@@ -361,10 +361,10 @@
     <info>http://snap.nlc.dcccd.edu/reference/sysadmin/julian/ch18/389-392.html</info>
   </rule>
 
-  <rule id="1610" level="13" timeframe="120" frequency="5">
+  <rule id="1610" level="13" timeframe="120" frequency="6" ignore="30">
     <if_level>7</if_level>
     <same_source_ip></same_source_ip>
-    <comment>Multiple events from same source ip (5 within 2 minutes)</comment>
+    <comment>Multiple events from same source ip (6 within 2 minutes)</comment>
   </rule>  
 </group> <!-- SYSLOG, ATTACKS -->
 
