@@ -553,14 +553,14 @@ void OS_ReadMSG(int m_queue)
 
                 /* If not alert set, keep going */
                 if(currently_rule->noalert)
-                    continue;
+                    break;
                 
                 /* Checking if rule is supposed to be ignored */
                 if(currently_rule->time_ignored)
                 {
                     if((lf->time - currently_rule->time_ignored) < 
                             currently_rule->ignore_time)
-                        continue;
+                        break;
                     else
                         currently_rule->time_ignored = 0;
                 }
