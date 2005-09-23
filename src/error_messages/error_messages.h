@@ -30,6 +30,7 @@
 #define FORMAT_ERROR "%s(1106): String not correctly formated. Crafted?"  
 #define MKDIR_ERROR  "%s(1107): Impossible to create directory: '%s'"
 #define PERM_ERROR   "%s(1108): Permission error. Operation not completed."
+#define THREAD_ERROR "%s(1109): Error creating new pthread."
 
 /* COMMON ERRORS */
 #define CONN_ERROR 	"%s(1201): No remote connection configured. Exiting."
