@@ -1,0 +1,19 @@
+OSSEC HIDS 0.3
+Copyright (c) 2004,2005 Daniel B. Cid  	<daniel.cid@gmail.com>
+					                    <dcid@ossec.net>
+
+
+= Information about OSSEC =
+
+** Visit our website for the lasted news/information.
+http://www.ossec.net/hids/
+
+** This information is from version 0.1
+
+OSSEC HIDS is a complex system that abstracts multiple host-based
+intrusion detection capabilities into a single, scalable and
+powerful infrascture. It includes log gathering, file integrity
+checking, system health monitoring, event correlation and
+analysis into a unique and powerfull tool.
+
+..

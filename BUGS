@@ -1,0 +1,49 @@
+*1104 (integrity check)
+ **reporter: anonymous
+ **date: 2005-08-22
+ **message: I'm receiving a lot of messages from the integrity check
+            daemon related to modifications on /etc/resolv.conf..
+            I'm using DHCP and even when the md5sum does not change,
+            the c_time is changed and an alert generated.
+ **resolution: For v0.3, I'm going to add a supress flag to avoid
+               receiving repeated alerts like this. For now, I realize
+               that adding the st_ctime to the checksum is useless. 
+               Removing it will stop these unecessary alerts.
+ **stats: Fixed/Closed (by Daniel B. Cid).
+                          
+
+*1103 (analysis_stats)
+ **reporter: anonymous
+ **date: 2005-08-22
+ **message: Stats are bogus. Looking at the code, I  see that gethour
+            is not correct.
+ **resolution: The stats was comparing the maximum and minimum number
+               of events against the wrong threshold value. Fixed gethour
+               to do it right :)
+ **status: Fixed/Closed (by Daniel B. Cid).
+ 
+                
+*1102 (analysis server)
+ **reporter: anonymous
+ **date: 2005-Jul-29
+ **message: Every SSH login error message is being notified twice.
+            I receive two emails with the same message. 
+            -- CUT --
+ **resolution: The problem is that SSH forks and create a uniq process
+               to handle a new client requests. When the login fails,
+               both processes are logging to syslog. This is the reason
+               why you are seeing two messages every time. I added
+               some checkings to avoid notifying on repeated messages.
+ **status: Fixed/Closed (by Daniel B. Cid).              
+                          
+
+*1101 (os_regex)
+ **reporter: anonymous
+ **date: 2005-Jul-25
+ **message: Rule "su\S*: BAD su" is not matching the log entry
+            "su: BAD SU dcid to root on /dev/ttyp0". If I change
+            the regex to "su: BAD su" it works.
+ **resolution: Bug on the os_regex. When the first pattern after
+               a "\X*" matched the next character, it would be
+               ignored. Fixed the library.
+ **status: Fixed/Closed (by Daniel B. Cid).                            

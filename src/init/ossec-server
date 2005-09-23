@@ -1,0 +1,136 @@
+#!/bin/sh
+# ossec-control        This shell script takes care of starting
+#                      or stopping ossec-hids
+# Author: Daniel B. Cid <daniel.cid@gmail.com>
+
+
+DEFAULT_DIR="/var/ossec"
+DIR=${DEFAULT_DIR}
+
+
+###  Do not modify bellow here ###
+pfile=""
+    
+# Help message
+help()
+{
+    # Help message
+    echo "Usage: $0 {start|stop|restart|status}";
+    exit 1;
+}
+
+
+# Status function
+status()
+{
+    DAEMONS="ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild"
+    for i in ${DAEMONS}; do
+        pfile=${i}
+        pstatus;
+        if [ $? = 0 ]; then
+            echo "${i} not running..."
+        else
+            echo "${i} is running..."
+        fi
+    done             
+}
+
+
+# Start function
+start()
+{
+
+    DAEMONS="ossec-maild ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd"
+    
+    echo "Starting OSSEC HIDS (by Daniel B. Cid)..."
+    
+    for i in ${DAEMONS}; do
+        pfile=${i}
+        pstatus;
+        if [ $? = 0 ]; then
+            ${DEFAULT_DIR}/bin/${i};
+            if [ $? != 0 ]; then
+                exit 1;
+            fi 
+
+            echo "Started ${i}..."            
+            sleep 1;
+        else
+            echo "${i} already running..."                
+        fi    
+    
+    done    
+
+    echo "Completed."
+}
+
+pstatus()
+{
+    # pfile must be set
+    if [ "X${pfile}" = "X" ]; then
+        return 0;
+    fi
+        
+    ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        kill -0 `cat ${DIR}/var/run/${pfile}*.pid` > /dev/null 2>&1
+        if [ $? = 0 ]; then
+          return 1;  
+        fi           
+    fi
+    
+    return 0;    
+}
+
+stopa()
+{
+
+    DAEMONS="ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild"
+    for i in ${DAEMONS}; do
+        pfile=${i}
+        pstatus;
+        if [ $? = 1 ]; then
+            echo "Killing ${i} .. ";
+            kill `cat ${DIR}/var/run/${i}*.pid`;
+        else
+            echo "${i} not running .."; 
+        fi
+        
+        rm -f ${DIR}/var/run/${i}*.pid
+        
+     done    
+    
+    echo "OSSEC HIDS Stopped"
+}
+
+
+
+### MAIN HERE ###
+WHO=`whoami`
+
+if [ ! "X${WHO}" = "Xroot" ]; then
+	echo "$0: You must be root to run this script"
+	exit 1;
+fi
+
+
+case "$1" in
+  start)
+	start
+	;;
+  stop) 
+	stopa
+	;;
+  restart)
+	stopa
+	start
+	;;
+  status)
+    status
+	;;
+  help)  
+    help
+    ;;
+  *)
+    help
+esac

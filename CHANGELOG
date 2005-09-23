@@ -1,0 +1,98 @@
+Daniel B. Cid <daniel.cid@gmail.com>
+v0.3 (2005/09/22): Added support for logcollector to read one file
+                   at a time. Added automatic file ignore on syscheck.
+                   Only monitor stable files. Added noalert option to
+                   the rules. Hashing some of them to minimize run time
+                   checking (kernel rules done). Fixed maild to wait a few
+                   seconds before sending an alert. It will avoid multiple
+                   alerts at the same time on different e-mails. Added
+                   option for local installation. Added manage_agents to
+                   deal with agents addition, etc.
+                   Modified files:
+                   src/headers/mq_op.h
+                   src/init/init.sh
+                   src/logcollector/VERSION
+                   src/logcollector/config.c
+                   src/logcollector/logcollector.c
+                   src/logcollector/logcollector.h
+                   src/logcollector/read_snortfull.c
+                   src/logcollector/read_syslog.c
+                   src/os_crypto/blowfish/bf_op.c
+                   src/os_crypto/md5/md5_op.c
+                   src/os_crypto/md5/md5_op.h
+                   src/os_execd/exec.c
+                   src/os_maild/maild.c
+                   src/os_maild/maild.h
+                   src/os_maild/os_maild_client.c
+                   src/os_net/os_net.c
+                   src/os_regex/os_regex.c
+                   src/os_regex/os_regex_match.c
+                   src/syscheckd/create_db.c
+                   src/syscheckd/run_check.c
+                   etc/decoder.xml
+                   etc/rules/syslog.rules
+                   install.sh
+                   src/InstallServer.sh
+                   src/Makeall
+                   src/addagent/Makefile
+                   src/analysisd/alerts/log.c
+                   src/analysisd/analysisd.c
+                   src/analysisd/alerts/mail.c
+                   src/analysisd/analysisd.h
+                   src/analysisd/decoders/decoder.c
+                   src/analysisd/decoders/snort.c
+                   src/analysisd/decoders/syscheck.c
+                   src/analysisd/eventinfo.c
+                   src/analysisd/eventinfo.h
+                   src/analysisd/rules.c
+                   src/analysisd/rules.h 
+                   src/analysisd/stats.c
+                    
+Daniel B. Cid <daniel.cid@gmail.com>
+v0.3-a (2005/08/22): Added more rules. Improved ssh decoder (only
+                     use FTS for successfull logins) and fixed bug 1102
+                     related to the bogus stats.
+
+Daniel B. Cid <daniel.cid@gmail.com>
+v0.2-b (2005/08/01): Added proftpd decoder and some rules to analyze
+                   proftpd logs. Added named rules.
+
+Daniel B. Cid <daniel.cid@gmail.com>
+v0.2-a (2005/07/26): Integrity check daemon (syschek) added. Added support 
+                   for it on analysisd either. Bugs fixed, etc.
+                   Modified files:
+                       install.sh
+                       src/InstallServer.sh
+                       src/Makeall
+                       src/Makefile
+                       src/Version
+                       src/analysisd/alerts/mail.c
+                       src/analysisd/analysisd.c
+                       src/analysisd/config.c
+                       src/analysisd/config.h
+                       src/analysisd/decoders/snort.c
+                       src/analysisd/eventinfo.h
+                       src/analysisd/rules.c
+                       src/analysisd/rules.h
+                       src/analysisd/rules_list.c
+                       src/analysisd/stats.c
+                       src/client-agent/agentd.c
+                       src/headers/config_op.h
+                       src/headers/mq_op.h
+                       src/init/ossec-client
+                       src/init/ossec-server
+                       src/logcollector/logcollector.c
+                       src/os_crypto/md5/md5_op.c
+                       src/os_crypto/shared/sec.c
+                       src/os_maild/mail_list.c
+                       src/os_maild/maild.c
+                       src/os_maild/os_maild_client.c
+                       src/os_regex/os_regex.c
+                       src/remoted/config.c
+                       src/remoted/remoted.c
+                   Bugs fixed: 1101, 1102
+                   
+Daniel B. Cid <daniel.cid@gmail.com>
+v0.1   (2005/07/06): First version released. I'm working on that
+                   since 2003, but never had enough time to finish
+                   it. Now, it is usable.

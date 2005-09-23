@@ -1,0 +1,49 @@
+OSSEC Hids Logging
+
+== Introduction ==
+
+The system supports two types of logs. Alert logging and event
+or archive logging. 
+
+Every message received is treated as an event. 
+Any log message, integrity report, system information will be treated 
+as such. Event logging is very expensive for the system because
+it will archive every event. However, they can be usefull to get
+the big picture if some attack happens.
+
+Alert logging is the most usefull one. An alert is generated when
+an event is matched against one of the detection rules. Besides 
+logging, OSSEC hids also supports email notifications and external
+command execution as an alert method.
+
+
+== Event logging ==
+
+Inside the OSSEC default loggings directory (by default /var/ossec/logs) 
+there is an entry for "archives" (/var/ossec/logs/archives). Inside this
+directory, all events will be stored by date.
+For example, all events received on May 22 of 2004, will be stored on:
+
+/var/ossec/logs/archives/2004/May/events-22.log
+
+After each day, a hash will be created for this specific day at
+
+/var/ossec/logs/archives/2004/May/events-22.log.md5
+
+This hash will be the hash of the file from the day 22 plus the hash
+from the day 21.
+
+The hash from the day 1, will be the hash from the day 31 (or 30 or 28)
+from the previous month.
+
+This will ensure that no log will be modified. Also, for this to happen,
+all the logs (since the first day) will need to be modified.
+
+
+== Alert logging ==
+
+There will be a "alerts" directory on the OSSEC default logging directory.
+It will be organized on the same way the event logging is. Please read
+above to understand it.
+
+

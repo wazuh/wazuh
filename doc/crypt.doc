@@ -1,0 +1,37 @@
+How the encryption is done.
+
+-The message is received from the queue (unix socket).
+-It will come in the format:
+	localization:location:group:message
+	  (integer):/var/log/messages:syslog:xxx
+
+-The function create encrypted will:
+
+	1.Generate an random integer
+	2.Check the size of the message and padded it if necessary
+	3.Generate the md5sum of the message (for authentication)
+	4.The encrypted message will be in the format:
+	  :checksum:randomint:localization:location:group:message
+	5.Encrypt the message above using a symmetric key (by defaylt 64*8bits)
+	6.Generate the message to be sent:
+	   :id:size_of_the_encryptedmessage:encryptedmessage
+
+-The function read encrypted will:
+	1.Read the ID and check if it matches the IP in the hash strucuture
+	2.Read the size of the encrypted message
+	3.Unencrypted the message using the symmetric key.
+	4.Check if the message was sucessfully decrypted by:
+		4.1-Checking if is in the right format (starting with ":")
+		4.2-Checking if the md5sum matches.
+	5.Remove the ID random int from the message
+	6.Change the location to match the srcip->location
+	7.Change the localization to match the one received.
+	8.Send the message to the queue.
+
+
+*The randoness will be done by using:
+	-random (seeded by time() +getpid() + getppid())
+
+*The checksum will be done by md5
+
+*The encryption will be done by blowfish cbc mode.

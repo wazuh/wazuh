@@ -1,0 +1,4 @@
+Mar 30 12:01:25 compute-0-0.local automount[6447]: mount(nfs): nfs: mount failure cares.local:/export/home/jfiske on /home/jfiske
+Mar 30 12:01:25 compute-0-0.local automount[6449]: mount(nfs): nfs: mount failure cares.local:/export/home/jfiske on /home/jfiske
+Aug  4 12:35:30 localhost automount[7203]: mount(nfs): nfs: mount failure 192.168.1.100:/compile/nfs/107 on /test/107
+Jul 2 22:37:52 gkar automount[2344]: mount(nfs): nfs: mount failure sunray:/exp

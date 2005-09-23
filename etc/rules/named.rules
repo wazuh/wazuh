@@ -1,0 +1,20 @@
+<!-- Default rules for Named -->
+
+<group name="named,syslog">
+  <rule id="1901" level="8">
+    <match>dropping source port zero packet from</match>
+    <comment>Invalid DNS packet. Possibility of attack</comment>
+  </rule>
+
+  <rule id="1902" level="8">
+    <regex>^named[\d+]: denied AXFR from</regex>
+    <comment>Failed attempt to perform zone transfer</comment>
+  </rule>
+
+  <rule id="1903" level="0">
+    <regex>^named[\d+]: denied update from|</regex>
+    <regex>^named[\d+]: unapproved update from|</regex>
+    <comment>NSUpdate attempt. Generally mis-configuration</comment>
+    <info>http://seclists.org/lists/incidents/2000/May/0217.html</info>
+  </rule>
+</group> <!-- SYSLOG,NAMED -->

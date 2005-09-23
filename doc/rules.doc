@@ -1,0 +1,66 @@
+--- Rules Organization ---
+
+
+-- Classification --
+
+The rules are classified in multiple levels. From the lowest (00) to the maximum
+level 16. Some levels are not used right now. Other levels can be added between
+them or after them. 
+
+**The rules will be read from the highest to the lowest level. **
+
+00 - Ignore the log if matched (to avoid false positives -- no action taken).
+01 - "Bad word" matching. Include words like "bad", "error", etc.
+02 - ** Unused **
+03 - System notification messages (no security importance).
+04 - ** Unused ** 
+05 - System low importance errors (including bad configuration, etc).
+06 - Important system notification messages.
+07 - User caused errors (missed password, bad username, denied action, etc).
+08 - Medium importancy error/warning messages.
+09 - ** Unused **
+10 - Repeatedly user caused errors (can be an attack, multiple bad passwords, etc).
+11 - High importance notification or error messages.
+12 - Unusual (important) message. Probably matches an unknown security event.
+13 - Important (known) security event.
+14 - ** Unused **
+15 - Urgent security event (can not be a false positive).
+16 - High urgent (critical) security event (uh-oh,).
+
+
+== Rules Config ==
+
+The configuration of the rules is composed the following fields:
+
+Attributes:
+    -level      (level of the rule, see above)
+    -id         (rule id --must be unique)
+    -maxsize    (maximum message size (log size))
+    -timeframe  (maximum timeframe between two events)
+    -frequency  (minimum frequency of same event)
+
+Elements:
+    ** Rule information ** 
+    -comment    (rule comment/description)
+    -info       (additional information about the rule/website/etc)
+    -cve        (cve of the bug/attack that the rule matches)
+    -group      (additional group to the rule)
+    
+    ** Information to match **
+    -regex      (regular expression to match the rule)
+    -match      (word to match the rule)
+    -user       (username)
+
+    ** Link rule as a child **
+    -if_sid     (to add this rule as child of any rule listed)
+    -if_group   (to add this rule as child of any rule grouped)
+    
+    ** Search on the previous events **
+
+    -if_matched_group   (search on previous events)
+    -if_matched_regex   (search on previous events)    
+    -same_source_ip     (search on previous events related to the same source ip)
+    -same_user          (search on previous events related to the same user)
+    -same_loghost       (search on previous events that came from the same log host)
+
+The rules  are organized in a XML format (inside the rules directory): 

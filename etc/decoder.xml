@@ -1,0 +1,93 @@
+<!--
+   - Allowed fields:
+   - location - where the log came from (only on FTS)
+   - user     - extract the user name
+   - dstuser  - the destination username (from su)
+   - srcip    - source ip
+   - dstip    - dst ip
+   - id       - event id 
+  -->
+
+<!-- SSH decoder.
+  -  Will extract username and srcip from the logs.
+  -  Only add to the FTS if the login was sucessfull
+  -  If the login failed, just extract the username/srcip for correlation
+  -  Examples:
+  -  sshd[8813]: Accepted password for root from 192.168.10.1 port 1066 ssh2
+  -  sshd[2404]: Accepted password for root from 192.168.11.1 port 2011 ssh2
+  -  sshd[21405]: Accepted password for root from 192.1.1.1 port 6023 ssh2
+  -  sshd[21487]: Failed password for root from 192.168.1.1 port 1045 ssh2
+  -  sshd[8813]: Failed none for root from 192.168.10.161 port 1066 ssh2
+  -  sshd[12675]: Failed password for invalid user lala11 from x.x.x.x ..
+  -  sshd[12914]: Failed password for invalid user lala6 from ...
+  -  "" Failed keyboard-interactive for root from 192.1.1.1 port 1066 ssh2    
+  -->
+<decoder name="ssh-success">
+  <prematch>^sshd[\d+]: Accepted</prematch>
+  <regex>^sshd[\d+]: Accepted \S+ for (\S+) from (\S+) port </regex>
+  <order>user,srcip</order>
+  <fts>name,user,location</fts>
+  <ftscomment>First time this user logged in (using ssh)</ftscomment>
+</decoder>
+
+<decoder name="ssh">
+  <prematch>^sshd[\d+]: Failed</prematch>
+  <regex>^sshd[\d+]: Failed \S+ for invalid user (\S+) from (\S+) port |</regex>
+  <regex>^sshd[\d+]: Failed \S+ for (\S+) from (\S+) port </regex>
+  <order>user,srcip</order>
+</decoder>
+
+<!-- Su decoder.
+  -  Will extract the username.
+  -  Examples:
+  -  su[2921936]: failed: ttyq4 changing from ldap to root
+  -  su[234]: BAD SU ger to fwmaster on /dev/ttyp0
+  -  su(pam_unix)[23164]: authentication failure; logname= uid=1342 euid=0 tty= ruser=dcid rhost=  user=osaudit
+  -  su(pam_unix)[2298]: authentication failure; logname= uid=1342 euid=0 tty= ruser=dcid rhost=  user=root
+  -  Jul  5 12:17:38 lili su[2702]: - pts/5 ab-dc-root
+  -  Jul  5 12:13:15 lili su[2614]: - pts/6 dcid-root
+  -->
+  
+<decoder name="su">
+  <prematch>^su(pam_unix)[\d+]:\s|^su[\d+]:\s|^su:\s</prematch>
+  <regex>^su\Spam_unix\S[\d+]: authentication failure; logname=\S*\s</regex>
+  <regex>uid=\d+ euid=\d+ tty=\S* ruser=(\S+) rhost=\S+ user=(\S+)$|</regex>
+  <regex>^su\S*: BAD SU (\S+) to (\S+) on|</regex>
+  <regex>^su[\d+]: failed: \S+ changing from (\S+) to (\S+)|</regex>
+  <regex>^su[\d+]: - \S+ (\S+)-(\S+)$</regex>
+  <order>user,dstuser</order>
+  <fts>name,user,location</fts>
+  <ftscomment>First time user attempted to use su</ftscomment>
+</decoder>
+
+<!-- Sudo decoder.
+  -  Will extract the username
+  -  Examples:
+  -  Apr 27 15:22:23 niban sudo:     dcid : TTY=pts/4 ; PWD=/home/dcid ; USER=root ; COMMAND=/usr/bin/tail /var/log/snort/alert.fast
+  -  Apr 27 15:25:08 niban sudo:     dcid : TTY=pts/4 ; PWD=/home/dcid ; USER=root ; COMMAND=/usr/bin/tail /var/log/snort/alert.fast
+  -  Apr 14 10:59:01 enigma sudo:     dcid : TTY=ttyp3 ; PWD=/home/dcid/ossec-hids.0.1a/src/analysisd ; USER=root ; COMMAND=/bin/cp -pr ../../bin/addagent ../../bin/osaudit-logaudit ../../bin/ossec-execd ../../bin/ossec-logcollector ../../bin/ossec-maild ../../bin/ossec-remoted /var/ossec/bin
+  -  Apr 19 14:52:02 enigma sudo:     dcid : TTY=ttyp3 ; PWD=/var/www/alex ; USER=root ; COMMAND=/sbin/chown dcid.dcid .
+  -->
+<decoder name="sudo">
+  <prematch>^sudo:\s</prematch>
+  <regex>^sudo:\s+(\S+)\s:</regex>
+  <order>user</order>
+  <fts>name,user,location</fts>
+  <ftscomment>First time user executed the sudo command</ftscomment>
+</decoder>  
+
+<!-- ProFTPD decoder.
+  - Will extract the username/srcip
+  - Examples:
+  - proftpd[12564]: juf01 (pD9EE35B1.dip.t-dialin.net[217.238.53.177]) - USER jufu: Login successful
+  -->
+
+<decoder name="proftpd">  
+  <prematch>^proftpd[\d+]: </prematch>
+  <regex>proftpd[\d+]: (\S+\s\S+) - USER (\S+): Login successful</regex>
+  <order>srcip,user</order>
+  <fts>name,user,srcip,location</fts>
+  <ftscomment>First time user logged in via FTP</ftscomment>
+</decoder>
+
+<!-- EOF -->

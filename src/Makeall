@@ -1,0 +1,99 @@
+#!/bin/sh
+
+# Make clean?
+ARGV=$1
+
+# Checking argument
+if [ "X${ARGV}" = "X" ]; then
+    echo ""
+    echo "No argument. Available options are:"
+    echo "  $0 clean"
+    echo "  $0 all"
+    echo "  $0 build"
+    echo "  $0 libs"
+    echo ""
+    exit 1;
+fi
+
+# CPU information
+#CPU=`uname -p`
+MACH=`uname -m`
+OS=`uname`
+
+MSG=""
+# Libraries. They need to be compiled before.
+LIBS="os_xml os_regex os_net os_crypto"
+# Shares sources
+SOURCES="shared"
+# Binaries
+BINARIES="os_maild os_execd analysisd logcollector remoted client-agent addagent syscheckd"
+DIRECTORIES=""      # Directories to make
+
+
+# Cleaning Config.OS
+if [ "X${ARGV}" = "Xall" ]; then
+    ls ./Config.OS >/dev/null 2>&1
+    if [ $? != 0 ]; then
+        echo "" > Config.OS
+    fi
+
+    # Checking for OpenSSLconf.h
+    ls /usr/include/openssl/opensslconf.h > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        echo "DEXTRA=-DUSE_OPENSSL" >> Config.OS
+    fi    
+
+    if [ "X$OS" = "XSunOS" ]; then
+        echo "EEXTRA=-lsocket -lnsl -lresolv" >> Config.OS
+    fi    
+fi
+
+# Cleaning
+if [ "X${ARGV}" = "Xclean" ]; then
+    echo "" > ./Config.OS
+fi
+   
+    
+# Getting values for each action
+if [ "X${ARGV}" = "Xall" ]; then
+    DIRECTORIES="${LIBS} ${SOURCES} ${BINARIES}" 
+elif [ "X${ARGV}" = "Xlibs" ]; then
+    DIRECTORIES="${LIBS} ${SOURCES}"
+elif [ "X${ARGV}" = "Xbuild" ]; then
+    DIRECTORIES="${BINARIES}"   # Only binaries need to be built
+else
+    DIRECTORIES="${LIBS} ${SOURCES} ${BINARIES}"
+fi
+
+# Making each directory
+for i in ${DIRECTORIES}; do
+    cd $i
+    if [ $? != 0 ]; then
+        echo ""
+        echo "Error acessing directory $i"
+        exit 1;
+    fi    
+    if [ "X${ARGV}" = "Xclean" ]; then
+        echo "Entering $i"
+        make clean
+    elif [ "X${ARGV}" = "Xbuild" ]; then
+        make build
+        if [ $? != 0 ]; then
+            echo ""
+            echo "Error Making the binaries"
+            exit 1;
+        fi        
+    else
+        echo "Making $i"
+        make
+        if [ $? != 0 ]; then
+            echo ""
+            echo "Error Making $i"
+            exit 1;
+        fi
+    fi    
+    cd ../
+done
+
+exit 0;
+# EOF #

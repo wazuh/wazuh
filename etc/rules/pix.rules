@@ -1,0 +1,44 @@
+<!-- Default rules for the Cisco PIX log analysis -->
+
+<!-- For more info:
+  -  http://www.cisco.com/en/US/products/sw/secursw/ps2120/products_system_message_guide_chapter09186a00801582b2.html
+  -->
+
+<group name="syslog,pix">
+  <rule id="2001" level="7">
+    <match>^%PIX-6-605004: Login denied from</match>
+    <comment>Attempt to log in the PIX firewall from untrusted network</comment>
+  </rule>
+
+  <rule id="2002" level="7">
+    <match>^%PIX-5-502103: User priv level changed:</match>
+    <comment>User changed his privileges in the PIX</comment>
+  </rule>
+
+  <rule id="2003" level="3">
+    <match>^%PIX-6-605005: Login permitted from</match>
+    <comment>Sucessfull login into the PIX firewall</comment>
+  </rule>
+
+  <rule id="2004" level="0">
+    <match>^%PIX-6-302010: </match> 
+    <!--  %PIX-6-302010: 0 in use, 376 most used-->
+    <comment>Connection related message from the PIX firewall</comment>
+  </rule>
+
+  <rule id="2005" level="8">
+    <match>^%PIX-6-308001: PIX console enable password incorrect</match>
+    <comment>Password mismatch while trying enable on the PIX</comment>
+  </rule>
+
+   <rule id="2006" level="11">
+    <match>^%PIX-4-405001: Received ARP response collision from</match>
+    <comment>ARP collision detected by the PIX. Worth looking at it</comment>
+  </rule> 
+
+   <rule id="2007" level="7">
+    <match>^%PIX-4-401004: Shunned packet: </match>
+    <comment>Attempt to connect from a shunned IP</comment>
+  </rule> 
+  
+</group> <!-- SYSLOG,PIX -->

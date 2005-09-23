@@ -1,0 +1,8 @@
+#Red Hat
+Feb  4 10:43:02 niban sudo:     dcid : TTY=pts/4 ; PWD=/home/dcid ; USER=root ; COMMAND=/bin/ls
+Feb  4 10:44:00 niban sudo:     dcid : TTY=pts/4 ; PWD=/home/dcid ; USER=root ; COMMAND=/bin/chmod 777 /home/dcid/test1
+Feb  4 10:46:37 niban sudo:     dcid : TTY=pts/26 ; PWD=/home/dcid/dev/pr/osaudit/osaudit-0.1/src ; USER=root ; COMMAND=/bin/cp -pr ../bin/logreader ../bin/logremote ../bin/logremote-client /var/osaudit/bin
+#OpenBSD
+May 26 19:40:41 enigma sudo:     dcid : TTY=ttyp0 ; PWD=/var/www/htdocs ; USER=root ; COMMAND=/usr/bin/tail /var/log/secure
+#Slackware
+May 26 20:16:17 lili sudo:     dcid : TTY=pts/1 ; PWD=/home/dcid ; USER=root ; COMMAND=/usr/bin/vi /etc/sudoers

@@ -1,0 +1,21 @@
+<!-- Default rules for proftpd -->
+
+<group name="proftpd,syslog">
+  <rule id="2501" level="0">
+    <match>^proftpd</match>
+    <regex>FTP session opened|FTP session closed.</regex>
+    <comment>FTP session opened/closed. Ignore it</comment>
+  </rule>
+
+  <rule id="2502" level="8">
+    <match>^proftpd</match>
+    <regex>- no such user </regex>
+    <comment>Attempt to login using a non-existent user</comment>
+  </rule>
+
+  <rule id="2503" level="7">
+    <match>^proftpd</match>
+    <regex>- USER \S+: Login failed</regex>
+    <comment>Login failed while trying to access the FTP server</comment>
+  </rule>
+</group> <!-- SYSLOG,PROFTPD -->

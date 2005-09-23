@@ -1,0 +1,33 @@
+<xml_var name="lala">xx</xml_var>
+<xml_var name="lala2">xx2</xml_var>
+
+<a></a>
+
+<test name="123">
+  <aatr>$lala</aatr>
+  <aatr2>lele</aatr2>
+</test>
+
+<test2 name="456">
+  <aatr>$lala</aatr>
+  <aatr1>$lala2</aatr1>
+  <aatr2>$lala</aatr2>
+  <aatr3>$lala2</aatr3>
+  <aatr4>lala-abc</aatr4>
+</test2>
+
+<myxml1 name="name1" value="abc">
+  <element1 name="mytestname" value ='element1value'>content1</element1>
+   <element2 name = "mysecondname">content2</element2>
+</myxml1>
+
+<myxml2 name="name2" value="def" value2="test">
+  <element3>content3</element3>
+  <element4 value="myvalueforelement4">content4</element4>
+  <element5>content5
+    <element51>content51</element51>
+    <element52>content52</element52>
+  </element5>
+  <element6>content6</element6>
+</myxml2>
+

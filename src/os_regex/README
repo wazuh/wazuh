@@ -1,0 +1,72 @@
+OSSEC os_regex 0.2
+Copyright (c) 2004,2005 Daniel B. Cid   <daniel.cid@gmail.com>
+                                        <dcid@ossec.net>
+
+ 
+= OSSEC, os_regex Library. =
+
+
+Fast and simple library for regular expressions in C.
+Available at http://www.ossec.net/c/os_regex/
+
+This library is designed to be simple, but support
+the most common regular expressions.
+
+Right now it supports:
+
+	\w, \w+ -> For A-Z, a-z, 0-9 characters
+	\d, \d+ -> For 0-9 characters
+	\s, \s+	-> For spaces (" ")
+	\., \.+	-> For any character
+	\W, \W+ -> For anything not \w
+	\D, \D+ -> For anything not \d
+	\S, \S+ -> For anything not \s (everything but spaces)
+
+We also support the "^" (beginning of the text), "$" (end of the text)
+and the "|" to have multiple expressions.
+
+Available functions:
+
+	OS_WordMatch(char *regex, char *str).
+		-Returns 0 in case of success (if matched).
+		-Word match does not support regex.
+	   Examples:
+		OS_WordMatch("^test a", "test abcd")   -> OK
+		OS_WordMatch("TesT a" , "test abcd")   -> OK
+		OS_WordMatch("test a$", "test abcd")   -> NOT OK
+		OS_WordMatch("any tr", "testANY Tr  ") -> OK
+	
+	OS_WordMatch_Sensitive 
+		-Similar of OS_WordMatch, but the search is
+		 case sensitive.	
+
+	OS_Regex(char *regex, char *str)
+		-Returns 0 in case of success (if matched).
+		-Supports all regex.
+	   Examples:
+		OS_Regex("^\w+\s+\d+$","test 123")	-> OK
+		OS_Regex("^\w+\s+\d+$","1test 123")	-> NOT OK
+		OS_Regex("^\w+\s+\d+Test$","test 1Test")-> OK
+		OS_Regex("^\w+\s+\d+$","t 1")		-> OK
+		OS_Regex("\w+\W+\d+","test 123")	-> OK
+	
+	OS_Regex_Sensitive(char *regex, char *str)
+		-Save as OS_Regex, but case sensitive.
+
+	OS_StrIsNum(char *str)
+		-Returns 0 in case of success
+		-Checks if an string is only composed of 0-9.
+
+	OS_GetPiece(char *initialmatch, char *finalmatch, char *str)
+		-Return a string in case of success.
+		-Returns NULL in error.
+		-This function will break "str"(last arg) in one
+		 piece, delimited by initialmatch and finalmatch.
+		-It supports only "^" and "$".
+		-No regex allowed. 
+	   Examples:
+		OS_GetPiece("test","dc","laltest 123 adcv") -> 
+					retuns: " 123 a"
+		OS_GetPiece("","dc","lala test dc123") ->
+					returns: "lala test "
+

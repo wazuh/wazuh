@@ -1,0 +1,3 @@
+# freebsd invalid physical login
+login: 1 LOGIN FAILURE ON ttyv0
+login: 1 LOGIN FAILURE ON ttyv0, root

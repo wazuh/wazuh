@@ -1,0 +1,17 @@
+OSSEC HIDS 0.3
+Copyright (c) 2004,2005 Daniel B. Cid  	<daniel.cid@gmail.com>
+					                    <dcid@ossec.net>
+
+
+= Information about OSSEC HIDS =
+
+Visit http://www.ossec.net/hids/
+
+= Recommended Installation =
+
+See INSTALL
+
+== Configuring OSSEC HIDS ==
+
+Just follow the steps from the install.sh script.
+There is also some extra information of doc/README.config

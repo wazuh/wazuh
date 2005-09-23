@@ -1,0 +1,21 @@
+== OSSEC, os_xml "library" ==
+Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+
+This "library" is a set of very simple functions to read
+a XML configuration file.
+
+It can only read XML, not write. I did not test it on very
+complex XML files, so I don't know if it will work.
+
+Any question, comment or suggestion, please contact me
+at dcid@ossec.net or daniel@underlinux.com.br.
+
+The latest version of this library is available at
+http://www.ossec.net/c/os_xml/
+
+== Examples ==
+
+The file examples/main.c shows some examples (reading example.xml) on 
+how to use the "os_xml" to read an XML file. Basically, you only need to
+start your XML" by calling the ReadXML function (the file as argument)
+and use the other supplied functions to read the structure it creates. 

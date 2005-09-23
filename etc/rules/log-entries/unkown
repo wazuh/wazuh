@@ -1,0 +1,17 @@
+ Apr 14 19:18:56 mozart in.telnetd[11634]: connect from 192.168.11.200
+ Apr 14 19:18:56 mozart imapd[11635]: connect from 192.168.11.200
+ Apr 14 19:18:56 mozart in.fingerd[11637]: connect from 192.168.11.200
+ Apr 14 19:18:56 mozart ipop3d[11638]: connect from 192.168.11.200
+ Apr 14 19:18:56 mozart in.telnetd[11639]: connect from 192.168.11.200
+ Apr 14 19:18:56 mozart in.ftpd[11640]: connect from 192.168.11.200
+ Apr 14 19:19:03 mozart ipop3d[11642]: connect from 192.168.11.200
+ Apr 14 19:19:03 mozart imapd[11643]: connect from 192.168.11.200
+ Apr 14 19:19:04 mozart in.fingerd[11646]: connect from 192.168.11.200
+ Apr 14 19:19:05 mozart in.fingerd[11648]: connect from 192.168.11.200 
+
+ Apr 14 21:01:58 mozart imapd[11667]: command stream end of file, while reading line user=??? host=[192.168.11.200]
+ Apr 14 21:01:58 mozart ipop3d[11668]: No such file or directory while reading line user=??? host=[192.168.11.200]
+ Apr 14 21:02:05 mozart sendmail[11675]: NOQUEUE: [192.168.11.200]: expn root
+
+ Apr 14 21:03:09 mozart telnetd[11682]: ttloop: peer died: Invalid or incomplete multibyte or wide character
+ Apr 14 21:03:12 mozart ftpd[11688]: FTP session closed 

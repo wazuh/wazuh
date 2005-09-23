@@ -1,0 +1,2 @@
+Jan 25 21:05:40 horus xinetd[4479]: Deactivating service ftp due to excessive incoming connections.  Restarting in 30 seconds.
+Feb 20 14:54:32 localhost xinetd[717]: Deactivating service nsca due to excessive incoming connections.  Restarting in 30 seconds.

@@ -1,0 +1,14 @@
+== Group ==
+
+Global (every daemon)              - ossec
+
+== Users ==
+
+Maild   - ossecm
+Logd    - ossecl
+Execd   - ossece
+Analysys- ossec
+Remoted - ossecr
+
+
+

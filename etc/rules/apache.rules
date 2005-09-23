@@ -1,0 +1,13 @@
+<!-- Nothing done yet -->
+
+<!-- Apache chunked encoding:
+  -  http://www.securityfocus.com/infocus/1633
+  -->
+  
+<apache_err>
+  <3001 level="11" info="http://www.ossec.net/logs/rule-3001">
+  <regex>^[notice] child pid \d+ exit signal Segmentation Fault</regex>
+  <comment>Sucessfull attack of the Apache chunked encoding vulnerability</comment>
+  </3001>
+</apache_err>
+

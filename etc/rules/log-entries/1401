@@ -1,0 +1,6 @@
+#Red Hat box
+Feb  1 14:39:16 nogan sudo:    test2 : 3 incorrect password attempts ; TTY=pts/4 ; PWD=/home/test2 ; USER=root ; COMMAND=/bin/ls
+#OpenBSD
+Jan 28 20:36:33 enigma sudo:     dcid : 3 incorrect password attempts ; TTY=ttyp0 ; PWD=/home/dcid ; USER=root ; COMMAND=/bin/ls
+May 26 19:40:25 enigma sudo:     dcid : 3 incorrect password attempts ; TTY=ttyp0 ; PWD=/var/www/htdocs ; USER=root ; COMMAND=/bin/ls
+
