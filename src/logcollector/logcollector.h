@@ -18,7 +18,7 @@
 typedef struct _logreader
 {
     int mtime;
-    int type;
+    char type;
     int ign;
         
 	char *file;
