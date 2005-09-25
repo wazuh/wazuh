@@ -17,6 +17,7 @@
 
 #include "headers/defs.h"
 #include "headers/mq_op.h"
+#include "headers/debug_op.h"
 #include "headers/file_op.h"
 #include "os_net/os_net.h"
 #include "os_regex/os_regex.h"
@@ -52,61 +53,59 @@ int FinishMQ()
  * Send a message to the queue.
  */
 int SendMSG(int queue, char *message, char *locmsg,
-                       char *logroup, unsigned short int loc)
+                       char *logroup, char loc)
 {
-    char **pieces = NULL;
     char tmpstr[OS_MAXSTR+1];
 
-    /* This may be a big loss in here... */
-    memset(tmpstr,'\0',OS_MAXSTR+1);
+
+    tmpstr[OS_MAXSTR] = '\0';
 
     if(loc == SECURE_MQ)
     {
-        /* Breaking in six pieces */
-        pieces = OS_StrBreak(':', message, 7);
-        if(pieces == NULL)
-            return(-1);
+        char *nm;
+        printf("message received was !!%s!!\n",message);
 
-        /* If pieces[6] is not null, pieces[0]-[5] will not be */
-        else if(pieces[6] == NULL)
+        message++;
+        
+        nm = index(message, ':');
+        if(nm == NULL)
         {
-            if(pieces[0])
-                free(pieces[0]);
-            
-            if(pieces[1])
-                free(pieces[1]);
-            
-            if(pieces[2])
-                free(pieces[2]);
-            
-            if(pieces[3])
-                free(pieces[3]);
-            
-            if(pieces[4])
-                free(pieces[4]);
-            
-            if(pieces[5])
-                free(pieces[5]);
-                
-            free(pieces);                    
-            return(-1);
-        }   
+            merror("%s: Error deserializing message",ARGV0);
+            return(0);
+        }
         
-        snprintf(tmpstr,OS_MAXSTR,"%s:%s->%s:%s:%s",pieces[3],locmsg,
-                pieces[4],pieces[5],pieces[6]);
+        nm++; /* We point now to the beginning of the rand */
         
-        free(pieces[0]);
-        free(pieces[1]);
-        free(pieces[2]);
-        free(pieces[3]);
-        free(pieces[4]);
-        free(pieces[5]);
-        free(pieces[6]);
-        free(pieces);
+        message = index(nm, ':');
+        if(message == NULL)
+        {
+            merror("%s: Error deserializing message",ARGV0);
+            return(0);
+        }
+
+        message++; /* We are now on the beginning of the message itself */
+        
+        loc = message[0];
+        message++;
+        if(message[0] != ':')
+        {
+            merror("%s: Error deserializing message",ARGV0);
+            return(0);
+        }
+        
+        message++; /* Pointing now to the location */
+        
+        snprintf(tmpstr,OS_MAXSTR,"%c:%s->%s",loc, locmsg, message);
     }
     else
         snprintf(tmpstr,OS_MAXSTR,"%d:%s:%s:%s",loc,locmsg,logroup,message);
 
+
+    /* queue not available */
+    if(queue < 0)
+        return(-1);
+
+        
     /* We attempt 5 times to send the message.
      * After the first error, we wait 0.001 seconds.
      * After the second error, we wait 0.01 seconds.

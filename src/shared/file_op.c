@@ -24,6 +24,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <sys/utsname.h>
 
 #include "headers/file_op.h"
 #include "headers/defs.h"
@@ -96,5 +98,34 @@ int DeletePID(char *name)
     
     return(0);
 }
+
+/* getuname; Get uname and returns a string with it.
+ * Memory must be freed after use
+ */
+char *getuname()
+{
+    struct utsname uts_buf;
+
+    if(uname(&uts_buf) == 0)
+    {
+        char *ret;
+
+        ret = calloc(256, sizeof(char));
+        if(ret == NULL)
+            return(NULL);
+
+        snprintf(ret, 255, "%s %s %s %s %s", 
+                                 uts_buf.sysname,
+                                 uts_buf.nodename,
+                                 uts_buf.release,
+                                 uts_buf.version,
+                                 uts_buf.machine);
+
+        return(ret);
+    }
+
+    return(NULL);
+}
+
 
 /* EOF */
