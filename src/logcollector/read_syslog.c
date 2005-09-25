@@ -51,7 +51,6 @@ int read_syslog(int pos)
                     logr[pos].group,logr[pos].type) < 0)
         {
             merror("%s: Error sending message to queue",ARGV0);
-            close(logr_queue);
             if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
             {
                 merror("%s: Impossible to open queue",ARGV0);

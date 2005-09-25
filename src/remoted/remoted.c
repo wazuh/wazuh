@@ -40,6 +40,8 @@
 #include "headers/privsep_op.h"
 #include "headers/file_op.h"
 #include "headers/sec.h"
+#include "headers/pthreads_op.h"
+
 
 #define IPSIZE 16
 
@@ -49,6 +51,9 @@ short int chroot_flag=0;
 /* Error messages */
 #include "error_messages/error_messages.h"
 
+
+/*  start_mgr prototype */
+void *start_mgr(void *arg);
 
 
 /* OS_IPNotAllowed, v0.1, 2005/02/11 
@@ -102,8 +107,7 @@ void _startit(int position,int connection_type, int uid,
     int port = 0;
     int _local_err = 0;
     
-    keystruct keys;
-
+    
 
     /* if SYSLOG and allowips is not defined, exit */
     if((logr->allowips == NULL)&&(connection_type == SYSLOG_CONN))
@@ -165,7 +169,19 @@ void _startit(int position,int connection_type, int uid,
 
     /* Reading the private keys for secure connection */
     if(connection_type == SECURE_CONN)
+    {
+        /* Read the keys */ 
         ReadKeys(&keys);
+        
+        
+        /* Creating a new TCP socket to start
+         * handling connections with the agents 
+         */
+        if(CreateThread(start_mgr, (void *)&port) != 0)
+        {
+            ErrorExit("%s: Impossible to start the manager thread.");
+        }
+    }
 
     while(1)
     {
@@ -208,10 +224,10 @@ void _startit(int position,int connection_type, int uid,
             }
 
             /* If we can't send the message, try to connect to the
-             * socket again. If not, increments local_err, rest a 
-             * little bit and try again latter
+             * socket again. If not, increments local_err and try
+             * again latter
              */
-            if(SendMSG(m_queue, cleartext_msg, srcip,logr->group[position],
+            if(SendMSG(m_queue, cleartext_msg, srcip, logr->group[position],
                         SECURE_MQ) < 0)
             {
                 merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);

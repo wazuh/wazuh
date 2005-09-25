@@ -270,13 +270,17 @@ int OS_SendUDPbySize(int socket, int size, char *msg)
 int OS_AcceptTCP(int socket,  char *srcip, int addrsize)
 {
     int clientsocket;
-    _cl = sizeof(_c);
+    struct sockaddr_in _nc;
+    socklen_t _ncl;
+    
+    memset(&_nc, 0, sizeof(_nc));
+    _ncl = sizeof(_nc);
 
-    if((clientsocket = accept(socket, (struct sockaddr *) &_c,
-                    &_cl)) < 0)
+    if((clientsocket = accept(socket, (struct sockaddr *) &_nc,
+                    &_ncl)) < 0)
         return(-1);	
 
-    strncpy(srcip, inet_ntoa(_c.sin_addr),addrsize -1);
+    strncpy(srcip, inet_ntoa(_nc.sin_addr),addrsize -1);
     srcip[addrsize -1]='\0';
 
     return(clientsocket);

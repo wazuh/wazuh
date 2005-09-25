@@ -148,20 +148,21 @@ void ReadKeys(keystruct *keys)
     }
 
     /* Initializing structure */
-    keys->ids=NULL;
-    keys->keys=NULL;
-    keys->ips=NULL;
-    keys->keysize=0;
+    keys->ids = NULL;
+    keys->keys = NULL;
+    keys->ips = NULL;
+    keys->keysize = 0;
 
     _MemClear(id,name,ip,key);
 
     while((c = fgetc(fp)) != EOF)
     {
-        if( c == '#')
+        if(c == '#')
             _ig=1;
             
         if(_ig == 1 && c != '\n')
             continue;
+            
         else
             _ig=0;
 
@@ -210,8 +211,8 @@ void ReadKeys(keystruct *keys)
             _pos=0;	
             j=0;
             /* Generate the key hash and clear the key from the memory */
-            _CHash(keys,id,name,ip,key);
-            _MemClear(id,name,ip,key);
+            _CHash(keys, id, name, ip, key);
+            _MemClear(id, name, ip, key);
             continue;
         }
         else if(_pos == 3 && j < 65)
@@ -285,7 +286,7 @@ char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer)
 {
     int i=0, _key=0;
     
-    long int _rsize=0;
+    int _rsize=0;
 
     char *clear_msg = NULL;
     char *id = NULL;    
@@ -308,9 +309,10 @@ char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer)
     i = 0;
     while(*buffer != ':')
     {
-        if(i >= 8)
+        if((*buffer == '\0') || (i >= 8))
         {
             merror("(ReadSecMSG): Bad encrypted message(size 1)");
+            return(NULL);
         }
         
         buffer++;
@@ -319,6 +321,7 @@ char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer)
     if(i == 0)
     {
         merror("(ReadSecMSG): Bad encrypted message(size 0)");
+        return(NULL);
     }
     
     id[i] = '\0';
@@ -336,14 +339,16 @@ char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer)
     buffer++; /* Jumping to next : */
     i = 0;
     _rsize = atoi(buffer);
+    
     if((_rsize <= 0) || (_rsize >= OS_MAXSTR))
     {
         merror("encrypt-handler: Bad encrypted message (wrong size)");
         return(NULL);
     }
+    
     while(*buffer != ':')
     {
-        if(i > 5)
+        if((*buffer == '\0') || (i > 6))
         {
             merror("encrypt-handler: Bad encrypted message (wrong size i)");
             return(NULL);
@@ -357,7 +362,7 @@ char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer)
         return(NULL);
     }
     
-    buffer++; /* Buffer is now :, moving to next */
+    buffer++; /* Buffer is after : */
    
     clear_msg = OS_BF_Str(buffer,keys->keys[_key],_rsize,OS_DECRYPT); 
 
@@ -385,7 +390,7 @@ char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer)
     return(clear_msg);    
 }
 
-/* Createh a encrypted message */
+/* Creat a encrypted message */
 char *CreateSecMSG(keystruct *keys, char *msg, int id, int *msgsize, 
 		                            unsigned short int rand0)
 {
@@ -415,7 +420,7 @@ char *CreateSecMSG(keystruct *keys, char *msg, int id, int *msgsize,
 
     if(_msize <= 16)
     {
-        merror("(CreateSecMSG): Small msg, possible craft");
+        merror("(CreateSecMSG): Small msg, possibly crafted");
         return(NULL);
     }
 
