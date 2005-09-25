@@ -84,8 +84,9 @@
   </rule>
 
   <rule id ="404" level="10">
-    <regex>^sshd[\d+]: Illegal user|</regex>
+    <regex>^sshd[\d+]: Illegal user|^sshd[\d+]: invalid user|</regex>
     <regex>^sshd[\d+]: input_userauth_request: illegal user|</regex>
+    <regex>^sshd[\d+]: input_userauth_request: invalid user|</regex>
     <regex>^sshd[\d+]: Failed password for invalid user</regex>
     <comment>Attempt to login using a non-existent user</comment>
   </rule>
@@ -361,10 +362,10 @@
     <info>http://snap.nlc.dcccd.edu/reference/sysadmin/julian/ch18/389-392.html</info>
   </rule>
 
-  <rule id="1610" level="13" timeframe="120" frequency="6" ignore="30">
+  <rule id="1610" level="13" timeframe="120" frequency="7" ignore="60">
     <if_level>7</if_level>
     <same_source_ip></same_source_ip>
-    <comment>Multiple events from same source ip (6 within 2 minutes)</comment>
+    <comment>Multiple events from same source ip (8 within 2 minutes)</comment>
   </rule>  
 </group> <!-- SYSLOG, ATTACKS -->
 
@@ -377,7 +378,7 @@
 </group> <!-- SYSLOG, ELEVATION_OF_PRIVILEGE -->
 
 <group name="syslog,scans">
-  <rule id="1801" level="13" frequency="7" timeframe="80" ignore="30">
+  <rule id="1801" level="13" frequency="7" timeframe="90" ignore="60">
     <if_group>connection_attempt</if_group>
     <comment>Horizontal scan on the network</comment>
     <same_source_ip></same_source_ip>
