@@ -31,6 +31,7 @@
 #define MKDIR_ERROR  "%s(1107): Impossible to create directory: '%s'"
 #define PERM_ERROR   "%s(1108): Permission error. Operation not completed."
 #define THREAD_ERROR "%s(1109): Error creating new pthread."
+#define READ_ERROR   "%s(1110): Error reading socket."
 
 /* COMMON ERRORS */
 #define CONN_ERROR 	"%s(1201): No remote connection configured. Exiting."

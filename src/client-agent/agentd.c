@@ -60,21 +60,26 @@ short int chroot_flag=0;
  */
 void _startit(agent *logr, char *dir, int uid, int gid)
 {
-    int m_queue = 0;    
+    int m_queue = 0;
+    int sock;
+        
     unsigned short int rand0; /* Rand addition */
     unsigned int port = 0;
-    int sock;
+    
     keystruct keys;
 
+
+    /* Giving the default port if none is available */
     if((logr->port == NULL) || (port = atoi(logr->port) <= 0))
     {
         port = DEFAULT_SECURE;
-        /* merror(PORT_ERROR,ARGV0,port); */
     }
 
+    /* Setting group ID */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,gid);
 
+    /* chrooting */
     if(Privsep_Chroot(dir) < 0)
         ErrorExit(CHROOT_ERROR,ARGV0,dir);
 
@@ -83,6 +88,7 @@ void _startit(agent *logr, char *dir, int uid, int gid)
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0,uid);
 
+
     /* Create the queue. In this case we are going to create
      * and read from it
      * Exit if fails.
@@ -90,17 +96,21 @@ void _startit(agent *logr, char *dir, int uid, int gid)
     if((m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
         ErrorExit(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
 
+
     /* Creating PID file */	
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
 
+
     /* Reading the private keys  */
     ReadKeys(&keys);
+
 
     /* Connecting UDP */
     sock = OS_ConnectUDP(port,logr->rip);
     if(sock < 0)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
+
 
     /* Initial random numbers */
     srand( time(0)+getpid()+getppid() );
@@ -146,9 +156,9 @@ int main(int argc, char **argv)
     int c = 0;
     int binds = 0;
     
-    char *dir=DEFAULTDIR;
-    char *user=USER;
-    char *group=GROUPGLOBAL;
+    char *dir = DEFAULTDIR;
+    char *user = USER;
+    char *group = GROUPGLOBAL;
     
     int uid=0;
     int gid=0;
@@ -183,6 +193,7 @@ int main(int argc, char **argv)
 
     debug1("%s: Starting ... ",ARGV0);
 
+    /* Reading config */
     if((binds = ClientConf(DEFAULTCPATH,&logr)) == 0)
         ErrorExit(CLIENT_ERROR,ARGV0);
 
@@ -195,6 +206,7 @@ int main(int argc, char **argv)
     if((uid < 0)||(gid < 0))
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
+
     /* Starting the signal manipulation */
     StartSIG(ARGV0);	
 
@@ -206,3 +218,4 @@ int main(int argc, char **argv)
     return(0);
 }
 
+/* EOF */
