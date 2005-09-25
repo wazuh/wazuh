@@ -71,13 +71,13 @@ int DecodeSnort(Eventinfo *lf, char c)
     /* setting snort ID */
     lf->type = SNORT;
   
-    if(c == SNORT_MQ_FULLC)
+    if(c == SNORT_MQ_FULL)
     {
         ret = OS_RegexStr("^[**] [(\\d+:\\d+:\\d+)]\\.+[Priority: \\d+]  "
              "(\\S+):\\d+ ->", lf->log);          
     }
 
-    else if(c == SNORT_MQ_FASTC)
+    else if(c == SNORT_MQ_FAST)
     {
        ret = OS_RegexStr("^[**] [(\\d+:\\d+:\\d+)]\\.+[Priority: \\d+] "
             "{\\S+} (\\S+):\\d+ ->", lf->log); 
