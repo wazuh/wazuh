@@ -309,8 +309,8 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
   
       
     /* Snort plugin */
-    if((pieces[0][0] == SNORT_MQ_FULLC) || 
-       (pieces[0][0] == SNORT_MQ_FASTC))
+    if((pieces[0][0] == SNORT_MQ_FULL) || 
+       (pieces[0][0] == SNORT_MQ_FAST))
     {
         /* Beginning of the snort msg */
         if(strncmp("[**] [",lf->log,6) == 0)
@@ -318,7 +318,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     }
 
     /* Integrity check from syscheck */
-    else if(pieces[0][0] == SYSCHECK_MQ_C)
+    else if(pieces[0][0] == SYSCHECK_MQ)
     {
         DecodeSyscheck(lf);
     }
