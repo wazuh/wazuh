@@ -87,6 +87,7 @@ int SendMSG(int queue, char *message, char *locmsg,
         
         loc = message[0];
         message++;
+
         if(message[0] != ':')
         {
             merror("%s: Error deserializing message",ARGV0);
@@ -98,7 +99,7 @@ int SendMSG(int queue, char *message, char *locmsg,
         snprintf(tmpstr,OS_MAXSTR,"%c:%s->%s",loc, locmsg, message);
     }
     else
-        snprintf(tmpstr,OS_MAXSTR,"%d:%s:%s:%s",loc,locmsg,logroup,message);
+        snprintf(tmpstr,OS_MAXSTR,"%c:%s:%s:%s",loc,locmsg,logroup,message);
 
 
     /* queue not available */
