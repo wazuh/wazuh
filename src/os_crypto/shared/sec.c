@@ -391,11 +391,11 @@ char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer)
 }
 
 /* Creat a encrypted message */
-char *CreateSecMSG(keystruct *keys, char *msg, int id, int *msgsize, 
-		                            unsigned short int rand0)
+char *CreateSecMSG(keystruct *keys, char *msg, int id, int *msgsize)
 {
     register int i=0,j=0;
 
+    unsigned short int rand0;
     unsigned short int rand1;
 
     int _msize = strlen(msg);
@@ -426,6 +426,7 @@ char *CreateSecMSG(keystruct *keys, char *msg, int id, int *msgsize,
 
 
     /* rand1  */
+    rand0 = (unsigned short int)rand();
     rand1 = (unsigned short int)rand();
 
     /* Well, well... after two years without looking at this
