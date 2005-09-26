@@ -44,6 +44,7 @@
 #include "headers/privsep_op.h"
 #include "headers/file_op.h"
 #include "headers/sec.h"
+#include "headers/pthreads_op.h"
 
 #include "error_messages/error_messages.h"
 
@@ -52,22 +53,21 @@
 short int dbg_flag=0;
 short int chroot_flag=0;
 
+/* manager thread */
+void *start_mgr(void *arg);
 
 /* _startit v0.1, 2005/01/30
  * Internal Function. Does all the socket/ queueing
  * manipulation.
  * Maximum allowed input is 1024 bytes.
  */
-void _startit(agent *logr, char *dir, int uid, int gid)
+void _startit(char *dir, int uid, int gid)
 {
     int m_queue = 0;
     int sock;
         
-    unsigned short int rand0; /* Rand addition */
     unsigned int port = 0;
     
-    keystruct keys;
-
 
     /* Giving the default port if none is available */
     if((logr->port == NULL) || (port = atoi(logr->port) <= 0))
@@ -105,16 +105,23 @@ void _startit(agent *logr, char *dir, int uid, int gid)
     /* Reading the private keys  */
     ReadKeys(&keys);
 
+    
+    /* Initial random numbers */
+    srand( time(0)+getpid()+getppid() );
+    rand();
 
+
+    /* Starting manager */
+    if(CreateThread(start_mgr, (void *)&port) != 0)
+    {
+        ErrorExit("%s: Impossible to start the manager thread.");
+    }
+                                                              
     /* Connecting UDP */
     sock = OS_ConnectUDP(port,logr->rip);
     if(sock < 0)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
 
-
-    /* Initial random numbers */
-    srand( time(0)+getpid()+getppid() );
-    rand0 = (unsigned short int)rand();
 
     /* daemon loop */	
     for(;;)
@@ -127,8 +134,7 @@ void _startit(agent *logr, char *dir, int uid, int gid)
             char *crypt_msg = NULL;
             int _ssize = 0; /* msg socket size */
 
-            rand0 = (unsigned short int)rand(); /* new random */
-            crypt_msg = CreateSecMSG(&keys, msg, 0, &_ssize, rand0);
+            crypt_msg = CreateSecMSG(&keys, msg, 0, &_ssize);
             
             /* Returns NULL if can't create encrypted message */
             if(crypt_msg == NULL)
@@ -163,7 +169,6 @@ int main(int argc, char **argv)
     int uid=0;
     int gid=0;
 
-    agent logr;
 
     while((c = getopt(argc, argv, "dhu:g:D:")) != -1){
         switch(c){
@@ -193,8 +198,14 @@ int main(int argc, char **argv)
 
     debug1("%s: Starting ... ",ARGV0);
 
+    logr = (agent *)calloc(1, sizeof(agent));
+    if(!logr)
+    {
+        ErrorExit(MEM_ERROR, ARGV0);
+    }
+    
     /* Reading config */
-    if((binds = ClientConf(DEFAULTCPATH,&logr)) == 0)
+    if((binds = ClientConf(DEFAULTCPATH)) == 0)
         ErrorExit(CLIENT_ERROR,ARGV0);
 
     else if(binds < 0)
@@ -213,7 +224,7 @@ int main(int argc, char **argv)
     if(fork() == 0)
     {
         /* Forking and going to background */
-        _startit(&logr,dir,uid,gid);
+        _startit(dir,uid,gid);
     }
     return(0);
 }

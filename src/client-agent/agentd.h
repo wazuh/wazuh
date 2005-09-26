@@ -28,7 +28,10 @@ typedef struct _agent
 /** Prototypes **/
 
 /* Client configuration */
-int ClientConf(char *cfgfile,agent *logr);
+int ClientConf(char *cfgfile);
 
+#include "headers/sec.h"
+keystruct keys;
+agent *logr;
 
 #endif
