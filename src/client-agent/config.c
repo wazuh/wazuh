@@ -36,7 +36,7 @@ extern short int dbg_flag;
  * Read the config file (for the remote client)
  * v0.2: New OS_XML
  */ 
-int ClientConf(char *cfgfile, agent *logr)
+int ClientConf(char *cfgfile)
 {
     OS_XML xml;
 
