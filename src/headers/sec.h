@@ -26,8 +26,7 @@ typedef struct _keystruct
 
 void ReadKeys(keystruct *keys);
 char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer);
-char *CreateSecMSG(keystruct *keys,char *msg, int id, int *msgsize, 
-	unsigned short int rand0);
+char *CreateSecMSG(keystruct *keys,char *msg, int id, int *msgsize);
 int CheckAllowedIP(keystruct *keys, char *srcip, char *id);
 int CheckSum(char *msg, int size);
 
