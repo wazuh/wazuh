@@ -13,7 +13,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <dirent.h>
+#include <fcntl.h>
 
 #include <errno.h>
 
@@ -79,8 +81,7 @@ char *getsharedfiles()
             continue;
         }
         
-        snprintf(tmp_ret, m_size, "%s %s\n",    tmp_dir,
-                                                md5sum);
+        snprintf(tmp_ret, m_size, "%s %s\n", md5sum, entry->d_name);
         
         m_size-=strlen(tmp_ret);
 
@@ -106,8 +107,8 @@ char *getsharedfiles()
     return(ret);
 }
 
-/* start_mgr: Start manager thread */
-void *start_mgr(void *arg)
+/* main_mgr: main manager thread */
+void *main_mgr(void *arg)
 {
     int sock;
     int *port = (int *)arg;
@@ -129,6 +130,8 @@ void *start_mgr(void *arg)
         return(NULL);
     }
     
+    printf("connected \n");
+
     /* Send the message.
      * Message is going to be the 
      * uname : file checksum : file checksum :
@@ -145,7 +148,9 @@ void *start_mgr(void *arg)
             return(NULL);
         }
     }
-    
+   
+    printf("uname is %s\n", uname);
+     
     /* get shared files */
     shared_files = getsharedfiles();
     if(!shared_files)
@@ -153,11 +158,13 @@ void *start_mgr(void *arg)
         shared_files = strdup("\0");
         if(!shared_files)
         {
+            free(uname);
             merror(MEM_ERROR,ARGV0);
             return(NULL);
         }
     }
-    printf("connected \n");
+    
+    printf("shared files is %s\n",shared_files);
     
     /* creating message */
     snprintf(tmp_msg, 1024, "%s\n%s",uname, shared_files);
@@ -166,6 +173,8 @@ void *start_mgr(void *arg)
     
     if(crypt_msg == NULL)
     {
+        free(uname);
+        free(shared_files);
         merror(SEC_ERROR,ARGV0);
         return(NULL);
     }
@@ -177,8 +186,34 @@ void *start_mgr(void *arg)
     }
                                                                                      
     printf("message sent!\n");
+    
+    free(uname);
+    free(shared_files);
     free(crypt_msg);
     return(NULL);
+}
+
+
+/* start_mgr: Start manager thread */
+void *start_mgr(void *arg)
+{
+    struct timeval fp_timeout;
+    
+    /* We notify the server every NOTIFY_TIME */
+    while(1)
+    {
+        main_mgr(arg);
+
+        fp_timeout.tv_sec = NOTIFY_TIME;
+        fp_timeout.tv_usec = 0;
+
+        /* Waiting for the select timeout */
+        if (select(0, NULL, NULL, NULL, &fp_timeout) < 0)
+        {
+            merror("%s: Internal error (select).",ARGV0);
+            return(NULL);
+        }
+    }
 }
 
 /* EOF */

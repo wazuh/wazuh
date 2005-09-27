@@ -33,6 +33,12 @@
 #define OS_KEYSIZE	32	    /* Maximum size for a key */
 
 
+/* manager notification */
+#ifndef NOTIFY_TIME
+    #define NOTIFY_TIME     600 /* every 10 minutes */
+#endif
+    
+        
 /* Users Configuration */
 #ifndef MAILUSER
     #define MAILUSER        "ossecm"
