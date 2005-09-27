@@ -32,8 +32,6 @@
 #define OS_DEFSIZE	128	    /* Default size */
 #define OS_KEYSIZE	32	    /* Maximum size for a key */
 
-#define HIGHLEVEL       8	/* Maximum level for a rule */
-#define LOWLEVEL        0	/* Lowest level for a rule */
 
 /* Users Configuration */
 #ifndef MAILUSER
@@ -74,16 +72,14 @@
 #endif
         
 #ifndef KEYS_FILE
-	#define KEYS_FILE "/etc/client.keys"
+	#define KEYS_FILE       "/etc/client.keys"
 #endif
 
-#ifndef DEFAULTQPATH
-	#define DEFAULTQPATH	"/var/ossec/queue/ossec/queue"
-#endif
+/* Built in defines */
+#define DEFAULTQPATH	DEFAULTDIR DEFAULTQUEUE
 
-#ifndef DEFAULTCPATH
-	#define DEFAULTCPATH	"/var/ossec/etc/ossec.conf"
-#endif
+#define DEFAULTCPATH    DEFAULTDIR "/etc/ossec.conf"
+
 
 #ifndef DEFAULT_SECURE
 	#define DEFAULT_SECURE 1514 /* Default UDP port- secure */
@@ -93,5 +89,11 @@
 	#define DEFAULT_SYSLOG 514 /* Default syslog port - udp */
 #endif
 
+#ifndef SHAREDCFG_DIR
+    #define SHAREDCFG_DIR   "/etc/shared"
+#endif
+
+/* Built in */    
+#define SHAREDCFG_DIRPATH   DEFAULTDIR SHAREDCFG_DIR
 
 #endif /* __OS_HEADERS */
