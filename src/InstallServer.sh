@@ -17,7 +17,7 @@ USER="ossec"
 USER_MAIL="ossecm"
 USER_EXEC="ossece"
 USER_REM="ossecr"
-subdirs="logs logs/archives logs/alerts bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck tmp var var/run etc checksum_db"
+subdirs="logs logs/archives logs/alerts bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck tmp var var/run etc etc/shared checksum_db"
 
 # ${DIR} must be set 
 if [ "X${DIR}" = "X" ]; then

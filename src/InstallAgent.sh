@@ -13,7 +13,7 @@ UNAME=`uname`;
 DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 GROUP="ossec"
 USER="ossec"
-subdirs="logs bin queue queue/ossec var var/run etc checksum_db"
+subdirs="logs bin queue queue/ossec var var/run etc etc/shared checksum_db"
 
 
 # ${DIR} must be set 
@@ -66,9 +66,14 @@ if [ -e /etc/localtime ]; then
     cp -pr /etc/localtime ${DIR}/etc/; 
 fi
 
+# For the /etc/shared
+chmod 770 ${DIR}/etc/shared # ossec must be able to write to it
+
+
 # For the /var/run
 chmod 770 ${DIR}/var/run
 chown root:${GROUP} ${DIR}/var/run
+
 
 # Moving the binary files
 cp -pr ../bin/ossec-agentd ${DIR}/bin/
@@ -76,6 +81,7 @@ cp -pr ../bin/ossec-logcollector ${DIR}/bin/
 cp -pr ../bin/ossec-syscheckd ${DIR}/bin/
 cp -pr ./init/ossec-client ${DIR}/bin/ossec-control
 cp -pr ../bin/manage_agents ${DIR}/bin/
+
 
 # Moving the config file
 if [ -e ${DIR}/etc/ossec.conf ]; then
