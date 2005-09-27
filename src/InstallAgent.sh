@@ -3,11 +3,13 @@
 
 # Checking if it is executed from the right place
 LOCATION=./LOCATION
-if [ ! -e ${LOCATION} ]; then
+
+ls ${LOCATION} > /dev/null 2>&1
+if [ $? != 0 ]; then
     echo "Cannot execute. Wrong directory"
     exit 1;
 fi
-
+            
 UNAME=`uname`;
 # Getting default variables
 DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
@@ -24,8 +26,10 @@ fi
 
 
 # Creating root directory
-if [ ! -d ${DIR} ]; then mkdir -m 700 -p ${DIR}; fi
-if [ ! -d ${DIR} ]; then 
+ls ${DIR} > /dev/null 2>&1    
+if [ $? != 0 ]; then mkdir -m 700 -p ${DIR}; fi
+ls ${DIR} > /dev/null 2>&1    
+if [ $? != 0 ]; then 
     echo "You do not have permissions to create ${DIR}. Exiting..."
     exit 1;
 fi
@@ -44,7 +48,8 @@ fi
 
 # Creating sub dirs
 for i in ${subdirs}; do
-    if [ ! -d ${DIR}/${i} ]; then mkdir -m 700 ${DIR}/${i}; fi
+    ls ${DIR}/${i} > /dev/null 2>&1
+    if [ $? != 0 ]; then mkdir -m 700 ${DIR}/${i}; fi
 done
 
 # Default for all directories
@@ -62,9 +67,12 @@ chmod -R 750 ${DIR}/logs
 # For the etc dir
 chmod 550 ${DIR}/etc
 chown -R root:${GROUP} ${DIR}/etc
-if [ -e /etc/localtime ]; then
-    cp -pr /etc/localtime ${DIR}/etc/; 
+
+ls /etc/localtime > /dev/null 2>&1
+if [ $? = 0 ]; then
+        cp -pL /etc/localtime ${DIR}/etc/;
 fi
+        
 
 # For the /etc/shared
 chmod 770 ${DIR}/etc/shared # ossec must be able to write to it
@@ -84,12 +92,13 @@ cp -pr ../bin/manage_agents ${DIR}/bin/
 
 
 # Moving the config file
-if [ -e ${DIR}/etc/ossec.conf ]; then
-    echo "Not overwritting ${DIR}/etc/ossec.conf .."
-elif [ -e ../etc/ossec.mc ]; then
+ls ../etc/ossec.mc > /dev/null 2>&1
+if [ $? = 0 ]; then
     cp -pr ../etc/ossec.mc ${DIR}/etc/ossec.conf
 else    
     cp -pr ../etc/ossec-agent.conf ${DIR}/etc/ossec.conf
 fi
 
 exit 0;
+
+#EOF

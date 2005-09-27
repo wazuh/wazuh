@@ -96,7 +96,7 @@ chmod 550 ${DIR}/etc
 chown -R root:${GROUP} ${DIR}/etc
 ls /etc/localtime > /dev/null 2>&1
 if [ $? = 0 ]; then
-    cp -pr /etc/localtime ${DIR}/etc/; 
+    cp -pL /etc/localtime ${DIR}/etc/; 
 fi
 
 # For the /var/run
@@ -128,3 +128,5 @@ fi
 
 
 exit 0;
+
+#EOF
