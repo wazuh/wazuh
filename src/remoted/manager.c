@@ -193,7 +193,7 @@ void handleagent(int clientsocket, char *srcip)
     printf("ip allowed!\n");
     
     /* Reading from client */
-    while((n = read(clientsocket, buf, OS_MAXSTR)) > 0)
+    while((n = recv(clientsocket, buf, OS_MAXSTR, 0)) > 0)
     {
         printf("got buf: %d!\n",n);
         

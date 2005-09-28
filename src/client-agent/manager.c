@@ -72,7 +72,7 @@ void getreply(int socket)
     char *cleartext_msg;
     char *tmp_msg;
     
-    while((n = read(socket, buf, OS_MAXSTR)) > 0)
+    while((n = recv(socket, buf, OS_MAXSTR, 0)) > 0)
     {
         buf[n] = '\0';
         strncat(client_msg, buf, client_size);
