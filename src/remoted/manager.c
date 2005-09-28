@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <dirent.h>
+#include <sys/socket.h>
 
 #include "remoted.h"
 

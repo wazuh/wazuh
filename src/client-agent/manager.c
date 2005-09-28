@@ -16,6 +16,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <sys/socket.h>
 
 #include <errno.h>
 
