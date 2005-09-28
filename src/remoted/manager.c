@@ -190,9 +190,13 @@ void handleagent(int clientsocket, char *srcip)
         return;
     }
 
+    printf("ip allowed!\n");
+    
     /* Reading from client */
     while((n = read(clientsocket, buf, OS_MAXSTR)) > 0)
     {
+        printf("got buf: %d!\n",n);
+        
         buf[n] = '\0';
         strncat(client_msg, buf, client_size);
         client_size-= n;
@@ -213,6 +217,7 @@ void handleagent(int clientsocket, char *srcip)
         return;
     }
 
+    printf("read message!\n");
     
     /* Decrypting the message */
     cleartext_msg = ReadSecMSG(&keys, srcip, client_msg);
@@ -223,8 +228,11 @@ void handleagent(int clientsocket, char *srcip)
         return;
     }
 
+    printf("decrypted!%s\n",cleartext_msg);
     /* Removing checksum and rand number */
     tmp_msg = r_read(cleartext_msg);
+    
+    printf("message is now:%s\n",tmp_msg);
     
     if(!tmp_msg)
     {
@@ -246,6 +254,8 @@ void handleagent(int clientsocket, char *srcip)
     }
     *tmp_msg = '\0';
     tmp_msg++;
+    
+    printf("got uname!:%s\n",uname);
     
     
     /* XXX write uname somewhere */
@@ -278,7 +288,8 @@ void handleagent(int clientsocket, char *srcip)
 
         *file = '\0';
         file++;
-        
+    
+            
         for(i = 0;;i++)
         {
             if(f_sum[i] == NULL)
@@ -298,17 +309,21 @@ void handleagent(int clientsocket, char *srcip)
         }
     }
 
-    for(i = 0;;i++)
+    printf("if fsum\n");
+    if(f_sum)
     {
-        if(f_sum[i] == NULL)
-            break;
-        
-        if((f_sum[i]->mark == 1) ||
-           (f_sum[i]->mark == 0))
+        for(i = 0;;i++)
         {
+            if(f_sum[i] == NULL)
+                break;
+
+            if((f_sum[i]->mark == 1) ||
+                    (f_sum[i]->mark == 0))
+            {
+            }
+
+            f_sum[i]->mark = 0;        
         }
-        
-        f_sum[i]->mark = 0;        
     }
     
     printf("message is: %s \n",tmp_msg);
@@ -347,16 +362,23 @@ void *start_mgr(void *arg)
     /* Receiving connections from now on */
     while(1)
     {
+        printf("accept?\n");
+        
         if((clientsock = OS_AcceptTCP(sock, srcip, 16)) < 0)
             ErrorExit(CONN_ERROR,ARGV0,port);
 
+        printf("received conn!\n");
         /* Re-readinf files on the shared directory */
         if((time(0) - ctime) > 1200)
         {
+            printf("a\n");
             f_files();
+            printf("b\n");
             c_files();
+            printf("c\n");
         }
         
+        printf("handling agent!\n");
         handleagent(clientsock, srcip);    
     }
 

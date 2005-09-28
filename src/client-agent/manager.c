@@ -28,6 +28,94 @@
 
 #include "agentd.h"
 
+
+/* r_read: Returns a pointer to the string after the checksum
+ * and after the randon number. Returns null on error. 
+ */ 
+char *r_read(char *tmp_msg)
+{   
+    tmp_msg++;
+
+    /* Removing checksum */
+    tmp_msg = index(tmp_msg, ':');
+    if(!tmp_msg)
+    {
+        return(NULL);
+    }
+
+    tmp_msg++;
+
+    /* Removing randon */
+    tmp_msg = index(tmp_msg, ':');
+    if(!tmp_msg)
+    {   
+        return(NULL);
+    }   
+
+    tmp_msg++;
+
+    return(tmp_msg);
+}
+  
+
+
+/* getreply: Act based on the message from the server
+ */
+void getreply(int socket)
+{
+    int n;
+
+    int client_size = OS_MAXSTR -1;
+    char buf[OS_MAXSTR +1];
+    char client_msg[OS_MAXSTR +1];
+    
+    char *cleartext_msg;
+    char *tmp_msg;
+    
+    while((n = read(socket, buf, OS_MAXSTR)) > 0)
+    {
+        buf[n] = '\0';
+        strncat(client_msg, buf, client_size);
+        client_size-= n;
+
+        /* Error in here, message should not be that big */
+        if(client_size <= 1)
+        {
+            merror("%s: Invalid message from server",ARGV0);
+            return;
+        }
+    }
+
+    if(n < 0)
+    {
+        merror(READ_ERROR,ARGV0);
+        return;
+    }
+
+    cleartext_msg = ReadSecMSG(&keys, logr->rip, client_msg);
+    if(cleartext_msg == NULL)
+    {
+        merror(MSG_ERROR,ARGV0,logr->rip);
+        return;
+    }
+
+    /* Removing checksum and rand number */
+    tmp_msg = r_read(cleartext_msg);
+
+    if(!tmp_msg)
+    {
+        merror("%s: Invalid message from '%s'",ARGV0, logr->rip);
+        free(cleartext_msg);
+        return;
+    }
+
+    printf("msg is :%s\n",tmp_msg);
+
+    return;
+
+}
+
+
 /* getfiles: Return the name of the files in a directory
  */
 char *getsharedfiles()
@@ -144,6 +232,7 @@ void *main_mgr(void *arg)
         uname = strdup("No system info available");
         if(!uname)
         {
+            close(sock);
             merror(MEM_ERROR,ARGV0);
             return(NULL);
         }
@@ -158,6 +247,7 @@ void *main_mgr(void *arg)
         shared_files = strdup("\0");
         if(!shared_files)
         {
+            close(sock);
             free(uname);
             merror(MEM_ERROR,ARGV0);
             return(NULL);
@@ -173,6 +263,7 @@ void *main_mgr(void *arg)
     
     if(crypt_msg == NULL)
     {
+        close(sock);
         free(uname);
         free(shared_files);
         merror(SEC_ERROR,ARGV0);
@@ -184,9 +275,14 @@ void *main_mgr(void *arg)
     {
         merror("%s: Error sending message to server (write)",ARGV0);
     }
-                                                                                     
+
     printf("message sent!\n");
     
+    /* Waiting for a reply */
+    getreply(sock);
+    
+    
+    close(sock);
     free(uname);
     free(shared_files);
     free(crypt_msg);
