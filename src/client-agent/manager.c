@@ -79,7 +79,7 @@ void getreply(int socket)
     {
         buf[n] = '\0';
 
-        cleartext_msg = ReadSecMSG(&keys, logr->rip, buf);
+        cleartext_msg = ReadSecMSG(&keys, NULL, buf);
         if(cleartext_msg == NULL)
         {
             merror(MSG_ERROR,ARGV0,logr->rip);

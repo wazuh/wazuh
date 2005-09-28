@@ -327,14 +327,21 @@ char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer)
     id[i] = '\0';
 
     /* Checking if the id/ip key pair exist */
-    _key = CheckAllowedIP(keys,srcip,id);
-
-    if(_key == -1)
+    if(srcip != NULL)
     {
-        merror("(SecMsg): IP address \"%s\" not allowed.",srcip);
-        return(NULL);
+        _key = CheckAllowedIP(keys,srcip,id);
+
+        if(_key == -1)
+        {
+            merror("(SecMsg): IP address \"%s\" not allowed.",srcip);
+            return(NULL);
+        }
     }
-                                                                                                    
+    else
+    {
+        _key = 0;
+    }
+     
     /** Getting size **/
     buffer++; /* Jumping to next : */
     i = 0;
@@ -418,9 +425,9 @@ char *CreateSecMSG(keystruct *keys, char *msg, int id, int *msgsize)
         return(NULL);
     }
 
-    if(_msize <= 8)
+    if(_msize < 8)
     {
-        merror("(CreateSecMSG): Small msg, possibly crafted");
+        merror("(CreateSecMSG): Small msg '%s', possibly crafted", msg);
         return(NULL);
     }
 
