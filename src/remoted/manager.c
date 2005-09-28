@@ -188,7 +188,8 @@ int send_file(int socket, int agentid, char *name)
     }
 
     /* Sending the file name first */
-    snprintf(buf, OS_FLSIZE, "#!-%s\n", name);
+    snprintf(buf, OS_FLSIZE, "#!-up file %s\n", name);
+    
     crypt_msg = CreateSecMSG(&keys, buf, agentid, &msg_size);
     if(crypt_msg == NULL)
     {

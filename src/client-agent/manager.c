@@ -265,7 +265,7 @@ void *main_mgr(void *arg)
     int msg_size;
 
     
-    char tmp_msg[1024];
+    char tmp_msg[OS_MAXSTR +1];
     char *crypt_msg;
     char *uname;
     char *shared_files;
@@ -319,7 +319,7 @@ void *main_mgr(void *arg)
     printf("shared files is %s\n",shared_files);
     
     /* creating message */
-    snprintf(tmp_msg, 1024, "%s\n%s",uname, shared_files);
+    snprintf(tmp_msg, OS_MAXSTR, "%s\n%s",uname, shared_files);
     
     crypt_msg = CreateSecMSG(&keys, tmp_msg, 0, &msg_size);
     
@@ -338,6 +338,10 @@ void *main_mgr(void *arg)
         merror("%s: Error sending message to server (write)",ARGV0);
     }
 
+    free(uname);
+    free(shared_files);
+    free(crypt_msg);
+
     printf("message sent!\n");
     
     /* Waiting for a reply */
@@ -345,9 +349,6 @@ void *main_mgr(void *arg)
     
     
     close(sock);
-    free(uname);
-    free(shared_files);
-    free(crypt_msg);
     return(NULL);
 }
 
