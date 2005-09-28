@@ -425,7 +425,7 @@ char *CreateSecMSG(keystruct *keys, char *msg, int id, int *msgsize)
         return(NULL);
     }
 
-    if(_msize < 8)
+    if(_msize < 1)
     {
         merror("(CreateSecMSG): Small msg '%s', possibly crafted", msg);
         return(NULL);
