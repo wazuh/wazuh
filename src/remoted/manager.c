@@ -15,7 +15,9 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <dirent.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <time.h>
 
 #include "remoted.h"
 
@@ -163,6 +165,76 @@ char *r_read(char *tmp_msg)
     return(tmp_msg);
 }
 
+
+/* send_file: Sends a file to the agent.
+ * Returns -1 on error
+ */
+int send_file(int socket, int agentid, char *name)
+{
+    char file[OS_MAXSTR +1];
+    char buf[OS_FLSIZE +1];
+    char *crypt_msg;
+
+    int msg_size;
+    FILE *fp;
+
+    snprintf(file, OS_MAXSTR, "%s/%s",SHAREDCFG_DIR, name);
+
+    fp = fopen(file, "r");
+    if(!fp)
+    {
+        merror("%s: Impossible to open file '%s'",ARGV0, file);
+        return(-1);
+    }
+
+    /* Sending the file name first */
+    snprintf(buf, OS_FLSIZE, "#!-%s\n", name);
+    crypt_msg = CreateSecMSG(&keys, buf, agentid, &msg_size);
+    if(crypt_msg == NULL)
+    {
+        merror(SEC_ERROR,ARGV0);
+        fclose(fp);
+        return(-1);
+    }
+    if(write(socket, crypt_msg, msg_size) < msg_size)
+    {
+        free(crypt_msg);
+        fclose(fp);
+        merror("%s: Error sending message to agent (write)",ARGV0);
+        return(-1);
+    }
+
+    free(crypt_msg);
+    
+    /* Sending the file content */
+    while(fgets(buf, OS_FLSIZE , fp) != NULL)
+    {
+        crypt_msg = CreateSecMSG(&keys, buf, agentid, &msg_size);
+
+        if(crypt_msg == NULL)
+        {
+            fclose(fp);
+            merror(SEC_ERROR,ARGV0);
+            return(-1);
+        }
+
+        if(write(socket, crypt_msg, msg_size) < msg_size)
+        {
+            fclose(fp);
+            free(crypt_msg);
+            merror("%s: Error sending message to agent (write)",ARGV0);
+            return(-1);
+        }
+
+        free(crypt_msg);
+    }
+
+    printf("file sent!\n");
+    fclose(fp);
+    return(0);
+}
+
+
 /* handleagent: Handle new connections from agent. 
  * If message is just a "I'm alive" message, do not fork.
  * If message is a new one, fork and share configs
@@ -171,20 +243,16 @@ void handleagent(int clientsocket, char *srcip)
 {
     int i;
     int n;
-    int client_size = OS_MAXSTR -1;
+    int agentid;
 
     char buf[OS_MAXSTR +1];
-    char client_msg[OS_MAXSTR +1];
     char *cleartext_msg;
     char *tmp_msg;
     char *uname;
 
-    /* Null terminating */
-    client_msg[0] = '\0';
-    client_msg[client_size +1] = '\0';
 
     /* IP not on the agents list */
-    if(CheckAllowedIP(&keys, srcip, NULL) == -1)
+    if((agentid = CheckAllowedIP(&keys, srcip, NULL)) == -1)
     {
         merror(DENYIP_ERROR,ARGV0,srcip);
         close(clientsocket);
@@ -192,23 +260,16 @@ void handleagent(int clientsocket, char *srcip)
     }
 
     printf("ip allowed!\n");
-    
+   
+    printf("!!\n");
+     
     /* Reading from client */
-    while((n = recv(clientsocket, buf, OS_MAXSTR, 0)) > 0)
+    
+    if((n = recv(clientsocket, buf, OS_MAXSTR, 0)) > 0)
     {
         printf("got buf: %d!\n",n);
         
         buf[n] = '\0';
-        strncat(client_msg, buf, client_size);
-        client_size-= n;
-
-        /* Error in here, message should not be that big */
-        if(client_size <= 1)
-        {
-            merror("%s: Invalid message from client '%s'",ARGV0, srcip);
-            close(clientsocket);
-            return;
-        }
     }
 
     if(n < 0)
@@ -221,7 +282,7 @@ void handleagent(int clientsocket, char *srcip)
     printf("read message!\n");
     
     /* Decrypting the message */
-    cleartext_msg = ReadSecMSG(&keys, srcip, client_msg);
+    cleartext_msg = ReadSecMSG(&keys, srcip, buf);
     if(cleartext_msg == NULL)
     {
         merror(MSG_ERROR,ARGV0,srcip);
@@ -321,6 +382,12 @@ void handleagent(int clientsocket, char *srcip)
             if((f_sum[i]->mark == 1) ||
                     (f_sum[i]->mark == 0))
             {
+                if(send_file(clientsocket, agentid, f_sum[i]->name) < 0)
+                {
+                    merror("%s: Error sending file '%s' to agent.",
+                                                            ARGV0,
+                                                            f_sum[i]->name);
+                }
             }
 
             f_sum[i]->mark = 0;        

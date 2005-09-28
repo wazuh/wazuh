@@ -66,51 +66,112 @@ void getreply(int socket)
 {
     int n;
 
-    int client_size = OS_MAXSTR -1;
-    char buf[OS_MAXSTR +1];
-    char client_msg[OS_MAXSTR +1];
+    char buf[OS_FLSIZE +1];
+    char file[OS_MAXSTR +1];
     
     char *cleartext_msg;
     char *tmp_msg;
     
-    while((n = recv(socket, buf, OS_MAXSTR, 0)) > 0)
+    FILE *fp;
+    fp = NULL;
+
+    while((n = recv(socket, buf, OS_FLSIZE, 0)) > 0)
     {
         buf[n] = '\0';
-        strncat(client_msg, buf, client_size);
-        client_size-= n;
 
-        /* Error in here, message should not be that big */
-        if(client_size <= 1)
+        cleartext_msg = ReadSecMSG(&keys, logr->rip, buf);
+        if(cleartext_msg == NULL)
         {
-            merror("%s: Invalid message from server",ARGV0);
+            merror(MSG_ERROR,ARGV0,logr->rip);
             return;
         }
+
+        /* Removing checksum and rand number */
+        tmp_msg = r_read(cleartext_msg);
+        
+        if(!tmp_msg)
+        {
+            merror("%s: Invalid message from '%s'",ARGV0, logr->rip);
+            free(cleartext_msg);
+            return;
+        }
+                                                        
+        printf("msg is :%s\n",tmp_msg);                                        
+
+        /* Check for commands */
+        if(tmp_msg[0] == '#' && tmp_msg[1] == '!' &&
+           tmp_msg[2] == '-')
+        {
+            tmp_msg+=3;
+
+            /* Close any open file pointer if it was being written to */
+            if(fp)
+            {
+                fclose(fp);
+                fp = NULL;
+            }
+            
+            if(strncmp(tmp_msg, "up file ", strlen("up file ")) == 0)
+            {
+                char *validate_file;
+                tmp_msg+=strlen("up file ");
+
+                if((validate_file = index(tmp_msg, '\n')) != NULL)
+                {
+                    *validate_file = '\0';
+                }
+                
+                if((validate_file = index(tmp_msg, '/')) != NULL)
+                {
+                    *validate_file = '-';
+                }
+                
+                if((validate_file = index(tmp_msg, '.')) != NULL)
+                {
+                    *validate_file = '-';
+                }
+                
+                snprintf(file, OS_MAXSTR, "%s/%s", SHAREDCFG_DIR, tmp_msg);
+
+                fp = fopen(file, "w");
+                if(!fp)
+                {
+                    merror("%s: Impossible to open file '%s'", ARGV0, file);
+                }
+            }
+            
+            else if(strncmp(tmp_msg, "close file", strlen("close file")) == 0)
+            {
+                /* no error */
+            }
+
+            else
+            {
+                merror("%s: Wrong message received.", ARGV0);
+            }
+        }
+
+        else if(fp)
+        {
+            fprintf(fp, "%s", tmp_msg);
+        }
+        
+        else
+        {
+            merror("%s: Invalid message received. No action defined.",ARGV0);
+        }
+        free(cleartext_msg);
     }
 
+    if(fp)
+        fclose(fp);
+        
     if(n < 0)
     {
-        merror(READ_ERROR,ARGV0);
+        printf("connection done. exiting\n");
         return;
     }
 
-    cleartext_msg = ReadSecMSG(&keys, logr->rip, client_msg);
-    if(cleartext_msg == NULL)
-    {
-        merror(MSG_ERROR,ARGV0,logr->rip);
-        return;
-    }
-
-    /* Removing checksum and rand number */
-    tmp_msg = r_read(cleartext_msg);
-
-    if(!tmp_msg)
-    {
-        merror("%s: Invalid message from '%s'",ARGV0, logr->rip);
-        free(cleartext_msg);
-        return;
-    }
-
-    printf("msg is :%s\n",tmp_msg);
 
     return;
 
