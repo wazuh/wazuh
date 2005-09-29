@@ -22,6 +22,7 @@ typedef struct _agent
 {
 	char *port;
 	char *rip; /* remote (server) ip */
+    int sock;
 }agent;
 
 
