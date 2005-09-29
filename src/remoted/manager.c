@@ -198,6 +198,7 @@ int send_file(int agentid, char *srcip, int port, char *name)
     socket = OS_ConnectUDP(port,srcip);
     if(socket < 0)
     {
+        fclose(fp);
         merror(CONNS_ERROR,ARGV0,srcip);
         return(-1);
     }
@@ -216,9 +217,10 @@ int send_file(int agentid, char *srcip, int port, char *name)
     }
 
     /* Sending initial message */
-    if(OS_SendUDPbySize(socket, msg_size, crypt_msg) < msg_size)
+    if(OS_SendUDPbySize(socket, msg_size, crypt_msg) < 0)
     {
         free(crypt_msg);
+        fclose(fp);
         merror(SEND_ERROR,ARGV0);
         close(socket);
         return(-1);
@@ -239,7 +241,7 @@ int send_file(int agentid, char *srcip, int port, char *name)
             return(-1);
         }
 
-        if(OS_SendUDPbySize(socket, msg_size, crypt_msg) < msg_size)
+        if(OS_SendUDPbySize(socket, msg_size, crypt_msg) < 0)
         {
             fclose(fp);
             free(crypt_msg);
@@ -251,6 +253,30 @@ int send_file(int agentid, char *srcip, int port, char *name)
         free(crypt_msg);
     }
 
+    /* Sending the message to close the file */
+    snprintf(buf, OS_MAXSTR, "#!-close file ");
+
+    crypt_msg = CreateSecMSG(&keys, buf, agentid, &msg_size);
+    if(crypt_msg == NULL)
+    {
+        merror(SEC_ERROR,ARGV0);
+        fclose(fp);
+        close(socket);
+        return(-1);
+    }
+
+    /* Sending initial message */
+    if(OS_SendUDPbySize(socket, msg_size, crypt_msg) < 0)
+    {
+        free(crypt_msg);
+        merror(SEND_ERROR,ARGV0);
+        close(socket);
+        fclose(fp);
+        return(-1);
+    }
+    
+    free(crypt_msg);
+    
     printf("file sent!\n");
     fclose(fp);
     close(socket);

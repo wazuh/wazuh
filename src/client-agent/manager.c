@@ -114,6 +114,8 @@ void getreply(int socket)
         {
             tmp_msg+=3;
 
+            printf("message is now x:%s\n",tmp_msg);
+            
             /* Close any open file pointer if it was being written to */
             if(fp)
             {
@@ -126,6 +128,8 @@ void getreply(int socket)
                 char *validate_file;
                 tmp_msg+=strlen("up file ");
 
+                printf("open file: %s\n", tmp_msg);
+                
                 if((validate_file = index(tmp_msg, '\n')) != NULL)
                 {
                     *validate_file = '\0';
@@ -148,6 +152,7 @@ void getreply(int socket)
                 {
                     merror("%s: Impossible to open file '%s'", ARGV0, file);
                 }
+                printf("OPEN!\n");
             }
             
             else if(strncmp(tmp_msg, "close file", strlen("close file")) == 0)
@@ -163,13 +168,16 @@ void getreply(int socket)
 
         else if(fp)
         {
+            printf("writting '%s' to fp\n",tmp_msg);
             fprintf(fp, "%s", tmp_msg);
+            fflush(fp);
         }
         
         else
         {
             merror("%s: Invalid message received. No action defined.",ARGV0);
         }
+        
         free(cleartext_msg);
         free(buffer);
     }
