@@ -220,6 +220,8 @@ void _startit(int position,int connection_type, int uid,
                 continue;
             }
 
+            printf("clear text is: '%s'\n",cleartext_msg);
+
             tmp_msg = r_read(cleartext_msg);
             if(tmp_msg == NULL)
             {
@@ -228,7 +230,9 @@ void _startit(int position,int connection_type, int uid,
                 free(cleartext_msg);
                 continue;
             }
-            
+           
+            printf("message is now: '%s'\n", tmp_msg);
+             
             /* Check if it is a control message */ 
             if((tmp_msg[0] == '#') && (tmp_msg[1] == '!') &&
                                       (tmp_msg[2] == '-'))

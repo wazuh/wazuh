@@ -79,8 +79,8 @@ void getreply(int socket)
     {
         buffer = OS_RecvAllUDP(socket, OS_MAXSTR, srcip, IPSIZE);
 
-        /* Checking if IP is allowed */
-        if(CheckAllowedIP(&keys, srcip, NULL) == -1)
+        /* Checking if IP is allowed - only the manager */
+        if(strcmp(srcip, logr->rip) != 0)
         {
             merror(DENYIP_ERROR,ARGV0,srcip);
             free(buffer);

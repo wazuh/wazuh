@@ -355,6 +355,8 @@ void start_mgr(int agentid, char *msg, char *srcip, int port)
         if((f_sum[i]->mark == 1) ||
                 (f_sum[i]->mark == 0))
         {
+            printf("sending file: '%s'\n",f_sum[i]->name);
+            
             if(send_file(agentid, srcip, port, f_sum[i]->name) < 0)
             {
                 merror("%s: Error sending file '%s' to agent.",
