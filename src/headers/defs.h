@@ -31,7 +31,7 @@
 #define OS_FLSIZE	256	    /* Maximum size whenever reading a file */		
 #define OS_DEFSIZE	128	    /* Default size */
 #define OS_KEYSIZE	32	    /* Maximum size for a key */
-
+#define IPSIZE      16      /* IP Address size */
 
 /* manager notification */
 #ifndef NOTIFY_TIME

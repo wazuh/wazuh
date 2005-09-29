@@ -62,29 +62,8 @@ int SendMSG(int queue, char *message, char *locmsg,
 
     if(loc == SECURE_MQ)
     {
-        char *nm;
         printf("message received was !!%s!!\n",message);
 
-        message++;
-        
-        nm = index(message, ':');
-        if(nm == NULL)
-        {
-            merror("%s: Error deserializing message",ARGV0);
-            return(0);
-        }
-        
-        nm++; /* We point now to the beginning of the rand */
-        
-        message = index(nm, ':');
-        if(message == NULL)
-        {
-            merror("%s: Error deserializing message",ARGV0);
-            return(0);
-        }
-
-        message++; /* We are now on the beginning of the message itself */
-        
         loc = message[0];
         message++;
 

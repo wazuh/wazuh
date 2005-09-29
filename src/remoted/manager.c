@@ -34,7 +34,13 @@ typedef struct _file_sum
     os_md5 sum;
 }file_sum;
 
+
+/* Global vars, acessible every where */
 file_sum **f_sum;
+
+time_t _ctime;
+time_t _stime;
+
 
 /* f_files: Free the files memory
  */
@@ -169,10 +175,11 @@ char *r_read(char *tmp_msg)
 /* send_file: Sends a file to the agent.
  * Returns -1 on error
  */
-int send_file(int socket, int agentid, char *name)
+int send_file(int agentid, char *srcip, int port, char *name)
 {
+    int socket;
     char file[OS_MAXSTR +1];
-    char buf[OS_FLSIZE +1];
+    char buf[OS_MAXSTR +1];
     char *crypt_msg;
 
     int msg_size;
@@ -187,28 +194,40 @@ int send_file(int socket, int agentid, char *name)
         return(-1);
     }
 
+    /* Connecting to the agent */
+    socket = OS_ConnectUDP(port,srcip);
+    if(socket < 0)
+    {
+        merror(CONNS_ERROR,ARGV0,srcip);
+        return(-1);
+    }
+
+
     /* Sending the file name first */
-    snprintf(buf, OS_FLSIZE, "#!-up file %s\n", name);
-    
+    snprintf(buf, OS_MAXSTR, "#!-up file %s\n", name);
+
     crypt_msg = CreateSecMSG(&keys, buf, agentid, &msg_size);
     if(crypt_msg == NULL)
     {
         merror(SEC_ERROR,ARGV0);
         fclose(fp);
-        return(-1);
-    }
-    if(write(socket, crypt_msg, msg_size) < msg_size)
-    {
-        free(crypt_msg);
-        fclose(fp);
-        merror("%s: Error sending message to agent (write)",ARGV0);
+        close(socket);
         return(-1);
     }
 
-    free(crypt_msg);
+    /* Sending initial message */
+    if(OS_SendUDPbySize(socket, msg_size, crypt_msg) < msg_size)
+    {
+        free(crypt_msg);
+        merror(SEND_ERROR,ARGV0);
+        close(socket);
+        return(-1);
+    }
     
+    free(crypt_msg);
+
     /* Sending the file content */
-    while(fgets(buf, OS_FLSIZE , fp) != NULL)
+    while(fgets(buf, OS_MAXSTR , fp) != NULL)
     {
         crypt_msg = CreateSecMSG(&keys, buf, agentid, &msg_size);
 
@@ -216,14 +235,16 @@ int send_file(int socket, int agentid, char *name)
         {
             fclose(fp);
             merror(SEC_ERROR,ARGV0);
+            close(socket);
             return(-1);
         }
 
-        if(write(socket, crypt_msg, msg_size) < msg_size)
+        if(OS_SendUDPbySize(socket, msg_size, crypt_msg) < msg_size)
         {
             fclose(fp);
             free(crypt_msg);
-            merror("%s: Error sending message to agent (write)",ARGV0);
+            merror("%s: Error sending message to agent (send)",ARGV0);
+            close(socket);
             return(-1);
         }
 
@@ -232,115 +253,69 @@ int send_file(int socket, int agentid, char *name)
 
     printf("file sent!\n");
     fclose(fp);
+    close(socket);
     return(0);
 }
 
 
-/* handleagent: Handle new connections from agent. 
- * If message is just a "I'm alive" message, do not fork.
- * If message is a new one, fork and share configs
- */
-void handleagent(int clientsocket, char *srcip)
+/* start_mgr: Start manager thread */
+void start_mgr(int agentid, char *msg, char *srcip, int port)
 {
     int i;
-    int n;
-    int agentid;
 
-    char buf[OS_MAXSTR +1];
-    char *cleartext_msg;
-    char *tmp_msg;
     char *uname;
 
-
-    /* IP not on the agents list */
-    if((agentid = CheckAllowedIP(&keys, srcip, NULL)) == -1)
+    _ctime = time(0);
+    if((_ctime - _stime) > (NOTIFY_TIME*2))
     {
-        merror(DENYIP_ERROR,ARGV0,srcip);
-        close(clientsocket);
-        return;
+        f_files();
+        c_files();
+        _stime = _ctime;
     }
 
-    printf("ip allowed!\n");
-   
-    printf("!!\n");
-     
-    /* Reading from client */
-    
-    if((n = recv(clientsocket, buf, OS_MAXSTR, 0)) > 0)
-    {
-        printf("got buf: %d!\n",n);
-        
-        buf[n] = '\0';
-    }
-
-    if(n < 0)
-    {
-        merror(READ_ERROR,ARGV0);
-        close(clientsocket);
-        return;
-    }
-
-    printf("read message!\n");
-    
-    /* Decrypting the message */
-    cleartext_msg = ReadSecMSG(&keys, srcip, buf);
-    if(cleartext_msg == NULL)
-    {
-        merror(MSG_ERROR,ARGV0,srcip);
-        close(clientsocket);
-        return;
-    }
-
-    printf("decrypted!%s\n",cleartext_msg);
-    /* Removing checksum and rand number */
-    tmp_msg = r_read(cleartext_msg);
-    
-    printf("message is now:%s\n",tmp_msg);
-    
-    if(!tmp_msg)
-    {
-        merror("%s: Invalid message from '%s'",ARGV0, srcip);
-        close(clientsocket);
-        free(cleartext_msg);
-        return;
-    }
+    printf("message is now:%s\n",msg);
 
     /* Get uname */
-    uname = tmp_msg;
-    tmp_msg = index(tmp_msg,'\n');
-    if(!tmp_msg)
+    uname = msg;
+    msg = index(msg,'\n');
+    if(!msg)
     {
         merror("%s: Invalid message from '%s' (uname)",ARGV0, srcip);
-        close(clientsocket);
-        free(cleartext_msg);
         return;
     }
-    *tmp_msg = '\0';
-    tmp_msg++;
-    
+
+    *msg = '\0';
+    msg++;
+
     printf("got uname!:%s\n",uname);
-    
-    
+
+
     /* XXX write uname somewhere */
-    
+
+    if(!f_sum)
+    {
+        /* Nothing to share with agent */
+        return;
+    }
+
     /* Parse message */ 
-    while(*tmp_msg != '\0')
+    while(*msg != '\0')
     {
         char *md5;
         char *file;
 
-        md5 = tmp_msg;
-        file = tmp_msg;
+        md5 = msg;
+        file = msg;
 
-        tmp_msg = index(tmp_msg, '\n');
-        if(!tmp_msg)
+        msg = index(msg, '\n');
+        if(!msg)
         {
             merror("%s: Invalid message from '%s' (index \\n)",ARGV0, srcip);
             break;
         }
 
-        *tmp_msg = '\0';
-        tmp_msg++;
+        *msg = '\0';
+        msg++;
 
         file = index(file, ' ');
         if(!file)
@@ -351,19 +326,18 @@ void handleagent(int clientsocket, char *srcip)
 
         *file = '\0';
         file++;
-    
-            
+
         for(i = 0;;i++)
         {
             if(f_sum[i] == NULL)
                 break;
-                
-            if(strcmp(f_sum[i]->name, file) != 0)
+
+            else if(strcmp(f_sum[i]->name, file) != 0)
                 continue;
-            
-            if(strcmp(f_sum[i]->sum, md5) != 0)
+
+            else if(strcmp(f_sum[i]->sum, md5) != 0)
                 f_sum[i]->mark = 1; /* Marked to update */
-            
+
             else
             {
                 f_sum[i]->mark = 2;
@@ -373,88 +347,36 @@ void handleagent(int clientsocket, char *srcip)
     }
 
     printf("if fsum\n");
-    if(f_sum)
+    for(i = 0;;i++)
     {
-        for(i = 0;;i++)
+        if(f_sum[i] == NULL)
+            break;
+
+        if((f_sum[i]->mark == 1) ||
+                (f_sum[i]->mark == 0))
         {
-            if(f_sum[i] == NULL)
-                break;
-
-            if((f_sum[i]->mark == 1) ||
-                    (f_sum[i]->mark == 0))
+            if(send_file(agentid, srcip, port, f_sum[i]->name) < 0)
             {
-                if(send_file(clientsocket, agentid, f_sum[i]->name) < 0)
-                {
-                    merror("%s: Error sending file '%s' to agent.",
-                                                            ARGV0,
-                                                            f_sum[i]->name);
-                }
+                merror("%s: Error sending file '%s' to agent.",
+                        ARGV0,
+                        f_sum[i]->name);
             }
-
-            f_sum[i]->mark = 0;        
         }
+
+        f_sum[i]->mark = 0;        
     }
-    
-    printf("message is: %s \n",tmp_msg);
 
-
-    free(cleartext_msg);
-    close(clientsocket);
+    printf("message is: %s \n",msg);
 
     return; 
 }
 
 
-/* start_mgr: Start manager thread */
-void *start_mgr(void *arg)
+/* manager_init: Should be called before anything here */
+void manager_init()
 {
-    int sock;
-    int clientsock;
-    int *port = (int *)arg;
-    
-    char srcip[16];
-    
-    time_t ctime;
-    printf("Starting manager thread on port %d..\n", *port);
-
-
-    /* Bind manager port */
-    if((sock = OS_Bindporttcp(*port,NULL)) < 0)
-        ErrorExit(BIND_ERROR,ARGV0,port);
-
-    
-    printf("Bind port \n");
-
-    ctime = time(0);
+    _stime = time(0);
     c_files();
-
-    /* Receiving connections from now on */
-    while(1)
-    {
-        printf("accept?\n");
-        
-        if((clientsock = OS_AcceptTCP(sock, srcip, 16)) < 0)
-            ErrorExit(CONN_ERROR,ARGV0,port);
-
-        printf("received conn!\n");
-        /* Re-readinf files on the shared directory */
-        if((time(0) - ctime) > 1200)
-        {
-            printf("a\n");
-            f_files();
-            printf("b\n");
-            c_files();
-            printf("c\n");
-        }
-        
-        printf("handling agent!\n");
-        handleagent(clientsock, srcip);    
-    }
-
-   printf("done? should't be here\n"); 
-        
-    
-    return NULL;
 }
 
 /* EOF */

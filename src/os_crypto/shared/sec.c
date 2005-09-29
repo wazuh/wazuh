@@ -31,7 +31,6 @@
 
 #define NAMESIZE 33
 #define KEYSIZE	 65
-#define IPSIZE	 17
 
 
 /* _MemClear v0.1 - Internal use */
@@ -291,6 +290,7 @@ char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer)
     char *clear_msg = NULL;
     char *id = NULL;    
 
+    printf("buffer is: '%s'\n",buffer);
 
     if(*buffer != ':')
     {

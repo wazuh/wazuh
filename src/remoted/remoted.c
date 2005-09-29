@@ -43,8 +43,6 @@
 #include "headers/pthreads_op.h"
 
 
-#define IPSIZE 16
-
 short int dbg_flag=0;
 short int chroot_flag=0;
 
@@ -52,8 +50,11 @@ short int chroot_flag=0;
 #include "error_messages/error_messages.h"
 
 
-/*  start_mgr prototype */
-void *start_mgr(void *arg);
+/*  manager prototypes */
+void manager_init();
+void start_mgr(int agentid, char *msg, char *srcip, int port);
+char *r_read(char *tmp_msg);
+
 
 
 /* OS_IPNotAllowed, v0.1, 2005/02/11 
@@ -129,7 +130,9 @@ void _startit(int position,int connection_type, int uid,
             
         else if(connection_type == SYSLOG_CONN)
             port = DEFAULT_SYSLOG;
+        
     }
+
 
     /* Only using UDP 
      * UDP is faster and unreliable. Perfect :)
@@ -148,6 +151,10 @@ void _startit(int position,int connection_type, int uid,
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0, uid);
 
+    /* Initing manager */
+    manager_init();
+
+    
     /* Try three times to connect to the message queue.
      * Exit if all attempts fail.
      */
@@ -164,23 +171,16 @@ void _startit(int position,int connection_type, int uid,
         }
     }
 
+    /* Creating PID */
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
+
 
     /* Reading the private keys for secure connection */
     if(connection_type == SECURE_CONN)
     {
         /* Read the keys */ 
         ReadKeys(&keys);
-        
-        
-        /* Creating a new TCP socket to start
-         * handling connections with the agents 
-         */
-        if(CreateThread(start_mgr, (void *)&port) != 0)
-        {
-            ErrorExit("%s: Impossible to start the manager thread.");
-        }
     }
 
     while(1)
@@ -188,31 +188,28 @@ void _startit(int position,int connection_type, int uid,
         if(_local_err == 5)
             ErrorExit(QUEUE_FATAL,ARGV0,DEFAULTQUEUE);
 
+        /* Receiving message - up to MAXSTR */
         buffer = OS_RecvAllUDP(sock, OS_MAXSTR, srcip, IPSIZE);
 
+
+        /* Can't do much in here */
         if(buffer == NULL)
             continue;
 
-        if((connection_type == SECURE_CONN) && 
-                (CheckAllowedIP(&keys,srcip,NULL) == -1)) 
-        {
-            merror(DENYIP_ERROR,ARGV0,srcip);
-            free(buffer);
-            continue;
-        }
-
-        /* Only checking it if connection is != SECURE (syslog) */
-        else if((connection_type != SECURE_CONN)&&
-                (OS_IPNotAllowed(srcip,logr)))
-        {
-            merror(DENYIP_ERROR,ARGV0,srcip);
-            free(buffer);
-            continue;
-        }
-
+        
+        /* Handling secure connections */
         if(connection_type == SECURE_CONN)
         {
-            char *cleartext_msg = NULL;
+            int agentid;
+            char *cleartext_msg;
+            char *tmp_msg;
+    
+            if((agentid = CheckAllowedIP(&keys, srcip, NULL) == -1))
+            {
+                merror(DENYIP_ERROR,ARGV0,srcip);
+                free(buffer);
+                continue;
+            }
             
             cleartext_msg = ReadSecMSG(&keys, srcip, buffer);
             
@@ -223,11 +220,27 @@ void _startit(int position,int connection_type, int uid,
                 continue;
             }
 
+            tmp_msg = r_read(cleartext_msg);
+            if(tmp_msg == NULL)
+            {
+                merror(MSG_ERROR,ARGV0,srcip);
+                free(buffer);
+                free(cleartext_msg);
+                continue;
+            }
+            
+            /* Check if it is a control message */ 
+            if((tmp_msg[0] == '#') && (tmp_msg[1] == '!') &&
+                                      (tmp_msg[2] == '-'))
+            {
+                start_mgr(agentid, tmp_msg, srcip, port);
+            }
+            
             /* If we can't send the message, try to connect to the
              * socket again. If not, increments local_err and try
              * again latter
              */
-            if(SendMSG(m_queue, cleartext_msg, srcip, logr->group[position],
+            else if(SendMSG(m_queue, tmp_msg, srcip, logr->group[position],
                         SECURE_MQ) < 0)
             {
                 merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
@@ -247,8 +260,13 @@ void _startit(int position,int connection_type, int uid,
         }
 
         else
-        {	
-            if(SendMSG(m_queue,buffer,srcip,logr->group[position],
+        {
+            /* Checking if IP is allowed here */
+            if(OS_IPNotAllowed(srcip,logr))
+            {
+                merror(DENYIP_ERROR,ARGV0,srcip);
+            }
+            else if(SendMSG(m_queue,buffer,srcip,logr->group[position],
                         SYSLOG_MQ) < 0)
             {
                 merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
@@ -260,7 +278,7 @@ void _startit(int position,int connection_type, int uid,
                 _local_err++;
             }
             else
-                _local_err=0;
+                _local_err = 0;
         }
         
         free(buffer);
@@ -343,10 +361,10 @@ int main(int argc, char **argv)
         }
         
         else if(strcmp(logr.conn[i],"syslog") == 0)
-            connection_type=SYSLOG_CONN;
+            connection_type = SYSLOG_CONN;
             
         else if (strcmp(logr.conn[i],"secure") == 0)
-            connection_type=SECURE_CONN;
+            connection_type = SECURE_CONN;
             
         else
         {
