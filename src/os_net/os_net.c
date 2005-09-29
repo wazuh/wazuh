@@ -85,7 +85,7 @@ int OS_Bindport(unsigned int _port,unsigned int _proto,char *_ip)
 
     if(_proto == IPPROTO_TCP)
     {
-        if(listen(ossock,32) < 0)
+        if(listen(ossock, 32) < 0)
             return(OS_SOCKTERR);
     }
     
