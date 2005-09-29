@@ -64,24 +64,33 @@ char *r_read(char *tmp_msg)
  */
 void getreply(int socket)
 {
-    int n;
-
-    char buf[OS_FLSIZE +1];
     char file[OS_MAXSTR +1];
     
+    char srcip[IPSIZE +1];
+    char *buffer;
     char *cleartext_msg;
     char *tmp_msg;
     
     FILE *fp;
     fp = NULL;
 
-    while((n = recv(socket, buf, OS_FLSIZE, 0)) > 0)
-    {
-        buf[n] = '\0';
 
-        cleartext_msg = ReadSecMSG(&keys, NULL, buf);
+    while(1)
+    {
+        buffer = OS_RecvAllUDP(socket, OS_MAXSTR, srcip, IPSIZE);
+
+        /* Checking if IP is allowed */
+        if(CheckAllowedIP(&keys, srcip, NULL) == -1)
+        {
+            merror(DENYIP_ERROR,ARGV0,srcip);
+            free(buffer);
+            continue;
+        }
+        
+        cleartext_msg = ReadSecMSG(&keys, NULL, buffer);
         if(cleartext_msg == NULL)
         {
+            free(buffer);
             merror(MSG_ERROR,ARGV0,logr->rip);
             return;
         }
@@ -93,6 +102,7 @@ void getreply(int socket)
         {
             merror("%s: Invalid message from '%s'",ARGV0, logr->rip);
             free(cleartext_msg);
+            free(buffer);
             return;
         }
                                                         
@@ -161,18 +171,12 @@ void getreply(int socket)
             merror("%s: Invalid message received. No action defined.",ARGV0);
         }
         free(cleartext_msg);
+        free(buffer);
     }
 
     if(fp)
         fclose(fp);
         
-    if(n < 0)
-    {
-        printf("connection done. exiting\n");
-        return;
-    }
-
-
     return;
 
 }
@@ -258,30 +262,16 @@ char *getsharedfiles()
 }
 
 /* main_mgr: main manager thread */
-void *main_mgr(void *arg)
+void main_mgr(int socket)
 {
-    int sock;
-    int *port = (int *)arg;
     int msg_size;
 
-    
     char tmp_msg[OS_MAXSTR +1];
     char *crypt_msg;
     char *uname;
     char *shared_files;
     
-    printf("Starting manager thread on port %d..\n", *port);
-
-
-    /* Connect to the server */
-    if((sock =  OS_ConnectTCP(*port, logr->rip)) < 0)
-    {
-        merror(CONNS_ERROR, ARGV0, logr->rip);
-        return(NULL);
-    }
     
-    printf("connected \n");
-
     /* Send the message.
      * Message is going to be the 
      * uname : file checksum : file checksum :
@@ -294,9 +284,8 @@ void *main_mgr(void *arg)
         uname = strdup("No system info available");
         if(!uname)
         {
-            close(sock);
             merror(MEM_ERROR,ARGV0);
-            return(NULL);
+            return;
         }
     }
    
@@ -309,35 +298,31 @@ void *main_mgr(void *arg)
         shared_files = strdup("\0");
         if(!shared_files)
         {
-            close(sock);
             free(uname);
             merror(MEM_ERROR,ARGV0);
-            return(NULL);
+            return;
         }
     }
     
     printf("shared files is %s\n",shared_files);
     
     /* creating message */
-    snprintf(tmp_msg, OS_MAXSTR, "%s\n%s",uname, shared_files);
+    snprintf(tmp_msg, OS_MAXSTR, "#!-%s\n%s",uname, shared_files);
     
     crypt_msg = CreateSecMSG(&keys, tmp_msg, 0, &msg_size);
     
     if(crypt_msg == NULL)
     {
-        close(sock);
         free(uname);
         free(shared_files);
         merror(SEC_ERROR,ARGV0);
-        return(NULL);
-    }
-   
-    /* sending message */
-    if(write(sock, crypt_msg, msg_size) < msg_size)
-    {
-        merror("%s: Error sending message to server (write)",ARGV0);
+        return;
     }
 
+    /* Send UDP message */
+    if(OS_SendUDPbySize(logr->sock, msg_size, crypt_msg) < 0)
+        merror(SEND_ERROR,ARGV0);
+                                       
     free(uname);
     free(shared_files);
     free(crypt_msg);
@@ -345,11 +330,9 @@ void *main_mgr(void *arg)
     printf("message sent!\n");
     
     /* Waiting for a reply */
-    getreply(sock);
+    getreply(socket);
     
-    
-    close(sock);
-    return(NULL);
+    return;
 }
 
 
@@ -357,11 +340,21 @@ void *main_mgr(void *arg)
 void *start_mgr(void *arg)
 {
     struct timeval fp_timeout;
-    
+    int *port = (int *)arg;
+    int sock;
+
+    /* Bind port to receive commands from server manager */
+    if((sock = OS_Bindportudp(*port, NULL)) < 0)
+    {
+        merror(BIND_ERROR,ARGV0,port);
+        return(NULL);
+    }
+
+
     /* We notify the server every NOTIFY_TIME */
     while(1)
     {
-        main_mgr(arg);
+        main_mgr(sock);
 
         fp_timeout.tv_sec = NOTIFY_TIME;
         fp_timeout.tv_usec = 0;

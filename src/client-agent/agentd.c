@@ -64,7 +64,6 @@ void *start_mgr(void *arg);
 void _startit(char *dir, int uid, int gid)
 {
     int m_queue = 0;
-    int sock;
         
     unsigned int port = 0;
     
@@ -111,16 +110,17 @@ void _startit(char *dir, int uid, int gid)
     rand();
 
 
+    /* Connecting UDP */
+    logr->sock = OS_ConnectUDP(port,logr->rip);
+    if(logr->sock < 0)
+        ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
+
+
     /* Starting manager */
     if(CreateThread(start_mgr, (void *)&port) != 0)
     {
         ErrorExit("%s: Impossible to start the manager thread.");
     }
-                                                              
-    /* Connecting UDP */
-    sock = OS_ConnectUDP(port,logr->rip);
-    if(sock < 0)
-        ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
 
 
     /* daemon loop */	
@@ -145,7 +145,7 @@ void _startit(char *dir, int uid, int gid)
             }
 
             /* Send _ssize of crypt_msg */
-            if(OS_SendUDPbySize(sock, _ssize, crypt_msg) < 0)
+            if(OS_SendUDPbySize(logr->sock, _ssize, crypt_msg) < 0)
                 merror(SEND_ERROR,ARGV0);
 
             /* No need to set them to null */
