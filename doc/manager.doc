@@ -1,0 +1,17 @@
+How do the server manager the agents.
+
+-The client will open port 1514 (by default) and listen for
+ messages from the server. Only the IP of the server will be
+ allowed.
+
+-Every 10 minutes, the client will send an status notification
+ to the server. This status message contain some information
+ about the agent system and information about the files it
+ has on the shared directory.
+ 
+-The server will receive the status message, update the agent
+ status file and check if it has any file to be sent to the 
+ agent. If it has, it will connect to the agent and send
+ the file.
+
+-Every message will be encrypted. 
