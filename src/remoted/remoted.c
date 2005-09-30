@@ -109,7 +109,8 @@ void _startit(int position,int connection_type, int uid,
     int _local_err = 0;
     
     
-
+    printf("startit!\n");
+    
     /* if SYSLOG and allowips is not defined, exit */
     if((logr->allowips == NULL)&&(connection_type == SYSLOG_CONN))
     {
@@ -133,7 +134,8 @@ void _startit(int position,int connection_type, int uid,
         
     }
 
-
+    printf("OK!\n");
+    
     /* Only using UDP 
      * UDP is faster and unreliable. Perfect :)
      */	
@@ -151,9 +153,12 @@ void _startit(int position,int connection_type, int uid,
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0, uid);
 
+    printf(":)\n");
     /* Initing manager */
     manager_init();
 
+    
+    printf("hum!\n");
     
     /* Try three times to connect to the message queue.
      * Exit if all attempts fail.
@@ -170,6 +175,7 @@ void _startit(int position,int connection_type, int uid,
                 ErrorExit(QUEUE_FATAL,ARGV0, DEFAULTQUEUE);
         }
     }
+
 
     /* Creating PID */
     if(CreatePID(ARGV0, getpid()) < 0)
@@ -191,7 +197,8 @@ void _startit(int position,int connection_type, int uid,
         /* Receiving message - up to MAXSTR */
         buffer = OS_RecvAllUDP(sock, OS_MAXSTR, srcip, IPSIZE);
 
-
+        printf("recwived megssage!\n");
+        
         /* Can't do much in here */
         if(buffer == NULL)
             continue;
@@ -354,6 +361,7 @@ int main(int argc, char **argv)
     /* Starting the signal manipulation */
     StartSIG(ARGV0);	
 
+    printf("AB!\n");
 
     /* Really starting the program. */
     for(i=0;i<binds;i++)
