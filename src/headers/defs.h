@@ -33,6 +33,11 @@
 #define OS_KEYSIZE	32	    /* Maximum size for a key */
 #define IPSIZE      16      /* IP Address size */
 
+
+/* Max limit of 256 agents */
+#define MAX_AGENTS  256
+
+
 /* manager notification */
 #ifndef NOTIFY_TIME
     #define NOTIFY_TIME     600 /* every 10 minutes */
