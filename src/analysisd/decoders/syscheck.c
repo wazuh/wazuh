@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "headers/defs.h"
 #include "headers/debug_op.h"
 #include "os_regex/os_regex.h"
 #include "config.h"
@@ -32,8 +33,6 @@ char _db_buf[1024];
 char _db_comment[512];
 char _db_comment2[512];
 
-/* Max limit of 256 agents */
-#define MAX_AGENTS  256
 
 char *agent_ips[MAX_AGENTS];
 FILE *agent_fps[MAX_AGENTS];

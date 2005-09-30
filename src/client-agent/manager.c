@@ -72,11 +72,33 @@ void getreply(int socket)
     char *tmp_msg;
     
     FILE *fp;
+
+    fd_set fdset;
+
+    struct timeval fdtimeout;
+
+    /* Setting FP to null, before starting */
     fp = NULL;
-
-
+    
     while(1)
     {
+        FD_ZERO(&fdset);
+        FD_SET(socket, &fdset);
+        
+        fdtimeout.tv_sec = 30;
+        fdtimeout.tv_usec = 0;
+
+        /* we are only monitoring one socket, so no reason
+         * to ISSET
+         */
+                 
+        /* Wait for 30 seconds at a maximum for a reply */
+        if(select(socket +1, &fdset, NULL, NULL, &fdtimeout) == 0)
+        {
+            /* timeout */
+            return;
+        }
+        
         buffer = OS_RecvAllUDP(socket, OS_MAXSTR, srcip, IPSIZE);
 
         /* Checking if IP is allowed - only the manager */
@@ -282,7 +304,7 @@ void main_mgr(int socket)
     
     /* Send the message.
      * Message is going to be the 
-     * uname : file checksum : file checksum :
+     * uname\n checksum file\n checksum file\n 
      */   
     
     /* Getting uname */
@@ -364,7 +386,7 @@ void *start_mgr(void *arg)
     {
         main_mgr(sock);
 
-        fp_timeout.tv_sec = NOTIFY_TIME;
+        fp_timeout.tv_sec = NOTIFY_TIME -30;
         fp_timeout.tv_usec = 0;
 
         /* Waiting for the select timeout */
