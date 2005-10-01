@@ -70,7 +70,9 @@ void getreply(int socket)
     char *buffer;
     char *cleartext_msg;
     char *tmp_msg;
-    
+   
+    char file_sum[34];
+     
     FILE *fp;
 
     fd_set fdset;
@@ -79,7 +81,9 @@ void getreply(int socket)
 
     /* Setting FP to null, before starting */
     fp = NULL;
-    
+   
+    memset(file_sum, '\0', 34);
+     
     while(1)
     {
         FD_ZERO(&fdset);
@@ -95,6 +99,9 @@ void getreply(int socket)
         /* Wait for 30 seconds at a maximum for a reply */
         if(select(socket +1, &fdset, NULL, NULL, &fdtimeout) == 0)
         {
+            if(fp)
+                fclose(fp);
+                
             /* timeout */
             return;
         }
@@ -150,6 +157,22 @@ void getreply(int socket)
                 char *validate_file;
                 tmp_msg+=strlen("up file ");
 
+                /* Going to after the file sum */
+                validate_file = index(tmp_msg, ' ');
+                if(!validate_file)
+                {
+                    goto cleanup;       
+                }
+
+                *validate_file = '\0';
+                
+                /* copying the file sum */
+                strncpy(file_sum, tmp_msg, 33);
+                
+                /* Setting tmp_msg to the beginning of the ifle name */
+                validate_file++;
+                tmp_msg = validate_file;
+                
                 printf("open file: %s\n", tmp_msg);
                 
                 if((validate_file = index(tmp_msg, '\n')) != NULL)
@@ -180,6 +203,18 @@ void getreply(int socket)
             else if(strncmp(tmp_msg, "close file", strlen("close file")) == 0)
             {
                 /* no error */
+                os_md5 currently_md5;
+
+                if(OS_MD5_File(file, currently_md5) < 0)
+                {
+                    /* Removing file */
+                    unlink(file);
+                }
+                else
+                {
+                    if(strcmp(currently_md5, file_sum) != 0)
+                        unlink(file);
+                }
             }
 
             else
@@ -200,6 +235,7 @@ void getreply(int socket)
             merror("%s: Invalid message received. No action defined.",ARGV0);
         }
         
+        cleanup:
         free(cleartext_msg);
         free(buffer);
     }

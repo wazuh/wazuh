@@ -61,11 +61,15 @@ char *_ips[MAX_AGENTS];
 /* free_thread: Frees the mgr_thread structure */
 void free_thread(mgr_thread *h)
 {
+    if(!h)
+        return;
+
     if(h->msg)
         free(h->msg);
     if(h->srcip)
         free(h->srcip);
     
+    free(h);
     return;        
 }
 
@@ -81,6 +85,8 @@ int equal_last_msg(char *srcip, char *r_msg)
     {
         if(!_ips[i])
         {
+            printf("hum?\n");
+            
             _ips[i] = strdup(srcip);
             _msg[i] = strdup(r_msg);
 
@@ -89,6 +95,8 @@ int equal_last_msg(char *srcip, char *r_msg)
                 ErrorExit(MEM_ERROR, ARGV0);
                 return(0);
             }
+
+            return(0);
         }
         
         else if(strcmp(_ips[i], srcip) == 0)
@@ -256,7 +264,7 @@ char *r_read(char *tmp_msg)
 /* send_file: Sends a file to the agent.
  * Returns -1 on error
  */
-int send_file(int agentid, char *srcip, int port, char *name)
+int send_file(int agentid, char *srcip, int port, char *name, char *sum)
 {
     int socket;
     char file[OS_MAXSTR +1];
@@ -286,7 +294,7 @@ int send_file(int agentid, char *srcip, int port, char *name)
 
 
     /* Sending the file name first */
-    snprintf(buf, OS_MAXSTR, "#!-up file %s\n", name);
+    snprintf(buf, OS_MAXSTR, "#!-up file %s %s\n", sum, name);
 
     crypt_msg = CreateSecMSG(&keys, buf, agentid, &msg_size);
     if(crypt_msg == NULL)
@@ -470,7 +478,7 @@ void *mgr_handle(void *arg)
             printf("sending file: '%s'\n",f_sum[i]->name);
             
             if(send_file(to_thread->agentid, to_thread->srcip, 
-                         to_thread->port, f_sum[i]->name) < 0)
+                         to_thread->port, f_sum[i]->name, f_sum[i]->sum) < 0)
             {
                 merror("%s: Error sending file '%s' to agent.",
                         ARGV0,
@@ -496,24 +504,33 @@ void start_mgr(int agentid, char *msg, char *srcip, int port)
     /* Nothing changed on the agent. Keep going */
     if(equal_last_msg(srcip, msg))
     {
+        printf("message read already: \n");
         return;
     }
 
     else
     {
-        mgr_thread to_thread;
+        mgr_thread *to_thread;
 
-        to_thread.agentid = agentid;
-        to_thread.msg = strdup(msg);
-        if(!to_thread.msg)
+        printf("message is: %s\n",msg);
+        
+        to_thread = (mgr_thread *)calloc(1, sizeof(mgr_thread));
+        if(!to_thread)
+        {
             ErrorExit(MEM_ERROR,ARGV0);
-        to_thread.srcip = strdup(srcip);
-        if(!to_thread.srcip)
+        }
+        
+        to_thread->agentid = agentid;
+        to_thread->msg = strdup(msg);
+        if(!to_thread->msg)
             ErrorExit(MEM_ERROR,ARGV0);
-        to_thread.port = port;
+        to_thread->srcip = strdup(srcip);
+        if(!to_thread->srcip)
+            ErrorExit(MEM_ERROR,ARGV0);
+        to_thread->port = port;
 
         /* Starting manager */
-        if(CreateThread(mgr_handle, (void *)&to_thread) != 0)
+        if(CreateThread(mgr_handle, (void *)to_thread) != 0)
         {
             ErrorExit("%s: Impossible to start the manager thread.");
         }
@@ -528,6 +545,8 @@ void manager_init()
     int i;
     _stime = time(0);
     c_files();
+
+    debug1("%s: DEBUG: Starting manager_unit", ARGV0);
 
     for(i=0;i<MAX_AGENTS;i++)
     {
