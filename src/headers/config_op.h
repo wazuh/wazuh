@@ -27,6 +27,7 @@ char *xml_remote="remote";
 char *xml_client="client";
 char *xml_execd="execd";
 char *xml_syscheck="syscheck";
+char *xml_rootcheck="rootcheck";
 
 
 #endif /* _OS_CONFIG */
