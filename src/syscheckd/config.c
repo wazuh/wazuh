@@ -30,10 +30,6 @@
 extern short int dbg_flag;
 
 
-/* FilesConf v0.3, 2005/03/03
- * Read the config file (the localfiles)
- * v0.3: Changed for the new OS_XML
- */
 int Read_Syscheck_Config(char * cfgfile)
 {
     OS_XML xml;
