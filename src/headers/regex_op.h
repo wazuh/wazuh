@@ -13,7 +13,8 @@
 #ifndef OS_REGEX_OP_H
 #define OS_REGEX_OP_H
 
-int OS_Regex(char *str, char *regex);
+/* Posix regex pattern matching */
+int OS_PRegex(char *str, char *regex);
 
 
 #endif
