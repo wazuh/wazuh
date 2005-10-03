@@ -10,9 +10,9 @@
  */
        
 
-#ifndef __SYSCHECK_H
+#ifndef __ROOTCHECK_H
 
-#define __SYSCHECK_H
+#define __ROOTCHECK_H
 
 #include <stdio.h>
 
@@ -20,6 +20,7 @@ typedef struct _config
 {
     char *workdir;
     char *rootkit_files;
+    char *rootkit_trojans;
 
     FILE *fp;
     int daemon;
@@ -39,18 +40,29 @@ config rootcheck;
 
 /** Prototypes **/
 
-/* run_check: checks the integrity of the files against the
+/* common is_file: Check if a file exist (using stat and fopen) */
+int is_file(char *file_name);
+
+/* Check if regex is present on the file.
+ * Similar to `strings fiile | grep -r regex`
+ */ 
+int os_string(char *file, char *regex);
+
+
+/* run_rk_check: checks the integrity of the files against the
  * saved database
  */
-void run_check();
+void run_rk_check();
 
-/* start_daemon: Runs run_check periodically.
+/* start_rk_daemon: Runs run_rk_check periodically.
  */
-void start_daemon();
+void start_rk_daemon();
 
 
-/*** Plugins functions prototypes ***/
+/*** Plugins prototypes ***/
 void check_rc_files(char *basedir, FILE *fp);
+
+void check_rc_trojans(char *basedir, FILE *fp);
 
 #endif
 
