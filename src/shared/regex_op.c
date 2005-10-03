@@ -17,11 +17,11 @@
 #include "error_messages/error_messages.h"
 
 
-/* OS_Regex:
- * Compile a regex, returning NULL on error
+/* OS_PRegex:
+ * Compile a posix regex, returning NULL on error
  * Returns 1 if matches, 0 if not.
  */
-int OS_Regex(char *str, char *regex)
+int OS_PRegex(char *str, char *regex)
 {
     regex_t preg;
     

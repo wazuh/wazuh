@@ -185,7 +185,7 @@ int os_string(char *file, char *regex)
 
             *buf = '\0';
 
-            if(OS_Regex(line, regex))
+            if(OS_PRegex(line, regex))
             {
                 return(1);
             }
