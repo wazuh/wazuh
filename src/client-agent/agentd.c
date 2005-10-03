@@ -116,6 +116,8 @@ void _startit(char *dir, int uid, int gid)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
 
 
+    debug1("%s: DEBUG: Creating manager thread", ARGV0);
+
     /* Starting manager */
     if(CreateThread(start_mgr, (void *)&port) != 0)
     {
