@@ -43,6 +43,7 @@ int Read_Rootcheck_Config(char * cfgfile)
     char *(xml_notify[])={xml_rootcheck, "notify", NULL};
     char *(xml_workdir[])={xml_rootcheck, "work_directory", NULL};
     char *(xml_rootkit_files[])={xml_rootcheck, "rootkit_files", NULL};
+    char *(xml_rootkit_trojans[])={xml_rootcheck, "rootkit_trojans", NULL};
 
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
@@ -98,6 +99,7 @@ int Read_Rootcheck_Config(char * cfgfile)
     
     
     rootcheck.rootkit_files  = OS_GetOneContentforElement(&xml,xml_rootkit_files);
+    rootcheck.rootkit_trojans  = OS_GetOneContentforElement(&xml,xml_rootkit_trojans);
 
 
     OS_ClearXML(&xml);

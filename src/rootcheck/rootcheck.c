@@ -155,7 +155,7 @@ int main(int argc, char **argv)
                 
             /* Start the daemon */
             debug1("%s: DEBUG: Starting daemon", ARGV0);
-            start_daemon();
+            start_rk_daemon();
         }
         
         else
@@ -167,8 +167,8 @@ int main(int argc, char **argv)
     /* Will only check the integrity once and exit */
     else
     {
-        debug1("%s: DEBUG: Running run_check",ARGV0);
-        run_check(); 
+        debug1("%s: DEBUG: Running run_rk_check",ARGV0);
+        run_rk_check(); 
     }
 
    

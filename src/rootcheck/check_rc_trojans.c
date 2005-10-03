@@ -1,4 +1,4 @@
-/*   $OSSEC, check_rc_files.c, v0.1, 2005/09/30, Daniel B. Cid$   */
+/*   $OSSEC, check_rc_trojans.c, v0.1, 2005/10/01, Daniel B. Cid$   */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -17,6 +17,8 @@
 
 #include <sys/param.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
 #include <errno.h>
 
 #include "headers/defs.h"
@@ -25,26 +27,28 @@
 #include "rootcheck.h"
 
 
-
-/* check_rc_files:
- * Read the file pointer specified (rootkit_files)
- * and check if the configured file is there
+/* check_rc_trojans:
+ * Read the file pointer specified (rootkit_trojans)
+ * and check if the any trojan entry is on the configured files
  */
-void check_rc_files(char *basedir, FILE *fp)
+void check_rc_trojans(char *basedir, FILE *fp)
 {
+    int i;
     char buf[OS_MAXSTR +1];
     char file_path[OS_MAXSTR +1];
 
     char *file;
-    char *name;
-    char *link;
-    
-    debug1("%s: DEBUG: Starting on check_rc_files", ARGV0);
-     
+    char *string_to_look;
+
+    char *(all_paths[]) = {"bin","sbin","usr/bin","usr/sbin"};
+
+    debug1("%s: DEBUG: Starting on check_rc_trojans", ARGV0);
+
+
     while(fgets(buf, OS_MAXSTR, fp) != NULL)
     {
         char *nbuf;
-    
+
         /* Removing end of line */
         nbuf = index(buf, '\n');
         if(nbuf)
@@ -54,7 +58,7 @@ void check_rc_files(char *basedir, FILE *fp)
 
         /* Assigning buf to be used */
         nbuf = buf;
-       
+
         /* Excluding commented lines or blanked ones */ 
         while(*nbuf != '\0')
         {
@@ -68,15 +72,15 @@ void check_rc_files(char *basedir, FILE *fp)
             else
                 break;
         }
-       
+
         if(*nbuf == '\0')
             goto newline;
-             
+
         /* File now may be valid */
         file = nbuf;
-        name = nbuf; 
-         
-         
+        string_to_look = nbuf; 
+
+
         /* Getting the file and the rootkit name */
         while(*nbuf != '\0')
         {
@@ -92,75 +96,70 @@ void check_rc_files(char *basedir, FILE *fp)
                 nbuf++;
             }
         }
-   
+
         if(*nbuf == '\0')
             goto newline;
-             
-        
+
+        printf("file is: %s\n", file);
+
         /* Some ugly code to remove spaces and \t */ 
         while(*nbuf != '\0')
         {
-           if(*nbuf == '!')
-           {
-               nbuf++;
-               if(*nbuf == ' ' || *nbuf == '\t')
-               {
-                   nbuf++;
-                   name = nbuf;
-
-                   break;
-               }
-           }
-           else if(*nbuf == ' ' || *nbuf == '\t')
-           {
-               nbuf++;
-               continue;
-           }
-           else
-           {
-               goto newline;
-           }
-        }
-
-        
-        /* Getting the link (if present) */
-        link = index(nbuf, ':');
-        if(link)
-        {
-            *link = '\0';
-           
-            link++; 
-            if(*link == ':')
+            if(*nbuf == '!')
             {
-                link++;
+                nbuf++;
+                string_to_look = nbuf;
+                break;
+            }
+            else if(*nbuf == ' ' || *nbuf == '\t')
+            {
+                nbuf++;
+                continue;
+            }
+            else
+            {
+                goto newline;
             }
         }
-       
-         
-        /* Cleaning any space of \t at the end */
-        nbuf = index(nbuf, ' ');
+
+
+        if(!string_to_look)
+        {
+            goto newline;
+        }
+
+        printf("string to look is %s\n", string_to_look);
+
+        /* Removing any possible space of \t at the end */
+        nbuf = index(string_to_look, ' ');
         if(nbuf)
         {
             *nbuf = '\0';
         }
 
-        nbuf = index(nbuf, '\t');
+        nbuf = index(string_to_look, '\t');
         if(nbuf)
         {
             *nbuf = '\0';
         }
-        
-        printf("ok here... file: %s, name: %s, link: %s\n",file,name, link);
-        
-        snprintf(file_path, OS_MAXSTR, "%s/%s",basedir, file);
-        
-        if(is_file(file_path))
+
+        printf("ok here... file: %s, str: %s \n", file, string_to_look);
+
+        /* Trying with all possible paths */
+        for(i = 0;i<=3;i++)
         {
-            printf("oops.. rootkit: %s\n",file);
+            snprintf(file_path, OS_MAXSTR, "%s/%s/%s",basedir, 
+                    all_paths[i],
+                    file);
+
+            if(is_file(file_path) && os_string(file_path, string_to_look))
+            {
+                printf("oops.. rootkit: %s\n",file_path);
+            }
         }
-        
-        newline:
-            continue;        
+
+newline:
+        continue;        
     }
 }
 
