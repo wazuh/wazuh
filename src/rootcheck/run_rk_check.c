@@ -209,7 +209,11 @@ void run_rk_check()
 
         fclose(fp);
     }
+   
+    /*** Third check, looking for files on the /dev ***/
+    check_rc_dev(basedir);
     
+     
     debug1("%s: DEBUG: Leaving run_rk_check",ARGV0); 
     return;
 }
