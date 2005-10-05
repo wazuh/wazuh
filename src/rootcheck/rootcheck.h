@@ -66,6 +66,8 @@ void check_rc_trojans(char *basedir, FILE *fp);
 
 void check_rc_dev(char *basedir);
 
+void check_rc_sys(char *basedir);
+
 #endif
 
 /* EOF */

@@ -1,4 +1,4 @@
-/*   $OSSEC, check_rc_dev.c, v0.1, 2005/10/03, Daniel B. Cid$   */
+/*   $OSSEC, check_rc_sys.c, v0.1, 2005/10/04, Daniel B. Cid$   */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -27,9 +27,9 @@
 #include "rootcheck.h"
 
 /** Prototypes **/
-int read_dev_dir(char *dir_name);
+int read_sys_dir(char *dir_name);
 
-int read_dev_file(char *file_name)
+int read_sys_file(char *file_name)
 {
     struct stat statbuf;
     
@@ -39,24 +39,39 @@ int read_dev_file(char *file_name)
         return(-1);
     }
     
-    if(S_ISDIR(statbuf.st_mode))
+    /* If directory, read the directory */
+    else if(S_ISDIR(statbuf.st_mode))
     {
         #ifdef DEBUG
         verbose("%s: Reading dir: %s\n",ARGV0, file_name);
         #endif
 
-        return(read_dev_dir(file_name));
+        return(read_sys_dir(file_name));
     }
-        
+    
+    /* If has OTHER write and exec permission, alert */
+    if((statbuf.st_mode & S_IWOTH) == S_IWOTH)
+    {
+        if(strncmp("/dev", file_name, 4) == 0)
+        {
+            printf("ignore dev! %s\n", file_name);
+        }
+        else if((statbuf.st_mode & S_IXUSR) == S_IXUSR)
+        {
+            printf("file with WRITE and EXEC per: %s\n", file_name);
+        }
+        else
+        {
+            printf("file with WRITE per: %s\n", file_name);
+        }
+    } 
     else if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
     {
-        printf("file: %s on /dev\n", file_name);
+        /* printf("file: %s on /dev\n", file_name); */
     }
     else
     {
-        #ifdef DEBUG
-        verbose("%s: *** IRREG file: '%s'\n",ARGV0,file_name);
-        #endif
+    /*    verbose("%s: *** IRREG file: '%s'\n",ARGV0,file_name); */
     }
 
     return(0);
@@ -65,15 +80,12 @@ int read_dev_file(char *file_name)
 /* read_dir v0.1
  *
  */
-int read_dev_dir(char *dir_name)
+int read_sys_dir(char *dir_name)
 {
-    int i;
-    
     DIR *dp;
     
 	struct dirent *entry;
 	
-    char *(ignore_dev[]) = {"MAKEDEV","README.MAKEDEV","MAKEDEV.README"};
     
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
     {
@@ -85,11 +97,19 @@ int read_dev_dir(char *dir_name)
     dp = opendir(dir_name);
 	if(!dp)
     {
-        merror("%s: Error opening directory: '%s': %s ",
+        if((strcmp(dir_name, "") == 0)&&
+           (dp = opendir("/"))) 
+        {
+            /* ok */
+        }
+        else
+        {
+            merror("%s: Error opening directory: '%s': %s ",
                                               ARGV0,
                                               dir_name,
                                               strerror(errno));
-        return(-1);
+            return(-1);
+        }
     }
 
     while((entry = readdir(dp)) != NULL)
@@ -101,17 +121,9 @@ int read_dev_dir(char *dir_name)
            (strcmp(entry->d_name,"..") == 0))  
             continue;
         
-        /* Do not look for the ignored files */
-        for(i = 0;i<=2;i++)
-            if(strcmp(ignore_dev[i], entry->d_name) == 0)
-                break;
-       
-        if(i < 3)
-            continue;
-             
         snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);
         
-        read_dev_file(f_name);
+        read_sys_file(f_name);
 
     }
 
@@ -121,16 +133,16 @@ int read_dev_dir(char *dir_name)
 }
 
 
-/*  check_rc_dev: v0.1
- *
+/*  check_rc_sys: v0.1
+ *  Scan the whole filesystem looking for possible issues
  */
-void check_rc_dev(char *basedir)
+void check_rc_sys(char *basedir)
 {
     char file_path[OS_MAXSTR +1];
 
-    snprintf(file_path, OS_MAXSTR, "%s/dev", basedir);
+    snprintf(file_path, OS_MAXSTR, "%s", basedir);
 
-    read_dev_dir(file_path);
+    read_sys_dir(file_path);
 
     return;
 }

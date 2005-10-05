@@ -163,7 +163,9 @@ void run_rk_check()
     if(i > 0)
     {
         if(basedir[i-1] == '/')
+        {
             basedir[i-1] = '\0';
+        }
     }
         
         
@@ -213,7 +215,10 @@ void run_rk_check()
     /*** Third check, looking for files on the /dev ***/
     check_rc_dev(basedir);
     
-     
+    /*** Fourth check,  scan the whole system looking for additional issues */
+    check_rc_sys(basedir);
+    
+         
     debug1("%s: DEBUG: Leaving run_rk_check",ARGV0); 
     return;
 }
