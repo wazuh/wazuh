@@ -1,4 +1,4 @@
-/*   $OSSEC, run_check.c, v0.2, 2005/08/22, Daniel B. Cid$   */
+/*   $OSSEC, run_check.c, v0.3, 2005/10/05, Daniel B. Cid$   */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -9,7 +9,8 @@
  * Foundation
  */
 
-/* v0.2 (2005/08/22): Removing st_ctime, bug 1104
+/* v0.3 (2005/10/05): Adding st_mode, owner uid and group owner.
+ * v0.2 (2005/08/22): Removing st_ctime, bug 1104
  * v0.1 (2005/07/15)
   */
   
@@ -121,10 +122,10 @@ void start_daemon()
                  */
                 file_count++;
 
-                /* sleep 2 on every 30 messages */
+                /* sleep 3 every 30 messages */
                 if(file_count >= 30)
                 {
-                    sleep(2);
+                    sleep(3);
                     file_count = 0;
                 }
             }
@@ -178,7 +179,7 @@ void run_check()
          file_count++;
          if(file_count >= 30)
          {
-             sleep(1);
+             sleep(2);
              file_count = 0;
          }
         
@@ -210,7 +211,7 @@ void run_check()
         /* Setting n_sum to the begining of buf */
         n_sum = buf;
 
-        /* If it returns null, we will already have alerted if necessary */
+        /* If it returns < 0, we will already have alerted if necessary */
         if(c_read_file(n_file) < 0)
             continue;
 
@@ -246,14 +247,14 @@ int c_read_file(char *file_name)
 
     /* stating and generating md5 of the file */
     if((lstat(file_name, &statbuf) < 0)||
-        (OS_MD5_File(file_name, f_sum) < 0))
+            (OS_MD5_File(file_name, f_sum) < 0))
     {
         if(syscheck.notify == QUEUE)
         {
             snprintf(alert_msg, 512,"-1 %s",file_name);
             notify_agent(alert_msg);
         }
-    
+
         else
         {
             merror("%s: Error accessing '%s'",ARGV0,file_name);
@@ -262,9 +263,12 @@ int c_read_file(char *file_name)
         return(-1);
     }
 
-    snprintf(c_sum,255,"%d%s",
-                (int)statbuf.st_size,
-                f_sum);
+    snprintf(c_sum,255,"%d:%d:%d:%d:%s",
+            (int)statbuf.st_size,
+            (int)statbuf.st_mode,
+            (int)statbuf.st_uid,
+            (int)statbuf.st_gid,
+            f_sum);
 
     return(0);
 }

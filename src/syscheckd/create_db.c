@@ -1,4 +1,4 @@
-/*   $OSSEC, create_db.c, v0.2, 2005/08/22, Daniel B. Cid$   */
+/*   $OSSEC, create_db.c, v0.3, 2005/10/05, Daniel B. Cid$   */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -9,7 +9,8 @@
  * Foundation
  */
 
-/* v0.2 (2005/08/22): Removing st_ctime, bug 1104
+/* v0.3 (2005/10/05): Adding st_mode, owner uid and group owner.
+ * v0.2 (2005/08/22): Removing st_ctime, bug 1104
  * v0.1 (2005/07/15)
  */
  
@@ -65,7 +66,11 @@ int read_file(char *file_name)
 
         else
         {
-            fprintf(syscheck.fp,"%d%s %s\n",(int)statbuf.st_size,
+            fprintf(syscheck.fp,"%d:%d:%d:%d:%s %s\n",
+                    (int)statbuf.st_size,
+                    (int)statbuf.st_mode,
+                    (int)statbuf.st_uid,
+                    (int)statbuf.st_gid,
                     f_sum,
                     file_name);
         }
@@ -90,7 +95,8 @@ int read_file(char *file_name)
 int read_dir(char *dir_name)
 {
     int dir_size;
-    
+   
+    char f_name[PATH_MAX +2]; 
     DIR *dp;
     
 	struct dirent *entry;
@@ -115,30 +121,26 @@ int read_dir(char *dir_name)
     while((entry = readdir(dp)) != NULL)
     {
         char *s_name;
-        char *f_name;
-
+        
         /* Just ignore . and ..  */
         if((strcmp(entry->d_name,".") == 0) ||
            (strcmp(entry->d_name,"..") == 0))  
             continue;
             
-        f_name = (char *)calloc(PATH_MAX+2,sizeof(char));
+        strcpy(f_name,dir_name);
+       
         s_name = f_name;
         
-        strcpy(f_name,dir_name);
-        
-        f_name += dir_size;
+        s_name += dir_size;
 
         /* checking if the file name is already null terminated */
-        if(*(f_name-1) != '/')
-            *f_name++ = '/';
+        if(*(s_name-1) != '/')
+            *s_name++ = '/';
             
-        *f_name = '\0';
+        *s_name = '\0';
         
-        strncpy(f_name,entry->d_name,PATH_MAX-dir_size);
-        read_file(s_name);
-
-        free(s_name);
+        strncpy(s_name,entry->d_name,PATH_MAX-dir_size);
+        read_file(f_name);
     }
 
     closedir(dp);
