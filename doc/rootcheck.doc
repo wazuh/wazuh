@@ -1,0 +1,46 @@
+Rootkit detection techniques used by the OSSEC HIDS
+by Daniel B. Cid, daniel.cid@gmail.com
+
+
+Starting on version 1.0, the OSSEC HIDS will perform
+rootkit detection on every system where the agent is
+installed. The rootcheck (rootkit detection engine) will
+be executed every X minutes (user specified --by default
+every 2 hours) to detect any possible rootkit installed.
+Used witht the log analysis and the integrity checking
+engine, it will become a very powerful monitoring solution
+(the OSSEC HIDS performs log analysis and integrity
+checking since version 0.1).
+
+Other feature included on version 1.0 is that the analysis
+server will automatically forward the rootkit detection
+signatures to the agents, reducing the administration
+overhead for the system admin. The agents and server will
+keep contact every 10 minutes and if the server is
+updated with a new signature file, it will forward them
+to all configured agents. Take a look at the management
+documentation for more information.
+
+The rootcheck will perform the following steps on the
+system trying to find rootkits:
+
+
+1- Read the rootkit_files.txt which contains a big database
+   of rootkits and files used by them. It will try to stats,
+   fopen and opendir each specified file. We use all these
+   system calls, because some kernel-level rootkits, hide
+   files from some system calls. The more system calls we
+   try, the better the detection. This method is more like
+   an anti-virus rule that needs to be updated constantly.
+   The chances of false-positives are small, but false
+   negatives can be produced by modifying the rootkits.
+
+2- Read the rootkit_trojans.txt which contains a database
+   of signatures of files trojaned by rootkits. This
+   technique of modifying binaries with trojaned versions
+   was commonly used by most of the popular rootkits 
+   available. This detection method will not find any
+   kernel level rootkit or any unknown rootkit.   
+   
+3-
+
