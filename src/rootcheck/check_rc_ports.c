@@ -18,7 +18,7 @@
 #include <sys/socket.h>
 #include <netdb.h> 
 #include <netinet/in.h>
-
+#include <errno.h>
 
 #include "headers/defs.h"
 #include "headers/debug_op.h"
@@ -26,7 +26,8 @@
 #include "rootcheck.h"
 
 /** Prototypes **/
-void test_ports(int proto)
+
+void conn_port(int proto, int port)
 {
     int i;
     int ossock;
@@ -51,11 +52,27 @@ void test_ports(int proto)
         server.sin_addr.s_addr = htonl(INADDR_ANY);
 
         if(bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0)
-            printf("proto %d port: %d\n",proto, i);
+            printf("proto %d port: %d, err: %d\n",proto, i, errno);
         
         close(ossock);    
     }
 }
+
+
+void test_ports(int proto)
+{
+	int i;
+
+	for(i = 0; i<= 65535; i++)
+	{
+		if(conn_port(proto, i))
+		{
+			printf("proto %d port: %d, err: %d\n",proto, i, errno);
+		}
+	}
+
+}
+
 
 /*  check_rc_ports: v0.1
  *  Check all ports
