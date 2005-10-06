@@ -56,6 +56,10 @@ int read_sys_file(char *file_name)
         {
             printf("ignore dev! %s\n", file_name);
         }
+        else if(strcmp("/var/empty/dev/log", file_name) == 0)
+        {
+            printf("ignore var empty/dev/log\n");
+        }
         else if((statbuf.st_mode & S_IXUSR) == S_IXUSR)
         {
             printf("file with WRITE and EXEC per: %s\n", file_name);
@@ -64,7 +68,18 @@ int read_sys_file(char *file_name)
         {
             printf("file with WRITE per: %s\n", file_name);
         }
-    } 
+    }
+
+    else if((statbuf.st_mode & S_ISUID) == S_ISUID)
+    {
+        printf("SUID  file: %s\n", file_name);
+    }
+    
+    else if((statbuf.st_mode & S_ISGID) == S_ISGID)
+    {
+        printf("GID file: %s\n", file_name);
+    }
+    
     else if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
     {
         /* printf("file: %s on /dev\n", file_name); */

@@ -68,6 +68,10 @@ void check_rc_dev(char *basedir);
 
 void check_rc_sys(char *basedir);
 
+void check_rc_pids();
+
+void check_rc_ports();
+
 #endif
 
 /* EOF */
