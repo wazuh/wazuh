@@ -25,51 +25,77 @@
 
 #include "rootcheck.h"
 
-/** Prototypes **/
+#ifndef NETSTAT
+#define NETSTAT "netstat -an | grep \"^%s\" | " \
+                "grep \"[^0-9]%d \" > /dev/null 2>&1"
+#endif
 
-void conn_port(int proto, int port)
+int run_netstat(int proto, int port)
 {
-    int i;
+    char nt[OS_MAXSTR +1];
+
+    printf("netstat: %s\n",NETSTAT);
+    if(proto == IPPROTO_TCP)
+        snprintf(nt, OS_MAXSTR, NETSTAT, "tcp", port);
+    else if(proto == IPPROTO_UDP)
+        snprintf(nt, OS_MAXSTR, NETSTAT, "udp", port);
+    else
+    {
+        merror("%s: Netstat error (wrong proto)", ARGV0);
+        return(0);
+    }
+
+    if(system(nt) == 0)    
+        return(1);
+    
+    return(0);    
+}
+
+
+int conn_port(int proto, int port)
+{
     int ossock;
     struct sockaddr_in server;
 
-    for(i = 0; i<= 65535; i++)
+    if(proto == IPPROTO_UDP)
     {
-        if(proto == IPPROTO_UDP)
-        {
-            if((ossock = socket(PF_INET,SOCK_DGRAM,IPPROTO_UDP)) < 0)
-                continue;
-        }
-        else if(proto == IPPROTO_TCP)
-        {
-            if((ossock = socket(PF_INET,SOCK_STREAM,IPPROTO_TCP)) < 0)
-                continue;
-        }
-
-        memset(&server, 0, sizeof(server));
-        server.sin_family = AF_INET;
-        server.sin_port = htons( i );
-        server.sin_addr.s_addr = htonl(INADDR_ANY);
-
-        if(bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0)
-            printf("proto %d port: %d, err: %d\n",proto, i, errno);
-        
-        close(ossock);    
+        if((ossock = socket(PF_INET,SOCK_DGRAM,IPPROTO_UDP)) < 0)
+            return(0);
     }
+    else if(proto == IPPROTO_TCP)
+    {
+        if((ossock = socket(PF_INET,SOCK_STREAM,IPPROTO_TCP)) < 0)
+            return(0);
+    }
+
+    memset(&server, 0, sizeof(server));
+    server.sin_family = AF_INET;
+    server.sin_port = htons( port );
+    server.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if(bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0)
+    {
+        return(1);
+    }
+
+    close(ossock);  
+
+    return(0);  
 }
 
 
 void test_ports(int proto)
 {
-	int i;
+    int i;
 
-	for(i = 0; i<= 65535; i++)
-	{
-		if(conn_port(proto, i))
-		{
-			printf("proto %d port: %d, err: %d\n",proto, i, errno);
-		}
-	}
+    for(i = 0; i<= 65535; i++)
+    {
+        if(conn_port(proto, i))
+        {
+            if(!run_netstat(proto, i))
+                printf("proto %d port: %d \n",proto, i);
+        }
+    }
 
 }
 
@@ -79,13 +105,13 @@ void test_ports(int proto)
  */
 void check_rc_ports()
 {
-   
+
     /* Trsting TCP ports */ 
     test_ports(IPPROTO_TCP);
 
     /* Testing UDP ports */
     test_ports(IPPROTO_UDP);
-        
+
     return;
 }
 
