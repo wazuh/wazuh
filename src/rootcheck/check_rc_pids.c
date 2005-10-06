@@ -11,11 +11,11 @@
 
  
 #include <stdio.h>       
-#include <sys/types.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 
+#include <sys/types.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <signal.h>
@@ -93,7 +93,7 @@ void loop_all_pids(char *ps, pid_t max_pid)
             }
 
             /* If it matches, process was terminated */
-            if(!_gsid0 && !_kill1)
+            if(_gsid0 && _kill1)
             {
                 continue;
             }
