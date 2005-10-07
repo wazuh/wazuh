@@ -25,6 +25,12 @@
 
 #include "rootcheck.h"
 
+/* SunOS netstat */
+#if defined(sun) || defined(__sun__)
+#define NETSTAT "netstat -an -P %s | "\
+                "grep \"[^0-9]%d \" > /dev/null 2>&1"
+#endif
+
 #ifndef NETSTAT
 #define NETSTAT "netstat -an | grep \"^%s\" | " \
                 "grep \"[^0-9]%d \" > /dev/null 2>&1"

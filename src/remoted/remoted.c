@@ -23,6 +23,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>  
 #include <arpa/inet.h>
+#include <time.h>
 
 #include "os_net/os_net.h"
 
