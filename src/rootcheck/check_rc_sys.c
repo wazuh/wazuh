@@ -33,7 +33,7 @@ int read_sys_file(char *file_name)
 {
     struct stat statbuf;
     
-    if(stat(file_name, &statbuf) < 0)
+    if(lstat(file_name, &statbuf) < 0)
     {
         merror("%s: Error accessing '%s'",ARGV0,file_name);
         return(-1);
@@ -50,15 +50,17 @@ int read_sys_file(char *file_name)
     }
     
     /* If has OTHER write and exec permission, alert */
-    if((statbuf.st_mode & S_IWOTH) == S_IWOTH)
+    if(((statbuf.st_mode & S_IWOTH) == S_IWOTH) && 
+         (S_ISREG(statbuf.st_mode)))
     {
         if(strncmp("/dev", file_name, 4) == 0)
         {
-            printf("ignore dev! %s\n", file_name);
+        }
+        else if(strncmp("/proc", file_name, 5) == 0)
+        {
         }
         else if(strcmp("/var/empty/dev/log", file_name) == 0)
         {
-            printf("ignore var empty/dev/log\n");
         }
         else if((statbuf.st_mode & S_IXUSR) == S_IXUSR)
         {
@@ -82,11 +84,9 @@ int read_sys_file(char *file_name)
     
     else if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
     {
-        /* printf("file: %s on /dev\n", file_name); */
     }
     else
     {
-    /*    verbose("%s: *** IRREG file: '%s'\n",ARGV0,file_name); */
     }
 
     return(0);

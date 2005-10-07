@@ -100,7 +100,6 @@ void check_rc_trojans(char *basedir, FILE *fp)
         if(*nbuf == '\0')
             goto newline;
 
-        printf("file is: %s\n", file);
 
         /* Some ugly code to remove spaces and \t */ 
         while(*nbuf != '\0')
@@ -128,7 +127,6 @@ void check_rc_trojans(char *basedir, FILE *fp)
             goto newline;
         }
 
-        printf("string to look is %s\n", string_to_look);
 
         /* Removing any possible space of \t at the end */
         nbuf = index(string_to_look, ' ');
@@ -143,7 +141,6 @@ void check_rc_trojans(char *basedir, FILE *fp)
             *nbuf = '\0';
         }
 
-        printf("ok here... file: %s, str: %s \n", file, string_to_look);
 
         /* Trying with all possible paths */
         for(i = 0;i<=3;i++)
@@ -154,7 +151,7 @@ void check_rc_trojans(char *basedir, FILE *fp)
 
             if(is_file(file_path) && os_string(file_path, string_to_look))
             {
-                printf("oops.. rootkit: %s\n",file_path);
+                printf("trojan.. rootkit: %s -> %s\n",file_path,string_to_look);
             }
         }
 

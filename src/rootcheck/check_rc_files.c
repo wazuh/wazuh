@@ -150,8 +150,6 @@ void check_rc_files(char *basedir, FILE *fp)
             *nbuf = '\0';
         }
         
-        printf("ok here... file: %s, name: %s, link: %s\n",file,name, link);
-        
         snprintf(file_path, OS_MAXSTR, "%s/%s",basedir, file);
         
         if(is_file(file_path))

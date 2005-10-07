@@ -33,7 +33,7 @@ int read_dev_file(char *file_name)
 {
     struct stat statbuf;
     
-    if(stat(file_name, &statbuf) < 0)
+    if(lstat(file_name, &statbuf) < 0)
     {
         merror("%s: Error accessing '%s'",ARGV0,file_name);
         return(-1);
@@ -48,7 +48,7 @@ int read_dev_file(char *file_name)
         return(read_dev_dir(file_name));
     }
         
-    else if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
+    else if(S_ISREG(statbuf.st_mode))
     {
         printf("file: %s on /dev\n", file_name);
     }
@@ -73,8 +73,10 @@ int read_dev_dir(char *dir_name)
     
 	struct dirent *entry;
 	
-    char *(ignore_dev[]) = {"MAKEDEV","README.MAKEDEV","MAKEDEV.README"};
-    
+    char *(ignore_dev[]) = {"MAKEDEV","README.MAKEDEV",
+                            "MAKEDEV.README", ".udevdb",
+                            ".udev.tdb"};
+        
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
     {
         merror("%s: Invalid directory given",ARGV0);
@@ -102,11 +104,11 @@ int read_dev_dir(char *dir_name)
             continue;
         
         /* Do not look for the ignored files */
-        for(i = 0;i<=2;i++)
+        for(i = 0;i<=4;i++)
             if(strcmp(ignore_dev[i], entry->d_name) == 0)
                 break;
        
-        if(i < 3)
+        if(i < 5)
             continue;
              
         snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);
@@ -128,6 +130,7 @@ void check_rc_dev(char *basedir)
 {
     char file_path[OS_MAXSTR +1];
 
+    debug1("%s: DEBUG: Starting on check_rc_dev", ARGV0);
     snprintf(file_path, OS_MAXSTR, "%s/dev", basedir);
 
     read_dev_dir(file_path);
