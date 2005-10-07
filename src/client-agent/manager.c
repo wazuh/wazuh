@@ -135,7 +135,6 @@ void getreply(int socket)
             return;
         }
                                                         
-        printf("msg is :%s\n",tmp_msg);                                        
 
         /* Check for commands */
         if(tmp_msg[0] == '#' && tmp_msg[1] == '!' &&
@@ -143,7 +142,6 @@ void getreply(int socket)
         {
             tmp_msg+=3;
 
-            printf("message is now x:%s\n",tmp_msg);
             
             /* Close any open file pointer if it was being written to */
             if(fp)
@@ -173,7 +171,6 @@ void getreply(int socket)
                 validate_file++;
                 tmp_msg = validate_file;
                 
-                printf("open file: %s\n", tmp_msg);
                 
                 if((validate_file = index(tmp_msg, '\n')) != NULL)
                 {
@@ -184,11 +181,9 @@ void getreply(int socket)
                 {
                     *validate_file = '-';
                 }
-                
-                if((validate_file = index(tmp_msg, '.')) != NULL)
-                {
-                    *validate_file = '-';
-                }
+    
+                if(tmp_msg[0] == '.')
+                    tmp_msg[0] = '-';            
                 
                 snprintf(file, OS_MAXSTR, "%s/%s", SHAREDCFG_DIR, tmp_msg);
 
@@ -197,7 +192,6 @@ void getreply(int socket)
                 {
                     merror("%s: Impossible to open file '%s'", ARGV0, file);
                 }
-                printf("OPEN!\n");
             }
             
             else if(strncmp(tmp_msg, "close file", strlen("close file")) == 0)
@@ -225,7 +219,6 @@ void getreply(int socket)
 
         else if(fp)
         {
-            printf("writting '%s' to fp\n",tmp_msg);
             fprintf(fp, "%s", tmp_msg);
             fflush(fp);
         }
@@ -308,10 +301,7 @@ char *getsharedfiles()
         tmp_ret+=strlen(tmp_ret);
        
         if(*tmp_ret == '\n')
-        {
-            printf("im \\n lala\n");
             tmp_ret++;
-        }
         
     }
 
@@ -355,7 +345,6 @@ void main_mgr(int socket)
         }
     }
    
-    printf("uname is %s\n", uname);
      
     /* get shared files */
     shared_files = getsharedfiles();
@@ -370,7 +359,6 @@ void main_mgr(int socket)
         }
     }
     
-    printf("shared files is %s\n",shared_files);
     
     /* creating message */
     snprintf(tmp_msg, OS_MAXSTR, "#!-%s\n%s",uname, shared_files);
@@ -393,7 +381,6 @@ void main_mgr(int socket)
     free(shared_files);
     free(crypt_msg);
 
-    printf("message sent!\n");
     
     /* Waiting for a reply */
     getreply(socket);

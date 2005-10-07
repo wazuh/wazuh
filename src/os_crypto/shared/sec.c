@@ -290,7 +290,6 @@ char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer)
     char *clear_msg = NULL;
     char *id = NULL;    
 
-    printf("buffer is: '%s'\n",buffer);
 
     if(*buffer != ':')
     {

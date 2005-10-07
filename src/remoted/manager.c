@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <time.h>
+#include <signal.h>
 
 #include "remoted.h"
 
@@ -58,6 +59,13 @@ char *_msg[MAX_AGENTS];
 char *_ips[MAX_AGENTS];
 
 
+/* Signal handler */
+void ReReadFiles()
+{
+    _stime = 0;
+}
+
+
 /* free_thread: Frees the mgr_thread structure */
 void free_thread(mgr_thread *h)
 {
@@ -85,7 +93,6 @@ int equal_last_msg(char *srcip, char *r_msg)
     {
         if(!_ips[i])
         {
-            printf("hum?\n");
             
             _ips[i] = strdup(srcip);
             _msg[i] = strdup(r_msg);
@@ -184,7 +191,6 @@ void c_files()
 
         snprintf(tmp_dir, 512, "%s/%s", SHAREDCFG_DIR, entry->d_name);
 
-        printf("reading dir: %s\n",tmp_dir);
         
         if(OS_MD5_File(tmp_dir, md5sum) != 0)
         {
@@ -192,7 +198,6 @@ void c_files()
             continue;
         }
         
-        printf("md5sum OK!\n");
         
         f_sum = (file_sum **)realloc(f_sum, (f_size +2) * sizeof(file_sum *));
         if(!f_sum)
@@ -201,7 +206,6 @@ void c_files()
             return;
         }
 
-        printf("a\n");
         f_sum[f_size] = calloc(1, sizeof(file_sum));
         if(!f_sum[f_size])
         {
@@ -209,7 +213,6 @@ void c_files()
             return;
         }
 
-        printf("b\n");
         
         strncpy(f_sum[f_size]->sum, md5sum, 32);
         f_sum[f_size]->name = strdup(entry->d_name);
@@ -219,12 +222,10 @@ void c_files()
             return;
         }
 
-        printf("c\n");
         f_sum[f_size]->mark = 0;
         f_size++;
     }
     
-    printf("done!\n");
     if(f_sum != NULL)
         f_sum[f_size] = NULL;
 
@@ -392,7 +393,6 @@ void *mgr_handle(void *arg)
         _stime = _ctime;
     }
 
-    printf("message is now:%s\n",msg);
 
     /* Get uname */
     uname = to_thread->msg;
@@ -407,7 +407,6 @@ void *mgr_handle(void *arg)
     *msg = '\0';
     msg++;
 
-    printf("got uname!:%s\n",uname);
 
 
     /* XXX write uname somewhere */
@@ -466,7 +465,6 @@ void *mgr_handle(void *arg)
         }
     }
 
-    printf("if fsum\n");
     for(i = 0;;i++)
     {
         if(f_sum[i] == NULL)
@@ -475,7 +473,6 @@ void *mgr_handle(void *arg)
         if((f_sum[i]->mark == 1) ||
                 (f_sum[i]->mark == 0))
         {
-            printf("sending file: '%s'\n",f_sum[i]->name);
             
             if(send_file(to_thread->agentid, to_thread->srcip, 
                          to_thread->port, f_sum[i]->name, f_sum[i]->sum) < 0)
@@ -490,7 +487,6 @@ void *mgr_handle(void *arg)
     }
 
     
-    printf("message is: %s \n",msg);
 
     free_thread(to_thread);
     
@@ -502,9 +498,8 @@ void *mgr_handle(void *arg)
 void start_mgr(int agentid, char *msg, char *srcip, int port)
 {
     /* Nothing changed on the agent. Keep going */
-    if(equal_last_msg(srcip, msg))
+    if(equal_last_msg(srcip, msg) && (_stime != 0))
     {
-        printf("message read already: \n");
         return;
     }
 
@@ -512,7 +507,6 @@ void start_mgr(int agentid, char *msg, char *srcip, int port)
     {
         mgr_thread *to_thread;
 
-        printf("message is: %s\n",msg);
         
         to_thread = (mgr_thread *)calloc(1, sizeof(mgr_thread));
         if(!to_thread)
@@ -553,6 +547,9 @@ void manager_init()
         _ips[i] = NULL;
         _msg[i] = NULL;
     }
+
+    /* Signal handling for re-reading the files */
+    signal(SIGUSR1, ReReadFiles);
 }
 
 /* EOF */

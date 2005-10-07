@@ -62,7 +62,6 @@ int SendMSG(int queue, char *message, char *locmsg,
 
     if(loc == SECURE_MQ)
     {
-        printf("message received was !!%s!!\n",message);
 
         loc = message[0];
         message++;

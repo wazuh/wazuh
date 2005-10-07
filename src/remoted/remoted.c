@@ -109,8 +109,6 @@ void _startit(int position,int connection_type, int uid,
     int _local_err = 0;
     
     
-    printf("startit!\n");
-    
     /* if SYSLOG and allowips is not defined, exit */
     if((logr->allowips == NULL)&&(connection_type == SYSLOG_CONN))
     {
@@ -134,7 +132,6 @@ void _startit(int position,int connection_type, int uid,
         
     }
 
-    printf("OK!\n");
     
     /* Only using UDP 
      * UDP is faster and unreliable. Perfect :)
