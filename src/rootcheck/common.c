@@ -38,8 +38,6 @@ int is_file(char *file_name)
     if(fp)
         fclose(fp);
     
-    printf("file: %s\n",file_name);    
-
     return(1);
 }
 
