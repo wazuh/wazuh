@@ -14,6 +14,7 @@ clean:
 		@/bin/sh ./Makeall clean
 		rm -f ../bin/ossec*
 		rm -f ../bin/addagent
+		rm -f ../bin/manage_agents
 
 all:
 		@/bin/sh ./Makeall all
