@@ -228,6 +228,41 @@ usr/doc/.gifnocfi		! Old rootkits ::rootkits/Old.php
 usr/doc/.dnif			! Old rootkits ::rootkits/Old.php
 usr/doc/.nigol			! Old rootkits ::rootkits/Old.php
 
+# Kenga3 rootkit
+usr/include/. .         ! Kenga3 rootkit
+
+# OpenBSD rootkit
+usr/lib/security/libgcj.security    ! OpenBSD rootkit
+
+# ESRK rootkit
+usr/lib/tcl5.3          ! ESRK rootkit
+
+# Fu rootkit
+sbin/xc                 ! Fu rootkit
+usr/include/ivtype.h    ! Fu rootkit
+bin/.lib                ! Fu rootkit
+
+# ShKit rootkit
+lib/security/.config    ! ShKit rootkit
+etc/ld.so.hash          ! ShKit rootkit
+
+# AjaKit rootkit
+lib/.ligh.gh            ! AjaKit rootkit
+dev/tux                 ! AjaKit rootkit
+
+# zaRwT rootkit
+bin/imin                ! zaRwT rootkit
+bin/imout               ! zaRwT rootkit
+
+# Madalin rootkit
+usr/include/icekey.h    ! Madalin rootkit
+usr/include/iceconf.h   ! Madalin rootkit
+usr/include/iceseed.h   ! Madalin rootkit
+
+# shv5 rootkit XXX http://www.askaboutskating.com/forum/.../shv5/setup
+lib/libsh.so            ! shv5 rootkit
+usr/lib/libsh           ! shv5 rootkit
+
 #Suspicious files
 etc/rc.d/init.d/rc.modules	! Suspicious file ::rootkits/Suspicious.php
 lib/ldd.so			        ! Suspicious file ::rootkits/Suspicious.php
@@ -274,3 +309,10 @@ dev/hdx2			        ! Suspicious file ::rootkits/Suspicious.php
 dev/xdf2			        ! Suspicious file ::rootkits/Suspicious.php
 dev/ptyp			        ! Suspicious file ::rootkits/Suspicious.php
 dev/ptyr			        ! Suspicious file ::rootkits/Suspicious.php
+sbin/pback                  ! Suspicious file ::rootkits/Suspicious.php
+usr/man/man3/psid           ! Suspicious file ::rootkits/Suspicious.php
+proc/kset                   ! Suspicious file ::rootkits/Suspicious.php
+usr/bin/gib                 ! Suspicious file ::rootkits/Suspicious.php
+usr/bin/ct                  ! Suspicious file ::rootkits/Suspicious.php
+usr/bin/snick               ! Suspicious file ::rootkits/Suspicious.php
+usr/bin/kfl                 ! Suspicious file ::rootkits/Suspicious.php

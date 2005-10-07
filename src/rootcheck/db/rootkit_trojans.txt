@@ -21,21 +21,21 @@ uname		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 date		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 du			!/dev|w0rm|/prof|file\.h
 df			!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
-login      	!bash|^/bin/sh|elite|klogin\.c|SucKIT|xlogin|vejeta|porcao|xstat 
+login      	!bash|elite|klogin\.c|SucKIT|xlogin|vejeta|porcao 
 passwd		!bash|^/bin/sh|file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[a-s,uvxz]|^/bin/.*sh
 mingetty	!bash|Dimensioni|pacchetto
 chfn		!bash|file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[a-s,uvxz]
 chsh		!bash|file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[a-s,uvxz]
-mail		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
+mail		!bash|file\.h|proc\.h|/dev/[^n]
 su			!bash|/dev/[a-s,uvxz]|/dev/[A-D]|/dev/[F-Z]|/dev/[0-9]|satori|vejeta|conf\.inv
-sudo		!bash|^/bin/sh|satori|vejeta|conf\.inv
+sudo		!bash|satori|vejeta|conf\.inv
 crond		!/dev/|bash|^/bin/sh
 gpm			!bash|mingetty
 ifconfig	!bash|^/bin/sh|/dev/tux|session.null|/dev/[a-n]|/dev/[p-t,vxy]|/dev/[A-Z]
 diff		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 md5sum		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 hdparm		!bash|/dev/ida|/dev/
-ldd			!/dev/|proc\.h|libshow.so|libproc.a
+ldd			!/dev/[^n]|proc\.h|libshow.so|libproc.a
 
 
 # Trojan entries for troubleshooting binaries
@@ -43,10 +43,10 @@ ldd			!/dev/|proc\.h|libshow.so|libproc.a
 grep        !bash|givemer|/dev/
 egrep		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 find		!bash|/dev/[0-9]|/dev/[a-r]|/prof|/home/virus|security|file\.h
-lsof		!/prof|/dev/[0-9]|/dev/[a-j]|/dev/[l-s,uvxz]|/dev/[A-Z]|proc\.h|bash|^/bin/sh|/dev/ttyo|/dev/ttyp
+lsof		!/prof|/dev/[^n]|proc\.h|bash|^/bin/sh|/dev/ttyo|/dev/ttyp
 netstat		!bash|^/bin/sh|/dev/|/prof|grep|addr\.h
 top			!/dev/|proc\.h|/prof
-ps			!/dev/[0-9]|/dev/[A-Z]|/dev/[a-c]|/dev/[e-j,nqrsuvxz]|/dev/ttyo|\.1proc|security|proc\.h|bash|^/bin/sh	
+ps			!/dev/ttyo|\.1proc|proc\.h|bash|^/bin/sh	
 tcpdump		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 pidof		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 fuser		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
@@ -57,17 +57,17 @@ w			!uname -a|proc\.h|bash|^/dev/|/dev/[a-s,uvxz]|/dev/[A-O]|/dev/Q-Z]
 
 sendmail	!bash|fuck
 named		!bash|blah|/dev/[0-9]|^/bin/sh
-inetd		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
+inetd		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh
 apachectl	!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 sshd		!check_global_passwd|panasonic|satori|vejeta|\.ark|/hash\.zk|bash|/dev[a-s]|/dev[A-Z]/
-syslogd		!bash|/usr/lib/pt07|/dev/[a-u]|/dev/[A-L]|/dev/[N-Z]|syslogs\.h|^/bin/sh|proc\.h
+syslogd		!bash|/usr/lib/pt07|/dev/[^cln]]|syslogs\.h|^/bin/sh|proc\.h
 xinetd		!bash|^/bin/sh|file\.h|proc\.h|^/bin/.*sh
 in.telnetd	!cterm100|vt350|VT100|ansi-term|bash|^/bin/sh|/dev[A-R]|/dev/[a-z]/
 in.fingerd	!bash|^/bin/sh|cterm100|/dev/
 identd		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 init		!bash|/dev/h
 tcpd		!bash|^/bin/sh|proc\.h|p1r0c4|hack|/dev/
-rlogin		!p1r0c4|r00t|bash|/dev/
+rlogin		!p1r0c4|r00t|bash|/dev/[^nt]
 
 
 # Kill trojan

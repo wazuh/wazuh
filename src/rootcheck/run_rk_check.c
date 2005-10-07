@@ -50,7 +50,7 @@ int notify_agent(char *msg)
     {
         merror("%s: Error sending message to queue",ARGV0);
 
-    //    * Trying to send it twice *
+      * Trying to send it twice *
         if(SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK, SYSCHECK_MQ) == 0)
         {
             return(0);
@@ -186,7 +186,7 @@ void run_rk_check()
                     rootcheck.rootkit_files);
         }
 
-        //check_rc_files(basedir, fp);
+        check_rc_files(basedir, fp);
 
         fclose(fp);
     }
@@ -207,16 +207,16 @@ void run_rk_check()
                                         rootcheck.rootkit_trojans);
         }
 
-        //check_rc_trojans(basedir, fp);
+        check_rc_trojans(basedir, fp);
 
         fclose(fp);
     }
    
     /*** Third check, looking for files on the /dev ***/
-    //check_rc_dev(basedir);
+    check_rc_dev(basedir);
     
     /*** Fourth check,  scan the whole system looking for additional issues */
-    //check_rc_sys(basedir);
+    check_rc_sys(basedir);
     
     /*** Process checking ***/
     check_rc_pids();         
