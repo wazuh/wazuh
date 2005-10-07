@@ -8,21 +8,21 @@
 # file_name !string_to_search
 
 # Commom binaries and public trojan entries
-ls          !bash|^/bin/sh|dev/|\.tmp/lsfile|duarawkz|/prof|security|file\.h
+ls          !bash|^/bin/sh|dev/[^cl]|\.tmp/lsfile|duarawkz|/prof|security|file\.h
 env			!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
-echo		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
-chown		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
-chmod		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
-chgrp		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
-cat			!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
+echo		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh
+chown		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh
+chmod		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh
+chgrp		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh
+cat			!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh
 bash		!^/bin/sh|file\.h|proc\.h|/dev/[0-9]|/dev/[hijkz]|^/bin/.*sh
-sh			!^/bin/sh|file\.h|proc\.h|/dev/[0-9]|/dev/[hijkz]|^/bin/.*sh
+sh			!file\.h|proc\.h|/dev/[0-9]|/dev/[hijkz]
 uname		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
-date		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
+date		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh
 du			!/dev|w0rm|/prof|file\.h
-df			!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
+df			!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh
 login      	!bash|elite|klogin\.c|SucKIT|xlogin|vejeta|porcao 
-passwd		!bash|^/bin/sh|file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[a-s,uvxz]|^/bin/.*sh
+passwd		!bash|file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[a-s,uvxz]
 mingetty	!bash|Dimensioni|pacchetto
 chfn		!bash|file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[a-s,uvxz]
 chsh		!bash|file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[a-s,uvxz]
@@ -31,8 +31,8 @@ su			!bash|/dev/[a-s,uvxz]|/dev/[A-D]|/dev/[F-Z]|/dev/[0-9]|satori|vejeta|conf\.
 sudo		!bash|satori|vejeta|conf\.inv
 crond		!/dev/|bash|^/bin/sh
 gpm			!bash|mingetty
-ifconfig	!bash|^/bin/sh|/dev/tux|session.null|/dev/[a-n]|/dev/[p-t,vxy]|/dev/[A-Z]
-diff		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
+ifconfig	!bash|^/bin/sh|/dev/tux|session.null|/dev/[^cl]
+diff		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh
 md5sum		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 hdparm		!bash|/dev/ida|/dev/
 ldd			!/dev/[^n]|proc\.h|libshow.so|libproc.a
@@ -47,7 +47,7 @@ lsof		!/prof|/dev/[^n]|proc\.h|bash|^/bin/sh|/dev/ttyo|/dev/ttyp
 netstat		!bash|^/bin/sh|/dev/|/prof|grep|addr\.h
 top			!/dev/|proc\.h|/prof
 ps			!/dev/ttyo|\.1proc|proc\.h|bash|^/bin/sh	
-tcpdump		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
+tcpdump		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^b]|^/bin/.*sh
 pidof		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 fuser		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 w			!uname -a|proc\.h|bash|^/dev/|/dev/[a-s,uvxz]|/dev/[A-O]|/dev/Q-Z]
@@ -58,7 +58,7 @@ w			!uname -a|proc\.h|bash|^/dev/|/dev/[a-s,uvxz]|/dev/[A-O]|/dev/Q-Z]
 sendmail	!bash|fuck
 named		!bash|blah|/dev/[0-9]|^/bin/sh
 inetd		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh
-apachectl	!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
+apachectl	!bash|^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh
 sshd		!check_global_passwd|panasonic|satori|vejeta|\.ark|/hash\.zk|bash|/dev[a-s]|/dev[A-Z]/
 syslogd		!bash|/usr/lib/pt07|/dev/[^cln]]|syslogs\.h|^/bin/sh|proc\.h
 xinetd		!bash|^/bin/sh|file\.h|proc\.h|^/bin/.*sh

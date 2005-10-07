@@ -113,7 +113,7 @@ int os_string(char *file, char *regex)
     oss.fp = fopen(file, "r");
     if(!oss.fp)
     {
-        merror(MEM_ERROR, ARGV0);
+        free(bfr);
         return(0);
     }
 
@@ -187,12 +187,14 @@ int os_string(char *file, char *regex)
 
             if(OS_PRegex(line, regex))
             {
+                free(bfr);
                 return(1);
             }
         }
         cnt = 0;
     }
 
+    free(bfr);
     return(0);
 }
 
