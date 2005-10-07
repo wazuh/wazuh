@@ -92,7 +92,10 @@ void test_ports(int proto)
     {
         if(conn_port(proto, i))
         {
-            if(!run_netstat(proto, i))
+            /* Checking if we can find it using netsta, if not
+             * check again to see if the port is still being used.
+             */
+            if(!run_netstat(proto, i) && conn_port(proto, i))
                 printf("proto %d port: %d \n",proto, i);
         }
     }

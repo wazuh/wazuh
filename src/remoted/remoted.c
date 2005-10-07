@@ -148,17 +148,17 @@ void _startit(int position,int connection_type, int uid,
     if(Privsep_Chroot(dir) < 0)
         ErrorExit(CHROOT_ERROR,ARGV0,dir);
 
-    chroot_flag=1; /* Inside chroot now */
+
+    chroot_flag = 1; /* Inside chroot now */
+
 
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0, uid);
 
-    printf(":)\n");
+        
     /* Initing manager */
     manager_init();
 
-    
-    printf("hum!\n");
     
     /* Try three times to connect to the message queue.
      * Exit if all attempts fail.
@@ -197,7 +197,6 @@ void _startit(int position,int connection_type, int uid,
         /* Receiving message - up to MAXSTR */
         buffer = OS_RecvAllUDP(sock, OS_MAXSTR, srcip, IPSIZE);
 
-        printf("recwived megssage!\n");
         
         /* Can't do much in here */
         if(buffer == NULL)
@@ -227,8 +226,7 @@ void _startit(int position,int connection_type, int uid,
                 continue;
             }
 
-            printf("clear text is: '%s'\n",cleartext_msg);
-
+            /* Removing checksum and extra stuff from the msg */
             tmp_msg = r_read(cleartext_msg);
             if(tmp_msg == NULL)
             {
@@ -238,7 +236,6 @@ void _startit(int position,int connection_type, int uid,
                 continue;
             }
            
-            printf("message is now: '%s'\n", tmp_msg);
              
             /* Check if it is a control message */ 
             if((tmp_msg[0] == '#') && (tmp_msg[1] == '!') &&
@@ -246,6 +243,7 @@ void _startit(int position,int connection_type, int uid,
             {
                 start_mgr(agentid, tmp_msg, srcip, port);
             }
+            
             
             /* If we can't send the message, try to connect to the
              * socket again. If not, increments local_err and try
@@ -361,7 +359,11 @@ int main(int argc, char **argv)
     /* Starting the signal manipulation */
     StartSIG(ARGV0);	
 
-    printf("AB!\n");
+
+    /* Creating some randoness (before forking) */
+    srand( time(0)+getpid()+getppid() );
+    rand();
+                
 
     /* Really starting the program. */
     for(i=0;i<binds;i++)
