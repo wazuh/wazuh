@@ -72,6 +72,8 @@ void check_rc_pids();
 
 void check_rc_ports();
 
+void check_rc_if();
+
 #endif
 
 /* EOF */

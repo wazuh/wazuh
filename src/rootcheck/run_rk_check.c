@@ -216,13 +216,16 @@ void run_rk_check()
     check_rc_dev(basedir);
     
     /*** Fourth check,  scan the whole system looking for additional issues */
-    check_rc_sys(basedir);
+    //check_rc_sys(basedir);
     
     /*** Process checking ***/
     check_rc_pids();         
 
     /*** Check the open ports ***/
     check_rc_ports();    
+
+    /*** Check interfaces ***/
+    check_rc_if();    
     
     debug1("%s: DEBUG: Leaving run_rk_check",ARGV0); 
     return;
