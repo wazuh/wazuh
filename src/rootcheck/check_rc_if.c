@@ -16,6 +16,7 @@
 #include <net/if.h>
 
 #include <stdio.h>
+#include <string.h>
  
 
 #include "headers/defs.h"
@@ -30,10 +31,11 @@
 void check_rc_if()
 {
     int _fd, i;
-    char tmp_str[OS_MAXSTR + 1];
+    char tmp_str[2* OS_MAXSTR + 1];
     
     struct ifconf _if;
     struct ifreq *_ir;
+    struct ifreq _ifr;
 
     _fd = socket(AF_INET, SOCK_DGRAM, 0);
     if(_fd < 0)
@@ -43,9 +45,9 @@ void check_rc_if()
     }
 
  
-    memset(tmp_str, '\0', OS_MAXSTR +1);
+    memset(tmp_str, '\0', 2* OS_MAXSTR +1);
     
-    _if.ifc_len = OS_MAXSTR;
+    _if.ifc_len = sizeof(tmp_str);
     _if.ifc_buf = tmp_str;
     
     if (ioctl(_fd, SIOCGIFCONF, &_if) < 0)
@@ -56,11 +58,24 @@ void check_rc_if()
                                      
     _ir = _if.ifc_req;
 
-    for (i = _if.ifc_len / sizeof(struct ifreq); --i >= 0; _ir++)
+    /* Looping on all interfaces */
+    for (i = _if.ifc_len /sizeof(struct ifreq); i > 0; i--, _ir++)
     {
-        printf("name: %s\n",_ir->ifr_name);
-    }
-                                                                                      
+        strncpy(_ifr.ifr_name, _ir->ifr_name, sizeof(_ifr.ifr_name));
+
+        /* Getting information from each interface */
+        if (ioctl(_fd, SIOCGIFFLAGS, (char*)&_ifr) == -1) 
+        {
+            continue;
+        }
+
+        printf("name: %s\n",_ifr.ifr_name);
+
+        if ((_ifr.ifr_flags & IFF_PROMISC) )
+        {
+            printf("promisc!\n");
+        }
+    }                                                                              
 
     return;
 }
