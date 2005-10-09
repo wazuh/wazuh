@@ -28,6 +28,7 @@ typedef struct _config
     FILE *fp;
     int daemon;
     int notify; /* QUEUE or SYSLOG */
+    int rootcheck;
 
     int queue;
 }config;
