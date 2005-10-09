@@ -48,6 +48,7 @@ extern int  __crt_wday;
 void DecodeEvent(Eventinfo *lf);
 int DecodeSnort(Eventinfo *lf, char c);
 void DecodeSyscheck(Eventinfo *lf);
+void DecodeRootcheck(Eventinfo *lf);
                 
 
                 
@@ -242,6 +243,9 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
     /* Assigning the values in the strucuture */
     lf->log = strdup(pieces[3]);
+    if(!lf->log)
+        merror(MEM_ERROR, ARGV0);
+        
     lf->location = pieces[1];
     lf->group = pieces[2];
     lf->type = UNKNOWN;
@@ -322,6 +326,12 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     {
         DecodeSyscheck(lf);
     }
+    
+    /* Rootcheck decoding */
+    else if(pieces[0][0] == ROOTCHECK_MQ)
+    {
+        DecodeRootcheck(lf);
+    }
      
     /* Checking if it is a snort alert from syslog */
     else if(strncmp("snort: [",lf->log,8) == 0)
@@ -352,4 +362,4 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     return(0);
 }
 
-    /* EOF */
+/* EOF */
