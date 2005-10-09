@@ -155,9 +155,18 @@ void check_rc_sys(char *basedir)
     snprintf(file_path, OS_MAXSTR, "%s", basedir);
 
     /* Opening output files */
-    _wx = fopen("rootcheck-rw-rw-rw-.txt", "w");
-    _ww = fopen("rootcheck-rwxrwxrwx.txt", "w");
-    _suid=fopen("rootcheck-suid-files.txt", "w");
+    if(rootcheck.notify != QUEUE)
+    {
+        _wx = fopen("rootcheck-rw-rw-rw-.txt", "w");
+        _ww = fopen("rootcheck-rwxrwxrwx.txt", "w");
+        _suid=fopen("rootcheck-suid-files.txt", "w");
+    }
+    else
+    {
+        _wx = NULL;
+        _ww = NULL;
+        _suid = NULL;
+    }
     
     read_sys_dir(file_path);
 
