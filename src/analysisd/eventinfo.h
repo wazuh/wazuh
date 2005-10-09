@@ -77,7 +77,7 @@ Eventinfo *currently_lf;
 #define SUDO        5   /* Sudo usage */
 #define SU          6   /* SU usage */
 #define SYSCHECK    7   /* syscheck integrity events */
-
+#define ROOTCHECK   8   /* rootcheck messages */
 
 /** Functions for events **/
 
