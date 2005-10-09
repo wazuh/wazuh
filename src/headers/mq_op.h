@@ -10,32 +10,17 @@
  */
 
 
-/* 
- * * loc=1, localfile
- * * loc=2, syslog
- * * loc=4, secure syslog
- * * loc=5, snort messages
- * * loc=6, apache-err messages
- * * loc=7, syscheck integrity messages
- */
-
 #ifndef _MQ__H
-
 #define _MQ__H
 
 #define LOCALFILE_MQ 	'1'
-
 #define SYSLOG_MQ	    '2'
-
 #define SECURE_MQ	    '4'
-
 #define SNORT_MQ_FULL   '5'
-
 #define SNORT_MQ_FAST   '6'
-
 #define APACHERR_MQ	    '7'
-
 #define SYSCHECK_MQ     '8'
+#define ROOTCHECK_MQ    '9'
 
 
 int StartMQ(char * key,short int type);
