@@ -8,7 +8,7 @@ include ${PT}LOCATION
 include ${PT}Config.OS
 
 
-CFLAGS = -Wall -I${PT} ${CPATH} ${CEXTRA} ${DEXTRA} ${EEXTRA} -DARGV0=\"${NAME}\" -DXML_VAR=\"var\"
+CFLAGS = -Wall -I${PT} ${CPATH} ${CEXTRA} ${DEXTRA} ${EEXTRA} -DARGV0=\"${NAME}\" -DXML_VAR=\"var\" -DOSSECHIDS
 
 SOURCES = *.c
 OBJECTS = *.o
@@ -20,3 +20,4 @@ OS_REGEX = ${PT}os_regex/os_regex.a
 OS_NET = ${PT}os_net/os_net.a
 OS_CRYPTO = ${PT}os_crypto/os_crypto.a
 OS_SHARED = ${PT}shared/lib_shared.a
+OS_ROOTCHECK = ${PT}rootcheck/rootcheck_lib.a
