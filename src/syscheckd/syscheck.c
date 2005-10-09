@@ -36,6 +36,10 @@
 #include "headers/debug_op.h"
 #include "syscheck.h"
 
+#ifdef OSSECHIDS
+#include "rootcheck/rootcheck.h"
+#endif
+
 #include "error_messages/error_messages.h"
 
 /** Prototypes **/
@@ -189,6 +193,12 @@ int main(int argc, char **argv)
     /* When using the queue, we always create the database */
     if(syscheck.notify == QUEUE)
     {
+        /* Starting rootcheck */
+        #ifdef OSSECHIDS
+        if(rootcheck_init() == 0)
+            syscheck.rootcheck = 1;
+        #endif
+            
         /* Will create the temp db to store in a file pointer */
         create_db();
 
@@ -196,7 +206,7 @@ int main(int argc, char **argv)
         fflush(syscheck.fp);
 
         /* Some sync time */
-        sleep(2);
+        sleep(1);
     }
   
     /* If syslog is set, just read the database */ 

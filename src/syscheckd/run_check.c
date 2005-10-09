@@ -33,6 +33,8 @@
 
 #include "syscheck.h"
 
+#include "rootcheck/rootcheck.h"
+
 #define MAX_LINE PATH_MAX+256
 
 /** Prototypes **/
@@ -86,7 +88,8 @@ int notify_agent(char *msg)
  */
 void start_daemon()
 {
-        
+    int count = 0;
+            
     #ifdef DEBUG
     verbose("%s: Starting daemon ..",ARGV0);
     #endif
@@ -137,11 +140,23 @@ void start_daemon()
     /* Check every SYSCHECK_WAIT */    
     while(1)
     {
+        /* Running rootcheck */
+        if(count > 6)
+        {
+            if(syscheck.rootcheck)
+                run_rk_check();
+            count = 0;
+        }
+        
+        sleep(SYSCHECK_WAIT);
+
         /* Set syscheck.fp to the begining of the file */
         fseek(syscheck.fp,0, SEEK_SET);
         run_check();
-                
-        sleep(SYSCHECK_WAIT);
+         
+        count++;
+        
+        sleep(12);        
     }
 }
 
