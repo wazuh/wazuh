@@ -89,12 +89,6 @@ void OS_Createmail(int *mailq, Eventinfo *lf)
     
     strcpy(msg.subject,snd_msg);	
 
-
-    /* Building the body msg */
-    //snprintf(snd_ms2, 255,
-      //       "Received From: %s\r\nRule: %d fired (level %d) -> \"%s\"\r\n",
-        //     lf->location, lf->sigid,
-          //   lf->level, lf->comment);	
     
     if(lf->last_events[0])
     {
@@ -139,16 +133,6 @@ void OS_Createmail(int *mailq, Eventinfo *lf)
             snd_msg2 
             );    
            
-           /* 
-    snprintf(snd_msg,512,"%s%d %s %02d %s\r\n\r\n%s%s%s%s",
-            "\r\nOSSEC HIDS Notification.\r\n",
-            lf->year,lf->mon,lf->day,lf->hour,
-            snd_ms2,
-            "Portion of the log:\r\n\r\n\"",
-            lf->sigid == STATS_PLUGIN?"No Log Available (HOURLY_STATS)":lf->log,
-            "\"\r\n\r\n --END OF NOTIFICATION\r\n\r\n");
-            */
-            
     msg.body = calloc(strlen(snd_msg)+1,sizeof(char *));
     
     if(msg.body == NULL)
