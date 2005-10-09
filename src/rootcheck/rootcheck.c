@@ -42,13 +42,15 @@
 #include "error_messages/error_messages.h"
 
 
+/** Prototypes **/
+/* Read the new XML config */
+int Read_Rootcheck_Config(char * cfgfile, rkconfig *cfg);
+
+
+#ifndef OSSECHIDS
+
 int dbg_flag = 0;
 int chroot_flag = 0;
-
-/** Prototypes **/
-
-/* Read the new XML config */
-int Read_Rootcheck_Config(char * cfgfile, config *cfg);
 
 
 /* main v0.1
@@ -57,6 +59,13 @@ int Read_Rootcheck_Config(char * cfgfile, config *cfg);
 int main(int argc, char **argv)
 {
     int c;
+
+#else
+
+int rootcheck_init()
+{
+    
+#endif    
     
     char *cfg = DEFAULTCPATH;
     
@@ -64,7 +73,9 @@ int main(int argc, char **argv)
     rootcheck.workdir = NULL;
     rootcheck.daemon = 1;
     rootcheck.notify = SYSLOG;
-    
+
+
+#ifndef OSSECHIDS
     while((c = getopt(argc, argv, "sdhD:c:")) != -1)
     {
         switch(c)
@@ -92,16 +103,23 @@ int main(int argc, char **argv)
 
     }
 
+#endif
+
     /* Staring message */
     debug1(STARTED_MSG,ARGV0);
 
     /* Checking if the configuration is present */
     if(File_DateofChange(cfg) < 0)
-        ErrorExit("%s: Configuration file: %s not found",ARGV0,cfg);
+    {
+        merror("%s: Configuration file '%s' not found",ARGV0,cfg);
+        return(-1);
+    }
 
 
     if(Read_Rootcheck_Config(cfg, &rootcheck) < 0)
-        ErrorExit("%s: Error on the configuration file '%s'",ARGV0,cfg);
+    {
+        return(-1);
+    }
 
 
     /* Setting default values */
@@ -134,42 +152,15 @@ int main(int argc, char **argv)
     }
 
 
+#ifndef OSSECHIDS
     /* Start the signal handling */
     StartSIG(ARGV0);
-
-
-    /* Forking */
-    if(rootcheck.daemon)
-    {
-        pid_t pid;
-
-        pid = fork();
-        if(pid < 0)
-            ErrorExit(FORK_ERROR,ARGV0);
-        
-        else if(pid == 0)
-        {
-            /* Create pid */
-            if(CreatePID(ARGV0, getpid()) < 0)
-                ErrorExit(PID_ERROR,ARGV0);
-                
-            /* Start the daemon */
-            debug1("%s: DEBUG: Starting daemon", ARGV0);
-            start_rk_daemon();
-        }
-        
-        else
-        {
-            /* Child is running now */
-        }
-    }
     
-    /* Will only check the integrity once and exit */
-    else
-    {
-        debug1("%s: DEBUG: Running run_rk_check",ARGV0);
-        run_rk_check(); 
-    }
+#endif
+
+    
+    debug1("%s: DEBUG: Running run_rk_check",ARGV0);
+    run_rk_check(); 
 
    
     debug1("%s: DEBUG:  Leaving...",ARGV0); 

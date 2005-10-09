@@ -16,7 +16,7 @@
 
 #include <stdio.h>
 
-typedef struct _config
+typedef struct _rkconfig
 {
     char *workdir;
     char *rootkit_files;
@@ -27,10 +27,10 @@ typedef struct _config
     int notify; /* QUEUE or SYSLOG */
 
     int queue;
-}config;
+}rkconfig;
 
 
-config rootcheck;
+rkconfig rootcheck;
 
 
 /* output types */
@@ -58,6 +58,10 @@ int os_string(char *file, char *regex);
 /* Used to report messages */
 int notify_rk(int rk_type, char *msg);
 
+
+/* rootcheck_init: Starts the rootcheck externally
+ */
+int rootcheck_init();
 
 /* run_rk_check: checks the integrity of the files against the
  * saved database

@@ -19,7 +19,6 @@
 #include "headers/os_err.h"
 
 #include "headers/file_op.h"
-#include "headers/config_op.h"
 #include "headers/debug_op.h"
 
 #include "os_xml/os_xml.h"
@@ -38,6 +37,8 @@ int Read_Rootcheck_Config(char * cfgfile)
 
     char *str = NULL;
 
+    char *xml_rootcheck="rootcheck";    
+    
     /* XML Definitions */
     char *(xml_daemon[])={xml_rootcheck,"daemon", NULL};
     char *(xml_notify[])={xml_rootcheck, "notify", NULL};
@@ -55,8 +56,8 @@ int Read_Rootcheck_Config(char * cfgfile)
     if(!OS_RootElementExist(&xml,xml_rootcheck))
     {
         OS_ClearXML(&xml);
-        merror("%s: Configuration not found. Exiting..",ARGV0);
-        exit(0);
+        merror("%s: Rootcheck configuration not found. ",ARGV0);
+        return(-1);
     }
 
 
@@ -80,8 +81,9 @@ int Read_Rootcheck_Config(char * cfgfile)
             rootcheck.notify = SYSLOG;
         else
         {
-            ErrorExit("%s: Invalid notification option. Only "
+            merror("%s: Invalid notification option. Only "
                       "'syslog' or 'queue' are allowed.",ARGV0);
+            return(-1);
         }
         
         free(str);

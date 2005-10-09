@@ -57,8 +57,6 @@
 
 #define ISSTR(ch)	(isascii(ch) && (isprint(ch) || ch == '\t'))
 
-int dbg_flag;
-int chroot_flag;
 
 typedef struct exec EXEC;    
 

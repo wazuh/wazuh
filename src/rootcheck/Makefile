@@ -11,9 +11,14 @@ include ../Config.Make
 
 OBJS = *.c ${OS_SHARED} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_CRYPTO}
 
-syscheck:
+rootcheck:
+		$(CC) $(CFLAGS) -c *.c
+		ar cru rootcheck_lib.a *.o
+		ranlib rootcheck_lib.a
+        
+binary:        
 		$(CC) $(CFLAGS) $(OBJS) -o ${NAME}
 clean:
-		${CLEAN}
+		${CLEAN} rootcheck_lib.a
 build:
 		${BUILD}
