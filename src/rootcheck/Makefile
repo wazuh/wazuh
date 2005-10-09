@@ -21,4 +21,4 @@ binary:
 clean:
 		${CLEAN} rootcheck_lib.a
 build:
-		${BUILD}
+		-${BUILD}

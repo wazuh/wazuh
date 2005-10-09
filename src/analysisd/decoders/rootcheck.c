@@ -142,6 +142,8 @@ void RK_Search(Eventinfo *lf)
     {
         merror("%s: Error handling rootcheck database",ARGV0);
         rk_err++; /* Increment rk error */
+
+        return;
     }
 
     /* Reads the file and search for a possible

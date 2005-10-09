@@ -186,6 +186,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     {
         merror("%s: Error handling integrity database",ARGV0);
         db_err++; /* Increment db error */
+        return;
     }
 
     /* Reads the integrity file and search for a possible
