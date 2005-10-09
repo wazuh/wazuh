@@ -26,6 +26,9 @@
 
 #include "rootcheck.h"
 
+int _dev_errors;
+int _dev_total;
+
 /** Prototypes **/
 int read_dev_dir(char *dir_name);
 
@@ -35,7 +38,6 @@ int read_dev_file(char *file_name)
     
     if(lstat(file_name, &statbuf) < 0)
     {
-        merror("%s: Error accessing '%s'",ARGV0,file_name);
         return(-1);
     }
     
@@ -50,13 +52,13 @@ int read_dev_file(char *file_name)
         
     else if(S_ISREG(statbuf.st_mode))
     {
-        printf("file: %s on /dev\n", file_name);
-    }
-    else
-    {
-        #ifdef DEBUG
-        verbose("%s: *** IRREG file: '%s'\n",ARGV0,file_name);
-        #endif
+        char op_msg[OS_MAXSTR +1];
+
+        snprintf(op_msg, OS_MAXSTR, "File '%s' present on /dev."
+                                    " Possible hidden file.", file_name);
+        notify_rk(ALERT_SYSTEM_CRIT, op_msg);
+
+        _dev_errors++;
     }
 
     return(0);
@@ -87,10 +89,6 @@ int read_dev_dir(char *dir_name)
     dp = opendir(dir_name);
 	if(!dp)
     {
-        merror("%s: Error opening directory: '%s': %s ",
-                                              ARGV0,
-                                              dir_name,
-                                              strerror(errno));
         return(-1);
     }
 
@@ -102,7 +100,9 @@ int read_dev_dir(char *dir_name)
         if((strcmp(entry->d_name,".") == 0) ||
            (strcmp(entry->d_name,"..") == 0))  
             continue;
-        
+       
+        _dev_total++;
+         
         /* Do not look for the ignored files */
         for(i = 0;i<=4;i++)
             if(strcmp(ignore_dev[i], entry->d_name) == 0)
@@ -129,12 +129,24 @@ int read_dev_dir(char *dir_name)
 void check_rc_dev(char *basedir)
 {
     char file_path[OS_MAXSTR +1];
+    
+    _dev_total = 0, _dev_errors = 0;
 
     debug1("%s: DEBUG: Starting on check_rc_dev", ARGV0);
+
     snprintf(file_path, OS_MAXSTR, "%s/dev", basedir);
 
     read_dev_dir(file_path);
 
+    if(_dev_errors == 0)
+    {
+        char op_msg[OS_MAXSTR +1];
+        snprintf(op_msg, OS_MAXSTR, "No problem detected on the /dev "
+                                    "directory. Analized %d files", 
+                                    _dev_total);
+        notify_rk(ALERT_OK, op_msg);
+    }
+    
     return;
 }
 
