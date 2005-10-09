@@ -227,6 +227,7 @@ ConfigureServer()
             ;;
         *)
             ROOTCHECK="yes"
+            echo "   - Running rootcheck (rootkit detection)"
             ;;
     esac
     
