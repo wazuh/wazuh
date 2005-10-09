@@ -38,7 +38,7 @@
 int notify_rk(int rk_type, char *msg)
 {
     /* Non-queue notification */
-    if(rootcheck.queue != QUEUE)
+    if(rootcheck.notify != QUEUE)
     {
         if(rk_type == ALERT_OK)
             printf("[OK]: %s\n", msg);

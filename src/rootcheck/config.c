@@ -107,6 +107,7 @@ int Read_Rootcheck_Config(char * cfgfile)
     OS_ClearXML(&xml);
  
     debug1("%s: DEBUG: Daemon set to '%d'",ARGV0, rootcheck.daemon);
+    debug1("%s: DEBUG: alert set to '%d'",ARGV0, rootcheck.notify);
        
     return(0);
 }
