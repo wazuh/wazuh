@@ -43,6 +43,8 @@ int Read_Syscheck_Config(char * cfgfile)
     char *(xml_notify[])={xml_syscheck, "notify",NULL};
     char *(xml_workdir[])={xml_syscheck, "work_directory",NULL};
 
+    syscheck.rootcheck = 0;
+
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
         merror("config_op: XML error: %s",xml.err);
