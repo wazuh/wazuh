@@ -3,6 +3,7 @@
 # http://www.ossec.net/hids/
 
 PT=../../
+NAME=ossec-analysisd
 
 include ../../Config.Make
 
