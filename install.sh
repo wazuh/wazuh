@@ -131,7 +131,26 @@ ConfigureClient()
             echo "</syscheck>" >> $NEWCONFIG
             ;;
     esac                    
-   
+  
+    # rootcheck
+    echo ""
+    echo "  4.3- Do you want to run the rootkit check engine(yes/no)y"
+    read ES
+    case $ES in
+        n|N|no|No|NO)
+            echo "   - Not running rootcheck (rootkit detection)"
+            ;;
+        *)
+            echo "   - Running rootcheck (rootkit detection)"
+            echo "" >> $NEWCONFIG
+            echo "<rootcheck>" >> $NEWCONFIG
+            echo "  <notify>queue</notify>" >> $NEWCONFIG
+            echo "  <rootkit_files>$DEFDIR/etc/shared/rootkit_files.txt</rootkit_files>" >> $NEWCONFIG
+            echo "  <rootkit_trojans>$DEFDIR/etc/shared/rootkit_trojans.txt</rootkit_trojans>" >> $NEWCONFIG
+            echo "</rootcheck>" >> $NEWCONFIG
+            ;;
+    esac
+                       
     # Log files 
     echo ""
     echo " - Setting up the configuration to analyze the following logs:"
@@ -198,11 +217,24 @@ ConfigureServer()
             ;;
     esac                    
   
+    # rootcheck
+    echo ""
+    echo "  4.3- Do you want to run the rootkit check engine(yes/no)y"
+    read ES
+    case $ES in
+        n|N|no|No|NO)
+            echo "   - Not running rootcheck (rootkit detection)"
+            ;;
+        *)
+            ROOTCHECK="yes"
+            ;;
+    esac
+    
     
     if [ "X$INSTYPE" = "Xserver" ]; then
       # Configuring remote syslog  
 	  echo ""
-	  echo "  4.3- Do you want to listen for remote syslog (514 udp) (y/n)?y"
+	  echo "  4.4- Do you want to listen for remote syslog (514 udp) (y/n)?y"
 	  read ANSWER
       case $ANSWER in
 		n|N)
@@ -216,7 +248,7 @@ ConfigureServer()
 
 	  # Configuring remote connections
 	  echo ""
-	  echo "  4.4- Do you want to listen for remote secure connections (1514 udp) (y/n)?y"
+	  echo "  4.5- Do you want to listen for remote secure connections (1514 udp) (y/n)?y"
 	  read ANSWER
 	  case $ANSWER in
 		n|N)
@@ -267,7 +299,17 @@ ConfigureServer()
         echo "</syscheck>" >> $NEWCONFIG
     fi
     
-        
+    if [ "X$ROOTCHECK" = "Xyes" ]; then
+        echo "   - Running rootcheck (rootkit detection)"
+        echo "" >> $NEWCONFIG
+        echo "<rootcheck>" >> $NEWCONFIG
+        echo "  <notify>queue</notify>" >> $NEWCONFIG
+        echo "  <rootkit_files>$DEFDIR/etc/shared/rootkit_files.txt</rootkit_files>" >> $NEWCONFIG
+        echo "  <rootkit_trojans>$DEFDIR/etc/shared/rootkit_trojans.txt</rootkit_trojans>" >> $NEWCONFIG
+        echo "</rootcheck>" >> $NEWCONFIG
+    fi
+
+    
 	if [ "X$RLOG" = "Xyes" ]; then
 	echo "" >> $NEWCONFIG
 	echo "<remote>" >> $NEWCONFIG
