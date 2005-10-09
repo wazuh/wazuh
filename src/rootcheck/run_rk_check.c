@@ -43,14 +43,18 @@ int notify_rk(int rk_type, char *msg)
         if(rk_type == ALERT_OK)
             printf("[OK]: %s\n", msg);
         else if(rk_type == ALERT_SYSTEM_ERROR)
-            printf("ERR : %s\n", msg);
+            printf("[ERR]: %s\n", msg);
         else
         {
-            printf("RK  : %s\n", msg);
+            printf("[FAILED]: %s\n", msg);
         }
         return(0);
     }
-    
+   
+    /* No need to alert on that to the server */
+    if(rk_type <= ALERT_SYSTEM_ERROR)
+        return(0);
+          
     if(SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK, ROOTCHECK_MQ) < 0)
     {
         merror("%s: Error sending message to queue",ARGV0);

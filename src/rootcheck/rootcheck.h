@@ -39,9 +39,9 @@ rkconfig rootcheck;
 
 /* rk_types */
 #define ALERT_OK                0
-#define ALERT_ROOTKIT_FOUND     1
-#define ALERT_SYSTEM_ERROR      2
-#define ALERT_SYSTEM_CRIT       3
+#define ALERT_SYSTEM_ERROR      1 
+#define ALERT_SYSTEM_CRIT       2
+#define ALERT_ROOTKIT_FOUND     3
 
 #define ROOTCHECK           "rootcheck"
 

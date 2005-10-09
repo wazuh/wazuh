@@ -111,6 +111,7 @@ cp -pr ./init/ossec-server ${DIR}/bin/ossec-control
 
 # Moving the decoders
 cp -pr ../etc/decoder.xml ${DIR}/etc/
+cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
 
 # Moving the config file
 ls ${DIR}/etc/ossec.conf > /dev/null 2>&1

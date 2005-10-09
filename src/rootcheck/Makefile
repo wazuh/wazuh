@@ -17,7 +17,7 @@ rootcheck:
 		ranlib rootcheck_lib.a
         
 binary:        
-		$(CC) $(CFLAGS) $(OBJS) -o ${NAME}
+		$(CC) $(CFLAGS) $(OBJS) -U OSSECHIDS -o ${NAME}
 clean:
 		${CLEAN} rootcheck_lib.a
 build:
