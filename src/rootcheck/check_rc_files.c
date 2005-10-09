@@ -38,7 +38,11 @@ void check_rc_files(char *basedir, FILE *fp)
     char *file;
     char *name;
     char *link;
-    
+   
+    int _errors = 0;
+    int _total = 0;
+     
+     
     debug1("%s: DEBUG: Starting on check_rc_files", ARGV0);
      
     while(fgets(buf, OS_MAXSTR, fp) != NULL)
@@ -151,14 +155,31 @@ void check_rc_files(char *basedir, FILE *fp)
         }
         
         snprintf(file_path, OS_MAXSTR, "%s/%s",basedir, file);
+
+        _total++;
         
+        /* Checking if file exists */        
         if(is_file(file_path))
         {
-            printf("oops.. rootkit: %s\n",file);
+            char op_msg[OS_MAXSTR +1];
+            
+            _errors = 1;
+            snprintf(op_msg, OS_MAXSTR, "Rootkit '%s' detected "
+                     "by the presence of file '%s'.",name, file_path);
+            
+            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
         }
         
         newline:
             continue;        
+    }
+
+    if(_errors == 0)
+    {
+        char op_msg[OS_MAXSTR +1];
+        snprintf(op_msg, OS_MAXSTR, "No presence of public rootkits detected."
+                                    " Analized %d files.", _total);
+        notify_rk(ALERT_OK, op_msg);
     }
 }
 
