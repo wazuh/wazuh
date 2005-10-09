@@ -27,7 +27,7 @@
 #include "rootcheck.h"
 
 /** Prototypes **/
-void loop_all_pids(char *ps, pid_t max_pid)
+void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
 {
     int _kill0 = 0;
     int _kill1 = 0;
@@ -44,6 +44,8 @@ void loop_all_pids(char *ps, pid_t max_pid)
         if((i <= 0)||(i > max_pid))
             break;
 
+        (*_total)++;
+        
         _kill0 = 0;
         _gsid0 = 0;
         _gsid1 = 0;
@@ -101,12 +103,24 @@ void loop_all_pids(char *ps, pid_t max_pid)
         
         if(_gsid0 != _kill0)
         {
-            printf("!! pid: %d hidden from kill or getsid\n",i);
+            char op_msg[OS_MAXSTR +1];
+        
+            snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
+                             "kill or getsid. Possible kernel-level "
+                             "rootkit.", i);
+            
+            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+            (*_errors)++;
         }
 
         else if(_gsid0 && _kill0 && !_ps0)
         {
-            printf("pid : %d hideen!!!\n",i);
+            char op_msg[OS_MAXSTR +1];
+            snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
+                             "ps. Possible trojaned version installed.",i);
+           
+            notify_rk(ALERT_ROOTKIT_FOUND, op_msg); 
+            (*_errors)++;
         }
     }
 }
@@ -117,15 +131,17 @@ void loop_all_pids(char *ps, pid_t max_pid)
  */
 void check_rc_pids()
 {
+    int _total = 0;
+    int _errors = 0;
+    
     char ps[OS_MAXSTR +1];
     pid_t max_pid;
     
     /* Default max pid for most systems */
     max_pid = 32768;
 
-    printf(".");
-    fflush(stdout);
 
+    /* Checking where ps is */
     strcpy(ps, "/bin/ps");
     if(!is_file(ps))
     {
@@ -134,9 +150,17 @@ void check_rc_pids()
             ps[0] = '\0';
     }
     
-    printf("ps is %s\n",ps);
+    loop_all_pids(ps, max_pid, &_errors, &_total);
+
+    if(_errors == 0)
+    {
+        char op_msg[OS_MAXSTR +1];
+        snprintf(op_msg, OS_MAXSTR, "No hidden process by Kernel-level "
+                                    "rootkits.\n      %s is not trojaned. "
+                                    "Analized %d processes.", ps, _total);
+        notify_rk(ALERT_OK, op_msg);
+    }
     
-    loop_all_pids(ps, max_pid);
     return;
 }
 

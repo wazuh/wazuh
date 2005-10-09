@@ -33,7 +33,7 @@
  */
 void check_rc_trojans(char *basedir, FILE *fp)
 {
-    int i;
+    int i, _errors = 0, _total = 0;
     char buf[OS_MAXSTR +1];
     char file_path[OS_MAXSTR +1];
 
@@ -41,6 +41,7 @@ void check_rc_trojans(char *basedir, FILE *fp)
     char *string_to_look;
 
     char *(all_paths[]) = {"bin","sbin","usr/bin","usr/sbin"};
+
 
     debug1("%s: DEBUG: Starting on check_rc_trojans", ARGV0);
 
@@ -141,7 +142,8 @@ void check_rc_trojans(char *basedir, FILE *fp)
             *nbuf = '\0';
         }
 
-
+        _total++;
+        
         /* Trying with all possible paths */
         for(i = 0;i<=3;i++)
         {
@@ -151,12 +153,29 @@ void check_rc_trojans(char *basedir, FILE *fp)
 
             if(is_file(file_path) && os_string(file_path, string_to_look))
             {
-                printf("trojan.. rootkit: %s -> %s\n",file_path,string_to_look);
+                char op_msg[OS_MAXSTR +1];
+                _errors = 1;
+            
+                snprintf(op_msg, OS_MAXSTR, "Trojaned version of file "
+                        "'%s' detected. Signature used: '%s'", 
+                                        file_path,
+                                        string_to_look);
+
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             }
         }
 
-newline:
+    newline:
         continue;        
+    }
+
+
+    if(_errors == 0)
+    {
+        char op_msg[OS_MAXSTR +1];
+        snprintf(op_msg, OS_MAXSTR, "No binaries with any trojan detected. "
+                                    "Analized %d files", _total);
+        notify_rk(ALERT_OK, op_msg);
     }
 }
 

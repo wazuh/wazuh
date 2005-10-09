@@ -26,6 +26,13 @@
 
 #include "rootcheck.h"
 
+int _sys_errors;
+int _sys_total;
+
+FILE *_wx;
+FILE *_ww;
+FILE *_suid;
+
 /** Prototypes **/
 int read_sys_dir(char *dir_name);
 
@@ -35,17 +42,12 @@ int read_sys_file(char *file_name)
     
     if(lstat(file_name, &statbuf) < 0)
     {
-        merror("%s: Error accessing '%s'",ARGV0,file_name);
         return(-1);
     }
     
     /* If directory, read the directory */
     else if(S_ISDIR(statbuf.st_mode))
     {
-        #ifdef DEBUG
-        verbose("%s: Reading dir: %s\n",ARGV0, file_name);
-        #endif
-
         return(read_sys_dir(file_name));
     }
     
@@ -53,40 +55,36 @@ int read_sys_file(char *file_name)
     if(((statbuf.st_mode & S_IWOTH) == S_IWOTH) && 
          (S_ISREG(statbuf.st_mode)))
     {
-        if(strncmp("/dev", file_name, 4) == 0)
+        if((statbuf.st_mode & S_IXUSR) == S_IXUSR)
         {
-        }
-        else if(strncmp("/proc", file_name, 5) == 0)
-        {
-        }
-        else if(strcmp("/var/empty/dev/log", file_name) == 0)
-        {
-        }
-        else if((statbuf.st_mode & S_IXUSR) == S_IXUSR)
-        {
-            printf("file with WRITE and EXEC per: %s\n", file_name);
+            if(_wx)
+                fprintf(_wx, "%s\n",file_name);
+                
+            _sys_errors++;    
         }
         else
         {
-            printf("file with WRITE per: %s\n", file_name);
+            if(_ww)
+                fprintf(_ww, "%s\n", file_name);
         }
+
+        if(statbuf.st_uid == 0)
+        {
+            char op_msg[OS_MAXSTR +1];
+            snprintf(op_msg, OS_MAXSTR, "File '%s' is owned by root and has"
+                                        " written permission to anyone.",
+                                        file_name);
+
+            notify_rk(ALERT_SYSTEM_CRIT, op_msg);
+
+        }
+        _sys_errors++;
     }
 
     else if((statbuf.st_mode & S_ISUID) == S_ISUID)
     {
-        printf("SUID  file: %s\n", file_name);
-    }
-    
-    else if((statbuf.st_mode & S_ISGID) == S_ISGID)
-    {
-        printf("GID file: %s\n", file_name);
-    }
-    
-    else if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
-    {
-    }
-    else
-    {
+        if(_suid)
+            fprintf(_suid,"%s\n", file_name);
     }
 
     return(0);
@@ -119,10 +117,6 @@ int read_sys_dir(char *dir_name)
         }
         else
         {
-            merror("%s: Error opening directory: '%s': %s ",
-                                              ARGV0,
-                                              dir_name,
-                                              strerror(errno));
             return(-1);
         }
     }
@@ -155,10 +149,53 @@ void check_rc_sys(char *basedir)
 {
     char file_path[OS_MAXSTR +1];
 
+    _sys_errors = 0;
+    _sys_total = 0;
+    
     snprintf(file_path, OS_MAXSTR, "%s", basedir);
 
+    /* Opening output files */
+    _wx = fopen("rootcheck-rw-rw-rw-.txt", "w");
+    _ww = fopen("rootcheck-rwxrwxrwx.txt", "w");
+    _suid=fopen("rootcheck-suid-files.txt", "w");
+    
     read_sys_dir(file_path);
 
+    if(_sys_errors == 0)
+    {
+        char op_msg[OS_MAXSTR +1];
+        snprintf(op_msg, OS_MAXSTR, "No problem found on the system."
+                                    " Analized %d files.", _sys_total);
+        notify_rk(ALERT_OK, op_msg);
+    }
+
+    else
+    {
+        char op_msg[OS_MAXSTR +1];
+        snprintf(op_msg, OS_MAXSTR, "Check the following files for more "
+                                    "information:\n"
+                                    "      rootcheck-rw-rw-rw-.txt\n"
+                                    "      rootcheck-rwxrwxrwx.txt\n"
+                                    "      rootcheck-suid-files.txt\n");
+        
+        notify_rk(ALERT_SYSTEM_ERROR, op_msg);
+    }
+
+    if(_wx)
+    {
+        fclose(_wx);
+    }
+    
+    if(_ww)
+    {
+        fclose(_ww);
+    }
+    
+    if(_suid)
+    {
+        fclose(_suid); 
+    }
+               
     return;
 }
 

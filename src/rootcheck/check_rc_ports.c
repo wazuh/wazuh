@@ -40,7 +40,6 @@ int run_netstat(int proto, int port)
 {
     char nt[OS_MAXSTR +1];
 
-    printf("netstat: %s\n",NETSTAT);
     if(proto == IPPROTO_TCP)
         snprintf(nt, OS_MAXSTR, NETSTAT, "tcp", port);
     else if(proto == IPPROTO_UDP)
@@ -81,6 +80,7 @@ int conn_port(int proto, int port)
 
     if(bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0)
     {
+        close(ossock);
         return(1);
     }
 
@@ -90,19 +90,30 @@ int conn_port(int proto, int port)
 }
 
 
-void test_ports(int proto)
+void test_ports(int proto, int *_errors, int *_total)
 {
     int i;
 
     for(i = 0; i<= 65535; i++)
     {
+        (*_total)++;
         if(conn_port(proto, i))
         {
-            /* Checking if we can find it using netsta, if not
+            /* Checking if we can find it using netstat, if not,
              * check again to see if the port is still being used.
              */
             if(!run_netstat(proto, i) && conn_port(proto, i))
-                printf("proto %d port: %d \n",proto, i);
+            {
+                char op_msg[OS_MAXSTR +1];
+                
+                (*_errors)++;
+                
+                snprintf(op_msg, OS_MAXSTR, "Port '%d'(%d) hidden. "
+                                "Kernel-level rootkit or trojaned "
+                                "version of netstat.", i, proto);
+
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+            }
         }
     }
 
@@ -114,13 +125,24 @@ void test_ports(int proto)
  */
 void check_rc_ports()
 {
-
+    int _errors = 0;
+    int _total = 0;
+    
     /* Trsting TCP ports */ 
-    test_ports(IPPROTO_TCP);
+    test_ports(IPPROTO_TCP, &_errors, &_total);
 
     /* Testing UDP ports */
-    test_ports(IPPROTO_UDP);
+    test_ports(IPPROTO_UDP, &_errors, &_total);
 
+    if(_errors == 0)
+    {
+        char op_msg[OS_MAXSTR +1];
+        snprintf(op_msg, OS_MAXSTR,"No kernel-level rootkit hiding any port."
+                                   "\n      Netstat is acting correctly."
+                                    " Analized %d ports.", _total);
+        notify_rk(ALERT_OK, op_msg);
+    }
+    
     return;
 }
 

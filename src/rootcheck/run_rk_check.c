@@ -29,123 +29,69 @@
 
 #include "rootcheck.h"
 
-#define MAX_LINE PATH_MAX+256
-
-/** Prototypes **/
-int c_read_file(char *file_name);
 
 
-/* Global variables -- currently checksum, msg to alert  */
-char c_sum[256];
-char alert_msg[512];
 
-
-/* notify_agent
- * Send a message to the agent client with notification
+/* notify_rk
+ * Report a problem.
  */
- /*
-int notify_agent(char *msg)
+int notify_rk(int rk_type, char *msg)
 {
-    if(SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK, SYSCHECK_MQ) < 0)
+    /* Non-queue notification */
+    if(rootcheck.queue != QUEUE)
+    {
+        if(rk_type == ALERT_OK)
+            printf("[OK]: %s\n", msg);
+        else if(rk_type == ALERT_SYSTEM_ERROR)
+            printf("ERR : %s\n", msg);
+        else
+        {
+            printf("RK  : %s\n", msg);
+        }
+        return(0);
+    }
+    
+    if(SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK, ROOTCHECK_MQ) < 0)
     {
         merror("%s: Error sending message to queue",ARGV0);
 
-      * Trying to send it twice *
-        if(SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK, SYSCHECK_MQ) == 0)
+        if(SendMSG(rootcheck.queue,msg,ROOTCHECK,ROOTCHECK,ROOTCHECK_MQ) == 0)
         {
             return(0);
         }
 
-      //  * Closing before trying to open again *
-        close(syscheck.queue);
+        close(rootcheck.queue);
         
-        if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+        if((rootcheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         {
             merror("%s: Impossible to open queue",ARGV0);
             sleep(60);
 
-            if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+            if((rootcheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
                 ErrorExit("%s: Impossible to access queue %s",
                                ARGV0,DEFAULTQPATH); 
         }
 
-       // * If we reach here, we can send it again *
-        SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK, SYSCHECK_MQ);
-        
+        SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK, ROOTCHECK_MQ);
     }
 
     return(0);        
 }
-*/   
+
  
 /* start_rk_daemon
- * Run periodicaly the integrity checking 
+ * Start the rootkit daemon variables
  */
 void start_rk_daemon()
 {
     return;
-}        
         
-        /*
-    #ifdef DEBUG
-    verbose("%s: Starting daemon ..",ARGV0);
-    #endif
-    
-  //  * Send the integrity database to the agent *
-    if(syscheck.notify == QUEUE)
+    if(rootcheck.notify == QUEUE)
     {
-        char buf[MAX_LINE];
-        int file_count = 0;
-        
-        if(fseek(syscheck.fp,0, SEEK_SET) == -1)
-        {
-            ErrorExit("%s: Error setting the file pointer (fseek)",ARGV0);
-        }
-    
-        while(fgets(buf,MAX_LINE,syscheck.fp) != NULL)
-        {
-            if(buf[0] != '#' && buf[0] != ' ' && buf[0] != '\n')
-            {
-                char *n_buf;
-                
-              //  * Removing the \n before sending to the analysis server *
-                n_buf = index(buf,'\n');
-                if(n_buf == NULL)
-                    continue;
-                
-                *n_buf = '\0';
-                    
-                notify_agent(buf);
-
-              //  * A count and a sleep to avoid flooding the server. 
-                 * Time or speed are not  requirements in here
-              //   *
-                file_count++;
-
-                * sleep 2 on every 30 messages *
-                if(file_count >= 30)
-                {
-                    sleep(2);
-                    file_count = 0;
-                }
-            }
-        }
-    }
-
-    sleep(60);// * before entering in daemon mode itself *
-    
-    * Check every SYSCHECK_WAIT *    
-    while(1)
-    {
-  //      * Set syscheck.fp to the begining of the file *
-        fseek(syscheck.fp,0, SEEK_SET);
-        run_rk_check();
-                
-        sleep(SYSCHECK_WAIT);
     }
 }
 
-*/
+
 /* run_rk_check: v0.1
  * Execute the rootkit checks
  */
@@ -167,7 +113,15 @@ void run_rk_check()
             basedir[i-1] = '\0';
         }
     }
-        
+  
+    /*** Initial message ***/
+    if(rootcheck.notify != QUEUE)
+    {
+        printf("\n");
+        printf("Starting rootcheck (http://www.ossec.net/rootcheck)\n");
+        printf("Be patient, it may take a few minutes to complete...\n");
+        printf("\n");
+    }
         
     /***  First check, look for rootkits ***/
     /* Open rootkit_files and pass the pointer to check_rc_files */
@@ -178,7 +132,6 @@ void run_rk_check()
 
     else
     {
-
         fp = fopen(rootcheck.rootkit_files, "r");
         if(!fp)
         {
@@ -186,9 +139,12 @@ void run_rk_check()
                     rootcheck.rootkit_files);
         }
 
-        check_rc_files(basedir, fp);
+        else
+        {
+            check_rc_files(basedir, fp);
 
-        fclose(fp);
+            fclose(fp);
+        }
     }
   
   
@@ -207,16 +163,19 @@ void run_rk_check()
                                         rootcheck.rootkit_trojans);
         }
 
-        check_rc_trojans(basedir, fp);
+        else
+        {
+            check_rc_trojans(basedir, fp);
 
-        fclose(fp);
+            fclose(fp);
+        }
     }
    
     /*** Third check, looking for files on the /dev ***/
     check_rc_dev(basedir);
     
     /*** Fourth check,  scan the whole system looking for additional issues */
-    //check_rc_sys(basedir);
+    check_rc_sys(basedir);
     
     /*** Process checking ***/
     check_rc_pids();         

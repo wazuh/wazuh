@@ -1,6 +1,6 @@
-/*   $OSSEC, syscheck.h, v0.1, 2005/07/29, Daniel B. Cid$   */
+/*   $OSSEC, rootcheck.h, v0.1, 2005/10/03, Daniel B. Cid$   */
 
-/* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -32,11 +32,18 @@ typedef struct _config
 
 config rootcheck;
 
+
+/* output types */
 #define QUEUE   101
 #define SYSLOG  102
 
-#define MAX_DIR_SIZE    64
+/* rk_types */
+#define ALERT_OK                0
+#define ALERT_ROOTKIT_FOUND     1
+#define ALERT_SYSTEM_ERROR      2
+#define ALERT_SYSTEM_CRIT       3
 
+#define ROOTCHECK           "rootcheck"
 
 /** Prototypes **/
 
@@ -47,6 +54,9 @@ int is_file(char *file_name);
  * Similar to `strings fiile | grep -r regex`
  */ 
 int os_string(char *file, char *regex);
+
+/* Used to report messages */
+int notify_rk(int rk_type, char *msg);
 
 
 /* run_rk_check: checks the integrity of the files against the
