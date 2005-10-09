@@ -76,6 +76,7 @@ fi
 
 # For the /etc/shared
 chmod 770 ${DIR}/etc/shared # ossec must be able to write to it
+cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
 
 
 # For the /var/run
