@@ -29,7 +29,7 @@ chsh		!bash|file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[a-s,uvxz]
 mail		!bash|file\.h|proc\.h|/dev/[^n]
 su			!bash|/dev/[a-s,uvxz]|/dev/[A-D]|/dev/[F-Z]|/dev/[0-9]|satori|vejeta|conf\.inv
 sudo		!bash|satori|vejeta|conf\.inv
-crond		!/dev/|bash|^/bin/sh
+crond		!/dev/[^nt]|bash
 gpm			!bash|mingetty
 ifconfig	!bash|^/bin/sh|/dev/tux|session.null|/dev/[^cl]
 diff		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh
