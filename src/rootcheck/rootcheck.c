@@ -73,6 +73,7 @@ int rootcheck_init()
     rootcheck.workdir = NULL;
     rootcheck.daemon = 1;
     rootcheck.notify = SYSLOG;
+    rootcheck.scanall = 0;
 
 
 #ifndef OSSECHIDS
@@ -96,6 +97,9 @@ int rootcheck_init()
                     ErrorExit("%s: -c needs an argument",ARGV0);
                 cfg = optarg;
                 break;
+            case 's':
+                rootcheck.scanall = 1;
+                break;    
             default:
                 help();
                 break;   

@@ -39,7 +39,9 @@ int read_sys_dir(char *dir_name);
 int read_sys_file(char *file_name)
 {
     struct stat statbuf;
-    
+   
+    _sys_total++;
+
     if(lstat(file_name, &statbuf) < 0)
     {
         return(-1);
@@ -171,9 +173,32 @@ void check_rc_sys(char *basedir)
         _ww = NULL;
         _suid = NULL;
     }
-    
-    read_sys_dir(file_path);
 
+    /* Scan the whole file system -- may be slow */
+    if(rootcheck.scanall)    
+        read_sys_dir(file_path);
+    
+    /* Scan only specific directories */
+    else
+    {
+        int _i = 0;
+        char *(dirs_to_scan[]) = {"/bin", "/sbin", "/usr/bin",
+                                  "/usr/sbin", "/dev", "/lib",
+                                  "/etc", "/root", "/var/log",
+                                  "/var/mail", "/var/lib",
+                                  "/usr/lib", "/usr/share", NULL};
+
+        for(_i = 0; _i <= 12; _i++)
+        {
+            if(dirs_to_scan[_i] == NULL)
+                break;
+            snprintf(file_path, OS_MAXSTR, "%s%s", 
+                                            basedir, 
+                                            dirs_to_scan[_i]);
+            read_sys_dir(file_path);
+        }
+    }
+    
     if(_sys_errors == 0)
     {
         char op_msg[OS_MAXSTR +1];

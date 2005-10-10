@@ -45,6 +45,7 @@ int Read_Rootcheck_Config(char * cfgfile)
     char *(xml_workdir[])={xml_rootcheck, "work_directory", NULL};
     char *(xml_rootkit_files[])={xml_rootcheck, "rootkit_files", NULL};
     char *(xml_rootkit_trojans[])={xml_rootcheck, "rootkit_trojans", NULL};
+    char *(xml_scanall[])={xml_rootcheck, "scanall", NULL};
 
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
@@ -71,6 +72,19 @@ int Read_Rootcheck_Config(char * cfgfile)
         str = NULL;    
     }
 
+    /* Scan all flag */
+    if(!rootcheck.scanall)
+    {
+        str = OS_GetOneContentforElement(&xml,xml_scanall);
+        if(str)
+        {
+            if(str[0] == 'y')
+                rootcheck.scanall = 1;
+            free(str);
+            str = NULL;
+        }
+    }
+    
     /* Notifications type */
     str  = OS_GetOneContentforElement(&xml,xml_notify);
     if(str)
