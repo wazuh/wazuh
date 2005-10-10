@@ -131,7 +131,11 @@ int read_sys_dir(char *dir_name)
             continue;
         
         snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);
-        
+       
+        /* Ignoring /proc */
+        if(strcmp(f_name, "/proc") == 0)
+            continue;
+             
         read_sys_file(f_name);
 
     }
