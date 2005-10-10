@@ -38,9 +38,11 @@ int OS_PRegex(char *str, char *regex)
     if(regexec(&preg, str, strlen(str), NULL, 0) != 0)
     {
         /* Didn't match */
+        regfree(&preg);
         return(0);
     }
 
+    regfree(&preg);
     return(1);
     
 }
