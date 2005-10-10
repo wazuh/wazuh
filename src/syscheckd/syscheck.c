@@ -239,6 +239,7 @@ int main(int argc, char **argv)
         
         else if(pid == 0)
         {
+            debug1("%s: Starting new process..", ARGV0);
             /* Create pid */
             if(CreatePID(ARGV0, getpid()) < 0)
                 ErrorExit(PID_ERROR,ARGV0);
@@ -260,6 +261,7 @@ int main(int argc, char **argv)
     }
     
 
+    debug1("%s: Leaving main process.", ARGV0);
     return(0);        
 }
 

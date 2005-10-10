@@ -155,7 +155,10 @@ int rootcheck_init()
 #ifndef OSSECHIDS
     /* Start the signal handling */
     StartSIG(ARGV0);
-    
+
+#else
+    return(0);
+        
 #endif
 
     

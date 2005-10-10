@@ -88,7 +88,7 @@ int notify_agent(char *msg)
  */
 void start_daemon()
 {
-    int count = 0;
+    int count = 7;
             
     #ifdef DEBUG
     verbose("%s: Starting daemon ..",ARGV0);
