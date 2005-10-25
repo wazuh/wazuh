@@ -509,7 +509,10 @@ fi
 Install
 
 echo ""
-echo " - Configuration finished without any problem."
+echo ""
+echo ""
+echo ""
+echo " - Configuration finished properly."
 echo ""
 echo " - To start OSSEC HIDS:"
 echo "		$DEFDIR/bin/ossec-control start"
@@ -520,14 +523,29 @@ echo ""
 echo " - The configuration can be viewed or modified at $DEFDIR/etc/ossec.conf"
 echo ""
 
+echo "
+    Thanks for using the OSSEC HIDS.
+    If you have any question, suggestion or if you found a bug,
+    contact us at contact@ossec.net or using our public maillist at
+    ossec-list@ossec.net 
+    (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list).
+
+    More information can be found at http://www.ossec.net/hids/
+   
+   ---  Press any key to finish (more information bellow).  ---
+   "
+
+read ANY
+
 if [ "X$INSTYPE" = "Xserver" ]; then	
-echo " - If you are going to use encryption (secure communication between the"
-echo "   client and the server), you need to run the $DEFDIR/bin/addagent for"
-echo "   each client. Type $DEFDIR/bin/addagent -h for help."
-echo ""
+echo " - You need to add each agent before the are authorized to access. "
+echo "   Run the $DEFDIR/bin/manage-agents to add or remove them."
+echo "   More information on the faq: http://www.ossec.net/hids/faq.php#3.1"
+echo ""  
+if [ "X$RLOG" = "Xyes" ]; then
 echo " - If you would like to receive syslog messages remotely, you need"
-echo "   to add in the configuration file (inside the global element) the "
-echo "   IPs that you want to  allow to receive messages from."
+echo "   to add in the configuration file (inside the 'global' element) the "
+echo "   IPs authorized to do so."
 echo "   The syntax should be:"
 echo "     <global>"
 echo "     .."
@@ -536,24 +554,25 @@ echo "       <allowed-ips>10.1.1.</allowed-ips>  - To allow network 10.1.1.0/24"
 echo "       <allowed-ips>10.1.</allowed-ips> - To allow network 10.1.0.0/16"
 echo "     </global>"
 echo ""
+fi
+
 elif [ "X$INSTYPE" = "Xclient" ]; then	
-echo " - You need to run the addagent script on the server now and copy " 
-echo "   the client.keys-XXX file to $DEFDIR/etc/ (and rename to client.keys) "
+echo " - To communicate with the server, you first need to add this "
+echo "   agent to it. When you have done so, you can run the "
+echo "   $DEFDIR/bin/manage-agents to import the keys from the server."
 echo ""
 fi
 
-echo " - Depending on your system, check if /etc/rc.d/init.d/ossec"
+echo " --- Press any key to continue --- "
+read ANY
+
+echo " - Depending on your system, check if /etc/rc.d/init.d/ossec "
 echo "   or /etc/rc.local was created/modified. If not, add the following"
 echo "   line to your init script (may vary depending on the system) to"
 echo "   have OSSEC HIDS starting during boot"
 echo ""
 echo "		$DEFDIR/bin/ossec-control start" 
 echo ""
-echo ""
-echo " - Any question, comment, bug or patch contact daniel.cid@gmail.com"
-echo " More information can be found at http://www.ossec.net/hids/"
-echo ""
-echo " Hope you ENJOY :)"
 echo ""
 
 ## EOF ##
