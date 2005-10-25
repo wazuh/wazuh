@@ -76,6 +76,14 @@ else
     DIRECTORIES="${LIBS} ${SOURCES} ${BINARIES}"
 fi
 
+
+# Checking if the bin directoru is present
+ls ../bin >/dev/null 2>&1
+if [ $? != 0 ]; then
+    mkdir -p ../bin
+fi
+
+                    
 # Making each directory
 for i in ${DIRECTORIES}; do
     cd $i

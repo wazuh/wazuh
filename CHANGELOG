@@ -1,4 +1,81 @@
 Daniel B. Cid <daniel.cid@gmail.com>
+v0.4 (2005/10/25):
+                   Added support for the rootkit detection on the
+                   agents. Added hability of "file sharing" between
+                   the server and agents. A lot of fixes, improvements,
+                   etc. Ported install scripts/makefiles to work on
+                   Solaris 9, MacOS 10 and many other platforms. Added
+                   agent information (inside agent-info) directory.
+                   Modified files:
+                   ossec-hids/CHANGELOG
+                   ossec-hids/CONFIG
+                   ossec-hids/INSTALL
+                   ossec-hids/README
+                   ossec-hids/etc/rules/syslog.rules
+                   ossec-hids/install.sh
+                   ossec-hids/src/Config.Make
+                   ossec-hids/src/InstallAgent.sh
+                   ossec-hids/src/InstallServer.sh
+                   ossec-hids/src/LOCATION
+                   ossec-hids/src/Makeall
+                   ossec-hids/src/Makefile
+                   ossec-hids/src/VERSION
+                   ossec-hids/src/addagent/addagent.c
+                   ossec-hids/src/addagent/manage_agents.c
+                   ossec-hids/src/analysisd/alerts/exec.c
+                   ossec-hids/src/analysisd/alerts/mail.c
+                   ossec-hids/src/analysisd/analysisd.c
+                   ossec-hids/src/analysisd/cleanevent.c
+                   ossec-hids/src/analysisd/config.h
+                   ossec-hids/src/analysisd/decoders/Makefile
+                   ossec-hids/src/analysisd/decoders/decode-xml.c
+                   ossec-hids/src/analysisd/decoders/snort.c
+                   ossec-hids/src/analysisd/decoders/syscheck.c
+                   ossec-hids/src/analysisd/eventinfo.c
+                   ossec-hids/src/analysisd/eventinfo.h
+                   ossec-hids/src/analysisd/fts.c
+                   ossec-hids/src/analysisd/rules.c
+                   ossec-hids/src/analysisd/rules.h
+                   ossec-hids/src/analysisd/rules_list.c
+                   ossec-hids/src/analysisd/stats.c
+                   ossec-hids/src/client-agent/Makefile
+                   ossec-hids/src/client-agent/agentd.c
+                   ossec-hids/src/client-agent/agentd.h
+                   ossec-hids/src/client-agent/config.c
+                   ossec-hids/src/error_messages/error_messages.h
+                   ossec-hids/src/headers/config_op.h
+                   ossec-hids/src/headers/defs.h
+                   ossec-hids/src/headers/file_op.h
+                   ossec-hids/src/headers/mq_op.h
+                   ossec-hids/src/headers/sec.h
+                   ossec-hids/src/logcollector/logcollector.c
+                   ossec-hids/src/logcollector/logcollector.h
+                   ossec-hids/src/logcollector/read_snortfull.c
+                   ossec-hids/src/logcollector/read_syslog.c
+                   ossec-hids/src/os_crypto/shared/sec.c
+                   ossec-hids/src/os_execd/exec.c
+                   ossec-hids/src/os_execd/execd.c
+                   ossec-hids/src/os_maild/maild.c
+                   ossec-hids/src/os_net/os_net.c
+                   ossec-hids/src/os_xml/os_xml.c
+                   ossec-hids/src/remoted/Makefile
+                   ossec-hids/src/remoted/remoted.c
+                   ossec-hids/src/remoted/remoted.h
+                   ossec-hids/src/shared/Makefile
+                   ossec-hids/src/shared/file_op.c
+                   ossec-hids/src/shared/mq_op.c
+                   ossec-hids/src/syscheckd/Makefile
+                   ossec-hids/src/syscheckd/config.c
+                   ossec-hids/src/syscheckd/create_db.c
+                   ossec-hids/src/syscheckd/run_check.c
+                   ossec-hids/src/syscheckd/syscheck.c
+                   ossec-hids/src/syscheckd/syscheck.h
+                   ossec-hids/src/remoted/manager.doc
+                   ossec-hids/src/analysisd/decoders/rootcheck.c
+                   ossec-hids/src/client-agent/manager.c
+                   ossec-hids/src/rootcheck
+
+Daniel B. Cid <daniel.cid@gmail.com>
 v0.3 (2005/09/22): Added support for logcollector to read one file
                    at a time. Added automatic file ignore on syscheck.
                    Only monitor stable files. Added noalert option to
