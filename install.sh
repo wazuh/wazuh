@@ -538,7 +538,7 @@ echo "
 read ANY
 
 if [ "X$INSTYPE" = "Xserver" ]; then	
-echo " - You need to add each agent before the are authorized to access. "
+echo " - You need to add each agent before they are authorized to access. "
 echo "   Run the $DEFDIR/bin/manage-agents to add or remove them."
 echo "   More information on the faq: http://www.ossec.net/hids/faq.php#3.1"
 echo ""  
