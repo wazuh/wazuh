@@ -17,7 +17,7 @@ USER="ossec"
 USER_MAIL="ossecm"
 USER_EXEC="ossece"
 USER_REM="ossecr"
-subdirs="logs logs/archives logs/alerts bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck queue/rootcheck tmp var var/run etc etc/shared checksum_db"
+subdirs="logs logs/archives logs/alerts bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck queue/rootcheck queue/agent-info tmp var var/run etc etc/shared checksum_db"
 
 # ${DIR} must be set 
 if [ "X${DIR}" = "X" ]; then
@@ -79,6 +79,8 @@ chown -R ${USER}:${GROUP} ${DIR}/queue/syscheck
 chmod -R 700 ${DIR}/queue/syscheck
 chown -R ${USER}:${GROUP} ${DIR}/queue/rootcheck
 chmod -R 700 ${DIR}/queue/rootcheck
+chown -R ${USER_REM}:${GROUP} ${DIR}/queue/agent-info
+chmod -R 755 ${DIR}/queue/agent-info
 
 # For the stats directory
 chown -R ${USER}:${GROUP} ${DIR}/stats
