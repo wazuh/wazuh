@@ -12,9 +12,13 @@
 
 /* Syscheck decoder */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "headers/defs.h"
 #include "headers/debug_op.h"
@@ -145,7 +149,7 @@ FILE *DB_File(char *agent, int *agent_id)
         }
         if(!agent_fps[i])
         {
-            merror("%s: Impossible to open '%s'",ARGV0,_db_buf);
+            merror("%s: Unable to open '%s'",ARGV0,_db_buf);
             
             free(agent_ips[i]);
             agent_ips[i] = NULL;
@@ -307,18 +311,8 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 snprintf(_db_comment,512,"Integrity checksum of file '%s' "
                         "has changed.",f_name);
             }
-            
-            snprintf(_db_comment2,512,"Integrity checksum changed for: '%s'\n"
-                                      "Old checksum was: '%s'\n"
-                                      "New checksum is : '%s'\n",
-                                      f_name, saved_sum, c_sum);
-            
-            lf->comment = _db_comment; 
-
-            lf->level = Config.integrity;
-
-            lf->sigid = SYSCHECK_PLUGIN;
-
+      
+            /* Adding new checksum to the database */
             /* Commenting the file entry and adding a new one latter */
             fsetpos(fp, &__initi_pos);
             fputc('#',fp);
@@ -327,7 +321,131 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             /* Adding the new entry at the end of the file */
             fseek(fp, 0, SEEK_END);
             fprintf(fp,"%s %s\n",c_sum,f_name);
+            
            
+            /* File deleted */
+            if(c_sum[0] == '-' && c_sum[1] == '1')
+            {
+                snprintf(_db_comment2, 512,
+                            "File '%s' was deleted. Unable to retrieve "
+                            "checksum.", f_name);
+            }
+            
+            else    
+            {
+                /* Providing more info about the file change */
+                char *oldsize = NULL, *newsize = NULL;
+                char *olduid = NULL, *newuid = NULL;
+                char *c_oldperm = NULL, *c_newperm = NULL;
+                char *oldgid = NULL, *newgid = NULL;
+                char *oldmd5 = NULL, *newmd5 = NULL;
+
+                int oldperm = 0, newperm = 0;
+                
+                oldsize = saved_sum;
+                newsize = c_sum;
+
+                c_oldperm = index(saved_sum, ':');
+                c_newperm = index(c_sum, ':');
+
+                /* Get old/new permissions */
+                if(c_oldperm && c_newperm)
+                {
+                    *c_oldperm = '\0';
+                    c_oldperm++;
+
+                    *c_newperm = '\0';
+                    c_newperm++;
+
+                    /* Get old/new uid/gid */
+                    olduid = index(c_oldperm, ':');
+                    newuid = index(c_newperm, ':');
+
+                    if(olduid && newuid)
+                    {
+                        *olduid = '\0';
+                        *newuid = '\0';
+
+                        olduid++;
+                        newuid++;
+
+                        oldgid = index(olduid, ':');
+                        newgid = index(newuid, ':');
+
+                        if(oldgid && newgid)
+                        {
+                            *oldgid = '\0';
+                            *newgid = '\0';
+
+                            oldgid++;
+                            newgid++;
+
+
+                            /* Getting md5 */
+                            oldmd5 = index(oldgid, ':');
+                            newmd5 = index(newgid, ':');
+
+                            if(oldmd5 && newmd5)
+                            {
+                                *oldmd5 = '\0';
+                                *newmd5 = '\0';
+
+                                oldmd5++;
+                                newmd5++;    
+                            }
+                        }
+                    }
+                }
+
+                /* Getting integer values */
+                if(c_newperm && c_oldperm)
+                {
+                    newperm = atoi(c_newperm);
+                    oldperm = atoi(c_oldperm);
+                }
+                
+                /* Provide information about the file */    
+                snprintf(_db_comment2,512,"Integrity checksum changed for: "
+                        "'%s'\n"
+                        "Size changed from '%s' to '%s'\n"
+                        "Permissions changed from '%c%c%c%c%c%c%c%c%c' "
+                        "to '%c%c%c%c%c%c%c%c%c'\n"
+                        "Ownership was '%s', now it is '%s'\n"
+                        "Group ownership was '%s', now it is '%s'\n"
+                        "Old checksum was: '%s'\n"
+                        "New checksum is : '%s'\n",
+                        f_name, 
+                        oldsize, newsize,
+                        (oldperm & S_IRUSR)? 'r' : '-',
+                        (oldperm & S_IWUSR)? 'w' : '-',
+                        (oldperm & S_IXUSR)? 'x' : '-',
+                        (oldperm & S_IRGRP)? 'r' : '-',
+                        (oldperm & S_IWGRP)? 'w' : '-',
+                        (oldperm & S_IXGRP)? 'x' : '-',
+                        (oldperm & S_IROTH)? 'r' : '-',
+                        (oldperm & S_IWOTH)? 'w' : '-',
+                        (oldperm & S_IXOTH)? 'x' : '-',
+                        
+                        (newperm & S_IRUSR)? 'r' : '-',
+                        (newperm & S_IWUSR)? 'w' : '-',
+                        (newperm & S_IXUSR)? 'x' : '-',
+                        (newperm & S_IRGRP)? 'r' : '-',
+                        (newperm & S_IWGRP)? 'w' : '-',
+                        (newperm & S_IXGRP)? 'x' : '-',
+                        (newperm & S_IROTH)? 'r' : '-',
+                        (newperm & S_IWOTH)? 'w' : '-',
+                        (newperm & S_IXOTH)? 'x' : '-',
+                        olduid, newuid,
+                        oldgid, newgid,
+                        oldmd5, newmd5);
+            }
+            
+            lf->comment = _db_comment; 
+
+            lf->level = Config.integrity;
+
+            lf->sigid = SYSCHECK_PLUGIN;
+
             
             /* Creating a new log message */
             free(lf->log);

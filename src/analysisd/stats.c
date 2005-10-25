@@ -121,7 +121,7 @@ void Update_Hour()
         }
         	
         else
-            merror("%s: logstats: Impossible to open %s",ARGV0,_hourly);
+            merror(FOPEN_ERROR, "logstats", _hourly);
             
         _CHour[i] = 0; /* Zeroing the currently  hour */
     }
@@ -151,7 +151,7 @@ void Update_Hour()
                 fclose(fp);
             }
             else
-                merror("%s: logstats: Impossible to open %s",ARGV0, _weekly);
+                merror(FOPEN_ERROR, "logstats", _weekly);
             
             _CWHour[i][j]=0;	
         }   
@@ -264,7 +264,7 @@ int Start_Hour(int *today, int *thishour)
     if(IsDir(STATWQUEUE) == -1)
         if(mkdir(STATWQUEUE,0770) == -1)
         {
-            merror("%s: logstat: Impossible to create stat queue: %s",
+            merror("%s: logstat: Unable to create stat queue: %s",
                             ARGV0, STATWQUEUE);
             return(-1);
         }       
@@ -272,7 +272,7 @@ int Start_Hour(int *today, int *thishour)
     if(IsDir(STATQUEUE) == -1)
         if(mkdir(STATQUEUE,0770) == -1)
         {
-            merror("%s: logstat: Impossible to create stat queue: %s",
+            merror("%s: logstat: Unable to create stat queue: %s",
                             ARGV0, STATQUEUE);
             return(-1);
         }       
@@ -310,7 +310,7 @@ int Start_Hour(int *today, int *thishour)
         if(IsDir(_weekly) == -1)
             if(mkdir(_weekly,0770) == -1)
             {
-                merror("%s: logstat: Impossible to create stat queue: %s",
+                merror("%s: logstat: Unable to create stat queue: %s",
                         ARGV0, _weekly);
                 return(-1);
             }

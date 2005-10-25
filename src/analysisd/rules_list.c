@@ -64,9 +64,26 @@ void _OS_AddAfterSid(int sid, RuleInfo *read_rule)
                 _OS_AddRule(rulenode_pt->child, read_rule);
             return;
         }
+        
+        /* Checking if the child has a rule */
+        if(rulenode_pt->child)
+        {
+            RuleNode *child_node = rulenode_pt->child;
+
+            while(child_node)
+            {
+                if(child_node->ruleinfo->sigid == sid)
+                {
+                    child_node->child =
+                        _OS_AddRule(child_node->child, read_rule);
+                    return;
+                }
+                child_node = child_node->next;
+            }
+        }
+        
         rulenode_pt = rulenode_pt->next;
     }
-
     /* rule ID not found */
     ErrorExit("rules_list: rule ID '%d' not found ... ",sid);
 }

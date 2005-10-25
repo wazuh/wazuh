@@ -9,11 +9,13 @@
  * Foundation
  */
 
+
+#include <sys/types.h>
+#include <sys/time.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/types.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -100,7 +102,10 @@ void getreply(int socket)
         if(select(socket +1, &fdset, NULL, NULL, &fdtimeout) == 0)
         {
             if(fp)
+            {
                 fclose(fp);
+                unlink(file);
+            }
                 
             /* timeout */
             return;
@@ -167,7 +172,7 @@ void getreply(int socket)
                 /* copying the file sum */
                 strncpy(file_sum, tmp_msg, 33);
                 
-                /* Setting tmp_msg to the beginning of the ifle name */
+                /* Setting tmp_msg to the beginning of the file name */
                 validate_file++;
                 tmp_msg = validate_file;
                 
@@ -185,12 +190,14 @@ void getreply(int socket)
                 if(tmp_msg[0] == '.')
                     tmp_msg[0] = '-';            
                 
-                snprintf(file, OS_MAXSTR, "%s/%s", SHAREDCFG_DIR, tmp_msg);
+                snprintf(file, OS_MAXSTR, "%s/.%s", 
+                                          SHAREDCFG_DIR,
+                                          tmp_msg);
 
                 fp = fopen(file, "w");
                 if(!fp)
                 {
-                    merror("%s: Impossible to open file '%s'", ARGV0, file);
+                    merror(FOPEN_ERROR, ARGV0, file);
                 }
             }
             
@@ -208,12 +215,29 @@ void getreply(int socket)
                 {
                     if(strcmp(currently_md5, file_sum) != 0)
                         unlink(file);
+                    else
+                    {
+                        char *final_file;
+                        char _ff[OS_MAXSTR +1];
+                        
+                        /* Renaming the file to its orignal name */
+                        
+                        final_file = index(file, '.');
+                        if(final_file)
+                        {
+                            final_file++;
+                            snprintf(_ff, OS_MAXSTR, "%s/%s",
+                                                     SHAREDCFG_DIR,
+                                                     final_file);
+                            rename(file, _ff);
+                        }
+                    }
                 }
             }
 
             else
             {
-                merror("%s: Wrong message received.", ARGV0);
+                merror("%s: Unknown message received.", ARGV0);
             }
         }
 
@@ -225,7 +249,7 @@ void getreply(int socket)
         
         else
         {
-            merror("%s: Invalid message received. No action defined.",ARGV0);
+            merror("%s: Unknown message received. No action defined.",ARGV0);
         }
         
         cleanup:
@@ -234,7 +258,10 @@ void getreply(int socket)
     }
 
     if(fp)
+    {
         fclose(fp);
+        unlink(file);
+    }
         
     return;
 
@@ -283,7 +310,8 @@ char *getsharedfiles()
         
         /* Just ignore . and ..  */
         if((strcmp(entry->d_name,".") == 0) ||
-                (strcmp(entry->d_name,"..") == 0))
+           (strcmp(entry->d_name,"..") == 0) ||
+           (entry->d_name[0] == '.'))
             continue;
 
         snprintf(tmp_dir, 255, "%s/%s", SHAREDCFG_DIR, entry->d_name);
@@ -404,7 +432,7 @@ void *start_mgr(void *arg)
     }
 
 
-    /* We notify the server every NOTIFY_TIME */
+    /* We notify the server every NOTIFY_TIME - 30 */
     while(1)
     {
         main_mgr(sock);

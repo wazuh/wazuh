@@ -128,7 +128,7 @@ int Rules_OP_ReadRules(char * rulefile)
     /* Applying any variable found */
     if(OS_ApplyVariables(&xml) != 0)
     {
-        merror("rules_op: Impossible to apply the variables.");
+        merror("rules_op: Unable to apply the variables.");
         return(-1);
     }
 

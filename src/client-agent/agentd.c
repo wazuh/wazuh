@@ -121,7 +121,7 @@ void _startit(char *dir, int uid, int gid)
     /* Starting manager */
     if(CreateThread(start_mgr, (void *)&port) != 0)
     {
-        ErrorExit("%s: Impossible to start the manager thread.");
+        ErrorExit(THREAD_ERROR, ARGV0);
     }
 
 
