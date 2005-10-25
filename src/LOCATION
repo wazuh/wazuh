@@ -1,3 +1,2 @@
 DIR="/var/ossec"
-INST=server
 CC=gcc
