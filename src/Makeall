@@ -44,7 +44,18 @@ if [ "X${ARGV}" = "Xall" ]; then
     fi    
 
     if [ "X$OS" = "XSunOS" ]; then
-        echo "EEXTRA=-lsocket -lnsl -lresolv" >> Config.OS
+        echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -include strings.h" >> Config.OS
+        PATH=$PATH:/usr/ccs/bin
+        export  PATH
+    fi    
+    if [ "X$OS" = "XFreeBSD" ]; then
+        echo "TEXTRA=-pthread" >> Config.OS
+    else
+        echo "TEXTRA=-lpthread" >> Config.OS
+    fi    
+
+    if [ "X$OS" = "XDarwin" ]; then
+        echo "EEXTRA=-DDarwin" >> Config.OS
     fi    
 fi
 
