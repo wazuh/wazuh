@@ -30,6 +30,8 @@
 #include "os_crypto/md5/md5_op.h"
 #include "error_messages/error_messages.h"
 
+#define AGENTINFO_DIR    "/queue/agent-info"
+
 /* Internal structures */
 typedef struct _file_sum
 {
@@ -59,13 +61,6 @@ char *_msg[MAX_AGENTS];
 char *_ips[MAX_AGENTS];
 
 
-/* Signal handler */
-void ReReadFiles()
-{
-    _stime = 0;
-}
-
-
 /* free_thread: Frees the mgr_thread structure */
 void free_thread(mgr_thread *h)
 {
@@ -80,6 +75,26 @@ void free_thread(mgr_thread *h)
     free(h);
     return;        
 }
+
+
+/* clear_last_msg: Clear all messages cached
+ */
+void clear_last_msg()
+{
+    int i;
+    for(i = 0;i<MAX_AGENTS; i++)
+    {
+        if(!_ips[i])
+            break;
+
+        free(_ips[i]);
+        _ips[i] = NULL;
+
+        free(_msg[i]);
+        _msg[i] = NULL;
+    }
+}
+
 
 /* last_messages: Check if the message received
  * is the same of the one received before.
@@ -229,6 +244,7 @@ void c_files()
     if(f_sum != NULL)
         f_sum[f_size] = NULL;
 
+    closedir(dp);
     return;    
 }
 
@@ -280,7 +296,7 @@ int send_file(int agentid, char *srcip, int port, char *name, char *sum)
     fp = fopen(file, "r");
     if(!fp)
     {
-        merror("%s: Impossible to open file '%s'",ARGV0, file);
+        merror("%s: Unable to open file '%s'",ARGV0, file);
         return(-1);
     }
 
@@ -340,7 +356,9 @@ int send_file(int agentid, char *srcip, int port, char *name, char *sum)
             return(-1);
         }
 
+        /* No hurry in here.. */
         free(crypt_msg);
+        sleep(1);
     }
 
     /* Sending the message to close the file */
@@ -355,7 +373,7 @@ int send_file(int agentid, char *srcip, int port, char *name, char *sum)
         return(-1);
     }
 
-    /* Sending initial message */
+    /* Sending final message */
     if(OS_SendUDPbySize(socket, msg_size, crypt_msg) < 0)
     {
         free(crypt_msg);
@@ -367,7 +385,6 @@ int send_file(int agentid, char *srcip, int port, char *name, char *sum)
     
     free(crypt_msg);
     
-    printf("file sent!\n");
     fclose(fp);
     close(socket);
     return(0);
@@ -385,31 +402,34 @@ void *mgr_handle(void *arg)
     
     char *msg = to_thread->msg;
             
-    _ctime = time(0);
-    if((_ctime - _stime) > (NOTIFY_TIME*2))
-    {
-        f_files();
-        c_files();
-        _stime = _ctime;
-    }
+    char agent_file[OS_MAXSTR +1];
 
-
+    FILE *fp;
+    
     /* Get uname */
     uname = to_thread->msg;
     msg = index(msg,'\n');
     if(!msg)
     {
         free_thread(to_thread);
-        merror("%s: Invalid message from '%s' (uname)",ARGV0, to_thread->srcip);
+        merror("%s: Invalid message from '%s' (uname)",ARGV0,to_thread->srcip);
         return(NULL);
     }
 
     *msg = '\0';
     msg++;
 
-
-
-    /* XXX write uname somewhere */
+    /* Writting to the agent file */
+    snprintf(agent_file, OS_MAXSTR, "%s/%s",
+                         AGENTINFO_DIR,
+                         to_thread->srcip);
+        
+    fp = fopen(agent_file, "w");
+    if(fp)
+    {
+        fprintf(fp, "%s\n", uname);
+        fclose(fp);
+    }        
 
     if(!f_sum)
     {
@@ -429,7 +449,9 @@ void *mgr_handle(void *arg)
         msg = index(msg, '\n');
         if(!msg)
         {
-            merror("%s: Invalid message from '%s' (index \\n)",ARGV0, to_thread->srcip);
+            merror("%s: Invalid message from '%s' (index \\n)",
+                        ARGV0, 
+                        to_thread->srcip);
             break;
         }
 
@@ -439,7 +461,9 @@ void *mgr_handle(void *arg)
         file = index(file, ' ');
         if(!file)
         {
-            merror("%s: Invalid message from '%s' (index ' ')",ARGV0, to_thread->srcip);
+            merror("%s: Invalid message from '%s' (index ' ')",
+                        ARGV0, 
+                        to_thread->srcip);
             break;
         }
 
@@ -465,6 +489,7 @@ void *mgr_handle(void *arg)
         }
     }
 
+    /* Updating each file marked */
     for(i = 0;;i++)
     {
         if(f_sum[i] == NULL)
@@ -486,8 +511,7 @@ void *mgr_handle(void *arg)
         f_sum[i]->mark = 0;        
     }
 
-    
-
+    /* Clearing the thread and returning */
     free_thread(to_thread);
     
     return(NULL); 
@@ -498,13 +522,25 @@ void *mgr_handle(void *arg)
 void start_mgr(int agentid, char *msg, char *srcip, int port)
 {
     /* Nothing changed on the agent. Keep going */
-    if(equal_last_msg(srcip, msg) && (_stime != 0))
+    if(equal_last_msg(srcip, msg))
     {
+        _ctime = time(0);
+        
+        /* Re-read everything and update agent files */
+        if((_ctime - _stime) > (NOTIFY_TIME*6))
+        {
+            f_files();
+            c_files();
+            clear_last_msg();
+            _stime = _ctime;
+        }
+
         return;
     }
 
     else
     {
+        /* Creating new thread to deal with client */
         mgr_thread *to_thread;
 
         
@@ -518,15 +554,17 @@ void start_mgr(int agentid, char *msg, char *srcip, int port)
         to_thread->msg = strdup(msg);
         if(!to_thread->msg)
             ErrorExit(MEM_ERROR,ARGV0);
+        
         to_thread->srcip = strdup(srcip);
         if(!to_thread->srcip)
             ErrorExit(MEM_ERROR,ARGV0);
+        
         to_thread->port = port;
 
         /* Starting manager */
         if(CreateThread(mgr_handle, (void *)to_thread) != 0)
         {
-            ErrorExit("%s: Impossible to start the manager thread.");
+            ErrorExit(THREAD_ERROR, ARGV0);
         }
     }
     return;
@@ -547,9 +585,6 @@ void manager_init()
         _ips[i] = NULL;
         _msg[i] = NULL;
     }
-
-    /* Signal handling for re-reading the files */
-    signal(SIGUSR1, ReReadFiles);
 }
 
 /* EOF */
