@@ -53,7 +53,7 @@ void OS_Run(int q, MailConfig *mail);
 
 int main(int argc, char **argv)
 {
-    char c;
+    int c;
     int uid=0,gid=0,m_queue=0;
     char *dir  = DEFAULTDIR;
     char *user = MAILUSER;
@@ -196,7 +196,7 @@ void OS_Run(int q, MailConfig *mail)
         }
         
         /* Hour changed. Send all supressed mails */ 
-        else if((mailsent < mail->maxperhour && mailsent != 0)||
+        else if(((mailsent < mail->maxperhour) && (mailsent != 0))||
                 ((p->tm_hour != thishour)&&(childcount < MAXCHILDPROCESS)) )
         {
             MailNode *mailmsg;
@@ -213,7 +213,7 @@ void OS_Run(int q, MailConfig *mail)
             pid = fork();
             if(pid < 0)
             {
-                merror("%s: Fork error");
+                merror(FORK_ERROR, ARGV0);
                 continue;
             }
             else if (pid == 0)
@@ -250,15 +250,17 @@ void OS_Run(int q, MailConfig *mail)
         if((msg = OS_RecvMailQ(q)) != NULL)
         {
             OS_AddMailtoList(msg);
-
+            
             /* Change timeout to see if any new message is coming shortly */
             mail_timeout = NEXTMAIL_TIMEOUT;   /* 5 seconds only */
         
         }
         else
         {
+            if(mail_timeout == NEXTMAIL_TIMEOUT)
+                mailsent++;
+            
             mail_timeout = DEFAULT_TIMEOUT; /* Default timeout */
-            mailsent++;
         }
 
         /* Waiting for the childs .. */
@@ -267,7 +269,7 @@ void OS_Run(int q, MailConfig *mail)
             int wp;
             wp = waitpid((pid_t) -1, NULL, WNOHANG);
             if (wp < 0)
-                merror("%s: Waitpid error.");  
+                merror(WAITPID_ERROR, ARGV0);  
 
             /* if = 0, we still need to wait for the child process */    
             else if (wp == 0) 

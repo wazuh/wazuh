@@ -124,7 +124,7 @@ void ReadKeys(keystruct *keys)
 {
     FILE *fp;
     
-    char c;
+    int c;
     
     char name[NAMESIZE];
     char ip[IPSIZE];
@@ -142,7 +142,7 @@ void ReadKeys(keystruct *keys)
     if(!fp)
     {
         /* We can leave from here */
-        merror("readkeys: Impossible to open the keys file");
+        merror("readkeys: Unable to open the keys file");
         exit(1);
     }
 

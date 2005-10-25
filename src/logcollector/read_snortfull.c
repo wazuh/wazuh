@@ -21,12 +21,14 @@
 #include "headers/defs.h"
 #include "logcollector.h"
 
+#include "error_messages/error_messages.h"
+
 
 /* Read snort_full/barnyard full logs */
 int read_snortfull(int pos)
 {
     int i=0,frst=0;
-    char c;
+    int c;
     char str[OS_MAXSTR];
 
     short int _bg = 0;
@@ -115,18 +117,10 @@ int read_snortfull(int pos)
             if(SendMSG(logr_queue,str,logr[pos].file,
                        logr[pos].group,logr[pos].type) < 0)
             {
-                merror("%s: Error sending message to queue",ARGV0);
+                merror(QUEUE_SEND, ARGV0);
                 if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
                 {
-                    merror("%s: Impossible to open queue",ARGV0);
-                    sleep(10);
-                    if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-                    {
-                        sleep(30);
-                        if((logr_queue=StartMQ(DEFAULTQPATH,WRITE))<0)
-                            ErrorExit("%s: Impossible to access queue %s",
-                                    ARGV0,DEFAULTQPATH);
-                    }
+                    ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
                 }
             }
             i = 0;

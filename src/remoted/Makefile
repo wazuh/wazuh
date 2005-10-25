@@ -9,7 +9,7 @@ include ../Config.Make
 
 LOCAL = remoted.c config.c manager.c
 
-rlog_OBJS = ${LOCAL} ${OS_SHARED} ${OS_NET} ${OS_XML} ${OS_REGEX} ${OS_CRYPTO} -lpthread
+rlog_OBJS = ${LOCAL} ${OS_SHARED} ${OS_NET} ${OS_XML} ${OS_REGEX} ${OS_CRYPTO} ${TEXTRA}
 
 remoted:
 		${CC} ${CFLAGS}  ${rlog_OBJS} -o ${NAME}

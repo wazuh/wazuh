@@ -76,7 +76,7 @@ int OS_Execd(execd_config *config, ExecdMsg *msg)
         /* Checking if the file exists */
         if(File_DateofChange(exec) < 0)
         {
-            merror("File \"%s\" does not exist. Impossible to execute",exec);
+            merror("File \"%s\" does not exist. Unable to execute",exec);
             exit (1);
         }
         

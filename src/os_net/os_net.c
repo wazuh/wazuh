@@ -33,7 +33,13 @@
 
 #include "os_net.h"
 
-/* ** Not thread safe ** */
+
+/* Darwin should be happy now */
+#ifdef Darwin
+typedef int socklen_t;
+#endif
+
+
 struct sockaddr_in _c;	    /* Client socket */
 socklen_t _cl;                    /* Client socket length */
 struct sockaddr_un n_us;    /* Unix socket  */

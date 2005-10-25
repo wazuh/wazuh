@@ -21,6 +21,8 @@
 #include "headers/mq_op.h"
 #include "logcollector.h"
 
+#include "error_messages/error_messages.h"
+
 
 /* v0.3 (2005/08/24): Using fgets instead of fgetc
  * v0.2 (2005/04/04)
@@ -50,18 +52,10 @@ int read_syslog(int pos)
         if(SendMSG(logr_queue,str,logr[pos].file,
                     logr[pos].group,logr[pos].type) < 0)
         {
-            merror("%s: Error sending message to queue",ARGV0);
+            merror(QUEUE_SEND, ARGV0);
             if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
             {
-                merror("%s: Impossible to open queue",ARGV0);
-                sleep(10);
-                if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-                {
-                    sleep(30);
-                    if((logr_queue=StartMQ(DEFAULTQPATH,WRITE))<0)
-                        ErrorExit("%s: Impossible to access queue %s",
-                                ARGV0,DEFAULTQPATH);
-                }
+                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
             }
         }
 

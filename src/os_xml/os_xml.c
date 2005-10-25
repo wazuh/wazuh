@@ -389,7 +389,7 @@ int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
 {
     int location=0;
     int count=0;
-    char c;
+    int c;
     char attr[XML_MAXSIZE+1];
     char value[XML_MAXSIZE+1];
 
