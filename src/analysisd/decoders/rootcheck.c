@@ -101,7 +101,7 @@ FILE *RK_File(char *agent, int *agent_id)
         }
         if(!rk_agent_fps[i])
         {
-            merror("%s: Impossible to open '%s'",ARGV0,_rk_buf);
+            merror(FOPEN_ERROR, ARGV0,_rk_buf);
             
             free(rk_agent_ips[i]);
             rk_agent_ips[i] = NULL;
