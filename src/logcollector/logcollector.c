@@ -172,7 +172,6 @@ void run()
         if(logr[i].file == NULL)
             break;
         
-        max_file++;
         
         /* Initiating the files */    
         handle_file(i);
@@ -194,6 +193,7 @@ void run()
         }
     }
 
+    max_file = i;
     
     /* Daemon loop */
     while(1)
@@ -316,6 +316,7 @@ int handle_file(int i)
         logr[i].fp = NULL;
         return(-1);
     }
+    
     if((logr[i].mtime = File_DateofChange(logr[i].file)) < 0)
     {
         merror("%s: Error handling file '%s' (date_of_change)",ARGV0,logr[i].file);
