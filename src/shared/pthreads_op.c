@@ -32,22 +32,14 @@ int CreateThread(void *function_pointer(void *data), void *data)
         return (-1);
     }
 
+    if(pthread_detach(lthread) != 0)
+    {
+        merror(THREAD_ERROR,ARGV0);
+        return(-1);
+    }
+
     return(0);
 }
 
-/*
-void *mylala(int *a)
-{
-    printf("Printf thread example: %d\n", *a);
-    return (0);
-}
-
-int main()
-{
-    int abc = 10;
-    CreateThread((void *)mylala, (void *)&abc);
-    return(0);
-}
-*/
 
 /* EOF */
