@@ -18,6 +18,9 @@
  * Monitor some files and forward the output to our analysis system.
  */
 
+
+#include <sys/types.h>
+#include <sys/time.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -114,15 +117,7 @@ int main(int argc, char **argv)
     /* Starting the queue. */
     if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
     {   
-        merror(QUEUE_ERROR,ARGV0,DEFAULTQPATH);
-        sleep(10);
-        if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-        {
-            merror(QUEUE_ERROR,ARGV0,DEFAULTQPATH);
-            sleep(60);
-            if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-                ErrorExit(QUEUE_FATAL,ARGV0,DEFAULTQPATH);
-        }
+        ErrorExit(QUEUE_FATAL,ARGV0,DEFAULTQPATH);
     }
 
     /* Starting signal handler */
