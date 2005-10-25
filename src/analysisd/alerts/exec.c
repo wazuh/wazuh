@@ -69,7 +69,7 @@ void OS_Exec(int *execq, short int *notify, int position,
     
     if(OS_SendExecQ(*execq, &msg) < 0)
     {
-        /* Impossible to send. Trying again.. */
+        /* Unable to send. Trying again.. */
         if((*execq = StartMQ(EXECQUEUE,WRITE)) < 0)
         {
             *notify+=1;

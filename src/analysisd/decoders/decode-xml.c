@@ -69,7 +69,7 @@ void ReadDecodeXML(char *file)
     /* Applying any variable found */
     if(OS_ApplyVariables(&xml) != 0)
     {
-        ErrorExit("decode-xml: Impossible to apply the variables.");
+        ErrorExit("decode-xml: Unable to apply the variables.");
     }
 
 

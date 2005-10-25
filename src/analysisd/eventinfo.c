@@ -35,7 +35,7 @@
  * Will look if any of the last events (inside the timeframe)
  * match the specified rule. 
  */
-Eventinfo *Search_LastEvents(Eventinfo *my_lf)
+Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
 {
     EventNode *eventnode_pt;
 
@@ -54,14 +54,11 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf)
         
         /* If time is outside the timeframe, return */
         if((c_time - lf->time) > currently_rule->timeframe)
+        {
+            my_lf->last_events[0] = NULL;
             return(NULL);
+        }
         
-        /* Don't search for events that were already matched 
-         * on the same rule.
-         */
-        if(my_lf->matched == lf->level)
-            break;
-            
         /* If regex does not match, go to next */
         if(currently_rule->if_matched_regex)
         {

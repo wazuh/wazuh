@@ -227,7 +227,7 @@ int add()
     printf("\n");
     fp = fopen(KEYS_FILE,"a");
     if(!fp)
-        ErrorExit("%s: Impossible to open %s",ARGV0,KEYS_FILE);
+        ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
     fclose(fp);
 
     /* Opening for reading */
@@ -312,7 +312,7 @@ int add()
 
         fp = fopen(KEYS_FILE,"a");
         if(!fp)
-            ErrorExit("%s: Impossible to open %s",ARGV0,KEYS_FILE);
+            ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
 
         snprintf(str1, 64, "%d%s%d",time3-time2, name, rand1);
         snprintf(str2, 64, "%d%s%s%d", time2-time1, ip, id, rand2);
@@ -320,7 +320,7 @@ int add()
         OS_MD5_Str(str1, md1);
         OS_MD5_Str(str2, md2);
 
-        snprintf(str1, 64, "%s%d%d",md1,getpid(),rand());
+        snprintf(str1, 64, "%s%d%d",md1,(int)getpid(),rand());
         OS_MD5_Str(str1, md1);
 
         fprintf(fp,"%s %s %s %s%s\n",id, name, ip, md1,md2);
@@ -416,9 +416,7 @@ int k_import()
     fp = fopen(KEYS_FILE,"w");
     if(!fp)
     {
-        printf("%s: Error. Impossible to open the agent key file for writting"
-                ,ARGV0);
-        exit(1);
+        ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
     }
 
     printf("Provide the Key generated from the server.\n");
@@ -591,15 +589,8 @@ int main(int argc, char **argv)
     
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
-        ErrorExit("%s: Impossible to chroot to: %s",ARGV0,dir);
+        ErrorExit(CHROOT_ERROR, ARGV0, dir);
 
-    /* Setting umask */
-   // n_umask = umask(0027);
-
-    //fp = fopen(KEYS_FILE,"a");
-    //if(!fp)
-      //  ErrorExit("%s: Impossible to open %s",ARGV0,KEYS_FILE);
-    
     
     /* Little shell */
     while(1)
@@ -612,15 +603,15 @@ int main(int argc, char **argv)
         printf("   (A)dd an agent (A).\n");    
         printf("   (E)xtract key for an agent (E).\n");    
         printf("   (R)emove an agent (R).\n");
-        #endif
-        
+        #else
         printf("   (I)mport key for an agent (I).\n");    
+        #endif
         printf("   (Q)uit.\n");
 
         #ifdef CLIENT
         printf("Choose your actions: I or Q: ");
         #else
-        printf("Choose your actions: A,E,I,R or Q: ");
+        printf("Choose your actions: A,E,R or Q: ");
         #endif
         
         fflush(stdout);

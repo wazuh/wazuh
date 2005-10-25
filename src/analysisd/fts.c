@@ -171,7 +171,7 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
         fp = fopen(queue,"r");
         if(!fp)
         {
-            merror("int-fts: Impossible to open the fts queue for read");
+            merror("int-fts: Unable to open the fts queue for read");
             return(-1);
         }
 
@@ -206,7 +206,7 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
     fp = fopen(queue,"a");
     if(!fp)
     {
-        merror("int-fts: Impossible to open the fts queue to write.");
+        merror("int-fts: Unable to open the fts queue to write.");
         return(-1);
     }
     

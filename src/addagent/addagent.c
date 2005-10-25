@@ -166,14 +166,14 @@ int main(int argc, char **argv)
     
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
-        ErrorExit("%s: Impossible to chroot to: %s",ARGV0,dir);
+        ErrorExit(CHROOT_ERROR, ARGV0, dir);
 
     /* Setting umask */
     n_umask = umask(0027);
 
     fp = fopen(KEYS_FILE,"a");
     if(!fp)
-        ErrorExit("%s: Impossible to open %s",ARGV0,KEYS_FILE);
+        ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
 
     /* some randoness to the key string */
     srand( (unsigned) time(0) + getpid() );
@@ -207,7 +207,7 @@ int main(int argc, char **argv)
     snprintf(tmpstr1,64,"%s-%s",KEYS_FILE_NEW,id);
     fp = fopen(tmpstr1,"w");
     if(!fp)
-        ErrorExit("%s: Impossible to open \"%s\"",ARGV0,tmpstr1);
+        ErrorExit(FOPEN_ERROR ,ARGV0,tmpstr1);
 
     fprintf(fp,"%s %s %s %s%s\n",id, name, ip, md1,md2);
     fclose(fp);

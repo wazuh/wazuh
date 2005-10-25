@@ -148,7 +148,7 @@ void OS_Createmail(int *mailq, Eventinfo *lf)
 
     if(OS_SendMailQ(*mailq, &msg) < 0)
     {
-        /* Impossible to send. Trying again.. */
+        /* Unable to send. Trying again.. */
         merror("%s: Error sending alert information to maild.",ARGV0);
         
         if((*mailq = StartMQ(MAILQUEUE,WRITE)) < 0)

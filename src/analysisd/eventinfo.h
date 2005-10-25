@@ -18,6 +18,7 @@
 #ifndef _EVTINFO__H
 
 #define _EVTINFO__H
+#include "rules.h"
 
 /* Event Information structure */
 typedef struct _Eventinfo
@@ -82,7 +83,7 @@ Eventinfo *currently_lf;
 /** Functions for events **/
 
 /* Search for matches in the last events */
-Eventinfo *Search_LastEvents(Eventinfo *lf);
+Eventinfo *Search_LastEvents(Eventinfo *lf, RuleInfo *currently_rule);
 
 /* Zero the eventinfo structure */
 void Zero_Eventinfo(Eventinfo *lf);

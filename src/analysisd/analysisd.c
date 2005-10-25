@@ -66,7 +66,7 @@ int __crt_wday;
 
 /* Internal Functions */
 void OS_ReadMSG(int m_queue);
-int OS_CheckIfRuleMatch(Eventinfo *lf);
+RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 
 
 /** External functions prototypes (only called here) **/
@@ -256,9 +256,11 @@ void OS_ReadMSG(int m_queue)
     
 
     /* Time structures */
-    int today=0;
-    int thishour=0;
+    int today = 0;
+    int thishour = 0;
 
+    int mt_now = 0;
+    
     /* Null to global currently pointers */
     currently_lf = NULL;
     currently_rule = NULL;
@@ -333,8 +335,6 @@ void OS_ReadMSG(int m_queue)
         /* Receive message from queue */
         if((msg = OS_RecvUnix(m_queue, OS_MAXSTR)) != NULL)
         {
-            int chld_node_matched = 0;
-
             RuleNode *rulenode_pt;
                         
             /* Getting the time we received the event */
@@ -481,70 +481,19 @@ void OS_ReadMSG(int m_queue)
 
             do
             {
-                currently_rule = rulenode_pt->ruleinfo;
-          
-                if(!OS_CheckIfRuleMatch(lf)) /* 0 = didn't match */
+                /* Checking each rule. */
+                if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt)) 
+                        == NULL)
                 {
                     continue;
                 }
 
-                /* Checking any dependent rule */
-                if(rulenode_pt->child)
+                /* Checking ignore time */ 
+                if(currently_rule->ignore_time && 
+                        (currently_rule->time_ignored == 0))
                 {
-                    RuleNode *child_node = rulenode_pt->child;
-
-                    #ifdef DEBUG
-                    verbose("%s: DEBUG: Checking for the child rule",ARGV0);
-                    #endif
-                    
-                    chld_node_matched = 0;
-
-                    while(child_node)
-                    {
-                        currently_rule = child_node->ruleinfo;
-                        if(OS_CheckIfRuleMatch(lf))
-                        {
-                            #ifdef DEBUG
-                            verbose("%s: DEBUG: Found child",ARGV0);
-                            #endif
-
-                            chld_node_matched = 1;
-                            break;
-                        }
-                        child_node = child_node->next;
-                    }
-
-                    /* If the child node didn't match */
-                    if(chld_node_matched == 0)
-                    {
-                        currently_rule = rulenode_pt->ruleinfo;
-                        
-                        if(currently_rule->ignore_time)
-                        {
-                            currently_rule->time_ignored = lf->time;
-                        }
-                    }
-                
-                    else
-                    {
-                        /* If the children rule matched and has a ignore
-                         * time set, ignore the parent rule also
-                         */
-                        if(currently_rule->ignore_time)
-                        {
-                            currently_rule->time_ignored = lf->time;
-                            rulenode_pt->ruleinfo->time_ignored = lf->time; 
-                        }
-                    } 
-                } 
-                
-                /* If no child rule */
-                else
-                {
-                    if(currently_rule->ignore_time)
-                    {
-                        currently_rule->time_ignored = lf->time;
-                    }
+                    currently_rule->time_ignored = lf->time;
+                    mt_now = 1;
                 }
                 
                 /* Rule fired (if reached here) */
@@ -553,12 +502,14 @@ void OS_ReadMSG(int m_queue)
 
                 /* If not alert set, keep going */
                 if(currently_rule->noalert)
-                    break;
+                    continue;
                 
                 /* Checking if rule is supposed to be ignored */
                 if(currently_rule->time_ignored)
                 {
-                    if((lf->time - currently_rule->time_ignored) < 
+                    if(mt_now)
+                        mt_now = 0;
+                    else if((lf->time - currently_rule->time_ignored) < 
                             currently_rule->ignore_time)
                         break;
                     else
@@ -668,12 +619,21 @@ void OS_ReadMSG(int m_queue)
 /* CheckIfRuleMatch v0.1
  * Will check if the currently_rule matches the event information
  */
-int OS_CheckIfRuleMatch(Eventinfo *lf)
+RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
 {
-
+    RuleInfo *currently_rule = curr_node->ruleinfo;
+    
+    /* Can't be null */
+    if(!currently_rule)
+    {
+        merror("%s: Inconsistent state. currently rule NULL", ARGV0);
+        return(NULL);
+    }
+    
+    /* Group checking */
     if(!OS_Match(lf->group,currently_rule->group)
             && !OS_Match("all",lf->group))
-        return(0);
+        return(NULL);
 
 
     /* Checking if any word to match exist */
@@ -681,7 +641,7 @@ int OS_CheckIfRuleMatch(Eventinfo *lf)
     {
         if(!OS_Match(currently_rule->match,
                     lf->log))
-            return(0);
+            return(NULL);
     }	   	   
 
     
@@ -689,26 +649,26 @@ int OS_CheckIfRuleMatch(Eventinfo *lf)
     if(currently_rule->regex)
     {
         if(!OS_Regex(currently_rule->regex,lf->log))
-            return(0);
+            return(NULL);
     }
 
-    /* Checking if exist any regex for this rule */
+    /* Checking if exist any user to match */
     if(currently_rule->user)
     {
         if(lf->dstuser)
         {
             if(!OS_Match(currently_rule->user,lf->dstuser))
-                return(0);
+                return(NULL);
         }
         else if(lf->user)
         {
             if(!OS_Match(currently_rule->user,lf->user))
-                return(0);
+                return(NULL);
         }
         else
         {
             /* no user set */
-            return(0);
+            return(NULL);
         }
     }
 
@@ -717,7 +677,7 @@ int OS_CheckIfRuleMatch(Eventinfo *lf)
     if(currently_rule->maxsize)
     {
         if(strlen(lf->log) < currently_rule->maxsize)
-            return(0);
+            return(NULL);
     }
    
    
@@ -732,7 +692,7 @@ int OS_CheckIfRuleMatch(Eventinfo *lf)
                 ARGV0);
         #endif
 
-        found_lf = Search_LastEvents(lf);
+        found_lf = Search_LastEvents(lf, currently_rule);
         if(found_lf)
         {
             /* Found Event */
@@ -745,12 +705,30 @@ int OS_CheckIfRuleMatch(Eventinfo *lf)
         else
         {
             /* Didn't match... */
-            return(0);
+            return(NULL);
         }
 
     }
 
-    return(1);  /* Matched */
+    /* Search for dependent rules */
+    if(curr_node->child)
+    {
+        RuleNode *child_node = curr_node->child;
+        RuleInfo *child_rule = NULL;
+        
+        while(child_node)
+        {
+            child_rule = OS_CheckIfRuleMatch(lf, child_node);
+            if(child_rule != NULL)
+            {
+                return(child_rule);
+            }
+            
+            child_node = child_node->next;
+        }
+    }
+    
+    return(currently_rule);  /* Matched */
 }
 
 /* EOF */
