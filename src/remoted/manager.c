@@ -434,6 +434,7 @@ void *mgr_handle(void *arg)
     if(!f_sum)
     {
         /* Nothing to share with agent */
+        free_thread(to_thread);
         return(NULL);
     }
 
