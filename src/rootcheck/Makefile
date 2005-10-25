@@ -9,15 +9,15 @@ NAME=ossec-rootcheck
 include ../Config.Make
 
 
-OBJS = *.c ${OS_SHARED} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_CRYPTO}
+OBJS = *.c ${OS_SHARED} ${OS_XML}
 
 rootcheck:
-		$(CC) $(CFLAGS) -c *.c
+		$(CC) $(CFLAGS) -c *.c -D_GNU_SOURCE
 		ar cru rootcheck_lib.a *.o
 		ranlib rootcheck_lib.a
         
 binary:        
-		$(CC) $(CFLAGS) $(OBJS) -U OSSECHIDS -o ${NAME}
+		$(CC) $(CFLAGS) $(OBJS) -U OSSECHIDS -D_GNU_SOURCE -o ${NAME}
 clean:
 		${CLEAN} rootcheck_lib.a
 build:

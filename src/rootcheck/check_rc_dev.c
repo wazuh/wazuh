@@ -21,6 +21,9 @@
 #include <dirent.h>
 #include <errno.h>
 
+/* Solaris happy */
+#include <limits.h>
+
 #include "headers/defs.h"
 #include "headers/debug_op.h"
 
@@ -70,15 +73,35 @@ int read_dev_file(char *file_name)
 int read_dev_dir(char *dir_name)
 {
     int i;
+    int ign_size = 0;
     
     DIR *dp;
     
 	struct dirent *entry;
-	
+    
     char *(ignore_dev[]) = {"MAKEDEV","README.MAKEDEV",
                             "MAKEDEV.README", ".udevdb",
-                            ".udev.tdb"};
-        
+                            ".udev.tdb", ".initramfs-tools",
+                            "MAKEDEV.local",
+    #ifdef SOLARIS                            
+                            ".devfsadm_dev.lock",
+                            ".devlink_db_lock",
+                            ".devlink_db",
+                            ".devfsadm_daemon.lock",
+                            ".devfsadm_synch_door",
+    #elif Darwin
+                            "fd",                        
+    #endif
+                            NULL};    
+    
+    ign_size = 6;
+    
+    #ifdef SOLARIS
+    ign_size = 11; /* +5 */
+    #elif Darwin
+    ign_size = 7;
+    #endif
+    
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
     {
         merror("%s: Invalid directory given",ARGV0);
@@ -104,11 +127,13 @@ int read_dev_dir(char *dir_name)
         _dev_total++;
          
         /* Do not look for the ignored files */
-        for(i = 0;i<=4;i++)
+        for(i = 0;i<=ign_size;i++)
+        {
             if(strcmp(ignore_dev[i], entry->d_name) == 0)
                 break;
+        }
        
-        if(i < 5)
+        if(i <= ign_size)
             continue;
              
         snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);

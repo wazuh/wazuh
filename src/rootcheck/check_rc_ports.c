@@ -115,6 +115,17 @@ void test_ports(int proto, int *_errors, int *_total)
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             }
         }
+
+        if((*_errors) > 25)
+        {
+            char op_msg[OS_MAXSTR +1];
+            snprintf(op_msg, OS_MAXSTR, "Excessive number of '%s' ports "
+                             "hidden. It maybe a false-positive or "
+                             "something really bad is going on.",
+                             (proto == IPPROTO_UDP)? "udp" : "tcp" );
+            notify_rk(ALERT_SYSTEM_CRIT, op_msg);
+            return;
+        }
     }
 
 }

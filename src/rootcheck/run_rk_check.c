@@ -21,15 +21,17 @@
 #include <dirent.h>
 #include <errno.h>
 
-#include "os_crypto/md5/md5_op.h"
 
 #include "headers/defs.h"
 #include "headers/debug_op.h"
+
+#ifdef OSSECHIDS
 #include "headers/mq_op.h"
+#endif
 
 #include "rootcheck.h"
 
-
+#include "error_messages/error_messages.h"
 
 
 /* notify_rk
@@ -54,7 +56,8 @@ int notify_rk(int rk_type, char *msg)
     /* No need to alert on that to the server */
     if(rk_type <= ALERT_SYSTEM_ERROR)
         return(0);
-          
+
+    #ifdef OSSECHIDS    
     if(SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK, ROOTCHECK_MQ) < 0)
     {
         merror("%s: Error sending message to queue",ARGV0);
@@ -64,20 +67,14 @@ int notify_rk(int rk_type, char *msg)
             return(0);
         }
 
-        close(rootcheck.queue);
-        
         if((rootcheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         {
-            merror("%s: Impossible to open queue",ARGV0);
-            sleep(60);
-
-            if((rootcheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-                ErrorExit("%s: Impossible to access queue %s",
-                               ARGV0,DEFAULTQPATH); 
+            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
         }
 
         SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK, ROOTCHECK_MQ);
     }
+    #endif
 
     return(0);        
 }

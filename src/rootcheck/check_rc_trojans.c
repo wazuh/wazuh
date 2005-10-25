@@ -130,10 +130,22 @@ void check_rc_trojans(char *basedir, FILE *fp)
 
 
         /* Removing any possible space of \t at the end */
-        nbuf = index(string_to_look, ' ');
-        if(nbuf)
+        nbuf = string_to_look;
+        while(*nbuf != '\0')
         {
-            *nbuf = '\0';
+            if(*nbuf == ' ')
+            {
+                nbuf++;
+                if((*nbuf == '\0') ||
+                   (*nbuf == ' ')  ||
+                   (*nbuf == '\t'))
+                {
+                    nbuf--;
+                    *nbuf = '\0';
+                    break;
+                }
+            }
+            nbuf++;
         }
 
         nbuf = index(string_to_look, '\t');

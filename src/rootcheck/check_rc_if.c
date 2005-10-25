@@ -19,7 +19,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
- 
+
+/* Solaris happy again */
+#ifdef SOLARIS
+#include <stropts.h>
+#include <sys/sockio.h>
+#endif
 
 #include "headers/defs.h"
 #include "headers/debug_op.h"

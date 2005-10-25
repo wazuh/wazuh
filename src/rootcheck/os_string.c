@@ -36,7 +36,6 @@
 
 #include <sys/types.h>
 
-#include <a.out.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -45,7 +44,45 @@
 #include <string.h>
 #include <locale.h>
 #include <unistd.h>
-#include <err.h>
+
+/* Again, making solaris happy... */
+#ifdef SOLARIS
+#include <sys/exechdr.h>
+
+#elif defined Darwin
+#include <sys/exec.h>
+#else
+
+#include <a.out.h>
+#endif
+
+
+#ifndef PAGSIZ
+#define       PAGSIZ          0x02000
+#endif
+
+#ifndef OLD_PAGSIZ
+#define       OLD_PAGSIZ      0x00800
+#endif
+
+#ifndef N_BADMAG
+#define       N_BADMAG(x) \
+    (((x).a_magic)!=OMAGIC && ((x).a_magic)!=NMAGIC && ((x).a_magic)!=ZMAGIC)
+#endif
+
+#ifndef N_PAGSIZ
+#define       N_PAGSIZ(x) \
+        ((x).a_machtype == M_OLDSUN2? OLD_PAGSIZ : PAGSIZ)
+#endif
+
+#ifndef N_TXTOFF
+#define       N_TXTOFF(x) \
+        /* text segment */ \
+    ((x).a_machtype == M_OLDSUN2 \
+           ? ((x).a_magic==ZMAGIC ? N_PAGSIZ(x) : sizeof (struct exec)) \
+           : ((x).a_magic==ZMAGIC ? 0 : sizeof (struct exec)) )
+#endif
+
 
 #include "headers/defs.h"
 #include "headers/debug_op.h"
@@ -100,7 +137,7 @@ int os_string(char *file, char *regex)
     
     
     /* Allocating for the buffer */ 
-    bfr = calloc(STR_MINLEN + 1, sizeof(char *));
+    bfr = calloc(STR_MINLEN + 2, sizeof(char *));
     if (!bfr)
     {
         merror(MEM_ERROR, ARGV0);
@@ -150,7 +187,6 @@ int os_string(char *file, char *regex)
         oss.hcnt = 0;
     }
 
-
     /* Read the file and perform the regex comparison */
     for (cnt = 0; (ch = os_getch(&oss)) != EOF;) 
     {
@@ -162,7 +198,7 @@ int os_string(char *file, char *regex)
             if (++cnt < STR_MINLEN)
                 continue;
             
-            strncpy(line, bfr, STR_MINLEN +1);    
+            strncpy(line, (char *)bfr, STR_MINLEN +1);    
             buf = line;
             buf+=strlen(line);
             
@@ -179,19 +215,25 @@ int os_string(char *file, char *regex)
                     *buf = '\0';
                     break;
                 }
+		cnt++;
             }
 
             *buf = '\0';
 
             if(OS_PRegex(line, regex))
             {
+                if(oss.fp)
+                    fclose(oss.fp);
                 free(bfr);
                 return(1);
             }
         }
+
         cnt = 0;
     }
 
+    if(oss.fp)
+        fclose(oss.fp);
     free(bfr);
     return(0);
 }

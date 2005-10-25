@@ -20,7 +20,6 @@ usr/bin/adore			! Adore Worm ::/rootkits/adorew.php
 #T.R.K rootkit
 usr/bin/soucemask		! TRK rootkit ::/rootkits/trk.php
 usr/bin/sourcemask		! TRK rootkit ::/rootkits/trk.php
-usr/bin/ct			    ! TRK rootkit ::/rootkits/trk.php
 
 # 55.808.A Worm
 tmp/.../a			    ! 55808.A Worm ::
@@ -231,9 +230,6 @@ usr/doc/.nigol			! Old rootkits ::rootkits/Old.php
 # Kenga3 rootkit
 usr/include/. .         ! Kenga3 rootkit
 
-# OpenBSD rootkit
-usr/lib/security/libgcj.security    ! OpenBSD rootkit
-
 # ESRK rootkit
 usr/lib/tcl5.3          ! ESRK rootkit
 
@@ -262,6 +258,10 @@ usr/include/iceseed.h   ! Madalin rootkit
 # shv5 rootkit XXX http://www.askaboutskating.com/forum/.../shv5/setup
 lib/libsh.so            ! shv5 rootkit
 usr/lib/libsh           ! shv5 rootkit
+
+# BMBL rootkit (http://www.giac.com/practical/GSEC/Steve_Terrell_GSEC.pdf)
+etc/.bmbl               ! BMBL rootkit
+etc/.bmbl/sk            ! BMBL rootkit
 
 #Suspicious files
 etc/rc.d/init.d/rc.modules	! Suspicious file ::rootkits/Suspicious.php
@@ -313,6 +313,5 @@ sbin/pback                  ! Suspicious file ::rootkits/Suspicious.php
 usr/man/man3/psid           ! Suspicious file ::rootkits/Suspicious.php
 proc/kset                   ! Suspicious file ::rootkits/Suspicious.php
 usr/bin/gib                 ! Suspicious file ::rootkits/Suspicious.php
-usr/bin/ct                  ! Suspicious file ::rootkits/Suspicious.php
 usr/bin/snick               ! Suspicious file ::rootkits/Suspicious.php
 usr/bin/kfl                 ! Suspicious file ::rootkits/Suspicious.php

@@ -22,7 +22,6 @@
 #include "headers/debug_op.h"
 
 #include "os_xml/os_xml.h"
-#include "os_regex/os_regex.h"
 
 #include "rootcheck.h"
 

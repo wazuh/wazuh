@@ -29,7 +29,11 @@
 
 #include "headers/sig_op.h"
 #include "headers/file_op.h"
+
+#ifdef OSSECHIDS
 #include "headers/mq_op.h"
+#endif
+
 #include "headers/defs.h"
 #include "headers/help.h"
 #include "headers/debug_op.h"
@@ -66,8 +70,12 @@ int rootcheck_init()
 {
     
 #endif    
-    
+   
+    #ifdef OSSECHIDS 
     char *cfg = DEFAULTCPATH;
+    #else
+    char *cfg = "./rootcheck.conf";
+    #endif
     
     /* Zeroing the structure */
     rootcheck.workdir = NULL;
@@ -131,7 +139,7 @@ int rootcheck_init()
         rootcheck.workdir = DEFAULTDIR;
 
 
-    
+    #ifdef OSSECHIDS
     /* Connect to the queue if configured to do so */
     if(rootcheck.notify == QUEUE)
     {
@@ -154,16 +162,16 @@ int rootcheck_init()
             }
         }
     }
+    #endif
 
-
-#ifndef OSSECHIDS
+    #ifndef OSSECHIDS
     /* Start the signal handling */
     StartSIG(ARGV0);
 
-#else
+    #else
     return(0);
         
-#endif
+    #endif
 
     
     debug1("%s: DEBUG: Running run_rk_check",ARGV0);

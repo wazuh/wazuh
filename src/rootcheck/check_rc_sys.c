@@ -21,6 +21,9 @@
 #include <dirent.h>
 #include <errno.h>
 
+/* Solaris happy */
+#include <limits.h>
+
 #include "headers/defs.h"
 #include "headers/debug_op.h"
 
@@ -50,6 +53,15 @@ int read_sys_file(char *file_name)
     /* If directory, read the directory */
     else if(S_ISDIR(statbuf.st_mode))
     {
+        /* Making Darwin happy. for some reason,
+         * when I read /dev/fd, it goes forever on
+         * /dev/fd5, /dev/fd6, etc.. weird
+         */
+        #ifdef Darwin
+        if(strcmp("/dev/fd", file_name) == 0)
+            return(0);
+        #endif
+                
         return(read_sys_dir(file_name));
     }
     

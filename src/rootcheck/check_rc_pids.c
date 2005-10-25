@@ -70,7 +70,9 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         /* checking if process appears on ps */
         if(*ps)
         {
-            snprintf(command, OS_MAXSTR, "%s -p %d > /dev/null 2>&1", ps, i);
+            snprintf(command, OS_MAXSTR, "%s -p %d > /dev/null 2>&1", 
+                                                        ps, 
+                                                        (int)i);
 
             /* Found PID on ps */
             _ps0 = 0;
@@ -107,7 +109,7 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         
             snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
                              "kill or getsid. Possible kernel-level "
-                             "rootkit.", i);
+                             "rootkit.", (int)i);
             
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             (*_errors)++;
@@ -117,7 +119,8 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         {
             char op_msg[OS_MAXSTR +1];
             snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
-                             "ps. Possible trojaned version installed.",i);
+                             "ps. Possible trojaned version installed.",
+                             (int)i);
            
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg); 
             (*_errors)++;

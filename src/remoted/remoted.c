@@ -43,12 +43,11 @@
 #include "headers/sec.h"
 #include "headers/pthreads_op.h"
 
+/* Error messages */
+#include "error_messages/error_messages.h"
 
 short int dbg_flag=0;
 short int chroot_flag=0;
-
-/* Error messages */
-#include "error_messages/error_messages.h"
 
 
 /*  manager prototypes */
@@ -87,7 +86,7 @@ int OS_IPNotAllowed(char *srcip, remoted *logr)
         }
     }
 
-    /* If the io is not allowed, it will be denied */
+    /* If the ip is not allowed, it will be denied */
     return(1);
 }
 
@@ -107,7 +106,6 @@ void _startit(int position,int connection_type, int uid,
     char srcip[IPSIZE];
     
     int port = 0;
-    int _local_err = 0;
     
     
     /* if SYSLOG and allowips is not defined, exit */
@@ -163,15 +161,7 @@ void _startit(int position,int connection_type, int uid,
      */
     if((m_queue = StartMQ(DEFAULTQUEUE,WRITE)) < 0)
     {	
-        merror(QUEUE_ERROR,ARGV0, DEFAULTQUEUE);
-        sleep(5);
-        if((m_queue = StartMQ(DEFAULTQUEUE,WRITE)) < 0)
-        {
-            merror(QUEUE_ERROR,ARGV0, DEFAULTQUEUE);
-            sleep(10);
-            if((m_queue = StartMQ(DEFAULTQUEUE,WRITE)) < 0)
-                ErrorExit(QUEUE_FATAL,ARGV0, DEFAULTQUEUE);
-        }
+        ErrorExit(QUEUE_FATAL,ARGV0, DEFAULTQUEUE);
     }
 
 
@@ -189,9 +179,6 @@ void _startit(int position,int connection_type, int uid,
 
     while(1)
     {
-        if(_local_err == 5)
-            ErrorExit(QUEUE_FATAL,ARGV0,DEFAULTQUEUE);
-
         /* Receiving message - up to MAXSTR */
         buffer = OS_RecvAllUDP(sock, OS_MAXSTR, srcip, IPSIZE);
 
@@ -207,8 +194,10 @@ void _startit(int position,int connection_type, int uid,
             int agentid;
             char *cleartext_msg;
             char *tmp_msg;
-    
-            if((agentid = CheckAllowedIP(&keys, srcip, NULL) == -1))
+  
+            /* Getting a valid agentid */ 
+            agentid = CheckAllowedIP(&keys, srcip, NULL); 
+            if(agentid < 0)
             {
                 merror(DENYIP_ERROR,ARGV0,srcip);
                 free(buffer);
@@ -239,6 +228,7 @@ void _startit(int position,int connection_type, int uid,
             if((tmp_msg[0] == '#') && (tmp_msg[1] == '!') &&
                                       (tmp_msg[2] == '-'))
             {
+                tmp_msg+=3;
                 start_mgr(agentid, tmp_msg, srcip, port);
             }
             
@@ -254,18 +244,14 @@ void _startit(int position,int connection_type, int uid,
                 
                 if((m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
                 {
-                    merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
-                    sleep(_local_err);
+                    ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
                 }
-                
-                _local_err++;
             }
-            else
-                _local_err = 0;
 
             free(cleartext_msg);    
         }
 
+        /* syslog message */
         else
         {
             /* Checking if IP is allowed here */
@@ -273,19 +259,16 @@ void _startit(int position,int connection_type, int uid,
             {
                 merror(DENYIP_ERROR,ARGV0,srcip);
             }
+            
             else if(SendMSG(m_queue,buffer,srcip,logr->group[position],
                         SYSLOG_MQ) < 0)
             {
                 merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
                 if((m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
                 {
-                    merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
-                    sleep(_local_err);
+                    ErrorExit(QUEUE_FATAL,ARGV0,DEFAULTQUEUE);
                 }
-                _local_err++;
             }
-            else
-                _local_err = 0;
         }
         
         free(buffer);
@@ -304,10 +287,10 @@ int main(int argc, char **argv)
     
     int connection_type=0;
     
-    char *cfg=DEFAULTCPATH;
-    char *dir=DEFAULTDIR;
-    char *user=REMUSER;
-    char *group=GROUPGLOBAL;
+    char *cfg = DEFAULTCPATH;
+    char *dir = DEFAULTDIR;
+    char *user = REMUSER;
+    char *group = GROUPGLOBAL;
 
     while((c = getopt(argc, argv, "dhu:g:D:")) != -1){
         switch(c){
