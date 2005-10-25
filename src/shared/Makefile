@@ -2,7 +2,7 @@
 # Daniel B. Cid <dcid@sourcefire.com>||<daniel@underlinux.com.br>
 # http://www.ossec.net/hids/
 
-NAME=shared
+NAME=shared-libs
 PT=../
 
 include ../Config.Make
