@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
+#include <limits.h>
 
 #include "os_crypto/md5/md5_op.h"
 
@@ -160,7 +161,7 @@ int create_db()
     syscheck.fp = fopen(syscheck.db,"w+"); /* Read and write */
     if(!syscheck.fp)
     {
-        ErrorExit("%s: Impossible to create syscheck database "
+        ErrorExit("%s: Unable to create syscheck database "
                   "at '%s'. Exiting..",ARGV0,syscheck.db);
         return(0);    
     }

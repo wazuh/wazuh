@@ -216,7 +216,7 @@ int main(int argc, char **argv)
         if(!syscheck.fp)
         {
             merror("%s: Did you create the syscheck database ?",ARGV0);
-            ErrorExit("%s: Impossible to create syscheck database "
+            ErrorExit("%s: Unable to create syscheck database "
                   "at '%s/%s'. Exiting..",ARGV0,syscheck.workdir,SYSCHECK_DB);
             return(0);    
         }

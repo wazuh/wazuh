@@ -24,6 +24,7 @@
 #include <sys/param.h>
 #include <dirent.h>
 #include <errno.h>
+#include <limits.h>
 
 #include "os_crypto/md5/md5_op.h"
 
@@ -34,6 +35,8 @@
 #include "syscheck.h"
 
 #include "rootcheck/rootcheck.h"
+
+#include "error_messages/error_messages.h"
 
 #define MAX_LINE PATH_MAX+256
 
@@ -66,12 +69,7 @@ int notify_agent(char *msg)
         
         if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         {
-            merror("%s: Impossible to open queue",ARGV0);
-            sleep(60);
-
-            if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-                ErrorExit("%s: Impossible to access queue %s",
-                               ARGV0,DEFAULTQPATH); 
+            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
         }
 
         /* If we reach here, we can send it again */

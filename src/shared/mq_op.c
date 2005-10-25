@@ -22,6 +22,8 @@
 #include "os_net/os_net.h"
 #include "os_regex/os_regex.h"
 
+#include "error_messages/error_messages.h"
+
 /* StartMQ v0.2, 2004/07/30
  * Start the Message Queue. type: WRITE||READ
  */
@@ -33,7 +35,13 @@ int StartMQ(char * path, short int type)
     {
         if(File_DateofChange(path) < 0)
         {
-            return(-1);
+            merror(QUEUE_ERROR, ARGV0, path);
+            sleep(15);
+            if(File_DateofChange(path) < 0)
+            {
+                sleep(15);
+                return(-1);
+            }
         }
 
         return(OS_ConnectUnixDomain(path));
@@ -95,7 +103,7 @@ int SendMSG(int queue, char *message, char *locmsg,
      */
     if(OS_SendUnix(queue, tmpstr,0) < 0)
     {
-        /* Impossible to send. Trying again.. */
+        /* Unable to send. Trying again.. */
         usleep(10000);
         if(OS_SendUnix(queue, tmpstr,0) < 0)
         {
