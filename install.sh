@@ -554,6 +554,9 @@ echo "       <allowed-ips>10.1.1.</allowed-ips>  - To allow network 10.1.1.0/24"
 echo "       <allowed-ips>10.1.</allowed-ips> - To allow network 10.1.0.0/16"
 echo "     </global>"
 echo ""
+echo " --- Press any key to continue --- "
+read ANY
+
 fi
 
 elif [ "X$INSTYPE" = "Xclient" ]; then	
@@ -561,10 +564,10 @@ echo " - To communicate with the server, you first need to add this "
 echo "   agent to it. When you have done so, you can run the "
 echo "   $DEFDIR/bin/manage-agents to import the keys from the server."
 echo ""
-fi
-
 echo " --- Press any key to continue --- "
 read ANY
+fi
+
 
 echo " - Depending on your system, check if /etc/rc.d/init.d/ossec "
 echo "   or /etc/rc.local was created/modified. If not, add the following"
