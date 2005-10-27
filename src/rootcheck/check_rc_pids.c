@@ -66,7 +66,18 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         {
             continue;
         }
-        
+       
+        /* Checking the number of errors */ 
+        if((*_errors) > 15)
+        {
+            char op_msg[OS_MAXSTR +1];
+            snprintf(op_msg, OS_MAXSTR, "Excessive number of hidden processes"
+                    ". It maybe a false-positive or "
+                    "something really bad is going on.");
+            notify_rk(ALERT_SYSTEM_CRIT, op_msg);
+            return;
+        }
+                                                                                
         /* checking if process appears on ps */
         if(*ps)
         {
@@ -108,8 +119,8 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
             char op_msg[OS_MAXSTR +1];
         
             snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
-                             "kill or getsid. Possible kernel-level "
-                             "rootkit.", (int)i);
+                             "kill (%d) or getsid (%d). Possible kernel-level"
+                             " rootkit.", (int)i, _kill0, _gsid0);
             
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             (*_errors)++;
