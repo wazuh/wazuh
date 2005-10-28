@@ -24,14 +24,7 @@
    #define ARGV0 "ossec-analysisd"
 #endif
 
-#include "headers/defs.h"
-
-#include "headers/mq_op.h"
-#include "headers/sig_op.h"
-#include "headers/file_op.h"
-#include "headers/debug_op.h"
-#include "headers/help.h"
-#include "headers/privsep_op.h"
+#include "shared.h"
 
 #include "alerts/alerts.h"
 #include "alerts/getloglocation.h"
@@ -41,7 +34,6 @@
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
 
-#include "error_messages/error_messages.h"
 
 /* local headers */
 #include "config.h"
@@ -51,8 +43,6 @@
 #include "analysisd.h"
 
 
-short int dbg_flag=0;
-short int chroot_flag=0;
 
 /* Alert queues */
 int mailq = 0;
@@ -108,14 +98,14 @@ void Update_Hour();
 /* Main function v0.2: 2005/03/22 */
 int main(int argc, char **argv)
 {
-    int c=0,m_queue=0;
-    char *dir=DEFAULTDIR;
-    char *user=USER;
-    char *group=GROUPGLOBAL;
-    int uid=0,gid=0;
+    int c = 0, m_queue = 0;
+    char *dir = DEFAULTDIR;
+    char *user = USER;
+    char *group = GROUPGLOBAL;
+    int uid = 0,gid = 0;
 
     char **rulesfiles;
-    char *cfg=DEFAULTCPATH;
+    char *cfg = DEFAULTCPATH;
 
     while((c = getopt(argc, argv, "dhu:g:D:c:")) != -1){
         switch(c){
@@ -123,26 +113,26 @@ int main(int argc, char **argv)
                 help();
                 break;
             case 'd':
-                dbg_flag++;
+                nowDebug();
                 break;
             case 'u':
                 if(!optarg)
                     ErrorExit("%s: -u needs an argument",ARGV0);
-                user=optarg;
+                user = optarg;
                 break;
             case 'g':
                 if(!optarg)
                     ErrorExit("%s: -g needs an argument",ARGV0);
-                group=optarg;
+                group = optarg;
                 break;
             case 'D':
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
-                dir=optarg;
+                dir = optarg;
             case 'c':
                 if(!optarg)
                     ErrorExit("%s: -c needs an argument",ARGV0);
-                cfg=optarg;
+                cfg = optarg;
                 break;
             default:
                 help();
@@ -150,6 +140,7 @@ int main(int argc, char **argv)
         }
 
     }
+
 
     /* Starting daemon */
     debug1(STARTED_MSG,ARGV0);
@@ -180,7 +171,8 @@ int main(int argc, char **argv)
     if(Privsep_Chroot(dir) < 0)
         ErrorExit(CHROOT_ERROR,ARGV0,dir);
 
-    chroot_flag=1; /* Inside chroot now */
+
+    nowChroot();
 
 
     /* Setting the user */ 
@@ -194,6 +186,7 @@ int main(int argc, char **argv)
 
     /* Creating the rule list */
     Rules_OP_CreateRules();
+
     
     /* Reading the rules */
     {
@@ -210,6 +203,7 @@ int main(int argc, char **argv)
         free(tmp_rules);
     }
 
+
     /* Verbose message */
     debug1(PRIVSEP_MSG,ARGV0,dir,user);
 
@@ -218,30 +212,26 @@ int main(int argc, char **argv)
     if((m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
         ErrorExit(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
 
-    debug1("%s: Started queue at %s",ARGV0,DEFAULTQUEUE);	
 
     /* Signal manipulation	*/
     StartSIG(ARGV0);
 
-    /* Forking and going to the background */
-    if(dbg_flag == 0)
-    {               
-        int pid=0;
-        if((pid = fork()) < 0)
-            ErrorExit(FORK_ERROR,ARGV0);
-        else if(pid == 0)
-        {     
-            /* Creating the PID file */
-            if(CreatePID(ARGV0, getpid()) < 0)
-                ErrorExit(PID_ERROR,ARGV0);
-        }             
-        else                    
-            exit(0);
-    }
 
-    /* Going to read the messages */	
+    /* going on Daemon mode */
+    nowDaemon();
+    goDaemon();
+
+    
+    /* Creating the PID file */
+    if(CreatePID(ARGV0, getpid()) < 0)
+        ErrorExit(PID_ERROR,ARGV0);
+
+
+    /* Going to main loop */	
     OS_ReadMSG(m_queue);
+
     exit(0);
+    
 }
 
 
@@ -252,8 +242,6 @@ int main(int argc, char **argv)
  */
 void OS_ReadMSG(int m_queue)
 {
-
-    
 
     /* Time structures */
     int today = 0;

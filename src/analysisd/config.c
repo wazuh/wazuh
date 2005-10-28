@@ -18,23 +18,18 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "headers/defs.h"
-#include "headers/os_err.h"
+#include "shared.h"
 
-#include "headers/file_op.h"
-#include "headers/config_op.h"
-#include "headers/debug_op.h"
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
 
 #include "analysisd.h"
 #include "config.h"
 
-#include "error_messages/error_messages.h"
-
-extern short int dbg_flag;
 
 #define GetS(x) (x+48)
+
+
 /* GlobalConf vv0.2: 2005/03/03
  * v0.2: Changing to support the new OS_XML
  */

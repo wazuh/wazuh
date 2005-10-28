@@ -33,6 +33,7 @@
 #define THREAD_ERROR  "%s(1109): Error creating new pthread."
 #define READ_ERROR    "%s(1110): Error reading socket."
 #define WAITPID_ERROR "%s(1111): Waitpid error."                                
+#define SETSID_ERROR  "%s(1112): Setsid error."
 
 
 /* COMMON ERRORS */
@@ -57,6 +58,7 @@
 #define RULESLOAD_ERROR	"%s(1219): Unable to access the rules directory."
 #define RULES_ERROR	    "%s(1220): Error loading the rules."
 #define QUEUE_SEND      "%s(1224): Error sending message to queue."
+#define SIGNAL_RECV     "%s(1225): SIGNAL Received. Exit Cleaning..."
 
 #define MAILQ_ERROR	    "%s(1221): No Mail queue at %s"
 #define IMSG_ERROR	    "%s(1222): Invalid msg: %s"
