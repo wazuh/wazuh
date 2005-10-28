@@ -1,0 +1,74 @@
+Active response design
+
+- On the OSSEC configuration file (ossec.conf) you specify the
+  allowed responses and the command to execute:
+
+  <command>
+    <name>test</name>
+    <expect>ip-address, username</expect>
+    <executable>exec1.sh</executable>
+  </command>
+
+  <command>
+    <name>kill-user</name>
+    <expect>username</expect>
+    <executable>killuser</executable>
+  </command>
+
+  You can add as much commands as you want. Every executable
+  must be inside the /var/ossec/exec . They must also have
+  executable permission (allowed formats: .pl, .sh, etc).
+  The "expect" element is not optional. You must specify
+  what the command is expecting to receive. We only allow
+  the ip-address and username (currently).
+  
+  Once you have binded the command names to the executables,
+  a configuration will be generated ( on run-time only) at
+  /var/ossec/etc/shared/exec-commands.conf .
+  This configuration will be shared with all agents.
+  
+  
+- Continuing on the OSSEC configuration file (ossec.conf), now
+  you need to configure the active response.
+  The active response can be executed on 4 different places:
+
+  - On the AS (analysis server).
+  - On the agent that generated the event.
+  - On a specific agent.
+  - Everywhere (danger)
+  
+  * Note that if you want to execute a command on a device that
+    does not support the installation of the agent (like on a PIX
+    firewall, for example), you need to configure the response
+    to be executed on the analysis server. The AS will connect to
+    the remote device and execute it (based on the configuration).
+
+  <active-response>
+    <name>response-1</name>
+    <command>kill-user</command>
+    <location>AS</location>
+    <rules-id>400,401,402</rules-id>
+    <rules-group>attack,xyz</rules-group>
+    <level>3</level>
+  </active-response>  
+
+  The names must be unique.
+  The command must be a command name specified on the "exec" area.
+  The location can be:
+                      AS or analysis-server
+                      local or local-agent (to run on the agent that
+                                            generated the event)
+                      agent:ip             (to run on a specific agent)
+                      agent:name           (to run on a speficic agent)  
+                      all or everywhere    (no explanation necessary)
+  The rules-id is a list (comma separated) of rules to alert.
+  The rules-group is a list of group of rules (see rules config).
+  The level specify that the response should be made on every event
+  with level above the one specified.
+  
+  *Note that the rules-id, rules-group and level follow a boolean OR.
+   It means that the command (in the example above) will be executed
+   on any event above level 3 OR any event that matches rules 400,
+   401 and 402 OR any event that matches the above groups.
+  *You can have multiple commands.
+   
