@@ -9,6 +9,10 @@
  * Foundation
  */
 
+/* v0.2: 2005/10/27: Better handlers 
+ * v0.1: 2004/08/02
+ */
+
 /* Part of the OSSEC HIDS
  * Available at http://www.ossec.net/hids/
  */
@@ -23,64 +27,60 @@
 #include "headers/defs.h"
 #include "headers/debug_op.h"
 
-/* Functions to generate debug/verbose/error messages.
- * Right now, we have two debug levels: 1,2,
- * a verbose mode and a error (merror) function.
- * To see these messages, use the "-d","-v" options
- * (or "-d" twice to see debug2). The merror is printed
- * by default when an important error occur.
- * 
- */
 
-extern short int dbg_flag;
-extern short int chroot_flag;
-short int log_flag;
+int dbg_flag = 0;
+int chroot_flag = 0;
+int daemon_flag = 0;
 
 /* For internal logs */
 #ifndef LOGFILE
-   #define LOGFILE   "/logs/ossec.log"
+#define LOGFILE   "/logs/ossec.log"
 #endif
+
 
 /* _log function */
 void _log(const char * msg,va_list args)
 {
     time_t tm;
     struct tm *p;
+
+    FILE *fp;
+    
     tm = time(NULL);
     p = localtime(&tm);
 
-    if(log_flag == 1)
-    {
-        FILE *fp;
 
-        /* If under chroot, log directly to /logs/ossec.log */
-        if(chroot_flag == 1)
-            fp = fopen(LOGFILE,"a");
-        else
-        {
-            char _logfile[128];
-            memset(_logfile,'\0',128);
-            snprintf(_logfile,127,"%s%s",DEFAULTDIR,LOGFILE);
-            fp = fopen(_logfile, "a");
-        }
-        	
-        if(fp)
-        {
-            (void)fprintf(fp,"%d/%02d/%02d %02d:%02d:%02d ",
-                          p->tm_year+1900,p->tm_mon+1, 
-                          p->tm_mday,p->tm_hour,p->tm_min,p->tm_sec);
-            (void)vfprintf(fp, msg, args);
-            (void)fprintf(fp, "\n");
-            fclose(fp);
-        }
+    /* If under chroot, log directly to /logs/ossec.log */
+    if(chroot_flag == 1)
+        fp = fopen(LOGFILE, "a");
+    else
+    {
+        char _logfile[256];
+        snprintf(_logfile, 256, "%s%s", DEFAULTDIR, LOGFILE);
+        fp = fopen(_logfile, "a");
     }
-    
-    /* Print to stderr */		
-    (void)fprintf(stderr,"%d/%02d/%02d %02d:%02d:%02d ",
-                  p->tm_year+1900,p->tm_mon+1 ,p->tm_mday,
-                  p->tm_hour,p->tm_min,p->tm_sec);
-    (void)vfprintf(stderr, msg, args);
-    (void)fprintf(stderr, "\n");
+
+    if(fp)
+    {
+        (void)fprintf(fp,"%d/%02d/%02d %02d:%02d:%02d ",
+                      p->tm_year+1900,p->tm_mon+1, 
+                      p->tm_mday,p->tm_hour,p->tm_min,p->tm_sec);
+        (void)vfprintf(fp, msg, args);
+        (void)fprintf(fp, "\n");
+        fclose(fp);
+    }
+
+
+    /* Only if not in daemon mode */
+    if(daemon_flag == 0)
+    {
+        /* Print to stderr */		
+        (void)fprintf(stderr,"%d/%02d/%02d %02d:%02d:%02d ",
+                      p->tm_year+1900,p->tm_mon+1 ,p->tm_mday,
+                      p->tm_hour,p->tm_min,p->tm_sec);
+        (void)vfprintf(stderr, msg, args);
+        (void)fprintf(stderr, "\n");
+    }
 }
 
 
@@ -89,7 +89,6 @@ void debug1(const char * msg,...)
     if(dbg_flag >= 1)
     {
         va_list args;
-        log_flag=0;
         va_start(args, msg);
 
         _log(msg, args);
@@ -103,7 +102,6 @@ void debug2(const char * msg,...)
     if(dbg_flag >= 2)
     {
         va_list args;
-        log_flag=0;
         va_start(args, msg);
         _log(msg, args);
         va_end(args);
@@ -113,7 +111,6 @@ void debug2(const char * msg,...)
 void merror(const char * msg,... )
 {
     va_list args;
-    log_flag=1;
     va_start(args, msg);
     _log(msg, args);
     va_end(args);
@@ -122,7 +119,6 @@ void merror(const char * msg,... )
 void verbose(const char * msg,... )
 {
     va_list args;
-    log_flag=0;
     va_start(args, msg);
     _log(msg, args);
     va_end(args);
@@ -131,11 +127,34 @@ void verbose(const char * msg,... )
 void ErrorExit(const char *msg, ...)
 {
     va_list args;
-    log_flag=1;
     va_start(args, msg);
     _log(msg, args);
     va_end(args);
+
     exit(1);
+}
+
+
+void nowChroot()
+{
+    chroot_flag = 1;
+}
+
+
+void nowDaemon()
+{
+    daemon_flag = 1;
+}
+
+
+void nowDebug()
+{
+    dbg_flag++;
+}
+
+int isChroot()
+{
+    return(chroot_flag);
 }
 
 /* EOF */			

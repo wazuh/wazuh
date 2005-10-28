@@ -19,9 +19,8 @@
 #include "maild.h"
 #include "mail_list.h"
 
-#include "headers/defs.h"
-#include "headers/os_err.h"
-#include "headers/debug_op.h"
+#include "shared.h"
+
 #include "os_net/os_net.h"
 #include "os_regex/os_regex.h"
 

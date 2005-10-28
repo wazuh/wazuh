@@ -33,21 +33,10 @@
 
 #include "remoted.h"
 
-#include "headers/defs.h"
-#include "headers/mq_op.h"
-#include "headers/debug_op.h"
-#include "headers/sig_op.h"
-#include "headers/help.h"
-#include "headers/privsep_op.h"
-#include "headers/file_op.h"
-#include "headers/sec.h"
-#include "headers/pthreads_op.h"
+#include "shared.h"
 
-/* Error messages */
-#include "error_messages/error_messages.h"
+#include "sec.h"
 
-short int dbg_flag=0;
-short int chroot_flag=0;
 
 
 /*  manager prototypes */
@@ -145,7 +134,7 @@ void _startit(int position,int connection_type, int uid,
         ErrorExit(CHROOT_ERROR,ARGV0,dir);
 
 
-    chroot_flag = 1; /* Inside chroot now */
+    nowChroot();
 
 
     if(Privsep_SetUser(uid) < 0)
@@ -280,12 +269,11 @@ void _startit(int position,int connection_type, int uid,
  */
 int main(int argc, char **argv)
 {
-    
-    int c,binds=0,i=0,uid=0,gid=0;
+    int c,binds = 0,i = 0,uid = 0,gid = 0;
     
     remoted logr;
     
-    int connection_type=0;
+    int connection_type = 0;
     
     char *cfg = DEFAULTCPATH;
     char *dir = DEFAULTDIR;
@@ -298,7 +286,7 @@ int main(int argc, char **argv)
                 help();
                 break;
             case 'd':
-                dbg_flag++;
+                nowDebug();
                 break;
             case 'u':
                 if(!optarg)
@@ -326,11 +314,12 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    /* Return < 0 if bad configured */
+    /* Return < 0 on error */
     else if(binds < 0)
         ErrorExit(CONFIG_ERROR,ARGV0);
 
-    /*Check if the user/group given are valid */
+
+    /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if((uid < 0)||(gid < 0))
@@ -340,14 +329,21 @@ int main(int argc, char **argv)
     /* Starting the signal manipulation */
     StartSIG(ARGV0);	
 
+    i = getpid();
 
-    /* Creating some randoness (before forking) */
-    srand( time(0)+getpid()+getppid() );
+
+    /* Going on daemon */
+    nowDaemon();
+    goDaemon();
+
+    
+    /* Creating some randoness  */
+    srand( time(0) + getpid()+ i);
     rand();
                 
 
     /* Really starting the program. */
-    for(i=0;i<binds;i++)
+    for(i=0;i < binds; i++)
     {
         if(!logr.conn[i])
         {
@@ -368,10 +364,16 @@ int main(int argc, char **argv)
         }
         
         if(fork() == 0)
+        {   
+            /* On the child */
             _startit(i,connection_type,uid,gid,dir,&logr);
+        }
         else
             continue;
     }
+
+
+    /* Done over here */
     return(0);
 }
 

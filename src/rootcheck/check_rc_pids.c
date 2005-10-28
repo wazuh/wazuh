@@ -47,6 +47,7 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         (*_total)++;
         
         _kill0 = 0;
+        _kill1 = 0;
         _gsid0 = 0;
         _gsid1 = 0;
         _ps0 = -1;
@@ -55,7 +56,8 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         {
             _kill0 = 1;
         }
-        
+       
+        /* getpgid to test */ 
         if(!((getsid(i) == -1)&&(errno == ESRCH)))
         {
             _gsid0 = 1;

@@ -35,6 +35,9 @@
 
 #include "headers/file_op.h"
 #include "headers/defs.h"
+#include "headers/debug_op.h"
+
+#include "error_messages/error_messages.h"
 
 int File_DateofChange(char *file)
 {
@@ -61,16 +64,15 @@ int CreatePID(char *name, int pid)
     char file[256];
     FILE *fp;
     
-    /* Must be defined on the main file */
-    extern short int chroot_flag;
-    
-    if(chroot_flag == 0)
+    if(isChroot)
+    {
+        snprintf(file,255,"%s/%s-%d.pid",OS_PIDFILE,name,pid);
+    }
+    else
     {
         snprintf(file,255,"%s%s/%s-%d.pid",DEFAULTDIR,
                 OS_PIDFILE,name,pid);
     }
-    else
-        snprintf(file,255,"%s/%s-%d.pid",OS_PIDFILE,name,pid);
 
     fp = fopen(file,"a");
     if(!fp)
@@ -87,15 +89,15 @@ int DeletePID(char *name)
 {
     char file[256];
     
-    extern short int chroot_flag;
-    
-    if(chroot_flag == 0)
+    if(isChroot)
+    {
+        snprintf(file,255,"%s/%s-%d.pid",OS_PIDFILE,name,(int)getpid());
+    }
+    else
     {
         snprintf(file,255,"%s%s/%s-%d.pid",DEFAULTDIR,
                 OS_PIDFILE,name,(int)getpid());
     }
-    else
-        snprintf(file,255,"%s/%s-%d.pid",OS_PIDFILE,name,(int)getpid());
 
     if(File_DateofChange(file) < 0)
         return(-1);
@@ -132,6 +134,53 @@ char *getuname()
 
     return(NULL);
 }
+
+/* goDaemon: Daemonize a process..
+ *
+ */
+void goDaemon()
+{
+    pid_t pid;
+
+    pid = fork();
+
+    if(pid < 0)
+    {
+        merror(FORK_ERROR, ARGV0);
+        return;
+    }
+    else if(pid)
+    {
+        exit(0);
+    }
+    
+    /* becoming session leader */
+    if(setsid() < 0)
+    {
+        merror(SETSID_ERROR, ARGV0);
+        return;
+    }
+
+    /* forking again */
+    pid = fork();
+    if(pid < 0)
+    {
+        merror(FORK_ERROR, ARGV0);
+        return;
+    }
+    else if(pid)
+    {
+        exit(0);
+    }
+
+    /* Closing stdin, stdout and stderr */
+    fclose(stdin);
+    fclose(stdout);
+    fclose(stderr);
+
+    return;
+}
+
 
 
 /* EOF */
