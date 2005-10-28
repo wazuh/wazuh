@@ -1,4 +1,4 @@
-/*      $OSSEC, debug_op.h, v0.1, 2004/08/02, Daniel B. Cid$      */
+/*      $OSSEC, debug_op.h, v0.2, 2005/10/27, Daniel B. Cid$      */
 
 /* Copyright (C) 2003,2004 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -9,6 +9,11 @@
  * Foundation
  */
 
+
+/* v0.2: 2005/10/27: Better handlers 
+ * v0.1: 2004/08/02
+ */
+ 
 /* Part of the OSSEC HIDS
  * Available at http://www.ossec.net/hids/
  */
@@ -34,5 +39,17 @@ void merror(const char *msg,...);
 void verbose(const char *msg,...);
 
 void ErrorExit(const char *msg,...);
+
+
+/* Use these three functions to set when you
+ * enter in debug, chroot or daemon mode
+ */
+void nowDebug();
+
+void nowChroot();
+
+void nowDaemon();
+
+int isChroot();
 
 #endif
