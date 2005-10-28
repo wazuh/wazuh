@@ -18,18 +18,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "headers/defs.h"
-#include "headers/os_err.h"
+#include "shared.h" 
 
-#include "headers/file_op.h"
-#include "headers/config_op.h"
-#include "headers/debug_op.h"
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
 
 #include "logcollector.h"
-#include "error_messages/error_messages.h"
 
 
 /* FilesConf v0.3, 2005/03/03

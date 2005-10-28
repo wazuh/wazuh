@@ -30,24 +30,14 @@
    #define ARGV0 "ossec-maild"
 #endif
 
-#include "headers/defs.h"
-#include "headers/mq_op.h"
-#include "headers/sig_op.h"
-#include "headers/debug_op.h"
-#include "headers/help.h"
-#include "headers/privsep_op.h"
-#include "headers/file_op.h"
+#include "shared.h"
 
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
 
-#include "error_messages/error_messages.h"
-
 #include "maild.h"
 #include "mail_list.h"
 
-short int dbg_flag=0;
-short int chroot_flag=0;
 
 void OS_Run(int q, MailConfig *mail);
 
@@ -69,7 +59,7 @@ int main(int argc, char **argv)
                 help();
                 break;
             case 'd':
-                dbg_flag++;
+                nowDebug();
                 break;
             case 'u':
                 if(!optarg)
@@ -106,49 +96,50 @@ int main(int argc, char **argv)
     if((uid < 0)||(gid < 0))
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
+
     /* Reading configuration */
     if(MailConf(cfg, &mail) < 0)
         ErrorExit(CONFIG_ERROR,ARGV0);
+
 
     /* Privilege separation */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
+    /* chrooting */
     if(Privsep_Chroot(dir) < 0)
         ErrorExit(CHROOT_ERROR,ARGV0,dir);
 
-    chroot_flag=1; /* Inside chroot now */
+    nowChroot();
+
 
     /* Changing user */        
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0,user);
 
-    /* debug1 message .. */
+
     debug1(PRIVSEP_MSG,ARGV0,dir,user);
+
 
     /* Starting queue (mail queue) */
     if((m_queue = StartMQ(MAILQUEUE,READ)) < 0)
         ErrorExit(QUEUE_ERROR,ARGV0,MAILQUEUE);
 
+
     /* Signal manipulation */
     StartSIG(ARGV0);
 
-    /* Forking and going to the background */
-    if(dbg_flag == 0)
-    {               
-        int pid=0;
-        if((pid = fork()) < 0)
-            ErrorExit(FORK_ERROR,ARGV0);
-        else if(pid == 0)
-        {     
-            /* Creating the PID file */
-            if(CreatePID(ARGV0, getpid()) < 0)
-                ErrorExit(PID_ERROR,ARGV0);
-        }             
-        else                    
-            exit(0);
-    }
+    
+    /* Going on daemon mode */
+    nowDaemon();
+    goDaemon();
+    
 
+    /* Creating PID files */
+    if(CreatePID(ARGV0, getpid()) < 0)
+        ErrorExit(PID_ERROR,ARGV0);
+
+        
     /* the real daemon now */	
     OS_Run(m_queue,&mail);
     exit(0);
@@ -178,6 +169,7 @@ void OS_Run(int q, MailConfig *mail)
 
     /* Creating the list */
     OS_CreateMailList(MAIL_LIST_SIZE);    
+    
  
     /* Setting default timeout */
     mail_timeout = DEFAULT_TIMEOUT;

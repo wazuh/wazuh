@@ -107,4 +107,42 @@
 /* Built in */    
 #define SHAREDCFG_DIRPATH   DEFAULTDIR SHAREDCFG_DIR
 
+
+/* Xml global elements */
+#ifndef xml_global
+#define xml_global "global"
+#endif
+
+#ifndef xml_response
+#define xml_response "response"
+#endif
+
+#ifndef xml_rules
+#define xml_rules "rules"
+#endif
+
+#ifndef xml_localfile
+#define xml_localfile "localfile"
+#endif
+
+#ifndef xml_remote
+#define xml_remote "remote"
+#endif
+
+#ifndef xml_client
+#define xml_client "client"
+#endif
+
+#ifndef xml_execd
+#define xml_execd "execd"
+#endif
+
+#ifndef xml_syscheck
+#define xml_syscheck "syscheck"
+#endif
+
+#ifndef xml_rootcheck
+#define xml_rootcheck "rootcheck"
+#endif
+
 #endif /* __OS_HEADERS */

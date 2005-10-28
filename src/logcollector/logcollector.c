@@ -31,24 +31,12 @@
    #define ARGV0="ossec-logcollector"
 #endif
       
-#include "headers/defs.h"
-#include "headers/mq_op.h"
-#include "headers/sig_op.h"
-#include "headers/file_op.h"
-#include "headers/debug_op.h"
-#include "headers/help.h"
-#include "headers/privsep_op.h"
-#include "headers/os_err.h"
+
+#include "shared.h"
+      
 #include "os_regex/os_regex.h"
 
-#include "error_messages/error_messages.h"
-
 #include "logcollector.h"
-
-
-/* External use dbg ahd chroot flags */
-short int dbg_flag=0;
-short int chroot_flag=0;
 
 
 
@@ -75,7 +63,7 @@ int main(int argc, char **argv)
                 help();
                 break;
             case 'd':
-                dbg_flag++;
+                nowDebug();
                 break;
             case 'D':
                 if(!optarg)
@@ -100,59 +88,40 @@ int main(int argc, char **argv)
     if(File_DateofChange(cfg) < 0)
         ErrorExit("%s: Configuration file '%s' not found",ARGV0,cfg);
 
+
     /* Reading config file */
     if((c = FilesConf(cfg)) == OS_NOTFOUND)
     {
         verbose("%s: No file configured to monitor. Exiting...",ARGV0);
         exit(0);
     }
+    
     else if(c < 0)
         ErrorExit(CONFIG_ERROR,ARGV0,cfg);
 
-    #ifdef DEBUG
-        verbose("%s: Going to read files and fork..",ARGV0);
-    #endif
 
     
     /* Starting the queue. */
     if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-    {   
         ErrorExit(QUEUE_FATAL,ARGV0,DEFAULTQPATH);
-    }
+
 
     /* Starting signal handler */
     StartSIG(ARGV0);	
 
-    /* Forking .. */
-    {
-        int pid = 0;
-        pid = fork();
+    /* Going on daemon mode */
+    nowDaemon();
+    goDaemon();
 
-        if(pid < 0)
-            ErrorExit(FORK_ERROR,ARGV0);
+    /* Creating PID file */
+    if(CreatePID(ARGV0, getpid()) < 0)
+        merror(PID_ERROR, ARGV0);
+    
+    
+    /* Main loop */        
+    run();
 
-        else if(pid == 0)
-        {
-            #ifdef DEBUG
-            verbose("%s: New process %d ..",ARGV0,getpid());
-            #endif
-
-            /* Creating Pid file */
-            if(CreatePID(ARGV0, getpid()) < 0)
-                ErrorExit(PID_ERROR,ARGV0);
-            
-            run();
-            
-            return(0);    
-        }
-        else
-        {
-            exit(0);
-        }
-    }
-
-    /* Exiting from the main process  -- shouldn't reach here any way*/
-    exit(0);
+    return(0);
 }
 
 

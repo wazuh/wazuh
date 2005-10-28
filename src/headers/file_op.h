@@ -30,7 +30,10 @@ int CreatePID(char *name, int pid);
 
 int DeletePID(char *name);
 
-/* not really a file operating, but returns the uname */
+/* daemonize a process */
+void goDaemon();
+
+/* not really a file operation, but returns the uname */
 char *getuname();
 
 #endif
