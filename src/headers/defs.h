@@ -145,4 +145,8 @@
 #define xml_rootcheck "rootcheck"
 #endif
 
+#ifndef xml_command
+#define xml_command  "command"
+#endif
+
 #endif /* __OS_HEADERS */

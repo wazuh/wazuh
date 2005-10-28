@@ -59,6 +59,10 @@
 #define RULES_ERROR	    "%s(1220): Error loading the rules."
 #define QUEUE_SEND      "%s(1224): Error sending message to queue."
 #define SIGNAL_RECV     "%s(1225): SIGNAL Received. Exit Cleaning..."
+#define XML_ERROR       "%s(1226): Error reading XML: '%s'."
+#define XML_ERROR_VAR   "%s(1227): Error applying XML variables."
+#define XML_NO_ELEM     "%s(1228): Element '%s' without any option."
+#define XML_INVALID     "%s(1229): Invalid element '%s' on the '%s' config."
 
 #define MAILQ_ERROR	    "%s(1221): No Mail queue at %s"
 #define IMSG_ERROR	    "%s(1222): Invalid msg: %s"
@@ -70,6 +74,8 @@
 
 
 #define EXECQ_ERROR     "%s(1301): No Execd queue at %s"
+
+/* Active response */
 
 /* Verbose messages */
 #define STARTED_MSG	"%s: Starting ..."
