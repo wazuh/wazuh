@@ -19,7 +19,7 @@ typedef struct __Config
     
     int mailbylevel;
     int logbylevel;
-    int externbylevel;
+
     char **syscheck_ignore;
     int syscheck_threshold;
 }_Config;

@@ -55,7 +55,6 @@ int GlobalConf(char * cfgfile)
     /* From Response */	
     char *(xml_response_mail[])={xml_response,"mail-notification",NULL};
     char *(xml_response_log[])={xml_response,"log",NULL};
-    char *(xml_response_extern[])={xml_response,"extern",NULL};
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
@@ -80,7 +79,6 @@ int GlobalConf(char * cfgfile)
     /* Default actions -- only log above level 3 */
     Config.mailbylevel = 99;
     Config.logbylevel  = 1;
-    Config.externbylevel = 0;
 
     
     /* Checking if the e-mail notification is enable */
@@ -235,20 +233,6 @@ int GlobalConf(char * cfgfile)
         str=NULL;
     }
      
-    /* external command execution */
-    str=OS_GetOneContentforElement(&xml, xml_response_extern);
-    if(str != NULL)
-    {
-        if(OS_StrIsNum(str))
-            merror("Invalid level \"%s\" for the external command "
-                   "execuation  (must be int).", str);
-        else
-            Config.externbylevel=atoi(str);
-        free(str);
-        str=NULL;
-    }
-     
-
     OS_ClearXML(&xml);	
     return(0);
 }

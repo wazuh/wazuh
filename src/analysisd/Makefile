@@ -7,7 +7,7 @@ NAME=ossec-analysisd
 
 include ../Config.Make
 
-LOCAL= analysisd.c stats.c rules.c rules_list.c config.c fts.c eventinfo.c eventinfo_list.c cleanevent.c
+LOCAL= analysisd.c stats.c rules.c rules_list.c config.c fts.c eventinfo.c eventinfo_list.c cleanevent.c active-response.c
 PLUGINS = decoders/decoders.a ../shared/mem_op.o
 ALERTS  = alerts/alerts.a ../os_maild/os_maild_client.o ../os_execd/os_execd_client.o
 
