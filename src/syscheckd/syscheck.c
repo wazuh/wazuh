@@ -50,9 +50,6 @@ int Read_Syscheck_Config(char * cfgfile, config *cfg);
 int create_db();
 
 
-short int dbg_flag = 0;
-short int chroot_flag = 0;
-
 /* main v0.3
  *
  */
@@ -60,7 +57,7 @@ int main(int argc, char **argv)
 {
     int init = 0, c;
     
-    char *cfg=DEFAULTCPATH;
+    char *cfg = DEFAULTCPATH;
     
     /* Zeroing the structure */
     syscheck.workdir = NULL;
@@ -79,7 +76,7 @@ int main(int argc, char **argv)
                 help();
                 break;
             case 'd':
-                dbg_flag++;
+                nowDebug();
                 break;
             case 'D':
                 if(!optarg)
@@ -166,13 +163,13 @@ int main(int argc, char **argv)
         {   
             merror(QUEUE_ERROR,ARGV0,DEFAULTQPATH);
             
-            /* 10 seconds to see if the agent starts */
-            sleep(10);
+            /* 5 seconds to see if the agent starts */
+            sleep(5);
             if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
             {
-                /* more 1 minute of wait.. */
+                /* more 10 seconds of wait.. */
                 merror(QUEUE_ERROR,ARGV0,DEFAULTQPATH);
-                sleep(60);
+                sleep(10);
                 if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
                     ErrorExit(QUEUE_FATAL,ARGV0,DEFAULTQPATH);
             }
@@ -199,14 +196,6 @@ int main(int argc, char **argv)
             syscheck.rootcheck = 1;
         #endif
             
-        /* Will create the temp db to store in a file pointer */
-        create_db();
-
-        /* Flushing to avoid being written twice when forking */
-        fflush(syscheck.fp);
-
-        /* Some sync time */
-        sleep(1);
     }
   
     /* If syslog is set, just read the database */ 
@@ -231,27 +220,35 @@ int main(int argc, char **argv)
     /* Forking */
     if(syscheck.daemon)
     {
-        pid_t pid;
+        debug1("%s: Starting new process..", ARGV0);
 
-        pid = fork();
-        if(pid < 0)
-            ErrorExit(FORK_ERROR,ARGV0);
-        
-        else if(pid == 0)
+
+        /* Setting daemon flag */
+        nowDaemon();
+
+        /* Entering in daemon mode now */
+        goDaemon();
+
+        /* Create pid */
+        if(CreatePID(ARGV0, getpid()) < 0)
+            merror(PID_ERROR,ARGV0);
+
+
+        /* When on QUEUE, we need to create the database every time */
+        if(syscheck.notify == QUEUE)
         {
-            debug1("%s: Starting new process..", ARGV0);
-            /* Create pid */
-            if(CreatePID(ARGV0, getpid()) < 0)
-                ErrorExit(PID_ERROR,ARGV0);
-                
-            /* Start the daemon checking against the syscheck.db */
-            start_daemon();
+            /* Will create the temp db to store in a file pointer */
+            create_db();
+
+            fflush(syscheck.fp);
+
+            /* Some sync time */
+            sleep(1);
         }
-        
-        else
-        {
-            /* Child is running now */
-        }
+
+        /* Start the daemon checking against the syscheck.db */
+        start_daemon();
+
     }
     
     /* Will only check the integrity once and exit */
