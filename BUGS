@@ -1,3 +1,19 @@
+*1106 (syscheck)
+ **reporter: Dimitris Ntelakis
+ **message: Syscheck should only report the pieces of the integrity
+            checking that changed. Not everything..
+ **resolution:
+ **stats:
+            
+
+*1105 (rootcheck)
+ **reporter: Giannis Vrentzos
+ **message: Rootcheck is reporting the own PID as being 
+            hidden.
+ **resolution:
+ **stats:           
+
+
 *1104 (integrity check)
  **reporter: anonymous
  **date: 2005-08-22
