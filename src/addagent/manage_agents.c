@@ -24,23 +24,17 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "headers/debug_op.h"
-#include "headers/defs.h"
-#include "headers/privsep_op.h"
+#include "shared.h"
 
 #include "os_regex/os_regex.h"
 
 #include "os_crypto/md5/md5_op.h"
-
-#include "error_messages/error_messages.h"
 
 #define KEYS_FILE_NEW "client.keys"
 
 #undef ARGV0
 #define ARGV0 "manage_agents"
 
-int dbg_flag=0;
-int chroot_flag=0;
 
 /* b64 function prototypes */
 char *decode_base64(const char *src);
@@ -591,7 +585,9 @@ int main(int argc, char **argv)
     if(Privsep_Chroot(dir) < 0)
         ErrorExit(CHROOT_ERROR, ARGV0, dir);
 
+    nowChroot();
     
+     
     /* Little shell */
     while(1)
     {

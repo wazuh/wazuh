@@ -15,19 +15,12 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "headers/defs.h"
-#include "headers/os_err.h"
-
-#include "headers/file_op.h"
-#include "headers/config_op.h"
-#include "headers/debug_op.h"
+#include "shared.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
 
 #include "syscheck.h"
-
-extern short int dbg_flag;
 
 
 int Read_Syscheck_Config(char * cfgfile)

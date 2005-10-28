@@ -24,10 +24,8 @@
 
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
-#include "headers/defs.h"
-#include "headers/debug_op.h"
-#include "headers/file_op.h"
-#include "error_messages/error_messages.h"
+
+#include "shared.h"
 
 #include "agentd.h"
 

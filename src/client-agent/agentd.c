@@ -36,25 +36,13 @@
 
 #include "os_net/os_net.h"
 
-#include "headers/defs.h"
-#include "headers/mq_op.h"
-#include "headers/debug_op.h"
-#include "headers/sig_op.h"
-#include "headers/help.h"
-#include "headers/privsep_op.h"
-#include "headers/file_op.h"
-#include "headers/sec.h"
-#include "headers/pthreads_op.h"
+#include "shared.h"
+#include "sec.h"
 
-#include "error_messages/error_messages.h"
-
-
-/* External debug and chroot flags */
-short int dbg_flag=0;
-short int chroot_flag=0;
 
 /* manager thread */
 void *start_mgr(void *arg);
+
 
 /* _startit v0.1, 2005/01/30
  * Internal Function. Does all the socket/ queueing
@@ -63,6 +51,7 @@ void *start_mgr(void *arg);
  */
 void _startit(char *dir, int uid, int gid)
 {
+    int pid;
     int m_queue = 0;
         
     unsigned int port = 0;
@@ -82,7 +71,9 @@ void _startit(char *dir, int uid, int gid)
     if(Privsep_Chroot(dir) < 0)
         ErrorExit(CHROOT_ERROR,ARGV0,dir);
 
-    chroot_flag = 1; /* Inside chroot now */
+    
+    nowChroot();
+
 
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0,uid);
@@ -96,9 +87,16 @@ void _startit(char *dir, int uid, int gid)
         ErrorExit(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
 
 
+
+    /* Going daemon */
+    pid = getpid();
+    nowDaemon();
+    goDaemon();
+
+
     /* Creating PID file */	
     if(CreatePID(ARGV0, getpid()) < 0)
-        ErrorExit(PID_ERROR,ARGV0);
+        merror(PID_ERROR,ARGV0);
 
 
     /* Reading the private keys  */
@@ -106,7 +104,7 @@ void _startit(char *dir, int uid, int gid)
 
     
     /* Initial random numbers */
-    srand( time(0)+getpid()+getppid() );
+    srand( time(0) + getpid() + pid + getppid() );
     rand();
 
 
@@ -116,7 +114,6 @@ void _startit(char *dir, int uid, int gid)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
 
 
-    debug1("%s: DEBUG: Creating manager thread", ARGV0);
 
     /* Starting manager */
     if(CreateThread(start_mgr, (void *)&port) != 0)
@@ -157,6 +154,7 @@ void _startit(char *dir, int uid, int gid)
     }
 }
 
+
 /* main, v0.1, 2005/01/30
  */
 int main(int argc, char **argv)
@@ -168,8 +166,8 @@ int main(int argc, char **argv)
     char *user = USER;
     char *group = GROUPGLOBAL;
     
-    int uid=0;
-    int gid=0;
+    int uid = 0;
+    int gid = 0;
 
 
     while((c = getopt(argc, argv, "dhu:g:D:")) != -1){
@@ -178,7 +176,7 @@ int main(int argc, char **argv)
                 help();
                 break;
             case 'd':
-                dbg_flag++;
+                nowDebug();
                 break;
             case 'u':
                 if(!optarg)
@@ -198,13 +196,14 @@ int main(int argc, char **argv)
         }
     }
 
-    debug1("%s: Starting ... ",ARGV0);
+    debug1(STARTED_MSG, ARGV0);
 
     logr = (agent *)calloc(1, sizeof(agent));
     if(!logr)
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
+
     
     /* Reading config */
     if((binds = ClientConf(DEFAULTCPATH)) == 0)
@@ -213,6 +212,7 @@ int main(int argc, char **argv)
     else if(binds < 0)
         ErrorExit(CONFIG_ERROR,ARGV0);
 
+
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
@@ -220,14 +220,15 @@ int main(int argc, char **argv)
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
 
+
     /* Starting the signal manipulation */
     StartSIG(ARGV0);	
 
-    if(fork() == 0)
-    {
-        /* Forking and going to background */
-        _startit(dir,uid,gid);
-    }
+
+   
+    _startit(dir, uid, gid);
+
+    
     return(0);
 }
 

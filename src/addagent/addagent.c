@@ -42,11 +42,9 @@
 #define KEYS_FILE_NEW "client.keys"
 
 #ifndef ARGV0
-  #define ARGV0 "addagent"
+ #define ARGV0 "addagent"
 #endif
     
-int dbg_flag=0;
-int chroot_flag=0;
 
 char *dir=DEFAULTDIR;
 
@@ -82,10 +80,10 @@ void help()
 int main(int argc, char **argv)
 {
     FILE *fp;
-    char *name=NULL;
-    char *id=NULL;
-    char *pass=NULL;
-    char *ip=NULL;
+    char *name = NULL;
+    char *id = NULL;
+    char *pass = NULL;
+    char *ip = NULL;
     int c;
     int gid;
 
@@ -118,17 +116,17 @@ int main(int argc, char **argv)
             case 'i':
                 if(!optarg)
                     ErrorExit("%s: -i needs an argument",ARGV0);
-                id=optarg;
+                id = optarg;
                 break;
             case 'a':
                 if(!optarg)
                     ErrorExit("%s: -a needs an argument",ARGV0);
-                ip=optarg;
+                ip = optarg;
                 break;
             case 'p':
                 if(!optarg)
                     ErrorExit("%s: -p needs an argument",ARGV0);
-                pass=optarg;
+                pass = optarg;
                 break;		
         }
     }
@@ -154,6 +152,7 @@ int main(int argc, char **argv)
     if((strlen(id) > 6)||(strlen(ip) > 18) || (strlen(name) > 32)
             || (strlen(pass) > 64))
         ErrorExit("Maximum size reached for some variable. id(max:6), ip(max:16), name(max:32), pass(max:64)");
+
 
     /* Getting the group */
     gid = Privsep_GetGroup(group);
