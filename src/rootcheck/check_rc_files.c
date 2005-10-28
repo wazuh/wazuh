@@ -19,8 +19,7 @@
 #include <sys/types.h>
 #include <errno.h>
 
-#include "headers/defs.h"
-#include "headers/debug_op.h"
+#include "shared.h"
 
 #include "rootcheck.h"
 
@@ -154,9 +153,52 @@ void check_rc_files(char *basedir, FILE *fp)
             *nbuf = '\0';
         }
         
-        snprintf(file_path, OS_MAXSTR, "%s/%s",basedir, file);
-
         _total++;
+
+
+        /* Checking if it is a file to search everywhere */
+        if(*file == '*')
+        {
+            if(rk_sys_count >= MAX_RK_SYS)
+            {
+                merror(MAX_RK_MSG, ARGV0, MAX_RK_SYS);
+            }
+            
+            else
+            {
+                /* Removing * / from the file */
+                file++;
+                if(*file == '/')
+                    file++;
+                
+                /* Memory assignment */    
+                rk_sys_file[rk_sys_count] = strdup(file);
+                rk_sys_name[rk_sys_count] = strdup(name);
+
+                if(!rk_sys_name[rk_sys_count] ||
+                   !rk_sys_file[rk_sys_count] )
+                {
+                    merror(MEM_ERROR, ARGV0);
+                    
+                    if(rk_sys_file[rk_sys_count])
+                        free(rk_sys_file[rk_sys_count]);
+                    if(rk_sys_name[rk_sys_count])
+                        free(rk_sys_name[rk_sys_count]);
+                    
+                    rk_sys_file[rk_sys_count] = NULL;
+                    rk_sys_name[rk_sys_count] = NULL;        
+                }
+                
+                rk_sys_count++;
+
+                /* Always assigning the last as NULL */
+                rk_sys_file[rk_sys_count] = NULL;
+                rk_sys_name[rk_sys_count] = NULL;
+            }
+            continue;
+        }
+        
+        snprintf(file_path, OS_MAXSTR, "%s/%s",basedir, file);
         
         /* Checking if file exists */        
         if(is_file(file_path))

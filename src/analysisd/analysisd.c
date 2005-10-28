@@ -315,7 +315,7 @@ void OS_ReadMSG(int m_queue)
         {
             ErrorExit(MEM_ERROR,ARGV0);
         }
-        
+    
         #ifdef DEBUG
         verbose("%s: DEBUG:  Waiting new message.\n",ARGV0);
         #endif

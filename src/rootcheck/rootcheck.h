@@ -38,6 +38,9 @@ rkconfig rootcheck;
 #define QUEUE   101
 #define SYSLOG  102
 
+/* Maximum files to search on the whole system */
+#define MAX_RK_SYS      512
+
 /* rk_types */
 #define ALERT_OK                0
 #define ALERT_SYSTEM_ERROR      1 
@@ -88,6 +91,12 @@ void check_rc_pids();
 void check_rc_ports();
 
 void check_rc_if();
+
+
+/* Global vars */
+char **rk_sys_file;
+char **rk_sys_name;
+int rk_sys_count;
 
 #endif
 

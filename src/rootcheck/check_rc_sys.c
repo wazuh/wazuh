@@ -109,6 +109,7 @@ int read_sys_file(char *file_name)
  */
 int read_sys_dir(char *dir_name)
 {
+    int i;
     DIR *dp;
     
 	struct dirent *entry;
@@ -143,13 +144,34 @@ int read_sys_dir(char *dir_name)
         if((strcmp(entry->d_name,".") == 0) ||
            (strcmp(entry->d_name,"..") == 0))  
             continue;
-        
+
+
+        /* Checking every file against the rootkit database */
+        for(i = 0; i<= rk_sys_count; i++)
+        {
+            if(!rk_sys_file[i])
+                break;
+
+            if(strcmp(rk_sys_file[i], entry->d_name) == 0)
+            {
+                char op_msg[OS_MAXSTR +1];
+
+                _sys_errors++;
+                snprintf(op_msg, OS_MAXSTR, "Rootkit '%s' detected "
+                        "by the presence of file '%s/%s'.",
+                        rk_sys_name[i], dir_name, rk_sys_file[i]);
+
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+            }
+        }
+
+
         snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);
-       
+
         /* Ignoring /proc */
         if(strcmp(f_name, "/proc") == 0)
             continue;
-             
+
         read_sys_file(f_name);
 
     }
@@ -198,7 +220,8 @@ void check_rc_sys(char *basedir)
                                   "/usr/sbin", "/dev", "/lib",
                                   "/etc", "/root", "/var/log",
                                   "/var/mail", "/var/lib",
-                                  "/usr/lib", "/usr/share", NULL};
+                                  "/usr/lib", "/usr/share", 
+                                  "/tmp", NULL};
 
         for(_i = 0; _i <= 12; _i++)
         {

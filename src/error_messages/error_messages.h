@@ -64,6 +64,11 @@
 #define IMSG_ERROR	    "%s(1222): Invalid msg: %s"
 #define SNDMAIL_ERROR	"%s(1223): Error Sending email to %s (smtp server)"
 
+
+/* rootcheck */
+#define MAX_RK_MSG      "%s(1250): Maximum number of global files reached: %d"
+
+
 #define EXECQ_ERROR     "%s(1301): No Execd queue at %s"
 
 /* Verbose messages */

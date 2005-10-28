@@ -36,8 +36,11 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
     int _ps0 = -1;
     
     pid_t i = 1;
+    pid_t my_pid;
 
     char command[OS_MAXSTR +1];
+
+    my_pid = getpid();
     
     for(;;i++)
     {
@@ -65,6 +68,12 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
 
         /* IF PID does not exist, keep going */
         if(!_kill0 && !_gsid0)
+        {
+            continue;
+        }
+
+        /* We do not need to look at our own pid */
+        else if(i == my_pid)
         {
             continue;
         }

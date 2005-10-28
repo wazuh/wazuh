@@ -64,7 +64,7 @@ int CreatePID(char *name, int pid)
     char file[256];
     FILE *fp;
     
-    if(isChroot)
+    if(isChroot())
     {
         snprintf(file,255,"%s/%s-%d.pid",OS_PIDFILE,name,pid);
     }
@@ -89,7 +89,7 @@ int DeletePID(char *name)
 {
     char file[256];
     
-    if(isChroot)
+    if(isChroot())
     {
         snprintf(file,255,"%s/%s-%d.pid",OS_PIDFILE,name,(int)getpid());
     }

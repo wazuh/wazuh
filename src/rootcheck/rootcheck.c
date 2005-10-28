@@ -53,9 +53,6 @@ int Read_Rootcheck_Config(char * cfgfile, rkconfig *cfg);
 
 #ifndef OSSECHIDS
 
-int dbg_flag = 0;
-int chroot_flag = 0;
-
 
 /* main v0.1
  *
@@ -93,7 +90,7 @@ int rootcheck_init()
                 help();
                 break;
             case 'd':
-                dbg_flag++;
+                nowDebug();
                 break;
             case 'D':
                 if(!optarg)
@@ -150,19 +147,26 @@ int rootcheck_init()
         {   
             merror(QUEUE_ERROR,ARGV0,DEFAULTQPATH);
             
-            /* 10 seconds to see if the agent starts */
-            sleep(10);
+            /* 5 seconds to see if the agent starts */
+            sleep(5);
             if((rootcheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
             {
-                /* more 1 minute of wait.. */
+                /* more 10 seconds wait.. */
                 merror(QUEUE_ERROR,ARGV0,DEFAULTQPATH);
-                sleep(60);
+                sleep(10);
                 if((rootcheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
                     ErrorExit(QUEUE_FATAL,ARGV0,DEFAULTQPATH);
             }
         }
     }
     #endif
+
+    rk_sys_name = calloc(MAX_RK_SYS +2, sizeof(char *));
+    rk_sys_file = calloc(MAX_RK_SYS +2, sizeof(char *));
+    if(!rk_sys_name || !rk_sys_file)
+    {
+        ErrorExit(MEM_ERROR, ARGV0);
+    }
 
     #ifndef OSSECHIDS
     /* Start the signal handling */

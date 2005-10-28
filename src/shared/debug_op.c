@@ -17,6 +17,9 @@
  * Available at http://www.ossec.net/hids/
  */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+     
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,12 +55,16 @@ void _log(const char * msg,va_list args)
 
     /* If under chroot, log directly to /logs/ossec.log */
     if(chroot_flag == 1)
+    {
         fp = fopen(LOGFILE, "a");
+        chmod(LOGFILE, S_IRUSR | S_IWUSR| S_IWGRP | S_IRGRP | S_IROTH);
+    }
     else
     {
         char _logfile[256];
         snprintf(_logfile, 256, "%s%s", DEFAULTDIR, LOGFILE);
         fp = fopen(_logfile, "a");
+        chmod(_logfile, S_IRUSR | S_IWUSR| S_IWGRP | S_IRGRP | S_IROTH);
     }
 
     if(fp)
@@ -67,6 +74,7 @@ void _log(const char * msg,va_list args)
                       p->tm_mday,p->tm_hour,p->tm_min,p->tm_sec);
         (void)vfprintf(fp, msg, args);
         (void)fprintf(fp, "\n");
+        fflush(fp);
         fclose(fp);
     }
 

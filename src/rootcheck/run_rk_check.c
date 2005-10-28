@@ -123,7 +123,13 @@ void run_rk_check()
         printf("Be patient, it may take a few minutes to complete...\n");
         printf("\n");
     }
-        
+ 
+    /* Cleaning the global variables */
+    rk_sys_count = 0;
+    rk_sys_file[rk_sys_count] = NULL;
+    rk_sys_name[rk_sys_count] = NULL;
+
+
     /***  First check, look for rootkits ***/
     /* Open rootkit_files and pass the pointer to check_rc_files */
     if(!rootcheck.rootkit_files)
@@ -186,7 +192,22 @@ void run_rk_check()
 
     /*** Check interfaces ***/
     check_rc_if();    
-    
+   
+   
+    /* Cleaning the global memory */
+    {
+        int li;
+        for(li = 0;li <= rk_sys_count; li++)
+        {
+            if(!rk_sys_file[li] ||
+               !rk_sys_name[li])
+                break; 
+
+            free(rk_sys_file[li]);
+            free(rk_sys_name[li]);
+        }
+    }
+
     debug1("%s: DEBUG: Leaving run_rk_check",ARGV0); 
     return;
 }
