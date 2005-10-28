@@ -27,15 +27,12 @@
 
 #include <errno.h>
 
-#include "headers/defs.h"
-#include "headers/debug_op.h"
-#include "headers/mem_op.h"
+#include "shared.h"
 
 #include "os_regex/os_regex.h"
 
 #include "maild.h"
 
-#include "error_messages/error_messages.h"
 
 int OS_SendMailQ(int socket, MailMsg *mail)
 {
