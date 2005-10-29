@@ -24,6 +24,28 @@ typedef struct __Config
     int syscheck_threshold;
 }_Config;
 
+
+typedef struct _ar_command
+{
+    char *name;
+    char *expect;
+    char *executable;
+}ar_command;
+
+
+typedef struct _ar
+{
+    char *command;
+    char *location;
+    char *rules_id;
+    char *rules_group;
+    char *level;
+}ar;
+
+
+ar_command **ar_commands;
+ar **active-responses;
+
 _Config Config;  /* Global Config structure */
 
 

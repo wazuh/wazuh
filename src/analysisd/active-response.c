@@ -23,6 +23,12 @@
 #include "config.h"
 
 
+/* Initiatiating active response */
+void AS_Init()
+{
+    ar_commands = NULL;
+    active-responses = NULL;
+}
 
 int AS_GetActiveResponseCommands(char * config_file)
 {
@@ -65,6 +71,7 @@ int AS_GetActiveResponseCommands(char * config_file)
     while(node[i])
     {
         XML_NODE elements = NULL;
+        ar_command **tmp_commands = ar_commands;
 
         int j = 0;
         
@@ -82,6 +89,15 @@ int AS_GetActiveResponseCommands(char * config_file)
             continue;
         }
 
+
+        /* Allocating for the active-response */
+        while(*tmp_commands)
+        {
+            tmp_commands++;
+        }
+        ar_command **ar_commands;
+
+        
         while(elements[j])
         {
             if(!elements[j]->element) 
