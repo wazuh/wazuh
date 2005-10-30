@@ -40,11 +40,12 @@ typedef struct _ar
     char *rules_id;
     char *rules_group;
     char *level;
-}ar;
+}active_response;
 
 
-ar_command **ar_commands;
-ar **active-responses;
+#include "list_op.h"
+OSList *ar_commands;
+OSList *active_responses;
 
 _Config Config;  /* Global Config structure */
 

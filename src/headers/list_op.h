@@ -14,15 +14,35 @@
 
 #ifndef _OS_LIST
 #define _OS_LIST
+
+typedef struct _OSListNode
+{
+    struct _OSListNode *next;
+    struct _OSListNode *prev;
+    void *data;
+}OSListNode;
+
+
 typedef struct _OSList
 {
-    struct _OSList *next;
-    void *data;
+    OSListNode *first_node;
+    OSListNode *last_node;
+    OSListNode *cur_node;
+    
+    int currently_size;
+    int max_size;
+
+    void *free_data_function;
 }OSList;
 
 
 OSList *OS_CreateList();
-OSList *OS_GetFirstNode(OSList *);
-int OS_AddData(OSList *list, void *data);
+OSListNode *OS_GetFirstNode(OSList *);
+OSListNode *OS_GetLastNode(OSList *);
+OSListNode *OS_GetNextNode(OSList *);
+
+int OSList_AddData(OSList *list, void *data);
 
 #endif
+
+/* EOF */

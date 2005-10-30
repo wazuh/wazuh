@@ -76,6 +76,15 @@
 #define EXECQ_ERROR     "%s(1301): No Execd queue at %s"
 
 /* Active response */
+#define AR_CMD_MISS     "%s(1280): Missing command options. " \
+                        "You must specify a 'name', 'executable' and 'expect'."
+#define AR_MISS         "%s(1281): Missing options in the active response " \
+                        "configuration. "                        
+
+/* List operations */
+#define LIST_ERROR      "%s(1290); Error creating a new list (calloc)."
+#define LIST_ADD_ERROR  "%s(1291): Error adding nodes to list."
+
 
 /* Verbose messages */
 #define STARTED_MSG	"%s: Starting ..."

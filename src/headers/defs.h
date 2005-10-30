@@ -149,4 +149,8 @@
 #define xml_command  "command"
 #endif
 
+#ifndef xml_ar
+#define xml_ar      "active-response"
+#endif
+
 #endif /* __OS_HEADERS */
