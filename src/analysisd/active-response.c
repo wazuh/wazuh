@@ -19,9 +19,7 @@
 
 #include "shared.h"
 
-#include "rules.h"
-#include "config.h"
-
+#include "active-response.h"
 
 /* Initiatiating active response */
 void AS_Init()

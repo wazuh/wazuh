@@ -1,4 +1,4 @@
-/*   $OSSEC, rules.c, v0.5, 2005/09/21, Daniel B. Cid$   */
+/*   $OSSEC, rules.c, v0.6, 2005/10/30, Daniel B. Cid$   */
 
 /* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -18,6 +18,7 @@
  * v0,3: 2005/03/27 (support to new OS_XML)
  * v0.4: 2005/05/30 (using a list instead of an array)
  * v0.5: 2005/09/21: Adding if_matched_sid and fix the priority of level 0
+ * v0.6: 2005/10/30: Adding support for the active response
  */
  
 #include <stdio.h>
@@ -32,22 +33,28 @@
 
 #include "rules.h"
 #include "config.h"
+#include "active-response.h"
 
 #include "error_messages/error_messages.h"
 
-extern short int dbg_flag;
 
 /* Internal functions */
-int getattributes(char **attributes, char **values,
-    int *id, int *level, int *maxsize, int *timeframe,
-    int *frequency,int *accuracy, int *noalert, int *ignore_time);
-void printrule(RuleInfo *config_rule);
+int getattributes(char **attributes, 
+                  char **values,
+                  int *id, int *level, 
+                  int *maxsize, int *timeframe,
+                  int *frequency, int *accuracy, 
+                  int *noalert, int *ignore_time);
 
-RuleInfo *zerorulemember(int id, int level, int maxsize,
-                           int frequency,int timeframe,
-                           int noalert, int ignore_time
-                           );
+RuleInfo *zerorulemember(int id, int level, 
+                         int maxsize, int frequency,
+                         int timeframe, int noalert,
+                         int ignore_time);
+
+void printrule(RuleInfo *config_rule);
 char *loadmemory(char *at, char *str);
+
+
 
 /* Rules_OP_ReadRules, v0.1, 2005/07/04
  * Will initialize the rules list
@@ -61,6 +68,8 @@ void Rules_OP_CreateRules()
     return;
 }
 
+
+
 /* Rules_OP_ReadRules, v0.3, 2005/03/21
  * Read the log rules.
  * v0.3: Fixed many memory problems.
@@ -73,30 +82,30 @@ int Rules_OP_ReadRules(char * rulefile)
     /* XML variables */ 
     /* These are the available options for the rule configuration */
     
-    char *xml_group="group";
-    char *xml_rule="rule";
+    char *xml_group = "group";
+    char *xml_rule = "rule";
 
-    char *xml_regex="regex";
-    char *xml_match="match";
-    char *xml_cve="cve";
-    char *xml_info="info";
-    char *xml_comment="comment";
+    char *xml_regex = "regex";
+    char *xml_match = "match";
+    char *xml_cve = "cve";
+    char *xml_info = "info";
+    char *xml_comment = "comment";
     
-    char *xml_srcip="srcip";
-    char *xml_dstip="dstip";
-    char *xml_user="user";
+    char *xml_srcip = "srcip";
+    char *xml_dstip = "dstip";
+    char *xml_user = "user";
     
-    char *xml_if_sid="if_sid";
-    char *xml_if_group="if_group";
-    char *xml_if_level="if_level";
+    char *xml_if_sid = "if_sid";
+    char *xml_if_group = "if_group";
+    char *xml_if_level = "if_level";
     
-    char *xml_if_matched_regex="if_matched_regex";
-    char *xml_if_matched_group="if_matched_group";
-    char *xml_if_matched_sid="if_matched_sid";
+    char *xml_if_matched_regex = "if_matched_regex";
+    char *xml_if_matched_group = "if_matched_group";
+    char *xml_if_matched_sid = "if_matched_sid";
     
-    char *xml_same_source_ip="same_source_ip";
-    char *xml_same_user="same_user";
-    char *xml_same_loghost="same_loghost";
+    char *xml_same_source_ip = "same_source_ip";
+    char *xml_same_user = "same_user";
+    char *xml_same_loghost = "same_loghost";
 
     char *rulepath;
     
@@ -118,6 +127,7 @@ int Rules_OP_ReadRules(char * rulefile)
     if(OS_ReadXML(rulepath,&xml) < 0)
     {
         merror("rules_op: XML error: %s",xml.err);
+        free(rulepath);
         return(-1);	
     }
 
@@ -141,6 +151,7 @@ int Rules_OP_ReadRules(char * rulefile)
         OS_ClearXML(&xml);
         return(-1);    
     }
+
 
     /* Checking if there is any invalid global option */
     while(node[i])
@@ -174,14 +185,15 @@ int Rules_OP_ReadRules(char * rulefile)
         i++;
     }
 
-   
+
+    /* Getting the rules now */   
     i=0;
     while(node[i])
     {
         XML_NODE rule=NULL;
 
         char *group_name;
-        int j=0;
+        int j = 0;
 
         /* Getting all rules for a global group */        
         rule = OS_GetElementsbyNode(&xml,node[i]);
@@ -434,7 +446,7 @@ int Rules_OP_ReadRules(char * rulefile)
             printrule(config_ruleinfo);
 
             /* Adding rule to the rules list */
-            /* If the rule dependes from some other,
+            /* If the rule depends on some other,
              * add as a child */
 
             if((config_ruleinfo->if_sid)
@@ -452,6 +464,7 @@ int Rules_OP_ReadRules(char * rulefile)
         } /* while(rule[j]) */
         OS_ClearNode(rule);
         i++;
+        
     } /* while (node[i]) */
 
     /* Cleaning global node */
@@ -565,6 +578,7 @@ char *loadmemory(char *at, char *str)
     return(NULL);
 }
 
+
 /* Print the rule info */
 void printrule(RuleInfo *config_rule)
 {
@@ -580,22 +594,23 @@ void printrule(RuleInfo *config_rule)
             "\t\tregex: %s\n"
             "\t\tContext: %d\n\n",
             ARGV0,
-            config_rule -> sigid,
-            config_rule -> level,
+            config_rule ->sigid,
+            config_rule ->level,
             config_rule ->match,
             config_rule ->regex,
             config_rule ->context);
 }
 
 
-/* Zero a rule member */
-RuleInfo *zerorulemember(int id, int level, int maxsize,
-                  int frequency, int timeframe, int noalert, int ignore_time)
+
+RuleInfo *zerorulemember(int id, int level, 
+                         int maxsize, int frequency,
+                         int timeframe, int noalert, 
+                         int ignore_time)
 {
     RuleInfo *ruleinfo_pt = NULL;
     
     /* Allocation memory for structure */
-    /* int */
     ruleinfo_pt = (RuleInfo *)calloc(1,sizeof(RuleInfo));
 
     if(ruleinfo_pt == NULL)
@@ -658,19 +673,21 @@ RuleInfo *zerorulemember(int id, int level, int maxsize,
 
 /* Get the attributes */
 int getattributes(char **attributes, char **values,
-    int *id, int *level, int *maxsize, int *timeframe,
-    int *frequency, int *accuracy, int *noalert, int *ignore_time)
+                  int *id, int *level, 
+                  int *maxsize, int *timeframe,
+                  int *frequency, int *accuracy, 
+                  int *noalert, int *ignore_time)
 {
     int k=0;
     
-    char *xml_id="id";
-    char *xml_level="level";
-    char *xml_maxsize="maxsize";
-    char *xml_timeframe="timeframe";
-    char *xml_frequency="frequency";
-    char *xml_accuracy="accuracy";
-    char *xml_noalert="noalert";
-    char *xml_ignore_time="ignore";
+    char *xml_id = "id";
+    char *xml_level = "level";
+    char *xml_maxsize = "maxsize";
+    char *xml_timeframe = "timeframe";
+    char *xml_frequency = "frequency";
+    char *xml_accuracy = "accuracy";
+    char *xml_noalert = "noalert";
+    char *xml_ignore_time = "ignore";
    
     /* Getting attributes */
     while(attributes[k])

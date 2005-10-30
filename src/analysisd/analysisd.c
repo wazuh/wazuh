@@ -36,6 +36,7 @@
 
 
 /* local headers */
+#include "active-response.h"
 #include "config.h"
 #include "rules.h"
 #include "stats.h"
@@ -44,9 +45,10 @@
 
 
 
-/* Alert queues */
+/* mail queue */
 int mailq = 0;
-int execq = 0;
+/* execd queue */
+int execdq = 0;
 
 
 /* For hourly stats */
@@ -184,9 +186,23 @@ int main(int argc, char **argv)
     ReadDecodeXML(XML_DECODER);
 
 
-    /* Creating the rule list */
+    /* Reading the active response config */
+    AS_Init();
+    
+    if(AS_GetActiveResponseCommands(cfg) < 0)
+    {
+        ErrorExit(CONFIG_ERROR, ARGV0);
+    }
+    if(AS_GetActiveResponses(cfg) < 0)
+    {
+        ErrorExit(CONFIG_ERROR, ARGV0);
+    }
+    
+    
+    /* Creating the rules list */
     Rules_OP_CreateRules();
 
+    
     
     /* Reading the rules */
     {
@@ -278,15 +294,17 @@ void OS_ReadMSG(int m_queue)
             Config.mailnotify=0;
         }
 
-    /* Starting exec queue */
-    if(Config.exec == 1)
+
+    /* Starting the exec queue */
+    if(Config.ar == 1)
     {
-        if((execq = StartMQ(EXECQUEUE,WRITE)) < 0)
+        if((execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
         {
-            merror(EXECQ_ERROR,ARGV0,EXECQUEUE);
-            Config.exec=0;   
+            merror(ARQ_ERROR, ARGV0);
+            Config.ar = 0;   
         }
     }
+
 
     /* Getting currently time before starting */
     c_time = time(NULL);

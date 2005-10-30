@@ -1,15 +1,27 @@
+/*   $OSSEC, config.h, v0.x, xxxx/xx/xx, Daniel B. Cid$   */
+
+/* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
+ * All right reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
+
+ 
+
 #ifndef _CONFIG__H
 
 #define _CONFIG__H
 
-#include "headers/defs.h"
 
 /* Configuration structure */
 typedef struct __Config
 {
     int logall;
     int mailnotify;
-    int exec;
+    int ar;
     int fts;
     int stats;
     int integrity;
@@ -24,28 +36,6 @@ typedef struct __Config
     int syscheck_threshold;
 }_Config;
 
-
-typedef struct _ar_command
-{
-    char *name;
-    char *expect;
-    char *executable;
-}ar_command;
-
-
-typedef struct _ar
-{
-    char *command;
-    char *location;
-    char *rules_id;
-    char *rules_group;
-    char *level;
-}active_response;
-
-
-#include "list_op.h"
-OSList *ar_commands;
-OSList *active_responses;
 
 _Config Config;  /* Global Config structure */
 

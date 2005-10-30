@@ -71,7 +71,7 @@ int GlobalConf(char * cfgfile)
     Config.mailnotify = 0;
     Config.accuracy = 0;
     Config.keeplogdate = 0;
-    Config.exec = 0;
+    Config.ar = 0;
     Config.syscheck_threshold = 3;
 
     Config.syscheck_ignore = NULL;
