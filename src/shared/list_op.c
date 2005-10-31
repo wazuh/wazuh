@@ -25,7 +25,7 @@
 /* Create the list 
  * Return NULL on error
  */
-OSList *OS_CreateList()
+OSList *OSList_Create()
 {
     OSList *my_list;
 
@@ -46,7 +46,7 @@ OSList *OS_CreateList()
 /* Get first node from list
  * Returns null on invalid list
  */
-OSListNode *OS_GetFirstNode(OSList *list)
+OSListNode *OSList_GetFirstNode(OSList *list)
 {
     list->cur_node = list->first_node;
     return(list->first_node);
@@ -56,7 +56,7 @@ OSListNode *OS_GetFirstNode(OSList *list)
 /* Get last node from list
  * Returns null on invalid list
  */
-OSListNode *OS_GetLastNode(OSList *list)
+OSListNode *OSList_GetLastNode(OSList *list)
 {
     list->cur_node = list->last_node;
     return(list->last_node);
@@ -66,7 +66,7 @@ OSListNode *OS_GetLastNode(OSList *list)
 /* Get next node from list
  * Returns null on invalid list
  */
-OSListNode *OS_GetNextNode(OSList *list)
+OSListNode *OSList_GetNextNode(OSList *list)
 {
     if(list->cur_node == NULL)
         return(NULL);

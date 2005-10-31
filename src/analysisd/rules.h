@@ -19,6 +19,8 @@
 
 #define TIMEFRAME 360 /* Default timeframe */
 
+#include "active-response.h"
+
 typedef struct _RuleInfo
 {
     int sigid;  /* id attribute -- required*/
@@ -32,7 +34,7 @@ typedef struct _RuleInfo
     /* Not an option in the rule */
     short int mailresponse;
     short int logresponse;
-    short int userresponse;
+    active_response **ar;
 
     int maxsize; /* maxsize attribute */
     int frequency; /* frequency attribute */
@@ -51,7 +53,6 @@ typedef struct _RuleInfo
     char *info;
     char *cve;
     
-    /*char *external;*/ /* external command execution */
 
     char *if_sid;          /* If signature id was matched */
     char *if_level;        /* If any level => was matched */

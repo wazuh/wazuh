@@ -36,10 +36,10 @@ typedef struct _OSList
 }OSList;
 
 
-OSList *OS_CreateList();
-OSListNode *OS_GetFirstNode(OSList *);
-OSListNode *OS_GetLastNode(OSList *);
-OSListNode *OS_GetNextNode(OSList *);
+OSList *OSList_Create();
+OSListNode *OSList_GetFirstNode(OSList *);
+OSListNode *OSList_GetLastNode(OSList *);
+OSListNode *OSList_GetNextNode(OSList *);
 
 int OSList_AddData(OSList *list, void *data);
 

@@ -24,8 +24,8 @@
 /* Initiatiating active response */
 void AS_Init()
 {
-    ar_commands = OS_CreateList();
-    active_responses = OS_CreateList();
+    ar_commands = OSList_Create();
+    active_responses = OSList_Create();
 
     if(!ar_commands || !active_responses)
     {
@@ -43,11 +43,11 @@ int AS_GetActiveResponses(char * config_file)
 
     int i = 0;
 
-    char *ar_command = "command";
-    char *ar_location = "location";
-    char *ar_rules_id = "rules_id";
-    char *ar_rules_group = "rules_group";
-    char *ar_level = "level";
+    char *xml_ar_command = "command";
+    char *xml_ar_location = "location";
+    char *xml_ar_rules_id = "rules_id";
+    char *xml_ar_rules_group = "rules_group";
+    char *xml_ar_level = "level";
 
 
     /* Reading the XML */       
@@ -107,29 +107,36 @@ int AS_GetActiveResponses(char * config_file)
             return(-1);
         }
         
+        /* Initializing variables */
+        tmp_ar->command = NULL;
+        tmp_ar->location = NULL;
+        tmp_ar->rules_id = NULL;
+        tmp_ar->rules_group = NULL;
+        tmp_ar->level = NULL;
+        tmp_ar->ar_cmd = NULL;
         
         while(elements[j])
         {
             if(!elements[j]->element || !elements[j]->content) 
                 break;
             
-            if(strcmp(elements[j]->element, ar_command) == 0)    
+            if(strcmp(elements[j]->element, xml_ar_command) == 0)    
             {
                 tmp_ar->command = strdup(elements[j]->content);
             }
-            else if(strcmp(elements[j]->element, ar_location) == 0)    
+            else if(strcmp(elements[j]->element, xml_ar_location) == 0)    
             {
                 tmp_ar->location = strdup(elements[j]->content);
             }
-            else if(strcmp(elements[j]->element, ar_rules_id) == 0)
+            else if(strcmp(elements[j]->element, xml_ar_rules_id) == 0)
             {
                 tmp_ar->rules_id = strdup(elements[j]->content);
             }
-            else if(strcmp(elements[j]->element, ar_rules_group) == 0)
+            else if(strcmp(elements[j]->element, xml_ar_rules_group) == 0)
             {
                 tmp_ar->rules_group = strdup(elements[j]->content);
             }
-            else if(strcmp(elements[j]->element, ar_level) == 0)
+            else if(strcmp(elements[j]->element, xml_ar_level) == 0)
             {
                 tmp_ar->level = strdup(elements[j]->content);
             }
@@ -153,7 +160,35 @@ int AS_GetActiveResponses(char * config_file)
             OS_ClearXML(&xml);
             return(-1);
         }
-       
+      
+        /* Checking if command name is valid */
+        {
+            OSListNode *my_commands_node;
+
+            my_commands_node = OSList_GetFirstNode(ar_commands);
+            while(my_commands_node)
+            {
+                ar_command *my_command;
+                my_command = (ar_command *)my_commands_node->data;
+
+                if(strcmp(my_command->name, tmp_ar->command) == 0)
+                {
+                    tmp_ar->ar_cmd = my_command;
+                    break;
+                }
+                
+                my_commands_node = OSList_GetNextNode(ar_commands);
+            }
+
+            if(tmp_ar->ar_cmd == NULL)
+            {
+                merror(AR_MISS, ARGV0);
+                OS_ClearXML(&xml);
+                return(-1);
+            }
+        }
+        
+        
         if(!OSList_AddData(active_responses, (void *)tmp_ar))
         {
             merror(LIST_ADD_ERROR, ARGV0);
@@ -244,6 +279,9 @@ int AS_GetActiveResponseCommands(char * config_file)
             return(-1);
         }
         
+        tmp_command->name = NULL; 
+        tmp_command->expect= NULL; 
+        tmp_command->executable = NULL; 
         
         while(elements[j])
         {

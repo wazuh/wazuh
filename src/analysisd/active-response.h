@@ -29,6 +29,7 @@ typedef struct _ar
     char *rules_id;
     char *rules_group;
     char *level;
+    ar_command *ar_cmd;
 }active_response;
 
 

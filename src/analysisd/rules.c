@@ -24,18 +24,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "os_regex/os_regex.h"
 #include "os_xml/os_xml.h"
 
-#include "headers/defs.h"
-#include "headers/debug_op.h"
+#include "shared.h"
 
 #include "rules.h"
 #include "config.h"
 #include "active-response.h"
-
-#include "error_messages/error_messages.h"
 
 
 /* Internal functions */
@@ -52,6 +50,7 @@ RuleInfo *zerorulemember(int id, int level,
                          int ignore_time);
 
 void printrule(RuleInfo *config_rule);
+void Rule_AddAR(RuleInfo *config_rule);
 char *loadmemory(char *at, char *str);
 
 
@@ -288,7 +287,6 @@ int Rules_OP_ReadRules(char * rulefile)
              * The level is correct so the rule is probably going to
              * be fine
              */
-
             config_ruleinfo -> group = strdup(group_name);
             
             if(!config_ruleinfo -> group)  
@@ -441,14 +439,20 @@ int Rules_OP_ReadRules(char * rulefile)
                 }
             } /* enf of elements block */
 
+
+            /* Assigning an active response to the rule */
+            Rule_AddAR(config_ruleinfo);
+
+            
             j++; /* next rule */
 
             printrule(config_ruleinfo);
 
+
             /* Adding rule to the rules list */
             /* If the rule depends on some other,
-             * add as a child */
-
+             * add as a child 
+             */
             if((config_ruleinfo->if_sid)
                 ||(config_ruleinfo->if_group)
                 ||(config_ruleinfo->if_level))
@@ -629,8 +633,8 @@ RuleInfo *zerorulemember(int id, int level,
         ruleinfo_pt->mailresponse = 1;
     if(Config.logbylevel <= level)    
         ruleinfo_pt->logresponse = 1;
-    
-    ruleinfo_pt->userresponse = 0;
+   
+    ruleinfo_pt->ar = NULL; 
     
     ruleinfo_pt->context = 0;
     
@@ -654,7 +658,6 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->comment = NULL;
     ruleinfo_pt->info = NULL;
     ruleinfo_pt->cve = NULL;
-    /*    ruleinfo_pt->external = NULL;*/
     
     ruleinfo_pt->if_sid = NULL;
     ruleinfo_pt->if_group = NULL;
@@ -819,3 +822,119 @@ int getattributes(char **attributes, char **values,
     }
     return(0);
 }
+
+
+/* Bind active responses to the rule.
+ * No return.
+ */
+void Rule_AddAR(RuleInfo *rule_config)
+{
+    int rule_ar_size = 0;
+    int mark_to_ar = 0;
+    OSListNode *my_ars_node;
+    
+    
+    /* No AR for ignored rules */
+    if(rule_config->level == 0)
+    {
+        return;
+    }
+    
+    /* Looping on all AR */
+    my_ars_node = OSList_GetFirstNode(active_responses);
+    while(my_ars_node)
+    {
+        active_response *my_ar;
+
+        my_ar = (active_response *)my_ars_node->data;
+        mark_to_ar = 0;
+
+        /* Checking if the level for the ar is higher */
+        if(my_ar->level)
+        {
+            int ar_level = atoi(my_ar->level);
+
+            if(rule_config->level > ar_level)
+            {
+                mark_to_ar = 1;
+            }
+        }
+       
+        /* Checking if group matches */
+        if(my_ar->rules_group)
+        {
+           if(OS_Regex(my_ar->rules_group, rule_config->group))
+           {
+               mark_to_ar = 1;
+           }
+        }
+        
+        /* Checking if rule id matches */
+        if(my_ar->rules_id)
+        {
+            int r_id = 0;
+            char *str_pt = my_ar->rules_id;
+
+            while(*str_pt != '\0')
+            {
+                /* We allow spaces in between */
+                if(*str_pt == ' ')
+                {
+                    str_pt++;
+                    continue;
+                }
+
+                /* If is digit, we get the value
+                 * and search for the next digit
+                 * available
+                 */
+                else if(isdigit(*str_pt))
+                {
+                    r_id = atoi(str_pt);
+                    
+                    /* mark to ar if id matches */
+                    if(r_id == rule_config->sigid)
+                    {
+                        mark_to_ar = 1;
+                    }
+                    
+                    str_pt = index(str_pt, ',');
+                    if(str_pt)
+                    {
+                        str_pt++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                else
+                {
+                    break;
+                }
+            }
+        } /* eof of rules_id */
+       
+        /* Bind AR to the rule */ 
+        if(mark_to_ar == 1)
+        {
+            rule_ar_size++;
+
+            rule_config->ar = realloc(rule_config->ar,
+                                      (rule_ar_size + 1)
+                                      *sizeof(active_response *));
+            
+            /* Always set the last node to NULL */
+            rule_config->ar[rule_ar_size - 1] = my_ar;
+            rule_config->ar[rule_ar_size] = NULL;  
+        }
+        
+        my_ars_node = OSList_GetNextNode(active_responses);
+    }
+
+    return;
+}
+
+
+/* EOF */
