@@ -53,10 +53,6 @@
     #define USER            "ossec"
 #endif
     
-#ifndef EXECUSER
-    #define EXECUSER        "ossece"
-#endif
-    
 #ifndef REMUSER
     #define REMUSER         "ossecr"
 #endif
