@@ -42,7 +42,6 @@ typedef struct _file_sum
 
 typedef struct _mgr_thread
 {
-    int port;
     int agentid;
     char *srcip;
     char *msg;
@@ -281,9 +280,8 @@ char *r_read(char *tmp_msg)
 /* send_file: Sends a file to the agent.
  * Returns -1 on error
  */
-int send_file(int agentid, char *srcip, int port, char *name, char *sum)
+int send_file(int agentid, char *name, char *sum)
 {
-    int socket;
     char file[OS_MAXSTR +1];
     char buf[OS_MAXSTR +1];
     char *crypt_msg;
@@ -300,15 +298,6 @@ int send_file(int agentid, char *srcip, int port, char *name, char *sum)
         return(-1);
     }
 
-    /* Connecting to the agent */
-    socket = OS_ConnectUDP(port,srcip);
-    if(socket < 0)
-    {
-        fclose(fp);
-        merror(CONNS_ERROR,ARGV0,srcip);
-        return(-1);
-    }
-
 
     /* Sending the file name first */
     snprintf(buf, OS_MAXSTR, "#!-up file %s %s\n", sum, name);
@@ -318,17 +307,16 @@ int send_file(int agentid, char *srcip, int port, char *name, char *sum)
     {
         merror(SEC_ERROR,ARGV0);
         fclose(fp);
-        close(socket);
         return(-1);
     }
 
     /* Sending initial message */
-    if(OS_SendUDPbySize(socket, msg_size, crypt_msg) < 0)
+    if(OS_SendToUDPbySize(logr.sock, msg_size, crypt_msg, 
+                          (struct sockaddr *)keys.peer_info[agentid]) < 0)
     {
         free(crypt_msg);
         fclose(fp);
         merror(SEND_ERROR,ARGV0);
-        close(socket);
         return(-1);
     }
     
@@ -343,16 +331,14 @@ int send_file(int agentid, char *srcip, int port, char *name, char *sum)
         {
             fclose(fp);
             merror(SEC_ERROR,ARGV0);
-            close(socket);
             return(-1);
         }
 
-        if(OS_SendUDPbySize(socket, msg_size, crypt_msg) < 0)
+        if(OS_SendUDPbySize(logr.sock, msg_size, crypt_msg) < 0)
         {
             fclose(fp);
             free(crypt_msg);
             merror("%s: Error sending message to agent (send)",ARGV0);
-            close(socket);
             return(-1);
         }
 
@@ -369,16 +355,14 @@ int send_file(int agentid, char *srcip, int port, char *name, char *sum)
     {
         merror(SEC_ERROR,ARGV0);
         fclose(fp);
-        close(socket);
         return(-1);
     }
 
     /* Sending final message */
-    if(OS_SendUDPbySize(socket, msg_size, crypt_msg) < 0)
+    if(OS_SendUDPbySize(logr.sock, msg_size, crypt_msg) < 0)
     {
         free(crypt_msg);
         merror(SEND_ERROR,ARGV0);
-        close(socket);
         fclose(fp);
         return(-1);
     }
@@ -386,7 +370,6 @@ int send_file(int agentid, char *srcip, int port, char *name, char *sum)
     free(crypt_msg);
     
     fclose(fp);
-    close(socket);
     return(0);
 }
 
@@ -500,8 +483,7 @@ void *mgr_handle(void *arg)
                 (f_sum[i]->mark == 0))
         {
             
-            if(send_file(to_thread->agentid, to_thread->srcip, 
-                         to_thread->port, f_sum[i]->name, f_sum[i]->sum) < 0)
+            if(send_file(to_thread->agentid,f_sum[i]->name,f_sum[i]->sum) < 0)
             {
                 merror("%s: Error sending file '%s' to agent.",
                         ARGV0,
@@ -520,7 +502,7 @@ void *mgr_handle(void *arg)
 
 
 /* start_mgr: Start manager thread */
-void start_mgr(int agentid, char *msg, char *srcip, int port)
+void start_mgr(int agentid, char *msg, char *srcip)
 {
     /* Nothing changed on the agent. Keep going */
     if(equal_last_msg(srcip, msg))
@@ -528,7 +510,7 @@ void start_mgr(int agentid, char *msg, char *srcip, int port)
         _ctime = time(0);
         
         /* Re-read everything and update agent files */
-        if((_ctime - _stime) > (NOTIFY_TIME*6))
+        if((_ctime - _stime) > (NOTIFY_TIME * 6))
         {
             f_files();
             c_files();
@@ -560,8 +542,6 @@ void start_mgr(int agentid, char *msg, char *srcip, int port)
         if(!to_thread->srcip)
             ErrorExit(MEM_ERROR,ARGV0);
         
-        to_thread->port = port;
-
         /* Starting manager */
         if(CreateThread(mgr_handle, (void *)to_thread) != 0)
         {

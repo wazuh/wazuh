@@ -14,32 +14,32 @@
  */
 
 
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
 
-#include "headers/defs.h"
-#include "headers/file_op.h"
-#include "headers/debug_op.h"
+#include "shared.h"
 
 #include "headers/sec.h"
 
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/blowfish/bf_op.h"
 
-#define NAMESIZE 33
-#define KEYSIZE	 65
+
+#define KEYSIZE	 72
 
 
 /* _MemClear v0.1 - Internal use */
 void _MemClear(char *id, char *name, char *ip, char *key)
 {
-	memset(id,'\0', IDMAXSIZE);
-	memset(name,'\0',NAMESIZE);
+	memset(id,'\0', KEYSIZE);
+	memset(name,'\0',KEYSIZE);
 	memset(key,'\0', KEYSIZE);
-	memset(ip,'\0', IPSIZE);
+	memset(ip,'\0', KEYSIZE);
 }
 
 /* _CHash v0.1 -Internal use  */
@@ -48,68 +48,80 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
 	os_md5 filesum1;
 	os_md5 filesum2;
     
-	char _finalstr[65];
+	char _finalstr[KEYSIZE];
+    
 	int _fsize = 0;
 	int _idsize = 0;
 	int _ipsize = 0;
 	
-	/* Getting ID */
+       
+	/* Getting ID/IP */
 	_idsize = strlen(id)+1;
+	_ipsize=strlen(ip)+1;
+    
 	keys->ids = (char **)realloc(keys->ids,
-			(keys->keysize+1)*sizeof(char *));	
-	if(keys->ids == NULL)
-	   ErrorExit("Memory error (realloc 1) while reading private keys");
+			(keys->keysize+1) * sizeof(char *));
 	
-	keys->ids[keys->keysize]=(char *)calloc(_idsize,sizeof(char));
-	if(keys->ids[keys->keysize] == NULL)
-	   ErrorExit("Memory error (calloc) while reading private keys");
+    keys->ips = (char **)realloc(keys->ips,
+            (keys->keysize+1)* sizeof(char*));
+
+    keys->peer_info = realloc(keys->peer_info,
+            (keys->keysize+1) * sizeof(struct sockaddr_in *));
+    keys->peer_info[keys->keysize] = calloc(1, 
+                                        sizeof(struct sockaddr_in *));
+    
+    if(!keys->ids || !keys->ips || !keys->peer_info 
+                  || !keys->peer_info[keys->keysize])
+    {
+        ErrorExit(MEM_ERROR, ARGV0);
+    }
+    
+	keys->ids[keys->keysize] = calloc(_idsize,sizeof(char));
+    keys->ips[keys->keysize] = calloc(_ipsize,sizeof(char)); 
+
+    if(!keys->ids[keys->keysize] || !keys->ips[keys->keysize])
+    {
+        ErrorExit(MEM_ERROR, ARGV0);
+    }
+
 
 	strncpy(keys->ids[keys->keysize],id,_idsize-1);
-      
-	/* Getting IP */
-	_ipsize=strlen(ip)+1;
-	keys->ips = (char **)realloc(keys->ips,
-			(keys->keysize+1)* sizeof(char*));
-	if(keys->ips == NULL)
-	   ErrorExit("Memory error (realloc ips) while reading priv keys");
-	
-	keys->ips[keys->keysize]=(char*)calloc(_ipsize,sizeof(char));
-	if(keys->ips[keys->keysize] == NULL)
-	   ErrorExit("Memory error (calloc ips) while reading priv keys");
 	strncpy(keys->ips[keys->keysize],ip,_ipsize-1);
-	
+      
 	
 	/* Generating key */
 	/* MD5 from name and key */
 	OS_MD5_Str(name, filesum1);	
 	OS_MD5_Str(key, filesum2);
 
-	/* Cleaning final str */
-	memset(_finalstr,'\0', 65);
 
 	/* Generating new filesum1 */ 
-	snprintf(_finalstr,64,"%s%s",filesum1,filesum2);
+	snprintf(_finalstr, sizeof(_finalstr)-1, "%s%s",filesum1,filesum2);
 	
+    
     OS_MD5_Str(_finalstr, filesum1);	
 	
+    
 	/* Generating final key */
 	memset(_finalstr,'\0', 65);
 	snprintf(_finalstr,64,"%s%s",filesum1,filesum2);
 
+
 	/* Final size */
-	_fsize=strlen(_finalstr)+1;
+	_fsize = strlen(_finalstr)+1;
 
     keys->keys = (char **)realloc(keys->keys,
 			(keys->keysize+1)*sizeof(char *));
 	if(keys->keys == NULL)
-	   ErrorExit("Memory error (realloc) while reading private keys!\n");
+       ErrorExit(MEM_ERROR, ARGV0); 
 
     keys->keys[keys->keysize]=(char *)calloc(_fsize,sizeof(char));
     
     if(keys->keys[keys->keysize] == NULL)
-	   ErrorExit("Memory error (calloc) while reading private keys!\n");
+       ErrorExit(MEM_ERROR, ARGV0); 
 
 	strncpy(keys->keys[keys->keysize],_finalstr,_fsize-1);
+
 
 	/* Cleaning final string from memory */
 	memset(_finalstr,'\0', 65);
@@ -126,9 +138,9 @@ void ReadKeys(keystruct *keys)
     
     int c;
     
-    char name[NAMESIZE];
-    char ip[IPSIZE];
-    char id[IDMAXSIZE];
+    char name[KEYSIZE];
+    char ip[KEYSIZE];
+    char id[KEYSIZE];
     char key[KEYSIZE];
     
     int _pos=0,j=0,_ig=0;

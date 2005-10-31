@@ -64,10 +64,11 @@ char *r_read(char *tmp_msg)
  */
 void getreply(int socket)
 {
-    char file[OS_MAXSTR +1];
+    int recv_b;
     
-    char srcip[IPSIZE +1];
-    char *buffer;
+    char file[OS_MAXSTR +1];
+    char buffer[OS_MAXSTR +1];
+    
     char *cleartext_msg;
     char *tmp_msg;
    
@@ -108,21 +109,12 @@ void getreply(int socket)
             /* timeout */
             return;
         }
-        
-        buffer = OS_RecvAllUDP(socket, OS_MAXSTR, srcip, IPSIZE);
+       
+        recv_b = OS_RecvConnUDP(socket, buffer, OS_MAXSTR);
 
-        /* Checking if IP is allowed - only the manager */
-        if(strcmp(srcip, logr->rip) != 0)
-        {
-            merror(DENYIP_ERROR,ARGV0,srcip);
-            free(buffer);
-            continue;
-        }
-        
         cleartext_msg = ReadSecMSG(&keys, NULL, buffer);
         if(cleartext_msg == NULL)
         {
-            free(buffer);
             merror(MSG_ERROR,ARGV0,logr->rip);
             return;
         }
@@ -134,7 +126,6 @@ void getreply(int socket)
         {
             merror("%s: Invalid message from '%s'",ARGV0, logr->rip);
             free(cleartext_msg);
-            free(buffer);
             return;
         }
                                                         
@@ -252,7 +243,6 @@ void getreply(int socket)
         
         cleanup:
         free(cleartext_msg);
-        free(buffer);
     }
 
     if(fp)
@@ -419,21 +409,12 @@ void main_mgr(int socket)
 void *start_mgr(void *arg)
 {
     struct timeval fp_timeout;
-    int *port = (int *)arg;
-    int sock;
-
-    /* Bind port to receive commands from server manager */
-    if((sock = OS_Bindportudp(*port, NULL)) < 0)
-    {
-        merror(BIND_ERROR,ARGV0,port);
-        return(NULL);
-    }
-
+    int *sock = (int *)arg;
 
     /* We notify the server every NOTIFY_TIME - 30 */
     while(1)
     {
-        main_mgr(sock);
+        main_mgr(*sock);
 
         fp_timeout.tv_sec = NOTIFY_TIME -30;
         fp_timeout.tv_usec = 0;

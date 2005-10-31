@@ -18,6 +18,7 @@
 
 #define __OS_NET_H
 
+
 /* OS_Bindport*
  * Bind a specific port (protocol and a ip).
  * If the IP is not set, it is going to use ADDR_ANY
@@ -42,8 +43,13 @@ int OS_ConnectUDP(unsigned int _port, char *_ip);
 /* OS_RecvUDP
  * Receive a UDP packet. Return NULL if failed
  */
+#include <sys/types.h>
+#include <sys/socket.h>
 char *OS_RecvUDP(int socket, int sizet);
-char *OS_RecvAllUDP(int socket, int sizet, char *srcip, int addrsize);
+int OS_RecvConnUDP(int socket, char *buffer, int buffer_size);
+int OS_RecvAllUDP(int socket, char *buffer, int buffer_size,
+                  char *srcip, struct sockaddr *peer_info);
+
 
 /* OS_RecvUnix
  * Receive a message via a Unix socket
@@ -66,6 +72,9 @@ int OS_SendUnix(int socket, char * msg, int size);
 
 int OS_SendUDP(int socket, char *msg);
 int OS_SendUDPbySize(int socket, int size, char *msg);
+int OS_SendToUDPbySize(int socket, int msg_size, char *crypt_msg,
+                       struct sockaddr * peer_info);
+    
 
 /* OS_GetHost
  * Calls gethostbyname

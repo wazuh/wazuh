@@ -115,8 +115,10 @@ void _startit(char *dir, int uid, int gid)
 
 
 
-    /* Starting manager */
-    if(CreateThread(start_mgr, (void *)&port) != 0)
+    /* Starting manager - thread to receive messages
+     * from the server.
+     */
+    if(CreateThread(start_mgr, (void *)&logr->sock) != 0)
     {
         ErrorExit(THREAD_ERROR, ARGV0);
     }
@@ -208,6 +210,7 @@ int main(int argc, char **argv)
     /* Reading config */
     if((binds = ClientConf(DEFAULTCPATH)) == 0)
         ErrorExit(CLIENT_ERROR,ARGV0);
+
 
     else if(binds < 0)
         ErrorExit(CONFIG_ERROR,ARGV0);

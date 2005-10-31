@@ -29,6 +29,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include "defs.h"
+
 #include "os_err.h"
 
 #include "os_net.h"
@@ -41,7 +43,7 @@ typedef int socklen_t;
 
 
 struct sockaddr_in _c;	    /* Client socket */
-socklen_t _cl;                    /* Client socket length */
+socklen_t _cl;              /* Client socket length */
 struct sockaddr_un n_us;    /* Unix socket  */
 
 /* UNIX SOCKET */
@@ -49,6 +51,8 @@ struct sockaddr_un n_us;    /* Unix socket  */
 #define SUN_LEN(ptr) ((size_t) (((struct sockaddr_un *) 0)->sun_path)        \
 		                      + strlen ((ptr)->sun_path))
 #endif
+
+
 
 /* OS_Bindport v 0.2, 2005/02/11
  * Bind a specific port
@@ -270,6 +274,20 @@ int OS_SendUDPbySize(int socket, int size, char *msg)
 }
 
 
+int OS_SendToUDPbySize(int socket, int msg_size, char *crypt_msg,
+                       struct sockaddr * peer_info)
+{
+
+    if(sendto(socket, crypt_msg, msg_size, 0,
+               (struct sockaddr *)peer_info, sizeof(peer_info)) < 0) 
+    {
+        return(OS_SOCKTERR);
+    }
+
+    return(0);
+        
+}
+
 /* OS_AcceptTCP v0.1, 2005/01/28
  * Accept a TCP connection
  */
@@ -330,26 +348,44 @@ char *OS_RecvUDP(int socket, int sizet)
     return(ret);
 }
 
+
+/* OS_RecvConnUDP v0.1
+ * Receives a message from a connected UDP socket
+ */
+int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
+{
+    int recv_b;
+
+    recv_b = recv(socket, buffer, buffer_size, 0);
+    if(recv_b < 0)
+        return(0);
+    
+    return(recv_b);    
+}
+
+
 /* OS_RecvALLUDP v0.1, 2004/07/23
  * Duplicate work of the above function,
  * but returning also the source IP address
  */
-char *OS_RecvAllUDP(int socket, int sizet, char *srcip, int addrsize)
+int OS_RecvAllUDP(int socket, char *buffer, int buffer_size,
+                  char *srcip, struct sockaddr *peer_info)
 {
-    char *ret;
-    
-    ret = (char *) calloc((sizet), sizeof(char));
-    
-    if(ret == NULL)
-        return(NULL);
-    
-    if((recvfrom(socket,ret,sizet-1,0,(struct sockaddr *)&_c,&_cl))<0)
-        return(NULL);
+    int recv_b;
+   
+     
+    recv_b = recvfrom(socket, buffer, buffer_size, 0,
+                      (struct sockaddr *)peer_info, &_cl);
 
-    strncpy(srcip, inet_ntoa(_c.sin_addr),addrsize -1);
-    srcip[addrsize -1]='\0';
-    return(ret);
+    if(recv_b < 0)
+        return(0);
+
+    strncpy(srcip, inet_ntoa(_c.sin_addr), IPSIZE);
+    srcip[IPSIZE]='\0';
+    
+    return(recv_b);
 }
+
 
 /* OS_RecvUnix, v0.1, 2004/07/29
  * Receive a message using a Unix socket
@@ -371,6 +407,7 @@ char *OS_RecvUnix(int socket, int sizet)
 
     return(ret);
 }
+
 
 /* OS_SendUnix, v0.1, 2004/07/29
  * Send a message using a Unix socket

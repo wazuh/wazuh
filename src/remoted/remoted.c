@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>  
 #include <arpa/inet.h>
@@ -41,7 +42,7 @@
 
 /*  manager prototypes */
 void manager_init();
-void start_mgr(int agentid, char *msg, char *srcip, int port);
+void start_mgr(int agentid, char *msg, char *srcip);
 char *r_read(char *tmp_msg);
 
 
@@ -49,28 +50,28 @@ char *r_read(char *tmp_msg);
 /* OS_IPNotAllowed, v0.1, 2005/02/11 
  * Checks if an IP is not allowed.
  */
-int OS_IPNotAllowed(char *srcip, remoted *logr)
+int OS_IPNotAllowed(char *srcip)
 {
-    if(logr->denyips != NULL)
+    if(logr.denyips != NULL)
     {
         int i=0;
         for(i=0;i<255;i++) /* Maximum access-list */
         {
-            if(logr->denyips[i] == NULL)
+            if(logr.denyips[i] == NULL)
                 break;
-            if(strncmp(logr->denyips[i],srcip,strlen(logr->denyips[i]))==0)
+            if(strncmp(logr.denyips[i],srcip,strlen(logr.denyips[i]))==0)
                 return(1);
         }
     }
-    if(logr->allowips != NULL)
+    if(logr.allowips != NULL)
     {
         int i=0;
         for(i=0;i<255;i++) /* Maximum access-list */
         {
-            if(logr->allowips[i] == NULL)
+            if(logr.allowips[i] == NULL)
                 break;
-            if(strncmp(logr->allowips[i],srcip,
-                        strlen(logr->allowips[i]))==0)
+            if(strncmp(logr.allowips[i],srcip,
+                        strlen(logr.allowips[i]))==0)
                 return(0);
         }
     }
@@ -86,27 +87,31 @@ int OS_IPNotAllowed(char *srcip, remoted *logr)
  * Maximum allowed input is 1024 bytes.
  */
 void _startit(int position,int connection_type, int uid, 
-              int gid, char *dir, remoted *logr)
+              int gid, char *dir)
 {
     int sock;
     int m_queue;
     
-    char *buffer;
-    char srcip[IPSIZE];
+    char buffer[OS_MAXSTR +1];
+    char srcip[IPSIZE +1];
     
     int port = 0;
+   
+    int recv_b;
     
+    struct sockaddr_in peer_info;
+     
     
     /* if SYSLOG and allowips is not defined, exit */
-    if((logr->allowips == NULL)&&(connection_type == SYSLOG_CONN))
+    if((logr.allowips == NULL)&&(connection_type == SYSLOG_CONN))
     {
         ErrorExit("%s: No ip/network allowed in the access list "
                   "for syslog. No reason for running it. Exiting...",
                   ARGV0);
     }
            
-    if((logr->port == NULL)||(logr->port[position] == NULL)||
-            ((port = atoi(logr->port[position])) <= 0) ||
+    if((logr.port == NULL)||(logr.port[position] == NULL)||
+            ((port = atoi(logr.port[position])) <= 0) ||
               (port > 65535))
     {
         if(port < 0 || port > 65535)
@@ -169,11 +174,12 @@ void _startit(int position,int connection_type, int uid,
     while(1)
     {
         /* Receiving message - up to MAXSTR */
-        buffer = OS_RecvAllUDP(sock, OS_MAXSTR, srcip, IPSIZE);
+        recv_b = OS_RecvAllUDP(sock, buffer, OS_MAXSTR,
+                               srcip, (struct sockaddr *)&peer_info);
 
         
         /* Can't do much in here */
-        if(buffer == NULL)
+        if(recv_b == 0)
             continue;
 
         
@@ -189,7 +195,6 @@ void _startit(int position,int connection_type, int uid,
             if(agentid < 0)
             {
                 merror(DENYIP_ERROR,ARGV0,srcip);
-                free(buffer);
                 continue;
             }
             
@@ -198,7 +203,6 @@ void _startit(int position,int connection_type, int uid,
             if(cleartext_msg == NULL)
             {
                 merror(MSG_ERROR,ARGV0,srcip);
-                free(buffer);
                 continue;
             }
 
@@ -207,18 +211,22 @@ void _startit(int position,int connection_type, int uid,
             if(tmp_msg == NULL)
             {
                 merror(MSG_ERROR,ARGV0,srcip);
-                free(buffer);
                 free(cleartext_msg);
                 continue;
             }
            
+            
+            /* Saving Peer info */
+            memcpy(keys.peer_info[agentid], &peer_info,
+                                             sizeof(struct sockaddr_in *));
+             
              
             /* Check if it is a control message */ 
             if((tmp_msg[0] == '#') && (tmp_msg[1] == '!') &&
                                       (tmp_msg[2] == '-'))
             {
                 tmp_msg+=3;
-                start_mgr(agentid, tmp_msg, srcip, port);
+                start_mgr(agentid, tmp_msg, srcip); 
             }
             
             
@@ -226,7 +234,7 @@ void _startit(int position,int connection_type, int uid,
              * socket again. If not, increments local_err and try
              * again latter
              */
-            else if(SendMSG(m_queue, tmp_msg, srcip, logr->group[position],
+            else if(SendMSG(m_queue, tmp_msg, srcip, logr.group[position],
                         SECURE_MQ) < 0)
             {
                 merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
@@ -244,12 +252,12 @@ void _startit(int position,int connection_type, int uid,
         else
         {
             /* Checking if IP is allowed here */
-            if(OS_IPNotAllowed(srcip,logr))
+            if(OS_IPNotAllowed(srcip))
             {
                 merror(DENYIP_ERROR,ARGV0,srcip);
             }
             
-            else if(SendMSG(m_queue,buffer,srcip,logr->group[position],
+            else if(SendMSG(m_queue,buffer,srcip,logr.group[position],
                         SYSLOG_MQ) < 0)
             {
                 merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
@@ -259,8 +267,6 @@ void _startit(int position,int connection_type, int uid,
                 }
             }
         }
-        
-        free(buffer);
     }
 }
 
@@ -271,7 +277,6 @@ int main(int argc, char **argv)
 {
     int c,binds = 0,i = 0,uid = 0,gid = 0;
     
-    remoted logr;
     
     int connection_type = 0;
     
@@ -366,7 +371,7 @@ int main(int argc, char **argv)
         if(fork() == 0)
         {   
             /* On the child */
-            _startit(i,connection_type,uid,gid,dir,&logr);
+            _startit(i,connection_type,uid,gid,dir);
         }
         else
             continue;

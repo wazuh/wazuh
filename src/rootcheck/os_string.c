@@ -45,6 +45,9 @@
 #include <locale.h>
 #include <unistd.h>
 
+#include <netinet/in.h>
+
+
 /* Again, making solaris happy... */
 #ifdef SOLARIS
 #include <sys/exechdr.h>

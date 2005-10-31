@@ -26,12 +26,16 @@ typedef struct _remoted
 	char **conn;
 	char **allowips;
 	char **denyips;
+
+    int sock;
 }remoted;
+
 
 int BindConf(char *cfgfile, remoted *logr);
 
 /* Shared keys */
 #include "headers/sec.h"
 keystruct keys;
+remoted logr;
 
 #endif
