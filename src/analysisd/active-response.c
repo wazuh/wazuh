@@ -86,6 +86,7 @@ int AS_GetActiveResponses(char * config_file)
         
         if(strcmp(node[i]->element, xml_ar) != 0)
         {
+            i++;
             continue;
         }
         
@@ -287,6 +288,7 @@ int AS_GetActiveResponseCommands(char * config_file)
         
         if(strcmp(node[i]->element, xml_command) != 0)
         {
+            i++;
             continue;
         }
         

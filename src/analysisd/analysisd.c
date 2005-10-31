@@ -164,6 +164,20 @@ int main(int argc, char **argv)
         ErrorExit(RULESLOAD_ERROR,ARGV0);
 
         
+    /* Reading the active response config */
+    AS_Init();
+   
+    if(AS_GetActiveResponseCommands(cfg) < 0)
+    {
+        ErrorExit(CONFIG_ERROR, ARGV0);
+    }
+    if(AS_GetActiveResponses(cfg) < 0)
+    {
+        ErrorExit(CONFIG_ERROR, ARGV0);
+    }
+
+    debug1("%s: Reading config", ARGV0);
+    
     /* Setting the group */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
@@ -186,18 +200,6 @@ int main(int argc, char **argv)
     ReadDecodeXML(XML_DECODER);
 
 
-    /* Reading the active response config */
-    AS_Init();
-    
-    if(AS_GetActiveResponseCommands(cfg) < 0)
-    {
-        ErrorExit(CONFIG_ERROR, ARGV0);
-    }
-    if(AS_GetActiveResponses(cfg) < 0)
-    {
-        ErrorExit(CONFIG_ERROR, ARGV0);
-    }
-    
     
     /* Creating the rules list */
     Rules_OP_CreateRules();
