@@ -579,23 +579,38 @@ void OS_ReadMSG(int m_queue)
                     OS_Createmail(&mailq,lf);
                 }
 
+                /* Execute an active response */
+                if(currently_rule->ar)
+                {
+                    int do_ar;
+                    active_response **rule_ar = currently_rule->ar;
 
+                    while(*rule_ar)
+                    {
+                        do_ar = 1;
+                        if((*rule_ar)->ar_cmd->user)
+                        {
+                            if(!lf->user)
+                                do_ar = 0;
+                        }
+                        if((*rule_ar)->ar_cmd->srcip)
+                        {
+                            if(!lf->srcip)
+                                do_ar = 0;
+                        }
+
+                        if(do_ar)
+                        {
+                            OS_Exec(&execdq, lf, *rule_ar);
+                        }
+
+                        rule_ar++;
+                    }
+                }
+                
                 /* Copy the strucuture to the state structure */
                 OS_AddEvent(lf);
                 
-                /* Execute an external command */
-
-                /*
-                   if((rules.userresponse[i] == 1)&&
-                   (rules.external[i] != NULL))
-                   {
-                   OS_Exec(&execq,&(Config.exec),i,&lf,NULL,rules);    
-                   }
-                   else if(Config.externcmdbylevel[rules.level[i]] != NULL)
-                   {
-                   OS_Exec(&execq,&(Config.exec),i,&lf,NULL);    
-                   }
-                 */
                 break;
                 	
             }while((rulenode_pt = rulenode_pt->next) != NULL);

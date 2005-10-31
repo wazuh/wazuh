@@ -27,9 +27,8 @@ void OS_Run(int q, execd_config *execd);
 int main(int argc, char **argv)
 {
     int c;
-    int uid = 0,gid = 0,m_queue = 0;
+    int gid = 0,m_queue = 0;
     char *dir  = DEFAULTDIR;
-    char *user = EXECUSER;
     char *group = GROUPGLOBAL;
     char *cfg = DEFAULTCPATH;
 
@@ -43,11 +42,6 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
-                break;
-            case 'u':
-                if(!optarg)
-                    ErrorExit("%s: -u needs an argument",ARGV0);
-                user = optarg;
                 break;
             case 'g':
                 if(!optarg)
@@ -73,11 +67,10 @@ int main(int argc, char **argv)
     /* Starting daemon */
     verbose(STARTED_MSG,ARGV0);
 
-    /* Check if the user/group given are valid */
-    uid = Privsep_GetUser(user);
+    /* Check if the group given are valid */
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
-        ErrorExit(USER_ERROR,ARGV0,user,group);
+    if(gid < 0)
+        ErrorExit(USER_ERROR,ARGV0,"",group);
 
     /* Reading configuration */
     {
@@ -93,6 +86,7 @@ int main(int argc, char **argv)
         }
     }
 
+
     /* Privilege separation */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
@@ -106,12 +100,6 @@ int main(int argc, char **argv)
     nowChroot();
 
 
-    /* Changing user */        
-    if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR,ARGV0,user);
-
-    verbose(PRIVSEP_MSG,ARGV0,dir,user);
-
 
     /* Starting queue (exec queue) */
     if((m_queue = StartMQ(EXECQUEUE,READ)) < 0)
@@ -120,6 +108,7 @@ int main(int argc, char **argv)
 
     /* Signal manipulation */
     StartSIG(ARGV0);
+
 
     /* Going daemon */
     nowDaemon();

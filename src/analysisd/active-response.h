@@ -19,6 +19,7 @@ typedef struct _ar_command
     char *name;
     char *expect;
     char *executable;
+    int user, srcip;
 }ar_command;
 
 
@@ -29,7 +30,11 @@ typedef struct _ar
     char *rules_id;
     char *rules_group;
     char *level;
+
     ar_command *ar_cmd;
+    int AS;
+    int local;
+    int agent;
 }active_response;
 
 

@@ -18,11 +18,9 @@
 
 #include "alerts.h"
 
-#include "headers/defs.h"
-#include "headers/os_err.h"
-#include "headers/debug_op.h"
+#include "shared.h"
 #include "rules.h"
-#include "headers/mq_op.h"
+#include "active-response.h"
 
 #include "os_net/os_net.h"
 #include "os_regex/os_regex.h"
@@ -33,55 +31,24 @@
 
 /* OS_Exec v0.1 
  */
-void OS_Exec(int *execq, short int *notify, int position, 
-		Eventinfo *lf, char *msgtolog)
+void OS_Exec(int *execq, Eventinfo *lf, active_response *ar)
 {
-    ExecdMsg msg;
+    char exec_msg[OS_MAXSTR +1];
 
-    if(*notify < 0)
-        return;
-    else if(*notify == 0)
+    snprintf(exec_msg, OS_MAXSTR,
+             "#!-execd %s %s %s",
+             ar->command,
+             lf->user,
+             lf->srcip);
+
+    /* active response on the server */         
+    if(ar->AS)
     {
-        merror("%s: Command execution configured, but impossible to send.",
-                ARGV0);
-        *notify=-1;
-        return;
+        if(OS_SendUnix(*execq, exec_msg, 0) < 0)
+        {
+            merror("%s: Error communication with execd", ARGV0);
+        }
     }
-    else if(*notify > 10)
-    {
-        merror("%s: Command execution  disabled. Too many errors.",ARGV0);
-        *notify=-1;
-        return;
-    }
-
-
-#ifdef DEBUG	
-    if(position >= 0)
-        debug2("analysisd_os_execd: Matching rule: %d, comment:%s",
-                currently_rule->sigid,currently_rule->comment);	
-#endif
-
-    msg.type=0;
-    msg.args_size=0;
-    msg.args=NULL;
-    msg.name=strdup("ls1");
-    msg.name_size=strlen(msg.name);    
     
-    if(OS_SendExecQ(*execq, &msg) < 0)
-    {
-        /* Unable to send. Trying again.. */
-        if((*execq = StartMQ(EXECQUEUE,WRITE)) < 0)
-        {
-            *notify+=1;
-        }
-        if(OS_SendExecQ(*execq, &msg) < 0)
-            *notify+=1;
-        else
-        {
-            OS_FreeExecdMsg(&msg);
-        }
-    }
-    else
-        *notify=1;
     return;
 }

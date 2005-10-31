@@ -14,10 +14,9 @@
 
 #define _EXEC__H
 
-#include "rules.h"
 #include "eventinfo.h"
+#include "active-response.h"
 
-void OS_Exec(int *execq, short int *notify, int position, 
-		Eventinfo *lf, char *msgtolog);
+void OS_Exec(int *execq, Eventinfo *lf, active_response *ar);
 
 #endif

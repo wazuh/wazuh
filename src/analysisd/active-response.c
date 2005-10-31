@@ -115,6 +115,10 @@ int AS_GetActiveResponses(char * config_file)
         tmp_ar->level = NULL;
         tmp_ar->ar_cmd = NULL;
         
+        tmp_ar->AS = 0;
+        tmp_ar->local = 0;
+        tmp_ar->agent = 0;
+        
         while(elements[j])
         {
             if(!elements[j]->element || !elements[j]->content) 
@@ -160,7 +164,32 @@ int AS_GetActiveResponses(char * config_file)
             OS_ClearXML(&xml);
             return(-1);
         }
-      
+     
+        if(OS_Regex("AS|analysis", tmp_ar->location))
+        {
+            tmp_ar->AS = 1;    
+        }
+        if(OS_Regex("local", tmp_ar->location))
+        {
+            tmp_ar->local = 1;
+        }
+        if(OS_Regex("agent:", tmp_ar->location))
+        {
+            tmp_ar->agent = 1;
+        }
+        if(OS_Regex("all", tmp_ar->location))
+        {
+            tmp_ar->AS = 1;
+            tmp_ar->agent = 1;
+        }
+        
+        if(!tmp_ar->AS && !tmp_ar->local && !tmp_ar->agent)
+        {
+            merror(AR_INV_LOC, ARGV0, tmp_ar->location);
+            OS_ClearXML(&xml);
+            return(-1);
+        }
+         
         /* Checking if command name is valid */
         {
             OSListNode *my_commands_node;
@@ -282,6 +311,8 @@ int AS_GetActiveResponseCommands(char * config_file)
         tmp_command->name = NULL; 
         tmp_command->expect= NULL; 
         tmp_command->executable = NULL; 
+        tmp_command->user = 0;
+        tmp_command->srcip = 0;
         
         while(elements[j])
         {
@@ -322,6 +353,12 @@ int AS_GetActiveResponseCommands(char * config_file)
             return(-1);
         }
        
+        /* Getting the expect */
+        if(OS_Regex("user", tmp_command->expect))
+            tmp_command->user = 1;
+        if(OS_Regex("srcip", tmp_command->expect))
+            tmp_command->srcip = 1;
+                
         if(!OSList_AddData(ar_commands, (void *)tmp_command))
         {
             merror(LIST_ADD_ERROR, ARGV0);

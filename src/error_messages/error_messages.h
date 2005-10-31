@@ -81,6 +81,8 @@
 #define AR_MISS         "%s(1281): Missing options in the active response " \
                         "configuration. "                        
 #define ARQ_ERROR       "%s(1301): Unable to establish active response queue."
+#define AR_INV_LOC      "%s(1302): Invalid active response location: '%s'."
+
                         
 /* List operations */
 #define LIST_ERROR      "%s(1290); Error creating a new list (calloc)."
