@@ -369,7 +369,7 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
  * but returning also the source IP address
  */
 int OS_RecvAllUDP(int socket, char *buffer, int buffer_size,
-                  char *srcip, struct sockaddr *peer_info)
+                  struct sockaddr *peer_info)
 {
     int recv_b;
    
@@ -380,9 +380,6 @@ int OS_RecvAllUDP(int socket, char *buffer, int buffer_size,
     if(recv_b < 0)
         return(0);
 
-    strncpy(srcip, inet_ntoa(_c.sin_addr), IPSIZE);
-    srcip[IPSIZE]='\0';
-    
     return(recv_b);
 }
 

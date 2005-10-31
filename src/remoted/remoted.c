@@ -175,8 +175,11 @@ void _startit(int position,int connection_type, int uid,
     {
         /* Receiving message - up to MAXSTR */
         recv_b = OS_RecvAllUDP(sock, buffer, OS_MAXSTR,
-                               srcip, (struct sockaddr *)&peer_info);
+                               (struct sockaddr *)&peer_info);
 
+        strncpy(srcip, inet_ntoa(peer_info.sin_addr), IPSIZE);
+        srcip[IPSIZE] = '\0';
+            
         
         /* Can't do much in here */
         if(recv_b == 0)

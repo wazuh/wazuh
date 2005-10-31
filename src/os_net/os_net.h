@@ -48,7 +48,7 @@ int OS_ConnectUDP(unsigned int _port, char *_ip);
 char *OS_RecvUDP(int socket, int sizet);
 int OS_RecvConnUDP(int socket, char *buffer, int buffer_size);
 int OS_RecvAllUDP(int socket, char *buffer, int buffer_size,
-                  char *srcip, struct sockaddr *peer_info);
+                  struct sockaddr *peer_info);
 
 
 /* OS_RecvUnix
