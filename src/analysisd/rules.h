@@ -48,6 +48,7 @@ typedef struct _RuleInfo
     char *group; /* group */
     char *regex; /* regex */
     char *match; /* match */
+    char *plugin_decoded;
 
     char *comment;
     char *info;

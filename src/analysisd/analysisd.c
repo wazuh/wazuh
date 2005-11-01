@@ -662,7 +662,19 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         return(NULL);
 
 
-    /* Checking if any word to match exist */
+    /* Checking if any plugin pre-matched is here */
+    if(currently_rule->plugin_decoded)
+    {
+        /* Must have the log tag decoded */
+        if(!lf->log_tag)
+            return(NULL);
+            
+        if(strcmp(currently_rule->plugin_decoded,
+                  lf->log_tag) != 0)
+            return(NULL);  
+    }
+    
+    /* Checking if any word to match exists */
     if(currently_rule->match)
     {
         if(!OS_Match(currently_rule->match,

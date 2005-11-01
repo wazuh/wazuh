@@ -70,7 +70,7 @@
   <!-- Hashing SSHD rules -->
   
   <rule id="400" level="0" noalert="1">
-    <regex>^sshd[\d+]:</regex>
+    <decoded_as>sshd</decoded_as>
     <comment>SSHD messages grouped</comment>
   </rule>
   
@@ -251,7 +251,7 @@
 
 <group name="syslog,su">
   <rule id="1100" level="0" noalert="1">
-    <regex>^su\S*:</regex>
+    <decoded_as>su</decoded_as>
     <comment>Initial matching for su messages</comment>
   </rule>
   
@@ -316,7 +316,7 @@
 
 <group name="syslog,sudo">
   <rule id="1400" level="0" noalert="1">
-    <match>^sudo:</match>
+    <decoded_as>sudo</decoded_as>
     <comment>Initial match for sudo messages</comment>
   </rule>
   

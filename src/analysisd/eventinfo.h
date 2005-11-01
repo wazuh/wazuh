@@ -31,7 +31,7 @@ typedef struct _Eventinfo
     char *group;
     char *comment;
     char *info;
-    char *last_events[32];  /* Last 32 events will be printed */
+    char *last_events[12];  /* Last 12 events can be printed */
 
     char *srcip;
     char *dstip;
@@ -41,8 +41,10 @@ typedef struct _Eventinfo
     char *command;      /* Command executed */
 
     char *fts;          /* What is going to the FTS */
+    
     short int type;
     short int level;
+    
     int sigid;
     int time;
     int frequency;

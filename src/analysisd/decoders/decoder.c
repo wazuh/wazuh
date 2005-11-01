@@ -53,7 +53,10 @@ void DecodeEvent(Eventinfo *lf)
             /* If prematch fails, go to the next plugin in the list */
             if(nnode->prematch && !OS_Regex(nnode->prematch,lf->log))
                 continue;
-    
+
+            lf->log_tag = nnode->name;
+
+            
             /* Check if we have any child plugin */
             while(node->child)
             {
@@ -139,17 +142,11 @@ void DecodeEvent(Eventinfo *lf)
             {
                 lf->fts = nnode->fts;
 
-                /* the comment we need to duplicate */
+                /* the comment we need to duplicate too */
                 if(nnode->ftscomment)
                     lf->comment = nnode->ftscomment;
             }
 
-            /* Getting the name */
-            if(nnode->name)
-            {
-                /* We just need to point at it */
-                lf->log_tag = nnode->name;
-            }
             
             /* Matched the pre match */
             return;         

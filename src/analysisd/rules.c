@@ -86,6 +86,7 @@ int Rules_OP_ReadRules(char * rulefile)
 
     char *xml_regex = "regex";
     char *xml_match = "match";
+    char *xml_decoded = "decoded_as";
     char *xml_cve = "cve";
     char *xml_info = "info";
     char *xml_comment = "comment";
@@ -323,6 +324,12 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         config_ruleinfo-> match=
                             loadmemory(config_ruleinfo-> match,
+                                    rule_opt[k]->content);
+                    }
+                    else if(strcasecmp(rule_opt[k]->element, xml_decoded)==0)
+                    {
+                        config_ruleinfo->plugin_decoded =
+                            loadmemory(config_ruleinfo->plugin_decoded,
                                     rule_opt[k]->content);
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_info)==0)
@@ -654,6 +661,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->group = NULL;
     ruleinfo_pt->regex = NULL;
     ruleinfo_pt->match = NULL;
+    ruleinfo_pt->plugin_decoded = NULL;
 
     ruleinfo_pt->comment = NULL;
     ruleinfo_pt->info = NULL;

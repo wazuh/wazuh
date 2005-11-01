@@ -89,7 +89,7 @@ void ReadDecodeXML(char *file)
         XML_NODE elements=NULL;
         PluginInfo *pi;
 
-        int j=0;
+        int j = 0;
 
         
         if(!node[i]->element || 
@@ -134,6 +134,10 @@ void ReadDecodeXML(char *file)
         pi->fts = NULL;
         pi->ftscomment = NULL;
         
+        if(!pi->name)
+        {
+            ErrorExit(MEM_ERROR, ARGV0);
+        }
         
         /* Looping on all the elements */
         while(elements[j])

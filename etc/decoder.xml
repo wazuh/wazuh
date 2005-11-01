@@ -22,7 +22,13 @@
   -  sshd[12914]: Failed password for invalid user lala6 from ...
   -  "" Failed keyboard-interactive for root from 192.1.1.1 port 1066 ssh2    
   -->
-<decoder name="ssh-success">
+
+<decoder name="sshd">
+   <prematch>^sshd[\d+]: </prematch>
+</decoder>
+
+<decoder name="sshd-success">
+  <parent>sshd</parent>
   <prematch>^sshd[\d+]: Accepted</prematch>
   <regex>^sshd[\d+]: Accepted \S+ for (\S+) from (\S+) port </regex>
   <order>user,srcip</order>
@@ -30,7 +36,8 @@
   <ftscomment>First time this user logged in (using ssh)</ftscomment>
 </decoder>
 
-<decoder name="ssh">
+<decoder name="ssh-failed">
+  <parent>sshd</parent>
   <prematch>^sshd[\d+]: Failed</prematch>
   <regex>^sshd[\d+]: Failed \S+ for invalid user (\S+) from (\S+) port |</regex>
   <regex>^sshd[\d+]: Failed \S+ for (\S+) from (\S+) port </regex>
