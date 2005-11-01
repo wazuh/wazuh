@@ -20,14 +20,11 @@
 #include "os_regex/os_regex.h"
 #include "os_xml/os_xml.h"
 
-#include "headers/defs.h"
-#include "headers/debug_op.h"
+#include "shared.h"
 
 #include "decoder.h"
 
-#include "error_messages/error_messages.h"
 
-extern short int dbg_flag;
 
 /* Internal functions */
 char *_loadmemory(char *at, char *str);
@@ -43,18 +40,19 @@ void ReadDecodeXML(char *file)
     /* XML variables */ 
     /* These are the available options for the rule configuration */
     
-    char *xml_decoder="decoder";
-    char *xml_decoder_name="name";
-    char *xml_prematch="prematch";
-    char *xml_regex="regex";
-    char *xml_order="order";
-    char *xml_fts="fts";
-    char *xml_ftscomment="ftscomment";
+    char *xml_decoder = "decoder";
+    char *xml_decoder_name = "name";
+    char *xml_parent = "parent";
+    char *xml_prematch = "prematch";
+    char *xml_regex = "regex";
+    char *xml_order = "order";
+    char *xml_fts = "fts";
+    char *xml_ftscomment = "ftscomment";
     
    
     /* Allowed Fields */
     char *(allowed_fields[]) = {"user","dstuser","srcip","dstip","id",
-                                "location",NULL};
+                                "location", NULL};
     
     int i = 0;
     
@@ -128,6 +126,7 @@ void ReadDecodeXML(char *file)
         
         
         /* Default values to the list */
+        pi->parent = NULL;
         pi->name = strdup(node[i]->values[0]);
         pi->regex = NULL;
         pi->order = NULL;
@@ -136,7 +135,7 @@ void ReadDecodeXML(char *file)
         pi->ftscomment = NULL;
         
         
-        /* Looping on all the element */
+        /* Looping on all the elements */
         while(elements[j])
         {
             /* Checking if the rule name is correct */
@@ -148,6 +147,12 @@ void ReadDecodeXML(char *file)
                 ErrorExit("decode-xml: Leaving..");
             }
 
+            /* Checking if it is a child of a rule */
+            else if(strcasecmp(elements[j]->element, xml_parent) == 0)
+            {
+                pi->parent = _loadmemory(pi->parent, elements[j]->content);
+            }
+            
             /* Getting the regex */
             else if(strcasecmp(elements[j]->element,xml_regex) == 0)
             {
@@ -210,7 +215,7 @@ void ReadDecodeXML(char *file)
                 }
             }
             
-             /* Getting the order */
+            /* Getting the order */
             else if(strcasecmp(elements[j]->element,xml_fts)==0)
             {
                 char **norder;

@@ -70,6 +70,9 @@
 	#define DEFAULTQUEUE	"/queue/ossec/queue"
 #endif
 
+/* active response shared file */
+#define DEFAULTAR       "/etc/shared/ar.conf"
+
 /* Used by analysisd to get the decoders plugins.
  * Only read from CHROOT.
  * Should not be changed by the user.
@@ -82,11 +85,14 @@
 	#define KEYS_FILE       "/etc/client.keys"
 #endif
 
+
 /* Built in defines */
 #define DEFAULTQPATH	DEFAULTDIR DEFAULTQUEUE
-
 #define DEFAULTCPATH    DEFAULTDIR "/etc/ossec.conf"
+#define DEFAULTARPATH   DEFAULTDIR DEFAULTAR
 
+#define EXECQUEUE	    "/queue/alerts/execq"
+#define EXECQUEUEPATH   DEFAULTDIR EXECQUEUE
 
 #ifndef DEFAULT_SECURE
 	#define DEFAULT_SECURE 1514 /* Default UDP port- secure */

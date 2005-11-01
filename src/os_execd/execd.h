@@ -14,7 +14,6 @@
 
 #define _EXECD_H
 
-#define EXECQUEUE	"queue/alerts/execq"
 
 
 #endif

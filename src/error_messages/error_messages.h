@@ -80,10 +80,12 @@
                         "You must specify a 'name', 'executable' and 'expect'."
 #define AR_MISS         "%s(1281): Missing options in the active response " \
                         "configuration. "                        
-#define ARQ_ERROR       "%s(1301): Unable to establish active response queue."
+#define ARQ_ERROR       "%s(1301): Unable to connect to active response queue."
 #define AR_INV_LOC      "%s(1302): Invalid active response location: '%s'."
+#define AR_INV_CMD      "%s(1303): Invalid command '%s' in the active response."
 
-                        
+
+                                   
 /* List operations */
 #define LIST_ERROR      "%s(1290); Error creating a new list (calloc)."
 #define LIST_ADD_ERROR  "%s(1291): Error adding nodes to list."

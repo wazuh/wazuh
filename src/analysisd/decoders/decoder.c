@@ -20,15 +20,12 @@
 #include "os_regex/os_regex.h"
 #include "os_xml/os_xml.h"
 
-#include "headers/defs.h"
-#include "headers/debug_op.h"
+#include "shared.h"
 
 #include "eventinfo.h"
 #include "decoder.h"
 
-#include "error_messages/error_messages.h"
 
-extern short int dbg_flag;
 
 
 /* DecodeEvent.
@@ -53,12 +50,28 @@ void DecodeEvent(Eventinfo *lf)
         {
             PluginInfo *nnode = node->plugin;
             
-            /* If prematch fails, go to next plugin in the list */
+            /* If prematch fails, go to the next plugin in the list */
             if(nnode->prematch && !OS_Regex(nnode->prematch,lf->log))
                 continue;
     
-                    
+            /* Check if we have any child plugin */
+            while(node->child)
+            {
+                nnode = node->child->plugin;
+
+                if(nnode->prematch && OS_Regex(nnode->prematch,lf->log))
+                {
+                    break;
+                }
+                
+                node->child = node->child->next;
+                nnode = NULL;
+            }
            
+            if(!nnode)
+                return;
+
+            
             /* Getting the regex */
             if(nnode->regex)
             {
@@ -73,17 +86,17 @@ void DecodeEvent(Eventinfo *lf)
                 {
                     if(nnode->order[i])
                     {
-                        /* User field */
-                        if(strcmp(nnode->order[i],"user") == 0)
+                        /* DstUser field */
+                        if(strcmp(nnode->order[i],"dstuser") == 0)
                         {
-                            lf->user = fields[i];
+                            lf->dstuser = fields[i];
                             i++;
                             continue;
                         }
-                         /* Dst User field */
-                        if(strstr(nnode->order[i],"dstuser") != NULL)
+                         /* User field */
+                        else if(strstr(nnode->order[i],"user") != NULL)
                         {
-                            lf->dstuser = fields[i];
+                            lf->user = fields[i];
                             i++;
                             continue;
                         }

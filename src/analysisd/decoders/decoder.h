@@ -8,6 +8,7 @@
 /* Plugin structure */
 typedef struct
 {
+    char *parent;
     char *name;
     char *regex;
     char *prematch;
@@ -20,6 +21,7 @@ typedef struct
 typedef struct _PluginNode
 {
     struct _PluginNode *next;
+    struct _PluginNode *child;
     PluginInfo *plugin;
 }PluginNode;
 

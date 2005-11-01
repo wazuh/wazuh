@@ -90,8 +90,8 @@ int main(int argc, char **argv)
 
 
     /* Starting queue (exec queue) */
-    if((m_queue = StartMQ(EXECQUEUE,READ)) < 0)
-        ErrorExit(QUEUE_ERROR,ARGV0,EXECQUEUE);
+    if((m_queue = StartMQ(EXECQUEUEPATH,READ)) < 0)
+        ErrorExit(QUEUE_ERROR,ARGV0,EXECQUEUEPATH);
 
 
     /* Signal manipulation */
@@ -126,7 +126,7 @@ void OS_Run(int q)
     {
         if(recv(q, buffer, OS_MAXSTR, 0) == -1)
         {
-            merror(QUEUE_ERROR, ARGV0, EXECQUEUE);
+            merror(QUEUE_ERROR, ARGV0, EXECQUEUEPATH);
             continue;
         }
 
