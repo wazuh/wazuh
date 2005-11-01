@@ -40,9 +40,9 @@
 #include "sec.h"
 
 
-/* manager thread */
+/* manager threads */
 void *start_mgr(void *arg);
-
+void *notify_mgr(void *arg);
 
 /* _startit v0.1, 2005/01/30
  * Internal Function. Does all the socket/ queueing
@@ -119,6 +119,14 @@ void _startit(char *dir, int uid, int gid)
      * from the server.
      */
     if(CreateThread(start_mgr, (void *)&logr->sock) != 0)
+    {
+        ErrorExit(THREAD_ERROR, ARGV0);
+    }
+
+    /* Starting notification thread.
+     * Sends file information to the server
+     */
+    if(CreateThread(notify_mgr, (void *)&logr->sock) != 0)
     {
         ErrorExit(THREAD_ERROR, ARGV0);
     }

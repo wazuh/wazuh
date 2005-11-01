@@ -60,9 +60,9 @@ char *r_read(char *tmp_msg)
   
 
 
-/* getreply: Act based on the message from the server
+/* getreply: Act based on the messages from the server
  */
-void getreply(int socket)
+void get_messages(int socket)
 {
     int recv_b;
     
@@ -84,39 +84,48 @@ void getreply(int socket)
     fp = NULL;
    
     memset(file_sum, '\0', 34);
-     
+    file[0] = '\0'; 
+    
     while(1)
     {
         FD_ZERO(&fdset);
         FD_SET(socket, &fdset);
         
-        fdtimeout.tv_sec = 30;
+        fdtimeout.tv_sec = 60;
         fdtimeout.tv_usec = 0;
 
         /* we are only monitoring one socket, so no reason
          * to ISSET
          */
                  
-        /* Wait for 30 seconds at a maximum for a reply */
+        /* Wait for 60 seconds at a maximum for a message */
         if(select(socket +1, &fdset, NULL, NULL, &fdtimeout) == 0)
         {
             if(fp)
             {
                 fclose(fp);
+            }
+            if(file[0] != '\0')
+            {
                 unlink(file);
             }
                 
             /* timeout */
-            return;
+            continue;
         }
        
+        /* Receving message from server */
         recv_b = OS_RecvConnUDP(socket, buffer, OS_MAXSTR);
-
+        if(recv_b <= 0)
+        {
+            continue;
+        }
+        
         cleartext_msg = ReadSecMSG(&keys, NULL, buffer);
         if(cleartext_msg == NULL)
         {
             merror(MSG_ERROR,ARGV0,logr->rip);
-            return;
+            continue;
         }
 
         /* Removing checksum and rand number */
@@ -126,16 +135,24 @@ void getreply(int socket)
         {
             merror("%s: Invalid message from '%s'",ARGV0, logr->rip);
             free(cleartext_msg);
-            return;
+            continue;
         }
                                                         
-
+        merror("received: %s\n",tmp_msg);
+        
         /* Check for commands */
         if(tmp_msg[0] == '#' && tmp_msg[1] == '!' &&
            tmp_msg[2] == '-')
         {
             tmp_msg+=3;
 
+            /* If it is an active response message */
+            if(strncmp(tmp_msg, "execd: ", strlen("execd: ")) == 0)
+            {
+                tmp_msg+=strlen("execd: ");
+                free(cleartext_msg);
+                continue;
+            } 
             
             /* Close any open file pointer if it was being written to */
             if(fp)
@@ -195,7 +212,12 @@ void getreply(int socket)
                 /* no error */
                 os_md5 currently_md5;
 
-                if(OS_MD5_File(file, currently_md5) < 0)
+                if(file[0] == '\0')
+                {
+                    /* nada */
+                }
+                
+                else if(OS_MD5_File(file, currently_md5) < 0)
                 {
                     /* Removing file */
                     unlink(file);
@@ -221,6 +243,8 @@ void getreply(int socket)
                             rename(file, _ff);
                         }
                     }
+                    
+                    file[0] = '\0';
                 }
             }
 
@@ -245,10 +269,12 @@ void getreply(int socket)
         free(cleartext_msg);
     }
 
+    /* Cleaning up */
     if(fp)
     {
         fclose(fp);
-        unlink(file);
+        if(file[0] != '\0')
+            unlink(file);
     }
         
     return;
@@ -287,6 +313,7 @@ char *getsharedfiles()
     ret = (char *)calloc(m_size, sizeof(char));
     if(!ret)
     {
+        closedir(dp);
         merror(MEM_ERROR);
         return(NULL);
     }
@@ -391,22 +418,33 @@ void main_mgr(int socket)
 
     /* Send UDP message */
     if(OS_SendUDPbySize(logr->sock, msg_size, crypt_msg) < 0)
+    {
         merror(SEND_ERROR,ARGV0);
+    }
                                        
     free(uname);
     free(shared_files);
     free(crypt_msg);
 
-    
-    /* Waiting for a reply */
-    getreply(socket);
-    
     return;
 }
 
 
+
 /* start_mgr: Start manager thread */
 void *start_mgr(void *arg)
+{
+    int *sock = (int *)arg;
+
+    get_messages(*sock);
+
+    return(NULL);
+}
+
+
+
+/* notify_mgr: Start notify thread */
+void *notify_mgr(void *arg)
 {
     struct timeval fp_timeout;
     int *sock = (int *)arg;
@@ -426,6 +464,10 @@ void *start_mgr(void *arg)
             return(NULL);
         }
     }
+    
+    return(NULL);
 }
+
+
 
 /* EOF */
