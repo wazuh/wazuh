@@ -56,7 +56,9 @@ void DecodeEvent(Eventinfo *lf)
 
             lf->log_tag = nnode->name;
 
-            
+            merror("tag: %s\n",lf->log_tag);
+
+
             /* Check if we have any child plugin */
             while(node->child)
             {

@@ -665,6 +665,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking if any plugin pre-matched is here */
     if(currently_rule->plugin_decoded)
     {
+        merror("decoded: %s",currently_rule->plugin_decoded);
+        
         /* Must have the log tag decoded */
         if(!lf->log_tag)
             return(NULL);
@@ -672,6 +674,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         if(strcmp(currently_rule->plugin_decoded,
                   lf->log_tag) != 0)
             return(NULL);  
+        merror("OK!");
     }
     
     /* Checking if any word to match exists */

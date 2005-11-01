@@ -328,6 +328,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element, xml_decoded)==0)
                     {
+                        merror("reading decode config");
                         config_ruleinfo->plugin_decoded =
                             loadmemory(config_ruleinfo->plugin_decoded,
                                     rule_opt[k]->content);
