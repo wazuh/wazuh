@@ -587,6 +587,8 @@ void OS_ReadMSG(int m_queue)
                     int do_ar;
                     active_response **rule_ar = currently_rule->ar;
 
+                    merror("ar entering");
+                    
                     while(*rule_ar)
                     {
                         do_ar = 1;
@@ -603,6 +605,7 @@ void OS_ReadMSG(int m_queue)
 
                         if(do_ar)
                         {
+                            merror("exec");
                             OS_Exec(&execdq, lf, *rule_ar);
                         }
 

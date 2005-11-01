@@ -50,5 +50,9 @@ void OS_Exec(int *execq, Eventinfo *lf, active_response *ar)
         }
     }
     
+    if(ar->local || ar->agent)
+    {
+    }
+    
     return;
 }

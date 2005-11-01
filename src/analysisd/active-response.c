@@ -21,6 +21,8 @@
 
 #include "active-response.h"
 
+#include "config.h"
+
 /* Initiatiating active response */
 void AS_Init()
 {
@@ -212,7 +214,7 @@ int AS_GetActiveResponses(char * config_file)
 
             if(tmp_ar->ar_cmd == NULL)
             {
-                merror(AR_MISS, ARGV0);
+                merror(AR_INV_CMD, ARGV0, tmp_ar->command);
                 OS_ClearXML(&xml);
                 return(-1);
             }
@@ -226,6 +228,8 @@ int AS_GetActiveResponses(char * config_file)
             return(-1);
         }
         
+        Config.ar = 1;
+
         i++;
     } 
 
@@ -246,15 +250,25 @@ int AS_GetActiveResponseCommands(char * config_file)
     OS_XML xml;
     XML_NODE node = NULL;
 
+    FILE *fp;
     int i = 0;
 
     char *command_name = "name";
     char *command_expect = "expect";
     char *command_executable = "executable";
 
+    /* Openning shared ar file */
+    fp = fopen(DEFAULTARPATH, "w");
+    if(!fp)
+    {
+        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
+        return(-1);
+    }
+    
     /* Reading the XML */       
     if(OS_ReadXML(config_file, &xml) < 0)
     {
+        fclose(fp);
         merror(XML_ERROR, ARGV0, xml.err);
         return(-1);	
     }
@@ -263,6 +277,7 @@ int AS_GetActiveResponseCommands(char * config_file)
     /* Applying any variable found */
     if(OS_ApplyVariables(&xml) != 0)
     {
+        fclose(fp);
         merror(XML_ERROR_VAR, ARGV0);
         OS_ClearXML(&xml);
         return(-1);
@@ -273,6 +288,7 @@ int AS_GetActiveResponseCommands(char * config_file)
     node = OS_GetElementsbyNode(&xml,NULL);
     if(!node)
     {
+        fclose(fp);
         merror(CONFIG_ERROR, ARGV0);
         OS_ClearXML(&xml);
         return(-1);    
@@ -338,6 +354,7 @@ int AS_GetActiveResponseCommands(char * config_file)
                 merror(XML_INVALID, ARGV0, elements[j]->element, 
                                            node[i]->element);
                 OS_ClearXML(&xml);
+                fclose(fp);
                 return(-1);
             }
             
@@ -352,6 +369,7 @@ int AS_GetActiveResponseCommands(char * config_file)
         {
             merror(AR_CMD_MISS, ARGV0);
             OS_ClearXML(&xml);
+            fclose(fp);
             return(-1);
         }
        
@@ -365,9 +383,13 @@ int AS_GetActiveResponseCommands(char * config_file)
         {
             merror(LIST_ADD_ERROR, ARGV0);
             OS_ClearXML(&xml);
+            fclose(fp);
             return(-1);
         }
         
+        /* Adding to shared file */
+        fprintf(fp, "%s - %s\n", tmp_command->name,
+                                 tmp_command->executable);
         i++;
     } 
 
@@ -377,6 +399,7 @@ int AS_GetActiveResponseCommands(char * config_file)
 
 
     /* Done over here */
+    fclose(fp);
     return(0);
 }
 
