@@ -421,7 +421,8 @@ void main_mgr(int socket)
     {
         merror(SEND_ERROR,ARGV0);
     }
-                                       
+    
+    merror("update message sent!");    
     free(uname);
     free(shared_files);
     free(crypt_msg);
