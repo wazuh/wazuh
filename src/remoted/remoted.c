@@ -100,7 +100,7 @@ void _startit(int position,int connection_type, int uid,
     int recv_b;
     
     struct sockaddr_in peer_info;
-     
+    socklen_t peer_size;
     
     /* if SYSLOG and allowips is not defined, exit */
     if((logr.allowips == NULL)&&(connection_type == SYSLOG_CONN))
@@ -150,8 +150,8 @@ void _startit(int position,int connection_type, int uid,
     manager_init();
 
     
-    /* Try three times to connect to the message queue.
-     * Exit if all attempts fail.
+    /* Connecting to the message queue
+     * Exit if it fails.
      */
     if((m_queue = StartMQ(DEFAULTQUEUE,WRITE)) < 0)
     {	
@@ -171,20 +171,27 @@ void _startit(int position,int connection_type, int uid,
         ReadKeys(&keys);
     }
 
+    /* setting peer size */
+    peer_size = sizeof(peer_info);
+    logr.peer_size = sizeof(peer_info);
+
+    
+    /* Infinit loop in here */
     while(1)
     {
         /* Receiving message - up to MAXSTR */
-        recv_b = OS_RecvAllUDP(sock, buffer, OS_MAXSTR,
-                               (struct sockaddr *)&peer_info);
+        recv_b = recvfrom(sock, buffer, OS_MAXSTR, 0, 
+                          (struct sockaddr *)&peer_info, &peer_size);
 
+        /* Nothing received */
+        if(recv_b <= 0)
+            continue;
+        
+        
+        /* Setting the source ip */
         strncpy(srcip, inet_ntoa(peer_info.sin_addr), IPSIZE);
         srcip[IPSIZE] = '\0';
             
-        
-        /* Can't do much in here */
-        if(recv_b == 0)
-            continue;
-
         
         /* Handling secure connections */
         if(connection_type == SECURE_CONN)
@@ -200,9 +207,9 @@ void _startit(int position,int connection_type, int uid,
                 merror(DENYIP_ERROR,ARGV0,srcip);
                 continue;
             }
-            
+        
+            /* Decrypting the message */    
             cleartext_msg = ReadSecMSG(&keys, srcip, buffer);
-            
             if(cleartext_msg == NULL)
             {
                 merror(MSG_ERROR,ARGV0,srcip);
@@ -219,16 +226,17 @@ void _startit(int position,int connection_type, int uid,
             }
            
             
-            /* Saving Peer info */
-            memcpy(keys.peer_info[agentid], &peer_info,
-                                             sizeof(struct sockaddr_in *));
-             
              
             /* Check if it is a control message */ 
             if((tmp_msg[0] == '#') && (tmp_msg[1] == '!') &&
                                       (tmp_msg[2] == '-'))
             {
                 tmp_msg+=3;
+
+                /* We need to save the peerinfo if it is a control msg */
+                memcpy(&keys.peer_info[agentid], &peer_info, peer_size);
+                                                
+                merror("contro message, starting manager: %s\n", inet_ntoa(keys.peer_info[agentid].sin_addr));
                 start_mgr(agentid, tmp_msg, srcip); 
             }
             

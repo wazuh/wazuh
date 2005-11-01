@@ -274,19 +274,6 @@ int OS_SendUDPbySize(int socket, int size, char *msg)
 }
 
 
-int OS_SendToUDPbySize(int socket, int msg_size, char *crypt_msg,
-                       struct sockaddr * peer_info)
-{
-
-    if(sendto(socket, crypt_msg, msg_size, 0,
-               (struct sockaddr *)peer_info, sizeof(peer_info)) < 0) 
-    {
-        return(OS_SOCKTERR);
-    }
-
-    return(0);
-        
-}
 
 /* OS_AcceptTCP v0.1, 2005/01/28
  * Accept a TCP connection
@@ -363,25 +350,6 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
     return(recv_b);    
 }
 
-
-/* OS_RecvALLUDP v0.1, 2004/07/23
- * Duplicate work of the above function,
- * but returning also the source IP address
- */
-int OS_RecvAllUDP(int socket, char *buffer, int buffer_size,
-                  struct sockaddr *peer_info)
-{
-    int recv_b;
-   
-     
-    recv_b = recvfrom(socket, buffer, buffer_size, 0,
-                      (struct sockaddr *)peer_info, &_cl);
-
-    if(recv_b < 0)
-        return(0);
-
-    return(recv_b);
-}
 
 
 /* OS_RecvUnix, v0.1, 2004/07/29

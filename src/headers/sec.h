@@ -21,7 +21,7 @@ typedef struct _keystruct
     char **ids;
     char **keys;
     char **ips;
-    struct sockaddr_in **peer_info;
+    struct sockaddr_in *peer_info;
     int keysize;
 }keystruct;
 

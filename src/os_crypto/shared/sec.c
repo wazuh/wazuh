@@ -16,6 +16,9 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 
 #include <stdio.h>
 #include <string.h>
@@ -54,7 +57,8 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
 	int _idsize = 0;
 	int _ipsize = 0;
 	
-       
+    struct sockaddr_in peer;
+    
 	/* Getting ID/IP */
 	_idsize = strlen(id)+1;
 	_ipsize=strlen(ip)+1;
@@ -66,12 +70,9 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
             (keys->keysize+1)* sizeof(char*));
 
     keys->peer_info = realloc(keys->peer_info,
-            (keys->keysize+1) * sizeof(struct sockaddr_in *));
-    keys->peer_info[keys->keysize] = calloc(1, 
-                                        sizeof(struct sockaddr_in *));
+            (keys->keysize+1) * sizeof(peer));
     
-    if(!keys->ids || !keys->ips || !keys->peer_info 
-                  || !keys->peer_info[keys->keysize])
+    if(!keys->ids || !keys->ips || !keys->peer_info) 
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }

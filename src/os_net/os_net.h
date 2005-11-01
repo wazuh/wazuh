@@ -43,12 +43,8 @@ int OS_ConnectUDP(unsigned int _port, char *_ip);
 /* OS_RecvUDP
  * Receive a UDP packet. Return NULL if failed
  */
-#include <sys/types.h>
-#include <sys/socket.h>
 char *OS_RecvUDP(int socket, int sizet);
 int OS_RecvConnUDP(int socket, char *buffer, int buffer_size);
-int OS_RecvAllUDP(int socket, char *buffer, int buffer_size,
-                  struct sockaddr *peer_info);
 
 
 /* OS_RecvUnix
@@ -72,8 +68,6 @@ int OS_SendUnix(int socket, char * msg, int size);
 
 int OS_SendUDP(int socket, char *msg);
 int OS_SendUDPbySize(int socket, int size, char *msg);
-int OS_SendToUDPbySize(int socket, int msg_size, char *crypt_msg,
-                       struct sockaddr * peer_info);
     
 
 /* OS_GetHost

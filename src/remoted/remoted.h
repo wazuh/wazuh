@@ -19,6 +19,9 @@
 
 #define MGR_PORT    1514
 
+/* socklen_t header */
+#include <sys/types.h>
+#include <sys/socket.h>
 typedef struct _remoted
 {
 	char **port;
@@ -28,6 +31,7 @@ typedef struct _remoted
 	char **denyips;
 
     int sock;
+    socklen_t peer_size; 
 }remoted;
 
 
@@ -35,6 +39,7 @@ int BindConf(char *cfgfile, remoted *logr);
 
 /* Shared keys */
 #include "headers/sec.h"
+
 keystruct keys;
 remoted logr;
 

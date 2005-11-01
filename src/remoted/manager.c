@@ -17,18 +17,20 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include <time.h>
 #include <signal.h>
 
 #include "remoted.h"
 
 #include "os_net/os_net.h"
-#include "headers/defs.h"
-#include "headers/debug_op.h"
-#include "headers/pthreads_op.h"
+
+#include "shared.h"
 
 #include "os_crypto/md5/md5_op.h"
-#include "error_messages/error_messages.h"
 
 #define AGENTINFO_DIR    "/queue/agent-info"
 
@@ -72,6 +74,7 @@ void free_thread(mgr_thread *h)
         free(h->srcip);
     
     free(h);
+    h = NULL;
     return;        
 }
 
@@ -282,6 +285,7 @@ char *r_read(char *tmp_msg)
  */
 int send_file(int agentid, char *name, char *sum)
 {
+    int i = 0;
     char file[OS_MAXSTR +1];
     char buf[OS_MAXSTR +1];
     char *crypt_msg;
@@ -311,8 +315,9 @@ int send_file(int agentid, char *name, char *sum)
     }
 
     /* Sending initial message */
-    if(OS_SendToUDPbySize(logr.sock, msg_size, crypt_msg, 
-                          (struct sockaddr *)keys.peer_info[agentid]) < 0)
+    if(sendto(logr.sock, crypt_msg, msg_size, 0,
+                         (struct sockaddr *)&keys.peer_info[agentid],
+                         logr.peer_size) < 0) 
     {
         free(crypt_msg);
         fclose(fp);
@@ -321,6 +326,7 @@ int send_file(int agentid, char *name, char *sum)
     }
     
     free(crypt_msg);
+    sleep(1);
 
     /* Sending the file content */
     while(fgets(buf, OS_MAXSTR , fp) != NULL)
@@ -334,7 +340,9 @@ int send_file(int agentid, char *name, char *sum)
             return(-1);
         }
 
-        if(OS_SendUDPbySize(logr.sock, msg_size, crypt_msg) < 0)
+        if(sendto(logr.sock, crypt_msg, msg_size, 0,
+                         (struct sockaddr *)&keys.peer_info[agentid],
+                         logr.peer_size) < 0)  
         {
             fclose(fp);
             free(crypt_msg);
@@ -344,9 +352,18 @@ int send_file(int agentid, char *name, char *sum)
 
         /* No hurry in here.. */
         free(crypt_msg);
-        sleep(1);
+
+        /* Sleep 1 every 5 messages -- no flood */
+        if(i > 4)
+        {
+            sleep(1);
+            i = 0;
+        }
+        i++;
     }
 
+    sleep(1);
+    
     /* Sending the message to close the file */
     snprintf(buf, OS_MAXSTR, "#!-close file ");
 
@@ -359,7 +376,9 @@ int send_file(int agentid, char *name, char *sum)
     }
 
     /* Sending final message */
-    if(OS_SendUDPbySize(logr.sock, msg_size, crypt_msg) < 0)
+    if(sendto(logr.sock, crypt_msg, msg_size, 0,
+                         (struct sockaddr *)&keys.peer_info[agentid],
+                         logr.peer_size) < 0) 
     {
         free(crypt_msg);
         merror(SEND_ERROR,ARGV0);
@@ -368,8 +387,8 @@ int send_file(int agentid, char *name, char *sum)
     }
     
     free(crypt_msg);
-    
     fclose(fp);
+    
     return(0);
 }
 
