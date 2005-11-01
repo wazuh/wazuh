@@ -40,15 +40,15 @@ PluginNode *OS_GetFirstPlugin()
 
 
 /* Add a plugin to the list */
-void OS_AddPlugin(PluginInfo *pi)
+PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
 {
-    PluginNode *tmp_node = pluginnode;
-        
+    PluginNode *tmp_node = s_node;
+    
     if(tmp_node)
     {
         PluginNode *new_node;
-        new_node = (PluginNode *)calloc(1,sizeof(PluginNode));
         
+        new_node = (PluginNode *)calloc(1,sizeof(PluginNode));
         if(new_node == NULL)
         {
             ErrorExit(MEM_ERROR,ARGV0);
@@ -64,22 +64,53 @@ void OS_AddPlugin(PluginInfo *pi)
         
         new_node->next = NULL;
         new_node->plugin = pi; 
+        new_node->child = NULL;
     }
     
     else
     {
-        pluginnode = (PluginNode *)calloc(1,sizeof(PluginNode));
+        tmp_node = (PluginNode *)calloc(1, sizeof(PluginNode));
         
-        if(pluginnode == NULL)
+        if(tmp_node == NULL)
         {
             ErrorExit(MEM_ERROR,ARGV0);
         }
 
-        pluginnode->next = NULL;
-        pluginnode->plugin = pi;
+        tmp_node->child = NULL;
+        tmp_node->next = NULL;
+        tmp_node->plugin = pi;
+
+        s_node = tmp_node;
     }
 
-    return;
+    return (s_node);
+}
+
+void OS_AddPlugin(PluginInfo *pi)
+{
+    /* Search for parent */
+    if(pi->parent)
+    {
+        PluginNode *tmp_node = pluginnode;
+
+        while(tmp_node)
+        {
+            if(strcmp(tmp_node->plugin->name, pi->parent) == 0)
+            {
+                tmp_node->child = _OS_AddPlugin(tmp_node->child, pi);
+                return;
+            }
+            tmp_node = tmp_node->next;
+        }
+        merror("%s: Parent plugin '%s' not found", ARGV0,
+                                                   pi->parent);
+
+        return; 
+    }
+    else
+    {
+        pluginnode = _OS_AddPlugin(pluginnode, pi);
+    }
 }
 
 /* EOF */
