@@ -1,3 +1,19 @@
+/*   $OSSEC, execd.c, v0.2, 2005/11/01, Daniel B. Cid$   */
+
+/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+ * All right reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
+
+
+
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -16,12 +32,9 @@
 #include "execd.h"
 
 
-/* Config function */    
-int ExecConf(char *cfgfile, execd_config *execd);
-
 
 /* Internal function */
-void OS_Run(int q, execd_config *execd);
+void OS_Run(int q);
 
 
 int main(int argc, char **argv)
@@ -30,10 +43,8 @@ int main(int argc, char **argv)
     int gid = 0,m_queue = 0;
     char *dir  = DEFAULTDIR;
     char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    char *cfg = DEFAULTARPATH;
 
-    /* Mail Structure */
-    execd_config execd;
 
     while((c = getopt(argc, argv, "dhu:g:D:c:")) != -1){
         switch(c){
@@ -72,33 +83,10 @@ int main(int argc, char **argv)
     if(gid < 0)
         ErrorExit(USER_ERROR,ARGV0,"",group);
 
-    /* Reading configuration */
-    {
-        int rval = 0;    
-        if((rval = ExecConf(cfg,&execd)) < 0)
-        {
-            if(rval == OS_NOTFOUND)
-            {
-                exit(0);
-            }
-            
-            ErrorExit(CONFIG_ERROR,ARGV0);
-        }
-    }
-
 
     /* Privilege separation */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
-
-
-    /* Going on chroot */
-    if(Privsep_Chroot(dir) < 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
-
-
-    nowChroot();
-
 
 
     /* Starting queue (exec queue) */
@@ -121,34 +109,28 @@ int main(int argc, char **argv)
 
 
     /* The real daemon Now */	
-    OS_Run(m_queue,&execd);
+    OS_Run(m_queue);
     
     exit(0);
 }
 
 
 /* OS_Run: Read the queue and send the appropriate alerts */
-void OS_Run(int q, execd_config *execd)
+void OS_Run(int q)
 {
-    ExecdMsg msg;
+    char buffer[OS_MAXSTR + 1];
 
+    memset(buffer, '\0', OS_MAXSTR +1);
+    
     while(1)
     {
-        /* Receive message from queue */
-        if(OS_RecvExecQ(q, &msg) == 0)
+        if(recv(q, buffer, OS_MAXSTR, 0) == -1)
         {
-            /*
-            //if(OS_Sendmail(mail,&msg) < 0)
-            //   merror(SNDMAIL_ERROR,ARGV0,mail->smtpserver);
-            //free(msg.body);
-            //free(msg.subject);
-            //msg.body=NULL;
-            //msg.subject=NULL;	
-            */
-            OS_FreeExecdMsg(&msg);
+            merror(QUEUE_ERROR, ARGV0, EXECQUEUE);
+            continue;
         }
-        else
-            merror(QUEUE_ERROR,ARGV0,EXECQUEUE);
+
+        merror("received: %s\n", buffer);
     }
 }
 

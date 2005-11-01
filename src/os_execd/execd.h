@@ -1,29 +1,20 @@
+/*   $OSSEC, execd.h, v0.2, 2005/11/01, Daniel B. Cid$   */
+
+/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+ * All right reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
+
+
 #ifndef _EXECD_H
 
 #define _EXECD_H
 
 #define EXECQUEUE	"queue/alerts/execq"
 
-/* Mail msg structure */
-typedef struct _ExecdMsg
-{
-	int type;
-    int name_size;
-    int args_size;
-    char *name;
-    char **args;
-}ExecdMsg;
 
-/* Mail config structure */
-typedef struct _execd_config
-	{
-	char **name;
-	char **cmd;
-	}execd_config;
-
-
-/* Send and receive the exec message on the unix queue */
-int OS_RecvExecQ(int socket, ExecdMsg *execd_msg);
-int OS_SendExecQ(int socket, ExecdMsg *execd_msg);
-void OS_FreeExecdMsg(ExecdMsg *msg);
 #endif

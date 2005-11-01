@@ -22,36 +22,10 @@
 
 #include "execd.h"
 
-char *_getexec(execd_config *config,char *name)
-{
-    if(!name)
-        return(NULL);
-    if((config) && (config->name))
-    {
-        int i=0;
-        while(config->name[i])
-        {
-            if(strcmp(config->name[i],name) == 0)
-            {
-                if(config->cmd[i])
-                {
-                    char *ret=NULL;
-                    ret=strdup(config->cmd[i]);
-                    if(ret == NULL)
-                        return(NULL);
-                    return(ret);    
-                }
-            }
-            i++;
-        }
-    }
-    return(NULL);
-}
-
 
 /* OS_Execd v0.1: 2005/03/18
  */
-int OS_Execd(execd_config *config, ExecdMsg *msg)
+int OS_Execd()
 {
 	char cmdexec[256];
 	extern int errno;
@@ -64,10 +38,10 @@ int OS_Execd(execd_config *config, ExecdMsg *msg)
 	if(pid == 0)
     {
         /* Getting cmd to exec */
-        char *exec = _getexec(config,msg->name);
+        char *exec = NULL;
         if(exec == NULL)
         {
-            merror("%s: No command for exec name: %s",ARGV0,msg->name);
+            merror("%s: No command for exec name: %s",ARGV0);
             exit(1);
         }
         /* Checking if the file exists */

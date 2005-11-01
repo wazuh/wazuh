@@ -6,7 +6,7 @@ NAME=ossec-execd
 
 include ../Config.Make
 
-LOCAL = execd.c config.c os_execd_client.c exec.c
+LOCAL = execd.c exec.c
 
 OBJS = ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_XML}
 
