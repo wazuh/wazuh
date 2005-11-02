@@ -134,26 +134,22 @@ void ReadKeys(keystruct *keys)
 {
     FILE *fp;
     
-    int c;
+    char buffer[OS_MAXSTR +1];
     
     char name[KEYSIZE];
     char ip[KEYSIZE];
     char id[KEYSIZE];
     char key[KEYSIZE];
     
-    int _pos = 0,j = 0,_ig = 0;
 
     if(File_DateofChange(KEYS_FILE) < 0)
-        ErrorExit("ossec-remoted: Keys file %s does not exist. No secure "
-                  "communication can be established. Exiting...",
-                  KEYS_FILE);
+        ErrorExit(NO_AUTHFILE, ARGV0, KEYS_FILE);
 
     fp = fopen(KEYS_FILE,"r");
     if(!fp)
     {
         /* We can leave from here */
-        merror("readkeys: Unable to open the keys file");
-        exit(1);
+        ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
     }
 
 
@@ -165,101 +161,97 @@ void ReadKeys(keystruct *keys)
 
     _MemClear(id, name, ip, key);
 
-    /* XXX fix this --read whole line */
-    while((c = fgetc(fp)) != EOF)
+    memset(buffer, '\0', OS_MAXSTR +1);
+    
+    /* Reading each line.
+     * lines are divided on id name ip key
+     */
+    while(fgets(buffer, OS_MAXSTR, fp) != NULL)
     {
-        if(c == '#')
-            _ig=1;
-            
-        if(_ig == 1 && c != '\n')
+        char *tmp_str;
+        char *valid_str;
+        if((buffer[0] == '#') || (buffer[0] == ' '))
             continue;
-            
-        else
-            _ig=0;
 
-        if((_pos == 0) && (j >=7 || c == ' '))
+        /* Getting ID */
+        valid_str = buffer;
+        tmp_str = index(buffer, ' ');
+        if(!tmp_str)
         {
-            id[j]='\0';
-            _pos++;
-            j=0;
+            merror(INVALID_KEY, ARGV0, buffer);
             continue;
         }
-        else if(_pos == 0 && j < 7)
+
+        *tmp_str = '\0';
+        tmp_str++;
+
+        strncpy(id, valid_str, KEYSIZE -1);
+
+        /* Getting name */
+        valid_str = tmp_str;
+        tmp_str = index(tmp_str, ' ');
+        if(!tmp_str)
         {
-            id[j]=c;
-            j++;
-            continue;
+            merror(INVALID_KEY, ARGV0, buffer);
         }
-        else if((_pos == 1) && (j >= 31 || c == ' '))
+
+        *tmp_str = '\0';
+        tmp_str++;
+        strncpy(name, valid_str, KEYSIZE -1);
+         
+        /* Getting ip address */
+        valid_str = tmp_str;
+        tmp_str = index(tmp_str, ' ');
+        if(!tmp_str)
         {
-            name[j]='\0';
-            _pos++;
-            j=0;
-            continue;
+            merror(INVALID_KEY, ARGV0, buffer);
         }
-        else if(_pos == 1 && j < 31)
+
+        *tmp_str = '\0';
+        tmp_str++;
+        strncpy(ip, valid_str, KEYSIZE -1);
+        
+        /* Getting key */
+        valid_str = tmp_str;
+        tmp_str = index(tmp_str, ' ');
+        if(!tmp_str)
         {
-            name[j]=c;
-            j++;
-            continue;
+            merror(INVALID_KEY, ARGV0, buffer);
         }
-        else if((_pos == 2) && (j >= 31 || c == ' '))
-        {
-            ip[j]='\0';
-            _pos++;
-            j=0;
-            continue;
-        }
-        else if(_pos == 2 && j< 31)
-        {
-            ip[j]=c;
-            j++;
-            continue;
-        }
-        else if((_pos == 3) && (j >= 64 || c == '\n'))
-        {
-            key[j]='\0';
-            _pos=0;	
-            j=0;
-            
-            /* Generate the key hash and clear the key from the memory */
-            _CHash(keys, id, name, ip, key);
-            _MemClear(id, name, ip, key);
-            continue;
-        }
-        else if(_pos == 3 && j < 65)
-        {
-            key[j]=c;
-            j++;
-            continue;
-        }
+
+        *tmp_str = '\0';
+        tmp_str++;
+        strncpy(key, valid_str, KEYSIZE -1);
+        
+        /* Generating the key hash */
+       _CHash(keys, id, name, ip, key);
+
+        /* Clearing the memory */
+        _MemClear(id, name, ip, key); 
+        
+        continue;
     }
     
     fclose(fp);
 
     /* clear one last time before leaving */
     _MemClear(id,name,ip,key);		
+    
     return;
 }
 
 
 
-/* CheckAllowedIP v0.1: 2005/02/09 */
-int CheckAllowedIP(keystruct *keys, char *srcip, char *id)
+/* IsAllowedIP v0.1: 2005/02/09 */
+int IsAllowedIP(keystruct *keys, char *srcip)
 {
     int i = 0;
 
     if(srcip == NULL)
         return(-1);
    
-    for(i=0;i<keys->keysize;i++)
+    for(i = 0; i < keys->keysize; i++)
     {
-        if(id != NULL)
-        {
-            if(strcmp(keys->ids[i],id) != 0)
-                continue;
-        }
-        
         if(strcmp(keys->ips[i],srcip) == 0)
             return(i);
     }
@@ -269,12 +261,12 @@ int CheckAllowedIP(keystruct *keys, char *srcip, char *id)
 
 
 /* CheckSum v0.1: 2005/02/15 
- * Will received the message, retrieve
- * the checksum from it, generate a new checksum
- * from the rest of the message and compare if
- * they match. Return 0 if they match, -1 otherwise.
+ * Verify the checksum of the message.
+ * Also removes the checksum and the random
+ * number from it.
+ * Returns NULL on error or the message on success.
  */
-int CheckSum(char *msg, int size)
+char *CheckSum(char *msg, int size)
 {
     os_md5 recvd_sum;
     os_md5 checksum;
@@ -289,233 +281,128 @@ int CheckSum(char *msg, int size)
     OS_MD5_Str(msg, checksum);
     
     if(strncmp(checksum,recvd_sum,32) != 0)
-        return(-1);
-        
-    return(0);
+        return(NULL);
+    
+    /* Removing ':' */    
+    msg++;
+
+    /* Removing random number */
+    msg = index(msg, ':');
+    if(!msg)
+        return(NULL);
+    
+    /* Removing : after random */
+    msg++;
+
+    return(msg);
 }
 
 
+
 /* ReadSecMSG v0.2: 2005/02/10 */
-char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer)
+char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext, 
+                                  int id, int buffer_size)
 {
-    int i=0, _key=0;
-    
-    int _rsize=0;
-
-    char *clear_msg = NULL;
-    char *id = NULL;    
-
-
+    char *f_msg;
     if(*buffer != ':')
     {
-        merror("(ReadSecMSG): Bad encrypted message(bad [0])");
+        merror(ENCFORMAT_ERROR, ARGV0, keys->ips[id]);
         return(NULL);
     }
 
-    /* Message:
-     * :id:size:msg
-     */
+    
     buffer++; /* to next : */
    
-    /** Getting id **/ 
-    id = buffer;
-    
-    i = 0;
-    while(*buffer != ':')
-    {
-        if((*buffer == '\0') || (i >= 8))
-        {
-            merror("(ReadSecMSG): Bad encrypted message(size 1)");
-            return(NULL);
-        }
-        
-        buffer++;
-        i++;
-    }
-    if(i == 0)
-    {
-        merror("(ReadSecMSG): Bad encrypted message(size 0)");
-        return(NULL);
-    }
-    
-    id[i] = '\0';
-
-    /* Checking if the id/ip key pair exist */
-    if(srcip != NULL)
-    {
-        _key = CheckAllowedIP(keys,srcip,id);
-
-        if(_key == -1)
-        {
-            merror("(SecMsg): IP address \"%s\" not allowed.",srcip);
-            return(NULL);
-        }
-    }
-    else
-    {
-        _key = 0;
-    }
-     
-    /** Getting size **/
-    buffer++; /* Jumping to next : */
-    i = 0;
-    _rsize = atoi(buffer);
-    
-    if((_rsize <= 0) || (_rsize >= OS_MAXSTR))
-    {
-        merror("encrypt-handler: Bad encrypted message (wrong size)");
-        return(NULL);
-    }
-    
-    while(*buffer != ':')
-    {
-        if((*buffer == '\0') || (i > 6))
-        {
-            merror("encrypt-handler: Bad encrypted message (wrong size i)");
-            return(NULL);
-        }
-        i++;
-        buffer++;
-    }
-    if(i == 0)
-    {
-        merror("encrypt-handler: Bad encrypted message (wrong size 2)");
-        return(NULL);
-    }
-    
-    buffer++; /* Buffer is after : */
    
-    clear_msg = OS_BF_Str(buffer,keys->keys[_key],_rsize,OS_DECRYPT); 
-
-    /* checking for return */
-    if(clear_msg == NULL)
+    if(!OS_BF_Str(buffer, cleartext, keys->keys[id], buffer_size,OS_DECRYPT)) 
     {
-        merror("(SecMsg): Bad encrypted message (wrong key)");
+        merror(ENCKEY_ERROR, ARGV0, keys->ips[id]);
         return(NULL);
     }
 
     /* Checking first char -- must be ':' */
-    else if(clear_msg[0] != ':')
+    else if(cleartext[0] != ':')
     {
-        merror("(SecMsg): Bad encrypted message (wrong start)");
+        merror(ENCFORMAT_ERROR, ARGV0, keys->ips[id]);
+        return(NULL);
     }
     
-    /* Checking checksum */
-    if(CheckSum(clear_msg,_rsize) < 0)
+    /* Checking checksum -- it also removes the random in there */
+
+    f_msg = CheckSum(cleartext, buffer_size);
+    if(f_msg == NULL)
     {
-        merror("(SecMsg): Bad msg checksum");
-        free(clear_msg);
+        merror(ENCSUM_ERROR, ARGV0, keys->ips[id]);
         return(NULL);
     }
 
-    return(clear_msg);    
+    return(f_msg);    
 }
 
-/* Creat a encrypted message */
-char *CreateSecMSG(keystruct *keys, char *msg, int id, int *msgsize)
-{
-    register int i=0,j=0;
 
+
+/* Creat a encrypted message.
+ * Returns the size of it
+ */
+int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
+                                  int id)
+{
+    int msg_size;
+    int final_size;
+    int bfsize;
+    
     unsigned short int rand0;
     unsigned short int rand1;
-
-    int _msize = strlen(msg);
-    int _mtotalsize = 0;
-    int _bfsize =0 ; /* Must be x % 8 = 0 */
-
-    char _msizechar[6];
-    char _tmpmsg[_msize+24];
-    char _finmsg[_msize+57];
-
-    char *_crypt_msg = NULL;
-    char *msg_encrypted = NULL;
-
+    
+    char _tmpmsg[OS_MAXSTR +1];
+    char _finmsg[OS_MAXSTR +1];
+    
     os_md5 md5sum;
-
-    /* Avoiding any possible message overflow */
-    if(_msize >= (OS_MAXSTR - 58))
+    
+    msg_size = strlen(msg);
+    
+    if((msg_size > (OS_MAXSTR - 64))||(msg_size < 1))
     {
-        merror("(CreateSecMSG): Overflow attempt");
-        return(NULL);
+        merror(ENCSIZE_ERROR, ARGV0, msg);
+        return(0);
     }
-
-    if(_msize < 1)
-    {
-        merror("(CreateSecMSG): Small msg '%s', possibly crafted", msg);
-        return(NULL);
-    }
-
-
-    /* rand1  */
+    
+    /* Random number */
     rand0 = (unsigned short int)rand();
     rand1 = (unsigned short int)rand();
 
-    /* Well, well... after two years without looking at this
-     * code I have no idea what it does anymore (and why I did this
-     * way.. XXX to be re-examined and possible re-implemented later
-     * 2005-03
-     */
      
-    /* Padding the message (needs to be div by 8 */
-    _bfsize = 8 - (_msize % 8);
-    if(_bfsize == 8)
-        _bfsize=0;
+    /* Padding the message (needs to be div by 8) */
+    bfsize = 8 - (msg_size % 8);
+    if(bfsize == 8)
+        bfsize = 0;
 
-    memset(_tmpmsg,'\0',_msize+24);
-    memset(_finmsg,'\0',_msize+57);
+    _tmpmsg[OS_MAXSTR] = '\0';
+    _finmsg[OS_MAXSTR] = '\0';
+    msg_encrypted[OS_MAXSTR] = '\0';
+    
+    snprintf(_tmpmsg, OS_MAXSTR,":%07hu%05hu%0*d:%s",rand1,rand0,bfsize+1,1,msg);
 
-    snprintf(_tmpmsg,_msize+24,":%07hu%05hu%0*d:%s",rand1,rand0,_bfsize+1,1,msg);
-
+    
     /* Generating md5sum of the unencrypted string */
     OS_MD5_Str(_tmpmsg, md5sum);
 
+    
     /* Generating final msg to be encrypted */
-    snprintf(_finmsg,_msize+57,":%s%s",md5sum,_tmpmsg);
+    snprintf(_finmsg, OS_MAXSTR,":%s%s",md5sum,_tmpmsg);
 
-    memset(_tmpmsg,'\0',_msize+24);
+    msg_size = strlen(_finmsg);
 
-    _msize = strlen(_finmsg);
-
+    msg_encrypted[0] = ':';
+    msg_encrypted++;
+    
     /* Encrypting everything */
-    msg_encrypted = OS_BF_Str(_finmsg, keys->keys[id], _msize, OS_ENCRYPT);
-
-    /* Clearing the message not encrypted */
-    memset(_finmsg,'\0',_msize);
-    memset(_msizechar,'\0', 6);
-
-    if(msg_encrypted == NULL)
-    {
-        merror("(CreateSecMSG): Blowfish error");
-        return(NULL);
-    }
-
-    snprintf(_msizechar,6,"%d",_msize);
-
-    _mtotalsize = _msize+1 + strlen(keys->ids[id])+1+strlen(_msizechar)+2;
-
-    _crypt_msg = (char *) calloc(_mtotalsize, sizeof(char *));
+    OS_BF_Str(_finmsg, msg_encrypted, keys->keys[id], msg_size, OS_ENCRYPT);
     
-    if(_crypt_msg == NULL)
-    {
-        merror("(CreateSecMSG): Memory error");
-        free(msg_encrypted);
-        return(NULL);
-    }
+    msg_encrypted--;
 
-    /* Generating the message to be sent */
-    snprintf(_crypt_msg,_mtotalsize-_msize,":%s:%s:",
-            keys->ids[id],_msizechar);
-    _mtotalsize--;
-
-    for(i=_mtotalsize-_msize;i<_mtotalsize;i++)
-        _crypt_msg[i]=msg_encrypted[j++];
-
-    _crypt_msg[_mtotalsize]='\0';
-
-    *msgsize = _mtotalsize+1;
-    
-    free(msg_encrypted);
-    return(_crypt_msg);
+    return(msg_size +1);
 }
-			
+
+
 /* EOF */

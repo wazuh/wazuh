@@ -46,7 +46,7 @@ int run_netstat(int proto, int port)
         snprintf(nt, OS_MAXSTR, NETSTAT, "udp", port);
     else
     {
-        merror("%s: Netstat error (wrong proto)", ARGV0);
+        merror("%s: Netstat error (wrong protocol)", ARGV0);
         return(0);
     }
 
@@ -108,15 +108,16 @@ void test_ports(int proto, int *_errors, int *_total)
                 
                 (*_errors)++;
                 
-                snprintf(op_msg, OS_MAXSTR, "Port '%d'(%d) hidden. "
+                snprintf(op_msg, OS_MAXSTR, "Port '%d'(%s) hidden. "
                                 "Kernel-level rootkit or trojaned "
-                                "version of netstat.", i, proto);
+                                "version of netstat.", i, 
+                                 (proto == IPPROTO_UDP)? "udp" : "tcp");
 
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             }
         }
 
-        if((*_errors) > 25)
+        if((*_errors) > 20)
         {
             char op_msg[OS_MAXSTR +1];
             snprintf(op_msg, OS_MAXSTR, "Excessive number of '%s' ports "

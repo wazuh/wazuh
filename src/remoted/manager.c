@@ -251,34 +251,6 @@ void c_files()
 }
 
  
-/* r_read: Returns a pointer to the string after the checksum
- * and after the randon number. Returns null on error. 
- */
-char *r_read(char *tmp_msg)
-{
-    tmp_msg++;
-    
-    /* Removing checksum */
-    tmp_msg = index(tmp_msg, ':');
-    if(!tmp_msg)
-    {
-        return(NULL);
-    }
-
-    tmp_msg++;
-
-    /* Removing randon */
-    tmp_msg = index(tmp_msg, ':');
-    if(!tmp_msg)
-    {   
-        return(NULL);
-    }   
-    
-    tmp_msg++;
-    
-    return(tmp_msg);
-}
-
 
 /* send_file: Sends a file to the agent.
  * Returns -1 on error
@@ -288,9 +260,10 @@ int send_file(int agentid, char *name, char *sum)
     int i = 0;
     char file[OS_MAXSTR +1];
     char buf[OS_MAXSTR +1];
-    char *crypt_msg;
+    char crypt_msg[OS_MAXSTR +1];
 
     int msg_size;
+    
     FILE *fp;
 
     snprintf(file, OS_MAXSTR, "%s/%s",SHAREDCFG_DIR, name);
@@ -306,8 +279,8 @@ int send_file(int agentid, char *name, char *sum)
     /* Sending the file name first */
     snprintf(buf, OS_MAXSTR, "#!-up file %s %s\n", sum, name);
 
-    crypt_msg = CreateSecMSG(&keys, buf, agentid, &msg_size);
-    if(crypt_msg == NULL)
+    msg_size = CreateSecMSG(&keys, buf, crypt_msg, agentid);
+    if(msg_size == 0)
     {
         merror(SEC_ERROR,ARGV0);
         fclose(fp);
@@ -319,21 +292,19 @@ int send_file(int agentid, char *name, char *sum)
                          (struct sockaddr *)&keys.peer_info[agentid],
                          logr.peer_size) < 0) 
     {
-        free(crypt_msg);
         fclose(fp);
         merror(SEND_ERROR,ARGV0);
         return(-1);
     }
     
-    free(crypt_msg);
     sleep(1);
 
     /* Sending the file content */
     while(fgets(buf, OS_MAXSTR , fp) != NULL)
     {
-        crypt_msg = CreateSecMSG(&keys, buf, agentid, &msg_size);
+        msg_size = CreateSecMSG(&keys, buf, crypt_msg, agentid);
 
-        if(crypt_msg == NULL)
+        if(msg_size == 0)
         {
             fclose(fp);
             merror(SEC_ERROR,ARGV0);
@@ -345,13 +316,10 @@ int send_file(int agentid, char *name, char *sum)
                          logr.peer_size) < 0)  
         {
             fclose(fp);
-            free(crypt_msg);
             merror("%s: Error sending message to agent (send)",ARGV0);
             return(-1);
         }
 
-        /* No hurry in here.. */
-        free(crypt_msg);
 
         /* Sleep 1 every 5 messages -- no flood */
         if(i > 4)
@@ -367,8 +335,8 @@ int send_file(int agentid, char *name, char *sum)
     /* Sending the message to close the file */
     snprintf(buf, OS_MAXSTR, "#!-close file ");
 
-    crypt_msg = CreateSecMSG(&keys, buf, agentid, &msg_size);
-    if(crypt_msg == NULL)
+    msg_size = CreateSecMSG(&keys, buf, crypt_msg, agentid);
+    if(msg_size == 0)
     {
         merror(SEC_ERROR,ARGV0);
         fclose(fp);
@@ -380,13 +348,11 @@ int send_file(int agentid, char *name, char *sum)
                          (struct sockaddr *)&keys.peer_info[agentid],
                          logr.peer_size) < 0) 
     {
-        free(crypt_msg);
         merror(SEND_ERROR,ARGV0);
         fclose(fp);
         return(-1);
     }
     
-    free(crypt_msg);
     fclose(fp);
     
     return(0);

@@ -91,9 +91,12 @@ void _startit(int position,int connection_type, int uid,
 {
     int sock;
     int m_queue;
+    int agentid;
     
     char buffer[OS_MAXSTR +1];
+    char cleartext_msg[OS_MAXSTR +1]; 
     char srcip[IPSIZE +1];
+    char *tmp_msg;
     
     int port = 0;
    
@@ -175,6 +178,11 @@ void _startit(int position,int connection_type, int uid,
     peer_size = sizeof(peer_info);
     logr.peer_size = sizeof(peer_info);
 
+    /* Initializing some variables */
+    memset(buffer, '\0', OS_MAXSTR +1);
+    memset(cleartext_msg, '\0', OS_MAXSTR +1);
+    tmp_msg = NULL;
+
     
     /* Infinit loop in here */
     while(1)
@@ -196,12 +204,9 @@ void _startit(int position,int connection_type, int uid,
         /* Handling secure connections */
         if(connection_type == SECURE_CONN)
         {
-            int agentid;
-            char *cleartext_msg;
-            char *tmp_msg;
   
             /* Getting a valid agentid */ 
-            agentid = CheckAllowedIP(&keys, srcip, NULL); 
+            agentid = IsAllowedIP(&keys, srcip); 
             if(agentid < 0)
             {
                 merror(DENYIP_ERROR,ARGV0,srcip);
@@ -209,23 +214,14 @@ void _startit(int position,int connection_type, int uid,
             }
         
             /* Decrypting the message */    
-            cleartext_msg = ReadSecMSG(&keys, srcip, buffer);
-            if(cleartext_msg == NULL)
+            tmp_msg = ReadSecMSG(&keys, buffer, cleartext_msg,
+                                        agentid,recv_b -1);
+            if(tmp_msg == NULL)
             {
                 merror(MSG_ERROR,ARGV0,srcip);
                 continue;
             }
 
-            /* Removing checksum and extra stuff from the msg */
-            tmp_msg = r_read(cleartext_msg);
-            if(tmp_msg == NULL)
-            {
-                merror(MSG_ERROR,ARGV0,srcip);
-                free(cleartext_msg);
-                continue;
-            }
-           
-            
              
             /* Check if it is a control message */ 
             if((tmp_msg[0] == '#') && (tmp_msg[1] == '!') &&
@@ -255,8 +251,6 @@ void _startit(int position,int connection_type, int uid,
                     ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
                 }
             }
-
-            free(cleartext_msg);    
         }
 
         /* syslog message */
