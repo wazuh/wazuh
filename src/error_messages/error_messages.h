@@ -97,6 +97,7 @@
 #define ENCKEY_ERROR    "%s(1404): Authentication error. Wrong key from '%s'."
 #define ENCSIZE_ERROR   "%s(1405): Message size not valid: '%s'."                                   
 #define ENCSUM_ERROR    "%s(1406): Checksum mismatch on message from '%s'."
+#define ENCTIME_ERROR   "%s(1407): Duplicated message time from '%s'."
                                    
                                    
 /* Verbose messages */

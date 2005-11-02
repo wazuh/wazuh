@@ -22,6 +22,9 @@ typedef struct _keystruct
     char **keys;
     char **ips;
     struct sockaddr_in *peer_info;
+    time_t *time;
+    int *count;
+
     int keysize;
 }keystruct;
 
