@@ -23,7 +23,7 @@ help()
 # Status function
 status()
 {
-    DAEMONS="ossec-agentd ossec-logcollector ossec-syscheckd"
+    DAEMONS="ossec-execd ossec-agentd ossec-logcollector ossec-syscheckd"
     for i in ${DAEMONS}; do
         pfile=${i}
         pstatus;
@@ -40,7 +40,7 @@ status()
 start()
 {
 
-    DAEMONS="ossec-agentd ossec-logcollector ossec-syscheckd"
+    DAEMONS="ossec-execd ossec-agentd ossec-logcollector ossec-syscheckd"
     
     echo "Starting OSSEC HIDS (by Daniel B. Cid)..." 
     
@@ -54,7 +54,6 @@ start()
             fi 
            
             echo "Started ${i}..." 
-            sleep 1;
         else
             echo "${i} already running..."                
         fi    
@@ -84,7 +83,7 @@ pstatus()
 
 stopa()
 {
-    DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd"
+    DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd"
     for i in ${DAEMONS}; do
         pfile=${i}
         pstatus;
