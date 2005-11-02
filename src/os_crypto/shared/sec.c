@@ -213,14 +213,12 @@ void ReadKeys(keystruct *keys)
         
         /* Getting key */
         valid_str = tmp_str;
-        tmp_str = index(tmp_str, ' ');
-        if(!tmp_str)
+        tmp_str = index(tmp_str, '\n');
+        if(tmp_str)
         {
-            merror(INVALID_KEY, ARGV0, buffer);
+            *tmp_str = '\0';
         }
 
-        *tmp_str = '\0';
-        tmp_str++;
         strncpy(key, valid_str, KEYSIZE -1);
         
         /* Generating the key hash */
