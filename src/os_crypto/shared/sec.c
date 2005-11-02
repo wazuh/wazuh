@@ -277,13 +277,16 @@ char *CheckSum(char *msg, int size)
     msg+=32;
 
     OS_MD5_Str(msg, checksum);
-    
+    merror("msg:%s ***", msg);
+    merror("checksun: %s, recv:%s,\n", checksum, recvd_sum);
     if(strncmp(checksum,recvd_sum,32) != 0)
         return(NULL);
     
     /* Removing ':' */    
     msg++;
 
+    merror("msg now: %s", msg);
+    
     /* Removing random number */
     msg = index(msg, ':');
     if(!msg)
@@ -292,6 +295,7 @@ char *CheckSum(char *msg, int size)
     /* Removing : after random */
     msg++;
 
+    merror("last msg: %s", msg);
     return(msg);
 }
 
@@ -324,6 +328,8 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         merror(ENCFORMAT_ERROR, ARGV0, keys->ips[id]);
         return(NULL);
     }
+
+    merror("\n\n*** msg: %s",cleartext);
     
     /* Checking checksum -- it also removes the random in there */
 
@@ -383,6 +389,7 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
 
     
     /* Generating md5sum of the unencrypted string */
+    merror("generating md5sum of *** %s ***", _tmpmsg);
     OS_MD5_Str(_tmpmsg, md5sum);
 
     
