@@ -22,8 +22,8 @@
 #define OS_DECRYPT      0
 
 
-char *OS_BF_Str(char * input, char *charkey, long size,
-       short int action);
+int OS_BF_Str(char * input, char *output, char *charkey, 
+                            long size, short int action);
 
 #endif
 

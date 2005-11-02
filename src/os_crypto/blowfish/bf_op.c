@@ -28,17 +28,12 @@
 
 typedef unsigned char uchar;
 
-char *OS_BF_Str(char *input, char *charkey, long size, 
-	short int action)
+int OS_BF_Str(char *input, char *output, char *charkey, 
+                long size, short int action)
 {
     BF_KEY key;
     static unsigned char cbc_iv [8]={0xfe,0xdc,0xba,0x98,0x76,0x54,0x32,0x10};
     unsigned char iv[8];
-    char *output = NULL;
-
-    output = calloc(size+1, sizeof(char));
-    if(output == NULL)
-        return(NULL);
 
     memcpy(iv,cbc_iv,sizeof(iv));
 
@@ -47,7 +42,7 @@ char *OS_BF_Str(char *input, char *charkey, long size,
     BF_cbc_encrypt((uchar *)input, (uchar *)output, size,
             &key, iv, action);
 
-    return(output);
+    return(1);
 }
 
 /* EOF */
