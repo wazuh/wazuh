@@ -34,7 +34,8 @@
 
 
 #define KEYSIZE	 72
-
+u_int8_t global_count = 0;
+time_t global_time = 0;
 
 /* _MemClear v0.1 - Internal use */
 void _MemClear(char *id, char *name, char *ip, char *key)
@@ -64,8 +65,12 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
 
     keys->peer_info = realloc(keys->peer_info,
             (keys->keysize+1) * sizeof(peer));
+   
+    keys->time = realloc(keys->time, (keys->keysize+1) * sizeof(int)); 
+    keys->count = realloc(keys->count, (keys->keysize+1) * sizeof(int)); 
     
-    if(!keys->ids || !keys->ips || !keys->peer_info) 
+    if(!keys->ids || !keys->ips || !keys->peer_info
+                  || !keys->time|| !keys->count) 
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
@@ -260,8 +265,6 @@ int IsAllowedIP(keystruct *keys, char *srcip)
 
 /* CheckSum v0.1: 2005/02/15 
  * Verify the checksum of the message.
- * Also removes the checksum and the random
- * number from it.
  * Returns NULL on error or the message on success.
  */
 char *CheckSum(char *msg, int size)
@@ -280,18 +283,6 @@ char *CheckSum(char *msg, int size)
     if(strncmp(checksum,recvd_sum,32) != 0)
         return(NULL);
     
-    /* Removing ':' */    
-    msg++;
-
-    
-    /* Removing random number */
-    msg = index(msg, ':');
-    if(!msg)
-        return(NULL);
-    
-    /* Removing : after random */
-    msg++;
-
     return(msg);
 }
 
@@ -301,6 +292,9 @@ char *CheckSum(char *msg, int size)
 char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext, 
                                   int id, int buffer_size)
 {
+    int msg_count;
+    time_t msg_time;
+    
     char *f_msg;
     if(*buffer != ':')
     {
@@ -326,8 +320,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
 
     cleartext[buffer_size] = '\0';
     
-    /* Checking checksum -- it also removes the random in there */
-
+    /* Checking checksum  */
     f_msg = CheckSum(cleartext, buffer_size);
     if(f_msg == NULL)
     {
@@ -335,7 +328,31 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         return(NULL);
     }
 
-    return(f_msg);    
+    /* Checking time -- protecting against replay attacks */
+    msg_time = atoi(f_msg);
+    f_msg+=11;
+    
+    msg_count = atoi(f_msg);
+    f_msg+=5;
+
+    if((msg_time > keys->time[id]) ||
+       ((msg_time == keys->time[id]) && (msg_count > keys->count[id]))      
+      )
+    {
+        /* Updating currently time and count */
+        keys->time[id] = msg_time;
+        keys->count[id] = msg_count;
+        
+        f_msg = index(f_msg, ':');
+        if(f_msg)
+        {
+            f_msg++;
+            return(f_msg);
+        }
+    }
+    
+    merror(ENCTIME_ERROR, ARGV0, keys->ips[id]);
+    return(NULL);
 }
 
 
@@ -350,8 +367,9 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     int final_size;
     int bfsize;
     
-    unsigned short int rand0;
-    unsigned short int rand1;
+    u_int16_t rand1;
+    
+    time_t curr_time;
     
     char _tmpmsg[OS_MAXSTR +1];
     char _finmsg[OS_MAXSTR +1];
@@ -367,8 +385,7 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     }
     
     /* Random number */
-    rand0 = (unsigned short int)rand();
-    rand1 = (unsigned short int)rand();
+    rand1 = (u_int16_t)rand();
 
      
     /* Padding the message (needs to be div by 8) */
@@ -380,7 +397,15 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     _finmsg[OS_MAXSTR] = '\0';
     msg_encrypted[OS_MAXSTR] = '\0';
     
-    snprintf(_tmpmsg, OS_MAXSTR,":%07hu%05hu%0*d:%s",rand1,rand0,bfsize+1,1,msg);
+    curr_time = time(0);
+    if(curr_time != global_time)
+    {
+        global_count = 0;
+        global_time = curr_time;
+    }
+    
+    snprintf(_tmpmsg, OS_MAXSTR,"%010u:%04hu:%05hu%0*d:%s", curr_time, global_count, 
+                                                            rand1,  bfsize+1, 1, msg);
 
     
     /* Generating md5sum of the unencrypted string */
@@ -400,6 +425,11 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     
     msg_encrypted--;
 
+    
+    /* Updating the global count */
+    global_count++;
+    
+    
     return(msg_size +1);
 }
 
