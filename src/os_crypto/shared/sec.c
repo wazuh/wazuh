@@ -53,15 +53,8 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
     
 	char _finalstr[KEYSIZE];
     
-	int _fsize = 0;
-	int _idsize = 0;
-	int _ipsize = 0;
-	
     struct sockaddr_in peer;
     
-	/* Getting ID/IP */
-	_idsize = strlen(id)+1;
-	_ipsize=strlen(ip)+1;
     
 	keys->ids = (char **)realloc(keys->ids,
 			(keys->keysize+1) * sizeof(char *));
@@ -77,8 +70,8 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
         ErrorExit(MEM_ERROR, ARGV0);
     }
     
-	keys->ids[keys->keysize] = calloc(_idsize,sizeof(char));
-    keys->ips[keys->keysize] = calloc(_ipsize,sizeof(char)); 
+	keys->ids[keys->keysize] = strdup(id);
+	keys->ips[keys->keysize] = strdup(ip);
 
     if(!keys->ids[keys->keysize] || !keys->ips[keys->keysize])
     {
@@ -86,51 +79,55 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
     }
 
 
-	strncpy(keys->ids[keys->keysize],id,_idsize-1);
-	strncpy(keys->ips[keys->keysize],ip,_ipsize-1);
-      
 	
 	/* Generating key */
-	/* MD5 from name and key */
+	/* MD5 from name, id and key */
 	OS_MD5_Str(name, filesum1);	
-	OS_MD5_Str(key, filesum2);
+	OS_MD5_Str(id,  filesum2);
 
 
 	/* Generating new filesum1 */ 
 	snprintf(_finalstr, sizeof(_finalstr)-1, "%s%s",filesum1,filesum2);
 	
-    
-    OS_MD5_Str(_finalstr, filesum1);	
+    /* Using just half of the first md5 (user/id) */
+    OS_MD5_Str(_finalstr, filesum1);
+    filesum1[15] = '\0';	
+    filesum1[16] = '\0';
+    	
+    OS_MD5_Str(key, filesum2);	
 	
     
 	/* Generating final key */
 	memset(_finalstr,'\0', 65);
-	snprintf(_finalstr,64,"%s%s",filesum1,filesum2);
+	snprintf(_finalstr, 49, "%s%s", filesum2, filesum1);
 
+    /* Final key is 48 * 4 = 192bits */
 
-	/* Final size */
-	_fsize = strlen(_finalstr)+1;
 
     keys->keys = (char **)realloc(keys->keys,
 			(keys->keysize+1)*sizeof(char *));
 	if(keys->keys == NULL)
        ErrorExit(MEM_ERROR, ARGV0); 
 
-    keys->keys[keys->keysize]=(char *)calloc(_fsize,sizeof(char));
+
+    keys->keys[keys->keysize]=strdup(_finalstr);
     
     if(keys->keys[keys->keysize] == NULL)
        ErrorExit(MEM_ERROR, ARGV0); 
 
-	strncpy(keys->keys[keys->keysize],_finalstr,_fsize-1);
 
 
 	/* Cleaning final string from memory */
 	memset(_finalstr,'\0', 65);
 
+
 	/* next */
 	keys->keysize++;	
+    
 	return;
 }
+
+
 
 /* ReadKeys v0.1: 2005/02/01 */
 void ReadKeys(keystruct *keys)
@@ -144,7 +141,7 @@ void ReadKeys(keystruct *keys)
     char id[KEYSIZE];
     char key[KEYSIZE];
     
-    int _pos=0,j=0,_ig=0;
+    int _pos = 0,j = 0,_ig = 0;
 
     if(File_DateofChange(KEYS_FILE) < 0)
         ErrorExit("ossec-remoted: Keys file %s does not exist. No secure "
@@ -159,14 +156,16 @@ void ReadKeys(keystruct *keys)
         exit(1);
     }
 
+
     /* Initializing structure */
     keys->ids = NULL;
     keys->keys = NULL;
     keys->ips = NULL;
     keys->keysize = 0;
 
-    _MemClear(id,name,ip,key);
+    _MemClear(id, name, ip, key);
 
+    /* XXX fix this --read whole line */
     while((c = fgetc(fp)) != EOF)
     {
         if(c == '#')
@@ -222,6 +221,7 @@ void ReadKeys(keystruct *keys)
             key[j]='\0';
             _pos=0;	
             j=0;
+            
             /* Generate the key hash and clear the key from the memory */
             _CHash(keys, id, name, ip, key);
             _MemClear(id, name, ip, key);
@@ -241,6 +241,7 @@ void ReadKeys(keystruct *keys)
     _MemClear(id,name,ip,key);		
     return;
 }
+
 
 
 /* CheckAllowedIP v0.1: 2005/02/09 */
@@ -264,6 +265,7 @@ int CheckAllowedIP(keystruct *keys, char *srcip, char *id)
     }
     return(-1);
 }
+
 
 
 /* CheckSum v0.1: 2005/02/15 
