@@ -53,6 +53,9 @@ void _startit(char *dir, int uid, int gid)
 {
     int pid;
     int m_queue = 0;
+    int _ssize;    
+    
+    char crypt_msg[OS_MAXSTR +1];
         
     unsigned int port = 0;
     
@@ -131,7 +134,11 @@ void _startit(char *dir, int uid, int gid)
         ErrorExit(THREAD_ERROR, ARGV0);
     }
 
-
+    /* Initializing variables */
+    _ssize = 0;
+    memset(crypt_msg, '\0', OS_MAXSTR +1);
+    
+    
     /* daemon loop */	
     for(;;)
     {
@@ -140,13 +147,10 @@ void _startit(char *dir, int uid, int gid)
         /* Receiving from the unix queue */
         if((msg = OS_RecvUnix(m_queue, OS_MAXSTR)) != NULL)
         {
-            char *crypt_msg = NULL;
-            int _ssize = 0; /* msg socket size */
-
-            crypt_msg = CreateSecMSG(&keys, msg, 0, &_ssize);
+            _ssize = CreateSecMSG(&keys, msg, crypt_msg, 0);
             
             /* Returns NULL if can't create encrypted message */
-            if(crypt_msg == NULL)
+            if(_ssize == 0)
             {
                 merror(SEC_ERROR,ARGV0);
                 free(msg);
@@ -158,7 +162,6 @@ void _startit(char *dir, int uid, int gid)
                 merror(SEND_ERROR,ARGV0);
 
             /* No need to set them to null */
-            free(crypt_msg);
             free(msg);
         }
     }

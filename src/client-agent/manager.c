@@ -30,35 +30,6 @@
 #include "agentd.h"
 
 
-/* r_read: Returns a pointer to the string after the checksum
- * and after the randon number. Returns null on error. 
- */ 
-char *r_read(char *tmp_msg)
-{   
-    tmp_msg++;
-
-    /* Removing checksum */
-    tmp_msg = index(tmp_msg, ':');
-    if(!tmp_msg)
-    {
-        return(NULL);
-    }
-
-    tmp_msg++;
-
-    /* Removing randon */
-    tmp_msg = index(tmp_msg, ':');
-    if(!tmp_msg)
-    {   
-        return(NULL);
-    }   
-
-    tmp_msg++;
-
-    return(tmp_msg);
-}
-  
-
 
 /* getreply: Act based on the messages from the server
  */
@@ -69,7 +40,7 @@ void get_messages(int socket)
     char file[OS_MAXSTR +1];
     char buffer[OS_MAXSTR +1];
     
-    char *cleartext_msg;
+    char cleartext[OS_MAXSTR + 1];
     char *tmp_msg;
    
     char file_sum[34];
@@ -83,8 +54,9 @@ void get_messages(int socket)
     /* Setting FP to null, before starting */
     fp = NULL;
    
+    memset(cleartext, '\0', OS_MAXSTR +1);
+    memset(file, '\0', OS_MAXSTR +1);
     memset(file_sum, '\0', 34);
-    file[0] = '\0'; 
     
     while(1)
     {
@@ -108,6 +80,7 @@ void get_messages(int socket)
             if(file[0] != '\0')
             {
                 unlink(file);
+                file[0] = '\0';
             }
                 
             /* timeout */
@@ -121,24 +94,15 @@ void get_messages(int socket)
             continue;
         }
         
-        cleartext_msg = ReadSecMSG(&keys, NULL, buffer);
-        if(cleartext_msg == NULL)
+        /* Id of zero -- only one key allowed */
+        tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b -1);
+        if(tmp_msg == NULL);
         {
             merror(MSG_ERROR,ARGV0,logr->rip);
             continue;
         }
 
-        /* Removing checksum and rand number */
-        tmp_msg = r_read(cleartext_msg);
-        
-        if(!tmp_msg)
-        {
-            merror("%s: Invalid message from '%s'",ARGV0, logr->rip);
-            free(cleartext_msg);
-            continue;
-        }
-                                                        
-        merror("received: %s\n",tmp_msg);
+        merror("received: %s\n", tmp_msg);
         
         /* Check for commands */
         if(tmp_msg[0] == '#' && tmp_msg[1] == '!' &&
@@ -150,7 +114,6 @@ void get_messages(int socket)
             if(strncmp(tmp_msg, "execd: ", strlen("execd: ")) == 0)
             {
                 tmp_msg+=strlen("execd: ");
-                free(cleartext_msg);
                 continue;
             } 
             
@@ -170,7 +133,7 @@ void get_messages(int socket)
                 validate_file = index(tmp_msg, ' ');
                 if(!validate_file)
                 {
-                    goto cleanup;       
+                    continue;
                 }
 
                 *validate_file = '\0';
@@ -264,9 +227,6 @@ void get_messages(int socket)
         {
             merror("%s: Unknown message received. No action defined.",ARGV0);
         }
-        
-        cleanup:
-        free(cleartext_msg);
     }
 
     /* Cleaning up */
@@ -366,7 +326,7 @@ void main_mgr(int socket)
     int msg_size;
 
     char tmp_msg[OS_MAXSTR +1];
-    char *crypt_msg;
+    char crypt_msg[OS_MAXSTR +1];
     char *uname;
     char *shared_files;
     
@@ -406,9 +366,9 @@ void main_mgr(int socket)
     /* creating message */
     snprintf(tmp_msg, OS_MAXSTR, "#!-%s\n%s",uname, shared_files);
     
-    crypt_msg = CreateSecMSG(&keys, tmp_msg, 0, &msg_size);
+    msg_size = CreateSecMSG(&keys, tmp_msg, crypt_msg, 0);
     
-    if(crypt_msg == NULL)
+    if(msg_size == 0)
     {
         free(uname);
         free(shared_files);
@@ -425,7 +385,6 @@ void main_mgr(int socket)
     merror("update message sent!");    
     free(uname);
     free(shared_files);
-    free(crypt_msg);
 
     return;
 }

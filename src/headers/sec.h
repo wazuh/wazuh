@@ -26,10 +26,11 @@ typedef struct _keystruct
 }keystruct;
 
 void ReadKeys(keystruct *keys);
-char *ReadSecMSG(keystruct *keys, char *srcip, char *buffer);
-char *CreateSecMSG(keystruct *keys,char *msg, int id, int *msgsize);
-int CheckAllowedIP(keystruct *keys, char *srcip, char *id);
-int CheckSum(char *msg, int size);
+char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext, 
+                                  int id, int buffer_size);
+int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
+                                  int id);
+int IsAllowedIP(keystruct *keys, char *srcip);
 
 #endif
 

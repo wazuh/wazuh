@@ -90,7 +90,15 @@
 #define LIST_ERROR      "%s(1290); Error creating a new list (calloc)."
 #define LIST_ADD_ERROR  "%s(1291): Error adding nodes to list."
 
-
+/* Encryption/ auth errors */
+#define INVALID_KEY     "%s(1401): Error reading authentication key: '%s'."
+#define NO_AUTHFILE     "%s(1402): Authentication key file '%s' not found."
+#define ENCFORMAT_ERROR "%s(1403): Incorrectly formated message from '%s'."
+#define ENCKEY_ERROR    "%s(1404): Authentication error. Wrong key from '%s'."
+#define ENCSIZE_ERROR   "%s(1405): Message size not valid: '%s'."                                   
+#define ENCSUM_ERROR    "%s(1406): Checksum mismatch on message from '%s'."
+                                   
+                                   
 /* Verbose messages */
 #define STARTED_MSG	"%s: Starting ..."
 #define PRIVSEP_MSG	"%s: Chrooted to directory: %s, using user: %s"
