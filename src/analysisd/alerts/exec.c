@@ -36,7 +36,7 @@ void OS_Exec(int *execq, Eventinfo *lf, active_response *ar)
     char exec_msg[OS_MAXSTR +1];
 
     snprintf(exec_msg, OS_MAXSTR,
-             "#!-execd %s %s %s",
+             "execd %s %s %s",
              ar->command,
              lf->user,
              lf->srcip);

@@ -39,7 +39,7 @@
 <decoder name="ssh-failed">
   <parent>sshd</parent>
   <prematch>^sshd[\d+]: Failed</prematch>
-  <regex>^sshd[\d+]: Failed \S+ for invalid user (\S+) from (\S+) port |</regex>
+  <regex>^sshd[\d+]: Failed \S+ for i\w+ user (\S+) from (\S+) port |</regex>
   <regex>^sshd[\d+]: Failed \S+ for (\S+) from (\S+) port </regex>
   <order>user,srcip</order>
 </decoder>
