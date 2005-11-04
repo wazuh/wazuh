@@ -85,7 +85,12 @@
 #define AR_INV_CMD      "%s(1303): Invalid command '%s' in the active response."
 
 
-                                   
+#define EXECD_INV_MSG   "%s(1310): Invalid active response (execd) message '%s'."
+#define EXEC_INV_NAME   "%s(1311): Invalid command name '%s' provided."
+#define EXEC_CMDERROR   "%s(1312): Error executing '%s': %s"
+#define EXEC_INV_CONF   "%s(1313): Invalid active response config: '%s'."
+
+
 /* List operations */
 #define LIST_ERROR      "%s(1290); Error creating a new list (calloc)."
 #define LIST_ADD_ERROR  "%s(1291): Error adding nodes to list."

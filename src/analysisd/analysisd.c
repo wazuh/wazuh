@@ -594,11 +594,13 @@ void OS_ReadMSG(int m_queue)
                         do_ar = 1;
                         if((*rule_ar)->ar_cmd->user)
                         {
+                            merror("user -> %s", lf->user);
                             if(!lf->user)
                                 do_ar = 0;
                         }
                         if((*rule_ar)->ar_cmd->srcip)
                         {
+                            merror("srcip -> %s", lf->srcip);
                             if(!lf->srcip)
                                 do_ar = 0;
                         }

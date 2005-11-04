@@ -76,7 +76,7 @@ int main(int argc, char **argv)
     }
 
     /* Starting daemon */
-    verbose(STARTED_MSG,ARGV0);
+    debug1(STARTED_MSG,ARGV0);
 
     /* Check if the group given are valid */
     gid = Privsep_GetGroup(group);
@@ -118,10 +118,23 @@ int main(int argc, char **argv)
 /* OS_Run: Read the queue and send the appropriate alerts */
 void OS_Run(int q)
 {
+    int i;
     char buffer[OS_MAXSTR + 1];
+    char *tmp_msg = NULL;
+    char *name;
+    char *command;
+    char *cmd_args[MAX_ARGS +2];
 
     memset(buffer, '\0', OS_MAXSTR +1);
     
+    /* Initializing the cmd arguments */
+    for(i = 0; i<= MAX_ARGS +1; i++)
+    {
+        cmd_args[i] = NULL;
+    }
+    
+    
+    /* Receiving loop */
     while(1)
     {
         if(recv(q, buffer, OS_MAXSTR, 0) == -1)
@@ -131,6 +144,76 @@ void OS_Run(int q)
         }
 
         merror("received: %s\n", buffer);
+
+        /* Verifying if the message is valid */
+        tmp_msg = buffer;
+
+        if(strncmp(buffer, "execd ", strlen("execd ")) != 0)
+        {
+            merror(EXECD_INV_MSG, ARGV0, buffer);
+            continue;
+        }
+
+        tmp_msg += strlen("execd ");
+
+        
+        /* Getting application name */
+        name = tmp_msg;
+
+        tmp_msg = index(tmp_msg, ' ');
+        if(!tmp_msg)
+        {
+            merror(EXECD_INV_MSG, ARGV0, buffer);
+            continue;
+        }
+        *tmp_msg = '\0';
+        tmp_msg++;
+       
+        
+        /* Getting the command to execute (valid name) */
+        command = GetCommandbyName(name);
+        if(!command)
+        {
+            ReadExecConfig();
+            command = GetCommandbyName(name);
+            if(!command)
+            {
+                merror(EXEC_INV_NAME, ARGV0, name);
+                continue;
+            }
+        }
+        cmd_args[0] = command; 
+
+
+        /* Getting the arguments */
+        i = 1;
+        while(i < MAX_ARGS)
+        {
+            cmd_args[i] = tmp_msg;
+            tmp_msg = index(tmp_msg, ' ');
+            if(!tmp_msg)
+            {
+                cmd_args[i+1] = NULL;
+                break;
+            }
+            *tmp_msg = '\0';
+            tmp_msg++;
+            
+            i++;
+        }
+        
+        
+        /* executing command */
+        ExecCmd(cmd_args);        
+        
+        /* Some cleanup */
+        while(i > 0)
+        {
+            cmd_args[i] = NULL;
+            i--;
+        }
+
+        /* continuing .. */
     }
 }
 

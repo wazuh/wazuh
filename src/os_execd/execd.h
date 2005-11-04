@@ -12,6 +12,19 @@
 
 #ifndef _EXECD_H
 
+/* Maximum number of active responses active */
+#define MAX_AR      64
+
+/* Maximum number of command arguments */
+#define MAX_ARGS    32
+
+
+/* Function prototypes */
+int ReadExecConfig();
+char *GetCommandbyName(char *name);
+void ExecCmd(char **cmd);
+
+
 #define _EXECD_H
 
 

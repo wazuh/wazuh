@@ -351,6 +351,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         }
     }
     
+    merror("time: %d, count: %d", msg_time, msg_count);
     merror(ENCTIME_ERROR, ARGV0, keys->ips[id]);
     return(NULL);
 }

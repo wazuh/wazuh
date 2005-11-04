@@ -1,4 +1,4 @@
-/*   $OSSEC, defs.h, v0.1, 2004/07/22, Daniel B. Cid$   */
+/*   $OSSEC, defs.h, v0.2, 2005/11/04, Daniel B. Cid$   */
 
 /* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -9,28 +9,24 @@
  * Foundation
  */
 
+
 /* Global definitions
  */
 
-#ifndef __OS_HEADERS /* Definition of the headers */
+#ifndef __OS_HEADERS
 #define __OS_HEADERS
 
 
-/* Basic SUCESS/ERROR definitions */
-#define ERROR 		1	
-#define SUCESS 		0	
-
-/* Whenever whe need to speficy r/w permissions */
+/* Read / Write definitions
+ */
 #define READ 		1
 #define	WRITE		2
 
+
 /* Size limit control */
-#define OS_MAXSTR 	1024	/* Maximum size to be read */
-#define OS_MAXMSG	512	    /* Maximum msg to be passed */
-#define OS_RULESIZE	256	    /* Maximum size for a rule */	 	
-#define OS_FLSIZE	256	    /* Maximum size whenever reading a file */		
-#define OS_DEFSIZE	128	    /* Default size */
-#define OS_KEYSIZE	32	    /* Maximum size for a key */
+#define OS_MAXSTR 	1024	/* Maximum size (for strings, sockets ,etc) */
+#define OS_RULESIZE	256	    /* Maximum size -- rule only */	 	
+#define OS_FLSIZE	256	    /* Maximum size for files */		
 #define IPSIZE      16      /* IP Address size */
 
 
@@ -39,12 +35,10 @@
 
 
 /* manager notification */
-#ifndef NOTIFY_TIME
-    #define NOTIFY_TIME     600 /* every 10 minutes */
-#endif
-    
+#define NOTIFY_TIME     600     /* every 10 minutes */
+
         
-/* Users Configuration */
+/* User Configuration */
 #ifndef MAILUSER
     #define MAILUSER        "ossecm"
 #endif
@@ -65,49 +59,50 @@
 	#define DEFAULTDIR	"/var/ossec"
 #endif
 
-/* queues configuration */
-#ifndef DEFAULTQUEUE
-	#define DEFAULTQUEUE	"/queue/ossec/queue"
-#endif
 
-/* active response shared file */
+/* Default queue */
+#define DEFAULTQUEUE	"/queue/ossec/queue"
+
+
+/* Active response files */
 #define DEFAULTAR       "/etc/shared/ar.conf"
+#define AR_BINDIR       "/active-response/bin"
 
-/* Used by analysisd to get the decoders plugins.
- * Only read from CHROOT.
- * Should not be changed by the user.
- */
-#ifndef XML_DECODER
-    #define XML_DECODER     "/etc/decoder.xml"
-#endif
+
+/* Exec queue */
+#define EXECQUEUE	    "/queue/alerts/execq"
+
+
+/* Decoder file */
+#define XML_DECODER     "/etc/decoder.xml"
         
-#ifndef KEYS_FILE
-	#define KEYS_FILE       "/etc/client.keys"
-#endif
+
+/* Authentication keys file */
+#define KEYS_FILE       "/etc/client.keys"
+
+
+/* Shared config directory */
+#define SHAREDCFG_DIR   "/etc/shared"
 
 
 /* Built in defines */
 #define DEFAULTQPATH	DEFAULTDIR DEFAULTQUEUE
 #define DEFAULTCPATH    DEFAULTDIR "/etc/ossec.conf"
 #define DEFAULTARPATH   DEFAULTDIR DEFAULTAR
-
-#define EXECQUEUE	    "/queue/alerts/execq"
+#define AR_BINDIRPATH   DEFAULTDIR AR_BINDIR
 #define EXECQUEUEPATH   DEFAULTDIR EXECQUEUE
+#define SHAREDCFG_DIRPATH   DEFAULTDIR SHAREDCFG_DIR
 
+
+/* Default ports */
 #ifndef DEFAULT_SECURE
-	#define DEFAULT_SECURE 1514 /* Default UDP port- secure */
+	#define DEFAULT_SECURE 1514 /* Default encrypted */
 #endif
 
 #ifndef DEFAULT_SYSLOG
 	#define DEFAULT_SYSLOG 514 /* Default syslog port - udp */
 #endif
 
-#ifndef SHAREDCFG_DIR
-    #define SHAREDCFG_DIR   "/etc/shared"
-#endif
-
-/* Built in */    
-#define SHAREDCFG_DIRPATH   DEFAULTDIR SHAREDCFG_DIR
 
 
 /* Xml global elements */

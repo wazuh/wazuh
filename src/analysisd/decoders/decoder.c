@@ -34,6 +34,7 @@
 void DecodeEvent(Eventinfo *lf)
 {
     PluginNode *node;
+    PluginNode *child_node;
    
     node = OS_GetFirstPlugin();
     
@@ -43,7 +44,8 @@ void DecodeEvent(Eventinfo *lf)
     if(!node)
         return;
   
-     
+    merror("here1");
+    
     do 
     {
         if(node->plugin)
@@ -56,26 +58,31 @@ void DecodeEvent(Eventinfo *lf)
 
             lf->log_tag = nnode->name;
 
-            merror("tag: %s\n",lf->log_tag);
+            child_node = node->child;
+            merror("tag: %s - log: %s",lf->log_tag, lf->log);
 
 
             /* Check if we have any child plugin */
-            while(node->child)
+            while(child_node)
             {
-                nnode = node->child->plugin;
+                nnode = child_node->plugin;
 
+                merror("child found: %s", nnode->prematch);
+                
                 if(nnode->prematch && OS_Regex(nnode->prematch,lf->log))
                 {
+                    merror("regex found");
                     break;
                 }
                 
-                node->child = node->child->next;
+                child_node = child_node->next;
                 nnode = NULL;
             }
            
             if(!nnode)
                 return;
 
+            merror("node not null");
             
             /* Getting the regex */
             if(nnode->regex)
@@ -83,12 +90,15 @@ void DecodeEvent(Eventinfo *lf)
                 int i = 0;
                 char **fields;
                 
+                merror("nnode->regex: %s, lf->log: %s,",nnode->regex,lf->log);
                 fields = OS_RegexStr(nnode->regex,lf->log);
                 if(!fields)
                     return;
 
+                merror("found");
                 while(fields[i])
                 {
+                    merror("order i: %s", nnode->order[i]);
                     if(nnode->order[i])
                     {
                         /* DstUser field */
@@ -99,28 +109,28 @@ void DecodeEvent(Eventinfo *lf)
                             continue;
                         }
                          /* User field */
-                        else if(strstr(nnode->order[i],"user") != NULL)
+                        else if(strcmp(nnode->order[i],"user") == 0)
                         {
                             lf->user = fields[i];
                             i++;
                             continue;
                         }
                         /* srcip */
-                        else if(strstr(nnode->order[i],"srcip") != NULL)
+                        else if(strcmp(nnode->order[i],"srcip") == 0)
                         {
                             lf->srcip = fields[i];
                             i++;
                             continue;
                         }
                         /* desip */
-                        else if(strstr(nnode->order[i],"dstip") != NULL)
+                        else if(strcmp(nnode->order[i],"dstip") == 0)
                         {
                             lf->dstip = fields[i];
                             i++;
                             continue;
                         }
                         /* ID */
-                        else if(strstr(nnode->order[i],"id") != NULL)
+                        else if(strcmp(nnode->order[i],"id") == 0)
                         {
                             lf->id = fields[i];
                             i++;

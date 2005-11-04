@@ -199,11 +199,12 @@ void ReadDecodeXML(char *file)
                    
                     while(allowed_fields[k])
                     {
-                        if(strstr(*norder,allowed_fields[k]) != NULL)
+                        if(strcmp(*norder,allowed_fields[k]) == 0)
                         {
                             /* Location is not acceptable here */
-                            if(strstr(*norder,"location") == NULL)
+                            if(strcmp(*norder,"location") != 0)
                                 f_allowed = 1;
+                            break;
                         }
                         
                         k++;
@@ -219,7 +220,7 @@ void ReadDecodeXML(char *file)
                 }
             }
             
-            /* Getting the order */
+            /* Getting the fts order */
             else if(strcasecmp(elements[j]->element,xml_fts)==0)
             {
                 char **norder;
@@ -245,16 +246,17 @@ void ReadDecodeXML(char *file)
                    
                     while(allowed_fields[k])
                     {
-                        if(strstr(*norder,allowed_fields[k]) != NULL)
+                        if(strcmp(*norder,allowed_fields[k]) == 0)
                         {
                             f_allowed = 1;
+                            break;
                         }
                         
                         k++;
                     }
 
                     /* Name is also allowed for the fts */
-                    if(strstr(*norder,"name") != NULL)
+                    if(strcmp(*norder,"name") == 0)
                         f_allowed = 1;
                         
                     if(f_allowed == 0)

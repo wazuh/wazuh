@@ -22,42 +22,128 @@
 
 #include "execd.h"
 
+char exec_names[MAX_AR +1][OS_FLSIZE +1];
+char exec_cmd[MAX_AR +1][OS_FLSIZE +1];
+int  exec_size = 0;
 
-/* OS_Execd v0.1: 2005/03/18
+
+/** int ReadExecConfig() v0.1: 
+ * Reads the shared exec config.
+ * Returns 1 on success or 0 on failure. 
+ * Format of the file is 'name - command'
  */
-int OS_Execd()
+int ReadExecConfig()
 {
-	char cmdexec[256];
-	extern int errno;
+    int i = 0;
+    FILE *fp;
+    char buffer[OS_MAXSTR +1];
+
+    /* Cleaning up */
+    for(i = 0;i < exec_size; i++)
+    {
+        exec_names[i][0] = '\0';
+        exec_cmd[i][0] = '\0';
+        exec_size = 0;
+    }
+    
+    /* Opening file */
+    fp = fopen(DEFAULTARPATH, "r");
+    if(!fp)
+    {
+        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
+        return(0);
+    }
+
+    /* Reading config */
+    while(fgets(buffer, OS_MAXSTR, fp) != NULL)
+    {
+        char *name;
+        char *tmp_str;
+
+        name = buffer;
+
+        /* Cleaning up the buffer */
+        tmp_str = index(buffer, ' ');
+        if(!tmp_str)
+        {
+            merror(EXEC_INV_CONF, ARGV0, DEFAULTARPATH);
+            continue;
+        }
+        *tmp_str = '\0';
+        tmp_str++;
+
+        if(*tmp_str == '-')
+        {
+            tmp_str+=2;
+        }
+        else
+        {
+            merror(EXEC_INV_CONF, ARGV0, DEFAULTARPATH);
+            continue;
+        }
+        
+        /* Setting the name */
+        strncpy(exec_names[exec_size], name, OS_FLSIZE);
+        exec_names[exec_size][OS_FLSIZE] = '\0';
+
+        
+        /* Name now used as command name */
+        name = tmp_str;
+
+        tmp_str = index(tmp_str, '\n');
+        if(tmp_str)
+            *tmp_str = '\0';
+
+        snprintf(exec_cmd[exec_size], OS_FLSIZE, "%s/%s", AR_BINDIRPATH, name);
+
+        exec_size++;
+    }
+
+    return(1);
+}
+
+
+
+/** char *GetCommandbyName(char *name) v0.1
+ * Returns a pointer to the command name (full path)
+ * Returns NULL if name cannot be found
+ */
+char *GetCommandbyName(char *name)
+{
+    int i = 0;
+
+    for(;i < exec_size; i++)
+    {
+        if(strcmp(name, exec_names[i]) == 0)
+            return(exec_cmd[i]);
+    }
+
+    return(NULL);
+}
+
+
+/** void ExecCmd(char **cmd) v0.1
+ * Execute command given. Must be a argv** NULL terminated.
+ * Void. Prints error to log message in case of problems.
+ */
+void ExecCmd(char **cmd)
+{
 	pid_t pid;
 	
-	memset(cmdexec,'\0',256);
 	
 	/* Forking and leaving it running */
 	pid = fork();
 	if(pid == 0)
     {
-        /* Getting cmd to exec */
-        char *exec = NULL;
-        if(exec == NULL)
+        if(execv(*cmd++, cmd) < 0)
         {
-            merror("%s: No command for exec name: %s",ARGV0);
-            exit(1);
-        }
-        /* Checking if the file exists */
-        if(File_DateofChange(exec) < 0)
-        {
-            merror("File \"%s\" does not exist. Unable to execute",exec);
-            exit (1);
-        }
-        
-        if(execv(exec,NULL) < 0)
-        {
-            merror("Error executing %s: %d -> %s\n",cmdexec,errno,strerror(errno));
+            merror(EXEC_CMDERROR, ARGV0, *(--cmd), strerror(errno));
             exit(1);
         }
         exit(0);
     }
-	else
-		return (0);
+    return;
 }
+
+
+/* EOF */
