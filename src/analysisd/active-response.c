@@ -78,6 +78,7 @@ int AS_GetActiveResponses(char * config_file)
         return(-1);    
     }
 
+
     /* Searching for the commands */ 
     while(node[i])
     {
@@ -228,8 +229,13 @@ int AS_GetActiveResponses(char * config_file)
             return(-1);
         }
         
+        if(tmp_ar->AS)
+            Config.local_ar = 1;
+        if(tmp_ar->local || tmp_ar->agent)
+            Config.remote_ar = 1;
+        
         Config.ar = 1;
-
+            
         i++;
     } 
 

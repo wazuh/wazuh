@@ -20,6 +20,7 @@
 
 #include "shared.h"
 #include "rules.h"
+#include "config.h"
 #include "active-response.h"
 
 #include "os_net/os_net.h"
@@ -31,28 +32,41 @@
 
 /* OS_Exec v0.1 
  */
-void OS_Exec(int *execq, Eventinfo *lf, active_response *ar)
+void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
 {
     char exec_msg[OS_MAXSTR +1];
 
     snprintf(exec_msg, OS_MAXSTR,
-             "execd %s %s %s",
+             "execd %s %s %s %s",
+             lf->location,
              ar->command,
              lf->user,
              lf->srcip);
 
     /* active response on the server */         
-    if(ar->AS)
+    if(ar->AS && Config.local_ar)
     {
         if(OS_SendUnix(*execq, exec_msg, 0) < 0)
         {
-            merror("%s: Error communication with execd", ARGV0);
+            merror("%s: Error communicating with execd", ARGV0);
         }
     }
     
-    if(ar->local || ar->agent)
+    if(Config.remote_ar)
     {
+        if(ar->local)
+        {
+            if(OS_SendUnix(*arq, exec_msg, 0) < 0)
+            {
+                merror("%s: Error communicating with arq", ARGV0);
+            }
+        }
+        if(ar->agent)
+        {
+        }    
     }
     
     return;
 }
+
+/* EOF */
