@@ -36,6 +36,7 @@ typedef struct _remoted
 
 
 int BindConf(char *cfgfile, remoted *logr);
+void *AR_Forward(void *arg);
 
 /* Shared keys */
 #include "headers/sec.h"

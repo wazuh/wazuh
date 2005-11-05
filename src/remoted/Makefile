@@ -7,7 +7,7 @@ NAME=ossec-remoted
 
 include ../Config.Make
 
-LOCAL = remoted.c config.c manager.c
+LOCAL = remoted.c config.c manager.c ar-forward.c
 
 rlog_OBJS = ${LOCAL} ${OS_SHARED} ${OS_NET} ${OS_XML} ${OS_REGEX} ${OS_CRYPTO} ${TEXTRA}
 

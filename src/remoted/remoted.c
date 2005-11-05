@@ -84,9 +84,9 @@ int OS_IPNotAllowed(char *srcip)
 /* _startit v0.1, 2004/7/30
  * Internal Function. Does all the socket/ queueing
  * manipulation.
- * Maximum allowed input is 1024 bytes.
+ * Maximum allowed input is MAXSTR.
  */
-void _startit(int position,int connection_type, int uid, 
+void _startit(int position, int connection_type, int uid, 
               int gid, char *dir)
 {
     int sock;
@@ -105,17 +105,18 @@ void _startit(int position,int connection_type, int uid,
     struct sockaddr_in peer_info;
     socklen_t peer_size;
     
+    
     /* if SYSLOG and allowips is not defined, exit */
     if((logr.allowips == NULL)&&(connection_type == SYSLOG_CONN))
     {
-        ErrorExit("%s: No ip/network allowed in the access list "
-                  "for syslog. No reason for running it. Exiting...",
-                  ARGV0);
+        ErrorExit(NO_SYSLOG, ARGV0);
     }
-           
-    if((logr.port == NULL)||(logr.port[position] == NULL)||
-            ((port = atoi(logr.port[position])) <= 0) ||
-              (port > 65535))
+    
+    /* Checking if the port is valid */       
+    if((logr.port == NULL ) ||
+       (logr.port[position] == NULL )||
+       ((port = atoi(logr.port[position])) <= 0) ||
+        (port > 65535))
     {
         if(port < 0 || port > 65535)
             merror(PORT_ERROR,ARGV0,port);
@@ -148,10 +149,23 @@ void _startit(int position,int connection_type, int uid,
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0, uid);
 
-        
-    /* Initing manager */
-    manager_init();
+    
+    /* Initializing manager and forwarder if 
+     * secure connection.
+     */
+    if(connection_type == SECURE_CONN)
+    {
+        /* Initing manager */
+        manager_init();
 
+
+        /* Starting Ar forwarder */
+        if(CreateThread(AR_Forward, (void *)NULL) != 0)
+        {
+            ErrorExit(THREAD_ERROR, ARGV0);
+        }
+    }
+    
     
     /* Connecting to the message queue
      * Exit if it fails.
@@ -174,9 +188,11 @@ void _startit(int position,int connection_type, int uid,
         ReadKeys(&keys);
     }
 
+
     /* setting peer size */
     peer_size = sizeof(peer_info);
     logr.peer_size = sizeof(peer_info);
+
 
     /* Initializing some variables */
     memset(buffer, '\0', OS_MAXSTR +1);
@@ -187,7 +203,7 @@ void _startit(int position,int connection_type, int uid,
     /* Infinit loop in here */
     while(1)
     {
-        /* Receiving message - up to MAXSTR */
+        /* Receiving message  */
         recv_b = recvfrom(sock, buffer, OS_MAXSTR, 0, 
                           (struct sockaddr *)&peer_info, &peer_size);
 
@@ -317,12 +333,17 @@ int main(int argc, char **argv)
 
     debug1(STARTED_MSG,ARGV0);
     
+    
     /* Return 0 if not configured */
     if((binds = BindConf(cfg,&logr)) == 0)
-    {	
+    {
+        #ifndef LOCAL_ONLY
         merror(CONN_ERROR,ARGV0);
+        #endif
+        
         exit(0);
     }
+
 
     /* Return < 0 on error */
     else if(binds < 0)
@@ -338,6 +359,7 @@ int main(int argc, char **argv)
 
     /* Starting the signal manipulation */
     StartSIG(ARGV0);	
+
 
     i = getpid();
 
@@ -373,13 +395,16 @@ int main(int argc, char **argv)
             continue;
         }
         
+        /* Forking for each connection handler */
         if(fork() == 0)
         {   
             /* On the child */
-            _startit(i,connection_type,uid,gid,dir);
+            _startit(i, connection_type, uid, gid, dir);
         }
         else
+        {
             continue;
+        }
     }
 
 

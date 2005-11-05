@@ -73,6 +73,10 @@
 #define EXECQUEUE	    "/queue/alerts/execq"
 
 
+/* Active response queue */
+#define ARQUEUE         "/queue/alerts/ar"
+
+
 /* Decoder file */
 #define XML_DECODER     "/etc/decoder.xml"
         

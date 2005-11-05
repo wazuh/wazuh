@@ -365,7 +365,6 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
                                   int id)
 {
     int msg_size;
-    int final_size;
     int bfsize;
     
     u_int16_t rand1;

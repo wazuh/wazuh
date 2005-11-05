@@ -22,6 +22,8 @@ typedef struct __Config
     int logall;
     int mailnotify;
     int ar;
+    int local_ar;
+    int remote_ar;
     int fts;
     int stats;
     int integrity;

@@ -109,6 +109,9 @@
 #define STARTED_MSG	"%s: Starting ..."
 #define PRIVSEP_MSG	"%s: Chrooted to directory: %s, using user: %s"
 
+#define NO_SYSLOG       "%s(1501): No IP or network allowed in the access list" \
+                        " for syslog. No reason for running it. Exiting."
+
 
 #endif /* _ERROR_MESSAGES__H */
 

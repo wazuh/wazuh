@@ -49,6 +49,8 @@
 int mailq = 0;
 /* execd queue */
 int execdq = 0;
+/* active response queue */
+int arq = 0;
 
 
 /* For hourly stats */
@@ -176,7 +178,7 @@ int main(int argc, char **argv)
         ErrorExit(CONFIG_ERROR, ARGV0);
     }
 
-    debug1("%s: Reading config", ARGV0);
+    
     
     /* Setting the group */	
     if(Privsep_SetGroup(gid) < 0)
@@ -272,13 +274,12 @@ void OS_ReadMSG(int m_queue)
     currently_rule = NULL;
 
     /* Starting the getloglocation */
-    #ifdef DEBUG
-    printf("%s: DEBUG: Starting the log process...\n",ARGV0);
-    #endif
+    debug1("%s: DEBUG: Starting the log process...\n",ARGV0);
 
 
     /* Initiating the logs */
     OS_InitLog();
+
 
     /* Initiating the integrity database */
     SyscheckInit();
@@ -290,20 +291,38 @@ void OS_ReadMSG(int m_queue)
 
     /* Starting the mail queue (if configured to */
     if(Config.mailnotify == 1)
+    {
         if((mailq = StartMQ(MAILQUEUE,WRITE)) < 0)
         {
             merror(MAILQ_ERROR,ARGV0,MAILQUEUE);
-            Config.mailnotify=0;
+            Config.mailnotify = 0;
         }
+    }
 
 
-    /* Starting the exec queue */
+    /* Starting the active response queues */
     if(Config.ar == 1)
     {
-        if((execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
+        if(Config.remote_ar)
         {
-            merror(ARQ_ERROR, ARGV0);
-            Config.ar = 0;   
+            if((arq = StartMQ(ARQUEUE, WRITE)) < 0)
+            {
+                merror(ARQ_ERROR, ARGV0);
+                Config.remote_ar = 0;
+            }
+        }
+        if(Config.local_ar)
+        {
+            if((execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
+            {
+                merror(ARQ_ERROR, ARGV0);
+                Config.local_ar = 0;   
+            }
+        }
+
+        if(!Config.local_ar && !Config.remote_ar)
+        {
+            Config.ar = 0;
         }
     }
 
@@ -317,9 +336,8 @@ void OS_ReadMSG(int m_queue)
         Config.stats=0;
 
 
-    #ifdef DEBUG
-    verbose("%s: DEBUG: Started completed. Waiting for new messages..",ARGV0);
-    #endif
+    debug1("%s: DEBUG: Startup completed. Waiting for new messages..",ARGV0);
+    
 
     /* Daemon loop */
     while(1)
@@ -337,8 +355,9 @@ void OS_ReadMSG(int m_queue)
         }
     
         #ifdef DEBUG
-        verbose("%s: DEBUG:  Waiting new message.\n",ARGV0);
+        debug2("%s: DEBUG:  Waiting new message.\n",ARGV0);
         #endif
+        
         
         /* Receive message from queue */
         if((msg = OS_RecvUnix(m_queue, OS_MAXSTR)) != NULL)
@@ -472,7 +491,7 @@ void OS_ReadMSG(int m_queue)
 
 
             #ifdef DEBUG
-            verbose("%s: DEBUG: Starting rule checks\n",ARGV0);
+            debug2("%s: DEBUG: Starting rule checks\n",ARGV0);
             #endif
 
             /* Currently lf always pointing to lf */
@@ -484,7 +503,8 @@ void OS_ReadMSG(int m_queue)
            
             if(!rulenode_pt) 
             {
-                ErrorExit("%s: Rules in an inconsistent state. Exiting",ARGV0);
+                ErrorExit("%s: Rules in an inconsistent state. Exiting.",
+                                                               ARGV0);
             }
 
             do
@@ -512,6 +532,7 @@ void OS_ReadMSG(int m_queue)
                 if(currently_rule->noalert)
                     continue;
                 
+                
                 /* Checking if rule is supposed to be ignored */
                 if(currently_rule->time_ignored)
                 {
@@ -523,6 +544,7 @@ void OS_ReadMSG(int m_queue)
                     else
                         currently_rule->time_ignored = 0;
                 }
+                
                 
                 /* Copying the rule values to here */
                 lf->level    = currently_rule->level;
@@ -541,7 +563,7 @@ void OS_ReadMSG(int m_queue)
                 }
                  
                 #ifdef DEBUG
-                printf("%s: DEBUG: rule %d triggered (level:%d)\n",ARGV0,
+                debug2("%s: DEBUG: rule %d triggered (level:%d)\n",ARGV0,
                         currently_rule->sigid,
                         currently_rule->level);
                 #endif
@@ -552,8 +574,10 @@ void OS_ReadMSG(int m_queue)
                 
                 /* Execute an action if specified */
 
-                /* Level 0 rules are to be ignored */
-                /* however, they will be kept on the memory */
+                /* Level 0 rules are to be ignored. 
+                 * However, they will be kept in memory
+                 * as fired. 
+                 */
                 if(currently_rule->level == 0)
                 {
                     OS_AddEvent(lf);
@@ -565,7 +589,7 @@ void OS_ReadMSG(int m_queue)
                 {
 
                     #ifdef DEBUG
-                    verbose("%s: DEBUG: Logging ...",ARGV0);
+                    debug2("%s: DEBUG: Logging ...",ARGV0);
                     #endif
 
                     OS_Log(lf);
@@ -575,7 +599,7 @@ void OS_ReadMSG(int m_queue)
                 if(currently_rule->mailresponse == 1)
                 {
                     #ifdef DEBUG
-                    verbose("%s: DEBUG: Mailling ... ", ARGV0);
+                    debug2("%s: DEBUG: Mailling ... ", ARGV0);
                     #endif
                     
                     OS_Createmail(&mailq,lf);
@@ -608,7 +632,7 @@ void OS_ReadMSG(int m_queue)
                         if(do_ar)
                         {
                             merror("exec");
-                            OS_Exec(&execdq, lf, *rule_ar);
+                            OS_Exec(&execdq, &arq, lf, *rule_ar);
                         }
 
                         rule_ar++;
