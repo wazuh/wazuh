@@ -5,7 +5,7 @@ Active response design
 
   <command>
     <name>test</name>
-    <expect>ip-address, username</expect>
+    <expect>srcip, username</expect>
     <executable>exec1.sh</executable>
   </command>
 
@@ -20,7 +20,7 @@ Active response design
   executable permission (allowed formats: .pl, .sh, etc).
   The "expect" element is not optional. You must specify
   what the command is expecting to receive. We only allow
-  the ip-address and username (currently).
+  the srcip and username (currently).
   
   Once you have binded the command names to the executables,
   a configuration will be generated ( on run-time only) at
@@ -52,7 +52,6 @@ Active response design
     <level>3</level>
   </active-response>  
 
-  The names must be unique.
   The command must be a command name specified on the "exec" area.
   The location can be:
                       AS or analysis-server

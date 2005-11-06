@@ -35,6 +35,7 @@
 void *AR_Forward(void *arg)
 {
     int arq = 0;
+    int agent_id = 0;
     char msg_to_send[OS_MAXSTR +1];
     char *msg = NULL;
 
@@ -108,13 +109,16 @@ void *AR_Forward(void *arg)
             /* Send to ALL agents */
             if(*ar_location == ALL_AGENTS)
             {
-                action_all = 1;
+                for(i = 0;i< keys.keysize; i++)
+                {
+                    send_msg(i, msg_to_send);
+                }
             }
 
             /* Send to the remote agent that generated the event */
             else if(*ar_location == REMOTE_AGENT)
             {
-                int agent_id = GetAgentIDbyIP(location);
+                agent_id = GetAgentIDbyIP(location);
                 if(agent_id < 0)
                 {
                     merror(AR_NOAGENT_ERROR, ARGV0, location);
@@ -129,6 +133,15 @@ void *AR_Forward(void *arg)
             /* Send to a pre-defined agent */
             else if(*ar_location == SPECIFIC_AGENT)
             {
+                ar_location++;
+
+                agent_id = IsIPAllowed(ar_location);
+                
+                if(agent_id < 0)
+                {
+                    merror(AR_NOAGENT_ERROR, ARGV0, ar_location);
+                    goto cleanup;
+                }
             }
 
             cleanup:
