@@ -38,8 +38,11 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
 
 
     /* active response on the server */         
-    if(ar->AS && Config.local_ar)
+    if(ar->location[0] == AS_ONLY)
     {
+        if(!Config.local_ar)
+            return;
+            
         snprintf(exec_msg, OS_MAXSTR,
                 "%s %s %s",
                 ar->command,
@@ -52,8 +55,8 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
         }
     }
    
-    /* active response to the forwarder */ 
-    if(Config.remote_ar)
+    /* Active response to the forwarder */ 
+    else if(Config.remote_ar)
     {
         snprintf(exec_msg, OS_MAXSTR,
                 "%s %s %s %s %s",

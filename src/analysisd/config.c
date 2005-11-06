@@ -72,6 +72,8 @@ int GlobalConf(char * cfgfile)
     Config.accuracy = 0;
     Config.keeplogdate = 0;
     Config.ar = 0;
+    Config.remote_ar = 0;
+    Config.local_ar = 0;
     Config.syscheck_threshold = 3;
 
     Config.syscheck_ignore = NULL;

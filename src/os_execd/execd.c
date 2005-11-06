@@ -145,20 +145,9 @@ void OS_Run(int q)
 
         merror("received: %s\n", buffer);
 
-        /* Verifying if the message is valid */
-        tmp_msg = buffer;
-
-        if(strncmp(buffer, "execd ", strlen("execd ")) != 0)
-        {
-            merror(EXECD_INV_MSG, ARGV0, buffer);
-            continue;
-        }
-
-        tmp_msg += strlen("execd ");
-
         
         /* Getting application name */
-        name = tmp_msg;
+        name = buffer;
 
         tmp_msg = index(tmp_msg, ' ');
         if(!tmp_msg)

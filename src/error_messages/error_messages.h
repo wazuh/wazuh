@@ -90,6 +90,8 @@
 #define EXEC_CMDERROR   "%s(1312): Error executing '%s': %s"
 #define EXEC_INV_CONF   "%s(1313): Invalid active response config: '%s'."
 
+#define AR_NOAGENT_ERROR    "%s(1320): Agent '%s' not found."
+
 
 /* List operations */
 #define LIST_ERROR      "%s(1290); Error creating a new list (calloc)."

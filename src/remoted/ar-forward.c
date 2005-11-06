@@ -31,17 +31,26 @@
 
 #include "shared.h"
 
+/*** Prototypes ***/
+int send_msg(int agentid, char *msg);
 
+
+/** void *AR_Forward(void *arg) v0.1
+ * Start of a new thread. Only returns
+ * on unrecoverable errors.
+ */
 void *AR_Forward(void *arg)
 {
+    int i = 0;
     int arq = 0;
     int agent_id = 0;
+    
     char msg_to_send[OS_MAXSTR +1];
+    
     char *msg = NULL;
-
-    char *location;
-    char *ar_location;
-    char *tmp_str;
+    char *location = NULL;
+    char *ar_location = NULL;
+    char *tmp_str = NULL;
 
 
     /* Creating the unix queue */
@@ -64,8 +73,7 @@ void *AR_Forward(void *arg)
             if(!tmp_str)
             {
                 merror(EXECD_INV_MSG, ARGV0, msg);
-                free(msg);
-                continue;
+                goto cleanup;
             }
             *tmp_str = '\0';
             tmp_str++;
@@ -92,8 +100,7 @@ void *AR_Forward(void *arg)
             if(!tmp_str)
             {
                 merror(EXECD_INV_MSG, ARGV0, msg);
-                free(msg);
-                continue;
+                goto cleanup;
             }
             *tmp_str = '\0';
             tmp_str++;
@@ -106,7 +113,7 @@ void *AR_Forward(void *arg)
                                              tmp_str);
 
             
-            /* Send to ALL agents */
+            /* Sending to ALL agents */
             if(*ar_location == ALL_AGENTS)
             {
                 for(i = 0;i< keys.keysize; i++)
@@ -116,18 +123,16 @@ void *AR_Forward(void *arg)
             }
 
             /* Send to the remote agent that generated the event */
-            else if(*ar_location == REMOTE_AGENT)
+            else if((*ar_location == REMOTE_AGENT) && (location != NULL))
             {
-                agent_id = GetAgentIDbyIP(location);
+                agent_id = IsAllowedIP(&keys, location);
                 if(agent_id < 0)
                 {
                     merror(AR_NOAGENT_ERROR, ARGV0, location);
-                    /* Agent '%s' not found. */
                     goto cleanup;
                 }
                 
                 send_msg(agent_id, msg_to_send);
-                action_remote = 1;
             }
 
             /* Send to a pre-defined agent */
@@ -135,7 +140,7 @@ void *AR_Forward(void *arg)
             {
                 ar_location++;
 
-                agent_id = IsIPAllowed(ar_location);
+                agent_id = IsAllowedIP(&keys, ar_location);
                 
                 if(agent_id < 0)
                 {
@@ -152,7 +157,8 @@ void *AR_Forward(void *arg)
 
  
 
-/* send_msg: Send message to the agent.
+/* send_msg: 
+ * Send message to an agent.
  * Returns -1 on error
  */
 int send_msg(int agentid, char *msg)

@@ -44,7 +44,9 @@ int AS_GetActiveResponses(char * config_file)
     XML_NODE node = NULL;
 
     int i = 0;
+    int j = 0;
 
+    
     char *xml_ar_command = "command";
     char *xml_ar_location = "location";
     char *xml_ar_rules_id = "rules_id";
@@ -85,7 +87,7 @@ int AS_GetActiveResponses(char * config_file)
         XML_NODE elements = NULL;
         active_response *tmp_ar;
 
-        int j = 0;
+        j = 0;
         
         if(strcmp(node[i]->element, xml_ar) != 0)
         {
@@ -119,9 +121,6 @@ int AS_GetActiveResponses(char * config_file)
         tmp_ar->level = NULL;
         tmp_ar->ar_cmd = NULL;
         
-        tmp_ar->AS = 0;
-        tmp_ar->local = 0;
-        tmp_ar->agent = 0;
         
         while(elements[j])
         {
@@ -169,30 +168,62 @@ int AS_GetActiveResponses(char * config_file)
             return(-1);
         }
      
-        if(OS_Regex("AS|analysis", tmp_ar->location))
+        if(OS_Regex("^AS|^analysis", tmp_ar->location))
         {
-            tmp_ar->AS = 1;    
+            free(tmp_ar->location);
+
+            tmp_ar->location = calloc(2, sizeof(char));
+            if(!tmp_ar->location)
+            {
+                ErrorExit(MEM_ERROR);
+            }
+            
+            tmp_ar->location[0] = AS_ONLY;
+            tmp_ar->location[1] = '\0';
         }
-        if(OS_Regex("local", tmp_ar->location))
+        else if(OS_Regex("^local", tmp_ar->location))
         {
-            tmp_ar->local = 1;
+            free(tmp_ar->location);
+
+            tmp_ar->location = calloc(2, sizeof(char));
+            if(!tmp_ar->location)
+            {
+                ErrorExit(MEM_ERROR);
+            }
+
+            tmp_ar->location[0] = REMOTE_AGENT;
+            tmp_ar->location[1] = '\0';
+
         }
-        if(OS_Regex("agent:", tmp_ar->location))
+        else if(OS_Regex("^agent:", tmp_ar->location))
         {
-            tmp_ar->agent = 1;
+            tmp_ar->location += strlen("agent");
+
+            tmp_ar->location[0] = SPECIFIC_AGENT;
+
+            /* verify if the agent name of IP is valid */
         }
-        if(OS_Regex("all", tmp_ar->location))
+        else if(OS_Regex("^all", tmp_ar->location))
         {
-            tmp_ar->AS = 1;
-            tmp_ar->agent = 1;
+            free(tmp_ar->location);
+
+            tmp_ar->location = calloc(2, sizeof(char));
+            if(!tmp_ar->location)
+            {
+                ErrorExit(MEM_ERROR);
+            }
+
+            tmp_ar->location[0] = ALL_AGENTS;
+            tmp_ar->location[1] = '\0';
         }
         
-        if(!tmp_ar->AS && !tmp_ar->local && !tmp_ar->agent)
+        else
         {
             merror(AR_INV_LOC, ARGV0, tmp_ar->location);
             OS_ClearXML(&xml);
             return(-1);
         }
+         
          
         /* Checking if command name is valid */
         {
@@ -229,10 +260,19 @@ int AS_GetActiveResponses(char * config_file)
             return(-1);
         }
         
-        if(tmp_ar->AS)
+        if(tmp_ar->location[0] == AS_ONLY)
+        {
             Config.local_ar = 1;
-        if(tmp_ar->local || tmp_ar->agent)
+        }
+        else if(tmp_ar->location[0] == ALL_AGENTS)
+        {
+            Config.local_ar = 1;
             Config.remote_ar = 1;
+        }
+        else
+        {
+            Config.remote_ar = 1;
+        }
         
         Config.ar = 1;
             
@@ -258,6 +298,8 @@ int AS_GetActiveResponseCommands(char * config_file)
 
     FILE *fp;
     int i = 0;
+
+    char *tmp_str = NULL;
 
     char *command_name = "name";
     char *command_expect = "expect";
@@ -333,10 +375,8 @@ int AS_GetActiveResponseCommands(char * config_file)
         }
         
         tmp_command->name = NULL; 
-        tmp_command->expect= NULL; 
+        tmp_command->expect= 0;
         tmp_command->executable = NULL; 
-        tmp_command->user = 0;
-        tmp_command->srcip = 0;
         
         while(elements[j])
         {
@@ -349,7 +389,7 @@ int AS_GetActiveResponseCommands(char * config_file)
             }
             else if(strcmp(elements[j]->element, command_expect) == 0)    
             {
-                tmp_command->expect = strdup(elements[j]->content);
+                tmp_str = strdup(elements[j]->content);
             }
             else if(strcmp(elements[j]->element, command_executable) == 0)
             {
@@ -370,7 +410,7 @@ int AS_GetActiveResponseCommands(char * config_file)
         
         OS_ClearNode(elements);
 
-        if(!tmp_command->name || !tmp_command->expect
+        if(!tmp_command->name || !tmp_str
             || !tmp_command->executable)
         {
             merror(AR_CMD_MISS, ARGV0);
@@ -379,11 +419,16 @@ int AS_GetActiveResponseCommands(char * config_file)
             return(-1);
         }
        
+       
         /* Getting the expect */
-        if(OS_Regex("user", tmp_command->expect))
-            tmp_command->user = 1;
-        if(OS_Regex("srcip", tmp_command->expect))
-            tmp_command->srcip = 1;
+        if(OS_Regex("user", tmp_str))
+            tmp_command->expect |= USERNAME;
+        if(OS_Regex("srcip", tmp_str))
+            tmp_command->expect |= SRCIP;
+        
+        free(tmp_str);
+        tmp_str = NULL;
+        
                 
         if(!OSList_AddData(ar_commands, (void *)tmp_command))
         {

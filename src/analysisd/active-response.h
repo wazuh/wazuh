@@ -16,10 +16,9 @@
 
 typedef struct _ar_command
 {
+    int expect;
     char *name;
-    char *expect;
     char *executable;
-    int user, srcip;
 }ar_command;
 
 
@@ -32,9 +31,6 @@ typedef struct _ar
     char *level;
 
     ar_command *ar_cmd;
-    int AS;
-    int local;
-    int agent;
 }active_response;
 
 

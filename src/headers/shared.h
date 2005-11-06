@@ -27,6 +27,8 @@
 #include "pthreads_op.h"
 #include "regex_op.h"
 #include "sig_op.h"
+#include "rc.h"
+#include "ar.h"
 
 #include "error_messages/error_messages.h"
 

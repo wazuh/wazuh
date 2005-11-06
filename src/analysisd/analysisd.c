@@ -616,13 +616,13 @@ void OS_ReadMSG(int m_queue)
                     while(*rule_ar)
                     {
                         do_ar = 1;
-                        if((*rule_ar)->ar_cmd->user)
+                        if((*rule_ar)->ar_cmd->expect & USERNAME)
                         {
                             merror("user -> %s", lf->user);
                             if(!lf->user)
                                 do_ar = 0;
                         }
-                        if((*rule_ar)->ar_cmd->srcip)
+                        if((*rule_ar)->ar_cmd->expect & SRCIP)
                         {
                             merror("srcip -> %s", lf->srcip);
                             if(!lf->srcip)
