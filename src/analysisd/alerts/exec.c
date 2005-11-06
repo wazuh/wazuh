@@ -36,34 +36,37 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
 {
     char exec_msg[OS_MAXSTR +1];
 
-    snprintf(exec_msg, OS_MAXSTR,
-             "execd %s %s %s %s",
-             lf->location,
-             ar->command,
-             lf->user,
-             lf->srcip);
 
     /* active response on the server */         
     if(ar->AS && Config.local_ar)
     {
+        snprintf(exec_msg, OS_MAXSTR,
+                "%s %s %s",
+                ar->command,
+                lf->user,
+                lf->srcip);
+
         if(OS_SendUnix(*execq, exec_msg, 0) < 0)
         {
             merror("%s: Error communicating with execd", ARGV0);
         }
     }
-    
+   
+    /* active response to the forwarder */ 
     if(Config.remote_ar)
     {
-        if(ar->local)
+        snprintf(exec_msg, OS_MAXSTR,
+                "%s %s %s %s %s",
+                lf->location,
+                ar->location,
+                ar->command,
+                lf->user,
+                lf->srcip);
+        
+        if(OS_SendUnix(*arq, exec_msg, 0) < 0)
         {
-            if(OS_SendUnix(*arq, exec_msg, 0) < 0)
-            {
-                merror("%s: Error communicating with arq", ARGV0);
-            }
+            merror("%s: Error communicating with arq", ARGV0);
         }
-        if(ar->agent)
-        {
-        }    
     }
     
     return;

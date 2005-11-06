@@ -35,7 +35,13 @@
 void *AR_Forward(void *arg)
 {
     int arq = 0;
+    char msg_to_send[OS_MAXSTR +1];
     char *msg = NULL;
+
+    char *location;
+    char *ar_location;
+    char *tmp_str;
+
 
     /* Creating the unix queue */
     if((arq = StartMQ(ARQUEUE, READ)) < 0)
@@ -49,6 +55,83 @@ void *AR_Forward(void *arg)
         if((msg = OS_RecvUnix(arq, OS_MAXSTR)) != NULL)
         {
             merror("msg: %s",msg);
+
+            /* Getting the location */
+            location = msg;
+            
+            tmp_str = index(msg, ' ');
+            if(!tmp_str)
+            {
+                merror(EXECD_INV_MSG, ARGV0, msg);
+                free(msg);
+                continue;
+            }
+            *tmp_str = '\0';
+            tmp_str++;
+
+
+            /***  Extracting the agent ip (NULL if local) ***/
+            location = index(location, '>');
+            if(!location)
+            {
+                /* It is a local message from
+                 * the AS. Not generated externally.
+                 */
+                
+            }
+            else
+            {
+                location++;
+            }
+
+
+            /*** Extracting the active response location ***/
+            ar_location = tmp_str;
+            tmp_str = index(tmp_str, ' ');
+            if(!tmp_str)
+            {
+                merror(EXECD_INV_MSG, ARGV0, msg);
+                free(msg);
+                continue;
+            }
+            *tmp_str = '\0';
+            tmp_str++;
+
+
+            /*** Creating the new message ***/
+            snprintf(msg_to_send, OS_MAXSTR, "%s%s %s", 
+                                             CONTROL_HEADER,
+                                             EXECD_HEADER,
+                                             tmp_str);
+
+            
+            /* Send to ALL agents */
+            if(*ar_location == ALL_AGENTS)
+            {
+                action_all = 1;
+            }
+
+            /* Send to the remote agent that generated the event */
+            else if(*ar_location == REMOTE_AGENT)
+            {
+                int agent_id = GetAgentIDbyIP(location);
+                if(agent_id < 0)
+                {
+                    merror(AR_NOAGENT_ERROR, ARGV0, location);
+                    /* Agent '%s' not found. */
+                    goto cleanup;
+                }
+                
+                send_msg(agent_id, msg_to_send);
+                action_remote = 1;
+            }
+
+            /* Send to a pre-defined agent */
+            else if(*ar_location == SPECIFIC_AGENT)
+            {
+            }
+
+            cleanup:
             free(msg);
         }
     }
