@@ -97,7 +97,7 @@ void get_messages(int socket)
         
         /* Id of zero -- only one key allowed */
         tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b -1);
-        if(tmp_msg == NULL);
+        if(tmp_msg == NULL)
         {
             merror(MSG_ERROR,ARGV0,logr->rip);
             continue;
