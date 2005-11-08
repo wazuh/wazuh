@@ -35,7 +35,18 @@
 void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
 {
     char exec_msg[OS_MAXSTR +1];
+    char *ip;
 
+    /* Cleaning the IP */
+    ip = rindex(lf->srcip, ':');
+    if(ip)
+    {
+        ip++;
+    }
+    else
+    {
+        ip = lf->srcip;
+    }
 
     /* active response on the server */         
     if(ar->location[0] == AS_ONLY)
@@ -47,7 +58,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
                 "%s %s %s",
                 ar->command,
                 lf->user,
-                lf->srcip);
+                ip);
 
         if(OS_SendUnix(*execq, exec_msg, 0) < 0)
         {
@@ -64,7 +75,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
                 ar->location,
                 ar->command,
                 lf->user,
-                lf->srcip);
+                ip);
         
         if(OS_SendUnix(*arq, exec_msg, 0) < 0)
         {
