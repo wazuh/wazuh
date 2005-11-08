@@ -19,7 +19,7 @@
 /* Global headers */
 #define CONTROL_HEADER      "#!-"
 
-#define ISValidHeader(str)  ((str[0] == '#') && \
+#define IsValidHeader(str)  ((str[0] == '#') && \
                              (str[1] == '!') && \
                              (str[2] == '-') && \
                              (str+=3) )       
@@ -28,6 +28,11 @@
 /* Exec message */
 #define EXECD_HEADER        "execd "
 
+/* File update message */
+#define FILE_UPDATE_HEADER  "up file "
+
+/* File closing message */
+#define FILE_CLOSE_HEADER   "close file "
 
 #endif
 
