@@ -96,7 +96,7 @@
     <regex>^sshd[\d+]: Illegal user|^sshd[\d+]: invalid user|</regex>
     <regex>^sshd[\d+]: input_userauth_request: illegal user|</regex>
     <regex>^sshd[\d+]: input_userauth_request: invalid user|</regex>
-    <regex>^sshd[\d+]: Failed password for invalid user|</regex>
+    <regex>^sshd[\d+]: Failed \S+ for invalid user|</regex>
     <regex>^sshd[\d+]: Failed \S+ for illegal user</regex>
     <comment>Attempt to login using a non-existent user</comment>
   </rule>

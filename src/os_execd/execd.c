@@ -149,7 +149,7 @@ void OS_Run(int q)
         /* Getting application name */
         name = buffer;
 
-        tmp_msg = index(tmp_msg, ' ');
+        tmp_msg = index(buffer, ' ');
         if(!tmp_msg)
         {
             merror(EXECD_INV_MSG, ARGV0, buffer);

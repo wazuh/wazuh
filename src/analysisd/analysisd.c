@@ -563,11 +563,9 @@ void OS_ReadMSG(int m_queue)
                     merror(MEM_ERROR,ARGV0);
                 }
                  
-                #ifdef DEBUG
                 debug2("%s: DEBUG: rule %d triggered (level:%d)\n",ARGV0,
                         currently_rule->sigid,
                         currently_rule->level);
-                #endif
             
 
                 lf->comment = currently_rule->comment;

@@ -44,6 +44,14 @@
   <order>user,srcip</order>
 </decoder>
 
+<decoder name="ssh-error">
+  <parent>sshd</parent>
+  <prematch>^sshd[\d+]: error:</prematch>
+  <regex>^sshd[\d+]: error: PAM: Authentication failure for (\S+) from (\S+)$</regex>
+  <order>user,srcip</order>
+</decoder>
+        
+
 <!-- Su decoder.
   -  Will extract the username.
   -  Examples:

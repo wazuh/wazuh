@@ -54,7 +54,7 @@ void OS_Createmail(int *mailq, Eventinfo *lf)
         if(Config.mailnotify < 0)
             return;
             
-        merror("logaudit: E-mail configured, but impossible to send.");
+        merror("%s: E-mail configured, but impossible to send.", ARGV0);
         Config.mailnotify = -1;
         return;
     }

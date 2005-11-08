@@ -35,7 +35,8 @@ void DecodeEvent(Eventinfo *lf)
 {
     PluginNode *node;
     PluginNode *child_node;
-   
+    PluginInfo *nnode;
+    
     node = OS_GetFirstPlugin();
     
     /* Return if no node...
@@ -44,16 +45,18 @@ void DecodeEvent(Eventinfo *lf)
     if(!node)
         return;
   
-    merror("here1");
+    merror("decoder");
     
     do 
     {
         if(node->plugin)
         {
-            PluginInfo *nnode = node->plugin;
+            nnode = node->plugin;
+           
+            merror("going on prematch:%s", nnode->prematch);
             
             /* If prematch fails, go to the next plugin in the list */
-            if(nnode->prematch && !OS_Regex(nnode->prematch,lf->log))
+            if(!nnode->prematch || !OS_Regex(nnode->prematch,lf->log))
                 continue;
 
             lf->log_tag = nnode->name;
@@ -163,7 +166,8 @@ void DecodeEvent(Eventinfo *lf)
             /* Matched the pre match */
             return;         
         }
-        
+       
+       merror("next!"); 
     }while((node=node->next) != NULL);
 }
     
