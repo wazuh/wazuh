@@ -15,7 +15,7 @@ UNAME=`uname`;
 DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 GROUP="ossec"
 USER="ossec"
-subdirs="logs bin queue queue/ossec var var/run etc etc/shared checksum_db"
+subdirs="logs bin queue queue/ossec var var/run etc etc/shared checksum_db active-response active-response/bin"
 
 
 # ${DIR} must be set 
@@ -91,6 +91,9 @@ cp -pr ../bin/ossec-syscheckd ${DIR}/bin/
 cp -pr ./init/ossec-client ${DIR}/bin/ossec-control
 cp -pr ../bin/manage_agents ${DIR}/bin/
 
+# Copying active response modules
+cp -pr ../active-response/* ${DIR}/active-response/bin/
+chmod 755 ${DIR}/active-response/bin/*
 
 # Moving the config file
 ls ../etc/ossec.mc > /dev/null 2>&1

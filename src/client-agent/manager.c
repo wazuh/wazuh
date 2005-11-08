@@ -31,7 +31,7 @@
 
 
 
-/* getreply: Act based on the messages from the server
+/* get_messages: Act based on the messages from the server
  */
 void get_messages(int socket)
 {
@@ -76,6 +76,7 @@ void get_messages(int socket)
             if(fp)
             {
                 fclose(fp);
+                fp = NULL;
             }
             if(file[0] != '\0')
             {
@@ -105,15 +106,18 @@ void get_messages(int socket)
         merror("received: %s\n", tmp_msg);
         
         /* Check for commands */
-        if(tmp_msg[0] == '#' && tmp_msg[1] == '!' &&
-           tmp_msg[2] == '-')
+        if(IsValidHeader(tmp_msg))
         {
-            tmp_msg+=3;
 
             /* If it is an active response message */
-            if(strncmp(tmp_msg, "execd: ", strlen("execd: ")) == 0)
+            if(strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0)
             {
-                tmp_msg+=strlen("execd: ");
+                tmp_msg+=strlen(EXECD_HEADER);
+                if(OS_SendUnix(logr->execdq, tmp_msg, 0) < 0)
+                {
+                    merror("%s: Error communicating with execd", ARGV0);
+                }
+
                 continue;
             } 
             
@@ -124,10 +128,10 @@ void get_messages(int socket)
                 fp = NULL;
             }
             
-            if(strncmp(tmp_msg, "up file ", strlen("up file ")) == 0)
+            if(strncmp(tmp_msg, FILE_UPDATE_HEADER, strlen(FILE_UPDATE_HEADER)) == 0)
             {
                 char *validate_file;
-                tmp_msg+=strlen("up file ");
+                tmp_msg+=strlen(FILE_UPDATE_HEADER);
 
                 /* Going to after the file sum */
                 validate_file = index(tmp_msg, ' ');
@@ -170,7 +174,7 @@ void get_messages(int socket)
                 }
             }
             
-            else if(strncmp(tmp_msg, "close file", strlen("close file")) == 0)
+            else if(strncmp(tmp_msg, FILE_CLOSE_HEADER, strlen(FILE_CLOSE_HEADER)) == 0)
             {
                 /* no error */
                 os_md5 currently_md5;

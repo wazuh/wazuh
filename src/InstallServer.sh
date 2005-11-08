@@ -17,7 +17,7 @@ USER="ossec"
 USER_MAIL="ossecm"
 USER_EXEC="ossece"
 USER_REM="ossecr"
-subdirs="logs logs/archives logs/alerts bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck queue/rootcheck queue/agent-info tmp var var/run etc etc/shared checksum_db"
+subdirs="logs logs/archives logs/alerts bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck queue/rootcheck queue/agent-info tmp var var/run etc etc/shared checksum_db active-response active-response/bin"
 
 # ${DIR} must be set 
 if [ "X${DIR}" = "X" ]; then
@@ -116,6 +116,12 @@ cp -pr ./init/ossec-server ${DIR}/bin/ossec-control
 # Moving the decoders
 cp -pr ../etc/decoder.xml ${DIR}/etc/
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
+
+
+# Copying active response modules
+cp -pr ../active-response/* ${DIR}/active-response/bin/
+chmod 755 ${DIR}/active-response/bin/*
+
 
 # Moving the config file
 ls ${DIR}/etc/ossec.conf > /dev/null 2>&1

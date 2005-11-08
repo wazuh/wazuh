@@ -117,6 +117,12 @@ void _startit(char *dir, int uid, int gid)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
 
 
+    /* Connecting to the execd queue */
+    if((logr->execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
+    {
+        ErrorExit(ARQ_ERROR, ARGV0);
+    }
+
 
     /* Starting manager - thread to receive messages
      * from the server.
@@ -140,7 +146,7 @@ void _startit(char *dir, int uid, int gid)
     
     
     /* daemon loop */	
-    for(;;)
+    while(1)
     {
         char *msg = NULL;
 

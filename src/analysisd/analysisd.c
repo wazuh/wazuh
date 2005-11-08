@@ -371,6 +371,7 @@ void OS_ReadMSG(int m_queue)
             /* Default values for the log info */
             Zero_Eventinfo(lf);
 
+            merror("msg received is: %s",msg);
 
             /* Clean the msg appropriately */
             if(OS_CleanMSG(msg,lf) < 0)
