@@ -444,7 +444,6 @@ void *wait_for_msgs(void *none)
 
         merror("wait_for_msgs: msg received..");
 
-        read_controlmsg(id, msg);
 
         /* Checking if any other agent is ready */
         for(i = 0;i<MAX_AGENTS; i++)
