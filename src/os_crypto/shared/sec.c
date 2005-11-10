@@ -37,6 +37,8 @@
 u_int8_t global_count = 0;
 time_t global_time = 0;
 
+
+
 /* _MemClear v0.1 - Internal use */
 void _MemClear(char *id, char *name, char *ip, char *key)
 {
@@ -45,6 +47,7 @@ void _MemClear(char *id, char *name, char *ip, char *key)
 	memset(key,'\0', KEYSIZE);
 	memset(ip,'\0', KEYSIZE);
 }
+
 
 /* _CHash v0.1 -Internal use  */
 void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
@@ -57,6 +60,7 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
     struct sockaddr_in peer;
     
     
+    /* Allocating for the whole structure */
 	keys->ids = (char **)realloc(keys->ids,
 			(keys->keysize+1) * sizeof(char *));
 	
@@ -75,8 +79,15 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
         ErrorExit(MEM_ERROR, ARGV0);
     }
     
+    /* Setting configured values */
 	keys->ids[keys->keysize] = strdup(id);
 	keys->ips[keys->keysize] = strdup(ip);
+
+
+    /* Initializing the variables */
+    keys->count[keys->keysize] = 0;
+    keys->time[keys->keysize] = 0;
+
 
     if(!keys->ids[keys->keysize] || !keys->ips[keys->keysize])
     {
@@ -93,6 +104,7 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
 
 	/* Generating new filesum1 */ 
 	snprintf(_finalstr, sizeof(_finalstr)-1, "%s%s",filesum1,filesum2);
+
 	
     /* Using just half of the first md5 (user/id) */
     OS_MD5_Str(_finalstr, filesum1);
@@ -167,6 +179,7 @@ void ReadKeys(keystruct *keys)
     _MemClear(id, name, ip, key);
 
     memset(buffer, '\0', OS_MAXSTR +1);
+
     
     /* Reading each line.
      * lines are divided on id name ip key
@@ -177,6 +190,7 @@ void ReadKeys(keystruct *keys)
         char *valid_str;
         if((buffer[0] == '#') || (buffer[0] == ' '))
             continue;
+
 
         /* Getting ID */
         valid_str = buffer;
@@ -192,6 +206,7 @@ void ReadKeys(keystruct *keys)
 
         strncpy(id, valid_str, KEYSIZE -1);
 
+
         /* Getting name */
         valid_str = tmp_str;
         tmp_str = index(tmp_str, ' ');
@@ -203,6 +218,7 @@ void ReadKeys(keystruct *keys)
         *tmp_str = '\0';
         tmp_str++;
         strncpy(name, valid_str, KEYSIZE -1);
+
          
         /* Getting ip address */
         valid_str = tmp_str;
@@ -215,6 +231,7 @@ void ReadKeys(keystruct *keys)
         *tmp_str = '\0';
         tmp_str++;
         strncpy(ip, valid_str, KEYSIZE -1);
+
         
         /* Getting key */
         valid_str = tmp_str;
@@ -225,9 +242,11 @@ void ReadKeys(keystruct *keys)
         }
 
         strncpy(key, valid_str, KEYSIZE -1);
+
         
         /* Generating the key hash */
        _CHash(keys, id, name, ip, key);
+
 
         /* Clearing the memory */
         _MemClear(id, name, ip, key); 
@@ -272,6 +291,7 @@ char *CheckSum(char *msg, int size)
     os_md5 recvd_sum;
     os_md5 checksum;
 
+
     /* Better way */
     msg++;
     strncpy(recvd_sum,msg,32);
@@ -311,6 +331,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         return(NULL);
     }
 
+
     /* Checking first char -- must be ':' */
     else if(cleartext[0] != ':')
     {
@@ -319,6 +340,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
     }
 
     cleartext[buffer_size] = '\0';
+
     
     /* Checking checksum  */
     f_msg = CheckSum(cleartext, buffer_size);
@@ -327,6 +349,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         merror(ENCSUM_ERROR, ARGV0, keys->ips[id]);
         return(NULL);
     }
+
 
     /* Checking time -- protecting against replay attacks */
     msg_time = atoi(f_msg);
@@ -348,6 +371,10 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         {
             f_msg++;
             return(f_msg);
+        }
+        else
+        {
+            merror("msg null");
         }
     }
     
@@ -404,12 +431,15 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
         global_time = curr_time;
     }
     
-    snprintf(_tmpmsg, OS_MAXSTR,"%010u:%04hu:%05hu%0*d:%s", curr_time, global_count, 
-                                                            rand1,  bfsize+1, 1, msg);
+    snprintf(_tmpmsg, OS_MAXSTR,"%010u:%04hu:%05hu%0*d:%s", 
+                            curr_time, global_count, 
+                            rand1,  bfsize+1, 1, msg);
+
 
     
     /* Generating md5sum of the unencrypted string */
     OS_MD5_Str(_tmpmsg, md5sum);
+
 
     
     /* Generating final msg to be encrypted */
@@ -419,11 +449,13 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
 
     msg_encrypted[0] = ':';
     msg_encrypted++;
+
     
     /* Encrypting everything */
     OS_BF_Str(_finmsg, msg_encrypted, keys->keys[id], msg_size, OS_ENCRYPT);
     
     msg_encrypted--;
+
 
     
     /* Updating the global count */
