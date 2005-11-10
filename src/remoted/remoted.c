@@ -32,12 +32,12 @@
 
 
 
-/** void HandleRemote(int position) v0.2 2005/11/09
+/** void HandleRemote(int position, int uid) v0.2 2005/11/09
  * Handle remote connections
  * v0.2, 2005/11/09
  * v0.1, 2004/7/30
  */
-void HandleRemote(int position);
+void HandleRemote(int position, int uid);
 {
     /* If syslog connection and allowips is not defined, exit */
     if((logr.allowips == NULL)&&(logr.conn[position] == SYSLOG_CONN))
@@ -67,7 +67,13 @@ void HandleRemote(int position);
     if((logr.sock = OS_Bindportudp(port,NULL)) < 0)
         ErrorExit(BIND_ERROR,ARGV0,port);
 
-    
+   
+   
+    /* Revoking the privileges */
+    if(Privsep_SetUser(uid) < 0)
+        ErrorExit(SETUID_ERROR,ARGV0, uid);
+                    
+     
     /* Connecting to the message queue
      * Exit if it fails.
      */

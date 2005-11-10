@@ -103,11 +103,6 @@ int main(int argc, char **argv)
     nowChroot();
 
 
-    /* Privilege revocation */
-    if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR,ARGV0, uid);
-            
-    
     /* Starting the signal manipulation */
     StartSIG(ARGV0);	
 
@@ -132,7 +127,7 @@ int main(int argc, char **argv)
         if(fork() == 0)
         {   
             /* On the child */
-            HandleRemote(i);
+            HandleRemote(i, uid);
         }
         else
         {
