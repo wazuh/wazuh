@@ -14,6 +14,10 @@
 
 #define __LOGREMOTE_H
 
+#ifndef ARGV0
+#define ARGV0 "ossec-remoted"
+#endif
+
 #define SYSLOG_CONN 1   
 #define SECURE_CONN 2
 
@@ -30,6 +34,7 @@ typedef struct _remoted
 	char **allowips;
 	char **denyips;
 
+    int m_queue;
     int sock;
     socklen_t peer_size; 
 }remoted;

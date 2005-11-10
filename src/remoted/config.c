@@ -1,4 +1,4 @@
-/*   $OSSEC, config.c, v0.2, 2005/01/17, Daniel B. Cid$   */
+/*   $OSSEC, config.c, v0.3, 2005/11/09, Daniel B. Cid$   */
 
 /* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,11 +24,12 @@
 #include "remoted.h"
 
 
-/* BindConf v0.2, 2005/03/03
+/* RemotedConfig v0.3, 2005/11/09
  * Read the config file (the remote access)
  * v0.2: New OS_XML
+ * v0.3: Some improvements and cleanup
  */ 
-int BindConf(char *cfgfile, remoted *logr)
+int RemotedConfig(char *cfgfile, remoted *logr)
 {
     OS_XML xml;
     
@@ -39,7 +41,7 @@ int BindConf(char *cfgfile, remoted *logr)
     int fentries = 0;
     
 
-    /** XML Definitions **/
+    /*** XML Definitions ***/
     
     /* Allowed and denied IPS */
     char *(xml_allowips[])={xml_global, "allowed-ips",NULL};
@@ -50,21 +52,24 @@ int BindConf(char *cfgfile, remoted *logr)
     char *xml_remote_group = "group";
     char *xml_remote_connection = "connection";
 
+    /* Initializing */
     logr->port = NULL;
     logr->group = NULL;
     logr->conn = NULL;
     logr->allowips = NULL;
     logr->denyips = NULL;
 
+    
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
         merror("%s: XML Error: %s",ARGV0, xml.err);
         return(OS_INVALID);
     }
 
+    /* Return 0, if not configured to run xml_remote */
     if(!(rentries = OS_RootElementExist(&xml, xml_remote)))
     {
-        verbose("%s: No configuration entry. Exiting... ",ARGV0);
+        merror("%s: No configuration entry. Exiting... ",ARGV0);
         OS_ClearXML(&xml);
         return(0);
     }	
@@ -82,7 +87,7 @@ int BindConf(char *cfgfile, remoted *logr)
     /* Allocating the entries */
     logr->port = (char**)calloc(rentries+1,sizeof(char *));	
     logr->group = (char **)calloc(rentries+1,sizeof(char *));	
-    logr->conn = (char **)calloc(rentries+1,sizeof(char *));	
+    logr->conn = (int *)calloc(rentries+1,sizeof(int));	
 
     node = OS_GetElementsbyNode(&xml,NULL);
     if(node == NULL)
@@ -100,9 +105,9 @@ int BindConf(char *cfgfile, remoted *logr)
             if(strcasecmp(node[i]->element,xml_remote) == 0)
             {
                 XML_NODE chld_node = NULL;
-                
+
                 j = 0;
-                
+
                 if(rentries <= 0)
                 {
                     merror("%s: Error reading XML nodes",ARGV0);
@@ -110,8 +115,12 @@ int BindConf(char *cfgfile, remoted *logr)
                     return(OS_CFGERR);
                 }
 
+                /* Initializing the config values */
                 rentries--;
-                
+                logr->conn[rentries] = 0;
+                logr->port[rentries] = 0;
+                logr->group[rentries] = NULL;
+
                 chld_node = OS_GetElementsbyNode(&xml,node[i]);
 
                 while(chld_node[j])
@@ -124,37 +133,56 @@ int BindConf(char *cfgfile, remoted *logr)
                     }
 
                     else if(strcasecmp(chld_node[j]->element,
-                            xml_remote_connection) == 0)
+                                xml_remote_connection) == 0)
                     {
-                        logr->conn[rentries] = 
-                                strdup(chld_node[j]->content);                
+                        if(strcmp(chld_node[j]->content, "syslog") == 0)
+                        {
+                            logr->conn[rentries] = SYSLOG_CONN;
+                        }
+                        else if(strcmp(chld_node[j]->content, "secure") == 0)
+                        {
+                            logr->conn[rentries] = SECURE_CONN;
+                        }
+                        else
+                        {
+                            merror("%s: Invalid remote connection: %s",
+                                    ARGV0, chld_node[j]->content);
+                            OS_ClearXML(&xml);
+                            return(OS_CFGERR);
+                        }
                     }
-                    
+
                     else if(strcasecmp(chld_node[j]->element,
-                            xml_remote_port) == 0)
+                                xml_remote_port) == 0)
                     {
-                        logr->port[rentries] = 
-                                strdup(chld_node[j]->content);                
+                        logr->port[rentries] = atoi(chil_node[j]->content);
                     }
-                    
+
                     else if(strcasecmp(chld_node[j]->element,
-                            xml_remote_group) == 0)
+                                xml_remote_group) == 0)
                     {
                         logr->group[rentries] = 
-                                strdup(chld_node[j]->content);                
+                            strdup(chld_node[j]->content);                
                     }
-                    
+
                     else
                     {
                         merror("%: Invalid entry '%s' for remoted",
-                                    ARGV0,chld_node[j]->element);
+                                ARGV0,chld_node[j]->element);
                         OS_ClearXML(&xml);
                         return(OS_CFGERR);
                     }
-                    
+
                     j++;
                 } /* while chld_node */
-    
+
+                if(logr->conn[rentries] == 0)
+                {
+                    merror("%s: No connection in the remote configuraton", ARGV0);
+                    OS_ClearXML(&xml);
+                    return(OS_CFGERR);
+                }
+
                 /* Clearing chld_node */
                 OS_ClearNode(chld_node);            
             }
@@ -170,3 +198,4 @@ int BindConf(char *cfgfile, remoted *logr)
 }
 
 
+/* EOF */
