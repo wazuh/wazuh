@@ -1,4 +1,4 @@
-/*   $OSSEC, agentd.h, v0.1, 2005/01/30, Daniel B. Cid$   */
+/*   $OSSEC, agentd.h, v0.2, 2005/11/09, Daniel B. Cid$   */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
@@ -14,26 +14,56 @@
  */
 
 
-#ifndef __LOGCLIENT_H
+#ifndef __AGENTD_H
 
-#define __LOGCLIENT_H
+#define __AGENTD_H
 
+/* Configuration structure */
 typedef struct _agent
 {
 	char *port;
 	char *rip; /* remote (server) ip */
+    int m_queue;
     int sock;
     int execdq;
 }agent;
 
 
-/** Prototypes **/
+
+/*** Function Prototypes ***/
 
 /* Client configuration */
 int ClientConf(char *cfgfile);
 
-#include "headers/sec.h"
+/* Agentd init function */
+void AgentdStart(char *dir, int uid, int gid);
+
+/* Event Forwarder */
+void EventForward();
+
+/* Receiver thread */
+void *receiver_thread(void *none);
+
+/* Notifier thread */
+void *notify_thread(void *none);
+
+
+
+/*** Global variables ***/
+
+/* Global variables. Only modified
+ * during startup. Shared by all
+ * threads and functions
+ */
+
+#include "shared.h"
+#include "sec.h"
+
 keystruct keys;
 agent *logr;
 
 #endif
+
+
+
+/* EOF */

@@ -23,7 +23,6 @@
 
 #include "agentd.h"
 
-extern short int dbg_flag;
 
 /* Relocated from config_op.c */
 
@@ -65,3 +64,6 @@ int ClientConf(char *cfgfile)
     OS_ClearXML(&xml);
     return(1);
 }
+
+
+/* EOF */
