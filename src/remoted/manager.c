@@ -505,6 +505,8 @@ void read_controlmsg(int agentid, char *msg)
     
     
     /* Get uname */
+    merror("msg: %s!!", msg);
+
     uname = msg;
     msg = index(msg,'\n');
     if(!msg)
@@ -621,6 +623,7 @@ void read_controlmsg(int agentid, char *msg)
 void save_controlmsg(int agentid, char *msg)
 {
     /* Notify other thread that something changed */
+    merror("saving msg: %s", msg);
     equal_last_msg(agentid, msg);
     
     return;
