@@ -430,7 +430,10 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
         global_count = 0;
         global_time = curr_time;
     }
-    
+   
+    merror("generating message with: time %d and count %d ",
+                            curr_time, global_count);
+
     snprintf(_tmpmsg, OS_MAXSTR,"%010u:%04hu:%05hu%0*d:%s", 
                             curr_time, global_count, 
                             rand1,  bfsize+1, 1, msg);
