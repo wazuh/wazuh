@@ -32,7 +32,6 @@
  */
 void HandleSecure(int position)
 {
-    int m_queue;
     int agentid;
 
     char buffer[OS_MAXSTR +1];
@@ -136,12 +135,12 @@ void HandleSecure(int position)
         /* If we can't send the message, try to connect to the
          * socket again. If not exits.
          */
-        else if(SendMSG(m_queue, tmp_msg, srcip, logr.group[position],
+        else if(SendMSG(logr.m_queue, tmp_msg, srcip, logr.group[position],
                     SECURE_MQ) < 0)
         {
             merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
 
-            if((m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
+            if((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0)
             {
                 ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
             }
