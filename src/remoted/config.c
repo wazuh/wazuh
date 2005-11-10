@@ -85,7 +85,7 @@ int RemotedConfig(char *cfgfile, remoted *logr)
 
 
     /* Allocating the entries */
-    logr->port = (char**)calloc(rentries+1,sizeof(char *));	
+    logr->port = (int *)calloc(rentries+1,sizeof(int));	
     logr->group = (char **)calloc(rentries+1,sizeof(char *));	
     logr->conn = (int *)calloc(rentries+1,sizeof(int));	
 
@@ -155,7 +155,7 @@ int RemotedConfig(char *cfgfile, remoted *logr)
                     else if(strcasecmp(chld_node[j]->element,
                                 xml_remote_port) == 0)
                     {
-                        logr->port[rentries] = atoi(chil_node[j]->content);
+                        logr->port[rentries] = atoi(chld_node[j]->content);
                     }
 
                     else if(strcasecmp(chld_node[j]->element,

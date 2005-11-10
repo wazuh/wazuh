@@ -17,6 +17,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <pthread.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -34,6 +35,8 @@
 
 #define AGENTINFO_DIR    "/queue/agent-info"
 
+
+
 /* Internal structures */
 typedef struct _file_sum
 {
@@ -42,12 +45,12 @@ typedef struct _file_sum
     os_md5 sum;
 }file_sum;
 
-typedef struct _mgr_thread
-{
-    int agentid;
-    char *srcip;
-    char *msg;
-}mgr_thread;
+
+
+/* Internal functions prototypes */
+void read_controlmsg(int agentid, char *msg);
+
+
 
 
 /* Global vars, acessible every where */
@@ -57,93 +60,120 @@ time_t _ctime;
 time_t _stime;
 
 
+
 /* For the last message tracking */
 char *_msg[MAX_AGENTS];
-char *_ips[MAX_AGENTS];
+int _changed[MAX_AGENTS];
+int modified_agentid;
 
 
-/* free_thread: Frees the mgr_thread structure */
-void free_thread(mgr_thread *h)
-{
-    if(!h)
-        return;
-
-    if(h->msg)
-        free(h->msg);
-    if(h->srcip)
-        free(h->srcip);
-    
-    free(h);
-    h = NULL;
-    return;        
-}
+/* pthread mutex variables */
+pthread_mutex_t lastmsg_mutex;
+pthread_cond_t awake_mutex;
 
 
-/* clear_last_msg: Clear all messages cached
+
+/* clear_last_msg: Clear all cached messages
  */
 void clear_last_msg()
 {
     int i;
+
+    /* Free msg if it is set */
+    if(pthread_mutex_lock(&lastmsg_mutex) != 0)
+    {
+        merror(MUTEX_ERROR, ARGV0);
+        return;
+    }
+
+    /* Clearing all last messages */
     for(i = 0;i<MAX_AGENTS; i++)
     {
-        if(!_ips[i])
-            break;
-
-        free(_ips[i]);
-        _ips[i] = NULL;
-
-        free(_msg[i]);
-        _msg[i] = NULL;
+        if(_msg[i])
+        {
+            free(_msg[i]);
+            _msg[i] = NULL;
+        }
+        _changed[i] = 0;
     }
+
+    /* Unlocking mutex */
+    if(pthread_mutex_unlock(&lastmsg_mutex) != 0)
+    {
+        merror(MUTEX_ERROR, ARGV0);
+        return;
+    }
+
+    return;
 }
 
 
-/* last_messages: Check if the message received
+
+/* equal_last_msg: Check if the message received
  * is the same of the one received before.
  * If yes, return (1)
  */
-int equal_last_msg(char *srcip, char *r_msg)
+int equal_last_msg(int agentid, char *r_msg)
 {
-    int i;
-
-    for(i = 0;i<MAX_AGENTS; i++)
+    if(_msg[agentid])
     {
-        if(!_ips[i])
+        /* Return 1 if we had this message already */
+        if(strcmp(_msg[agentid], r_msg) == 0)
+            return(1);
+
+        /* Free msg if it is set */
+        if(pthread_mutex_lock(&lastmsg_mutex) != 0)
         {
-            
-            _ips[i] = strdup(srcip);
-            _msg[i] = strdup(r_msg);
-
-            if(!_ips[i] || !_msg[i])
-            {
-                ErrorExit(MEM_ERROR, ARGV0);
-                return(0);
-            }
-
-            return(0);
+            merror(MUTEX_ERROR, ARGV0);
+            return(1);
         }
         
-        else if(strcmp(_ips[i], srcip) == 0)
+        free(_msg[agentid]);
+        _msg[agentid] = NULL;
+
+        /* Unlocking mutex */
+        if(pthread_mutex_unlock(&lastmsg_mutex) != 0)
         {
-            if(strcmp(_msg[i], r_msg) == 0)
-            {
-                return(1);
-            }
-            
-            free(_msg[i]);
-            _msg[i] = strdup(r_msg);
-            if(!_msg[i])
-            {
-                ErrorExit(MEM_ERROR, ARGV0);
-                return(0);
-            }
-            return(0);
+            merror(MUTEX_ERROR, ARGV0);
+            return(1);
         }
+        
+                
     }
 
-    merror("%s: Maximum number of agents reached.",ARGV0);
+    /* Locking before using */
+    if(pthread_mutex_lock(&lastmsg_mutex) != 0)
+    {
+        merror(MUTEX_ERROR, ARGV0);
+        return(1);
+    }
+    
+    
+    /* Assign new values */
+    _changed[agentid] = 1;
+    _msg[agentid] = strdup(r_msg);
+    if(!_msg[agentid])
+    {
+        merror(MEM_ERROR, ARGV0);
+    }
+    modified_agentid = agentid;
+    
+    
+    /* Signal that new data is available */
+    pthread_cond_signal(&awake_mutex);
+
+    
+    /* Unlocking mutex */
+    if(pthread_mutex_unlock(&lastmsg_mutex) != 0)
+    {
+        merror(MUTEX_ERROR, ARGV0);
+        return(1);
+    }
+
+    
     return(0);
-}
+}    
+
 
 
 /* f_files: Free the files memory
@@ -168,6 +198,8 @@ void f_files()
     free(f_sum);
     f_sum = NULL;
 }
+
+
 
 /* c_files: Create the structure with the files and checksums
  * Returns void
@@ -359,29 +391,127 @@ int send_file(int agentid, char *name, char *sum)
 }
 
 
-/* mgr_thread: Reads message and manage the agent */
-void *mgr_handle(void *arg)
+
+/** void *wait_for_msgs(void *none) v0.1
+ * Wait for new messages to read
+ */
+void *wait_for_msgs(void *none)
+{
+    int id, i;
+    char msg[OS_MAXSTR +2];
+    
+
+    /* Initializing the memory */
+    memset(msg, '\0', OS_MAXSTR +2);
+
+    
+    /* should never leave this loop */
+    while(1)
+    {
+        merror("wait_for_msgs: waiting for msg");
+
+        /* Every 60 minutes, re read the files.
+         * If something change, notify all agents 
+         */
+        _ctime = time(0);
+        if((_ctime - _stime) > (NOTIFY_TIME*6))
+        {
+            f_files();
+            c_files();
+
+            clear_last_msg();                
+        }
+        
+        /* locking mutex */
+        if(pthread_mutex_lock(&lastmsg_mutex) != 0)
+        {
+            merror(MUTEX_ERROR, ARGV0);
+            return(NULL);
+        }
+
+        /* If no agent is available, wait for signal */
+        if(modified_agentid == -1)
+        {
+            pthread_cond_wait(&awake_mutex, &lastmsg_mutex);
+        }
+
+        /* Unlocking mutex */
+        if(pthread_mutex_unlock(&lastmsg_mutex) != 0)
+        {
+            merror(MUTEX_ERROR, ARGV0);
+            return(NULL);
+        }
+
+        merror("wait_for_msgs: msg received..");
+
+        read_controlmsg(id, msg);
+
+        /* Checking if any other agent is ready */
+        for(i = 0;i<MAX_AGENTS; i++)
+        {
+            id = 0;
+            
+            /* locking mutex */
+            if(pthread_mutex_lock(&lastmsg_mutex) != 0)
+            {
+                merror(MUTEX_ERROR, ARGV0);
+                break;
+            }
+
+            if((_changed[i] == 1)&&(_msg[i]))
+            {
+
+                /* Copying the message to be analyzed */
+                strncpy(msg, _msg[i], OS_MAXSTR);
+                _changed[i] = 0;
+
+                if(modified_agentid >= i)
+                    modified_agentid = -1;
+
+                id = 1;
+            }
+            
+            /* Unlocking mutex */
+            if(pthread_mutex_unlock(&lastmsg_mutex) != 0)
+            {
+                merror(MUTEX_ERROR, ARGV0);
+                break;
+            }
+
+            if(id)
+            {
+                read_controlmsg(i, msg);
+            }
+        }
+    }
+
+    return(NULL);
+}
+
+
+
+/** void read_contromsg(int agentid, char *msg) v0.2.
+ * Reads the available control message from
+ * the agent.
+ */
+void read_controlmsg(int agentid, char *msg)
 {   
     int i;
 
     char *uname;
-
-    mgr_thread *to_thread = (mgr_thread *)arg;
-    
-    char *msg = to_thread->msg;
-            
     char agent_file[OS_MAXSTR +1];
 
     FILE *fp;
     
+    
     /* Get uname */
-    uname = to_thread->msg;
+    uname = msg;
     msg = index(msg,'\n');
     if(!msg)
     {
-        free_thread(to_thread);
-        merror("%s: Invalid message from '%s' (uname)",ARGV0,to_thread->srcip);
-        return(NULL);
+        merror("%s: Invalid message from '%s' (uname)",ARGV0, 
+                                                       keys.ips[agentid]);
+        return;
     }
 
     *msg = '\0';
@@ -390,7 +520,7 @@ void *mgr_handle(void *arg)
     /* Writting to the agent file */
     snprintf(agent_file, OS_MAXSTR, "%s/%s",
                          AGENTINFO_DIR,
-                         to_thread->srcip);
+                         keys.ips[agentid]);
         
     fp = fopen(agent_file, "w");
     if(fp)
@@ -402,8 +532,7 @@ void *mgr_handle(void *arg)
     if(!f_sum)
     {
         /* Nothing to share with agent */
-        free_thread(to_thread);
-        return(NULL);
+        return;
     }
 
     /* Parse message */ 
@@ -420,7 +549,7 @@ void *mgr_handle(void *arg)
         {
             merror("%s: Invalid message from '%s' (index \\n)",
                         ARGV0, 
-                        to_thread->srcip);
+                        keys.ips[agentid]);
             break;
         }
 
@@ -432,7 +561,7 @@ void *mgr_handle(void *arg)
         {
             merror("%s: Invalid message from '%s' (index ' ')",
                         ARGV0, 
-                        to_thread->srcip);
+                        keys.ips[agentid]);
             break;
         }
 
@@ -468,7 +597,7 @@ void *mgr_handle(void *arg)
                 (f_sum[i]->mark == 0))
         {
             
-            if(send_file(to_thread->agentid,f_sum[i]->name,f_sum[i]->sum) < 0)
+            if(send_file(agentid,f_sum[i]->name,f_sum[i]->sum) < 0)
             {
                 merror("%s: Error sending file '%s' to agent.",
                         ARGV0,
@@ -479,62 +608,24 @@ void *mgr_handle(void *arg)
         f_sum[i]->mark = 0;        
     }
 
-    /* Clearing the thread and returning */
-    free_thread(to_thread);
     
-    return(NULL); 
+    return; 
 }
 
 
-/* start_mgr: Start manager thread */
-void start_mgr(int agentid, char *msg, char *srcip)
+
+/* save_controlmsg: Save a control message received
+ * from an agent. read_contromsg (other thread) is going
+ * to deal with it.
+ */
+void save_controlmsg(int agentid, char *msg)
 {
-    /* Nothing changed on the agent. Keep going */
-    if(equal_last_msg(srcip, msg))
-    {
-        _ctime = time(0);
-        
-        /* Re-read everything and update agent files */
-        if((_ctime - _stime) > (NOTIFY_TIME * 6))
-        {
-            f_files();
-            c_files();
-            clear_last_msg();
-            _stime = _ctime;
-        }
-
-        return;
-    }
-
-    else
-    {
-        /* Creating new thread to deal with client */
-        mgr_thread *to_thread;
-
-        
-        to_thread = (mgr_thread *)calloc(1, sizeof(mgr_thread));
-        if(!to_thread)
-        {
-            ErrorExit(MEM_ERROR,ARGV0);
-        }
-        
-        to_thread->agentid = agentid;
-        to_thread->msg = strdup(msg);
-        if(!to_thread->msg)
-            ErrorExit(MEM_ERROR,ARGV0);
-        
-        to_thread->srcip = strdup(srcip);
-        if(!to_thread->srcip)
-            ErrorExit(MEM_ERROR,ARGV0);
-        
-        /* Starting manager */
-        if(CreateThread(mgr_handle, (void *)to_thread) != 0)
-        {
-            ErrorExit(THREAD_ERROR, ARGV0);
-        }
-    }
+    /* Notify other thread that something changed */
+    equal_last_msg(agentid, msg);
+    
     return;
 }
+
 
 
 /* manager_init: Should be called before anything here */
@@ -548,9 +639,19 @@ void manager_init()
 
     for(i=0;i<MAX_AGENTS;i++)
     {
-        _ips[i] = NULL;
         _msg[i] = NULL;
+        _changed[i] = 0;
     }
+
+    /* Initializing mutexes */
+    pthread_mutex_init(&lastmsg_mutex, NULL);
+    pthread_cond_init (&awake_mutex, NULL);
+
+    modified_agentid = -1;
+
+    return;
 }
+
+
 
 /* EOF */

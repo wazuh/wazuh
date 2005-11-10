@@ -37,7 +37,7 @@
  * v0.2, 2005/11/09
  * v0.1, 2004/7/30
  */
-void HandleRemote(int position, int uid);
+void HandleRemote(int position, int uid)
 {
     /* If syslog connection and allowips is not defined, exit */
     if((logr.allowips == NULL)&&(logr.conn[position] == SYSLOG_CONN))
@@ -49,7 +49,7 @@ void HandleRemote(int position, int uid);
     /* Checking if the port is valid */       
     if((logr.port[position] < 0) | (logr.port[position] > 65535))
     {
-        merror(PORT_ERROR, ARGV0, port);
+        merror(PORT_ERROR, ARGV0, logr.port[position]);
         logr.port[position] = 0;
     }
    
@@ -57,15 +57,15 @@ void HandleRemote(int position, int uid);
     if(logr.port[position] == 0)
     {
         if(logr.conn[position] == SYSLOG_CONN)
-            port = DEFAULT_SYSLOG;
+            logr.port[position] = DEFAULT_SYSLOG;
         else
-            port = DEFAULT_SECURE;
+            logr.port[position] = DEFAULT_SECURE;
     }
 
     
     /* Only using UDP. Fast, unreliable.. perfect */
-    if((logr.sock = OS_Bindportudp(port,NULL)) < 0)
-        ErrorExit(BIND_ERROR,ARGV0,port);
+    if((logr.sock = OS_Bindportudp(logr.port[position],NULL)) < 0)
+        ErrorExit(BIND_ERROR, ARGV0, logr.port[position]);
 
    
    
@@ -73,6 +73,7 @@ void HandleRemote(int position, int uid);
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0, uid);
                     
+    
      
     /* Connecting to the message queue
      * Exit if it fails.

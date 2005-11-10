@@ -21,16 +21,19 @@
 #define SYSLOG_CONN 1   
 #define SECURE_CONN 2
 
-#define MGR_PORT    1514
-
-/* socklen_t header */
 #include <sys/types.h>
 #include <sys/socket.h>
+#include "shared.h"
+#include "sec.h"
+
+/* socklen_t header */
 typedef struct _remoted
 {
-	char **port;
+    int *port;
+    int *conn;
+    
 	char **group;
-	char **conn;
+
 	char **allowips;
 	char **denyips;
 
@@ -40,11 +43,35 @@ typedef struct _remoted
 }remoted;
 
 
-int BindConf(char *cfgfile, remoted *logr);
+/*** Function prototypes ***/
+
+/* Read remoted config */
+int RemotedConfig(char *cfgfile, remoted *logr);
+
+/* Handle Remote connections */
+void HandleRemote(int position, int uid); 
+
+/* Handle Syslog */
+void HandleSyslog(int position);
+
+/* Handle Secure connections */
+void HandleSecure(int position);
+
+/* Forward active response events */
 void *AR_Forward(void *arg);
 
-/* Shared keys */
-#include "headers/sec.h"
+/* Initialize the manager */
+void manager_init();
+
+/* Wait for messages from the agent to analize */
+void *wait_for_msgs(void *none);
+
+/* Save control messages */
+void save_controlmsg(int agentid, char *msg);
+
+
+
+/*** Global variables ***/
 
 keystruct keys;
 remoted logr;

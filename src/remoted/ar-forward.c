@@ -26,10 +26,8 @@
 #include <signal.h>
 
 #include "remoted.h"
-
 #include "os_net/os_net.h"
 
-#include "shared.h"
 
 /*** Prototypes ***/
 int send_msg(int agentid, char *msg);

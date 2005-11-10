@@ -33,7 +33,6 @@ int main(int argc, char **argv)
     int i = 0,c = 0;
     int uid = 0, gid = 0;
     int binds = 0;
-    int connection_type = 0;
     
     char *cfg = DEFAULTCPATH;
     char *dir = DEFAULTDIR;
