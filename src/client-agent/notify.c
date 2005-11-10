@@ -108,7 +108,7 @@ char *getsharedfiles()
 
 
 
-/* main_mgr: main manager thread */
+/* run_notify: Send periodically notification to server */
 void run_notify()
 {
     int msg_size;
