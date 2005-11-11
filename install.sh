@@ -284,10 +284,10 @@ ConfigureServer()
 	
 	# Rules configuration
 	echo "<rules>" >> $NEWCONFIG
-	echo "  <include>syslog.rules</include>" >> $NEWCONFIG
-	echo "  <include>pix.rules</include>" >> $NEWCONFIG
-	echo "  <include>named.rules</include>" >> $NEWCONFIG
-	echo "  <include>proftpd.rules</include>" >> $NEWCONFIG
+	echo "  <include>syslog_rules.xml</include>" >> $NEWCONFIG
+	echo "  <include>pix_rules.xml</include>" >> $NEWCONFIG
+	echo "  <include>named_rules.xml</include>" >> $NEWCONFIG
+	echo "  <include>proftpd_rules.xml</include>" >> $NEWCONFIG
 	echo "</rules>" >> $NEWCONFIG
 
     # syscheck
