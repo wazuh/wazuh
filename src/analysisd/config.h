@@ -35,6 +35,7 @@ typedef struct __Config
     int logbylevel;
 
     char **syscheck_ignore;
+    char **ar_ignore;
     int syscheck_threshold;
 }_Config;
 

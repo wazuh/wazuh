@@ -51,6 +51,7 @@ int GlobalConf(char * cfgfile)
     char *(xml_global_accuracy[])={xml_global,"only_accurates",NULL};
     char *(xml_global_syscheck_ignore[])={xml_global,"syscheck_ignore",NULL};
     char *(xml_global_syscheck_threshold[])={xml_global,"syscheck_threshold",NULL};
+    char *(xml_global_ar_ignore[])={xml_global,"ar_ignore_hosts", NULL};
 
     /* From Response */	
     char *(xml_response_mail[])={xml_response,"mail-notification",NULL};
@@ -77,6 +78,7 @@ int GlobalConf(char * cfgfile)
     Config.syscheck_threshold = 3;
 
     Config.syscheck_ignore = NULL;
+    Config.ar_ignore = NULL;
     
     /* Default actions -- only log above level 3 */
     Config.mailbylevel = 99;
@@ -158,6 +160,11 @@ int GlobalConf(char * cfgfile)
         free(str);
         str = NULL;
     }
+    
+
+    /* Getting active response ignore host list */
+    Config.ar_ignore = OS_GetElementContent(&xml, xml_global_ar_ignore);
+    
      
     /* getting the information about the stats */
     str=OS_GetOneContentforElement(&xml, xml_global_stats);
