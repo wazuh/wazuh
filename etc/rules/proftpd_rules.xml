@@ -1,4 +1,9 @@
-<!-- Default rules for proftpd -->
+
+<!-- Official proftpd rules for the OSSEC HIDS. v0.5
+  -  Author: Daniel B. Cid
+  -  Date: Nov 11, 2005
+  -->
+      
 
 <group name="proftpd,syslog">
   <rule id="2501" level="0">
@@ -19,3 +24,6 @@
     <comment>Login failed while trying to access the FTP server</comment>
   </rule>
 </group> <!-- SYSLOG,PROFTPD -->
+
+
+<!-- EOF -->

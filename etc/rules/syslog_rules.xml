@@ -1,74 +1,79 @@
-<!-- This are the default variables for the OSSEC HIDS SYSLOG rules -->
+
+<!-- Official Syslog rules for the OSSEC HIDS. v0.5
+  -  Author: Daniel B. Cid
+  -  Date: Nov 11, 2005
+  -->
+
+
+  
+<!-- Default variables for the OSSEC HIDS SYSLOG rules -->
 
 <!-- OSSEC website -->
 <var name="HTTP_OSSEC">http://www.ossec.net/logs</var>
 
-
-<!-- Bad words matching. Any log containing any of this rules 
-     will be triggered.
-     -->
+<!-- Bad words matching. Any log containing these messages
+  -  will be triggered.
+  -->
 <var name="BAD_WORDS">core_dumped|failure|error|attack|bad|illegal|denied|refused|unauthorized|fatal|Segmentation Fault|Corrupted</var>
-
 
 <!-- System users. They should never log in to the system -->
 <var name="SYS_USERS">apache|mysql|www|nobody|nogroup|portmap|named|rpc|mail|ftp|shutdown|bin|daemon|postfix</var>
 
 
-<!-- Starting the rules -->
 
+
+<!-- Syslog errors. -->
 <group name="syslog,errors">
   <rule id="101" level="4">
     <regex>^PAM-securetty[\d+]: Couldn't open /etc/securetty$</regex>
     <comment>File /etc/securetty missing. Root access unrestricted</comment>
-    <info>$HTTP_OSSEC/rule-101</info>
   </rule>
 
   <rule id="102" level="1">
     <match>$BAD_WORDS</match>
     <comment>Possible problem (unknown) somewhere in the system</comment>
-    <info>$HTTP_OSSEC/rules-level1</info>
   </rule>    
 
   <rule id="103" level="10" maxsize="1012">
-    <comment>Non standard syslog message (size too big)</comment>
+    <comment>Non standard syslog message (size too large)</comment>
   </rule>  
 </group> <!-- SYSLOG,ERRORS -->
 
 
-<group name="syslog,nfs">
-  
-  <!-- XXX All These NFS rules need to be fixed. I'm not an NFS fan and dont use it.. -->
 
+<!-- NFS messages -->
+<group name="syslog,nfs">
+  <!-- XXX All These NFS rules need to be fixed. I'm not an NFS fan and dont use it.. -->
   <rule id="202" level="3">
     <match>nfs: mount failure$</match>
-    <comment>Impossible to mount the NFS directory</comment>
+    <comment>Unable to mount the NFS directory</comment>
   </rule>
 
   <rule id="203" level="3">
     <regex>mount\.+reason given by server: Permission denied$</regex>
-    <comment>Impossible to mount the NFS directory</comment>
+    <comment>Unable to mount the NFS directory</comment>
   </rule>
  
   <rule id="204" level="3">
     <match>^rpc.mountd: refused mount request from</match>
-    <comment>Impossible to mount the NFS directory</comment>
+    <comment>Unable to mount the NFS directory</comment>
   </rule>
 </group> <!-- SYSLOG,NFS -->
   
   
+
+<!-- xinetd messages -->  
 <group name="syslog,xinetd">
   <rule id="301" level="8">
     <regex>^xinetd[\d+]: Deactivating service \S+ due to excessive </regex>
-    <regex>incoming connections</regex>
     <comment>Excessive number connections to a service</comment>
   </rule>
 </group> <!-- SYSLOG,XINETD -->
 
 
+
+<!-- Access control messages -->
 <group name="syslog,accesscontrol,connection_attempt">
-  
-  <!-- Hashing SSHD rules -->
-  
   <rule id="400" level="0" noalert="1">
     <decoded_as>sshd</decoded_as>
     <comment>SSHD messages grouped</comment>
@@ -93,11 +98,7 @@
 
   <rule id ="404" level="10">
     <if_sid>400</if_sid>
-    <regex>^sshd[\d+]: Illegal user|^sshd[\d+]: invalid user|</regex>
-    <regex>^sshd[\d+]: input_userauth_request: illegal user|</regex>
-    <regex>^sshd[\d+]: input_userauth_request: invalid user|</regex>
-    <regex>^sshd[\d+]: Failed \S+ for invalid user|</regex>
-    <regex>^sshd[\d+]: Failed \S+ for illegal user</regex>
+    <match>illegal user|invalid user</match>
     <comment>Attempt to login using a non-existent user</comment>
   </rule>
 
@@ -132,6 +133,8 @@
 </group> <!-- SYSLOG,ACESSCONTROL -->
 
 
+
+<!-- Sendmail messages -->
 <group name="syslog,sendmail">
   <rule id="501" level="5">
     <regex>;ruleset=check_rcpt \.+Relaying denied</regex>
@@ -145,6 +148,8 @@
 </group> <!-- SYSLOG,SENDMAIL -->
   
 
+
+<!-- FTP messages -->
 <group name="syslog,ftp">
   <rule id="601" level="7">
     <match>FTP LOGIN REFUSED</match>
@@ -163,33 +168,40 @@
 </group> <!-- SYSLOG,FTP -->
 
 
+
+<!-- Smartd messages -->
 <group name="syslog,smartd">
-  <rule id="701" level="0"> <!-- IGNORED -->
+  <rule id="700" level="0" noalert="1">
+    <match>^smart</match>
+    <comment>Pre-match rule for smartd<comment>
+  </rule>
+  
+  <rule id="701" level="0">
+    <if_sid>700</if_sid>
     <match>No configuration file /etc/smartd.conf found</match>
     <comment>Smartd Started but not configured</comment>
   </rule>
 
-  <rule id="702" level="0" accuracy="0"> <!-- IGNORED -->
+  <rule id="702" level="0" accuracy="0">
+    <if_sid>700</if_sid>
     <regex>^smartd\.+Unable to register ATA device</regex>
     <comment>Smartd configuration problem</comment>
   </rule>
 
-  <rule id ="703" level="0" accuracy="0"> <!-- IGNORED -->
+  <rule id ="703" level="0" accuracy="0">
+    <if_sid>700</if_sid>
     <regex>^smartd\.+No such device or address, open() failed</regex>
     <comment>Device configured but not available to Smartd</comment>
   </rule>  
 </group> <!-- SYSLOG,SMARTD -->
 
 
-<group name="syslog,linuxkernel">
 
-  <!-- Hashing all kernel rules. Only 806 will be checked to see if
-    -- it is a kernel message (set to noalert)
-    -->
-    
-  <rule id="806" level="0" noalert="1">
+<!-- Linux Kernel messages -->
+<group name="syslog,linuxkernel">
+  <rule id="800" level="0" noalert="1">
     <match>^kernel: </match>
-    <comment>Pre match rule for kernel messages. Hashing it</comment>
+    <comment>Pre-match rule for kernel messages</comment>
   </rule>
 
   <rule id="801" level="0">
@@ -224,25 +236,28 @@
     <comment>Invalid I/O request to /dev/fd0 (bug on the 2.6 kernel?)</comment>
   </rule>
 
-  <rule id="807" level="0">
+  <rule id="806" level="0">
     <if_sid>806</if_sid>
     <match>^kernel: svc: unknown program 100227 (me 100003)</match>
     <comment>NFS incompability between Linux and Solaris. Ignoring.</comment>
   </rule>
-
 </group> <!-- SYSLOG,LINUXKERNEL -->
 
 
+
+<!-- Cron messages -->
 <group name="syslog,cron">
   <rule id="901" level="0" accuracy="0">
     <regex>^crond: unable to exec \.+ output to sink null</regex>
-    <comment>Cron bad configuration</comment>
+    <comment>Wrong cron configuration</comment>
   </rule>
 </group> <!-- SYSLOG,CRON -->
 
 
+
+<!-- Automount messages -->
 <group name="syslog,automount">
-  <rule id="901" level="3">
+  <rule id="951" level="3">
     <regex>^automount[\d+]: \S+: lookup for \S+ failed</regex>
     <comment>Automount informative message</comment>
     <info>http://www.cs.arizona.edu/computer.help/policy/DIGITAL_unix/AA-PS2SC-TE_html/netadmin24.html</info>
@@ -250,6 +265,8 @@
 </group> <!-- SYSLOG,AUTOMOUNT -->
 
 
+
+<!-- Su messages -->
 <group name="syslog,su">
   <rule id="1100" level="0" noalert="1">
     <decoded_as>su</decoded_as>
@@ -258,27 +275,27 @@
   
   <rule id ="1101" level="7">
    <if_sid>1100</if_sid>
-   <regex>^su(pam_unix)[\d+]: authentication failure; logname=|</regex>
-   <regex>^su\S*: failed: \S+ changing from|</regex>
-   <regex>^su\S*: BAD su|^su[\d+]: Authentication failed</regex>
+   <match>: authentication failure; | failed |BAD su|</match>
    <comment>User missed the password to change UID (user id)</comment> 
   </rule>
 
   <rule id ="1102" level="10">
     <user>root</user>
-    <if_sid>1101</if_sid> <!-- Dependent rule -->
+    <if_sid>1101</if_sid>
     <comment>User missed the password to change UID to root</comment>
   </rule>
 
   <rule id="1103" level="5">
     <if_sid>1100</if_sid>
-    <regex>^su\S*: session opened for user root|</regex>
+    <regex>session opened for user root|</regex>
     <regex>^su[\d+]: + \S+ \S+-root$</regex>
     <comment>User sucessfully changed UID to root</comment>
   </rule>
 </group> <!-- SYSLOG,SU -->
 
 
+
+<!-- Tripwire messages -->
 <group name="syslog,tripwire">
   <rule id="1201" level="8">
     <regex>tripwire\.+ Integrity Check failed: File could not</regex>
@@ -287,6 +304,8 @@
 </group> <!-- SYSLOG,TRIPWIRE -->
 
 
+
+<!-- Adduser messages -->
 <group name="syslog,adduser">
   <rule id="1301" level="4">
     <regex>^useradd[\d+]: new group:|</regex>
@@ -315,6 +334,8 @@
 </group> <!-- SYSLOG,ADDUSER -->
 
 
+
+<!-- Sudo messages -->
 <group name="syslog,sudo">
   <rule id="1400" level="0" noalert="1">
     <decoded_as>sudo</decoded_as>
@@ -335,6 +356,8 @@
 </group> <!-- SYSLOG, SUDO -->
 
 
+
+<!-- SSHD messages -->
 <group name="syslog,sshd">
   <rule id="1501" level="11">
     <if_sid>400</if_sid>
@@ -344,6 +367,8 @@
 </group> <!-- SYSLOG, SSHD -->
 
 
+
+<!-- Attack signatures -->
 <group name="syslog,attacks">
   <rule id="1601" level="11"> <!-- XXX SSH CONNECTION/LOGIN -->
     <if_sid>400</if_sid>
@@ -407,6 +432,8 @@
 </group> <!-- SYSLOG, ATTACKS -->
 
 
+
+<!-- Privilege scalation messages -->
 <group name="syslog,elevation_of_privilege">
   <rule id="1701" level="15" timeframe="300">
     <if_group>adduser</if_group>
@@ -416,6 +443,8 @@
 </group> <!-- SYSLOG, ELEVATION_OF_PRIVILEGE -->
 
 
+
+<!-- Scan signatures -->
 <group name="syslog,scans">
   <rule id="1801" level="13" frequency="7" timeframe="90" ignore="60">
     <if_group>connection_attempt</if_group>
@@ -426,6 +455,8 @@
 </group> <!-- SYSLOG,SCANS -->
 
 
+
+<!-- PPTP messages -->
 <group name="syslog,pptp">
   <rule id="2601" level="0">
     <match>^pptp[</match>
@@ -435,3 +466,7 @@
     <info>http://poptop.sourceforge.net/dox/gre-protocol-unavailable.phtml</info>
   </rule>
 </group>
+
+
+
+<!-- EOF -->

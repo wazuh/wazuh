@@ -1,4 +1,9 @@
-<!-- Default rules for Named -->
+
+<!-- Official named rules for the OSSEC HIDS. v0.5
+  -  Author: Daniel B. Cid
+  -  Date: Nov 11, 2005
+  -->
+      
 
 <group name="named,syslog">
   <rule id="1901" level="8">
