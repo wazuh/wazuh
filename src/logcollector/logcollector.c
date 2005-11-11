@@ -1,4 +1,4 @@
-/*   $OSSEC, logcollector.c, v0.3, 2005/08/26, Daniel B. Cid$   */
+/*   $OSSEC, logcollector.c, v0.4, 2005/11/11, Daniel B. Cid$   */
 
 /* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -10,14 +10,6 @@
  */
 
 
-/* v0.3 (2005/08/26): Reading all files in just one process 
- * v0.2 (2005/04/04):
- */  
-
-/* Logcolletor daemon.
- * Monitor some files and forward the output to our analysis system.
- */
-
 
 #include <sys/types.h>
 #include <sys/time.h>
@@ -27,106 +19,15 @@
 #include <string.h>
 #include <fcntl.h>
 
-#ifndef ARGV0
-   #define ARGV0="ossec-logcollector"
-#endif
-      
-
-#include "shared.h"
-      
 #include "os_regex/os_regex.h"
 
 #include "logcollector.h"
 
 
-
-/* Internal functions */
-int FilesConf(char * cfgfile);
-void run();
-int handle_file(int i);
-int read_snortfull(int pos);
-int read_syslog(int pos);
-
-
-/* main: v0.3: 2005/04/04 */
-int main(int argc, char **argv)
-{
-    int c;
-    char *cfg=DEFAULTCPATH;
-    char *dir=DEFAULTDIR;
-
-    while((c = getopt(argc, argv, "dhD:c:")) != -1)
-    {
-        switch(c)
-        {
-            case 'h':
-                help();
-                break;
-            case 'd':
-                nowDebug();
-                break;
-            case 'D':
-                if(!optarg)
-                    ErrorExit("%s: -D needs an argument",ARGV0);
-                dir = optarg;
-                break;
-            case 'c':
-                if(!optarg)
-                    ErrorExit("%s: -c needs an argument",ARGV0);
-                cfg = optarg;
-                break;
-            default:
-                help();
-                break;   
-        }
-
-    }
-
-    debug1(STARTED_MSG,ARGV0);
-
-    /* Configuration file not present */
-    if(File_DateofChange(cfg) < 0)
-        ErrorExit("%s: Configuration file '%s' not found",ARGV0,cfg);
-
-
-    /* Reading config file */
-    if((c = FilesConf(cfg)) == OS_NOTFOUND)
-    {
-        verbose("%s: No file configured to monitor. Exiting...",ARGV0);
-        exit(0);
-    }
-    
-    else if(c < 0)
-        ErrorExit(CONFIG_ERROR,ARGV0,cfg);
-
-
-    
-    /* Starting the queue. */
-    if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-        ErrorExit(QUEUE_FATAL,ARGV0,DEFAULTQPATH);
-
-
-    /* Starting signal handler */
-    StartSIG(ARGV0);	
-
-    /* Going on daemon mode */
-    nowDaemon();
-    goDaemon();
-
-    /* Creating PID file */
-    if(CreatePID(ARGV0, getpid()) < 0)
-        merror(PID_ERROR, ARGV0);
-    
-    
-    /* Main loop */        
-    run();
-
-    return(0);
-}
-
-
-/* run: Process the file and forward their content to analysd/agentd */
-void run()
+/** void LogCollectorStart() v0.4
+ * Handle file management.
+ */
+void LogCollectorStart()
 {
     int i = 0, r = 0;
     int max_file = 0;
@@ -134,6 +35,7 @@ void run()
     int tmtmp = 0;
     
     struct timeval fp_timeout;
+
 
     /* Initializing each file and structure */
     for(i = 0;;i++)
@@ -164,6 +66,7 @@ void run()
 
     max_file = i;
     
+    
     /* Daemon loop */
     while(1)
     {
@@ -178,6 +81,7 @@ void run()
         }
 
         f_check++;
+
 
         /* Checking which file is available */
         for(i = 0; i <= max_file; i++)
@@ -207,20 +111,25 @@ void run()
                     clearerr(logr[i].fp);
 
                     /* Updating mtime */
-                    logr[i].mtime = File_DateofChange(logr[i].file);
+                    logr[i].mtime = tmtmp;
 
                     logr[i].ign = 0;
                 }
                 
                 else
                 {
-                    merror("%s: File error: '%s'",ARGV0,logr[i].file);
+                    merror("%s: File error: '%s'", ARGV0, logr[i].file);
                     
                     if(fseek(logr[i].fp,0,SEEK_END) < 0)
                     {
-                        merror("%s: File error (fseek): '%s'",ARGV0,logr[i].file);
+                        merror("%s: File error (fseek): '%s'",ARGV0, logr[i].file);
                         fclose(logr[i].fp);
-                        handle_file(i);
+                        logr[i].fp = NULL;
+                        
+                        if(handle_file(i) != 0)
+                        {
+                            continue;
+                        }
                     }
                     
                     logr[i].ign--;
@@ -256,17 +165,19 @@ void run()
                 if(logr[i].ign < -5)
                 {
                     merror("%s: Ignoring file '%s'. Too many problems "
-                            " reading it.",ARGV0,logr[i].file);
+                            "reading it.",ARGV0, logr[i].file);
                     fclose(logr[i].fp);
                     logr[i].fp = NULL;
                     logr[i].ign = -10;
                 }
+                
                 continue;
             }
         }
 
     }
 }
+
 
 
 /* handke_file: Open, get the ileno, seek to the end and update mtime */

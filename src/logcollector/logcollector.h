@@ -1,4 +1,4 @@
-/*   $OSSEC, logcollector.h, v0.2, 2005/08/26, Daniel B. Cid$   */
+/*   $OSSEC, logcollector.h, v0.3, 2005/11/11, Daniel B. Cid$   */
 
 /* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -10,11 +10,24 @@
  */
 
 
+
 #ifndef __LOGREADER_H
 
 #define __LOGREADER_H
 
+#ifndef ARGV0
+#define ARGV0="ossec-logcollector"
+#endif
+
+#define FP_TIMEOUT  2
+
 #include <stdio.h> /* for FILE* */
+#include "shared.h"
+#include "error_messages/error_messages.h"
+
+
+
+/* Logreader config */
 typedef struct _logreader
 {
     int mtime;
@@ -27,9 +40,31 @@ typedef struct _logreader
     FILE *fp;
 }logreader;
 
+
+
+/*** Function prototypes ***/
+
+
+/* Read logcollector config */
+int LogCollectorConfig(char * cfgfile);
+
+/* Stary log collector daemon */
+void LogCollectorStart();
+
+/* Handle files */
+int handle_file(int i);
+
+/* Read syslog file */
+int read_syslog(int pos);
+
+/* Read snort full file */
+int read_snortfull(int pos);
+
+
+/*** Global variables ***/
+
 int logr_queue;
 logreader *logr;
 
-#define FP_TIMEOUT  2
 
 #endif

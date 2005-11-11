@@ -27,11 +27,11 @@
 #include "logcollector.h"
 
 
-/* FilesConf v0.3, 2005/03/03
+/* LogCollectorConfig v0.3, 2005/03/03
  * Read the config file (the localfiles)
  * v0.3: Changed for the new OS_XML
  */
-int FilesConf(char * cfgfile)
+int LogCollectorConfig(char * cfgfile)
 {
     int i = 0,j = 0;
     int rentries = 0, fentries = 0;

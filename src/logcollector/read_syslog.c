@@ -21,7 +21,6 @@
 #include "headers/mq_op.h"
 #include "logcollector.h"
 
-#include "error_messages/error_messages.h"
 
 
 /* v0.3 (2005/08/24): Using fgets instead of fgetc
