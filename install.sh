@@ -29,8 +29,10 @@ FAST="";
 NEWCONFIG="./etc/ossec.mc"
 CEXTRA=""
 
+
+
 checkDependencies()	# Thanks gabriel@macacos.org
-  {
+{
   echo ""
   echo "2- Cheking Dependencies:"
   echo ""
@@ -57,46 +59,54 @@ checkDependencies()	# Thanks gabriel@macacos.org
 fi
 echo "    - Found: $CC"
 echo ""
-	}
+}
 
+
+
+# Sets the environment
 setEnv()
-	{
-	echo ""
-	echo "3- Setting up the working environment."
-	echo ""
-	echo " - Where do you want to install $NAME? "
-	echo " - The default location is $DEFDIR, do want to keep it ?(y/n)y"
-	read ANSWER
-	case $ANSWER in
-		n|N)
-			echo "    - Type the directory to install it:"
-			read TMPDIR
-			DEFDIR="$TMPDIR"
-			echo "    - Installation will be made at ${DEFDIR}"
-            CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${DEFDIR}\\\" -DDEFAULTQPATH=\\\"${DEFDIR}/queue/ossec/queue\\\" -DDEFAULTCPATH=\\\"${DEFDIR}/etc/ossec.conf\\\""
-			;;
-	esac
-    
+{
+    echo ""
+    echo "3- Setting up the working environment."
+    echo ""
+    echo " - Where do you want to install $NAME? "
+    echo " - The default location is $DEFDIR, do want to keep it ?(y/n)y"
+    read ANSWER
+    case $ANSWER in
+        n|N)
+          echo "    - Type the directory to install it:"
+          read TMPDIR
+          DEFDIR="$TMPDIR"
+          echo "    - Installation will be made at ${DEFDIR}"
+          CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${DEFDIR}\\\""
+          ;;
+    esac
+
     if [ "X$INSTYPE" = "Xclient" ]; then
         CEXTRA="$CEXTRA -DCLIENT"
+    elif [ "X$INSTYPE" = "Xlocal" ]; then
+        CEXTRA="$CEXTRA -DLOCAL"    
     fi   
 
+
     ls $DEFDIR >/dev/null 2>&1
-	if [ $? = 0 ]; then
-		echo " - The directory $DEFDIR already exist."
-		echo " - Do you want to delete it? (y/n)n"
-		read ANSWER
-		case $ANSWER in
-			y|Y)
-				rm -rf $DEFDIR
-				;;
-		esac
-	fi
-	}
+    if [ $? = 0 ]; then
+        echo " - The directory $DEFDIR already exist."
+        echo " - Do you want to delete it? (y/n)n"
+        read ANSWER
+        case $ANSWER in
+            y|Y)
+                rm -rf $DEFDIR
+                ;;
+        esac
+    fi
+}
 
 
+
+# Configure client
 ConfigureClient()
-	{
+{
 	echo ""
 	echo "4- Configuring $NAME."
 	echo ""
@@ -181,6 +191,8 @@ ConfigureClient()
 	read ANY
 	}
 
+
+# Configure the server
 ConfigureServer()
 	{
 	echo ""
@@ -203,9 +215,10 @@ ConfigureServer()
 			;;
 	esac
 
+
     # Integrity check config
     echo ""
-    echo "  4.2- Do you want to run the integrity check daemon(yes/no)y"
+    echo "  4.2- Do you want to run the integrity check daemon?(yes/no)y"
     read AS
     case $AS in
         n|N|no|No|NO)
@@ -219,7 +232,7 @@ ConfigureServer()
   
     # rootcheck
     echo ""
-    echo "  4.3- Do you want to run the rootkit check engine(yes/no)y"
+    echo "  4.3- Do you want to run the rootkit check engine?(yes/no)y"
     read ES
     case $ES in
         n|N|no|No|NO)
@@ -230,6 +243,24 @@ ConfigureServer()
             echo "   - Running rootcheck (rootkit detection)"
             ;;
     esac
+
+    # Active response
+    echo ""
+    echo "  4.4- Active response allows you to execute a specific "
+    echo "       command based on the events received. You can "
+    echo "       block an IP address or disable access for a "
+    echo "       user (for example). "
+    echo "       Do you want to have active response enabled? (yes/no)y"
+    read AR
+    case $AR in
+        n|N|no|No|NO)
+            echo "   - Active response disabled."
+            ;;
+        *)
+            ACTIVERESPONSE="yes"
+            echo "   - Active response enabled."
+            ;;
+    esac                
     
     
     if [ "X$INSTYPE" = "Xserver" ]; then
@@ -249,11 +280,11 @@ ConfigureServer()
 
 	  # Configuring remote connections
 	  echo ""
-	  echo "  4.5- Do you want to listen for remote secure connections (1514 udp) (y/n)?y"
+	  echo "  4.5- Do you want enable secure communication (1514 udp)(y/n)?y"
 	  read ANSWER
 	  case $ANSWER in
 		n|N)
-		  echo "   --- Not receiving encrypted/secure messages"
+		  echo "   --- Not receiving secure messages from agents."
 		  ;;
 		*)
 		  echo "   - Listening to remote secure messages."
@@ -267,6 +298,7 @@ ConfigureServer()
 		  ;;
 	  esac
 	fi
+    
     
 	# Writting config
 	echo "<global>" > $NEWCONFIG
@@ -282,6 +314,7 @@ ConfigureServer()
 	echo "</global>" >> $NEWCONFIG
 	echo "" >> $NEWCONFIG
 	
+    
 	# Rules configuration
 	echo "<rules>" >> $NEWCONFIG
 	echo "  <include>syslog_rules.xml</include>" >> $NEWCONFIG
@@ -289,6 +322,7 @@ ConfigureServer()
 	echo "  <include>named_rules.xml</include>" >> $NEWCONFIG
 	echo "  <include>proftpd_rules.xml</include>" >> $NEWCONFIG
 	echo "</rules>" >> $NEWCONFIG
+
 
     # syscheck
     if [ "X$SYSCHECK" = "Xyes" ]; then
