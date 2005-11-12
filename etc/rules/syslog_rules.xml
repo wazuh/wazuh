@@ -173,7 +173,7 @@
 <group name="syslog,smartd">
   <rule id="700" level="0" noalert="1">
     <match>^smart</match>
-    <comment>Pre-match rule for smartd<comment>
+    <comment>Pre-match rule for smartd</comment>
   </rule>
   
   <rule id="701" level="0">
@@ -205,39 +205,39 @@
   </rule>
 
   <rule id="801" level="0">
-    <if_sid>806</if_sid>
+    <if_sid>800</if_sid>
     <match>^kernel: PCI: if you experience problems, try using option</match>
     <comment>Informative message from the kernel (generally ignored</comment>
   </rule>
 
   <rule id="802" level="0">
-    <if_sid>806</if_sid>
+    <if_sid>800</if_sid>
     <match>^modprobe: Can't locate module sound</match>
     <comment>Informative message from the kernel</comment>
   </rule>
   
   <rule id ="803" level="8">
-    <if_sid>806</if_sid>
+    <if_sid>800</if_sid>
     <match>^kernel: Oversized packet received from</match>
     <comment>Error message from the kernel. Ping of death attack?</comment>
   </rule>  
 
   <rule id = "804" level="8">
-    <if_sid>806</if_sid>
+    <if_sid>800</if_sid>
     <regex>^kernel: \S+: Promiscuous mode enabled|</regex>
     <regex>^kernel: device \S+ entered promiscuous mode</regex>
     <comment>Interface entered in promiscuous mode (sniffing enabled)</comment>
   </rule>
 
   <rule id="805" level="0">
-    <if_sid>806</if_sid>
+    <if_sid>800</if_sid>
     <match>^kernel: end_request: I/O error, dev fd0, sector 0|</match>
     <match>^kernel: Buffer I/O error on device fd0, logical block 0</match>
     <comment>Invalid I/O request to /dev/fd0 (bug on the 2.6 kernel?)</comment>
   </rule>
 
   <rule id="806" level="0">
-    <if_sid>806</if_sid>
+    <if_sid>800</if_sid>
     <match>^kernel: svc: unknown program 100227 (me 100003)</match>
     <comment>NFS incompability between Linux and Solaris. Ignoring.</comment>
   </rule>
