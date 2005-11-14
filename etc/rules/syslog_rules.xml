@@ -241,6 +241,12 @@
     <match>^kernel: svc: unknown program 100227 (me 100003)</match>
     <comment>NFS incompability between Linux and Solaris. Ignoring.</comment>
   </rule>
+
+  <rule id="807" level="0">
+    <if_sid>800</if_sid>
+    <match>^kernel: svc: bad direction </match>
+    <comment>NFS incompability between Linux and Solaris. Ignoring.</comment>
+  </rule>
 </group> <!-- SYSLOG,LINUXKERNEL -->
 
 
