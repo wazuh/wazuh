@@ -35,6 +35,7 @@
 #define WAITPID_ERROR "%s(1111): Waitpid error."                                
 #define SETSID_ERROR  "%s(1112): Setsid error."
 #define MUTEX_ERROR   "%s(1113): Error setting pthread mutex."
+#define SELECT_ERROR  "%s(1114): Unable to select."
 
 
 /* COMMON ERRORS */
