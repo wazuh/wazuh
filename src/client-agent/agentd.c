@@ -21,6 +21,11 @@
 #include <string.h>
 #include <time.h>
 
+#include <sys/select.h>
+
+#include <sys/time.h>
+#include <sys/types.h>
+
 #include "agentd.h"
 
 #include "os_net/os_net.h"
@@ -32,10 +37,16 @@
  */
 void AgentdStart(char *dir, int uid, int gid)
 {
-    int pid;
+    int rc = 0;
+    int pid = 0;
     int port = 0;
-    
+    int maxfd = 0;   
 
+    fd_set fdset;
+    
+    struct timeval fdtimeout;
+
+    
     /* Giving the default port if none is available */
     if((logr->port == NULL) || (port = atoi(logr->port) <= 0))
     {
@@ -65,7 +76,8 @@ void AgentdStart(char *dir, int uid, int gid)
     if((logr->m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
         ErrorExit(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
 
-
+    maxfd = logr->m_queue;
+    
 
     /* Going daemon */
     pid = getpid();
@@ -92,6 +104,12 @@ void AgentdStart(char *dir, int uid, int gid)
     if(logr->sock < 0)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
 
+    
+    /* Setting max fd for select */
+    if(logr->sock > maxfd)
+    {
+        maxfd = logr->sock;
+    }
 
     /* Connecting to the execd queue */
     if((logr->execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
@@ -100,6 +118,15 @@ void AgentdStart(char *dir, int uid, int gid)
     }
 
 
+    /* Creating mutexes */
+    pthread_mutex_init(&receiver_mutex, NULL);
+    pthread_mutex_init(&forwarder_mutex, NULL);
+    pthread_mutex_init(&notify_mutex, NULL);
+    pthread_cond_init (&receiver_cond, NULL);
+    pthread_cond_init (&forwarder_cond, NULL);
+    pthread_cond_init (&notify_cond, NULL);
+
+    
     /* Starting receiver thread.
      * Receive events/commands from the server
      */
@@ -119,8 +146,104 @@ void AgentdStart(char *dir, int uid, int gid)
 
     
     /* Starting the Event Forwarder */
-    EventForward();
+    if(CreateThread(EventForward, (void *)NULL) != 0)
+    {
+        ErrorExit(THREAD_ERROR, ARGV0);
+    }
     
+    
+    /* Maxfd must be higher socket +1 */
+    maxfd++;
+    
+    
+    /* monitor loop */
+    while(1)
+    {
+        /* Monitoring all available sockets from here */
+        FD_ZERO(&fdset);
+        FD_SET(logr->sock, &fdset);
+        FD_SET(logr->m_queue, &fdset);
+
+        fdtimeout.tv_sec = 120;
+        fdtimeout.tv_usec = 0;
+
+
+        /* Wait for 120 seconds at a maximum for any descriptor */
+        rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
+        if(rc == -1)
+        {
+            merror(SELECT_ERROR, ARGV0);
+            continue;
+        }
+        
+        
+        /* Sending signal to notifier */
+        if(pthread_mutex_lock(&notify_mutex) != 0)
+        {
+            merror(MUTEX_ERROR, ARGV0);
+            return;
+        }
+
+        pthread_cond_signal(&notify_cond);    
+        if(pthread_mutex_unlock(&notify_mutex) != 0)
+        {
+            merror(MUTEX_ERROR, ARGV0);
+            return;
+        }
+
+        
+        /* If timeout, do not signal to other threads */
+        if(select(maxfd, &fdset, NULL, NULL, &fdtimeout) == 0)
+        {
+            merror("timeout");
+            continue;
+        }
+
+       
+        merror("received");
+        
+        /* For the receiver */
+        if(FD_ISSET(logr->sock, &fdset))
+        {
+            if(pthread_mutex_lock(&receiver_mutex) != 0)
+            {
+                merror(MUTEX_ERROR, ARGV0);
+                return;
+            }
+
+            available_receiver = 1;
+            pthread_cond_signal(&receiver_cond);
+            
+            if(pthread_mutex_unlock(&receiver_mutex) != 0)
+            {
+                merror(MUTEX_ERROR, ARGV0);
+                return;
+            }
+
+        }
+
+        
+        /* For the forwarder */
+        if(FD_ISSET(logr->m_queue, &fdset))
+        {
+             if(pthread_mutex_lock(&forwarder_mutex) != 0)
+            {
+                merror(MUTEX_ERROR, ARGV0);
+                return;
+            }
+
+            available_forwarder = 1; 
+            pthread_cond_signal(&forwarder_cond);
+            
+            if(pthread_mutex_unlock(&forwarder_mutex) != 0)
+            {
+                merror(MUTEX_ERROR, ARGV0);
+                return;
+            }
+        }
+        
+        
+    }
 }
 
 
