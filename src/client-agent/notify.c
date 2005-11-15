@@ -182,28 +182,45 @@ void run_notify()
 /* notify_mgr: Start notify thread */
 void *notify_thread(void *none)
 {
-    struct timeval fp_timeout;
+    time_t curr_time;
+    time_t saved_time;
 
+    saved_time = curr_time = time(0);
+    run_notify();
+    
     /* We notify the server every NOTIFY_TIME - 30 */
     while(1)
     {
         merror("before main _mgr");
-        run_notify();
 
-        merror("after main mgr");
-
-        fp_timeout.tv_sec = NOTIFY_TIME -30;
-        fp_timeout.tv_usec = 0;
-
-        merror("before select");
-        /* Waiting for the select timeout */
-        if (select(0, NULL, NULL, NULL, &fp_timeout) < 0)
+        if(pthread_mutex_lock(&notify_mutex) != 0)
         {
-            merror("%s: Internal error (select).",ARGV0);
+            merror(MUTEX_ERROR, ARGV0);
             return(NULL);
         }
 
-        merror("after select");
+        /* Time not elapsed.. */
+        curr_time = time(0);
+        if((curr_time - saved_time) < NOTIFY_TIME)
+        {
+            merror("waiting...");
+            pthread_cond_wait(&notify_cond, &notify_mutex);
+        }
+        else
+        {
+            merror("updating time");
+            saved_time = curr_time;
+            run_notify();
+        }
+
+        /* Unlocking mutex */
+        if(pthread_mutex_unlock(&notify_mutex) != 0)
+        {
+            merror(MUTEX_ERROR, ARGV0);
+            return(NULL);
+        }
+
+        merror("dine");
     }
     
     return(NULL);

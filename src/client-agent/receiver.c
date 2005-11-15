@@ -48,9 +48,6 @@ void *receiver_thread(void *none)
      
     FILE *fp;
 
-    fd_set fdset;
-
-    struct timeval fdtimeout;
 
     /* Setting FP to null, before starting */
     fp = NULL;
@@ -59,181 +56,180 @@ void *receiver_thread(void *none)
     memset(file, '\0', OS_MAXSTR +1);
     memset(file_sum, '\0', 34);
     
+    
     while(1)
     {
-        FD_ZERO(&fdset);
-        FD_SET(logr->sock, &fdset);
-        
-        fdtimeout.tv_sec = 60;
-        fdtimeout.tv_usec = 0;
-
-        /* we are only monitoring one socket, so no reason
-         * to ISSET
-         */
-                 
-        /* Wait for 60 seconds at a maximum for a message */
-        if(select(logr->sock +1, &fdset, NULL, NULL, &fdtimeout) == 0)
+        /* locking mutex */
+        if(pthread_mutex_lock(&receiver_mutex) != 0)
         {
-            if(fp)
-            {
-                fclose(fp);
-                fp = NULL;
-            }
-            if(file[0] != '\0')
-            {
-                unlink(file);
-                file[0] = '\0';
-            }
-                
-            /* timeout */
-            continue;
-        }
-       
-        /* Receving message from server */
-        recv_b = OS_RecvConnUDP(logr->sock, buffer, OS_MAXSTR);
-        if(recv_b <= 0)
-        {
-            continue;
-        }
-        
-        /* Id of zero -- only one key allowed */
-        tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b -1);
-        if(tmp_msg == NULL)
-        {
-            merror(MSG_ERROR,ARGV0,logr->rip);
-            continue;
+            merror(MUTEX_ERROR, ARGV0);
+            return(NULL);
         }
 
-        merror("received: %s\n", tmp_msg);
-        
-        /* Check for commands */
-        if(IsValidHeader(tmp_msg))
+        if(available_receiver == 0)
         {
+            pthread_cond_wait(&receiver_cond, &receiver_mutex);
+        }
 
-            /* If it is an active response message */
-            if(strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0)
+        /* Setting availables to 0 */
+        available_receiver = 0;
+        
+        /* Unlocking mutex */
+        if(pthread_mutex_unlock(&receiver_mutex) != 0)
+        {
+            merror(MUTEX_ERROR, ARGV0);
+            return(NULL);
+        }
+
+        
+        /* Read until no more messages are available */ 
+        while((recv_b = recv(logr->sock, buffer, OS_MAXSTR, MSG_DONTWAIT)) > 0)
+        {
+            
+            /* Id of zero -- only one key allowed */
+            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b -1);
+            if(tmp_msg == NULL)
             {
-                tmp_msg+=strlen(EXECD_HEADER);
-                if(OS_SendUnix(logr->execdq, tmp_msg, 0) < 0)
-                {
-                    merror("%s: Error communicating with execd", ARGV0);
-                }
-
+                merror(MSG_ERROR,ARGV0,logr->rip);
                 continue;
-            } 
-            
-            /* Close any open file pointer if it was being written to */
-            if(fp)
-            {
-                fclose(fp);
-                fp = NULL;
             }
-            
-            if(strncmp(tmp_msg, FILE_UPDATE_HEADER, strlen(FILE_UPDATE_HEADER)) == 0)
-            {
-                char *validate_file;
-                tmp_msg+=strlen(FILE_UPDATE_HEADER);
 
-                /* Going to after the file sum */
-                validate_file = index(tmp_msg, ' ');
-                if(!validate_file)
+            merror("here received: %s\n", tmp_msg);
+
+            /* Check for commands */
+            if(IsValidHeader(tmp_msg))
+            {
+                /* If it is an active response message */
+                if(strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0)
                 {
+                    tmp_msg+=strlen(EXECD_HEADER);
+                    if(OS_SendUnix(logr->execdq, tmp_msg, 0) < 0)
+                    {
+                        merror("%s: Error communicating with execd", ARGV0);
+                    }
+
                     continue;
+                } 
+
+                /* Close any open file pointer if it was being written to */
+                if(fp)
+                {
+                    fclose(fp);
+                    fp = NULL;
                 }
 
-                *validate_file = '\0';
-                
-                /* copying the file sum */
-                strncpy(file_sum, tmp_msg, 33);
-                
-                /* Setting tmp_msg to the beginning of the file name */
-                validate_file++;
-                tmp_msg = validate_file;
-                
-                
-                if((validate_file = index(tmp_msg, '\n')) != NULL)
+                /* File update message */
+                if(strncmp(tmp_msg, FILE_UPDATE_HEADER, strlen(FILE_UPDATE_HEADER)) == 0)
                 {
+                    char *validate_file;
+                    tmp_msg+=strlen(FILE_UPDATE_HEADER);
+
+                    /* Going to after the file sum */
+                    validate_file = index(tmp_msg, ' ');
+                    if(!validate_file)
+                    {
+                        continue;
+                    }
+
                     *validate_file = '\0';
-                }
-                
-                if((validate_file = index(tmp_msg, '/')) != NULL)
-                {
-                    *validate_file = '-';
-                }
-    
-                if(tmp_msg[0] == '.')
-                    tmp_msg[0] = '-';            
-                
-                snprintf(file, OS_MAXSTR, "%s/.%s", 
-                                          SHAREDCFG_DIR,
-                                          tmp_msg);
 
-                fp = fopen(file, "w");
-                if(!fp)
-                {
-                    merror(FOPEN_ERROR, ARGV0, file);
-                }
-            }
-            
-            else if(strncmp(tmp_msg, FILE_CLOSE_HEADER, strlen(FILE_CLOSE_HEADER)) == 0)
-            {
-                /* no error */
-                os_md5 currently_md5;
+                    /* copying the file sum */
+                    strncpy(file_sum, tmp_msg, 33);
 
-                if(file[0] == '\0')
-                {
-                    /* nada */
+                    
+                    /* Setting tmp_msg to the beginning of the file name */
+                    validate_file++;
+                    tmp_msg = validate_file;
+
+
+                    if((validate_file = index(tmp_msg, '\n')) != NULL)
+                    {
+                        *validate_file = '\0';
+                    }
+
+                    if((validate_file = index(tmp_msg, '/')) != NULL)
+                    {
+                        *validate_file = '-';
+                    }
+
+                    if(tmp_msg[0] == '.')
+                        tmp_msg[0] = '-';            
+
+                    
+                    snprintf(file, OS_MAXSTR, "%s/.%s", 
+                            SHAREDCFG_DIR,
+                            tmp_msg);
+
+                    fp = fopen(file, "w");
+                    if(!fp)
+                    {
+                        merror(FOPEN_ERROR, ARGV0, file);
+                    }
                 }
-                
-                else if(OS_MD5_File(file, currently_md5) < 0)
+
+                else if(strncmp(tmp_msg, FILE_CLOSE_HEADER, strlen(FILE_CLOSE_HEADER)) == 0)
                 {
-                    /* Removing file */
-                    unlink(file);
-                }
-                else
-                {
-                    if(strcmp(currently_md5, file_sum) != 0)
+                    /* no error */
+                    os_md5 currently_md5;
+
+                    if(file[0] == '\0')
+                    {
+                        merror("nada file");
+                        /* nada */
+                    }
+
+                    else if(OS_MD5_File(file, currently_md5) < 0)
+                    {
+                        /* Removing file */
                         unlink(file);
+                        file[0] = '\0';
+                    }
                     else
                     {
-                        char *final_file;
-                        char _ff[OS_MAXSTR +1];
-                        
-                        /* Renaming the file to its orignal name */
-                        
-                        final_file = index(file, '.');
-                        if(final_file)
+                        if(strcmp(currently_md5, file_sum) != 0)
+                            unlink(file);
+                        else
                         {
-                            final_file++;
-                            snprintf(_ff, OS_MAXSTR, "%s/%s",
-                                                     SHAREDCFG_DIR,
-                                                     final_file);
-                            rename(file, _ff);
+                            char *final_file;
+                            char _ff[OS_MAXSTR +1];
+
+                            /* Renaming the file to its orignal name */
+
+                            final_file = index(file, '.');
+                            if(final_file)
+                            {
+                                final_file++;
+                                snprintf(_ff, OS_MAXSTR, "%s/%s",
+                                        SHAREDCFG_DIR,
+                                        final_file);
+                                rename(file, _ff);
+                            }
                         }
+
+                        file[0] = '\0';
                     }
-                    
-                    file[0] = '\0';
                 }
+
+                else
+                {
+                    merror("%s: Unknown message received.", ARGV0);
+                }
+            }
+
+            else if(fp)
+            {
+                fprintf(fp, "%s", tmp_msg);
+                fflush(fp);
             }
 
             else
             {
-                merror("%s: Unknown message received.", ARGV0);
+                merror("%s: Unknown message received. No action defined.",ARGV0);
             }
-        }
-
-        else if(fp)
-        {
-            fprintf(fp, "%s", tmp_msg);
-            fflush(fp);
-        }
-        
-        else
-        {
-            merror("%s: Unknown message received. No action defined.",ARGV0);
-        }
+        }    
     }
 
+    
     /* Cleaning up */
     if(fp)
     {
