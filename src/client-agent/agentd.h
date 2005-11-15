@@ -39,7 +39,7 @@ int ClientConf(char *cfgfile);
 void AgentdStart(char *dir, int uid, int gid);
 
 /* Event Forwarder */
-void EventForward();
+void *EventForward(void *none);
 
 /* Receiver thread */
 void *receiver_thread(void *none);
@@ -56,11 +56,22 @@ void *notify_thread(void *none);
  * threads and functions
  */
 
+#include <pthread.h>
 #include "shared.h"
 #include "sec.h"
 
 keystruct keys;
 agent *logr;
+
+pthread_mutex_t receiver_mutex;
+pthread_mutex_t forwarder_mutex;
+pthread_mutex_t notify_mutex;
+pthread_cond_t  receiver_cond;
+pthread_cond_t  forwarder_cond;
+pthread_cond_t  notify_cond;
+
+int available_receiver;
+int available_forwarder;
 
 #endif
 
