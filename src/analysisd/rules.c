@@ -107,6 +107,8 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_same_user = "same_user";
     char *xml_same_loghost = "same_loghost";
 
+    char *xml_options = "options";
+    
     char *rulepath;
     
     int i;
@@ -328,7 +330,6 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element, xml_decoded)==0)
                     {
-                        merror("reading decode config");
                         config_ruleinfo->plugin_decoded =
                             loadmemory(config_ruleinfo->plugin_decoded,
                                     rule_opt[k]->content);
@@ -435,6 +436,18 @@ int Rules_OP_ReadRules(char * rulefile)
                         config_ruleinfo->context = 1;
                         config_ruleinfo->same_loghost = 1;
                     }
+                    else if(strcasecmp(rule_opt[k]->element,
+                                xml_options) == 0)
+                    {
+                        if(OS_Regex("mail", rule_opt[k]->content))
+                        {
+                            config_ruleinfo->emailalert = 1;
+                        }
+                        if(OS_Regex("log", rule_opt[k]->content))
+                        {
+                            config_ruleinfo->logalert = 1;
+                        }
+                    }
                     else
                     {
                         merror("rules_op: Invalid element \"%s\" for "
@@ -454,6 +467,7 @@ int Rules_OP_ReadRules(char * rulefile)
             
             j++; /* next rule */
 
+            
             printrule(config_ruleinfo);
 
 
@@ -634,13 +648,13 @@ RuleInfo *zerorulemember(int id, int level,
     /* Default values */
     ruleinfo_pt->level = level;
 
-    ruleinfo_pt->mailresponse = 0;
-    ruleinfo_pt->logresponse = 0;
+    ruleinfo_pt->emailalert = 0;
+    ruleinfo_pt->logalert = 0;
 
     if(Config.mailbylevel <= level)
-        ruleinfo_pt->mailresponse = 1;
+        ruleinfo_pt->emailalert = 1;
     if(Config.logbylevel <= level)    
-        ruleinfo_pt->logresponse = 1;
+        ruleinfo_pt->logalert = 1;
    
     ruleinfo_pt->ar = NULL; 
     

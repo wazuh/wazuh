@@ -54,8 +54,8 @@ int GlobalConf(char * cfgfile)
     char *(xml_global_ar_ignore[])={xml_global,"ar_ignore_hosts", NULL};
 
     /* From Response */	
-    char *(xml_response_mail[])={xml_response,"mail-notification",NULL};
-    char *(xml_response_log[])={xml_response,"log",NULL};
+    char *(xml_alerts_mail[])={xml_alerts,"mail-notification",NULL};
+    char *(xml_alerts_log[])={xml_alerts,"log",NULL};
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
@@ -217,7 +217,7 @@ int GlobalConf(char * cfgfile)
     
     /**  Getting specific responses per alert level **/
     /* Mail response */
-    str = OS_GetOneContentforElement(&xml, xml_response_mail);
+    str = OS_GetOneContentforElement(&xml, xml_alerts_mail);
     if(str != NULL)
     {
         if(!OS_StrIsNum(str))
@@ -230,7 +230,7 @@ int GlobalConf(char * cfgfile)
     }
     
     /* logging */
-    str = OS_GetOneContentforElement(&xml, xml_response_log);
+    str = OS_GetOneContentforElement(&xml, xml_alerts_log);
     if(str != NULL)
     {
         if(!OS_StrIsNum(str))

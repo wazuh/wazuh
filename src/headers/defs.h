@@ -114,8 +114,8 @@
 #define xml_global "global"
 #endif
 
-#ifndef xml_response
-#define xml_response "response"
+#ifndef xml_alerts
+#define xml_alerts "alerts"
 #endif
 
 #ifndef xml_rules

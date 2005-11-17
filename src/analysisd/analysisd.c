@@ -584,7 +584,7 @@ void OS_ReadMSG(int m_queue)
                 }
 
                 /* Log the alert if configured to ... */
-                if(currently_rule->logresponse == 1)
+                if(currently_rule->logalert == 1)
                 {
 
                     #ifdef DEBUG
@@ -595,7 +595,7 @@ void OS_ReadMSG(int m_queue)
                 }
 
                 /* Send an email alert */
-                if(currently_rule->mailresponse == 1)
+                if(currently_rule->emailalert == 1)
                 {
                     #ifdef DEBUG
                     debug2("%s: DEBUG: Mailling ... ", ARGV0);

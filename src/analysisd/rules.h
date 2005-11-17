@@ -32,8 +32,8 @@ typedef struct _RuleInfo
     int ignore_time;
     
     /* Not an option in the rule */
-    short int mailresponse;
-    short int logresponse;
+    short int emailalert;
+    short int logalert;
     active_response **ar;
 
     int maxsize; /* maxsize attribute */
