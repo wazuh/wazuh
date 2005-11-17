@@ -70,7 +70,7 @@ int main(int argc, char **argv)
     /* Return 0 if not configured */
     if((binds = RemotedConfig(cfg, &logr)) == 0)
     {
-        #ifndef LOCAL_ONLY
+        #ifndef LOCAL
         merror(CONN_ERROR,ARGV0);
         #endif
         
