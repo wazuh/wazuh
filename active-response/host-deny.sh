@@ -1,6 +1,7 @@
 #!/bin/sh
 # Adds an IP to the /etc/hosts.deny file
 # Requirements: sshd and other binaries with tcp wrappers support
+# Expect: srcip
 # Author: Daniel B. Cid
 # Last modified: Nov 09, 2005
 

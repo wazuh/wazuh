@@ -210,9 +210,29 @@ ConfigureClient()
     # Rootcheck?
     UseRootcheck
 
+
+    # active response on the client side 
+    echo ""
+    echo "  4.4- Do you want to enable active response?(yes/no)y"
+    read ES
+    case $ES in
+        n|N|no|No|NO)
+            echo "" >> $NEWCONFIG
+            echo "<active-response>" >> $NEWCONFIG
+            echo "  <disabled>yes</disabled>" >> $NEWCONFIG
+            echo "</active-response> " >> $NEWCONFIG
+            
+            echo "   - Active response disabled"
+            ;;
+        *)
+            echo "   - Active response enabled"
+            ;;
+    esac
+
+
  
     # Set up the log files
-    SetupLogs "4.4"
+    SetupLogs "4.5"
                        
 	
 }
@@ -285,7 +305,7 @@ ConfigureServer()
     echo "  4.4- Active response allows you to execute a specific "
     echo "       command based on the events received. You can "
     echo "       block an IP address or disable access for a "
-    echo "       user (for example). "
+    echo "       specific user (for example). "
     echo "       Do you want to have active response enabled? (yes/no)y"
     read AR
     case $AR in
@@ -358,6 +378,28 @@ ConfigureServer()
 	echo "</alerts>" >> $NEWCONFIG
 
 
+    if [ "X$ACTIVERESPONSE" = "Xyes" ]; then
+        # Add commands in here
+        echo "" >> $NEWCONFIG
+        echo "<command>" >> $NEWCONFIG
+        echo "  <name>host-deny</name>"
+        echo "  <executable>host-deny.sh</executable>" >> $NEWCONFIG
+        echo "  <expect>srcip</expect>" >> $NEWCONFIG
+        echo "</command>" >> $NEWCONFIG
+        
+        echo "" >> $NEWCONFIG
+        echo "<command>" >> $NEWCONFIG
+        echo "  <name>iptables-drop</name>"
+        echo "  <executable>iptables-drop.sh</executable>" >> $NEWCONFIG
+        echo "  <expect>srcip</expect>" >> $NEWCONFIG
+        echo "</command>" >> $NEWCONFIG
+    else    
+        echo "" >> $NEWCONFIG
+        echo "<active-response>" >> $NEWCONFIG
+        echo "  <disabled>yes</disabled>" >> $NEWCONFIG
+        echo "</active-response> " >> $NEWCONFIG
+    fi
+    
     # Setting up the logs
     SetupLogs "4.7"
 }

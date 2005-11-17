@@ -1,6 +1,7 @@
 #!/bin/sh
 # Adds an IP to the iptables drop list
 # Requirements: Linux with iptables installed
+# Expect: srcip
 # Author: Daniel B. Cid
 # Last modified: Nov 11, 2005
 
