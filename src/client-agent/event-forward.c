@@ -88,7 +88,6 @@ void *EventForward(void *none)
             if(_ssize == 0)
             {
                 merror(SEC_ERROR,ARGV0);
-                free(msg);
                 continue;
             }
 
