@@ -419,6 +419,7 @@ void *wait_for_msgs(void *none)
             f_files();
             c_files();
 
+            _stime = _ctime;
             clear_last_msg();                
         }
         
