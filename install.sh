@@ -350,12 +350,12 @@ ConfigureServer()
 
 	# Email/log alerts
 	echo "" >> $NEWCONFIG
-	echo "<response>" >> $NEWCONFIG
+	echo "<alerts>" >> $NEWCONFIG
     echo "   <log>1</log>" >> $NEWCONFIG
     if [ "$EMAILNOTIFY" = "yes" ]; then
         echo "   <mail-notification>1</mail-notification>">> $NEWCONFIG
 	fi
-	echo "</response>" >> $NEWCONFIG
+	echo "</alerts>" >> $NEWCONFIG
 
 
     # Setting up the logs
