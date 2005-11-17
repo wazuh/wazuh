@@ -89,6 +89,11 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
             return;
         }
                                                                                 
+        /* If we are being run by the ossec hids, sleep here (no rush) */
+        #ifdef OSSECHIDS
+        sleep(2);
+        #endif
+        
         /* checking if process appears on ps */
         if(*ps)
         {

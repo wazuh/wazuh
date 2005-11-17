@@ -195,12 +195,10 @@ void AgentdStart(char *dir, int uid, int gid)
         /* If timeout, do not signal to other threads */
         if(select(maxfd, &fdset, NULL, NULL, &fdtimeout) == 0)
         {
-            merror("timeout");
             continue;
         }
 
        
-        merror("received");
         
         /* For the receiver */
         if(FD_ISSET(logr->sock, &fdset))
@@ -241,6 +239,11 @@ void AgentdStart(char *dir, int uid, int gid)
                 return;
             }
         }
+
+        /* Sleep in here. Each thread is already reading what they
+         * have available.
+         */
+        sleep(1); 
         
         
     }

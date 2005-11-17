@@ -102,16 +102,22 @@ void test_ports(int proto, int *_errors, int *_total)
             /* Checking if we can find it using netstat, if not,
              * check again to see if the port is still being used.
              */
+
+            /* If we are being run by the ossec hids, sleep here (no rush) */
+            #ifdef OSSECHIDS
+            sleep(2);
+            #endif
+
             if(!run_netstat(proto, i) && conn_port(proto, i))
             {
                 char op_msg[OS_MAXSTR +1];
-                
+
                 (*_errors)++;
-                
+
                 snprintf(op_msg, OS_MAXSTR, "Port '%d'(%s) hidden. "
-                                "Kernel-level rootkit or trojaned "
-                                "version of netstat.", i, 
-                                 (proto == IPPROTO_UDP)? "udp" : "tcp");
+                        "Kernel-level rootkit or trojaned "
+                        "version of netstat.", i, 
+                        (proto == IPPROTO_UDP)? "udp" : "tcp");
 
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             }
