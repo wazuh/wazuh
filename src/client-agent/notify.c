@@ -170,7 +170,6 @@ void run_notify()
         merror(SEND_ERROR,ARGV0);
     }
     
-    merror("update message sent!");    
     free(uname);
     free(shared_files);
 
@@ -191,7 +190,6 @@ void *notify_thread(void *none)
     /* We notify the server every NOTIFY_TIME - 30 */
     while(1)
     {
-        merror("before main _mgr");
 
         if(pthread_mutex_lock(&notify_mutex) != 0)
         {
@@ -203,12 +201,10 @@ void *notify_thread(void *none)
         curr_time = time(0);
         if((curr_time - saved_time) < NOTIFY_TIME)
         {
-            merror("waiting...");
             pthread_cond_wait(&notify_cond, &notify_mutex);
         }
         else
         {
-            merror("updating time");
             saved_time = curr_time;
             run_notify();
         }
@@ -220,7 +216,6 @@ void *notify_thread(void *none)
             return(NULL);
         }
 
-        merror("dine");
     }
     
     return(NULL);

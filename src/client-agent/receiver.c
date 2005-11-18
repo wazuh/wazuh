@@ -94,7 +94,6 @@ void *receiver_thread(void *none)
                 continue;
             }
 
-            merror("here received: %s\n", tmp_msg);
 
             /* Check for commands */
             if(IsValidHeader(tmp_msg))
