@@ -108,7 +108,7 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         }
        
         /* If our kill or getsid system call, got the
-         * PID , but ps didn't check if it was a problem
+         * PID , but ps didn't find if it was a problem
          * with a PID being deleted (not used anymore )
          */
         if(!_ps0)
@@ -124,13 +124,13 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
             }
 
             /* If it matches, process was terminated */
-            if(_gsid0 && _kill1)
+            if(!_gsid1 && !_kill1)
             {
                 continue;
             }
         }
         
-        if(_gsid0 != _kill0)
+        if((_gsid0 == _gsid1)&&(_kill0 == _kill1)&&(_gsid0 != _kill0))
         {
             char op_msg[OS_MAXSTR +1];
         
@@ -142,7 +142,7 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
             (*_errors)++;
         }
 
-        else if(_gsid0 && _kill0 && !_ps0)
+        else if(_gsid1 && _kill1 && !_ps0)
         {
             char op_msg[OS_MAXSTR +1];
             snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
