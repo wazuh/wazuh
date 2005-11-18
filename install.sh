@@ -7,7 +7,7 @@
 ### Setting up variables
 VERSION=`cat ./src/VERSION`
 LOCATION="./src/LOCATION"
-UNAME=`uname -snpr`
+UNAME=`uname -snr`
 NUNAME=`uname`
 ME=`whoami`
 HOST=`hostname`
@@ -78,12 +78,12 @@ Install()
 ##########
 # UseSyscheck()
 ##########
-UseSysckeck()
+UseSyscheck()
 {
 
     # Integrity check config
     echo ""
-    echo "  4.2- Do you want to run the integrity check daemon?(yes/no)y"
+    echo "  3.2- Do you want to run the integrity check daemon?(yes/no)y"
     read AS
     case $AS in
         n|N|no|No|NO)
@@ -117,7 +117,7 @@ UseRootcheck()
 
     # Rootkit detection configuration 
     echo ""
-    echo "  4.3- Do you want to run the rootkit detection engine?(yes/no)y"
+    echo "  3.3- Do you want to run the rootkit detection engine?(yes/no)y"
     read ES
     case $ES in
         n|N|no|No|NO)
@@ -152,7 +152,7 @@ SetupLogs()
 
     NB=$1
     echo ""
-    echo " $NB- Setting the configuration to analyze the following logs:"
+    echo "  $NB- Setting the configuration to analyze the following logs:"
 
     LOG_FILES="/var/log/messages /var/log/authlog /var/log/auth.log /var/log/secure /var/log/syslog"
 
@@ -160,7 +160,7 @@ SetupLogs()
         # If log file present, add it    
         ls $i > /dev/null 2>&1
         if [ $? = 0 ]; then
-            echo "   -- $i"
+            echo "    -- $i"
 	        echo "" >> $NEWCONFIG
 	        echo "<localfile>" >> $NEWCONFIG
     	    echo "  <group>syslog</group>" >> $NEWCONFIG
@@ -189,10 +189,10 @@ SetupLogs()
 ConfigureClient()
 {
 	echo ""
-	echo "4- Configuring $NAME."
+	echo "3- Configuring $NAME."
 	echo ""
 	echo ""
-	echo "  4.1- What's the IP Address of the OSSEC HIDS server ?"
+	echo "  3.1- What's the IP Address of the OSSEC HIDS server ?"
 	    read IP
 	    echo ""
 	    echo "   - Adding Server IP: $IP"
@@ -213,7 +213,7 @@ ConfigureClient()
 
     # active response on the client side 
     echo ""
-    echo "  4.4- Do you want to enable active response?(yes/no)y"
+    echo "  3.4- Do you want to enable active response?(yes/no)y"
     read ES
     case $ES in
         n|N|no|No|NO)
@@ -232,7 +232,7 @@ ConfigureClient()
 
  
     # Set up the log files
-    SetupLogs "4.5"
+    SetupLogs "3.5"
                        
 	
 }
@@ -246,12 +246,12 @@ ConfigureClient()
 ConfigureServer()
 {
 	echo ""
-	echo "4- Configuring $NAME."
+	echo "3- Configuring $NAME."
 	
     
     # Configuring e-mail notification
 	echo ""
-	echo "  4.1- Do you want e-mail notification (y/n)?y"
+	echo "  3.1- Do you want e-mail notification (y/n)?y"
 	read ANSWER
 	case $ANSWER in
 		n|N)
@@ -302,7 +302,7 @@ ConfigureServer()
 
     # Active response
     echo ""
-    echo "  4.4- Active response allows you to execute a specific "
+    echo "  3.4- Active response allows you to execute a specific "
     echo "       command based on the events received. You can "
     echo "       block an IP address or disable access for a "
     echo "       specific user (for example). "
@@ -322,7 +322,7 @@ ConfigureServer()
     if [ "X$INSTYPE" = "Xserver" ]; then
       # Configuring remote syslog  
 	  echo ""
-	  echo "  4.5- Do you want to listen for remote syslog (514 udp) (y/n)?y"
+	  echo "  3.5- Do you want to listen for remote syslog (514 udp) (y/n)?y"
 	  read ANSWER
       case $ANSWER in
 		n|N)
@@ -336,7 +336,7 @@ ConfigureServer()
 
 	  # Configuring remote connections
 	  echo ""
-	  echo "  4.6- Do you want enable secure communication (1514 udp)(y/n)?y"
+	  echo "  3.6- Do you want enable secure communication (1514 udp)(y/n)?y"
 	  read ANSWER
 	  case $ANSWER in
 		n|N)
@@ -382,14 +382,14 @@ ConfigureServer()
         # Add commands in here
         echo "" >> $NEWCONFIG
         echo "<command>" >> $NEWCONFIG
-        echo "  <name>host-deny</name>"
+        echo "  <name>host-deny</name>" >> $NEWCONFIG
         echo "  <executable>host-deny.sh</executable>" >> $NEWCONFIG
         echo "  <expect>srcip</expect>" >> $NEWCONFIG
         echo "</command>" >> $NEWCONFIG
         
         echo "" >> $NEWCONFIG
         echo "<command>" >> $NEWCONFIG
-        echo "  <name>iptables-drop</name>"
+        echo "  <name>iptables-drop</name>" >> $NEWCONFIG
         echo "  <executable>iptables-drop.sh</executable>" >> $NEWCONFIG
         echo "  <expect>srcip</expect>" >> $NEWCONFIG
         echo "</command>" >> $NEWCONFIG
@@ -401,7 +401,7 @@ ConfigureServer()
     fi
     
     # Setting up the logs
-    SetupLogs "4.7"
+    SetupLogs "3.7"
 }
 
 
@@ -413,7 +413,7 @@ ConfigureServer()
 setEnv()
 {
     echo ""
-    echo "3- Setting up the working environment."
+    echo "2- Setting up the working environment."
     echo ""
     echo " - Where do you want to install $NAME? "
     echo " - The default location is $WORKDIR, do want to keep it ?(y/n)y"
@@ -458,7 +458,7 @@ setEnv()
 checkDependencies()
 {
     echo ""
-    echo "2- Cheking Dependencies:"
+    echo "- Cheking Dependencies:"
     echo ""
     echo "  - Checking for gcc"
 	
@@ -496,7 +496,6 @@ checkDependencies()
 ##########
 main()
 {
-    clear
 
     # Must be executed as ./install.sh
     ls ./src/VERSION >/dev/null 2>&1
@@ -524,6 +523,8 @@ main()
     # Checking dependencies
     checkDependencies
 
+    
+    clear
     
 
     # Initial message
@@ -707,9 +708,9 @@ main()
 
 
 ### Calling main function where everything happens
-main;
+main
 
-exit 0;
+exit 0
 
 
 
