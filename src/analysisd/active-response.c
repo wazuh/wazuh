@@ -197,7 +197,7 @@ int AS_GetActiveResponses(char * config_file)
         }
         else if(OS_Regex("^agent:", tmp_ar->location))
         {
-            tmp_ar->location += strlen("agent");
+            tmp_ar->location += strlen("agent:");
 
             tmp_ar->location[0] = SPECIFIC_AGENT;
 
