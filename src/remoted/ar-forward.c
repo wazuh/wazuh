@@ -180,13 +180,9 @@ int send_msg(int agentid, char *msg)
 {
     int msg_size;
     char crypt_msg[OS_MAXSTR +1];
-    char buffer[OS_MAXSTR +1];
 
 
-    /* Sending the file name first */
-    snprintf(buffer, OS_MAXSTR, "#!execd %s\n", msg);
-
-    msg_size = CreateSecMSG(&keys, buffer, crypt_msg, agentid);
+    msg_size = CreateSecMSG(&keys, msg, crypt_msg, agentid);
     if(msg_size == 0)
     {
         merror(SEC_ERROR,ARGV0);
