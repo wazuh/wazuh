@@ -78,6 +78,10 @@ void *AR_Forward(void *arg)
             tmp_str++;
 
 
+            /* Setting ar_location */
+            ar_location = tmp_str;
+
+
             /***  Extracting the agent ip (NULL if local) ***/
             tmp_str = index(location, '>');
             if(!tmp_str)
@@ -95,8 +99,7 @@ void *AR_Forward(void *arg)
 
 
             /*** Extracting the active response location ***/
-            ar_location = tmp_str;
-            tmp_str = index(tmp_str, ' ');
+            tmp_str = index(ar_location, ' ');
             if(!tmp_str)
             {
                 merror(EXECD_INV_MSG, ARGV0, msg);
