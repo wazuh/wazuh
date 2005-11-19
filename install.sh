@@ -307,6 +307,7 @@ ConfigureServer()
     echo "       block an IP address or disable access for a "
     echo "       specific user (for example). "
     echo "       http://www.ossec.net/hids/config.php#active-response "
+    echo ""
     echo "       Do you want to have active response enabled? (yes/no)y"
     read AR
     case $AR in
