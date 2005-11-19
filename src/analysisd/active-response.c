@@ -45,7 +45,7 @@ int AS_GetActiveResponses(char * config_file)
 
     int i = 0;
     int j = 0;
-
+    int snort_sz = 1;
     
     char *xml_ar_command = "command";
     char *xml_ar_location = "location";
@@ -244,6 +244,22 @@ int AS_GetActiveResponses(char * config_file)
             }
         }
         
+        /* If snort active response, add to the Snort ar */
+        if(tmp_ar->rules_group && OS_Regex("snort", tmp_ar->rules_group))
+        {
+            Config.snort_ar = realloc(Config.snort_ar, (snort_sz + 1) *
+                    sizeof(active_response *)); 
+            if(!Config.snort_ar)
+            {
+                ErrorExit(MEM_ERROR, ARGV0);
+            }
+
+            Config.snort_ar[snort_sz -1] = tmp_ar;
+            Config.snort_ar[snort_sz] = NULL;
+
+            snort_sz++;
+        }
+        
         
         if(!OSList_AddData(active_responses, (void *)tmp_ar))
         {
@@ -252,6 +268,7 @@ int AS_GetActiveResponses(char * config_file)
             return(-1);
         }
        
+
 
         /* Settin the configs to start the right queues */ 
         if(tmp_ar->location == AS_ONLY)

@@ -306,6 +306,7 @@ ConfigureServer()
     echo "       command based on the events received. You can "
     echo "       block an IP address or disable access for a "
     echo "       specific user (for example). "
+    echo "       http://www.ossec.net/hids/config.php#active-response "
     echo "       Do you want to have active response enabled? (yes/no)y"
     read AR
     case $AR in
@@ -315,6 +316,31 @@ ConfigureServer()
         *)
             ACTIVERESPONSE="yes"
             echo "   - Active response enabled."
+            echo ""
+            echo "   - By default, we can enable the host-deny and the "
+            echo "     and the iptables-drop responses. The first one "
+            echo "     will add a host to the /etc/hosts.deny and the "
+            echo "     second one will block the host on iptables (linux"
+            echo "     only). "
+            echo "   - They can be used to stop SSHD brute force scans, "
+            echo "     portscans and some other forms of attacks. You can "
+            echo "     also add them to block on snort events (for example)."
+            echo ""
+            echo "   - Do you want to enable the host-deny response?(yes/no)y"
+            read HD
+            case $HD in
+                n|N|no|No|NO)
+                    echo "     - host-deny disabled"
+                    ;;
+                *)    
+                    echo "     - host-deny enabled (local) for levels >= 8 "
+                    HOSTDENY="yes"
+                    ;;
+            esac
+            echo ""
+            echo "   - For more options and information about active response,"
+            echo "     go to our website in the documentation session."
+            echo ""
             ;;
     esac                
     
@@ -393,6 +419,15 @@ ConfigureServer()
         echo "  <executable>iptables-drop.sh</executable>" >> $NEWCONFIG
         echo "  <expect>srcip</expect>" >> $NEWCONFIG
         echo "</command>" >> $NEWCONFIG
+        
+        if [ "X$HOSTDENY" = "Xyes" ]; then
+            echo "" >> $NEWCONFIG
+            echo "<active-response>" >> $NEWCONFIG
+            echo "  <command>host-deny</command>" >> $NEWCONFIG
+            echo "  <location>local</location>" >> $NEWCONFIG
+            echo "  <level>8</level>" >> $NEWCONFIG
+            echo "</active-response>" >> $NEWCONFIG
+        fi    
     else    
         echo "" >> $NEWCONFIG
         echo "<active-response>" >> $NEWCONFIG
