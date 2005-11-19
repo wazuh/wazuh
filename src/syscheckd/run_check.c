@@ -56,7 +56,7 @@ int notify_agent(char *msg)
 {
     if(SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK, SYSCHECK_MQ) < 0)
     {
-        merror("%s: Error sending message to queue",ARGV0);
+        merror(QUEUE_SEND, ARGV0);
 
         /* Trying to send it twice */
         if(SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK, SYSCHECK_MQ) == 0)
