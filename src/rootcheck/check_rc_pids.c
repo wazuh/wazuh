@@ -144,13 +144,17 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
 
         else if(_gsid1 && _kill1 && !_ps0)
         {
-            char op_msg[OS_MAXSTR +1];
-            snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
+            /* checking if the pid is a thread (not showing on ps */
+            if(!check_rc_readproc((int)i))
+            {
+                char op_msg[OS_MAXSTR +1];
+                snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
                              "ps. Possible trojaned version installed.",
                              (int)i);
            
-            notify_rk(ALERT_ROOTKIT_FOUND, op_msg); 
-            (*_errors)++;
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg); 
+                (*_errors)++;
+            }
         }
     }
 }

@@ -88,6 +88,9 @@ void check_rc_sys(char *basedir);
 
 void check_rc_pids();
 
+/* Verifies if "pid" is in the proc directory */
+int check_rc_readproc(int pid); 
+
 void check_rc_ports();
 
 void check_rc_if();
