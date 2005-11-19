@@ -79,17 +79,18 @@ void *AR_Forward(void *arg)
 
 
             /***  Extracting the agent ip (NULL if local) ***/
-            location = index(location, '>');
-            if(!location)
+            tmp_str = index(location, '>');
+            if(!tmp_str)
             {
                 /* It is a local message from
                  * the AS. Not generated externally.
                  */
-                
+                location = NULL;
             }
             else
             {
-                location++;
+                tmp_str--;
+                *tmp_str = '\0';
             }
 
 
