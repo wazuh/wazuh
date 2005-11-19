@@ -122,7 +122,7 @@ void *AR_Forward(void *arg)
             
             
             /*** Creating the new message ***/
-            snprintf(msg_to_send, OS_MAXSTR, "%s%s %s", 
+            snprintf(msg_to_send, OS_MAXSTR, "%s%s%s", 
                                              CONTROL_HEADER,
                                              EXECD_HEADER,
                                              tmp_str);
