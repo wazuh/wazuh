@@ -302,6 +302,10 @@ void OS_ReadMSG(int m_queue)
     /* Starting the active response queues */
     if(Config.ar == 1)
     {
+        /* Waiting the ARQ to settle .. */
+        sleep(3);
+
+        
         if(Config.remote_ar)
         {
             if((arq = StartMQ(ARQUEUE, WRITE)) < 0)

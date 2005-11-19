@@ -51,6 +51,10 @@
 #define DATA_ERROR	"os_sendmail(1706): DATA not accepted by server"
 #define END_DATA_ERROR	"os_sendmail(1707): End of DATA not accepted by server"
 
+#define MAIL_DEBUG_FLAG     0
+#define MAIL_DEBUG(x,y,z) if(MAIL_DEBUG_FLAG) merror(x,y,z)
+
+
 /* OS_Sendmail v0.1: 2005/03/18
  */
 int OS_Sendmail(MailConfig *mail)
@@ -73,6 +77,7 @@ int OS_Sendmail(MailConfig *mail)
     if(socket < 0)
         return(socket);
 
+
     /* Receiving the banner */
     msg = OS_RecvTCP(socket, OS_MAXSTR);
     if((msg == NULL)||(!OS_Match(VALIDBANNER, msg)))
@@ -82,7 +87,9 @@ int OS_Sendmail(MailConfig *mail)
         close(socket);
         return(OS_INVALID);	
     }
+    MAIL_DEBUG("DEBUG: Received banner: '%s' %s", msg, "");
     free(msg);
+
 
     /* Sending HELO message */
     OS_SendTCP(socket,HELOMSG);
@@ -94,6 +101,7 @@ int OS_Sendmail(MailConfig *mail)
         close(socket);
         return(OS_INVALID);	
     }
+    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", HELOMSG, msg);
     free(msg);	
 
 
@@ -109,7 +117,9 @@ int OS_Sendmail(MailConfig *mail)
         close(socket);
         return(OS_INVALID);	
     }
+    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
     free(msg);	
+
 
     /* Building "RCPT TO" msg */
     while(1)
@@ -135,6 +145,7 @@ int OS_Sendmail(MailConfig *mail)
             close(socket);
             return(OS_INVALID);	
         }
+        MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
         free(msg);
     }
 
@@ -149,6 +160,7 @@ int OS_Sendmail(MailConfig *mail)
         close(socket);
         return(OS_INVALID);	
     }
+    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", DATAMSG, msg);
     free(msg);
 
 
