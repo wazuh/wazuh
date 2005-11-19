@@ -13,6 +13,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
 #include <stdio.h>
 #include <unistd.h>
@@ -118,7 +119,7 @@ int main(int argc, char **argv)
 /* OS_Run: Read the queue and send the appropriate alerts */
 void OS_Run(int q)
 {
-    int i;
+    int i, childcount = 0;
     char buffer[OS_MAXSTR + 1];
     char *tmp_msg = NULL;
     char *name;
@@ -137,6 +138,24 @@ void OS_Run(int q)
     /* Receiving loop */
     while(1)
     {
+        
+        /* Cleaning up any child .. */
+        while (childcount)
+        {
+            int wp;
+            wp = waitpid((pid_t) -1, NULL, WNOHANG);
+            if (wp < 0)
+                merror(WAITPID_ERROR, ARGV0);
+
+            /* if = 0, we still need to wait for the child process */
+            else if (wp == 0)
+                break;
+            else
+                childcount--;
+        }
+
+        
+        /* Waiting for messages */
         if(recv(q, buffer, OS_MAXSTR, 0) == -1)
         {
             merror(QUEUE_ERROR, ARGV0, EXECQUEUEPATH);
@@ -145,7 +164,7 @@ void OS_Run(int q)
 
         merror("received: %s\n", buffer);
 
-        
+
         /* Getting application name */
         name = buffer;
 
@@ -157,8 +176,8 @@ void OS_Run(int q)
         }
         *tmp_msg = '\0';
         tmp_msg++;
-       
-        
+
+
         /* Getting the command to execute (valid name) */
         command = GetCommandbyName(name);
         if(!command)
@@ -179,6 +198,8 @@ void OS_Run(int q)
         while(i < MAX_ARGS)
         {
             cmd_args[i] = tmp_msg;
+            cmd_args[i+1] = NULL;
+
             tmp_msg = index(tmp_msg, ' ');
             if(!tmp_msg)
             {
@@ -187,13 +208,14 @@ void OS_Run(int q)
             }
             *tmp_msg = '\0';
             tmp_msg++;
-            
+
             i++;
         }
-        
-        
+
+
         /* executing command */
         ExecCmd(cmd_args);        
+        childcount++;
         
         /* Some cleanup */
         while(i > 0)

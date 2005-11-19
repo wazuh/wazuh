@@ -136,9 +136,9 @@ void ExecCmd(char **cmd)
 	pid = fork();
 	if(pid == 0)
     {
-        if(execv(*cmd++, cmd) < 0)
+        if(execv(*cmd, cmd) < 0)
         {
-            merror(EXEC_CMDERROR, ARGV0, *(--cmd), strerror(errno));
+            merror(EXEC_CMDERROR, ARGV0, *cmd, strerror(errno));
             exit(1);
         }
         exit(0);
