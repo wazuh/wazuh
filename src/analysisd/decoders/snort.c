@@ -25,6 +25,9 @@
 #include "headers/mq_op.h"
 
 
+char *snort_tag = "snort";
+
+
 /* Special decoder for snort
  * We are not using the default rendering
  * to make it simple (and less resource intensive)
@@ -108,6 +111,10 @@ int DecodeSnort(Eventinfo *lf, char c)
     }
     
     free(ret); 
+
+    /* Setting the log tag */
+    lf->log_tag = snort_tag;
+    
 
     /* Snort FTS */
     lf->fts = strdup("name,id,srcip");

@@ -85,6 +85,7 @@
 #define ARQ_ERROR       "%s(1301): Unable to connect to active response queue."
 #define AR_INV_LOC      "%s(1302): Invalid active response location: '%s'."
 #define AR_INV_CMD      "%s(1303): Invalid command '%s' in the active response."
+#define AR_DEF_AGENT    "%s(1304): No agent defined for response."
 
 
 #define EXECD_INV_MSG   "%s(1310): Invalid active response (execd) message '%s'."

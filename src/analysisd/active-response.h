@@ -25,7 +25,8 @@ typedef struct _ar_command
 typedef struct _ar
 {
     char *command;
-    char *location;
+    char location;
+    char *agent_id;
     char *rules_id;
     char *rules_group;
     char *level;
@@ -35,6 +36,7 @@ typedef struct _ar
 
 
 #include "list_op.h"
+
 OSList *ar_commands;
 OSList *active_responses;
 

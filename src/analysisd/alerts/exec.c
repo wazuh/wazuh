@@ -66,9 +66,14 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
         }
     }
     
-    
-    /* active response on the server */         
-    if(ar->location[0] == AS_ONLY)
+     
+    /* active response on the server. 
+     * The response must be here, if the ar->location is set to AS
+     * or the ar->location is set to local (REMOTE_AGENT) and the
+     * event location is from here.
+     */         
+    if( (ar->location == AS_ONLY) ||
+      ((ar->location == REMOTE_AGENT) && (index(lf->location, '>') == NULL)) )
     {
         if(!Config.local_ar)
             return;
@@ -89,9 +94,10 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     else if(Config.remote_ar)
     {
         snprintf(exec_msg, OS_MAXSTR,
-                "%s %s %s %s %s",
+                "%s %c %s %s %s %s",
                 lf->location,
                 ar->location,
+                ar->agent_id,
                 ar->command,
                 lf->user,
                 ip);

@@ -267,7 +267,6 @@ void OS_ReadMSG(int m_queue)
     int today = 0;
     int thishour = 0;
 
-    int mt_now = 0;
     
     /* Null to global currently pointers */
     currently_lf = NULL;
@@ -371,7 +370,6 @@ void OS_ReadMSG(int m_queue)
             /* Default values for the log info */
             Zero_Eventinfo(lf);
 
-            merror("msg received is: %s",msg);
 
             /* Clean the msg appropriately */
             if(OS_CleanMSG(msg,lf) < 0)
@@ -459,20 +457,45 @@ void OS_ReadMSG(int m_queue)
                 if(Snort_FTS(lf) == 1)
                 {
                     lf->level = Config.fts;
-                    
+
                     if(Config.logbylevel <= Config.fts)
                         OS_Log(lf);
                     if(Config.mailbylevel <= Config.fts)
                         OS_Createmail(&mailq,lf);
-                    
-                    lf->level = -1;
-                    lf->comment = NULL;
+
+                    /* Active response for snort */
+                    if(Config.snort_ar)
+                    {
+                        active_response **snort_ar;
+
+                        snort_ar = Config.snort_ar;
+
+                        merror("Snort ar entering");
+
+                        while(*snort_ar)
+                        {
+                            if((*snort_ar)->ar_cmd->expect & SRCIP)
+                            {
+                                merror("srcip -> %s", lf->srcip);
+                                if(lf->srcip)
+                                {
+                                    merror("exec");
+                                    OS_Exec(&execdq, &arq, lf, *snort_ar);
+                                }
+                            }
+
+                            snort_ar++;
+                        }
+                    }
+
+                    OS_AddEvent(lf);    
+
                 }
 
-                /* dont need to process snort packet further */
+                /* dont need to process snort packets any further */
                 goto CLMEM;
-            }
-            
+
+            } 
             
             /* FTS for others */
             else if((Config.fts != 0) && (FTS(lf) == 1))
@@ -517,13 +540,7 @@ void OS_ReadMSG(int m_queue)
                     continue;
                 }
 
-                /* Checking ignore time */ 
-                if(currently_rule->ignore_time && 
-                        (currently_rule->time_ignored == 0))
-                {
-                    currently_rule->time_ignored = lf->time;
-                    mt_now = 1;
-                }
+                
                 
                 /* Rule fired (if reached here) */
                 currently_rule->firedtimes++;
@@ -534,16 +551,26 @@ void OS_ReadMSG(int m_queue)
                     continue;
                 
                 
-                /* Checking if rule is supposed to be ignored */
-                if(currently_rule->time_ignored)
+                /* Checking ignore time */ 
+                if(currently_rule->ignore_time)
                 {
-                    if(mt_now)
-                        mt_now = 0;
-                    else if((lf->time - currently_rule->time_ignored) < 
-                            currently_rule->ignore_time)
+                    if(currently_rule->time_ignored == 0)
+                    {
+                        currently_rule->time_ignored = lf->time;
+                    }
+                    /* If the currently time - the time the rule was ignore
+                     * is less than the time it should be ignored,
+                     * leave (do not alert again).
+                     */
+                    else if((lf->time - currently_rule->time_ignored) 
+                             < currently_rule->ignore_time)
+                    {
                         break;
+                    }
                     else
+                    {
                         currently_rule->time_ignored = 0;
+                    }
                 }
                 
                 
@@ -608,7 +635,9 @@ void OS_ReadMSG(int m_queue)
                 if(currently_rule->ar)
                 {
                     int do_ar;
-                    active_response **rule_ar = currently_rule->ar;
+                    active_response **rule_ar;
+                    
+                    rule_ar = currently_rule->ar;
 
                     merror("ar entering");
                     

@@ -48,6 +48,7 @@ void *AR_Forward(void *arg)
     char *msg = NULL;
     char *location = NULL;
     char *ar_location = NULL;
+    char *ar_agent_id = NULL;
     char *tmp_str = NULL;
 
 
@@ -104,6 +105,18 @@ void *AR_Forward(void *arg)
             tmp_str++;
 
 
+            /*** Extracting the agent id */
+            ar_agent_id = tmp_str;
+            tmp_str = index(tmp_str, ' ');
+            if(!tmp_str)
+            {
+                merror(EXECD_INV_MSG, ARGV0, msg);
+                goto cleanup;
+            }
+            *tmp_str = '\0';
+            tmp_str++;
+            
+            
             /*** Creating the new message ***/
             snprintf(msg_to_send, OS_MAXSTR, "%s%s %s", 
                                              CONTROL_HEADER,
@@ -138,11 +151,11 @@ void *AR_Forward(void *arg)
             {
                 ar_location++;
 
-                agent_id = IsAllowedIP(&keys, ar_location);
+                agent_id = IsAllowedID(&keys, ar_agent_id);
                 
                 if(agent_id < 0)
                 {
-                    merror(AR_NOAGENT_ERROR, ARGV0, ar_location);
+                    merror(AR_NOAGENT_ERROR, ARGV0, ar_agent_id);
                     goto cleanup;
                 }
             }

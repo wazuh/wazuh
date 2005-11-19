@@ -282,6 +282,24 @@ int IsAllowedIP(keystruct *keys, char *srcip)
 
 
 
+/* IsAllowedID v0.1: 2005/11/19 */
+int IsAllowedID(keystruct *keys, char *id)
+{
+    int i = 0;
+
+    if(id == NULL)
+        return(-1);
+   
+    for(i = 0; i < keys->keysize; i++)
+    {
+        if(strcmp(keys->ids[i],id) == 0)
+            return(i);
+    }
+    return(-1);
+}
+
+
+
 /* CheckSum v0.1: 2005/02/15 
  * Verify the checksum of the message.
  * Returns NULL on error or the message on success.

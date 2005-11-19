@@ -49,6 +49,7 @@ int AS_GetActiveResponses(char * config_file)
     
     char *xml_ar_command = "command";
     char *xml_ar_location = "location";
+    char *xml_ar_agent_id = "agent_id";
     char *xml_ar_rules_id = "rules_id";
     char *xml_ar_rules_group = "rules_group";
     char *xml_ar_level = "level";
@@ -84,6 +85,7 @@ int AS_GetActiveResponses(char * config_file)
     /* Searching for the commands */ 
     while(node[i])
     {
+        char *tmp_location;
         XML_NODE elements = NULL;
         active_response *tmp_ar;
 
@@ -115,12 +117,14 @@ int AS_GetActiveResponses(char * config_file)
         
         /* Initializing variables */
         tmp_ar->command = NULL;
-        tmp_ar->location = NULL;
+        tmp_ar->location = '\0';
+        tmp_ar->agent_id = NULL;
         tmp_ar->rules_id = NULL;
         tmp_ar->rules_group = NULL;
         tmp_ar->level = NULL;
         tmp_ar->ar_cmd = NULL;
         
+        tmp_location = NULL;
         
         while(elements[j])
         {
@@ -133,7 +137,11 @@ int AS_GetActiveResponses(char * config_file)
             }
             else if(strcmp(elements[j]->element, xml_ar_location) == 0)    
             {
-                tmp_ar->location = strdup(elements[j]->content);
+                tmp_location = strdup(elements[j]->content);
+            }
+            else if(strcmp(elements[j]->element, xml_ar_agent_id) == 0)
+            {
+                tmp_ar->agent_id = strdup(elements[j]->content);
             }
             else if(strcmp(elements[j]->element, xml_ar_rules_id) == 0)
             {
@@ -161,70 +169,54 @@ int AS_GetActiveResponses(char * config_file)
         
         OS_ClearNode(elements);
 
-        if(!tmp_ar->command || !tmp_ar->location)
+        if(!tmp_ar->command || !tmp_location)
         {
             merror(AR_MISS, ARGV0);
             OS_ClearXML(&xml);
             return(-1);
         }
      
-        if(OS_Regex("^AS|^analysis", tmp_ar->location))
+        if(OS_Regex("AS|analysis", tmp_location))
         {
-            free(tmp_ar->location);
+            tmp_ar->location = AS_ONLY;
+        }
+        
+        else if(OS_Regex("local", tmp_location))
+        {
 
-            tmp_ar->location = calloc(2, sizeof(char));
-            if(!tmp_ar->location)
+            tmp_ar->location = REMOTE_AGENT;
+
+        }
+        
+        else if(OS_Regex("defined-agent", tmp_location))
+        {
+            if(!tmp_ar->agent_id)
             {
-                ErrorExit(MEM_ERROR);
+                ErrorExit(AR_DEF_AGENT);
             }
             
-            tmp_ar->location[0] = AS_ONLY;
-            tmp_ar->location[1] = '\0';
+            tmp_ar->location = SPECIFIC_AGENT;
+            
+            /* TODO: verify that the agent id is valid */
         }
-        else if(OS_Regex("^local", tmp_ar->location))
+        else if(OS_Regex("all", tmp_location))
         {
-            free(tmp_ar->location);
-
-            tmp_ar->location = calloc(2, sizeof(char));
-            if(!tmp_ar->location)
-            {
-                ErrorExit(MEM_ERROR);
-            }
-
-            tmp_ar->location[0] = REMOTE_AGENT;
-            tmp_ar->location[1] = '\0';
-
-        }
-        else if(OS_Regex("^agent:", tmp_ar->location))
-        {
-            tmp_ar->location += strlen("agent:");
-
-            tmp_ar->location[0] = SPECIFIC_AGENT;
-
-            /* verify if the agent name of IP is valid */
-        }
-        else if(OS_Regex("^all", tmp_ar->location))
-        {
-            free(tmp_ar->location);
-
-            tmp_ar->location = calloc(2, sizeof(char));
-            if(!tmp_ar->location)
-            {
-                ErrorExit(MEM_ERROR);
-            }
-
-            tmp_ar->location[0] = ALL_AGENTS;
-            tmp_ar->location[1] = '\0';
+            tmp_ar->location = ALL_AGENTS;
         }
         
         else
         {
-            merror(AR_INV_LOC, ARGV0, tmp_ar->location);
+            merror(AR_INV_LOC, ARGV0, tmp_location);
             OS_ClearXML(&xml);
             return(-1);
         }
          
-         
+        
+        /* cleaning tmp_location */ 
+        free(tmp_location);
+        tmp_location = NULL;
+        
+        
         /* Checking if command name is valid */
         {
             OSListNode *my_commands_node;
@@ -259,12 +251,19 @@ int AS_GetActiveResponses(char * config_file)
             OS_ClearXML(&xml);
             return(-1);
         }
-        
-        if(tmp_ar->location[0] == AS_ONLY)
+       
+
+        /* Settin the configs to start the right queues */ 
+        if(tmp_ar->location == AS_ONLY)
         {
             Config.local_ar = 1;
         }
-        else if(tmp_ar->location[0] == ALL_AGENTS)
+        else if(tmp_ar->location == ALL_AGENTS)
+        {
+            Config.local_ar = 1;
+            Config.remote_ar = 1;
+        }
+        else if(tmp_ar->location == REMOTE_AGENT)
         {
             Config.local_ar = 1;
             Config.remote_ar = 1;

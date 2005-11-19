@@ -34,6 +34,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
 int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
                                   int id);
 int IsAllowedIP(keystruct *keys, char *srcip);
+int IsAllowedID(keystruct *keys, char *id);
 
 #endif
 

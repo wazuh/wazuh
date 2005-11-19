@@ -347,8 +347,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
     
     /* Clearing the memory */
-    /* We can't clear pieces[1] amd pieces[2]. lf
-     * is pointing to it.
+    /* We can't clear pieces[1] and pieces[2].
      */
      
     free(pieces[0]);

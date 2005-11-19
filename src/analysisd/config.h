@@ -15,6 +15,7 @@
 
 #define _CONFIG__H
 
+#include "active-response.h"
 
 /* Configuration structure */
 typedef struct __Config
@@ -36,6 +37,8 @@ typedef struct __Config
 
     char **syscheck_ignore;
     char **ar_ignore;
+    
+    active_response **snort_ar;
     int syscheck_threshold;
 }_Config;
 

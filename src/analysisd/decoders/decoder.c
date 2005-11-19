@@ -45,7 +45,6 @@ void DecodeEvent(Eventinfo *lf)
     if(!node)
         return;
   
-    merror("decoder");
     
     do 
     {
