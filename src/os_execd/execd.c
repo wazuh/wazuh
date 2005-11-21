@@ -126,6 +126,8 @@ void OS_Run(int q)
     char *command;
     char *cmd_args[MAX_ARGS +2];
 
+    OSList *timeout_list;
+    
     memset(buffer, '\0', OS_MAXSTR +1);
     
     /* Initializing the cmd arguments */
@@ -133,7 +135,13 @@ void OS_Run(int q)
     {
         cmd_args[i] = NULL;
     }
-    
+   
+    /* Creating list for timeout */
+   timeout_list = OSList_Create(); 
+   if(!timeout_list)
+   {
+       ErrorExit("%s: Error creating timeout list", ARGV0);
+   }
     
     /* Receiving loop */
     while(1)
@@ -191,7 +199,9 @@ void OS_Run(int q)
             }
         }
         cmd_args[0] = command; 
-
+        strncpy(timeout_call[0], command, 255);
+        strncpy(timeout_call[1], REMOVE_ENTRY, 255);
+        
 
         /* Getting the arguments */
         i = 1;
@@ -209,12 +219,21 @@ void OS_Run(int q)
             *tmp_msg = '\0';
             tmp_msg++;
 
+            strncpy(timeout_call[i], cmd_args[i], 255);
+
             i++;
         }
 
 
         /* executing command */
-        ExecCmd(cmd_args);        
+        ExecCmd(cmd_args);
+
+        /* Adding command to the timeout list */
+        if(!OSList_AddData(timeout_list, timeout_call))
+        {
+            merror("%s: Error adding command to the timeout list", ARGV0);
+        }
+        
         childcount++;
         
         /* Some cleanup */
