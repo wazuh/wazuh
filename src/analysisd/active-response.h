@@ -17,6 +17,7 @@
 typedef struct _ar_command
 {
     int expect;
+    int timeout_allowed;
     char *name;
     char *executable;
 }ar_command;
@@ -24,6 +25,8 @@ typedef struct _ar_command
 
 typedef struct _ar
 {
+    int timeout;
+    char *name;
     char *command;
     char location;
     char *agent_id;

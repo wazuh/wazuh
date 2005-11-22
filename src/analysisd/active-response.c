@@ -43,6 +43,7 @@ int AS_GetActiveResponses(char * config_file)
     OS_XML xml;
     XML_NODE node = NULL;
 
+    FILE *fp;
     int i = 0;
     int j = 0;
     int snort_sz = 1;
@@ -53,6 +54,7 @@ int AS_GetActiveResponses(char * config_file)
     char *xml_ar_rules_id = "rules_id";
     char *xml_ar_rules_group = "rules_group";
     char *xml_ar_level = "level";
+    char *xml_ar_timeout = "timeout";
 
 
     /* Reading the XML */       
@@ -81,7 +83,16 @@ int AS_GetActiveResponses(char * config_file)
         return(-1);    
     }
 
+    
+    /* Openning shared ar file */
+    fp = fopen(DEFAULTARPATH, "w");
+    if(!fp)
+    {
+        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
+        return(-1);
+    }
 
+    
     /* Searching for the commands */ 
     while(node[i])
     {
@@ -116,8 +127,12 @@ int AS_GetActiveResponses(char * config_file)
         }
         
         /* Initializing variables */
+        tmp_ar->name = NULL;
         tmp_ar->command = NULL;
         tmp_ar->location = '\0';
+
+        tmp_ar->timeout = 0;
+        
         tmp_ar->agent_id = NULL;
         tmp_ar->rules_id = NULL;
         tmp_ar->rules_group = NULL;
@@ -154,6 +169,10 @@ int AS_GetActiveResponses(char * config_file)
             else if(strcmp(elements[j]->element, xml_ar_level) == 0)
             {
                 tmp_ar->level = strdup(elements[j]->content);
+            }
+            else if(strcmp(elements[j]->element, xml_ar_timeout) == 0)
+            {
+                tmp_ar->timeout = atoi(elements[j]->content);
             }
             else
             {
@@ -192,12 +211,12 @@ int AS_GetActiveResponses(char * config_file)
         {
             if(!tmp_ar->agent_id)
             {
-                ErrorExit(AR_DEF_AGENT);
+                merror(AR_DEF_AGENT);
+                return(-1);
             }
             
             tmp_ar->location = SPECIFIC_AGENT;
             
-            /* TODO: verify that the agent id is valid */
         }
         else if(OS_Regex("all", tmp_location))
         {
@@ -243,6 +262,15 @@ int AS_GetActiveResponses(char * config_file)
                 return(-1);
             }
         }
+       
+        /* Checking if timeout is allowed */
+        if(tmp_ar->timeout && !tmp_ar->ar_cmd->timeout_allowed)
+        {
+            merror("%s: Timeout not allowed for command: '%s'", 
+                                                          ARGV0, 
+                                                          tmp_ar->ar_cmd->name);        
+            return(-1);
+        }
         
         /* If snort active response, add to the Snort ar */
         if(tmp_ar->rules_group && OS_Regex("snort", tmp_ar->rules_group))
@@ -269,7 +297,22 @@ int AS_GetActiveResponses(char * config_file)
         }
        
 
+        /* Setting a unique active response name */
+        tmp_ar->name = calloc(OS_MAXSTR +1, sizeof(char));
+        if(!tmp_ar->name)
+        {
+            ErrorExit(MEM_ERROR, ARGV0);
+        }
+        snprintf(tmp_ar->name, OS_MAXSTR, "%s%d", tmp_ar->ar_cmd->name,
+                                                  tmp_ar->timeout);  
+        
+        
+        /* Adding to shared file */
+        fprintf(fp, "%s - %s - %d\n", tmp_ar->name,
+                                      tmp_ar->ar_cmd->executable,
+                                      tmp_ar->timeout);
 
+        
         /* Settin the configs to start the right queues */ 
         if(tmp_ar->location == AS_ONLY)
         {
@@ -299,7 +342,11 @@ int AS_GetActiveResponses(char * config_file)
     OS_ClearNode(node);
     OS_ClearXML(&xml);
 
-
+    
+    /* Closing shared file for active response */
+    fclose(fp);
+    
+    
     /* Done over here */
     return(0);
 }
@@ -312,7 +359,6 @@ int AS_GetActiveResponseCommands(char * config_file)
     OS_XML xml;
     XML_NODE node = NULL;
 
-    FILE *fp;
     int i = 0;
 
     char *tmp_str = NULL;
@@ -320,19 +366,12 @@ int AS_GetActiveResponseCommands(char * config_file)
     char *command_name = "name";
     char *command_expect = "expect";
     char *command_executable = "executable";
-
-    /* Openning shared ar file */
-    fp = fopen(DEFAULTARPATH, "w");
-    if(!fp)
-    {
-        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
-        return(-1);
-    }
+    char *timeout_allowed = "timeout_allowed";
+    
     
     /* Reading the XML */       
     if(OS_ReadXML(config_file, &xml) < 0)
     {
-        fclose(fp);
         merror(XML_ERROR, ARGV0, xml.err);
         return(-1);	
     }
@@ -341,7 +380,6 @@ int AS_GetActiveResponseCommands(char * config_file)
     /* Applying any variable found */
     if(OS_ApplyVariables(&xml) != 0)
     {
-        fclose(fp);
         merror(XML_ERROR_VAR, ARGV0);
         OS_ClearXML(&xml);
         return(-1);
@@ -352,7 +390,6 @@ int AS_GetActiveResponseCommands(char * config_file)
     node = OS_GetElementsbyNode(&xml,NULL);
     if(!node)
     {
-        fclose(fp);
         merror(CONFIG_ERROR, ARGV0);
         OS_ClearXML(&xml);
         return(-1);    
@@ -393,6 +430,7 @@ int AS_GetActiveResponseCommands(char * config_file)
         tmp_command->name = NULL; 
         tmp_command->expect= 0;
         tmp_command->executable = NULL; 
+        tmp_command->timeout_allowed = 0;
         
         while(elements[j])
         {
@@ -411,12 +449,18 @@ int AS_GetActiveResponseCommands(char * config_file)
             {
                 tmp_command->executable = strdup(elements[j]->content);
             }
+            else if(strcmp(elements[j]->element, timeout_allowed) == 0)
+            {
+                if(elements[j]->content[0] == 'y')
+                {
+                    tmp_command->timeout_allowed = 1;
+                }
+            }
             else
             {
                 merror(XML_INVALID, ARGV0, elements[j]->element, 
                                            node[i]->element);
                 OS_ClearXML(&xml);
-                fclose(fp);
                 return(-1);
             }
             
@@ -431,7 +475,6 @@ int AS_GetActiveResponseCommands(char * config_file)
         {
             merror(AR_CMD_MISS, ARGV0);
             OS_ClearXML(&xml);
-            fclose(fp);
             return(-1);
         }
        
@@ -450,13 +493,9 @@ int AS_GetActiveResponseCommands(char * config_file)
         {
             merror(LIST_ADD_ERROR, ARGV0);
             OS_ClearXML(&xml);
-            fclose(fp);
             return(-1);
         }
         
-        /* Adding to shared file */
-        fprintf(fp, "%s - %s\n", tmp_command->name,
-                                 tmp_command->executable);
         i++;
     } 
 
@@ -466,7 +505,6 @@ int AS_GetActiveResponseCommands(char * config_file)
 
 
     /* Done over here */
-    fclose(fp);
     return(0);
 }
 
