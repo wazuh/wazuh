@@ -28,10 +28,12 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/utsname.h>
+#include <fcntl.h>
 
 #include "headers/file_op.h"
 #include "headers/defs.h"
@@ -153,7 +155,7 @@ void goDaemon()
     {
         exit(0);
     }
-    
+
     /* becoming session leader */
     if(setsid() < 0)
     {
@@ -178,6 +180,13 @@ void goDaemon()
     fclose(stdout);
     fclose(stderr);
 
+
+    /* Openining stdin, stdout and stderr to dev null */
+    open("/dev/null", O_RDONLY);
+    open("/dev/null", O_RDWR);
+    open("/dev/null", O_RDWR);
+
+    
     return;
 }
 

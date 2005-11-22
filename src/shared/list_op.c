@@ -85,8 +85,9 @@ void OSList_DeleteCurrentlyNode(OSList *list)
 {
     OSListNode *prev;
     OSListNode *next;
+    
     if(list->cur_node == NULL)
-        return(NULL);
+        return;
     
     prev = list->cur_node->prev;
     next = list->cur_node->next;
