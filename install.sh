@@ -412,6 +412,7 @@ ConfigureServer()
         echo "  <name>host-deny</name>" >> $NEWCONFIG
         echo "  <executable>host-deny.sh</executable>" >> $NEWCONFIG
         echo "  <expect>srcip</expect>" >> $NEWCONFIG
+	echo "  <timeout_allowed>yes</timeout_allowed>" >> $NEWCONFIG
         echo "</command>" >> $NEWCONFIG
         
         echo "" >> $NEWCONFIG
@@ -419,6 +420,7 @@ ConfigureServer()
         echo "  <name>iptables-drop</name>" >> $NEWCONFIG
         echo "  <executable>iptables-drop.sh</executable>" >> $NEWCONFIG
         echo "  <expect>srcip</expect>" >> $NEWCONFIG
+	echo "  <timeout_allowed>yes</timeout_allowed>" >> $NEWCONFIG
         echo "</command>" >> $NEWCONFIG
         
         if [ "X$HOSTDENY" = "Xyes" ]; then
@@ -427,6 +429,7 @@ ConfigureServer()
             echo "  <command>host-deny</command>" >> $NEWCONFIG
             echo "  <location>local</location>" >> $NEWCONFIG
             echo "  <level>8</level>" >> $NEWCONFIG
+            echo "  <timeout>600</timeout>" >> $NEWCONFIG		
             echo "</active-response>" >> $NEWCONFIG
         fi    
     else    
