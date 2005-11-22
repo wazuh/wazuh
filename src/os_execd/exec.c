@@ -24,13 +24,14 @@
 
 char exec_names[MAX_AR +1][OS_FLSIZE +1];
 char exec_cmd[MAX_AR +1][OS_FLSIZE +1];
+int  exec_timeout[MAX_AR +1];
 int  exec_size = 0;
 
 
 /** int ReadExecConfig() v0.1: 
  * Reads the shared exec config.
  * Returns 1 on success or 0 on failure. 
- * Format of the file is 'name - command'
+ * Format of the file is 'name - command - timeout'
  */
 int ReadExecConfig()
 {
@@ -43,6 +44,7 @@ int ReadExecConfig()
     {
         exec_names[i][0] = '\0';
         exec_cmd[i][0] = '\0';
+        exec_timeout[i] = 0;
         exec_size = 0;
     }
     
@@ -57,10 +59,10 @@ int ReadExecConfig()
     /* Reading config */
     while(fgets(buffer, OS_MAXSTR, fp) != NULL)
     {
-        char *name;
+        char *str_pt;
         char *tmp_str;
 
-        name = buffer;
+        str_pt = buffer;
 
         /* Cleaning up the buffer */
         tmp_str = index(buffer, ' ');
@@ -72,6 +74,8 @@ int ReadExecConfig()
         *tmp_str = '\0';
         tmp_str++;
 
+        
+        /* Searching for ' ' and - */
         if(*tmp_str == '-')
         {
             tmp_str+=2;
@@ -82,20 +86,49 @@ int ReadExecConfig()
             continue;
         }
         
+        
         /* Setting the name */
-        strncpy(exec_names[exec_size], name, OS_FLSIZE);
+        strncpy(exec_names[exec_size], str_pt, OS_FLSIZE);
         exec_names[exec_size][OS_FLSIZE] = '\0';
 
         
-        /* Name now used as command name */
-        name = tmp_str;
+        str_pt = tmp_str;
 
+        tmp_str = index(tmp_str, ' ');
+        if(!tmp_str)
+        {
+            merror(EXEC_INV_CONF, ARGV0, DEFAULTARPATH);
+            continue;
+        }
+        *tmp_str = '\0';
+
+        
+        /* Writting the full command path */
+        snprintf(exec_cmd[exec_size], OS_FLSIZE, "%s/%s", AR_BINDIRPATH, str_pt);
+
+        
+        /* Searching for ' ' and - */
+        tmp_str++;
+        if(*tmp_str == '-')
+        {
+            tmp_str+=2;
+        }
+        else
+        {
+            merror(EXEC_INV_CONF, ARGV0, DEFAULTARPATH);
+            continue;
+        }
+        
+       
+        str_pt = tmp_str; 
         tmp_str = index(tmp_str, '\n');
         if(tmp_str)
             *tmp_str = '\0';
 
-        snprintf(exec_cmd[exec_size], OS_FLSIZE, "%s/%s", AR_BINDIRPATH, name);
-
+        
+        /* Getting the exec timeout */
+        exec_timeout[exec_size] = atoi(str_pt);
+        
         exec_size++;
     }
 
@@ -104,18 +137,23 @@ int ReadExecConfig()
 
 
 
-/** char *GetCommandbyName(char *name) v0.1
+/** char *GetCommandbyName(char *name, int *timeout) v0.2
  * Returns a pointer to the command name (full path)
  * Returns NULL if name cannot be found
+ * If timeout is not NULL, write the timeout for that
+ * command to it.
  */
-char *GetCommandbyName(char *name)
+char *GetCommandbyName(char *name, int *timeout)
 {
     int i = 0;
 
     for(;i < exec_size; i++)
     {
         if(strcmp(name, exec_names[i]) == 0)
+        {
+            *timeout = exec_timeout[i];
             return(exec_cmd[i]);
+        }
     }
 
     return(NULL);

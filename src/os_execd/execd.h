@@ -12,17 +12,38 @@
 
 #ifndef _EXECD_H
 
+#ifndef ARGV0
+#define ARGV0 "ossec-execd"
+#endif
+
+
+/* Add/delete arguments for the commands */
+#define ADD_ENTRY       "add"
+#define DELETE_ENTRY    "delete"
+
+
 /* Maximum number of active responses active */
 #define MAX_AR      64
 
+
 /* Maximum number of command arguments */
-#define MAX_ARGS    32
+#define MAX_ARGS    16 
+
+
+/* Execd select timeout -- in seconds */
+#define EXECD_TIMEOUT   90
+
 
 
 /* Function prototypes */
+void ExecdStart(int queue);
+
 int ReadExecConfig();
-char *GetCommandbyName(char *name);
+
+char *GetCommandbyName(char *name, int *timeout);
+
 void ExecCmd(char **cmd);
+
 
 
 #define _EXECD_H
