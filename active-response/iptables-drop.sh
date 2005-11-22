@@ -7,8 +7,9 @@
 
 UNAME=`uname`
 IPTABLES="/sbin/iptables"
-USER=$1
-IP=$2
+ACTION=$1
+USER=$2
+IP=$3
 
 # We should only run on linux
 if [ "X${UNAME}" != "XLinux" ]; then
@@ -26,5 +27,21 @@ if [ "x${IP}" = "x" ]; then
    exit 1;
 fi
 
-${IPTABLES} -I INPUT -s ${IP} -j DROP
-exit 0;
+
+# Blocking IP
+if [ "x${ACTION}" = "xadd" ]; then
+   ${IPTABLES} -I INPUT -s ${IP} -j DROP
+   exit 0;
+
+# Removing IP block
+elif [ "x${ACTION}" = "xdelete" ]; then
+   ${IPTABLES} -D INPUT -s ${IP} -j DROP
+   exit 0;
+
+# Invalid action
+else
+   echo "$0: invalid action: ${ACTION}"
+fi
+       
+
+exit 1;
