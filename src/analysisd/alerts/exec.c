@@ -80,7 +80,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
             
         snprintf(exec_msg, OS_MAXSTR,
                 "%s %s %s",
-                ar->command,
+                ar->name,
                 lf->user,
                 ip);
 
@@ -98,7 +98,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
                 lf->location,
                 ar->location,
                 ar->agent_id,
-                ar->command,
+                ar->name,
                 lf->user,
                 ip);
         
