@@ -7,6 +7,7 @@ Active response design
     <name>test</name>
     <expect>srcip, username</expect>
     <executable>exec1.sh</executable>
+    <timeout_allowed>yes</timeout_allowed>
   </command>
 
   <command>
@@ -24,7 +25,7 @@ Active response design
   
   Once you have binded the command names to the executables,
   a configuration will be generated ( on run-time only) at
-  /var/ossec/etc/shared/exec-commands.conf .
+  /var/ossec/etc/shared/ar.conf .
   This configuration will be shared with all agents.
   
   
@@ -35,7 +36,7 @@ Active response design
   - On the AS (analysis server).
   - On the agent that generated the event.
   - On a specific agent.
-  - Everywhere (danger)
+  - Everywhere 
   
   * Note that if you want to execute a command on a device that
     does not support the installation of the agent (like on a PIX
@@ -50,6 +51,7 @@ Active response design
     <rules-id>400,401,402</rules-id>
     <rules-group>attack,xyz</rules-group>
     <level>3</level>
+    <timeout>600</timeout>
   </active-response>  
 
   The command must be a command name specified on the "exec" area.
@@ -58,7 +60,6 @@ Active response design
                       local or local-agent (to run on the agent that
                                             generated the event)
                       agent:ip             (to run on a specific agent)
-                      agent:name           (to run on a speficic agent)  
                       all or everywhere    (no explanation necessary)
   The rules-id is a list (comma separated) of rules to alert.
   The rules-group is a list of group of rules (see rules config).
