@@ -1,3 +1,9 @@
+OSSEC HIDS 0.5
+Copyright (c) 2004,2005 Daniel B. Cid   <daniel.cid@gmail.com>
+                                        <dcid@ossec.net>
+
+
+
 How do the server manager the agents.
 
 -The client will open port 1514 (by default) and listen for
