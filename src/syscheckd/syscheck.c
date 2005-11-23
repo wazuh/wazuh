@@ -163,11 +163,8 @@ int main(int argc, char **argv)
     /* Connect to the queue if configured to do so */
     if(syscheck.notify == QUEUE)
     {
-        
-        #ifdef DEBUG
-        verbose("%s: Starting queue ...",ARGV0);
-        #endif
-        
+        sleep(3);
+
         /* Starting the queue. */
         if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         {   
