@@ -1,4 +1,10 @@
-Active response design
+OSSEC HIDS 0.5
+Copyright (c) 2004,2005 Daniel B. Cid   <daniel.cid@gmail.com>
+                                        <dcid@ossec.net>
+
+
+
+Active response configuration.
 
 - On the OSSEC configuration file (ossec.conf) you specify the
   allowed responses and the command to execute:

@@ -1,3 +1,8 @@
+OSSEC HIDS 0.5
+Copyright (c) 2004,2005 Daniel B. Cid   <daniel.cid@gmail.com>
+                                        <dcid@ossec.net>
+                                        
+
 How the active response works internally:
 
 - Read active-respose-doc.txt for details on configuration

@@ -1,4 +1,93 @@
 Daniel B. Cid <daniel.cid@gmail.com>
+v0.5(2005/11/28):
+                   Added support for the active response. Fixed the way
+                   the agents and the servers communicate, improving the
+                   speed and the security. Addition of many rules and
+                   decoders. Multiple bug fixes, improvements, etc.. 
+                   BUGS
+                   doc/README.config
+                   etc/decoder.xml
+                   etc/ossec-server.conf
+                   etc/ossec.conf
+                   install.sh
+                   src/Config.Make
+                   src/InstallAgent.sh
+                   src/InstallServer.sh
+                   src/VERSION
+                   src/addagent/addagent.c
+                   src/addagent/manage_agents.c
+                   src/analysisd/Makefile
+                   src/analysisd/alerts/exec.c
+                   src/analysisd/alerts/exec.h
+                   src/analysisd/alerts/mail.c
+                   src/analysisd/analysisd.c
+                   src/analysisd/cleanevent.c
+                   src/analysisd/config.c
+                   src/analysisd/config.h
+                   src/analysisd/decoders/decode-xml.c
+                   src/analysisd/decoders/decoder.c
+                   src/analysisd/decoders/decoder.h
+                   src/analysisd/decoders/plugins_list.c
+                   src/analysisd/decoders/snort.c
+                   src/analysisd/eventinfo.h
+                   src/analysisd/rules.c
+                   src/analysisd/rules.h
+                   src/client-agent/Makefile
+                   src/client-agent/VERSION
+                   src/client-agent/agentd.c
+                   src/client-agent/agentd.h
+                   src/client-agent/config.c
+                   src/error_messages/error_messages.h
+                   src/headers/debug_op.h
+                   src/headers/defs.h
+                   src/headers/file_op.h
+                   src/headers/sec.h
+                   src/init/ossec-client
+                   src/init/ossec-server
+                   src/logcollector/Makefile
+                   src/logcollector/config.c
+                   src/logcollector/logcollector.c
+                   src/logcollector/logcollector.h
+                   src/logcollector/read_syslog.c
+                   src/os_crypto/blowfish/bf_op.c
+                   src/os_crypto/blowfish/bf_op.h
+                   src/os_crypto/shared/sec.c
+                   src/os_execd/Makefile
+                   src/os_execd/exec.c
+                   src/os_execd/execd.c
+                   src/os_execd/execd.h
+                   src/os_maild/config.c
+                   src/os_maild/maild.c
+                   src/os_maild/os_maild_client.c
+                   src/os_maild/sendmail.c
+                   src/os_net/os_net.c
+                   src/os_net/os_net.h
+                   src/os_xml/os_xml_variables.c
+                   src/remoted/Makefile
+                   src/remoted/config.c
+                   src/remoted/manager.c
+                   src/remoted/remoted.c
+                   src/remoted/remoted.h
+                   src/rootcheck/check_rc_files.c
+                   src/rootcheck/check_rc_pids.c
+                   src/rootcheck/check_rc_ports.c
+                   src/rootcheck/check_rc_sys.c
+                   src/rootcheck/config.c
+                   src/rootcheck/db/rootkit_files.txt
+                   src/rootcheck/os_string.c
+                   src/rootcheck/rootcheck.c
+                   src/rootcheck/rootcheck.h
+                   src/rootcheck/run_rk_check.c
+                   src/shared/debug_op.c
+                   src/shared/file_op.c
+                   src/shared/mq_op.c
+                   src/shared/sig_op.c
+                   src/syscheckd/config.c
+                   src/syscheckd/run_check.c
+                   src/syscheckd/syscheck.c
+
+
+Daniel B. Cid <daniel.cid@gmail.com>
 v0.4 (2005/10/25):
                    Added support for the rootkit detection on the
                    agents. Added hability of "file sharing" between
