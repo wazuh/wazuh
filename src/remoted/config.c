@@ -69,7 +69,9 @@ int RemotedConfig(char *cfgfile, remoted *logr)
     /* Return 0, if not configured to run xml_remote */
     if(!(rentries = OS_RootElementExist(&xml, xml_remote)))
     {
+        #ifndef LOCAL
         merror("%s: No configuration entry. Exiting... ",ARGV0);
+        #endif
         OS_ClearXML(&xml);
         return(0);
     }	
