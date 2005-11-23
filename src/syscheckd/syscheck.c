@@ -137,16 +137,14 @@ int main(int argc, char **argv)
     else
     {
         /* setting db directory */
-        syscheck.db = calloc(strlen(syscheck.workdir)+
-                strlen(SYSCHECK_DB) + 2,
-                sizeof(char));
+        syscheck.db = (char *)calloc(1024, sizeof(char));
 
         if(syscheck.db == NULL)
         {
             ErrorExit(MEM_ERROR,ARGV0);
         }
 
-        sprintf(syscheck.db,"%s%s",syscheck.workdir,SYSCHECK_DB);
+        snprintf(syscheck.db, 1024, "%s%s",syscheck.workdir,SYSCHECK_DB);
     }
 
     

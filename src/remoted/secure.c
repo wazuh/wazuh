@@ -125,9 +125,6 @@ void HandleSecure(int position)
             /* We need to save the peerinfo if it is a control msg */
             memcpy(&keys.peer_info[agentid], &peer_info, peer_size);
 
-            merror("control message, starting manager: %s\n", 
-                    inet_ntoa(keys.peer_info[agentid].sin_addr));
-            
             save_controlmsg(agentid, tmp_msg);
         }
 
