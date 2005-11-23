@@ -89,6 +89,8 @@ chmod -R 750 ${DIR}/stats
 # For the logging user
 chown -R ${USER}:${GROUP} ${DIR}/logs
 chmod -R 750 ${DIR}/logs
+touch ${DIR}/logs/ossec.log
+chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
 
 # For the rules directory
 cp -pr ../etc/rules/* ${DIR}/rules/
