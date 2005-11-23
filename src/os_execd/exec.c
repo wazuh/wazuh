@@ -168,7 +168,6 @@ void ExecCmd(char **cmd)
 {
 	pid_t pid;
 
-    merror("execing: %s", *cmd);    
 	
 	/* Forking and leaving it running */
 	pid = fork();
