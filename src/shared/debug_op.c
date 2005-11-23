@@ -57,14 +57,12 @@ void _log(const char * msg,va_list args)
     if(chroot_flag == 1)
     {
         fp = fopen(LOGFILE, "a");
-        chmod(LOGFILE, S_IRUSR | S_IWUSR| S_IWGRP | S_IRGRP | S_IROTH);
     }
     else
     {
         char _logfile[256];
         snprintf(_logfile, 256, "%s%s", DEFAULTDIR, LOGFILE);
         fp = fopen(_logfile, "a");
-        chmod(_logfile, S_IRUSR | S_IWUSR| S_IWGRP | S_IRGRP | S_IROTH);
     }
 
     if(fp)
