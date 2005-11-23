@@ -228,11 +228,6 @@ int main(int argc, char **argv)
     debug1(PRIVSEP_MSG,ARGV0,dir,user);
 
 
-    /* Setting the queue */
-    if((m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
-        ErrorExit(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
-
-
     /* Signal manipulation	*/
     StartSIG(ARGV0);
 
@@ -247,6 +242,11 @@ int main(int argc, char **argv)
         ErrorExit(PID_ERROR,ARGV0);
 
 
+    /* Setting the queue */
+    if((m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
+        ErrorExit(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
+
+    
     /* Going to main loop */	
     OS_ReadMSG(m_queue);
 

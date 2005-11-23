@@ -150,6 +150,18 @@ int main(int argc, char **argv)
     }
 
     
+    /* Going on daemon mode */
+    if(syscheck.daemon)
+    {
+
+        /* Setting daemon flag */
+        nowDaemon();
+
+        /* Entering in daemon mode now */
+        goDaemon();
+    }
+    
+    
     /* Connect to the queue if configured to do so */
     if(syscheck.notify == QUEUE)
     {
@@ -217,19 +229,12 @@ int main(int argc, char **argv)
     }
     
 
-    /* Forking */
+
+    /* Going on daemon mode */
     if(syscheck.daemon)
     {
-        debug1("%s: Starting new process..", ARGV0);
 
-
-        /* Setting daemon flag */
-        nowDaemon();
-
-        /* Entering in daemon mode now */
-        goDaemon();
-
-        /* Create pid */
+        /* Creating pid */
         if(CreatePID(ARGV0, getpid()) < 0)
             merror(PID_ERROR,ARGV0);
 

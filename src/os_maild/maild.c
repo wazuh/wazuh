@@ -121,10 +121,6 @@ int main(int argc, char **argv)
     debug1(PRIVSEP_MSG,ARGV0,dir,user);
 
 
-    /* Starting queue (mail queue) */
-    if((m_queue = StartMQ(MAILQUEUE,READ)) < 0)
-        ErrorExit(QUEUE_ERROR,ARGV0,MAILQUEUE);
-
 
     /* Signal manipulation */
     StartSIG(ARGV0);
@@ -139,7 +135,12 @@ int main(int argc, char **argv)
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
 
-        
+    
+     /* Starting queue (mail queue) */
+    if((m_queue = StartMQ(MAILQUEUE,READ)) < 0)
+        ErrorExit(QUEUE_ERROR,ARGV0,MAILQUEUE);
+    
+
     /* the real daemon now */	
     OS_Run(m_queue,&mail);
     exit(0);

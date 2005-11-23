@@ -89,10 +89,6 @@ int main(int argc, char **argv)
     }
 
 
-    /* Starting the queue. */
-    if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-        ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
-
 
     /* Starting signal handler */
     StartSIG(ARGV0);	
@@ -107,7 +103,12 @@ int main(int argc, char **argv)
     if(CreatePID(ARGV0, getpid()) < 0)
         merror(PID_ERROR, ARGV0);
 
+    
+    /* Starting the queue. */
+    if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+        ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
 
+    
     /* Main loop */        
     LogCollectorStart();
     
