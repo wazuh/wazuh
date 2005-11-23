@@ -142,6 +142,7 @@ char *getuname()
  */
 void goDaemon()
 {
+    int fd;
     pid_t pid;
 
     pid = fork();
@@ -175,17 +176,33 @@ void goDaemon()
         exit(0);
     }
 
+
+    /* Dup stdin, stdout and stderr to dev/null */
+    if((fd = open("/dev/null", O_RDWR)) >= 0)
+    {
+        dup2(fd, 0);
+        dup2(fd, 1);
+        dup2(fd, 2);
+    }
+
+
+    /* Going to / */
+    chdir("/");
+
+    
     /* Closing stdin, stdout and stderr */
+    /*
     fclose(stdin);
     fclose(stdout);
     fclose(stderr);
-
+    */
 
     /* Openining stdin, stdout and stderr to dev null */
+    /*
     open("/dev/null", O_RDONLY);
     open("/dev/null", O_RDWR);
     open("/dev/null", O_RDWR);
-
+    */
     
     return;
 }

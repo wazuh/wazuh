@@ -101,11 +101,16 @@ int main(int argc, char **argv)
     if(MailConf(cfg, &mail) < 0)
         ErrorExit(CONFIG_ERROR,ARGV0);
 
+    /* Going on daemon mode */
+    nowDaemon();
+    goDaemon();
 
+    
     /* Privilege separation */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
+    
     /* chrooting */
     if(Privsep_Chroot(dir) < 0)
         ErrorExit(CHROOT_ERROR,ARGV0,dir);
@@ -113,6 +118,7 @@ int main(int argc, char **argv)
     nowChroot();
 
 
+    
     /* Changing user */        
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0,user);
@@ -125,10 +131,6 @@ int main(int argc, char **argv)
     /* Signal manipulation */
     StartSIG(ARGV0);
 
-    
-    /* Going on daemon mode */
-    nowDaemon();
-    goDaemon();
     
 
     /* Creating PID files */

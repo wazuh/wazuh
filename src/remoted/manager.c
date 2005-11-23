@@ -325,7 +325,7 @@ int send_file(int agentid, char *name, char *sum)
                          logr.peer_size) < 0) 
     {
         fclose(fp);
-        merror(SEND_ERROR,ARGV0);
+        merror(SEND_ERROR,ARGV0, "agent");
         return(-1);
     }
     
@@ -380,7 +380,7 @@ int send_file(int agentid, char *name, char *sum)
                          (struct sockaddr *)&keys.peer_info[agentid],
                          logr.peer_size) < 0) 
     {
-        merror(SEND_ERROR,ARGV0);
+        merror(SEND_ERROR,ARGV0, "agent");
         fclose(fp);
         return(-1);
     }
@@ -408,7 +408,6 @@ void *wait_for_msgs(void *none)
     /* should never leave this loop */
     while(1)
     {
-        merror("wait_for_msgs: waiting for msg");
 
         /* Every 60 minutes, re read the files.
          * If something change, notify all agents 
@@ -443,7 +442,6 @@ void *wait_for_msgs(void *none)
             return(NULL);
         }
 
-        merror("wait_for_msgs: msg received..");
 
 
         /* Checking if any other agent is ready */
@@ -505,7 +503,6 @@ void read_controlmsg(int agentid, char *msg)
     
     
     /* Get uname */
-    merror("msg: %s!!", msg);
 
     uname = msg;
     msg = index(msg,'\n');
@@ -623,7 +620,6 @@ void read_controlmsg(int agentid, char *msg)
 void save_controlmsg(int agentid, char *msg)
 {
     /* Notify other thread that something changed */
-    merror("saving msg: %s", msg);
     equal_last_msg(agentid, msg);
     
     return;

@@ -58,21 +58,12 @@ int notify_agent(char *msg)
     {
         merror(QUEUE_SEND, ARGV0);
 
-        /* Trying to send it twice */
-        if(SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK, SYSCHECK_MQ) == 0)
-        {
-            return(0);
-        }
-
-        /* Closing before trying to open again */
-        close(syscheck.queue);
-        
         if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         {
             ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
         }
 
-        /* If we reach here, we can send it again */
+        /* If we reach here, we can try to send it again */
         SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK, SYSCHECK_MQ);
         
     }
@@ -91,6 +82,11 @@ void start_daemon()
     #ifdef DEBUG
     verbose("%s: Starting daemon ..",ARGV0);
     #endif
+   
+    
+    /* some time to settle */
+    sleep(20);
+
     
     /* Send the integrity database to the agent */
     if(syscheck.notify == QUEUE)
@@ -123,8 +119,8 @@ void start_daemon()
                  */
                 file_count++;
 
-                /* sleep 3 every 30 messages */
-                if(file_count >= 30)
+                /* sleep 3 every 20 messages */
+                if(file_count >= 20)
                 {
                     sleep(3);
                     file_count = 0;
@@ -154,7 +150,7 @@ void start_daemon()
          
         count++;
         
-        sleep(12);        
+        sleep(10);        
     }
 }
 

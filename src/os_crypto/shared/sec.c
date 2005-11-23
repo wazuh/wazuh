@@ -390,13 +390,8 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
             f_msg++;
             return(f_msg);
         }
-        else
-        {
-            merror("msg null");
-        }
     }
     
-    merror("time: %d, count: %d", msg_time, msg_count);
     merror(ENCTIME_ERROR, ARGV0, keys->ips[id]);
     return(NULL);
 }
@@ -449,8 +444,6 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
         global_time = curr_time;
     }
    
-    merror("generating message with: time %d and count %d ",
-                            curr_time, global_count);
 
     snprintf(_tmpmsg, OS_MAXSTR,"%010u:%04hu:%05hu%0*d:%s", 
                             curr_time, global_count, 

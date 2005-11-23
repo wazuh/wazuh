@@ -95,11 +95,7 @@ int main(int argc, char **argv)
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
-
-    /* Starting queue (exec queue) */
-    if((m_queue = StartMQ(EXECQUEUEPATH,READ)) < 0)
-        ErrorExit(QUEUE_ERROR,ARGV0,EXECQUEUEPATH);
-
+    
 
     /* Signal manipulation */
     StartSIG(ARGV0);
@@ -113,6 +109,12 @@ int main(int argc, char **argv)
     /* Creating the PID file */
     if(CreatePID(ARGV0, getpid()) < 0)
         merror(PID_ERROR,ARGV0);
+
+    
+    
+    /* Starting queue (exec queue) */
+    if((m_queue = StartMQ(EXECQUEUEPATH,READ)) < 0)
+        ErrorExit(QUEUE_ERROR,ARGV0,EXECQUEUEPATH);
 
 
     /* The real daemon Now */	

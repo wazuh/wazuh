@@ -44,7 +44,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                             break;
                 
                         /* If not used, it will be cleaned latter */        
-                        sprintf(_lxml->err,"XML_ERR: Memory error");
+                        snprintf(_lxml->err, 128, "XML_ERR: Memory error");
                             
                         var = (char**)realloc(var,(s+1)*sizeof(char *));
                         if(var == NULL)
@@ -65,7 +65,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                     }
                     else
                     {
-                        sprintf(_lxml->err,"XML_ERR: Only \"name\" is allowed"
+                        snprintf(_lxml->err, 128, "XML_ERR: Only \"name\" is allowed"
                                            " as an attribute for a variable");
                         return(-1);
                     }
@@ -74,12 +74,12 @@ int OS_ApplyVariables(OS_XML *_lxml)
             
             if((_found_var == 0)||(!_lxml->ct[i]))
             {
-                sprintf(_lxml->err,"XML_ERR: Bad formed variable. No value "
+                snprintf(_lxml->err,128, "XML_ERR: Bad formed variable. No value "
                                    "set");
                 return(-1);
             }
             
-            sprintf(_lxml->err,"XML_ERR: Memory error");
+            snprintf(_lxml->err,128, "XML_ERR: Memory error");
         
             value = (char**)realloc(value,(s+1)*sizeof(char *));
             if (value == NULL)
@@ -121,7 +121,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
             
             if(p == NULL)
             {
-                sprintf(_lxml->err,"XML_ERR: Memory error");
+                snprintf(_lxml->err, 128, "XML_ERR: Memory error");
                 return(-1);
             }
             
@@ -162,7 +162,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                                     
                                     if(_lxml->ct[i] == NULL)
                                     {
-                                        sprintf(_lxml->err,"XML_ERR: Memory "
+                                        snprintf(_lxml->err,128, "XML_ERR: Memory "
                                                         "error");
                                         return(-1);
                                     }

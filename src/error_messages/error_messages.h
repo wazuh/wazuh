@@ -56,7 +56,7 @@
 #define CLIENT_ERROR	"%s(1215): No client configured. Exiting."
 #define CONNS_ERROR	    "%s(1216): Connection error to %s."
 #define SEC_ERROR	    "%s(1217): Error creating encrypted message."
-#define SEND_ERROR	    "%s(1218): Unable to send message to server."
+#define SEND_ERROR	    "%s(1218): Unable to send message to %s."
 #define RULESLOAD_ERROR	"%s(1219): Unable to access the rules directory."
 #define RULES_ERROR	    "%s(1220): Error loading the rules."
 #define QUEUE_SEND      "%s(1224): Error sending message to queue."

@@ -62,7 +62,6 @@ void *EventForward(void *none)
         if(available_forwarder == 0)
         {
             pthread_cond_wait(&forwarder_cond, &forwarder_mutex);
-            merror("reiceived forwarder");
         }
 
         /* Setting availables to 0 */
@@ -76,7 +75,6 @@ void *EventForward(void *none)
             return(NULL);
         }
 
-        merror("receiving from unix");
 
         while((recv_b = recv(logr->m_queue, msg, OS_MAXSTR, MSG_DONTWAIT)) > 0)
         {
@@ -93,7 +91,7 @@ void *EventForward(void *none)
 
             /* Send _ssize of crypt_msg */
             if(OS_SendUDPbySize(logr->sock, _ssize, crypt_msg) < 0)
-                merror(SEND_ERROR,ARGV0);
+                merror(SEND_ERROR,ARGV0, "server");
 
         }
     }

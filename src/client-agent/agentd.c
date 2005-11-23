@@ -53,10 +53,18 @@ void AgentdStart(char *dir, int uid, int gid)
         port = DEFAULT_SECURE;
     }
 
+    
+    /* Going daemon */
+    pid = getpid();
+    nowDaemon();
+    goDaemon();
+
+    
     /* Setting group ID */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR, ARGV0, gid);
 
+    
     /* chrooting */
     if(Privsep_Chroot(dir) < 0)
         ErrorExit(CHROOT_ERROR, ARGV0, dir);
@@ -78,11 +86,6 @@ void AgentdStart(char *dir, int uid, int gid)
 
     maxfd = logr->m_queue;
     
-
-    /* Going daemon */
-    pid = getpid();
-    nowDaemon();
-    goDaemon();
 
 
     /* Creating PID file */	

@@ -94,8 +94,8 @@ int SendMSG(int queue, char *message, char *locmsg,
 
         
     /* We attempt 5 times to send the message.
-     * After the first error, we wait 0.001 seconds.
-     * After the second error, we wait 0.01 seconds.
+     * After the first error, we wait 0.01 seconds.
+     * After the second error, we wait 0.1 seconds.
      * After the third error, we wait 1 second.
      * After the fourth error, we wait 2 seconds.
      * If we failed again, the message is not going
@@ -104,14 +104,14 @@ int SendMSG(int queue, char *message, char *locmsg,
     if(OS_SendUnix(queue, tmpstr,0) < 0)
     {
         /* Unable to send. Trying again.. */
-        usleep(10000);
+        usleep(100000);
         if(OS_SendUnix(queue, tmpstr,0) < 0)
         {
             /* When the socket is to busy, we may get some
              * error here. Just sleep 0.01 seconds and try
              * again.
              */
-            usleep(100000);
+            usleep(1000000);
             if(OS_SendUnix(queue, tmpstr,0) < 0)
             {
                 sleep(1);

@@ -63,7 +63,6 @@ void *AR_Forward(void *arg)
     {
         if((msg = OS_RecvUnix(arq, OS_MAXSTR)) != NULL)
         {
-            merror("msg: %s",msg);
 
             /* Getting the location */
             location = msg;
@@ -194,7 +193,7 @@ int send_msg(int agentid, char *msg)
                          (struct sockaddr *)&keys.peer_info[agentid],
                          logr.peer_size) < 0) 
     {
-        merror(SEND_ERROR,ARGV0);
+        merror(SEND_ERROR,ARGV0, "agent");
         return(-1);
     }
     

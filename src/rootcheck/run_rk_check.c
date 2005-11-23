@@ -62,11 +62,6 @@ int notify_rk(int rk_type, char *msg)
     {
         merror("%s: Error sending message to queue",ARGV0);
 
-        if(SendMSG(rootcheck.queue,msg,ROOTCHECK,ROOTCHECK,ROOTCHECK_MQ) == 0)
-        {
-            return(0);
-        }
-
         if((rootcheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         {
             ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);

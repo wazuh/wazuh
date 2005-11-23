@@ -173,7 +173,6 @@ void *receiver_thread(void *none)
 
                     if(file[0] == '\0')
                     {
-                        merror("nada file");
                         /* nada */
                     }
 

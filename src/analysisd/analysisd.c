@@ -149,6 +149,7 @@ int main(int argc, char **argv)
     /* Starting daemon */
     debug1(STARTED_MSG,ARGV0);
 
+    
     /*Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
@@ -179,6 +180,11 @@ int main(int argc, char **argv)
     }
 
     
+    /* going on Daemon mode */
+    nowDaemon();
+    goDaemon();
+    
+    
     
     /* Setting the group */	
     if(Privsep_SetGroup(gid) < 0)
@@ -192,21 +198,15 @@ int main(int argc, char **argv)
 
     nowChroot();
 
-
-    /* Setting the user */ 
-    if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR,ARGV0,user);
     
 
     /* Reading decoders */
     ReadDecodeXML(XML_DECODER);
 
-
     
     /* Creating the rules list */
     Rules_OP_CreateRules();
 
-    
     
     /* Reading the rules */
     {
@@ -232,10 +232,11 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);
 
 
-    /* going on Daemon mode */
-    nowDaemon();
-    goDaemon();
-
+    
+    /* Setting the user */ 
+    if(Privsep_SetUser(uid) < 0)
+        ErrorExit(SETUID_ERROR,ARGV0,user);
+    
     
     /* Creating the PID file */
     if(CreatePID(ARGV0, getpid()) < 0)
@@ -474,16 +475,13 @@ void OS_ReadMSG(int m_queue)
 
                         snort_ar = Config.snort_ar;
 
-                        merror("Snort ar entering");
 
                         while(*snort_ar)
                         {
                             if((*snort_ar)->ar_cmd->expect & SRCIP)
                             {
-                                merror("srcip -> %s", lf->srcip);
                                 if(lf->srcip)
                                 {
-                                    merror("exec");
                                     OS_Exec(&execdq, &arq, lf, *snort_ar);
                                 }
                             }
@@ -643,27 +641,23 @@ void OS_ReadMSG(int m_queue)
                     
                     rule_ar = currently_rule->ar;
 
-                    merror("ar entering");
                     
                     while(*rule_ar)
                     {
                         do_ar = 1;
                         if((*rule_ar)->ar_cmd->expect & USERNAME)
                         {
-                            merror("user -> %s", lf->user);
                             if(!lf->user)
                                 do_ar = 0;
                         }
                         if((*rule_ar)->ar_cmd->expect & SRCIP)
                         {
-                            merror("srcip -> %s", lf->srcip);
                             if(!lf->srcip)
                                 do_ar = 0;
                         }
 
                         if(do_ar)
                         {
-                            merror("exec");
                             OS_Exec(&execdq, &arq, lf, *rule_ar);
                         }
 
@@ -723,7 +717,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking if any plugin pre-matched is here */
     if(currently_rule->plugin_decoded)
     {
-        merror("decoded: %s",currently_rule->plugin_decoded);
         
         /* Must have the log tag decoded */
         if(!lf->log_tag)
@@ -732,7 +725,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         if(strcmp(currently_rule->plugin_decoded,
                   lf->log_tag) != 0)
             return(NULL);  
-        merror("OK!");
     }
     
     /* Checking if any word to match exists */

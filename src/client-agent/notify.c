@@ -167,7 +167,7 @@ void run_notify()
     /* Send UDP message */
     if(OS_SendUDPbySize(logr->sock, msg_size, crypt_msg) < 0)
     {
-        merror(SEND_ERROR,ARGV0);
+        merror(SEND_ERROR,ARGV0, "server");
     }
     
     free(uname);
