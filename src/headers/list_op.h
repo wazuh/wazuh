@@ -40,6 +40,7 @@ OSList *OSList_Create();
 OSListNode *OSList_GetFirstNode(OSList *);
 OSListNode *OSList_GetLastNode(OSList *);
 OSListNode *OSList_GetNextNode(OSList *);
+OSListNode *OSList_GetCurrentlyNode(OSList *list);
 
 void OSList_DeleteCurrentlyNode(OSList *list);
 

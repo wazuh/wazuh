@@ -76,6 +76,15 @@ OSListNode *OSList_GetNextNode(OSList *list)
     return(list->cur_node);
 }
   
+  
+/* Get the currently node.
+ * Returns null when no currently node is available
+ */  
+OSListNode *OSList_GetCurrentlyNode(OSList *list)
+{
+    return(list->cur_node);
+}
+
 
 /* Delete currently node from list
  * Pointer goes to the next node available.
@@ -96,8 +105,26 @@ void OSList_DeleteCurrentlyNode(OSList *list)
     /* Setting the previous node of the next one
      * and the next node of the previous one.. :)
      */
-    prev->next = next->prev;
-    
+    if(prev && next)
+    {
+        prev->next = next->prev;
+    }
+    else if(prev)
+    {
+        prev->next = NULL;
+        list->last_node = prev;
+    }
+    else if(next)
+    {
+        next->prev = NULL;
+        list->first_node = next;
+    }
+    else
+    {
+        list->last_node = NULL;
+        list->first_node = NULL;
+    }
+            
     /* Freeing the node memory */
     free(list->cur_node);
 

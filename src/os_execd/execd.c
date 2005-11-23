@@ -239,15 +239,22 @@ void ExecdStart(int q)
 
             list_entry = (timeout_data *)timeout_node->data;
 
+            
             if((curr_time - list_entry->time_of_addition) > 
                     list_entry->time_to_block)
             {
+                
+                ExecCmd(list_entry->command);
+                
+                
                 /* Deletecurruently node already sets the pointer to next */
                 OSList_DeleteCurrentlyNode(timeout_list);
+                timeout_node = OSList_GetCurrentlyNode(timeout_list);
 
-                ExecCmd(list_entry->command);
 
+                /* Cleating the memory */
                 FreeTimeoutEntry(list_entry);
+
 
                 childcount++;
             }
@@ -262,6 +269,7 @@ void ExecdStart(int q)
         /* Setting timeout to EXECD_TIMEOUT */
         socket_timeout.tv_sec = EXECD_TIMEOUT;
         socket_timeout.tv_usec= 0;
+
 
 
         /* Setting FD values */
@@ -282,8 +290,9 @@ void ExecdStart(int q)
             continue;
         }
 
+
         
-        /* Waiting for messages */
+        /* Receiving the message */
         if(recv(q, buffer, OS_MAXSTR, 0) == -1)
         {
             merror(QUEUE_ERROR, ARGV0, EXECQUEUEPATH);
@@ -293,6 +302,7 @@ void ExecdStart(int q)
 
         /* Currently time */
         curr_time = time(0);
+
 
 
         /* Allocating memory for the timeout argument */
@@ -306,6 +316,7 @@ void ExecdStart(int q)
 
 
         merror("received: %s\n", buffer);
+
 
 
 
@@ -323,6 +334,7 @@ void ExecdStart(int q)
 
 
 
+
         /* Getting the command to execute (valid name) */
         command = GetCommandbyName(name, &timeout_value);
         if(!command)
@@ -337,6 +349,7 @@ void ExecdStart(int q)
         }
 
 
+
         /* Adding initial variables to the cmd_arg and to the timeout cmd */
         cmd_args[0] = command; 
         cmd_args[1] = ADD_ENTRY;
@@ -345,6 +358,8 @@ void ExecdStart(int q)
 
         cmd_args[2] = NULL;
         timeout_args[2] = NULL;
+
+
 
 
         /* Getting the arguments */
@@ -357,6 +372,9 @@ void ExecdStart(int q)
             tmp_msg = index(tmp_msg, ' ');
             if(!tmp_msg)
             {
+                timeout_args[i] = strdup(cmd_args[i]);
+                timeout_args[i+1] = NULL;
+                
                 cmd_args[i+1] = NULL;
                 break;
             }
@@ -370,8 +388,10 @@ void ExecdStart(int q)
         }
 
 
+
         /* executing command */
         ExecCmd(cmd_args);
+
 
 
         /* Creating the timeout entry */
@@ -386,12 +406,15 @@ void ExecdStart(int q)
             FreeTimeoutEntry(timeout_entry);
         }        
 
+
         /* Adding command to the timeout list */
         else if(!OSList_AddData(timeout_list, timeout_entry))
         {
-            FreeTimeoutEntry(timeout_entry);
             merror("%s: Error adding command to the timeout list", ARGV0);
+            FreeTimeoutEntry(timeout_entry);
         }
+
+
 
         childcount++;
 
