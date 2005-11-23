@@ -317,9 +317,6 @@ void ExecdStart(int q)
         }
 
 
-        merror("received: %s\n", buffer);
-
-
 
 
         /* Getting application name */
