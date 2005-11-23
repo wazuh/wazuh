@@ -52,7 +52,6 @@ void DecodeEvent(Eventinfo *lf)
         {
             nnode = node->plugin;
            
-            merror("going on prematch:%s", nnode->prematch);
             
             /* If prematch fails, go to the next plugin in the list */
             if(!nnode->prematch || !OS_Regex(nnode->prematch,lf->log))
@@ -61,7 +60,6 @@ void DecodeEvent(Eventinfo *lf)
             lf->log_tag = nnode->name;
 
             child_node = node->child;
-            merror("tag: %s - log: %s",lf->log_tag, lf->log);
 
 
             /* Check if we have any child plugin */
@@ -69,11 +67,9 @@ void DecodeEvent(Eventinfo *lf)
             {
                 nnode = child_node->plugin;
 
-                merror("child found: %s", nnode->prematch);
                 
                 if(nnode->prematch && OS_Regex(nnode->prematch,lf->log))
                 {
-                    merror("regex found");
                     break;
                 }
                 
@@ -84,7 +80,6 @@ void DecodeEvent(Eventinfo *lf)
             if(!nnode)
                 return;
 
-            merror("node not null");
             
             /* Getting the regex */
             if(nnode->regex)
@@ -92,15 +87,12 @@ void DecodeEvent(Eventinfo *lf)
                 int i = 0;
                 char **fields;
                 
-                merror("nnode->regex: %s, lf->log: %s,",nnode->regex,lf->log);
                 fields = OS_RegexStr(nnode->regex,lf->log);
                 if(!fields)
                     return;
 
-                merror("found");
                 while(fields[i])
                 {
-                    merror("order i: %s", nnode->order[i]);
                     if(nnode->order[i])
                     {
                         /* DstUser field */
@@ -166,7 +158,6 @@ void DecodeEvent(Eventinfo *lf)
             return;         
         }
        
-       merror("next!"); 
     }while((node=node->next) != NULL);
 }
     
