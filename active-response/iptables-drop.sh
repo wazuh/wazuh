@@ -19,7 +19,11 @@ fi
 # Checking if iptables is present
 ls ${IPTABLES} >> /dev/null 2>&1
 if [ $? != 0 ]; then
-   exit 0;
+   IPTABLES="/usr/sbin/iptables"
+   ls ${IPTABLES} >> /dev/null 2>&1
+   if [ $? != 0 ]; then
+      exit 0;
+   fi
 fi    
        
 if [ "x${IP}" = "x" ]; then

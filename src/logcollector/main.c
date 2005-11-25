@@ -103,7 +103,12 @@ int main(int argc, char **argv)
     if(CreatePID(ARGV0, getpid()) < 0)
         merror(PID_ERROR, ARGV0);
 
+   
+   
+    /* Waiting 6 seconds for the analysisd/agentd to settle */
+    sleep(6);
     
+     
     /* Starting the queue. */
     if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
