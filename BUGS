@@ -1,3 +1,12 @@
+*1108 (log-analysis)
+ **reporter: Netinho
+ **message: -Some alerts from Snort are not being read correctly.
+            -Excessive number of alerts from iptables
+            -Configuration not clear on how to block an ip from snort.
+ **resolution:            
+ **stats:
+ 
+
 *1107 (rootcheck)
  **reporter: Giannis Vrentzos
  **message: Rootcheck checkports is reporting some false 
