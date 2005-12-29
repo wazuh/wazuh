@@ -26,9 +26,9 @@ typedef struct _RuleInfo
     int sigid;  /* id attribute -- required*/
     int level;  /* level attribute --required */
 
-    int context; /* Not an option */
-    int firedtimes;  /* Not an option */
-    int time_ignored; /* Not a user option */
+    int context; /* Not an user option */
+    int firedtimes;  /* Not an user option */
+    int time_ignored; /* Not an user option */
     int ignore_time;
     
     /* Not an option in the rule */

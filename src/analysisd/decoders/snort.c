@@ -117,7 +117,7 @@ int DecodeSnort(Eventinfo *lf, char c)
     
 
     /* Snort FTS */
-    lf->fts = strdup("name,id,srcip");
+    lf->fts|=FTS_NAME|FTS_ID|FTS_SRCIP;
     lf->comment = strdup("First time Snort rule fired");
     
 

@@ -20,6 +20,7 @@
 /* Global headers */
 #include <sys/types.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "defs.h"
 #include "help.h"
@@ -39,12 +40,20 @@
 
 #include "error_messages/error_messages.h"
 
-
+/* Global portability code */
 #ifdef SOLARIS
 typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
 #endif /* SOLARIS */
 
+/*** Global prototypes ***/
+/*** These functions will exit on error. No need to check return code ***/
+
+/* for calloc: x = calloc(4,sizeof(char)) -> os_calloc(4,sizeof(char),x) */
+#define os_calloc(x,y,z) (z = calloc(x,y))?1:ErrorExit(MEM_ERROR, ARGV0) 
+
+/* for startswith: */
+#define startswith(x,y) (strncmp(x,y,strlen(y)) == 0?1:0)
 
 #endif /* __SHARED_H */
 

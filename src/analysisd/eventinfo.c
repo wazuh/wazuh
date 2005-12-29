@@ -173,7 +173,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->dstuser = NULL;
     lf->id = NULL;
     lf->command = NULL;
-    lf->fts = NULL;
+    lf->fts = 0;
 
     lf->type = 0;        
     lf->level = -1; /* level 0 is valid */

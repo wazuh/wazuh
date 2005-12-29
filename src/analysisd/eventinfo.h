@@ -40,7 +40,7 @@ typedef struct _Eventinfo
     char *id;
     char *command;      /* Command executed */
 
-    char *fts;          /* What is going to the FTS */
+    int fts;          /* What is going to the FTS */
     
     short int type;
     short int level;
@@ -72,15 +72,23 @@ Eventinfo *currently_lf;
 
 
 /** Types of events (plugin usage) **/
+#define UNKNOWN		0   /* Unkown */
+#define SYSLOG		1   /* syslog messages */
+#define SNORT		2   /* Snort alerts */
+#define FIREWALL    3   /* Firewall events */
+#define IDS         4   /* IDS alerts */
+#define SYSCHECK    5   /* syscheck integrity events */
+#define ROOTCHECK   6   /* rootcheck messages */
 
-#define UNKNOWN		1   /* Unkown */
-#define SSH		    2   /* SSH connections */
-#define LOGIN		3   /* Logs from Login */
-#define SNORT		4   /* Snort events */
-#define SUDO        5   /* Sudo usage */
-#define SU          6   /* SU usage */
-#define SYSCHECK    7   /* syscheck integrity events */
-#define ROOTCHECK   8   /* rootcheck messages */
+/* FTS allowed values */
+#define FTS_NAME     0001000
+#define FTS_USER     0002000
+#define FTS_DSTUSER  0004000
+#define FTS_SRCIP    0000100
+#define FTS_DSTIP    0000200
+#define FTS_LOCATION 0000400
+#define FTS_ID       0000010
+
 
 /** Functions for events **/
 

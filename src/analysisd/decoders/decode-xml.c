@@ -22,6 +22,7 @@
 
 #include "shared.h"
 
+#include "eventinfo.h"
 #include "decoder.h"
 
 
@@ -35,7 +36,7 @@ void ReadDecodeXML(char *file)
 {
     
     OS_XML xml;
-    XML_NODE node=NULL;
+    XML_NODE node = NULL;
 
     /* XML variables */ 
     /* These are the available options for the rule configuration */
@@ -46,14 +47,15 @@ void ReadDecodeXML(char *file)
     char *xml_prematch = "prematch";
     char *xml_regex = "regex";
     char *xml_order = "order";
+    char *xml_type = "type";
     char *xml_fts = "fts";
     char *xml_ftscomment = "ftscomment";
     
    
-    /* Allowed Fields */
-    char *(allowed_fields[]) = {"user","dstuser","srcip","dstip","id",
-                                "location", NULL};
-    
+    /* Allowed fields
+     * char *(allowed_fields[]) = {"user","dstuser","srcip","dstip","id",
+     *                           "location", "name", NULL};
+     */
     int i = 0;
     
      
@@ -131,8 +133,9 @@ void ReadDecodeXML(char *file)
         pi->regex = NULL;
         pi->order = NULL;
         pi->prematch = NULL;
-        pi->fts = NULL;
         pi->ftscomment = NULL;
+        pi->fts = 0;
+        pi->type = 0;
         
         if(!pi->name)
         {
@@ -181,43 +184,77 @@ void ReadDecodeXML(char *file)
                     _loadmemory(pi->ftscomment,
                             elements[j]->content);
             }
+            /* Getting the type */
+            else if(strcmp(elements[j]->element, xml_type) == 0)
+            {
+                if(strcmp(elements[j]->content, "firewall") == 0)
+                    pi->type = FIREWALL;
+                else if(strcmp(elements[j]->content, "ids") == 0)
+                    pi->type = IDS;
+                else
+                {
+                    ErrorExit("decode-xml: Invalid decoder type '%s'.",
+                               elements[j]->content);
+                }
+            }
                          
             /* Getting the order */
             else if(strcasecmp(elements[j]->element,xml_order)==0)
             {
-                char **norder;
+                char **norder, **s_norder;
+                int order_int = 0;
+                
                 /* Maximum number is 8 for the order */
-                pi->order = OS_StrBreak(',',elements[j]->content, 8);
+                norder = OS_StrBreak(',',elements[j]->content, 8);
+                s_norder = norder;
+                os_calloc(8, sizeof(void *), pi->order);
 
-                norder = pi->order;
+
+                /* Initializing the function pointers */
+                while(order_int < 8)
+                {
+                    pi->order[order_int] = NULL;
+                    order_int++;
+                }
+                order_int = 0;
+                
 
                 /* Checking the values from the order */
                 while(*norder)
                 {
-                    int f_allowed = 0;
-                    int k = 0;
-                   
-                    while(allowed_fields[k])
+                    if(strstr(*norder, "dstuser") != NULL)
                     {
-                        if(strcmp(*norder,allowed_fields[k]) == 0)
-                        {
-                            /* Location is not acceptable here */
-                            if(strcmp(*norder,"location") != 0)
-                                f_allowed = 1;
-                            break;
-                        }
-                        
-                        k++;
+                        pi->order[order_int] = (void *)DstUser_FP;
                     }
-
-                    if(f_allowed == 0)
+                    else if(strstr(*norder, "user") != NULL)
+                    {
+                        pi->order[order_int] = (void *)User_FP;
+                    }
+                    else if(strstr(*norder, "srcip") != NULL)
+                    {
+                        pi->order[order_int] = (void *)SrcIP_FP;
+                    }
+                    else if(strstr(*norder, "dstip") != NULL)
+                    {
+                        pi->order[order_int] = (void *)DstIP_FP;
+                    }
+                    else if(strstr(*norder, "id") != NULL)
+                    {
+                        pi->order[order_int] = (void *)ID_FP;
+                    }
+                    else
                     {
                         ErrorExit("decode-xml: Wrong field '%s' in the order"
                                   " of decoder '%s'",*norder,pi->name);
                     }
 
+                    free(*norder);
                     norder++;
+
+                    order_int++;
                 }
+
+                free(s_norder);
             }
             
             /* Getting the fts order */
@@ -231,38 +268,46 @@ void ReadDecodeXML(char *file)
                 if(norder == NULL)
                     ErrorExit(MEM_ERROR,ARGV0);
                 
-                pi->fts =
-                    _loadmemory(pi->fts,
-                            elements[j]->content);
                 
                 /* Saving the initial point to free later */
                 s_norder = norder;
+                
                     
                 /* Checking the values from the fts */
                 while(*norder)
                 {
-                    int f_allowed = 0;
-                    int k = 0;
-                   
-                    while(allowed_fields[k])
+                    if(strstr(*norder, "dstuser") != NULL)
                     {
-                        if(strcmp(*norder,allowed_fields[k]) == 0)
-                        {
-                            f_allowed = 1;
-                            break;
-                        }
-                        
-                        k++;
+                        pi->fts|=FTS_DSTUSER;
                     }
-
-                    /* Name is also allowed for the fts */
-                    if(strcmp(*norder,"name") == 0)
-                        f_allowed = 1;
-                        
-                    if(f_allowed == 0)
+                    else if(strstr(*norder, "user") != NULL)
+                    {
+                        pi->fts|=FTS_USER;
+                    }
+                    else if(strstr(*norder, "srcip") != NULL)
+                    {
+                        pi->fts|=FTS_SRCIP;
+                    }
+                    else if(strstr(*norder, "dstip") != NULL)
+                    {
+                        pi->fts|=FTS_DSTIP;
+                    }
+                    else if(strstr(*norder, "id") != NULL)
+                    {
+                        pi->fts|=FTS_ID;
+                    }
+                    else if(strstr(*norder, "location") != NULL)
+                    {
+                        pi->fts|=FTS_LOCATION;
+                    }
+                    else if(strstr(*norder, "name") != NULL)
+                    {
+                        pi->fts|=FTS_NAME;
+                    }
+                    else
                     {
                         ErrorExit("decode-xml: Wrong field '%s' in the fts"
-                                  " decoder '%s'",*norder,pi->name);
+                                  " decoder '%s'",*norder, pi->name);
                     }
 
                     free(*norder);

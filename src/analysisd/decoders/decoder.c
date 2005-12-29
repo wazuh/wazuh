@@ -36,23 +36,23 @@ void DecodeEvent(Eventinfo *lf)
     PluginNode *node;
     PluginNode *child_node;
     PluginInfo *nnode;
-    
+
     node = OS_GetFirstPlugin();
-    
+
     /* Return if no node...
      * This shouldn't happen here anyways
      */
     if(!node)
         return;
-  
-    
+
+
     do 
     {
         if(node->plugin)
         {
             nnode = node->plugin;
-           
-            
+
+
             /* If prematch fails, go to the next plugin in the list */
             if(!nnode->prematch || !OS_Regex(nnode->prematch,lf->log))
                 continue;
@@ -62,31 +62,38 @@ void DecodeEvent(Eventinfo *lf)
             child_node = node->child;
 
 
+            /* Setting the type */
+            if(nnode->type)
+            {
+                lf->type = nnode->type;
+            }
+
+
             /* Check if we have any child plugin */
             while(child_node)
             {
                 nnode = child_node->plugin;
 
-                
+
                 if(nnode->prematch && OS_Regex(nnode->prematch,lf->log))
                 {
                     break;
                 }
-                
+
                 child_node = child_node->next;
                 nnode = NULL;
             }
-           
+
             if(!nnode)
                 return;
 
-            
+
             /* Getting the regex */
             if(nnode->regex)
             {
                 int i = 0;
                 char **fields;
-                
+
                 fields = OS_RegexStr(nnode->regex,lf->log);
                 if(!fields)
                     return;
@@ -95,54 +102,21 @@ void DecodeEvent(Eventinfo *lf)
                 {
                     if(nnode->order[i])
                     {
-                        /* DstUser field */
-                        if(strcmp(nnode->order[i],"dstuser") == 0)
-                        {
-                            lf->dstuser = fields[i];
-                            i++;
-                            continue;
-                        }
-                         /* User field */
-                        else if(strcmp(nnode->order[i],"user") == 0)
-                        {
-                            lf->user = fields[i];
-                            i++;
-                            continue;
-                        }
-                        /* srcip */
-                        else if(strcmp(nnode->order[i],"srcip") == 0)
-                        {
-                            lf->srcip = fields[i];
-                            i++;
-                            continue;
-                        }
-                        /* desip */
-                        else if(strcmp(nnode->order[i],"dstip") == 0)
-                        {
-                            lf->dstip = fields[i];
-                            i++;
-                            continue;
-                        }
-                        /* ID */
-                        else if(strcmp(nnode->order[i],"id") == 0)
-                        {
-                            lf->id = fields[i];
-                            i++;
-                            continue;
-                        }
-                        
-                        /* We do not free any memory used above */
+                        nnode->order[i](lf, fields[i]);
+                        i++;
+                        continue;
                     }
-                    
+
+                    /* We do not free any memory used above */
                     free(fields[i]);
                     i++;
                 }
 
                 free(fields);
-                    
+
             }
-           
-            
+
+
             /* Checking if the FTS is set */
             if(nnode->fts)
             {
@@ -153,13 +127,46 @@ void DecodeEvent(Eventinfo *lf)
                     lf->comment = nnode->ftscomment;
             }
 
-            
+
             /* Matched the pre match */
             return;         
         }
-       
+
     }while((node=node->next) != NULL);
 }
-    
+
+
+/*** Event decoders ****/
+void *DstUser_FP(Eventinfo *lf, char *field)
+{
+    lf->dstuser = field;
+    return(NULL);
+}
+void *User_FP(Eventinfo *lf, char *field)
+{
+    lf->user = field;
+    return(NULL);
+}
+void *SrcIP_FP(Eventinfo *lf, char *field)
+{
+    lf->srcip = field;
+    return(NULL);
+}
+void *DstIP_FP(Eventinfo *lf, char *field)
+{
+    lf->dstip = field;
+    return(NULL);
+}
+void *ID_FP(Eventinfo *lf, char *field)
+{
+    lf->id = field;
+    return(NULL);
+}
+void *None_FP(Eventinfo *lf, char *field)
+{
+    free(field);
+    return(NULL);
+}
+
 
 /* EOF */

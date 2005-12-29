@@ -37,15 +37,11 @@ char *snort_fts_comment = "First time this snort rule was fired";
 int _Internal_FTS(char *queue, Eventinfo *lf)
 {
     FILE *fp;
-    
-    int msgsize = 96;
-    
-    char _line[96];
+    int msgsize;
+    char _line[OS_FLSIZE + 1];
 
-    memset(_line,'\0',96);
+    _line[OS_FLSIZE] = '\0';
 
-    /* Make sure that msgsize is never <= 0 */
-    msgsize-=2;
    
     /* If lf->fts is not set, return */
     if(!lf->fts)
@@ -53,108 +49,15 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
         
          
     /* Assigning the values to the FTS */
-    
-    /* Name (Log_tag) */
-    if(strstr(lf->fts,"name") != NULL)
-    {
-        if((lf->log_tag) && (msgsize > 0))
-        {
-            strncat(_line,lf->log_tag,msgsize);
-            msgsize-=strlen(lf->log_tag)-1;
-           
-            if(msgsize > 0)
-            {
-                strncat(_line," ",msgsize);
-                msgsize-=2;
-            }
-        }
-    }
-    
-    /* User */
-    if(strstr(lf->fts,"user") != NULL)
-    {
-        if((lf->user) && (msgsize > 0))
-        {
-            strncat(_line,lf->user,msgsize);
-            msgsize-=strlen(lf->user)-1;
-
-            if(msgsize > 0)
-            {
-                strncat(_line," ",msgsize);
-                msgsize-=2;
-            }
-        }
-    }
-    /* DstUser */
-    if(strstr(lf->fts,"dstuser") != NULL)
-    {
-        if((lf->dstuser) && (msgsize > 0))
-        {
-            strncat(_line,lf->dstuser,msgsize);
-            msgsize-=strlen(lf->dstuser)-1;
-
-            if(msgsize > 0)
-            {
-                strncat(_line," ",msgsize);
-                msgsize-=2;
-            }
-        }
-    }
-    /* ID */
-    if(strstr(lf->fts,"id") != NULL)
-    {
-        if((lf->id) && (msgsize > 0))
-        {
-            strncat(_line,lf->id,msgsize);
-            msgsize-=strlen(lf->id)-1;
-
-            if(msgsize > 0)
-            {
-                strncat(_line," ",msgsize);
-                msgsize-=2;
-            }
-        }
-    }
-    /* SRCIP */
-    if(strstr(lf->fts,"srcip") != NULL)
-    {
-        if((lf->srcip) && (msgsize > 0))
-        {
-            strncat(_line,lf->srcip,msgsize);
-            msgsize-=strlen(lf->srcip)-1;
-
-            if(msgsize > 0)
-            {
-                strncat(_line," ",msgsize);
-                msgsize-=2;
-            }
-        }
-    }
-    
-    /* DSTIP */
-    if(strstr(lf->fts,"dstip") != NULL)
-    {
-        if((lf->dstip) && (msgsize > 0))
-        {
-            strncat(_line,lf->dstip,msgsize);
-            msgsize-=strlen(lf->dstip)-1;
-
-            if(msgsize > 0)
-            {
-                strncat(_line," ",msgsize);
-                msgsize-=2;
-            }
-        }
-    }
-    /* Location */
-    if(strstr(lf->fts,"location") != NULL)
-    {
-        if((lf->location) && (msgsize > 0))
-        {
-            strncat(_line,lf->location,msgsize);
-            msgsize-=strlen(lf->location)-1;
-        }
-    }
+    snprintf(_line,OS_FLSIZE -1, "%s %s %s %s %s %s %s",
+                                 (lf->fts & FTS_NAME)?lf->log_tag:"",
+                                 (lf->fts & FTS_ID)?lf->id:"",
+                                 (lf->fts & FTS_USER)?lf->user:"",
+                                 (lf->fts & FTS_DSTUSER)?lf->dstuser:"",
+                                 (lf->fts & FTS_SRCIP)?lf->srcip:"",
+                                 (lf->fts & FTS_DSTIP)?lf->dstip:"",
+                                 (lf->fts & FTS_LOCATION)?lf->location:"");
+                                  
 
     /* Getting the msgsize size */
     msgsize = strlen(_line);
@@ -163,12 +66,12 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
     /* If File_Date of char <= is because the file is not present */ 
     if(File_DateofChange(queue) >= 0)
     {
-        char _fline[96];
+        char _fline[OS_FLSIZE +1];
         
-        memset(_fline,'\0', 96);
+        _fline[OS_FLSIZE] = '\0';
 
         
-        fp = fopen(queue,"r");
+        fp = fopen(queue, "r");
         if(!fp)
         {
             merror("int-fts: Unable to open the fts queue for read");
@@ -176,24 +79,23 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
         }
 
         /* Checking this FTS is already present */
-        while(fgets(_fline, 94 , fp) != NULL)
+        while(fgets(_fline, OS_FLSIZE , fp) != NULL)
         {
-            if(strlen(_fline) >= 94)
+            if(strlen(_fline) >= OS_FLSIZE)
             {
                 merror("int-fts: Line overflow. Log problem.");
                 return(-1);
             }
             
-            if(strlen(_fline) != msgsize+1)
+            if(strlen(_fline) != (msgsize + 1))
                 continue;
                 
-            if(strncmp(_fline,_line,msgsize) != 0)
+            if(strncmp(_fline, _line, msgsize) != 0)
                 continue;
 
             fclose(fp);
 
             /* If we match, we can return 0 and keep going */
-            
             return(0);
         }
         
@@ -203,7 +105,7 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
 
     
     /* Rule has not being fired or queue is not present */	
-    fp = fopen(queue,"a");
+    fp = fopen(queue, "a");
     if(!fp)
     {
         merror("int-fts: Unable to open the fts queue to write.");

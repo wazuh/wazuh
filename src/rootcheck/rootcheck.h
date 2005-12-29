@@ -55,7 +55,7 @@ rkconfig rootcheck;
 int is_file(char *file_name);
 
 /* Check if regex is present on the file.
- * Similar to `strings fiile | grep -r regex`
+ * Similar to `strings file | grep -r regex`
  */ 
 int os_string(char *file, char *regex);
 

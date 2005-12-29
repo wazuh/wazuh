@@ -47,7 +47,7 @@ void HandleRemote(int position, int uid)
     
     
     /* Checking if the port is valid */       
-    if((logr.port[position] < 0) | (logr.port[position] > 65535))
+    if((logr.port[position] < 0) || (logr.port[position] > 65535))
     {
         merror(PORT_ERROR, ARGV0, logr.port[position]);
         logr.port[position] = 0;

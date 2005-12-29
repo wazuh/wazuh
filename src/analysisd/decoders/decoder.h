@@ -5,16 +5,21 @@
 #define __DECODER_H
 
 
+/* We need the eventinfo in here */
+#include "eventinfo.h"
+
+
 /* Plugin structure */
 typedef struct
 {
+    int type;
+    int fts;
     char *parent;
     char *name;
     char *regex;
     char *prematch;
-    char *fts;
     char *ftscomment;
-    char **order;
+    void (**order)(Eventinfo *lf, char *field);
 }PluginInfo;
 
 /* List structure */
@@ -33,6 +38,15 @@ typedef struct _PluginNode
 void OS_CreatePluginList();
 void OS_AddPlugin(PluginInfo *pi);
 PluginNode *OS_GetFirstPlugin();
+
+
+/* Interfaces for the event decoders */
+void *DstUser_FP(Eventinfo *lf, char *field);
+void *User_FP(Eventinfo *lf, char *field);
+void *SrcIP_FP(Eventinfo *lf, char *field);
+void *DstIP_FP(Eventinfo *lf, char *field);
+void *ID_FP(Eventinfo *lf, char *field);
+void *None_FP(Eventinfo *lf, char *field);
 
 #endif
 
