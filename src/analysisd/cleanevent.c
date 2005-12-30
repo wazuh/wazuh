@@ -321,7 +321,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
        (pieces[0][0] == SNORT_MQ_FAST))
     {
         /* Beginning of the snort msg */
-        if(startswith(lf->log, "[**] ["))
+        if(OS_StrStartsWith(lf->log, "[**] ["))
             DecodeSnort(lf, pieces[0][0]);
     }
 
@@ -349,7 +349,14 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         DecodeEvent(lf);
     }
 
-    
+    /* Checking for special cases in here */
+    switch(lf->type)
+    {
+        case FIREWALL:
+            DecodeFirewall(lf);
+            break;
+    }
+     
     /* Clearing the memory */
     /* We can't clear pieces[1] and pieces[2].
      */

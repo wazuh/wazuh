@@ -400,7 +400,7 @@ void OS_ReadMSG(int m_queue)
             /* Dont need to go further if syscheck/rootcheck message */
             if((lf->type == SYSCHECK) || (lf->type == ROOTCHECK))
             {
-                /* if level != -1, syscheck event fired */
+                /* if level != -1, syscheck/rootcheck event fired */
                 if(lf->level > 0)
                 {
                     OS_AddEvent(lf);

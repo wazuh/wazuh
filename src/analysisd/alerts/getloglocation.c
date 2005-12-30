@@ -33,6 +33,7 @@
 int __crt_day;
 char __elogfile[OS_FLSIZE+1];
 char __alogfile[OS_FLSIZE+1];
+char __flogfile[OS_FLSIZE+1];
 	
 /* OS_InitLog */    
 void OS_InitLog()
@@ -43,9 +44,11 @@ void OS_InitLog()
     /* alerts and events log file */    
     memset(__alogfile,'\0',OS_FLSIZE +1); 
     memset(__elogfile,'\0',OS_FLSIZE +1); 
+    memset(__flogfile,'\0',OS_FLSIZE +1); 
 
     _eflog = NULL;
     _aflog = NULL;
+    _fflog = NULL;
     
     /* Setting the umask */
     umask(0027);
@@ -59,7 +62,6 @@ int OS_GetLogLocation(Eventinfo *lf)
     /* Checking if the year directory is there.
      * If not, create it. Same for the month directory.
      */
-
     if(__crt_day != lf->day)
     {
         /* For the events */
@@ -98,6 +100,7 @@ int OS_GetLogLocation(Eventinfo *lf)
         
         if(!_eflog)
             merror("%s: Error opening logfile: '%s'",ARGV0,__elogfile);
+       
         
         /* for the alerts logs */
         snprintf(__alogfile,OS_FLSIZE,"%s/%d/", ALERTS, lf->year);
@@ -136,9 +139,50 @@ int OS_GetLogLocation(Eventinfo *lf)
         if(!_aflog)
             merror("%s: Error opening logfile: '%s'",ARGV0,__alogfile);
             
+        
+        /* For the firewall events */
+        snprintf(__flogfile,OS_FLSIZE,"%s/%d/", FWLOGS, lf->year);
+        if(IsDir(__flogfile) == -1)
+            if(mkdir(__flogfile,0770) == -1)
+            {
+                merror(MKDIR_ERROR,ARGV0,__flogfile);
+                return (-1);
+            }
+
+        snprintf(__flogfile,OS_FLSIZE,"%s/%d/%s", FWLOGS, lf->year,lf->mon);
+
+        if(IsDir(__flogfile) == -1)
+            if(mkdir(__flogfile,0770) == -1)
+            {
+                merror(MKDIR_ERROR,ARGV0,__flogfile);
+                return (-1);
+            }
+
+
+        /* Creating the logfile name */
+        snprintf(__flogfile,OS_FLSIZE,"%s/%d/%s/ossec-%s-%02d.log",
+                FWLOGS,
+                lf->year,
+                lf->mon,
+                "firewall",
+                lf->day);
+
+        if(_fflog)
+        {
+            fclose(_fflog);
+        }
+        
+        _fflog = fopen(__flogfile,"a");
+        
+        if(!_fflog)
+            merror("%s: Error opening logfile: '%s'",ARGV0,__flogfile);
+        
+        
+        /* Setting the new day */        
         __crt_day = lf->day;
     }
 
     return(0);
 }
+
 /* EOF */

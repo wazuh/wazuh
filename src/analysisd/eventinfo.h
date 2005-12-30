@@ -23,38 +23,48 @@
 /* Event Information structure */
 typedef struct _Eventinfo
 {
-    char *log_tag;
-    
+    /* Extracted from the event */
     char *log;
     char *location;
     char *hostname;
     char *group;
-    char *comment;
-    char *info;
-    char *last_events[12];  /* Last 12 events can be printed */
 
+    /* A tag for this specific event */
+    char *log_tag;
+
+    /* Extracted from the decoders */
+    short int type;
     char *srcip;
     char *dstip;
+    char *srcport;
+    char *dstport;
+    char *protocol;
+    char *action;
     char *user;
     char *dstuser;
     char *id;
-    char *command;      /* Command executed */
+    char *command;
 
-    int fts;          /* What is going to the FTS */
-    
-    short int type;
+    /* FTS fields */
+    int fts;
+
+    /* Extract when the event fires a rule */
     short int level;
-    
+    short int frequency;
     int sigid;
+    char *comment;
+    char *info;
+    char *last_events[12];  /* Last 12 events can be used */
+
+
+    /* Other internal variables */
+    short int matched;
+    
     int time;
-    int frequency;
-
-
-    char *hour;
-    char *mon;
     int day;
     int year;
-    int matched;    /* if the event has been matched on the past */
+    char *hour;
+    char *mon;
 
 }Eventinfo;
 

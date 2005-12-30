@@ -165,10 +165,14 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->comment = NULL;
     lf->info = NULL;
     lf->last_events[0] = NULL; /* Setting the first event as null */
-    lf->last_events[31] = NULL; /* Setting the last event as null */
+    lf->last_events[11] = NULL; /* Setting the last event as null */
 
     lf->srcip = NULL;
     lf->dstip = NULL;
+    lf->srcport = NULL;
+    lf->dstport = NULL;
+    lf->protocol = NULL;
+    lf->action = NULL;
     lf->user = NULL;
     lf->dstuser = NULL;
     lf->id = NULL;
@@ -214,6 +218,14 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->srcip);
     if(lf->dstip)
         free(lf->dstip);
+    if(lf->srcport)
+        free(lf->srcport);
+    if(lf->dstport)
+        free(lf->dstport);
+    if(lf->protocol)
+        free(lf->protocol);
+    if(lf->action)
+        free(lf->action);            
     if(lf->user)
         free(lf->user);
     if(lf->dstuser)
