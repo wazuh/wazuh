@@ -39,7 +39,6 @@ int OS_Regex(char *pattern, char *str)
             pattern = ++pt;
             count = 0;
             continue;    
-            /*j=i+1;*/            
         }
         pt++;
         count++;

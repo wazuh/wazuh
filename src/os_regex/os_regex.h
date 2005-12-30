@@ -14,6 +14,7 @@
 
 #ifndef __OS_REGEX_H
 #define __OS_REGEX_H
+#include "os_regex_str.h"
 
 /*
  * OS_StrBreak.
@@ -23,17 +24,6 @@
  */
 char **OS_StrBreak(char match, char * str, int size);
 
-/* OS_GetPiece.
- * Get a piece from a string (str), divided by(in the middle of) 
- * initialpattern and finalpattern. 
- * It will return a pointer to  a string. This pointer must be freeed
- * after use.
- * Returns the new string (or NULL in case of error)
- *
- * initialpattern and finalpattern may contain regular expressions.
- * Look at OS_Regex for the available ones.
- */
-char *OS_GetPiece(char *initialpattern, char *finalpattern, char *str);
 char **OS_RegexStr(char *pattern, char *str);
 
 /* OS_WordMatch.

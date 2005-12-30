@@ -34,24 +34,21 @@
 /* uchar */
 typedef unsigned char uchar;
 
-/* Is a number ?
- * 0-9
- * Return 0 if true
- */
+/* _IsD Returns 1 if it is a number */
 #define _IsD(x) ((x >= 48) && (x <= 57))
-#define GetS(x) (x-48)
+
 
 /* Is it a character ?
  * a-z or A-Z or 0-9
- * Return 0 if true
+ * Returns 1 if true
  */
-#define _IsW(x)    ((x >= 48 && x <= 57 )|| \
-		    (x >= 65 && x <= 90 )|| \
-		    (x >= 97 && x <= 122)) 
+#define _IsW(x) ((x >= 48 && x <= 57 )|| \
+		         (x >= 65 && x <= 90 )|| \
+		         (x >= 97 && x <= 122)) 
 
 /* Is it a ' ' (blank)
  * Ascii 32
- * Return 0 if true
+ * Returns 1 if true
  */
 #define _IsS(x)	(x == 32)
 
@@ -68,17 +65,17 @@ typedef unsigned char uchar;
 #define CharCmp(x,y) (x == y)?(1): \
                      (y >= 97 && y <= 112 && x == (y-32))?(1): \
                      (y >= 65 && y <= 90 && x == (y+32))?(1):(0)
-#define Regex(x,y)   (x == 'd' && y >= 48 && y <= 57)?(1):(0)|| \
+#define Regex(x,y)   (x == 'd' && y >= 48 && y <= 57)|| \
                      (x == 'w' && \
                      ((y >= 48 && y <= 57)|| \
                       (y >= 65 && y <= 90)|| \
-                      (y >= 97 && y <= 122)))?(1):(0)|| \
-                     (x == 's' && y == 32)?(1):(0)|| \
-                     (x == 'S' && y != 32)?(1):(0)|| \
-                     (x == '.')?(1):(0)|| \
-                     (x == 'D' && (y < 48 || y > 57))?(1):(0)|| \
+                      (y >= 97 && y <= 122)))|| \
+                     (x == 's' && y == 32)|| \
+                     (x == 'S' && y != 32)|| \
+                     (x == '.')|| \
+                     (x == 'D' && (y < 48 || y > 57))|| \
                      (x == 'W' && (y < 48 || y > 122 || \
-                     (y > 57 && y <65)||(y > 90 && y< 97)))?(1):(0)
+                     (y > 57 && y <65)||(y > 90 && y< 97)))
 
 
 static const uchar charmap[] = {

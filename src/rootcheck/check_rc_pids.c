@@ -169,11 +169,8 @@ void check_rc_pids()
     int _errors = 0;
     
     char ps[OS_MAXSTR +1];
-    pid_t max_pid;
+    pid_t max_pid = MAX_PID;
     
-    /* Default max pid for most systems */
-    max_pid = 32768;
-
 
     /* Checking where ps is */
     strcpy(ps, "/bin/ps");

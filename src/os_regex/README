@@ -56,17 +56,3 @@ Available functions:
 	OS_StrIsNum(char *str)
 		-Returns 0 in case of success
 		-Checks if an string is only composed of 0-9.
-
-	OS_GetPiece(char *initialmatch, char *finalmatch, char *str)
-		-Return a string in case of success.
-		-Returns NULL in error.
-		-This function will break "str"(last arg) in one
-		 piece, delimited by initialmatch and finalmatch.
-		-It supports only "^" and "$".
-		-No regex allowed. 
-	   Examples:
-		OS_GetPiece("test","dc","laltest 123 adcv") -> 
-					retuns: " 123 a"
-		OS_GetPiece("","dc","lala test dc123") ->
-					returns: "lala test "
-

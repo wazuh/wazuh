@@ -173,24 +173,6 @@ char **OS_RegexStr(char *pattern, char *str)
 
 
 
-/* OS_StrIsNum v0.1
- * Checks if a specific string is numeric (like "129544")
- */
-int OS_StrIsNum(char *str)
-{
-    if(str == NULL)
-        return(FALSE);
-        
-    while(*str != '\0')
-    {
-        if(!_IsD(*str))
-            return(FALSE); /* 0 */
-        str++;    
-    }
-
-    return(TRUE);
-}
-
 /* Split a string into multiples pieces, divided by "match".
  * Returns a NULL terminated array or NULL in error.
  */

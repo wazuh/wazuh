@@ -284,10 +284,10 @@ void c_files()
 
  
 
-/* send_file: Sends a file to the agent.
+/* send_file_toagent: Sends a file to the agent.
  * Returns -1 on error
  */
-int send_file(int agentid, char *name, char *sum)
+int send_file_toagent(int agentid, char *name, char *sum)
 {
     int i = 0;
     char file[OS_MAXSTR +1];
@@ -596,7 +596,7 @@ void read_controlmsg(int agentid, char *msg)
                 (f_sum[i]->mark == 0))
         {
             
-            if(send_file(agentid,f_sum[i]->name,f_sum[i]->sum) < 0)
+            if(send_file_toagent(agentid,f_sum[i]->name,f_sum[i]->sum) < 0)
             {
                 merror("%s: Error sending file '%s' to agent.",
                         ARGV0,
