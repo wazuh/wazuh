@@ -7,8 +7,8 @@ NAME=os_regex
 
 include ../Config.Make
 
-SRCS =  os_regex.c os_regex_match.c os_regex_strbreak.c 
-OBJS =  os_regex_match.o os_regex.o os_regex_strbreak.o 
+SRCS =  *.c
+OBJS =  *.o
 
 regex:
 		$(CC) $(CFLAGS) -c $(SRCS) -Wall
