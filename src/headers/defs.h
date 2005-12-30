@@ -30,6 +30,14 @@
 #define IPSIZE      16      /* IP Address size */
 
 
+/* Maximum allowed PID */
+#ifdef SOLARIS
+    #define MAX_PID 29999
+#else
+    #define MAX_PID 32768
+#endif
+
+    
 /* Max limit of 256 agents */
 #define MAX_AGENTS  256
 

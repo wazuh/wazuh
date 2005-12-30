@@ -128,7 +128,7 @@ void DecodeEvent(Eventinfo *lf)
             }
 
 
-            /* Matched the pre match */
+            /* Matched  */
             return;         
         }
 
@@ -155,6 +155,26 @@ void *SrcIP_FP(Eventinfo *lf, char *field)
 void *DstIP_FP(Eventinfo *lf, char *field)
 {
     lf->dstip = field;
+    return(NULL);
+}
+void *SrcPort_FP(Eventinfo *lf, char *field)
+{
+    lf->srcport = field;
+    return(NULL);
+}
+void *DstPort_FP(Eventinfo *lf, char *field)
+{
+    lf->dstport = field;
+    return(NULL);
+}
+void *Protocol_FP(Eventinfo *lf, char *field)
+{
+    lf->protocol = field;
+    return(NULL);
+}
+void *Action_FP(Eventinfo *lf, char *field)
+{
+    lf->action = field;
     return(NULL);
 }
 void *ID_FP(Eventinfo *lf, char *field)

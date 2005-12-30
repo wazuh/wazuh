@@ -45,6 +45,10 @@ void *DstUser_FP(Eventinfo *lf, char *field);
 void *User_FP(Eventinfo *lf, char *field);
 void *SrcIP_FP(Eventinfo *lf, char *field);
 void *DstIP_FP(Eventinfo *lf, char *field);
+void *SrcPort_FP(Eventinfo *lf, char *field);
+void *DstPort_FP(Eventinfo *lf, char *field);
+void *Protocol_FP(Eventinfo *lf, char *field);
+void *Action_FP(Eventinfo *lf, char *field);
 void *ID_FP(Eventinfo *lf, char *field);
 void *None_FP(Eventinfo *lf, char *field);
 

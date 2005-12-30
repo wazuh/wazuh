@@ -52,10 +52,6 @@ void ReadDecodeXML(char *file)
     char *xml_ftscomment = "ftscomment";
     
    
-    /* Allowed fields
-     * char *(allowed_fields[]) = {"user","dstuser","srcip","dstip","id",
-     *                           "location", "name", NULL};
-     */
     int i = 0;
     
      
@@ -237,6 +233,22 @@ void ReadDecodeXML(char *file)
                     else if(strstr(*norder, "dstip") != NULL)
                     {
                         pi->order[order_int] = (void *)DstIP_FP;
+                    }
+                    else if(strstr(*norder, "srcport") != NULL)
+                    {
+                        pi->order[order_int] = (void *)SrcPort_FP;
+                    }
+                    else if(strstr(*norder, "dstport") != NULL)
+                    {
+                        pi->order[order_int] = (void *)DstPort_FP;
+                    }
+                    else if(strstr(*norder, "protocol") != NULL)
+                    {
+                        pi->order[order_int] = (void *)Protocol_FP;
+                    }
+                    else if(strstr(*norder, "action") != NULL)
+                    {
+                        pi->order[order_int] = (void *)Action_FP;
                     }
                     else if(strstr(*norder, "id") != NULL)
                     {
