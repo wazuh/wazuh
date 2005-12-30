@@ -2,7 +2,7 @@
 # Installation script for the OSSEC HIDS
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 # Last modification: Nov 17, 2005
-
+a
 
 ### Setting up variables
 VERSION=`cat ./src/VERSION`
