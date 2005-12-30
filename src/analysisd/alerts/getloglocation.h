@@ -35,8 +35,10 @@ int OS_GetLogLocation(Eventinfo *lf);
 
 FILE *_eflog;
 FILE *_aflog;
+FILE *_fflog;
 
 #define EVENTS  "/logs/archives"
 #define ALERTS  "/logs/alerts"
+#define FWLOGS  "/logs/firewall"
 
 #endif /* GETLL_H */
