@@ -1,5 +1,5 @@
-OSSEC os_regex 0.2
-Copyright (c) 2004,2005 Daniel B. Cid   <daniel.cid@gmail.com>
+OSSEC os_regex 0.3
+Copyright (c) 2004,2005,2006 Daniel B. Cid   <daniel.cid@gmail.com>
                                         <dcid@ossec.net>
 
  
@@ -10,49 +10,29 @@ Fast and simple library for regular expressions in C.
 Available at http://www.ossec.net/c/os_regex/
 
 This library is designed to be simple, but support
-the most common regular expressions.
+the most common regular expressions. It was design
+with intrusion detection systems in mind, where having
+all options is not crucial, but speed is.
 
-Right now it supports:
 
-	\w, \w+ -> For A-Z, a-z, 0-9 characters
-	\d, \d+ -> For 0-9 characters
-	\s, \s+	-> For spaces (" ")
-	\., \.+	-> For any character
-	\W, \W+ -> For anything not \w
-	\D, \D+ -> For anything not \d
-	\S, \S+ -> For anything not \s (everything but spaces)
+The following expressions are supported:
+    \w  ->  A-Z, a-z, 0-9 characters
+    \d  ->  0-9 characters
+    \s  ->  For spaces " "
+    \c  ->  A-Z, a-z characters (not in perl)
+    \p  ->  ()*+,-.:;<=>? (pontuation characters)
+    \W  ->  For anything not \w
+    \D  ->  For anything not \d
+    \S  ->  For anything not \s
+    \.  ->  For anything
 
-We also support the "^" (beginning of the text), "$" (end of the text)
-and the "|" to have multiple expressions.
+       
+Each regular expression can be followed by:
 
-Available functions:
+    +  ->  To match one or more times (eg \w+ or \d+)
+    *  ->  To match zero or more times (eg \w* or \p*)
 
-	OS_WordMatch(char *regex, char *str).
-		-Returns 0 in case of success (if matched).
-		-Word match does not support regex.
-	   Examples:
-		OS_WordMatch("^test a", "test abcd")   -> OK
-		OS_WordMatch("TesT a" , "test abcd")   -> OK
-		OS_WordMatch("test a$", "test abcd")   -> NOT OK
-		OS_WordMatch("any tr", "testANY Tr  ") -> OK
-	
-	OS_WordMatch_Sensitive 
-		-Similar of OS_WordMatch, but the search is
-		 case sensitive.	
-
-	OS_Regex(char *regex, char *str)
-		-Returns 0 in case of success (if matched).
-		-Supports all regex.
-	   Examples:
-		OS_Regex("^\w+\s+\d+$","test 123")	-> OK
-		OS_Regex("^\w+\s+\d+$","1test 123")	-> NOT OK
-		OS_Regex("^\w+\s+\d+Test$","test 1Test")-> OK
-		OS_Regex("^\w+\s+\d+$","t 1")		-> OK
-		OS_Regex("\w+\W+\d+","test 123")	-> OK
-	
-	OS_Regex_Sensitive(char *regex, char *str)
-		-Save as OS_Regex, but case sensitive.
-
-	OS_StrIsNum(char *str)
-		-Returns 0 in case of success
-		-Checks if an string is only composed of 0-9.
+    
+We also support the "^" to match at the beginning of the text,
+'$" to match at the end of the text and "|" to have multiple
+expressions.
