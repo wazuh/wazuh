@@ -12,54 +12,116 @@
 /* See README for details */
 /* http://www.ossec.net/c/os_regex/ */
 
+
 #ifndef __OS_REGEX_H
 #define __OS_REGEX_H
-#include "os_regex_str.h"
 
-/*
- * OS_StrBreak.
- * Break a string in "size" pieces, divided by a character
- * "match"
- * Returns 0 in case of success.
+
+/* OSRegex_Compile flags */
+#define OS_RETURN_SUBSTRING     0000200
+#define OS_CASE_SENSITIVE       0000400
+
+
+/* Pattern maximum size */
+#define OS_PATTERN_MAXSIZE    1024
+
+
+/* Error codes */
+#define OS_REGEX_REG_NULL       1
+#define OS_REGEX_PATTERN_NULL   2 
+#define OS_REGEX_MAXSIZE        3
+#define OS_REGEX_OUTOFMEMORY    4
+#define OS_REGEX_STR_NULL       5
+#define OS_REGEX_BADREGEX       6
+#define OS_REGEX_BADPARENTHESIS 7
+#define OS_REGEX_NO_MATCH       8
+
+
+/* OSRegex structure */
+typedef struct _OSRegex
+{
+    int error;
+    int *flags;
+    char **patterns;
+    char **sub_strings;
+    char ***prts_closure;
+    char ***prts_str;
+}OSRegex;
+
+
+/*** Prototypes ***/
+
+
+/** int OSRegex_Compile(char *pattern, OSRegex *reg, int flags) v0.1
+ * Compile a regular expression to be used later.
+ * Allowed flags are:
+ *      - OS_CASE_SENSITIVE
+ *      - OS_RETURN_SUBSTRING
+ * Returns 1 on success or 0 on error.
+ * The error code is set on reg->error.
  */
-char **OS_StrBreak(char match, char * str, int size);
+int OSRegex_Compile(char *pattern, OSRegex *reg, int flags);
+       
 
-char **OS_RegexStr(char *pattern, char *str);
-
-/* OS_WordMatch.
- * Match if a word is present in some string.
- * This word (match*) cannot contain regular expressions.
- * The only allowed "regexs" are: 
- *  | : To specify multiple strings
- *  ^ : To seach at the beginning of the string
- *
- * The sensitive case will by case sensitive.
- * The default is case Insensitive.
+/** int OSRegex_Execute(char *str, OSRegex *reg) v0.1
+ * Compare an already compiled regular expression with
+ * a not NULL string.
+ * Returns 1 on success or 0 on error.
+ * The error code is set on reg->error.
  */
-int OS_WordMatch_Sensitive(char *match, char *str);
+int OSRegex_Execute(char *str, OSRegex *reg);
+
+
+/** int OSRegex_FreePattern(SRegex *reg) v0.1
+ * Release all the memory created by the compilation/executation
+ * phases.
+ * Returns void.
+ */
+void OSRegex_FreePattern(OSRegex *reg);
+
+
+/** int OSRegex_FreeSubStrings(OSRegex *reg) v0.1
+ * Release all the memory created to store the sub strings.
+ * Returns void.
+ */
+void OSRegex_FreeSubStrings(OSRegex *reg);   
+
+
+/** int OS_Regex(char *pattern, char *str) v0.4
+ * This function is a wrapper around the compile/execute
+ * functions. It should only be used when the pattern is
+ * only going to be used once.
+ * Returns 1 on success or 0 on failure.
+ */
+int OS_Regex(char *pattern, char *str);
+      
+
+/* OS_WordMatch v0.3:
+ * Searches for  pattern in the string
+ */
 int OS_WordMatch(char *pattern, char *str);
-#define OS_Match(pattern,str) OS_WordMatch(pattern,str)
-#define OS_FastMatch(pattern,str) OS_WordMatch(pattern,str)
+#define OS_Match OS_WordMatch
 
-/* OS_Regex.
- * Match if a regex is present in some string.
- * We allow the following regex:
- *  \w,\w+,\W,\W+,\d,\d+,\D,\D+,\s,\s+,\S,\S+,
- *  \.,\.+, ^,$ and |
- *
- * Returns 0 in case of success (it matches)
- *
- * The sensitive case will by case sensitive.
- * The default is case insensitive.
+  
+/** Inline prototypes **/
+
+
+/** int OS_StrStartsWith(char *str, char *pattern) v0.1
+ * Verifies if a string starts with the provided pattern.
+ * Returns 1 on success or 0 on failure.
  */
-int OS_Regex(char *regex, char *str);
-int OS_Regex_Sensitive(char *regex, char *str);
+#include <string.h>
+#define startswith(x,y) (strncmp(x,y,strlen(y)) == 0?1:0)
+#define OS_StrStartsWith startswith
 
-/* OS_StrIsNum.
- * Check if a string only contain digits.
- * Returns 0 in case of success
+
+/** int OS_StrIsNum(char *str) v0.1
+ * Checks if a specific string is numeric (like "129544")
  */
-int OS_StrIsNum(char * str);
+int OS_StrIsNum(char *str);
 
-/* Look at main.c for other examples */
+
 #endif
+
+
+/* EOF */
