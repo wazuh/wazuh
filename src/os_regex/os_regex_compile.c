@@ -96,6 +96,9 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
                  (*pt == '.') || 
                  (*pt == '(') ||
                  (*pt == ')') ||
+                 (*pt == 'c') ||
+                 (*pt == 'p') ||
+                 (*pt == 'n') ||
                  (*pt == '\\')))
             {
                 reg->error = OS_REGEX_BADREGEX;

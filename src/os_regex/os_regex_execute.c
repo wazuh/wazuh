@@ -62,7 +62,6 @@ int OSRegex_Execute(char *str, OSRegex *reg)
             {
                 j = 0;
 
-                printf("success\n");
                 /* We must always have the open and the close */
                 while(reg->prts_str[i][j] && reg->prts_str[i][j+1])
                 {
@@ -70,17 +69,19 @@ int OSRegex_Execute(char *str, OSRegex *reg)
 
                     reg->prts_str[i][j+1][0] = '\0';
 
-                    printf("%s\n",reg->prts_str[i][j]);
-
                     reg->sub_strings[k] = strdup(reg->prts_str[i][j]);
                     if(!reg->sub_strings[k])
                     {
+                        OSRegex_FreeSubStrings(reg);
+                        return(0);
                     }
                     
-                    printf("%s\n",reg->sub_strings[k]);
+                    /* Set the next one to null */
                     reg->prts_str[i][j+1][0] = str_char;
                     k++;
                     reg->sub_strings[k] = NULL;
+
+                    /* Go two by two */
                     j+=2;
                 }
 

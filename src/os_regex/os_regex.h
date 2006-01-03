@@ -102,6 +102,15 @@ int OS_Regex(char *pattern, char *str);
 int OS_WordMatch(char *pattern, char *str);
 #define OS_Match OS_WordMatch
 
+
+/** char **OS_StrBreak(char match, char *str, int size) v0.2
+ * Split a string into multiples pieces, divided by a char "match".
+ * Returns a NULL terminated array on success or NULL on error.
+ */
+char **OS_StrBreak(char match, char *str, int size);
+  
+
+
   
 /** Inline prototypes **/
 
