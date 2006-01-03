@@ -13,11 +13,10 @@
 #ifndef __OS_INTERNAL_H
 #define __OS_INTERNAL_H
 
+
 /*
  * Defining some caracters to be used.
 */
-
-
 #define BACKSLASH   '\\'
 #define ENDSTR      '\0'
 #define ENDLINE     '\n'
@@ -30,9 +29,14 @@
 #define FALSE        0
 
 
+/* Pattern flags */
+#define BEGIN_SET   0000200
+#define END_SET     0000400     
+
 
 /* uchar */
 typedef unsigned char uchar;
+
 
 /* _IsD Returns 1 if it is a number */
 #define _IsD(x) ((x >= 48) && (x <= 57))
@@ -46,26 +50,29 @@ typedef unsigned char uchar;
 		         (x >= 65 && x <= 90 )|| \
 		         (x >= 97 && x <= 122)) 
 
+
 /* Is it a ' ' (blank)
  * Ascii 32
  * Returns 1 if true
  */
 #define _IsS(x)	(x == 32)
 
+
 /* Check for parenthesis */
 #define prts(x) (x == ')' || x == '(')
 
-/* Will return +32 or -32 for case
- * insensitive searches.
- * Use GetCaseCS if using case sensitive.
+
+/* Is it '+' or '*'
+ * Returns 1 on success
  */
- 
-#define GetCase(x) (x >= 65 && x <= 90)?(+32):(x >= 97 && x <= 112)?(-32):(0)
-#define GetCaseCS(x,y) (y == CS)?(x+0):(x >= 65 && x <= 90)?(x+32):(x >= 97 && x <= 112)?(x-32):(x+0)
-#define CharCmp(x,y) (x == y)?(1): \
-                     (y >= 97 && y <= 112 && x == (y-32))?(1): \
-                     (y >= 65 && y <= 90 && x == (y+32))?(1):(0)
+#define isPlus(x)    ((x == '+') || (x == '*'))
+
+
+/* Is "y" a valid "x"?.
+ * Returns 1 on success
+ */
 #define Regex(x,y)   (x == 'd' && y >= 48 && y <= 57)|| \
+                     ((x == '\\') && (y == '\\'))|| \
                      (x == 'w' && \
                      ((y >= 48 && y <= 57)|| \
                       (y >= 65 && y <= 90)|| \
@@ -78,6 +85,7 @@ typedef unsigned char uchar;
                      (y > 57 && y <65)||(y > 90 && y< 97)))
 
 
+/* Charmap for case insensitive search */
 static const uchar charmap[] = {
         '\000', '\001', '\002', '\003', '\004', '\005', '\006', '\007',
         '\010', '\011', '\012', '\013', '\014', '\015', '\016', '\017',
@@ -113,4 +121,8 @@ static const uchar charmap[] = {
         '\370', '\371', '\372', '\373', '\374', '\375', '\376', '\377',
     };
 
-#endif 
+
+#endif
+
+
+/* EOF */ 

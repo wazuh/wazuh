@@ -34,6 +34,7 @@ int OS_StrIsNum(char *str)
     return(TRUE);
 }
 
+
 /** int OS_StrStartsWith(char *str, char *pattern) v0.1
  * Verifies if a string starts with the provided pattern.
  * Returns 1 on success or 0 on failure.
