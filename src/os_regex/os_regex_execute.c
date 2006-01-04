@@ -111,7 +111,8 @@ int OSRegex_Execute(char *str, OSRegex *reg)
     return(0);
 }    
 
-
+#define PRTS(x) (((*x == '(' || *x == ')') && x++) || 1)
+#define ENDOFFILE(x) ( PRTS(x) && ((*x == '\0') || (*x == ENDREGEX)))
 
 /** int _OS_Regex(char *pattern, char *str, char **prts_closure,
               char **prts_str, int flags) v0.1
@@ -358,7 +359,6 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
             continue;
         }
 
-
         /* Error Handling */
             if(pt_error[3])
             {
@@ -405,10 +405,10 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
         
     }while(*(++st) != '\0');
 
-    if((*pt == '\0')||
-       (*pt == BACKSLASH && _regex_matched && 
-       isPlus(*(pt+2)) && ((*(pt+3) == '\0')||(*(pt+3) == ENDREGEX)))||
-       (*pt == ENDREGEX))
+
+    if(ENDOFFILE(pt) || 
+        (*pt == BACKSLASH && _regex_matched && (pt+=2) && isPlus(*pt) && (pt++) &&
+        ((ENDOFFILE(pt)) || ((*pt == BACKSLASH) && (pt+=2) && (*pt == '*') && (pt++) && (ENDOFFILE(pt)) )))) 
     {
         return(r_code);
     }

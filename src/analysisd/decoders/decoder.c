@@ -52,11 +52,13 @@ void DecodeEvent(Eventinfo *lf)
         {
             nnode = node->plugin;
 
-
+            merror("checking against: %s", nnode->prematch->patterns[0]);
+            
             /* If prematch fails, go to the next plugin in the list */
-            if(!nnode->prematch || !OS_Regex(nnode->prematch,lf->log))
+            if(!nnode->prematch || !OSRegex_Execute(lf->log,nnode->prematch))
                 continue;
 
+            merror("ok");
             lf->log_tag = nnode->name;
 
             child_node = node->child;
@@ -66,6 +68,7 @@ void DecodeEvent(Eventinfo *lf)
             if(nnode->type)
             {
                 lf->type = nnode->type;
+                merror("type set");
             }
 
 
@@ -75,7 +78,7 @@ void DecodeEvent(Eventinfo *lf)
                 nnode = child_node->plugin;
 
 
-                if(nnode->prematch && OS_Regex(nnode->prematch,lf->log))
+                if(nnode->prematch && OSRegex_Execute(lf->log,nnode->prematch))
                 {
                     break;
                 }
@@ -88,32 +91,39 @@ void DecodeEvent(Eventinfo *lf)
                 return;
 
 
+            merror("going to regex");
             /* Getting the regex */
             if(nnode->regex)
             {
                 int i = 0;
-                char **fields;
 
-                fields = OS_RegexStr(nnode->regex,lf->log);
-                if(!fields)
+                merror("we do have regex: '%s',\nlog:'%s'",
+                                            nnode->regex->patterns[0], lf->log);
+                /* If Regex does not match, return */
+                if(!OSRegex_Execute(lf->log, nnode->regex))
+                {
                     return;
-
-                while(fields[i])
+                }
+               
+                if(nnode->regex->sub_strings)
+                {
+                    merror("field returned ok");
+                }
+                
+                while(nnode->regex->sub_strings[i])
                 {
                     if(nnode->order[i])
                     {
-                        nnode->order[i](lf, fields[i]);
+                        nnode->order[i](lf, nnode->regex->sub_strings[i]);
                         i++;
                         continue;
                     }
 
                     /* We do not free any memory used above */
-                    free(fields[i]);
+                    free(nnode->regex->sub_strings[i]);
+                    nnode->regex->sub_strings[i] = NULL;
                     i++;
                 }
-
-                free(fields);
-
             }
 
 

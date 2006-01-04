@@ -75,6 +75,8 @@
 #define MAX_RK_MSG      "%s(1250): Maximum number of global files reached: %d"
 
 
+/* Analysisd decoder */
+#define DECODE_NOPREMATCH   "%s(1270): No 'prematch' found in decoder '%s'"
 
 
 /* Active response */
@@ -100,6 +102,7 @@
 #define LIST_ERROR      "%s(1290); Error creating a new list (calloc)."
 #define LIST_ADD_ERROR  "%s(1291): Error adding nodes to list."
 
+
 /* Encryption/ auth errors */
 #define INVALID_KEY     "%s(1401): Error reading authentication key: '%s'."
 #define NO_AUTHFILE     "%s(1402): Authentication key file '%s' not found."
@@ -108,8 +111,12 @@
 #define ENCSIZE_ERROR   "%s(1405): Message size not valid: '%s'."                                   
 #define ENCSUM_ERROR    "%s(1406): Checksum mismatch on message from '%s'."
 #define ENCTIME_ERROR   "%s(1407): Duplicated message time from '%s'."
+
                                    
-                                   
+/* Regex errors */
+#define REGEX_COMPILE   "%s(1450): Syntax error on regex: '%s': %d."
+
+
 /* Verbose messages */
 #define STARTED_MSG	"%s: Starting ..."
 #define PRIVSEP_MSG	"%s: Chrooted to directory: %s, using user: %s"

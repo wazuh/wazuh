@@ -1,3 +1,13 @@
+/*   $OSSEC, decoder.h, v0.2, 2006/01/04, Daniel B. Cid$   */
+
+/* Copyright (C) 2005,2006 Daniel B. Cid <dcid@ossec.net>
+ * All right reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
 
 
 #ifndef __DECODER_H
@@ -5,8 +15,9 @@
 #define __DECODER_H
 
 
-/* We need the eventinfo in here */
+/* We need the eventinfo and os_regex in here */
 #include "eventinfo.h"
+#include "os_regex/os_regex.h"
 
 
 /* Plugin structure */
@@ -16,8 +27,8 @@ typedef struct
     int fts;
     char *parent;
     char *name;
-    char *regex;
-    char *prematch;
+    OSRegex *regex;
+    OSRegex *prematch;
     char *ftscomment;
     void (**order)(Eventinfo *lf, char *field);
 }PluginInfo;

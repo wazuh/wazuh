@@ -88,6 +88,8 @@ void ReadDecodeXML(char *file)
         PluginInfo *pi;
 
         int j = 0;
+        char *regex;
+        char *prematch;
 
         
         if(!node[i]->element || 
@@ -126,17 +128,24 @@ void ReadDecodeXML(char *file)
         /* Default values to the list */
         pi->parent = NULL;
         pi->name = strdup(node[i]->values[0]);
-        pi->regex = NULL;
         pi->order = NULL;
-        pi->prematch = NULL;
         pi->ftscomment = NULL;
         pi->fts = 0;
         pi->type = 0;
         
+        regex = NULL;
+        prematch = NULL;
+       
         if(!pi->name)
         {
             ErrorExit(MEM_ERROR, ARGV0);
         }
+        
+        
+        /* Assigning the memory for the regex/prematch */ 
+        os_calloc(1, sizeof(OSRegex), pi->regex);
+        os_calloc(1, sizeof(OSRegex), pi->prematch);
+        
         
         /* Looping on all the elements */
         while(elements[j])
@@ -160,26 +169,27 @@ void ReadDecodeXML(char *file)
             else if(strcasecmp(elements[j]->element,xml_regex) == 0)
             {
                 /* Assign regex */
-                pi->regex =
-                    _loadmemory(pi->regex,
+                regex =
+                    _loadmemory(regex,
                             elements[j]->content);
             }
             
             /* Getting the pre match */
             else if(strcasecmp(elements[j]->element,xml_prematch)==0)
             {
-                pi->prematch =
-                    _loadmemory(pi->prematch,
+                prematch =
+                    _loadmemory(prematch,
                             elements[j]->content);
             }
 
-             /* Getting the fts comment */
+            /* Getting the fts comment */
             else if(strcasecmp(elements[j]->element,xml_ftscomment)==0)
             {
                 pi->ftscomment =
                     _loadmemory(pi->ftscomment,
                             elements[j]->content);
             }
+            
             /* Getting the type */
             else if(strcmp(elements[j]->element, xml_type) == 0)
             {
@@ -187,6 +197,8 @@ void ReadDecodeXML(char *file)
                     pi->type = FIREWALL;
                 else if(strcmp(elements[j]->content, "ids") == 0)
                     pi->type = IDS;
+                else if(strcmp(elements[j]->content, "snort") == 0)
+                    pi->type = SNORT;    
                 else
                 {
                     ErrorExit("decode-xml: Invalid decoder type '%s'.",
@@ -345,6 +357,34 @@ void ReadDecodeXML(char *file)
         
         OS_ClearNode(elements);
         
+
+        /* Prematch must be set */
+        if(!prematch)
+        {
+            ErrorExit(DECODE_NOPREMATCH, ARGV0, pi->name);
+        }
+            
+        
+        /* Compiling the regex/prematch */
+        if(!OSRegex_Compile(prematch, pi->prematch, 0))
+        {
+            ErrorExit(REGEX_COMPILE, ARGV0, prematch, pi->prematch->error);
+        }
+        
+        if(!OSRegex_Compile(regex, pi->regex, OS_RETURN_SUBSTRING))
+        {
+            ErrorExit(REGEX_COMPILE, ARGV0, regex, pi->regex->error);
+        }
+        
+        
+        /* Freeing regex and pattern */
+        if(regex)
+            free(regex);
+
+        if(prematch)
+            free(prematch);    
+        
+        
         /* Adding plugin to the list */
         OS_AddPlugin(pi);
 
@@ -371,7 +411,7 @@ char *_loadmemory(char *at, char *str)
 {
     if(at == NULL)
     {
-        int strsize=0;
+        int strsize = 0;
         if((strsize = strlen(str)) < OS_RULESIZE)
         {
             at = calloc(strsize+1,sizeof(char));
@@ -389,24 +429,26 @@ char *_loadmemory(char *at, char *str)
             return(NULL);
         }
     }
-    else /*at is not null. Need to reallocat its memory and copy str to it*/
+    /* At is not null. Need to reallocat its memory and copy str to it */
+    else
     {
         int strsize = strlen(str);
         int atsize = strlen(at);
         int finalsize = atsize+strsize+1;
-        if((atsize > OS_RULESIZE) || (strsize > OS_RULESIZE))
+        if(finalsize > OS_RULESIZE)
         {
             merror(SIZE_ERROR,ARGV0,str);
             return(NULL);
         }
-        at = realloc(at, (finalsize)*sizeof(char));
+        at = realloc(at, (finalsize +1)*sizeof(char));
         if(at == NULL)
         {
             merror(MEM_ERROR,ARGV0);
             return(NULL);
         }
-        strncat(at,str,strsize-1);
-        at[finalsize-1]='\0';
+        strncat(at,str,strsize);
+        at[finalsize - 1] = '\0';
+
         return(at);
     }
     return(NULL);

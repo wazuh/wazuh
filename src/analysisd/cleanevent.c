@@ -316,17 +316,8 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /***  Running plugins ***/
   
       
-    /* Snort plugin */
-    if((pieces[0][0] == SNORT_MQ_FULL) || 
-       (pieces[0][0] == SNORT_MQ_FAST))
-    {
-        /* Beginning of the snort msg */
-        if(OS_StrStartsWith(lf->log, "[**] ["))
-            DecodeSnort(lf, pieces[0][0]);
-    }
-
     /* Integrity check from syscheck */
-    else if(pieces[0][0] == SYSCHECK_MQ)
+    if(pieces[0][0] == SYSCHECK_MQ)
     {
         DecodeSyscheck(lf);
     }
@@ -336,12 +327,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     {
         DecodeRootcheck(lf);
     }
-     
-    /* Checking if it is a snort alert from syslog */
-    else if(startswith(lf->log, "snort: ["))
-    {
-        DecodeSnort(lf, 0);
-    }
 
     /* Run the Decoder plugins */
     else
@@ -349,14 +334,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         DecodeEvent(lf);
     }
 
-    /* Checking for special cases in here */
-    switch(lf->type)
-    {
-        case FIREWALL:
-            DecodeFirewall(lf);
-            break;
-    }
-     
+
     /* Clearing the memory */
     /* We can't clear pieces[1] and pieces[2].
      */

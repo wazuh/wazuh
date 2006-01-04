@@ -408,6 +408,11 @@ void OS_ReadMSG(int m_queue)
                 goto CLMEM;
             }
 
+            /* Firewall event */
+            if(lf->type == FIREWALL)
+            {
+                FW_Log(lf);
+            }
                 
             /* Stats checking */
             if(Config.stats)

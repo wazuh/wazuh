@@ -50,18 +50,13 @@ void _storetofile(Eventinfo *lf)
 {
     if(_eflog) 
     {
-        if(fprintf(_eflog,
+        fprintf(_eflog,
             "%d %s %02d %s %s\n",
             lf->year,
             lf->mon,
             lf->day,
             lf->hour,
-            lf->log) < 0)
-        {
-            merror("%s: Error writting to archive log file",ARGV0);
-            fclose(_eflog);
-            _eflog = NULL;
-        }
+            lf->log);
    
         fflush(_eflog); 
     }
@@ -156,6 +151,41 @@ void OS_Log(Eventinfo *lf)
 
     /* Write to file */
     _writefile(lf);
+
+    return;
+}
+
+
+/* FW_Log: v0.1, 2005/12/30 */
+void FW_Log(Eventinfo *lf)
+{
+    if(OS_GetLogLocation(lf) < 0)
+    {
+        merror(PERM_ERROR, ARGV0);
+        return;
+    }
+
+    /* log to file */
+    if(_fflog)
+    {
+        fprintf(_fflog,
+                "%d %s %02d %s %s %s %s:%s->%s:%s\n",
+                    lf->year,
+                    lf->mon,
+                    lf->day,
+                    lf->hour,
+                    lf->action,
+                    lf->protocol,
+                    lf->srcip,
+                    lf->srcport,
+                    lf->dstip,
+                    lf->dstport);
+        fflush(_eflog);
+    }
+    else
+    {
+        merror("%s: File descriptor closed.",ARGV0);
+    }
 
     return;
 }
