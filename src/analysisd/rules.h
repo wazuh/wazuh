@@ -45,6 +45,7 @@ typedef struct _RuleInfo
     int same_user;
     int same_loghost;
 
+    int category; /* category */
     char *group; /* group */
     char *regex; /* regex */
     char *match; /* match */

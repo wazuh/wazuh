@@ -44,49 +44,80 @@ RuleNode *OS_GetFirstRule()
     return(rulenode_pt);    
 }
 
-/* Add a rule as a child in the list */
-void _OS_AddAfterSid(int sid, RuleInfo *read_rule)
+
+/* Search all rules, including childs */
+int _AddtoRule(int sid, int level, int none, char *group, 
+               RuleNode *r_node, RuleInfo *read_rule)
 {
-    RuleNode *rulenode_pt;
-
-    rulenode_pt = OS_GetFirstRule();
-
-    if(!rulenode_pt)
-    {
-        ErrorExit("rules_list: Rules in an inconsistent state. Exiting...");
-    }
+    int r_code = 0;
     
-    while(rulenode_pt) 
+    /* If we don't have the first node, start from
+     * the beginning of the list
+     */
+    if(!r_node)
     {
-        if(rulenode_pt->ruleinfo->sigid == sid)
-        {
-            rulenode_pt->child=
-                _OS_AddRule(rulenode_pt->child, read_rule);
-            return;
-        }
-        
-        /* Checking if the child has a rule */
-        if(rulenode_pt->child)
-        {
-            RuleNode *child_node = rulenode_pt->child;
+        r_node = OS_GetFirstRule();
+    }
 
-            while(child_node)
+    while(r_node)
+    {
+        /* The category must always be the same */
+        if(read_rule->category != r_node->ruleinfo->category)
+        {
+            continue;
+        }
+
+        /* Checking if the sigid matches */
+        if(sid && (r_node->ruleinfo->sigid == sid))
+        {
+            r_node->child=
+                _OS_AddRule(r_node->child, read_rule);
+            return(1);
+        }
+
+        /* Checking if the level matches */
+        else if(level && (r_node->ruleinfo->level >= level))
+        {
+            r_node->child=
+                _OS_AddRule(r_node->child, read_rule);
+            r_code = 1;
+        }
+
+        /* Checking if the group matches */
+        else if(group)
+        {
+            if(OS_WordMatch(group,r_node->ruleinfo->group))
             {
-                if(child_node->ruleinfo->sigid == sid)
-                {
-                    child_node->child =
-                        _OS_AddRule(child_node->child, read_rule);
-                    return;
-                }
-                child_node = child_node->next;
+                /* We will loop on all rules until we find */
+                r_node->child =
+                    _OS_AddRule(r_node->child, read_rule);
+                r_code = 1;
             }
         }
         
-        rulenode_pt = rulenode_pt->next;
+        /* If none of them is set, check for the category */
+        else
+        {
+            r_node->child =
+                    _OS_AddRule(r_node->child, read_rule);
+            return(1);
+        }
+
+        /* Checking if the child has a rule */
+        if(r_node->child)
+        {
+            if(_AddtoRule(sid, level, none, group, r_node->child, read_rule))
+            {
+                r_code = 1;
+            }
+        }
+
+        r_node = r_node->next;
     }
-    /* rule ID not found */
-    ErrorExit("rules_list: rule ID '%d' not found ... ",sid);
+    
+    return(r_code);    
 }
+
 
 /* Add a child */
 int OS_AddChild(RuleInfo *read_rule)
@@ -100,7 +131,7 @@ int OS_AddChild(RuleInfo *read_rule)
     /* Adding for if_sid */    
     if(read_rule->if_sid)
     {
-        int val=0;
+        int val = 0;
         char *sid;
         
         sid  = read_rule->if_sid;
@@ -111,7 +142,7 @@ int OS_AddChild(RuleInfo *read_rule)
             int rule_id = 0;
             if((*sid == ',')||(*sid == ' '))
             {
-                val=0;
+                val = 0;
                 continue;
             }
             else if((isdigit((int)*sid)) || (*sid == '\0'))
@@ -119,8 +150,12 @@ int OS_AddChild(RuleInfo *read_rule)
                 if(val == 0)
                 {
                     rule_id = atoi(sid);
-                    _OS_AddAfterSid(rule_id, read_rule);
-                    val=1;
+                    if(!_AddtoRule(rule_id, 0, 0, NULL, NULL, read_rule))
+                    {
+                        ErrorExit("rules_list: Signature ID '%d' not "
+                                  "found. Invalid 'if_sid'.", rule_id);
+                    }
+                    val = 1;
                 }
             }
             else
@@ -136,61 +171,39 @@ int OS_AddChild(RuleInfo *read_rule)
     {
         int  ilevel = 0;
 
-        RuleNode *rulenode_pt;
-
         ilevel = atoi(read_rule->if_level);
         if(ilevel == 0)
         {
             merror("%s: Invalid level (atoi)",ARGV0);
             return(1);
         }
-        
-        rulenode_pt = OS_GetFirstRule();
 
-        if(!rulenode_pt)
+        if(!_AddtoRule(0, ilevel, 0, NULL, NULL, read_rule))
         {
-            ErrorExit("rules_list: Rules in an inconsistent state. Exiting.");
-        }
-
-        while(rulenode_pt)
-        {
-            if(rulenode_pt->ruleinfo->level >= ilevel)
-            {
-                /* We will loop on all rules until we find */
-                rulenode_pt->child=
-                    _OS_AddRule(rulenode_pt->child, read_rule);
-            }
-            rulenode_pt = rulenode_pt->next;
+            ErrorExit("rules_list: Level ID '%d' not "
+                    "found. Invalid 'if_level'.", ilevel);
         }
     }
 
     /* Adding for if_group */    
     else if(read_rule->if_group)
     {
-        char *group;
-        RuleNode *rulenode_pt;
-        
-        group  = read_rule->if_group;
-
-        rulenode_pt = OS_GetFirstRule();
-
-        if(!rulenode_pt)
+        if(!_AddtoRule(0, 0, 0, read_rule->if_group, NULL, read_rule))
         {
-            ErrorExit("rules_list: Rules in an inconsistent state. Exiting.");
-        }
-
-        while(rulenode_pt) 
-        {
-            if(OS_WordMatch(group,rulenode_pt->ruleinfo->group))
-            {
-                /* We will loop on all rules until we find */
-                rulenode_pt->child=
-                    _OS_AddRule(rulenode_pt->child, read_rule);
-            }
-            rulenode_pt = rulenode_pt->next;
+            ErrorExit("rules_list: Group '%s' not "
+                      "found. Invalid 'if_group'.", read_rule->if_group);
         }
     }
-
+    
+    /* Just add based on the category */
+    else
+    {
+        if(!_AddtoRule(0, 0, 0, NULL, NULL, read_rule))
+        {
+            ErrorExit("rules_list: Category '%d' not "
+                    "found. Invalid 'category'.", read_rule->category);
+        }
+    }
 
     /* done over here */
     return(0);

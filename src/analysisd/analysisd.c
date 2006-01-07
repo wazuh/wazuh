@@ -719,7 +719,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         return(NULL);
 
 
-    /* Checking if any plugin pre-matched is here */
+    /* Checking if any plugin pre-matched in here */
     if(currently_rule->plugin_decoded)
     {
         

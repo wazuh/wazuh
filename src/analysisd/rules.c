@@ -33,6 +33,7 @@
 
 #include "rules.h"
 #include "config.h"
+#include "eventinfo.h"
 #include "active-response.h"
 
 
@@ -87,6 +88,7 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_regex = "regex";
     char *xml_match = "match";
     char *xml_decoded = "decoded_as";
+    char *xml_category = "category";
     char *xml_cve = "cve";
     char *xml_info = "info";
     char *xml_comment = "comment";
@@ -219,7 +221,7 @@ int Rules_OP_ReadRules(char * rulefile)
 
         while(rule[j])
         {
-            RuleInfo *config_ruleinfo=NULL;
+            RuleInfo *config_ruleinfo = NULL;
             
             /* Checking if the rule name is correct */
             if((!rule[j]->element)||
@@ -300,7 +302,7 @@ int Rules_OP_ReadRules(char * rulefile)
 
             /* Rule elements block */
             {
-                XML_NODE rule_opt=NULL;
+                XML_NODE rule_opt = NULL;
                 int k=0;
                 rule_opt =  OS_GetElementsbyNode(&xml,rule[j]);
                 if(rule_opt == NULL)
@@ -369,6 +371,27 @@ int Rules_OP_ReadRules(char * rulefile)
                         config_ruleinfo->user=
                             loadmemory(config_ruleinfo->user,
                                     rule_opt[k]->content);
+                    }
+                    /* We allow these three categories so far */
+                    else if(strcasecmp(rule_opt[k]->element, xml_category)==0)
+                    {
+                        if(strcmp(rule_opt[k]->content, "firewall") == 0)
+                        {
+                            config_ruleinfo->category = FIREWALL;
+                        }
+                        else if(strcmp(rule_opt[k]->content, "ids") == 0)
+                        {
+                            config_ruleinfo->category = IDS;
+                        }
+                        else if(strcmp(rule_opt[k]->content, "syslog") == 0)
+                        {
+                            config_ruleinfo->category = SYSLOG;
+                        }
+                        else
+                        {
+                            ErrorExit("%s: Invalid category '%s' chosen",
+                                      ARGV0, rule_opt[k]->content);
+                        }
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_if_sid)==0)
                     {
@@ -471,19 +494,18 @@ int Rules_OP_ReadRules(char * rulefile)
             printrule(config_ruleinfo);
 
 
-            /* Adding rule to the rules list */
-            /* If the rule depends on some other,
-             * add as a child 
+            /* Adding the rule to the rules list.
+             * Only the template rules are supposed
+             * to be at the top level. All others
+             * will be a "child" of someone.
              */
-            if((config_ruleinfo->if_sid)
-                ||(config_ruleinfo->if_group)
-                ||(config_ruleinfo->if_level))
-            {
-                OS_AddChild(config_ruleinfo);
-            }
-            else
+            if(config_ruleinfo->sigid < 10)
             {    
                 OS_AddRule(config_ruleinfo);
+            }
+            else
+            {
+                OS_AddChild(config_ruleinfo);
             }
             
             
@@ -647,6 +669,9 @@ RuleInfo *zerorulemember(int id, int level,
     
     /* Default values */
     ruleinfo_pt->level = level;
+
+    /* Default category is syslog */
+    ruleinfo_pt->category = SYSLOG;
 
     ruleinfo_pt->emailalert = 0;
     ruleinfo_pt->logalert = 0;
@@ -938,7 +963,8 @@ void Rule_AddAR(RuleInfo *rule_config)
                 }
             }
         } /* eof of rules_id */
-       
+ 
+        
         /* Bind AR to the rule */ 
         if(mark_to_ar == 1)
         {
