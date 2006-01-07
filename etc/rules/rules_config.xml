@@ -1,0 +1,32 @@
+<!-- Rules configuration options.
+  -  This file must always be included, otherwise most
+  -  of the rules will not work properly.
+  -
+  -  Author: Daniel B. Cid
+  -  Date: Jan 7, 2006
+  -->
+  
+
+<group name="syslog">
+  <rule id="01" level="0">
+    <category>syslog</category>
+    <comment>Generic template for all syslog rules</comment>
+  </rule>
+</group>
+
+<group name="firewall">
+  <rule id="02" level="0">
+    <category>firewall</category>
+    <comment>Generic template for all firewall rules</comment>
+  </rule>
+</group>
+
+<group name="ids">
+  <rule id="03" level="0">
+    <category>ids</category>
+    <comment>Generic template for all ids rules</comment>
+  </rule>
+</group>
+
+            
+<!-- EOF -->
