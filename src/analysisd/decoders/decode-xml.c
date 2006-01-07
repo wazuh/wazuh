@@ -363,7 +363,14 @@ void ReadDecodeXML(char *file)
         {
             ErrorExit(DECODE_NOPREMATCH, ARGV0, pi->name);
         }
-            
+
+        /* If pi->regex is not set, fts must not be set too */
+        if(!pi->regex && (pi->fts || pi->order))
+        {
+            ErrorExit("%s: No regex specified for '%s'. You "
+                      "can't specify the fts or order", 
+                      ARGV0, pi->name);
+        }
         
         /* Compiling the regex/prematch */
         if(!OSRegex_Compile(prematch, pi->prematch, 0))
@@ -371,9 +378,19 @@ void ReadDecodeXML(char *file)
             ErrorExit(REGEX_COMPILE, ARGV0, prematch, pi->prematch->error);
         }
         
-        if(!OSRegex_Compile(regex, pi->regex, OS_RETURN_SUBSTRING))
+        /* We may not have the pi->regex */
+        if(regex)
         {
-            ErrorExit(REGEX_COMPILE, ARGV0, regex, pi->regex->error);
+            if(!OSRegex_Compile(regex, pi->regex, OS_RETURN_SUBSTRING))
+            {
+                ErrorExit(REGEX_COMPILE, ARGV0, regex, pi->regex->error);
+            }
+        }
+        /* We can release pi->regex */
+        else
+        {
+            OSRegex_FreePattern(pi->regex);
+            pi->regex = NULL;
         }
         
         

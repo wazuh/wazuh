@@ -409,7 +409,7 @@ void OS_ReadMSG(int m_queue)
             }
 
             /* Firewall event */
-            if(lf->type == FIREWALL)
+            else if(lf->type == FIREWALL)
             {
                 FW_Log(lf);
             }

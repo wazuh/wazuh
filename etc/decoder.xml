@@ -153,7 +153,6 @@
    <order>id,srcip,dstip</order>
    <fts>name,id,srcip,dstip</fts>
    <ftscomment>First time Snort rule fired</ftscomment>
-   <fts>
 </decoder>
    
    

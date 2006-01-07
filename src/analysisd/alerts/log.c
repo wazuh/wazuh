@@ -180,7 +180,7 @@ void FW_Log(Eventinfo *lf)
                     lf->srcport,
                     lf->dstip,
                     lf->dstport);
-        fflush(_eflog);
+        fflush(_fflog);
     }
     else
     {

@@ -114,6 +114,7 @@ void DecodeEvent(Eventinfo *lf)
                 {
                     if(nnode->order[i])
                     {
+                        merror("setting fields..");
                         nnode->order[i](lf, nnode->regex->sub_strings[i]);
                         i++;
                         continue;
