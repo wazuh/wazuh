@@ -29,3 +29,6 @@
 [Mon Dec 19 23:02:05 2005] [error] [client 85.105.120.139] user oahmet: authentication failure for "/~oahmet/gunce/ss.txt": Password Mismatch
 
 
+Sun Aug 5 16:23:04 2001] [error] [client 66.31.142.16] File does not exist: /var/www/html/default.ida
+[Sun Aug 5 16:26:02 2001] [error] [client 66.31.68.147] File does not exist: /var/www/html/default.ida
+[Sun Aug 5 16:32:01 2001] [error] [client 66.31.101.12] File does not exist: /var/www/html/default.ida
