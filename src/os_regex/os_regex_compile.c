@@ -325,6 +325,7 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
     }
     
     /* Success return */
+    free(new_str_free);
     return(1);
     
     

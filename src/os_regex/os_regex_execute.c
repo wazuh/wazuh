@@ -90,7 +90,6 @@ int OSRegex_Execute(char *str, OSRegex *reg)
             i++;
         }
 
-        reg->error = OS_REGEX_NO_MATCH;
         return(0);
 
     }
@@ -138,7 +137,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
     char *next_pt;
 
     char *pt_error[4] = {NULL, NULL, NULL, NULL};
-    char *pt_error_str[4] = {NULL, NULL, NULL, NULL};
+    char *pt_error_str[4];
     
 
     /* Will loop the whole string, trying to find a match */
@@ -167,13 +166,10 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
             }
             
             pt++;
-            st--;
-
-            continue;
         }
 
         /* If it starts on Backslash (future regex) */
-        else if(*pt == BACKSLASH)
+        if(*pt == BACKSLASH)
         {
             if(Regex(*(pt+1), *st))
             {
@@ -233,7 +229,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                         {
                             /* If the next one does not have
                              * a '+' or '*', we can set it as
-                             * being read anc continue.
+                             * being read and continue.
                              */
                             if(!isPlus(*(next_pt+2)))
                             {
