@@ -5,6 +5,9 @@
    - dstuser  - the destination username (from su)
    - srcip    - source ip
    - dstip    - dst ip
+   - srcport  - source port
+   - dstport  - destination port
+   - protocol - protocol
    - id       - event id 
   -->
 
@@ -24,7 +27,7 @@
   -->
 
 <decoder name="sshd">
-   <prematch>^sshd[\d+]: </prematch>
+  <prematch>^sshd[\d+]: </prematch>
 </decoder>
 
 <decoder name="sshd-success">
@@ -75,6 +78,7 @@
   <ftscomment>First time user attempted to use su</ftscomment>
 </decoder>
 
+
 <!-- Sudo decoder.
   -  Will extract the username
   -  Examples:
@@ -91,6 +95,7 @@
   <ftscomment>First time user executed the sudo command</ftscomment>
 </decoder>  
 
+
 <!-- ProFTPD decoder.
   - Will extract the username/srcip
   - Examples:
@@ -104,6 +109,7 @@
   <fts>name,user,srcip,location</fts>
   <ftscomment>First time user logged in via FTP</ftscomment>
 </decoder>
+
 
 <!-- Iptables decoder.
   - Will extract the srcip, dstip, srcport, dstport, protocol
@@ -155,5 +161,34 @@
    <ftscomment>First time Snort rule fired</ftscomment>
 </decoder>
    
-   
+
+<!-- Apache decoder.
+  - Will extract the srcip
+  - Examples:
+  - [error] [client 80.230.208.105] Directory index forbidden by rule: /home/
+  - [error] [client 64.94.163.159] Client sent malformed Host header
+  - [error] [client 66.31.142.16] File does not exist: /var/www/html/default.ida
+  -->
+<decoder name="apache-errorlog">
+  <type>apache</type>
+  <prematch>^[\w+] [client</prematch>
+  <regex>^[\w+] [client (\d+.\d+.\d+.\d+)] </regex>
+  <order>srcip</order>
+</decoder> 
+
+<!-- Apache access log decoder.
+  -  Will extract the srcip
+  - Examples:
+  -  63.91.167.39 - - [03/Aug/2001:21:56:18 -0700] "GET /default.ida?NNNN
+  -  206.78.62.16 - - [06/Aug/2001:08:57:08 -0700] "GET /default.ida?XX
+  -  5.211.112.6 - - [04/Feb/2003:16:17:30 -0500] "GET /mod_ssl:error: 
+  -->
+<decoder name="apache-accesslog">
+  <type>apache</type>
+  <prematch>^\d+.\d+.\d+.\d+ - - [</prematch>
+  <regex>^(\d+.\d+.\d+.\d+) - - [\d+/\w+\d+:\d+:\d+:\d+ -\d+]</regex>
+  <order>srcip</order>
+</decoder>
+
+  
 <!-- EOF -->

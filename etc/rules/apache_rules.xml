@@ -8,7 +8,7 @@
   
 <group name="apache">
   <rule id="3000" level="0" noalert="1">
-    <decoded_as>apache</decoded_as>
+    <decoded_as>apache-errorlog</decoded_as>
     <category>apache</category>
     <comment>Apache messages grouped</comment>
   </rule>    
@@ -65,6 +65,13 @@
     <comment>User authentication failed.</comment>
   </rule>
 
+  <rule id="3008" level="12">
+    <if_sid>3000</if_sid>
+    <category>apache</category>
+    <regex>^[error] [client \S+ File does not exist: \S+default.ida$</regex>
+    <comment>Code Red 2 attack</comment>
+    <info>http://www.cert.org/incident_notes/IN-2001-09.html</info>
+  </rule>
 </group> <!-- ERROR_LOG,APACHE -->
 
 
