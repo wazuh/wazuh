@@ -1,13 +1,72 @@
-<!-- Nothing done yet -->
-
-<!-- Apache chunked encoding:
-  -  http://www.securityfocus.com/infocus/1633
+<!-- Apache rules.
+  -  No comment (for Ahmet to add)
+  -
+  -  Author: Ahmet
+  -  Date: Jan x, 2006
   -->
+
   
-<apache_err>
-  <3001 level="11" info="http://www.ossec.net/logs/rule-3001">
-  <regex>^[notice] child pid \d+ exit signal Segmentation Fault</regex>
-  <comment>Sucessfull attack of the Apache chunked encoding vulnerability</comment>
-  </3001>
-</apache_err>
+<group name="apache">
+  <rule id="3000" level="0" noalert="1">
+    <decoded_as>apache</decoded_as>
+    <category>apache</category>
+    <comment>Apache messages grouped</comment>
+  </rule>    
+
+  <rule id="3001" level="11">
+    <if_sid>3000</if_sid>
+    <category>apache</category>
+    <regex>^[notice] child pid \d+ exit signal Segmentation Fault</regex>
+    <comment>Sucessfull attack of the Apache encoding vulnerability</comment>
+    <info>http://www.securityfocus.com/infocus/1633</info>
+  </rule>
+
+  <rule id="3002" level="7">
+    <if_sid>3000</if_sid>
+    <category>apache</category>
+    <regex>^[error] [client \S+ \w+ denied by server configuration</regex>
+    <comment>Attempt to access forbidden file or directory</comment>
+  </rule>
+
+  <rule id="3003" level="7">
+    <if_sid>3000</if_sid>
+    <category>apache</category>
+    <regex>^[error] [client \S+ Directory index forbidden by rule</regex>
+    <comment>Attempt to access forbidden directory index</comment>
+  </rule>
+
+  <rule id="3004" level="13">
+    <if_sid>3000</if_sid>
+    <category>apache</category>
+    <regex>^[error] [client \S+ Client sent malformed Host header</regex>
+    <comment>Code Red attack</comment>
+    <info>http://www.cert.org/advisories/CA-2001-19.html</info>
+  </rule>
+
+  <rule id="3005" level="7">
+    <if_sid>3000</if_sid>
+    <category>apache</category>
+    <regex>^[warn] [client \S+ [\d+] auth_ldap authenticate: </regex>
+    <regex>user \S+ authentication failed</regex>
+    <comment>User authentication failed</comment>
+  </rule>
+
+  <rule id="3006" level="10">
+    <if_sid>3000</if_sid>
+    <category>apache</category>
+    <regex>^[error] [client \S+ user \S+ not found</regex>
+    <comment>Attempt to login using a non-existent user</comment>
+  </rule>
+
+  <rule id="3007" level="7">
+    <if_sid>3000</if_sid>
+    <category>apache</category>
+    <regex>^[error] [client \S+ user \S+: authentication failure</regex>
+    <comment>User authentication failed.</comment>
+  </rule>
+
+</group> <!-- ERROR_LOG,APACHE -->
+
+
+<!-- EOF -->
 

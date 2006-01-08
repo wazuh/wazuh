@@ -198,7 +198,9 @@ void ReadDecodeXML(char *file)
                 else if(strcmp(elements[j]->content, "ids") == 0)
                     pi->type = IDS;
                 else if(strcmp(elements[j]->content, "snort") == 0)
-                    pi->type = SNORT;    
+                    pi->type = SNORT;
+                else if(strcmp(elements[j]->content, "apache") == 0)
+                    pi->type = APACHE;    
                 else
                 {
                     ErrorExit("decode-xml: Invalid decoder type '%s'.",

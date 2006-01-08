@@ -712,7 +712,13 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         merror("%s: Inconsistent state. currently rule NULL", ARGV0);
         return(NULL);
     }
-    
+   
+    /* First think to check is the category */
+    if(lf->type != currently_rule->category)
+    {
+        return(NULL);
+    }
+     
     /* Group checking */
     if(!OS_Match(lf->group,currently_rule->group)
             && !OS_Match("all",lf->group))

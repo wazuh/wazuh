@@ -179,9 +179,9 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->command = NULL;
     lf->fts = 0;
 
-    lf->type = 0;        
-    lf->level = -1; /* level 0 is valid */
-    lf->sigid = -1; /* signature id 0 is valid */
+    lf->type = SYSLOG; /* default type is syslog */        
+    lf->level = -1;    /* level 0 is valid */
+    lf->sigid = -1;    /* signature id 0 is valid */
     lf->time = 0;
     lf->frequency = 0;
     lf->matched = 0;

@@ -8,25 +8,30 @@
   
 
 <group name="syslog">
-  <rule id="01" level="0">
+  <rule id="01" level="0" noalert="1">
     <category>syslog</category>
     <comment>Generic template for all syslog rules</comment>
   </rule>
 </group>
 
 <group name="firewall">
-  <rule id="02" level="0">
+  <rule id="02" level="0" noalert="1">
     <category>firewall</category>
     <comment>Generic template for all firewall rules</comment>
   </rule>
 </group>
 
 <group name="ids">
-  <rule id="03" level="0">
+  <rule id="03" level="0" noalert="1">
     <category>ids</category>
     <comment>Generic template for all ids rules</comment>
   </rule>
 </group>
 
-            
+<group name="apache">
+  <rule id="04" level="0" noalert="1">
+    <category>apache</category>
+    <comment>Generic template for all apache rules</comment>
+  </rule>  
+</group>            
 <!-- EOF -->

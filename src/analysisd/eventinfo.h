@@ -89,6 +89,7 @@ Eventinfo *currently_lf;
 #define IDS         4   /* IDS alerts */
 #define SYSCHECK    5   /* syscheck integrity events */
 #define ROOTCHECK   6   /* rootcheck messages */
+#define APACHE      7   /* Apache logs */
 
 /* FTS allowed values */
 #define FTS_NAME     0001000

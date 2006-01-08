@@ -387,6 +387,10 @@ int Rules_OP_ReadRules(char * rulefile)
                         {
                             config_ruleinfo->category = SYSLOG;
                         }
+                        else if(strcmp(rule_opt[k]->content, "apache") == 0)
+                        {
+                            config_ruleinfo->category = APACHE;
+                        }
                         else
                         {
                             ErrorExit("%s: Invalid category '%s' chosen",
