@@ -28,6 +28,7 @@ RuleNode *rulenode;
 /* _OS_Addrule: Internal AddRule */
 RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
 
+
 /* Create the RuleList */
 void OS_CreateRuleList()
 {
@@ -35,6 +36,7 @@ void OS_CreateRuleList()
 
     return;
 }
+
 
 /* Get first node from rule */
 RuleNode *OS_GetFirstRule()
@@ -61,26 +63,40 @@ int _AddtoRule(int sid, int level, int none, char *group,
 
     while(r_node)
     {
-        /* The category must always be the same */
-        if(read_rule->category != r_node->ruleinfo->category)
+
+        /* Checking if the sigid matches */
+        if(sid)
+        {    
+            if(r_node->ruleinfo->sigid == sid)
+            {
+                /* Assign the category of this rule to the child 
+                 * as they must match
+                 */
+                read_rule->category = r_node->ruleinfo->category;
+
+                r_node->child=
+                    _OS_AddRule(r_node->child, read_rule);
+                return(1);
+            }
+        }
+        
+        /* If we are not searching for the sid, the category must
+         * be the same 
+         */
+        else if(read_rule->category != r_node->ruleinfo->category)
         {
             continue;
         }
 
-        /* Checking if the sigid matches */
-        if(sid && (r_node->ruleinfo->sigid == sid))
-        {
-            r_node->child=
-                _OS_AddRule(r_node->child, read_rule);
-            return(1);
-        }
-
         /* Checking if the level matches */
-        else if(level && (r_node->ruleinfo->level >= level))
+        else if(level)
         {
-            r_node->child=
-                _OS_AddRule(r_node->child, read_rule);
-            r_code = 1;
+            if(r_node->ruleinfo->level >= level)
+            {
+                r_node->child=
+                    _OS_AddRule(r_node->child, read_rule);
+                r_code = 1;
+            }
         }
 
         /* Checking if the group matches */
