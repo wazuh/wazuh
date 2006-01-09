@@ -511,7 +511,7 @@ int Rules_OP_ReadRules(char * rulefile)
             {
                 OS_AddChild(config_ruleinfo);
             }
-            
+
             
         } /* while(rule[j]) */
         OS_ClearNode(rule);

@@ -207,7 +207,7 @@ int main(int argc, char **argv)
     /* Creating the rules list */
     Rules_OP_CreateRules();
 
-    
+   
     /* Reading the rules */
     {
         char **tmp_rules = rulesfiles;

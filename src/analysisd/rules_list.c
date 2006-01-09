@@ -92,7 +92,8 @@ int _AddtoRule(int sid, int level, int none, char *group,
         /* Checking if the level matches */
         else if(level)
         {
-            if(r_node->ruleinfo->level >= level)
+            if((r_node->ruleinfo->level >= level) && 
+                    (r_node->ruleinfo->sigid != read_rule->sigid))
             {
                 r_node->child=
                     _OS_AddRule(r_node->child, read_rule);
@@ -232,7 +233,8 @@ int OS_AddChild(RuleInfo *read_rule)
 RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
 {
     RuleNode *tmp_rulenode = _rulenode;
-        
+    
+
     if(tmp_rulenode != NULL)
     {
         int middle_insertion = 0;
