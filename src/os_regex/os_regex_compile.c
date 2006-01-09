@@ -96,13 +96,28 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
                  (*pt == '.') || 
                  (*pt == '(') ||
                  (*pt == ')') ||
-                 (*pt == 'c') ||
                  (*pt == 'p') ||
-                 (*pt == 'n') ||
                  (*pt == '\\')))
             {
                 reg->error = OS_REGEX_BADREGEX;
                 goto compile_error;
+            }
+
+            /* Giving the new values for each regex */
+            switch(*pt)
+            {
+                case 'd': *pt = 1;break;
+                case 'w': *pt = 2;break;
+                case 's': *pt = 3;break;
+                case 'p': *pt = 4;break;
+                case '(': *pt = 5;break;
+                case ')': *pt = 6;break;
+                case '\\': *pt = 7;break;
+                case 'D': *pt = 8;break;
+                case 'W': *pt = 9;break;
+                case 'S': *pt = 10;break;
+                case '.': *pt = 11;break;
+                          
             }
             pt++;
 
@@ -114,6 +129,8 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
         }
         else if(*pt == ')')
         {
+            /* Internally, open and closed are the same */
+            *pt = '(';
             parenthesis--;
             prts_size++;
         }
@@ -130,7 +147,7 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
          */
         if(!(flags & OS_CASE_SENSITIVE))
         {
-            *pt = tolower(*pt);
+            *pt = charmap[(uchar)*pt];
         }
         
         if(*pt == OR)

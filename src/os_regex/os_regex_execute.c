@@ -110,7 +110,7 @@ int OSRegex_Execute(char *str, OSRegex *reg)
     return(0);
 }    
 
-#define PRTS(x) (((*x == '(' || *x == ')') && x++) || 1)
+#define PRTS(x) ((prts(*x) && x++) || 1)
 #define ENDOFFILE(x) ( PRTS(x) && ((*x == '\0') || (*x == ENDREGEX)))
 
 /** int _OS_Regex(char *pattern, char *str, char **prts_closure,
@@ -171,7 +171,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
         /* If it starts on Backslash (future regex) */
         if(*pt == BACKSLASH)
         {
-            if(Regex(*(pt+1), *st))
+            if(Regex((uchar)*(pt+1), (uchar)*st))
             {
                 next_pt = pt+2;
                 
@@ -225,7 +225,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
 
                     if(*next_pt == BACKSLASH)
                     {
-                        if(Regex(*(next_pt+1), *st))
+                        if(Regex((uchar)*(next_pt+1), (uchar)*st))
                         {
                             /* If the next one does not have
                              * a '+' or '*', we can set it as
