@@ -85,6 +85,7 @@ int _AddtoRule(int sid, int level, int none, char *group,
          */
         else if(read_rule->category != r_node->ruleinfo->category)
         {
+            r_node = r_node->next;
             continue;
         }
 
