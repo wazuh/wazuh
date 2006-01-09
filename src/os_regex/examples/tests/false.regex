@@ -5,3 +5,4 @@
 "(lalala" "lalala"
 "test123(\d)" "test123a"
 "\(test)" "test"
+"(\w+)(\d+)" "1 1"
