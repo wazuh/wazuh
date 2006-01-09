@@ -106,7 +106,6 @@ int OSRegex_Execute(char *str, OSRegex *reg)
         i++;
     }
 
-    reg->error = OS_REGEX_NO_MATCH;
     return(0);
 }    
 
@@ -143,29 +142,29 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
     /* Will loop the whole string, trying to find a match */
     do
     {
-        if(*pt == '\0')
+        switch(*pt)
         {
-            return(r_code);
-        }
+            case '\0':    
+                return(r_code);
 
-        /* If it is a parenthesis do not match against the character */
-        else if(prts(*pt))
-        {
-            /* Find the closure for the parenthesis */
-            if(prts_closure)
-            {
-                prts_int = 0;
-                while(prts_closure[prts_int])
+                /* If it is a parenthesis do not match against the character */
+            case '(':
+                /* Find the closure for the parenthesis */
+                if(prts_closure)
                 {
-                    if(prts_closure[prts_int] == pt)
+                    prts_int = 0;
+                    while(prts_closure[prts_int])
                     {
-                        prts_str[prts_int] = st;
+                        if(prts_closure[prts_int] == pt)
+                        {
+                            prts_str[prts_int] = st;
+                        }
+                        prts_int++;
                     }
-                    prts_int++;
                 }
-            }
-            
-            pt++;
+
+                pt++;
+                break;
         }
 
         /* If it starts on Backslash (future regex) */
@@ -222,8 +221,12 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                     {
                         next_pt++;
                     }
-
-                    if(*next_pt == BACKSLASH)
+                    
+                    if(*next_pt == '\0')
+                    {
+                        ok_here = 1;
+                    }
+                    else if(*next_pt == BACKSLASH)
                     {
                         if(Regex((uchar)*(next_pt+1), (uchar)*st))
                         {
@@ -241,10 +244,6 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                             }
                         }
                     }
-                    else if(*next_pt == '\0')
-                    {
-                        ok_here = 1;
-                    }
                     else if(*next_pt == charmap[(uchar)*st])
                     {
                         _regex_matched = 0;
@@ -254,7 +253,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                     /* If the next character matches in here */
                     if(ok_here >= 0)
                     {
-                        if(prts(*(next_pt - 1)) && prts_closure)
+                        if(prts_closure && prts(*(next_pt - 1)))
                         {
                             prts_int = 0;
                             while(prts_closure[prts_int])
@@ -318,7 +317,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
             /* If we didn't match regex, but _regex_matched == 1, jump
              * to the next available pattern
              */
-            else if(isPlus(*(pt+2)) && _regex_matched == 1)
+            else if((*(pt+2) == '+') && (_regex_matched == 1))
             {
                 pt+=3;
                 st--;
@@ -334,10 +333,8 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                 _regex_matched = 0;
                 continue;
             }
-            else
-            {
-                _regex_matched = 0;
-            }
+
+            _regex_matched = 0;
         }
         else if(*pt == charmap[(uchar)*st])
         {
