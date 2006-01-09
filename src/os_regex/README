@@ -19,8 +19,7 @@ The following expressions are supported:
     \w  ->  A-Z, a-z, 0-9 characters
     \d  ->  0-9 characters
     \s  ->  For spaces " "
-    \c  ->  A-Z, a-z characters (not in perl)
-    \p  ->  ()*+,-.:;<=>? (pontuation characters)
+    \p  ->  ()*+,-.:;<=>?[] (pontuation characters)
     \W  ->  For anything not \w
     \D  ->  For anything not \d
     \S  ->  For anything not \s
