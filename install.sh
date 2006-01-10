@@ -162,7 +162,7 @@ SetupLogs()
             echo "    -- $i"
 	        echo "" >> $NEWCONFIG
 	        echo "<localfile>" >> $NEWCONFIG
-    	    echo "  <group>syslog</group>" >> $NEWCONFIG
+    	    echo "  <log_format>syslog</log_format>" >> $NEWCONFIG
 	        echo "  <location>$i</location>" >>$NEWCONFIG
 	        echo "</localfile>" >> $NEWCONFIG
         fi

@@ -116,10 +116,31 @@ int LogCollectorConfig(char * cfgfile)
                     {
                         os_strdup(chld_node[j]->content, 
                                 logr[fentries].logformat);
+                        
+                        if(strcmp(logr[fentries].logformat, "syslog") == 0)
+                        {
+                        }
+                        else if(strcmp(logr[fentries].logformat, "snort-full") == 0)
+                        {
+                        }
+                        else if(strcmp(logr[fentries].logformat, "snort-fast") == 0)
+                        {
+                        }
+                        else if(strcmp(logr[fentries].logformat, "apache") == 0)
+                        {
+                        }
+                        else
+                        {
+                            ErrorExit("%s: Invalid log format '%s'. "
+                                      "Only 'syslog', 'snort-full', 'snort-fast'"
+                                      " and 'apache' are allowed.", 
+                                      ARGV0, 
+                                      logr[fentries].logformat);
+                        }
                     }
                     else
                     {
-                        merror("%s: Invalid element '%s' in the %s config",
+                        ErrorExit("%s: Invalid element '%s' in the %s config",
                                 ARGV0,chld_node[j]->element, xml_localfile);
                     }
 
