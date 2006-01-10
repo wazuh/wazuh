@@ -119,6 +119,7 @@
 
 /* Verbose messages */
 #define STARTED_MSG	"%s: Starting ..."
+#define STARTUP_MSG	"%s: Started (pid: %d)."
 #define PRIVSEP_MSG	"%s: Chrooted to directory: %s, using user: %s"
 
 #define NO_SYSLOG       "%s(1501): No IP or network allowed in the access list" \

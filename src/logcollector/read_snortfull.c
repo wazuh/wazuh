@@ -25,7 +25,7 @@
 
 
 /* Read snort_full/barnyard full logs */
-int read_snortfull(int pos)
+void *read_snortfull(int pos, int *rc)
 {
     int i=0,frst=0;
     int c;
@@ -87,7 +87,8 @@ int read_snortfull(int pos)
                 if(str[i-1] != ']')
                 {
                     merror("%s: Bad formated snort full file",ARGV0);
-                    return(ftell(logr[pos].fp));
+                    *rc = ftell(logr[pos].fp);
+                    return(NULL);
                 }
                 str[i]=' ';
                 i++;
@@ -115,7 +116,7 @@ int read_snortfull(int pos)
             str[i]='\0';
 
             if(SendMSG(logr_queue,str,logr[pos].file,
-                       logr[pos].group,logr[pos].type) < 0)
+                       logr[pos].logformat, LOCALFILE_MQ) < 0)
             {
                 merror(QUEUE_SEND, ARGV0);
                 if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
@@ -143,9 +144,16 @@ int read_snortfull(int pos)
     }
 
     if(frst == 1)
-        return (0);
+    {
+        *rc = 0;
+    }
 
-    return(ftell(logr[pos].fp));
+    else
+    {
+        *rc = ftell(logr[pos].fp);
+    }
+    
+    return(NULL);
 
 }
 

@@ -96,6 +96,10 @@ void AgentdStart(char *dir, int uid, int gid)
     /* Reading the private keys  */
     ReadKeys(&keys);
 
+
+    /* Start up message */
+    verbose(STARTUP_MSG, ARGV0, getpid());
+
     
     /* Initial random numbers */
     srand( time(0) + getpid() + pid + getppid() );

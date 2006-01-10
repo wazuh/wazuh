@@ -28,7 +28,7 @@
  */
 
 /* Read syslog files/snort fast/apache files */
-int read_syslog(int pos)
+void *read_syslog(int pos, int *rc)
 {
     char *p;
     char str[OS_MAXSTR+1];
@@ -49,7 +49,7 @@ int read_syslog(int pos)
         #endif
 
         if(SendMSG(logr_queue,str,logr[pos].file,
-                    logr[pos].group,logr[pos].type) < 0)
+                    logr[pos].logformat, LOCALFILE_MQ) < 0)
         {
             merror(QUEUE_SEND, ARGV0);
             if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
@@ -62,7 +62,8 @@ int read_syslog(int pos)
     }
 
     /* We are checking for errors in the main function */
-    return(0); 
+    *rc = 0;
+    return(NULL); 
 }
 
 /* EOF */

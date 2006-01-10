@@ -118,8 +118,12 @@ int main(int argc, char **argv)
     /* Creating some randoness  */
     srand( time(0) + getpid()+ i);
     rand();
-                
+    
 
+    /* Start up message */
+    verbose(STARTUP_MSG, ARGV0, getpid());
+
+    
     /* Really starting the program. */
     for(i= 0;i < binds; i++)
     {

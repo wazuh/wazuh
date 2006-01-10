@@ -40,7 +40,7 @@ int LogCollectorConfig(char * cfgfile)
 
     /* XML Definitions */
     char *xml_localfile_location = "location";
-    char *xml_localfile_group = "group";
+    char *xml_localfile_logformat = "log_format";
 
     /* Reading XML file */
     if(OS_ReadXML(cfgfile,&xml) < 0)
@@ -65,11 +65,10 @@ int LogCollectorConfig(char * cfgfile)
     }
 
     /* Allocating memory for the file structure */
-    logr = (logreader *)calloc(rentries+1, sizeof(logreader));
-    if(logr == NULL)
-        ErrorExit(MEM_ERROR,ARGV0);
+    os_calloc(rentries+1, sizeof(logreader), logr);
+    
     logr[rentries].file = NULL;
-    logr[rentries].group = NULL;
+    logr[rentries].logformat = NULL;
     
     
     /* Searching for entries related to files */
@@ -78,7 +77,7 @@ int LogCollectorConfig(char * cfgfile)
     {
         if(node[i]->element)
         {
-            if(strcasecmp(node[i]->element,xml_localfile) == 0)
+            if(strcmp(node[i]->element,xml_localfile) == 0)
             {
                 XML_NODE chld_node = NULL;
                 
@@ -92,7 +91,7 @@ int LogCollectorConfig(char * cfgfile)
                 }
 
                 logr[fentries].file = NULL;
-                logr[fentries].group = NULL;
+                logr[fentries].logformat = NULL;
                 logr[fentries].fp = NULL;
                 
                 chld_node = OS_GetElementsbyNode(&xml,node[i]);
@@ -106,18 +105,17 @@ int LogCollectorConfig(char * cfgfile)
                         return(OS_CFGERR);
                     }
 
-                    else if(strcasecmp(chld_node[j]->element,
+                    else if(strcmp(chld_node[j]->element,
                             xml_localfile_location) == 0)
                     {
-                        logr[fentries].file = 
-                                strdup(chld_node[j]->content);                
+                        os_strdup(chld_node[j]->content, logr[fentries].file);                
                     }
                     
                     else if(strcasecmp(chld_node[j]->element,
-                            xml_localfile_group) == 0)
+                            xml_localfile_logformat) == 0)
                     {
-                        logr[fentries].group = 
-                                strdup(chld_node[j]->content);
+                        os_strdup(chld_node[j]->content, 
+                                logr[fentries].logformat);
                     }
                     else
                     {
@@ -125,18 +123,15 @@ int LogCollectorConfig(char * cfgfile)
                                 ARGV0,chld_node[j]->element, xml_localfile);
                     }
 
+                    if(!logr[fentries].logformat)
+                    {
+                        /* default log format is syslog compatible */
+                        os_strdup("syslog", logr[fentries].logformat);
+                    }
+                    
                     j++;
                 }
                
-                /* Returning if invalid the config */ 
-                if(!logr[fentries].file || !logr[fentries].group)
-                {
-                    merror("%s: Each file must have an associated group. "
-                           "Config Error.",ARGV0);
-                    OS_ClearXML(&xml);
-                    return(OS_INVALID);
-                }
-                
                 fentries++;
             }
         }

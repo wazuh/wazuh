@@ -114,6 +114,10 @@ int main(int argc, char **argv)
         ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
 
     
+    /* Start up message */
+    verbose(STARTUP_MSG, ARGV0, getpid());
+
+
     /* Main loop */        
     LogCollectorStart();
     

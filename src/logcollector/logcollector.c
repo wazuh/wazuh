@@ -49,18 +49,13 @@ void LogCollectorStart()
         
         
         /* Getting the log type */
-        logr[i].type = LOCALFILE_MQ; 
-        if(OS_Match("snort-full", logr[i].group))
+        if(logr[i].logformat && OS_Match("snort-full", logr[i].logformat))
         {
-            logr[i].type = SNORT_MQ_FULL;
+            logr[i].read = (void *)read_snortfull;
         }
-        else if(OS_Match("snort-fast", logr[i].group))
+        else
         {
-            logr[i].type = SNORT_MQ_FAST;
-        }
-        else if(OS_Match("apache-err", logr[i].group))
-        {
-            logr[i].type = APACHERR_MQ;
+            logr[i].read = (void *)read_syslog;
         }
     }
 
@@ -95,14 +90,7 @@ void LogCollectorStart()
             if(tmtmp != logr[i].mtime)
             {
                 /* Reading file */
-                if(logr[i].type == SNORT_MQ_FULL)
-                {
-                    r = read_snortfull(i);
-                }
-                else
-                {
-                    r = read_syslog(i);
-                }
+                logr[i].read(i, &r);
 
                 /* Checking read ret code */
                 if(r == 0 && feof(logr[i].fp))
@@ -180,7 +168,7 @@ void LogCollectorStart()
 
 
 
-/* handke_file: Open, get the ileno, seek to the end and update mtime */
+/* handle_file: Open, get the fileno, seek to the end and update mtime */
 int handle_file(int i)
 {
     logr[i].fp = fopen(logr[i].file, "r");

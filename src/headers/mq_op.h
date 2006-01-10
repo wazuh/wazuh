@@ -16,9 +16,6 @@
 #define LOCALFILE_MQ 	'1'
 #define SYSLOG_MQ	    '2'
 #define SECURE_MQ	    '4'
-#define SNORT_MQ_FULL   '5'
-#define SNORT_MQ_FAST   '6'
-#define APACHERR_MQ	    '7'
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
 

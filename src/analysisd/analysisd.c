@@ -247,6 +247,9 @@ int main(int argc, char **argv)
     if((m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
         ErrorExit(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
 
+   
+    /* Start up message */
+    verbose(STARTUP_MSG, ARGV0, getpid());
     
     /* Going to main loop */	
     OS_ReadMSG(m_queue);

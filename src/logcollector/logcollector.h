@@ -35,7 +35,9 @@ typedef struct _logreader
     int ign;
         
 	char *file;
-	char *group;
+	char *logformat;
+
+    void (*read)(int i, int *rc);
 
     FILE *fp;
 }logreader;
@@ -55,10 +57,10 @@ void LogCollectorStart();
 int handle_file(int i);
 
 /* Read syslog file */
-int read_syslog(int pos);
+void *read_syslog(int pos, int *rc);
 
 /* Read snort full file */
-int read_snortfull(int pos);
+void *read_snortfull(int pos, int *rc);
 
 
 /*** Global variables ***/

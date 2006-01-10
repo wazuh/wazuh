@@ -52,6 +52,8 @@ typedef uint8_t u_int8_t;
 /* for calloc: x = calloc(4,sizeof(char)) -> os_calloc(4,sizeof(char),x) */
 #define os_calloc(x,y,z) (z = calloc(x,y))?1:ErrorExit(MEM_ERROR, ARGV0) 
 
+#define os_strdup(x,y) (y = strdup(x))?1:ErrorExit(MEM_ERROR, ARGV0)
+
 #endif /* __SHARED_H */
 
 /* EOF */
