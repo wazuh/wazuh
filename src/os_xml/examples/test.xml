@@ -5,7 +5,7 @@
 
 <test name="123">
   <aatr>$lala</aatr>
-  <aatr2>lele</aatr2>
+  <aatr2/>lele<aatr2/>
 </test>
 
 <test2 name="456">
