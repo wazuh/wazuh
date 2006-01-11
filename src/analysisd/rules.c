@@ -100,6 +100,7 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_if_sid = "if_sid";
     char *xml_if_group = "if_group";
     char *xml_if_level = "if_level";
+    char *xml_fts = "if_fts";
     
     char *xml_if_matched_regex = "if_matched_regex";
     char *xml_if_matched_group = "if_matched_group";
@@ -452,6 +453,11 @@ int Rules_OP_ReadRules(char * rulefile)
                         config_ruleinfo->same_source_ip = 1;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
+                                xml_fts) == 0)
+                    {
+                        config_ruleinfo->fts = 1;
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,
                                 xml_same_user)==0)
                     {
                         config_ruleinfo->context = 1;
@@ -466,11 +472,11 @@ int Rules_OP_ReadRules(char * rulefile)
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_options) == 0)
                     {
-                        if(OS_Regex("mail", rule_opt[k]->content))
+                        if(OS_Regex("notify_by_email", rule_opt[k]->content))
                         {
                             config_ruleinfo->emailalert = 1;
                         }
-                        if(OS_Regex("log", rule_opt[k]->content))
+                        if(OS_Regex("generate_log", rule_opt[k]->content))
                         {
                             config_ruleinfo->logalert = 1;
                         }

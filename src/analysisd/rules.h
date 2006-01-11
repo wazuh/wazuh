@@ -20,6 +20,7 @@
 #define TIMEFRAME 360 /* Default timeframe */
 
 #include "active-response.h"
+#include "shared.h"
 
 typedef struct _RuleInfo
 {
@@ -32,8 +33,9 @@ typedef struct _RuleInfo
     int ignore_time;
     
     /* Not an option in the rule */
-    short int emailalert;
-    short int logalert;
+    u_int8_t fts ;
+    u_int8_t emailalert;
+    u_int8_t logalert;
     active_response **ar;
 
     int maxsize; /* maxsize attribute */
@@ -101,9 +103,8 @@ RuleNode *OS_GetFirstRule();
    
 #define STATS_PLUGIN        11
 #define FTS_PLUGIN          12
-#define SNORT_FTS_PLUGIN    13
-#define SYSCHECK_PLUGIN     14   
-#define ROOTCHECK_PLUGIN    15   
+#define SYSCHECK_PLUGIN     13   
+#define ROOTCHECK_PLUGIN    14   
 
 
 /** Rule Path **/
