@@ -16,7 +16,6 @@
 
 
 /* FTS queues */
-#define SNORT_FTS_QUEUE "/queue/fts/snort-fts-queue"
-#define SYSLOG_FTS_QUEUE "/queue/fts/syslog-fts-queue"
+#define FTS_QUEUE "/queue/fts/fts-queue"
 
 #endif
