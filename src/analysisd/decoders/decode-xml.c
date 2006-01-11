@@ -197,8 +197,6 @@ void ReadDecodeXML(char *file)
                     pi->type = FIREWALL;
                 else if(strcmp(elements[j]->content, "ids") == 0)
                     pi->type = IDS;
-                else if(strcmp(elements[j]->content, "snort") == 0)
-                    pi->type = SNORT;
                 else if(strcmp(elements[j]->content, "apache") == 0)
                     pi->type = APACHE;    
                 else

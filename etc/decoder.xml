@@ -104,7 +104,8 @@
 
 <decoder name="proftpd">  
   <prematch>^proftpd[\d+]: </prematch>
-  <regex>proftpd[\d+]: (\S+\s\S+) - USER (\S+): Login successful</regex>
+  <regex>proftpd[\d+]: \S+ \(\S+[\d+.\d+.\d+.\d+]\) - USER (\S+): </regex>
+  <regex>Login successful</regex>
   <order>srcip,user</order>
   <fts>name,user,srcip,location</fts>
   <ftscomment>First time user logged in via FTP</ftscomment>
@@ -153,7 +154,7 @@
     {UDP} 192.168.20.32 -> 192.168.20.2  
   -->
 <decoder name="snort">
-   <type>snort</type>
+   <type>ids</type>
    <prematch>^snort: [\d+:\d+:\d+] |^[**] [\d+:\d+:\d+] </prematch>
    <regex>^\S+ [(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+)\p*\d* -> (\d+.\d+.\d+.\d+)\p*</regex>
    <order>id,srcip,dstip</order>
@@ -175,6 +176,7 @@
   <regex>^[\w+] [client (\d+.\d+.\d+.\d+)] </regex>
   <order>srcip</order>
 </decoder> 
+
 
 <!-- Apache access log decoder.
   -  Will extract the srcip

@@ -28,7 +28,6 @@
 #include "eventinfo.h"
 #include "rules.h"
 
-char *snort_fts_comment = "First time this snort rule was fired";
 
 /* _Internal_FTS v0.1
  *  Check if the word "msg" is present on the file "queue".
@@ -119,13 +118,13 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
 }
 
 
-/* FTS will check if the log is compatible with the syslog
- * FTS analysis. If it is, it will check if this is the first entry
- * for the received log.
+/* FTS will check if the log is compatible with the 
+ * FTS analysis. If it is, it will check if this is the first 
+ * entry for the received events.
  */
 int FTS(Eventinfo *lf)
 {
-    if(_Internal_FTS(SYSLOG_FTS_QUEUE,lf))
+    if(_Internal_FTS(FTS_QUEUE,lf))
     {
         lf->sigid = FTS_PLUGIN;
         return(1);
@@ -135,16 +134,4 @@ int FTS(Eventinfo *lf)
 }
 
 
-/* Run the FTS for all snort events */
-int Snort_FTS(Eventinfo *lf)
-{
-
-    if(_Internal_FTS(SNORT_FTS_QUEUE,lf))
-    {
-        lf->sigid = SNORT_FTS_PLUGIN;
-        lf->comment = snort_fts_comment;
-        return(1);
-    }
-
-    return(0);
-}
+/* EOF */

@@ -84,9 +84,8 @@ Eventinfo *currently_lf;
 /** Types of events (plugin usage) **/
 #define UNKNOWN		0   /* Unkown */
 #define SYSLOG		1   /* syslog messages */
-#define SNORT		2   /* Snort alerts */
+#define IDS 		2   /* IDS alerts */
 #define FIREWALL    3   /* Firewall events */
-#define IDS         4   /* IDS alerts */
 #define SYSCHECK    5   /* syscheck integrity events */
 #define ROOTCHECK   6   /* rootcheck messages */
 #define APACHE      7   /* Apache logs */

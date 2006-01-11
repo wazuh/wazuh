@@ -475,4 +475,14 @@
 
 
 
+<!-- Syslog FTS -->
+<group name="syslog,fts">
+  <rule id="2620" level="8">
+    <if_fts></if_fts>
+    <comment>First time syslog event received (see decoders)</comment>
+  </rule>
+</group>
+                
+
+
 <!-- EOF -->

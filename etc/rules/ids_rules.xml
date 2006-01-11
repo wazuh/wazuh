@@ -1,0 +1,13 @@
+<!-- Official IDS rules for the OSSEC HIDS
+  -  Author: Daniel B. Cid
+  -  Date: Jan 10, 2006
+  -->
+      
+
+<group name="ids">
+  <rule id="3100" level="8">
+    <category>ids</category>
+    <if_fts></if_fts>
+    <comment>First time this IDS event is seem.</comment>
+  </rule>
+</group>

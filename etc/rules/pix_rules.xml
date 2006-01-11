@@ -14,7 +14,7 @@
     <comment>Pre-match for PIX rules</comment>
   </rule>
   
-  <rule id="2001" level="7">
+  <rule id="2001" level="8">
     <if_sid>2000</if_sid>
     <match>^%PIX-6-605004: Login denied from</match>
     <comment>Attempt to log in the PIX firewall from untrusted network</comment>

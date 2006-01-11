@@ -80,7 +80,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf);
 
 
 /* from FTS */
-int Snort_FTS(Eventinfo *lf);
 int FTS(Eventinfo *lf);
 
 
@@ -462,64 +461,23 @@ void OS_ReadMSG(int m_queue)
 
 
             /** FTS CHECKS **/
-
-            /* FTS for Snort */	
-            if((Config.fts != 0) && (lf->type == SNORT))
+            if((Config.fts != 0) && (FTS(lf) == 1))
             {
-                /* If FTS, alert on that */
-                if(Snort_FTS(lf) == 1)
-                {
-                    lf->level = Config.fts;
-
-                    if(Config.logbylevel <= Config.fts)
-                        OS_Log(lf);
-                    if(Config.mailbylevel <= Config.fts)
-                        OS_Createmail(&mailq,lf);
-
-                    /* Active response for snort */
-                    if(Config.snort_ar)
-                    {
-                        active_response **snort_ar;
-
-                        snort_ar = Config.snort_ar;
-
-
-                        while(*snort_ar)
-                        {
-                            if((*snort_ar)->ar_cmd->expect & SRCIP)
-                            {
-                                if(lf->srcip)
-                                {
-                                    OS_Exec(&execdq, &arq, lf, *snort_ar);
-                                }
-                            }
-
-                            snort_ar++;
-                        }
-                    }
-
-                    OS_AddEvent(lf);    
-
-                }
-
-                /* dont need to process snort packets any further */
-                goto CLMEM;
-
-            } 
-            
-            /* FTS for others */
-            else if((Config.fts != 0) && (FTS(lf) == 1))
-            {
-                lf->level = Config.fts;
+                //lf->level = Config.fts;
                 
-                if(Config.logbylevel <= Config.fts)
-                    OS_Log(lf);
-                if(Config.mailbylevel <= Config.fts)
-                    OS_Createmail(&mailq,lf);
-                
-                lf->level = -1;
+                //if(Config.logbylevel <= Config.fts)
+                //    OS_Log(lf);
+                //if(Config.mailbylevel <= Config.fts)
+                //    OS_Createmail(&mailq,lf);
+                //
+                //lf->level = -1;
 
                 /* Clearing the comment */
+                //lf->comment = NULL;
+            }
+            else
+            {
+                lf->fts = 0;
                 lf->comment = NULL;
             }
 
@@ -740,6 +698,14 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                   lf->log_tag) != 0)
             return(NULL);  
     }
+   
+    
+    /* Checking for th FTS flag */
+    if(currently_rule->fts && !lf->fts)
+    {
+        return(NULL);
+    }
+
     
     /* Checking if any word to match exists */
     if(currently_rule->match)
@@ -757,6 +723,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
     }
 
+    
     /* Checking if exist any user to match */
     if(currently_rule->user)
     {
