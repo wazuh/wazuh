@@ -6,62 +6,66 @@
 
 int main(int argc, char ** argv)
 {
-    OS_XML xml;
-    xml_node **node=NULL;
     int i = 0;
+    OS_XML xml;
+    XML_NODE node = NULL;
 
+    
+    /* File name must be given */
     if(argc < 2)
     {
-        printf("usage: %s file\n",argv[0]);
+        printf("Usage: %s file\n",argv[0]);
         return(-1);
     }
+
     
-    while(1)
+    /* Reading the XML. Printing error and line number */ 
+    if(OS_ReadXML(argv[1],&xml) < 0)
     {
-        usleep(10);
-        printf(".");
-        fflush(stdout);
-        
-        if(OS_ReadXML(argv[1],&xml) < 0)
-        {
-            printf("Error reading XML!%s\n",xml.err);
-            return(1);
-        }
-
-        node = OS_GetElementsbyNode(&xml,NULL);
-        if(node == NULL)
-        {
-            printf("error reading xml\n");
-            return(1);
-        }
-
-        i = 0;
-        
-        while(node[i])
-        {
-            xml_node **cnode = NULL;
-            int j=0;
-            cnode = OS_GetElementsbyNode(&xml,node[i]);
-            if(cnode == NULL)
-            {
-                i++;
-                continue;
-            }
-            while(cnode[j])
-            {
-                /* */
-                j++;
-            }
-            
-            OS_ClearNode(cnode);
-            i++;
-        }
-        
-        OS_ClearNode(node);
-        
-        node = NULL;
-        
-        OS_ClearXML(&xml);
+        printf("OS_ReadXML error: %s, line :%d\n",xml.err, xml.err_line);
+        return(1);
     }
+
+    /* Getting all nodes */
+    node = OS_GetElementsbyNode(&xml,NULL);
+    if(node == NULL)
+    {
+        printf("OS_GetElementsbyNode error: %s, line: %d\n", xml.err, xml.err_line);
+        return(1);
+    }
+
+    i = 0;
+
+    while(node[i])
+    {
+        int j = 0;
+        XML_NODE cnode;
+        
+        cnode = OS_GetElementsbyNode(&xml, node[i]);
+        if(cnode == NULL)
+        {
+            i++;
+            continue;
+        }
+        
+        while(cnode[j])
+        {
+            printf("Element: %s -> %s\n", 
+                    cnode[j]->element,
+                    cnode[j]->content);
+            j++;
+        }
+
+        OS_ClearNode(cnode);
+        i++;
+    }
+
+    /* Clearing the nodes */
+    OS_ClearNode(node);
+
+    node = NULL;
+
+    OS_ClearXML(&xml);
+
     return(0);
 }
