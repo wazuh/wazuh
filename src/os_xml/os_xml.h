@@ -49,6 +49,7 @@ typedef struct _OS_XML
     int *rl;		/* Relation in the XML */
     int *ck;		/* If the item was closed or not */
     int *ln;        /* Currently xml file line */
+    int err_line;   /* Line number of the possible error */
     char **ct;		/* Content is stored */
     char **el;		/* The element/attribute name is stored */
     char err[128];	/* Error messages are stored in here */
