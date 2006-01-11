@@ -77,7 +77,7 @@ void Rules_OP_CreateRules()
 int Rules_OP_ReadRules(char * rulefile)
 {
     OS_XML xml;
-    XML_NODE node=NULL;
+    XML_NODE node = NULL;
 
     /* XML variables */ 
     /* These are the available options for the rule configuration */
