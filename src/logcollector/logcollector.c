@@ -81,8 +81,6 @@ void LogCollectorStart()
         /* Checking which file is available */
         for(i = 0; i <= max_file; i++)
         {
-            if(!logr[i].file)
-                break;
             if(!logr[i].fp)
                 continue;
 
@@ -110,12 +108,15 @@ void LogCollectorStart()
                     
                     if(fseek(logr[i].fp,0,SEEK_END) < 0)
                     {
-                        merror("%s: File error (fseek): '%s'",ARGV0, logr[i].file);
+                        merror("%s: File error (fseek): '%s'",
+                                                ARGV0, 
+                                                logr[i].file);
                         fclose(logr[i].fp);
                         logr[i].fp = NULL;
                         
                         if(handle_file(i) != 0)
                         {
+                            logr[i].ign--;
                             continue;
                         }
                     }
@@ -126,7 +127,7 @@ void LogCollectorStart()
             }
         }
 
-        /* Only check bellow if check> 50 */
+        /* Only check bellow if check > 50 */
         if(f_check <= 50)
             continue;
 
@@ -136,9 +137,7 @@ void LogCollectorStart()
         /* Checking if any file has been renamed/removed */
         for(i = 0; i <= max_file; i++)
         {
-            if(!logr[i].file)
-                break;
-            else if(!logr[i].fp)
+            if(!logr[i].fp)
             {
                 if(logr[i].ign == -10)
                     continue;
@@ -148,18 +147,13 @@ void LogCollectorStart()
                     continue;
                 }
             }
-            else if(logr[i].ign < -1)
+            else if(logr[i].ign < -5)
             {
-                if(logr[i].ign < -5)
-                {
-                    merror("%s: Ignoring file '%s'. Too many problems "
-                            "reading it.",ARGV0, logr[i].file);
-                    fclose(logr[i].fp);
-                    logr[i].fp = NULL;
-                    logr[i].ign = -10;
-                }
-                
-                continue;
+                merror("%s: Ignoring file '%s'. Too many problems "
+                        "reading it.",ARGV0, logr[i].file);
+                fclose(logr[i].fp);
+                logr[i].fp = NULL;
+                logr[i].ign = -10;
             }
         }
 

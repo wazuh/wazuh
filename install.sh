@@ -173,7 +173,19 @@ SetupLogs()
     for i in ${SNORT_FILES}; do
         ls $i > /dev/null 2>&1
         if [ $? = 0 ]; then
-            echo "    -- $i (snort file)"
+            echo "" >> $NEWCONFIG
+            echo "<localfile>" >> $NEWCONFIG
+            
+            head -n 1 $i|grep "\[**\] "|grep -v "Classification:"
+            if [ $? = 0 ]; then
+                echo "  <log_format>snort-full</log_format>" >> $NEWCONFIG
+                echo "    -- $i (snort-full file)"
+            else
+                echo "  <log_format>snort-fast</log_format>" >> $NEWCONFIG
+                echo "    -- $i (snort-fast file)"
+            fi
+            echo "  <location>$i</location>" >>$NEWCONFIG
+            echo "</localfile>" >> $NEWCONFIG    
         fi
     done    
     

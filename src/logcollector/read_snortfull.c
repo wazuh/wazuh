@@ -1,6 +1,6 @@
-/*   $OSSEC, read_snortfull.c, v0.2, 2005/04/04, Daniel B. Cid$   */
+/*   $OSSEC, read_snortfull.c, v0.4, 2006/01/13, Daniel B. Cid$   */
 
-/* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003,2004,2005,2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -9,152 +9,120 @@
  * Foundation
  */
 
-/* Read the snort full log */
+/* v0.4 (2006/01/13): Fixing to read snort-full logs correctly.
+ *
+ */
 
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "headers/defs.h"
 #include "headers/debug_op.h"
 #include "headers/mq_op.h"
-#include "headers/defs.h"
 #include "logcollector.h"
 
-#include "error_messages/error_messages.h"
 
-
-/* Read snort_full/barnyard full logs */
+/* Read snort_full files */
 void *read_snortfull(int pos, int *rc)
 {
-    int i=0,frst=0;
-    int c;
-    char str[OS_MAXSTR];
+    int f_msg_size = OS_MAXSTR;
+    
+    char *one = "one";
+    char *two = "two";
+    
+    char *p = NULL;
+    char *q;
+    char str[OS_MAXSTR + 1];
+    char f_msg[OS_MAXSTR +1];
+    
+    str[OS_MAXSTR]='\0';
+    f_msg[OS_MAXSTR] = '\0';
 
-    short int _bg = 0;
-    short int _nl = 0;
-    short int _igspace = 0;
-    short int _ignewline = 0; /* To deal with barnyard dump output */
-
-    memset(str,'\0',OS_MAXSTR); 	/* Cleaning the string */
-
-    while((c = fgetc(logr[pos].fp)) != EOF)
+    while(fgets(str, OS_MAXSTR, logr[pos].fp) != NULL)
     {
-        if((_ignewline == 1)&&(c != '\n'))
-            continue;
-        if((_ignewline == 1)&&(c == '\n'))
+        /* Removing \n at the end of the string */
+        if ((q = strchr(str, '\n')) != NULL)
         {
-            if((c = fgetc(logr[pos].fp)) == '=')
-            {
-                /* Barnyard bad output */
-                _bg=0;
-                _nl=0;
-                _igspace=0;
-                _ignewline=0;
-                i=0;
-                memset(str,'\0',OS_MAXSTR);
-                frst=1;
-                continue;
-            }
-            else
-                fputc(c,logr[pos].fp);
-            _ignewline=2;
+            *q = '\0';
+        }
+        else
+        {
+            goto file_error;
         }
 
-        if((_igspace == 1) && (c != ' '))
-            continue;
-
-        if((_igspace == 1) && (c == ' '))
-            _igspace=2;
-
-        if((_bg == 0) && (c == '[') && 
-                ((c = fgetc(logr[pos].fp)) == '*') &&
-                ((c = fgetc(logr[pos].fp)) == '*') &&
-                ((c = fgetc(logr[pos].fp)) == ']') &&
-                ((c = fgetc(logr[pos].fp)) == ' ') &&
-                ((c = fgetc(logr[pos].fp)) == '['))
+        /* First part of the message */
+        if(p == NULL)
         {
-            strcpy(str,"[**] [");
-            i=6;
-            _bg=1;
-            continue;
-        }
-        else if((_bg == 1) && (c == '\n') && (i < OS_MAXSTR) )
-        {
-            _nl++;
-            if(_nl == 1)
+            if(strncmp(str, "[**] [", 6) == 0)
             {
-                if(str[i-1] != ']')
-                {
-                    merror("%s: Bad formated snort full file",ARGV0);
-                    *rc = ftell(logr[pos].fp);
-                    return(NULL);
-                }
-                str[i]=' ';
-                i++;
-                continue;
+                strncpy(f_msg, str, OS_MAXSTR);
+                f_msg_size -= strlen(str)+1;
+                p = one;
             }
-            else if((_nl == 2) && (_igspace == 0))
+        }
+        else
+        {
+            if(p == one)
             {
-                if((_ignewline == 0)&&((c = fgetc(logr[pos].fp)) == 'E'))
+                /* Second line has the [Classification: */
+                if(strncmp(str, "[Classification: ", 16) == 0)
                 {
-                    _ignewline=1;
-                    _igspace=1;
+                    strncat(f_msg, str, f_msg_size);
+                    f_msg_size -= strlen(str)+1;
+                    p = two;
                 }
                 else
-                {		
-                    _igspace=1;
-                    fputc(c,logr[pos].fp);
-                }
-
-                continue;
-            }
-        }
-
-        else if(_nl >= 3 || i >= OS_MAXSTR)
-        {
-            str[i]='\0';
-
-            if(SendMSG(logr_queue,str,logr[pos].file,
-                       logr[pos].logformat, LOCALFILE_MQ) < 0)
-            {
-                merror(QUEUE_SEND, ARGV0);
-                if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
                 {
-                    ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                    goto file_error;
                 }
             }
-            i = 0;
-            frst = 1;
-            _nl = 0;
-            _bg = 0;
-            _igspace = 0;
-            _ignewline = 0;
-            memset(str,'\0',OS_MAXSTR);
+            else if(p == two)
+            {
+                /* Third line has the 01/13-15 (date) */
+                if((str[2] == '/')&&(str[5] == '-')&&(q = strchr(str,' ')))
+                {
+                    strncat(f_msg, ++q, f_msg_size);
+                    f_msg_size -= strlen(q)+1;
+                    p = NULL;
 
-            frst=1;
-            continue;
+                    /* Sending the message */
+                    if(SendMSG(logr_queue,f_msg, logr[pos].file,
+                               logr[pos].logformat, LOCALFILE_MQ) < 0)
+                    {
+                        merror(QUEUE_SEND, ARGV0);
+                        if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+                        {
+                            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                        }
+                    }
+                    
+                    f_msg[0] = '\0';
+                    f_msg_size = OS_MAXSTR;
+                    str[0] = '\0';
+                }
+                else
+                {
+                    goto file_error;
+                }
+
+            }
         }
 
-        if(_bg == 1)
-        {
-            str[i]=c;
-            i++;
-        }
+        continue;
+
+        file_error:
+
+        merror("%s: Bad formated snort full file", ARGV0);
+        *rc = 1;
+        return(NULL);
+
     }
 
-    if(frst == 1)
-    {
-        *rc = 0;
-    }
-
-    else
-    {
-        *rc = ftell(logr[pos].fp);
-    }
-    
-    return(NULL);
-
+    /* We are checking for errors in the main function */
+    *rc = 0;
+    return(NULL); 
 }
 
 /* EOF */
