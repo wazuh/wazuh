@@ -168,6 +168,15 @@ SetupLogs()
         fi
     done    
 
+    # Getting snort files
+    SNORT_FILES="/var/log/snort/alert"
+    for i in ${SNORT_FILES}; do
+        ls $i > /dev/null 2>&1
+        if [ $? = 0 ]; then
+            echo "    -- $i (snort file)"
+        fi
+    done    
+    
 	echo ""
 	echo " - If any want to monitor any other file, just change "
 	echo " - $WORKDIR/etc/ossec.conf and add a new localfile entry."

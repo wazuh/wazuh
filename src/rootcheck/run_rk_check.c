@@ -182,9 +182,12 @@ void run_rk_check()
     /*** Process checking ***/
     check_rc_pids();         
 
-    /*** Check the open ports ***/
+    /*** Check all the ports ***/
     check_rc_ports();    
 
+    /*** Check open ports ***/
+    check_open_ports();
+        
     /*** Check interfaces ***/
     check_rc_if();    
    

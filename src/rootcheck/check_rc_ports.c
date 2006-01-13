@@ -59,6 +59,7 @@ int run_netstat(int proto, int port)
 
 int conn_port(int proto, int port)
 {
+    int rc = 0;
     int ossock;
     struct sockaddr_in server;
 
@@ -78,15 +79,26 @@ int conn_port(int proto, int port)
     server.sin_port = htons( port );
     server.sin_addr.s_addr = htonl(INADDR_ANY);
 
+    
+    /* If we can't bind, it means the port is open */
     if(bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0)
     {
-        close(ossock);
-        return(1);
+        rc = 1;
     }
 
+    /* Setting if port is open or closed */
+    if(proto == IPPROTO_TCP)
+    {
+        total_ports_tcp[port] = rc;
+    }
+    else
+    {
+        total_ports_udp[port] = rc;
+    }
+    
     close(ossock);  
 
-    return(0);  
+    return(rc);  
 }
 
 
@@ -145,6 +157,15 @@ void check_rc_ports()
 {
     int _errors = 0;
     int _total = 0;
+
+    int i = 0;
+
+    while(i<=65535)
+    {
+        total_ports_tcp[i] = 0;
+        total_ports_udp[i] = 0;
+        i++;
+    }
     
     /* Trsting TCP ports */ 
     test_ports(IPPROTO_TCP, &_errors, &_total);

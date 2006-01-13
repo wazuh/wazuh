@@ -38,7 +38,6 @@ typedef struct __Config
     char **syscheck_ignore;
     char **ar_ignore;
     
-    active_response **snort_ar;
     int syscheck_threshold;
 }_Config;
 
