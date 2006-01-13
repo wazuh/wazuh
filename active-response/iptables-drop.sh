@@ -35,11 +35,13 @@ fi
 # Blocking IP
 if [ "x${ACTION}" = "xadd" ]; then
    ${IPTABLES} -I INPUT -s ${IP} -j DROP
+   ${IPTABLES} -I FORWARD -s ${IP} -j DROP
    exit 0;
 
 # Removing IP block
 elif [ "x${ACTION}" = "xdelete" ]; then
    ${IPTABLES} -D INPUT -s ${IP} -j DROP
+   ${IPTABLES} -D FORWARD -s ${IP} -j DROP
    exit 0;
 
 # Invalid action
