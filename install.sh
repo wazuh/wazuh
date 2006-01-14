@@ -176,7 +176,7 @@ SetupLogs()
             echo "" >> $NEWCONFIG
             echo "<localfile>" >> $NEWCONFIG
             
-            head -n 1 $i|grep "\[**\] "|grep -v "Classification:"
+            head -n 1 $i|grep "\[**\] "|grep -v "Classification:" > /dev/null
             if [ $? = 0 ]; then
                 echo "  <log_format>snort-full</log_format>" >> $NEWCONFIG
                 echo "    -- $i (snort-full file)"
@@ -311,6 +311,7 @@ ConfigureServer()
 	echo "  <include>named_rules.xml</include>" >> $NEWCONFIG
 	echo "  <include>proftpd_rules.xml</include>" >> $NEWCONFIG
     echo "  <include>apache_rules.xml</include>" >> $NEWCONFIG
+    echo "  <include>ids_rules.xml</include>" >> $NEWCONFIG
 	echo "</rules>" >> $NEWCONFIG
 	echo "" >> $NEWCONFIG
 

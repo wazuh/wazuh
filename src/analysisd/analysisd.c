@@ -482,6 +482,7 @@ void OS_ReadMSG(int m_queue)
             }
 
 
+            merror("fts is:%d\n",lf->fts);
             #ifdef DEBUG
             debug2("%s: DEBUG: Starting rule checks\n",ARGV0);
             #endif
@@ -680,12 +681,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         return(NULL);
     }
      
-    /* Group checking */
-    if(!OS_Match(lf->group,currently_rule->group)
-            && !OS_Match("all",lf->group))
-        return(NULL);
-
-
     /* Checking if any plugin pre-matched in here */
     if(currently_rule->plugin_decoded)
     {

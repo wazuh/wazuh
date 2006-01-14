@@ -705,6 +705,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->time_ignored = 0;
     
     ruleinfo_pt->same_source_ip = 0;
+    ruleinfo_pt->fts = 0;
     ruleinfo_pt->same_user = 0;
     ruleinfo_pt->same_loghost = 0;
 

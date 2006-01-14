@@ -73,6 +73,33 @@ void *read_snortfull(int pos, int *rc)
                     f_msg_size -= strlen(str)+1;
                     p = two;
                 }
+                /* If it is a preprocessor message, it will not have
+                 * the classification.
+                 */
+                else if((str[2] == '/')&&(str[5] == '-')&&(q = strchr(str,' ')))
+                {
+                    strncat(f_msg, "[Classification: Preprocessor] "
+                                   "[Priority: 3] ", f_msg_size);
+                    strncat(f_msg, ++q, f_msg_size -40);
+                    
+                    /* Cleaning for next event */
+                    p = NULL;
+                    
+                    /* Sending the message */
+                    if(SendMSG(logr_queue,f_msg, logr[pos].file,
+                               logr[pos].logformat, LOCALFILE_MQ) < 0)
+                    {
+                        merror(QUEUE_SEND, ARGV0);
+                        if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+                        {
+                            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                        }
+                    }
+
+                    f_msg[0] = '\0';
+                    f_msg_size = OS_MAXSTR;
+                    str[0] = '\0';
+                }
                 else
                 {
                     goto file_error;
