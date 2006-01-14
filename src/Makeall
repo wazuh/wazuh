@@ -19,6 +19,7 @@ fi
 #CPU=`uname -p`
 MACH=`uname -m`
 OS=`uname`
+VERSION=`cat ./VERSION`
 
 MSG=""
 # Libraries. They need to be compiled before.
