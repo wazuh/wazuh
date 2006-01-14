@@ -79,7 +79,7 @@ void try_to_access_ports()
 
             if(_ports_open == 0)
             {
-                snprintf(port_proto, 64, "\n       %d (tcp),", i);
+                snprintf(port_proto, 64, "\n      %d (tcp),", i);
             }
             else
             {
@@ -96,7 +96,7 @@ void try_to_access_ports()
 
             if(_ports_open == 0)
             {
-                snprintf(port_proto, 64, "\n       %d (udp),", i);
+                snprintf(port_proto, 64, "\n      %d (udp),", i);
             }
             else
             {
@@ -134,7 +134,7 @@ void check_open_ports()
     /* Testing All ports */ 
     try_to_access_ports();
 
-    open_ports_str[strlen(open_ports_str)] = '\0';
+    open_ports_str[strlen(open_ports_str) -1] = '\0';
 
     notify_rk(ALERT_OK, open_ports_str);
     
