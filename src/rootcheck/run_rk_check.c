@@ -50,6 +50,8 @@ int notify_rk(int rk_type, char *msg)
         {
             printf("[FAILED]: %s\n", msg);
         }
+
+        printf("\n");
         return(0);
     }
    
