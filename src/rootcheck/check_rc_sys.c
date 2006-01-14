@@ -85,9 +85,10 @@ int read_sys_file(char *file_name)
         if(statbuf.st_uid == 0)
         {
             char op_msg[OS_MAXSTR +1];
-            snprintf(op_msg, OS_MAXSTR, "File '%s' is owned by root and has"
-                                        " written permission to anyone.",
-                                        file_name);
+            snprintf(op_msg, OS_MAXSTR, "File '%s' is: \n"
+                             "          - owned by root,\n"
+                             "          - has written permission to anyone.\n",
+                             file_name);
 
             notify_rk(ALERT_SYSTEM_CRIT, op_msg);
 
@@ -246,10 +247,10 @@ void check_rc_sys(char *basedir)
     {
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "Check the following files for more "
-                                    "information:\n"
-                                    "      rootcheck-rw-rw-rw-.txt\n"
-                                    "      rootcheck-rwxrwxrwx.txt\n"
-                                    "      rootcheck-suid-files.txt\n");
+                    "information:\n"
+                    "       rootcheck-rw-rw-rw-.txt (list of world writable)\n"
+                    "       rootcheck-rwxrwxrwx.txt (list of world writtable/executable)\n"
+                    "       rootcheck-suid-files.txt (list of suid files)\n");
         
         notify_rk(ALERT_SYSTEM_ERROR, op_msg);
     }

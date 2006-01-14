@@ -28,6 +28,7 @@
 #include "rootcheck.h"
 
 
+int _ports_open;
 int open_ports_size;
 char open_ports_str[OS_MAXSTR + 1];
 
@@ -76,18 +77,41 @@ void try_to_access_ports()
         {
             char port_proto[64];
 
-            snprintf(port_proto, 64, "%d (tcp),", i);
+            if(_ports_open == 0)
+            {
+                snprintf(port_proto, 64, "\n       %d (tcp),", i);
+            }
+            else
+            {
+                snprintf(port_proto, 64, "%d (tcp),", i);
+            }
             strncat(open_ports_str, port_proto, open_ports_size);
             open_ports_size -= strlen(port_proto) +1;            
+
+            _ports_open++;
         }
         if(total_ports_udp[i] && connect_to_port(IPPROTO_UDP, i))
         {
             char port_proto[64];
 
-            snprintf(port_proto, 64, "%d (udp),",i);
+            if(_ports_open == 0)
+            {
+                snprintf(port_proto, 64, "\n       %d (udp),", i);
+            }
+            else
+            {
+                snprintf(port_proto, 64, "%d (udp),", i);
+            }
+
             strncat(open_ports_str, port_proto, open_ports_size);
             open_ports_size -= strlen(port_proto) +1;
 
+            _ports_open++;
+        }
+
+        if(_ports_open >= 4)
+        {
+            _ports_open = 0;
         }
     }
 
@@ -101,9 +125,10 @@ void check_open_ports()
 {
     memset(open_ports_str, '\0', OS_MAXSTR +1);
     open_ports_size = OS_MAXSTR - 1;
+    _ports_open = 0;
     
     #ifndef OSSECHIDS
-    snprintf(open_ports_str, OS_MAXSTR, "The following ports are open: ");
+    snprintf(open_ports_str, OS_MAXSTR, "The following ports are open:");
     open_ports_size-=strlen(open_ports_str) +1;
     
     /* Testing All ports */ 
