@@ -8,6 +8,6 @@
   <rule id="3100" level="8">
     <category>ids</category>
     <if_fts></if_fts>
-    <comment>First time this IDS event is seem.</comment>
+    <comment>First time this IDS event is seen</comment>
   </rule>
 </group>
