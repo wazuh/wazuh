@@ -20,24 +20,8 @@
  */
 
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#include "headers/debug_op.h"
-#include "headers/defs.h"
-#include "headers/privsep_op.h"
-
-#include "os_regex/os_regex.h"
-
+#include "shared.h"
 #include "os_crypto/md5/md5_op.h"
-
-#include "error_messages/error_messages.h"
 
 #define KEYS_FILE_NEW "client.keys"
 

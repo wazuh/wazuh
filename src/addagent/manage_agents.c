@@ -15,18 +15,7 @@
  */
 
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-
 #include "shared.h"
-
-#include "os_regex/os_regex.h"
 
 #include "os_crypto/md5/md5_op.h"
 

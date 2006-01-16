@@ -14,18 +14,7 @@
  */
 
 
-
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-#include <sys/select.h>
-
-#include <sys/time.h>
-#include <sys/types.h>
-
+#include "shared.h"
 #include "agentd.h"
 
 #include "os_net/os_net.h"
