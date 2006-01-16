@@ -18,11 +18,8 @@
  */
 
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include "shared.h"
+#include "agentd.h"
 
 #ifndef LOGCLIENT
    #define LOGCLIENT
@@ -32,9 +29,7 @@
    #define ARGV0 "ossec-agentd"
 #endif
 
-#include "agentd.h"
 
-#include "shared.h"
 
 
 
