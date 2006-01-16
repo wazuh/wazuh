@@ -13,14 +13,8 @@
  *
  */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
 
-#include "headers/defs.h"
-#include "headers/debug_op.h"
-#include "headers/mq_op.h"
+#include "shared.h"
 #include "logcollector.h"
 
 

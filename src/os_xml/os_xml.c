@@ -14,13 +14,8 @@
  */
 
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <stdarg.h>
-#include <time.h>
-#include <errno.h>
+
+#include "shared.h"
 
 #include "os_xml.h"
 

@@ -14,32 +14,12 @@
  * Available at http://www.ossec.net/c/os_net/
  */
  
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdlib.h>
  
-#include <sys/types.h>
-#include <sys/stat.h>
 
-#include <netdb.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
-#include <sys/socket.h>
-#include <sys/un.h>
-
-#include "defs.h"
-
-#include "os_err.h"
+#include "shared.h"
 
 #include "os_net.h"
-
-
-/* Darwin should be happy now */
-#ifdef Darwin
-typedef int socklen_t;
-#endif
 
 
 struct sockaddr_in _c;	    /* Client socket */

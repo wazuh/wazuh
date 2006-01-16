@@ -14,17 +14,6 @@
  */
 
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
-
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
-
 #include "shared.h"
 
 #include "headers/sec.h"
@@ -34,6 +23,7 @@
 
 
 #define KEYSIZE	 72
+
 u_int8_t global_count = 0;
 time_t global_time = 0;
 
