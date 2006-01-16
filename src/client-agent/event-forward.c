@@ -14,18 +14,11 @@
  */
 
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <sys/socket.h>
-
+#include "shared.h"
 #include "agentd.h"
 
 #include "os_net/os_net.h"
 
-#include "shared.h"
 #include "sec.h"
 
 
