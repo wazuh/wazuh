@@ -190,7 +190,7 @@
 
   <rule id ="703" level="0" accuracy="0">
     <if_sid>700</if_sid>
-    <regex>^smartd\.+No such device or address, open() failed</regex>
+    <regex>^smartd\.+No such device or address, open\(\) failed</regex>
     <comment>Device configured but not available to Smartd</comment>
   </rule>  
 </group> <!-- SYSLOG,SMARTD -->
@@ -399,7 +399,7 @@
   </rule>
 
   <rule id="1605" level="11">
-    <match>changed by ((null)</match>
+    <match>changed by \(\(null\)</match>
     <comment>"Null" user changed some information</comment>
   </rule>
 
