@@ -21,9 +21,7 @@
 
 #define FP_TIMEOUT  2
 
-#include <stdio.h> /* for FILE* */
 #include "shared.h"
-#include "error_messages/error_messages.h"
 
 
 
