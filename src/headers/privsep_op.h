@@ -15,7 +15,7 @@
 #ifndef __PRIV_H
 
 #define __PRIV_H
-#include <sys/types.h>
+#include "shared.h"
 
 int Privsep_GetUser(char * name);
 

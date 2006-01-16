@@ -10,17 +10,7 @@
  */
 
 
-#include <sys/types.h>
-#include <sys/time.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <dirent.h>
-#include <fcntl.h>
-#include <sys/socket.h>
-
-#include <errno.h>
+#include "shared.h"
 
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
