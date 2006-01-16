@@ -11,15 +11,8 @@
 
 
 
-#include <sys/types.h>
-#include <sys/time.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <fcntl.h>
 
-#include "os_regex/os_regex.h"
+#include "shared.h"
 
 #include "logcollector.h"
 

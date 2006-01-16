@@ -19,8 +19,30 @@
 
 /* Global headers */
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/select.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+#include <fcntl.h>
+#include <dirent.h>
+
+/* Making Windows happy */
+#ifndef WIN32
+#include <netdb.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#else
+#include <winsock.h>
+#endif
+
+#include <time.h>
+#include <errno.h>
 
 #include "defs.h"
 #include "help.h"
@@ -38,13 +60,29 @@
 #include "rc.h"
 #include "ar.h"
 
+#include "os_xml/os_xml.h"
+#include "os_regex/os_regex.h"
+
 #include "error_messages/error_messages.h"
 
 /* Global portability code */
+
 #ifdef SOLARIS
 typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
 #endif /* SOLARIS */
+
+/* For Darwin */
+#ifdef Darwin
+typedef int socklen_t;
+#endif
+
+/* For Windows */
+#ifdef WIN32
+typedef int uid_t;
+typedef int gid_t;
+#endif
+
 
 /*** Global prototypes ***/
 /*** These functions will exit on error. No need to check return code ***/

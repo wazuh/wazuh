@@ -13,16 +13,8 @@
  * v0.2 (2005/01/17)
  */
  
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
 #include "shared.h" 
-
-#include "os_xml/os_xml.h"
-#include "os_regex/os_regex.h"
-#include "os_net/os_net.h"
 
 #include "logcollector.h"
 
