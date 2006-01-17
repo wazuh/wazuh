@@ -26,9 +26,9 @@ typedef struct _ar_command
 typedef struct _ar
 {
     int timeout;
+    int location;
     char *name;
     char *command;
-    char location;
     char *agent_id;
     char *rules_id;
     char *rules_group;
