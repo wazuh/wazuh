@@ -17,10 +17,20 @@
 
 
 /* Recepient agents */
-#define ALL_AGENTS      'a'
-#define REMOTE_AGENT    'r'
-#define SPECIFIC_AGENT  's'
-#define AS_ONLY         'l'
+#define ALL_AGENTS      0000001
+#define REMOTE_AGENT    0000002
+#define SPECIFIC_AGENT  0000004
+#define AS_ONLY         0000010
+
+#define ALL_AGENTS_C     'A'
+#define REMOTE_AGENT_C   'R'
+#define SPECIFIC_AGENT_C 'S'
+#define NONE_C           'N'
+
+
+/* AR  Queues to use */
+#define REMOTE_AR       00001
+#define LOCAL_AR        00002
 
 
 /* Expected values */
