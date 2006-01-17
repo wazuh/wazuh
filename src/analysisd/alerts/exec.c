@@ -72,10 +72,10 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
      * or the ar->location is set to local (REMOTE_AGENT) and the
      * event location is from here.
      */         
-    if( (ar->location == AS_ONLY) ||
-      ((ar->location == REMOTE_AGENT) && (index(lf->location, '>') == NULL)) )
+    if( (ar->location & AS_ONLY) ||
+      ((ar->location & REMOTE_AGENT) && (index(lf->location, '>') == NULL)) )
     {
-        if(!Config.local_ar)
+        if(!(Config.ar & LOCAL_AR))
             return;
             
         snprintf(exec_msg, OS_MAXSTR,
@@ -91,12 +91,14 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     }
    
     /* Active response to the forwarder */ 
-    else if(Config.remote_ar)
+    if(Config.ar & REMOTE_AR)
     {
         snprintf(exec_msg, OS_MAXSTR,
-                "%s %c %s %s %s %s",
+                "%s %c%c%c %s %s %s %s",
                 lf->location,
-                ar->location,
+                (ar->location & ALL_AGENTS)?ALL_AGENTS_C:NONE_C,
+                (ar->location & REMOTE_AGENT)?REMOTE_AGENT_C:NONE_C,
+                (ar->location & SPECIFIC_AGENT)?SPECIFIC_AGENT_C:NONE_C,
                 ar->agent_id,
                 ar->name,
                 lf->user,
@@ -104,7 +106,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
         
         if(OS_SendUnix(*arq, exec_msg, 0) < 0)
         {
-            merror("%s: Error communicating with arq", ARGV0);
+            merror("%s: Error communicating with ar queue", ARGV0);
         }
     }
     

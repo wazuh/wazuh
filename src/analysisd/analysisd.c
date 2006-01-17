@@ -303,32 +303,27 @@ void OS_ReadMSG(int m_queue)
 
 
     /* Starting the active response queues */
-    if(Config.ar == 1)
+    if(Config.ar)
     {
         /* Waiting the ARQ to settle .. */
-        sleep(3);
+        sleep(2);
 
         
-        if(Config.remote_ar)
+        if(Config.ar & REMOTE_AR)
         {
             if((arq = StartMQ(ARQUEUE, WRITE)) < 0)
             {
                 merror(ARQ_ERROR, ARGV0);
-                Config.remote_ar = 0;
+                Config.ar&= REMOTE_AR;
             }
         }
-        if(Config.local_ar)
+        if(Config.ar & LOCAL_AR)
         {
             if((execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
             {
                 merror(ARQ_ERROR, ARGV0);
-                Config.local_ar = 0;   
+                Config.ar&= LOCAL_AR;   
             }
-        }
-
-        if(!Config.local_ar && !Config.remote_ar)
-        {
-            Config.ar = 0;
         }
     }
 
