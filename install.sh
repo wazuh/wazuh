@@ -362,6 +362,19 @@ ConfigureServer()
                     ;;
             esac
             echo ""
+            echo "   - Do you want to enable the iptables-drop response?(yes/no)y"
+            read HD2
+            case $HD2 in
+                n|N|no|No|NO)
+                    echo "     - iptables-drop disabled"
+                    ;;
+                *)
+                    echo "     - iptables-drop enabled (local) for levels >= 8 "
+                    IPTABLESDROP="yes"
+                    ;;
+            esac        
+                        
+            echo ""
             echo "   - For more options and information about active response,"
             echo "     go to our website in the documentation session."
             echo ""
@@ -462,7 +475,17 @@ ConfigureServer()
             echo "  <level>8</level>" >> $NEWCONFIG
             echo "  <timeout>600</timeout>" >> $NEWCONFIG		
             echo "</active-response>" >> $NEWCONFIG
-        fi    
+        fi
+        
+        if [ "X$IPTABLESDROP" = "Xyes" ]; then
+            echo "" >> $NEWCONFIG
+            echo "<active-response>" >> $NEWCONFIG
+            echo "  <command>iptables-drop</command>" >> $NEWCONFIG
+            echo "  <location>local</location>" >> $NEWCONFIG
+            echo "  <level>8</level>" >> $NEWCONFIG
+            echo "  <timeout>600</timeout>" >> $NEWCONFIG
+            echo "</active-response>" >> $NEWCONFIG
+        fi        
     else    
         echo "" >> $NEWCONFIG
         echo "<active-response>" >> $NEWCONFIG

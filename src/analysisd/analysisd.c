@@ -299,6 +299,10 @@ void OS_ReadMSG(int m_queue)
             merror(MAILQ_ERROR,ARGV0,MAILQUEUE);
             Config.mailnotify = 0;
         }
+        else
+        {
+            verbose("%s: Connected to '%s' (mailqueue)", ARGV0, MAILQUEUE);
+        }
     }
 
 
@@ -314,7 +318,21 @@ void OS_ReadMSG(int m_queue)
             if((arq = StartMQ(ARQUEUE, WRITE)) < 0)
             {
                 merror(ARQ_ERROR, ARGV0);
-                Config.ar&= REMOTE_AR;
+                
+                /* If LOCAL_AR is set, keep it there */
+                if(Config.ar & LOCAL_AR)
+                {
+                    Config.ar = 0;
+                    Config.ar|=LOCAL_AR;
+                }
+                else
+                {
+                    Config.ar = 0;
+                }
+            }
+            else
+            {
+                verbose("%s: Connected to '%s'", ARGV0, ARQUEUE);
             }
         }
         if(Config.ar & LOCAL_AR)
@@ -322,7 +340,21 @@ void OS_ReadMSG(int m_queue)
             if((execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
             {
                 merror(ARQ_ERROR, ARGV0);
-                Config.ar&= LOCAL_AR;   
+                
+                /* If REMOTE_AR is set, keep it there */
+                if(Config.ar & REMOTE_AR)
+                {
+                    Config.ar = 0;
+                    Config.ar|=REMOTE_AR;
+                }
+                else
+                {
+                    Config.ar = 0;
+                }
+            }
+            else
+            {
+                verbose("%s: Connected to '%s'", ARGV0, EXECQUEUE);
             }
         }
     }
@@ -334,7 +366,7 @@ void OS_ReadMSG(int m_queue)
 
     /* Starting the hourly/weekly stats */
     if(Start_Hour(&today,&thishour) < 0)
-        Config.stats=0;
+        Config.stats = 0;
 
 
     debug1("%s: DEBUG: Startup completed. Waiting for new messages..",ARGV0);
