@@ -95,6 +95,9 @@ int AS_GetActiveResponses(char * config_file)
     /* Searching for the commands */ 
     while(node[i])
     {
+        int r_ar = 0;
+        int l_ar = 0;
+
         char *tmp_location;
         XML_NODE elements = NULL;
         active_response *tmp_ar;
@@ -128,7 +131,7 @@ int AS_GetActiveResponses(char * config_file)
         /* Initializing variables */
         tmp_ar->name = NULL;
         tmp_ar->command = NULL;
-        tmp_ar->location = '\0';
+        tmp_ar->location = 0;
 
         tmp_ar->timeout = 0;
         
@@ -196,17 +199,15 @@ int AS_GetActiveResponses(char * config_file)
      
         if(OS_Regex("AS|analysis", tmp_location))
         {
-            tmp_ar->location = AS_ONLY;
+            tmp_ar->location|= AS_ONLY;
         }
         
-        else if(OS_Regex("local", tmp_location))
+        if(OS_Regex("local", tmp_location))
         {
-
-            tmp_ar->location = REMOTE_AGENT;
-
+            tmp_ar->location|= REMOTE_AGENT;
         }
         
-        else if(OS_Regex("defined-agent", tmp_location))
+        if(OS_Regex("defined-agent", tmp_location))
         {
             if(!tmp_ar->agent_id)
             {
@@ -214,15 +215,16 @@ int AS_GetActiveResponses(char * config_file)
                 return(-1);
             }
             
-            tmp_ar->location = SPECIFIC_AGENT;
+            tmp_ar->location|= SPECIFIC_AGENT;
             
         }
-        else if(OS_Regex("all", tmp_location))
+        if(OS_Regex("all", tmp_location))
         {
-            tmp_ar->location = ALL_AGENTS;
+            tmp_ar->location|= ALL_AGENTS;
         }
         
-        else
+        /* If we didn't set any value for the location */
+        if(tmp_ar->location == 0) 
         {
             merror(AR_INV_LOC, ARGV0, tmp_location);
             OS_ClearXML(&xml);
@@ -296,27 +298,35 @@ int AS_GetActiveResponses(char * config_file)
 
         
         /* Settin the configs to start the right queues */ 
-        if(tmp_ar->location == AS_ONLY)
+        if(tmp_ar->location & AS_ONLY)
         {
-            Config.local_ar = 1;
+            r_ar = 1;
         }
-        else if(tmp_ar->location == ALL_AGENTS)
+        if(tmp_ar->location & ALL_AGENTS)
         {
-            Config.local_ar = 1;
-            Config.remote_ar = 1;
+            r_ar = 1;
+            l_ar = 1;
         }
-        else if(tmp_ar->location == REMOTE_AGENT)
+        if(tmp_ar->location & REMOTE_AGENT)
         {
-            Config.local_ar = 1;
-            Config.remote_ar = 1;
+            r_ar = 1;
+            l_ar = 1;
         }
-        else
+        if(tmp_ar->location & SPECIFIC_AGENT)
         {
-            Config.remote_ar = 1;
+            r_ar = 1;
+        }
+
+        /* Setting the configuration for the active response */
+        if(r_ar)
+        {
+            Config.ar|= REMOTE_AR;
+        }
+        if(l_ar)
+        {
+            Config.ar|= LOCAL_AR;
         }
         
-        Config.ar = 1;
-            
         i++;
     } 
 
