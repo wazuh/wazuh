@@ -42,12 +42,13 @@ void *AR_Forward(void *arg)
     int i = 0;
     int arq = 0;
     int agent_id = 0;
+    int ar_location = 0;
     
     char msg_to_send[OS_MAXSTR +1];
     
     char *msg = NULL;
     char *location = NULL;
-    char *ar_location = NULL;
+    char *ar_location_str = NULL;
     char *ar_agent_id = NULL;
     char *tmp_str = NULL;
 
@@ -78,9 +79,23 @@ void *AR_Forward(void *arg)
 
 
             /* Setting ar_location */
-            ar_location = tmp_str;
-
-
+            ar_location_str = tmp_str;
+            if(*tmp_str == ALL_AGENTS_C)
+            {
+                ar_location|=ALL_AGENTS;
+            }
+            tmp_str++;
+            if(*tmp_str == REMOTE_AGENT_C)
+            {
+                ar_location|=REMOTE_AGENT;
+            }
+            tmp_str++;
+            if(*tmp_str == SPECIFIC_AGENT_C)
+            {
+                ar_location|=SPECIFIC_AGENT;
+            }
+            
+            
             /***  Extracting the agent ip (NULL if local) ***/
             tmp_str = index(location, '>');
             if(!tmp_str)
@@ -98,7 +113,7 @@ void *AR_Forward(void *arg)
 
 
             /*** Extracting the active response location ***/
-            tmp_str = index(ar_location, ' ');
+            tmp_str = index(ar_location_str, ' ');
             if(!tmp_str)
             {
                 merror(EXECD_INV_MSG, ARGV0, msg);
@@ -128,16 +143,17 @@ void *AR_Forward(void *arg)
 
             
             /* Sending to ALL agents */
-            if(*ar_location == ALL_AGENTS)
+            if(ar_location & ALL_AGENTS)
             {
                 for(i = 0;i< keys.keysize; i++)
                 {
                     send_msg(i, msg_to_send);
+                    goto cleanup;
                 }
             }
 
             /* Send to the remote agent that generated the event */
-            else if((*ar_location == REMOTE_AGENT) && (location != NULL))
+            if((ar_location & REMOTE_AGENT) && (location != NULL))
             {
                 agent_id = IsAllowedIP(&keys, location);
                 if(agent_id < 0)
@@ -150,7 +166,7 @@ void *AR_Forward(void *arg)
             }
 
             /* Send to a pre-defined agent */
-            else if(*ar_location == SPECIFIC_AGENT)
+            if(ar_location & SPECIFIC_AGENT)
             {
                 ar_location++;
 
