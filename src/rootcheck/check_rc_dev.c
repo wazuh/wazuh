@@ -88,6 +88,7 @@ int read_dev_dir(char *dir_name)
                             ".devlink_db_lock",
                             ".devlink_db",
                             ".devfsadm_daemon.lock",
+                            ".devfsadm_deamon.lock",
                             ".devfsadm_synch_door",
     #elif Darwin
                             "fd",                        
