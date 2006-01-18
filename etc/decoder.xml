@@ -24,6 +24,10 @@
   -  sshd[12675]: Failed password for invalid user lala11 from x.x.x.x ..
   -  sshd[12914]: Failed password for invalid user lala6 from ...
   -  "" Failed keyboard-interactive for root from 192.1.1.1 port 1066 ssh2    
+  -  sshd[23857]: [ID 702911 auth.notice] User xxx, coming from zzzz,
+  -  authenticated. 
+  -  sshd[61834]: reverse mapping checking getaddrinfo for sv.tvcm.ch
+  -  failed - POSSIBLE BREAKIN ATTEMPT!
   -->
 
 <decoder name="sshd">
@@ -34,6 +38,15 @@
   <parent>sshd</parent>
   <prematch>^sshd[\d+]: Accepted</prematch>
   <regex>^sshd[\d+]: Accepted \S+ for (\S+) from (\S+) port </regex>
+  <order>user,srcip</order>
+  <fts>name,user,location</fts>
+  <ftscomment>First time this user logged in (using ssh)</ftscomment>
+</decoder>
+
+<decoder name="sshd-success-solaris">
+  <parent>sshd</parent>
+  <prematch>^sshd[\d+]: [ID \d+ \w+.\w+] User</prematch>
+  <regex>^sshd[\d+]: [ID \d+ \w+.\w+] User (\S+), comming from (\S+), a</regex>
   <order>user,srcip</order>
   <fts>name,user,location</fts>
   <ftscomment>First time this user logged in (using ssh)</ftscomment>
@@ -53,7 +66,14 @@
   <regex>^sshd[\d+]: error: PAM: Authentication failure for (\S+) from (\S+)$</regex>
   <order>user,srcip</order>
 </decoder>
-        
+
+<decoder name="ssh-reverse-mapping">
+  <parent>sshd</parent>
+  <prematch>^sshd[\d+]: reverse mapping checking</prematch>
+  <regex>^sshd[\d+]: reverse mapping \w+ \w+ for (\S+) failed - POSS</regex>
+  <order>srcip</order>
+</decoder>       
+
 
 <!-- Su decoder.
   -  Will extract the username.

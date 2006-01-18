@@ -913,7 +913,7 @@ void Rule_AddAR(RuleInfo *rule_config)
         {
             int ar_level = atoi(my_ar->level);
 
-            if(rule_config->level > ar_level)
+            if(rule_config->level >= ar_level)
             {
                 mark_to_ar = 1;
             }

@@ -82,7 +82,8 @@
   <rule id="401" level="7">
     <match>FAILED LOGIN |authentication failure|</match>
     <match>Authentication failed for|invalid password for|</match>
-    <match>Failed password for|LOGIN FAILURE ON </match>
+    <match>Failed password for|LOGIN FAILURE ON |</match>
+    <match>Wrong password given for user</match>
     <comment>User missed the password</comment>
   </rule>
 
@@ -369,6 +370,18 @@
     <if_sid>400</if_sid>
     <regex>^sshd[\d+]: Bad protocol version identification</regex>
     <comment>Possible attack on the ssh server(or version gathering)</comment>
+  </rule>
+
+  <rule id="1502" level="7">
+    <if_sid>400</if_sid>
+    <regex>^sshd[\d+]: reverse mapping \w+ \w+ for \S+ failed - POSS</regex>
+    <comment>Reverse lookup error (bad ISP or possible attack)</comment>
+  </rule>
+
+  <rule id="1503" level="11" frequency="4" timeframe="360">
+    <if_sid>1502</if_sid>
+    <if_matched_sid>1502</if_matched_sid>
+    <comment>Possible breakin attempt (high reverse lookup errors)</comment>
   </rule>
 </group> <!-- SYSLOG, SSHD -->
 

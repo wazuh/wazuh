@@ -313,6 +313,7 @@ void OS_ReadMSG(int m_queue)
         sleep(2);
 
         
+        #ifndef LOCAL
         if(Config.ar & REMOTE_AR)
         {
             if((arq = StartMQ(ARQUEUE, WRITE)) < 0)
@@ -335,6 +336,23 @@ void OS_ReadMSG(int m_queue)
                 verbose("%s: Connected to '%s'", ARGV0, ARQUEUE);
             }
         }
+        
+        #else
+        /* Only for LOCAL_ONLY installs */
+        if(Config.ar & REMOTE_AR)
+        {
+            if(Config.ar & LOCAL_AR)
+            {
+                Config.ar = 0;
+                Config.ar|=LOCAL_AR;
+            }
+            else
+            {
+                Config.ar = 0;
+            }
+        }
+        #endif
+        
         if(Config.ar & LOCAL_AR)
         {
             if((execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
