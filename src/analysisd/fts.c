@@ -61,7 +61,13 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
     /* Getting the msgsize size */
     msgsize = strlen(_line);
 
-   
+    
+    /* Checking if from the last 20 FTS events, we had
+     * at least 4 "similars" before. If yes, we just
+     * ignore it.
+     */
+    
+    
     /* If File_Date of char <= is because the file is not present */ 
     if(File_DateofChange(queue) >= 0)
     {
