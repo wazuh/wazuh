@@ -1,47 +1,76 @@
 #!/bin/sh
-# Disable an account by setting "passwd -l"
+# Disable an account by setting "passwd -l" or chuser
 # Requirements: System with a passwd that supports -l and -u
+#               or a system with chuser (AIX)
 # Expect: username (can't be "root")
-# Author: Daniel B. Cid
-# Last modified: Jan 13, 2005
+# Authors: Ahmet Ozturk and Daniel B. Cid
+# Last modified: Jan 19, 2005
+
 
 UNAME=`uname`
 PASSWD="/usr/bin/passwd"
+CHUSER="/usr/bin/chuser"
 ACTION=$1
 USER=$2
 IP=$3
 
-# We should only run on linux
-if [ "X${UNAME}" != "XLinux" ]; then
-   exit 0;
-fi
 
-# Checking if iptables is present
-ls ${PASSWD} >> /dev/null 2>&1
-if [ $? != 0 ]; then
-    exit 0;
-fi    
-       
 if [ "x${USER}" = "x" ]; then
-   echo "$0: <username>" 
+   echo "$0: [ add | delete ] <username>" 
    exit 1;
 fi
 
 
-# Disabling an account
-if [ "x${ACTION}" = "xadd" ]; then
-   ${PASSWD} -l ${USER}
-   exit 0;
+# We should run on linux and on SunOS the passwd -u/-l
+if [ "X${UNAME}" = "XLinux" -o "X${UNAME}" = "XSunOS" ]; then
+   # Checking if passwd is present
+   ls ${PASSWD} >> /dev/null 2>&1
+   if [ $? != 0 ]; then
+      exit 0;
+   fi    
 
-# Removing IP block
-elif [ "x${ACTION}" = "xdelete" ]; then
-   ${PASSWD} -u ${USER}
-   exit 0;
+   CMD=${PASSWD}
+   if [ "x${ACTION}" = "xadd" ]; then
+       ARGS="-l"
+   elif [ "x${ACTION}" = "xdelete" ]; then
+       ARGS="-u"
+   else
+      echo "$0: invalid action: ${ACTION}"
+      exit 1;
+   fi
 
-# Invalid action
-else
-   echo "$0: invalid action: ${ACTION}"
+
+# On AIX, we run CHUSER
+elif [ "X${UNAME}" = "XAIX" ]; then
+   # Checking if chuser is present
+   ls ${CHUSER} >> /dev/null 2>&1
+   if [ $? != 0 ]; then
+      exit 0;
+   fi    
+
+   CMD=${CHUSER}
+    
+   # Disabling an account
+   if [ "x${ACTION}" = "xadd" ]; then
+      ARGS="account_locked=true" 
+   # Unblock the account 
+   elif [ "x${ACTION}" = "xdelete" ]; then
+      ARGS="account_locked=false"
+   # Invalid action
+   else
+      echo "$0: invalid action: ${ACTION}"
+      exit 1;
+   fi
+
+
+# We only support Linux, SunOS and AIX
+else 
+   exit 0;
 fi
-       
+
+
+# Execute the command
+${CMD} ${ARGS} ${USER}
 
 exit 1;
+
