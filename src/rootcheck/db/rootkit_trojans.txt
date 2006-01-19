@@ -44,7 +44,7 @@ grep        !bash|givemer|/dev/
 egrep		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 find		!bash|/dev/[^nlcs]|/prof|/home/virus|file\.h
 lsof		!/prof|/dev/[^nfk]|proc\.h|bash|^/bin/sh|/dev/ttyo|/dev/ttyp
-netstat		!bash|^/bin/sh|/dev/[^ik]|/prof|grep|addr\.h
+netstat		!bash|^/bin/sh|/dev/[^aik]|/prof|grep|addr\.h
 top			!/dev/[^npi3t%]|proc\.h|/prof
 ps			!/dev/ttyo|\.1proc|proc\.h|bash|^/bin/sh	
 tcpdump		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^b]|^/bin/.*sh
@@ -57,7 +57,7 @@ w			!uname -a|proc\.h|bash
 
 sendmail	!bash|fuck
 named		!bash|blah|/dev/[0-9]|^/bin/sh
-inetd		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^n%]|^/bin/.*sh
+inetd		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^un%]|^/bin/.*sh
 apachectl	!bash|^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh
 sshd		!check_global_passwd|panasonic|satori|vejeta|\.ark|/hash\.zk|bash|/dev[a-s]|/dev[A-Z]/
 syslogd		!bash|/usr/lib/pt07|/dev/[^cln]]|syslogs\.h|proc\.h
