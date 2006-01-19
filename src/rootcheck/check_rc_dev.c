@@ -98,7 +98,7 @@ int read_dev_dir(char *dir_name)
     ign_size = 6;
     
     #ifdef SOLARIS
-    ign_size = 11; /* +5 */
+    ign_size = 12; /* +6 */
     #elif Darwin
     ign_size = 7;
     #endif
