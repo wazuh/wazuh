@@ -83,6 +83,11 @@ typedef int uid_t;
 typedef int gid_t;
 #endif
 
+/* For AIX */
+#ifdef AIX
+#define MSG_DONTWAIT MSG_NONBLOCK
+#endif
+
 
 /*** Global prototypes ***/
 /*** These functions will exit on error. No need to check return code ***/

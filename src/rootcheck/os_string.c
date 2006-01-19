@@ -69,9 +69,16 @@
 #endif
 
 #ifndef N_BADMAG
+
+#ifdef AIX
+#define       N_BADMAG(x) \
+    (((x).magic)!=U802TOCMAGIC && ((x).magic)!=U803TOCMAGIC && ((x).magic)!=U803XTOCMAGIC && ((x).magic)!=U64_TOCMAGIC)
+#else /* non AIX */
 #define       N_BADMAG(x) \
     (((x).a_magic)!=OMAGIC && ((x).a_magic)!=NMAGIC && ((x).a_magic)!=ZMAGIC)
 #endif
+
+#endif  /* N_BADMAG */
 
 #ifndef N_PAGSIZ
 #define       N_PAGSIZ(x) \
@@ -79,12 +86,20 @@
 #endif
 
 #ifndef N_TXTOFF
+
+#ifdef AIX
+#define         N_TXTOFF(x) \
+        /* text segment */ \
+            ((x).magic==U64_TOCMAGIC ? 0 : sizeof (struct aouthdr))
+#else /* non AIX */
 #define       N_TXTOFF(x) \
         /* text segment */ \
     ((x).a_machtype == M_OLDSUN2 \
            ? ((x).a_magic==ZMAGIC ? N_PAGSIZ(x) : sizeof (struct exec)) \
            : ((x).a_magic==ZMAGIC ? 0 : sizeof (struct exec)) )
 #endif
+
+#endif /* N_TXTOFF */
 
 
 #include "headers/defs.h"
@@ -98,7 +113,11 @@
 #define ISSTR(ch)	(isascii(ch) && (isprint(ch) || ch == '\t'))
 
 
+#ifdef AIX
+typedef struct aouthdr EXEC;    
+#else
 typedef struct exec EXEC;    
+#endif
 
 typedef struct _os_strings
 {
@@ -180,7 +199,11 @@ int os_string(char *file, char *regex)
         }
         else
         {
+            #ifdef AIX
+            oss.read_len = head->tsize + head->dsize;
+            #else
             oss.read_len = head->a_text + head->a_data;
+            #endif
         }
 
         oss.head_len = 0;

@@ -381,7 +381,9 @@ char *OS_GetHost(char *host)
     
     char *ip;
     struct hostent *h;
+    #ifndef AIX
     extern int h_errno;
+    #endif
 
     if(host == NULL)
         return(NULL);

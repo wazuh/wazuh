@@ -44,6 +44,12 @@ if [ "X${ARGV}" = "Xall" ]; then
         echo "DEXTRA=-DUSE_OPENSSL" >> Config.OS
     fi    
 
+    if [ "X$OS" = "XAIX" ]; then
+        echo "EEXTRA=-DAIX" >> Config.OS
+        PATH=$PATH:/usr/vac/bin
+        export  PATH
+    fi
+
     if [ "X$OS" = "XSunOS" ]; then
         echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -include strings.h" >> Config.OS
         PATH=$PATH:/usr/ccs/bin
