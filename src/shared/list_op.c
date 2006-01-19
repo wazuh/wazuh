@@ -130,6 +130,8 @@ void OSList_DeleteCurrentlyNode(OSList *list)
 
     /* Setting the currently node to the next one */
     list->cur_node = next;
+
+    list->currently_size--;
 }
 
 
@@ -170,6 +172,32 @@ int OSList_AddData(OSList *list, void *data)
     /* newnode become last node */
     list->last_node = newnode;
 
+    /* Increment list size */
+    list->currently_size++;
+    
+    /* if currently_size higher than the maximum size, remove the
+     * oldest node (first one)
+     */
+    if(list->max_size)
+    {
+        if(list->currently_size > list->max_size)
+        {
+            /* Remove first node */
+            newnode = list->first_node->next;
+
+            newnode->prev = NULL;
+
+            /* Clearing the memory */
+            free(list->first_node);
+
+            /* First node become the ex first->next */
+            list->first_node = newnode;
+
+            /* Reduce list size */
+            list->currently_size--;
+        }
+    }
+    
     return(1);
 }
 
