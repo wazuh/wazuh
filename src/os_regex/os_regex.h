@@ -110,6 +110,11 @@ int OS_WordMatch(char *pattern, char *str);
 char **OS_StrBreak(char match, char *str, int size);
   
 
+/** int OS_StrHowClosedMatch(char *str1, char *str2) v0.1
+ * Returns the number of characters that both strings
+ * have in similar (start at the beginning of them).
+ */
+int OS_StrHowClosedMatch(char *str1, char *str2);
 
   
 /** Inline prototypes **/
