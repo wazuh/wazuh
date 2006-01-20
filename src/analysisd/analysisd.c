@@ -80,6 +80,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf);
 
 
 /* from FTS */
+int FTS_Init();
 int FTS(Eventinfo *lf);
 
 
@@ -275,9 +276,6 @@ void OS_ReadMSG(int m_queue)
     currently_lf = NULL;
     currently_rule = NULL;
 
-    /* Starting the getloglocation */
-    debug1("%s: DEBUG: Starting the log process...\n",ARGV0);
-
 
     /* Initiating the logs */
     OS_InitLog();
@@ -291,6 +289,13 @@ void OS_ReadMSG(int m_queue)
     OS_CreateEventList(Config.memorysize);
 
 
+    /* Initiating the FTS list */
+    if(!FTS_Init())
+    {
+        ErrorExit(FTS_LIST_ERROR, ARGV0);
+    }
+    
+
     /* Starting the mail queue (if configured to */
     if(Config.mailnotify == 1)
     {
@@ -301,7 +306,7 @@ void OS_ReadMSG(int m_queue)
         }
         else
         {
-            verbose("%s: Connected to '%s' (mailqueue)", ARGV0, MAILQUEUE);
+            verbose(CONN_TO, ARGV0, MAILQUEUE, "mail");
         }
     }
 
@@ -333,7 +338,7 @@ void OS_ReadMSG(int m_queue)
             }
             else
             {
-                verbose("%s: Connected to '%s'", ARGV0, ARQUEUE);
+                verbose(CONN_TO, ARGV0, ARQUEUE, "active-response");
             }
         }
         
@@ -372,7 +377,7 @@ void OS_ReadMSG(int m_queue)
             }
             else
             {
-                verbose("%s: Connected to '%s'", ARGV0, EXECQUEUE);
+                verbose(CONN_TO, ARGV0, EXECQUEUE, "exec");
             }
         }
     }
@@ -755,6 +760,24 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
     }	   	   
 
+    /* Checking for the url */
+    if(currently_rule->url)
+    {
+        if(!OS_Match(currently_rule->url,
+                    lf->url))
+        {
+            return(NULL);
+        }
+    }
+
+    /* Checking for the id */
+    if(currently_rule->id)
+    {
+        if(!OS_Match(currently_rule->id, lf->id))
+        {
+            return(NULL);
+        }
+    }
     
     /* Checking if exist any regex for this rule */
     if(currently_rule->regex)

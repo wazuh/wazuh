@@ -44,6 +44,7 @@ typedef struct _Eventinfo
     char *dstuser;
     char *id;
     char *command;
+    char *url;
 
     /* FTS fields */
     int fts;

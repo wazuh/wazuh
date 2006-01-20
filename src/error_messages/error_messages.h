@@ -75,7 +75,8 @@
 #define MAX_RK_MSG      "%s(1250): Maximum number of global files reached: %d"
 
 
-/* Analysisd decoder */
+/* Analysisd */
+#define FTS_LIST_ERROR  "%s(1260): Error initiating FTS list"
 #define DECODE_NOPREMATCH   "%s(1270): No 'prematch' found in decoder '%s'"
 
 
@@ -101,6 +102,8 @@
 /* List operations */
 #define LIST_ERROR      "%s(1290); Error creating a new list (calloc)."
 #define LIST_ADD_ERROR  "%s(1291): Error adding nodes to list."
+#define LIST_SIZE_ERROR "%s(1292): Error setting error size."
+#define LIST_FREE_ERROR "%s(1293): Error setting data free pointer."
 
 
 /* Encryption/ auth errors */
@@ -124,7 +127,7 @@
 
 #define NO_SYSLOG       "%s(1501): No IP or network allowed in the access list" \
                         " for syslog. No reason for running it. Exiting."
-
+#define CONN_TO     "%s: Connected to '%s' (%s queue)"
 
 #endif /* _ERROR_MESSAGES__H */
 

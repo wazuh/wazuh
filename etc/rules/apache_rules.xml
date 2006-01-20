@@ -67,6 +67,21 @@
   </rule>
 </group> <!-- ERROR_LOG,APACHE -->
 
+<group name="apache-accesslog">
+  <rule id="3100" level="0" noalert="1">
+    <decoded_as>apache-accesslog</decoded_as>
+    <category>apache</category>
+    <comment>Apache messages grouped</comment>
+  </rule>
 
+  <rule id="3101" level="7">
+    <if_sid>3100</if_sid>
+    <url>cmd.exe|root.exe|_vti_bin|_mem_bin|msadc|c/winnt|d/winnt|</url>
+    <url>/x90/|/xmlrpc|awstats.pl</url>
+    <comment>Common web attacks</comment>
+  </rule>
+
+  
+</group> <!-- APACHE access log -->
 <!-- EOF -->
 

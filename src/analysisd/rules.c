@@ -96,6 +96,8 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_srcip = "srcip";
     char *xml_dstip = "dstip";
     char *xml_user = "user";
+    char *xml_url = "url";
+    char *xml_id = "id";
     
     char *xml_if_sid = "if_sid";
     char *xml_if_group = "if_group";
@@ -373,6 +375,20 @@ int Rules_OP_ReadRules(char * rulefile)
                             loadmemory(config_ruleinfo->user,
                                     rule_opt[k]->content);
                     }
+                    else if(strcasecmp(rule_opt[k]->element,xml_id)==0)
+                    {
+                        config_ruleinfo->id=
+                            loadmemory(config_ruleinfo->id,
+                                    rule_opt[k]->content);
+                    }
+                    
+                    else if(strcasecmp(rule_opt[k]->element,xml_url)==0)
+                    {
+                        config_ruleinfo->url=
+                            loadmemory(config_ruleinfo->url,
+                                    rule_opt[k]->content);
+                    }
+                    
                     /* We allow these three categories so far */
                     else if(strcasecmp(rule_opt[k]->element, xml_category)==0)
                     {
@@ -728,6 +744,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->user = NULL; 
     ruleinfo_pt->srcip = NULL;
     ruleinfo_pt->dstip = NULL;
+    ruleinfo_pt->url = NULL;
+    ruleinfo_pt->id = NULL;
     
     return(ruleinfo_pt);
 }

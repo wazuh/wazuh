@@ -69,6 +69,8 @@ typedef struct _RuleInfo
     char *srcip;
     char *dstip;
     char *user;
+    char *url;
+    char *id;
 
 }RuleInfo;
 

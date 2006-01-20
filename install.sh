@@ -299,6 +299,7 @@ ConfigureServer()
 		echo "  <mail-notify>no</mail-notify>" >> $NEWCONFIG
 	fi
         echo "  <syscheck_ignore>/etc/mtab</syscheck_ignore>">> $NEWCONFIG
+        echo "  <ar_ignore_hosts>127.0.0.1</ar_ignore_hosts>" >> $NEWCONFIG
 	echo "</global>" >> $NEWCONFIG
 	echo "" >> $NEWCONFIG
 
