@@ -15,8 +15,8 @@ chown		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh
 chmod		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh
 chgrp		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh
 cat			!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh
-bash		!file\.h|proc\.h|/dev/[0-9]|/dev/[hijkz]
-sh			!file\.h|proc\.h|/dev/[0-9]|/dev/[hijkz]
+bash		!proc\.h|/dev/[0-9]|/dev/[hijkz]
+sh			!proc\.h|/dev/[0-9]|/dev/[hijkz]
 uname		!bash|^/bin/sh|file\.h|proc\.h|^/bin/.*sh
 date		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cl]|^/bin/.*sh
 du			!/dev|w0rm|/prof|file\.h

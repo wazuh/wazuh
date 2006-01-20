@@ -90,6 +90,7 @@ int read_dev_dir(char *dir_name)
                             ".devfsadm_daemon.lock",
                             ".devfsadm_deamon.lock",
                             ".devfsadm_synch_door",
+                            ".zone_reg_door",
     #elif Darwin
                             "fd",                        
     #endif
@@ -98,7 +99,7 @@ int read_dev_dir(char *dir_name)
     ign_size = 6;
     
     #ifdef SOLARIS
-    ign_size = 12; /* +6 */
+    ign_size = 13; /* +7 */
     #elif Darwin
     ign_size = 7;
     #endif
