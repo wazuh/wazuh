@@ -28,7 +28,7 @@
 #include "eventinfo.h"
 #include "rules.h"
 
-#define FTS_MAX_SIZE        20
+#define FTS_MAX_SIZE        28
 #define FTS_MINSIZE_FOR_STR 14
 
 OSList *fts_list = NULL;
@@ -136,6 +136,9 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
         }
 
 
+        /* Close here to open latter */
+        fclose(fp);
+
         /* Checking if from the last 20 FTS events, we had
          * at least 4 "similars" before. If yes, we just
          * ignore it.
@@ -149,7 +152,7 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
             {
                 number_of_matches++;
 
-                if(number_of_matches > 4)
+                if(number_of_matches > 3)
                 {
                     return(0);
                 }
@@ -160,9 +163,6 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
         os_strdup(_line, line_for_list);
         OSList_AddData(fts_list, line_for_list);
 
-
-        /* Close here to open latter */
-        fclose(fp);
     }
 
     
