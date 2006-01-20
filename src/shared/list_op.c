@@ -38,8 +38,47 @@ OSList *OSList_Create()
     my_list->cur_node = NULL;
     my_list->currently_size = 0;
     my_list->max_size = 0;
+    my_list->free_data_function = NULL;
     
     return(my_list);
+}
+
+
+/* Set the maximum number of elements
+ * in the list. Returns 0 on error or
+ * 1 on success.
+ */
+int OSList_SetMaxSize(OSList *list, int max_size)
+{
+    if(!list)
+    {
+        return(0);
+    }
+    
+    /* Minimum size is 1 */
+    if(max_size <= 1)
+    {
+        return(0);
+    }
+
+    list->max_size = max_size;
+
+    return(1);
+}
+
+
+/* Set the pointer to the function to free the memory
+ * data.
+ */
+int OSList_SetFreeDataPointer(OSList *list, void *free_data_function)
+{
+    if(!list)
+    {
+        return(0);
+    }
+    
+    list->free_data_function = free_data_function;
+    return(1);
 }
 
 
@@ -64,7 +103,8 @@ OSListNode *OSList_GetLastNode(OSList *list)
 
 
 /* Get next node from list
- * Returns null on invalid list
+ * Returns null on invalid list or at
+ * the end of the list
  */
 OSListNode *OSList_GetNextNode(OSList *list)
 {
@@ -76,7 +116,21 @@ OSListNode *OSList_GetNextNode(OSList *list)
     return(list->cur_node);
 }
   
-  
+
+/* Get the prev node from the list
+ * Returns NULL at the beginning
+ */
+OSListNode *OSList_GetPrevNode(OSList *list)
+{
+    if(list->cur_node == NULL)
+        return(NULL);
+
+    list->cur_node = list->cur_node->prev;
+
+    return(list->cur_node);
+}
+    
+
 /* Get the currently node.
  * Returns null when no currently node is available
  */  
