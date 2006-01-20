@@ -165,6 +165,23 @@ void FW_Log(Eventinfo *lf)
         return;
     }
 
+    /* Setting the actions */
+    if(OS_Match("drop|deny|reject|block", lf->action))
+    {
+        os_free(lf->action);
+        os_strdup("DROP", lf->action);
+    }
+    else if(OS_Match("accept|allow|pass", lf->action))
+    {
+        os_free(lf->action);
+        os_strdup("ALLOW", lf->action);
+    }
+    else
+    {
+        os_free(lf->action);
+        os_strdup("UNKNOWN", lf->action);
+    }
+
     /* log to file */
     if(_fflog)
     {

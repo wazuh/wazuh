@@ -97,6 +97,8 @@ typedef int gid_t;
 
 #define os_strdup(x,y) (y = strdup(x))?1:ErrorExit(MEM_ERROR, ARGV0)
 
+#define os_free(x) (x)?free(x):merror("free a null")
+
 #endif /* __SHARED_H */
 
 /* EOF */
