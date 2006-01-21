@@ -193,6 +193,11 @@ void *ID_FP(Eventinfo *lf, char *field)
     lf->id = field;
     return(NULL);
 }
+void *Url_FP(Eventinfo *lf, char *field)
+{
+    lf->url = field;
+    return(NULL);
+}
 void *None_FP(Eventinfo *lf, char *field)
 {
     free(field);

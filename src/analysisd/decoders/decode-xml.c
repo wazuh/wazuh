@@ -266,6 +266,10 @@ void ReadDecodeXML(char *file)
                     {
                         pi->order[order_int] = (void *)ID_FP;
                     }
+                    else if(strstr(*norder, "url") != NULL)
+                    {
+                        pi->order[order_int] = (void *)Url_FP;
+                    }
                     else
                     {
                         ErrorExit("decode-xml: Wrong field '%s' in the order"
