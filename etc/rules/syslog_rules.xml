@@ -282,7 +282,7 @@
   
   <rule id ="1101" level="7">
    <if_sid>1100</if_sid>
-   <match>: authentication failure; | failed |BAD su|</match>
+   <match>: authentication failure; | failed |BAD su</match>
    <comment>User missed the password to change UID (user id)</comment> 
   </rule>
 
