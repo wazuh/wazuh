@@ -61,6 +61,7 @@ void *DstPort_FP(Eventinfo *lf, char *field);
 void *Protocol_FP(Eventinfo *lf, char *field);
 void *Action_FP(Eventinfo *lf, char *field);
 void *ID_FP(Eventinfo *lf, char *field);
+void *Url_FP(Eventinfo *lf, char *field);
 void *None_FP(Eventinfo *lf, char *field);
 
 #endif
