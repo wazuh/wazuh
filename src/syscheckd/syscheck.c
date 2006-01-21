@@ -234,6 +234,10 @@ int main(int argc, char **argv)
             merror(PID_ERROR,ARGV0);
 
 
+        /* Start up message */
+        verbose(STARTUP_MSG, ARGV0, getpid());
+        
+        
         /* When on QUEUE, we need to create the database every time */
         if(syscheck.notify == QUEUE)
         {

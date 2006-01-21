@@ -117,6 +117,10 @@ int main(int argc, char **argv)
         ErrorExit(QUEUE_ERROR,ARGV0,EXECQUEUEPATH);
 
 
+    /* Start up message */
+    verbose(STARTUP_MSG, ARGV0, getpid());
+        
+
     /* The real daemon Now */	
     ExecdStart(m_queue);
     

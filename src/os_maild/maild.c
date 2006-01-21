@@ -143,6 +143,10 @@ int main(int argc, char **argv)
         ErrorExit(QUEUE_ERROR,ARGV0,MAILQUEUE);
     
 
+    /* Start up message */
+    verbose(STARTUP_MSG, ARGV0, getpid());
+    
+
     /* the real daemon now */	
     OS_Run(m_queue,&mail);
     exit(0);

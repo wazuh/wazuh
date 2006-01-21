@@ -89,6 +89,10 @@ void HandleRemote(int position, int uid)
         ErrorExit(PID_ERROR,ARGV0);
 
 
+    /* Start up message */
+    verbose(STARTUP_MSG, ARGV0, getpid());
+        
+
     /* If Secure connection, deal with it */
     if(logr.conn[position] == SECURE_CONN)
     {
