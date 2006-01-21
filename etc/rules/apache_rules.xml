@@ -77,10 +77,15 @@
   <rule id="3101" level="7">
     <if_sid>3100</if_sid>
     <url>cmd.exe|root.exe|_vti_bin|_mem_bin|msadc|c/winnt|d/winnt|</url>
-    <url>/x90/|/xmlrpc|awstats.pl</url>
+    <url>/x90/|/xmlrpc|awstats.pl|default.ida</url>
     <comment>Common web attacks</comment>
   </rule>
 
+  <rule id="3102" level="10">
+    <if_sid>3101</if_sid>
+    <id>200</id>
+    <comment>A commom web attack returned code 200 (success)</comment>
+  </rule>
   
 </group> <!-- APACHE access log -->
 <!-- EOF -->
