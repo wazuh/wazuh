@@ -39,8 +39,8 @@ char *(weekdays[])={"Sunday","Monday","Tuesday","Wednesday","Thursday",
 /* Stats definitions */
 #define STATWQUEUE	"/stats/weekly"
 #define STATQUEUE	"/stats/hourly"
-#define MAXDIFF		300
-#define MINDIFF	    20	
+#define MAXDIFF		350
+#define MINDIFF	    35	
 
 /* Global vars */
 int _RWHour[7][24];
@@ -65,7 +65,7 @@ char *_pprevlast;
 
 
 /* gethour: v0.2
- * Return the parameter (event_number + 15 % of it)
+ * Return the parameter (event_number + 20 % of it)
  * If event_number < MINDIFF, return MINDIFF
  * If event_number > MAXDIFF, return MAXDIFF
  */
@@ -73,7 +73,7 @@ int gethour(int event_number)
 {
     int event_diff;
 
-    event_diff = (event_number * 15)/100;
+    event_diff = (event_number * 20)/100;
 
     event_diff++;
     
@@ -99,19 +99,19 @@ void Update_Hour()
         FILE *fp;
         
         /* If saved hourly = 0, just copy the current hourly rate */
-        if(_RHour[i] == 0)
-            _RHour[i]=_CHour[i];
-        
-        else if(_RHour[i] == 0)
+        if(_CHour[i] == 0)
             continue;
+        
+        if(_RHour[i] == 0)
+            _RHour[i]=_CHour[i] + 10;
         
         else
         {
             /* The average is going to be 3* the saved hour +
              * the currently hourly rate, divided by 4 */
-            _RHour[i]=((_CHour[i]+(3*_RHour[i]))/4)+1;
+            _RHour[i]=((_CHour[i]+(3*_RHour[i]))/4)+5;
         }
-
+        
         snprintf(_hourly,128,"%s/%d",STATQUEUE,i);
         fp = fopen(_hourly, "w");
         if(fp)
@@ -121,8 +121,9 @@ void Update_Hour()
         }
         	
         else
+        {
             merror(FOPEN_ERROR, "logstats", _hourly);
-            
+        }   
         _CHour[i] = 0; /* Zeroing the currently  hour */
     }
 
@@ -134,14 +135,14 @@ void Update_Hour()
 
         for(j=0;j<=23;j++)
         {
-            if(_RWHour[i][j] == 0)
-                _RWHour[i][j] = _CWHour[i][j];
-                
-            else if(_RWHour[i][j] == 0)
+            if(_CWHour[i][j] == 0)
                 continue;
+
+            if(_RWHour[i][j] == 0)
+                _RWHour[i][j] = _CWHour[i][j] + 10;
                 
             else
-                _RWHour[i][j]=((_CWHour[i][j]+(3*_RWHour[i][j]))/4)+1;	
+                _RWHour[i][j]=((_CWHour[i][j]+(3*_RWHour[i][j]))/4)+5;	
 
             snprintf(_weekly,128,"%s/%d/%d",STATWQUEUE,i,j);
             fp = fopen(_weekly, "w");
@@ -151,7 +152,9 @@ void Update_Hour()
                 fclose(fp);
             }
             else
+            {
                 merror(FOPEN_ERROR, "logstats", _weekly);
+            }
             
             _CWHour[i][j]=0;	
         }   
