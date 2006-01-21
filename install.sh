@@ -189,6 +189,22 @@ SetupLogs()
         fi
     done    
     
+    # Getting apache logs
+    APACHE_FILES="/var/log/apache/error.log /var/log/apache/access.log /var/www/logs/access_log /var/www/logs/error_log"
+    for i in ${APACHE_FILES}; do
+        ls $i > /dev/null 2>&1
+        if [ $? = 0 ]; then
+          echo "" >> $NEWCONFIG
+          echo "<localfile>" >> $NEWCONFIG
+          echo "  <log_format>apache</log_format>" >> $NEWCONFIG
+          echo "  <location>$i</location>" >>$NEWCONFIG
+          echo "</localfile>" >> $NEWCONFIG
+          
+          echo "    -- $i (apache log)"
+        fi
+    done
+    
+    
 	echo ""
 	echo " - If any want to monitor any other file, just change "
 	echo " - $WORKDIR/etc/ossec.conf and add a new localfile entry."
