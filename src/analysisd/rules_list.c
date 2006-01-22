@@ -197,6 +197,8 @@ int OS_AddChild(RuleInfo *read_rule)
             return(1);
         }
 
+        ilevel*=100;
+
         if(!_AddtoRule(0, ilevel, 0, NULL, NULL, read_rule))
         {
             ErrorExit("rules_list: Level ID '%d' not "
