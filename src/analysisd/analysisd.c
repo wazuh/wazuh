@@ -552,6 +552,12 @@ void OS_ReadMSG(int m_queue)
 
             do
             {
+                /* The categories must match */
+                if(rulenode_pt->ruleinfo->category != lf->type)
+                {
+                    continue;
+                }
+                
                 /* Checking each rule. */
                 if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt)) 
                         == NULL)
@@ -725,13 +731,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         return(NULL);
     }
    
-    /* First think to check is the category */
-    if(lf->type != currently_rule->category)
-    {
-        return(NULL);
-    }
      
-    /* Checking if any plugin pre-matched in here */
+    /* Checking if any plugin pre-matched here */
     if(currently_rule->plugin_decoded)
     {
         

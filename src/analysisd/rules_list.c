@@ -80,15 +80,6 @@ int _AddtoRule(int sid, int level, int none, char *group,
             }
         }
         
-        /* If we are not searching for the sid, the category must
-         * be the same 
-         */
-        else if(read_rule->category != r_node->ruleinfo->category)
-        {
-            r_node = r_node->next;
-            continue;
-        }
-
         /* Checking if the level matches */
         else if(level)
         {
@@ -100,6 +91,16 @@ int _AddtoRule(int sid, int level, int none, char *group,
                 r_code = 1;
             }
         }
+        
+        /* If we are not searching for the sid or level, the category must
+         * be the same 
+         */
+        else if(read_rule->category != r_node->ruleinfo->category)
+        {
+            r_node = r_node->next;
+            continue;
+        }
+
 
         /* Checking if the group matches */
         else if(group)
@@ -113,7 +114,7 @@ int _AddtoRule(int sid, int level, int none, char *group,
             }
         }
         
-        /* If none of them is set, check for the category */
+        /* If none of them is set, add for the category */
         else
         {
             r_node->child =
