@@ -210,7 +210,7 @@
 <decoder name="apache-accesslog">
   <type>apache</type>
   <prematch>^\d+.\d+.\d+.\d+ - - [</prematch>
-  <regex>^(\d+.\d+.\d+.\d+) - - [\d+/\w+\d+:\d+:\d+:\d+ -\d+] </regex>
+  <regex>^(\d+.\d+.\d+.\d+) - - [\d+/\w+/\d+:\d+:\d+:\d+ -\d+] </regex>
   <regex>"\w+ (\S+) HTTP\S+" (\d+) </regex>
   <order>srcip,url,id</order>
 </decoder>

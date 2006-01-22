@@ -245,7 +245,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         
         else
         {
-            pieces[3]+=26;
+            pieces[3]+=27;
         }
     }
 

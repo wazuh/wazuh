@@ -763,6 +763,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking for the url */
     if(currently_rule->url)
     {
+        merror("checking against url: %s with %s",currently_rule->url, lf->url);
         if(!OS_Match(currently_rule->url,
                     lf->url))
         {
