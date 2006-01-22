@@ -389,6 +389,12 @@ void ReadDecodeXML(char *file)
             {
                 ErrorExit(REGEX_COMPILE, ARGV0, regex, pi->regex->error);
             }
+
+            /* We must have the sub_strings to retrieve the nodes */
+            if(!pi->regex->sub_strings)
+            {
+                ErrorExit(REGEX_SUBS, ARGV0, regex);
+            }
         }
         /* We can release pi->regex */
         else

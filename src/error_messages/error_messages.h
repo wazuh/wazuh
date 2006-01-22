@@ -118,6 +118,7 @@
                                    
 /* Regex errors */
 #define REGEX_COMPILE   "%s(1450): Syntax error on regex: '%s': %d."
+#define REGEX_SUBS      "%s(1451): Missing sub_strings on regex: '%s'."
 
 
 /* Verbose messages */
