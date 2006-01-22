@@ -53,6 +53,7 @@ RuleInfo *zerorulemember(int id, int level,
 void printrule(RuleInfo *config_rule);
 void Rule_AddAR(RuleInfo *config_rule);
 char *loadmemory(char *at, char *str);
+void _setlevels(RuleNode *node);
 
 
 
@@ -266,12 +267,6 @@ int Rules_OP_ReadRules(char * rulefile)
                     return(-1);
                 }
 
-                if((Config.accuracy == 1)&&(accuracy == 0))
-                {
-                    merror("rules_op: Ignoring rule %d. Not accurate",id);
-                    continue;
-                }
-                
                 /* Allocating memory and initializing structure */
                 if((config_ruleinfo = zerorulemember(id, level, maxsize,
                             frequency,timeframe, noalert,ignore_time)) == NULL)
@@ -286,6 +281,16 @@ int Rules_OP_ReadRules(char * rulefile)
                  */
                  if(config_ruleinfo->level == 0)
                      config_ruleinfo->level = 99;
+
+                 /* Each level now is going to be multiplied by 100.
+                  * If the accuracy is set to 0 we don't multiply,
+                  * so it will be at the end of the list. We will
+                  * divide by 100 later.
+                  */
+                 if(accuracy)
+                 {
+                     config_ruleinfo->level *= 100;
+                 }
                      
 
             } /* end attributes/memory allocation block */
@@ -545,27 +550,11 @@ int Rules_OP_ReadRules(char * rulefile)
     OS_ClearNode(node);
     OS_ClearXML(&xml);
 
-    /* Setting levels 99 to zero again */
+    /* Setting the levels to the right place again */
     {
         RuleNode *tmp_node = OS_GetFirstRule();
-        while(tmp_node)
-        {
-            if(tmp_node->ruleinfo->level == 99)
-                tmp_node->ruleinfo->level = 0;
-            
-            if(tmp_node->child)
-            {
-                RuleNode *child_node = tmp_node->child;
-                while(child_node)
-                {
-                    if(child_node->ruleinfo->level == 99)
-                        child_node->ruleinfo->level = 0;
 
-                    child_node = child_node->next;
-                }
-            }
-            tmp_node = tmp_node->next;
-        }
+        _setlevels(tmp_node);
         
     } /* Done with the levels */
     
@@ -1014,5 +1003,24 @@ void Rule_AddAR(RuleInfo *rule_config)
     return;
 }
 
+/* _set levels */
+void _setlevels(RuleNode *node)
+{
+    while(node)
+    {
+        if(node->ruleinfo->level == 9900)
+            node->ruleinfo->level = 0;
+
+        if(node->ruleinfo->level > 100)
+            node->ruleinfo->level/=100;
+
+        if(node->child)
+        {
+            _setlevels(node->child);
+        }
+
+        node = node->next;
+    }
+}
 
 /* EOF */

@@ -1,4 +1,4 @@
-<!-- Official pix rules for the OSSEC HIDS. v0.5
+<!-- Official pix rules for the OSSEC HIDS
   -  Author: Daniel B. Cid
   -  Date: Nov 11, 2005
   -->
@@ -14,19 +14,19 @@
     <comment>Pre-match for PIX rules</comment>
   </rule>
   
-  <rule id="2001" level="8">
+  <rule id="2001" level="9">
     <if_sid>2000</if_sid>
     <match>^%PIX-6-605004: Login denied from</match>
     <comment>Attempt to log in the PIX firewall from untrusted network</comment>
   </rule>
 
-  <rule id="2002" level="7">
+  <rule id="2002" level="2">
     <if_sid>2000</if_sid>
     <match>^%PIX-5-502103: User priv level changed:</match>
     <comment>User changed his privileges in the PIX</comment>
   </rule>
 
-  <rule id="2003" level="3">
+  <rule id="2003" level="2">
     <if_sid>2000</if_sid>
     <match>^%PIX-6-605005: Login permitted from</match>
     <comment>Sucessfull login into the PIX firewall</comment>
@@ -38,19 +38,19 @@
     <comment>Connection related message from the PIX firewall</comment>
   </rule>
 
-  <rule id="2005" level="8">
+  <rule id="2005" level="12">
     <if_sid>2000</if_sid>
     <match>^%PIX-6-308001: PIX console enable password incorrect</match>
     <comment>Password mismatch while trying enable on the PIX</comment>
   </rule>
 
-   <rule id="2006" level="11">
+   <rule id="2006" level="8">
     <if_sid>2000</if_sid>
     <match>^%PIX-4-405001: Received ARP response collision from</match>
     <comment>ARP collision detected by the PIX. Worth looking at it</comment>
   </rule> 
 
-   <rule id="2007" level="7">
+   <rule id="2007" level="9">
     <if_sid>2000</if_sid>
     <match>^%PIX-4-401004: Shunned packet: </match>
     <comment>Attempt to connect from a shunned IP</comment>

@@ -1,0 +1,27 @@
+0100 - 0199 Syslog error messages
+0200 - 0299 NFS messages
+0300 - 0399 Xinetd messages
+0400 - 0499 Access control messages
+0500 - 0599 Sendmail messages
+0600 - 0699 Ftp messages
+0700 - 0799 Smartd messages
+0800 - 0899 Kernel messages
+0900 - 0949 Crond messages
+0950 - 0999 Automount messages
+1000 - 1099 Unused
+1100 - 1199 Su messages
+1200 - 1299 Tripwire messages
+1300 - 1399 Adduser messages
+1400 - 1499 Sudo messages
+1500 - 1599 sshd messages
+1600 - 1699 Attack patterns
+1700 - 1799 Privilege scalation patterns
+1800 - 1899 Scan patterns
+1900 - 1999 DNS rules
+2000 - 2499 PIX rules
+2500 - 2599 Proftpd rules
+2600 - 2699 PPTP messages
+2700 - 2799 FTS rules
+3000 - 3099 Apache error log rules
+3100 - 3199 Apache access log rules
+4000 - 4999 IDS rules

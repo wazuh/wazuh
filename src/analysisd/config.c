@@ -78,7 +78,7 @@ int GlobalConf(char * cfgfile)
     Config.syscheck_ignore = NULL;
     Config.ar_ignore = NULL;
     
-    /* Default actions -- only log above level 3 */
+    /* Default actions -- only log above level 1 */
     Config.mailbylevel = 99;
     Config.logbylevel  = 1;
 

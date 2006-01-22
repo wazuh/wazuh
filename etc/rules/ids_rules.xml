@@ -5,7 +5,7 @@
       
 
 <group name="ids">
-  <rule id="4000" level="8">
+  <rule id="4000" level="9">
     <category>ids</category>
     <if_fts></if_fts>
     <comment>First time this IDS event is seen</comment>

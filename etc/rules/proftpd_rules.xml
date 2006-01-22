@@ -1,25 +1,29 @@
-
-<!-- Official proftpd rules for the OSSEC HIDS. v0.5
+<!-- Official proftpd rules for the OSSEC HIDS
   -  Author: Daniel B. Cid
   -  Date: Nov 11, 2005
   -->
       
 
 <group name="proftpd,syslog">
-  <rule id="2501" level="0">
+  <rule id="2500" level="0" noalert="1">
     <match>^proftpd</match>
+    <comment>Grouping for the proftpd rules</comment>
+  </rule>
+  
+  <rule id="2501" level="0">
+    <if_sid>2500</if_sid>
     <regex>FTP session opened|FTP session closed.</regex>
     <comment>FTP session opened/closed. Ignore it</comment>
   </rule>
 
-  <rule id="2502" level="8">
-    <match>^proftpd</match>
+  <rule id="2502" level="9">
+    <if_sid>2500</if_sid>
     <regex>- no such user </regex>
     <comment>Attempt to login using a non-existent user</comment>
   </rule>
 
-  <rule id="2503" level="7">
-    <match>^proftpd</match>
+  <rule id="2503" level="5">
+    <if_sid>2500</if_sid>
     <regex>- USER \S+: Login failed</regex>
     <comment>Login failed while trying to access the FTP server</comment>
   </rule>

@@ -1,22 +1,29 @@
-
-<!-- Official named rules for the OSSEC HIDS. v0.5
+<!-- Official named rules for the OSSEC HIDS
   -  Author: Daniel B. Cid
   -  Date: Nov 11, 2005
   -->
       
 
 <group name="named,syslog">
-  <rule id="1901" level="8">
+  <rule id="1900" level="0" noalert="1">
+    <regex>^named[\d+]: </regex>
+    <comment>Grouping of the named rules</comment>
+  </rule>
+  
+  <rule id="1901" level="12">
+    <if_sid>1900</if_sid>
     <match>dropping source port zero packet from</match>
     <comment>Invalid DNS packet. Possibility of attack</comment>
   </rule>
 
-  <rule id="1902" level="8">
+  <rule id="1902" level="9">
+    <if_sid>1900</if_sid>
     <regex>^named[\d+]: denied AXFR from</regex>
-    <comment>Failed attempt to perform zone transfer</comment>
+    <comment>Failed attempt to perform a zone transfer</comment>
   </rule>
 
   <rule id="1903" level="0">
+    <if_sid>1900</if_sid>
     <regex>^named[\d+]: denied update from|</regex>
     <regex>^named[\d+]: unapproved update from|</regex>
     <comment>NSUpdate attempt. Generally mis-configuration</comment>

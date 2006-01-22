@@ -1,10 +1,10 @@
-OSSEC HIDS 0.5
-Copyright (c) 2004,2005 Daniel B. Cid   <daniel.cid@gmail.com>
+OSSEC HIDS 0.6
+Copyright (c) 2004-2006 Daniel B. Cid   <daniel.cid@gmail.com>
                                         <dcid@ossec.net>
                                         
 
 
---- Rules Organization ---
+--- Rules Classification ---
 
 
 -- Classification --
@@ -15,25 +15,40 @@ them or after them.
 
 **The rules will be read from the highest to the lowest level. **
 
-00 - Ignore the log if matched (to avoid false positives -- no action taken).
-01 - "Bad word" matching. Include words like "bad", "error", etc.
-02 - ** Unused **
-03 - System notification messages (no security importance).
-04 - ** Unused ** 
-05 - System low importance errors (including bad configuration, etc).
-06 - Important system notification messages.
-07 - User caused errors (missed password, bad username, denied action, etc).
-08 - Medium importancy error/warning messages.
-09 - ** Unused **
-10 - Repeatedly user caused errors (can be an attack, multiple bad passwords, etc).
-11 - High importance notification or error messages.
-12 - Unusual (important) message. Probably matches an unknown security event.
-13 - Important (known) security event.
-14 - ** Unused **
-15 - Urgent security event (can not be a false positive).
-16 - High urgent (critical) security event (uh-oh,).
-
-
+00 - Ignored - No action taken. Used to avoid false positives. These rules
+     are scanned before all the others.
+01 - None -
+02 - System low priority notification - System notification or 
+     status messages. They have no security relevance.
+03 - None -      
+04 - System low priority error - Errors related to bad configurations or
+     unused devices/applications. They have no security relevance.
+05 - User generated error - They include missed passwords, denied
+     actions, etc. By itself they have no security relevance.
+06 - Low relevance attack - They indicate a worm or a virus that have
+     no affect to the system (like code red for apache servers, etc).      
+07 - "Bad word" matching. They include words like "bad", "error", etc.
+     These events are most of the time unclassified and may have
+     some security relevance.
+08 - None - 
+09 - Error from invalid source - Include attempts to login as
+     an unknown user or from an invalid source. It also include
+     First time seen IDS events. May have security relevance 
+     (specially if repeated).
+10 - Multiple user generated errors - They include multiple bad
+     passwords, multiple failed logins, etc. They may indicate an
+     attack or may just be that a user just forgot his credencials.
+11 - None -
+12 - High importancy event - They include error or warning messages
+     from the system, kernel, etc. They may indicate an attack against 
+     a specific application.
+13 - Unusual error (high importance) -  Most of the times it matches a
+     common attack pattern.
+14 - High importance security event. Most of the times done with 
+     correlation and it indicates an attack.
+15 - Severe attack - No chances of false positives. Immediate
+     attention is necessary.
+                                         
 == Rules Config ==
 
 The configuration of the rules is composed the following fields:
