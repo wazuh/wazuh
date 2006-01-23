@@ -10,6 +10,8 @@ UNAME=`uname -snr`
 NUNAME=`uname`
 ME=`whoami`
 HOST=`hostname`
+NAMESERVERS=`cat /etc/resolv.conf | grep nameserver | cut -d " " -f 2`
+HOST_CMD=/usr/bin/host
 CC=""
 NAME="OSSEC HIDS"
 INSTYPE="server"
@@ -298,8 +300,39 @@ ConfigureServer()
 			EMAILNOTIFY="yes"
 			echo "   - What's your e-mail address? "
 			read EMAIL
-			echo "   - What's your smtp server ip/host? "
-			read SMTP
+            ls ${HOST_CMD} > /dev/null 2>&1
+            if [ $? = 0 ]; then
+              HOSTTMP=`${HOST_CMD} -t mx ossec.net`
+              if [ "$HOSTTMP" = "ossec.net mail is handled by 10 mx.underlinux.com.br." ]; then
+                 # Breaking down the user e-mail
+                 EMAILHOST=`echo ${EMAIL} | cut -d "@" -f 2`
+                 HOSTTMP=`${HOST_CMD} -t mx ${EMAILHOST}`
+                 SMTPHOST=`echo ${HOSTTMP} | cut -d " " -f 7`
+              fi    
+            fi
+
+            if [ "X${SMTPHOST}" != "X" ]; then
+               echo ""
+               echo "   - We found that your SMTP server is: ${SMTPHOST}"
+               echo "   - Do you want to use it?(y/n)y"
+               read EMAIL2
+               case ${EMAIL2} in
+                  n|N|no|No|NO)
+                     echo ""
+                     SMTP=""
+                     ;;
+                  *)
+                     SMTP=${SMTPHOST}
+                     echo "   --- Using ${SMTP} as your STMP server."   
+                     echo ""
+                     ;;
+               esac
+            fi
+
+            if [ "X${SMTP}" = "X" ]; then
+			   echo "   - What's your smtp server ip/host? "
+               read SMTP
+            fi   
 			;;
 	esac
 
@@ -316,6 +349,10 @@ ConfigureServer()
 	fi
         echo "  <syscheck_ignore>/etc/mtab</syscheck_ignore>">> $NEWCONFIG
         echo "  <ar_ignore_hosts>127.0.0.1</ar_ignore_hosts>" >> $NEWCONFIG
+        for ip in ${NAMESERVERS};
+        do
+            echo "  <ar_ignore_hosts>${ip}</ar_ignore_hosts>" >>$NEWCONFIG
+        done
 	echo "</global>" >> $NEWCONFIG
 	echo "" >> $NEWCONFIG
 
@@ -453,7 +490,7 @@ ConfigureServer()
 	echo "<alerts>" >> $NEWCONFIG
     echo "   <log>1</log>" >> $NEWCONFIG
     if [ "$EMAILNOTIFY" = "yes" ]; then
-        echo "   <mail-notification>1</mail-notification>">> $NEWCONFIG
+        echo "   <mail-notification>7</mail-notification>">> $NEWCONFIG
 	fi
 	echo "</alerts>" >> $NEWCONFIG
 
@@ -489,7 +526,7 @@ ConfigureServer()
             echo "<active-response>" >> $NEWCONFIG
             echo "  <command>host-deny</command>" >> $NEWCONFIG
             echo "  <location>local</location>" >> $NEWCONFIG
-            echo "  <level>8</level>" >> $NEWCONFIG
+            echo "  <level>6</level>" >> $NEWCONFIG
             echo "  <timeout>600</timeout>" >> $NEWCONFIG		
             echo "</active-response>" >> $NEWCONFIG
         fi
@@ -499,7 +536,7 @@ ConfigureServer()
             echo "<active-response>" >> $NEWCONFIG
             echo "  <command>iptables-drop</command>" >> $NEWCONFIG
             echo "  <location>local</location>" >> $NEWCONFIG
-            echo "  <level>8</level>" >> $NEWCONFIG
+            echo "  <level>6</level>" >> $NEWCONFIG
             echo "  <timeout>600</timeout>" >> $NEWCONFIG
             echo "</active-response>" >> $NEWCONFIG
         fi        

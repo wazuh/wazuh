@@ -65,6 +65,8 @@ chown -R ${USER}:${GROUP} ${DIR}/logs
 chmod -R 750 ${DIR}/logs
 touch ${DIR}/logs/ossec.log
 chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
+chmod 664 ${DIR}/logs/ossec.log
+
 
 
 # For the etc dir

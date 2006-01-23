@@ -513,17 +513,6 @@ void OS_ReadMSG(int m_queue)
             /** FTS CHECKS **/
             if((Config.fts != 0) && (FTS(lf) == 1))
             {
-                //lf->level = Config.fts;
-                
-                //if(Config.logbylevel <= Config.fts)
-                //    OS_Log(lf);
-                //if(Config.mailbylevel <= Config.fts)
-                //    OS_Createmail(&mailq,lf);
-                //
-                //lf->level = -1;
-
-                /* Clearing the comment */
-                //lf->comment = NULL;
             }
             else
             {
@@ -532,7 +521,6 @@ void OS_ReadMSG(int m_queue)
             }
 
 
-            merror("fts is:%d\n",lf->fts);
             #ifdef DEBUG
             debug2("%s: DEBUG: Starting rule checks\n",ARGV0);
             #endif
