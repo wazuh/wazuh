@@ -45,10 +45,10 @@ int GlobalConf(char * cfgfile)
     char *(xml_global_logall[])={xml_global,"logall",NULL};
     char *(xml_global_fts[])={xml_global,"fts",NULL};
     char *(xml_global_integrity[])={xml_global,"integrity_checking",NULL};
+    char *(xml_global_rootcheck[])={xml_global,"rootkit_detection",NULL};
     char *(xml_global_stats[])={xml_global,"stats",NULL};
     char *(xml_global_memorysize[])={xml_global,"memory_size",NULL};
     char *(xml_global_keeplogdate[])={xml_global,"keep_log_date",NULL};
-    char *(xml_global_accuracy[])={xml_global,"only_accurates",NULL};
     char *(xml_global_syscheck_ignore[])={xml_global,"syscheck_ignore",NULL};
     char *(xml_global_syscheck_threshold[])={xml_global,"syscheck_threshold",NULL};
     char *(xml_global_ar_ignore[])={xml_global,"ar_ignore_hosts", NULL};
@@ -67,10 +67,10 @@ int GlobalConf(char * cfgfile)
     Config.logall = 0;
     Config.fts = 4;
     Config.stats = 4;
-    Config.integrity = 4;
+    Config.integrity = 8;
+    Config.rootcheck = 8;
     Config.memorysize = 1024;
     Config.mailnotify = 0;
-    Config.accuracy = 0;
     Config.keeplogdate = 0;
     Config.ar = 0;
     Config.syscheck_threshold = 3;
@@ -132,6 +132,20 @@ int GlobalConf(char * cfgfile)
         free(str);
         str = NULL;
     }
+    /* Getting the information for the rootcheck alerting */
+    str = OS_GetOneContentforElement(&xml, xml_global_rootcheck);
+    if(str != NULL)
+    {
+        if(!OS_StrIsNum(str))
+            merror("Invalid alert level '%s' for the rootkit "
+                    "detection (must be int).", str);
+        else
+            Config.rootcheck = atoi(str); 
+
+        free(str);
+        str = NULL;
+    }
+    
     /* Getting the syscheck threshold */
     str = OS_GetOneContentforElement(&xml, xml_global_syscheck_threshold);
     if(str != NULL)
@@ -202,17 +216,6 @@ int GlobalConf(char * cfgfile)
         str=NULL;
     }
 
-    /* If we should use non accurate rules
-     */
-    str=OS_GetOneContentforElement(&xml, xml_global_accuracy);
-    if(str != NULL)
-    {
-        if(str[0] == 'y')
-            Config.accuracy=1;
-        free(str);
-        str=NULL;
-    }
-    
     /**  Getting specific responses per alert level **/
     /* Mail response */
     str = OS_GetOneContentforElement(&xml, xml_alerts_mail);

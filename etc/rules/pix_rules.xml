@@ -50,7 +50,7 @@
     <comment>ARP collision detected by the PIX. Worth looking at it</comment>
   </rule> 
 
-   <rule id="2007" level="9">
+   <rule id="2007" level="10">
     <if_sid>2000</if_sid>
     <match>^%PIX-4-401004: Shunned packet: </match>
     <comment>Attempt to connect from a shunned IP</comment>

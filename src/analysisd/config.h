@@ -26,9 +26,9 @@ typedef struct __Config
     int fts;
     int stats;
     int integrity;
+    int rootcheck;
     int memorysize; /* For stateful analysis */
     int keeplogdate;
-    int accuracy;
     
     int mailbylevel;
     int logbylevel;

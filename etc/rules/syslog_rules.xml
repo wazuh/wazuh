@@ -107,7 +107,7 @@
     <comment>Illegal root login. Some verification is necessary</comment>
   </rule>
 
-  <rule id="406" level="5">
+  <rule id="406" level="3">
     <regex>^login[\d+]: ROOT LOGIN  on</regex>
     <comment>Physical root login</comment>
   </rule>  
@@ -141,8 +141,8 @@
     <comment>Relay attempt</comment>
   </rule>
 
-  <rule id="502" level="9">
-    <match>Cannot mail directly to files</match>
+  <rule id="502" level="12">
+    <match>Cannot mail directly to </match>
     <comment>Attempt to remotely create a file on the system</comment>
   </rule>
 </group> <!-- SYSLOG,SENDMAIL -->
@@ -219,10 +219,10 @@
   <rule id ="803" level="9">
     <if_sid>800</if_sid>
     <match>^kernel: Oversized packet received from</match>
-    <comment>Error message from the kernel. Ping of death attack?</comment>
+    <comment>Error message from the kernel. Ping of death attack.</comment>
   </rule>  
 
-  <rule id = "804" level="9">
+  <rule id = "804" level="8">
     <if_sid>800</if_sid>
     <regex>^kernel: \S+: Promiscuous mode enabled|</regex>
     <regex>^kernel: device \S+ entered promiscuous mode</regex>
@@ -291,7 +291,7 @@
     <comment>User missed the password to change UID to root</comment>
   </rule>
 
-  <rule id="1103" level="5">
+  <rule id="1103" level="3">
     <if_sid>1100</if_sid>
     <regex>session opened for user root|</regex>
     <regex>^su[\d+]: + \S+ \S+-root$</regex>
@@ -303,7 +303,7 @@
 
 <!-- Tripwire messages -->
 <group name="syslog,tripwire">
-  <rule id="1201" level="9">
+  <rule id="1201" level="8">
     <regex>tripwire\.+ Integrity Check failed: File could not</regex>
     <comment>Problems with the tripwire checking</comment>
   </rule>
@@ -320,7 +320,7 @@
     <comment>New group added to the system</comment>
   </rule>
 
-  <rule id="1302" level="12">
+  <rule id="1302" level="8">
     <regex>^adduser[\d+]: new user:|</regex>
     <regex>^useradd[\d+]: new user:</regex>
     <comment>New user added to the system</comment>
@@ -333,7 +333,7 @@
     <comment>Group (or user) deleted from the system</comment>
   </rule>
 
-  <rule id="1304" level="12">
+  <rule id="1304" level="8">
     <regex>^chfn[d\+]: changed user</regex>
     <comment>Information from the user was changed</comment>
   </rule>
@@ -354,7 +354,7 @@
     <comment>Three failed attempts to run sudo</comment>
   </rule>
 
-  <rule id="1402" level="4">
+  <rule id="1402" level="3">
     <if_sid>1400</if_sid>
     <regex>^sudo:\s+\S+ : TTY=\S+ ; PWD=\S+ ; USER=root ; COMMAND=</regex>
     <comment>Sucessful sudo to ROOT executed</comment>
@@ -405,7 +405,7 @@
     <comment>Buffer overflow on WU-FTPD versions prior to 2.6</comment>
   </rule>
 
-  <rule id="1604" level="12">
+  <rule id="1604" level="13">
     <match>?????????????????????</match>
     <comment>Unkown buffer overflow attempt</comment>
   </rule>
@@ -442,8 +442,8 @@
     <info>http://snap.nlc.dcccd.edu/reference/sysadmin/julian/ch18/389-392.html</info>
   </rule>
 
-  <rule id="1610" level="10" timeframe="120" frequency="7" ignore="60">
-    <if_level>7</if_level>
+  <rule id="1610" level="10" timeframe="120" frequency="8" ignore="60">
+    <if_level>6</if_level>
     <same_source_ip></same_source_ip>
     <comment>Multiple events from same source ip (8 within 2 minutes)</comment>
   </rule>  
