@@ -173,7 +173,7 @@ void RK_Search(Eventinfo *lf)
     /* if we reach here, we need to alert */
     lf->comment = "Rootkit detection engine message";
 
-    lf->level = Config.integrity;
+    lf->level = Config.rootcheck;
 
     lf->sigid = ROOTCHECK_PLUGIN;
 
