@@ -511,7 +511,7 @@ void OS_ReadMSG(int m_queue)
 
 
             /** FTS CHECKS **/
-            if((Config.fts != 0) && (FTS(lf) == 1))
+            if(FTS(lf))
             {
             }
             else

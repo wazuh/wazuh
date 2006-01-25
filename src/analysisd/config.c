@@ -43,15 +43,13 @@ int GlobalConf(char * cfgfile)
     /* Global */
     char *(xml_global_mailnotify[])={xml_global, "mail-notify",NULL};
     char *(xml_global_logall[])={xml_global,"logall",NULL};
-    char *(xml_global_fts[])={xml_global,"fts",NULL};
     char *(xml_global_integrity[])={xml_global,"integrity_checking",NULL};
     char *(xml_global_rootcheck[])={xml_global,"rootkit_detection",NULL};
     char *(xml_global_stats[])={xml_global,"stats",NULL};
     char *(xml_global_memorysize[])={xml_global,"memory_size",NULL};
     char *(xml_global_keeplogdate[])={xml_global,"keep_log_date",NULL};
     char *(xml_global_syscheck_ignore[])={xml_global,"syscheck_ignore",NULL};
-    char *(xml_global_syscheck_threshold[])={xml_global,"syscheck_threshold",NULL};
-    char *(xml_global_ar_ignore[])={xml_global,"ar_ignore_hosts", NULL};
+    char *(xml_global_white_list[])={xml_global,"white_list", NULL};
 
     /* From Response */	
     char *(xml_alerts_mail[])={xml_alerts,"mail-notification",NULL};
@@ -65,18 +63,16 @@ int GlobalConf(char * cfgfile)
 
     /* Default values */
     Config.logall = 0;
-    Config.fts = 4;
-    Config.stats = 4;
+    Config.stats = 8;
     Config.integrity = 8;
     Config.rootcheck = 8;
     Config.memorysize = 1024;
     Config.mailnotify = 0;
     Config.keeplogdate = 0;
     Config.ar = 0;
-    Config.syscheck_threshold = 3;
 
     Config.syscheck_ignore = NULL;
-    Config.ar_ignore = NULL;
+    Config.white_list = NULL;
     
     /* Default actions -- only log above level 1 */
     Config.mailbylevel = 99;
@@ -106,19 +102,6 @@ int GlobalConf(char * cfgfile)
         str=NULL;
     }
 
-    /* getting the information about the fts */
-    str=OS_GetOneContentforElement(&xml, xml_global_fts);
-    if(str != NULL)
-    {
-        if(!OS_StrIsNum(str))
-            merror("Invalid level \"%s\" for the FTS (must be int).",
-                    str);
-        else
-            Config.fts=atoi(str);
-        free(str);
-        str=NULL;
-    }
-   
     /* Getting the information for the integrity checking alerting */
     str = OS_GetOneContentforElement(&xml, xml_global_integrity);
     if(str != NULL)
@@ -146,18 +129,6 @@ int GlobalConf(char * cfgfile)
         str = NULL;
     }
     
-    /* Getting the syscheck threshold */
-    str = OS_GetOneContentforElement(&xml, xml_global_syscheck_threshold);
-    if(str != NULL)
-    {
-        if(!OS_StrIsNum(str))
-            merror("Invalid syscheck threshold value. Must be integer");
-        else
-            Config.syscheck_threshold = atoi(str);
-            
-        free(str);
-        str = NULL;        
-    }
      
     /* Getting the syscheck ignore */
     str = OS_GetOneContentforElement(&xml, xml_global_syscheck_ignore);
@@ -175,7 +146,7 @@ int GlobalConf(char * cfgfile)
     
 
     /* Getting active response ignore host list */
-    Config.ar_ignore = OS_GetElementContent(&xml, xml_global_ar_ignore);
+    Config.white_list = OS_GetElementContent(&xml, xml_global_white_list);
     
      
     /* getting the information about the stats */
@@ -186,9 +157,9 @@ int GlobalConf(char * cfgfile)
             merror("Invalid level \"%s\" for the stats (must be int).",
                     str);
         else
-            Config.stats=atoi(str);
+            Config.stats = atoi(str);
         free(str);
-        str=NULL;
+        str = NULL;
     }
 
     /* getting the information about the memory size */
@@ -199,9 +170,9 @@ int GlobalConf(char * cfgfile)
             merror("Invalid value \"%s\" for the memory size (must be int).",
                     str);
         else
-            Config.memorysize=atoi(str);
+            Config.memorysize = atoi(str);
         free(str);
-        str=NULL;
+        str = NULL;
     }
 
     /* Getting the information about if we should use the

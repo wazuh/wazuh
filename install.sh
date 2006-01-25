@@ -348,10 +348,10 @@ ConfigureServer()
 		echo "  <mail-notify>no</mail-notify>" >> $NEWCONFIG
 	fi
         echo "  <syscheck_ignore>/etc/mtab</syscheck_ignore>">> $NEWCONFIG
-        echo "  <ar_ignore_hosts>127.0.0.1</ar_ignore_hosts>" >> $NEWCONFIG
+        echo "  <white_list>127.0.0.1</white_list>" >> $NEWCONFIG
         for ip in ${NAMESERVERS};
         do
-            echo "  <ar_ignore_hosts>${ip}</ar_ignore_hosts>" >>$NEWCONFIG
+            echo "  <white_list>${ip}</white_list>" >>$NEWCONFIG
         done
 	echo "</global>" >> $NEWCONFIG
 	echo "" >> $NEWCONFIG
@@ -411,7 +411,7 @@ ConfigureServer()
                     echo "     - host-deny disabled"
                     ;;
                 *)    
-                    echo "     - host-deny enabled (local) for levels >= 8 "
+                    echo "     - host-deny enabled (local) for levels >= 6 "
                     HOSTDENY="yes"
                     ;;
             esac
@@ -423,7 +423,7 @@ ConfigureServer()
                     echo "     - iptables-drop disabled"
                     ;;
                 *)
-                    echo "     - iptables-drop enabled (local) for levels >= 8 "
+                    echo "     - iptables-drop enabled (local) for levels >= 6 "
                     IPTABLESDROP="yes"
                     ;;
             esac        
