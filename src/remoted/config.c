@@ -10,11 +10,6 @@
  */
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
 #include "shared.h"
 
 #include "os_xml/os_xml.h"
@@ -49,12 +44,10 @@ int RemotedConfig(char *cfgfile, remoted *logr)
 
     /* Remote options */	
     char *xml_remote_port = "port";
-    char *xml_remote_group = "group";
     char *xml_remote_connection = "connection";
 
     /* Initializing */
     logr->port = NULL;
-    logr->group = NULL;
     logr->conn = NULL;
     logr->allowips = NULL;
     logr->denyips = NULL;
@@ -80,15 +73,47 @@ int RemotedConfig(char *cfgfile, remoted *logr)
     
     /* Getting allowed ips */
     logr->allowips = OS_GetElementContent(&xml, xml_allowips);
+    if(logr->allowips)
+    {
+        char **tmp_allow;
+
+        tmp_allow = logr->allowips;
+
+        while(*tmp_allow)
+        {
+            if(!OS_IsValidIP(*tmp_allow))
+            {
+                merror(INVALID_IP, ARGV0, *tmp_allow);
+                return(OS_CFGERR);
+            }
+            tmp_allow++;
+        }
+    }
 
 
     /* Getting denied ips */
     logr->denyips = OS_GetElementContent(&xml, xml_denyips);
+    if(logr->denyips)
+    {
+        char **tmp_deny;
 
+        tmp_deny = logr->denyips;
+
+        while(*tmp_deny)
+        {
+            if(!OS_IsValidIP(*tmp_deny))
+            {
+                merror(INVALID_IP, ARGV0, *tmp_deny);
+                return(OS_CFGERR);
+            }
+            tmp_deny++;
+        }
+    }
+    
+    
 
     /* Allocating the entries */
     logr->port = (int *)calloc(rentries+1,sizeof(int));	
-    logr->group = (char **)calloc(rentries+1,sizeof(char *));	
     logr->conn = (int *)calloc(rentries+1,sizeof(int));	
 
     node = OS_GetElementsbyNode(&xml,NULL);
@@ -121,7 +146,6 @@ int RemotedConfig(char *cfgfile, remoted *logr)
                 rentries--;
                 logr->conn[rentries] = 0;
                 logr->port[rentries] = 0;
-                logr->group[rentries] = NULL;
 
                 chld_node = OS_GetElementsbyNode(&xml,node[i]);
 
@@ -158,13 +182,6 @@ int RemotedConfig(char *cfgfile, remoted *logr)
                                 xml_remote_port) == 0)
                     {
                         logr->port[rentries] = atoi(chld_node[j]->content);
-                    }
-
-                    else if(strcasecmp(chld_node[j]->element,
-                                xml_remote_group) == 0)
-                    {
-                        logr->group[rentries] = 
-                            strdup(chld_node[j]->content);                
                     }
 
                     else
