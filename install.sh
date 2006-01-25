@@ -103,6 +103,7 @@ UseSyscheck()
         echo "  <daemon>yes</daemon>" >> $NEWCONFIG
         echo "  <directories>$SYSCHECK_DIRS</directories>" >> $NEWCONFIG
         echo "  <notify>queue</notify>" >> $NEWCONFIG
+        echo "  <ignore>/etc/mtab</ignore>">> $NEWCONFIG
         echo "</syscheck>" >> $NEWCONFIG
     fi
 }
@@ -347,7 +348,6 @@ ConfigureServer()
 	else
 		echo "  <mail-notify>no</mail-notify>" >> $NEWCONFIG
 	fi
-        echo "  <syscheck_ignore>/etc/mtab</syscheck_ignore>">> $NEWCONFIG
         echo "  <white_list>127.0.0.1</white_list>" >> $NEWCONFIG
         for ip in ${NAMESERVERS};
         do
@@ -471,7 +471,6 @@ ConfigureServer()
 	if [ "X$RLOG" = "Xyes" ]; then
 	echo "" >> $NEWCONFIG
 	echo "<remote>" >> $NEWCONFIG
-	echo "  <group>all</group>" >> $NEWCONFIG
 	echo "  <connection>syslog</connection>" >> $NEWCONFIG
 	echo "</remote>" >> $NEWCONFIG
 	fi
@@ -479,7 +478,6 @@ ConfigureServer()
 	if [ "X$SLOG" = "Xyes" ]; then
 	echo "" >> $NEWCONFIG
 	echo "<remote>" >> $NEWCONFIG
-	echo "  <group>syslog</group>" >> $NEWCONFIG
 	echo "  <connection>secure</connection>" >> $NEWCONFIG
 	echo "</remote>" >> $NEWCONFIG
 	fi

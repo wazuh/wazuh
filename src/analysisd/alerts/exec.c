@@ -36,7 +36,6 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
 {
     char exec_msg[OS_MAXSTR +1];
     char *ip;
-    char **ar_ignore;
 
     /* Cleaning the IP */
     ip = rindex(lf->srcip, ':');
@@ -50,19 +49,12 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     }
 
 
-    /* Checking if IP is ignored */
+    /* Checking if IP is to ignored */
     if(Config.white_list)
     {
-        ar_ignore = Config.white_list;
-        while(*ar_ignore)
+        if(OS_IPFoundList(lf->srcip, Config.white_list))
         {
-            /* If ip is on ignore list, do not
-             * block it.
-             */
-            if(strcmp(*ar_ignore, lf->srcip) == 0)
-                return;
-
-            ar_ignore++;
+            return;
         }
     }
     

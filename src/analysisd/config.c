@@ -48,7 +48,7 @@ int GlobalConf(char * cfgfile)
     char *(xml_global_stats[])={xml_global,"stats",NULL};
     char *(xml_global_memorysize[])={xml_global,"memory_size",NULL};
     char *(xml_global_keeplogdate[])={xml_global,"keep_log_date",NULL};
-    char *(xml_global_syscheck_ignore[])={xml_global,"syscheck_ignore",NULL};
+    char *(xml_global_syscheck_ignore[])={xml_syscheck,"ignore",NULL};
     char *(xml_global_white_list[])={xml_global,"white_list", NULL};
 
     /* From Response */	
@@ -67,7 +67,7 @@ int GlobalConf(char * cfgfile)
     Config.integrity = 8;
     Config.rootcheck = 8;
     Config.memorysize = 1024;
-    Config.mailnotify = 0;
+    Config.mailnotify = -1;
     Config.keeplogdate = 0;
     Config.ar = 0;
 
@@ -75,7 +75,7 @@ int GlobalConf(char * cfgfile)
     Config.white_list = NULL;
     
     /* Default actions -- only log above level 1 */
-    Config.mailbylevel = 99;
+    Config.mailbylevel = 7;
     Config.logbylevel  = 1;
 
     
@@ -86,9 +86,9 @@ int GlobalConf(char * cfgfile)
         if(str != NULL)
         {
             if(str[0] == 'y')
-                Config.mailnotify=1;
+                Config.mailnotify = 1;
             free(str);
-            str=NULL;
+            str = NULL;
         }
     }
 
@@ -99,7 +99,7 @@ int GlobalConf(char * cfgfile)
         if(str[0] == 'y')
             Config.logall=1;
         free(str);
-        str=NULL;
+        str = NULL;
     }
 
     /* Getting the information for the integrity checking alerting */
@@ -107,8 +107,11 @@ int GlobalConf(char * cfgfile)
     if(str != NULL)
     {
         if(!OS_StrIsNum(str))
+        {
             merror("Invalid alert level '%s' for the integrity "
                     "checking (must be int).", str);
+            return(OS_INVALID);
+        }
         else
             Config.integrity = atoi(str); 
 
@@ -120,8 +123,11 @@ int GlobalConf(char * cfgfile)
     if(str != NULL)
     {
         if(!OS_StrIsNum(str))
+        {
             merror("Invalid alert level '%s' for the rootkit "
                     "detection (must be int).", str);
+            return(OS_INVALID);
+        }
         else
             Config.rootcheck = atoi(str); 
 
@@ -131,22 +137,30 @@ int GlobalConf(char * cfgfile)
     
      
     /* Getting the syscheck ignore */
-    str = OS_GetOneContentforElement(&xml, xml_global_syscheck_ignore);
-    if(str != NULL)
-    {
-        Config.syscheck_ignore = OS_StrBreak(',', str , 32); /* max of 32 */
-        if(Config.syscheck_ignore == NULL)
-        {
-            merror(MEM_ERROR,ARGV0);
-        }
-        
-        free(str);
-        str = NULL;
-    }
+    Config.syscheck_ignore = 
+        OS_GetElementContent(&xml, xml_global_syscheck_ignore);
     
 
     /* Getting active response ignore host list */
     Config.white_list = OS_GetElementContent(&xml, xml_global_white_list);
+    if(Config.white_list)
+    {
+        char **tmp_list;
+
+        tmp_list = Config.white_list;
+
+        /* Checking if every ip is valid */
+        while(*tmp_list)
+        {
+            if(!OS_IsValidIP(*tmp_list))
+            {
+                merror(INVALID_IP, ARGV0, *tmp_list);
+                return(OS_INVALID);
+            }
+            
+            tmp_list++;
+        }
+    }
     
      
     /* getting the information about the stats */
