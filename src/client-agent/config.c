@@ -52,7 +52,7 @@ int ClientConf(char *cfgfile)
     logr->rip  = OS_GetOneContentforElement(&xml,xml_client_ip);
     if(logr->rip == NULL)
     {
-        merror("ossec-agent: You need to specify the remote IP");
+        merror("ossec-agent: You need to specify the server remote IP");
         OS_ClearXML(&xml);
         return(OS_CFGERR);
     }
