@@ -23,7 +23,6 @@ typedef struct __Config
     int logall;
     int mailnotify;
     int ar;
-    int fts;
     int stats;
     int integrity;
     int rootcheck;
@@ -34,9 +33,8 @@ typedef struct __Config
     int logbylevel;
 
     char **syscheck_ignore;
-    char **ar_ignore;
+    char **white_list;
     
-    int syscheck_threshold;
 }_Config;
 
 
