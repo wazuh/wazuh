@@ -152,9 +152,11 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
             {
                 number_of_matches++;
 
+                /* We go and add this new entry to the list */
                 if(number_of_matches > 3)
                 {
-                    return(0);
+                    _line[FTS_MINSIZE_FOR_STR] = '\0';
+                    break;
                 }
             }
 

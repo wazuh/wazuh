@@ -59,6 +59,7 @@
 #include "sig_op.h"
 #include "rc.h"
 #include "ar.h"
+#include "validate_op.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"

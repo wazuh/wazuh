@@ -51,9 +51,9 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
 
 
     /* Checking if IP is ignored */
-    if(Config.ar_ignore)
+    if(Config.white_list)
     {
-        ar_ignore = Config.ar_ignore;
+        ar_ignore = Config.white_list;
         while(*ar_ignore)
         {
             /* If ip is on ignore list, do not
