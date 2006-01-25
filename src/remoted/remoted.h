@@ -21,8 +21,6 @@
 #define SYSLOG_CONN 1   
 #define SECURE_CONN 2
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include "shared.h"
 #include "sec.h"
 
@@ -32,7 +30,6 @@ typedef struct _remoted
     int *port;
     int *conn;
     
-	char **group;
 
 	char **allowips;
 	char **denyips;

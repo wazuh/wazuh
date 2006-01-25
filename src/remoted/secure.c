@@ -130,9 +130,9 @@ void HandleSecure(int position)
 
 
         /* If we can't send the message, try to connect to the
-         * socket again. If not exits.
+         * socket again. If not exit.
          */
-        else if(SendMSG(logr.m_queue, tmp_msg, srcip, logr.group[position],
+        else if(SendMSG(logr.m_queue, tmp_msg, srcip, NULL,
                     SECURE_MQ) < 0)
         {
             merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);

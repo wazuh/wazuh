@@ -11,17 +11,7 @@
 
 
 
-
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>  
-#include <arpa/inet.h>
-#include <time.h>
-
+#include "shared.h"
 #include "os_net/os_net.h"
 
 #include "remoted.h"
@@ -37,25 +27,16 @@ int OS_IPNotAllowed(char *srcip)
 {
     if(logr.denyips != NULL)
     {
-        int i=0;
-        for(i=0;i<255;i++) /* Maximum access-list */
+        if(OS_IPFoundList(srcip, logr.denyips))
         {
-            if(logr.denyips[i] == NULL)
-                break;
-            if(strncmp(logr.denyips[i],srcip,strlen(logr.denyips[i]))==0)
-                return(1);
+            return(1);
         }
     }
     if(logr.allowips != NULL)
     {
-        int i=0;
-        for(i=0;i<255;i++) /* Maximum access-list */
+        if(OS_IPFoundList(srcip, logr.allowips))
         {
-            if(logr.allowips[i] == NULL)
-                break;
-            if(strncmp(logr.allowips[i],srcip,
-                        strlen(logr.allowips[i]))==0)
-                return(0);
+            return(0);
         }
     }
 
@@ -110,7 +91,7 @@ void HandleSyslog(int position)
         }
 
         else if(SendMSG(logr.m_queue, buffer,srcip,
-                        logr.group[position],
+                        "syslog",
                         SYSLOG_MQ) < 0)
         {
             merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
