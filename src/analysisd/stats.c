@@ -89,7 +89,7 @@ int gethour(int event_number)
 /* Update_Hour: done daily  */
 void Update_Hour()
 {
-    int i=0,j=0;
+    int i,j;
 
     /* Hourly update */
     for(i=0;i<=23;i++)
