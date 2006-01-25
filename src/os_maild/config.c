@@ -101,6 +101,18 @@ int MailConf(char *cfgfile, MailConfig *Mail)
             {
                 Mail->maxperhour = atoi(str);
             }
+            else
+            {
+                merror(INVALID_ELEMENT, ARGV0, "mail-maxperhour", str);
+                return(OS_INVALID);
+            }
+
+            /* Checking for the right values of maxperhour */
+            if((Mail->maxperhour <= 0) || (Mail->maxperhour > 9999))
+            {
+                merror(INVALID_ELEMENT, ARGV0, "mail-maxperhour", str);
+                return(OS_INVALID);
+            } 
 
             free(str);
             str = NULL;    

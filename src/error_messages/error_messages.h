@@ -65,6 +65,9 @@
 #define XML_ERROR_VAR   "%s(1227): Error applying XML variables."
 #define XML_NO_ELEM     "%s(1228): Element '%s' without any option."
 #define XML_INVALID     "%s(1229): Invalid element '%s' on the '%s' config."
+#define INVALID_IP      "%s(1230): Invalid ip address: '%s'."
+#define INVALID_ELEMENT "%s(1231): Invalid value for element '%s': %s"
+
 
 #define MAILQ_ERROR	    "%s(1221): No Mail queue at %s"
 #define IMSG_ERROR	    "%s(1222): Invalid msg: %s"
