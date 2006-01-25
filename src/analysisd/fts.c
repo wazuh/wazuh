@@ -99,9 +99,18 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
     msgsize = strlen(_line);
 
     
+    /* Maximum size is OS_FLSIZE */
+    if(msgsize >= OS_FLSIZE)
+    {
+        merror(SIZE_ERROR, ARGV0, _line);
+        return(0);
+    }
+
+    
     /* If File_Date of char <= is because the file is not present */ 
     if(File_DateofChange(queue) >= 0)
     {
+        int _fline_size;
         char _fline[OS_FLSIZE +1];
 
         _fline[OS_FLSIZE] = '\0';
@@ -110,25 +119,18 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
         fp = fopen(queue, "r");
         if(!fp)
         {
-            merror("int-fts: Unable to open the fts queue for read");
-            return(-1);
+            merror(FOPEN_ERROR, ARGV0, queue);
+            return(0);
         }
 
         /* Checking this FTS is already present */
         while(fgets(_fline, OS_FLSIZE , fp) != NULL)
         {
-            if(strlen(_fline) >= OS_FLSIZE)
-            {
-                merror("int-fts: Line overflow. Log problem.");
-                return(-1);
-            }
-
-            if(strlen(_fline) != (msgsize + 1))
+            _fline_size = strlen(_fline) -1;
+            
+            if(strncmp(_fline, _line, _fline_size) != 0)
                 continue;
-
-            if(strncmp(_fline, _line, msgsize) != 0)
-                continue;
-
+            
             fclose(fp);
 
             /* If we match, we can return 0 and keep going */
@@ -139,6 +141,7 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
         /* Close here to open latter */
         fclose(fp);
 
+        
         /* Checking if from the last 20 FTS events, we had
          * at least 4 "similars" before. If yes, we just
          * ignore it.
@@ -172,8 +175,8 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
     fp = fopen(queue, "a");
     if(!fp)
     {
-        merror("int-fts: Unable to open the fts queue to write.");
-        return(-1);
+        merror(FOPEN_ERROR, ARGV0, queue);
+        return(0);
     }
     
     fprintf(fp,"%s\n", _line);
@@ -189,13 +192,7 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
  */
 int FTS(Eventinfo *lf)
 {
-    if(_Internal_FTS(FTS_QUEUE,lf))
-    {
-        lf->sigid = FTS_PLUGIN;
-        return(1);
-    }
-
-    return(0);	
+    return(_Internal_FTS(FTS_QUEUE,lf));
 }
 
 

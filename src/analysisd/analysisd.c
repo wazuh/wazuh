@@ -296,7 +296,7 @@ void OS_ReadMSG(int m_queue)
     }
     
 
-    /* Starting the mail queue (if configured to */
+    /* Starting the mail queue (if configured to) */
     if(Config.mailnotify == 1)
     {
         if((mailq = StartMQ(MAILQUEUE,WRITE)) < 0)
@@ -460,31 +460,14 @@ void OS_ReadMSG(int m_queue)
                 goto CLMEM;
             }
 
+            
             /* Firewall event */
             else if(lf->type == FIREWALL)
             {
                 FW_Log(lf);
             }
-                
-            /* Stats checking */
-            if(Config.stats)
-            {
-                if(Check_Hour(lf) == 1)
-                {
-                    lf->level = Config.stats;
-                    
-                    /* alert for statistical analysis */
-                    if(Config.logbylevel <= Config.stats)
-                        OS_Log(lf);
-                    if(Config.mailbylevel <= Config.stats)
-                        OS_Createmail(&mailq, lf);
 
-                    lf->level = -1;
-                    lf->comment = NULL;
-                }
-            }
-
-
+            
             /* Check if the date has changed */
             if(today != lf->day)
             {
@@ -501,6 +484,24 @@ void OS_ReadMSG(int m_queue)
             {
                 thishour = __crt_hour;
             }
+    
+            
+            /* Stats checking */
+            if(Config.stats)
+            {
+                if(Check_Hour(lf) == 1)
+                {
+                    lf->level = Config.stats;
+                    
+                    /* alert for statistical analysis */
+                    if(Config.logbylevel <= Config.stats)
+                        OS_Log(lf);
+                    if(Config.mailbylevel <= Config.stats)
+                        OS_Createmail(&mailq, lf);
+
+                    lf->level = -1;
+                }
+            }
 
 
             /* Checking if the message is duplicated */	
@@ -511,13 +512,9 @@ void OS_ReadMSG(int m_queue)
 
 
             /** FTS CHECKS **/
-            if(FTS(lf))
-            {
-            }
-            else
+            if(!FTS(lf))
             {
                 lf->fts = 0;
-                lf->comment = NULL;
             }
 
 

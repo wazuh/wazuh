@@ -104,6 +104,7 @@ UseSyscheck()
         echo "  <directories>$SYSCHECK_DIRS</directories>" >> $NEWCONFIG
         echo "  <notify>queue</notify>" >> $NEWCONFIG
         echo "  <ignore>/etc/mtab</ignore>">> $NEWCONFIG
+        echo "  <ignore>/etc/hosts.deny</ignore>">> $NEWCONFIG
         echo "</syscheck>" >> $NEWCONFIG
     fi
 }
