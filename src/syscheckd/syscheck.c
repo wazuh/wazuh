@@ -64,6 +64,11 @@ int main(int argc, char **argv)
     syscheck.dir = NULL;
     syscheck.daemon = 1;
     syscheck.notify = SYSLOG;
+
+
+    /* Setting the name */
+    OS_SetName(ARGV0);
+        
     
     while((c = getopt(argc, argv, "sdhD:c:")) != -1)
     {
