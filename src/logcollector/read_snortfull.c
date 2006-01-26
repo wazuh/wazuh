@@ -21,6 +21,7 @@
 /* Read snort_full files */
 void *read_snortfull(int pos, int *rc)
 {
+    int __rc = 0;
     int f_msg_size = OS_MAXSTR;
     
     char *one = "one";
@@ -37,7 +38,7 @@ void *read_snortfull(int pos, int *rc)
     while(fgets(str, OS_MAXSTR, logr[pos].fp) != NULL)
     {
         /* Removing \n at the end of the string */
-        if ((q = strchr(str, '\n')) != NULL)
+        if ((q = strrchr(str, '\n')) != NULL)
         {
             *q = '\0';
         }
@@ -131,19 +132,20 @@ void *read_snortfull(int pos, int *rc)
             }
         }
 
+        __rc = 1;
         continue;
 
         file_error:
 
         merror("%s: Bad formated snort full file", ARGV0);
-        *rc = 1;
+        *rc = -1;
         return(NULL);
 
     }
 
-    /* We are checking for errors in the main function */
-    *rc = 0;
-    return(NULL); 
+    *rc = __rc;
+
+    return(NULL);
 }
 
 /* EOF */

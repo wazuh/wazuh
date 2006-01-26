@@ -114,9 +114,14 @@ void LogCollectorStart()
                     {
                         logr[i].ign = 0;
                     }
-                    else
+                    else if(r == 1)
                     {
                         logr[i].ign++;
+                    }
+                    /* File formatting error */
+                    else
+                    {
+                        logr[i].ign--;
                     }
                 }
                 /* ferror is set */
@@ -174,9 +179,20 @@ void LogCollectorStart()
                 }
             }
             
+            
+            /* Too many errors for the file */ 
+            if(logr[i].ign < -8)
+            {
+                merror(LOGC_FILE_ERROR, ARGV0, logr[i].file);
+                fclose(logr[i].fp);
+                logr[i].fp = NULL;
+                logr[i].ign = -10;
+                continue;
+            }
+            
             if(!logr[i].fp)
             {
-                if(logr[i].ign == -10)
+                if(logr[i].ign <= -10)
                     continue;
                 else
                 {
@@ -189,14 +205,6 @@ void LogCollectorStart()
                 }
             }
            
-            /* Too many errors for the file */ 
-            if(logr[i].ign < -6)
-            {
-                merror(LOGC_FILE_ERROR, ARGV0, logr[i].file);
-                fclose(logr[i].fp);
-                logr[i].fp = NULL;
-                logr[i].ign = -10;
-            }
         }
 
     }
