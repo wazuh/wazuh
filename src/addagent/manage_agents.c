@@ -550,6 +550,10 @@ int main(int argc, char **argv)
     char *group = GROUPGLOBAL;
     gid_t gid;
     
+
+    /* Setting the name */
+    OS_SetName(ARGV0);
+        
    
     time1 = time(0);
      

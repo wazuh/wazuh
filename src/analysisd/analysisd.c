@@ -111,6 +111,10 @@ int main(int argc, char **argv)
     char **rulesfiles;
     char *cfg = DEFAULTCPATH;
 
+    /* Setting the name */
+    OS_SetName(ARGV0);
+
+
     while((c = getopt(argc, argv, "dhu:g:D:c:")) != -1){
         switch(c){
             case 'h':
@@ -315,7 +319,7 @@ void OS_ReadMSG(int m_queue)
     if(Config.ar)
     {
         /* Waiting the ARQ to settle .. */
-        sleep(2);
+        sleep(3);
 
         
         #ifndef LOCAL

@@ -85,6 +85,10 @@ int main(int argc, char **argv)
     
     char *group=GROUPGLOBAL;
     
+
+    /* Setting the name */
+    OS_SetName(ARGV0);
+        
     verbose("%s: Creating client key",ARGV0);
 
     while((c = getopt(argc, argv, "hp:a:i:n:")) != -1){
