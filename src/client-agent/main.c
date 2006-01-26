@@ -47,6 +47,10 @@ int main(int argc, char **argv)
     int uid = 0;
     int gid = 0;
 
+    
+    /* Setting the name */
+    OS_SetName(ARGV0);
+
 
     while((c = getopt(argc, argv, "dhu:g:D:")) != -1){
         switch(c){

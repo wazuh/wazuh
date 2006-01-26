@@ -22,6 +22,9 @@
 
 #define OS_PIDFILE	"/var/run"
 
+/* Set the program name. Must be done before **anything** else */
+void OS_SetName(char *name);
+
 int File_DateofChange(char *file);
 
 int IsDir(char *file);
