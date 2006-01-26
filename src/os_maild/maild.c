@@ -53,6 +53,11 @@ int main(int argc, char **argv)
     /* Mail Structure */
     MailConfig mail;
 
+
+    /* Setting the name */
+    OS_SetName(ARGV0);
+        
+
     while((c = getopt(argc, argv, "dhu:g:D:c:")) != -1){
         switch(c){
             case 'h':

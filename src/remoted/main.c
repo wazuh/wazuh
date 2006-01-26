@@ -11,21 +11,8 @@
 
 
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>  
-#include <arpa/inet.h>
-#include <time.h>
-
-#include "os_net/os_net.h"
-
-
-#include "remoted.h"
 #include "shared.h"
+#include "remoted.h"
 
 
 int main(int argc, char **argv)
@@ -39,6 +26,11 @@ int main(int argc, char **argv)
     char *user = REMUSER;
     char *group = GROUPGLOBAL;
 
+    
+    /* Setting the name -- must be done ASAP */
+    OS_SetName(ARGV0);
+
+    
     while((c = getopt(argc, argv, "dhu:g:D:")) != -1){
         switch(c){
             case 'h':
