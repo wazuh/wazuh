@@ -10,13 +10,9 @@
  */
 
 
-#include <sys/types.h>
-#include <stdio.h>
-#include <string.h>
+#include "shared.h"
 #include <regex.h>
 
-#include "headers/debug_op.h"
-#include "error_messages/error_messages.h"
 
 
 /* OS_PRegex:
@@ -33,7 +29,7 @@ int OS_PRegex(char *str, char *regex)
     
     if(regcomp(&preg, regex, REG_EXTENDED|REG_NOSUB) != 0)
     {
-        merror("%s: Regex compile error (%s)\n",ARGV0, regex);
+        merror("%s: Posix Regex compile error (%s)\n", __local_name, regex);
     }
 
     if(regexec(&preg, str, strlen(str), NULL, 0) != 0)

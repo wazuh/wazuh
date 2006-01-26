@@ -10,10 +10,9 @@
  */
 
 
+#include "shared.h"
 #include <pthread.h>
 
-#include "headers/debug_op.h"
-#include "error_messages/error_messages.h"
 
 
 /* CreateThread(void v0.1
@@ -28,13 +27,13 @@ int CreateThread(void *function_pointer(void *data), void *data)
     ret = pthread_create(&lthread, NULL, function_pointer, (void*)data);
     if(ret != 0)
     {
-        merror(THREAD_ERROR,ARGV0);
+        merror(THREAD_ERROR, __local_name);
         return (-1);
     }
 
     if(pthread_detach(lthread) != 0)
     {
-        merror(THREAD_ERROR,ARGV0);
+        merror(THREAD_ERROR, __local_name);
         return(-1);
     }
 
