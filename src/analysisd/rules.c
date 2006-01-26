@@ -897,7 +897,21 @@ void Rule_AddAR(RuleInfo *rule_config)
 {
     int rule_ar_size = 0;
     int mark_to_ar = 0;
+    int rule_real_level = 0;
+    
     OSListNode *my_ars_node;
+    
+    
+    /* Setting the correctly levels 
+     * We play internally with the rules, to set
+     * the priorities... Rules with 0 of accuracy,
+     * receive a low level and go down in the list
+     */
+    if(rule_config->level == 9900)
+        rule_real_level = 0;
+    
+    if(rule_config->level > 100)
+        rule_real_level = rule_config->level/100;
     
     
     /* No AR for ignored rules */

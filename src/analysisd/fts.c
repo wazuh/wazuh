@@ -28,7 +28,7 @@
 #include "eventinfo.h"
 #include "rules.h"
 
-#define FTS_MAX_SIZE        28
+#define FTS_MAX_SIZE        36
 #define FTS_MINSIZE_FOR_STR 14
 
 OSList *fts_list = NULL;

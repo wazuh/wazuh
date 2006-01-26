@@ -24,6 +24,7 @@
 /* Read syslog files/snort fast/apache files */
 void *read_syslog(int pos, int *rc)
 {
+    int __rc = 0;
     char *p;
     char str[OS_MAXSTR+1];
 
@@ -31,17 +32,14 @@ void *read_syslog(int pos, int *rc)
 
     while(fgets(str, OS_MAXSTR, logr[pos].fp) != NULL)
     {
-
-        if ((p = strchr(str, '\n')) != NULL) 
+        /* Getting the last occurence of \n */
+        if ((p = strrchr(str, '\n')) != NULL) 
         {
             *p = '\0';
         }
                       
-
-        #ifdef DEBUG
-        verbose("%s: Read message: '%s'",ARGV0,str);
-        #endif
-
+        
+        /* Sending message to queue */
         if(SendMSG(logr_queue,str,logr[pos].file,
                     logr[pos].logformat, LOCALFILE_MQ) < 0)
         {
@@ -50,13 +48,22 @@ void *read_syslog(int pos, int *rc)
             {
                 ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
             }
+
         }
 
+        __rc++;
         continue;
     }
 
-    /* We are checking for errors in the main function */
-    *rc = 0;
+    /* Nothing was available to be read */
+    if(__rc == 0)
+    {
+        *rc = 1;
+    }
+    else
+    {
+        *rc = 0;
+    }
     return(NULL); 
 }
 

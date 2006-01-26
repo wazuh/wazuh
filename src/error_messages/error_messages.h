@@ -36,6 +36,10 @@
 #define SETSID_ERROR  "%s(1112): Setsid error."
 #define MUTEX_ERROR   "%s(1113): Error setting pthread mutex."
 #define SELECT_ERROR  "%s(1114): Unable to select."
+#define FREAD_ERROR   "%s(1115): Error reading file '%s'."
+#define FSEEK_ERROR   "%s(1116): Error handling file '%s' (fseek)."
+#define FILE_ERROR    "%s(1117): Error handling file '%s' (date of change)."
+#define SYSTEM_ERROR  "%s(1118): Internal error. Exiting.."
 
 
 /* COMMON ERRORS */
@@ -81,6 +85,10 @@
 /* Analysisd */
 #define FTS_LIST_ERROR  "%s(1260): Error initiating FTS list"
 #define DECODE_NOPREMATCH   "%s(1270): No 'prematch' found in decoder '%s'"
+
+
+/* Log collector */
+#define LOGC_FILE_ERROR "%s(1601): Ignoring file '%s'. Unable to read."
 
 
 /* Active response */
