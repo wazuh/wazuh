@@ -26,20 +26,16 @@
 #endif
 
 
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <sys/utsname.h>
-#include <fcntl.h>
+#include "shared.h"
 
-#include "headers/file_op.h"
-#include "headers/defs.h"
-#include "headers/debug_op.h"
 
-#include "error_messages/error_messages.h"
+/* Sets the name of the starting progran */
+void OS_SetName(char *name)
+{
+    __local_name = name;
+    return;
+}
+
 
 int File_DateofChange(char *file)
 {
@@ -149,7 +145,7 @@ void goDaemon()
 
     if(pid < 0)
     {
-        merror(FORK_ERROR, ARGV0);
+        merror(FORK_ERROR, __local_name);
         return;
     }
     else if(pid)
@@ -160,7 +156,7 @@ void goDaemon()
     /* becoming session leader */
     if(setsid() < 0)
     {
-        merror(SETSID_ERROR, ARGV0);
+        merror(SETSID_ERROR, __local_name);
         return;
     }
 
@@ -168,7 +164,7 @@ void goDaemon()
     pid = fork();
     if(pid < 0)
     {
-        merror(FORK_ERROR, ARGV0);
+        merror(FORK_ERROR, __local_name);
         return;
     }
     else if(pid)

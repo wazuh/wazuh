@@ -12,14 +12,7 @@
 /* Common API for dealing with lists */ 
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "debug_op.h"
-#include "list_op.h"
-#include "error_messages/error_messages.h"
-
+#include "shared.h"
 
 
 /* Create the list 
@@ -201,7 +194,7 @@ int OSList_AddData(OSList *list, void *data)
     newnode = calloc(1, sizeof(OSListNode));
     if(!newnode)
     {
-        merror(MEM_ERROR, ARGV0);
+        merror(MEM_ERROR, __local_name);
         return(0);
     }
 
