@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/select.h>
+#include <sys/utsname.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -57,6 +58,7 @@
 #include "pthreads_op.h"
 #include "regex_op.h"
 #include "sig_op.h"
+#include "list_op.h"
 #include "rc.h"
 #include "ar.h"
 #include "validate_op.h"
@@ -88,6 +90,10 @@ typedef int gid_t;
 #ifdef AIX
 #define MSG_DONTWAIT MSG_NONBLOCK
 #endif
+
+
+/* Local name */
+char *__local_name;
 
 
 /*** Global prototypes ***/

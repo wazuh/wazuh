@@ -42,6 +42,11 @@ int main(int argc, char **argv)
     char *cfg = DEFAULTCPATH;
     char *dir = DEFAULTDIR;
 
+
+    /* Setting the name */
+    OS_SetName(ARGV0);
+        
+
     while((c = getopt(argc, argv, "dhD:c:")) != -1)
     {
         switch(c)

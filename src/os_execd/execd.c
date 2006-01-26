@@ -52,6 +52,9 @@ int main(int argc, char **argv)
     char *group = GROUPGLOBAL;
     char *cfg = DEFAULTARPATH;
 
+    /* Setting the name */
+    OS_SetName(ARGV0);
+        
 
     while((c = getopt(argc, argv, "dhu:g:D:c:")) != -1){
         switch(c){
