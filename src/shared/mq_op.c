@@ -21,17 +21,31 @@ int __mq_rcode;
 int StartMQ(char * path, short int type)
 {
     if(type == READ)
+    {
         return(OS_BindUnixDomain(path,0660));
+    }
+    
+    /* We give up to 21 seconds for the other end to
+     * start
+     */
     else
     {
         if(File_DateofChange(path) < 0)
         {
-            merror(QUEUE_ERROR, ARGV0, path);
-            sleep(15);
+            merror(QUEUE_ERROR, __local_name, path);
+            sleep(1);
             if(File_DateofChange(path) < 0)
             {
-                sleep(15);
-                return(-1);
+                merror(QUEUE_ERROR, __local_name, path);
+                sleep(5);
+                if(File_DateofChange(path) < 0)
+                {
+                    sleep(15);
+                    if(File_DateofChange(path) < 0)
+                    {
+                        return(-1);
+                    }
+                }
             }
         }
 
@@ -39,8 +53,9 @@ int StartMQ(char * path, short int type)
     }
 }
 
+
 /* FinishMQ v0.2, 2004/07/29
- * Finish the Messahe queue.
+ * Finish the Message queue.
  */
 int FinishMQ()
 {
@@ -67,7 +82,7 @@ int SendMSG(int queue, char *message, char *locmsg,
 
         if(message[0] != ':')
         {
-            merror("%s: Error deserializing message",ARGV0);
+            merror(FORMAT_ERROR, __local_name);
             return(0);
         }
         
@@ -98,8 +113,11 @@ int SendMSG(int queue, char *message, char *locmsg,
         /* Error on the socket */
         if(__mq_rcode == OS_SOCKTERR)
         {
+            merror("%s: socketerr", __local_name);
             return(-1);
         }
+
+        merror("%s: socket busy", __local_name);
         
         /* Unable to send. Socket busy */
         sleep(1);
@@ -110,12 +128,15 @@ int SendMSG(int queue, char *message, char *locmsg,
              * again.
              */
             sleep(1);
+        merror("%s: socket busy", __local_name);
             if(OS_SendUnix(queue, tmpstr,0) < 0)
             {
                 sleep(2);
+        merror("%s: socket busy", __local_name);
                 if(OS_SendUnix(queue, tmpstr,0) < 0)
                 {
                     sleep(2);
+        merror("%s: socket busy", __local_name);
                     if(OS_SendUnix(queue, tmpstr,0) < 0)
                     {
                         /* Message is going to be lost
