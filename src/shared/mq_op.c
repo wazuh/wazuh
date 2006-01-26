@@ -10,19 +10,9 @@
  */
 
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include "shared.h"
+int __mq_rcode;
 
-#include "headers/defs.h"
-#include "headers/mq_op.h"
-#include "headers/debug_op.h"
-#include "headers/file_op.h"
-#include "os_net/os_net.h"
-#include "os_regex/os_regex.h"
-
-#include "error_messages/error_messages.h"
 
 /* StartMQ v0.2, 2004/07/30
  * Start the Message Queue. type: WRITE||READ
@@ -93,28 +83,35 @@ int SendMSG(int queue, char *message, char *locmsg,
         return(-1);
 
         
-    /* We attempt 5 times to send the message.
-     * After the first error, we wait 0.01 seconds.
-     * After the second error, we wait 0.1 seconds.
-     * After the third error, we wait 1 second.
+    /* We attempt 5 times to send the message if
+     * the receiver socket is busy.
+     * After the first error, we wait 1 second.
+     * After the second error, we wait more 1 seconds.
+     * After the third error, we wait 2 seconds.
      * After the fourth error, we wait 2 seconds.
      * If we failed again, the message is not going
      * to be delivered and an error is sent back.
      */
-    if(OS_SendUnix(queue, tmpstr,0) < 0)
+    if((__mq_rcode = OS_SendUnix(queue, tmpstr,0)) < 0)
     {
-        /* Unable to send. Trying again.. */
-        usleep(100000);
+        /* Error on the socket */
+        if(__mq_rcode == OS_SOCKTERR)
+        {
+            return(-1);
+        }
+        
+        /* Unable to send. Socket busy */
+        sleep(1);
         if(OS_SendUnix(queue, tmpstr,0) < 0)
         {
             /* When the socket is to busy, we may get some
-             * error here. Just sleep 0.01 seconds and try
+             * error here. Just sleep 1 second and try
              * again.
              */
-            usleep(1000000);
+            sleep(1);
             if(OS_SendUnix(queue, tmpstr,0) < 0)
             {
-                sleep(1);
+                sleep(2);
                 if(OS_SendUnix(queue, tmpstr,0) < 0)
                 {
                     sleep(2);
@@ -124,7 +121,8 @@ int SendMSG(int queue, char *message, char *locmsg,
                          * if the application does not care
                          * about checking the error 
                          */ 
-                        close(queue); 
+                        close(queue);
+                        queue = -1; 
                         return(-1);
                     }
                 }

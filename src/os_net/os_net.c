@@ -247,7 +247,7 @@ int OS_SendTCPbySize(int socket, int size, char *msg)
  */
 int OS_SendUDPbySize(int socket, int size, char *msg)
 {
-    if((send(socket,msg,size,0))<0)
+    if((send(socket,msg,size,0)) < 0)
         return(OS_SOCKTERR);
         
     return(0);
@@ -355,7 +355,8 @@ char *OS_RecvUnix(int socket, int sizet)
 
 
 /* OS_SendUnix, v0.1, 2004/07/29
- * Send a message using a Unix socket
+ * Send a message using a Unix socket.
+ * Returns the OS_SOCKETERR if it 
  */ 
 int OS_SendUnix(int socket, char * msg, int size)
 {
@@ -367,8 +368,13 @@ int OS_SendUnix(int socket, char * msg, int size)
         size = strlen(msg)+1;
         
     if(send(socket, msg, size,0) < size)
+    {
+        if(errno == ENOBUFS)
+            return(OS_SOCKBUSY);
+
         return(OS_SOCKTERR);
-        
+    }
+    
     return(OS_SUCESS);
 }
 
