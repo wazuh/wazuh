@@ -11,6 +11,7 @@
 
 
 #include "shared.h"
+#include "os_net/os_net.h"
 int __mq_rcode;
 
 
