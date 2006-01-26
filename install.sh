@@ -807,7 +807,7 @@ main()
     if [ "X$INSTYPE" = "Xserver" ]; then
     echo ""        	
     echo " - You need to add each agent before they are authorized to access. "
-    echo "   Run the $WORKDIR/bin/manage-agents to add or remove them."
+    echo "   Run the $WORKDIR/bin/manage_agents to add or remove them."
     echo "   More information on the faq: http://www.ossec.net/hids/faq.php#3.1"
     echo ""
       
@@ -832,7 +832,7 @@ main()
     elif [ "X$INSTYPE" = "Xclient" ]; then	
     echo " - To communicate with the server, you first need to add this "
     echo "   agent to it. When you have done so, you can run the "
-    echo "   $WORKDIR/bin/manage-agents to import the authentication key from"
+    echo "   $WORKDIR/bin/manage_agents to import the authentication key from"
     echo "   the server."
     echo ""
     echo " --- Press any key to continue --- "
