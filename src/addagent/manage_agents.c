@@ -390,7 +390,7 @@ int k_import()
     char b64[512];
     char *b64_dec;
    
-    char *name; char *ip;
+    char *name; char *ip; char *tmp_key;
      
     char line_read[256];
     
@@ -436,6 +436,14 @@ int k_import()
         {
             *ip = '\0';
             ip++;
+
+            tmp_key = index(ip, ' ');
+            if(!tmp_key)
+            {
+                printf("\nInvalid authentication key. Try again.. \n");
+                return(0);
+            }
+            *tmp_key = '\0';
             
             printf("\n");
             printf("Agent information:\n");

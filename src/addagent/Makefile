@@ -9,8 +9,8 @@ include $(PT)Config.Make
 
 OBJS = ${OS_SHARED} ${OS_REGEX} ${OS_CRYPTO}
 
-$(NAME):
-		$(CC) -DARGV0=\"$(NAME)\" $(CFLAGS) addagent.c $(OBJS) -o $@
+handler:
+		$(CC) -DARGV0=\"$(NAME)\" $(CFLAGS) addagent.c $(OBJS) -o addagent
 		$(CC) $(CFLAGS) manage_agents.c b64.c $(OBJS) -o manage_agents
 clean:
 		$(CLEAN) manage_agents

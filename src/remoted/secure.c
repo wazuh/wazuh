@@ -11,16 +11,7 @@
 
 
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>  
-#include <arpa/inet.h>
-#include <time.h>
-
+#include "shared.h"
 #include "os_net/os_net.h"
 
 
@@ -64,6 +55,16 @@ void HandleSecure(int position)
     }
 
 
+    /* Connecting to the message queue
+     * Exit if it fails.
+     */
+    if((logr.m_queue = StartMQ(DEFAULTQUEUE,WRITE)) < 0)
+    {
+        ErrorExit(QUEUE_FATAL,ARGV0, DEFAULTQUEUE);
+    }
+        
+
+    
     /* Reading authentication keys */
     ReadKeys(&keys);
 

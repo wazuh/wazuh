@@ -117,7 +117,6 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
                 case 'W': *pt = 9;break;
                 case 'S': *pt = 10;break;
                 case '.': *pt = 11;break;
-                          
             }
             pt++;
 
@@ -176,6 +175,7 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
     count++;
     reg->patterns = calloc(count +1, sizeof(char *));
     reg->flags = calloc(count +1, sizeof(int));
+    
     
     /* For the substrings */
     if((prts_size > 0) && (flags & OS_RETURN_SUBSTRING))

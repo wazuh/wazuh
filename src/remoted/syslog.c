@@ -66,6 +66,15 @@ void HandleSyslog(int position)
     /* Initializing some variables */
     memset(buffer, '\0', OS_MAXSTR +2);
 
+    
+    /* Connecting to the message queue
+     * Exit if it fails.
+     */
+    if((logr.m_queue = StartMQ(DEFAULTQUEUE,WRITE)) < 0)
+    {
+        ErrorExit(QUEUE_FATAL,ARGV0, DEFAULTQUEUE);
+    }
+        
 
     /* Infinit loop in here */
     while(1)

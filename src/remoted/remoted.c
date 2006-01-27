@@ -1,6 +1,6 @@
-/*   $OSSEC, remoted.c, v0.3, 2005/02/09, Daniel B. Cid$   */
+/*   $OSSEC, remoted.c, v0.4, 2006/01/26, Daniel B. Cid$   */
 
-/* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003,2004,2005,2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -16,16 +16,7 @@
  */
 
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>  
-#include <arpa/inet.h>
-#include <time.h>
-
+#include "shared.h"
 #include "os_net/os_net.h"
 
 #include "remoted.h"
@@ -83,16 +74,6 @@ void HandleRemote(int position, int uid)
     }
                     
     
-     
-    /* Connecting to the message queue
-     * Exit if it fails.
-     */
-    if((logr.m_queue = StartMQ(DEFAULTQUEUE,WRITE)) < 0)
-    {	
-        ErrorExit(QUEUE_FATAL,ARGV0, DEFAULTQUEUE);
-    }
-
-
     /* Creating PID */
     if(CreatePID(ARGV0, getpid()) < 0)
     {
@@ -109,6 +90,7 @@ void HandleRemote(int position, int uid)
     {
         HandleSecure(position);
     }
+    
 
     /* If not, deal with syslog */
     else
