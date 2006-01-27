@@ -30,6 +30,11 @@
 #define IPSIZE      16      /* IP Address size */
 
 
+/* Some names */
+#define __name      "OSSEC HIDS"
+#define __version   "v0.6"
+
+
 /* Maximum allowed PID */
 #ifdef SOLARIS
     #define MAX_PID 29999
@@ -91,6 +96,7 @@
 
 /* Authentication keys file */
 #define KEYS_FILE       "/etc/client.keys"
+#define AUTH_FILE       KEYS_FILE
 
 
 /* Shared config directory */
