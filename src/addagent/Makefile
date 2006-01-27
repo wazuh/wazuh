@@ -1,8 +1,8 @@
-# Makefile for addagent
+# Makefile for addagent /manage_agents
 # Daniel B. Cid <daniel.cid@gmail.com>||<daniel@underlinux.com.br>
 # http://www.ossec.net/hids/
 
-NAME=addagent
+NAME=manage_agents
 PT=../
 
 include $(PT)Config.Make
@@ -10,8 +10,7 @@ include $(PT)Config.Make
 OBJS = ${OS_SHARED} ${OS_REGEX} ${OS_CRYPTO}
 
 handler:
-		$(CC) -DARGV0=\"$(NAME)\" $(CFLAGS) addagent.c $(OBJS) -o addagent
-		$(CC) $(CFLAGS) manage_agents.c b64.c $(OBJS) -o manage_agents
+		$(CC) $(CFLAGS) *.c $(OBJS) -o manage_agents
 clean:
 		$(CLEAN) manage_agents
 build:
