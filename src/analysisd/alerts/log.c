@@ -166,21 +166,35 @@ void FW_Log(Eventinfo *lf)
     }
 
     /* Setting the actions */
-    if(OS_Match("drop|deny|reject|block", lf->action))
+    switch(*lf->action)
     {
-        os_free(lf->action);
-        os_strdup("DROP", lf->action);
+        /* discard, drop, deny, */
+        case 'd':
+        case 'D':
+        /* reject, */
+        case 'r':
+        case 'R':
+        /* block */
+        case 'b':
+        case 'B':
+            os_free(lf->action);
+            os_strdup("DROP", lf->action);
+            break;
+        /* allow, accept, */    
+        case 'a':
+        case 'A':
+        /* pass */
+        case 'p':
+        case 'P':
+            os_free(lf->action);
+            os_strdup("ALLOW", lf->action);        
+            break;
+        default:
+            os_free(lf->action);
+            os_strdup("UNKNOWN", lf->action);
+            break;    
     }
-    else if(OS_Match("accept|allow|pass", lf->action))
-    {
-        os_free(lf->action);
-        os_strdup("ALLOW", lf->action);
-    }
-    else
-    {
-        os_free(lf->action);
-        os_strdup("UNKNOWN", lf->action);
-    }
+
 
     /* log to file */
     if(_fflog)
