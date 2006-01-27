@@ -1,0 +1,38 @@
+/*   $OSSEC, read_from_user.c, v0.2, 2006/01/27, Daniel B. Cid$   */
+
+/* Copyright (C) 2005,2006 Daniel B. Cid <dcid@ossec.net>
+ * All right reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
+
+
+
+#include "manage_agents.h"
+
+char __user_buffer[USER_SIZE +1];
+char *__user_buffer_pt;
+
+
+/** read_from_user **/
+char *read_from_user()
+{
+    memset(__user_buffer, '\0', USER_SIZE +1);
+
+    if((fgets(__user_buffer, USER_SIZE -1, stdin) == NULL) || 
+       (strlen(__user_buffer) >= (USER_SIZE -2)))
+    {
+        printf(INPUT_LARGE);
+        exit(1);
+    }
+
+    __user_buffer_pt = chomp(__user_buffer);
+
+    return(__user_buffer_pt);
+}
+
+
+/* EOF */
