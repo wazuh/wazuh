@@ -110,7 +110,7 @@ void DecodeEvent(Eventinfo *lf)
                     }
 
                     /* We do not free any memory used above */
-                    free(nnode->regex->sub_strings[i]);
+                    os_free(nnode->regex->sub_strings[i]);
                     nnode->regex->sub_strings[i] = NULL;
                     i++;
                 }
