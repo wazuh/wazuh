@@ -736,7 +736,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
    
     
     /* Checking for th FTS flag */
-    if(currently_rule->fts && !lf->fts)
+    if((currently_rule->fts) && (!lf->fts))
     {
         return(NULL);
     }

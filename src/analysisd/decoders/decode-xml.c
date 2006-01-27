@@ -131,7 +131,7 @@ void ReadDecodeXML(char *file)
         pi->order = NULL;
         pi->ftscomment = NULL;
         pi->fts = 0;
-        pi->type = 0;
+        pi->type = SYSLOG;
         
         regex = NULL;
         prematch = NULL;
@@ -199,6 +199,8 @@ void ReadDecodeXML(char *file)
                     pi->type = IDS;
                 else if(strcmp(elements[j]->content, "apache") == 0)
                     pi->type = APACHE;    
+                else if(strcmp(elements[j]->content, "syslog") == 0)
+                    pi->type = SYSLOG;
                 else
                 {
                     ErrorExit("decode-xml: Invalid decoder type '%s'.",
