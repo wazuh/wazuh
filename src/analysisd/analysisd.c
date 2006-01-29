@@ -711,7 +711,22 @@ void OS_ReadMSG(int m_queue)
  */
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
 {
+    /* We must check for a decoded,
+     * fts,
+     * word match (fast regex),
+     * regex,
+     * url,
+     * id,
+     * user,
+     * maxsize,
+     * protocol,
+     * srcip,
+     * dstip,
+     * srcport,
+     * dstport
+     */
     RuleInfo *currently_rule = curr_node->ruleinfo;
+   
     
     /* Can't be null */
     if(!currently_rule)
@@ -724,7 +739,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking if any plugin pre-matched here */
     if(currently_rule->plugin_decoded)
     {
-        
         /* Must have the log tag decoded */
         if(!lf->log_tag)
             return(NULL);
@@ -750,16 +764,25 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
     }	   	   
 
+    
+    /* Checking if exist any regex for this rule */
+    if(currently_rule->regex)
+    {
+        if(!OSRegex_Execute(lf->log,currently_rule->regex))
+            return(NULL);
+    }
+    
+    
     /* Checking for the url */
     if(currently_rule->url)
     {
-        if(!OS_Regex(currently_rule->url,
-                    lf->url))
+        if(!OSRegex_Execute(lf->url,currently_rule->url))
         {
             return(NULL);
         }
     }
 
+    
     /* Checking for the id */
     if(currently_rule->id)
     {
@@ -769,12 +792,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         }
     }
     
-    /* Checking if exist any regex for this rule */
-    if(currently_rule->regex)
-    {
-        if(!OS_Regex(currently_rule->regex,lf->log))
-            return(NULL);
-    }
 
     
     /* Checking if exist any user to match */
@@ -805,7 +822,23 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
     }
    
-   
+    /* Checking for the srcip */
+    if(currently_rule->srcip)
+    {
+        if(!OS_IPFound(lf->srcip, currently_rule->srcip))
+        {
+            return(NULL);
+        }
+    }
+    
+    /* Checking for the dstip */
+    if(currently_rule->dstip)
+    {
+        if(!OS_IPFound(lf->dstip, currently_rule->dstip))
+        {
+            return(NULL);
+        }
+    }
      
     /* If it is a context rule, search for it */
     if(currently_rule->context == 1)

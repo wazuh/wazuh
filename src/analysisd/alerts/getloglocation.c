@@ -12,23 +12,9 @@
 
 /* Get the log directory/file based on the day/month/year */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#include "error_messages/error_messages.h"
-
-#include "headers/debug_op.h"
-#include "headers/file_op.h"
-#include "headers/defs.h"
 
 /* analysisd headers */
 #include "getloglocation.h"
-#include "eventinfo.h"
 
 int __crt_day;
 char __elogfile[OS_FLSIZE+1];

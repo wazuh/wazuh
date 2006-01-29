@@ -7,25 +7,25 @@
 <group name="proftpd,syslog">
   <rule id="2500" level="0" noalert="1">
     <match>^proftpd</match>
-    <comment>Grouping for the proftpd rules</comment>
+    <description>Grouping for the proftpd rules</description>
   </rule>
   
   <rule id="2501" level="0">
     <if_sid>2500</if_sid>
     <regex>FTP session opened|FTP session closed.</regex>
-    <comment>FTP session opened/closed. Ignore it</comment>
+    <description>FTP session opened/closed. Ignore it</description>
   </rule>
 
   <rule id="2502" level="9">
     <if_sid>2500</if_sid>
     <regex>- no such user </regex>
-    <comment>Attempt to login using a non-existent user</comment>
+    <description>Attempt to login using a non-existent user</description>
   </rule>
 
   <rule id="2503" level="5">
     <if_sid>2500</if_sid>
     <regex>- USER \S+: Login failed</regex>
-    <comment>Login failed while trying to access the FTP server</comment>
+    <description>Login failed while trying to access the FTP server</description>
   </rule>
 </group> <!-- SYSLOG,PROFTPD -->
 
