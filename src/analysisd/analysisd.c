@@ -468,7 +468,13 @@ void OS_ReadMSG(int m_queue)
             /* Firewall event */
             else if(lf->type == FIREWALL)
             {
-                FW_Log(lf);
+                /* If we could not get any information from
+                 * the log, just ignore it
+                 */
+                if(!FW_Log(lf))
+                {
+                    goto CLMEM;
+                }
             }
 
             

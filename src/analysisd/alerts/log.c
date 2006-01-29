@@ -157,13 +157,25 @@ void OS_Log(Eventinfo *lf)
 
 
 /* FW_Log: v0.1, 2005/12/30 */
-void FW_Log(Eventinfo *lf)
+int FW_Log(Eventinfo *lf)
 {
+    /* If we don't have the srcip or the
+     * action, there is no point in going
+     * forward over here
+     */
+    if(!lf->action || !lf->srcip)
+    {
+        return(0);
+    }
+
+    
+    /* Getting the location */
     if(OS_GetLogLocation(lf) < 0)
     {
         merror(PERM_ERROR, ARGV0);
-        return;
+        return(-1);
     }
+
 
     /* Setting the actions */
     switch(*lf->action)
@@ -218,7 +230,7 @@ void FW_Log(Eventinfo *lf)
         merror("%s: File descriptor closed.",ARGV0);
     }
 
-    return;
+    return(1);
 }
 
 /* EOF */
