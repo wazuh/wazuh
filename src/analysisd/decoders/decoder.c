@@ -102,6 +102,7 @@ void DecodeEvent(Eventinfo *lf)
                
                 while(nnode->regex->sub_strings[i])
                 {
+                    
                     if(nnode->order[i])
                     {
                         nnode->order[i](lf, nnode->regex->sub_strings[i]);
@@ -114,6 +115,7 @@ void DecodeEvent(Eventinfo *lf)
                     nnode->regex->sub_strings[i] = NULL;
                     i++;
                 }
+
             }
 
 
