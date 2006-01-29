@@ -40,6 +40,14 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
     char *new_str;
     char *new_str_free = NULL;
 
+    
+    /* Checking for references not initialized */
+    if(reg == NULL)
+    {
+        return(0);
+    }
+    
+
     /* Initializing OSRegex structure */
     reg->error = 0;
     reg->patterns = NULL;
@@ -49,11 +57,6 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
     reg->sub_strings = NULL;
 
 
-    /* Checking for references not initialized */
-    if(reg == NULL)
-    {
-        return(0);
-    }
 
     /* The pattern can't be null */
     if(pattern == NULL)

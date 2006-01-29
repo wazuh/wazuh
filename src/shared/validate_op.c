@@ -20,7 +20,34 @@
 char *ip_address_regex = 
      "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?[0-9]{0,2}$";
 
+     
+/** int OS_IPFound(char *ip_address, char *that_ip)
+ * Checks if ip_address is present at that_ip.
+ * Returns 1 on success or 0 on failure.
+ */
+int OS_IPFound(char *ip_address, char *that_ip)
+{
+    if(*that_ip == '.')
+    {
+        that_ip++;
+        if(strncmp(ip_address, that_ip, strlen(that_ip)) == 0)
+        {
+            /* found */
+            return(1);
+        }
+    }
+    else
+    {
+        if(strcmp(ip_address, that_ip) == 0)
+        {
+            /* found */
+            return(1);
+        }
+    }
+    return(0);
+}
 
+     
 /** int OS_IPFoundList(char *ip_address, char **list_of_ips)
  * Checks if ip_address is present on the "list_of_ips".
  * Returns 1 on success or 0 on failure.
