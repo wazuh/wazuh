@@ -12,19 +12,12 @@
 
 /* Rootcheck decoder */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#include "headers/defs.h"
-#include "headers/debug_op.h"
-#include "os_regex/os_regex.h"
 #include "config.h"
-#include "rules.h"
+#include "os_regex/os_regex.h"
 #include "eventinfo.h"
 #include "alerts/alerts.h"
 
-#include "error_messages/error_messages.h"
 
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
