@@ -21,9 +21,7 @@
  * 
  * Supports:
  *      '|' to separate multiple OR patterns
- *      '&' to search for multiple AND patterns
  *      '^' to match the begining of a string
- *      '$' to match the end of a string
  */
 
 
@@ -38,48 +36,31 @@ int OS_WordMatch(char *pattern, char *str)
 {
     int count = 0;
 
-    char *pt = pattern;
-
-    if((pattern == NULL) || (str == NULL))
+    if(*pattern == '\0')
         return(FALSE);
 
-    /* Pattern is 0, everything matches */
-    if(*pt == '\0')
-        return(TRUE);
- 
     do
     {
-        if((*pt == '|')||(*pt == '&'))
+        if(pattern[count] == '|')
         {
-            /* If we match '|' or '&', search with
+            /* If we match '|' , search with
              * we have so far.
              */
             if(_InternalMatch(pattern, str, count))
             {
-                /* If we match, and search set to OR, return TRUE */
-                if(*pt == '|')
-                    return(TRUE);
-            
-                pattern = ++pt;        
-                count = 0;
-                continue;
+                return(TRUE);
             }
             else
             {
-                /* If we didn't match and search set to AND, return FALSE */
-                if(*pt == '&')
-                    return(FALSE);
-                
-                pattern = ++pt;
+                pattern += count+1;
                 count = 0;
                 continue;
             }
         }
        
-        pt++;count++;
+        count++;
        
-        
-    }while(*pt != '\0');
+    }while(pattern[count] != '\0');
 
     /* Last check until end of string */
     return(_InternalMatch(pattern, str,count));
@@ -93,42 +74,24 @@ int _InternalMatch(char *pattern, char *str, int pattern_size)
 
     uchar last_char = pattern[pattern_size];
    
+
     /* Return true for some odd expressions */ 
     if(*pattern == '\0')
         return(TRUE);
 
+    
     /* If '^' specified, just do a strncasecmp */
     else if(*pattern == '^')
     {
         pattern++;
         pattern_size --;
          
-        /* If our match should be the same, remove the '$' */
-        if(pattern[pattern_size-1] == '$')
-        {
-            pattern_size--;
-            if(strlen(str) != pattern_size)
-                return(FALSE);
-        }
-
         /* Compare two string */
         if(strncasecmp(pattern,str,pattern_size) == 0)
             return(TRUE);
         return(FALSE);
     }
 
-    /* If we only need to match for '$', go to the end
-     * of the string and strcmp from there
-     */
-    else if(pattern[pattern_size-1] == '$')
-    {
-        str+=strlen(str)-pattern_size+1;
-        pattern_size--;
-        
-        if(strncasecmp(pattern,str,pattern_size) == 0)
-            return(TRUE);
-        return(FALSE);    
-    }
 
     /* Null line */
     else if(*st == '\0')
