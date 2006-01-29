@@ -11,49 +11,49 @@
 <group name="syslog,pix">
   <rule id="2000" level="0" noalert="1">
     <match>^%PIX-</match>
-    <comment>Pre-match for PIX rules</comment>
+    <description>Pre-match for PIX rules</description>
   </rule>
   
   <rule id="2001" level="9">
     <if_sid>2000</if_sid>
     <match>^%PIX-6-605004: Login denied from</match>
-    <comment>Attempt to log in the PIX firewall from untrusted network</comment>
+    <description>Attempt to log in the PIX firewall from untrusted network</description>
   </rule>
 
   <rule id="2002" level="2">
     <if_sid>2000</if_sid>
     <match>^%PIX-5-502103: User priv level changed:</match>
-    <comment>User changed his privileges in the PIX</comment>
+    <description>User changed his privileges in the PIX</description>
   </rule>
 
   <rule id="2003" level="2">
     <if_sid>2000</if_sid>
     <match>^%PIX-6-605005: Login permitted from</match>
-    <comment>Sucessfull login into the PIX firewall</comment>
+    <description>Sucessfull login into the PIX firewall</description>
   </rule>
 
   <rule id="2004" level="0">
     <if_sid>2000</if_sid>
     <match>^%PIX-6-302010: </match> 
-    <comment>Connection related message from the PIX firewall</comment>
+    <description>Connection related message from the PIX firewall</description>
   </rule>
 
   <rule id="2005" level="12">
     <if_sid>2000</if_sid>
     <match>^%PIX-6-308001: PIX console enable password incorrect</match>
-    <comment>Password mismatch while trying enable on the PIX</comment>
+    <description>Password mismatch while trying enable on the PIX</description>
   </rule>
 
    <rule id="2006" level="8">
     <if_sid>2000</if_sid>
     <match>^%PIX-4-405001: Received ARP response collision from</match>
-    <comment>ARP collision detected by the PIX. Worth looking at it</comment>
+    <description>ARP collision detected by the PIX. Worth looking at it</description>
   </rule> 
 
    <rule id="2007" level="10">
     <if_sid>2000</if_sid>
     <match>^%PIX-4-401004: Shunned packet: </match>
-    <comment>Attempt to connect from a shunned IP</comment>
+    <description>Attempt to connect from a shunned IP</description>
   </rule> 
 </group> <!-- SYSLOG,PIX -->
 
