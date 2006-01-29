@@ -12,23 +12,11 @@
 
 /* Syscheck decoder */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include "headers/defs.h"
-#include "headers/debug_op.h"
+#include "eventinfo.h"
 #include "os_regex/os_regex.h"
 #include "config.h"
-#include "rules.h"
-#include "eventinfo.h"
 #include "alerts/alerts.h"
 
-#include "error_messages/error_messages.h"
 
 #define SYSCHECK_DIR    "/queue/syscheck"
 

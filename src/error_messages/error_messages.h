@@ -65,10 +65,11 @@
 #define RULES_ERROR	    "%s(1220): Error loading the rules."
 #define QUEUE_SEND      "%s(1224): Error sending message to queue."
 #define SIGNAL_RECV     "%s(1225): SIGNAL Received. Exit Cleaning..."
-#define XML_ERROR       "%s(1226): Error reading XML: '%s'."
+#define XML_ERROR       "%s(1226): Error reading XML: '%s' (line %d)."
 #define XML_ERROR_VAR   "%s(1227): Error applying XML variables."
 #define XML_NO_ELEM     "%s(1228): Element '%s' without any option."
 #define XML_INVALID     "%s(1229): Invalid element '%s' on the '%s' config."
+#define XML_READ_ERROR  "%s(1232): Error reading XML. Unknown."
 #define INVALID_IP      "%s(1230): Invalid ip address: '%s'."
 #define INVALID_ELEMENT "%s(1231): Invalid value for element '%s': %s"
 

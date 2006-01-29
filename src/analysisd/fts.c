@@ -13,20 +13,8 @@
  */
 
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
-#include "error_messages/error_messages.h"
-
-#include "headers/defs.h"
-#include "headers/file_op.h"
-#include "headers/debug_op.h"
-#include "os_regex/os_regex.h"
-
 #include "fts.h"
 #include "eventinfo.h"
-#include "rules.h"
 
 #define FTS_MAX_SIZE        36
 #define FTS_MINSIZE_FOR_STR 14

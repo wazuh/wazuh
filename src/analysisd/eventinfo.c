@@ -15,20 +15,9 @@
 
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-
-#include "headers/defs.h"
-
-#include "rules.h"
 #include "config.h"
 #include "analysisd.h"
 #include "eventinfo.h"
-
-#include "headers/debug_op.h"
-
 #include "os_regex/os_regex.h"
 
 /* Search LastEvents.  
@@ -62,8 +51,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         /* If regex does not match, go to next */
         if(currently_rule->if_matched_regex)
         {
-            if(!OS_Regex(currently_rule->if_matched_regex,
-                    lf->log))
+            if(!OSRegex_Execute(lf->log, currently_rule->if_matched_regex))
             {
                 /* Didn't match */
                 continue;

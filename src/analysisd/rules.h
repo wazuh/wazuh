@@ -19,13 +19,17 @@
 
 #define TIMEFRAME 360 /* Default timeframe */
 
-#include "active-response.h"
 #include "shared.h"
+#include "active-response.h"
+
 
 typedef struct _RuleInfo
 {
     int sigid;  /* id attribute -- required*/
     int level;  /* level attribute --required */
+    int maxsize;
+    int frequency;
+    int timeframe;
 
     int context; /* Not an user option */
     int firedtimes;  /* Not an user option */
@@ -36,43 +40,39 @@ typedef struct _RuleInfo
     u_int8_t fts ;
     u_int8_t emailalert;
     u_int8_t logalert;
-    active_response **ar;
-
-    int maxsize; /* maxsize attribute */
-    int frequency; /* frequency attribute */
-    int timeframe; /* timeframe attribute */
-    int noalert;   /* No alert flag */
-
-    int same_source_ip;
-    int same_user;
-    int same_loghost;
-
-    int category; /* category */
-    char *group; /* group */
-    char *regex; /* regex */
-    char *match; /* match */
+    u_int8_t noalert;
+    u_int8_t same_source_ip;
+    u_int8_t same_user;
+    u_int8_t same_loghost;
+    u_int8_t category;
+   
+    char *group;
     char *plugin_decoded;
-
-    char *comment;
-    char *info;
-    char *cve;
-    
-
-    char *if_sid;          /* If signature id was matched */
-    char *if_level;        /* If any level => was matched */
-    char *if_group;        /* If group was matched */
-    
-    char *if_matched_regex;
-    char *if_matched_group;
-    int if_matched_sid;
+    char *match;
+    OSRegex *regex;
 
     char *srcip;
     char *dstip;
     char *user;
-    char *url;
+    OSRegex *url;
     char *id;
+    
+    char *comment; /* description in the xml */
+    char *info;
+    char *cve;
+    
+    char *if_sid;
+    char *if_level;
+    char *if_group;
+
+    OSRegex *if_matched_regex;
+    char *if_matched_group;
+    int if_matched_sid;
+    
+    active_response **ar;
 
 }RuleInfo;
+
 
 typedef struct _RuleNode
 {
@@ -83,6 +83,7 @@ typedef struct _RuleNode
 
 
 RuleInfo *currently_rule; /* */
+
 
 /** Rule_list Functions **/
 
