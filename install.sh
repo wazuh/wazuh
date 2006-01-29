@@ -240,8 +240,6 @@ ConfigureClient()
 
 	echo "<client>" > $NEWCONFIG
 	echo "  <server-ip>$IP</server-ip>" >> $NEWCONFIG
-	echo "  <group>syslog</group>" >> $NEWCONFIG
-	echo "  <connection>secure</connection>" >> $NEWCONFIG
 	echo "</client>" >> $NEWCONFIG
 
     # Syscheck?
@@ -251,28 +249,8 @@ ConfigureClient()
     UseRootcheck
 
 
-    # active response on the client side 
-    echo ""
-    echo "  3.4- Do you want to enable active response?(yes/no)y"
-    read ES
-    case $ES in
-        n|N|no|No|NO)
-            echo "" >> $NEWCONFIG
-            echo "<active-response>" >> $NEWCONFIG
-            echo "  <disabled>yes</disabled>" >> $NEWCONFIG
-            echo "</active-response> " >> $NEWCONFIG
-            
-            echo "   - Active response disabled"
-            ;;
-        *)
-            echo "   - Active response enabled"
-            ;;
-    esac
-
-
- 
     # Set up the log files
-    SetupLogs "3.5"
+    SetupLogs "3.4"
                        
 	
 }
