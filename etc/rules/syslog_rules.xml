@@ -44,7 +44,7 @@
 <group name="syslog,nfs">
   <!-- XXX All These NFS rules need to be fixed. I'm not an NFS fan and dont use it.. -->
   <rule id="202" level="4">
-    <match>nfs: mount failure$</match>
+    <match>nfs: mount failure</match>
     <description>Unable to mount the NFS directory</description>
   </rule>
 
@@ -340,7 +340,7 @@
   </rule>
 
   <rule id="1304" level="8">
-    <regex>^chfn[d\+]: changed user</regex>
+    <regex>^chfn[\d+]: changed user</regex>
     <description>Information from the user was changed</description>
   </rule>
 </group> <!-- SYSLOG,ADDUSER -->
