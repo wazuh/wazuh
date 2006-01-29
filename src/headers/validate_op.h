@@ -20,6 +20,14 @@
 
 
 
+/** int OS_IPFound(char *ip_address, char *that_ip)
+ * Checks if ip_address is present at that_ip.
+ * Returns 1 on success or 0 on failure.
+ */
+int OS_IPFound(char *ip_address, char *that_ip);
+
+    
+
 /** int OS_IPFoundList(char *ip_address, char **list_of_ips)
  * Checks if ip_address is present on the "list_of_ips".
  * Returns 1 on success or 0 on failure.
