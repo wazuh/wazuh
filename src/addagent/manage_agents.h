@@ -71,6 +71,7 @@ fpos_t fp_pos;
 /* Add errors */
 #define ADD_ERROR_ID    "ID '%s' already present. Starting over again.\n"
 #define ADD_ERROR_NAME  "Name '%s' already present. Starting over again.\n"
+#define IP_ERROR        "Invalid IP '%s'. Starting over again.\n"
 #define NO_AGENT        "No agent available. You need to add one first.\n"
 #define NO_ID           "Invalid ID '%s' given. Not present.\n"
 #define NO_KEY          "\nInvalid authentication key. Unable to read it.\n"

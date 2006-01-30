@@ -136,6 +136,13 @@ int add_agent()
     
         _ip = read_from_user();
         strncpy(ip, _ip, FILE_SIZE -1);
+        
+        if(!OS_IsValidIP(ip) || OS_HasNetmask(ip))
+        {
+            printf(IP_ERROR, ip);
+            goto final;
+        }
+
     }
    
     
