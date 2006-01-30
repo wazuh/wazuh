@@ -282,12 +282,16 @@ ConfigureServer()
 			read EMAIL
             ls ${HOST_CMD} > /dev/null 2>&1
             if [ $? = 0 ]; then
-              HOSTTMP=`${HOST_CMD} -t mx ossec.net`
+              HOSTTMP=`${HOST_CMD} -W 5 -t mx ossec.net`
               if [ "$HOSTTMP" = "ossec.net mail is handled by 10 mx.underlinux.com.br." ]; then
                  # Breaking down the user e-mail
                  EMAILHOST=`echo ${EMAIL} | cut -d "@" -f 2`
-                 HOSTTMP=`${HOST_CMD} -t mx ${EMAILHOST}`
-                 SMTPHOST=`echo ${HOSTTMP} | cut -d " " -f 7`
+                 if [ "X${EMAILHOST}" = "Xlocalhost" ]; then
+                    SMTPHOST="127.0.0.1"
+                 else       
+                    HOSTTMP=`${HOST_CMD} -W 6 -t mx ${EMAILHOST}`
+                    SMTPHOST=`echo ${HOSTTMP} | cut -d " " -f 7`
+                 fi   
               fi    
             fi
 
