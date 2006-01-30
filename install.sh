@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installation script for the OSSEC HIDS
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
-# Last modification: Dec 30, 2005
+# Last modification: Jan 30, 2006
 
 ### Setting up variables
 VERSION=`cat ./src/VERSION`
