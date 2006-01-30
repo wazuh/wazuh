@@ -375,10 +375,10 @@ ConfigureServer()
             echo "   - Active response enabled."
             echo ""
             echo "   - By default, we can enable the host-deny and the "
-            echo "     and the iptables-drop responses. The first one "
+            echo "     and the firewall-drop responses. The first one "
             echo "     will add a host to the /etc/hosts.deny and the "
-            echo "     second one will block the host on iptables (linux"
-            echo "     only). "
+            echo "     second one will block the host on iptables (linux)"
+            echo "     or on ipfilter (Solaris, FreeBSD, etc)."
             echo "   - They can be used to stop SSHD brute force scans, "
             echo "     portscans and some other forms of attacks. You can "
             echo "     also add them to block on snort events (for example)."
@@ -395,15 +395,15 @@ ConfigureServer()
                     ;;
             esac
             echo ""
-            echo "   - Do you want to enable the iptables-drop response?(yes/no)y"
+            echo "   - Do you want to enable the firewall-drop response?(yes/no)y"
             read HD2
             case $HD2 in
                 n|N|no|No|NO)
-                    echo "     - iptables-drop disabled"
+                    echo "     - firewall-drop disabled"
                     ;;
                 *)
-                    echo "     - iptables-drop enabled (local) for levels >= 6 "
-                    IPTABLESDROP="yes"
+                    echo "     - firewall-drop enabled (local) for levels >= 6 "
+                    FIREWALLDROP="yes"
                     ;;
             esac        
                         
@@ -484,8 +484,8 @@ ConfigureServer()
         
         echo "" >> $NEWCONFIG
         echo "<command>" >> $NEWCONFIG
-        echo "  <name>iptables-drop</name>" >> $NEWCONFIG
-        echo "  <executable>iptables-drop.sh</executable>" >> $NEWCONFIG
+        echo "  <name>firewall-drop</name>" >> $NEWCONFIG
+        echo "  <executable>firewall-drop.sh</executable>" >> $NEWCONFIG
         echo "  <expect>srcip</expect>" >> $NEWCONFIG
 	    echo "  <timeout_allowed>yes</timeout_allowed>" >> $NEWCONFIG
         echo "</command>" >> $NEWCONFIG
@@ -508,10 +508,10 @@ ConfigureServer()
             echo "</active-response>" >> $NEWCONFIG
         fi
         
-        if [ "X$IPTABLESDROP" = "Xyes" ]; then
+        if [ "X$FIREWALLDROP" = "Xyes" ]; then
             echo "" >> $NEWCONFIG
             echo "<active-response>" >> $NEWCONFIG
-            echo "  <command>iptables-drop</command>" >> $NEWCONFIG
+            echo "  <command>firewall-drop</command>" >> $NEWCONFIG
             echo "  <location>local</location>" >> $NEWCONFIG
             echo "  <level>6</level>" >> $NEWCONFIG
             echo "  <timeout>600</timeout>" >> $NEWCONFIG
