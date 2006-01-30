@@ -20,5 +20,4 @@ binary:
 		$(CC) $(CFLAGS) $(OBJS) -U OSSECHIDS -D_GNU_SOURCE -o ${NAME}
 clean:
 		${CLEAN} rootcheck_lib.a
-build:
-		-${BUILD}
+build:        
