@@ -117,6 +117,7 @@ int NameExist(char *u_name)
 /* print available agents */
 int print_agents()
 {
+    int total = 0;
     FILE *fp;
     char line_read[FILE_SIZE +1];
     line_read[FILE_SIZE] = '\0';
@@ -125,7 +126,6 @@ int print_agents()
     if(!fp)
         return(0);
 
-    printf(PRINT_AVAILABLE);
     fseek(fp, 0, SEEK_SET);
     
     memset(line_read,'\0',FILE_SIZE);
@@ -153,7 +153,10 @@ int print_agents()
                 if(key)
                 {
                     *key = '\0';
+                    if(!total)
+                        printf(PRINT_AVAILABLE);
                     printf(PRINT_AGENT, line_read, name, ip);
+                    total++;
                 }
                 
             }
@@ -161,7 +164,7 @@ int print_agents()
     }
 
     fclose(fp);
-    if(line_read[0] != '\0')
+    if(total)
         return(1);
     
     return(0);    
