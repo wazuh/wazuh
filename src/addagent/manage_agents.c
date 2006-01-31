@@ -255,9 +255,11 @@ int remove_agent()
     user_input = read_from_user();
     strcpy(u_id, user_input);
 
-    if(IDExist(user_input))
+    if(!IDExist(user_input))
     {
         printf(NO_ID, user_input);
+        printf(PRESS_ENTER);
+        read_from_user();
         return(0);
     }
     
@@ -269,7 +271,7 @@ int remove_agent()
     /* If user confirm */
     if(user_input[0] == 'y' || user_input[0] == 'Y')
     {
-        fp = fopen(AUTH_FILE, "w");
+        fp = fopen(AUTH_FILE, "r+");
         if(!fp)
         {
             ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
@@ -285,6 +287,9 @@ int remove_agent()
         printf(REMOVE_NOT);
     }
 
+    printf(PRESS_ENTER);
+    read_from_user();
+            
     return(0);
 }
 
