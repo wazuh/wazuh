@@ -83,10 +83,10 @@ fpos_t fp_pos;
 #define REMOVE_NOT      "Not removing ..\n"
 
 /* Import agent */    
-#define IMPORT_KEY      "\nProvide the Key generated from the server.\n" \
-                        "The best approach is to cut and paste it.\n" \
-                        "** OBS: Do not include spaces or new lines.\n" \
-                        "Paste it here:\n"
+#define IMPORT_KEY      "\n* Provide the Key generated from the server.\n" \
+                        "* The best approach is to cut and paste it.\n" \
+                        "*** OBS: Do not include spaces or new lines.\n\n" \
+                        "Paste it here: "
     
 /* extract key */    
 #define EXTRACT_KEY     "Provide the ID of the agent you want to extract " \
