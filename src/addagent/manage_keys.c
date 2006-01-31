@@ -65,7 +65,8 @@ int k_import()
                 return(0);
             }
             *tmp_key = '\0';
-           
+        
+            printf("\n");   
             printf(AGENT_INFO, b64_dec, name, ip); 
             fflush(stdout);
 
@@ -82,6 +83,7 @@ int k_import()
                 fclose(fp);
                 printf(AGENT_ADD);
                 printf(PRESS_ENTER);
+                read_from_user();
                 return(1);
             }
         }
