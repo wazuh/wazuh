@@ -81,6 +81,7 @@ int k_import()
                 fprintf(fp,"%s\n",line_read);
                 fclose(fp);
                 printf(AGENT_ADD);
+                printf(PRESS_ENTER);
                 return(1);
             }
         }
