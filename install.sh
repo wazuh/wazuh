@@ -10,7 +10,8 @@ UNAME=`uname -snr`
 NUNAME=`uname`
 ME=`whoami`
 HOST=`hostname`
-NAMESERVERS=`cat /etc/resolv.conf | grep nameserver | cut -d " " -f 2`
+NAMESERVERS=`cat /etc/resolv.conf | grep nameserver | cut -d " " -sf 2`
+NAMESERVERS2=`cat /etc/resolv.conf | grep nameserver | cut -sf 2`
 HOST_CMD=/usr/bin/host
 CC=""
 NAME="OSSEC HIDS"
@@ -332,9 +333,11 @@ ConfigureServer()
 		echo "  <mail-notify>no</mail-notify>" >> $NEWCONFIG
 	fi
         echo "  <white_list>127.0.0.1</white_list>" >> $NEWCONFIG
-        for ip in ${NAMESERVERS};
+        for ip in ${NAMESERVERS} ${NAMESERVERS2};
         do
-            echo "  <white_list>${ip}</white_list>" >>$NEWCONFIG
+            if [ "X${ip}" != "X" ]; then
+              echo "  <white_list>${ip}</white_list>" >>$NEWCONFIG
+            fi
         done
 	echo "</global>" >> $NEWCONFIG
 	echo "" >> $NEWCONFIG
