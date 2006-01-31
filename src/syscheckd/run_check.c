@@ -119,8 +119,8 @@ void start_daemon()
                  */
                 file_count++;
 
-                /* sleep 3 every 20 messages */
-                if(file_count >= 20)
+                /* sleep 3 every 15 messages */
+                if(file_count >= 15)
                 {
                     sleep(3);
                     file_count = 0;
