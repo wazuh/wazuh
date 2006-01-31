@@ -39,6 +39,8 @@ int k_import()
     if(b64_dec == NULL)
     {
         printf(NO_KEY);
+        printf(PRESS_ENTER);
+        read_from_user();
         return(0);
     }
     
@@ -85,6 +87,8 @@ int k_import()
     }
     
     printf(NO_KEY);
+    printf(PRESS_ENTER);
+    read_from_user();
     return(0);
 
 }
@@ -102,6 +106,8 @@ int k_extract()
     if(!print_agents())
     {
         printf(NO_AGENT);
+        printf(PRESS_ENTER);
+        read_from_user();
         return(0);
     }
 
@@ -115,6 +121,9 @@ int k_extract()
     if(!IDExist(user_input))
     {
         printf(NO_ID, user_input);
+        printf(PRESS_ENTER);
+        read_from_user();
+        return(0);
     }
 
     

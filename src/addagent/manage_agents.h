@@ -54,7 +54,7 @@ fpos_t fp_pos;
 
 
 /* Print agents */
-#define PRINT_AVAILABLE     "Available agents: \n"
+#define PRINT_AVAILABLE     "\nAvailable agents: \n"
 #define PRINT_AGENT         "   ID: %s, Name: %s, IP: %s\n"
 
 /* Add new agent */
@@ -66,15 +66,15 @@ fpos_t fp_pos;
                         "IP Address:%s\n\nConfirm adding it?(y/n): "
 #define AGENT_ADD       "Added.\n"
 #define ADD_NOT         "Not Adding..\n"
-#define PRESS_ENTER     "Press ENTER to continue.\n"
+#define PRESS_ENTER     "** Press ENTER to continue.\n"
 
 /* Add errors */
-#define ADD_ERROR_ID    "ID '%s' already present. Starting over again.\n"
-#define ADD_ERROR_NAME  "Name '%s' already present. Starting over again.\n"
-#define IP_ERROR        "Invalid IP '%s'. Starting over again.\n"
-#define NO_AGENT        "No agent available. You need to add one first.\n"
-#define NO_ID           "Invalid ID '%s' given. Not present.\n"
-#define NO_KEY          "\nInvalid authentication key. Unable to read it.\n"
+#define ADD_ERROR_ID    "\n** ID '%s' already present. Starting over again.\n"
+#define ADD_ERROR_NAME  "\n** Name '%s' already present. Starting over again.\n"
+#define IP_ERROR        "\n** Invalid IP '%s'. Starting over again.\n"
+#define NO_AGENT        "\n** No agent available. You need to add one first.\n"
+#define NO_ID           "\n** Invalid ID '%s' given. Not present.\n"
+#define NO_KEY          "\n** Invalid authentication key. Starting over again.\n"
 
 /* Remove agent */
 #define REMOVE_ID       "Provide the ID of the agent you want to remove: "
@@ -83,7 +83,7 @@ fpos_t fp_pos;
 #define REMOVE_NOT      "Not removing ..\n"
 
 /* Import agent */    
-#define IMPORT_KEY      "Provide the Key generated from the server.\n" \
+#define IMPORT_KEY      "\nProvide the Key generated from the server.\n" \
                         "The best approach is to cut and paste it.\n" \
                         "** OBS: Do not include spaces or new lines.\n" \
                         "Paste it here:\n"
@@ -91,8 +91,8 @@ fpos_t fp_pos;
 /* extract key */    
 #define EXTRACT_KEY     "Provide the ID of the agent you want to extract " \
                         "the key: "
-#define EXTRACT_MSG     "Agent key information for '%s' is: \n%s" \
-                        "\nPress ENTER to continue\n\n"
+#define EXTRACT_MSG     "\nAgent key information for '%s' is: \n%s\n" \
+                        "\n** Press ENTER to continue\n"
    
 /* Commom errors */
 #define ERROR_KEYS      "Unable to handle keys file. Exiting.\n"
@@ -111,7 +111,7 @@ fpos_t fp_pos;
                         "   (Q)uit.\n" \
                         "Choose your actions: A,E,R or Q: "
 
-#define BANNER_CLIENT   "   (I)mport key for an agent (I).\n" \
+#define BANNER_CLIENT   "   (I)mport key for the server (I).\n" \
                         "   (Q)uit.\n" \
                         "Choose your actions: I or Q: "
                         
