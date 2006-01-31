@@ -30,6 +30,7 @@ void AgentdStart(char *dir, int uid, int gid)
     int pid = 0;
     int port = 0;
     int maxfd = 0;   
+    int total = 0;
 
     fd_set fdset;
     
@@ -163,38 +164,54 @@ void AgentdStart(char *dir, int uid, int gid)
         fdtimeout.tv_sec = 120;
         fdtimeout.tv_usec = 0;
 
+        
+        /* Only notify when total is 0 */ 
+        if(!total)
+        { 
+            /* Sending signal to notifier */
+            if(pthread_mutex_lock(&notify_mutex) != 0)
+            {
+                merror(MUTEX_ERROR, ARGV0);
+                return;
+            }
 
+            pthread_cond_signal(&notify_cond);    
+            if(pthread_mutex_unlock(&notify_mutex) != 0)
+            {
+                merror(MUTEX_ERROR, ARGV0);
+                return;
+            }
+
+            total++;
+        }
+        
+        
         /* Wait for 120 seconds at a maximum for any descriptor */
         rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
         if(rc == -1)
         {
-            merror(SELECT_ERROR, ARGV0);
-            continue;
+            ErrorExit(SELECT_ERROR, ARGV0);
         }
-        
-        
-        /* Sending signal to notifier */
-        if(pthread_mutex_lock(&notify_mutex) != 0)
-        {
-            merror(MUTEX_ERROR, ARGV0);
-            return;
-        }
-
-        pthread_cond_signal(&notify_cond);    
-        if(pthread_mutex_unlock(&notify_mutex) != 0)
-        {
-            merror(MUTEX_ERROR, ARGV0);
-            return;
-        }
-
+       
         
         /* If timeout, do not signal to other threads */
-        if(select(maxfd, &fdset, NULL, NULL, &fdtimeout) == 0)
+        else if(rc == 0)
         {
+            total = 0;
             continue;
+        }    
+        
+        /* Zero on every 120 events */
+        else if(total >=120)
+        {
+            total = 0;
         }
 
-       
+        else
+        {
+            total++;
+        }
+        
         
         /* For the receiver */
         if(FD_ISSET(logr->sock, &fdset))
