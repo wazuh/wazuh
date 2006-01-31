@@ -27,13 +27,22 @@ char *ip_address_regex =
  */
 int OS_IPFound(char *ip_address, char *that_ip)
 {
+    int _true = 1;
+    
+    /* If negate is set */
+    if(*that_ip == '!')
+    {
+        that_ip++;
+        _true = 0;
+    }
+    
     if(*that_ip == '.')
     {
         that_ip++;
         if(strncmp(ip_address, that_ip, strlen(that_ip)) == 0)
         {
             /* found */
-            return(1);
+            return(_true);
         }
     }
     else
@@ -41,10 +50,11 @@ int OS_IPFound(char *ip_address, char *that_ip)
         if(strcmp(ip_address, that_ip) == 0)
         {
             /* found */
-            return(1);
+            return(_true);
         }
     }
-    return(0);
+    
+    return(!_true);
 }
 
      
@@ -55,15 +65,23 @@ int OS_IPFound(char *ip_address, char *that_ip)
  */
 int OS_IPFoundList(char *ip_address, char **list_of_ips)
 {
+    int _true = 1;
+    
     while(*list_of_ips)
     {
+        if(**list_of_ips == '!')
+        {
+            _true = 0;
+            (*list_of_ips)++;
+        }
+        
         if(**list_of_ips == '.')
         {
             (*list_of_ips)++;
             if(strncmp(ip_address, *list_of_ips, strlen(*list_of_ips)) == 0)
             {
                 /* found */
-                return(1);
+                return(_true);
             }
         }
         else
@@ -71,13 +89,13 @@ int OS_IPFoundList(char *ip_address, char **list_of_ips)
             if(strcmp(ip_address, *list_of_ips) == 0)
             {
                 /* found */
-                return(1);
+                return(_true);
             }
         }
         list_of_ips++;
     }
 
-    return(0);
+    return(!_true);
 }    
 
      
@@ -87,6 +105,9 @@ int OS_IPFoundList(char *ip_address, char **list_of_ips)
  */
 int OS_HasNetmask(char *ip_address)
 {
+    if(*ip_address == '!')
+        ip_address++;
+    
     if(ip_address[0] == '.')
     {
         return(1);
@@ -112,6 +133,17 @@ int OS_IsValidIP(char *ip_address)
     int ip_parts[4];
     char *tmp_str;
 
+    /* Can't be null */
+    if(!ip_address)
+    {
+        return(0);
+    }
+
+    if(*ip_address == '!')
+    {
+        ip_address++;
+    }
+    
     /* checking against the basic regex */
     if(!OS_PRegex(ip_address, ip_address_regex))
     {
