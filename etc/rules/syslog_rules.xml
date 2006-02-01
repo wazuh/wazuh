@@ -509,7 +509,8 @@
 
 <!-- Syslog FTS -->
 <group name="syslog,fts">
-  <rule id="2701" level="8">
+  <rule id="2701" level="3">
+    <options>notify_by_email</options>
     <if_fts></if_fts>
     <description>First time syslog event received (see decoders)</description>
   </rule>
