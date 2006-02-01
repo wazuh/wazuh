@@ -89,21 +89,19 @@ void _writefile(Eventinfo *lf)
                 lf->sigid == STATS_PLUGIN?
                 "No Log Available (HOURLY_STATS)":lf->log);
 
+        
         /* Printing the last events if present */
-        if(lf->last_events[0])
+        if(lf->lasts_lf)
         {
-            char **lasts = lf->last_events;
+            char **lasts = lf->lasts_lf;
             while(*lasts)
             {
                 fprintf(_aflog,"%s\n",*lasts);
                 lasts++;
             }
-            fprintf(_aflog,"\n");
         }
-        else
-        {
-            fprintf(_aflog,"\n");
-        }
+        
+        fprintf(_aflog,"\n");
         
         fflush(_aflog);
     }
