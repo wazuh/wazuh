@@ -251,6 +251,12 @@
     <match>^kernel: svc: bad direction </match>
     <description>NFS incompability between Linux and Solaris. Ignoring.</description>
   </rule>
+
+  <rule id="808" level="12">
+    <if_sid>800</if_sid>
+    <match>^kernel: Out of Memory: </match>
+    <description>System running out of memory. Availability of the system is in risk.</description>
+  </rule>
 </group> <!-- SYSLOG,LINUXKERNEL -->
 
 
