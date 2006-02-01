@@ -779,6 +779,17 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->url = NULL;
     ruleinfo_pt->id = NULL;
     
+    /* Zeroing last matched events */
+    ruleinfo_pt->__frequency = 0;
+    {
+        int i = 0;
+        while(i <= MAX_LAST_EVENTS)
+        { 
+            ruleinfo_pt->last_events[i] = NULL;
+            i++;
+        }
+    }
+
     return(ruleinfo_pt);
 }
 

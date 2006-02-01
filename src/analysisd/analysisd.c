@@ -277,7 +277,6 @@ void OS_ReadMSG(int m_queue)
 
     
     /* Null to global currently pointers */
-    currently_lf = NULL;
     currently_rule = NULL;
 
 
@@ -532,9 +531,6 @@ void OS_ReadMSG(int m_queue)
             debug2("%s: DEBUG: Starting rule checks\n",ARGV0);
             #endif
 
-            /* Currently lf always pointing to lf */
-            currently_lf = lf;
-
             
             /* Looping all the rules */
             rulenode_pt = OS_GetFirstRule();
@@ -605,12 +601,11 @@ void OS_ReadMSG(int m_queue)
                     merror(MEM_ERROR,ARGV0);
                 }
                  
-                debug2("%s: DEBUG: rule %d triggered (level:%d)\n",ARGV0,
-                        currently_rule->sigid,
-                        currently_rule->level);
-            
 
                 lf->comment = currently_rule->comment;
+
+                /* Setting the last events if specified */
+                lf->lasts_lf = currently_rule->last_events;
 
                 
                 /* Execute an action if specified */
@@ -844,29 +839,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* If it is a context rule, search for it */
     if(currently_rule->context == 1)
     {
-        Eventinfo *found_lf;
-
-        #ifdef DEBUG
-        verbose("%s: DEBUG: Context rule. Checking last msgs",
-                ARGV0);
-        #endif
-
-        found_lf = Search_LastEvents(lf, currently_rule);
-        if(found_lf)
+        if(!Search_LastEvents(lf, currently_rule))
         {
-            /* Found Event */
-            #ifdef DEBUG
-            verbose("%s: Previous event found", ARGV0);
-            #endif
-            
-        }
-        
-        else
-        {
-            /* Didn't match... */
             return(NULL);
         }
-
     }
 
     /* Search for dependent rules */
@@ -892,7 +868,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     {
         return(NULL);
     }
-    
+   
     return(currently_rule);  /* Matched */
 }
 

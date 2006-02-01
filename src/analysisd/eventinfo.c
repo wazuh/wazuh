@@ -36,6 +36,10 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         return(NULL);
     }
     
+    /* Setting frequency to 0 */
+    currently_rule->__frequency = 0;
+
+    
     /* Searching all previous events */
     do
     {
@@ -44,7 +48,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         /* If time is outside the timeframe, return */
         if((c_time - lf->time) > currently_rule->timeframe)
         {
-            my_lf->last_events[0] = NULL;
             return(NULL);
         }
         
@@ -81,63 +84,48 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         /* checking for repetitions on user error */
         if(currently_rule->same_user)
         {
-            if((!lf->user)||(!currently_lf->user))
+            if((!lf->user)||(!my_lf->user))
                 continue;
                 
-            if(strcmp(lf->user,currently_lf->user) != 0)
+            if(strcmp(lf->user,my_lf->user) != 0)
                 continue;
-            
-            if(currently_lf->frequency < currently_rule->frequency)
-            {
-                if(my_lf->frequency <= 30)
-                    my_lf->last_events[my_lf->frequency] = lf->log;
-                currently_lf->frequency++;
-                continue;
-            }
         }
         
         /* checking for repetitions from same src_ip */
         else if(currently_rule->same_source_ip)
         {
-            if((!lf->srcip)||(!currently_lf->srcip))
+            if((!lf->srcip)||(!my_lf->srcip))
                 continue;
                 
-            if(strcmp(lf->srcip,currently_lf->srcip) != 0)
+            if(strcmp(lf->srcip,my_lf->srcip) != 0)
                 continue;
-            
-            if(currently_lf->frequency < currently_rule->frequency)
+        }
+       
+        
+        /* Checking if the number of matches worked */ 
+        if(currently_rule->__frequency < currently_rule->frequency)
+        {
+            if(currently_rule->__frequency <= 10)
             {
-                if(my_lf->frequency <= 30)
-                    my_lf->last_events[my_lf->frequency] = lf->log;
-                currently_lf->frequency++;
-                continue;
+                currently_rule->last_events[currently_rule->__frequency] 
+                            = lf->log;
+                currently_rule->last_events[currently_rule->__frequency+1] 
+                            = NULL;
             }
+            
+            currently_rule->__frequency++;
+            continue;
         }
         
-        /* frequency check */
-        else if(currently_rule->frequency)
-        {
-            if(my_lf->frequency < currently_rule->frequency)
-            {
-                if(my_lf->frequency <= 30)
-                    my_lf->last_events[my_lf->frequency] = lf->log;
-                my_lf->frequency++;
-                continue;
-            }
-        }
         
         /* If reached here, we matched */
-        if(my_lf->frequency <= 31)
-            my_lf->last_events[my_lf->frequency] = NULL;
-        
         lf->matched = my_lf->level;
             
         return(lf);    
         
-    }while((eventnode_pt=eventnode_pt->next) != NULL);
+    }while((eventnode_pt = eventnode_pt->next) != NULL);
 
-    /* Setting last events to null, if we don't match them */
-    my_lf->last_events[0] = NULL;
+    
     return(NULL);
 }
 
@@ -152,8 +140,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->hostname = NULL;
     lf->comment = NULL;
     lf->info = NULL;
-    lf->last_events[0] = NULL; /* Setting the first event as null */
-    lf->last_events[11] = NULL; /* Setting the last event as null */
 
     lf->srcip = NULL;
     lf->dstip = NULL;
@@ -172,7 +158,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->level = -1;    /* level 0 is valid */
     lf->sigid = -1;    /* signature id 0 is valid */
     lf->time = 0;
-    lf->frequency = 0;
+    lf->lasts_lf = NULL;
     lf->matched = 0;
     
     lf->year = 0;

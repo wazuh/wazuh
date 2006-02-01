@@ -18,7 +18,9 @@
 #ifndef _EVTINFO__H
 
 #define _EVTINFO__H
+
 #include "rules.h"
+
 
 /* Event Information structure */
 typedef struct _Eventinfo
@@ -51,11 +53,9 @@ typedef struct _Eventinfo
 
     /* Extract when the event fires a rule */
     short int level;
-    short int frequency;
     int sigid;
     char *comment;
     char *info;
-    char *last_events[12];  /* Last 12 events can be used */
 
 
     /* Other internal variables */
@@ -67,6 +67,7 @@ typedef struct _Eventinfo
     char *hour;
     char *mon;
 
+    char **lasts_lf;
 }Eventinfo;
 
 /* Events List structure */
@@ -77,9 +78,6 @@ typedef struct _EventNode
     struct _EventNode *prev;
 }EventNode;
 
-
-/* Points to the currently event being analuzed */
-Eventinfo *currently_lf;
 
 
 /** Types of events (plugin usage) **/
