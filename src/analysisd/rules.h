@@ -18,6 +18,7 @@
 #define _OS_RULES
 
 #define TIMEFRAME 360 /* Default timeframe */
+#define MAX_LAST_EVENTS 11
 
 #include "shared.h"
 #include "active-response.h"
@@ -35,7 +36,11 @@ typedef struct _RuleInfo
     int firedtimes;  /* Not an user option */
     int time_ignored; /* Not an user option */
     int ignore_time;
+
+    int __frequency;
+    char *last_events[MAX_LAST_EVENTS+1];
     
+
     /* Not an option in the rule */
     u_int8_t fts ;
     u_int8_t emailalert;
