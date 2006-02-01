@@ -566,11 +566,6 @@ void OS_ReadMSG(int m_queue)
                 currently_rule->firedtimes++;
 
 
-                /* If not alert set, keep going */
-                if(currently_rule->noalert)
-                    continue;
-                
-                
                 /* Checking ignore time */ 
                 if(currently_rule->ignore_time)
                 {
@@ -890,6 +885,12 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             
             child_node = child_node->next;
         }
+    }
+    
+    /* If we are set to no alert, keep going */
+    if(currently_rule->noalert)
+    {
+        return(NULL);
     }
     
     return(currently_rule);  /* Matched */
