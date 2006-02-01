@@ -477,6 +477,11 @@ int Rules_OP_ReadRules(char * rulefile)
                             return(-1);
                         }
                         config_ruleinfo->if_matched_sid = atoi(rule_opt[k]->content);
+
+                        /* If_matched_sid, we need to get the if_sid */
+                        config_ruleinfo->if_sid=
+                            loadmemory(config_ruleinfo->if_sid,
+                                                    rule_opt[k]->content);
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_same_source_ip)==0)

@@ -119,7 +119,6 @@
   </rule>  
 
   <rule id="408" level="10" frequency="8" timeframe="120" ignore="60">
-    <if_sid>404</if_sid>
     <if_matched_sid>404</if_matched_sid>
     <description>SSHD brute force trying to get access to the system</description>
   </rule>
@@ -132,7 +131,6 @@
   </rule>
 
   <rule id="410" level="10" frequency="5" timeframe="240">
-    <if_sid>401</if_sid>
     <if_matched_sid>401</if_matched_sid>
     <description>Multiple authentication failures</description>
   </rule>
@@ -384,9 +382,19 @@
   </rule>
 
   <rule id="1503" level="10" frequency="4" timeframe="360">
-    <if_sid>1502</if_sid>
     <if_matched_sid>1502</if_matched_sid>
     <description>Possible breakin attempt (high reverse lookup errors)</description>
+  </rule>
+
+  <rule id="1504" level="4">
+    <if_sid>400</if_sid>
+    <match>fatal: Timeout before authentication for</match>
+    <description>Timeout while logging in (sshd)</description>
+  </rule>
+
+  <rule id="1505" level="10" frequency="4" timeframe="360">
+    <if_matched_sid>1504</if_matched_sid>
+    <description>Possible scan or breakin attempt (high number of login timeouts)</description>
   </rule>
 </group> <!-- SYSLOG, SSHD -->
 

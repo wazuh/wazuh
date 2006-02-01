@@ -9,6 +9,7 @@ ACTION=$1
 USER=$2
 IP=$3
 
+echo "`date` $0 $1 $2 $3" >> /tmp/ossec-hids-responses.log
 
 # IP Address must be provided
 if [ "x${IP}" = "x" ]; then
