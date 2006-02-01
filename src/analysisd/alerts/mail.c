@@ -90,9 +90,9 @@ void OS_Createmail(int *mailq, Eventinfo *lf)
     strcpy(msg.subject,snd_msg);	
 
     
-    if(lf->last_events[0])
+    if(lf->lasts_lf)
     {
-        char **lasts = lf->last_events;
+        char **lasts = lf->lasts_lf;
         int snd_size = 508;
         int lasts_size = 0;
         
@@ -128,7 +128,7 @@ void OS_Createmail(int *mailq, Eventinfo *lf)
             "Portion of the log(s):\r\n\r\n\"",
             lf->sigid == STATS_PLUGIN?
                 "No Log Available (HOURLY_STATS)":lf->log,
-            lf->last_events[0] == NULL?
+            lf->lasts_lf == NULL?
             "":    
             snd_msg2 
             );    
