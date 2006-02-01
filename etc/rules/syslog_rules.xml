@@ -373,13 +373,13 @@
 <group name="syslog,sshd">
   <rule id="1501" level="12">
     <if_sid>400</if_sid>
-    <regex>^sshd[\d+]: Bad protocol version identification</regex>
+    <regex>Bad protocol version identification</regex>
     <description>Possible attack on the ssh server(or version gathering)</description>
   </rule>
 
   <rule id="1502" level="5">
     <if_sid>400</if_sid>
-    <regex>^sshd[\d+]: reverse mapping \w+ \w+ for \S+ failed - POSS</regex>
+    <regex>reverse mapping \w+ \w+ for \S+ failed - POSS</regex>
     <description>Reverse lookup error (bad ISP or possible attack)</description>
   </rule>
 
@@ -396,7 +396,7 @@
 <group name="syslog,attacks">
   <rule id="1601" level="12"> <!-- XXX SSH CONNECTION/LOGIN -->
     <if_sid>400</if_sid>
-    <regex>sshd[\d+]: Accepted password for|session opened for user</regex>
+    <regex>Accepted password for|session opened for user</regex>
     <user>$SYS_USERS</user>
     <description>System user sucessfully logged on the system</description>
   </rule>
