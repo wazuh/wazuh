@@ -284,6 +284,10 @@ ConfigureServer()
             ls ${HOST_CMD} > /dev/null 2>&1
             if [ $? = 0 ]; then
               HOSTTMP=`${HOST_CMD} -W 5 -t mx ossec.net 2>/dev/null`
+              if [ $? = 1 ]; then
+                 # Trying without the -W 
+                 HOSTTMP=`${HOST_CMD} -t mx ossec.net 2>/dev/null`
+              fi       
               if [ "$HOSTTMP" = "ossec.net mail is handled by 10 mx.underlinux.com.br." ]; then
                  # Breaking down the user e-mail
                  EMAILHOST=`echo ${EMAIL} | cut -d "@" -f 2`
@@ -793,7 +797,7 @@ main()
     echo ""        	
     echo " - You need to add each agent before they are authorized to access. "
     echo "   Run the $WORKDIR/bin/manage_agents to add or remove them."
-    echo "   More information on the faq: http://www.ossec.net/hids/faq.php#3.1"
+    echo "   More information at http://www.ossec.net/hids-0.6/doc.php\#manageagents"
     echo ""
       
     if [ "X$RLOG" = "Xyes" ]; then
@@ -804,8 +808,7 @@ main()
     echo "     <global>"
     echo "     .."
     echo "       <allowed-ips>10.1.1.1</allowed-ips> - To allow this ip"
-    echo "       <allowed-ips>10.1.1.</allowed-ips>  - To allow network 10.1.1.0/24"
-    echo "       <allowed-ips>10.1.</allowed-ips> - To allow network 10.1.0.0/16"
+    echo "       <allowed-ips>10.1.1.0/24</allowed-ips>  - To allow network 10.1.1.0/24"
     echo "     </global>"
     echo ""
     echo " --- Press any key to continue --- "
@@ -818,7 +821,8 @@ main()
     echo " - To communicate with the server, you first need to add this "
     echo "   agent to it. When you have done so, you can run the "
     echo "   $WORKDIR/bin/manage_agents to import the authentication key from"
-    echo "   the server."
+    echo "   the server. "
+    echo "   More information at http://www.ossec.net/hids-0.6/doc.php\#manageagents"
     echo ""
     echo " --- Press any key to continue --- "
 
