@@ -283,7 +283,7 @@ ConfigureServer()
 			read EMAIL
             ls ${HOST_CMD} > /dev/null 2>&1
             if [ $? = 0 ]; then
-              HOSTTMP=`${HOST_CMD} -W 5 -t mx ossec.net`
+              HOSTTMP=`${HOST_CMD} -W 5 -t mx ossec.net 2>/dev/null`
               if [ "$HOSTTMP" = "ossec.net mail is handled by 10 mx.underlinux.com.br." ]; then
                  # Breaking down the user e-mail
                  EMAILHOST=`echo ${EMAIL} | cut -d "@" -f 2`

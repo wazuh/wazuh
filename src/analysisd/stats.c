@@ -405,7 +405,7 @@ void LastMsg_Change(char *log)
     nlog = index(log,' ');
     if(nlog == NULL)
     {
-        merror("%s: Message indexing error (index)",ARGV0);
+        merror("%s: Message indexing error (index): %s",ARGV0, log);
         return;
     }
     nlog++;

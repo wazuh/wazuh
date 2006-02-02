@@ -65,6 +65,9 @@ void *AR_Forward(void *arg)
         if((msg = OS_RecvUnix(arq, OS_MAXSTR)) != NULL)
         {
 
+            /* Always zeroing the location */
+            ar_location = 0;
+            
             /* Getting the location */
             location = msg;
             
@@ -148,12 +151,11 @@ void *AR_Forward(void *arg)
                 for(i = 0;i< keys.keysize; i++)
                 {
                     send_msg(i, msg_to_send);
-                    goto cleanup;
                 }
             }
 
             /* Send to the remote agent that generated the event */
-            if((ar_location & REMOTE_AGENT) && (location != NULL))
+            else if((ar_location & REMOTE_AGENT) && (location != NULL))
             {
                 agent_id = IsAllowedIP(&keys, location);
                 if(agent_id < 0)
@@ -166,7 +168,7 @@ void *AR_Forward(void *arg)
             }
 
             /* Send to a pre-defined agent */
-            if(ar_location & SPECIFIC_AGENT)
+            else if(ar_location & SPECIFIC_AGENT)
             {
                 ar_location++;
 
@@ -177,6 +179,8 @@ void *AR_Forward(void *arg)
                     merror(AR_NOAGENT_ERROR, ARGV0, ar_agent_id);
                     goto cleanup;
                 }
+
+                send_msg(agent_id, msg_to_send);
             }
 
             cleanup:
@@ -196,7 +200,13 @@ int send_msg(int agentid, char *msg)
     int msg_size;
     char crypt_msg[OS_MAXSTR +1];
 
+    /* If we don't have the agent id, ignore it */
+    if(!keys.rcvd[agentid])
+    {
+        return(-1);
+    }
 
+    
     msg_size = CreateSecMSG(&keys, msg, crypt_msg, agentid);
     if(msg_size == 0)
     {
@@ -209,7 +219,7 @@ int send_msg(int agentid, char *msg)
                          (struct sockaddr *)&keys.peer_info[agentid],
                          logr.peer_size) < 0) 
     {
-        merror(SEND_ERROR,ARGV0, "agent");
+        merror(SEND_ERROR,ARGV0, keys.ids[agentid]);
         return(-1);
     }
     

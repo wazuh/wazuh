@@ -62,9 +62,11 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
    
     keys->time = realloc(keys->time, (keys->keysize+1) * sizeof(int)); 
     keys->count = realloc(keys->count, (keys->keysize+1) * sizeof(int)); 
+    keys->rcvd = realloc(keys->rcvd, (keys->keysize+1) * sizeof(int)); 
     
     if(!keys->ids || !keys->ips || !keys->peer_info
-                  || !keys->time|| !keys->count) 
+                  || !keys->time|| !keys->count
+                  || !keys->rcvd) 
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
@@ -77,6 +79,7 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
     /* Initializing the variables */
     keys->count[keys->keysize] = 0;
     keys->time[keys->keysize] = 0;
+    keys->rcvd[keys->keysize] = 0;
 
 
     if(!keys->ids[keys->keysize] || !keys->ips[keys->keysize])

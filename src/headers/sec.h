@@ -24,6 +24,7 @@ typedef struct _keystruct
     struct sockaddr_in *peer_info;
     time_t *time;
     int *count;
+    int *rcvd;
 
     int keysize;
 }keystruct;

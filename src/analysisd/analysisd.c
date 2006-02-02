@@ -649,7 +649,6 @@ void OS_ReadMSG(int m_queue)
                     
                     rule_ar = currently_rule->ar;
 
-                    
                     while(*rule_ar)
                     {
                         do_ar = 1;

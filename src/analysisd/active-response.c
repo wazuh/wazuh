@@ -220,7 +220,8 @@ int AS_GetActiveResponses(char * config_file)
         }
         if(OS_Regex("all", tmp_location))
         {
-            tmp_ar->location|= ALL_AGENTS;
+            tmp_ar->location|=AS_ONLY;
+            tmp_ar->location|=ALL_AGENTS;
         }
         
         /* If we didn't set any value for the location */

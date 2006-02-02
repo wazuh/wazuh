@@ -64,7 +64,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
      * or the ar->location is set to local (REMOTE_AGENT) and the
      * event location is from here.
      */         
-    if( (ar->location & AS_ONLY) ||
+    if((ar->location & AS_ONLY) ||
       ((ar->location & REMOTE_AGENT) && (index(lf->location, '>') == NULL)) )
     {
         if(!(Config.ar & LOCAL_AR))
@@ -95,7 +95,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
                 ar->name,
                 lf->user,
                 ip);
-        
+       
         if(OS_SendUnix(*arq, exec_msg, 0) < 0)
         {
             merror("%s: Error communicating with ar queue", ARGV0);
