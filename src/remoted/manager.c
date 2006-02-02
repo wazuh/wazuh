@@ -298,12 +298,20 @@ int send_file_toagent(int agentid, char *name, char *sum)
     
     FILE *fp;
 
+    
+    /* If rcvd is not set, do not send (agent didn't connect to me yet */
+    if(!keys.rcvd[agentid])
+    {
+        return(-1);    
+    }
+    
+    
     snprintf(file, OS_MAXSTR, "%s/%s",SHAREDCFG_DIR, name);
 
     fp = fopen(file, "r");
     if(!fp)
     {
-        merror("%s: Unable to open file '%s'",ARGV0, file);
+        merror(FOPEN_ERROR, ARGV0, file);
         return(-1);
     }
 
@@ -325,7 +333,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
                          logr.peer_size) < 0) 
     {
         fclose(fp);
-        merror(SEND_ERROR,ARGV0, "agent");
+        merror(SEND_ERROR,ARGV0, keys.ids[agentid]);
         return(-1);
     }
     
@@ -348,7 +356,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
                          logr.peer_size) < 0)  
         {
             fclose(fp);
-            merror("%s: Error sending message to agent (send)",ARGV0);
+            merror(SEND_ERROR,ARGV0, keys.ids[agentid]);
             return(-1);
         }
 
@@ -380,7 +388,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
                          (struct sockaddr *)&keys.peer_info[agentid],
                          logr.peer_size) < 0) 
     {
-        merror(SEND_ERROR,ARGV0, "agent");
+        merror(SEND_ERROR,ARGV0, keys.ids[agentid]);
         fclose(fp);
         return(-1);
     }
