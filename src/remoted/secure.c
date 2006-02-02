@@ -125,6 +125,7 @@ void HandleSecure(int position)
 
             /* We need to save the peerinfo if it is a control msg */
             memcpy(&keys.peer_info[agentid], &peer_info, peer_size);
+            keys.rcvd[agentid] = 1;
 
             save_controlmsg(agentid, tmp_msg);
         }

@@ -31,16 +31,16 @@ int StartMQ(char * path, short int type)
      */
     else
     {
+        int rc = 0;
         if(File_DateofChange(path) < 0)
         {
-            merror(QUEUE_ERROR, __local_name, path);
             sleep(1);
             if(File_DateofChange(path) < 0)
             {
-                merror(QUEUE_ERROR, __local_name, path);
                 sleep(5);
                 if(File_DateofChange(path) < 0)
                 {
+                    merror(QUEUE_ERROR, __local_name, path);
                     sleep(15);
                     if(File_DateofChange(path) < 0)
                     {
@@ -50,7 +50,23 @@ int StartMQ(char * path, short int type)
             }
         }
 
-        return(OS_ConnectUnixDomain(path));
+        /* Wait up to 3 seconds to connect to the unix domain.
+         * After three errors, exit.
+         */
+        if((rc = OS_ConnectUnixDomain(path)) < 0)
+        {
+            sleep(1);
+            if((rc = OS_ConnectUnixDomain(path)) < 0)
+            {
+                sleep(2);
+                if((rc = OS_ConnectUnixDomain(path)) < 0)
+                {
+                    merror(QUEUE_ERROR, __local_name, path);
+                    return(-1);
+                }
+            }
+        }
+        return(rc);
     }
 }
 
