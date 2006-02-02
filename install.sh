@@ -288,7 +288,7 @@ ConfigureServer()
                  # Trying without the -W 
                  HOSTTMP=`${HOST_CMD} -t mx ossec.net 2>/dev/null`
               fi       
-              if [ "$HOSTTMP" = "ossec.net mail is handled by 10 mx.underlinux.com.br." ]; then
+              if [ "X$HOSTTMP" = "Xossec.net mail is handled by 10 mx.underlinux.com.br." -o "X$HOSTTMP" = "Xossec.net mail is handled (pri=10) by mx.underlinux.com.br" ]; then
                  # Breaking down the user e-mail
                  EMAILHOST=`echo ${EMAIL} | cut -d "@" -f 2`
                  if [ "X${EMAILHOST}" = "Xlocalhost" ]; then
