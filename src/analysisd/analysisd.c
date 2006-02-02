@@ -645,6 +645,7 @@ void OS_ReadMSG(int m_queue)
                 if(currently_rule->ar)
                 {
                     int do_ar;
+                    char *tmp_str;
                     active_response **rule_ar;
                     
                     rule_ar = currently_rule->ar;
@@ -656,11 +657,43 @@ void OS_ReadMSG(int m_queue)
                         {
                             if(!lf->user)
                                 do_ar = 0;
+                            else
+                            {
+                                /* Verifying for invalid user names */
+                                if(((tmp_str = index(lf->user, '|')) != NULL)||
+                                   ((tmp_str = index(lf->user, ';')) != NULL)||
+                                   ((tmp_str = index(lf->user, '&')) != NULL)||
+                                   ((tmp_str = index(lf->user, '"')) != NULL)||
+                                   ((tmp_str = index(lf->user, ',')) != NULL)
+                                  )
+                                {
+                                    merror(CRAFTED_USER, ARGV0, lf->user);
+                                    do_ar = 0;
+                                    break;
+                                }
+
+                            }
                         }
                         if((*rule_ar)->ar_cmd->expect & SRCIP)
                         {
                             if(!lf->srcip)
                                 do_ar = 0;
+                            else
+                            {
+                                /* Verifying for invalid ips */
+                                if(((tmp_str = index(lf->srcip, '|')) != NULL)||
+                                   ((tmp_str = index(lf->srcip, ';')) != NULL)||
+                                   ((tmp_str = index(lf->srcip, '&')) != NULL)||
+                                   ((tmp_str = index(lf->srcip, '"')) != NULL)||
+                                   ((tmp_str = index(lf->srcip, ',')) != NULL)
+                                  )
+                                {
+                                    merror(CRAFTED_IP, ARGV0, lf->user);
+                                    do_ar = 0;
+                                    break;
+                                }
+
+                            }
                         }
 
                         if(do_ar)

@@ -86,6 +86,8 @@
 /* Analysisd */
 #define FTS_LIST_ERROR  "%s(1260): Error initiating FTS list"
 #define DECODE_NOPREMATCH   "%s(1270): No 'prematch' found in decoder '%s'"
+#define CRAFTED_IP      "%s(1271): Invalid IP Address '%s'. Possible attack."
+#define CRAFTED_USER    "%s(1272): Invalid username '%s'. Possible attack."
 
 
 /* Log collector */
