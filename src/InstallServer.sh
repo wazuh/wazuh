@@ -112,7 +112,6 @@ chown root:${GROUP} ${DIR}/var/run
 
 # Moving the binary files
 cp -pr ../bin/ossec* ${DIR}/bin/
-cp -pr ../bin/addagent ${DIR}/bin/
 cp -pr ../bin/manage_agents ${DIR}/bin/
 cp -pr ./init/ossec-server ${DIR}/bin/ossec-control
 

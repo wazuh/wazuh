@@ -442,18 +442,7 @@ ConfigureServer()
 	  esac
 
 	  # Configuring remote connections
-	  echo ""
-	  echo "  3.6- Do you want enable secure communication (1514 udp)(y/n)?y"
-	  read ANSWER
-	  case $ANSWER in
-		n|N)
-		  echo "   --- Not receiving secure messages from agents."
-		  ;;
-		*)
-		  echo "   - Listening to remote secure messages."
-		  SLOG="yes"
-		  ;;
-	  esac
+      SLOG="yes"
 	fi
     
     
@@ -536,7 +525,7 @@ ConfigureServer()
     fi
     
     # Setting up the logs
-    SetupLogs "3.7"
+    SetupLogs "3.6"
 }
 
 
@@ -715,6 +704,8 @@ main()
 	        echo ""
             echo "  - Use 'local' if you are just have one system to analyze."
             echo ""
+            echo "  - More info: http://www.ossec.net/hids/doc.php#starting"
+            echo ""
 	        ;;
             
             server|Server|S|SERVER|s)
@@ -797,7 +788,8 @@ main()
     echo ""        	
     echo " - You need to add each agent before they are authorized to access. "
     echo "   Run the $WORKDIR/bin/manage_agents to add or remove them."
-    echo "   More information at http://www.ossec.net/hids-0.6/doc.php\#manageagents"
+    echo "   More information at: "
+    echo "   http://www.ossec.net/hids/doc.php\#manageagents "
     echo ""
       
     if [ "X$RLOG" = "Xyes" ]; then
@@ -820,9 +812,10 @@ main()
     elif [ "X$INSTYPE" = "Xclient" ]; then	
     echo " - To communicate with the server, you first need to add this "
     echo "   agent to it. When you have done so, you can run the "
-    echo "   $WORKDIR/bin/manage_agents to import the authentication key from"
-    echo "   the server. "
-    echo "   More information at http://www.ossec.net/hids-0.6/doc.php\#manageagents"
+    echo "   $WORKDIR/bin/manage_agents to import the authentication key"
+    echo "   from the server. "
+    echo "   More information at " 
+    echo "   http://www.ossec.net/hids/doc.php\#manageagents"
     echo ""
     echo " --- Press any key to continue --- "
 
