@@ -118,7 +118,7 @@
     <description>Authentication failed while logging in as root</description>
   </rule>  
 
-  <rule id="408" level="10" frequency="8" timeframe="120" ignore="60">
+  <rule id="408" level="10" frequency="6" timeframe="120" ignore="60">
     <if_matched_sid>404</if_matched_sid>
     <description>SSHD brute force trying to get access to the system</description>
   </rule>
@@ -401,6 +401,18 @@
   <rule id="1505" level="10" frequency="4" timeframe="360">
     <if_matched_sid>1504</if_matched_sid>
     <description>Possible scan or breakin attempt (high number of login timeouts)</description>
+  </rule>
+
+  <rule id="1506" level="6">
+    <if_sid>400</if_sid>
+    <match>Did not receive identification string from</match>
+    <description>SSH insecure connection attempt (scan)</description>
+  </rule>
+
+  <rule id="1507" level="14">
+    <if_sid>400</if_sid>
+    <match>fatal: buffer_get_string: bad string</match>
+    <description>OpenSSH challenge-response exploit</description>
   </rule>
 </group> <!-- SYSLOG, SSHD -->
 

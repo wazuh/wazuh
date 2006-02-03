@@ -16,7 +16,7 @@
 #include "fts.h"
 #include "eventinfo.h"
 
-#define FTS_MAX_SIZE        36
+#define FTS_MAX_SIZE        32
 #define FTS_MINSIZE_FOR_STR 14
 
 OSList *fts_list = NULL;
@@ -130,21 +130,23 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
         fclose(fp);
 
         
-        /* Checking if from the last 20 FTS events, we had
-         * at least 4 "similars" before. If yes, we just
+        /* Checking if from the last  FTS events, we had
+         * at least 3 "similars" before. If yes, we just
          * ignore it.
          */
         fts_node = OSList_GetLastNode(fts_list);
+        merror("on fts - %s", _line);
         while(fts_node)
         {
-
+            merror("comparing %s", (char*)fts_node->data);
             if(OS_StrHowClosedMatch((char *)fts_node->data, _line) > 
                     FTS_MINSIZE_FOR_STR)
             {
+                merror("matched :%d", number_of_matches);
                 number_of_matches++;
 
                 /* We go and add this new entry to the list */
-                if(number_of_matches > 3)
+                if(number_of_matches > 2)
                 {
                     _line[FTS_MINSIZE_FOR_STR] = '\0';
                     break;
@@ -153,6 +155,8 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
 
             fts_node = OSList_GetPrevNode(fts_list);
         }
+        merror("adding data: %s",_line);
+        
         os_strdup(_line, line_for_list);
         OSList_AddData(fts_list, line_for_list);
 
