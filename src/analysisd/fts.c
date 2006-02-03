@@ -135,14 +135,11 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
          * ignore it.
          */
         fts_node = OSList_GetLastNode(fts_list);
-        merror("on fts - %s", _line);
         while(fts_node)
         {
-            merror("comparing %s", (char*)fts_node->data);
             if(OS_StrHowClosedMatch((char *)fts_node->data, _line) > 
                     FTS_MINSIZE_FOR_STR)
             {
-                merror("matched :%d", number_of_matches);
                 number_of_matches++;
 
                 /* We go and add this new entry to the list */
@@ -155,7 +152,6 @@ int _Internal_FTS(char *queue, Eventinfo *lf)
 
             fts_node = OSList_GetPrevNode(fts_list);
         }
-        merror("adding data: %s",_line);
         
         os_strdup(_line, line_for_list);
         OSList_AddData(fts_list, line_for_list);
