@@ -25,6 +25,12 @@ char _db_buf[1024];
 char _db_comment[512];
 char _db_comment2[512];
 
+char _tmp_size[197];
+char _tmp_perm[197];
+char _tmp_owner[197];
+char _tmp_gowner[197];
+char _tmp_md5[197];
+
 
 char *agent_ips[MAX_AGENTS];
 FILE *agent_fps[MAX_AGENTS];
@@ -391,41 +397,99 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                     newperm = atoi(c_newperm);
                     oldperm = atoi(c_oldperm);
                 }
+               
+                /* Generating size message */
+                if(strcmp(oldsize, newsize) == 0)
+                {
+                    _tmp_size[0] = '\0';
+                }
+                else
+                {
+                    snprintf(_tmp_size, 128,"Size changed from '%s' to '%s'\n",
+                                            oldsize, newsize);
+                }
+                
+                /* Permission message */
+                if(oldperm == newperm)
+                {
+                    _tmp_perm[0] = '\0';
+                }
+                else
+                {
+                    snprintf(_tmp_perm, 196, "Permissions changed from "
+                            "'%c%c%c%c%c%c%c%c%c' "
+                            "to '%c%c%c%c%c%c%c%c%c'\n",
+                            (oldperm & S_IRUSR)? 'r' : '-',
+                            (oldperm & S_IWUSR)? 'w' : '-',
+                            (oldperm & S_IXUSR)? 'x' : '-',
+                            (oldperm & S_IRGRP)? 'r' : '-',
+                            (oldperm & S_IWGRP)? 'w' : '-',
+                            (oldperm & S_IXGRP)? 'x' : '-',
+                            (oldperm & S_IROTH)? 'r' : '-',
+                            (oldperm & S_IWOTH)? 'w' : '-',
+                            (oldperm & S_IXOTH)? 'x' : '-',
+
+                            (newperm & S_IRUSR)? 'r' : '-',
+                            (newperm & S_IWUSR)? 'w' : '-',
+                            (newperm & S_IXUSR)? 'x' : '-',
+                            (newperm & S_IRGRP)? 'r' : '-',
+                            (newperm & S_IWGRP)? 'w' : '-',
+                            (newperm & S_IXGRP)? 'x' : '-',
+                            (newperm & S_IROTH)? 'r' : '-',
+                            (newperm & S_IWOTH)? 'w' : '-',
+                            (newperm & S_IXOTH)? 'x' : '-');
+                }
+                
+                /* Ownership message */
+                if(strcmp(newuid, olduid) == 0)
+                {
+                    _tmp_owner[0] = '\0';
+                }
+                else
+                {
+                    snprintf(_tmp_owner, 128, "Ownership was '%s', "
+                                              "now it is '%s'\n",
+                                              olduid, newuid);
+                }    
+                
+                /* group ownership message */
+                if(strcmp(newgid, oldgid) == 0)
+                {
+                    _tmp_gowner[0] = '\0';
+                }
+                else
+                {
+                    snprintf(_tmp_gowner, 128, "Group ownership was '%s', "
+                                               "now it is '%s'\n",
+                                               oldgid, newgid);
+                }
+                
+                /* md5 message */
+                if(strcmp(newmd5, oldmd5) == 0)
+                {
+                    _tmp_md5[0] = '\0';
+                }
+                else
+                {
+                    snprintf(_tmp_md5, 195, "Old checksum was: '%s'\n"
+                                            "New checksum is : '%s'\n",
+                                            oldmd5, newmd5);
+                }
                 
                 /* Provide information about the file */    
                 snprintf(_db_comment2,512,"Integrity checksum changed for: "
                         "'%s'\n"
-                        "Size changed from '%s' to '%s'\n"
-                        "Permissions changed from '%c%c%c%c%c%c%c%c%c' "
-                        "to '%c%c%c%c%c%c%c%c%c'\n"
-                        "Ownership was '%s', now it is '%s'\n"
-                        "Group ownership was '%s', now it is '%s'\n"
-                        "Old checksum was: '%s'\n"
-                        "New checksum is : '%s'\n",
+                        "%s"
+                        "%s"
+                        "%s"
+                        "%s"
+                        "%s",
                         f_name, 
-                        oldsize, newsize,
-                        (oldperm & S_IRUSR)? 'r' : '-',
-                        (oldperm & S_IWUSR)? 'w' : '-',
-                        (oldperm & S_IXUSR)? 'x' : '-',
-                        (oldperm & S_IRGRP)? 'r' : '-',
-                        (oldperm & S_IWGRP)? 'w' : '-',
-                        (oldperm & S_IXGRP)? 'x' : '-',
-                        (oldperm & S_IROTH)? 'r' : '-',
-                        (oldperm & S_IWOTH)? 'w' : '-',
-                        (oldperm & S_IXOTH)? 'x' : '-',
-                        
-                        (newperm & S_IRUSR)? 'r' : '-',
-                        (newperm & S_IWUSR)? 'w' : '-',
-                        (newperm & S_IXUSR)? 'x' : '-',
-                        (newperm & S_IRGRP)? 'r' : '-',
-                        (newperm & S_IWGRP)? 'w' : '-',
-                        (newperm & S_IXGRP)? 'x' : '-',
-                        (newperm & S_IROTH)? 'r' : '-',
-                        (newperm & S_IWOTH)? 'w' : '-',
-                        (newperm & S_IXOTH)? 'x' : '-',
-                        olduid, newuid,
-                        oldgid, newgid,
-                        oldmd5, newmd5);
+                        _tmp_size,
+                        _tmp_perm,
+                        _tmp_owner,
+                        _tmp_gowner,
+                        _tmp_md5);
             }
             
             lf->comment = _db_comment; 

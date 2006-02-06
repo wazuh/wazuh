@@ -43,6 +43,21 @@ if [ "$UNAME" = "FreeBSD" ]; then
 	/usr/sbin/pw useradd ${USER_MAIL} -d ${DIR} -s /sbin/nologin -g ${GROUP}
 	/usr/sbin/pw useradd ${USER_EXEC} -d ${DIR} -s /sbin/nologin -g ${GROUP}
 	/usr/sbin/pw useradd ${USER_REM} -d ${DIR} -s /sbin/nologin -g ${GROUP}
+
+elif [ "$UNAME" = "SunOS" ]; then
+    /usr/sbin/groupadd ${GROUP}
+    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
+    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_MAIL}
+    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_EXEC}
+    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_REM}
+
+elif [ "$UNAME" = "AIX" ]; then
+    /usr/bin/mkgroup ${GROUP}
+    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
+    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_MAIL}
+    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_EXEC}
+    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_REM}
+            
 else
 	/usr/sbin/groupadd ${GROUP}
 	/usr/sbin/useradd -d ${DIR} -s /sbin/nologin -g ${GROUP} ${USER}

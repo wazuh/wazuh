@@ -40,6 +40,14 @@ if [ "$UNAME" = "FreeBSD" ]; then
     /usr/sbin/pw groupadd ${GROUP}
 	/usr/sbin/pw useradd ${USER} -d ${DIR} -s /sbin/nologin -g ${GROUP}
 
+elif [ "$UNAME" = "SunOS" ]; then
+    /usr/sbin/groupadd ${GROUP}
+    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
+
+elif [ "$UNAME" = "AIX" ]; then
+    /usr/bin/mkgroup ${GROUP}
+    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
+        
 else
 	/usr/sbin/groupadd ${GROUP}
 	/usr/sbin/useradd -d ${DIR} -s /sbin/nologin -g ${GROUP} ${USER}
