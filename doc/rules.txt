@@ -66,37 +66,5 @@ them or after them.
      
 == Rules Config ==
 
-The configuration of the rules is composed the following fields:
+http://www.ossec.net/hids/doc.php#rules
 
-Attributes:
-    -level      (level of the rule, see above)
-    -id         (rule id --must be unique)
-    -maxsize    (maximum message size (log size))
-    -timeframe  (maximum timeframe between two events)
-    -frequency  (minimum frequency of same event)
-
-Elements:
-    ** Rule information ** 
-    -comment    (rule comment/description)
-    -info       (additional information about the rule/website/etc)
-    -cve        (cve of the bug/attack that the rule matches)
-    -group      (additional group to the rule)
-    
-    ** Information to match **
-    -regex      (regular expression to match the rule)
-    -match      (word to match the rule)
-    -user       (username)
-
-    ** Link rule as a child **
-    -if_sid     (to add this rule as child of any rule listed)
-    -if_group   (to add this rule as child of any rule grouped)
-    
-    ** Search on the previous events **
-
-    -if_matched_group   (search on previous events)
-    -if_matched_regex   (search on previous events)    
-    -same_source_ip     (search on previous events related to the same source ip)
-    -same_user          (search on previous events related to the same user)
-    -same_loghost       (search on previous events that came from the same log host)
-
-The rules  are organized in a XML format (inside the rules directory): 
