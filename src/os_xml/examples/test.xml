@@ -5,6 +5,10 @@
 
 <test name="123">
   <aatr>$lala</aatr>
+<!-- 
+  <lala></2lala>
+  <aart2>test</aart2>
+-->
   <aatr2/>lele<aatr2/>
 </test>
 

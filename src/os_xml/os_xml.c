@@ -217,24 +217,32 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
 
     while((c=FGETC(fp)) != EOF)
     {
+        /* Max size */
         if(count >= XML_MAXSIZE)
         {
             xml_error(_lxml,"XML ERR: String overflow. Exiting.");
             return(-1);
         }
-        else if(location == -1)
+
+        /* Checking for comments */
+        if(c == _R_CONFS)
+        {
+            int r = 0;
+            if((r = _oscomment(fp)) < 0)
+            {
+                xml_error(_lxml,"XML ERR: Comment not closed. Bad XML.");
+                return(-1);
+            }
+            else if(r == 1)
+                continue;
+        }
+        
+        /* real checking */
+        if(location == -1)
         {
             if(c == _R_CONFS)
             {
-                int r = 0;
-                if((r = _oscomment(fp)) < 0)
-                {
-                    xml_error(_lxml,"XML ERR: Comment not closed. Bad XML.");
-                    return(-1);
-                }
-                else if(r == 1)
-                    continue;
-                else if((c=fgetc(fp)) == '/')
+                if((c=fgetc(fp)) == '/')
                 {
                     xml_error(_lxml,"XML ERR: Bad formed XML. Element "
                                     "not opened");
@@ -248,7 +256,7 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
                 continue;
         }
         
-        else if((location == 0) &&((c == _R_CONFE) || (c == ' ')))
+        else if((location == 0) && ((c == _R_CONFE) || (c == ' ')))
         {
             int _ge = 0;
             int _ga = 0;
