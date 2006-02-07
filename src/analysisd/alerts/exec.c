@@ -38,27 +38,41 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     char *ip;
 
     /* Cleaning the IP */
-    ip = rindex(lf->srcip, ':');
-    if(ip)
+    if(lf->srcip)
     {
-        ip++;
+        ip = rindex(lf->srcip, ':');
+        if(ip)
+        {
+            ip++;
+        }
+        else
+        {
+            ip = lf->srcip;
+        }
+
+
+        /* Checking if IP is to ignored */
+        if(Config.white_list)
+        {
+            if(OS_IPFoundList(lf->srcip, Config.white_list))
+            {
+                return;
+            }
+        }
     }
     else
     {
-        ip = lf->srcip;
+        ip = "";
     }
+   
 
-
-    /* Checking if IP is to ignored */
-    if(Config.white_list)
+    /* Setting null user */
+    if(!lf->user)
     {
-        if(OS_IPFoundList(lf->srcip, Config.white_list))
-        {
-            return;
-        }
+        lf->user = "null";
     }
     
-     
+    
     /* active response on the server. 
      * The response must be here, if the ar->location is set to AS
      * or the ar->location is set to local (REMOTE_AGENT) and the
