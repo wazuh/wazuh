@@ -3,8 +3,8 @@
  **message: -Some alerts from Snort are not being read correctly.
             -Excessive number of alerts from iptables
             -Configuration not clear on how to block an ip from snort.
- **resolution:            
- **stats:
+ **resolution: fixed.            
+ **stats: Fixed/Closed (by Daniel B. Cid)
  
 
 *1107 (rootcheck)
@@ -19,8 +19,8 @@
  **reporter: Dimitris Ntelakis
  **message: Syscheck should only report the pieces of the integrity
             checking that changed. Not everything..
- **resolution:
- **stats:
+ **resolution: Fixed.
+ **stats: Fixed/Closed (by Daniel B. Cid)
             
 
 *1105 (rootcheck)
