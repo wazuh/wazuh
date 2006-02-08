@@ -158,7 +158,7 @@ SetupLogs()
     echo ""
     echo "  $NB- Setting the configuration to analyze the following logs:"
 
-    LOG_FILES="/var/log/messages /var/log/authlog /var/log/auth.log /var/log/secure /var/log/syslog"
+    LOG_FILES="/var/log/messages /var/log/authlog /var/log/auth.log /var/log/secure /var/log/syslog /var/log/ipfilter.log /var/adm/ipsec.log"
 
     for i in ${LOG_FILES}; do
         # If log file present, add it    
