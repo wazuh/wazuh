@@ -113,7 +113,7 @@ FILE *DB_File(char *agent, int *agent_id)
     {
         if(strcmp(agent_ips[i],agent) == 0)
         {
-            /* pointing to tbe beginning of the file */
+            /* pointing to the beginning of the file */
             fseek(agent_fps[i],0, SEEK_SET);
             *agent_id = i;
             return(agent_fps[i]);

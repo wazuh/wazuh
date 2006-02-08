@@ -367,7 +367,7 @@
   <rule id="1402" level="3">
     <if_sid>1400</if_sid>
     <regex>^sudo:\s+\S+ : TTY=\S+ ; PWD=\S+ ; USER=root ; COMMAND=</regex>
-    <description>Sucessful sudo to ROOT executed</description>
+    <description>Successful sudo to ROOT executed</description>
   </rule>
 </group> <!-- SYSLOG, SUDO -->
 

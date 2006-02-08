@@ -49,11 +49,10 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
     
     struct sockaddr_in peer;
     
-    
     /* Allocating for the whole structure */
 	keys->ids = (char **)realloc(keys->ids,
 			(keys->keysize+1) * sizeof(char *));
-	
+
     keys->ips = (char **)realloc(keys->ips,
             (keys->keysize+1)* sizeof(char*));
 
@@ -167,13 +166,16 @@ void ReadKeys(keystruct *keys)
     keys->ids = NULL;
     keys->keys = NULL;
     keys->ips = NULL;
+    keys->count = NULL;
+    keys->time = NULL;
+    keys->rcvd = NULL;
+    keys->peer_info = NULL;
     keys->keysize = 0;
 
     _MemClear(id, name, ip, key);
 
     memset(buffer, '\0', OS_MAXSTR +1);
 
-    
     /* Reading each line.
      * lines are divided on id name ip key
      */
@@ -181,6 +183,7 @@ void ReadKeys(keystruct *keys)
     {
         char *tmp_str;
         char *valid_str;
+        
         if((buffer[0] == '#') || (buffer[0] == ' '))
             continue;
 
@@ -236,10 +239,8 @@ void ReadKeys(keystruct *keys)
 
         strncpy(key, valid_str, KEYSIZE -1);
 
-        
         /* Generating the key hash */
        _CHash(keys, id, name, ip, key);
-
 
         /* Clearing the memory */
         _MemClear(id, name, ip, key); 
