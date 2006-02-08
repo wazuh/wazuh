@@ -789,7 +789,7 @@ main()
     echo " - You need to add each agent before they are authorized to access. "
     echo "   Run the $WORKDIR/bin/manage_agents to add or remove them."
     echo "   More information at: "
-    echo "   http://www.ossec.net/hids/doc.php\#manageagents "
+    echo "   http://www.ossec.net/hids/doc.php\#ma"
     echo ""
       
     if [ "X$RLOG" = "Xyes" ]; then
@@ -815,7 +815,7 @@ main()
     echo "   $WORKDIR/bin/manage_agents to import the authentication key"
     echo "   from the server. "
     echo "   More information at " 
-    echo "   http://www.ossec.net/hids/doc.php\#manageagents"
+    echo "   http://www.ossec.net/hids/doc.php\#ma"
     echo ""
     echo " --- Press any key to continue --- "
 
