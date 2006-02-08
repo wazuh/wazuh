@@ -329,12 +329,12 @@ ConfigureServer()
 	# Writting global parameters 
 	echo "<global>" > $NEWCONFIG
 	if [ "$EMAILNOTIFY" = "yes" ]; then
-		echo "  <mail-notify>yes</mail-notify>" >> $NEWCONFIG
-		echo "  <emailto>$EMAIL</emailto>" >> $NEWCONFIG
-		echo "  <smtpserver>$SMTP</smtpserver>" >> $NEWCONFIG
-		echo "  <emailfrom>ossect@${HOST}</emailfrom>" >> $NEWCONFIG
+		echo "  <email_notification>yes</email_notification>" >> $NEWCONFIG
+		echo "  <email_to>$EMAIL</email_to>" >> $NEWCONFIG
+		echo "  <smtp_server>$SMTP</smtp_server>" >> $NEWCONFIG
+		echo "  <email_from>ossect@${HOST}</email_from>" >> $NEWCONFIG
 	else
-		echo "  <mail-notify>no</mail-notify>" >> $NEWCONFIG
+		echo "  <email_notification>no</email_notification>" >> $NEWCONFIG
 	fi
         echo "  <white_list>127.0.0.1</white_list>" >> $NEWCONFIG
         for ip in ${NAMESERVERS} ${NAMESERVERS2};
@@ -467,7 +467,7 @@ ConfigureServer()
 	echo "<alerts>" >> $NEWCONFIG
     echo "   <log>1</log>" >> $NEWCONFIG
     if [ "$EMAILNOTIFY" = "yes" ]; then
-        echo "   <mail-notification>7</mail-notification>">> $NEWCONFIG
+        echo "   <email_notification>7</email_notification>">> $NEWCONFIG
 	fi
 	echo "</alerts>" >> $NEWCONFIG
 
