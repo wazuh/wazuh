@@ -14,5 +14,4 @@ me:
 clean:
 		$(CLEAN) syscheck_update
 build:
-		${BUILD} 
 		cp -pr syscheck_update  ${PT}../bin
