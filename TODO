@@ -1,3 +1,4 @@
 - Notify when no message is received from a specific agent.
 - Auto update of the rules (suggestion by Giannis Vrentzos).
   <check_for_new_rules> on ossec.conf
+- Consistency on all configuration options (suggestion by Giannis Vrentzos).
