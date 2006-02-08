@@ -41,7 +41,7 @@ int GlobalConf(char * cfgfile)
 
     /* XML definitions */
     /* Global */
-    char *(xml_global_mailnotify[])={xml_global, "mail-notify",NULL};
+    char *(xml_global_mailnotify[])={xml_global, "email_notification",NULL};
     char *(xml_global_logall[])={xml_global,"logall",NULL};
     char *(xml_global_integrity[])={xml_global,"integrity_checking",NULL};
     char *(xml_global_rootcheck[])={xml_global,"rootkit_detection",NULL};
@@ -52,7 +52,7 @@ int GlobalConf(char * cfgfile)
     char *(xml_global_white_list[])={xml_global,"white_list", NULL};
 
     /* From Response */	
-    char *(xml_alerts_mail[])={xml_alerts,"mail-notification",NULL};
+    char *(xml_alerts_mail[])={xml_alerts,"email-notification",NULL};
     char *(xml_alerts_log[])={xml_alerts,"log",NULL};
 
     if(OS_ReadXML(cfgfile,&xml) < 0)

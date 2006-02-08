@@ -33,11 +33,11 @@ int MailConf(char *cfgfile, MailConfig *Mail)
     char *str = NULL;
     int mailnotify=0;
 
-    char *(xml_global_emailto[])={xml_global,"emailto",NULL};
-    char *(xml_global_emailfrom[])={xml_global,"emailfrom",NULL};
-    char *(xml_global_smtpserver[])={xml_global, "smtpserver",NULL};
-    char *(xml_global_mailnotify[])={xml_global, "mail-notify",NULL};
-    char *(xml_global_mailmaxperhour[])={xml_global, "mail-maxperhour",NULL};
+    char *(xml_global_emailto[])={xml_global,"email_to",NULL};
+    char *(xml_global_emailfrom[])={xml_global,"email_from",NULL};
+    char *(xml_global_smtpserver[])={xml_global, "smtp_server",NULL};
+    char *(xml_global_mailnotify[])={xml_global, "email_notification",NULL};
+    char *(xml_global_mailmaxperhour[])={xml_global, "email_maxperhour",NULL};
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
