@@ -121,15 +121,9 @@ int main(int argc, char **argv)
         fp = fopen(final_dir, "w");
         if(fp)
         {
-            fprintf(fp, "aaaaaaaaabbccdd");
-            printf("ok: '%s'\n", final_dir);
             fclose(fp);
         }
-        else
-        {
-            printf("error!!!!\n");
-        }
-        //unlink(final_dir);
+        unlink(final_dir);
     }
 
     /* external agents */
@@ -156,7 +150,7 @@ int main(int argc, char **argv)
         fp = fopen(final_dir, "w");
         if(fp)
             fclose(fp);
-        //unlink(final_dir);
+        unlink(final_dir);
     }
    
     printf("\n** Integrity check database updated\n\n"); 
