@@ -149,12 +149,20 @@
         
 <decoder name="iptables">
    <type>firewall</type>
+   <prematch>^kernel: [\d+.\d+] \S+ IN=</prematch>
+   <regex>^kernel: [\d+.\d+] (\S+) \.+ SRC=(\S+) DST=(\S+) \.+ </regex>
+   <regex>PROTO=(\w+) SPT=(\d+) DPT=(\d+) </regex>
+   <order>action,srcip,dstip,protocol,srcport,dstport</order>
+</decoder>
+
+<decoder name="iptables">
+   <type>firewall</type>
    <prematch>^kernel: \S+ IN=\S* OUT=</prematch>
    <regex>^kernel: (\S+) \.+ SRC=(\S+) DST=(\S+) \.+ PROTO=(\w+) </regex>
    <regex>SPT=(\d+) DPT=(\d+) </regex>
    <order>action,srcip,dstip,protocol,srcport,dstport</order>
 </decoder>
-
+               
 
 <!-- Solaris IPFilter decoder.
   - Will extract the action, srcip, srcport, dstip, dstport
