@@ -1,4 +1,136 @@
 Daniel B. Cid <daniel.cid@gmail.com>
+v0.6(2006/02/10):
+                   Add new active responses for ipfilter, user locking
+                   and fixed the one for iptables. A lot of improvements
+                   to the integrity checking and rootkit detection engines.
+                   This version also includes a lot of new rules and new
+                   options for better correlation... 
+                   Modified files:
+                   BUGS
+                   CONFIG
+                   INSTALL
+                   README
+                   TODO
+                   active-response/disable-account.sh
+                   active-response/firewall-drop.sh
+                   active-response/host-deny.sh
+                   doc/README.config
+                   doc/active-response-internal.txt
+                   doc/active-response.txt
+                   doc/rules.txt
+                   etc/decoder.xml
+                   etc/ossec-agent.conf
+                   etc/ossec-server.conf
+                   etc/ossec.conf
+                   etc/rules/ids_rules.xml
+                   etc/rules/named_rules.xml
+                   etc/rules/pix_rules.xml
+                   etc/rules/proftpd_rules.xml
+                   etc/rules/syslog_rules.xml
+                   install.sh
+                   src/InstallAgent.sh
+                   src/InstallServer.sh
+                   src/Makeall
+                   src/Makefile
+                   src/VERSION
+                   src/addagent/manage_agents.h
+                   src/addagent/manage_keys.c
+                   src/addagent/read_from_user.c
+                   src/addagent/validate.c
+                   src/analysisd/active-response.c
+                   src/analysisd/active-response.h
+                   src/analysisd/alerts/exec.c
+                   src/analysisd/alerts/getloglocation.c
+                   src/analysisd/alerts/getloglocation.h
+                   src/analysisd/alerts/log.c
+                   src/analysisd/alerts/log.h
+                   src/analysisd/alerts/mail.c
+                   src/analysisd/analysisd.c
+                   src/analysisd/cleanevent.c
+                   src/analysisd/config.c
+                   src/analysisd/config.h
+                   src/analysisd/decoders/decode-xml.c
+                   src/analysisd/decoders/decoder.c
+                   src/analysisd/decoders/decoder.h
+                   src/analysisd/decoders/rootcheck.c
+                   src/analysisd/decoders/syscheck.c
+                   src/analysisd/eventinfo.c
+                   src/analysisd/eventinfo.h
+                   src/analysisd/fts.c
+                   src/analysisd/fts.h
+                   src/analysisd/rules.c
+                   src/analysisd/rules.h
+                   src/analysisd/rules_list.c
+                   src/analysisd/stats.c
+                   src/client-agent/agentd.c
+                   src/client-agent/config.c
+                   src/client-agent/event-forward.c
+                   src/client-agent/main.c
+                   src/client-agent/notify.c
+                   src/client-agent/receiver.c
+                   src/error_messages/error_messages.h
+                   src/headers/ar.h
+                   src/headers/defs.h
+                   src/headers/file_op.h
+                   src/headers/list_op.h
+                   src/headers/mq_op.h
+                   src/headers/os_err.h
+                   src/headers/privsep_op.h
+                   src/headers/sec.h
+                   src/headers/shared.h
+                   src/headers/validate_op.h
+                   src/logcollector/config.c
+                   src/logcollector/logcollector.c
+                   src/logcollector/logcollector.h
+                   src/logcollector/main.c
+                   src/logcollector/read_snortfull.c
+                   src/logcollector/read_syslog.c
+                   src/os_crypto/shared/sec.c
+                   src/os_execd/execd.c
+                   src/os_maild/config.c
+                   src/os_maild/maild.c
+                   src/os_maild/sendmail.c
+                   src/os_net/os_err.h
+                   src/os_net/os_net.c
+                   src/os_regex/Makefile
+                   src/os_regex/README
+                   src/os_regex/examples/regex_str.c
+                   src/os_regex/examples/run.sh
+                   src/os_regex/os_regex.c
+                   src/os_regex/os_regex.h
+                   src/os_regex/os_regex_compile.c
+                   src/os_regex/os_regex_execute.c
+                   src/os_regex/os_regex_free_pattern.c
+                   src/os_regex/os_regex_internal.h
+                   src/os_xml/os_xml.c
+                   src/remoted/config.c
+                   src/remoted/main.c
+                   src/remoted/manager.c
+                   src/remoted/secure.c
+                   src/remoted/remoted.h
+                   src/remoted/remoted.c
+                   src/remoted/syslog.c
+                   src/rootcheck/check_open_ports.c
+                   src/rootcheck/check_rc_dev.c
+                   src/rootcheck/check_rc_pids.c
+                   src/rootcheck/check_rc_ports.c
+                   src/rootcheck/check_rc_sys.c
+                   src/rootcheck/db/rootkit_files.txt
+                   src/rootcheck/db/rootkit_trojans.txt
+                   src/rootcheck/os_string.c
+                   src/rootcheck/rootcheck.c
+                   src/rootcheck/run_rk_check.c
+                   src/shared/file_op.c
+                   src/shared/list_op.c
+                   src/shared/mq_op.c
+                   src/shared/pthreads_op.c
+                   src/shared/regex_op.c
+                   src/shared/validate_op.c
+                   src/syscheckd/run_check.c
+                   src/syscheckd/syscheck.c
+                   
+                    
+Daniel B. Cid <daniel.cid@gmail.com>
 v0.5(2005/11/28):
                    Added support for the active response. Fixed the way
                    the agents and the servers communicate, improving the
