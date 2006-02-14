@@ -414,6 +414,12 @@
     <match>fatal: buffer_get_string: bad string</match>
     <description>OpenSSH challenge-response exploit</description>
   </rule>
+
+  <rule id="1508" level="4">
+    <if_sid>400</if_sid>
+    <match>fatal: Read from socket failed: Connection reset</description>
+    <description>Timeout while logging in (sshd)</description>
+  </rule>  
 </group> <!-- SYSLOG, SSHD -->
 
 
