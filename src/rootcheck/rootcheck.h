@@ -27,6 +27,7 @@ typedef struct _rkconfig
     int notify; /* QUEUE or SYSLOG */
     int scanall;
 
+    int time;
     int queue;
 }rkconfig;
 
@@ -48,6 +49,9 @@ rkconfig rootcheck;
 #define ALERT_ROOTKIT_FOUND     3
 
 #define ROOTCHECK           "rootcheck"
+
+/* Default to 10 hours */
+#define ROOTCHECK_WAIT          36000
 
 /** Prototypes **/
 

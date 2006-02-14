@@ -77,7 +77,10 @@ int notify_agent(char *msg)
  */
 void start_daemon()
 {
-    int count = 7;
+    time_t curr_time = 0;
+    time_t prev_time_rk = 0;
+    time_t prev_time_sk = 0;
+    
             
     #ifdef DEBUG
     verbose("%s: Starting daemon ..",ARGV0);
@@ -85,7 +88,7 @@ void start_daemon()
    
     
     /* some time to settle */
-    sleep(20);
+    sleep(30);
 
     
     /* Send the integrity database to the agent */
@@ -129,28 +132,42 @@ void start_daemon()
         }
     }
 
-    sleep(60); /* before entering in daemon mode itself */
+
+    /* before entering in daemon mode itself */
+    sleep(30);
+    
     
     /* Check every SYSCHECK_WAIT */    
     while(1)
     {
-        /* Running rootcheck */
-        if(count > 6)
+        curr_time = time(0);
+
+        /* If time elapsed is higher than the rootcheck_time,
+         * run it.
+         */
+        #ifdef OSSECHIDS 
+        if((curr_time - prev_time_rk) > rootcheck.time)
         {
             if(syscheck.rootcheck)
                 run_rk_check();
-            count = 0;
+            prev_time_rk = curr_time;    
         }
+        #endif
         
-        sleep(SYSCHECK_WAIT);
+        
+        /* If time elapsed is higher than the syscheck time,
+         * run syscheck time.
+         */
+        if((curr_time - prev_time_sk) > syscheck.time)
+        {
+            /* Set syscheck.fp to the begining of the file */
+            fseek(syscheck.fp,0, SEEK_SET);
+            run_check();
 
-        /* Set syscheck.fp to the begining of the file */
-        fseek(syscheck.fp,0, SEEK_SET);
-        run_check();
-         
-        count++;
-        
-        sleep(10);        
+            prev_time_sk = curr_time;
+        } 
+
+        sleep(SYSCHECK_WAIT);
     }
 }
 

@@ -93,6 +93,7 @@ int rootcheck_init()
     rootcheck.daemon = 1;
     rootcheck.notify = SYSLOG;
     rootcheck.scanall = 0;
+    rootcheck.time = ROOTCHECK_WAIT;
 
 
 #ifndef OSSECHIDS

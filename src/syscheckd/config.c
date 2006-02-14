@@ -35,8 +35,11 @@ int Read_Syscheck_Config(char * cfgfile)
     char *(xml_remote_db[])={xml_syscheck, "remote_db",NULL};
     char *(xml_notify[])={xml_syscheck, "notify",NULL};
     char *(xml_workdir[])={xml_syscheck, "work_directory",NULL};
+    char *(xml_time[])={xml_syscheck, "frequency", NULL};
+    
 
     syscheck.rootcheck = 0;
+    syscheck.time = SYSCHECK_WAIT*2;
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
@@ -80,6 +83,23 @@ int Read_Syscheck_Config(char * cfgfile)
         str = NULL;    
     }
 
+    /* time  */
+    str = OS_GetOneContentforElement(&xml,xml_time);
+    if(str)
+    {
+        if(!OS_StrIsNum(str))
+        {
+            merror("Invalid frequency time '%s' for the integrity "
+                    "checking (must be int).", str);
+            return(OS_INVALID);
+        }
+
+        syscheck.time = atoi(str);
+        
+        free(str);
+        str = NULL;
+    }
+                                                                    
     /* Notifications type */
     str  = OS_GetOneContentforElement(&xml,xml_notify);
     if(str)

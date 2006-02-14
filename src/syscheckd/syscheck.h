@@ -30,6 +30,7 @@ typedef struct _config
     int notify; /* QUEUE or SYSLOG */
     int rootcheck;
 
+    int time;
     int queue;
 }config;
 

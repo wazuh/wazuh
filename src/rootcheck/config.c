@@ -40,6 +40,7 @@ int Read_Rootcheck_Config(char * cfgfile)
     char *(xml_rootkit_files[])={xml_rootcheck, "rootkit_files", NULL};
     char *(xml_rootkit_trojans[])={xml_rootcheck, "rootkit_trojans", NULL};
     char *(xml_scanall[])={xml_rootcheck, "scanall", NULL};
+    char *(xml_time[])={xml_rootcheck, "frequency", NULL};
 
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
@@ -66,6 +67,24 @@ int Read_Rootcheck_Config(char * cfgfile)
         str = NULL;    
     }
 
+    /* time  */
+    str = OS_GetOneContentforElement(&xml,xml_time);
+    if(str)
+    {
+        if(!OS_StrIsNum(str))
+        {
+            merror("Invalid frequency time '%s' for the rootkit "
+                    "detection (must be int).", str);
+            return(OS_INVALID);
+        }
+
+        rootcheck.time = atoi(str);
+
+        free(str);
+        str = NULL;
+    }
+                                                                                                            
+    
     /* Scan all flag */
     if(!rootcheck.scanall)
     {

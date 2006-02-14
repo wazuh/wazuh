@@ -39,8 +39,8 @@ char *(weekdays[])={"Sunday","Monday","Tuesday","Wednesday","Thursday",
 /* Stats definitions */
 #define STATWQUEUE	"/stats/weekly"
 #define STATQUEUE	"/stats/hourly"
-#define MAXDIFF		350
-#define MINDIFF	    35	
+#define MAXDIFF		450
+#define MINDIFF	    45	
 
 /* Global vars */
 int _RWHour[7][24];
@@ -65,7 +65,7 @@ char *_pprevlast;
 
 
 /* gethour: v0.2
- * Return the parameter (event_number + 20 % of it)
+ * Return the parameter (event_number + 25 % of it)
  * If event_number < MINDIFF, return MINDIFF
  * If event_number > MAXDIFF, return MAXDIFF
  */
@@ -73,7 +73,7 @@ int gethour(int event_number)
 {
     int event_diff;
 
-    event_diff = (event_number * 20)/100;
+    event_diff = (event_number * 25)/100;
 
     event_diff++;
     
@@ -103,7 +103,7 @@ void Update_Hour()
             continue;
         
         if(_RHour[i] == 0)
-            _RHour[i]=_CHour[i] + 10;
+            _RHour[i]=_CHour[i] + 20;
         
         else
         {
@@ -139,7 +139,7 @@ void Update_Hour()
                 continue;
 
             if(_RWHour[i][j] == 0)
-                _RWHour[i][j] = _CWHour[i][j] + 10;
+                _RWHour[i][j] = _CWHour[i][j] + 20;
                 
             else
                 _RWHour[i][j]=((_CWHour[i][j]+(3*_RWHour[i][j]))/4)+5;	
