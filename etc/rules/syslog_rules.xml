@@ -210,51 +210,51 @@
 
   <rule id="801" level="0">
     <if_sid>800</if_sid>
-    <match>^kernel: PCI: if you experience problems, try using option</match>
+    <match>PCI: if you experience problems, try using option</match>
     <description>Informative message from the kernel (generally ignored</description>
   </rule>
 
   <rule id="802" level="0">
     <if_sid>800</if_sid>
-    <match>^modprobe: Can't locate module sound</match>
+    <match>modprobe: Can't locate module sound</match>
     <description>Informative message from the kernel</description>
   </rule>
   
   <rule id ="803" level="9">
     <if_sid>800</if_sid>
-    <match>^kernel: Oversized packet received from</match>
+    <match>Oversized packet received from</match>
     <description>Error message from the kernel. Ping of death attack.</description>
   </rule>  
 
   <rule id = "804" level="8">
     <if_sid>800</if_sid>
-    <regex>^kernel: \S+: Promiscuous mode enabled|</regex>
-    <regex>^kernel: device \S+ entered promiscuous mode</regex>
+    <regex>Promiscuous mode enabled|</regex>
+    <regex>device \S+ entered promiscuous mode</regex>
     <description>Interface entered in promiscuous mode (sniffing enabled)</description>
   </rule>
 
   <rule id="805" level="0">
     <if_sid>800</if_sid>
-    <match>^kernel: end_request: I/O error, dev fd0, sector 0|</match>
-    <match>^kernel: Buffer I/O error on device fd0, logical block 0</match>
+    <match>end_request: I/O error, dev fd0, sector 0|</match>
+    <match>Buffer I/O error on device fd0, logical block 0</match>
     <description>Invalid I/O request to /dev/fd0 (bug on the 2.6 kernel?)</description>
   </rule>
 
   <rule id="806" level="0">
     <if_sid>800</if_sid>
-    <match>^kernel: svc: unknown program 100227 (me 100003)</match>
+    <match>svc: unknown program 100227 (me 100003)</match>
     <description>NFS incompability between Linux and Solaris. Ignoring.</description>
   </rule>
 
   <rule id="807" level="0">
     <if_sid>800</if_sid>
-    <match>^kernel: svc: bad direction </match>
+    <match>svc: bad direction </match>
     <description>NFS incompability between Linux and Solaris. Ignoring.</description>
   </rule>
 
   <rule id="808" level="12">
     <if_sid>800</if_sid>
-    <match>^kernel: Out of Memory: </match>
+    <match>Out of Memory: </match>
     <description>System running out of memory. Availability of the system is in risk.</description>
   </rule>
 </group> <!-- SYSLOG,LINUXKERNEL -->
