@@ -235,13 +235,18 @@
   - [error] [client 80.230.208.105] Directory index forbidden by rule: /home/
   - [error] [client 64.94.163.159] Client sent malformed Host header
   - [error] [client 66.31.142.16] File does not exist: /var/www/html/default.ida
+  - [notice] Apache configured  
   -->
 <decoder name="apache-errorlog">
   <type>apache</type>
-  <date_format>[\w\w\w \w\w\w \d\d \d\d:\d\d:\d\d \d\d\d\d] </date_format>
   <prematch>^[\w+] [client</prematch>
   <regex>^[\w+] [client (\d+.\d+.\d+.\d+)] </regex>
   <order>srcip</order>
+</decoder> 
+
+<decoder name="apache-errorlog">
+  <type>apache</type>
+  <prematch>^[warn] |^[notice] |^[error] </prematch>
 </decoder> 
 
 
