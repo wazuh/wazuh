@@ -238,6 +238,7 @@
   -->
 <decoder name="apache-errorlog">
   <type>apache</type>
+  <date_format>[\w\w\w \w\w\w \d\d \d\d:\d\d:\d\d \d\d\d\d] </date_format>
   <prematch>^[\w+] [client</prematch>
   <regex>^[\w+] [client (\d+.\d+.\d+.\d+)] </regex>
   <order>srcip</order>

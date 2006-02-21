@@ -517,7 +517,6 @@
   <rule id="2601" level="0">
     <match>^pptp[</match>
     <regex>^pptpd[\d+]: GRE: \S+ from \S+ failed: status = -1 </regex>
-    <regex>error = \S+</regex>
     <description>PPTPD failed message (communication error)</description>
     <info>http://poptop.sourceforge.net/dox/gre-protocol-unavailable.phtml</info>
   </rule>

@@ -14,56 +14,85 @@
     <description>Apache messages grouped</description>
   </rule>    
 
-  <rule id="3001" level="12">
-    <if_sid>3000</if_sid>
-    <regex>^[notice] child pid \d+ exit signal Segmentation Fault</regex>
-    <description>Sucessfull attack of the Apache encoding vulnerability</description>
+  <rule id="3001" level="0" noalert="1">
+    <match>^[error] </match>
+    <description>Apache error messages grouped</description>
+  </rule>
+  
+  <rule id="3002" level="0" noalert="1">
+    <match>^[warn] </match>
+    <description>Apache warn messages grouped</description>
+  </rule>
+  
+  <rule id="3003" level="0" noalert="1">
+    <match>^[notice] </match>
+    <description>Apache notice messages grouped</description>
+  </rule>
+
+  <rule id="3004" level="12">
+    <if_sid>3003</if_sid>
+    <regex>child pid \d+ exit signal Segmentation Fault</regex>
+    <description>Apache segmentation fault</description>
     <info>http://www.securityfocus.com/infocus/1633</info>
   </rule>
 
-  <rule id="3002" level="9">
-    <if_sid>3000</if_sid>
+  <rule id="3005" level="9">
+    <if_sid>3001</if_sid>
     <regex>^[error] [client \S+ \w+ denied by server configuration</regex>
     <description>Attempt to access forbidden file or directory</description>
   </rule>
 
-  <rule id="3003" level="9">
-    <if_sid>3000</if_sid>
+  <rule id="3006" level="5">
+    <if_sid>3001</if_sid>
     <regex>^[error] [client \S+ Directory index forbidden by rule</regex>
     <description>Attempt to access forbidden directory index</description>
   </rule>
 
-  <rule id="3004" level="6">
-    <if_sid>3000</if_sid>
+  <rule id="3007" level="6">
+    <if_sid>3001</if_sid>
     <regex>^[error] [client \S+ Client sent malformed Host header</regex>
     <description>Code Red attack</description>
     <info>http://www.cert.org/advisories/CA-2001-19.html</info>
   </rule>
 
-  <rule id="3005" level="5">
-    <if_sid>3000</if_sid>
+  <rule id="3008" level="5">
+    <if_sid>3002</if_sid>
     <regex>^[warn] [client \S+ [\d+] auth_ldap authenticate: </regex>
     <regex>user \S+ authentication failed</regex>
     <description>User authentication failed</description>
   </rule>
 
-  <rule id="3006" level="9">
-    <if_sid>3000</if_sid>
+  <rule id="3009" level="9">
+    <if_sid>3001</if_sid>
     <regex>^[error] [client \S+ user \S+ not found</regex>
     <description>Attempt to login using a non-existent user</description>
   </rule>
 
-  <rule id="3007" level="5">
-    <if_sid>3000</if_sid>
+  <rule id="3010" level="5">
+    <if_sid>3001</if_sid>
     <regex>^[error] [client \S+ user \S+: authentication failure</regex>
     <description>User authentication failed.</description>
   </rule>
 
-  <rule id="3008" level="6">
-    <if_sid>3000</if_sid>
+  <rule id="3011" level="6">
+    <if_sid>3001</if_sid>
     <regex>^[error] [client \S+ File does not exist: \S+default.ida$</regex>
     <description>Code Red 2 attack</description>
     <info>http://www.cert.org/incident_notes/IN-2001-09.html</info>
+  </rule>
+
+  <rule id="3012" level="5">
+    <if_sid>3001</if_sid>
+    <match>File does not exist: |</match>
+    <match>failed to open stream: No such file or directory|</match>
+    <match>Failed opening </match>
+    <description>Attempt to access an non-existent file</description> 
+  </rule>
+
+  <rule id="3013" level="5" frequency="6" timeframe="120">
+    <if_matched_sid>3009</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple attempts to access non-existent files (web scan)</description>
   </rule>
 </group> <!-- ERROR_LOG,APACHE -->
 

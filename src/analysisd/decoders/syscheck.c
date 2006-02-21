@@ -221,7 +221,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         if(saved_name[sn_size] == '\n')
             saved_name[sn_size] = '\0';
         
-        /* Cannot use strncmp to avoid errors with crafted files */    
+        
         if(strcmp(f_name,saved_name) == 0)
         {
             char **agent_tmp = agent_ign[agent_id];
@@ -274,11 +274,11 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             
             
             /* Checking the number of changes */
-            if(agent_ign_num[agent_id][p] >= 2)
+            if(agent_ign_num[agent_id][p] >= 1)
             {
-                if(agent_ign_num[agent_id][p] >= 3)
+                if(agent_ign_num[agent_id][p] >= 2)
                 {
-                    if(agent_ign_num[agent_id][p] >= 4)
+                    if(agent_ign_num[agent_id][p] >= 3)
                     {
                         /* Ignoring it.. */
                         return;
