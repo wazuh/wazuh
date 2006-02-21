@@ -129,11 +129,18 @@
 
 <decoder name="proftpd-success">
   <parent>proftpd</parent>  
+  <prematch>^proftpd[\d+]: \S+ \(\S+[\d+.\d+.\d+.\d+]\)\s*\S USER</regex>
   <regex>^proftpd[\d+]: \S+ \(\S+[\d+.\d+.\d+.\d+]\)\s*\S USER (\S+): </regex>
   <regex>Login successful</regex>
   <order>srcip,user</order>
   <fts>name,user,srcip,location</fts>
   <ftscomment>First time user logged in via FTP</ftscomment>
+</decoder>
+
+<decoder name="proftpd-ip">
+  <parent>proftpd</parent>
+  <regex> from (\S+) </regex>
+  <order>srcip</order>
 </decoder>
 
 
