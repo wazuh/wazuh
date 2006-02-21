@@ -45,7 +45,7 @@ if [ "X${ARGV}" = "Xall" ]; then
     fi    
 
     if [ "X$OS" = "XAIX" ]; then
-        echo "EEXTRA=-DAIX" >> Config.OS
+        echo "EEXTRA=-DAIX -DHIGHFIRST" >> Config.OS
         PATH=$PATH:/usr/vac/bin
         export  PATH
     fi
