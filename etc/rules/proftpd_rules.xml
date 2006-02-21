@@ -4,7 +4,7 @@
   -->
       
 
-<group name="proftpd,syslog">
+<group name="proftpd,syslog,">
   <rule id="2500" level="0" noalert="1">
     <match>^proftpd</match>
     <description>Grouping for the proftpd rules</description>
