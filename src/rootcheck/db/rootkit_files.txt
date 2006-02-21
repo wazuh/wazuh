@@ -347,6 +347,12 @@ etc/.bmbl/sk            ! BMBL rootkit
 */rpimp                 ! rpv21 (Reverse Pimpage)::/rootkits/rpimp.php
 
 
+# Cback Linux worm
+/tmp/cback              ! cback worm ::/rootkits/cback.php
+/tmp/derfiq             ! cback worm ::/rootkits/cback.php
+*/cback                 ! cback worm ::/rootkits/cback.php
+
+
 # Public sniffers
 */.linux-sniff          ! Sniffer log ::
 */sniff-l0g             ! Sniffer log ::
