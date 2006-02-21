@@ -120,11 +120,16 @@
   - Will extract the username/srcip
   - Examples:
   - proftpd[12564]: juf01 (pD9EE35B1.dip.t-dialin.net[217.238.53.177]) - USER jufu: Login successful
+  - proftpd[30362] xx.yy.zz (aa.bb.cc[aa.bb.vv.dd]): USER backup: Login successful.
   -->
 
 <decoder name="proftpd">  
   <prematch>^proftpd[\d+]: </prematch>
-  <regex>proftpd[\d+]: \S+ \(\S+[\d+.\d+.\d+.\d+]\) - USER (\S+): </regex>
+</decoder>
+
+<decoder name="proftpd-success">
+  <parent>proftpd</parent>  
+  <regex>^proftpd[\d+]: \S+ \(\S+[\d+.\d+.\d+.\d+]\)\s*\S USER (\S+): </regex>
   <regex>Login successful</regex>
   <order>srcip,user</order>
   <fts>name,user,srcip,location</fts>
