@@ -103,7 +103,6 @@ int SendMSG(int queue, char *message, char *locmsg,
 
     if(loc == SECURE_MQ)
     {
-
         loc = message[0];
         message++;
 
@@ -129,9 +128,9 @@ int SendMSG(int queue, char *message, char *locmsg,
     /* We attempt 5 times to send the message if
      * the receiver socket is busy.
      * After the first error, we wait 1 second.
-     * After the second error, we wait more 2 seconds.
-     * After the third error, we wait 3 seconds.
-     * After the fourth error, we wait 4 seconds.
+     * After the second error, we wait more 3 seconds.
+     * After the third error, we wait 5 seconds.
+     * After the fourth error, we wait 10 seconds.
      * If we failed again, the message is not going
      * to be delivered and an error is sent back.
      */
@@ -154,15 +153,15 @@ int SendMSG(int queue, char *message, char *locmsg,
              * error here. Just sleep 2 second and try
              * again.
              */
-            sleep(2);
+            sleep(3);
         merror("%s: socket busy", __local_name);
             if(OS_SendUnix(queue, tmpstr,0) < 0)
             {
-                sleep(3);
+                sleep(5);
         merror("%s: socket busy", __local_name);
                 if(OS_SendUnix(queue, tmpstr,0) < 0)
                 {
-                    sleep(4);
+                    sleep(10);
         merror("%s: socket busy", __local_name);
                     if(OS_SendUnix(queue, tmpstr,0) < 0)
                     {

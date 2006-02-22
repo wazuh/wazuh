@@ -517,12 +517,6 @@ ConfigureServer()
             echo "  <timeout>600</timeout>" >> $NEWCONFIG
             echo "</active-response>" >> $NEWCONFIG
         fi        
-    else    
-        echo "" >> $NEWCONFIG
-        echo "<active-response>" >> $NEWCONFIG
-        echo "  <disabled>yes</disabled>" >> $NEWCONFIG
-        echo "</active-response> " >> $NEWCONFIG
-    fi
     
     # Setting up the logs
     SetupLogs "3.6"

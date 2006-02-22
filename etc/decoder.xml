@@ -129,7 +129,7 @@
 
 <decoder name="proftpd-success">
   <parent>proftpd</parent>  
-  <prematch>^proftpd[\d+]: \S+ \(\S+[\d+.\d+.\d+.\d+]\)\s*\S USER</regex>
+  <prematch>^proftpd[\d+]: \S+ \(\S+[\d+.\d+.\d+.\d+]\)\s*\S USER</prematch>
   <regex>^proftpd[\d+]: \S+ \(\S+[\d+.\d+.\d+.\d+]\)\s*\S USER (\S+): </regex>
   <regex>Login successful</regex>
   <order>srcip,user</order>
@@ -139,6 +139,7 @@
 
 <decoder name="proftpd-ip">
   <parent>proftpd</parent>
+  <prematch>^proftpd[\d+]: </prematch>
   <regex> from (\S+) </regex>
   <order>srcip</order>
 </decoder>

@@ -533,6 +533,23 @@
   </rule>
 </group>
                 
+<group name="syslog,squid">
+  <rule id="1000" level="0" noalert="1">
+    <regex>^squid[\d+]: </regex>
+    <description>Squid syslog messages grouped</description>
+  </rule>
 
+  <rule id="1001" level="0">
+    <if_sid>1000</if_sid>
+    <regex>^squid[\d+]: ctx: enter level</regex>
+    <description>Squid debug message</description>
+  </rule>
+
+  <rule id="1002" level="0">
+    <if_sid>1000</if_sid>
+    <regex>^squid[\d+]: urlParse: Illegal character in hostname</regex>
+    <description>Squid debug message</description>
+  </rule>  
+</group>
 
 <!-- EOF -->

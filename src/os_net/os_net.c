@@ -247,8 +247,19 @@ int OS_SendTCPbySize(int socket, int size, char *msg)
  */
 int OS_SendUDPbySize(int socket, int size, char *msg)
 {
-    if((send(socket,msg,size,0)) < 0)
-        return(OS_SOCKTERR);
+    int i = 0;
+
+    /* Maximum attempts is 5 */
+    while((send(socket,msg,size,0)) < 0)
+    {
+        if((errno != ENOBUFS) || (i >= 5))
+        {
+            return(OS_SOCKTERR);
+        }
+
+        i++;    
+        sleep(i);    
+    }
         
     return(0);
 }

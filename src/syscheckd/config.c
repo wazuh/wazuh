@@ -36,7 +36,11 @@ int Read_Syscheck_Config(char * cfgfile)
     char *(xml_notify[])={xml_syscheck, "notify",NULL};
     char *(xml_workdir[])={xml_syscheck, "work_directory",NULL};
     char *(xml_time[])={xml_syscheck, "frequency", NULL};
-    
+
+    /* Configuration example 
+    <directories check_all="yes">/etc,/usr/bin,/usr/sbin,/bin,/sbin</directories>
+      <directories check_owner="yes" check_group="yes" check_perm="yes" check_size="yes" check_sum="yes">/var/log</directories>
+    */
 
     syscheck.rootcheck = 0;
     syscheck.time = SYSCHECK_WAIT*2;

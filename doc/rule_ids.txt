@@ -8,7 +8,7 @@
 0800 - 0899 Kernel messages
 0900 - 0949 Crond messages
 0950 - 0999 Automount messages
-1000 - 1099 Unused
+1000 - 1099 Squid syslog messages
 1100 - 1199 Su messages
 1200 - 1299 Tripwire messages
 1300 - 1399 Adduser messages
