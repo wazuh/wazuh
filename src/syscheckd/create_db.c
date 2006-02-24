@@ -33,9 +33,9 @@
 #include "syscheck.h"
 
 /** Prototypes **/
-int read_dir(char *dir_name);
+int read_dir(char *dir_name, int opts);
 
-int read_file(char *file_name)
+int read_file(char *file_name, int opts)
 {
     struct stat statbuf;
     
@@ -51,7 +51,7 @@ int read_file(char *file_name)
         verbose("%s: Reading dir: %s\n",ARGV0, file_name);
         #endif
 
-        return(read_dir(file_name));
+        return(read_dir(file_name, opts));
     }
         
     else if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
@@ -68,11 +68,11 @@ int read_file(char *file_name)
         else
         {
             fprintf(syscheck.fp,"%d:%d:%d:%d:%s %s\n",
-                    (int)statbuf.st_size,
-                    (int)statbuf.st_mode,
-                    (int)statbuf.st_uid,
-                    (int)statbuf.st_gid,
-                    f_sum,
+                    opts & CHECK_SIZE?(int)statbuf.st_size:-2,
+                    opts & CHECK_PERM?(int)statbuf.st_mode:-2,
+                    opts & CHECK_OWNER?(int)statbuf.st_uid:-2,
+                    opts & CHECK_GROUP?(int)statbuf.st_gid:-2,
+                    opts & CHECK_SUM?f_sum:"xxx",
                     file_name);
         }
         
@@ -93,7 +93,7 @@ int read_file(char *file_name)
 /* read_dir v0.1
  *
  */
-int read_dir(char *dir_name)
+int read_dir(char *dir_name, int opts)
 {
     int dir_size;
    
@@ -141,7 +141,7 @@ int read_dir(char *dir_name)
         *s_name = '\0';
         
         strncpy(s_name,entry->d_name,PATH_MAX-dir_size);
-        read_file(f_name);
+        read_file(f_name, opts);
     }
 
     closedir(dp);
@@ -154,6 +154,7 @@ int read_dir(char *dir_name)
  */
 int create_db()
 {
+    int i = 0;
     char **dir_name;
     
     dir_name = syscheck.dir;
@@ -181,8 +182,9 @@ int create_db()
     
     do
     {
-        read_dir(*dir_name);
-    }while(*(++dir_name) != NULL);
+        read_dir(dir_name[i], syscheck.opts[i]);
+        i++;
+    }while(dir_name[i] != NULL);
 
     return(0);
 

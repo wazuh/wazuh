@@ -81,7 +81,7 @@
   <rule id="401" level="5">
     <match>FAILED LOGIN |authentication failure|</match>
     <match>Authentication failed for|invalid password for|</match>
-    <match>Failed password for|LOGIN FAILURE ON |</match>
+    <match>Failed password for|LOGIN FAILURE ON |auth failure: </match>
     <match>Wrong password given for user</match>
     <description>User missed the password</description>
   </rule>
@@ -514,11 +514,22 @@
 
 <!-- PPTP messages -->
 <group name="syslog,pptp">
+  <rule id="2600" level="0" noalert="1">
+    <match>^pptpd[</match>
+    <description>PPTPD messages grouped</description>
+  </rule>
+  
   <rule id="2601" level="0">
-    <match>^pptp[</match>
+    <if_sid>2600</if_sid>
     <regex>^pptpd[\d+]: GRE: \S+ from \S+ failed: status = -1 </regex>
     <description>PPTPD failed message (communication error)</description>
-    <info>http://poptop.sourceforge.net/dox/gre-protocol-unavailable.phtml</info>
+    <info>poptop.sourceforge.net/dox/gre-protocol-unavailable.phtml</info>
+  </rule>
+  
+  <rule id="2602" level="0">
+    <if_sid>2600</if_sid>
+    <regex>^pptpd[\d+]: tcflush failed: Bad file descriptor</regex>
+    <description>PPTPD communication error</description>
   </rule>
 </group>
 
@@ -548,6 +559,12 @@
   <rule id="1002" level="0">
     <if_sid>1000</if_sid>
     <regex>^squid[\d+]: urlParse: Illegal character in hostname</regex>
+    <description>Squid debug message</description>
+  </rule>  
+
+  <rule id="1003" level="0">
+    <if_sid>1000</if_sid>
+    <regex>^squid[\d+]: httpReadReply: Request not yet fully sent</regex>
     <description>Squid debug message</description>
   </rule>  
 </group>

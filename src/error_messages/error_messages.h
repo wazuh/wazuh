@@ -83,6 +83,15 @@
 #define MAX_RK_MSG      "%s(1250): Maximum number of global files reached: %d"
 
 
+/* syscheck */
+#define SYSCHECK_NO_OPT "%s(1701): No option provided for directories: '%s',"\
+                        "ignoring it."
+#define SK_NO_DIR       "%s(1702): No directory provided for 'directories' "\
+                        "element."
+#define SK_INV_ATTR     "%s(1703): Invalid attribute '%s' for directory option"
+#define SK_INV_OPT      "%s(1704): Invalid option '%s' for attribute '%s'"
+
+
 /* Analysisd */
 #define FTS_LIST_ERROR  "%s(1260): Error initiating FTS list"
 #define DECODE_NOPREMATCH   "%s(1270): No 'prematch' found in decoder '%s'"

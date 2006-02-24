@@ -19,8 +19,10 @@ INSTYPE="server"
 DEFAULT_DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 WORKDIR="$DEFAULT_DIR";
 NEWCONFIG="./etc/ossec.mc"
-SYSCHECK_DIRS="/etc,/usr/bin,/usr/sbin,/bin,/sbin"
 CEXTRA=""
+
+## Templates
+SYSCHECK_TEMPLATE="etc/templates/syscheck.template"
 
 
 
@@ -100,13 +102,7 @@ UseSyscheck()
     # Adding to the config file
     if [ "X$SYSCHECK" = "Xyes" ]; then
         echo "" >> $NEWCONFIG
-        echo "<syscheck>" >> $NEWCONFIG
-        echo "  <daemon>yes</daemon>" >> $NEWCONFIG
-        echo "  <directories>$SYSCHECK_DIRS</directories>" >> $NEWCONFIG
-        echo "  <notify>queue</notify>" >> $NEWCONFIG
-        echo "  <ignore>/etc/mtab</ignore>">> $NEWCONFIG
-        echo "  <ignore>/etc/hosts.deny</ignore>">> $NEWCONFIG
-        echo "</syscheck>" >> $NEWCONFIG
+        cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG
     fi
 }
 

@@ -50,6 +50,12 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         {
             return(NULL);
         }
+
+        /* We avoid multiple triggers for the same rule */
+        else if(lf->matched >= my_lf->level)
+        {
+            break;
+        }
         
         /* If regex does not match, go to next */
         if(currently_rule->if_matched_regex)

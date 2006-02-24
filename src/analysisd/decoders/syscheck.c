@@ -414,7 +414,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 {
                     _tmp_perm[0] = '\0';
                 }
-                else
+                else if(oldperm > 0 && newperm > 0)
                 {
                     snprintf(_tmp_perm, 196, "Permissions changed from "
                             "'%c%c%c%c%c%c%c%c%c' "
