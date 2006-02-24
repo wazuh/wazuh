@@ -280,5 +280,20 @@
   <order>srcip,url,id</order>
 </decoder>
 
-  
+
+<!-- Squid access log decoder.
+  - Will extract the srcip.
+  - Author: Ahmet Ozturk
+  - Examples:
+  - 1140701044.525   1231 192.168.1.201 TCP_DENIED/400 1536
+    GET ahmet - NONE/- text/html
+  - 1140701230.827    781 192.168.1.210 TCP_DENIED/407 1785
+    GET http://www.ossec.net oahmet NONE/- text/html
+  -->
+<decoder name="squid-accesslog">
+  <type>squid</type>
+  <prematch>^\d+ \d+.\d+.\d+.\d+ </prematch>
+  <regex>^\d+ (\d+.\d+.\d+.\d+) </regex>
+  <order>srcip</order>
+</decoder>  
 <!-- EOF -->

@@ -150,6 +150,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             lf->hostname[hostname_size++] = *pieces[3];
         }while(*(++pieces[3]) != ' ');
 
+
         /* Apending the \0 to the hostname string */
         lf->hostname[hostname_size] = '\0';
         
@@ -248,6 +249,23 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             pieces[3]+=27;
         }
     }
+    /* Checking for squid date format
+     * 1140804070.368  11623
+     * seconds from 00:00:00 1970-01-01 UTC
+     */
+    else if((loglen > 32) && 
+            (pieces[3][0] == '1') &&
+            (pieces[3][10] == '.') &&
+            (pieces[3][14] == ' '))
+    {
+        pieces[3]+=14;
+
+        /* We need to start at the size of the event */
+        while(*pieces[3] == ' ')
+        {
+            pieces[3]++;
+        }
+    }
 
 
     /* Assigning the values in the strucuture */
@@ -256,6 +274,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     {
         merror(MEM_ERROR, ARGV0);
     }
+
 
     /* location and group */        
     lf->location = pieces[1];

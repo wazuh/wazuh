@@ -25,3 +25,4 @@
 3000 - 3099 Apache error log rules
 3100 - 3199 Apache access log rules
 4000 - 4999 IDS rules
+5000 - 5999 Squid rules
