@@ -121,11 +121,14 @@ int LogCollectorConfig(char * cfgfile)
                         else if(strcmp(logr[fentries].logformat, "apache") == 0)
                         {
                         }
+                        else if(strcmp(logr[fentries].logformat, "squid") == 0)
+                        {
+                        }
                         else
                         {
                             ErrorExit("%s: Invalid log format '%s'. "
                                       "Only 'syslog', 'snort-full', 'snort-fast'"
-                                      " and 'apache' are allowed.", 
+                                      ", 'squid' and 'apache' are allowed.", 
                                       ARGV0, 
                                       logr[fentries].logformat);
                         }
