@@ -16,9 +16,31 @@
 
 #include <stdio.h>
 
+
+#define QUEUE   101
+#define SYSLOG  102
+
+#define MAX_DIR_SIZE    64
+#define MAX_DIR_ENTRY   128
+
+#define SYSCHECK_DB     "/checksum_db/syscheck.db"
+#define CHECKSUM_DIR    "/checksum_db"
+#define SYSCHECK_WAIT   3600
+#define SYSCHECK        "syscheck"
+
+/* Checking options */
+#define CHECK_SUM       0000001
+#define CHECK_PERM      0000002
+#define CHECK_SIZE      0000004
+#define CHECK_OWNER     0000010
+#define CHECK_GROUP     0000020
+
+
 typedef struct _config
 {
-	char **dir;
+	char *dir[MAX_DIR_ENTRY +1];
+    int opts[MAX_DIR_ENTRY +1];
+
 	char **ignore_list;
 
     char *workdir;
@@ -36,16 +58,6 @@ typedef struct _config
 
 
 config syscheck;
-
-#define QUEUE   101
-#define SYSLOG  102
-
-#define MAX_DIR_SIZE    64
-
-#define SYSCHECK_DB     "/checksum_db/syscheck.db"
-#define CHECKSUM_DIR    "/checksum_db"
-#define SYSCHECK_WAIT   3600
-#define SYSCHECK        "syscheck"
 
 /** Prototypes **/
 

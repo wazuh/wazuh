@@ -61,7 +61,6 @@ int main(int argc, char **argv)
     
     /* Zeroing the structure */
     syscheck.workdir = NULL;
-    syscheck.dir = NULL;
     syscheck.daemon = 1;
     syscheck.notify = SYSLOG;
 
