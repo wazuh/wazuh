@@ -45,7 +45,7 @@ egrep		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh
 find		!bash|/dev/[^nlcs]|/prof|/home/virus|file\.h
 lsof		!/prof|/dev/[^nfk]|proc\.h|bash|^/bin/sh|/dev/ttyo|/dev/ttyp
 netstat		!bash|^/bin/sh|/dev/[^aik]|/prof|grep|addr\.h
-top			!/dev/[^npi3t%]|proc\.h|/prof
+top			!/dev/[^npi3t%]|proc\.h|/prof/
 ps			!/dev/ttyo|\.1proc|proc\.h|bash|^/bin/sh	
 tcpdump		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^b]|^/bin/.*sh
 pidof		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh

@@ -567,6 +567,13 @@
     <regex>^squid[\d+]: httpReadReply: Request not yet fully sent</regex>
     <description>Squid debug message</description>
   </rule>  
+
+  <rule id="1004" level="0">
+    <if_sid>1000</if_sid>
+    <regex>^squid[\d+]: httpReadReply: Excess data from</regex>
+    <description>Squid debug message</description>
+  </rule>  
+  
 </group>
 
 <!-- EOF -->

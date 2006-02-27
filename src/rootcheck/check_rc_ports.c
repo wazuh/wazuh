@@ -29,12 +29,23 @@
 #if defined(sun) || defined(__sun__)
 #define NETSTAT "netstat -an -P %s | "\
                 "grep \"[^0-9]%d \" > /dev/null 2>&1"
+#elif defined(Linux)
+#define NETSTAT_LIST "netstat -an | grep \"^%s\" | "\
+                     "cut -d ':' -f 2 | cut -d ' ' -f 1"
+#define NETSTAT "netstat -an | grep \"^%s\" | " \
+                "grep \"[^0-9]%d \" > /dev/null 2>&1"                          
 #endif
 
 #ifndef NETSTAT
 #define NETSTAT "netstat -an | grep \"^%s\" | " \
                 "grep \"[^0-9]%d \" > /dev/null 2>&1"
 #endif
+
+
+int islisted(int proto, int port)
+{
+    return(0);
+}
 
 int run_netstat(int proto, int port)
 {
@@ -111,9 +122,23 @@ void test_ports(int proto, int *_errors, int *_total)
         (*_total)++;
         if(conn_port(proto, i))
         {
+            /* Checking on the list of open ports */
+            if(islisted(proto, i))
+            {
+                continue;
+            }
+            
             /* Checking if we can find it using netstat, if not,
              * check again to see if the port is still being used.
              */
+            if(run_netstat(proto, i))
+            {
+                continue;
+                
+                #ifdef OSSECHIDS
+                sleep(2);
+                #endif
+            }
 
             /* If we are being run by the ossec hids, sleep here (no rush) */
             #ifdef OSSECHIDS
