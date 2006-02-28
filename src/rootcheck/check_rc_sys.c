@@ -115,18 +115,34 @@ int read_sys_file(char *file_name)
  */
 int read_sys_dir(char *dir_name)
 {
-    int i;
+    int i, entry_count = 0;
     DIR *dp;
     
 	struct dirent *entry;
-	
+    struct stat statbuf;	
     
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
     {
-        merror("%s: Invalid directory given",ARGV0);
+        merror("%s: Invalid directory given.",ARGV0);
         return(-1);
     }
     
+    
+    /* Getting the number of nodes. The total number on opendir
+     * must be the same
+     */
+    if(lstat(dir_name, &statbuf) < 0)
+    {
+        return(-1);
+    }
+    
+    
+    if(!S_ISDIR(statbuf.st_mode))
+    {
+        return(-1);
+    }
+    
+     
     /* Opening the directory given */
     dp = opendir(dir_name);
 	if(!dp)
@@ -142,16 +158,34 @@ int read_sys_dir(char *dir_name)
         }
     }
 
+    /* Reading every entry in the directory */
     while((entry = readdir(dp)) != NULL)
     {
         char f_name[PATH_MAX +2];
+        struct stat statbuf_local;
 
         /* Just ignore . and ..  */
         if((strcmp(entry->d_name,".") == 0) ||
            (strcmp(entry->d_name,"..") == 0))  
+        {
+            entry_count++;
             continue;
+        }
+
+        /* Creating new file + path string */
+        snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);
 
 
+        /* Checking if file is a directory */
+        if(lstat(f_name, &statbuf_local) == 0)
+        {
+            if(S_ISDIR(statbuf_local.st_mode))
+            {
+                entry_count++;
+            }
+        }
+
+        
         /* Checking every file against the rootkit database */
         for(i = 0; i<= rk_sys_count; i++)
         {
@@ -171,17 +205,27 @@ int read_sys_dir(char *dir_name)
             }
         }
 
-
-        snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);
-
         /* Ignoring /proc */
         if(strcmp(f_name, "/proc") == 0)
             continue;
 
         read_sys_file(f_name);
-
     }
 
+    /* Entry count for directory different than the actual
+     * link count from stats.
+     */
+    if(entry_count != statbuf.st_nlink)
+    {
+        char op_msg[OS_MAXSTR +1];
+        snprintf(op_msg, OS_MAXSTR, "Files hidden inside directory "
+                         "'%s'. Link count does not match number of files.",
+                         dir_name);
+        notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+
+        _sys_errors++;
+    }
+    
     closedir(dp);
     
     return(0);
@@ -227,9 +271,10 @@ void check_rc_sys(char *basedir)
                                   "/etc", "/root", "/var/log",
                                   "/var/mail", "/var/lib",
                                   "/usr/lib", "/usr/share", 
-                                  "/tmp", NULL};
+                                  "/tmp", "/boot", "/usr/local", 
+                                  "/var/www", "/var/tmp", NULL};
 
-        for(_i = 0; _i <= 12; _i++)
+        for(_i = 0; _i <= 24; _i++)
         {
             if(dirs_to_scan[_i] == NULL)
                 break;

@@ -49,6 +49,7 @@ void check_rc_trojans(char *basedir, FILE *fp)
     while(fgets(buf, OS_MAXSTR, fp) != NULL)
     {
         char *nbuf;
+        char *message = NULL;
 
         /* Removing end of line */
         nbuf = index(buf, '\n');
@@ -69,109 +70,113 @@ void check_rc_trojans(char *basedir, FILE *fp)
                 continue;
             }
             else if(*nbuf == '#')
-                goto newline;
+            {
+                *nbuf = '\0';
+                break;
+            }
             else
                 break;
         }
 
         if(*nbuf == '\0')
-            goto newline;
+            continue;
+
 
         /* File now may be valid */
         file = nbuf;
         string_to_look = nbuf; 
 
-
-        /* Getting the file and the rootkit name */
-        while(*nbuf != '\0')
+        string_to_look = strchr(file, '!');
+        if(!string_to_look)
         {
-            if(*nbuf == ' ' || *nbuf == '\t')
-            {
-                /* Setting the limit for the file */
-                *nbuf = '\0';
-                nbuf++;
-                break;
-            }
-            else
-            {
-                nbuf++;
-            }
-        }
-
-        if(*nbuf == '\0')
             goto newline;
-
-
-        /* Some ugly code to remove spaces and \t */ 
-        while(*nbuf != '\0')
+        }
+        
+        *string_to_look = '\0';
+        string_to_look++;
+        
+        /* Cleaning the file */
+        while(*file != '\0')
         {
-            if(*nbuf == '!')
-            {
-                nbuf++;
-                string_to_look = nbuf;
+            if(*file != ' ' && *file != '\t')
                 break;
-            }
-            else if(*nbuf == ' ' || *nbuf == '\t')
-            {
-                nbuf++;
-                continue;
-            }
-            else
-            {
-                goto newline;
-            }
+            file++;    
         }
 
-
+        /* Cleaning spaces */
+        nbuf = strchr(file, ' ');
+        if(nbuf)
+            *nbuf = '\0';
+        nbuf = strchr(file, '\t');
+        if(nbuf)
+            *nbuf = '\0';
+        
+                
+        /* Cleaning the string to look */
+        while(*string_to_look != '\0')
+        {
+            if(*string_to_look != ' ' && *string_to_look != '\t')
+                break;
+            string_to_look++;
+        }
+        
+        /* Cleaning spaces */
+        nbuf = strchr(string_to_look, '!');
+        if(nbuf)
+        {
+            *nbuf = '\0';
+            nbuf++;
+        }
+        else
+        {
+            goto newline;    
+        }
+        
+        /* Getting any possible message */
+        message = nbuf;
+        
+        /* Cleaning the message */
+        while(*message != '\0')
+        {
+            if(*message != ' ' && *message != '\t')
+                break;
+            message++;    
+        }
+                                                                                    
         if(!string_to_look)
         {
             goto newline;
         }
 
 
-        /* Removing any possible space of \t at the end */
-        nbuf = string_to_look;
-        while(*nbuf != '\0')
-        {
-            if(*nbuf == ' ')
-            {
-                nbuf++;
-                if((*nbuf == '\0') ||
-                   (*nbuf == ' ')  ||
-                   (*nbuf == '\t'))
-                {
-                    nbuf--;
-                    *nbuf = '\0';
-                    break;
-                }
-            }
-            nbuf++;
-        }
-
-        nbuf = index(string_to_look, '\t');
-        if(nbuf)
-        {
-            *nbuf = '\0';
-        }
-
         _total++;
         
         /* Trying with all possible paths */
         for(i = 0;i<=3;i++)
         {
-            snprintf(file_path, OS_MAXSTR, "%s/%s/%s",basedir, 
-                    all_paths[i],
-                    file);
-
+            if(*file != '/')
+            {
+                snprintf(file_path, OS_MAXSTR, "%s/%s/%s",basedir, 
+                        all_paths[i],
+                        file);
+            }
+            else
+            {
+                strncpy(file_path, file, OS_MAXSTR);
+                file_path[OS_MAXSTR -1] = '\0';
+                i = 4;
+            }
+            
             if(is_file(file_path) && os_string(file_path, string_to_look))
             {
                 char op_msg[OS_MAXSTR +1];
                 _errors = 1;
             
                 snprintf(op_msg, OS_MAXSTR, "Trojaned version of file "
-                        "'%s' detected. Signature used: '%s'", 
+                        "'%s' detected. Signature used: '%s' (%s)", 
                                         file_path,
-                                        string_to_look);
+                                        string_to_look,
+                                        *message == '\0'?"Trojan":message);
 
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             }

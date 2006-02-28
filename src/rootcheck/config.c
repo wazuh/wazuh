@@ -42,7 +42,9 @@ int Read_Rootcheck_Config(char * cfgfile)
     char *(xml_scanall[])={xml_rootcheck, "scanall", NULL};
     char *(xml_time[])={xml_rootcheck, "frequency", NULL};
 
-
+    /* :) */
+    xml_time[2] = NULL;
+    
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
         merror("config_op: XML error: %s",xml.err);
@@ -68,6 +70,7 @@ int Read_Rootcheck_Config(char * cfgfile)
     }
 
     /* time  */
+    #ifdef OSSECHIDS
     str = OS_GetOneContentforElement(&xml,xml_time);
     if(str)
     {
@@ -83,6 +86,7 @@ int Read_Rootcheck_Config(char * cfgfile)
         free(str);
         str = NULL;
     }
+    #endif
                                                                                                             
     
     /* Scan all flag */

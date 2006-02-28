@@ -110,7 +110,10 @@ for i in ${DIRECTORIES}; do
             exit 1;
         fi        
     else
-        echo "Making $i"
+        echo ""
+        echo ""
+        echo " *** Making $i *** "
+        echo ""
         make
         if [ $? != 0 ]; then
             echo ""
