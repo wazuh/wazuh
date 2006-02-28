@@ -32,11 +32,8 @@ char _tmp_gowner[197];
 char _tmp_md5[197];
 
 
-char *agent_ips[MAX_AGENTS];
-FILE *agent_fps[MAX_AGENTS];
-
-int  agent_ign_num[MAX_AGENTS][66];
-char *agent_ign[MAX_AGENTS][66];
+char *agent_ips[MAX_AGENTS +1];
+FILE *agent_fps[MAX_AGENTS +1];
 
 extern int mailq;
 int db_err;
@@ -51,28 +48,7 @@ fpos_t __initi_pos;
  */
 void SyscheckUpdateDaily()
 {
-    int i = 0;
-    int j;
-    
-    for(;i<MAX_AGENTS;i++)
-    {
-        if(!agent_ips[i])
-            return;
-        
-        for(j = 0;j<=65;j++)
-        {
-            if(!agent_ign[i][j])
-                break;
-       
-            /* Chance to get back on track :) */ 
-            if(agent_ign_num[i][j] > 4)    
-            {
-                agent_ign_num[i][j]--;
-            }
-
-        }
-            
-    }
+    return;
 }
 
 
@@ -85,17 +61,10 @@ void SyscheckInit()
 
     db_err = 0;
     
-    for(;i<MAX_AGENTS;i++)
+    for(;i <= MAX_AGENTS;i++)
     {
-        int j;
         agent_ips[i] = NULL;
         agent_fps[i] = NULL;
-
-        for(j = 0;j<=65;j++)
-        {
-            agent_ign_num[i][j] = 0;
-            agent_ign[i][j] = NULL;
-        }
     }
 
     return;
@@ -111,7 +80,7 @@ FILE *DB_File(char *agent, int *agent_id)
 
     while(agent_ips[i] != NULL)
     {
-        if(strcmp(agent_ips[i],agent) == 0)
+        if(strcmp(agent_ips[i], agent) == 0)
         {
             /* pointing to the beginning of the file */
             fseek(agent_fps[i],0, SEEK_SET);
@@ -141,6 +110,7 @@ FILE *DB_File(char *agent, int *agent_id)
                 agent_fps[i] = fopen(_db_buf, "r+");
             }
         }
+        
         if(!agent_fps[i])
         {
             merror("%s: Unable to open '%s'",ARGV0,_db_buf);
@@ -172,6 +142,7 @@ FILE *DB_File(char *agent, int *agent_id)
  */
 void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 {
+    int p = 0;
     int sn_size;
     int agent_id;
     char *saved_sum;
@@ -186,6 +157,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         db_err++; /* Increment db error */
         return;
     }
+
 
     /* Reads the integrity file and search for a possible
      * entry
@@ -217,68 +189,46 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
         /* Removing the \n from saved_name */
         sn_size = strlen(saved_name);
-        sn_size-=1; /* 0 = \0, -1 = \n */
+        sn_size -= 1; /* 0 = \0, -1 = \n */
         if(saved_name[sn_size] == '\n')
             saved_name[sn_size] = '\0';
         
         
         if(strcmp(f_name,saved_name) == 0)
         {
-            char **agent_tmp = agent_ign[agent_id];
-            int p = 0;
-            
             saved_name--;
             *saved_name = '\0';
 
             saved_sum = _db_buf;
+
+            /* First three bytes are for frequency check */
+            saved_sum+=4;
 
             /* checksum match, we can just return and keep going */
             if(strcmp(saved_sum,c_sum) == 0)
                 return;
 
             /* If we reached here, the checksum of the file has changed */
-            
-            /* Checking how often this file has been changed and ignoring it */    
-            while(*agent_tmp)
+            if(saved_sum[-3] == '!')
             {
-                if(p >= 64)
-                {
-                    agent_tmp = agent_ign[agent_id];
-                    if(*agent_tmp)
-                    {
-                        p = 0;
-                        free(*agent_tmp);
-                        *agent_tmp = NULL;
-                        agent_ign_num[agent_id][p] = 0;
-                    }
-                    break;
-                }
-                if(strcmp(*agent_tmp,f_name) == 0)
-                {
-                    agent_ign_num[agent_id][p]++;
-                    break;
-                }
-
                 p++;
-                
-            }
-            
-            if(*agent_tmp == NULL)
-            {
-                *agent_tmp = strdup(f_name);
-                if(*agent_tmp == NULL)
+                if(saved_sum[-2] == '!')
                 {
-                    ErrorExit(MEM_ERROR,ARGV0);
+                    p++;
+                    if(saved_sum[-1] == '!')    
+                        p++;
+                    else if(saved_sum[-1] == '?')
+                        p+=2;    
                 }
             }
             
             
             /* Checking the number of changes */
-            if(agent_ign_num[agent_id][p] >= 1)
+            if(p >= 1)
             {
-                if(agent_ign_num[agent_id][p] >= 2)
+                if(p >= 2)
                 {
-                    if(agent_ign_num[agent_id][p] >= 3)
+                    if(p >= 3)
                     {
                         /* Ignoring it.. */
                         return;
@@ -296,7 +246,6 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                                              " has changed again (2nd time)",
                                              f_name);   
                 }
-                
             }
            
             /* First change */ 
@@ -306,6 +255,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         "has changed.",f_name);
             }
       
+      
             /* Adding new checksum to the database */
             /* Commenting the file entry and adding a new one latter */
             fsetpos(fp, &__initi_pos);
@@ -314,7 +264,12 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             
             /* Adding the new entry at the end of the file */
             fseek(fp, 0, SEEK_END);
-            fprintf(fp,"%s %s\n",c_sum,f_name);
+            fprintf(fp,"%c%c%c%s %s\n",
+                        '!',
+                        p >= 1? '!' : '+',
+                        p == 2? '!' : (p > 2)?'?':'+',
+                        c_sum,
+                        f_name);
             
            
             /* File deleted */
@@ -501,7 +456,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             
             /* Creating a new log message */
             free(lf->log);
-            lf->log = strdup(_db_comment2);
+            os_strdup(_db_comment2, lf->log);
             if(!lf->log)
             {
                 merror(MEM_ERROR,ARGV0);
@@ -515,18 +470,17 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             if(Config.mailbylevel <= Config.integrity)
                 OS_Createmail(&mailq, lf);
 
-           
             return; 
         }
                        
         fgetpos(fp, &__initi_pos); /* getting next location */
-        /* continuiing... */                                                
-    }
+        
+    } /* continuiing... */
 
     /* If we reach here, this file is not present on our database */
     fseek(fp, 0, SEEK_END);
     
-    fprintf(fp,"%s %s\n",c_sum,f_name);
+    fprintf(fp,"+++%s %s\n",c_sum,f_name);
 
     return;
 }
