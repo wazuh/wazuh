@@ -1,6 +1,7 @@
 <!-- Official named rules for the OSSEC HIDS
   -  Author: Daniel B. Cid
-  -  Date: Nov 11, 2005
+  -  Date: Feb 28, 2006 (v0.2) - Added rule for log rotation (1904)
+  -  Date: Nov 11, 2005 (v0.1)
   -->
       
 
@@ -28,5 +29,11 @@
     <regex>^named[\d+]: unapproved update from|</regex>
     <description>NSUpdate attempt. Generally mis-configuration</description>
     <info>http://seclists.org/lists/incidents/2000/May/0217.html</info>
+  </rule>
+
+  <rule id="1904" level="4">
+    <if_sid>1900</if_sid>
+    <regex>^named[\d+]: unable to rename log file</regex>
+    <description>Log permission misconfiguration in Named</description>
   </rule>
 </group> <!-- SYSLOG,NAMED -->
