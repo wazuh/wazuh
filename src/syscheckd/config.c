@@ -42,7 +42,6 @@ int read_attr(char *dirs, char **g_attrs, char **g_values)
         return(0);
     }
 
-    merror("dirs are: %s", dirs);
     /* Doing it for each directory */
     while(*dir)
     {
@@ -65,7 +64,6 @@ int read_attr(char *dirs, char **g_attrs, char **g_values)
         tmp_str = strchr(tmp_dir, ' ');
         if(tmp_str)
             *tmp_str = '\0';
-        merror("tmp_dir is now: %s", tmp_dir);    
 
 
         /* Getting the options */
@@ -202,7 +200,6 @@ int read_attr(char *dirs, char **g_attrs, char **g_values)
                 break;
         }
         
-        merror("adding tmp_dir: %s", tmp_dir);
         os_strdup(tmp_dir, syscheck.dir[i]);
         syscheck.opts[i] = opts;
         
