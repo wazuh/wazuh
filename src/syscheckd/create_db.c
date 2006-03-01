@@ -67,11 +67,16 @@ int read_file(char *file_name, int opts)
 
         else
         {
-            fprintf(syscheck.fp,"%d:%d:%d:%d:%s %s\n",
-                    opts & CHECK_SIZE?(int)statbuf.st_size:-2,
-                    opts & CHECK_PERM?(int)statbuf.st_mode:-2,
-                    opts & CHECK_OWNER?(int)statbuf.st_uid:-2,
-                    opts & CHECK_GROUP?(int)statbuf.st_gid:-2,
+            fprintf(syscheck.fp,"%c%c%c%c%c%d:%d:%d:%d:%s %s\n",
+                    opts & CHECK_SIZE?'+':'-',
+                    opts & CHECK_PERM?'+':'-',
+                    opts & CHECK_OWNER?'+':'-',
+                    opts & CHECK_GROUP?'+':'-',
+                    opts & CHECK_SUM?'+':'-',
+                    opts & CHECK_SIZE?(int)statbuf.st_size:0,
+                    opts & CHECK_PERM?(int)statbuf.st_mode:0,
+                    opts & CHECK_OWNER?(int)statbuf.st_uid:0,
+                    opts & CHECK_GROUP?(int)statbuf.st_gid:0,
                     opts & CHECK_SUM?f_sum:"xxx",
                     file_name);
         }
