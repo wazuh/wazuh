@@ -107,7 +107,7 @@
     <if_sid>3100</if_sid>
     <url>cmd.exe|root.exe|_vti_bin|_mem_bin|msadc|c/winnt|d/winnt|</url>
     <url>/x90/|/xmlrpc|awstats.pl?configdir=\Secho|default.ida|</url>
-    <url>/scripts/.|/sumthin|nsiislog.dll</url>
+    <url>/scripts/.|/sumthin|nsiislog.dll|chmod%|echo%|wget%</url>
     <description>Common web attacks</description>
     <info>http://www.armbrustconsulting.com/LogEntries.html</info>
   </rule>
