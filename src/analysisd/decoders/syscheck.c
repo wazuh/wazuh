@@ -202,7 +202,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             saved_sum = _db_buf;
 
             /* First three bytes are for frequency check */
-            saved_sum+=4;
+            saved_sum+=3;
 
             /* checksum match, we can just return and keep going */
             if(strcmp(saved_sum,c_sum) == 0)
