@@ -114,8 +114,14 @@ void start_daemon()
                     continue;
                 
                 *n_buf = '\0';
+                
+                
+                /* First 5 characters are for internal use */
+                n_buf = buf;
+                n_buf+=5;
                     
-                notify_agent(buf);
+                notify_agent(n_buf);
+
 
                 /* A count and a sleep to avoid flooding the server. 
                  * Time or speed are not  requirements in here
@@ -184,7 +190,7 @@ void run_check()
     while(fgets(buf,MAX_LINE,syscheck.fp) != NULL)
     {
         /* Buf should be in the following format:
-         * checksum file_name (checksum space filename)
+         * header checksum file_name (checksum space filename)
          */
         char *n_file; /* file read from the db */
         char *n_sum;  /* md5sum read from the db */
@@ -203,7 +209,7 @@ void run_check()
          * on the client side -- speed not necessary
          */
          file_count++;
-         if(file_count >= 20)
+         if(file_count >= 30)
          {
              sleep(2);
              file_count = 0;
@@ -298,58 +304,32 @@ int c_read_file(char *file_name, char *oldsum)
     /* Getting the old sum values */
 
     /* size */
-    size = atoi(oldsum);
-    oldsum = strchr(oldsum, ':');
-    if(!oldsum)
-    {
-        merror("%s: Invalid checksum '%s'",ARGV0, oldsum);
-        return(0);
-    }
-    oldsum++;
+    if(oldsum[0] == '+')
+        size = 1;
 
     /* perm */
-    perm = atoi(oldsum);
-    oldsum = strchr(oldsum, ':');
-    if(!oldsum)
-    {
-        merror("%s: Invalid checksum '%s'",ARGV0, oldsum);
-        return(0);
-    }
-    oldsum++;
+    if(oldsum[1] == '+')
+        perm = 1;
+
+    /* owner */
+    if(oldsum[2] == '+')
+        owner = 1;     
     
-    /* owner */                                    
-    owner = atoi(oldsum);
-    oldsum = strchr(oldsum, ':');
-    if(!oldsum)
-    {
-        merror("%s: Invalid checksum '%s'",ARGV0, oldsum);
-        return(0);
-    }
-    oldsum++;
-
     /* group */
-    group = atoi(oldsum);
-    oldsum = strchr(oldsum, ':');
-    if(!oldsum)
-    {
-        merror("%s: Invalid checksum '%s'",ARGV0, oldsum);
-        return(0);
-    }
-    oldsum++;
-
+    if(oldsum[3] == '+')
+        group = 1;
+        
     /* checksum */
-    if(oldsum[0] == 'x' && oldsum[1] == 'x' &&
-       oldsum[2] == 'x' && oldsum[3] == '\0')
-    {
-        sum = -2;
-    }
+    if(oldsum[4] == '+')
+        sum = 1;    
+
     
     snprintf(c_sum,255,"%d:%d:%d:%d:%s",
-            size == -2?-2:(int)statbuf.st_size,
-            perm == -2?-2:(int)statbuf.st_mode,
-            owner== -2?-2:(int)statbuf.st_uid,
-            group== -2?-2:(int)statbuf.st_gid,
-            sum  == -2?"xxx":f_sum);
+            size == 0?0:(int)statbuf.st_size,
+            perm == 0?0:(int)statbuf.st_mode,
+            owner== 0?0:(int)statbuf.st_uid,
+            group== 0?0:(int)statbuf.st_gid,
+            sum  == 0?"xxx":f_sum);
 
     return(0);
 }
