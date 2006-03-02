@@ -52,7 +52,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         }
 
         /* We avoid multiple triggers for the same rule */
-        else if(lf->matched >= my_lf->level)
+        else if(lf->matched >= currently_rule->level)
         {
             break;
         }

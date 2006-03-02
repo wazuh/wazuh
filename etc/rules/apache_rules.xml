@@ -15,16 +15,19 @@
   </rule>    
 
   <rule id="3001" level="0" noalert="1">
+    <if_sid>3000</if_sid>
     <match>^[error] </match>
     <description>Apache error messages grouped</description>
   </rule>
   
   <rule id="3002" level="0" noalert="1">
+    <if_sid>3000</if_sid>
     <match>^[warn] </match>
     <description>Apache warn messages grouped</description>
   </rule>
   
   <rule id="3003" level="0" noalert="1">
+    <if_sid>3000</if_sid>
     <match>^[notice] </match>
     <description>Apache notice messages grouped</description>
   </rule>
