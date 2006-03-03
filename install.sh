@@ -64,6 +64,9 @@ Install()
     
     # Calling the init script  to start ossec hids during boot
     runInit
+    if [ $? = 1 ]; then
+        notmodified="yes"
+    fi    
     	
     cd ../
 }
@@ -81,6 +84,7 @@ UseSyscheck()
     echo ""
     $ECHO "  3.2- ${runsyscheck}?(yes/no)y"
     read AS
+    echo ""
     case $AS in
         n|N|no|No|NO)
             echo "   - ${nosyscheck}"
@@ -109,8 +113,9 @@ UseRootcheck()
 
     # Rootkit detection configuration 
     echo ""
-    echo "  3.3- ${runrootcheck}(yes/no)y"
+    $ECHO "  3.3- ${runrootcheck}(yes/no)y"
     read ES
+    echo ""
     case $ES in
         n|N|no|No|NO)
             echo "   - ${norootcheck}"
@@ -196,7 +201,8 @@ SetupLogs()
           echo "    -- $i (apache log)"
         fi
     done
-    
+   
+    echo "" 
     catMsg "0x106-logs"
 	read ANY
 }
@@ -259,7 +265,7 @@ ConfigureServer()
 			;;
 		*)
 			EMAILNOTIFY="yes"
-			echo "   - ${whatsemail} "
+			$ECHO "   - ${whatsemail} "
 			read EMAIL
             ls ${HOST_CMD} > /dev/null 2>&1
             if [ $? = 0 ]; then
@@ -283,7 +289,7 @@ ConfigureServer()
             if [ "X${SMTPHOST}" != "X" ]; then
                echo ""
                echo "   - ${yoursmtp}: ${SMTPHOST}"
-               echo "   - ${usesmtp}(y/n)y"
+               $ECHO "   - ${usesmtp} (y/n)y"
                read EMAIL2
                case ${EMAIL2} in
                   n|N|no|No|NO)
@@ -572,7 +578,7 @@ main()
     
 
     # Initial message
-    echo "$NAME $VERSION ${installscript} - http://www.ossec.net/hids/"
+    echo " $NAME $VERSION ${installscript} - http://www.ossec.net/hids/"
     
     catMsg "0x101-initial"
 
@@ -598,6 +604,7 @@ main()
             catMsg "0x102-installhelp"
 	        ;;
             
+            echo ""
             server|Server|S|SERVER|s)
 	        echo "  - ${serverchose}."
 	        INSTYPE="server"
