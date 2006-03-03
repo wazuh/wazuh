@@ -1,0 +1,77 @@
+# Global
+moreinfo="More information at: "
+starting="Starting OSSEC HIDS"
+systemis="System is"
+modifiedinit="Modified init script to start OSSEC HIDS during boot."
+noboot="Unknown system. No init script added."
+
+# Part 1
+installscript="Installation Script"
+system="System"
+user="User"
+host="Host"
+hitanyorabort="Hit any key to continue or Ctrl-C to abort"
+whattoinstall="What kind of installation do you want (server,agent,local or help)?"
+serverchose="Server installation chose"
+clientchose="Agent(client) installation chose"
+localchose="Local installation chose"
+
+# Part 2
+settingupenv="Setting up the installation environment"
+wheretoinstall="Choose where to install the OSSEC HIDS"
+installat="Installation will be made at "
+deletedir="The installation directory already exists. Should I delete it?"
+
+# Part 3
+configuring="Configuring "
+mailnotify="Do you want e-mail notification?"
+nomail="Email Notification skipped"
+whatsemail="What's your e-mail address?"
+yoursmtp="We found that your SMTP server is"
+usesmtp="Do you want to use it?"
+usingsmtp="Using SMTP server: "
+whatsmtp="What's your smtp server ip/host?"
+
+# Part 3.1/agent
+serverip="What's the IP Address of the OSSEC HIDS server?"
+addingip="Adding Server IP"
+
+
+# Part 3.2
+runsyscheck="Do you want to run the integrity check daemon?"
+nosyscheck="Not running syscheck (integrity check daemon)"
+yessyscheck="Running syscheck (integrity check daemon)"
+
+# Part 3.3
+runrootcheck="Do you want to run the rootkit detection engine?"
+norootcheck="Not running rootcheck (rootkit detection)"
+yesrootcheck="Running rootcheck (rootkit detection)"
+
+# Part 3.4/server/local
+noactive="Active response disabled"
+nohosts="host-deny disabled"
+yeshosts="host-deny enabled (local) for levels >= 6"
+firewallar="Do you want to enable the firewall-drop response?"
+nofirewall="firewall-drop disabled"
+yesfirewall="firewall-drop enabled (local) for levels >= 6"
+
+# Part 3.5/server/local
+syslog="Do you want to listen for remote syslog (514 udp)?"
+nosyslog="Not listening on the syslog port"
+yessyslog="Listening to remote syslog messages"
+
+# Part 3.4/3.5
+readlogs="Setting the configuration to analyze the following logs:"
+
+# Part 5
+installing="Installing the system"
+runningmake="Running the Makefile"
+
+# Final
+configurationdone="Configuration finished properly"
+tostart="To start OSSEC HIDS"
+tostop="To stop OSSEC HIDS"
+configat="The configuration can be viewed or modified at"
+addserveragent="You need to add each agent before they are authorized to access. "
+runma="Run the 'manage_agents to add or remove them."
+presskey="Press any key to continue"
