@@ -1,0 +1,64 @@
+<!-- Squid rules.
+  -  Official rules for squid
+  -
+  -  Author: Ahmet Ozturk
+  -  Date: Mar 1, 2006
+  -->
+
+  
+<group name="squid">
+  <rule id="5000" level="0" noalert="1">
+    <decoded_as>squid-accesslog</decoded_as>
+    <category>squid</category>
+    <description>Squid messages grouped</description>
+  </rule>    
+
+  <rule id="5001" level="5">
+    <if_sid>5000</if_sid>
+    <regex>\d+ \S+ TCP_DENIED/400</regex>
+    <description>Bad request/malformed syntax.</description>
+  </rule>
+
+  <rule id="5002" level="5">
+    <if_sid>5000</if_sid>
+    <regex>\d+ \S+ TCP_MISS/401</regex>
+    <description>Authentication failed for URL.</description>
+  </rule>
+
+  <rule id="5003" level="5">
+    <if_sid>5000</if_sid>
+    <regex>\d+ \S+ TCP_MISS/403</regex>
+    <description>Attempt to access forbidden file or directory.</description>
+  </rule>
+
+  <rule id="5004" level="5">
+    <if_sid>5000</if_sid>
+    <regex>\d+ \S+ TCP_MISS/404</regex>
+    <description>Attempt to access an non-existent file.</description>
+  </rule>
+
+  <rule id="5005" level="5">
+    <if_sid>5000</if_sid>
+    <regex>\d+ \S+ TCP_DENIED/407</regex>
+    <description>Proxy authentication failed. User is not allowed to use squid proxy.</description>
+  </rule>
+
+  <rule id="5006" level="5">
+    <if_sid>5000</if_sid>
+    <regex>\d+ \S+ TCP_MISS/503</regex>
+    <description>Attempt to acces invalid URL.</description>
+  </rule>
+
+
+<!-- Combined rules -->
+  
+  <rule id="5011" level="12" frequency="6" timeframe="120">
+    <if_matched_sid>5003</if_matched_sid>
+    <same_source_ip />    
+    <description>Multiple attempt to access forbidden file or directory.</description>
+  </rule>
+</group> <!-- SQUID access log -->
+
+<!-- EOF -->
+
+
