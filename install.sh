@@ -502,7 +502,7 @@ setEnv()
     echo ""
     echo "2- ${settingupenv}."
     echo ""
-    echo " - ${wheretoinstall} [$INSTALLDIR]"
+    $ECHO " - ${wheretoinstall} [$INSTALLDIR]"
     read ANSWER
     if [ ! "X$ANSWER" = "X" ]; then
         INSTALLDIR=$ANSWER;
