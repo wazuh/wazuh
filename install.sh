@@ -8,11 +8,19 @@
 LOCAL=`dirname $0`;
 cd $LOCAL
 
+### Looking for for echo -n
+ECHO="echo -n"
+echo -n "a" > /dev/null 2>&1
+if [ ! $? = 0 ]; then
+    ECHO=echo
+fi    
+
 . ./src/init/shared.sh
 . ./src/init/language.sh
 . ./src/init/functions.sh
 . ./src/init/init.sh
 . ./etc/templates/en/messages.txt
+
 
 
 
@@ -71,7 +79,7 @@ UseSyscheck()
 
     # Integrity check config
     echo ""
-    echo "  3.2- ${runsyscheck}?(yes/no)y"
+    $ECHO "  3.2- ${runsyscheck}?(yes/no)y"
     read AS
     case $AS in
         n|N|no|No|NO)
@@ -582,7 +590,7 @@ main()
     while [ 1 ]
     do
         echo ""
-        echo "1- ${whattoinstall}"
+        $ECHO "1- ${whattoinstall} "
 
         read ANSWER
         case $ANSWER in
