@@ -1,0 +1,8 @@
+
+  3.4- Active response allows you to execute a specific 
+       command based on the events received. You can 
+       block an IP address or disable access for a 
+       specific user (for example). 
+       http://www.ossec.net/hids/config.php#active-response 
+       
+       Do you want to have active response enabled? (yes/no)y

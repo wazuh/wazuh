@@ -1,33 +1,19 @@
 #!/bin/sh
 # Installation script for the OSSEC HIDS
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
-# Last modification: Jan 30, 2006
-
-### Setting up variables
-VERSION=`cat ./src/VERSION`
-LOCATION="./src/LOCATION"
-UNAME=`uname -snr`
-NUNAME=`uname`
-ME=`whoami`
-HOST=`hostname`
-NAMESERVERS=`cat /etc/resolv.conf | grep nameserver | cut -d " " -sf 2`
-NAMESERVERS2=`cat /etc/resolv.conf | grep nameserver | cut -sf 2`
-HOST_CMD=`which host`
-CC=""
-NAME="OSSEC HIDS"
-INSTYPE="server"
-DEFAULT_DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
-WORKDIR="$DEFAULT_DIR";
-NEWCONFIG="./etc/ossec.mc"
-CEXTRA=""
-
-## Templates
-SYSCHECK_TEMPLATE="etc/templates/syscheck.template"
+# Last modification: Mar 02, 2006
 
 
+### Looking up for the execution directory
+LOCAL=`dirname $0`;
+cd $LOCAL
 
+. ./src/init/shared.sh
+. ./src/init/language.sh
+. ./src/init/functions.sh
+. ./src/init/init.sh
+. ./etc/templates/en/messages.txt
 
-### Internal functions (follow the bottom-top order)
 
 
 ##########
@@ -36,23 +22,21 @@ SYSCHECK_TEMPLATE="etc/templates/syscheck.template"
 Install()
 {
 	echo ""
-	echo "5- Installing the system"
+	echo "5- ${installing}"
     
-	echo "DIR=\"${WORKDIR}\"" > ${LOCATION}
+	echo "DIR=\"${INSTALLDIR}\"" > ${LOCATION}
     echo "CC=${CC}" >> ${LOCATION}
     
     # Changing Config.OS with the new C flags
     echo "CEXTRA=${CEXTRA}" > ./src/Config.OS
     
     # Makefile
-	echo " - Running the Makefile"
+	echo " - ${runningmake}"
     cd ./src
     make all
     
     if [ $? != 0 ]; then
-        echo " Error (install 1)."
-        echo " Building error."
-        exit 1;
+        catError "0x5-build"
     fi
         
     # Building everything    
@@ -71,7 +55,7 @@ Install()
 
     
     # Calling the init script  to start ossec hids during boot
-    ./init/init.sh
+    runInit
     	
     cd ../
 }
@@ -87,15 +71,15 @@ UseSyscheck()
 
     # Integrity check config
     echo ""
-    echo "  3.2- Do you want to run the integrity check daemon?(yes/no)y"
+    echo "  3.2- ${runsyscheck}?(yes/no)y"
     read AS
     case $AS in
         n|N|no|No|NO)
-            echo "   - Not running syscheck (integrity check daemon)"
+            echo "   - ${nosyscheck}"
             ;;
         *)
             SYSCHECK="yes"
-            echo "   - Running syscheck (integrity check daemon)"
+            echo "   -${yessyscheck}"
             ;;
     esac                    
 
@@ -117,15 +101,15 @@ UseRootcheck()
 
     # Rootkit detection configuration 
     echo ""
-    echo "  3.3- Do you want to run the rootkit detection engine?(yes/no)y"
+    echo "  3.3- ${runrootcheck}(yes/no)y"
     read ES
     case $ES in
         n|N|no|No|NO)
-            echo "   - Not running rootcheck (rootkit detection)"
+            echo "   - ${norootcheck}"
             ;;
         *)
             ROOTCHECK="yes"
-            echo "   - Running rootcheck (rootkit detection)"
+            echo "   - ${yesrootcheck}"
             ;;
     esac
 
@@ -135,8 +119,8 @@ UseRootcheck()
         echo "" >> $NEWCONFIG
         echo "<rootcheck>" >> $NEWCONFIG
         echo "  <notify>queue</notify>" >> $NEWCONFIG
-        echo "  <rootkit_files>$WORKDIR/etc/shared/rootkit_files.txt</rootkit_files>" >> $NEWCONFIG
-        echo "  <rootkit_trojans>$WORKDIR/etc/shared/rootkit_trojans.txt</rootkit_trojans>" >> $NEWCONFIG
+        echo "  <rootkit_files>$INSTALLDIR/etc/shared/rootkit_files.txt</rootkit_files>" >> $NEWCONFIG
+        echo "  <rootkit_trojans>$INSTALLDIR/etc/shared/rootkit_trojans.txt</rootkit_trojans>" >> $NEWCONFIG
         echo "</rootcheck>" >> $NEWCONFIG
     fi            
 }
@@ -152,7 +136,7 @@ SetupLogs()
 
     NB=$1
     echo ""
-    echo "  $NB- Setting the configuration to analyze the following logs:"
+    echo "  $NB- ${readlogs}"
 
     LOG_FILES="/var/log/messages /var/log/authlog /var/log/auth.log /var/log/secure /var/log/syslog /var/log/ipfilter.log /var/adm/ipsec.log"
 
@@ -205,15 +189,7 @@ SetupLogs()
         fi
     done
     
-    
-	echo ""
-	echo " - If any want to monitor any other file, just change "
-	echo " - $WORKDIR/etc/ossec.conf and add a new localfile entry."
-	echo " - Any questions about the configuration can be solved by "
-	echo " - visiting us online at http://www.ossec.net/hids/ ."
-	echo ""
-	echo ""
-	echo "   - Press Any Key to continue - "
+    catMsg "0x106-logs"
 	read ANY
 }
 
@@ -226,13 +202,13 @@ SetupLogs()
 ConfigureClient()
 {
 	echo ""
-	echo "3- Configuring $NAME."
+	echo "3- ${configuring} $NAME."
 	echo ""
 	echo ""
-	echo "  3.1- What's the IP Address of the OSSEC HIDS server ?"
+	echo "  3.1- ${serverip}"
 	    read IP
 	    echo ""
-	    echo "   - Adding Server IP: $IP"
+	    echo "   - ${addingip} $IP"
 	    echo ""
 
 	echo "<client>" > $NEWCONFIG
@@ -256,26 +232,26 @@ ConfigureClient()
 
 
 ##########
-# ConfigureClient()
+# ConfigureServer()
 ##########
 ConfigureServer()
 {
 	echo ""
-	echo "3- Configuring $NAME."
+	echo "3- ${configuring} $NAME."
 	
     
     # Configuring e-mail notification
 	echo ""
-	echo "  3.1- Do you want e-mail notification (y/n)?y"
+	echo "  3.1- ${mailnotify} (y/n)y"
 	read ANSWER
 	case $ANSWER in
 		n|N)
-			echo "   --- Email Notification skipped "
+			echo "   --- ${nomail} "
 			EMAILNOTIFY="no"
 			;;
 		*)
 			EMAILNOTIFY="yes"
-			echo "   - What's your e-mail address? "
+			echo "   - ${whatsemail} "
 			read EMAIL
             ls ${HOST_CMD} > /dev/null 2>&1
             if [ $? = 0 ]; then
@@ -284,13 +260,13 @@ ConfigureServer()
                  # Trying without the -W 
                  HOSTTMP=`${HOST_CMD} -t mx ossec.net 2>/dev/null`
               fi       
-              if [ "X$HOSTTMP" = "Xossec.net mail is handled by 10 mx.underlinux.com.br." -o "X$HOSTTMP" = "Xossec.net mail is handled (pri=10) by mx.underlinux.com.br" ]; then
+              if [ "X$HOSTTMP" = "X${OSSECMX}" -o "X$HOSTTMP" = "X${OSSECMX2}" ];then
                  # Breaking down the user e-mail
                  EMAILHOST=`echo ${EMAIL} | cut -d "@" -f 2`
                  if [ "X${EMAILHOST}" = "Xlocalhost" ]; then
                     SMTPHOST="127.0.0.1"
                  else       
-                    HOSTTMP=`${HOST_CMD} -W 6 -t mx ${EMAILHOST}`
+                    HOSTTMP=`${HOST_CMD} -W 5 -t mx ${EMAILHOST}`
                     SMTPHOST=`echo ${HOSTTMP} | cut -d " " -f 7`
                  fi   
               fi    
@@ -298,8 +274,8 @@ ConfigureServer()
 
             if [ "X${SMTPHOST}" != "X" ]; then
                echo ""
-               echo "   - We found that your SMTP server is: ${SMTPHOST}"
-               echo "   - Do you want to use it?(y/n)y"
+               echo "   - ${yoursmtp}: ${SMTPHOST}"
+               echo "   - ${usesmtp}(y/n)y"
                read EMAIL2
                case ${EMAIL2} in
                   n|N|no|No|NO)
@@ -308,14 +284,14 @@ ConfigureServer()
                      ;;
                   *)
                      SMTP=${SMTPHOST}
-                     echo "   --- Using ${SMTP} as your STMP server."   
+                     echo "   --- ${usingsmtp} ${SMTP}"   
                      echo ""
                      ;;
                esac
             fi
 
             if [ "X${SMTP}" = "X" ]; then
-			   echo "   - What's your smtp server ip/host? "
+			   echo "   - ${whatsmtp} "
                read SMTP
             fi   
 			;;
@@ -352,6 +328,7 @@ ConfigureServer()
 	echo "  <include>proftpd_rules.xml</include>" >> $NEWCONFIG
     echo "  <include>apache_rules.xml</include>" >> $NEWCONFIG
     echo "  <include>ids_rules.xml</include>" >> $NEWCONFIG
+    echo "  <include>squid_rules.xml</include>" >> $NEWCONFIG
 	echo "</rules>" >> $NEWCONFIG
 	echo "" >> $NEWCONFIG
 
@@ -364,59 +341,40 @@ ConfigureServer()
 
 
     # Active response
-    echo ""
-    echo "  3.4- Active response allows you to execute a specific "
-    echo "       command based on the events received. You can "
-    echo "       block an IP address or disable access for a "
-    echo "       specific user (for example). "
-    echo "       http://www.ossec.net/hids/config.php#active-response "
-    echo ""
-    echo "       Do you want to have active response enabled? (yes/no)y"
+    catMsg "0x107-ar"
+    
     read AR
     case $AR in
         n|N|no|No|NO)
-            echo "   - Active response disabled."
+            echo "   - ${noactive}."
             ;;
         *)
             ACTIVERESPONSE="yes"
-            echo "   - Active response enabled."
-            echo ""
-            echo "   - By default, we can enable the host-deny and the "
-            echo "     and the firewall-drop responses. The first one "
-            echo "     will add a host to the /etc/hosts.deny and the "
-            echo "     second one will block the host on iptables (linux)"
-            echo "     or on ipfilter (Solaris, FreeBSD, etc)."
-            echo "   - They can be used to stop SSHD brute force scans, "
-            echo "     portscans and some other forms of attacks. You can "
-            echo "     also add them to block on snort events (for example)."
-            echo ""
-            echo "   - Do you want to enable the host-deny response?(yes/no)y"
+            catMsg "0x108-ar-enabled"
+            
             read HD
             case $HD in
                 n|N|no|No|NO)
-                    echo "     - host-deny disabled"
+                    echo "     - ${nohosts}"
                     ;;
                 *)    
-                    echo "     - host-deny enabled (local) for levels >= 6 "
+                    echo "     - ${yeshosts} "
                     HOSTDENY="yes"
                     ;;
             esac
             echo ""
-            echo "   - Do you want to enable the firewall-drop response?(yes/no)y"
+            echo "   - ${firewallar}(yes/no)y"
             read HD2
             case $HD2 in
                 n|N|no|No|NO)
-                    echo "     - firewall-drop disabled"
+                    echo "     - ${nofirewall}"
                     ;;
                 *)
-                    echo "     - firewall-drop enabled (local) for levels >= 6 "
+                    echo "     - ${yesfirewall} "
                     FIREWALLDROP="yes"
                     ;;
             esac        
                         
-            echo ""
-            echo "   - For more options and information about active response,"
-            echo "     go to our website in the documentation session."
             echo ""
             ;;
     esac                
@@ -425,14 +383,14 @@ ConfigureServer()
     if [ "X$INSTYPE" = "Xserver" ]; then
       # Configuring remote syslog  
 	  echo ""
-	  echo "  3.5- Do you want to listen for remote syslog (514 udp) (y/n)?y"
+	  echo "  3.5- ${syslog} (y/n)y"
 	  read ANSWER
       case $ANSWER in
 		n|N)
-			echo "   --- Not listening on the syslog port"
+			echo "   --- ${nosyslog}"
 			;;
 		*)
-			echo "   - Listening to remote syslog messages"
+			echo "   - ${yessyslog}"
 			RLOG="yes"
 			;;
 	  esac
@@ -528,20 +486,18 @@ ConfigureServer()
 setEnv()
 {
     echo ""
-    echo "2- Setting up the working environment."
+    echo "2- ${settingupenv}."
     echo ""
-    echo " - Where do you want to install $NAME? "
-    echo " - The default location is $WORKDIR, do want to keep it ?(y/n)y"
+    echo " - ${wheretoinstall} [$INSTALLDIR]"
     read ANSWER
-    case $ANSWER in
-        n|N)
-          echo "    - Type the directory to install it:"
-          read TMPDIR
-          WORKDIR="$TMPDIR"
-          echo "    - Installation will be made at ${WORKDIR}"
-          CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${WORKDIR}\\\""
-          ;;
-    esac
+    if [ ! "X$ANSWER" = "X" ]; then
+        INSTALLDIR=$ANSWER;
+    fi
+
+    CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${WORKDIR}\\\""
+    
+    echo "    - ${installat} ${INSTALLDIR}"
+    
 
     if [ "X$INSTYPE" = "Xclient" ]; then
         CEXTRA="$CEXTRA -DCLIENT"
@@ -549,15 +505,13 @@ setEnv()
         CEXTRA="$CEXTRA -DLOCAL"    
     fi   
 
-
-    ls $WORKDIR >/dev/null 2>&1
+    ls $INSTALLDIR >/dev/null 2>&1
     if [ $? = 0 ]; then
-        echo " - The directory $WORKDIR already exist."
-        echo " - Do you want to delete it? (y/n)n"
+        echo " - ${deletedir} (y/n)n"
         read ANSWER
         case $ANSWER in
             y|Y)
-                rm -rf $WORKDIR
+                rm -rf $INSTALLDIR
                 ;;
         esac
     fi
@@ -573,36 +527,17 @@ setEnv()
 checkDependencies()
 {
     echo ""
-    echo "- Cheking Dependencies:"
-    echo ""
-    echo "  - Checking for gcc"
-	
     which gcc > /dev/null 2>&1
     if [ $? -ne "0" ]; then
-        echo "   --- GCC Not found in PATH"
-        echo "   --- Checking for cc"
         which cc > /dev/null 2>&1
         if [ $? -ne "0" ]; then
-	    
-        echo "   --- Not found in PATH"
-	    echo ""
-        
-	    echo " Error(checkDependencies 1)."
-        echo " You need a compiler (like gcc) to continue with the "
-	    echo " with the installation. "
-	    echo ""
-	    exit 1
+        catError "0x3-dependencies"
         fi
-        
         CC="cc"
     else
         CC="gcc"
     fi
-    
-    echo "    - Found: $CC"
-    echo ""
 }
-
 
 
 
@@ -613,51 +548,33 @@ main()
 {
 
     # Must be executed as ./install.sh
-    ls ./src/VERSION >/dev/null 2>&1
-    if [ $? != 0 ]; then
-        echo ""
-        echo " Error (main 1). "
-        echo " This script can only be executed from the same directory. "
-        echo " Change directory to where this script is before running it."
-        echo " You must run it as ./install.sh ."
-        echo ""
-        exit 1;	
+    if [ `isFile ${VERSION_FILE}` = "${FALSE}" ]; then
+        catError "0x1-location";
     fi
 
-    
     # Must be root
     if [ ! "X$ME" = "Xroot" ]; then
-	    echo ""
-	    echo " Error (main 2)."
-        echo " You must be root to use this script."
-	    echo ""
-	    exit 1
-    fi
-
+        catError "0x2-beroot";
+    fi    
 
     # Checking dependencies
     checkDependencies
 
-    
     clear
     
 
     # Initial message
-    echo ""
-    echo " $NAME $VERSION Installation Script - http://www.ossec.net/hids/"
-    echo ""
-    echo " You are about to start the installation process of the OSSEC HIDS."
-    echo " You must have a C compiler pre-installed in your system."
-    echo " Any question, suggestion or comment, please send an e-mail to"
-    echo " dcid@ossec.net (or daniel.cid@gmail.com)."
-    echo ""
-    echo " - System: $UNAME"
-    echo " - User: $ME"
-    echo " - Host: $HOST"
+    echo "$NAME $VERSION ${installscript} - http://www.ossec.net/hids/"
+    
+    catMsg "0x101-initial"
 
+    echo "  - $system: $UNAME"
+    echo "  - $user: $ME"
+    echo "  - $host: $HOST"
+    echo ""
+    echo ""
+    echo "  -- $hitanyorabort --"
 
-
-    echo "  -- Hit any key to continue or Ctrl-C to abort  -- "
     read ANY
 
 
@@ -665,54 +582,28 @@ main()
     while [ 1 ]
     do
         echo ""
-        echo "1- What kind of installation do you want (server,agent,local,help)?"
+        echo "1- ${whattoinstall}"
 
         read ANSWER
         case $ANSWER in
             h|H|Help|help|HELP)
-	        echo ""
-	        echo "  - You have three installation options: agent, local or server."
-	        echo ""
-	        echo "    - If you choose server, you will be able to analyze all  "
-	        echo "      the logs, create e-mail notifications and responses,   "
-	        echo "      and also receive logs from remote syslog machines and  "
-	        echo "      from systems running the 'agents' (where traffic is  "
-            echo "      sent encrypted).              "
-	        echo ""
-	        echo "    - If you choose the agent(client), you will be able to read"
-	        echo "      local files (from syslog, snort, apache, etc) and forward"
-	        echo "      them (encrypted) to the server for analysis.             "
-	        echo ""
-            echo "    - If you choose local, you will be able to do everything  "
-            echo "      the server does, except receiving remote messages from  "
-            echo "      the agents or external syslog devices.                  "
-            echo ""
-	        echo "  - Use 'server' if you are setting up a log/analysis server."
-	        echo ""
-	        echo "  - Use 'agent' if you have another machine to run as a log"
-	        echo "    server and want to forward the logs to the server for analysis."
-            echo "    (ideal for webserver, database servers ,etc)"
-	        echo ""
-            echo "  - Use 'local' if you are just have one system to analyze."
-            echo ""
-            echo "  - More info: http://www.ossec.net/hids/doc.php#starting"
-            echo ""
+            catMsg "0x102-installhelp"
 	        ;;
             
             server|Server|S|SERVER|s)
-	        echo "  - Server installation chose."
+	        echo "  - ${serverchose}."
 	        INSTYPE="server"
 	        break;
 	        ;;
             
             client|agent|Agent|Client|C|A|CLIENT|AGENT|c|a)
-	        echo "  - Agent(client) installation chose."
+	        echo "  - ${agentchose}}."
 	        INSTYPE="client"
 	        break;
 	        ;;
    
             local|Local|l|L|LOCAL)
-            echo "  - Local installation chose." 
+            echo "  - ${localchose}." 
             INSTYPE="local"
             break;
             ;;
@@ -733,10 +624,7 @@ main()
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         ConfigureServer   
     else
-        echo " Error (main 3)."
-        echo " Wrong installation type. It can only be agent, server or local."
-        echo ""
-        exit 1;
+        catError "0x4-installtype"
     fi
 
     # Installing (calls the respective script 
@@ -749,78 +637,49 @@ main()
     echo ""
     echo ""
     echo ""
-    echo " - Configuration finished properly."
+    echo " - ${configurationdone}."
     echo ""
-    echo " - To start OSSEC HIDS:"
+    echo " - ${tostart}:"
     echo "		$WORKDIR/bin/ossec-control start"
     echo ""
-    echo " - To stop OSSEC HIDS:"
+    echo " - ${tostop}:"
     echo "		$WORKDIR/bin/ossec-control stop"
     echo ""
-    echo " - The configuration can be viewed or modified at $WORKDIR/etc/ossec.conf"
+    echo " - ${configat} $WORKDIR/etc/ossec.conf"
     echo ""
 
 
-    echo "
-    Thanks for using the OSSEC HIDS.
-    If you have any question, suggestion or if you find any bug,
-    contact us at contact@ossec.net or using our public maillist at
-    ossec-list@ossec.net 
-    (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list).
+    catMsg "0x103-thanksforusing"
 
-    More information can be found at http://www.ossec.net/hids/
-   
-   ---  Press any key to finish (more information bellow).  ---
-   "
 
     read ANY
 
     if [ "X$INSTYPE" = "Xserver" ]; then
     echo ""        	
-    echo " - You need to add each agent before they are authorized to access. "
-    echo "   Run the $WORKDIR/bin/manage_agents to add or remove them."
-    echo "   More information at: "
+    echo " - ${addserveragent}."
+    echo "   ${runma}."
+    echo "   $INSTALLDIR/bin/manage_agents"
+    echo "   ${moreinfo}"
     echo "   http://www.ossec.net/hids/doc.php\#ma"
     echo ""
       
-    if [ "X$RLOG" = "Xyes" ]; then
-    echo " - If you would like to receive syslog messages remotely, you need"
-    echo "   to add in the configuration file (inside the 'global' element) the "
-    echo "   IPs authorized to do so."
-    echo "   The syntax should be:"
-    echo "     <global>"
-    echo "     .."
-    echo "       <allowed-ips>10.1.1.1</allowed-ips> - To allow this ip"
-    echo "       <allowed-ips>10.1.1.0/24</allowed-ips>  - To allow network 10.1.1.0/24"
-    echo "     </global>"
+    elif [ "X$INSTYPE" = "Xclient" ]; then
+    catMsg "0x104-client"	
+    echo "   $WORKDIR/bin/manage_agents"
     echo ""
-    echo " --- Press any key to continue --- "
-
-    read ANY
-
-    fi
-
-    elif [ "X$INSTYPE" = "Xclient" ]; then	
-    echo " - To communicate with the server, you first need to add this "
-    echo "   agent to it. When you have done so, you can run the "
-    echo "   $WORKDIR/bin/manage_agents to import the authentication key"
-    echo "   from the server. "
-    echo "   More information at " 
+    echo "   ${moreinfo}"
     echo "   http://www.ossec.net/hids/doc.php\#ma"
     echo ""
-    echo " --- Press any key to continue --- "
+    echo " --- ${presskey} --- "
 
     read ANY
     fi
 
-
-    echo " - Depending on your system, check if /etc/rc.d/init.d/ossec "
-    echo "   or /etc/rc.local was created or modified. If not, add the following"
-    echo "   line to your init script to have the OSSEC HIDS starting during boot:"
-    echo ""
-    echo "		$WORKDIR/bin/ossec-control start" 
-    echo ""
-    echo ""
+    if [ "X$notmodified" = "Xyes" ]; then
+        catMsg "0x105-noboot"
+        echo "		$WORKDIR/bin/ossec-control start" 
+        echo ""
+    fi
 }
 
 

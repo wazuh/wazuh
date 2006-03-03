@@ -51,10 +51,11 @@ if [ "X${ARGV}" = "Xall" ]; then
     fi
 
     if [ "X$OS" = "XSunOS" ]; then
-        echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -include strings.h" >> Config.OS
+        echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -include strings.h">>Config.OS
         PATH=$PATH:/usr/ccs/bin
         export  PATH
-    fi    
+    fi
+        
     if [ "X$OS" = "XFreeBSD" ]; then
         echo "TEXTRA=-pthread" >> Config.OS
     else
@@ -65,6 +66,7 @@ if [ "X${ARGV}" = "Xall" ]; then
         echo "EEXTRA=-DDarwin" >> Config.OS
     fi    
 fi
+
 
 # Cleaning
 if [ "X${ARGV}" = "Xclean" ]; then
@@ -84,7 +86,7 @@ else
 fi
 
 
-# Checking if the bin directoru is present
+# Checking if the bin directory is present
 ls ../bin >/dev/null 2>&1
 if [ $? != 0 ]; then
     mkdir -p ../bin
