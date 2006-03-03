@@ -3,7 +3,8 @@
   -  of the rules will not work properly.
   -
   -  Author: Daniel B. Cid
-  -  Date: Jan 7, 2006
+  -  Author Ahmet Ozturk
+  -  Date: Mar 1, 2006
   -->
   
 
@@ -34,4 +35,12 @@
     <description>Generic template for all apache rules</description>
   </rule>  
 </group>            
+
+<group name="squid">
+  <rule id="05" level="0" noalert="1">
+    <category>squid</category>
+     <description>Generic template for all squid rules</description>
+  </rule>
+</group>
+            
 <!-- EOF -->
