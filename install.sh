@@ -604,20 +604,22 @@ main()
             catMsg "0x102-installhelp"
 	        ;;
             
-            echo ""
             server|Server|S|SERVER|s)
+            echo ""
 	        echo "  - ${serverchose}."
 	        INSTYPE="server"
 	        break;
 	        ;;
             
             client|agent|Agent|Client|C|A|CLIENT|AGENT|c|a)
+            echo ""
 	        echo "  - ${agentchose}}."
 	        INSTYPE="client"
 	        break;
 	        ;;
    
             local|Local|l|L|LOCAL)
+            echo ""
             echo "  - ${localchose}." 
             INSTYPE="local"
             break;
