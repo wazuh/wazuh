@@ -421,14 +421,14 @@ int Rules_OP_ReadRules(char * rulefile)
                         {
                             config_ruleinfo->category = APACHE;
                         }
-                        else if(strcmp(rule_opt[k]->content, "apache") == 0)
+                        else if(strcmp(rule_opt[k]->content, "squid") == 0)
                         {
                             config_ruleinfo->category = SQUID;
                         }
                         else
                         {
-                            ErrorExit("%s: Invalid category '%s' chosen",
-                                      ARGV0, rule_opt[k]->content);
+                            merror(INVALID_CAT, ARGV0, rule_opt[k]->content);
+                            return(-1);
                         }
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_if_sid)==0)
@@ -441,9 +441,9 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         if(!OS_StrIsNum(rule_opt[k]->content))
                         {
-                            merror("%s: Invalid configuration. If_level '%s'"
-                                      "must be a valid level.",
-                                      ARGV0, rule_opt[k]->content);
+                            merror(INVALID_CONFIG, ARGV0, 
+                                                   "if_level",
+                                                   rule_opt[k]->content); 
                             return(-1);
                         }
 
@@ -476,8 +476,9 @@ int Rules_OP_ReadRules(char * rulefile)
                         config_ruleinfo->context = 1;
                         if(!OS_StrIsNum(rule_opt[k]->content))
                         {
-                            merror("%s: Invalid configuration. If_match_sid '%s' "
-                                   "must be an integer",ARGV0, rule_opt[k]->content);
+                            merror(INVALID_CONFIG, ARGV0,
+                                    "if_matched_sid",
+                                    rule_opt[k]->content);
                             return(-1);
                         }
                         config_ruleinfo->if_matched_sid = atoi(rule_opt[k]->content);
