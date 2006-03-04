@@ -38,10 +38,6 @@ char *(weekdays[])={"Sunday","Monday","Tuesday","Wednesday","Thursday",
 		"Friday","Saturday"};
 
 
-/* Stats definitions */
-#define STATWQUEUE	"/stats/weekly"
-#define STATQUEUE	"/stats/hourly"
-#define STATSAVED   "/stats/total"
 #define MAXDIFF		400
 #define MINDIFF	    40	
 
@@ -70,14 +66,19 @@ char *_prevlast;
 char *_pprevlast;
 
 
-void print_totals(Eventinfo *lf)
+void print_totals()
 {
     int i, totals = 0;
     char logfile[OS_FLSIZE +1];
     FILE *flog;
 
+    /* Pre year must be set */
+    if(!prev_year)
+        return;
+    
+        
     /* Creating the path for the logs */
-    snprintf(logfile, OS_FLSIZE,"%s/%d/", STATSAVED, lf->year);
+    snprintf(logfile, OS_FLSIZE,"%s/%d/", STATSAVED, prev_year);
     if(IsDir(logfile) == -1)
         if(mkdir(logfile,0770) == -1)
         {
@@ -85,7 +86,7 @@ void print_totals(Eventinfo *lf)
             return;
         }
 
-    snprintf(logfile,OS_FLSIZE,"%s/%d/%s", STATSAVED, lf->year, lf->mon);
+    snprintf(logfile,OS_FLSIZE,"%s/%d/%s", STATSAVED, prev_year, prev_month);
 
     if(IsDir(logfile) == -1)
         if(mkdir(logfile,0770) == -1)
@@ -98,10 +99,10 @@ void print_totals(Eventinfo *lf)
     /* Creating the logfile name */
     snprintf(logfile,OS_FLSIZE,"%s/%d/%s/ossec-%s-%02d.log",
             STATSAVED,
-            lf->year,
-            lf->mon,
+            prev_year,
+            prev_month,
             "totals",
-            lf->day);
+            today);
 
     flog = fopen(logfile, "w");
     if(!flog)
@@ -118,7 +119,7 @@ void print_totals(Eventinfo *lf)
     }
     fprintf(flog,"total:%d\n", totals);
     
-    fclose(_fflog);
+    fclose(flog);
 }
 
 
@@ -145,14 +146,14 @@ int gethour(int event_number)
 
 
 /* Update_Hour: done daily  */
-void Update_Hour(Eventinfo *lf)
+void Update_Hour()
 {
     int i,j;
     int inter;
     
     
     /* Print total number of logs received per hour */
-    print_totals(lf);
+    print_totals();
     
     
     /* Hourly update */

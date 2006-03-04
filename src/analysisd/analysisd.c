@@ -58,6 +58,13 @@ int __crt_hour;
 int __crt_wday;
 
 
+/* Time structures */
+int today = 0;
+int thishour = 0;
+
+char prev_month[4] = {'\0','\0','\0','\0'};
+char prev_year = 0;
+
 /* Internal Functions */
 void OS_ReadMSG(int m_queue);
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
@@ -98,6 +105,7 @@ int Start_Hour(int *today,int *thishour);
 int Check_Hour(Eventinfo *lf);
 void Update_Hour();
 
+void DumpLogstats();
 
 /* Main function v0.2: 2005/03/22 */
 int main(int argc, char **argv)
@@ -114,6 +122,13 @@ int main(int argc, char **argv)
     /* Setting the name */
     OS_SetName(ARGV0);
 
+    thishour = 0;
+    today = 0;
+    prev_year = 0;
+    prev_month[0] = '\0';
+    prev_month[1] = '\0';
+    prev_month[2] = '\0';
+    prev_month[3] = '\0';
 
     while((c = getopt(argc, argv, "dhu:g:D:c:")) != -1){
         switch(c){
@@ -270,10 +285,6 @@ int main(int argc, char **argv)
  */
 void OS_ReadMSG(int m_queue)
 {
-
-    /* Time structures */
-    int today = 0;
-    int thishour = 0;
 
     
     /* Null to global currently pointers */
@@ -476,24 +487,29 @@ void OS_ReadMSG(int m_queue)
                 }
             }
 
+
+            /* Update the hour */
+            if(thishour != __crt_hour)
+            {
+                /* Search all the rules and print the number
+                 * of alerts that each one fired.
+                 */
+                DumpLogstats(); 
+                thishour = __crt_hour;
+            }
+           
             
             /* Check if the date has changed */
             if(today != lf->day)
             {
                 if(Config.stats)
-                    Update_Hour();  /* Update the hour stats (done daily) */
+                    Update_Hour();  /* Update the hourly stats (done daily) */
                 
                 /* Syscheck Update */
                 SyscheckUpdateDaily();    
                 today = lf->day;
             }
 
-            /* Update the hour */
-            if(thishour != __crt_hour)
-            {
-                thishour = __crt_hour;
-            }
-    
             
             /* Stats checking */
             if(Config.stats)
@@ -534,7 +550,6 @@ void OS_ReadMSG(int m_queue)
             
             /* Looping all the rules */
             rulenode_pt = OS_GetFirstRule();
-           
             if(!rulenode_pt) 
             {
                 ErrorExit("%s: Rules in an inconsistent state. Exiting.",
@@ -557,11 +572,6 @@ void OS_ReadMSG(int m_queue)
                 }
 
                 
-                
-                /* Rule fired (if reached here) */
-                currently_rule->firedtimes++;
-
-
                 /* Checking ignore time */ 
                 if(currently_rule->ignore_time)
                 {
@@ -590,19 +600,11 @@ void OS_ReadMSG(int m_queue)
                 lf->sigid    = currently_rule->sigid;
 
 
-                /* Copying the group */
-                if(lf->group)
-                    free(lf->group);
-                    
-                lf->group    = strdup(currently_rule->group);
+                /* Getting the group */
+                lf->group    = currently_rule->group;
                 
-                if(!lf->group)
-                {
-                    merror(MEM_ERROR,ARGV0);
-                }
-                 
-
                 lf->comment = currently_rule->comment;
+
 
                 /* Setting the last events if specified */
                 lf->lasts_lf = currently_rule->last_events;
@@ -703,13 +705,18 @@ void OS_ReadMSG(int m_queue)
             /* Cleaning the memory */	
             CLMEM:
             
+            prev_month[0] = lf->mon[0];
+            prev_month[1] = lf->mon[1];
+            prev_month[2] = lf->mon[2];
+            prev_year = lf->year;
+            
             /* Only clear the memory if the eventinfo was not
-             * added to the stateful memory
+             * added to the stateful memory 
+             * -- message is free inside clean event --
              */
             if(lf->level < 0)
                 Free_Eventinfo(lf);
 
-            /* msg is free inside clean event */
         }
     }
     return;
@@ -849,7 +856,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
         }
     }
-     
+   
+      
     /* If it is a context rule, search for it */
     if(currently_rule->context == 1)
     {
@@ -858,6 +866,11 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
         }
     }
+
+
+    /* Incrementing hourly fired times */
+    currently_rule->firedtimes++;
+
 
     /* Search for dependent rules */
     if(curr_node->child)
@@ -885,5 +898,100 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
    
     return(currently_rule);  /* Matched */
 }
+
+
+/** void LoopRule(RuleNode *curr_node);
+ *  Update each rule and print it to the logs.
+ */
+void LoopRule(RuleNode *curr_node, FILE *flog)
+{
+    if(curr_node->ruleinfo->firedtimes)
+    {
+        fprintf(flog, "%d:rule %d:%d\n", thishour, 
+                                         curr_node->ruleinfo->sigid,
+                                         curr_node->ruleinfo->firedtimes);
+        curr_node->ruleinfo->firedtimes = 0;
+    }
+    
+    if(curr_node->child)
+    {
+        RuleNode *child_node = curr_node->child;
+
+        while(child_node)
+        {
+            LoopRule(child_node, flog);
+            child_node = child_node->next;
+        }
+    }
+    return;
+}
+
+
+/** void DumpLogstats();
+ *  Dump the hourly stats about each rule.
+ */
+void DumpLogstats()
+{
+    RuleNode *rulenode_pt;
+    char logfile[OS_FLSIZE +1];
+    FILE *flog;
+
+    /* We need to have year and month set */
+    if(prev_year == 0)
+        return;
+
+
+    /* Opening log file */
+    snprintf(logfile, OS_FLSIZE, "%s/%d/", STATSAVED, prev_year);
+    if(IsDir(logfile) == -1)
+        if(mkdir(logfile,0770) == -1)
+        {
+            merror(MKDIR_ERROR, ARGV0, logfile);
+            return;
+        }
+
+    snprintf(logfile,OS_FLSIZE,"%s/%d/%s", STATSAVED, prev_year,prev_month);
+
+    if(IsDir(logfile) == -1)
+        if(mkdir(logfile,0770) == -1)
+        {
+            merror(MKDIR_ERROR,ARGV0,logfile);
+            return;
+        }
+
+
+    /* Creating the logfile name */
+    snprintf(logfile,OS_FLSIZE,"%s/%d/%s/ossec-%s-%02d.log",
+            STATSAVED,
+            prev_year,
+            prev_month,
+            "totals",
+            today);
+
+    flog = fopen(logfile, "w");
+    if(!flog)
+    {
+        merror(FOPEN_ERROR, ARGV0, logfile);
+        return;
+    }
+
+    rulenode_pt = OS_GetFirstRule();
+
+    if(!rulenode_pt)
+    {
+        ErrorExit("%s: Rules in an inconsistent state. Exiting.",
+                ARGV0);
+    }
+
+    /* Looping on all the rules and printing the stats from them */
+    do
+    {
+        LoopRule(rulenode_pt, flog);    
+    }while((rulenode_pt = rulenode_pt->next) != NULL);
+
+    fclose(flog);
+}
+
+
 
 /* EOF */

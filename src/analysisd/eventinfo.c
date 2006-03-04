@@ -186,8 +186,6 @@ void Free_Eventinfo(Eventinfo *lf)
     
     if(lf->log)
         free(lf->log);
-    if(lf->group)
-        free(lf->group);
     if(lf->location)
         free(lf->location);
     if(lf->hostname)

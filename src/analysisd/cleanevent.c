@@ -276,9 +276,8 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     }
 
 
-    /* location and group */        
+    /* location  */        
     lf->location = pieces[1];
-    lf->group = pieces[2];
 
 
     /* Setting up the event data */
@@ -356,10 +355,11 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
 
     /* Clearing the memory */
-    /* We can't clear pieces[1] and pieces[2].
+    /* We can't clear pieces[1] .
      */
      
     free(pieces[0]);
+    free(pieces[2]);
     free(log3);
     
     free(pieces);

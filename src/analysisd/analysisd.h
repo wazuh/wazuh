@@ -21,5 +21,12 @@
 
 #include <sys/types.h>
 
+/* Time structures */
+int today;
+int thishour;
+
+char prev_month[4];
+char prev_year;
+
 time_t c_time; /* Current time of event. Used everywhere */
 #endif
