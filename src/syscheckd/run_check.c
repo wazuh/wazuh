@@ -25,6 +25,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
+#include <time.h>
 
 #include "os_crypto/md5/md5_op.h"
 

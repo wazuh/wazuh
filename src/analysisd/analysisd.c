@@ -58,13 +58,6 @@ int __crt_hour;
 int __crt_wday;
 
 
-/* Time structures */
-int today = 0;
-int thishour = 0;
-
-char prev_month[4] = {'\0','\0','\0','\0'};
-char prev_year = 0;
-
 /* Internal Functions */
 void OS_ReadMSG(int m_queue);
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
@@ -101,7 +94,7 @@ void SyscheckUpdateDaily();
 
 
 /* From stats */
-int Start_Hour(int *today,int *thishour);
+int Start_Hour();
 int Check_Hour(Eventinfo *lf);
 void Update_Hour();
 
@@ -402,7 +395,7 @@ void OS_ReadMSG(int m_queue)
 
 
     /* Starting the hourly/weekly stats */
-    if(Start_Hour(&today,&thishour) < 0)
+    if(Start_Hour() < 0)
         Config.stats = 0;
 
 

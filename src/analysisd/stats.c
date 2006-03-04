@@ -114,10 +114,10 @@ void print_totals()
     /* Printing the hourly stats */
     for(i=0;i<=23;i++)
     {
-        fprintf(flog,"%d:%d\n", i, _CHour[i]);
+        fprintf(flog,"Hour Average - %d:%d\n", i, _CHour[i]);
         totals+=_CHour[i];
     }
-    fprintf(flog,"total:%d\n", totals);
+    fprintf(flog,"Total for day:%d\n", totals);
     
     fclose(flog);
 }
@@ -321,7 +321,7 @@ int Check_Hour(Eventinfo *lf)
 }
 
 /* Starting hourly stats and other necessary variables */
-int Start_Hour(int *today, int *thishour)
+int Start_Hour()
 {
     int i=0,j=0;
     struct tm *p;
@@ -333,8 +333,8 @@ int Start_Hour(int *today, int *thishour)
     _fired = 0;
     _cignorehour = 0;
 
-    *today = p->tm_mday;
-    *thishour = p->tm_hour;
+    today = p->tm_mday;
+    thishour = p->tm_hour;
 
     /* Last three messages
      * They are used to keep track of the last
