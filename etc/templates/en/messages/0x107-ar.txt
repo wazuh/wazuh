@@ -5,4 +5,3 @@
        specific user (for example). 
        http://www.ossec.net/hids/config.php#active-response 
        
-       Do you want to have active response enabled? (yes/no)y

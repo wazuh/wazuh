@@ -48,6 +48,7 @@ norootcheck="Not running rootcheck (rootkit detection)"
 yesrootcheck="Running rootcheck (rootkit detection)"
 
 # Part 3.4/server/local
+enable_ar="Do you want to have active response enabled?"
 noactive="Active response disabled"
 nohosts="host-deny disabled"
 yeshosts="host-deny enabled (local) for levels >= 6"
