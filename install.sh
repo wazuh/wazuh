@@ -151,7 +151,7 @@ SetupLogs()
     echo ""
     echo "  $NB- ${readlogs}"
 
-    LOG_FILES="/var/log/messages /var/log/authlog /var/log/auth.log /var/log/secure /var/log/syslog /var/log/ipfilter.log /var/adm/ipsec.log"
+    LOG_FILES="/var/log/messages /var/log/authlog /var/log/auth.log /var/log/secure /var/log/syslog /var/log/ipfilter.log /var/adm/ipsec.log /var/log/userlog /var/log/security"
 
     for i in ${LOG_FILES}; do
         # If log file present, add it    
@@ -256,7 +256,7 @@ ConfigureServer()
     
     # Configuring e-mail notification
 	echo ""
-	echo "  3.1- ${mailnotify} (y/n)y"
+	$ECHO "  3.1- ${mailnotify} (y/n)y"
 	read ANSWER
 	case $ANSWER in
 		n|N)
@@ -298,8 +298,8 @@ ConfigureServer()
                      ;;
                   *)
                      SMTP=${SMTPHOST}
-                     echo "   --- ${usingsmtp} ${SMTP}"   
                      echo ""
+                     echo "   --- ${usingsmtp} ${SMTP}"   
                      ;;
                esac
             fi
@@ -356,6 +356,7 @@ ConfigureServer()
 
     # Active response
     catMsg "0x107-ar"
+    $ECHO "${enable_ar}"
     
     read AR
     case $AR in
@@ -510,6 +511,7 @@ setEnv()
 
     CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${WORKDIR}\\\""
     
+    echo ""
     echo "    - ${installat} ${INSTALLDIR}"
     
 
