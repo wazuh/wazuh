@@ -50,7 +50,8 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size);
 /* OS_RecvUnix
  * Receive a message via a Unix socket
  */
-char *OS_RecvUnix(int socket, int sizet);
+int OS_RecvUnix(int socket, int sizet, char *ret); 
+
 
 /* OS_RecvTCP
  * Receive a TCP packet
