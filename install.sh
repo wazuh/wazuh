@@ -260,6 +260,7 @@ ConfigureServer()
 	read ANSWER
 	case $ANSWER in
 		n|N)
+            echo ""
 			echo "   --- ${nomail} "
 			EMAILNOTIFY="no"
 			;;
