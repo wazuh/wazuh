@@ -12,8 +12,7 @@
 
 #include "shared.h"
 #include "os_net/os_net.h"
-int __mq_rcode;
-int __mq_non_block = 0;
+
 
 
 /* StartMQ v0.2, 2004/07/30
@@ -71,33 +70,13 @@ int StartMQ(char * path, short int type)
 }
 
 
-/* FinishMQ v0.2, 2004/07/29
- * Finish the Message queue.
- */
-int FinishMQ()
-{
-    return(0);
-}
-
-/** void QueueNonBlocking()
- * Set the queue for non blocking
- */
-void QueueNonBlocking()
-{
-    __mq_non_block = 1;
-    
-    return;
-}
-
-
 /* SendMSG v0.1, 2005/02/15
  * Send a message to the queue.
  */
-int SendMSG(int queue, char *message, char *locmsg,
-                       char *logroup, char loc)
+int SendMSG(int queue, char *message, char *locmsg, char loc)
 {
+    int __mq_rcode;
     char tmpstr[OS_MAXSTR+1];
-
 
     tmpstr[OS_MAXSTR] = '\0';
 
@@ -117,7 +96,7 @@ int SendMSG(int queue, char *message, char *locmsg,
         snprintf(tmpstr,OS_MAXSTR,"%c:%s->%s",loc, locmsg, message);
     }
     else
-        snprintf(tmpstr,OS_MAXSTR,"%c:%s:%s:%s",loc,locmsg,logroup,message);
+        snprintf(tmpstr,OS_MAXSTR,"%c:%s:%s",loc,locmsg,message);
 
 
     /* queue not available */

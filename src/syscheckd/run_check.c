@@ -55,7 +55,7 @@ char alert_msg[512];
  */
 int notify_agent(char *msg)
 {
-    if(SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK, SYSCHECK_MQ) < 0)
+    if(SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ) < 0)
     {
         merror(QUEUE_SEND, ARGV0);
 
@@ -65,7 +65,7 @@ int notify_agent(char *msg)
         }
 
         /* If we reach here, we can try to send it again */
-        SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK, SYSCHECK_MQ);
+        SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ);
         
     }
 
