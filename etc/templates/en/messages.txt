@@ -1,3 +1,9 @@
+# Configuration
+yes="y"
+no="n"
+yesmatch="y"
+nomatch="n"
+
 # Global
 moreinfo="More information at: "
 starting="Starting OSSEC HIDS"

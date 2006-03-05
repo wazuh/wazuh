@@ -281,7 +281,7 @@ int main(int argc, char **argv)
 void OS_ReadMSG(int m_queue)
 {
     char msg[OS_MAXSTR +1];
-    
+    Eventinfo *lf;
     
     /* Null to global currently pointers */
     currently_rule = NULL;
@@ -404,6 +404,22 @@ void OS_ReadMSG(int m_queue)
     /* Doing some cleanup */
     memset(msg, '\0', OS_MAXSTR +1);
     
+    /* Initializing the logs */
+    {
+        lf = (Eventinfo *)calloc(1,sizeof(Eventinfo));
+        if(!lf)
+            ErrorExit(MEM_ERROR, ARGV0);
+        lf->year = prev_year;
+        os_strdup(prev_month, lf->mon);
+        lf->day = today;
+
+        if(OS_GetLogLocation(lf) < 0)
+        {
+            ErrorExit("%s: Error alocating log files", ARGV0);
+        }
+
+        Free_Eventinfo(lf);
+    }
     
     debug1("%s: DEBUG: Startup completed. Waiting for new messages..",ARGV0);
     

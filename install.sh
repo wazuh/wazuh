@@ -82,11 +82,11 @@ UseSyscheck()
 
     # Integrity check config
     echo ""
-    $ECHO "  3.2- ${runsyscheck}?(yes/no)y"
+    $ECHO "  3.2- ${runsyscheck} ($yes/$no) [$yes]: "
     read AS
     echo ""
     case $AS in
-        n|N|no|No|NO)
+        $nomatch)
             echo "   - ${nosyscheck}"
             ;;
         *)
@@ -113,11 +113,11 @@ UseRootcheck()
 
     # Rootkit detection configuration 
     echo ""
-    $ECHO "  3.3- ${runrootcheck}(yes/no)y"
+    $ECHO "  3.3- ${runrootcheck} ($yes/$no) [$yes]: "
     read ES
     echo ""
     case $ES in
-        n|N|no|No|NO)
+        $nomatch)
             echo "   - ${norootcheck}"
             ;;
         *)
@@ -256,10 +256,10 @@ ConfigureServer()
     
     # Configuring e-mail notification
 	echo ""
-	$ECHO "  3.1- ${mailnotify} (y/n)y"
+	$ECHO "  3.1- ${mailnotify} ($yes/$no) [$yes]: "
 	read ANSWER
 	case $ANSWER in
-		n|N)
+		$nomatch)
             echo ""
 			echo "   --- ${nomail} "
 			EMAILNOTIFY="no"
@@ -290,10 +290,10 @@ ConfigureServer()
             if [ "X${SMTPHOST}" != "X" ]; then
                echo ""
                echo "   - ${yoursmtp}: ${SMTPHOST}"
-               $ECHO "   - ${usesmtp} (y/n)y"
+               $ECHO "   - ${usesmtp} ($yes/$no) [$yes]: "
                read EMAIL2
                case ${EMAIL2} in
-                  n|N|no|No|NO)
+                  $nomatch)
                      echo ""
                      SMTP=""
                      ;;
@@ -357,11 +357,11 @@ ConfigureServer()
 
     # Active response
     catMsg "0x107-ar"
-    $ECHO "${enable_ar}"
+    $ECHO "${enable_ar} ($yes/$no) [$yes]: "
     
     read AR
     case $AR in
-        n|N|no|No|NO)
+        $nomatch)
             echo "   - ${noactive}."
             ;;
         *)
@@ -370,7 +370,7 @@ ConfigureServer()
             
             read HD
             case $HD in
-                n|N|no|No|NO)
+                $nomatch)
                     echo "     - ${nohosts}"
                     ;;
                 *)    
@@ -379,10 +379,10 @@ ConfigureServer()
                     ;;
             esac
             echo ""
-            echo "   - ${firewallar}(yes/no)y"
+            $ECHO "   - ${firewallar} ($yes/$no) [$yes]: "
             read HD2
             case $HD2 in
-                n|N|no|No|NO)
+                $nomatch)
                     echo "     - ${nofirewall}"
                     ;;
                 *)
@@ -399,10 +399,10 @@ ConfigureServer()
     if [ "X$INSTYPE" = "Xserver" ]; then
       # Configuring remote syslog  
 	  echo ""
-	  echo "  3.5- ${syslog} (y/n)y"
+	  $ECHO "  3.5- ${syslog} ($yes/$no) [$yes]: "
 	  read ANSWER
       case $ANSWER in
-		n|N)
+		$nomatch)
 			echo "   --- ${nosyslog}"
 			;;
 		*)

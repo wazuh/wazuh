@@ -335,9 +335,10 @@ int Start_Hour()
 
     today = p->tm_mday;
     thishour = p->tm_hour;
-    prev_year = p->tm_year;
+    prev_year = p->tm_year + 1900;
     strncpy(prev_month, l_month[p->tm_mon], 3);
     prev_month[3] = '\0';
+
 
     /* Last three messages
      * They are used to keep track of the last
