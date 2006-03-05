@@ -41,12 +41,13 @@
 #include "config.h"
 
 
+/* OS_Store: v0.2, 2005/02/10 */
 /* Will store the events in a file 
  * The string must be null terminated and contain
  * any necessary new lines, tabs, etc.
  *
  */
-void _storetofile(Eventinfo *lf)
+void OS_Store(Eventinfo *lf)
 {
     if(_eflog) 
     {
@@ -69,10 +70,10 @@ void _storetofile(Eventinfo *lf)
 }
 
 
+/* OS_Log: v0.3, 2006/03/04 */
 /* _writefile: v0.2, 2005/02/09 */
-void _writefile(Eventinfo *lf)
+void OS_Log(Eventinfo *lf)
 {
-
     /* Writting to the alert log file */
     if(_aflog) 
     {
@@ -114,46 +115,6 @@ void _writefile(Eventinfo *lf)
 }
 
 
-/* OS_Store: v0.2, 2005/02/10 */
-void OS_Store(Eventinfo *lf)
-{
-    if(OS_GetLogLocation(lf) < 0)
-    {
-    /* Return null for permission errors. 
-     * We can't log.
-     */
-        merror(PERM_ERROR,ARGV0);
-        return;
-    }
-
-
-    /* Write to file */
-    _storetofile(lf);
-
-    return;
-}
-
-
-/* OS_Log: v0.2, 2005/02/10 */
-void OS_Log(Eventinfo *lf)
-{
-    if(OS_GetLogLocation(lf) < 0)
-    {
-    /* Return null for permission errors. 
-     * We can't log.
-     */
-        merror(PERM_ERROR,ARGV0);
-        return;
-    }
-
-
-    /* Write to file */
-    _writefile(lf);
-
-    return;
-}
-
-
 /* FW_Log: v0.1, 2005/12/30 */
 int FW_Log(Eventinfo *lf)
 {
@@ -164,14 +125,6 @@ int FW_Log(Eventinfo *lf)
     if(!lf->action || !lf->srcip)
     {
         return(0);
-    }
-
-    
-    /* Getting the location */
-    if(OS_GetLogLocation(lf) < 0)
-    {
-        merror(PERM_ERROR, ARGV0);
-        return(-1);
     }
 
 
