@@ -7,11 +7,9 @@ void LastMsg_Change(char *log);
 int LastMsg_Stats(char *log);
 
 /* Stats definitions */
-#define STATWQUEUE  "/stats/weekly"
-#define STATQUEUE   "/stats/hourly"
-#define STATSAVED   "/stats/total"
+#define STATWQUEUE  "/stats/weekly-average"
+#define STATQUEUE   "/stats/hourly-average"
+#define STATSAVED   "/stats/totals"
 
-
-/* Other necessary global variables */
 
 #endif
