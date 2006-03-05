@@ -25,6 +25,8 @@
 struct sockaddr_in _c;	    /* Client socket */
 socklen_t _cl;              /* Client socket length */
 struct sockaddr_un n_us;    /* Unix socket  */
+socklen_t us_l = sizeof(n_us);
+
 
 /* UNIX SOCKET */
 #ifndef SUN_LEN
@@ -346,22 +348,15 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
 /* OS_RecvUnix, v0.1, 2004/07/29
  * Receive a message using a Unix socket
  */
-char *OS_RecvUnix(int socket, int sizet)
+int OS_RecvUnix(int socket, int sizet, char *ret)
 {
-    char *ret;
-    socklen_t us_l;
+    size_t recvd;
+    if((recvd = recvfrom(socket,ret, sizet-1,0,(struct sockaddr*)&n_us,&us_l)) 
+        < 0)
+        return(0);
 
-    us_l = sizeof(n_us);
-
-    ret = (char *) calloc((sizet), sizeof(char));
-    
-    if(ret == NULL)
-        return(NULL);
-    
-    if(recvfrom(socket,ret,sizet-1,0,(struct sockaddr*)&n_us,&us_l) < 0)
-        return(NULL);
-
-    return(ret);
+    ret[recvd] = '\0';
+    return(1);
 }
 
 
@@ -371,10 +366,6 @@ char *OS_RecvUnix(int socket, int sizet)
  */ 
 int OS_SendUnix(int socket, char * msg, int size)
 {
-    int us_l;
-
-    us_l = sizeof(n_us);
-    
     if(size == 0)
         size = strlen(msg)+1;
         
