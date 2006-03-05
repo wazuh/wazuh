@@ -96,26 +96,20 @@
     <description>Connection blocked by Tcp Wrappers (or other ACL)</description>
   </rule>
 
-  <rule id ="404" level="9">
+  <rule id ="404" level="5">
     <if_sid>400</if_sid>
     <match>illegal user|invalid user</match>
     <description>Attempt to login using a non-existent user</description>
   </rule>
 
-  <rule id ="405" level="12">
+  <rule id ="405" level="9">
     <match>ILLEGAL ROOT LOGIN</match>
-    <description>Illegal root login. Some verification is necessary</description>
+    <description>Illegal root login. </description>
   </rule>
 
   <rule id="406" level="3">
     <regex>^login[\d+]: ROOT LOGIN  on</regex>
     <description>Physical root login</description>
-  </rule>  
-
-  <rule id="407" level="9">
-    <if_sid>401</if_sid>
-    <user>root</user>
-    <description>Authentication failed while logging in as root</description>
   </rule>  
 
   <rule id="408" level="10" frequency="6" timeframe="120" ignore="60">

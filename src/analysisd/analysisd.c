@@ -101,6 +101,9 @@ int Check_Hour(Eventinfo *lf);
 void Update_Hour();
 void DumpLogstats();
 
+/* Hourly alerts */
+int hourly_alerts;
+
 
 /* Main function v0.2: 2005/03/22 */
 int main(int argc, char **argv)
@@ -124,6 +127,7 @@ int main(int argc, char **argv)
     prev_month[1] = '\0';
     prev_month[2] = '\0';
     prev_month[3] = '\0';
+    hourly_alerts = 0;
 
     while((c = getopt(argc, argv, "dhu:g:D:c:")) != -1){
         switch(c){
@@ -928,6 +932,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         return(NULL);
     }
    
+    hourly_alerts++;
     return(currently_rule);  /* Matched */
 }
 
@@ -1022,6 +1027,15 @@ void DumpLogstats()
         LoopRule(rulenode_pt, flog);    
     }while((rulenode_pt = rulenode_pt->next) != NULL);
 
+    /* Print total for the hour */
+    if(hourly_alerts)
+    {
+        fprintf(flog, "Alerts for:%d:%d\n",
+                thishour,
+                hourly_alerts);
+        hourly_alerts = 0;
+    }
+    
     fclose(flog);
 }
 
