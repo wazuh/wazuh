@@ -25,8 +25,11 @@
 int today;
 int thishour;
 
+int prev_year;
 char prev_month[4];
-char prev_year;
+
+int __crt_hour;
+int __crt_wday;
 
 time_t c_time; /* Current time of event. Used everywhere */
 #endif
