@@ -60,7 +60,7 @@ int notify_rk(int rk_type, char *msg)
         return(0);
 
     #ifdef OSSECHIDS    
-    if(SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK, ROOTCHECK_MQ) < 0)
+    if(SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0)
     {
         merror(QUEUE_SEND, ARGV0);
 
@@ -69,7 +69,7 @@ int notify_rk(int rk_type, char *msg)
             ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
         }
 
-        if(SendMSG(rootcheck.queue,msg,ROOTCHECK,ROOTCHECK,ROOTCHECK_MQ) < 0)
+        if(SendMSG(rootcheck.queue,msg,ROOTCHECK,ROOTCHECK_MQ) < 0)
         {
             ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
         }

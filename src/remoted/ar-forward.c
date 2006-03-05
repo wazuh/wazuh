@@ -46,7 +46,7 @@ void *AR_Forward(void *arg)
     
     char msg_to_send[OS_MAXSTR +1];
     
-    char *msg = NULL;
+    char msg[OS_MAXSTR +1];
     char *location = NULL;
     char *ar_location_str = NULL;
     char *ar_agent_id = NULL;
@@ -59,12 +59,13 @@ void *AR_Forward(void *arg)
         ErrorExit(QUEUE_ERROR, ARGV0, ARQUEUE);
     }
 
+    memset(msg, '\0', OS_MAXSTR +1);
+
     /* Daemon loop */
     while(1)
     {
-        if((msg = OS_RecvUnix(arq, OS_MAXSTR)) != NULL)
+        if(OS_RecvUnix(arq, OS_MAXSTR, msg))
         {
-
             /* Always zeroing the location */
             ar_location = 0;
             
@@ -184,7 +185,6 @@ void *AR_Forward(void *arg)
             }
 
             cleanup:
-            free(msg);
         }
     }
 }

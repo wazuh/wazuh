@@ -100,7 +100,6 @@ void HandleSyslog(int position)
         }
 
         else if(SendMSG(logr.m_queue, buffer,srcip,
-                        "syslog",
                         SYSLOG_MQ) < 0)
         {
             merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
