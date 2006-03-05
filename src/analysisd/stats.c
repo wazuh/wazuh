@@ -35,7 +35,10 @@
 #include "headers/debug_op.h"
 
 char *(weekdays[])={"Sunday","Monday","Tuesday","Wednesday","Thursday",
-		"Friday","Saturday"};
+		            "Friday","Saturday"};
+char *(l_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
+                 "Sept","Oct","Nov","Dec"};
+                        
 
 
 #define MAXDIFF		400
@@ -50,9 +53,6 @@ int _CWHour[7][25];
 
 int _RHour[25];
 int _CHour[25];
-
-extern int __crt_wday;
-extern int __crt_hour;
 
 int _cignorehour = 0;
 int _fired = 0;
@@ -114,10 +114,10 @@ void print_totals()
     /* Printing the hourly stats */
     for(i=0;i<=23;i++)
     {
-        fprintf(flog,"Hour Average - %d:%d\n", i, _CHour[i]);
+        fprintf(flog,"Hour totals - %d:%d\n", i, _CHour[i]);
         totals+=_CHour[i];
     }
-    fprintf(flog,"Total for day:%d\n", totals);
+    fprintf(flog,"Total events for day:%d\n", totals);
     
     fclose(flog);
 }
@@ -335,6 +335,9 @@ int Start_Hour()
 
     today = p->tm_mday;
     thishour = p->tm_hour;
+    prev_year = p->tm_year;
+    strncpy(prev_month, l_month[p->tm_mon], 3);
+    prev_month[3] = '\0';
 
     /* Last three messages
      * They are used to keep track of the last

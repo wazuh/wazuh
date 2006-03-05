@@ -1,4 +1,4 @@
-/*   $OSSEC, cleanevent.c, v0.2, 2005/08/26, Daniel B. Cid$   */
+/*   $OSSEC, cleanevent.c, v0.3, 2006/03/04, Daniel B. Cid$   */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -10,15 +10,12 @@
  */
 
 
-/* v0.2(2005/08/26): Fixing the decoder for snort-fast alerts
+/* v0.3(2006/03/04): Moving the decoder away from here. Some
+ *                   optimizations.
+ * v0.2(2005/08/26): Fixing the decoder for snort-fast alerts
  * v0.1:
  */
   
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
 
 #include "shared.h"
 #include "os_regex/os_regex.h"
@@ -36,72 +33,48 @@ char *(month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
 	            "Sept","Oct","Nov","Dec"};
 
 
-/* current hour and weekday.
- * Used to generate hourly statistics 
- */
-extern int  __crt_hour;
-extern int  __crt_wday;
-
-/* External Functions prototypes
- */
-void DecodeEvent(Eventinfo *lf);
-int DecodeSnort(Eventinfo *lf, char c);
-void DecodeSyscheck(Eventinfo *lf);
-void DecodeRootcheck(Eventinfo *lf);
-                
 
                 
-/* OS_CleanMSG v0.2: 2005/03/22
+/* OS_CleanMSG v0.3: 2006/03/04
  * Format a received message in the 
  * Eventinfo structure.
  */
 int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
-    char **pieces = NULL;
-    char *log3;
+    char *pieces[2];
     
-    int hostname_size = 0,loglen = 0;
+    int hostname_size = 0, loglen = 0;
     
     struct tm *p;
 
+    /* Going after the first piece */
+    msg+=2;
 
-    /* MSG Can't be NULL */
-    if(msg == NULL)
-    {
-        merror(NULL_ERROR,ARGV0);
-        return(-1);
-    }
-
-    /* Calling StrBreak */
-    pieces = OS_StrBreak(':', msg, 4); /* Divide in 4 pieces */
-    if(pieces == NULL)
+    pieces[0] = msg;
+    
+    pieces[1] = strchr(msg, ':');
+    if(!pieces[1])
     {
         merror(FORMAT_ERROR,ARGV0);
         return(-1);
     }
-
-    /* None of the pieces can be null */    
-    if((pieces[0] == NULL)||(pieces[1] == NULL)||
-       (pieces[2] == NULL)||(pieces[3] == NULL))
-    {
-        merror(FORMAT_ERROR,ARGV0);
-        return(-1);
-    }
-
-
-    log3 = pieces[3]; /* to free later */
-    loglen=strlen(pieces[3])+1;
-
+    
+    *pieces[1] = '\0';
+    pieces[1]++;    
+    
+    /* Now pieces[0] is the location and pieces[1] the log itself */
+    loglen = strlen(pieces[1]) + 1;
+    
     
     /* Checking for the syslog date format. 
      * ( ex: Dec 29 10:00:01 ) 
      */	
     if( (loglen > 16) && 
-        (pieces[3][3] == ' ') && 
-        (pieces[3][6] == ' ') && 
-        (pieces[3][9] == ':') && 
-        (pieces[3][12] == ':') && 
-        (pieces[3][15] == ' ') )
+        (pieces[1][3] == ' ') && 
+        (pieces[1][6] == ' ') && 
+        (pieces[1][9] == ':') && 
+        (pieces[1][12] == ':') && 
+        (pieces[1][15] == ' ') )
     {
 
         /* Use the date from the log instead of using the
@@ -111,29 +84,29 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         {
             /* Getting the month */
             os_calloc(4,sizeof(char), lf->mon);
-            strncpy(lf->mon,pieces[3],3);
-            pieces[3]+=4;
+            strncpy(lf->mon,pieces[1],3);
+            pieces[1]+=4;
 
             /* Getting the day */
-            lf->day = atoi(pieces[3]);
-            pieces[3] = index(pieces[3], ' ');
-            if(!pieces[3])
+            lf->day = atoi(pieces[1]);
+            pieces[1] = index(pieces[1], ' ');
+            if(!pieces[1])
             {
                 merror(FORMAT_ERROR,ARGV0);
                 return(-1);
 
             }
-            pieces[3]++;
+            pieces[1]++;
 
             /* Getting the hour */
             os_calloc(9,sizeof(char), lf->hour);
-            strncpy(lf->hour,pieces[3],8);
+            strncpy(lf->hour,pieces[1],8);
 
-            pieces[3]+=9;
+            pieces[1]+=9;
         }
         else
         {
-            pieces[3]+=16;
+            pieces[1]+=16;
         }
 
         /* Assining the memory for hostname */
@@ -143,19 +116,19 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             if(hostname_size >= OS_FLSIZE)
             {
                 merror("%s: Invalid hostname (greater than %d): '%s'",
-                                             ARGV0, OS_FLSIZE, pieces[3]);
+                                             ARGV0, OS_FLSIZE, pieces[1]);
                 return(-1);
                 break;
             }
-            lf->hostname[hostname_size++] = *pieces[3];
-        }while(*(++pieces[3]) != ' ');
+            lf->hostname[hostname_size++] = *pieces[1];
+        }while(*(++pieces[1]) != ' ');
 
 
         /* Apending the \0 to the hostname string */
         lf->hostname[hostname_size] = '\0';
         
-        /* Moving pieces[3] to the beginning of the log message */
-        pieces[3]++;
+        /* Moving pieces[1] to the beginning of the log message */
+        pieces[1]++;
     }
 
 
@@ -163,12 +136,12 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      * ex: 01/28-09:13:16.240702  [**] 
      */ 
     else if( (loglen > 23) && 
-             (pieces[3][2] == '/') && 
-             (pieces[3][5] == '-') &&
-             (pieces[3][8] == ':') && 
-             (pieces[3][11]== ':') &&
-             (pieces[3][14]== '.') && 
-             (pieces[3][21] == ' ') )
+             (pieces[1][2] == '/') && 
+             (pieces[1][5] == '-') &&
+             (pieces[1][8] == ':') && 
+             (pieces[1][11]== ':') &&
+             (pieces[1][14]== '.') && 
+             (pieces[1][21] == ' ') )
     {
         /* Use the date from the log instead of using the
          * date from when the log was received 
@@ -177,7 +150,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         {
             /* Getting the month */
             int month_int;
-            month_int = atoi(pieces[3]) - 1;
+            month_int = atoi(pieces[1]) - 1;
             if((month_int < 0) || (month_int > 11))
             {
                 merror(FORMAT_ERROR,ARGV0);
@@ -186,35 +159,35 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             
             os_calloc(4,sizeof(char),lf->mon);
             strncpy(lf->mon, month[month_int], 3);
-            pieces[3]+=3;
+            pieces[1]+=3;
 
 
             /* Getting the day */
-            lf->day = atoi(pieces[3]);
-            pieces[3]+=3;
+            lf->day = atoi(pieces[2]);
+            pieces[1]+=3;
            
             os_calloc(9, sizeof(char),lf->hour); 
-            strncpy(lf->hour,pieces[3],8);
+            strncpy(lf->hour,pieces[1],8);
             
-            pieces[3]+=17;
+            pieces[1]+=17;
         }
         else
         {
-            pieces[3]+=23;
+            pieces[1]+=23;
         }
     }
 
     /* Checking for apache log format */
     /* [Fri Feb 11 18:06:35 2004] [warn] */
     else if( (loglen > 27) && 
-             (pieces[3][0] == '[') && 
-             (pieces[3][4] == ' ') &&
-             (pieces[3][8] == ' ') && 
-             (pieces[3][11]== ' ') &&
-             (pieces[3][14]== ':') && 
-             (pieces[3][17]== ':') &&
-             (pieces[3][20]== ' ') && 
-             (pieces[3][25]== ']') )
+             (pieces[1][0] == '[') && 
+             (pieces[1][4] == ' ') &&
+             (pieces[1][8] == ' ') && 
+             (pieces[1][11]== ' ') &&
+             (pieces[1][14]== ':') && 
+             (pieces[1][17]== ':') &&
+             (pieces[1][20]== ' ') && 
+             (pieces[1][25]== ']') )
     {
         
         /* Use the date from the log instead of using the
@@ -223,30 +196,30 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         if(Config.keeplogdate)
         {
             /* Getting the month */
-            pieces[3]+=5;
+            pieces[1]+=5;
             os_calloc(4,sizeof(char),lf->mon);
-            strncpy(lf->mon,pieces[3],3);
+            strncpy(lf->mon,pieces[1],3);
             
-            pieces[3]+=4;
+            pieces[1]+=4;
             
             /* Getting the day */
-            lf->day = atoi(pieces[3]);
-            pieces[3]+=3;
+            lf->day = atoi(pieces[1]);
+            pieces[1]+=3;
 
             /* Getting the hour */ 
             os_calloc(9,sizeof(char), lf->hour);
-            strncpy(lf->hour,pieces[3],8);
-            pieces[3]+=9;
+            strncpy(lf->hour,pieces[1],8);
+            pieces[1]+=9;
 
             /* Getting the year */
-            lf->year = atoi(pieces[3]);
+            lf->year = atoi(pieces[1]);
             
-            pieces[3]+=6;
+            pieces[1]+=6;
         }
         
         else
         {
-            pieces[3]+=27;
+            pieces[1]+=27;
         }
     }
     /* Checking for squid date format
@@ -254,30 +227,26 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      * seconds from 00:00:00 1970-01-01 UTC
      */
     else if((loglen > 32) && 
-            (pieces[3][0] == '1') &&
-            (pieces[3][10] == '.') &&
-            (pieces[3][14] == ' '))
+            (pieces[1][0] == '1') &&
+            (pieces[1][10] == '.') &&
+            (pieces[1][14] == ' '))
     {
-        pieces[3]+=14;
+        pieces[1]+=14;
 
         /* We need to start at the size of the event */
-        while(*pieces[3] == ' ')
+        while(*pieces[1] == ' ')
         {
-            pieces[3]++;
+            pieces[1]++;
         }
     }
 
 
     /* Assigning the values in the strucuture */
-    lf->log = strdup(pieces[3]);
-    if(!lf->log)
-    {
-        merror(MEM_ERROR, ARGV0);
-    }
+    os_strdup(pieces[1], lf->log);
 
 
     /* location  */        
-    lf->location = pieces[1];
+    os_strdup(pieces[0], lf->location);
 
 
     /* Setting up the event data */
@@ -327,46 +296,8 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     __crt_wday = p->tm_wday;   
   
     
-    #ifdef DEBUG
-    printf("%s: DEBUG: Going to the plugins checking.\n",ARGV0);
-    #endif
-
-    
-    /***  Running plugins ***/
-  
-      
-    /* Integrity check from syscheck */
-    if(pieces[0][0] == SYSCHECK_MQ)
-    {
-        DecodeSyscheck(lf);
-    }
-    
-    /* Rootcheck decoding */
-    else if(pieces[0][0] == ROOTCHECK_MQ)
-    {
-        DecodeRootcheck(lf);
-    }
-
-    /* Run the Decoder plugins */
-    else
-    {
-        DecodeEvent(lf);
-    }
-
-
-    /* Clearing the memory */
-    /* We can't clear pieces[1] .
-     */
-     
-    free(pieces[0]);
-    free(pieces[2]);
-    free(log3);
-    
-    free(pieces);
-
-    free(msg);
-    
     return(0);
+
 }
 
 /* EOF */
