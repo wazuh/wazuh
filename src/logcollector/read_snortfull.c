@@ -82,7 +82,7 @@ void *read_snortfull(int pos, int *rc)
                     
                     /* Sending the message */
                     if(SendMSG(logr_queue,f_msg, logr[pos].file,
-                               logr[pos].logformat, LOCALFILE_MQ) < 0)
+                               LOCALFILE_MQ) < 0)
                     {
                         merror(QUEUE_SEND, ARGV0);
                         if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
@@ -111,7 +111,7 @@ void *read_snortfull(int pos, int *rc)
 
                     /* Sending the message */
                     if(SendMSG(logr_queue,f_msg, logr[pos].file,
-                               logr[pos].logformat, LOCALFILE_MQ) < 0)
+                               LOCALFILE_MQ) < 0)
                     {
                         merror(QUEUE_SEND, ARGV0);
                         if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)

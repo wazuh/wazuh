@@ -20,11 +20,8 @@
 #define ROOTCHECK_MQ    '9'
 
 
-int StartMQ(char * key,short int type);
+int StartMQ(char * key, short int type);
 
-int FinishMQ();
-
-int SendMSG(int queue, char * message, char *locmsg, 
-                       char *logroup, char loc);
+int SendMSG(int queue, char * message, char *locmsg, char loc);
 
 #endif

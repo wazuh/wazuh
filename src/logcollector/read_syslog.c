@@ -41,7 +41,7 @@ void *read_syslog(int pos, int *rc)
         
         /* Sending message to queue */
         if(SendMSG(logr_queue,str,logr[pos].file,
-                    logr[pos].logformat, LOCALFILE_MQ) < 0)
+                   LOCALFILE_MQ) < 0)
         {
             merror(QUEUE_SEND, ARGV0);
             if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)

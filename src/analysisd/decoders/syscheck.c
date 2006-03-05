@@ -43,14 +43,6 @@ int db_err;
 fpos_t __initi_pos;
 
 
-/* SyscheckUpdateDaily
- * Clear unnecessary events from the queue
- */
-void SyscheckUpdateDaily()
-{
-    return;
-}
-
 
 /* SyscheckInit
  * Initialize the necessary information to process the syscheck information
