@@ -47,15 +47,12 @@
 
 /* mail queue */
 int mailq = 0;
+
 /* execd queue */
 int execdq = 0;
+
 /* active response queue */
 int arq = 0;
-
-
-/* For hourly stats */
-int __crt_hour;
-int __crt_wday;
 
 
 /* Internal Functions */
@@ -65,40 +62,45 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 
 /** External functions prototypes (only called here) **/
 
-/* From config .. */
+/* For config  */
 int GlobalConf(char * cfgfile);
 char **GetRulesFiles(char * cfg);
 
 
-/* From rules */
+/* For rules */
 void Rules_OP_CreateRules();
 int Rules_OP_ReadRules(char * cfgfile);
 
 
-/* From cleanmsg */
+/* For cleanmsg */
 int OS_CleanMSG(char *msg, Eventinfo *lf);
 
 
-/* from FTS */
+/* for FTS */
 int FTS_Init();
 int FTS(Eventinfo *lf);
 
 
-/* From Decoder Plugins */
+/* For decoders */
+void DecodeEvent(Eventinfo *lf);
+void DecodeSyscheck(Eventinfo *lf);
+void DecodeRootcheck(Eventinfo *lf);
+ 
+
+/* For Decoder Plugins */
 void ReadDecodeXML(char *file);
 
 
-/* From syscheckd (integrity checking) */
+/* For syscheckd (integrity checking) */
 void SyscheckInit();
-void SyscheckUpdateDaily();
 
 
-/* From stats */
+/* For stats */
 int Start_Hour();
 int Check_Hour(Eventinfo *lf);
 void Update_Hour();
-
 void DumpLogstats();
+
 
 /* Main function v0.2: 2005/03/22 */
 int main(int argc, char **argv)
@@ -278,11 +280,11 @@ int main(int argc, char **argv)
  */
 void OS_ReadMSG(int m_queue)
 {
-
+    char msg[OS_MAXSTR +1];
+    
     
     /* Null to global currently pointers */
     currently_rule = NULL;
-
 
     /* Initiating the logs */
     OS_InitLog();
@@ -399,6 +401,10 @@ void OS_ReadMSG(int m_queue)
         Config.stats = 0;
 
 
+    /* Doing some cleanup */
+    memset(msg, '\0', OS_MAXSTR +1);
+    
+    
     debug1("%s: DEBUG: Startup completed. Waiting for new messages..",ARGV0);
     
 
@@ -407,7 +413,6 @@ void OS_ReadMSG(int m_queue)
     {
         /* Msg to be received and the event info structure */
         Eventinfo *lf;
-        char *msg;
         
         lf = (Eventinfo *)calloc(1,sizeof(Eventinfo));
         
@@ -423,10 +428,10 @@ void OS_ReadMSG(int m_queue)
         
         
         /* Receive message from queue */
-        if((msg = OS_RecvUnix(m_queue, OS_MAXSTR)) != NULL)
+        if(OS_RecvUnix(m_queue, OS_MAXSTR, msg))
         {
             RuleNode *rulenode_pt;
-                        
+
             /* Getting the time we received the event */
             c_time = time(NULL);
 
@@ -436,25 +441,70 @@ void OS_ReadMSG(int m_queue)
 
 
             /* Clean the msg appropriately */
-            if(OS_CleanMSG(msg,lf) < 0)
+            if(OS_CleanMSG(msg, lf) < 0)
             {
                 merror(IMSG_ERROR,ARGV0,msg);
-                
-                free(msg);
-                
+
                 Free_Eventinfo(lf);
-                
-                msg = NULL;
+
                 continue;
             }
 
             /* Currently rule must be null in here */
             currently_rule = NULL;
 
-            #ifdef DEBUG
-            verbose("%s: DEBUG:  Received message: %s\n",ARGV0,lf->log);
-            #endif
 
+            /** Checking the date/hour changes **/
+
+            /* Update the hour */
+            if(thishour != __crt_hour)
+            {
+                /* Search all the rules and print the number
+                 * of alerts that each one fired.
+                 */
+                DumpLogstats();
+                thishour = __crt_hour;
+            }
+
+            /* Check if the date has changed */
+            if(today != lf->day)
+            {
+                if(Config.stats)
+                    Update_Hour();  /* Update the hourly stats (done daily) */
+
+                if(OS_GetLogLocation(lf) < 0)
+                {
+                    ErrorExit("%s: Error alocating log files", ARGV0);
+                }
+
+                today = lf->day;
+                prev_month[0] = lf->mon[0];
+                prev_month[1] = lf->mon[1];
+                prev_month[2] = lf->mon[2];
+                prev_year = lf->year;
+            }
+
+
+            /***  Running plugins/decoders ***/
+
+            /* Integrity check from syscheck */
+            if(msg[0] == SYSCHECK_MQ)
+            {
+                DecodeSyscheck(lf);
+            }
+
+            /* Rootcheck decoding */
+            else if(msg[0] == ROOTCHECK_MQ)
+            {
+                DecodeRootcheck(lf);
+            }
+
+            /* Run the Decoder plugins */
+            else
+            {
+                DecodeEvent(lf);
+            }
+            
 
             /* Dont need to go further if syscheck/rootcheck message */
             if((lf->type == SYSCHECK) || (lf->type == ROOTCHECK))
@@ -467,7 +517,7 @@ void OS_ReadMSG(int m_queue)
                 goto CLMEM;
             }
 
-            
+
             /* Firewall event */
             else if(lf->type == FIREWALL)
             {
@@ -481,36 +531,13 @@ void OS_ReadMSG(int m_queue)
             }
 
 
-            /* Update the hour */
-            if(thishour != __crt_hour)
-            {
-                /* Search all the rules and print the number
-                 * of alerts that each one fired.
-                 */
-                DumpLogstats(); 
-                thishour = __crt_hour;
-            }
-           
-            
-            /* Check if the date has changed */
-            if(today != lf->day)
-            {
-                if(Config.stats)
-                    Update_Hour();  /* Update the hourly stats (done daily) */
-                
-                /* Syscheck Update */
-                SyscheckUpdateDaily();    
-                today = lf->day;
-            }
-
-            
             /* Stats checking */
             if(Config.stats)
             {
                 if(Check_Hour(lf) == 1)
                 {
                     lf->level = Config.stats;
-                    
+
                     /* alert for statistical analysis */
                     if(Config.logbylevel <= Config.stats)
                         OS_Log(lf);
@@ -536,17 +563,17 @@ void OS_ReadMSG(int m_queue)
             }
 
 
-            #ifdef DEBUG
+#ifdef DEBUG
             debug2("%s: DEBUG: Starting rule checks\n",ARGV0);
-            #endif
+#endif
 
-            
+
             /* Looping all the rules */
             rulenode_pt = OS_GetFirstRule();
             if(!rulenode_pt) 
             {
                 ErrorExit("%s: Rules in an inconsistent state. Exiting.",
-                                                               ARGV0);
+                        ARGV0);
             }
 
             do
@@ -556,7 +583,7 @@ void OS_ReadMSG(int m_queue)
                 {
                     continue;
                 }
-                
+
                 /* Checking each rule. */
                 if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt)) 
                         == NULL)
@@ -564,7 +591,7 @@ void OS_ReadMSG(int m_queue)
                     continue;
                 }
 
-                
+
                 /* Checking ignore time */ 
                 if(currently_rule->ignore_time)
                 {
@@ -577,7 +604,7 @@ void OS_ReadMSG(int m_queue)
                      * leave (do not alert again).
                      */
                     else if((lf->time - currently_rule->time_ignored) 
-                             < currently_rule->ignore_time)
+                            < currently_rule->ignore_time)
                     {
                         break;
                     }
@@ -586,8 +613,8 @@ void OS_ReadMSG(int m_queue)
                         currently_rule->time_ignored = 0;
                     }
                 }
-                
-                
+
+
                 /* Copying the rule values to here */
                 lf->level    = currently_rule->level;
                 lf->sigid    = currently_rule->sigid;
@@ -595,14 +622,14 @@ void OS_ReadMSG(int m_queue)
 
                 /* Getting the group */
                 lf->group    = currently_rule->group;
-                
+
                 lf->comment = currently_rule->comment;
 
 
                 /* Setting the last events if specified */
                 lf->lasts_lf = currently_rule->last_events;
 
-                
+
                 /* Execute an action if specified */
 
                 /* Level 0 rules are to be ignored. 
@@ -619,9 +646,9 @@ void OS_ReadMSG(int m_queue)
                 if(currently_rule->logalert == 1)
                 {
 
-                    #ifdef DEBUG
+#ifdef DEBUG
                     debug2("%s: DEBUG: Logging ...",ARGV0);
-                    #endif
+#endif
 
                     OS_Log(lf);
                 }
@@ -629,10 +656,10 @@ void OS_ReadMSG(int m_queue)
                 /* Send an email alert */
                 if(currently_rule->emailalert == 1)
                 {
-                    #ifdef DEBUG
+#ifdef DEBUG
                     debug2("%s: DEBUG: Mailling ... ", ARGV0);
-                    #endif
-                    
+#endif
+
                     OS_Createmail(&mailq,lf);
                 }
 
@@ -641,7 +668,7 @@ void OS_ReadMSG(int m_queue)
                 {
                     int do_ar;
                     active_response **rule_ar;
-                    
+
                     rule_ar = currently_rule->ar;
 
                     while(*rule_ar)
@@ -662,13 +689,13 @@ void OS_ReadMSG(int m_queue)
                         {
                             /* Verifying the IP and username */
                             if((lf->srcip)&&
-                               !OS_PRegex(lf->srcip, "^[a-zA-Z._0-9-]*$"))
+                                    !OS_PRegex(lf->srcip, "^[a-zA-Z._0-9-]*$"))
                             {
                                 merror(CRAFTED_IP, ARGV0, lf->user);
                                 break;
                             }
                             else if((lf->user)&&
-                               !OS_PRegex(lf->user, "^[a-zA-Z._0-9-]*$")) 
+                                    !OS_PRegex(lf->user, "^[a-zA-Z._0-9-]*$")) 
                             {
                                 merror(CRAFTED_USER, ARGV0, lf->user);
                                 break;
@@ -681,12 +708,12 @@ void OS_ReadMSG(int m_queue)
                         rule_ar++;
                     }
                 }
-                
+
                 /* Copy the strucuture to the state structure */
                 OS_AddEvent(lf);
-                
+
                 break;
-                	
+
             }while((rulenode_pt = rulenode_pt->next) != NULL);
 
 
@@ -696,13 +723,9 @@ void OS_ReadMSG(int m_queue)
 
 
             /* Cleaning the memory */	
-            CLMEM:
-            
-            prev_month[0] = lf->mon[0];
-            prev_month[1] = lf->mon[1];
-            prev_month[2] = lf->mon[2];
-            prev_year = lf->year;
-            
+CLMEM:
+
+
             /* Only clear the memory if the eventinfo was not
              * added to the stateful memory 
              * -- message is free inside clean event --
@@ -900,9 +923,10 @@ void LoopRule(RuleNode *curr_node, FILE *flog)
 {
     if(curr_node->ruleinfo->firedtimes)
     {
-        fprintf(flog, "%d:rule %d:%d\n", thishour, 
-                                         curr_node->ruleinfo->sigid,
-                                         curr_node->ruleinfo->firedtimes);
+        fprintf(flog, "%d-%d-%d\n", 
+                thishour, 
+                curr_node->ruleinfo->sigid,
+                curr_node->ruleinfo->firedtimes);
         curr_node->ruleinfo->firedtimes = 0;
     }
     
