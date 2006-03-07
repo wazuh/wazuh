@@ -252,6 +252,10 @@ int Check_Hour(Eventinfo *lf)
     _CHour[__crt_hour]++;
     _CWHour[__crt_wday][__crt_hour]++;	
 
+    if(_RHour[24] <= 2)
+    {
+        return(0);
+    }
 
     /* checking if any message was already fired for this hour */
     if((_fired == 1)&&(_cignorehour == __crt_hour))
@@ -291,6 +295,11 @@ int Check_Hour(Eventinfo *lf)
         }
     }
 
+
+    /* We need to have at least 3 days of stats */
+    if(_RWHour[__crt_wday][24] <= 2)
+        return(0);
+        
     /* checking for the hour during a specific day of the week */
     if(_RWHour[__crt_wday][__crt_hour] != 0)
     {

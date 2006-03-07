@@ -231,6 +231,7 @@ int main(int argc, char **argv)
         char **tmp_rules = rulesfiles;
         while(*rulesfiles)
         {
+            verbose("%s: Reading rules file: '%s'", ARGV0, *rulesfiles);
             if(Rules_OP_ReadRules(*rulesfiles) < 0)
                 ErrorExit(RULES_ERROR,ARGV0);
                 

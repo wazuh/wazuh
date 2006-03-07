@@ -143,6 +143,11 @@
     <match>Cannot mail directly to </match>
     <description>Attempt to remotely create a file on the system</description>
   </rule>
+
+  <rule id="503" level="2">
+    <regex>^sm-mta[\d+]: auxpropfunc error no mechanism available</regex>
+    <description>Sendmail error message (invalid mechanism)</description>
+  </rule>
 </group> <!-- SYSLOG,SENDMAIL -->
   
 
@@ -250,6 +255,12 @@
     <if_sid>800</if_sid>
     <match>Out of Memory: </match>
     <description>System running out of memory. Availability of the system is in risk.</description>
+  </rule>
+
+  <rule id="809" level="4">
+    <if_sid>800</if_sid>
+    <match>I/O error: dev |end_request: I/O error, dev</match>
+    <description>Kernel Input/Output error</description>
   </rule>
 </group> <!-- SYSLOG,LINUXKERNEL -->
 

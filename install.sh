@@ -61,6 +61,7 @@ Install()
         make server    
 	fi
 
+    cd ../
     
     # Calling the init script  to start ossec hids during boot
     runInit
@@ -68,7 +69,6 @@ Install()
         notmodified="yes"
     fi    
     	
-    cd ../
 }
 
 
