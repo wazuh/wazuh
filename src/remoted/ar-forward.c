@@ -76,7 +76,7 @@ void *AR_Forward(void *arg)
             if(!tmp_str)
             {
                 merror(EXECD_INV_MSG, ARGV0, msg);
-                goto cleanup;
+                continue;
             }
             *tmp_str = '\0';
             tmp_str++;
@@ -121,7 +121,7 @@ void *AR_Forward(void *arg)
             if(!tmp_str)
             {
                 merror(EXECD_INV_MSG, ARGV0, msg);
-                goto cleanup;
+                continue;
             }
             *tmp_str = '\0';
             tmp_str++;
@@ -133,7 +133,7 @@ void *AR_Forward(void *arg)
             if(!tmp_str)
             {
                 merror(EXECD_INV_MSG, ARGV0, msg);
-                goto cleanup;
+                continue;
             }
             *tmp_str = '\0';
             tmp_str++;
@@ -162,7 +162,7 @@ void *AR_Forward(void *arg)
                 if(agent_id < 0)
                 {
                     merror(AR_NOAGENT_ERROR, ARGV0, location);
-                    goto cleanup;
+                    continue;
                 }
                 
                 send_msg(agent_id, msg_to_send);
@@ -178,13 +178,11 @@ void *AR_Forward(void *arg)
                 if(agent_id < 0)
                 {
                     merror(AR_NOAGENT_ERROR, ARGV0, ar_agent_id);
-                    goto cleanup;
+                    continue;
                 }
 
                 send_msg(agent_id, msg_to_send);
             }
-
-            cleanup:
         }
     }
 }

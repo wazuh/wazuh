@@ -32,7 +32,7 @@ int OS_MD5_File(char * fname, char * output)
     char tmpstr[6];
     int n;
     
-    memset(output,0,33);
+    memset(output,0, 33);
     
     fp = fopen(fname,"r");
     if(!fp)
@@ -67,7 +67,7 @@ int OS_MD5_Str(char * str, char * output)
     
     MD5_CTX ctx;
 
-    memset(output,0,33);
+    memset(output,0, 33);
 
     MD5Init(&ctx);
     

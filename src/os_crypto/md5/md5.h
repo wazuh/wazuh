@@ -19,11 +19,14 @@
 #ifndef MD5_H
 #define MD5_H
 
-#ifdef __alpha
-typedef unsigned int uint32;
-#else
-typedef unsigned long uint32;
+#include <sys/types.h>
+#if defined SOLARIS
+typedef uint32_t u_int32_t;
+typedef uint16_t u_int16_t;
+typedef uint8_t u_int8_t;
 #endif
+
+typedef u_int32_t uint32;
 
 struct MD5Context {
 	uint32 buf[4];
