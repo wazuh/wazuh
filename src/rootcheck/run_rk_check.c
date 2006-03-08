@@ -119,7 +119,9 @@ void run_rk_check()
     if(rootcheck.notify != QUEUE)
     {
         printf("\n");
-        printf("Starting rootcheck (http://www.ossec.net/rootcheck)\n");
+        printf("** Starting Rootcheck v0.7 by Daniel B. Cid        **\n");
+        printf("** http://www.ossec.net/hids/aboutus.php#dev-team  **\n");
+        printf("** http://www.ossec.net/rootcheck/                 **\n\n");
         printf("Be patient, it may take a few minutes to complete...\n");
         printf("\n");
     }
