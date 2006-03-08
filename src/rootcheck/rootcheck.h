@@ -26,6 +26,7 @@ typedef struct _rkconfig
     int daemon;
     int notify; /* QUEUE or SYSLOG */
     int scanall;
+    int readall;
 
     int time;
     int queue;
@@ -55,7 +56,11 @@ rkconfig rootcheck;
 
 /** Prototypes **/
 
-/* common is_file: Check if a file exist (using stat and fopen) */
+/* common isfile_ondir: Check if file is present on dir */
+int isfile_ondir(char *file, char *dir);
+
+
+/* common is_file: Check if a file exist (using stat, fopen and opendir) */
 int is_file(char *file_name);
 
 /* Check if regex is present on the file.

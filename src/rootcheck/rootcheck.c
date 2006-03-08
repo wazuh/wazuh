@@ -56,7 +56,7 @@ int Read_Rootcheck_Config(char * cfgfile, rkconfig *cfg);
 void rootcheck_help()
 {
     printf("\n");
-    printf("Rootcheck v0.6 (Jan/20/2006):\n");
+    printf("Rootcheck v0.7 (Marc/12/2006):\n");
     printf("http://www.ossec.net/rootcheck/\n");
     printf("Available options:\n");
     printf("\t\t-h\t  This Help message\n");
@@ -64,6 +64,7 @@ void rootcheck_help()
     printf("\t\t-d\t  Enable debug\n");
     printf("\t\t-D <dir>  Set the working directory\n");
     printf("\t\t-s\t  Scans the whole system\n");
+    printf("\t\t-r\t  Read all the files for kernel-based detection\n");
     printf("\n");
     exit(0);
 }
@@ -93,11 +94,12 @@ int rootcheck_init()
     rootcheck.daemon = 1;
     rootcheck.notify = SYSLOG;
     rootcheck.scanall = 0;
+    rootcheck.readall = 0;
     rootcheck.time = ROOTCHECK_WAIT;
 
 
 #ifndef OSSECHIDS
-    while((c = getopt(argc, argv, "sdhD:c:")) != -1)
+    while((c = getopt(argc, argv, "srdhD:c:")) != -1)
     {
         switch(c)
         {
@@ -119,6 +121,9 @@ int rootcheck_init()
                 break;
             case 's':
                 rootcheck.scanall = 1;
+                break;    
+            case 'r':
+                rootcheck.readall = 1;
                 break;    
             default:
                 rootcheck_help();
