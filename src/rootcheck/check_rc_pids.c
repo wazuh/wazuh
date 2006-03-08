@@ -23,10 +23,57 @@
 
 #include "headers/defs.h"
 #include "headers/debug_op.h"
+#include "headers/file_op.h"
 
 #include "rootcheck.h"
 
-/** Prototypes **/
+
+int noproc;
+
+
+/** int proc_read(int pid)
+ * If /proc is mounted, check to see if the pid is present
+ */
+int proc_read(int pid)
+{
+    char dir[OS_MAXSTR +1];
+
+    if(noproc)
+        return(0);
+        
+    snprintf(dir, OS_MAXSTR, "%d",pid);
+    if(isfile_ondir(dir, "/proc"))
+    {
+        return(1);
+    }
+    return(0);
+}
+
+
+/** int proc_stat(int pid)
+ * If /proc is mounted, check to see if the pid is present there.
+ */
+int proc_stat(int pid)
+{
+    char proc_dir[OS_MAXSTR + 1];
+    
+    if(noproc)
+        return(0);
+        
+    snprintf(proc_dir, OS_MAXSTR, "%s/%d", "/proc", pid);
+    
+    if(is_file(proc_dir))
+    {
+        return(1);
+    }
+
+    return(0);
+}
+
+
+/** void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
+ * Check all the available PIDs for hidden stuff.
+ */
 void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
 {
     int _kill0 = 0;
@@ -34,6 +81,8 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
     int _gsid0 = 0;
     int _gsid1 = 0;
     int _ps0 = -1;
+    int _proc_stat = 0;
+    int _proc_read = 0;
     
     pid_t i = 1;
     pid_t my_pid;
@@ -54,7 +103,10 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         _gsid0 = 0;
         _gsid1 = 0;
         _ps0 = -1;
+        _proc_stat = 0;
+        _proc_read = 0;
         
+        /* kill test */
         if(!((kill(i, 0) == -1)&&(errno == ESRCH)))
         {
             _kill0 = 1;
@@ -66,8 +118,20 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
             _gsid0 = 1;
         }
 
+        /* proc stat */
+        if(proc_stat(i))
+        {
+            _proc_stat = 1;
+        }
+        
+        /* proc readdir */
+        if(proc_read(i))
+        {
+            _proc_read = 1;
+        }
+        
         /* IF PID does not exist, keep going */
-        if(!_kill0 && !_gsid0)
+        if(!_kill0 && !_gsid0 && !_proc_stat && !_proc_read)
         {
             continue;
         }
@@ -108,11 +172,12 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         }
        
         /* If our kill or getsid system call, got the
-         * PID , but ps didn't find if it was a problem
+         * PID , but ps didn't, we need to find if it was a problem
          * with a PID being deleted (not used anymore )
          */
-        if(!_ps0)
+        if(!_ps0 || (_proc_read != !_proc_stat))
         {
+            int _proc_s = 0; int _proc_r = 0;
             if(!((getsid(i) == -1)&&(errno == ESRCH)))
             {
                 _gsid1 = 1;
@@ -123,8 +188,14 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
                 _kill1 = 1;
             }
 
+            if(proc_stat(i))
+                _proc_s = 1;
+            
+            if(proc_read(i))
+                _proc_r = 1;    
+
             /* If it matches, process was terminated */
-            if(!_gsid1 && !_kill1)
+            if(!_gsid1 && !_kill1 && !_proc_s && !_proc_r)
             {
                 continue;
             }
@@ -156,6 +227,16 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
                 (*_errors)++;
             }
         }
+
+        else if(_proc_read != _proc_stat)
+        {
+            char op_msg[OS_MAXSTR +1];
+            snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
+                                         "/proc. Possible kernel level "
+                                         "rootkit.", (int)i);
+            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+            (*_errors)++;
+        }
     }
 }
 
@@ -170,8 +251,9 @@ void check_rc_pids()
     
     char ps[OS_MAXSTR +1];
     pid_t max_pid = MAX_PID;
-    
 
+    noproc = 1;
+    
     /* Checking where ps is */
     strcpy(ps, "/bin/ps");
     if(!is_file(ps))
@@ -179,6 +261,13 @@ void check_rc_pids()
         strcpy(ps, "/usr/bin/ps");
         if(!is_file(ps))
             ps[0] = '\0';
+    }
+    
+    
+    /* Proc is mounted */
+    if(is_file("/proc") && is_file("/proc/1"))
+    {
+        noproc = 0;
     }
     
     loop_all_pids(ps, max_pid, &_errors, &_total);

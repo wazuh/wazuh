@@ -39,6 +39,9 @@ MSG="messages"
 
 ## Config templates
 SYSCHECK_TEMPLATE="./etc/templates/config/syscheck.template"
+SYSLOG_TEMPLATE="./etc/templates/config/syslog-logs.template"
+APACHE_TEMPLATE="./etc/templates/config/apache-logs.template"
+SNORT_TEMPLATE="./etc/templates/config/snort-logs.template"
 
 
 ## Host output

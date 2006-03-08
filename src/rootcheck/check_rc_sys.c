@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -37,9 +38,9 @@ FILE *_ww;
 FILE *_suid;
 
 /** Prototypes **/
-int read_sys_dir(char *dir_name);
+int read_sys_dir(char *dir_name, int do_read);
 
-int read_sys_file(char *file_name)
+int read_sys_file(char *file_name, int do_read)
 {
     struct stat statbuf;
    
@@ -49,7 +50,7 @@ int read_sys_file(char *file_name)
     {
         return(-1);
     }
-    
+   
     /* If directory, read the directory */
     else if(S_ISDIR(statbuf.st_mode))
     {
@@ -62,8 +63,42 @@ int read_sys_file(char *file_name)
             return(0);
         #endif
                 
-        return(read_sys_dir(file_name));
+        return(read_sys_dir(file_name, do_read));
     }
+
+    /* Check if the size from stats is the same as when we
+     * read the file
+     */
+    if(S_ISREG(statbuf.st_mode) && do_read)
+    {
+        char buf[1024];
+        int fd;
+        int nr;
+        int total = 0;
+
+        fd = open(file_name, O_RDONLY, 0);
+        /* It may not necessarily open */
+        if(fd >= 0)
+        {
+            while ((nr = read(fd, buf, sizeof(buf))) > 0)
+            {
+                total += nr;
+            }
+
+            if(total != statbuf.st_size)
+            {
+                char op_msg[OS_MAXSTR +1];
+                snprintf(op_msg, OS_MAXSTR, "Anomaly detected in file '%s'. "
+                                 "File size doesn't match what we found. "
+                                 "Possible kernel level rootkit.",
+                                 file_name);
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+                _sys_errors++;
+            }
+            close(fd);
+        }
+    }
+     
     
     /* If has OTHER write and exec permission, alert */
     if(((statbuf.st_mode & S_IWOTH) == S_IWOTH) && 
@@ -113,13 +148,17 @@ int read_sys_file(char *file_name)
 /* read_dir v0.1
  *
  */
-int read_sys_dir(char *dir_name)
+int read_sys_dir(char *dir_name, int do_read)
 {
     int i, entry_count = 0;
     DIR *dp;
     
 	struct dirent *entry;
     struct stat statbuf;	
+   
+    char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin", 
+                                 "/usr/sbin", "/dev", "/lib",
+                                 "/etc", "/tmp", "/boot", NULL };
     
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
     {
@@ -141,7 +180,18 @@ int read_sys_dir(char *dir_name)
     {
         return(-1);
     }
-    
+   
+    /* Check if the do_read is valid for this directory */
+    for(i = 0; i< 24; i++)
+    {
+        if(dirs_to_doread[i] == NULL)
+            break;
+        if(strcmp(dir_name, dirs_to_doread[i]) == 0)
+        {
+            do_read = 1;
+            break;
+        }
+    }
      
     /* Opening the directory given */
     dp = opendir(dir_name);
@@ -209,7 +259,7 @@ int read_sys_dir(char *dir_name)
         if(strcmp(f_name, "/proc") == 0)
             continue;
 
-        read_sys_file(f_name);
+        read_sys_file(f_name, do_read);
     }
 
     /* Entry count for directory different than the actual
@@ -239,6 +289,8 @@ void check_rc_sys(char *basedir)
 {
     char file_path[OS_MAXSTR +1];
 
+    debug1("%s: DEBUG: Starting on check_rc_sys", ARGV0);
+
     _sys_errors = 0;
     _sys_total = 0;
     
@@ -258,9 +310,10 @@ void check_rc_sys(char *basedir)
         _suid = NULL;
     }
 
+        
     /* Scan the whole file system -- may be slow */
     if(rootcheck.scanall)    
-        read_sys_dir(file_path);
+        read_sys_dir(file_path, rootcheck.readall);
     
     /* Scan only specific directories */
     else
@@ -281,7 +334,7 @@ void check_rc_sys(char *basedir)
             snprintf(file_path, OS_MAXSTR, "%s%s", 
                                             basedir, 
                                             dirs_to_scan[_i]);
-            read_sys_dir(file_path);
+            read_sys_dir(file_path, rootcheck.readall);
         }
     }
     
@@ -297,26 +350,35 @@ void check_rc_sys(char *basedir)
     {
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "Check the following files for more "
-                 "information:\n"
-                 "       rootcheck-rw-rw-rw-.txt (list of world writable files)\n"
-                 "       rootcheck-rwxrwxrwx.txt (list of world writtable/executable files)\n"
-                 "       rootcheck-suid-files.txt (list of suid files)");
+            "information:\n%s%s%s",
+            (ftell(_wx) == 0)?"":       
+            "       rootcheck-rw-rw-rw-.txt (list of world writable files)\n",
+            (ftell(_ww) == 0)?"":
+            "       rootcheck-rwxrwxrwx.txt (list of world writtable/executable files)\n",
+            (ftell(_suid) == 0)?"":        
+            "       rootcheck-suid-files.txt (list of suid files)");
         
         notify_rk(ALERT_SYSTEM_ERROR, op_msg);
     }
 
     if(_wx)
     {
+        if(ftell(_wx) == 0)
+            unlink("rootcheck-rw-rw-rw-.txt");
         fclose(_wx);
     }
     
     if(_ww)
     {
+        if(ftell(_ww) == 0)
+            unlink("rootcheck-rwxrwxrwx.txt");
         fclose(_ww);
     }
     
     if(_suid)
     {
+        if(ftell(_suid) == 0)
+            unlink("rootcheck-suid-files.txt");
         fclose(_suid); 
     }
                

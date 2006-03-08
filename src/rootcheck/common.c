@@ -14,10 +14,37 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-
+      
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <dirent.h>
+
+
+/** int isfile_ondir(char *file, char *dir)
+ * Checks is 'file' is present on 'dir' using readdir
+ */
+int isfile_ondir(char *file, char *dir)
+{
+    DIR *dp = NULL;
+    struct dirent *entry;
+    dp = opendir(dir);
+    
+    if(!dp)
+        return(0);
+
+    while((entry = readdir(dp)) != NULL)
+    {
+        if(strcmp(entry->d_name, file) == 0)
+        {
+            closedir(dp);
+            return(1);
+        }
+    }
+    
+    closedir(dp);
+    return(0);
+}
 
 
 /* is_file: Check if the file is present
@@ -27,9 +54,11 @@ int is_file(char *file_name)
 {
     struct stat statbuf;
     FILE *fp = NULL;
+    DIR *dp = NULL;
     
     if((lstat(file_name, &statbuf) < 0) &&
-        ((fp = fopen(file_name, "r")) == NULL))
+        ((fp = fopen(file_name, "r")) == NULL) &&
+        ((dp = opendir(file_name)) == NULL))
     {
         return(0);
     }
@@ -38,6 +67,9 @@ int is_file(char *file_name)
     if(fp)
         fclose(fp);
     
+    if(dp)
+        closedir(dp);
+        
     return(1);
 }
 
