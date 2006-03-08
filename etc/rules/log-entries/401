@@ -1,3 +1,6 @@
 # freebsd invalid physical login
 login: 1 LOGIN FAILURE ON ttyv0
 login: 1 LOGIN FAILURE ON ttyv0, root
+
+# saslauthd
+saslauthd[113]: do_auth         : auth failure: [user=SERVERWEB\Administrador] [service=smtp] [realm=] [mech=shadow] [reason=Unknown]
