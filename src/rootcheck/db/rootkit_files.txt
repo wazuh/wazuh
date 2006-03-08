@@ -174,11 +174,14 @@ etc/sbin/ava 			! Adore Rootkit ::
 # Slapper
 tmp/.bugtraq 			! Slapper installed ::
 tmp/.bugtraq.c 			! Slapper installed ::
-tmp/.cinik 			! Slapper installed ::
-tmp/.b 				! Slapper installed ::
-tmp/httpd 			! Slapper installed ::
+tmp/.cinik 			    ! Slapper installed ::
+tmp/.b 				    ! Slapper installed ::
+tmp/httpd 			    ! Slapper installed ::
 tmp./update 			! Slapper installed ::
 tmp/.unlock 			! Slapper installed ::
+tmp/.font-unix/.cinik   ! Slapper installed ::
+tmp/.cinik              ! Slapper installed ::
+
 
 
 # Scalper
@@ -213,6 +216,7 @@ usr/lib/.../			! Bobkit Rootkit ::rootkits/bobkit.php
 usr/sbin/.../			! Bobkit Rootkit ::rootkits/bobkit.php
 usr/bin/ntpsx			! Bobkit Rootkit ::rootkits/bobkit.php
 tmp/.bkp			    ! Bobkit Rootkit ::rootkits/bobkit.php
+usr/lib/.bkit-		    ! Bobkit Rootkit ::rootkits/bobkit.php
 */bkit-	    		    ! Bobkit Rootkit ::rootkits/bobkit.php
 
 # Hidrootkit
@@ -254,13 +258,13 @@ usr/sbin/kswapd 		! Anonoiyng rootkit ::
 etc/sysconfig/console/load.zk 	! ZK rootkit ::
 
 
-#SuckIt
+# SuckIt
 lib/.x				! SuckIt rootkit ::
 */hide.log          ! Suckit rootkit ::
 lib/sk              ! SuckIT rootkit ::
 
 
-#Beastkit
+# Beastkit
 usr/local/bin/bin		! Beastkit rootkit ::rootkits/beastkit.php
 usr/man/.man10			! Beastkit rootkit ::rootkits/beastkit.php
 usr/sbin/arobia			! Beastkit rootkit ::rootkits/beastkit.php
@@ -268,7 +272,7 @@ usr/lib/elm/arobia		! Beastkit rootkit ::rootkits/beastkit.php
 usr/local/bin/.../bktd	! Beastkit rootkit ::rootkits/beastkit.php
 
 
-#Tuxkit
+# Tuxkit
 dev/tux				! Tuxkit rootkit ::rootkits/Tuxkit.php
 usr/bin/xsf			! Tuxkit rootkit ::rootkits/Tuxkit.php
 usr/bin/xchk		! Tuxkit rootkit ::rootkits/Tuxkit.php
@@ -310,7 +314,11 @@ etc/ld.so.hash          ! ShKit rootkit
 
 # AjaKit rootkit
 lib/.ligh.gh            ! AjaKit rootkit
+lib/.libgh.gh           ! AjaKit rootkit
+lib/.libgh-gh           ! AjaKit rootkit
 dev/tux                 ! AjaKit rootkit
+dev/tux/.proc           ! AjaKit rootkit
+dev/tux/.file           ! AjaKit rootkit
 
 
 # zaRwT rootkit
@@ -348,9 +356,17 @@ etc/.bmbl/sk            ! BMBL rootkit
 
 
 # Cback Linux worm
-/tmp/cback              ! cback worm ::/rootkits/cback.php
-/tmp/derfiq             ! cback worm ::/rootkits/cback.php
-*/cback                 ! cback worm ::/rootkits/cback.php
+tmp/cback              ! cback worm ::/rootkits/cback.php
+tmp/derfiq             ! cback worm ::/rootkits/cback.php
+*/cback                ! cback worm ::/rootkits/cback.php
+
+
+# aPa Kit (from rkhunter)
+usr/share/.aPa          ! Apa Kit
+
+
+# enye-sec Rootkit
+etc/.enyelkmHIDE^IT.ko  ! enye-sec Rootkit ::/rootkits/enye-sec.php
 
 
 # Public sniffers

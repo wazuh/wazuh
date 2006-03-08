@@ -75,9 +75,11 @@ rlogin		!p1r0c4|r00t|bash|/dev/[^nt]!
 killall		!/dev/[^t%]|proc\.h|bash|tmp!
 kill		!/dev/[ab,d-k,m-z]|/dev/[F-Z]|/dev/[A-D]|/dev/[0-9]|proc\.h|bash|tmp!
 
+
 # Rootkit entries
-/sbin/init      !HOME! Suckit rootkit
-/proc/1/maps    !init.! Suckit rootkit
+/sbin/init              !HOME! Suckit rootkit
+/proc/1/maps            !init.! Suckit rootkit
+/etc/rc.d/rc.sysinit    !enyelkmHIDE! enye-sec Rootkit
 
 
 # EOF #
