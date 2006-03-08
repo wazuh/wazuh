@@ -40,6 +40,7 @@ int Read_Rootcheck_Config(char * cfgfile)
     char *(xml_rootkit_files[])={xml_rootcheck, "rootkit_files", NULL};
     char *(xml_rootkit_trojans[])={xml_rootcheck, "rootkit_trojans", NULL};
     char *(xml_scanall[])={xml_rootcheck, "scanall", NULL};
+    char *(xml_readall[])={xml_rootcheck, "readall", NULL};
     char *(xml_time[])={xml_rootcheck, "frequency", NULL};
 
     /* :) */
@@ -101,6 +102,21 @@ int Read_Rootcheck_Config(char * cfgfile)
             str = NULL;
         }
     }
+
+
+    /* read all flag */
+    if(!rootcheck.readall)
+    {
+        str = OS_GetOneContentforElement(&xml,xml_readall);
+        if(str)
+        {
+            if(str[0] == 'y')
+                rootcheck.readall = 1;
+            free(str);
+            str = NULL;
+        }
+    }
+    
     
     /* Notifications type */
     str  = OS_GetOneContentforElement(&xml,xml_notify);
