@@ -32,7 +32,7 @@
 
 /* Some names */
 #define __name      "OSSEC HIDS"
-#define __version   "v0.6"
+#define __version   "v0.7"
 
 
 /* Maximum allowed PID */
