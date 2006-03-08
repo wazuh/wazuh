@@ -81,8 +81,8 @@
   <rule id="401" level="5">
     <match>FAILED LOGIN |authentication failure|</match>
     <match>Authentication failed for|invalid password for|</match>
-    <match>Failed password for|LOGIN FAILURE ON |auth failure: </match>
-    <match>Wrong password given for user</match>
+    <match>Failed password for|LOGIN FAILURE ON |auth failure: |</match>
+    <match>Wrong password given for user|login failed </match>
     <description>User missed the password</description>
   </rule>
 

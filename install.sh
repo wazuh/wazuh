@@ -151,8 +151,7 @@ SetupLogs()
     echo ""
     echo "  $NB- ${readlogs}"
 
-    LOG_FILES="/var/log/messages /var/log/authlog /var/log/auth.log /var/log/secure /var/log/syslog /var/log/ipfilter.log /var/adm/ipsec.log /var/log/userlog /var/log/security"
-
+    LOG_FILES=`cat ${SYSLOG_TEMPLATE}`
     for i in ${LOG_FILES}; do
         # If log file present, add it    
         ls $i > /dev/null 2>&1
@@ -167,7 +166,7 @@ SetupLogs()
     done    
 
     # Getting snort files
-    SNORT_FILES="/var/log/snort/alert"
+    SNORT_FILES=`cat ${SNORT_TEMPLATE}`
     for i in ${SNORT_FILES}; do
         ls $i > /dev/null 2>&1
         if [ $? = 0 ]; then
@@ -188,7 +187,7 @@ SetupLogs()
     done    
     
     # Getting apache logs
-    APACHE_FILES="/var/log/apache/error.log /var/log/apache/error_log /var/log/apache/access.log /var/log/apache/access_log /var/www/logs/access_log /var/www/logs/error_log"
+    APACHE_FILES=`cat ${APACHE_TEMPLATE}`
     for i in ${APACHE_FILES}; do
         ls $i > /dev/null 2>&1
         if [ $? = 0 ]; then
