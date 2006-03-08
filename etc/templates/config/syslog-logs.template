@@ -1,0 +1,9 @@
+/var/log/messages
+/var/log/authlog
+/var/log/auth.log
+/var/log/secure
+/var/log/syslog
+/var/log/ipfilter.log
+/var/adm/ipsec.log
+/var/log/userlog 
+/var/log/security
