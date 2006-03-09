@@ -52,15 +52,31 @@ int isfile_ondir(char *file, char *dir)
  */
 int is_file(char *file_name)
 {
+    int ret = 0;
     struct stat statbuf;
+    char curr_dir[1024];
     FILE *fp = NULL;
     DIR *dp = NULL;
+    
+    curr_dir[1023] = '\0';
+    if(!getcwd(curr_dir, 1023))
+    {
+        return(0);
+    }
+                                        
+    if(chdir(file_name) == 0)
+    {
+        ret = 1;
+
+        /* Returning to the previous directory */
+        chdir(curr_dir);
+    }
     
     if((lstat(file_name, &statbuf) < 0) &&
         ((fp = fopen(file_name, "r")) == NULL) &&
         ((dp = opendir(file_name)) == NULL))
     {
-        return(0);
+        return(ret);
     }
 
     /* must close it over here */
