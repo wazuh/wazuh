@@ -562,6 +562,30 @@ checkDependencies()
 ##########
 main()
 {
+    LG="en"
+    
+    # Choosing the language.
+    echo ""
+    while [ 1 ]; do
+    for i in `ls ${TEMPLATE}`; do 
+        # ignore CVS (should not be there anyways and config)
+        if [ "$i" = "CVS" -o "$i" = "config" ]; then continue; fi
+        cat "${TEMPLATE}/$i/language.txt"
+        if [ ! "$i" = "en" ]; then
+            LG="${LG}/$i"
+        fi    
+    done
+    $ECHO "  (${LG}) [en]: "
+    read USER_LG;
+
+    if [ "X${USER_LG}" = "X" ]; then
+        USER_LG="en"
+    fi    
+    ls "${TEMPLATE}/${USER_LG}" > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        break;
+    fi
+    done;    
 
     # Must be executed as ./install.sh
     if [ `isFile ${VERSION_FILE}` = "${FALSE}" ]; then
