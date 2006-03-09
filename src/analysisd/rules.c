@@ -347,6 +347,12 @@ int Rules_OP_ReadRules(char * rulefile)
                             loadmemory(config_ruleinfo->info,
                                     rule_opt[k]->content);
                     }
+                    else if(strcasecmp(rule_opt[k]->element,xml_group)==0)
+                    {
+                        config_ruleinfo->group =
+                            loadmemory(config_ruleinfo->group,
+                                    rule_opt[k]->content);
+                    }
                     else if(strcasecmp(rule_opt[k]->element,xml_cve)==0)
                     {
                         config_ruleinfo->cve=
