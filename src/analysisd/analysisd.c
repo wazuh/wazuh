@@ -1007,7 +1007,7 @@ void DumpLogstats()
             "totals",
             today);
 
-    flog = fopen(logfile, "w");
+    flog = fopen(logfile, "a");
     if(!flog)
     {
         merror(FOPEN_ERROR, ARGV0, logfile);
@@ -1028,15 +1028,13 @@ void DumpLogstats()
         LoopRule(rulenode_pt, flog);    
     }while((rulenode_pt = rulenode_pt->next) != NULL);
 
+
     /* Print total for the hour */
-    if(hourly_alerts)
-    {
-        fprintf(flog, "Alerts for:%d:%d\n",
+    fprintf(flog, "Alerts for:%d:%d\n\n",
                 thishour,
                 hourly_alerts);
-        hourly_alerts = 0;
-    }
-    
+    hourly_alerts = 0;
+   
     fclose(flog);
 }
 

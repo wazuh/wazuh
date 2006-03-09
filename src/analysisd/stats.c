@@ -104,7 +104,7 @@ void print_totals()
             "totals",
             today);
 
-    flog = fopen(logfile, "w");
+    flog = fopen(logfile, "a");
     if(!flog)
     {
         merror(FOPEN_ERROR, ARGV0, logfile);
