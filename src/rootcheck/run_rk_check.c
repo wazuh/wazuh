@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -98,6 +99,8 @@ void start_rk_daemon()
  */
 void run_rk_check()
 {
+    time_t time1;
+    time_t time2;
     int i;
 
     FILE *fp;
@@ -115,6 +118,8 @@ void run_rk_check()
         }
     }
   
+    time1 = time(0);
+    
     /*** Initial message ***/
     if(rootcheck.notify != QUEUE)
     {
@@ -213,6 +218,15 @@ void run_rk_check()
         }
     }
 
+    /*** Final message ***/
+    time2 = time(0);
+    
+    if(rootcheck.notify != QUEUE)
+    {
+        printf("\n");
+        printf("- Scan completed in %d seconds.\n\n", (int)(time2 - time1));
+    }
+                                                                        
     debug1("%s: DEBUG: Leaving run_rk_check",ARGV0); 
     return;
 }

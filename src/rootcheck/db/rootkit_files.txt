@@ -18,7 +18,6 @@ tmp/mclzaKmfa			! Bash door ::/rootkits/bashdoor.php
 
 #adore Worm
 dev/.shit/red.tgz		! Adore Worm ::/rootkits/adorew.php
-usr/lib/lib			    ! Adore Worm ::/rootkits/adorew.php 
 usr/lib/libt			! Adore Worm ::/rootkits/adorew.php
 usr/bin/adore			! Adore Worm ::/rootkits/adorew.php
 */klogd.o               ! Adore Worm ::/rootkits/adorew.php
@@ -367,6 +366,22 @@ usr/share/.aPa          ! Apa Kit
 
 # enye-sec Rootkit
 etc/.enyelkmHIDE^IT.ko  ! enye-sec Rootkit ::/rootkits/enye-sec.php
+
+
+# Override Rootkit
+dev/grid-hide-pid-     ! Override rootkit ::/rootkits/override.php
+dev/grid-unhide-pid-   ! Override rootkit ::/rootkits/override.php
+dev/grid-show-pids     ! Override rootkit ::/rootkits/override.php
+dev/grid-hide-port-    ! Override rootkit ::/rootkits/override.php
+dev/grid-unhide-port-  ! Override rootkit ::/rootkits/override.php
+
+
+# PHALANX rootkit
+usr/share/.home.ph1     ! PHALANX rootkit ::
+usr/share/.home.ph1/tty ! PHALANX rootkit ::
+etc/host.ph1            ! PHALANX rootkit ::
+bin/host.ph1            ! PHALANX rootkit ::
+*/phalanx               ! PHALANX rootkit ::
 
 
 # Public sniffers
