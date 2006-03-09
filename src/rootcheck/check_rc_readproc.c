@@ -99,7 +99,7 @@ int read_proc_dir(char *dir_name, char *pid, int position)
 
             while(*tmp_str != '\0')
             {
-                if(!isdigit(*tmp_str))
+                if(!isdigit((int)*tmp_str))
                     break;
                 tmp_str++;
             }

@@ -50,6 +50,39 @@ int proc_read(int pid)
 }
 
 
+/** int proc_chdir(int pid)
+ * If /proc is mounted, check to see if the pid is present
+ */
+int proc_chdir(int pid)
+{
+    int ret = 0;
+    char curr_dir[OS_MAXSTR + 1];
+    char dir[OS_MAXSTR + 1];
+
+    if(noproc)
+        return(0);
+    
+    if(!getcwd(curr_dir, OS_MAXSTR))
+    {
+        return(0);
+    }
+    
+    if(chdir("/proc") == -1)
+        return(0);    
+        
+    snprintf(dir, OS_MAXSTR, "/proc/%d", pid);
+    if(chdir(dir) == 0)
+    {
+        ret = 1;
+    }
+
+    /* Returning to the previous directory */
+    chdir(curr_dir);
+    
+    return(ret);    
+}
+
+
 /** int proc_stat(int pid)
  * If /proc is mounted, check to see if the pid is present there.
  */
@@ -81,8 +114,9 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
     int _gsid0 = 0;
     int _gsid1 = 0;
     int _ps0 = -1;
-    int _proc_stat = 0;
-    int _proc_read = 0;
+    int _proc_stat  = 0;
+    int _proc_read  = 0;
+    int _proc_chdir = 0;
     
     pid_t i = 1;
     pid_t my_pid;
@@ -103,8 +137,9 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         _gsid0 = 0;
         _gsid1 = 0;
         _ps0 = -1;
-        _proc_stat = 0;
-        _proc_read = 0;
+        _proc_stat  = 0;
+        _proc_read  = 0;
+        _proc_chdir = 0;
         
         /* kill test */
         if(!((kill(i, 0) == -1)&&(errno == ESRCH)))
@@ -119,19 +154,17 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         }
 
         /* proc stat */
-        if(proc_stat(i))
-        {
-            _proc_stat = 1;
-        }
+        _proc_stat = proc_stat(i);
         
         /* proc readdir */
-        if(proc_read(i))
-        {
-            _proc_read = 1;
-        }
+        _proc_read = proc_read(i);
+
+        /* proc chdir */
+        _proc_chdir = proc_chdir(i); 
         
+               
         /* IF PID does not exist, keep going */
-        if(!_kill0 && !_gsid0 && !_proc_stat && !_proc_read)
+        if(!_kill0 && !_gsid0 && !_proc_stat && !_proc_read && !_proc_chdir)
         {
             continue;
         }
@@ -153,10 +186,6 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
             return;
         }
                                                                                 
-        /* If we are being run by the ossec hids, sleep here (no rush) */
-        #ifdef OSSECHIDS
-        sleep(2);
-        #endif
         
         /* checking if process appears on ps */
         if(*ps)
@@ -171,13 +200,19 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
                 _ps0 = 1;
         }
        
+        /* If we are being run by the ossec hids, sleep here (no rush) */
+        #ifdef OSSECHIDS
+        sleep(2);
+        #endif
+        
+        
         /* If our kill or getsid system call, got the
          * PID , but ps didn't, we need to find if it was a problem
          * with a PID being deleted (not used anymore )
          */
-        if(!_ps0 || (_proc_read != !_proc_stat))
+        if(!_ps0 || (_proc_read != _proc_stat) || (_proc_stat != _proc_chdir))
         {
-            int _proc_s = 0; int _proc_r = 0;
+            int _proc_s = 0; int _proc_r = 0; int _proc_c = 0;
             if(!((getsid(i) == -1)&&(errno == ESRCH)))
             {
                 _gsid1 = 1;
@@ -188,14 +223,14 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
                 _kill1 = 1;
             }
 
-            if(proc_stat(i))
-                _proc_s = 1;
+            _proc_s = proc_stat(i);
             
-            if(proc_read(i))
-                _proc_r = 1;    
+            _proc_r = proc_read(i);
 
+            _proc_c = proc_chdir(i);
+            
             /* If it matches, process was terminated */
-            if(!_gsid1 && !_kill1 && !_proc_s && !_proc_r)
+            if(!_gsid1 && !_kill1 && !_proc_s && !_proc_r && !_proc_c)
             {
                 continue;
             }
@@ -228,7 +263,8 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
             }
         }
 
-        else if(_proc_read != _proc_stat)
+        else if((_proc_read != _proc_stat) || 
+                (_proc_read != _proc_chdir))
         {
             char op_msg[OS_MAXSTR +1];
             snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "

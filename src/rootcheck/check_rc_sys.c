@@ -157,8 +157,8 @@ int read_sys_dir(char *dir_name, int do_read)
     struct stat statbuf;	
    
     char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin", 
-                                 "/usr/sbin", "/dev", "/lib",
-                                 "/etc", "/tmp", "/boot", NULL };
+                                 "/usr/sbin", "/dev", "/etc", 
+                                 "/boot", NULL };
     
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
     {
@@ -323,9 +323,9 @@ void check_rc_sys(char *basedir)
                                   "/usr/sbin", "/dev", "/lib",
                                   "/etc", "/root", "/var/log",
                                   "/var/mail", "/var/lib",
-                                  "/usr/lib", "/usr/share", 
+                                  "/usr/lib", "/usr/include",
                                   "/tmp", "/boot", "/usr/local", 
-                                  "/var/www", "/var/tmp", NULL};
+                                  "/var/tmp", NULL};
 
         for(_i = 0; _i <= 24; _i++)
         {
