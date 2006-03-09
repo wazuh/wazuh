@@ -5,9 +5,9 @@
   -->
       
 
-<group name="named,syslog">
+<group name="syslog,named">
   <rule id="1900" level="0" noalert="1">
-    <regex>^named[\d+]: </regex>
+    <decoded_as>named</decoded_as>
     <description>Grouping of the named rules</description>
   </rule>
   
@@ -19,26 +19,25 @@
 
   <rule id="1902" level="9">
     <if_sid>1900</if_sid>
-    <regex>^named[\d+]: denied AXFR from</regex>
+    <match>denied AXFR from</match>
     <description>Failed attempt to perform a zone transfer</description>
   </rule>
 
   <rule id="1903" level="0">
     <if_sid>1900</if_sid>
-    <regex>^named[\d+]: denied update from|</regex>
-    <regex>^named[\d+]: unapproved update from|</regex>
+    <match>denied update from|unapproved update from</match>
     <description>NSUpdate attempt. Generally mis-configuration</description>
     <info>http://seclists.org/lists/incidents/2000/May/0217.html</info>
   </rule>
 
   <rule id="1904" level="4">
     <if_sid>1900</if_sid>
-    <regex>^named[\d+]: unable to rename log file</regex>
+    <match>unable to rename log file</match>
     <description>Log permission misconfiguration in Named</description>
   </rule>
 
   <rule id="1905" level="4">
     <if_sid>1900</if_sid>
-    <regex>^named[\d+]: unexpected RCODE </regex>
-    <description>Unexpected error while resolving domain (broken domain)</description>
+    <match>unexpected RCODE </match>
+    <description>Unexpected error while resolving domain</description>
 </group> <!-- SYSLOG,NAMED -->

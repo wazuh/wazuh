@@ -74,6 +74,12 @@
   <order>srcip</order>
 </decoder>       
 
+<decoder name="ssh-generic">
+  <parent>sshd</parent>
+  <regex> from (\S*\d+.\d+.\d+.\d\d*\d*)</regex>
+  <order>srcip</order>
+</decoder>
+
 
 <!-- Su decoder.
   -  Will extract the username.
@@ -157,9 +163,20 @@
   <regex>^imapd[\d+]: login failed user=(\S+) auth=\S* host=(\S+) </regex>
   <order>user,srcip</order>
 </decoder>
-          
 
-          
+
+
+<!-- Named decoder.
+  - Will extract the srcip
+  - Examples:
+  -
+ -->           
+<decoder name="named">
+  <prematch>^named[\d+]: </prematch>
+  <regex> from [(\d+.\d+.\d+.\d+)].</regex>
+  <order>srcip</order>
+</decoder>
+
 
 <!-- Iptables decoder.
   - Will extract the srcip, dstip, srcport, dstport, protocol

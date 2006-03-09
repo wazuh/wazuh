@@ -74,11 +74,17 @@ void DecodeEvent(Eventinfo *lf)
             {
                 nnode = child_node->plugin;
 
-
-                if(nnode->prematch && OSRegex_Execute(lf->log,nnode->prematch))
-                {
-                    break;
+                
+                /* If we have a pre match and it matches, keep
+                 * going. If we don't have a pre match, keep going too.
+                 */
+                if(nnode->prematch)
+                {     
+                    if(OSRegex_Execute(lf->log,nnode->prematch))
+                        break;
                 }
+                else
+                    break;
 
                 child_node = child_node->next;
                 nnode = NULL;
@@ -106,6 +112,7 @@ void DecodeEvent(Eventinfo *lf)
                     if(nnode->order[i])
                     {
                         nnode->order[i](lf, nnode->regex->sub_strings[i]);
+                        nnode->regex->sub_strings[i] = NULL;
                         i++;
                         continue;
                     }
@@ -115,7 +122,6 @@ void DecodeEvent(Eventinfo *lf)
                     nnode->regex->sub_strings[i] = NULL;
                     i++;
                 }
-
             }
 
 

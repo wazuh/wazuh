@@ -63,6 +63,11 @@ them or after them.
      attention is necessary.
 
 
+== Rules Group ==
+
+-We can specify groups for specific rules. It's used for active
+response reasons and for correlation.
+
      
 == Rules Config ==
 
