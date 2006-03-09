@@ -367,7 +367,7 @@ void ReadDecodeXML(char *file)
         
 
         /* Prematch must be set */
-        if(!prematch)
+        if(!prematch && !pi->parent)
         {
             ErrorExit(DECODE_NOPREMATCH, ARGV0, pi->name);
         }
@@ -380,11 +380,16 @@ void ReadDecodeXML(char *file)
                       ARGV0, pi->name);
         }
         
+
         /* Compiling the regex/prematch */
-        if(!OSRegex_Compile(prematch, pi->prematch, 0))
+        if(prematch)
         {
-            ErrorExit(REGEX_COMPILE, ARGV0, prematch, pi->prematch->error);
+            if(!OSRegex_Compile(prematch, pi->prematch, 0))
+            {
+                ErrorExit(REGEX_COMPILE, ARGV0, prematch, pi->prematch->error);
+            }
         }
+        
         
         /* We may not have the pi->regex */
         if(regex)

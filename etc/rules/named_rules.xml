@@ -40,4 +40,5 @@
     <if_sid>1900</if_sid>
     <match>unexpected RCODE </match>
     <description>Unexpected error while resolving domain</description>
+  </rule>  
 </group> <!-- SYSLOG,NAMED -->
