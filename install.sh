@@ -15,12 +15,6 @@ if [ ! $? = 0 ]; then
     ECHO=echo
 fi    
 
-. ./src/init/shared.sh
-. ./src/init/language.sh
-. ./src/init/functions.sh
-. ./src/init/init.sh
-. ./etc/templates/en/messages.txt
-
 
 
 
@@ -563,6 +557,9 @@ checkDependencies()
 main()
 {
     LG="en"
+    LANGUAGE="en"
+    . ./src/init/shared.sh
+
     
     # Choosing the language.
     echo ""
@@ -583,10 +580,19 @@ main()
     fi    
     ls "${TEMPLATE}/${USER_LG}" > /dev/null 2>&1
     if [ $? = 0 ]; then
+        . ./etc/templates/${USER_LG}/messages.txt
         break;
     fi
     done;    
 
+    LANGUAGE=${USER_LG}
+    
+    . ./src/init/shared.sh
+    . ./src/init/language.sh
+    . ./src/init/functions.sh
+    . ./src/init/init.sh
+    . ./etc/templates/${LANGUAGE}/messages.txt
+    
     # Must be executed as ./install.sh
     if [ `isFile ${VERSION_FILE}` = "${FALSE}" ]; then
         catError "0x1-location";
