@@ -432,8 +432,6 @@ dev/ptyzg			        ! Suspicious file ::rootkits/Suspicious.php
 dev/xdf1			        ! Suspicious file ::rootkits/Suspicious.php
 dev/ttyop			        ! Suspicious file ::rootkits/Suspicious.php
 dev/ttyof			        ! Suspicious file ::rootkits/Suspicious.php
-dev/hd5				        ! Suspicious file ::rootkits/Suspicious.php
-dev/hd6				        ! Suspicious file ::rootkits/Suspicious.php
 dev/hd7				        ! Suspicious file ::rootkits/Suspicious.php
 dev/hdx1			        ! Suspicious file ::rootkits/Suspicious.php
 dev/hdx2			        ! Suspicious file ::rootkits/Suspicious.php
