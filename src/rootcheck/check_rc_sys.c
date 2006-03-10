@@ -32,6 +32,7 @@
 
 int _sys_errors;
 int _sys_total;
+dev_t did;
 
 FILE *_wx;
 FILE *_ww;
@@ -151,6 +152,7 @@ int read_sys_file(char *file_name, int do_read)
 int read_sys_dir(char *dir_name, int do_read)
 {
     int i, entry_count = 0;
+    int did_changed = 0;
     DIR *dp;
     
 	struct dirent *entry;
@@ -173,6 +175,14 @@ int read_sys_dir(char *dir_name, int do_read)
     if(lstat(dir_name, &statbuf) < 0)
     {
         return(-1);
+    }
+    
+    
+    /* Currently device id */
+    if(did != statbuf.st_dev)
+    {
+        did_changed = 1;
+        did = statbuf.st_dev;
     }
     
     
@@ -265,7 +275,8 @@ int read_sys_dir(char *dir_name, int do_read)
     /* Entry count for directory different than the actual
      * link count from stats.
      */
-    if(entry_count != statbuf.st_nlink)
+    if((entry_count != statbuf.st_nlink) && 
+       ((did_changed == 0) || ((entry_count + 1) != statbuf.st_nlink)))
     {
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "Files hidden inside directory "
@@ -293,6 +304,7 @@ void check_rc_sys(char *basedir)
 
     _sys_errors = 0;
     _sys_total = 0;
+    did = 0; /* device id */
     
     snprintf(file_path, OS_MAXSTR, "%s", basedir);
 
