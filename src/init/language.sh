@@ -3,8 +3,6 @@
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 # Last modification: Mar 03, 2006
 
-. ./src/init/shared.sh
-. ./src/init/functions.sh
 
 ##########
 # catError()

@@ -29,9 +29,6 @@ CEXTRA=""
 NEWCONFIG="./etc/ossec.mc"
 PRECONFIG="./etc/PRECONFIG"
 
-## Languages (default to english)
-LANGUAGE="en"
-
 ## Templates
 TEMPLATE="./etc/templates"
 ERROR="errors"
