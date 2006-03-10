@@ -1,0 +1,4 @@
+ 
+ Fehler 0x2.
+ Dieses Script kann nur mit root Rechten ausgeführt werden.
+
