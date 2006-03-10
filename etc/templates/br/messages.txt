@@ -1,0 +1,85 @@
+# Configuration
+yes="s"
+no="n"
+yesmatch="s"
+nomatch="n"
+
+# Global
+moreinfo="Maiores informações em: "
+starting="Iniciando o OSSEC HIDS"
+systemis="Systema:"
+modifiedinit="Modificado o script de inicialização parexecutar o OSSEC HIDS durante o boot."
+noboot="Sistema desconhecido. Não foi adicionado ao script de Inicialização."
+
+# Part 1
+installscript="Script de instalação"
+system="Sistema"
+user="Usuário"
+host="Host"
+hitanyorabort="Aperte qualquer tecla para continuar ou Ctrl+C para abortar."
+whattoinstall="Que tipo da instalação você quer (servidor, cliente, local ou ajuda)?"
+serverchose="Instalação do Servidoescolhida."
+clientchose="instalação do Clientescolhida."
+localchose="Instalação Loc escolhida."
+
+# Part 2
+settingupenv="Ajustando o ambiente de configuração."
+wheretoinstall="Escolha onde instalar o OSSEC HIDS"
+installat="A instalação será feita em "
+deletedir="O diretório de instalação já existe. Desremove-lo?"
+
+# Part 3
+configuring="Configurando"
+mailnotify="Qual o e-mail para receber as notificações?"
+nomail="Desabilitado a notificação por e-mail"
+whatsemail="Qual o seu endereço de e-mail?"
+yoursmtp="Seu servidor SMTP foi encontrada como"
+usesmtp="Deseja usar isto?"
+usingsmtp="Usando servidor SMTP: "
+whatsmtp="Qual o ip/host de seu servidor SMTP?"
+
+# Part 3.1/agent
+serverip="Qual o endereço de IP do servidor OSSEC HIDS?"
+addingip="Adicionando IP do servidor"
+
+
+# Part 3.2
+runsyscheck="Deseja executar a verificação da integridade do sistema?"
+nosyscheck="Syscheck (Sistema de verificação de integridaddesabilitado"
+yessyscheck="Syscheck (Sistema de verificação de integridadehabilitado"
+
+# Part 3.3
+runrootcheck="Gostaria de executar o sistema de detecç� de rootkis?"
+norootcheck="Rootcheck (Sistema de detecç� de rootkits) desabilitado"
+yesrootcheck="Rootcheck (Sistem de detecç� de rootkits) habilitado"
+
+# Part 3.4/server/local
+enable_ar="Gostaria de ter o sistema de resposta ativa de incidentes habilitada?"
+noactive="Resposta ativa de incidentes desabilitada"
+nohosts="host-deny desabilitado"
+yeshosts="host-deny habilitado (local) para niveis >= 6"
+firewallar="Gostaria de habilitar a resposta do firewall-drop?"
+nofirewall="firewall-drop desabilitado"
+yesfirewall="firewall-drop habilitado (local) para niveis >= 6"
+
+# Part 3.5/server/local
+syslog="Gostaria de habilitar o sistema de log remoto (514 udp)?"
+nosyslog="Não escutando na porta de syslog"
+yessyslog="Escutando mensagens remotas de syslog"
+
+# Part 3.4/3.5
+readlogs="Ajustando a configuração para anasar os seguintes registros:"
+
+# Part 5
+installing="Instalando o sistema"
+runningmake="Executando o Makefile"
+
+# Final
+configurationdone="Configuração terminada corretamente"
+tostart="Para começar OSSEC HIDS"
+tostop="Para parar OSSEC HIDS"
+configat="A configuração pode ser vista ou modificado em"
+addserveragent="Você necessita adicionar cada usuário antes que estejam autozados a acessar. "
+runma="Execute 'manage_agents' para adicionar ou remover."
+presskey="Precione qualquer tecla para continuar."
+
