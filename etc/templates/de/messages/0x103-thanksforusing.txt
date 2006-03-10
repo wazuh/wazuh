@@ -1,0 +1,11 @@
+
+    Danke das Sie OSSEC HIDS benutzen.
+    Bei Fragen, Anregungen oder wenn Sie einen Fehler gefunden
+    haben, können Sie die Entwickler per E-Mail contact@ossec.net 
+    oder über die Mailingliste unter ossec-list@ossec.net erreichen
+    (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list).
+
+    Weitere Informtionen finden Sie unter http://www.ossec.net/hids/
+
+    ---  Drücken Sie eine Taste um fortzufahren  ---
+    
