@@ -125,7 +125,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         
         
         /* If reached here, we matched */
-        lf->matched = my_lf->level;
+        lf->matched = currently_rule->level;
             
         return(lf);    
         
