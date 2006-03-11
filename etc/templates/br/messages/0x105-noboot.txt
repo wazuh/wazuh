@@ -1,0 +1,4 @@
+
+ - Nenhuma alteração foi criada para que OSSEC HIDS inicie"
+   durrante a inicialização. Adicione o seguinte em seu script de inicialização: "
+

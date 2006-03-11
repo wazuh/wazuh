@@ -1,0 +1,27 @@
+
+  - Você tem três opções para executar a instalação: agent, local or server.
+  
+    - Se você escolher 'server', você poderá analizar todos os logs,
+      the logs, criar notificações de e-mail e respostas,   
+      e também receber logs de máquinas remotas e de sistemas  
+      com 'agents' rodando (onde o tráfego é enviado criptografado).
+      
+    - Se você escolher 'agent'(client), você poderá ler arquivos 
+      locais (do syslog, snort, apache, etc) and os encaminhar
+      (criptografados) ao servidor para análises.             
+
+    - Se você escolher local, você poderá fazer tudo o que o
+      o servidor faz, exceto receber mensagens remotas de 
+      agents or dispositivos 'syslog' externos      
+
+  - Utilize 'server' se você estiver configurando um servidor de logs/analises.
+  
+  - Utilize 'agent' se você tiver outra máquina que rodando como servidor de log
+     e quizer encaminhar os logs ao servidor para análises.
+    (ideal para webservers, servidores de banco de dados, etc)
+    
+  - Utiliza 'local' se você apenas quizer um sistema de análises.
+  
+  - Maiores informações: http://www.ossec.net/hids/doc.php#starting"
+
+  

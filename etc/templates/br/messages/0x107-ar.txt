@@ -1,0 +1,7 @@
+
+  3.4- Respostas ativas possibilita a você executar um comando
+       específico baseados em eventos recebidos. Você pode
+       bloquear um endereço IP ou desabilitar o acesso 
+       usuário específico, por exemplo. 
+       http://www.ossec.net/hids/config.php#active-response 
+       

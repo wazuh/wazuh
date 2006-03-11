@@ -30,11 +30,11 @@ deletedir="O diretório de instalação já existe. Desremove-lo?"
 
 # Part 3
 configuring="Configurando"
-mailnotify="Qual o e-mail para receber as notificações?"
+mailnotify="Deseja receber as notificações por e-mail?"
 nomail="Desabilitado a notificação por e-mail"
 whatsemail="Qual o seu endereço de e-mail?"
 yoursmtp="Seu servidor SMTP foi encontrada como"
-usesmtp="Deseja usar isto?"
+usesmtp="Deseja usa-lo?"
 usingsmtp="Usando servidor SMTP: "
 whatsmtp="Qual o ip/host de seu servidor SMTP?"
 
@@ -45,8 +45,8 @@ addingip="Adicionando IP do servidor"
 
 # Part 3.2
 runsyscheck="Deseja executar a verificação da integridade do sistema?"
-nosyscheck="Syscheck (Sistema de verificação de integridaddesabilitado"
-yessyscheck="Syscheck (Sistema de verificação de integridadehabilitado"
+nosyscheck="Syscheck (Sistema de verificação de integride) desabilitado"
+yessyscheck="Syscheck (Sistema de verificação de integrida) habilitado"
 
 # Part 3.3
 runrootcheck="Gostaria de executar o sistema de detecç� de rootkis?"
