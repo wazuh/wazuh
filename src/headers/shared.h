@@ -30,6 +30,7 @@
 #include <stdarg.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <ctype.h>
 
 /* Making Windows happy */
 #ifndef WIN32
