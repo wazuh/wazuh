@@ -84,7 +84,7 @@ void ReadDecodeXML(char *file)
     
     while(node[i])
     {
-        XML_NODE elements=NULL;
+        XML_NODE elements = NULL;
         PluginInfo *pi;
 
         int j = 0;
@@ -132,6 +132,8 @@ void ReadDecodeXML(char *file)
         pi->ftscomment = NULL;
         pi->fts = 0;
         pi->type = SYSLOG;
+        pi->prematch = NULL;
+        pi->regex = NULL;
         
         regex = NULL;
         prematch = NULL;
@@ -140,11 +142,6 @@ void ReadDecodeXML(char *file)
         {
             ErrorExit(MEM_ERROR, ARGV0);
         }
-        
-        
-        /* Assigning the memory for the regex/prematch */ 
-        os_calloc(1, sizeof(OSRegex), pi->regex);
-        os_calloc(1, sizeof(OSRegex), pi->prematch);
         
         
         /* Looping on all the elements */
@@ -373,7 +370,7 @@ void ReadDecodeXML(char *file)
         }
 
         /* If pi->regex is not set, fts must not be set too */
-        if(!pi->regex && (pi->fts || pi->order))
+        if(!regex && (pi->fts || pi->order))
         {
             ErrorExit("%s: No regex specified for '%s'. You "
                       "can't specify the fts or order", 
@@ -384,16 +381,20 @@ void ReadDecodeXML(char *file)
         /* Compiling the regex/prematch */
         if(prematch)
         {
+            os_calloc(1, sizeof(OSRegex), pi->prematch);
             if(!OSRegex_Compile(prematch, pi->prematch, 0))
             {
                 ErrorExit(REGEX_COMPILE, ARGV0, prematch, pi->prematch->error);
             }
+
+            free(prematch);
         }
         
         
         /* We may not have the pi->regex */
         if(regex)
         {
+            os_calloc(1, sizeof(OSRegex), pi->regex);
             if(!OSRegex_Compile(regex, pi->regex, OS_RETURN_SUBSTRING))
             {
                 ErrorExit(REGEX_COMPILE, ARGV0, regex, pi->regex->error);
@@ -404,22 +405,9 @@ void ReadDecodeXML(char *file)
             {
                 ErrorExit(REGEX_SUBS, ARGV0, regex);
             }
-        }
-        /* We can release pi->regex */
-        else
-        {
-            OSRegex_FreePattern(pi->regex);
-            pi->regex = NULL;
-        }
-        
-        
-        /* Freeing regex and pattern */
-        if(regex)
-            free(regex);
 
-        if(prematch)
-            free(prematch);    
-        
+            free(regex);
+        }
         
         /* Adding plugin to the list */
         OS_AddPlugin(pi);
