@@ -6,3 +6,5 @@
 /var/www/logs/error_log
 /var/log/httpd/error_log
 /var/log/httpd/access_log
+/var/log/apache2/error.log
+/var/log/apache2/access.log

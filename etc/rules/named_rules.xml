@@ -41,4 +41,10 @@
     <match>unexpected RCODE </match>
     <description>Unexpected error while resolving domain</description>
   </rule>  
+
+  <rule id="1906" level="4">
+    <if_sid>1900</if_sid>
+    <match>refused notify from non-master</match>
+    <description>DNS configuration error.</description>
+  </rule>
 </group> <!-- SYSLOG,NAMED -->
