@@ -158,12 +158,15 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                         if(prts_closure[prts_int] == pt)
                         {
                             prts_str[prts_int] = st;
+                            break;
                         }
                         prts_int++;
                     }
                 }
 
                 pt++;
+                if(*pt == '\0')
+                    return(r_code);
                 break;
         }
 
@@ -260,7 +263,8 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                             {
                                 if(prts_closure[prts_int] == (next_pt -1))
                                 {
-                                    prts_str[prts_int] = st;
+                                    prts_str[prts_int] = (st +1);
+                                    break;
                                 }
                                 prts_int++;
                             }
@@ -269,7 +273,9 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
 
                         /* If next_pt == \0, return the r_code */
                         if(*next_pt == '\0')
+                        {
                             return(r_code);
+                        }
 
                             
                         /* Each "if" will increment the amount
@@ -306,6 +312,29 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                 }
                 else
                 {
+                    next_pt++;
+
+                    /* If it is a parenthesis, mark the location */
+                    if(prts_closure && prts(*next_pt))
+                    {
+                        prts_int = 0;
+                        while(prts_closure[prts_int])
+                        {
+                            if(prts_closure[prts_int] == next_pt)
+                            {
+                                prts_str[prts_int] = st +1;
+                                break;
+                            }
+                            prts_int++;
+                        }
+                        next_pt++;
+                    }
+
+                    if(*next_pt == '\0')
+                    {
+                        return(1);
+                    }
+
                     _regex_matched = 1;
                 }
                 
@@ -399,9 +428,51 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
     }while(*(++st) != '\0');
 
 
+    /* Matching for a possible last parenthesis */
+    if(prts_closure)
+    {
+        while(!prts(*pt) && *pt != '\0')
+        {
+            if(*pt == BACKSLASH && *(pt+2) == '*')
+                pt+=3;
+            else
+                break;    
+        }
+        
+        if(prts(*pt))
+        {
+            prts_int = 0;
+            while(prts_closure[prts_int])
+            {
+                if(prts_closure[prts_int] == pt)
+                {
+                    prts_str[prts_int] = st;
+                    break;
+                }
+                prts_int++;
+            }
+        }
+    }
+
+    /* Cleaning up */
     if(ENDOFFILE(pt) || 
-        (*pt == BACKSLASH && _regex_matched && (pt+=2) && isPlus(*pt) && (pt++) &&
-        ((ENDOFFILE(pt)) || ((*pt == BACKSLASH) && (pt+=2) && (*pt == '*') && (pt++) && (ENDOFFILE(pt)) )))) 
+        (*pt == BACKSLASH && 
+        _regex_matched && 
+        (pt+=2) && 
+        isPlus(*pt) && 
+        (pt++) &&
+        ((ENDOFFILE(pt)) || 
+        ((*pt == BACKSLASH) && 
+        (pt+=2) && 
+        (*pt == '*') && 
+        (pt++) && 
+        (ENDOFFILE(pt)) ))) ||
+        (*pt == BACKSLASH &&
+        (pt+=2) &&
+        (*pt == '*') &&
+        (pt++) &&
+        ENDOFFILE(pt))
+        ) 
     {
         return(r_code);
     }
