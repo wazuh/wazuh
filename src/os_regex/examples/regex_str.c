@@ -46,7 +46,8 @@ int main(int argc,char **argv)
             printf("substrings:\n");
             while(*ret)
             {
-                printf("  %d: %s\n", sub_size++, *ret++);
+                printf("  %d: !%s!\n", sub_size, *ret);
+                sub_size++; ret++;
             }
 
             /* We must free the substrings */

@@ -3,7 +3,6 @@
 maketest:
 		$(CC) -o regex regex.c ../os_regex.a -I../ -Wall
 		$(CC) -o match match.c ../os_regex.a -I../ -Wall
-		$(CC) -o regex2 regex2.c ../os_regex.a -I../ -Wall
 		$(CC) -o regex_str regex_str.c ../os_regex.a -I../ -Wall
 
 clean:
