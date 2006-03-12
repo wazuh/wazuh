@@ -453,6 +453,7 @@ void OS_ReadMSG(int m_queue)
         {
             RuleNode *rulenode_pt;
 
+            merror("received: %s", msg);
             /* Getting the time we received the event */
             c_time = time(NULL);
 
@@ -470,6 +471,8 @@ void OS_ReadMSG(int m_queue)
 
                 continue;
             }
+
+            merror("decoded: %s", msg);
 
             /* Currently rule must be null in here */
             currently_rule = NULL;
