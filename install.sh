@@ -333,6 +333,7 @@ ConfigureServer()
 	echo "  <include>syslog_rules.xml</include>" >> $NEWCONFIG
 	echo "  <include>pix_rules.xml</include>" >> $NEWCONFIG
 	echo "  <include>named_rules.xml</include>" >> $NEWCONFIG
+	echo "  <include>pure-ftpd_rules.xml</include>" >> $NEWCONFIG
 	echo "  <include>proftpd_rules.xml</include>" >> $NEWCONFIG
     echo "  <include>apache_rules.xml</include>" >> $NEWCONFIG
     echo "  <include>ids_rules.xml</include>" >> $NEWCONFIG

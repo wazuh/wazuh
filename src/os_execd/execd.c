@@ -94,7 +94,7 @@ int main(int argc, char **argv)
         ErrorExit(USER_ERROR,ARGV0,"",group);
 
 
-    /* Privilege separation */	
+    /* Privilege separation */  
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, getpid());
         
 
-    /* The real daemon Now */	
+    /* The real daemon Now */  
     ExecdStart(m_queue);
     
     exit(0);
@@ -216,6 +216,7 @@ void ExecdStart(int q)
     while(1)
     {
         int timeout_value;
+        int added_before = 0;
         char **timeout_args;
         timeout_data *timeout_entry;
 
@@ -324,8 +325,6 @@ void ExecdStart(int q)
         }
 
 
-
-
         /* Getting application name */
         name = buffer;
 
@@ -367,7 +366,6 @@ void ExecdStart(int q)
 
 
 
-
         /* Getting the arguments */
         i = 2;
         while(i < MAX_ARGS)
@@ -394,35 +392,69 @@ void ExecdStart(int q)
         }
 
 
-
-        /* executing command */
-        ExecCmd(cmd_args);
-
-
-
-        /* Creating the timeout entry */
-        timeout_entry->command = timeout_args;
-        timeout_entry->time_of_addition = curr_time;
-        timeout_entry->time_to_block = timeout_value;
-
-
-        /* We don't need to add if the timeout_value == 0 */
-        if(!timeout_value)
+        /* From ahmet ozturk <oahmet@metu.edu.tr> */
+        /* Check if we executed this command and added it to timeout list */
+        timeout_node = OSList_GetFirstNode(timeout_list);
+        added_before = 0;
+        while(timeout_node)
         {
-            FreeTimeoutEntry(timeout_entry);
-        }        
+          timeout_data *list_entry;
+          list_entry = (timeout_data *)timeout_node->data;
+          if((strcmp(list_entry->command[i], timeout_args[i]) == 0) &&
+             (strcmp(list_entry->command[0], timeout_args[0]) == 0)) 
+          {
+              /* Means we executed this command before
+               * and we don't need to add it again
+               */
+              added_before = 1;
 
-
-        /* Adding command to the timeout list */
-        else if(!OSList_AddData(timeout_list, timeout_entry))
-        {
-            merror("%s: Error adding command to the timeout list", ARGV0);
-            FreeTimeoutEntry(timeout_entry);
+              /* updating the timeout */
+              list_entry->time_of_addition = curr_time;
+              break;
+          }
+          
+          /* Continue with the next entry in timeout list*/
+          timeout_node = OSList_GetNextNode(timeout_list);
         }
 
+        if(!added_before)
+        {
+            /* executing command */
+            ExecCmd(cmd_args);
+
+            /* Creating the timeout entry */
+            timeout_entry->command = timeout_args;
+            timeout_entry->time_of_addition = curr_time;
+            timeout_entry->time_to_block = timeout_value;
 
 
-        childcount++;
+            /* We don't need to add if the timeout_value == 0 */
+            if(!timeout_value)
+            {
+                FreeTimeoutEntry(timeout_entry);
+            }        
+
+
+            /* Adding command to the timeout list */
+            else if(!OSList_AddData(timeout_list, timeout_entry))
+            {
+                merror("%s: Error adding command to the timeout list", ARGV0);
+                FreeTimeoutEntry(timeout_entry);
+            }
+
+            childcount++;
+        }
+        
+        /* We didn't add it to the timeout list */
+        else
+        {
+            /* Creating the timeout entry to be properly deleted */
+            timeout_entry->command = timeout_args;
+            timeout_entry->time_of_addition = curr_time;
+            timeout_entry->time_to_block = timeout_value;
+
+            FreeTimeoutEntry(timeout_entry);
+        }
 
         /* Some cleanup */
         while(i > 0)
