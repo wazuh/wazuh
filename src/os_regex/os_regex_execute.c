@@ -263,7 +263,10 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                             {
                                 if(prts_closure[prts_int] == (next_pt -1))
                                 {
-                                    prts_str[prts_int] = (st +1);
+                                    if(*(st+1) == '\0')
+                                        prts_str[prts_int] = st+1;
+                                    else    
+                                        prts_str[prts_int] = st;
                                     break;
                                 }
                                 prts_int++;
@@ -322,7 +325,10 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                         {
                             if(prts_closure[prts_int] == next_pt)
                             {
-                                prts_str[prts_int] = st +1;
+                                if(*(st+1) == '\0')
+                                    prts_str[prts_int] = st +1;
+                                else
+                                    prts_str[prts_int] = st;
                                 break;
                             }
                             prts_int++;

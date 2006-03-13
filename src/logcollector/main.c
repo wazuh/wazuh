@@ -118,10 +118,6 @@ int main(int argc, char **argv)
     if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
 
-    
-    /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, getpid());
-
 
     /* Main loop */        
     LogCollectorStart();
