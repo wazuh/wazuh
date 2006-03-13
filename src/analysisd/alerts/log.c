@@ -78,7 +78,8 @@ void OS_Log(Eventinfo *lf)
     if(_aflog) 
     {
         fprintf(_aflog,
-                "%d %s %02d %s %s\nRule: %d (level %d) -> '%s'\n%s\n",
+                "%d %s %02d %s %s\nRule: %d (level %d) -> '%s'\n"
+                "Src IP: %s\nUser: %s\n%s\n",
                 lf->year,
                 lf->mon,
                 lf->day,
@@ -87,6 +88,8 @@ void OS_Log(Eventinfo *lf)
                 lf->sigid,
                 lf->level,
                 lf->comment,
+                lf->srcip == NULL?"(none)":lf->srcip,
+                lf->user == NULL?"(none)":lf->user,
                 lf->sigid == STATS_PLUGIN?
                 "No Log Available (HOURLY_STATS)":lf->log);
 
