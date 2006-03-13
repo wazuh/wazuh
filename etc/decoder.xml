@@ -145,10 +145,39 @@
 
 <decoder name="proftpd-ip">
   <parent>proftpd</parent>
-  <prematch>^proftpd[\d+]: </prematch>
   <regex> from (\S+) </regex>
   <order>srcip</order>
 </decoder>
+
+
+<!-- Pure-FTPd decoder.
+  - Will extract the username/srcip whenever possible.
+  - Samples by Peter Ahlert <peter@ifup.de> (thanks!)
+  - Examples:
+  - pure-ftpd-wrapper[926]: connect from 1.1.0.1 (1.1.0.1)
+  - pure-ftpd: (?@1.1.0.1) [INFO] New connection from 1.1.0.1
+  - pure-ftpd: (abcde@1.1.0.1) [INFO] Can't change directory to /.test: Permission denied
+  - pure-ftpd: (abcde@1.1.0.1) [INFO] Logout.
+  - pure-ftpd: (?@59.150.14.54) [WARNING] Authentication failed for user [newuser]
+  -->
+<decoder name="pure-ftpd">
+  <prematch>^pure-ftpd</prematch>
+</decoder>
+
+<decoder name="pure-ftpd-login">
+  <parent>pure-ftpd</parent>
+  <prematch>[INFO] \S+ is now logged in</prematch>
+  <regex>\(?@(\S+)\) [INFO] (\S+) is now logged in</regex>
+  <order>srcip,user</order>
+  <fts>name,user,srcip,location</fts>
+  <ftscomment>First time user logged in via FTP</ftscomment>
+</decoder>
+
+<decoder name="pure-ftpd-generic">
+  <parent>pure-ftpd</parent>
+  <regex>: \((\S+)@(\S+)\) [</regex>
+  <order>user,srcip</order>
+</decoder>  
 
 
 <!-- Imapd decoder.

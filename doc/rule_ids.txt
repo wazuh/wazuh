@@ -22,6 +22,7 @@
 2500 - 2599 Proftpd rules
 2600 - 2699 PPTP messages
 2700 - 2799 FTS rules
+2800 - 2899 Pure-FTPD rules
 3000 - 3099 Apache error log rules
 3100 - 3199 Apache access log rules
 4000 - 4999 IDS rules
