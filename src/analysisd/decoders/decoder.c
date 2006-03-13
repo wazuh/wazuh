@@ -93,21 +93,17 @@ void DecodeEvent(Eventinfo *lf)
             if(!nnode)
                 return;
 
-            merror("regex for: %s", lf->log);
 
             /* Getting the regex */
             if(nnode->regex)
             {
                 int i = 0;
 
-                merror("here");
                 /* If Regex does not match, return */
                 if(!OSRegex_Execute(lf->log, nnode->regex))
                 {
-                    merror("faileD");
                     return;
                 }
-                merror("success");
                
                 while(nnode->regex->sub_strings[i])
                 {
