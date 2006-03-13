@@ -2,7 +2,7 @@
   -  Official rules for squid
   -
   -  Author: Ahmet Ozturk
-  -  Date: Mar 1, 2006
+  -  Date: Mar 2, 2006
   -->
 
   
@@ -16,49 +16,57 @@
   <rule id="5001" level="5">
     <if_sid>5000</if_sid>
     <regex>\d+ \S+ TCP_DENIED/400</regex>
-    <description>Bad request/malformed syntax.</description>
+    <description>Bad request/Invalid syntax.</description>
   </rule>
 
   <rule id="5002" level="5">
     <if_sid>5000</if_sid>
     <regex>\d+ \S+ TCP_MISS/401</regex>
-    <description>Authentication failed for URL.</description>
+    <description>Unauthorized: Failed attempt to access authorization-required file or directory.</description>
   </rule>
 
   <rule id="5003" level="5">
     <if_sid>5000</if_sid>
     <regex>\d+ \S+ TCP_MISS/403</regex>
-    <description>Attempt to access forbidden file or directory.</description>
+    <description>Forbidden: Attempt to access forbidden file or directory.</description>
   </rule>
 
   <rule id="5004" level="5">
     <if_sid>5000</if_sid>
     <regex>\d+ \S+ TCP_MISS/404</regex>
-    <description>Attempt to access an non-existent file.</description>
+    <description>Not Found: Attempt to access non-existent file or directory.</description>
   </rule>
 
   <rule id="5005" level="5">
     <if_sid>5000</if_sid>
     <regex>\d+ \S+ TCP_DENIED/407</regex>
-    <description>Proxy authentication failed. User is not allowed to use squid proxy.</description>
+    <description>Proxy Authentication Required: User is not authorized to use proxy.</description>
   </rule>
 
   <rule id="5006" level="5">
     <if_sid>5000</if_sid>
     <regex>\d+ \S+ TCP_MISS/503</regex>
-    <description>Attempt to acces invalid URL.</description>
+    <description>Service Unavailable: Attempt to access non-existent server.</description>
   </rule>
 
-
-<!-- Combined rules -->
-  
-  <rule id="5011" level="12" frequency="6" timeframe="120">
+  <rule id="5051" level="10" frequency="5" timeframe="120">
     <if_matched_sid>5003</if_matched_sid>
-    <same_source_ip />    
-    <description>Multiple attempt to access forbidden file or directory.</description>
+    <same_source_ip />
+    <description>Multiple attempts to access forbidden file or directory.</description>
   </rule>
-</group> <!-- SQUID access log -->
+
+  <rule id="5052" level="10" frequency="5" timeframe="120">
+    <if_matched_sid>5005</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple unauthorized attempts to use proxy.</description>
+  </rule>
+
+  <rule id="5053" level="10" frequency="5" timeframe="120">
+    <if_matched_sid>5001</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple Bad requests/Invalid syntax. Possbile scan</description>
+  </rule>
+</group> <!-- ACCESSLOG,SQUID -->
 
 <!-- EOF -->
-
 
