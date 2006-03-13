@@ -21,6 +21,7 @@ typedef struct _keystruct
     char **ids;
     char **keys;
     char **ips;
+    char **name;
     struct sockaddr_in *peer_info;
     time_t *time;
     int *count;
