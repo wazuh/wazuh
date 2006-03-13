@@ -9,5 +9,3 @@
    - Beide können benutzt werden um SSH Brute-Force scans,
      Portscans oder andere Attacken zu verhindern. Es kann
      auch durch einen Snort-Event geblockt werden.
-     
-   - Möchten Sie 'host-deny' einschalten? (ja/nein)j"
