@@ -56,6 +56,9 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
     keys->ips = (char **)realloc(keys->ips,
             (keys->keysize+1)* sizeof(char*));
 
+    keys->name = (char **)realloc(keys->name,
+            (keys->keysize+1)* sizeof(char*));
+    
     keys->peer_info = realloc(keys->peer_info,
             (keys->keysize+1) * sizeof(peer));
    
@@ -65,7 +68,7 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
     
     if(!keys->ids || !keys->ips || !keys->peer_info
                   || !keys->time|| !keys->count
-                  || !keys->rcvd) 
+                  || !keys->rcvd || !keys->name) 
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
@@ -73,6 +76,7 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
     /* Setting configured values */
 	keys->ids[keys->keysize] = strdup(id);
 	keys->ips[keys->keysize] = strdup(ip);
+	keys->name[keys->keysize] = strdup(name);
 
 
     /* Initializing the variables */
@@ -81,7 +85,9 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
     keys->rcvd[keys->keysize] = 0;
 
 
-    if(!keys->ids[keys->keysize] || !keys->ips[keys->keysize])
+    if(!keys->ids[keys->keysize] || 
+       !keys->ips[keys->keysize] ||
+       !keys->name[keys->keysize])
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }

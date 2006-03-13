@@ -7,6 +7,8 @@ UN=${NUNAME};
 
 runInit()
 {
+    echo ""
+    echo ""
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" ]; then
         # Checking for the presence of ossec-control on rc.local
         grep ossec-control /etc/rc.local > /dev/null 2>&1

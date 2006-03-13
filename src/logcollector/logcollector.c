@@ -37,6 +37,7 @@ void LogCollectorStart()
         if(logr[i].file == NULL)
             break;
         
+        verbose("%s: Analyzing file: %s", ARGV0, logr[i].file);
         
         /* Initiating the files */    
         handle_file(i);

@@ -282,9 +282,20 @@ int read_sys_dir(char *dir_name, int do_read)
         snprintf(op_msg, OS_MAXSTR, "Files hidden inside directory "
                          "'%s'. Link count does not match number of files.",
                          dir_name);
+
+        /* Solaris /boot is terrible :) */
+        #ifdef SOLARIS
+        if(strncmp(dir_name, "/boot", strlen("/boot")) != 0)
+        {
+            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+            _sys_errors++;
+        }
+        
+        #else
         notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
 
         _sys_errors++;
+        #endif
     }
     
     closedir(dp);

@@ -29,6 +29,7 @@ void HandleSecure(int position)
     char cleartext_msg[OS_MAXSTR +1]; 
     char srcip[IPSIZE +1];
     char *tmp_msg;
+    char srcmsg[OS_FLSIZE +1];
 
 
     int recv_b;
@@ -77,8 +78,9 @@ void HandleSecure(int position)
     /* Initializing some variables */
     memset(buffer, '\0', OS_MAXSTR +1);
     memset(cleartext_msg, '\0', OS_MAXSTR +1);
+    memset(srcmsg, '\0', OS_FLSIZE +1);
     tmp_msg = NULL;
-
+    
     
     
     /* loop in here */
@@ -128,13 +130,19 @@ void HandleSecure(int position)
             keys.rcvd[agentid] = 1;
 
             save_controlmsg(agentid, tmp_msg);
+
+            continue;
         }
 
 
+        /* Generating srcmsg */
+        snprintf(srcmsg, OS_FLSIZE, "(%s) %s", keys.name[agentid], srcip);
+        
+
         /* If we can't send the message, try to connect to the
-         * socket again. If not exit.
+         * socket again. If it not exist.
          */
-        else if(SendMSG(logr.m_queue, tmp_msg, srcip, 
+        if(SendMSG(logr.m_queue, tmp_msg, srcmsg, 
                     SECURE_MQ) < 0)
         {
             merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
