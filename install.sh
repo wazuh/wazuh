@@ -216,7 +216,6 @@ ConfigureClient()
 	    read IP
 	    echo ""
 	    echo "   - ${addingip} $IP"
-	    echo ""
 
 	echo "<client>" > $NEWCONFIG
 	echo "  <server-ip>$IP</server-ip>" >> $NEWCONFIG
@@ -640,7 +639,7 @@ main()
             
             client|agent|Agent|Client|C|A|CLIENT|AGENT|c|a)
             echo ""
-	        echo "  - ${agentchose}}."
+	        echo "  - ${clientchose}}."
 	        INSTYPE="client"
 	        break;
 	        ;;
