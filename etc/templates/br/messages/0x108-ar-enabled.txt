@@ -8,5 +8,3 @@
    - Eles podem ser usados para parar SSHD scans forçados, "
      portscans e outras formas de ataque. Você pode "
      também adicioná-los ao sistemas de bloqueio do snort, por exemplo."
-     
-   - Você deseja habilitar as respostas 'host-deny'?(yes/no)y"

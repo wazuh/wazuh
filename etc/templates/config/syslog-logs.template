@@ -7,3 +7,4 @@
 /var/adm/ipsec.log
 /var/log/userlog 
 /var/log/security
+/var/log/xferlog

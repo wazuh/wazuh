@@ -38,7 +38,7 @@
   <rule id="2805" level="5">
     <if_sid>2800</if_sid>
     <match>[INFO] Can't change directory to</match>
-    <description>Attempt to access invalid directory</match>
+    <description>Attempt to access invalid directory</description>
   </rule>  
 
   <rule id="1806" level="10" frequency="6" timeframe="120">
