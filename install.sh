@@ -81,11 +81,11 @@ UseSyscheck()
     echo ""
     case $AS in
         $nomatch)
-            echo "   - ${nosyscheck}"
+            echo "   - ${nosyscheck}."
             ;;
         *)
             SYSCHECK="yes"
-            echo "   -${yessyscheck}"
+            echo "   -${yessyscheck}."
             ;;
     esac                    
 
@@ -112,11 +112,11 @@ UseRootcheck()
     echo ""
     case $ES in
         $nomatch)
-            echo "   - ${norootcheck}"
+            echo "   - ${norootcheck}."
             ;;
         *)
             ROOTCHECK="yes"
-            echo "   - ${yesrootcheck}"
+            echo "   - ${yesrootcheck}."
             ;;
     esac
 
@@ -351,27 +351,19 @@ ConfigureServer()
 
     # Active response
     catMsg "0x107-ar"
-    $ECHO "${enable_ar} ($yes/$no) [$yes]: "
+    $ECHO "       ${enable_ar} ($yes/$no) [$yes]: "
     
     read AR
     case $AR in
         $nomatch)
+            echo ""
             echo "   - ${noactive}."
             ;;
         *)
             ACTIVERESPONSE="yes"
+            echo ""
             catMsg "0x108-ar-enabled"
             
-            read HD
-            case $HD in
-                $nomatch)
-                    echo "     - ${nohosts}"
-                    ;;
-                *)    
-                    echo "     - ${yeshosts} "
-                    HOSTDENY="yes"
-                    ;;
-            esac
             echo ""
             $ECHO "   - ${firewallar} ($yes/$no) [$yes]: "
             read HD2
@@ -382,6 +374,7 @@ ConfigureServer()
                 *)
                     echo "     - ${yesfirewall} "
                     FIREWALLDROP="yes"
+                    HOSTDENY="yes"
                     ;;
             esac        
                         
@@ -498,7 +491,7 @@ setEnv()
     echo ""
     echo "2- ${settingupenv}."
     echo ""
-    $ECHO " - ${wheretoinstall} [$INSTALLDIR]"
+    $ECHO " - ${wheretoinstall} [$INSTALLDIR]: "
     read ANSWER
     if [ ! "X$ANSWER" = "X" ]; then
         INSTALLDIR=$ANSWER;
@@ -507,7 +500,7 @@ setEnv()
     CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${WORKDIR}\\\""
     
     echo ""
-    echo "    - ${installat} ${INSTALLDIR}"
+    echo "    - ${installat} ${INSTALLDIR} ."
     
 
     if [ "X$INSTYPE" = "Xclient" ]; then
@@ -563,8 +556,8 @@ main()
 
     
     # Choosing the language.
-    echo ""
     while [ 1 ]; do
+    echo ""
     for i in `ls ${TEMPLATE}`; do 
         # ignore CVS (should not be there anyways and config)
         if [ "$i" = "CVS" -o "$i" = "config" ]; then continue; fi
@@ -683,9 +676,6 @@ main()
 
     
     # User messages
-    echo ""
-    echo ""
-    echo ""
     echo ""
     echo " - ${configurationdone}."
     echo ""

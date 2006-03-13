@@ -8,5 +8,3 @@
    - They can be used to stop SSHD brute force scans, 
      portscans and some other forms of attacks. You can 
      also add them to block on snort events (for example).
-     
-   - Do you want to enable the host-deny response?(yes/no)y

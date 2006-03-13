@@ -36,6 +36,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
 {
     char exec_msg[OS_MAXSTR +1];
     char *ip;
+    char *location;
 
     /* Cleaning the IP */
     if(lf->srcip)
@@ -96,12 +97,23 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
         }
     }
    
+    /* Removing (agent_name) if present */
+    if((location = strchr(lf->location, ')')) != NULL)
+    {
+        /* Going after the ) */
+        location+=2;
+    }
+    else
+    {
+        location = lf->location;
+    }
+    
     /* Active response to the forwarder */ 
     if(Config.ar & REMOTE_AR)
     {
         snprintf(exec_msg, OS_MAXSTR,
                 "%s %c%c%c %s %s %s %s",
-                lf->location,
+                location,
                 (ar->location & ALL_AGENTS)?ALL_AGENTS_C:NONE_C,
                 (ar->location & REMOTE_AGENT)?REMOTE_AGENT_C:NONE_C,
                 (ar->location & SPECIFIC_AGENT)?SPECIFIC_AGENT_C:NONE_C,
