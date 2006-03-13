@@ -1,0 +1,31 @@
+# ossec-hids, CONTRIB.txt, v1.0 2006/03/13, Daniel B. Cid
+#
+
+Many thanks to everyone who contributed and helped with
+the ossec-hids project. Bellow is the list of everyone
+who helped since the version 0.1.
+(if you feel you should be here, but it is not, let me know)
+
+-Development
+  - Daniel B. Cid <dcid ( at ) ossec.net>
+  - Ahmet ozturk <oahmet ( at )  metu.edu.tr>
+
+
+-Testing
+  - Giannis Vrentzos  <gvre ( at ) phaistosnetworks.gr>
+  - Peter Ahlert <peter ( at ) ifup.de>
+  - under@underlinux.com.br <under ( at ) underlinux.com.br>  
+  - André Alexandre Gaio <aagaio ( at ) linwork.com.br>
+
+  
+-Translations
+
+  -Portuguese:
+  - Daniel Barcellos <danielpoa.rs ( at ) gmail.com>
+  - Allan Soares <allan.soares ( at ) gmail.com>
+  - White_Tiger <itihoitiho ( at ) gmail.com>
+
+  -German:
+  - Peter Ahlert <peter ( at ) ifup.de>
+
+# EOF  
