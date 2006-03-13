@@ -511,7 +511,8 @@ setEnv()
 
     ls $INSTALLDIR >/dev/null 2>&1
     if [ $? = 0 ]; then
-        echo " - ${deletedir} (y/n)n"
+        echo ""
+        $ECHO "    - ${deletedir} ($yes/$no) [$yes]: "
         read ANSWER
         case $ANSWER in
             y|Y)
