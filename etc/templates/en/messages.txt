@@ -3,6 +3,10 @@ yes="y"
 no="n"
 yesmatch="y"
 nomatch="n"
+agent="agent"
+local="local"
+server="server"
+help="help"
 
 # Global
 moreinfo="More information at: "

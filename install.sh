@@ -617,6 +617,10 @@ main()
 
     read ANY
 
+    serverm=`echo ${server} | cut -b 1`
+    localm=`echo ${local} | cut -b 1`
+    agentm=`echo ${agent} | cut -b 1`
+    helpm=`echo ${help} | cut -b 1`
 
     # Loop with the installation options
     while [ 1 ]
@@ -626,25 +630,26 @@ main()
 
         read ANSWER
         case $ANSWER in
-            h|H|Help|help|HELP)
+        
+            ${helpm}|${help})
             catMsg "0x102-installhelp"
 	        ;;
             
-            server|Server|S|SERVER|s)
+            ${server}|${serverm})
             echo ""
 	        echo "  - ${serverchose}."
 	        INSTYPE="server"
 	        break;
 	        ;;
             
-            client|agent|Agent|Client|C|A|CLIENT|AGENT|c|a)
+            ${agent}|${agentm})
             echo ""
 	        echo "  - ${clientchose}}."
 	        INSTYPE="client"
 	        break;
 	        ;;
    
-            local|Local|l|L|LOCAL)
+            ${local}|${localm})
             echo ""
             echo "  - ${localchose}." 
             INSTYPE="local"
