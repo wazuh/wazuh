@@ -220,7 +220,7 @@ void check_rc_files(char *basedir, FILE *fp)
     {
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "No presence of public rootkits detected."
-                                    " Analized %d files.", _total);
+                                    " Analyzed %d files.", _total);
         notify_rk(ALERT_OK, op_msg);
     }
 }

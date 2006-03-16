@@ -126,7 +126,7 @@ void check_rc_if()
     {
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "No problem detected on ifconfig/ifs."
-                                    " Analized %d interfaces.", _total);
+                                    " Analyzed %d interfaces.", _total);
         notify_rk(ALERT_OK, op_msg);
     }
     

@@ -313,7 +313,7 @@ void check_rc_pids()
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "No hidden process by Kernel-level "
                                     "rootkits.\n      %s is not trojaned. "
-                                    "Analized %d processes.", ps, _total);
+                                    "Analyzed %d processes.", ps, _total);
         notify_rk(ALERT_OK, op_msg);
     }
     

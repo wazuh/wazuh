@@ -169,7 +169,7 @@ void check_rc_dev(char *basedir)
     {
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "No problem detected on the /dev "
-                                    "directory. Analized %d files", 
+                                    "directory. Analyzed %d files", 
                                     _dev_total);
         notify_rk(ALERT_OK, op_msg);
     }
