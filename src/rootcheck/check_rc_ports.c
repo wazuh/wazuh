@@ -203,7 +203,7 @@ void check_rc_ports()
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR,"No kernel-level rootkit hiding any port."
                                    "\n      Netstat is acting correctly."
-                                    " Analized %d ports.", _total);
+                                    " Analyzed %d ports.", _total);
         notify_rk(ALERT_OK, op_msg);
     }
     

@@ -365,7 +365,7 @@ void check_rc_sys(char *basedir)
     {
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "No problem found on the system."
-                                    " Analized %d files.", _sys_total);
+                                    " Analyzed %d files.", _sys_total);
         notify_rk(ALERT_OK, op_msg);
     }
 
