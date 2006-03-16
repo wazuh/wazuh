@@ -60,7 +60,7 @@ void *AR_Forward(void *arg);
 /* Initialize the manager */
 void manager_init();
 
-/* Wait for messages from the agent to analize */
+/* Wait for messages from the agent to analyze */
 void *wait_for_msgs(void *none);
 
 /* Save control messages */

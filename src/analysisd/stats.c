@@ -41,8 +41,8 @@ char *(l_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
                         
 
 
-#define MAXDIFF		400
-#define MINDIFF	    40	
+#define MAXDIFF		600
+#define MINDIFF	    50	
 
 
 /* Global vars */
@@ -56,6 +56,7 @@ int _CHour[25];
 
 int _cignorehour = 0;
 int _fired = 0;
+int _daily_errors = 0;
 
 
 char __comment[192];
@@ -179,9 +180,18 @@ void Update_Hour()
 
             else
             {
-                /* The average is going to be the number of interactions +
-                 * the currently hourly rate, divided by 4 */
-                _RHour[i]=((_CHour[i]+(inter*_RHour[i]))/(inter+1))+5;
+                /* If we had too many errors this day */
+                if(_daily_errors >= 4)
+                {
+                    _RHour[i]=(((2*_CHour[i])+(inter*_RHour[i]))/(inter+2))+20;
+                }
+                
+                else
+                {
+                    /* The average is going to be the number of interactions +
+                     * the currently hourly rate, divided by 4 */
+                    _RHour[i]=((_CHour[i]+(inter*_RHour[i]))/(inter+1))+5;
+                }
             }
         }
         
@@ -223,7 +233,16 @@ void Update_Hour()
                    _RWHour[i][j] = _CWHour[i][j] + 20;
 
                 else
-                   _RWHour[i][j]=((_CWHour[i][j]+(inter*_RWHour[i][j]))/(inter+1))+5;	
+                {
+                    if(_daily_errors >= 4)
+                    {
+                        _RWHour[i][j]=(((2*_CWHour[i][j])+(inter*_RWHour[i][j]))/(inter+2))+20;
+                    }
+                    else
+                    {
+                        _RWHour[i][j]=((_CWHour[i][j]+(inter*_RWHour[i][j]))/(inter+1))+5;	
+                    }
+                }
             }
             
             snprintf(_weekly,128,"%s/%d/%d",STATWQUEUE,i,j);
@@ -242,6 +261,7 @@ void Update_Hour()
         }   
     }
 
+    _daily_errors = 0;
     return;
 }
 
@@ -258,7 +278,7 @@ int Check_Hour(Eventinfo *lf)
     }
 
     /* checking if any message was already fired for this hour */
-    if((_fired == 1)&&(_cignorehour == __crt_hour))
+    if((_daily_errors >= 4)||((_fired == 1)&&(_cignorehour == __crt_hour)))
         return(0);
 
     else if(_cignorehour != __crt_hour)
@@ -290,6 +310,7 @@ int Check_Hour(Eventinfo *lf)
                 lf->comment = __comment;                    
                 
                 _fired = 1;
+                _daily_errors++;
                 return(1);
             }
         }
@@ -322,6 +343,7 @@ int Check_Hour(Eventinfo *lf)
                 
                 lf->comment = __comment;
                 _fired = 1;
+                _daily_errors++;
                 return(1);
             }
         }
