@@ -191,7 +191,7 @@ void check_rc_trojans(char *basedir, FILE *fp)
     {
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "No binaries with any trojan detected. "
-                                    "Analized %d files", _total);
+                                    "Analyzed %d files", _total);
         notify_rk(ALERT_OK, op_msg);
     }
 }
