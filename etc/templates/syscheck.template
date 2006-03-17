@@ -1,8 +1,0 @@
-<syscheck>
-  <daemon>yes</daemon>
-  <directories check_all="yes">/etc,/usr/bin,/usr/sbin,/bin,/sbin</directories>
-  <notify>queue</notify>
-  <ignore>/etc/mtab</ignore>
-  <ignore>/etc/hosts.deny</ignore>
-  <ignore>/etc/mail/statistics</ignore>
-</syscheck>
