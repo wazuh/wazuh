@@ -4,6 +4,11 @@ no="n"
 yesmatch="s"
 nomatch="n"
 
+server="servidor"
+agent="cliente"
+local="local"
+ajuda="ajuda"
+
 # Global
 moreinfo="Maiores informações em: "
 starting="Iniciando o OSSEC HIDS"
@@ -17,9 +22,9 @@ system="Sistema"
 user="Usuário"
 host="Host"
 hitanyorabort="Aperte qualquer tecla para continuar ou Ctrl+C para abortar."
-whattoinstall="Que tipo de instalação você quer ([S]servidor, [A]agent(client), [L]local ou [H]ajuda)?"
-serverchose="Instalação do Servidoescolhida."
-clientchose="instalação do Clientescolhida."
+whattoinstall="Que tipo de instalação você queservidor, client, local ou ajuda)?"
+serverchose="Instalação do Servir escolhida."
+clientchose="instalação do Clien escolhida."
 localchose="Instalação Loc escolhida."
 
 # Part 2
