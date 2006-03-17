@@ -8,5 +8,6 @@
 /var/log/userlog 
 /var/log/security
 /var/log/xferlog
+/var/log/proftpd.log
 /var/log/radius.log
 /var/log/radius/radius.log

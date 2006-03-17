@@ -262,6 +262,12 @@
     <match>I/O error: dev |end_request: I/O error, dev</match>
     <description>Kernel Input/Output error</description>
   </rule>
+
+  <rule id="810" level="4">
+    <if_sid>800</if_sid>
+    </match>Forged DCC command from</match>
+    <description>IRC misconfiguration</description>
+  </rule>
 </group> <!-- SYSLOG,LINUXKERNEL -->
 
 
