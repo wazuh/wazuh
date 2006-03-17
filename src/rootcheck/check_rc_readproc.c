@@ -152,6 +152,12 @@ int check_rc_readproc(int pid)
     char char_pid[32];
 
     proc_pid_found = 0;
+   
+    /* NL threads */ 
+    snprintf(char_pid, 31, "/proc/.%d", pid);
+    if(is_file(char_pid))
+        return(1);
+    
     
     snprintf(char_pid, 31, "%d", pid);
     
