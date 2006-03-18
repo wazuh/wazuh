@@ -701,9 +701,10 @@ main()
 
     if [ "X$INSTYPE" = "Xserver" ]; then
     echo ""        	
-    echo " - ${addserveragent}."
-    echo "   ${runma}."
+    echo " - ${addserveragent}"
+    echo "   ${runma}:"
     echo "   $INSTALLDIR/bin/manage_agents"
+    echo ""
     echo "   ${moreinfo}"
     echo "   http://www.ossec.net/hids/doc.php\#ma"
     echo ""
