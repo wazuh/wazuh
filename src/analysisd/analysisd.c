@@ -711,9 +711,9 @@ void OS_ReadMSG(int m_queue)
                         {
                             /* Verifying the IP and username */
                             if((lf->srcip)&&
-                                    !OS_PRegex(lf->srcip, "^[a-zA-Z._0-9-]*$"))
+                                    !OS_PRegex(lf->srcip, "^[a-zA-Z.:_0-9-]*$"))
                             {
-                                merror(CRAFTED_IP, ARGV0, lf->user);
+                                merror(CRAFTED_IP, ARGV0, lf->srcip);
                                 break;
                             }
                             else if((lf->user)&&
