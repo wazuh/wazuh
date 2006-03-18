@@ -13,7 +13,7 @@ ajuda="ajuda"
 moreinfo="Maiores informações em: "
 starting="Iniciando o OSSEC HIDS"
 systemis="Systema:"
-modifiedinit="Modificado o script de inicialização parexecutar o OSSEC HIDS durante o boot."
+modifiedinit="Modificado o script de inicializacao para executar o OSSEC HIDS durante o boot."
 noboot="Sistema desconhecido. Não foi adicionado ao script de Inicialização."
 
 # Part 1
@@ -22,16 +22,16 @@ system="Sistema"
 user="Usuário"
 host="Host"
 hitanyorabort="Aperte qualquer tecla para continuar ou Ctrl+C para abortar."
-whattoinstall="Que tipo de instalação você queservidor, client, local ou ajuda)?"
-serverchose="Instalação do Servir escolhida."
-clientchose="instalação do Clien escolhida."
-localchose="Instalação Loc escolhida."
+whattoinstall="Que tipo de instalacao voce quer? (servidor, cliente, local ou ajuda)?"
+serverchose="Instalacao 'Servidor' escolhida."
+clientchose="Instalacao 'Cliente' escolhida."
+localchose="Instalacao 'Local' escolhida."
 
 # Part 2
 settingupenv="Ajustando o ambiente de configuração."
 wheretoinstall="Escolha onde instalar o OSSEC HIDS"
 installat="A instalação será feita em "
-deletedir="O diretório de instalação já existe. Desremove-lo?"
+deletedir="O diretório e instalacao ja existe. Deseja remove-lo?"
 
 # Part 3
 configuring="Configurando"
