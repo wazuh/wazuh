@@ -1,4 +1,4 @@
  
  Erro 0x2.
- Você necessita ser root para rodar este script.
+ Você necessitaestar logado como root para executar este script.
 
