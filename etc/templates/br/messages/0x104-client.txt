@@ -1,5 +1,5 @@
 
- - Para se comunicar com o servidor, você primeiro precisa adicionar a ele este 
-   agent. Quando você tiver feito, você poderá rodar a ferramenta
-   'manage_agents' para importar a chave de autenticação do servidor.
+ - Para se comunicar com o servidor, você primeiro precisa adicionar este cliente. 
+   Quando tiver feito isto, você poderá rodar a ferramenta 'manage_agents' para 
+   importar a chave de autenticação do servidor.
    
