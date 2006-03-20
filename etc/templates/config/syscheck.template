@@ -5,4 +5,6 @@
   <ignore>/etc/mtab</ignore>
   <ignore>/etc/hosts.deny</ignore>
   <ignore>/etc/mail/statistics</ignore>
+  <ignore>/etc/random-seed</ignore>
+  <ignore>/etc/adjtime</ignore>
 </syscheck>
