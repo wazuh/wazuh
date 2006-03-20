@@ -66,6 +66,13 @@ yeshosts="host-deny habilitado (local) para niveis >= 6"
 firewallar="Gostaria de habilitar a resposta do firewall-drop?"
 nofirewall="firewall-drop desabilitado"
 yesfirewall="firewall-drop habilitado (local) para niveis >= 6"
+defaultwhitelist="Default white list for the active response:"
+addwhite="Do you want to add more IPs to the white list?"
+ipswhite="IPs (space separated): "
+defaultwhitelist="Lista de enderecos IPS que nao serao bloqueados pela resposta automatica:"
+addwhite="Voce deseja adicionar mais algum endereco a essa lista?"
+ipswhite="Enderecos IP (separados por espaco): "
+
 
 # Part 3.5/server/local
 syslog="Gostaria de habilitar o sistema de log remoto (514 udp)?"
