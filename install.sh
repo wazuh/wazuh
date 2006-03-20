@@ -3,6 +3,11 @@
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 # Last modification: Mar 02, 2006
 
+# Changelog 19/03/2006 - Rafael M. Capovilla <under@underlinux.com.br>
+# New function AddWhite to allow users to add more Ips in the white_list
+# Minor *echos* modifications to better look
+# Bug fix - When email address is blank
+# Bug fix - delete INSTALLDIR - Default is yes but if the user just press enter the script wasn't deleting it as it should
 
 ### Looking up for the execution directory
 LOCAL=`dirname $0`;
@@ -14,9 +19,6 @@ echo -n "a" > /dev/null 2>&1
 if [ ! $? = 0 ]; then
     ECHO=echo
 fi    
-
-
-
 
 ##########
 # install()
@@ -260,6 +262,13 @@ ConfigureServer()
 			EMAILNOTIFY="yes"
 			$ECHO "   - ${whatsemail} "
 			read EMAIL
+            echo "${EMAIL}" | grep "@" |grep "\." > /dev/null ;RVAL=$?;
+            # Ugly e-mail validation
+			while [ "$EMAIL" = "" -o ! ${RVAL} = 0 ] ; do
+				$ECHO "   - ${whatsemail} "
+				read EMAIL
+                echo "${EMAIL}" | grep "@" |grep "\." > /dev/null ;RVAL=$?;
+			done
             ls ${HOST_CMD} > /dev/null 2>&1
             if [ $? = 0 ]; then
               HOSTTMP=`${HOST_CMD} -W 5 -t mx ossec.net 2>/dev/null`
@@ -298,7 +307,7 @@ ConfigureServer()
             fi
 
             if [ "X${SMTP}" = "X" ]; then
-			   echo "   - ${whatsmtp} "
+			   $ECHO "   - ${whatsmtp} "
                read SMTP
             fi   
 			;;
@@ -315,17 +324,10 @@ ConfigureServer()
 	else
 		echo "  <email_notification>no</email_notification>" >> $NEWCONFIG
 	fi
-        echo "  <white_list>127.0.0.1</white_list>" >> $NEWCONFIG
-        for ip in ${NAMESERVERS} ${NAMESERVERS2};
-        do
-            if [ "X${ip}" != "X" ]; then
-              echo "  <white_list>${ip}</white_list>" >>$NEWCONFIG
-            fi
-        done
-	echo "</global>" >> $NEWCONFIG
+    
+    echo "</global>" >> $NEWCONFIG	
 	echo "" >> $NEWCONFIG
-
-
+    
 	# Writting rules configuration
 	echo "<rules>" >> $NEWCONFIG
     echo "  <include>rules_config.xml</include> ">> $NEWCONFIG
@@ -376,8 +378,21 @@ ConfigureServer()
                     HOSTDENY="yes"
                     ;;
             esac        
-                        
+            echo "<global>" >> $NEWCONFIG
+            echo "  <white_list>127.0.0.1</white_list>" >> $NEWCONFIG
             echo ""
+            echo "   - ${defaultwhitelist}"
+            for ip in ${NAMESERVERS} ${NAMESERVERS2};
+            do
+            if [ "X${ip}" != "X" ]; then
+                echo "      - ${ip}"
+                echo "  <white_list>${ip}</white_list>" >>$NEWCONFIG
+            fi
+            done
+            AddWhite
+
+            echo "</global>" >> $NEWCONFIG
+            echo "" >> $NEWCONFIG
             ;;
     esac                
     
@@ -494,6 +509,7 @@ setEnv()
     read ANSWER
     if [ ! "X$ANSWER" = "X" ]; then
         INSTALLDIR=$ANSWER;
+        WORKDIR=$ANSWER;
     fi
 
     CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${WORKDIR}\\\""
@@ -514,7 +530,7 @@ setEnv()
         $ECHO "    - ${deletedir} ($yes/$no) [$yes]: "
         read ANSWER
         case $ANSWER in
-            y|Y)
+            y|Y|"")
                 rm -rf $INSTALLDIR
                 ;;
         esac
@@ -543,7 +559,39 @@ checkDependencies()
     fi
 }
 
-
+##########
+# AddWhite()
+##########
+AddWhite()
+{
+	while [ 1 ]
+	do
+		$ECHO "  - ${addwhite} ($yes/$no)? [$no]: "
+		read ANSWER
+		if [ "X${ANSWER}" == "X" ] ; then
+			ANSWER=X
+		fi
+			
+		case $ANSWER in
+			"X")
+				break;
+				;;
+			*)
+				$ECHO "  - ${ipswhite}"
+				read IPS
+				
+				for ip in ${IPS};
+				do
+					if [ "X${ip}" != "X" ]; then
+						echo "  <white_list>${ip}</white_list>" >>$NEWCONFIG
+					fi
+				done
+				
+				break;
+				;;
+		esac
+	done
+}
 
 ##########
 # main()
@@ -703,8 +751,8 @@ main()
     echo ""        	
     echo " - ${addserveragent}"
     echo "   ${runma}:"
-    echo "   $INSTALLDIR/bin/manage_agents"
     echo ""
+    echo "   $INSTALLDIR/bin/manage_agents"
     echo "   ${moreinfo}"
     echo "   http://www.ossec.net/hids/doc.php\#ma"
     echo ""
@@ -739,3 +787,4 @@ exit 0
 
 
 ## EOF ##
+
