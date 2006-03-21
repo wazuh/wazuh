@@ -378,7 +378,13 @@ int Start_Hour()
     _lastmsg = NULL;
     _prevlast = NULL;
     _pprevlast = NULL;
-            
+    
+    
+    /* They should not be null */
+    os_strdup(" ", _lastmsg);
+    os_strdup(" ", _prevlast);
+    os_strdup(" ", _pprevlast);
+                
     
     /* Creating the stat queue directories */        
     if(IsDir(STATWQUEUE) == -1)
@@ -475,7 +481,9 @@ int Start_Hour()
 }
 
 
-/* LastMsg_Stats: v0.2: 2005/03/17 
+/* LastMsg_Stats: v0.3: 2006/03/21
+ * v0.3: Some performance fixes (2006/03/21).
+ * v0.2: 2005/03/17
  * check if the message received is repeated. Doing
  * it to avoid floods
  */
@@ -483,33 +491,35 @@ int LastMsg_Stats(char *log)
 {
     char *nlog;
 
-	if(_lastmsg == NULL)
-		return(0);
-
     /* Moving the char pointer to after the p_name[pid]. 
      * BUG 1102
      */
-    nlog = index(log,' ');
+    nlog = strchr(log,' ');
     if(nlog == NULL)
     {
-        merror("%s: Message error (index)",ARGV0);
-        return(0);
+        merror("%s: Message error (index): %s",ARGV0, log);
+        nlog = log;
     }
-    nlog++;
+    else
+    {
+        nlog++;
+    }
 
-	if((_lastmsg != NULL)&&(strcmp(nlog,_lastmsg) == 0))
+	if(strcmp(nlog,_lastmsg) == 0)
 		return(1);		
 		
-	else if((_prevlast != NULL)&&(strcmp(nlog,_prevlast) == 0))
+	else if(strcmp(nlog,_prevlast) == 0)
 		return(1);
 
-	else if((_pprevlast != NULL)&&(strcmp(nlog,_pprevlast) == 0))
+	else if(strcmp(nlog,_pprevlast) == 0)
 		return(1);
 	
 	return(0);
 }
 
-/* LastMsg_Change: v0.2: 2005/03/17 
+/* LastMsg_Change: v0.3: 2006/03/21
+ * v0.3: 2006/03/21: Some performance fixes.
+ * v0.2: 2005/03/17 
  * If the message is not repeated, rearrange the last
  * received messages
  */
@@ -517,32 +527,28 @@ void LastMsg_Change(char *log)
 {
     char *nlog;
 
-    if(_prevlast)
-    {
-        free(_pprevlast);
-        _pprevlast = strdup(_prevlast);
-    }
-    if(_lastmsg)
-    {
-        free(_prevlast);
-        _prevlast = strdup(_lastmsg);
+    /* Removing the last one */
+    free(_pprevlast);
+    
+    /* Moving the second to third and the last to second */
+    _pprevlast = _prevlast;
+    
+    _prevlast = _lastmsg;
+    
 
-        free(_lastmsg);
-        _lastmsg = NULL;
-    }
-
-    /* Moving to after the proccess ID/PID 
-     * Bug 1102
-     */
-    nlog = index(log,' ');
+    /* Moving to after the proccess ID/PID */
+    nlog = strchr(log,' ');
     if(nlog == NULL)
     {
         merror("%s: Message indexing error (index): %s",ARGV0, log);
-        return;
+        nlog = log;
     }
-    nlog++;
-        
-    _lastmsg = strdup(nlog);
+    else
+    {
+        nlog++;
+    }
+
+    os_strdup(nlog, _lastmsg);
     return;
 }
 
