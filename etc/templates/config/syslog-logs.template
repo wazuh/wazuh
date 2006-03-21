@@ -11,3 +11,4 @@
 /var/log/proftpd.log
 /var/log/radius.log
 /var/log/radius/radius.log
+/var/log/mail.info

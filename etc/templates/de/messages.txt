@@ -3,6 +3,11 @@ yes="j"
 no="n"
 yesmatch="j"
 nomatch="n"
+agent="agent"
+local="lokal"
+server="server"
+help="hilfe"
+
 
 # Global
 moreinfo="Weitere Informationen unter: "
@@ -16,11 +21,11 @@ installscript="Installations Script"
 system="System"
 user="User"
 host="Host"
-hitanyorabort="Hit any key to continue or Ctrl-C to abort"
-whattoinstall="What kind of installation do you want (server,agent,local or help)?"
-serverchose="Server installation chose"
-clientchose="Agent(client) installation chose"
-localchose="Local installation chose"
+hitanyorabort="Drücken Sie eine Taste zum fortfahren oder Ctrl-C zum abbrechen"
+whattoinstall="Welche Art der Installation möchten Sie starten (server,agent,lokal oder hilfe)?"
+serverchose="Server installation ausgewählt"
+clientchose="Agent(client) installation ausgewählt"
+localchose="Lokale installation ausgewählt"
 
 # Part 2
 settingupenv="Die Installation wird vorbereitet"
@@ -61,6 +66,10 @@ yeshosts="host-deny (local) f�r level >= 6 eingeschaltet "
 firewallar="M�chten Sie firewall-drop benutzen?"
 nofirewall="firewall-drop ausgeschaltet"
 yesfirewall="firewall-drop (local) f�r level >= 6 eingeschaltet"
+defaultwhitelist="Standard Ausnahmeliste (White-list) für active response:"
+addwhite="Möchten Sie weitere IPs zur White-list hinzufügen?"
+ipswhite="IPs (Durch Leerzeichen getrennt): "
+
 
 # Part 3.5/server/local
 syslog="M�chten Sie Nachrichten von einem remote syslog (514 udp) empfangen?"
