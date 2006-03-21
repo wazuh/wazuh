@@ -369,7 +369,7 @@ void check_rc_sys(char *basedir)
         notify_rk(ALERT_OK, op_msg);
     }
 
-    else
+    else if(_wx && _ww && _suid)
     {
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "Check the following files for more "
