@@ -54,6 +54,7 @@ typedef struct _Eventinfo
     /* Extract when the event fires a rule */
     short int level;
     int sigid;
+    int size;
     char *comment;
     char *info;
 

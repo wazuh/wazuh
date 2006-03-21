@@ -88,14 +88,14 @@ void HandleRemote(int position, int uid)
     /* If Secure connection, deal with it */
     if(logr.conn[position] == SECURE_CONN)
     {
-        HandleSecure(position);
+        HandleSecure();
     }
     
 
     /* If not, deal with syslog */
     else
     {
-        HandleSyslog(position);
+        HandleSyslog();
     }
     
     return;

@@ -350,7 +350,7 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
  */
 int OS_RecvUnix(int socket, int sizet, char *ret)
 {
-    size_t recvd;
+    ssize_t recvd;
     if((recvd = recvfrom(socket,ret, sizet-1,0,(struct sockaddr*)&n_us,&us_l)) 
         < 0)
         return(0);

@@ -45,10 +45,10 @@ int OS_IPNotAllowed(char *srcip)
 }
 
 
-/** void HandleSyslog(int position) v0.2
+/** void HandleSyslog() v0.2
  * Handle syslog connections
  */
-void HandleSyslog(int position)
+void HandleSyslog()
 {
     char buffer[OS_MAXSTR +2];
     char srcip[IPSIZE +1];

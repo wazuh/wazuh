@@ -152,7 +152,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                                 if(strcasecmp(var[j],lvar) == 0)
                                 {
                                     /* Found var */
-                                    int l=0,m=0;
+                                    int l=0,m=0,sp=0;
                                     int tsize= strlen(_lxml->ct[i])+
                                                strlen(value[j])-tp+1; 
                                     
@@ -174,8 +174,9 @@ int OS_ApplyVariables(OS_XML *_lxml)
                                     m=tsize-init-1;
                                     
                                     l=final+1;
+                                    sp = strlen(p2);
                                     
-                                    for(;l<strlen(p2);l++)
+                                    for(;l<sp;l++)
                                     {
                                         _lxml->ct[i][m]=p[l];
                                         if(m >= tsize)

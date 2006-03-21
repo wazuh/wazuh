@@ -18,10 +18,10 @@
 #include "remoted.h"
 
 
-/** void HandleSecure(int position) v0.3
+/** void HandleSecure() v0.3
  * Handle the secure connections
  */
-void HandleSecure(int position)
+void HandleSecure()
 {
     int agentid;
 

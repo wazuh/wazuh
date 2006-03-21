@@ -70,8 +70,5 @@ int OS_StrHowClosedMatch(char *str1, char *str2)
  */
 #define startswith(x,y) (strncmp(x,y,strlen(y)) == 0?1:0)  
 #define OS_StrStartsWith startswith 
-//int OS_StrStartsWith(char *str, char *pattern)
-//{
-//}
 
 /* EOF */

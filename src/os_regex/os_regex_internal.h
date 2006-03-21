@@ -70,8 +70,6 @@ typedef unsigned char uchar;
 
 /* True char */
 #define TRUECHAR    1
-//1
-//'\001'
 
 
 /* Is "y" a valid "x"?.

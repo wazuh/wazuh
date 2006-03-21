@@ -42,11 +42,6 @@
 #endif
 
 
-int islisted(int proto, int port)
-{
-    return(0);
-}
-
 int run_netstat(int proto, int port)
 {
     char nt[OS_MAXSTR +1];
@@ -122,12 +117,6 @@ void test_ports(int proto, int *_errors, int *_total)
         (*_total)++;
         if(conn_port(proto, i))
         {
-            /* Checking on the list of open ports */
-            if(islisted(proto, i))
-            {
-                continue;
-            }
-            
             /* Checking if we can find it using netstat, if not,
              * check again to see if the port is still being used.
              */

@@ -49,10 +49,10 @@ int RemotedConfig(char *cfgfile, remoted *logr);
 void HandleRemote(int position, int uid); 
 
 /* Handle Syslog */
-void HandleSyslog(int position);
+void HandleSyslog();
 
 /* Handle Secure connections */
-void HandleSecure(int position);
+void HandleSecure();
 
 /* Forward active response events */
 void *AR_Forward(void *arg);

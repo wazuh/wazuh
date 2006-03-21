@@ -304,7 +304,7 @@ int IsAllowedID(keystruct *keys, char *id)
  * Verify the checksum of the message.
  * Returns NULL on error or the message on success.
  */
-char *CheckSum(char *msg, int size)
+char *CheckSum(char *msg)
 {
     os_md5 recvd_sum;
     os_md5 checksum;
@@ -361,7 +361,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
 
     
     /* Checking checksum  */
-    f_msg = CheckSum(cleartext, buffer_size);
+    f_msg = CheckSum(cleartext);
     if(f_msg == NULL)
     {
         merror(ENCSUM_ERROR, ARGV0, keys->ips[id]);

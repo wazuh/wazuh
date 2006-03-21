@@ -239,12 +239,13 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
                 reg->flags[i]|=BEGIN_SET;
             }
 
-            /* If string ends with $, set the END_SET flag */
+            /* If string ends with $, set the END_SET flag
             if(*(pt-1) == ENDREGEX)
             {
-                //*(pt-1) = '\0';
-                //reg->flags[i]|=END_SET;
+                *(pt-1) = '\0';
+                reg->flags[i]|=END_SET;
             }
+            */
 
             reg->patterns[i] = strdup(new_str);
 

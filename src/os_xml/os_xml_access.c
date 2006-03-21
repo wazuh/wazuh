@@ -351,8 +351,8 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
                         }   
                     }
 
-                    if((_lxml->ct[i] != NULL)&&
-                            (strlen(_lxml->ct[i]) >= 0)){
+                    if(_lxml->ct[i] != NULL)
+                    {
                         int ct_size=0;
                         ct_size = strlen(_lxml->ct[i])+1;
                         size+=ct_size;
