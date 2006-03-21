@@ -1,0 +1,12 @@
+
+    OSSEC HIDS kullandýðýnýz için teþekkürler.
+    Sorularýnýz, önerileriniz olursa veya her hangi bir yanlýþ
+    bulursanýz contact@ossec.net adresi ile veya kamuya açýk
+    e-posta listemiz ile ossec-list@ossec.net adresinden iletiþime 
+    geçiniz.   
+    (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list).
+
+    http://www.ossec.net/hids/ adresinde daha fazla bilgi bulunabilir.
+
+    ---  Bitirmek için herhangi bir tuþa basýn (aþaðýda daha fazla bilgi olabilir.). ---
+    
