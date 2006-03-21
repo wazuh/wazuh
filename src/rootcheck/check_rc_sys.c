@@ -151,7 +151,8 @@ int read_sys_file(char *file_name, int do_read)
  */
 int read_sys_dir(char *dir_name, int do_read)
 {
-    int i, entry_count = 0;
+    int i;
+    unsigned int entry_count = 0;
     int did_changed = 0;
     DIR *dp;
     
