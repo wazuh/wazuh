@@ -207,6 +207,21 @@
 </decoder>
 
 
+<!-- Postfix  decoder.
+  - Will extract the srcip
+  - Examples: 
+  - postfix/smtpd[32297]: NOQUEUE: reject: RCPT from unknown[213.255.237.245]: 554 
+    <ce101@ce.metu.edu.tr>: Relay access denied; from=<kryonomm@yahoo.com> 
+    to=<e10445@jubiipost.dk> proto=SMTP helo=<SM01.net>
+ -->
+
+<decoder name="postfix-reject">
+  <prematch>^postfix/smtpd[\d+]: </prematch>
+  <regex>NOQUEUE: reject: RCPT from \S+[(\d+.\d+.\d+.\d+)]:</regex>
+  <order>srcip</order>
+</decoder>
+
+
 <!-- Iptables decoder.
   - Will extract the srcip, dstip, srcport, dstport, protocol
   - Examples:
