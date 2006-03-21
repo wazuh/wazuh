@@ -1,0 +1,29 @@
+
+  - Üç adet kurulum seçeneði bulunmaktadýr: aracý, yerel veya sunucu.
+  
+    - Eger sunucu seçerseniz, bütün günlük kayýtlarýný inceleyebilir
+      e-posta ile bilgilendirilebilir, yanýt üretebilirsiniz.
+      Ayrýca uzak syslog bilgisayarlarýndan ve 'aracý' olarak
+      çalýþan sistemlerden günlük kayýtlarýný alabilirsiniz
+      (aradaki trafik þifrelenecektir). 
+      
+    - Eðer aracý(istemci) seçerseniz, syslog, snort, apache vb. 
+      ürettikleri yerel dosyalarý okuyabilir ve incelenmek üzere
+      þifreli bir þekilde sunucuya gönderebilirsiniz.
+
+    - Eðer yerel seçerseniz, aracýlardan veya harici syslog 
+      aygýtlarýndan gelen mesajlarý almak dýþýnda sunucunun
+      yapabildiði herþeyi yapabilirsiniz.
+
+  - Eðer günlük kaydý inceleme sunucusu oluþturuyorsanýz 'sunucu' seçin.
+  
+  - Eðer baþka bir günlük kaydý sunucunuz varsa ve incelenmesi için
+    günlük kayýtlarýnýzý bu sunucuya yönlendirmek istiyorsanýz 
+    'aracý' seçin. (web sunucular, veritabaný sunucular vb. için
+    idealdir)
+    
+  - Eðer inceleme yapacaðýnýz tek sisteminiz varsa 'yerel' seçin.
+  
+  - Daha fazla bilgi: http://www.ossec.net/hids/doc.php#starting"
+
+  
