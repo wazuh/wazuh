@@ -34,8 +34,9 @@ int main(int argc, char **argv)
     char *user_msg;
     char *dir = DEFAULTDIR;
     char *group = GROUPGLOBAL;
-    gid_t gid;
-    
+    int gid;
+
+    if(argv[argc -1]){}    
 
     /* Setting the name */
     OS_SetName(ARGV0);
