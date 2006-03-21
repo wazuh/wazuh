@@ -585,9 +585,12 @@ void OS_ReadMSG(int m_queue)
             }
 
 
-#ifdef DEBUG
+            #ifdef DEBUG
             debug2("%s: DEBUG: Starting rule checks\n",ARGV0);
-#endif
+            #endif
+
+
+            lf->size = strlen(lf->log);
 
 
             /* Looping all the rules */
@@ -873,7 +876,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking if any rule related to the size exist */
     if(currently_rule->maxsize)
     {
-        if(strlen(lf->log) < currently_rule->maxsize)
+        if(lf->size < currently_rule->maxsize)
             return(NULL);
     }
    
