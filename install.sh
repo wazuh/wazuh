@@ -339,6 +339,7 @@ ConfigureServer()
     echo "  <include>apache_rules.xml</include>" >> $NEWCONFIG
     echo "  <include>ids_rules.xml</include>" >> $NEWCONFIG
     echo "  <include>squid_rules.xml</include>" >> $NEWCONFIG
+    echo "  <include>spamd_rules.xml</include>" >> $NEWCONFIG
 	echo "</rules>" >> $NEWCONFIG
 	echo "" >> $NEWCONFIG
 
