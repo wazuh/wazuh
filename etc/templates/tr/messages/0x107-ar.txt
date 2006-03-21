@@ -1,0 +1,7 @@
+
+  3.4- Etkin yanýt üretme (Active response), edinilen olay 
+       bilgilerine göre belirli bir komut çalýþtýrmanýza olanak
+       tanýr. Örneðin bir IP adresinin engelleyebilir veya bir
+       kullanýcýnýn eriþimini kýsýtlayabilirsiniz.
+       http://www.ossec.net/hids/config.php#active-response 
+       
