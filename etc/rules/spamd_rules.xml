@@ -1,0 +1,22 @@
+<!-- spamd rules for the OSSEC HIDS (still need much more work)
+  -  Author: Peter Ahlert <peter@ifup.de>
+  -  Author: Daniel B. Cid
+  -  Date: Mar 20, 2006
+  -->
+      
+
+<group name="spamd,syslog,">
+  <rule id="2900" level="0" noalert="1">
+    <match>^spamd</match>
+    <description>Grouping for the pure-ftpd rules</description>
+  </rule>
+  
+  <rule id="2901" level="0">
+    <if_sid>2900</if_sid>
+    <match>: result:</match>
+    <description>SPAMD result message (not very usefull here)</description>
+  </rule>
+</group> <!-- SYSLOG,SPAMD -->
+
+
+<!-- EOF -->
