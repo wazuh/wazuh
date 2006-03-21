@@ -1,0 +1,91 @@
+# Configuration
+yes="e"
+no="h"
+yesmatch="e"
+nomatch="h"
+agent="aracý"
+local="yerel"
+server="sunucu"
+help="yardým"
+
+# Global
+moreinfo="Daha fazla bilgi: "
+starting="OSSEC HIDS baþlatýlýyor"
+systemis="Sistem"
+modifiedinit="OSSEC HIDS'i önyüklemede baþlatmak için baþlangýç betiði deðiþtirildi."
+noboot="Bilinmeyen sistem. Baþlangýç betiði eklenmedi."
+
+# Part 1
+installscript="Kurulum Betiði"
+system="Sistem"
+user="Kullanýcý"
+host="Bilgisayar"
+hitanyorabort="Devam etmek için her hangi bir tuþa veya çýkmak için Ctrl-C ye basýn"
+whattoinstall="Ne tür kurulum yapmak istiyorsunuz (sunucu, aracý, yerel veya yardým)?"
+serverchose="Sunucu kurulumu seçildi"
+clientchose="Aracý(istemci) kurulumu seçildi"
+localchose="Yerel kurulum seçildi"
+
+# Part 2
+settingupenv="Kurulum ortamý hazýrlanýyor"
+wheretoinstall="OSSEC HIDS kurulacak yeri seçin"
+installat="Kurulum buraya yapýlacak: "
+deletedir="Kurulum dizini zaten var. Silinsin mi?"
+
+# Part 3
+configuring="yapýlandýrýlýyor:"
+mailnotify="E-posta ile bilgilendirilmek ister misiniz?"
+nomail="E-posta ile bilgilendirmeden vazgeçildi"
+whatsemail="E-posta adresiniz nedir?"
+yoursmtp="SMTP sunucunuz olarak bunu bulduk"
+usesmtp="Kullanmak ister misiniz?"
+usingsmtp="SMTP sunucu kullanýlýyor: "
+whatsmtp="SMTP sunucunuzun IP adresi veya ismi nedir?"
+
+# Part 3.1/agent
+serverip="OSSEC HIDS sunucusunun IP adresi nedir?"
+addingip="Sunucu IP adresi ekleniyor"
+
+
+# Part 3.2
+runsyscheck="Güvenilirlik/bütünlük kontrol programýnýn çalýþtýrýlmasýný ister misiniz?"
+nosyscheck="syscheck çalýþtýrýlmýyor (güvenilirlik/bütünlük kontrol programý)"
+yessyscheck="syscheck çalýþtýrýlýyor (güvenilirlik/bütünlük kontrol programý)"
+
+# Part 3.3
+runrootcheck="rootkit tespit etme motorunun çalýþmasýný ister misiniz?"
+norootcheck="rootcheck çalýþtýrýlmýyor (rootkit tespit etme)"
+yesrootcheck="rootcheck çalýþtýrýlýyor (rootkit tespit etme)"
+
+# Part 3.4/server/local
+enable_ar="Etkin yanýt üretmenin (Active response) etkin kýlýnmasýný ister misiniz?"
+noactive="Etkin yanýt üretme(Active response) etkin kýlýnmadý"
+nohosts="host-deny etkin kýlýnmadý"
+yeshosts="Uyarý seviyesi >= 6 için host-deny etkin kýlýndý (yerel)"
+firewallar="firewall-drop yanýtýnýn etkin kýlýnmasýný ister misiniz?"
+nofirewall="firewall-drop etkin kýlýnmadý"
+yesfirewall="Uyarý seviyesi >= 6 için firewall-drop etkin kýlýndý (yerel)"
+defaultwhitelist="Etkin yanýt üretme için öntanýmlý beyaz liste:"
+addwhite="Beyaz listeye baþka IP adreslerini de eklemek ister misiniz?"
+ipswhite="IPler (boþlukla ayrýlmýþ): "
+
+# Part 3.5/server/local
+syslog="Uzak syslog (514 udp) dinlemek ister misiniz?"
+nosyslog="syslog dinlenmiyor"
+yessyslog="Uzak syslog mesajlarý dinleniyor"
+
+# Part 3.4/3.5
+readlogs="Bu dosyalarý incelemek için yapýlandýrma oluþturuluyor:"
+
+# Part 5
+installing="Sistem kuruluyor"
+runningmake="Makefile çalýþtýrýlýyor"
+
+# Final
+configurationdone="Yapýlandýrma doðru olarak tamamlandý"
+tostart="OSSEC HIDS'i baþlatmak için"
+tostop="OSSEC HIDS'i durdurmak için"
+configat="Yapýlandýrma buradan görülebilir veya deðiþtirilebilir:"
+addserveragent="Her bir aracýyý/istemciyi eriþim için yetkilendirmeden önce eklemeniz gerekmektedir."
+runma="Eklemek ve çýkarmak için 'manage_agents' komutunu kullanýn."
+presskey="Devam etmek için herhangi bir tuþa basýnýz"
