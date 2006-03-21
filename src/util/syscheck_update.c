@@ -35,8 +35,8 @@ int main(int argc, char **argv)
     char *dir = DEFAULTDIR;
     char *group = GROUPGLOBAL;
     char *user = USER;
-    gid_t gid;
-    uid_t uid;
+    int gid;
+    int uid;
     
 
     /* Setting the name */
