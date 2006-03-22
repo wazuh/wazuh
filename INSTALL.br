@@ -1,0 +1,65 @@
+OSSEC HIDS 0.7
+Copyright (c) 2004-2006 Daniel B. Cid  	<daniel.cid@gmail.com>
+		                        <dcid@ossec.net>
+
+
+** Traduzido por Willian Itiho Amano <itihoitiho ( at ) gmail.com>
+
+
+= Informações dobre o OSSEC HIDS =
+
+Visite http://www.ossec.net
+
+
+= Instalação recomendada =
+
+A instalação do OSSEC HIDS é muito simples. Você pode executa-la pela
+maneira rápida (usando o script 'install.sh' com os valores padroes)
+ou customizada (mudando na mão os valores do script install.sh).
+Eu REALMENTE recomento SEMPRE o uso da maneira rápida.
+
+**Apenas desenvolvedores ou pessoas experientes devem usar outro método.
+
+Passos do processo rápido:
+
+1- Rode o script ./install.sh. Ele irá guia-lo pelo processo de instalação.
+
+2- O script criará tudo em /var/ossec e tentará criar um script de 
+   inicialização em seu sistema (/etc/rc.local ou /etc/rc.d/init.d/ossec). 
+   Se o script de inicialização não for criado, siga as instruções do
+   para iniciar o OSSEC HIDS durante o boot. Para iniciar na mão, digite
+   /var/ossec/bin/ossec-control start
+
+3- Se você for rodar em vários clientes, Instale o servidor primeiro. 
+   Use o manage_agents para criar as chaves de encriptação.
+
+4- Aproveite.
+
+
+= Instalação e execução (99,99% da vezes, leia acima) =
+
+
+Passos para instalação na mão:
+
+1- Crie os diretórios necessários (por default /var/ossec).
+2- Mova os arquivos necessários para o diretório ossec.
+3- Compile tudo.
+4- Mova os binários para o diretório default.
+5- Crie os usuários necessários.
+6- Sete todas as permições dos arquivos.
+
+
+As 5 etapas do Makefile (veja como criar o servidor).
+
+O Makefile lê as opções do arquivo LOCATION. Mude
+o que necessitar de lá.
+
+Para compilar tudo use:
+
+	% make clean
+	% make all (step 3)
+	% su
+	# make server (will do steps 1,2,4 and 6 above)
+
+*Antes de rodas make server, make sure Deverá ter os usuários criados.
+O Makefile não fará isso.
