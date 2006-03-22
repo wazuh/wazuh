@@ -1,0 +1,51 @@
+OSSEC HIDS 0.5
+Copyright (c) 2004,2005 Daniel B. Cid   <daniel.cid@gmail.com>
+                                        <dcid@ossec.net>
+
+
+
+OSSEC Hids Logging
+
+== Introdução ==
+
+O sistema suporta dois tipos de logs. Logs de alertas e eventos
+ou arquivos de logs. 
+
+Todas as mensagens recebidas são tratadas como um envento. Todas as 
+mensagens de log, avisos de integridade, informações de sistema são
+tratadas como tal. Fazer log de é muito pesado para o sistema pois
+o sistema tem de arquivar cada evendo. Entretanto, é muito bom para
+se ter uma visão geral de tentativas de ataque.
+
+Criar logs de alertas é muito importante. Pode ser gerado quando um evento
+vai de encontro com uma regra de detecção. Adicionalmente o OSSEC hids
+suporta envio de em-ails e execução de comandos esternos como método de alerta.
+
+== Criando logs de eventos ==
+
+O diretório de logs do OSSEC  (by default /var/ossec/logs) 
+possúi entrada para arquivos (/var/ossec/logs/archives). Dentro deste diretório,
+todos os enventos são classificados por data.
+Por exemplo, todos os eventos recebidos em 22 de maio de 2004, serão guardados em:
+
+/var/ossec/logs/archives/2004/May/events-22.log
+
+Após cada dia, uma combinação será criada para cada dia específico.
+
+/var/ossec/logs/archives/2004/May/events-22.log.md5
+
+Este será uma combinação do arquivo do dia 22 com o do dia 21.
+
+A combinação do dia 1, será feita com o dia 31(ou 30 ou 28) do mes anterior.
+
+Isto assegurará que o log não seja modificado. Para que isto aconteça, 
+todos os logs (desde o primeiro dia) deverão ser modificados.
+
+
+== Criando logs de alerta ==
+
+Haverá um diretório de alerta dentro do diretório default do OSSEC.
+Este será organizado da mesma forma que os logs de envetos. Por facor leia
+a explicação acima.
+
+

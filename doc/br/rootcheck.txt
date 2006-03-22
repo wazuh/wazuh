@@ -1,0 +1,64 @@
+Técnicas de detecção de Rootkit usadas pelo OSSEC HIDS
+por Daniel B. Cid, daniel.cid@gmail.com
+
+
+Començando  na versão 0.4, o OSSEC HIDS executará a detecção
+de rootkit em todos os sistemas que o cliente estiver instalado.
+O rootcheck (Sistema de detecção de rootkit) será executado
+a cada X minutos (Especificado pelo usuário --por default
+a cada 2 horas) para detectar possiveis rootkits instalados.
+Em conjunto com a análize de logs e o sistema de checagem de integridade,
+ele torna-se uma solução poderosa de monitoramento (o OSSEC HIDS executa
+a análize de logs e verificação de integridade desde a versão 0.1).
+
+Outra característica incluída na versão 0.4 é que o servidor de análize
+enviará automaticamente as assinaturas de detecção de rootkit aos
+clientes, reduzindo o trabalho com administração para o administrador
+de sistemas. Os clientes e servidor manterão contato a cada 10 minutos
+e se o servidor for atualizado com um novo arquivo de assinatura, ele enviará
+para todos os clientes configurados. De uma olhada na documentação para maiores
+informações.
+
+O rootcheck executará as seguintes etapas para verificar a presença de 
+rootkits:
+
+
+1- Lerá o arquivo rootkit_files.txt que contem um grande banco de dados
+   de rootkits e arquivos usados pelo mesmo. Tentará usar as funções
+   fopen e opendir no arquivo especificado. Nós usamos todas a chamadas do 
+   sistema,por causa de que rootkits que rodam a nivel de kernel, escondem as 
+   chamadas dos sistema. Nós tentamos melhoras as coutras chamadas do sistema, 
+   para uma melhor detecção. Este método é mais parecido com uma regra de 
+   antí-virus, que necessita ser atualizado contantemente. As chances de 
+   falso-positivos são pequenas, mas falso-negativos podem ser produzidos 
+   modificando os rootkits.
+
+2- Lerá o arquivo rootkit_trojans.txt que contem um banco de dados de 
+   assinaturas de arquivos infectados por rootkits. Esta técnica verifica
+   binários modificados por trojans conhecidos. Este método de detecção
+   não encontra nenhum rootkit a nivel de kernel ou nenhum rootkit desconhecido.
+   
+3- Escaneia o diretório /dev procurando por anomalias. O /dev contém todos os
+   arquivos de device e scripts de Makedev. Vários rootkits usam arquivos 
+   escondidoso no /dev. Esta técnica pode detectar rootkits desconhecidos.
+
+4- Escaneia o sistema de arquivos a procura por arquivos incomuns e problema de 
+   permição. Arquivos setados para root, com permição de escrita para outros 
+   são muito perigosos e a detecção de rootkit olha isso. Arquivos com Suid, 
+   diretórios e arquivos escondidos  são inspecionados.
+
+5- Procura pela presença de processos ocultos. Nós usamos as funções getsid e
+   kill para checar se algum PID está sendo usado ou não. Se estiver, mas a função
+   não pode ve-lo, é uma indicação de rootkit a nivel de kernel ou o ps foi 
+   infectado. Nós verificamos também a saída do kill e do getid que deve ser a mesma.
+
+6- Olha a presença de portas escondidas. Nós usamos a função bind para checar todas
+   as portas TCP e UDP to do sistema. Se não podemos usar o bind na porta (ele está
+   sendo usado), mas o netsatat não mostra, provavelmente há um rootkit instalado.
+
+7- Escaneia todas a interfaces do sistema e procura por alguma com módo "promisc" 
+   abilitado. Se a interface está neste modo, a saída do ifconfig mostrará. Se não,
+   há a possibilidade de haver um rootkit instalado.
+
+
+EOF
