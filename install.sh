@@ -654,7 +654,7 @@ main()
     
 
     # Initial message
-    echo " $NAME $VERSION ${installscript} - http://www.ossec.net/hids/"
+    echo " $NAME $VERSION ${installscript} - http://www.ossec.net"
     
     catMsg "0x101-initial"
 
@@ -756,7 +756,7 @@ main()
     echo ""
     echo "   $INSTALLDIR/bin/manage_agents"
     echo "   ${moreinfo}"
-    echo "   http://www.ossec.net/hids/doc.php\#ma"
+    echo "   http://www.ossec.net/en/manual.html#ma"
     echo ""
       
     elif [ "X$INSTYPE" = "Xclient" ]; then
@@ -764,7 +764,7 @@ main()
     echo "   $WORKDIR/bin/manage_agents"
     echo ""
     echo "   ${moreinfo}"
-    echo "   http://www.ossec.net/hids/doc.php\#ma"
+    echo "   http://www.ossec.net/en/manual.html#ma"
     echo ""
     echo " --- ${presskey} --- "
 
