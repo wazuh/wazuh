@@ -1,0 +1,66 @@
+OSSEC HIDS 0.6
+Copyright (c) 2004-2006 Daniel B. Cid   <daniel.cid@gmail.com>
+                                        <dcid@ossec.net>
+                                        
+
+
+--- Classidicação das regras ---
+
+
+-- Classificação --
+
+As regras são classificadas em vários niveis, indo do menos (00) para o maior (16). 
+Alguns níveis não estão sendo usados. Você pode adicionar mais entre ou após estes.
+
+**As regras serão lidas partindo do menor nivel para o maior. **
+
+00 - Ignorado - Não há nehum ação. Usado para evitar falso positivos. Estas regras
+     são escaneadas antes das demias e incluem eventos sem relevância de segurança.
+01 - Nenhuma -
+02 - Notificação do sistema com baixa prioridade - Notificações do sistema ou mensagens
+     de status. Estas regras não posseum relevância de segurança.
+03 - Eventos de sucesso/Autorizado - Estes incluem tentativas de logins com sucesso,
+     eventos permitidos pelo, etc.
+04 - Erros de sistema com baixa prioridade - Erros relatados por má configuração ou
+     devices/aplicações não usadas. Estas não apresentam relevância de segurança e
+     normalmente são causadas por instalações padrões ou software em testes.
+05 - Erros gerados pelo usuário - Este incluem senhas erradas, ações não permitidas,
+     etc, mas não tem relevância de segurança.
+06 - Ataque de baixa relevância - Estas indicam que um worm ou vírus que não afetam
+     o sistema (como o code red para servidores apache, etc). Incluem também eventos
+     de IDS ou erros frequentes.
+07 - Combinação de "Bad word". Estas incluem palavras como "bad", "error", etc. Estes
+     eventos normalmente não são classificados e possuem alguma relevância de segurança.
+08 - Visto pela primeira vez - Incluem eventos vistos pela primeira vez, primeira vez 
+     de ventos de IDS ou primeira vez que um usuário loga. Se você estiver começando a
+     usar o OSSEC HIDS, estas mensagens serão frequêntes mas depois devem diminuir.
+     Estas incluem também ações de segurança relevantes (como iniciar um sniffer ou
+     algo do gênero).
+09 - Erro de fonte inválida - Inclue tentativas de login com um usuário desconhecido
+     ou de uma fonte inválida. Pode haver relevância de segurança (princilmente se ocorrer
+     repetidamente). Incluem também erros a respeito do usuário "root".
+10 - Erros gerador por vários usuários - Estas incluem vários bad passwords,
+     vários logins falhos, etc. Podem indicar um ataque ou um usuário que esqueceu
+     suas credenciais.
+11 - Advertência de checagem de integridade -Estas incluem mensagens a respeito da
+     modificação de binários ou a presença de rootkits (pelo rootcheck). Se você
+     houver modificado apenas a configuração do seu sistema, deve ficar atento as mensagens
+     do "syscheck". Pode indicar um ataque com sucesso.
+12 - Evento de alta importância - Estas incluem erros ou avisos vindos do sistema, kernel,
+     etc. Podem indicar um ataque a uma aplicação específica.
+13 - Erros incomuns (alta importância) -  A maioria das vezes mostra um ataque padrão.
+14 - Evendo de segurança de alta importância - Na maioria das vezes são eventos de 
+     corelação e indicam um ataque.
+15 - Ataque severo - Não há chanses de falso positivo. É necessária atenção imediata.
+
+
+== Grupos de regras ==
+
+-Nós podemos especificar grupos para regras específicas. Isto é usado para
+razões de resposta ativa ou para corelação.
+
+     
+== Configuração das regras ==
+
+http://www.ossec.net/hids/doc.php#rules
+
