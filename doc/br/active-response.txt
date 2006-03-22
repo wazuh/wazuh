@@ -1,0 +1,6 @@
+OSSEC HIDS 0.6
+Copyright (c) 2004-2006 Daniel B. Cid   <daniel.cid@gmail.com>
+                                        <dcid@ossec.net>
+
+
+http://www.ossec.net/hids/doc.php#active-response
