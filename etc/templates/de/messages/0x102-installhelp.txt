@@ -23,6 +23,6 @@
 
   - Wählen Sie 'Local' wenn nur ein System analysiert werden soll.  
     
-  - weitere Informationen unter: http://www.ossec.net/hids/doc.php#starting"
+  - weitere Informationen unter: http://www.ossec.net/en/manual.html#starting
 
   

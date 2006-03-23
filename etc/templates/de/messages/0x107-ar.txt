@@ -3,5 +3,5 @@
        Events ausführen. Dadurch können zB IP-Adressen
        geblockt werden oder der Zugriff für bestimmte 
        Benutzer abgeschaltet werden.
-       http://www.ossec.net/hids/config.php#active-response 
+       http://www.ossec.net/en/manual.html#active-response
        

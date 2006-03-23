@@ -3,6 +3,5 @@
        específico baseados em eventos recebidos. Você pode
        bloquear um endereço IP ou desabilitar o acesso de um
        usuário específico, por exemplo. 
-
-       http://www.ossec.net/hids/config.php#active-response 
+       http://www.ossec.net/en/manual.html#active-response 
        

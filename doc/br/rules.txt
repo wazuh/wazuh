@@ -1,4 +1,4 @@
-OSSEC HIDS 0.6
+OSSEC HIDS v0.7
 Copyright (c) 2004-2006 Daniel B. Cid   <daniel.cid@gmail.com>
                                         <dcid@ossec.net>
                                         
@@ -62,5 +62,5 @@ razões de resposta ativa ou para corelação.
      
 == Configuração das regras ==
 
-http://www.ossec.net/hids/doc.php#rules
+http://www.ossec.net/en/manual.html#rules
 
