@@ -53,7 +53,27 @@
 #include <sys/exechdr.h>
 
 #elif defined Darwin
-#include <sys/exec.h>
+
+/* For some reason darwin does not have that */
+struct exec
+{
+  unsigned long a_info;         /* Use macros N_MAGIC, etc for access */
+  unsigned char   a_machtype;     /* machine type */
+  unsigned short  a_magic;        /* magic number */
+  unsigned a_text;              /* length of text, in bytes */
+  unsigned a_data;              /* length of data, in bytes */
+  unsigned a_bss;               /* length of uninitialized data area for file, in bytes */
+  unsigned a_syms;              /* length of symbol table data in file, in bytes */
+  unsigned a_entry;             /* start address */
+  unsigned a_trsize;            /* length of relocation info for text, in bytes */
+  unsigned a_drsize;            /* length of relocation info for data, in bytes */
+};
+#define OMAGIC 0407		/* Object file or impure executable.  */
+#define NMAGIC 0410		/* Code indicating pure executable.  */
+#define ZMAGIC 0413		/* Code indicating demand-paged executable.  */
+#define BMAGIC 0415		/* Used by a b.out object.  */
+#define M_OLDSUN2	0
+
 #else
 
 #include <a.out.h>

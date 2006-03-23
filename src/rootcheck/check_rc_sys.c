@@ -236,14 +236,20 @@ int read_sys_dir(char *dir_name, int do_read)
         /* Creating new file + path string */
         snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);
 
-
         /* Checking if file is a directory */
         if(lstat(f_name, &statbuf_local) == 0)
         {
+	    #ifndef Darwin
             if(S_ISDIR(statbuf_local.st_mode))
+	    #else
+	    if(S_ISDIR(statbuf_local.st_mode) || 
+ 	       S_ISREG(statbuf_local.st_mode) ||
+	       S_ISLNK(statbuf_local.st_mode))
+	    #endif
             {
                 entry_count++;
             }
+	
         }
 
         
@@ -281,8 +287,8 @@ int read_sys_dir(char *dir_name, int do_read)
     {
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "Files hidden inside directory "
-                         "'%s'. Link count does not match number of files.",
-                         dir_name);
+                         "'%s'. Link count does not match number of files (%d,%d).",
+                         dir_name, entry_count, statbuf.st_nlink);
 
         /* Solaris /boot is terrible :) */
         #ifdef SOLARIS
@@ -291,7 +297,12 @@ int read_sys_dir(char *dir_name, int do_read)
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             _sys_errors++;
         }
-        
+        #elif Darwin
+	if(strncmp(dir_name, "/dev", strlen("/dev")) != 0)
+	{
+	    notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+	    _sys_errors++;
+	} 
         #else
         notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
 

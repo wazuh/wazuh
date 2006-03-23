@@ -78,7 +78,7 @@ typedef uint8_t u_int8_t;
 
 /* For Darwin */
 #ifdef Darwin
-typedef int socklen_t;
+typedef int sock2len_t;
 #endif
 
 /* For Windows */
