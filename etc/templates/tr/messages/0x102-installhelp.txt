@@ -24,6 +24,6 @@
     
   - Eðer inceleme yapacaðýnýz tek sisteminiz varsa 'yerel' seçin.
   
-  - Daha fazla bilgi: http://www.ossec.net/hids/doc.php#starting"
+  - Daha fazla bilgi: http://www.ossec.net/en/manual.html#starting
 
   

@@ -3,5 +3,5 @@
        bilgilerine göre belirli bir komut çalýþtýrmanýza olanak
        tanýr. Örneðin bir IP adresinin engelleyebilir veya bir
        kullanýcýnýn eriþimini kýsýtlayabilirsiniz.
-       http://www.ossec.net/hids/config.php#active-response 
+       http://www.ossec.net/en/manual.html#active-response
        
