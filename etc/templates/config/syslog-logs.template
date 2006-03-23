@@ -2,6 +2,8 @@
 /var/log/authlog
 /var/log/auth.log
 /var/log/secure
+/var/log/secure.log
+/var/log/system.log
 /var/log/syslog
 /var/log/ipfilter.log
 /var/adm/ipsec.log
