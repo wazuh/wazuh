@@ -23,6 +23,6 @@
     
   - Use 'local' if you are just have one system to analyze.
   
-  - More info: http://www.ossec.net/hids/doc.php#starting"
+  - More info: http://www.ossec.net/en/manual.html#starting
 
   
