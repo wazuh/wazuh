@@ -213,7 +213,6 @@ ConfigureClient()
 	echo ""
 	echo "3- ${configuring} $NAME."
 	echo ""
-	echo ""
 	echo "  3.1- ${serverip}"
 	    read IP
 	    echo ""
@@ -755,6 +754,7 @@ main()
     echo "   ${runma}:"
     echo ""
     echo "   $INSTALLDIR/bin/manage_agents"
+    echo ""
     echo "   ${moreinfo}"
     echo "   http://www.ossec.net/en/manual.html#ma"
     echo ""
