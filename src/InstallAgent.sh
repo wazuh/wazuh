@@ -47,7 +47,24 @@ elif [ "$UNAME" = "SunOS" ]; then
 elif [ "$UNAME" = "AIX" ]; then
     /usr/bin/mkgroup ${GROUP}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
-        
+    
+elif [ "$UNAME" = "Darwin" ]; then
+    # Ugly hack for Darwin (it's their fault not having a command line adduser)
+    grep ${USER} /etc/passwd > /dev/null 2>&1
+    if [ ! $? = 0 ]; then
+        inituid=3056;
+        while [ 1 ]; do
+            grep $inituid /etc/passwd /etc/group /etc/master.passwd > /dev/null 2>&1
+            if [ $? = 0 ]; then
+                inituid=`expr $inituid + 1`
+            else
+                break;
+            fi
+        done
+        echo "${GROUP}:*:$inituid:${USER}" >> /etc/group
+        echo "${USER}:*:$inituid:$inituid:${USER}:${DIR}:/usr/bin/false" >> /etc/passwd
+        echo "${USER}:*:$inituid:$inituid::0:0:${USER}:${DIR}:/usr/bin/false" >> /etc/master.passwd
+    fi        
 else
 	/usr/sbin/groupadd ${GROUP}
 	/usr/sbin/useradd -d ${DIR} -s /sbin/nologin -g ${GROUP} ${USER}
