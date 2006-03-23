@@ -92,6 +92,6 @@ tostart="Para começar OSSEC HIDS"
 tostop="Para parar OSSEC HIDS"
 configat="A configuração pode ser vista ou modificado em"
 addserveragent="Você necessita adicionar cada usuário antes que estejam autozados a acessar. "
-runma="Execute 'manage_agents' para adicionar ou remover."
+runma="Execute o 'manage_agents' para adicionar ou remover"
 presskey="Precione qualquer tecla para continuar."
 
