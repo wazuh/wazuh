@@ -67,13 +67,6 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     }
    
 
-    /* Setting null user */
-    if(!lf->user)
-    {
-        lf->user = "null";
-    }
-    
-    
     /* active response on the server. 
      * The response must be here, if the ar->location is set to AS
      * or the ar->location is set to local (REMOTE_AGENT) and the
@@ -88,7 +81,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
         snprintf(exec_msg, OS_MAXSTR,
                 "%s %s %s",
                 ar->name,
-                lf->user,
+                lf->user == NULL?"null":lf->user,
                 ip);
 
         if(OS_SendUnix(*execq, exec_msg, 0) < 0)
@@ -119,7 +112,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
                 (ar->location & SPECIFIC_AGENT)?SPECIFIC_AGENT_C:NONE_C,
                 ar->agent_id,
                 ar->name,
-                lf->user,
+                lf->user == NULL?"null":lf->user,
                 ip);
        
         if(OS_SendUnix(*arq, exec_msg, 0) < 0)
