@@ -54,6 +54,7 @@ int AS_GetActiveResponses(char * config_file)
     char *xml_ar_rules_group = "rules_group";
     char *xml_ar_level = "level";
     char *xml_ar_timeout = "timeout";
+    char *xml_ar_disabled = "disabled";
 
 
     /* Reading the XML */       
@@ -175,6 +176,10 @@ int AS_GetActiveResponses(char * config_file)
             else if(strcmp(elements[j]->element, xml_ar_timeout) == 0)
             {
                 tmp_ar->timeout = atoi(elements[j]->content);
+            }
+            else if(strcmp(elements[j]->element, xml_ar_disabled) == 0)
+            {
+                /* ignore */
             }
             else
             {

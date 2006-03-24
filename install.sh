@@ -360,6 +360,10 @@ ConfigureServer()
         $nomatch)
             echo ""
             echo "   - ${noactive}."
+            echo "<active-response>" >> $NEWCONFIG
+            echo "  <disabled>yes</disabled>" >> $NEWCONFIG
+            echo "</active-response>" >> $NEWCONFIG
+            echo "" >> $NEWCONFIG
             ;;
         *)
             ACTIVERESPONSE="yes"
