@@ -44,6 +44,8 @@ char *GetCommandbyName(char *name, int *timeout);
 
 void ExecCmd(char **cmd);
 
+int ExecdConfig(char * cfgfile);
+
 
 
 #define _EXECD_H

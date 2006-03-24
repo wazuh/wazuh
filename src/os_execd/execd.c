@@ -51,6 +51,7 @@ int main(int argc, char **argv)
     char *dir  = DEFAULTDIR;
     char *group = GROUPGLOBAL;
     char *cfg = DEFAULTARPATH;
+    char *xmlcfg = DEFAULTCPATH;
 
     /* Setting the name */
     OS_SetName(ARGV0);
@@ -114,6 +115,8 @@ int main(int argc, char **argv)
         merror(PID_ERROR,ARGV0);
 
     
+    ExecdConfig(xmlcfg);
+
     
     /* Starting queue (exec queue) */
     if((m_queue = StartMQ(EXECQUEUEPATH,READ)) < 0)
