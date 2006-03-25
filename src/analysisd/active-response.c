@@ -179,7 +179,7 @@ int AS_GetActiveResponses(char * config_file)
             }
             else if(strcmp(elements[j]->element, xml_ar_disabled) == 0)
             {
-                /* ignore */
+                Config.ar = -1;
             }
             else
             {
@@ -194,6 +194,15 @@ int AS_GetActiveResponses(char * config_file)
         } 
         
         OS_ClearNode(elements);
+
+        if(Config.ar == -1)
+        {
+            Config.ar = 0;
+            OS_ClearNode(node);
+            OS_ClearXML(&xml);
+            fclose(fp);
+            return(0);
+        }
 
         if(!tmp_ar->command || !tmp_location)
         {

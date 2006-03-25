@@ -53,6 +53,7 @@ int ExecdConfig(char * cfgfile)
             if(strcmp(node[i]->element,xml_ar) == 0)
             {
                 XML_NODE chld_node = NULL;
+                chld_node = OS_GetElementsbyNode(&xml,node[i]);
                 
                 j = 0;
  

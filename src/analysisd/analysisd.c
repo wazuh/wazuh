@@ -266,6 +266,27 @@ int main(int argc, char **argv)
     if((m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
         ErrorExit(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
 
+    /* White list */
+    if(Config.white_list == NULL)
+    {
+        if(Config.ar)
+            verbose("%s: No IP in the white list for active reponse.");
+    }
+    else
+    {
+        if(Config.ar)
+        {
+            char **wl;
+            int wlc = 0;
+            wl = Config.white_list;
+            while(*wl)
+            {
+                wl++;wlc++;
+            }
+            verbose("%s: %d IPs in the white list for active response.",
+                    ARGV0, wlc);
+        }
+    }
    
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
