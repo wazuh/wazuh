@@ -3,5 +3,6 @@
        command based on the events received. You can 
        block an IP address or disable access for a 
        specific user (for example). 
+       More information at:
        http://www.ossec.net/en/manual.html#active-response
        
