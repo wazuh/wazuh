@@ -1,11 +1,11 @@
 
-  - You have three installation options: agent, local or server.
+  - You have three installation options: server, agent or local.
   
     - If you choose server, you will be able to analyze all  
       the logs, create e-mail notifications and responses,   
       and also receive logs from remote syslog machines and  
       from systems running the 'agents' (where traffic is  
-      sent encrypted).
+      sent to the server encrypted).
       
     - If you choose the agent(client), you will be able to read
       local files (from syslog, snort, apache, etc) and forward
@@ -13,16 +13,17 @@
 
     - If you choose local, you will be able to do everything  
       the server does, except receiving remote messages from  
-      the agents or external syslog devices      
+      the agents or external syslog devices.
 
-  - Use 'server' if you are setting up a log/analysis server.
+  - Choose 'server' if you are setting up a log/analysis server.
   
-  - Use 'agent' if you have another machine to run as a log
+  - Choose 'agent' if you have another machine to run as a log
     server and want to forward the logs to the server for analysis.
     (ideal for webservers, database servers ,etc)
     
-  - Use 'local' if you are just have one system to analyze.
+  - Choose 'local' if you only have one system to monitor.
   
-  - More info: http://www.ossec.net/en/manual.html#starting
+  - More inforomation at: 
+    http://www.ossec.net/en/manual.html#starting
 
   
