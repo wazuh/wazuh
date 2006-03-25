@@ -87,7 +87,7 @@ UseSyscheck()
             ;;
         *)
             SYSCHECK="yes"
-            echo "   -${yessyscheck}."
+            echo "   - ${yessyscheck}."
             ;;
     esac                    
 
@@ -213,12 +213,20 @@ ConfigureClient()
 	echo ""
 	echo "3- ${configuring} $NAME."
 	echo ""
-	echo "  3.1- ${serverip}"
-	    read IP
-	    echo ""
-	    echo "   - ${addingip} $IP"
-
-	echo "<client>" > $NEWCONFIG
+    
+    while [ 1 ]; do
+	$ECHO "  3.1- ${serverip}: "
+	    read IPANSWER
+        echo $IPANSWER | grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" > /dev/null 2>&1
+        if [ $? = 0 ]; then
+	        echo ""
+            IP=$IPANSWER
+	        echo "   - ${addingip} $IP"
+            break;
+        fi
+    done
+	
+    echo "<client>" > $NEWCONFIG
 	echo "  <server-ip>$IP</server-ip>" >> $NEWCONFIG
 	echo "</client>" >> $NEWCONFIG
 
@@ -228,11 +236,26 @@ ConfigureClient()
     # Rootcheck?
     UseRootcheck
 
+    echo ""
+    $ECHO "  3.4 - ${enable_ar} ($yes/$no) [$yes]: "
+    read ANY
+    case $ANY in
+        $nomatch)
+            echo ""
+            echo "   - ${noactive}."
+            echo "" >> $NEWCONFIG
+            echo "<active-response>" >> $NEWCONFIG
+            echo "  <disabled>yes</disabled>" >> $NEWCONFIG
+            echo "</active-response>" >> $NEWCONFIG
+            echo "" >> $NEWCONFIG
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
 
     # Set up the log files
-    SetupLogs "3.4"
-                       
-	
+    SetupLogs "3.5"
 }
 
 
@@ -254,14 +277,14 @@ ConfigureServer()
 	case $ANSWER in
 		$nomatch)
             echo ""
-			echo "   --- ${nomail} "
+			echo "   --- ${nomail}."
 			EMAILNOTIFY="no"
 			;;
 		*)
 			EMAILNOTIFY="yes"
 			$ECHO "   - ${whatsemail} "
 			read EMAIL
-            echo "${EMAIL}" | grep "@" |grep "\." > /dev/null ;RVAL=$?;
+            echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null ;RVAL=$?;
             # Ugly e-mail validation
 			while [ "$EMAIL" = "" -o ! ${RVAL} = 0 ] ; do
 				$ECHO "   - ${whatsemail} "
@@ -353,13 +376,14 @@ ConfigureServer()
 
     # Active response
     catMsg "0x107-ar"
-    $ECHO "       ${enable_ar} ($yes/$no) [$yes]: "
+    $ECHO "   - ${enable_ar} ($yes/$no) [$yes]: "
     
     read AR
     case $AR in
         $nomatch)
             echo ""
             echo "   - ${noactive}."
+            echo "" >> $NEWCONFIG
             echo "<active-response>" >> $NEWCONFIG
             echo "  <disabled>yes</disabled>" >> $NEWCONFIG
             echo "</active-response>" >> $NEWCONFIG
@@ -509,13 +533,22 @@ setEnv()
 {
     echo ""
     echo "2- ${settingupenv}."
+
     echo ""
-    $ECHO " - ${wheretoinstall} [$INSTALLDIR]: "
-    read ANSWER
-    if [ ! "X$ANSWER" = "X" ]; then
-        INSTALLDIR=$ANSWER;
-        WORKDIR=$ANSWER;
-    fi
+    while [ 1 ]; do
+        $ECHO " - ${wheretoinstall} [$INSTALLDIR]: "
+        read ANSWER
+        if [ ! "X$ANSWER" = "X" ]; then
+            echo $ANSWER | grep -E "^/[a-zA-Z0-9/-]*$" > /dev/null 2>&1
+            if [ $? = 0 ]; then
+                INSTALLDIR=$ANSWER;
+                WORKDIR=$ANSWER;
+                break;
+            fi 
+        else
+            break;           
+        fi
+    done
 
     CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${WORKDIR}\\\""
     
@@ -571,24 +604,28 @@ AddWhite()
 {
 	while [ 1 ]
 	do
-		$ECHO "  - ${addwhite} ($yes/$no)? [$no]: "
+        echo ""
+		$ECHO "   - ${addwhite} ($yes/$no)? [$no]: "
 		read ANSWER
 		if [ "X${ANSWER}" == "X" ] ; then
-			ANSWER=X
+			ANSWER=$no
 		fi
 			
 		case $ANSWER in
-			"X")
+			$no)
 				break;
 				;;
 			*)
-				$ECHO "  - ${ipswhite}"
+				$ECHO "   - ${ipswhite}"
 				read IPS
 				
 				for ip in ${IPS};
 				do
 					if [ "X${ip}" != "X" ]; then
+                        echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
+                        if [ $? = 0 ]; then
 						echo "  <white_list>${ip}</white_list>" >>$NEWCONFIG
+                        fi
 					fi
 				done
 				
