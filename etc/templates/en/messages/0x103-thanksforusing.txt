@@ -7,5 +7,5 @@
 
     More information can be found at http://www.ossec.net/hids/
 
-    ---  Press any key to finish (maybe more information bellow). ---
+    ---  Press ENTER to finish (maybe more information bellow). ---
     
