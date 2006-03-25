@@ -1,4 +1,4 @@
-   - Active response enabled.
+     - Active response enabled.
    
    - By default, we can enable the host-deny and the 
      firewall-drop responses. The first one will add
