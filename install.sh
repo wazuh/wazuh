@@ -284,12 +284,12 @@ ConfigureServer()
 			EMAILNOTIFY="yes"
 			$ECHO "   - ${whatsemail} "
 			read EMAIL
-            echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null ;RVAL=$?;
+            echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
             # Ugly e-mail validation
 			while [ "$EMAIL" = "" -o ! ${RVAL} = 0 ] ; do
 				$ECHO "   - ${whatsemail} "
 				read EMAIL
-                echo "${EMAIL}" | grep "@" |grep "\." > /dev/null ;RVAL=$?;
+                echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
 			done
             ls ${HOST_CMD} > /dev/null 2>&1
             if [ $? = 0 ]; then
@@ -382,7 +382,7 @@ ConfigureServer()
     case $AR in
         $nomatch)
             echo ""
-            echo "   - ${noactive}."
+            echo "     - ${noactive}."
             echo "" >> $NEWCONFIG
             echo "<active-response>" >> $NEWCONFIG
             echo "  <disabled>yes</disabled>" >> $NEWCONFIG
@@ -397,6 +397,7 @@ ConfigureServer()
             echo ""
             $ECHO "   - ${firewallar} ($yes/$no) [$yes]: "
             read HD2
+            echo ""
             case $HD2 in
                 $nomatch)
                     echo "     - ${nofirewall}"
@@ -431,12 +432,13 @@ ConfigureServer()
 	  echo ""
 	  $ECHO "  3.5- ${syslog} ($yes/$no) [$yes]: "
 	  read ANSWER
+      echo ""
       case $ANSWER in
 		$nomatch)
-			echo "   --- ${nosyslog}"
+			echo "   --- ${nosyslog}."
 			;;
 		*)
-			echo "   - ${yessyslog}"
+			echo "   - ${yessyslog}."
 			RLOG="yes"
 			;;
 	  esac
