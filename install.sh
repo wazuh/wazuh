@@ -26,7 +26,7 @@ if [ ! "X$hs" = "Xa" ]; then
 fi
 
 # For solaris
-echo "xxxx" | grep -E "xxx"
+echo "xxxx" | grep -E "xxx" > /dev/null 2>&1
 if [ ! $? = 0 ]; then
     ls "/usr/xpg4/bin/grep" > /dev/null 2>&1
     if [ $? = 0 ]; then
@@ -35,13 +35,6 @@ if [ ! $? = 0 ]; then
 fi
 
                             
-### Looking for for echo -n
-ECHO="echo -n"
-echo -n "a" > /dev/null 2>&1
-if [ ! $? = 0 ]; then
-    ECHO=echo
-fi    
-
 ##########
 # install()
 ##########
