@@ -17,6 +17,28 @@ cd $LOCAL
 ECHO="echo -n"
 echo -n "a" > /dev/null 2>&1
 if [ ! $? = 0 ]; then
+    ls "/usr/ucb/echo" > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        ECHO="/usr/ucb/echo"
+    else
+        ECHO=echo
+    fi
+fi
+
+# For solaris
+echo "xxxx" | grep -E "xxx"
+if [ ! $? = 0 ]; then
+    ls "/usr/xpg4/bin/grep" > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        export PATH=/usr/xpg4/bin:$PATH
+    fi
+fi
+
+                            
+### Looking for for echo -n
+ECHO="echo -n"
+echo -n "a" > /dev/null 2>&1
+if [ ! $? = 0 ]; then
     ECHO=echo
 fi    
 
