@@ -15,8 +15,8 @@ cd $LOCAL
 
 ### Looking for for echo -n
 ECHO="echo -n"
-echo -n "a" > /dev/null 2>&1
-if [ ! $? = 0 ]; then
+hs=`echo -n "a"`
+if [ ! "X$hs" = "Xa" ]; then
     ls "/usr/ucb/echo" > /dev/null 2>&1
     if [ $? = 0 ]; then
         ECHO="/usr/ucb/echo"
@@ -30,7 +30,7 @@ echo "xxxx" | grep -E "xxx"
 if [ ! $? = 0 ]; then
     ls "/usr/xpg4/bin/grep" > /dev/null 2>&1
     if [ $? = 0 ]; then
-        export PATH=/usr/xpg4/bin:$PATH
+        PATH=/usr/xpg4/bin:$PATH
     fi
 fi
 
