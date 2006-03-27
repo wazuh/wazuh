@@ -51,7 +51,7 @@ if [ "X${ARGV}" = "Xall" ]; then
     fi
 
     if [ "X$OS" = "XSunOS" ]; then
-        echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -include strings.h">>Config.OS
+        echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -DHIGHFIRST -include strings.h">>Config.OS
         PATH=$PATH:/usr/ccs/bin
         export  PATH
     fi
