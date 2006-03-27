@@ -624,7 +624,7 @@ AddWhite()
         echo ""
 		$ECHO "   - ${addwhite} ($yes/$no)? [$no]: "
 		read ANSWER
-		if [ "X${ANSWER}" == "X" ] ; then
+		if [ "X${ANSWER}" = "X" ] ; then
 			ANSWER=$no
 		fi
 			
@@ -638,7 +638,7 @@ AddWhite()
 				
 				for ip in ${IPS};
 				do
-					if [ "X${ip}" != "X" ]; then
+					if [ ! "X${ip}" = "X" ]; then
                         echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
                         if [ $? = 0 ]; then
 						echo "  <white_list>${ip}</white_list>" >>$NEWCONFIG
