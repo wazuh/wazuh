@@ -222,6 +222,22 @@
 </decoder>
 
 
+
+<!-- Sendmail decoder.
+  - Will extract the srcip
+  - Examples: 
+  - sendmail[15806618]: k1SN9pkK15806618: ruleset=check_mail, arg1=<rtreter@qffff.com>, 
+  - relay=dsl.static81215198185.ttnet.net.tr [81.215.198.185] (may be forged), reject=553 5.1.8 
+  - <rtreter@qffff.com>... Domain of sender address rtreter@qffff.com does not exist
+ -->
+
+<decoder name="sendmail-reject">
+  <prematch>sendmail[\d+]: </prematch>
+  <regex>relay=\S+ [(\d+.\d+.\d+.\d+)] </regex>
+  <order>srcip</order>
+</decoder>  
+
+
 <!-- Iptables decoder.
   - Will extract the srcip, dstip, srcport, dstport, protocol
   - Examples:

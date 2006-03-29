@@ -49,7 +49,7 @@
     <description>Service Unavailable: Attempt to access non-existent server.</description>
   </rule>
 
-  <rule id="5051" level="10" frequency="5" timeframe="120">
+  <rule id="5051" level="10" frequency="7" timeframe="120">
     <if_matched_sid>5003</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts to access forbidden file or directory.</description>
@@ -61,10 +61,16 @@
     <description>Multiple unauthorized attempts to use proxy.</description>
   </rule>
 
-  <rule id="5053" level="10" frequency="5" timeframe="120">
+  <rule id="5053" level="10" frequency="7" timeframe="120">
     <if_matched_sid>5001</if_matched_sid>
     <same_source_ip />
-    <description>Multiple Bad requests/Invalid syntax. Possbile scan</description>
+    <description>Multiple Bad requests/Invalid syntax.</description>
+  </rule>
+
+  <rule id="5054" level="10" frequency="10" timeframe="120">
+    <if_matched_sid>5004</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple attempts to access a non-existent file.</description>
   </rule>
 </group> <!-- ACCESSLOG,SQUID -->
 

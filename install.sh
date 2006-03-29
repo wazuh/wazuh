@@ -378,6 +378,7 @@ ConfigureServer()
     echo "  <include>squid_rules.xml</include>" >> $NEWCONFIG
     echo "  <include>postfix_rules.xml</include>" >> $NEWCONFIG
     echo "  <include>spamd_rules.xml</include>" >> $NEWCONFIG
+    echo "  <include>sendmail_rules.xml</include>" >> $NEWCONFIG
 	echo "</rules>" >> $NEWCONFIG
 	echo "" >> $NEWCONFIG
 

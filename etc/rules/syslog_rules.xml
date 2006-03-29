@@ -119,14 +119,18 @@
 
   <rule id="409" level="0">
     <if_sid>400</if_sid>
-    <regex>authentication failure; logname= uid=0 euid=0 </regex>
-    <regex>tty=ssh ruser= rhost\S+$</regex>
+    <match>authentication failure; logname= uid=0 euid=0 tty=ssh</match>
     <description>Useless SSHD message without a user associated</description>
   </rule>
 
   <rule id="410" level="10" frequency="5" timeframe="240">
     <if_matched_sid>401</if_matched_sid>
     <description>Multiple authentication failures</description>
+  </rule>
+
+  <rule id="411" level="0">
+    <regex>^popa3d[\d+]: Authentication passed</regex>
+    <description>Pop3 Authentication passed</description>
   </rule>
 </group> <!-- SYSLOG,ACESSCONTROL -->
 
@@ -430,6 +434,12 @@
     <if_sid>400</if_sid>
     <match>fatal: Read from socket failed: Connection reset</match>
     <description>Timeout while logging in (sshd)</description>
+  </rule>
+  
+  <rule id="1509" level="0">
+    <if_sid>400</if_sid>
+    <match>error: Could not get shadow information for NOUSER<match>
+    <description>Useless SSHD message without a user/ip</description>
   </rule>  
 </group> <!-- SYSLOG, SSHD -->
 

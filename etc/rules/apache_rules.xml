@@ -92,7 +92,7 @@
     <description>Attempt to access an non-existent file</description> 
   </rule>
 
-  <rule id="3013" level="6" frequency="6" timeframe="120">
+  <rule id="3013" level="6" frequency="8" timeframe="120">
     <if_matched_sid>3012</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts to access non-existent files (web scan)</description>
