@@ -23,8 +23,7 @@
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
 
-#define SYSCHECK_DB     "/checksum_db/syscheck.db"
-#define CHECKSUM_DIR    "/checksum_db"
+#define SYSCHECK_DB     "/queue/syscheck/syschecklocal.db"
 #define SYSCHECK_WAIT   3600
 #define SYSCHECK        "syscheck"
 

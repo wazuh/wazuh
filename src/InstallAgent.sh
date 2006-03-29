@@ -15,7 +15,7 @@ UNAME=`uname`;
 DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 GROUP="ossec"
 USER="ossec"
-subdirs="logs bin queue queue/ossec queue/alerts var var/run etc etc/shared checksum_db active-response active-response/bin"
+subdirs="logs bin queue queue/ossec queue/alerts var var/run etc etc/shared active-response active-response/bin"
 
 
 # ${DIR} must be set 
@@ -116,6 +116,10 @@ if [ $? = 0 ]; then
 else    
     cp -pr ../etc/ossec-agent.conf ${DIR}/etc/ossec.conf
 fi
+
+chown root:${GROUP} ${DIR}/bin/*
+chmod 550 ${DIR}/bin/*
+
 
 exit 0;
 

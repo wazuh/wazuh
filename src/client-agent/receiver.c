@@ -91,9 +91,13 @@ void *receiver_thread(void *none)
                 if(strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0)
                 {
                     tmp_msg+=strlen(EXECD_HEADER);
-                    if(OS_SendUnix(logr->execdq, tmp_msg, 0) < 0)
+                    if(logr->execdq >= 0)
                     {
-                        merror("%s: Error communicating with execd", ARGV0);
+                        if(OS_SendUnix(logr->execdq, tmp_msg, 0) < 0)
+                        {
+                            merror("%s: Error communicating with execd", 
+                            ARGV0);
+                        }
                     }
 
                     continue;

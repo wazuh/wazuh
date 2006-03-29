@@ -4,8 +4,10 @@
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 
-DEFAULT_DIR="/var/ossec"
-DIR=${DEFAULT_DIR}
+LOCAL=`dirname $0`;
+cd ${LOCAL}
+DIR=`dirname pwd`;
+cd -;
 
 
 ###  Do not modify bellow here ###
@@ -48,7 +50,7 @@ start()
         pfile=${i}
         pstatus;
         if [ $? = 0 ]; then
-            ${DEFAULT_DIR}/bin/${i};
+            ${DIR}/bin/${i};
             if [ $? != 0 ]; then
                 exit 1;
             fi 

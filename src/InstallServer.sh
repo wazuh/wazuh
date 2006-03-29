@@ -17,7 +17,7 @@ USER="ossec"
 USER_MAIL="ossecm"
 USER_EXEC="ossece"
 USER_REM="ossecr"
-subdirs="logs logs/archives logs/alerts logs/firewall bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck queue/rootcheck queue/agent-info tmp var var/run etc etc/shared checksum_db active-response active-response/bin"
+subdirs="logs logs/archives logs/alerts logs/firewall bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck queue/rootcheck queue/agent-info tmp var var/run etc etc/shared active-response active-response/bin"
 
 # ${DIR} must be set 
 if [ "X${DIR}" = "X" ]; then
@@ -154,6 +154,10 @@ if [ $? = 0 ]; then
 else    
     cp -pr ../etc/ossec-server.conf ${DIR}/etc/ossec.conf
 fi
+
+chown root:${GROUP} ${DIR}/bin/*
+chmod 550 ${DIR}/bin/*
+
 
 
 exit 0;
