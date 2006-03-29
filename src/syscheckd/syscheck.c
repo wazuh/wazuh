@@ -130,10 +130,9 @@ int main(int argc, char **argv)
         if(syscheck.db == NULL)
             ErrorExit(MEM_ERROR,ARGV0);
         
-        snprintf(syscheck.db,1023,"%s%s/%s-%d%d.tmp",
+        snprintf(syscheck.db,1023,"%s%s-%d%d.tmp",
                                   syscheck.workdir,
-                                  CHECKSUM_DIR,
-                                  "syscheck-db",
+                                  SYSCHECK_DB,
                                   (int)tmp_time,
                                   (int)tmp_pid);    
     }
