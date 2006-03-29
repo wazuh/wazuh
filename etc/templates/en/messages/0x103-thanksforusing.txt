@@ -5,7 +5,7 @@
     ossec-list@ossec.net
     (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list).
 
-    More information can be found at http://www.ossec.net/hids/
+    More information can be found at http://www.ossec.net
 
     ---  Press ENTER to finish (maybe more information bellow). ---
     

@@ -173,6 +173,7 @@ void ReadKeys(keystruct *keys)
     keys->keys = NULL;
     keys->ips = NULL;
     keys->count = NULL;
+    keys->name = NULL;
     keys->time = NULL;
     keys->rcvd = NULL;
     keys->peer_info = NULL;

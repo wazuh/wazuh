@@ -143,8 +143,9 @@ int main(int argc, char **argv)
             helpmsg();
         }
         
-        snprintf(final_dir, 1020, "/%s/%s->syscheck",
+        snprintf(final_dir, 1020, "/%s/(%s) %s->syscheck",
                                     "queue/syscheck",
+                                    keys.name[i],
                                     keys.ips[i]);  
        
         fp = fopen(final_dir, "w");
