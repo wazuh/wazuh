@@ -1,11 +1,10 @@
 
     Obrigado por usar OSSEC HIDS.
-    Se você tiver alguma pergunta, sugestão ou encontrar algum "bug"
-    contate-nos através de contact@ossec.net ou utilize nossa lista de e-mail em
-    ossec-list@ossec.net
+    Se vocÃª tiver alguma pergunta, sugestÃ£o ou se vocÃª encontrar algum "bug"
+    nos contate atravÃ©s de contact@ossec.net ou utilize nossa pÃºblica lista de e-mail em ossec-list@ossec.net
     (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list).
 
-    Maiores informações podem ser encontradas em http://www.ossec.net/hids/
+    Maiores informaÃ§Ãµes podem ser encontradas em http://www.ossec.net/hids/
 
-    ---  Pressione qualquer tecla para continuar (talvez haja maiores informações abaixo). ---
-    
+    ---  Pressione qualquer tecla para continuar (talvez haja maiores informaÃ§Ãµes abaixo). ---
+

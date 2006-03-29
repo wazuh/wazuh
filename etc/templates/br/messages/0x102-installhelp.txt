@@ -1,27 +1,27 @@
 
-  - Você tem três opções para executar a instalação: cliente, local or servidor.
-  
-    - Se você escolher 'servidor', você poderá analizar todos os logs,
-      criar notificações de e-mail e respostas, e também receber logs 
-      de máquinas remotas e de sistemas  com 'clentes' rodando (onde o 
-      tráfego é enviado criptografado).
-      
-    - Se você escolher 'cliente', você poderá ler arquivos 
-      locais (do syslog, snort, apache, etc) e os encaminhar
-      (criptografados) ao servidor para análises.
+  - VocÃª tem trÃªs opÃ§Ãµes para executar a instalaÃ§Ã£o: [S]ervidor, [A]gente ou [L]ocal.
 
-    - Se você escolher local, você poderá fazer tudo o que o
-      o servidor faz, exceto receber mensagens remotas de 
-      máquinas clientes ou dispositivos 'syslog' externos 
+    - Se vocÃª escolher '[S]ervidor', vocÃª poderÃ¡ analizar todos os logs,
+      ,criar notificaÃ§Ãµes de e-mail e respostas, e tambÃ©m receber
+      logs de mÃ¡quinas remotas e de sistemas com 'agentes' rodando
+      (onde o trÃ¡fego Ã© enviado criptografado).
 
-  - Utilize 'servidor' se você estiver configurando um servidor de análize de logs.
-  
-  - Utilize 'cliente' se você tiver outra máquina rodando como servidor de log
-     e quizer encaminhar os logs ao servidor para análises.
+    - Se vocÃª escolher '[A]gente'(cliente), vocÃª poderÃ¡ ler arquivos
+      locais (do syslog, snort, apache, etc) e encaminhÃ¡-los
+      (criptografados) ao servidor para anÃ¡lise.
+
+    - Se vocÃª escolher local, vocÃª poderÃ¡ fazer tudo o que o
+      o servidor faz, exceto receber mensagens remotas de
+      agentes ou mensagens remotas de 'syslog'.
+
+  - Utilize '[S]ervidor' se vocÃª estiver configurando um servidor de logs/anÃ¡lise.
+
+  - Utilize '[A]gente' se vocÃª tiver outra mÃ¡quina rodando como servidor de logs
+    e quiser encaminhar os logs ao servidor para anÃ¡lise.
     (ideal para webservers, servidores de banco de dados, etc)
-    
-  - Utilize 'local' se você apenas quizer um sistema de análises.
-  
-  - Maiores informações: http://www.ossec.net/en/manual.html#starting
 
-  
+  - Utilize '[L]ocal' se vocÃª apenas tem apenas um sistema para analizar.
+
+  - Maiores informaÃ§Ãµes: http://www.ossec.net/hids/doc.php#starting"
+
+

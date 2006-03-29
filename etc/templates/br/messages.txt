@@ -1,64 +1,64 @@
-# Configuration
+# Configuração
 yes="s"
 no="n"
 yesmatch="s"
 nomatch="n"
-
 server="servidor"
 agent="cliente"
 local="local"
-ajuda="ajuda"
+help="ajuda"
+
 
 # Global
 moreinfo="Maiores informações em: "
 starting="Iniciando o OSSEC HIDS"
-systemis="Systema:"
-modifiedinit="Modificado o script de inicializacao para executar o OSSEC HIDS durante o boot."
-noboot="Sistema desconhecido. Não foi adicionado ao script de Inicialização."
+systemis="O Sistema é:"
+modifiedinit="O script de inicialização foi modificado para executar o OSSEC HIDS durante o boot."
+noboot="Sistema desconhecido. Nenhum script de incialização foi adicionado."
 
-# Part 1
+# Parte 1
 installscript="Script de instalação"
 system="Sistema"
 user="Usuário"
 host="Host"
 hitanyorabort="Aperte qualquer tecla para continuar ou Ctrl+C para abortar."
-whattoinstall="Que tipo de instalacao voce quer? (servidor, cliente, local ou ajuda)?"
-serverchose="Instalacao 'Servidor' escolhida."
-clientchose="Instalacao 'Cliente' escolhida."
-localchose="Instalacao 'Local' escolhida."
+whattoinstall="Que tipo de instalação você quer ([S]servidor, [A]agente, [L]local ou [H]ajuda)?"
+serverchose="Escolhida instalação [S]ervidor."
+clientchose="Escolhida instalação [A]gente."
+localchose="Escolhida instalação [L]ocal."
 
-# Part 2
+# Parte 2
 settingupenv="Ajustando o ambiente de configuração."
 wheretoinstall="Escolha onde instalar o OSSEC HIDS"
 installat="A instalação será feita em "
-deletedir="O diretório e instalacao ja existe. Deseja remove-lo?"
+deletedir="O diretório de instalação já existe. Deseja removê-lo?"
 
-# Part 3
+# Parte 3
 configuring="Configurando"
 mailnotify="Deseja receber as notificações por e-mail?"
-nomail="Desabilitado a notificação por e-mail"
+nomail="Desabilitada a notificação por e-mail"
 whatsemail="Qual o seu endereço de e-mail?"
 yoursmtp="Seu servidor SMTP foi encontrada como"
-usesmtp="Deseja usa-lo?"
+usesmtp="Deseja usá-lo?"
 usingsmtp="Usando servidor SMTP: "
 whatsmtp="Qual o ip/host de seu servidor SMTP?"
 
-# Part 3.1/agent
+# Parte 3.1/agente
 serverip="Qual o endereço de IP do servidor OSSEC HIDS?"
 addingip="Adicionando IP do servidor"
 
 
-# Part 3.2
+# Parte 3.2
 runsyscheck="Deseja executar a verificação da integridade do sistema?"
-nosyscheck="Syscheck (Sistema de verificação de integride) desabilitado"
-yessyscheck="Syscheck (Sistema de verificação de integrida) habilitado"
+nosyscheck="Syscheck (Sistema de verificação de integridade) desabilitado"
+yessyscheck="Syscheck (Sistema de verificação de integridade) habilitado"
 
-# Part 3.3
-runrootcheck="Gostaria de executar o sistema de detecç� de rootkis?"
-norootcheck="Rootcheck (Sistema de detecç� de rootkits) desabilitado"
-yesrootcheck="Rootcheck (Sistem de detecç� de rootkits) habilitado"
+# Parte 3.3
+runrootcheck="Gostaria de executar o sistema de detecção de rootkis?"
+norootcheck="Rootcheck (Sistema de detecção de rootkits) desabilitado"
+yesrootcheck="Rootcheck (Sistem de detecção de rootkits) habilitado"
 
-# Part 3.4/server/local
+# Parte 3.4/servidor/local
 enable_ar="Gostaria de ter o sistema de resposta ativa de incidentes habilitada?"
 noactive="Resposta ativa de incidentes desabilitada"
 nohosts="host-deny desabilitado"
@@ -66,32 +66,29 @@ yeshosts="host-deny habilitado (local) para niveis >= 6"
 firewallar="Gostaria de habilitar a resposta do firewall-drop?"
 nofirewall="firewall-drop desabilitado"
 yesfirewall="firewall-drop habilitado (local) para niveis >= 6"
-defaultwhitelist="Default white list for the active response:"
-addwhite="Do you want to add more IPs to the white list?"
-ipswhite="IPs (space separated): "
-defaultwhitelist="Lista de enderecos IPS que nao serao bloqueados pela resposta automatica:"
+defaultwhitelist="Lista de enderecos IPS que nao serao bloqueados pela resposta automatica:" 
 addwhite="Voce deseja adicionar mais algum endereco a essa lista?"
 ipswhite="Enderecos IP (separados por espaco): "
 
 
-# Part 3.5/server/local
-syslog="Gostaria de habilitar o sistema de log remoto (514 udp)?"
+# Parte 3.5/servidor/local
+syslog="Gostaria de habilitar a escuta por mensagens remotas de syslog (514 udp)?"
 nosyslog="Não escutando na porta de syslog"
 yessyslog="Escutando mensagens remotas de syslog"
 
-# Part 3.4/3.5
-readlogs="Ajustando a configuração para anasar os seguintes registros:"
+# Parte 3.4/3.5
+readlogs="Ajustando a configuração para analisar os seguintes registros:"
 
-# Part 5
+# Parte 5
 installing="Instalando o sistema"
 runningmake="Executando o Makefile"
 
 # Final
-configurationdone="Configuração terminada corretamente"
-tostart="Para começar OSSEC HIDS"
+configurationdone="Configuração finalizada corretamente"
+tostart="Para incializar OSSEC HIDS"
 tostop="Para parar OSSEC HIDS"
-configat="A configuração pode ser vista ou modificado em"
-addserveragent="Você necessita adicionar cada usuário antes que estejam autozados a acessar. "
-runma="Execute o 'manage_agents' para adicionar ou remover"
-presskey="Precione qualquer tecla para continuar."
+configat="A configuração pode ser vista ou modificada em"
+addserveragent="Você necessita adicionar cada agente antes que estejam autorizados a acessar o servidor."
+runma="Execute o 'manage_agents' para adicioná-los ou remove-los."
+presskey="Pressione qualquer tecla para continuar."
 

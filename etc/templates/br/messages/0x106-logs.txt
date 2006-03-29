@@ -1,9 +1,7 @@
+ - Se quiser monitorar outro arquivo, modifique
+   o ossec.conf e adicione a nova entrada para o arquivo.
+   Qualquer dÃºvida sobre como configurar, visite http://www.ossec.net/hids/ .
 
- - Se desejar monitorar outro arquivo, apenas modifique
-   o arquivo ossec.conf e adicione uma nova entrada para o arquivo.
-   
-   Qualquer dúvido sobre como configurar, visite http://www.ossec.net/hids/ .
-   
-   
-   --- Pressione qualquer tecla para continuar ---
-                            
+
+   --- Pressione ENTER para continuar ---
+

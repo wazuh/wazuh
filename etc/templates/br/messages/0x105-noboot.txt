@@ -1,4 +1,5 @@
 
- - Nenhuma alteração foi criada para que OSSEC HIDS inicie
-   durrante a inicialização. Adicione o seguinte em seu script de inicialização: 
+ - Nenhuma aÃ§Ã£o foi tomada para que OSSEC HIDS inicie
+   durrante o 'boot'. Adicione a seguinte linha em seu 
+   script de inicializaÃ§Ã£o:
 

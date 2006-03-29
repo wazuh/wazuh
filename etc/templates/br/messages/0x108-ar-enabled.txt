@@ -1,12 +1,10 @@
-   - Resposta Automatica de incidentes habilitada.
-   
-   - Por padrao, sera habilitado o bloqueio de hosts e
-     as respostas ativas no firewall. O primeiro ira adicionar�
-     um host ao /etc/hosts.deny e o segundo ira bloquear
-     o 'host' no 'iptables' (linux) ou pelo ipfilter
-     (Solaris, FreeBSD, etc).
+   - Respostas automaticas habilitadas.
 
-   - Eles podem ser usados para parar scanners SSHD,
-     portscans e outras formas de ataque. Voce pode 
-     tambem pode usa-lo para bloquear eventos gerados
-     pelo snort, por exemplo.
+   - Por padrão, nós podemos habilitar o 'host-deny' e
+     as respostas 'firewall-drop'. O primeiro adicionará
+     um host ao /etc/hosts.deny e o segundo 
+     bloqueará o host pelo 'iptables' (linux)
+     ou pelo ipfilter (Solaris, FreeBSD, etc).
+   - Eles podem ser usados para parar SSHD scans forçados, 
+     portscans e outras formas de ataque. Você pode 
+     também adicioná-los ao sistema de bloqueio do snort, por exemplo.
