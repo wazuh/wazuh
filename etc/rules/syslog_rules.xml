@@ -438,7 +438,7 @@
   
   <rule id="1509" level="0">
     <if_sid>400</if_sid>
-    <match>error: Could not get shadow information for NOUSER<match>
+    <match>error: Could not get shadow information for NOUSER</match>
     <description>Useless SSHD message without a user/ip</description>
   </rule>  
 </group> <!-- SYSLOG, SSHD -->

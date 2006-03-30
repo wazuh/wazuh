@@ -15,7 +15,7 @@ UNAME=`uname`;
 DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 GROUP="ossec"
 USER="ossec"
-subdirs="logs bin queue queue/ossec queue/alerts var var/run etc etc/shared active-response active-response/bin"
+subdirs="logs bin queue queue/ossec queue/alerts queue/syscheck var var/run etc etc/shared active-response active-response/bin"
 
 
 # ${DIR} must be set 
