@@ -6,7 +6,8 @@
 
 LOCAL=`dirname $0`;
 cd ${LOCAL}
-DIR=`dirname pwd`;
+PWD=`pwd`
+DIR=`dirname $PWD`;
 cd -;
 
 ###  Do not modify bellow here ###
