@@ -37,7 +37,11 @@ int daemon_flag = 0;
 
 /* For internal logs */
 #ifndef LOGFILE
-#define LOGFILE   "/logs/ossec.log"
+  #ifndef WIN32
+    #define LOGFILE   "/logs/ossec.log"
+  #else
+    #define LOGFILE "ossec.log"
+  #endif
 #endif
 
 
@@ -71,7 +75,11 @@ void _log(const char * msg,va_list args)
                       p->tm_year+1900,p->tm_mon+1, 
                       p->tm_mday,p->tm_hour,p->tm_min,p->tm_sec);
         (void)vfprintf(fp, msg, args);
+        #ifdef WIN32
+        (void)fprintf(fp, "\r\n");
+        #else
         (void)fprintf(fp, "\n");
+        #endif
         fflush(fp);
         fclose(fp);
     }

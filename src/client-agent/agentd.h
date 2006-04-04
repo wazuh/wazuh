@@ -63,12 +63,17 @@ void *notify_thread(void *none);
 keystruct keys;
 agent *logr;
 
+
+/* Not for windows */
+#ifndef WIN32
 pthread_mutex_t receiver_mutex;
 pthread_mutex_t forwarder_mutex;
 pthread_mutex_t notify_mutex;
 pthread_cond_t  receiver_cond;
 pthread_cond_t  forwarder_cond;
 pthread_cond_t  notify_cond;
+#endif
+
 
 int available_receiver;
 int available_forwarder;

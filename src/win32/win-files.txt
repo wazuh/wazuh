@@ -1,0 +1,3 @@
+client-agent/config.c client-agent-config.c
+client-agent/agentd.h agentd.h
+logcollector logcollector

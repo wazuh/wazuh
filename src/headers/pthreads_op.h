@@ -13,7 +13,8 @@
 #ifndef PTHREADS_OP_H
 #define PTHREADS_OP_H
 
+#ifndef WIN32
 int CreateThread(void *function_pointer(void *data), void *data);
-
+#endif
 
 #endif

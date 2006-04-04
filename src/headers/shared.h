@@ -21,8 +21,12 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+
+/* Making windows happy */
+#ifndef WIN32
 #include <sys/select.h>
 #include <sys/utsname.h>
+#endif
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -51,23 +55,7 @@
 
 #include "os_err.h"
 
-#include "debug_op.h"
-#include "file_op.h"
-#include "mem_op.h"
-#include "mq_op.h"
-#include "privsep_op.h"
-#include "pthreads_op.h"
-#include "regex_op.h"
-#include "sig_op.h"
-#include "list_op.h"
-#include "rc.h"
-#include "ar.h"
-#include "validate_op.h"
 
-#include "os_xml/os_xml.h"
-#include "os_regex/os_regex.h"
-
-#include "error_messages/error_messages.h"
 
 /* Global portability code */
 
@@ -81,10 +69,12 @@ typedef uint8_t u_int8_t;
 typedef int sock2len_t;
 #endif
 
-/* For Windows */
+/* For Windows (so high maintanence :)) */
 #ifdef WIN32
 typedef int uid_t;
 typedef int gid_t;
+typedef int socklen_t;
+/* typedef closesocket close; */
 #endif
 
 /* For AIX */
@@ -109,4 +99,24 @@ char *__local_name;
 
 #endif /* __SHARED_H */
 
+
+#include "debug_op.h"
+#include "file_op.h"
+#include "mem_op.h"
+#include "mq_op.h"
+#include "privsep_op.h"
+#include "pthreads_op.h"
+#include "regex_op.h"
+#include "sig_op.h"
+#include "list_op.h"
+#include "rc.h"
+#include "ar.h"
+#include "validate_op.h"
+
+#include "os_xml/os_xml.h"
+#include "os_regex/os_regex.h"
+
+#include "error_messages/error_messages.h"
+
+			       
 /* EOF */

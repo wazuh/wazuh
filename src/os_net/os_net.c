@@ -24,16 +24,20 @@
 
 struct sockaddr_in _c;	    /* Client socket */
 socklen_t _cl;              /* Client socket length */
+
+#ifndef WIN32
 struct sockaddr_un n_us;    /* Unix socket  */
 socklen_t us_l = sizeof(n_us);
-
 
 /* UNIX SOCKET */
 #ifndef SUN_LEN
 #define SUN_LEN(ptr) ((size_t) (((struct sockaddr_un *) 0)->sun_path)        \
 		                      + strlen ((ptr)->sun_path))
-#endif
+#endif /* Sun_LEN */
 
+#else
+int ENOBUFS = 0;
+#endif /* WIN32*/
 
 
 /* OS_Bindport v 0.2, 2005/02/11
@@ -103,6 +107,7 @@ int OS_Bindportudp(unsigned int _port, char *_ip)
     return(OS_Bindport(_port, IPPROTO_UDP, _ip));
 }
 
+#ifndef WIN32
 /* OS_BindUnixDomain v0.1, 2004/07/29
  * Bind to a Unix domain, using DGRAM sockets
  */
@@ -165,7 +170,7 @@ int OS_ConnectUnixDomain(char * path)
     /* Returning the socket */	
     return(ossock);
 }
-
+#endif
 
 /* OS_Connect v 0.1, 2004/07/21
  * Open a TCP/UDP client socket 
@@ -344,7 +349,7 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
 }
 
 
-
+#ifndef WIN32
 /* OS_RecvUnix, v0.1, 2004/07/29
  * Receive a message using a Unix socket
  */
@@ -380,6 +385,7 @@ int OS_SendUnix(int socket, char * msg, int size)
     return(OS_SUCESS);
 }
 
+
 /* OS_GetHost, v0.1, 2005/01/181
  * Calls gethostbyname
  */
@@ -389,6 +395,7 @@ char *OS_GetHost(char *host)
     
     char *ip;
     struct hostent *h;
+
     #ifndef AIX
     extern int h_errno;
     #endif
@@ -400,8 +407,8 @@ char *OS_GetHost(char *host)
         return(NULL);
 
     if(h_errno < 0 || h_errno > 2)
-        return(NULL);
-
+        return(NULL);	
+    
     sz = strlen(inet_ntoa(*((struct in_addr *)h->h_addr)))+1;
     if((ip = (char *) calloc(sz,sizeof(char))) == NULL)
         return(NULL);
@@ -410,5 +417,6 @@ char *OS_GetHost(char *host)
     
     return(ip);
 }
+#endif
 
 /* EOF */
