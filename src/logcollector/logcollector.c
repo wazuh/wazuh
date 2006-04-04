@@ -30,6 +30,11 @@ void LogCollectorStart()
     
     struct timeval fp_timeout;
 
+    #ifdef WIN32
+    
+    /* Initializes windows logging */
+    win_startdel();
+    #endif
 
     /* Initializing each file and structure */
     for(i = 0;;i++)
@@ -81,8 +86,14 @@ void LogCollectorStart()
         }
 
         f_check++;
-
-
+        
+        #ifdef WIN32
+        
+        /* Check for messages in the event viewer */
+        win_readel();
+        
+        #endif
+        
         /* Checking which file is available */
         for(i = 0; i <= max_file; i++)
         {

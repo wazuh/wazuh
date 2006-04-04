@@ -11,6 +11,7 @@
 
        
 #include "shared.h"
+#include "logcollector.h"       
 
 
 /* This is only for windows */
@@ -31,6 +32,7 @@ typedef struct _os_el
 
     DWORD record;
 }os_el;
+os_el el[3];
 
 
 
@@ -229,6 +231,7 @@ void readel(os_el *el, int printit)
     char el_user[257];
     char el_domain[257];
     char el_string[1025];
+    char final_msg[1024];
     LPSTR el_sstring[57];
 
     /* Er must point to the mbuffer */
@@ -238,6 +241,7 @@ void readel(os_el *el, int printit)
     el_string[1024] = '\0';
     el_user[256] = '\0';
     el_domain[256] = '\0';
+    final_msg[1023] = '\0';
     el_sstring[56] = NULL;
 
     /* Reading the event log */	    
@@ -338,7 +342,9 @@ void readel(os_el *el, int printit)
 
             if(printit)
             {
-                printf("WinEvtLog: %s: %s(0x%08X): %s: %s(%s): %s\n", 
+                
+                snprintf(final_msg, 1022, 
+                        "WinEvtLog: %s: %s(0x%08X): %s: %s(%s): %s\n", 
                         el->name,
                         category, 
                         (int)el->er->EventID,
@@ -346,6 +352,16 @@ void readel(os_el *el, int printit)
                         el_user,
                         el_domain,
                         descriptive_msg != NULL?descriptive_msg:el_string);	
+                
+                if(SendMSG(logr_queue, final_msg, "WinEvtLog",
+                            LOCALFILE_MQ) < 0)
+                {
+                    merror(QUEUE_SEND, ARGV0);
+                    if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+                    {
+                        ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                    }
+                }
             }
 
             if(descriptive_msg != NULL)
@@ -362,30 +378,32 @@ void readel(os_el *el, int printit)
 }
 
 
-/** void win_readel() 
- * Reads the event logging for windows
+/** void win_startel()
+ * Starts the event logging for windows
  */
-void win_readel()
+void win_startel()
 {
-    os_el el[3];	
-    startEL("System", &el[0]);	
-    startEL("Security", &el[1]);	
+    startEL("System", &el[0]);
+    startEL("Security", &el[1]);
     startEL("Application", &el[2]);
 
     /* Initial read */
     readel(&el[0],0);
     readel(&el[1],0);
     readel(&el[2],0);
+}
 
-    while(1)
-    {
-        readel(&el[0],1);
-        readel(&el[1],1);
-        readel(&el[2],1);
 
-        /* Sleep 8 seconds (8*1000) before attempting to read again */
-        Sleep(8000);
-    }
+/** void win_readel() 
+ * Reads the event logging for windows
+ */
+void win_readel()
+{
+    /* Sleep plus 2 seconds before reading again */
+    Sleep(2000);
+    readel(&el[0],1);
+    readel(&el[1],1);
+    readel(&el[2],1);
 }
 
 
