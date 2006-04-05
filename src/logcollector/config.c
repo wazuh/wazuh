@@ -57,10 +57,10 @@ int LogCollectorConfig(char * cfgfile)
     }
 
     /* Allocating memory for the file structure */
-    os_calloc(rentries+1, sizeof(logreader), logr);
+    os_calloc(rentries+1, sizeof(logreader), log);
     
-    logr[rentries].file = NULL;
-    logr[rentries].logformat = NULL;
+    log[rentries].file = NULL;
+    log[rentries].logformat = NULL;
     
     
     /* Searching for entries related to files */
@@ -82,9 +82,9 @@ int LogCollectorConfig(char * cfgfile)
                     return(OS_CFGERR);
                 }
 
-                logr[fentries].file = NULL;
-                logr[fentries].logformat = NULL;
-                logr[fentries].fp = NULL;
+                log[fentries].file = NULL;
+                log[fentries].logformat = NULL;
+                log[fentries].fp = NULL;
                 
                 chld_node = OS_GetElementsbyNode(&xml,node[i]);
 
@@ -100,28 +100,28 @@ int LogCollectorConfig(char * cfgfile)
                     else if(strcmp(chld_node[j]->element,
                             xml_localfile_location) == 0)
                     {
-                        os_strdup(chld_node[j]->content, logr[fentries].file);                
+                        os_strdup(chld_node[j]->content, log[fentries].file);                
                     }
                     
                     else if(strcasecmp(chld_node[j]->element,
                             xml_localfile_logformat) == 0)
                     {
                         os_strdup(chld_node[j]->content, 
-                                logr[fentries].logformat);
+                                log[fentries].logformat);
                         
-                        if(strcmp(logr[fentries].logformat, "syslog") == 0)
+                        if(strcmp(log[fentries].logformat, "syslog") == 0)
                         {
                         }
-                        else if(strcmp(logr[fentries].logformat, "snort-full") == 0)
+                        else if(strcmp(log[fentries].logformat, "snort-full") == 0)
                         {
                         }
-                        else if(strcmp(logr[fentries].logformat, "snort-fast") == 0)
+                        else if(strcmp(log[fentries].logformat, "snort-fast") == 0)
                         {
                         }
-                        else if(strcmp(logr[fentries].logformat, "apache") == 0)
+                        else if(strcmp(log[fentries].logformat, "apache") == 0)
                         {
                         }
-                        else if(strcmp(logr[fentries].logformat, "squid") == 0)
+                        else if(strcmp(log[fentries].logformat, "squid") == 0)
                         {
                         }
                         else
@@ -130,7 +130,7 @@ int LogCollectorConfig(char * cfgfile)
                                       "Only 'syslog', 'snort-full', 'snort-fast'"
                                       ", 'squid' and 'apache' are allowed.", 
                                       ARGV0, 
-                                      logr[fentries].logformat);
+                                      log[fentries].logformat);
                         }
                     }
                     else
@@ -139,10 +139,10 @@ int LogCollectorConfig(char * cfgfile)
                                 ARGV0,chld_node[j]->element, xml_localfile);
                     }
 
-                    if(!logr[fentries].logformat)
+                    if(!log[fentries].logformat)
                     {
                         /* default log format is syslog compatible */
-                        os_strdup("syslog", logr[fentries].logformat);
+                        os_strdup("syslog", log[fentries].logformat);
                     }
                     
                     j++;

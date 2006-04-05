@@ -35,7 +35,7 @@ void *read_snortfull(int pos, int *rc)
     str[OS_MAXSTR]='\0';
     f_msg[OS_MAXSTR] = '\0';
 
-    while(fgets(str, OS_MAXSTR, logr[pos].fp) != NULL)
+    while(fgets(str, OS_MAXSTR, log[pos].fp) != NULL)
     {
         /* Removing \n at the end of the string */
         if ((q = strrchr(str, '\n')) != NULL)
@@ -81,7 +81,7 @@ void *read_snortfull(int pos, int *rc)
                     p = NULL;
                     
                     /* Sending the message */
-                    if(SendMSG(logr_queue,f_msg, logr[pos].file,
+                    if(SendMSG(logr_queue,f_msg, log[pos].file,
                                LOCALFILE_MQ) < 0)
                     {
                         merror(QUEUE_SEND, ARGV0);
@@ -110,7 +110,7 @@ void *read_snortfull(int pos, int *rc)
                     p = NULL;
 
                     /* Sending the message */
-                    if(SendMSG(logr_queue,f_msg, logr[pos].file,
+                    if(SendMSG(logr_queue,f_msg, log[pos].file,
                                LOCALFILE_MQ) < 0)
                     {
                         merror(QUEUE_SEND, ARGV0);

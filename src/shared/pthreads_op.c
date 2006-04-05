@@ -10,6 +10,7 @@
  */
 
 
+#ifndef WIN32
 #include "shared.h"
 #include <pthread.h>
 
@@ -40,5 +41,5 @@ int CreateThread(void *function_pointer(void *data), void *data)
     return(0);
 }
 
-
+#endif
 /* EOF */

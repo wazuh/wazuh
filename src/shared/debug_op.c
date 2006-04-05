@@ -23,7 +23,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef WIN32
 #include <syslog.h>
+#endif
 #include <stdarg.h>
 #include <time.h>
 
@@ -65,7 +67,11 @@ void _log(const char * msg,va_list args)
     else
     {
         char _logfile[256];
+        #ifndef WIN32
         snprintf(_logfile, 256, "%s%s", DEFAULTDIR, LOGFILE);
+        #else
+        snprintf(_logfile, 256, "%s", LOGFILE);
+        #endif
         fp = fopen(_logfile, "a");
     }
 

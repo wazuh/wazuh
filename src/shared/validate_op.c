@@ -16,6 +16,7 @@
 /* Functions to validate values */
 
 
+#ifndef WIN32
 #include "shared.h"
 char *ip_address_regex = 
      "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?[0-9]{0,2}$";
@@ -231,7 +232,7 @@ int OS_IsValidIP(char *ip_address)
     /* Returning success */
     return(1);
 }
-
+#endif
 
 
 /* EOF */

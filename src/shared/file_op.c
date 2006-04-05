@@ -105,6 +105,7 @@ int DeletePID(char *name)
     return(0);
 }
 
+#ifndef WIN32
 /* getuname; Get uname and returns a string with it.
  * Memory must be freed after use
  */
@@ -203,6 +204,6 @@ void goDaemon()
     return;
 }
 
-
+#endif
 
 /* EOF */

@@ -30,7 +30,7 @@ void *read_syslog(int pos, int *rc)
 
     str[OS_MAXSTR]='\0';
 
-    while(fgets(str, OS_MAXSTR, logr[pos].fp) != NULL)
+    while(fgets(str, OS_MAXSTR, log[pos].fp) != NULL)
     {
         /* Getting the last occurence of \n */
         if ((p = strrchr(str, '\n')) != NULL) 
@@ -40,7 +40,7 @@ void *read_syslog(int pos, int *rc)
                       
         
         /* Sending message to queue */
-        if(SendMSG(logr_queue,str,logr[pos].file,
+        if(SendMSG(logr_queue,str,log[pos].file,
                    LOCALFILE_MQ) < 0)
         {
             merror(QUEUE_SEND, ARGV0);

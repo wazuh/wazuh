@@ -2,6 +2,9 @@ os_net os_net
 os_regex os_regex
 os_xml os_xml
 os_crypto os_crypto
+headers headers
+shared shared
+error_messages error_messages
 client-agent/config.c client-agent-config.c
 client-agent/agentd.h agentd.h
 logcollector/config.c logcollector-config.c
@@ -10,3 +13,7 @@ logcollector/logcollector.h logcollector.h
 logcollector/read_snortfull.c read_snortfull.c
 logcollector/read_syslog.c read_syslog.c
 logcollector/read_win_el.c read_win_el.c
+win32/os_win.h os_win.h
+win32/win_agent.c win_agent.c
+win32/win_service.c win_service.c
+win32/make.bat make.bat

@@ -14,6 +14,7 @@
 #include "os_net/os_net.h"
 
 
+#ifndef WIN32
 
 /* StartMQ v0.2, 2004/07/30
  * Start the Message Queue. type: WRITE||READ
@@ -159,5 +160,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
     return(0);
 }
+
+#endif
 
 /* EOF */

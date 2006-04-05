@@ -26,6 +26,10 @@ typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
 #endif
 
+#ifdef WIN32
+typedef unsigned int u_int32_t;
+#endif
+
 typedef u_int32_t uint32;
 
 struct MD5Context {

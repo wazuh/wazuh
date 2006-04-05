@@ -13,6 +13,8 @@
 /* Functions to handle signal manipulation
  */
 
+#ifndef WIN32
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -55,4 +57,5 @@ void StartSIG(char *process_name)
     signal(SIGPIPE, HandleSIGPIPE);
 }
 
+#endif
 /* EOF */

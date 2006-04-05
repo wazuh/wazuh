@@ -21,6 +21,10 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/blowfish/bf_op.h"
 
+#ifdef WIN32
+typedef unsigned short int u_int16_t;
+typedef unsigned char u_int8_t;
+#endif
 
 #define KEYSIZE	 72
 
@@ -197,7 +201,7 @@ void ReadKeys(keystruct *keys)
 
         /* Getting ID */
         valid_str = buffer;
-        tmp_str = index(buffer, ' ');
+        tmp_str = strchr(buffer, ' ');
         if(!tmp_str)
         {
             merror(INVALID_KEY, ARGV0, buffer);
@@ -212,7 +216,7 @@ void ReadKeys(keystruct *keys)
 
         /* Getting name */
         valid_str = tmp_str;
-        tmp_str = index(tmp_str, ' ');
+        tmp_str = strchr(tmp_str, ' ');
         if(!tmp_str)
         {
             merror(INVALID_KEY, ARGV0, buffer);
@@ -225,7 +229,7 @@ void ReadKeys(keystruct *keys)
          
         /* Getting ip address */
         valid_str = tmp_str;
-        tmp_str = index(tmp_str, ' ');
+        tmp_str = strchr(tmp_str, ' ');
         if(!tmp_str)
         {
             merror(INVALID_KEY, ARGV0, buffer);
@@ -238,7 +242,7 @@ void ReadKeys(keystruct *keys)
         
         /* Getting key */
         valid_str = tmp_str;
-        tmp_str = index(tmp_str, '\n');
+        tmp_str = strchr(tmp_str, '\n');
         if(tmp_str)
         {
             *tmp_str = '\0';
@@ -385,7 +389,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         keys->time[id] = msg_time;
         keys->count[id] = msg_count;
         
-        f_msg = index(f_msg, ':');
+        f_msg = strchr(f_msg, ':');
         if(f_msg)
         {
             f_msg++;

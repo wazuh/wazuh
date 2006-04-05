@@ -13,18 +13,15 @@
 #ifdef WIN32
 
 #include "shared.h"
+#include "agentd.h"
+#include "logcollector.h"
+#include "os_win.h"
+#include "os_net/os_net.h"
 
 #ifndef ARGV0
-#define ARGV0 ossec-agent
+#define ARGV0 "ossec-agent"
 #endif
 
-
-/** int WinAgent()
- * Main process of the windows agent
- */
-int os_WinAgent()
-{
-}
 
 
 /** main(int argc, char **argv)
@@ -32,18 +29,55 @@ int os_WinAgent()
  */
 int main(int argc, char **argv)
 {
+    int binds;
+    char *cfg = DEFAULTCPATH;
+    char *tmpstr;
+    char mypath[OS_MAXSTR +1];
+    char myfile[OS_MAXSTR +1];
+    WSADATA wsaData;
 
+
+    /* Setting the name */
     OS_SetName(ARGV0);
 
+
+    /* Find where I'm */
+    mypath[OS_MAXSTR] = '\0';
+    myfile[OS_MAXSTR] = '\0';
+    
+    /* mypath is going to be the whole path of the file */
+    strncpy(mypath, argv[0], OS_MAXSTR);
+    tmpstr = strrchr(mypath, '\\');
+    if(tmpstr)
+    {
+        /* tmpstr is now the file name */
+        *tmpstr = '\0';
+        tmpstr++;
+        strncpy(myfile, tmpstr, OS_MAXSTR);
+    }
+    else
+    {
+        strncpy(myfile, argv[0], OS_MAXSTR);
+        mypath[0] = '.';
+        mypath[1] = '\0';
+    }
+    chdir(mypath);
+    getcwd(mypath, OS_MAXSTR -1);
+    strncat(mypath, "\\", OS_MAXSTR - (strlen(mypath) + 2));
+    strncat(mypath, myfile, OS_MAXSTR - (strlen(mypath) + 2));
+    
+    printf("my path: %s\n", mypath);
+     
     if(argc > 1)
     {
         if(strcmp(argv[1], "install-service") == 0)
         {
-            /* Call install service */
+            return(InstallService(mypath));
+            
         }
         if(strcmp(argv[1], "uninstall-service") == 0)
         {
-            /* Call to uninstall */
+            return(UninstallService());
         }
         else
         {
@@ -52,6 +86,14 @@ int main(int argc, char **argv)
     }
 
 
+    /* Starting logr */
+    logr = (agent *)calloc(1, sizeof(agent));
+    if(!logr)
+    {
+        ErrorExit(MEM_ERROR, ARGV0);
+    }
+                                
+    
     /* Read agent config */
     if((binds = ClientConf(DEFAULTCPATH)) == 0)
         ErrorExit(CLIENT_ERROR,ARGV0);
@@ -61,11 +103,30 @@ int main(int argc, char **argv)
         ErrorExit("%s: Configuration file '%s' not found",ARGV0,cfg);
 
 
-    /* Reading locollector config file */
+    /* Reading logcollector config file */
     LogCollectorConfig(cfg);
 
+    /* Starting winsock stuff */
+    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
+    {
+        merror("%s: WSAStartup() failed", ARGV0);
+        exit(1);
+    }
 
     /* Start it */
+    if(!os_WinMain(argc, argv))
+    {
+        ErrorExit("%s: Unable to start WinMain.", ARGV0);
+    }
+
+    while(1)
+    {
+        Sleep(10000);
+        printf("lala\n");
+    }
+    
+    WSACleanup();
+    return(0);
 }
 
 
@@ -117,7 +178,10 @@ int StartMQ(char * path, short int type)
     if(logr->sock < 0)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
 
-    path;type;
+    path[0] = '\0';
+    type = 0;
+
+    return(0);
 }
 
 #endif

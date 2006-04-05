@@ -1,0 +1,1 @@
+"C:\MinGW\bin\gcc.exe" -o "ossec-agent" -Wall  -DARGV0=\"ossec-agent\" -DWIN32 os_regex/*.c os_net/*.c os_xml/*.c shared/*.c os_crypto/blowfish/*.c os_crypto/md5/*.c os_crypto/shared/*.c *.c -Iheaders/ -I./ -lwsock32

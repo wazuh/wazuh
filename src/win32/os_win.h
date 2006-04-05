@@ -11,16 +11,22 @@
 
 
 
-/** int InstallService()
+/** int InstallService(char *path)
  * Install the OSSEC HIDS agent service.
  */
-int InstallService(int argc, char **argv); 
+int InstallService(char *path);
 
 
 /** int UninstallService()
  * Uninstall the OSSEC HIDS agent service.
  */
 int UninstallService(); 
+
+
+/** int os_WinMain(int argc, char **argv)
+ * Starts the process from the services.
+ */
+int os_WinMain(int argc, char **argv);
 
 
 /* EOF */

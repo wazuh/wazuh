@@ -16,6 +16,7 @@
 /* Functions for privilege separation.
  */
 
+#ifndef WIN32
 
 #include <stdio.h>
 #include <pwd.h>
@@ -85,4 +86,5 @@ int Privsep_Chroot(char * path)
     return(OS_SUCESS);
 }
 
+#endif
 /* EOF */

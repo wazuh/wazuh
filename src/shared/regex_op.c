@@ -10,6 +10,7 @@
  */
 
 
+#ifndef WIN32
 #include "shared.h"
 #include <regex.h>
 
@@ -44,5 +45,6 @@ int OS_PRegex(char *str, char *regex)
     
 }
 
+#endif
 
 /* EOF */

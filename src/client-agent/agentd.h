@@ -56,7 +56,9 @@ void *notify_thread(void *none);
  * threads and functions
  */
 
+#ifndef WIN32
 #include <pthread.h>
+#endif
 #include "shared.h"
 #include "sec.h"
 

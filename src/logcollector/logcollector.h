@@ -16,7 +16,7 @@
 #define __LOGREADER_H
 
 #ifndef ARGV0
-#define ARGV0="ossec-logcollector"
+#define ARGV0 "ossec-logcollector"
 #endif
 
 #define FP_TIMEOUT  2
@@ -61,10 +61,17 @@ void *read_syslog(int pos, int *rc);
 void *read_snortfull(int pos, int *rc);
 
 
+#ifdef WIN32
+/* Windows only */
+void win_startel();
+void win_readel();
+#endif
+
+
 /*** Global variables ***/
 
 int logr_queue;
-logreader *logr;
+logreader *log;
 
 
 #endif

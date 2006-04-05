@@ -26,3 +26,7 @@ for i in ${CAT}; do
         dest=""
     fi            
 done    
+
+# Final cleanup
+rm ${WINPKG}/os_crypto/md5/main.c
+rm ${WINPKG}/os_crypto/blowfish/main.c

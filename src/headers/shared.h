@@ -44,6 +44,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #else
+#include <windows.h>
 #include <winsock.h>
 #endif
 
@@ -74,6 +75,8 @@ typedef int sock2len_t;
 typedef int uid_t;
 typedef int gid_t;
 typedef int socklen_t;
+#define sleep Sleep
+
 /* typedef closesocket close; */
 #endif
 
