@@ -66,7 +66,6 @@ int main(int argc, char **argv)
     strncat(mypath, "\\", OS_MAXSTR - (strlen(mypath) + 2));
     strncat(mypath, myfile, OS_MAXSTR - (strlen(mypath) + 2));
     
-    printf("my path: %s\n", mypath);
      
     if(argc > 1)
     {
@@ -106,6 +105,16 @@ int main(int argc, char **argv)
     /* Reading logcollector config file */
     LogCollectorConfig(cfg);
 
+
+    /* Reading the private keys  */
+    ReadKeys(&keys);
+
+
+    /* Initial random numbers */
+    srand(time(0));
+    rand();
+
+                            
     /* Starting winsock stuff */
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
     {
@@ -119,11 +128,8 @@ int main(int argc, char **argv)
         ErrorExit("%s: Unable to start WinMain.", ARGV0);
     }
 
-    while(1)
-    {
-        Sleep(10000);
-        printf("lala\n");
-    }
+    /* Startting logcollector -- main process here */
+    LogCollectorStart();
     
     WSACleanup();
     return(0);
@@ -140,6 +146,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     tmpstr[OS_MAXSTR +1] = '\0';
     crypt_msg[OS_MAXSTR +1] = '\0';
 
+    merror("message: %s", message);
     snprintf(tmpstr,OS_MAXSTR,"%c:%s:%s", loc, locmsg, message);
 
     _ssize = CreateSecMSG(&keys, tmpstr, crypt_msg, 0);
