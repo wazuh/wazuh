@@ -1,12 +1,20 @@
 !define VERSION "0.75"
+!define NAME "Ossec HIDS"
 
-Name "OSSEC HIDS Windows Agent v${VERSION}"
+Name "${NAME} Windows Agent v${VERSION}"
+Caption "${NAME} Windows Agent Installer"
+UninstallCaption "${NAME} Windows Agent Uninstaller"
+DirText "${NAME} Windows Agent Installer"
+ComponentText  "${NAME} Windows Agent Installer"
+CompletedText "${NAME} Windows Agent Installer is finished"
+UninstallText "${NAME} Windows Agent Uninstaller"
+BrandingText " "
 OutFile "C:\ossec-win32-agent.exe"
+
 
 InstallDir $PROGRAMFILES\ossec-agent
 InstallDirRegKey HKLM "ossec" "Install_Dir"
 
-Page components
 Page directory
 Page instfiles
 
@@ -18,7 +26,7 @@ Section "OSSEC HIDS Windows Agent (required)"
 
 SetOutPath $INSTDIR
   
-File C:\win-pkg\ossec-agent.exe
+File ossec-agent.exe ossec.conf
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"
@@ -30,12 +38,18 @@ WriteUninstaller "uninstall.exe"
 CreateDirectory "$SMPROGRAMS\ossec"
 CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 CreateShortCut "$SMPROGRAMS\ossec\Edit.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
+CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "http://www.ossec.net/en/manual.html" "" "http://www.ossec.net/en/manual.html" 0
+
+    ; Install in the services 
+    Exec '"$INSTDIR\ossec-agent.exe" install-service'
 
 SectionEnd
 
 
 Section "Uninstall"
   
+  ; Uninstall from the services
+  Exec '"$INSTDIR\ossec-agent.exe" uninstall-service'
   ; Remove registry keys
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec"
   DeleteRegKey HKLM SOFTWARE\ossec
