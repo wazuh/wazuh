@@ -1,0 +1,8 @@
+
+  3.4- Aktywna ochrona pozwala na wykonywanie określonych
+       komend w zależności od otrzymanego sygnału. Np.
+       możesz zablokować adres IP lub dostęp dla wybranego
+       użytkownika.  
+       Więcej informacji na:
+       http://www.ossec.net/en/manual.html#active-response
+       

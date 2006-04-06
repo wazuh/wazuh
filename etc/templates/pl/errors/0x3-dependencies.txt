@@ -1,0 +1,5 @@
+ 
+ Błąd 0x3.
+ Potrzebujesz kompilatora (np. gcc lub cc) aby kontynuować
+ instalacje.
+ 

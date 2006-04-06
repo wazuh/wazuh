@@ -1,0 +1,91 @@
+# Konfiguracja
+yes="y"
+no="n"
+yesmatch="y"
+nomatch="n"
+agent="agent"
+local="lokalnie"
+server="serwer"
+help="pomoc"
+
+# Ogólne
+moreinfo="Więcej informacji na: "
+starting="Rozpoczynam OSSEC HIDS"
+systemis="System "
+modifiedinit="Init skrypt zmodyfikowany do uruchomiania OSSEC HIDS podczas bootowania."
+noboot="Nieznany system. Skrypt init nie został dodany."
+
+# Część 1
+installscript="Skrypt instalacyjny"
+system="System"
+user="Użytkownik"
+host="Host"
+hitanyorabort="Wciśnij ENTER aby kontynuować lub Ctrl-C aby przerwać."
+whattoinstall="Wybierz rodzaj instalacji (serwer, agent, lokalnie or pomoc)?"
+serverchose="Wybrana instalacja: serwer"
+clientchose="Wybrana instalacja: agent(klient)"
+localchose="Wybrana instalacja: lokalnie"
+
+# Część 2
+settingupenv="Ustawianie środowiska instalacyjnego"
+wheretoinstall="Wybierz katalog w którym zainstalować OSSEC HIDS"
+installat="OSSEC HIDS zostanie zainstalowane w :"
+deletedir="Wybrany katalog istnieje, skasować go?"
+
+# Część 3
+configuring="Konfiguracja "
+mailnotify="Czy chcesz powiadomienie na e-mail?"
+nomail="Powiadomienie e-mail wyłączone"
+whatsemail="Podaj e-mail adres?"
+yoursmtp="Znaleziony SMTP serwer: "
+usesmtp="Czy chcesz go użyć?"
+usingsmtp="Używam SMTP serwer: "
+whatsmtp="Podaj SMTP serwer (ip/host)?"
+
+# Część 3.1/agent
+serverip="Podaj adres IP serwera OSSEC HIDS."
+addingip="Dodaje IP serwera"
+
+
+# Część 3.2
+runsyscheck="Czy chcesz aby demon sprawdzania integralności systemu (syscheck) był uruchomiony?"
+nosyscheck="Nie uruchomiony syscheck (demon sprawdzania integralności systemu)"
+yessyscheck="Uruchomiony syscheck (demon sprawdzania integralności systemu)"
+
+# Część 3.3
+runrootcheck="Czy chcesz aby system detekcji rootkit'ów (rootcheck) był uruchomiony?"
+norootcheck="Nie uruchomiony rootcheck (system detekcji rootkit'ów)"
+yesrootcheck="Uruchomiony rootcheck (system detekcji rootkit'ów)"
+
+# Część 3.4/server/local
+enable_ar="Czy chcesz uaktywnić aktywną ochrone?"
+noactive="Aktywna ochrona wyłączona"
+nohosts="host-deny wyłączone"
+yeshosts="host-deny włączone (local) dla poziomów >= 6"
+firewallar="Czy chcesz uaktywnić ochrone firewall-drop?"
+nofirewall="firewall-drop wyłączone."
+yesfirewall="firewall-drop włączone (local) dla poziomów >= 6"
+defaultwhitelist="Domyślna biała lista dla aktywnej ochrony:"
+addwhite="Czy chcesz dodać więcej adresów IP do białej listy?"
+ipswhite="Adresy IP (część oddzielona): "
+
+# Część 3.5/server/local
+syslog="Czy chcesz uaktywnić zdalnego syslog'a (port 514 udp)?"
+nosyslog="Zdalny syslog wyłączony"
+yessyslog="Zdalny syslog włączony"
+
+# Część 3.4/3.5
+readlogs="Ustawianie konfiguracji do analizy następujących logów:"
+
+# Część 5
+installing="Instaluje system"
+runningmake="Uruchomiono Makefile"
+
+# Finał
+configurationdone="Konfiguracja zakończona pomyślnie"
+tostart="Aby wystartować OSSEC HIDS"
+tostop="Aby zatrzymać OSSEC HIDS"
+configat="Konfiguracja może być wyświetlona lub zmodyfikowana w"
+addserveragent="Powinieneś dodać agent(a/ów) przed ich autoryzacją dostępu."
+runma="Uruchom 'manage_agents' aby je dodać lub usunąć"
+presskey="Wciśnij ENTER aby kontynuować"

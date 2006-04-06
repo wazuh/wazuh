@@ -1,0 +1,4 @@
+ 
+ Błąd 0x2.
+ Skrypt należy uruchamiać na prawach root'a.
+
