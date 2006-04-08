@@ -27,40 +27,13 @@
 #include "config.h"
 
 
-#define GetS(x) (x+48)
-
-
 /* GlobalConf vv0.2: 2005/03/03
  * v0.2: Changing to support the new OS_XML
  */
 int GlobalConf(char * cfgfile)
 {
-    OS_XML xml;
-
-    char *str=NULL;
-
-    /* XML definitions */
-    /* Global */
-    char *(xml_global_mailnotify[])={xml_global, "email_notification",NULL};
-    char *(xml_global_logall[])={xml_global,"logall",NULL};
-    char *(xml_global_integrity[])={xml_global,"integrity_checking",NULL};
-    char *(xml_global_rootcheck[])={xml_global,"rootkit_detection",NULL};
-    char *(xml_global_stats[])={xml_global,"stats",NULL};
-    char *(xml_global_memorysize[])={xml_global,"memory_size",NULL};
-    char *(xml_global_keeplogdate[])={xml_global,"keep_log_date",NULL};
-    char *(xml_global_syscheck_ignore[])={xml_syscheck,"ignore",NULL};
-    char *(xml_global_white_list[])={xml_global,"white_list", NULL};
-
-    /* From Response */	
-    char *(xml_alerts_mail[])={xml_alerts,"email-notification",NULL};
-    char *(xml_alerts_log[])={xml_alerts,"log",NULL};
-
-    if(OS_ReadXML(cfgfile,&xml) < 0)
-    {
-        merror("config_op: XML Error: %s",xml.err);
-        return(OS_INVALID);
-    }
-
+    int modules = 0;
+        
     /* Default values */
     Config.logall = 0;
     Config.stats = 8;
@@ -78,198 +51,21 @@ int GlobalConf(char * cfgfile)
     Config.mailbylevel = 7;
     Config.logbylevel  = 1;
 
+    Config.includes = NULL;
+
+    modules|= CGLOBAL;
+    modules|= CRULES;
+    modules|= CALERTS;
+
     
-    /* Checking if the e-mail notification is enable */
-    if(OS_ElementExist(&xml,xml_global_mailnotify))
+    if(ReadConfig(modules, cfgfile, &Config, NULL)< 0)
     {
-        str = OS_GetOneContentforElement(&xml, xml_global_mailnotify);
-        if(str != NULL)
-        {
-            if(str[0] == 'y')
-                Config.mailnotify = 1;
-            free(str);
-            str = NULL;
-        }
+        return(OS_INVALID);
     }
 
-    /* getting the information about logging all */
-    str=OS_GetOneContentforElement(&xml, xml_global_logall);
-    if(str != NULL)
-    {
-        if(str[0] == 'y')
-            Config.logall=1;
-        free(str);
-        str = NULL;
-    }
-
-    /* Getting the information for the integrity checking alerting */
-    str = OS_GetOneContentforElement(&xml, xml_global_integrity);
-    if(str != NULL)
-    {
-        if(!OS_StrIsNum(str))
-        {
-            merror("Invalid alert level '%s' for the integrity "
-                    "checking (must be int).", str);
-            return(OS_INVALID);
-        }
-        else
-            Config.integrity = atoi(str); 
-
-        free(str);
-        str = NULL;
-    }
-    /* Getting the information for the rootcheck alerting */
-    str = OS_GetOneContentforElement(&xml, xml_global_rootcheck);
-    if(str != NULL)
-    {
-        if(!OS_StrIsNum(str))
-        {
-            merror("Invalid alert level '%s' for the rootkit "
-                    "detection (must be int).", str);
-            return(OS_INVALID);
-        }
-        else
-            Config.rootcheck = atoi(str); 
-
-        free(str);
-        str = NULL;
-    }
-    
-     
-    /* Getting the syscheck ignore */
-    Config.syscheck_ignore = 
-        OS_GetElementContent(&xml, xml_global_syscheck_ignore);
-    
-
-    /* Getting active response ignore host list */
-    Config.white_list = OS_GetElementContent(&xml, xml_global_white_list);
-    if(Config.white_list)
-    {
-        char **tmp_list;
-
-        tmp_list = Config.white_list;
-
-        /* Checking if every ip is valid */
-        while(*tmp_list)
-        {
-            if(!OS_IsValidIP(*tmp_list))
-            {
-                merror(INVALID_IP, ARGV0, *tmp_list);
-                return(OS_INVALID);
-            }
-            
-            tmp_list++;
-        }
-    }
-    
-     
-    /* getting the information about the stats */
-    str=OS_GetOneContentforElement(&xml, xml_global_stats);
-    if(str != NULL)
-    {
-        if(!OS_StrIsNum(str))
-            merror("Invalid level \"%s\" for the stats (must be int).",
-                    str);
-        else
-            Config.stats = atoi(str);
-        free(str);
-        str = NULL;
-    }
-
-    /* getting the information about the memory size */
-    str=OS_GetOneContentforElement(&xml, xml_global_memorysize);
-    if(str != NULL)
-    {
-        if(!OS_StrIsNum(str))
-            merror("Invalid value \"%s\" for the memory size (must be int).",
-                    str);
-        else
-            Config.memorysize = atoi(str);
-        free(str);
-        str = NULL;
-    }
-
-    /* Getting the information about if we should use the
-     * date provided from the logs
-     */
-    str=OS_GetOneContentforElement(&xml, xml_global_keeplogdate);
-    if(str != NULL)
-    {
-        if(str[0] == 'y')
-            Config.keeplogdate=1;
-        free(str);
-        str=NULL;
-    }
-
-    /**  Getting specific responses per alert level **/
-    /* Mail response */
-    str = OS_GetOneContentforElement(&xml, xml_alerts_mail);
-    if(str != NULL)
-    {
-        if(!OS_StrIsNum(str))
-            merror("Invalid level \"%s\" for the mail response (must be int).",
-                    str);
-        else
-            Config.mailbylevel = atoi(str);
-        free(str);
-        str=NULL;
-    }
-    
-    /* logging */
-    str = OS_GetOneContentforElement(&xml, xml_alerts_log);
-    if(str != NULL)
-    {
-        if(!OS_StrIsNum(str))
-            merror("Invalid level \"%s\" for logging (must be int).",
-                    str);
-        else
-            Config.logbylevel = atoi(str);
-        free(str);
-        str=NULL;
-    }
-     
-    OS_ClearXML(&xml);	
     return(0);
 }
 
-
-
-/* GetRulesFiles, v0.2, 2005/03/03
- * v0.2: Changed for the new OS_XML
- */
-char **GetRulesFiles(char * cfg)
-{
-    char **files;
-    
-    OS_XML xml;
-
-    /* XML Definition */
-    char *(xml_rules_include[])={xml_rules, "include",NULL};
-
-    if(OS_ReadXML(cfg,&xml) < 0)
-    {
-        merror("config_op: XML Error: %s",xml.err);
-        return(NULL);
-    }
-
-
-    if(!OS_ElementExist(&xml, xml_rules_include))
-    {
-        merror("config_op: No rules file specified");
-        return(NULL);
-    }
-
-    files = OS_GetElementContent(&xml, xml_rules_include);
-    
-    if(files == NULL)
-    {
-        merror("config_op: Error getting the rules files");
-    }
-    
-    OS_ClearXML(&xml);
-    
-    return(files);
-}
 
 
 /* EOF */

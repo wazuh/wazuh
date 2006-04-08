@@ -32,10 +32,13 @@ void print_banner()
 int main(int argc, char **argv)
 {
     char *user_msg;
+    
+    #ifndef WIN32
     char *dir = DEFAULTDIR;
     char *group = GROUPGLOBAL;
     int gid;
-
+    #endif
+    
     if(argv[argc -1]){}    
 
     /* Setting the name */
@@ -45,7 +48,7 @@ int main(int argc, char **argv)
     /* Getting currently time */
     time1 = time(0);
     
-    
+    #ifndef WIN32 
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     if(gid < 0)
@@ -71,7 +74,8 @@ int main(int argc, char **argv)
     /* Inside chroot now */
     nowChroot();
     
-    
+    #endif
+
     /* Little shell */
     while(1)
     {

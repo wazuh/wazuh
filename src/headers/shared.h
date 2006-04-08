@@ -76,7 +76,9 @@ typedef int uid_t;
 typedef int gid_t;
 typedef int socklen_t;
 #define sleep Sleep
-
+void WinSetError();
+typedef unsigned short int u_int16_t;
+typedef unsigned char u_int8_t;
 /* typedef closesocket close; */
 #endif
 

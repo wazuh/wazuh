@@ -103,7 +103,11 @@ int add_agent()
 
     
     /* Source is time1+ time2 +pid + ppid */
+    #ifndef WIN32
     srand(time2 + time1 + getpid() + getppid());
+    #else
+    srand(time2 + time1 + getpid());
+    #endif
     rand1 = rand();
 
     

@@ -40,6 +40,7 @@ void OS_SetName(char *name)
 int File_DateofChange(char *file)
 {
     struct stat file_status;
+
     if(stat(file, &file_status) < 0)
         return(-1);
 

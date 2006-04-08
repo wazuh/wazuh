@@ -26,7 +26,7 @@ Section "OSSEC HIDS Windows Agent (required)"
 
 SetOutPath $INSTDIR
   
-File ossec-agent.exe ossec.conf
+File ossec-agent.exe ossec.conf manage_agents.exe
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"

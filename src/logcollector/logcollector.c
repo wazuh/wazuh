@@ -26,11 +26,12 @@ void LogCollectorStart()
     int max_file = 0;
     int f_check = 0;
     int tmtmp = 0;
-    int int_error = 0;
     
+    #ifndef WIN32
+    int int_error = 0;
     struct timeval fp_timeout;
 
-    #ifdef WIN32
+    #else
     
     /* Initializes windows logging */
     win_startel();
@@ -69,6 +70,7 @@ void LogCollectorStart()
     /* Daemon loop */
     while(1)
     {
+        #ifndef WIN32
         fp_timeout.tv_sec = FP_TIMEOUT;
         fp_timeout.tv_usec = 0;
 
@@ -84,6 +86,10 @@ void LogCollectorStart()
             }
             continue;
         }
+        #else
+        /* Windows don't like select that way */
+        Sleep(FP_TIMEOUT * 1000);
+        #endif
 
         f_check++;
         

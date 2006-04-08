@@ -14,47 +14,7 @@
 
 #define __SYSCHECK_H
 
-#include <stdio.h>
-
-
-#define QUEUE   101
-#define SYSLOG  102
-
-#define MAX_DIR_SIZE    64
-#define MAX_DIR_ENTRY   128
-
-#define SYSCHECK_DB     "/queue/syscheck/syschecklocal.db"
-#define SYSCHECK_WAIT   3600
-#define SYSCHECK        "syscheck"
-
-/* Checking options */
-#define CHECK_SUM       0000001
-#define CHECK_PERM      0000002
-#define CHECK_SIZE      0000004
-#define CHECK_OWNER     0000010
-#define CHECK_GROUP     0000020
-
-
-typedef struct _config
-{
-	char *dir[MAX_DIR_ENTRY +1];
-    int opts[MAX_DIR_ENTRY +1];
-
-	char **ignore_list;
-
-    char *workdir;
-    char *remote_db;
-    char *db;
-
-    FILE *fp;
-    int daemon;
-    int notify; /* QUEUE or SYSLOG */
-    int rootcheck;
-
-    int time;
-    int queue;
-}config;
-
+#include "config/syscheck-config.h"
 
 config syscheck;
 

@@ -22,23 +22,9 @@
 #define FP_TIMEOUT  2
 
 #include "shared.h"
+#include "config/localfile-config.h"
+#include "config/config.h"
 
-
-
-/* Logreader config */
-typedef struct _logreader
-{
-    int mtime;
-    char type;
-    int ign;
-        
-	char *file;
-	char *logformat;
-
-    void (*read)(int i, int *rc);
-
-    FILE *fp;
-}logreader;
 
 
 
@@ -71,7 +57,7 @@ void win_readel();
 /*** Global variables ***/
 
 int logr_queue;
-logreader *log;
+logreader log[MAX_READ_FILE +1];
 
 
 #endif

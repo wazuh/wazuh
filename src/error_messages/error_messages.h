@@ -69,7 +69,12 @@
 #define XML_ERROR_VAR   "%s(1227): Error applying XML variables."
 #define XML_NO_ELEM     "%s(1228): Element '%s' without any option."
 #define XML_INVALID     "%s(1229): Invalid element '%s' on the '%s' config."
+#define XML_INVELEM     "%s(1229): Invalid element in the configuration: %s."
+#define XML_ELEMNULL    "%s(1229): Invalid NULL element in the configuration."
 #define XML_READ_ERROR  "%s(1232): Error reading XML. Unknown."
+#define XML_VALUENULL   "%s(1232): Invalid NULL content for element: %s."
+#define XML_VALUEERR    "%s(1233): Invalid value for element '%s': %s."
+#define XML_MAXREACHED  "%s(1234): Maximum number of elements reached for: %s."
 #define INVALID_IP      "%s(1230): Invalid ip address: '%s'."
 #define INVALID_ELEMENT "%s(1231): Invalid value for element '%s': %s"
 
@@ -103,6 +108,7 @@
 
 /* Log collector */
 #define LOGC_FILE_ERROR "%s(1601): Ignoring file '%s'. Unable to read."
+#define NO_FILE         "%s(1602): No file configured to monitor. Exiting."
 
 
 /* Active response */
@@ -145,6 +151,9 @@
 #define REGEX_COMPILE   "%s(1450): Syntax error on regex: '%s': %d."
 #define REGEX_SUBS      "%s(1451): Missing sub_strings on regex: '%s'."
 
+/* Mail errors */
+#define INVALID_SMTP    "%s(1501): Invalid SMTP Server: %s"
+#define INVALID_MAIL    "%s(1502): Invalid Email Address: %s"
 
 /* Verbose messages */
 #define STARTED_MSG	"%s: Starting ..."

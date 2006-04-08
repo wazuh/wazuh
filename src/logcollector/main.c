@@ -76,23 +76,15 @@ int main(int argc, char **argv)
 
     debug1(STARTED_MSG,ARGV0);
 
-    /* Configuration file not present */
-    if(File_DateofChange(cfg) < 0)
-        ErrorExit("%s: Configuration file '%s' not found",ARGV0,cfg);
-
 
     /* Reading config file */
-    if((c = LogCollectorConfig(cfg)) == OS_NOTFOUND)
-    {
-        merror("%s: No file configured to monitor. Exiting...",ARGV0);
-        exit(0);
-    }
-
-    else if(c < 0)
-    {
+    if(LogCollectorConfig(cfg) < 0)
         ErrorExit(CONFIG_ERROR,ARGV0,cfg);
-    }
+    
 
+    if(log[0].file == NULL)
+        ErrorExit(NO_FILE, ARGV0);
+            
 
 
     /* Starting signal handler */

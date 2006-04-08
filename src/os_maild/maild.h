@@ -35,14 +35,8 @@ typedef struct _MailMsg
 	char *body;
 }MailMsg;
 
-/* Mail config structure */
-typedef struct _MailConfig
-{
-    char **to;
-    char *from;
-    char *smtpserver;
-    int maxperhour;
-}MailConfig;
+#include "config/mail-config.h"
+
 
 /* Config function */    
 int MailConf(char *cfgfile, MailConfig *Mail);

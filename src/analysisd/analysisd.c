@@ -64,7 +64,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 
 /* For config  */
 int GlobalConf(char * cfgfile);
-char **GetRulesFiles(char * cfg);
 
 
 /* For rules */
@@ -114,7 +113,6 @@ int main(int argc, char **argv)
     char *group = GROUPGLOBAL;
     int uid = 0,gid = 0;
 
-    char **rulesfiles;
     char *cfg = DEFAULTCPATH;
 
     /* Setting the name */
@@ -180,13 +178,9 @@ int main(int argc, char **argv)
         ErrorExit(CONFIG_ERROR,ARGV0);
 
 
-    /* Getting the rules files */
-    if(!(rulesfiles = GetRulesFiles(cfg)))
-        ErrorExit(RULESLOAD_ERROR,ARGV0);
-
-        
     /* Reading the active response config */
     AS_Init();
+
    
     if(AS_GetActiveResponseCommands(cfg) < 0)
     {
@@ -228,7 +222,9 @@ int main(int argc, char **argv)
    
     /* Reading the rules */
     {
-        char **tmp_rules = rulesfiles;
+        
+        char **rulesfiles;
+        rulesfiles = Config.includes;
         while(*rulesfiles)
         {
             verbose("%s: Reading rules file: '%s'", ARGV0, *rulesfiles);
@@ -239,7 +235,8 @@ int main(int argc, char **argv)
             rulesfiles++;    
         }
 
-        free(tmp_rules);
+        free(Config.includes);
+        Config.includes = NULL;
     }
 
 

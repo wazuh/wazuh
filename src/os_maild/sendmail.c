@@ -83,7 +83,8 @@ int OS_Sendmail(MailConfig *mail)
     if((msg == NULL)||(!OS_Match(VALIDBANNER, msg)))
     {
         merror(BANNER_ERROR);
-        free(msg);
+        if(msg)
+            free(msg);
         close(socket);
         return(OS_INVALID);	
     }
@@ -96,11 +97,43 @@ int OS_Sendmail(MailConfig *mail)
     msg = OS_RecvTCP(socket, OS_MAXSTR);
     if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
     {
-        merror("%s:%s",HELO_ERROR,msg);
-        free(msg);
-        close(socket);
-        return(OS_INVALID);	
+        if(msg)
+        {
+            /* Ugly fix warning :) */
+            /* In some cases (with virus scans in the middle)
+             * we may get two banners. Check for that in here.
+             */
+            if(OS_Match(VALIDBANNER, msg))
+            {
+                free(msg);
+
+                /* Try again */
+                msg = OS_RecvTCP(socket, OS_MAXSTR);
+                if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
+                {
+                    merror("%s:%s",HELO_ERROR,msg!= NULL?msg:"null");
+                    if(msg)
+                        free(msg);
+                    close(socket);
+                    return(OS_INVALID);    
+                }
+            }
+            else
+            {
+                merror("%s:%s",HELO_ERROR,msg);
+                free(msg);
+                close(socket);
+                return(OS_INVALID);
+            }
+        }
+        else
+        {
+            merror("%s:%s",HELO_ERROR,"null");
+            close(socket);
+            return(OS_INVALID);
+        }
     }
+    
     MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", HELOMSG, msg);
     free(msg);	
 

@@ -21,11 +21,6 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/blowfish/bf_op.h"
 
-#ifdef WIN32
-typedef unsigned short int u_int16_t;
-typedef unsigned char u_int8_t;
-#endif
-
 #define KEYSIZE	 72
 
 u_int8_t global_count = 0;

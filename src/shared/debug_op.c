@@ -37,6 +37,10 @@ int dbg_flag = 0;
 int chroot_flag = 0;
 int daemon_flag = 0;
 
+#ifdef WIN32
+void WinSetError();
+#endif
+
 /* For internal logs */
 #ifndef LOGFILE
   #ifndef WIN32
@@ -147,6 +151,11 @@ void verbose(const char * msg,... )
 void ErrorExit(const char *msg, ...)
 {
     va_list args;
+   
+    #ifdef WIN32 
+    WinSetError();
+    #endif
+
     va_start(args, msg);
     _log(msg, args);
     va_end(args);

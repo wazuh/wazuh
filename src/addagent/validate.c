@@ -43,7 +43,7 @@ int IDExist(char *id)
             continue;
         }
         
-        name = index(line_read, ' ');
+        name = strchr(line_read, ' ');
         if(name)
         {
             *name = '\0';
@@ -89,12 +89,12 @@ int NameExist(char *u_name)
         if(line_read[0] == '#')
             continue;
 
-        name = index(line_read, ' ');
+        name = strchr(line_read, ' ');
         if(name)
         {
             char *ip;
             name++;
-            ip = index(name, ' ');
+            ip = strchr(name, ' ');
             if(ip)
             {
                 *ip = '\0';
@@ -137,19 +137,19 @@ int print_agents()
         if(line_read[0] == '#')
             continue;
             
-        name = index(line_read, ' ');
+        name = strchr(line_read, ' ');
         if(name)
         {
             char *ip;
             *name = '\0';
             name++;
-            ip = index(name, ' ');
+            ip = strchr(name, ' ');
             if(ip)
             {
                 char *key;
                 *ip = '\0';
                 ip++;
-                key = index(ip, ' ');
+                key = strchr(ip, ' ');
                 if(key)
                 {
                     *key = '\0';

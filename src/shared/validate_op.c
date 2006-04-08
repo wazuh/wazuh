@@ -16,7 +16,6 @@
 /* Functions to validate values */
 
 
-#ifndef WIN32
 #include "shared.h"
 char *ip_address_regex = 
      "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?[0-9]{0,2}$";
@@ -144,12 +143,36 @@ int OS_IsValidIP(char *ip_address)
     {
         ip_address++;
     }
-    
+   
+    #ifndef WIN32 
     /* checking against the basic regex */
     if(!OS_PRegex(ip_address, ip_address_regex))
     {
         return(0);
     }
+    #else
+    {
+        char *tmp_ip;
+        int dots = 0;
+        tmp_ip = ip_address;
+        while(*tmp_ip != '\0')
+        {
+            if(*tmp_ip < '0'  && 
+               *tmp_ip > '9'  && 
+               *tmp_ip != '.' &&
+               *tmp_ip != '/')
+            {
+                /* Invalid ip */
+                return(0);
+            }
+            if(*tmp_ip == '.')
+                dots++;
+            tmp_ip++;
+        }
+        if(dots != 3)
+            return(0);
+    }
+    #endif
 
     
     /* Getting the size of ip_address */
@@ -157,7 +180,7 @@ int OS_IsValidIP(char *ip_address)
     
     
     /* Getting the cidr if available */ 
-    tmp_str = index(ip_address,'/');
+    tmp_str = strchr(ip_address,'/');
     if(tmp_str)
     {
         tmp_str++;
@@ -192,7 +215,7 @@ int OS_IsValidIP(char *ip_address)
         }
         
         /* Jumping to the next part of the ip */
-        tmp_str = index(tmp_str, '.');
+        tmp_str = strchr(tmp_str, '.');
         if(tmp_str)
         {
             tmp_str++;
@@ -232,7 +255,6 @@ int OS_IsValidIP(char *ip_address)
     /* Returning success */
     return(1);
 }
-#endif
 
 
 /* EOF */

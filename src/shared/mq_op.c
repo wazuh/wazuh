@@ -21,6 +21,7 @@
  */
 int StartMQ(char * path, short int type)
 {
+    
     if(type == READ)
     {
         return(OS_BindUnixDomain(path,0660));

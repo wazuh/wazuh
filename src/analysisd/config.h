@@ -15,28 +15,8 @@
 
 #define _CONFIG__H
 
-#include "active-response.h"
-
-/* Configuration structure */
-typedef struct __Config
-{
-    int logall;
-    int mailnotify;
-    int ar;
-    int stats;
-    int integrity;
-    int rootcheck;
-    int memorysize; /* For stateful analysis */
-    int keeplogdate;
-    
-    int mailbylevel;
-    int logbylevel;
-
-    char **syscheck_ignore;
-    char **white_list;
-    
-}_Config;
-
+#include "config/config.h"
+#include "config/global-config.h"
 
 _Config Config;  /* Global Config structure */
 

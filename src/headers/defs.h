@@ -95,7 +95,11 @@
         
 
 /* Authentication keys file */
+#ifndef WIN32
 #define KEYS_FILE       "/etc/client.keys"
+#else
+#define KEYS_FILE       "client.keys"
+#endif
 #define AUTH_FILE       KEYS_FILE
 
 

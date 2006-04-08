@@ -28,47 +28,14 @@
  */ 
 int ClientConf(char *cfgfile)
 {
-    OS_XML xml;
-    char *str;
+    int modules = 0;
+    logr->port = DEFAULT_SECURE;
 
-    /* XML definitions */
-    char *(xml_client_ip[])={xml_client,"server-ip",NULL};
-    char *(xml_client_port[])={xml_client, "port",NULL};
-    char *(xml_ar_disabled[])={xml_ar, "disabled", NULL};
+    modules|= CCLIENT;
 
-    logr->execdq = 0;
-    if(OS_ReadXML(cfgfile,&xml) < 0)
-    {
-        merror("config_op (ossec-agent): XML error: %s",xml.err);
+    if(ReadConfig(modules, cfgfile, logr, NULL) < 0)
         return(OS_INVALID);
-    }
 
-    if(!OS_RootElementExist(&xml, xml_client))
-    {
-        merror("config_op (ossec-agent): No client configuration");
-        OS_ClearXML(&xml);
-        return(0);
-    }
-
-    /* will get only the first element */
-    logr->port = OS_GetOneContentforElement(&xml,xml_client_port);
-    logr->rip  = OS_GetOneContentforElement(&xml,xml_client_ip);
-    if(logr->rip == NULL)
-    {
-        merror("ossec-agent: You need to specify the server remote IP");
-        OS_ClearXML(&xml);
-        return(OS_CFGERR);
-    }
-
-    str = OS_GetOneContentforElement(&xml, xml_ar_disabled);
-    if(str)
-    {
-        if(*str == 'y')
-            logr->execdq = -1;
-        free(str);    
-    }
-
-    OS_ClearXML(&xml);
     return(1);
 }
 

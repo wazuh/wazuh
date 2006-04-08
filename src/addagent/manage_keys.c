@@ -47,18 +47,18 @@ int k_import()
     memset(line_read, '\0', FILE_SIZE +1);
     strncpy(line_read, b64_dec, FILE_SIZE);
 
-    name = index(b64_dec, ' ');
+    name = strchr(b64_dec, ' ');
     if(name && strlen(line_read) < FILE_SIZE)
     {
         *name = '\0';
         name++;
-        ip = index(name, ' ');
+        ip = strchr(name, ' ');
         if(ip)
         {
             *ip = '\0';
             ip++;
 
-            tmp_key = index(ip, ' ');
+            tmp_key = strchr(ip, ' ');
             if(!tmp_key)
             {
                 printf(NO_KEY);

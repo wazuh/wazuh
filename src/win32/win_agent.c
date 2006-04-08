@@ -85,6 +85,13 @@ int main(int argc, char **argv)
     }
 
 
+    /* Start it */
+    if(!os_WinMain(argc, argv))
+    {
+        ErrorExit("%s: Unable to start WinMain.", ARGV0);
+    }
+
+
     /* Starting logr */
     logr = (agent *)calloc(1, sizeof(agent));
     if(!logr)
@@ -96,6 +103,7 @@ int main(int argc, char **argv)
     /* Read agent config */
     if((binds = ClientConf(DEFAULTCPATH)) == 0)
         ErrorExit(CLIENT_ERROR,ARGV0);
+
 
     /* Configuration file not present */
     if(File_DateofChange(cfg) < 0)
@@ -118,15 +126,16 @@ int main(int argc, char **argv)
     /* Starting winsock stuff */
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
     {
-        merror("%s: WSAStartup() failed", ARGV0);
-        exit(1);
+        ErrorExit("%s: WSAStartup() failed", ARGV0);
     }
 
-    /* Start it */
-    if(!os_WinMain(argc, argv))
+    /* Socket connection */
     {
-        ErrorExit("%s: Unable to start WinMain.", ARGV0);
+        /* Bogus code not used */
+        char pp[2]; int tt;
+        StartMQ(pp, tt);
     }
+    
 
     /* Startting logcollector -- main process here */
     LogCollectorStart();

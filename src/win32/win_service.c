@@ -153,10 +153,11 @@ int UninstallService()
 }
 
 
+
 /** VOID WINAPI OssecServiceCtrlHandler (DWORD dwOpcode)
  * "Signal" handler
  */
-VOID WINAPI OssecServiceCtrlHandler (DWORD dwOpcode)
+VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 {
     switch(dwOpcode)
     {
@@ -174,6 +175,14 @@ VOID WINAPI OssecServiceCtrlHandler (DWORD dwOpcode)
     return;
 }
  
+
+/** void WinSetError()
+ * Sets the error code in the services
+ */
+void WinSetError()
+{
+    OssecServiceCtrlHandler(SERVICE_CONTROL_STOP);
+}
 
  
 /** int os_WinMain(int argc, char **argv)

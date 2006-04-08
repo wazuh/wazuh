@@ -38,7 +38,6 @@
 int main(int argc, char **argv)
 {
     int c = 0;
-    int binds = 0;
     
     char *dir = DEFAULTDIR;
     char *user = USER;
@@ -88,12 +87,11 @@ int main(int argc, char **argv)
 
     
     /* Reading config */
-    if((binds = ClientConf(DEFAULTCPATH)) == 0)
+    if(ClientConf(DEFAULTCPATH) < 0)
         ErrorExit(CLIENT_ERROR,ARGV0);
 
-
-    else if(binds < 0)
-        ErrorExit(CONFIG_ERROR,ARGV0);
+    if(!logr->rip)
+        ErrorExit(CLIENT_ERROR,ARGV0);        
 
 
     /* Check if the user/group given are valid */

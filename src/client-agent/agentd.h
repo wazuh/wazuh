@@ -18,16 +18,8 @@
 
 #define __AGENTD_H
 
-/* Configuration structure */
-typedef struct _agent
-{
-	char *port;
-	char *rip; /* remote (server) ip */
-    int m_queue;
-    int sock;
-    int execdq;
-}agent;
-
+#include "config/config.h"
+#include "config/client-config.h"
 
 
 /*** Function Prototypes ***/

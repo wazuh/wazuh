@@ -28,20 +28,12 @@ void AgentdStart(char *dir, int uid, int gid)
 {
     int rc = 0;
     int pid = 0;
-    int port = 0;
     int maxfd = 0;   
     int total = 0;
 
     fd_set fdset;
     
     struct timeval fdtimeout;
-
-    
-    /* Giving the default port if none is available */
-    if((logr->port == NULL) || (port = atoi(logr->port) <= 0))
-    {
-        port = DEFAULT_SECURE;
-    }
 
     
     /* Going daemon */
@@ -97,7 +89,7 @@ void AgentdStart(char *dir, int uid, int gid)
 
 
     /* Connecting UDP */
-    logr->sock = OS_ConnectUDP(port,logr->rip);
+    logr->sock = OS_ConnectUDP(logr->port,logr->rip);
     if(logr->sock < 0)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
 
