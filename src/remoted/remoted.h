@@ -18,26 +18,8 @@
 #define ARGV0 "ossec-remoted"
 #endif
 
-#define SYSLOG_CONN 1   
-#define SECURE_CONN 2
-
-#include "shared.h"
+#include "config/remote-config.h"
 #include "sec.h"
-
-/* socklen_t header */
-typedef struct _remoted
-{
-    int *port;
-    int *conn;
-    
-
-	char **allowips;
-	char **denyips;
-
-    int m_queue;
-    int sock;
-    socklen_t peer_size; 
-}remoted;
 
 
 /*** Function prototypes ***/

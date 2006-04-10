@@ -157,11 +157,9 @@ int OS_ConnectUnixDomain(char * path)
     /* Setting up path */
     strncpy(n_us.sun_path,path,sizeof(n_us.sun_path)-1);	
 
-    merror("hum");
     if((ossock = socket(AF_UNIX, SOCK_DGRAM,0)) < 0)
         return(OS_SOCKTERR);
 
-    merror("hum2");
 
     /* Connecting to the UNIX domain.
      * We can use "send" after that
@@ -169,7 +167,6 @@ int OS_ConnectUnixDomain(char * path)
     if(connect(ossock,(struct sockaddr *)&n_us,SUN_LEN(&n_us)) < 0)
         return(OS_SOCKTERR);
 
-    merror("hum3");
 
     /* Returning the socket */	
     return(ossock);

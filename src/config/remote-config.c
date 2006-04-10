@@ -37,15 +37,33 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
 
     logr = (remoted *)d1;
 
-
+    /* conn and port must not be null */
+    if(!logr->conn)
+    {
+        os_calloc(1, sizeof(int), logr->conn);
+        logr->conn[0] = 0;
+    }
+    if(!logr->port)
+    {
+        os_calloc(1, sizeof(int), logr->port);
+        logr->port[0] = 0;
+    }
+    
     /* Cleaning */
-    while(logr->conn[pl] != NULL)
+    while(logr->conn[pl] != 0)
         pl++;
 
 
     logr->port[pl] = 0;
     logr->conn[pl] = 0;
 
+    /* Adding space for the last null connection/port */
+    logr->port = realloc(logr->port, sizeof(int)*(pl +2));
+    logr->conn = realloc(logr->conn, sizeof(int)*(pl +2));
+    if(!logr->port || !logr->conn)
+    {
+        merror(MEM_ERROR, ARGV0);
+    }
     
     while(node[i])
     {
@@ -127,11 +145,13 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
     /* conn must be set */
     if(logr->conn[pl] == 0)
     {
+        merror(CONN_ERROR, ARGV0);
     }
     
     /* Set port in here */
     if(logr->port[pl] == 0)
     {
+        logr->port[pl] = DEFAULT_SECURE;
     }
 
     

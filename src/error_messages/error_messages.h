@@ -43,7 +43,7 @@
 
 
 /* COMMON ERRORS */
-#define CONN_ERROR 	    "%s(1201): No remote connection configured. Exiting."
+#define CONN_ERROR 	    "%s(1201): No remote connection configured."
 #define CONFIG_ERROR	"%s(1202): Configuration problem. Exiting."
 #define USER_ERROR	    "%s(1203): Invalid user '%s' or group '%s' given."
 #define CONNTYPE_ERROR 	"%s(1204): Invalid connection type: '%s'."
@@ -110,6 +110,8 @@
 #define LOGC_FILE_ERROR "%s(1601): Ignoring file '%s'. Unable to read."
 #define NO_FILE         "%s(1602): No file configured to monitor. Exiting."
 
+/* Remoted */
+#define NO_REM_CONN     "%s(1701): No remote connection configured."
 
 /* Active response */
 #define AR_CMD_MISS     "%s(1280): Missing command options. " \
@@ -163,6 +165,8 @@
 #define NO_SYSLOG       "%s(1501): No IP or network allowed in the access list" \
                         " for syslog. No reason for running it. Exiting."
 #define CONN_TO     "%s: Connected to '%s' (%s queue)"
+#define MAIL_DIS    "%s: E-Mail notification disabled. Clean Exit."
+
 
 #endif /* _ERROR_MESSAGES__H */
 

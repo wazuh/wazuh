@@ -97,9 +97,11 @@ int read_main_elements(OS_XML xml, int modules,
         }
         else if(strcmp(node[i]->element, oscommand) == 0)
         {
+            /* not verified in here */
         }
         else if(strcmp(node[i]->element, osactive_response) == 0)
         {
+            /* Not verified in here */
         }
         else
         {

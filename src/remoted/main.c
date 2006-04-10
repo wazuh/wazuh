@@ -19,7 +19,6 @@ int main(int argc, char **argv)
 {
     int i = 0,c = 0;
     int uid = 0, gid = 0;
-    int binds = 0;
     
     char *cfg = DEFAULTCPATH;
     char *dir = DEFAULTDIR;
@@ -60,19 +59,10 @@ int main(int argc, char **argv)
     
     
     /* Return 0 if not configured */
-    if((binds = RemotedConfig(cfg, &logr)) == 0)
+    if(RemotedConfig(cfg, &logr) < 0)
     {
-        #ifndef LOCAL
-        merror(CONN_ERROR,ARGV0);
-        #endif
-        
-        exit(0);
-    }
-
-
-    /* Return < 0 on error */
-    else if(binds < 0)
         ErrorExit(CONFIG_ERROR,ARGV0);
+    }
 
 
     /* Check if the user/group given are valid */
@@ -115,9 +105,9 @@ int main(int argc, char **argv)
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
 
-    
     /* Really starting the program. */
-    for(i= 0;i < binds; i++)
+    i = 0; 
+    while(logr.conn[i] != 0)
     {
         /* Forking for each connection handler */
         if(fork() == 0)
@@ -127,6 +117,7 @@ int main(int argc, char **argv)
         }
         else
         {
+            i++;
             continue;
         }
     }

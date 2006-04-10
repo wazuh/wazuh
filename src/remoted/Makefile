@@ -7,7 +7,7 @@ NAME=ossec-remoted
 
 include ../Config.Make
 
-rlog_OBJS = *.c ${OS_SHARED} ${OS_NET} ${OS_XML} ${OS_REGEX} ${OS_CRYPTO} ${TEXTRA}
+rlog_OBJS = *.c ${OS_CONFIG} ${OS_SHARED} ${OS_NET} ${OS_XML} ${OS_REGEX} ${OS_CRYPTO} ${TEXTRA}
 
 remoted:
 		${CC} ${CFLAGS}  ${rlog_OBJS} -o ${NAME}

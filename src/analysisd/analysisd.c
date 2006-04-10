@@ -107,7 +107,7 @@ int hourly_alerts;
 /* Main function v0.2: 2005/03/22 */
 int main(int argc, char **argv)
 {
-    int c = 0, m_queue = 0;
+    int c = 0, m_queue = 0, test_config = 0;
     char *dir = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
@@ -127,7 +127,7 @@ int main(int argc, char **argv)
     prev_month[3] = '\0';
     hourly_alerts = 0;
 
-    while((c = getopt(argc, argv, "dhu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "tdhu:g:D:c:")) != -1){
         switch(c){
             case 'h':
                 help();
@@ -154,6 +154,8 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -c needs an argument",ARGV0);
                 cfg = optarg;
                 break;
+            case 't':
+                test_config = 1;    
             default:
                 help();
                 break;
@@ -227,7 +229,8 @@ int main(int argc, char **argv)
         rulesfiles = Config.includes;
         while(*rulesfiles)
         {
-            verbose("%s: Reading rules file: '%s'", ARGV0, *rulesfiles);
+            if(!test_config)
+                verbose("%s: Reading rules file: '%s'", ARGV0, *rulesfiles);
             if(Rules_OP_ReadRules(*rulesfiles) < 0)
                 ErrorExit(RULES_ERROR,ARGV0);
                 
@@ -240,6 +243,11 @@ int main(int argc, char **argv)
     }
 
 
+    /* Success */
+    if(test_config)
+        exit(0);
+
+        
     /* Verbose message */
     debug1(PRIVSEP_MSG,ARGV0,dir,user);
 

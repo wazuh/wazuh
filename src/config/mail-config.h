@@ -18,10 +18,11 @@
 /* Mail config structure */
 typedef struct _MailConfig
 {
+    int mn;
+    int maxperhour;
     char **to;
     char *from;
     char *smtpserver;
-    int maxperhour;
 }MailConfig;
 
 

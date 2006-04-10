@@ -22,6 +22,7 @@
 #define CLOCALFILE   0000040
 #define CREMOTE      0000100
 #define CCLIENT      0000200
+#define CMAIL        0000400
 
 #include "os_xml/os_xml.h"
 

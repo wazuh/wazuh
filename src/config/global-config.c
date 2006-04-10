@@ -51,16 +51,32 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     Config = (_Config *)configp;
     Mail = (MailConfig *)mailp;
     
-    
-    /* Mail structure */
-    if(Mail)
+    /* Getting right white_size */
+    if(Config && Config->white_list)
     {
-        Mail->to = NULL;
-        Mail->from = NULL;
-        Mail->smtpserver = NULL;
-        Mail->maxperhour = 12;
+        char **ww;
+        ww = Config->white_list;
+
+        while(*ww != NULL)
+        {
+            white_size++;
+            ww++;
+        }
     }
-                                    
+    
+    /* Getting mail_to size */
+    if(Mail && Mail->to)
+    {
+        char **ww;
+        ww = Mail->to;
+        while(*ww != NULL)
+        {
+            mailto_size++;
+            ww++;
+        }
+    }
+
+    
     while(node[i])
     {
         if(!node[i]->element)
@@ -77,9 +93,15 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element, xml_mailnotify) == 0)
         {
             if(strcmp(node[i]->content, "yes") == 0)
-                Config->mailnotify = 1;
+            { 
+                if(Config) Config->mailnotify = 1; 
+                if(Mail) Mail->mn = 1;
+            }
             else if(strcmp(node[i]->content, "no") == 0)
-                Config->mailnotify = 0;
+            { 
+                if(Config) Config->mailnotify = 0; 
+                if(Mail) Mail->mn = 0;
+            }
             else
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
@@ -90,12 +112,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element, xml_logall) == 0)
         {
             if(strcmp(node[i]->content, "yes") == 0)
-                Config->logall = 1;
+                { if(Config) Config->logall = 1;}
             else if(strcmp(node[i]->content, "no") == 0)
-                Config->logall = 0;
+                {if(Config) Config->logall = 0;}
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);                return(OS_INVALID);
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
             }
         }
         /* Integrity */
@@ -106,7 +129,10 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
-            Config->integrity = atoi(node[i]->content);
+            if(Config)
+            {
+                Config->integrity = atoi(node[i]->content);
+            }
         }
         /* rootcheck */
         else if(strcmp(node[i]->element, xml_rootcheckd) == 0)
@@ -116,7 +142,10 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
-            Config->rootcheck = atoi(node[i]->content);
+            if(Config)
+            {
+                Config->rootcheck = atoi(node[i]->content);
+            }
         }
         /* stats */
         else if(strcmp(node[i]->element, xml_stats) == 0)
@@ -126,7 +155,10 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
-            Config->stats = atoi(node[i]->content);
+            if(Config)
+            {
+                Config->stats = atoi(node[i]->content);
+            }
         }
         else if(strcmp(node[i]->element, xml_memorysize) == 0)
         {
@@ -135,25 +167,33 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
-            Config->memorysize = atoi(node[i]->content);
+            if(Config)
+            {
+                Config->memorysize = atoi(node[i]->content);
+            }
         }
         /* whitelist */
         else if(strcmp(node[i]->element, xml_white_list) == 0)
         {
-            white_size++;
-            Config->white_list = realloc(Config->white_list, sizeof(char *)*white_size);
-            if(!Config->white_list)
+            if(Config)
             {
-                merror(MEM_ERROR, ARGV0);
-                return(OS_INVALID);
-            }
+                white_size++;
+                Config->white_list = 
+                    realloc(Config->white_list, sizeof(char *)*white_size);
+                if(!Config->white_list)
+                {
+                    merror(MEM_ERROR, ARGV0);
+                    return(OS_INVALID);
+                }
 
-            os_strdup(node[i]->content,Config->white_list[white_size -2]);
-            Config->white_list[white_size -1] = NULL;
-            if(!OS_IsValidIP(Config->white_list[white_size -2]))
-            {
-                merror(INVALID_IP, ARGV0, Config->white_list[white_size -2]);
-                return(OS_INVALID);
+                os_strdup(node[i]->content,Config->white_list[white_size -2]);
+                Config->white_list[white_size -1] = NULL;
+                if(!OS_IsValidIP(Config->white_list[white_size -2]))
+                {
+                    merror(INVALID_IP, ARGV0, 
+                                       Config->white_list[white_size -2]);
+                    return(OS_INVALID);
+                }
             }
         }
         
