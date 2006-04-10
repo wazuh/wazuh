@@ -1,0 +1,8 @@
+ - Se desideri monitorare qualsiasi altro file, modifica ossec.conf
+   e aggiungi una nuova, specifica, sezione.
+   Per qualsiasi dubbio sulla configurazione visita il sito del progetto 
+   all'indirizzo http://www.ossec.net .
+ 
+   
+   --- Premi ENTER per continuare ---
+                            

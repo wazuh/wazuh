@@ -1,0 +1,11 @@
+
+    Grazie per aver scelto OSSEC HIDS.
+    Per qualsiasi domanda, suggerimento o se hai trovato qualche bug,
+    contattaci all'indirizzo contact@ossec.net o utlizza la nostra 
+    mailinglist pubblica:
+    (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list).
+
+    Puoi trovare ulteriori informazioni all'indirizzo http://www.ossec.net
+
+    ---  Premi ENTER per terminare ---
+    

@@ -1,0 +1,5 @@
+
+ - Non è stata effettuata alcuna modifica per avviare OSSEC HIDS 
+   in fase di boot.
+   Aggiungi la seguente riga al tuo script di init:
+

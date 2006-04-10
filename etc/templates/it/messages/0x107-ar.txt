@@ -1,0 +1,7 @@
+
+  3.4- La risposta attiva consente di eseguire uno specifico comando in
+       conseguenza di un evento. Ad esempio, puoi bloccare un indrizzo IP o
+       disabilitare l'accesso ad uno specifico user.
+       Ulteriori informazioni su:
+       http://www.ossec.net/en/manual.html#active-response
+       
