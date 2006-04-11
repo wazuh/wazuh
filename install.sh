@@ -141,11 +141,10 @@ UseRootcheck()
     # Adding to the config file
     if [ "X$ROOTCHECK" = "Xyes" ]; then
         echo "" >> $NEWCONFIG
-        echo "<rootcheck>" >> $NEWCONFIG
-        echo "  <notify>queue</notify>" >> $NEWCONFIG
-        echo "  <rootkit_files>$INSTALLDIR/etc/shared/rootkit_files.txt</rootkit_files>" >> $NEWCONFIG
-        echo "  <rootkit_trojans>$INSTALLDIR/etc/shared/rootkit_trojans.txt</rootkit_trojans>" >> $NEWCONFIG
-        echo "</rootcheck>" >> $NEWCONFIG
+        echo "  <rootcheck>" >> $NEWCONFIG
+        echo "    <rootkit_files>$INSTALLDIR/etc/shared/rootkit_files.txt</rootkit_files>" >> $NEWCONFIG
+        echo "    <rootkit_trojans>$INSTALLDIR/etc/shared/rootkit_trojans.txt</rootkit_trojans>" >> $NEWCONFIG
+        echo "  </rootcheck>" >> $NEWCONFIG
     fi            
 }
 
@@ -169,10 +168,10 @@ SetupLogs()
         if [ $? = 0 ]; then
             echo "    -- $i"
 	        echo "" >> $NEWCONFIG
-	        echo "<localfile>" >> $NEWCONFIG
-    	    echo "  <log_format>syslog</log_format>" >> $NEWCONFIG
-	        echo "  <location>$i</location>" >>$NEWCONFIG
-	        echo "</localfile>" >> $NEWCONFIG
+	        echo "  <localfile>" >> $NEWCONFIG
+    	    echo "    <log_format>syslog</log_format>" >> $NEWCONFIG
+	        echo "    <location>$i</location>" >>$NEWCONFIG
+	        echo "  </localfile>" >> $NEWCONFIG
         fi
     done    
 
@@ -182,18 +181,18 @@ SetupLogs()
         ls $i > /dev/null 2>&1
         if [ $? = 0 ]; then
             echo "" >> $NEWCONFIG
-            echo "<localfile>" >> $NEWCONFIG
+            echo "  <localfile>" >> $NEWCONFIG
             
             head -n 1 $i|grep "\[**\] "|grep -v "Classification:" > /dev/null
             if [ $? = 0 ]; then
-                echo "  <log_format>snort-full</log_format>" >> $NEWCONFIG
+                echo "    <log_format>snort-full</log_format>" >> $NEWCONFIG
                 echo "    -- $i (snort-full file)"
             else
-                echo "  <log_format>snort-fast</log_format>" >> $NEWCONFIG
+                echo "    <log_format>snort-fast</log_format>" >> $NEWCONFIG
                 echo "    -- $i (snort-fast file)"
             fi
-            echo "  <location>$i</location>" >>$NEWCONFIG
-            echo "</localfile>" >> $NEWCONFIG    
+            echo "    <location>$i</location>" >>$NEWCONFIG
+            echo "  </localfile>" >> $NEWCONFIG    
         fi
     done    
     
@@ -203,10 +202,10 @@ SetupLogs()
         ls $i > /dev/null 2>&1
         if [ $? = 0 ]; then
           echo "" >> $NEWCONFIG
-          echo "<localfile>" >> $NEWCONFIG
-          echo "  <log_format>apache</log_format>" >> $NEWCONFIG
-          echo "  <location>$i</location>" >>$NEWCONFIG
-          echo "</localfile>" >> $NEWCONFIG
+          echo "  <localfile>" >> $NEWCONFIG
+          echo "    <log_format>apache</log_format>" >> $NEWCONFIG
+          echo "    <location>$i</location>" >>$NEWCONFIG
+          echo "  </localfile>" >> $NEWCONFIG
           
           echo "    -- $i (apache log)"
         fi
@@ -241,9 +240,9 @@ ConfigureClient()
         fi
     done
 	
-    echo "<client>" > $NEWCONFIG
-	echo "  <server-ip>$IP</server-ip>" >> $NEWCONFIG
-	echo "</client>" >> $NEWCONFIG
+    echo "  <client>" > $NEWCONFIG
+	echo "    <server-ip>$IP</server-ip>" >> $NEWCONFIG
+	echo "  </client>" >> $NEWCONFIG
 
     # Syscheck?
     UseSyscheck
@@ -259,9 +258,9 @@ ConfigureClient()
             echo ""
             echo "   - ${noactive}."
             echo "" >> $NEWCONFIG
-            echo "<active-response>" >> $NEWCONFIG
-            echo "  <disabled>yes</disabled>" >> $NEWCONFIG
-            echo "</active-response>" >> $NEWCONFIG
+            echo "  <active-response>" >> $NEWCONFIG
+            echo "    <disabled>yes</disabled>" >> $NEWCONFIG
+            echo "  </active-response>" >> $NEWCONFIG
             echo "" >> $NEWCONFIG
             ;;
         *)
@@ -352,34 +351,35 @@ ConfigureServer()
 
 
 	# Writting global parameters 
-	echo "<global>" > $NEWCONFIG
+    echo "<ossec_config>" > $NEWCONFIG 
+	echo "  <global>" > $NEWCONFIG
 	if [ "$EMAILNOTIFY" = "yes" ]; then
-		echo "  <email_notification>yes</email_notification>" >> $NEWCONFIG
-		echo "  <email_to>$EMAIL</email_to>" >> $NEWCONFIG
-		echo "  <smtp_server>$SMTP</smtp_server>" >> $NEWCONFIG
-		echo "  <email_from>ossect@${HOST}</email_from>" >> $NEWCONFIG
+		echo "    <email_notification>yes</email_notification>" >> $NEWCONFIG
+		echo "    <email_to>$EMAIL</email_to>" >> $NEWCONFIG
+		echo "    <smtp_server>$SMTP</smtp_server>" >> $NEWCONFIG
+		echo "    <email_from>ossect@${HOST}</email_from>" >> $NEWCONFIG
 	else
-		echo "  <email_notification>no</email_notification>" >> $NEWCONFIG
+		echo "    <email_notification>no</email_notification>" >> $NEWCONFIG
 	fi
     
-    echo "</global>" >> $NEWCONFIG	
+    echo "  </global>" >> $NEWCONFIG	
 	echo "" >> $NEWCONFIG
     
 	# Writting rules configuration
-	echo "<rules>" >> $NEWCONFIG
-    echo "  <include>rules_config.xml</include> ">> $NEWCONFIG
-	echo "  <include>syslog_rules.xml</include>" >> $NEWCONFIG
-	echo "  <include>pix_rules.xml</include>" >> $NEWCONFIG
-	echo "  <include>named_rules.xml</include>" >> $NEWCONFIG
-	echo "  <include>pure-ftpd_rules.xml</include>" >> $NEWCONFIG
-	echo "  <include>proftpd_rules.xml</include>" >> $NEWCONFIG
-    echo "  <include>apache_rules.xml</include>" >> $NEWCONFIG
-    echo "  <include>ids_rules.xml</include>" >> $NEWCONFIG
-    echo "  <include>squid_rules.xml</include>" >> $NEWCONFIG
-    echo "  <include>postfix_rules.xml</include>" >> $NEWCONFIG
-    echo "  <include>spamd_rules.xml</include>" >> $NEWCONFIG
-    echo "  <include>sendmail_rules.xml</include>" >> $NEWCONFIG
-	echo "</rules>" >> $NEWCONFIG
+	echo "  <rules>" >> $NEWCONFIG
+    echo "    <include>rules_config.xml</include> ">> $NEWCONFIG
+	echo "    <include>syslog_rules.xml</include>" >> $NEWCONFIG
+	echo "    <include>pix_rules.xml</include>" >> $NEWCONFIG
+	echo "    <include>named_rules.xml</include>" >> $NEWCONFIG
+	echo "    <include>pure-ftpd_rules.xml</include>" >> $NEWCONFIG
+	echo "    <include>proftpd_rules.xml</include>" >> $NEWCONFIG
+    echo "    <include>apache_rules.xml</include>" >> $NEWCONFIG
+    echo "    <include>ids_rules.xml</include>" >> $NEWCONFIG
+    echo "    <include>squid_rules.xml</include>" >> $NEWCONFIG
+    echo "    <include>postfix_rules.xml</include>" >> $NEWCONFIG
+    echo "    <include>spamd_rules.xml</include>" >> $NEWCONFIG
+    echo "    <include>sendmail_rules.xml</include>" >> $NEWCONFIG
+	echo "  </rules>" >> $NEWCONFIG
 	echo "" >> $NEWCONFIG
 
 
@@ -400,9 +400,9 @@ ConfigureServer()
             echo ""
             echo "     - ${noactive}."
             echo "" >> $NEWCONFIG
-            echo "<active-response>" >> $NEWCONFIG
-            echo "  <disabled>yes</disabled>" >> $NEWCONFIG
-            echo "</active-response>" >> $NEWCONFIG
+            echo "  <active-response>" >> $NEWCONFIG
+            echo "    <disabled>yes</disabled>" >> $NEWCONFIG
+            echo "  </active-response>" >> $NEWCONFIG
             echo "" >> $NEWCONFIG
             ;;
         *)
@@ -421,23 +421,22 @@ ConfigureServer()
                 *)
                     echo "     - ${yesfirewall} "
                     FIREWALLDROP="yes"
-                    HOSTDENY="yes"
                     ;;
             esac        
-            echo "<global>" >> $NEWCONFIG
-            echo "  <white_list>127.0.0.1</white_list>" >> $NEWCONFIG
+            echo "  <global>" >> $NEWCONFIG
+            echo "    <white_list>127.0.0.1</white_list>" >> $NEWCONFIG
             echo ""
             echo "   - ${defaultwhitelist}"
             for ip in ${NAMESERVERS} ${NAMESERVERS2};
             do
             if [ "X${ip}" != "X" ]; then
                 echo "      - ${ip}"
-                echo "  <white_list>${ip}</white_list>" >>$NEWCONFIG
+                echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
             fi
             done
             AddWhite
 
-            echo "</global>" >> $NEWCONFIG
+            echo "  </global>" >> $NEWCONFIG
             echo "" >> $NEWCONFIG
             ;;
     esac                
@@ -467,25 +466,25 @@ ConfigureServer()
     
 	if [ "X$RLOG" = "Xyes" ]; then
 	echo "" >> $NEWCONFIG
-	echo "<remote>" >> $NEWCONFIG
-	echo "  <connection>syslog</connection>" >> $NEWCONFIG
-	echo "</remote>" >> $NEWCONFIG
+	echo "  <remote>" >> $NEWCONFIG
+	echo "    <connection>syslog</connection>" >> $NEWCONFIG
+	echo "  </remote>" >> $NEWCONFIG
 	fi
 
 	if [ "X$SLOG" = "Xyes" ]; then
 	echo "" >> $NEWCONFIG
-	echo "<remote>" >> $NEWCONFIG
-	echo "  <connection>secure</connection>" >> $NEWCONFIG
-	echo "</remote>" >> $NEWCONFIG
+	echo "  <remote>" >> $NEWCONFIG
+	echo "    <connection>secure</connection>" >> $NEWCONFIG
+	echo "  </remote>" >> $NEWCONFIG
 	fi
 
 
 	# Email/log alerts
 	echo "" >> $NEWCONFIG
-	echo "<alerts>" >> $NEWCONFIG
-    echo "   <log>1</log>" >> $NEWCONFIG
+	echo "  <alerts>" >> $NEWCONFIG
+    echo "    <log>1</log>" >> $NEWCONFIG
     if [ "$EMAILNOTIFY" = "yes" ]; then
-        echo "   <email_notification>7</email_notification>">> $NEWCONFIG
+        echo "    <email_notification>7</email_notification>">> $NEWCONFIG
 	fi
 	echo "</alerts>" >> $NEWCONFIG
 
@@ -493,47 +492,17 @@ ConfigureServer()
     if [ "X$ACTIVERESPONSE" = "Xyes" ]; then
         # Add commands in here
         echo "" >> $NEWCONFIG
-        echo "<command>" >> $NEWCONFIG
-        echo "  <name>host-deny</name>" >> $NEWCONFIG
-        echo "  <executable>host-deny.sh</executable>" >> $NEWCONFIG
-        echo "  <expect>srcip</expect>" >> $NEWCONFIG
-	    echo "  <timeout_allowed>yes</timeout_allowed>" >> $NEWCONFIG
-        echo "</command>" >> $NEWCONFIG
-        
+        cat ${HOST_DENY_TEMPLATE} >> $NEWCONFIG
         echo "" >> $NEWCONFIG
-        echo "<command>" >> $NEWCONFIG
-        echo "  <name>firewall-drop</name>" >> $NEWCONFIG
-        echo "  <executable>firewall-drop.sh</executable>" >> $NEWCONFIG
-        echo "  <expect>srcip</expect>" >> $NEWCONFIG
-	    echo "  <timeout_allowed>yes</timeout_allowed>" >> $NEWCONFIG
-        echo "</command>" >> $NEWCONFIG
-        
+        cat ${FIREWALL_DROP_TEMPLATE} >> $NEWCONFIG
         echo "" >> $NEWCONFIG
-        echo "<command>" >> $NEWCONFIG
-        echo "  <name>disable-account</name>" >> $NEWCONFIG
-        echo "  <executable>disable-account.sh</executable>" >> $NEWCONFIG
-        echo "  <expect>user</expect>" >> $NEWCONFIG
-	    echo "  <timeout_allowed>yes</timeout_allowed>" >> $NEWCONFIG
-        echo "</command>" >> $NEWCONFIG
-        
-        if [ "X$HOSTDENY" = "Xyes" ]; then
-            echo "" >> $NEWCONFIG
-            echo "<active-response>" >> $NEWCONFIG
-            echo "  <command>host-deny</command>" >> $NEWCONFIG
-            echo "  <location>local</location>" >> $NEWCONFIG
-            echo "  <level>6</level>" >> $NEWCONFIG
-            echo "  <timeout>600</timeout>" >> $NEWCONFIG		
-            echo "</active-response>" >> $NEWCONFIG
-        fi
-        
+        cat ${DISABLE_ACCOUNT_TEMPLATE} >> $NEWCONFIG
+        echo "" >> $NEWCONFIG
+
         if [ "X$FIREWALLDROP" = "Xyes" ]; then
             echo "" >> $NEWCONFIG
-            echo "<active-response>" >> $NEWCONFIG
-            echo "  <command>firewall-drop</command>" >> $NEWCONFIG
-            echo "  <location>local</location>" >> $NEWCONFIG
-            echo "  <level>6</level>" >> $NEWCONFIG
-            echo "  <timeout>600</timeout>" >> $NEWCONFIG
-            echo "</active-response>" >> $NEWCONFIG
+            cat ${ACTIVE_RESPONSE_TEMPLATE} >> $NEWCONFIG
+            echo "" >> $NEWCONFIG
         fi        
     fi
      

@@ -39,6 +39,10 @@ SYSCHECK_TEMPLATE="./etc/templates/config/syscheck.template"
 SYSLOG_TEMPLATE="./etc/templates/config/syslog-logs.template"
 APACHE_TEMPLATE="./etc/templates/config/apache-logs.template"
 SNORT_TEMPLATE="./etc/templates/config/snort-logs.template"
+HOST_DENY_TEMPLATE="./etc/templates/config/ar-host-deny.template"
+FIREWALL_DROP_TEMPLATE="./etc/templates/config/ar-firewall-drop.template"
+DISABLE_ACCOUNT_TEMPLATE="./etc/templates/config/ar-disable-account.template"
+ACTIVE_RESPONSE_TEMPLATE="./etc/templates/config/active-response.template"
 
 
 ## Host output

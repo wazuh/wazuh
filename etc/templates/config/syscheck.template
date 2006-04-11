@@ -1,10 +1,15 @@
-<syscheck>
-  <daemon>yes</daemon>
-  <directories check_all="yes">/etc,/usr/bin,/usr/sbin,/bin,/sbin</directories>
-  <notify>queue</notify>
-  <ignore>/etc/mtab</ignore>
-  <ignore>/etc/hosts.deny</ignore>
-  <ignore>/etc/mail/statistics</ignore>
-  <ignore>/etc/random-seed</ignore>
-  <ignore>/etc/adjtime</ignore>
-</syscheck>
+  <syscheck>
+    <!-- Frequency that syscheck is executed -- default every 2 hours -->
+    <frequency>7200</frequency>
+    
+    <!-- Directories to check  (perform all possible verifications) -->
+    <directories check_all="yes">/etc,/usr/bin,/usr/sbin</directories>
+    <directories check_all="yes">/bin,/sbin</directories>
+
+    <!-- Files/directories to ignore -->
+    <ignore>/etc/mtab</ignore>
+    <ignore>/etc/hosts.deny</ignore>
+    <ignore>/etc/mail/statistics</ignore>
+    <ignore>/etc/random-seed</ignore>
+    <ignore>/etc/adjtime</ignore>
+  </syscheck>
