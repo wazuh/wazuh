@@ -31,17 +31,14 @@ int ExecdConfig(char * cfgfile)
     /* Reading XML file */
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
-        merror("%s: XML error: %s", ARGV0, xml.err);
-        exit(1);
+        ErrorExit(XML_ERROR, ARGV0, cfgfile, 0);
     }
 
 
     node = OS_GetElementsbyNode(&xml,NULL);
     if(node == NULL)
     {
-        merror("%s: Error reading the XML.", ARGV0);
-        OS_ClearXML(&xml);
-        exit(1);
+        ErrorExit(XML_READ_ERROR, ARGV0);
     }
 
     
@@ -61,18 +58,25 @@ int ExecdConfig(char * cfgfile)
                 {
                     if((!chld_node[j]->element)||(!chld_node[j]->content))
                     {
-                        merror("%s: Error reading XML child nodes",ARGV0);
-                        OS_ClearXML(&xml);
-                        exit(1);
+                        merror(XML_INVELEM, ARGV0, xml_ar);
+                        return(-1);
                     }
 
                     else if(strcmp(chld_node[j]->element,
                             xml_ar_disabled) == 0)
                     {
-                        if(chld_node[j]->content[0] == 'y')
+                        if(strcmp(chld_node[j]->content,"yes") == 0)
                         {
-                            verbose("%s: Active response disabled. Exiting.", ARGV0);
-                            exit(0);
+                            return(1);
+                        }
+                        else if(strcmp(chld_node[j]->content,"no") == 0)
+                        {
+                        }
+                        else
+                        {
+                            merror(XML_VALUEERR, ARGV0, 
+                                chld_node[j]->content[0]);
+                            return(-1);
                         }
                     }
                     

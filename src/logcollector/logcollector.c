@@ -30,11 +30,6 @@ void LogCollectorStart()
     #ifndef WIN32
     int int_error = 0;
     struct timeval fp_timeout;
-
-    #else
-    
-    /* Initializes windows logging */
-    win_startel();
     #endif
 
     /* Initializing each file and structure */
@@ -42,21 +37,33 @@ void LogCollectorStart()
     {
         if(log[i].file == NULL)
             break;
-        
-        verbose("%s: Analyzing file: %s", ARGV0, log[i].file);
-        
-        /* Initiating the files */    
-        handle_file(i);
-        
-        
-        /* Getting the log type */
-        if(log[i].logformat && OS_Match("snort-full", log[i].logformat))
+       
+        if(strcmp(log[i].logformat,"eventlog") == 0)
         {
-            log[i].read = (void *)read_snortfull;
+            #ifdef WIN32
+            verbose(READING_EVTLOG, ARGV0, log[i].file);
+            win_startel(log[i].file);
+            #endif
+            log[i].file = NULL;
+            log[i].fp = NULL;
         }
+        
         else
         {
-            log[i].read = (void *)read_syslog;
+            verbose(READING_FILE, ARGV0, log[i].file);
+
+            /* Initiating the files */    
+            handle_file(i);
+
+            /* Getting the log type */
+            if(OS_Match("snort-full", log[i].logformat))
+            {
+                log[i].read = (void *)read_snortfull;
+            }
+            else
+            {
+                log[i].read = (void *)read_syslog;
+            }
         }
     }
 
@@ -88,16 +95,14 @@ void LogCollectorStart()
         }
         #else
         /* Windows don't like select that way */
-        Sleep(FP_TIMEOUT * 1000);
+        Sleep((FP_TIMEOUT + 2) * 1000);
         #endif
 
         f_check++;
         
         #ifdef WIN32
-        
         /* Check for messages in the event viewer */
         win_readel();
-        
         #endif
         
         /* Checking which file is available */
@@ -174,8 +179,8 @@ void LogCollectorStart()
             }
         }
 
-        /* Only check bellow if check > 20 */
-        if(f_check <= 20)
+        /* Only check bellow if check > 40 */
+        if(f_check <= 40)
             continue;
 
         /* Zeroing f_check */    
@@ -185,10 +190,15 @@ void LogCollectorStart()
         /* Checking if any file has been renamed/removed */
         for(i = 0; i <= max_file; i++)
         {
+            /* These are the windows logs */
+            if(!log[i].file)
+                continue;
+                
             /* File has been changing, but not able to read */
             if(log[i].ign > 0)
             {
-                fclose(log[i].fp);
+                if(log[i].fp)
+                    fclose(log[i].fp);
                 log[i].fp = NULL;
                 if(handle_file(i) < 0)
                 {

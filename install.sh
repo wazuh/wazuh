@@ -239,8 +239,9 @@ ConfigureClient()
             break;
         fi
     done
-	
-    echo "  <client>" > $NEWCONFIG
+
+    echo "<ossec_config>" > $NEWCONFIG	
+    echo "  <client>" >> $NEWCONFIG
 	echo "    <server-ip>$IP</server-ip>" >> $NEWCONFIG
 	echo "  </client>" >> $NEWCONFIG
 
@@ -270,6 +271,8 @@ ConfigureClient()
 
     # Set up the log files
     SetupLogs "3.5"
+
+    echo "</ossec_config>" >> $NEWCONFIG
 }
 
 

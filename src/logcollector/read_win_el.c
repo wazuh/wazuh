@@ -33,7 +33,7 @@ typedef struct _os_el
     DWORD record;
 }os_el;
 os_el el[3];
-
+int el_last = 0;
 
 
 /** int startEL(char *app, os_el *el)
@@ -381,16 +381,11 @@ void readel(os_el *el, int printit)
 /** void win_startel()
  * Starts the event logging for windows
  */
-void win_startel()
+void win_startel(char *evt_log)
 {
-    startEL("System", &el[0]);
-    startEL("Security", &el[1]);
-    startEL("Application", &el[2]);
-
-    /* Initial read */
-    readel(&el[0],0);
-    readel(&el[1],0);
-    readel(&el[2],0);
+    startEL(evt_log, &el[el_last]);
+    readel(&el[el_last],0);
+    el_last++;
 }
 
 
@@ -399,11 +394,13 @@ void win_startel()
  */
 void win_readel()
 {
+    int i = 0;
+    
     /* Sleep plus 2 seconds before reading again */
     Sleep(2000);
-    readel(&el[0],1);
-    readel(&el[1],1);
-    readel(&el[2],1);
+    
+    for(;i<el_last;i++)
+        readel(&el[i],1);
 }
 
 

@@ -92,13 +92,15 @@ int rootcheck_init()
     /* Zeroing the structure */
     rootcheck.workdir = NULL;
     rootcheck.daemon = 1;
-    rootcheck.notify = SYSLOG;
+    rootcheck.notify = QUEUE;
     rootcheck.scanall = 0;
     rootcheck.readall = 0;
     rootcheck.time = ROOTCHECK_WAIT;
 
 
 #ifndef OSSECHIDS
+    rootcheck.notify = SYSLOG;
+    rootcheck.daemon = 0;
     while((c = getopt(argc, argv, "srdhD:c:")) != -1)
     {
         switch(c)
@@ -147,7 +149,7 @@ int rootcheck_init()
 
     if(Read_Rootcheck_Config(cfg, &rootcheck) < 0)
     {
-        return(-1);
+        ErrorExit(CONFIG_ERROR, ARGV0);
     }
 
 

@@ -14,25 +14,7 @@
 
 #define __ROOTCHECK_H
 
-#include <stdio.h>
-
-typedef struct _rkconfig
-{
-    char *workdir;
-    char *rootkit_files;
-    char *rootkit_trojans;
-
-    FILE *fp;
-    int daemon;
-    int notify; /* QUEUE or SYSLOG */
-    int scanall;
-    int readall;
-
-    int time;
-    int queue;
-}rkconfig;
-
-
+#include "config/rootcheck-config.h"
 rkconfig rootcheck;
 
 

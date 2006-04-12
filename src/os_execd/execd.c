@@ -105,17 +105,27 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);
 
 
+    /* Reading config */
+    if((c = ExecdConfig(xmlcfg)) < 0)
+    {
+        ErrorExit(CONFIG_ERROR, ARGV0);
+    }
+
+    
     /* Going daemon */
     nowDaemon();
     goDaemon();
 
+    /* Active response disabled */
+    if(c == 1)
+    {
+        verbose(EXEC_DISABLED, ARGV0);
+        exit(0);
+    }
     
     /* Creating the PID file */
     if(CreatePID(ARGV0, getpid()) < 0)
         merror(PID_ERROR,ARGV0);
-
-    
-    ExecdConfig(xmlcfg);
 
     
     /* Starting queue (exec queue) */

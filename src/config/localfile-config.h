@@ -15,6 +15,7 @@
 
 #define __CLOGREADER_H
 
+#define EVENTLOG    "eventlog"
 #define MAX_READ_FILE   16
 
 /* Logreader config */

@@ -86,7 +86,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             else if(strcmp(log[pl].logformat, "squid") == 0)
             {
             }
-            else if(strcmp(log[pl].logformat, "EventLog") == 0)
+            else if(strcmp(log[pl].logformat, EVENTLOG) == 0)
             {
             }
             else
@@ -105,6 +105,32 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         i++;
     }
 
+    /* Missing log format */
+    if(!log[pl].logformat)
+    {
+        merror(MISS_LOG_FORMAT, ARGV0);
+        return(OS_INVALID);
+    }
+
+    /* Missing file */
+    if(!log[pl].file)
+    {
+        merror(MISS_FILE, ARGV0);
+        return(OS_INVALID);
+    }
+    
+    /* Verifying a valid event log config */
+    if(strcmp(log[pl].logformat, EVENTLOG) == 0)
+    {
+        if((strcmp(log[pl].file, "Application") != 0)&&
+           (strcmp(log[pl].file, "System") != 0)&&
+           (strcmp(log[pl].file, "Security") != 0))
+         {
+             /* Invalid event log */
+             merror(INV_EVTLOG, ARGV0, log[pl].file);
+             return(OS_INVALID);
+         }
+    }
     return(0);
 }
 

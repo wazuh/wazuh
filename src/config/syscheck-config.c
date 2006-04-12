@@ -223,11 +223,6 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
 
     syscheck = (config *)configp;
     
-    syscheck->rootcheck = 0;
-    syscheck->time = SYSCHECK_WAIT*2;
-    syscheck->notify = SYSLOG;
-
-
     /* Cleaning up the dirs */
     for(i = 0; i<= MAX_DIR_ENTRY; i++)
     {

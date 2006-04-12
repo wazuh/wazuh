@@ -22,6 +22,7 @@
 	/***  Error messages - English ***/
 
 /* SYSTEM ERRORS */
+#define EXITING       "Exiting."
 #define FORK_ERROR	  "%s(1101): Unable to fork. Exiting."
 #define MEM_ERROR	  "%s(1102): Memory error. Exiting."
 #define FOPEN_ERROR   "%s(1103): Unable to open file '%s'."
@@ -107,8 +108,6 @@
 
 
 /* Log collector */
-#define LOGC_FILE_ERROR "%s(1601): Ignoring file '%s'. Unable to read."
-#define NO_FILE         "%s(1602): No file configured to monitor. Exiting."
 
 /* Remoted */
 #define NO_REM_CONN     "%s(1701): No remote connection configured."
@@ -128,6 +127,7 @@
 #define EXEC_INV_NAME   "%s(1311): Invalid command name '%s' provided."
 #define EXEC_CMDERROR   "%s(1312): Error executing '%s': %s"
 #define EXEC_INV_CONF   "%s(1313): Invalid active response config: '%s'."
+#define EXEC_DISABLED   "%s(1350): Active response disabled. Exiting."
 
 #define AR_NOAGENT_ERROR    "%s(1320): Agent '%s' not found."
 
@@ -137,6 +137,15 @@
 #define LIST_ADD_ERROR  "%s(1291): Error adding nodes to list."
 #define LIST_SIZE_ERROR "%s(1292): Error setting error size."
 #define LIST_FREE_ERROR "%s(1293): Error setting data free pointer."
+
+/* Log collector messages */
+#define MISS_LOG_FORMAT "%s(1901): Missing 'log_format' element."
+#define MISS_FILE       "%s(1902): Missing 'location' element."
+#define INV_EVTLOG      "%s(1903): Invalid event log: '%s'."
+#define LOGC_FILE_ERROR "%s(1904): Unable to read file: '%s'"
+#define NO_FILE         "%s(1905): No file configured to monitor."
+#define READING_FILE    "%s(1950): Analyzing file: '%s'."
+#define READING_EVTLOG  "%s(1951): Analyzing event log: '%s'."
 
 
 /* Encryption/ auth errors */

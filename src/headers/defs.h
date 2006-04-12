@@ -30,9 +30,12 @@
 #define IPSIZE      16      /* IP Address size */
 
 
-/* Some names */
+/* Some Global names */
 #define __name      "OSSEC HIDS"
-#define __version   "v0.7"
+#define __version   "v0.8"
+#define __author    "Daniel B. Cid"
+#define __contact   "contact@ossec.net"
+#define __site      "http://www.ossec.net"
 
 
 /* Maximum allowed PID */
