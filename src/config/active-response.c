@@ -1,0 +1,384 @@
+/*   $OSSEC, active-response.c, v0.1, 2005/10/28, Daniel B. Cid$   */
+
+/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+ * All right reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
+
+ 
+#include "shared.h"
+#include "os_xml/os_xml.h"
+#include "os_regex/os_regex.h"
+
+#include "active-response.h"
+#include "config.h"
+
+
+/* get the list of all active responses */
+int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
+{
+    FILE *fp;
+    int i = 0;
+    int r_ar = 0;
+    int l_ar = 0;
+
+
+    char *xml_ar_command = "command";
+    char *xml_ar_location = "location";
+    char *xml_ar_agent_id = "agent_id";
+    char *xml_ar_rules_id = "rules_id";
+    char *xml_ar_rules_group = "rules_group";
+    char *xml_ar_level = "level";
+    char *xml_ar_timeout = "timeout";
+    char *xml_ar_disabled = "disabled";
+
+    char *tmp_location;
+    active_response *tmp_ar;
+
+
+    /* Openning shared ar file */
+    fp = fopen(DEFAULTARPATH, "a");
+    if(!fp)
+    {
+        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
+        return(-1);
+    }
+
+    /* Allocating for the active-response */
+    tmp_ar = calloc(1, sizeof(active_response));
+    if(!tmp_ar)
+    {
+        merror(MEM_ERROR, ARGV0);
+        return(-1);
+    }
+
+    /* Initializing variables */
+    tmp_ar->name = NULL;
+    tmp_ar->command = NULL;
+    tmp_ar->location = 0;
+    tmp_ar->timeout = 0;
+    tmp_ar->agent_id = NULL;
+    tmp_ar->rules_id = NULL;
+    tmp_ar->rules_group = NULL;
+    tmp_ar->level = NULL;
+    tmp_ar->ar_cmd = NULL;
+    tmp_location = NULL;
+
+
+
+    /* Searching for the commands */ 
+    while(node[i])
+    {
+        if(!node[i]->element)
+        {
+            merror(XML_ELEMNULL, ARGV0);
+            return(OS_INVALID);
+        }
+        else if(!node[i]->content)
+        {
+            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            return(OS_INVALID);
+        }
+
+        /* Command */
+        if(strcmp(node[i]->element, xml_ar_command) == 0)    
+        {
+            tmp_ar->command = strdup(node[i]->content);
+        }
+        /* Target */
+        else if(strcmp(node[i]->element, xml_ar_location) == 0)    
+        {
+            tmp_location = strdup(node[i]->content);
+        }
+        else if(strcmp(node[i]->element, xml_ar_agent_id) == 0)
+        {
+            tmp_ar->agent_id = strdup(node[i]->content);
+        }
+        else if(strcmp(node[i]->element, xml_ar_rules_id) == 0)
+        {
+            tmp_ar->rules_id = strdup(node[i]->content);
+        }
+        else if(strcmp(node[i]->element, xml_ar_rules_group) == 0)
+        {
+            tmp_ar->rules_group = strdup(node[i]->content);
+        }
+        else if(strcmp(node[i]->element, xml_ar_level) == 0)
+        {
+            tmp_ar->level = strdup(node[i]->content);
+        }
+        else if(strcmp(node[i]->element, xml_ar_timeout) == 0)
+        {
+            tmp_ar->timeout = atoi(node[i]->content);
+        }
+        else if(strcmp(node[i]->element, xml_ar_disabled) == 0)
+        {
+            ar_flag = -1;
+        }
+        else
+        {
+            merror(XML_INVELEM, ARGV0, node[i]->element);
+            return(OS_INVALID);
+        }
+        i++;
+    } 
+
+    if(ar_flag == -1)
+    {
+        fclose(fp);
+        return(0);
+    }
+
+    /* Command and location must be there */
+    if(!tmp_ar->command || !tmp_location)
+    {
+        merror(AR_MISS, ARGV0);
+        return(-1);
+    }
+
+    /* analysisd */
+    if(OS_Regex("AS|analysisd", tmp_location))
+    {
+        tmp_ar->location|= AS_ONLY;
+    }
+
+    if(OS_Regex("local", tmp_location))
+    {
+        tmp_ar->location|= REMOTE_AGENT;
+    }
+
+    if(OS_Regex("defined-agent", tmp_location))
+    {
+        if(!tmp_ar->agent_id)
+        {
+            merror(AR_DEF_AGENT);
+            return(-1);
+        }
+
+        tmp_ar->location|= SPECIFIC_AGENT;
+
+    }
+    if(OS_Regex("all", tmp_location))
+    {
+        tmp_ar->location|=AS_ONLY;
+        tmp_ar->location|=ALL_AGENTS;
+    }
+
+    /* If we didn't set any value for the location */
+    if(tmp_ar->location == 0) 
+    {
+        merror(AR_INV_LOC, ARGV0, tmp_location);
+        return(-1);
+    }
+
+
+    /* cleaning tmp_location */ 
+    free(tmp_location);
+    tmp_location = NULL;
+
+
+    /* Checking if command name is valid */
+    {
+        OSListNode *my_commands_node;
+
+        my_commands_node = OSList_GetFirstNode(ar_commands);
+        while(my_commands_node)
+        {
+            ar_command *my_command;
+            my_command = (ar_command *)my_commands_node->data;
+
+            if(strcmp(my_command->name, tmp_ar->command) == 0)
+            {
+                tmp_ar->ar_cmd = my_command;
+                break;
+            }
+
+            my_commands_node = OSList_GetNextNode(ar_commands);
+        }
+
+        if(tmp_ar->ar_cmd == NULL)
+        {
+            merror(AR_INV_CMD, ARGV0, tmp_ar->command);
+            return(-1);
+        }
+    }
+
+    /* Checking if timeout is allowed */
+    if(tmp_ar->timeout && !tmp_ar->ar_cmd->timeout_allowed)
+    {
+        merror(AR_NO_TIMEOUT, ARGV0, tmp_ar->ar_cmd->name);
+        return(-1);
+    }
+
+    if(!OSList_AddData(active_responses, (void *)tmp_ar))
+    {
+        merror(LIST_ADD_ERROR, ARGV0);
+        return(-1);
+    }
+
+
+    /* Setting a unique active response name */
+    tmp_ar->name = calloc(OS_MAXSTR +1, sizeof(char));
+    if(!tmp_ar->name)
+    {
+        ErrorExit(MEM_ERROR, ARGV0);
+    }
+    snprintf(tmp_ar->name, OS_MAXSTR, "%s%d", 
+            tmp_ar->ar_cmd->name,
+            tmp_ar->timeout);  
+
+
+    /* Adding to shared file */
+    fprintf(fp, "%s - %s - %d\n", 
+            tmp_ar->name,
+            tmp_ar->ar_cmd->executable,
+            tmp_ar->timeout);
+
+
+    /* Settin the configs to start the right queues */ 
+    if(tmp_ar->location & AS_ONLY)
+    {
+        r_ar = 1;
+    }
+    if(tmp_ar->location & ALL_AGENTS)
+    {
+        r_ar = 1;
+        l_ar = 1;
+    }
+    if(tmp_ar->location & REMOTE_AGENT)
+    {
+        r_ar = 1;
+        l_ar = 1;
+    }
+    if(tmp_ar->location & SPECIFIC_AGENT)
+    {
+        r_ar = 1;
+    }
+
+    /* Setting the configuration for the active response */
+    if(r_ar && (!(ar_flag & REMOTE_AR)))
+    {
+        ar_flag|= REMOTE_AR;
+    }
+    if(l_ar && (!(ar_flag & LOCAL_AR)))
+    {
+        ar_flag|= LOCAL_AR;
+    }
+
+
+    /* Closing shared file for active response */
+    fclose(fp);
+
+    /* Done over here */
+    return(0);
+}
+
+
+
+/* get the list of active response commands */
+int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
+{
+    int i = 0;
+
+    char *tmp_str = NULL;
+
+    char *command_name = "name";
+    char *command_expect = "expect";
+    char *command_executable = "executable";
+    char *timeout_allowed = "timeout_allowed";
+
+    ar_command *tmp_command;
+
+    /* Allocating for the active-response */
+    tmp_command = calloc(1, sizeof(ar_command));
+    if(!tmp_command)
+    {
+        merror(MEM_ERROR, ARGV0);
+        return(-1);
+    }
+
+    tmp_command->name = NULL;
+    tmp_command->expect= 0;
+    tmp_command->executable = NULL;
+    tmp_command->timeout_allowed = 0;
+
+
+    /* Searching for the commands */ 
+    while(node[i])
+    {
+        if(!node[i]->element)
+        {
+            merror(XML_ELEMNULL, ARGV0);
+            return(OS_INVALID);
+        }
+        else if(!node[i]->content)
+        {
+            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            return(OS_INVALID);
+        }
+        if(strcmp(node[i]->element, command_name) == 0)    
+        {
+            tmp_command->name = strdup(node[i]->content);
+        }
+        else if(strcmp(node[i]->element, command_expect) == 0)    
+        {
+            tmp_str = strdup(node[i]->content);
+        }
+        else if(strcmp(node[i]->element, command_executable) == 0)
+        {
+            tmp_command->executable = strdup(node[i]->content);
+        }
+        else if(strcmp(node[i]->element, timeout_allowed) == 0)
+        {
+            if(strcmp(node[i]->content, "yes") == 0)
+                tmp_command->timeout_allowed = 1;
+            else if(strcmp(node[i]->content, "no") == 0)
+                tmp_command->timeout_allowed = 0;
+            else
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+        else
+        {
+            merror(XML_INVELEM, ARGV0, node[i]->element);
+            return(OS_INVALID);
+        }
+        i++;
+    }
+
+    if(!tmp_command->name || !tmp_str
+            || !tmp_command->executable)
+    {
+        merror(AR_CMD_MISS, ARGV0);
+        return(-1);
+    }
+
+
+    /* Getting the expect */
+    if(OS_Regex("user", tmp_str))
+        tmp_command->expect |= USERNAME;
+    if(OS_Regex("srcip", tmp_str))
+        tmp_command->expect |= SRCIP;
+
+    free(tmp_str);
+    tmp_str = NULL;
+
+
+    if(!OSList_AddData(ar_commands, (void *)tmp_command))
+    {
+        merror(LIST_ADD_ERROR, ARGV0);
+        return(-1);
+    }
+
+
+    /* Done over here */
+    return(0);
+}
+
+
+/* EOF */
