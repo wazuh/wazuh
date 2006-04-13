@@ -37,6 +37,21 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
 
     logr = (remoted *)d1;
 
+    /* Getting allowed-ips */
+    if(logr->allowips)
+    {
+        while(logr->allowips[allow_size -1])
+            allow_size++;
+    }
+
+    /* Getting denied-ips */
+    if(logr->denyips)
+    {
+        while(logr->denyips[deny_size -1])
+            deny_size++;
+    }
+                                            
+    
     /* conn and port must not be null */
     if(!logr->conn)
     {
@@ -64,6 +79,8 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
     {
         merror(MEM_ERROR, ARGV0);
     }
+    logr->port[pl +1] = 0;
+    logr->conn[pl +1] = 0;
     
     while(node[i])
     {
@@ -77,7 +94,6 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
             merror(XML_VALUENULL, ARGV0, node[i]->element);
             return(OS_INVALID);
         }
-
         else if(strcasecmp(node[i]->element,xml_remote_connection) == 0)
         {
             if(strcmp(node[i]->content, "syslog") == 0)
@@ -96,7 +112,18 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
         }
         else if(strcasecmp(node[i]->element,xml_remote_port) == 0)
         {
+            if(!OS_StrIsNum(node[i]->content))
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
             logr->port[pl] = atoi(node[i]->content);
+
+            if(logr->port[pl] <= 0 || logr->port[pl] > 65535)
+            {
+                merror(PORT_ERROR, ARGV0, logr->port[pl]);
+                return(OS_INVALID);
+            }
         }
         else if(strcmp(node[i]->element, xml_allowips) == 0)
         {
@@ -151,7 +178,10 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
     /* Set port in here */
     if(logr->port[pl] == 0)
     {
-        logr->port[pl] = DEFAULT_SECURE;
+        if(logr->conn[pl] == SECURE_CONN)
+            logr->port[pl] = DEFAULT_SECURE;
+        else
+            logr->port[pl] = DEFAULT_SYSLOG;    
     }
 
     

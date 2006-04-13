@@ -32,6 +32,11 @@ int RemotedConfig(char *cfgfile, remoted *logr)
 
     modules|= CREMOTE;
 
+    logr->port = NULL;
+    logr->conn = NULL;
+    logr->allowips = NULL;
+    logr->denyips = NULL;
+
     if(ReadConfig(modules, cfgfile, logr, NULL) < 0)
         return(OS_INVALID);
 
