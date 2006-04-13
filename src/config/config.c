@@ -57,7 +57,8 @@ int read_main_elements(OS_XML xml, int modules,
         }
         else if(strcmp(node[i]->element, osglobal) == 0)
         {
-            if((modules & CGLOBAL) && (Read_Global(chld_node, d1, d2) < 0))
+            if(((modules & CGLOBAL) || (modules & CMAIL)) 
+                && (Read_Global(chld_node, d1, d2) < 0))
                 return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, osrules) == 0)
@@ -97,17 +98,21 @@ int read_main_elements(OS_XML xml, int modules,
         }
         else if(strcmp(node[i]->element, oscommand) == 0)
         {
-            /* not verified in here */
+            if((modules & CGLOBAL)&&(ReadActiveCommands(chld_node, d1, d2)<0))
+                return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, osactive_response) == 0)
         {
-            /* Not verified in here */
+            if((modules & CGLOBAL)&&(ReadActiveResponses(chld_node, d1, d2)<0))
+                return(OS_INVALID);
         }
         else
         {
             merror(XML_INVELEM, ARGV0, node[i]->element);
             return(OS_INVALID);
         }
+        
+        OS_ClearNode(chld_node);
         i++;
     }
 

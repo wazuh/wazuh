@@ -39,6 +39,8 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
     /* Setting frequency to 0 */
     currently_rule->__frequency = 0;
 
+
+
     
     /* Searching all previous events */
     do

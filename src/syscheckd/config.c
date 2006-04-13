@@ -31,8 +31,6 @@ int Read_Syscheck_Config(char * cfgfile)
 
     syscheck.rootcheck = 0;
     syscheck.time = SYSCHECK_WAIT*2;
-    syscheck.notify = SYSLOG;
-
 
     if(ReadConfig(modules, cfgfile, &syscheck, NULL) < 0)
         return(OS_INVALID);

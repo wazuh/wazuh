@@ -24,7 +24,7 @@
  */
 int Read_Global(XML_NODE node, void *configp, void *mailp)
 {
-    int i = 1;
+    int i = 0;
 
     /* White list size */
     int white_size = 1;
@@ -75,7 +75,6 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             ww++;
         }
     }
-
     
     while(node[i])
     {

@@ -13,40 +13,6 @@
 #ifndef _AR__H
 #define _AR__H
 
-
-typedef struct _ar_command
-{
-    int expect;
-    int timeout_allowed;
-    char *name;
-    char *executable;
-}ar_command;
-
-
-typedef struct _ar
-{
-    int timeout;
-    int location;
-    char *name;
-    char *command;
-    char *agent_id;
-    char *rules_id;
-    char *rules_group;
-    char *level;
-
-    ar_command *ar_cmd;
-}active_response;
-
-
-#include "list_op.h"
-
-OSList *ar_commands;
-OSList *active_responses;
-
-
-/* function prototypes */
-void AS_Init();
-int AS_GetActiveResponses(char * config_file);
-int AS_GetActiveResponseCommands(char * config_file);
+#include "config/active-response.h"
 
 #endif

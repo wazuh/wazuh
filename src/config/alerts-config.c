@@ -19,7 +19,7 @@
 
 int Read_Alerts(XML_NODE node, void *configp, void *mailp)
 {
-    int i = 1;
+    int i = 0;
 
     /* XML definitions */
     char *xml_email_level = "email_alert_level";

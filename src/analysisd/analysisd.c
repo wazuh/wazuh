@@ -175,24 +175,19 @@ int main(int argc, char **argv)
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
 
+    /* Initializing Active response */
+    AS_Init();
+
+    
     /* Reading configuration file */
     if(GlobalConf(cfg) < 0)
         ErrorExit(CONFIG_ERROR,ARGV0);
 
-
-    /* Reading the active response config */
-    AS_Init();
-
-   
-    if(AS_GetActiveResponseCommands(cfg) < 0)
-    {
-        ErrorExit(CONFIG_ERROR, ARGV0);
-    }
-    if(AS_GetActiveResponses(cfg) < 0)
-    {
-        ErrorExit(CONFIG_ERROR, ARGV0);
-    }
-
+    /* Fixing Config.ar */
+    Config.ar = ar_flag;
+    if(Config.ar == -1)
+        Config.ar = 0;
+        
     
     /* going on Daemon mode */
     nowDaemon();

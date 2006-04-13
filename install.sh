@@ -355,7 +355,7 @@ ConfigureServer()
 
 	# Writting global parameters 
     echo "<ossec_config>" > $NEWCONFIG 
-	echo "  <global>" > $NEWCONFIG
+	echo "  <global>" >> $NEWCONFIG
 	if [ "$EMAILNOTIFY" = "yes" ]; then
 		echo "    <email_notification>yes</email_notification>" >> $NEWCONFIG
 		echo "    <email_to>$EMAIL</email_to>" >> $NEWCONFIG
@@ -426,6 +426,7 @@ ConfigureServer()
                     FIREWALLDROP="yes"
                     ;;
             esac        
+            echo "" >> $NEWCONFIG
             echo "  <global>" >> $NEWCONFIG
             echo "    <white_list>127.0.0.1</white_list>" >> $NEWCONFIG
             echo ""
@@ -485,11 +486,11 @@ ConfigureServer()
 	# Email/log alerts
 	echo "" >> $NEWCONFIG
 	echo "  <alerts>" >> $NEWCONFIG
-    echo "    <log>1</log>" >> $NEWCONFIG
+    echo "    <log_alert_level>1</log_alert_level>" >> $NEWCONFIG
     if [ "$EMAILNOTIFY" = "yes" ]; then
-        echo "    <email_notification>7</email_notification>">> $NEWCONFIG
+        echo "    <email_alert_level>7</email_alert_level>">> $NEWCONFIG
 	fi
-	echo "</alerts>" >> $NEWCONFIG
+	echo "  </alerts>" >> $NEWCONFIG
 
 
     if [ "X$ACTIVERESPONSE" = "Xyes" ]; then
@@ -511,6 +512,7 @@ ConfigureServer()
      
     # Setting up the logs
     SetupLogs "3.6"
+    echo "</ossec_config>" >> $NEWCONFIG 
 }
 
 
@@ -614,7 +616,7 @@ AddWhite()
 					if [ ! "X${ip}" = "X" ]; then
                         echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
                         if [ $? = 0 ]; then
-						echo "  <white_list>${ip}</white_list>" >>$NEWCONFIG
+						echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
                         fi
 					fi
 				done

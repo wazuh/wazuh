@@ -62,14 +62,14 @@ int main(int argc, char **argv)
     /* Zeroing the structure */
     syscheck.workdir = NULL;
     syscheck.daemon = 1;
-    syscheck.notify = SYSLOG;
+    syscheck.notify = QUEUE;
 
 
     /* Setting the name */
     OS_SetName(ARGV0);
         
     
-    while((c = getopt(argc, argv, "sdhD:c:")) != -1)
+    while((c = getopt(argc, argv, "SsdhD:c:")) != -1)
     {
         switch(c)
         {
@@ -92,11 +92,12 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -c needs an argument",ARGV0);
                 cfg = optarg;
                 break;
+            case 'S':
+                syscheck.notify = SYSLOG;    
             default:
                 help();
                 break;   
         }
-
     }
 
     /* Staring message */
@@ -104,13 +105,14 @@ int main(int argc, char **argv)
 
     /* Checking if the configuration is present */
     if(File_DateofChange(cfg) < 0)
-        ErrorExit("%s: Configuration file: %s not found",ARGV0,cfg);
+        ErrorExit(NO_CONFIG, ARGV0, cfg);
 
 
     if(Read_Syscheck_Config(cfg, &syscheck) < 0)
     {
-        ErrorExit("%s: Error on the configuration file '%s'",ARGV0,cfg);
+        ErrorExit(CONFIG_ERROR, ARGV0);
     }
+
 
     /* Setting default values */
     if(syscheck.workdir == NULL)
@@ -186,16 +188,19 @@ int main(int argc, char **argv)
         }
     }
 
+
     /* Start the signal handling */
     StartSIG(ARGV0);
+
 
     /* Lets create the database */
     if(init == 1)
     {
-        verbose("%s: Creating new database for integrity check",ARGV0);
+        verbose(SK_CREATE_DB, ARGV0);
         create_db();
         exit(0);
     }
+
    
     /* When using the queue, we always create the database */
     if(syscheck.notify == QUEUE)
@@ -205,7 +210,6 @@ int main(int argc, char **argv)
         if(rootcheck_init() == 0)
             syscheck.rootcheck = 1;
         #endif
-            
     }
   
     /* If syslog is set, just read the database */ 
@@ -214,20 +218,11 @@ int main(int argc, char **argv)
         syscheck.fp = fopen(syscheck.db,"r");
         if(!syscheck.fp)
         {
-            merror("%s: Did you create the syscheck database ?",ARGV0);
-            ErrorExit("%s: Unable to create syscheck database "
-                  "at '%s/%s'. Exiting..",ARGV0,syscheck.workdir,SYSCHECK_DB);
-            return(0);    
+            ErrorExit(SK_NO_DB, ARGV0, syscheck.db);
         }
     }
 
-    else
-    {
-        ErrorExit("%s: Invalid notification type.",ARGV0);
-    }
     
-
-
     /* Going on daemon mode */
     if(syscheck.daemon)
     {
@@ -250,7 +245,7 @@ int main(int argc, char **argv)
             fflush(syscheck.fp);
 
             /* Some sync time */
-            sleep(1);
+            sleep(2);
         }
 
         /* Start the daemon checking against the syscheck.db */
@@ -265,7 +260,6 @@ int main(int argc, char **argv)
     }
     
 
-    debug1("%s: Leaving main process.", ARGV0);
     return(0);        
 }
 

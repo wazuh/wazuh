@@ -70,15 +70,15 @@
 #define XML_ERROR_VAR   "%s(1227): Error applying XML variables."
 #define XML_NO_ELEM     "%s(1228): Element '%s' without any option."
 #define XML_INVALID     "%s(1229): Invalid element '%s' on the '%s' config."
-#define XML_INVELEM     "%s(1229): Invalid element in the configuration: %s."
-#define XML_ELEMNULL    "%s(1229): Invalid NULL element in the configuration."
+#define XML_INVELEM     "%s(1230): Invalid element in the configuration: %s."
+#define XML_ELEMNULL    "%s(1231): Invalid NULL element in the configuration."
 #define XML_READ_ERROR  "%s(1232): Error reading XML. Unknown."
-#define XML_VALUENULL   "%s(1232): Invalid NULL content for element: %s."
-#define XML_VALUEERR    "%s(1233): Invalid value for element '%s': %s."
-#define XML_MAXREACHED  "%s(1234): Maximum number of elements reached for: %s."
-#define INVALID_IP      "%s(1230): Invalid ip address: '%s'."
-#define INVALID_ELEMENT "%s(1231): Invalid value for element '%s': %s"
-
+#define XML_VALUENULL   "%s(1234): Invalid NULL content for element: %s."
+#define XML_VALUEERR    "%s(1235): Invalid value for element '%s': %s."
+#define XML_MAXREACHED  "%s(1236): Maximum number of elements reached for: %s."
+#define INVALID_IP      "%s(1237): Invalid ip address: '%s'."
+#define INVALID_ELEMENT "%s(1238): Invalid value for element '%s': %s"
+#define NO_CONFIG       "%s(1239): Configuration file not found: '%s'."
 
 #define MAILQ_ERROR	    "%s(1221): No Mail queue at %s"
 #define IMSG_ERROR	    "%s(1222): Invalid msg: %s"
@@ -96,6 +96,8 @@
                         "element."
 #define SK_INV_ATTR     "%s(1703): Invalid attribute '%s' for directory option"
 #define SK_INV_OPT      "%s(1704): Invalid option '%s' for attribute '%s'"
+#define SK_NO_DB        "%s(1705): No integrity database found at '%s'."
+#define SK_CREATE_DB    "%s(1750): Creating new database for integrity check"
 
 
 /* Analysisd */
@@ -121,6 +123,7 @@
 #define AR_INV_LOC      "%s(1302): Invalid active response location: '%s'."
 #define AR_INV_CMD      "%s(1303): Invalid command '%s' in the active response."
 #define AR_DEF_AGENT    "%s(1304): No agent defined for response."
+#define AR_NO_TIMEOUT   "%s(1305): Timeout not allowed for command: '%s'."
 
 
 #define EXECD_INV_MSG   "%s(1310): Invalid active response (execd) message '%s'."
