@@ -78,8 +78,10 @@ void OS_Log(Eventinfo *lf)
     if(_aflog) 
     {
         fprintf(_aflog,
+                "** Alert: %s\n"
                 "%d %s %02d %s %s\nRule: %d (level %d) -> '%s'\n"
                 "Src IP: %s\nUser: %s\n%s\n",
+                lf->mail_flag?"mail":"",
                 lf->year,
                 lf->mon,
                 lf->day,

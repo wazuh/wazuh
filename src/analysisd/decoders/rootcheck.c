@@ -178,12 +178,11 @@ void RK_Search(Eventinfo *lf)
 
 
     /* alert/ notify */ 
+    if(Config.mailbylevel <= Config.integrity)    
+        lf->mail_flag = 1;
+                                
     if(Config.logbylevel <= Config.integrity)
         OS_Log(lf);
-
-    if(Config.mailbylevel <= Config.integrity)
-        OS_Createmail(&mailq, lf);
-
 
     return; 
 }

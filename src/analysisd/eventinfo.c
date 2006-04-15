@@ -162,6 +162,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->url = NULL;
     lf->fts = 0;
 
+    lf->mail_flag = 0;
     lf->type = SYSLOG; /* default type is syslog */        
     lf->level = -1;    /* level 0 is valid */
     lf->sigid = -1;    /* signature id 0 is valid */

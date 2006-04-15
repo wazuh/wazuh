@@ -16,9 +16,18 @@
 #ifndef __SHARED_H
 
 #define __SHARED_H
+#ifndef _LARGEFILE64_SOURCE
+#define _LARGEFILE64_SOURCE
+#endif
+
+#ifndef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
+
 
 /* Global headers */
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 
@@ -56,6 +65,13 @@
 
 #include "os_err.h"
 
+#ifndef _LARGEFILE64_SOURCE
+#define _LARGEFILE64_SOURCE
+#endif
+
+#ifndef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
 
 
 /* Global portability code */
@@ -117,6 +133,7 @@ char *__local_name;
 #include "rc.h"
 #include "ar.h"
 #include "validate_op.h"
+#include "file-queue.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"

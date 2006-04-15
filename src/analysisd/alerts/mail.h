@@ -15,8 +15,5 @@
 
 #define _MAIL__H
 
-#include "eventinfo.h"
-
-void OS_Createmail(int *mailq, Eventinfo *lf);
 
 #endif

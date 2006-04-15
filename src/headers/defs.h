@@ -97,6 +97,12 @@
 #define XML_DECODER     "/etc/decoder.xml"
         
 
+/* Log directories */
+#define EVENTS          "/logs/archives"
+#define ALERTS          "/logs/alerts"
+#define FWLOGS          "/logs/firewall"
+
+
 /* Authentication keys file */
 #ifndef WIN32
 #define KEYS_FILE       "/etc/client.keys"

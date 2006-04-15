@@ -119,8 +119,9 @@
 
   <rule id="409" level="0">
     <if_sid>400</if_sid>
-    <match>authentication failure; logname= uid=0 euid=0 tty=ssh</match>
-    <description>Useless SSHD message without a user associated</description>
+    <match>authentication failure; logname= uid=0 euid=0 tty=ssh|</match>
+    <match>input_userauth_request: invalid user</match>
+    <description>Useless SSHD message without a user/ip</description>
   </rule>
 
   <rule id="410" level="10" frequency="5" timeframe="240">

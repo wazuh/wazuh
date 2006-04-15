@@ -14,14 +14,6 @@
  * v0.1 (2005/03/15)
  */
 
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
 #ifndef MAILD
    #define MAILD
 #endif
@@ -31,20 +23,16 @@
 #endif
 
 #include "shared.h"
-
-#include "os_regex/os_regex.h"
-#include "os_net/os_net.h"
-
 #include "maild.h"
 #include "mail_list.h"
 
 
-void OS_Run(int q, MailConfig *mail);
+void OS_Run(MailConfig *mail);
 
 int main(int argc, char **argv)
 {
     int c;
-    int uid=0,gid=0,m_queue=0;
+    int uid=0,gid=0;
     char *dir  = DEFAULTDIR;
     char *user = MAILUSER;
     char *group = GROUPGLOBAL;
@@ -143,17 +131,12 @@ int main(int argc, char **argv)
         ErrorExit(PID_ERROR,ARGV0);
 
     
-     /* Starting queue (mail queue) */
-    if((m_queue = StartMQ(MAILQUEUE,READ)) < 0)
-        ErrorExit(QUEUE_ERROR,ARGV0,MAILQUEUE);
-    
-
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
     
 
     /* the real daemon now */	
-    OS_Run(m_queue,&mail);
+    OS_Run(&mail);
     exit(0);
 }
 
@@ -161,7 +144,7 @@ int main(int argc, char **argv)
 /* OS_Run: Read the queue and send the appropriate alerts.
  * not supposed to return..
  */
-void OS_Run(int q, MailConfig *mail)
+void OS_Run(MailConfig *mail)
 {
     MailMsg *msg;
 
@@ -173,11 +156,19 @@ void OS_Run(int q, MailConfig *mail)
     int today = 0;		        
     int thishour = 0;
 
+    file_queue *fileq;
+
+
     /* Getting currently time before starting */
     tm = time(NULL);
     p = localtime(&tm);	
     today = p->tm_mday;
     thishour = p->tm_hour;
+
+
+    /* Init file queue */
+    Init_FileQueue(fileq, p);
+
 
     /* Creating the list */
     OS_CreateMailList(MAIL_LIST_SIZE);    
@@ -185,6 +176,7 @@ void OS_Run(int q, MailConfig *mail)
  
     /* Setting default timeout */
     mail_timeout = DEFAULT_TIMEOUT;
+
     
     while(1)
     {
@@ -251,7 +243,7 @@ void OS_Run(int q, MailConfig *mail)
         }
         
         /* Receive message from queue */
-        if((msg = OS_RecvMailQ(q)) != NULL)
+        if((msg = OS_RecvMailQ(fileq, p)) != NULL)
         {
             OS_AddMailtoList(msg);
             

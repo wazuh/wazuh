@@ -108,7 +108,6 @@ UseSyscheck()
 
     # Adding to the config file
     if [ "X$SYSCHECK" = "Xyes" ]; then
-        echo "" >> $NEWCONFIG
         cat ${SYSCHECK_TEMPLATE} >> $NEWCONFIG
     fi
 }
@@ -161,6 +160,7 @@ SetupLogs()
     echo ""
     echo "  $NB- ${readlogs}"
 
+    echo "  <!-- Files to monitor (localfiles) -->" >> $NEWCONFIG
     LOG_FILES=`cat ${SYSLOG_TEMPLATE}`
     for i in ${LOG_FILES}; do
         # If log file present, add it    
@@ -441,7 +441,6 @@ ConfigureServer()
             AddWhite
 
             echo "  </global>" >> $NEWCONFIG
-            echo "" >> $NEWCONFIG
             ;;
     esac                
     

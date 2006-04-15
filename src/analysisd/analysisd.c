@@ -581,13 +581,15 @@ void OS_ReadMSG(int m_queue)
                 {
                     lf->level = Config.stats;
 
+                    if(Config.mailbylevel <= Config.stats)
+                        lf->mail_flag = 1;
+
                     /* alert for statistical analysis */
                     if(Config.logbylevel <= Config.stats)
                         OS_Log(lf);
-                    if(Config.mailbylevel <= Config.stats)
-                        OS_Createmail(&mailq, lf);
 
                     lf->level = -1;
+                    lf->mail_flag = 0;
                 }
             }
 
@@ -691,23 +693,10 @@ void OS_ReadMSG(int m_queue)
                 /* Log the alert if configured to ... */
                 if(currently_rule->logalert == 1)
                 {
-
-#ifdef DEBUG
-                    debug2("%s: DEBUG: Logging ...",ARGV0);
-#endif
-
+                    lf->mail_flag = currently_rule->emailalert;
                     OS_Log(lf);
                 }
 
-                /* Send an email alert */
-                if(currently_rule->emailalert == 1)
-                {
-#ifdef DEBUG
-                    debug2("%s: DEBUG: Mailling ... ", ARGV0);
-#endif
-
-                    OS_Createmail(&mailq,lf);
-                }
 
                 /* Execute an active response */
                 if(currently_rule->ar)

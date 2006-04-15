@@ -55,7 +55,6 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
                 return(OS_INVALID);
             }
 
-            merror("reading: %s", node[i]->content);
             os_strdup(node[i]->content,Config->includes[rules_size -2]);
             Config->includes[rules_size -1] = NULL;
         }
