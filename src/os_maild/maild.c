@@ -31,7 +31,7 @@ void OS_Run(MailConfig *mail);
 
 int main(int argc, char **argv)
 {
-    int c;
+    int c, test_config = 0;
     int uid=0,gid=0;
     char *dir  = DEFAULTDIR;
     char *user = MAILUSER;
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
         
 
-    while((c = getopt(argc, argv, "dhu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "dhtu:g:D:c:")) != -1){
         switch(c){
             case 'h':
                 help();
@@ -73,6 +73,8 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -c needs an argument",ARGV0);
                 cfg = optarg;
                 break;
+            case 't':
+                test_config = 1;    
             default:
                 help();
                 break;
@@ -94,6 +96,10 @@ int main(int argc, char **argv)
     if(MailConf(cfg, &mail) < 0)
         ErrorExit(CONFIG_ERROR,ARGV0);
 
+    /* Exit here if test config is set */
+    if(test_config)
+        exit(0);
+        
     /* Going on daemon mode */
     nowDaemon();
     goDaemon();

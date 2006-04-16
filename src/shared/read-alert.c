@@ -56,9 +56,9 @@ void FreeAlertData(alert_data *al_data)
     }
     if(al_data->log)
     {
-        while(*al_data->log)
+        while(*(al_data->log))
         {
-            free(*al_data->log);
+            free(*(al_data->log));
             al_data->log++;
         }
     }
@@ -80,7 +80,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *location = NULL;
     char *srcip = NULL;
     char *user = NULL;
-    char *log[12] = {NULL};
+    char **log = NULL;
     int level, rule;
     
     char str[OS_MAXSTR+1];
@@ -89,14 +89,9 @@ alert_data *GetAlertData(int flag, FILE *fp)
 
     while(fgets(str, OS_MAXSTR, fp) != NULL)
     {
-        /* Removing new lines */
-        if ((p = strrchr(str, '\n')) != NULL)
-        {
-            *p = '\0';
-        }
-
+        
         /* Enf of alert */
-        if(strcmp(str, "") == 0)
+        if(strcmp(str, "\n") == 0)
         {
             /* Found in here */
             if(_r == 2)
@@ -132,6 +127,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
 
             /* Searching for active-response flag */
             _r = 1;
+            continue;
         }
 
         if(_r < 1)
@@ -142,14 +138,17 @@ alert_data *GetAlertData(int flag, FILE *fp)
         /* r1 means: 2006 Apr 13 16:15:17 /var/log/auth.log */
         if(_r == 1)
         {
+            /* Clear new line */
+            os_clearnl(str,p);
+             
             p = strchr(str, ':');
             {
                 if(p)
                 {
-                    p = strchr(str, ' ');
+                    p = strchr(p, ' ');
                     if(p)
                     {
-                        p = '\0';
+                        *p = '\0';
                         p++;
                     }
                 }
@@ -166,7 +165,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             if(date || location)
                 merror("Merror date or location not NULL");
             
-            os_strdup(str, date);    
+            os_strdup(str, date);
             os_strdup(p, location);    
             _r = 2;
             log_size = 0;
@@ -179,6 +178,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
             /* Rule begin */
             if(strncmp(RULE_BEGIN, str, RULE_BEGIN_SZ) == 0)
             {
+                os_clearnl(str,p);
+                
                 p = str + RULE_BEGIN_SZ;
                 rule = atoi(p);
 
@@ -209,23 +210,28 @@ alert_data *GetAlertData(int flag, FILE *fp)
             }
             
             /* srcip */
-            if(strncmp(SRCIP_BEGIN, str, SRCIP_BEGIN_SZ) == 0)
+            else if(strncmp(SRCIP_BEGIN, str, SRCIP_BEGIN_SZ) == 0)
             {
+                os_clearnl(str,p);
+                
                 p = str + SRCIP_BEGIN_SZ;
                 os_strdup(p, srcip);
             }
             /* username */
-            if(strncmp(USER_BEGIN, str, USER_BEGIN_SZ) == 0)
+            else if(strncmp(USER_BEGIN, str, USER_BEGIN_SZ) == 0)
             {
+                os_clearnl(str,p);
+                
                 p = str + USER_BEGIN_SZ;
                 os_strdup(p, user);
             }
             /* It is a log message */
             else if(log_size < 10)
             {
+                os_realloc(log, (log_size +2)*sizeof(char *), log);
                 os_strdup(str, log[log_size]); 
-                log[log_size + 1] = NULL;
                 log_size++;
+                log[log_size] = NULL;
             }
         }
 
@@ -270,6 +276,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
         }
     }
 
+    /* We need to clean end of file before returning */
+    clearerr(fp);
     return(NULL);
 }
 

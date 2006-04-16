@@ -24,6 +24,8 @@
  */
 MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p)
 {
+    int i = 0;
+    char logs[OS_MAXSTR +1];
     MailMsg *mail;
     alert_data *al_data;
 
@@ -41,6 +43,15 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p)
     os_calloc(SUBJECT_SIZE, sizeof(char), mail->subject);
 
 
+    /* Generating the logs */
+    logs[0] = '\0';
+    logs[OS_MAXSTR] = '\0';
+    while(al_data->log[i])
+    {
+        strncat(logs, al_data->log[i], OS_MAXSTR - strlen(logs) -1);
+        i++;
+    }
+
     /* Subject */
     snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT, al_data->level);
 
@@ -51,9 +62,9 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p)
             al_data->rule,
             al_data->level,
             al_data->comment,
-            al_data->log[0] == NULL?"":al_data->log[0]
-            );
+            logs);
 
+    
     /* Clearing the memory */
     FreeAlertData(al_data);
     

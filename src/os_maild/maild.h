@@ -23,7 +23,7 @@
 #define MAXCHILDPROCESS     6    /* Maximum simultaneos childs */
 
 /* Each timeout is x * 5 */
-#define NEXTMAIL_TIMEOUT    1    /* Time to check for next msg - 5 */
+#define NEXTMAIL_TIMEOUT    2    /* Time to check for next msg - 5 */
 #define DEFAULT_TIMEOUT     18   /* socket read timeout - 18 (*5)*/ 
 #define SUBJECT_SIZE        128  /* Maximum subject size */
 #define BODY_SIZE           1024 /* Maximum body size */

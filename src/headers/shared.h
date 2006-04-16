@@ -118,6 +118,10 @@ char *__local_name;
 
 #define os_free(x) (x)?free(x):merror("free a null")
 
+#define os_realloc(x,y,z) (z = realloc(x,y))?1:ErrorExit(MEM_ERROR, ARGV0)
+
+#define os_clearnl(x,p) if((p = strrchr(x, '\n')))*p = '\0';
+
 #endif /* __SHARED_H */
 
 

@@ -28,7 +28,6 @@
 
 #include "alerts/alerts.h"
 #include "alerts/getloglocation.h"
-#include "os_maild/maild.h"
 #include "os_execd/execd.h"
 
 #include "os_regex/os_regex.h"
@@ -44,9 +43,6 @@
 #include "analysisd.h"
 
 
-
-/* mail queue */
-int mailq = 0;
 
 /* execd queue */
 int execdq = 0;
@@ -182,6 +178,7 @@ int main(int argc, char **argv)
     /* Reading configuration file */
     if(GlobalConf(cfg) < 0)
         ErrorExit(CONFIG_ERROR,ARGV0);
+        
 
     /* Fixing Config.ar */
     Config.ar = ar_flag;
@@ -330,21 +327,6 @@ void OS_ReadMSG(int m_queue)
         ErrorExit(FTS_LIST_ERROR, ARGV0);
     }
     
-
-    /* Starting the mail queue (if configured to) */
-    if(Config.mailnotify == 1)
-    {
-        if((mailq = StartMQ(MAILQUEUE,WRITE)) < 0)
-        {
-            merror(MAILQ_ERROR,ARGV0,MAILQUEUE);
-            Config.mailnotify = 0;
-        }
-        else
-        {
-            verbose(CONN_TO, ARGV0, MAILQUEUE, "mail");
-        }
-    }
-
 
     /* Starting the active response queues */
     if(Config.ar)

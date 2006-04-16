@@ -33,6 +33,7 @@
 int GlobalConf(char * cfgfile)
 {
     int modules = 0;
+    FILE *fp;
         
     /* Default values */
     Config.logall = 0;
@@ -57,6 +58,16 @@ int GlobalConf(char * cfgfile)
     modules|= CRULES;
     modules|= CALERTS;
 
+
+    /* Cleaning ar file */
+    fp = fopen(DEFAULTARPATH, "w");
+    if(!fp)
+    {
+        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
+        return(OS_INVALID);
+    }
+    fclose(fp);
+    
     
     if(ReadConfig(modules, cfgfile, &Config, NULL)< 0)
     {
