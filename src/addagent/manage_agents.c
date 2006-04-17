@@ -121,33 +121,36 @@ int add_agent()
     
     /* Getting the name */
     memset(name, '\0', STR_SIZE);
-    while(name[0] == '\0')
+    do
     {
-        printf(ADD_NAME);
-        fflush(stdout);
+      printf(ADD_NAME);
+      fflush(stdout);
 
-        _name = read_from_user();
-        strncpy(name, _name, FILE_SIZE -1);
-    }
+      _name = read_from_user();
+      strncpy(name, _name, FILE_SIZE -1);
+
+      /* Search for ID KEY  -- no duplicates */
+      if(NameExist(name))
+         printf(ADD_ERROR_NAME, name);
+
+    } while(NameExist(name));
 
     
     /* Getting IP */
     memset(ip, '\0', STR_SIZE);
-    while(ip[0] == '\0')
-    {
-        printf(ADD_IP);
-        fflush(stdout);
-    
-        _ip = read_from_user();
-        strncpy(ip, _ip, FILE_SIZE -1);
-        
-        if(!OS_IsValidIP(ip) || OS_HasNetmask(ip))
-        {
-            printf(IP_ERROR, ip);
-            goto final;
-        }
 
-    }
+    do
+    {
+      printf(ADD_IP);
+      fflush(stdout);
+    
+      _ip = read_from_user();
+      strncpy(ip, _ip, FILE_SIZE -1);
+      
+      if(!OS_IsValidIP(ip) || OS_HasNetmask(ip))
+          printf(IP_ERROR, ip);
+
+    } while(!OS_IsValidIP(ip) || OS_HasNetmask(ip));
    
     
     /* Default ID */
@@ -165,37 +168,36 @@ int add_agent()
    
     
     /* Getting ID */
-    printf(ADD_ID, id);
-    fflush(stdout);
-    
-    _id = read_from_user();
-    if(_id[0] != '\0')
+    do
     {
-        strncpy(id, _id, FILE_SIZE -1);
-    }
+      printf(ADD_ID, id);
+      fflush(stdout);
     
-    
-    /* Search for ID KEY  -- no duplicates */
-    if(IDExist(id))
-    {
+      _id = read_from_user();
+      if(_id[0] != '\0')
+      {
+          strncpy(id, _id, FILE_SIZE -1);
+      }
+      /* Search for ID KEY  -- no duplicates */
+      if(IDExist(id))
+      {
         printf(ADD_ERROR_ID, id);
-        goto final;
-    }
-    /* Search for name -- no duplicates */
-    if(NameExist(name))
-    {
-        printf(ADD_ERROR_NAME, name);
-        goto final;
-    }
+      }
+    } while(IDExist(id));
+    
+    
 
     printf(AGENT_INFO, id, name, ip);
     fflush(stdout);
 
-    user_input = read_from_user();
-   
-    /* If user accepts to add */ 
-    if(user_input[0] == 'y' || user_input[0] == 'Y')
+    do
     {
+      printf(ADD_CONFIRM);
+      user_input = read_from_user();
+   
+      /* If user accepts to add */ 
+      if(user_input[0] == 'y' || user_input[0] == 'Y')
+      {
         time3 = time(0);
         rand2 = rand();
 
@@ -226,15 +228,14 @@ int add_agent()
         fclose(fp);
 
         printf(AGENT_ADD);
-    }
-    else
-    {
+      }
+      else if(user_input[0] == 'n' || user_input[0] == 'N')
+      {
         printf(ADD_NOT);
-    }
+      }
 
-    final:
-    printf(PRESS_ENTER);
-    read_from_user();
+    } while(!(user_input[0] == 'y' || user_input[0] == 'Y' || user_input[0] == 'n' || user_input[0] == 'N'));
+
     return(0);
 }
 
@@ -253,28 +254,30 @@ int remove_agent()
         return(0);
     }
 
-    printf(REMOVE_ID);
-    fflush(stdout);
-
-    user_input = read_from_user();
-    strcpy(u_id, user_input);
-
-    if(!IDExist(user_input))
+    do
     {
+      printf(REMOVE_ID);
+      fflush(stdout);
+
+      user_input = read_from_user();
+      strcpy(u_id, user_input);
+
+      if(!IDExist(user_input))
+      {
         printf(NO_ID, user_input);
-        printf(PRESS_ENTER);
-        read_from_user();
-        return(0);
-    }
+      }
+    } while(!IDExist(user_input));
     
-    printf(REMOVE_CONFIRM);
-    fflush(stdout);
-    
-    user_input = read_from_user();
-    
-    /* If user confirm */
-    if(user_input[0] == 'y' || user_input[0] == 'Y')
+    do
     {
+      printf(REMOVE_CONFIRM);
+      fflush(stdout);
+    
+      user_input = read_from_user();
+    
+      /* If user confirm */
+      if(user_input[0] == 'y' || user_input[0] == 'Y')
+      {
         fp = fopen(AUTH_FILE, "r+");
         if(!fp)
         {
@@ -285,17 +288,29 @@ int remove_agent()
         fprintf(fp, "# # # # # # # #");
         fclose(fp);
         printf(REMOVE_DONE, u_id);
-    }
-    else
-    {
+      }
+      else if(user_input[0] == 'n' || user_input[0] == 'N')
+      {
         printf(REMOVE_NOT);
-    }
+      }
 
-    printf(PRESS_ENTER);
-    read_from_user();
-            
+    } while(!(user_input[0] == 'y' || user_input[0] == 'Y' || user_input[0] == 'n' || user_input[0] == 'N'));
+
     return(0);
 }
 
+
+int list_agents()
+{
+  if(!print_agents())
+    printf(NO_AGENT);
+
+
+  printf(PRESS_ENTER);
+  read_from_user();
+
+  return(0);
+
+}
 
 /* EOF */

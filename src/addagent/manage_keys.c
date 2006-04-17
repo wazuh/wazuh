@@ -114,20 +114,16 @@ int k_extract()
         return(0);
     }
 
-
-    printf(EXTRACT_KEY);
-    fflush(stdout);
-
-    user_input = read_from_user();
-
-    
-    if(!IDExist(user_input))
+    do
     {
+      printf(EXTRACT_KEY);
+      fflush(stdout);
+      user_input = read_from_user();
+ 
+      if(!IDExist(user_input))
         printf(NO_ID, user_input);
-        printf(PRESS_ENTER);
-        read_from_user();
-        return(0);
-    }
+
+    } while(!IDExist(user_input));
 
     
     /* Trying to open the auth file */

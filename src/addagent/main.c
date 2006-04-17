@@ -98,6 +98,10 @@ int main(int argc, char **argv)
             case 'I':
                 k_import();
                 break;    
+            case 'l':
+            case 'L':
+                list_agents();
+                break;    
             case 'r':
             case 'R':
                 remove_agent();

@@ -32,6 +32,7 @@ int NameExist(char *u_name);
 
 /* Print available agents */
 int print_agents();
+int list_agents();
     
 /* clear a line */
 char *chomp(char *str);
@@ -63,17 +64,18 @@ fpos_t fp_pos;
 #define ADD_IP          "   * The IP Address for the new agent: "
 #define ADD_ID          "   * An ID for the new agent[%s]: "
 #define AGENT_INFO      "Agent information:\n   ID:%s\n   Name:%s\n   " \
-                        "IP Address:%s\n\nConfirm adding it?(y/n): "
+                        "IP Address:%s\n\n"
+#define ADD_CONFIRM     "Confirm adding it?(y/n): "
 #define AGENT_ADD       "Added.\n"
-#define ADD_NOT         "Not Adding..\n"
-#define PRESS_ENTER     "** Press ENTER to continue.\n"
+#define ADD_NOT         "Not Adding ..\n"
+#define PRESS_ENTER     "** Press ENTER to return main menu.\n"
 
 /* Add errors */
 #define ADD_ERROR_ID    "\n** ID '%s' already present. Starting over again.\n"
-#define ADD_ERROR_NAME  "\n** Name '%s' already present. Starting over again.\n"
-#define IP_ERROR        "\n** Invalid IP '%s'. Starting over again.\n"
+#define ADD_ERROR_NAME  "\n** Name '%s' already present. Please enter a new name.\n"
+#define IP_ERROR        "\n** Invalid IP '%s'. Please enter a valid IP Address.\n"
 #define NO_AGENT        "\n** No agent available. You need to add one first.\n"
-#define NO_ID           "\n** Invalid ID '%s' given. Not present.\n"
+#define NO_ID           "\n** Invalid ID '%s' given. ID is not present.\n"
 #define NO_KEY          "\n** Invalid authentication key. Starting over again.\n"
 
 /* Remove agent */
@@ -92,7 +94,7 @@ fpos_t fp_pos;
 #define EXTRACT_KEY     "Provide the ID of the agent you want to extract " \
                         "the key: "
 #define EXTRACT_MSG     "\nAgent key information for '%s' is: \n%s\n" \
-                        "\n** Press ENTER to continue\n"
+                        "\n** Press ENTER to return main menu.\n"
    
 /* Commom errors */
 #define ERROR_KEYS      "Unable to handle keys file. Exiting.\n"
@@ -107,9 +109,10 @@ fpos_t fp_pos;
     
 #define BANNER_OPT      "   (A)dd an agent (A).\n" \
                         "   (E)xtract key for an agent (E).\n" \
+                        "   (L)ist already added agents (L).\n" \
                         "   (R)emove an agent (R).\n" \
                         "   (Q)uit.\n" \
-                        "Choose your actions: A,E,R or Q: "
+                        "Choose your actions: A,E,L,R or Q: "
 
 #define BANNER_CLIENT   "   (I)mport key for the server (I).\n" \
                         "   (Q)uit.\n" \
