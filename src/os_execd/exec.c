@@ -40,13 +40,14 @@ int ReadExecConfig()
     char buffer[OS_MAXSTR +1];
 
     /* Cleaning up */
-    for(i = 0;i < exec_size; i++)
+    for(i = 0;i <= exec_size+1; i++)
     {
-        exec_names[i][0] = '\0';
-        exec_cmd[i][0] = '\0';
+        memset(exec_names[i], '\0', OS_FLSIZE +1);
+        memset(exec_cmd[i], '\0', OS_FLSIZE +1);
         exec_timeout[i] = 0;
-        exec_size = 0;
     }
+    exec_size = 0;
+    
     
     /* Opening file */
     fp = fopen(DEFAULTARPATH, "r");
@@ -55,6 +56,7 @@ int ReadExecConfig()
         merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
         return(0);
     }
+
 
     /* Reading config */
     while(fgets(buffer, OS_MAXSTR, fp) != NULL)
@@ -104,7 +106,10 @@ int ReadExecConfig()
 
         
         /* Writting the full command path */
-        snprintf(exec_cmd[exec_size], OS_FLSIZE, "%s/%s", AR_BINDIRPATH, str_pt);
+        snprintf(exec_cmd[exec_size], OS_FLSIZE, 
+                                      "%s/%s", 
+                                      AR_BINDIRPATH, 
+                                      str_pt);
 
         
         /* Searching for ' ' and - */

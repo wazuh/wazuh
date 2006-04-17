@@ -15,7 +15,7 @@ cd ../
 PWD=`pwd`
 LOCK="${PWD}/host-deny-lock"
 LOCK_PID="${PWD}/host-deny-lock/pid"
-MAX_ITERATION="5"
+MAX_ITERATION="16"
 
 echo "`date` $0 $1 $2 $3" >> /tmp/ossec-hids-responses.log
 
@@ -37,24 +37,27 @@ while [ 1 ]; do
         break;
     fi
 
-    # Breaking out of the loop after 5 attempts
+    # Getting currently/saved PID locking the file
+    C_PID=`cat ${LOCK_PID} 2>/dev/null`
+    if [ "x" = "x${S_PID}" ]; then
+        S_PID=${C_PID}
+    fi    
+
+    # Breaking out of the loop after X attempts
+    if [ "x${C_PID}" = "x${S_PID}" ]; then
+        i=`expr $i + 1`;
+    fi
     i=`expr $i + 1`;
+    
+    # So i increments 2 by 2 if the pid does not change.
+    # If the pid keeps changing, we will increments one
+    # by one and fail after MAX_ITERACTION
     if [ "$i" = "${MAX_ITERATION}" ]; then
         echo "`date` Unable to execute. Locked: $0 $1 $2 $3"
                         >> /tmp/ossec-hids-responses.log
         # Unlocking
         rm -rf ${LOCK}                
         exit 1;                
-    fi
-    
-    # Checking if the PID is still there 
-    kill -0  `cat ${LOCK_PID}` >/dev/null 2>&1
-    PSL=$?
-    if [ "${PSL} = 0" ];
-        # Locked
-        sleep 1;        
-    else
-        break;    
     fi
 done
 

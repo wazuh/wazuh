@@ -167,10 +167,9 @@ void FreeTimeoutEntry(timeout_data *timeout_entry)
         while(*tmp_str)
         {
             free(*tmp_str);
-            *tmp_str = NULL;
-
             tmp_str++;
         }
+        free(timeout_entry->command);
     }
 
     free(timeout_entry);
@@ -266,7 +265,6 @@ void ExecdStart(int q)
             if((curr_time - list_entry->time_of_addition) > 
                     list_entry->time_to_block)
             {
-                
                 ExecCmd(list_entry->command);
                 
                 
@@ -275,7 +273,7 @@ void ExecdStart(int q)
                 timeout_node = OSList_GetCurrentlyNode(timeout_list);
 
 
-                /* Cleating the memory */
+                /* Clearing the memory */
                 FreeTimeoutEntry(list_entry);
 
 
@@ -328,16 +326,6 @@ void ExecdStart(int q)
 
 
 
-        /* Allocating memory for the timeout argument */
-        timeout_args = calloc(MAX_ARGS+2, sizeof(char *));
-        timeout_entry = calloc(1, sizeof(timeout_data));
-        if(!timeout_args || !timeout_entry)
-        {
-            merror(MEM_ERROR, ARGV0);
-            continue;    
-        }
-
-
         /* Getting application name */
         name = buffer;
 
@@ -349,8 +337,6 @@ void ExecdStart(int q)
         }
         *tmp_msg = '\0';
         tmp_msg++;
-
-
 
 
         /* Getting the command to execute (valid name) */
@@ -367,16 +353,18 @@ void ExecdStart(int q)
         }
 
 
+        /* Allocating memory for the timeout argument */
+        os_calloc(MAX_ARGS+2, sizeof(char *), timeout_args);
+        
 
         /* Adding initial variables to the cmd_arg and to the timeout cmd */
         cmd_args[0] = command; 
         cmd_args[1] = ADD_ENTRY;
-        timeout_args[0] = strdup(command);
-        timeout_args[1] = strdup(DELETE_ENTRY);
+        os_strdup(command, timeout_args[0]);
+        os_strdup(DELETE_ENTRY, timeout_args[1]);
 
         cmd_args[2] = NULL;
         timeout_args[2] = NULL;
-
 
 
         /* Getting the arguments */
@@ -391,8 +379,6 @@ void ExecdStart(int q)
             {
                 timeout_args[i] = strdup(cmd_args[i]);
                 timeout_args[i+1] = NULL;
-                
-                cmd_args[i+1] = NULL;
                 break;
             }
             *tmp_msg = '\0';
@@ -430,29 +416,29 @@ void ExecdStart(int q)
           timeout_node = OSList_GetNextNode(timeout_list);
         }
 
+
+        /* If it wasn't added before, do it now */
         if(!added_before)
         {
             /* executing command */
             ExecCmd(cmd_args);
 
-            /* Creating the timeout entry */
-            timeout_entry->command = timeout_args;
-            timeout_entry->time_of_addition = curr_time;
-            timeout_entry->time_to_block = timeout_value;
-
-
             /* We don't need to add if the timeout_value == 0 */
-            if(!timeout_value)
+            if(timeout_value)
             {
-                FreeTimeoutEntry(timeout_entry);
-            }        
+                /* Creating the timeout entry */
+                os_calloc(1, sizeof(timeout_data), timeout_entry);
+                timeout_entry->command = timeout_args;
+                timeout_entry->time_of_addition = curr_time;
+                timeout_entry->time_to_block = timeout_value;
 
 
-            /* Adding command to the timeout list */
-            else if(!OSList_AddData(timeout_list, timeout_entry))
-            {
-                merror("%s: Error adding command to the timeout list", ARGV0);
-                FreeTimeoutEntry(timeout_entry);
+                /* Adding command to the timeout list */
+                if(!OSList_AddData(timeout_list, timeout_entry))
+                {
+                    merror(LIST_ADD_ERROR, ARGV0);
+                    FreeTimeoutEntry(timeout_entry);
+                } 
             }
 
             childcount++;
@@ -461,12 +447,16 @@ void ExecdStart(int q)
         /* We didn't add it to the timeout list */
         else
         {
-            /* Creating the timeout entry to be properly deleted */
-            timeout_entry->command = timeout_args;
-            timeout_entry->time_of_addition = curr_time;
-            timeout_entry->time_to_block = timeout_value;
+            char **ss_ta = timeout_args;
 
-            FreeTimeoutEntry(timeout_entry);
+            /* Clear the timeout arguments */
+            while(*timeout_args)
+            {
+                free(*timeout_args);
+                timeout_args++;
+            }
+
+            free(ss_ta);
         }
 
         /* Some cleanup */
