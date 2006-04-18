@@ -1,0 +1,47 @@
+/*   $OSSEC, os_regex.c, v0.4, 2006/01/02, Daniel B. Cid$   */
+
+/* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
+ * All right reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
+
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+#include "os_regex.h"
+
+
+/** int OS_Match2(char *pattern, char *str) v0.4
+ *
+ *  This function is a wrapper around the compile/execute
+ *  functions. It should only be used when the pattern is
+ *  only going to be used once.
+ *  Returns 1 on success or 0 on failure.
+ */
+int OS_Match2(char *pattern, char *str)
+{
+    int r_code = 0;
+    OSMatch reg;
+
+    /* If the compilation failed, we don't need to free anything */
+    if(OSMatch_Compile(pattern, &reg, 0))
+    {
+        if(OSMatch_Execute(str,strlen(str), &reg))
+        {
+            r_code = 1;
+        }
+
+        OSMatch_FreePattern(&reg);
+    }
+    
+    return(r_code);
+}
+
+
+/* EOF */

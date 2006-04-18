@@ -49,6 +49,15 @@ typedef struct _OSRegex
 }OSRegex;
 
 
+/* OSmatch structure */
+typedef struct _OSMatch
+{
+    int error;
+    int *size;
+    char **patterns;
+}OSMatch;
+
+
 /*** Prototypes ***/
 
 
@@ -94,8 +103,39 @@ void OSRegex_FreeSubStrings(OSRegex *reg);
  * Returns 1 on success or 0 on failure.
  */
 int OS_Regex(char *pattern, char *str);
-      
 
+
+      
+/** int OSMatch_Compile(char *pattern, OSMatch *reg, int flags) v0.1
+ * Compile a pattern to be used later.
+ * Allowed flags are:
+ *      - OS_CASE_SENSITIVE
+ * Returns 1 on success or 0 on error.
+ * The error code is set on reg->error.
+ */
+int OSMatch_Compile(char *pattern, OSMatch *reg, int flags);
+
+
+/** int OSMatch_Execute(char *str, int str_len, OSMatch *reg) v0.1
+ * Compare an already compiled pattern with
+ * a not NULL string.
+ * Returns 1 on success or 0 on error.
+ * The error code is set on reg->error.
+ */
+int OSMatch_Execute(char *str, int str_len, OSMatch *reg);
+
+
+/** int OSMatch_FreePattern(OSMatch *reg) v0.1
+ * Release all the memory created by the compilation/executation
+ * phases.
+ * Returns void.
+ */
+void OSMatch_FreePattern(OSMatch *reg);
+
+
+int OS_Match2(char *pattern, char *str);
+
+    
 /* OS_WordMatch v0.3:
  * Searches for  pattern in the string
  */

@@ -20,6 +20,7 @@ if(! -f $prog)
 while(<FILE>)
 {
     my $line = $_;
+    print "running: $prog $line\n";
     my $result =  `$prog $line`;
     if($result =~ /$msg/)
     {
