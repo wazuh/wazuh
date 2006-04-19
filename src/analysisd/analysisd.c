@@ -464,6 +464,8 @@ void OS_ReadMSG(int m_queue)
             Zero_Eventinfo(lf);
 
 
+            verbose("rc:%s", msg);
+
             /* Clean the msg appropriately */
             if(OS_CleanMSG(msg, lf) < 0)
             {
@@ -809,8 +811,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking if any word to match exists */
     if(currently_rule->match)
     {
-        if(!OS_Match(currently_rule->match,
-                    lf->log))
+        if(!OSMatch_Execute(lf->log,lf->size,currently_rule->match))
             return(NULL);
     }	   	   
 

@@ -53,7 +53,7 @@ typedef struct _RuleInfo
    
     char *group;
     char *plugin_decoded;
-    char *match;
+    OSMatch *match;
     OSRegex *regex;
 
     char *srcip;

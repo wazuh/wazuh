@@ -74,6 +74,12 @@ int GlobalConf(char * cfgfile)
         return(OS_INVALID);
     }
 
+
+    /* Minimum memory size */
+    if(Config.memorysize < 64)
+        Config.memorysize = 64;
+        
+
     return(0);
 }
 

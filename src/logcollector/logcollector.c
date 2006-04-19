@@ -56,7 +56,7 @@ void LogCollectorStart()
             handle_file(i);
 
             /* Getting the log type */
-            if(OS_Match("snort-full", log[i].logformat))
+            if(strcmp("snort-full", log[i].logformat) == 0)
             {
                 log[i].read = (void *)read_snortfull;
             }

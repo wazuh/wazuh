@@ -497,7 +497,6 @@ int LastMsg_Stats(char *log)
     nlog = strchr(log,' ');
     if(nlog == NULL)
     {
-        merror("%s: Message error (index): %s",ARGV0, log);
         nlog = log;
     }
     else
@@ -540,7 +539,6 @@ void LastMsg_Change(char *log)
     nlog = strchr(log,' ');
     if(nlog == NULL)
     {
-        merror("%s: Message indexing error (index): %s",ARGV0, log);
         nlog = log;
     }
     else

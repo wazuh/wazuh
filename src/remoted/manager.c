@@ -137,8 +137,6 @@ int equal_last_msg(int agentid, char *r_msg)
             merror(MUTEX_ERROR, ARGV0);
             return(1);
         }
-        
-                
     }
 
     /* Locking before using */

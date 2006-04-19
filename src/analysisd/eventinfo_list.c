@@ -24,6 +24,8 @@ EventNode *lastnode;
 
 int _memoryused = 0;
 int _memorymaxsize = 0;
+int _max_freq = 0;
+
 
 /* Create the Event List */
 void OS_CreateEventList(int maxsize)
@@ -74,20 +76,29 @@ void OS_AddEvent(Eventinfo *lf)
 
         _memoryused++;
         
-        /* Need to remove the last node */
+        /* Need to remove the last nodes */
         if(_memoryused > _memorymaxsize)
         {
+            int i = 0;
             EventNode *oldlast;
-
-            oldlast = lastnode;
-            lastnode = lastnode->prev;
-            lastnode->next = NULL;
             
-            /* free event info */
-            Free_Eventinfo(oldlast->event);
-            free(oldlast);
+            /* Remove at least the last 10 events 
+             * or the events that will not match anymore
+             * (higher than max frequency)
+             */
+            while((i < 10)||((lf->time - lastnode->event->time) > _max_freq))
+            {
+                oldlast = lastnode;
+                lastnode = lastnode->prev;
+                lastnode->next = NULL;
 
-            _memoryused--;
+                /* Free event info */
+                Free_Eventinfo(oldlast->event);
+                free(oldlast);
+
+                _memoryused--;
+                i++;
+            }
         }
     }
     
