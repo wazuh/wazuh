@@ -6,21 +6,23 @@
       
 
 <group name="pure-ftpd,syslog,">
-  <rule id="2800" level="0" noalert="1">
+  <rule id="2800" level="0">
     <decoded_as>pure-ftpd</decoded_as>
-    <description>Grouping for the pure-ftpd rules</description>
+    <description>Grouping for the pure-ftpd rules.</description>
   </rule>
   
   <rule id="2801" level="3">
     <if_sid>2800</if_sid>
     <match>[INFO] New connection from</match>
-    <description>New FTP connection</description>
+    <group>connection_attempt</group>
+    <description>New FTP connection.</description>
   </rule>
 
   <rule id="2802" level="5">
     <if_sid>2800</if_sid>
     <match>[WARNING] Authentication failed for user</match>
-    <description>FTP Authentication failed</description>
+    <group>authentication_failed</group>
+    <description>FTP Authentication failed.</description>
   </rule>
 
   <rule id="2803" level="0">
@@ -50,6 +52,13 @@
     <if_matched_sid>2801</if_matched_sid>
     <same_source_ip />
     <description>Multiple connection attempts from same source</description>
+  </rule>
+
+  <rule id="2809" level="3">
+    <match>[INFO] \S+ is now logged in</match>
+    <group>authentication_success</group>
+    <description>FTP Authentication success.</description>
+  </rule>  
   </rule>
 </group> <!-- SYSLOG,PURE-FTPD -->
 

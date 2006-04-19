@@ -67,10 +67,11 @@ typedef struct _Eventinfo
     int day;
     int year;
     char *hour;
-    char *mon;
+    char mon[4];
 
     char **lasts_lf;
 }Eventinfo;
+
 
 /* Events List structure */
 typedef struct _EventNode

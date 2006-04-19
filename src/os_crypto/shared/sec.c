@@ -443,6 +443,15 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
         global_count = 0;
         global_time = curr_time;
     }
+
+    /* If global count reaches 254 */
+    if(global_count >= 254)
+    {
+        merror("%s: Global count too high", ARGV0);
+        sleep(1);
+        global_time = time(0);
+        global_count = 0;
+    }
    
 
     snprintf(_tmpmsg, OS_MAXSTR,"%010u:%04hu:%05hu%0*d:%s", 

@@ -7,18 +7,10 @@
   
 <!-- Default variables for the OSSEC HIDS SYSLOG rules -->
 
-<!-- OSSEC website -->
-<var name="HTTP_OSSEC">http://www.ossec.net/logs</var>
-
 <!-- Bad words matching. Any log containing these messages
   -  will be triggered.
   -->
 <var name="BAD_WORDS">core_dumped|failure|error|attack|bad|illegal|denied|refused|unauthorized|fatal|Segmentation Fault|Corrupted</var>
-
-<!-- System users. They should never log in to the system -->
-<var name="SYS_USERS">apache|mysql|www|nobody|nogroup|portmap|named|rpc|mail|ftp|shutdown|bin|daemon|postfix|shell|info|guest|psql</var>
-
-
 
 
 <!-- Syslog errors. -->
@@ -33,7 +25,7 @@
     <description>Possible problem (unknown) somewhere in the system</description>
   </rule>    
 
-  <rule id="103" level="13" maxsize="1012">
+  <rule id="103" level="13" maxsize="912">
     <description>Non standard syslog message (size too large)</description>
   </rule>  
 </group> <!-- SYSLOG,ERRORS -->
@@ -73,11 +65,6 @@
 
 <!-- Access control messages -->
 <group name="syslog,accesscontrol,connection_attempt">
-  <rule id="400" level="0" noalert="1">
-    <decoded_as>sshd</decoded_as>
-    <description>SSHD messages grouped</description>
-  </rule>
-  
   <rule id="401" level="5">
     <match>FAILED LOGIN |authentication failure|</match>
     <match>Authentication failed for|invalid password for|</match>
@@ -96,12 +83,6 @@
     <description>Connection blocked by Tcp Wrappers (or other ACL)</description>
   </rule>
 
-  <rule id ="404" level="5">
-    <if_sid>400</if_sid>
-    <match>illegal user|invalid user</match>
-    <description>Attempt to login using a non-existent user</description>
-  </rule>
-
   <rule id ="405" level="9">
     <match>ILLEGAL ROOT LOGIN</match>
     <description>Illegal root login. </description>
@@ -111,18 +92,6 @@
     <regex>^login[\d+]: ROOT LOGIN  on</regex>
     <description>Physical root login</description>
   </rule>  
-
-  <rule id="408" level="10" frequency="6" timeframe="120" ignore="60">
-    <if_matched_sid>404</if_matched_sid>
-    <description>SSHD brute force trying to get access to the system</description>
-  </rule>
-
-  <rule id="409" level="0">
-    <if_sid>400</if_sid>
-    <match>authentication failure; logname= uid=0 euid=0 tty=ssh|</match>
-    <match>input_userauth_request: invalid user</match>
-    <description>Useless SSHD message without a user/ip</description>
-  </rule>
 
   <rule id="410" level="10" frequency="5" timeframe="240">
     <if_matched_sid>401</if_matched_sid>
@@ -386,152 +355,6 @@
     <description>Successful sudo to ROOT executed</description>
   </rule>
 </group> <!-- SYSLOG, SUDO -->
-
-
-
-<!-- SSHD messages -->
-<group name="syslog,sshd">
-  <rule id="1501" level="12">
-    <if_sid>400</if_sid>
-    <regex>Bad protocol version identification</regex>
-    <description>Possible attack on the ssh server(or version gathering)</description>
-  </rule>
-
-  <rule id="1502" level="5">
-    <if_sid>400</if_sid>
-    <regex>reverse mapping \w+ \w+ for \S+ failed - POSS</regex>
-    <description>Reverse lookup error (bad ISP or possible attack)</description>
-  </rule>
-
-  <rule id="1503" level="10" frequency="4" timeframe="360">
-    <if_matched_sid>1502</if_matched_sid>
-    <description>Possible breakin attempt (high reverse lookup errors)</description>
-  </rule>
-
-  <rule id="1504" level="4">
-    <if_sid>400</if_sid>
-    <match>fatal: Timeout before authentication for</match>
-    <description>Timeout while logging in (sshd)</description>
-  </rule>
-
-  <rule id="1505" level="10" frequency="4" timeframe="360">
-    <if_matched_sid>1504</if_matched_sid>
-    <description>Possible scan or breakin attempt (high number of login timeouts)</description>
-  </rule>
-
-  <rule id="1506" level="6">
-    <if_sid>400</if_sid>
-    <match>Did not receive identification string from</match>
-    <description>SSH insecure connection attempt (scan)</description>
-  </rule>
-
-  <rule id="1507" level="14">
-    <if_sid>400</if_sid>
-    <match>fatal: buffer_get_string: bad string</match>
-    <description>OpenSSH challenge-response exploit</description>
-  </rule>
-
-  <rule id="1508" level="4">
-    <if_sid>400</if_sid>
-    <match>fatal: Read from socket failed: Connection reset</match>
-    <description>Timeout while logging in (sshd)</description>
-  </rule>
-  
-  <rule id="1509" level="0">
-    <if_sid>400</if_sid>
-    <match>error: Could not get shadow information for NOUSER</match>
-    <description>Useless SSHD message without a user/ip</description>
-  </rule>  
-</group> <!-- SYSLOG, SSHD -->
-
-
-
-<!-- Attack signatures -->
-<group name="syslog,attacks">
-  <rule id="1601" level="12"> <!-- XXX SSH CONNECTION/LOGIN -->
-    <if_sid>400</if_sid>
-    <regex>Accepted password for|session opened for user</regex>
-    <user>$SYS_USERS</user>
-    <description>System user sucessfully logged on the system</description>
-  </rule>
-
-  <rule id="1602" level="14">
-    <regex>^rpc.statd[\d+]: gethostbyname error for \W+</regex>
-    <description>Buffer overflow attack on rpc.statd</description>
-  </rule>
-
-  <rule id="1603" level="14">
-    <regex>ftpd[\d+]: \S+ FTP LOGIN FROM \.+ 0bin0sh</regex>
-    <description>Buffer overflow on WU-FTPD versions prior to 2.6</description>
-  </rule>
-
-  <rule id="1604" level="13">
-    <match>?????????????????????</match>
-    <description>Unkown buffer overflow attempt</description>
-  </rule>
-
-  <rule id="1605" level="12">
-    <match>changed by \(\(null\)</match>
-    <description>"Null" user changed some information</description>
-  </rule>
-
-  <rule id="1606" level="12">
-    <regex>@@@@@@@@@@@@@@@@@@@@@@@@\.+/bin/sh</regex>
-    <description>Buffer overflow attack (probably on yppasswd)</description>
-  </rule>
-
-  <rule id="1607" level="14">
-    <regex>cachefsd: Segmentation Fault - core dumped|</regex>
-    <regex>inetd[\d+]: \S+cachefsd: Segmentation Fault - core dumped</regex>
-    <description>Heap overflow in the Solaris cachefsd service</description>
-    <cve>2002-0033</cve>
-  </rule>
-
-  <rule id="1608" level="14" timeframe="120">
-    <if_sid>400</if_sid>
-    <if_matched_regex>^sshd[\d+]: \.+Corrupted check by bytes on</if_matched_regex>
-    <regex>^sshd[\d+]: fatal: Local: crc32 compensation attack</regex>
-    <description>SSH CRC-32 Compensation attack</description>
-    <cve>2001-0144</cve>
-    <info>http://www.securityfocus.com/bid/2347/info/</info>
-  </rule>
-
-  <rule id="1609" level="12">
-    <match>attempt to execute code on stack by</match>
-    <description>Stack overflow attempt or program exiting with SEGV</description>
-    <info>http://snap.nlc.dcccd.edu/reference/sysadmin/julian/ch18/389-392.html</info>
-  </rule>
-
-  <rule id="1610" level="10" timeframe="120" frequency="8" ignore="60">
-    <if_level>6</if_level>
-    <same_source_ip></same_source_ip>
-    <description>Multiple events from same source ip (8 within 2 minutes)</description>
-  </rule>  
-</group> <!-- SYSLOG, ATTACKS -->
-
-
-
-<!-- Privilege scalation messages -->
-<group name="syslog,elevation_of_privilege">
-  <rule id="1701" level="15" timeframe="300">
-    <if_group>adduser</if_group>
-    <if_matched_group>attacks</if_matched_group>
-    <description>Possible attack followed by the addition of an user</description>
-  </rule>
-</group> <!-- SYSLOG, ELEVATION_OF_PRIVILEGE -->
-
-
-
-<!-- Scan signatures -->
-<group name="syslog,scans">
-  <rule id="1801" level="10" frequency="7" timeframe="90" ignore="60">
-    <if_group>connection_attempt</if_group>
-    <description>Horizontal scan on the network</description>
-    <same_source_ip></same_source_ip>
-    <info>http://project.honeynet.org/papers/enemy2/</info>
-  </rule>
-</group> <!-- SYSLOG,SCANS -->
-
 
 
 <!-- PPTP messages -->

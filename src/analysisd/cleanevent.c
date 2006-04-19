@@ -43,7 +43,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
     char *pieces[2];
     
-    int hostname_size = 0, loglen = 0;
+    int hostname_size = 0, loglen;
     
     struct tm *p;
 
@@ -83,7 +83,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         if(Config.keeplogdate)
         {
             /* Getting the month */
-            os_calloc(4,sizeof(char), lf->mon);
             strncpy(lf->mon,pieces[1],3);
             pieces[1]+=4;
 
@@ -130,7 +129,24 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         /* Moving pieces[1] to the beginning of the log message */
         pieces[1]++;
     }
-
+    
+    /* xferlog date format 
+     * Mon Apr 17 18:27:14 2006 1 64.160.42.130
+     */
+    else if((loglen > 28) &&
+            (pieces[1][3] == ' ')&&
+            (pieces[1][7] == ' ')&&
+            (pieces[1][10] == ' ')&&
+            (pieces[1][13] == ':')&&
+            (pieces[1][16] == ':')&&
+            (pieces[1][19] == ' ')&&
+            (pieces[1][24] == ' ')&&
+            (pieces[1][26] == ' '))
+    {
+        /* Moving pieces to the beginning of the message */
+        pieces[1]+=24;
+    }
+    
 
     /* Checking for snort date format
      * ex: 01/28-09:13:16.240702  [**] 
@@ -157,7 +173,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 return(-1);
             }
             
-            os_calloc(4,sizeof(char),lf->mon);
             strncpy(lf->mon, month[month_int], 3);
             pieces[1]+=3;
 
@@ -189,7 +204,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
              (pieces[1][20]== ' ') && 
              (pieces[1][25]== ']') )
     {
-        
         /* Use the date from the log instead of using the
          * date from when the log was received 
          */
@@ -197,7 +211,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         {
             /* Getting the month */
             pieces[1]+=5;
-            os_calloc(4,sizeof(char),lf->mon);
             strncpy(lf->mon,pieces[1],3);
             
             pieces[1]+=4;
@@ -248,7 +261,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
 
     /* location  */        
-    os_strdup(pieces[0], lf->location);
+    lf->location = pieces[0];
 
 
     /* Setting up the event data */
@@ -270,14 +283,9 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         lf->year = p->tm_year+1900;
     }
     
-    if(!lf->mon)
+    if(lf->mon[0] == '\0')
     {
-        lf->mon = strdup(month[p->tm_mon]);
-
-        if(!lf->mon)
-        {
-            ErrorExit(MEM_ERROR,ARGV0); 
-        }
+        strncpy(lf->mon,month[p->tm_mon],3);
     }
 
     

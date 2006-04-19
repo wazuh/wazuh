@@ -73,10 +73,6 @@ void print_totals()
     char logfile[OS_FLSIZE +1];
     FILE *flog;
 
-    /* Pre year must be set */
-    if(!prev_year)
-        return;
-    
         
     /* Creating the path for the logs */
     snprintf(logfile, OS_FLSIZE,"%s/%d/", STATSAVED, prev_year);

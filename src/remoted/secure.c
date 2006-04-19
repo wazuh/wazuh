@@ -140,7 +140,7 @@ void HandleSecure()
         
 
         /* If we can't send the message, try to connect to the
-         * socket again. If it not exist.
+         * socket again. If it not exit.
          */
         if(SendMSG(logr.m_queue, tmp_msg, srcmsg, 
                     SECURE_MQ) < 0)

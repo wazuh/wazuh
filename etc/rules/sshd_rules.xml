@@ -1,0 +1,120 @@
+<!-- Official SSHD rules for the OSSEC HIDS
+  -  Author: Daniel B. Cid
+  -  Date: Nov 11, 2005 v1
+  -  Date: Apr 19, 2006 v2
+  -->
+
+
+<!-- SSHD messages -->
+<group name="syslog,sshd">
+  <rule id="1500" level="0" noalert="1">
+    <decoded_as>sshd</decoded_as>
+    <description>SSHD messages grouped.</description>
+  </rule>
+            
+              
+  <rule id="1501" level="12">
+    <if_sid>1500</if_sid>
+    <regex>Bad protocol version identification</regex>
+    <description>Possible attack on the ssh server </description>
+    <description>(or version gathering)</description>
+  </rule>
+
+  <rule id="1502" level="5">
+    <if_sid>1500</if_sid>
+    <regex>reverse mapping \w+ \w+ for \S+ failed - POSS</regex>
+    <description>Reverse lookup error (bad ISP or attack).</description>
+  </rule>
+
+  <rule id="1503" level="10" frequency="4" timeframe="360">
+    <if_matched_sid>1502</if_matched_sid>
+    <description>Possible breakin attempt </description>
+    <description>(high number of reverse lookup errors).</description>
+  </rule>
+
+  <rule id="1504" level="4">
+    <if_sid>1500</if_sid>
+    <match>fatal: Timeout before authentication for</match>
+    <description>Timeout while logging in (sshd).</description>
+  </rule>
+
+  <rule id="1505" level="10" frequency="4" timeframe="360">
+    <if_matched_sid>1504</if_matched_sid>
+    <description>Possible scan or breakin attempt </description>
+    <description>(high number of login timeouts).</description>
+  </rule>
+
+  <rule id="1506" level="6">
+    <if_sid>1500</if_sid>
+    <match>Did not receive identification string from</match>
+    <description>SSH insecure connection attempt (scan)</description>
+  </rule>
+
+  <rule id="1507" level="14">
+    <if_sid>1500</if_sid>
+    <match>fatal: buffer_get_string: bad string</match>
+    <description>OpenSSH challenge-response exploit</description>
+  </rule>
+
+  <rule id="1508" level="4">
+    <if_sid>1500</if_sid>
+    <match>fatal: Read from socket failed: Connection reset</match>
+    <description>Timeout while logging in (sshd)</description>
+  </rule>
+  
+  <rule id="1509" level="0">
+    <if_sid>1500</if_sid>
+    <match>error: Could not get shadow information for NOUSER</match>
+    <description>Useless SSHD message without a user/ip</description>
+  </rule>
+  
+  <rule id ="1510" level="5">
+    <if_sid>1500</if_sid>
+    <match>illegal user|invalid user</match>
+    <group>invalid_login,connection_attempt</group>
+    <description>Attempt to login using a non-existent user</description>
+  </rule>
+
+  <rule id="1511" level="0">
+    <if_sid>1500</if_sid>
+    <match>authentication failure; logname= uid=0 euid=0 tty=ssh|</match>
+    <match>input_userauth_request: invalid user</match>
+    <description>Useless SSHD message without a user/ip.</description>
+  </rule>
+
+  <rule id="1512" level="10" frequency="6" timeframe="120" ignore="120">
+    <if_matched_sid>1510</if_matched_sid>
+    <description>SSHD brute force trying to get access to </description>
+    <description>the system.</description>
+  </rule>
+
+  <rule id="1513" level="6">
+    <if_sid>1500</if_sid>
+    <match>Corrupted check bytes on</match>
+    <description>Corrupted bytes on SSHD.</description>  
+  </rule>
+  
+  <rule id="1514" level="14" timeframe="120" frequency="1">
+    <if_matched_sid>1513</if_matched_sid>
+    <regex>Local: crc32 compensation attack</regex>
+    <description>SSH CRC-32 Compensation attack</description>
+    <cve>2001-0144</cve>
+    <info>http://www.securityfocus.com/bid/2347/info/</info>
+  </rule>  
+
+  <rule id="1515" level="3">
+    <if_sid>1500</if_sid>
+    <regex> Accepted \S+ for </regex>
+    <group>authentication_success,connection_attempt</group>
+    <description>SSHD authentication success.</description>
+  </rule>
+
+  <rule id="1516" level="5">
+    <if_sid>1500</if_sid>
+    <regex> Failed \S+ for </regex>
+    <group>authentication_failed,connection_attempt</group>
+    <description>SSHD authentication failed.</description>
+  </rule>  
+</group> <!-- SYSLOG, SSHD -->
+
+<!-- EOF -->

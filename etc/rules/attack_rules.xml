@@ -1,0 +1,90 @@
+<!-- Official "attack" rules for the OSSEC HIDS
+  -  Author: Daniel B. Cid
+  -  Date: Nov 11, 2005 v1
+  -  Date: Apr 19, 2006 v2
+  -->
+
+
+<!-- System users. They should never log in to the system -->
+<var name="SYS_USERS">apache|mysql|www|nobody|nogroup|portmap|named|rpc|mail|ftp|shutdown|bin|daemon|postfix|shell|info|guest|psql</var>
+
+
+<!-- Attack signatures -->
+<group name="syslog,attacks">
+  <rule id="1601" level="12">
+    <if_group>authentication_success</if_group>
+    <user>$SYS_USERS</user>
+    <description>System user sucessfully logged on the system.</description>
+  </rule>
+
+  <rule id="1602" level="14">
+    <regex>^rpc.statd[\d+]: gethostbyname error for \W+</regex>
+    <description>Buffer overflow attack on rpc.statd</description>
+  </rule>
+
+  <rule id="1603" level="14">
+    <regex>ftpd[\d+]: \S+ FTP LOGIN FROM \.+ 0bin0sh</regex>
+    <description>Buffer overflow on WU-FTPD versions prior to 2.6</description>
+  </rule>
+
+  <rule id="1604" level="13">
+    <match>?????????????????????</match>
+    <description>Unkown buffer overflow attempt</description>
+  </rule>
+
+  <rule id="1605" level="12">
+    <match>changed by \(\(null\)</match>
+    <description>"Null" user changed some information</description>
+  </rule>
+
+  <rule id="1606" level="12">
+    <match>@@@@@@@@@@@@@@@@@@@@@@@@@</match>
+    <description>Buffer overflow attack (probably on yppasswd)</description>
+  </rule>
+
+  <rule id="1607" level="14">
+    <regex>cachefsd: Segmentation Fault - core dumped</regex>
+    <description>Heap overflow in the Solaris cachefsd service</description>
+    <cve>2002-0033</cve>
+  </rule>
+
+  <rule id="1609" level="12">
+    <match>attempt to execute code on stack by</match>
+    <description>Stack overflow attempt or program exiting </description>
+    <description>with SEGV (Solaris)</description>
+    <info>http://snap.nlc.dcccd.edu/reference/sysadmin/julian/ch18/389-392.html</info>
+  </rule>
+
+  <rule id="1610" level="10" timeframe="120" frequency="8" ignore="60">
+    <if_level>6</if_level>
+    <same_source_ip></same_source_ip>
+    <description>Multiple events from same source ip.</description>
+  </rule>  
+</group> <!-- SYSLOG, ATTACKS -->
+
+
+
+<!-- Privilege scalation messages -->
+<group name="syslog,elevation_of_privilege">
+  <rule id="1701" level="15" timeframe="300">
+    <if_group>adduser</if_group>
+    <if_matched_group>attacks</if_matched_group>
+    <description>Attack followed by the addition </description>
+    <description>of an user.</description>
+  </rule>
+</group> <!-- SYSLOG, ELEVATION_OF_PRIVILEGE -->
+
+
+
+<!-- Scan signatures -->
+<group name="syslog,scans">
+  <rule id="1801" level="10" frequency="6" timeframe="90" ignore="90">
+    <if_group>connection_attempt</if_group>
+    <description>Horizontal scan on the network</description>
+    <same_source_ip />
+    <info>http://project.honeynet.org/papers/enemy2/</info>
+  </rule>
+</group> <!-- SYSLOG,SCANS -->
+
+
+<!-- EOF -->

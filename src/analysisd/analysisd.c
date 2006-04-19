@@ -117,10 +117,7 @@ int main(int argc, char **argv)
     thishour = 0;
     today = 0;
     prev_year = 0;
-    prev_month[0] = '\0';
-    prev_month[1] = '\0';
-    prev_month[2] = '\0';
-    prev_month[3] = '\0';
+    memset(prev_month, '\0', 4);
     hourly_alerts = 0;
 
     while((c = getopt(argc, argv, "tdhu:g:D:c:")) != -1){
@@ -418,7 +415,7 @@ void OS_ReadMSG(int m_queue)
         if(!lf)
             ErrorExit(MEM_ERROR, ARGV0);
         lf->year = prev_year;
-        os_strdup(prev_month, lf->mon);
+        strncpy(lf->mon, prev_month, 3);
         lf->day = today;
 
         if(OS_GetLogLocation(lf) < 0)
@@ -435,9 +432,6 @@ void OS_ReadMSG(int m_queue)
     /* Daemon loop */
     while(1)
     {
-        /* Msg to be received and the event info structure */
-        Eventinfo *lf;
-        
         lf = (Eventinfo *)calloc(1,sizeof(Eventinfo));
         
         /* This shouldn't happen .. */
@@ -464,8 +458,6 @@ void OS_ReadMSG(int m_queue)
             Zero_Eventinfo(lf);
 
 
-            verbose("rc:%s", msg);
-
             /* Clean the msg appropriately */
             if(OS_CleanMSG(msg, lf) < 0)
             {
@@ -491,24 +483,25 @@ void OS_ReadMSG(int m_queue)
                  */
                 DumpLogstats();
                 thishour = __crt_hour;
-            }
 
-            /* Check if the date has changed */
-            if(today != lf->day)
-            {
-                if(Config.stats)
-                    Update_Hour();  /* Update the hourly stats (done daily) */
-
-                if(OS_GetLogLocation(lf) < 0)
+                /* Check if the date has changed */
+                if(today != lf->day)
                 {
-                    ErrorExit("%s: Error alocating log files", ARGV0);
-                }
+                    if(Config.stats)
+                    {
+                        /* Update the hourly stats (done daily) */
+                        Update_Hour();
+                    }
 
-                today = lf->day;
-                prev_month[0] = lf->mon[0];
-                prev_month[1] = lf->mon[1];
-                prev_month[2] = lf->mon[2];
-                prev_year = lf->year;
+                    if(OS_GetLogLocation(lf) < 0)
+                    {
+                        ErrorExit("%s: Error alocating log files", ARGV0);
+                    }
+
+                    today = lf->day;
+                    strncpy(prev_month, lf->mon, 3);
+                    prev_year = lf->year;
+                }
             }
 
 
@@ -590,11 +583,6 @@ void OS_ReadMSG(int m_queue)
             {
                 lf->fts = 0;
             }
-
-
-            #ifdef DEBUG
-            debug2("%s: DEBUG: Starting rule checks\n",ARGV0);
-            #endif
 
 
             lf->size = strlen(lf->log);
@@ -742,7 +730,7 @@ void OS_ReadMSG(int m_queue)
 
 
             /* Cleaning the memory */	
-CLMEM:
+            CLMEM:
 
 
             /* Only clear the memory if the eventinfo was not
@@ -971,11 +959,6 @@ void DumpLogstats()
     RuleNode *rulenode_pt;
     char logfile[OS_FLSIZE +1];
     FILE *flog;
-
-    /* We need to have year and month set */
-    if(prev_year == 0)
-        return;
-
 
     /* Opening log file */
     snprintf(logfile, OS_FLSIZE, "%s/%d/", STATSAVED, prev_year);

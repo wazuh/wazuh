@@ -143,7 +143,6 @@ void Zero_Eventinfo(Eventinfo *lf)
 {
     lf->log_tag = NULL;
     lf->log = NULL;
-    lf->location = NULL;
     lf->group = NULL;
     lf->hostname = NULL;
     lf->comment = NULL;
@@ -171,7 +170,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->matched = 0;
     
     lf->year = 0;
-    lf->mon = NULL;
+    lf->mon[0] = '\0'; lf->mon[3] = '\0';
     lf->day = 0;
     lf->hour = NULL;
 
@@ -189,8 +188,6 @@ void Free_Eventinfo(Eventinfo *lf)
     
     if(lf->log)
         free(lf->log);
-    if(lf->location)
-        free(lf->location);
     if(lf->hostname)
         free(lf->hostname);    
     if(lf->info)
@@ -219,8 +216,6 @@ void Free_Eventinfo(Eventinfo *lf)
     if(lf->url)
         free(lf->url);
         
-    if(lf->mon)
-        free(lf->mon);
     if(lf->hour)
         free(lf->hour);            
 
