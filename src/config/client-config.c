@@ -29,7 +29,6 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
     logr = (agent *)d1;
 
     logr->execdq = 0;
-    printf("a\n");
 
     while(node[i])
     {
@@ -80,6 +79,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
             merror(XML_INVELEM, ARGV0, node[i]->element);
             return(OS_INVALID);
         }
+        i++;
     }
 
     return(0);

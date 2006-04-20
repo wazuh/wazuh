@@ -19,6 +19,18 @@
 #include "mail-config.h"
 
 
+void AssignIgnore_Global(char **ignores, void *configp)
+{
+    _Config *Config;
+
+    Config = (_Config *)configp;
+    if(Config)
+    {
+        Config->syscheck_ignore = ignores;
+    }
+}
+
+
 /* GlobalConf vv0.2: 2005/03/03
  * v0.2: Changing to support the new OS_XML
  */

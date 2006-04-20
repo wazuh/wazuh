@@ -59,7 +59,6 @@
     <group>authentication_success</group>
     <description>FTP Authentication success.</description>
   </rule>  
-  </rule>
 </group> <!-- SYSLOG,PURE-FTPD -->
 
 

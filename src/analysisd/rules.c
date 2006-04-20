@@ -50,7 +50,6 @@ RuleInfo *zerorulemember(int id, int level,
                          int timeframe, int noalert,
                          int ignore_time);
 
-void printrule(RuleInfo *config_rule);
 void Rule_AddAR(RuleInfo *config_rule);
 char *loadmemory(char *at, char *str);
 void _setlevels(RuleNode *node);
@@ -667,9 +666,6 @@ int Rules_OP_ReadRules(char * rulefile)
             j++; /* next rule */
 
             
-            printrule(config_ruleinfo);
-
-
             /* Adding the rule to the rules list.
              * Only the template rules are supposed
              * to be at the top level. All others
@@ -708,7 +704,6 @@ int Rules_OP_ReadRules(char * rulefile)
         RuleNode *dbg_node = OS_GetFirstRule();
         while(dbg_node)
         {
-            printrule(dbg_node->ruleinfo);
             if(dbg_node->child)
             {
                 RuleNode *child_node = dbg_node->child;
@@ -716,7 +711,6 @@ int Rules_OP_ReadRules(char * rulefile)
                 printf("** Child Node for %d **\n",dbg_node->ruleinfo->sigid);
                 while(child_node)
                 {
-                    printrule(child_node->ruleinfo);
                     child_node = child_node->next;
                 }
             }

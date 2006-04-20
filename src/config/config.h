@@ -30,6 +30,7 @@
 int ReadConfig(int modules, char *cfgfile, void *d1, void *d2);
 
 int Read_Global(XML_NODE node, void *d1, void *d2);
+void AssignIgnore_Global(char **ignores, void *configp);
 int Read_Rules(XML_NODE node, void *d1, void *d2);
 int Read_Syscheck(XML_NODE node, void *d1, void *d2);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);

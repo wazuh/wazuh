@@ -116,6 +116,15 @@ int read_main_elements(OS_XML xml, int modules,
         i++;
     }
 
+    /* Getting syscheck.ignore */
+    if(modules & CGLOBAL)
+    {
+        char *xml_syscheck_ignore[3] = {xml_syscheck, "ignore", NULL};
+        char **ignores;
+        ignores = OS_GetElementContent(&xml,xml_syscheck_ignore);
+        AssignIgnore_Global(ignores, d1);
+    }
+
     return(0);
 }
 

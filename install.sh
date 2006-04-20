@@ -244,6 +244,7 @@ ConfigureClient()
     echo "  <client>" >> $NEWCONFIG
 	echo "    <server-ip>$IP</server-ip>" >> $NEWCONFIG
 	echo "  </client>" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     # Syscheck?
     UseSyscheck
