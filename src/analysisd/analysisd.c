@@ -529,11 +529,10 @@ void OS_ReadMSG(int m_queue)
             /* Dont need to go further if syscheck/rootcheck message */
             if((lf->type == SYSCHECK) || (lf->type == ROOTCHECK))
             {
-                /* if level != -1, syscheck/rootcheck event fired */
-                if(lf->level > 0)
-                {
-                    OS_AddEvent(lf);
-                }
+                /* We don't process syscheck/rootcheck events
+                 * any further.
+                 */
+                lf->level = 0; 
                 goto CLMEM;
             }
 
@@ -565,7 +564,7 @@ void OS_ReadMSG(int m_queue)
                     if(Config.logbylevel <= Config.stats)
                         OS_Log(lf);
 
-                    lf->level = -1;
+                    lf->level = 0;
                     lf->mail_flag = 0;
                 }
             }
@@ -585,6 +584,7 @@ void OS_ReadMSG(int m_queue)
             }
 
 
+            /* Getting log size */
             lf->size = strlen(lf->log);
 
 
@@ -609,6 +609,13 @@ void OS_ReadMSG(int m_queue)
                         == NULL)
                 {
                     continue;
+                }
+
+
+                /* Ignore level 0 */
+                if(currently_rule->level == 0)
+                {
+                    break;
                 }
 
 
@@ -649,18 +656,6 @@ void OS_ReadMSG(int m_queue)
                 /* Setting the last events if specified */
                 lf->lasts_lf = currently_rule->last_events;
 
-
-                /* Execute an action if specified */
-
-                /* Level 0 rules are to be ignored. 
-                 * However, they will be kept in memory
-                 * as fired. 
-                 */
-                if(currently_rule->level == 0)
-                {
-                    OS_AddEvent(lf);
-                    break;
-                }
 
                 /* Log the alert if configured to ... */
                 if(currently_rule->logalert == 1)
@@ -732,12 +727,11 @@ void OS_ReadMSG(int m_queue)
             /* Cleaning the memory */	
             CLMEM:
 
-
             /* Only clear the memory if the eventinfo was not
              * added to the stateful memory 
              * -- message is free inside clean event --
              */
-            if(lf->level < 0)
+            if(lf->level == 0)
                 Free_Eventinfo(lf);
 
         }
@@ -812,6 +806,17 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     }
     
     
+    /* Checking for actions */
+    if(currently_rule->action)
+    {
+        if(!lf->action)
+            return(NULL);
+
+        if(strcmp(currently_rule->action,lf->action) != 0)
+            return(NULL);
+    }
+
+    
     /* Checking for the url */
     if(currently_rule->url)
     {
@@ -825,10 +830,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking for the id */
     if(currently_rule->id)
     {
-        if(!OS_Match(currently_rule->id, lf->id))
-        {
+        if(!OSMatch_Execute(lf->id,
+                            strlen(lf->id),
+                            currently_rule->id))
             return(NULL);
-        }
     }
     
 
@@ -838,12 +843,16 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     {
         if(lf->dstuser)
         {
-            if(!OS_Match(currently_rule->user,lf->dstuser))
+            if(!OSMatch_Execute(lf->dstuser,
+                                strlen(lf->dstuser),
+                                currently_rule->user))
                 return(NULL);
         }
         else if(lf->user)
         {
-            if(!OS_Match(currently_rule->user,lf->user))
+            if(!OSMatch_Execute(lf->user,
+                                strlen(lf->user),
+                                currently_rule->user))
                 return(NULL);
         }
         else

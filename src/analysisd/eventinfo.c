@@ -72,8 +72,8 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         /* Group match */
         if(currently_rule->if_matched_group)
         {
-            if(!OS_Match(currently_rule->if_matched_group,
-                lf->log))
+            if(!OSMatch_Execute(lf->log, lf->size,
+                                         currently_rule->if_matched_group))
             {
                 continue; /* Didn't match */
             }
@@ -163,7 +163,7 @@ void Zero_Eventinfo(Eventinfo *lf)
 
     lf->mail_flag = 0;
     lf->type = SYSLOG; /* default type is syslog */        
-    lf->level = -1;    /* level 0 is valid */
+    lf->level = 0;     /* level 0 is valid */
     lf->sigid = -1;    /* signature id 0 is valid */
     lf->time = 0;
     lf->lasts_lf = NULL;

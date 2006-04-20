@@ -23,7 +23,7 @@
 
 #define KEYSIZE	 72
 
-u_int8_t global_count = 0;
+u_int16_t global_count = 0;
 time_t global_time = 0;
 
 
@@ -444,11 +444,14 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
         global_time = curr_time;
     }
 
-    /* If global count reaches 254 */
-    if(global_count >= 254)
+    /* If global count reaches 1512 */
+    if(global_count >= 1512)
     {
         merror("%s: Global count too high", ARGV0);
-        sleep(1);
+        while(time(0) == global_time)
+        {
+            global_count = 0;
+        }
         global_time = time(0);
         global_count = 0;
     }

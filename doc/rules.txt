@@ -67,6 +67,21 @@ them or after them.
 
 -We can specify groups for specific rules. It's used for active
 response reasons and for correlation.
+- We currently use the following groups:
+
+- invalid_login
+- authentication_success
+- authentication_failed
+- connection_attempt
+- attacks
+- adduser
+- sshd
+- ids
+- firewall
+- squid
+- apache
+- syslog
+
 
      
 == Rules Config ==

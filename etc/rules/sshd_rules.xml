@@ -115,6 +115,12 @@
     <group>authentication_failed,connection_attempt</group>
     <description>SSHD authentication failed.</description>
   </rule>  
+
+  <rule id="1517" level="4">
+    <if_sid>1500</if_sid>
+    <match>error: Bad prime description in line</match>
+    <description>SSHD configuration error (moduli).</description>
+  </rule>
 </group> <!-- SYSLOG, SSHD -->
 
 <!-- EOF -->

@@ -5,68 +5,83 @@
       
 
 <group name="syslog,sendmail">
-  <rule id="6200" level="0" noalert="1">
+  <rule id="6200" level="0">
     <decoded_as>sendmail-reject</decoded_as>
-    <description>Grouping of the sendmail reject rules</description>
-  </rule>
-  
-  <rule id="6201" level="5">
-    <if_sid>6200</if_sid>
-    <regex>reject=451 4.1.8 </regex>
-    <description>Sender domain does not have any valid MX record. (451: Requested action aborted: error in processing)</description>
+    <description>Grouping of the sendmail rules.</description>
   </rule>
 
-  <rule id="6202" level="5">
+  <rule id="6201" level="0" noalert="1">
     <if_sid>6200</if_sid>
-    <regex>reject=550 5.0.0 </regex>
-    <description>Rejected by access list. (550: Requested action not taken)</description>
+    <match>reject=</match>
+    <description>Grouping of the sendmail reject rules.</description>
+  </rule>
+  
+  <rule id="6202" level="5">
+    <if_sid>6201</if_sid>
+    <match>reject=451 4.1.8 </match>
+    <description>Sender domain does not have any valid </description>
+    <description>MX record (Requested action aborted).</description>
   </rule>
 
   <rule id="6203" level="5">
-    <if_sid>6200</if_sid>
-    <regex>reject=550 5.7.1 </regex>
-    <description>Attepmt to use mail server as relay. (550: Requested action not taken)</description>
+    <if_sid>6201</if_sid>
+    <match>reject=550 5.0.0 </match>
+    <description>Rejected by access list </description>
+    <description>(550: Requested action not taken).</description>
   </rule>
 
   <rule id="6204" level="5">
-    <if_sid>6200</if_sid>
-    <regex>reject=553 5.1.8 </regex>
-    <description>Sender domain is not found. (553: Requested action not taken)</description>
+    <if_sid>6201</if_sid>
+    <match>reject=550 5.7.1 </match>
+    <description>Attepmt to use mail server as relay </description>
+    <description>(550: Requested action not taken).</description>
   </rule>
 
   <rule id="6205" level="5">
-    <if_sid>6200</if_sid>
-    <regex>reject=553 5.5.4 </regex>
-    <description>Sender address does not have domain part. (553: Requested action not taken)</description>
+    <if_sid>6201</if_sid>
+    <match>reject=553 5.1.8 </match>
+    <description>Sender domain is not found </description>
+    <description> (553: Requested action not taken).</description>
+  </rule>
+
+  <rule id="6206" level="5">
+    <if_sid>6201</if_sid>
+    <match>reject=553 5.5.4 </match>
+    <description>Sender address does not have domain </description>
+    <description>(553: Requested action not taken).</description>
   </rule>
 
   <rule id="6251" level="10" frequency="5" timeframe="120">
-    <if_matched_sid>6201</if_matched_sid>
+    <if_matched_sid>6202</if_matched_sid>
     <same_source_ip />
-    <description>Sender domain has bogus MX record. It should not be sending e-mail (Possibly sending spam)</description>
+    <description>Sender domain has bogus MX record. </description>
+    <description>It should not be sending e-mail.</description>
   </rule>
 
   <rule id="6252" level="10" frequency="5" timeframe="120">
-    <if_matched_sid>6202</if_matched_sid>
+    <if_matched_sid>6203</if_matched_sid>
     <same_source_ip />
-    <description>Multiple attempts to send e-mail from a previously rejected sender (access).</description>
+    <description>Multiple attempts to send e-mail from a </description>
+    <description>previously rejected sender (access).</description>
   </rule>
 
   <rule id="6253" level="10" frequency="5" timeframe="120">
-    <if_matched_sid>6203</if_matched_sid>
+    <if_matched_sid>6204</if_matched_sid>
     <same_source_ip />
     <description>Multiple relaying attepmts for spam.</description>
   </rule>
 
   <rule id="6254" level="10" frequency="5" timeframe="120">
-    <if_matched_sid>6204</if_matched_sid>
+    <if_matched_sid>6205</if_matched_sid>
     <same_source_ip />
-    <description>>Multiple attempts to send e-mail from invalid/unkonown sender domain.</description>
+    <description>Multiple attempts to send e-mail </description>
+    <description>from invalid/unkonown sender domain.</description>
   </rule>
 
   <rule id="6255" level="10" frequency="5" timeframe="120">
-    <if_matched_sid>6205</if_matched_sid>
+    <if_matched_sid>6206</if_matched_sid>
     <same_source_ip />
-    <description>Multiple attempts to send e-mail from invalid/unkonown sender.</description>
+    <description>Multiple attempts to send e-mail from </description>
+    <description>invalid/unkonown sender.</description>
   </rule>
 </group> <!-- SYSLOG,SENDMAIL -->

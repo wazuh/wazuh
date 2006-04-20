@@ -47,6 +47,7 @@ int _OS_Match(char *pattern, char *str, int size)
             }
             return(TRUE);
             nnext:
+            continue;
         }
     }while(++i <= size);
 

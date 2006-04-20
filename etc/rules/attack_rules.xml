@@ -57,9 +57,14 @@
 
   <rule id="1610" level="10" timeframe="120" frequency="8" ignore="60">
     <if_level>6</if_level>
-    <same_source_ip></same_source_ip>
+    <same_source_ip />
     <description>Multiple events from same source ip.</description>
   </rule>  
+
+  <rule id="1611" level="10" frequency="8" timeframe="160">
+    <if_matched_group>authentication_failed</if_matched_group>
+    <description>Multiple authentication failures.</description>
+  </rule>
 </group> <!-- SYSLOG, ATTACKS -->
 
 

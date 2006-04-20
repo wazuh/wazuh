@@ -93,7 +93,10 @@ void HandleSecure()
 
         /* Nothing received */
         if(recv_b <= 0)
+        {
+            merror("%s: XXX 0 size message received", ARGV0);
             continue;
+        }
 
 
         /* Setting the source ip */
@@ -124,7 +127,6 @@ void HandleSecure()
         /* Check if it is a control message */ 
         if(IsValidHeader(tmp_msg))
         {
-
             /* We need to save the peerinfo if it is a control msg */
             memcpy(&keys.peer_info[agentid], &peer_info, peer_size);
             keys.rcvd[agentid] = 1;

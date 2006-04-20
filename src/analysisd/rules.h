@@ -58,9 +58,10 @@ typedef struct _RuleInfo
 
     char *srcip;
     char *dstip;
-    char *user;
+    OSMatch *user;
     OSRegex *url;
-    char *id;
+    OSMatch *id;
+    char *action;
     
     char *comment; /* description in the xml */
     char *info;
@@ -71,7 +72,7 @@ typedef struct _RuleInfo
     char *if_group;
 
     OSRegex *if_matched_regex;
-    char *if_matched_group;
+    OSMatch *if_matched_group;
     int if_matched_sid;
     
     active_response **ar;

@@ -449,11 +449,6 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             /* Creating a new log message */
             free(lf->log);
             os_strdup(_db_comment2, lf->log);
-            if(!lf->log)
-            {
-                merror(MEM_ERROR,ARGV0);
-                return;
-            }
            
             /* alert/ notify */ 
             if(Config.mailbylevel <= Config.integrity)

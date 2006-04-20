@@ -10,4 +10,15 @@
     <if_fts></if_fts>
     <description>First time this IDS event is seen</description>
   </rule>
+
+  <rule id="4001" level="6">
+    <category>ids</category>
+    <description>IDS event.</description>
+  </rule>
+
+  <rule id="4051" level="10" frequency="8" timeframe="240" ignore="120">
+    <if_sid>4001</if_sid>
+    <same_source_ip />
+    <description>Multiple IDS events from same source ip.</description>
+  </rule>  
 </group>

@@ -101,6 +101,7 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_user = "user";
     char *xml_url = "url";
     char *xml_id = "id";
+    char *xml_action = "action";
     
     char *xml_if_sid = "if_sid";
     char *xml_if_group = "if_group";
@@ -309,6 +310,9 @@ int Rules_OP_ReadRules(char * rulefile)
                 char *match = NULL;
                 char *url = NULL;
                 char *if_matched_regex = NULL;
+                char *if_matched_group = NULL;
+                char *user = NULL;
+                char *id = NULL;
                 
                 XML_NODE rule_opt = NULL;
                 rule_opt =  OS_GetElementsbyNode(&xml,rule[j]);
@@ -393,17 +397,22 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_user)==0)
                     {
-                        config_ruleinfo->user=
-                            loadmemory(config_ruleinfo->user,
+                        user =
+                            loadmemory(user,
                                     rule_opt[k]->content);
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_id)==0)
                     {
-                        config_ruleinfo->id=
-                            loadmemory(config_ruleinfo->id,
+                        id =
+                            loadmemory(id,
                                     rule_opt[k]->content);
                     }
-                    
+                    else if(strcasecmp(rule_opt[k]->element,xml_action)==0)
+                    {
+                        config_ruleinfo->action = 
+                            loadmemory(config_ruleinfo->action,
+                                    rule_opt[k]->content);
+                    }
                     else if(strcasecmp(rule_opt[k]->element,xml_url)==0)
                     {
                         url=
@@ -476,8 +485,8 @@ int Rules_OP_ReadRules(char * rulefile)
                     else if(strcasecmp(rule_opt[k]->element,xml_if_matched_group)==0)
                     {
                         config_ruleinfo->context = 1;
-                        config_ruleinfo->if_matched_group=
-                            loadmemory(config_ruleinfo->if_matched_group,
+                        if_matched_group=
+                            loadmemory(if_matched_group,
                                     rule_opt[k]->content);
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_if_matched_sid)==0)
@@ -523,13 +532,21 @@ int Rules_OP_ReadRules(char * rulefile)
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_options) == 0)
                     {
-                        if(OS_Regex("notify_by_email", rule_opt[k]->content))
+                        if(OS_Regex("alert_by_email", rule_opt[k]->content))
                         {
                             config_ruleinfo->emailalert = 1;
                         }
-                        if(OS_Regex("generate_log", rule_opt[k]->content))
+                        else if(OS_Regex("no_email_alert",rule_opt[k]->content))
+                        {
+                            config_ruleinfo->emailalert = 0;
+                        }
+                        if(OS_Regex("log_alert", rule_opt[k]->content))
                         {
                             config_ruleinfo->logalert = 1;
+                        }
+                        else if(OS_Regex("no_log", rule_opt[k]->content))
+                        {
+                            config_ruleinfo->logalert = 0;
                         }
                     }
                     else
@@ -551,6 +568,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         merror(REGEX_COMPILE, ARGV0, regex, 
                                 config_ruleinfo->regex->error);
+                        return(-1);
                     }
                     free(regex);
                     regex = NULL;
@@ -563,9 +581,36 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         merror(REGEX_COMPILE, ARGV0, match,
                                 config_ruleinfo->match->error);
+                        return(-1);
                     }
                     free(match);
                     match = NULL;
+                }
+                
+                if(id)
+                {
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->id);
+                    if(!OSMatch_Compile(id, config_ruleinfo->id, 0))
+                    {
+                        merror(REGEX_COMPILE, ARGV0, id, 
+                                              config_ruleinfo->id->error);
+                        return(-1);
+                    }
+                    free(id);
+                    id = NULL;
+                }
+                
+                if(user)
+                {
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->user);
+                    if(!OSMatch_Compile(user, config_ruleinfo->user, 0))
+                    {
+                        merror(REGEX_COMPILE, ARGV0, user,
+                                              config_ruleinfo->user->error);
+                        return(-1);
+                    }
+                    free(user);
+                    user = NULL;
                 }
                 
                 if(url)
@@ -575,9 +620,27 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         merror(REGEX_COMPILE, ARGV0, url, 
                                 config_ruleinfo->url->error);
+                        return(-1);
                     }
                     free(url);
                     url = NULL;
+                }
+                
+                if(if_matched_group)
+                {
+                    os_calloc(1, sizeof(OSMatch), 
+                                 config_ruleinfo->if_matched_group);
+                    
+                    if(!OSMatch_Compile(if_matched_group, 
+                                        config_ruleinfo->if_matched_group,
+                                        0))
+                    {
+                        merror(REGEX_COMPILE, ARGV0, if_matched_group,
+                                config_ruleinfo->if_matched_group->error);
+                        return(-1);
+                    }
+                    free(if_matched_group);
+                    if_matched_group = NULL;
                 }
                 
                 if(if_matched_regex)
@@ -589,6 +652,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         merror(REGEX_COMPILE, ARGV0, if_matched_regex, 
                                 config_ruleinfo->if_matched_regex->error);
+                        return(-1);
                     }
                     free(if_matched_regex);
                     if_matched_regex = NULL;
@@ -723,30 +787,6 @@ char *loadmemory(char *at, char *str)
 }
 
 
-/* Print the rule info */
-void printrule(RuleInfo *config_rule)
-{
-    #ifdef DEBUG
-    void (*print_function) (const char * msg,... ) = &verbose;
-    #else
-    void (*print_function) (const char * msg,... ) = &debug1;
-    #endif
-     
-    print_function("%s: Reading rule %d\n"
-            "\t\tLevel: %d\n"
-            "\t\tMatch: %s\n"
-            "\t\tregex: %s\n"
-            "\t\tContext: %d\n\n",
-            ARGV0,
-            config_rule ->sigid,
-            config_rule ->level,
-            config_rule ->match,
-            config_rule ->regex,
-            config_rule ->context);
-}
-
-
-
 RuleInfo *zerorulemember(int id, int level, 
                          int maxsize, int frequency,
                          int timeframe, int noalert, 
@@ -819,6 +859,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->dstip = NULL;
     ruleinfo_pt->url = NULL;
     ruleinfo_pt->id = NULL;
+    ruleinfo_pt->action = NULL;
     
     /* Zeroing last matched events */
     ruleinfo_pt->__frequency = 0;

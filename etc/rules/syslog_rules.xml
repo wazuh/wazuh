@@ -1,6 +1,9 @@
 <!-- Official Syslog rules for the OSSEC HIDS
   -  Author: Daniel B. Cid
-  -  Date: Nov 11, 2005
+  -  Date: Mar 03, 2004 v1
+  -  Date: Dec 10, 2004 v2
+  -  Date: Nov 11, 2005 v3
+  -  Date: Apr 19, 2006 v4
   -->
 
 
@@ -16,17 +19,17 @@
 <!-- Syslog errors. -->
 <group name="syslog,errors">
   <rule id="101" level="2">
-    <regex>^PAM-securetty[\d+]: Couldn't open /etc/securetty$</regex>
-    <description>File /etc/securetty missing. Root access unrestricted</description>
+    <regex>^PAM-securetty[\d+]: Couldn't open /etc/securetty</regex>
+    <description>File securetty missing. Root access unrestricted.</description>
   </rule>
 
   <rule id="102" level="7" accuracy="0">
     <match>$BAD_WORDS</match>
-    <description>Possible problem (unknown) somewhere in the system</description>
+    <description>Unknown problem somewhere in the system.</description>
   </rule>    
 
-  <rule id="103" level="13" maxsize="912">
-    <description>Non standard syslog message (size too large)</description>
+  <rule id="103" level="13" maxsize="756">
+    <description>Non standard syslog message (size too large).</description>
   </rule>  
 </group> <!-- SYSLOG,ERRORS -->
 
@@ -34,20 +37,27 @@
 
 <!-- NFS messages -->
 <group name="syslog,nfs">
-  <!-- XXX All These NFS rules need to be fixed. I'm not an NFS fan and dont use it.. -->
-  <rule id="202" level="4">
+  <!-- XXX All These NFS rules need to be fixed. -->
+  <rule id="200" level="0" noalert="1">
+    <match>^automount[|^mount</match>
+    <description>NFS rules grouped.</description>
+  </rule>
+  
+  <rule id="201" level="4">
+    <if_sid>200</if_sid>
     <match>nfs: mount failure</match>
-    <description>Unable to mount the NFS directory</description>
+    <description>Unable to mount the NFS share.</description>
   </rule>
 
-  <rule id="203" level="4">
-    <regex>mount\.+reason given by server: Permission denied$</regex>
-    <description>Unable to mount the NFS directory</description>
+  <rule id="202" level="4">
+    <if_sid>200</if_sid>
+    <match>reason given by server: Permission denied</match>
+    <description>Unable to mount the NFS directory.</description>
   </rule>
  
-  <rule id="204" level="4">
+  <rule id="203" level="4">
     <match>^rpc.mountd: refused mount request from</match>
-    <description>Unable to mount the NFS directory</description>
+    <description>Unable to mount the NFS directory.</description>
   </rule>
 </group> <!-- SYSLOG,NFS -->
   
@@ -57,7 +67,7 @@
 <group name="syslog,xinetd">
   <rule id="301" level="10">
     <regex>^xinetd[\d+]: Deactivating service \S+ due to excessive </regex>
-    <description>Excessive number connections to a service</description>
+    <description>Excessive number connections to a service.</description>
   </rule>
 </group> <!-- SYSLOG,XINETD -->
 
@@ -68,19 +78,22 @@
   <rule id="401" level="5">
     <match>FAILED LOGIN |authentication failure|</match>
     <match>Authentication failed for|invalid password for|</match>
-    <match>Failed password for|LOGIN FAILURE ON |auth failure: |</match>
-    <match>Wrong password given for user|login failed|Auth: Login incorrect:</match>
-    <description>User missed the password</description>
+    <match>LOGIN FAILURE ON |auth failure: |</match>
+    <match>Wrong password given for|login failed|Auth: Login incorrect</match>
+    <group>authentication_failed</group>
+    <description>User authentication failure.</description>
   </rule>
 
   <rule id="402" level="10">
-    <match>more authentication failures;|REPEATED login failures on</match>
+    <match>more authentication failures;|REPEATED login failures</match>
+    <group>authentication_failed</group>
     <description>User missed the password more than one time</description>
   </rule>
 
   <rule id="403" level="5">
-    <regex>Connection from \.+denied|refused connect from</regex>
-    <description>Connection blocked by Tcp Wrappers (or other ACL)</description>
+    <regex>^\S+[\d+]: refused connect from|</regex>
+    <regex>Connection from \S+ denied</regex>
+    <description>Connection blocked by Tcp Wrappers.</description>
   </rule>
 
   <rule id ="405" level="9">
@@ -93,12 +106,7 @@
     <description>Physical root login</description>
   </rule>  
 
-  <rule id="410" level="10" frequency="5" timeframe="240">
-    <if_matched_sid>401</if_matched_sid>
-    <description>Multiple authentication failures</description>
-  </rule>
-
-  <rule id="411" level="0">
+  <rule id="407" level="3">
     <regex>^popa3d[\d+]: Authentication passed</regex>
     <description>Pop3 Authentication passed</description>
   </rule>
@@ -107,20 +115,10 @@
 
 
 <!-- Sendmail messages -->
-<group name="syslog,sendmail">
-  <rule id="501" level="6">
-    <regex>;ruleset=check_rcpt \.+Relaying denied</regex>
-    <description>Relay attempt</description>
-  </rule>
-
-  <rule id="502" level="12">
-    <match>Cannot mail directly to </match>
-    <description>Attempt to remotely create a file on the system</description>
-  </rule>
-
-  <rule id="503" level="2">
+<group name="syslog,sm-mta">
+  <rule id="501" level="2">
     <regex>^sm-mta[\d+]: auxpropfunc error no mechanism available</regex>
-    <description>Sendmail error message (invalid mechanism)</description>
+    <description>Sendmail error message (invalid mechanism).</description>
   </rule>
 </group> <!-- SYSLOG,SENDMAIL -->
   
@@ -249,7 +247,7 @@
 <!-- Cron messages -->
 <group name="syslog,cron">
   <rule id="901" level="0">
-    <regex>^crond: unable to exec \.+ output to sink null</regex>
+    <regex>^crond: unable to exec</regex>
     <description>Wrong crond configuration</description>
   </rule>
 </group> <!-- SYSLOG,CRON -->

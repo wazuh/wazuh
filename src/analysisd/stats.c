@@ -177,9 +177,9 @@ void Update_Hour()
             else
             {
                 /* If we had too many errors this day */
-                if(_daily_errors >= 4)
+                if(_daily_errors >= 3)
                 {
-                    _RHour[i]=(((2*_CHour[i])+(inter*_RHour[i]))/(inter+2))+20;
+                    _RHour[i]=(((3*_CHour[i])+(inter*_RHour[i]))/(inter+3))+25;
                 }
                 
                 else
@@ -230,9 +230,9 @@ void Update_Hour()
 
                 else
                 {
-                    if(_daily_errors >= 4)
+                    if(_daily_errors >= 3)
                     {
-                        _RWHour[i][j]=(((2*_CWHour[i][j])+(inter*_RWHour[i][j]))/(inter+2))+20;
+                        _RWHour[i][j]=(((3*_CWHour[i][j])+(inter*_RWHour[i][j]))/(inter+3))+25;
                     }
                     else
                     {
@@ -274,7 +274,7 @@ int Check_Hour(Eventinfo *lf)
     }
 
     /* checking if any message was already fired for this hour */
-    if((_daily_errors >= 4)||((_fired == 1)&&(_cignorehour == __crt_hour)))
+    if((_daily_errors >= 3)||((_fired == 1)&&(_cignorehour == __crt_hour)))
         return(0);
 
     else if(_cignorehour != __crt_hour)

@@ -11,35 +11,35 @@
 <group name="syslog">
   <rule id="01" level="0" noalert="1">
     <category>syslog</category>
-    <description>Generic template for all syslog rules</description>
+    <description>Generic template for all syslog rules.</description>
   </rule>
 </group>
 
 <group name="firewall">
   <rule id="02" level="0" noalert="1">
     <category>firewall</category>
-    <description>Generic template for all firewall rules</description>
+    <description>Generic template for all firewall rules.</description>
   </rule>
 </group>
 
 <group name="ids">
   <rule id="03" level="0" noalert="1">
     <category>ids</category>
-    <description>Generic template for all ids rules</description>
+    <description>Generic template for all ids rules.</description>
   </rule>
 </group>
 
 <group name="apache">
   <rule id="04" level="0" noalert="1">
     <category>apache</category>
-    <description>Generic template for all apache rules</description>
+    <description>Generic template for all apache rules.</description>
   </rule>  
 </group>            
 
 <group name="squid">
   <rule id="05" level="0" noalert="1">
     <category>squid</category>
-     <description>Generic template for all squid rules</description>
+    <description>Generic template for all squid rules.</description>
   </rule>
 </group>
             

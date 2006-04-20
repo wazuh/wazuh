@@ -9,6 +9,7 @@
    - dstport  - destination port
    - protocol - protocol
    - id       - event id 
+   - action   - event action (deny, drop, accept, etc)
   -->
 
 <!-- SSH decoder.
