@@ -166,13 +166,15 @@ void FreeTimeoutEntry(timeout_data *timeout_entry)
     {
         while(*tmp_str)
         {
-            free(*tmp_str);
+            os_free(*tmp_str);
+            *tmp_str = NULL;
             tmp_str++;
         }
-        free(timeout_entry->command);
+        os_free(timeout_entry->command);
+        timeout_entry->command = NULL;
     }
 
-    free(timeout_entry);
+    os_free(timeout_entry);
     timeout_entry = NULL;
 
     return;
@@ -260,22 +262,18 @@ void ExecdStart(int q)
             timeout_data *list_entry;
 
             list_entry = (timeout_data *)timeout_node->data;
-
             
             if((curr_time - list_entry->time_of_addition) > 
                     list_entry->time_to_block)
             {
                 ExecCmd(list_entry->command);
                 
-                
                 /* Deletecurruently node already sets the pointer to next */
                 OSList_DeleteCurrentlyNode(timeout_list);
                 timeout_node = OSList_GetCurrentlyNode(timeout_list);
 
-
                 /* Clearing the memory */
                 FreeTimeoutEntry(list_entry);
-
 
                 childcount++;
             }
@@ -286,7 +284,7 @@ void ExecdStart(int q)
             }
         }
 
-
+        
         /* Setting timeout to EXECD_TIMEOUT */
         socket_timeout.tv_sec = EXECD_TIMEOUT;
         socket_timeout.tv_usec= 0;
@@ -325,7 +323,6 @@ void ExecdStart(int q)
         curr_time = time(0);
 
 
-
         /* Getting application name */
         name = buffer;
 
@@ -351,7 +348,6 @@ void ExecdStart(int q)
                 continue;
             }
         }
-
 
         /* Allocating memory for the timeout argument */
         os_calloc(MAX_ARGS+2, sizeof(char *), timeout_args);
@@ -390,7 +386,6 @@ void ExecdStart(int q)
             i++;
         }
 
-
         /* From ahmet ozturk <oahmet@metu.edu.tr> */
         /* Check if we executed this command and added it to timeout list */
         timeout_node = OSList_GetFirstNode(timeout_list);
@@ -398,6 +393,7 @@ void ExecdStart(int q)
         while(timeout_node)
         {
           timeout_data *list_entry;
+          
           list_entry = (timeout_data *)timeout_node->data;
           if((strcmp(list_entry->command[i], timeout_args[i]) == 0) &&
              (strcmp(list_entry->command[0], timeout_args[0]) == 0)) 
@@ -415,7 +411,6 @@ void ExecdStart(int q)
           /* Continue with the next entry in timeout list*/
           timeout_node = OSList_GetNextNode(timeout_list);
         }
-
 
         /* If it wasn't added before, do it now */
         if(!added_before)
@@ -440,6 +435,18 @@ void ExecdStart(int q)
                     FreeTimeoutEntry(timeout_entry);
                 } 
             }
+            /* If no timeout, we still need to free it in here */
+            else
+            {
+                char **ss_ta = timeout_args;
+                while(*timeout_args)
+                {
+                    os_free(*timeout_args);
+                    *timeout_args = NULL;
+                    timeout_args++;
+                }
+                os_free(ss_ta);
+            }
 
             childcount++;
         }
@@ -452,11 +459,13 @@ void ExecdStart(int q)
             /* Clear the timeout arguments */
             while(*timeout_args)
             {
-                free(*timeout_args);
+                os_free(*timeout_args);
+                *timeout_args = NULL;
                 timeout_args++;
             }
 
-            free(ss_ta);
+            os_free(ss_ta);
+            ss_ta = NULL;
         }
 
         /* Some cleanup */

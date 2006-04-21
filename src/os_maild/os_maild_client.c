@@ -48,6 +48,11 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p)
     logs[OS_MAXSTR] = '\0';
     while(al_data->log[i])
     {
+        /* If size left is small then the size of the log, stop it */
+        if((OS_MAXSTR - strlen(logs)) <= (strlen(al_data->log[i]) +2))
+        {
+            break;
+        }
         strncat(logs, al_data->log[i], OS_MAXSTR - strlen(logs) -1);
         i++;
     }

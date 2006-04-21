@@ -49,23 +49,15 @@
  */
 void OS_Store(Eventinfo *lf)
 {
-    if(_eflog) 
-    {
-        fprintf(_eflog,
+    fprintf(_eflog,
             "%d %s %02d %s %s\n",
             lf->year,
             lf->mon,
             lf->day,
             lf->hour,
             lf->log);
-   
-        fflush(_eflog); 
-    }
-    else
-    {
-        merror("%s: File descriptor closed.",ARGV0);
-    }
-    
+
+    fflush(_eflog); 
     return;	
 }
 
@@ -75,47 +67,39 @@ void OS_Store(Eventinfo *lf)
 void OS_Log(Eventinfo *lf)
 {
     /* Writting to the alert log file */
-    if(_aflog) 
-    {
-        fprintf(_aflog,
-                "** Alert: %s\n"
-                "%d %s %02d %s %s\nRule: %d (level %d) -> '%s'\n"
-                "Src IP: %s\nUser: %s\n%s\n",
-                lf->mail_flag?"mail":"",
-                lf->year,
-                lf->mon,
-                lf->day,
-                lf->hour,
-                lf->location,
-                lf->sigid,
-                lf->level,
-                lf->comment,
-                lf->srcip == NULL?"(none)":lf->srcip,
-                lf->user == NULL?"(none)":lf->user,
-                lf->sigid == STATS_PLUGIN?
-                "No Log Available (HOURLY_STATS)":lf->log);
+    fprintf(_aflog,
+            "** Alert: %s\n"
+            "%d %s %02d %s %s\nRule: %d (level %d) -> '%s'\n"
+            "Src IP: %s\nUser: %s\n%s\n",
+            lf->mail_flag?"mail":"",
+            lf->year,
+            lf->mon,
+            lf->day,
+            lf->hour,
+            lf->location,
+            lf->sigid,
+            lf->level,
+            lf->comment,
+            lf->srcip == NULL?"(none)":lf->srcip,
+            lf->user == NULL?"(none)":lf->user,
+            lf->sigid == STATS_PLUGIN?
+            "No Log Available (HOURLY_STATS)":lf->log);
 
-        
-        /* Printing the last events if present */
-        if(lf->lasts_lf)
-        {
-            char **lasts = lf->lasts_lf;
-            while(*lasts)
-            {
-                fprintf(_aflog,"%s\n",*lasts);
-                lasts++;
-            }
-        }
-        
-        fprintf(_aflog,"\n");
-        
-        fflush(_aflog);
-    }
-    else
+
+    /* Printing the last events if present */
+    if(lf->lasts_lf)
     {
-        merror("%s: File descriptor (aflog) closed. Error.",ARGV0);
+        char **lasts = lf->lasts_lf;
+        while(*lasts)
+        {
+            fprintf(_aflog,"%s\n",*lasts);
+            lasts++;
+        }
     }
-    
+
+    fprintf(_aflog,"\n");
+
+    fflush(_aflog);
     return;	
 }
 
@@ -139,19 +123,19 @@ int FW_Log(Eventinfo *lf)
         /* discard, drop, deny, */
         case 'd':
         case 'D':
-        /* reject, */
+            /* reject, */
         case 'r':
         case 'R':
-        /* block */
+            /* block */
         case 'b':
         case 'B':
             os_free(lf->action);
             os_strdup("DROP", lf->action);
             break;
-        /* allow, accept, */    
+            /* allow, accept, */    
         case 'a':
         case 'A':
-        /* pass */
+            /* pass */
         case 'p':
         case 'P':
             os_free(lf->action);
@@ -165,26 +149,20 @@ int FW_Log(Eventinfo *lf)
 
 
     /* log to file */
-    if(_fflog)
-    {
-        fprintf(_fflog,
-                "%d %s %02d %s %s %s %s:%s->%s:%s\n",
-                    lf->year,
-                    lf->mon,
-                    lf->day,
-                    lf->hour,
-                    lf->action,
-                    lf->protocol,
-                    lf->srcip,
-                    lf->srcport,
-                    lf->dstip,
-                    lf->dstport);
-        fflush(_fflog);
-    }
-    else
-    {
-        merror("%s: File descriptor closed.",ARGV0);
-    }
+    fprintf(_fflog,
+            "%d %s %02d %s %s %s %s:%s->%s:%s\n",
+            lf->year,
+            lf->mon,
+            lf->day,
+            lf->hour,
+            lf->action,
+            lf->protocol,
+            lf->srcip,
+            lf->srcport,
+            lf->dstip,
+            lf->dstport);
+    
+    fflush(_fflog);
 
     return(1);
 }

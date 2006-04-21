@@ -141,20 +141,21 @@ void OSList_DeleteCurrentlyNode(OSList *list)
 {
     OSListNode *prev;
     OSListNode *next;
-    
+   
     if(list->cur_node == NULL)
         return;
     
     prev = list->cur_node->prev;
     next = list->cur_node->next;
 
-    
+     
     /* Setting the previous node of the next one
      * and the next node of the previous one.. :)
      */
     if(prev && next)
     {
-        prev->next = next->prev;
+        prev->next = next;
+        next->prev = prev;
     }
     else if(prev)
     {

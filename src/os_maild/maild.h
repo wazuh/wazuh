@@ -26,7 +26,7 @@
 #define NEXTMAIL_TIMEOUT    2    /* Time to check for next msg - 5 */
 #define DEFAULT_TIMEOUT     18   /* socket read timeout - 18 (*5)*/ 
 #define SUBJECT_SIZE        128  /* Maximum subject size */
-#define BODY_SIZE           1024 /* Maximum body size */
+#define BODY_SIZE           1256 /* Maximum body size */
 
 #define MAIL_SUBJECT        "OSSEC Hids Notification - Alert level %d"
 #define MAIL_BODY           "\r\nOSSEC HIDS Notification.\r\n" \

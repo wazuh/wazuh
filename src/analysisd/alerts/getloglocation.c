@@ -49,12 +49,18 @@ int OS_GetLogLocation(Eventinfo *lf)
      */
      
     /* For the events */
+    if(_eflog)
+    {
+        if(ftell(_eflog) == 0)
+            unlink(__elogfile);
+        fclose(_eflog);
+    }
+    
     snprintf(__elogfile,OS_FLSIZE,"%s/%d/", EVENTS, lf->year);
     if(IsDir(__elogfile) == -1)
         if(mkdir(__elogfile,0770) == -1)
         {
-            merror(MKDIR_ERROR,ARGV0,__elogfile);
-            return (-1);
+            ErrorExit(MKDIR_ERROR,ARGV0,__elogfile);
         }
 
     snprintf(__elogfile,OS_FLSIZE,"%s/%d/%s", EVENTS, lf->year,lf->mon);
@@ -62,8 +68,7 @@ int OS_GetLogLocation(Eventinfo *lf)
     if(IsDir(__elogfile) == -1)
         if(mkdir(__elogfile,0770) == -1)
         {
-            merror(MKDIR_ERROR,ARGV0,__elogfile);
-            return (-1);
+            ErrorExit(MKDIR_ERROR,ARGV0,__elogfile);
         }
 
 
@@ -75,24 +80,25 @@ int OS_GetLogLocation(Eventinfo *lf)
             "archive",
             lf->day);
 
-    if(_eflog)
-    {
-        fclose(_eflog);
-    }
 
     _eflog = fopen(__elogfile,"a");
-
     if(!_eflog)
-        merror("%s: Error opening logfile: '%s'",ARGV0,__elogfile);
+        ErrorExit("%s: Error opening logfile: '%s'",ARGV0,__elogfile);
 
 
     /* for the alerts logs */
+    if(_aflog)
+    {
+        if(ftell(_aflog) == 0)
+            unlink(__alogfile);
+        fclose(_aflog);
+    }
+                            
     snprintf(__alogfile,OS_FLSIZE,"%s/%d/", ALERTS, lf->year);
     if(IsDir(__alogfile) == -1)
         if(mkdir(__alogfile,0770) == -1)
         {
-            merror(MKDIR_ERROR,ARGV0,__alogfile);
-            return (-1);
+            ErrorExit(MKDIR_ERROR,ARGV0,__alogfile);
         }
 
     snprintf(__alogfile,OS_FLSIZE,"%s/%d/%s", ALERTS, lf->year,lf->mon);
@@ -100,8 +106,7 @@ int OS_GetLogLocation(Eventinfo *lf)
     if(IsDir(__alogfile) == -1)
         if(mkdir(__alogfile,0770) == -1)
         {
-            merror(MKDIR_ERROR,ARGV0,__alogfile);
-            return (-1);
+            ErrorExit(MKDIR_ERROR,ARGV0,__alogfile);
         }
 
 
@@ -113,24 +118,25 @@ int OS_GetLogLocation(Eventinfo *lf)
             "alerts",
             lf->day);
 
-    if(_aflog)
-    {
-        fclose(_aflog);
-    }
-
     _aflog = fopen(__alogfile,"a");
-
+    
     if(!_aflog)
-        merror("%s: Error opening logfile: '%s'",ARGV0,__alogfile);
+        ErrorExit("%s: Error opening logfile: '%s'",ARGV0,__alogfile);
 
 
     /* For the firewall events */
+    if(_fflog)
+    {
+        if(ftell(_fflog) == 0)
+            unlink(__flogfile);
+        fclose(_fflog);
+    }
+                            
     snprintf(__flogfile,OS_FLSIZE,"%s/%d/", FWLOGS, lf->year);
     if(IsDir(__flogfile) == -1)
         if(mkdir(__flogfile,0770) == -1)
         {
-            merror(MKDIR_ERROR,ARGV0,__flogfile);
-            return (-1);
+            ErrorExit(MKDIR_ERROR,ARGV0,__flogfile);
         }
 
     snprintf(__flogfile,OS_FLSIZE,"%s/%d/%s", FWLOGS, lf->year,lf->mon);
@@ -138,8 +144,7 @@ int OS_GetLogLocation(Eventinfo *lf)
     if(IsDir(__flogfile) == -1)
         if(mkdir(__flogfile,0770) == -1)
         {
-            merror(MKDIR_ERROR,ARGV0,__flogfile);
-            return (-1);
+            ErrorExit(MKDIR_ERROR,ARGV0,__flogfile);
         }
 
 
@@ -151,15 +156,10 @@ int OS_GetLogLocation(Eventinfo *lf)
             "firewall",
             lf->day);
 
-    if(_fflog)
-    {
-        fclose(_fflog);
-    }
-
     _fflog = fopen(__flogfile,"a");
 
     if(!_fflog)
-        merror("%s: Error opening logfile: '%s'",ARGV0,__flogfile);
+        ErrorExit("%s: Error opening logfile: '%s'",ARGV0,__flogfile);
 
 
     /* Setting the new day */        

@@ -27,6 +27,7 @@
 Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
 {
     EventNode *eventnode_pt;
+    Eventinfo *lf;
 
     eventnode_pt = OS_GetLastEvent();
 
@@ -39,13 +40,11 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
     /* Setting frequency to 0 */
     currently_rule->__frequency = 0;
 
-
-
     
     /* Searching all previous events */
     do
     {
-        Eventinfo *lf = eventnode_pt->event;
+        lf = eventnode_pt->event;
         
         /* If time is outside the timeframe, return */
         if((c_time - lf->time) > currently_rule->timeframe)
@@ -53,7 +52,15 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
             return(NULL);
         }
 
-        /* We avoid multiple triggers for the same rule */
+        /* The category must be the same */
+        else if(lf->type != my_lf->type)
+        {
+            continue;    
+        }
+        
+        /* We avoid multiple triggers for the same rule 
+         * or rules with a lower level.
+         */
         else if(lf->matched >= currently_rule->level)
         {
             break;
@@ -89,7 +96,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
             }
         }
          
-        /* checking for repetitions on user error */
+        /* Checking for repetitions on user error */
         if(currently_rule->same_user)
         {
             if((!lf->user)||(!my_lf->user))
@@ -99,7 +106,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
                 continue;
         }
         
-        /* checking for repetitions from same src_ip */
+        /* Checking for repetitions from same src_ip */
         else if(currently_rule->same_source_ip)
         {
             if((!lf->srcip)||(!my_lf->srcip))
