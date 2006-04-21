@@ -26,6 +26,12 @@ int main(int argc, char ** argv)
         return(1);
     }
 
+    if(OS_ApplyVariables(&xml) != 0)
+    {
+        printf("OS_ReadXML error: Applying variables.\n");
+        return(1);
+    }
+
     /* Getting all nodes */
     node = OS_GetElementsbyNode(&xml,NULL);
     if(node == NULL)
@@ -53,6 +59,17 @@ int main(int argc, char ** argv)
             printf("Element: %s -> %s\n", 
                     cnode[j]->element,
                     cnode[j]->content);
+            if(cnode[j]->attributes && cnode[j]->values)
+            {
+                int k = 0;
+                while(cnode[j]->attributes[k])
+                {
+                    printf("attr %s:%s\n",
+                           cnode[j]->attributes[k],
+                           cnode[j]->values[k]);
+                    k++;
+                }
+            }
             j++;
         }
 

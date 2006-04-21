@@ -5,6 +5,9 @@
   -  Date: Mar 2, 2006
   -->
 
+<!-- Squid frequency -->
+<var name="SQUID_FREQ">8</var>
+
   
 <group name="squid">
   <rule id="5000" level="0">
@@ -67,26 +70,26 @@
   </rule>
 
   <!-- Context relevant rules (correlated) -->
-  <rule id="5051" level="10" frequency="8" timeframe="120">
+  <rule id="5051" level="10" frequency="$SQUID_FREQ" timeframe="120">
     <if_matched_sid>5005</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts to access forbidden file </description>
     <description>or directory from same source ip.</description>
   </rule>
 
-  <rule id="5052" level="10" frequency="6" timeframe="120">
+  <rule id="5052" level="10" frequency="$SQUID_FREQ" timeframe="120">
     <if_matched_sid>5007</if_matched_sid>
     <same_source_ip />
     <description>Multiple unauthorized attempts to use proxy.</description>
   </rule>
 
-  <rule id="5053" level="10" frequency="8" timeframe="120">
+  <rule id="5053" level="10" frequency="$SQUID_FREQ" timeframe="120">
     <if_matched_sid>5003</if_matched_sid>
     <same_source_ip />
     <description>Multiple Bad requests/Invalid syntax.</description>
   </rule>
 
-  <rule id="5054" level="10" frequency="12" timeframe="90">
+  <rule id="5054" level="10" frequency="$SQUID_FREQ" timeframe="120">
     <if_matched_sid>5006</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts to access a non-existent file.</description>

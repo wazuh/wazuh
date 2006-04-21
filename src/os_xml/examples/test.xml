@@ -1,5 +1,5 @@
-<xml_var name="lala">xx</xml_var>
-<xml_var name="lala2">xx2</xml_var>
+<var name="lala">xx</var>
+<var name="bebe">xx2</var>
 
 <a></a>
 
@@ -12,8 +12,8 @@
   <aatr2/>lele<aatr2/>
 </test>
 
-<test2 name="456">
-  <aatr>$lala</aatr>
+<test2 name="$lala">
+  <aatr gaga="$lala">$lala</aatr>
   <aatr1>$lala2</aatr1>
   <aatr2>$lala</aatr2>
   <aatr3>$lala2</aatr3>

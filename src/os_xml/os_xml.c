@@ -389,7 +389,9 @@ int _writememory(char *str, short int type, unsigned int size,
 
     /* Checking if it is a variable */
     if(strcasecmp(XML_VAR,str) == 0)
+    {
         _lxml->tp[_lxml->cur] = XML_VARIABLE_BEGIN;
+    }
 
     _lxml->cur++;
     return(0);

@@ -104,7 +104,8 @@ int OS_ApplyVariables(OS_XML *_lxml)
     i = 0; 
     for(;i<_lxml->cur;i++)
     {
-        if((_lxml->tp[i] == XML_ELEM)&&(_lxml->ct[i]))
+        if(((_lxml->tp[i] == XML_ELEM) || (_lxml->tp[i] == XML_ATTR))&&
+            (_lxml->ct[i]))
         {
             int tp=0,init=0,final=0;
             char *p = NULL;
