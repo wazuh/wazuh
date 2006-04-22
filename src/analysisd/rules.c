@@ -52,7 +52,6 @@ RuleInfo *zerorulemember(int id, int level,
 
 void Rule_AddAR(RuleInfo *config_rule);
 char *loadmemory(char *at, char *str);
-void _setlevels(RuleNode *node);
 
 extern int _max_freq;
 
@@ -691,14 +690,6 @@ int Rules_OP_ReadRules(char * rulefile)
     OS_ClearNode(node);
     OS_ClearXML(&xml);
 
-    /* Setting the levels to the right place again */
-    {
-        RuleNode *tmp_node = OS_GetFirstRule();
-
-        _setlevels(tmp_node);
-        
-    } /* Done with the levels */
-    
     #ifdef DEBUG
     {
         RuleNode *dbg_node = OS_GetFirstRule();
@@ -718,6 +709,7 @@ int Rules_OP_ReadRules(char * rulefile)
         }
     }
     #endif
+
     /* Done over here */
     return(0);
 }

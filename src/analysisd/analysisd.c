@@ -65,6 +65,7 @@ int GlobalConf(char * cfgfile);
 /* For rules */
 void Rules_OP_CreateRules();
 int Rules_OP_ReadRules(char * cfgfile);
+void _setlevels(RuleNode *node);
 
 
 /* For cleanmsg */
@@ -230,7 +231,14 @@ int main(int argc, char **argv)
         free(Config.includes);
         Config.includes = NULL;
     }
+    
+    /* Fixing the levels/accuracy */
+    {
+        RuleNode *tmp_node = OS_GetFirstRule();
 
+        _setlevels(tmp_node);
+    }
+    
 
     /* Success */
     if(test_config)
