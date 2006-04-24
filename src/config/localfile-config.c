@@ -47,6 +47,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     logf[pl].file = NULL;
     logf[pl].logformat = NULL;
     logf[pl].fp = NULL;
+    logf[pl].ffile = NULL;
     
     /* Searching for entries related to files */
     i = 0;
@@ -64,7 +65,27 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         }
         else if(strcmp(node[i]->element,xml_localfile_location) == 0)
         {
-            os_strdup(node[i]->content, logf[pl].file);                
+            /* We need the format file */
+            if(strchr(node[i]->content, '%'))
+            {
+                struct tm *p;
+                int l_time = time(0);
+                char lfile[OS_FLSIZE + 1];
+                size_t ret;
+
+                p = localtime(&l_time);
+
+                lfile[OS_FLSIZE] = '\0';
+                ret = strftime(lfile, OS_FLSIZE, node[i]->content, p);
+                if(ret == 0)
+                {
+                    merror(PARSE_ERROR, ARGV0, logf[i].ffile);
+                    return(OS_INVALID);
+                }
+
+                os_strdup(node[i]->content, logf[pl].ffile);
+            }
+            os_strdup(node[i]->content, logf[pl].file);
         }
 
         else if(strcasecmp(node[i]->element,xml_localfile_logformat) == 0)
@@ -81,6 +102,9 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             {
             }
             else if(strcmp(logf[pl].logformat, "apache") == 0)
+            {
+            }
+            else if(strcmp(logf[pl].logformat, "iis") == 0)
             {
             }
             else if(strcmp(logf[pl].logformat, "squid") == 0)

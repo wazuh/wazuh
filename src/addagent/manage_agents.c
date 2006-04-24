@@ -121,19 +121,34 @@ int add_agent()
     
     /* Getting the name */
     memset(name, '\0', STR_SIZE);
-    do
+    while(1) 
     {
-      printf(ADD_NAME);
-      fflush(stdout);
+        printf(ADD_NAME);
+        fflush(stdout);
 
-      _name = read_from_user();
-      strncpy(name, _name, FILE_SIZE -1);
+        _name = read_from_user();
 
-      /* Search for ID KEY  -- no duplicates */
-      if(NameExist(name))
-         printf(ADD_ERROR_NAME, name);
+        /* We must have something in the name */
+        if(strlen(_name) < 2)
+        {
+            continue;
+        }
 
-    } while(NameExist(name));
+        /* quit */
+        if(strcmp(_name, QUIT) == 0)
+            return(0);
+            
+        strncpy(name, _name, FILE_SIZE -1);
+
+        /* Search for name  -- no duplicates */
+        if(NameExist(name))
+        {
+            printf(ADD_ERROR_NAME, name);
+            continue;
+        }
+
+        break;
+    }
 
     
     /* Getting IP */
@@ -145,6 +160,11 @@ int add_agent()
       fflush(stdout);
     
       _ip = read_from_user();
+      
+      /* quit */
+      if(strcmp(_ip, QUIT) == 0)
+          return(0);
+                              
       strncpy(ip, _ip, FILE_SIZE -1);
       
       if(!OS_IsValidIP(ip) || OS_HasNetmask(ip))
@@ -174,6 +194,13 @@ int add_agent()
       fflush(stdout);
     
       _id = read_from_user();
+
+
+      /* quit */
+      if(strcmp(_id, QUIT) == 0)
+          return(0);
+                          
+                          
       if(_id[0] != '\0')
       {
           strncpy(id, _id, FILE_SIZE -1);
@@ -260,6 +287,10 @@ int remove_agent()
       fflush(stdout);
 
       user_input = read_from_user();
+
+      if(strcmp(user_input, QUIT) == 0)
+          return(0);
+
       strcpy(u_id, user_input);
 
       if(!IDExist(user_input))
@@ -302,14 +333,14 @@ int remove_agent()
 
 int list_agents()
 {
-  if(!print_agents())
-    printf(NO_AGENT);
+    if(!print_agents())
+        printf(NO_AGENT);
 
+    printf("\n");
+    printf(PRESS_ENTER);
+    read_from_user();
 
-  printf(PRESS_ENTER);
-  read_from_user();
-
-  return(0);
+    return(0);
 
 }
 

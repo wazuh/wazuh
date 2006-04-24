@@ -147,6 +147,7 @@
 #define INV_EVTLOG      "%s(1903): Invalid event log: '%s'."
 #define LOGC_FILE_ERROR "%s(1904): Unable to read file: '%s'"
 #define NO_FILE         "%s(1905): No file configured to monitor."
+#define PARSE_ERROR     "%s(1906): Error parsing file: '%s'."
 #define READING_FILE    "%s(1950): Analyzing file: '%s'."
 #define READING_EVTLOG  "%s(1951): Analyzing event log: '%s'."
 

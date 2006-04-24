@@ -34,6 +34,10 @@ int k_import()
     printf(IMPORT_KEY);
 
     user_input = read_from_user();
+
+    /* quit */
+    if(strcmp(user_input, QUIT) == 0)
+        return(0);
     
     b64_dec = decode_base64(user_input);
     if(b64_dec == NULL)
@@ -95,9 +99,6 @@ int k_import()
                     printf("%s", ADD_NOT);
                     return(0);
                 }
-                else
-                {
-                }
             }
         }
     }
@@ -129,12 +130,16 @@ int k_extract()
 
     do
     {
-      printf(EXTRACT_KEY);
-      fflush(stdout);
-      user_input = read_from_user();
- 
-      if(!IDExist(user_input))
-        printf(NO_ID, user_input);
+        printf(EXTRACT_KEY);
+        fflush(stdout);
+        user_input = read_from_user();
+
+        /* quit */
+        if(strcmp(user_input, QUIT) == 0)
+            return(0);
+
+        if(!IDExist(user_input))
+            printf(NO_ID, user_input);
 
     } while(!IDExist(user_input));
 

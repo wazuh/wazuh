@@ -70,7 +70,10 @@ int NameExist(char *u_name)
     char line_read[FILE_SIZE +1];
     line_read[FILE_SIZE] = '\0';
 
-    if(!u_name)
+    if((!u_name)||
+       (*u_name == '\0')||
+       (*u_name == '\r')||
+       (*u_name == '\n'))
         return(0);
 
     fp = fopen(AUTH_FILE, "r");

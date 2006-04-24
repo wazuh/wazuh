@@ -16,6 +16,9 @@
 
 #include "logcollector.h"
 
+int _cday = 0;
+int update_fname(int i);
+
 
 /** void LogCollectorStart() v0.4
  * Handle file management.
@@ -50,11 +53,26 @@ void LogCollectorStart()
         
         else
         {
+            /* Initializing the files */    
+            if(logf[i].ffile)
+            {
+                if(update_fname(i))
+                {
+                    handle_file(i);
+                }
+                else
+                {
+                    ErrorExit(PARSE_ERROR, ARGV0, logf[i].ffile);
+                }
+                    
+            }
+            else
+            {
+                handle_file(i);
+            }
+            
             verbose(READING_FILE, ARGV0, logf[i].file);
-
-            /* Initiating the files */    
-            handle_file(i);
-
+            
             /* Getting the log type */
             if(strcmp("snort-full", logf[i].logformat) == 0)
             {
@@ -179,8 +197,8 @@ void LogCollectorStart()
             }
         }
 
-        /* Only check bellow if check > 40 */
-        if(f_check <= 40)
+        /* Only check bellow if check > VCHECK_FILES */
+        if(f_check <= VCHECK_FILES)
             continue;
 
         /* Zeroing f_check */    
@@ -193,6 +211,17 @@ void LogCollectorStart()
             /* These are the windows logs */
             if(!logf[i].file)
                 continue;
+            
+            /* Files with date -- check for day change */
+            if(logf[i].ffile)
+            {
+                if(update_fname(i))
+                {
+                    fclose(logf[i].fp);
+                    logf[i].fp = NULL;
+                    handle_file(i);
+                }
+            }
                 
             /* File has been changing, but not able to read */
             if(logf[i].ign > 0)
@@ -216,12 +245,14 @@ void LogCollectorStart()
             if(logf[i].ign < -8)
             {
                 merror(LOGC_FILE_ERROR, ARGV0, logf[i].file);
-                fclose(logf[i].fp);
+                if(logf[i].fp);
+                    fclose(logf[i].fp);
                 logf[i].fp = NULL;
                 logf[i].ign = -10;
                 continue;
             }
-            
+           
+            /* Files  */ 
             if(!logf[i].fp)
             {
                 if(logf[i].ign <= -10)
@@ -242,6 +273,44 @@ void LogCollectorStart()
     }
 }
 
+
+/**int update_fname(int i): updates file name */
+int update_fname(int i)
+{
+    struct tm *p;
+    int __ctime = time(0);
+    
+    char lfile[OS_FLSIZE + 1];
+    size_t ret;
+
+    p = localtime(&__ctime);
+
+    /* Handle file */
+    if(p->tm_mday == _cday)
+    {
+        return(0);
+    }
+
+    _cday = p->tm_mday;
+
+    lfile[OS_FLSIZE] = '\0';
+    ret = strftime(lfile, OS_FLSIZE, logf[i].ffile, p);
+    if(ret == 0)
+    {
+        ErrorExit(PARSE_ERROR, ARGV0, logf[i].ffile);
+    }
+    
+    /* Update the file name */
+    if(strcmp(lfile, logf[i].file) != 0)
+    {
+        free(logf[i].file);
+
+        os_strdup(lfile, logf[i].file);    
+        return(1);
+    }
+
+    return(0);
+}
 
 
 /* handle_file: Open, get the fileno, seek to the end and update mtime */

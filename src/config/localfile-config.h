@@ -16,15 +16,21 @@
 #define __CLOGREADER_H
 
 #define EVENTLOG    "eventlog"
+#define VCHECK_FILES    32
 #define MAX_READ_FILE   16
+#define DATE_MODIFIED   1
 
 /* Logreader config */
 typedef struct _logreader
 {
     int mtime;
-    char type;
     int ign;
         
+    /* ffile - format file is only used when 
+     * the file has format string to retrieve
+     * the date,
+     */    
+    char *ffile;        
 	char *file;
 	char *logformat;
 

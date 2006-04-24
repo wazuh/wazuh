@@ -52,14 +52,17 @@ fpos_t fp_pos;
 #define FILE_SIZE       257
 #define STR_SIZE        66
 
-
+/* Internal strings */
+#define QUIT                "\\q"
 
 /* Print agents */
 #define PRINT_AVAILABLE     "\nAvailable agents: \n"
 #define PRINT_AGENT         "   ID: %s, Name: %s, IP: %s\n"
 
 /* Add new agent */
-#define ADD_NEW         "\nAdding a new agent. Please provide the following:\n"
+#define ADD_NEW         "\n- Adding a new agent"\
+                        " (use '\\q' to return to main menu).\n"\
+                        "  Please provide the following:\n"
 #define ADD_NAME        "   * A name for the new agent: "
 #define ADD_IP          "   * The IP Address for the new agent: "
 #define ADD_ID          "   * An ID for the new agent[%s]: "
@@ -79,7 +82,7 @@ fpos_t fp_pos;
 #define NO_KEY          "\n** Invalid authentication key. Starting over again.\n"
 
 /* Remove agent */
-#define REMOVE_ID       "Provide the ID of the agent you want to remove: "
+#define REMOVE_ID       "Provide the ID of the agent to remove (or '\\q' to quit): "
 #define REMOVE_CONFIRM  "Confirm deleting it?(y/n): "
 #define REMOVE_DONE     "Agent '%s' removed.\n"
 #define REMOVE_NOT      "Not removing ..\n"
@@ -88,11 +91,11 @@ fpos_t fp_pos;
 #define IMPORT_KEY      "\n* Provide the Key generated from the server.\n" \
                         "* The best approach is to cut and paste it.\n" \
                         "*** OBS: Do not include spaces or new lines.\n\n" \
-                        "Paste it here: "
+                        "Paste it here (or '\\q' to quit): "
     
 /* extract key */    
-#define EXTRACT_KEY     "Provide the ID of the agent you want to extract " \
-                        "the key: "
+#define EXTRACT_KEY     "Provide the ID of the agent to extract " \
+                        "the key (or '\\q' to quit): "
 #define EXTRACT_MSG     "\nAgent key information for '%s' is: \n%s\n" \
                         "\n** Press ENTER to return main menu.\n"
    

@@ -16,6 +16,7 @@
 /* print banner */
 void print_banner()
 {
+    printf("\n");
     printf(BANNER, __name, __version);
 
     #ifdef CLIENT
