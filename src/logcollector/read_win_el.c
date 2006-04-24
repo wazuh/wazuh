@@ -17,7 +17,7 @@
 /* This is only for windows */
 #ifdef WIN32
 
-#define BUFFER_SIZE 1024*64
+#define BUFFER_SIZE 2048*64
 
 
 
@@ -65,19 +65,19 @@ char *el_getCategory(int category_id)
     switch(category_id)
     {
         case EVENTLOG_ERROR_TYPE:
-            cat = "EVENTLOG_ERROR";
+            cat = "ERROR";
             break;
         case EVENTLOG_WARNING_TYPE:
-            cat = "EVENTLOG_WARNING";
+            cat = "WARNING";
             break;
         case EVENTLOG_INFORMATION_TYPE:
-            cat = "EVENTLOG_INFORMATION";
+            cat = "INFORMATION";
             break;
         case EVENTLOG_AUDIT_SUCCESS:
-            cat = "EVENTLOG_AUDIT_SUCCESS";
+            cat = "AUDIT_SUCCESS";
             break;
         case EVENTLOG_AUDIT_FAILURE:
-            cat = "EVENTLOG_AUDIT_FAILURE";
+            cat = "AUDIT_FAILURE";
             break;
         default:
             cat = "Unknown";
@@ -219,7 +219,7 @@ void readel(os_el *el, int printit)
     int size_left;
     int str_size;
 
-    char *mbuffer[BUFFER_SIZE];
+    char mbuffer[BUFFER_SIZE];
     LPSTR sstr = NULL;
 
     char *tmp_str = NULL;
@@ -276,7 +276,13 @@ void readel(os_el *el, int printit)
 
                 for (nstr = 0;nstr < el->er->NumStrings;nstr++)
                 {
-                    str_size = strlen(sstr);	
+                    /* Depending on the event, we may need to
+                     * get the username, because the one in the
+                     * structure is not accurate.
+                     * We may also get the source IP address 
+                     * if available. XXX todo.
+                     */
+                    str_size = strlen(sstr);
                     strncat(el_string, sstr, size_left);
 
                     tmp_str= strchr(el_string, '\0');
@@ -295,7 +301,10 @@ void readel(os_el *el, int printit)
                 }
 
                 /* Get a more descriptive message (if available) */
-                descriptive_msg = el_getMessage(el->er, el->name, source, el_sstring);
+                descriptive_msg = el_getMessage(el->er, 
+                                                el->name, 
+                                                source, 
+                                                el_sstring);
                 if(descriptive_msg != NULL)
                 {
                     /* Remove any \n or \r */
@@ -324,8 +333,14 @@ void readel(os_el *el, int printit)
             if (el->er->UserSidLength)
             {
                 SID_NAME_USE account_type;
-                if(!LookupAccountSid(NULL, (SID *)((LPSTR)el->er + el->er->UserSidOffset),
-                            el_user, &user_size, el_domain, &domain_size, &account_type))		
+                if(!LookupAccountSid(NULL, 
+                                    (SID *)((LPSTR)el->er + 
+                                    el->er->UserSidOffset),
+                                    el_user, 
+                                    &user_size, 
+                                    el_domain, 
+                                    &domain_size, 
+                                    &account_type))		
                 {
                     strncpy(el_user, "(no user)", 255);
                     strncpy(el_domain, "no domain", 255);
@@ -342,15 +357,17 @@ void readel(os_el *el, int printit)
 
             if(printit)
             {
-                
+                DWORD _evtid = 65535;
+                int id = (int)el->er->EventID & _evtid; 
                 snprintf(final_msg, 1022, 
-                        "WinEvtLog: %s: %s(0x%08X): %s: %s(%s): %s\n", 
+                        "WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s\n", 
                         el->name,
                         category, 
-                        (int)el->er->EventID,
+                        id,
                         source,
                         el_user,
                         el_domain,
+                        computer_name,
                         descriptive_msg != NULL?descriptive_msg:el_string);	
                 
                 if(SendMSG(logr_queue, final_msg, "WinEvtLog",

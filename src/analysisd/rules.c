@@ -441,6 +441,10 @@ int Rules_OP_ReadRules(char * rulefile)
                         {
                             config_ruleinfo->category = SQUID;
                         }
+                        else if(strcmp(rule_opt[k]->content,"windows") == 0)
+                        {
+                            config_ruleinfo->category = WINDOWS;
+                        }
                         else
                         {
                             merror(INVALID_CAT, ARGV0, rule_opt[k]->content);

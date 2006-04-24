@@ -17,7 +17,7 @@
 
 #include <windows.h>
 
-#define BUFFER_SIZE 1024*64
+#define BUFFER_SIZE 2048*64
 #define DEFAULT_FILE 	"C:\\ossec-extracted-evt.log"
 
 FILE *fp;
@@ -68,19 +68,19 @@ char *el_getCategory(int category_id)
     switch(category_id)
     {
         case EVENTLOG_ERROR_TYPE:
-            cat = "EVENTLOG_ERROR";
+            cat = "ERROR";
             break;
         case EVENTLOG_WARNING_TYPE:
-            cat = "EVENTLOG_WARNING";
+            cat = "WARNING";
             break;
         case EVENTLOG_INFORMATION_TYPE:
-            cat = "EVENTLOG_INFORMATION";
+            cat = "INFORMATION";
             break;
         case EVENTLOG_AUDIT_SUCCESS:
-            cat = "EVENTLOG_AUDIT_SUCCESS";
+            cat = "AUDIT_SUCCESS";
             break;
         case EVENTLOG_AUDIT_FAILURE:
-            cat = "EVENTLOG_AUDIT_FAILURE";
+            cat = "AUDIT_FAILURE";
             break;
         default:
             cat = "Unknown";
@@ -222,7 +222,7 @@ void readel(os_el *el, int printit)
     int size_left;
     int str_size;
 
-    char *mbuffer[BUFFER_SIZE];
+    char mbuffer[BUFFER_SIZE];
     LPSTR sstr = NULL;
 
     char *tmp_str = NULL;
@@ -298,7 +298,8 @@ void readel(os_el *el, int printit)
                 }
 
                 /* Get a more descriptive message (if available) */
-                descriptive_msg = el_getMessage(el->er, el->name, source, el_sstring);
+                descriptive_msg = el_getMessage(el->er, el->name, source, 
+                                                        el_sstring);
                 if(descriptive_msg != NULL)
                 {
                     /* Remove any \n or \r */
@@ -345,13 +346,15 @@ void readel(os_el *el, int printit)
 
             if(printit)
             {
+                DWORD _evtid = 65535;   
+                int id = (int)el->er->EventID & _evtid;                  
                 
                 snprintf(final_msg, 1022, 
-                        "%d WinEvtLog: %s: %s(0x%08X): %s: %s(%s): %s",
-		        (int)el->er->TimeGenerated,	
+                        "%d WinEvtLog: %s: %s(%d): %s: %s(%s): %s",
+        		        (int)el->er->TimeGenerated,	
                         el->name,
                         category, 
-                        (int)el->er->EventID,
+                        id,
                         source,
                         el_user,
                         el_domain,

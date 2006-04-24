@@ -42,5 +42,11 @@
     <description>Generic template for all squid rules.</description>
   </rule>
 </group>
-            
+
+<group name="windows">
+  <rule id="06" level="0" noalert="1">
+    <category>windows</category>
+    <description>Generic template for all windows rules.</description>
+  </rule>
+</group>            
 <!-- EOF -->

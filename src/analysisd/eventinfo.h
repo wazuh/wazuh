@@ -92,6 +92,8 @@ typedef struct _EventNode
 #define ROOTCHECK   6   /* rootcheck messages */
 #define APACHE      7   /* Apache logs */
 #define SQUID       8   /* Squid logs */
+#define WINDOWS     9   /* Windows logs */
+
 
 /* FTS allowed values */
 #define FTS_NAME     0001000

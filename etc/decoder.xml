@@ -390,4 +390,28 @@
   <regex>^\d+ (\d+.\d+.\d+.\d+) </regex>
   <order>srcip</order>
 </decoder>  
+
+
+<!-- Windows decoder
+  - Will extract url (as win source),action (as win category) and id.
+  - Examples:
+  - WinEvtLog: Application: INFORMATION(0x00000064): ESENT: 
+    (no user)(no domain): 
+  - WinEvtLog: Security: AUDIT_FAILURE(0x000002A9): Security: 
+    SYSTEM: NT AUTHORITY: The logon to account: xyz    by: 
+    MICROSOFT_AUTHENTICATION_PACKAGE_V1_0    from workstation: la    failed. 
+    The error code was: 3221225572
+  - WinEvtLog: Security: AUDIT_FAILURE(0x00000211): Security: 
+    SYSTEM: NT AUTHORITY: Logon Failure:      Reason:     Unknown user 
+    name or bad password       User Name:  ab      Domain:     cd      
+    Logon Type: 2       Logon Process:  User32          Authentication 
+    Package: Negotiate       Workstation Name:   ad
+  -->
+<decoder name="windows">
+  <type>windows</type>
+  <prematch>^WinEvtLog: </prematch>
+  <regex>^WinEvtLog: (\w+): (\w+)\((\d+)\): </regex>
+  <order>url,action,id</order>
+</decoder>    
+
 <!-- EOF -->

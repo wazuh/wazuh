@@ -199,7 +199,9 @@ void ReadDecodeXML(char *file)
                 else if(strcmp(elements[j]->content, "syslog") == 0)
                     pi->type = SYSLOG;
                 else if(strcmp(elements[j]->content, "squid") == 0)
-                    pi->type = SQUID;    
+                    pi->type = SQUID;
+                else if(strcmp(elements[j]->content, "windows") == 0)
+                    pi->type = WINDOWS;        
                 else
                 {
                     ErrorExit("decode-xml: Invalid decoder type '%s'.",

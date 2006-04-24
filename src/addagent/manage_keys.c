@@ -67,24 +67,37 @@ int k_import()
             *tmp_key = '\0';
         
             printf("\n");   
-            printf(AGENT_INFO, b64_dec, name, ip); 
-            fflush(stdout);
-
-            user_input = read_from_user();
-
-            if(user_input[0] == 'y' || user_input[0] == 'Y')
+            printf(AGENT_INFO, b64_dec, name, ip);
+            
+            while(1)
             {
-                fp = fopen(KEYS_FILE,"w");
-                if(!fp)
+                printf(ADD_CONFIRM);
+                fflush(stdout);
+
+                user_input = read_from_user();
+
+                if(user_input[0] == 'y' || user_input[0] == 'Y')
                 {
-                    ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
+                    fp = fopen(KEYS_FILE,"w");
+                    if(!fp)
+                    {
+                        ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
+                    }
+                    fprintf(fp,"%s\n",line_read);
+                    fclose(fp);
+                    printf(AGENT_ADD);
+                    printf(PRESS_ENTER);
+                    read_from_user();
+                    return(1);
                 }
-                fprintf(fp,"%s\n",line_read);
-                fclose(fp);
-                printf(AGENT_ADD);
-                printf(PRESS_ENTER);
-                read_from_user();
-                return(1);
+                else if(user_input[0] == 'n' || user_input[0] == 'N')
+                {
+                    printf("%s", ADD_NOT);
+                    return(0);
+                }
+                else
+                {
+                }
             }
         }
     }
