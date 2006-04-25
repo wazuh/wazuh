@@ -98,20 +98,23 @@ int main(int argc, char **argv)
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
+    logr->port = DEFAULT_SECURE;
                                 
-    
-    /* Read agent config */
-    if((binds = ClientConf(DEFAULTCPATH)) == 0)
-        ErrorExit(CLIENT_ERROR,ARGV0);
-
 
     /* Configuration file not present */
     if(File_DateofChange(cfg) < 0)
         ErrorExit("%s: Configuration file '%s' not found",ARGV0,cfg);
+        
+    
+    /* Read agent config */
+    if((binds = ClientConf(cfg)) == 0)
+        ErrorExit(CLIENT_ERROR,ARGV0);
+
 
 
     /* Reading logcollector config file */
-    LogCollectorConfig(cfg);
+    if(LogCollectorConfig(cfg) < 0)
+        ErrorExit(CONFIG_ERROR, ARGV0);
 
 
     /* Reading the private keys  */
@@ -181,16 +184,8 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 /* StartMQ for windows */
 int StartMQ(char * path, short int type)
 {
-    int port;
-    
-    /* Giving the default port if none is available */
-    if((logr->port == NULL) || (port = atoi(logr->port) <= 0))
-    {
-        port = DEFAULT_SECURE;
-    }
-
     /* Connecting UDP */
-    logr->sock = OS_ConnectUDP(port, logr->rip);
+    logr->sock = OS_ConnectUDP(logr->port, logr->rip);
     if(logr->sock < 0)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
 

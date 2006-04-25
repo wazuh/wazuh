@@ -6,6 +6,7 @@ headers headers
 shared shared
 error_messages error_messages
 addagent addagent
+config config
 client-agent/config.c client-agent-config.c
 client-agent/agentd.h agentd.h
 logcollector/config.c logcollector-config.c

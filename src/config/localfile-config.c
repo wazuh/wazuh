@@ -69,7 +69,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             if(strchr(node[i]->content, '%'))
             {
                 struct tm *p;
-                int l_time = time(0);
+                time_t l_time = time(0);
                 char lfile[OS_FLSIZE + 1];
                 size_t ret;
 

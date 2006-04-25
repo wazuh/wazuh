@@ -278,7 +278,7 @@ void LogCollectorStart()
 int update_fname(int i)
 {
     struct tm *p;
-    int __ctime = time(0);
+    time_t __ctime = time(0);
     
     char lfile[OS_FLSIZE + 1];
     size_t ret;

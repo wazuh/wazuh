@@ -40,8 +40,10 @@ CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$I
 CreateShortCut "$SMPROGRAMS\ossec\Edit.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
 CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "http://www.ossec.net/en/manual.html" "" "http://www.ossec.net/en/manual.html" 0
 
-    ; Install in the services 
-    Exec '"$INSTDIR\ossec-agent.exe" install-service'
+; Install in the services 
+Exec '"$INSTDIR\ossec-agent.exe" install-service'
+ExecWait '"C:\WINDOWS\notepad.exe" "$INSTDIR\ossec.conf"'
+ExecWait '$INSTDIR\manage_agents.exe'
 
 SectionEnd
 
@@ -55,8 +57,12 @@ Section "Uninstall"
   DeleteRegKey HKLM SOFTWARE\ossec
 
   ; Remove files and uninstaller
-  Delete $INSTDIR\ossec-agent.exe
-  Delete $INSTDIR\uninstall.exe
+  Delete "$INSTDIR\ossec-agent.exe"
+  Delete "$INSTDIR\manage_agents.exe"
+  Delete "$INSTDIR\ossec.conf"
+  Delete "$INSTDIR\uninstall.exe"
+  Delete "$INSTDIR\*"
+  Delete "$INSTDIR"
 
   ; Remove shortcuts, if any
   Delete "$SMPROGRAMS\ossec\*.*"

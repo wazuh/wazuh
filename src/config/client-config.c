@@ -61,6 +61,12 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
                 return(OS_INVALID);
             }
             logr->port = atoi(node[i]->content);
+
+            if(logr->port <= 0 || logr->port > 65535)
+            {
+                merror(PORT_ERROR, ARGV0, logr->port);
+                return(OS_INVALID);
+            }
         }
         else if(strcmp(node[i]->element,xml_ar_disabled) == 0)
         {

@@ -241,6 +241,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
         else if(strcmp(node[i]->element, xml_smtpserver) == 0)
         {
+            #ifndef WIN32
             if(Mail)
             {
                 Mail->smtpserver = OS_GetHost(node[i]->content);
@@ -250,6 +251,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     return(OS_INVALID);
                 }
             }
+            #endif    
         }
         else if(strcmp(node[i]->element, xml_mailmaxperhour) == 0)
         {

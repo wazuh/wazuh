@@ -27,12 +27,12 @@
 
 /* Global headers */
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 
 /* Making windows happy */
 #ifndef WIN32
+#include <sys/wait.h>
 #include <sys/select.h>
 #include <sys/utsname.h>
 #endif
