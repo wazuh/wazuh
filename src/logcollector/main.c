@@ -82,7 +82,7 @@ int main(int argc, char **argv)
         ErrorExit(CONFIG_ERROR,ARGV0,cfg);
     
 
-    if(logf[0].file == NULL)
+    if(logff[0].file == NULL)
         ErrorExit(NO_FILE, ARGV0);
             
 

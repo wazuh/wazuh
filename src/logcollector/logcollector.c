@@ -38,23 +38,23 @@ void LogCollectorStart()
     /* Initializing each file and structure */
     for(i = 0;;i++)
     {
-        if(logf[i].file == NULL)
+        if(logff[i].file == NULL)
             break;
        
-        if(strcmp(logf[i].logformat,"eventlog") == 0)
+        if(strcmp(logff[i].logformat,"eventlog") == 0)
         {
             #ifdef WIN32
-            verbose(READING_EVTLOG, ARGV0, logf[i].file);
-            win_startel(logf[i].file);
+            verbose(READING_EVTLOG, ARGV0, logff[i].file);
+            win_startel(logff[i].file);
             #endif
-            logf[i].file = NULL;
-            logf[i].fp = NULL;
+            logff[i].file = NULL;
+            logff[i].fp = NULL;
         }
         
         else
         {
             /* Initializing the files */    
-            if(logf[i].ffile)
+            if(logff[i].ffile)
             {
                 if(update_fname(i))
                 {
@@ -62,7 +62,7 @@ void LogCollectorStart()
                 }
                 else
                 {
-                    ErrorExit(PARSE_ERROR, ARGV0, logf[i].ffile);
+                    ErrorExit(PARSE_ERROR, ARGV0, logff[i].ffile);
                 }
                     
             }
@@ -71,16 +71,16 @@ void LogCollectorStart()
                 handle_file(i);
             }
             
-            verbose(READING_FILE, ARGV0, logf[i].file);
+            verbose(READING_FILE, ARGV0, logff[i].file);
             
             /* Getting the log type */
-            if(strcmp("snort-full", logf[i].logformat) == 0)
+            if(strcmp("snort-full", logff[i].logformat) == 0)
             {
-                logf[i].read = (void *)read_snortfull;
+                logff[i].read = (void *)read_snortfull;
             }
             else
             {
-                logf[i].read = (void *)read_syslog;
+                logff[i].read = (void *)read_syslog;
             }
         }
     }
@@ -126,7 +126,7 @@ void LogCollectorStart()
         /* Checking which file is available */
         for(i = 0; i <= max_file; i++)
         {
-            if(!logf[i].fp)
+            if(!logff[i].fp)
                 continue;
 
             /* We check if the date of the file has changed.
@@ -139,60 +139,60 @@ void LogCollectorStart()
              * like that. We need to open and close the file
              * again.
              */
-            tmtmp = File_DateofChange(logf[i].file);
-            if(tmtmp != logf[i].mtime)
+            tmtmp = File_DateofChange(logff[i].file);
+            if(tmtmp != logff[i].mtime)
             {
                 /* Reading file */
-                logf[i].read(i, &r);
+                logff[i].read(i, &r);
 
                 /* Checking read ret code */
-                if(!ferror(logf[i].fp))
+                if(!ferror(logff[i].fp))
                 {
                     /* Clearing EOF */
-                    clearerr(logf[i].fp);
+                    clearerr(logff[i].fp);
 
                     /* Updating mtime */
-                    logf[i].mtime = tmtmp;
+                    logff[i].mtime = tmtmp;
 
                     /* Nothing was available to be read */
                     if(r == 0)
                     {
-                        logf[i].ign = 0;
+                        logff[i].ign = 0;
                     }
                     else if(r == 1)
                     {
-                        logf[i].ign++;
+                        logff[i].ign++;
                     }
                     /* File formatting error */
                     else
                     {
-                        logf[i].ign--;
+                        logff[i].ign--;
                     }
                 }
                 /* ferror is set */
                 else
                 {
-                    merror(FREAD_ERROR, ARGV0, logf[i].file);
+                    merror(FREAD_ERROR, ARGV0, logff[i].file);
                     
-                    if(fseek(logf[i].fp,0,SEEK_END) < 0)
+                    if(fseek(logff[i].fp,0,SEEK_END) < 0)
                     {
-                        merror(FSEEK_ERROR, ARGV0, logf[i].file);
+                        merror(FSEEK_ERROR, ARGV0, logff[i].file);
 
                         /* Closing the file */
-                        fclose(logf[i].fp);
-                        logf[i].fp = NULL;
+                        fclose(logff[i].fp);
+                        logff[i].fp = NULL;
                         
                         /* Trying to open it again */
                         if(handle_file(i) != 0)
                         {
-                            logf[i].ign--;
+                            logff[i].ign--;
                             continue;
                         }
                     }
                     
                     /* Increase the error count  */
-                    logf[i].ign--;
-                    clearerr(logf[i].fp);
+                    logff[i].ign--;
+                    clearerr(logff[i].fp);
                 }
             }
         }
@@ -209,60 +209,60 @@ void LogCollectorStart()
         for(i = 0; i <= max_file; i++)
         {
             /* These are the windows logs */
-            if(!logf[i].file)
+            if(!logff[i].file)
                 continue;
             
             /* Files with date -- check for day change */
-            if(logf[i].ffile)
+            if(logff[i].ffile)
             {
                 if(update_fname(i))
                 {
-                    fclose(logf[i].fp);
-                    logf[i].fp = NULL;
+                    fclose(logff[i].fp);
+                    logff[i].fp = NULL;
                     handle_file(i);
                 }
             }
                 
             /* File has been changing, but not able to read */
-            if(logf[i].ign > 0)
+            if(logff[i].ign > 0)
             {
-                if(logf[i].fp)
-                    fclose(logf[i].fp);
-                logf[i].fp = NULL;
+                if(logff[i].fp)
+                    fclose(logff[i].fp);
+                logff[i].fp = NULL;
                 if(handle_file(i) < 0)
                 {
-                    logf[i].ign = -1;
+                    logff[i].ign = -1;
                 }
                 else
                 {
-                    logf[i].ign = -1;
+                    logff[i].ign = -1;
                     continue;
                 }
             }
             
             
             /* Too many errors for the file */ 
-            if(logf[i].ign < -8)
+            if(logff[i].ign < -8)
             {
-                merror(LOGC_FILE_ERROR, ARGV0, logf[i].file);
-                if(logf[i].fp);
-                    fclose(logf[i].fp);
-                logf[i].fp = NULL;
-                logf[i].ign = -10;
+                merror(LOGC_FILE_ERROR, ARGV0, logff[i].file);
+                if(logff[i].fp);
+                    fclose(logff[i].fp);
+                logff[i].fp = NULL;
+                logff[i].ign = -10;
                 continue;
             }
            
             /* Files  */ 
-            if(!logf[i].fp)
+            if(!logff[i].fp)
             {
-                if(logf[i].ign <= -10)
+                if(logff[i].ign <= -10)
                     continue;
                 else
                 {
                     /* Try for a few times to open the file */
                     if(handle_file(i) < 0)
                     {
-                        logf[i].ign--;
+                        logff[i].ign--;
                     }
                     continue;
                 }
@@ -294,18 +294,18 @@ int update_fname(int i)
     _cday = p->tm_mday;
 
     lfile[OS_FLSIZE] = '\0';
-    ret = strftime(lfile, OS_FLSIZE, logf[i].ffile, p);
+    ret = strftime(lfile, OS_FLSIZE, logff[i].ffile, p);
     if(ret == 0)
     {
-        ErrorExit(PARSE_ERROR, ARGV0, logf[i].ffile);
+        ErrorExit(PARSE_ERROR, ARGV0, logff[i].ffile);
     }
     
     /* Update the file name */
-    if(strcmp(lfile, logf[i].file) != 0)
+    if(strcmp(lfile, logff[i].file) != 0)
     {
-        free(logf[i].file);
+        free(logff[i].file);
 
-        os_strdup(lfile, logf[i].file);    
+        os_strdup(lfile, logff[i].file);    
         return(1);
     }
 
@@ -319,30 +319,30 @@ int handle_file(int i)
     /* We must be able to open the file, fseek and get the
      * time of change from it.
      */
-    logf[i].fp = fopen(logf[i].file, "r");
-    if(!logf[i].fp)
+    logff[i].fp = fopen(logff[i].file, "r");
+    if(!logff[i].fp)
     {
-        merror(FOPEN_ERROR, ARGV0, logf[i].file);
+        merror(FOPEN_ERROR, ARGV0, logff[i].file);
         return(-1);
     }
 
-    if(fseek(logf[i].fp, 0, SEEK_END) < 0)
+    if(fseek(logff[i].fp, 0, SEEK_END) < 0)
     {
-        merror(FSEEK_ERROR, ARGV0,logf[i].file);
-        fclose(logf[i].fp);
-        logf[i].fp = NULL;
+        merror(FSEEK_ERROR, ARGV0,logff[i].file);
+        fclose(logff[i].fp);
+        logff[i].fp = NULL;
         return(-1);
     }
     
-    if((logf[i].mtime = File_DateofChange(logf[i].file)) < 0)
+    if((logff[i].mtime = File_DateofChange(logff[i].file)) < 0)
     {
-        merror(FILE_ERROR,ARGV0,logf[i].file);
-        fclose(logf[i].fp);
-        logf[i].fp = NULL;
+        merror(FILE_ERROR,ARGV0,logff[i].file);
+        fclose(logff[i].fp);
+        logff[i].fp = NULL;
         return(-1);
     }
     
-    logf[i].ign = 0;
+    logff[i].ign = 0;
     return(0);
 }
 

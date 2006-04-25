@@ -57,7 +57,7 @@ void win_readel();
 /*** Global variables ***/
 
 int logr_queue;
-logreader logf[MAX_READ_FILE +1];
+logreader logff[MAX_READ_FILE +1];
 
 
 #endif

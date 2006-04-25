@@ -29,10 +29,10 @@ int LogCollectorConfig(char * cfgfile)
 
     modules|= CLOCALFILE;
 
-    logf[0].file = NULL;
-    logf[0].ffile = NULL;
+    logff[0].file = NULL;
+    logff[0].ffile = NULL;
 
-    if(ReadConfig(modules, cfgfile, &logf, NULL) < 0)
+    if(ReadConfig(modules, cfgfile, &logff, NULL) < 0)
         return(OS_INVALID);
 
     return(1);
