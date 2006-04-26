@@ -65,7 +65,7 @@ int GlobalConf(char * cfgfile);
 /* For rules */
 void Rules_OP_CreateRules();
 int Rules_OP_ReadRules(char * cfgfile);
-void _setlevels(RuleNode *node);
+void _setlevels(RuleNode *node, int nnode);
 
 
 /* For cleanmsg */
@@ -236,7 +236,7 @@ int main(int argc, char **argv)
     {
         RuleNode *tmp_node = OS_GetFirstRule();
 
-        _setlevels(tmp_node);
+        _setlevels(tmp_node, 0);
     }
     
 
@@ -586,9 +586,12 @@ void OS_ReadMSG(int m_queue)
 
 
             /** FTS CHECKS **/
-            if(!FTS(lf))
+            if(lf->fts)
             {
-                lf->fts = 0;
+                if(!FTS(lf))
+                {
+                    lf->fts = 0;
+                }
             }
 
 
@@ -634,7 +637,7 @@ void OS_ReadMSG(int m_queue)
                     {
                         currently_rule->time_ignored = lf->time;
                     }
-                    /* If the currently time - the time the rule was ignore
+                    /* If the currently time - the time the rule was ignored
                      * is less than the time it should be ignored,
                      * leave (do not alert again).
                      */

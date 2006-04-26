@@ -32,7 +32,7 @@ typedef struct _RuleInfo
     int frequency;
     int timeframe;
 
-    int context; /* Not an user option */
+    u_int8_t context; /* Not an user option */
     int firedtimes;  /* Not an user option */
     int time_ignored; /* Not an user option */
     int ignore_time;
@@ -47,6 +47,7 @@ typedef struct _RuleInfo
     u_int8_t logalert;
     u_int8_t noalert;
     u_int8_t same_source_ip;
+    u_int8_t same_id;
     u_int8_t same_user;
     u_int8_t same_loghost;
     u_int8_t category;

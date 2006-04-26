@@ -55,12 +55,6 @@
     <info>http://snap.nlc.dcccd.edu/reference/sysadmin/julian/ch18/389-392.html</info>
   </rule>
 
-  <rule id="1610" level="10" timeframe="120" frequency="8" ignore="60">
-    <if_level>6</if_level>
-    <same_source_ip />
-    <description>Multiple events from same source ip.</description>
-  </rule>  
-
   <rule id="1611" level="10" frequency="8" timeframe="160">
     <if_matched_group>authentication_failed</if_matched_group>
     <description>Multiple authentication failures.</description>
@@ -84,7 +78,7 @@
 <!-- Scan signatures -->
 <group name="syslog,scans">
   <rule id="1801" level="10" frequency="6" timeframe="90" ignore="90">
-    <if_group>connection_attempt</if_group>
+    <if_matched_group>connection_attempt</if_matched_group>
     <description>Horizontal scan on the network</description>
     <same_source_ip />
     <info>http://project.honeynet.org/papers/enemy2/</info>

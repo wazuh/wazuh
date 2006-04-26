@@ -39,7 +39,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
     
     /* Setting frequency to 0 */
     currently_rule->__frequency = 0;
-
     
     /* Searching all previous events */
     do
@@ -52,19 +51,22 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
             return(NULL);
         }
 
+
+        /* We avoid multiple triggers for the same rule 
+         * or rules with a lower level.
+         */
+        else if(lf->matched >= currently_rule->level)
+        {
+            return(NULL);
+        }
+        
+        
         /* The category must be the same */
         else if(lf->type != my_lf->type)
         {
             continue;    
         }
         
-        /* We avoid multiple triggers for the same rule 
-         * or rules with a lower level.
-         */
-        else if(lf->matched >= currently_rule->level)
-        {
-            break;
-        }
         
         /* If regex does not match, go to next */
         if(currently_rule->if_matched_regex)
@@ -105,9 +107,19 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
             if(strcmp(lf->user,my_lf->user) != 0)
                 continue;
         }
-        
+       
+        /* Checking for same id */
+        if(currently_rule->same_id)
+        {
+            if((!lf->id) || (!my_lf->id))
+                continue;
+            
+            if(strcmp(lf->id,my_lf->id) != 0)
+                continue;    
+        }
+         
         /* Checking for repetitions from same src_ip */
-        else if(currently_rule->same_source_ip)
+        if(currently_rule->same_source_ip)
         {
             if((!lf->srcip)||(!my_lf->srcip))
                 continue;
@@ -134,8 +146,9 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         
         
         /* If reached here, we matched */
+        my_lf->matched = currently_rule->level;
         lf->matched = currently_rule->level;
-            
+       
         return(lf);    
         
     }while((eventnode_pt = eventnode_pt->next) != NULL);
@@ -231,7 +244,6 @@ void Free_Eventinfo(Eventinfo *lf)
      * fts
      * comment
      */
-    
     free(lf);
     lf = NULL; 
     

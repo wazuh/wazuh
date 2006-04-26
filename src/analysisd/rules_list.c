@@ -80,11 +80,23 @@ int _AddtoRule(int sid, int level, int none, char *group,
             }
         }
         
+        
+        /* If we are not searching for the sid, the category must
+         * be the same. 
+         */
+        else if(read_rule->category != r_node->ruleinfo->category)
+        {
+            r_node = r_node->next;
+            continue;
+        }
+
+        
         /* Checking if the level matches */
         else if(level)
         {
             if((r_node->ruleinfo->level >= level) && 
-                    (r_node->ruleinfo->sigid != read_rule->sigid))
+               (r_node->ruleinfo->sigid != read_rule->sigid) &&
+               (r_node->ruleinfo->context == 0))
             {
                 r_node->child=
                     _OS_AddRule(r_node->child, read_rule);
@@ -92,14 +104,6 @@ int _AddtoRule(int sid, int level, int none, char *group,
             }
         }
         
-        /* If we are not searching for the sid or level, the category must
-         * be the same 
-         */
-        else if(read_rule->category != r_node->ruleinfo->category)
-        {
-            r_node = r_node->next;
-            continue;
-        }
 
 
         /* Checking if the group matches */
@@ -117,6 +121,8 @@ int _AddtoRule(int sid, int level, int none, char *group,
         /* If none of them is set, add for the category */
         else
         {
+            /* Setting the parent category to it */
+            read_rule->category = r_node->ruleinfo->category;
             r_node->child =
                     _OS_AddRule(r_node->child, read_rule);
             return(1);
@@ -246,7 +252,7 @@ RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
         
         while(tmp_rulenode != NULL)
         {
-            if(read_rule->level >= tmp_rulenode->ruleinfo->level)
+            if(read_rule->level > tmp_rulenode->ruleinfo->level)
             {
                 middle_insertion = 1;
                 break;

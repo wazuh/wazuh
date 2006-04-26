@@ -113,6 +113,7 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_same_source_ip = "same_source_ip";
     char *xml_same_user = "same_user";
     char *xml_same_loghost = "same_loghost";
+    char *xml_same_id = "same_id";
 
     char *xml_options = "options";
     
@@ -501,7 +502,8 @@ int Rules_OP_ReadRules(char * rulefile)
                                     rule_opt[k]->content);
                             return(-1);
                         }
-                        config_ruleinfo->if_matched_sid = atoi(rule_opt[k]->content);
+                        config_ruleinfo->if_matched_sid = 
+                                    atoi(rule_opt[k]->content);
 
                         /* If_matched_sid, we need to get the if_sid */
                         config_ruleinfo->if_sid=
@@ -513,6 +515,11 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         config_ruleinfo->context = 1;
                         config_ruleinfo->same_source_ip = 1;
+                    }
+                    else if(strcmp(rule_opt[k]->element, xml_same_id) == 0)
+                    {
+                        config_ruleinfo->context = 1;
+                        config_ruleinfo->same_id = 1;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_fts) == 0)
@@ -560,6 +567,16 @@ int Rules_OP_ReadRules(char * rulefile)
                         return(-1);
                     }
                     k++;
+                }
+
+                /* If if_matched_group we must have a if_sid or if_group */
+                if(if_matched_group)
+                {
+                    if(!config_ruleinfo->if_sid && !config_ruleinfo->if_group)
+                    {
+                        os_strdup(if_matched_group, 
+                                  config_ruleinfo->if_group);        
+                    }
                 }
 
                 /* Checking the regexes */
@@ -824,6 +841,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->time_ignored = 0;
     
     ruleinfo_pt->same_source_ip = 0;
+    ruleinfo_pt->same_id = 0;
     ruleinfo_pt->fts = 0;
     ruleinfo_pt->same_user = 0;
     ruleinfo_pt->same_loghost = 0;
@@ -1143,8 +1161,21 @@ void Rule_AddAR(RuleInfo *rule_config)
     return;
 }
 
+
+/* print rule */
+void printRuleinfo(RuleInfo *rule, int node)
+{
+    debug1("%d : rule:%d, level %d, timeout: %d", 
+            node,
+            rule->sigid, 
+            rule->level,
+            rule->ignore_time,
+            rule->frequency);
+}
+
+
 /* _set levels */
-void _setlevels(RuleNode *node)
+void _setlevels(RuleNode *node, int nnode)
 {
     while(node)
     {
@@ -1154,9 +1185,12 @@ void _setlevels(RuleNode *node)
         if(node->ruleinfo->level > 100)
             node->ruleinfo->level/=100;
 
+        /* Rule information */
+        printRuleinfo(node->ruleinfo, nnode);
+        
         if(node->child)
         {
-            _setlevels(node->child);
+            _setlevels(node->child, nnode+1);
         }
 
         node = node->next;
