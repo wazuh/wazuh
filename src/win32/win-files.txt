@@ -19,4 +19,4 @@ win32/os_win.h os_win.h
 win32/win_agent.c win_agent.c
 win32/win_service.c win_service.c
 win32/make.bat make.bat
-win32/ossec.conf ossec.conf
+win32/ossec-win.conf ossec.conf

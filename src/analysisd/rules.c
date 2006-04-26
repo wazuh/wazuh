@@ -700,7 +700,12 @@ int Rules_OP_ReadRules(char * rulefile)
                 OS_AddChild(config_ruleinfo);
             }
 
-            
+            /* Cleaning what we do not need */
+            if(config_ruleinfo->if_group)
+            {
+                free(config_ruleinfo->if_group);
+                config_ruleinfo->if_group = NULL;
+            }
         } /* while(rule[j]) */
         OS_ClearNode(rule);
         i++;
