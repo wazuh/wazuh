@@ -1180,8 +1180,9 @@ void printRuleinfo(RuleInfo *rule, int node)
 
 
 /* _set levels */
-void _setlevels(RuleNode *node, int nnode)
+int _setlevels(RuleNode *node, int nnode)
 {
+    int l_size = 0;
     while(node)
     {
         if(node->ruleinfo->level == 9900)
@@ -1190,16 +1191,23 @@ void _setlevels(RuleNode *node, int nnode)
         if(node->ruleinfo->level > 100)
             node->ruleinfo->level/=100;
 
+        l_size++;
+        
         /* Rule information */
         printRuleinfo(node->ruleinfo, nnode);
         
         if(node->child)
         {
-            _setlevels(node->child, nnode+1);
+            int chl_size = 0;
+            chl_size = _setlevels(node->child, nnode+1);
+
+            l_size += chl_size;
         }
 
         node = node->next;
     }
+
+    return(l_size);
 }
 
 /* EOF */

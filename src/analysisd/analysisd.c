@@ -65,7 +65,7 @@ int GlobalConf(char * cfgfile);
 /* For rules */
 void Rules_OP_CreateRules();
 int Rules_OP_ReadRules(char * cfgfile);
-void _setlevels(RuleNode *node, int nnode);
+int _setlevels(RuleNode *node, int nnode);
 
 
 /* For cleanmsg */
@@ -217,7 +217,7 @@ int main(int argc, char **argv)
         
         char **rulesfiles;
         rulesfiles = Config.includes;
-        while(*rulesfiles)
+        while(rulesfiles && *rulesfiles)
         {
             if(!test_config)
                 verbose("%s: Reading rules file: '%s'", ARGV0, *rulesfiles);
@@ -234,11 +234,25 @@ int main(int argc, char **argv)
     
     /* Fixing the levels/accuracy */
     {
+        int total_rules;
         RuleNode *tmp_node = OS_GetFirstRule();
 
-        _setlevels(tmp_node, 0);
+        total_rules = _setlevels(tmp_node, 0);
+        if(!test_config)
+            verbose("%s: Total rules enabled: '%d'", ARGV0, total_rules);    
     }
-    
+   
+    /* Ignored files on syscheck */
+    {
+        char **files;
+        files = Config.syscheck_ignore;
+        while(files && *files)
+        {
+            if(!test_config)
+                verbose("%s: Ignoring file: '%s'", ARGV0, *files);
+            files++;    
+        }
+    }
 
     /* Success */
     if(test_config)

@@ -70,6 +70,8 @@ int read_main_elements(OS_XML xml, int modules,
         {
             if((modules & CSYSCHECK) && (Read_Syscheck(chld_node, d1,d2) < 0))
                 return(OS_INVALID);
+            if((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0))
+                return(OS_INVALID);    
         }
         else if(strcmp(node[i]->element, osrootcheck) == 0)
         {
@@ -114,15 +116,6 @@ int read_main_elements(OS_XML xml, int modules,
         
         OS_ClearNode(chld_node);
         i++;
-    }
-
-    /* Getting syscheck.ignore */
-    if(modules & CGLOBAL)
-    {
-        char *xml_syscheck_ignore[3] = {xml_syscheck, "ignore", NULL};
-        char **ignores;
-        ignores = OS_GetElementContent(&xml,xml_syscheck_ignore);
-        AssignIgnore_Global(ignores, d1);
     }
 
     return(0);

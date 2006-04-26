@@ -31,7 +31,72 @@ void AssignIgnore_Global(char **ignores, void *configp)
 }
 
 
-/* GlobalConf vv0.2: 2005/03/03
+/* GlobalConfSK v0.1: 2006/04/26
+ * v0.1 Getting the ignore fields.
+ */
+int Read_GlobalSK(XML_NODE node, void *configp, void *mailp)
+{
+    int i = 0;
+    int ign_size = 1;
+    char *xml_ignore = "ignore";
+
+    _Config *Config;
+
+    Config = (_Config *)configp;
+    
+    
+    /* Shouldn't be here if !Config */
+    if(!Config)
+        return(0);
+
+
+    /* Getting right white_size */
+    if(Config && Config->syscheck_ignore)
+    {
+        char **ww;
+        ww = Config->syscheck_ignore;
+
+        while(*ww != NULL)
+        {
+            ign_size++;
+            ww++;
+        }
+    }
+
+    while(node[i])
+    {
+        if(!node[i]->element)
+        {
+            merror(XML_ELEMNULL, ARGV0);
+            return(OS_INVALID);
+        }
+        else if(!node[i]->content)
+        {
+            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            return(OS_INVALID);
+        }
+        else if(strcmp(node[i]->element,xml_ignore) == 0)
+        {
+            ign_size++;
+            Config->syscheck_ignore =
+                realloc(Config->syscheck_ignore, sizeof(char *)*ign_size);
+            if(!Config->syscheck_ignore)
+            {
+                merror(MEM_ERROR, ARGV0);
+                return(OS_INVALID);
+            }
+
+            os_strdup(node[i]->content,Config->syscheck_ignore[ign_size -2]);
+            Config->syscheck_ignore[ign_size -1] = NULL;
+        }
+        i++;
+    }
+
+    return(0);
+}
+
+
+/* GlobalConf v0.2: 2005/03/03
  * v0.2: Changing to support the new OS_XML
  */
 int Read_Global(XML_NODE node, void *configp, void *mailp)
