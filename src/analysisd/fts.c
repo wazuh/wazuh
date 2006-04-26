@@ -48,8 +48,17 @@ int FTS_Init()
     fp_list = fopen(FTS_QUEUE, "r+");
     if(!fp_list)
     {
-        merror(FOPEN_ERROR, ARGV0, FTS_QUEUE);
-        return(0);
+        /* Create the file if we cant open it */
+        fp_list = fopen(FTS_QUEUE, "w+");
+        if(fp_list)
+            fclose(fp_list);
+        
+        fp_list = fopen(FTS_QUEUE, "r+");
+        if(!fp_list)
+        {
+            merror(FOPEN_ERROR, ARGV0, FTS_QUEUE);
+            return(0);
+        }
     }
                                                             
     return(1);
