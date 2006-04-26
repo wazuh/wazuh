@@ -173,6 +173,7 @@ void OS_Run(MailConfig *mail)
 
 
     /* Init file queue */
+    os_calloc(1, sizeof(file_queue), fileq);
     Init_FileQueue(fileq, p);
 
 
