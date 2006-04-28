@@ -12,4 +12,5 @@
     <ignore>/etc/mail/statistics</ignore>
     <ignore>/etc/random-seed</ignore>
     <ignore>/etc/adjtime</ignore>
+    <ignore>/etc/httpd/logs</ignore>
   </syscheck>

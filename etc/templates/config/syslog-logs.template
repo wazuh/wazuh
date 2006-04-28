@@ -15,4 +15,5 @@
 /var/log/radius/radius.log
 /var/log/mail.info
 /var/log/mail.notice
+/var/log/maillog
 /usr/local/squid/var/logs/access.log
