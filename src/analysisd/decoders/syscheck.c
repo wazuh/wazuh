@@ -21,9 +21,9 @@
 #define SYSCHECK_DIR    "/queue/syscheck"
 
 /** Global variables **/
-char _db_buf[1024];
-char _db_comment[512];
-char _db_comment2[512];
+char _db_buf[1024 +1];
+char _db_comment[512 +1];
+char _db_comment2[512 +1];
 
 char _tmp_size[197];
 char _tmp_perm[197];
@@ -59,6 +59,10 @@ void SyscheckInit()
         agent_fps[i] = NULL;
     }
 
+    memset(_db_buf, '\0', 1025);
+    memset(_db_comment, '\0', 513);
+    memset(_db_comment2, '\0', 513);
+    
     return;
 }
 
@@ -515,9 +519,6 @@ void DecodeSyscheck(Eventinfo *lf)
     
     DB_Search(f_name,c_sum,lf);
    
-    /* Setting lf->log back correctly */
-    f_name--; *f_name = ' ';
-
     return;
 }
 

@@ -391,10 +391,18 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
             return(f_msg);
         }
     }
-    
-    
-    merror("XXX: cleartext: %s", cleartext);
-    merror("XXX: msg_count: %d, time: %d, saved count: %d, saved_time:%d",
+   
+    /* Checking if it is a duplicated message */
+    if((msg_count == keys->count[id]) && (msg_time == keys->time[id]))
+    {
+        return(NULL);
+    }
+
+
+    /* Warn about duplicated message */
+    merror("%s: Duplicate error:  msg_count: %d, time: %d, "
+           "saved count: %d, saved_time:%d",
+            ARGV0,
             msg_count,
             msg_time,
             keys->count[id],

@@ -119,7 +119,7 @@ void HandleSecure()
                 agentid,recv_b -1);
         if(tmp_msg == NULL)
         {
-            merror(MSG_ERROR,ARGV0,srcip);
+            /* If not duplicated, a warning was already generated */
             continue;
         }
 
