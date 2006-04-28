@@ -16,13 +16,8 @@
  * v0.2 (2005/02/17): none
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
+#include "shared.h"
 #include "analysisd.h"
 #include "stats.h"
 #include "rules.h"
@@ -33,6 +28,7 @@
 #include "alerts/alerts.h"
 
 #include "headers/debug_op.h"
+
 
 char *(weekdays[])={"Sunday","Monday","Tuesday","Wednesday","Thursday",
 		            "Friday","Saturday"};

@@ -845,7 +845,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking for the url */
     if(currently_rule->url)
     {
-        if(!OSRegex_Execute(lf->url,currently_rule->url))
+        if(!OSMatch_Execute(lf->url, strlen(lf->url), currently_rule->url))
         {
             return(NULL);
         }

@@ -103,6 +103,12 @@
 #define FWLOGS          "/logs/firewall"
 
 
+/* Stats directories */
+#define STATWQUEUE  "/stats/weekly-average"
+#define STATQUEUE   "/stats/hourly-average"
+#define STATSAVED   "/stats/totals"
+
+
 /* Authentication keys file */
 #ifndef WIN32
 #define KEYS_FILE       "/etc/client.keys"

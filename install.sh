@@ -769,26 +769,23 @@ main()
     read ANY
 
     if [ "X$INSTYPE" = "Xserver" ]; then
-    echo ""        	
-    echo " - ${addserveragent}"
-    echo "   ${runma}:"
-    echo ""
-    echo "   $INSTALLDIR/bin/manage_agents"
-    echo ""
-    echo "   ${moreinfo}"
-    echo "   http://www.ossec.net/en/manual.html#ma"
-    echo ""
+        echo ""        	
+        echo " - ${addserveragent}"
+        echo "   ${runma}:"
+        echo ""
+        echo "   $INSTALLDIR/bin/manage_agents"
+        echo ""
+        echo "   ${moreinfo}"
+        echo "   http://www.ossec.net/en/manual.html#ma"
+        echo ""
       
     elif [ "X$INSTYPE" = "Xclient" ]; then
-    catMsg "0x104-client"	
-    echo "   $WORKDIR/bin/manage_agents"
-    echo ""
-    echo "   ${moreinfo}"
-    echo "   http://www.ossec.net/en/manual.html#ma"
-    echo ""
-    echo " --- ${presskey} --- "
-
-    read ANY
+        catMsg "0x104-client"	
+        echo "   $WORKDIR/bin/manage_agents"
+        echo ""
+        echo "   ${moreinfo}"
+        echo "   http://www.ossec.net/en/manual.html#ma"
+        echo ""
     fi
 
     if [ "X$notmodified" = "Xyes" ]; then

@@ -11,7 +11,8 @@ OBJS = ${OS_SHARED} ${OS_REGEX} ${OS_CRYPTO}
 
 me:
 		$(CC) $(CFLAGS) ${ADDAGENT} syscheck_update.c $(OBJS) -o syscheck_update
+		$(CC) $(CFLAGS) clear_stats.c $(OBJS) -o clear_stats
 clean:
-		$(CLEAN) syscheck_update
+		$(CLEAN) syscheck_update clear_stats
 build:
-		cp -pr syscheck_update  ${PT}../bin
+		cp -pr syscheck_update clear_stats ${PT}../bin

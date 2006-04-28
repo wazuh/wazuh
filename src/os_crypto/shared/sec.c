@@ -453,14 +453,15 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     }
 
     /* If global count reaches 1512 */
-    if(global_count >= 1512)
+    if(global_count >= 1756)
     {
-        merror("%s: Global count too high", ARGV0);
+        merror("%s: Global count too high.", ARGV0);
         while(time(0) == global_time)
         {
             global_count = 0;
         }
-        global_time = time(0);
+        curr_time = time(0);
+        global_time = curr_time;
         global_count = 0;
     }
    

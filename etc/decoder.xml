@@ -233,7 +233,7 @@
  -->
 
 <decoder name="sendmail-reject">
-  <prematch>sendmail[\d+]: </prematch>
+  <prematch>^sendmail[\d+]: </prematch>
   <regex>relay=\S+ [(\d+.\d+.\d+.\d+)] </regex>
   <order>srcip</order>
 </decoder>  
@@ -387,8 +387,8 @@
 <decoder name="squid-accesslog">
   <type>squid</type>
   <prematch>^\d+ \d+.\d+.\d+.\d+ </prematch>
-  <regex>^\d+ (\d+.\d+.\d+.\d+) </regex>
-  <order>srcip</order>
+  <regex>^\d+ (\d+.\d+.\d+.\d+) (\S+) \d+ \w+ (\S+) </regex>
+  <order>srcip,id,url</order>
 </decoder>  
 
 

@@ -634,8 +634,8 @@ int Rules_OP_ReadRules(char * rulefile)
                 
                 if(url)
                 {
-                    os_calloc(1, sizeof(OSRegex), config_ruleinfo->url);
-                    if(!OSRegex_Compile(url, config_ruleinfo->url, 0))
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->url);
+                    if(!OSMatch_Compile(url, config_ruleinfo->url, 0))
                     {
                         merror(REGEX_COMPILE, ARGV0, url, 
                                 config_ruleinfo->url->error);

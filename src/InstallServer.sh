@@ -129,6 +129,7 @@ chown root:${GROUP} ${DIR}/var/run
 cp -pr ../bin/ossec* ${DIR}/bin/
 cp -pr ../bin/manage_agents ${DIR}/bin/
 cp -pr ../bin/syscheck_update ${DIR}/bin/
+cp -pr ../bin/clear_stats ${DIR}/bin/
 cp -pr ./init/ossec-server ${DIR}/bin/ossec-control
 
 # Moving the decoders

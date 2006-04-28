@@ -60,7 +60,7 @@ typedef struct _RuleInfo
     char *srcip;
     char *dstip;
     OSMatch *user;
-    OSRegex *url;
+    OSMatch *url;
     OSMatch *id;
     char *action;
     
