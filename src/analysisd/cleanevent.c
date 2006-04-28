@@ -241,6 +241,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      */
     else if((loglen > 32) && 
             (pieces[1][0] == '1') &&
+            (pieces[1][1] == '1') &&
             (pieces[1][10] == '.') &&
             (isdigit((int)pieces[1][13])) &&
             (pieces[1][14] == ' ') &&

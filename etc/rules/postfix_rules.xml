@@ -5,7 +5,7 @@
       
 
 <group name="syslog,postfix">
-  <rule id="6000" level="0" noalert="1">
+  <rule id="6000" level="0">
     <decoded_as>postfix-reject</decoded_as>
     <description>Grouping of the postfix reject rules</description>
   </rule>
@@ -13,55 +13,65 @@
   <rule id="6001" level="5">
     <if_sid>6000</if_sid>
     <regex>554 \S+: Relay access denied</regex>
-    <description>Attepmt to use mail server as relay (554: Transaction failed)</description>
+    <description>Attepmt to use mail server as relay </description>
+    <description> (554: Transaction failed).</description>
   </rule>
 
   <rule id="6002" level="5">
     <if_sid>6000</if_sid>
     <regex>550 \S+: Client host rejected</regex>
-    <description>Rejected by access list (550: Requested action not taken)</description>
+    <description>Rejected by access list </description>
+    <description>(550: Requested action not taken).</description>
   </rule>
 
   <rule id="6003" level="5">
     <if_sid>6000</if_sid>
     <regex>450 \S+: Sender address rejected</regex>
-    <description>Sender domain is not found (450: Requested mail action not taken)</description>
+    <description>Sender domain is not found </description>
+    <description>(450: Requested mail action not taken).</description>
   </rule>
 
   <rule id="6004" level="5">
     <if_sid>6000</if_sid>
     <regex>550 \S+: Sender address rejected</regex>
-    <description>Sender domain does not have any valid MX record or denied by bad_sender list (550: Requested action not taken:)</description>
+    <description>Sender domain does not have any valid </description>
+    <description>MX record or denied by bad_sender list </description>
+    <description>(550: Requested action not taken).</description>
   </rule>
   
   <rule id="6005" level="5">
     <if_sid>6000</if_sid>
     <regex>554 \S+: Sender address rejected</regex>
-    <description>Attepmt to use mail server as relay (554: Transaction failed)</description>
+    <description>Attepmt to use mail server as relay </description>
+    <description>(554: Transaction failed).</description>
   </rule>
   
   <rule id="6006" level="5">
     <if_sid>6000</if_sid>
     <regex>450 \S+: Recipient address rejected</regex>
-    <description>Invalid recipient and sender domain is not found (450: Requested mail action not taken)</description>
+    <description>Invalid recipient and sender domain is not </description>
+    <description>found (450: Requested mail action not taken).</description>
   </rule>
   
   <rule id="6007" level="5">
     <if_sid>6000</if_sid>
     <regex>503 \S+: Recipient address rejected</regex>
-    <description>Improper use of SMTP command pipelining (503: Bad sequence of commands)</description>
+    <description>Improper use of SMTP command pipelining </description>
+    <description>(503: Bad sequence of commands).</description>
   </rule>
   
   <rule id="6008" level="5">
     <if_sid>6000</if_sid>
     <regex>504 \S+: Recipient address rejected</regex>
-    <description>Receipent adrdess must contain FQDN (504: Command parameter not implemented)</description>
+    <description>Receipent adrdess must contain FQDN </description>
+    <description>(504: Command parameter not implemented).</description>
   </rule>
   
   <rule id="6009" level="5">
     <if_sid>6000</if_sid>
     <regex>550 \S+: Recipient address rejected</regex>
-    <description>Invalid recipient - User unknown in local recipient table (550: Requested action not taken)</description>
+    <description>Invalid recipient - User unknown in local </description>
+    <description>recipient table (550: Action not taken).</description>
   </rule>
 
   <rule id="6051" level="10" frequency="3" timeframe="120">
@@ -73,19 +83,22 @@
   <rule id="6052" level="10" frequency="5" timeframe="120">
     <if_matched_sid>6002</if_matched_sid>
     <same_source_ip />
-    <description>Multiple attempts to send e-mail from a previously rejected sender IP (access).</description>
+    <description>Multiple attempts to send e-mail from a </description>
+    <description>previously rejected sender IP (access).</description>
   </rule>
 
   <rule id="6053" level="10" frequency="5" timeframe="120">
     <if_matched_sid>6003</if_matched_sid>
     <same_source_ip />
-    <description>Multiple attempts to send e-mail from invalid/unkonown sender domain.</description>
+    <description>Multiple attempts to send e-mail from </description>
+    <description>invalid/unkonown sender domain.</description>
   </rule>
 
   <rule id="6054" level="10" frequency="5" timeframe="120">
     <if_matched_sid>6004</if_matched_sid>
     <same_source_ip />
-    <description>IP has bogus MX record. It should not be sending e-mail (Possibly sending spam).</description>
+    <description>IP has bogus MX record. It should not be </description>
+    <description>sending e-mail (Possibly sending spam).</description>
   </rule>
 
   <rule id="6055" level="10" frequency="3" timeframe="120">
@@ -97,19 +110,21 @@
   <rule id="6056" level="10" frequency="5" timeframe="120">
     <if_matched_sid>6006</if_matched_sid>
     <same_source_ip />
-    <description>Multiple attepmts to send e-mail to invalid recipient / from unknown sender domain.</description>
+    <description>Multiple attepmts to send e-mail to </description>
+    <description>invalid recipient / from unknown sender domain.</description>
   </rule>
 
   <rule id="6056" level="10" frequency="5" timeframe="120">
     <if_matched_sid>6006</if_matched_sid>
     <same_source_ip />
-    <description>Multiple attepmts to send e-mail to invalid recipient / from unknown sender domain.</description>
+    <description>Multiple attepmts to send e-mail to </description>
+    <description>invalid recipient / from unknown sender domain.</description>
   </rule>
 
   <rule id="6057" level="14" frequency="3" timeframe="120">
     <if_matched_sid>6007</if_matched_sid>
     <same_source_ip />
-    <description>Multiple misuse of SMTP service (Bad sequence of commands).</description>
+    <description>Multiple misuse of SMTP service (bad sequence of commands).</description>
   </rule>
 
   <rule id="6058" level="10" frequency="10" timeframe="120">

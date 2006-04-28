@@ -18,57 +18,66 @@
 
   <rule id="5001" level="0" noalert="1">
     <if_sid>5000</if_sid>
-    <regex>\d+ \S+ TCP_DENIED</regex>
+    <action>TCP_DENIED</action>
     <description>Squid TCP DENIED.</description>
   </rule>
   
   <rule id="5002" level="0" noalert="1">
     <if_sid>5000</if_sid>
-    <regex>\d+ \S+ TCP_MISS</regex>
-    <description>Squid TCP MISS.</description>
+    <id>^40</id>
+    <description>Squid TCP error code (40x).</description>
   </rule>
     
   <rule id="5003" level="5">
     <if_sid>5001</if_sid>
-    <regex>\d+ \S+ TCP_DENIED/400</regex>
+    <id>^400</id>
     <description>Bad request/Invalid syntax.</description>
   </rule>
 
   <rule id="5004" level="5">
     <if_sid>5002</if_sid>
-    <regex>\d+ \S+ TCP_MISS/401</regex>
+    <id>^401</id>
     <description>Unauthorized: Failed attempt to access </description>
     <description>authorization-required file or directory.</description>
   </rule>
 
   <rule id="5005" level="5">
     <if_sid>5002</if_sid>
-    <regex>\d+ \S+ TCP_MISS/403</regex>
+    <id>^403</id>
     <description>Forbidden: Attempt to access forbidden file </description>
     <description>or directory.</description>
   </rule>
 
   <rule id="5006" level="5">
     <if_sid>5002</if_sid>
-    <regex>\d+ \S+ TCP_MISS/404</regex>
+    <id>^404</id>
     <description>Not Found: Attempt to access non-existent </description>
     <description>file or directory.</description>
   </rule>
 
   <rule id="5007" level="5">
     <if_sid>5001</if_sid>
-    <regex>\d+ \S+ TCP_DENIED/407</regex>
+    <id>^407</id>
     <description>Proxy Authentication Required: User is not </description>
     <description>authorized to use proxy.</description>
   </rule>
 
-  <rule id="5008" level="5">
-    <if_sid>5002</if_sid>
-    <regex>\d+ \S+ TCP_MISS/503</regex>
-    <description>Service Unavailable: Attempt to access </description>
-    <description>non-existent server.</description>
+  <!-- Special rules for 404 -->
+  <rule id="5021" level="5">
+    <if_sid>5006</if_sid>
+    <url>blst.php|xxx3.php|ngr7.php|ngr2.php</url>
+    <description>Attempt to access a W32.Beagle.DP file.</description>
+    <info>http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
   </rule>
-
+  
+  <rule id="5022" level="0">
+    <if_sid>5006</if_sid>
+    <url>.jpg|.gif|favicon.ico|.png|.swf|.txt|.zip|</url>
+    <url>^http://codecs.microsoft.com/isapi/ocget.dll|</url>
+    <url>^http://activex.microsoft.com/objects/ocget.dll</url>
+    <description>Ignored files on a 404 error.</description>
+  </rule>                        
+  
   <!-- Context relevant rules (correlated) -->
   <rule id="5051" level="10" frequency="$SQUID_FREQ" timeframe="120">
     <if_matched_sid>5005</if_matched_sid>
@@ -89,7 +98,14 @@
     <description>Multiple Bad requests/Invalid syntax.</description>
   </rule>
 
-  <rule id="5054" level="10" frequency="$SQUID_FREQ" timeframe="120">
+  <rule id="5054" level="12" frequency="$SQUID_FREQ" timeframe="240">
+    <if_matched_sid>5021</if_matched_sid>
+    <same_source_ip />
+    <description>Infected machine with W32.Beagle.DP.</description>
+    <info>http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
+  </rule>
+  
+  <rule id="5055" level="10" frequency="$SQUID_FREQ" timeframe="90">
     <if_matched_sid>5006</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts to access a non-existent file.</description>

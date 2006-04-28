@@ -217,7 +217,7 @@
  -->
 
 <decoder name="postfix-reject">
-  <prematch>^postfix/smtpd[\d+]: </prematch>
+  <prematch>^postfix/\w+[\d+]: </prematch>
   <regex>NOQUEUE: reject: RCPT from \S+[(\d+.\d+.\d+.\d+)]:</regex>
   <order>srcip</order>
 </decoder>
@@ -387,8 +387,8 @@
 <decoder name="squid-accesslog">
   <type>squid</type>
   <prematch>^\d+ \d+.\d+.\d+.\d+ </prematch>
-  <regex>^\d+ (\d+.\d+.\d+.\d+) (\S+) \d+ \w+ (\S+) </regex>
-  <order>srcip,id,url</order>
+  <regex>^\d+ (\d+.\d+.\d+.\d+) (\w+)/(\d+) \d+ \w+ (\S+) </regex>
+  <order>srcip,action,id,url</order>
 </decoder>  
 
 
