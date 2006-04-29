@@ -306,7 +306,7 @@
 
 <!-- Adduser messages -->
 <group name="syslog,adduser">
-  <rule id="1301" level="12">
+  <rule id="1301" level="8">
     <regex>^useradd[\d+]: new group:|</regex>
     <regex>^groupadd[\d+]: new group:|</regex>
     <regex>^adduser[\d+]: new group:</regex>

@@ -68,6 +68,27 @@
     <description>Session reconnected/disconnected to winstation.</description>
   </rule>
 
+  <rule id="8010" level="8">
+    <if_sid>8004</if_sid>
+    <id>^624|^626</id>
+    <group>adduser</group>
+    <description>User account created.</description>
+  </rule>
+
+  <rule id="8011" level="">
+    <if_sid>8004</if_sid>
+    <id>^628|^642</id>
+    <group>adduser</group>
+    <description>User account changed.</description>
+  </rule>
+
+  <rule id="8012" level="">
+    <if_sid>8004</if_sid>
+    <id>^630</id>
+    <group>adduser</group>
+    <description>User account deleted.</description>
+  </rule>
+  
   <rule id="8051" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>8008</if_matched_sid>
     <same_user />
