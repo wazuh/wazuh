@@ -23,19 +23,27 @@
 #endif
 
 
+/* Help message */
+void agent_help()
+{
+    printf("\nOSSEC HIDS %s %s .\n", ARGV0, __version);
+    printf("Available options:\n");
+    printf("\t-h                This help message.\n");
+    printf("\thelp              This help message.\n");
+    printf("\tinstall-service   Installs as a service\n");
+    printf("\tuninstall-service Uninstalls as a service\n");
+    printf("\tstart             Manually starts (not from services)\n");
+    exit(1);
+}
+
 
 /** main(int argc, char **argv)
  * ..
  */
 int main(int argc, char **argv)
 {
-    int binds;
-    char *cfg = DEFAULTCPATH;
-    char *tmpstr;
     char mypath[OS_MAXSTR +1];
     char myfile[OS_MAXSTR +1];
-    WSADATA wsaData;
-
 
     /* Setting the name */
     OS_SetName(ARGV0);
@@ -44,6 +52,7 @@ int main(int argc, char **argv)
     /* Find where I'm */
     mypath[OS_MAXSTR] = '\0';
     myfile[OS_MAXSTR] = '\0';
+    
     
     /* mypath is going to be the whole path of the file */
     strncpy(mypath, argv[0], OS_MAXSTR);
@@ -72,11 +81,22 @@ int main(int argc, char **argv)
         if(strcmp(argv[1], "install-service") == 0)
         {
             return(InstallService(mypath));
-            
         }
-        if(strcmp(argv[1], "uninstall-service") == 0)
+        else if(strcmp(argv[1], "uninstall-service") == 0)
         {
             return(UninstallService());
+        }
+        else if(strcmp(argv[1], "start") == 0)
+        {
+            return(local_start());
+        }
+        else if(strcmp(argv[1], "-h") == 0)
+        {
+            agent_help();
+        }
+        else if(strcmp(argv[1], "help") == 0)
+        {
+            agent_help();
         }
         else
         {
@@ -91,6 +111,18 @@ int main(int argc, char **argv)
         ErrorExit("%s: Unable to start WinMain.", ARGV0);
     }
 
+    return(0);
+}
+
+
+/* Locally starts (after service/win init) */
+int local_start()
+{
+    int binds;
+    char *cfg = DEFAULTCPATH;
+    char *tmpstr;
+    WSADATA wsaData;
+
 
     /* Starting logr */
     logr = (agent *)calloc(1, sizeof(agent));
@@ -99,17 +131,16 @@ int main(int argc, char **argv)
         ErrorExit(MEM_ERROR, ARGV0);
     }
     logr->port = DEFAULT_SECURE;
-                                
+
 
     /* Configuration file not present */
     if(File_DateofChange(cfg) < 0)
         ErrorExit("%s: Configuration file '%s' not found",ARGV0,cfg);
-        
-    
+
+
     /* Read agent config */
     if((binds = ClientConf(cfg)) == 0)
         ErrorExit(CLIENT_ERROR,ARGV0);
-
 
 
     /* Reading logcollector config file */
@@ -125,7 +156,7 @@ int main(int argc, char **argv)
     srand(time(0));
     rand();
 
-                            
+
     /* Starting winsock stuff */
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
     {
@@ -138,11 +169,11 @@ int main(int argc, char **argv)
         char pp[2]; int tt;
         StartMQ(pp, tt);
     }
-    
+
 
     /* Startting logcollector -- main process here */
     LogCollectorStart();
-    
+
     WSACleanup();
     return(0);
 }

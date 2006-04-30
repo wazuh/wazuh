@@ -345,14 +345,14 @@
   - [notice] Apache configured  
   -->
 <decoder name="apache-errorlog">
-  <type>apache</type>
+  <type>web-log</type>
   <prematch>^[\w+] [client</prematch>
   <regex>^[\w+] [client (\d+.\d+.\d+.\d+)] </regex>
   <order>srcip</order>
 </decoder> 
 
 <decoder name="apache-errorlog">
-  <type>apache</type>
+  <type>web-log</type>
   <prematch>^[warn] |^[notice] |^[error] </prematch>
 </decoder> 
 
@@ -367,7 +367,7 @@
      200 1732
   -->
 <decoder name="apache-accesslog">
-  <type>apache</type>
+  <type>web-log</type>
   <prematch>^\d+.\d+.\d+.\d+ - - [</prematch>
   <regex>^(\d+.\d+.\d+.\d+) - - [\d+/\w+/\d+:\d+:\d+:\d+ -\d+] </regex>
   <regex>"\w+ (\S+)\s+HTTP\S+ (\d+) </regex>

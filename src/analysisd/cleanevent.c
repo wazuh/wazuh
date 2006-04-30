@@ -245,7 +245,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             (pieces[1][10] == '.') &&
             (isdigit((int)pieces[1][13])) &&
             (pieces[1][14] == ' ') &&
-            (pieces[1][21] == ' '))
+            ((pieces[1][21] == ' ')||(pieces[1][22] == ' ')))
     {
         pieces[1]+=14;
 

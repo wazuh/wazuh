@@ -10,7 +10,7 @@
 <group name="apache">
   <rule id="3000" level="0">
     <decoded_as>apache-errorlog</decoded_as>
-    <category>apache</category>
+    <category>web-log</category>
     <description>Apache messages grouped.</description>
   </rule>    
 
@@ -114,13 +114,13 @@
     <description>Multiple Invalid URI requests from </description>
     <description>same source.</description>
   </rule>
-                    
 </group> <!-- ERROR_LOG,APACHE -->
+
 
 <group name="apache-accesslog">
   <rule id="3100" level="0">
     <decoded_as>apache-accesslog</decoded_as>
-    <category>apache</category>
+    <category>web-log</category>
     <description>Apache messages grouped.</description>
   </rule>
 

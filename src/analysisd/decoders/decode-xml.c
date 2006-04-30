@@ -194,8 +194,8 @@ void ReadDecodeXML(char *file)
                     pi->type = FIREWALL;
                 else if(strcmp(elements[j]->content, "ids") == 0)
                     pi->type = IDS;
-                else if(strcmp(elements[j]->content, "apache") == 0)
-                    pi->type = APACHE;    
+                else if(strcmp(elements[j]->content, "web-log") == 0)
+                    pi->type = WEBLOG;    
                 else if(strcmp(elements[j]->content, "syslog") == 0)
                     pi->type = SYSLOG;
                 else if(strcmp(elements[j]->content, "squid") == 0)

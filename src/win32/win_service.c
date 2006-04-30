@@ -13,6 +13,7 @@
 #ifdef WIN32
 
 #include "shared.h"
+#include "os_win.h"
 #include <Winsvc.h>
 
 #ifndef ARGV0
@@ -238,6 +239,10 @@ void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv)
         merror("%s: SetServiceStatus error", ARGV0);
         return;
     }
+
+
+    /* Starting process */
+    local_start();
 }
 
 

@@ -90,7 +90,7 @@ typedef struct _EventNode
 #define FIREWALL    3   /* Firewall events */
 #define SYSCHECK    5   /* syscheck integrity events */
 #define ROOTCHECK   6   /* rootcheck messages */
-#define APACHE      7   /* Apache logs */
+#define WEBLOG      7   /* Apache logs */
 #define SQUID       8   /* Squid logs */
 #define WINDOWS     9   /* Windows logs */
 

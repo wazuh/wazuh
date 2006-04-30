@@ -434,9 +434,9 @@ int Rules_OP_ReadRules(char * rulefile)
                         {
                             config_ruleinfo->category = SYSLOG;
                         }
-                        else if(strcmp(rule_opt[k]->content, "apache") == 0)
+                        else if(strcmp(rule_opt[k]->content, "web-log") == 0)
                         {
-                            config_ruleinfo->category = APACHE;
+                            config_ruleinfo->category = WEBLOG;
                         }
                         else if(strcmp(rule_opt[k]->content, "squid") == 0)
                         {
