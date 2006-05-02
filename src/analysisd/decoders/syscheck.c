@@ -25,11 +25,11 @@ char _db_buf[1024 +1];
 char _db_comment[512 +1];
 char _db_comment2[512 +1];
 
-char _tmp_size[197];
-char _tmp_perm[197];
-char _tmp_owner[197];
-char _tmp_gowner[197];
-char _tmp_md5[197];
+char _tmp_size[197 +1];
+char _tmp_perm[197 +1];
+char _tmp_owner[197 +1];
+char _tmp_gowner[197 +1];
+char _tmp_md5[197 +1];
 
 
 char *agent_ips[MAX_AGENTS +1];
@@ -62,6 +62,12 @@ void SyscheckInit()
     memset(_db_buf, '\0', 1025);
     memset(_db_comment, '\0', 513);
     memset(_db_comment2, '\0', 513);
+    
+    memset(_tmp_size, '\0', 198);
+    memset(_tmp_perm, '\0', 198);
+    memset(_tmp_owner, '\0', 198);
+    memset(_tmp_gowner, '\0', 198);
+    memset(_tmp_md5, '\0', 198);
     
     return;
 }
@@ -120,6 +126,7 @@ FILE *DB_File(char *agent, int *agent_id)
         /* Returning the opened pointer (the beginning of it) */
         fseek(agent_fps[i],0, SEEK_SET);
         *agent_id = i;
+        
         return(agent_fps[i]);
     }
 
@@ -266,6 +273,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         p == 2? '!' : (p > 2)?'?':'+',
                         c_sum,
                         f_name);
+            fflush(fp);
             
            
             /* File deleted */
@@ -472,6 +480,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     fseek(fp, 0, SEEK_END);
     
     fprintf(fp,"+++%s %s\n",c_sum,f_name);
+    fflush(fp);
 
     return;
 }
