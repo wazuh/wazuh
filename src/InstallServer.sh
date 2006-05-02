@@ -9,7 +9,15 @@ if [ $? != 0 ]; then
     exit 1;
 fi
 
+# Getting any argument
+UARG=$1;
+if [ "X$UARG" = "Xlocal" ]; then
+    # Setting local install
+    LOCAL= "local"
+fi
+    
 UNAME=`uname`;
+
 # Getting default variables
 DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 GROUP="ossec"
@@ -130,7 +138,13 @@ cp -pr ../bin/ossec* ${DIR}/bin/
 cp -pr ../bin/manage_agents ${DIR}/bin/
 cp -pr ../bin/syscheck_update ${DIR}/bin/
 cp -pr ../bin/clear_stats ${DIR}/bin/
-cp -pr ./init/ossec-server ${DIR}/bin/ossec-control
+
+# Local install chosen
+if [ "X$LOCAL" = "Xlocal" ]; then
+    cp -pr ./init/ossec-local.sh ${DIR}/bin/ossec-control
+else    
+    cp -pr ./init/ossec-server.sh ${DIR}/bin/ossec-control
+fi
 
 # Moving the decoders
 cp -pr ../etc/decoder.xml ${DIR}/etc/

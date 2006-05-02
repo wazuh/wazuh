@@ -69,7 +69,7 @@ Install()
 		make agent
 
     elif [ "X$INSTYPE" = "Xlocal" ]; then
-        make server    
+        make local    
 	fi
 
     cd ../

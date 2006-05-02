@@ -21,22 +21,27 @@
 
   <rule id="3102" level="6">
     <if_sid>3100</if_sid>
+    <url>='|select%20|insert%20|%20from%20|%20where%20</url>
+    <info>SQL injection attempt.</info>
+  </rule>
+  
+  <rule id="3103" level="6">
+    <if_sid>3100</if_sid>
     
-    <!-- Attempt to do directory transversal, sql injections,
+    <!-- Attempt to do directory transversal, simple sql injections,
       -  or access to the etc or bin directory (unix). -->
-    
-    <url>../../|'|%027|/etc/|/bin/|%|%00|%0A|%0D|%7f|</url>
+    <url>%027|%00|%7f|%2E%2E|%0A|%0D|../..|..\..|echo;|</url>
     <url>cmd.exe|root.exe|_vti_bin|_mem_bin|msadc|/winnt/|</url>
-    <url>/x90/|/xmlrpc|awstats.pl?configdir=|default.ida|</url>
-    <url>/scripts/|/sumthin|nsiislog.dll|chmod%|echo%|wget%</url>
+    <url>/x90/|default.ida|/sumthin|nsiislog.dll|chmod%|wget%|</url>
+    <url>/scripts/|cat%|exec%</url>
     <description>Common web attack.</description>
     <info>http://www.armbrustconsulting.com/LogEntries.html</info>
   </rule>
 
   <rule id="3103" level="12">
-    <if_sid>3102</if_sid>
+    <if_sid>3102, 3103</if_sid>
     <id>^200</id>
-    <description>A commom web attack returned code 200 (success).</description>
+    <description>A web attack returned code 200 (success).</description>
   </rule>
 
   <rule id="3151" level="10" frequency="10" timeframe="120">
@@ -45,5 +50,17 @@
     <description>Mutiple web server 400 error codes </description>
     <description>from same source ip.</description>
   </rule>
+
+  <rule id="3152" level="10" frequency="10" timeframe="120">
+    <if_matched_sid>3102</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple SQL injection attempts from same </description>
+    <description>souce ip.</description>
+  </rule>
   
+  <rule id="3153" level="10" frequency="10" timeframe="120">
+    <if_matched_sid>3103</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple common web attacks from same souce ip.</description>
+  </rule>
 </group> <!-- Web access log -->

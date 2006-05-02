@@ -8,7 +8,7 @@ LOCAL=`dirname $0`;
 cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
-cd - >/dev/null;
+cd $OLDPWD >/dev/null 2>&1;
 
 ###  Do not modify bellow here ###
 NAME="OSSEC HIDS"

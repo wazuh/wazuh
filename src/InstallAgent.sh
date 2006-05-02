@@ -102,7 +102,7 @@ cp -pr ../bin/ossec-agentd ${DIR}/bin/
 cp -pr ../bin/ossec-logcollector ${DIR}/bin/
 cp -pr ../bin/ossec-syscheckd ${DIR}/bin/
 cp -pr ../bin/ossec-execd ${DIR}/bin/
-cp -pr ./init/ossec-client ${DIR}/bin/ossec-control
+cp -pr ./init/ossec-client.sh ${DIR}/bin/ossec-control
 cp -pr ../bin/manage_agents ${DIR}/bin/
 
 # Copying active response modules

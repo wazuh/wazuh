@@ -6,6 +6,7 @@ none:
 		@echo "Nothing selected ..."
 		@echo "\"make all\" to compile everything."
 		@echo "\"make server\" to build the server."
+		@echo "\"make local\" to build the local."
 		@echo "\"make agent\" to build the agent."
 		@echo "\"make libs\" to build the libraries only."
 		@echo "\"make clean\" to clean anything built"
@@ -27,5 +28,8 @@ libs:
 server:
 		@/bin/sh ./InstallServer.sh
 
+local:
+		@/bin/sh ./InstallServer.sh local
+        
 agent:
 		@/bin/sh ./InstallAgent.sh
