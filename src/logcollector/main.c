@@ -39,6 +39,7 @@
 int main(int argc, char **argv)
 {
     int c;
+    int test_config = 0;
     char *cfg = DEFAULTCPATH;
     char *dir = DEFAULTDIR;
 
@@ -47,7 +48,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
         
 
-    while((c = getopt(argc, argv, "dhD:c:")) != -1)
+    while((c = getopt(argc, argv, "tdhD:c:")) != -1)
     {
         switch(c)
         {
@@ -67,6 +68,9 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -c needs an argument",ARGV0);
                 cfg = optarg;
                 break;
+            case 't':
+                test_config = 1;
+                break;    
             default:
                 help();
                 break;   
@@ -86,6 +90,10 @@ int main(int argc, char **argv)
         ErrorExit(NO_FILE, ARGV0);
             
 
+    /* Exit if test config */
+    if(test_config)
+        exit(0);
+        
 
     /* Starting signal handler */
     StartSIG(ARGV0);	

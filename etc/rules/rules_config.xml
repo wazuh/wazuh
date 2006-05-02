@@ -29,9 +29,9 @@
   </rule>
 </group>
 
-<group name="apache">
+<group name="web-log">
   <rule id="04" level="0" noalert="1">
-    <category>apache</category>
+    <category>web-log</category>
     <description>Generic template for all apache rules.</description>
   </rule>  
 </group>            

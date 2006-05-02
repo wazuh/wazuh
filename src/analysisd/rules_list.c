@@ -80,8 +80,19 @@ int _AddtoRule(int sid, int level, int none, char *group,
             }
         }
         
+        /* Checking if the group matches */
+        else if(group)
+        {
+            if(OS_WordMatch(group,r_node->ruleinfo->group))
+            {
+                /* We will loop on all rules until we find */
+                r_node->child =
+                    _OS_AddRule(r_node->child, read_rule);
+                r_code = 1;
+            }
+        }
         
-        /* If we are not searching for the sid, the category must
+        /* If we are not searching for the sid/group, the category must
          * be the same. 
          */
         else if(read_rule->category != r_node->ruleinfo->category)
@@ -99,20 +110,6 @@ int _AddtoRule(int sid, int level, int none, char *group,
                (r_node->ruleinfo->context == 0))
             {
                 r_node->child=
-                    _OS_AddRule(r_node->child, read_rule);
-                r_code = 1;
-            }
-        }
-        
-
-
-        /* Checking if the group matches */
-        else if(group)
-        {
-            if(OS_WordMatch(group,r_node->ruleinfo->group))
-            {
-                /* We will loop on all rules until we find */
-                r_node->child =
                     _OS_AddRule(r_node->child, read_rule);
                 r_code = 1;
             }

@@ -75,6 +75,7 @@ int main(int argc, char **argv)
                 break;
             case 't':
                 test_config = 1;    
+                break;
             default:
                 help();
                 break;
@@ -96,9 +97,11 @@ int main(int argc, char **argv)
     if(MailConf(cfg, &mail) < 0)
         ErrorExit(CONFIG_ERROR,ARGV0);
 
+
     /* Exit here if test config is set */
     if(test_config)
         exit(0);
+
         
     /* Going on daemon mode */
     nowDaemon();

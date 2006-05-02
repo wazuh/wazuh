@@ -56,7 +56,7 @@ int notify_rk(int rk_type, char *msg);
 
 /* rootcheck_init: Starts the rootcheck externally
  */
-int rootcheck_init();
+int rootcheck_init(int test_config);
 
 /* run_rk_check: checks the integrity of the files against the
  * saved database

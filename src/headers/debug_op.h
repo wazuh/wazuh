@@ -38,6 +38,8 @@ void merror(const char *msg,...);
 
 void verbose(const char *msg,...);
 
+void print_out(const char *msg,...);
+
 void ErrorExit(const char *msg,...);
 
 

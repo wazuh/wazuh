@@ -56,6 +56,7 @@ int create_db();
 int main(int argc, char **argv)
 {
     int init = 0, c;
+    int test_config = 0;
     
     char *cfg = DEFAULTCPATH;
     
@@ -69,7 +70,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
         
     
-    while((c = getopt(argc, argv, "SsdhD:c:")) != -1)
+    while((c = getopt(argc, argv, "tSsdhD:c:")) != -1)
     {
         switch(c)
         {
@@ -93,27 +94,45 @@ int main(int argc, char **argv)
                 cfg = optarg;
                 break;
             case 'S':
-                syscheck.notify = SYSLOG;    
+                syscheck.notify = SYSLOG;
+            case 't':
+                test_config = 1;
+                break;        
             default:
                 help();
                 break;   
         }
     }
 
-    /* Staring message */
-    debug1(STARTED_MSG,ARGV0);
 
     /* Checking if the configuration is present */
     if(File_DateofChange(cfg) < 0)
         ErrorExit(NO_CONFIG, ARGV0, cfg);
 
 
+    /* Read syscheck config */
     if(Read_Syscheck_Config(cfg, &syscheck) < 0)
     {
         ErrorExit(CONFIG_ERROR, ARGV0);
     }
 
 
+    /* Read rootcheck config */
+    if(syscheck.notify == QUEUE)
+    {
+        /* Starting rootcheck */
+        #ifdef OSSECHIDS
+        if(rootcheck_init(test_config) == 0)
+            syscheck.rootcheck = 1;
+        #endif
+    }
+                                                                        
+
+    /* Exit if testing config */
+    if(test_config)
+        exit(0);
+
+        
     /* Setting default values */
     if(syscheck.workdir == NULL)
         syscheck.workdir = DEFAULTDIR;
@@ -202,18 +221,8 @@ int main(int argc, char **argv)
     }
 
    
-    /* When using the queue, we always create the database */
-    if(syscheck.notify == QUEUE)
-    {
-        /* Starting rootcheck */
-        #ifdef OSSECHIDS
-        if(rootcheck_init() == 0)
-            syscheck.rootcheck = 1;
-        #endif
-    }
-  
     /* If syslog is set, just read the database */ 
-    else if(syscheck.notify == SYSLOG)
+    if(syscheck.notify == SYSLOG)
     {
         syscheck.fp = fopen(syscheck.db,"r");
         if(!syscheck.fp)

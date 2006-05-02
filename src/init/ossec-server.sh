@@ -8,11 +8,14 @@ LOCAL=`dirname $0`;
 cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
-cd -;
-
+cd - >/dev/null;
 
 ###  Do not modify bellow here ###
-pfile=""
+NAME="OSSEC HIDS"
+VERSION="v0.8"
+AUTHOR="Daniel B. Cid"
+DAEMONS="ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd"
+
     
 # Help message
 help()
@@ -26,10 +29,8 @@ help()
 # Status function
 status()
 {
-    DAEMONS="ossec-execd ossec-agentd ossec-logcollector ossec-syscheckd"
     for i in ${DAEMONS}; do
-        pfile=${i}
-        pstatus;
+        pstatus ${i};
         if [ $? = 0 ]; then
             echo "${i} not running..."
         else
@@ -43,20 +44,29 @@ status()
 start()
 {
 
-    DAEMONS="ossec-execd ossec-agentd ossec-logcollector ossec-syscheckd"
+    SDAEMONS="ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd"
     
-    echo "Starting OSSEC HIDS (by Daniel B. Cid)..." 
+    echo "Starting $NAME $VERSION (by $AUTHOR)..."
+
+    # We first loop to check the config. 
+    for i in ${SDAEMONS}; do
+        ${DIR}/bin/${i} -t;
+        if [ $? != 0 ]; then
+            echo "${i}: Configuration error. Exiting"
+            exit 1;
+        fi    
+    done
     
-    for i in ${DAEMONS}; do
-        pfile=${i}
-        pstatus;
+    # We actually start them now.
+    for i in ${SDAEMONS}; do
+        pstatus ${i};
         if [ $? = 0 ]; then
             ${DIR}/bin/${i};
             if [ $? != 0 ]; then
                 exit 1;
             fi 
-           
-            echo "Started ${i}..." 
+
+            echo "Started ${i}..."            
         else
             echo "${i} already running..."                
         fi    
@@ -66,8 +76,11 @@ start()
     echo "Completed."
 }
 
+# Process status
 pstatus()
 {
+    pfile=$1;
+    
     # pfile must be set
     if [ "X${pfile}" = "X" ]; then
         return 0;
@@ -84,12 +97,13 @@ pstatus()
     return 0;    
 }
 
+
+# Stop all
 stopa()
 {
-    DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd"
+
     for i in ${DAEMONS}; do
-        pfile=${i}
-        pstatus;
+        pstatus ${i};
         if [ $? = 1 ]; then
             echo "Killing ${i} .. ";
             kill `cat ${DIR}/var/run/${i}*.pid`;
@@ -101,7 +115,7 @@ stopa()
         
      done    
     
-    echo "OSSEC HIDS Stopped"
+    echo "$NAME $VERSION Stopped"
 }
 
 

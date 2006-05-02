@@ -6,6 +6,7 @@
     <include>named_rules.xml</include>
     <include>pure-ftpd_rules.xml</include>
     <include>proftpd_rules.xml</include>
+    <include>web_rules.xml</include>
     <include>apache_rules.xml</include>
     <include>ids_rules.xml</include>
     <include>squid_rules.xml</include>

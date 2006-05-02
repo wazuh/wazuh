@@ -17,13 +17,31 @@
  */
 
 
-#include <stdio.h>
-#include <stdlib.h>
+#include "shared.h"
 
 void help()
 {
-    printf("Help:\n");
-    printf("\tNothing available yet. Look at the documentation\n\n");
+    int i = 0;
+    char *daemons[] = {"ossec-maild", "ossec-execd", 
+                      "ossec-analysisd", "ossec-logcollector",
+                      "ossec-remoted", "ossec-syscheckd", NULL};
+    
+    print_out("");
+    print_out("%s %s - %s (%s)", __name, __version, __author, __contact);
+    print_out("%s", __site);
+    while(daemons[i])
+    {
+        print_out("");
+        print_out("  %s: -[thd] [-u user] [-g group] [-c config]",daemons[i]);
+        print_out("    -h          This help message");
+        print_out("    -d          Execute in debug mode");
+        print_out("    -t          Test configuration");
+        print_out("    -u <user>   Run as 'user'");
+        print_out("    -g <group>  Run as 'group'");
+        print_out("    -c <config> Read the 'config' file");
+        i++;
+    }
+    print_out("");
     exit(1);
 }
 

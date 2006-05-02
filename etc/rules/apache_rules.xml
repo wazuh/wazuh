@@ -117,34 +117,5 @@
 </group> <!-- ERROR_LOG,APACHE -->
 
 
-<group name="apache-accesslog">
-  <rule id="3100" level="0">
-    <decoded_as>apache-accesslog</decoded_as>
-    <category>web-log</category>
-    <description>Apache messages grouped.</description>
-  </rule>
-
-  <rule id="3101" level="6">
-    <if_sid>3100</if_sid>
-    <url>cmd.exe|root.exe|_vti_bin|_mem_bin|msadc|c/winnt|d/winnt|</url>
-    <url>/x90/|/xmlrpc|awstats.pl?configdir=\Secho|default.ida|</url>
-    <url>/scripts/.|/sumthin|nsiislog.dll|chmod%|echo%|wget%</url>
-    <description>Common web attacks.</description>
-    <info>http://www.armbrustconsulting.com/LogEntries.html</info>
-  </rule>
-
-  <rule id="3102" level="0">
-    <if_sid>3101</if_sid>
-    <url>referer=http\S+www.google.com</url>
-    <description>Google search</description>
-  </rule>
-  
-  <rule id="3103" level="12">
-    <if_sid>3101</if_sid>
-    <id>200</id>
-    <description>A commom web attack returned code 200 (success).</description>
-  </rule>
-  
-</group> <!-- APACHE access log -->
 <!-- EOF -->
 

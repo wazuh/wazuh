@@ -103,7 +103,11 @@ void _log(const char * msg,va_list args)
                       p->tm_year+1900,p->tm_mon+1 ,p->tm_mday,
                       p->tm_hour,p->tm_min,p->tm_sec);
         (void)vfprintf(stderr, msg, args);
+        #ifdef WIN32
+        (void)fprintf(stderr, "\r\n");
+        #else
         (void)fprintf(stderr, "\n");
+        #endif
     }
 }
 
@@ -173,6 +177,23 @@ void nowChroot()
 void nowDaemon()
 {
     daemon_flag = 1;
+}
+
+void print_out(const char *msg, ...)
+{
+    va_list args;
+    va_start(args, msg);
+
+    /* Print to stderr */
+    (void)vfprintf(stderr, msg, args);
+    
+    #ifdef WIN32
+    (void)fprintf(stderr, "\r\n");
+    #else
+    (void)fprintf(stderr, "\n");
+    #endif
+    
+    va_end(args);
 }
 
 

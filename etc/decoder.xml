@@ -357,8 +357,10 @@
 </decoder> 
 
 
-<!-- Apache access log decoder.
-  -  Will extract the srcip
+<!-- NCSA common log decoder (used by apache and IIS NCSA).
+  -  Will extract the srcip, url and id.
+  -  Every web access log must use "web-accesslog" as their
+  -  name if they want to be matched against the web rules.
   - Examples:
   -  63.91.167.39 - - [03/Aug/2001:21:56:18 -0700] "GET /default.ida?NNNN
   -  206.78.62.16 - - [06/Aug/2001:08:57:08 -0700] "GET /default.ida?XX
@@ -366,11 +368,11 @@
   -  192.168.2.190 - - [18/Jan/2006:13:10:06 -0500] "GET /xxx.html HTTP/1.1"
      200 1732
   -->
-<decoder name="apache-accesslog">
+<decoder name="web-accesslog">
   <type>web-log</type>
   <prematch>^\d+.\d+.\d+.\d+ - - [</prematch>
-  <regex>^(\d+.\d+.\d+.\d+) - - [\d+/\w+/\d+:\d+:\d+:\d+ -\d+] </regex>
-  <regex>"\w+ (\S+)\s+HTTP\S+ (\d+) </regex>
+  <regex>^(\d+.\d+.\d+.\d+) - - [\S+ -\d+] </regex>
+  <regex>"\w+ (\S+) HTTP\S+ (\d+) </regex>
   <order>srcip,url,id</order>
 </decoder>
 

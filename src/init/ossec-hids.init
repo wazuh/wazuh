@@ -15,7 +15,7 @@ stop() {
 }
 
 status() {
-	${DIRECTORY}/bin/ossec-control stop
+	${DIRECTORY}/bin/ossec-control status
 }
 
 
@@ -31,6 +31,7 @@ case "$1" in
 	start
 	;;
   status)
+    status
 	;;
   *)
 	echo "*** Usage: ossec {start|stop|restart|status}"

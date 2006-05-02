@@ -2,9 +2,14 @@
   -  Official rules for squid
   -
   -  Author: Ahmet Ozturk
-  -  Date: Mar 2, 2006
+  -  Author: Daniel B. Cid
+  -  Date: May 1, 2006
   -->
 
+<!-- More information about squid codes bellow:
+   - http://www.uniar.ukrnet.net/tools/Squid-FAQ/FAQ-6.html
+  -->
+  
 <!-- Squid frequency -->
 <var name="SQUID_FREQ">8</var>
 
@@ -21,7 +26,12 @@
     <action>TCP_DENIED</action>
     <description>Squid TCP DENIED.</description>
   </rule>
-  
+
+  <!-- Pre-rule with all the 400 error codes.
+     - This will make searching faster for most
+     - of the traffic.
+    --> 
+     
   <rule id="5002" level="0" noalert="1">
     <if_sid>5000</if_sid>
     <id>^40</id>

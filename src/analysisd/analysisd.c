@@ -150,6 +150,7 @@ int main(int argc, char **argv)
                 break;
             case 't':
                 test_config = 1;    
+                break;
             default:
                 help();
                 break;
@@ -169,13 +170,19 @@ int main(int argc, char **argv)
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
 
+    /* Found user */
+    debug1(FOUND_USER, ARGV0);
+
+    
     /* Initializing Active response */
     AS_Init();
-
+    debug1(ASINIT, ARGV0);
+    
     
     /* Reading configuration file */
     if(GlobalConf(cfg) < 0)
         ErrorExit(CONFIG_ERROR,ARGV0);
+    debug1(READ_CONFIG, ARGV0);
         
 
     /* Fixing Config.ar */
@@ -185,8 +192,11 @@ int main(int argc, char **argv)
         
     
     /* going on Daemon mode */
-    nowDaemon();
-    goDaemon();
+    if(!test_config)
+    {
+        nowDaemon();
+        goDaemon();
+    }
     
     
     
@@ -201,7 +211,7 @@ int main(int argc, char **argv)
 
 
     nowChroot();
-
+    
     
 
     /* Reading decoders */
@@ -214,7 +224,6 @@ int main(int argc, char **argv)
    
     /* Reading the rules */
     {
-        
         char **rulesfiles;
         rulesfiles = Config.includes;
         while(rulesfiles && *rulesfiles)
@@ -232,6 +241,7 @@ int main(int argc, char **argv)
         Config.includes = NULL;
     }
     
+    
     /* Fixing the levels/accuracy */
     {
         int total_rules;
@@ -241,6 +251,7 @@ int main(int argc, char **argv)
         if(!test_config)
             verbose("%s: Total rules enabled: '%d'", ARGV0, total_rules);    
     }
+   
    
     /* Ignored files on syscheck */
     {
@@ -254,7 +265,8 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Success */
+
+    /* Success on the configuration test */
     if(test_config)
         exit(0);
 
@@ -267,7 +279,6 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);
 
 
-    
     /* Setting the user */ 
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0,user);
@@ -281,6 +292,7 @@ int main(int argc, char **argv)
     /* Setting the queue */
     if((m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
         ErrorExit(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
+
 
     /* White list */
     if(Config.white_list == NULL)
@@ -303,12 +315,15 @@ int main(int argc, char **argv)
                     ARGV0, wlc);
         }
     }
+
    
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
+
     
     /* Going to main loop */	
     OS_ReadMSG(m_queue);
+
 
     exit(0);
     

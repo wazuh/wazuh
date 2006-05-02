@@ -171,7 +171,6 @@
 #define INVALID_MAIL    "%s(1502): Invalid Email Address: %s"
 
 /* Verbose messages */
-#define STARTED_MSG	"%s: Starting ..."
 #define STARTUP_MSG	"%s: Started (pid: %d)."
 #define PRIVSEP_MSG	"%s: Chrooted to directory: %s, using user: %s"
 
@@ -179,6 +178,13 @@
                         " for syslog. No reason for running it. Exiting."
 #define CONN_TO     "%s: Connected to '%s' (%s queue)"
 #define MAIL_DIS    "%s: E-Mail notification disabled. Clean Exit."
+
+                        
+/* Debug Messages */
+#define STARTED_MSG "%s: Starting ..."
+#define FOUND_USER  "%s: Found user/group ..."
+#define ASINIT      "%s: Active response initialized ..."
+#define READ_CONFIG "%s: Read configuration ..."
 
 
 #endif /* _ERROR_MESSAGES__H */

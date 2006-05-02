@@ -9,7 +9,7 @@ echo Looking for IIS log files to monitor.
 echo For more information visit:
 echo http://www.ossec.net/en/manual.html#iis
 
-IF EXIST %WinDir%\System32\LogFiles\W3SVC1\nc*.log (
+IF EXIST %WinDir%\System32\LogFiles\W3SVC1\nc??????.log (
     echo    * IIS NCSA log found. Changing config to read it.
       <localfile>
           <location>System</location>
@@ -19,7 +19,7 @@ IF EXIST %WinDir%\System32\LogFiles\W3SVC1\nc*.log (
                 
     echo.  >> ossec.conf
     echo ^<ossec_config^> >> ossec.conf
-    echo   ^<location^>%WinDir%\System32\LogFiles\W3SVC1\nc*.log^</location^> >> ossec.conf
+    echo   ^<location^>%WinDir%\System32\LogFiles\W3SVC1\nc%%y%%m%%d.log^</location^> >> ossec.conf
     echo   ^<log_format^>iis^</log_format^> >> ossec.conf 
     echo ^</ossec_config^> >> ossec.conf >> ossec.conf
     pause

@@ -47,6 +47,7 @@ typedef struct _timeout_data
 int main(int argc, char **argv)
 {
     int c;
+    int test_config = 0;
     int gid = 0,m_queue = 0;
     char *dir  = DEFAULTDIR;
     char *group = GROUPGLOBAL;
@@ -57,7 +58,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
         
 
-    while((c = getopt(argc, argv, "dhu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "tdhu:g:D:c:")) != -1){
         switch(c){
             case 'h':
                 help();
@@ -79,6 +80,9 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -c needs an argument",ARGV0);
                 cfg = optarg;
                 break;
+            case 't':
+                test_config = 1;
+                break;    
             default:
                 help();
                 break;
@@ -86,8 +90,7 @@ int main(int argc, char **argv)
 
     }
 
-    /* Starting daemon */
-    debug1(STARTED_MSG,ARGV0);
+
 
     /* Check if the group given are valid */
     gid = Privsep_GetGroup(group);
@@ -99,11 +102,6 @@ int main(int argc, char **argv)
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
-    
-
-    /* Signal manipulation */
-    StartSIG(ARGV0);
-
 
     /* Reading config */
     if((c = ExecdConfig(xmlcfg)) < 0)
@@ -111,10 +109,20 @@ int main(int argc, char **argv)
         ErrorExit(CONFIG_ERROR, ARGV0);
     }
 
+
+    /* Exit if test_config */
+    if(test_config)
+        exit(0);
+        
+        
+    /* Signal manipulation */
+    StartSIG(ARGV0);
+
     
     /* Going daemon */
     nowDaemon();
     goDaemon();
+
 
     /* Active response disabled */
     if(c == 1)

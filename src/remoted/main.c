@@ -19,6 +19,7 @@ int main(int argc, char **argv)
 {
     int i = 0,c = 0;
     int uid = 0, gid = 0;
+    int test_config = 0;
     
     char *cfg = DEFAULTCPATH;
     char *dir = DEFAULTDIR;
@@ -30,7 +31,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
     
-    while((c = getopt(argc, argv, "dhu:g:D:")) != -1){
+    while((c = getopt(argc, argv, "dthu:g:D:")) != -1){
         switch(c){
             case 'h':
                 help();
@@ -48,6 +49,9 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -g needs an argument",ARGV0);
                 group = optarg;
                 break;		
+            case 't':
+                test_config = 1;    
+                break;
             case 'D':
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
@@ -65,6 +69,11 @@ int main(int argc, char **argv)
     }
 
 
+    /* Exit if test_config is set */
+    if(test_config)
+        exit(0);
+
+        
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);

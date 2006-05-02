@@ -75,10 +75,11 @@ void rootcheck_help()
 int main(int argc, char **argv)
 {
     int c;
+    int test_config = 0;
 
 #else
 
-int rootcheck_init()
+int rootcheck_init(int test_config)
 {
     
 #endif    
@@ -101,7 +102,7 @@ int rootcheck_init()
 #ifndef OSSECHIDS
     rootcheck.notify = SYSLOG;
     rootcheck.daemon = 0;
-    while((c = getopt(argc, argv, "srdhD:c:")) != -1)
+    while((c = getopt(argc, argv, "strdhD:c:")) != -1)
     {
         switch(c)
         {
@@ -123,7 +124,10 @@ int rootcheck_init()
                 break;
             case 's':
                 rootcheck.scanall = 1;
-                break;    
+                break;
+            case 't':
+                test_config = 1;
+                break;        
             case 'r':
                 rootcheck.readall = 1;
                 break;    
@@ -152,6 +156,8 @@ int rootcheck_init()
         ErrorExit(CONFIG_ERROR, ARGV0);
     }
 
+    if(test_config)
+        return(0);
 
     /* Setting default values */
     if(rootcheck.workdir == NULL)
