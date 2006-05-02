@@ -42,6 +42,7 @@ void agent_help()
  */
 int main(int argc, char **argv)
 {
+    char *tmpstr;
     char mypath[OS_MAXSTR +1];
     char myfile[OS_MAXSTR +1];
 
@@ -120,7 +121,6 @@ int local_start()
 {
     int binds;
     char *cfg = DEFAULTCPATH;
-    char *tmpstr;
     WSADATA wsaData;
 
 

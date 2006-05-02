@@ -11,12 +11,6 @@ echo http://www.ossec.net/en/manual.html#iis
 
 IF EXIST %WinDir%\System32\LogFiles\W3SVC1\nc??????.log (
     echo    * IIS NCSA log found. Changing config to read it.
-      <localfile>
-          <location>System</location>
-              <log_format>eventlog</log_format>
-                </localfile>
-                </ossec_config>
-                
     echo.  >> ossec.conf
     echo ^<ossec_config^> >> ossec.conf
     echo   ^<location^>%WinDir%\System32\LogFiles\W3SVC1\nc%%y%%m%%d.log^</location^> >> ossec.conf

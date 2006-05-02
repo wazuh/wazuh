@@ -157,7 +157,10 @@ void ErrorExit(const char *msg, ...)
     va_list args;
    
     #ifdef WIN32 
-    WinSetError();
+        /* If not MA */
+        #ifndef MA
+        WinSetError();
+        #endif
     #endif
 
     va_start(args, msg);
