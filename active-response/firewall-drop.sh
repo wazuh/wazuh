@@ -24,8 +24,11 @@ ACTION=$1
 USER=$2
 IP=$3
 
-
-echo "`date` $0 $1 $2 $3" >> /tmp/ossec-hids-responses.log
+LOCAL=`dirname $0`;
+cd $LOCAL
+cd ../
+PWD=`pwd`
+echo "`date` $0 $1 $2 $3" >> ${PWD}/ossec-hids-responses.log
 
 
 # Checking for an IP

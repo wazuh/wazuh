@@ -15,9 +15,70 @@ cd ../
 PWD=`pwd`
 LOCK="${PWD}/host-deny-lock"
 LOCK_PID="${PWD}/host-deny-lock/pid"
-MAX_ITERATION="16"
 
-echo "`date` $0 $1 $2 $3" >> /tmp/ossec-hids-responses.log
+
+# This number should be more than enough (even if a hundred
+# instances of this script is ran together). If you have
+# a really loaded env, you can increase it to 75 or 100.
+MAX_ITERATION="50"
+
+
+# Lock function
+lock()
+{
+    i=0;
+    # Providing a lock.
+    while [ 1 ]; do
+        mkdir ${LOCK} > /dev/null 2>&1
+        MSL=$?
+        if [ "${MSL}" = "0" ]; then
+            # Lock aquired (setting the pid)
+            echo "$$" > ${LOCK_PID}
+            return;
+        fi
+
+        # Getting currently/saved PID locking the file
+        C_PID=`cat ${LOCK_PID} 2>/dev/null`
+        if [ "x" = "x${S_PID}" ]; then
+            S_PID=${C_PID}
+        fi    
+
+        # Breaking out of the loop after X attempts
+        if [ "x${C_PID}" = "x${S_PID}" ]; then
+            i=`expr $i + 1`;
+        fi
+   
+        # Sleep 1 after 10/25 interactions
+        if [ "$i" = "10" -o "$i" = "25" ]; then
+            sleep 1;
+        fi
+             
+        i=`expr $i + 1`;
+        
+        # So i increments 2 by 2 if the pid does not change.
+        # If the pid keeps changing, we will increments one
+        # by one and fail after MAX_ITERACTION
+        if [ "$i" = "${MAX_ITERATION}" ]; then
+            echo "`date` Unable to execute. Locked: $0" \
+                        >> ${PWD}/ossec-hids-responses.log
+            
+            # Unlocking and exiting
+            unlock;
+            exit 1;                
+        fi
+    done
+}
+
+# Unlock function
+unlock()
+{
+   rm -rf ${LOCK} 
+}
+
+
+# Logging the call
+echo "`date` $0 $1 $2 $3" >> ${PWD}/ossec-hids-responses.log
+
 
 # IP Address must be provided
 if [ "x${IP}" = "x" ]; then
@@ -26,61 +87,26 @@ if [ "x${IP}" = "x" ]; then
 fi
 
 
-i=0;
-# Providing a lock.
-while [ 1 ]; do
-    mkdir ${LOCK} > /dev/null 2>&1
-    MSL=$?
-    if [ "${MSL}" = "0" ]; then
-        # Lock aquired (setting the pid)
-        echo "$$" > ${LOCK_PID}
-        break;
-    fi
-
-    # Getting currently/saved PID locking the file
-    C_PID=`cat ${LOCK_PID} 2>/dev/null`
-    if [ "x" = "x${S_PID}" ]; then
-        S_PID=${C_PID}
-    fi    
-
-    # Breaking out of the loop after X attempts
-    if [ "x${C_PID}" = "x${S_PID}" ]; then
-        i=`expr $i + 1`;
-    fi
-    i=`expr $i + 1`;
-    
-    # So i increments 2 by 2 if the pid does not change.
-    # If the pid keeps changing, we will increments one
-    # by one and fail after MAX_ITERACTION
-    if [ "$i" = "${MAX_ITERATION}" ]; then
-        echo "`date` Unable to execute. Locked: $0 $1 $2 $3"
-                        >> /tmp/ossec-hids-responses.log
-        # Unlocking
-        rm -rf ${LOCK}                
-        exit 1;                
-    fi
-done
-
-
 # Adding the ip to hosts.deny
 if [ "x${ACTION}" = "xadd" ]; then
+   lock;     
    echo "ALL:${IP}" >> /etc/hosts.deny
-   rm -rf ${LOCK}
+   unlock;
    exit 0;
 
 
 # Deleting from hosts.deny   
 elif [ "x${ACTION}" = "xdelete" ]; then   
-   cat /etc/hosts.deny | grep -v "ALL:${IP}"> /tmp/hosts.deny.$$
+   lock;
+   cat /etc/hosts.deny | grep -v "ALL:${IP}$"> /tmp/hosts.deny.$$
    mv /tmp/hosts.deny.$$ /etc/hosts.deny
-   rm -rf ${LOCK}
+   unlock;
    exit 0;
 
 
 # Invalid action   
 else
    echo "$0: invalid action: ${ACTION}"
-   rm -rf ${LOCK}
 fi       
 
 exit 1;

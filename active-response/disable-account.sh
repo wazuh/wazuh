@@ -14,12 +14,19 @@ ACTION=$1
 USER=$2
 IP=$3
 
+LOCAL=`dirname $0`;
+cd $LOCAL
+cd ../
+PWD=`pwd`
+echo "`date` $0 $1 $2 $3" >> ${PWD}/ossec-hids-responses.log
 
-echo "`date` $0 $1 $2 $3" >> /tmp/ossec-hids-responses.log
 
 if [ "x${USER}" = "x" ]; then
    echo "$0: [ add | delete ] <username>" 
    exit 1;
+elif [ "x${USER}" = "xroot" ]; then
+   echo "$0: Invalid username."
+   exit 1;   
 fi
 
 
