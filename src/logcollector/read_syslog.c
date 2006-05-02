@@ -37,6 +37,17 @@ void *read_syslog(int pos, int *rc)
         {
             *p = '\0';
         }
+        
+        #ifdef WIN32
+        if ((p = strrchr(str, '\r')) != NULL)
+        {
+            *p = '\0';
+        }
+
+        /* Looking for empty string (only on windows) */
+        if(strlen(str) <= 1)
+            continue;
+        #endif
                       
         
         /* Sending message to queue */
