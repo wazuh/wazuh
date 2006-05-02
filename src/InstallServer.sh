@@ -13,7 +13,7 @@ fi
 UARG=$1;
 if [ "X$UARG" = "Xlocal" ]; then
     # Setting local install
-    LOCAL= "local"
+    LOCAL="local"
 fi
     
 UNAME=`uname`;
