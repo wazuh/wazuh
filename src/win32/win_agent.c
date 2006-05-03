@@ -183,6 +183,7 @@ int local_start()
 int SendMSG(int queue, char *message, char *locmsg, char loc)
 {
     int _ssize;
+    char *pl;
     char tmpstr[OS_MAXSTR+2];
     char crypt_msg[OS_MAXSTR +2];
 
@@ -190,6 +191,14 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     crypt_msg[OS_MAXSTR +1] = '\0';
 
     merror("message: %s", message);
+
+    /* locmsg cannot have the C:, as we use it as delimiter */
+    pl = strchr(locmsg, ':');
+    if(pl)
+    {
+        *pl = ';';
+    }
+    
     snprintf(tmpstr,OS_MAXSTR,"%c:%s:%s", loc, locmsg, message);
 
     _ssize = CreateSecMSG(&keys, tmpstr, crypt_msg, 0);
