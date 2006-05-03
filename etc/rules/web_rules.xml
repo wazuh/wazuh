@@ -19,13 +19,19 @@
     <description>Web server 400 error code.</description>
   </rule>
 
-  <rule id="3102" level="6">
+  <rule id="3102" level="0">
+    <if_sid>3101</if_sid>
+    <url>.jpg|.gif|favicon.ico|.png|robots.txt|.css</url>
+    <description>Ignored extensions on 400 error codes.</description>
+  </rule>
+  
+  <rule id="3103" level="6">
     <if_sid>3100</if_sid>
     <url>='|select%20|insert%20|%20from%20|%20where%20</url>
     <description>SQL injection attempt.</description>
   </rule>
   
-  <rule id="3103" level="6">
+  <rule id="3104" level="6">
     <if_sid>3100</if_sid>
     
     <!-- Attempt to do directory transversal, simple sql injections,
@@ -38,8 +44,8 @@
     <info>http://www.armbrustconsulting.com/LogEntries.html</info>
   </rule>
 
-  <rule id="3103" level="12">
-    <if_sid>3102, 3103</if_sid>
+  <rule id="3105" level="12">
+    <if_sid>3103, 3104</if_sid>
     <id>^200</id>
     <description>A web attack returned code 200 (success).</description>
   </rule>
@@ -52,14 +58,14 @@
   </rule>
 
   <rule id="3152" level="10" frequency="10" timeframe="120">
-    <if_matched_sid>3102</if_matched_sid>
+    <if_matched_sid>3103</if_matched_sid>
     <same_source_ip />
     <description>Multiple SQL injection attempts from same </description>
     <description>souce ip.</description>
   </rule>
   
   <rule id="3153" level="10" frequency="10" timeframe="120">
-    <if_matched_sid>3103</if_matched_sid>
+    <if_matched_sid>3104</if_matched_sid>
     <same_source_ip />
     <description>Multiple common web attacks from same souce ip.</description>
   </rule>
