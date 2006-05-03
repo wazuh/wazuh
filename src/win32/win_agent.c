@@ -196,10 +196,15 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     pl = strchr(locmsg, ':');
     if(pl)
     {
-        *pl = ';';
+        /* Setting pl after the ":" if it exists. */
+        pl++;
+    }
+    else
+    {
+        pl = locmsg;
     }
     
-    snprintf(tmpstr,OS_MAXSTR,"%c:%s:%s", loc, locmsg, message);
+    snprintf(tmpstr,OS_MAXSTR,"%c:%s:%s", loc, pl, message);
 
     _ssize = CreateSecMSG(&keys, tmpstr, crypt_msg, 0);
 
