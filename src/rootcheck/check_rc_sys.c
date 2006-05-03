@@ -288,7 +288,7 @@ int read_sys_dir(char *dir_name, int do_read)
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "Files hidden inside directory "
                          "'%s'. Link count does not match number of files (%d,%d).",
-                         dir_name, entry_count, statbuf.st_nlink);
+                         dir_name, entry_count, (int)statbuf.st_nlink);
 
         /* Solaris /boot is terrible :) */
         #ifdef SOLARIS

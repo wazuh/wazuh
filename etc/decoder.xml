@@ -233,7 +233,7 @@
  -->
 
 <decoder name="sendmail-reject">
-  <prematch>^sendmail[\d+]: </prematch>
+  <prematch>^sendmail[\d+]: |^sm-mta[\d+]: </prematch>
   <regex>relay=\S+ [(\d+.\d+.\d+.\d+)] </regex>
   <order>srcip</order>
 </decoder>  

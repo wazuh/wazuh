@@ -78,7 +78,7 @@
   <rule id="401" level="5">
     <match>FAILED LOGIN |authentication failure|</match>
     <match>Authentication failed for|invalid password for|</match>
-    <match>LOGIN FAILURE ON |auth failure: |</match>
+    <match>LOGIN FAILURE|auth failure: |</match>
     <match>Wrong password given for|login failed|Auth: Login incorrect</match>
     <group>authentication_failed</group>
     <description>User authentication failure.</description>
@@ -114,11 +114,11 @@
 
 
 
-<!-- Sendmail messages -->
-<group name="syslog,sm-mta">
-  <rule id="501" level="2">
-    <regex>^sm-mta[\d+]: auxpropfunc error no mechanism available</regex>
-    <description>Sendmail error message (invalid mechanism).</description>
+<!-- Mail/Procmail messages -->
+<group name="syslog,mail">
+  <rule id="501" level="0">
+    <match>^procmail[</match>
+    <description>Ignoring procmail messages.</description>
   </rule>
 </group> <!-- SYSLOG,SENDMAIL -->
   
