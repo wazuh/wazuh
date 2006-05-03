@@ -22,7 +22,7 @@
   <rule id="3102" level="6">
     <if_sid>3100</if_sid>
     <url>='|select%20|insert%20|%20from%20|%20where%20</url>
-    <info>SQL injection attempt.</info>
+    <description>SQL injection attempt.</description>
   </rule>
   
   <rule id="3103" level="6">
