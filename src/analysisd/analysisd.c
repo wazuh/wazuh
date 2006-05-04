@@ -862,7 +862,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     {
         if(!lf->url)
         {
-            return(NULL)
+            return(NULL);
         }
         
         if(!OSMatch_Execute(lf->url, strlen(lf->url), currently_rule->url))
