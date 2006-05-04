@@ -860,6 +860,11 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking for the url */
     if(currently_rule->url)
     {
+        if(!lf->url)
+        {
+            return(NULL)
+        }
+        
         if(!OSMatch_Execute(lf->url, strlen(lf->url), currently_rule->url))
         {
             return(NULL);
@@ -870,6 +875,11 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking for the id */
     if(currently_rule->id)
     {
+        if(!lf->id)
+        {
+            return(NULL);
+        }
+        
         if(!OSMatch_Execute(lf->id,
                             strlen(lf->id),
                             currently_rule->id))
@@ -913,6 +923,11 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking for the srcip */
     if(currently_rule->srcip)
     {
+        if(!lf->srcip)
+        {
+            return(NULL);
+        }
+        
         if(!OS_IPFound(lf->srcip, currently_rule->srcip))
         {
             return(NULL);
@@ -922,6 +937,11 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking for the dstip */
     if(currently_rule->dstip)
     {
+        if(!lf->dstip)
+        {
+            return(NULL);
+        }
+        
         if(!OS_IPFound(lf->dstip, currently_rule->dstip))
         {
             return(NULL);

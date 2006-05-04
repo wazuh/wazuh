@@ -46,8 +46,8 @@ int c_read_file(char *file_name, char *oldsum);
 
 
 /* Global variables -- currently checksum, msg to alert  */
-char c_sum[256];
-char alert_msg[512];
+char c_sum[256 +1];
+char alert_msg[512 +1];
 
 
 /* notify_agent
@@ -86,7 +86,11 @@ void start_daemon()
     #ifdef DEBUG
     verbose("%s: Starting daemon ..",ARGV0);
     #endif
-   
+  
+    /* Zeroing memory */
+    memset(c_sum, '\0', 256 +1);
+    memset(alert_msg, '\0', 512 +1);
+     
     
     /* some time to settle */
     sleep(30);
@@ -234,7 +238,6 @@ void run_check()
         n_file++;
 
         /* Removing the '\n' if present and setting it to \0 */
-        /* Using c_sum temporaly in here */
         tmp_c = index(n_file,'\n');
         if(tmp_c)
         {
