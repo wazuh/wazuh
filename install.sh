@@ -361,7 +361,7 @@ ConfigureServer()
 		echo "    <email_notification>yes</email_notification>" >> $NEWCONFIG
 		echo "    <email_to>$EMAIL</email_to>" >> $NEWCONFIG
 		echo "    <smtp_server>$SMTP</smtp_server>" >> $NEWCONFIG
-		echo "    <email_from>ossect@${HOST}</email_from>" >> $NEWCONFIG
+		echo "    <email_from>ossecm@${HOST}</email_from>" >> $NEWCONFIG
 	else
 		echo "    <email_notification>no</email_notification>" >> $NEWCONFIG
 	fi

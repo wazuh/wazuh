@@ -92,6 +92,7 @@
 
   <rule id="403" level="5">
     <regex>^\S+[\d+]: refused connect from|</regex>
+    <regex>^xinetd[\d+]: libwrap refused connection|</regex>
     <regex>Connection from \S+ denied</regex>
     <description>Connection blocked by Tcp Wrappers.</description>
   </rule>

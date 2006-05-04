@@ -1,4 +1,4 @@
-# OSSEC HIDS, CONTRIB.txt, v1.0 2006/03/13, Daniel B. Cid
+# OSSEC HIDS, CONTRIB.txt, v1.1 2006/05/04, Daniel B. Cid
 #
 
 Many thanks to everyone who contributed and helped with
@@ -14,10 +14,11 @@ who helped since the version 0.1.
 -Testing
   - Giannis Vrentzos  <gvre ( at ) phaistosnetworks.gr>
   - Peter Ahlert <peter ( at ) ifup.de>
-  - under@underlinux.com.br <under ( at ) underlinux.com.br>  
-  - André Alexandre Gaio <aagaio ( at ) linwork.com.br>
+  - Rafael Capovilla <under ( at ) underlinux.com.br>  
+  - Andre Alexandre Gaio <aagaio ( at ) linwork.com.br>
   - Liliane A. Cid <liliane.alves ( at ) gmail.com> 
-
+  - Marcus Maciel - <marcus @ ( at ) underlinux.com.br>
+  - Kayvan A. Sylvan <kayvan@ ( at ) sylvan.com>
   
 -Translations
 
@@ -25,8 +26,18 @@ who helped since the version 0.1.
   - Daniel Barcellos <danielpoa.rs ( at ) gmail.com>
   - Allan Soares <allan.soares ( at ) gmail.com>
   - Willian Itiho Amano <itihoitiho ( at ) gmail.com>
+  - Liliane Cid - <liliane.alves ( at ) gmail.com>
 
   -German:
   - Peter Ahlert <peter ( at ) ifup.de>
+
+  -Turkish
+  - Ahmet Ozturk - <oahmet @ ( at ) metu.edu.tr>
+
+  -Polish
+  - Dziankowski Krzysztof - <odpadki @ ( at ) poczta.onet.pl>
+
+  -Italian
+  - Alberto Furia - <straluna ( at ) email.it>
 
 # EOF  

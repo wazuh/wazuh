@@ -47,4 +47,11 @@
     <match>refused notify from non-master</match>
     <description>DNS configuration error.</description>
   </rule>
+
+  <rule id="1907" level="0">
+    <if_sid>1900</if_sid>
+    <regex>^named[\d+]: client \S+ update \S+ denied</regex>
+    <description>DNS update using RFC2136 Dynamic protocol.</description>
+    <info>http://www.isc.org/index.pl?/sw/bind/FAQ.php</info>
+  </rule>
 </group> <!-- SYSLOG,NAMED -->

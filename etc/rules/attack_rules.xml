@@ -79,7 +79,7 @@
 <group name="syslog,scans">
   <rule id="1801" level="10" frequency="10" timeframe="90" ignore="90">
     <if_matched_group>connection_attempt</if_matched_group>
-    <description>Horizontal scan on the network</description>
+    <description>Network scan from same source ip.</description>
     <same_source_ip />
     <info>http://project.honeynet.org/papers/enemy2/</info>
   </rule>
