@@ -38,8 +38,7 @@ int OS_IPFound(char *ip_address, char *that_ip)
     
     if(*that_ip == '.')
     {
-        that_ip++;
-        if(strncmp(ip_address, that_ip, strlen(that_ip)) == 0)
+        if(strncmp(ip_address, that_ip+1, strlen(that_ip)-1) == 0)
         {
             /* found */
             return(_true);
@@ -66,19 +65,24 @@ int OS_IPFound(char *ip_address, char *that_ip)
 int OS_IPFoundList(char *ip_address, char **list_of_ips)
 {
     int _true = 1;
+    int _extra = 0;
     
     while(*list_of_ips)
     {
+        _extra = 0;
+        
         if(**list_of_ips == '!')
         {
             _true = 0;
-            (*list_of_ips)++;
+            _extra++;
         }
         
         if(**list_of_ips == '.')
         {
-            (*list_of_ips)++;
-            if(strncmp(ip_address, *list_of_ips, strlen(*list_of_ips)) == 0)
+            _extra++;
+            if(strncmp(ip_address, 
+                      (*list_of_ips) + _extra, 
+                      strlen(*list_of_ips) - _extra) == 0)
             {
                 /* found */
                 return(_true);
@@ -86,7 +90,7 @@ int OS_IPFoundList(char *ip_address, char **list_of_ips)
         }
         else
         {
-            if(strcmp(ip_address, *list_of_ips) == 0)
+            if(strcmp(ip_address, (*list_of_ips) + _extra) == 0)
             {
                 /* found */
                 return(_true);
