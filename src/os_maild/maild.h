@@ -49,7 +49,7 @@ typedef struct _MailMsg
 
 
 /* Config function */    
-int MailConf(char *cfgfile, MailConfig *Mail);
+int MailConf(int test_config, char *cfgfile, MailConfig *Mail);
 
 
 /* Receive the e-mail message */

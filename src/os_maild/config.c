@@ -18,7 +18,7 @@
 /* MailConf v0.1: 2005/04/01
  * Reads the Mail configuration
  */
-int MailConf(char *cfgfile, MailConfig *Mail)
+int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
 {
     int modules = 0;
 
@@ -35,7 +35,10 @@ int MailConf(char *cfgfile, MailConfig *Mail)
 
     if(!Mail->mn)
     {
-        verbose(MAIL_DIS, ARGV0);
+        if(!test_config)
+        {
+            verbose(MAIL_DIS, ARGV0);
+        }
         exit(0);        
     }
 
