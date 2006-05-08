@@ -224,7 +224,7 @@ void OS_Run(MailConfig *mail)
             }
             else if (pid == 0)
             {
-                if(OS_Sendmail(mail) < 0)
+                if(OS_Sendmail(mail, p) < 0)
                     merror(SNDMAIL_ERROR,ARGV0,mail->smtpserver);
                 
                 exit(0);    
