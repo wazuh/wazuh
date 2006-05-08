@@ -4,8 +4,8 @@
 # We use TABLE 00001. If you use this table for anything else,
 # please change it here.
 # Expect: srcip
-# Author: Under (under@underlinux.com.br)
-# Author: Daniel B. Cid
+# Author: Rafael Capovilla - under @ ( at ) underlinux.com.br
+# Author: Daniel B. Cid - dcid @ ( at ) ossec.net
 # Last modified: May 07, 2006
 
 UNAME=`uname`
