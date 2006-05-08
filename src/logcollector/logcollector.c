@@ -208,7 +208,7 @@ void LogCollectorStart()
         /* Checking if any file has been renamed/removed */
         for(i = 0; i <= max_file; i++)
         {
-            /* These are the windows logs */
+            /* These are the windows logs or ignored files */
             if(!logff[i].file)
                 continue;
             
@@ -217,7 +217,10 @@ void LogCollectorStart()
             {
                 if(update_fname(i))
                 {
-                    fclose(logff[i].fp);
+                    if(logff[i].fp)
+                    {
+                        fclose(logff[i].fp);
+                    }
                     logff[i].fp = NULL;
                     handle_file(i);
                 }
@@ -248,6 +251,8 @@ void LogCollectorStart()
                 if(logff[i].fp);
                     fclose(logff[i].fp);
                 logff[i].fp = NULL;
+                logff[i].ffile = NULL;
+                logff[i].file = NULL;
                 logff[i].ign = -10;
                 continue;
             }
@@ -267,9 +272,7 @@ void LogCollectorStart()
                     continue;
                 }
             }
-           
         }
-
     }
 }
 
