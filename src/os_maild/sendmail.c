@@ -38,7 +38,7 @@
 #define FROM			"From: OSSEC HIDS <%s>\r\n"
 #define TO			    "To: <%s>\r\n"
 #define SUBJECT			"Subject: %s\r\n"
-#define DATE            "%s\r\n"
+#define DATE            "Date: %s\r\n"
 #define ENDDATA			"\r\n.\r\n"
 #define QUITMSG 		"QUIT\r\n"
 
