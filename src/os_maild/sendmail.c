@@ -38,7 +38,6 @@
 #define FROM			"From: OSSEC HIDS <%s>\r\n"
 #define TO			    "To: <%s>\r\n"
 #define SUBJECT			"Subject: %s\r\n"
-#define DATE            "%s\r\n"
 #define ENDDATA			"\r\n.\r\n"
 #define QUITMSG 		"QUIT\r\n"
 
@@ -207,16 +206,18 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     snprintf(snd_msg,127,FROM,mail->from);
     OS_SendTCP(socket, snd_msg);
 
+
+    /* Sending date */
+    memset(snd_msg,'\0',128);
+    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T %z\r\n",p);
+    OS_SendTCP(socket,snd_msg);
+
+    
     /* Sending subject */
     memset(snd_msg,'\0',128);
     snprintf(snd_msg,127,SUBJECT,mailmsg->mail->subject);	
     OS_SendTCP(socket,snd_msg);
 
-    /* Sending date */
-    memset(snd_msg,'\0',128);
-    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T %z",p);
-    snprintf(snd_msg,127,DATE, snd_msg);
-    OS_SendTCP(socket,snd_msg);
 
     /* Sending body */
 

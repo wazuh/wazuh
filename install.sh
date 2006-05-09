@@ -73,7 +73,14 @@ Install()
 	fi
 
     cd ../
-    
+   
+   
+    # Generate the /etc/ossec-init.conf
+    echo "DIRECTORY=\"${INSTALLDIR}\"" > /etc/ossec-init.conf 
+    echo "VERSION=\"${VERSION}\"" >> /etc/ossec-init.conf 
+    echo "DATE=\"`date`\"" >> /etc/ossec-init.conf
+    chmod 600 /etc/ossec-init.conf
+     
     # Calling the init script  to start ossec hids during boot
     runInit
     if [ $? = 1 ]; then

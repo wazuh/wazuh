@@ -12,8 +12,11 @@
 export LANG=C
 
 . /etc/init.d/functions
+. /etc/ossec-init.conf
 
-DIRECTORY="/var/ossec"
+if [ "X${DIRECTORY}" = "X" ]; then
+    DIRECTORY="/var/ossec"
+fi
 
 start() {
 	echo -n "Starting OSSEC: "

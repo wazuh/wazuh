@@ -4,8 +4,12 @@
 #                             <daniel.cid@gmail.com>
 
 
-DIRECTORY="/var/ossec"
+. /etc/ossec-init.conf
+if [ "X${DIRECTORY}" = "X" ]; then
+    DIRECTORY="/var/ossec"
+fi
 
+    
 start() {
 	${DIRECTORY}/bin/ossec-control start
 }

@@ -1,4 +1,4 @@
-!define VERSION "0.8BETA"
+!define VERSION "0.8"
 !define NAME "Ossec HIDS"
 
 Name "${NAME} Windows Agent v${VERSION}"
@@ -38,13 +38,13 @@ WriteUninstaller "uninstall.exe"
 CreateDirectory "$SMPROGRAMS\ossec"
 CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 CreateShortCut "$SMPROGRAMS\ossec\Edit.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
-CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "http://www.ossec.net/en/manual.html" "" "http://www.ossec.net/en/manual.html" 0
+CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "http://www.ossec.net/en/manual.html#windows" "" "http://www.ossec.net/en/manual.html#windows" 0
 
 ; Install in the services 
-Exec '$INSTDIR\iis-logs.bat'
-Exec '"$INSTDIR\ossec-agent.exe" install-service'
-ExecWait '"C:\WINDOWS\notepad.exe" "$INSTDIR\ossec.conf"'
+ExecWait '$INSTDIR\iis-logs.bat'
+ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
 ExecWait '$INSTDIR\manage_agents.exe'
+ExecWait '"C:\WINDOWS\notepad.exe" "$INSTDIR\ossec.conf"'
 
 SectionEnd
 
