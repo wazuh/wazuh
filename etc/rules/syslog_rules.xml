@@ -382,6 +382,7 @@
 <!-- Syslog FTS -->
 <group name="syslog,fts">
   <rule id="2701" level="4">
+    <if_group>authentication_success</if_group>
     <options>alert_by_email</options>
     <if_fts></if_fts>
     <description>First time syslog event received (see decoders)</description>

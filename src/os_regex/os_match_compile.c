@@ -18,6 +18,12 @@
 #include "os_regex.h"
 #include "os_regex_internal.h"
 
+/* Prototype fo the _OsMatch */
+int _OS_Match(char *pattern, char *str, int str_len, int size);
+int _os_strncmp(char *pattern, char *str, int str_len, int size);
+int _os_strcmp_last(char *pattern, char *str, int str_len, int size);
+int _os_strcmp(char *pattern, char *str, int str_len, int size);
+
 
 /** int OSMatch_Compile(char *pattern, OSMatch *reg, int flags) v0.1
  * Compile a pattern to be used later.
@@ -101,10 +107,11 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
     count++;
     reg->patterns = calloc(count +1, sizeof(char *));
     reg->size = calloc(count +1, sizeof(int));
+    reg->match_fp = calloc(count +1, sizeof(void *));
     
     
     /* Memory allocation error check */
-    if(!reg->patterns || !reg->size)
+    if(!reg->patterns || !reg->size || !reg->match_fp)
     {
         reg->error = OS_REGEX_OUTOFMEMORY;
         goto compile_error;
@@ -115,6 +122,7 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
     for(i = 0; i<=count; i++)
     {
         reg->patterns[i] = NULL;
+        reg->match_fp[i] = NULL;
         reg->size[i] = 0;
     }
     i = 0;
@@ -136,23 +144,45 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
 
             *pt = '\0';
 
-            
-            reg->patterns[i] = strdup(new_str);
+            /* Dupping the string */
+            if(*new_str == BEGINREGEX)
+                reg->patterns[i] = strdup(new_str +1);
+            else     
+                reg->patterns[i] = strdup(new_str);
 
+            /* Memory error */
             if(!reg->patterns[i])
             {
                 reg->error = OS_REGEX_OUTOFMEMORY;
                 goto compile_error;
-
             }
 
-            /* If string starts with ^, decrement size */
-            if(*new_str == BEGINREGEX)
+
+            /* If the string has ^ and $ */
+            if((*new_str == BEGINREGEX) && (*(pt -1) == ENDREGEX))
             {
+                reg->match_fp[i] = _os_strcmp;
                 reg->size[i] = strlen(reg->patterns[i]) -1;
+                reg->patterns[i][reg->size[i]] = '\0';
+            }
+
+            /* String only has $ */
+            else if(*(pt -1) == ENDREGEX)
+            {
+                reg->match_fp[i] = _os_strcmp_last;
+                reg->size[i] = strlen(reg->patterns[i]) -1;
+                reg->patterns[i][reg->size[i]] = '\0';
+            }
+            
+            /* If string starts with ^, use strncmp */
+            else if(*new_str == BEGINREGEX)
+            {
+                reg->match_fp[i] = _os_strncmp;
+                reg->size[i] = strlen(reg->patterns[i]);
             }
             else
             {
+                reg->match_fp[i] = _OS_Match;
                 reg->size[i] = strlen(reg->patterns[i]);
             }
 

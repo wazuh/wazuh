@@ -19,10 +19,12 @@
 
 
 /** Internal matching **/
-int _OS_Match(char *pattern, char *str, int size)
+int _OS_Match(char *pattern, char *str, int str_len, int size)
 {
     int i = 0,j;
     char *pt = pattern;
+
+    size = str_len - size;
 
     /* Look to match the first pattern */
     do
@@ -55,6 +57,39 @@ int _OS_Match(char *pattern, char *str, int size)
 }
 
 
+/** Internal matching **/
+int _os_strncmp(char *pattern, char *str, int str_len, int size)
+{
+    if(strncmp(pattern, str, size) == 0)
+        return(TRUE);
+        
+    return(FALSE);    
+}
+
+/** Internal matching **/
+int _os_strcmp(char *pattern, char *str, int str_len, int size)
+{
+    if(strcmp(pattern, str) == 0)
+        return(TRUE);
+    
+    return(FALSE);    
+}
+
+
+/** Internal matching **/
+int _os_strcmp_last(char *pattern, char *str, int str_len, int size)
+{
+    /* Size of the string must be bigger */
+    if((str_len - size) < 0)
+        return(FALSE);
+        
+    if(strcmp(pattern, str + (str_len - size)) == 0)
+        return(TRUE);
+    
+    return(FALSE);            
+}
+
+
 /** int OSMatch_Execute(char *str, int str_len, OSMatch *reg) v0.1
  * Compare an already compiled pattern with
  * a not NULL string.
@@ -76,15 +111,12 @@ int OSMatch_Execute(char *str, int str_len, OSMatch *reg)
     /* Looping on all sub patterns */
     while(reg->patterns[i])
     {
-        if(reg->patterns[i][0] == BEGINREGEX)
+        if(reg->match_fp[i](reg->patterns[i], 
+                            str, 
+                            str_len, 
+                            reg->size[i]) == TRUE)
         {
-            if(strncmp(reg->patterns[i] +1, str, reg->size[i]) == 0)
-                return(1);
-        }
-        else
-        {
-            if(_OS_Match(reg->patterns[i], str, str_len - reg->size[i]))
-                return(1);
+            return(1);
         }
         i++;
     }
