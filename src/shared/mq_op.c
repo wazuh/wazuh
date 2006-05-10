@@ -124,7 +124,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
             return(-1);
         }
 
-        merror("%s: socket busy", __local_name);
+        /* merror("%s: socket busy", __local_name); */
         
         /* Unable to send. Socket busy */
         sleep(1);
@@ -135,15 +135,15 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
              * again.
              */
             sleep(3);
-        merror("%s: socket busy", __local_name);
+            /* merror("%s: socket busy", __local_name); */
             if(OS_SendUnix(queue, tmpstr,0) < 0)
             {
                 sleep(5);
-        merror("%s: socket busy", __local_name);
+                merror("%s: socket busy", __local_name);
                 if(OS_SendUnix(queue, tmpstr,0) < 0)
                 {
                     sleep(10);
-        merror("%s: socket busy", __local_name);
+                    merror("%s: socket busy", __local_name);
                     if(OS_SendUnix(queue, tmpstr,0) < 0)
                     {
                         /* Message is going to be lost

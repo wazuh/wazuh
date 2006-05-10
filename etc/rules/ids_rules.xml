@@ -9,7 +9,7 @@
   <rule id="4000" level="8">
     <category>ids</category>
     <if_fts></if_fts>
-    <description>First time this IDS event is seen</description>
+    <description>First time this IDS alert is generated.</description>
   </rule>
 
   <rule id="4001" level="6">
