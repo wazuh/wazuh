@@ -86,6 +86,11 @@
     <url>windowsupdate/redir/wuredir.cab|</url>
     <url>^http://codecs.microsoft.com/isapi/ocget.dll|</url>
     <url>^http://activex.microsoft.com/objects/ocget.dll</url>
+
+    <!-- Add more extensions to be ignored in here.
+    <url>|.html$|.htm</url>
+      -->
+
     <description>Ignored files on a 404 error.</description>
   </rule>                        
   

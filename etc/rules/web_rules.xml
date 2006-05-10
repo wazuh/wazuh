@@ -21,7 +21,13 @@
 
   <rule id="3102" level="0">
     <if_sid>3101</if_sid>
-    <url>.jpg|.gif|favicon.ico|.png|robots.txt|.css</url>
+    <url>.jpg$|.gif$|favicon.ico$|.png$|robots.txt$|.css$</url>
+    
+    <!-- Add any other url to be ignored in here
+         (to avoid too many false positives from your site)
+    <url>|.html$|.jpe$</url>
+    -->
+    
     <description>Ignored extensions on 400 error codes.</description>
   </rule>
   
