@@ -359,7 +359,11 @@ void readel(os_el *el, int printit)
             {
                 DWORD _evtid = 65535;
                 int id = (int)el->er->EventID & _evtid; 
-                snprintf(final_msg, 1022, 
+               
+                final_msg[892] = '\0'; 
+                final_msg[893] = '\0'; 
+                
+                snprintf(final_msg, 892, 
                         "WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s\n", 
                         el->name,
                         category, 
@@ -370,14 +374,17 @@ void readel(os_el *el, int printit)
                         computer_name,
                         descriptive_msg != NULL?descriptive_msg:el_string);	
                 
+                if(strlen(final_msg) >= 890)
+                {
+                    final_msg[888] = '\n';
+                    final_msg[889] = '\0';
+                    final_msg[890] = '\0';
+                }
+                
                 if(SendMSG(logr_queue, final_msg, "WinEvtLog",
                             LOCALFILE_MQ) < 0)
                 {
                     merror(QUEUE_SEND, ARGV0);
-                    if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-                    {
-                        ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
-                    }
                 }
             }
 
