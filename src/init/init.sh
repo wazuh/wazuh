@@ -18,7 +18,8 @@ runInit()
             echo " - ${systemis} Redhat Linux."
             echo " - ${modifiedinit}"
             cp -pr ./src/init/ossec-hids-rh.init /etc/rc.d/init.d/ossec
-            chmod a+x /etc/rc.d/init.d/ossec
+            chmod 555 /etc/rc.d/init.d/ossec
+            chown root.ossec /etc/rc.d/init.d/ossec
             /sbin/chkconfig --add ossec
             return 0
         fi
@@ -48,6 +49,8 @@ runInit()
             echo " - ${systemis} Linux (SysV)."
             echo " - ${modifiedinit}"
             cp -pr ./src/init/ossec-hids.init  /etc/rc.d/init.d/ossec
+            chmod 555 /etc/rc.d/init.d/ossec
+            chown root.ossec /etc/rc.d/init.d/ossec
             return 0;
         else
             echo " - ${noboot}"

@@ -183,7 +183,7 @@
   <rule id="801" level="0">
     <if_sid>800</if_sid>
     <match>PCI: if you experience problems, try using option</match>
-    <description>Informative message from the kernel (generally ignored</description>
+    <description>Informative message from the kernel.</description>
   </rule>
 
   <rule id="802" level="0">
@@ -195,39 +195,41 @@
   <rule id ="803" level="9">
     <if_sid>800</if_sid>
     <match>Oversized packet received from</match>
-    <description>Error message from the kernel. Ping of death attack.</description>
+    <description>Error message from the kernel. </description>
+    <description>Ping of death attack.</description>
   </rule>  
 
   <rule id = "804" level="8">
     <if_sid>800</if_sid>
     <regex>Promiscuous mode enabled|</regex>
     <regex>device \S+ entered promiscuous mode</regex>
-    <description>Interface entered in promiscuous mode (sniffing enabled)</description>
+    <description>Interface entered in promiscuous(sniffing) mode.</description>
   </rule>
 
   <rule id="805" level="0">
     <if_sid>800</if_sid>
     <match>end_request: I/O error, dev fd0, sector 0|</match>
     <match>Buffer I/O error on device fd0, logical block 0</match>
-    <description>Invalid I/O request to /dev/fd0 (bug on the 2.6 kernel?)</description>
+    <description>Invalid request to /dev/fd0 (bug on the kernel).</description>
   </rule>
 
   <rule id="806" level="0">
     <if_sid>800</if_sid>
     <match>svc: unknown program 100227 (me 100003)</match>
-    <description>NFS incompability between Linux and Solaris. Ignoring.</description>
+    <description>NFS incompability between Linux and Solaris.</description>
   </rule>
 
   <rule id="807" level="0">
     <if_sid>800</if_sid>
     <match>svc: bad direction </match>
-    <description>NFS incompability between Linux and Solaris. Ignoring.</description>
+    <description>NFS incompability between Linux and Solaris.</description>
   </rule>
 
   <rule id="808" level="12">
     <if_sid>800</if_sid>
     <match>Out of Memory: </match>
-    <description>System running out of memory. Availability of the system is in risk.</description>
+    <description>System running out of memory. </description>
+    <description>Availability of the system is in risk.</description>
   </rule>
 
   <rule id="809" level="4">
@@ -240,6 +242,17 @@
     <if_sid>800</if_sid>
     <match>Forged DCC command from</match>
     <description>IRC misconfiguration</description>
+  </rule>
+
+  <rule id="811" level="0">
+    <if_sid>800</if_sid>
+    <match>ipw2200: Firmware error detected.</match>
+    <description>Kernel device error.</description>
+  </rule>
+
+  <rule id="820" level="0">
+    <match>^hpiod: unable to ParDevice</match>
+    <description>Ignoring hpiod for producing useless logs.</description>
   </rule>
 </group> <!-- SYSLOG,LINUXKERNEL -->
 

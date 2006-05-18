@@ -8,7 +8,7 @@
 <group name="spamd,syslog,">
   <rule id="2900" level="0" noalert="1">
     <match>^spamd</match>
-    <description>Grouping for the pure-ftpd rules</description>
+    <description>Grouping for the spamd rules</description>
   </rule>
   
   <rule id="2901" level="0">

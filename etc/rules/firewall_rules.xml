@@ -17,7 +17,7 @@
     <if_sid>7000</if_sid>
     <action>DROP</action>
     <options>no_log</options>
-    <description>IDS event.</description>
+    <description>Firewall drop event.</description>
   </rule>
 
   <rule id="7051" level="10" frequency="16" timeframe="45" ignore="240">

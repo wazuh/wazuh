@@ -1,0 +1,35 @@
+<!-- smbd rules for the OSSEC HIDS (still need more work)
+  -  Author: Daniel B. Cid
+  -  Logs from:  Kayvan A. Sylvan <kayvan@sylvan.com>
+  -  Date: Mar 20, 2006
+  -->
+      
+
+<group name="smbd,syslog">
+  <rule id="3200" level="0" noalert="1">
+    <match>^smbd</match>
+    <description>Grouping for the smbd rules</description>
+  </rule>
+  
+  <rule id="3201" level="0">
+    <if_sid>3200</if_sid>
+    <match>getpeername failed. Error was Transport endpoint</match>
+    <description>Samba network problems.</description>
+  </rule>
+
+  <rule id="3202" level="5">
+    <if_sid>3200</if_sid>
+    <match>Denied connection from</match>
+    <description>Samba connection denied.</description>
+  </rule>
+
+  <rule id="3203" level="0">
+    <if_sid>3200</if_sid>
+    <match>Connection reset by peer</match>
+    <description>Samba network problems.</description>
+  </rule>
+  
+</group> <!-- SYSLOG,SMBD -->
+
+
+<!-- EOF -->

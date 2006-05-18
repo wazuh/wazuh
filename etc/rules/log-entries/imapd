@@ -1,0 +1,1126 @@
+May  7 13:40:14 gaucha imapd[26772]: imap service init from 200.255.5.8
+May  7 13:40:14 gaucha imapd[26772]: Authenticated user=joao host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:14 gaucha imapd[26772]: Logout user=joao host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:20 gaucha imapd[26788]: imap service init from 200.255.5.8
+May  7 13:40:20 gaucha imapd[26788]: Authenticated user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:21 gaucha imapd[26788]: Logout user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:25 gaucha imapd[26792]: imap service init from 200.255.5.8
+May  7 13:40:25 gaucha imapd[26792]: Authenticated user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:25 gaucha imapd[26792]: Logout user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:33 gaucha imapd[26801]: imap service init from 200.255.5.8
+May  7 13:40:33 gaucha imapd[26801]: Authenticated user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:33 gaucha imapd[26801]: Logout user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:38 gaucha imapd[26803]: imap service init from 200.255.5.8
+May  7 13:40:38 gaucha imapd[26803]: Authenticated user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:39 gaucha imapd[26803]: Logout user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:45 gaucha imapd[26810]: imap service init from 200.255.5.8
+May  7 13:40:45 gaucha imapd[26810]: Authenticated user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:45 gaucha imapd[26810]: Logout user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:55 gaucha imapd[26820]: imap service init from 200.255.5.8
+May  7 13:40:55 gaucha imapd[26820]: Authenticated user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:40:55 gaucha imapd[26820]: Logout user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:41:24 gaucha imapd[26906]: imap service init from 200.255.5.8
+May  7 13:41:24 gaucha imapd[26906]: Authenticated user=lamafia host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:41:25 gaucha imapd[26906]: Logout user=lamafia host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:41:25 gaucha imapd[26908]: imap service init from 200.255.5.8
+May  7 13:41:25 gaucha imapd[26908]: Authenticated user=lamafia host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:41:25 gaucha imapd[26908]: Logout user=lamafia host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:41:39 gaucha imapd[26924]: imap service init from 200.255.5.8
+May  7 13:41:39 gaucha imapd[26924]: Authenticated user=lamafia host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:41:40 gaucha imapd[26924]: Logout user=lamafia host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:41:43 gaucha imapd[26932]: imap service init from 200.255.5.8
+May  7 13:41:43 gaucha imapd[26932]: Authenticated user=lamafia host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:41:44 gaucha imapd[26932]: Logout user=lamafia host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:41:59 gaucha imapd[26953]: imap service init from 200.255.5.8
+May  7 13:41:59 gaucha imapd[26953]: Authenticated user=joao host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:41:59 gaucha imapd[26953]: Logout user=joao host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:42:00 gaucha imapd[26959]: imap service init from 200.255.5.8
+May  7 13:42:00 gaucha imapd[26959]: Authenticated user=joao host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:42:00 gaucha imapd[26959]: Logout user=joao host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:42:19 gaucha imapd[27019]: imap service init from 200.255.5.8
+May  7 13:42:19 gaucha imapd[27019]: Authenticated user=joao host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:42:21 gaucha imapd[27019]: Logout user=joao host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:42:48 gaucha imapd[27094]: imap service init from 200.255.5.8
+May  7 13:42:48 gaucha imapd[27094]: Authenticated user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:42:48 gaucha imapd[27094]: Logout user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:42:48 gaucha imapd[27096]: imap service init from 200.255.5.8
+May  7 13:42:48 gaucha imapd[27096]: Authenticated user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:42:48 gaucha imapd[27096]: Logout user=tiago host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:51:53 gaucha imapd[27832]: imap service init from 200.255.5.8
+May  7 13:51:56 gaucha imapd[27832]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:51:59 gaucha imapd[27832]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:52:02 gaucha imapd[27832]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:52:02 gaucha imapd[27832]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:52:41 gaucha imapd[27991]: imap service init from 200.255.5.8
+May  7 13:52:44 gaucha imapd[27991]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:52:47 gaucha imapd[27991]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:52:50 gaucha imapd[27991]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:52:50 gaucha imapd[27991]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:52:51 gaucha imapd[27999]: imap service init from 200.255.5.8
+May  7 13:52:54 gaucha imapd[27999]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:52:57 gaucha imapd[27999]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:53:00 gaucha imapd[27999]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:53:00 gaucha imapd[27999]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:53:39 gaucha imapd[28041]: imap service init from 200.255.5.8
+May  7 13:53:42 gaucha imapd[28041]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:53:45 gaucha imapd[28041]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:53:48 gaucha imapd[28041]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:53:48 gaucha imapd[28041]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:54:10 gaucha imapd[28129]: imap service init from 200.255.5.8
+May  7 13:54:13 gaucha imapd[28129]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:54:16 gaucha imapd[28129]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:54:19 gaucha imapd[28129]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:54:19 gaucha imapd[28129]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:54:39 gaucha imapd[28170]: imap service init from 200.255.5.8
+May  7 13:54:42 gaucha imapd[28170]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:54:45 gaucha imapd[28170]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:54:48 gaucha imapd[28170]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:54:48 gaucha imapd[28170]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:55:37 gaucha imapd[28236]: imap service init from 200.255.5.8
+May  7 13:55:40 gaucha imapd[28236]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:55:43 gaucha imapd[28236]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:55:46 gaucha imapd[28236]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:55:46 gaucha imapd[28236]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:56:23 gaucha imapd[28311]: imap service init from 200.255.5.8
+May  7 13:56:27 gaucha imapd[28311]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:56:30 gaucha imapd[28311]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:56:33 gaucha imapd[28311]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:56:33 gaucha imapd[28311]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:57:08 gaucha imapd[28414]: imap service init from 200.255.5.8
+May  7 13:57:08 gaucha imapd[28414]: Authenticated user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:57:08 gaucha imapd[28414]: Logout user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:57:08 gaucha imapd[28416]: imap service init from 200.255.5.8
+May  7 13:57:08 gaucha imapd[28416]: Authenticated user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:57:10 gaucha imapd[28416]: Logout user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:57:16 gaucha imapd[28424]: imap service init from 200.255.5.8
+May  7 13:57:17 gaucha imapd[28424]: Authenticated user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:57:17 gaucha imapd[28424]: Logout user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:57:17 gaucha imapd[28425]: imap service init from 200.255.5.8
+May  7 13:57:17 gaucha imapd[28425]: Authenticated user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:57:17 gaucha imapd[28425]: Logout user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:57:56 gaucha imapd[28469]: imap service init from 200.255.5.8
+May  7 13:57:56 gaucha imapd[28469]: Authenticated user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:57:57 gaucha imapd[28469]: Logout user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:58:11 gaucha imapd[28538]: imap service init from 200.255.5.8
+May  7 13:58:11 gaucha imapd[28538]: Authenticated user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:58:11 gaucha imapd[28538]: Logout user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:58:12 gaucha imapd[28539]: imap service init from 200.255.5.8
+May  7 13:58:12 gaucha imapd[28539]: Authenticated user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:58:12 gaucha imapd[28539]: Logout user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:58:12 gaucha imapd[28541]: imap service init from 200.255.5.8
+May  7 13:58:12 gaucha imapd[28541]: Authenticated user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:58:12 gaucha imapd[28541]: Logout user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:58:20 gaucha imapd[28553]: imap service init from 200.255.5.8
+May  7 13:58:20 gaucha imapd[28553]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:58:20 gaucha imapd[28553]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:58:24 gaucha imapd[28557]: imap service init from 200.255.5.8
+May  7 13:58:24 gaucha imapd[28557]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:58:24 gaucha imapd[28557]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:58:50 gaucha imapd[28646]: imap service init from 200.255.5.8
+May  7 13:58:50 gaucha imapd[28646]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:58:50 gaucha imapd[28646]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:59:12 gaucha imapd[28691]: imap service init from 200.255.5.8
+May  7 13:59:12 gaucha imapd[28691]: Authenticated user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:59:13 gaucha imapd[28691]: Logout user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:59:13 gaucha imapd[28692]: imap service init from 200.255.5.8
+May  7 13:59:13 gaucha imapd[28692]: Authenticated user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:59:13 gaucha imapd[28692]: Logout user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:59:39 gaucha imapd[28713]: imap service init from 200.255.5.8
+May  7 13:59:39 gaucha imapd[28713]: Authenticated user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:59:39 gaucha imapd[28713]: Logout user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:59:40 gaucha imapd[28714]: imap service init from 200.255.5.8
+May  7 13:59:40 gaucha imapd[28714]: Authenticated user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:59:40 gaucha imapd[28714]: Logout user=paulomartins host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:59:43 gaucha imapd[28718]: imap service init from 200.255.5.8
+May  7 13:59:43 gaucha imapd[28718]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 13:59:43 gaucha imapd[28718]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:00:51 gaucha imapd[28821]: imap service init from 200.255.5.8
+May  7 14:00:53 gaucha imapd[28824]: imap service init from 200.255.5.8
+May  7 14:00:53 gaucha imapd[28824]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:00:53 gaucha imapd[28824]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:00:54 gaucha imapd[28821]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:00:57 gaucha imapd[28821]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:01:00 gaucha imapd[28821]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:01:00 gaucha imapd[28821]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:01:04 gaucha imapd[28827]: imap service init from 200.255.5.8
+May  7 14:01:04 gaucha imapd[28827]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:01:04 gaucha imapd[28827]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:01:27 gaucha imapd[28910]: imap service init from 200.255.5.8
+May  7 14:01:27 gaucha imapd[28910]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:01:27 gaucha imapd[28910]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:01:31 gaucha imapd[28912]: imap service init from 200.255.5.8
+May  7 14:01:34 gaucha imapd[28912]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:01:37 gaucha imapd[28912]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:01:40 gaucha imapd[28912]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:01:40 gaucha imapd[28912]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:01:50 gaucha imapd[28938]: imap service init from 200.255.5.8
+May  7 14:01:50 gaucha imapd[28938]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:01:50 gaucha imapd[28938]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:07 gaucha imapd[28959]: imap service init from 200.255.5.8
+May  7 14:02:10 gaucha imapd[28959]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:11 gaucha imapd[28968]: imap service init from 200.255.5.8
+May  7 14:02:11 gaucha imapd[28968]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:11 gaucha imapd[28968]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:13 gaucha imapd[28959]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:16 gaucha imapd[28959]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:16 gaucha imapd[28959]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:16 gaucha imapd[28977]: imap service init from 200.255.5.8
+May  7 14:02:18 gaucha imapd[28978]: imap service init from 200.255.5.8
+May  7 14:02:18 gaucha imapd[28978]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:18 gaucha imapd[28978]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:19 gaucha imapd[28977]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:22 gaucha imapd[28977]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:25 gaucha imapd[28977]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:25 gaucha imapd[28977]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:25 gaucha imapd[28988]: imap service init from 200.255.5.8
+May  7 14:02:28 gaucha imapd[28988]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:31 gaucha imapd[28988]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:34 gaucha imapd[28988]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:34 gaucha imapd[28988]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:42 gaucha imapd[29001]: imap service init from 200.255.5.8
+May  7 14:02:42 gaucha imapd[29001]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:02:42 gaucha imapd[29001]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:03:44 gaucha imapd[29105]: imap service init from 200.255.5.8
+May  7 14:03:44 gaucha imapd[29105]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:03:44 gaucha imapd[29105]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:04:25 gaucha imapd[29565]: imap service init from 200.255.5.8
+May  7 14:04:25 gaucha imapd[29565]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:04:25 gaucha imapd[29565]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:05:14 gaucha imapd[29645]: imap service init from 200.255.5.8
+May  7 14:05:14 gaucha imapd[29645]: Authenticated user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:05:14 gaucha imapd[29645]: Logout user=acp host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:18:34 gaucha imapd[30752]: imap service init from 200.255.5.8
+May  7 14:18:34 gaucha imapd[30752]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:18:34 gaucha imapd[30752]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:18:34 gaucha imapd[30754]: imap service init from 200.255.5.8
+May  7 14:18:34 gaucha imapd[30754]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:18:43 gaucha imapd[30754]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:18:47 gaucha imapd[30766]: imap service init from 200.255.5.8
+May  7 14:18:47 gaucha imapd[30766]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:18:48 gaucha imapd[30766]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:18:55 gaucha imapd[30769]: imap service init from 200.255.5.8
+May  7 14:18:55 gaucha imapd[30769]: Authenticated user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:18:55 gaucha imapd[30769]: Logout user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:18:56 gaucha imapd[30772]: imap service init from 200.255.5.8
+May  7 14:18:56 gaucha imapd[30772]: Authenticated user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:18:59 gaucha imapd[30772]: Logout user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:19:03 gaucha imapd[30779]: imap service init from 200.255.5.8
+May  7 14:19:03 gaucha imapd[30779]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:19:04 gaucha imapd[30779]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:19:30 gaucha imapd[30793]: imap service init from 200.255.5.8
+May  7 14:19:30 gaucha imapd[30793]: Authenticated user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:19:30 gaucha imapd[30793]: Logout user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:19:46 gaucha imapd[30813]: imap service init from 200.255.5.8
+May  7 14:19:46 gaucha imapd[30813]: Authenticated user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:19:46 gaucha imapd[30813]: Logout user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:20:04 gaucha imapd[30831]: imap service init from 200.255.5.8
+May  7 14:20:04 gaucha imapd[30831]: Authenticated user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:20:04 gaucha imapd[30831]: Logout user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:21:52 gaucha imapd[31001]: imap service init from 200.255.5.8
+May  7 14:21:52 gaucha imapd[31001]: Authenticated user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:21:52 gaucha imapd[31001]: Logout user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:26:30 gaucha imapd[31461]: imap service init from 200.255.5.8
+May  7 14:26:33 gaucha imapd[31461]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:26:39 gaucha imapd[31461]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:26:45 gaucha imapd[31480]: imap service init from 200.255.5.8
+May  7 14:26:45 gaucha imapd[31480]: Authenticated user=blowsky host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:26:45 gaucha imapd[31480]: Logout user=blowsky host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:26:45 gaucha imapd[31481]: imap service init from 200.255.5.8
+May  7 14:26:45 gaucha imapd[31481]: Authenticated user=blowsky host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:26:45 gaucha imapd[31481]: Logout user=blowsky host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:27:08 gaucha imapd[31495]: imap service init from 200.255.5.8
+May  7 14:27:08 gaucha imapd[31495]: Authenticated user=blowsky host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:27:08 gaucha imapd[31495]: Logout user=blowsky host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:27:11 gaucha imapd[31497]: imap service init from 200.255.5.8
+May  7 14:27:11 gaucha imapd[31497]: Authenticated user=blowsky host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:27:11 gaucha imapd[31497]: Logout user=blowsky host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:27:13 gaucha imapd[31500]: imap service init from 200.255.5.8
+May  7 14:27:13 gaucha imapd[31500]: Authenticated user=blowsky host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:27:13 gaucha imapd[31500]: Logout user=blowsky host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:27:55 gaucha imapd[31531]: imap service init from 200.255.5.8
+May  7 14:27:55 gaucha imapd[31531]: Authenticated user=blowsky host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:27:55 gaucha imapd[31531]: Logout user=blowsky host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:27:59 gaucha imapd[31542]: imap service init from 200.255.5.8
+May  7 14:27:59 gaucha imapd[31542]: Authenticated user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:27:59 gaucha imapd[31542]: Logout user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:00 gaucha imapd[31543]: imap service init from 200.255.5.8
+May  7 14:28:00 gaucha imapd[31543]: Authenticated user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:00 gaucha imapd[31543]: Logout user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:16 gaucha imapd[31574]: imap service init from 200.255.5.8
+May  7 14:28:16 gaucha imapd[31574]: Authenticated user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:16 gaucha imapd[31574]: Logout user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:20 gaucha imapd[31582]: imap service init from 200.255.5.8
+May  7 14:28:20 gaucha imapd[31582]: Authenticated user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:20 gaucha imapd[31582]: Logout user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:23 gaucha imapd[31588]: imap service init from 200.255.5.8
+May  7 14:28:23 gaucha imapd[31588]: Authenticated user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:24 gaucha imapd[31588]: Logout user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:38 gaucha imapd[31599]: imap service init from 200.255.5.8
+May  7 14:28:38 gaucha imapd[31599]: Authenticated user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:38 gaucha imapd[31599]: Logout user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:41 gaucha imapd[31602]: imap service init from 200.255.5.8
+May  7 14:28:41 gaucha imapd[31602]: Authenticated user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:41 gaucha imapd[31602]: Logout user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:46 gaucha imapd[31605]: imap service init from 200.255.5.8
+May  7 14:28:46 gaucha imapd[31605]: Authenticated user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:46 gaucha imapd[31605]: Logout user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:50 gaucha imapd[31611]: imap service init from 200.255.5.8
+May  7 14:28:50 gaucha imapd[31611]: Authenticated user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:28:50 gaucha imapd[31611]: Logout user=andreiaps host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:11 gaucha imapd[31848]: imap service init from 200.255.5.8
+May  7 14:31:11 gaucha imapd[31848]: Authenticated user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:11 gaucha imapd[31848]: Logout user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:11 gaucha imapd[31849]: imap service init from 200.255.5.8
+May  7 14:31:11 gaucha imapd[31849]: Authenticated user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:11 gaucha imapd[31849]: Logout user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:15 gaucha imapd[31858]: imap service init from 200.255.5.8
+May  7 14:31:15 gaucha imapd[31858]: Authenticated user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:15 gaucha imapd[31858]: Logout user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:24 gaucha imapd[31873]: imap service init from 200.255.5.8
+May  7 14:31:24 gaucha imapd[31873]: Authenticated user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:24 gaucha imapd[31873]: Logout user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:26 gaucha imapd[31875]: imap service init from 200.255.5.8
+May  7 14:31:26 gaucha imapd[31875]: Authenticated user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:26 gaucha imapd[31875]: Logout user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:30 gaucha imapd[31879]: imap service init from 200.255.5.8
+May  7 14:31:30 gaucha imapd[31879]: Authenticated user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:30 gaucha imapd[31879]: Logout user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:32 gaucha imapd[31881]: imap service init from 200.255.5.8
+May  7 14:31:32 gaucha imapd[31881]: Authenticated user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:31:32 gaucha imapd[31881]: Logout user=rhsc host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:36:00 gaucha imapd[32375]: imap service init from 200.255.5.8
+May  7 14:36:00 gaucha imapd[32375]: Authenticated user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:36:00 gaucha imapd[32375]: Logout user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:36:04 gaucha imapd[32381]: imap service init from 200.255.5.8
+May  7 14:36:04 gaucha imapd[32381]: Authenticated user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:36:04 gaucha imapd[32381]: Logout user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:36:06 gaucha imapd[32385]: imap service init from 200.255.5.8
+May  7 14:36:06 gaucha imapd[32385]: Authenticated user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:36:06 gaucha imapd[32385]: Logout user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:36:15 gaucha imapd[32442]: imap service init from 200.255.5.8
+May  7 14:36:15 gaucha imapd[32442]: Authenticated user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:36:15 gaucha imapd[32442]: Logout user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:36:21 gaucha imapd[32443]: imap service init from 200.255.5.8
+May  7 14:36:21 gaucha imapd[32443]: Authenticated user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:36:21 gaucha imapd[32443]: Logout user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:14 gaucha imapd[32479]: imap service init from 200.255.5.8
+May  7 14:37:14 gaucha imapd[32479]: Authenticated user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:15 gaucha imapd[32479]: Logout user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:15 gaucha imapd[32485]: imap service init from 200.255.5.8
+May  7 14:37:15 gaucha imapd[32485]: Authenticated user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:15 gaucha imapd[32485]: Logout user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:18 gaucha imapd[32488]: imap service init from 200.255.5.8
+May  7 14:37:18 gaucha imapd[32488]: Authenticated user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:18 gaucha imapd[32488]: Logout user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:19 gaucha imapd[32489]: imap service init from 200.255.5.8
+May  7 14:37:19 gaucha imapd[32489]: Authenticated user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:19 gaucha imapd[32489]: Logout user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:20 gaucha imapd[32493]: imap service init from 200.255.5.8
+May  7 14:37:20 gaucha imapd[32493]: Authenticated user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:20 gaucha imapd[32493]: Logout user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:20 gaucha imapd[32494]: imap service init from 200.255.5.8
+May  7 14:37:20 gaucha imapd[32494]: Authenticated user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:20 gaucha imapd[32494]: Logout user=solaris host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:25 gaucha imapd[32502]: imap service init from 200.255.5.8
+May  7 14:37:25 gaucha imapd[32502]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:25 gaucha imapd[32502]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:25 gaucha imapd[32503]: imap service init from 200.255.5.8
+May  7 14:37:25 gaucha imapd[32503]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:25 gaucha imapd[32503]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:34 gaucha imapd[32508]: imap service init from 200.255.5.8
+May  7 14:37:34 gaucha imapd[32508]: Authenticated user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:34 gaucha imapd[32508]: Logout user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:34 gaucha imapd[32509]: imap service init from 200.255.5.8
+May  7 14:37:34 gaucha imapd[32509]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:34 gaucha imapd[32509]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:45 gaucha imapd[32520]: imap service init from 200.255.5.8
+May  7 14:37:45 gaucha imapd[32520]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:37:45 gaucha imapd[32520]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:38:22 gaucha imapd[32552]: imap service init from 200.255.5.8
+May  7 14:38:22 gaucha imapd[32552]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:38:22 gaucha imapd[32552]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:38:25 gaucha imapd[32555]: imap service init from 200.255.5.8
+May  7 14:38:28 gaucha imapd[32555]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:38:31 gaucha imapd[32555]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:38:34 gaucha imapd[32555]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:38:34 gaucha imapd[32555]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:38:38 gaucha imapd[32574]: imap service init from 200.255.5.8
+May  7 14:38:38 gaucha imapd[32574]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:38:38 gaucha imapd[32574]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:38:47 gaucha imapd[32590]: imap service init from 200.255.5.8
+May  7 14:38:47 gaucha imapd[32590]: Authenticated user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:38:47 gaucha imapd[32590]: Logout user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:38:48 gaucha imapd[32591]: imap service init from 200.255.5.8
+May  7 14:38:48 gaucha imapd[32591]: Authenticated user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:38:49 gaucha imapd[32591]: Logout user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:39:20 gaucha imapd[32640]: imap service init from 200.255.5.8
+May  7 14:39:20 gaucha imapd[32640]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:39:21 gaucha imapd[32640]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:39:26 gaucha imapd[32648]: imap service init from 200.255.5.8
+May  7 14:39:26 gaucha imapd[32648]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:39:26 gaucha imapd[32648]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:06 gaucha imapd[32713]: imap service init from 200.255.5.8
+May  7 14:40:06 gaucha imapd[32713]: Authenticated user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:06 gaucha imapd[32713]: Logout user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:07 gaucha imapd[32716]: imap service init from 200.255.5.8
+May  7 14:40:07 gaucha imapd[32716]: Authenticated user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:07 gaucha imapd[32716]: Logout user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:11 gaucha imapd[32717]: imap service init from 200.255.5.8
+May  7 14:40:11 gaucha imapd[32717]: Authenticated user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:12 gaucha imapd[32717]: Logout user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:18 gaucha imapd[32729]: imap service init from 200.255.5.8
+May  7 14:40:18 gaucha imapd[32729]: Authenticated user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:18 gaucha imapd[32729]: Logout user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:24 gaucha imapd[32733]: imap service init from 200.255.5.8
+May  7 14:40:24 gaucha imapd[32733]: Authenticated user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:24 gaucha imapd[32733]: Logout user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:25 gaucha imapd[32734]: imap service init from 200.255.5.8
+May  7 14:40:25 gaucha imapd[32734]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:25 gaucha imapd[32734]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:41 gaucha imapd[32750]: imap service init from 200.255.5.8
+May  7 14:40:41 gaucha imapd[32750]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:41 gaucha imapd[32750]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:54 gaucha imapd[32766]: imap service init from 200.255.5.8
+May  7 14:40:54 gaucha imapd[32766]: Authenticated user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:54 gaucha imapd[32766]: Logout user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:58 gaucha imapd[304]: imap service init from 200.255.5.8
+May  7 14:40:58 gaucha imapd[304]: Authenticated user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:59 gaucha imapd[304]: Logout user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:59 gaucha imapd[309]: imap service init from 200.255.5.8
+May  7 14:40:59 gaucha imapd[309]: Authenticated user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:40:59 gaucha imapd[309]: Logout user=sergiogrl host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:41:03 gaucha imapd[311]: imap service init from 200.255.5.8
+May  7 14:41:03 gaucha imapd[311]: Authenticated user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:41:03 gaucha imapd[311]: Logout user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:41:14 gaucha imapd[341]: imap service init from 200.255.5.8
+May  7 14:41:14 gaucha imapd[341]: Authenticated user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:41:14 gaucha imapd[341]: Logout user=lhalpern host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:41:22 gaucha imapd[352]: imap service init from 200.255.5.8
+May  7 14:41:22 gaucha imapd[352]: Authenticated user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:41:22 gaucha imapd[352]: Logout user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:41:32 gaucha imapd[367]: imap service init from 200.255.5.8
+May  7 14:41:32 gaucha imapd[367]: Authenticated user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:41:32 gaucha imapd[367]: Logout user=wrs host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:50:37 gaucha imapd[1357]: imap service init from 200.255.5.8
+May  7 14:50:37 gaucha imapd[1357]: Authenticated user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:50:37 gaucha imapd[1357]: Logout user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:50:37 gaucha imapd[1359]: imap service init from 200.255.5.8
+May  7 14:50:37 gaucha imapd[1359]: Authenticated user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:50:38 gaucha imapd[1359]: Logout user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:50:49 gaucha imapd[1380]: imap service init from 200.255.5.8
+May  7 14:50:49 gaucha imapd[1380]: Authenticated user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:50:49 gaucha imapd[1380]: Logout user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:50:58 gaucha imapd[1390]: imap service init from 200.255.5.8
+May  7 14:50:58 gaucha imapd[1390]: Authenticated user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:50:58 gaucha imapd[1390]: Logout user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:51:05 gaucha imapd[1456]: imap service init from 200.255.5.8
+May  7 14:51:05 gaucha imapd[1456]: Authenticated user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:51:05 gaucha imapd[1456]: Logout user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:51:10 gaucha imapd[1466]: imap service init from 200.255.5.8
+May  7 14:51:10 gaucha imapd[1466]: Authenticated user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:51:10 gaucha imapd[1466]: Logout user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:51:19 gaucha imapd[1540]: imap service init from 200.255.5.8
+May  7 14:51:19 gaucha imapd[1540]: Authenticated user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:51:19 gaucha imapd[1540]: Logout user=raphaelv host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:55:51 gaucha imapd[2016]: imap service init from 200.255.5.8
+May  7 14:55:51 gaucha imapd[2016]: Authenticated user=niguna host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:55:51 gaucha imapd[2016]: Logout user=niguna host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:55:52 gaucha imapd[2019]: imap service init from 200.255.5.8
+May  7 14:55:52 gaucha imapd[2019]: Authenticated user=niguna host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:55:52 gaucha imapd[2019]: Logout user=niguna host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:56:26 gaucha imapd[2103]: imap service init from 200.255.5.8
+May  7 14:56:26 gaucha imapd[2103]: Authenticated user=niguna host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:56:26 gaucha imapd[2103]: Logout user=niguna host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:56:28 gaucha imapd[2108]: imap service init from 200.255.5.8
+May  7 14:56:28 gaucha imapd[2108]: Authenticated user=niguna host=bahiana.resenet.com.br [200.255.5.8]
+May  7 14:56:28 gaucha imapd[2108]: Logout user=niguna host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:10 gaucha imapd[2571]: imap service init from 200.255.5.8
+May  7 15:01:10 gaucha imapd[2571]: Authenticated user=sil host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:10 gaucha imapd[2571]: Logout user=sil host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:11 gaucha imapd[2574]: imap service init from 200.255.5.8
+May  7 15:01:11 gaucha imapd[2574]: Authenticated user=sil host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:12 gaucha imapd[2574]: Logout user=sil host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:17 gaucha imapd[2579]: imap service init from 200.255.5.8
+May  7 15:01:17 gaucha imapd[2579]: Authenticated user=sil host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:17 gaucha imapd[2579]: Logout user=sil host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:20 gaucha imapd[2583]: imap service init from 200.255.5.8
+May  7 15:01:20 gaucha imapd[2583]: Authenticated user=sil host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:20 gaucha imapd[2583]: Logout user=sil host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:21 gaucha imapd[2586]: imap service init from 200.255.5.8
+May  7 15:01:21 gaucha imapd[2586]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:21 gaucha imapd[2586]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:23 gaucha imapd[2591]: imap service init from 200.255.5.8
+May  7 15:01:23 gaucha imapd[2591]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:32 gaucha imapd[2591]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:45 gaucha imapd[2622]: imap service init from 200.255.5.8
+May  7 15:01:45 gaucha imapd[2622]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:01:45 gaucha imapd[2622]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:02:27 gaucha imapd[2694]: imap service init from 200.255.5.8
+May  7 15:02:27 gaucha imapd[2694]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:02:27 gaucha imapd[2694]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:02:32 gaucha imapd[2704]: imap service init from 200.255.5.8
+May  7 15:02:32 gaucha imapd[2704]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:02:32 gaucha imapd[2704]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:02:39 gaucha imapd[2707]: imap service init from 200.255.5.8
+May  7 15:02:39 gaucha imapd[2707]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:02:39 gaucha imapd[2707]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:02:51 gaucha imapd[2716]: imap service init from 200.255.5.8
+May  7 15:02:51 gaucha imapd[2716]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:02:51 gaucha imapd[2716]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:03:00 gaucha imapd[2723]: imap service init from 200.255.5.8
+May  7 15:03:00 gaucha imapd[2723]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:03:00 gaucha imapd[2723]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:03:22 gaucha imapd[2760]: imap service init from 200.255.5.8
+May  7 15:03:22 gaucha imapd[2760]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:03:22 gaucha imapd[2760]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:03:27 gaucha imapd[2765]: imap service init from 200.255.5.8
+May  7 15:03:27 gaucha imapd[2765]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:03:28 gaucha imapd[2765]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:03:50 gaucha imapd[2787]: imap service init from 200.255.5.8
+May  7 15:03:50 gaucha imapd[2787]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:03:50 gaucha imapd[2787]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:03:57 gaucha imapd[2802]: imap service init from 200.255.5.8
+May  7 15:03:57 gaucha imapd[2802]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:03:57 gaucha imapd[2802]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:04:01 gaucha imapd[2806]: imap service init from 200.255.5.8
+May  7 15:04:01 gaucha imapd[2806]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:04:03 gaucha imapd[2806]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:04:26 gaucha imapd[2846]: imap service init from 200.255.5.8
+May  7 15:04:26 gaucha imapd[2846]: Authenticated user=tupa8 host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:04:26 gaucha imapd[2846]: Logout user=tupa8 host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:04:26 gaucha imapd[2847]: imap service init from 200.255.5.8
+May  7 15:04:26 gaucha imapd[2847]: Authenticated user=tupa8 host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:04:26 gaucha imapd[2847]: Logout user=tupa8 host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:06:38 gaucha imapd[2983]: imap service init from 200.255.5.8
+May  7 15:06:38 gaucha imapd[2983]: Authenticated user=estudio host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:06:38 gaucha imapd[2983]: Logout user=estudio host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:06:38 gaucha imapd[2984]: imap service init from 200.255.5.8
+May  7 15:06:38 gaucha imapd[2984]: Authenticated user=estudio host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:06:38 gaucha imapd[2984]: Logout user=estudio host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:06:43 gaucha imapd[2985]: imap service init from 200.255.5.8
+May  7 15:06:43 gaucha imapd[2985]: Authenticated user=estudio host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:06:43 gaucha imapd[2985]: Logout user=estudio host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:06:43 gaucha imapd[2986]: imap service init from 200.255.5.8
+May  7 15:06:43 gaucha imapd[2986]: Authenticated user=estudio host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:06:43 gaucha imapd[2986]: Logout user=estudio host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:06:43 gaucha imapd[2987]: imap service init from 200.255.5.8
+May  7 15:06:44 gaucha imapd[2987]: Authenticated user=estudio host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:06:44 gaucha imapd[2987]: Logout user=estudio host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:07:14 gaucha imapd[2999]: imap service init from 200.255.5.8
+May  7 15:07:14 gaucha imapd[2999]: Authenticated user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:07:15 gaucha imapd[2999]: Logout user=sesan host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:07:22 gaucha imapd[3001]: imap service init from 200.255.5.8
+May  7 15:07:22 gaucha imapd[3001]: Authenticated user=estudio host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:07:22 gaucha imapd[3001]: Logout user=estudio host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:09:06 gaucha imapd[3166]: imap service init from 200.255.5.8
+May  7 15:09:06 gaucha imapd[3166]: Authenticated user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:09:06 gaucha imapd[3166]: Logout user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:09:07 gaucha imapd[3169]: imap service init from 200.255.5.8
+May  7 15:09:07 gaucha imapd[3169]: Authenticated user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:09:07 gaucha imapd[3169]: Logout user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:09:26 gaucha imapd[3187]: imap service init from 200.255.5.8
+May  7 15:09:26 gaucha imapd[3187]: Authenticated user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:09:26 gaucha imapd[3187]: Logout user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:09:29 gaucha imapd[3188]: imap service init from 200.255.5.8
+May  7 15:09:29 gaucha imapd[3188]: Authenticated user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:09:29 gaucha imapd[3188]: Logout user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:09:32 gaucha imapd[3191]: imap service init from 200.255.5.8
+May  7 15:09:32 gaucha imapd[3191]: Authenticated user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:09:32 gaucha imapd[3191]: Logout user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:22 gaucha imapd[3259]: imap service init from 200.255.5.8
+May  7 15:10:22 gaucha imapd[3259]: Authenticated user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:22 gaucha imapd[3259]: Logout user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:31 gaucha imapd[3263]: imap service init from 200.255.5.8
+May  7 15:10:31 gaucha imapd[3263]: Authenticated user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:31 gaucha imapd[3263]: Logout user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:39 gaucha imapd[3273]: imap service init from 200.255.5.8
+May  7 15:10:39 gaucha imapd[3273]: Authenticated user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:39 gaucha imapd[3273]: Logout user=rfonseca host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:40 gaucha imapd[3275]: imap service init from 200.255.5.8
+May  7 15:10:40 gaucha imapd[3275]: Authenticated user=leobarroso host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:40 gaucha imapd[3275]: Logout user=leobarroso host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:41 gaucha imapd[3276]: imap service init from 200.255.5.8
+May  7 15:10:41 gaucha imapd[3276]: Authenticated user=leobarroso host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:41 gaucha imapd[3276]: Logout user=leobarroso host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:58 gaucha imapd[3283]: imap service init from 200.255.5.8
+May  7 15:10:58 gaucha imapd[3283]: Authenticated user=ceopenedo4 host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:59 gaucha imapd[3283]: Logout user=ceopenedo4 host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:59 gaucha imapd[3285]: imap service init from 200.255.5.8
+May  7 15:10:59 gaucha imapd[3285]: Authenticated user=ceopenedo4 host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:10:59 gaucha imapd[3285]: Logout user=ceopenedo4 host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:11:06 gaucha imapd[3290]: imap service init from 200.255.5.8
+May  7 15:11:06 gaucha imapd[3290]: Authenticated user=ceopenedo4 host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:11:06 gaucha imapd[3290]: Logout user=ceopenedo4 host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:13:03 gaucha imapd[3386]: imap service init from 200.255.5.8
+May  7 15:13:03 gaucha imapd[3386]: Authenticated user=ceopenedo4 host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:13:03 gaucha imapd[3386]: Logout user=ceopenedo4 host=bahiana.resenet.com.br [200.255.5.8]
+May  7 15:14:04 gaucha imapd[3455]: imap service init from 200.255.5.8
+May  7 15:14:04 gaucha imapd[3455]: Authenticated user=ceopenedo4 host=bahiana.resenet.com.br
+May  9 07:22:56 gaucha imapd[13648]: Logout user=marciabernardes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:23:45 gaucha imapd[13784]: imap service init from 200.255.5.8
+May  9 07:23:45 gaucha imapd[13784]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:23:45 gaucha imapd[13784]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:23:45 gaucha imapd[13785]: imap service init from 200.255.5.8
+May  9 07:23:45 gaucha imapd[13785]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:23:47 gaucha imapd[13785]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:23:53 gaucha imapd[13795]: imap service init from 200.255.5.8
+May  9 07:23:53 gaucha imapd[13795]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:23:53 gaucha imapd[13795]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:24:01 gaucha imapd[13816]: imap service init from 200.255.5.8
+May  9 07:24:01 gaucha imapd[13816]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:24:01 gaucha imapd[13816]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:24:04 gaucha imapd[13824]: imap service init from 200.255.5.8
+May  9 07:24:04 gaucha imapd[13824]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:24:04 gaucha imapd[13824]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:24:06 gaucha imapd[13825]: imap service init from 200.255.5.8
+May  9 07:24:06 gaucha imapd[13825]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:24:06 gaucha imapd[13825]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:24:14 gaucha imapd[13897]: imap service init from 200.255.5.8
+May  9 07:24:14 gaucha imapd[13897]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:24:14 gaucha imapd[13897]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:25:46 gaucha imapd[14162]: imap service init from 200.255.5.8
+May  9 07:25:46 gaucha imapd[14162]: Authenticated user=diretori host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:25:46 gaucha imapd[14162]: Logout user=diretori host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:25:46 gaucha imapd[14164]: imap service init from 200.255.5.8
+May  9 07:25:46 gaucha imapd[14164]: Authenticated user=diretori host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:25:47 gaucha imapd[14164]: Logout user=diretori host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:03 gaucha imapd[14186]: imap service init from 200.255.5.8
+May  9 07:26:03 gaucha imapd[14186]: Authenticated user=diretori host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:03 gaucha imapd[14186]: Logout user=diretori host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:04 gaucha imapd[14190]: imap service init from 200.255.5.8
+May  9 07:26:04 gaucha imapd[14190]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:05 gaucha imapd[14190]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:07 gaucha imapd[14249]: imap service init from 200.255.5.8
+May  9 07:26:07 gaucha imapd[14249]: Authenticated user=diretori host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:07 gaucha imapd[14249]: Logout user=diretori host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:10 gaucha imapd[14307]: imap service init from 200.255.5.8
+May  9 07:26:10 gaucha imapd[14307]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:10 gaucha imapd[14307]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:13 gaucha imapd[14316]: imap service init from 200.255.5.8
+May  9 07:26:13 gaucha imapd[14316]: Authenticated user=nicolau host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:13 gaucha imapd[14316]: Logout user=nicolau host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:13 gaucha imapd[14318]: imap service init from 200.255.5.8
+May  9 07:26:13 gaucha imapd[14318]: Authenticated user=nicolau host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:14 gaucha imapd[14318]: Logout user=nicolau host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:16 gaucha imapd[14322]: imap service init from 200.255.5.8
+May  9 07:26:16 gaucha imapd[14322]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:16 gaucha imapd[14322]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:46 gaucha imapd[14421]: imap service init from 200.255.5.8
+May  9 07:26:46 gaucha imapd[14421]: Authenticated user=nicolau host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:46 gaucha imapd[14421]: Logout user=nicolau host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:48 gaucha imapd[14422]: imap service init from 200.255.5.8
+May  9 07:26:48 gaucha imapd[14422]: Authenticated user=nicolau host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:48 gaucha imapd[14422]: Logout user=nicolau host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:53 gaucha imapd[14432]: imap service init from 200.255.5.8
+May  9 07:26:53 gaucha imapd[14432]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:26:53 gaucha imapd[14432]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:27:01 gaucha imapd[14452]: imap service init from 200.255.5.8
+May  9 07:27:01 gaucha imapd[14452]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:27:01 gaucha imapd[14452]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:27:07 gaucha imapd[14463]: imap service init from 200.255.5.8
+May  9 07:27:07 gaucha imapd[14463]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:27:07 gaucha imapd[14463]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:27:20 gaucha imapd[14492]: imap service init from 200.255.5.8
+May  9 07:27:20 gaucha imapd[14492]: Authenticated user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:27:21 gaucha imapd[14492]: Logout user=robertoferraz host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:28:03 gaucha imapd[14618]: imap service init from 200.255.5.8
+May  9 07:28:03 gaucha imapd[14618]: Authenticated user=tetedias host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:28:03 gaucha imapd[14618]: Logout user=tetedias host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:28:18 gaucha imapd[14644]: imap service init from 200.255.5.8
+May  9 07:28:18 gaucha imapd[14644]: Authenticated user=tetedias host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:28:18 gaucha imapd[14644]: Logout user=tetedias host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:28:19 gaucha imapd[14649]: imap service init from 200.255.5.8
+May  9 07:28:19 gaucha imapd[14649]: Authenticated user=tetedias host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:28:19 gaucha imapd[14649]: Logout user=tetedias host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:02 gaucha imapd[15751]: imap service init from 200.255.5.8
+May  9 07:36:02 gaucha imapd[15751]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:02 gaucha imapd[15751]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:03 gaucha imapd[15752]: imap service init from 200.255.5.8
+May  9 07:36:03 gaucha imapd[15752]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:06 gaucha imapd[15752]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:09 gaucha imapd[15763]: imap service init from 200.255.5.8
+May  9 07:36:09 gaucha imapd[15763]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:09 gaucha imapd[15763]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:19 gaucha imapd[15782]: imap service init from 200.255.5.8
+May  9 07:36:19 gaucha imapd[15782]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:19 gaucha imapd[15782]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:33 gaucha imapd[15805]: imap service init from 200.255.5.8
+May  9 07:36:33 gaucha imapd[15805]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:33 gaucha imapd[15805]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:39 gaucha imapd[15811]: imap service init from 200.255.5.8
+May  9 07:36:39 gaucha imapd[15811]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:40 gaucha imapd[15811]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:42 gaucha imapd[15817]: imap service init from 200.255.5.8
+May  9 07:36:42 gaucha imapd[15817]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:36:42 gaucha imapd[15817]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:37:21 gaucha imapd[15954]: imap service init from 200.255.5.8
+May  9 07:37:21 gaucha imapd[15954]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:37:21 gaucha imapd[15954]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:00 gaucha imapd[16051]: imap service init from 200.255.5.8
+May  9 07:38:00 gaucha imapd[16051]: Authenticated user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:01 gaucha imapd[16051]: Logout user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:01 gaucha imapd[16053]: imap service init from 200.255.5.8
+May  9 07:38:01 gaucha imapd[16053]: Authenticated user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:01 gaucha imapd[16053]: Logout user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:14 gaucha imapd[16081]: imap service init from 200.255.5.8
+May  9 07:38:14 gaucha imapd[16081]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:14 gaucha imapd[16081]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:17 gaucha imapd[16139]: imap service init from 200.255.5.8
+May  9 07:38:17 gaucha imapd[16139]: Authenticated user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:17 gaucha imapd[16139]: Logout user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:19 gaucha imapd[16151]: imap service init from 200.255.5.8
+May  9 07:38:19 gaucha imapd[16151]: Authenticated user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:19 gaucha imapd[16151]: Logout user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:22 gaucha imapd[16207]: imap service init from 200.255.5.8
+May  9 07:38:22 gaucha imapd[16207]: Authenticated user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:22 gaucha imapd[16207]: Logout user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:31 gaucha imapd[16229]: imap service init from 200.255.5.8
+May  9 07:38:31 gaucha imapd[16229]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:31 gaucha imapd[16229]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:33 gaucha imapd[16237]: imap service init from 200.255.5.8
+May  9 07:38:33 gaucha imapd[16237]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:33 gaucha imapd[16237]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:36 gaucha imapd[16240]: imap service init from 200.255.5.8
+May  9 07:38:36 gaucha imapd[16240]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:36 gaucha imapd[16240]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:48 gaucha imapd[16260]: imap service init from 200.255.5.8
+May  9 07:38:48 gaucha imapd[16260]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:48 gaucha imapd[16260]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:54 gaucha imapd[16277]: imap service init from 200.255.5.8
+May  9 07:38:54 gaucha imapd[16277]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:54 gaucha imapd[16277]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:58 gaucha imapd[16286]: imap service init from 200.255.5.8
+May  9 07:38:58 gaucha imapd[16286]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:38:58 gaucha imapd[16286]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:05 gaucha imapd[16297]: imap service init from 200.255.5.8
+May  9 07:39:05 gaucha imapd[16297]: Authenticated user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:05 gaucha imapd[16297]: Logout user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:07 gaucha imapd[16301]: imap service init from 200.255.5.8
+May  9 07:39:07 gaucha imapd[16301]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:07 gaucha imapd[16301]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:08 gaucha imapd[16302]: imap service init from 200.255.5.8
+May  9 07:39:08 gaucha imapd[16302]: Authenticated user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:09 gaucha imapd[16302]: Logout user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:10 gaucha imapd[16304]: imap service init from 200.255.5.8
+May  9 07:39:10 gaucha imapd[16304]: Authenticated user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:10 gaucha imapd[16304]: Logout user=dsf host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:16 gaucha imapd[16315]: imap service init from 200.255.5.8
+May  9 07:39:16 gaucha imapd[16315]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:16 gaucha imapd[16315]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:51 gaucha imapd[16397]: imap service init from 200.255.5.8
+May  9 07:39:51 gaucha imapd[16397]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:51 gaucha imapd[16397]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:54 gaucha imapd[16404]: imap service init from 200.255.5.8
+May  9 07:39:54 gaucha imapd[16404]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:39:54 gaucha imapd[16404]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:40:20 gaucha imapd[16514]: imap service init from 200.255.5.8
+May  9 07:40:20 gaucha imapd[16514]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:40:20 gaucha imapd[16514]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:40:22 gaucha imapd[16524]: imap service init from 200.255.5.8
+May  9 07:40:22 gaucha imapd[16524]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:40:22 gaucha imapd[16524]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:40:45 gaucha imapd[16638]: imap service init from 200.255.5.8
+May  9 07:40:45 gaucha imapd[16638]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:40:45 gaucha imapd[16638]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:41:11 gaucha imapd[16683]: imap service init from 200.255.5.8
+May  9 07:41:11 gaucha imapd[16683]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:41:11 gaucha imapd[16683]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:41:21 gaucha imapd[16703]: imap service init from 200.255.5.8
+May  9 07:41:21 gaucha imapd[16703]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:41:21 gaucha imapd[16703]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:41:24 gaucha imapd[16713]: imap service init from 200.255.5.8
+May  9 07:41:24 gaucha imapd[16713]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:41:28 gaucha imapd[16713]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:41:40 gaucha imapd[16789]: imap service init from 200.255.5.8
+May  9 07:41:40 gaucha imapd[16789]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:41:40 gaucha imapd[16789]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:41:57 gaucha imapd[16821]: imap service init from 200.255.5.8
+May  9 07:41:57 gaucha imapd[16821]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:41:58 gaucha imapd[16821]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:42:21 gaucha imapd[16892]: imap service init from 200.255.5.8
+May  9 07:42:21 gaucha imapd[16892]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:42:21 gaucha imapd[16892]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:42:22 gaucha imapd[16897]: imap service init from 200.255.5.8
+May  9 07:42:22 gaucha imapd[16897]: Authenticated user=noka host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:42:22 gaucha imapd[16897]: Logout user=noka host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:42:28 gaucha imapd[16900]: imap service init from 200.255.5.8
+May  9 07:42:28 gaucha imapd[16900]: Authenticated user=noka host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:42:28 gaucha imapd[16900]: Logout user=noka host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:42:51 gaucha imapd[16993]: imap service init from 200.255.5.8
+May  9 07:42:51 gaucha imapd[16993]: Authenticated user=bedan host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:42:51 gaucha imapd[16993]: Logout user=bedan host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:42:58 gaucha imapd[17002]: imap service init from 200.255.5.8
+May  9 07:42:58 gaucha imapd[17002]: Authenticated user=bedan host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:43:04 gaucha imapd[17002]: Logout user=bedan host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:43:56 gaucha imapd[17079]: imap service init from 200.255.5.8
+May  9 07:43:56 gaucha imapd[17079]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:43:57 gaucha imapd[17079]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:44:00 gaucha imapd[17086]: imap service init from 200.255.5.8
+May  9 07:44:00 gaucha imapd[17086]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:44:01 gaucha imapd[17086]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:44:08 gaucha imapd[17152]: imap service init from 200.255.5.8
+May  9 07:44:09 gaucha imapd[17152]: Authenticated user=noka host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:44:09 gaucha imapd[17152]: Logout user=noka host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:44:14 gaucha imapd[17161]: imap service init from 200.255.5.8
+May  9 07:44:14 gaucha imapd[17161]: Authenticated user=noka host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:44:14 gaucha imapd[17161]: Logout user=noka host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:44:41 gaucha imapd[17217]: imap service init from 200.255.5.8
+May  9 07:44:41 gaucha imapd[17217]: Authenticated user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:44:41 gaucha imapd[17217]: Logout user=pessoal host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:00 gaucha imapd[17263]: imap service init from 200.255.5.8
+May  9 07:45:00 gaucha imapd[17263]: Authenticated user=noka host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:01 gaucha imapd[17263]: Logout user=noka host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:21 gaucha imapd[17329]: imap service init from 200.255.5.8
+May  9 07:45:21 gaucha imapd[17329]: Authenticated user=noka host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:22 gaucha imapd[17329]: Logout user=noka host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:26 gaucha imapd[17405]: imap service init from 200.255.5.8
+May  9 07:45:29 gaucha imapd[17405]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:32 gaucha imapd[17405]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:35 gaucha imapd[17405]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:35 gaucha imapd[17405]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:39 gaucha imapd[17480]: imap service init from 200.255.5.8
+May  9 07:45:42 gaucha imapd[17480]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:45 gaucha imapd[17480]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:48 gaucha imapd[17480]: AUTHENTICATE LOGIN failure host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:48 gaucha imapd[17480]: Logout user=??? host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:48 gaucha imapd[17488]: imap service init from 200.255.5.8
+May  9 07:45:48 gaucha imapd[17488]: Authenticated user=hype host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:48 gaucha imapd[17488]: Logout user=hype host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:49 gaucha imapd[17489]: imap service init from 200.255.5.8
+May  9 07:45:49 gaucha imapd[17489]: Authenticated user=hype host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:49 gaucha imapd[17490]: imap service init from 200.255.5.8
+May  9 07:45:49 gaucha imapd[17490]: Authenticated user=carolduarte host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:49 gaucha imapd[17490]: Logout user=carolduarte host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:49 gaucha imapd[17489]: Logout user=hype host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:49 gaucha imapd[17491]: imap service init from 200.255.5.8
+May  9 07:45:49 gaucha imapd[17491]: Authenticated user=carolduarte host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:52 gaucha imapd[17494]: imap service init from 200.255.5.8
+May  9 07:45:52 gaucha imapd[17494]: Authenticated user=hype host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:53 gaucha imapd[17494]: Logout user=hype host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:45:59 gaucha imapd[17549]: imap service init from 200.255.5.8
+May  9 07:45:59 gaucha imapd[17549]: Authenticated user=hype host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:46:00 gaucha imapd[17549]: Logout user=hype host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:46:12 gaucha imapd[17575]: imap service init from 200.255.5.8
+May  9 07:46:12 gaucha imapd[17575]: Authenticated user=hype host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:46:12 gaucha imapd[17575]: Logout user=hype host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:46:14 gaucha imapd[17577]: imap service init from 200.255.5.8
+May  9 07:46:14 gaucha imapd[17577]: Authenticated user=hype host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:46:15 gaucha imapd[17577]: Logout user=hype host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:47:09 gaucha imapd[17491]: Command stream end of file, while reading line user=carolduarte host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:48:48 gaucha imapd[17978]: imap service init from 200.255.5.8
+May  9 07:48:48 gaucha imapd[17978]: Authenticated user=wald-meister host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:48:48 gaucha imapd[17978]: Logout user=wald-meister host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:48:48 gaucha imapd[17979]: imap service init from 200.255.5.8
+May  9 07:48:48 gaucha imapd[17979]: Authenticated user=wald-meister host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:48:48 gaucha imapd[17979]: Logout user=wald-meister host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:48:54 gaucha imapd[17985]: imap service init from 200.255.5.8
+May  9 07:48:54 gaucha imapd[17985]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:48:54 gaucha imapd[17985]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:48:55 gaucha imapd[17986]: imap service init from 200.255.5.8
+May  9 07:48:55 gaucha imapd[17986]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:48:58 gaucha imapd[17986]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:13 gaucha imapd[18022]: imap service init from 200.255.5.8
+May  9 07:49:13 gaucha imapd[18022]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:13 gaucha imapd[18022]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:17 gaucha imapd[18076]: imap service init from 200.255.5.8
+May  9 07:49:17 gaucha imapd[18076]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:17 gaucha imapd[18076]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:23 gaucha imapd[18094]: imap service init from 200.255.5.8
+May  9 07:49:23 gaucha imapd[18094]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:23 gaucha imapd[18094]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:33 gaucha imapd[18164]: imap service init from 200.255.5.8
+May  9 07:49:33 gaucha imapd[18164]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:33 gaucha imapd[18164]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:39 gaucha imapd[18191]: imap service init from 200.255.5.8
+May  9 07:49:39 gaucha imapd[18191]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:40 gaucha imapd[18191]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:42 gaucha imapd[18199]: imap service init from 200.255.5.8
+May  9 07:49:42 gaucha imapd[18199]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:42 gaucha imapd[18199]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:47 gaucha imapd[18225]: imap service init from 200.255.5.8
+May  9 07:49:47 gaucha imapd[18225]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:49:47 gaucha imapd[18225]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:02 gaucha imapd[18304]: imap service init from 200.255.5.8
+May  9 07:50:02 gaucha imapd[18304]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:02 gaucha imapd[18304]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:05 gaucha imapd[18319]: imap service init from 200.255.5.8
+May  9 07:50:05 gaucha imapd[18319]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:05 gaucha imapd[18319]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:10 gaucha imapd[18350]: imap service init from 200.255.5.8
+May  9 07:50:10 gaucha imapd[18350]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:10 gaucha imapd[18350]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:13 gaucha imapd[18411]: imap service init from 200.255.5.8
+May  9 07:50:13 gaucha imapd[18411]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:13 gaucha imapd[18411]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:16 gaucha imapd[18420]: imap service init from 200.255.5.8
+May  9 07:50:16 gaucha imapd[18420]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:16 gaucha imapd[18420]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:33 gaucha imapd[18508]: imap service init from 200.255.5.8
+May  9 07:50:33 gaucha imapd[18508]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:33 gaucha imapd[18508]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:38 gaucha imapd[18527]: imap service init from 200.255.5.8
+May  9 07:50:38 gaucha imapd[18527]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:38 gaucha imapd[18527]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:57 gaucha imapd[18626]: imap service init from 200.255.5.8
+May  9 07:50:57 gaucha imapd[18626]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:50:57 gaucha imapd[18626]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:51:04 gaucha imapd[18650]: imap service init from 200.255.5.8
+May  9 07:51:04 gaucha imapd[18650]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:51:05 gaucha imapd[18650]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:51:07 gaucha imapd[18670]: imap service init from 200.255.5.8
+May  9 07:51:07 gaucha imapd[18670]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:51:07 gaucha imapd[18670]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:51:15 gaucha imapd[18708]: imap service init from 200.255.5.8
+May  9 07:51:15 gaucha imapd[18708]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:51:15 gaucha imapd[18708]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:51:57 gaucha imapd[18897]: imap service init from 200.255.5.8
+May  9 07:51:58 gaucha imapd[18897]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:51:58 gaucha imapd[18897]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:52:14 gaucha imapd[18968]: imap service init from 200.255.5.8
+May  9 07:52:14 gaucha imapd[18968]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:52:15 gaucha imapd[18968]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:52:17 gaucha imapd[18986]: imap service init from 200.255.5.8
+May  9 07:52:17 gaucha imapd[18986]: Authenticated user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:52:17 gaucha imapd[18986]: Logout user=lenita host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:53:53 gaucha imapd[19553]: imap service init from 200.255.5.8
+May  9 07:53:53 gaucha imapd[19553]: Authenticated user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:53:53 gaucha imapd[19553]: Logout user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:53:54 gaucha imapd[19558]: imap service init from 200.255.5.8
+May  9 07:53:54 gaucha imapd[19558]: Authenticated user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:53:54 gaucha imapd[19558]: Logout user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:54:24 gaucha imapd[19699]: imap service init from 200.255.5.8
+May  9 07:54:24 gaucha imapd[19699]: Authenticated user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:54:24 gaucha imapd[19699]: Logout user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:54:29 gaucha imapd[19724]: imap service init from 200.255.5.8
+May  9 07:54:29 gaucha imapd[19724]: Authenticated user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:54:29 gaucha imapd[19724]: Logout user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:54:33 gaucha imapd[19747]: imap service init from 200.255.5.8
+May  9 07:54:33 gaucha imapd[19747]: Authenticated user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:54:33 gaucha imapd[19747]: Logout user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:55:07 gaucha imapd[20068]: imap service init from 200.255.5.8
+May  9 07:55:07 gaucha imapd[20068]: Authenticated user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:55:07 gaucha imapd[20068]: Logout user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:55:19 gaucha imapd[20104]: imap service init from 200.255.5.8
+May  9 07:55:19 gaucha imapd[20104]: Authenticated user=valseved host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:55:19 gaucha imapd[20104]: Logout user=valseved host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:55:19 gaucha imapd[20105]: imap service init from 200.255.5.8
+May  9 07:55:19 gaucha imapd[20105]: Authenticated user=valseved host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:55:27 gaucha imapd[20105]: Logout user=valseved host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:56:24 gaucha imapd[20542]: imap service init from 200.255.5.8
+May  9 07:56:24 gaucha imapd[20542]: Authenticated user=valseved host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:56:24 gaucha imapd[20542]: Logout user=valseved host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:59:06 gaucha imapd[20981]: imap service init from 200.255.5.8
+May  9 07:59:06 gaucha imapd[20981]: Authenticated user=martti host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:59:06 gaucha imapd[20981]: Logout user=martti host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:59:06 gaucha imapd[20982]: imap service init from 200.255.5.8
+May  9 07:59:06 gaucha imapd[20982]: Authenticated user=martti host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:59:09 gaucha imapd[20982]: Logout user=martti host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:59:43 gaucha imapd[21049]: imap service init from 200.255.5.8
+May  9 07:59:43 gaucha imapd[21049]: Authenticated user=auditar host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:59:43 gaucha imapd[21049]: Logout user=auditar host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:59:43 gaucha imapd[21050]: imap service init from 200.255.5.8
+May  9 07:59:43 gaucha imapd[21050]: Authenticated user=auditar host=bahiana.resenet.com.br [200.255.5.8]
+May  9 07:59:43 gaucha imapd[21050]: Logout user=auditar host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:00:21 gaucha imapd[21262]: imap service init from 200.255.5.8
+May  9 08:00:21 gaucha imapd[21262]: Authenticated user=auditar host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:00:21 gaucha imapd[21262]: Logout user=auditar host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:00:23 gaucha imapd[21271]: imap service init from 200.255.5.8
+May  9 08:00:23 gaucha imapd[21271]: Authenticated user=auditar host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:00:23 gaucha imapd[21271]: Logout user=auditar host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:00:37 gaucha imapd[21282]: imap service init from 200.255.5.8
+May  9 08:00:37 gaucha imapd[21282]: Authenticated user=bgr host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:00:37 gaucha imapd[21282]: Logout user=bgr host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:00:38 gaucha imapd[21283]: imap service init from 200.255.5.8
+May  9 08:00:38 gaucha imapd[21283]: Authenticated user=bgr host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:00:38 gaucha imapd[21283]: Logout user=bgr host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:00:58 gaucha imapd[21362]: imap service init from 200.255.5.8
+May  9 08:00:58 gaucha imapd[21362]: Authenticated user=auditarconsultoria host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:00:58 gaucha imapd[21362]: Logout user=auditarconsultoria host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:00:58 gaucha imapd[21363]: imap service init from 200.255.5.8
+May  9 08:00:58 gaucha imapd[21363]: Authenticated user=auditarconsultoria host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:00:58 gaucha imapd[21363]: Logout user=auditarconsultoria host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:01:28 gaucha imapd[21427]: imap service init from 200.255.5.8
+May  9 08:01:28 gaucha imapd[21427]: Authenticated user=martti host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:01:28 gaucha imapd[21427]: Logout user=martti host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:01:43 gaucha imapd[21459]: imap service init from 200.255.5.8
+May  9 08:01:43 gaucha imapd[21459]: Authenticated user=diretori host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:01:43 gaucha imapd[21459]: Logout user=diretori host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:01:44 gaucha imapd[21460]: imap service init from 200.255.5.8
+May  9 08:01:44 gaucha imapd[21460]: Authenticated user=diretori host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:01:44 gaucha imapd[21460]: Logout user=diretori host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:01:46 gaucha imapd[21462]: imap service init from 200.255.5.8
+May  9 08:01:46 gaucha imapd[21462]: Authenticated user=martti host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:01:47 gaucha imapd[21462]: Logout user=martti host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:02:03 gaucha imapd[21486]: imap service init from 200.255.5.8
+May  9 08:02:03 gaucha imapd[21486]: Authenticated user=martti host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:02:04 gaucha imapd[21486]: Logout user=martti host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:02:05 gaucha imapd[21491]: imap service init from 200.255.5.8
+May  9 08:02:05 gaucha imapd[21491]: Authenticated user=martti host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:02:06 gaucha imapd[21491]: Logout user=martti host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:01 gaucha imapd[21603]: imap service init from 200.255.5.8
+May  9 08:03:01 gaucha imapd[21603]: Authenticated user=jurac_lo host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:01 gaucha imapd[21603]: Logout user=jurac_lo host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:02 gaucha imapd[21610]: imap service init from 200.255.5.8
+May  9 08:03:02 gaucha imapd[21610]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:02 gaucha imapd[21610]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:02 gaucha imapd[21611]: imap service init from 200.255.5.8
+May  9 08:03:02 gaucha imapd[21611]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:04 gaucha imapd[21611]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:05 gaucha imapd[21615]: imap service init from 200.255.5.8
+May  9 08:03:06 gaucha imapd[21615]: Authenticated user=jurac_lo host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:06 gaucha imapd[21615]: Logout user=jurac_lo host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:10 gaucha imapd[21620]: imap service init from 200.255.5.8
+May  9 08:03:10 gaucha imapd[21620]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:10 gaucha imapd[21620]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:13 gaucha imapd[21632]: imap service init from 200.255.5.8
+May  9 08:03:13 gaucha imapd[21632]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:13 gaucha imapd[21632]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:28 gaucha imapd[21652]: imap service init from 200.255.5.8
+May  9 08:03:28 gaucha imapd[21652]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:28 gaucha imapd[21652]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:31 gaucha imapd[21658]: imap service init from 200.255.5.8
+May  9 08:03:31 gaucha imapd[21658]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:31 gaucha imapd[21658]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:44 gaucha imapd[21671]: imap service init from 200.255.5.8
+May  9 08:03:44 gaucha imapd[21671]: Authenticated user=cooperarh host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:44 gaucha imapd[21671]: Logout user=cooperarh host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:55 gaucha imapd[21693]: imap service init from 200.255.5.8
+May  9 08:03:55 gaucha imapd[21693]: Authenticated user=cooperarh host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:56 gaucha imapd[21693]: Logout user=cooperarh host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:59 gaucha imapd[21695]: imap service init from 200.255.5.8
+May  9 08:03:59 gaucha imapd[21695]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:03:59 gaucha imapd[21695]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:01 gaucha imapd[21699]: imap service init from 200.255.5.8
+May  9 08:04:01 gaucha imapd[21699]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:01 gaucha imapd[21699]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:19 gaucha imapd[21725]: imap service init from 200.255.5.8
+May  9 08:04:19 gaucha imapd[21725]: Authenticated user=cooperarh host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:19 gaucha imapd[21725]: Logout user=cooperarh host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:23 gaucha imapd[21735]: imap service init from 200.255.5.8
+May  9 08:04:23 gaucha imapd[21735]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:23 gaucha imapd[21735]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:26 gaucha imapd[21743]: imap service init from 200.255.5.8
+May  9 08:04:26 gaucha imapd[21743]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:26 gaucha imapd[21743]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:32 gaucha imapd[21749]: imap service init from 200.255.5.8
+May  9 08:04:32 gaucha imapd[21749]: Authenticated user=cooperarh host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:46 gaucha imapd[21749]: Logout user=cooperarh host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:55 gaucha imapd[21881]: imap service init from 200.255.5.8
+May  9 08:04:55 gaucha imapd[21881]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:56 gaucha imapd[21881]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:58 gaucha imapd[21940]: imap service init from 200.255.5.8
+May  9 08:04:58 gaucha imapd[21940]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:04:58 gaucha imapd[21940]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:01 gaucha imapd[21947]: imap service init from 200.255.5.8
+May  9 08:05:01 gaucha imapd[21947]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:01 gaucha imapd[21947]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:05 gaucha imapd[21964]: imap service init from 200.255.5.8
+May  9 08:05:05 gaucha imapd[21964]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:05 gaucha imapd[21964]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:18 gaucha imapd[22030]: imap service init from 200.255.5.8
+May  9 08:05:18 gaucha imapd[22030]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:18 gaucha imapd[22030]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:21 gaucha imapd[22038]: imap service init from 200.255.5.8
+May  9 08:05:21 gaucha imapd[22038]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:22 gaucha imapd[22038]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:24 gaucha imapd[22040]: imap service init from 200.255.5.8
+May  9 08:05:24 gaucha imapd[22040]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:24 gaucha imapd[22040]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:35 gaucha imapd[22057]: imap service init from 200.255.5.8
+May  9 08:05:35 gaucha imapd[22057]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:35 gaucha imapd[22057]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:37 gaucha imapd[22062]: imap service init from 200.255.5.8
+May  9 08:05:37 gaucha imapd[22062]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:37 gaucha imapd[22062]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:40 gaucha imapd[22067]: imap service init from 200.255.5.8
+May  9 08:05:40 gaucha imapd[22067]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:40 gaucha imapd[22067]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:55 gaucha imapd[22140]: imap service init from 200.255.5.8
+May  9 08:05:55 gaucha imapd[22140]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:05:56 gaucha imapd[22140]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:06:13 gaucha imapd[22167]: imap service init from 200.255.5.8
+May  9 08:06:13 gaucha imapd[22167]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:06:13 gaucha imapd[22167]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:06:18 gaucha imapd[22176]: imap service init from 200.255.5.8
+May  9 08:06:18 gaucha imapd[22176]: Authenticated user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:06:18 gaucha imapd[22176]: Logout user=resenet host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:06:31 gaucha imapd[22209]: imap service init from 200.255.5.8
+May  9 08:06:31 gaucha imapd[22209]: Authenticated user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:06:31 gaucha imapd[22209]: Logout user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:06:31 gaucha imapd[22212]: imap service init from 200.255.5.8
+May  9 08:06:31 gaucha imapd[22212]: Authenticated user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:06:43 gaucha imapd[22212]: Logout user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:32 gaucha imapd[22350]: imap service init from 200.255.5.8
+May  9 08:07:32 gaucha imapd[22350]: Authenticated user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:33 gaucha imapd[22350]: Logout user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:36 gaucha imapd[22355]: imap service init from 200.255.5.8
+May  9 08:07:36 gaucha imapd[22355]: Authenticated user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:36 gaucha imapd[22355]: Logout user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:48 gaucha imapd[22382]: imap service init from 200.255.5.8
+May  9 08:07:48 gaucha imapd[22382]: Authenticated user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:48 gaucha imapd[22382]: Logout user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:48 gaucha imapd[22387]: imap service init from 200.255.5.8
+May  9 08:07:48 gaucha imapd[22387]: Authenticated user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:48 gaucha imapd[22387]: Logout user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:51 gaucha imapd[22395]: imap service init from 200.255.5.8
+May  9 08:07:51 gaucha imapd[22395]: Authenticated user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:51 gaucha imapd[22395]: Logout user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:55 gaucha imapd[22401]: imap service init from 200.255.5.8
+May  9 08:07:55 gaucha imapd[22401]: Authenticated user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:55 gaucha imapd[22401]: Logout user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:58 gaucha imapd[22409]: imap service init from 200.255.5.8
+May  9 08:07:58 gaucha imapd[22409]: Authenticated user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:07:58 gaucha imapd[22409]: Logout user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:08:00 gaucha imapd[22417]: imap service init from 200.255.5.8
+May  9 08:08:00 gaucha imapd[22417]: Authenticated user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:08:00 gaucha imapd[22417]: Logout user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:08:09 gaucha imapd[22427]: imap service init from 200.255.5.8
+May  9 08:08:10 gaucha imapd[22427]: Authenticated user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:08:10 gaucha imapd[22427]: Logout user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:08:55 gaucha imapd[22498]: imap service init from 200.255.5.8
+May  9 08:08:55 gaucha imapd[22498]: Authenticated user=diegoperes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:08:55 gaucha imapd[22498]: Logout user=diegoperes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:08:58 gaucha imapd[22502]: imap service init from 200.255.5.8
+May  9 08:08:58 gaucha imapd[22502]: Authenticated user=diegoperes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:04 gaucha imapd[22502]: Logout user=diegoperes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:12 gaucha imapd[22530]: imap service init from 200.255.5.8
+May  9 08:09:12 gaucha imapd[22530]: Authenticated user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:13 gaucha imapd[22530]: Logout user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:14 gaucha imapd[22539]: imap service init from 200.255.5.8
+May  9 08:09:14 gaucha imapd[22539]: Authenticated user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:15 gaucha imapd[22539]: Logout user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:19 gaucha imapd[22600]: imap service init from 200.255.5.8
+May  9 08:09:19 gaucha imapd[22600]: Authenticated user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:19 gaucha imapd[22600]: Logout user=rgmuller host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:24 gaucha imapd[22604]: imap service init from 200.255.5.8
+May  9 08:09:24 gaucha imapd[22604]: Authenticated user=diegoperes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:24 gaucha imapd[22604]: Logout user=diegoperes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:25 gaucha imapd[22606]: imap service init from 200.255.5.8
+May  9 08:09:25 gaucha imapd[22606]: Authenticated user=fonterra host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:26 gaucha imapd[22606]: Logout user=fonterra host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:26 gaucha imapd[22608]: imap service init from 200.255.5.8
+May  9 08:09:26 gaucha imapd[22608]: Authenticated user=fonterra host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:27 gaucha imapd[22608]: Logout user=fonterra host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:51 gaucha imapd[22633]: imap service init from 200.255.5.8
+May  9 08:09:51 gaucha imapd[22633]: Authenticated user=diegoperes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:52 gaucha imapd[22633]: Logout user=diegoperes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:58 gaucha imapd[22650]: imap service init from 200.255.5.8
+May  9 08:09:58 gaucha imapd[22650]: Authenticated user=diegoperes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:09:58 gaucha imapd[22650]: Logout user=diegoperes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:10:17 gaucha imapd[22800]: imap service init from 200.255.5.8
+May  9 08:10:17 gaucha imapd[22800]: Authenticated user=terabyte host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:10:17 gaucha imapd[22800]: Logout user=terabyte host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:10:18 gaucha imapd[22801]: imap service init from 200.255.5.8
+May  9 08:10:18 gaucha imapd[22801]: Authenticated user=diegoperes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:10:18 gaucha imapd[22801]: Logout user=diegoperes host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:10:19 gaucha imapd[22805]: imap service init from 200.255.5.8
+May  9 08:10:19 gaucha imapd[22805]: Authenticated user=terabyte host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:10:20 gaucha imapd[22805]: Logout user=terabyte host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:10:30 gaucha imapd[22825]: imap service init from 200.255.5.8
+May  9 08:10:30 gaucha imapd[22825]: Authenticated user=terabyte host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:10:30 gaucha imapd[22825]: Logout user=terabyte host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:10:38 gaucha imapd[22836]: imap service init from 200.255.5.8
+May  9 08:10:38 gaucha imapd[22836]: Authenticated user=terabyte host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:10:38 gaucha imapd[22836]: Logout user=terabyte host=bahiana.resenet.com.br [200.255.5.8]
+May  9 08:11:00 gaucha imapd[22914]: imap service init from 200.255.5.8
+May  9 08:11:00 gaucha imapd[22914]: Authenticated user=claudiadessimoni host=bahiana.resenet.com.br [200.255.5.8]

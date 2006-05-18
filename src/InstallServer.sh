@@ -153,8 +153,9 @@ cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
 
 # Copying active response modules
 sh ./init/fw-check.sh
-cp -pr ../active-response/*.sh ${DIR}/active-response/bin/
+cp -p ../active-response/*.sh ${DIR}/active-response/bin/
 chmod 755 ${DIR}/active-response/bin/*
+chown root.ossec ${DIR}/active-response/bin/*
 
 
 # Moving the config file
