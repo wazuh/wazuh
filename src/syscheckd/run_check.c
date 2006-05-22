@@ -47,7 +47,7 @@ int c_read_file(char *file_name, char *oldsum);
 
 /* Global variables -- currently checksum, msg to alert  */
 char c_sum[256 +1];
-char alert_msg[512 +1];
+char alert_msg[812 +1];
 
 
 /* notify_agent
@@ -89,7 +89,7 @@ void start_daemon()
   
     /* Zeroing memory */
     memset(c_sum, '\0', 256 +1);
-    memset(alert_msg, '\0', 512 +1);
+    memset(alert_msg, '\0', 812 +1);
      
     
     /* some time to settle */
@@ -259,7 +259,7 @@ void run_check()
             /* Sending the new checksum to the analysis server */
             if(syscheck.notify == QUEUE)
             {
-                snprintf(alert_msg, 512,"%s %s",c_sum,n_file);
+                snprintf(alert_msg, 812,"%s %s",c_sum,n_file);
                 notify_agent(alert_msg);
             }
             else
@@ -292,6 +292,7 @@ int c_read_file(char *file_name, char *oldsum)
     {
         if(syscheck.notify == QUEUE)
         {
+            alert_msg[512] = '\0';
             snprintf(alert_msg, 512,"-1 %s",file_name);
             notify_agent(alert_msg);
         }
