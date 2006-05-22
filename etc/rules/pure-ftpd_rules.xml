@@ -45,13 +45,13 @@
 
   <rule id="2806" level="10" frequency="6" timeframe="120">
     <if_matched_sid>2802</if_matched_sid>
-    <description>FTP brute force (multiple failed logins)</description>
+    <description>FTP brute force (multiple failed logins).</description>
   </rule>
 
   <rule id="2807" level="10" frequency="6" timeframe="60">
     <if_matched_sid>2801</if_matched_sid>
     <same_source_ip />
-    <description>Multiple connection attempts from same source</description>
+    <description>Multiple connection attempts from same source.</description>
   </rule>
 
   <rule id="2809" level="3">

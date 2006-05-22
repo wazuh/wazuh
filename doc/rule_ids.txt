@@ -27,6 +27,7 @@
 3000 - 3099 Apache error log rules
 3100 - 3199 Apache access log rules
 3200 - 3299 Samba (smbd)
+3300 - 3399 Imapd
 4000 - 4999 IDS rules
 5000 - 5999 Squid rules
 6000 - 6199 Postfix rules

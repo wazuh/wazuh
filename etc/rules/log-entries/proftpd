@@ -1,0 +1,12 @@
+May 21 20:20:44 slacker proftpd[25526] slacker.lab.ossec.net: ProFTPD 1.2.10 (stable) (built Tue Aug 2 22:33:07 PDT 2005) standalone mode STARTUP
+May 21 20:21:18 slacker proftpd[25530] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): FTP session opened.
+May 21 20:21:21 slacker proftpd[25530] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): no such user 'a'
+May 21 20:21:21 slacker proftpd[25530] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): USER a: no such user found from 192.168.2.10 [192.168.2.10] to 192.168.2.32:21
+May 21 20:22:14 slacker proftpd[25530] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): FTP session closed.
+May 21 20:22:15 slacker proftpd[25556] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): FTP session opened.
+May 21 20:22:28 slacker proftpd[25556] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): USER dcid: Login successful.
+May 21 20:22:35 slacker proftpd[25556] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): FTP session closed.
+May 21 20:22:42 slacker proftpd[25557] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): FTP session opened.
+May 21 20:22:44 slacker proftpd[25557] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): USER dcid (Login failed): Incorrect password.
+May 21 20:22:46 slacker proftpd[25557] slacker.lab.ossec.net (192.168.2.10[192.168.2.10]): FTP session closed.
+

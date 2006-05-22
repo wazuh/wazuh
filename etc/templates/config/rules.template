@@ -14,6 +14,7 @@
     <include>firewall_rules.xml</include>
     <include>postfix_rules.xml</include>
     <include>sendmail_rules.xml</include>
+    <include>imapd_rules.xml</include>
     <include>spamd_rules.xml</include>
     <include>msauth_rules.xml</include>
     <include>attack_rules.xml</include>

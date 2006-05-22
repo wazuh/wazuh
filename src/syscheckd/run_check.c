@@ -254,7 +254,7 @@ void run_check()
             continue;
 
 
-        if(strcmp(c_sum,n_sum) != 0)
+        if(strcmp(c_sum,n_sum+5) != 0)
         {
             /* Sending the new checksum to the analysis server */
             if(syscheck.notify == QUEUE)

@@ -1,6 +1,7 @@
 <!-- Official proftpd rules for the OSSEC HIDS
   -  Author: Daniel B. Cid
   -  Date: Nov 11, 2005
+  -  Last modification: May 21, 2006
   -->
       
 
@@ -10,25 +11,51 @@
     <description>Grouping for the proftpd rules.</description>
   </rule>
   
-  <rule id="2501" level="0">
+  <rule id="2501" level="3">
     <if_sid>2500</if_sid>
-    <match>FTP session opened|FTP session closed.</match>
+    <match>FTP session opened.$</match>
+    <group>connection_attempt</group>
     <description>FTP session opened/closed. Ignore it</description>
   </rule>
 
-  <rule id="2502" level="9">
+  <rule id="2502" level="0">
+    <if_sid>2500</if_sid>
+    <match>FTP session closed.$</match>
+    <description>FTP session closed.</description>
+  </rule>
+
+  <rule id="2503" level="9">
     <if_sid>2500</if_sid>
     <regex>- no such user </regex>
     <group>invalid_login</group>
-    <description>Attempt to login using a non-existent user</description>
+    <description>Attempt to login using a non-existent user.</description>
   </rule>
 
-  <rule id="2503" level="5">
+  <rule id="2504" level="5">
     <if_sid>2500</if_sid>
-    <regex>- USER \S+: Login failed</regex>
+    <regex>Incorrect password.$|Login failed</regex>
     <group>authentication_failed</group>
     <description>Login failed accessing the FTP server</description>
   </rule>
+
+  <rule id="2505" level="3">
+    <if_sid>2500</if_sid>
+    <match>Login successful</match>
+    <group>authentication_success</group>
+    <description>FTP Authentication success.</description>
+  </rule>
+
+  <rule id="2551" level="10" frequency="6" timeframe="120">
+    <if_matched_sid>2504</if_matched_sid>
+    <description>FTP brute force (multiple failed logins).</description>
+  </rule>
+
+  <rule id="2552" level="10" frequency="10" timeframe="60">
+    <if_matched_sid>2501</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple connection attempts from same source.</description>
+  </rule>
+            
 </group> <!-- SYSLOG,PROFTPD -->
 
 

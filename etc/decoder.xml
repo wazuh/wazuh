@@ -136,17 +136,17 @@
 
 <decoder name="proftpd-success">
   <parent>proftpd</parent>  
-  <prematch>^proftpd[\d+]: \S+ \(\S+[\d+.\d+.\d+.\d+]\)\s*\S USER</prematch>
-  <regex>^proftpd[\d+]: \S+ \(\S+[\d+.\d+.\d+.\d+]\)\s*\S USER (\S+): </regex>
+  <prematch>: Login successful</prematch>
+  <regex>^proftpd[\d+]: \S+ \(\S+[(\d+.\d+.\d+.\d+)]\)\s*\S USER (\S+): </regex>
   <regex>Login successful</regex>
   <order>srcip,user</order>
   <fts>name,user,srcip,location</fts>
-  <ftscomment>First time user logged in via FTP</ftscomment>
+  <ftscomment>First time user logged in via FTP.</ftscomment>
 </decoder>
 
 <decoder name="proftpd-ip">
   <parent>proftpd</parent>
-  <regex> from (\S+) </regex>
+  <regex>^proftpd[\d+]: \S+ \(\S+[(\d+.\d+.\d+.\d+)]\)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -190,20 +190,9 @@
   - imapd[27113]: Authenticated user=badyy host=a.resenet.com.br [1.2.3.4]
   - imapd[27113]: Logout user=badyy host=a.resenet.com.br [1.2.3.4]  
   -->
-<decoder name="imapd-login">
+<decoder name="imapd">
   <prematch>^imapd[\d+]: </prematch>
-</decoder>  
-
-<decoder name="imapd-login-failed">
-  <parent>imapd-login</parent>
-  <prematch>^imapd[\d+]: login failed</prematch>
-  <regex>^imapd[\d+]: login failed user=(\S+) \.+ host=\S+ [(\S+)]</regex>
-  <order>user,srcip</order>
-</decoder>
-
-<decoder name="imapd-login-generic">
-  <parent>imapd-login</parent>
-  <regex>^imapd[\d+]: \S+ user=(\S+) host=\S+ [(\S+)]</regex>    
+  <regex>user=(\S+) \.+ [(\d+.\d+.\d+.\d+)]</regex>    
   <order>user,srcip</order>
 </decoder>
 
