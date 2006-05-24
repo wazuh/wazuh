@@ -665,7 +665,14 @@ AddWhite()
 	do
         echo ""
 		$ECHO "   - ${addwhite} ($yes/$no)? [$no]: "
-		read ANSWER
+
+        # If white list is set, we don't need to ask it here.
+        if [ "X${USER_WHITE_LIST}" = "X" ]; then
+		    read ANSWER
+        else
+            ANSWER=$yes
+        fi
+                
 		if [ "X${ANSWER}" = "X" ] ; then
 			ANSWER=$no
 		fi
@@ -706,6 +713,7 @@ main()
     LG="en"
     LANGUAGE="en"
     . ./src/init/shared.sh
+    . ./src/init/functions.sh
 
     # Reading pre-defined file
     if [ ! `isFile ${PREDEF_FILE}` = "${FALSE}" ]; then
