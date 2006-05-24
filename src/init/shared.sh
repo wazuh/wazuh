@@ -12,6 +12,16 @@ LOCATION="./src/LOCATION"
 UNAME=`uname -snr`
 NUNAME=`uname`
 ME=`whoami`
+
+# If whoami does not exist, try id
+if [ ! $? = 0 ]; then
+    ME=`id | cut -d " " -f 1`
+    if [ "X${ME}" = "Xuid=0(root)" ]; then
+        ME="root"
+    fi    
+fi    
+
+OSSEC_INIT="/etc/ossec-init.conf"
 HOST=`hostname`
 NAMESERVERS=`cat /etc/resolv.conf | grep nameserver | cut -d " " -sf 2`
 NAMESERVERS2=`cat /etc/resolv.conf | grep nameserver | cut -sf 2`
@@ -52,6 +62,7 @@ OSSECMX2="ossec.net mail is handled (pri=10) by mx.underlinux.com.br"
 
 ## Predefined file
 PREDEF_FILE="./etc/preloaded-vars.conf"
+
 
 
 ## EOF ##

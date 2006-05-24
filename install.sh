@@ -78,18 +78,20 @@ Install()
    
    
     # Generate the /etc/ossec-init.conf
-    echo "DIRECTORY=\"${INSTALLDIR}\"" > /etc/ossec-init.conf 
-    echo "VERSION=\"${VERSION}\"" >> /etc/ossec-init.conf 
-    echo "DATE=\"`date`\"" >> /etc/ossec-init.conf
-    echo "TYPE=\"${INSTYPE}\"" >> /etc/ossec-init.conf
-    chmod 600 /etc/ossec-init.conf
+    echo "DIRECTORY=\"${INSTALLDIR}\"" > ${OSSEC_INIT}
+    echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}
+    echo "DATE=\"`date`\"" >> ${OSSEC_INIT}
+    echo "TYPE=\"${INSTYPE}\"" >> ${OSSEC_INIT}
+    chmod 600 ${OSSEC_INIT}
     
      
     # Calling the init script  to start ossec hids during boot
-    runInit
-    if [ $? = 1 ]; then
-        notmodified="yes"
-    fi    
+    if [ "X${update_only}" = "X" ]; then
+        runInit
+        if [ $? = 1 ]; then
+            notmodified="yes"
+        fi 
+    fi       
     	
 }
 
@@ -588,7 +590,7 @@ setEnv()
             $ECHO " - ${wheretoinstall} [$INSTALLDIR]: "
             read ANSWER
             if [ ! "X$ANSWER" = "X" ]; then
-                echo $ANSWER | grep -E "^/[a-zA-Z0-9/-]*$" > /dev/null 2>&1
+                echo $ANSWER |grep -E "^/[a-zA-Z0-9/-]{3,128}*$">/dev/null 2>&1
                 if [ $? = 0 ]; then
                     INSTALLDIR=$ANSWER;
                     WORKDIR=$ANSWER;
@@ -769,6 +771,7 @@ main()
     . ./src/init/init.sh
     . ${TEMPLATE}/${LANGUAGE}/messages.txt
     
+    
     # Must be executed as ./install.sh
     if [ `isFile ${VERSION_FILE}` = "${FALSE}" ]; then
         catError "0x1-location";
@@ -801,6 +804,53 @@ main()
         read ANY
     fi
 
+    # Is this an update?
+    if [ `isFile ${OSSEC_INIT}` = "${TRUE}" ]; then
+        echo ""
+        ct="1"
+        while [ $ct = "1" ]; do
+            ct="0"
+            $ECHO " - ${wanttoupdate} ($yes/$no): "
+            if [ "X${USER_UPDATE}" = "X" ]; then
+                read ANY
+            else
+                ANY=$yes
+            fi    
+
+            case $ANY in
+                $yes)
+                    update_only="yes"
+                    break;
+                    ;;
+                $no)
+                    break;
+                    ;;
+                  *)
+                    ct="1"
+                    ;;      
+            esac
+        done
+        
+
+        # Do some of the update steps.
+        if [ "X${update_only}" = "Xyes" ]; then
+            . ./src/init/update.sh
+            
+            if [ "`doUpdatecleanup`" = "${FALSE}" ]; then
+                # Disabling update
+                echo ""
+                echo "${unabletoupdate}"
+                update_only=""
+            else
+                # Get update
+                USER_INSTALL_TYPE=`getPreinstalled`
+                USER_DIR=`getPreinstalledDir`
+                USER_DELETE_DIR="$nomatch"
+            fi     
+        fi    
+        echo ""
+    fi    
+    
     serverm=`echo ${server} | cut -b 1`
     localm=`echo ${local} | cut -b 1`
     agentm=`echo ${agent} | cut -b 1`
@@ -832,7 +882,7 @@ main()
                 ${agent}|${agentm})
                 echo ""
 	            echo "  - ${clientchose}."
-	            INSTYPE="client"
+	            INSTYPE="agent"
 	            break;
 	            ;;
    
@@ -849,21 +899,23 @@ main()
         INSTYPE=${USER_INSTALL_TYPE}
     fi
 
+
     # Setting up the environment
     setEnv
 
     
     # Configuring the system (based on the installation type)
-    
-    if [ "X$INSTYPE" = "Xserver" ]; then	
-        ConfigureServer
-    elif [ "X$INSTYPE" = "Xagent" ]; then
-        ConfigureClient
-    elif [ "X$INSTYPE" = "Xlocal" ]; then
-        ConfigureServer   
-    else
-        catError "0x4-installtype"
-    fi
+    if [ "X${update_only}" = "X" ]; then    
+        if [ "X$INSTYPE" = "Xserver" ]; then	
+            ConfigureServer
+        elif [ "X$INSTYPE" = "Xagent" ]; then
+            ConfigureClient
+        elif [ "X$INSTYPE" = "Xlocal" ]; then
+            ConfigureServer   
+        else
+            catError "0x4-installtype"
+        fi
+    fi    
 
     # Installing (calls the respective script 
     # -- InstallAgent.sh pr InstallServer.sh
@@ -923,6 +975,7 @@ main()
 
 ### Calling main function where everything happens
 main
+
 
 exit 0
 

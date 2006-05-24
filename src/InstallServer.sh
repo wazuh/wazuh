@@ -159,11 +159,13 @@ cp -p ../active-response/*.sh ${DIR}/active-response/bin/
 chmod 755 ${DIR}/active-response/bin/*
 chown root.ossec ${DIR}/active-response/bin/*
 
+chown root:${GROUP} ${DIR}/bin/*
+chmod 550 ${DIR}/bin/*
+
 
 # Moving the config file
 ls ${DIR}/etc/ossec.conf > /dev/null 2>&1
 if [ $? = 0 ]; then
-    echo "Not overwritting /etc/ossec.conf."
     exit 0;
 fi
 
@@ -173,10 +175,6 @@ if [ $? = 0 ]; then
 else    
     cp -pr ../etc/ossec-server.conf ${DIR}/etc/ossec.conf
 fi
-
-chown root:${GROUP} ${DIR}/bin/*
-chmod 550 ${DIR}/bin/*
-
 
 
 exit 0;

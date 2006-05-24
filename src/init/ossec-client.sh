@@ -16,6 +16,62 @@ VERSION="v0.8"
 AUTHOR="Daniel B. Cid"
 DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd"
 
+
+## Locking for the start/stop
+LOCK="${DIR}/var/start-script-lock"
+LOCK_PID="${LOCK}/pid"
+
+
+# This number should be more than enough (even if it is
+# started multiple times together). It will try for up
+# to 10 attempts (or 10 seconds) to execute.
+MAX_ITERATION="10"
+
+
+# Lock function
+lock()
+{
+    i=0;
+    
+    # Providing a lock.
+    while [ 1 ]; do
+        mkdir ${LOCK} > /dev/null 2>&1
+        MSL=$?
+        if [ "${MSL}" = "0" ]; then
+            # Lock aquired (setting the pid)
+            echo "$$" > ${LOCK_PID}
+            return;
+        fi
+
+        # Waiting 1 second before trying again
+        sleep 1;
+        i=`expr $i + 1`;
+
+        # If PID is not present, speed things a bit.
+        kill -0 `cat ${LOCK_PID}` >/dev/null 2>&1
+        if [ ! $? = 0 ]; then
+            # Pid is not present.
+            i=`expr $i + 1`;
+        fi    
+
+        # We tried 10 times to acquire the lock.
+        if [ "$i" = "${MAX_ITERATION}" ]; then
+            # Unlocking and executing
+            unlock;
+            mkdir ${LOCK} > /dev/null 2>&1
+            echo "$$" > ${LOCK_PID}
+            return;
+        fi
+    done
+}
+
+
+# Unlock function
+unlock()
+{
+    rm -rf ${LOCK}
+}
+
     
 # Help message
 help()
@@ -46,12 +102,14 @@ start()
     SDAEMONS="ossec-execd ossec-agentd ossec-logcollector ossec-syscheckd"
     
     echo "Starting $NAME $VERSION (by $AUTHOR)..."
+    lock;
 
     # We first loop to check the config. 
     for i in ${SDAEMONS}; do
         ${DIR}/bin/${i} -t;
         if [ $? != 0 ]; then
             echo "${i}: Configuration error. Exiting"
+            unlock;
             exit 1;
         fi    
     done
@@ -62,6 +120,7 @@ start()
         if [ $? = 0 ]; then
             ${DIR}/bin/${i};
             if [ $? != 0 ]; then
+                unlock;
                 exit 1;
             fi 
 
@@ -72,6 +131,10 @@ start()
     
     done    
 
+    # After we start we give 2 seconds for the daemons
+    # to internally create their PID files.
+    sleep 2;
+    unlock;
     echo "Completed."
 }
 
@@ -100,7 +163,7 @@ pstatus()
 # Stop all
 stopa()
 {
-
+    lock;
     for i in ${DAEMONS}; do
         pstatus ${i};
         if [ $? = 1 ]; then
@@ -114,6 +177,7 @@ stopa()
         
      done    
     
+    unlock;
     echo "$NAME $VERSION Stopped"
 }
 

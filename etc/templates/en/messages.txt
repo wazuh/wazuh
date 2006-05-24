@@ -89,3 +89,7 @@ configat="The configuration can be viewed or modified at"
 addserveragent="You need to add the agent(s) before they are authorized to access."
 runma="Run the 'manage_agents' to add or remove them"
 presskey="Press ENTER to continue"
+
+# Update
+wanttoupdate="You already have OSSEC installed. Do you want to update it?"
+unabletoupdate="Unable to perform update. A full new install will be required."
