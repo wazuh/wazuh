@@ -123,7 +123,7 @@ int FTS(Eventinfo *lf)
         return(0);
     }
 
-    /* Checking if from the last  FTS events, we had
+    /* Checking if from the last FTS events, we had
      * at least 3 "similars" before. If yes, we just
      * ignore it.
      */

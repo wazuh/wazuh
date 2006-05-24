@@ -9,9 +9,11 @@
 # Bug fix - When email address is blank
 # Bug fix - delete INSTALLDIR - Default is yes but if the user just press enter the script wasn't deleting it as it should
 
+
 ### Looking up for the execution directory
 LOCAL=`dirname $0`;
 cd $LOCAL
+
 
 ### Looking for for echo -n
 ECHO="echo -n"
@@ -65,7 +67,7 @@ Install()
 	if [ "X$INSTYPE" = "Xserver" ]; then
 		make server
 	
-    elif [ "X$INSTYPE" = "Xclient" ]; then 
+    elif [ "X$INSTYPE" = "Xagent" ]; then 
 		make agent
 
     elif [ "X$INSTYPE" = "Xlocal" ]; then
@@ -79,7 +81,9 @@ Install()
     echo "DIRECTORY=\"${INSTALLDIR}\"" > /etc/ossec-init.conf 
     echo "VERSION=\"${VERSION}\"" >> /etc/ossec-init.conf 
     echo "DATE=\"`date`\"" >> /etc/ossec-init.conf
+    echo "TYPE=\"${INSTYPE}\"" >> /etc/ossec-init.conf
     chmod 600 /etc/ossec-init.conf
+    
      
     # Calling the init script  to start ossec hids during boot
     runInit
@@ -101,7 +105,11 @@ UseSyscheck()
     # Integrity check config
     echo ""
     $ECHO "  3.2- ${runsyscheck} ($yes/$no) [$yes]: "
-    read AS
+    if [ "X${USER_ENABLE_SYSCHECK}" = "X" ]; then
+        read AS
+    else
+        AS=${USER_ENABLE_SYSCHECK}
+    fi        
     echo ""
     case $AS in
         $nomatch)
@@ -111,7 +119,7 @@ UseSyscheck()
             SYSCHECK="yes"
             echo "   - ${yessyscheck}."
             ;;
-    esac                    
+    esac 
 
     # Adding to the config file
     if [ "X$SYSCHECK" = "Xyes" ]; then
@@ -131,7 +139,13 @@ UseRootcheck()
     # Rootkit detection configuration 
     echo ""
     $ECHO "  3.3- ${runrootcheck} ($yes/$no) [$yes]: "
-    read ES
+    
+    if [ "X${USER_ENABLE_ROOTCHECK}" = "X" ]; then
+        read ES
+    else
+        ES=${USER_ENABLE_ROOTCHECK}
+    fi    
+    
     echo ""
     case $ES in
         $nomatch)
@@ -220,7 +234,11 @@ SetupLogs()
    
     echo "" 
     catMsg "0x106-logs"
-	read ANY
+
+
+    if [ "X$USER_NO_STOP" = "X" ]; then
+        read ANY
+    fi
 }
 
 
@@ -234,18 +252,23 @@ ConfigureClient()
 	echo ""
 	echo "3- ${configuring} $NAME."
 	echo ""
-    
-    while [ 1 ]; do
-	$ECHO "  3.1- ${serverip}: "
-	    read IPANSWER
-        echo $IPANSWER | grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" > /dev/null 2>&1
-        if [ $? = 0 ]; then
-	        echo ""
-            IP=$IPANSWER
-	        echo "   - ${addingip} $IP"
-            break;
-        fi
-    done
+  
+    if [ "X${USER_AGENT_SERVER_IP}" = "X" ]; then
+        # Looping and asking for server ip  
+        while [ 1 ]; do
+	    $ECHO "  3.1- ${serverip}: "
+	        read IPANSWER
+            echo $IPANSWER | grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" > /dev/null 2>&1
+            if [ $? = 0 ]; then
+	            echo ""
+                IP=$IPANSWER
+	            echo "   - ${addingip} $IP"
+                break;
+            fi
+        done
+    else
+        IP=${USER_AGENT_SERVER_IP}
+    fi    
 
     echo "<ossec_config>" > $NEWCONFIG	
     echo "  <client>" >> $NEWCONFIG
@@ -261,7 +284,13 @@ ConfigureClient()
 
     echo ""
     $ECHO "  3.4 - ${enable_ar} ($yes/$no) [$yes]: "
-    read ANY
+
+    if [ "X${USER_ENABLE_ACTIVE_RESPONSE}" = "X" ]; then
+        read ANY
+    else
+        ANY=${USER_ENABLE_ACTIVE_RESPONSE}
+    fi    
+    
     case $ANY in
         $nomatch)
             echo ""
@@ -298,7 +327,13 @@ ConfigureServer()
     # Configuring e-mail notification
 	echo ""
 	$ECHO "  3.1- ${mailnotify} ($yes/$no) [$yes]: "
+    
+    if [ "X${USER_ENABLE_EMAIL}" = "X" ]; then
 	read ANSWER
+    else
+        ANSWER=${USER_ENABLE_EMAIL}
+    fi
+        
 	case $ANSWER in
 		$nomatch)
             echo ""
@@ -308,14 +343,20 @@ ConfigureServer()
 		*)
 			EMAILNOTIFY="yes"
 			$ECHO "   - ${whatsemail} "
-			read EMAIL
-            echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
-            # Ugly e-mail validation
-			while [ "$EMAIL" = "" -o ! ${RVAL} = 0 ] ; do
-				$ECHO "   - ${whatsemail} "
-				read EMAIL
+            if [ "X${USER_EMAIL_ADDRESS}" = "X" ]; then
+			
+                read EMAIL
                 echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
-			done
+                # Ugly e-mail validation
+			    while [ "$EMAIL" = "" -o ! ${RVAL} = 0 ] ; do
+				    $ECHO "   - ${whatsemail} "
+				    read EMAIL
+                    echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
+			    done
+            else
+                EMAIL=${USER_EMAIL_ADDRESS}
+            fi
+                    
             ls ${HOST_CMD} > /dev/null 2>&1
             if [ $? = 0 ]; then
               HOSTTMP=`${HOST_CMD} -W 5 -t mx ossec.net 2>/dev/null`
@@ -335,29 +376,33 @@ ConfigureServer()
               fi    
             fi
 
-            if [ "X${SMTPHOST}" != "X" ]; then
-               echo ""
-               echo "   - ${yoursmtp}: ${SMTPHOST}"
-               $ECHO "   - ${usesmtp} ($yes/$no) [$yes]: "
-               read EMAIL2
-               case ${EMAIL2} in
-                  $nomatch)
-                     echo ""
-                     SMTP=""
-                     ;;
-                  *)
-                     SMTP=${SMTPHOST}
-                     echo ""
-                     echo "   --- ${usingsmtp} ${SMTP}"   
-                     ;;
-               esac
-            fi
+            if [ "X${USER_EMAIL_SMTP}" = "X" ]; then
+                if [ "X${SMTPHOST}" != "X" ]; then
+                    echo ""
+                    echo "   - ${yoursmtp}: ${SMTPHOST}"
+                    $ECHO "   - ${usesmtp} ($yes/$no) [$yes]: "
+                    read EMAIL2
+                    case ${EMAIL2} in
+                        $nomatch)
+                        echo ""
+                        SMTP=""
+                        ;;
+                    *)
+                        SMTP=${SMTPHOST}
+                        echo ""
+                        echo "   --- ${usingsmtp} ${SMTP}"   
+                        ;;
+                    esac
+                fi
 
-            if [ "X${SMTP}" = "X" ]; then
-			   $ECHO "   - ${whatsmtp} "
-               read SMTP
-            fi   
-			;;
+                if [ "X${SMTP}" = "X" ]; then
+			        $ECHO "   - ${whatsmtp} "
+                    read SMTP
+                fi  
+            else
+                SMTP=${USER_EMAIL_SMTP}
+            fi             
+        ;;
 	esac
 
 
@@ -392,7 +437,12 @@ ConfigureServer()
     catMsg "0x107-ar"
     $ECHO "   - ${enable_ar} ($yes/$no) [$yes]: "
     
-    read AR
+    if [ "X${USER_ENABLE_ACTIVE_RESPONSE}" = "X" ]; then
+        read AR
+    else
+        AR=${USER_ENABLE_ACTIVE_RESPONSE}
+    fi
+        
     case $AR in
         $nomatch)
             echo ""
@@ -410,7 +460,13 @@ ConfigureServer()
             
             echo ""
             $ECHO "   - ${firewallar} ($yes/$no) [$yes]: "
-            read HD2
+            
+            if [ "X${USER_ENABLE_FIREWALL_RESPONSE}" = "X" ]; then
+                read HD2
+            else
+                HD2=${USER_ENABLE_FIREWALL_RESPONSE}
+            fi
+                    
             echo ""
             case $HD2 in
                 $nomatch)
@@ -444,7 +500,13 @@ ConfigureServer()
       # Configuring remote syslog  
 	  echo ""
 	  $ECHO "  3.5- ${syslog} ($yes/$no) [$yes]: "
-	  read ANSWER
+      
+      if [ "X${USER_ENABLE_SYSLOG}" = "X" ]; then
+	    read ANSWER
+      else
+        ANSWER=${USER_ENABLE_SYSLOG}
+      fi
+              
       echo ""
       case $ANSWER in
 		$nomatch)
@@ -521,28 +583,34 @@ setEnv()
     echo "2- ${settingupenv}."
 
     echo ""
-    while [ 1 ]; do
-        $ECHO " - ${wheretoinstall} [$INSTALLDIR]: "
-        read ANSWER
-        if [ ! "X$ANSWER" = "X" ]; then
-            echo $ANSWER | grep -E "^/[a-zA-Z0-9/-]*$" > /dev/null 2>&1
-            if [ $? = 0 ]; then
-                INSTALLDIR=$ANSWER;
-                WORKDIR=$ANSWER;
-                break;
-            fi 
-        else
-            break;           
-        fi
-    done
+    if [ "X${USER_DIR}" = "X" ]; then
+        while [ 1 ]; do
+            $ECHO " - ${wheretoinstall} [$INSTALLDIR]: "
+            read ANSWER
+            if [ ! "X$ANSWER" = "X" ]; then
+                echo $ANSWER | grep -E "^/[a-zA-Z0-9/-]*$" > /dev/null 2>&1
+                if [ $? = 0 ]; then
+                    INSTALLDIR=$ANSWER;
+                    WORKDIR=$ANSWER;
+                    break;
+                fi 
+            else
+                break;           
+            fi  
+        done
+    else
+        INSTALLDIR=${USER_DIR}
+        WORKDIR=${USER_DIR}
+    fi    
 
+    
     CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${WORKDIR}\\\""
     
     echo ""
     echo "    - ${installat} ${INSTALLDIR} ."
     
 
-    if [ "X$INSTYPE" = "Xclient" ]; then
+    if [ "X$INSTYPE" = "Xagent" ]; then
         CEXTRA="$CEXTRA -DCLIENT"
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         CEXTRA="$CEXTRA -DLOCAL"    
@@ -550,11 +618,16 @@ setEnv()
 
     ls $INSTALLDIR >/dev/null 2>&1
     if [ $? = 0 ]; then
-        echo ""
-        $ECHO "    - ${deletedir} ($yes/$no) [$yes]: "
-        read ANSWER
+        if [ "X${USER_DELETE_DIR}" = "X" ]; then
+            echo ""
+            $ECHO "    - ${deletedir} ($yes/$no) [$yes]: "
+            read ANSWER
+        else
+            ANSWER=${USER_DELETE_DIR}
+        fi
+            
         case $ANSWER in
-            y|Y|"")
+            $yesmatch)
                 rm -rf $INSTALLDIR
                 ;;
         esac
@@ -603,8 +676,12 @@ AddWhite()
 				;;
 			*)
 				$ECHO "   - ${ipswhite}"
-				read IPS
-				
+                if [ "X${USER_WHITE_LIST}" = "X" ]; then
+				    read IPS
+				else
+                    IPS=${USER_WHITE_LIST}
+                fi
+                    
 				for ip in ${IPS};
 				do
 					if [ ! "X${ip}" = "X" ]; then
@@ -630,38 +707,59 @@ main()
     LANGUAGE="en"
     . ./src/init/shared.sh
 
-    
-    # Choosing the language.
-    while [ 1 ]; do
-    echo ""
-    for i in `ls ${TEMPLATE}`; do 
-        # ignore CVS (should not be there anyways and config)
-        if [ "$i" = "CVS" -o "$i" = "config" ]; then continue; fi
-        cat "${TEMPLATE}/$i/language.txt"
-        if [ ! "$i" = "en" ]; then
-            LG="${LG}/$i"
-        fi    
-    done
-    $ECHO "  (${LG}) [en]: "
-    read USER_LG;
-
-    if [ "X${USER_LG}" = "X" ]; then
-        USER_LG="en"
-    fi    
-    ls "${TEMPLATE}/${USER_LG}" > /dev/null 2>&1
-    if [ $? = 0 ]; then
-        . ./etc/templates/${USER_LG}/messages.txt
-        break;
+    # Reading pre-defined file
+    if [ ! `isFile ${PREDEF_FILE}` = "${FALSE}" ]; then
+        . ${PREDEF_FILE}
     fi
-    done;    
+                        
+    # If user language is not set
+     
+    if [ "X${USER_LANGUAGE}" = "X" ]; then
+    
+        # Choosing the language.
+        while [ 1 ]; do
+        echo ""
+        for i in `ls ${TEMPLATE}`; do 
+            # ignore CVS (should not be there anyways and config)
+            if [ "$i" = "CVS" -o "$i" = "config" ]; then continue; fi
+            cat "${TEMPLATE}/$i/language.txt"
+            if [ ! "$i" = "en" ]; then
+                LG="${LG}/$i"
+            fi    
+        done
+        $ECHO "  (${LG}) [en]: "
+        read USER_LG;
 
-    LANGUAGE=${USER_LG}
+        if [ "X${USER_LG}" = "X" ]; then
+            USER_LG="en"
+        fi    
+    
+        ls "${TEMPLATE}/${USER_LG}" > /dev/null 2>&1
+        if [ $? = 0 ]; then
+            break;
+        fi
+        done;    
+
+        LANGUAGE=${USER_LG}
+    
+    else
+        
+        # If provided language is not valid, default to english
+        ls "${TEMPLATE}/${USER_LANGUAGE}" > /dev/null 2>&1
+        if [ $? = 0 ]; then
+            LANGUAGE=${USER_LANGUAGE}
+        else
+            LANGUAGE="en"
+        fi    
+
+    fi # for USER_LANGUAGE
+    
     
     . ./src/init/shared.sh
     . ./src/init/language.sh
     . ./src/init/functions.sh
     . ./src/init/init.sh
-    . ./etc/templates/${LANGUAGE}/messages.txt
+    . ${TEMPLATE}/${LANGUAGE}/messages.txt
     
     # Must be executed as ./install.sh
     if [ `isFile ${VERSION_FILE}` = "${FALSE}" ]; then
@@ -691,49 +789,57 @@ main()
     echo ""
     echo "  -- $hitanyorabort --"
 
-    read ANY
+    if [ "X$USER_NO_STOP" = "X" ]; then
+        read ANY
+    fi
 
     serverm=`echo ${server} | cut -b 1`
     localm=`echo ${local} | cut -b 1`
     agentm=`echo ${agent} | cut -b 1`
     helpm=`echo ${help} | cut -b 1`
 
-    # Loop with the installation options
-    while [ 1 ]
-    do
-        echo ""
-        $ECHO "1- ${whattoinstall} "
+    # If user install type is not set, ask for it.
+    if [ "X${USER_INSTALL_TYPE}" = "X" ]; then
 
-        read ANSWER
-        case $ANSWER in
+        # Loop for the installation options
+        while [ 1 ]
+        do
+            echo ""
+            $ECHO "1- ${whattoinstall} "
+
+            read ANSWER
+            case $ANSWER in
         
-            ${helpm}|${help})
-            catMsg "0x102-installhelp"
-	        ;;
+                ${helpm}|${help})
+                catMsg "0x102-installhelp"
+	            ;;
             
-            ${server}|${serverm})
-            echo ""
-	        echo "  - ${serverchose}."
-	        INSTYPE="server"
-	        break;
-	        ;;
+                ${server}|${serverm})
+                echo ""
+	            echo "  - ${serverchose}."
+	            INSTYPE="server"
+	            break;
+	            ;;
             
-            ${agent}|${agentm})
-            echo ""
-	        echo "  - ${clientchose}."
-	        INSTYPE="client"
-	        break;
-	        ;;
+                ${agent}|${agentm})
+                echo ""
+	            echo "  - ${clientchose}."
+	            INSTYPE="client"
+	            break;
+	            ;;
    
-            ${local}|${localm})
-            echo ""
-            echo "  - ${localchose}." 
-            INSTYPE="local"
-            break;
-            ;;
-        esac
-    done
+                ${local}|${localm})
+                echo ""
+                echo "  - ${localchose}." 
+                INSTYPE="local"
+                break;
+                ;;
+            esac
+        done
 
+    else
+        INSTYPE=${USER_INSTALL_TYPE}
+    fi
 
     # Setting up the environment
     setEnv
@@ -743,7 +849,7 @@ main()
     
     if [ "X$INSTYPE" = "Xserver" ]; then	
         ConfigureServer
-    elif [ "X$INSTYPE" = "Xclient" ]; then
+    elif [ "X$INSTYPE" = "Xagent" ]; then
         ConfigureClient
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         ConfigureServer   
@@ -772,8 +878,10 @@ main()
 
     catMsg "0x103-thanksforusing"
 
+    if [ "X$USER_NO_STOP" = "X" ]; then
+        read ANY
+    fi
 
-    read ANY
 
     if [ "X$INSTYPE" = "Xserver" ]; then
         echo ""        	
@@ -786,7 +894,7 @@ main()
         echo "   http://www.ossec.net/en/manual.html#ma"
         echo ""
       
-    elif [ "X$INSTYPE" = "Xclient" ]; then
+    elif [ "X$INSTYPE" = "Xagent" ]; then
         catMsg "0x104-client"	
         echo "   $WORKDIR/bin/manage_agents"
         echo ""

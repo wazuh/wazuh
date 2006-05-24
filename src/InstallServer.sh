@@ -149,6 +149,8 @@ fi
 # Moving the decoders
 cp -pr ../etc/decoder.xml ${DIR}/etc/
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
+chown root.ossec ${DIR}/etc/decoder.xml
+chown root.ossec ${DIR}/etc/shared/rootkit*
 
 
 # Copying active response modules

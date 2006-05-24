@@ -50,5 +50,8 @@ RULES_TEMPLATE="./etc/templates/config/rules.template"
 OSSECMX="ossec.net mail is handled by 10 mx.underlinux.com.br."
 OSSECMX2="ossec.net mail is handled (pri=10) by mx.underlinux.com.br"
 
+## Predefined file
+PREDEF_FILE="./preload-vars.sh"
+
 
 ## EOF ##
