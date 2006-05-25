@@ -93,3 +93,8 @@ presskey="Press ENTER to continue"
 # Update
 wanttoupdate="You already have OSSEC installed. Do you want to update it?"
 unabletoupdate="Unable to perform update. A full new install will be required."
+updatecompleted="Update completed."
+updatefailed="Update failed."
+updaterules="Do you want to update the rules?"
+updatingrules="Updating rules."
+notupdatingrules="Not updating rules."
