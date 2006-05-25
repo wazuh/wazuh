@@ -587,6 +587,19 @@ void OS_ReadMSG(int m_queue)
             }
 
 
+            /* We only check if the last message is
+             * duplicated on syslog
+             */
+            else if(lf->type == SYSLOG)
+            {
+                /* Checking if the message is duplicated */
+                if(LastMsg_Stats(lf->log) == 1)
+                    goto CLMEM;
+                else
+                    LastMsg_Change(lf->log);
+            }
+
+
             /* Stats checking */
             if(Config.stats)
             {
@@ -605,13 +618,6 @@ void OS_ReadMSG(int m_queue)
                     lf->mail_flag = 0;
                 }
             }
-
-
-            /* Checking if the message is duplicated */	
-            if(LastMsg_Stats(lf->log) == 1)
-                goto CLMEM;
-            else
-                LastMsg_Change(lf->log);
 
 
             /** FTS CHECKS **/
