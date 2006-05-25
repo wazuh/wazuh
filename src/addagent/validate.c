@@ -14,6 +14,30 @@
 #include "manage_agents.h"
 
 
+int OS_IsValidID(char *id)
+{
+    int id_len = 0;
+    int i = 0;
+    
+    /* ID must not be null */ 
+    if(!id)
+      return(0);
+
+    id_len = strlen(id);
+
+    /* Check ID length, it should contain max. 5 characters */
+    if (id_len > 5)
+      return(0);
+
+    /* Check ID if it contains only numeric characters [0-9] */
+    for(i = 0; i < id_len; i++)
+    {
+      if(!(isdigit(id[i])))
+        return(0);
+    }
+    
+    return(1);
+}
 
 /* ID Search (is valid ID) */
 int IDExist(char *id)
@@ -25,7 +49,7 @@ int IDExist(char *id)
     /* ID must not be null */ 
     if(!id)
         return(0);
-    
+
     fp = fopen(AUTH_FILE, "r");
     if(!fp)
         return(0);
@@ -61,6 +85,24 @@ int IDExist(char *id)
     return(0);
 }
 
+
+int OS_IsValidName(char *u_name)
+{
+    int i = 0;
+
+    /* We must have something in the name */
+    if(strlen(u_name) < 2 || strlen(u_name) > 32)
+      return(0);
+
+    /* check if it contains any non-alphanumeric characters */
+    for(i = 0; i < strlen(u_name); i++)
+    {
+      if(!(isalnum(u_name[i])))
+        return(0);
+    }
+
+    return(1);
+}
 
 
 /* Is_Name (is valid name) */

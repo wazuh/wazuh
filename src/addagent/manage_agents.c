@@ -121,36 +121,29 @@ int add_agent()
     
     /* Getting the name */
     memset(name, '\0', STR_SIZE);
-    while(1) 
+
+    do
     {
-        printf(ADD_NAME);
-        fflush(stdout);
+      printf(ADD_NAME);
+      fflush(stdout);
+      _name = read_from_user();
 
-        _name = read_from_user();
+      if(strcmp(_name, QUIT) == 0)
+        return(0);
 
-        /* We must have something in the name */
-        if(strlen(_name) < 2)
-        {
-            continue;
-        }
+      strncpy(name, _name, FILE_SIZE -1);
 
-        /* quit */
-        if(strcmp(_name, QUIT) == 0)
-            return(0);
-            
-        strncpy(name, _name, FILE_SIZE -1);
+      /* check the name */
+      if(!OS_IsValidName(name))
+        printf(INVALID_NAME,name);
 
-        /* Search for name  -- no duplicates */
-        if(NameExist(name))
-        {
-            printf(ADD_ERROR_NAME, name);
-            continue;
-        }
+      /* Search for name  -- no duplicates */
+      if(NameExist(name))
+        printf(ADD_ERROR_NAME, name);
 
-        break;
-    }
+    } while(NameExist(name) || !OS_IsValidName(name));
 
-    
+
     /* Getting IP */
     memset(ip, '\0', STR_SIZE);
 
@@ -173,10 +166,12 @@ int add_agent()
     } while(!OS_IsValidIP(ip) || OS_HasNetmask(ip));
    
     
-    /* Default ID */
-    snprintf(id, 8, "00%d", i);
-    while(IDExist(id))
+    do
     {
+      /* Default ID */
+      snprintf(id, 8, "00%d", i);
+      while(IDExist(id))
+      {
         i++;
         snprintf(id, 8, "00%d", i);
 
@@ -184,16 +179,14 @@ int add_agent()
         {
             printf(ERROR_KEYS);
         }
-    }
-   
+      }
     
-    /* Getting ID */
-    do
-    {
+      /* Getting ID */
       printf(ADD_ID, id);
       fflush(stdout);
     
       _id = read_from_user();
+
 
 
       /* quit */
@@ -205,12 +198,15 @@ int add_agent()
       {
           strncpy(id, _id, FILE_SIZE -1);
       }
+
+      if(!OS_IsValidID(id))
+        printf(INVALID_ID, id);
+
       /* Search for ID KEY  -- no duplicates */
       if(IDExist(id))
-      {
         printf(ADD_ERROR_ID, id);
-      }
-    } while(IDExist(id));
+      
+    } while(IDExist(id) || !OS_IsValidID(id));
     
     
 

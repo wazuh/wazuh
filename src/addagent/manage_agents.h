@@ -27,6 +27,8 @@ int k_extract();
 int k_import();
 
 /* Validation functions */
+int OS_IsValidName(char *u_name);
+int OS_IsValidID(char *id);
 int IDExist(char *id);
 int NameExist(char *u_name);
 
@@ -80,6 +82,8 @@ fpos_t fp_pos;
 #define NO_AGENT        "\n** No agent available. You need to add one first.\n"
 #define NO_ID           "\n** Invalid ID '%s' given. ID is not present.\n"
 #define NO_KEY          "\n** Invalid authentication key. Starting over again.\n"
+#define INVALID_ID      "\n** Invalid ID '%s' given. ID must be numeric (max 5 digits).\n"
+#define INVALID_NAME    "\n** Invalid name '%s' given. Name must contain only alphanumeric characters (min=2, max=32).\n"
 
 /* Remove agent */
 #define REMOVE_ID       "Provide the ID of the agent to remove (or '\\q' to quit): "
