@@ -99,9 +99,10 @@ UpdateOSSECRules()
     # Backing up the old config
     cp -pr ${OSSEC_CONF_FILE} "${OSSEC_CONF_FILE}.bak"
     
-    FCONTENT=`cat ${OSSEC_CONF_FILE}|grep -v "rules" |grep -v "<include>"`
+    cat ${OSSEC_CONF_FILE}|grep -v "rules" |grep -v "<include>" > "${OSSEC_CONF_FILE}.$$.tmp"
 
-    echo ${FCONTENT} > ${OSSEC_CONF_FILE}
+    echo "${OSSEC_CONF_FILE}.$$.tmp" > ${OSSEC_CONF_FILE}
+    rm "${OSSEC_CONF_FILE}.$$.tmp"
     echo "" >> ${OSSEC_CONF_FILE}
     echo "<ossec_config>" >> ${OSSEC_CONF_FILE}
     cat ${RULES_TEMPLATE} >> ${OSSEC_CONF_FILE}
