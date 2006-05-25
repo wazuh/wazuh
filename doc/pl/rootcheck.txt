@@ -1,0 +1,67 @@
+Rootkit detection techniques used by the OSSEC HIDS
+by Daniel B. Cid, daniel.cid@gmail.com
+
+Zaczynając od wersji 0.4, OSSEC HIDS dokonuje wykrywania rootkitów na
+każdym systemnie na którym jest zainstalowany agent. Mechanizm
+wykrywania rootkitów (rootcheck) jest wykonywany co X minut
+(wyspecyfikowane przez użytkownika - domyśnie co dwie godziny) w celu
+wykrycia zinstalowanych rootkitów. Używany razem z analizatorem logów
+oraz mechanizmem sprawdzania integralności, staje się bardzo wydajnym
+systemem monitorowania (OSSEC HIDS dokonuje analizy logów i sprawdzania
+integralności od wersji 0.1).
+
+Inną właściwością dołączoną do wersji 0.4 jest automatyczne rozsyłanie
+sygnatur wykrywania rootkitów do wszystkich agentów przez serwer.
+Redukuje to ilość obowiązków administratora. Serwer z agentami utrzymuje
+kontakt co 10 minut. Dodatkowo jeśli serwer zostanie zaktualizowany
+nowymi sygnaturami, przekazuje je wszystkim skonfigurowanym agentom.
+Aby uzyskać więcej informacji zajżyj do dokumentacji zarządzania.
+
+
+Kroki wykonywane przez rootcheck w celu wykrycia rootkitów:
+
+1- Czyta plik rootkit_files.txt, który zawiera sporą baze danych o
+   rootkitach i używanych przez nie plików. Próbuje wykonać: stats,
+   fopen i opendir na każdym z takich plików. Używa wszystkich tych
+   wywołań systemowych, ponieważ istnieją rootkity pracujące na poziomie
+   jądra, które ukrywają pliki przed niektórymi wywołaniami. Im więcej
+   użyjemy wywołań, tym lepsza będzie detekcja. Metoda jest podobna do
+   reguły anty-virusa, potrzebuje nieustanntgo uaktualniania. Szanse
+   detekcji rootkita którego nie ma (false-positive) są małe, za to już
+   szanse nie wykrycie rootkita (false-negative) rosną wraz z
+   modyfikacjami rootkitów.
+
+2- Czyta plik rootkit_trojans.txt który zawiera baze danych sygnatur
+   plików modyfikowanych na trojany przez rootkity. Technika modyfikacji
+   binariów na wersje z trojanami jest powszechnie używana przez
+   większość dostępnych rootkitów. Nastepująca metoda nie wykrywa
+   rootkitów poziomu jądra ani żadnych jeszcze nie znanych.
+
+3- Skanuje katalog /dev wyszukując anomali. /dev powinien tylko zawierać
+   pliki urządzeń oraz skrypt Makedev. Duża część rootkitów używa
+   katalogu /dev w celu ukrycia plików. Ta metoda może wykryć nieznane
+   dotąd rootkity.
+
+4- Skanuje cały system plików szukając niespotykanych plików oraz
+   tych z podejrzanymi uprawnieiami. Pliki użytkownika root z
+   możliwością zapisu dla innych są bardzo niebezpieczne, dlatego
+   rootkit wyszukuje takie. Pliki z ustawionym suid oraz ukryte katalogi
+   również są sprawdane.
+
+5- Szuja ukrytych procesów. Używa getsid() oraz kill() do sprawdzenia
+   czy dany pid jest używany. Jeśli dany pid jest używany, a "ps" nie
+   widzi go, wskazuje to na obecność rootkita poziomu jądra lub
+   zmodyfikowaną wersję "ps". Weryfikuje także wyniki kill i getsid,
+   które powinny być identyczne.
+
+6- Wyszukuje ukrytych portów. Używa bind() do sprawdzenia każdego portu
+   tcp i udp w systemie. Jeśli nie możemy wykonać bind na danym porcie
+   (czyli jest używany), a "netstat" go nie pokazuje, to prawdopodobnie
+   mamy zainstalowanego rootkita.
+
+7- Skanuje wszystkie interfejsy w systemnie i wyszukuje te z włączonym
+   trybem "promisc". Jeśli interfejs jest w trybie "promisc", "ifconfig"
+   tego powinien pokazać to, jeśli nie prawdopodobnie mamy
+   zainstalowanego rootkita.
+
+EOF

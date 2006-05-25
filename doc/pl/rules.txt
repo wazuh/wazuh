@@ -1,0 +1,85 @@
+OSSEC HIDS v0.7
+Copyright (c) 2004-2006 Daniel B. Cid   <daniel.cid@gmail.com>
+                                        <dcid@ossec.net>
+                                        
+
+
+--- Klasyfikacja reguł ---
+
+
+-- Klasyfikacja --
+
+Reguły są podzielone na 16 poziomów. Niektóre poziomy są aktualnie nie używane.
+Inne mogą być dodane pomiędzy nimi lub za.
+
+**Reguły są czytane od najwyższego do najniższego poziomu. **
+
+00 - Ignorowane - Nie jest podejmowana żadna akcja. Używane aby uniknąć
+     fałszywych ataków. Te reguły są przetwarzane przed wszystkimi pozostałymi.
+     Zawierają zdarzenia nie związane z bezpieczeństwem.
+01 - Brak -
+02 - Niski priorytet powiadomień systemowych - Powiadomienia systemowe lub
+     wiadomości statusu. Nie związane z bezpieczeństwem.
+03 - Pomyślne/Autoryzowane akcje - Zawiera pomyślne próby logowania, dozwolone
+     akcje firewall'a, itd.
+04 - Niski priorytet błędów systemowych - Błędy związane ze złą konfiguracją lub
+     nieużywanymi urządzeniami/aplikacjami. Nie są związane z bezpieczeństwem,
+     zazwyczaj są powodowane poprzez instalacje lub testowanie aplikacji.
+05 - Błędy wygenerowane przez użytkownika - Zawierają błędne logowania,
+     zabronione akcje, itp. Nie mają wpływu na bezpieczeństwo, ponieważ już są
+     blokowane.
+06 - Atak o niskim znaczeniu - Powodowane przez robaki lub wirusy które nie mają
+     wpływu na system (takie jak code red dla serwera apache, itp). Zawierają
+     także często akcje IDS oraz błędy.
+07 - Dopasowanie *bad word* - Zawierają słowa "bad', "error", itp. W większości
+     niesklasyfikowane akcje, które mogą mieć wpływ na bezpieczeństwo.
+08 - Widziane poraz pierwszy - Zawierają akcje widziane poraz pierwszy. Np.
+     pierwszy raz jest generowana akcja IDS albo pierwsze logowanie użytkownika.
+     Jeśli dopiero zacząłeś używać OSSEC HIDS, takie akcje najprawsopodobniej
+     będą występować często. Lecz po jakimś czasie znikną. Zawierają także akcje
+     związane z bezpieczeństwem (takie jak uruchomienie sniffera lub podobnego
+     narzędzia).
+09 - Błędy z nieznanego źródła - Zawierają próby logowania jako nieznany
+     użytkownik lub z niepoprawnego źródła. Mogą mieć wpływ na bezpieczeństwo
+     (szczególnie gdy powtarzane). Obejmują także błędy związane z kontem
+     "administratora", root'a.
+10 - Powtarzalne błędy generowane przez użytkownika - Zawierają wielokrotne
+     nieudane próby logowania, błędy autoryzacji itp. Mogą oznaczać atak lub
+     poprostu użytkownik zapomiał swoich danych autoryzujących.
+11 - Ostrzeżenie, sprawdzanie spójności - Zawiera wiadomości oznaczające
+     modyfikacje plików binarnych lub obecność rootkit'ów (generowane przez
+     rootcheck). Jeśli aktualizowałeś system nie powinieneś się przejmować tymi
+     ostrzeżeniami. Mogą oznaczać udany atak.
+12 - Wysoce istotne zdarzenia - Zawierają wiadomości błądów lub ostrzeżeń od
+     systemu, jądra, itp. Moga oznaczać atak na konkretną aplikacje.
+13 - Niespotykane błędy (wysoce istotne) - W większości dopasowane do wzorców
+     znanych ataków.
+14 - Wysoce istotne zdarzenia bezpieczeństwa - Akcje wykrywane poprzez związki
+     ze sobą, zazwyczaj oznaczają atak.
+15 - Poważny atak - Natychmiastowa reakcja jest potrzebna (nie może być mowy tu
+     o fałszywym ataku).
+
+
+== Grupa reguł ==
+
+-Możemy wyspecyfikować grupy dla specyficznych reguł. Jest to używane do
+ aktywnej ochrony oraz do relacji.
+-Aktualnie używamy następujących grup:
+
+- invalid_login
+- authentication_success
+- authentication_failed
+- connection_attempt
+- attacks
+- adduser
+- sshd
+- ids
+- firewall
+- squid
+- apache
+- syslog
+
+
+== Konfiguracja reguł ==
+
+http://www.ossec.net/en/manual.html#rules

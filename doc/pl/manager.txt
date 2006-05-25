@@ -1,0 +1,19 @@
+OSSEC HIDS 0.5
+Copyright (c) 2004,2005 Daniel B. Cid   <daniel.cid@gmail.com>
+                                        <dcid@ossec.net>
+
+
+Jak serwer zarządza agentami.
+
+-Klient otwiera port 1514 (domyślnie) i nasłuchuje na wiadomości od
+ serwera. Wyłącznie IP serwera jest akceptowane.
+
+-Co 10 minut, klient wysyła powiadomienie o stanie do serwera.
+ Powiadomienie zawiera niektóre informacje o systemie klienckim oraz
+ informacje o plikach które posiada w katalogu shared.
+
+-Serwer otrzymuje wiadomości statusu, aktualizuje plik statusu agenta
+ oraz sprawdza czy posiada jakiś plik do wysłania dla agenta. Jeśli ma,
+ to łączy się z klientem i wysyła go.
+
+-Każda wiadomość jest szyfrowana.
