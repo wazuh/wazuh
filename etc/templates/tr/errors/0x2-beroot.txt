@@ -1,0 +1,4 @@
+ 
+ Error 0x2.
+ Bu betiği çalıştırabilmeniz için root olmalısınız.
+

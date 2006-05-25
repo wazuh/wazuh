@@ -1,0 +1,8 @@
+
+  3.4- Etkin yanıt üretme (Active response), edinilen olay 
+       bilgilerine göre belirli bir komut çalıştırmanıza olanak
+       tanır. Örneğin bir IP adresinin engelleyebilir veya bir
+       kullanıcının erişimini kısıtlayabilirsiniz.
+       Daha fazla bilgi:
+       http://www.ossec.net/en/manual.html#active-response
+       

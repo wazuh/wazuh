@@ -1,0 +1,8 @@
+ - Eğer başka bir dosyayı daha gözlemek isterseniz
+   ossec.conf dosyasına yeni bir localfile girdisi ekleyin.
+   Yapılandırma hakkındaki herhangi bir sorunuzu cevaplamak için
+   http://www.ossec.net adresini ziyaret edebilirsiniz.
+   
+   
+   --- Devam etmek için ENTER tuşuna basın ---
+                            
