@@ -90,6 +90,12 @@ Install()
     chmod 600 ${OSSEC_INIT}
     
 
+    # If update_rules is set, we need to tweak 
+    # ossec.conf to read the new signatures.
+    if [ "X${update_rules}" = "Xyes" ]; then
+        UpdateOSSECRules
+    fi    
+
     # If update, start OSSEC
     if [ "X${update_only}" = "Xyes" ]; then
         UpdateStartOSSEC    
@@ -845,11 +851,12 @@ main()
         # Do some of the update steps.
         if [ "X${update_only}" = "Xyes" ]; then
             . ./src/init/update.sh
-            
+
             if [ "`doUpdatecleanup`" = "${FALSE}" ]; then
                 # Disabling update
                 echo ""
                 echo "${unabletoupdate}"
+                sleep 5;
                 update_only=""
             else
                 # Get update
@@ -857,6 +864,36 @@ main()
                 USER_DIR=`getPreinstalledDir`
                 USER_DELETE_DIR="$nomatch"
             fi     
+
+            ct="1"
+            
+            # We dont need to update the rules on agent installs
+            if [ "X${USER_INSTALL_TYPE}" = "Xagent" ]; then
+                ct="0"
+            fi
+                
+            while [ $ct = "1" ]; do
+                ct="0"    
+                $ECHO " - ${updaterules} ($yes/$no): "
+                if [ "X${USER_UPDATE_RULES}" = "X" ]; then
+                    read ANY
+                else    
+                    ANY=$yes
+                fi
+            
+                case $ANY in
+                    $yes)
+                        update_rules="yes"
+                        break;
+                        ;;
+                    $no)         
+                        break;
+                        ;;
+                    *)
+                        ct="1"
+                        ;;
+                esac 
+            done
         fi    
         echo ""
     fi    
@@ -931,7 +968,6 @@ main()
     # -- InstallAgent.sh pr InstallServer.sh
     Install
 
-    
     # User messages
     echo ""
     echo " - ${configurationdone}."
@@ -948,6 +984,15 @@ main()
 
     catMsg "0x103-thanksforusing"
 
+
+    if [ "X${update_only}" = "Xyes" ]; then
+        echo ""
+        echo " - ${updatecompleted}"
+        echo ""
+        exit 0;
+    fi    
+
+    
     if [ "X$USER_NO_STOP" = "X" ]; then
         read ANY
     fi

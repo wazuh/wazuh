@@ -86,3 +86,24 @@ UpdateStopOSSEC()
    $DIRECTORY/bin/ossec-control stop 
 }
 
+
+##########
+# UpdateOSSECRules 
+##########
+UpdateOSSECRules()
+{
+    . ${OSSEC_INIT}
+
+    OSSEC_CONF_FILE="$DIRECTORY/etc/ossec.conf"
+
+    # Backing up the old config
+    cp -pr ${OSSEC_CONF_FILE} "${OSSEC_CONF_FILE}.bak"
+    
+    FCONTENT=`cat ${OSSEC_CONF_FILE}|grep -v "rules" |grep -v "<include>"`
+
+    echo ${FCONTENT} > ${OSSEC_CONF_FILE}
+    echo "" >> ${OSSEC_CONF_FILE}
+    echo "<ossec_config>" >> ${OSSEC_CONF_FILE}
+    cat ${RULES_TEMPLATE} >> ${OSSEC_CONF_FILE}
+    echo "</ossec_config>" >> ${OSSEC_CONF_FILE}
+} 
