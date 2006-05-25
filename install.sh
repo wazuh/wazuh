@@ -62,6 +62,11 @@ Install()
         
     # Building everything    
     make build
+
+    # If update, stop ossec
+    if [ "X${update_only}" = "Xyes" ]; then
+        UpdateStopOSSEC
+    fi    
     
     # Making the right installation type
 	if [ "X$INSTYPE" = "Xserver" ]; then
@@ -84,6 +89,11 @@ Install()
     echo "TYPE=\"${INSTYPE}\"" >> ${OSSEC_INIT}
     chmod 600 ${OSSEC_INIT}
     
+
+    # If update, start OSSEC
+    if [ "X${update_only}" = "Xyes" ]; then
+        UpdateStartOSSEC    
+    fi    
      
     # Calling the init script  to start ossec hids during boot
     if [ "X${update_only}" = "X" ]; then

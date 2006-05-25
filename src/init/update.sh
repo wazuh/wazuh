@@ -26,9 +26,6 @@ doUpdatecleanup()
         echo "${FALSE}"
         return 1;
     fi
-    
-    # Stopping ossec
-    $DIRECTORY/bin/ossec-control stop
 }
 
 
@@ -66,3 +63,26 @@ getPreinstalledDir()
     echo "$DIRECTORY"
     return 0;
 }
+
+
+##########
+# UpdateStartOSSEC
+##########
+UpdateStartOSSEC()
+{
+   . ${OSSEC_INIT}
+   
+   $DIRECTORY/bin/ossec-control start 
+}
+
+
+##########
+# UpdateStopOSSEC
+##########
+UpdateStopOSSEC()
+{
+   . ${OSSEC_INIT}
+   
+   $DIRECTORY/bin/ossec-control stop 
+}
+
