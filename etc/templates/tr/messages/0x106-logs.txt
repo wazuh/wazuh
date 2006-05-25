@@ -1,8 +1,0 @@
- - Eðer baþka bir dosyayý daha gözlemek isterseniz
-   ossec.conf dosyasýna yeni bir localfile girdisi ekleyin.
-   Yapýlandýrma hakkýndaki herhangi bir sorunuzu çözmek için
-   http://www.ossec.net/hids/ adresini ziyaret edebilirsiniz.
-   
-   
-   --- Devam etmek için herhangi bir tuþa basýn ---
-                            

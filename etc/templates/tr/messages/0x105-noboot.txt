@@ -1,4 +1,0 @@
-
- - Önyükleme sýrasýnda OSSEC HIDS'i baþlatmak için hiç birþey yapýlmadý. 
-   Bu satýrý baþlangýç betiðine ekleyin: 
-

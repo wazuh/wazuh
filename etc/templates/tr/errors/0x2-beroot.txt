@@ -1,4 +1,0 @@
- 
- Error 0x2.
- Bu betiði çalýþtýrabilmeniz için root olmalýsýnýz.
-
