@@ -1,0 +1,11 @@
+
+	OSSEC HIDS の使用に感謝します．
+	あなたが何らかの質問，提案したいときや，バグを発見したときは，
+	contact@ossec.net まで連絡するか ossec-list@ossec.net にある
+	我々の公開メーリングリストを使ってください．
+    (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list)．
+
+	詳細な情報は http://www.ossec.net にあります．
+
+	---  ENTER を押すと終了します (以下，詳細な情報が続きます)．---
+    

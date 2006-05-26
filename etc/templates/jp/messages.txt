@@ -1,0 +1,97 @@
+# Configuration
+yes="y"
+no="n"
+yesmatch="y"
+nomatch="n"
+agent="agent"
+local="local"
+server="server"
+help="help"
+
+# Global
+moreinfo="¾ÜºÙ¤Ê¾ðÊó¤Ï°Ê²¼¤Ë¤¢¤ê¤Þ¤¹: "
+starting="OSSEC HIDS ¤òµ¯Æ°¤·¤Þ¤¹"
+systemis="¥·¥¹¥Æ¥à¤Ï"
+modifiedinit="Init script modified to start OSSEC HIDS during boot."
+modifiedinit="½é´ü¥¹¥¯¥ê¥×¥È¤Ï¥Ö¡¼¥ÈÃæ¤Ë OSSEC HIDS ¤òµ¯Æ°¤¹¤ë¤è¤¦½¤Àµ¤·¤Þ¤·¤¿¡¥"
+noboot="ÉÔÌÀ¤Ê¥·¥¹¥Æ¥à¤Ç¤¹¡¥½é´ü¥¹¥¯¥ê¥×¥È¤ÏÄÉ²Ã¤µ¤ì¤Þ¤»¤ó¡¥"
+
+# Part 1
+installscript="¥¤¥ó¥¹¥È¡¼¥ë¥¹¥¯¥ê¥×¥È"
+system="¥·¥¹¥Æ¥à"
+user="¥æ¡¼¥¶"
+host="¥Û¥¹¥È"
+hitanyorabort="Â³¤±¤ë¤Ë¤Ï ENTER ¤ò²¡¤·¤Æ¤¯¤À¤µ¤¤¡¥¤Þ¤¿¡¤Ctrl-C ¤ÇÃæ»ß¤·¤Þ¤¹¡¥"
+whattoinstall="¤É¤Î¼ïÎà¤Î¥¤¥ó¥¹¥È¡¼¥ë¤òÁªÂò¤·¤Þ¤¹¤« (server¡¤agent¡¤local ¤Þ¤¿¤Ï help)?"
+serverchose="Server ¥¤¥ó¥¹¥È¡¼¥ë¤òÁªÂò¤·¤Þ¤·¤¿"
+clientchose="Agent(client) ¥¤¥ó¥¹¥È¡¼¥ë¤òÁªÂò¤·¤Þ¤·¤¿"
+localchose="Local ¥¤¥ó¥¹¥È¡¼¥ë¤òÁªÂò¤·¤Þ¤·¤¿"
+
+# Part 2
+settingupenv="¥¤¥ó¥¹¥È¡¼¥ë´Ä¶­¤òÀßÄê¤·¤Æ¤¤¤Þ¤¹"
+wheretoinstall="Choose where to install the OSSEC HIDS"
+wheretoinstall="OSSEC HIDS ¤Î¥¤¥ó¥¹¥È¡¼¥ëÀè¤òÁªÂò¤·¤Æ¤¯¤À¤µ¤¤"
+installat="¥¤¥ó¥¹¥È¡¼¥ëÀè¤ò°Ê²¼¤ËºîÀ®¤·¤Þ¤¹ "
+deletedir="¥¤¥ó¥¹¥È¡¼¥ëÀè¤Î¥Ç¥£¥ì¥¯¥È¥ê¤¬´û¤ËÂ¸ºß¤·¤Þ¤¹¡¥ºï½ü¤·¤Æ¤è¤í¤·¤¤¤Ç¤¹¤«?"
+
+# Part 3
+configuring="ÀßÄê"
+mailnotify="¥á¡¼¥ëÄÌÃÎ¤ò´õË¾¤·¤Þ¤¹¤«?"
+nomail="¥á¡¼¥ëÄÌÃÎ¤òÌµ¸ú¤Ë¤·¤Þ¤·¤¿"
+whatsemail="¥á¡¼¥ë¥¢¥É¥ì¥¹¤Ï²¿¤Ç¤¹¤«?"
+yoursmtp="¤¢¤Ê¤¿¤Î SMTP ¥µ¡¼¥Ð¤òÈ¯¸«¤·¤Þ¤·¤¿"
+usesmtp="¤³¤Î¥µ¡¼¥Ð¤ò»ÈÍÑ¤·¤Þ¤¹¤«?"
+usingsmtp="¤³¤Î SMTP ¥µ¡¼¥Ð¤ò»ÈÍÑ¤·¤Þ¤¹: "
+whatsmtp="»ÈÍÑ¤¹¤ë SMTP ¥µ¡¼¥Ð¤Î ip/host ¤Ï²¿¤Ç¤¹¤«?"
+
+# Part 3.1/agent
+serverip="OSSEC HIDS ¥µ¡¼¥Ð¤Î IP ¥¢¥É¥ì¥¹¤Ï²¿¤Ç¤¹¤«?"
+addingip="¥µ¡¼¥Ð¤Î IP ¤ò²Ã¤¨¤Æ¤¤¤Þ¤¹"
+
+
+# Part 3.2
+runsyscheck="À°¹çÀ­¸¡ºº¤ò¹Ô¤¦¥Ç¡¼¥â¥ó¤ò¼Â¹Ô¤µ¤»¤Þ¤¹¤«?"
+nosyscheck="syscheck (À°¹çÀ­¸¡ºº¥Ç¡¼¥â¥ó) ¤Ï¼Â¹Ô¤µ¤»¤Þ¤»¤ó"
+yessyscheck="syscheck (À°¹çÀ­¸¡ºº¥Ç¡¼¥â¥ó) ¤ò¼Â¹Ô¤µ¤»¤Þ¤¹"
+
+# Part 3.3
+runrootcheck="rootkit ¸¡ÃÎ¥¨¥ó¥¸¥ó¤ò¼Â¹Ô¤µ¤»¤Þ¤¹¤«?"
+norootcheck="rootcheck (rootkit ¸¡ÃÎ) ¤Ï¼Â¹Ô¤µ¤»¤Þ¤»¤ó"
+yesrootcheck="rootcheck (rootkit ¸¡ÃÎ) ¤ò¼Â¹Ô¤µ¤»¤Þ¤¹"
+
+# Part 3.4/server/local
+enable_ar="¥¢¥¯¥Æ¥£¥Ö¥ì¥¹¥Ý¥ó¥¹¤òÍ­¸ú¤Ë¤·¤Þ¤¹¤«?"
+noactive="¥¢¥¯¥Æ¥£¥Ö¥ì¥¹¥Ý¥ó¥¹¤òÌµ¸ú¤Ë¤·¤Þ¤·¤¿"
+nohosts="host-deny ¤òÌµ¸ú¤Ë¤·¤Þ¤·¤¿"
+yeshosts="host-deny enabled (local) for levels >= 6"
+yeshosts="local ¤Ç¤Î levels >= ¤ËÂÐ¤¹¤ë host-deny ¤òÍ­¸ú¤Ë¤·¤Þ¤·¤¿"
+firewallar="firewall-drop ¥ì¥¹¥Ý¥ó¥¹¤òÍ­¸ú¤Ë¤·¤Þ¤¹¤«?"
+nofirewall="firewall-drop ¤òÌµ¸ú¤Ë¤·¤Þ¤·¤¿¡¥"
+yesfirewall="local ¤Ç¤Î levels >= 6 ¤ËÂÐ¤¹¤ë firewall-drop ¤òÍ­¸ú¤Ë¤·¤Þ¤·¤¿"
+defaultwhitelist="¥¢¥¯¥Æ¥£¥Ö¥ì¥¹¥Ý¥ó¥¹¤Ç¤Î½é´ü¥Û¥ï¥¤¥È¥ê¥¹¥È:"
+addwhite="¥Û¥ï¥¤¥È¥ê¥¹¥È¤Ø IP ¤òÄÉ²Ã¤·¤Þ¤¹¤«?"
+ipswhite="IP ¤òÆþÎÏ¤·¤Æ¤¯¤À¤µ¤¤ (¥¹¥Ú¡¼¥¹¶èÀÚ¤ê): "
+
+# Part 3.5/server/local
+syslog="Do you want to enable remote syslog (port 514 udp)?"
+syslog="¥ê¥â¡¼¥È syslog (port 514 udp) ¤òÍ­¸ú¤Ë¤·¤Þ¤¹¤«?"
+nosyslog="¥ê¥â¡¼¥È syslog ¤òÌµ¸ú¤Ë¤·¤Þ¤·¤¿"
+yessyslog="¥ê¥â¡¼¥È syslog ¤òÍ­¸ú¤Ë¤·¤Þ¤·¤¿"
+
+# Part 3.4/3.5
+readlogs="°Ê²¼¤Î¥í¥°¤ò²òÀÏ¤¹¤ë¤¿¤á¤ÎÀßÄê¤ò½àÈ÷¤·¤Æ¤¤¤Þ¤¹:"
+
+# Part 5
+installing="¥·¥¹¥Æ¥à¤ò¥¤¥ó¥¹¥È¡¼¥ë¤·¤Þ¤¹"
+runningmake="Makefile ¤ò¼Â¹Ô¤·¤Þ¤¹"
+
+
+# Final
+configurationdone="ÀßÄê¤¬´°Á´¤Ë½ªÎ»¤·¤Þ¤·¤¿"
+tostart="OSSEC HIDS ¤ò³«»Ï¤µ¤»¤Þ¤¹"
+tostop="OSSEC HIDS ¤òÄä»ß¤µ¤»¤Þ¤¹"
+configat="°Ê²¼¤Î¥Õ¥¡¥¤¥ë¤ÇÀßÄê¤Ë¤Ä¤¤¤Æ¤Î³ÎÇ§¤ÈÊÑ¹¹¤¬¤Ç¤­¤Þ¤¹"
+addserveragent="¥¨¡¼¥¸¥§¥ó¥È¤òÄÉ²Ã¤¹¤ëÁ°¤Ë¥¢¥¯¥»¥¹¤¹¤ë¤¿¤á¤ÎÇ§¾Ú¤¬É¬Í×¤Ë¤Ê¤ê¤Þ¤¹¡¥"
+runma="¥¨¡¼¥¸¥§¥ó¥È¤òÄÉ²Ã¤¹¤ë¤«ºï½ü¤¹¤ëºÝ¤Ï 'manage_agents' ¤ò¼Â¹Ô¤·¤Æ¤¯¤À¤µ¤¤"
+presskey="Â³¤±¤ë¤Ë¤Ï ENTER ¤ò²¡¤·¤Æ¤¯¤À¤µ¤¤"
+
