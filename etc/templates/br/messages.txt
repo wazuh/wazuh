@@ -92,3 +92,12 @@ addserveragent="Você precisa adicionar cada um dos clientes antes que estejam a
 runma="Execute o 'manage_agents' para adicioná-los ou removê-los"
 presskey="Pressione ENTER para continuar."
 
+# Update
+wanttoupdate="OSSEC ja esta instalado. Deseja atualiza-lo?"
+unabletoupdate="Error na atualizacao. Sera necessario reinstala-lo."
+updatecompleted="Atualizacao completada."
+updatefailed="Erro na atualizacao."
+updaterules="Voce deseja atualizar as regras?"
+updatingrules="Atualizando as regras."
+notupdatingrules="Nao atualizando as regras."
+
