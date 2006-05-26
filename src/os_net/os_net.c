@@ -358,11 +358,12 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
 int OS_RecvUnix(int socket, int sizet, char *ret)
 {
     ssize_t recvd;
-    if((recvd = recvfrom(socket,ret, sizet-1,0,(struct sockaddr*)&n_us,&us_l)) 
+    if((recvd = recvfrom(socket,ret, sizet-2,0,(struct sockaddr*)&n_us,&us_l)) 
         < 0)
         return(0);
 
     ret[recvd] = '\0';
+    ret[recvd +1] = '\0';
     return(1);
 }
 
