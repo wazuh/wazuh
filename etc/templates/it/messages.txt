@@ -89,3 +89,12 @@ configat="La configurazione può essere vista o modificata in"
 addserveragent="E' necessario aggiungere gli agent(s) prima che siano autorizzati ad accedere al server."
 runma="Utilizza 'manage_agents' per aggiungerli o rimuoverli"
 presskey="Premi ENTER per continuare."
+
+# update
+wanttoupdate="OSSEC è già stato installato. Vuoi aggiornarlo ?"
+unabletoupdate="Impossibile eseguire l'aggiornamento. E' necessaria un'installazione completa."
+updatecompleted="Aggiornamento completato."
+updatefailed="Aggiornamento fallito."
+updaterules="Si desidera aggiornare le regole ?"
+updatingrules="Aggiornamento delle regole in corso."
+notupdatingrules="Nessun aggiornamento delle regole in corso."
