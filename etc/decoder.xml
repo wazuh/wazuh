@@ -223,7 +223,8 @@
   <prematch>^postfix/\S+[\d+]: </prematch>
 </decoder>
 
-<decoder name="postfix-reject" use_own_name="true">
+<decoder name="postfix-reject">
+  <use_own_name>true</use_own_name>
   <parent>postfix</parent>  
   <prematch>NOQUEUE: reject: RCPT from </prematch>
   <regex>NOQUEUE: reject: RCPT from \S+[(\d+.\d+.\d+.\d+)]: (\d+) </regex>
