@@ -128,6 +128,8 @@
   - Examples:
   - proftpd[12564]: juf01 (pD9EE35B1.dip.t-dialin.net[217.238.53.177]) - USER jufu: Login successful
   - proftpd[30362] xx.yy.zz (aa.bb.cc[aa.bb.vv.dd]): USER backup: Login successful.
+  - proftpd[2344]: refused connect from 192.168.1.2 (192.168.1.2)
+  - proftpd[15181]: valhalla (crawl-66-249-66-80.googlebot.com[66.249.66.80]) - Connection from crawl-66-249-66-80.googlebot.com [66.249.66.80] denied.
   -->
 
 <decoder name="proftpd">  
@@ -217,10 +219,15 @@
     to=<e10445@jubiipost.dk> proto=SMTP helo=<SM01.net>
  -->
 
-<decoder name="postfix-reject">
+<decoder name="postfix">
   <prematch>^postfix/\S+[\d+]: </prematch>
-  <regex>NOQUEUE: reject: RCPT from \S+[(\d+.\d+.\d+.\d+)]:</regex>
-  <order>srcip</order>
+</decoder>
+
+<decoder name="postfix-reject" use_own_name="true">
+  <parent>postfix</parent>  
+  <prematch>NOQUEUE: reject: RCPT from </prematch>
+  <regex>NOQUEUE: reject: RCPT from \S+[(\d+.\d+.\d+.\d+)]: (\d+) </regex>
+  <order>srcip,id</order>
 </decoder>
 
 

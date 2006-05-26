@@ -51,37 +51,48 @@
     <description>(553: Requested action not taken).</description>
   </rule>
 
-  <rule id="6251" level="10" frequency="5" timeframe="120">
+  <rule id="6207" level="4">
+    <if_sid>6201</if_sid>
+    <description>Sendmail rejected message.</description>
+  </rule>
+  
+  <rule id="6251" level="10" frequency="6" timeframe="120">
     <if_matched_sid>6202</if_matched_sid>
     <same_source_ip />
     <description>Sender domain has bogus MX record. </description>
     <description>It should not be sending e-mail.</description>
   </rule>
 
-  <rule id="6252" level="10" frequency="5" timeframe="120">
+  <rule id="6252" level="10" frequency="6" timeframe="120">
     <if_matched_sid>6203</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts to send e-mail from a </description>
     <description>previously rejected sender (access).</description>
   </rule>
 
-  <rule id="6253" level="10" frequency="5" timeframe="120">
+  <rule id="6253" level="10" frequency="6" timeframe="120">
     <if_matched_sid>6204</if_matched_sid>
     <same_source_ip />
-    <description>Multiple relaying attepmts for spam.</description>
+    <description>Multiple relaying attempts of spam.</description>
   </rule>
 
-  <rule id="6254" level="10" frequency="5" timeframe="120">
+  <rule id="6254" level="10" frequency="6" timeframe="120">
     <if_matched_sid>6205</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts to send e-mail </description>
-    <description>from invalid/unkonown sender domain.</description>
+    <description>from invalid/unknown sender domain.</description>
   </rule>
 
-  <rule id="6255" level="10" frequency="5" timeframe="120">
+  <rule id="6255" level="10" frequency="6" timeframe="120">
     <if_matched_sid>6206</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts to send e-mail from </description>
-    <description>invalid/unkonown sender.</description>
+    <description>invalid/unknown sender.</description>
+  </rule>
+  
+  <rule id="6256" level="10" frequency="10" timeframe="120">
+    <if_matched_sid>6207</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple rejected e-mails from same source ip.</description>
   </rule>
 </group> <!-- SYSLOG,SENDMAIL -->

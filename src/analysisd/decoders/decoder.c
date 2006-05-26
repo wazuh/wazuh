@@ -81,7 +81,13 @@ void DecodeEvent(Eventinfo *lf)
                 if(nnode->prematch)
                 {     
                     if(OSRegex_Execute(lf->log,nnode->prematch))
+                    {
+                        if(nnode->use_own_name)
+                        {
+                            lf->log_tag = nnode->name;
+                        }
                         break;
+                    }
                 }
                 else
                     break;

@@ -43,6 +43,7 @@ void ReadDecodeXML(char *file)
     
     char *xml_decoder = "decoder";
     char *xml_decoder_name = "name";
+    char *xml_usename = "use_own_name";
     char *xml_parent = "parent";
     char *xml_prematch = "prematch";
     char *xml_regex = "regex";
@@ -134,6 +135,7 @@ void ReadDecodeXML(char *file)
         pi->type = SYSLOG;
         pi->prematch = NULL;
         pi->regex = NULL;
+        pi->use_own_name = 0;
         
         regex = NULL;
         prematch = NULL;
@@ -186,6 +188,13 @@ void ReadDecodeXML(char *file)
                     _loadmemory(pi->ftscomment,
                             elements[j]->content);
             }
+
+            else if(strcasecmp(elements[j]->element,xml_usename)==0)
+            {
+                if(strcmp(elements[j]->content,"true") == 0)
+                    pi->use_own_name = 1;
+            }
+                                                                                
             
             /* Getting the type */
             else if(strcmp(elements[j]->element, xml_type) == 0)

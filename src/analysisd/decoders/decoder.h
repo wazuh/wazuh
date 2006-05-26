@@ -25,6 +25,7 @@ typedef struct
 {
     int type;
     int fts;
+    int use_own_name;
     char *parent;
     char *name;
     OSRegex *regex;
