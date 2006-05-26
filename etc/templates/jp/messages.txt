@@ -95,3 +95,11 @@ addserveragent="¥¨¡¼¥¸¥§¥ó¥È¤òÄÉ²Ã¤¹¤ëÁ°¤Ë¥¢¥¯¥»
 runma="¥¨¡¼¥¸¥§¥ó¥È¤òÄÉ²Ã¤¹¤ë¤«ºï½ü¤¹¤ëºÝ¤Ï 'manage_agents' ¤ò¼Â¹Ô¤·¤Æ¤¯¤À¤µ¤¤"
 presskey="Â³¤±¤ë¤Ë¤Ï ENTER ¤ò²¡¤·¤Æ¤¯¤À¤µ¤¤"
 
+# Update
+wanttoupdate="既に OSSEC がインストールされています．アップデートしますか?"
+unabletoupdate="アップデート作業を行えません．新しくインストールする必要があります．"
+updatecompleted="アップデートは完了しました．"
+updatefailed="アップデートは失敗しました．"
+updaterules="ルールをアップデートしますか?"
+updatingrules="ルールをアップデートしています"
+notupdatingrules="ルールはアップデートしません．"
