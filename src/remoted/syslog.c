@@ -18,8 +18,6 @@
 
 
 
-
-
 /* OS_IPNotAllowed, v0.1, 2005/02/11 
  * Checks if an IP is not allowed.
  */
@@ -52,6 +50,8 @@ void HandleSyslog()
 {
     char buffer[OS_MAXSTR +2];
     char srcip[IPSIZE +1];
+
+    char *buffer_pt = NULL;
 
     int recv_b;
 
@@ -88,10 +88,32 @@ void HandleSyslog()
             continue;
 
 
+        /* null terminating the message */
+        buffer[recv_b] = '\0';
+
+        
         /* Setting the source ip */
         strncpy(srcip, inet_ntoa(peer_info.sin_addr), IPSIZE);
         srcip[IPSIZE] = '\0';
 
+
+        /* Removing syslog header */
+        if(buffer[0] == '<')
+        {
+            buffer_pt = strchr(buffer+1, '>');
+            if(buffer_pt)
+            {
+                buffer_pt++;
+            }
+            else
+            {
+                buffer_pt = buffer;
+            }
+        }
+        else
+        {
+            buffer_pt = buffer;
+        }    
 
         /* Checking if IP is allowed here */
         if(OS_IPNotAllowed(srcip))
@@ -99,7 +121,7 @@ void HandleSyslog()
             merror(DENYIP_ERROR,ARGV0,srcip);
         }
 
-        else if(SendMSG(logr.m_queue, buffer,srcip,
+        else if(SendMSG(logr.m_queue, buffer_pt, srcip,
                         SYSLOG_MQ) < 0)
         {
             merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
