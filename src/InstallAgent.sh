@@ -109,7 +109,7 @@ cp -pr ../bin/manage_agents ${DIR}/bin/
 sh ./init/fw-check.sh
 cp -pr ../active-response/* ${DIR}/active-response/bin/
 chmod 755 ${DIR}/active-response/bin/*
-chown root.ossec ${DIR}/active-response/bin/*
+chown root:ossec ${DIR}/active-response/bin/*
 
 chown root:${GROUP} ${DIR}/bin/*
 chmod 550 ${DIR}/bin/*

@@ -149,15 +149,15 @@ fi
 # Moving the decoders
 cp -pr ../etc/decoder.xml ${DIR}/etc/
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
-chown root.ossec ${DIR}/etc/decoder.xml
-chown root.ossec ${DIR}/etc/shared/rootkit*
+chown root:ossec ${DIR}/etc/decoder.xml
+chown root:ossec ${DIR}/etc/shared/rootkit*
 
 
 # Copying active response modules
 sh ./init/fw-check.sh
 cp -p ../active-response/*.sh ${DIR}/active-response/bin/
 chmod 755 ${DIR}/active-response/bin/*
-chown root.ossec ${DIR}/active-response/bin/*
+chown root:ossec ${DIR}/active-response/bin/*
 
 chown root:${GROUP} ${DIR}/bin/*
 chmod 550 ${DIR}/bin/*
