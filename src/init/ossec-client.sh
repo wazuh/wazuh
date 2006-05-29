@@ -184,13 +184,6 @@ stopa()
 
 
 ### MAIN HERE ###
-WHO=`whoami`
-
-if [ ! "X${WHO}" = "Xroot" ]; then
-	echo "$0: You must be root to run this script"
-	exit 1;
-fi
-
 
 case "$1" in
   start)

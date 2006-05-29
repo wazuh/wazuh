@@ -31,6 +31,13 @@ BINARIES="os_maild os_execd analysisd logcollector remoted client-agent addagent
 DIRECTORIES=""      # Directories to make
 
 
+# Setting SunOS path
+if [ "X$OS" = "XSunOS" ]; then
+    PATH=$PATH:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin
+    export  PATH
+fi
+            
+
 # Cleaning Config.OS
 if [ "X${ARGV}" = "Xall" ]; then
     ls ./Config.OS >/dev/null 2>&1
@@ -52,8 +59,6 @@ if [ "X${ARGV}" = "Xall" ]; then
 
     if [ "X$OS" = "XSunOS" ]; then
         echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -DHIGHFIRST -include strings.h">>Config.OS
-        PATH=$PATH:/usr/ccs/bin
-        export  PATH
     fi
         
     if [ "X$OS" = "XFreeBSD" ]; then

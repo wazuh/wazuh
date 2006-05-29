@@ -33,7 +33,7 @@
   
   <rule id="3103" level="6">
     <if_sid>3100</if_sid>
-    <url>='|select%20|insert%20|%20from%20|%20where%20</url>
+    <url>='|select%20|insert%20|%20from%20|%20where%20|union%20</url>
     <description>SQL injection attempt.</description>
   </rule>
   
@@ -50,8 +50,15 @@
     <info>http://www.armbrustconsulting.com/LogEntries.html</info>
   </rule>
 
-  <rule id="3105" level="12">
-    <if_sid>3103, 3104</if_sid>
+  <rule id="3105" level="6">
+    <url>%3Cscript|%2Fscript|script>|script%3E|SRC=javascript|IMG%20|</url>
+    <url>%20ONLOAD=|INPUT%20</url>
+    <if_sid>3100</if_sid>
+    <description>XSS (Cross Site Scripting) attempt.</description>
+  </rule>
+  
+  <rule id="3106" level="12">
+    <if_sid>3103, 3104, 3105</if_sid>
     <id>^200</id>
     <description>A web attack returned code 200 (success).</description>
   </rule>
@@ -63,16 +70,24 @@
     <description>from same source ip.</description>
   </rule>
 
-  <rule id="3152" level="10" frequency="10" timeframe="120">
+  <rule id="3152" level="10" frequency="6" timeframe="120">
     <if_matched_sid>3103</if_matched_sid>
     <same_source_ip />
     <description>Multiple SQL injection attempts from same </description>
     <description>souce ip.</description>
   </rule>
   
-  <rule id="3153" level="10" frequency="10" timeframe="120">
+  <rule id="3153" level="10" frequency="8" timeframe="120">
     <if_matched_sid>3104</if_matched_sid>
     <same_source_ip />
     <description>Multiple common web attacks from same souce ip.</description>
   </rule>
+
+  <rule id="3154" level="10" frequency="8" timeframe="120">
+    <if_matched_sid>3105</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple XSS (Cross Site Scripting) attempts </description>
+    <description>from same souce ip.</description>
+  </rule>
+  
 </group> <!-- Web access log -->

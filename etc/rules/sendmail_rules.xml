@@ -23,14 +23,14 @@
     <description>MX record (Requested action aborted).</description>
   </rule>
 
-  <rule id="6203" level="5">
+  <rule id="6203" level="6">
     <if_sid>6201</if_sid>
     <match>reject=550 5.0.0 </match>
     <description>Rejected by access list </description>
     <description>(550: Requested action not taken).</description>
   </rule>
 
-  <rule id="6204" level="5">
+  <rule id="6204" level="6">
     <if_sid>6201</if_sid>
     <match>reject=550 5.7.1 </match>
     <description>Attepmt to use mail server as relay </description>
