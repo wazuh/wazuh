@@ -1,0 +1,4 @@
+ 
+ Error 0x2.
+ Vous devez être root pour exécuter ce script.
+

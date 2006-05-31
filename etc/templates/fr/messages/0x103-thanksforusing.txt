@@ -1,0 +1,11 @@
+
+    Merci d'utiliser OSSEC HIDS.
+    Si vous avez des questions, suggestions ou si vous trouvez
+    un bug, contactez nous sur contact@ossec.net ou en utilisant la
+    liste de diffusion publique sur ossec-list@ossec.net
+    (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list).
+
+    Plus d'information peut être trouver sur http://www.ossec.net
+
+    ---  Appuyez sur Entrée pour finir (peut-être plus d'info plus bas). ---
+    

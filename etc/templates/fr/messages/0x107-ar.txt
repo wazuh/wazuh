@@ -1,0 +1,8 @@
+
+  3.4- La réponse active vous permet d'éxécuter des commandes
+       spécifiques en fonction d'évènement. Par exemple,
+       vous pouvez bloquer une adresse IP ou interdire
+       l'accès à un utilisateur spécifique.
+       Plus d'information sur :
+       http://www.ossec.net/en/manual.html#active-response
+       
