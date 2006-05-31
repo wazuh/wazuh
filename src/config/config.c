@@ -47,8 +47,7 @@ int read_main_elements(OS_XML xml, int modules,
         
         if(!chld_node)
         {
-            merror(XML_ELEMNULL, ARGV0);
-            return(OS_INVALID);
+            return(0);
         }
         else if(!node[i]->element)
         {
