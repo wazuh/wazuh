@@ -47,7 +47,8 @@ int read_main_elements(OS_XML xml, int modules,
         
         if(!chld_node)
         {
-            return(0);
+            merror(XML_ELEMNULL, ARGV0);
+            return(OS_INVALID);
         }
         else if(!node[i]->element)
         {
@@ -157,19 +158,17 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
             XML_NODE chld_node = NULL;
             chld_node = OS_GetElementsbyNode(&xml,node[i]);
 
-            if(!chld_node)
+            /* Main element does not need to have any child */
+            if(chld_node)
             {
-                merror(XML_ELEMNULL, ARGV0);
-                return(OS_INVALID);
-            }
+                if(read_main_elements(xml, modules, chld_node, d1, d2) < 0)
+                {
+                    merror(CONFIG_ERROR, ARGV0);
+                    return(OS_INVALID);
+                }
 
-            if(read_main_elements(xml, modules, chld_node, d1, d2) < 0)
-            {
-                merror(CONFIG_ERROR, ARGV0);
-                return(OS_INVALID);
+                OS_ClearNode(chld_node);    
             }
-
-            OS_ClearNode(chld_node);    
         }
         else
         {

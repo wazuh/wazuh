@@ -48,6 +48,8 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
 
     do
     {
+        lf = (Eventinfo *)lf_node->data;
+        
         /* If time is outside the timeframe, return */
         if((c_time - lf->time) > currently_rule->timeframe)
         {

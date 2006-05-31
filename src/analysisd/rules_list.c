@@ -74,19 +74,22 @@ int _AddtoRule(int sid, int level, int none, char *group,
                  */
                 read_rule->category = r_node->ruleinfo->category;
 
-                /* If child does not have a list, create one */
-                if(!r_node->ruleinfo->prev_matched)
+                /* If matched sid */
+                if(read_rule->if_matched_sid)
                 {
-                    r_node->ruleinfo->prev_matched = OSList_Create();
-                    if(!r_node)
+                    /* If child does not have a list, create one */
+                    if(!r_node->ruleinfo->prev_matched)
                     {
-                        ErrorExit(MEM_ERROR, ARGV0);
+                        r_node->ruleinfo->prev_matched = OSList_Create();
+                        if(!r_node->ruleinfo->prev_matched)
+                        {
+                            ErrorExit(MEM_ERROR, ARGV0);
+                        }
                     }
+
+                    /* Assigning the parent pointer to it */
+                    read_rule->sid_search = r_node->ruleinfo->prev_matched;
                 }
-                
-                /* Assigning the parent pointer to it */
-                read_rule->sid_search = r_node->ruleinfo->prev_matched;
-                
                 
                 r_node->child=
                     _OS_AddRule(r_node->child, read_rule);
