@@ -17,5 +17,6 @@
 
 /* FTS queues */
 #define FTS_QUEUE "/queue/fts/fts-queue"
+#define IG_QUEUE  "/queue/fts/ig-queue"
 
 #endif

@@ -51,25 +51,22 @@ typedef struct _Eventinfo
     /* FTS fields */
     int fts;
 
+    /* Pointer to the rule that generated it */
+    RuleInfo *generated_rule;
+    OSListNode *node_to_delete;
+    
     /* Extract when the event fires a rule */
-    short int level;
-    int sigid;
     int size;
-    char *comment;
-    char *info;
 
 
     /* Other internal variables */
     short int matched;
-    short int mail_flag;
     
     int time;
     int day;
     int year;
     char *hour;
     char mon[4];
-
-    char **lasts_lf;
 }Eventinfo;
 
 
@@ -96,13 +93,13 @@ typedef struct _EventNode
 
 
 /* FTS allowed values */
-#define FTS_NAME     0001000
-#define FTS_USER     0002000
-#define FTS_DSTUSER  0004000
-#define FTS_SRCIP    0000100
-#define FTS_DSTIP    0000200
-#define FTS_LOCATION 0000400
-#define FTS_ID       0000010
+#define FTS_NAME     001000
+#define FTS_USER     002000
+#define FTS_DSTUSER  004000
+#define FTS_SRCIP    000100
+#define FTS_DSTIP    000200
+#define FTS_LOCATION 000400
+#define FTS_ID       000010
 
 
 /** Functions for events **/

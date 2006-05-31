@@ -104,7 +104,7 @@ UpdateOSSECRules()
     cat "${OSSEC_CONF_FILE}.$$.tmp" > ${OSSEC_CONF_FILE}
     rm "${OSSEC_CONF_FILE}.$$.tmp"
     echo "" >> ${OSSEC_CONF_FILE}
-    echo "<ossec_config>" >> ${OSSEC_CONF_FILE}
+    echo "<ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
     cat ${RULES_TEMPLATE} >> ${OSSEC_CONF_FILE}
-    echo "</ossec_config>" >> ${OSSEC_CONF_FILE}
+    echo "</ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
 } 

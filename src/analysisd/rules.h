@@ -23,6 +23,22 @@
 #include "shared.h"
 #include "active-response.h"
 
+/* Event context  - stored on a uint8 */
+#define SAME_USER       0x001 /* 1   */
+#define SAME_SRCIP      0x002 /* 2   */
+#define SAME_ID         0x004 /* 4   */
+#define SAME_AGENT      0x008 /* 8   */
+#define NOT_SAME_USER   0xffe /* 0xfff - 0x001  */
+#define NOT_SAME_SRCIP  0xffd /* 0xfff - 0x002  */
+#define NOT_SAME_ID     0xffb /* 0xfff - 0x004  */
+#define NOT_SAME_AGENT  0xff7 /* 0xfff - 0x008 */
+
+/* Alert options  - store on a uint8 */
+#define DO_FTS          0x001
+#define DO_MAILALERT    0x002
+#define DO_LOGALERT     0x004
+#define NO_ALERT        0x010
+            
 
 typedef struct _RuleInfo
 {
@@ -33,25 +49,32 @@ typedef struct _RuleInfo
     int timeframe;
 
     u_int8_t context; /* Not an user option */
+
     int firedtimes;  /* Not an user option */
     int time_ignored; /* Not an user option */
     int ignore_time;
+    int ignore;
+    int ckignore;
 
     int __frequency;
     char *last_events[MAX_LAST_EVENTS+1];
     
 
     /* Not an option in the rule */
-    u_int8_t fts ;
-    u_int8_t emailalert;
-    u_int8_t logalert;
-    u_int8_t noalert;
-    u_int8_t same_source_ip;
-    u_int8_t same_id;
-    u_int8_t same_user;
-    u_int8_t same_loghost;
+    u_int8_t alert_opts;
+
+    /* Context options */
+    u_int8_t context_opts;
+
+    /* category */
     u_int8_t category;
    
+    /* List of matched */
+    OSList *prev_matched;
+
+    /* Pointer to a list */
+    OSList *sid_search;
+
     char *group;
     char *plugin_decoded;
     OSMatch *match;
@@ -90,6 +113,15 @@ typedef struct _RuleNode
 
 
 RuleInfo *currently_rule; /* */
+
+/* RuleInfo functions */
+RuleInfo *zerorulemember(int id, 
+                         int level,
+                         int maxsize, 
+                         int frequency,
+                         int timeframe, 
+                         int noalert,
+                         int ignore_time);
 
 
 /** Rule_list Functions **/

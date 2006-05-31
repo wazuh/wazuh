@@ -81,6 +81,10 @@ int main(int argc, char **argv)
         ErrorExit(USER_ERROR,user,group);
 
 
+    /* pid before going daemon */
+    i = getpid();
+
+
     /* Going on daemon */
     nowDaemon();
     goDaemon();
@@ -102,10 +106,6 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);	
 
 
-    i = getpid();
-
-
-    
     /* Creating some randoness  */
     srand( time(0) + getpid()+ i);
     rand();
@@ -113,6 +113,7 @@ int main(int argc, char **argv)
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
+
 
     /* Really starting the program. */
     i = 0; 

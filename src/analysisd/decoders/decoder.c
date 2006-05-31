@@ -134,10 +134,6 @@ void DecodeEvent(Eventinfo *lf)
             if(nnode->fts)
             {
                 lf->fts = nnode->fts;
-
-                /* the comment we need to duplicate too */
-                if(nnode->ftscomment)
-                    lf->comment = nnode->ftscomment;
             }
 
 

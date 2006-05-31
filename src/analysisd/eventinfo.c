@@ -20,6 +20,109 @@
 #include "eventinfo.h"
 #include "os_regex/os_regex.h"
 
+/* Search last times a signature fired
+ * Will look for only that specific signature.
+ */
+Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
+{
+    Eventinfo *lf;
+    OSListNode *lf_node;
+    
+    
+    /* Setting frequency to 0 */
+    currently_rule->__frequency = 0;
+
+
+    /* checking sid search is valid */
+    if(!currently_rule->sid_search)
+    {
+        merror("%s: No sid search!! XXX", ARGV0);
+    }
+
+    /* Getting last node */
+    lf_node = OSList_GetLastNode(currently_rule->sid_search);
+    if(!lf_node)
+    {
+        return(NULL);
+    }
+
+    do
+    {
+        /* If time is outside the timeframe, return */
+        if((c_time - lf->time) > currently_rule->timeframe)
+        {
+            return(NULL);
+        }
+
+        /* We avoid multiple triggers for the same rule
+         * or rules with a lower level.
+         */
+        else if(lf->matched >= currently_rule->level)
+        {
+            return(NULL);
+        }
+
+
+        /* Checking for repetitions on user error */
+        if(currently_rule->context_opts & SAME_USER)
+        {
+            if((!lf->user)||(!my_lf->user))
+                continue;
+
+            if(strcmp(lf->user,my_lf->user) != 0)
+                continue;
+        }
+
+        /* Checking for same id */
+        if(currently_rule->context_opts & SAME_ID)
+        {
+            if((!lf->id) || (!my_lf->id))
+                continue;
+
+            if(strcmp(lf->id,my_lf->id) != 0)
+                continue;
+        }
+
+        /* Checking for repetitions from same src_ip */
+        if(currently_rule->context_opts & SAME_SRCIP)
+        {
+            if((!lf->srcip)||(!my_lf->srcip))
+                continue;
+
+            if(strcmp(lf->srcip,my_lf->srcip) != 0)
+                continue;
+        }
+
+
+        /* Checking if the number of matches worked */
+        if(currently_rule->__frequency < currently_rule->frequency)
+        {
+            if(currently_rule->__frequency <= 10)
+            {
+                currently_rule->last_events[currently_rule->__frequency]
+                    = lf->log;
+                currently_rule->last_events[currently_rule->__frequency+1]
+                    = NULL;
+            }
+
+            currently_rule->__frequency++;
+            continue;
+        }
+
+
+        /* If reached here, we matched */
+        my_lf->matched = currently_rule->level;
+        lf->matched = currently_rule->level;
+
+        return(lf);
+
+
+    }while((lf_node = lf_node->prev) != NULL);
+
+    return(NULL);
+}
+
+
 /* Search LastEvents.  
  * Will look if any of the last events (inside the timeframe)
  * match the specified rule. 
@@ -29,6 +132,13 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
     EventNode *eventnode_pt;
     Eventinfo *lf;
 
+    /* Last sids search */
+    if(currently_rule->if_matched_sid)
+    {
+        return(Search_LastSids(my_lf, currently_rule));
+    }
+    
+    /* Last events */
     eventnode_pt = OS_GetLastEvent();
 
     if(!eventnode_pt)
@@ -88,18 +198,8 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
             }
         }
       
-        /* Sid match */
-        if(currently_rule->if_matched_sid)
-        {
-            if(currently_rule->if_matched_sid !=
-               lf->sigid)
-            {
-                continue; /* Didn't match */ 
-            }
-        }
-         
         /* Checking for repetitions on user error */
-        if(currently_rule->same_user)
+        if(currently_rule->context_opts & SAME_USER)
         {
             if((!lf->user)||(!my_lf->user))
                 continue;
@@ -109,7 +209,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         }
        
         /* Checking for same id */
-        if(currently_rule->same_id)
+        if(currently_rule->context_opts & SAME_ID)
         {
             if((!lf->id) || (!my_lf->id))
                 continue;
@@ -119,7 +219,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         }
          
         /* Checking for repetitions from same src_ip */
-        if(currently_rule->same_source_ip)
+        if(currently_rule->context_opts & SAME_SRCIP)
         {
             if((!lf->srcip)||(!my_lf->srcip))
                 continue;
@@ -165,8 +265,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->log = NULL;
     lf->group = NULL;
     lf->hostname = NULL;
-    lf->comment = NULL;
-    lf->info = NULL;
 
     lf->srcip = NULL;
     lf->dstip = NULL;
@@ -181,12 +279,8 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->url = NULL;
     lf->fts = 0;
 
-    lf->mail_flag = 0;
     lf->type = SYSLOG; /* default type is syslog */        
-    lf->level = 0;     /* level 0 is valid */
-    lf->sigid = -1;    /* signature id 0 is valid */
     lf->time = 0;
-    lf->lasts_lf = NULL;
     lf->matched = 0;
     
     lf->year = 0;
@@ -194,6 +288,9 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->day = 0;
     lf->hour = NULL;
 
+    lf->generated_rule = NULL;
+    lf->node_to_delete = NULL;
+    
     return;
 }
 
@@ -210,8 +307,6 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->log);
     if(lf->hostname)
         free(lf->hostname);    
-    if(lf->info)
-        free(lf->info);    
 
     if(lf->srcip)
         free(lf->srcip);
@@ -239,6 +334,13 @@ void Free_Eventinfo(Eventinfo *lf)
     if(lf->hour)
         free(lf->hour);            
 
+    /* Freeing node to delete */
+    if(lf->node_to_delete)
+    {
+        OSList_DeleteThisNode(lf->generated_rule->prev_matched, 
+                              lf->node_to_delete);
+    }
+    
     /* We dont need to free:
      * log_tag
      * fts

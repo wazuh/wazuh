@@ -73,30 +73,31 @@ void OS_Log(Eventinfo *lf)
             "Src IP: %s\nUser: %s\n%s\n",
             lf->time,
             ftell(_aflog),
-            lf->mail_flag?" mail ":"",
+            lf->generated_rule->alert_opts & DO_MAILALERT?" mail ":"",
             lf->year,
             lf->mon,
             lf->day,
             lf->hour,
             lf->location,
-            lf->sigid,
-            lf->level,
-            lf->comment,
+            lf->generated_rule->sigid,
+            lf->generated_rule->level,
+            lf->generated_rule->comment,
             lf->srcip == NULL?"(none)":lf->srcip,
             lf->user == NULL?"(none)":lf->user,
-            lf->sigid == STATS_PLUGIN?
+            lf->generated_rule->sigid == STATS_PLUGIN?
             "No Log Available (HOURLY_STATS)":lf->log);
 
 
     /* Printing the last events if present */
-    if(lf->lasts_lf)
+    if(lf->generated_rule->last_events[0])
     {
-        char **lasts = lf->lasts_lf;
+        char **lasts = lf->generated_rule->last_events;
         while(*lasts)
         {
             fprintf(_aflog,"%s\n",*lasts);
             lasts++;
         }
+        lf->generated_rule->last_events[0] = NULL;
     }
 
     fprintf(_aflog,"\n");

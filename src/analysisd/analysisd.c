@@ -75,6 +75,8 @@ int OS_CleanMSG(char *msg, Eventinfo *lf);
 /* for FTS */
 int FTS_Init();
 int FTS(Eventinfo *lf);
+int AddtoIGnore(Eventinfo *lf);
+int IGnore(Eventinfo *lf);
 
 
 /* For decoders */
@@ -339,6 +341,9 @@ void OS_ReadMSG(int m_queue)
 {
     char msg[OS_MAXSTR +1];
     Eventinfo *lf;
+
+    RuleInfo *stats_rule;
+    extern char *__stats_comment;
     
     /* Null to global currently pointers */
     currently_rule = NULL;
@@ -441,6 +446,27 @@ void OS_ReadMSG(int m_queue)
     /* Starting the hourly/weekly stats */
     if(Start_Hour() < 0)
         Config.stats = 0;
+    else
+    {
+        /* Initializing stats rules */
+        stats_rule = zerorulemember(
+                STATS_PLUGIN,
+                Config.stats,
+                0,0,0,0,0);
+
+        if(!stats_rule)
+        {
+            ErrorExit(MEM_ERROR, ARGV0);
+        }
+
+        /* e-mail alert */
+        if(Config.mailbylevel <= Config.stats)
+            stats_rule->alert_opts |= DO_MAILALERT;
+
+        if(Config.logbylevel <= Config.stats)
+            stats_rule->alert_opts |= DO_LOGALERT;
+
+    }
 
 
     /* Doing some cleanup */
@@ -569,7 +595,6 @@ void OS_ReadMSG(int m_queue)
                 /* We don't process syscheck/rootcheck events
                  * any further.
                  */
-                lf->level = 0; 
                 goto CLMEM;
             }
 
@@ -605,17 +630,14 @@ void OS_ReadMSG(int m_queue)
             {
                 if(Check_Hour(lf) == 1)
                 {
-                    lf->level = Config.stats;
-
-                    if(Config.mailbylevel <= Config.stats)
-                        lf->mail_flag = 1;
+                    lf->generated_rule = stats_rule;
+                    lf->generated_rule->comment = __stats_comment;
 
                     /* alert for statistical analysis */
                     if(Config.logbylevel <= Config.stats)
                         OS_Log(lf);
 
-                    lf->level = 0;
-                    lf->mail_flag = 0;
+                    lf->generated_rule = NULL;
                 }
             }
 
@@ -687,26 +709,28 @@ void OS_ReadMSG(int m_queue)
                     }
                 }
 
+                /* Pointer to the rule that generated it */
+                lf->generated_rule = currently_rule;
 
-                /* Copying the rule values to here */
-                lf->level    = currently_rule->level;
-                lf->sigid    = currently_rule->sigid;
-
-
-                /* Getting the group */
-                lf->group    = currently_rule->group;
-
-                lf->comment = currently_rule->comment;
-
-
-                /* Setting the last events if specified */
-                lf->lasts_lf = currently_rule->last_events;
+                
+                /* Checking if we should ignore it */
+                if(currently_rule->ckignore && IGnore(lf))
+                {
+                    /* Ignoring rule */
+                    lf->generated_rule = NULL;
+                    break;
+                }
+                
+                /* Checking if we need to ignore something */
+                if(currently_rule->ignore)
+                {
+                    AddtoIGnore(lf);
+                }
 
 
                 /* Log the alert if configured to ... */
-                if(currently_rule->logalert == 1)
+                if(currently_rule->alert_opts & DO_LOGALERT)
                 {
-                    lf->mail_flag = currently_rule->emailalert;
                     OS_Log(lf);
                 }
 
@@ -757,7 +781,19 @@ void OS_ReadMSG(int m_queue)
                     }
                 }
 
-                /* Copy the strucuture to the state structure */
+                /* Copy the strucuture to the state memory */
+                if(currently_rule->prev_matched)
+                {
+                    if(!OSList_AddData(currently_rule->prev_matched, lf))
+                    {
+                        merror("%s: Unable to add data to sig list.", ARGV0);
+                    }
+                    else
+                    {
+                        lf->node_to_delete = 
+                            currently_rule->prev_matched->last_node;
+                    }
+                }
                 OS_AddEvent(lf);
 
                 break;
@@ -777,7 +813,7 @@ void OS_ReadMSG(int m_queue)
              * added to the stateful memory 
              * -- message is free inside clean event --
              */
-            if(lf->level == 0)
+            if(lf->generated_rule == NULL)
                 Free_Eventinfo(lf);
 
         }
@@ -830,7 +866,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
    
     
     /* Checking for th FTS flag */
-    if((currently_rule->fts) && (!lf->fts))
+    if((currently_rule->alert_opts & DO_FTS) && (!lf->fts))
     {
         return(NULL);
     }
@@ -988,7 +1024,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     }
     
     /* If we are set to no alert, keep going */
-    if(currently_rule->noalert)
+    if(currently_rule->alert_opts & NO_ALERT)
     {
         return(NULL);
     }

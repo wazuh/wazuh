@@ -22,9 +22,7 @@
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
 /** Global variables **/
-char _rk_buf[1024];
-char _rk_comment[512];
-char _rk_comment2[512];
+char _rk_buf[1025];
 
 
 char *rk_agent_ips[MAX_AGENTS];
@@ -32,6 +30,9 @@ FILE *rk_agent_fps[MAX_AGENTS];
 
 extern int mailq;
 int rk_err;
+
+/* Rootcheck rule */
+RuleInfo *rootcheck_rule;
 
 
 /* SyscheckInit
@@ -49,6 +50,32 @@ void RootcheckInit()
         rk_agent_fps[i] = NULL;
     }
 
+    /* clearing the buffer */
+    memset(_rk_buf, '\0', 1025);
+
+    /* Creating rule for rootcheck alerts */
+    rootcheck_rule = zerorulemember(
+                             ROOTCHECK_PLUGIN, /* id */ 
+                             Config.rootcheck, /* level */
+                             0,0,0,0,0);
+
+    if(!rootcheck_rule)
+    {
+        ErrorExit(MEM_ERROR, ARGV0);
+    }
+ 
+ 
+    /* Comment */
+    rootcheck_rule->comment = "Rootkit detection engine message";
+    rootcheck_rule->alert_opts = 0;
+    
+    /* e-mail alert */
+    if(Config.mailbylevel <= Config.rootcheck)
+        rootcheck_rule->alert_opts |= DO_MAILALERT;
+    
+    if(Config.logbylevel <= Config.rootcheck)
+        rootcheck_rule->alert_opts |= DO_LOGALERT;
+                    
     return;
 }
 
@@ -163,26 +190,19 @@ void RK_Search(Eventinfo *lf)
         }
     }                
 
-    /* if we reach here, we need to alert */
-    lf->comment = "Rootkit detection engine message";
-
-    lf->level = Config.rootcheck;
-
-    lf->sigid = ROOTCHECK_PLUGIN;
-
-
+    lf->generated_rule = rootcheck_rule;
+    
+    
     /* Adding the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
     fprintf(fp,"%s\n",lf->log);
     fflush(fp);
 
+    OS_Log(lf);
 
-    /* alert/ notify */ 
-    if(Config.mailbylevel <= Config.integrity)    
-        lf->mail_flag = 1;
-                                
-    if(Config.logbylevel <= Config.integrity)
-        OS_Log(lf);
+
+    /* Removing pointer to rootcheck_rule */
+    lf->generated_rule = NULL;
 
     return; 
 }
@@ -196,7 +216,8 @@ void DecodeRootcheck(Eventinfo *lf)
 {
     lf->type = ROOTCHECK; 
     
-    RK_Search(lf);
+    if(rootcheck_rule->alert_opts & DO_LOGALERT)
+        RK_Search(lf);
    
     return;
 }

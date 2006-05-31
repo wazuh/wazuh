@@ -21,6 +21,7 @@
 
 OSList *fts_list = NULL;
 FILE *fp_list = NULL;
+FILE *fp_ignore = NULL;
 
 
 /** int FTS_Init()
@@ -45,6 +46,7 @@ int FTS_Init()
         return(0);
     }
 
+    /* creating fts list */
     fp_list = fopen(FTS_QUEUE, "r+");
     if(!fp_list)
     {
@@ -60,8 +62,101 @@ int FTS_Init()
             return(0);
         }
     }
+
+
+    /* Creating ignore list */
+    fp_ignore = fopen(IG_QUEUE, "r+");
+    if(!fp_ignore)
+    {
+        /* Create the file if we cant open it */
+        fp_ignore = fopen(IG_QUEUE, "w+");
+        if(fp_ignore)
+            fclose(fp_ignore);
+        
+        fp_ignore = fopen(IG_QUEUE, "r+");
+        if(!fp_ignore)
+        {
+            merror(FOPEN_ERROR, ARGV0, IG_QUEUE);
+            return(0);
+        }
+    }
                                                             
     return(1);
+}
+
+/* AddtoIGnore -- adds a pattern to be ignored.
+ */
+void AddtoIGnore(Eventinfo *lf)
+{
+    char _line[OS_FLSIZE + 1];
+
+    _line[OS_FLSIZE] = '\0';
+
+    /* Assigning the values to the FTS */
+    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s",
+            (lf->log_tag && (lf->generated_rule->ignore & FTS_NAME))?
+                        lf->log_tag:"",
+            (lf->id && (lf->generated_rule->ignore & FTS_ID))?lf->id:"",
+            (lf->user && (lf->generated_rule->ignore & FTS_USER))?lf->user:"",
+            (lf->srcip && (lf->generated_rule->ignore & FTS_SRCIP))?
+                        lf->srcip:"",
+            (lf->dstip && (lf->generated_rule->ignore & FTS_DSTIP))?
+                        lf->dstip:"",
+            (lf->generated_rule->ignore & FTS_LOCATION)?lf->location:"");
+
+    fseek(fp_ignore, 0, SEEK_END);    
+    fprintf(fp_ignore,"%s\n", _line);
+    fflush(fp_ignore);
+
+    return;
+}
+
+
+/* IGnore v0.1
+ * Check if the event is to be ignored.
+ * Only after an event is matched (generated_rule must be set).
+ */
+int IGnore(Eventinfo *lf)
+{
+    int msgsize;
+    char _line[OS_FLSIZE + 1];
+    char _fline[OS_FLSIZE +1];
+
+    _line[OS_FLSIZE] = '\0';
+
+
+    /* Assigning the values to the FTS */
+    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s",
+            (lf->log_tag && (lf->generated_rule->ckignore & FTS_NAME))?
+                            lf->log_tag:"",
+            (lf->id && (lf->generated_rule->ckignore & FTS_ID))?lf->id:"",
+            (lf->user && (lf->generated_rule->ckignore & FTS_USER))?
+                            lf->user:"",
+            (lf->srcip && (lf->generated_rule->ckignore & FTS_SRCIP))?
+                            lf->srcip:"",
+            (lf->dstip && (lf->generated_rule->ckignore & FTS_DSTIP))?
+                            lf->dstip:"",
+            (lf->generated_rule->ckignore & FTS_LOCATION)?lf->location:"");
+
+    /* Getting the msgsize size */
+    msgsize = strlen(_line);
+
+    _fline[OS_FLSIZE] = '\0';
+
+
+    /** Checking if the ignore is present **/
+    /* Pointing to the beginning of the file */
+    fseek(fp_ignore, 0, SEEK_SET);
+    while(fgets(_fline, OS_FLSIZE , fp_ignore) != NULL)
+    {
+        if(strncmp(_fline, _line, msgsize) != 0)
+            continue;
+
+        /* If we match, we can return 1 */
+        return(1);
+    }
+
+    return(0);
 }
 
 
@@ -85,7 +180,7 @@ int FTS(Eventinfo *lf)
     _line[OS_FLSIZE] = '\0';
 
     /* Assigning the values to the FTS */
-    snprintf(_line,OS_FLSIZE -1, "%s %s %s %s %s %s %s",
+    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s %s",
             (lf->fts & FTS_NAME)?lf->log_tag:"",
             (lf->fts & FTS_ID)?lf->id:"",
             (lf->fts & FTS_USER)?lf->user:"",

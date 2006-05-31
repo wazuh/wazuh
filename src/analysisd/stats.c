@@ -55,7 +55,7 @@ int _fired = 0;
 int _daily_errors = 0;
 
 
-char __comment[192];
+char __stats_comment[192];
 
 /* Last msgs, to avoid floods */
 char *_lastmsg;
@@ -287,19 +287,14 @@ int Check_Hour(Eventinfo *lf)
         {
             if(_CHour[__crt_hour] > (gethour(_RHour[__crt_hour])))
             {
-                lf->sigid = STATS_PLUGIN;
-                
                 /* snprintf will null terminate */
-                snprintf(__comment, 191,
+                snprintf(__stats_comment, 191,
                                      "Excessive number of connections during "
                                      "this hour.\n The average number of logs"
                                      " between %d:00 and %d:00 is %d. We "
                                      "reached %d.",__crt_hour,__crt_hour+1,
                                      _RHour[__crt_hour],_CHour[__crt_hour]);
                 
-                
-                /* Safe, as comment is not used in the event list */
-                lf->comment = __comment;                    
                 
                 _fired = 1;
                 _daily_errors++;
@@ -321,9 +316,7 @@ int Check_Hour(Eventinfo *lf)
             if(_CWHour[__crt_wday][__crt_hour] > 
                     gethour(_RWHour[__crt_wday][__crt_hour]))
             {
-                lf->sigid = STATS_PLUGIN;
-                
-                snprintf(__comment, 191,
+                snprintf(__stats_comment, 191,
                                      "Excessive number of connections during "
                                      "this hour.\n The average number of logs"
                                      " between %d:00 and %d:00 on %s is %d. We"
@@ -333,7 +326,6 @@ int Check_Hour(Eventinfo *lf)
                                      _CWHour[__crt_wday][__crt_hour]);
                 
                 
-                lf->comment = __comment;
                 _fired = 1;
                 _daily_errors++;
                 return(1);

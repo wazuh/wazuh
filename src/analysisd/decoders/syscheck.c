@@ -38,6 +38,9 @@ FILE *agent_fps[MAX_AGENTS +1];
 extern int mailq;
 int db_err;
 
+/* Syscheck rule */
+RuleInfo *syscheck_rule;
+
 
 /* File search variables */
 fpos_t __initi_pos;
@@ -68,6 +71,24 @@ void SyscheckInit()
     memset(_tmp_owner, '\0', 198);
     memset(_tmp_gowner, '\0', 198);
     memset(_tmp_md5, '\0', 198);
+
+    syscheck_rule = zerorulemember(
+                        SYSCHECK_PLUGIN,
+                        Config.integrity,
+                        0,0,0,0,0);
+
+    if(!syscheck_rule)
+    {
+        ErrorExit(MEM_ERROR, ARGV0);
+    }
+
+    /* e-mail alert */
+    if(Config.mailbylevel <= Config.integrity)
+        syscheck_rule->alert_opts |= DO_MAILALERT;
+
+    if(Config.logbylevel <= Config.integrity)
+        syscheck_rule->alert_opts |= DO_LOGALERT;
+                                    
     
     return;
 }
@@ -451,23 +472,17 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         _tmp_md5);
             }
             
-            lf->comment = _db_comment; 
+            lf->generated_rule = syscheck_rule;
+            syscheck_rule->comment = _db_comment;
 
-            lf->level = Config.integrity;
-
-            lf->sigid = SYSCHECK_PLUGIN;
-
-            
             /* Creating a new log message */
             free(lf->log);
             os_strdup(_db_comment2, lf->log);
            
-            /* alert/ notify */ 
-            if(Config.mailbylevel <= Config.integrity)
-                lf->mail_flag = 1;
-                            
-            if(Config.logbylevel <= Config.integrity)
-                OS_Log(lf);
+            OS_Log(lf);
+
+            /* Removing pointer to rule */
+            lf->generated_rule = NULL;
                 
             return; 
         }
@@ -496,7 +511,13 @@ void DecodeSyscheck(Eventinfo *lf)
     char *f_name;
    
     lf->type = SYSCHECK; 
-    
+   
+
+    /* checking if we need to check it in here */
+    if(syscheck_rule->alert_opts & DO_LOGALERT)
+        return;
+        
+         
     f_name = index(lf->log,' ');
     if(f_name == NULL)
     {

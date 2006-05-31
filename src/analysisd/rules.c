@@ -45,10 +45,6 @@ int getattributes(char **attributes,
                   int *frequency, int *accuracy, 
                   int *noalert, int *ignore_time);
 
-RuleInfo *zerorulemember(int id, int level, 
-                         int maxsize, int frequency,
-                         int timeframe, int noalert,
-                         int ignore_time);
 
 void Rule_AddAR(RuleInfo *config_rule);
 char *loadmemory(char *at, char *str);
@@ -93,6 +89,8 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_cve = "cve";
     char *xml_info = "info";
     char *xml_comment = "description";
+    char *xml_ignore = "ignore";
+    char *xml_check_if_ignored = "check_if_ignored";
     
     char *xml_srcip = "srcip";
     char *xml_dstip = "dstip";
@@ -112,8 +110,13 @@ int Rules_OP_ReadRules(char * rulefile)
     
     char *xml_same_source_ip = "same_source_ip";
     char *xml_same_user = "same_user";
-    char *xml_same_loghost = "same_loghost";
+    char *xml_same_agent = "same_agent";
     char *xml_same_id = "same_id";
+    
+    char *xml_notsame_source_ip = "not_same_source_ip";
+    char *xml_notsame_user = "not_same_user";
+    char *xml_notsame_agent = "not_same_agent";
+    char *xml_notsame_id = "not_same_id";
 
     char *xml_options = "options";
     
@@ -418,7 +421,7 @@ int Rules_OP_ReadRules(char * rulefile)
                             loadmemory(url,
                                     rule_opt[k]->content);
                     }
-                    
+
                     /* We allow these four categories so far */
                     else if(strcasecmp(rule_opt[k]->element, xml_category)==0)
                     {
@@ -463,8 +466,8 @@ int Rules_OP_ReadRules(char * rulefile)
                         if(!OS_StrIsNum(rule_opt[k]->content))
                         {
                             merror(INVALID_CONFIG, ARGV0, 
-                                                   "if_level",
-                                                   rule_opt[k]->content); 
+                                    "if_level",
+                                    rule_opt[k]->content); 
                             return(-1);
                         }
 
@@ -503,59 +506,154 @@ int Rules_OP_ReadRules(char * rulefile)
                             return(-1);
                         }
                         config_ruleinfo->if_matched_sid = 
-                                    atoi(rule_opt[k]->content);
+                            atoi(rule_opt[k]->content);
 
                         /* If_matched_sid, we need to get the if_sid */
                         config_ruleinfo->if_sid=
                             loadmemory(config_ruleinfo->if_sid,
-                                                    rule_opt[k]->content);
+                                    rule_opt[k]->content);
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_same_source_ip)==0)
                     {
                         config_ruleinfo->context = 1;
-                        config_ruleinfo->same_source_ip = 1;
+                        config_ruleinfo->context_opts|= SAME_SRCIP;
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,
+                                xml_notsame_source_ip)==0)
+                    {
+                        config_ruleinfo->context = 1;
+                        config_ruleinfo->context_opts&= NOT_SAME_SRCIP;
                     }
                     else if(strcmp(rule_opt[k]->element, xml_same_id) == 0)
                     {
                         config_ruleinfo->context = 1;
-                        config_ruleinfo->same_id = 1;
+                        config_ruleinfo->context_opts|= SAME_ID;
+                    }
+                    else if(strcmp(rule_opt[k]->element, xml_notsame_id) == 0)
+                    {
+                        config_ruleinfo->context = 1;
+                        config_ruleinfo->context_opts&= NOT_SAME_ID;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_fts) == 0)
                     {
-                        config_ruleinfo->fts = 1;
+                        config_ruleinfo->alert_opts |= DO_FTS;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_same_user)==0)
                     {
                         config_ruleinfo->context = 1;
-                        config_ruleinfo->same_user = 1;
+                        config_ruleinfo->context_opts|= SAME_USER;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
-                                xml_same_loghost)==0)
+                                xml_notsame_user)==0)
                     {
                         config_ruleinfo->context = 1;
-                        config_ruleinfo->same_loghost = 1;
+                        config_ruleinfo->context_opts&= NOT_SAME_USER;
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,
+                                xml_same_agent)==0)
+                    {
+                        config_ruleinfo->context = 1;
+                        config_ruleinfo->context_opts|= SAME_AGENT;
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,
+                                xml_notsame_agent)==0)
+                    {
+                        config_ruleinfo->context = 1;
+                        config_ruleinfo->context_opts&= NOT_SAME_AGENT;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_options) == 0)
                     {
                         if(OS_Regex("alert_by_email", rule_opt[k]->content))
                         {
-                            config_ruleinfo->emailalert = 1;
+                            config_ruleinfo->alert_opts|= DO_MAILALERT;
                         }
                         else if(OS_Regex("no_email_alert",rule_opt[k]->content))
                         {
-                            config_ruleinfo->emailalert = 0;
+                            config_ruleinfo->alert_opts&= 0xfff - DO_MAILALERT;
                         }
                         if(OS_Regex("log_alert", rule_opt[k]->content))
                         {
-                            config_ruleinfo->logalert = 1;
+                            config_ruleinfo->alert_opts|= DO_LOGALERT;
                         }
                         else if(OS_Regex("no_log", rule_opt[k]->content))
                         {
-                            config_ruleinfo->logalert = 0;
+                            config_ruleinfo->alert_opts &= 0xfff - DO_LOGALERT;
+                        }
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,
+                                xml_ignore) == 0)
+                    {
+                        if(strstr(rule_opt[k]->content, "user") != NULL)
+                        {
+                            config_ruleinfo->ignore|=FTS_USER;
+                        }
+                        if(strstr(rule_opt[k]->content, "srcip") != NULL)
+                        {
+                            config_ruleinfo->ignore|=FTS_SRCIP;
+                        }
+                        if(strstr(rule_opt[k]->content, "dstip") != NULL)
+                        {
+                            config_ruleinfo->ignore|=FTS_DSTIP;
+                        }
+                        if(strstr(rule_opt[k]->content, "id") != NULL)
+                        {
+                            config_ruleinfo->ignore|=FTS_ID;
+                        }
+                        if(strstr(rule_opt[k]->content,"location")!= NULL)
+                        {
+                            config_ruleinfo->ignore|=FTS_LOCATION;
+                        }
+                        if(strstr(rule_opt[k]->content, "name") != NULL)
+                        {
+                            config_ruleinfo->ignore|=FTS_NAME;
+
+                        }
+                        if(!config_ruleinfo->ignore)
+                        {
+                            merror("%s: Wrong ignore option: '%s'", 
+                                                    ARGV0,
+                                                    rule_opt[k]->content);
+                            return(-1);
+                        }
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,
+                                xml_check_if_ignored) == 0)
+                    {
+                        if(strstr(rule_opt[k]->content, "user") != NULL)
+                        {
+                            config_ruleinfo->ckignore|=FTS_USER;
+                        }
+                        if(strstr(rule_opt[k]->content, "srcip") != NULL)
+                        {
+                            config_ruleinfo->ckignore|=FTS_SRCIP;
+                        }
+                        if(strstr(rule_opt[k]->content, "dstip") != NULL)
+                        {
+                            config_ruleinfo->ckignore|=FTS_DSTIP;
+                        }
+                        if(strstr(rule_opt[k]->content, "id") != NULL)
+                        {
+                            config_ruleinfo->ckignore|=FTS_ID;
+                        }
+                        if(strstr(rule_opt[k]->content,"location")!= NULL)
+                        {
+                            config_ruleinfo->ckignore|=FTS_LOCATION;
+                        }
+                        if(strstr(rule_opt[k]->content, "name") != NULL)
+                        {
+                            config_ruleinfo->ckignore|=FTS_NAME;
+
+                        }
+                        if(!config_ruleinfo->ckignore)
+                        {
+                            merror("%s: Wrong check_if_ignored option: '%s'", 
+                                                    ARGV0,
+                                                    rule_opt[k]->content);
+                            return(-1);
                         }
                     }
                     else
@@ -682,7 +780,6 @@ int Rules_OP_ReadRules(char * rulefile)
             /* Assigning an active response to the rule */
             Rule_AddAR(config_ruleinfo);
 
-            
             j++; /* next rule */
 
             
@@ -820,14 +917,6 @@ RuleInfo *zerorulemember(int id, int level,
     /* Default category is syslog */
     ruleinfo_pt->category = SYSLOG;
 
-    ruleinfo_pt->emailalert = 0;
-    ruleinfo_pt->logalert = 0;
-
-    if(Config.mailbylevel <= level)
-        ruleinfo_pt->emailalert = 1;
-    if(Config.logbylevel <= level)    
-        ruleinfo_pt->logalert = 1;
-   
     ruleinfo_pt->ar = NULL; 
     
     ruleinfo_pt->context = 0;
@@ -840,16 +929,23 @@ RuleInfo *zerorulemember(int id, int level,
     {
         _max_freq = ruleinfo_pt->frequency;
     }
-    ruleinfo_pt->noalert = noalert;
     ruleinfo_pt->ignore_time = ignore_time;
     ruleinfo_pt->timeframe = timeframe;
     ruleinfo_pt->time_ignored = 0;
-    
-    ruleinfo_pt->same_source_ip = 0;
-    ruleinfo_pt->same_id = 0;
-    ruleinfo_pt->fts = 0;
-    ruleinfo_pt->same_user = 0;
-    ruleinfo_pt->same_loghost = 0;
+   
+    ruleinfo_pt->context_opts = 0; 
+    ruleinfo_pt->alert_opts = 0; 
+    ruleinfo_pt->ignore = 0; 
+    ruleinfo_pt->ckignore = 0; 
+
+    if(noalert)
+    {
+        ruleinfo_pt->alert_opts |= NO_ALERT;
+    }
+    if(Config.mailbylevel <= level)
+        ruleinfo_pt->alert_opts |= DO_MAILALERT;
+    if(Config.logbylevel <= level)    
+        ruleinfo_pt->alert_opts |= DO_LOGALERT;
 
     ruleinfo_pt->group = NULL;
     ruleinfo_pt->regex = NULL;
@@ -884,6 +980,10 @@ RuleInfo *zerorulemember(int id, int level,
             i++;
         }
     }
+
+    /* zeroing the list of previous matches */
+    ruleinfo_pt->prev_matched = NULL;
+    ruleinfo_pt->sid_search = NULL;
 
     return(ruleinfo_pt);
 }
