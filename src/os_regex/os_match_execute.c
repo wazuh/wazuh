@@ -60,7 +60,7 @@ int _OS_Match(char *pattern, char *str, int str_len, int size)
 /** Internal matching **/
 int _os_strncmp(char *pattern, char *str, int str_len, int size)
 {
-    if(strncmp(pattern, str, size) == 0)
+    if(strncasecmp(pattern, str, size) == 0)
         return(TRUE);
         
     return(FALSE);    
@@ -69,7 +69,7 @@ int _os_strncmp(char *pattern, char *str, int str_len, int size)
 /** Internal matching **/
 int _os_strcmp(char *pattern, char *str, int str_len, int size)
 {
-    if(strcmp(pattern, str) == 0)
+    if(strcasecmp(pattern, str) == 0)
         return(TRUE);
     
     return(FALSE);    
@@ -82,8 +82,8 @@ int _os_strcmp_last(char *pattern, char *str, int str_len, int size)
     /* Size of the string must be bigger */
     if((str_len - size) < 0)
         return(FALSE);
-        
-    if(strcmp(pattern, str + (str_len - size)) == 0)
+    
+    if(strcasecmp(pattern, str + (str_len - size)) == 0)
         return(TRUE);
     
     return(FALSE);            
