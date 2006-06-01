@@ -721,7 +721,7 @@ void OS_ReadMSG(int m_queue)
                     break;
                 }
                 
-                /* Checking if we need to ignore something */
+                /* Checking if we need to add to ignore list */
                 if(currently_rule->ignore)
                 {
                     AddtoIGnore(lf);

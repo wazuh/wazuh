@@ -118,7 +118,6 @@ void AddtoIGnore(Eventinfo *lf)
  */
 int IGnore(Eventinfo *lf)
 {
-    int msgsize;
     char _line[OS_FLSIZE + 1];
     char _fline[OS_FLSIZE +1];
 
@@ -126,7 +125,7 @@ int IGnore(Eventinfo *lf)
 
 
     /* Assigning the values to the FTS */
-    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s",
+    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s\n",
             (lf->log_tag && (lf->generated_rule->ckignore & FTS_NAME))?
                             lf->log_tag:"",
             (lf->id && (lf->generated_rule->ckignore & FTS_ID))?lf->id:"",
@@ -138,9 +137,6 @@ int IGnore(Eventinfo *lf)
                             lf->dstip:"",
             (lf->generated_rule->ckignore & FTS_LOCATION)?lf->location:"");
 
-    /* Getting the msgsize size */
-    msgsize = strlen(_line);
-
     _fline[OS_FLSIZE] = '\0';
 
 
@@ -149,7 +145,7 @@ int IGnore(Eventinfo *lf)
     fseek(fp_ignore, 0, SEEK_SET);
     while(fgets(_fline, OS_FLSIZE , fp_ignore) != NULL)
     {
-        if(strncmp(_fline, _line, msgsize) != 0)
+        if(strcmp(_fline, _line) != 0)
             continue;
 
         /* If we match, we can return 1 */
