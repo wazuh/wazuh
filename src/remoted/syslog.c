@@ -21,7 +21,7 @@
 /* OS_IPNotAllowed, v0.1, 2005/02/11 
  * Checks if an IP is not allowed.
  */
-int OS_IPNotAllowed(char *srcip)
+static int OS_IPNotAllowed(char *srcip)
 {
     if(logr.denyips != NULL)
     {

@@ -16,12 +16,15 @@
 
 #define SYSLOG_CONN 1   
 #define SECURE_CONN 2
+#define UDP_PROTO   6
+#define TCP_PROTO   17
 
 #include "shared.h"
 
 /* socklen_t header */
 typedef struct _remoted
 {
+    int *proto;
     int *port;
     int *conn;
 

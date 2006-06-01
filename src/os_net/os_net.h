@@ -58,6 +58,8 @@ int OS_RecvUnix(int socket, int sizet, char *ret);
  */
 int OS_AcceptTCP(int socket, char *srcip, int addrsize);
 char *OS_RecvTCP(int socket, int sizet);
+int OS_RecvTCPBuffer(int socket, char *buffer, int sizet);
+  
 
 /* OS_SendTCP 
  * Send a TCP/UDP/UnixSocket packet (in a open socket)

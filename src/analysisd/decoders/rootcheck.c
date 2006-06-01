@@ -196,7 +196,6 @@ void RK_Search(Eventinfo *lf)
     /* Adding the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
     fprintf(fp,"%s\n",lf->log);
-    fflush(fp);
 
     OS_Log(lf);
 

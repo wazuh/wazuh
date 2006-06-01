@@ -33,6 +33,7 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
 
     /* Remote options */	
     char *xml_remote_port = "port";
+    char *xml_remote_proto = "protocol";
     char *xml_remote_connection = "connection";
 
     logr = (remoted *)d1;
@@ -63,6 +64,12 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
         os_calloc(1, sizeof(int), logr->port);
         logr->port[0] = 0;
     }
+    if(!logr->proto)
+    {
+        os_calloc(1, sizeof(int), logr->proto);
+        logr->proto[0] = 0;
+    }
+    
     
     /* Cleaning */
     while(logr->conn[pl] != 0)
@@ -71,16 +78,21 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
 
     logr->port[pl] = 0;
     logr->conn[pl] = 0;
+    logr->proto[pl] = 0;
+    
 
     /* Adding space for the last null connection/port */
     logr->port = realloc(logr->port, sizeof(int)*(pl +2));
     logr->conn = realloc(logr->conn, sizeof(int)*(pl +2));
-    if(!logr->port || !logr->conn)
+    logr->proto = realloc(logr->proto, sizeof(int)*(pl +2));
+    if(!logr->port || !logr->conn || !logr->proto)
     {
         merror(MEM_ERROR, ARGV0);
     }
+    
     logr->port[pl +1] = 0;
     logr->conn[pl +1] = 0;
+    logr->proto[pl +1] = 0;
     
     while(node[i])
     {
@@ -122,6 +134,22 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
             if(logr->port[pl] <= 0 || logr->port[pl] > 65535)
             {
                 merror(PORT_ERROR, ARGV0, logr->port[pl]);
+                return(OS_INVALID);
+            }
+        }
+        else if(strcasecmp(node[i]->element,xml_remote_proto) == 0)
+        {
+            if(strcasecmp(node[i]->content, "tcp") == 0)
+            {
+                logr->proto[pl] = TCP_PROTO;
+            }
+            else if(strcasecmp(node[i]->content, "udp") == 0)
+            {
+                logr->proto[pl] = UDP_PROTO;
+            }
+            else
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -184,6 +212,17 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
             logr->port[pl] = DEFAULT_SYSLOG;    
     }
 
+    /* set default protocol */
+    if(logr->proto[pl] == 0)
+    {
+        logr->proto[pl] = UDP_PROTO;
+    }
+
+    /* Secure connections only run on UDP */
+    if((logr->conn[pl] == SECURE_CONN) && (logr->proto[pl] == TCP_PROTO))
+    {
+        logr->proto[pl] = UDP_PROTO;
+    }
     
     return(0);
 }

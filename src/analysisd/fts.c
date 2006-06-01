@@ -177,12 +177,12 @@ int FTS(Eventinfo *lf)
 
     /* Assigning the values to the FTS */
     snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s %s",
-            (lf->fts & FTS_NAME)?lf->log_tag:"",
-            (lf->fts & FTS_ID)?lf->id:"",
-            (lf->fts & FTS_USER)?lf->user:"",
-            (lf->fts & FTS_DSTUSER)?lf->dstuser:"",
-            (lf->fts & FTS_SRCIP)?lf->srcip:"",
-            (lf->fts & FTS_DSTIP)?lf->dstip:"",
+            (lf->log_tag && (lf->fts & FTS_NAME))?lf->log_tag:"",
+            (lf->id && (lf->fts & FTS_ID))?lf->id:"",
+            (lf->user && (lf->fts & FTS_USER))?lf->user:"",
+            (lf->dstuser && (lf->fts & FTS_DSTUSER))?lf->dstuser:"",
+            (lf->srcip && (lf->fts & FTS_SRCIP))?lf->srcip:"",
+            (lf->dstip && (lf->fts & FTS_DSTIP))?lf->dstip:"",
             (lf->fts & FTS_LOCATION)?lf->location:"");
 
 

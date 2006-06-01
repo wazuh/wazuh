@@ -36,11 +36,21 @@ void HandleRemote(int position, int uid)
         ErrorExit(NO_SYSLOG, ARGV0);
     }
     
-    
-    /* Only using UDP. Fast, unreliable.. perfect */
-    if((logr.sock = OS_Bindportudp(logr.port[position],NULL)) < 0)
+    /* Bind TCP */ 
+    if(logr.proto[position] == TCP_PROTO)
     {
-        ErrorExit(BIND_ERROR, ARGV0, logr.port[position]);
+        if((logr.sock = OS_Bindporttcp(logr.port[position],NULL)) < 0)
+        {
+            ErrorExit(BIND_ERROR, ARGV0, logr.port[position]);
+        }
+    }
+    else
+    {
+        /* Using UDP. Fast, unreliable.. perfect */
+        if((logr.sock = OS_Bindportudp(logr.port[position],NULL)) < 0)
+        {
+            ErrorExit(BIND_ERROR, ARGV0, logr.port[position]);
+        }
     }
 
    
@@ -69,7 +79,11 @@ void HandleRemote(int position, int uid)
         HandleSecure();
     }
     
-
+    else if(logr.proto[position] == TCP_PROTO)
+    {
+        HandleSyslogTCP();
+    }
+    
     /* If not, deal with syslog */
     else
     {

@@ -278,7 +278,7 @@ int OS_SendUDPbySize(int socket, int size, char *msg)
 /* OS_AcceptTCP v0.1, 2005/01/28
  * Accept a TCP connection
  */
-int OS_AcceptTCP(int socket,  char *srcip, int addrsize)
+int OS_AcceptTCP(int socket, char *srcip, int addrsize)
 {
     int clientsocket;
     struct sockaddr_in _nc;
@@ -316,6 +316,29 @@ char *OS_RecvTCP(int socket, int sizet)
 
     return(ret);
 }
+
+
+/* OS_RecvTCPBuffer v0.1, 2004/07/21
+ * Receive a TCP packet (in a open socket)
+ */
+int OS_RecvTCPBuffer(int socket, char *buffer, int sizet)
+{
+    int retsize = 0;
+
+    while(!retsize)
+    {
+        retsize = recv(socket, buffer, sizet -1, 0);
+        if(retsize > 0)
+        {
+            buffer[retsize] = '\0';
+            return(0);
+        }
+        return(-1);
+    }
+    return(-1);
+}
+
+
 
 
 /* OS_RecvUDP v 0.1, 2004/07/20

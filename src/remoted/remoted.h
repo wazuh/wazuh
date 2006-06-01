@@ -33,6 +33,9 @@ void HandleRemote(int position, int uid);
 /* Handle Syslog */
 void HandleSyslog();
 
+/* Handle Syslog TCP */
+void HandleSyslogTCP();
+
 /* Handle Secure connections */
 void HandleSecure();
 

@@ -294,8 +294,6 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         p == 2? '!' : (p > 2)?'?':'+',
                         c_sum,
                         f_name);
-            fflush(fp);
-            
            
             /* File deleted */
             if(c_sum[0] == '-' && c_sum[1] == '1')
@@ -495,7 +493,6 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     fseek(fp, 0, SEEK_END);
     
     fprintf(fp,"+++%s %s\n",c_sum,f_name);
-    fflush(fp);
 
     return;
 }
