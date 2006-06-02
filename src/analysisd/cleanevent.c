@@ -43,7 +43,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
     char *pieces[2];
     
-    int hostname_size = 0, loglen;
+    int loglen;
     
     struct tm *p;
 
@@ -108,24 +108,16 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             pieces[1]+=16;
         }
 
-        /* Assining the memory for hostname */
-        os_calloc(OS_FLSIZE, sizeof(char), lf->hostname);
-        do
+        /* Checking for an extra space in here */
+        if(*pieces[1] == ' ')
+            pieces[1]++;
+       
+        /* Extracting the hostname */ 
+        while(*pieces[1] != ' ')
         {
-            if(hostname_size >= OS_FLSIZE)
-            {
-                merror("%s: Invalid hostname (greater than %d): '%s'",
-                                             ARGV0, OS_FLSIZE, pieces[1]);
-                return(-1);
-                break;
-            }
-            lf->hostname[hostname_size++] = *pieces[1];
-        }while(*(++pieces[1]) != ' ');
+            pieces[1]++;
+        }
 
-
-        /* Apending the \0 to the hostname string */
-        lf->hostname[hostname_size] = '\0';
-        
         /* Moving pieces[1] to the beginning of the log message */
         pieces[1]++;
     }

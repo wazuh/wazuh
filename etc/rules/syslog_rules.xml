@@ -98,7 +98,7 @@
   </rule>
 
   <rule id ="405" level="9">
-    <match>ILLEGAL ROOT LOGIN</match>
+    <match>ILLEGAL ROOT LOGIN|ROOT LOGIN REFUSED</match>
     <description>Illegal root login. </description>
   </rule>
 

@@ -266,7 +266,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->log_tag = NULL;
     lf->log = NULL;
     lf->group = NULL;
-    lf->hostname = NULL;
 
     lf->srcip = NULL;
     lf->dstip = NULL;
@@ -307,8 +306,6 @@ void Free_Eventinfo(Eventinfo *lf)
     
     if(lf->log)
         free(lf->log);
-    if(lf->hostname)
-        free(lf->hostname);    
 
     if(lf->srcip)
         free(lf->srcip);
