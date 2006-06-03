@@ -24,18 +24,24 @@
 /* Read syslog files/snort fast/apache files */
 void *read_syslog(int pos, int *rc)
 {
+    int __ms = 0;
     int __rc = 0;
     char *p;
     char str[OS_MAXSTR+1];
 
     str[OS_MAXSTR]='\0';
 
-    while(fgets(str, OS_MAXSTR, logff[pos].fp) != NULL)
+    while(fgets(str, OS_MAXSTR - 36, logff[pos].fp) != NULL)
     {
         /* Getting the last occurence of \n */
         if ((p = strrchr(str, '\n')) != NULL) 
         {
             *p = '\0';
+        }
+        else
+        {
+            /* Message size > maximum allowed */
+            __ms = 1;
         }
         
         #ifdef WIN32
@@ -62,6 +68,20 @@ void *read_syslog(int pos, int *rc)
 
         }
 
+        /* Incorrectly message size */
+        if(__ms)
+        {
+            merror("incorrect message: '%s'", str);
+            while(fgets(str, OS_MAXSTR - 36, logff[pos].fp) != NULL)
+            {
+                /* Getting the last occurence of \n */
+                if ((p = strrchr(str, '\n')) != NULL)
+                {
+                    break;
+                }
+            }
+        }
+        
         __rc++;
         continue;
     }

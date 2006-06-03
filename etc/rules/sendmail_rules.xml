@@ -63,14 +63,14 @@
     <description>It should not be sending e-mail.</description>
   </rule>
 
-  <rule id="6252" level="10" frequency="6" timeframe="120">
+  <rule id="6252" level="6" frequency="6" timeframe="120">
     <if_matched_sid>6203</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts to send e-mail from a </description>
     <description>previously rejected sender (access).</description>
   </rule>
 
-  <rule id="6253" level="10" frequency="6" timeframe="120">
+  <rule id="6253" level="6" frequency="6" timeframe="120">
     <if_matched_sid>6204</if_matched_sid>
     <same_source_ip />
     <description>Multiple relaying attempts of spam.</description>

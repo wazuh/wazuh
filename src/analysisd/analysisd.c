@@ -91,6 +91,7 @@ void ReadDecodeXML(char *file);
 
 /* For syscheckd (integrity checking) */
 void SyscheckInit();
+void RootcheckInit();
 
 
 /* For stats */
@@ -343,8 +344,8 @@ void OS_ReadMSG(int m_queue)
     Eventinfo *lf;
 
     RuleInfo *stats_rule;
-    extern char *__stats_comment;
     
+
     /* Null to global currently pointers */
     currently_rule = NULL;
 
@@ -354,6 +355,10 @@ void OS_ReadMSG(int m_queue)
 
     /* Initiating the integrity database */
     SyscheckInit();
+
+
+    /* Initializing Rootcheck */
+    RootcheckInit();
    
     
     /* Creating the event list */
@@ -458,14 +463,6 @@ void OS_ReadMSG(int m_queue)
         {
             ErrorExit(MEM_ERROR, ARGV0);
         }
-
-        /* e-mail alert */
-        if(Config.mailbylevel <= Config.stats)
-            stats_rule->alert_opts |= DO_MAILALERT;
-
-        if(Config.logbylevel <= Config.stats)
-            stats_rule->alert_opts |= DO_LOGALERT;
-
     }
 
 
@@ -634,7 +631,7 @@ void OS_ReadMSG(int m_queue)
                     lf->generated_rule->comment = __stats_comment;
 
                     /* alert for statistical analysis */
-                    if(Config.logbylevel <= Config.stats)
+                    if(stats_rule->alert_opts & DO_LOGALERT)
                         OS_Log(lf);
 
                     lf->generated_rule = NULL;

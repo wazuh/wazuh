@@ -92,7 +92,6 @@ presskey="Appuyez sur Entrée pour continuer"
 
 # Update
 wanttoupdate="Vous avez déjà installé OSSEC. Voulez-vous le mettre à jour ?"
-unabletoupdate="Unable to perform update. A full new install will be required."
 unabletoupdate="Impossible de mettre à jour. Une nouvelle installation est nécessaire."
 updatecompleted="Mise à jour complète."
 updatefailed="Echec de la mise à jour."

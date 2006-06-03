@@ -355,6 +355,10 @@ int Start_Hour()
     prev_month[3] = '\0';
 
 
+    /* Clearing some memory */
+    memset(__stats_comment, '\0', 192);
+
+
     /* Last three messages
      * They are used to keep track of the last
      * messages received to avoid floods.

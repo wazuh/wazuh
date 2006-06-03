@@ -67,15 +67,7 @@ void RootcheckInit()
  
     /* Comment */
     rootcheck_rule->comment = "Rootkit detection engine message";
-    rootcheck_rule->alert_opts = 0;
     
-    /* e-mail alert */
-    if(Config.mailbylevel <= Config.rootcheck)
-        rootcheck_rule->alert_opts |= DO_MAILALERT;
-    
-    if(Config.logbylevel <= Config.rootcheck)
-        rootcheck_rule->alert_opts |= DO_LOGALERT;
-                    
     return;
 }
 

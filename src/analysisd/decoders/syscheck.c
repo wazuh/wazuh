@@ -82,14 +82,6 @@ void SyscheckInit()
         ErrorExit(MEM_ERROR, ARGV0);
     }
 
-    /* e-mail alert */
-    if(Config.mailbylevel <= Config.integrity)
-        syscheck_rule->alert_opts |= DO_MAILALERT;
-
-    if(Config.logbylevel <= Config.integrity)
-        syscheck_rule->alert_opts |= DO_LOGALERT;
-                                    
-    
     return;
 }
 
