@@ -12,6 +12,40 @@
    - action   - event action (deny, drop, accept, etc)
   -->
 
+<!-- Pam decoder.
+  -  Will extract username and srcip whenever is possible.
+  - Examples:
+  - su(pam_unix)[23164]: authentication failure; logname= uid=1342 euid=0 tty= ruser=dcid rhost=  user=osaudit
+  - su(pam_unix)[2298]: authentication failure; logname= uid=1342 euid=0 tty= ruser=dcid rhost=  user=root
+  - vsftpd(pam_unix)[25073]: authentication failure; logname= uid=0 euid=0 tty= ruser= rhost=211.100.27.101
+  - vsftpd(pam_unix)[25073]: check pass; user unknown
+  - sshd(pam_unix)[16660]: authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=202.110.184.100  user=root
+  - su(pam_unix)[14592]: session opened for user news by (uid=0)
+  - su(pam_unix)[14592]: session closed for user news
+  - sshd(pam_unix)[13025]: authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=210.70.129.207  user=nobody
+  - sshd(pam_unix)[18987]: authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=languedoc-2-81-56-82-49.fbx.proxad.net  user=root
+  - sshd(pam_unix)[17365]: session opened for user test by (uid=508)
+  - sshd(pam_unix)[1345]: authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=222.237.79.237  user=root
+  -->
+<decoder name="pam">
+  <prematch>^\w+(pam_unix)[\d+]: </prematch>
+</decoder>
+
+<decoder name="pam-host-user">
+  <parent>pam</parent>
+  <prematch>rhost=\S+ user=\S+</prematch>
+  <regex>rhost=(\S+) user=(\S+)$</regex>
+  <order>srcip, user</order>
+</decoder>
+
+<decoder name="pam-user">
+  <parent>pam</parent>
+  <prematch>^\w+(pam_unix)[\d+]: session opened</prematch>
+  <regex>for user (\S+) </regex>
+  <order>user</order>
+</decoder>  
+
+  
 <!-- SSH decoder.
   -  Will extract username and srcip from the logs.
   -  Only add to the FTS if the login was sucessfull
@@ -183,6 +217,24 @@
 </decoder>  
 
 
+<!-- vsftpd decoder.
+  - Will extract the srcip.
+  - Examples:
+  - Sun Jun  4 22:08:04 2006 [pid 21612] CONNECT: Client "192.168.2.10"
+  - Sun Jun  4 22:08:39 2006 [pid 21611] [dcid] OK LOGIN: Client "192.168.2.10"
+  - Sun Jun  4 22:09:22 2006 [pid 21622] CONNECT: Client "192.168.2.10"
+  - Sun Jun  4 22:09:24 2006 [pid 21621] [lalal] FAIL LOGIN: Client "192.168.2.10"
+  - Sat Jun  3 07:51:42 2006 [pid 25073] [Administrator] FAIL LOGIN: Client
+  "211.100.27.101"
+  -->
+<decoder name="vsftpd">
+  <prematch>^\w\w\w \w\w\w\s+\d+ \S+ \d+ [pid \d+]</prematch>
+  <regex>Client "(\d+.\d+.\d+.\d+)"<regex>
+  <order>srcip</order>
+</decoder>
+
+
+  
 <!-- Imapd decoder.
   - Will extract the username/srcip
   - Examples:
