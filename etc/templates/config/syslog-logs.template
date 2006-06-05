@@ -11,6 +11,7 @@
 /var/log/security
 /var/log/xferlog
 /var/log/proftpd.log
+/var/log/vsftpd.log
 /var/log/radius.log
 /var/log/radius/radius.log
 /var/log/mail.info
