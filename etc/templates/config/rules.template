@@ -1,6 +1,8 @@
   <rules>
     <include>rules_config.xml</include>
+    <include>pam_rules.xml</include>
     <include>sshd_rules.xml</include>
+    <include>telnetd_rules.xml</include>
     <include>syslog_rules.xml</include>
     <include>pix_rules.xml</include>
     <include>named_rules.xml</include>

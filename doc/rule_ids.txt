@@ -28,6 +28,9 @@
 3100 - 3199 Apache access log rules
 3200 - 3299 Samba (smbd)
 3300 - 3399 Imapd
+3400 - 3499 vsftpd
+3500 - 3599 Pam unix
+3600 - 3699 Telnetd
 4000 - 4999 IDS rules
 5000 - 5999 Squid rules
 6000 - 6199 Postfix rules

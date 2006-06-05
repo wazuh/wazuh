@@ -116,6 +116,59 @@
 </decoder>
 
 
+<!--
+ - Telnet decoder
+ - Will extract the srcip
+ - Examples:
+ - May 31 12:33:44 queen telnetd[9876]: warning: can't verify hostname: 
+   gethostbyname(131.1.satis-tl.ru) failed
+ - May 29 21:12:18 queen telnetd[6474]: refused connect from 81.215.42.27
+ - Jun  1 23:02:07 queen telnetd[62948]: connect from external.example.net
+ - Jun  1 23:02:07 queen telnetd[62948]: ttloop:  read: A connection with a remote socket was reset by that socket.
+ - Jun  2 09:54:28 valhalla in.telnetd[19723]: [ID 927837 local2.info] connect from external.example.net
+ - Jun  2 09:54:28 valhalla telnetd[19723]: [ID 485252 daemon.info] ttloop:  peer died: Error 0
+ -->
+
+<decoder name="telnetd">
+  <prematch>^telnetd[\d+]: |^in.telnetd[\d+]: </prematch>
+</decoder>
+
+<decoder name="telnetd-ip">
+  <parent>telnetd</parent>
+  <regex>from (\d+.\d+.\d+.\d+)$</regex>
+  <order>srcip</order>
+</decoder>
+
+
+<!--
+ - Samba decoder.
+ - Will extraxt the username/srcip
+ - Examples:
+ - smbd[832]: Denied connection from (192.168.3.23)
+ - smbd[832]: Connection denied from 0.0.0.0
+ - smbd[17535]: Permission denied\-\- user not allowed to delete, 
+   pause, or resume print job. User name: ahmet. Printer name: prnq1.
+  -->
+
+<decoder name="smbd">
+  <prematch>^smbd[\d+]: </prematch>
+</decoder>
+
+<decoder name="smbd-user">
+  <parent>smbd</parent>
+  <prematch>User name:</prematch>
+  <regex>User name: (\S+).</regex>
+  <order>user</order>
+</decoder>
+
+<decoder name="smbd-ip">
+  <parent>smbd</parent>
+  <regex> from \((\d+.\d+.\d+.\d+)\)$</regex>
+  <order>srcip</order>
+</decoder>
+
+
+
 <!-- Su decoder.
   -  Will extract the username.
   -  Examples:
@@ -160,6 +213,7 @@
 <!-- ProFTPD decoder.
   - Will extract the username/srcip
   - Examples:
+  - proftpd[26916]: hayaletgemi (85.101.218.135[85.101.218.135]) - ANON anonymous: Login successful.
   - proftpd[12564]: juf01 (pD9EE35B1.dip.t-dialin.net[217.238.53.177]) - USER jufu: Login successful
   - proftpd[30362] xx.yy.zz (aa.bb.cc[aa.bb.vv.dd]): USER backup: Login successful.
   - proftpd[2344]: refused connect from 192.168.1.2 (192.168.1.2)
@@ -173,7 +227,7 @@
 <decoder name="proftpd-success">
   <parent>proftpd</parent>  
   <prematch>: Login successful</prematch>
-  <regex>^proftpd[\d+]: \S+ \(\S+[(\d+.\d+.\d+.\d+)]\)\s*\S USER (\S+): </regex>
+  <regex>^proftpd[\d+]: \S+ \(\S+[(\d+.\d+.\d+.\d+)]\)\s*\S \w+ (\S+): </regex>
   <regex>Login successful</regex>
   <order>srcip,user</order>
   <fts>name,user,srcip,location</fts>

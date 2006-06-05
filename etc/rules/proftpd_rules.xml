@@ -1,7 +1,7 @@
 <!-- Official proftpd rules for the OSSEC HIDS
   -  Author: Daniel B. Cid
   -  Date: Nov 11, 2005
-  -  Last modification: May 21, 2006
+  -  Last modification: Jun 5, 2006
   -->
       
 
@@ -59,6 +59,88 @@
     <description>Connection refused by TCP Wrappers.</description>
   </rule>
 
+  <rule id="2508" level="4">
+    <if_sid>2500</if_sid>
+    <match>unable to find open port in PassivePorts range</match>
+    <description>Small PassivePorts range in config file. </description>
+    <description>Server misconfiguration.</description>
+  </rule>
+
+  <rule id="2509" level="14">
+    <if_sid>2500</if_sid>
+    <match>Refused PORT </match> 
+    <description>Attempt to bypass firewall that can't adequately</description>
+    <description> keep state of FTP traffic.</description>
+    <info>http://www.kb.cert.org/vuls/id/328867</info>
+  </rule>
+
+  <rule id="2510" level="10">
+    <if_sid>2500</if_sid>
+    <match>Maximum login attempts </match>
+    <description>Multiple failed login attempts.</description>
+  </rule>
+
+  <rule id="2511" level="4">
+    <if_sid>2500</if_sid>
+    <match>host name/name mismatch|host name/address mismatch</match>
+    <description>Mismatch in server's hostname.</description>
+  </rule>
+
+  <rule id="2512" level="5">
+    <if_sid>2500</if_sid>
+    <match>warning: can't verify hostname: </match>
+    <description>Reverse lookup error (bad ISP config).</description>
+  </rule>
+
+  <rule id="2513" level="3">
+    <if_sid>2500</if_sid>
+    <match>connect from </match>
+    <group>connection_attempt</group>
+    <description>Remote host connected to FTP server.</description>
+  </rule>
+
+  <rule id="2514" level="3">
+    <if_sid>2500</if_sid>
+    <match>FTP no transfer timeout, disconnected</match>
+    <description>Remote host disconnected due to inactivity.</description>
+  </rule>
+
+  <rule id="2515" level="3">
+    <if_sid>2500</if_sid>
+    <match>FTP login timed out, disconnected</match>
+    <description>Remote host disconnected due to login time out.</description>
+  </rule>
+
+  <rule id="2516" level="3">
+    <if_sid>2500</if_sid>
+    <match>FTP session idle timeout, disconnected</match>
+    <description>Remote host disconnected due to time out.</description>
+  </rule>
+
+  <rule id="2517" level="3">
+    <if_sid>2500</if_sid>
+    <match>Data transfer stall timeout:</match>
+    <description>Data transfer stalled.</description>
+  </rule>
+
+  <rule id="2518" level="12">
+    <if_sid>2500</if_sid>
+    <match>ProFTPD terminating (signal 11)</match>
+    <description>FTP process crashed.</description>
+  </rule>
+
+  <rule id="2519" level="12">
+    <if_sid>2500</if_sid>
+    <match>Reallocating sreaddir buffer</match>
+    <description>FTP server Buffer overflow attempt</description>
+  </rule>
+
+  <rule id="2520" level="4">
+    <if_sid>2500</if_sid>
+    <match>listen() failed in</match>
+    <description>Unable to bind to adress.</description>
+  </rule>
+
   <rule id="2551" level="10" frequency="6" timeframe="120">
     <if_matched_sid>2504</if_matched_sid>
     <same_source_ip />
@@ -69,6 +151,12 @@
     <if_matched_sid>2501</if_matched_sid>
     <same_source_ip />
     <description>Multiple connection attempts from same source.</description>
+  </rule>
+            
+  <rule id="2553" level="10" frequency="10" timeframe="120">
+    <if_matched_sid>2515</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple timed out logins from same source.</description>
   </rule>
             
 </group> <!-- SYSLOG,PROFTPD -->
