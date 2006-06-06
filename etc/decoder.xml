@@ -283,7 +283,7 @@
   -->
 <decoder name="vsftpd">
   <prematch>^\w\w\w \w\w\w\s+\d+ \S+ \d+ [pid \d+]</prematch>
-  <regex>Client "(\d+.\d+.\d+.\d+)"<regex>
+  <regex>Client "(\d+.\d+.\d+.\d+)"</regex>
   <order>srcip</order>
 </decoder>
 
