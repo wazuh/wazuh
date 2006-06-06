@@ -164,6 +164,7 @@ int main(int argc, char **argv)
 
     /* Starting daemon */
     debug1(STARTED_MSG,ARGV0);
+    DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));
 
     
     /*Check if the user/group given are valid */
@@ -486,6 +487,7 @@ void OS_ReadMSG(int m_queue)
         Free_Eventinfo(lf);
     }
     
+    
     debug1("%s: DEBUG: Startup completed. Waiting for new messages..",ARGV0);
     
 
@@ -500,10 +502,8 @@ void OS_ReadMSG(int m_queue)
             ErrorExit(MEM_ERROR,ARGV0);
         }
     
-        #ifdef DEBUG
-        debug2("%s: DEBUG:  Waiting new message.\n",ARGV0);
-        #endif
-        
+        DEBUG_MSG("%s: DEBUG: Waiting for msgs - %d ", ARGV0, (int)time(0));
+
         
         /* Receive message from queue */
         if(OS_RecvUnix(m_queue, OS_MAXSTR, msg))
@@ -518,6 +518,10 @@ void OS_ReadMSG(int m_queue)
             Zero_Eventinfo(lf);
 
 
+            /* Message before extracting header */
+            DEBUG_MSG("%s: DEBUG: Received msg: %s ", ARGV0, msg);
+
+            
             /* Clean the msg appropriately */
             if(OS_CleanMSG(msg, lf) < 0)
             {
@@ -529,6 +533,10 @@ void OS_ReadMSG(int m_queue)
             }
 
 
+            /* Msg cleaned */
+            DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
+
+            
             /* Currently rule must be null in here */
             currently_rule = NULL;
 
@@ -649,6 +657,10 @@ void OS_ReadMSG(int m_queue)
             }
 
 
+            /* Checking the rules */
+            DEBUG_MSG("%s: DEBUG: Checking the rules - %d ", ARGV0, lf->type);
+
+            
             /* Getting log size */
             lf->size = strlen(lf->log);
 

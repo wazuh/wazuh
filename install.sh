@@ -36,7 +36,15 @@ if [ ! $? = 0 ]; then
     fi
 fi
 
-                            
+
+# Checking for command line arguments
+if [ "X$1" = "Xdebug" ]; then
+    SET_DEBUG="debug"
+else
+    SET_DEBUG=""    
+fi    
+
+
 ##########
 # install()
 ##########
@@ -49,6 +57,11 @@ Install()
     echo "CC=${CC}" >> ${LOCATION}
     
     # Changing Config.OS with the new C flags
+    # Checking if debug is enabled
+    if [ "X${SET_DEBUG}" = "Xdebug" ]; then
+        CEXTRA="${CEXTRA} -DDEBUGAD"
+    fi
+        
     echo "CEXTRA=${CEXTRA}" > ./src/Config.OS
     
     # Makefile
