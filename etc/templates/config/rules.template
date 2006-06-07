@@ -7,6 +7,7 @@
     <include>pix_rules.xml</include>
     <include>named_rules.xml</include>
     <include>smbd_rules.xml</include>
+    <include>vsftpd_rules.xml</include>
     <include>pure-ftpd_rules.xml</include>
     <include>proftpd_rules.xml</include>
     <include>web_rules.xml</include>
