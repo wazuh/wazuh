@@ -209,7 +209,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     /* Sending date */
     memset(snd_msg,'\0',128);
-    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T %z\r\n",p);
+    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T %Z\r\n",p);
     OS_SendTCP(socket,snd_msg);
 
     

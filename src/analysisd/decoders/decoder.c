@@ -86,6 +86,12 @@ void DecodeEvent(Eventinfo *lf)
                         {
                             lf->log_tag = nnode->name;
                         }
+
+                        /* Setting the type */
+                        if(nnode->type)
+                        {
+                            lf->type = nnode->type;
+                        }
                         break;
                     }
                 }

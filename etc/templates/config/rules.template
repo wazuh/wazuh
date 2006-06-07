@@ -15,6 +15,7 @@
     <include>ids_rules.xml</include>
     <include>squid_rules.xml</include>
     <include>firewall_rules.xml</include>
+    <include>netscreenfw_rules.xml</include>
     <include>postfix_rules.xml</include>
     <include>sendmail_rules.xml</include>
     <include>imapd_rules.xml</include>
