@@ -437,23 +437,23 @@
   <prematch>^\w+: NetScreen device_id</prematch>
 </decoder>  
 
-<decoder name="netscreen-traffic">
+<decoder name="netscreenfw-traffic">
   <parent>netscreenfw</parent>
   <type>firewall</type>
   <prematch>system-notification-00257(traffic): </prematch>
-  <regex> proto=(\w+) \.+ action=(\w+) \.+ src=(\S+) </regex>
+  <regex> proto=(\w+) \.+action=(\w+) \.+src=(\S+) </regex>
   <regex>dst=(\S+) src_port=(\d+) dst_port=(\d+)</regex>
   <order>protocol, action, srcip, dstip, srcport, dstport</order>
 </decoder>
 
-<decoder name="netscreen-critical">
+<decoder name="netscreenfw-critical">
   <parent>netscreenfw</parent>
   <prematch>system-critical-\.+ from </prematch>
-  <regex>system-(\w+)-(\d+): \.+ from\.+(\d+.\d+\d+\d+)</regex>
+  <regex>system-(\w+)-(\d+): \.+ from\.+(\d+.\d+.\d+.\d+) </regex>
   <order>action, id, srcip</order>
 </decoder>
 
-<decoder name="netscreen-admin">
+<decoder name="netscreenfw-admin">
   <parent>netscreenfw</parent>
   <regex>]system-(\w+)-(\d+):</regex>
   <order>action, id</order>  

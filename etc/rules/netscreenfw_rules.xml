@@ -6,25 +6,25 @@
 
 <group name="netscreenfw,syslog">
   <rule id="3700" level="0">
-    <match>netscreenfw</match>
+    <decoded_as>netscreenfw</decoded_as>
     <description>Grouping for the Netscreen Firewall rules</description>
   </rule>
 
   <rule id="3701" level="3">
     <if_sid>3700</if_sid>
-    <action>^notification$</action>
+    <action>notification</action>
     <description>Netscreen notification message.</description>
   </rule>
 
   <rule id="3702" level="4">
     <if_sid>3700</if_sid>
-    <action>^warning$</action>
+    <action>warning</action>
     <description>Netscreen warning message.</description>
   </rule>
 
   <rule id="3703" level="5">
     <if_sid>3700</if_sid>
-    <action>^critical$</action>
+    <action>critical</action>
     <description>Netscreen critical message.</description>
   </rule>
   
