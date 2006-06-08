@@ -76,7 +76,8 @@ void DecodeEvent(Eventinfo *lf)
 
                 
                 /* If we have a pre match and it matches, keep
-                 * going. If we don't have a pre match, keep going too.
+                 * going. If we don't have a prematch, stop
+                 * and go for the regexes.
                  */
                 if(nnode->prematch)
                 {     
@@ -102,48 +103,70 @@ void DecodeEvent(Eventinfo *lf)
                 nnode = NULL;
             }
 
+            /* Nothing matched */
             if(!nnode)
                 return;
 
 
             /* Getting the regex */
-            if(nnode->regex)
+            while(node)
             {
-                int i = 0;
+                if(nnode->regex)
+                {
+                    int i = 0;
 
-                /* If Regex does not match, return */
-                if(!OSRegex_Execute(lf->log, nnode->regex))
-                {
-                    return;
-                }
-               
-                while(nnode->regex->sub_strings[i])
-                {
-                    
-                    if(nnode->order[i])
+                    /* If Regex does not match, return */
+                    if(!OSRegex_Execute(lf->log, nnode->regex))
                     {
-                        nnode->order[i](lf, nnode->regex->sub_strings[i]);
-                        nnode->regex->sub_strings[i] = NULL;
-                        i++;
-                        continue;
+                        if(nnode->get_next)
+                        {
+                            node = node->next;
+                            nnode = node->plugin;        
+                            continue;
+                        }
+                        return;
                     }
 
-                    /* We do not free any memory used above */
-                    os_free(nnode->regex->sub_strings[i]);
-                    nnode->regex->sub_strings[i] = NULL;
-                    i++;
+                    while(nnode->regex->sub_strings[i])
+                    {
+                        if(nnode->order[i])
+                        {
+                            nnode->order[i](lf, nnode->regex->sub_strings[i]);
+                            nnode->regex->sub_strings[i] = NULL;
+                            i++;
+                            continue;
+                        }
+
+                        /* We do not free any memory used above */
+                        os_free(nnode->regex->sub_strings[i]);
+                        nnode->regex->sub_strings[i] = NULL;
+                        i++;
+                    }
+
+                    /* If we have a next regex, try getting it */
+                    if(nnode->get_next)
+                    {
+                        node = node->next;
+                        nnode = node->plugin;
+                        continue;
+                    }
+                    else
+                    {
+                        /* Checking if the FTS is set */
+                        if(nnode->fts)
+                        {
+                            lf->fts = nnode->fts;
+                        }
+
+                        break;
+                    }
                 }
+
+                /* If we don't have a regex, we may leave now */
+                return;
             }
 
-
-            /* Checking if the FTS is set */
-            if(nnode->fts)
-            {
-                lf->fts = nnode->fts;
-            }
-
-
-            /* Matched  */
+            /* ok to return  */
             return;         
         }
 

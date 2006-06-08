@@ -369,7 +369,7 @@
     DPT=22 WINDOW=8192 RES=0x00 ACK URGP=0     
   -->
         
-<decoder name="iptables">
+<decoder name="iptables-2.6">
    <type>firewall</type>
    <prematch>^kernel: [\d+.\d+] \S+ IN=</prematch>
    <regex>^kernel: [\d+.\d+] (\S+) \.+ SRC=(\S+) DST=(\S+) \.+ </regex>

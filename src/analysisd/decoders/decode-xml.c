@@ -136,6 +136,7 @@ void ReadDecodeXML(char *file)
         pi->prematch = NULL;
         pi->regex = NULL;
         pi->use_own_name = 0;
+        pi->get_next = 0;
         
         regex = NULL;
         prematch = NULL;
@@ -377,15 +378,13 @@ void ReadDecodeXML(char *file)
         /* Prematch must be set */
         if(!prematch && !pi->parent)
         {
-            ErrorExit(DECODE_NOPREMATCH, ARGV0, pi->name);
+            ErrorExit(DECODE_NOPRE, ARGV0, pi->name);
         }
 
         /* If pi->regex is not set, fts must not be set too */
-        if(!regex && (pi->fts || pi->order))
+        if((!regex && (pi->fts || pi->order)) || (regex && !pi->order))
         {
-            ErrorExit("%s: No regex specified for '%s'. You "
-                      "can't specify the fts or order", 
-                      ARGV0, pi->name);
+            ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
         }
         
 
@@ -421,7 +420,10 @@ void ReadDecodeXML(char *file)
         }
         
         /* Adding plugin to the list */
-        OS_AddPlugin(pi);
+        if(!OS_AddPlugin(pi))
+        {
+            ErrorExit(DECODER_ERROR, ARGV0);        
+        }
 
         i++;
     } /* while (node[i]) */

@@ -23,6 +23,7 @@
 /* Plugin structure */
 typedef struct
 {
+    int get_next;
     int type;
     int fts;
     int use_own_name;
@@ -48,7 +49,7 @@ typedef struct _PluginNode
  * list and to get the first plugin.
  */
 void OS_CreatePluginList();
-void OS_AddPlugin(PluginInfo *pi);
+int OS_AddPlugin(PluginInfo *pi);
 PluginNode *OS_GetFirstPlugin();
 
 

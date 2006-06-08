@@ -102,7 +102,6 @@
 
 /* Analysisd */
 #define FTS_LIST_ERROR  "%s(1260): Error initiating FTS list"
-#define DECODE_NOPREMATCH   "%s(1270): No 'prematch' found in decoder '%s'"
 #define CRAFTED_IP      "%s(1271): Invalid IP Address '%s'. Possible attack."
 #define CRAFTED_USER    "%s(1272): Invalid username '%s'. Possible attack."
 #define INVALID_CAT     "%s(1273): Invalid category '%s' chosen."
@@ -169,6 +168,16 @@
 /* Mail errors */
 #define INVALID_SMTP    "%s(1501): Invalid SMTP Server: %s"
 #define INVALID_MAIL    "%s(1502): Invalid Email Address: %s"
+
+/* Decoders */
+#define PPLUGIN_INV     "%s(2101): Parent decoder name invalid: '%s'"
+#define PDUP_INV        "%s(2102): Duplicated decoder with prematch: '%s'"
+#define PDUPFTS_INV     "%s(2103): Duplicated decoder with fts set: '%s'"
+#define DUP_INV         "%s(2104): Invalid duplicated decoder: '%s'"
+#define DEC_PLUGIN_ERR  "%s(2105): Error loading decoder options."
+#define DECODER_ERROR   "%s(2106): Error adding decoder plugin."
+#define DEC_REGEX_ERROR "%s(2107): Decoder configuration error: '%s'"
+#define DECODE_NOPRE    "%s(2108): No 'prematch' found in decoder: '%s'"
 
 /* Verbose messages */
 #define STARTUP_MSG	"%s: Started (pid: %d)."
