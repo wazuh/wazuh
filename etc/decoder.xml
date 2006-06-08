@@ -135,7 +135,7 @@
 
 <decoder name="telnetd-ip">
   <parent>telnetd</parent>
-  <regex>from (\d+.\d+.\d+.\d+)$</regex>
+  <regex>from (\d+.\d+.\d+.\d+)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -163,7 +163,7 @@
 
 <decoder name="smbd-ip">
   <parent>smbd</parent>
-  <regex> from \((\d+.\d+.\d+.\d+)\)$</regex>
+  <regex> from \((\d+.\d+.\d+.\d+)\)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -288,7 +288,23 @@
 </decoder>
 
 
-  
+<!-- FTPD decoder (Solaris).
+  - Examples:
+  - ftpd[811166]: refused connect from 88.225.42.182
+  - in.ftpd[18561]: [ID 484914 daemon.notice] gethostbyaddr: nameservices.net. != 216.117.134.168
+  - ftpd[31918]: FTPD: EXPORT file local , remote
+  -->
+<decoder name="ftpd">
+  <prematch>^ftpd[\d+]: |^in.ftpd[\d+]: </prematch>
+</decoder>
+
+<decoder name="ftpd-ip">
+  <parent>ftpd</parent>
+  <regex>FROM (\d+.\d+.\d+.\d+), |from (\d+.\d+.\d+.\d+)</regex>
+  <order>srcip</order>
+</decoder>
+
+
 <!-- Imapd decoder.
   - Will extract the username/srcip
   - Examples:
@@ -440,7 +456,7 @@
 <decoder name="netscreenfw-traffic">
   <parent>netscreenfw</parent>
   <type>firewall</type>
-  <prematch>system-notification-00257(traffic): </prematch>
+  <prematch>system-notification-00257\(traffic\): </prematch>
   <regex> proto=(\w+) \.+action=(\w+) \.+src=(\S+) </regex>
   <regex>dst=(\S+) src_port=(\d+) dst_port=(\d+)</regex>
   <order>protocol, action, srcip, dstip, srcport, dstport</order>

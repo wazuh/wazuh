@@ -18,7 +18,7 @@ int main(int argc,char **argv)
     }
 
     printf("for MATCH: ");	
-    if(OS_Match(argv[1],argv[2]))
+    if(OS_Match2(argv[1],argv[2]))
         printf("TRUE\n");
     else
         printf("FALSE\n");

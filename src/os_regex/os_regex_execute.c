@@ -277,7 +277,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                         /* If next_pt == \0, return the r_code */
                         if(*next_pt == '\0')
                         {
-                            return(r_code);
+                            continue;
                         }
 
                             
@@ -336,17 +336,17 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                         next_pt++;
                     }
 
-                    if(*next_pt == '\0')
-                    {
-                        return(1);
-                    }
-
                     _regex_matched = 1;
                 }
                 
                 r_code = 1;
 
                 continue;
+            }
+            
+            else if((*(pt+3) == '\0') && (_regex_matched == 1)&&(r_code == 1))
+            {
+                return(r_code);
             }
             
             /* If we didn't match regex, but _regex_matched == 1, jump

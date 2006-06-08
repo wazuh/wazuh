@@ -125,26 +125,6 @@
   
 
 
-<!-- FTP messages -->
-<group name="syslog,ftp">
-  <rule id="601" level="5">
-    <match>FTP LOGIN REFUSED</match>
-    <description>FTP Connection blocked by TCP Wrappers (or attempt to use an anonymous user on a FTP)</description>
-  </rule>
-
-  <rule id="602" level="0">
-    <regex>ftpd\.+of \.+created</regex>
-    <description>User created a direcotory via FTP</description>
-  </rule>
-  
-   <rule id="603" level="0">
-    <regex>ftpd\.+of \.+ deleted</regex>
-    <description>User deleted a direcotory via FTP</description>
-  </rule>
-</group> <!-- SYSLOG,FTP -->
-
-
-
 <!-- Smartd messages -->
 <group name="syslog,smartd">
   <rule id="700" level="0" noalert="1">
