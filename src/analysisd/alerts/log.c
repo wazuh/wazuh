@@ -69,7 +69,7 @@ void OS_Log(Eventinfo *lf)
     /* Writting to the alert log file */
     fprintf(_aflog,
             "** Alert %d.%ld:%s\n"
-            "%d %s %02d %s %s\nRule: %d (level %d) -> '%s'\n"
+            "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'\n"
             "Src IP: %s\nUser: %s\n%s\n",
             lf->time,
             ftell(_aflog),
@@ -78,6 +78,8 @@ void OS_Log(Eventinfo *lf)
             lf->mon,
             lf->day,
             lf->hour,
+            lf->hostname?lf->hostname:"",
+            lf->hostname?"->":"",
             lf->location,
             lf->generated_rule->sigid,
             lf->generated_rule->level,

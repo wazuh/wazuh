@@ -74,7 +74,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
      * event location is from here.
      */         
     if((ar->location & AS_ONLY) ||
-      ((ar->location & REMOTE_AGENT) && (index(lf->location, '>') == NULL)) )
+      ((ar->location & REMOTE_AGENT) && (lf->location[0] != '(')) )
     {
         if(!(Config.ar & LOCAL_AR))
             return;

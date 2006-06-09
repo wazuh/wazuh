@@ -112,12 +112,27 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         if(*pieces[1] == ' ')
             pieces[1]++;
        
+
+        /* Hostname */
+        lf->hostname = pieces[1];
+        
+
         /* Extracting the hostname */ 
         while(*pieces[1] != ' ')
         {
             pieces[1]++;
         }
+        
 
+        /* Ending the hostname string */
+        pieces[1][0] = '\0';
+        
+
+        /* If it comes from a remote agent, ignore hostname */
+        if(strchr(pieces[0], '>') != NULL)
+            lf->hostname = NULL;
+
+        
         /* Moving pieces[1] to the beginning of the log message */
         pieces[1]++;
     }
@@ -255,7 +270,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
     /* location  */        
     lf->location = pieces[0];
-
+    
 
     /* Setting up the event data */
     lf->time = c_time;

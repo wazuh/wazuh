@@ -100,6 +100,9 @@ void DecodeEvent(Eventinfo *lf)
                     }
                     if((cmatch = OSRegex_Execute(llog, nnode->prematch)))
                     {
+                        if(*cmatch != '\0')
+                            cmatch++;
+                            
                         if(nnode->use_own_name)
                         {
                             lf->log_tag = nnode->name;
@@ -176,6 +179,10 @@ void DecodeEvent(Eventinfo *lf)
                         }
                         return;
                     }
+
+                    /* Fixing next pointer */
+                    if(*regex_prev != '\0')
+                        regex_prev++;
 
                     while(nnode->regex->sub_strings[i])
                     {

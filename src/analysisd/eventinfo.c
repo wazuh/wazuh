@@ -266,6 +266,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->log_tag = NULL;
     lf->log = NULL;
     lf->group = NULL;
+    lf->hostname = NULL;
 
     lf->srcip = NULL;
     lf->dstip = NULL;

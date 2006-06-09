@@ -29,6 +29,7 @@ typedef struct _Eventinfo
     char *log;
     char *location;
     char *group;
+    char *hostname;
 
     /* A tag for this specific event */
     char *log_tag;

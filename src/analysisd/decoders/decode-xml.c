@@ -239,6 +239,22 @@ void ReadDecodeXML(char *file)
             /* Getting the pre match */
             else if(strcasecmp(elements[j]->element,xml_prematch)==0)
             {
+                pi->prematch_offset = ReadDecodeAttrs(
+                                      elements[j]->attributes,
+                                      elements[j]->values);
+
+                if(pi->prematch_offset & AFTER_ERROR)
+                {
+                    ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+                }
+
+                /* Only the first regex entry may have an offset */
+                if(prematch && pi->prematch_offset)
+                {
+                    merror(DUP_REGEX, ARGV0, pi->name);
+                    ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+                }
+
                 prematch =
                     _loadmemory(prematch,
                             elements[j]->content);
@@ -467,7 +483,7 @@ void ReadDecodeXML(char *file)
             if(!pi->parent)
             {
                 pi->regex_offset = 0;
-                pi->regex_offset |= AFTER_PARENT;
+                pi->regex_offset|= AFTER_PARENT;
             }
             else if(!prematch)
             {

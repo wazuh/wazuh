@@ -26,6 +26,8 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p)
 {
     int i = 0;
     char logs[OS_MAXSTR +1];
+    char *subject_host;
+    
     MailMsg *mail;
     alert_data *al_data;
 
@@ -58,8 +60,22 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p)
     }
 
     /* Subject */
-    snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT, al_data->level);
+    subject_host = strchr(al_data->location, '>');
+    if(subject_host)
+    {
+        subject_host--;
+        *subject_host = '\0';
+    }
+    snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT, 
+                                             al_data->location,
+                                             al_data->level);
 
+    /* fixing subject back */
+    if(subject_host)
+    {
+        *subject_host = '-';
+    }
+    
     /* Body */
     snprintf(mail->body, BODY_SIZE -1, MAIL_BODY,
             al_data->date,

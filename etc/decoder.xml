@@ -33,15 +33,15 @@
 
 <decoder name="pam-host-user">
   <parent>pam</parent>
-  <prematch>rhost=\S+ user=\S+</prematch>
-  <regex>rhost=(\S+) user=(\S+)$</regex>
+  <prematch offset="after_parent">rhost=\S+ user=\S+</prematch>
+  <regex offset="after_parent">rhost=(\S+) user=(\S+)$</regex>
   <order>srcip, user</order>
 </decoder>
 
 <decoder name="pam-user">
   <parent>pam</parent>
-  <prematch>^\w+(pam_unix)[\d+]: session opened</prematch>
-  <regex>for user (\S+) </regex>
+  <prematch offset="after_parent">^session opened </prematch>
+  <regex offset="after_prematch">^for user (\S+) </regex>
   <order>user</order>
 </decoder>  
 
@@ -135,7 +135,7 @@
 
 <decoder name="telnetd-ip">
   <parent>telnetd</parent>
-  <regex>from (\d+.\d+.\d+.\d+)</regex>
+  <regex offset="after_parent">from (\d+.\d+.\d+.\d+)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -156,14 +156,14 @@
 
 <decoder name="smbd-user">
   <parent>smbd</parent>
-  <prematch>User name:</prematch>
-  <regex>User name: (\S+).</regex>
+  <prematch offset="after_parent">User name:</prematch>
+  <regex offset="after_prematch">^ (\S+).</regex>
   <order>user</order>
 </decoder>
 
 <decoder name="smbd-ip">
   <parent>smbd</parent>
-  <regex> from \((\d+.\d+.\d+.\d+)\)</regex>
+  <regex offset="after_parent"> from \((\d+.\d+.\d+.\d+)\)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -282,8 +282,8 @@
   "211.100.27.101"
   -->
 <decoder name="vsftpd">
-  <prematch>^\w\w\w \w\w\w\s+\d+ \S+ \d+ [pid \d+]</prematch>
-  <regex>Client "(\d+.\d+.\d+.\d+)"</regex>
+  <prematch>^\w\w\w \w\w\w\s+\d+ \S+ \d+ [pid \d+] </prematch>
+  <regex offset="after_prematch">Client "(\d+.\d+.\d+.\d+)"</regex>
   <order>srcip</order>
 </decoder>
 
@@ -316,7 +316,7 @@
   -->
 <decoder name="imapd">
   <prematch>^imapd[\d+]: </prematch>
-  <regex>user=(\S+) \.+ [(\d+.\d+.\d+.\d+)]</regex>    
+  <regex offset="after_prematch">user=(\S+) \.+ [(\d+.\d+.\d+.\d+)]</regex>    
   <order>user,srcip</order>
 </decoder>
 
@@ -328,7 +328,7 @@
  -->           
 <decoder name="named">
   <prematch>^named[\d+]: </prematch>
-  <regex> from [(\d+.\d+.\d+.\d+)].</regex>
+  <regex offset="after_prematch"> from [(\d+.\d+.\d+.\d+)].</regex>
   <order>srcip</order>
 </decoder>
 
@@ -348,8 +348,8 @@
 <decoder name="postfix-reject">
   <use_own_name>true</use_own_name>
   <parent>postfix</parent>  
-  <prematch>NOQUEUE: reject: RCPT from </prematch>
-  <regex>NOQUEUE: reject: RCPT from \S+[(\d+.\d+.\d+.\d+)]: (\d+) </regex>
+  <prematch offset="after_parent">^NOQUEUE: reject: RCPT from </prematch>
+  <regex offset="after_prematch">[(\d+.\d+.\d+.\d+)]: (\d+) </regex>
   <order>srcip,id</order>
 </decoder>
 
@@ -362,10 +362,9 @@
   - relay=dsl.static81215198185.ttnet.net.tr [81.215.198.185] (may be forged), reject=553 5.1.8 
   - <rtreter@qffff.com>... Domain of sender address rtreter@qffff.com does not exist
  -->
-
 <decoder name="sendmail-reject">
   <prematch>^sendmail[\d+]: |^sm-mta[\d+]: </prematch>
-  <regex>relay=\S+ [(\d+.\d+.\d+.\d+)] </regex>
+  <regex offset="after_prematch">relay=\S+ [(\d+.\d+.\d+.\d+)]</regex>
   <order>srcip</order>
 </decoder>  
 
@@ -384,20 +383,12 @@
     LEN=52 TOS=0x10 PREC=0x00 TTL=64 ID=49546 DF PROTO=TCP SPT=43068 
     DPT=22 WINDOW=8192 RES=0x00 ACK URGP=0     
   -->
-        
-<decoder name="iptables-2.6">
-   <type>firewall</type>
-   <prematch>^kernel: [\d+.\d+] \S+ IN=</prematch>
-   <regex>^kernel: [\d+.\d+] (\S+) \.+ SRC=(\S+) DST=(\S+) \.+ </regex>
-   <regex>PROTO=(\w+) SPT=(\d+) DPT=(\d+) </regex>
-   <order>action,srcip,dstip,protocol,srcport,dstport</order>
-</decoder>
-
 <decoder name="iptables">
    <type>firewall</type>
-   <prematch>^kernel: \S+ IN=\S* OUT=</prematch>
-   <regex>^kernel: (\S+) \.+ SRC=(\S+) DST=(\S+) \.+ PROTO=(\w+) </regex>
-   <regex>SPT=(\d+) DPT=(\d+) </regex>
+   <prematch>^kernel: [\d+.\d+] \S+ IN=|^kernel: \S+ IN=</prematch>
+   
+   <regex offset="after_prematch"> SRC=(\S+) DST=(\S+) \.+ </regex>
+   <regex>PROTO=(\w+) SPT=(\d+) DPT=(\d+) </regex>
    <order>action,srcip,dstip,protocol,srcport,dstport</order>
 </decoder>
                
@@ -416,7 +407,7 @@
 <decoder name="ipfilter">
    <type>firewall</type>
    <prematch>^ipmon[\d+]: </prematch>
-   <regex> (\w) (\d+.\d+.\d+.\d+),(\d+) -> </regex>
+   <regex offset="after_prematch"> (\w) (\d+.\d+.\d+.\d+),(\d+) -> </regex>
    <regex>(\d+.\d+.\d+.\d+),(\d+) PR (\w+) </regex>
    <order>action,srcip,srcport,dstip,dstport,protocol</order>
 </decoder>
@@ -500,8 +491,10 @@
   -->
 <decoder name="snort">
    <type>ids</type>
-   <prematch>^snort: [\d+:\d+:\d+] |^snort[\d+]: [\d+:\d+:\d+] |^[**] [\d+:\d+:\d+] </prematch>
-   <regex>^\S+ [(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+)\p*\d* -> (\d+.\d+.\d+.\d+)\p*</regex>
+   <prematch>^snort: [\d+:\d+:\d+] |^snort[\d+]: [\d+:\d+:\d+] |</prematch>
+   <prematch>^[**] [\d+:\d+:\d+] </prematch>
+   <regex>^\S+ [(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+)\p*\d* -> </regex>
+   <regex>(\d+.\d+.\d+.\d+)</regex>
    <order>id,srcip,dstip</order>
    <fts>name,id,srcip,dstip</fts>
    <ftscomment>First time Snort rule fired</ftscomment>
@@ -523,8 +516,10 @@
 
 <decoder name="apache-errorlog-ip">
   <type>web-log</type>
-  <prematch>^[\w+] [client</prematch>
-  <regex>^[\w+] [client (\d+.\d+.\d+.\d+)] </regex>
+  <parent>apache-errorlog</parent>
+  
+  <prematch offset="after_parent">^[client</prematch>
+  <regex offset="after_prematch">^ (\d+.\d+.\d+.\d+)] </regex>
   <order>srcip</order>
 </decoder> 
 
