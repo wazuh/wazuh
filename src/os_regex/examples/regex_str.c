@@ -32,14 +32,17 @@ int main(int argc,char **argv)
      */
     if(OSRegex_Compile(argv[1], &reg, OS_RETURN_SUBSTRING))
     {
+        char *retv;
         /* If the execution succeeds, the substrings will be 
          * at reg.sub_strings
          */
-        if(OSRegex_Execute(argv[2], &reg))
+        if((retv = OSRegex_Execute(argv[2], &reg)))
         {
             int sub_size = 0;
             r_code = 1;
 
+            /* next pt */
+            printf("next pt: '%s'\n", retv);
             /* Assigning reg.sub_strings to ret */
             ret = reg.sub_strings;
             

@@ -83,8 +83,21 @@ chown -R root:${GROUP} ${DIR}/etc
 
 ls /etc/localtime > /dev/null 2>&1
 if [ $? = 0 ]; then
-        cp -pL /etc/localtime ${DIR}/etc/;
+        cp -p /etc/localtime ${DIR}/etc/;
 fi
+
+# Solaris Needs some extra files
+if [ "$UNAME" = "SunOS" ]; then
+    mkdir -p ${DIR}/usr/share/lib/zoneinfo/
+    chmod -R 555 ${DIR}/usr/
+    cp -p /usr/share/lib/zoneinfo/* ${DIR}/usr/share/lib/zoneinfo/
+fi    
+
+ls /etc/TIMEZONE > /dev/null 2>&1
+if [ $? = 0 ]; then
+    cp -p /etc/TIMEZONE ${DIR}/etc/;
+fi
+            
         
 
 # For the /etc/shared

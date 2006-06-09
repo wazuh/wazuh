@@ -19,19 +19,20 @@
 
 
 /** Internal prototypes **/
-int _OS_Regex(char *pattern, char *str, char **prts_closure,
+char *_OS_Regex(char *pattern, char *str, char **prts_closure,
               char **prts_str, int flags);
 
 
 
-/** int OSRegex_Execute(char *str, OSRegex *reg) v0.1
+/** char *OSRegex_Execute(char *str, OSRegex *reg) v0.1
  * Compare an already compiled regular expression with
  * a not NULL string.
- * Returns 1 on success or 0 on error.
+ * Returns the end of the string on success or NULL on error.
  * The error code is set on reg->error.
  */
-int OSRegex_Execute(char *str, OSRegex *reg)
+char *OSRegex_Execute(char *str, OSRegex *reg)
 {
+    char *ret;
     int i = 0;
     
     /* The string can't be NULL */
@@ -57,8 +58,8 @@ int OSRegex_Execute(char *str, OSRegex *reg)
                 j++;
             }
 
-            if(_OS_Regex(reg->patterns[i], str, reg->prts_closure[i],
-                        reg->prts_str[i], reg->flags[i]))
+            if((ret = _OS_Regex(reg->patterns[i], str, reg->prts_closure[i],
+                        reg->prts_str[i], reg->flags[i])))
             {
                 j = 0;
 
@@ -73,7 +74,7 @@ int OSRegex_Execute(char *str, OSRegex *reg)
                     if(!reg->sub_strings[k])
                     {
                         OSRegex_FreeSubStrings(reg);
-                        return(0);
+                        return(NULL);
                     }
                     
                     /* Set the next one to null */
@@ -85,7 +86,7 @@ int OSRegex_Execute(char *str, OSRegex *reg)
                     j+=2;
                 }
 
-                return(1);
+                return(ret);
             }
             i++;
         }
@@ -99,14 +100,14 @@ int OSRegex_Execute(char *str, OSRegex *reg)
     /* Looping on all sub patterns */
     while(reg->patterns[i])
     {
-        if(_OS_Regex(reg->patterns[i], str, NULL, NULL, reg->flags[i])) 
+        if((ret = _OS_Regex(reg->patterns[i], str, NULL, NULL, reg->flags[i]))) 
         {
-            return(1);
+            return(ret);
         }
         i++;
     }
 
-    return(0);
+    return(NULL);
 }    
 
 #define PRTS(x) ((prts(*x) && x++) || 1)
@@ -119,10 +120,10 @@ int OSRegex_Execute(char *str, OSRegex *reg)
  * If prts_closure is set, the parenthesis locations will be
  * written on prts_str (which must not be NULL)
  */              
-int _OS_Regex(char *pattern, char *str, char **prts_closure, 
+char *_OS_Regex(char *pattern, char *str, char **prts_closure, 
               char **prts_str, int flags)
 {
-    int r_code = 0;
+    char *r_code = NULL;
     
     int ok_here;
     int _regex_matched = 0;
@@ -192,7 +193,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                          */
                         st_error = st;
                     }
-                    r_code = 1;
+                    r_code = st;
                     continue;
                 }
                 
@@ -339,13 +340,13 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                     _regex_matched = 1;
                 }
                 
-                r_code = 1;
-
+                r_code = st;
                 continue;
             }
             
-            else if((*(pt+3) == '\0') && (_regex_matched == 1)&&(r_code == 1))
+            else if((*(pt+3) == '\0') && (_regex_matched == 1)&&(r_code))
             {
+                r_code = st;
                 return(r_code);
             }
             
@@ -364,7 +365,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
             {
                 pt+=3;
                 st--;
-                r_code = 1;
+                r_code = st;
                 _regex_matched = 0;
                 continue;
             }
@@ -383,7 +384,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                  */
                 st_error = st;
             }
-            r_code = 1;
+            r_code = st;
             continue;
         }
 
@@ -421,7 +422,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                 /* If we get an error and the "^" option is
                  * set, we can return "not matched" in here.
                  */
-                return(0);
+                return(NULL);
             }
             else if(st_error)
             {
@@ -429,7 +430,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
                 st_error = NULL;
             }
             pt = pattern;
-            r_code = 0;
+            r_code = NULL;
         
     }while(*(++st) != '\0');
 
@@ -483,7 +484,7 @@ int _OS_Regex(char *pattern, char *str, char **prts_closure,
         return(r_code);
     }
    
-    return(0);
+    return(NULL);
 }
 
 

@@ -73,13 +73,13 @@ typedef struct _OSMatch
 int OSRegex_Compile(char *pattern, OSRegex *reg, int flags);
        
 
-/** int OSRegex_Execute(char *str, OSRegex *reg) v0.1
+/** char *OSRegex_Execute(char *str, OSRegex *reg) v0.1
  * Compare an already compiled regular expression with
  * a not NULL string.
- * Returns 1 on success or 0 on error.
+ * Returns end of str on success or NULL on error.
  * The error code is set on reg->error.
  */
-int OSRegex_Execute(char *str, OSRegex *reg);
+char *OSRegex_Execute(char *str, OSRegex *reg);
 
 
 /** int OSRegex_FreePattern(SRegex *reg) v0.1

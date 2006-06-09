@@ -178,6 +178,9 @@
 #define DECODER_ERROR   "%s(2106): Error adding decoder plugin."
 #define DEC_REGEX_ERROR "%s(2107): Decoder configuration error: '%s'"
 #define DECODE_NOPRE    "%s(2108): No 'prematch' found in decoder: '%s'"
+#define DUP_REGEX       "%s(2109): Duplicated offsets for same regex: '%s'"
+#define INV_OFFSET      "%s(2120): Invalid offset value: '%s'"
+#define INV_ATTR        "%s(2121): Invalid decoder attribute: '%s'"
 
 /* Verbose messages */
 #define STARTUP_MSG	"%s: Started (pid: %d)."

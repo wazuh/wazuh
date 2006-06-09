@@ -43,6 +43,7 @@ PluginNode *OS_GetFirstPlugin()
 PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
 {
     PluginNode *tmp_node = s_node;
+    int rm_f = 0;
     
     if(tmp_node)
     {
@@ -61,6 +62,11 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
             /* Checking for common names */
             if(strcmp(tmp_node->plugin->name,pi->name) == 0)
             {
+                if(tmp_node->plugin->prematch && pi->regex_offset)
+                {
+                    rm_f = 1;                    
+                }
+                
                 /* Multi-regexes patterns cannot have prematch */
                 if(pi->prematch)
                 {
@@ -75,9 +81,6 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
                     return(NULL);
                 }
 
-                /* So here, instead of adding a new plugin,
-                 * we just duplicate the regex.
-                 */
                 if(tmp_node->plugin->regex && pi->regex)
                 {
                     tmp_node->plugin->get_next = 1;
@@ -91,6 +94,13 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
             
         }while(tmp_node->next && (tmp_node = tmp_node->next));
         
+        /* Must have a prematch set */
+        if(!rm_f && (pi->regex_offset & AFTER_PREVREGEX))
+        {
+            merror(INV_OFFSET, ARGV0, pi->name);
+            return(NULL);
+        }
+        
         tmp_node->next = new_node;
         
         new_node->next = NULL;
@@ -100,8 +110,15 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
     
     else
     {
+        /* Must have a previous regex set */
+        if(pi->regex_offset & AFTER_PREVREGEX)
+        {
+            merror(INV_OFFSET, ARGV0, pi->name);
+            return(NULL);
+        }
+
         tmp_node = (PluginNode *)calloc(1, sizeof(PluginNode));
-        
+
         if(tmp_node == NULL)
         {
             ErrorExit(MEM_ERROR,ARGV0);

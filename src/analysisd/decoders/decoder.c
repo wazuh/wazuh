@@ -1,6 +1,6 @@
-/*   $OSSEC, decoder.c, v0.1, 2005/06/21, Daniel B. Cid$   */
+/*   $OSSEC, decoder.c, 2005/06/21, Daniel B. Cid$   */
 
-/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -13,14 +13,10 @@
 /* v0.1: 2005/06/21
  */
  
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
+#include "shared.h"
 #include "os_regex/os_regex.h"
 #include "os_xml/os_xml.h"
 
-#include "shared.h"
 
 #include "eventinfo.h"
 #include "decoder.h"
@@ -37,7 +33,13 @@ void DecodeEvent(Eventinfo *lf)
     PluginNode *child_node;
     PluginInfo *nnode;
 
+    char *llog;
+    char *pmatch;
+    char *cmatch;
+    char *regex_prev = NULL;
+
     node = OS_GetFirstPlugin();
+
 
     /* Return if no node...
      * This shouldn't happen here anyways
@@ -54,9 +56,13 @@ void DecodeEvent(Eventinfo *lf)
 
             
             /* If prematch fails, go to the next plugin in the list */
-            if(!nnode->prematch || !OSRegex_Execute(lf->log,nnode->prematch))
+            if(!(pmatch = OSRegex_Execute(lf->log,nnode->prematch)))
                 continue;
 
+            /* Next character */
+            if(*pmatch != '\0')
+                pmatch++;
+                
             lf->log_tag = nnode->name;
 
             child_node = node->child;
@@ -80,8 +86,19 @@ void DecodeEvent(Eventinfo *lf)
                  * and go for the regexes.
                  */
                 if(nnode->prematch)
-                {     
-                    if(OSRegex_Execute(lf->log,nnode->prematch))
+                {
+                    char *llog;
+                    
+                    /* If we have an offset set, use it */     
+                    if(nnode->prematch_offset & AFTER_PARENT)
+                    {
+                        llog = pmatch;
+                    }
+                    else
+                    {
+                        llog = lf->log;
+                    }
+                    if((cmatch = OSRegex_Execute(llog, nnode->prematch)))
                     {
                         if(nnode->use_own_name)
                         {
@@ -93,11 +110,14 @@ void DecodeEvent(Eventinfo *lf)
                         {
                             lf->type = nnode->type;
                         }
+                        
                         break;
                     }
                 }
                 else
+                {
                     break;
+                }
 
                 child_node = child_node->next;
                 nnode = NULL;
@@ -115,13 +135,43 @@ void DecodeEvent(Eventinfo *lf)
                 {
                     int i = 0;
 
+                    /* With regex we have multiple options
+                     * regarding the offset:
+                     * after the prematch,
+                     * after the parent,
+                     * after some previous regex,
+                     * or any offset
+                     */
+                    if(nnode->regex_offset)
+                    {
+                        if(nnode->regex_offset & AFTER_PARENT)
+                        {
+                            llog = pmatch;
+                        }
+                        else if(nnode->regex_offset & AFTER_PREMATCH)
+                        {
+                            llog = cmatch;
+                        }
+                        else if(nnode->regex_offset & AFTER_PREVREGEX)
+                        {
+                            if(!regex_prev)
+                                llog = cmatch;
+                            else
+                                llog = regex_prev;
+                        }
+                    }
+                    else
+                    {
+                        llog = lf->log;
+                    }
+                    
                     /* If Regex does not match, return */
-                    if(!OSRegex_Execute(lf->log, nnode->regex))
+                    if(!(regex_prev = OSRegex_Execute(llog, nnode->regex)))
                     {
                         if(nnode->get_next)
                         {
                             node = node->next;
-                            nnode = node->plugin;        
+                            nnode = node->plugin;
                             continue;
                         }
                         return;

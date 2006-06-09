@@ -31,6 +31,51 @@
 char *_loadmemory(char *at, char *str);
 
 
+/* Read attributes */
+int ReadDecodeAttrs(char **names, char **values)
+{
+    if(!names || !values)
+        return(0);
+
+    if(!names[0] || !values[0])
+    {
+        return(0);
+    }
+    
+    if(strcmp(names[0], "offset") == 0)
+    {
+        int offset = 0;
+        
+        /* Offsets can be: after_parent, after_prematch
+         * or after_regex.
+         */
+        if(strcmp(values[0],"after_parent") == 0)
+        {
+            offset |= AFTER_PARENT;
+        }
+        else if(strcmp(values[0],"after_prematch") == 0)
+        {
+            offset |= AFTER_PREMATCH;
+        }
+        else if(strcmp(values[0],"after_regex") == 0)
+        {
+            offset |= AFTER_PREVREGEX;
+        }
+        else
+        {
+            merror(INV_OFFSET, ARGV0, values[0]);
+            offset |= AFTER_ERROR;
+        }
+        
+        return(offset);
+    }
+
+    /* Invalid attribute */
+    merror(INV_ATTR, ARGV0, names[0]);
+    return(AFTER_ERROR);
+}
+
+
 /* ReaddecodeXML */
 void ReadDecodeXML(char *file)
 {
@@ -137,6 +182,8 @@ void ReadDecodeXML(char *file)
         pi->regex = NULL;
         pi->use_own_name = 0;
         pi->get_next = 0;
+        pi->regex_offset = 0;
+        pi->prematch_offset = 0;
         
         regex = NULL;
         prematch = NULL;
@@ -168,6 +215,21 @@ void ReadDecodeXML(char *file)
             /* Getting the regex */
             else if(strcasecmp(elements[j]->element,xml_regex) == 0)
             {
+                pi->regex_offset = ReadDecodeAttrs(elements[j]->attributes,
+                                                   elements[j]->values);
+                
+                if(pi->regex_offset & AFTER_ERROR)
+                {
+                    ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+                }
+                
+                /* Only the first regex entry may have an offset */ 
+                if(regex && pi->regex_offset)
+                {
+                    merror(DUP_REGEX, ARGV0, pi->name);
+                    ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+                }
+                
                 /* Assign regex */
                 regex =
                     _loadmemory(regex,
@@ -379,6 +441,7 @@ void ReadDecodeXML(char *file)
         if(!prematch && !pi->parent)
         {
             ErrorExit(DECODE_NOPRE, ARGV0, pi->name);
+            ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
         }
 
         /* If pi->regex is not set, fts must not be set too */
@@ -388,6 +451,62 @@ void ReadDecodeXML(char *file)
         }
         
 
+        /* For the offsets */
+        if(pi->regex_offset & AFTER_PARENT && !pi->parent)
+        {
+            merror(INV_OFFSET, ARGV0, "after_parent");
+            ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+        }
+        
+        if(pi->regex_offset & AFTER_PREMATCH)
+        {
+            /* If after_prematch is set, but rule have
+             * no parent, set AFTER_PARENT and unset
+             * pre_match.
+             */
+            if(!pi->parent)
+            {
+                pi->regex_offset = 0;
+                pi->regex_offset |= AFTER_PARENT;
+            }
+            else if(!prematch)
+            {
+                merror(INV_OFFSET, ARGV0, "after_prematch");
+                ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+            }
+        }
+        
+        /* For the after_regex offset */
+        if(pi->regex_offset & AFTER_PREVREGEX)
+        {
+            if(!pi->parent || !regex)
+            {
+                merror(INV_OFFSET, ARGV0, "after_regex");
+                ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+            }
+        }
+        
+
+        /* Checking the prematch offset */
+        if(pi->prematch_offset)
+        {
+            /* Only the after parent is allowed */
+            if(pi->prematch_offset & AFTER_PARENT)
+            {
+                if(!pi->parent)
+                {
+                    merror(INV_OFFSET, ARGV0, "after_parent");
+                    ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+
+                }
+            }
+            else
+            {
+                ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+            }
+        }
+
+        
         /* Compiling the regex/prematch */
         if(prematch)
         {

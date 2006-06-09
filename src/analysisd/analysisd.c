@@ -590,6 +590,9 @@ void OS_ReadMSG(int m_queue)
             /* Run the Decoder plugins */
             else
             {
+                /* Getting log size */
+                lf->size = strlen(lf->log);
+
                 DecodeEvent(lf);
             }
             
@@ -661,10 +664,6 @@ void OS_ReadMSG(int m_queue)
             DEBUG_MSG("%s: DEBUG: Checking the rules - %d ", ARGV0, lf->type);
 
             
-            /* Getting log size */
-            lf->size = strlen(lf->log);
-
-
             /* Looping all the rules */
             rulenode_pt = OS_GetFirstRule();
             if(!rulenode_pt) 

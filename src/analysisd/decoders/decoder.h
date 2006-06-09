@@ -19,14 +19,22 @@
 #include "eventinfo.h"
 #include "os_regex/os_regex.h"
 
+#define AFTER_PARENT    0x001   /* 1   */
+#define AFTER_PREMATCH  0x002   /* 2   */
+#define AFTER_PREVREGEX 0x004   /* 4   */ 
+#define AFTER_ERROR     0x010   
+
 
 /* Plugin structure */
 typedef struct
 {
-    int get_next;
-    int type;
+    u_int8_t get_next;
+    u_int8_t regex_offset;
+    u_int8_t prematch_offset;
+    u_int8_t type;
+    u_int8_t use_own_name;
+    
     int fts;
-    int use_own_name;
     char *parent;
     char *name;
     OSRegex *regex;
