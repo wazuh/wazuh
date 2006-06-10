@@ -165,6 +165,8 @@ void OS_Run(MailConfig *mail)
     int today = 0;		        
     int thishour = 0;
 
+    int n_errs = 0;
+
     file_queue *fileq;
 
 
@@ -273,15 +275,33 @@ void OS_Run(MailConfig *mail)
         while (childcount) 
         {
             int wp;
-            wp = waitpid((pid_t) -1, NULL, WNOHANG);
+            int p_status;
+            wp = waitpid((pid_t) -1, &p_status, WNOHANG);
             if (wp < 0)
+            {
                 merror(WAITPID_ERROR, ARGV0);  
+                n_errs++;
+            }
 
             /* if = 0, we still need to wait for the child process */    
             else if (wp == 0) 
                 break;
             else
+            {
+                if(p_status != 0)
+                {
+                    merror(SNDMAIL_ERROR,ARGV0,mail->smtpserver);
+                    n_errs++;
+                }
                 childcount--;
+            }
+
+            /* Too many errors */
+            if(n_errs > 6)
+            {
+                merror(SNDMAIL_ERROR,ARGV0,mail->smtpserver);
+                exit(1);
+            }
         }
             
     }
