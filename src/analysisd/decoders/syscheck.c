@@ -503,7 +503,7 @@ void DecodeSyscheck(Eventinfo *lf)
    
 
     /* checking if we need to check it in here */
-    if(syscheck_rule->alert_opts & DO_LOGALERT)
+    if(!(syscheck_rule->alert_opts & DO_LOGALERT))
         return;
         
          
