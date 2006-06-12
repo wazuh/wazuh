@@ -535,11 +535,12 @@
   -  5.211.112.6 - - [04/Feb/2003:16:17:30 -0500] "GET /mod_ssl:error: 
   -  192.168.2.190 - - [18/Jan/2006:13:10:06 -0500] "GET /xxx.html HTTP/1.1"
      200 1732
+  -  1.1.1.1 - username [18/Jan/2006:13:10:06 -0500] "GET /xxx.html HTTP/1.1"   
   -->
 <decoder name="web-accesslog">
   <type>web-log</type>
-  <prematch>^\d+.\d+.\d+.\d+ - - [</prematch>
-  <regex>^(\d+.\d+.\d+.\d+) - - [\S+ -\d+] </regex>
+  <prematch>^\d+.\d+.\d+.\d+ - </prematch>
+  <regex>^(\d+.\d+.\d+.\d+) - \S+ [\S+ -\d+] </regex>
   <regex>"\w+ (\S+) HTTP\S+ (\d+) </regex>
   <order>srcip,url,id</order>
 </decoder>
