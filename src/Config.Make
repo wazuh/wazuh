@@ -22,3 +22,4 @@ OS_CRYPTO = ${PT}os_crypto/os_crypto.a
 OS_SHARED = ${PT}shared/lib_shared.a
 OS_ROOTCHECK = ${PT}rootcheck/rootcheck_lib.a
 OS_CONFIG = ${PT}config/*.c
+OS_ZLIB = ${PT}os_zlib/os_zlib.c ${PT}external/libz.a

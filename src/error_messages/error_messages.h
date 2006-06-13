@@ -182,6 +182,11 @@
 #define INV_OFFSET      "%s(2120): Invalid offset value: '%s'"
 #define INV_ATTR        "%s(2121): Invalid decoder attribute: '%s'"
 
+/* os_zlib */
+#define COMPRESS_ERR    "%s(2201): Error compressing string: '%s'."
+#define UNCOMPRESS_ERR  "%s(2202): Error uncompressing string."
+
+
 /* Verbose messages */
 #define STARTUP_MSG	"%s: Started (pid: %d)."
 #define PRIVSEP_MSG	"%s: Chrooted to directory: %s, using user: %s"

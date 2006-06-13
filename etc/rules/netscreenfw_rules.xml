@@ -33,15 +33,23 @@
     <action>information</action>
     <description>Netscreen informational message.</description>
   </rule>
+
+  <!-- ns204: NetScreen device_id=ns204 [Root]system-critical-00027: 
+     - Configuration Erase sequence accepted -->
+   <rule id="3705" level="11">
+    <if_sid>3703</if_sid>
+    <id>00027</id>
+    <description>Netscreen Erase sequence started.</description>
+  </rule>
                   
-  <rule id="3750" level="10" frequency="4" timeframe="120" ignore="60">
+  <rule id="3750" level="10" frequency="4" timeframe="180" ignore="60">
     <if_matched_sid>3703</if_matched_sid>
     <same_source_ip />
     <description>Multiple Netscreen critical messages from </description>
     <description>same source IP.</description>
   </rule>
 
-  <rule id="3751" level="10" frequency="8" timeframe="120" ignore="60">
+  <rule id="3751" level="10" frequency="6" timeframe="180" ignore="60">
     <if_matched_sid>3703</if_matched_sid>
     <description>Multiple Netscreen critical messages.</description>
   </rule>

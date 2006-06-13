@@ -14,8 +14,14 @@
   <rule id="2901" level="0">
     <if_sid>2900</if_sid>
     <match>: result:</match>
-    <description>SPAMD result message (not very usefull here)</description>
+    <description>SPAMD result message (not very usefull here).</description>
   </rule>
+
+  <rule id="2902" level="0">
+    <if_sid>2900</if_sid>
+    <match> checking message </match>
+    <description>Spamd debug event (reading message).</description>
+  <rule>
 </group> <!-- SYSLOG,SPAMD -->
 
 

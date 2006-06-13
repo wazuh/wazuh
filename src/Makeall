@@ -15,6 +15,8 @@ if [ "X${ARGV}" = "X" ]; then
     exit 1;
 fi
 
+ZLIBV="external/zlib-1.2.3/"
+
 # CPU information
 #CPU=`uname -p`
 MACH=`uname -m`
@@ -82,13 +84,33 @@ fi
 # Getting values for each action
 if [ "X${ARGV}" = "Xall" ]; then
     DIRECTORIES="${LIBS} ${SOURCES} ${BINARIES}" 
+    DOZLIB="x"
 elif [ "X${ARGV}" = "Xlibs" ]; then
     DIRECTORIES="${LIBS} ${SOURCES}"
+
+    DOZLIB="x"
 elif [ "X${ARGV}" = "Xbuild" ]; then
     DIRECTORIES="${BINARIES}"   # Only binaries need to be built
 else
     DIRECTORIES="${LIBS} ${SOURCES} ${BINARIES}"
+    DOZLIB="x"
 fi
+
+
+if [ "X${DOZLIB}" = "Xx" ]; then
+    # Build zlib here
+    echo ""
+    echo " *** Making zlib (by Jean-loup Gailly and Mark Adler)  *** "
+    cd ${ZLIBV}; make; make ossec;
+    cd -;
+    echo ""
+fi    
+
+
+if [ "X${ARGV}" = "Xclean" ]; then
+    # Cleaning zlib
+    cd ${ZLIBV}; make clean;
+fi    
 
 
 # Checking if the bin directory is present
