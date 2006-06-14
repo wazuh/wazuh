@@ -10,6 +10,8 @@ none:
 		@echo "\"make agent\" to build the agent."
 		@echo "\"make libs\" to build the libraries only."
 		@echo "\"make clean\" to clean anything built"
+		@echo "\"make setagent\" to set agent install"
+		@echo "\"make setlocal\" to set local install"
 
 clean:
 		@/bin/sh ./Makeall clean
