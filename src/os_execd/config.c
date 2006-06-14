@@ -31,7 +31,7 @@ int ExecdConfig(char * cfgfile)
     /* Reading XML file */
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
-        ErrorExit(XML_ERROR, ARGV0, cfgfile, 0);
+        ErrorExit(XML_ERROR, ARGV0, cfgfile, xml.err, xml.err_line);
     }
 
 

@@ -140,7 +140,7 @@ int Rules_OP_ReadRules(char * rulefile)
     /* Reading the XML */       
     if(OS_ReadXML(rulepath,&xml) < 0)
     {
-        merror(XML_ERROR, ARGV0, xml.err, xml.err_line);
+        merror(XML_ERROR, ARGV0, rulepath, xml.err, xml.err_line);
         free(rulepath);
         return(-1);	
     }

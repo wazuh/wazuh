@@ -93,7 +93,6 @@ elif [ "X${ARGV}" = "Xbuild" ]; then
     DIRECTORIES="${BINARIES}"   # Only binaries need to be built
 else
     DIRECTORIES="${LIBS} ${SOURCES} ${BINARIES}"
-    DOZLIB="x"
 fi
 
 
@@ -102,7 +101,7 @@ if [ "X${DOZLIB}" = "Xx" ]; then
     echo ""
     echo " *** Making zlib (by Jean-loup Gailly and Mark Adler)  *** "
     cd ${ZLIBV}; make; make ossec;
-    cd -;
+    cd $OLDPWD
     echo ""
 fi    
 
@@ -110,6 +109,7 @@ fi
 if [ "X${ARGV}" = "Xclean" ]; then
     # Cleaning zlib
     cd ${ZLIBV}; make clean;
+    cd $OLDPWD
 fi    
 
 

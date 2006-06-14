@@ -21,7 +21,7 @@
     <if_sid>2900</if_sid>
     <match> checking message </match>
     <description>Spamd debug event (reading message).</description>
-  <rule>
+  </rule>
 </group> <!-- SYSLOG,SPAMD -->
 
 
