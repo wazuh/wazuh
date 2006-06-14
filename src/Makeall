@@ -77,7 +77,8 @@ fi
 
 # Cleaning
 if [ "X${ARGV}" = "Xclean" ]; then
-    echo "" > ./Config.OS
+    #echo "" > ./Config.OS
+    echo " "
 fi
    
     

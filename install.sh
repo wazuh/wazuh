@@ -36,13 +36,22 @@ if [ ! $? = 0 ]; then
     fi
 fi
 
+# Initializing vars
+SET_DEBUG=""
 
 # Checking for command line arguments
-if [ "X$1" = "Xdebug" ]; then
-    SET_DEBUG="debug"
-else
-    SET_DEBUG=""    
-fi    
+for i in $*; do
+    if [ "X$i" = "Xdebug" ]; then
+        SET_DEBUG="debug"
+    elif [ "X$i" = "Xbinary-install" ]; then
+        USER_BINARYINSTALL="yes"
+    elif [ "X$i" = "Xhelp" ]; then
+        echo "$0 debug"
+        echo "$0 binary-install"
+        exit 1;
+    fi        
+done
+        
 
 
 ##########
@@ -67,15 +76,19 @@ Install()
     # Makefile
 	echo " - ${runningmake}"
     cd ./src
-    make all
-    
-    if [ $? != 0 ]; then
-        catError "0x5-build"
-    fi
-        
-    # Building everything    
-    make build
 
+    # Binary install will use the previous generated code.
+    if [ "X${USER_BINARYINSTALL}" = "X" ]; then
+        make all
+    
+        if [ $? != 0 ]; then
+            catError "0x5-build"
+        fi
+        
+        # Building everything    
+        make build
+    fi
+    
     # If update, stop ossec
     if [ "X${update_only}" = "Xyes" ]; then
         UpdateStopOSSEC

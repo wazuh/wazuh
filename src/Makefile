@@ -33,3 +33,8 @@ local:
         
 agent:
 		@/bin/sh ./InstallAgent.sh
+        
+setagent:
+		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
+setlocal:
+		@echo "CEXTRA=-DLOCAL" >> ./Config.OS
