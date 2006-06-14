@@ -138,7 +138,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
-        merror("%s: XML Error: %s",ARGV0, xml.err);
+        merror(XML_ERROR, ARGV0, cfgfile, xml.err, xml.err_line);
         return(OS_INVALID);
     }
 
