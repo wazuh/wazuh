@@ -32,6 +32,7 @@
 3500 - 3599 Pam unix
 3600 - 3699 Telnetd
 3700 - 3799 Netscreen Firewall
+3800 - 3899 Horde IMP
 4000 - 4999 IDS rules
 5000 - 5999 Squid rules
 6000 - 6199 Postfix rules

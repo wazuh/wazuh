@@ -6,17 +6,40 @@
 
 
 int main(int argc, char ** argv)
-	{
-	char *input="123456789";
-	char *output=NULL;
-	char *output2=NULL;
+{
+    int i;
+    char output[1024];
+    char output2[1024];
 
-	output = OS_BF_Str(argv[1], "mykey12", strlen(argv[1]), OS_ENCRYPT);
-	output2 = OS_BF_Str(output, "mykey12", strlen(argv[1]), OS_DECRYPT);
+    memset(output, '\0', 1024);
+    memset(output2, '\0', 1024);
 
-	printf("finished..\n");
-	printf("input: %s\n",argv[1]);
-	printf("output: %s\n",output);	
-	printf("output2: %s\n",output2);	
-	return(0);
-	}
+    if(argc < 3)
+    {
+        printf("%s: string key\n", argv[0]);
+        exit(1);
+    }
+    
+    if((strlen(argv[1]) > 1020) || (strlen(argv[2]) > 512))
+    {
+        printf("%s: size err\n", argv[0]);
+        exit(1);
+    }
+    
+    /* Encrypt */
+    OS_BF_Str(argv[1], output, argv[2], strlen(argv[1]), OS_ENCRYPT);
+
+    /* Decript */
+    OS_BF_Str(output, output2, argv[2], strlen(argv[1]), OS_DECRYPT);
+
+    printf("finished.\n");
+    printf("input: '%s'\n",argv[1]);
+    printf("crpt: ");
+    for(i=0;i <= strlen(argv[1]);i++)
+    {
+        printf("%d", output[i]);
+    }
+    printf("\n");
+    printf("output2: '%s'\n",output2);	
+    return(0);
+}

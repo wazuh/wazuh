@@ -499,7 +499,34 @@
    <fts>name,id,srcip,dstip</fts>
    <ftscomment>First time Snort rule fired</ftscomment>
 </decoder>
+
    
+   
+<!-- Horde decoder
+  - Will extract: username and srcip.
+  - Examples:
+  - [notice] [imp] Login success for raphaelv@xx [100.121.170.41] to {a.b.c:143} [on line 92 of "/home/webmail/horde/imp/redirect.php"]
+  - [error] [imp] FAILED LOGIN 210.179.154.213 to xxx:143[imap] as mala1
+  -->
+<decoder name="horde_imp">
+  <prematch>^[\w+] [imp] </prematch>
+</decoder>  
+
+<decoder name="horde_imp_success">
+  <parent>horde_imp</parent>
+  <prematch offset="after_parent">^Login success </prematch>
+  <regex offset="after_prematch">^for (\S+) [(\d+.\d+.\d+.\d+)] </regex>
+  <order>user, srcip</order>
+</decoder>
+
+<decoder name="horde_imp_failed">
+  <parent>horde_imp</parent>
+  <prematch offset="after_parent">^FAILED LOGIN</prematch>
+  <regex offset="after_prematch">^ (\d+.\d+.\d+.\d+) to \S+ as (\S+) </regex>
+  <order>srcip, user</order> 
+</decoder>
+
+
 
 <!-- Apache decoder.
   - Will extract the srcip

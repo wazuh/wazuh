@@ -15,7 +15,7 @@ UNAME=`uname`;
 DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 GROUP="ossec"
 USER="ossec"
-subdirs="logs bin queue queue/ossec queue/alerts queue/syscheck var var/run etc etc/shared active-response active-response/bin"
+subdirs="logs bin queue queue/ossec queue/alerts queue/syscheck queue/rids var var/run etc etc/shared active-response active-response/bin"
 
 
 # ${DIR} must be set 
@@ -37,20 +37,29 @@ fi
 
 # Creating groups/users
 if [ "$UNAME" = "FreeBSD" ]; then
+    grep "^${USER}" /etc/passwd > /dev/null 2>&1
+    if [ ! $? = 0 ]; then
     /usr/sbin/pw groupadd ${GROUP}
 	/usr/sbin/pw useradd ${USER} -d ${DIR} -s /sbin/nologin -g ${GROUP}
+    fi
 
 elif [ "$UNAME" = "SunOS" ]; then
+    grep "^${USER}" /etc/passwd > /dev/null 2>&1
+    if [ ! $? = 0 ]; then
     /usr/sbin/groupadd ${GROUP}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
+    fi
 
 elif [ "$UNAME" = "AIX" ]; then
     /usr/bin/mkgroup ${GROUP}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
     
 else
+    grep "^${USER}" /etc/passwd > /dev/null 2>&1
+    if [ ! $? = 0 ]; then
 	/usr/sbin/groupadd ${GROUP}
 	/usr/sbin/useradd -d ${DIR} -s /sbin/nologin -g ${GROUP} ${USER}
+    fi
 fi
 
 
@@ -71,6 +80,7 @@ chmod -R 770 ${DIR}/queue/ossec
 # For the logging user
 chown -R ${USER}:${GROUP} ${DIR}/logs
 chmod -R 750 ${DIR}/logs
+chmod -R 755 ${DIR}/queue/rids
 touch ${DIR}/logs/ossec.log
 chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
 chmod 664 ${DIR}/logs/ossec.log

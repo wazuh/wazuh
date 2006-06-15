@@ -25,7 +25,7 @@ USER="ossec"
 USER_MAIL="ossecm"
 USER_EXEC="ossece"
 USER_REM="ossecr"
-subdirs="logs logs/archives logs/alerts logs/firewall bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck queue/rootcheck queue/agent-info tmp var var/run etc etc/shared active-response active-response/bin"
+subdirs="logs logs/archives logs/alerts logs/firewall bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck queue/rootcheck queue/agent-info queue/rids tmp var var/run etc etc/shared active-response active-response/bin"
 
 # ${DIR} must be set 
 if [ "X${DIR}" = "X" ]; then
@@ -46,18 +46,24 @@ fi
 
 # Creating groups/users
 if [ "$UNAME" = "FreeBSD" ]; then
+    grep "^${USER}" /etc/passwd > /dev/null 2>&1
+    if [ ! $? = 0 ]; then
     /usr/sbin/pw groupadd ${GROUP}
 	/usr/sbin/pw useradd ${USER} -d ${DIR} -s /sbin/nologin -g ${GROUP}
 	/usr/sbin/pw useradd ${USER_MAIL} -d ${DIR} -s /sbin/nologin -g ${GROUP}
 	/usr/sbin/pw useradd ${USER_EXEC} -d ${DIR} -s /sbin/nologin -g ${GROUP}
 	/usr/sbin/pw useradd ${USER_REM} -d ${DIR} -s /sbin/nologin -g ${GROUP}
+    fi
 
 elif [ "$UNAME" = "SunOS" ]; then
+    grep "^${USER}" /etc/passwd > /dev/null 2>&1
+    if [ ! $? = 0 ]; then
     /usr/sbin/groupadd ${GROUP}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_MAIL}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_EXEC}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_REM}
+    fi
 
 elif [ "$UNAME" = "AIX" ]; then
     /usr/bin/mkgroup ${GROUP}
@@ -67,11 +73,14 @@ elif [ "$UNAME" = "AIX" ]; then
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_REM}
 
 else
+    grep "^${USER}" /etc/passwd > /dev/null 2>&1
+    if [ ! $? = 0 ]; then
 	/usr/sbin/groupadd ${GROUP}
 	/usr/sbin/useradd -d ${DIR} -s /sbin/nologin -g ${GROUP} ${USER}
 	/usr/sbin/useradd -d ${DIR} -s /sbin/nologin -g ${GROUP} ${USER_MAIL}
 	/usr/sbin/useradd -d ${DIR} -s /sbin/nologin -g ${GROUP} ${USER_EXEC}
 	/usr/sbin/useradd -d ${DIR} -s /sbin/nologin -g ${GROUP} ${USER_REM}
+    fi
 fi
 
 
@@ -104,6 +113,8 @@ chown -R ${USER}:${GROUP} ${DIR}/queue/rootcheck
 chmod -R 700 ${DIR}/queue/rootcheck
 chown -R ${USER_REM}:${GROUP} ${DIR}/queue/agent-info
 chmod -R 755 ${DIR}/queue/agent-info
+chown -R ${USER_REM}:${GROUP} ${DIR}/queue/rids
+chmod -R 755 ${DIR}/queue/rids
 
 # For the stats directory
 chown -R ${USER}:${GROUP} ${DIR}/stats
