@@ -17,7 +17,6 @@
 
 #define _OS_RULES
 
-#define TIMEFRAME 360 /* Default timeframe */
 #define MAX_LAST_EVENTS 11
 
 #include "shared.h"

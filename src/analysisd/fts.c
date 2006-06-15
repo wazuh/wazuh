@@ -16,9 +16,7 @@
 #include "fts.h"
 #include "eventinfo.h"
 
-#define FTS_MAX_SIZE        32
-#define FTS_MINSIZE_FOR_STR 14
-
+int fts_minsize_for_str = 0;
 OSList *fts_list = NULL;
 FILE *fp_list = NULL;
 FILE *fp_ignore = NULL;
@@ -29,13 +27,26 @@ FILE *fp_ignore = NULL;
  */
 int FTS_Init()
 {
+    int fts_list_size;
+    
     fts_list = OSList_Create();
     if(!fts_list)
     {
         merror(LIST_ERROR, ARGV0);
         return(0);
     }
-    if(!OSList_SetMaxSize(fts_list, FTS_MAX_SIZE))
+
+    /* Getting default list size */
+    fts_list_size = getDefine_Int("analysisd",
+                                  "fts_list_size",
+                                  12,512);
+
+    /* Getting minimum string size */
+    fts_minsize_for_str = getDefine_Int("analysisd",
+                                        "fts_min_size_for_str",
+                                        6, 128);
+    
+    if(!OSList_SetMaxSize(fts_list, fts_list_size))
     {
         merror(LIST_SIZE_ERROR, ARGV0);
         return(0);
@@ -222,14 +233,14 @@ int FTS(Eventinfo *lf)
     while(fts_node)
     {
         if(OS_StrHowClosedMatch((char *)fts_node->data, _line) > 
-                FTS_MINSIZE_FOR_STR)
+                fts_minsize_for_str)
         {
             number_of_matches++;
 
             /* We go and add this new entry to the list */
             if(number_of_matches > 2)
             {
-                _line[FTS_MINSIZE_FOR_STR] = '\0';
+                _line[fts_minsize_for_str] = '\0';
                 break;
             }
         }

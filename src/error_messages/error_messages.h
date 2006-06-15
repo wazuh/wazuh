@@ -27,8 +27,8 @@
 #define MEM_ERROR	  "%s(1102): Memory error. Exiting."
 #define FOPEN_ERROR   "%s(1103): Unable to open file '%s'."
 #define SIZE_ERROR    "%s(1104): Maximum string size reached for: %s."
-#define NULL_ERROR    "%s(1105): Null string used. Ignoring."
-#define FORMAT_ERROR  "%s(1106): String not correctly formated. Crafted?"  
+#define NULL_ERROR    "%s(1105): Null string used. "
+#define FORMAT_ERROR  "%s(1106): String not correctly formated."  
 #define MKDIR_ERROR   "%s(1107): Unable to create directory: '%s'"
 #define PERM_ERROR    "%s(1108): Permission error. Operation not completed."
 #define THREAD_ERROR  "%s(1109): Error creating new pthread."
@@ -41,6 +41,7 @@
 #define FSEEK_ERROR   "%s(1116): Error handling file '%s' (fseek)."
 #define FILE_ERROR    "%s(1117): Error handling file '%s' (date of change)."
 #define SYSTEM_ERROR  "%s(1118): Internal error. Exiting.."
+#define FGETS_ERROR   "%s(1119): Invalid line on file '%s': %s."
 
 
 /* COMMON ERRORS */
@@ -185,6 +186,10 @@
 /* os_zlib */
 #define COMPRESS_ERR    "%s(2201): Error compressing string: '%s'."
 #define UNCOMPRESS_ERR  "%s(2202): Error uncompressing string."
+
+/* read defines */
+#define DEF_NOT_FOUND   "%s(2301): Definition not found for: '%s.%s'."
+#define INV_DEF         "%s(2302): Invalid definition for %s.%s: '%s'."
 
 
 /* Verbose messages */

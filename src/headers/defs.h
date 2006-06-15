@@ -96,6 +96,10 @@
 /* Decoder file */
 #define XML_DECODER     "/etc/decoder.xml"
         
+        
+/* Internal definitions files */
+#define OSSEC_DEFINES   "etc/ossec_internal.conf"
+
 
 /* Log directories */
 #define EVENTS          "/logs/archives"

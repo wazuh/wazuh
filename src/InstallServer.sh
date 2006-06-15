@@ -170,10 +170,12 @@ else
     cp -pr ./init/ossec-server.sh ${DIR}/bin/ossec-control
 fi
 
-# Moving the decoders
+# Moving the decoders/internal_conf file.
 cp -pr ../etc/decoder.xml ${DIR}/etc/
+cp -pr ../etc/ossec_internal.conf ${DIR}/etc/
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
 chown root:ossec ${DIR}/etc/decoder.xml
+chown root:ossec ${DIR}/etc/ossec_internal.conf
 chown root:ossec ${DIR}/etc/shared/rootkit*
 
 

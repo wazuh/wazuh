@@ -20,6 +20,137 @@
 char *ip_address_regex = 
      "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?[0-9]{0,2}$";
 
+
+/* Read the file and return a string the matches the following
+ * format: high_name.low_name.
+ * If return is not null, value must be free.
+ */
+static char *_read_file(char *high_name, char *low_name)
+{
+    FILE *fp;
+    char buf[OS_MAXSTR +1];
+    char *buf_pt;
+    char *tmp_buffer;
+    char *ret;
+    
+    fp = fopen(OSSEC_DEFINES, "r");
+    if(!fp)
+    {
+        merror(FOPEN_ERROR, ARGV0, OSSEC_DEFINES);
+        return(NULL);
+    }
+
+    /* Invalid call */
+    if(!high_name || !low_name)
+    {
+        merror(NULL_ERROR, ARGV0);
+        fclose(fp);
+        return(NULL);
+    }
+
+    /* Reading it */
+    while(fgets(buf, OS_MAXSTR , fp) != NULL)
+    {
+        /* Commented or blank lines */
+        if(buf[0] == '#' || buf[0] == ' ' || buf[0] == '\n')
+        {
+            continue;
+        }
+
+        /* Messages not formatted correctly */
+        buf_pt = strchr(buf, '.');
+        if(!buf_pt)
+        {
+            merror(FGETS_ERROR, ARGV0, OSSEC_DEFINES, buf);
+            continue;
+        }
+
+        /* Checking for the high name */
+        *buf_pt = '\0'; buf_pt++;
+        if(strcmp(buf, high_name) != 0)
+        {
+            continue;
+        }
+
+        tmp_buffer = buf_pt;
+        
+        /* Getting the equal */
+        buf_pt = strchr(buf_pt, '=');
+        if(!buf_pt)
+        {
+            merror(FGETS_ERROR, ARGV0, OSSEC_DEFINES, buf);
+            continue;
+        }
+
+        /* Checking for the low name */
+        *buf_pt = '\0'; buf_pt++;
+        if(strcmp(tmp_buffer, low_name) != 0)
+        {
+            continue;
+        }
+
+        /* Removing new lines or anything that we cause errors */
+        tmp_buffer = strrchr(buf_pt, '\n');
+        if(tmp_buffer)
+        {
+            *tmp_buffer = '\0';
+        }
+
+        tmp_buffer = strrchr(buf_pt, '\r');
+        if(tmp_buffer)
+        {
+            *tmp_buffer = '\0';
+        }
+        
+        os_strdup(buf_pt, ret);
+        fclose(fp);
+        return(ret);
+    }
+    
+    fclose(fp);
+    return(NULL);
+}
+
+
+/** getDefine_Int.
+ * Gets an integer definition. This function always return on
+ * success or exit on error.
+ */
+int getDefine_Int(char *high_name, char *low_name, int min, int max)
+{
+    int ret;
+    char *value;
+    char *pt;
+
+    value = _read_file(high_name, low_name);
+    if(!value)
+    {
+        ErrorExit(DEF_NOT_FOUND, ARGV0, high_name, low_name);
+    }
+
+    pt = value;
+    while(*pt != '\0')
+    {
+        if(!isdigit(*pt))
+        {
+            ErrorExit(INV_DEF, ARGV0, high_name, low_name, value);
+        }
+        pt++;
+    }
+
+    ret = atoi(value);
+    if((ret < min) || (ret > max))
+    {
+        ErrorExit(INV_DEF, ARGV0, high_name, low_name, value);
+    }
+
+    /* Clearing memory */
+    free(value);
+
+    return(ret);
+}
+
+
      
 /** int OS_IPFound(char *ip_address, char *that_ip)
  * Checks if ip_address is present at that_ip.

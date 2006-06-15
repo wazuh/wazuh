@@ -252,8 +252,13 @@ int Rules_OP_ReadRules(char * rulefile)
             
             /* Attribute block */
             {
-                int id = -1,level = -1,maxsize = 0,timeframe = TIMEFRAME;
+                int id = -1,level = -1,maxsize = 0,timeframe = 0;
                 int frequency = 0, accuracy = 1, noalert = 0, ignore_time = 0;
+                
+                /* Getting default time frame */
+                timeframe = getDefine_Int("analysisd", 
+                                          "default_timeframe", 
+                                          60, 3600);
                 
                 if(getattributes(rule[j]->attributes,rule[j]->values,
                             &id,&level,&maxsize,&timeframe,

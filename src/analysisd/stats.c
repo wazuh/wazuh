@@ -37,10 +37,6 @@ char *(l_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
                         
 
 
-#define MAXDIFF		600
-#define MINDIFF	    50	
-
-
 /* Global vars */
 
 /* Hour 25 is internally used */
@@ -53,6 +49,9 @@ int _CHour[25];
 int _cignorehour = 0;
 int _fired = 0;
 int _daily_errors = 0;
+int maxdiff = 0;
+int mindiff = 0;
+int percent_diff = 20;
 
 
 char __stats_comment[192];
@@ -118,21 +117,21 @@ void print_totals()
 
 /* gethour: v0.2
  * Return the parameter (event_number + 20 % of it)
- * If event_number < MINDIFF, return MINDIFF
- * If event_number > MAXDIFF, return MAXDIFF
+ * If event_number < mindiff, return mindiff
+ * If event_number > maxdiff, return maxdiff 
  */
 int gethour(int event_number)
 {
     int event_diff;
 
-    event_diff = (event_number * 20)/100;
+    event_diff = (event_number * percent_diff)/100;
 
     event_diff++;
     
-    if(event_diff < MINDIFF)
-        return(event_number + MINDIFF);
-    else if(event_diff > MAXDIFF)
-        return(event_number + MAXDIFF);
+    if(event_diff < mindiff)
+        return(event_number + mindiff);
+    else if(event_diff > maxdiff)
+        return(event_number + maxdiff);
         
     return(event_number + event_diff);
 }
@@ -357,6 +356,20 @@ int Start_Hour()
 
     /* Clearing some memory */
     memset(__stats_comment, '\0', 192);
+
+
+    /* Getting maximum/minimum diffs */
+    maxdiff = getDefine_Int("analysisd",
+                            "stats_maxdiff",
+                            10, 9999);
+    
+    mindiff = getDefine_Int("analysisd",
+                            "stats_mindiff",
+                            10, 9999);
+
+    percent_diff = getDefine_Int("analysisd",
+                                 "stats_percent_diff",
+                                 5, 99);
 
 
     /* Last three messages
