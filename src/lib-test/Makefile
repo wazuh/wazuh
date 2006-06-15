@@ -1,5 +1,5 @@
-# Makefile for library tests.
-# Daniel B. Cid <daniel.cid@gmail.com>||<daniel@underlinux.com.br>
+# Makefile for os_zlib tests.
+# Daniel B. Cid <dcid@ossec.net>
 # http://www.ossec.net
 PT=../
 include $(PT)Config.Make
