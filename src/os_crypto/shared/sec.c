@@ -89,7 +89,7 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
                   || !keys->global|| !keys->local
                   || !keys->rcvd || !keys->name || !keys->fps) 
     {
-        ErrorExit(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, __local_name);
     }
     
     /* Setting configured values */
@@ -108,7 +108,7 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
        !keys->ips[keys->keysize] ||
        !keys->name[keys->keysize])
     {
-        ErrorExit(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, __local_name);
     }
 
 
@@ -141,13 +141,13 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
     keys->keys = (char **)realloc(keys->keys,
 			(keys->keysize+1)*sizeof(char *));
 	if(keys->keys == NULL)
-       ErrorExit(MEM_ERROR, ARGV0); 
+       ErrorExit(MEM_ERROR, __local_name); 
 
 
     keys->keys[keys->keysize]=strdup(_finalstr);
     
     if(keys->keys[keys->keysize] == NULL)
-       ErrorExit(MEM_ERROR, ARGV0); 
+       ErrorExit(MEM_ERROR, __local_name); 
 
 
 
@@ -177,13 +177,13 @@ void ReadKeys(keystruct *keys)
     
 
     if(File_DateofChange(KEYS_FILE) < 0)
-        ErrorExit(NO_AUTHFILE, ARGV0, KEYS_FILE);
+        ErrorExit(NO_AUTHFILE, __local_name, KEYS_FILE);
 
     fp = fopen(KEYS_FILE,"r");
     if(!fp)
     {
         /* We can leave from here */
-        ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
+        ErrorExit(FOPEN_ERROR, __local_name, KEYS_FILE);
     }
 
 
@@ -220,7 +220,7 @@ void ReadKeys(keystruct *keys)
         tmp_str = strchr(buffer, ' ');
         if(!tmp_str)
         {
-            merror(INVALID_KEY, ARGV0, buffer);
+            merror(INVALID_KEY, __local_name, buffer);
             continue;
         }
 
@@ -235,7 +235,7 @@ void ReadKeys(keystruct *keys)
         tmp_str = strchr(tmp_str, ' ');
         if(!tmp_str)
         {
-            merror(INVALID_KEY, ARGV0, buffer);
+            merror(INVALID_KEY, __local_name, buffer);
         }
 
         *tmp_str = '\0';
@@ -248,7 +248,7 @@ void ReadKeys(keystruct *keys)
         tmp_str = strchr(tmp_str, ' ');
         if(!tmp_str)
         {
-            merror(INVALID_KEY, ARGV0, buffer);
+            merror(INVALID_KEY, __local_name, buffer);
         }
 
         *tmp_str = '\0';
@@ -357,25 +357,37 @@ void StartCounter(keystruct *keys)
             keys->fps[i] = fopen(rids_file, "w");
             if(!keys->fps[i])
             {
-                ErrorExit(FOPEN_ERROR, ARGV0, rids_file);
+                ErrorExit(FOPEN_ERROR, __local_name, rids_file);
             }
         }
         else
         {
-            unsigned int g_c, l_c;
+            unsigned int g_c = 0, l_c = 0;
             if(fscanf(keys->fps[i],"%u:%u", &g_c, &l_c) != 2)
             {
-                ErrorExit("%s: Scanf error.", ARGV0);
+                if(i == keys->keysize)
+                {
+                    verbose("%s: No previous sender counter.", __local_name);
+                }
+                else
+                {
+                    verbose("%s: No previous counter available for '%s'.",
+                                            __local_name, keys->name[i]);
+                }
             }
 
             if(i == keys->keysize)
             {
-                verbose("%s: Opening sender counter: %d:%d", ARGV0, g_c, l_c);
+                verbose("%s: Assigning sender counter: %d:%d",
+                            __local_name, g_c, l_c);
                 global_count = g_c;
                 local_count = l_c;
             }
             else
             {
+                verbose("%s: Assigning counter for agent %s: '%d:%d'.",
+                            __local_name, keys->name[i], g_c, l_c);
+                            
                 keys->global[i] = g_c;
                 keys->local[i] = l_c;
             }
@@ -454,7 +466,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
     
     if(*buffer != ':')
     {
-        merror(ENCFORMAT_ERROR, ARGV0, keys->ips[id]);
+        merror(ENCFORMAT_ERROR, __local_name, keys->ips[id]);
         return(NULL);
     }
 
@@ -464,7 +476,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
     /* Decrypting message */
     if(!OS_BF_Str(buffer, cleartext, keys->keys[id], buffer_size, OS_DECRYPT)) 
     {
-        merror(ENCKEY_ERROR, ARGV0, keys->ips[id]);
+        merror(ENCKEY_ERROR, __local_name, keys->ips[id]);
         return(NULL);
     }
 
@@ -479,7 +491,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         cmp_size = os_uncompress(cleartext, cleartext, buffer_size, OS_MAXSTR);
         if(!cmp_size)
         {
-            merror(UNCOMPRESS_ERR, ARGV0);
+            merror(UNCOMPRESS_ERR, __local_name);
             return(NULL);
         }
 
@@ -487,7 +499,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         f_msg = CheckSum(cleartext);
         if(f_msg == NULL)
         {
-            merror(ENCSUM_ERROR, ARGV0, keys->ips[id]);
+            merror(ENCSUM_ERROR, __local_name, keys->ips[id]);
             return(NULL);
         }
 
@@ -528,13 +540,13 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         /* Warn about duplicated message */
         merror("%s: Duplicate error:  global: %d, local: %d, "
                 "saved global: %d, saved local:%d",
-                ARGV0,
+                __local_name,
                 msg_global,
                 msg_local,
                 keys->global[id],
                 keys->local[id]);
 
-        merror(ENCTIME_ERROR, ARGV0, keys->ips[id]);
+        merror(ENCTIME_ERROR, __local_name, keys->ips[id]);
         return(NULL);
     }
 
@@ -553,7 +565,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         f_msg = CheckSum(cleartext);
         if(f_msg == NULL)
         {
-            merror(ENCSUM_ERROR, ARGV0, keys->ips[id]);
+            merror(ENCSUM_ERROR, __local_name, keys->ips[id]);
             return(NULL);
         }
 
@@ -566,8 +578,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         f_msg+=5;
 
         if((msg_time > keys->global[id]) ||
-                ((msg_time == keys->global[id])&&(msg_count > keys->local[id]))
-          )
+           ((msg_time == keys->global[id])&&(msg_count > keys->local[id])))
         {
             /* Updating currently time and count */
             keys->global[id] = msg_time;
@@ -591,19 +602,17 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         /* Warn about duplicated message */
         merror("%s: Duplicate error:  msg_count: %d, time: %d, "
                 "saved count: %d, saved_time:%d",
-                ARGV0,
+                __local_name,
                 msg_count,
                 msg_time,
                 keys->local[id],
                 keys->global[id]);
 
-        merror(ENCTIME_ERROR, ARGV0, keys->ips[id]);
+        merror(ENCTIME_ERROR, __local_name, keys->ips[id]);
         return(NULL);
-
-
     }
     
-    merror(ENCFORMAT_ERROR, ARGV0, keys->ips[id]);
+    merror(ENCFORMAT_ERROR, __local_name, keys->ips[id]);
     return(NULL);
 }
 
@@ -629,7 +638,7 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     
     if((msg_size > (OS_MAXSTR - 56))||(msg_size < 1))
     {
-        merror(ENCSIZE_ERROR, ARGV0, msg);
+        merror(ENCSIZE_ERROR, __local_name, msg);
         return(0);
     }
     
@@ -671,7 +680,7 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     cmp_size = os_compress(_finmsg, _tmpmsg +1, msg_size, OS_MAXSTR);
     if(!cmp_size)
     {
-        merror(COMPRESS_ERR, ARGV0, _finmsg);
+        merror(COMPRESS_ERR, __local_name, _finmsg);
         return(0);
     }
     cmp_size++;

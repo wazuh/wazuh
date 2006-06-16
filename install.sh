@@ -82,6 +82,7 @@ Install()
         make all
     
         if [ $? != 0 ]; then
+            cd ../
             catError "0x5-build"
         fi
         
@@ -403,10 +404,10 @@ ConfigureServer()
                     
             ls ${HOST_CMD} > /dev/null 2>&1
             if [ $? = 0 ]; then
-              HOSTTMP=`${HOST_CMD} -W 5 -t mx ossec.net 2>/dev/null`
+              HOSTTMP=`${HOST_CMD} -W 5 -t mx devmail.ossec.net 2>/dev/null`
               if [ $? = 1 ]; then
                  # Trying without the -W 
-                 HOSTTMP=`${HOST_CMD} -t mx ossec.net 2>/dev/null`
+                 HOSTTMP=`${HOST_CMD} -t mx devmail.ossec.net 2>/dev/null`
               fi       
               if [ "X$HOSTTMP" = "X${OSSECMX}" -o "X$HOSTTMP" = "X${OSSECMX2}" ];then
                  # Breaking down the user e-mail

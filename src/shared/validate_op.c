@@ -46,14 +46,14 @@ static char *_read_file(char *high_name, char *low_name)
     fp = fopen(def_file, "r");
     if(!fp)
     {
-        merror(FOPEN_ERROR, ARGV0, def_file);
+        merror(FOPEN_ERROR, __local_name, def_file);
         return(NULL);
     }
 
     /* Invalid call */
     if(!high_name || !low_name)
     {
-        merror(NULL_ERROR, ARGV0);
+        merror(NULL_ERROR, __local_name);
         fclose(fp);
         return(NULL);
     }
@@ -71,7 +71,7 @@ static char *_read_file(char *high_name, char *low_name)
         buf_pt = strchr(buf, '.');
         if(!buf_pt)
         {
-            merror(FGETS_ERROR, ARGV0, def_file, buf);
+            merror(FGETS_ERROR, __local_name, def_file, buf);
             continue;
         }
 
@@ -88,7 +88,7 @@ static char *_read_file(char *high_name, char *low_name)
         buf_pt = strchr(buf_pt, '=');
         if(!buf_pt)
         {
-            merror(FGETS_ERROR, ARGV0, def_file, buf);
+            merror(FGETS_ERROR, __local_name, def_file, buf);
             continue;
         }
 
@@ -135,7 +135,7 @@ int getDefine_Int(char *high_name, char *low_name, int min, int max)
     value = _read_file(high_name, low_name);
     if(!value)
     {
-        ErrorExit(DEF_NOT_FOUND, ARGV0, high_name, low_name);
+        ErrorExit(DEF_NOT_FOUND, __local_name, high_name, low_name);
     }
 
     pt = value;
@@ -143,7 +143,7 @@ int getDefine_Int(char *high_name, char *low_name, int min, int max)
     {
         if(!isdigit(*pt))
         {
-            ErrorExit(INV_DEF, ARGV0, high_name, low_name, value);
+            ErrorExit(INV_DEF, __local_name, high_name, low_name, value);
         }
         pt++;
     }
@@ -151,7 +151,7 @@ int getDefine_Int(char *high_name, char *low_name, int min, int max)
     ret = atoi(value);
     if((ret < min) || (ret > max))
     {
-        ErrorExit(INV_DEF, ARGV0, high_name, low_name, value);
+        ErrorExit(INV_DEF, __local_name, high_name, low_name, value);
     }
 
     /* Clearing memory */
