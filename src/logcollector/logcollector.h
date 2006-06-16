@@ -19,7 +19,6 @@
 #define ARGV0 "ossec-logcollector"
 #endif
 
-#define FP_TIMEOUT  2
 
 #include "shared.h"
 #include "config/localfile-config.h"
@@ -56,6 +55,8 @@ void win_readel();
 
 /*** Global variables ***/
 
+
+int loop_timeout;
 int logr_queue;
 logreader logff[MAX_READ_FILE +1];
 

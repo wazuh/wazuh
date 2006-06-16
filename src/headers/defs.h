@@ -98,7 +98,7 @@
         
         
 /* Internal definitions files */
-#define OSSEC_DEFINES   "etc/ossec_internal.conf"
+#define OSSEC_DEFINES   "/etc/ossec_internal.conf"
 
 
 /* Log directories */

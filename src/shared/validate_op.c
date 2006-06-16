@@ -28,15 +28,25 @@ char *ip_address_regex =
 static char *_read_file(char *high_name, char *low_name)
 {
     FILE *fp;
+    char def_file[OS_MAXSTR +1];
     char buf[OS_MAXSTR +1];
     char *buf_pt;
     char *tmp_buffer;
     char *ret;
     
-    fp = fopen(OSSEC_DEFINES, "r");
+    if(isChroot())
+    {
+        snprintf(def_file,OS_MAXSTR,"%s", OSSEC_DEFINES);
+    }
+    else
+    {
+        snprintf(def_file,OS_MAXSTR,"%s%s",DEFAULTDIR, OSSEC_DEFINES);
+    }
+                                                        
+    fp = fopen(def_file, "r");
     if(!fp)
     {
-        merror(FOPEN_ERROR, ARGV0, OSSEC_DEFINES);
+        merror(FOPEN_ERROR, ARGV0, def_file);
         return(NULL);
     }
 
@@ -61,7 +71,7 @@ static char *_read_file(char *high_name, char *low_name)
         buf_pt = strchr(buf, '.');
         if(!buf_pt)
         {
-            merror(FGETS_ERROR, ARGV0, OSSEC_DEFINES, buf);
+            merror(FGETS_ERROR, ARGV0, def_file, buf);
             continue;
         }
 
@@ -78,7 +88,7 @@ static char *_read_file(char *high_name, char *low_name)
         buf_pt = strchr(buf_pt, '=');
         if(!buf_pt)
         {
-            merror(FGETS_ERROR, ARGV0, OSSEC_DEFINES, buf);
+            merror(FGETS_ERROR, ARGV0, def_file, buf);
             continue;
         }
 

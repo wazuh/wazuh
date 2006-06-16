@@ -96,7 +96,7 @@ void LogCollectorStart()
     while(1)
     {
         #ifndef WIN32
-        fp_timeout.tv_sec = FP_TIMEOUT;
+        fp_timeout.tv_sec = loop_timeout;
         fp_timeout.tv_usec = 0;
 
         /* Waiting for the select timeout */ 
@@ -113,15 +113,16 @@ void LogCollectorStart()
         }
         #else
         /* Windows don't like select that way */
-        Sleep((FP_TIMEOUT + 2) * 1000);
+        Sleep((loop_timeout + 2) * 1000);
         #endif
 
-        f_check++;
-        
         #ifdef WIN32
         /* Check for messages in the event viewer */
         win_readel();
         #endif
+        
+        f_check++;
+
         
         /* Checking which file is available */
         for(i = 0; i <= max_file; i++)
@@ -179,7 +180,8 @@ void LogCollectorStart()
                         merror(FSEEK_ERROR, ARGV0, logff[i].file);
 
                         /* Closing the file */
-                        fclose(logff[i].fp);
+                        if(logff[i].fp)
+                            fclose(logff[i].fp);
                         logff[i].fp = NULL;
                         
                         /* Trying to open it again */
@@ -211,6 +213,7 @@ void LogCollectorStart()
             /* These are the windows logs or ignored files */
             if(!logff[i].file)
                 continue;
+            
             
             /* Files with date -- check for day change */
             if(logff[i].ffile)
@@ -248,7 +251,7 @@ void LogCollectorStart()
             if(logff[i].ign < -8)
             {
                 merror(LOGC_FILE_ERROR, ARGV0, logff[i].file);
-                if(logff[i].fp);
+                if(logff[i].fp)
                     fclose(logff[i].fp);
                 logff[i].fp = NULL;
                 logff[i].ffile = NULL;
@@ -272,6 +275,7 @@ void LogCollectorStart()
                     continue;
                 }
             }
+
         }
     }
 }
@@ -306,7 +310,7 @@ int update_fname(int i)
     /* Update the file name */
     if(strcmp(lfile, logff[i].file) != 0)
     {
-        free(logff[i].file);
+        os_free(logff[i].file);
 
         os_strdup(lfile, logff[i].file);    
         return(1);

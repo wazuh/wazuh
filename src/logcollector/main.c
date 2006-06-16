@@ -89,6 +89,12 @@ int main(int argc, char **argv)
     if(logff[0].file == NULL)
         ErrorExit(NO_FILE, ARGV0);
             
+    
+    /* Getting loop timeout */
+    loop_timeout = getDefine_Int("logcollector",
+                                 "loop_timeout",
+                                 1, 60);        
+
 
     /* Exit if test config */
     if(test_config)

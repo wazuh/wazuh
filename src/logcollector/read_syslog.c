@@ -29,9 +29,9 @@ void *read_syslog(int pos, int *rc)
     char *p;
     char str[OS_MAXSTR+1];
 
-    str[OS_MAXSTR]='\0';
+    str[OS_MAXSTR]= '\0';
 
-    while(fgets(str, OS_MAXSTR - 36, logff[pos].fp) != NULL)
+    while(fgets(str, OS_MAXSTR - 64, logff[pos].fp) != NULL)
     {
         /* Getting the last occurence of \n */
         if ((p = strrchr(str, '\n')) != NULL) 
