@@ -116,7 +116,19 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         }
         else if(strcmp(node[i]->element, xml_ar_disabled) == 0)
         {
-            ar_flag = -1;
+            if(strcmp(node[i]->content, "yes") == 0)
+            {
+                ar_flag = -1;
+            }
+            else if(strcmp(node[i]->content, "no") == 0)
+            {
+                /* Don't do anything if disabled is set to "no" */
+            }
+            else
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
         }
         else
         {

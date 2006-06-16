@@ -75,7 +75,8 @@ int ExecdConfig(char * cfgfile)
                         else
                         {
                             merror(XML_VALUEERR, ARGV0, 
-                                chld_node[j]->content[0]);
+                                                 chld_node[j]->element,
+                                                 chld_node[j]->content); 
                             return(-1);
                         }
                     }

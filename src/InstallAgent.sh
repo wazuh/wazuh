@@ -51,9 +51,11 @@ elif [ "$UNAME" = "SunOS" ]; then
     fi
 
 elif [ "$UNAME" = "AIX" ]; then
+    grep "^${USER}" /etc/passwd > /dev/null 2>&1
+    if [ ! $? = 0 ]; then
     /usr/bin/mkgroup ${GROUP}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
-    
+    fi
 else
     grep "^${USER}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then

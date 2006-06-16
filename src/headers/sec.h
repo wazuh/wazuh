@@ -23,8 +23,9 @@ typedef struct _keystruct
     char **ips;
     char **name;
     struct sockaddr_in *peer_info;
-    time_t *time;
-    int *count;
+    FILE **fps;
+    unsigned int *global;
+    unsigned int *local;
     int *rcvd;
 
     int keysize;

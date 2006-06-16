@@ -15,17 +15,36 @@
 
 
 #include "shared.h"
-
 #include "headers/sec.h"
 
+#include "os_zlib/os_zlib.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/blowfish/bf_op.h"
 
+/** Remote IDS directory */
+#define RIDS_DIR        "/queue/rids"
+#define SENDER_COUNTER  "sender_counter"
 #define KEYSIZE	 72
 
-u_int16_t global_count = 0;
-time_t global_time = 0;
 
+/** Sending counts **/
+unsigned int global_count = 0;
+unsigned int local_count  = 0;
+
+/** Average compression rates **/
+int evt_count = 0;
+int rcv_count = 0;
+unsigned int c_orig_size = 0;
+unsigned int c_comp_size = 0;
+
+
+/** Static variables (read from define file) **/
+int _s_comp_print = 0;
+int _s_recv_flush = 0;
+
+
+/** Function Prototypes **/
+void StartCounter(keystruct *keys);
 
 
 /* _MemClear v0.1 - Internal use */
@@ -61,13 +80,14 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
     keys->peer_info = realloc(keys->peer_info,
             (keys->keysize+1) * sizeof(peer));
    
-    keys->time = realloc(keys->time, (keys->keysize+1) * sizeof(int)); 
-    keys->count = realloc(keys->count, (keys->keysize+1) * sizeof(int)); 
+    keys->global = realloc(keys->global, (keys->keysize+1) * sizeof(int)); 
+    keys->local = realloc(keys->local, (keys->keysize+1) * sizeof(int)); 
     keys->rcvd = realloc(keys->rcvd, (keys->keysize+1) * sizeof(int)); 
+    keys->fps = realloc(keys->fps, (keys->keysize+2) * sizeof(FILE *));
     
     if(!keys->ids || !keys->ips || !keys->peer_info
-                  || !keys->time|| !keys->count
-                  || !keys->rcvd || !keys->name) 
+                  || !keys->global|| !keys->local
+                  || !keys->rcvd || !keys->name || !keys->fps) 
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
@@ -79,8 +99,8 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
 
 
     /* Initializing the variables */
-    keys->count[keys->keysize] = 0;
-    keys->time[keys->keysize] = 0;
+    keys->local[keys->keysize] = 0;
+    keys->global[keys->keysize] = 0;
     keys->rcvd[keys->keysize] = 0;
 
 
@@ -171,11 +191,12 @@ void ReadKeys(keystruct *keys)
     keys->ids = NULL;
     keys->keys = NULL;
     keys->ips = NULL;
-    keys->count = NULL;
+    keys->global = NULL;
+    keys->local = NULL;
     keys->name = NULL;
-    keys->time = NULL;
     keys->rcvd = NULL;
     keys->peer_info = NULL;
+    keys->fps = NULL;
     keys->keysize = 0;
 
     _MemClear(id, name, ip, key);
@@ -258,7 +279,10 @@ void ReadKeys(keystruct *keys)
 
     /* clear one last time before leaving */
     _MemClear(id,name,ip,key);		
-    
+
+    /* Opening count files */
+    StartCounter(keys);
+
     return;
 }
 
@@ -299,6 +323,99 @@ int IsAllowedID(keystruct *keys, char *id)
 }
 
 
+/* StartCounter and read saved values */
+void StartCounter(keystruct *keys)
+{
+    int i;
+    char rids_file[OS_MAXSTR +1];
+
+    rids_file[OS_MAXSTR] = '\0';
+    
+    /* Starting receiving counter */
+    for(i = 0;i<=keys->keysize;i++)
+    {
+        /* On i == keysize, we deal with the
+         * sender counter.
+         */
+        if(i == keys->keysize)
+        {
+            snprintf(rids_file, OS_MAXSTR, "%s/%s",
+                                            RIDS_DIR,
+                                            SENDER_COUNTER);
+        }
+        else
+        {
+            snprintf(rids_file, OS_MAXSTR, "%s/%s",
+                                           RIDS_DIR,
+                                           keys->ids[i]);
+        }
+        keys->fps[i] = fopen(rids_file, "r+");
+        
+        /* If there nothing there, try to open as write only */
+        if(!keys->fps[i])
+        {
+            keys->fps[i] = fopen(rids_file, "w");
+            if(!keys->fps[i])
+            {
+                ErrorExit(FOPEN_ERROR, ARGV0, rids_file);
+            }
+        }
+        else
+        {
+            unsigned int g_c, l_c;
+            if(fscanf(keys->fps[i],"%u:%u", &g_c, &l_c) != 2)
+            {
+                ErrorExit("%s: Scanf error.", ARGV0);
+            }
+
+            if(i == keys->keysize)
+            {
+                verbose("%s: Opening sender counter: %d:%d", ARGV0, g_c, l_c);
+                global_count = g_c;
+                local_count = l_c;
+            }
+            else
+            {
+                keys->global[i] = g_c;
+                keys->local[i] = l_c;
+            }
+        }
+    }
+
+
+    /* Getting counter values */
+    _s_recv_flush = getDefine_Int("remoted",
+                                  "recv_counter_flush",
+                                  10, 999999);
+
+    /* Average printout values */
+    _s_comp_print = getDefine_Int("remoted",
+                                  "comp_average_printout",
+                                  10, 999999);
+}
+
+
+/** StoreSenderCounter((keystruct *keys, int global, int local)
+ * Store sender counter.
+ */
+void StoreSenderCounter(keystruct *keys, int global, int local)
+{
+    /* Writting at the beginning of the file */
+    fseek(keys->fps[keys->keysize], 0, SEEK_SET);
+    fprintf(keys->fps[keys->keysize], "%u:%u", global, local);
+}
+
+
+/* StoreCount(keystruct *keys, int id, int global, int local)
+ * Store the global and local count of events.
+ */
+void StoreCounter(keystruct *keys, int id, int global, int local)
+{
+    /* Writting at the beginning of the file */
+    fseek(keys->fps[id], 0, SEEK_SET);
+    fprintf(keys->fps[id], "%u:%u", global, local);
+}
+
 
 /* CheckSum v0.1: 2005/02/15 
  * Verify the checksum of the message.
@@ -311,7 +428,6 @@ char *CheckSum(char *msg)
 
 
     /* Better way */
-    msg++;
     strncpy(recvd_sum,msg,32);
     recvd_sum[32]='\0';
 
@@ -330,85 +446,164 @@ char *CheckSum(char *msg)
 char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext, 
                                   int id, int buffer_size)
 {
-    int msg_count;
-    time_t msg_time;
-    
+    int cmp_size;
+    unsigned int msg_global;
+    unsigned int msg_local;
+
     char *f_msg;
+    
     if(*buffer != ':')
     {
         merror(ENCFORMAT_ERROR, ARGV0, keys->ips[id]);
         return(NULL);
     }
 
-    
     buffer++; /* to next : */
-   
-    if(!OS_BF_Str(buffer, cleartext, keys->keys[id], buffer_size,OS_DECRYPT)) 
+
+
+    /* Decrypting message */
+    if(!OS_BF_Str(buffer, cleartext, keys->keys[id], buffer_size, OS_DECRYPT)) 
     {
         merror(ENCKEY_ERROR, ARGV0, keys->ips[id]);
         return(NULL);
     }
 
 
-    /* Checking first char -- must be ':' */
-    else if(cleartext[0] != ':')
+    /* Compressed */
+    else if(cleartext[0] == '!')
     {
-        merror(ENCFORMAT_ERROR, ARGV0, keys->ips[id]);
-        return(NULL);
-    }
+        cleartext[buffer_size] = '\0';
+        cleartext++;
+        buffer_size--;
 
-    cleartext[buffer_size] = '\0';
-
-    
-    /* Checking checksum  */
-    f_msg = CheckSum(cleartext);
-    if(f_msg == NULL)
-    {
-        merror(ENCSUM_ERROR, ARGV0, keys->ips[id]);
-        return(NULL);
-    }
-
-
-    /* Checking time -- protecting against replay attacks */
-    msg_time = atoi(f_msg);
-    f_msg+=11;
-    
-    msg_count = atoi(f_msg);
-    f_msg+=5;
-
-    if((msg_time > keys->time[id]) ||
-       ((msg_time == keys->time[id]) && (msg_count > keys->count[id]))      
-      )
-    {
-        /* Updating currently time and count */
-        keys->time[id] = msg_time;
-        keys->count[id] = msg_count;
-        
-        f_msg = strchr(f_msg, ':');
-        if(f_msg)
+        cmp_size = os_uncompress(cleartext, cleartext, buffer_size, OS_MAXSTR);
+        if(!cmp_size)
         {
-            f_msg++;
+            merror(UNCOMPRESS_ERR, ARGV0);
+            return(NULL);
+        }
+
+        /* Checking checksum  */
+        f_msg = CheckSum(cleartext);
+        if(f_msg == NULL)
+        {
+            merror(ENCSUM_ERROR, ARGV0, keys->ips[id]);
+            return(NULL);
+        }
+
+        /* Removing random */
+        f_msg+=5;
+
+
+        /* Checking count -- protecting against replay attacks */
+        msg_global = atoi(f_msg);
+        f_msg+=10;
+
+        msg_local = atoi(f_msg);
+        f_msg+=4;
+
+        if((msg_global > keys->global[id])||
+           ((msg_global == keys->global[id]) && (msg_local > keys->local[id])))
+        {
+            /* Updating currently counts */
+            keys->global[id] = msg_global;
+            keys->local[id] = msg_local;
+
+            if(rcv_count >= _s_recv_flush)
+            {
+                StoreCounter(keys, id, msg_global, msg_local);
+                rcv_count = 0;
+            }
+            rcv_count++;
             return(f_msg);
         }
-    }
-   
-    /* Checking if it is a duplicated message */
-    if((msg_count == keys->count[id]) && (msg_time == keys->time[id]))
-    {
+
+        /* Checking if it is a duplicated message */
+        if(msg_global == keys->global[id])
+        {
+            return(NULL);
+        }
+
+
+        /* Warn about duplicated message */
+        merror("%s: Duplicate error:  global: %d, local: %d, "
+                "saved global: %d, saved local:%d",
+                ARGV0,
+                msg_global,
+                msg_local,
+                keys->global[id],
+                keys->local[id]);
+
+        merror(ENCTIME_ERROR, ARGV0, keys->ips[id]);
         return(NULL);
     }
 
+    /* Old format */
+    else if(cleartext[0] == ':')
+    {
+        int msg_count;
+        time_t msg_time;
 
-    /* Warn about duplicated message */
-    merror("%s: Duplicate error:  msg_count: %d, time: %d, "
-           "saved count: %d, saved_time:%d",
-            ARGV0,
-            msg_count,
-            msg_time,
-            keys->count[id],
-            keys->time[id]);
+        /* Closing string */
+        cleartext[buffer_size] = '\0';
+
+
+        /* Checking checksum  */
+        cleartext++;
+        f_msg = CheckSum(cleartext);
+        if(f_msg == NULL)
+        {
+            merror(ENCSUM_ERROR, ARGV0, keys->ips[id]);
+            return(NULL);
+        }
+
+
+        /* Checking time -- protecting against replay attacks */
+        msg_time = atoi(f_msg);
+        f_msg+=11;
+
+        msg_count = atoi(f_msg);
+        f_msg+=5;
+
+        if((msg_time > keys->global[id]) ||
+                ((msg_time == keys->global[id])&&(msg_count > keys->local[id]))
+          )
+        {
+            /* Updating currently time and count */
+            keys->global[id] = msg_time;
+            keys->local[id] = msg_count;
+
+            f_msg = strchr(f_msg, ':');
+            if(f_msg)
+            {
+                f_msg++;
+                return(f_msg);
+            }
+        }
+
+        /* Checking if it is a duplicated message */
+        if((msg_count == keys->local[id]) && (msg_time == keys->global[id]))
+        {
+            return(NULL);
+        }
+
+
+        /* Warn about duplicated message */
+        merror("%s: Duplicate error:  msg_count: %d, time: %d, "
+                "saved count: %d, saved_time:%d",
+                ARGV0,
+                msg_count,
+                msg_time,
+                keys->local[id],
+                keys->global[id]);
+
+        merror(ENCTIME_ERROR, ARGV0, keys->ips[id]);
+        return(NULL);
+
+
+    }
     
-    merror(ENCTIME_ERROR, ARGV0, keys->ips[id]);
+    merror(ENCFORMAT_ERROR, ARGV0, keys->ips[id]);
     return(NULL);
 }
 
@@ -421,20 +616,18 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
                                   int id)
 {
     int msg_size;
-    int bfsize;
+    int cmp_size;
     
     u_int16_t rand1;
     
-    time_t curr_time;
-    
-    char _tmpmsg[OS_MAXSTR +1];
-    char _finmsg[OS_MAXSTR +1];
+    char _tmpmsg[OS_MAXSTR +2];
+    char _finmsg[OS_MAXSTR +2];
     
     os_md5 md5sum;
     
     msg_size = strlen(msg);
     
-    if((msg_size > (OS_MAXSTR - 64))||(msg_size < 1))
+    if((msg_size > (OS_MAXSTR - 56))||(msg_size < 1))
     {
         merror(ENCSIZE_ERROR, ARGV0, msg);
         return(0);
@@ -443,41 +636,21 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     /* Random number */
     rand1 = (u_int16_t)rand();
 
-     
-    /* Padding the message (needs to be div by 8) */
-    bfsize = 8 - (msg_size % 8);
-    if(bfsize == 8)
-        bfsize = 0;
-
-    _tmpmsg[OS_MAXSTR] = '\0';
-    _finmsg[OS_MAXSTR] = '\0';
+    _tmpmsg[OS_MAXSTR +1] = '\0';
+    _finmsg[OS_MAXSTR +1] = '\0';
     msg_encrypted[OS_MAXSTR] = '\0';
-    
-    curr_time = time(0);
-    if(curr_time != global_time)
-    {
-        global_count = 0;
-        global_time = curr_time;
-    }
-
-    /* If global count reaches 1512 */
-    if(global_count >= 1756)
-    {
-        merror("%s: Global count too high.", ARGV0);
-        while(time(0) == global_time)
-        {
-            global_count = 0;
-        }
-        curr_time = time(0);
-        global_time = curr_time;
-        global_count = 0;
-    }
    
-
-    snprintf(_tmpmsg, OS_MAXSTR,"%010u:%04hu:%05hu%0*d:%s", 
-                            (int)curr_time, global_count, 
-                            rand1,  bfsize+1, 1, msg);
-
+    if(local_count >= 9997)
+    {
+        local_count = 0;
+        global_count++;
+    }
+    local_count++;
+    
+    
+    snprintf(_tmpmsg, OS_MAXSTR,"%05hu%010u%04hu%s",
+                              rand1, global_count, local_count,
+                              msg);  
 
     
     /* Generating md5sum of the unencrypted string */
@@ -485,27 +658,51 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
 
 
     
-    /* Generating final msg to be encrypted */
-    snprintf(_finmsg, OS_MAXSTR,":%s%s",md5sum,_tmpmsg);
-
+    /* Generating final msg to be compressed */
+    snprintf(_finmsg, OS_MAXSTR,"%s%s",md5sum,_tmpmsg);
     msg_size = strlen(_finmsg);
 
+
+    /* Tmp msg */
+    *_tmpmsg = '!';
+
+
+    /* Compressing message */
+    cmp_size = os_compress(_finmsg, _tmpmsg +1, msg_size, OS_MAXSTR);
+    if(!cmp_size)
+    {
+        merror(COMPRESS_ERR, ARGV0, _finmsg);
+        return(0);
+    }
+    cmp_size++;
+    
+
+    /* Getting average sizes */
+    c_orig_size+= msg_size;
+    c_comp_size+= cmp_size;
+    if(evt_count >= _s_comp_print)
+    {
+        verbose("%s: Event sizes: %u->%u (%d%%)", 
+                    c_orig_size, 
+                    c_comp_size,
+                    (c_comp_size * 100)/c_orig_size);
+        evt_count = 0;
+    }
+    
+    /* Setting beginning of the message */
     msg_encrypted[0] = ':';
     msg_encrypted++;
 
     
     /* Encrypting everything */
-    OS_BF_Str(_finmsg, msg_encrypted, keys->keys[id], msg_size, OS_ENCRYPT);
+    OS_BF_Str(_tmpmsg, msg_encrypted, keys->keys[id], cmp_size, OS_ENCRYPT);
     
     msg_encrypted--;
 
+    /* Storing before leaving */
+    StoreSenderCounter(keys, global_count, local_count);
 
-    
-    /* Updating the global count */
-    global_count++;
-    
-    
-    return(msg_size +1);
+    return(cmp_size +1);
 }
 
 

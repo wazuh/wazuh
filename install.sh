@@ -688,10 +688,10 @@ setEnv()
 checkDependencies()
 {
     echo ""
-    which gcc > /dev/null 2>&1
-    if [ $? -ne "0" ]; then
-        which cc > /dev/null 2>&1
-        if [ $? -ne "0" ]; then
+    ls "`which gcc`" > /dev/null 2>&1
+    if [ ! $? = 0 ]; then
+        ls "`which cc`" > /dev/null 2>&1
+        if [ ! $? = 0 ]; then
         catError "0x3-dependencies"
         fi
         CC="cc"

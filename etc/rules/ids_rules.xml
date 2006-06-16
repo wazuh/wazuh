@@ -1,4 +1,4 @@
-<!-- Official IDS rules for the OSSEC HIDS
+<!-- Official IDS rules for OSSEC
   -  Author: Daniel B. Cid
   -  Date: Jan 10, 2006
   -->
@@ -16,6 +16,17 @@
     <category>ids</category>
     <check_if_ignored>srcip, id</check_if_ignored>
     <description>IDS event.</description>
+  </rule>
+
+  <!-- This rule ignores some Ids that cause too much
+    -  false positives.
+    -->
+  <rule id="4002" level="0">
+    <if_sid>4001</if_sid>
+    <!-- 1:1852 -> robots.txt access
+       - 
+       -->
+    <id>^1:1852:</id>
   </rule>
 
   <rule id="4051" level="10" frequency="$IDS_FREQ" timeframe="120" ignore="90">

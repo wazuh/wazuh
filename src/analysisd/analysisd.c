@@ -302,7 +302,7 @@ int main(int argc, char **argv)
     if(Config.white_list == NULL)
     {
         if(Config.ar)
-            verbose("%s: No IP in the white list for active reponse.");
+            verbose("%s: No IP in the white list for active reponse.", ARGV0);
     }
     else
     {
