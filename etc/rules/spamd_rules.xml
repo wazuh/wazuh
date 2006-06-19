@@ -19,7 +19,7 @@
 
   <rule id="2902" level="0">
     <if_sid>2900</if_sid>
-    <match> checking message </match>
+    <match> checking message | processing message </match>
     <description>Spamd debug event (reading message).</description>
   </rule>
 </group> <!-- SYSLOG,SPAMD -->
