@@ -181,11 +181,13 @@ int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip)
     int ossock;
     struct sockaddr_in server;
 
-    if(protocol == IPPROTO_TCP){
+    if(protocol == IPPROTO_TCP)
+    {
         if((ossock = socket(PF_INET,SOCK_STREAM,IPPROTO_TCP)) < 0)
             return(OS_SOCKTERR);
     }
-    else if(protocol == IPPROTO_UDP){
+    else if(protocol == IPPROTO_UDP)
+    {
         if((ossock = socket(PF_INET,SOCK_DGRAM,IPPROTO_UDP)) < 0)
             return(OS_SOCKTERR);
     }
@@ -265,7 +267,7 @@ int OS_SendUDPbySize(int socket, int size, char *msg)
             return(OS_SOCKTERR);
         }
 
-        merror("remote socket busy. waiting %d", i);
+        merror("Remote socket busy, waiting %d s.", i);
         i++;    
         sleep(i);    
     }
@@ -381,12 +383,11 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
 int OS_RecvUnix(int socket, int sizet, char *ret)
 {
     ssize_t recvd;
-    if((recvd = recvfrom(socket,ret, sizet-2,0,(struct sockaddr*)&n_us,&us_l)) 
-        < 0)
+    if((recvd = recvfrom(socket, ret, sizet -1, 0, 
+                         (struct sockaddr*)&n_us,&us_l)) < 0)
         return(0);
 
     ret[recvd] = '\0';
-    ret[recvd +1] = '\0';
     return(1);
 }
 

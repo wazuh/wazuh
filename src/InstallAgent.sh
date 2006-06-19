@@ -82,7 +82,7 @@ chmod -R 770 ${DIR}/queue/ossec
 # For the logging user
 chown -R ${USER}:${GROUP} ${DIR}/logs
 chmod -R 750 ${DIR}/logs
-chmod -R 755 ${DIR}/queue/rids
+chmod -R 775 ${DIR}/queue/rids
 touch ${DIR}/logs/ossec.log
 chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
 chmod 664 ${DIR}/logs/ossec.log

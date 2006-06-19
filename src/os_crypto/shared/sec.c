@@ -407,6 +407,17 @@ void StartCounter(keystruct *keys)
 }
 
 
+/** RemoveCounter(char *id)
+ * Remove the ID counter.
+ */
+void RemoveCounter(char *id)
+{
+    char rids_file[OS_MAXSTR +1];
+    snprintf(rids_file, OS_MAXSTR, "%s/%s",RIDS_DIR, id);
+    unlink(rids_file);
+}
+
+
 /** StoreSenderCounter((keystruct *keys, int global, int local)
  * Store sender counter.
  */
@@ -488,7 +499,15 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         cleartext++;
         buffer_size--;
 
-        cmp_size = os_uncompress(cleartext, cleartext, buffer_size, OS_MAXSTR);
+        /* Removing padding */
+        while(*cleartext == '!')
+        {
+            cleartext++;
+            buffer_size--;
+        }
+        
+        /* Uncompressing */
+        cmp_size = os_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR);
         if(!cmp_size)
         {
             merror(UNCOMPRESS_ERR, __local_name);
@@ -496,7 +515,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         }
 
         /* Checking checksum  */
-        f_msg = CheckSum(cleartext);
+        f_msg = CheckSum(buffer);
         if(f_msg == NULL)
         {
             merror(ENCSUM_ERROR, __local_name, keys->ips[id]);
@@ -511,8 +530,16 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         msg_global = atoi(f_msg);
         f_msg+=10;
 
+        /* Checking for the right message format */
+        if(*f_msg != ':')
+        {
+            merror(ENCFORMAT_ERROR, __local_name, keys->ips[id]);
+            return(NULL);
+        }
+        f_msg++;
+
         msg_local = atoi(f_msg);
-        f_msg+=4;
+        f_msg+=5;
 
         if((msg_global > keys->global[id])||
            ((msg_global == keys->global[id]) && (msg_local > keys->local[id])))
@@ -624,6 +651,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
 int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
                                   int id)
 {
+    int bfsize;
     int msg_size;
     int cmp_size;
     
@@ -636,7 +664,7 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     
     msg_size = strlen(msg);
     
-    if((msg_size > (OS_MAXSTR - 56))||(msg_size < 1))
+    if((msg_size > (OS_MAXSTR - 64))||(msg_size < 1))
     {
         merror(ENCSIZE_ERROR, __local_name, msg);
         return(0);
@@ -657,7 +685,7 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     local_count++;
     
     
-    snprintf(_tmpmsg, OS_MAXSTR,"%05hu%010u%04hu%s",
+    snprintf(_tmpmsg, OS_MAXSTR,"%05hu%010u:%04hu:%s",
                               rand1, global_count, local_count,
                               msg);  
 
@@ -672,12 +700,10 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     msg_size = strlen(_finmsg);
 
 
-    /* Tmp msg */
-    *_tmpmsg = '!';
-
-
-    /* Compressing message */
-    cmp_size = os_compress(_finmsg, _tmpmsg +1, msg_size, OS_MAXSTR);
+    /* Compressing message.
+     * We assing the first 8 bytes for padding. 
+     */
+    cmp_size = os_compress(_finmsg, _tmpmsg + 8, msg_size, OS_MAXSTR - 9);
     if(!cmp_size)
     {
         merror(COMPRESS_ERR, __local_name, _finmsg);
@@ -685,6 +711,22 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     }
     cmp_size++;
     
+    /* Padding the message (needs to be div by 8) */
+    bfsize = 8 - (cmp_size % 8);
+    if(bfsize == 8)
+        bfsize = 0;
+
+    _tmpmsg[0] = '!';
+    _tmpmsg[1] = '!';
+    _tmpmsg[2] = '!';
+    _tmpmsg[3] = '!';
+    _tmpmsg[4] = '!';
+    _tmpmsg[5] = '!';
+    _tmpmsg[6] = '!';
+    _tmpmsg[7] = '!';
+
+    cmp_size+=bfsize;
+
 
     /* Getting average sizes */
     c_orig_size+= msg_size;
@@ -697,6 +739,7 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
                     (c_comp_size * 100)/c_orig_size);
         evt_count = 0;
     }
+    evt_count++;
     
     /* Setting beginning of the message */
     msg_encrypted[0] = ':';
@@ -704,7 +747,10 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
 
     
     /* Encrypting everything */
-    OS_BF_Str(_tmpmsg, msg_encrypted, keys->keys[id], cmp_size, OS_ENCRYPT);
+    OS_BF_Str(_tmpmsg + (7 - bfsize), msg_encrypted, 
+                                      keys->keys[id], 
+                                      cmp_size, 
+                                      OS_ENCRYPT);
     
     msg_encrypted--;
 

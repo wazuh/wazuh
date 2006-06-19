@@ -38,6 +38,7 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
                                   int id);
 int IsAllowedIP(keystruct *keys, char *srcip);
 int IsAllowedID(keystruct *keys, char *id);
+void RemoveCounter(char *id);
 
 #endif
 

@@ -7,7 +7,7 @@ PT=../
 
 include $(PT)Config.Make
 
-OBJS = ${OS_SHARED} ${OS_REGEX} ${OS_CRYPTO}
+OBJS = ${OS_SHARED} ${OS_REGEX} ${OS_ZLIB} ${OS_CRYPTO}
 
 handler:
 		$(CC) $(CFLAGS) *.c $(OBJS) -o manage_agents
