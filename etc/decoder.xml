@@ -34,7 +34,7 @@
 <decoder name="pam-host-user">
   <parent>pam</parent>
   <prematch offset="after_parent">rhost=\S+ user=\S+</prematch>
-  <regex offset="after_parent">rhost=(\S+) user=(\S+)$</regex>
+  <regex offset="after_parent">rhost=(\S+) user=(\S+)</regex>
   <order>srcip, user</order>
 </decoder>
 
