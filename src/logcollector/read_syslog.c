@@ -29,7 +29,12 @@ void *read_syslog(int pos, int *rc)
     char *p;
     char str[OS_MAXSTR+1];
 
+    fpos_t fp_pos;
+
     str[OS_MAXSTR]= '\0';
+
+    /* Getting initial file location */
+    fgetpos(logff[pos].fp, &fp_pos);
 
     while(fgets(str, OS_MAXSTR - 64, logff[pos].fp) != NULL)
     {
@@ -38,11 +43,22 @@ void *read_syslog(int pos, int *rc)
         {
             *p = '\0';
         }
-        else
+        
+        /* If we didn't get the new line, because the
+         * size is large, send what we got so far.
+         */
+        else if(strlen(str) >= (OS_MAXSTR - 66))
         {
             /* Message size > maximum allowed */
             __ms = 1;
         }
+        else
+        {
+            /* Message not complete. Return. */
+            merror("%s: Message not complete. Trying again: '%s'", ARGV0,str);
+            fsetpos(logff[pos].fp, &fp_pos);
+            break;
+        }    
         
         #ifdef WIN32
         if ((p = strrchr(str, '\r')) != NULL)
@@ -52,7 +68,10 @@ void *read_syslog(int pos, int *rc)
 
         /* Looking for empty string (only on windows) */
         if(strlen(str) <= 1)
+        {
+            fgetpos(logff[pos].fp, &fp_pos);
             continue;
+        }
         #endif
                       
         
@@ -71,7 +90,7 @@ void *read_syslog(int pos, int *rc)
         /* Incorrectly message size */
         if(__ms)
         {
-            merror("incorrect message: '%s'", str);
+            merror("%s: Incorrect message size: '%s'", ARGV0, str);
             while(fgets(str, OS_MAXSTR - 36, logff[pos].fp) != NULL)
             {
                 /* Getting the last occurence of \n */
@@ -80,8 +99,10 @@ void *read_syslog(int pos, int *rc)
                     break;
                 }
             }
+            __ms = 0;
         }
         
+        fgetpos(logff[pos].fp, &fp_pos);
         __rc++;
         continue;
     }
