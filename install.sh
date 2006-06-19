@@ -1,5 +1,5 @@
 #!/bin/sh
-# Installation script for the OSSEC HIDS
+# Installation script for the OSSEC
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 # Last modification: Mar 02, 2006
 

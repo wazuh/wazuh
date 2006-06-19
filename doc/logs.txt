@@ -1,15 +1,13 @@
-OSSEC HIDS 0.5
-Copyright (c) 2004,2005 Daniel B. Cid   <daniel.cid@gmail.com>
-                                        <dcid@ossec.net>
+OSSEC v0.8
+Copyright (c) 2003-2006 Daniel B. Cid <dcid@ossec.net>
 
 
-
-OSSEC Hids Logging
+OSSEC Logging
 
 == Introduction ==
 
-The system supports two types of logs. Alert logging and event
-or archive logging. 
+Ossec supports three types of logs. Alert logging, firewall
+logging and event (archiving) logging.
 
 Every message received is treated as an event. 
 Any log message, integrity report, system information will be treated 
@@ -17,15 +15,15 @@ as such. Event logging is very expensive for the system because
 it will archive every event. However, they can be usefull to get
 the big picture if some attack happens.
 
-Alert logging is the most usefull one. An alert is generated when
-an event is matched against one of the detection rules. Besides 
-logging, OSSEC hids also supports email notifications and external
-command execution as an alert method.
+Alert logging is the most useful one. An alert is generated when
+an event is matched against one of the detection rules. In addition
+to the logging, OSSEC can also generate e-mail notifications or
+execute external commands for them. 
 
 
 == Event logging ==
 
-Inside the OSSEC default loggings directory (by default /var/ossec/logs) 
+Inside the OSSEC default log directory (by default /var/ossec/logs) 
 there is an entry for "archives" (/var/ossec/logs/archives). Inside this
 directory, all events will be stored by date.
 For example, all events received on May 22 of 2004, will be stored on:

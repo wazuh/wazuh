@@ -11,6 +11,7 @@
 
 
 #include "shared.h"
+#include "sec.h"
 
 
 /** Prototypes **/
