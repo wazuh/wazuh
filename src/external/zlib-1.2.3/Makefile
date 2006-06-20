@@ -1,6 +1,6 @@
-# Makefile -- shared functions
-# Daniel B. Cid <dcid@sourcefire.com>||<daniel@underlinux.com.br>
-# http://www.ossec.net/hids/
+# Makefile for zlib.
+# Daniel B. Cid <dcid@ossec.net>
+# http://www.ossec.net
 
 NAME=zlib
 PT=../../
@@ -12,8 +12,8 @@ shared:
 		ar cru libz.a ${OBJECTS}
 		ranlib libz.a
 clean:
-		${CLEAN} ../../headers/zlib.h ../libz.a
+		${CLEAN} ../../headers/zlib.h ../../headers/zconf.h ../libz.a
 
 ossec:
-		cp -pr zlib.h ../../headers
+		cp -pr zlib.h zconf.h ../../headers/
 		cp -pr libz.a ../
