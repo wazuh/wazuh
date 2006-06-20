@@ -1,4 +1,4 @@
-/*  $OSSEC, os_maild/sendmail.c, v0.1, 2005/03/18, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2004 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software 
  * Foundation
  */
+
 
 /* Basic e-mailing operations */
 
