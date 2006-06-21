@@ -1,10 +1,10 @@
-# OSSEC, CONTRIB.txt, v1.1 2006/05/04, Daniel B. Cid
-#
+# @(#) $Id$ 
+# 
 
 Many thanks to everyone who contributed and helped with
-the ossec project. Bellow is the list of everyone
-who helped since the version 0.1.
-(if you feel you should be here, but it is not, let me know)
+the ossec project. Bellow is the list with all the people
+who helped us since our first release (0.1).
+(if you feel you should be here, but it is not, let us know).
 
 -Development
   - Daniel B. Cid <dcid ( at ) ossec.net>
@@ -40,4 +40,10 @@ who helped since the version 0.1.
   -Italian
   - Alberto Furia - <straluna ( at ) email.it>
 
+  -French
+  - Yves Bigliazzi - <yves.bigliazzi ( at ) gmail.com>
+
+  -Japanese
+  - Kuzuno Hiroki - <kuzuno ( at )gmail.com>
+  
 # EOF  
