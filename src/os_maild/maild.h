@@ -1,7 +1,7 @@
-/*   $OSSEC, maild.h, v0.2, 2005/08/24, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
- * All right reserved.
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
+ * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -10,12 +10,7 @@
  */
 
 
-/* v0.2 (2005/08/24): Adding variable timeout
- * v0.1 (2005/03/15)
- */
-
 #ifndef _MAILD_H
-
 #define _MAILD_H
 
 #define MAILQUEUE	    "queue/alerts/mailq"

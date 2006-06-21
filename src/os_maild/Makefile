@@ -1,5 +1,5 @@
 # Makefile for maild
-# Daniel B. Cid <daniel.cid@gmail.com>||<daniel@underlinux.com.br>
+# Daniel B. Cid <dcid@ossec.net>
 
 PT=../
 NAME=ossec-maild
