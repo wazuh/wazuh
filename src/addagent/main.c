@@ -1,7 +1,7 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2005,2006 Daniel B. Cid <dcid@ossec.net>
- * All right reserved.
+/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+ * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
