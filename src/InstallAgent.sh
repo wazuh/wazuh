@@ -102,7 +102,7 @@ fi
 if [ "$UNAME" = "SunOS" ]; then
     mkdir -p ${DIR}/usr/share/lib/zoneinfo/
     chmod -R 555 ${DIR}/usr/
-    cp -p /usr/share/lib/zoneinfo/* ${DIR}/usr/share/lib/zoneinfo/
+    cp -pr /usr/share/lib/zoneinfo/* ${DIR}/usr/share/lib/zoneinfo/
 fi    
 
 ls /etc/TIMEZONE > /dev/null 2>&1
