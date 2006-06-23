@@ -55,7 +55,7 @@ void *read_syslog(int pos, int *rc)
         else
         {
             /* Message not complete. Return. */
-            merror("%s: Message not complete. Trying again: '%s'", ARGV0,str);
+            /* merror("%s: Message not complete. Trying again: '%s'", ARGV0,str); */
             fsetpos(logff[pos].fp, &fp_pos);
             break;
         }    
