@@ -3,14 +3,15 @@
 # http://www.ossec.net/hids/
 
 PT=../
+NAME=util
 
-ADDAGENT=../addagent/manage_agents.c ../addagent/manage_keys.c ../addagent/validate.c ../addagent/read_from_user.c ../addagent/b64.c
+SUP=../addagent/manage_agents.c ../addagent/manage_keys.c ../addagent/validate.c ../addagent/read_from_user.c ../addagent/b64.c
 include $(PT)Config.Make
 
 OBJS = ${OS_ZLIB} ${OS_SHARED} ${OS_REGEX} ${OS_CRYPTO}
 
 me:
-		$(CC) $(CFLAGS) ${ADDAGENT} syscheck_update.c $(OBJS) -o syscheck_update
+		$(CC) $(CFLAGS) ${SUP} syscheck_update.c $(OBJS) -o syscheck_update
 		$(CC) $(CFLAGS) clear_stats.c $(OBJS) -o clear_stats
 clean:
 		$(CLEAN) syscheck_update clear_stats
