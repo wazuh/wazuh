@@ -174,10 +174,10 @@ fi
 
 # Moving the decoders/internal_conf file.
 cp -pr ../etc/decoder.xml ${DIR}/etc/
-cp -pr ../etc/ossec_internal.conf ${DIR}/etc/
+cp -pr ../etc/internal_options.conf ${DIR}/etc/
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
 chown root:ossec ${DIR}/etc/decoder.xml
-chown root:ossec ${DIR}/etc/ossec_internal.conf
+chown root:ossec ${DIR}/etc/internal_options.conf
 chown root:ossec ${DIR}/etc/shared/rootkit*
 
 
