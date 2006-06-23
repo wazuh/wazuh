@@ -60,7 +60,7 @@ if [ "X${ARGV}" = "Xall" ]; then
     fi
 
     if [ "X$OS" = "XSunOS" ]; then
-        echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -DHIGHFIRST -include strings.h">>Config.OS
+        echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -DHIGHFIRST">>Config.OS
     fi
         
     if [ "X$OS" = "XFreeBSD" ]; then
