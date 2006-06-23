@@ -27,13 +27,16 @@ int LogCollectorConfig(char * cfgfile)
 {
     int modules = 0;
 
+    logreader_config log_config;
+
     modules|= CLOCALFILE;
 
-    logff[0].file = NULL;
-    logff[0].ffile = NULL;
+    log_config.config = NULL;
 
-    if(ReadConfig(modules, cfgfile, &logff, NULL) < 0)
+    if(ReadConfig(modules, cfgfile, &log_config, NULL) < 0)
         return(OS_INVALID);
+       
+    logff = log_config.config;       
 
     return(1);
 

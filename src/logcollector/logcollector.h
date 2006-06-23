@@ -58,7 +58,7 @@ void win_readel();
 
 int loop_timeout;
 int logr_queue;
-logreader logff[MAX_READ_FILE +1];
+logreader *logff;
 
 
 #endif

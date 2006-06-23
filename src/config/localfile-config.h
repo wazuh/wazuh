@@ -17,7 +17,6 @@
 
 #define EVENTLOG    "eventlog"
 #define VCHECK_FILES    32
-#define MAX_READ_FILE   16
 #define DATE_MODIFIED   1
 
 /* Logreader config */
@@ -39,5 +38,9 @@ typedef struct _logreader
     FILE *fp;
 }logreader;
 
+typedef struct _logreader_config
+{
+    logreader *config;
+}logreader_config;
 
 #endif

@@ -83,23 +83,24 @@ int main(int argc, char **argv)
 
     /* Reading config file */
     if(LogCollectorConfig(cfg) < 0)
-        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        ErrorExit(CONFIG_ERROR, ARGV0);
     
-
-    if(logff[0].file == NULL)
-        ErrorExit(NO_FILE, ARGV0);
-            
     
     /* Getting loop timeout */
     loop_timeout = getDefine_Int("logcollector",
                                  "loop_timeout",
-                                 1, 60);        
+                                 1, 120);        
 
 
     /* Exit if test config */
     if(test_config)
         exit(0);
         
+
+    /* No file available to monitor */
+    if(logff == NULL)
+        ErrorExit(NO_FILE, ARGV0);
+            
 
     /* Starting signal handler */
     StartSIG(ARGV0);	

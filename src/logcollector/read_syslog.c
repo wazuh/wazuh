@@ -84,7 +84,6 @@ void *read_syslog(int pos, int *rc)
             {
                 ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
             }
-
         }
 
         /* Incorrectly message size */

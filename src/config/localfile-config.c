@@ -1,6 +1,6 @@
-/*   $OSSEC, config.c, v0.3, 2005/08/23, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -9,13 +9,9 @@
  * Foundation
  */
 
-/* v0.3 (2005/08/23): Using the new OS_XML syntax and changing some usage 
- * v0.2 (2005/01/17)
- */
  
 
 #include "shared.h" 
-
 #include "localfile-config.h"
 
 
@@ -29,19 +25,32 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     char *xml_localfile_logformat = "log_format";
 
     logreader *logf;
+    logreader_config *log_config;
 
-    logf = (logreader *)d1;
-    
-    logf[MAX_READ_FILE].file = NULL;
-    logf[MAX_READ_FILE].logformat = NULL;
-    
-    while(logf[pl].file != NULL)
-        pl++;
+    log_config = (logreader_config *)d1;
 
-    if(pl >= MAX_READ_FILE)
+    
+    if(!log_config->config)
     {
-        merror(XML_MAXREACHED, ARGV0, "localfile");
-        return(OS_INVALID);     
+        os_calloc(2, sizeof(logreader), log_config->config);
+        logf = log_config->config;
+        logf[0].file = NULL;
+        logf[0].logformat = NULL;
+        logf[1].file = NULL;
+        logf[1].logformat = NULL;
+    }
+    else
+    {
+        logf = log_config->config;
+        while(logf[pl].file != NULL)
+        {
+            pl++;
+        }
+        /* Allocating more memory */
+        os_realloc(logf, (pl +2)*sizeof(logreader), log_config->config);
+        logf = log_config->config;
+        logf[pl +1].file = NULL;
+        logf[pl +1].logformat = NULL;
     }
     
     logf[pl].file = NULL;
