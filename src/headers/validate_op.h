@@ -58,6 +58,55 @@ int OS_HasNetmask(char *ip_address);
 int OS_IsValidIP(char *ip_address);
     
     
+/** Time range validations **/
+
+/** char *OS_IsValidTime(char *time_str)
+ * Validates if a time is in an acceptable format
+ * for ossec.
+ * Returns 0 if doesn't match or a valid string for
+ * ossec usage in success.
+ * ** On success this function may modify the value of date
+ * Acceptable formats:
+ * hh:mm - hh:mm (24 hour format)
+ * !hh:mm -hh:mm (24 hour format)
+ * hh - hh (24 hour format)
+ * hh:mm am - hh:mm pm (12 hour format)
+ * hh am - hh pm (12 hour format)
+ */
+char *OS_IsValidTime(char *time_str);            
+
+
+/** int OS_IsonTime(char *time_str, char *ossec_time)
+ * Must be a valid string, called after OS_IsValidTime.
+ * Returns 1 on success or 0 on failure.
+ */
+int OS_IsonTime(char *time_str, char *ossec_time);
+
+
+/** Day validations **/
+
+
+/** int OS_IsonDay(int week_day, char *ossec_day)
+ * Checks if the specified week day is in the
+ * range.
+ */
+int OS_IsonDay(int week_day, char *ossec_day);
+   
+
+/** char *OS_IsValidDay(char *day_str)
+ * Validates if an day is in an acceptable format
+ * for ossec.
+ * Returns 0 if doesn't match or a valid string for
+ * ossec usage in success.
+ * ** On success this function may modify the value of date
+ * Acceptable formats:
+ * weekdays, weekends, monday, tuesday, thursday,..
+ * monday,tuesday
+ * mon,tue wed
+ */
+char *OS_IsValidDay(char *day_str);
+
+          
 #endif
 
 /* EOF */

@@ -80,6 +80,8 @@
 #define INVALID_IP      "%s(1237): Invalid ip address: '%s'."
 #define INVALID_ELEMENT "%s(1238): Invalid value for element '%s': %s"
 #define NO_CONFIG       "%s(1239): Configuration file not found: '%s'."
+#define INVALID_TIME    "%s(1240): Invalid time format: '%s'."
+#define INVALID_DAY     "%s(1241): Invalid day format: '%s'."
 
 #define MAILQ_ERROR	    "%s(1221): No Mail queue at %s"
 #define IMSG_ERROR	    "%s(1222): Invalid msg: %s"
@@ -106,7 +108,7 @@
 #define CRAFTED_IP      "%s(1271): Invalid IP Address '%s'. Possible attack."
 #define CRAFTED_USER    "%s(1272): Invalid username '%s'. Possible attack."
 #define INVALID_CAT     "%s(1273): Invalid category '%s' chosen."
-#define INVALID_CONFIG  "%s(1274): Invalid configuration. Wrong '%s': %s."
+#define INVALID_CONFIG  "%s(1274): Invalid configuration. Element '%s': %s."
 
 
 /* Log collector */

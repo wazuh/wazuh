@@ -1,6 +1,6 @@
-/*  $OSSEC, validate_op.c, v0.1, 2006/01/24, Daniel B. Cid$  */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -9,11 +9,10 @@
  * Foundation
  */
 
-/* Part of the OSSEC HIDS.
- * Available at http://www.ossec.net/hids/
+/* Part of the OSSEC.
+ * Available at http://www.ossec.net
  */
 
-/* Functions to validate values */
 
 
 #include "shared.h"
@@ -401,5 +400,354 @@ int OS_IsValidIP(char *ip_address)
     return(1);
 }
 
+
+/** int OS_IsonTime(char *time_str, char *ossec_time)
+ * Must be a valid string, called after OS_IsValidTime.
+ * Returns 1 on success or 0 on failure.
+ */
+int OS_IsonTime(char *time_str, char *ossec_time)
+{
+    int _true = 1;
+
+    if(*ossec_time == '!')
+    {
+        _true = 0;
+    }
+    ossec_time++;
+
+    /* Comparing against min/max value */
+    if((strncmp(time_str, ossec_time, 5) >= 0)&&
+      (strncmp(time_str, ossec_time+5,5) <= 0))  
+    {
+        return(_true);
+    }
+    
+    return(!_true);
+}
+
+
+/** char *OS_IsValidTime(char *time_str)
+ * Validates if a time is in an acceptable format
+ * for ossec.
+ * Returns 0 if doesn't match or a valid string for
+ * ossec usage in success.
+ * ** On success this function may modify the value of date
+ * Acceptable formats:
+ * hh:mm - hh:mm (24 hour format)
+ * !hh:mm -hh:mm (24 hour format)
+ * hh - hh (24 hour format)
+ * hh:mm am - hh:mm pm (12 hour format)
+ * hh am - hh pm (12 hour format)
+ */
+#define RM_WHITE(x)while(*x == ' ')x++;
+char *__gethour(char *str, char *ossec_hour)
+{
+    int chour = 0;
+    int cmin = 0;
+    
+    /* Invalid time format */
+    if((!isdigit(*str) || !isdigit(*(str +1)))&& isdigit(*(str +2)))
+    {
+        merror(INVALID_TIME, __local_name, str);
+        return(NULL);
+    }
+
+    /* Hour */
+    chour = atoi(str);
+
+
+    /* Getting a valid hour */
+    if(chour < 0 || chour >= 24)
+    {
+        merror(INVALID_TIME, __local_name, str);
+        return(NULL);
+
+    }
+    
+    /* Going after the hour */
+    str+=2;
+    
+    /* Getting minute */
+    if(*str == ':')
+    {
+        str++;
+        if((!isdigit(*str) || !isdigit(*(str +1)))&& isdigit(*(str +2)))
+        {
+            merror(INVALID_TIME, __local_name, str);
+            return(NULL);
+        }
+
+        cmin = atoi(str);
+        str+=2;
+    }
+
+    /* Removing spaces */
+    RM_WHITE(str);
+    
+    if((*str == 'a') || (*str == 'A'))
+    {
+        str++;
+        if((*str == 'm') || (*str == 'M'))
+        {
+            snprintf(ossec_hour, 6, "%02d:%02d", chour, cmin);
+            str++;
+            return(str);
+        }
+    }
+    else if((*str == 'p') || (*str == 'P'))
+    {
+        str++;
+        if((*str == 'm') || (*str == 'M'))
+        {
+            chour += 12;
+            
+            /* New hour must be valid */
+            if(chour < 0 || chour >= 24)
+            {
+                merror(INVALID_TIME, __local_name, str);
+                return(NULL);
+            }
+                                                
+            snprintf(ossec_hour, 6, "%02d:%02d", chour, cmin);
+            str++;
+            return(str);
+        }
+        
+    }
+    else
+    {
+        snprintf(ossec_hour, 6, "%02d:%02d", chour, cmin);
+        return(str);
+    }
+
+    /* Here is error */
+    merror(INVALID_TIME, __local_name, str);
+    return(NULL);
+}
+
+
+char *OS_IsValidTime(char *time_str)
+{
+    char *ret;
+    char first_hour[7];
+    char second_hour[7];
+    int ng = 0;
+    
+    /* Must be not null */
+    if(!time_str)
+        return(NULL);
+    
+        
+    /* Clearing memory */
+    memset(first_hour, '\0', 7);
+    memset(second_hour, '\0', 7);
+    
+    
+    /* Removing white spaces */
+    RM_WHITE(time_str);
+
+
+    /* Checking for negative */
+    if(*time_str == '!')
+    {
+        ng = 1;
+        time_str++;
+
+        /* We may have white spaces after the '!' */
+        RM_WHITE(time_str);
+    }
+
+    
+    /* Getting first hour */
+    time_str = __gethour(time_str, first_hour);
+    if(!time_str)
+        return(NULL);
+
+    /* Removing white spaces */
+    RM_WHITE(time_str);
+    
+    if(*time_str != '-')
+    {
+        return(NULL);
+    }
+
+    time_str++;
+
+    /* Removing white spaces */
+    RM_WHITE(time_str);
+
+    /* Getting second hour */
+    time_str = __gethour(time_str, second_hour);
+    if(!time_str)
+        return(NULL);
+    
+    RM_WHITE(time_str);
+    if(*time_str != '\0')
+    {
+        return(NULL);
+    }
+
+    os_calloc(13, sizeof(char), ret);
+    
+    /* Fixing dump hours */
+    if(strcmp(first_hour,second_hour) > 0)
+    {
+        snprintf(ret, 12, "!%s%s", second_hour, first_hour);
+        return(ret);
+    }
+    
+    /* For the normal times */
+    snprintf(ret, 12, "%c%s%s", ng == 0?'.':'!', first_hour, second_hour);
+    return(ret);
+}
+
+
+
+/** int OS_IsonDay(int week_day, char *ossec_day)
+ * Checks if the specified week day is in the
+ * range.
+ */
+int OS_IsonDay(int week_day, char *ossec_day)
+{
+    int _true = 1;
+
+    /* Negative */
+    if(ossec_day[7] == '!')
+        _true = 0;
+    
+    if(week_day < 0 || week_day > 7)
+    {
+        return(0);
+    }
+
+    /* It is on the right day */
+    if(ossec_day[week_day] == 1)
+        return(_true);
+    
+    return(!_true);    
+}
+
+
+
+/** char *OS_IsValidDay(char *day_str)
+ * Validates if an day is in an acceptable format
+ * for ossec.
+ * Returns 0 if doesn't match or a valid string for
+ * ossec usage in success.
+ * ** On success this function may modify the value of date
+ * Acceptable formats:
+ * weekdays, weekends, monday, tuesday, thursday,..
+ * monday,tuesday
+ * mon,tue wed
+ */
+#define RM_SEP(x)while((*x == ' ') || (*x == ','))x++;
+#define IS_SEP(x) (*x == ' ' || *x == ',')
+char *OS_IsValidDay(char *day_str)
+{
+    int i = 0, ng = 0;
+    char *ret;
+    char day_ret[9] = {0,0,0,0,0,0,0,0,0};
+    char *(days[]) = 
+    {
+        "sunday", "sun", "monday", "mon", "tuesday", "tue",
+        "wednesday", "wed", "thursday", "thu", "friday",
+        "fri", "saturday", "sat", "weekdays", "weekends", NULL
+    };
+    int days_int[] = {0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,8};
+
+    /* Must be a valid string */
+    if(!day_str)
+        return(NULL);
+    
+    
+    RM_WHITE(day_str);
+    
+    /* checking for negatives */
+    if(*day_str == '!')
+    {
+        ng = 1;
+        RM_WHITE(day_str);
+    }
+
+    while(*day_str != '\0')
+    {
+        i = 0;
+        while(days[i])
+        {
+            if(strncasecmp(day_str, days[i], strlen(days[i])) == 0)
+            {
+                /* Weekdays */
+                if(days_int[i] == 7)
+                {
+                    day_ret[1] = 1;
+                    day_ret[2] = 1;
+                    day_ret[3] = 1;
+                    day_ret[4] = 1;
+                    day_ret[5] = 1;
+                }
+                /* weekends */
+                else if(days_int[i] == 8)
+                {
+                    day_ret[0] = 1;
+                    day_ret[6] = 1;
+                }
+                else
+                {
+                    day_ret[days_int[i]] = 1;
+                }
+                break;
+            }
+            i++;
+        }
+
+        if(!days[i])
+        {
+            merror(INVALID_DAY, ARGV0, day_str);
+            return(NULL);
+        }
+        
+        day_str += strlen(days[i]);
+
+        if(IS_SEP(day_str))
+        {
+            RM_SEP(day_str);
+            continue;
+        }
+        else if(*day_str == '\0')
+            break;
+        else
+        {
+            merror(INVALID_DAY, ARGV0, day_str);
+            return(NULL);
+        }
+    }
+
+    /* Assigning values */
+    os_calloc(9, sizeof(char), ret);
+    if(ng == 1)
+    {
+        /* Setting nevative */
+        ret[7] = '!';
+    }
+
+    ng = 0;
+    for(i = 0;i<=6;i++)
+    {
+        /* Checking if some is checked */
+        if(day_ret[i] == 1)
+            ng = 1;
+        ret[i] = day_ret[i];
+    }
+
+    /* At least one day must be checked */
+    if(ng == 0)
+    {
+        free(ret);
+        merror(INVALID_DAY, ARGV0, day_str);
+        return(NULL);
+    }
+    
+    return(ret);
+}
 
 /* EOF */

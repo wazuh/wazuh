@@ -88,6 +88,8 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_category = "category";
     char *xml_cve = "cve";
     char *xml_info = "info";
+    char *xml_day_time = "time";
+    char *xml_week_day = "weekday";
     char *xml_comment = "description";
     char *xml_ignore = "ignore";
     char *xml_check_if_ignored = "check_if_ignored";
@@ -360,6 +362,31 @@ int Rules_OP_ReadRules(char * rulefile)
                         config_ruleinfo->info=
                             loadmemory(config_ruleinfo->info,
                                     rule_opt[k]->content);
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,xml_day_time)==0)
+                    {
+                        config_ruleinfo->day_time = 
+                            OS_IsValidTime(rule_opt[k]->content);
+                        if(!config_ruleinfo->day_time)
+                        {
+                            merror(INVALID_CONFIG, ARGV0,
+                                    rule_opt[k]->element,
+                                    rule_opt[k]->content);
+                            return(-1);
+                        }
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,xml_week_day)==0)
+                    {
+                        config_ruleinfo->week_day = 
+                            OS_IsValidDay(rule_opt[k]->content);
+                            
+                        if(!config_ruleinfo->week_day)
+                        {
+                            merror(INVALID_CONFIG, ARGV0,
+                                    rule_opt[k]->element,
+                                    rule_opt[k]->content);                                                  return(-1);
+                        }
+
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_group)==0)
                     {
@@ -951,6 +978,9 @@ RuleInfo *zerorulemember(int id, int level,
         ruleinfo_pt->alert_opts |= DO_MAILALERT;
     if(Config.logbylevel <= level)    
         ruleinfo_pt->alert_opts |= DO_LOGALERT;
+
+    ruleinfo_pt->day_time = NULL;
+    ruleinfo_pt->week_day = NULL;
 
     ruleinfo_pt->group = NULL;
     ruleinfo_pt->regex = NULL;

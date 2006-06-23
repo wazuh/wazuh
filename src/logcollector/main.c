@@ -83,7 +83,7 @@ int main(int argc, char **argv)
 
     /* Reading config file */
     if(LogCollectorConfig(cfg) < 0)
-        ErrorExit(CONFIG_ERROR,ARGV0,cfg);
+        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     
 
     if(logff[0].file == NULL)

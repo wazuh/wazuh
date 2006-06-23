@@ -847,7 +847,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
      * srcip,
      * dstip,
      * srcport,
-     * dstport
+     * dstport,
+     * time,
+     * weekday,
      */
     RuleInfo *currently_rule = curr_node->ruleinfo;
    
@@ -997,8 +999,25 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
         }
     }
-   
-      
+
+    /* Checking if we are in the right time */
+    if(currently_rule->day_time)
+    {
+        if(!OS_IsonTime(lf->hour, currently_rule->day_time))
+        {
+            return(NULL);
+        }
+    }
+
+    /* Checking week day */
+    if(currently_rule->week_day)
+    {
+        if(!OS_IsonDay(__crt_wday, currently_rule->week_day))
+        {
+            return(NULL);
+        }
+    }
+        
     /* If it is a context rule, search for it */
     if(currently_rule->context == 1)
     {

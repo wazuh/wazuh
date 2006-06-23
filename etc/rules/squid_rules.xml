@@ -75,8 +75,9 @@
   <!-- Special rules for 403/404 errors -->
   <rule id="5021" level="5">
     <if_sid>5006</if_sid>
-    <url>blst.php|xxx3.php|ngr7.php|ngr2.php</url>
-    <description>Attempt to access a W32.Beagle.DP file.</description>
+    <url>blst.php|xxx3.php|ngr7.php|ngr2.php|/nul.php$|/mul.php$</url>
+    <description>Attempt to access a Beagle worm (or variant) </description>
+    <description>file.</description>
     <info>http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
   </rule>
   

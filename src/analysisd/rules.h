@@ -79,6 +79,10 @@ typedef struct _RuleInfo
     OSMatch *match;
     OSRegex *regex;
 
+    /* Policy-based rules */
+    char *day_time;
+    char *week_day;
+
     char *srcip;
     char *dstip;
     OSMatch *user;
