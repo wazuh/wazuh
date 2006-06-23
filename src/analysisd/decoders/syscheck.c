@@ -193,7 +193,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             continue;
         }
             
-        saved_name = index(_db_buf,' ');
+        saved_name = strchr(_db_buf,' ');
         if(saved_name == NULL)
         {
             merror("%s: Invalid integrity message in the database",ARGV0);
@@ -309,8 +309,8 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 oldsize = saved_sum;
                 newsize = c_sum;
 
-                c_oldperm = index(saved_sum, ':');
-                c_newperm = index(c_sum, ':');
+                c_oldperm = strchr(saved_sum, ':');
+                c_newperm = strchr(c_sum, ':');
 
                 /* Get old/new permissions */
                 if(c_oldperm && c_newperm)
@@ -322,8 +322,8 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                     c_newperm++;
 
                     /* Get old/new uid/gid */
-                    olduid = index(c_oldperm, ':');
-                    newuid = index(c_newperm, ':');
+                    olduid = strchr(c_oldperm, ':');
+                    newuid = strchr(c_newperm, ':');
 
                     if(olduid && newuid)
                     {
@@ -333,8 +333,8 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         olduid++;
                         newuid++;
 
-                        oldgid = index(olduid, ':');
-                        newgid = index(newuid, ':');
+                        oldgid = strchr(olduid, ':');
+                        newgid = strchr(newuid, ':');
 
                         if(oldgid && newgid)
                         {
@@ -346,8 +346,8 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
 
                             /* Getting md5 */
-                            oldmd5 = index(oldgid, ':');
-                            newmd5 = index(newgid, ':');
+                            oldmd5 = strchr(oldgid, ':');
+                            newmd5 = strchr(newgid, ':');
 
                             if(oldmd5 && newmd5)
                             {
@@ -507,7 +507,7 @@ void DecodeSyscheck(Eventinfo *lf)
         return;
         
          
-    f_name = index(lf->log,' ');
+    f_name = strchr(lf->log,' ');
     if(f_name == NULL)
     {
         merror("%s: Invalid integrity message received",ARGV0);

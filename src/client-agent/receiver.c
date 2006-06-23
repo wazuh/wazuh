@@ -117,7 +117,7 @@ void *receiver_thread(void *none)
                     tmp_msg+=strlen(FILE_UPDATE_HEADER);
 
                     /* Going to after the file sum */
-                    validate_file = index(tmp_msg, ' ');
+                    validate_file = strchr(tmp_msg, ' ');
                     if(!validate_file)
                     {
                         continue;
@@ -134,12 +134,12 @@ void *receiver_thread(void *none)
                     tmp_msg = validate_file;
 
 
-                    if((validate_file = index(tmp_msg, '\n')) != NULL)
+                    if((validate_file = strchr(tmp_msg, '\n')) != NULL)
                     {
                         *validate_file = '\0';
                     }
 
-                    if((validate_file = index(tmp_msg, '/')) != NULL)
+                    if((validate_file = strchr(tmp_msg, '/')) != NULL)
                     {
                         *validate_file = '-';
                     }
@@ -186,7 +186,7 @@ void *receiver_thread(void *none)
 
                             /* Renaming the file to its orignal name */
 
-                            final_file = index(file, '.');
+                            final_file = strchr(file, '.');
                             if(final_file)
                             {
                                 final_file++;

@@ -42,7 +42,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     /* Cleaning the IP */
     if(lf->srcip)
     {
-        ip = rindex(lf->srcip, ':');
+        ip = strrchr(lf->srcip, ':');
         if(ip)
         {
             ip++;

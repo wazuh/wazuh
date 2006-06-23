@@ -170,7 +170,7 @@ void RK_Search(Eventinfo *lf)
         }
 
         /* Removing new line */
-        tmpstr = index(_rk_buf, '\n');
+        tmpstr = strchr(_rk_buf, '\n');
         if(tmpstr)
             *tmpstr = '\0';    
 

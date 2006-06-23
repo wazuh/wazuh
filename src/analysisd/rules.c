@@ -1262,7 +1262,7 @@ void Rule_AddAR(RuleInfo *rule_config)
                         mark_to_ar = 1;
                     }
                     
-                    str_pt = index(str_pt, ',');
+                    str_pt = strchr(str_pt, ',');
                     if(str_pt)
                     {
                         str_pt++;

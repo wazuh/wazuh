@@ -114,7 +114,7 @@ void start_daemon()
                 char *n_buf;
                 
                 /* Removing the \n before sending to the analysis server */
-                n_buf = index(buf,'\n');
+                n_buf = strchr(buf,'\n');
                 if(n_buf == NULL)
                     continue;
                 
@@ -222,7 +222,7 @@ void run_check()
         
          
         /* Finding the file name */
-        n_file = index(buf,' ');
+        n_file = strchr(buf,' ');
         if(n_file == NULL)
         {
             merror("%s: Invalid entry in the integrity checking database. "
@@ -238,7 +238,7 @@ void run_check()
         n_file++;
 
         /* Removing the '\n' if present and setting it to \0 */
-        tmp_c = index(n_file,'\n');
+        tmp_c = strchr(n_file,'\n');
         if(tmp_c)
         {
             *tmp_c = '\0';

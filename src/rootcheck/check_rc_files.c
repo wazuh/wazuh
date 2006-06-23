@@ -49,7 +49,7 @@ void check_rc_files(char *basedir, FILE *fp)
         char *nbuf;
     
         /* Removing end of line */
-        nbuf = index(buf, '\n');
+        nbuf = strchr(buf, '\n');
         if(nbuf)
         {
             *nbuf = '\0';
@@ -127,7 +127,7 @@ void check_rc_files(char *basedir, FILE *fp)
 
         
         /* Getting the link (if present) */
-        link = index(nbuf, ':');
+        link = strchr(nbuf, ':');
         if(link)
         {
             *link = '\0';
@@ -141,13 +141,13 @@ void check_rc_files(char *basedir, FILE *fp)
        
          
         /* Cleaning any space of \t at the end */
-        nbuf = index(nbuf, ' ');
+        nbuf = strchr(nbuf, ' ');
         if(nbuf)
         {
             *nbuf = '\0';
         }
 
-        nbuf = index(nbuf, '\t');
+        nbuf = strchr(nbuf, '\t');
         if(nbuf)
         {
             *nbuf = '\0';

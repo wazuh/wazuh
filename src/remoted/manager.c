@@ -511,7 +511,7 @@ void read_controlmsg(int agentid, char *msg)
     /* Get uname */
 
     uname = msg;
-    msg = index(msg,'\n');
+    msg = strchr(msg,'\n');
     if(!msg)
     {
         merror("%s: Invalid message from '%s' (uname)",ARGV0, 
@@ -549,10 +549,10 @@ void read_controlmsg(int agentid, char *msg)
         md5 = msg;
         file = msg;
 
-        msg = index(msg, '\n');
+        msg = strchr(msg, '\n');
         if(!msg)
         {
-            merror("%s: Invalid message from '%s' (index \\n)",
+            merror("%s: Invalid message from '%s' (strchr \\n)",
                         ARGV0, 
                         keys.ips[agentid]);
             break;
@@ -561,10 +561,10 @@ void read_controlmsg(int agentid, char *msg)
         *msg = '\0';
         msg++;
 
-        file = index(file, ' ');
+        file = strchr(file, ' ');
         if(!file)
         {
-            merror("%s: Invalid message from '%s' (index ' ')",
+            merror("%s: Invalid message from '%s' (strchr ' ')",
                         ARGV0, 
                         keys.ips[agentid]);
             break;

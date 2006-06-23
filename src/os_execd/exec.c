@@ -67,7 +67,7 @@ int ReadExecConfig()
         str_pt = buffer;
 
         /* Cleaning up the buffer */
-        tmp_str = index(buffer, ' ');
+        tmp_str = strchr(buffer, ' ');
         if(!tmp_str)
         {
             merror(EXEC_INV_CONF, ARGV0, DEFAULTARPATH);
@@ -96,7 +96,7 @@ int ReadExecConfig()
         
         str_pt = tmp_str;
 
-        tmp_str = index(tmp_str, ' ');
+        tmp_str = strchr(tmp_str, ' ');
         if(!tmp_str)
         {
             merror(EXEC_INV_CONF, ARGV0, DEFAULTARPATH);
@@ -126,7 +126,7 @@ int ReadExecConfig()
         
        
         str_pt = tmp_str; 
-        tmp_str = index(tmp_str, '\n');
+        tmp_str = strchr(tmp_str, '\n');
         if(tmp_str)
             *tmp_str = '\0';
 

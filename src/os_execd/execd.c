@@ -334,7 +334,7 @@ void ExecdStart(int q)
         /* Getting application name */
         name = buffer;
 
-        tmp_msg = index(buffer, ' ');
+        tmp_msg = strchr(buffer, ' ');
         if(!tmp_msg)
         {
             merror(EXECD_INV_MSG, ARGV0, buffer);
@@ -378,7 +378,7 @@ void ExecdStart(int q)
             cmd_args[i] = tmp_msg;
             cmd_args[i+1] = NULL;
 
-            tmp_msg = index(tmp_msg, ' ');
+            tmp_msg = strchr(tmp_msg, ' ');
             if(!tmp_msg)
             {
                 timeout_args[i] = strdup(cmd_args[i]);

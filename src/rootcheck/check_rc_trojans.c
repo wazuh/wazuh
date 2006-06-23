@@ -52,7 +52,7 @@ void check_rc_trojans(char *basedir, FILE *fp)
         char *message = NULL;
 
         /* Removing end of line */
-        nbuf = index(buf, '\n');
+        nbuf = strchr(buf, '\n');
         if(nbuf)
         {
             *nbuf = '\0';

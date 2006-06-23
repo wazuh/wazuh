@@ -88,7 +88,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
             /* Getting the day */
             lf->day = atoi(pieces[1]);
-            pieces[1] = index(pieces[1], ' ');
+            pieces[1] = strchr(pieces[1], ' ');
             if(!pieces[1])
             {
                 merror(FORMAT_ERROR,ARGV0);

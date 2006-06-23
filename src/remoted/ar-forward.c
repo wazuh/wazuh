@@ -72,7 +72,7 @@ void *AR_Forward(void *arg)
             /* Getting the location */
             location = msg;
             
-            tmp_str = index(msg, ' ');
+            tmp_str = strchr(msg, ' ');
             if(!tmp_str)
             {
                 merror(EXECD_INV_MSG, ARGV0, msg);
@@ -101,7 +101,7 @@ void *AR_Forward(void *arg)
             
             
             /***  Extracting the agent ip (NULL if local) ***/
-            tmp_str = index(location, '>');
+            tmp_str = strchr(location, '>');
             if(!tmp_str)
             {
                 /* It is a local message from
@@ -117,7 +117,7 @@ void *AR_Forward(void *arg)
 
 
             /*** Extracting the active response location ***/
-            tmp_str = index(ar_location_str, ' ');
+            tmp_str = strchr(ar_location_str, ' ');
             if(!tmp_str)
             {
                 merror(EXECD_INV_MSG, ARGV0, msg);
@@ -129,7 +129,7 @@ void *AR_Forward(void *arg)
 
             /*** Extracting the agent id */
             ar_agent_id = tmp_str;
-            tmp_str = index(tmp_str, ' ');
+            tmp_str = strchr(tmp_str, ' ');
             if(!tmp_str)
             {
                 merror(EXECD_INV_MSG, ARGV0, msg);
