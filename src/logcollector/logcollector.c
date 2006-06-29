@@ -56,6 +56,8 @@ void LogCollectorStart()
             /* Initializing the files */    
             if(logff[i].ffile)
             {
+                /* Day must be zero */
+                _cday = 0;
                 if(update_fname(i))
                 {
                     handle_file(i);
@@ -77,6 +79,10 @@ void LogCollectorStart()
             if(strcmp("snort-full", logff[i].logformat) == 0)
             {
                 logff[i].read = (void *)read_snortfull;
+            }
+            else if(strcmp("nmapg", logff[i].logformat) == 0)
+            {
+                logff[i].read = (void *)read_nmapg;
             }
             else
             {
@@ -199,10 +205,12 @@ void LogCollectorStart()
             }
         }
 
+        
         /* Only check bellow if check > VCHECK_FILES */
         if(f_check <= VCHECK_FILES)
             continue;
 
+        
         /* Zeroing f_check */    
         f_check = 0;
 
@@ -298,7 +306,6 @@ int update_fname(int i)
         return(0);
     }
 
-    _cday = p->tm_mday;
 
     lfile[OS_FLSIZE] = '\0';
     ret = strftime(lfile, OS_FLSIZE, logff[i].ffile, p);
@@ -307,15 +314,22 @@ int update_fname(int i)
         ErrorExit(PARSE_ERROR, ARGV0, logff[i].ffile);
     }
     
+    
     /* Update the file name */
     if(strcmp(lfile, logff[i].file) != 0)
     {
         os_free(logff[i].file);
 
         os_strdup(lfile, logff[i].file);    
+
+        /* Setting cday to zero because other files may need
+         * to be changed.
+         */
+        _cday = 0;
         return(1);
     }
 
+    _cday = p->tm_mday;
     return(0);
 }
 

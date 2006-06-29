@@ -15,6 +15,7 @@
 
 #define LOCALFILE_MQ 	'1'
 #define SYSLOG_MQ	    '2'
+#define HOSTINFO_MQ     '3'
 #define SECURE_MQ	    '4'
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'

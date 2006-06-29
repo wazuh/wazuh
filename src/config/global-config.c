@@ -113,6 +113,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     char *xml_logall = "logall";
     char *xml_integrity = "integrity_checking";
     char *xml_rootcheckd = "rootkit_detection";
+    char *xml_hostinfo = "host_information";
     char *xml_stats = "stats";
     char *xml_memorysize = "memory_size";
     char *xml_white_list = "white_list";
@@ -223,6 +224,19 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 Config->rootcheck = atoi(node[i]->content);
             }
         }
+        /* hostinfo */
+        else if(strcmp(node[i]->element, xml_hostinfo) == 0)
+        {
+            if(!OS_StrIsNum(node[i]->content))
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+            if(Config)
+            {
+                Config->hostinfo = atoi(node[i]->content);
+            }
+        }
         /* stats */
         else if(strcmp(node[i]->element, xml_stats) == 0)
         {
@@ -307,7 +321,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element, xml_smtpserver) == 0)
         {
             #ifndef WIN32
-            if(Mail)
+            if(Mail && (Mail->mn))
             {
                 Mail->smtpserver = OS_GetHost(node[i]->content);
                 if(!Mail->smtpserver)

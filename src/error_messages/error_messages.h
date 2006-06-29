@@ -64,7 +64,7 @@
 #define SEC_ERROR	    "%s(1217): Error creating encrypted message."
 #define SEND_ERROR	    "%s(1218): Unable to send message to %s."
 #define RULESLOAD_ERROR	"%s(1219): Unable to access the rules directory."
-#define RULES_ERROR	    "%s(1220): Error loading the rules."
+#define RULES_ERROR	    "%s(1220): Error loading the rules: '%s'."
 #define QUEUE_SEND      "%s(1224): Error sending message to queue."
 #define SIGNAL_RECV     "%s(1225): SIGNAL Received. Exit Cleaning..."
 #define XML_ERROR       "%s(1226): Error reading XML file '%s': %s (line %d)."

@@ -45,6 +45,9 @@ void *read_syslog(int pos, int *rc);
 /* Read snort full file */
 void *read_snortfull(int pos, int *rc);
 
+/* Read nmap grepable format */
+void *read_nmapg(int pos, int *rc);
+
 
 #ifdef WIN32
 /* Windows only */

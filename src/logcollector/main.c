@@ -97,9 +97,12 @@ int main(int argc, char **argv)
         exit(0);
         
 
-    /* No file available to monitor */
+    /* No file available to monitor -- clean exit */
     if(logff == NULL)
-        ErrorExit(NO_FILE, ARGV0);
+    {
+        merror(NO_FILE, ARGV0);
+        exit(0);
+    }
             
 
     /* Starting signal handler */

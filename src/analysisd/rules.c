@@ -266,7 +266,7 @@ int Rules_OP_ReadRules(char * rulefile)
                             &id,&level,&maxsize,&timeframe,
                             &frequency,&accuracy,&noalert,&ignore_time) < 0)
                 {
-                    merror("%s: Invalid attributes for rule '%d'", ARGV0, j);
+                    merror("%s: Invalid attribute for rule.", ARGV0);
                     OS_ClearXML(&xml);
                     return(-1);
                 }

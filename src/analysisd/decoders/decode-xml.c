@@ -290,6 +290,8 @@ void ReadDecodeXML(char *file)
                     pi->type = SQUID;
                 else if(strcmp(elements[j]->content, "windows") == 0)
                     pi->type = WINDOWS;        
+                else if(strcmp(elements[j]->content, "host-information") == 0)
+                    pi->type = HOST_INFO;
                 else
                 {
                     ErrorExit("decode-xml: Invalid decoder type '%s'.",

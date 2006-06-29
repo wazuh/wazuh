@@ -37,6 +37,7 @@
 5000 - 5999 Squid rules
 6000 - 6199 Postfix rules
 6200 - 6499 Sendmail rules
+6300 - 6399 Policy rules
 7000 - 7499 Firewall rules
 8000 - 8999 Windows rules
 100000 - 199999 User defied rules

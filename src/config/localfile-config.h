@@ -16,7 +16,7 @@
 #define __CLOGREADER_H
 
 #define EVENTLOG    "eventlog"
-#define VCHECK_FILES    32
+#define VCHECK_FILES    64
 #define DATE_MODIFIED   1
 
 /* Logreader config */

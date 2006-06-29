@@ -16,7 +16,10 @@
 int os_compress(char *src, char *dst, int src_size, int dst_size)
 {
     /* We make sure to do not allow long sizes */
-    if(compress2(dst, (long int*)&dst_size, src,(long int)src_size, 9) == Z_OK)
+    if(compress2((unsigned char *)dst, 
+                (unsigned long int*)&dst_size, 
+                (unsigned char *)src,
+                (unsigned long int)src_size, 9) == Z_OK)
     {
         dst[dst_size] = '\0';
         return(dst_size);
@@ -29,7 +32,10 @@ int os_compress(char *src, char *dst, int src_size, int dst_size)
 /* os_uncompress: Uncompress a string with zlib. */
 int os_uncompress(char *src, char *dst, int src_size, int dst_size)
 {
-    if(uncompress(dst, (long int*)&dst_size, src, (long int)src_size) == Z_OK)
+    if(uncompress((unsigned char *)dst, 
+                 (unsigned long int*)&dst_size, 
+                 (unsigned char *)src, 
+                 (unsigned long int)src_size) == Z_OK)
     {
         dst[dst_size] = '\0';
         return(dst_size);

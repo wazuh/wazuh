@@ -83,6 +83,7 @@ int IGnore(Eventinfo *lf);
 void DecodeEvent(Eventinfo *lf);
 void DecodeSyscheck(Eventinfo *lf);
 void DecodeRootcheck(Eventinfo *lf);
+void DecodeHostinfo(Eventinfo *lf);
  
 
 /* For Decoder Plugins */
@@ -92,6 +93,7 @@ void ReadDecodeXML(char *file);
 /* For syscheckd (integrity checking) */
 void SyscheckInit();
 void RootcheckInit();
+void HostinfoInit();
 
 
 /* For stats */
@@ -235,7 +237,7 @@ int main(int argc, char **argv)
             if(!test_config)
                 verbose("%s: Reading rules file: '%s'", ARGV0, *rulesfiles);
             if(Rules_OP_ReadRules(*rulesfiles) < 0)
-                ErrorExit(RULES_ERROR,ARGV0);
+                ErrorExit(RULES_ERROR, ARGV0, *rulesfiles);
                 
             free(*rulesfiles);    
             rulesfiles++;    
@@ -361,6 +363,8 @@ void OS_ReadMSG(int m_queue)
     /* Initializing Rootcheck */
     RootcheckInit();
    
+    /* Initializing host info */
+    HostinfoInit();
     
     /* Creating the event list */
     OS_CreateEventList(Config.memorysize);
@@ -585,6 +589,12 @@ void OS_ReadMSG(int m_queue)
             else if(msg[0] == ROOTCHECK_MQ)
             {
                 DecodeRootcheck(lf);
+            }
+
+            /* Host information special decoder */
+            else if(msg[0] == HOSTINFO_MQ)
+            {
+                DecodeHostinfo(lf);
             }
 
             /* Run the Decoder plugins */

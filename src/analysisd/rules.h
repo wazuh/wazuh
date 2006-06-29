@@ -150,6 +150,7 @@ RuleNode *OS_GetFirstRule();
 #define FTS_PLUGIN          12
 #define SYSCHECK_PLUGIN     13   
 #define ROOTCHECK_PLUGIN    14   
+#define HOSTINFO_PLUGIN     15
 
 
 /** Rule Path **/

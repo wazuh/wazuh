@@ -442,15 +442,16 @@ int OS_IsonTime(char *time_str, char *ossec_time)
 #define RM_WHITE(x)while(*x == ' ')x++;
 char *__gethour(char *str, char *ossec_hour)
 {
+    int _size = 0;
     int chour = 0;
     int cmin = 0;
     
     /* Invalid time format */
-    if((!isdigit(*str) || !isdigit(*(str +1)))&& isdigit(*(str +2)))
+    if(!isdigit(*str))
     {
         merror(INVALID_TIME, __local_name, str);
-        return(NULL);
     }
+    
 
     /* Hour */
     chour = atoi(str);
@@ -465,7 +466,19 @@ char *__gethour(char *str, char *ossec_hour)
     }
     
     /* Going after the hour */
-    str+=2;
+    while(isdigit(*str))
+    {
+        _size++;
+        str++;
+    }
+
+    /* Invalid hour */
+    if(_size > 2)
+    {
+        merror(INVALID_TIME, __local_name, str);
+        return(NULL);
+    }
+    
     
     /* Getting minute */
     if(*str == ':')

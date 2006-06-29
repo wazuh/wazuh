@@ -90,6 +90,7 @@ typedef struct _EventNode
 #define WEBLOG      7   /* Apache logs */
 #define SQUID       8   /* Squid logs */
 #define WINDOWS     9   /* Windows logs */
+#define HOST_INFO   10  /* Host information logs (from nmap or similar) */
 
 
 /* FTS allowed values */
