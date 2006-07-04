@@ -2,19 +2,19 @@ OSSEC v0.8
 Copyright (c) 2003-2006 Daniel B. Cid <dcid@ossec.net>
 
 
-= Reporting bugs =
+** Reporting bugs **
 
 Bugs should be sent to the OSSEC mailling list 
 (ossec-list@ossec.net). Please, make sure to include
 the following information:
 
 -OSSEC version number.
--Output of /etc/ossec-init.conf
--Output of /var/ossec/etc/ossec.conf
--Output of /var/ossec/logs/ossec.log
--Operating system (uname -a if Unix)
+-Content of /etc/ossec-init.conf
+-Content of /var/ossec/etc/ossec.conf
+-Content of /var/ossec/logs/ossec.log
+-Operating system name/version (uname -a if Unix)
 -Any other relevant information.
 
 
-If you prefer to contact us privately, send the e-mail
-to contact@ossec.net.
+If you prefer to contact us privately or if it is a security
+issue, send an e-mail to contact@ossec.net.
