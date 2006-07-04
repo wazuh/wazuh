@@ -409,7 +409,7 @@ ConfigureServer()
                  # Trying without the -W 
                  HOSTTMP=`${HOST_CMD} -t mx devmail.ossec.net 2>/dev/null`
               fi       
-              if [ "X$HOSTTMP" = "X${OSSECMX}" -o "X$HOSTTMP" = "X${OSSECMX2}" ];then
+              if [ "X$HOSTTMP" = "X${OSSECMX}" -o "X$HOSTTMP" = "X${OSSECMX2}" -o "X$HOSTTMP" = "X${OSSECMX3}" ];then
                  # Breaking down the user e-mail
                  EMAILHOST=`echo ${EMAIL} | cut -d "@" -f 2`
                  if [ "X${EMAILHOST}" = "Xlocalhost" ]; then

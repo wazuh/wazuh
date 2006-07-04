@@ -59,6 +59,7 @@ RULES_TEMPLATE="./etc/templates/config/rules.template"
 ## Host output
 OSSECMX="devmail.ossec.net mail is handled by 1 ossec.mooo.com."
 OSSECMX2="devmail.ossec.net mail is handled (pri=1) by ossec.mooo.com"
+OSSECMX3="devmail.ossec.net mail is handled by 1 ossec.mooo.COM."
 
 ## Predefined file
 PREDEF_FILE="./etc/preloaded-vars.conf"
