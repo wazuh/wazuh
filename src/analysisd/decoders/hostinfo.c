@@ -23,6 +23,9 @@
 #define HOST_HOST       "Host: "
 #define HOST_PORT       " open ports: "
 
+#define HOST_CHANGED    "Host information changed."
+#define HOST_NEW        "New host information added."
+
 
 /** Global variables **/
 char _hi_buf[OS_MAXSTR +1];
@@ -78,8 +81,6 @@ void HostinfoInit()
     /* clearing the buffer */
     memset(_hi_buf, '\0', OS_MAXSTR +1);
 
-    merror("XXX starting hostingo");
-    
     /* Creating rule for rootcheck alerts */
     hostinfo_rule = zerorulemember(
                              HOSTINFO_PLUGIN,  /* id */ 
@@ -92,9 +93,6 @@ void HostinfoInit()
     }
  
  
-    /* Comment */
-    hostinfo_rule->comment = "System host information.";
-    
     _hi_fp = fopen(HOSTINFO_DIR, "r+");
     if(!_hi_fp)
     {
@@ -133,17 +131,18 @@ FILE *HI_File()
  */
 void HI_Search(Eventinfo *lf)
 {
-    char *port;
+    int changed = 0;
+    int bf_size;
+    
     char *ip;
-    char *buffer;
     char *tmpstr;
 
+    char buffer[OS_MAXSTR + 1];
     FILE *fp;
 
-    merror("a");
+    buffer[OS_MAXSTR] = '\0';
     fp = HI_File();
 
-    merror("b");
     if(!fp)
     {
         merror("%s: Error handling host information database.",ARGV0);
@@ -152,10 +151,13 @@ void HI_Search(Eventinfo *lf)
         return;
     }
 
+    /* Copying log to buffer */
+    strncpy(buffer,lf->log, OS_MAXSTR);
+    
     
     /* Getting ip */
-    buffer = __go_after(lf->log, HOST_HOST);
-    if(!buffer)
+    tmpstr = __go_after(buffer, HOST_HOST);
+    if(!tmpstr)
     {
         merror("%s: Error handling host information database.",ARGV0);
         hi_err++;
@@ -165,28 +167,19 @@ void HI_Search(Eventinfo *lf)
 
     
     /* Setting ip */
-    ip = buffer;
-    buffer = strchr(buffer, ',');
-    if(!buffer)
+    ip = tmpstr;
+    tmpstr = strchr(tmpstr, ',');
+    if(!tmpstr)
     {
         merror("%s: Error handling host information database.",ARGV0);
         hi_err++;
 
         return;
     }
-    buffer++;
+    tmpstr++;
+    *tmpstr = '\0';
 
-    
-    /* Removing port information */
-    buffer = __go_after(buffer, HOST_PORT);
-    if(!buffer)
-    {
-        merror("%s: Error handling host information database.",ARGV0);
-        hi_err++;
-
-        return;
-    }
-    port = buffer;
+    bf_size = strlen(buffer);
     
     
     /* Reads the file and search for a possible
@@ -206,24 +199,43 @@ void HI_Search(Eventinfo *lf)
             *tmpstr = '\0';    
 
 
-        /* Cannot use strncmp to avoid errors with crafted files */    
-        if(strcmp(lf->log, _hi_buf) == 0)
+        /* Checking for ip */
+        if(strncmp(buffer, _hi_buf, bf_size) == 0)
         {
-            return;
+            /* Cannot use strncmp to avoid errors with crafted files */    
+            if(strcmp(lf->log, _hi_buf) == 0)
+            {
+                return;
+            }
+            else
+            {
+                changed = 1;
+            }
         }
     }                
 
-    lf->generated_rule = hostinfo_rule;
-    
     
     /* Adding the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
     fprintf(fp,"%s\n",lf->log);
 
+    /* Setting rule */
+    lf->generated_rule = hostinfo_rule;
+    
+    /* Setting comment */
+    if(changed == 1)
+    {
+        lf->generated_rule->comment = HOST_CHANGED;
+    }
+    else
+    {
+        lf->generated_rule->comment = HOST_NEW;
+    }
+    
     OS_Log(lf);
 
 
-    /* Removing pointer to rootcheck_rule */
+    /* Removing pointer to hostinfo_rule */
     lf->generated_rule = NULL;
 
     return; 
@@ -237,8 +249,11 @@ void HI_Search(Eventinfo *lf)
 void DecodeHostinfo(Eventinfo *lf)
 {
     lf->type = HOST_INFO; 
+
+    /* Too many errors */
+    if(hi_err > 10)
+        return;
  
-    merror("decoding: %s", lf->log);   
     if(hostinfo_rule->alert_opts & DO_LOGALERT)
         HI_Search(lf);
    

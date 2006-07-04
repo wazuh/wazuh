@@ -73,7 +73,7 @@
   </rule>
 
   <!-- Special rules for 403/404 errors -->
-  <rule id="5021" level="5">
+  <rule id="5021" level="6">
     <if_sid>5006</if_sid>
     <url>blst.php|xxx3.php|ngr7.php|ngr2.php|/nul.php$|/mul.php$</url>
     <description>Attempt to access a Beagle worm (or variant) </description>
@@ -81,10 +81,17 @@
     <info>http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
   </rule>
   
+  <!-- Other worms -->
+  <rule id="5022" level="6">
+    <if_sid>5006</if_sid>
+    <url>/jk/exp.wmf$|/PopupSh.ocx$</url>
+    <description>Attempt to access a worm/trojan related site.</description>
+  </rule>
+  
   <!-- Ignoring google earth, ms web site access and some other
     -  common extensions to cause false positives.
     -->
-  <rule id="5022" level="0">
+  <rule id="5023" level="0">
     <if_sid>5004, 5005, 5006</if_sid>
     <url>.jpg|.gif|favicon.ico|.png|.swf|.txt|.zip|.css|.xml|.js|</url>
     <url>windowsupdate/redir/wuredir.cab|</url>
@@ -131,6 +138,15 @@
     <same_source_ip />
     <description>Multiple attempts to access a non-existent file.</description>
   </rule>
+
+  <rule id="5056" level="12" frequency="$SQUID_FREQ" timeframe="240">
+    <if_matched_sid>5022</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple attempts to access a worm/trojan/virus </description>
+    <description>related web site. System probably infected.</description>
+  </rule>
+
+
 </group> <!-- ACCESSLOG,SQUID -->
 
 <!-- EOF -->
