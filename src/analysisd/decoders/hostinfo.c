@@ -25,6 +25,7 @@
 
 #define HOST_CHANGED    "Host information changed."
 #define HOST_NEW        "New host information added."
+#define PREV_OPEN       "Previously"
 
 
 /** Global variables **/
@@ -138,9 +139,11 @@ void HI_Search(Eventinfo *lf)
     char *tmpstr;
 
     char buffer[OS_MAXSTR + 1];
+    char opened[OS_MAXSTR + 1];
     FILE *fp;
 
     buffer[OS_MAXSTR] = '\0';
+    opened[OS_MAXSTR] = '\0';
     fp = HI_File();
 
     if(!fp)
@@ -209,6 +212,10 @@ void HI_Search(Eventinfo *lf)
             }
             else
             {
+                char *tmp_ports;
+
+                tmp_ports = _hi_buf + (bf_size +1);
+                snprintf(opened, OS_MAXSTR, "%s %s", PREV_OPEN, tmp_ports);
                 changed = 1;
             }
         }
@@ -226,6 +233,7 @@ void HI_Search(Eventinfo *lf)
     if(changed == 1)
     {
         lf->generated_rule->comment = HOST_CHANGED;
+        lf->generated_rule->last_events[0] = opened;
     }
     else
     {
@@ -237,6 +245,7 @@ void HI_Search(Eventinfo *lf)
 
     /* Removing pointer to hostinfo_rule */
     lf->generated_rule = NULL;
+    hostinfo_rule->last_events[0] = NULL;
 
     return; 
 }
