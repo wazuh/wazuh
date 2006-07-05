@@ -130,6 +130,13 @@ chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
 chmod 664 ${DIR}/logs/ossec.log
 
 # For the rules directory
+ls ${DIR}/rules/*.xml
+
+# Backup previous rules
+if [ $? = 0 ]; then
+    mkdir ${DIR}/rules/rules-backup
+    cp -pr ${DIR}/rules/*.xml ${DIR}/rules/rules-backup/    
+fi    
 cp -pr ../etc/rules/* ${DIR}/rules/
 chown -R root:${GROUP} ${DIR}/rules
 chmod -R 550 ${DIR}/rules
