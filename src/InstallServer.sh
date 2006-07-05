@@ -130,7 +130,7 @@ chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
 chmod 664 ${DIR}/logs/ossec.log
 
 # For the rules directory
-ls ${DIR}/rules/*.xml
+ls ${DIR}/rules/*.xml > /dev/null 2>&1
 
 # Backup previous rules
 if [ $? = 0 ]; then
