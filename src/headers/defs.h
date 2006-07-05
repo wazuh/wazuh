@@ -25,6 +25,7 @@
 
 /* Size limit control */
 #define OS_MAXSTR 	1024	/* Maximum size (for strings, sockets ,etc) */
+#define OS_MAXSTR_2	2048	/* Maximum size 2 (for strings, sockets ,etc) */
 #define OS_RULESIZE	256	    /* Maximum size -- rule only */	 	
 #define OS_FLSIZE	256	    /* Maximum size for files */		
 #define IPSIZE      16      /* IP Address size */

@@ -31,6 +31,7 @@ static char *__get_port(char *str, char *proto, char *port, int msize);
  */
 static char *__get_port(char *str, char *proto, char *port, int msize)
 {
+    int filtered = 0;
     char *p, *q;
 
     /* Removing white spaces */
@@ -52,15 +53,18 @@ static char *__get_port(char *str, char *proto, char *port, int msize)
     port[msize -1] = '\0';
     
     /* Checking if the port is open */
-    p = __go_after(p, NMAPG_OPEN);
-    if(!p)
+    q = __go_after(p, NMAPG_OPEN);
+    if(!q)
     {
-        return(NULL);
+        /* Port is not open */
+        filtered = 1;    
+        q = p;
     }
+    
 
     
     /* Going to the start of protocol field */
-    p = strchr(p, '/');
+    p = strchr(q, '/');
     if(!p)
         return(NULL);
     p++;
@@ -79,7 +83,12 @@ static char *__get_port(char *str, char *proto, char *port, int msize)
     
     strncpy(proto, str, msize);
     proto[msize -1] = '\0';
-        
+    
+    
+    /* Setting proto to null if port is not open */
+    if(filtered)
+        proto[0] = '\0';    
+    
     
     /* Removing slashes */
     if(*p == '/')
@@ -134,9 +143,11 @@ static char *__go_after(char *x, char *y)
 /* Read Nmap grepable files */
 void *read_nmapg(int pos, int *rc)
 {
+    int final_msg_s = OS_MAXSTR -2;
+    int need_clear = 0;
     int __rc = 0;
     
-    char str[OS_MAXSTR + 1];
+    char str[OS_MAXSTR_2 + 1];
     char final_msg[OS_MAXSTR + 1];
     char buffer[OS_MAXSTR + 1];
     char port[17];
@@ -146,24 +157,38 @@ void *read_nmapg(int pos, int *rc)
     char *p;
     char *q;
     
-    str[OS_MAXSTR] = '\0';
+    str[OS_MAXSTR_2] = '\0';
     final_msg[OS_MAXSTR] = '\0';
     buffer[OS_MAXSTR] = '\0';
 
     port[16] = '\0';
     proto[16] = '\0';
 
-    while(fgets(str, OS_MAXSTR, logff[pos].fp) != NULL)
+    while(fgets(str, OS_MAXSTR_2 -1, logff[pos].fp) != NULL)
     {
+        /* If need clear is set, we need to clear the line */
+        if(need_clear)
+        {
+            if((q = strchr(str, '\n')) != NULL)
+            {
+                need_clear = 0;
+            }
+            continue;
+        }
+            
         /* Removing \n at the end of the string */
-        if ((q = strrchr(str, '\n')) != NULL)
+        if ((q = strchr(str, '\n')) != NULL)
         {
             *q = '\0';
+        }
+        else
+        {
+            need_clear = 1;
         }
 
         
         /* Do not get commented lines */
-        if((*str == '#') || (*str == '\0'))
+        if((str[0] == '#') || (str[0] == '\0'))
         {
             continue;
         }
@@ -219,27 +244,41 @@ void *read_nmapg(int pos, int *rc)
         /* Generating final msg */
         snprintf(final_msg, OS_MAXSTR, "Host: %s, open ports:",
                             ip);
+        final_msg_s-=(strlen(final_msg) +2);
 
-        
         /* Getting port and protocol */
         do
         {
+            /* Avoid filling the buffer (3*port size). */
+            if(final_msg_s < 27)
+            {
+                break;
+            }
+            
             p = __get_port(p, proto, port, 9);
             if(!p)
             {
+                merror("%s: Bad formated nmap grepable file (port).", ARGV0);
                 break;
+            }
+            
+            /* Port not open */
+            if(proto[0] == '\0')
+            {
+                continue;
             }
 
             
             /* Adding ports */
             snprintf(buffer, OS_MAXSTR, " %s(%s)", port, proto);
-            strncat(final_msg, buffer, OS_MAXSTR - strlen(final_msg) -2);
+            strncat(final_msg, buffer, final_msg_s);
+            final_msg_s-=(strlen(buffer) +2);
+            
         }while(*p == ',' && (p++));
        
 
         if(p)
         { 
-            merror("XXX sending: '%s'", final_msg);
             /* Sending message to queue */
             if(SendMSG(logr_queue, final_msg, logff[pos].file, 
                         HOSTINFO_MQ) < 0)
