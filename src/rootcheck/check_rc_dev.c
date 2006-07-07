@@ -78,10 +78,13 @@ int read_dev_dir(char *dir_name)
     
 	struct dirent *entry;
     
+    /* when will these people learn that dev is not
+     * meant to store log files or other kind of texts..
+     */
     char *(ignore_dev[]) = {"MAKEDEV","README.MAKEDEV",
                             "MAKEDEV.README", ".udevdb",
                             ".udev.tdb", ".initramfs-tools",
-                            "MAKEDEV.local",
+                            "MAKEDEV.local", ".udev", ".initramfs",
     #ifdef SOLARIS                            
                             ".devfsadm_dev.lock",
                             ".devlink_db_lock",

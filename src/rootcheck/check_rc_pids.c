@@ -292,10 +292,9 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
                 (_proc_stat != _kill1))
         {
             /* checking if the pid is a thread (not showing on proc */
-            if((_proc_read != _proc_stat) || !check_rc_readproc((int)i))
+            if(!check_rc_readproc((int)i))
             {
                 char op_msg[OS_MAXSTR +1];
-                printf("read: %d, stat: %d\n", _proc_read, _proc_stat);
                 snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
                         "/proc. Possible kernel level rootkit.", (int)i);
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
