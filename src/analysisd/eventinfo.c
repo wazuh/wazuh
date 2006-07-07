@@ -193,8 +193,9 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         /* Group match */
         if(currently_rule->if_matched_group)
         {
-            if(!OSMatch_Execute(lf->log, lf->size,
-                                         currently_rule->if_matched_group))
+            if(!OSMatch_Execute(lf->generated_rule->group, 
+                                lf->size,
+                                currently_rule->if_matched_group))
             {
                 continue; /* Didn't match */
             }
@@ -265,7 +266,6 @@ void Zero_Eventinfo(Eventinfo *lf)
 {
     lf->log_tag = NULL;
     lf->log = NULL;
-    lf->group = NULL;
     lf->hostname = NULL;
 
     lf->srcip = NULL;

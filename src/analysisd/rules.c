@@ -208,7 +208,6 @@ int Rules_OP_ReadRules(char * rulefile)
     {
         XML_NODE rule = NULL;
 
-        char *group_name;
         int j = 0;
 
         /* Getting all rules for a global group */        
@@ -220,11 +219,6 @@ int Rules_OP_ReadRules(char * rulefile)
             OS_ClearXML(&xml);
             return(-1);
         }
-
-        
-        /* Group name. We Already checked it before */
-        os_strdup(node[i]->values[0], group_name);
-
 
         while(rule[j])
         {
@@ -246,7 +240,7 @@ int Rules_OP_ReadRules(char * rulefile)
             if((!rule[j]->attributes) || (!rule[j]->values))
             {
                 merror("%s: Invalid rule '%d'. You must specify"
-                        " an ID and level (at least).",j);
+                        " an ID and a level at least.",j);
                 OS_ClearXML(&xml);
                 return(-1);
             }
@@ -309,7 +303,7 @@ int Rules_OP_ReadRules(char * rulefile)
              * The level is correct so the rule is probably going to
              * be fine
              */
-            os_strdup(group_name, config_ruleinfo->group);
+            os_strdup(node[i]->values[0], config_ruleinfo->group);
             
 
             /* Rule elements block */
