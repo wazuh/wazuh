@@ -73,7 +73,6 @@ int read_dev_file(char *file_name)
 int read_dev_dir(char *dir_name)
 {
     int i;
-    int ign_size = 0;
     
     DIR *dp;
     
@@ -96,13 +95,6 @@ int read_dev_dir(char *dir_name)
     #endif
                             NULL};    
     
-    ign_size = 6;
-    
-    #ifdef SOLARIS
-    ign_size = 13; /* +7 */
-    #elif Darwin
-    ign_size = 7;
-    #endif
     
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
     {
@@ -129,13 +121,13 @@ int read_dev_dir(char *dir_name)
         _dev_total++;
          
         /* Do not look for the ignored files */
-        for(i = 0;i<=ign_size;i++)
+        for(i = 0;ignore_dev[i] != NULL;i++)
         {
             if(strcmp(ignore_dev[i], entry->d_name) == 0)
                 break;
         }
        
-        if(i <= ign_size)
+        if(ignore_dev[i] != NULL)
             continue;
              
         snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);

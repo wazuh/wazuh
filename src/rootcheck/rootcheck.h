@@ -95,8 +95,8 @@ char **rk_sys_name;
 int rk_sys_count;
 
 /* All the ports */
-int total_ports_udp[65535 +1];
-int total_ports_tcp[65535 +1];
+char total_ports_udp[65535 +1];
+char total_ports_tcp[65535 +1];
 
 
 #endif

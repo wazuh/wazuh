@@ -113,6 +113,8 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
     int _kill1 = 0;
     int _gsid0 = 0;
     int _gsid1 = 0;
+    int _gpid0 = 0;
+    int _gpid1 = 0;
     int _ps0 = -1;
     int _proc_stat  = 0;
     int _proc_read  = 0;
@@ -136,22 +138,32 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         _kill1 = 0;
         _gsid0 = 0;
         _gsid1 = 0;
+        _gpid0 = 0;
+        _gpid1 = 0;
         _ps0 = -1;
         _proc_stat  = 0;
         _proc_read  = 0;
         _proc_chdir = 0;
         
+
         /* kill test */
         if(!((kill(i, 0) == -1)&&(errno == ESRCH)))
         {
             _kill0 = 1;
         }
        
-        /* getpgid to test */ 
+        /* getsid to test */ 
         if(!((getsid(i) == -1)&&(errno == ESRCH)))
         {
             _gsid0 = 1;
         }
+
+        /* getpgid test */
+        if(!((getpgid(i) == -1)&&(errno == ESRCH)))
+        {
+            _gpid0 = 1;
+        }
+        
 
         /* proc stat */
         _proc_stat = proc_stat(i);
@@ -164,7 +176,8 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         
                
         /* IF PID does not exist, keep going */
-        if(!_kill0 && !_gsid0 && !_proc_stat && !_proc_read && !_proc_chdir)
+        if(!_kill0 && !_gsid0 && !_gpid0 && 
+           !_proc_stat && !_proc_read && !_proc_chdir)
         {
             continue;
         }
@@ -205,14 +218,19 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         sleep(2);
         #endif
         
+        /* Everyone returned ok */
+        if(_ps0 && _kill0 && _gsid0 && _gpid0 && _proc_stat && _proc_read)
+        {
+            continue;
+        }
+                
+                
         
         /* If our kill or getsid system call, got the
          * PID , but ps didn't, we need to find if it was a problem
-         * with a PID being deleted (not used anymore )
+         * with a PID being deleted (not used anymore)
          */
-        if(!_ps0 || (_proc_read != _proc_stat) || (_proc_stat != _proc_chdir))
         {
-            int _proc_s = 0; int _proc_r = 0; int _proc_c = 0;
             if(!((getsid(i) == -1)&&(errno == ESRCH)))
             {
                 _gsid1 = 1;
@@ -223,20 +241,30 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
                 _kill1 = 1;
             }
 
-            _proc_s = proc_stat(i);
+            if(!((getpgid(i) == -1)&&(errno == ESRCH)))
+            {
+                _gpid1 = 1;
+            }
             
-            _proc_r = proc_read(i);
 
-            _proc_c = proc_chdir(i);
+            _proc_stat = proc_stat(i);
+            
+            _proc_read = proc_read(i);
+
+            _proc_chdir = proc_chdir(i);
             
             /* If it matches, process was terminated */
-            if(!_gsid1 && !_kill1 && !_proc_s && !_proc_r && !_proc_c)
+            if(!_gsid1 &&!_kill1 &&!_gpid1 &&!_proc_stat &&
+               !_proc_read &&!_proc_chdir)
             {
                 continue;
             }
         }
         
-        if((_gsid0 == _gsid1)&&(_kill0 == _kill1)&&(_gsid0 != _kill0))
+        
+        if((_gsid0 == _gsid1)&&
+           (_kill0 == _kill1)&&
+           (_gsid0 != _kill0))
         {
             char op_msg[OS_MAXSTR +1];
         
@@ -247,7 +275,33 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             (*_errors)++;
         }
+        else if((_kill1 != _gsid1)||
+                (_gpid1 != _kill1)||
+                (_gpid1 != _gsid1))
+        {
+            char op_msg[OS_MAXSTR +1];
+            snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
+                    "kill, getsid or getpgid. Possible kernel-level "
+                    "rootkit.", (int)i);
 
+            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+            (*_errors)++;
+        }
+        else if((_proc_read != _proc_stat)||
+                (_proc_read != _proc_chdir)||
+                (_proc_stat != _kill1))
+        {
+            /* checking if the pid is a thread (not showing on proc */
+            if((_proc_read != _proc_stat) || !check_rc_readproc((int)i))
+            {
+                char op_msg[OS_MAXSTR +1];
+                printf("read: %d, stat: %d\n", _proc_read, _proc_stat);
+                snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
+                        "/proc. Possible kernel level rootkit.", (int)i);
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+                (*_errors)++;
+            }
+        }
         else if(_gsid1 && _kill1 && !_ps0)
         {
             /* checking if the pid is a thread (not showing on ps */
@@ -261,17 +315,6 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg); 
                 (*_errors)++;
             }
-        }
-
-        else if((_proc_read != _proc_stat) || 
-                (_proc_read != _proc_chdir))
-        {
-            char op_msg[OS_MAXSTR +1];
-            snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
-                                         "/proc. Possible kernel level "
-                                         "rootkit.", (int)i);
-            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-            (*_errors)++;
         }
     }
 }

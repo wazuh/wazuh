@@ -195,6 +195,8 @@ int rootcheck_init(int test_config)
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
+    rk_sys_name[0] = NULL;
+    rk_sys_file[0] = NULL;
 
     #ifndef OSSECHIDS
     /* Start the signal handling */

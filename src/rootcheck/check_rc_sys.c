@@ -49,6 +49,14 @@ int read_sys_file(char *file_name, int do_read)
 
     if(lstat(file_name, &statbuf) < 0)
     {
+        char op_msg[OS_MAXSTR +1];
+        snprintf(op_msg, OS_MAXSTR, "Anomaly detected in file '%s'. "
+                "Hidden from stats, but showing up on readdir. "
+                "Possible kernel level rootkit.",
+                file_name);
+        notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+        _sys_errors++;
+
         return(-1);
     }
    
@@ -182,7 +190,8 @@ int read_sys_dir(char *dir_name, int do_read)
     /* Currently device id */
     if(did != statbuf.st_dev)
     {
-        did_changed = 1;
+        if(did != 0)
+            did_changed = 1;
         did = statbuf.st_dev;
     }
     
@@ -239,17 +248,19 @@ int read_sys_dir(char *dir_name, int do_read)
         /* Checking if file is a directory */
         if(lstat(f_name, &statbuf_local) == 0)
         {
-	    #ifndef Darwin
+            /* On all the systems, except darwin, the
+             * link count is only increased on directories.
+             */
+	        #ifndef Darwin
             if(S_ISDIR(statbuf_local.st_mode))
-	    #else
-	    if(S_ISDIR(statbuf_local.st_mode) || 
- 	       S_ISREG(statbuf_local.st_mode) ||
-	       S_ISLNK(statbuf_local.st_mode))
-	    #endif
+	        #else
+	        if(S_ISDIR(statbuf_local.st_mode) || 
+ 	           S_ISREG(statbuf_local.st_mode) ||
+	           S_ISLNK(statbuf_local.st_mode))
+	        #endif
             {
                 entry_count++;
             }
-	
         }
 
         
@@ -287,7 +298,8 @@ int read_sys_dir(char *dir_name, int do_read)
     {
         char op_msg[OS_MAXSTR +1];
         snprintf(op_msg, OS_MAXSTR, "Files hidden inside directory "
-                         "'%s'. Link count does not match number of files (%d,%d).",
+                         "'%s'. Link count does not match number of files "
+                         "(%d,%d).",
                          dir_name, entry_count, (int)statbuf.st_nlink);
 
         /* Solaris /boot is terrible :) */
@@ -298,11 +310,11 @@ int read_sys_dir(char *dir_name, int do_read)
             _sys_errors++;
         }
         #elif Darwin
-	if(strncmp(dir_name, "/dev", strlen("/dev")) != 0)
-	{
-	    notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-	    _sys_errors++;
-	} 
+	    if(strncmp(dir_name, "/dev", strlen("/dev")) != 0)
+        {
+            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+            _sys_errors++;
+        } 
         #else
         notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
 
@@ -360,7 +372,7 @@ void check_rc_sys(char *basedir)
                                   "/var/mail", "/var/lib",
                                   "/usr/lib", "/usr/include",
                                   "/tmp", "/boot", "/usr/local", 
-                                  "/var/tmp", NULL};
+                                  "/var/tmp", "/sys", NULL};
 
         for(_i = 0; _i <= 24; _i++)
         {

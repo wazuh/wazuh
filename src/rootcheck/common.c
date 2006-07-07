@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <errno.h>
 
 
 /** int isfile_ondir(char *file, char *dir)
@@ -59,11 +60,13 @@ int is_file(char *file_name)
     DIR *dp = NULL;
     
     curr_dir[1023] = '\0';
-    if(!getcwd(curr_dir, 1023))
+    if(!getcwd(curr_dir, 1022))
     {
         return(0);
     }
                                         
+
+    /** chdir test **/
     if(chdir(file_name) == 0)
     {
         ret = 1;
@@ -71,10 +74,34 @@ int is_file(char *file_name)
         /* Returning to the previous directory */
         chdir(curr_dir);
     }
+    /* Checking errno (if file exists, but it is not
+     * a directory.
+     */
+    else if(errno == ENOTDIR)
+    {
+        ret = 1;
+    }
+
     
-    if((lstat(file_name, &statbuf) < 0) &&
-        ((fp = fopen(file_name, "r")) == NULL) &&
-        ((dp = opendir(file_name)) == NULL))
+    /** Trying open dir **/
+    dp = opendir(file_name);
+    if(dp)
+    {
+        closedir(dp);
+        ret = 1;
+    }
+    /* File exists, but it is not a directory */
+    else if(errno == ENOTDIR)
+    {
+        ret = 1;
+    }
+    
+
+    /* Trying other calls */
+    if( (lstat(file_name, &statbuf) < 0) &&
+        (stat(file_name, &statbuf) < 0) &&   
+        (access(file_name, F_OK) < 0) &&
+        ((fp = fopen(file_name, "r")) == NULL))
     {
         return(ret);
     }
@@ -83,9 +110,6 @@ int is_file(char *file_name)
     if(fp)
         fclose(fp);
     
-    if(dp)
-        closedir(dp);
-        
     return(1);
 }
 

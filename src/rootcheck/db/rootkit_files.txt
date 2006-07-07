@@ -227,12 +227,12 @@ dev/ptyxx			! Ark rootkit ::
 
 
 #Mithra Rootkit
-/usr/lib/locale/uboot 		! Mithra`s rootkit ::
+usr/lib/locale/uboot 		! Mithra`s rootkit ::
 
 
 # Optickit
-/usr/bin/xsf 			! OpticKit ::
-/usr/bin/xchk 			! OpticKit ::
+usr/bin/xsf 			! OpticKit ::
+usr/bin/xchk 			! OpticKit ::
 
 
 # LOC rookit
