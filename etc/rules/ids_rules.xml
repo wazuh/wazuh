@@ -24,9 +24,11 @@
   <rule id="4002" level="0">
     <if_sid>4001</if_sid>
     <!-- 1:1852 -> robots.txt access
-       - 
+       - 1:368 - ICMP pings.
+       - 1:384 - ICMP pings.
+       - 1:366 - ICMP pings.
        -->
-    <id>^1:1852:</id>
+    <id>^1:1852:|^1:368:|^1:384:|^1:366:</id>
   </rule>
 
   <rule id="4051" level="10" frequency="$IDS_FREQ" timeframe="120" ignore="90">
