@@ -90,6 +90,8 @@
   
   <!-- Ignoring google earth, ms web site access and some other
     -  common extensions to cause false positives.
+    -  It includes most of the time bugs on ie that always
+    -  access these pages (causing 404 errors).
     -->
   <rule id="5023" level="0">
     <if_sid>5004, 5005, 5006</if_sid>
@@ -97,6 +99,9 @@
     <url>windowsupdate/redir/wuredir.cab|</url>
     <url>^http://codecs.microsoft.com/isapi/ocget.dll|</url>
     <url>^http://activex.microsoft.com/objects/ocget.dll|</url>
+    <url>^http://webmessenger.msn.com/session/null|</url>
+    <url>_vti_bin/owssvr.dll|MSOffice/cltreq.asp|</url>
+    <url>google.com/mt?|</url>
     <url>^http://kh.google.com/flatfile</url>
 
     <!-- Add more extensions to be ignored in here.

@@ -361,9 +361,10 @@
   - sendmail[15806618]: k1SN9pkK15806618: ruleset=check_mail, arg1=<rtreter@qffff.com>, 
   - relay=dsl.static81215198185.ttnet.net.tr [81.215.198.185] (may be forged), reject=553 5.1.8 
   - <rtreter@qffff.com>... Domain of sender address rtreter@qffff.com does not exist
+  - sm-msp-queue[13484]: k5TKj6L5012934: to=root, ctladdr=root (0/0), delay=00:04:00, xdelay=00:00:00, mailer=relay, pri=120112, relay=[127.0.0.1], dsn=4.0.0, stat=Deferred: Connection refused by [127.0.0.1]
  -->
 <decoder name="sendmail-reject">
-  <prematch>^sendmail[\d+]: |^sm-mta[\d+]: </prematch>
+  <prematch>^sendmail[\d+]: |^sm-mta[\d+]: |^sm-msp-queue[\d+]: </prematch>
   <regex offset="after_prematch">relay=\S+ [(\d+.\d+.\d+.\d+)]</regex>
   <order>srcip</order>
 </decoder>  
