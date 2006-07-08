@@ -28,16 +28,13 @@
 #include <sys/types.h>
 #include <time.h>
 
-#include "headers/sig_op.h"
-#include "headers/file_op.h"
-#include "headers/mq_op.h"
-#include "headers/defs.h"
-#include "headers/help.h"
-#include "headers/debug_op.h"
+#include "shared.h"
 #include "syscheck.h"
 
 #ifdef OSSECHIDS
-#include "rootcheck/rootcheck.h"
+    #ifndef WIN32
+    #include "rootcheck/rootcheck.h"
+    #endif
 #endif
 
 #include "error_messages/error_messages.h"
@@ -53,6 +50,19 @@ int create_db();
 /* main v0.3
  *
  */
+#ifdef WIN32
+int Start_win32_Syscheck()
+{
+    int init = 0;
+    int test_config = 0;
+    char *cfg = DEFAULTCPATH;
+    
+    /* Zeroing the structure */
+    syscheck.workdir = NULL;
+    syscheck.daemon = 1;
+    syscheck.notify = QUEUE;
+                
+#else      
 int main(int argc, char **argv)
 {
     int init = 0, c;
@@ -103,7 +113,7 @@ int main(int argc, char **argv)
                 break;   
         }
     }
-
+#endif
 
     /* Checking if the configuration is present */
     if(File_DateofChange(cfg) < 0)
@@ -122,8 +132,10 @@ int main(int argc, char **argv)
     {
         /* Starting rootcheck */
         #ifdef OSSECHIDS
+        #ifndef WIN32
         if(rootcheck_init(test_config) == 0)
             syscheck.rootcheck = 1;
+        #endif
         #endif
     }
                                                                         
@@ -235,11 +247,12 @@ int main(int argc, char **argv)
     /* Going on daemon mode */
     if(syscheck.daemon)
     {
-
+        #ifndef WIN32
         /* Creating pid */
         if(CreatePID(ARGV0, getpid()) < 0)
             merror(PID_ERROR,ARGV0);
 
+        #endif
 
         /* Start up message */
         verbose(STARTUP_MSG, ARGV0, getpid());

@@ -7,6 +7,9 @@ shared shared
 error_messages error_messages
 addagent addagent
 config config
+syscheckd syscheckd
+os_zlib os_zlib
+external/zlib-1.2.3 zlib-1.2.3
 client-agent/config.c client-agent-config.c
 client-agent/agentd.h agentd.h
 logcollector/config.c logcollector-config.c
@@ -15,6 +18,16 @@ logcollector/logcollector.h logcollector.h
 logcollector/read_snortfull.c read_snortfull.c
 logcollector/read_syslog.c read_syslog.c
 logcollector/read_win_el.c read_win_el.c
+logcollector/read_nmapg.c read_nmapg.c
+syscheckd/config.c syscheckd-config.c
+syscheckd/create_db.c create_db.c
+syscheckd/run_check.c run_check.c
+syscheckd/syscheck.c syscheck.c
+syscheckd/syscheck.h syscheck.h
+external/zlib-1.2.3/zlib.h zlib.h
+external/zlib-1.2.3/zconf.h zconf.h
+os_zlib/os_zlib.c os_zlib.c
+os_zlib/os_zlib.h os_zlib.h
 win32/os_win.h os_win.h
 win32/win_agent.c win_agent.c
 win32/win_service.c win_service.c

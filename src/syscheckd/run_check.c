@@ -29,13 +29,13 @@
 
 #include "os_crypto/md5/md5_op.h"
 
-#include "headers/defs.h"
-#include "headers/debug_op.h"
-#include "headers/mq_op.h"
+#include "shared.h"
 
 #include "syscheck.h"
 
+#ifndef WIN32
 #include "rootcheck/rootcheck.h"
+#endif
 
 #include "error_messages/error_messages.h"
 
@@ -79,7 +79,9 @@ int notify_agent(char *msg)
 void start_daemon()
 {
     time_t curr_time = 0;
+    #ifndef WIN32
     time_t prev_time_rk = 0;
+    #endif
     time_t prev_time_sk = 0;
     
             
@@ -94,7 +96,6 @@ void start_daemon()
     
     /* some time to settle */
     sleep(30);
-
     
     /* Send the integrity database to the agent */
     if(syscheck.notify == QUEUE)
@@ -157,12 +158,14 @@ void start_daemon()
          * run it.
          */
         #ifdef OSSECHIDS 
+        #ifndef WIN32
         if((curr_time - prev_time_rk) > rootcheck.time)
         {
             if(syscheck.rootcheck)
                 run_rk_check();
             prev_time_rk = curr_time;    
         }
+        #endif
         #endif
         
         
@@ -287,8 +290,13 @@ int c_read_file(char *file_name, char *oldsum)
     os_md5 f_sum;
 
     /* stating and generating md5 of the file */
+    #ifdef WIN32
+    if((stat(file_name, &statbuf) < 0)||
+            (OS_MD5_File(file_name, f_sum) < 0))
+    #else    
     if((lstat(file_name, &statbuf) < 0)||
             (OS_MD5_File(file_name, f_sum) < 0))
+    #endif    
     {
         if(syscheck.notify == QUEUE)
         {

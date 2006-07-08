@@ -39,7 +39,12 @@ int read_file(char *file_name, int opts)
 {
     struct stat statbuf;
     
+    /* Win32 does not have lstat */
+    #ifdef WIN32
+    if(stat(file_name, &statbuf) < 0)
+    #else
     if(lstat(file_name, &statbuf) < 0)
+    #endif
     {
         merror("%s: Error accessing '%s'",ARGV0,file_name);
         return(-1);
@@ -53,8 +58,13 @@ int read_file(char *file_name, int opts)
 
         return(read_dir(file_name, opts));
     }
-        
+    
+    /* No S_ISLNK on windows */
+    #ifdef WIN32
+    else if(S_ISREG(statbuf.st_mode))
+    #else
     else if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
+    #endif    
     {
         os_md5 f_sum;
 
