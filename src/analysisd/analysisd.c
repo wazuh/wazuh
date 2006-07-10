@@ -570,6 +570,9 @@ void OS_ReadMSG(int m_queue)
                         ErrorExit("%s: Error alocating log files", ARGV0);
                     }
 
+                    /* Compress yesterday's log file */
+                    OS_CompressLog(today,prev_month,prev_year);
+
                     today = lf->day;
                     strncpy(prev_month, lf->mon, 3);
                     prev_year = lf->year;

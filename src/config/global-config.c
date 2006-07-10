@@ -117,6 +117,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     char *xml_stats = "stats";
     char *xml_memorysize = "memory_size";
     char *xml_white_list = "white_list";
+    char *xml_compress_alerts = "compress_alerts";
 
     char *xml_emailto = "email_to";
     char *xml_emailfrom = "email_from";
@@ -192,6 +193,19 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 { if(Config) Config->logall = 1;}
             else if(strcmp(node[i]->content, "no") == 0)
                 {if(Config) Config->logall = 0;}
+            else
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+        /* compress alerts */
+        else if(strcmp(node[i]->element, xml_compress_alerts) == 0)
+        {
+            if(strcmp(node[i]->content, "yes") == 0)
+                { if(Config) Config->compress_alerts = 1;}
+            else if(strcmp(node[i]->content, "no") == 0)
+                { if(Config) Config->compress_alerts = 0;}
             else
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);

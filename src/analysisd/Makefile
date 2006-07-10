@@ -11,7 +11,7 @@ LOCAL= analysisd.c stats.c rules.c rules_list.c config.c fts.c eventinfo.c event
 PLUGINS = decoders/decoders.a
 ALERTS  = alerts/alerts.a ../os_maild/os_maild_client.o
 
-loga_OBJS = ${LOCAL} ${PLUGINS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED}
+loga_OBJS = ${LOCAL} ${PLUGINS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB}
 
 
 

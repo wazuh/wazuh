@@ -15,6 +15,7 @@
 #define __GETLL_H
 
 #include "eventinfo.h"
+#include "os_zlib/os_zlib.h"
 
 /*
  * Start the log location (need to be called before getlog)
