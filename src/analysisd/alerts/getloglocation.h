@@ -23,6 +23,11 @@
  */
 void OS_InitLog();
 
+/* Compress a log using gzip.
+ *
+ */
+int OS_CompressLog(int yesterday, char *prev_month, int prev_year);
+
 
 /*
  * Get the log file based on the date/logtype/

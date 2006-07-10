@@ -52,8 +52,6 @@ int create_db();
  */
 int Start_win32_Syscheck()
 {
-    int init = 0;
-    int test_config = 0;
     char *cfg = DEFAULTCPATH;
 
     /* Zeroing the structure */

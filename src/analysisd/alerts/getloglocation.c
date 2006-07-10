@@ -51,9 +51,9 @@ int OS_CompressLog(int yesterday, char *prev_month, int prev_year)
     int len, err;
     char buf[OS_MAXSTR + 1];
 
-    memset(__alogfile,'\0',OS_FLSIZE +1);
-    memset(__alogfileGZ,'\0',OS_FLSIZE +1);
-    _aflog = NULL;
+    memset(__zlogfile,'\0',OS_FLSIZE +1);
+    memset(__zlogfileGZ,'\0',OS_FLSIZE +1);
+    _zflog = NULL;
 
     /* Setting the umask */
     umask(0027);
