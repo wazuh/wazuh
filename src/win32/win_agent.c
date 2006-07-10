@@ -23,6 +23,10 @@
 #endif
 
 
+/** Prototypes **/
+int Start_win32_Syscheck();
+
+
 /* Help message */
 void agent_help()
 {
@@ -34,6 +38,16 @@ void agent_help()
     printf("\tuninstall-service Uninstalls as a service\n");
     printf("\tstart             Manually starts (not from services)\n");
     exit(1);
+}
+
+/* syscheck main thread */
+void *skthread()
+{
+    verbose("%s: Starting syscheckd thread.", ARGV0);
+
+    Start_win32_Syscheck();
+
+    return (NULL);
 }
 
 
@@ -148,6 +162,20 @@ int local_start()
         ErrorExit(CONFIG_ERROR, ARGV0);
 
 
+    /* Starting syscheck thread */
+    {
+        DWORD  threadID;
+
+        if(CreateThread(NULL, 
+                        0, 
+                        (LPTHREAD_START_ROUTINE)skthread, 
+                        NULL, 
+                        0, 
+                        (LPDWORD)&threadID) == NULL)
+        {
+            merror(THREAD_ERROR, ARGV0);
+        }
+    }
     /* Reading the private keys  */
     ReadKeys(&keys);
 

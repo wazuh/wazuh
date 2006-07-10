@@ -34,3 +34,4 @@ win32/win_service.c win_service.c
 win32/make.bat make.bat
 win32/iis-logs.bat iis-logs.bat
 win32/ossec-win.conf ossec.conf
+win32/internal_options-win.conf internal_options.conf

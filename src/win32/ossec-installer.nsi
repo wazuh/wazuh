@@ -1,4 +1,4 @@
-!define VERSION "0.8"
+!define VERSION "0.9"
 !define NAME "Ossec HIDS"
 
 Name "${NAME} Windows Agent v${VERSION}"
@@ -26,7 +26,7 @@ Section "OSSEC HIDS Windows Agent (required)"
 
 SetOutPath $INSTDIR
   
-File ossec-agent.exe ossec.conf manage_agents.exe iis-logs.bat
+File ossec-agent.exe ossec.conf manage_agents.exe iis-logs.bat internal_options.conf
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"
@@ -35,6 +35,8 @@ WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "
 WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "NoRepair" 1
 WriteUninstaller "uninstall.exe"
 
+CreateDirectory "$INSTDIR\rids"
+CreateDirectory "$INSTDIR\syscheck"
 CreateDirectory "$SMPROGRAMS\ossec"
 CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 CreateShortCut "$SMPROGRAMS\ossec\Edit.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0

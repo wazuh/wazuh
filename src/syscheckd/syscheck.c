@@ -47,22 +47,55 @@ int Read_Syscheck_Config(char * cfgfile, config *cfg);
 int create_db();
 
 
-/* main v0.3
+/* syscheck start for windows
  *
  */
-#ifdef WIN32
 int Start_win32_Syscheck()
 {
     int init = 0;
     int test_config = 0;
     char *cfg = DEFAULTCPATH;
-    
+
     /* Zeroing the structure */
-    syscheck.workdir = NULL;
+    syscheck.workdir = DEFAULTDIR;
     syscheck.daemon = 1;
     syscheck.notify = QUEUE;
-                
-#else      
+
+    /* Checking if the configuration is present */
+    if(File_DateofChange(cfg) < 0)
+        ErrorExit(NO_CONFIG, ARGV0, cfg);
+
+
+    /* Read syscheck config */
+    if(Read_Syscheck_Config(cfg, &syscheck) < 0)
+    {
+        ErrorExit(CONFIG_ERROR, ARGV0);
+    }
+
+    syscheck.db = (char *)calloc(1024,sizeof(char));
+    if(syscheck.db == NULL)
+        ErrorExit(MEM_ERROR,ARGV0);
+
+    snprintf(syscheck.db,1023,"%s",SYS_WIN_DB);
+
+     /* Will create the db to store syscheck data */
+     create_db();
+     fflush(syscheck.fp);
+
+     /* Some sync time */
+     sleep(2);
+
+     /* Start the daemon checking against the syscheck.db */
+     start_daemon();
+
+     exit(0);
+}                
+
+
+/* main v0.3
+ *
+ */
+#ifndef WIN32 
 int main(int argc, char **argv)
 {
     int init = 0, c;
@@ -113,7 +146,6 @@ int main(int argc, char **argv)
                 break;   
         }
     }
-#endif
 
     /* Checking if the configuration is present */
     if(File_DateofChange(cfg) < 0)
@@ -132,10 +164,8 @@ int main(int argc, char **argv)
     {
         /* Starting rootcheck */
         #ifdef OSSECHIDS
-        #ifndef WIN32
         if(rootcheck_init(test_config) == 0)
             syscheck.rootcheck = 1;
-        #endif
         #endif
     }
                                                                         
@@ -187,12 +217,12 @@ int main(int argc, char **argv)
     /* Going on daemon mode */
     if(syscheck.daemon)
     {
-
         /* Setting daemon flag */
         nowDaemon();
 
         /* Entering in daemon mode now */
         goDaemon();
+
     }
     
     
@@ -219,10 +249,9 @@ int main(int argc, char **argv)
         }
     }
 
-
     /* Start the signal handling */
     StartSIG(ARGV0);
-
+    
 
     /* Lets create the database */
     if(init == 1)
@@ -247,12 +276,10 @@ int main(int argc, char **argv)
     /* Going on daemon mode */
     if(syscheck.daemon)
     {
-        #ifndef WIN32
         /* Creating pid */
         if(CreatePID(ARGV0, getpid()) < 0)
             merror(PID_ERROR,ARGV0);
 
-        #endif
 
         /* Start up message */
         verbose(STARTUP_MSG, ARGV0, getpid());
@@ -261,7 +288,7 @@ int main(int argc, char **argv)
         /* When on QUEUE, we need to create the database every time */
         if(syscheck.notify == QUEUE)
         {
-            /* Will create the temp db to store in a file pointer */
+            /* Will create the temp db */
             create_db();
 
             fflush(syscheck.fp);
@@ -284,5 +311,6 @@ int main(int argc, char **argv)
 
     return(0);        
 }
+#endif /* ifndef WIN32 */
 
 /* EOF */

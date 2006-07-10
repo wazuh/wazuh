@@ -22,6 +22,10 @@ for i in ${CAT}; do
         dest=$i;
         echo "cp -pr ${source} ${WINPKG}/${dest}"
         cp -pr ${source} "${WINPKG}/${dest}"
+        if [ ! $? = 0 ]; then
+            echo "Error copying ${source} to ${WINPKG}/${dest}"
+            exit 1;
+        fi    
         source=""
         dest=""
     fi            

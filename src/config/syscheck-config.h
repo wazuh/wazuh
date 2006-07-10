@@ -21,6 +21,7 @@
 #define MAX_DIR_ENTRY   128
 
 #define SYSCHECK_DB     "/queue/syscheck/syschecklocal.db"
+#define SYS_WIN_DB      "syscheck/syschecklocal.db"
 #define SYSCHECK_WAIT   3600
 #define SYSCHECK        "syscheck"
 

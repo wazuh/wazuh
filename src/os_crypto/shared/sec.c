@@ -22,7 +22,11 @@
 #include "os_crypto/blowfish/bf_op.h"
 
 /** Remote IDS directory */
+#ifndef WIN32
 #define RIDS_DIR        "/queue/rids"
+#else
+#define RIDS_DIR        "rids"
+#endif
 #define SENDER_COUNTER  "sender_counter"
 #define KEYSIZE	 72
 
