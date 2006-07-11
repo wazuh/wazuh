@@ -6,7 +6,7 @@ Copyright (c) 2006 Daniel B. Cid <dcid@ossec.net>
 
 Ossec can read nmap grepable output files to use as a
 correlation tool and also to alert based on host information
-changes. Follow the step by step bellow on how to configure
+changes. Follow the step by step below on how to configure
 ossec:
 
 
