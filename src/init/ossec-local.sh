@@ -12,7 +12,7 @@ cd $OLDPWD >/dev/null 2>&1;
 
 ###  Do not modify bellow here ###
 NAME="OSSEC HIDS"
-VERSION="v0.8"
+VERSION="v0.9"
 AUTHOR="Daniel B. Cid"
 DAEMONS="ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd"
 
