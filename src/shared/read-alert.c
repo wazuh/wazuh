@@ -205,8 +205,16 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 p++;
                 os_strdup(p, comment);
                 
+                /* Must have the closing \' */
                 p = strrchr(comment, '\'');
-                p = '\0';
+                if(p)
+                {
+                    *p = '\0';
+                }
+                else
+                {
+                    goto l_error;
+                }
             }
             
             /* srcip */
