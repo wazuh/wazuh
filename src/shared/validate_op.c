@@ -33,6 +33,7 @@ static char *_read_file(char *high_name, char *low_name)
     char *tmp_buffer;
     char *ret;
     
+    #ifndef WIN32
     if(isChroot())
     {
         snprintf(def_file,OS_MAXSTR,"%s", OSSEC_DEFINES);
@@ -41,6 +42,10 @@ static char *_read_file(char *high_name, char *low_name)
     {
         snprintf(def_file,OS_MAXSTR,"%s%s",DEFAULTDIR, OSSEC_DEFINES);
     }
+    #else
+    snprintf(def_file,OS_MAXSTR,"%s", OSSEC_DEFINES);
+    #endif
+
                                                         
     fp = fopen(def_file, "r");
     if(!fp)

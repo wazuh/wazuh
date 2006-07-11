@@ -99,7 +99,11 @@
         
         
 /* Internal definitions files */
-#define OSSEC_DEFINES   "/etc/internal_options.conf"
+#ifndef WIN32
+    #define OSSEC_DEFINES   "/etc/internal_options.conf"
+#else
+    #define OSSEC_DEFINES   "internal_options.conf"
+#endif
 
 
 /* Log directories */
