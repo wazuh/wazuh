@@ -22,6 +22,8 @@
 #define ARGV0 "ossec-agent"
 #endif
 
+time_t __win32_curr_time = 0;
+
 
 /** Prototypes **/
 int Start_win32_Syscheck();
@@ -266,6 +268,55 @@ int StartMQ(char * path, short int type)
     type = 0;
 
     return(0);
+}
+
+
+/* Send win32 info to server */
+void send_win32_info()
+{
+    time_t curr_time;
+
+    curr_time = time(0);
+
+    if((curr_time - __win32_curr_time) > NOTIFY_TIME)
+    {
+        char tmp_msg[OS_MAXSTR +1];
+        char *myuname;
+
+        tmp_msg[OS_MAXSTR] = '\0';
+        __win32_curr_time = curr_time;
+
+        merror("XXX generating uname.");
+        myuname = getuname();
+        if(!myuname)
+        {
+            merror("%s: Error generating system information.", ARGV0);
+            return;
+        }
+        merror("XXX uname is: %s", myuname);
+
+        /* creating message */
+        snprintf(tmp_msg, OS_MAXSTR, "#!-%s\n",myuname);
+
+        msg_size = CreateSecMSG(&keys, tmp_msg, crypt_msg, 0);
+
+        if(msg_size == 0)
+        {
+            free(myuname);
+            merror(SEC_ERROR, ARGV0);
+            return;
+        }
+
+        /* Sending UDP message */
+        if(OS_SendUDPbySize(logr->sock, msg_size, crypt_msg) < 0)
+        {
+            merror(SEND_ERROR, ARGV0, "server");
+        }
+
+        free(myuname);
+    }
+
+    return;
 }
 
 #endif

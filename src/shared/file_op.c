@@ -196,6 +196,13 @@ void goDaemon()
     return;
 }
 
+
+#else
+/** get uname for windows **/
+char *getuname()
+{
+    return(NULL);
+}
 #endif
 
 /* EOF */

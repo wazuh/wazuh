@@ -210,6 +210,11 @@ void LogCollectorStart()
         if(f_check <= VCHECK_FILES)
             continue;
 
+        /* On windows, get system info */
+        #ifdef WIN32
+        send_win32_info();
+        #endif
+
         
         /* Zeroing f_check */    
         f_check = 0;

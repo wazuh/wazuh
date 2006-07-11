@@ -53,6 +53,7 @@ void *read_nmapg(int pos, int *rc);
 /* Windows only */
 void win_startel();
 void win_readel();
+void send_win32_info();
 #endif
 
 
