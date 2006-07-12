@@ -27,6 +27,7 @@
 #include <limits.h>
 
 #include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 #include "headers/debug_op.h"
 
@@ -46,7 +47,7 @@ int read_file(char *file_name, int opts)
     if(lstat(file_name, &statbuf) < 0)
     #endif
     {
-        merror("%s: Error accessing '%s'",ARGV0,file_name);
+        merror("%s: Error accessing '%s'.",ARGV0, file_name);
         return(-1);
     }
     
@@ -66,33 +67,52 @@ int read_file(char *file_name, int opts)
     else if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
     #endif    
     {
-        os_md5 f_sum;
+        os_md5 mf_sum;
+        os_sha1 sf_sum;
 
-        /* generating md5 of the file */
-        if(OS_MD5_File(file_name, f_sum) < 0)
+        /* Cleaning sums */
+        strncpy(mf_sum, "xxx", 4);
+        strncpy(sf_sum, "xxx", 4);
+
+
+        /* getting md5sum */
+        if(opts & CHECK_MD5SUM)
         {
-            /* Not add files we can't md5sum */
-            /* fprintf(syscheck.fp,"-1 %s\n",file_name); */
+            /* generating md5 of the file */
+            if(OS_MD5_File(file_name, mf_sum) < 0)
+            {
+                strncpy(mf_sum, "xxx", 4);
+            }
         }
 
-        else
+        /* getting sha1sum */
+        if(opts & CHECK_SHA1SUM)
         {
-            fprintf(syscheck.fp,"%c%c%c%c%c%d:%d:%d:%d:%s %s\n",
-                    opts & CHECK_SIZE?'+':'-',
-                    opts & CHECK_PERM?'+':'-',
-                    opts & CHECK_OWNER?'+':'-',
-                    opts & CHECK_GROUP?'+':'-',
-                    opts & CHECK_SUM?'+':'-',
-                    opts & CHECK_SIZE?(int)statbuf.st_size:0,
-                    opts & CHECK_PERM?(int)statbuf.st_mode:0,
-                    opts & CHECK_OWNER?(int)statbuf.st_uid:0,
-                    opts & CHECK_GROUP?(int)statbuf.st_gid:0,
-                    opts & CHECK_SUM?f_sum:"xxx",
-                    file_name);
+            /* generating md5 of the file */
+            if(OS_SHA1_File(file_name, sf_sum) < 0)
+            {
+                strncpy(sf_sum, "xxx", 4);
+            }
         }
-        
+
+
+        fprintf(syscheck.fp,"%c%c%c%c%c%c%d:%d:%d:%d:%s:%s %s\n",
+                opts & CHECK_SIZE?'+':'-',
+                opts & CHECK_PERM?'+':'-',
+                opts & CHECK_OWNER?'+':'-',
+                opts & CHECK_GROUP?'+':'-',
+                opts & CHECK_MD5SUM?'+':'-',
+                opts & CHECK_SHA1SUM?'+':'-',
+                opts & CHECK_SIZE?(int)statbuf.st_size:0,
+                opts & CHECK_PERM?(int)statbuf.st_mode:0,
+                opts & CHECK_OWNER?(int)statbuf.st_uid:0,
+                opts & CHECK_GROUP?(int)statbuf.st_gid:0,
+                opts & CHECK_MD5SUM?mf_sum:"xxx",
+                opts & CHECK_SHA1SUM?sf_sum:"xxx",
+                file_name);
+
         #ifdef DEBUG 
-        verbose("%s: file '%s %s'\n",ARGV0, file_name,f_sum);
+        verbose("%s: file '%s %s'",ARGV0, file_name, mf_sum);
         #endif
     }
     else
@@ -116,10 +136,12 @@ int read_dir(char *dir_name, int opts)
     DIR *dp;
     
 	struct dirent *entry;
+
+    f_name[PATH_MAX +1] = '\0';
 	
     if((dir_name == NULL)||((dir_size = strlen(dir_name)) > PATH_MAX))
     {
-        merror("%s: Invalid directory given",ARGV0);
+        merror("%s: Invalid directory given.",ARGV0);
         return(-1);
     }
     
@@ -127,12 +149,19 @@ int read_dir(char *dir_name, int opts)
     dp = opendir(dir_name);
 	if(!dp)
     {
+        if(errno == ENOTDIR)
+        {
+            if(read_file(dir_name, opts) == 0)
+                return(0);
+        }
+        
         merror("%s: Error opening directory: '%s': %s ",
                                               ARGV0,
                                               dir_name,
                                               strerror(errno));
         return(-1);
     }
+    
 
     while((entry = readdir(dp)) != NULL)
     {
@@ -143,7 +172,7 @@ int read_dir(char *dir_name, int opts)
            (strcmp(entry->d_name,"..") == 0))  
             continue;
             
-        strcpy(f_name,dir_name);
+        strncpy(f_name, dir_name, PATH_MAX);
        
         s_name = f_name;
         
@@ -155,7 +184,7 @@ int read_dir(char *dir_name, int opts)
             
         *s_name = '\0';
         
-        strncpy(s_name,entry->d_name,PATH_MAX-dir_size);
+        strncpy(s_name, entry->d_name, PATH_MAX - dir_size -1);
         read_file(f_name, opts);
     }
 

@@ -84,6 +84,9 @@ UpdateStopOSSEC()
    . ${OSSEC_INIT}
    
    $DIRECTORY/bin/ossec-control stop 
+
+   # We also need to remove all syscheck queue file (format changed)
+   rm -f $DIRECTORY/queue/syscheck/*
 }
 
 

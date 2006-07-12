@@ -28,6 +28,7 @@
 #include <time.h>
 
 #include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 #include "shared.h"
 
@@ -47,7 +48,7 @@ int c_read_file(char *file_name, char *oldsum);
 
 /* Global variables -- currently checksum, msg to alert  */
 char c_sum[256 +1];
-char alert_msg[812 +1];
+char alert_msg[912 +1];
 
 
 /* notify_agent
@@ -91,7 +92,7 @@ void start_daemon()
   
     /* Zeroing memory */
     memset(c_sum, '\0', 256 +1);
-    memset(alert_msg, '\0', 812 +1);
+    memset(alert_msg, '\0', 912 +1);
      
     
     /* some time to settle */
@@ -100,8 +101,10 @@ void start_daemon()
     /* Send the integrity database to the agent */
     if(syscheck.notify == QUEUE)
     {
-        char buf[MAX_LINE];
+        char buf[MAX_LINE +1];
         int file_count = 0;
+        
+        buf[MAX_LINE] = '\0';
         
         if(fseek(syscheck.fp,0, SEEK_SET) == -1)
         {
@@ -122,9 +125,9 @@ void start_daemon()
                 *n_buf = '\0';
                 
                 
-                /* First 5 characters are for internal use */
+                /* First 6 characters are for internal use */
                 n_buf = buf;
-                n_buf+=5;
+                n_buf+=6;
                     
                 notify_agent(n_buf);
 
@@ -191,10 +194,12 @@ void start_daemon()
  */
 void run_check()
 {
-    char buf[MAX_LINE];
+    char buf[MAX_LINE +1];
     int file_count = 0;
 
-    /* fgets garantee the null terminator */
+    buf[MAX_LINE] = '\0';
+    
+    /* fgets garantee the null termination */
     while(fgets(buf,MAX_LINE,syscheck.fp) != NULL)
     {
         /* Buf should be in the following format:
@@ -257,12 +262,12 @@ void run_check()
             continue;
 
 
-        if(strcmp(c_sum,n_sum+5) != 0)
+        if(strcmp(c_sum,n_sum+6) != 0)
         {
             /* Sending the new checksum to the analysis server */
             if(syscheck.notify == QUEUE)
             {
-                snprintf(alert_msg, 812,"%s %s",c_sum,n_file);
+                snprintf(alert_msg, 912, "%s %s",c_sum,n_file);
                 notify_agent(alert_msg);
             }
             else
@@ -283,28 +288,33 @@ void run_check()
  */
 int c_read_file(char *file_name, char *oldsum)
 {
-    int size = 0, perm = 0, owner = 0, group = 0, sum = 0;
+    int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0;
     
     struct stat statbuf;
 
-    os_md5 f_sum;
+    os_md5 mf_sum;
+    os_sha1 sf_sum;
 
-    /* stating and generating md5 of the file */
+
+    /* Cleaning sums */
+    strncpy(mf_sum, "xxx", 4);
+    strncpy(sf_sum, "xxx", 4);
+                    
+    
+
+    /* Stating the file */
     #ifdef WIN32
-    if((stat(file_name, &statbuf) < 0)||
-            (OS_MD5_File(file_name, f_sum) < 0))
-    #else    
-    if((lstat(file_name, &statbuf) < 0)||
-            (OS_MD5_File(file_name, f_sum) < 0))
-    #endif    
+    if(stat(file_name, &statbuf) < 0)
+    #else
+    if(lstat(file_name, &statbuf) < 0)
+    #endif
     {
         if(syscheck.notify == QUEUE)
         {
-            alert_msg[512] = '\0';
-            snprintf(alert_msg, 512,"-1 %s",file_name);
+            alert_msg[912] = '\0';
+            snprintf(alert_msg, 912,"-1 %s",file_name);
             notify_agent(alert_msg);
         }
-
         else
         {
             merror("%s: Error accessing '%s'",ARGV0,file_name);
@@ -312,7 +322,6 @@ int c_read_file(char *file_name, char *oldsum)
 
         return(-1);
     }
-
 
     /* Getting the old sum values */
 
@@ -332,17 +341,50 @@ int c_read_file(char *file_name, char *oldsum)
     if(oldsum[3] == '+')
         group = 1;
         
-    /* checksum */
+    /* md5 sum */
     if(oldsum[4] == '+')
-        sum = 1;    
+        md5sum = 1;
 
+    /* sha1 sum */
+    if(oldsum[5] == '+')
+        sha1sum = 1;
     
-    snprintf(c_sum,255,"%d:%d:%d:%d:%s",
+    
+    /* Generating new checksum */
+    #ifdef WIN32
+    if(S_ISREG(statbuf.st_mode))
+    #else
+    if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
+    #endif
+    {
+        if(sha1sum)
+        {
+            /* generating md5 of the file */
+            if(OS_SHA1_File(file_name, sf_sum) < 0)
+            {
+                strncpy(sf_sum, "xxx", 4);
+            }
+
+        }
+
+        if(md5sum)
+        {
+            /* generating md5 of the file */
+            if(OS_MD5_File(file_name, mf_sum) < 0)
+            {
+                strncpy(mf_sum, "xxx", 4);
+            }
+        }
+    }
+                            
+    
+    snprintf(c_sum,255,"%d:%d:%d:%d:%s:%s",
             size == 0?0:(int)statbuf.st_size,
             perm == 0?0:(int)statbuf.st_mode,
             owner== 0?0:(int)statbuf.st_uid,
             group== 0?0:(int)statbuf.st_gid,
-            sum  == 0?"xxx":f_sum);
+            md5sum   == 0?"xxx":mf_sum,
+            sha1sum  == 0?"xxx":sf_sum);
 
     return(0);
 }

@@ -26,12 +26,12 @@
 #define SYSCHECK        "syscheck"
 
 /* Checking options */
-#define CHECK_SUM       0000001
-#define CHECK_PERM      0000002
-#define CHECK_SIZE      0000004
-#define CHECK_OWNER     0000010
-#define CHECK_GROUP     0000020
-
+#define CHECK_MD5SUM        0000001
+#define CHECK_PERM          0000002
+#define CHECK_SIZE          0000004
+#define CHECK_OWNER         0000010
+#define CHECK_GROUP         0000020
+#define CHECK_SHA1SUM       0000040
 
 #include <stdio.h>
 

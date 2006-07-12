@@ -30,6 +30,7 @@ char _tmp_perm[197 +1];
 char _tmp_owner[197 +1];
 char _tmp_gowner[197 +1];
 char _tmp_md5[197 +1];
+char _tmp_sha1[197 +1];
 
 
 char *agent_ips[MAX_AGENTS +1];
@@ -71,6 +72,7 @@ void SyscheckInit()
     memset(_tmp_owner, '\0', 198);
     memset(_tmp_gowner, '\0', 198);
     memset(_tmp_md5, '\0', 198);
+    memset(_tmp_sha1, '\0', 198);
 
     syscheck_rule = zerorulemember(
                         SYSCHECK_PLUGIN,
@@ -303,6 +305,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 char *c_oldperm = NULL, *c_newperm = NULL;
                 char *oldgid = NULL, *newgid = NULL;
                 char *oldmd5 = NULL, *newmd5 = NULL;
+                char *oldsha1 = NULL, *newsha1 = NULL;
 
                 int oldperm = 0, newperm = 0;
                 
@@ -355,7 +358,20 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                                 *newmd5 = '\0';
 
                                 oldmd5++;
-                                newmd5++;    
+                                newmd5++;
+                                
+                                /* getting sha1 */
+                                oldsha1 = strchr(oldmd5, ':');
+                                newsha1 = strchr(newmd5, ':');
+                                
+                                if(oldsha1 && newsha1)
+                                {
+                                    *oldsha1 = '\0';
+                                    *newsha1 = '\0';
+
+                                    oldsha1++;
+                                    newsha1++;
+                                }
                             }
                         }
                     }
@@ -441,14 +457,28 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 }
                 else
                 {
-                    snprintf(_tmp_md5, 195, "Old checksum was: '%s'\n"
-                                            "New checksum is : '%s'\n",
+                    snprintf(_tmp_md5, 195, "Old md5sum was: '%s'\n"
+                                            "New md5sum is : '%s'\n",
                                             oldmd5, newmd5);
                 }
+
+                /* sha1 */
+                if(strcmp(newsha1, oldsha1) == 0)
+                {
+                    _tmp_sha1[0] = '\0';
+                }
+                else
+                {
+                    snprintf(_tmp_sha1, 195, "Old sha1sum was: '%s'\n"
+                                             "New sha1sum is : '%s'\n",
+                                             oldsha1, newsha1);
+                }
+                                                                                                                                                        
                 
                 /* Provide information about the file */    
                 snprintf(_db_comment2,512,"Integrity checksum changed for: "
                         "'%s'\n"
+                        "%s"
                         "%s"
                         "%s"
                         "%s"
@@ -459,7 +489,8 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         _tmp_perm,
                         _tmp_owner,
                         _tmp_gowner,
-                        _tmp_md5);
+                        _tmp_md5,
+                        _tmp_sha1);
             }
             
             lf->generated_rule = syscheck_rule;

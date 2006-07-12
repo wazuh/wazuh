@@ -18,6 +18,8 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
 {
     char *xml_check_all = "check_all";
     char *xml_check_sum = "check_sum";
+    char *xml_check_sha1sum = "check_sha1sum";
+    char *xml_check_md5sum = "check_md5sum";
     char *xml_check_size = "check_size";
     char *xml_check_owner = "check_owner";
     char *xml_check_group = "check_group";
@@ -75,7 +77,8 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
             {
                 if(strcmp(*values, "yes") == 0)
                 {
-                    opts|=CHECK_SUM;
+                    opts|=CHECK_MD5SUM;
+                    opts|=CHECK_SHA1SUM;
                     opts|=CHECK_PERM;
                     opts|=CHECK_SIZE;
                     opts|=CHECK_OWNER;
@@ -95,7 +98,40 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
             {
                 if(strcmp(*values, "yes") == 0)
                 {
-                    opts|=CHECK_SUM;
+                    opts|=CHECK_MD5SUM;
+                    opts|=CHECK_SHA1SUM;
+                }
+                else if(strcmp(*values, "no") == 0)
+                {
+                }
+                else
+                {
+                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    return(0);
+                }
+            }
+            /* Checking md5sum */
+            else if(strcmp(*attrs, xml_check_md5sum) == 0)
+            {
+                if(strcmp(*values, "yes") == 0)
+                {
+                    opts|=CHECK_MD5SUM;
+                }
+                else if(strcmp(*values, "no") == 0)
+                {
+                }
+                else
+                {
+                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    return(0);
+                }
+            }
+            /* Checking sha1sum */
+            else if(strcmp(*attrs, xml_check_sha1sum) == 0)
+            {
+                if(strcmp(*values, "yes") == 0)
+                {
+                    opts|=CHECK_SHA1SUM;
                 }
                 else if(strcmp(*values, "no") == 0)
                 {
