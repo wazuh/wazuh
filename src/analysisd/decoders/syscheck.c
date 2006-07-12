@@ -385,7 +385,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 }
                
                 /* Generating size message */
-                if(strcmp(oldsize, newsize) == 0)
+                if(!oldsize || !newsize || strcmp(oldsize, newsize) == 0)
                 {
                     _tmp_size[0] = '\0';
                 }
@@ -427,7 +427,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 }
                 
                 /* Ownership message */
-                if(strcmp(newuid, olduid) == 0)
+                if(!newuid || !olduid || strcmp(newuid, olduid) == 0)
                 {
                     _tmp_owner[0] = '\0';
                 }
@@ -439,7 +439,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 }    
                 
                 /* group ownership message */
-                if(strcmp(newgid, oldgid) == 0)
+                if(!newgid || !oldgid || strcmp(newgid, oldgid) == 0)
                 {
                     _tmp_gowner[0] = '\0';
                 }
@@ -451,7 +451,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 }
                 
                 /* md5 message */
-                if(strcmp(newmd5, oldmd5) == 0)
+                if(!newmd5 || !oldmd5 || strcmp(newmd5, oldmd5) == 0)
                 {
                     _tmp_md5[0] = '\0';
                 }
@@ -463,7 +463,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 }
 
                 /* sha1 */
-                if(strcmp(newsha1, oldsha1) == 0)
+                if(!newsha1 || !oldsha1 || strcmp(newsha1, oldsha1) == 0)
                 {
                     _tmp_sha1[0] = '\0';
                 }

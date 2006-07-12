@@ -17,5 +17,6 @@ os_crypto:
 clean:
 		@cd blowfish; make clean
 		@cd md5; make clean;
+		@cd sha1; make clean;
 		@cd shared; make clean;
 		rm -f *.a

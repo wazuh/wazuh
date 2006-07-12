@@ -6,3 +6,12 @@ Copyright (c) 2003-2006 Daniel B. Cid <dcid@ossec.net>
 
 ** Visit our website for the latest information.
 http://www.ossec.net
+
+
+= OSSEC comes with a modified version of zlib and parts of openssl =
+
+This product includes software developed by the OpenSSL Project
+for use in the OpenSSL Toolkit (http://www.openssl.org/).
+
+This product include software developed by the zlib project
+(Jean-loup Gailly and Mark Adler).
