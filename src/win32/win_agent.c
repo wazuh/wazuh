@@ -274,16 +274,21 @@ int StartMQ(char * path, short int type)
 /* Send win32 info to server */
 void send_win32_info()
 {
+    int msg_size;
     time_t curr_time;
 
     curr_time = time(0);
 
     if((curr_time - __win32_curr_time) > NOTIFY_TIME)
     {
-        char tmp_msg[OS_MAXSTR +1];
+        char tmp_msg[OS_MAXSTR +2];
+        char crypt_msg[OS_MAXSTR +2];
         char *myuname;
 
-        tmp_msg[OS_MAXSTR] = '\0';
+        tmp_msg[OS_MAXSTR +1] = '\0';
+        crypt_msg[OS_MAXSTR +1] = '\0';
+
+        /* fixing time */
         __win32_curr_time = curr_time;
 
         merror("XXX generating uname.");
