@@ -102,6 +102,7 @@
     <url>^http://webmessenger.msn.com/session/null|</url>
     <url>_vti_bin/owssvr.dll|MSOffice/cltreq.asp|</url>
     <url>google.com/mt?|</url>
+    <url>google.com/kh?|</url>
     <url>^http://kh.google.com/flatfile</url>
 
     <!-- Add more extensions to be ignored in here.

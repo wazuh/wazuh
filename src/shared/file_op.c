@@ -424,7 +424,8 @@ char *getuname()
                         memset(__wv, '\0', 32);
                         snprintf(__wv, 31, 
                                 "%d.%d ",
-                                osvi.dwMajorVersion, osvi.dwMinorVersion );
+                                (int)osvi.dwMajorVersion,
+                                (int)osvi.dwMinorVersion);
 
                         strncat(ret, __wv, ret_size -1);
                         ret_size-=strlen(__wv) +1;
@@ -448,12 +449,12 @@ char *getuname()
                         0, KEY_QUERY_VALUE, &hKey );
                 if( lRet == ERROR_SUCCESS )
                     snprintf(__wp, 63, "Service Pack 6a (Build %d)", 
-                            osvi.dwBuildNumber & 0xFFFF );         
+                            (int)osvi.dwBuildNumber & 0xFFFF );         
                 else /* Windows NT 4.0 prior to SP6a */
                 {
                     snprintf(__wp, 63, "%s (Build %d)",
                             osvi.szCSDVersion,
-                            osvi.dwBuildNumber & 0xFFFF);
+                            (int)osvi.dwBuildNumber & 0xFFFF);
                 }
 
                 strncat(ret, __wp, ret_size -1);
@@ -468,7 +469,7 @@ char *getuname()
 
                 snprintf(__wp, 63, "%s (Build %d)",
                         osvi.szCSDVersion,
-                        osvi.dwBuildNumber & 0xFFFF);
+                        (int)osvi.dwBuildNumber & 0xFFFF);
 
                 strncat(ret, __wp, ret_size -1);
                 ret_size-=strlen(__wp) +1;

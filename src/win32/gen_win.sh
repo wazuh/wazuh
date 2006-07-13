@@ -6,6 +6,10 @@ FILE="win-files.txt"
 CAT=`cat ${FILE}`
 WINPKG="win-pkg"
 
+# Generating configs
+./unix2dos.pl ossec.conf > ossec-win.conf
+./unix2dos.pl ../../etc/internal_options.conf > internal_options-win.conf
+
 # Going to the source dir
 cd ${DIR}
 CAT=`cat ${FILE}`
@@ -34,3 +38,4 @@ done
 # Final cleanup
 rm ${WINPKG}/os_crypto/md5/main.c
 rm ${WINPKG}/os_crypto/blowfish/main.c
+rm ${WINPKG}/os_crypto/sha1/main.c
