@@ -1,19 +1,33 @@
-!define VERSION "0.9"
+!define VERSION "0.9BETA"
 !define NAME "Ossec HIDS"
 
 Name "${NAME} Windows Agent v${VERSION}"
 Caption "${NAME} Windows Agent Installer"
 UninstallCaption "${NAME} Windows Agent Uninstaller"
-DirText "${NAME} Windows Agent Installer"
+DirText "${NAME} v${VERSION} Windows Agent Installer"
 ComponentText  "${NAME} Windows Agent Installer"
 CompletedText "${NAME} Windows Agent Installer is finished"
 UninstallText "${NAME} Windows Agent Uninstaller"
-BrandingText " "
+BrandingText "Copyright © Daniel B. Cid"
 OutFile "C:\ossec-win32-agent.exe"
 
 
 InstallDir $PROGRAMFILES\ossec-agent
 InstallDirRegKey HKLM "ossec" "Install_Dir"
+
+
+Function .onInit
+    SetOutPath $INSTDIR
+    IfFileExists $INSTDIR\ossec.conf 0 +3
+    MessageBox MB_OKCANCEL "${NAME} is already installed. Stop it before continuing." IDOK NoAbort
+    Abort
+    NoAbort:
+      
+    ;;MessageBox MB_YESNO "This will install. Continue?" IDYES NoAbort
+    ;;Abort ; causes installer to quit.
+    ;;NoAbort:
+FunctionEnd
+            
 
 Page directory
 Page instfiles
@@ -25,8 +39,18 @@ UninstPage instfiles
 Section "OSSEC HIDS Windows Agent (required)"
 
 SetOutPath $INSTDIR
-  
-File ossec-agent.exe ossec.conf manage_agents.exe iis-logs.bat internal_options.conf
+
+ClearErrors
+
+;;IfFileExists $INSTDIR\ossec.conf 0 +3
+;;  MessageBox MB_OK "${NAME} is already installed. Make sure to turn it off before you continue."
+;;  goto done
+;;  
+;;  File ossec-default.conf  
+;;
+;;done:  
+
+File ossec-agent.exe default-ossec.conf manage_agents.exe iis-logs.bat internal_options.conf
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"
@@ -46,7 +70,7 @@ CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "http://www.ossec.net/en/ma
 ExecWait '$INSTDIR\iis-logs.bat'
 ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
 ExecWait '$INSTDIR\manage_agents.exe'
-ExecWait '"C:\WINDOWS\notepad.exe" "$INSTDIR\ossec.conf"'
+ExecWait '"C:\Windows\notepad.exe" "$INSTDIR\ossec.conf"'
 
 SectionEnd
 
