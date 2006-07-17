@@ -98,3 +98,9 @@ updatefailed="Update failed."
 updaterules="Do you want to update the rules?"
 updatingrules="Updating rules."
 notupdatingrules="Not updating rules."
+
+# Pf support
+pfenable="Do you want the PF firewall in the active response?"
+nopf="PF response disabled."
+pftablename="Name of the PF table to use?"
+pfmessage="Add the following lines to the beginning of your rules"

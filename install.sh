@@ -8,6 +8,9 @@
 # Minor *echos* modifications to better look
 # Bug fix - When email address is blank
 # Bug fix - delete INSTALLDIR - Default is yes but if the user just press enter the script wasn't deleting it as it should
+# Changelog 15/07/2006 - Rafael M. Capovilla <under@underlinux.com.br>
+# New function AddTable to add support for OpenBSD pf rules in firewall-drop active response
+
 
 
 ### Looking up for the execution directory
@@ -518,7 +521,7 @@ ConfigureServer()
                     echo "     - ${nofirewall}"
                     ;;
                 *)
-                    echo "     - ${yesfirewall} "
+                    echo "     - ${yesfirewall}"
                     FIREWALLDROP="yes"
                     ;;
             esac        
@@ -535,6 +538,28 @@ ConfigureServer()
             fi
             done
             AddWhite
+
+            # If Openbsd or Freebsd with pf enable, ask about
+            # automatically setting it up.
+            if [ "X`./src/init/fw-check.sh`" = "XPF" ]; then
+                echo ""
+                $ECHO "   - ${pfenable} ($yes/$no) [$yes]: "
+                if [ "X${USER_ENABLE_PF}" = "X" ]; then
+                    read PFENABLE
+                else
+                    PFENABLE=${USER_ENABLE_PF}    
+                fi
+                    
+                echo ""
+                case $PFENABLE in
+                    $nomatch)
+                        echo "     - ${nopf}"
+                        ;;
+                    *)
+                        AddPFTable
+                        ;;
+                esac
+            fi                   
 
             echo "  </global>" >> $NEWCONFIG
             ;;
@@ -748,6 +773,41 @@ AddWhite()
 				;;
 		esac
 	done
+}
+
+
+##########
+# AddPFTable()
+##########
+AddPFTable()
+{
+    #default pf rules
+    TABLE="ossec_fwtable"
+    PFCTL="/sbin/pfctl"
+
+    $ECHO "   - ${pftablename} [$TABLE]: "
+    if [ "X${USER_PF_TABLE}" = "X" ]; then
+        read TBL
+    else
+        TBL=${USER_PF_TABLE}    
+    fi
+            
+    if [ "X${TBL}" = "X" ]; then
+        TBL=$TABLE
+    fi
+
+            
+    # Add table to the first line
+    echo "   - ${pfmessage}:"
+    echo " * ${moreinfo} http://www.ossec.net/en/manual.html#active-response-tools"
+    
+    echo "
+    echo "\ttable <${TBL}> persist #$TABLE "
+    echo "\tblock in quick from <${TBL}> to any"
+    echo "\tblock out quick from any to <${TBL}>"
+    echo ""
+    echo ""
+
 }
 
 ##########

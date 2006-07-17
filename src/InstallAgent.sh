@@ -133,7 +133,7 @@ cp -pr ./init/ossec-client.sh ${DIR}/bin/ossec-control
 cp -pr ../bin/manage_agents ${DIR}/bin/
 
 # Copying active response modules
-sh ./init/fw-check.sh
+sh ./init/fw-check.sh execute
 cp -pr ../active-response/* ${DIR}/active-response/bin/
 chmod 755 ${DIR}/active-response/bin/*
 chown root:ossec ${DIR}/active-response/bin/*

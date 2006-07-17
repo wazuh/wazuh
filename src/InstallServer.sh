@@ -189,7 +189,7 @@ chown root:ossec ${DIR}/etc/shared/rootkit*
 
 
 # Copying active response modules
-sh ./init/fw-check.sh
+sh ./init/fw-check.sh execute
 cp -p ../active-response/*.sh ${DIR}/active-response/bin/
 chmod 755 ${DIR}/active-response/bin/*
 chown root:ossec ${DIR}/active-response/bin/*
