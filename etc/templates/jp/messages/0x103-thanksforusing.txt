@@ -1,11 +1,11 @@
 
-	OSSEC HIDS $B$N;HMQ$K46<U$7$^$9!%(B
-	$B$"$J$?$,2?$i$+$N<ALd!$Ds0F$7$?$$$H$-$d!$%P%0$rH/8+$7$?$H$-$O!$(B
-	contact@ossec.net $B$^$GO"Mm$9$k$+(B ossec-list@ossec.net $B$K$"$k(B
-	$B2f!9$N8x3+%a!<%j%s%0%j%9%H$r;H$C$F$/$@$5$$!%(B
-    (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list)$B!%(B
+	OSSEC HIDS の使用に感謝します．
+	あなたが何らかの質問，提案したいときや，バグを発見したときは，
+	contact@ossec.net まで連絡するか ossec-list@ossec.net にある
+	我々の公開メーリングリストを使ってください．
+    (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list)．
 
-	$B>\:Y$J>pJs$O(B http://www.ossec.net $B$K$"$j$^$9!%(B
+	詳細な情報は http://www.ossec.net にあります．
 
-	---  ENTER $B$r2!$9$H=*N;$7$^$9(B ($B0J2<!$>\:Y$J>pJs$,B3$-$^$9(B)$B!%(B---
+	---  ENTER を押すと終了します (以下，詳細な情報が続きます)．---
     
