@@ -799,9 +799,11 @@ AddPFTable()
             
     # Add table to the first line
     echo "   - ${pfmessage}:"
-    echo " * ${moreinfo} http://www.ossec.net/en/manual.html#active-response-tools"
+    echo "     ${moreinfo}"
+    echo "     http://www.ossec.net/en/manual.html#active-response-tools"
     
-    echo "
+    echo ""
+    echo ""
     echo "\ttable <${TBL}> persist #$TABLE "
     echo "\tblock in quick from <${TBL}> to any"
     echo "\tblock out quick from any to <${TBL}>"
