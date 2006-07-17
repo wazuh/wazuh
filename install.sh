@@ -541,7 +541,7 @@ ConfigureServer()
 
             # If Openbsd or Freebsd with pf enable, ask about
             # automatically setting it up.
-            if [ "X`./src/init/fw-check.sh`" = "XPF" ]; then
+            if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
                 echo ""
                 $ECHO "   - ${pfenable} ($yes/$no) [$yes]: "
                 if [ "X${USER_ENABLE_PF}" = "X" ]; then
@@ -804,9 +804,9 @@ AddPFTable()
     
     echo ""
     echo ""
-    echo "\ttable <${TBL}> persist #$TABLE "
-    echo "\tblock in quick from <${TBL}> to any"
-    echo "\tblock out quick from any to <${TBL}>"
+    echo "      table <${TBL}> persist #$TABLE "
+    echo "      block in quick from <${TBL}> to any"
+    echo "      block out quick from any to <${TBL}>"
     echo ""
     echo ""
 
