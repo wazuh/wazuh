@@ -1,0 +1,26 @@
+OSSEC report tool 0.1
+Licensed under GPL
+Contributor Meir Michanie
+ossec_report_contrib.pl [-h|--help] # This text you read now
+ossec_report_contrib.pl [-r|--report] # prints a report for each element
+ossec_report_contrib.pl [-s|--summary] # prints a summary report
+ossec_report_contrib.pl [-t|--top] #prints the top list
+
+How To:
+=======
+
+ossec_report_contrib.pl OSSEC report tool 0.1
+ossec_report_contrib.pl is a GNU style program.
+It reads from STDIN and write to stdout. This gives you the advantage to use it in pipes.
+i.e.
+cat ossec-alerts-05.log | ossec_report_contrib.pl -r | mail root -s 'OSSEC detailed report'
+cat ossec-alerts-05.log | ossec_report_contrib.pl -s | mail root -s 'OSSEC summary report'
+cat <log file> | ossec_report_contrib.pl -t <key> | head -n 15 (for top 15)
+cat <log file> | ossec_report_contrib.pl -s (for sumary)
+
+Crontab entry:
+58 23 * * * (cat ossec-alerts-05.log | ossec_report_contrib.pl -s)
+     
+
+The <key> could be any one of the variables used in ossec log:
+mail,alerthost,datasource,rule,level,description,srcip,user.
