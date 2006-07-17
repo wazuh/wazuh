@@ -15,6 +15,7 @@ cd ${DIR}
 CAT=`cat ${FILE}`
 cd ..
 mkdir ${WINPKG}
+mkdir ${WINPKG}/setup
 
 source=""
 dest=""

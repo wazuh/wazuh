@@ -1,10 +1,12 @@
 !define VERSION "0.9BETA"
 !define NAME "Ossec HIDS"
+!define /date CDATE "%H:%M:%S %d %b, %Y"
+
 
 Name "${NAME} Windows Agent v${VERSION}"
 Caption "${NAME} Windows Agent Installer"
 UninstallCaption "${NAME} Windows Agent Uninstaller"
-DirText "${NAME} v${VERSION} Windows Agent Installer"
+DirText "${NAME} v${VERSION} Windows Agent Installer."
 ComponentText  "${NAME} Windows Agent Installer"
 CompletedText "${NAME} Windows Agent Installer is finished"
 UninstallText "${NAME} Windows Agent Uninstaller"
@@ -14,7 +16,6 @@ OutFile "C:\ossec-win32-agent.exe"
 
 InstallDir $PROGRAMFILES\ossec-agent
 InstallDirRegKey HKLM "ossec" "Install_Dir"
-
 
 Function .onInit
     SetOutPath $INSTDIR
@@ -50,7 +51,7 @@ ClearErrors
 ;;
 ;;done:  
 
-File ossec-agent.exe default-ossec.conf manage_agents.exe iis-logs.bat internal_options.conf
+File ossec-agent.exe default-ossec.conf manage_agents.exe iis-logs.bat internal_options.conf setup-windows.exe
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"
@@ -58,6 +59,15 @@ WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "Un
 WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "NoModify" 1
 WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "NoRepair" 1
 WriteUninstaller "uninstall.exe"
+
+; Writing version and install information
+FileOpen $0 $INSTDIR\VERSION.txt w
+IfErrors done
+FileWrite $0 "${NAME} v${VERSION}\r\n"
+FileWrite $0 "Installed at: ${CDATE}"
+FileClose $0
+done:
+
 
 CreateDirectory "$INSTDIR\rids"
 CreateDirectory "$INSTDIR\syscheck"
@@ -67,9 +77,8 @@ CreateShortCut "$SMPROGRAMS\ossec\Edit.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\o
 CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "http://www.ossec.net/en/manual.html#windows" "" "http://www.ossec.net/en/manual.html#windows" 0
 
 ; Install in the services 
-ExecWait '$INSTDIR\iis-logs.bat'
+ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"' 
 ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
-ExecWait '$INSTDIR\manage_agents.exe'
 ExecWait '"C:\Windows\notepad.exe" "$INSTDIR\ossec.conf"'
 
 SectionEnd
