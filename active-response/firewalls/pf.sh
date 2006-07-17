@@ -9,6 +9,9 @@ PFCTL="/sbin/pfctl"
 
 # Getting pf rules file.
 PFCTL_RULES=`${GREP} pf_rules /etc/rc.conf | awk -F"=" '{print $2}' | awk '{print $1}'`
+if [ "X${PFCTL_RULES}" = "X" ]; then
+    PFCTL_RULES="/etc/pf.conf"
+fi    
 
 # Checking if ossec table is configured
 PFCTL_TABLE=`cat ${PFCTL_RULES} | egrep -v "(^#|^$)" | grep ossec_fwtable | head -1 | awk '{print $2}' | sed "s/<//;s/>//"`
