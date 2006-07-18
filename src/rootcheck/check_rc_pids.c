@@ -292,7 +292,7 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
                 (_proc_stat != _kill1))
         {
             /* checking if the pid is a thread (not showing on proc */
-            if(!check_rc_readproc((int)i))
+            if(!noproc && !check_rc_readproc((int)i))
             {
                 char op_msg[OS_MAXSTR +1];
                 snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
