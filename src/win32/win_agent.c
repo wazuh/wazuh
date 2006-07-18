@@ -23,6 +23,7 @@
 #endif
 
 time_t __win32_curr_time = 0;
+HANDLE hMutex;
 
 
 /** Prototypes **/
@@ -201,6 +202,14 @@ int local_start()
     }
 
 
+    /* Starting mutex */
+    hMutex = CreateMutex(NULL, FALSE, NULL);
+    if(hMutex == NULL)
+    {
+        ErrorExit("%s: Error creating mutex.", ARGV0);
+    }
+
+
     /* Startting logcollector -- main process here */
     LogCollectorStart();
 
@@ -216,11 +225,31 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     char *pl;
     char tmpstr[OS_MAXSTR+2];
     char crypt_msg[OS_MAXSTR +2];
+    
+    DWORD dwWaitResult; 
 
     tmpstr[OS_MAXSTR +1] = '\0';
     crypt_msg[OS_MAXSTR +1] = '\0';
 
-    merror("message: %s", message);
+
+    /* Using a mutex to synchronize the writes */
+    dwWaitResult = WaitForSingleObject(hMutex, 5000L);
+
+    if(dwWaitResult != WAIT_OBJECT_0) 
+    {
+        switch(dwWaitResult)
+        {
+            case WAIT_TIMEOUT:
+                merror("%s: Error waiting mutex (timeout).", ARGV0);            
+                return(0);
+            case WAIT_ABANDONED:
+                merror("%s: Error waiting mutex (abandoned).", ARGV0);
+                return(0);
+            default:    
+                merror("%s: Error waiting mutex.", ARGV0);    
+                return(0);
+        }
+    }
 
     /* locmsg cannot have the C:, as we use it as delimiter */
     pl = strchr(locmsg, ':');
@@ -233,7 +262,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     {
         pl = locmsg;
     }
-    
+
     snprintf(tmpstr,OS_MAXSTR,"%c:%s:%s", loc, pl, message);
 
     _ssize = CreateSecMSG(&keys, tmpstr, crypt_msg, 0);
@@ -243,6 +272,11 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     if(_ssize == 0)
     {
         merror(SEC_ERROR,ARGV0);
+        if(!ReleaseMutex(hMutex))
+        {
+            merror("%s: Error releasing mutex.", ARGV0);        
+        }
+        
         return(-1);
     }
 
@@ -251,7 +285,11 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     {
         merror(SEND_ERROR,ARGV0, "server");
     }
-    
+
+    if(!ReleaseMutex(hMutex))
+    {
+        merror("%s: Error releasing mutex.", ARGV0);
+    }
     return(0);        
 }
 
@@ -291,14 +329,12 @@ void send_win32_info()
         /* fixing time */
         __win32_curr_time = curr_time;
 
-        merror("XXX generating uname.");
         myuname = getuname();
         if(!myuname)
         {
             merror("%s: Error generating system information.", ARGV0);
             return;
         }
-        merror("XXX uname is: %s", myuname);
 
         /* creating message */
         snprintf(tmp_msg, OS_MAXSTR, "#!-%s\n",myuname);

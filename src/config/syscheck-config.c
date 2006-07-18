@@ -57,7 +57,16 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
         /* Removing spaces at the end */
         tmp_str = strchr(tmp_dir, ' ');
         if(tmp_str)
-            *tmp_str = '\0';
+        {
+            tmp_str++;
+
+            /* Checking if it is really at the end */
+            if((*tmp_str == '\0') || (*tmp_str == ' '))
+            {
+                tmp_str--;
+                *tmp_str = '\0';
+            }
+        }
 
 
         /* Getting the options */

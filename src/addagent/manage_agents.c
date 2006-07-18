@@ -312,7 +312,7 @@ int remove_agent()
         }
         
         fsetpos(fp, &fp_pos);
-        fprintf(fp, "# # # # # # # #");
+        fprintf(fp, "#*#*#*#*#*#*#*#*#*#*#");
         fclose(fp);
 
 
