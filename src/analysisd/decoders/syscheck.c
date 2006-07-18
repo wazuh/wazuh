@@ -457,7 +457,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 }
                 else
                 {
-                    snprintf(_tmp_md5, 195, "Old md5sum was: '%s'\n"
+                    snprintf(_tmp_md5, 195, "\nOld md5sum was: '%s'\n"
                                             "New md5sum is : '%s'\n",
                                             oldmd5, newmd5);
                 }
@@ -469,7 +469,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 }
                 else
                 {
-                    snprintf(_tmp_sha1, 195, "Old sha1sum was: '%s'\n"
+                    snprintf(_tmp_sha1, 195, "\nOld sha1sum was: '%s'\n"
                                              "New sha1sum is : '%s'\n",
                                              oldsha1, newsha1);
                 }
