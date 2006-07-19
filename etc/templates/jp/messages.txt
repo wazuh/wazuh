@@ -104,3 +104,10 @@ updatefailed="アップデートは失敗しました．"
 updaterules="ルールをアップデートしますか?"
 updatingrules="ルールをアップデートしています"
 notupdatingrules="ルールはアップデートしません．"
+
+
+# Pf support
+pfenable="アクティブレスポンスを PF ファイヤーウォールで使用しますか？"
+nopf="PF レスポンスを無効にしました．"
+pftablename="使用する PF テーブル名は？"
+pfmessage="以下にあなたのルールを最初から追加してください．"

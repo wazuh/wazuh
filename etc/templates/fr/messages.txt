@@ -98,3 +98,10 @@ updatefailed="Echec de la mise à jour."
 updaterules="Voulez-vous mettre à jour les règles ?"
 updatingrules="Mise à jour des règles."
 notupdatingrules="Règles non mises à jour."
+
+# Pf support
+pfenable="Do you want to use the PF firewall in the active response?"
+nopf="PF response disabled."
+pftablename="Name of the PF table to use?"
+pfmessage="Add the following lines to the beginning of your rules"
+

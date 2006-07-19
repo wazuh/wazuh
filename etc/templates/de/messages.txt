@@ -100,3 +100,11 @@ updatefailed="Update fehlgeschlagen."
 updaterules="Möchten Sie die Regeln updaten?"
 updatingrules="Regeln werden upgedated."
 notupdatingrules="Regeln werden nicht verändert."
+
+# Pf support
+pfenable="Moechten Sie die PF Firewall für active response benutzen?"
+nopf="active response fuer PF Firewall ausgeschaltet."
+pftablename="Name der PF Tabelle die benutzt werden soll?"
+pfmessage="Fuegen Sie die folgende Zeile am Anfang Ihrer Regeln ein "
+
+

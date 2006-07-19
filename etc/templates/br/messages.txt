@@ -101,3 +101,9 @@ updaterules="Voce deseja atualizar as regras?"
 updatingrules="Atualizando as regras."
 notupdatingrules="Nao atualizando as regras."
 
+# Pf support
+pfenable="Deseja utilizar o firewall PF nas respostas automaticas?"
+nopf="Respostas automaticas com o PF desabilitadas."
+pftablename="Qual o nome da tabela no PF que deseja utilizar?"
+pfmessage="Adicione as seguintes linhas na configuracao do seu firewall"
+
