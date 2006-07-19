@@ -302,30 +302,36 @@ int read_sys_dir(char *dir_name, int do_read)
     if((entry_count != statbuf.st_nlink) && 
        ((did_changed == 0) || ((entry_count + 1) != statbuf.st_nlink)))
     {
+        struct stat statbuf2;
         char op_msg[OS_MAXSTR +1];
-        snprintf(op_msg, OS_MAXSTR, "Files hidden inside directory "
-                         "'%s'. Link count does not match number of files "
-                         "(%d,%d).",
-                         dir_name, entry_count, (int)statbuf.st_nlink);
 
-        /* Solaris /boot is terrible :) */
-        #ifdef SOLARIS
-        if(strncmp(dir_name, "/boot", strlen("/boot")) != 0)
+        if((lstat(dir_name, &statbuf2) == 0) && 
+            (statbuf2.st_nlink != entry_count))
         {
+            snprintf(op_msg, OS_MAXSTR, "Files hidden inside directory "
+                    "'%s'. Link count does not match number of files "
+                    "(%d,%d).",
+                    dir_name, entry_count, (int)statbuf.st_nlink);
+
+            /* Solaris /boot is terrible :) */
+            #ifdef SOLARIS
+            if(strncmp(dir_name, "/boot", strlen("/boot")) != 0)
+            {
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+                _sys_errors++;
+            }
+            #elif Darwin
+            if(strncmp(dir_name, "/dev", strlen("/dev")) != 0)
+            {
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+                _sys_errors++;
+            } 
+            #else
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+
             _sys_errors++;
+            #endif
         }
-        #elif Darwin
-	    if(strncmp(dir_name, "/dev", strlen("/dev")) != 0)
-        {
-            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-            _sys_errors++;
-        } 
-        #else
-        notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-
-        _sys_errors++;
-        #endif
     }
     
     closedir(dp);
