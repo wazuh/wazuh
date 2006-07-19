@@ -93,18 +93,24 @@ int read_sys_file(char *file_name, int do_read)
             {
                 total += nr;
             }
+            close(fd);
 
             if(total != statbuf.st_size)
             {
-                char op_msg[OS_MAXSTR +1];
-                snprintf(op_msg, OS_MAXSTR, "Anomaly detected in file '%s'. "
-                                 "File size doesn't match what we found. "
-                                 "Possible kernel level rootkit.",
-                                 file_name);
-                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-                _sys_errors++;
+                struct stat statbuf2;
+
+                if((lstat(file_name, &statbuf2) == 0) && 
+                   (total != statbuf2.st_size))
+                {
+                    char op_msg[OS_MAXSTR +1];
+                    snprintf(op_msg, OS_MAXSTR, "Anomaly detected in file "
+                            "'%s'. File size doesn't match what we found. "
+                            "Possible kernel level rootkit.",
+                            file_name);
+                    notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+                    _sys_errors++;
+                }
             }
-            close(fd);
         }
     }
      
