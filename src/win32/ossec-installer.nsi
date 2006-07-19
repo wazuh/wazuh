@@ -74,7 +74,7 @@ CreateDirectory "$INSTDIR\syscheck"
 CreateDirectory "$SMPROGRAMS\ossec"
 CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 CreateShortCut "$SMPROGRAMS\ossec\Edit.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
-CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "http://www.ossec.net/en/manual.html#windows" "" "http://www.ossec.net/en/manual.html#windows" 0
+CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "http://www.ossec.net/en/manual.html#windows" "" "http://www.ossec.net/en/manual.html" 0
 
 ; Install in the services 
 ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"' 
