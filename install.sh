@@ -541,25 +541,27 @@ ConfigureServer()
 
             # If Openbsd or Freebsd with pf enable, ask about
             # automatically setting it up.
-            if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
-                echo ""
-                $ECHO "   - ${pfenable} ($yes/$no) [$yes]: "
-                if [ "X${USER_ENABLE_PF}" = "X" ]; then
-                    read PFENABLE
-                else
-                    PFENABLE=${USER_ENABLE_PF}    
-                fi
-                    
-                echo ""
-                case $PFENABLE in
-                    $nomatch)
-                        echo "     - ${nopf}"
-                        ;;
-                    *)
-                        AddPFTable
-                        ;;
-                esac
-            fi                   
+            # Commenting it out in case I change my mind about it
+            # later.
+            #if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
+            #    echo ""
+            #    $ECHO "   - ${pfenable} ($yes/$no) [$yes]: "
+            #    if [ "X${USER_ENABLE_PF}" = "X" ]; then
+            #        read PFENABLE
+            #    else
+            #        PFENABLE=${USER_ENABLE_PF}    
+            #    fi
+            #        
+            #    echo ""
+            #    case $PFENABLE in
+            #        $nomatch)
+            #            echo "     - ${nopf}"
+            #            ;;
+            #        *)
+            #            AddPFTable
+            #            ;;
+            #    esac
+            #fi                   
 
             echo "  </global>" >> $NEWCONFIG
             ;;
@@ -783,30 +785,18 @@ AddPFTable()
 {
     #default pf rules
     TABLE="ossec_fwtable"
-    PFCTL="/sbin/pfctl"
 
-    $ECHO "   - ${pftablename} [$TABLE]: "
-    if [ "X${USER_PF_TABLE}" = "X" ]; then
-        read TBL
-    else
-        TBL=${USER_PF_TABLE}    
-    fi
-            
-    if [ "X${TBL}" = "X" ]; then
-        TBL=$TABLE
-    fi
-
-            
     # Add table to the first line
+    echo ""
     echo "   - ${pfmessage}:"
     echo "     ${moreinfo}"
     echo "     http://www.ossec.net/en/manual.html#active-response-tools"
     
     echo ""
     echo ""
-    echo "      table <${TBL}> persist #$TABLE "
-    echo "      block in quick from <${TBL}> to any"
-    echo "      block out quick from any to <${TBL}>"
+    echo "      table <${TABLE}> persist #$TABLE "
+    echo "      block in quick from <${TABLE}> to any"
+    echo "      block out quick from any to <${TABLE}>"
     echo ""
     echo ""
 
@@ -1073,6 +1063,10 @@ main()
 
     catMsg "0x103-thanksforusing"
 
+    # PF firewall message
+    if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
+        AddPFTable
+    fi    
 
     if [ "X${update_only}" = "Xyes" ]; then
         echo ""
