@@ -314,7 +314,25 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
         }
         else if(strcmp(node[i]->element,xml_ignore) == 0)
         {
-            /* Ignore is valid, but not get in here */
+            int ign_size = 0;
+
+            if(!syscheck->ignore)
+            {
+                os_calloc(2, sizeof(char *), syscheck->ignore);
+                syscheck->ignore[0] = NULL;
+                syscheck->ignore[1] = NULL;
+            }
+            else
+            {
+                while(syscheck->ignore[ign_size] != NULL)
+                    ign_size++;
+                
+                os_realloc(syscheck->ignore, 
+                           sizeof(char *)*(ign_size +2),
+                           syscheck->ignore);
+                syscheck->ignore[ign_size +1] = NULL;
+            }
+            os_strdup(node[i]->content,syscheck->ignore[ign_size]);
         }
         else
         {

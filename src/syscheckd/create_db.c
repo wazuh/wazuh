@@ -40,6 +40,22 @@ int read_file(char *file_name, int opts)
 {
     struct stat statbuf;
     
+    /* Checking if file is to be ignored */
+    if(syscheck.ignore)
+    {
+        int i = 0;
+        while(syscheck.ignore[i] != NULL)
+        {
+            if(strncmp(syscheck.ignore[i], file_name, 
+                                           strlen(syscheck.ignore[i])) == 0)
+            {
+                return(0);            
+            }
+
+            i++;
+        }
+    }
+
     /* Win32 does not have lstat */
     #ifdef WIN32
     if(stat(file_name, &statbuf) < 0)

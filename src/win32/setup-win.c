@@ -83,7 +83,13 @@ int config_syscheck()
     "    <frequency>7200</frequency>\r\n"
     "    <directories check_all=\"yes\">C:\\WINDOWS,C:\\Program Files</directories>\r\n"
 
-    "    <ignore>C:\\WINDOWS\\Internet Logs</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/System32/LogFiles</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/WindowsUpdate.log</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/system32/wbem/Logs</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/Prefetch</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/PCHEALTH/HELPCTR/DataColl</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/SoftwareDistribution/DataStore/Logs</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/SoftwareDistribution/ReportingEvents.log</ignore>\r\n"
     "  </syscheck>\r\n"
     "</ossec_config>\r\n");
 

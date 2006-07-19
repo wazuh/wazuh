@@ -556,7 +556,7 @@ void DecodeSyscheck(Eventinfo *lf)
         
         while(*ff_ig)
         {
-            if(strcmp(*ff_ig, f_name) == 0)
+            if(strncmp(*ff_ig, f_name, strlen(*ff_ig)) == 0)
             {
                 return;
             }

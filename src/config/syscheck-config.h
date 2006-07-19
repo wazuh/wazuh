@@ -40,7 +40,7 @@ typedef struct _config
 	char *dir[MAX_DIR_ENTRY +1];
     int opts[MAX_DIR_ENTRY +1];
 
-	char **ignore_list;
+	char **ignore;
 
     char *workdir;
     char *remote_db;
