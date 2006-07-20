@@ -100,8 +100,8 @@ updatingrules="Mise à jour des règles."
 notupdatingrules="Règles non mises à jour."
 
 # Pf support
-pfenable="Do you want to use the PF firewall in the active response?"
-nopf="PF response disabled."
-pftablename="Name of the PF table to use?"
-pfmessage="Add the following lines to the beginning of your rules"
+pfenable="Voulez-vous utiliser le firewall PF dans la réponse active ?"
+nopf="Réponse par PF désactivée."
+pftablename="Nom de la table PF à utiliser ?"
+pfmessage="Ajouter les lignes suivantes au début de vos règles"
 
