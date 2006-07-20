@@ -152,6 +152,12 @@
     <description>related web site. System probably infected.</description>
   </rule>
 
+  <rule id="5095" level="0" frequency="2" timeframe="150">
+    <if_matched_sid>5055</if_matched_sid>
+    <same_source_ip />
+    <description>Ignoring multiple attempts from same source ip</description>
+    <description> (alert only once).</description>
+  </rule>
 
 </group> <!-- ACCESSLOG,SQUID -->
 

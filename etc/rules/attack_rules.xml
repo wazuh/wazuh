@@ -65,10 +65,10 @@
 
 <!-- Privilege scalation messages -->
 <group name="syslog,elevation_of_privilege">
-  <rule id="1701" level="15" timeframe="300">
+  <rule id="1701" level="15" timeframe="300" frequency="2">
     <if_group>adduser</if_group>
     <if_matched_group>attacks</if_matched_group>
-    <description>Attack followed by the addition </description>
+    <description>Attacks followed by the addition </description>
     <description>of an user.</description>
   </rule>
 </group> <!-- SYSLOG, ELEVATION_OF_PRIVILEGE -->

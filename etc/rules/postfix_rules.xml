@@ -97,7 +97,7 @@
     <description>invalid recipient or from unknown sender domain.</description>
   </rule>
 
-  <rule id="6056" level="10" frequency="$POSTFIX_FREQ" timeframe="120">
+  <rule id="6056" level="10" frequency="$POSTFIX_FREQ" timeframe="120" ignore="30">
     <if_matched_sid>6006</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts to send e-mail from </description>
