@@ -197,6 +197,22 @@ int main(int argc, char **argv)
         Config.ar = 0;
         
     
+    /* Getting servers hostname */
+    memset(__shost, '\0', 512);
+    if(gethostname(__shost, 512 -1) != 0)
+    {
+        strncpy(__shost, OSSEC_SERVER, 512 -1);    
+    }
+    else
+    {
+        char *_ltmp;
+
+        /* Remove domain part if available */
+        _ltmp = strchr(__shost, '.');
+        if(_ltmp)
+            *_ltmp = '\0';
+    }
+    
     /* going on Daemon mode */
     if(!test_config)
     {

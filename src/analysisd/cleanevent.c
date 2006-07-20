@@ -128,11 +128,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         pieces[1][0] = '\0';
         
 
-        /* If it comes from a remote agent, ignore hostname */
-        if(strchr(pieces[0], '>') != NULL)
-            lf->hostname = NULL;
-
-        
         /* Moving pieces[1] to the beginning of the log message */
         pieces[1]++;
     }
@@ -272,6 +267,20 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     lf->location = pieces[0];
     
 
+    /* Setting hostname for local messages */
+    if(strchr(pieces[0], '>') != NULL)
+    {
+        /* Messages from an agent */
+        lf->hostname = NULL;
+    }
+    else
+    {
+        if(lf->hostname == NULL)
+        {
+           lf->hostname = __shost; 
+        }
+    }
+                            
     /* Setting up the event data */
     lf->time = c_time;
     p = localtime(&c_time);

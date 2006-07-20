@@ -32,4 +32,9 @@ int __crt_hour;
 int __crt_wday;
 
 time_t c_time; /* Current time of event. Used everywhere */
+
+/* Local host name */
+char __shost[512];
+
+#define OSSEC_SERVER    "ossec-server"
 #endif
