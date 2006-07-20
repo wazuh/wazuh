@@ -22,4 +22,5 @@
     <ignore>C:\WINDOWS/PCHEALTH/HELPCTR/DataColl</ignore>
     <ignore>C:\WINDOWS/SoftwareDistribution/DataStore/Logs</ignore>
     <ignore>C:\WINDOWS/SoftwareDistribution/ReportingEvents.log</ignore>
+    <ignore>C:\WINDOWS/Temp</ignore>
   </syscheck>

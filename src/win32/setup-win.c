@@ -90,6 +90,8 @@ int config_syscheck()
     "    <ignore>C:\\WINDOWS/PCHEALTH/HELPCTR/DataColl</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/SoftwareDistribution/DataStore/Logs</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/SoftwareDistribution/ReportingEvents.log</ignore>\r\n"
+    "    <ignore>C:\\Program Files/ossec-agent</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/Temp/</ignore>\r\n"
     "  </syscheck>\r\n"
     "</ossec_config>\r\n");
 
