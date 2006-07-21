@@ -94,6 +94,7 @@ int config_syscheck()
     "    <ignore>C:\\WINDOWS/Temp/</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/system32/config/systemprofile/Local Settings</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/SchedLgU.Txt</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/system32/config</ignore>\r\n"
     "  </syscheck>\r\n"
     "</ossec_config>\r\n");
 
