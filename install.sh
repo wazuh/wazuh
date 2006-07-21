@@ -900,7 +900,7 @@ main()
     fi
 
     # Is this an update?
-    if [ `isFile ${OSSEC_INIT}` = "${TRUE}" ]; then
+    if [ "`isUpdate`" = "${TRUE}" ]; then
         echo ""
         ct="1"
         while [ $ct = "1" ]; do

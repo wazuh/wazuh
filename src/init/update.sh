@@ -7,6 +7,31 @@
 FALSE="false"
 TRUE="true"
 
+
+##########
+# isUpdate
+##########
+isUpdate()
+{
+    ls -la ${OSSEC_INIT} > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        . ${OSSEC_INIT}
+        if [ "X$DIRECTORY" = "X" ]; then
+            echo "${FALSE}"
+            return 1;
+        fi
+        ls -la $DIRECTORY > /dev/null 2>&1
+        if [ $? = 0 ]; then
+            echo "${TRUE}"
+            return 0;
+        fi    
+    fi
+    
+    echo "${FALSE}"
+    return 1;    
+}
+
+
 ##########
 # doUpdatecleanup 
 ##########
