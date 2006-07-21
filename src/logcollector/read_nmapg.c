@@ -202,14 +202,12 @@ void *read_nmapg(int pos, int *rc)
         }
         
         
-        /* Getting ip */
-        p = strchr(q, ' ');
+        /* Getting ip/hostname */
+        p = strchr(q, ')');
         if(!p)
         {
             goto file_error;
         }
-        *p = '\0';
-        p++;
 
         
         /* Setting the valid ip */
@@ -226,6 +224,11 @@ void *read_nmapg(int pos, int *rc)
         q++;
 
 
+        /* Now fixing p, to have the closing parenthesis */
+        p++;
+        *p = '\0';
+        
+        
         /* q now should point to the ports */
         p = __go_after(q, NMAPG_PORT);
         if(!p)

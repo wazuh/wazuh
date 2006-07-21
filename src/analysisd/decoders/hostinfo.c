@@ -136,6 +136,7 @@ void HI_Search(Eventinfo *lf)
     int bf_size;
     
     char *ip;
+    char *portss;
     char *tmpstr;
 
     char buffer[OS_MAXSTR + 1];
@@ -179,10 +180,18 @@ void HI_Search(Eventinfo *lf)
 
         return;
     }
-    tmpstr++;
     *tmpstr = '\0';
+    tmpstr++;
+    portss = tmpstr;
 
-    bf_size = strlen(buffer);
+    /* Getting ip only information -- to store */
+    tmpstr = strchr(ip, ' ');
+    if(tmpstr)
+    {
+        *tmpstr = '\0';
+    }
+
+    bf_size = strlen(ip);
     
     
     /* Reads the file and search for a possible
@@ -203,10 +212,10 @@ void HI_Search(Eventinfo *lf)
 
 
         /* Checking for ip */
-        if(strncmp(buffer, _hi_buf, bf_size) == 0)
+        if(strncmp(ip, _hi_buf, bf_size) == 0)
         {
             /* Cannot use strncmp to avoid errors with crafted files */    
-            if(strcmp(lf->log, _hi_buf) == 0)
+            if(strcmp(portss, _hi_buf + bf_size +1) == 0)
             {
                 return;
             }
@@ -224,7 +233,7 @@ void HI_Search(Eventinfo *lf)
     
     /* Adding the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
-    fprintf(fp,"%s\n",lf->log);
+    fprintf(fp,"%s %s\n", ip, portss);
 
     /* Setting rule */
     lf->generated_rule = hostinfo_rule;
