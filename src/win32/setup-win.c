@@ -92,6 +92,7 @@ int config_syscheck()
     "    <ignore>C:\\WINDOWS/SoftwareDistribution/ReportingEvents.log</ignore>\r\n"
     "    <ignore>C:\\Program Files/ossec-agent</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/Temp/</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/system32/config/systemprofile/Local Settings</ignore>\r\n"
     "  </syscheck>\r\n"
     "</ossec_config>\r\n");
 

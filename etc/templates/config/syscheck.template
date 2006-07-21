@@ -23,4 +23,5 @@
     <ignore>C:\WINDOWS/SoftwareDistribution/DataStore/Logs</ignore>
     <ignore>C:\WINDOWS/SoftwareDistribution/ReportingEvents.log</ignore>
     <ignore>C:\WINDOWS/Temp</ignore>
+    <ignore>C:\WINDOWS/system32/config/systemprofile/Local Settings</ignore>
   </syscheck>
