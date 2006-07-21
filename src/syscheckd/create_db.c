@@ -46,7 +46,7 @@ int read_file(char *file_name, int opts)
         int i = 0;
         while(syscheck.ignore[i] != NULL)
         {
-            if(strncmp(syscheck.ignore[i], file_name, 
+            if(strncasecmp(syscheck.ignore[i], file_name, 
                                            strlen(syscheck.ignore[i])) == 0)
             {
                 return(0);            
