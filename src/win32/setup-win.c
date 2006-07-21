@@ -88,7 +88,7 @@ int config_syscheck()
     "    <ignore>C:\\WINDOWS/system32/wbem/Logs</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/Prefetch</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/PCHEALTH/HELPCTR/DataColl</ignore>\r\n"
-    "    <ignore>C:\\WINDOWS/SoftwareDistribution/DataStore/Logs</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/SoftwareDistribution/DataStore</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/SoftwareDistribution/ReportingEvents.log</ignore>\r\n"
     "    <ignore>C:\\Program Files/ossec-agent</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/Temp/</ignore>\r\n"
