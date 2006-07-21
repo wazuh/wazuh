@@ -899,6 +899,7 @@ main()
         read ANY
     fi
 
+    . ./src/init/update.sh
     # Is this an update?
     if [ "`isUpdate`" = "${TRUE}" ]; then
         echo ""
