@@ -143,7 +143,7 @@ static char *__go_after(char *x, char *y)
 /* Read Nmap grepable files */
 void *read_nmapg(int pos, int *rc)
 {
-    int final_msg_s = OS_MAXSTR -2;
+    int final_msg_s;
     int need_clear = 0;
     int __rc = 0;
     
@@ -247,7 +247,7 @@ void *read_nmapg(int pos, int *rc)
         /* Generating final msg */
         snprintf(final_msg, OS_MAXSTR, "Host: %s, open ports:",
                             ip);
-        final_msg_s-=(strlen(final_msg) +2);
+        final_msg_s = OS_MAXSTR - ((strlen(final_msg) +3));
 
         /* Getting port and protocol */
         do

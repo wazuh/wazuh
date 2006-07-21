@@ -184,6 +184,7 @@ void HI_Search(Eventinfo *lf)
     tmpstr++;
     portss = tmpstr;
 
+
     /* Getting ip only information -- to store */
     tmpstr = strchr(ip, ' ');
     if(tmpstr)
@@ -215,7 +216,7 @@ void HI_Search(Eventinfo *lf)
         if(strncmp(ip, _hi_buf, bf_size) == 0)
         {
             /* Cannot use strncmp to avoid errors with crafted files */    
-            if(strcmp(portss, _hi_buf + bf_size +1) == 0)
+            if(strcmp(portss, _hi_buf + bf_size) == 0)
             {
                 return;
             }
@@ -233,7 +234,7 @@ void HI_Search(Eventinfo *lf)
     
     /* Adding the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
-    fprintf(fp,"%s %s\n", ip, portss);
+    fprintf(fp,"%s%s\n", ip, portss);
 
     /* Setting rule */
     lf->generated_rule = hostinfo_rule;
