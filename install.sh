@@ -1064,12 +1064,15 @@ main()
 
     catMsg "0x103-thanksforusing"
 
-    # PF firewall message
-    if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
-        AddPFTable
-    fi    
-
+    
     if [ "X${update_only}" = "Xyes" ]; then
+        # Message for the update
+        if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
+            if [ "X$USER_NO_STOP" = "X" ]; then
+                read ANY
+            fi    
+            AddPFTable
+        fi    
         echo ""
         echo " - ${updatecompleted}"
         echo ""
@@ -1080,6 +1083,12 @@ main()
     if [ "X$USER_NO_STOP" = "X" ]; then
         read ANY
     fi
+
+
+    # PF firewall message
+    if [ "X`sh ./src/init/fw-check.sh`" = "XPF" ]; then
+        AddPFTable
+    fi    
 
 
     if [ "X$INSTYPE" = "Xserver" ]; then
