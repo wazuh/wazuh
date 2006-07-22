@@ -63,7 +63,7 @@ WriteUninstaller "uninstall.exe"
 ; Writing version and install information
 FileOpen $0 $INSTDIR\VERSION.txt w
 IfErrors done
-FileWrite $0 "${NAME} v${VERSION}\r\n"
+FileWrite $0 "${NAME} v${VERSION} - "
 FileWrite $0 "Installed at: ${CDATE}"
 FileClose $0
 done:
