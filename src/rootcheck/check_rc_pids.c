@@ -266,26 +266,36 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
            (_kill0 == _kill1)&&
            (_gsid0 != _kill0))
         {
-            char op_msg[OS_MAXSTR +1];
-        
-            snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
-                             "kill (%d) or getsid (%d). Possible kernel-level"
-                             " rootkit.", (int)i, _kill0, _gsid0);
-            
-            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-            (*_errors)++;
+            /* If kill found, but getsid and getpgid didnt', it may
+             * be a defunct process -- ignore.
+             */
+            if(!((_kill0 == 1)&&(_gsid0 == 0)&&(_gpid0 == 0)&&(_gsid1 == 0)))
+            {
+                char op_msg[OS_MAXSTR +1];
+
+                snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
+                        "kill (%d) or getsid (%d). Possible kernel-level"
+                        " rootkit.", (int)i, _kill0, _gsid0);
+
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+                (*_errors)++;
+            }
         }
         else if((_kill1 != _gsid1)||
                 (_gpid1 != _kill1)||
                 (_gpid1 != _gsid1))
         {
-            char op_msg[OS_MAXSTR +1];
-            snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
-                    "kill, getsid or getpgid. Possible kernel-level "
-                    "rootkit.", (int)i);
+            /* See defunct process comment above. */
+            if(!((_kill0 == 1)&&(_gsid0 == 0)&&(_gpid0 == 0)&&(_gsid1 == 0)))
+            {
+                char op_msg[OS_MAXSTR +1];
+                snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
+                        "kill, getsid or getpgid. Possible kernel-level "
+                        "rootkit.", (int)i);
 
-            notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-            (*_errors)++;
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+                (*_errors)++;
+            }
         }
         else if((_proc_read != _proc_stat)||
                 (_proc_read != _proc_chdir)||
