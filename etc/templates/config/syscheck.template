@@ -8,11 +8,14 @@
 
     <!-- Files/directories to ignore -->
     <ignore>/etc/mtab</ignore>
+    <ignore>/etc/mnttab</ignore>
     <ignore>/etc/hosts.deny</ignore>
     <ignore>/etc/mail/statistics</ignore>
     <ignore>/etc/random-seed</ignore>
     <ignore>/etc/adjtime</ignore>
     <ignore>/etc/httpd/logs</ignore>
+    <ignore>/etc/utmpx</ignore>
+    <ignore>/etc/wtmpx</ignore>
 
     <!-- Windows files to ignore -->
     <ignore>C:\WINDOWS/System32/LogFiles</ignore>
