@@ -343,10 +343,11 @@ void check_rc_pids()
     noproc = 1;
     
     /* Checking where ps is */
-    strcpy(ps, "/bin/ps");
+    memset(ps, '\0', OS_MAXSTR +1);
+    strncpy(ps, "/bin/ps", OS_MAXSTR);
     if(!is_file(ps))
     {
-        strcpy(ps, "/usr/bin/ps");
+        strncpy(ps, "/usr/bin/ps", OS_MAXSTR);
         if(!is_file(ps))
             ps[0] = '\0';
     }

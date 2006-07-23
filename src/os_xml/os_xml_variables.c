@@ -50,15 +50,12 @@ int OS_ApplyVariables(OS_XML *_lxml)
                         if(var == NULL)
                             return (-1);
                         
-                        var[s] = (char*)calloc(strlen(_lxml->ct[j])+1,
-                                                            sizeof(char));
+                        var[s] = strdup(_lxml->ct[j]);
                         if(var[s] == NULL)
-                            return (-1);
-                        
-                        strcpy(var[s],_lxml->ct[j]);
+                            return(-1);
                        
                         /* Cleaning the lxml->err */ 
-                        strcpy(_lxml->err," ");
+                        strncpy(_lxml->err," ", 3);
 
                         _found_var = 1;
                         break;
@@ -85,12 +82,11 @@ int OS_ApplyVariables(OS_XML *_lxml)
             if (value == NULL)
                 return(-1);
         
-            value[s] = (char*)calloc(strlen(_lxml->ct[i])+1,sizeof(char));
+            value[s] = strdup(_lxml->ct[i]);
             if(value[s] == NULL)
                 return(-1);    
         
-            strcpy(_lxml->err," ");
-            strcpy(value[s],_lxml->ct[i]);    
+            strncpy(_lxml->err," ", 3);
             s++;
         }
     } /* initial FOR to get the variables  */

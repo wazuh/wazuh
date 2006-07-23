@@ -270,6 +270,7 @@ int remove_agent()
     char *user_input;
     char u_id[FILE_SIZE +1];
     
+    u_id[FILE_SIZE] = '\0';
 
     if(!print_agents())
     {
@@ -287,7 +288,7 @@ int remove_agent()
       if(strcmp(user_input, QUIT) == 0)
           return(0);
 
-      strcpy(u_id, user_input);
+      strncpy(u_id, user_input, FILE_SIZE);
 
       if(!IDExist(user_input))
       {
