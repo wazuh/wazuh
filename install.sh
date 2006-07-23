@@ -24,7 +24,7 @@ hs=`echo -n "a"`
 if [ ! "X$hs" = "Xa" ]; then
     ls "/usr/ucb/echo" > /dev/null 2>&1
     if [ $? = 0 ]; then
-        ECHO="/usr/ucb/echo"
+        ECHO="/usr/ucb/echo -n"
     else
         ECHO=echo
     fi

@@ -13,12 +13,14 @@ UNAME=`uname -snr`
 NUNAME=`uname`
 
 # If whoami does not exist, try id
-ME=`whoami 2>/dev/null`
+ls "`which whoami`" > /dev/null 2>&1
 if [ ! $? = 0 ]; then
     ME=`id | cut -d " " -f 1`
     if [ "X${ME}" = "Xuid=0(root)" ]; then
         ME="root"
     fi    
+else
+    ME=`whoami 2>/dev/null`    
 fi    
 
 OSSEC_INIT="/etc/ossec-init.conf"
