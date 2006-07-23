@@ -350,6 +350,7 @@ ConfigureClient()
             echo "" >> $NEWCONFIG
             ;;
         *)
+            ACTIVERESPONSE="yes"
             echo ""
             ;;
     esac
