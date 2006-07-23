@@ -22,13 +22,16 @@
     -  false positives.
     -->
   <rule id="4002" level="0">
-    <if_sid>4001</if_sid>
+    <if_sid>4000, 4001</if_sid>
     <!-- 1:1852 -> robots.txt access
        - 1:368 - ICMP pings.
        - 1:384 - ICMP pings.
        - 1:366 - ICMP pings.
+       - 1:402 - ICMP port unreachable
+       - 1:408 - ICMP reply
+       - 1:1365 - RM commant attempt (too many false positives)
        -->
-    <id>^1:1852:|^1:368:|^1:384:|^1:366:</id>
+    <id>^1:1852:|^1:368:|^1:384:|^1:366:|^1:402:|^1:408:|^1:1365:</id>
   </rule>
 
   <rule id="4051" level="10" frequency="$IDS_FREQ" timeframe="120" ignore="90">
