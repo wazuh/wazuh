@@ -717,6 +717,15 @@ setEnv()
 checkDependencies()
 {
     echo ""
+    OLDOPATH=$PATH
+    if [ "X$NUNAME" = "XSunOS" ]; then
+        PATH=$PATH:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
+        export  PATH
+    elif [ "X$NUNAME" = "XAIX" ]; then
+        PATH=$PATH:/usr/vac/bin
+        export  PATH
+    fi
+
     ls "`which gcc`" > /dev/null 2>&1
     if [ ! $? = 0 ]; then
         ls "`which cc`" > /dev/null 2>&1
@@ -727,6 +736,9 @@ checkDependencies()
     else
         CC="gcc"
     fi
+
+    PATH=$OLDOPATH
+    export PATH
 }
 
 ##########

@@ -11,9 +11,9 @@ VERSION=`cat ${VERSION_FILE}`
 LOCATION="./src/LOCATION"
 UNAME=`uname -snr`
 NUNAME=`uname`
-ME=`whoami`
 
 # If whoami does not exist, try id
+ME=`whoami 2>/dev/null`
 if [ ! $? = 0 ]; then
     ME=`id | cut -d " " -f 1`
     if [ "X${ME}" = "Xuid=0(root)" ]; then

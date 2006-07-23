@@ -35,7 +35,7 @@ DIRECTORIES=""      # Directories to make
 
 # Setting SunOS path
 if [ "X$OS" = "XSunOS" ]; then
-    PATH=$PATH:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin
+    PATH=$PATH:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
     export  PATH
 fi
             
