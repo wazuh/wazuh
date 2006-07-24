@@ -86,7 +86,7 @@ configurationdone="Configuration finished properly"
 tostart="To start OSSEC HIDS"
 tostop="To stop OSSEC HIDS"
 configat="The configuration can be viewed or modified at"
-addserveragent="You need to add the agent(s) before they are authorized to access."
+addserveragent="In order to connect agent and server, you need to add each one of your agents to the server."
 runma="Run the 'manage_agents' to add or remove them"
 presskey="Press ENTER to continue"
 

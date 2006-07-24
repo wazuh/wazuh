@@ -67,12 +67,12 @@ fpos_t fp_pos;
                         " (use '\\q' to return to the main menu).\n"\
                         "  Please provide the following:\n"
 #define ADD_NAME        "   * A name for the new agent: "
-#define ADD_IP          "   * The IP Address for the new agent: "
+#define ADD_IP          "   * The IP Address of the new agent: "
 #define ADD_ID          "   * An ID for the new agent[%s]: "
 #define AGENT_INFO      "Agent information:\n   ID:%s\n   Name:%s\n   " \
                         "IP Address:%s\n\n"
 #define ADD_CONFIRM     "Confirm adding it?(y/n): "
-#define AGENT_ADD       "Agent Added.\n"
+#define AGENT_ADD       "Agent added.\n"
 #define ADDED           "Added.\n"
 #define ADD_NOT         "Not Adding ..\n"
 #define PRESS_ENTER     "** Press ENTER to return to the main menu.\n"
@@ -88,7 +88,7 @@ fpos_t fp_pos;
 #define INVALID_NAME    "\n** Invalid name '%s' given. Name must contain only alphanumeric characters (min=2, max=32).\n"
 
 /* Remove agent */
-#define REMOVE_ID       "Provide the ID of the agent to remove (or '\\q' to quit): "
+#define REMOVE_ID       "Provide the ID of the agent to be removed (or '\\q' to quit): "
 #define REMOVE_CONFIRM  "Confirm deleting it?(y/n): "
 #define REMOVE_DONE     "Agent '%s' removed.\n"
 #define REMOVE_NOT      "Not removing ..\n"
@@ -121,10 +121,10 @@ fpos_t fp_pos;
                         "   (L)ist already added agents (L).\n" \
                         "   (R)emove an agent (R).\n" \
                         "   (Q)uit.\n" \
-                        "Choose your actions: A,E,L,R or Q: "
+                        "Choose your action: A,E,L,R or Q: "
 
 #define BANNER_CLIENT   "   (I)mport key from the server (I).\n" \
                         "   (Q)uit.\n" \
-                        "Choose your actions: I or Q: "
+                        "Choose your action: I or Q: "
                         
 /* EOF */
