@@ -39,6 +39,10 @@ while(<>){
 		$date=$1;
 		$alerthost=$2;
 		$datasource=$3;
+	}elsif ( m/^([0-9]+\s\w+\s[0-9]+\s[0-9]+:[0-9]+:[0-9]+)\s(.*?)$/){
+                $date=$1;
+                $alerthost='none';
+                $datasource=$2;
 	}elsif ( m/Rule: ([0-9]+) \(level ([0-9]+)\) -> (.*)$/ ){
 		$rule=$1;
 		$level=$2;
