@@ -582,6 +582,20 @@
   <order>srcip,url,id</order>
 </decoder>
 
+<!-- IIS specific log format.
+  - #Fields: date time c-ip cs-username s-sitename s-computername s-ip s-port cs-method cs-uri-stem cs-uri-query sc-status cs-host cs(User-Agent) cs(Referer)
+  - Examples:
+  - 2006-07-23 04:40:02 1.2.3.4 - W3SVC3 CIN1WEB03 1.2.3.4 443 GET /Default.asp - 200 hiden.com Mozilla/4.0+(compatible;+MSIE+6.0;+Windows+NT+5.1;+Avant+Browser;+Avant+Browser;+.NET+CLR+1.1.4322;+.NET+CLR+2.0.50727) -
+  -->
+<decoder name="web-accesslog-iis">
+  <type>web-log</type>
+  <prematch>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d </prematch>
+  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) \S+ \S+ \S+ \S+ </regex>
+  <regex>\d+ \S+ (\S+ \S+) (\d+) </regex>
+  <order>srcip,url,id</order>
+</decoder>
+        
+
 
 <!-- Squid access log decoder.
   - Will extract the srcip.

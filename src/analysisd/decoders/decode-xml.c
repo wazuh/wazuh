@@ -215,19 +215,26 @@ void ReadDecodeXML(char *file)
             /* Getting the regex */
             else if(strcasecmp(elements[j]->element,xml_regex) == 0)
             {
-                pi->regex_offset = ReadDecodeAttrs(elements[j]->attributes,
-                                                   elements[j]->values);
+                int r_offset;
+                r_offset = ReadDecodeAttrs(elements[j]->attributes,
+                                           elements[j]->values);
                 
-                if(pi->regex_offset & AFTER_ERROR)
+                if(r_offset & AFTER_ERROR)
                 {
                     ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
                 }
                 
                 /* Only the first regex entry may have an offset */ 
-                if(regex && pi->regex_offset)
+                if(regex && r_offset)
                 {
                     merror(DUP_REGEX, ARGV0, pi->name);
                     ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+                }
+                
+                /* regex offset */
+                if(r_offset)
+                {
+                    pi->regex_offset = r_offset;
                 }
                 
                 /* Assign regex */
