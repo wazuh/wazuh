@@ -97,7 +97,7 @@
     <description>Connection blocked by Tcp Wrappers.</description>
   </rule>
 
-  <rule id ="405" level="9">
+  <rule id="405" level="9">
     <match>ILLEGAL ROOT LOGIN|ROOT LOGIN REFUSED</match>
     <description>Illegal root login. </description>
   </rule>
@@ -144,7 +144,7 @@
     <description>Smartd configuration problem</description>
   </rule>
 
-  <rule id ="703" level="0">
+  <rule id="703" level="0">
     <if_sid>700</if_sid>
     <regex>^smartd\.+No such device or address, open\(\) failed</regex>
     <description>Device configured but not available to Smartd</description>
@@ -172,14 +172,14 @@
     <description>Informative message from the kernel</description>
   </rule>
   
-  <rule id ="803" level="9">
+  <rule id="803" level="9">
     <if_sid>800</if_sid>
     <match>Oversized packet received from</match>
     <description>Error message from the kernel. </description>
     <description>Ping of death attack.</description>
   </rule>  
 
-  <rule id = "804" level="8">
+  <rule id="804" level="8">
     <if_sid>800</if_sid>
     <regex>Promiscuous mode enabled|</regex>
     <regex>device \S+ entered promiscuous mode</regex>
@@ -266,13 +266,13 @@
     <description>Initial matching for su messages</description>
   </rule>
   
-  <rule id ="1101" level="5">
+  <rule id="1101" level="5">
    <if_sid>1100</if_sid>
    <match>: authentication failure; | failed |BAD su</match>
    <description>User missed the password to change UID (user id)</description> 
   </rule>
 
-  <rule id ="1102" level="9">
+  <rule id="1102" level="9">
     <user>root</user>
     <if_sid>1101</if_sid>
     <description>User missed the password to change UID to root</description>

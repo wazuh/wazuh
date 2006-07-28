@@ -68,7 +68,7 @@
     <description>Useless SSHD message without a user/ip</description>
   </rule>
   
-  <rule id ="1510" level="5">
+  <rule id="1510" level="5">
     <if_sid>1500</if_sid>
     <match>illegal user|invalid user</match>
     <group>invalid_login,connection_attempt</group>
