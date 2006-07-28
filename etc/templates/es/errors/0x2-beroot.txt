@@ -1,0 +1,4 @@
+ 
+ Error 0x2.
+ Usted debe ser root en orden de usar el programa.
+

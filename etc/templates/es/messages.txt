@@ -1,0 +1,106 @@
+# Configuration
+yes="s"
+no="n"
+yesmatch="s"
+nomatch="n"
+agent="agente"
+local="local"
+server="servidor"
+help="ayuda"
+
+# Global
+moreinfo="Más información en: "
+starting="Comenzando OSSEC HIDS"
+systemis="El sistema es"
+modifiedinit="Init script modificado para empezar OSSEC HIDS durante el arranque."
+noboot="Sistema desconocido. El guión init  no fué agregado"
+
+# Part 1
+installscript="Guión de instalación"
+system="Sistema"
+user="Usuario"
+host="servidor"
+hitanyorabort="Presione ENTER para continuar ó Ctrl-C para abortar."
+whattoinstall="Que tipo de instalación Usted desea (servidor, agente, local ó ayuda)?"
+serverchose="Usted eligió instalación de Servidor"
+clientchose="Usted eligió instalación de Agente(cliente)"
+localchose="Usted eligió instalación Local"
+
+# Part 2
+settingupenv="Configurando las variables de entorno de la instalación"
+wheretoinstall="Eliga donde instalar OSSEC HIDS"
+installat="La instalación se realizará en "
+deletedir="El directorio de instalación  ya existe. Desea removerlo?"
+
+# Part 3
+configuring="Configurando el sistema"
+mailnotify="Desea recibir notificación por correo electrónico?"
+nomail="Notificación por correo electrónico deshabilitado"
+whatsemail="Cuál es vuestra dirección de correo electrónico?"
+yoursmtp="Hemos encontrado vuestro servidor de correo (SMTP)"
+usesmtp="Desea Usted usarlo?"
+usingsmtp="Usando el servidor SMTP: "
+whatsmtp="Cuál es la direccion ó nombre de vuestro servidor de correo SMTP?"
+
+# Part 3.1/agent
+serverip="Cuál es la direccion del servidor OSSEC HIDS?"
+addingip="Agregando el IP del servidor"
+
+
+# Part 3.2
+runsyscheck="Desea Usted agregar el servidor de integridad del sistema?"
+nosyscheck="No se ejecutará syscheck (servidor de integridad del sistema)"
+yessyscheck="Ejecutando syscheck (servidor de integridad del sistema)"
+
+# Part 3.3
+runrootcheck="Desea Usted agregar el sistema de detección de rootkit?"
+norootcheck="No se ejecutará rootcheck (sistema de detección de rootkit)"
+yesrootcheck="Ejecutando rootcheck (sistema de detección de rootkit)"
+
+# Part 3.4/server/local
+enable_ar="Desea Usted habilitar respuesta activa?"
+noactive="Respuesta activa deshabilitada"
+nohosts="host-deny deshabilitado"
+yeshosts="host-deny habilitado (local) para niveles >= 6"
+firewallar="Desea Usted habilitar la respuesta desechar en el Firewall?"
+nofirewall="Respuesta desechar en el Firewall deshabilitada."
+yesfirewall="Respuesta desechar en el Firewall habilitada (local)  para niveles >= 6"
+defaultwhitelist="Lista blanca para respuesta activa por omisión:"
+addwhite="Desea Usted agregar más IPs a la lista blanca?"
+ipswhite="IPs (lista separada por blancos): "
+
+# Part 3.5/server/local
+syslog="Desea Usted habilitarsyslog remoto (puerto 514 udp)?"
+nosyslog="Syslog remoto deshabilitado"
+yessyslog="Syslog remoto habilitado"
+
+# Part 3.4/3.5
+readlogs="Estableciendo la configuración para analizar los siguientes registros:"
+
+# Part 5
+installing="Instalando el sistema"
+runningmake="Ejecutando el Makefile"
+
+# Final
+configurationdone="Configuración finalizada correctamente"
+tostart="Para comenzar OSSEC HIDS"
+tostop="Para detener OSSEC HIDS"
+configat="LA configuracin puede ser leída ó mofificada en"
+addserveragent="Para connectar el agente con el servidor, debe Usted agregar cada uno de los agentes en el servidor."
+runma="Ejecute el programa 'manage_agents' para agregarlos ó removerlos "
+presskey="Press ENTER to continue"
+
+# Update
+wanttoupdate="Usted ya ha instalado OSSEC previamente. Desea Usted actualizarlo?"
+unabletoupdate="He sido incapaz de actualizar el sistema. Una nueva y completa instalación es requerida."
+updatecompleted="Actualización completa."
+updatefailed="LA actualización ha fallado."
+updaterules="Desea Usted actualizar las reglas?"
+updatingrules="Actualizando las reglas."
+notupdatingrules="No se actualiza las reglas."
+
+# Pf support
+pfenable="Desea Usted usar el PF firewall en la respuesta activa?"
+nopf="respuesta PF deshabilitada."
+pftablename="Nombre de la tabla de PF table a usar?"
+pfmessage="Agregar las siguientes lineas al principio de las reglas del PF"

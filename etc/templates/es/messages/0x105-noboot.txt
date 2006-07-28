@@ -1,0 +1,5 @@
+
+ - No se ha tomado acción para configurar OSSEC HIDS de ejecutar
+   durante el encendido de la maquina. Agrege las siguiente linea
+   a vuestro archivo código init:
+

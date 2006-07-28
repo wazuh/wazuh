@@ -1,0 +1,10 @@
+    
+    Gracias por usar OSSEC HIDS.
+    Si tuviera Usted alguna duda, sugerencia ó haya encontrado 
+    algun desperfecto, contactese con nosotros a contact@ossec.net
+    ó usando nuestrs lista pública de correo en ossec-list@ossec.net
+    
+    Más información puede ser encontrada en http://www.ossec.net
+    
+           ---  Presione ENTER para finalizar. ---
+       (Tal vez encuentre más información a continuación). 

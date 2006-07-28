@@ -1,0 +1,15 @@
+
+     - Respuesta activa habilitada.
+
+   - Por omición, podemos habilitar el rechazo de servicio 
+     o el abandono del paquete por medio del Firewall.
+     El rechazo agregara el ofendedor en el archivo etc/hosts.deny
+     y el abandono bloquara la comunicación con el ofendedor en iptables
+     (si el sistema fuera linux) ó ipfilter (si el sistema fuera
+     Solaris, FreeBSD or NetBSD).
+
+    - Las dos repuestas pueden ser utilizadas para detener un escaneo 
+      de fuerza bruta contra SSHD, escaneo de puertos y otras  formas
+      de ataque. Por ejemplo Usted podra tambien agregar los ofensores
+      de acuerdo a eventos registrados por medio de snort.
+

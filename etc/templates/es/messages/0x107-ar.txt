@@ -1,0 +1,8 @@
+
+  3.4- Respuestas activas le permitirán ejecutar un comando
+       específico en base a los eventos recibidos. Por ejemplo,
+       Usted podra bloquear una dirección IP ó deshabilitar el acceso
+       de un usuario específico.
+       Más información en:
+       http://www.ossec.net/en/manual.html#active-response
+

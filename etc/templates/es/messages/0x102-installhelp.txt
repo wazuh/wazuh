@@ -1,0 +1,31 @@
+
+  - Usted tiene tres posibilidades de instalación: servidor, 
+    agente ó local.
+
+    - Si Usted elige 'servidor', Usted sera capaz de analizar
+      todo  los registros, crear  notificaciónes de correo  y
+      respuestas, asi com otambien recibir registros desde equipos 
+      syslog  remotos y  sistemas  ejecutando  el  'agente' 
+      (quienes transmitiran su traffico cifrado hacia el servidor).
+       
+    - Si Usted elige 'agente'(cliente), Usted sera capaz de leer
+      registros  locales ( de syslog, snort, apache, etc)   y
+      retransmitir retrasmitirlos al servidor de analysis.
+
+    - Si Usted elige local Usted sera capaz de todo lo que es capaz
+      de hacer el servidor, excepto recibir mensajes remotos de los
+      agentes ó fuentes externas de syslog.
+
+    - Elija 'servidor' si Usted desea instalar un servidor de registros
+      ó análisis.
+
+    - Elija 'agente' si Usted tiene otra maquina ejecutando el servidor
+      de lectura de registros y desea transmitir los registros a él para
+      análisis. (ideal para servidore WEB, base de datos, etc)
+
+    -Elija 'local' si Usted tiene que monitear un solo sistema .
+
+  - Para más información dirijase a:
+    http://www.ossec.net/en/manual.html#starting
+
+  
