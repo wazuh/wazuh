@@ -18,7 +18,8 @@
 1700 - 1799 Privilege scalation patterns
 1800 - 1899 Scan patterns
 1900 - 1999 DNS rules
-2000 - 2499 PIX rules
+2000 - 2399 PIX rules
+2400 - 2499 Arpwatch rules
 2500 - 2599 Proftpd rules
 2600 - 2699 PPTP messages
 2700 - 2799 FTS rules

@@ -4,6 +4,7 @@
     <include>sshd_rules.xml</include>
     <include>telnetd_rules.xml</include>
     <include>syslog_rules.xml</include>
+    <include>arpwatch_rules.xml</include>
     <include>pix_rules.xml</include>
     <include>named_rules.xml</include>
     <include>smbd_rules.xml</include>

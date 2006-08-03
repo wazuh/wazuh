@@ -46,6 +46,7 @@ typedef struct _Eventinfo
     char *id;
     char *command;
     char *url;
+    char *data;
 
     /* FTS fields */
     int fts;
@@ -100,6 +101,7 @@ typedef struct _EventNode
 #define FTS_DSTIP    000200
 #define FTS_LOCATION 000400
 #define FTS_ID       000010
+#define FTS_DATA     000020
 
 
 /** Functions for events **/

@@ -282,6 +282,11 @@ void *Url_FP(Eventinfo *lf, char *field)
     lf->url = field;
     return(NULL);
 }
+void *Data_FP(Eventinfo *lf, char *field)
+{
+    lf->data = field;
+    return(NULL);
+}
 void *None_FP(Eventinfo *lf, char *field)
 {
     free(field);

@@ -9,7 +9,9 @@
    - dstport  - destination port
    - protocol - protocol
    - id       - event id 
+   - url      - url of the event
    - action   - event action (deny, drop, accept, etc)
+   - data     - Any extra data
   -->
 
 <!-- Pam decoder.
@@ -302,6 +304,26 @@
   <parent>ftpd</parent>
   <regex>FROM (\d+.\d+.\d+.\d+), |from (\d+.\d+.\d+.\d+)</regex>
   <order>srcip</order>
+</decoder>
+
+<!-- Arpwatch decoder.
+  - Will extract srcip/mac for "new station" messages.
+  - Examples:
+  - arpwatch: new station 192.168.1.103 0:11:43:5e:5d:80 eth0
+  - arpwatch: bogon 172.16.150.149 0:2:b3:d6:e5:68 eth0
+  - arpwatch: new station 192.168.2.10 0:c0:4f:78:32:be
+  -->
+<decoder name="arpwatch">
+  <prematch>^arpwatch: </prematch>
+</decoder>
+
+<decoder name="arpwatch-new">
+  <parent>arpwatch</parent>
+  <prematch offset="after_parent">^new station |^bogon </prematch>
+  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) (\S+)</regex>
+  <order>srcip, data</order>
+  <fts>name, srcip, data</fts>
+  <ftscomment>New host in the network.</ftscomment>
 </decoder>
 
 
