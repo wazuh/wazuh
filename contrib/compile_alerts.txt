@@ -1,0 +1,286 @@
+ossec rules reordering Mini Howto
+by Meir Michanie
+
+Patching an Ossec installation
+Reordering the rules
+
+    * Stop ossec
+
+root@topgun:/var/ossec#/etc/init.d/ossec stop
+
+
+
+    * Backup the whole ossec directory
+
+/root# tar -C /var -zcpvf ossec-orig.tar.gz ossec
+
+
+
+    * Move the contrib directory from the source package to the oseec installation
+
+/var/ossec# cp -a /tmp/ossec/contrib .
+
+
+    * Create directories to host the rules
+
+/var/ossec# mkdir signatures user_signatures repository
+
+
+    * Move the file rules_config.xml to the etc directory.
+
+/var/ossec# mv rules/rules_config.xml etc/
+
+
+    * Move the rest of the rules to the repository directory
+
+/var/ossec# mv rules/* repository/
+
+
+    * copy the rules tag portion to a file under /var/ossec. i.e. rules.txt
+    * delete the rules opening and closing tags
+    * remove all xml code leaving only the list of the files. i.e.
+
+pam_rules.xml
+ sshd_rules.xml
+ telnetd_rules.xml
+ syslog_rules.xml
+ pix_rules.xml
+ named_rules.xml
+ smbd_rules.xml
+ vsftpd_rules.xml
+ pure-ftpd_rules.xml
+ proftpd_rules.xml
+ hordeimp_rules.xml
+ web_rules.xml
+ apache_rules.xml
+ ids_rules.xml
+ squid_rules.xml
+ firewall_rules.xml
+ netscreenfw_rules.xml
+ postfix_rules.xml
+ sendmail_rules.xml
+ imapd_rules.xml
+ spamd_rules.xml
+ msauth_rules.xml
+ policy_rules.xml
+ attack_rules.xml
+
+
+    * modify the rules tag to:
+
+<rules>
+  <include>rules_ossec.xml</include>
+</rules>
+
+    * list of repository directory.
+
+/var/ossec# ls -1 repository/
+apache_rules.xml
+attack_rules.xml
+firewall_rules.xml
+ftpd_rules.xml
+hordeimp_rules.xml
+ids_rules.xml
+imapd_rules.xml
+msauth_rules.xml
+named_rules.xml
+netscreenfw_rules.xml
+ossec_rules.xml
+pam_rules.xml
+pix_rules.xml
+policy_rules.xml
+postfix_rules.xml
+proftpd_rules.xml
+pure-ftpd_rules.xml
+rules-backup
+sendmail_rules.xml
+smbd_rules.xml
+spamd_rules.xml
+squid_rules.xml
+sshd_rules.xml
+syslog_rules.xml
+telnetd_rules.xml
+vsftpd_rules.xml
+web_rules.xml
+
+
+
+    * Viewing the content of file rules.txt
+
+/var/ossec# cat rules.txt
+ pam_rules.xml
+ sshd_rules.xml
+ telnetd_rules.xml
+ syslog_rules.xml
+ pix_rules.xml
+ named_rules.xml
+ smbd_rules.xml
+ vsftpd_rules.xml
+ pure-ftpd_rules.xml
+ proftpd_rules.xml
+ hordeimp_rules.xml
+ web_rules.xml
+ apache_rules.xml
+ ids_rules.xml
+ squid_rules.xml
+ firewall_rules.xml
+ netscreenfw_rules.xml
+ postfix_rules.xml
+ sendmail_rules.xml
+ imapd_rules.xml
+ spamd_rules.xml
+ msauth_rules.xml
+ policy_rules.xml
+ attack_rules.xml
+
+
+
+    * Build links to the original rules files under the signatures directory
+
+/var/ossec# COUNT=0; for i in `cat rules.txt`; do 
+ (( COUNT = COUNT + 1)) ;
+ ln -s ../repository/$i `printf "signatures/%02d%s" $COUNT $i`;
+done
+
+
+
+    * If you wish to alterate a rule you should remove the link of the file from signature where XX denotes the two digits number prefixing the name of the file.
+
+/var/ossec# unlink signatures/XXattack_rules.xml
+
+
+
+    * Copy the file to be modified
+
+/var/ossec# cp repository/attack_rules.xml signatures/XXattack_rules.xml
+
+
+
+    * Edit your file.
+
+    * write your own rules file under the directory user_signatures
+
+/var/ossec# cat user_signatures/user_defined.xml
+ <group name="syslog,scans">
+  <rule id="9000" level="0">
+       <regex>Accepted publickey</regex>
+       <description>Accepted publickey bypass</description>
+  </rule>
+ </group>
+
+
+    * List the rules under signature
+
+/var/ossec# ls -l signatures/
+total 0
+lrwxrwxrwx 1 root root 27 2006-07-24 23:37 01pam_rules.xml -> ../repository/pam_rules.xml
+lrwxrwxrwx 1 root root 28 2006-07-24 23:37 02sshd_rules.xml -> ../repository/sshd_rules.xml
+lrwxrwxrwx 1 root root 31 2006-07-24 23:37 03telnetd_rules.xml -> ../repository/telnetd_rules.xml
+lrwxrwxrwx 1 root root 30 2006-07-24 23:37 04syslog_rules.xml -> ../repository/syslog_rules.xml
+lrwxrwxrwx 1 root root 27 2006-07-24 23:37 05pix_rules.xml -> ../repository/pix_rules.xml
+lrwxrwxrwx 1 root root 29 2006-07-24 23:37 06named_rules.xml -> ../repository/named_rules.xml
+lrwxrwxrwx 1 root root 28 2006-07-24 23:37 07smbd_rules.xml -> ../repository/smbd_rules.xml
+lrwxrwxrwx 1 root root 30 2006-07-24 23:37 08vsftpd_rules.xml -> ../repository/vsftpd_rules.xml
+lrwxrwxrwx 1 root root 33 2006-07-24 23:37 09pure-ftpd_rules.xml -> ../repository/pure-ftpd_rules.xml
+lrwxrwxrwx 1 root root 31 2006-07-24 23:37 10proftpd_rules.xml -> ../repository/proftpd_rules.xml
+lrwxrwxrwx 1 root root 32 2006-07-24 23:37 11hordeimp_rules.xml -> ../repository/hordeimp_rules.xml
+lrwxrwxrwx 1 root root 27 2006-07-24 23:37 12web_rules.xml -> ../repository/web_rules.xml
+lrwxrwxrwx 1 root root 30 2006-07-24 23:37 13apache_rules.xml -> ../repository/apache_rules.xml
+lrwxrwxrwx 1 root root 27 2006-07-24 23:37 14ids_rules.xml -> ../repository/ids_rules.xml
+lrwxrwxrwx 1 root root 29 2006-07-24 23:37 15squid_rules.xml -> ../repository/squid_rules.xml
+lrwxrwxrwx 1 root root 32 2006-07-24 23:37 16firewall_rules.xml -> ../repository/firewall_rules.xml
+lrwxrwxrwx 1 root root 35 2006-07-24 23:37 17netscreenfw_rules.xml -> ../repository/netscreenfw_rules.xml
+lrwxrwxrwx 1 root root 31 2006-07-24 23:37 18postfix_rules.xml -> ../repository/postfix_rules.xml
+lrwxrwxrwx 1 root root 32 2006-07-24 23:37 19sendmail_rules.xml -> ../repository/sendmail_rules.xml
+lrwxrwxrwx 1 root root 29 2006-07-24 23:37 20imapd_rules.xml -> ../repository/imapd_rules.xml
+lrwxrwxrwx 1 root root 29 2006-07-24 23:37 21spamd_rules.xml -> ../repository/spamd_rules.xml
+lrwxrwxrwx 1 root root 30 2006-07-24 23:37 22msauth_rules.xml -> ../repository/msauth_rules.xml
+lrwxrwxrwx 1 root root 30 2006-07-24 23:37 23policy_rules.xml -> ../repository/policy_rules.xml
+lrwxrwxrwx 1 root root 30 2006-07-24 23:37 24attack_rules.xml -> ../repository/attack_rules.xml
+
+
+
+    * Compile the alerts into a monolitic rule file.
+
+/var/ossec# perl contrib/compile_alerts.pl --user-signatures /var/ossec/user_signatures --signatures \
+/var/ossec/signatures --rules-config /var/ossec/etc/rules_config.xml > rules/rules_ossec.xml
+Adding /var/ossec/etc/rules_config.xml
+Adding /var/ossec/user_signatures/user_defined_rules.xml
+Adding /var/ossec/signatures/01pam_rules.xml
+Adding /var/ossec/signatures/02sshd_rules.xml
+Adding /var/ossec/signatures/03telnetd_rules.xml
+Adding /var/ossec/signatures/04syslog_rules.xml
+Adding /var/ossec/signatures/05pix_rules.xml
+Adding /var/ossec/signatures/06named_rules.xml
+Adding /var/ossec/signatures/07smbd_rules.xml
+Adding /var/ossec/signatures/08vsftpd_rules.xml
+Adding /var/ossec/signatures/09pure-ftpd_rules.xml
+Adding /var/ossec/signatures/10proftpd_rules.xml
+Adding /var/ossec/signatures/11hordeimp_rules.xml
+Adding /var/ossec/signatures/12web_rules.xml
+Adding /var/ossec/signatures/13apache_rules.xml
+Adding /var/ossec/signatures/14ids_rules.xml
+Adding /var/ossec/signatures/15squid_rules.xml
+Adding /var/ossec/signatures/16firewall_rules.xml
+Adding /var/ossec/signatures/17netscreenfw_rules.xml
+Adding /var/ossec/signatures/18postfix_rules.xml
+Adding /var/ossec/signatures/19sendmail_rules.xml
+Adding /var/ossec/signatures/20imapd_rules.xml
+Adding /var/ossec/signatures/21spamd_rules.xml
+Adding /var/ossec/signatures/22msauth_rules.xml
+Adding /var/ossec/signatures/23policy_rules.xml
+Adding /var/ossec/signatures/24attack_rules.xml
+processing: /var/ossec/etc/rules_config.xml
+processing: /var/ossec/user_signatures/user_defined_rules.xml
+processing: /var/ossec/signatures/01pam_rules.xml
+processing: /var/ossec/signatures/02sshd_rules.xml
+processing: /var/ossec/signatures/03telnetd_rules.xml
+processing: /var/ossec/signatures/04syslog_rules.xml
+processing: /var/ossec/signatures/05pix_rules.xml
+processing: /var/ossec/signatures/06named_rules.xml
+processing: /var/ossec/signatures/07smbd_rules.xml
+processing: /var/ossec/signatures/08vsftpd_rules.xml
+processing: /var/ossec/signatures/09pure-ftpd_rules.xml
+processing: /var/ossec/signatures/10proftpd_rules.xml
+processing: /var/ossec/signatures/11hordeimp_rules.xml
+processing: /var/ossec/signatures/12web_rules.xml
+processing: /var/ossec/signatures/13apache_rules.xml
+processing: /var/ossec/signatures/14ids_rules.xml
+processing: /var/ossec/signatures/15squid_rules.xml
+processing: /var/ossec/signatures/16firewall_rules.xml
+processing: /var/ossec/signatures/17netscreenfw_rules.xml
+processing: /var/ossec/signatures/18postfix_rules.xml
+processing: /var/ossec/signatures/19sendmail_rules.xml
+processing: /var/ossec/signatures/20imapd_rules.xml
+processing: /var/ossec/signatures/21spamd_rules.xml
+processing: /var/ossec/signatures/22msauth_rules.xml
+processing: /var/ossec/signatures/23policy_rules.xml
+processing: /var/ossec/signatures/24attack_rules.xml
+
+
+
+    * Now you can start again ossec
+
+/var/ossec#/etc/init.d/ossec start
+ Starting OSSEC Starting OSSEC HIDS v0.9 (by Daniel B. Cid)...
+ Started ossec-maild...
+ Started ossec-execd...
+ Started ossec-analysisd...
+ Started ossec-logcollector...
+ Started ossec-remoted...
+ Started ossec-syscheckd...
+ Completed.
+
+
+
+Extract of ossec.conf with the modified rules tag
+
+/var/ossec# cat etc/ossec.conf
+...
+  <rules>
+    <include>rules_ossec.xml</include>
+  </rules>
+...
+
+
+
