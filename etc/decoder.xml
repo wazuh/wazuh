@@ -495,6 +495,74 @@
 </decoder>
 
 
+<!-- Pix decoder.
+  - Will extract the srcip, srcport, dstip and dstport whenever possible.
+  - Examples:
+  - %PIX-6-106015: Deny TCP (no connection) from 161.58.238.151/110 to a.b.c.d/3782 flags RST ACK
+  - %PIX-2-106001: Inbound TCP connection denied from 165.139.46.7/3854 to 165.189.27.70/139 flags
+  - %PIX-3-710003: TCP access denied by ACL from 216.39.220.130/54065 to outside:62.192.113.98/ssh
+  - %PIX-7-710001: TCP access requested from X.X.X.X/1292 to outside:Y.Y.Y.Y/ssh
+  - %PIX-7-710002: UDP access permitted from 33.33.33.4/943 to inside:33.33.33.15/snmp
+  - %PIX-7-710005: UDP request discarded from <public IP of 525>/4500 to outside:192.168.69.137/4500
+  - %PIX-2-106002   protocol Connection denied by outbound list acl_ID src inside_address dest outside_address
+  - %PIX-2-106002: udp connection denied by outbound list 30 src 216.53.120.62 138 dest 169.132.10.82 138
+  -  %PIX-4-106023: Deny tcp src inside:111.11.11.1/2143 dst YYY:172.11.1.11/139 by access-group "inside_inbound"
+  - %PIX-4-400013 IDS:2003 ICMP redirect from 10.4.1.2 to 10.2.1.1 on interface dmz
+  -->
+<decoder name="pix">
+  <prematch>^%PIX-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %PIX-</prematch>
+</decoder>
+
+<decoder name="pix-fw1">
+  <parent>pix</parent>
+  <type>firewall</type>
+  <prematch offset="after_parent">^2-106001|^6-106015</prematch>
+  <regex offset="after_parent">^(\S+): \w+ (\w+) \S+ (\S+) from </regex>
+  <regex>(\S+)/(\S+) to (\S+)/(\S+)</regex>
+  <order>id, protocol, action, srcip, srcport, dstip, dstport</order>
+</decoder>
+
+<decoder name="pix-fw2">
+  <parent>pix</parent>
+  <type>firewall</type>
+  <prematch offset="after_parent">^3-710003|^7-710002|^7-710005</prematch>
+  <regex offset="after_parent">^(\S+): (\S+) \w+ (\w+)\.+from </regex>
+  <regex>(\S+)/(\S+) to \w+:(\S+)(\S+)</regex>
+  <order>id, protocol, action, srcip, srcport, dstip, dstport</order>
+</decoder>
+
+<decoder name="pix-fw3">
+  <parent>pix</parent>
+  <type>firewall</type>
+  <prematch offset="after_parent">^4-106023</prematch>
+  <regex offset="after_parent">^(\S+): (\w+) (\w+) src \w+:</regex>
+  <regex>(\S+)/(\S+) dst \w+:(\S+)(\S+)</regex>
+  <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
+</decoder>
+
+<decoder name="pix-attacks">
+  <parent>pix</parent>
+  <prematch offset="after_parent">^2-106012: |^2-106017: |</prematch>
+  <prematch>^2-106020|^1-106021|^1-106022|</prematch>
+  <prematch>^4-4000|^4-106019</prematch>
+  <regex offset="after_parent">^(\S+): \.+ (\d+.\d+.\d+.\d+) </regex>
+  <order>id, srcip</order>
+</decoder>
+
+<decoder name="pix-srcip">
+  <parent>pix</parent>
+  <prematch offset="after_parent">^6-605004|^6-308001</prematch>
+  <regex offset="after_parent">^(\S+): \.+ (\d+.\d+.\d+.\d+)</regex>
+  <order>id, srcip</order>
+</decoder>
+
+<decoder name="pix-generic">
+  <parent>pix</parent>
+  <regex offset="after_parent">^(\S+): </regex>
+  <order>id</order>
+</decoder>
+
+
 <!-- Snort decoder.
   - Will extract the id, srcip and dstip
   - Examples:

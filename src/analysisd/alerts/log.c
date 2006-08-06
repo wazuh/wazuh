@@ -140,7 +140,7 @@ int FW_Log(Eventinfo *lf)
             /* allow, accept, */    
         case 'a':
         case 'A':
-            /* pass */
+            /* pass/permitted */
         case 'p':
         case 'P':
             os_free(lf->action);

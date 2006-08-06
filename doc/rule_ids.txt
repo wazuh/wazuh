@@ -1,8 +1,34 @@
-0100 - 0199 Syslog error messages
-0200 - 0299 NFS messages
-0300 - 0399 Xinetd messages
-0400 - 0499 Access control messages
-0500 - 0599 Sendmail messages
+# ossec Rules ids.
+#
+# Rules should be divided in two parts:
+# Organization name - Rule ID.
+# *Official rules distributed by ossec will be in
+#  the following format:
+#     os-id (eg os-1001).
+# *Local modified rules should have the following
+#  format:
+#     local-id (eg local-100001).
+#
+# If the local rule is a modification of an official
+# ossec rule, it should have the same id, but with
+# the organization name of "local". 
+#
+# Every rule will also have a revision attribute (if modified).
+
+00000 - 00999 Internally reserved for ossec
+01000 - 01999 General syslog
+02100 - 02299 NFS
+02300 - 02499 Xinetd
+02500 - 02699 Access control
+
+03100 - 03299 Sendmail
+03300 - 03499 Postfix
+
+04100 - 04299 Generic Firewall
+04300 - 04499 Cisco PIX Firewall
+04500 - 04699 Netscreen Firewall
+
+
 0600 - 0699 Ftp messages
 0700 - 0799 Smartd messages
 0800 - 0899 Kernel messages
@@ -18,7 +44,6 @@
 1700 - 1799 Privilege scalation patterns
 1800 - 1899 Scan patterns
 1900 - 1999 DNS rules
-2000 - 2399 PIX rules
 2400 - 2499 Arpwatch rules
 2500 - 2599 Proftpd rules
 2600 - 2699 PPTP messages
@@ -32,12 +57,9 @@
 3400 - 3499 vsftpd
 3500 - 3599 Pam unix
 3600 - 3699 Telnetd
-3700 - 3799 Netscreen Firewall
 3800 - 3899 Horde IMP
 4000 - 4999 IDS rules
 5000 - 5999 Squid rules
-6000 - 6199 Postfix rules
-6200 - 6499 Sendmail rules
 6300 - 6399 Policy rules
 7000 - 7499 Firewall rules
 8000 - 8999 Windows rules

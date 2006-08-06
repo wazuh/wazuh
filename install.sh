@@ -729,9 +729,11 @@ checkDependencies()
     ls "`which gcc`" > /dev/null 2>&1
     if [ ! $? = 0 ]; then
         ls "`which cc`" > /dev/null 2>&1
-        if [ ! $? = 0 ]; then
-        catError "0x3-dependencies"
-        fi
+        if [ "X${USER_BINARYINSTALL}" = "X" ]; then
+            if [ ! $? = 0 ]; then
+            catError "0x3-dependencies"
+            fi
+        fi    
         CC="cc"
     else
         CC="gcc"

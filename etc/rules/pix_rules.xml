@@ -1,61 +1,134 @@
 <!-- Official pix rules for the OSSEC HIDS
   -  Author: Daniel B. Cid
   -  Date: Nov 11, 2005
+  -  Second revision: Aug 05, 2006
   -->
      
 
 <!-- For more info:
-  -  http://www.cisco.com/en/US/products/sw/secursw/ps2120/products_system_message_guide_chapter09186a00801582b2.html
+  - http://www.cisco.com/univercd/cc/td/doc/product/multisec/asa_sw/v_7_2/syslog/logsev.htm
+  - http://www.cisco.com/univercd/cc/td/doc/product/iaabu/pix/pix_sw/v_61/config/sysmgmt.htm
   -->
 
-<group name="syslog,pix">
-  <rule id="2000" level="0">
-    <match>^%PIX-</match>
-    <description>Pre-match for PIX rules</description>
+<!-- PIX assigned IDs are from 4300 to 4499 -->  
+
+
+<group name="syslog,pix,">
+  <rule id="4300" level="0">
+    <decoded_as>pix</decoded_as>
+    <description>Grouping of PIX rules</description>
+  </rule>
+
+  <rule id="4310" level="5">
+    <if_sid>4300</if_sid>
+    <id>^1-</id>
+    <description>PIX alert message.</description>
+  </rule>
+
+  <rule id="4311" level="5">
+    <if_sid>4300</if_sid>
+    <id>^2-</id>
+    <description>PIX critical message.</description>
+  </rule>
+
+  <rule id="4312" level="4">
+    <if_sid>4300</if_sid>
+    <id>^3-</id>
+    <description>PIX error message.</description>
   </rule>
   
-  <rule id="2001" level="9">
-    <if_sid>2000</if_sid>
-    <match>^%PIX-6-605004: Login denied from</match>
-    <description>Attempt to log in the PIX firewall from </description>
-    <description>untrusted network.</description>
+  <rule id="4313" level="4">
+    <if_sid>4300</if_sid>
+    <id>^4-</id>
+    <description>PIX warning message.</description>
   </rule>
 
-  <rule id="2002" level="2">
-    <if_sid>2000</if_sid>
-    <match>^%PIX-5-502103: User priv level changed:</match>
-    <description>User changed his privileges in the PIX.</description>
+  <rule id="4314" level="0">
+    <if_sid>4300</if_sid>
+    <id>^5-|^6-</id>
+    <description>PIX notification/informational message.</description>
+  </rule>
+  
+  <rule id="4315" level="0">
+    <if_sid>4300</if_sid>
+    <id>^7-</id>
+    <description>PIX debug message.</description>
+  </rule>
+  
+  <rule id="4321" level="9">
+    <if_sid>4314</if_sid>
+    <id>^6-605004</id>
+    <description>Failed login attempt at the PIX firewall.</description>
   </rule>
 
-  <rule id="2003" level="2">
-    <if_sid>2000</if_sid>
-    <match>^%PIX-6-605005: Login permitted from</match>
-    <description>Sucessfull login into the PIX firewall.</description>
+  <rule id="4322" level="3">
+    <if_sid>4314</if_sid>
+    <id>^5-502103</id>
+    <description>Privilege changed in the PIX firewall.</description>
   </rule>
 
-  <rule id="2004" level="0">
-    <if_sid>2000</if_sid>
-    <match>^%PIX-6-302010: </match> 
-    <description>Connection related message from the PIX firewall.</description>
+  <rule id="4323" level="3">
+    <if_sid>4314</if_sid>
+    <id>^6-605005</id>
+    <description>Sucessfull login to the PIX firewall.</description>
   </rule>
 
-  <rule id="2005" level="12">
-    <if_sid>2000</if_sid>
-    <match>^%PIX-6-308001: PIX console enable password incorrect</match>
-    <description>Password mismatch while 'enable' on the PIX.</description>
+  <rule id="4324" level="9">
+    <if_sid>4314</if_sid>
+    <id>^6-308001</id>
+    <description>Password mismatch while running 'enable' </description>
+    <description>on the PIX.</description>
   </rule>
 
-   <rule id="2006" level="8">
-    <if_sid>2000</if_sid>
-    <match>^%PIX-4-405001: Received ARP response collision from</match>
+  <rule id="4325" level="8">
+    <if_sid>4313</if_sid>
+    <id>^4-405001</id>
     <description>ARP collision detected by the PIX.</description>
   </rule> 
 
-   <rule id="2007" level="10">
-    <if_sid>2000</if_sid>
-    <match>^%PIX-4-401004: Shunned packet: </match>
-    <description>Attempt to connect from a shunned IP.</description>
+  <rule id="4326" level="8">
+    <if_sid>4313</if_sid>
+    <id>^4-401004</id>
+    <description>Attempt to connect from a blocked (shunned) IP.</description>
   </rule> 
+
+  <rule id="4330" level="8">
+    <if_sid>4310</if_sid>
+    <id>^1-106021|^1-106022</id>
+    <description>Attack in progress detect by the PIX.</description>
+  </rule>
+  
+  <rule id="4331" level="8">
+    <if_sid>4311</if_sid>
+    <id>^2-106012|^2-106017|^2-106020</id>
+    <description>Attack in progress detect by the PIX.</description>
+  </rule>
+   
+  <rule id="4332" level="8">
+    <if_sid>4313</if_sid>
+    <id>^4-4000|^4-106019</id>
+    <description>Attack in progress detect by the PIX.</description>
+  </rule>
+
+  <rule id="4380" level="10" frequency="6" timeframe="360">
+    <if_sid>4310</if_sid>
+    <description>Multiple PIX alert messages.</description>
+  </rule>
+  
+  <rule id="4381" level="10" frequency="6" timeframe="360">
+    <if_sid>4311</if_sid>
+    <description>Multiple PIX critical messages.</description>
+  </rule>
+  
+  <rule id="4382" level="10" frequency="8" timeframe="120">
+    <if_sid>4312</if_sid>
+    <description>Multiple PIX error messages.</description>
+  </rule>
+  
+  <rule id="4383" level="10" frequency="8" timeframe="120">
+    <if_sid>4313</if_sid>
+    <description>Multiple PIX warning messages.</description>
+  </rule>
 </group> <!-- SYSLOG,PIX -->
 
 
