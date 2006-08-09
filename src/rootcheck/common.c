@@ -1,4 +1,4 @@
-/*   $OSSEC, common.c, v0.1, 2005/10/01, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -10,17 +10,7 @@
  */
 
  
-#include <stdio.h>       
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-      
-#include <sys/param.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <errno.h>
-
+#include "shared.h"
 
 /** int isfile_ondir(char *file, char *dir)
  * Checks is 'file' is present on 'dir' using readdir

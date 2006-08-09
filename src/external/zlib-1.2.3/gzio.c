@@ -95,6 +95,7 @@ local gzFile gz_open (path, mode, fd)
     const char *mode;
     int  fd;
 {
+    int path_size;
     int err;
     int level = Z_DEFAULT_COMPRESSION; /* compression level */
     int strategy = Z_DEFAULT_STRATEGY; /* compression strategy */
@@ -124,11 +125,14 @@ local gzFile gz_open (path, mode, fd)
     s->msg = NULL;
     s->transparent = 0;
 
-    s->path = (char*)ALLOC(strlen(path)+1);
+    path_size = strlen(path) +1;
+    
+    s->path = (char*)ALLOC(path_size +1);
     if (s->path == NULL) {
         return destroy(s), (gzFile)Z_NULL;
     }
-    strcpy(s->path, path); /* do this early for debugging */
+    s->path[path_size] = '\0';
+    strncpy(s->path, path, path_size); /* do this early for debugging */
 
     s->mode = '\0';
     do {
@@ -223,7 +227,8 @@ gzFile ZEXPORT gzdopen (fd, mode)
     char name[46];      /* allow for up to 128-bit integers */
 
     if (fd < 0) return (gzFile)Z_NULL;
-    sprintf(name, "<fd:%d>", fd); /* for debugging */
+    name[45] = '\0';
+    snprintf(name, 45, "<fd:%d>", fd); /* for debugging */
 
     return gz_open (name, mode, fd);
 }
@@ -988,6 +993,7 @@ const char * ZEXPORT gzerror (file, errnum)
     gzFile file;
     int *errnum;
 {
+    int msg_size;
     char *m;
     gz_stream *s = (gz_stream*)file;
 
@@ -1003,11 +1009,13 @@ const char * ZEXPORT gzerror (file, errnum)
     if (m == NULL || *m == '\0') m = (char*)ERR_MSG(s->z_err);
 
     TRYFREE(s->msg);
-    s->msg = (char*)ALLOC(strlen(s->path) + strlen(m) + 3);
+    msg_size = strlen(s->path) + strlen(m) + 4;
+    
+    s->msg = (char*)ALLOC(msg_size +1);
     if (s->msg == Z_NULL) return (const char*)ERR_MSG(Z_MEM_ERROR);
-    strcpy(s->msg, s->path);
-    strcat(s->msg, ": ");
-    strcat(s->msg, m);
+
+    s->msg[msg_size] = '\0';
+    snprintf(s->msg, msg_size, "%s: %s", s->path, m);
     return (const char*)s->msg;
 }
 

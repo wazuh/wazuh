@@ -35,6 +35,7 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
     char *xml_remote_port = "port";
     char *xml_remote_proto = "protocol";
     char *xml_remote_connection = "connection";
+    char *xml_remote_lip = "local_ip";
 
     logr = (remoted *)d1;
 
@@ -69,6 +70,11 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
         os_calloc(1, sizeof(int), logr->proto);
         logr->proto[0] = 0;
     }
+    if(!logr->lip)
+    {
+        os_calloc(1, sizeof(char *), logr->lip);
+        logr->lip[0] = NULL;
+    }
     
     
     /* Cleaning */
@@ -76,23 +82,25 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
         pl++;
 
 
-    logr->port[pl] = 0;
-    logr->conn[pl] = 0;
-    logr->proto[pl] = 0;
-    
-
     /* Adding space for the last null connection/port */
     logr->port = realloc(logr->port, sizeof(int)*(pl +2));
     logr->conn = realloc(logr->conn, sizeof(int)*(pl +2));
     logr->proto = realloc(logr->proto, sizeof(int)*(pl +2));
-    if(!logr->port || !logr->conn || !logr->proto)
+    logr->lip = realloc(logr->lip, sizeof(char *)*(pl +2));
+    if(!logr->port || !logr->conn || !logr->proto || !logr->lip)
     {
         merror(MEM_ERROR, ARGV0);
     }
     
+    logr->port[pl] = 0;
+    logr->conn[pl] = 0;
+    logr->proto[pl] = 0;
+    logr->lip[pl] = NULL;
+    
     logr->port[pl +1] = 0;
     logr->conn[pl +1] = 0;
     logr->proto[pl +1] = 0;
+    logr->lip[pl +1] = NULL;
     
     while(node[i])
     {
@@ -150,6 +158,15 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
             else
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+        else if(strcasecmp(node[i]->element,xml_remote_lip) == 0)
+        {
+            os_strdup(node[i]->content,logr->lip[pl]);
+            if(!OS_IsValidIP(logr->lip[pl]) || OS_HasNetmask(logr->lip[pl]))
+            {
+                merror(INVALID_IP, ARGV0, node[i]->content);
                 return(OS_INVALID);
             }
         }

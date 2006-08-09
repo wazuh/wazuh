@@ -29,6 +29,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/param.h>
+
 
 /* Making windows happy */
 #ifndef WIN32
@@ -44,6 +46,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <ctype.h>
+#include <signal.h>
 
 /* Making Windows happy */
 #ifndef WIN32
@@ -77,6 +80,7 @@
 /* Global portability code */
 
 #ifdef SOLARIS
+#include <limits.h>
 typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
 #endif /* SOLARIS */

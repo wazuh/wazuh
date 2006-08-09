@@ -1,4 +1,4 @@
-/*   $OSSEC, check_rc_readproc.c, v0.1, 2005/11/19, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -10,24 +10,7 @@
  */
 
  
-#include <stdio.h>       
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <ctype.h>
-
-#include <sys/param.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <errno.h>
-
-/* Solaris happy */
-#include <limits.h>
-
-#include "headers/defs.h"
-#include "headers/debug_op.h"
-
+#include "shared.h"
 #include "rootcheck.h"
 
 #define PROC    0

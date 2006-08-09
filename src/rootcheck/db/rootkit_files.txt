@@ -253,10 +253,6 @@ usr/sbin/mech 			! Anonoiyng rootkit ::
 usr/sbin/kswapd 		! Anonoiyng rootkit ::
 
 
-# ZK rootkit
-etc/sysconfig/console/load.zk 	! ZK rootkit ::
-
-
 # SuckIt
 lib/.x				! SuckIt rootkit ::
 */hide.log          ! Suckit rootkit ::

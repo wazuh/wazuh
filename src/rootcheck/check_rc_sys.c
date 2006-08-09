@@ -1,4 +1,4 @@
-/*   $OSSEC, check_rc_sys.c, v0.1, 2005/10/04, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -9,25 +9,8 @@
  * Foundation
  */
 
- 
-#include <stdio.h>       
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <fcntl.h>
 
-#include <sys/param.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <errno.h>
-
-/* Solaris happy */
-#include <limits.h>
-
-#include "headers/defs.h"
-#include "headers/debug_op.h"
-
+#include "shared.h" 
 #include "rootcheck.h"
 
 int _sys_errors;
@@ -83,7 +66,7 @@ int read_sys_file(char *file_name, int do_read)
         char buf[1024];
         int fd;
         int nr;
-        int total = 0;
+        unsigned long int total = 0;
 
         fd = open(file_name, O_RDONLY, 0);
         /* It may not necessarily open */
@@ -173,7 +156,7 @@ int read_sys_dir(char *dir_name, int do_read)
 	struct dirent *entry;
     struct stat statbuf;	
    
-    char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin", 
+    char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
                                  "/usr/sbin", "/dev", "/etc", 
                                  "/boot", NULL };
     
@@ -381,7 +364,7 @@ void check_rc_sys(char *basedir)
         char *(dirs_to_scan[]) = {"/bin", "/sbin", "/usr/bin",
                                   "/usr/sbin", "/dev", "/lib",
                                   "/etc", "/root", "/var/log",
-                                  "/var/mail", "/var/lib",
+                                  "/var/mail", "/var/lib", "/var/www",
                                   "/usr/lib", "/usr/include",
                                   "/tmp", "/boot", "/usr/local", 
                                   "/var/tmp", "/sys", NULL};

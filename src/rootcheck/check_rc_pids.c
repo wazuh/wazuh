@@ -1,4 +1,4 @@
-/*   $OSSEC, check_rc_pids.c, v0.1, 2005/10/05, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -9,22 +9,7 @@
  * Foundation
  */
 
-#include <sys/types.h>
-#include <sys/param.h>
-#include <sys/stat.h>
- 
-#include <stdio.h>       
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <signal.h>
-#include <errno.h>
-
-#include "headers/defs.h"
-#include "headers/debug_op.h"
-#include "headers/file_op.h"
-
+#include "shared.h"
 #include "rootcheck.h"
 
 

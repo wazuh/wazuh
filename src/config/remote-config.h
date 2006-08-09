@@ -28,6 +28,7 @@ typedef struct _remoted
     int *port;
     int *conn;
 
+    char **lip;
 	char **allowips;
 	char **denyips;
 

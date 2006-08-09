@@ -1,4 +1,4 @@
-/*   $OSSEC, check_rc_files.c, v0.1, 2005/09/30, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -10,17 +10,7 @@
  */
 
  
-#include <stdio.h>       
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-
-#include <sys/param.h>
-#include <sys/types.h>
-#include <errno.h>
-
 #include "shared.h"
-
 #include "rootcheck.h"
 
 
