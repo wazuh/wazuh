@@ -5,75 +5,73 @@
       
 
 <group name="syslog,ftpd">
-  <rule id="600" level="0" noalert="1">
+  <rule id="11100" level="0" noalert="1">
     <decoded_as>ftpd</decoded_as>
     <description>Grouping for the ftpd rules.</description>
   </rule>
   
-  <rule id="601" level="5">
-    <if_sid>600</if_sid>
+  <rule id="11101" level="5">
+    <if_sid>11100</if_sid>
     <match>FTP LOGIN REFUSED</match>
     <description>FTP Connection blocked by TCP Wrappers </description>
     <description>(or attempt to use an anonymous user).</description>
   </rule>
 
-  <rule id="602" level="0">
-    <if_sid>600</if_sid>
+  <rule id="11102" level="0">
+    <if_sid>11100</if_sid>
     <match> created </match>
     <description>File created via FTP</description>
   </rule>
 
-  <rule id="603" level="0">
-    <if_sid>600</if_sid>
+  <rule id="11103" level="0">
+    <if_sid>11100</if_sid>
     <match> deleted </match>
     <description>File deleted via FTP</description>
   </rule>
 
-  <rule id="604" level="0">
-    <if_sid>600</if_sid>
+  <rule id="11104" level="0">
+    <if_sid>11100</if_sid>
     <match>FTPD: IMPORT file</match>
     <description>User uploaded a file to server.</description>
   </rule>
             
-  <rule id="605" level="0">
-    <if_sid>600</if_sid>
+  <rule id="11105" level="0">
+    <if_sid>11100</if_sid>
     <match>FTPD: EXPORT file</match>
     <description>User downloaded a file to server.</description>
   </rule>
 
-  <rule id="606" level="3">
-    <if_sid>600</if_sid>
+  <rule id="11106" level="3">
+    <if_sid>11100</if_sid>
     <match>FTP LOGIN FROM|connection from|connect from</match>
     <group>connection_attempt</group>
     <description>Remote host connected to FTP server.</description>
   </rule>
 
-  <rule id="607" level="5">
-    <if_sid>600</if_sid>
+  <rule id="11107" level="5">
+    <if_sid>11100</if_sid>
     <match>refused connect from</match>
     <group>connection_attempt</group>
     <description>Connection blocked by Tcp Wrappers.</description>
   </rule>
 
-  <rule id="608" level="5">
-    <if_sid>600</if_sid>
+  <rule id="11108" level="5">
+    <if_sid>11100</if_sid>
     <match>warning: can't verify hostname: |gethostbyaddr: </match>
     <description>Reverse lookup error (bad ISP config).</description>
   </rule>
 
-  <rule id="609" level="10">
-    <if_sid>600</if_sid>
+  <rule id="11109" level="10">
+    <if_sid>11100</if_sid>
     <match>repeated login failures</match>
     <description>Multiple FTP failed login attempts.</description>
   </rule>
 
-  <rule id="610" level="3">
-    <if_sid>600</if_sid>
+  <rule id="11110" level="3">
+    <if_sid>11100</if_sid>
     <match>timed out after</match>
     <description>User disconnected due to time out.</description>
   </rule>
-
-            
 </group> <!-- SYSLOG,FTPD -->
 
 

@@ -5,52 +5,52 @@
       
 
 <group name="netscreenfw,syslog">
-  <rule id="3700" level="0">
+  <rule id="4500" level="0">
     <decoded_as>netscreenfw</decoded_as>
     <description>Grouping for the Netscreen Firewall rules</description>
   </rule>
 
-  <rule id="3701" level="3">
-    <if_sid>3700</if_sid>
+  <rule id="4501" level="3">
+    <if_sid>4500</if_sid>
     <action>notification</action>
     <description>Netscreen notification message.</description>
   </rule>
 
-  <rule id="3702" level="4">
-    <if_sid>3700</if_sid>
+  <rule id="4502" level="4">
+    <if_sid>4500</if_sid>
     <action>warning</action>
     <description>Netscreen warning message.</description>
   </rule>
 
-  <rule id="3703" level="5">
-    <if_sid>3700</if_sid>
+  <rule id="4503" level="5">
+    <if_sid>4500</if_sid>
     <action>critical</action>
     <description>Netscreen critical message.</description>
   </rule>
   
-  <rule id="3704" level="5">
-    <if_sid>3700</if_sid>
+  <rule id="4504" level="5">
+    <if_sid>4500</if_sid>
     <action>information</action>
     <description>Netscreen informational message.</description>
   </rule>
 
   <!-- ns204: NetScreen device_id=ns204 [Root]system-critical-00027: 
      - Configuration Erase sequence accepted -->
-   <rule id="3705" level="11">
-    <if_sid>3703</if_sid>
+   <rule id="4505" level="11">
+    <if_sid>4503</if_sid>
     <id>00027</id>
     <description>Netscreen Erase sequence started.</description>
   </rule>
                   
-  <rule id="3750" level="10" frequency="4" timeframe="180" ignore="60">
-    <if_matched_sid>3703</if_matched_sid>
+  <rule id="4550" level="10" frequency="4" timeframe="180" ignore="60">
+    <if_matched_sid>4503</if_matched_sid>
     <same_source_ip />
     <description>Multiple Netscreen critical messages from </description>
     <description>same source IP.</description>
   </rule>
 
-  <rule id="3751" level="10" frequency="6" timeframe="180" ignore="60">
-    <if_matched_sid>3703</if_matched_sid>
+  <rule id="4551" level="10" frequency="6" timeframe="180" ignore="60">
+    <if_matched_sid>4503</if_matched_sid>
     <description>Multiple Netscreen critical messages.</description>
   </rule>
 </group> <!-- SYSLOG,NETSCREENFW -->

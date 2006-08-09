@@ -5,13 +5,13 @@
       
 
 <group name="policy_rules">
-  <rule id="6301" level="9">
+  <rule id="17101" level="9">
     <if_group>authentication_success</if_group>
     <time>6 pm - 8:30 am</time>
     <description>Sucessful login during non-business hours.</description>
   </rule>
 
-  <rule id="6302" level="9">
+  <rule id="17102" level="9">
     <if_group>authentication_success</if_group>
     <weekday>weekends</weekday>
     <description>Sucessful login during weekend.</description>

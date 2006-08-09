@@ -6,120 +6,120 @@
 <var name="MS_FREQ">6</var>      
 
 <group name="windows,event_log">
-  <rule id="8000" level="0">
+  <rule id="18100" level="0">
     <category>windows</category>
     <description>Group of windows rules.</description>
   </rule>
 
-  <rule id="8001" level="0">
-    <if_sid>8000</if_sid>
+  <rule id="18101" level="0">
+    <if_sid>18100</if_sid>
     <action>INFORMATION</action>
     <description>Windows informational event.</description>
   </rule>
   
-  <rule id="8002" level="0">
-    <if_sid>8000</if_sid>
+  <rule id="18102" level="0">
+    <if_sid>18100</if_sid>
     <action>WARNING</action>
     <description>Windows warning event.</description>
   </rule>
   
-  <rule id="8003" level="5">
-    <if_sid>8000</if_sid>
+  <rule id="18103" level="5">
+    <if_sid>18100</if_sid>
     <action>ERROR</action>
     <description>Windows error event.</description>
   </rule>
 
-  <rule id="8004" level="0">
-    <if_sid>8000</if_sid>
+  <rule id="18104" level="0">
+    <if_sid>18100</if_sid>
     <action>AUDIT_SUCCESS</action>
     <description>Windows audit success event.</description>
   </rule>
   
-  <rule id="8005" level="4">
-    <if_sid>8000</if_sid>
+  <rule id="18105" level="4">
+    <if_sid>18100</if_sid>
     <action>AUDIT_FAILURE</action>
     <description>Windows audit failure event.</description>
   </rule>
 
-  <rule id="8006" level="5">
-    <if_sid>8005</if_sid>
+  <rule id="18106" level="5">
+    <if_sid>18105</if_sid>
     <id>^529|^530|^531|^532|^533|^534|^535|^536|^537|^539</id>
     <group>authentication_failed</group>
     <description>Windows Logon Failure.</description>
   </rule>
 
-  <rule id="8007" level="3">
-    <if_sid>8004</if_sid>
+  <rule id="18107" level="3">
+    <if_sid>18104</if_sid>
     <id>^528|^538|^540</id>
     <group>authentication_success</group>
     <description>Windows Logon Success.</description>
   </rule>
 
-  <rule id="8008" level="4">
-    <if_sid>8005</if_sid>
+  <rule id="18108" level="4">
+    <if_sid>18105</if_sid>
     <id>^577</id>
     <description>Failed attempt to perform a privileged </description>
     <description>operation.</description>
   </rule>
 
-  <rule id="8009" level="3">
-    <if_sid>8004</if_sid>
+  <rule id="18109" level="3">
+    <if_sid>18104</if_sid>
     <id>^682|^683</id>
     <description>Session reconnected/disconnected to winstation.</description>
   </rule>
 
-  <rule id="8010" level="8">
-    <if_sid>8004</if_sid>
+  <rule id="18110" level="8">
+    <if_sid>18104</if_sid>
     <id>^624|^626</id>
     <group>adduser</group>
     <description>User account created.</description>
   </rule>
 
-  <rule id="8011" level="8">
-    <if_sid>8004</if_sid>
+  <rule id="18111" level="8">
+    <if_sid>18104</if_sid>
     <id>^628|^642</id>
     <group>adduser</group>
     <description>User account changed.</description>
   </rule>
 
-  <rule id="8012" level="8">
-    <if_sid>8004</if_sid>
+  <rule id="18112" level="8">
+    <if_sid>18104</if_sid>
     <id>^630</id>
     <group>adduser</group>
     <description>User account deleted.</description>
   </rule>
   
-  <rule id="8013" level="8">
-    <if_sid>8004</if_sid>
+  <rule id="18113" level="8">
+    <if_sid>18104</if_sid>
     <id>^612</id>
     <description>Windows Audit Policy changed.</description>
   </rule>
   
-  <rule id="8051" level="10" frequency="$MS_FREQ" timeframe="240">
-    <if_matched_sid>8008</if_matched_sid>
+  <rule id="18151" level="10" frequency="$MS_FREQ" timeframe="240">
+    <if_matched_sid>18108</if_matched_sid>
     <same_user />
     <description>Multiple failed attempts to perform a </description>
     <description>privileged operation by the same user.</description>
   </rule>
 
-  <rule id="8052" level="10" frequency="$MS_FREQ" timeframe="240">
-    <if_matched_sid>8006</if_matched_sid>
+  <rule id="18152" level="10" frequency="$MS_FREQ" timeframe="240">
+    <if_matched_sid>18106</if_matched_sid>
     <group>authentication_failed</group>
     <description>Multiple Windows Logon Failures.</description>
   </rule>
   
-  <rule id="8053" level="10" frequency="$MS_FREQ" timeframe="240">
-    <if_matched_sid>8005</if_matched_sid>
+  <rule id="18153" level="10" frequency="$MS_FREQ" timeframe="240">
+    <if_matched_sid>18105</if_matched_sid>
     <description>Multiple Windows audit failure events.</description>
   </rule>
 
-  <rule id="8054" level="10" frequency="$MS_FREQ" timeframe="240">
-    <if_matched_sid>8003</if_matched_sid>
+  <rule id="18154" level="10" frequency="$MS_FREQ" timeframe="240">
+    <if_matched_sid>18103</if_matched_sid>
     <description>Multiple Windows error events.</description>
   </rule>
   
-  <rule id="8055" level="10" frequency="$MS_FREQ" timeframe="120">
-    <if_matched_sid>8002</if_matched_sid>
+  <rule id="18155" level="10" frequency="$MS_FREQ" timeframe="120">
+    <if_matched_sid>18102</if_matched_sid>
     <description>Multiple Windows warning events.</description>
   </rule>
 </group>

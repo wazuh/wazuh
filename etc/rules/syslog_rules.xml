@@ -18,17 +18,17 @@
 
 <!-- Syslog errors. -->
 <group name="syslog,errors">
-  <rule id="101" level="2">
+  <rule id="1001" level="2">
     <regex>^PAM-securetty[\d+]: Couldn't open /etc/securetty</regex>
     <description>File securetty missing. Root access unrestricted.</description>
   </rule>
 
-  <rule id="102" level="7" accuracy="0">
+  <rule id="1002" level="7" accuracy="0">
     <match>$BAD_WORDS</match>
     <description>Unknown problem somewhere in the system.</description>
   </rule>    
 
-  <rule id="103" level="13" maxsize="756">
+  <rule id="1003" level="13" maxsize="756">
     <description>Non standard syslog message (size too large).</description>
   </rule>  
 </group> <!-- SYSLOG,ERRORS -->
@@ -38,24 +38,24 @@
 <!-- NFS messages -->
 <group name="syslog,nfs">
   <!-- XXX All These NFS rules need to be fixed. -->
-  <rule id="200" level="0" noalert="1">
+  <rule id="2100" level="0" noalert="1">
     <match>^automount[|^mount</match>
     <description>NFS rules grouped.</description>
   </rule>
   
-  <rule id="201" level="4">
-    <if_sid>200</if_sid>
+  <rule id="2101" level="4">
+    <if_sid>2100</if_sid>
     <match>nfs: mount failure</match>
     <description>Unable to mount the NFS share.</description>
   </rule>
 
-  <rule id="202" level="4">
-    <if_sid>200</if_sid>
+  <rule id="2102" level="4">
+    <if_sid>2100</if_sid>
     <match>reason given by server: Permission denied</match>
     <description>Unable to mount the NFS directory.</description>
   </rule>
  
-  <rule id="203" level="4">
+  <rule id="2103" level="4">
     <match>^rpc.mountd: refused mount request from</match>
     <description>Unable to mount the NFS directory.</description>
   </rule>
@@ -65,7 +65,7 @@
 
 <!-- xinetd messages -->  
 <group name="syslog,xinetd">
-  <rule id="301" level="10">
+  <rule id="2301" level="10">
     <regex>^xinetd[\d+]: Deactivating service \S+ due to excessive </regex>
     <description>Excessive number connections to a service.</description>
   </rule>
@@ -75,7 +75,7 @@
 
 <!-- Access control messages -->
 <group name="syslog,accesscontrol,connection_attempt">
-  <rule id="401" level="5">
+  <rule id="2501" level="5">
     <match>FAILED LOGIN |authentication failure|</match>
     <match>Authentication failed for|invalid password for|</match>
     <match>LOGIN FAILURE|auth failure: |authentication error|</match>
@@ -84,30 +84,30 @@
     <description>User authentication failure.</description>
   </rule>
 
-  <rule id="402" level="10">
+  <rule id="2502" level="10">
     <match>more authentication failures;|REPEATED login failures</match>
     <group>authentication_failed</group>
     <description>User missed the password more than one time</description>
   </rule>
 
-  <rule id="403" level="5">
+  <rule id="2503" level="5">
     <regex>^\S+[\d+]: refused connect from|</regex>
     <regex>^xinetd[\d+]: libwrap refused connection|</regex>
     <regex>Connection from \S+ denied</regex>
     <description>Connection blocked by Tcp Wrappers.</description>
   </rule>
 
-  <rule id="405" level="9">
+  <rule id="2504" level="9">
     <match>ILLEGAL ROOT LOGIN|ROOT LOGIN REFUSED</match>
     <description>Illegal root login. </description>
   </rule>
 
-  <rule id="406" level="3">
+  <rule id="2505" level="3">
     <regex>^login[\d+]: ROOT LOGIN  on</regex>
     <description>Physical root login</description>
   </rule>  
 
-  <rule id="407" level="3">
+  <rule id="2506" level="3">
     <regex>^popa3d[\d+]: Authentication passed</regex>
     <description>Pop3 Authentication passed</description>
   </rule>
@@ -117,7 +117,7 @@
 
 <!-- Mail/Procmail messages -->
 <group name="syslog,mail">
-  <rule id="501" level="0">
+  <rule id="2701" level="0">
     <match>^procmail[</match>
     <description>Ignoring procmail messages.</description>
   </rule>
@@ -127,25 +127,25 @@
 
 <!-- Smartd messages -->
 <group name="syslog,smartd">
-  <rule id="700" level="0" noalert="1">
+  <rule id="2800" level="0" noalert="1">
     <match>^smart</match>
     <description>Pre-match rule for smartd</description>
   </rule>
   
-  <rule id="701" level="0">
-    <if_sid>700</if_sid>
+  <rule id="2801" level="0">
+    <if_sid>2800</if_sid>
     <match>No configuration file /etc/smartd.conf found</match>
     <description>Smartd Started but not configured</description>
   </rule>
 
-  <rule id="702" level="0">
-    <if_sid>700</if_sid>
+  <rule id="2802" level="0">
+    <if_sid>2800</if_sid>
     <regex>^smartd\.+Unable to register ATA device</regex>
     <description>Smartd configuration problem</description>
   </rule>
 
-  <rule id="703" level="0">
-    <if_sid>700</if_sid>
+  <rule id="2803" level="0">
+    <if_sid>2800</if_sid>
     <regex>^smartd\.+No such device or address, open\(\) failed</regex>
     <description>Device configured but not available to Smartd</description>
   </rule>  
@@ -155,82 +155,82 @@
 
 <!-- Linux Kernel messages -->
 <group name="syslog,linuxkernel">
-  <rule id="800" level="0" noalert="1">
+  <rule id="5100" level="0" noalert="1">
     <match>^kernel: </match>
     <description>Pre-match rule for kernel messages</description>
   </rule>
 
-  <rule id="801" level="0">
-    <if_sid>800</if_sid>
+  <rule id="5101" level="0">
+    <if_sid>5100</if_sid>
     <match>PCI: if you experience problems, try using option</match>
     <description>Informative message from the kernel.</description>
   </rule>
 
-  <rule id="802" level="0">
-    <if_sid>800</if_sid>
+  <rule id="5102" level="0">
+    <if_sid>5100</if_sid>
     <match>modprobe: Can't locate module sound</match>
     <description>Informative message from the kernel</description>
   </rule>
   
-  <rule id="803" level="9">
-    <if_sid>800</if_sid>
+  <rule id="5103" level="9">
+    <if_sid>5100</if_sid>
     <match>Oversized packet received from</match>
     <description>Error message from the kernel. </description>
     <description>Ping of death attack.</description>
   </rule>  
 
-  <rule id="804" level="8">
-    <if_sid>800</if_sid>
+  <rule id="5104" level="8">
+    <if_sid>5100</if_sid>
     <regex>Promiscuous mode enabled|</regex>
     <regex>device \S+ entered promiscuous mode</regex>
     <description>Interface entered in promiscuous(sniffing) mode.</description>
   </rule>
 
-  <rule id="805" level="0">
-    <if_sid>800</if_sid>
+  <rule id="5105" level="0">
+    <if_sid>5100</if_sid>
     <match>end_request: I/O error, dev fd0, sector 0|</match>
     <match>Buffer I/O error on device fd0, logical block 0</match>
     <description>Invalid request to /dev/fd0 (bug on the kernel).</description>
   </rule>
 
-  <rule id="806" level="0">
-    <if_sid>800</if_sid>
+  <rule id="5106" level="0">
+    <if_sid>5100</if_sid>
     <match>svc: unknown program 100227 (me 100003)</match>
     <description>NFS incompability between Linux and Solaris.</description>
   </rule>
 
-  <rule id="807" level="0">
-    <if_sid>800</if_sid>
+  <rule id="5107" level="0">
+    <if_sid>5100</if_sid>
     <match>svc: bad direction </match>
     <description>NFS incompability between Linux and Solaris.</description>
   </rule>
 
-  <rule id="808" level="12">
-    <if_sid>800</if_sid>
+  <rule id="5108" level="12">
+    <if_sid>5100</if_sid>
     <match>Out of Memory: </match>
     <description>System running out of memory. </description>
     <description>Availability of the system is in risk.</description>
   </rule>
 
-  <rule id="809" level="4">
-    <if_sid>800</if_sid>
+  <rule id="5109" level="4">
+    <if_sid>5100</if_sid>
     <match>I/O error: dev |end_request: I/O error, dev</match>
     <description>Kernel Input/Output error</description>
   </rule>
 
-  <rule id="810" level="4">
-    <if_sid>800</if_sid>
+  <rule id="5110" level="4">
+    <if_sid>5100</if_sid>
     <match>Forged DCC command from</match>
     <description>IRC misconfiguration</description>
   </rule>
 
-  <rule id="811" level="0">
-    <if_sid>800</if_sid>
+  <rule id="5111" level="0">
+    <if_sid>5100</if_sid>
     <match>ipw2200: Firmware error detected.</match>
     <description>Kernel device error.</description>
   </rule>
 
-  <rule id="820" level="0">
+  <rule id="5200" level="0">
     <match>^hpiod: unable to ParDevice</match>
     <description>Ignoring hpiod for producing useless logs.</description>
   </rule>
@@ -240,7 +240,7 @@
 
 <!-- Cron messages -->
 <group name="syslog,cron">
-  <rule id="901" level="0">
+  <rule id="2830" level="0">
     <regex>^crond: unable to exec</regex>
     <description>Wrong crond configuration</description>
   </rule>
@@ -250,7 +250,7 @@
 
 <!-- Automount messages -->
 <group name="syslog,automount">
-  <rule id="951" level="2">
+  <rule id="2860" level="2">
     <regex>^automount[\d+]: \S+: lookup for \S+ failed</regex>
     <description>Automount informative message</description>
     <info>http://www.cs.arizona.edu/computer.help/policy/DIGITAL_unix/AA-PS2SC-TE_html/netadmin24.html</info>
@@ -261,24 +261,24 @@
 
 <!-- Su messages -->
 <group name="syslog,su">
-  <rule id="1100" level="0" noalert="1">
+  <rule id="5300" level="0" noalert="1">
     <decoded_as>su</decoded_as>
     <description>Initial matching for su messages</description>
   </rule>
   
-  <rule id="1101" level="5">
-   <if_sid>1100</if_sid>
+  <rule id="5301" level="5">
+   <if_sid>5300</if_sid>
    <match>: authentication failure; | failed |BAD su</match>
    <description>User missed the password to change UID (user id)</description> 
   </rule>
 
-  <rule id="1102" level="9">
+  <rule id="5302" level="9">
     <user>root</user>
     <if_sid>1101</if_sid>
     <description>User missed the password to change UID to root</description>
   </rule>
 
-  <rule id="1103" level="3">
+  <rule id="5303" level="3">
     <if_sid>1100</if_sid>
     <regex>session opened for user root|</regex>
     <regex>^su[\d+]: + \S+ \S+-root$</regex>
@@ -290,7 +290,7 @@
 
 <!-- Tripwire messages -->
 <group name="syslog,tripwire">
-  <rule id="1201" level="8">
+  <rule id="7101" level="8">
     <regex>tripwire\.+ Integrity Check failed: File could not</regex>
     <description>Problems with the tripwire checking</description>
   </rule>
@@ -300,27 +300,27 @@
 
 <!-- Adduser messages -->
 <group name="syslog,adduser">
-  <rule id="1301" level="8">
+  <rule id="5901" level="8">
     <regex>^useradd[\d+]: new group:|</regex>
     <regex>^groupadd[\d+]: new group:|</regex>
     <regex>^adduser[\d+]: new group:</regex>
     <description>New group added to the system</description>
   </rule>
 
-  <rule id="1302" level="8">
+  <rule id="5902" level="8">
     <regex>^adduser[\d+]: new user:|</regex>
     <regex>^useradd[\d+]: new user:</regex>
     <description>New user added to the system</description>
   </rule>
 
-  <rule id="1303" level="2">
+  <rule id="5903" level="2">
     <regex>^userdel[\d+]: delete user|</regex>
     <regex>^userdel[\d+]: remove group|</regex>
     <regex>^groupdel[\d+]: remove group</regex>
     <description>Group (or user) deleted from the system</description>
   </rule>
 
-  <rule id="1304" level="8">
+  <rule id="5904" level="8">
     <regex>^chfn[\d+]: changed user</regex>
     <description>Information from the user was changed</description>
   </rule>
@@ -330,19 +330,19 @@
 
 <!-- Sudo messages -->
 <group name="syslog,sudo">
-  <rule id="1400" level="0" noalert="1">
+  <rule id="5500" level="0" noalert="1">
     <decoded_as>sudo</decoded_as>
     <description>Initial match for sudo messages</description>
   </rule>
   
-  <rule id="1401" level="10">
-    <if_sid>1400</if_sid>
+  <rule id="5501" level="10">
+    <if_sid>5500</if_sid>
     <regex>^sudo:\s+\S+ : 3 incorrect password attempts</regex>
     <description>Three failed attempts to run sudo</description>
   </rule>
 
-  <rule id="1402" level="3">
-    <if_sid>1400</if_sid>
+  <rule id="5502" level="3">
+    <if_sid>5500</if_sid>
     <regex>^sudo:\s+\S+ : TTY=\S+ ; PWD=\S+ ; USER=root ; COMMAND=</regex>
     <description>Successful sudo to ROOT executed</description>
   </rule>
@@ -351,20 +351,20 @@
 
 <!-- PPTP messages -->
 <group name="syslog,pptp">
-  <rule id="2600" level="0" noalert="1">
+  <rule id="9100" level="0" noalert="1">
     <match>^pptpd[</match>
     <description>PPTPD messages grouped</description>
   </rule>
   
-  <rule id="2601" level="0">
-    <if_sid>2600</if_sid>
+  <rule id="9101" level="0">
+    <if_sid>9100</if_sid>
     <regex>^pptpd[\d+]: GRE: \S+ from \S+ failed: status = -1 </regex>
     <description>PPTPD failed message (communication error)</description>
     <info>poptop.sourceforge.net/dox/gre-protocol-unavailable.phtml</info>
   </rule>
   
-  <rule id="2602" level="0">
-    <if_sid>2600</if_sid>
+  <rule id="9102" level="0">
+    <if_sid>9100</if_sid>
     <regex>^pptpd[\d+]: tcflush failed: Bad file descriptor</regex>
     <description>PPTPD communication error</description>
   </rule>
@@ -374,7 +374,7 @@
 
 <!-- Syslog FTS -->
 <group name="syslog,fts">
-  <rule id="2701" level="4">
+  <rule id="10100" level="4">
     <if_group>authentication_success</if_group>
     <options>alert_by_email</options>
     <if_fts></if_fts>
@@ -383,31 +383,31 @@
 </group>
                 
 <group name="syslog,squid">
-  <rule id="1000" level="0" noalert="1">
+  <rule id="9200" level="0" noalert="1">
     <regex>^squid[\d+]: </regex>
     <description>Squid syslog messages grouped</description>
   </rule>
 
-  <rule id="1001" level="0">
-    <if_sid>1000</if_sid>
+  <rule id="9201" level="0">
+    <if_sid>9200</if_sid>
     <regex>^squid[\d+]: ctx: enter level</regex>
     <description>Squid debug message</description>
   </rule>
 
-  <rule id="1002" level="0">
-    <if_sid>1000</if_sid>
+  <rule id="9202" level="0">
+    <if_sid>9200</if_sid>
     <regex>^squid[\d+]: urlParse: Illegal character in hostname</regex>
     <description>Squid debug message</description>
   </rule>  
 
-  <rule id="1003" level="0">
-    <if_sid>1000</if_sid>
+  <rule id="9203" level="0">
+    <if_sid>9200</if_sid>
     <regex>^squid[\d+]: httpReadReply: Request not yet fully sent</regex>
     <description>Squid debug message</description>
   </rule>  
 
-  <rule id="1004" level="0">
-    <if_sid>1000</if_sid>
+  <rule id="9204" level="0">
+    <if_sid>9200</if_sid>
     <regex>^squid[\d+]: httpReadReply: Excess data from</regex>
     <description>Squid debug message</description>
   </rule>  

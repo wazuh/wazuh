@@ -99,9 +99,9 @@ updaterules="Вы хотите обновить правила?"
 updatingrules="Идет обновление правил ."
 notupdatingrules="Обновление правил не производится ."
 
-# Pf support
-pfenable="Do you want to use the PF firewall in the active response?"
-nopf="PF response disabled."
-pftablename="Name of the PF table to use?"
-pfmessage="Add the following lines to the beginning of your rules"
 
+# Pf support
+pfenable="Хотите ли Вы использовать PF файервол в активном реагировании?"
+nopf="PF активное реагирование отключено"
+pftablename="Имя таблицы PF ?"
+pfmessage="Добавьте следующие строки в начало ваших правил"

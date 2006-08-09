@@ -4,40 +4,40 @@
   -->
 
 <group name="pam,syslog,">
-  <rule id="3500" level="0" noalert="1">
+  <rule id="5500" level="0" noalert="1">
     <decoded_as>pam</decoded_as>
     <description>Grouping of the pam_unix rules.</description>
   </rule>
   
-  <rule id="3501" level="3">
-    <if_sid>3500</if_sid>
+  <rule id="5501" level="3">
+    <if_sid>5500</if_sid>
     <match>session opened for user </match>
     <group>authentication_success</group>
     <description>Login session opened.</description>
   </rule>
 
-  <rule id="3502" level="3">
-    <if_sid>3500</if_sid>
+  <rule id="5502" level="3">
+    <if_sid>5500</if_sid>
     <match>session closed for user </match>
     <description>Login session closed.</description>
   </rule>
  
-  <rule id="3503" level="5">
-    <if_sid>3500</if_sid>
+  <rule id="5503" level="5">
+    <if_sid>5500</if_sid>
     <match>authentication failure; logname=</match>
     <group>authentication_failed</group>
     <description>User login failed.</description>
   </rule> 
  
-  <rule id="3504" level="5">
-    <if_sid>3500</if_sid>
+  <rule id="5504" level="5">
+    <if_sid>5500</if_sid>
     <match>check pass; user unknown</match>
     <group>invalid_login</group>
     <description>Attempt to login with an invalid user.</description>
   </rule> 
 
-  <rule id="3551" level="10" frequency="6" timeframe="120">
-    <if_matched_sid>3503</if_matched_sid>
+  <rule id="5551" level="10" frequency="6" timeframe="120">
+    <if_matched_sid>5503</if_matched_sid>
     <description>Multiple failed logins in a small period of time.</description>
   </rule>
 

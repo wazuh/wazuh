@@ -6,50 +6,50 @@
       
 
 <group name="syslog,named">
-  <rule id="1900" level="0" noalert="1">
+  <rule id="12100" level="0" noalert="1">
     <decoded_as>named</decoded_as>
     <description>Grouping of the named rules</description>
   </rule>
   
-  <rule id="1901" level="12">
-    <if_sid>1900</if_sid>
+  <rule id="12101" level="12">
+    <if_sid>12100</if_sid>
     <match>dropping source port zero packet from</match>
     <description>Invalid DNS packet. Possibility of attack</description>
   </rule>
 
-  <rule id="1902" level="9">
-    <if_sid>1900</if_sid>
+  <rule id="12102" level="9">
+    <if_sid>12100</if_sid>
     <match>denied AXFR from</match>
     <description>Failed attempt to perform a zone transfer</description>
   </rule>
 
-  <rule id="1903" level="0">
-    <if_sid>1900</if_sid>
+  <rule id="12103" level="0">
+    <if_sid>12100</if_sid>
     <match>denied update from|unapproved update from</match>
     <description>NSUpdate attempt. Generally mis-configuration</description>
     <info>http://seclists.org/lists/incidents/2000/May/0217.html</info>
   </rule>
 
-  <rule id="1904" level="4">
-    <if_sid>1900</if_sid>
+  <rule id="12104" level="4">
+    <if_sid>12100</if_sid>
     <match>unable to rename log file</match>
     <description>Log permission misconfiguration in Named</description>
   </rule>
 
-  <rule id="1905" level="4">
-    <if_sid>1900</if_sid>
+  <rule id="12105" level="4">
+    <if_sid>12100</if_sid>
     <match>unexpected RCODE </match>
     <description>Unexpected error while resolving domain</description>
   </rule>  
 
-  <rule id="1906" level="4">
-    <if_sid>1900</if_sid>
+  <rule id="12106" level="4">
+    <if_sid>12100</if_sid>
     <match>refused notify from non-master</match>
     <description>DNS configuration error.</description>
   </rule>
 
-  <rule id="1907" level="0">
-    <if_sid>1900</if_sid>
+  <rule id="12107" level="0">
+    <if_sid>12100</if_sid>
     <regex>^named[\d+]: client \S+ update \S+ denied</regex>
     <description>DNS update using RFC2136 Dynamic protocol.</description>
     <info>http://www.isc.org/index.pl?/sw/bind/FAQ.php</info>
