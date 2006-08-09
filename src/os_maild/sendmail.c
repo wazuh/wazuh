@@ -229,10 +229,11 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         mailmsg = OS_PopLastMail();
     }while(mailmsg);
     
+    
     /* Sending end of data \r\n.\r\n */
     OS_SendTCP(socket,ENDDATA);	
     msg = OS_RecvTCP(socket, OS_MAXSTR);
-    if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
+    if(strict_checking && ((msg == NULL)||(!OS_Match(VALIDMAIL, msg))))
     {
         merror(END_DATA_ERROR);
         free(msg);

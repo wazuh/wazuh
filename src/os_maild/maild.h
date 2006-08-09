@@ -55,5 +55,6 @@ int OS_Sendmail(MailConfig *mail, struct tm *p);
 
 /* Mail timeout used by the file-queue */
 int mail_timeout;
+int strict_checking;
 
 #endif

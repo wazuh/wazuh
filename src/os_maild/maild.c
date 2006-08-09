@@ -94,6 +94,11 @@ int main(int argc, char **argv)
         ErrorExit(CONFIG_ERROR,ARGV0);
 
 
+    /* Reading internal options */
+    strict_checking = getDefine_Int("maild",
+                                    "strict_checking",
+                                     0, 1);
+    
     /* Exit here if test config is set */
     if(test_config)
         exit(0);
