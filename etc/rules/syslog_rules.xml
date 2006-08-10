@@ -273,13 +273,13 @@
   </rule>
 
   <rule id="5302" level="9">
+    <if_sid>5300</if_sid>
     <user>root</user>
-    <if_sid>1101</if_sid>
     <description>User missed the password to change UID to root</description>
   </rule>
 
   <rule id="5303" level="3">
-    <if_sid>1100</if_sid>
+    <if_sid>5300</if_sid>
     <regex>session opened for user root|</regex>
     <regex>^su[\d+]: + \S+ \S+-root$</regex>
     <description>User sucessfully changed UID to root</description>

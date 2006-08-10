@@ -22,8 +22,8 @@
 typedef struct _os_ip
 {
     char *ip;
-    int ip_address;
-    int netmask;
+    unsigned int ip_address;
+    unsigned int netmask;
 }os_ip;
 
 

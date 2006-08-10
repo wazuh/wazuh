@@ -219,7 +219,7 @@ int OS_IPFound(char *ip_address, os_ip *that_ip)
     struct in_addr net;
 
     /* Extracting ip address */
-    if((net.s_addr = inet_addr(ip_address)) != 1)
+    if((net.s_addr = inet_addr(ip_address)) <= 0)
     {
         return(!_true);
     }
@@ -252,7 +252,7 @@ int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
     int _true = 1;
 
     /* Extracting ip address */
-    if((net.s_addr = inet_addr(ip_address)) != 1)
+    if((net.s_addr = inet_addr(ip_address)) <= 0)
     {
         return(!_true);
     }
@@ -285,7 +285,7 @@ int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
  */
 int OS_IsValidIP(char *ip_address, os_ip *final_ip)
 {
-    int nmask = 0;
+    unsigned int nmask = 0;
     char *tmp_str;
 
     /* Can't be null */
@@ -294,6 +294,12 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
         return(0);
     }
 
+    /* Assigning the ip address */
+    if(final_ip)
+    {
+        os_strdup(ip_address, final_ip->ip);
+    }
+    
     if(*ip_address == '!')
     {
         ip_address++;
@@ -351,7 +357,7 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
             return(0);
         }
 
-        if((net.s_addr = inet_addr(ip_address)) != 1)
+        if((net.s_addr = inet_addr(ip_address)) <= 0)
         {
             return(0);
         }
@@ -367,11 +373,12 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
 
         return(2);
     }
+
     /* No cidr available */
     else
     {
         struct in_addr net;
-        if((net.s_addr = inet_addr(ip_address)) != 1)
+        if((net.s_addr = inet_addr(ip_address)) <= 0)
         {
             return(0);
         }
