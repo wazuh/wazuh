@@ -29,8 +29,8 @@ typedef struct _remoted
     int *conn;
 
     char **lip;
-	char **allowips;
-	char **denyips;
+	os_ip **allowips;
+	os_ip **denyips;
 
     int m_queue;
     int sock;

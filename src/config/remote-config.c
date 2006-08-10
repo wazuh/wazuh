@@ -164,7 +164,7 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
         else if(strcasecmp(node[i]->element,xml_remote_lip) == 0)
         {
             os_strdup(node[i]->content,logr->lip[pl]);
-            if(!OS_IsValidIP(logr->lip[pl]) || OS_HasNetmask(logr->lip[pl]))
+            if(OS_IsValidIP(logr->lip[pl], NULL) != 1)
             {
                 merror(INVALID_IP, ARGV0, node[i]->content);
                 return(OS_INVALID);
@@ -173,36 +173,37 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
         else if(strcmp(node[i]->element, xml_allowips) == 0)
         {
             allow_size++;
-            logr->allowips = realloc(logr->allowips,sizeof(char *)*allow_size);
+            logr->allowips =realloc(logr->allowips,sizeof(os_ip *)*allow_size);
             if(!logr->allowips)
             {
                 merror(MEM_ERROR, ARGV0);
                 return(OS_INVALID);
             }
 
-            os_strdup(node[i]->content, logr->allowips[allow_size -2]);
+            os_calloc(1, sizeof(os_ip), logr->allowips[allow_size -2]);
             logr->allowips[allow_size -1] = NULL;
-            if(!OS_IsValidIP(logr->allowips[allow_size -2]))
+            
+            if(!OS_IsValidIP(node[i]->content,logr->allowips[allow_size -2]))
             {
-                merror(INVALID_IP, ARGV0, logr->allowips[allow_size -2]);
+                merror(INVALID_IP, ARGV0, node[i]->content);
                 return(OS_INVALID);
             }
         }
         else if(strcmp(node[i]->element, xml_denyips) == 0)
         {
             deny_size++;
-            logr->denyips = realloc(logr->denyips,sizeof(char *)*deny_size);
+            logr->denyips = realloc(logr->denyips,sizeof(os_ip *)*deny_size);
             if(!logr->denyips)             
             {
                 merror(MEM_ERROR, ARGV0);
                 return(OS_INVALID);
             }
 
-            os_strdup(node[i]->content, logr->denyips[deny_size -2]);
+            os_calloc(1, sizeof(os_ip), logr->denyips[deny_size -2]);
             logr->denyips[deny_size -1] = NULL;
-            if(!OS_IsValidIP(logr->denyips[deny_size -2]))
+            if(!OS_IsValidIP(node[i]->content, logr->denyips[deny_size -2]))
             {
-                merror(INVALID_IP, ARGV0, logr->denyips[deny_size -2]);
+                merror(INVALID_IP, ARGV0, node[i]->content);
                 return(OS_INVALID);
             }
         }

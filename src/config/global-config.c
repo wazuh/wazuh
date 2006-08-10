@@ -133,7 +133,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     /* Getting right white_size */
     if(Config && Config->white_list)
     {
-        char **ww;
+        os_ip **ww;
         ww = Config->white_list;
 
         while(*ww != NULL)
@@ -283,19 +283,21 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             {
                 white_size++;
                 Config->white_list = 
-                    realloc(Config->white_list, sizeof(char *)*white_size);
+                    realloc(Config->white_list, sizeof(os_ip *)*white_size);
                 if(!Config->white_list)
                 {
                     merror(MEM_ERROR, ARGV0);
                     return(OS_INVALID);
                 }
 
-                os_strdup(node[i]->content,Config->white_list[white_size -2]);
+                os_calloc(1, sizeof(os_ip), Config->white_list[white_size -2]);
                 Config->white_list[white_size -1] = NULL;
-                if(!OS_IsValidIP(Config->white_list[white_size -2]))
+                
+                if(!OS_IsValidIP(node[i]->content,
+                                 Config->white_list[white_size -2]))
                 {
                     merror(INVALID_IP, ARGV0, 
-                                       Config->white_list[white_size -2]);
+                                       node[i]->content);
                     return(OS_INVALID);
                 }
             }

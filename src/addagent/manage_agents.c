@@ -160,10 +160,10 @@ int add_agent()
                               
       strncpy(ip, _ip, FILE_SIZE -1);
       
-      if(!OS_IsValidIP(ip) || OS_HasNetmask(ip))
+      if(OS_IsValidIP(ip, NULL) != 1)
           printf(IP_ERROR, ip);
 
-    } while(!OS_IsValidIP(ip) || OS_HasNetmask(ip));
+    } while(OS_IsValidIP(ip, NULL) != 1);
    
     
     do

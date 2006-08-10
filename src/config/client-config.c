@@ -47,7 +47,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
         else if(strcmp(node[i]->element,xml_client_ip) == 0)
         {
             os_strdup(node[i]->content, logr->rip);
-            if(!OS_IsValidIP(logr->rip))
+            if(OS_IsValidIP(logr->rip, NULL) != 1)
             {
                 merror(INVALID_IP, ARGV0, logr->rip);
                 return(OS_INVALID);

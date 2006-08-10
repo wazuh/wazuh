@@ -83,8 +83,8 @@ typedef struct _RuleInfo
     char *day_time;
     char *week_day;
 
-    char *srcip;
-    char *dstip;
+    os_ip *srcip;
+    os_ip *dstip;
     OSMatch *user;
     OSMatch *url;
     OSMatch *id;

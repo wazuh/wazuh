@@ -10,7 +10,7 @@
  */
 
 /* Part of the OSSEC HIDS
- * Available at http://www.ossec.net/hids/
+ * Available at http://www.ossec.net
  */
 
 
@@ -18,17 +18,25 @@
 
 #define __VALIDATE_H
 
+/* IP structure */
+typedef struct _os_ip
+{
+    char *ip;
+    int ip_address;
+    int netmask;
+}os_ip;
+
 
 /* Run time definitions. */
 int getDefine_Int(char *high_name, char *low_name, int min, int max);
 
 
 
-/** int OS_IPFound(char *ip_address, char *that_ip)
+/** int OS_IPFound(char *ip_address, os_ip *that_ip)
  * Checks if ip_address is present at that_ip.
  * Returns 1 on success or 0 on failure.
  */
-int OS_IPFound(char *ip_address, char *that_ip);
+int OS_IPFound(char *ip_address, os_ip *that_ip);
 
     
 
@@ -37,25 +45,17 @@ int OS_IPFound(char *ip_address, char *that_ip);
  * Returns 1 on success or 0 on failure.
  * The list MUST be NULL terminated
  */
-int OS_IPFoundList(char *ip_address, char **list_of_ips);
-
-
-
-/** int OS_HasNetmask(char *ip)
- * Checks if an IP Address has a netmask or not.
- * This function must ONLY be called after "OS_IsValidIP"
- */
-int OS_HasNetmask(char *ip_address);
+int OS_IPFoundList(char *ip_address, os_ip **list_of_ips);
 
 
 
 /** int OS_IsValidIP(char *ip)
  * Validates if an ip address is in the right
  * format.
- * Returns 0 if doesn't match or 1 if it does.
+ * Returns 0 if doesn't match or 1 if it does (or 2 if it has a cidr).
  * ** On success this function may modify the value of ip_address
  */
-int OS_IsValidIP(char *ip_address);
+int OS_IsValidIP(char *ip_address, os_ip *final_ip);
     
     
 /** Time range validations **/

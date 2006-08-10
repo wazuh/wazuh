@@ -44,7 +44,7 @@ typedef struct __Config
     char **syscheck_ignore;
 
     /* List of ips to never block */
-    char **white_list;
+    os_ip **white_list;
 
     /* List of rules */
     char **includes;

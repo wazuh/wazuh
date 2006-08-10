@@ -402,23 +402,21 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_srcip)==0)
                     {
-                        config_ruleinfo->srcip=
-                            loadmemory(config_ruleinfo->srcip,
-                                    rule_opt[k]->content);
-                        if(!OS_IsValidIP(config_ruleinfo->srcip))
+                        os_calloc(1, sizeof(os_ip), config_ruleinfo->srcip);
+                        if(!OS_IsValidIP(rule_opt[k]->content, 
+                                         config_ruleinfo->srcip))
                         {
-                            merror(INVALID_IP, ARGV0, config_ruleinfo->srcip);
+                            merror(INVALID_IP, ARGV0, rule_opt[k]->content);
                             return(-1);
                         }
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_dstip)==0)
                     {
-                        config_ruleinfo->dstip=
-                            loadmemory(config_ruleinfo->dstip,
-                                    rule_opt[k]->content);
-                        if(!OS_IsValidIP(config_ruleinfo->dstip))
+                        os_calloc(1, sizeof(os_ip), config_ruleinfo->dstip);
+                        if(!OS_IsValidIP(rule_opt[k]->content,
+                                         config_ruleinfo->dstip))
                         {
-                            merror(INVALID_IP, ARGV0, config_ruleinfo->dstip);
+                            merror(INVALID_IP, ARGV0, rule_opt[k]->content);
                             return(-1);
                         }
 

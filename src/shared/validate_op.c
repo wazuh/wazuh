@@ -19,6 +19,10 @@
 char *ip_address_regex = 
      "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?[0-9]{0,2}$";
 
+/* Global vars */
+int _mask_inited = 0;
+int _netmasks[33];
+
 
 /* Read the file and return a string the matches the following
  * format: high_name.low_name.
@@ -125,6 +129,45 @@ static char *_read_file(char *high_name, char *low_name)
     return(NULL);
 }
 
+/* Initialize netmasks -- took from snort util.c */
+void _init_masks()
+{
+    _mask_inited = 1;
+    _netmasks[0] = 0x0;
+    _netmasks[1] = 0x80000000;
+    _netmasks[2] = 0xC0000000;
+    _netmasks[3] = 0xE0000000;
+    _netmasks[4] = 0xF0000000;
+    _netmasks[5] = 0xF8000000;
+    _netmasks[6] = 0xFC000000;
+    _netmasks[7] = 0xFE000000;
+    _netmasks[8] = 0xFF000000;
+    _netmasks[9] = 0xFF800000;
+    _netmasks[10] = 0xFFC00000;
+    _netmasks[11] = 0xFFE00000;
+    _netmasks[12] = 0xFFF00000;
+    _netmasks[13] = 0xFFF80000;
+    _netmasks[14] = 0xFFFC0000;
+    _netmasks[15] = 0xFFFE0000;
+    _netmasks[16] = 0xFFFF0000;
+    _netmasks[17] = 0xFFFF8000;
+    _netmasks[18] = 0xFFFFC000;
+    _netmasks[19] = 0xFFFFE000;
+    _netmasks[20] = 0xFFFFF000;
+    _netmasks[21] = 0xFFFFF800;
+    _netmasks[22] = 0xFFFFFC00;
+    _netmasks[23] = 0xFFFFFE00;
+    _netmasks[24] = 0xFFFFFF00;
+    _netmasks[25] = 0xFFFFFF80;
+    _netmasks[26] = 0xFFFFFFC0;
+    _netmasks[27] = 0xFFFFFFE0;
+    _netmasks[28] = 0xFFFFFFF0;
+    _netmasks[29] = 0xFFFFFFF8;
+    _netmasks[30] = 0xFFFFFFFC;
+    _netmasks[31] = 0xFFFFFFFE;
+    _netmasks[32] = 0xFFFFFFFF;
+}
+
 
 /** getDefine_Int.
  * Gets an integer definition. This function always return on
@@ -166,80 +209,66 @@ int getDefine_Int(char *high_name, char *low_name, int min, int max)
 
 
      
-/** int OS_IPFound(char *ip_address, char *that_ip)
+/** int OS_IPFound(char *ip_address, os_ip *that_ip)
  * Checks if ip_address is present at that_ip.
  * Returns 1 on success or 0 on failure.
  */
-int OS_IPFound(char *ip_address, char *that_ip)
+int OS_IPFound(char *ip_address, os_ip *that_ip)
 {
     int _true = 1;
-    
-    /* If negate is set */
-    if(*that_ip == '!')
+    struct in_addr net;
+
+    /* Extracting ip address */
+    if((net.s_addr = inet_addr(ip_address)) != 1)
     {
-        that_ip++;
+        return(!_true);
+    }
+                                
+    /* If negate is set */
+    if(that_ip->ip[0] == '!')
+    {
         _true = 0;
     }
     
-    if(*that_ip == '.')
+    /* Checking if ip is in thatip & netmask */
+    if((net.s_addr & that_ip->netmask) == that_ip->ip_address)
     {
-        if(strncmp(ip_address, that_ip+1, strlen(that_ip)-1) == 0)
-        {
-            /* found */
-            return(_true);
-        }
+        return(_true);
     }
-    else
-    {
-        if(strcmp(ip_address, that_ip) == 0)
-        {
-            /* found */
-            return(_true);
-        }
-    }
-    
+
+    /* Didn't match */
     return(!_true);
 }
 
      
-/** int OS_IPFoundList(char *ip_address, char **list_of_ips)
+/** int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
  * Checks if ip_address is present on the "list_of_ips".
  * Returns 1 on success or 0 on failure.
  * The list MUST be NULL terminated
  */
-int OS_IPFoundList(char *ip_address, char **list_of_ips)
+int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
 {
+    struct in_addr net;
     int _true = 1;
-    int _extra = 0;
-    
+
+    /* Extracting ip address */
+    if((net.s_addr = inet_addr(ip_address)) != 1)
+    {
+        return(!_true);
+    }
+                                        
     while(*list_of_ips)
     {
-        _extra = 0;
+        os_ip *l_ip = *list_of_ips;
         
-        if(**list_of_ips == '!')
+        if(l_ip->ip[0] == '!')
         {
             _true = 0;
-            _extra++;
         }
-        
-        if(**list_of_ips == '.')
+    
+        if((net.s_addr & l_ip->netmask) == l_ip->ip_address)
         {
-            _extra++;
-            if(strncmp(ip_address, 
-                      (*list_of_ips) + _extra, 
-                      strlen(*list_of_ips) - _extra) == 0)
-            {
-                /* found */
-                return(_true);
-            }
-        }
-        else
-        {
-            if(strcmp(ip_address, (*list_of_ips) + _extra) == 0)
-            {
-                /* found */
-                return(_true);
-            }
+            return(_true);
         }
         list_of_ips++;
     }
@@ -248,38 +277,15 @@ int OS_IPFoundList(char *ip_address, char **list_of_ips)
 }    
 
      
-/** int OS_HasNetmask(char *ip)
- * Checks if an IP Address has a netmask or not.
- * This function must ONLY be called after "OS_IsValidIP"
- */
-int OS_HasNetmask(char *ip_address)
-{
-    if(*ip_address == '!')
-        ip_address++;
-    
-    if(ip_address[0] == '.')
-    {
-        return(1);
-    }
-
-    return(0);
-}    
-
-
-
 /** int OS_IsValidIP(char *ip)
  * Validates if an ip address is in the right
  * format.
- * Returns 0 if doesn't match or 1 if it does.
+ * Returns 0 if doesn't match or 1 if it is an ip or 2 an ip with cidr.
  * ** On success this function may modify the value of ip_address
  */
-int OS_IsValidIP(char *ip_address)
+int OS_IsValidIP(char *ip_address, os_ip *final_ip)
 {
-    int cidr = 0;
-    int i = 0;
-    int ip_address_size;
-    
-    int ip_parts[4];
+    int nmask = 0;
     char *tmp_str;
 
     /* Can't be null */
@@ -318,91 +324,74 @@ int OS_IsValidIP(char *ip_address)
                 dots++;
             tmp_ip++;
         }
-        if(dots != 3)
+        if(dots < 3 || dots > 6)
             return(0);
     }
     #endif
 
-    
-    /* Getting the size of ip_address */
-    ip_address_size = strlen(ip_address);
-    
-    
-    /* Getting the cidr if available */ 
+    /* Getting the cidr/netmask if available */ 
     tmp_str = strchr(ip_address,'/');
     if(tmp_str)
     {
+        int cidr;
+        struct in_addr net;
+        
+        *tmp_str = '\0';
         tmp_str++;
         cidr = atoi(tmp_str);
-
-        /* The CIDR can onlu be from 8,16,24 to 32 */
-        if((cidr != 8) && (cidr != 16) && (cidr != 24) && (cidr != 32))
+        if((cidr >= 1) && (cidr <= 32))
         {
-            return(0);
-        }
-
-        /* Only one IP */
-        if(cidr == 32)
-        {
-            tmp_str--;*tmp_str = '\0';
-            cidr = 0;
-        }
-    }
-
-    /* Setting tmp_str to the beginning of the ip */
-    tmp_str = ip_address;
-
-    
-    /* Getting each part of the IP */
-    while(i <= 3)
-    {
-        ip_parts[i] = atoi(tmp_str);
-        
-        if((ip_parts[i] > 255) || (ip_parts[i] < 0))
-        {
-            return(0);
-        }
-        
-        /* Jumping to the next part of the ip */
-        tmp_str = strchr(tmp_str, '.');
-        if(tmp_str)
-        {
-            tmp_str++;
+            if(!_mask_inited)
+                _init_masks();
+            nmask = _netmasks[cidr];
+            nmask = htonl(nmask);
         }
         else
         {
-            if(i != 3)
-            {
-                return(0);
-            }
-            break;
+            return(0);
         }
-        i++;
+
+        if((net.s_addr = inet_addr(ip_address)) != 1)
+        {
+            return(0);
+        }
+
+        if(final_ip)
+        {
+            final_ip->ip_address = net.s_addr & nmask;
+            final_ip->netmask = nmask;
+        }
+
+        tmp_str--;
+        *tmp_str = '/';
+
+        return(2);
+    }
+    /* No cidr available */
+    else
+    {
+        struct in_addr net;
+        if((net.s_addr = inet_addr(ip_address)) != 1)
+        {
+            return(0);
+        }
+        
+        if(final_ip)
+        {
+            final_ip->ip_address = net.s_addr;
+
+            if(!_mask_inited)
+                _init_masks();
+        
+            final_ip->netmask = htonl(_netmasks[32]);
+        }
+
+        /* Ip without cidr */
+        return(1);
     }
 
-    /* Getting the CIDRs */
-    if(cidr && (cidr == 8))
-    {
-        snprintf(ip_address, ip_address_size, ".%d.",
-                                              ip_parts[0]);
-    }
-    else if(cidr && (cidr == 16))
-    {
-        snprintf(ip_address, ip_address_size, ".%d.%d.",
-                                              ip_parts[0],
-                                              ip_parts[1]);
-    }
-    else if(cidr && (cidr == 24))
-    {
-        snprintf(ip_address, ip_address_size, ".%d.%d.%d.",
-                                              ip_parts[0],
-                                              ip_parts[1],
-                                              ip_parts[2]);  
-    }
-    
-    
-    /* Returning success */
-    return(1);
+    /* Should never reach here */
+    return(0);
 }
 
 

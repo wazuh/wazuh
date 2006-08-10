@@ -326,7 +326,7 @@ int main(int argc, char **argv)
     {
         if(Config.ar)
         {
-            char **wl;
+            os_ip **wl;
             int wlc = 0;
             wl = Config.white_list;
             while(*wl)
