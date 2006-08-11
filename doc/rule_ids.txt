@@ -22,6 +22,7 @@
 03300 - 03499 Postfix
 03500 - 03599 Spamd
 03600 - 03699 Imapd
+03700 - 03799 MailScanner
 
 04100 - 04299 Generic Firewall
 04300 - 04499 Cisco PIX Firewall
@@ -52,6 +53,8 @@
 12100 - 12299 Named (bind DNS)
 
 13100 - 13299 Samba (smbd)
+
+14100 - 14199 Racoon SSL
 
 17100 - 17399 Policy
 
