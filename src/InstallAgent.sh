@@ -56,6 +56,12 @@ elif [ "$UNAME" = "AIX" ]; then
     /usr/bin/mkgroup ${GROUP}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
     fi
+
+# Thanks Chuck L. for the mac addusers
+elif [ "$UNAME" = "Darwin" ]; then
+    chmod +x ./init/darwin-addusers.pl
+    ./init/darwin-addusers.pl
+    
 else
     grep "^${USER}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then

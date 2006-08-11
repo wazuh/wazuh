@@ -17,7 +17,8 @@
 
 #include "shared.h"
 char *ip_address_regex = 
-     "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?[0-9]{0,2}$";
+     "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?" 
+     "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
 
 /* Global vars */
 int _mask_inited = 0;
@@ -344,19 +345,43 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
         
         *tmp_str = '\0';
         tmp_str++;
-        cidr = atoi(tmp_str);
-        if((cidr >= 1) && (cidr <= 32))
+
+        /* Cidr */
+        if(strlen(tmp_str) <= 2)
         {
-            if(!_mask_inited)
-                _init_masks();
-            nmask = _netmasks[cidr];
-            nmask = htonl(nmask);
+            cidr = atoi(tmp_str);
+            if((cidr >= 1) && (cidr <= 32))
+            {
+                if(!_mask_inited)
+                    _init_masks();
+                nmask = _netmasks[cidr];
+                nmask = htonl(nmask);
+            }
+            else
+            {
+                return(0);
+            }
         }
+        /* Full netmask */
         else
         {
-            return(0);
-        }
+            /* Init the masks */
+            if(!_mask_inited)
+                _init_masks();
 
+            if(strcmp(tmp_str, "255.255.255.255") == 0)
+            {
+                nmask = htonl(_netmasks[32]);
+            }
+            else
+            {
+                if((nmask = inet_addr(ip_address)) <= 0)
+                {
+                    return(0);
+                }
+            }
+        }
+        
         if((net.s_addr = inet_addr(ip_address)) <= 0)
         {
             return(0);
