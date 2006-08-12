@@ -147,7 +147,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
     {
         merror("%s:%s",FROM_ERROR,msg);
-        free(msg);
+        if(msg)
+            free(msg);
         close(socket);
         return(OS_INVALID);	
     }
@@ -175,7 +176,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
         {
             merror(TO_ERROR);
-            free(msg);
+            if(msg)
+                free(msg);
             close(socket);
             return(OS_INVALID);	
         }
@@ -190,7 +192,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     if((msg == NULL)||(!OS_Match(VALIDDATA, msg)))
     {
         merror(DATA_ERROR);
-        free(msg);
+        if(msg)
+            free(msg);
         close(socket);
         return(OS_INVALID);	
     }
@@ -236,16 +239,22 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     if(strict_checking && ((msg == NULL)||(!OS_Match(VALIDMAIL, msg))))
     {
         merror(END_DATA_ERROR);
-        free(msg);
+        if(msg)
+            free(msg);
         close(socket);
         return(OS_INVALID);	
     }
-    free(msg);
+    /* Checking msg in here, since it may be null */
+    if(msg)
+        free(msg);
 
     /* quitting and closing socket */
     OS_SendTCP(socket,QUITMSG);
     msg = OS_RecvTCP(socket, OS_MAXSTR);
-    free(msg);
+    
+    if(msg)
+        free(msg);
+    
     memset(snd_msg,'\0',128);	
 
     /* Returning 0 (sucess) */

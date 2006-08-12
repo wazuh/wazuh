@@ -52,6 +52,16 @@ runInit()
             chmod 555 /etc/rc.d/init.d/ossec
             chown root:ossec /etc/rc.d/init.d/ossec
             return 0;
+        # Taken from Stephen Bunn ossec howto.    
+        elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
+            echo " - ${systemis} Linux (SysV)."
+            echo " - ${modifiedinit}"
+            cp -pr ./src/init/ossec-hids.init  /etc/init.d/ossec
+            chmod +x /etc/init.d/ossec
+            chmod go-w /etc/init.d/ossec
+            chown root /etc/init.d/ossec
+            update-rc.d ossec defaults
+            return 0;    
         else
             echo " - ${noboot}"
         fi        

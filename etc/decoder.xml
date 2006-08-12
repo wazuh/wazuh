@@ -772,7 +772,7 @@
   <type>windows</type>
   <prematch>^WinEvtLog: </prematch>
   <regex>^WinEvtLog: (\w+): (\w+)\((\d+)\): \w+: (\w+):</regex>
-  <order>url,action,id,user</order>
+  <order>data,action,id,user</order>
 </decoder>    
 
 

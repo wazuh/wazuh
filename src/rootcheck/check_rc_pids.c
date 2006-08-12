@@ -271,12 +271,12 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
                 (_gpid1 != _gsid1))
         {
             /* See defunct process comment above. */
-            if(!((_kill0 == 1)&&(_gsid0 == 0)&&(_gpid0 == 0)&&(_gsid1 == 0)))
+            if(!((_kill1 == 1)&&(_gsid1 == 0)&&(_gpid0 == 0)&&(_gsid1 == 0)))
             {
                 char op_msg[OS_MAXSTR +1];
                 snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
-                        "kill, getsid or getpgid. Possible kernel-level "
-                        "rootkit.", (int)i);
+                        "kill (%d), getsid (%d) or getpgid. Possible "
+                        "kernel-level rootkit.", (int)i, _kill1, _gsid1);
 
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
                 (*_errors)++;

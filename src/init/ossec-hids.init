@@ -1,7 +1,6 @@
 #!/bin/sh
 # OSSEC	        Controls OSSEC HIDS
-# Author:       Daniel B. Cid <daniel@underlinux.com.br>
-#                             <daniel.cid@gmail.com>
+# Author:       Daniel B. Cid <dcid@ossec.net>
 
 
 . /etc/ossec-init.conf
