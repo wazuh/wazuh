@@ -108,8 +108,11 @@
 
 /* Log directories */
 #define EVENTS          "/logs/archives"
+#define EVENTS_DAILY    "/logs/archives/archives.log"
 #define ALERTS          "/logs/alerts"
+#define ALERTS_DAILY    "/logs/alerts/alerts.log"
 #define FWLOGS          "/logs/firewall"
+#define FWLOGS_DAILY    "/logs/firewall/firewall.log"
 
 
 /* Stats directories */

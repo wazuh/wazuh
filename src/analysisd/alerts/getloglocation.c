@@ -158,7 +158,11 @@ int OS_GetLogLocation(Eventinfo *lf)
     _eflog = fopen(__elogfile,"a");
     if(!_eflog)
         ErrorExit("%s: Error opening logfile: '%s'",ARGV0,__elogfile);
-
+    
+    /* Creating a symlink */
+    unlink(EVENTS_DAILY);
+    link(__elogfile, EVENTS_DAILY);
+    
 
     /* for the alerts logs */
     if(_aflog)
@@ -196,7 +200,11 @@ int OS_GetLogLocation(Eventinfo *lf)
     
     if(!_aflog)
         ErrorExit("%s: Error opening logfile: '%s'",ARGV0,__alogfile);
-
+    
+    /* Creating a symlink */
+    unlink(ALERTS_DAILY);
+    link(__alogfile, ALERTS_DAILY);
+            
 
     /* For the firewall events */
     if(_fflog)
@@ -235,6 +243,11 @@ int OS_GetLogLocation(Eventinfo *lf)
     if(!_fflog)
         ErrorExit("%s: Error opening logfile: '%s'",ARGV0,__flogfile);
 
+
+    /* Creating a symlink */
+    unlink(FWLOGS_DAILY);
+    link(__flogfile, FWLOGS_DAILY);
+            
 
     /* Setting the new day */        
     __crt_day = lf->day;

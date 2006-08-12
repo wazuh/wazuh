@@ -331,6 +331,7 @@ int main(int argc, char **argv)
             wl = Config.white_list;
             while(*wl)
             {
+                verbose("%s: White listing IP: '%s'",ARGV0, (*wl)->ip);
                 wl++;wlc++;
             }
             verbose("%s: %d IPs in the white list for active response.",
