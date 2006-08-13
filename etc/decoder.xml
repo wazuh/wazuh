@@ -573,11 +573,20 @@
   <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>
 
+<decoder name="pix-fw4">
+  <parent>pix</parent>
+  <type>firewall</type>
+  <prematch offset="after_parent">^4-106019</prematch>
+  <regex offset="after_parent">^(\S+): IP packet from (\S+) to </regex>
+  <regex>(\S+), protocol (\w+) (\w+) </regex>
+  <order>id, srcip, dstip, protocol, action</order>
+</decoder>
+
 <decoder name="pix-attacks">
   <parent>pix</parent>
   <prematch offset="after_parent">^2-106012: |^2-106017: |</prematch>
   <prematch>^2-106020|^1-106021|^1-106022|</prematch>
-  <prematch>^4-4000|^4-106019</prematch>
+  <prematch>^4-4000</prematch>
   <regex offset="after_parent">^(\S+): \.+ (\d+.\d+.\d+.\d+) </regex>
   <order>id, srcip</order>
 </decoder>
