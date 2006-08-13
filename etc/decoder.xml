@@ -65,6 +65,7 @@
   -  authenticated. 
   -  sshd[61834]: reverse mapping checking getaddrinfo for sv.tvcm.ch
   -  failed - POSSIBLE BREAKIN ATTEMPT!
+  -  sshd[3251]: User root not allowed because listed in DenyUsers
   -->
 
 <decoder name="sshd">
@@ -73,8 +74,8 @@
 
 <decoder name="sshd-success">
   <parent>sshd</parent>
-  <prematch>^sshd[\d+]: Accepted</prematch>
-  <regex>^sshd[\d+]: Accepted \S+ for (\S+) from (\S+) port </regex>
+  <prematch offset="after_parent">^Accepted</prematch>
+  <regex offset="after_prematch">^ \S+ for (\S+) from (\S+) port </regex>
   <order>user,srcip</order>
   <fts>name,user,location</fts>
   <ftscomment>First time this user logged in (using ssh)</ftscomment>
@@ -82,8 +83,8 @@
 
 <decoder name="sshd-success-solaris">
   <parent>sshd</parent>
-  <prematch>^sshd[\d+]: [ID \d+ \w+.\w+] User</prematch>
-  <regex>^sshd[\d+]: [ID \d+ \w+.\w+] User (\S+), comming from (\S+), a</regex>
+  <prematch offset="after_parent">^[ID \d+ \w+.\w+] User</prematch>
+  <regex offset="after_prematch">^ (\S+), comming from (\S+), a</regex>
   <order>user,srcip</order>
   <fts>name,user,location</fts>
   <ftscomment>First time this user logged in (using ssh)</ftscomment>
@@ -91,29 +92,36 @@
 
 <decoder name="ssh-failed">
   <parent>sshd</parent>
-  <prematch>^sshd[\d+]: Failed</prematch>
-  <regex>^sshd[\d+]: Failed \S+ for i\w+ user (\S+) from (\S+) port |</regex>
-  <regex>^sshd[\d+]: Failed \S+ for (\S+) from (\S+) port </regex>
+  <prematch offset="after_parent">^Failed</prematch>
+  <regex offset="after_prematch">^ \S+ for i\w+ user (\S+) from (\S+) |</regex>
+  <regex>^ \S+ for (\S+) from (\S+) port </regex>
   <order>user,srcip</order>
 </decoder>
 
 <decoder name="ssh-error">
   <parent>sshd</parent>
-  <prematch>^sshd[\d+]: error:</prematch>
-  <regex>^sshd[\d+]: error: PAM: Authentication failure for (\S+) from (\S+)$</regex>
+  <prematch offset="after_parent">^error: PAM: Authentication </prematch>
+  <regex offset="after_prematch">^failure for (\S+) from (\S+)$</regex>
   <order>user,srcip</order>
 </decoder>
 
 <decoder name="ssh-reverse-mapping">
   <parent>sshd</parent>
-  <prematch>^sshd[\d+]: reverse mapping checking</prematch>
-  <regex>^sshd[\d+]: reverse mapping \w+ \w+ for (\S+) failed - POSS</regex>
+  <prematch offset="after_parent">^reverse mapping checking</prematch>
+  <regex offset="after_prematch">^\w+ \w+ for (\S+) failed - POSS</regex>
   <order>srcip</order>
 </decoder>       
 
+<decoder name="ssh-denied">
+  <parent>sshd</parent>
+  <prematch offset="after_parent">^User \S+ from </prematch>
+  <regex offset="after_parent">^User (\S+) from (\S+) </regex>
+  <order>user, srcip</order>
+</decoder>
+
 <decoder name="ssh-generic">
   <parent>sshd</parent>
-  <regex> from (\S*\d+.\d+.\d+.\d\d*\d*)</regex>
+  <regex offset="after_parent"> from (\S*\d+.\d+.\d+.\d\d*\d*)</regex>
   <order>srcip</order>
 </decoder>
 

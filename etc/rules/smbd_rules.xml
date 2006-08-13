@@ -34,7 +34,12 @@
     <match>Permission denied--</match>
     <description>User action denied by configuration.</description>
   </rule>
-  
+ 
+  <rule id="13105" level="3">
+    <if_sid>13100</if_sid>
+    <match>Unable to connect to CUPS server</match>
+    <description>Samba network problems (unable to connect).</description>
+  </rule> 
 </group> <!-- SYSLOG,SMBD -->
 
 
