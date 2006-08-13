@@ -128,12 +128,15 @@ int FW_Log(Eventinfo *lf)
         /* discard, drop, deny, */
         case 'd':
         case 'D':
-            /* reject, */
+        /* reject, */
         case 'r':
         case 'R':
-            /* block */
+        /* block */
         case 'b':
         case 'B':
+        /* */
+        case 'c':
+        case 'C':
             os_free(lf->action);
             os_strdup("DROP", lf->action);
             break;

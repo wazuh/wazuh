@@ -92,6 +92,12 @@
     <description>Attempt to connect from a blocked (shunned) IP.</description>
   </rule> 
 
+  <rule id="4327" level="8">
+    <if_sid>4313</if_sid>
+    <id>^4-710004</id>
+    <description>Connection limit exceeded.</description>
+  </rule> 
+  
   <rule id="4330" level="8">
     <if_sid>4310</if_sid>
     <id>^1-106021|^1-106022</id>
