@@ -12,7 +12,7 @@ if [ "X${UNAME}" = "XFreeBSD" ]; then
     if [ $? = 0 ]; then
         # Firewall is IPFW
         FILE="ipfw.sh";
-        echo "IPF";
+        echo "IPFW";
     fi    
 
     # if pf enabled?
@@ -22,7 +22,12 @@ if [ "X${UNAME}" = "XFreeBSD" ]; then
         FILE="pf.sh";
         echo "PF";
     fi    
-    
+
+# Darwin
+elif [ "X${UNAME}" = "Darwin" ]; then
+    echo "IPFW";
+    FILE="ipfw_mac.sh";
+        
 elif [ "X${UNAME}" = "XOpenBSD" ]; then
     if [ $? = 0 ]; then
         # Firewall is PF

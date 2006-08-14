@@ -34,7 +34,7 @@ fi
 
 # Blocking IP
 if [ "x${ACTION}" != "xadd" -a "x${ACTION}" != "xdelete" ]; then
-   echo "$0: invalid action: ${ACTION}"
+   echo "$0: Invalid action: ${ACTION}"
    exit 1;
 fi
 
