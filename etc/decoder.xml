@@ -119,6 +119,13 @@
   <order>user, srcip</order>
 </decoder>
 
+<decoder name="ssh-invalid-user">
+  <parent>sshd</parent>
+  <prematch offset="after_parent">^Invalid user</prematch>
+  <regex offset="after_parent">^ (\S+) from (\S+)</regex>
+  <order>user,srcip</order>
+</decoder>
+
 <decoder name="ssh-generic">
   <parent>sshd</parent>
   <regex offset="after_parent"> from (\S*\d+.\d+.\d+.\d\d*\d*)</regex>
