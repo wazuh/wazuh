@@ -180,7 +180,7 @@ int local_start()
         }
     }
     /* Reading the private keys  */
-    ReadKeys(&keys);
+    ReadKeys(&keys, 0);
 
 
     /* Initial random numbers */

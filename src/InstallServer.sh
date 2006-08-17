@@ -190,6 +190,9 @@ cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
 chown root:ossec ${DIR}/etc/decoder.xml
 chown root:ossec ${DIR}/etc/internal_options.conf
 chown root:ossec ${DIR}/etc/shared/rootkit*
+chmod 550 ${DIR}/etc
+chmod -R 440 ${DIR}/etc/*
+chmod 550 ${DIR}/etc/shared
 
 
 # Copying active response modules

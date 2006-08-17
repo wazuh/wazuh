@@ -76,7 +76,7 @@ void AgentdStart(char *dir, int uid, int gid)
 
 
     /* Reading the private keys  */
-    ReadKeys(&keys);
+    ReadKeys(&keys, 0);
 
 
     /* Start up message */

@@ -31,7 +31,7 @@ typedef struct _keystruct
     int keysize;
 }keystruct;
 
-void ReadKeys(keystruct *keys);
+void ReadKeys(keystruct *keys, int just_read);
 char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext, 
                                   int id, int buffer_size);
 int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,

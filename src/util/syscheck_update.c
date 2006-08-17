@@ -134,7 +134,7 @@ int main(int argc, char **argv)
         FILE *fp;
         keystruct keys;
 
-        ReadKeys(&keys);
+        ReadKeys(&keys, 1);
 
         i = IsAllowedID(&keys, argv[2]);
         if(i < 0)

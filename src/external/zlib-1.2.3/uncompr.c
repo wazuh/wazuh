@@ -35,11 +35,11 @@ int ZEXPORT uncompress (dest, destLen, source, sourceLen)
     stream.next_in = (Bytef*)source;
     stream.avail_in = (uInt)sourceLen;
     /* Check for source > 64K on 16-bit machine: */
-    if ((uLong)stream.avail_in != sourceLen) return Z_BUF_ERROR;
+    if ((uInt)stream.avail_in != (uInt)sourceLen) return Z_BUF_ERROR;
 
     stream.next_out = dest;
     stream.avail_out = (uInt)*destLen;
-    if ((uLong)stream.avail_out != *destLen) return Z_BUF_ERROR;
+    if ((uInt)stream.avail_out != (uInt)*destLen) return Z_BUF_ERROR;
 
     stream.zalloc = (alloc_func)0;
     stream.zfree = (free_func)0;

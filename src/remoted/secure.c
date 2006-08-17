@@ -67,7 +67,7 @@ void HandleSecure()
 
     
     /* Reading authentication keys */
-    ReadKeys(&keys);
+    ReadKeys(&keys, 0);
 
 
     /* setting up peer size */

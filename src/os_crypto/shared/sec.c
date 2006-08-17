@@ -168,7 +168,7 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
 
 
 /* ReadKeys v0.1: 2005/02/01 */
-void ReadKeys(keystruct *keys)
+void ReadKeys(keystruct *keys, int just_read)
 {
     FILE *fp;
     
@@ -285,8 +285,12 @@ void ReadKeys(keystruct *keys)
     _MemClear(id,name,ip,key);		
 
     /* Opening count files */
-    StartCounter(keys);
-
+    if(!just_read)
+    {
+        /* Reading the counters */
+        StartCounter(keys);
+    }
+    
     return;
 }
 

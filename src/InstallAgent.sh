@@ -119,10 +119,12 @@ fi
         
 
 # For the /etc/shared
-chmod 770 ${DIR}/etc/shared # ossec must be able to write to it
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
 cp -pr ../etc/internal_options.conf ${DIR}/etc/
 chown root:ossec ${DIR}/etc/internal_options.conf
+chmod 550 ${DIR}/etc
+chmod -R 440 ${DIR}/etc/*
+chmod -R 770 ${DIR}/etc/shared # ossec must be able to write to it
 
 
 # For the /var/run
