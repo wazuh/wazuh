@@ -21,8 +21,8 @@
  */
 MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p)
 {
-    int i = 0;
-    char logs[OS_MAXSTR +1];
+    int i = 0, body_size = OS_MAXSTR -1, log_size;
+    char logs[OS_MAXSTR + 1];
     char *subject_host;
     
     MailMsg *mail;
@@ -47,12 +47,17 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p)
     logs[OS_MAXSTR] = '\0';
     while(al_data->log[i])
     {
-        /* If size left is small then the size of the log, stop it */
-        if((OS_MAXSTR - strlen(logs)) <= (strlen(al_data->log[i]) +2))
+        log_size = strlen(al_data->log[i]) + 4;
+        
+        /* If size left is small than the size of the log, stop it */
+        if(body_size <= log_size)
         {
             break;
         }
-        strncat(logs, al_data->log[i], OS_MAXSTR - strlen(logs) -1);
+        
+        strncat(logs, al_data->log[i], body_size);
+        strncat(logs, "\r\n", body_size);
+        body_size -= log_size;
         i++;
     }
 

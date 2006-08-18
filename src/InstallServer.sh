@@ -46,7 +46,7 @@ fi
 
 # Creating groups/users
 if [ "$UNAME" = "FreeBSD" ]; then
-    grep "^${USER}" /etc/passwd > /dev/null 2>&1
+    grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
     /usr/sbin/pw groupadd ${GROUP}
 	/usr/sbin/pw useradd ${USER} -d ${DIR} -s /sbin/nologin -g ${GROUP}
@@ -56,7 +56,7 @@ if [ "$UNAME" = "FreeBSD" ]; then
     fi
 
 elif [ "$UNAME" = "SunOS" ]; then
-    grep "^${USER}" /etc/passwd > /dev/null 2>&1
+    grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
     /usr/sbin/groupadd ${GROUP}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
@@ -66,7 +66,7 @@ elif [ "$UNAME" = "SunOS" ]; then
     fi
 
 elif [ "$UNAME" = "AIX" ]; then
-    grep "^${USER}" /etc/passwd > /dev/null 2>&1
+    grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
     /usr/bin/mkgroup ${GROUP}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
@@ -79,7 +79,7 @@ elif [ "$UNAME" = "Darwin" ]; then
     chmod +x ./init/darwin-addusers.pl
     ./init/darwin-addusers.pl    
 else
-    grep "^${USER}" /etc/passwd > /dev/null 2>&1
+    grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
 	/usr/sbin/groupadd ${GROUP}
 	/usr/sbin/useradd -d ${DIR} -s /sbin/nologin -g ${GROUP} ${USER}

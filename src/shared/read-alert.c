@@ -236,6 +236,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
             /* It is a log message */
             else if(log_size < 10)
             {
+                os_clearnl(str,p);
+                
                 os_realloc(log, (log_size +2)*sizeof(char *), log);
                 os_strdup(str, log[log_size]); 
                 log_size++;
