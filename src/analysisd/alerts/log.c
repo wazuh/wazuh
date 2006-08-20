@@ -40,6 +40,9 @@
 #include "eventinfo.h"
 #include "config.h"
 
+#define FWDROP "drop"
+#define FWALLOW "accept"
+
 
 /* OS_Store: v0.2, 2005/02/10 */
 /* Will store the events in a file 
@@ -150,8 +153,21 @@ int FW_Log(Eventinfo *lf)
             os_strdup("ALLOW", lf->action);        
             break;
         default:
-            os_free(lf->action);
-            os_strdup("UNKNOWN", lf->action);
+            if(strcasestr(lf->action, FWDROP) != NULL)
+            {
+                os_free(lf->action);
+                os_strdup("DROP", lf->action);
+            }
+            else if(strcasestr(lf->action, FWALLOW) != NULL)
+            {
+                os_free(lf->action);
+                os_strdup("ALLOW", lf->action);
+            }
+            else
+            {
+                os_free(lf->action);
+                os_strdup("UNKNOWN", lf->action);
+            }
             break;    
     }
 

@@ -128,7 +128,7 @@
 
 <decoder name="ssh-generic">
   <parent>sshd</parent>
-  <regex offset="after_parent"> from (\S*\d+.\d+.\d+.\d\d*\d*)</regex>
+  <regex offset="after_parent"> from (\S+)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -445,16 +445,47 @@
   - kernel: [4475569.016000] IN= OUT=lo SRC=192.168.2.11 DST=192.168.2.11 
     LEN=52 TOS=0x10 PREC=0x00 TTL=64 ID=49546 DF PROTO=TCP SPT=43068 
     DPT=22 WINDOW=8192 RES=0x00 ACK URGP=0     
+  - Aug 17 10:03:37 myhostname kernel: SFW2-INext-DROP-DEFLT IN=eth0 OUT= MAC=00:08:02:da:c8:51:00:0f:f7:74:31:8a:08:00 SRC=1.2.3.36 DST=1.2.3.194 LEN=28 TOS=0x00 PREC=0x00 TTL=44 ID=60200 PROTO=ICMP TYPE=8 CODE=0 ID=10466 SEQ=21229   
   -->
 <decoder name="iptables">
-   <type>firewall</type>
-   <prematch>^kernel: [\d+.\d+] \S+ IN=|^kernel: \S+ IN=</prematch>
-   
-   <regex offset="after_prematch"> SRC=(\S+) DST=(\S+) \.+ </regex>
-   <regex>PROTO=(\w+) SPT=(\d+) DPT=(\d+) </regex>
-   <order>action,srcip,dstip,protocol,srcport,dstport</order>
+   <prematch>^kernel: </prematch>
 </decoder>
-               
+     
+<decoder name="iptables-1">
+   <parent>iptables</parent>
+   <type>firewall</type>
+   <prematch offset="after_parent">^[\d+.\d+] \S+ IN=</prematch>
+   
+   <regex offset="after_parent">^[\d+.\d+] (\S+) \.+ SRC=(\S+) DST=(\S+)</regex>
+   <regex> \.+ PROTO=(\w+) </regex>
+   <order>action,srcip,dstip,protocol</order>
+</decoder>
+
+<decoder name="iptables-1">
+   <parent>iptables</parent>
+   <type>firewall</type>
+   <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
+   <order>srcport,dstport</order>
+</decoder>
+
+<decoder name="iptables-2">
+   <parent>iptables</parent>
+   <type>firewall</type>
+   <prematch offset="after_parent">^\S+ IN=</prematch>
+   
+   <regex offset="after_parent">^(\S+) \.+ SRC=(\S+) DST=(\S+) \.+ </regex>
+   <regex>PROTO=(\w+) </regex>
+   <order>action,srcip,dstip,protocol</order>
+</decoder>
+
+<decoder name="iptables-2">
+   <parent>iptables</parent>
+   <type>firewall</type>
+   <regex offset="after_regex">^SPT=(\d+) DPT=(\d+) </regex>
+   <order>srcport,dstport</order>
+</decoder>
+
+
 
 <!-- Solaris IPFilter decoder.
   - Will extract the action, srcip, srcport, dstip, dstport

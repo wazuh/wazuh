@@ -88,7 +88,7 @@ void DecodeEvent(Eventinfo *lf)
                 if(nnode->prematch)
                 {
                     char *llog;
-                    
+                
                     /* If we have an offset set, use it */     
                     if(nnode->prematch_offset & AFTER_PARENT)
                     {
@@ -98,6 +98,7 @@ void DecodeEvent(Eventinfo *lf)
                     {
                         llog = lf->log;
                     }
+                    
                     if((cmatch = OSRegex_Execute(llog, nnode->prematch)))
                     {
                         if(*cmatch != '\0')
@@ -122,8 +123,27 @@ void DecodeEvent(Eventinfo *lf)
                     break;
                 }
 
-                child_node = child_node->next;
-                nnode = NULL;
+                /* If we have multiple regex only childs,
+                 * do not attempt to go any further with them.
+                 */
+                if(child_node->plugin->get_next)
+                {
+                    do
+                    {
+                        child_node = child_node->next;
+                    }while(child_node && child_node->plugin->get_next);
+
+                    if(!child_node)
+                        return;
+                    
+                    child_node = child_node->next;
+                    nnode = NULL;   
+                }
+                else
+                {
+                    child_node = child_node->next;
+                    nnode = NULL;
+                }
             }
 
             /* Nothing matched */
@@ -132,7 +152,7 @@ void DecodeEvent(Eventinfo *lf)
 
 
             /* Getting the regex */
-            while(node)
+            while(child_node)
             {
                 if(nnode->regex)
                 {
@@ -173,13 +193,14 @@ void DecodeEvent(Eventinfo *lf)
                     {
                         if(nnode->get_next)
                         {
-                            node = node->next;
-                            nnode = node->plugin;
+                            child_node = child_node->next;
+                            nnode = child_node->plugin;
                             continue;
                         }
                         return;
                     }
 
+                    
                     /* Fixing next pointer */
                     if(*regex_prev != '\0')
                         regex_prev++;
@@ -203,8 +224,8 @@ void DecodeEvent(Eventinfo *lf)
                     /* If we have a next regex, try getting it */
                     if(nnode->get_next)
                     {
-                        node = node->next;
-                        nnode = node->plugin;
+                        child_node = child_node->next;
+                        nnode = child_node->plugin;
                         continue;
                     }
                     else
