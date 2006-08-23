@@ -34,6 +34,38 @@ runInit()
         rc-update add ossec default
         return 0;
     fi    
+
+    # Suse
+    if [ -r "/etc/SuSE-release" ]; then
+        echo " - ${systemis} Suse Linux."
+        echo " - ${modifiedinit}"
+
+        cp -pr ./src/init/ossec-hids-suse.init  /etc/init.d/ossec
+        chmod 555 /etc/init.d/ossec
+        chown root:ossec /etc/init.d/ossec
+        ln -s /etc/init.d/ossec /etc/init.d/rcossec
+
+        /sbin/chkconfig --add ossec
+        return 0;
+    fi
+    
+    # Checking for slackware (by Jack S. Lai)
+    if [ -r "/etc/slackware-version" ]; then
+        echo " - ${systemis} Slackware Linux."
+        echo " - ${modifiedinit}"
+        cp -pr ./src/init/ossec-hids.init /etc/rc.d/rc.ossec
+        chmod 555 /etc/rc.d/rc.ossec
+        chown root:ossec /etc/rc.d/rc.ossec
+
+        grep ossec /etc/rc.d/rc.local > /dev/null 2>&1
+        if [ $? != 0 ]; then
+            echo "if [ -x /etc/rc.d/rc.ossec ]; then" >> /etc/rc.d/rc.local
+            echo "      /etc/rc.d/rc.ossec start" >>/etc/rc.d/rc.local
+            echo "fi" >>/etc/rc.d/rc.local
+        fi    
+
+        return 0;
+    fi    
     
     # Darwin init script (by Lorenzo Costanzia di Costigliole <mummie@tin.it>)
     if [ "X${NUNAME}" = "Darwin" ]; then

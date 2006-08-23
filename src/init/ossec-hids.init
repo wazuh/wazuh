@@ -1,6 +1,7 @@
 #!/bin/sh
 # OSSEC	        Controls OSSEC HIDS
 # Author:       Daniel B. Cid <dcid@ossec.net>
+# Modified for slackware by Jack S. Lai
 
 
 . /etc/ossec-init.conf
@@ -37,7 +38,7 @@ case "$1" in
     status
 	;;
   *)
-	echo "*** Usage: ossec {start|stop|restart|status}"
+	echo "*** Usage: $0 {start|stop|restart|status}"
 	exit 1
 esac
 
