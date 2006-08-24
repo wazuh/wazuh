@@ -14,6 +14,7 @@
    - data     - Any extra data
   -->
 
+
 <!-- Pam decoder.
   -  Will extract username and srcip whenever is possible.
   - Examples:
@@ -829,6 +830,14 @@
   <regex>^WinEvtLog: (\w+): (\w+)\((\d+)\): \w+: (\w+):</regex>
   <order>data,action,id,user</order>
 </decoder>    
+
+
+<!-- ossec decoder.
+  - Deals with ossec internal messages.
+  -->
+<decoder name="ossec">
+  <prematch>^ossec: </prematch>
+</decoder>  
 
 
 <!-- EOF -->

@@ -43,14 +43,14 @@
 
   <rule id="18106" level="5">
     <if_sid>18105</if_sid>
-    <id>^529|^530|^531|^532|^533|^534|^535|^536|^537|^539</id>
+    <id>^529|^530|^531|^532|^533|^534|^535|^536|^537|^539|^680|^681</id>
     <group>authentication_failed</group>
     <description>Windows Logon Failure.</description>
   </rule>
 
   <rule id="18107" level="3">
     <if_sid>18104</if_sid>
-    <id>^528|^538|^540</id>
+    <id>^528|^538|^540|^680</id>
     <group>authentication_success</group>
     <description>Windows Logon Success.</description>
   </rule>
@@ -70,7 +70,7 @@
 
   <rule id="18110" level="8">
     <if_sid>18104</if_sid>
-    <id>^624|^626</id>
+    <id>^624|^626|^645</id>
     <group>adduser</group>
     <description>User account created.</description>
   </rule>
