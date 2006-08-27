@@ -1,0 +1,194 @@
+#!/usr/bin/perl -w
+
+#
+#
+#	config2xml
+#
+#	Written by: Charlie Heselton (gentuxx@gmail.com)
+#	Date: 08/22/2006
+#	Version: 0.1
+#
+#	Description:  OSSEC-HIDS uses XML for it's configuration
+#	and rules files.  This script allows a user to use a 
+#	more traditional "key = value" format and convert it
+#	to the XML required by OSSEC.
+#
+#
+require 5.006;
+use strict;
+use Getopt::Std;
+
+my (%opts, %config);
+getopts('f:', \%opts);
+
+my $current_line = 0;
+if ($opts{'f'}) {
+	# open the "traditional" file and parse the contents.
+	open CONF, $opts{'f'} or die "Couldn't open input config file ($opts{'f'}): $! \n";
+	while (<CONF>) {
+		$current_line++;
+		# skip commented or blank lines
+		next if (/^#/);
+		next if (/^$/);
+		chomp;
+		# strip out any double quotes
+		#s/\"//g;
+		# strip out spaces or tabs
+		#s/(\s+|\t+)//g;
+		my ($key, $value);
+		#print STDERR "DEBUG:  \$\_ ===> $_\n";
+		if (/^\s*(\S+)\s*\=\s*\"?([^=]+)\"?/) {
+			$key = $1; $value = $2;
+		} else {
+			die "Config error!  Found an extra equals sign (=) in line $current_line\.  Input file not converted!\n";
+		}
+		# the keys below will be repeated, but if the value is assigned initially, 
+		# then the script fails when unwrapping the hash.
+		# key/value pairs that shouldn't be repeated throw a config error if they are repeated.
+		if ($key =~ /monitor_file|rules_include|active_response_command/) {
+			push @{$config{$key}}, $value;
+		} else {
+			if (exists($config{$key})) { die "$key has already been specified in the config file and can only be used once.  Input file not converted!\n"; }
+			$config{$key} = $value;
+		}
+	}
+	close CONF;
+} else {
+	die "No input file specified.\n";
+}
+undef $current_line;
+
+# strip out any double-quotes
+# this is handled for all the rest of the key/value pairs when the input file is initially parsed
+foreach my $key ( qw/ active_response_command / ) { foreach ( @{$config{$key}} ) { s!\"!!g; } }
+# separate the "complex" options into arrays
+my @whitelisted = split(/\,/, $config{'whitelist_ips'});
+my @ignored = split(/\,/, $config{'ignore'});
+
+# Write the xml file.  Easiest way is just to be deliberate.  Not the most elegant solution, but it should work.
+print <<END;
+
+<!-- OSSEC example config -->
+
+<ossec_config>
+  <global>
+    <email_notification>$config{'email_notify'}</email_notification>
+    <email_to>$config{'email_addr'}</email_to>
+    <smtp_server>$config{'smtp_server'}</smtp_server>
+    <email_from>$config{'email_from'}</email_from>
+END
+
+foreach my $wip ( sort( @whitelisted ) ) {
+	print "    <white_list>$wip</white_list>\n";
+}
+
+print "  </global>\n\n";
+print "  <rules>\n";
+
+foreach my $rulesfile ( sort( @{$config{'rules_include'}} ) ) {
+	print "    <include>$rulesfile</include>\n";
+}
+
+print <<END;
+  </rules>  
+
+  <syscheck>
+    <!-- Frequency that syscheck is executed -- default every 2 hours -->
+    <frequency>$config{'frequency'}</frequency>
+    
+    <!-- Directories to check  (perform all possible verifications) -->
+    <directories check_all="yes">$config{'directories_check_all'}</directories>
+
+    <!-- Files/directories to ignore -->
+END
+
+foreach my $ignored ( @ignored ) {
+	print "    <ignore>$ignored</ignore>\n";
+}
+
+print <<END;
+  </syscheck>
+
+  <rootcheck>
+    <rootkit_files>$config{'rootkit_files_db'}</rootkit_files>
+    <rootkit_trojans>$config{'rootkit_trojans_db'}</rootkit_trojans>
+  </rootcheck>
+
+END
+
+if ( exists($config{'remote'}) ) {
+	print "  <remote>\n";
+	if ((exists($config{'connection_type'})) && ($config{'connection_type'} eq 'secure')) {
+		print "    <connection>$config{'connection_type'}</connection>\n";
+	}
+	print "  </remote>\n";
+}
+
+print <<END;
+
+  <alerts>
+    <log_alert_level>$config{'log_alert_level'}</log_alert_level>
+    <email_alert_level>$config{'email_alert_level'}</email_alert_level>
+  </alerts>
+
+END
+
+if ( exists($config{'active_response'}) ) {		# should always be true
+	if ($config{'active_response'} eq 'disabled') {
+		print "  <active-response>\n    <disabled>yes</diabled>\n  </active-response>\n\n";
+	} else {
+		# Could use some comments/insight here, since I don't use the active response features.
+		foreach my $cmd ( sort(@{$config{'active-response-command'}}) ) {
+			my ( $name, $exe, $expect, $timeout ) = split(/\,/, $cmd);
+			print <<END;
+  <command>
+    <name>$name</name>
+    <executable>$exe</executable>
+    <expect>$expect</expect>
+    <timeout_allowed>$timeout</timeout_allowed>
+  </command>
+
+END
+		}
+
+		print <<END;
+
+  <!-- Active Response Config -->
+  <active-response>
+    <!-- This response is going to execute the host-deny
+       - command for every event that fires a rule with
+       - level (severity) >= 6.
+       - The IP is going to be blocked for  600 seconds.
+      -->
+    <command>host-deny</command>
+    <location>local</location>
+    <level>6</level>
+    <timeout>600</timeout>
+  </active-response>
+
+  <active-response>
+    <!-- Firewall Drop response. Block the IP for
+       - 600 seconds on the firewall (iptables,
+       - ipfilter, etc).
+      -->
+    <command>firewall-drop</command>
+    <location>local</location>
+    <level>6</level>
+    <timeout>600</timeout>    
+  </active-response>  
+
+  <!-- Files to monitor (localfiles) -->
+
+END
+	}
+}
+
+foreach my $file ( sort( @{$config{'monitor_file'}} ) ) {
+	my ($fileloc, $fformat) = split(/\,/, $file);
+	print "  <localfile>\n";
+	print "    <log_format>$fformat</log_format>\n";
+	print "    <location>$fileloc</location>\n";
+	print "  </localfile>\n";
+}
+
+print "</ossec_config>\n";
