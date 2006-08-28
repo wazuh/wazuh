@@ -1,4 +1,4 @@
-/*   $OSSEC, syscheck_update.c, v0.2, 2006/02/07, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005,2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
