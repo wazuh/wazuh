@@ -1,6 +1,6 @@
-/*   $OSSEC, ar-forward.c, v0.1, 2005/11/05, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005,2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -10,27 +10,16 @@
  */
 
 
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <dirent.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
-#include <time.h>
-#include <signal.h>
+#include "shared.h"
+#include <pthread.h>
 
 #include "remoted.h"
 #include "os_net/os_net.h"
 
 
-/*** Prototypes ***/
-int send_msg(int agentid, char *msg);
+/* pthread send_msg mutex */
+pthread_mutex_t sendmsg_mutex;
+
 
 
 /** void *AR_Forward(void *arg) v0.1
@@ -188,6 +177,12 @@ void *AR_Forward(void *arg)
 }
 
  
+void send_msg_init()
+{
+    /* Initializing mutex */
+    pthread_mutex_init(&sendmsg_mutex, NULL);
+}
+
 
 /* send_msg: 
  * Send message to an agent.
@@ -198,8 +193,9 @@ int send_msg(int agentid, char *msg)
     int msg_size;
     char crypt_msg[OS_MAXSTR +1];
 
+
     /* If we don't have the agent id, ignore it */
-    if(!keys.rcvd[agentid])
+    if(keys.rcvd[agentid] < (time(0) - (2*NOTIFY_TIME)))
     {
         return(-1);
     }
@@ -212,15 +208,31 @@ int send_msg(int agentid, char *msg)
         return(-1);
     }
 
+    
+    /* Locking before using */
+    if(pthread_mutex_lock(&sendmsg_mutex) != 0)
+    {
+        merror(MUTEX_ERROR, ARGV0);
+        return(-1);
+    }
+
+
     /* Sending initial message */
     if(sendto(logr.sock, crypt_msg, msg_size, 0,
                          (struct sockaddr *)&keys.peer_info[agentid],
                          logr.peer_size) < 0) 
     {
         merror(SEND_ERROR,ARGV0, keys.ids[agentid]);
-        return(-1);
     }
     
+    
+    /* Unlocking mutex */
+    if(pthread_mutex_unlock(&sendmsg_mutex) != 0)
+    {
+        merror(MUTEX_ERROR, ARGV0);
+        return(-1);
+    }
+                                        
 
     return(0);
 }

@@ -1,4 +1,4 @@
-/*   $OSSEC, getloglocation.c, v0.1, 2005/04/25, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -41,75 +41,11 @@ void OS_InitLog()
 }
 
 
-/* gzips a log file */
+/* gzips a log file 
 int OS_CompressLog(int yesterday, char *prev_month, int prev_year)
-{
-    gzFile *_zflogGZ;
-    FILE *_zflog;
-    char __zlogfile[OS_FLSIZE + 1];
-    char __zlogfileGZ[OS_FLSIZE + 1];
-    int len, err;
-    char buf[OS_MAXSTR + 1];
 
-    memset(__zlogfile,'\0',OS_FLSIZE +1);
-    memset(__zlogfileGZ,'\0',OS_FLSIZE +1);
-    _zflog = NULL;
-
-    /* Setting the umask */
-    umask(0027);
-		
-    /* Creating the logfile name */
-    snprintf(__zlogfile, OS_FLSIZE,"%s/%d/%s/ossec-%s-%02d.log",
-             ALERTS,
-             prev_year,
-             prev_month,
-             "alerts",
-             yesterday);
-
-    snprintf(__zlogfileGZ, OS_FLSIZE,"%s/%d/%s/ossec-%s-%02d.log.gz",
-             ALERTS,
-             prev_year,
-             prev_month,
-             "alerts",
-             yesterday);
-
-
-    /* Reading alert file */
-    _zflog = fopen(__zlogfile, "r");
-    if(!_zflog)
-    {
-        merror(FOPEN_ERROR, ARGV0, __zlogfile);
-        return(0);
-    }
-    
-    /* Opening compressed file */
-    _zflogGZ = gzopen(__zlogfileGZ, "w");
-    if(!_zflogGZ)
-    {
-        fclose(_zflog);
-        merror(FOPEN_ERROR, ARGV0, __zlogfileGZ);
-        return(0);
-    }
-    
-    for(;;)
-    {
-        len = fread(buf, 1, OS_MAXSTR, _zflog);
-        if(len == 0)
-            break;
-        if(gzwrite(_zflogGZ, buf, (unsigned)len) != len)
-            merror("%s: Compression error: %s", ARGV0,gzerror(_zflogGZ, &err));
-    }
-
-    /* Closing */
-    fclose(_zflog);
-    gzclose(_zflogGZ);
-
-    /* Removing uncompressed file */
-    unlink(__zlogfile);
-
-    return(0);
-}
-	  
+  -- moved to monitord.	  
+*/      
 
 
 

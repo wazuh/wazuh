@@ -1,4 +1,4 @@
-/*   $OSSEC, event-forward.c, v0.1, 2005/11/09, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -29,16 +29,11 @@
  */
 void *EventForward(void *none)
 {
-    int local_mutex;
     int recv_b;
-    int _ssize;    
-    char crypt_msg[OS_MAXSTR +2];
     char msg[OS_MAXSTR +2];
     
 
     /* Initializing variables */
-    _ssize = 0;
-    memset(crypt_msg, '\0', OS_MAXSTR +2);
     memset(msg, '\0', OS_MAXSTR +2);
     
     
@@ -58,7 +53,6 @@ void *EventForward(void *none)
         }
 
         /* Setting availables to 0 */
-        local_mutex = available_forwarder;
         available_forwarder = 0;
 
         /* Unlocking mutex */
@@ -73,19 +67,7 @@ void *EventForward(void *none)
         {
             msg[recv_b] = '\0';
             
-            _ssize = CreateSecMSG(&keys, msg, crypt_msg, 0);
-
-            /* Returns NULL if can't create encrypted message */
-            if(_ssize == 0)
-            {
-                merror(SEC_ERROR,ARGV0);
-                continue;
-            }
-
-            /* Send _ssize of crypt_msg */
-            if(OS_SendUDPbySize(logr->sock, _ssize, crypt_msg) < 0)
-                merror(SEND_ERROR,ARGV0, "server");
-
+            send_msg(0, msg);
         }
     }
     

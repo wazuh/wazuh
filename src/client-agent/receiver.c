@@ -1,6 +1,6 @@
-/*   $OSSEC, receiver.c, v0.2, 2005/11/09, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005,2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -111,7 +111,8 @@ void *receiver_thread(void *none)
                 }
 
                 /* File update message */
-                if(strncmp(tmp_msg, FILE_UPDATE_HEADER, strlen(FILE_UPDATE_HEADER)) == 0)
+                if(strncmp(tmp_msg, FILE_UPDATE_HEADER, 
+                                    strlen(FILE_UPDATE_HEADER)) == 0)
                 {
                     char *validate_file;
                     tmp_msg+=strlen(FILE_UPDATE_HEADER);
@@ -159,7 +160,8 @@ void *receiver_thread(void *none)
                     }
                 }
 
-                else if(strncmp(tmp_msg, FILE_CLOSE_HEADER, strlen(FILE_CLOSE_HEADER)) == 0)
+                else if(strncmp(tmp_msg, FILE_CLOSE_HEADER, 
+                                         strlen(FILE_CLOSE_HEADER)) == 0)
                 {
                     /* no error */
                     os_md5 currently_md5;
@@ -215,7 +217,8 @@ void *receiver_thread(void *none)
 
             else
             {
-                merror("%s: Unknown message received. No action defined.",ARGV0);
+                merror("%s: Unknown message received. No action defined.",
+                                                      ARGV0);
             }
         }    
     }

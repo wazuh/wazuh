@@ -1,6 +1,6 @@
-/*   $OSSEC, agentd.c, v0.3, 2005/11/09, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -119,6 +119,10 @@ void AgentdStart(char *dir, int uid, int gid)
     pthread_cond_init (&notify_cond, NULL);
 
     
+    /* Trying to connect to server */
+    start_agent();
+
+
     /* Starting receiver thread.
      * Receive events/commands from the server
      */

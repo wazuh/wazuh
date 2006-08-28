@@ -34,6 +34,12 @@
 /* File closing message */
 #define FILE_CLOSE_HEADER   "close file "
 
+/* Agent startup */
+#define HC_STARTUP          "agent startup "
+
+/* Agent startup ack */
+#define HC_STARTUP_ACK      "agent startup ack "
+
 #endif
 
 /* EOF */

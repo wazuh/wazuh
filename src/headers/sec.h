@@ -1,6 +1,6 @@
-/*   $OSSEC, sec.h, v0.1, 2005/01/28, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -11,7 +11,6 @@
 
 
 #ifndef __SEC_H
-
 #define __SEC_H
 
 #define IDMAXSIZE 8
@@ -26,7 +25,7 @@ typedef struct _keystruct
     FILE **fps;
     unsigned int *global;
     unsigned int *local;
-    int *rcvd;
+    unsigned int *rcvd;
 
     int keysize;
 }keystruct;

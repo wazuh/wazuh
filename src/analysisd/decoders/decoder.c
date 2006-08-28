@@ -75,77 +75,88 @@ void DecodeEvent(Eventinfo *lf)
             }
 
 
-            /* Check if we have any child plugin */
-            while(child_node)
+            /* If no child node is set, set the child node
+             * as if it were the child (ugh)
+             */
+            if(!child_node)
             {
-                nnode = child_node->plugin;
+                child_node = node;
+            }
 
-                
-                /* If we have a pre match and it matches, keep
-                 * going. If we don't have a prematch, stop
-                 * and go for the regexes.
-                 */
-                if(nnode->prematch)
+            else
+            {
+                /* Check if we have any child plugin */
+                while(child_node)
                 {
-                    char *llog;
-                
-                    /* If we have an offset set, use it */     
-                    if(nnode->prematch_offset & AFTER_PARENT)
+                    nnode = child_node->plugin;
+
+
+                    /* If we have a pre match and it matches, keep
+                     * going. If we don't have a prematch, stop
+                     * and go for the regexes.
+                     */
+                    if(nnode->prematch)
                     {
-                        llog = pmatch;
+                        char *llog;
+
+                        /* If we have an offset set, use it */     
+                        if(nnode->prematch_offset & AFTER_PARENT)
+                        {
+                            llog = pmatch;
+                        }
+                        else
+                        {
+                            llog = lf->log;
+                        }
+
+                        if((cmatch = OSRegex_Execute(llog, nnode->prematch)))
+                        {
+                            if(*cmatch != '\0')
+                                cmatch++;
+
+                            if(nnode->use_own_name)
+                            {
+                                lf->log_tag = nnode->name;
+                            }
+
+                            /* Setting the type */
+                            if(nnode->type)
+                            {
+                                lf->type = nnode->type;
+                            }
+
+                            break;
+                        }
                     }
                     else
                     {
-                        llog = lf->log;
-                    }
-                    
-                    if((cmatch = OSRegex_Execute(llog, nnode->prematch)))
-                    {
-                        if(*cmatch != '\0')
-                            cmatch++;
-                            
-                        if(nnode->use_own_name)
-                        {
-                            lf->log_tag = nnode->name;
-                        }
-
-                        /* Setting the type */
-                        if(nnode->type)
-                        {
-                            lf->type = nnode->type;
-                        }
-                        
                         break;
                     }
-                }
-                else
-                {
-                    break;
-                }
 
-                /* If we have multiple regex only childs,
-                 * do not attempt to go any further with them.
-                 */
-                if(child_node->plugin->get_next)
-                {
-                    do
+                    /* If we have multiple regex only childs,
+                     * do not attempt to go any further with them.
+                     */
+                    if(child_node->plugin->get_next)
+                    {
+                        do
+                        {
+                            child_node = child_node->next;
+                        }while(child_node && child_node->plugin->get_next);
+
+                        if(!child_node)
+                            return;
+
+                        child_node = child_node->next;
+                        nnode = NULL;   
+                    }
+                    else
                     {
                         child_node = child_node->next;
-                    }while(child_node && child_node->plugin->get_next);
-
-                    if(!child_node)
-                        return;
-                    
-                    child_node = child_node->next;
-                    nnode = NULL;   
-                }
-                else
-                {
-                    child_node = child_node->next;
-                    nnode = NULL;
+                        nnode = NULL;
+                    }
                 }
             }
-
+            
             /* Nothing matched */
             if(!nnode)
                 return;

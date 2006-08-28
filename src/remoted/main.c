@@ -74,7 +74,7 @@ int main(int argc, char **argv)
         exit(0);
 
         
-    /* Check if the user/group given are valid */
+    /* Check if the user and group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if((uid < 0)||(gid < 0))

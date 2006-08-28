@@ -115,28 +115,24 @@ int OS_BindUnixDomain(char * path, int mode)
 {
     int ossock = 0;
 
+    /* Making sure the path isn't there */
+    unlink(path);
+    
     memset(&n_us, 0, sizeof(n_us));
     n_us.sun_family = AF_UNIX;
     strncpy(n_us.sun_path, path, sizeof(n_us.sun_path)-1);
 
-    if((ossock = socket(AF_UNIX, SOCK_DGRAM,0)) < 0)
+    if((ossock = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0)
         return(OS_SOCKTERR);
 
-    /* Making sure the path isn't there */
-    unlink(path);
-    
     if(bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0)
     {
         close(ossock);
         return(OS_SOCKTERR);
     }
     
-    if(chmod(path,mode) < 0)
-    {
-        close(ossock);
-        unlink(path);
-        return(OS_FILERR);
-    }
+    /* Changing permissions */
+    chmod(path,mode);
     
     return(ossock);
 }

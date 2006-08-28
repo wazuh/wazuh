@@ -1,6 +1,6 @@
-/*   $OSSEC, analysisd.c, v0.4, 2005/09/08, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2003, 2004, 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -379,9 +379,11 @@ void OS_ReadMSG(int m_queue)
 
     /* Initializing Rootcheck */
     RootcheckInit();
+    
    
     /* Initializing host info */
     HostinfoInit();
+    
     
     /* Creating the event list */
     OS_CreateEventList(Config.memorysize);
@@ -586,9 +588,6 @@ void OS_ReadMSG(int m_queue)
                     {
                         ErrorExit("%s: Error alocating log files", ARGV0);
                     }
-
-                    /* Compress yesterday's log file */
-                    OS_CompressLog(today,prev_month,prev_year);
 
                     today = lf->day;
                     strncpy(prev_month, lf->mon, 3);

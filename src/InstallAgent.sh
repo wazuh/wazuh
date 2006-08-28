@@ -109,11 +109,14 @@ if [ "$UNAME" = "SunOS" ]; then
     mkdir -p ${DIR}/usr/share/lib/zoneinfo/
     chmod -R 555 ${DIR}/usr/
     cp -pr /usr/share/lib/zoneinfo/* ${DIR}/usr/share/lib/zoneinfo/
+    chown -R root:${GROUP} ${DIR}/usr/
 fi    
 
 ls /etc/TIMEZONE > /dev/null 2>&1
 if [ $? = 0 ]; then
     cp -p /etc/TIMEZONE ${DIR}/etc/;
+    chown root:${GROUP} ${DIR}/etc/TIMEZONE
+    chmod 555 ${DIR}/etc/TIMEZONE
 fi
             
         
@@ -121,9 +124,11 @@ fi
 # For the /etc/shared
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
 cp -pr ../etc/internal_options.conf ${DIR}/etc/
-chown root:ossec ${DIR}/etc/internal_options.conf
+chown root:${GROUP} ${DIR}/etc/internal_options.conf
+chown -R root:${GROUP} ${DIR}/etc/shared
+
 chmod 550 ${DIR}/etc
-chmod -R 440 ${DIR}/etc/*
+chmod 440 ${DIR}/etc/internal_options.conf
 chmod -R 770 ${DIR}/etc/shared # ossec must be able to write to it
 
 
@@ -163,6 +168,8 @@ if [ $? = 0 ]; then
 else    
     cp -pr ../etc/ossec-agent.conf ${DIR}/etc/ossec.conf
 fi
+chown root:${GROUP} ${DIR}/etc/ossec.conf
+chmod 440 ${DIR}/etc/ossec.conf
 
 
 

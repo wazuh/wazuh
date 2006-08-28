@@ -1,6 +1,6 @@
-/*   $OSSEC, agentd.h, v0.2, 2005/11/09, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005,2006 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -39,6 +39,11 @@ void *receiver_thread(void *none);
 /* Notifier thread */
 void *notify_thread(void *none);
 
+/* Sends message to server */
+int send_msg(int agentid, char *msg);
+
+/* Connects to server */
+void start_agent();
 
 
 /*** Global variables ***/

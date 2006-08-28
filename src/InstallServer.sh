@@ -150,7 +150,9 @@ chmod 550 ${DIR}/etc
 chown -R root:${GROUP} ${DIR}/etc
 ls /etc/localtime > /dev/null 2>&1
 if [ $? = 0 ]; then
-    cp -pL /etc/localtime ${DIR}/etc/; 
+    cp -pL /etc/localtime ${DIR}/etc/;
+    chmod 555 ${DIR}/etc/localtime
+    chown root:${GROUP} ${DIR}/etc/localtime 
 fi
 
 # Solaris Needs some extra files
@@ -163,6 +165,7 @@ fi
 ls /etc/TIMEZONE > /dev/null 2>&1
 if [ $? = 0 ]; then
     cp -p /etc/TIMEZONE ${DIR}/etc/;
+    chmod 555 ${DIR}/etc/TIMEZONE
 fi
                         
 
@@ -175,6 +178,7 @@ cp -pr ../bin/ossec* ${DIR}/bin/
 cp -pr ../bin/manage_agents ${DIR}/bin/
 cp -pr ../bin/syscheck_update ${DIR}/bin/
 cp -pr ../bin/clear_stats ${DIR}/bin/
+cp -pr ../bin/list_agents ${DIR}/bin/
 
 # Local install chosen
 if [ "X$LOCAL" = "Xlocal" ]; then
@@ -187,12 +191,14 @@ fi
 cp -pr ../etc/decoder.xml ${DIR}/etc/
 cp -pr ../etc/internal_options.conf ${DIR}/etc/
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
-chown root:ossec ${DIR}/etc/decoder.xml
-chown root:ossec ${DIR}/etc/internal_options.conf
-chown root:ossec ${DIR}/etc/shared/rootkit*
+chown root:${GROUP} ${DIR}/etc/decoder.xml
+chown root:${GROUP} ${DIR}/etc/internal_options.conf
+chown root:${GROUP} ${DIR}/etc/shared/*
+chmod 440 ${DIR}/etc/decoder.xml
+chmod 440 ${DIR}/etc/internal_options.conf
 chmod 550 ${DIR}/etc
-chmod -R 440 ${DIR}/etc/*
 chmod 550 ${DIR}/etc/shared
+chmod 440 ${DIR}/etc/shared/*
 
 
 # Copying active response modules
@@ -217,6 +223,9 @@ if [ $? = 0 ]; then
 else    
     cp -pr ../etc/ossec-server.conf ${DIR}/etc/ossec.conf
 fi
+chown root:${GROUP} ${DIR}/etc/ossec.conf
+chmod 440 ${DIR}/etc/ossec.conf
+
 
 
 exit 0;

@@ -28,7 +28,7 @@
 #define RIDS_DIR        "rids"
 #endif
 #define SENDER_COUNTER  "sender_counter"
-#define KEYSIZE	 72
+#define KEYSIZE	        128 
 
 
 /** Sending counts **/
@@ -54,10 +54,10 @@ void StartCounter(keystruct *keys);
 /* _MemClear v0.1 - Internal use */
 void _MemClear(char *id, char *name, char *ip, char *key)
 {
-	memset(id,'\0', KEYSIZE);
-	memset(name,'\0',KEYSIZE);
-	memset(key,'\0', KEYSIZE);
-	memset(ip,'\0', KEYSIZE);
+	memset(id,'\0', KEYSIZE +1);
+	memset(name,'\0',KEYSIZE +1);
+	memset(key,'\0', KEYSIZE +1);
+	memset(ip,'\0', KEYSIZE +1);
 }
 
 
@@ -136,12 +136,11 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
 	
     
 	/* Generating final key */
-	memset(_finalstr,'\0', 65);
+	memset(_finalstr,'\0', sizeof(_finalstr));
 	snprintf(_finalstr, 49, "%s%s", filesum2, filesum1);
 
+
     /* Final key is 48 * 4 = 192bits */
-
-
     keys->keys = (char **)realloc(keys->keys,
 			(keys->keysize+1)*sizeof(char *));
 	if(keys->keys == NULL)
@@ -156,7 +155,7 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
 
 
 	/* Cleaning final string from memory */
-	memset(_finalstr,'\0', 65);
+	memset(_finalstr,'\0', sizeof(_finalstr));
 
 
 	/* next */
@@ -174,10 +173,10 @@ void ReadKeys(keystruct *keys, int just_read)
     
     char buffer[OS_MAXSTR +1];
     
-    char name[KEYSIZE];
-    char ip[KEYSIZE];
-    char id[KEYSIZE];
-    char key[KEYSIZE];
+    char name[KEYSIZE +1];
+    char ip[KEYSIZE +1];
+    char id[KEYSIZE +1];
+    char key[KEYSIZE +1];
     
 
     if(File_DateofChange(KEYS_FILE) < 0)
@@ -271,7 +270,7 @@ void ReadKeys(keystruct *keys, int just_read)
         strncpy(key, valid_str, KEYSIZE -1);
 
         /* Generating the key hash */
-       _CHash(keys, id, name, ip, key);
+        _CHash(keys, id, name, ip, key);
 
         /* Clearing the memory */
         _MemClear(id, name, ip, key); 

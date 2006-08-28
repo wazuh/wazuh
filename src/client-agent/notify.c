@@ -1,4 +1,4 @@
-/*   $OSSEC, notify.c, v0.2, 2005/11/09, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -69,7 +69,8 @@ char *getsharedfiles()
 
         if(OS_MD5_File(tmp_dir, md5sum) != 0)
         {
-            merror("%s: Error accessing file '%s'",tmp_dir);
+            merror("%s: Error accessing file '%s': %s",ARGV0, 
+                                                 tmp_dir, strerror(errno));
             continue;
         }
         
@@ -101,10 +102,7 @@ char *getsharedfiles()
 /* run_notify: Send periodically notification to server */
 void run_notify()
 {
-    int msg_size;
-
     char tmp_msg[OS_MAXSTR +1];
-    char crypt_msg[OS_MAXSTR +1];
     char *uname;
     char *shared_files;
     
@@ -144,21 +142,7 @@ void run_notify()
     /* creating message */
     snprintf(tmp_msg, OS_MAXSTR, "#!-%s\n%s",uname, shared_files);
     
-    msg_size = CreateSecMSG(&keys, tmp_msg, crypt_msg, 0);
-    
-    if(msg_size == 0)
-    {
-        free(uname);
-        free(shared_files);
-        merror(SEC_ERROR,ARGV0);
-        return;
-    }
-
-    /* Send UDP message */
-    if(OS_SendUDPbySize(logr->sock, msg_size, crypt_msg) < 0)
-    {
-        merror(SEND_ERROR,ARGV0, "server");
-    }
+    send_msg(0, tmp_msg);
     
     free(uname);
     free(shared_files);

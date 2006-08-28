@@ -1,4 +1,4 @@
-/*   $OSSEC, getloglocation.h, v0.2, 2005/04/25, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -15,18 +15,12 @@
 #define __GETLL_H
 
 #include "eventinfo.h"
-#include "os_zlib/os_zlib.h"
 
 /*
  * Start the log location (need to be called before getlog)
  *
  */
 void OS_InitLog();
-
-/* Compress a log using gzip.
- *
- */
-int OS_CompressLog(int yesterday, char *prev_month, int prev_year);
 
 
 /*

@@ -73,8 +73,8 @@ int add_agent()
 {
     int i = 1;
     FILE *fp;
-    char str1[STR_SIZE];
-    char str2[STR_SIZE];
+    char str1[STR_SIZE +1];
+    char str2[STR_SIZE +1];
     
     os_md5 md1;
     os_md5 md2;
@@ -112,15 +112,15 @@ int add_agent()
 
     
     /* Zeroing strings */
-    memset(str1,'\0', STR_SIZE);
-    memset(str2,'\0', STR_SIZE);
+    memset(str1,'\0', STR_SIZE +1);
+    memset(str2,'\0', STR_SIZE +1);
 
 
     printf(ADD_NEW);
 
     
     /* Getting the name */
-    memset(name, '\0', STR_SIZE);
+    memset(name, '\0', FILE_SIZE +1);
 
     do
     {
@@ -145,7 +145,7 @@ int add_agent()
 
 
     /* Getting IP */
-    memset(ip, '\0', STR_SIZE);
+    memset(ip, '\0', FILE_SIZE +1);
 
     do
     {
@@ -237,13 +237,13 @@ int add_agent()
          * Random 5: Final key
          */
         
-        snprintf(str1, 64, "%d%s%d",time3-time2, name, rand1);
-        snprintf(str2, 64, "%d%s%s%d", time2-time1, ip, id, rand2);
+        snprintf(str1, STR_SIZE, "%d%s%d",time3-time2, name, rand1);
+        snprintf(str2, STR_SIZE, "%d%s%s%d", time2-time1, ip, id, rand2);
 
         OS_MD5_Str(str1, md1);
         OS_MD5_Str(str2, md2);
 
-        snprintf(str1, 64, "%s%d%d%d",md1,(int)getpid(),rand(), time3);
+        snprintf(str1, STR_SIZE, "%s%d%d%d",md1,(int)getpid(),rand(), time3);
         OS_MD5_Str(str1, md1);
 
         fprintf(fp,"%s %s %s %s%s\n",id, name, ip, md1,md2);
@@ -251,13 +251,15 @@ int add_agent()
         fclose(fp);
 
         printf(AGENT_ADD);
+        break;
       }
       else if(user_input[0] == 'n' || user_input[0] == 'N')
       {
         printf(ADD_NOT);
+        break;
       }
 
-    } while(!(user_input[0] == 'y' || user_input[0] == 'Y' || user_input[0] == 'n' || user_input[0] == 'N'));
+    } while(1);
 
     return(0);
 }
@@ -322,13 +324,15 @@ int remove_agent()
         
 
         printf(REMOVE_DONE, u_id);
+        break;
       }
       else if(user_input[0] == 'n' || user_input[0] == 'N')
       {
         printf(REMOVE_NOT);
+        break;
       }
 
-    } while(!(user_input[0] == 'y' || user_input[0] == 'Y' || user_input[0] == 'n' || user_input[0] == 'N'));
+    } while(1);
 
     return(0);
 }

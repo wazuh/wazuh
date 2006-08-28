@@ -193,6 +193,10 @@
 #define DEF_NOT_FOUND   "%s(2301): Definition not found for: '%s.%s'."
 #define INV_DEF         "%s(2302): Invalid definition for %s.%s: '%s'."
 
+/* Agent errors */
+#define AG_WAIT_SERVER  "%s(4101): Waiting for server reply (not started)."
+#define AG_CONNECTED    "%s(4102): Connected to the server."
+
 
 /* Verbose messages */
 #define STARTUP_MSG	"%s: Started (pid: %d)."
@@ -209,6 +213,10 @@
 #define FOUND_USER  "%s: Found user/group ..."
 #define ASINIT      "%s: Active response initialized ..."
 #define READ_CONFIG "%s: Read configuration ..."
+
+/* Ossec alert messages */
+#define OS_AD_STARTED   "ossec: Ossec started."
+#define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
 
 
 #endif /* _ERROR_MESSAGES__H */

@@ -20,7 +20,6 @@
 typedef struct __Config
 {
     u_int8_t logall;
-    u_int8_t compress_alerts;
     u_int8_t stats;
     u_int8_t integrity;
     u_int8_t rootcheck;

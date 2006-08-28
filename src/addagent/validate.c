@@ -26,7 +26,7 @@ int OS_IsValidID(char *id)
     id_len = strlen(id);
 
     /* Check ID length, it should contain max. 5 characters */
-    if (id_len > 5)
+    if (id_len > 8)
       return(0);
 
     /* Check ID if it contains only numeric characters [0-9] */
@@ -91,13 +91,13 @@ int OS_IsValidName(char *u_name)
     int i = 0;
 
     /* We must have something in the name */
-    if(strlen(u_name) < 2 || strlen(u_name) > 32)
+    if(strlen(u_name) < 2 || strlen(u_name) > 128)
       return(0);
 
     /* check if it contains any non-alphanumeric characters */
     for(i = 0; i < strlen(u_name); i++)
     {
-      if(!(isalnum(u_name[i])))
+      if(!isalnum(u_name[i]) && (u_name[i] != '-') && (u_name[i] != '_'))
         return(0);
     }
 

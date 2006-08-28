@@ -96,6 +96,10 @@
 
 /* Decoder file */
 #define XML_DECODER     "/etc/decoder.xml"
+
+        
+/* Agent information location */
+#define AGENTINFO_DIR    "/queue/agent-info"
         
         
 /* Internal definitions files */

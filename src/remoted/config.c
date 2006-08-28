@@ -1,4 +1,4 @@
-/*   $OSSEC, config.c, v0.3, 2005/11/09, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.

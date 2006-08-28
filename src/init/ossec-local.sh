@@ -14,7 +14,7 @@ cd $OLDPWD >/dev/null 2>&1;
 NAME="OSSEC HIDS"
 VERSION="v0.9-1"
 AUTHOR="Daniel B. Cid"
-DAEMONS="ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd"
+DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd"
 
 
 ## Locking for the start/stop
@@ -99,7 +99,7 @@ status()
 # Start function
 start()
 {
-    SDAEMONS="ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd"
+    SDAEMONS="ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
     
     echo "Starting $NAME $VERSION (by $AUTHOR)..."
     lock;

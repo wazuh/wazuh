@@ -202,15 +202,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         /* compress alerts */
         else if(strcmp(node[i]->element, xml_compress_alerts) == 0)
         {
-            if(strcmp(node[i]->content, "yes") == 0)
-                { if(Config) Config->compress_alerts = 1;}
-            else if(strcmp(node[i]->content, "no") == 0)
-                { if(Config) Config->compress_alerts = 0;}
-            else
-            {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
-                return(OS_INVALID);
-            }
+            /* removed from here -- compatility issues only */
         }
         /* Integrity */
         else if(strcmp(node[i]->element, xml_integrity) == 0)

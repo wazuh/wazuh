@@ -1,4 +1,4 @@
-/*   $OSSEC, syslogtcp.c, v0.3, 2005/11/10, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2003-2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.

@@ -1,4 +1,4 @@
-/*   $OSSEC, remoted.h, v0.3, 2005/02/09, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -51,6 +51,11 @@ void *wait_for_msgs(void *none);
 /* Save control messages */
 void save_controlmsg(int agentid, char *msg);
 
+/* Send message to agent */
+int send_msg(int agentid, char *msg);
+
+/* Initializing send_msg */
+void send_msg_init();
 
 
 /*** Global variables ***/
