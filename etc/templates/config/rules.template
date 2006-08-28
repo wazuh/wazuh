@@ -27,4 +27,5 @@
     <include>msauth_rules.xml</include>
     <!-- <include>policy_rules.xml</include> -->
     <include>attack_rules.xml</include>
+    <include>ossec_rules.xml</include>
   </rules>  

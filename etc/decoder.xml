@@ -41,6 +41,13 @@
   <order>srcip, user</order>
 </decoder>
 
+<decoder name="pam-host">
+  <parent>pam</parent>
+  <prematch offset="after_parent"> rhost</prematch>
+  <regex offset="after_prematch">^=(\S+) </regex>
+  <order>srcip</order>
+</decoder>
+
 <decoder name="pam-user">
   <parent>pam</parent>
   <prematch offset="after_parent">^session opened </prematch>
@@ -838,6 +845,14 @@
 <decoder name="ossec">
   <prematch>^ossec: </prematch>
 </decoder>  
+
+<decoder name="ossec-agent">
+  <parent>ossec</parent>
+  <prematch offset="after_parent">^Agent started:</prematch>
+  <regex offset="after_prematch">^ '(\S+)'</regex>
+  <order>data</order>
+  <fts>name, location, data</fts>
+</decoder>
 
 
 <!-- EOF -->
