@@ -95,9 +95,7 @@ int InstallService(char *path)
     {
         char local_msg[1025];
         LPVOID lpMsgBuf;
-        TCHAR szMsg[1001];
         
-        memset(szMsg, 0, 1001);
         memset(local_msg, 0, 1025);
 
         FormatMessage( FORMAT_MESSAGE_ALLOCATE_BUFFER |

@@ -134,6 +134,7 @@ char *__local_name;
 
 
 #include "debug_op.h"
+#include "wait_op.h"
 #include "file_op.h"
 #include "mem_op.h"
 #include "mq_op.h"

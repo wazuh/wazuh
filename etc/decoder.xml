@@ -305,6 +305,7 @@
   - Sun Jun  4 22:09:24 2006 [pid 21621] [lalal] FAIL LOGIN: Client "192.168.2.10"
   - Sat Jun  3 07:51:42 2006 [pid 25073] [Administrator] FAIL LOGIN: Client
   "211.100.27.101"
+  - Sun Aug 27 16:28:20 2006 [pid 13962] [xx] OK UPLOAD: Client "1.2.3.4", "/a.php", 8338 bytes, 18.77Kbyte/sec
   -->
 <decoder name="vsftpd">
   <prematch>^\w\w\w \w\w\w\s+\d+ \S+ \d+ [pid \d+] </prematch>

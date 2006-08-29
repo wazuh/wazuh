@@ -1,6 +1,6 @@
-/*      $OSSEC, mq_op.c, v0.2, 2005/02/15, Daniel B. Cid$      */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -82,6 +82,11 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
     tmpstr[OS_MAXSTR] = '\0';
 
+
+    /* Checking for global locks */
+    os_wait();
+    
+    
     if(loc == SECURE_MQ)
     {
         loc = message[0];

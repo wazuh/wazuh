@@ -88,6 +88,8 @@ int main(int argc, char **argv)
 
     mond.monitor_agents = getDefine_Int("monitord","monitor_agents",0,1);
 
+    mond.agents = NULL;
+
 
     /* Exit here if test config is set */
     if(test_config)

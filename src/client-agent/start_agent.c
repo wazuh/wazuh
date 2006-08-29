@@ -73,7 +73,7 @@ void start_agent()
             if(IsValidHeader(tmp_msg))
             {
                 /* If it is an ack reply */
-                if(strcmp(tmp_msg, HC_STARTUP_ACK) == 0)
+                if(strcmp(tmp_msg, HC_ACK) == 0)
                 {
                     verbose(AG_CONNECTED, ARGV0);
 

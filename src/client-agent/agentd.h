@@ -74,6 +74,7 @@ pthread_cond_t  notify_cond;
 #endif
 
 
+int available_server;
 int available_receiver;
 int available_forwarder;
 

@@ -50,7 +50,7 @@ char **get_agents(int flag)
     if(!dp) 
     {
         merror("%s: Error opening directory: '%s': %s ",
-                ARGV0,
+                __local_name,
                 AGENTINFO_DIR,
                 strerror(errno));
         return(NULL);
@@ -92,7 +92,7 @@ char **get_agents(int flag)
         f_files = (char **)realloc(f_files, (f_size +2) * sizeof(char *));
         if(!f_files)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR, __local_name);
         }
 
         os_strdup(entry->d_name, f_files[f_size]);

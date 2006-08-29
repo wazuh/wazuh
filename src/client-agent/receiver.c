@@ -60,8 +60,10 @@ void *receiver_thread(void *none)
             pthread_cond_wait(&receiver_cond, &receiver_mutex);
         }
 
+
         /* Setting availables to 0 */
         available_receiver = 0;
+
         
         /* Unlocking mutex */
         if(pthread_mutex_unlock(&receiver_mutex) != 0)
@@ -87,6 +89,10 @@ void *receiver_thread(void *none)
             /* Check for commands */
             if(IsValidHeader(tmp_msg))
             {
+                /* This is the only thread that modifies it */
+                available_server = (int)time(NULL);
+                
+                
                 /* If it is an active response message */
                 if(strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0)
                 {
@@ -102,6 +108,13 @@ void *receiver_thread(void *none)
 
                     continue;
                 } 
+
+
+                /* Ack from server */
+                else if(strcmp(tmp_msg, HC_ACK) == 0)
+                {
+                    continue;
+                }
 
                 /* Close any open file pointer if it was being written to */
                 if(fp)

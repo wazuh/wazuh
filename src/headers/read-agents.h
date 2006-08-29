@@ -17,6 +17,9 @@
 
 char **get_agents(int flag);
 
+void free_agents(char **agent_list);
+
+
 #define GA_NOTACTIVE    2
 #define GA_ACTIVE       3
 #define GA_ALL          5    

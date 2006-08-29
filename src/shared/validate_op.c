@@ -741,7 +741,7 @@ char *OS_IsValidDay(char *day_str)
 
         if(!days[i])
         {
-            merror(INVALID_DAY, ARGV0, day_str);
+            merror(INVALID_DAY, __local_name, day_str);
             return(NULL);
         }
         
@@ -756,7 +756,7 @@ char *OS_IsValidDay(char *day_str)
             break;
         else
         {
-            merror(INVALID_DAY, ARGV0, day_str);
+            merror(INVALID_DAY, __local_name, day_str);
             return(NULL);
         }
     }
@@ -782,7 +782,7 @@ char *OS_IsValidDay(char *day_str)
     if(ng == 0)
     {
         free(ret);
-        merror(INVALID_DAY, ARGV0, day_str);
+        merror(INVALID_DAY, __local_name, day_str);
         return(NULL);
     }
     

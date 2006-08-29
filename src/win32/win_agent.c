@@ -232,6 +232,10 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     crypt_msg[OS_MAXSTR +1] = '\0';
 
 
+    /* Checking for global locks */
+    os_wait();
+
+    
     /* Using a mutex to synchronize the writes */
     dwWaitResult = WaitForSingleObject(hMutex, 5000L);
 

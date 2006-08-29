@@ -63,6 +63,7 @@ void Monitord()
         p = localtime(&tm);
 
         /* Checking unavailable agents */
+        monitor_agents();
         
         /* Day changed, deal with log files */
         if(today != p->tm_mday)

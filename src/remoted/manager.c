@@ -338,16 +338,16 @@ void read_controlmsg(int agentid, char *msg)
 
     char *uname;
     char agent_file[OS_MAXSTR +1];
+    char msg_ack[OS_FLSIZE +1];
 
     FILE *fp;
     
+    msg_ack[OS_FLSIZE] = '\0';
     
     /* Startup message  -- communicate back to the agent */
     if(strcmp(msg, HC_STARTUP) == 0)
     {
-        char msg_ack[OS_FLSIZE +1];
-        msg_ack[OS_FLSIZE] = '\0';
-        snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_STARTUP_ACK);
+        snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
         send_msg(agentid, msg_ack);
         
         return;    
@@ -363,6 +363,12 @@ void read_controlmsg(int agentid, char *msg)
                                                        keys.ips[agentid]);
         return;
     }
+
+
+    /* Uname received, send ok to agent */
+    snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
+    send_msg(agentid, msg_ack);
+    
 
     *msg = '\0';
     msg++;

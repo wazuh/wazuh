@@ -100,6 +100,9 @@
         
 /* Agent information location */
 #define AGENTINFO_DIR    "/queue/agent-info"
+
+/* Wait file */
+#define WAIT_FILE       "/queue/.wait"
         
         
 /* Internal definitions files */
@@ -149,6 +152,7 @@
 #define AR_BINDIRPATH   DEFAULTDIR AR_BINDIR
 #define EXECQUEUEPATH   DEFAULTDIR EXECQUEUE
 #define SHAREDCFG_DIRPATH   DEFAULTDIR SHAREDCFG_DIR
+#define WAIT_FILE_PATH  DEFAULTDIR WAIT_FILE
 
 
 /* Default ports */

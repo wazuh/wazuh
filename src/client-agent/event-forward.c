@@ -68,6 +68,24 @@ void *EventForward(void *none)
             msg[recv_b] = '\0';
             
             send_msg(0, msg);
+
+            /* Check if the server has responded */
+            if((time(0) - available_server) > (3*NOTIFY_TIME))
+            {
+                /* If response is not available, set lock and
+                 * wait for it.
+                 */
+                verbose(SERVER_UNAV, ARGV0);     
+                os_setwait();
+                
+                while((time(0) - available_server) > (3*NOTIFY_TIME))
+                {
+                    sleep(1);
+                }
+
+                verbose(SERVER_UP, ARGV0);
+                os_delwait();
+            }
         }
     }
     

@@ -24,6 +24,8 @@ typedef struct _monitor_config
     short int sign;
     short int monitor_agents;
     int a_queue;
+
+    char **agents;
 }monitor_config;
 
 
@@ -34,6 +36,9 @@ void Monitord();
 
 /*manage_files */
 void manage_files(int cday, int cmon, int cyear);
+
+/* monitor_agents */
+void monitor_agents();
 
 /* Compress log */
 void OS_CompressLog(char *logfile);

@@ -189,7 +189,6 @@ void *notify_thread(void *none)
             merror(MUTEX_ERROR, ARGV0);
             return(NULL);
         }
-
     }
     
     return(NULL);

@@ -118,9 +118,19 @@ void AgentdStart(char *dir, int uid, int gid)
     pthread_cond_init (&forwarder_cond, NULL);
     pthread_cond_init (&notify_cond, NULL);
 
-    
+
+    /* initializing global variables */
+    available_server = 0;     
+    available_forwarder = 0;     
+    available_receiver = 0;     
+
+     
     /* Trying to connect to server */
+    os_setwait();
+
     start_agent();
+    
+    os_delwait();
 
 
     /* Starting receiver thread.
@@ -256,8 +266,6 @@ void AgentdStart(char *dir, int uid, int gid)
          * have available.
          */
         sleep(1); 
-        
-        
     }
 }
 

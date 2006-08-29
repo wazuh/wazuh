@@ -51,7 +51,7 @@
 
   <rule id="12107" level="0">
     <if_sid>12100</if_sid>
-    <regex>client \S+ update \S+ denied</regex>
+    <regex>update \S+ denied</regex>
     <description>DNS update using RFC2136 Dynamic protocol.</description>
     <info>http://www.isc.org/index.pl?/sw/bind/FAQ.php</info>
   </rule>

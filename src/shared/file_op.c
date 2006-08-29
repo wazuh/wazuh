@@ -1,6 +1,6 @@
-/*      $OSSEC, file_op.c, v0.2, 2004/08/03, Daniel B. Cid$      */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -9,9 +9,6 @@
  * Foundation
  */
 
-/* Part of the OSSEC HIDS.
- * Available at http://www.ossec.net/hids/
- */
 
 /* Functions to handle operation with files 
  */

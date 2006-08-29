@@ -214,9 +214,18 @@
 #define ASINIT      "%s: Active response initialized ..."
 #define READ_CONFIG "%s: Read configuration ..."
 
+
+/* Wait operations */
+#define WAITING_MSG     "%s: Process locked. Waiting for permission..."
+#define WAITING_FREE    "%s: Lock free. Continuing..."
+#define SERVER_UNAV     "%s: Server unavailable. Setting lock."
+#define SERVER_UP       "%s: Server responded. Releasing lock."
+
+
 /* Ossec alert messages */
 #define OS_AD_STARTED   "ossec: Ossec started."
 #define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
+#define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
 
 
 #endif /* _ERROR_MESSAGES__H */

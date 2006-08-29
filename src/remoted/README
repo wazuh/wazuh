@@ -1,0 +1,24 @@
+How Remoted works:
+
+Three daemons (forked):
+
+-Secured (udp port 1514)
+-Syslogd (udp port 514)
+-Syslogd (tcp port 514)
+
+
+-How secured works:
+
+-Three threads.
+
+-Main thread (remote receiver).
+  - Receives data from remote clients.
+  - If the data is a log, send to analysisd.
+  - If data is connection related, send to the manager thread
+    (by save_controlmsg).
+-AR_Forward (local receiver).
+  - Receives data (active responses) locally from analysisd.
+  - Forward them to the configured agent.
+-Manager (sends data to remote clients).
+  - Waits for messages from the main thread (wait_for_msgs).
+

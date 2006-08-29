@@ -30,9 +30,15 @@
     <if_sid>11400</if_sid>
     <match>FAIL LOGIN: </match>
     <group>authentication_failed</group>
-    <description>Login failed accessing the FTP server</description>
+    <description>Login failed accessing the FTP server.</description>
   </rule>
-
+  
+  <rule id="11404" level="0">
+    <if_sid>11400</if_sid>
+    <match>OK UPLOAD: </match>
+    <description>FTP server file upload.</description>
+  </rule>
+  
   <rule id="11451" level="10" frequency="6" timeframe="120">
     <if_matched_sid>11403</if_matched_sid>
     <same_source_ip />

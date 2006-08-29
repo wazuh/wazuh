@@ -38,7 +38,7 @@
 #define HC_STARTUP          "agent startup "
 
 /* Agent startup ack */
-#define HC_STARTUP_ACK      "agent startup ack "
+#define HC_ACK              "agent ack "
 
 #endif
 
