@@ -5,16 +5,20 @@
 # Author:  Chuck L.
 # License: GPL
 ###
+# for vi: set tabstop=4
+###
 # Rev history:
 # v0.1 - Initial coding. 
 # v0.2 - Modified script to use subroutines. It gets the job done, 
 #        but more work required to add further functionality. -CL
+# v0.2.1 - Modified the user add lines to have the users disabled
+#          from the start ('*' was missing in passwd field). -CL
 #######################################
 
 # Variables and whatnot
 my ($debug, $oUid, $oGid, @inUseUids, @inUseGids, $rev, $revDate);
-$rev     = '0.2';
-$revDate = '10-Aug-2006';
+$rev     = '0.2-1';
+$revDate = '30-Aug-2006';
 $debug   = '0';
 $fName   = "/tmp/niusers.tmp";
 
@@ -75,10 +79,10 @@ sub createUsersGroups {
     $fh = open (NITMP, ">$fName") or die "Unable to create temp file: $!\n";
 
 	print "Adding ossec users\n" if $debug;
-    print NITMP "ossec::" . $oUid . ":" . $oGid . "::0:0:ossec acct:/var/ossec:/sbin/nologin\n";
-    print NITMP "ossecm::" . $oUidM . ":" . $oGid . "::0:0:ossecm acct:/var/ossec:/sbin/nologin\n";
-    print NITMP "ossece::" . $oUidE . ":" . $oGid . "::0:0:ossece acct:/var/ossec:/sbin/nologin\n";
-    print NITMP "ossecr::" . $oUidR . ":" . $oGid . "::0:0:ossecr acct:/var/ossec:/sbin/nologin\n";
+    print NITMP "ossec:*:" . $oUid . ":" . $oGid . "::0:0:ossec acct:/var/ossec:/sbin/nologin\n";
+    print NITMP "ossecm:*:" . $oUidM . ":" . $oGid . "::0:0:ossecm acct:/var/ossec:/sbin/nologin\n";
+    print NITMP "ossece:*:" . $oUidE . ":" . $oGid . "::0:0:ossece acct:/var/ossec:/sbin/nologin\n";
+    print NITMP "ossecr:*:" . $oUidR . ":" . $oGid . "::0:0:ossecr acct:/var/ossec:/sbin/nologin\n";
 
 	close ($fh);
 	$rtnVal = system("$SUDO $NILOAD -v passwd / < $fName");
