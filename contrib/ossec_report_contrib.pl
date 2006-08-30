@@ -62,6 +62,7 @@ if ($argv[0]=~ m/^-r$|^--report$/i){
 }elsif ($argv[0]=~ m/^-s$|^--summary$/){
 	&summary(\%stats);
 }elsif ($argv[0]=~ m/^-t$|^--top$/){
+	$argv[1]= $argv[1] ? $argv[1] : 'srcip' ;
 	&top(\%stats,$argv[1]);
 }else{
 	&help();
@@ -78,7 +79,7 @@ sub help(){
 	print "$0 [-h|--help] # This text you read now\n";
 	print "$0 [-r|--report] # prints a report for each element\n";
 	print "$0 [-s|--summary] # prints a summary report\n";
-	print "$0 [-t|--top] #prints the top list\n";
+	print "$0 [-t|--top] <field> #prints the top list\n";
 	print "\nHow To:\n";
 	print   "=======\n";
 	print "$0\tOSSEC report tool $VERSION\n";
@@ -87,6 +88,7 @@ sub help(){
 	print "i.e.\n";
 	print " cat ossec-alerts-05.log | $0 -r | mail root -s 'OSSEC detailed report'\n";
 	print " cat ossec-alerts-05.log | $0 -s | mail root -s 'OSSEC summary report'\n";
+	print " cat ossec-alerts-05.log | $0 -t srcip |  head -n 15 | mail root -s 'OSSEC top 15 offenders report'\n";
 	print " Crontab entry:\n";
 	print "58 23 * * * (cat ossec-alerts-05.log | $0 -s)\n";
 	exit 0;

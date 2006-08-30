@@ -1,9 +1,14 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
+use strict;
+use Socket;
+use POSIX 'setsid';
 # ---------------------------------------------------------------------------
-# Author: J.A.Senger (jorge@br10.com.br)
-# File: ossec2mysqld.pl
-# Version 0.6 (07/2006)
+# Author: Meir Michanie (meirm@riunx.com)
+# Co-Author: J.A.Senger (jorge@br10.com.br)
+# File: ossec2mysql.pl
+# Version 0.7 (09/2006)
 # ---------------------------------------------------------------------------
+# http://www.riunx.com/
 # http://www.jasenger.com/ossec2mysql
 # ---------------------------------------------------------------------------
 #
@@ -22,21 +27,27 @@
 # MySQL Server
 # Perl DBD::mysql module
 # Perl DBI module
-# Perl File::Tail module (only for ossec2mysqld.pl)
 #
 # ---------------------------------------------------------------------------
 # Installation steps
 # ---------------------------------------------------------------------------
-#
-# 1) Run mysql_ossec.sql to MySQL's database and table;
-# 2) Create a user to access the database;
-# 3) Change the variables on session "Parameters":
-#	$par{dir_logs}: The OSSEC alert logs dir. Default is /var/ossec/logs/alerts/
-#	$par{db_host}: Host that runs MySQL database. Default is localhost
-#	$par{db_user}: User to access the database. Default is ossec
-#	$par{db_passwd}: Password to access the database. Default is ossec
-#	$par{db_db}: Database name. Default is ossec
-# If you change the database name, you must edit ossec_mysql.sql with the new db name.
+# 
+# 1) Create new database
+# 2a) Run ossec2mysql.sql to create MySQL tables in your database
+# 2b) Create BASE tables with snort tables extention
+# 3) Create a user to access the database;
+# 4) Copy ossec2mysql.conf to /etc/ossec2mysql.conf with 0600 permissions
+# 3) Edit /etc/ossec2mysql.conf according to your configuration:
+#	dbhost=localhost
+#	database=ossecbase
+#	debug=5
+#	dbport=3306
+#	dbpasswd=mypassword
+#	dbuser=ossecuser
+#	fieldseparator=;
+#	daemonize=0
+#	resolve=1
+#	
 #
 # ---------------------------------------------------------------------------
 # License
@@ -68,247 +79,443 @@
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# Load perl modules and libraries
-# ---------------------------------------------------------------------------
-
-use POSIX qw(setsid);
-use File::Tail;
-use DBI;
-$| = 1;
-&daemonize;
-&today;
-
-# ---------------------------------------------------------------------------
 # Parameters
 # ---------------------------------------------------------------------------
+$SIG{TERM} = sub { &gracefulend('TERM')};
+$SIG{INT} = sub { &gracefulend('INT')};
+my ($RUNASDAEMON)=0;
+my ($DAEMONLOGFILE)='/var/log/ossec2mysql.log';
+my ($DAEMONLOGERRORFILE) = '/var/log/ossec2mysql.err';
+my ($LOGGER)='ossec2mysql';
+use ossecmysql;
 
-$par{dir_logs} = "/var/ossec/logs/alerts/";
-$par{db_host} = "localhost";
-$par{db_user} = "ossec";
-$par{db_passwd} = "ossec";
-$par{db_db} = "ossec";
+my %conf;
+$conf{dbhost}='localhost';
+$conf{database}='snort';
+$conf{debug}=5;
+$conf{dbport}='3306';
+$conf{dbpasswd}='password';
+$conf{dbuser}='user';
+$conf{fieldseparator}=';'; # legacy - not in use
+$conf{daemonize}=0;
+$conf{resolve}=1;
 
+
+my($OCT) = '(?:25[012345]|2[0-4]\d|1?\d\d?)';
+
+my($IP) = $OCT . '\.' . $OCT . '\.' . $OCT . '\.' . $OCT;
+
+my $VERSION="0.3";
+my $sig_class_id=1;
+&help() unless @ARGV;
+my $dump=0;
+my ($hids_id,$hids,$hids_interface,$last_cid)=(undef, 'localhost', 'ossec',0);
+my ($tempvar,$VERBOSE)=(0,0);
 # ---------------------------------------------------------------------------
-# Database connection
+#  Arguments parsing
 # ---------------------------------------------------------------------------
+ 
+while (@ARGV){
+        $_= shift @ARGV;
+	if (m/^-d$|^--daemon$/){
+		$conf{daemonize}=1;
+	}elsif ( m/^-h$|^--help$/){
+                &help();
+	}elsif ( m/^-n$|^--noname$/){
+                $conf{'resolve'}=0;
+	}elsif ( m/^-v$|^--verbose$/){
+                $VERBOSE=1;
+	}elsif ( m/^--interface$/){
+                $hids_interface= shift @ARGV if @ARGV; # ossec-rt/ossec-feed
+        }elsif ( m/^--sensor$/){
+                $hids= shift @ARGV if @ARGV; # monitor
+        }elsif ( m/^--conf$/){
+                $conf{conf}= shift @ARGV if @ARGV; # localhost
+		&loadconf(\%conf);
+        }elsif ( m/^--dbhost$/){
+                $conf{dbhost}= shift @ARGV if @ARGV; # localhost
+        }elsif ( m/^--dbport$/){
+                $conf{dbport}= shift @ARGV if @ARGV; # localhost
+        }elsif ( m/^--dbname$/){
+                $conf{database}= shift @ARGV if @ARGV; # snort
+        }elsif ( m/^--dbuser$/){
+                $conf{dbuser}= shift @ARGV if @ARGV; # root
+        }elsif ( m/^--dbpass$/){
+                $conf{dbpasswd}= shift @ARGV if @ARGV; # monitor
+        }
 
-$dbh = DBI->connect("DBI:mysql:$par{db_db}:$par{db_host}", $par{db_user}, $par{db_passwd});
+}
+if ($conf{dbpasswd}=~ m/^--stdin$/){
+	print "dbpassword:";
+	$conf{dbpasswd}=<>;
+	chomp $conf{dbpasswd};
+}
 
-# ---------------------------------------------------------------------------
-# Writing the log file in database
-# ---------------------------------------------------------------------------
+&daemonize() if $conf{daemonize};
+my $dbi= ossecmysql->new(%conf) || die ("Could not connect to $conf{dbhost}:$conf{dbport}:$conf{database} as $conf{dbpasswd}\n");
+####
+# SQL vars;
+my ($query,$numrows,$row_ref);
+####
+#get sensor id
+$query= 'select sid,last_cid from sensor where hostname=? and interface=?';
+$numrows= $dbi->execute($query,$hids,$hids_interface);
+if (1==$numrows){
+	$row_ref=$dbi->{sth}->fetchrow_hashref;
+	$hids_id=$row_ref->{sid};
+	$last_cid=$row_ref->{last_cid};
+}else{
+	$query="INSERT INTO sensor ( sid , hostname , interface , filter , detail , encoding , last_cid )
+VALUES (
+NULL , ?, ? , NULL , ? , ?, ?
+)";
+	$numrows= $dbi->execute($query,$hids,$hids_interface,1,2,0);
+	$hids_id=$dbi->lastid();
+}
+$dbi->{sth}->finish;
+&forceprintlog ("SENSOR:$hids; feed:$hids_interface; id:$hids_id; last cid:$last_cid");
+#exit ;
 
-$count = 0;
-$par{log_file} = $par{dir_logs}.$today{year}."/".$txt_month."/ossec-alerts-".$today{day}.".log";
-$file=File::Tail->new($par{log_file});
-while (defined($line=$file->read))
-{
-	if ($count == 6)
-	{
-		&month_number;
-		$date = $year."-".$month_number."-".$day." ".$hour;
-		$query = "select * from alerts where code = '$code'";
-		$sth = $dbh->prepare($query);
-		$sth->execute;
-		if (!$sth->rows)
-		{
-			$query = "insert into alerts (code, date, agent, logfile, host, rule, level, description, source, user) values ('$code', '$date', '$agent', '$logfile', '$host', '$rule', '$level', '$description', '$source', '$user')";
-			$dbh->do($query);
+my $newrecord=0;
+my %stats;
+my %resolv;
+my ($timestamp,$sec,$mail,$date,$alerthost,$alerthostip,$datasource,$rule,$level,$description,
+	$srcip,$dstip,$user,$text)=();
+my $lasttimestamp=0;
+my $delta=0;
+########################################################
+my $datepath=`date "+%Y/%b/ossec-alerts-%d.log"`;
+my $LOG='/var/ossec/logs/alerts/'. $datepath;
+chomp $LOG;
+&taillog($last_cid,$LOG);
+###############################################################
+sub forceprintlog(){
+	$tempvar=$VERBOSE;
+	$VERBOSE=1;
+	&printlog (@_);
+	$VERBOSE=$tempvar;
+}
+sub taillog {
+   my ($last_cid,$LOG)=@_;
+   my($offset, $line, $stall) = '';
+
+   $offset = (-s $LOG); # Don't start at beginning, go to end
+
+   while (1==1) {
+       sleep(1);
+	%resolv=();
+       $| = 1;
+       $stall += 1;
+	unless ( -f $LOG){&forceprintlog ("Error -f $LOG"); next; }
+       if ((-s $LOG) < $offset) {
+           &forceprintlog ("Log shrunk, resetting..");
+           $offset = 0;
+       }
+	$datepath=`date "+%Y/%b/ossec-alerts-%d.log"`;
+	$LOG='/var/ossec/logs/alerts/'. $datepath;
+	chomp $LOG;
+
+        unless (open(TAIL, $LOG)){ &forceprintlog ("Error opening $LOG: $!\n");next ;}
+
+        if (seek(TAIL, $offset, 0)) {
+           # found offset, log not rotated
+       } else {
+           # log reset, follow
+           $offset=0;
+           seek(TAIL, $offset, 0);
+       }
+       while (<TAIL>) {
+	if (m/^$/){
+		$newrecord=1;
+		next unless $timestamp;
+		# BYPASS
+		# dstip=srcip
+		#$dstip=$srcip;
+		#
+		$alerthostip=$alerthost if $alerthost=~ m/^$IP$/;
+		if ($alerthostip){
+			$dstip=$alerthostip;
+			$resolv{$alerthost}=$dstip;
+		}else{
+			if (exists $resolv{$alerthost}){
+				$dstip=$resolv{$alerthost};
+			}else{
+				if ($conf{'resolve'}){
+					$dstip=`host $alerthost 2>/dev/null | grep 'has address' `;
+					if ($dstip =~m/(\d+\.\d+\.\d+\.\d+)/ ){
+						$dstip=$1;
+					}else{
+						$dstip=$srcip;
+					}
+				}else{
+					$dstip=$alerthost;
+				}
+				$resolv{$alerthost}=$dstip;
+				
+			}
 		}
-		($count, $code, $year, $month, $day, $hour, $agent, $logfile, $host, $rule, $level, $description, $source, $user, $date, $month_number) = "";
+		$last_cid= &prepair2basedata(
+			$hids_id,
+			$last_cid,
+			$timestamp,
+			$sec,
+			$mail,
+			$date,
+			$alerthost,
+			$datasource,
+			$rule,
+			$level,
+			$description,
+                	$srcip,
+			$dstip,
+			$user,
+			$text
+		);
+		($timestamp,$sec,$mail,$date,$alerthost,$alerthostip,$datasource,$rule,$level,$description,
+		$srcip,$dstip,$user,$text)=();
+		next ;
 	}
-	if (!$count)
-	{
-		if (!$line)
-		{
-			next;
+	if (m/^\*\* Alert ([0-9]+).([0-9]+):(.*)$/){
+		$timestamp=$1;
+		if ( $timestamp == $lasttimestamp){
+			$delta++;
+		}else{
+			$delta=0;
+			$lasttimestamp=$timestamp;
 		}
-		if (grep(/\*\*/, $line))
-		{
-			($trash, $trash, $code) = split(/ /, $line);
-			$code =~ s/[^0-9a-z-_\.]//g;
-			$count = 1;
-			next;
-		}
-	}
-	if ($count == 1)
-	{
-		if (grep(/\(/, $line))
-		{
-			($year, $month, $day, $hour, $agent, $host) = split(/ /, $line);
-			($host, $logfile) = split(/\-/, $host);
-                        $agent =~ s/[^0-9a-z-_\.]//g;
-			$logfile =~ s/\>//g;
-		}
-		else
-		{
-                        ($year, $month, $day, $hour, $logfile) = split(/ /, $line);
-			$host = "localhost";
+		$sec=$2;
+		$mail=$3;
+		$mail=$mail ? $mail : 'nomail';
+#2006 Aug 29 17:19:52 firewall -> /var/log/messages
+#2006 Aug 30 11:52:14 192.168.0.45->/var/log/secure
+#
+	}elsif ( m/^([0-9]+\s\w+\s[0-9]+\s[0-9]+:[0-9]+:[0-9]+)\s+(\S+)\s*->(.*)$/){
+		$date=$1;
+		$alerthost=$2;
+		$datasource=$3;
+#2006 Aug 29 17:33:31 (recepcao) 10.0.3.154 -> syscheck
+	}elsif ( m/^([0-9]+\s\w+\s[0-9]+\s[0-9]+:[0-9]+:[0-9]+)\s+\((.*?)\)\s+(\S+)\s+->(.*)$/){
+		$date=$1;
+		$alerthost=$2;
+		$alerthostip=$3;
+		$datasource=$4;
+	}elsif ( m/^([0-9]+\s\w+\s[0-9]+\s[0-9]+:[0-9]+:[0-9]+)\s(.*?)$/){
+                $date=$1;
+                $alerthost='localhost';
+                $datasource=$2;
+	}elsif ( m/Rule: ([0-9]+) \(level ([0-9]+)\) -> (.*)$/ ){
+		$rule=$1;
+		$level=$2;
+		$description= $3;
+	}elsif ( m/Src IP:/){
+		if ( m/($IP)/){
+                        $srcip=$1;
+                }else{
+                        $srcip='0.0.0.0';
                 }
-		$count = 2;
-		next;
+	}elsif ( m/User: (.*)$/){
+                $user=$1;
+        }elsif( m/(.*)$/){
+		$text .=$1;
 	}
-	if ($count == 2)
-	{
-		($trash, $rule, $trash, $level, $description) = split(/ /, $line);
-		$level =~ s/[^0-9a-z-_\.]//g;
-		$count = 3;
-		next;
+		
+
+       } # End while read line
+       $offset=tell(TAIL);
+       close(TAIL);
+   }
+}
+
+
+sub ossec_aton(){
+        my ($ip)=@_;
+        if ($ip=~ m/(\d+)\.(\d+)\.(\d+)\.(\d+)/){
+                my $num= ($1 * 256 ** 3) + ($2 * 256 ** 2)+ ($3 * 256 ** 1)+ ($4);
+
+                return "$num";
+        }else{
+                return "0";
+        }
+
+}
+
+sub prepair2basedata(){
+	my (
+		$hids_id,
+		$last_cid,
+		$timestamp,
+		$sec,
+		$mail,
+		$date,
+		$alerthost,
+		$datasource,
+		$rule,
+		$level,
+		$description,
+		$srcip,
+		$dstip,
+		$user,
+		$text
+	)=@_;
+	my ($count,$query,$row_ref,$sig_id);
+###
+#
+# Get/Set signature id
+	$query = "SELECT sig_id FROM signature where sig_name=? and sig_class_id=? and sig_priority=? and sig_rev=? and sig_sid=? and sig_gid is NULL";
+	$dbi->execute($query,$description,1,$level,0,$rule);
+	$count=$dbi->{sth}->rows;
+	if ($count){
+		$row_ref=$dbi->{sth}->fetchrow_hashref;
+		$sig_id=$row_ref->{sig_id};
+		&printlog ("REUSING SIGNATURE\n");
+	}else{
+		$query="INSERT INTO signature ( sig_id , sig_name , sig_class_id , sig_priority , sig_rev , sig_sid , sig_gid )
+VALUES (
+NULL ,?, ? , ? , ? , ?, NULL
+)";
+		$dbi->execute($query,$description,1,$level,0,$rule);
+		$sig_id = $dbi->lastid();
 	}
-        if ($count == 3)
-        {
-		($trash, $trash, $source) = split(/ /, $line);                
-                $source =~ s/[^0-9a-z-_\.]//g;
-                $count = 4;
-		next;
+$dbi->{sth}->finish;
+&printlog ("SIGNATURE: $sig_id\n");
+#######
+#
+# Set event
+	$query="INSERT INTO event ( sid , cid , signature , timestamp )
+VALUES (
+? , ? , ? ,? 
+)";
+	$last_cid++;
+	$dbi->execute($query,$hids_id,$last_cid,$sig_id,&fixdate2base($date));
+
+&printlog ("EVENT: ($query,$hids_id,$last_cid,$sig_id,&fixdate2base($date)\n");
+$dbi->{sth}->finish;
+#########
+#
+# Set acid_event
+	$query=" INSERT INTO acid_event ( sid , cid , signature , sig_name , sig_class_id , sig_priority , timestamp , ip_src , ip_dst , ip_proto , layer4_sport , layer4_dport )
+VALUES (
+? , ? , ? , ? , ? , ? , ? , ? , ? , ? , ?, ?
+) ";
+	$dbi->execute($query,$hids_id,$last_cid,$sig_id,$description,1,$level,&fixdate2base($date),&ossec_aton($srcip),&ossec_aton($dstip),undef,undef,undef);
+&printlog ("ACID_EVENT: ($query,$hids_id,$last_cid,$sig_id,$description,1,$level,&fixdate2base($date),&ossec_aton($srcip),&ossec_aton($dstip),undef,undef)\n");
+$dbi->{sth}->finish;
+
+#########
+#
+#
+# Set data
+	$text = "** Alert $timestamp.$sec:\t$mail\n$date $alerthost -> $datasource\nRule: $rule (level $level) -> $description\nSrc IP: ($srcip)\nUser: $user\n$text";
+	$query=" INSERT INTO data ( sid , cid , data_payload ) 
+VALUES (
+?,?,?)";
+	$dbi->execute($query,$hids_id,$last_cid,$text);
+&printlog ("DATA: ($query,$hids_id,$last_cid,$text)\n");
+$dbi->{sth}->finish;
+##########
+#
+	$query="UPDATE sensor SET last_cid=? where sid=? limit 1";
+        $numrows= $dbi->execute($query,$last_cid,$hids_id);
+# end sub
+$dbi->{sth}->finish;
+return $last_cid;
+}
+
+sub fixdate2base(){
+	my ($date)=@_;
+	$date=~ s/ Jan /-01-/;
+	$date=~ s/ Feb /-02-/;
+	$date=~ s/ Mar /-03-/;
+	$date=~ s/ Apr /-04-/;
+	$date=~ s/ May /-05-/;
+	$date=~ s/ Jun /-06-/;
+	$date=~ s/ Jul /-07-/;
+	$date=~ s/ Aug /-08-/;
+	$date=~ s/ Set /-09-/;
+	$date=~ s/ Oct /-10-/;
+	$date=~ s/ Nov /-11-/;
+	$date=~ s/ Dec /-12-/;
+	$date=~ s/\s$//g;
+	return $date;
+}
+sub version(){
+	print "OSSEC report tool $VERSION\n";
+	print "Licensed under GPL\n";
+	print "Contributor Meir Michanie\n";
+}
+
+sub help(){
+	&version();
+	print "This tool helps you import into base the alerts generated by ossec."
+        . " More info in the doc directory .\n";
+        print "Usage:\n";
+        print "$0 [-h|--help] # This text you read now\n";
+	print "Options:\n";
+	print "\t--dbhost <hostname>\n";
+	print "\t--dbname <database>\n";
+	print "\t--dbport <[0-9]+>\n";
+	print "\t--dbpass <dbpasswd>\n";
+	print "\t--dbuser <dbuser>\n";
+	print "\t-d|--daemonize\n";
+	print "\t-n|--noname\n";
+	print "\t-v|--verbose\n";
+	print "\t--conf <ossec2based-config>\n";
+	print "\t--sensor <sensor-name>\n";
+	print "\t--interface <ifname>\n";
+	
+	exit 0;
+}
+
+
+sub daemonize {
+        chdir '/'               or die "Can't chdir to /: $!";
+        open STDIN, '/dev/null' or die "Can't read /dev/null: $!";
+        open STDOUT, ">>$DAEMONLOGFILE"
+                               or die "Can't write to $DAEMONLOGFILE: $!";
+        defined(my $pid = fork) or die "Can't fork: $!";
+        if ($pid){
+                open (PIDFILE , ">/var/run/ossec2base2.pid") ;
+                print PIDFILE "$pid\n";
+                close (PIDFILE);
+                exit 0;
         }
-        if ($count == 4)
-        {
-		($trash, $user) = split(/ /, $line);                
-		$user =~ s/[^0-9a-z-_\.]//g;
-                $count = 5;
-                next;
-        }
-        if ($count == 5)
-        {
-                $description = $line;
-                $count = 6;
-                next;
+        setsid                  or die "Can't start a new session: $!";
+        open STDERR, ">>$DAEMONLOGERRORFILE" or die "Can't write to $DAEMONLOGERRORFILE: $!";
+}
+
+sub gracefulend(){
+        my ($signal)=@_;
+        &forceprintlog ("Terminating upon signal $signal");
+        close TAIL;
+        &forceprintlog ("Daemon halted");
+        close STDOUT;
+	close STDERR;
+        exit 0;
+}
+
+sub printlog(){
+	return  unless $VERBOSE;
+        my (@lines)=@_;
+        foreach my $line(@lines){
+                chomp $line;
+                my ($date)=scalar localtime;
+                $date=~ s/^\S+\s+(\S+.*\s[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}).*$/$1/;
+                print "$date $LOGGER: $line\n";
         }
 }
 
-# ---------------------------------------------------------------------------
-# Disconnect dbh and exit
-# ---------------------------------------------------------------------------
 
-$sth->finish;
-$dbh->disconnect;
-exit;
-
-# ---------------------------------------------------------------------------
-# Libraries
-# ---------------------------------------------------------------------------
-
-sub today
-{
-	($today{second}, $today{minute}, $today{hour}, $today{day}, $today{month}, $today{year}, $trash) = localtime(time);
-	$today{month}++;
-	if ($today{month} == 1)
-	{
-		$txt_month = "Jan";
+sub loadconf(){
+	my ($hash_ref)=@_;
+	my $conf=$hash_ref->{conf};
+	unless (-f $conf) { &printlog ("ERROR: I can't find config file $conf"); exit 1;}
+	unless (open ( CONF , "$conf")){ &printlog ("ERROR: I can't open file $conf");exit 1;}
+	while (<CONF>){
+		next if m/^$|^#/;
+		if ( m/^(\S+)\s?=\s?(.*?)$/) {
+                        $hash_ref->{$1} = $2;
+                }
 	}
-        if ($today{month} == 2)
-        {
-                $txt_month = "Feb";
-        }
-        if ($today{month} == 3)
-        {
-                $txt_month = "Mar";
-        }
-        if ($today{month} == 4)
-        {
-                $txt_month = "Apr";
-        }
-        if ($today{month} == 5)
-        {
-                $txt_month = "May";
-        }
-        if ($today{month} == 6)
-        {
-                $txt_month = "Jun";
-        }
-        if ($today{month} == 7)
-        {
-                $txt_month = "Jul";
-        }
-        if ($today{month} == 8)
-        {
-                $txt_month = "Aug";
-        }
-        if ($today{month} == 9)
-        {
-                $txt_month = "Sep";
-        }
-        if ($today{month} == 10)
-        {
-                $txt_month = "Oct";
-        }
-        if ($today{month} == 11)
-        {
-                $txt_month = "Nov";
-        }
-        if ($today{month} == 12)
-        {
-                $txt_month = "Dec";
-        }
-	$today{day} = sprintf("%02d", $today{day});
-	$today{month} = sprintf("%02d", $today{month});
-	$today{year} = sprintf("%04d", $today{year} + 1900);
-	$today{hour} = sprintf("%02d", $today{hour});
-	$today{minute} = sprintf("%02d", $today{minute});
-	$today{second} = sprintf("%02d", $today{second});
+	close CONF;
 }
 
-sub daemonize
-{
-	chdir '/' or die "Can't chdir to /: $!";
-	open STDIN, '/dev/null' or die "Can't read /dev/null: $!";
-	open STDOUT, '>>/dev/null' or die "Can't write to /dev/null: $!";
-	open STDERR, '>>/dev/null' or die "Can't write to /dev/null: $!";
-	defined(my $pid = fork) or die "Can't fork: $!";
-	exit if $pid;
-	setsid or die "Can't start a new session: $!";
-	umask 0;
-}
-
-sub month_number
-{
-	if ($txt_month eq "Jan")
-	{
-		$month_number = 1;
-	}
-        if ($txt_month eq "Feb")
-        {
-                $month_number = 2;
-        }
-        if ($txt_month eq "Mar")
-        {
-                $month_number = 3;
-        }
-        if ($txt_month eq "Apr")
-        {
-                $month_number = 4;
-        }
-        if ($txt_month eq "May")
-        {
-                $month_number = 5;
-        }
-        if ($txt_month eq "Jun")
-        {
-                $month_number = 6;
-        }
-        if ($txt_month eq "Jul")
-        {
-                $month_number = 7;
-        }
-        if ($txt_month eq "Aug")
-        {
-                $month_number = 8;
-        }
-        if ($txt_month eq "Sep")
-        {
-                $month_number = 9;
-        }
-        if ($txt_month eq "Oct")
-        {
-                $month_number = 10;
-        }
-        if ($txt_month eq "Nov")
-        {
-                $month_number = 11;
-        }
-        if ($txt_month eq "Dec")
-        {
-                $month_number = 12;
-        }
-}
