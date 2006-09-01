@@ -257,6 +257,7 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
     char *xml_directories = "directories";
     char *xml_time = "frequency";
     char *xml_ignore = "ignore";
+    char *xml_auto_ignore = "auto_ignore";
 
     /* Configuration example 
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -333,6 +334,10 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
                 syscheck->ignore[ign_size +1] = NULL;
             }
             os_strdup(node[i]->content,syscheck->ignore[ign_size]);
+        }
+        else if(strcmp(node[i]->element,xml_auto_ignore) == 0)
+        {
+            /* auto_ignore is not read here. */
         }
         else
         {

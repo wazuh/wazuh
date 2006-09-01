@@ -246,7 +246,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             {
                 if(p >= 2)
                 {
-                    if(p >= 3)
+                    if((p >= 3) && Config.syscheck_auto_ignore)
                     {
                         /* Ignoring it.. */
                         return;
@@ -254,8 +254,10 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                     
                     /* Third change */
                     snprintf(_db_comment,512,"Integrity checksum of file '%s'"
-                             " has changed again (third time). Ignoring it.",
-                             f_name);
+                             " has changed again (third time or more).%s",
+                             f_name, 
+                             Config.syscheck_auto_ignore == 1?
+                             "Ignoring it.":"");
                 }
                 else
                 {

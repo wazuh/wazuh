@@ -380,6 +380,17 @@ bin/host.ph1            ! PHALANX rootkit ::
 */phalanx               ! PHALANX rootkit ::
 
 
+# ZK rootkit (http://honeyblog.org/junkyard/reports/redhat-compromise2.pdf)
+# and from chkrootkit
+usr/share/.zk                   ! ZK rootkit ::
+usr/share/.zk/zk                ! ZK rootkit ::
+etc/sysconfig/console/load.zk   ! ZK rootkit ::
+etc/1ssue.net                   ! ZK rootkit ::
+usr/X11R6/.zk                   ! ZK rootkit ::
+usr/X11R6/.zk/xfs               ! ZK rootkit ::
+usr/X11R6/.zk/echo              ! ZK rootkit ::
+
+
 # Public sniffers
 */.linux-sniff          ! Sniffer log ::
 */sniff-l0g             ! Sniffer log ::
@@ -441,3 +452,6 @@ usr/bin/gib                 ! Suspicious file ::rootkits/Suspicious.php
 usr/bin/snick               ! Suspicious file ::rootkits/Suspicious.php
 usr/bin/kfl                 ! Suspicious file ::rootkits/Suspicious.php
 */.log                      ! Suspicious file ::rootkits/Suspicious.php
+*/ecmf                      ! Suspicious file ::rootkits/Suspicious.php
+*/mirkforce                 ! Suspicious file ::rootkits/Suspicious.php
+*/mfclean                   ! Suspicious file ::rootkits/Suspicious.php

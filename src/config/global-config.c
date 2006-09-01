@@ -39,6 +39,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, void *mailp)
     int i = 0;
     int ign_size = 1;
     char *xml_ignore = "ignore";
+    char *xml_auto_ignore = "auto_ignore";
 
     _Config *Config;
 
@@ -74,6 +75,22 @@ int Read_GlobalSK(XML_NODE node, void *configp, void *mailp)
         {
             merror(XML_VALUENULL, ARGV0, node[i]->element);
             return(OS_INVALID);
+        }
+        else if(strcmp(node[i]->element,xml_auto_ignore) == 0)
+        {
+            if(strcmp(node[i]->content, "yes") == 0)
+            {
+                Config->syscheck_auto_ignore = 1;
+            }
+            else if(strcmp(node[i]->content, "no") == 0)
+            {
+                Config->syscheck_auto_ignore = 0;
+            }
+            else
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
         }
         else if(strcmp(node[i]->element,xml_ignore) == 0)
         {
