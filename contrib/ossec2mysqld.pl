@@ -206,14 +206,14 @@ sub taillog {
 	%resolv=();
        $| = 1;
        $stall += 1;
+	$datepath=`date "+%Y/%b/ossec-alerts-%d.log"`;
+	$LOG='/var/ossec/logs/alerts/'. $datepath;
+	chomp $LOG;
 	unless ( -f $LOG){&forceprintlog ("Error -f $LOG"); next; }
        if ((-s $LOG) < $offset) {
            &forceprintlog ("Log shrunk, resetting..");
            $offset = 0;
        }
-	$datepath=`date "+%Y/%b/ossec-alerts-%d.log"`;
-	$LOG='/var/ossec/logs/alerts/'. $datepath;
-	chomp $LOG;
 
         unless (open(TAIL, $LOG)){ &forceprintlog ("Error opening $LOG: $!\n");next ;}
 
