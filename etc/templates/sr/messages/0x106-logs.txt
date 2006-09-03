@@ -1,0 +1,9 @@
+ - Ako želiš da nadgledaš neki drugi fajl, samo promeni 
+   ossec.conf i dodaj novi localfile ulaz.
+   Sva pitanja vezana za konfiguraciju mogu biti odgovorena 
+   ako nas posetiš online na http://www.ossec.net .
+ 
+
+  --- Pritisni ENTER da nastaviš ---
+   
+                            

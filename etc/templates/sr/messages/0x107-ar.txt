@@ -1,0 +1,7 @@
+  3.4- Aktivna reakcija ti omogućava da izvedeš specifičnu
+       komandu na bazi primljenih događaja. Na primer,
+       možeš da blokiraš IP adresu ili onemogućiš pristup
+       određenom korisniku.
+       Više obaveštenja na:
+       http://www.ossec.net/en/manual.html#active-response
+       
