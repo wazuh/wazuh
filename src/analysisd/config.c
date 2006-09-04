@@ -44,6 +44,8 @@ int GlobalConf(char * cfgfile)
     Config.memorysize = 1024;
     Config.mailnotify = -1;
     Config.keeplogdate = 0;
+    Config.syscheck_alert_new = 0;
+    Config.syscheck_auto_ignore = 1;
     Config.ar = 0;
 
     Config.syscheck_ignore = NULL;

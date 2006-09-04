@@ -40,6 +40,10 @@
 /* Agent startup ack */
 #define HC_ACK              "agent ack "
 
+/* Syscheck database completed */
+#define HC_SK_DB_COMPLETED  "syscheck-db-completed"
+
+
 #endif
 
 /* EOF */

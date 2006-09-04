@@ -33,7 +33,6 @@ char _hi_buf[OS_MAXSTR +1];
 FILE *_hi_fp = NULL;
 
 
-extern int mailq;
 int hi_err;
 
 /* Hostinformation rule */

@@ -23,6 +23,7 @@ typedef struct __Config
     u_int8_t stats;
     u_int8_t integrity;
     u_int8_t syscheck_auto_ignore;
+    u_int8_t syscheck_alert_new;
     u_int8_t rootcheck;
     u_int8_t hostinfo;
     u_int8_t mailbylevel;

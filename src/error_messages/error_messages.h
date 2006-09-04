@@ -101,6 +101,7 @@
 #define SK_INV_OPT      "%s(1704): Invalid option '%s' for attribute '%s'"
 #define SK_NO_DB        "%s(1705): No integrity database found at '%s'."
 #define SK_CREATE_DB    "%s(1750): Creating new database for integrity check"
+#define SK_INV_MSG      "%s(1755): Invalid syscheck message received."
 
 
 /* Analysisd */

@@ -20,31 +20,38 @@
 
 #define SYSCHECK_DIR    "/queue/syscheck"
 
-/** Global variables **/
-char _db_buf[1024 +1];
-char _db_comment[512 +1];
-char _db_comment2[512 +1];
 
-char _tmp_size[197 +1];
-char _tmp_perm[197 +1];
-char _tmp_owner[197 +1];
-char _tmp_gowner[197 +1];
-char _tmp_md5[197 +1];
-char _tmp_sha1[197 +1];
+typedef struct __sdb
+{
+    char buf[OS_MAXSTR + 1];
+    char comment[OS_MAXSTR +1];
+    char comment2[OS_MAXSTR +1];
+
+    char size[OS_FLSIZE +1];
+    char perm[OS_FLSIZE +1];
+    char owner[OS_FLSIZE +1];
+    char gowner[OS_FLSIZE +1];
+    char md5[OS_FLSIZE +1];
+    char sha1[OS_FLSIZE +1];
+
+    char agent_cp[MAX_AGENTS +1][1];
+    char *agent_ips[MAX_AGENTS +1];
+    FILE *agent_fps[MAX_AGENTS +1];
+
+    int db_err;
+
+    /* Syscheck rule */
+    RuleInfo *syscheck_rule;
 
 
-char *agent_ips[MAX_AGENTS +1];
-FILE *agent_fps[MAX_AGENTS +1];
-
-extern int mailq;
-int db_err;
-
-/* Syscheck rule */
-RuleInfo *syscheck_rule;
+    /* File search variables */
+    fpos_t init_pos;
+    
+}_sdb; /* syscheck db information */
 
 
-/* File search variables */
-fpos_t __initi_pos;
+/* Global variable */
+_sdb sdb;
 
 
 
@@ -55,36 +62,106 @@ void SyscheckInit()
 {
     int i = 0;
 
-    db_err = 0;
+    sdb.db_err = 0;
     
     for(;i <= MAX_AGENTS;i++)
     {
-        agent_ips[i] = NULL;
-        agent_fps[i] = NULL;
+        sdb.agent_ips[i] = NULL;
+        sdb.agent_fps[i] = NULL;
+        sdb.agent_cp[i][0] = '0';
     }
 
-    memset(_db_buf, '\0', 1025);
-    memset(_db_comment, '\0', 513);
-    memset(_db_comment2, '\0', 513);
+    /* Clearing db memory */
+    memset(sdb.buf, '\0', OS_MAXSTR +1);
+    memset(sdb.comment, '\0', OS_MAXSTR +1);
+    memset(sdb.comment2, '\0', OS_MAXSTR +1);
     
-    memset(_tmp_size, '\0', 198);
-    memset(_tmp_perm, '\0', 198);
-    memset(_tmp_owner, '\0', 198);
-    memset(_tmp_gowner, '\0', 198);
-    memset(_tmp_md5, '\0', 198);
-    memset(_tmp_sha1, '\0', 198);
+    memset(sdb.size, '\0', OS_FLSIZE +1);
+    memset(sdb.perm, '\0', OS_FLSIZE +1);
+    memset(sdb.owner, '\0', OS_FLSIZE +1);
+    memset(sdb.gowner, '\0', OS_FLSIZE +1);
+    memset(sdb.md5, '\0', OS_FLSIZE +1);
+    memset(sdb.sha1, '\0', OS_FLSIZE +1);
 
-    syscheck_rule = zerorulemember(
+
+    /* Zeroring syscheck rule */
+    sdb.syscheck_rule = zerorulemember(
                         SYSCHECK_PLUGIN,
                         Config.integrity,
                         0,0,0,0,0);
 
-    if(!syscheck_rule)
+    if(!sdb.syscheck_rule)
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
 
+
+    debug1("%s: SyscheckInit completed.", ARGV0);
     return;
+}
+
+/* DB_IsCompleted
+ * Checks if the db is completed for that specific agent.
+ */
+#define DB_IsCompleted(x) (sdb.agent_cp[x][0] == '1')?1:0
+
+
+void __setcompleted(char *agent)
+{
+    FILE *fp;
+    
+    /* Getting agent file */
+    snprintf(sdb.buf, OS_MAXSTR , "%s/.%s.cpt", SYSCHECK_DIR, agent);
+
+    fp = fopen(sdb.buf,"w");
+    if(fp)
+    {
+        fprintf(fp, "#!X");
+        fclose(fp);
+    }
+}
+
+
+int __iscompleted(char *agent)
+{
+    FILE *fp;
+
+    /* Getting agent file */
+    snprintf(sdb.buf, OS_MAXSTR , "%s/.%s.cpt", SYSCHECK_DIR, agent);
+
+    fp = fopen(sdb.buf,"r");
+    if(fp)
+    {
+        fclose(fp);
+        return(1);
+    }
+    return(0);
+}
+
+
+/* void DB_SetCompleted(Eventinfo *lf).
+ * Set the database of a specific agent as completed.
+ */
+void DB_SetCompleted(Eventinfo *lf)
+{
+    int i = 0;
+
+    /* Finding file pointer */
+    while(sdb.agent_ips[i] != NULL)
+    {
+        if(strcmp(sdb.agent_ips[i], lf->location) == 0)
+        {
+            /* Return if already set as completed. */
+            if(DB_IsCompleted(i))
+            {
+                return;
+            }
+            
+            __setcompleted(lf->location);
+        }
+
+        i++;
+    }
 }
 
 
@@ -95,63 +172,64 @@ FILE *DB_File(char *agent, int *agent_id)
 {
     int i = 0;
 
-    while(agent_ips[i] != NULL)
+    /* Finding file pointer */
+    while(sdb.agent_ips[i] != NULL)
     {
-        if(strcmp(agent_ips[i], agent) == 0)
+        if(strcmp(sdb.agent_ips[i], agent) == 0)
         {
             /* pointing to the beginning of the file */
-            fseek(agent_fps[i],0, SEEK_SET);
+            fseek(sdb.agent_fps[i],0, SEEK_SET);
             *agent_id = i;
-            return(agent_fps[i]);
+            return(sdb.agent_fps[i]);
         }
         
         i++;    
     }
 
     /* If here, our agent wasn't found */
-    agent_ips[i] = strdup(agent);
+    os_strdup(agent, sdb.agent_ips[i]);
 
-    if(agent_ips[i] != NULL)
+
+    /* Getting agent file */
+    snprintf(sdb.buf, OS_MAXSTR , "%s/%s", SYSCHECK_DIR,agent);
+    
+        
+    /* r+ to read and write. Do not truncate */
+    sdb.agent_fps[i] = fopen(sdb.buf,"r+");
+    if(!sdb.agent_fps[i])
     {
-        snprintf(_db_buf,1024,"%s/%s",SYSCHECK_DIR,agent);
-        
-        /* r+ to read and write. Do not truncate */
-        agent_fps[i] = fopen(_db_buf,"r+");
-        if(!agent_fps[i])
+        /* try opening with a w flag, file probably does not exist */
+        sdb.agent_fps[i] = fopen(sdb.buf, "w");
+        if(sdb.agent_fps[i])
         {
-            /* try opening with a w flag, file probably does not exist */
-            agent_fps[i] = fopen(_db_buf, "w");
-            if(agent_fps[i])
-            {
-                fclose(agent_fps[i]);
-                agent_fps[i] = fopen(_db_buf, "r+");
-            }
+            fclose(sdb.agent_fps[i]);
+            sdb.agent_fps[i] = fopen(sdb.buf, "r+");
         }
-        
-        if(!agent_fps[i])
-        {
-            merror("%s: Unable to open '%s'",ARGV0,_db_buf);
-            
-            free(agent_ips[i]);
-            agent_ips[i] = NULL;
-
-            return(NULL);
-        }
-
-        /* Returning the opened pointer (the beginning of it) */
-        fseek(agent_fps[i],0, SEEK_SET);
-        *agent_id = i;
-        
-        return(agent_fps[i]);
     }
-
-    else
+        
+    /* Checking again */    
+    if(!sdb.agent_fps[i])
     {
-        merror(MEM_ERROR,ARGV0);
+        merror("%s: Unable to open '%s'",ARGV0, sdb.buf);
+
+        free(sdb.agent_ips[i]);
+        sdb.agent_ips[i] = NULL;
         return(NULL);
     }
 
-    return(NULL);
+
+    /* Returning the opened pointer (the beginning of it) */
+    fseek(sdb.agent_fps[i],0, SEEK_SET);
+    *agent_id = i;
+    
+    
+    /* Getting if the agent was completed */
+    if(__iscompleted(agent))
+    {
+        sdb.agent_cp[i][0] = '1';    
+    }
+
+    return(sdb.agent_fps[i]);
 }
 
 
@@ -163,16 +241,19 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     int p = 0;
     int sn_size;
     int agent_id;
+    
     char *saved_sum;
     char *saved_name;
+    
     FILE *fp;
 
+
+    /* Getting db pointer */
     fp = DB_File(lf->location, &agent_id);
-    
     if(!fp)
     {
         merror("%s: Error handling integrity database",ARGV0);
-        db_err++; /* Increment db error */
+        sdb.db_err++; /* Increment db error */
         return;
     }
 
@@ -180,30 +261,32 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     /* Reads the integrity file and search for a possible
      * entry
      */
-    if(fgetpos(fp, &__initi_pos) == -1)
+    if(fgetpos(fp, &sdb.init_pos) == -1)
     {
-        merror("%s: Error handling integrity database (fgetpos)",ARGV0);
+        merror("%s: Error handling integrity database (fgetpos).",ARGV0);
         return;
     }
     
-    while(fgets(_db_buf, 1024, fp) != NULL)
+    
+    while(fgets(sdb.buf, OS_MAXSTR, fp) != NULL)
     {
         /* Ignore blank lines and lines with a comment */
-        if(_db_buf[0] == '\n' || _db_buf[0] == '#')
+        if(sdb.buf[0] == '\n' || sdb.buf[0] == '#')
         {
-            fgetpos(fp, &__initi_pos); /* getting next location */
+            fgetpos(fp, &sdb.init_pos); /* getting next location */
             continue;
         }
             
-        saved_name = strchr(_db_buf,' ');
+            
+        saved_name = strchr(sdb.buf,' ');
         if(saved_name == NULL)
         {
             merror("%s: Invalid integrity message in the database",ARGV0);
-            fgetpos(fp, &__initi_pos); /* getting next location */
+            fgetpos(fp, &sdb.init_pos); /* getting next location */
             continue;
         }
-
         saved_name++;
+        
 
         /* Removing the \n from saved_name */
         sn_size = strlen(saved_name);
@@ -217,14 +300,17 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             saved_name--;
             *saved_name = '\0';
 
-            saved_sum = _db_buf;
+            saved_sum = sdb.buf;
+
 
             /* First three bytes are for frequency check */
             saved_sum+=3;
 
+
             /* checksum match, we can just return and keep going */
             if(strcmp(saved_sum,c_sum) == 0)
                 return;
+
 
             /* If we reached here, the checksum of the file has changed */
             if(saved_sum[-3] == '!')
@@ -253,7 +339,8 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                     }
                     
                     /* Third change */
-                    snprintf(_db_comment,512,"Integrity checksum of file '%s'"
+                    snprintf(sdb.comment,OS_MAXSTR,
+                                        "Integrity checksum of file '%s'"
                              " has changed again (third time or more).%s",
                              f_name, 
                              Config.syscheck_auto_ignore == 1?
@@ -262,23 +349,25 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 else
                 {
                     /* Second change */
-                    snprintf(_db_comment,512,"Integrity checksum of file '%s'"
-                                             " has changed again (2nd time)",
-                                             f_name);   
+                    snprintf(sdb.comment,OS_MAXSTR,
+                                        "Integrity checksum of file '%s'"
+                                        " has changed again (2nd time)",
+                                        f_name);   
                 }
             }
            
             /* First change */ 
             else
             {
-                snprintf(_db_comment,512,"Integrity checksum of file '%s' "
-                        "has changed.",f_name);
+                snprintf(sdb.comment,OS_MAXSTR,
+                                    "Integrity checksum of file '%s' "
+                                    "has changed.",f_name);
             }
       
       
             /* Adding new checksum to the database */
             /* Commenting the file entry and adding a new one latter */
-            fsetpos(fp, &__initi_pos);
+            fsetpos(fp, &sdb.init_pos);
             fputc('#',fp);
 
             
@@ -291,10 +380,11 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         c_sum,
                         f_name);
            
+           
             /* File deleted */
             if(c_sum[0] == '-' && c_sum[1] == '1')
             {
-                snprintf(_db_comment2, 512,
+                snprintf(sdb.comment2, OS_MAXSTR,
                             "File '%s' was deleted. Unable to retrieve "
                             "checksum.", f_name);
             }
@@ -389,22 +479,23 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 /* Generating size message */
                 if(!oldsize || !newsize || strcmp(oldsize, newsize) == 0)
                 {
-                    _tmp_size[0] = '\0';
+                    sdb.size[0] = '\0';
                 }
                 else
                 {
-                    snprintf(_tmp_size, 128,"Size changed from '%s' to '%s'\n",
-                                            oldsize, newsize);
+                    snprintf(sdb.size, OS_FLSIZE,
+                                       "Size changed from '%s' to '%s'\n",
+                                       oldsize, newsize);
                 }
                 
                 /* Permission message */
                 if(oldperm == newperm)
                 {
-                    _tmp_perm[0] = '\0';
+                    sdb.perm[0] = '\0';
                 }
                 else if(oldperm > 0 && newperm > 0)
                 {
-                    snprintf(_tmp_perm, 196, "Permissions changed from "
+                    snprintf(sdb.perm, OS_FLSIZE, "Permissions changed from "
                             "'%c%c%c%c%c%c%c%c%c' "
                             "to '%c%c%c%c%c%c%c%c%c'\n",
                             (oldperm & S_IRUSR)? 'r' : '-',
@@ -431,11 +522,11 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 /* Ownership message */
                 if(!newuid || !olduid || strcmp(newuid, olduid) == 0)
                 {
-                    _tmp_owner[0] = '\0';
+                    sdb.owner[0] = '\0';
                 }
                 else
                 {
-                    snprintf(_tmp_owner, 128, "Ownership was '%s', "
+                    snprintf(sdb.owner, OS_FLSIZE, "Ownership was '%s', "
                                               "now it is '%s'\n",
                                               olduid, newuid);
                 }    
@@ -443,11 +534,11 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 /* group ownership message */
                 if(!newgid || !oldgid || strcmp(newgid, oldgid) == 0)
                 {
-                    _tmp_gowner[0] = '\0';
+                    sdb.gowner[0] = '\0';
                 }
                 else
                 {
-                    snprintf(_tmp_gowner, 128, "Group ownership was '%s', "
+                    snprintf(sdb.gowner, OS_FLSIZE,"Group ownership was '%s', "
                                                "now it is '%s'\n",
                                                oldgid, newgid);
                 }
@@ -455,11 +546,11 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 /* md5 message */
                 if(!newmd5 || !oldmd5 || strcmp(newmd5, oldmd5) == 0)
                 {
-                    _tmp_md5[0] = '\0';
+                    sdb.md5[0] = '\0';
                 }
                 else
                 {
-                    snprintf(_tmp_md5, 195, "Old md5sum was: '%s'\n"
+                    snprintf(sdb.md5, OS_FLSIZE, "Old md5sum was: '%s'\n"
                                             "New md5sum is : '%s'\n",
                                             oldmd5, newmd5);
                 }
@@ -467,18 +558,18 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 /* sha1 */
                 if(!newsha1 || !oldsha1 || strcmp(newsha1, oldsha1) == 0)
                 {
-                    _tmp_sha1[0] = '\0';
+                    sdb.sha1[0] = '\0';
                 }
                 else
                 {
-                    snprintf(_tmp_sha1, 195, "Old sha1sum was: '%s'\n"
+                    snprintf(sdb.sha1, OS_FLSIZE, "Old sha1sum was: '%s'\n"
                                              "New sha1sum is : '%s'\n",
                                              oldsha1, newsha1);
                 }
                                                                                                                                                         
                 
                 /* Provide information about the file */    
-                snprintf(_db_comment2,512,"Integrity checksum changed for: "
+                snprintf(sdb.comment2,512,"Integrity checksum changed for: "
                         "'%s'\n"
                         "%s"
                         "%s"
@@ -487,20 +578,22 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         "%s"
                         "%s",
                         f_name, 
-                        _tmp_size,
-                        _tmp_perm,
-                        _tmp_owner,
-                        _tmp_gowner,
-                        _tmp_md5,
-                        _tmp_sha1);
+                        sdb.size,
+                        sdb.perm,
+                        sdb.owner,
+                        sdb.gowner,
+                        sdb.md5,
+                        sdb.sha1);
             }
             
-            lf->generated_rule = syscheck_rule;
-            syscheck_rule->comment = _db_comment;
+            
+            lf->generated_rule = sdb.syscheck_rule;
+            sdb.syscheck_rule->comment = sdb.comment;
+
 
             /* Creating a new log message */
             free(lf->log);
-            os_strdup(_db_comment2, lf->log);
+            os_strdup(sdb.comment2, lf->log);
            
             OS_Log(lf);
 
@@ -510,21 +603,47 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             return; 
         }
                        
-        fgetpos(fp, &__initi_pos); /* getting next location */
+        fgetpos(fp, &sdb.init_pos); /* getting next location */
         
     } /* continuiing... */
+
 
     /* If we reach here, this file is not present on our database */
     fseek(fp, 0, SEEK_END);
     
     fprintf(fp,"+++%s %s\n",c_sum,f_name);
 
+
+    /* Alert if configured to notify on new files */
+    if((Config.syscheck_alert_new == 1) && (DB_IsCompleted(agent_id)))
+    {
+        lf->generated_rule = sdb.syscheck_rule;
+        sdb.syscheck_rule->comment = sdb.comment;
+
+
+        /* New file message */
+        snprintf(sdb.comment2,OS_MAXSTR,
+                              "New file '%s' added to directory. Checksum: %s."
+                              ,f_name,c_sum);
+        
+
+        /* Creating a new log message */
+        free(lf->log);
+        os_strdup(sdb.comment2, lf->log);
+
+        OS_Log(lf);
+
+        /* Removing pointer to rule */
+        lf->generated_rule = NULL;
+
+    }
+
     return;
 }
 
 
 /* Special decoder for syscheck
- * Not using the default rendering tools for simplicity
+ * Not using the default decoding lib for simplicity
  * and to be less resource intensive
  */
 void DecodeSyscheck(Eventinfo *lf)
@@ -532,24 +651,40 @@ void DecodeSyscheck(Eventinfo *lf)
     char *c_sum;
     char *f_name;
    
+   
+    /* Setting lf type */
     lf->type = SYSCHECK; 
    
 
     /* checking if we need to check it in here */
-    if(!(syscheck_rule->alert_opts & DO_LOGALERT))
+    if(!(sdb.syscheck_rule->alert_opts & DO_LOGALERT))
         return;
         
-         
-    f_name = strchr(lf->log,' ');
+        
+    /* Every syscheck message must be in the following format:
+     * checksum filename     
+     */
+    f_name = strchr(lf->log, ' ');
     if(f_name == NULL)
     {
-        merror("%s: Invalid integrity message received",ARGV0);
+        /* If we don't have a valid syscheck message, it may be
+         * a database completed message.
+         */
+        if(strcmp(lf->log, HC_SK_DB_COMPLETED) == 0)
+        {
+            DB_SetCompleted(lf);
+            return;    
+        }
+         
+        merror(SK_INV_MSG, ARGV0);
         return;
     }
     
-    /* Zeroing to check the check sum */
+    
+    /* Zeroing to get the check sum */
     *f_name = '\0';
     f_name++;
+
 
     /* Checking if file is supposed to be ignored */
     if(Config.syscheck_ignore)
@@ -567,8 +702,12 @@ void DecodeSyscheck(Eventinfo *lf)
         }
     }
     
+    
+    /* Checksum is at the beginning of the log */
     c_sum = lf->log;
     
+    
+    /* Searching for file changes */
     DB_Search(f_name,c_sum,lf);
    
     return;

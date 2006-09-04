@@ -28,7 +28,6 @@ char _rk_buf[1025];
 char *rk_agent_ips[MAX_AGENTS];
 FILE *rk_agent_fps[MAX_AGENTS];
 
-extern int mailq;
 int rk_err;
 
 /* Rootcheck rule */

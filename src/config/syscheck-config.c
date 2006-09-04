@@ -258,6 +258,7 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
     char *xml_time = "frequency";
     char *xml_ignore = "ignore";
     char *xml_auto_ignore = "auto_ignore";
+    char *xml_alert_new_files = "alert_new_files";
 
     /* Configuration example 
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -338,6 +339,10 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element,xml_auto_ignore) == 0)
         {
             /* auto_ignore is not read here. */
+        }
+        else if(strcmp(node[i]->element,xml_alert_new_files) == 0)
+        {
+            /* alert_new_files option is not read here. */
         }
         else
         {
