@@ -102,10 +102,13 @@ int rootcheck_init(int test_config)
 #ifndef OSSECHIDS
     rootcheck.notify = SYSLOG;
     rootcheck.daemon = 0;
-    while((c = getopt(argc, argv, "strdhD:c:")) != -1)
+    while((c = getopt(argc, argv, "VstrdhD:c:")) != -1)
     {
         switch(c)
         {
+            case 'V':
+                print_version();
+                break;
             case 'h':
                 rootcheck_help();
                 break;

@@ -42,8 +42,11 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
         
 
-    while((c = getopt(argc, argv, "dhtu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vdhtu:g:D:c:")) != -1){
         switch(c){
+            case 'V':
+                print_version();
+                break;
             case 'h':
                 help();
                 break;

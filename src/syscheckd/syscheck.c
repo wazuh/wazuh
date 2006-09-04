@@ -111,10 +111,13 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
         
     
-    while((c = getopt(argc, argv, "tSsdhD:c:")) != -1)
+    while((c = getopt(argc, argv, "VtSsdhD:c:")) != -1)
     {
         switch(c)
         {
+            case 'V':
+                print_version();
+                break;
             case 's':
                 init = 1;
                 break;

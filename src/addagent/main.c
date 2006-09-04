@@ -111,6 +111,9 @@ int main(int argc, char **argv)
             case 'Q':
                 printf(EXIT);
                 exit(0);    
+	    case 'V':
+		print_version();   
+		break;
             default:    
                 printf("\n ** Invalid Action ** \n\n");
                 break;            

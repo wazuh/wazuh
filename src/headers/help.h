@@ -16,5 +16,6 @@
 
 #define __HELP_H
 void help();
+void print_version();
 
 #endif

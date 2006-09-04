@@ -33,6 +33,7 @@ void help()
     {
         print_out("");
         print_out("  %s: -[thd] [-u user] [-g group] [-c config]",daemons[i]);
+        print_out("    -V          Version and license message");
         print_out("    -h          This help message");
         print_out("    -d          Execute in debug mode");
         print_out("    -t          Test configuration");
@@ -42,6 +43,15 @@ void help()
         i++;
     }
     print_out("");
+    exit(1);
+}
+
+void print_version()
+{
+    print_out("");
+    print_out("%s %s - %s", __name, __version, __author);
+    print_out("");
+    print_out("%s",__license);
     exit(1);
 }
 

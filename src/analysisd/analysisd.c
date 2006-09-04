@@ -126,8 +126,11 @@ int main(int argc, char **argv)
     memset(prev_month, '\0', 4);
     hourly_alerts = 0;
 
-    while((c = getopt(argc, argv, "tdhu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vtdhu:g:D:c:")) != -1){
         switch(c){
+	    case 'V':
+		print_version();
+		break;
             case 'h':
                 help();
                 break;
