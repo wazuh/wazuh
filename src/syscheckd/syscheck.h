@@ -1,6 +1,6 @@
-/*   $OSSEC, syscheck.h, v0.1, 2005/07/29, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -15,19 +15,38 @@
 #define __SYSCHECK_H
 
 #include "config/syscheck-config.h"
+#define MAX_LINE PATH_MAX+256
 
+/* Global config */
 config syscheck;
 
-/** Prototypes **/
+
+/** Function Prototypes **/
 
 /* run_check: checks the integrity of the files against the
  * saved database
  */
 void run_check();
 
+
 /* start_daemon: Runs run_check periodically.
  */
 void start_daemon();
+
+
+/* Read the XML config */
+int Read_Syscheck_Config(char * cfgfile);
+
+
+/* create the database */
+int create_db();
+
+
+/* int check_db()
+ * Checks database for new files.
+ */
+int check_db();
+  
 
 #endif
 

@@ -1,6 +1,6 @@
-/*   $OSSEC, create_db.c, v0.3, 2005/10/05, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005,2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -9,34 +9,69 @@
  * Foundation
  */
 
-/* v0.3 (2005/10/05): Adding st_mode, owner uid and group owner.
- * v0.2 (2005/08/22): Removing st_ctime, bug 1104
- * v0.1 (2005/07/15)
- */
- 
-#include <stdio.h>       
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-
-#include <sys/param.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <errno.h>
-#include <limits.h>
-
+#include "shared.h"
+#include "syscheck.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 
-#include "headers/debug_op.h"
+/* flags for read_dir and read_file */
+#define CREATE_DB   1
+#define CHECK_DB    2    
+int __counter = 0;
 
-#include "syscheck.h"
 
 /** Prototypes **/
-int read_dir(char *dir_name, int opts);
+int read_dir(char *dir_name, int opts, int flag);
 
-int read_file(char *file_name, int opts)
+/* int check_file(char *file_name)
+ * Checks if the file is already in the database.
+ */
+int check_file(char *file_name)
+{
+    char buf[MAX_LINE +2];
+    buf[MAX_LINE +1] = '\0';
+    
+    while(fgets(buf, MAX_LINE, syscheck.fp) != NULL)
+    {
+        if((buf[0] != '#') && (buf[0] != ' ') && (buf[0] != '\n'))
+        {
+            char *n_buf;
+
+            /* Removing the new line */
+            n_buf = strchr(buf,'\n');
+            if(n_buf == NULL)
+                continue;
+
+            *n_buf = '\0';
+
+
+            /* First 6 characters are for internal use */
+            n_buf = buf;
+            n_buf+=6;
+
+            n_buf = strchr(n_buf, ' ');
+            if(n_buf)
+            {
+                n_buf++;
+
+                /* Checking if name matches */
+                if(strcmp(n_buf, file_name) == 0)
+                    return(1);
+            }
+        }
+    }
+
+    /* New file */
+    debug2("%s: DEBUG: new file '%s'.", ARGV0, file_name);
+    return(0);
+}
+
+
+
+/* int read_file(char *file_name, int opts, int flag)
+ * Reads and generates the integrity data of a file.
+ */
+int read_file(char *file_name, int opts, int flag)
 {
     struct stat statbuf;
     
@@ -73,7 +108,7 @@ int read_file(char *file_name, int opts)
         verbose("%s: Reading dir: %s\n",ARGV0, file_name);
         #endif
 
-        return(read_dir(file_name, opts));
+        return(read_dir(file_name, opts, flag));
     }
     
     /* No S_ISLNK on windows */
@@ -111,7 +146,18 @@ int read_file(char *file_name, int opts)
             }
         }
 
-
+        
+        if(flag == CHECK_DB)
+        {
+            /* File in the database already */
+            fseek(syscheck.fp, 0, SEEK_SET);
+            if(check_file(file_name))
+            {
+                return(0);
+            }
+            fseek(syscheck.fp, 0, SEEK_END);
+        }
+        
         fprintf(syscheck.fp,"%c%c%c%c%c%c%d:%d:%d:%d:%s:%s %s\n",
                 opts & CHECK_SIZE?'+':'-',
                 opts & CHECK_PERM?'+':'-',
@@ -127,6 +173,16 @@ int read_file(char *file_name, int opts)
                 opts & CHECK_SHA1SUM?sf_sum:"xxx",
                 file_name);
 
+
+        /* Sleeping in here too */
+        if(__counter >= (6 * syscheck.sleep_after))
+        {
+            sleep(syscheck.tsleep);
+            __counter = 0;
+        }
+        __counter++;
+
+        
         #ifdef DEBUG 
         verbose("%s: file '%s %s'",ARGV0, file_name, mf_sum);
         #endif
@@ -141,10 +197,11 @@ int read_file(char *file_name, int opts)
     return(0);
 }
 
+
 /* read_dir v0.1
  *
  */
-int read_dir(char *dir_name, int opts)
+int read_dir(char *dir_name, int opts, int flag)
 {
     int dir_size;
    
@@ -155,11 +212,15 @@ int read_dir(char *dir_name, int opts)
 
     f_name[PATH_MAX +1] = '\0';
 	
+    /* Directory should be valid */
     if((dir_name == NULL)||((dir_size = strlen(dir_name)) > PATH_MAX))
     {
-        merror("%s: Invalid directory given.",ARGV0);
+        if(flag == CREATE_DB)
+            merror(NULL_ERROR, ARGV0);
+        
         return(-1);
     }
+    
     
     /* Opening the directory given */
     dp = opendir(dir_name);
@@ -167,14 +228,18 @@ int read_dir(char *dir_name, int opts)
     {
         if(errno == ENOTDIR)
         {
-            if(read_file(dir_name, opts) == 0)
+            if(read_file(dir_name, opts, flag) == 0)
                 return(0);
         }
         
-        merror("%s: Error opening directory: '%s': %s ",
+        if(flag == CREATE_DB)
+        {
+            merror("%s: Error opening directory: '%s': %s ",
                                               ARGV0,
                                               dir_name,
                                               strerror(errno));
+        }
+        
         return(-1);
     }
     
@@ -194,31 +259,48 @@ int read_dir(char *dir_name, int opts)
         
         s_name += dir_size;
 
+
         /* checking if the file name is already null terminated */
         if(*(s_name-1) != '/')
             *s_name++ = '/';
             
         *s_name = '\0';
         
-        strncpy(s_name, entry->d_name, PATH_MAX - dir_size -1);
-        read_file(f_name, opts);
+        strncpy(s_name, entry->d_name, PATH_MAX - dir_size -2);
+        read_file(f_name, opts, flag);
     }
 
     closedir(dp);
-    
     return(0);
 }
 
-/* create_db v0.1
- *
+
+/* int check_db()
+ * Checks database for new files.
+ */
+int check_db()
+{
+    int i = 0;
+
+    /* Read all available directories */
+    __counter = 0;
+    do
+    {
+        read_dir(syscheck.dir[i], syscheck.opts[i], CHECK_DB);
+        i++;
+    }while(syscheck.dir[i] != NULL);
+
+    return(0);
+}
+
+
+/* int create_db
+ * Creates the file database.
  */
 int create_db()
 {
     int i = 0;
-    char **dir_name;
     
-    dir_name = syscheck.dir;
-
     syscheck.fp = fopen(syscheck.db,"w+"); /* Read and write */
     if(!syscheck.fp)
     {
@@ -227,24 +309,26 @@ int create_db()
         return(0);    
     }
 
+
     /* Creating an local fp only */
-    if(syscheck.notify == QUEUE)
-    {
-        unlink(syscheck.db);
-    }
+    unlink(syscheck.db);
+
     
     /* dir_name can't be null */
-    if(dir_name == NULL || *dir_name == NULL)
+    if((syscheck.dir == NULL) || (syscheck.dir[0] == NULL))
     {
         merror("%s: No directories to check.",ARGV0);
         return(-1);
     }
     
+
+    /* Read all available directories */
+    __counter = 0;
     do
     {
-        read_dir(dir_name[i], syscheck.opts[i]);
+        read_dir(syscheck.dir[i], syscheck.opts[i], CREATE_DB);
         i++;
-    }while(dir_name[i] != NULL);
+    }while(syscheck.dir[i] != NULL);
 
     return(0);
 

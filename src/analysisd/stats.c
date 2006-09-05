@@ -33,7 +33,7 @@
 char *(weekdays[])={"Sunday","Monday","Tuesday","Wednesday","Thursday",
 		            "Friday","Saturday"};
 char *(l_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
-                 "Sept","Oct","Nov","Dec"};
+                 "Sep","Oct","Nov","Dec"};
                         
 
 

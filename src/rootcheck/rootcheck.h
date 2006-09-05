@@ -1,6 +1,6 @@
-/*   $OSSEC, rootcheck.h, v0.1, 2005/10/03, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005,2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -11,7 +11,6 @@
        
 
 #ifndef __ROOTCHECK_H
-
 #define __ROOTCHECK_H
 
 #include "config/rootcheck-config.h"
@@ -24,6 +23,7 @@ rkconfig rootcheck;
 
 /* Maximum files to search on the whole system */
 #define MAX_RK_SYS      512
+
 
 /* rk_types */
 #define ALERT_OK                0

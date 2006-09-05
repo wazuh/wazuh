@@ -1,6 +1,6 @@
-/*   $OSSEC, config.c, v0.2, 2005/07/14, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -35,6 +35,7 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
         merror(SK_NO_DIR, ARGV0);
         return(0);
     }
+
 
     /* Doing it for each directory */
     while(*dir)
@@ -247,6 +248,7 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
     
     return(1);
 }
+
 
 
 int Read_Syscheck(XML_NODE node, void *configp, void *mailp)

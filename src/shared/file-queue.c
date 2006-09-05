@@ -17,7 +17,7 @@
 
 /* To translante between month (int) to month (char) */
 char *(s_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
-                "Sept","Oct","Nov","Dec"};
+                "Sep","Oct","Nov","Dec"};
 
 
 /** void file_sleep();

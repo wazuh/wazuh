@@ -1,6 +1,6 @@
-/*   $OSSEC, config.c, v0.2, 2005/07/14, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -10,16 +10,7 @@
  */
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-
 #include "shared.h"
-
-#include "os_xml/os_xml.h"
-#include "os_regex/os_regex.h"
-
 #include "syscheck.h"
 #include "config/config.h"
 

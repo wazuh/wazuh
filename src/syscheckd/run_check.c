@@ -1,6 +1,6 @@
-/*   $OSSEC, run_check.c, v0.3, 2005/10/05, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -9,46 +9,26 @@
  * Foundation
  */
 
-/* v0.3 (2005/10/05): Adding st_mode, owner uid and group owner.
- * v0.2 (2005/08/22): Removing st_ctime, bug 1104
- * v0.1 (2005/07/15)
-  */
-  
-#include <stdio.h>       
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/param.h>
-#include <dirent.h>
-#include <errno.h>
-#include <limits.h>
-#include <time.h>
-
+#include "shared.h"
+#include "syscheck.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 
-#include "shared.h"
-
-#include "syscheck.h"
 
 #ifndef WIN32
 #include "rootcheck/rootcheck.h"
 #endif
 
-#include "error_messages/error_messages.h"
 
-#define MAX_LINE PATH_MAX+256
 
 /** Prototypes **/
 int c_read_file(char *file_name, char *oldsum);
 
 
 /* Global variables -- currently checksum, msg to alert  */
-char c_sum[256 +1];
-char alert_msg[912 +1];
+char c_sum[256 +2];
+char alert_msg[912 +2];
 
 
 /* notify_agent
@@ -80,9 +60,11 @@ int notify_agent(char *msg)
 void start_daemon()
 {
     time_t curr_time = 0;
+    
     #ifndef WIN32
     time_t prev_time_rk = 0;
     #endif
+    
     time_t prev_time_sk = 0;
     
             
@@ -90,30 +72,32 @@ void start_daemon()
     verbose("%s: Starting daemon ..",ARGV0);
     #endif
   
+  
     /* Zeroing memory */
-    memset(c_sum, '\0', 256 +1);
-    memset(alert_msg, '\0', 912 +1);
+    memset(c_sum, '\0', 256 +2);
+    memset(alert_msg, '\0', 912 +2);
      
     
     /* some time to settle */
-    sleep(30);
+    sleep(syscheck.tsleep * 10);
+    
     
     /* Send the integrity database to the agent */
-    if(syscheck.notify == QUEUE)
     {
         char buf[MAX_LINE +1];
         int file_count = 0;
         
         buf[MAX_LINE] = '\0';
         
-        if(fseek(syscheck.fp,0, SEEK_SET) == -1)
+        if(fseek(syscheck.fp, 0, SEEK_SET) == -1)
         {
-            ErrorExit("%s: Error setting the file pointer (fseek)",ARGV0);
+            ErrorExit(FSEEK_ERROR, ARGV0, "syscheck_db");
         }
+    
     
         while(fgets(buf,MAX_LINE,syscheck.fp) != NULL)
         {
-            if(buf[0] != '#' && buf[0] != ' ' && buf[0] != '\n')
+            if((buf[0] != '#') && (buf[0] != ' ') && (buf[0] != '\n'))
             {
                 char *n_buf;
                 
@@ -133,14 +117,15 @@ void start_daemon()
 
 
                 /* A count and a sleep to avoid flooding the server. 
-                 * Time or speed are not  requirements in here
+                 * Time or speed are not requirements in here
                  */
                 file_count++;
 
-                /* sleep 3 every 15 messages */
-                if(file_count >= 15)
+
+                /* sleep X every Y files */
+                if(file_count >= syscheck.sleep_after)
                 {
-                    sleep(3);
+                    sleep(syscheck.tsleep);
                     file_count = 0;
                 }
             }
@@ -148,8 +133,8 @@ void start_daemon()
     }
 
 
-    /* before entering in daemon mode itself */
-    sleep(30);
+    /* Before entering in daemon mode itself */
+    sleep(syscheck.tsleep * 10);
     
     
     /* Check every SYSCHECK_WAIT */    
@@ -160,7 +145,6 @@ void start_daemon()
         /* If time elapsed is higher than the rootcheck_time,
          * run it.
          */
-        #ifdef OSSECHIDS 
         #ifndef WIN32
         if((curr_time - prev_time_rk) > rootcheck.time)
         {
@@ -169,16 +153,20 @@ void start_daemon()
             prev_time_rk = curr_time;    
         }
         #endif
-        #endif
-        
+
         
         /* If time elapsed is higher than the syscheck time,
          * run syscheck time.
          */
         if((curr_time - prev_time_sk) > syscheck.time)
         {
+            /* Looking for new files */
+            check_db();
+
             /* Set syscheck.fp to the begining of the file */
             fseek(syscheck.fp,0, SEEK_SET);
+
+            /* Checking for changes */
             run_check();
 
             prev_time_sk = curr_time;
@@ -194,13 +182,19 @@ void start_daemon()
  */
 void run_check()
 {
-    char buf[MAX_LINE +1];
+    char buf[MAX_LINE +2];
     int file_count = 0;
 
-    buf[MAX_LINE] = '\0';
+    buf[MAX_LINE +1] = '\0';
+    
+    
+    /* Sending database completed message */
+    notify_agent(HC_SK_DB_COMPLETED);
+    debug2("%s: DEBUG: Sending database completed message.");
+    
     
     /* fgets garantee the null termination */
-    while(fgets(buf,MAX_LINE,syscheck.fp) != NULL)
+    while(fgets(buf, MAX_LINE, syscheck.fp) != NULL)
     {
         /* Buf should be in the following format:
          * header checksum file_name (checksum space filename)
@@ -222,28 +216,28 @@ void run_check()
          * on the client side -- speed not necessary
          */
          file_count++;
-         if(file_count >= 30)
+         if(file_count >= (2*syscheck.sleep_after))
          {
-             sleep(2);
+             sleep(syscheck.tsleep);
              file_count = 0;
          }
         
          
         /* Finding the file name */
-        n_file = strchr(buf,' ');
+        n_file = strchr(buf, ' ');
         if(n_file == NULL)
         {
-            merror("%s: Invalid entry in the integrity checking database. "
-                   "Wrong format for '%s'",ARGV0, buf);
-
+            merror("%s: Invalid entry in the integrity check database.",ARGV0);
             continue;
         }
 
         /* Zeroing the ' ' and messing up with buf */
         *n_file ='\0';
 
+
         /* Setting n_file to the begining of the file name */
         n_file++;
+
 
         /* Removing the '\n' if present and setting it to \0 */
         tmp_c = strchr(n_file,'\n');
@@ -265,22 +259,17 @@ void run_check()
         if(strcmp(c_sum,n_sum+6) != 0)
         {
             /* Sending the new checksum to the analysis server */
-            if(syscheck.notify == QUEUE)
-            {
-                snprintf(alert_msg, 912, "%s %s",c_sum,n_file);
-                notify_agent(alert_msg);
-            }
-            else
-            {
-                merror("%s: Checksum differ for file %s.",ARGV0,n_file);
-            }
-            
+            alert_msg[912 +1] = '\0';
+            snprintf(alert_msg, 912, "%s %s",c_sum,n_file);
+            notify_agent(alert_msg);
+
             continue;
         }
 
         /* FILE OK if reached here */
     }
 }
+
 
 /* c_read_file
  * Read file information and return a pointer
@@ -309,16 +298,9 @@ int c_read_file(char *file_name, char *oldsum)
     if(lstat(file_name, &statbuf) < 0)
     #endif
     {
-        if(syscheck.notify == QUEUE)
-        {
-            alert_msg[912] = '\0';
-            snprintf(alert_msg, 912,"-1 %s",file_name);
-            notify_agent(alert_msg);
-        }
-        else
-        {
-            merror("%s: Error accessing '%s'",ARGV0,file_name);
-        }
+        alert_msg[912 +1] = '\0';
+        snprintf(alert_msg, 912,"-1 %s",file_name);
+        notify_agent(alert_msg);
 
         return(-1);
     }
@@ -377,7 +359,7 @@ int c_read_file(char *file_name, char *oldsum)
         }
     }
                             
-    
+    c_sum[255] = '\0';
     snprintf(c_sum,255,"%d:%d:%d:%d:%s:%s",
             size == 0?0:(int)statbuf.st_size,
             perm == 0?0:(int)statbuf.st_mode,

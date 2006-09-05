@@ -30,7 +30,7 @@
 
 /* To translante between month (int) to month (char) */
 char *(month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
-	            "Sept","Oct","Nov","Dec"};
+	            "Sep","Oct","Nov","Dec"};
 
 
 

@@ -14,7 +14,7 @@
 #include "monitord.h"
 
 char *(months[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
-                  "Sept","Oct","Nov","Dec"};
+                  "Sep","Oct","Nov","Dec"};
 
 
 /* OS_GetLogLocation: v0.1, 2005/04/25 */
