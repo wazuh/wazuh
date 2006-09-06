@@ -22,6 +22,7 @@
  */
 void OS_InitLog();
 
+void OS_InitFwLog();
 
 /*
  * Get the log file based on the date/logtype/
@@ -32,6 +33,7 @@ void OS_InitLog();
  *         -1       error 
  */
 int OS_GetLogLocation(Eventinfo *lf);
+
 
 FILE *_eflog;
 FILE *_aflog;

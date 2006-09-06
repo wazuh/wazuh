@@ -16,6 +16,9 @@
 
 #include "eventinfo.h"
 
+#define FWDROP "drop"
+#define FWALLOW "accept"
+
 void OS_Log(Eventinfo *lf);
 void OS_Store(Eventinfo *lf);
 int FW_Log(Eventinfo *lf);

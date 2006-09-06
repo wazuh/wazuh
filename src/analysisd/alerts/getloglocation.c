@@ -24,6 +24,7 @@ char __flogfile[OS_FLSIZE+1];
 /* OS_InitLog */    
 void OS_InitLog()
 {
+    OS_InitFwLog();
 
     __crt_day = 0;
     

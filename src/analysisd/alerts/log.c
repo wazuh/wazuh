@@ -9,39 +9,19 @@
  * Foundation
  */
 
-/* v0.4 (2005/09/10): Added logging for multiple events
- * v0.3 (2005/02/10)
- */
- 
-/* Basic logging operations */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-
+#include "shared.h"
 #include "log.h"
 #include "alerts.h"
 #include "getloglocation.h"
-
-#include "error_messages/error_messages.h"
-
-#include "headers/defs.h"
-#include "headers/os_err.h"
-#include "headers/debug_op.h"
-#include "headers/file_op.h"
-
-/* analysisd headers */
 #include "rules.h"
 #include "eventinfo.h"
 #include "config.h"
 
-#define FWDROP "drop"
-#define FWALLOW "accept"
+
+/* Drop/allow patterns */
+OSMatch FWDROPpm;
+OSMatch FWALLOWpm;
 
 
 /* OS_Store: v0.2, 2005/02/10 */
@@ -112,6 +92,25 @@ void OS_Log(Eventinfo *lf)
 }
 
 
+
+void OS_InitFwLog()
+{
+    /* Initializing fw log regexes */
+    if(!OSMatch_Compile(FWDROP, &FWDROPpm, 0))
+    {
+        ErrorExit(REGEX_COMPILE, ARGV0, FWDROP,
+                FWDROPpm.error);
+    }
+
+    if(!OSMatch_Compile(FWALLOW, &FWALLOWpm, 0))
+    {
+        ErrorExit(REGEX_COMPILE, ARGV0, FWALLOW,
+                FWALLOWpm.error);
+    }
+                    
+}
+
+
 /* FW_Log: v0.1, 2005/12/30 */
 int FW_Log(Eventinfo *lf)
 {
@@ -153,12 +152,12 @@ int FW_Log(Eventinfo *lf)
             os_strdup("ALLOW", lf->action);        
             break;
         default:
-            if(strcasestr(lf->action, FWDROP) != NULL)
+            if(OSMatch_Execute(lf->action,strlen(lf->action),&FWDROPpm))
             {
                 os_free(lf->action);
                 os_strdup("DROP", lf->action);
             }
-            else if(strcasestr(lf->action, FWALLOW) != NULL)
+            if(OSMatch_Execute(lf->action,strlen(lf->action),&FWALLOWpm))
             {
                 os_free(lf->action);
                 os_strdup("ALLOW", lf->action);
