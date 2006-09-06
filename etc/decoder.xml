@@ -412,8 +412,6 @@
  -->
 <decoder name="sendmail-reject">
   <prematch>^sendmail[\d+]: |^sm-mta[\d+]: |^sm-msp-queue[\d+]: </prematch>
-  <regex offset="after_prematch">relay=\S+ [(\d+.\d+.\d+.\d+)]</regex>
-  <order>srcip</order>
 </decoder>  
 
 <decoder name="sendmail-reject-nodns">
