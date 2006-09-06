@@ -97,6 +97,9 @@ int add_agent()
     }
     fclose(fp);
 
+    #ifndef WIN32
+    chmod(AUTH_FILE, 0440);
+    #endif
     
     /* Setting time 2 */
     time2 = time(0);
@@ -229,6 +232,10 @@ int add_agent()
         {
             ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
         }
+        #ifndef WIN32
+        chmod(AUTH_FILE, 0440);
+        #endif
+                
         
         /* Random 1: Time took to write the agent information.
          * Random 2: Time took to choose the action.
@@ -313,6 +320,10 @@ int remove_agent()
         {
             ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
         }
+        #ifndef WIN32
+        chmod(AUTH_FILE, 0440);
+        #endif
+                
         
         fsetpos(fp, &fp_pos);
         fprintf(fp, "#*#*#*#*#*#*#*#*#*#*#");

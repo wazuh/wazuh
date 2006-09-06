@@ -89,6 +89,10 @@ int k_import()
                     }
                     fprintf(fp,"%s\n",line_read);
                     fclose(fp);
+                    #ifndef WIN32
+                    chmod(KEYS_FILE, 0440);
+                    #endif
+                            
                     printf(ADDED);
                     printf(PRESS_ENTER);
                     read_from_user();
