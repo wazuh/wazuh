@@ -401,7 +401,7 @@ sub fixdate2base(){
 	$date=~ s/ Jun /-06-/;
 	$date=~ s/ Jul /-07-/;
 	$date=~ s/ Aug /-08-/;
-	$date=~ s/ Set /-09-/;
+	$date=~ s/ Sep /-09-/;
 	$date=~ s/ Oct /-10-/;
 	$date=~ s/ Nov /-11-/;
 	$date=~ s/ Dec /-12-/;
