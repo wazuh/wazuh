@@ -104,7 +104,7 @@ void AddtoIGnore(Eventinfo *lf)
     _line[OS_FLSIZE] = '\0';
 
     /* Assigning the values to the FTS */
-    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s %s",
+    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s %s %s",
             (lf->log_tag && (lf->generated_rule->ignore & FTS_NAME))?
                         lf->log_tag:"",
             (lf->id && (lf->generated_rule->ignore & FTS_ID))?lf->id:"",
@@ -140,7 +140,7 @@ int IGnore(Eventinfo *lf)
 
 
     /* Assigning the values to the FTS */
-    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s %s\n",
+    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s %s %s\n",
             (lf->log_tag && (lf->generated_rule->ckignore & FTS_NAME))?
                             lf->log_tag:"",
             (lf->id && (lf->generated_rule->ckignore & FTS_ID))?lf->id:"",
@@ -195,7 +195,7 @@ int FTS(Eventinfo *lf)
     _line[OS_FLSIZE] = '\0';
 
     /* Assigning the values to the FTS */
-    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s %s %s",
+    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s %s %s %s",
             (lf->log_tag && (lf->fts & FTS_NAME))?lf->log_tag:"",
             (lf->id && (lf->fts & FTS_ID))?lf->id:"",
             (lf->user && (lf->fts & FTS_USER))?lf->user:"",
