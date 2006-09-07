@@ -22,7 +22,8 @@ void Monitord()
     struct tm *p;       
 
     int today = 0;		        
-    int thishour = 0;
+    int thismonth = 0;
+    int thisyear = 0;
 
     char str[OS_MAXSTR +1];
 
@@ -35,8 +36,11 @@ void Monitord()
     /* Getting currently time before starting */
     tm = time(NULL);
     p = localtime(&tm);	
+    
     today = p->tm_mday;
-    thishour = p->tm_hour;
+    thismonth = p->tm_mon;
+    thisyear = p->tm_year+1900;
+                
 
     
     /* Connecting to the message queue
@@ -68,9 +72,11 @@ void Monitord()
         /* Day changed, deal with log files */
         if(today != p->tm_mday)
         {
-            manage_files(p->tm_mday, p->tm_mon, p->tm_year+1900);
+            manage_files(today, thismonth, thisyear);
 
             today = p->tm_mday;
+            thismonth = p->tm_mon;
+            thisyear = p->tm_year+1900;
         }
 
         /* We only check every minute */
