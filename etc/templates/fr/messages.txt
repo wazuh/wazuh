@@ -1,4 +1,4 @@
-# Configuration
+# Configuration 
 yes="o"
 no="n"
 yesmatch="o"
