@@ -665,6 +665,24 @@
 </decoder>
 
 
+<!-- Cisco IOS IDS/IPS module 
+  - Will extract the id, srcip, srcport, dstip and dstport
+  - Sep  1 10:25:29 10.10.10.1 426: *Sep  1 17:23:26.743: %IPS-4-SIGNATURE: Sig:3051 Subsig:1 Sev:4 TCP Connection Window Size DoS [192.168.100.11:51654 -> 10.10.10.10:4444]
+  - Sep  1 10:25:29 10.10.10.1 427: *Sep  1 17:23:26.755: %IPS-4-SIGNATURE: Sig:3051 Subsig:1 Sev:4 TCP Connection Window Size DoS [192.168.100.11:60797 -> 10.10.10.10:80]
+  - Sep  1 10:25:29 10.10.10.1 428: *Sep  1 17:23:26.759: %IPS-4-SIGNATURE: Sig:5123 Subsig:2 Sev:5 WWW IIS Internet Printing Overflow [192.168.100.11:60797 -> 10.10.10.10:80]
+  -->
+<decoder name="cisco-ios-ids">
+  <type>ids</type>
+  <prematch>^%IPS-4-SIGNATURE: |</prematch>
+  <prematch>^\d+: \S+\s+\d+ \S+: %IPS-4-SIGNATURE: </prematch>
+  <regex offset="after_prematch">^Sig:(\d+) \.+[(\S+):(\d+) -> </regex>
+  <regex>(\S+):(\d+)]</regex>
+  <order>id, srcip, srcport, dstip, dstport</order>
+  <fts>name, id, srcip, dstip</fts>
+  <ftscomment>First time Cisco IOS IDS/IPS module rule fired.</ftscomment>
+</decoder>
+
+
 <!-- Snort decoder.
   - Will extract the id, srcip and dstip
   - Examples:
@@ -690,7 +708,7 @@
    <regex>(\d+.\d+.\d+.\d+)</regex>
    <order>id,srcip,dstip</order>
    <fts>name,id,srcip,dstip</fts>
-   <ftscomment>First time Snort rule fired</ftscomment>
+   <ftscomment>First time Snort rule fired.</ftscomment>
 </decoder>
 
    
@@ -773,6 +791,7 @@
   <regex>"\w+ (\S+) HTTP\S+ (\d+) </regex>
   <order>srcip,url,id</order>
 </decoder>
+
 
 <!-- IIS specific log format.
   - #Fields: date time c-ip cs-username s-sitename s-computername s-ip s-port cs-method cs-uri-stem cs-uri-query sc-status cs-host cs(User-Agent) cs(Referer)

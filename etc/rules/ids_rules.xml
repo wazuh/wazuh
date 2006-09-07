@@ -19,10 +19,11 @@
   </rule>
 
   <!-- This rule ignores some Ids that cause too much
-    -  false positives.
+    -  false positives. Snort specific.
     -->
   <rule id="20102" level="0">
     <if_sid>20100, 20101</if_sid>
+    <decoded_as>snort</decoded_as>
     <!-- 1:1852 -> robots.txt access
        - 1:368 - ICMP ping.
        - 1:384 - ICMP ping.

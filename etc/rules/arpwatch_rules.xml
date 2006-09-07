@@ -41,6 +41,12 @@
     <match>bad interface eth0|exiting|Running as </match>
     <description>Arpwatch startup/exiting messages.</description>
   </rule> 
+
+  <rule id="7206" level="0">
+    <if_sid>7200</if_sid>
+    <match>sent bad addr len</match>
+    <description>Arpwatch detected bad address len (ignored).</description>
+  </rule> 
 </group> <!-- SYSLOG,arpwatch -->
 
 
