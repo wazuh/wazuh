@@ -1,4 +1,4 @@
-!define VERSION "0.9BETA"
+!define VERSION "0.9.2BETA"
 !define NAME "Ossec HIDS"
 !define /date CDATE "%H:%M:%S %d %b, %Y"
 
@@ -71,6 +71,7 @@ done:
 
 CreateDirectory "$INSTDIR\rids"
 CreateDirectory "$INSTDIR\syscheck"
+CreateDirectory "$INSTDIR\shared"
 CreateDirectory "$SMPROGRAMS\ossec"
 CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 CreateShortCut "$SMPROGRAMS\ossec\Edit.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0

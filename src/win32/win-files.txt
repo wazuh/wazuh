@@ -12,6 +12,9 @@ os_zlib os_zlib
 external/zlib-1.2.3 zlib-1.2.3
 client-agent/config.c client-agent-config.c
 client-agent/agentd.h agentd.h
+client-agent/receiver.c receiver.c
+client-agent/start_agent.c start_agent.c
+client-agent/sendmsg.c sendmsg.c
 logcollector/config.c logcollector-config.c
 logcollector/logcollector.c logcollector.c
 logcollector/logcollector.h logcollector.h

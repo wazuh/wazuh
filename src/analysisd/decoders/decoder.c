@@ -319,6 +319,11 @@ void *Data_FP(Eventinfo *lf, char *field)
     lf->data = field;
     return(NULL);
 }
+void *SystemName_FP(Eventinfo *lf, char *field)
+{
+    lf->systemname = field;
+    return(NULL);
+}
 void *None_FP(Eventinfo *lf, char *field)
 {
     free(field);

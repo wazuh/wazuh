@@ -105,9 +105,14 @@ the Free Software Foundation; either version 2 of the License, or\n\
 /* Agent information location */
 #define AGENTINFO_DIR    "/queue/agent-info"
 
+
 /* Wait file */
-#define WAIT_FILE       "/queue/.wait"
-        
+#ifndef WIN32
+    #define WAIT_FILE       "/queue/.wait"
+#else
+    #define WAIT_FILE       ".wait"
+#endif
+    
         
 /* Internal definitions files */
 #ifndef WIN32
@@ -142,8 +147,11 @@ the Free Software Foundation; either version 2 of the License, or\n\
 
 
 /* Shared config directory */
-#define SHAREDCFG_DIR   "/etc/shared"
-
+#ifndef WIN32
+    #define SHAREDCFG_DIR   "/etc/shared"
+#else
+    #define SHAREDCFG_DIR   "shared"       
+#endif    
 
 /* Built in defines */
 #define DEFAULTQPATH	DEFAULTDIR DEFAULTQUEUE

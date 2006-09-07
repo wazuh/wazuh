@@ -374,6 +374,10 @@ void ReadDecodeXML(char *file)
                     {
                         pi->order[order_int] = (void *)Data_FP;
                     }
+                    else if(strstr(*norder, "system_name") != NULL)
+                    {
+                        pi->order[order_int] = (void *)SystemName_FP;
+                    }
                     else
                     {
                         ErrorExit("decode-xml: Wrong field '%s' in the order"
@@ -439,6 +443,10 @@ void ReadDecodeXML(char *file)
                     else if(strstr(*norder, "data") != NULL)
                     {
                         pi->fts|=FTS_DATA;
+                    }
+                    else if(strstr(*norder, "system_name") != NULL)
+                    {
+                        pi->fts|=FTS_SYSTEMNAME;
                     }
                     else
                     {

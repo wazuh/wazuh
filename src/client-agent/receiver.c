@@ -48,6 +48,8 @@ void *receiver_thread(void *none)
     
     while(1)
     {
+        
+        #ifndef WIN32
         /* locking mutex */
         if(pthread_mutex_lock(&receiver_mutex) != 0)
         {
@@ -71,10 +73,12 @@ void *receiver_thread(void *none)
             merror(MUTEX_ERROR, ARGV0);
             return(NULL);
         }
-
         
         /* Read until no more messages are available */ 
         while((recv_b = recv(logr->sock, buffer, OS_MAXSTR, MSG_DONTWAIT)) > 0)
+        #else
+        while((recv_b = recv(logr->sock, buffer, OS_MAXSTR, 0)) > 0)
+        #endif
         {
             
             /* Id of zero -- only one key allowed */
@@ -96,6 +100,7 @@ void *receiver_thread(void *none)
                 /* If it is an active response message */
                 if(strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0)
                 {
+                    #ifndef WIN32
                     tmp_msg+=strlen(EXECD_HEADER);
                     if(logr->execdq >= 0)
                     {
@@ -106,6 +111,7 @@ void *receiver_thread(void *none)
                         }
                     }
 
+                    #endif    
                     continue;
                 } 
 

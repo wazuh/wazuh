@@ -119,6 +119,7 @@ int main(int argc, char **argv)
         else
         {
             merror("%s: Unknown option: %s", ARGV0, argv[1]);
+            exit(1);
         }
     }
 
@@ -139,6 +140,8 @@ int local_start()
     int binds;
     char *cfg = DEFAULTCPATH;
     WSADATA wsaData;
+    DWORD  threadID;
+    DWORD  threadID2;
 
 
     /* Starting logr */
@@ -163,22 +166,8 @@ int local_start()
     /* Reading logcollector config file */
     if(LogCollectorConfig(cfg) < 0)
         ErrorExit(CONFIG_ERROR, ARGV0);
+    
 
-
-    /* Starting syscheck thread */
-    {
-        DWORD  threadID;
-
-        if(CreateThread(NULL, 
-                        0, 
-                        (LPTHREAD_START_ROUTINE)skthread, 
-                        NULL, 
-                        0, 
-                        (LPDWORD)&threadID) == NULL)
-        {
-            merror(THREAD_ERROR, ARGV0);
-        }
-    }
     /* Reading the private keys  */
     ReadKeys(&keys, 0);
 
@@ -195,11 +184,7 @@ int local_start()
     }
 
     /* Socket connection */
-    {
-        /* Bogus code not used */
-        char pp[2]; int tt;
-        StartMQ(pp, tt);
-    }
+    StartMQ(NULL, 0);
 
 
     /* Starting mutex */
@@ -210,6 +195,43 @@ int local_start()
     }
 
 
+    /* Starting syscheck thread */
+    if(CreateThread(NULL, 
+                    0, 
+                    (LPTHREAD_START_ROUTINE)skthread, 
+                    NULL, 
+                    0, 
+                    (LPDWORD)&threadID) == NULL)
+    {
+        merror(THREAD_ERROR, ARGV0);
+    }
+
+    
+
+    /* Checking if server is connected */
+    os_setwait();
+        
+    start_agent();
+            
+    os_delwait();
+                    
+
+    /* Starting receiver thread */
+    if(CreateThread(NULL, 
+                    0, 
+                    (LPTHREAD_START_ROUTINE)receiver_thread, 
+                    NULL, 
+                    0, 
+                    (LPDWORD)&threadID2) == NULL)
+    {
+        merror(THREAD_ERROR, ARGV0);
+    }
+    
+    
+    /* Sending agent information message */
+    send_win32_info();
+    
+    
     /* Startting logcollector -- main process here */
     LogCollectorStart();
 
@@ -231,10 +253,6 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     tmpstr[OS_MAXSTR +1] = '\0';
     crypt_msg[OS_MAXSTR +1] = '\0';
 
-
-    /* Checking for global locks */
-    os_wait();
-
     
     /* Using a mutex to synchronize the writes */
     dwWaitResult = WaitForSingleObject(hMutex, 5000L);
@@ -254,6 +272,30 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
                 return(0);
         }
     }
+
+
+    /* Check if the server has responded */
+    if((time(0) - available_server) > (3*NOTIFY_TIME))
+    {
+        int wi = 1;
+        
+        /* If response is not available, set lock and
+         * wait for it.
+         */
+        verbose(SERVER_UNAV, ARGV0);
+
+        while((time(0) - available_server) > (3*NOTIFY_TIME))
+        {
+            /* Sending information to see if server replies */
+            send_win32_info();
+
+            sleep(wi);
+            wi++;
+        }
+
+        verbose(SERVER_UP, ARGV0);
+    }
+    
 
     /* locmsg cannot have the C:, as we use it as delimiter */
     pl = strchr(locmsg, ':');
@@ -306,9 +348,11 @@ int StartMQ(char * path, short int type)
     if(logr->sock < 0)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
 
-    path[0] = '\0';
-    type = 0;
-
+    if((path == NULL) && (type == 0))
+    {
+        return(0);
+    }
+    
     return(0);
 }
 

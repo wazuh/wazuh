@@ -115,6 +115,8 @@ void AddtoIGnore(Eventinfo *lf)
                         lf->dstip:"",
             (lf->data && (lf->generated_rule->ignore & FTS_DATA))?
                         lf->data:"",            
+            (lf->systemname && (lf->generated_rule->ignore & FTS_SYSTEMNAME))?
+                        lf->systemname:"",            
             (lf->generated_rule->ignore & FTS_LOCATION)?lf->location:"");
 
     fseek(fp_ignore, 0, SEEK_END);    
@@ -149,7 +151,9 @@ int IGnore(Eventinfo *lf)
             (lf->dstip && (lf->generated_rule->ckignore & FTS_DSTIP))?
                             lf->dstip:"",
             (lf->data && (lf->generated_rule->ignore & FTS_DATA))?
-                            lf->data:"",                
+                            lf->data:"",
+            (lf->systemname && (lf->generated_rule->ignore & FTS_SYSTEMNAME))?
+                            lf->systemname:"",                                
             (lf->generated_rule->ckignore & FTS_LOCATION)?lf->location:"");
 
     _fline[OS_FLSIZE] = '\0';
@@ -199,6 +203,7 @@ int FTS(Eventinfo *lf)
             (lf->srcip && (lf->fts & FTS_SRCIP))?lf->srcip:"",
             (lf->dstip && (lf->fts & FTS_DSTIP))?lf->dstip:"",
             (lf->data && (lf->fts & FTS_DATA))?lf->data:"",
+            (lf->systemname && (lf->fts & FTS_SYSTEMNAME))?lf->systemname:"",
             (lf->fts & FTS_LOCATION)?lf->location:"");
 
 

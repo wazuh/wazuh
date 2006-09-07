@@ -101,6 +101,8 @@ typedef unsigned short int u_int16_t;
 typedef unsigned char u_int8_t;
 /* typedef closesocket close; */
 
+#define MSG_DONTWAIT    0
+
 #ifndef PROCESSOR_ARCHITECTURE_AMD64
  #define PROCESSOR_ARCHITECTURE_AMD64 9
 #endif

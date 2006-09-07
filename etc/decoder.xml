@@ -601,6 +601,8 @@
   - %PIX-2-106002: udp connection denied by outbound list 30 src 216.53.120.62 138 dest 169.132.10.82 138
   -  %PIX-4-106023: Deny tcp src inside:111.11.11.1/2143 dst YYY:172.11.1.11/139 by access-group "inside_inbound"
   - %PIX-4-400013 IDS:2003 ICMP redirect from 10.4.1.2 to 10.2.1.1 on interface dmz
+  - %PIX-2-106006: Deny inbound UDP from ***/20031 to ***/20031 on  
+  interface vpn
   -->
 <decoder name="pix">
   <prematch>^%PIX-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %PIX-</prematch>
@@ -640,6 +642,15 @@
   <regex offset="after_parent">^(\S+): IP packet from (\S+) to </regex>
   <regex>(\S+), protocol (\w+) (\w+) </regex>
   <order>id, srcip, dstip, protocol, action</order>
+</decoder>
+
+<decoder name="pix-fw5">
+  <parent>pix</parent>
+  <type>firewall</type>
+  <prematch offset="after_parent">^2-106006|^2-106007</prematch>
+  <regex offset="after_parent">^(\S+): (\w+) \S+ (\w+) from </regex>
+  <regex>(\d+.\d+.\d+.\d+)/(\d+) to (\d+.\d+.\d+.\d+)/(\d+) </regex>
+  <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>
 
 <decoder name="pix-attacks">
@@ -850,7 +861,8 @@
 
 
 <!-- Windows decoder
-  - Will extract url (as win source),action (as win category) and id.
+  - Will extract data (as win source),action (as win category), id,
+  - username and computer name (as url).
   - Examples:
   - WinEvtLog: Application: INFORMATION(0x00000064): ESENT: 
     (no user)(no domain): 
@@ -863,12 +875,14 @@
     name or bad password       User Name:  ab      Domain:     cd      
     Logon Type: 2       Logon Process:  User32          Authentication 
     Package: Negotiate       Workstation Name:   ad
+  - WinEvtLog: Security: AUDIT_SUCCESS(538): Security: lac: OSSEC-HM: OSSEC-HM: User Logoff:        User Name:      lac     Domain:         OSSEC-HM        Logon ID:               (0x0,0x7C966E)          Logon Type:     2  
   -->
 <decoder name="windows">
   <type>windows</type>
   <prematch>^WinEvtLog: </prematch>
-  <regex>^WinEvtLog: (\w+): (\w+)\((\d+)\): \w+: (\w+):</regex>
-  <order>data,action,id,user</order>
+  <regex>^WinEvtLog: (\w+): (\w+)\((\d+)\): \w+: (\w+): \S+ (\S+):</regex>
+  <order>data, action, id, user, system_name</order>
+  <fts>name, location, user, system_name</fts>
 </decoder>    
 
 

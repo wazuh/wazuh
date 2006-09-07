@@ -126,6 +126,15 @@
     <description>Windows audit log was cleared.</description>
   </rule>
   
+  <rule id="18119" level="3">
+    <if_sid>18107</if_sid>
+    <options>alert_by_email</options>
+    <id>^528|^538|^540|^672|^673</id>
+    <group>authentication_success</group>
+    <if_fts />
+    <description>First time this user logged in this system.</description>
+  </rule>
+  
   <rule id="18151" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>18108</if_matched_sid>
     <same_user />

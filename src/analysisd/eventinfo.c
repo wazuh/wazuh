@@ -280,6 +280,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->command = NULL;
     lf->url = NULL;
     lf->data = NULL;
+    lf->systemname = NULL;
     lf->fts = 0;
 
     lf->type = SYSLOG; /* default type is syslog */        
@@ -333,6 +334,8 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->url);
     if(lf->data)
         free(lf->data);    
+    if(lf->systemname)
+        free(lf->systemname);    
         
     if(lf->hour)
         free(lf->hour);            
