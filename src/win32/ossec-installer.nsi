@@ -1,4 +1,4 @@
-!define VERSION "0.9.2BETA"
+!define VERSION "0.9.2BETA1"
 !define NAME "Ossec HIDS"
 !define /date CDATE "%H:%M:%S %d %b, %Y"
 
@@ -20,10 +20,13 @@ InstallDirRegKey HKLM "ossec" "Install_Dir"
 Function .onInit
     SetOutPath $INSTDIR
     IfFileExists $INSTDIR\ossec.conf 0 +3
-    MessageBox MB_OKCANCEL "${NAME} is already installed. Stop it before continuing." IDOK NoAbort
+    MessageBox MB_OKCANCEL "${NAME} is already installed. Stopping it before continuing." IDOK NoAbort
     Abort
     NoAbort:
-      
+    
+    ;; Stopping ossec service.
+    ExecWait '"sc" "stop" "OssecSvc"'  
+    
     ;;MessageBox MB_YESNO "This will install. Continue?" IDYES NoAbort
     ;;Abort ; causes installer to quit.
     ;;NoAbort:
@@ -51,7 +54,7 @@ ClearErrors
 ;;
 ;;done:  
 
-File ossec-agent.exe default-ossec.conf manage_agents.exe iis-logs.bat internal_options.conf setup-windows.exe
+File ossec-agent.exe default-ossec.conf manage_agents.exe iis-logs.bat internal_options.conf setup-windows.exe service-start.exe doc.html
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"
@@ -75,7 +78,9 @@ CreateDirectory "$INSTDIR\shared"
 CreateDirectory "$SMPROGRAMS\ossec"
 CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 CreateShortCut "$SMPROGRAMS\ossec\Edit.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
-CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "http://www.ossec.net/en/manual.html#windows" "" "http://www.ossec.net/en/manual.html" 0
+CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
+CreateShortCut "$SMPROGRAMS\ossec\Start.lnk" "$INSTDIR\service-start.exe" "" "$INSTDIR\service-start.exe" 0
+
 
 ; Install in the services 
 ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"' 

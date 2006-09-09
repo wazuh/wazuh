@@ -29,15 +29,17 @@
   - sshd(pam_unix)[18987]: authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=languedoc-2-81-56-82-49.fbx.proxad.net  user=root
   - sshd(pam_unix)[17365]: session opened for user test by (uid=508)
   - sshd(pam_unix)[1345]: authentication failure; logname= uid=0 euid=0 tty=NODEVssh ruser= rhost=222.237.79.237  user=root
+  - sshd(pam_unix)[15794]: 2 more authentication failures; logname= uid=0
+  euid=0 tty=ssh ruser= rhost=10.0.3.1  user=root
   -->
 <decoder name="pam">
-  <prematch>^\w+(pam_unix)[\d+]: </prematch>
+  <prematch>^\w+\(pam_unix\)[\d+]: </prematch>
 </decoder>
 
 <decoder name="pam-host-user">
   <parent>pam</parent>
-  <prematch offset="after_parent">rhost=\S+ user=\S+</prematch>
-  <regex offset="after_parent">rhost=(\S+) user=(\S+)</regex>
+  <prematch offset="after_parent">rhost=\S+\s+user=\S+</prematch>
+  <regex offset="after_parent">rhost=(\S+)\s+user=(\S+)</regex>
   <order>srcip, user</order>
 </decoder>
 
@@ -603,6 +605,7 @@
   - %PIX-4-400013 IDS:2003 ICMP redirect from 10.4.1.2 to 10.2.1.1 on interface dmz
   - %PIX-2-106006: Deny inbound UDP from ***/20031 to ***/20031 on  
   interface vpn
+  - %PIX-7-710002: TCP access permitted from 10.0.0.1/60749 to db:10.0.0.2/ssh
   -->
 <decoder name="pix">
   <prematch>^%PIX-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %PIX-</prematch>
@@ -622,7 +625,7 @@
   <type>firewall</type>
   <prematch offset="after_parent">^3-710003|^7-710002|^7-710005</prematch>
   <regex offset="after_parent">^(\S+): (\S+) \w+ (\w+)\.+from </regex>
-  <regex>(\S+)/(\S+) to \w+:(\S+)(\S+)</regex>
+  <regex>(\S+)/(\S+) to \w+:(\S+)/(\S+)</regex>
   <order>id, protocol, action, srcip, srcport, dstip, dstport</order>
 </decoder>
 
@@ -631,7 +634,7 @@
   <type>firewall</type>
   <prematch offset="after_parent">^4-106023</prematch>
   <regex offset="after_parent">^(\S+): (\w+) (\w+) src \w+:</regex>
-  <regex>(\S+)/(\S+) dst \w+:(\S+)(\S+)</regex>
+  <regex>(\S+)/(\S+) dst \w+:(\S+)/(\S+)</regex>
   <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>
 
@@ -880,7 +883,8 @@
 <decoder name="windows">
   <type>windows</type>
   <prematch>^WinEvtLog: </prematch>
-  <regex>^WinEvtLog: (\w+): (\w+)\((\d+)\): \w+: (\w+): \S+ (\S+):</regex>
+  <regex>^WinEvtLog: (\w+): (\w+)\((\d+)\): \w+: (\w+): \S+ (\S+): </regex>
+  <regex>\S+ (\S+):</regex>
   <order>data, action, id, user, system_name</order>
   <fts>name, location, user, system_name</fts>
 </decoder>    

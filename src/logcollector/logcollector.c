@@ -35,6 +35,8 @@ void LogCollectorStart()
     struct timeval fp_timeout;
     #endif
 
+    debug1("%s: DEBUG: Entering LogCollectorStart().", ARGV0);
+    
     /* Initializing each file and structure */
     for(i = 0;;i++)
     {
@@ -267,9 +269,17 @@ void LogCollectorStart()
                 merror(LOGC_FILE_ERROR, ARGV0, logff[i].file);
                 if(logff[i].fp)
                     fclose(logff[i].fp);
+                    
                 logff[i].fp = NULL;
-                logff[i].ffile = NULL;
-                logff[i].file = NULL;
+
+
+                /* If the file has a variable date, ignore it for
+                 * today only.
+                 */
+                if(!logff[i].ffile)
+                {
+                    logff[i].file = NULL;
+                }
                 logff[i].ign = -10;
                 continue;
             }
@@ -328,6 +338,8 @@ int update_fname(int i)
 
         os_strdup(lfile, logff[i].file);    
 
+        verbose(VAR_LOG_MON, ARGV0, logff[i].file);
+        
         /* Setting cday to zero because other files may need
          * to be changed.
          */

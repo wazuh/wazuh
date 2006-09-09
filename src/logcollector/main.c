@@ -39,6 +39,7 @@
 int main(int argc, char **argv)
 {
     int c;
+    int debug_flag = 0;
     int test_config = 0;
     char *cfg = DEFAULTCPATH;
     char *dir = DEFAULTDIR;
@@ -92,7 +93,18 @@ int main(int argc, char **argv)
     /* Getting loop timeout */
     loop_timeout = getDefine_Int("logcollector",
                                  "loop_timeout",
-                                 1, 120);        
+                                 1, 120);
+            
+    debug_flag = getDefine_Int("logcollector",
+                               "debug",
+                               0,2);
+    
+    /* Getting debug values */
+    while(debug_flag != 0)
+    {
+        nowDebug();
+        debug_flag--;
+    }
 
 
     /* Exit if test config */
@@ -124,6 +136,7 @@ int main(int argc, char **argv)
    
    
     /* Waiting 6 seconds for the analysisd/agentd to settle */
+    debug1("%s: DEBUG: Waiting main daemons to settle.", ARGV0);
     sleep(6);
     
      

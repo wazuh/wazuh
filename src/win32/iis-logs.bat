@@ -22,7 +22,7 @@ IF EXIST %WinDir%\System32\LogFiles\W3SVC1\nc??????.log (
     echo   ^</localfile^> >> ossec.conf
     echo ^</ossec_config^> >> ossec.conf
     pause
-    exit )
+    )
 
 IF EXIST %WinDir%\System32\LogFiles\W3SVC1\ex??????.log (
     echo    * IIS W3C extended log found. Changing config to read it.
@@ -34,7 +34,7 @@ IF EXIST %WinDir%\System32\LogFiles\W3SVC1\ex??????.log (
     echo   ^</localfile^> >> ossec.conf
     echo ^</ossec_config^> >> ossec.conf
     pause
-    exit )
+    )
 
 IF EXIST %WinDir%\System32\LogFiles\W3SVC3\ex??????.log (
     echo    * IIS W3C extended log found. Changing config to read it.
@@ -46,7 +46,7 @@ IF EXIST %WinDir%\System32\LogFiles\W3SVC3\ex??????.log (
     echo   ^</localfile^> >> ossec.conf
     echo ^</ossec_config^> >> ossec.conf
     pause
-    exit )
+    )
 
 IF EXIST %WinDir%\System32\LogFiles\W3SVC1 (
     echo    * IIS Log found. Look at the link above if you want to monitor it.

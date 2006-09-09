@@ -153,6 +153,7 @@
 #define PARSE_ERROR     "%s(1906): Error parsing file: '%s'."
 #define READING_FILE    "%s(1950): Analyzing file: '%s'."
 #define READING_EVTLOG  "%s(1951): Analyzing event log: '%s'."
+#define VAR_LOG_MON     "%s(1952): Monitoring variable log file: '%s'."
 
 
 /* Encryption/ auth errors */

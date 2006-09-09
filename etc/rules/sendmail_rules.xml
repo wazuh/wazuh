@@ -25,7 +25,7 @@
 
   <rule id="3103" level="6">
     <if_sid>3101</if_sid>
-    <match>reject=550 5.0.0 |reject=553 5.3.0 Spam blocked</match>
+    <match>reject=550 5.0.0 |reject=553 5.3.0</match>
     <description>Rejected by access list </description>
     <description>(55x: Requested action not taken).</description>
   </rule>

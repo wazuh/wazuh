@@ -89,6 +89,10 @@ void AgentdStart(char *dir, int uid, int gid)
 
 
     /* Connecting UDP */
+    verbose("%s: Connecting to server (%s:%d).", ARGV0,
+                                                 logr->rip,
+                                                 logr->port);
+
     logr->sock = OS_ConnectUDP(logr->port,logr->rip);
     if(logr->sock < 0)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);

@@ -137,6 +137,7 @@ int main(int argc, char **argv)
 /* Locally starts (after service/win init) */
 int local_start()
 {
+    int debug_level;
     int binds;
     char *cfg = DEFAULTCPATH;
     WSADATA wsaData;
@@ -153,22 +154,35 @@ int local_start()
     logr->port = DEFAULT_SECURE;
 
 
+    /* Getting debug level */
+    debug_level = getDefine_Int("windows","debug", 0, 2);
+    while(debug_level != 0)
+    {
+        nowDebug();
+        debug_level--;
+    }
+    
+    
+    
     /* Configuration file not present */
     if(File_DateofChange(cfg) < 0)
         ErrorExit("%s: Configuration file '%s' not found",ARGV0,cfg);
 
 
     /* Read agent config */
+    debug1("%s: DEBUG: Reading agent configuration.", ARGV0);
     if((binds = ClientConf(cfg)) == 0)
         ErrorExit(CLIENT_ERROR,ARGV0);
 
 
     /* Reading logcollector config file */
+    debug1("%s: DEBUG: Reading logcollector configuration.", ARGV0);
     if(LogCollectorConfig(cfg) < 0)
         ErrorExit(CONFIG_ERROR, ARGV0);
     
 
     /* Reading the private keys  */
+    debug1("%s: DEBUG: Reading private keys.", ARGV0);
     ReadKeys(&keys, 0);
 
 
@@ -183,11 +197,13 @@ int local_start()
         ErrorExit("%s: WSAStartup() failed", ARGV0);
     }
 
+
     /* Socket connection */
     StartMQ(NULL, 0);
 
 
     /* Starting mutex */
+    debug1("%s: DEBUG: Creating thread mutex.", ARGV0);
     hMutex = CreateMutex(NULL, FALSE, NULL);
     if(hMutex == NULL)
     {
@@ -253,6 +269,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     tmpstr[OS_MAXSTR +1] = '\0';
     crypt_msg[OS_MAXSTR +1] = '\0';
 
+    debug2("%s: DEBUG: Attempting to send message to server.", ARGV0);
     
     /* Using a mutex to synchronize the writes */
     dwWaitResult = WaitForSingleObject(hMutex, 5000L);
@@ -309,6 +326,9 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
         pl = locmsg;
     }
 
+    
+    debug2("%s: DEBUG: Sending message to server: '%s'", ARGV0, message);
+    
     snprintf(tmpstr,OS_MAXSTR,"%c:%s:%s", loc, pl, message);
 
     _ssize = CreateSecMSG(&keys, tmpstr, crypt_msg, 0);
@@ -343,6 +363,10 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 /* StartMQ for windows */
 int StartMQ(char * path, short int type)
 {
+    verbose("%s: Connecting to server (%s:%d).", ARGV0,
+                                                 logr->rip,
+                                                 logr->port);
+    
     /* Connecting UDP */
     logr->sock = OS_ConnectUDP(logr->port, logr->rip);
     if(logr->sock < 0)
@@ -364,6 +388,7 @@ void send_win32_info()
     time_t curr_time;
 
     curr_time = time(0);
+    debug2("%s: DEBUG: Checking if time elapsed to send keep alive.", ARGV0);
 
     if((curr_time - __win32_curr_time) > NOTIFY_TIME)
     {
@@ -374,6 +399,10 @@ void send_win32_info()
         tmp_msg[OS_MAXSTR +1] = '\0';
         crypt_msg[OS_MAXSTR +1] = '\0';
 
+
+        debug1("%s: DEBUG: Sending keep alive message.", ARGV0);
+
+        
         /* fixing time */
         __win32_curr_time = curr_time;
 

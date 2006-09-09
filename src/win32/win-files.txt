@@ -39,3 +39,6 @@ win32/setup-win.c setup/setup-win.c
 win32/iis-logs.bat iis-logs.bat
 win32/ossec-win.conf default-ossec.conf
 win32/internal_options-win.conf internal_options.conf
+win32/doc.html doc.html
+win32/ossec-installer.nsi ossec-installer.nsi
+win32/service-start.c setup/service-start.c

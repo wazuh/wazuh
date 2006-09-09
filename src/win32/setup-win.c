@@ -155,5 +155,7 @@ int main(int argc, char **argv)
         }
     }
 
+    /* Configure ossec for automatic startup */
+    system("sc config OssecSvc start= auto");
     return(0);
 }

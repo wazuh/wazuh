@@ -35,7 +35,20 @@ void HandleRemote(int position, int uid)
     {
         ErrorExit(NO_SYSLOG, ARGV0);
     }
+    else
+    {
+        os_ip **tmp_ips;
+        
+        tmp_ips = logr.allowips;
+        while(*tmp_ips)
+        {
+            verbose("%s: Remote syslog allowed from: '%s'",
+                         ARGV0, (*tmp_ips)->ip);
+            tmp_ips++;
+        }
+    }
     
+
     /* Bind TCP */ 
     if(logr.proto[position] == TCP_PROTO)
     {

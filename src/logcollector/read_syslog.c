@@ -55,7 +55,7 @@ void *read_syslog(int pos, int *rc)
         else
         {
             /* Message not complete. Return. */
-            /* merror("%s: Message not complete. Trying again: '%s'", ARGV0,str); */
+            debug1("%s: Message not complete. Trying again: '%s'", ARGV0,str);
             fsetpos(logff[pos].fp, &fp_pos);
             break;
         }    
@@ -74,6 +74,8 @@ void *read_syslog(int pos, int *rc)
         }
         #endif
                       
+        debug2("%s: DEBUG: Reading syslog message: '%s'", ARGV0, str);
+
         
         /* Sending message to queue */
         if(SendMSG(logr_queue,str,logff[pos].file,
@@ -89,7 +91,7 @@ void *read_syslog(int pos, int *rc)
         /* Incorrectly message size */
         if(__ms)
         {
-            merror("%s: Incorrect message size: '%s'", ARGV0, str);
+            merror("%s: Large message size: '%s'", ARGV0, str);
             while(fgets(str, OS_MAXSTR - 36, logff[pos].fp) != NULL)
             {
                 /* Getting the last occurence of \n */
