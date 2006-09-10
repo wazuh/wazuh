@@ -148,7 +148,7 @@
 #define MISS_LOG_FORMAT "%s(1901): Missing 'log_format' element."
 #define MISS_FILE       "%s(1902): Missing 'location' element."
 #define INV_EVTLOG      "%s(1903): Invalid event log: '%s'."
-#define LOGC_FILE_ERROR "%s(1904): Unable to read file: '%s'"
+#define LOGC_FILE_ERROR "%s(1904): File not available, ignoring it: '%s'."
 #define NO_FILE         "%s(1905): No file configured to monitor."
 #define PARSE_ERROR     "%s(1906): Error parsing file: '%s'."
 #define READING_FILE    "%s(1950): Analyzing file: '%s'."

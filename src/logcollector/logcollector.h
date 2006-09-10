@@ -62,6 +62,7 @@ void send_win32_info();
 
 int loop_timeout;
 int logr_queue;
+int open_file_attempts;
 logreader *logff;
 
 

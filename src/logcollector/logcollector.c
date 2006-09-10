@@ -264,8 +264,14 @@ void LogCollectorStart()
             
             
             /* Too many errors for the file */ 
-            if(logff[i].ign < -8)
+            if(logff[i].ign < (-open_file_attempts))
             {
+                /* -999 Maximum ignore */
+                if(logff[i].ign == -999)
+                {
+                    continue;
+                }
+                
                 merror(LOGC_FILE_ERROR, ARGV0, logff[i].file);
                 if(logff[i].fp)
                     fclose(logff[i].fp);
@@ -280,14 +286,14 @@ void LogCollectorStart()
                 {
                     logff[i].file = NULL;
                 }
-                logff[i].ign = -10;
+                logff[i].ign = -999;
                 continue;
             }
            
             /* Files  */ 
             if(!logff[i].fp)
             {
-                if(logff[i].ign <= -10)
+                if(logff[i].ign <= -999)
                     continue;
                 else
                 {

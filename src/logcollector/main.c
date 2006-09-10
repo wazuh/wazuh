@@ -94,6 +94,9 @@ int main(int argc, char **argv)
     loop_timeout = getDefine_Int("logcollector",
                                  "loop_timeout",
                                  1, 120);
+    
+    open_file_attempts = getDefine_Int("logcollector", "open_attempts",
+                                       2, 998);
             
     debug_flag = getDefine_Int("logcollector",
                                "debug",
