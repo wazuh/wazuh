@@ -31,20 +31,23 @@
 void HandleRemote(int position, int uid)
 {
     /* If syslog connection and allowips is not defined, exit */
-    if((logr.allowips == NULL)&&(logr.conn[position] == SYSLOG_CONN))
+    if(logr.conn[position] == SYSLOG_CONN)
     {
-        ErrorExit(NO_SYSLOG, ARGV0);
-    }
-    else
-    {
-        os_ip **tmp_ips;
-        
-        tmp_ips = logr.allowips;
-        while(*tmp_ips)
+        if(logr.allowips == NULL)
         {
-            verbose("%s: Remote syslog allowed from: '%s'",
-                         ARGV0, (*tmp_ips)->ip);
-            tmp_ips++;
+            ErrorExit(NO_SYSLOG, ARGV0);
+        }
+        else
+        {
+            os_ip **tmp_ips;
+
+            tmp_ips = logr.allowips;
+            while(*tmp_ips)
+            {
+                verbose("%s: Remote syslog allowed from: '%s'",
+                        ARGV0, (*tmp_ips)->ip);
+                tmp_ips++;
+            }
         }
     }
     
