@@ -98,6 +98,8 @@ $conf{dbpasswd}='password';
 $conf{dbuser}='user';
 $conf{fieldseparator}=';'; # legacy - not in use
 $conf{daemonize}=0;
+$conf{sensor}='sensor';
+$conf{hids_interface}='ossec';
 $conf{resolve}=1;
 
 
@@ -125,9 +127,9 @@ while (@ARGV){
         }elsif ( m/^-v$|^--verbose$/){
 		 $VERBOSE=1;
 	}elsif ( m/^--interface$/){
-                $hids_interface= shift @ARGV if @ARGV; # ossec-rt/ossec-feed
+                $conf{hids_interface}= shift @ARGV if @ARGV; # ossec-rt/ossec-feed
         }elsif ( m/^--sensor$/){
-                $hids= shift @ARGV if @ARGV; # monitor
+                $conf{sensor}= shift @ARGV if @ARGV; # monitor
         }elsif ( m/^--conf$/){
                 $conf{conf}= shift @ARGV if @ARGV; # localhost
 		&loadconf(\%conf);
@@ -149,6 +151,8 @@ if ($conf{dbpasswd}=~ m/^--stdin$/){
 	$conf{dbpasswd}=<>;
 	chomp $conf{dbpasswd};
 }
+$hids=$conf{sensor} if exists($conf{sensor});
+$hids_interface=$conf{hids_interface} if exists($conf{hids_interface});
 
 &daemonize() if $conf{daemonize};
 my $dbi= ossecmysql->new(%conf) || die ("Could not connect to $conf{dbhost}:$conf{dbport}:$conf{database} as $conf{dbpasswd}\n");
