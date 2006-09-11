@@ -139,8 +139,7 @@ $rule,$date,$srcip,$dstip,$level,$description
 sub taillog {
    my($offset, $line, $stall) = '';
 
-	$offset = 0;
-   #$offset = (-s $LOG); # Don't start at beginning, go to end
+   $offset = (-s $LOG); # Don't start at beginning, go to end
 
 	my $count=10;
    while (1==1) {
