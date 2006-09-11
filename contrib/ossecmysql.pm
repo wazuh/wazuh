@@ -12,7 +12,6 @@ sub new(){
 	$self->{dbport}=$conf{dbport};
 	$self->{dbuser}=$conf{dbuser};
 	$self->{dbpasswd}=$conf{dbpasswd};
-	$self->{fieldseparator}=$conf{fieldseparator};
 
 	$self->{dsn} = "DBI:mysql:database=$self->{database};host=$self->{dbhost};port=$self->{dbport}";
         $self->{dbh} = DBI->connect($self->{dsn}, $self->{dbuser},$self->{dbpasswd});

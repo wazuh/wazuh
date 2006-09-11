@@ -44,7 +44,6 @@ use strict;
 #	dbport=3306
 #	dbpasswd=mypassword
 #	dbuser=ossecuser
-#	fieldseparator=;
 #	daemonize=0
 #	resolve=1
 #	
@@ -96,7 +95,6 @@ $conf{debug}=5;
 $conf{dbport}='3306';
 $conf{dbpasswd}='password';
 $conf{dbuser}='user';
-$conf{fieldseparator}=';'; # legacy - not in use
 $conf{daemonize}=0;
 $conf{sensor}='sensor';
 $conf{hids_interface}='ossec';
