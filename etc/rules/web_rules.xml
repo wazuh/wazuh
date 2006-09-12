@@ -38,13 +38,13 @@
   </rule>
   
   <rule id="31103" level="6">
-    <if_sid>31100</if_sid>
+    <if_sid>31100, 31190</if_sid>
     <url>='|select%20|insert%20|%20from%20|%20where%20|union%20</url>
     <description>SQL injection attempt.</description>
   </rule>
   
   <rule id="31104" level="6">
-    <if_sid>31100</if_sid>
+    <if_sid>31100, 31190</if_sid>
     
     <!-- Attempt to do directory transversal, simple sql injections,
       -  or access to the etc or bin directory (unix). -->
@@ -57,9 +57,9 @@
   </rule>
 
   <rule id="31105" level="6">
+    <if_sid>31100, 31190</if_sid>
     <url>%3Cscript|%2Fscript|script>|script%3E|SRC=javascript|IMG%20|</url>
     <url>%20ONLOAD=|INPUT%20</url>
-    <if_sid>31100</if_sid>
     <description>XSS (Cross Site Scripting) attempt.</description>
   </rule>
   
@@ -77,6 +77,13 @@
     <url>^/search.php?search=|^index.php?searchword=</url>
     <description>Ignored URLs for the web attacks</description>
   </rule>
+
+  <rule id="31115" level="13" maxsize="2900">
+    <if_sid>31100, 31190</if_sid>
+    <description>Very large HTTP URL. Higher than allowed on most browsers.</description>
+    <description>Possible attack or attempt to bypass detection.</description>
+  </rule>
+      
 
   <rule id="31151" level="10" frequency="10" timeframe="120">
     <if_matched_sid>31101</if_matched_sid>
