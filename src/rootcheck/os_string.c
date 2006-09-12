@@ -244,7 +244,7 @@ int os_string(char *file, char *regex)
             if (++cnt < STR_MINLEN)
                 continue;
             
-            strncpy(line, (char *)bfr, STR_MINLEN);    
+            strncpy(line, (char *)bfr, STR_MINLEN +1);
             buf = line;
             buf+=strlen(line);
             
