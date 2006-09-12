@@ -80,7 +80,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
 
     /* Receiving the banner */
-    msg = OS_RecvTCP(socket, OS_MAXSTR);
+    msg = OS_RecvTCP(socket, OS_SIZE_1024);
     if((msg == NULL)||(!OS_Match(VALIDBANNER, msg)))
     {
         merror(BANNER_ERROR);
@@ -95,7 +95,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     /* Sending HELO message */
     OS_SendTCP(socket,HELOMSG);
-    msg = OS_RecvTCP(socket, OS_MAXSTR);
+    msg = OS_RecvTCP(socket, OS_SIZE_1024);
     if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
     {
         if(msg)
@@ -109,7 +109,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
                 free(msg);
 
                 /* Try again */
-                msg = OS_RecvTCP(socket, OS_MAXSTR);
+                msg = OS_RecvTCP(socket, OS_SIZE_1024);
                 if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
                 {
                     merror("%s:%s",HELO_ERROR,msg!= NULL?msg:"null");
@@ -143,7 +143,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     memset(snd_msg,'\0',128);
     snprintf(snd_msg,127,MAILFROM, mail->from);
     OS_SendTCP(socket,snd_msg);
-    msg = OS_RecvTCP(socket, OS_MAXSTR);
+    msg = OS_RecvTCP(socket, OS_SIZE_1024);
     if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
     {
         merror("%s:%s",FROM_ERROR,msg);
@@ -172,7 +172,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         memset(snd_msg,'\0',128);
         snprintf(snd_msg,127,RCPTTO, mail->to[i++]);
         OS_SendTCP(socket,snd_msg);
-        msg = OS_RecvTCP(socket, OS_MAXSTR);
+        msg = OS_RecvTCP(socket, OS_SIZE_1024);
         if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
         {
             merror(TO_ERROR);
@@ -188,7 +188,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     /* Sending the "DATA" msg */
     OS_SendTCP(socket,DATAMSG);
-    msg = OS_RecvTCP(socket, OS_MAXSTR);
+    msg = OS_RecvTCP(socket, OS_SIZE_1024);
     if((msg == NULL)||(!OS_Match(VALIDDATA, msg)))
     {
         merror(DATA_ERROR);
@@ -235,7 +235,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     
     /* Sending end of data \r\n.\r\n */
     OS_SendTCP(socket,ENDDATA);	
-    msg = OS_RecvTCP(socket, OS_MAXSTR);
+    msg = OS_RecvTCP(socket, OS_SIZE_1024);
     if(strict_checking && ((msg == NULL)||(!OS_Match(VALIDMAIL, msg))))
     {
         merror(END_DATA_ERROR);
@@ -250,7 +250,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     /* quitting and closing socket */
     OS_SendTCP(socket,QUITMSG);
-    msg = OS_RecvTCP(socket, OS_MAXSTR);
+    msg = OS_RecvTCP(socket, OS_SIZE_1024);
     
     if(msg)
         free(msg);

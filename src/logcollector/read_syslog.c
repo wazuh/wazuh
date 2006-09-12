@@ -1,6 +1,6 @@
-/*   $OSSEC, read_syslog.c, v0.3, 2005/08/24, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -36,7 +36,7 @@ void *read_syslog(int pos, int *rc)
     /* Getting initial file location */
     fgetpos(logff[pos].fp, &fp_pos);
 
-    while(fgets(str, OS_MAXSTR - 64, logff[pos].fp) != NULL)
+    while(fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL)
     {
         /* Getting the last occurence of \n */
         if ((p = strrchr(str, '\n')) != NULL) 
@@ -47,7 +47,7 @@ void *read_syslog(int pos, int *rc)
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
          */
-        else if(strlen(str) >= (OS_MAXSTR - 66))
+        else if(strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2))
         {
             /* Message size > maximum allowed */
             __ms = 1;
@@ -92,7 +92,7 @@ void *read_syslog(int pos, int *rc)
         if(__ms)
         {
             merror("%s: Large message size: '%s'", ARGV0, str);
-            while(fgets(str, OS_MAXSTR - 36, logff[pos].fp) != NULL)
+            while(fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL)
             {
                 /* Getting the last occurence of \n */
                 if ((p = strrchr(str, '\n')) != NULL)

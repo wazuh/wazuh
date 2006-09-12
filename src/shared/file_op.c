@@ -198,7 +198,7 @@ void goDaemon()
 /** get uname for windows **/
 char *getuname()
 {
-    int ret_size = OS_MAXSTR -2;
+    int ret_size = OS_SIZE_1024 -2;
     char *ret = NULL;
 
     typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
@@ -223,8 +223,8 @@ char *getuname()
     }
 
     /* Allocating the memory */
-    os_calloc(OS_MAXSTR +1, sizeof(char), ret);
-    ret[OS_MAXSTR] = '\0';
+    os_calloc(OS_SIZE_1024 +1, sizeof(char), ret);
+    ret[OS_SIZE_1024] = '\0';
     
     switch(osvi.dwPlatformId)
     {

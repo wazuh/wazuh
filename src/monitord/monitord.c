@@ -25,12 +25,12 @@ void Monitord()
     int thismonth = 0;
     int thisyear = 0;
 
-    char str[OS_MAXSTR +1];
+    char str[OS_SIZE_1024 +1];
 
     /* Waiting a few seconds to settle */
     sleep(10);
 
-    memset(str, '\0', OS_MAXSTR +1);
+    memset(str, '\0', OS_SIZE_1024 +1);
     
     
     /* Getting currently time before starting */
@@ -53,7 +53,7 @@ void Monitord()
 
 
     /* Sending startup message */
-    snprintf(str, OS_MAXSTR -1, OS_AD_STARTED);
+    snprintf(str, OS_SIZE_1024 -1, OS_AD_STARTED);
     if(SendMSG(mond.a_queue, str, ARGV0,
                        LOCALFILE_MQ) < 0)
     {

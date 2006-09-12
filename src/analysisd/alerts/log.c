@@ -53,7 +53,7 @@ void OS_Log(Eventinfo *lf)
     fprintf(_aflog,
             "** Alert %d.%ld:%s\n"
             "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'\n"
-            "Src IP: %s\nUser: %s\n%s\n",
+            "Src IP: %s\nUser: %s\n%.1256s\n",
             lf->time,
             ftell(_aflog),
             lf->generated_rule->alert_opts & DO_MAILALERT?" mail ":"",
@@ -79,7 +79,7 @@ void OS_Log(Eventinfo *lf)
         char **lasts = lf->generated_rule->last_events;
         while(*lasts)
         {
-            fprintf(_aflog,"%s\n",*lasts);
+            fprintf(_aflog,"%.1256s\n",*lasts);
             lasts++;
         }
         lf->generated_rule->last_events[0] = NULL;

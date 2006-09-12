@@ -1,4 +1,4 @@
-/*   $OSSEC, read_win_el.c, v0.1, 2006/04/04, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -94,12 +94,12 @@ int el_getEventDLL(char *evt_name, char *source, char *event)
 {
     HKEY key;
     DWORD ret;
-    char keyname[256];
+    char keyname[512];
 
 
-    keyname[255] = '\0';
+    keyname[511] = '\0';
 
-    snprintf(keyname, 254, 
+    snprintf(keyname, 510, 
             "System\\CurrentControlSet\\Services\\EventLog\\%s\\%s", 
             evt_name, 
             source);
@@ -228,21 +228,21 @@ void readel(os_el *el, int printit)
     char *computer_name;
     char *descriptive_msg;
 
-    char el_user[257];
-    char el_domain[257];
-    char el_string[1025];
-    char final_msg[1024];
-    LPSTR el_sstring[57];
+    char el_user[OS_FLSIZE +1];
+    char el_domain[OS_FLSIZE +1];
+    char el_string[OS_MAXSTR +1];
+    char final_msg[OS_MAXSTR +1];
+    LPSTR el_sstring[OS_FLSIZE +1];
 
     /* Er must point to the mbuffer */
     el->er = (EVENTLOGRECORD *) &mbuffer; 
 
     /* Zeroing the last values */
-    el_string[1024] = '\0';
-    el_user[256] = '\0';
-    el_domain[256] = '\0';
-    final_msg[1023] = '\0';
-    el_sstring[56] = NULL;
+    el_string[OS_MAXSTR] = '\0';
+    el_user[OS_FLSIZE] = '\0';
+    el_domain[OS_FLSIZE] = '\0';
+    final_msg[OS_MAXSTR] = '\0';
+    el_sstring[OS_FLSIZE] = NULL;
 
     /* Reading the event log */	    
     while(ReadEventLog(el->h, 
@@ -269,7 +269,7 @@ void readel(os_el *el, int printit)
             /* We must have some description */
             if(el->er->NumStrings)
             {	
-                size_left = 1020;	
+                size_left = OS_MAXSTR - OS_SIZE_1024;	
 
                 sstr = (LPSTR)((LPBYTE)el->er + el->er->StringOffset);
                 el_string[0] = '\0';
@@ -285,7 +285,7 @@ void readel(os_el *el, int printit)
                     str_size = strlen(sstr);
                     strncat(el_string, sstr, size_left);
 
-                    tmp_str= strchr(el_string, '\0');
+                    tmp_str = strchr(el_string, '\0');
                     if(tmp_str)
                     {
                         *tmp_str = ' ';		
@@ -297,7 +297,10 @@ void readel(os_el *el, int printit)
                         el_sstring[nstr] = (LPSTR)sstr;
 
                     sstr = strchr( (LPSTR)sstr, '\0');
-                    sstr++; 
+                    if(sstr)
+                        sstr++;
+                    else
+                        break;     
                 }
 
                 /* Get a more descriptive message (if available) */
@@ -325,7 +328,7 @@ void readel(os_el *el, int printit)
             }
             else
             {
-                strncpy(el_string, "(no message)", 1020);	
+                strncpy(el_string, "(no message)", 128);	
             }
 
 
@@ -360,10 +363,10 @@ void readel(os_el *el, int printit)
                 DWORD _evtid = 65535;
                 int id = (int)el->er->EventID & _evtid; 
                
-                final_msg[892] = '\0'; 
-                final_msg[893] = '\0'; 
+                final_msg[OS_MAXSTR - OS_LOG_HEADER] = '\0'; 
+                final_msg[OS_MAXSTR - OS_LOG_HEADER -1] = '\0'; 
                 
-                snprintf(final_msg, 892, 
+                snprintf(final_msg, OS_MAXSTR - OS_LOG_HEADER -1, 
                         "WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s\n", 
                         el->name,
                         category, 
@@ -373,13 +376,6 @@ void readel(os_el *el, int printit)
                         el_domain,
                         computer_name,
                         descriptive_msg != NULL?descriptive_msg:el_string);	
-                
-                if(strlen(final_msg) >= 890)
-                {
-                    final_msg[888] = '\n';
-                    final_msg[889] = '\0';
-                    final_msg[890] = '\0';
-                }
                 
                 if(SendMSG(logr_queue, final_msg, "WinEvtLog",
                             LOCALFILE_MQ) < 0)

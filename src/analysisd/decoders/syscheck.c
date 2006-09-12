@@ -111,7 +111,7 @@ void __setcompleted(char *agent)
     FILE *fp;
     
     /* Getting agent file */
-    snprintf(sdb.buf, OS_MAXSTR , "%s/.%s.cpt", SYSCHECK_DIR, agent);
+    snprintf(sdb.buf, OS_FLSIZE , "%s/.%s.cpt", SYSCHECK_DIR, agent);
 
     fp = fopen(sdb.buf,"w");
     if(fp)
@@ -127,7 +127,7 @@ int __iscompleted(char *agent)
     FILE *fp;
 
     /* Getting agent file */
-    snprintf(sdb.buf, OS_MAXSTR , "%s/.%s.cpt", SYSCHECK_DIR, agent);
+    snprintf(sdb.buf, OS_FLSIZE , "%s/.%s.cpt", SYSCHECK_DIR, agent);
 
     fp = fopen(sdb.buf,"r");
     if(fp)
@@ -191,7 +191,7 @@ FILE *DB_File(char *agent, int *agent_id)
 
 
     /* Getting agent file */
-    snprintf(sdb.buf, OS_MAXSTR , "%s/%s", SYSCHECK_DIR,agent);
+    snprintf(sdb.buf, OS_FLSIZE , "%s/%s", SYSCHECK_DIR,agent);
     
         
     /* r+ to read and write. Do not truncate */
@@ -340,7 +340,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                     
                     /* Third change */
                     snprintf(sdb.comment,OS_MAXSTR,
-                                        "Integrity checksum of file '%s'"
+                                        "Integrity checksum of file '%.756s'"
                              " has changed again (third time or more).%s",
                              f_name, 
                              Config.syscheck_auto_ignore == 1?
@@ -350,7 +350,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 {
                     /* Second change */
                     snprintf(sdb.comment,OS_MAXSTR,
-                                        "Integrity checksum of file '%s'"
+                                        "Integrity checksum of file '%.756s'"
                                         " has changed again (2nd time)",
                                         f_name);   
                 }
@@ -360,7 +360,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             else
             {
                 snprintf(sdb.comment,OS_MAXSTR,
-                                    "Integrity checksum of file '%s' "
+                                    "Integrity checksum of file '%.756s' "
                                     "has changed.",f_name);
             }
       
@@ -385,7 +385,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             if(c_sum[0] == '-' && c_sum[1] == '1')
             {
                 snprintf(sdb.comment2, OS_MAXSTR,
-                            "File '%s' was deleted. Unable to retrieve "
+                            "File '%.756s' was deleted. Unable to retrieve "
                             "checksum.", f_name);
             }
             
@@ -570,7 +570,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 
                 /* Provide information about the file */    
                 snprintf(sdb.comment2,512,"Integrity checksum changed for: "
-                        "'%s'\n"
+                        "'%.756s'\n"
                         "%s"
                         "%s"
                         "%s"
@@ -623,8 +623,9 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
         /* New file message */
         snprintf(sdb.comment2,OS_MAXSTR,
-                              "New file '%s' added to directory. Checksum: %s."
-                              ,f_name,c_sum);
+                              "New file '%.756s' "
+                              "added to directory. Checksum: %s.",
+                              f_name,c_sum);
         
 
         /* Creating a new log message */

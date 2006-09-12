@@ -48,7 +48,7 @@ static int OS_IPNotAllowed(char *srcip)
  */
 void HandleSyslog()
 {
-    char buffer[OS_MAXSTR +2];
+    char buffer[OS_SIZE_1024 +2];
     char srcip[IPSIZE +1];
 
     char *buffer_pt = NULL;
@@ -64,7 +64,7 @@ void HandleSyslog()
 
 
     /* Initializing some variables */
-    memset(buffer, '\0', OS_MAXSTR +2);
+    memset(buffer, '\0', OS_SIZE_1024 +2);
 
     
     /* Connecting to the message queue
@@ -80,7 +80,7 @@ void HandleSyslog()
     while(1)
     {
         /* Receiving message  */
-        recv_b = recvfrom(logr.sock, buffer, OS_MAXSTR, 0, 
+        recv_b = recvfrom(logr.sock, buffer, OS_SIZE_1024, 0, 
                 (struct sockaddr *)&peer_info, &peer_size);
 
         /* Nothing received */

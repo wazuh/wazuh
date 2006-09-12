@@ -147,7 +147,7 @@ void *read_nmapg(int pos, int *rc)
     int need_clear = 0;
     int __rc = 0;
     
-    char str[OS_MAXSTR_2 + 1];
+    char str[OS_MAXSTR + 1];
     char final_msg[OS_MAXSTR + 1];
     char buffer[OS_MAXSTR + 1];
     char port[17];
@@ -157,14 +157,14 @@ void *read_nmapg(int pos, int *rc)
     char *p;
     char *q;
     
-    str[OS_MAXSTR_2] = '\0';
+    str[OS_MAXSTR] = '\0';
     final_msg[OS_MAXSTR] = '\0';
     buffer[OS_MAXSTR] = '\0';
 
     port[16] = '\0';
     proto[16] = '\0';
 
-    while(fgets(str, OS_MAXSTR_2 -1, logff[pos].fp) != NULL)
+    while(fgets(str, OS_MAXSTR -OS_LOG_HEADER, logff[pos].fp) != NULL)
     {
         /* If need clear is set, we need to clear the line */
         if(need_clear)

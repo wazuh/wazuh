@@ -102,7 +102,7 @@ char *getsharedfiles()
 /* run_notify: Send periodically notification to server */
 void run_notify()
 {
-    char tmp_msg[OS_MAXSTR +1];
+    char tmp_msg[OS_SIZE_1024 +1];
     char *uname;
     char *shared_files;
     
@@ -140,7 +140,7 @@ void run_notify()
     
     
     /* creating message */
-    snprintf(tmp_msg, OS_MAXSTR, "#!-%s\n%s",uname, shared_files);
+    snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s",uname, shared_files);
     
     send_msg(0, tmp_msg);
     

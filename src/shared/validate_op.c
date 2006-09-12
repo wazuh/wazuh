@@ -32,8 +32,8 @@ int _netmasks[33];
 static char *_read_file(char *high_name, char *low_name)
 {
     FILE *fp;
-    char def_file[OS_MAXSTR +1];
-    char buf[OS_MAXSTR +1];
+    char def_file[OS_FLSIZE +1];
+    char buf[OS_SIZE_1024 +1];
     char *buf_pt;
     char *tmp_buffer;
     char *ret;
@@ -41,14 +41,14 @@ static char *_read_file(char *high_name, char *low_name)
     #ifndef WIN32
     if(isChroot())
     {
-        snprintf(def_file,OS_MAXSTR,"%s", OSSEC_DEFINES);
+        snprintf(def_file,OS_FLSIZE,"%s", OSSEC_DEFINES);
     }
     else
     {
-        snprintf(def_file,OS_MAXSTR,"%s%s",DEFAULTDIR, OSSEC_DEFINES);
+        snprintf(def_file,OS_FLSIZE,"%s%s",DEFAULTDIR, OSSEC_DEFINES);
     }
     #else
-    snprintf(def_file,OS_MAXSTR,"%s", OSSEC_DEFINES);
+    snprintf(def_file,OS_FLSIZE,"%s", OSSEC_DEFINES);
     #endif
 
                                                         
@@ -68,7 +68,8 @@ static char *_read_file(char *high_name, char *low_name)
     }
 
     /* Reading it */
-    while(fgets(buf, OS_MAXSTR , fp) != NULL)
+    buf[OS_SIZE_1024] = '\0';
+    while(fgets(buf, OS_SIZE_1024 , fp) != NULL)
     {
         /* Commented or blank lines */
         if(buf[0] == '#' || buf[0] == ' ' || buf[0] == '\n')

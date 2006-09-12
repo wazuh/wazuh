@@ -235,12 +235,12 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
 
     /* Setting a unique active response name */
-    tmp_ar->name = calloc(OS_MAXSTR +1, sizeof(char));
+    tmp_ar->name = calloc(OS_FLSIZE +1, sizeof(char));
     if(!tmp_ar->name)
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
-    snprintf(tmp_ar->name, OS_MAXSTR, "%s%d", 
+    snprintf(tmp_ar->name, OS_FLSIZE, "%s%d", 
             tmp_ar->ar_cmd->name,
             tmp_ar->timeout);  
 

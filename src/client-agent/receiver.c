@@ -27,7 +27,7 @@ void *receiver_thread(void *none)
 {
     int recv_b;
     
-    char file[OS_MAXSTR +1];
+    char file[OS_SIZE_1024 +1];
     char buffer[OS_MAXSTR +1];
     
     char cleartext[OS_MAXSTR + 1];
@@ -42,7 +42,8 @@ void *receiver_thread(void *none)
     fp = NULL;
    
     memset(cleartext, '\0', OS_MAXSTR +1);
-    memset(file, '\0', OS_MAXSTR +1);
+    memset(buffer, '\0', OS_MAXSTR +1);
+    memset(file, '\0', OS_SIZE_1024 +1);
     memset(file_sum, '\0', 34);
     
     
@@ -74,11 +75,9 @@ void *receiver_thread(void *none)
             return(NULL);
         }
         
-        /* Read until no more messages are available */ 
-        while((recv_b = recv(logr->sock, buffer, OS_MAXSTR, MSG_DONTWAIT)) > 0)
-        #else
-        while((recv_b = recv(logr->sock, buffer, OS_MAXSTR, 0)) > 0)
         #endif
+        /* Read until no more messages are available */ 
+        while((recv_b = recv(logr->sock, buffer,OS_SIZE_1024,MSG_DONTWAIT))>0)
         {
             
             /* Id of zero -- only one key allowed */
@@ -168,7 +167,7 @@ void *receiver_thread(void *none)
                         tmp_msg[0] = '-';            
 
                     
-                    snprintf(file, OS_MAXSTR, "%s/.%s", 
+                    snprintf(file, OS_SIZE_1024, "%s/.%s", 
                             SHAREDCFG_DIR,
                             tmp_msg);
 
@@ -203,7 +202,7 @@ void *receiver_thread(void *none)
                         else
                         {
                             char *final_file;
-                            char _ff[OS_MAXSTR +1];
+                            char _ff[OS_SIZE_1024 +1];
 
                             /* Renaming the file to its orignal name */
 
@@ -211,7 +210,7 @@ void *receiver_thread(void *none)
                             if(final_file)
                             {
                                 final_file++;
-                                snprintf(_ff, OS_MAXSTR, "%s/%s",
+                                snprintf(_ff, OS_SIZE_1024, "%s/%s",
                                         SHAREDCFG_DIR,
                                         final_file);
                                 rename(file, _ff);

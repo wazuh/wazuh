@@ -171,7 +171,7 @@ void ReadKeys(keystruct *keys, int just_read)
 {
     FILE *fp;
     
-    char buffer[OS_MAXSTR +1];
+    char buffer[OS_BUFFER_SIZE +1];
     
     char name[KEYSIZE +1];
     char ip[KEYSIZE +1];
@@ -204,12 +204,12 @@ void ReadKeys(keystruct *keys, int just_read)
 
     _MemClear(id, name, ip, key);
 
-    memset(buffer, '\0', OS_MAXSTR +1);
+    memset(buffer, '\0', OS_BUFFER_SIZE +1);
 
     /* Reading each line.
      * lines are divided on id name ip key
      */
-    while(fgets(buffer, OS_MAXSTR, fp) != NULL)
+    while(fgets(buffer, OS_BUFFER_SIZE, fp) != NULL)
     {
         char *tmp_str;
         char *valid_str;
@@ -334,9 +334,9 @@ int IsAllowedID(keystruct *keys, char *id)
 void StartCounter(keystruct *keys)
 {
     int i;
-    char rids_file[OS_MAXSTR +1];
+    char rids_file[OS_FLSIZE +1];
 
-    rids_file[OS_MAXSTR] = '\0';
+    rids_file[OS_FLSIZE] = '\0';
     
     /* Starting receiving counter */
     for(i = 0;i<=keys->keysize;i++)
@@ -346,13 +346,13 @@ void StartCounter(keystruct *keys)
          */
         if(i == keys->keysize)
         {
-            snprintf(rids_file, OS_MAXSTR, "%s/%s",
+            snprintf(rids_file, OS_FLSIZE, "%s/%s",
                                             RIDS_DIR,
                                             SENDER_COUNTER);
         }
         else
         {
-            snprintf(rids_file, OS_MAXSTR, "%s/%s",
+            snprintf(rids_file, OS_FLSIZE, "%s/%s",
                                            RIDS_DIR,
                                            keys->ids[i]);
         }
@@ -381,6 +381,9 @@ void StartCounter(keystruct *keys)
                     verbose("%s: No previous counter available for '%s'.",
                                             __local_name, keys->name[i]);
                 }
+                
+                g_c = 0;
+                l_c = 0;
             }
 
             if(i == keys->keysize)
@@ -419,8 +422,8 @@ void StartCounter(keystruct *keys)
  */
 void RemoveCounter(char *id)
 {
-    char rids_file[OS_MAXSTR +1];
-    snprintf(rids_file, OS_MAXSTR, "%s/%s",RIDS_DIR, id);
+    char rids_file[OS_FLSIZE +1];
+    snprintf(rids_file, OS_FLSIZE, "%s/%s",RIDS_DIR, id);
     unlink(rids_file);
 }
 
@@ -432,7 +435,7 @@ void StoreSenderCounter(keystruct *keys, int global, int local)
 {
     /* Writting at the beginning of the file */
     fseek(keys->fps[keys->keysize], 0, SEEK_SET);
-    fprintf(keys->fps[keys->keysize], "%u:%u", global, local);
+    fprintf(keys->fps[keys->keysize], "%u:%u:", global, local);
 }
 
 
@@ -443,7 +446,7 @@ void StoreCounter(keystruct *keys, int id, int global, int local)
 {
     /* Writting at the beginning of the file */
     fseek(keys->fps[id], 0, SEEK_SET);
-    fprintf(keys->fps[id], "%u:%u", global, local);
+    fprintf(keys->fps[id], "%u:%u:", global, local);
 }
 
 
@@ -571,7 +574,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         }
 
 
-        /* Warn about duplicated message */
+        /* Warn about duplicated messages */
         merror("%s: Duplicate error:  global: %d, local: %d, "
                 "saved global: %d, saved local:%d",
                 __local_name,
@@ -671,7 +674,7 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     
     msg_size = strlen(msg);
     
-    if((msg_size > (OS_MAXSTR - 64))||(msg_size < 1))
+    if((msg_size > (OS_MAXSTR - OS_HEADER_SIZE))||(msg_size < 1))
     {
         merror(ENCSIZE_ERROR, __local_name, msg);
         return(0);
@@ -710,7 +713,7 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     /* Compressing message.
      * We assing the first 8 bytes for padding. 
      */
-    cmp_size = os_compress(_finmsg, _tmpmsg + 8, msg_size, OS_MAXSTR - 9);
+    cmp_size = os_compress(_finmsg, _tmpmsg + 8, msg_size, OS_MAXSTR - 12);
     if(!cmp_size)
     {
         merror(COMPRESS_ERR, __local_name, _finmsg);
@@ -740,7 +743,7 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     c_comp_size+= cmp_size;
     if(evt_count > _s_comp_print)
     {
-        verbose("%s: Event sizes: %u->%u (%d%%)", ARGV0,
+        verbose("%s: Event sizes: %u->%u (%d%%)", __local_name,
                     c_orig_size, 
                     c_comp_size,
                     (c_comp_size/c_orig_size) * 100);

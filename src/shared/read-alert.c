@@ -1,4 +1,4 @@
-/*   $OSSEC, read-alert.c, v0.1, 2006/04/13, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -83,11 +83,11 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char **log = NULL;
     int level, rule;
     
-    char str[OS_MAXSTR+1];
-    str[OS_MAXSTR]='\0';
+    char str[OS_BUFFER_SIZE+1];
+    str[OS_BUFFER_SIZE]='\0';
 
 
-    while(fgets(str, OS_MAXSTR, fp) != NULL)
+    while(fgets(str, OS_BUFFER_SIZE, fp) != NULL)
     {
         
         /* Enf of alert */

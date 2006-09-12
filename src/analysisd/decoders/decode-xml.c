@@ -609,7 +609,7 @@ char *_loadmemory(char *at, char *str)
     if(at == NULL)
     {
         int strsize = 0;
-        if((strsize = strlen(str)) < OS_RULESIZE)
+        if((strsize = strlen(str)) < OS_SIZE_1024)
         {
             at = calloc(strsize+1,sizeof(char));
             if(at == NULL)
@@ -632,7 +632,7 @@ char *_loadmemory(char *at, char *str)
         int strsize = strlen(str);
         int atsize = strlen(at);
         int finalsize = atsize+strsize+1;
-        if(finalsize > OS_RULESIZE)
+        if(finalsize > OS_SIZE_1024)
         {
             merror(SIZE_ERROR,ARGV0,str);
             return(NULL);

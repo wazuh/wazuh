@@ -125,11 +125,10 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
         /* Error on the socket */
         if(__mq_rcode == OS_SOCKTERR)
         {
-            merror("%s: socketerr", __local_name);
+            merror("%s: socketerr.", __local_name);
             return(-1);
         }
 
-        /* merror("%s: socket busy", __local_name); */
         
         /* Unable to send. Socket busy */
         sleep(1);

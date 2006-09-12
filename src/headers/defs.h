@@ -1,6 +1,6 @@
-/*   $OSSEC, defs.h, v0.2, 2005/11/04, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -24,24 +24,32 @@
 
 
 /* Size limit control */
-#define OS_MAXSTR 	1024	/* Maximum size (for strings, sockets ,etc) */
-#define OS_MAXSTR_2	2048	/* Maximum size 2 (for strings, sockets ,etc) */
-#define OS_RULESIZE	256	    /* Maximum size -- rule only */	 	
-#define OS_FLSIZE	256	    /* Maximum size for files */		
-#define IPSIZE      16      /* IP Address size */
+#define OS_SIZE_8192    8192
+#define OS_SIZE_6144    6144
+#define OS_SIZE_4096    4096
+#define OS_SIZE_2048    2048
+#define OS_SIZE_1024    1024
+#define OS_SIZE_256     256
+#define OS_SIZE_128     128
+
+#define OS_MAXSTR       OS_SIZE_6144    /* Size for logs, sockets, etc */
+#define OS_BUFFER_SIZE  OS_SIZE_2048    /* Size of general buffers */
+#define OS_FLSIZE	    OS_SIZE_256     /* Maximum file size */
+#define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size */
+#define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size */
+#define IPSIZE          16              /* IP Address size */
 
 
 /* Some Global names */
 #define __name      "OSSEC HIDS"
-#define __version   "v0.9-1b"
+#define __version   "v0.9-1c"
 #define __author    "Daniel B. Cid"
 #define __contact   "contact@ossec.net"
 #define __site      "http://www.ossec.net"
 #define __license   "\
 This program is free software; you can redistribute it and/or modify\n\
-it under the terms of the GNU General Public License as published by\n\
-the Free Software Foundation; either version 2 of the License, or\n\
-(at your option) any later version.\n"
+it under the terms of the GNU General Public License (version 2) as \n\
+published by the Free Software Foundation.\n"
 
 /* Maximum allowed PID */
 #ifdef SOLARIS

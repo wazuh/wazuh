@@ -33,9 +33,9 @@ void *AR_Forward(void *arg)
     int agent_id = 0;
     int ar_location = 0;
     
-    char msg_to_send[OS_MAXSTR +1];
+    char msg_to_send[OS_SIZE_1024 +1];
     
-    char msg[OS_MAXSTR +1];
+    char msg[OS_SIZE_1024 +1];
     char *location = NULL;
     char *ar_location_str = NULL;
     char *ar_agent_id = NULL;
@@ -48,12 +48,12 @@ void *AR_Forward(void *arg)
         ErrorExit(QUEUE_ERROR, ARGV0, ARQUEUE);
     }
 
-    memset(msg, '\0', OS_MAXSTR +1);
+    memset(msg, '\0', OS_SIZE_1024 +1);
 
     /* Daemon loop */
     while(1)
     {
-        if(OS_RecvUnix(arq, OS_MAXSTR, msg))
+        if(OS_RecvUnix(arq, OS_SIZE_1024, msg))
         {
             /* Always zeroing the location */
             ar_location = 0;
@@ -129,7 +129,7 @@ void *AR_Forward(void *arg)
             
             
             /*** Creating the new message ***/
-            snprintf(msg_to_send, OS_MAXSTR, "%s%s%s", 
+            snprintf(msg_to_send, OS_SIZE_1024, "%s%s%s", 
                                              CONTROL_HEADER,
                                              EXECD_HEADER,
                                              tmp_str);

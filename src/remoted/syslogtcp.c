@@ -78,7 +78,7 @@ static void HandleClient(int client_socket, char *srcip)
         if(!buffer_pt)
         {
             /* Buffer is full */
-            if((sb_size - r_sz) <= 1)
+            if((sb_size - r_sz) <= 2)
             {
                 merror("%s: Full buffer receiving from: '%s'", ARGV0, srcip);
                 sb_size = OS_MAXSTR;
@@ -101,9 +101,9 @@ static void HandleClient(int client_socket, char *srcip)
 
         /* Storing everything on the storage_buffer */
         /* Checking if buffer will be  full */
-        if((sb_size - r_sz) <= 1)
+        if((sb_size - r_sz) <= 2)
         {
-            merror("%s: Full buffer receiving from: '%s'", ARGV0, srcip);
+            merror("%s: Full buffer receiving from: '%s'.", ARGV0, srcip);
             sb_size = OS_MAXSTR;
             storage_buffer[0] = '\0';
             tmp_buffer[0] = '\0';

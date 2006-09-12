@@ -34,7 +34,7 @@
  */
 void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
 {
-    char exec_msg[OS_MAXSTR +1];
+    char exec_msg[OS_SIZE_1024 +1];
     char *ip;
     char *location;
 
@@ -79,7 +79,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
         if(!(Config.ar & LOCAL_AR))
             return;
             
-        snprintf(exec_msg, OS_MAXSTR,
+        snprintf(exec_msg, OS_SIZE_1024,
                 "%s %s %s",
                 ar->name,
                 lf->user == NULL?"null":lf->user,
@@ -87,7 +87,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
 
         if(OS_SendUnix(*execq, exec_msg, 0) < 0)
         {
-            merror("%s: Error communicating with execd", ARGV0);
+            merror("%s: Error communicating with execd.", ARGV0);
         }
     }
    
@@ -105,7 +105,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     /* Active response to the forwarder */ 
     if(Config.ar & REMOTE_AR)
     {
-        snprintf(exec_msg, OS_MAXSTR,
+        snprintf(exec_msg, OS_SIZE_1024,
                 "%s %c%c%c %s %s %s %s",
                 location,
                 (ar->location & ALL_AGENTS)?ALL_AGENTS_C:NONE_C,
@@ -118,7 +118,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
        
         if(OS_SendUnix(*arq, exec_msg, 0) < 0)
         {
-            merror("%s: Error communicating with ar queue", ARGV0);
+            merror("%s: Error communicating with ar queue.", ARGV0);
         }
     }
     

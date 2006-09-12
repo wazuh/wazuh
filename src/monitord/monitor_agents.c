@@ -54,10 +54,10 @@ void monitor_agents()
         /* Agent disconnected */
         if(available == 0)
         {
-            char str[OS_MAXSTR +1];
+            char str[OS_SIZE_1024 +1];
             
             /* Sending disconnected message */
-            snprintf(str, OS_MAXSTR -1, OS_AG_DISCON, *cr_agents);
+            snprintf(str, OS_SIZE_1024 -1, OS_AG_DISCON, *cr_agents);
             if(SendMSG(mond.a_queue, str, ARGV0,
                         LOCALFILE_MQ) < 0)
             {

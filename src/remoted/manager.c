@@ -217,8 +217,8 @@ void c_files()
 int send_file_toagent(int agentid, char *name, char *sum)
 {
     int i = 0;
-    char file[OS_MAXSTR +1];
-    char buf[OS_MAXSTR +1];
+    char file[OS_SIZE_1024 +1];
+    char buf[OS_SIZE_1024 +1];
     char crypt_msg[OS_MAXSTR +1];
 
     int msg_size;
@@ -233,7 +233,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
     }
     
     
-    snprintf(file, OS_MAXSTR, "%s/%s",SHAREDCFG_DIR, name);
+    snprintf(file, OS_SIZE_1024, "%s/%s",SHAREDCFG_DIR, name);
 
     fp = fopen(file, "r");
     if(!fp)
@@ -244,7 +244,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
 
 
     /* Sending the file name first */
-    snprintf(buf, OS_MAXSTR, "%s%s%s %s\n", 
+    snprintf(buf, OS_SIZE_1024, "%s%s%s %s\n", 
                              CONTROL_HEADER, FILE_UPDATE_HEADER, sum, name);
 
     msg_size = CreateSecMSG(&keys, buf, crypt_msg, agentid);
@@ -268,7 +268,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
     sleep(1);
 
     /* Sending the file content */
-    while(fgets(buf, OS_MAXSTR , fp) != NULL)
+    while(fgets(buf, OS_SIZE_1024 , fp) != NULL)
     {
         msg_size = CreateSecMSG(&keys, buf, crypt_msg, agentid);
 
@@ -301,7 +301,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
     sleep(1);
     
     /* Sending the message to close the file */
-    snprintf(buf, OS_MAXSTR, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
+    snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
 
     msg_size = CreateSecMSG(&keys, buf, crypt_msg, agentid);
     if(msg_size == 0)
@@ -337,7 +337,7 @@ void read_controlmsg(int agentid, char *msg)
     int i;
 
     char *uname;
-    char agent_file[OS_MAXSTR +1];
+    char agent_file[OS_SIZE_1024 +1];
     char msg_ack[OS_FLSIZE +1];
 
     FILE *fp;
@@ -375,7 +375,7 @@ void read_controlmsg(int agentid, char *msg)
 
 
     /* Writting to the agent file */
-    snprintf(agent_file, OS_MAXSTR, "%s/%s-%s",
+    snprintf(agent_file, OS_SIZE_1024, "%s/%s-%s",
                          AGENTINFO_DIR,
                          keys.name[agentid],
                          keys.ips[agentid]);
@@ -479,11 +479,11 @@ void read_controlmsg(int agentid, char *msg)
 void *wait_for_msgs(void *none)
 {
     int id, i;
-    char msg[OS_MAXSTR +2];
+    char msg[OS_SIZE_1024 +2];
     
 
     /* Initializing the memory */
-    memset(msg, '\0', OS_MAXSTR +2);
+    memset(msg, '\0', OS_SIZE_1024 +2);
 
     
     /* should never leave this loop */
@@ -539,7 +539,7 @@ void *wait_for_msgs(void *none)
             if((_changed[i] == 1)&&(_msg[i]))
             {
                 /* Copying the message to be analyzed */
-                strncpy(msg, _msg[i], OS_MAXSTR);
+                strncpy(msg, _msg[i], OS_SIZE_1024);
                 _changed[i] = 0;
 
                 if(modified_agentid >= i)
