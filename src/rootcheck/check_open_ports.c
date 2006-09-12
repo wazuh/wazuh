@@ -1,4 +1,4 @@
-/*   $OSSEC, check_open_ports.c, v0.1, 2006/01/11, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -30,7 +30,7 @@
 
 int _ports_open;
 int open_ports_size;
-char open_ports_str[OS_MAXSTR + 1];
+char open_ports_str[OS_SIZE_1024 + 1];
 
 /* connect_to_port */
 int connect_to_port(int proto, int port)
@@ -123,12 +123,12 @@ void try_to_access_ports()
  */
 void check_open_ports()
 {
-    memset(open_ports_str, '\0', OS_MAXSTR +1);
-    open_ports_size = OS_MAXSTR - 1;
+    memset(open_ports_str, '\0', OS_SIZE_1024 +1);
+    open_ports_size = OS_SIZE_1024 - 1;
     _ports_open = 0;
     
     #ifndef OSSECHIDS
-    snprintf(open_ports_str, OS_MAXSTR, "The following ports are open:");
+    snprintf(open_ports_str, OS_SIZE_1024, "The following ports are open:");
     open_ports_size-=strlen(open_ports_str) +1;
     
     /* Testing All ports */ 

@@ -32,8 +32,8 @@ int read_sys_file(char *file_name, int do_read)
 
     if(lstat(file_name, &statbuf) < 0)
     {
-        char op_msg[OS_MAXSTR +1];
-        snprintf(op_msg, OS_MAXSTR, "Anomaly detected in file '%s'. "
+        char op_msg[OS_SIZE_1024 +1];
+        snprintf(op_msg, OS_SIZE_1024, "Anomaly detected in file '%s'. "
                 "Hidden from stats, but showing up on readdir. "
                 "Possible kernel level rootkit.",
                 file_name);
@@ -63,7 +63,7 @@ int read_sys_file(char *file_name, int do_read)
      */
     if(S_ISREG(statbuf.st_mode) && do_read)
     {
-        char buf[1024];
+        char buf[OS_SIZE_1024];
         int fd;
         int nr;
         unsigned long int total = 0;
@@ -85,8 +85,8 @@ int read_sys_file(char *file_name, int do_read)
                 if((lstat(file_name, &statbuf2) == 0) && 
                    (total != statbuf2.st_size))
                 {
-                    char op_msg[OS_MAXSTR +1];
-                    snprintf(op_msg, OS_MAXSTR, "Anomaly detected in file "
+                    char op_msg[OS_SIZE_1024 +1];
+                    snprintf(op_msg, OS_SIZE_1024, "Anomaly detected in file "
                             "'%s'. File size doesn't match what we found. "
                             "Possible kernel level rootkit.",
                             file_name);
@@ -117,13 +117,13 @@ int read_sys_file(char *file_name, int do_read)
 
         if(statbuf.st_uid == 0)
         {
-            char op_msg[OS_MAXSTR +1];
+            char op_msg[OS_SIZE_1024 +1];
             #ifdef OSSECHIDS
-            snprintf(op_msg, OS_MAXSTR, "File '%s' is owned by root "
+            snprintf(op_msg, OS_SIZE_1024, "File '%s' is owned by root "
                              "and has written permissions to anyone.",
                              file_name);
             #else
-            snprintf(op_msg, OS_MAXSTR, "File '%s' is: \n"
+            snprintf(op_msg, OS_SIZE_1024, "File '%s' is: \n"
                              "          - owned by root,\n"
                              "          - has written permissions to anyone.",
                              file_name);
@@ -261,10 +261,10 @@ int read_sys_dir(char *dir_name, int do_read)
 
             if(strcmp(rk_sys_file[i], entry->d_name) == 0)
             {
-                char op_msg[OS_MAXSTR +1];
+                char op_msg[OS_SIZE_1024 +1];
 
                 _sys_errors++;
-                snprintf(op_msg, OS_MAXSTR, "Rootkit '%s' detected "
+                snprintf(op_msg, OS_SIZE_1024, "Rootkit '%s' detected "
                         "by the presence of file '%s/%s'.",
                         rk_sys_name[i], dir_name, rk_sys_file[i]);
 
@@ -286,12 +286,12 @@ int read_sys_dir(char *dir_name, int do_read)
        ((did_changed == 0) || ((entry_count + 1) != statbuf.st_nlink)))
     {
         struct stat statbuf2;
-        char op_msg[OS_MAXSTR +1];
+        char op_msg[OS_SIZE_1024 +1];
 
         if((lstat(dir_name, &statbuf2) == 0) && 
             (statbuf2.st_nlink != entry_count))
         {
-            snprintf(op_msg, OS_MAXSTR, "Files hidden inside directory "
+            snprintf(op_msg, OS_SIZE_1024, "Files hidden inside directory "
                     "'%s'. Link count does not match number of files "
                     "(%d,%d).",
                     dir_name, entry_count, (int)statbuf.st_nlink);
@@ -328,7 +328,7 @@ int read_sys_dir(char *dir_name, int do_read)
  */
 void check_rc_sys(char *basedir)
 {
-    char file_path[OS_MAXSTR +1];
+    char file_path[OS_SIZE_1024 +1];
 
     debug1("%s: DEBUG: Starting on check_rc_sys", ARGV0);
 
@@ -336,7 +336,7 @@ void check_rc_sys(char *basedir)
     _sys_total = 0;
     did = 0; /* device id */
     
-    snprintf(file_path, OS_MAXSTR, "%s", basedir);
+    snprintf(file_path, OS_SIZE_1024, "%s", basedir);
 
     /* Opening output files */
     if(rootcheck.notify != QUEUE)
@@ -373,7 +373,7 @@ void check_rc_sys(char *basedir)
         {
             if(dirs_to_scan[_i] == NULL)
                 break;
-            snprintf(file_path, OS_MAXSTR, "%s%s", 
+            snprintf(file_path, OS_SIZE_1024, "%s%s", 
                                             basedir, 
                                             dirs_to_scan[_i]);
             read_sys_dir(file_path, rootcheck.readall);
@@ -382,16 +382,16 @@ void check_rc_sys(char *basedir)
     
     if(_sys_errors == 0)
     {
-        char op_msg[OS_MAXSTR +1];
-        snprintf(op_msg, OS_MAXSTR, "No problem found on the system."
+        char op_msg[OS_SIZE_1024 +1];
+        snprintf(op_msg, OS_SIZE_1024, "No problem found on the system."
                                     " Analyzed %d files.", _sys_total);
         notify_rk(ALERT_OK, op_msg);
     }
 
     else if(_wx && _ww && _suid)
     {
-        char op_msg[OS_MAXSTR +1];
-        snprintf(op_msg, OS_MAXSTR, "Check the following files for more "
+        char op_msg[OS_SIZE_1024 +1];
+        snprintf(op_msg, OS_SIZE_1024, "Check the following files for more "
             "information:\n%s%s%s",
             (ftell(_wx) == 0)?"":       
             "       rootcheck-rw-rw-rw-.txt (list of world writable files)\n",

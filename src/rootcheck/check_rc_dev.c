@@ -1,4 +1,4 @@
-/*   $OSSEC, check_rc_dev.c, v0.1, 2005/10/03, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -39,9 +39,9 @@ int read_dev_file(char *file_name)
         
     else if(S_ISREG(statbuf.st_mode))
     {
-        char op_msg[OS_MAXSTR +1];
+        char op_msg[OS_SIZE_1024 +1];
 
-        snprintf(op_msg, OS_MAXSTR, "File '%s' present on /dev."
+        snprintf(op_msg, OS_SIZE_1024, "File '%s' present on /dev."
                                     " Possible hidden file.", file_name);
         notify_rk(ALERT_SYSTEM_CRIT, op_msg);
 
@@ -117,6 +117,7 @@ int read_dev_dir(char *dir_name)
         if(ignore_dev[i] != NULL)
             continue;
              
+        f_name[PATH_MAX +1] = '\0';     
         snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);
         
         read_dev_file(f_name);
@@ -134,20 +135,20 @@ int read_dev_dir(char *dir_name)
  */
 void check_rc_dev(char *basedir)
 {
-    char file_path[OS_MAXSTR +1];
+    char file_path[OS_SIZE_1024 +1];
     
     _dev_total = 0, _dev_errors = 0;
 
     debug1("%s: DEBUG: Starting on check_rc_dev", ARGV0);
 
-    snprintf(file_path, OS_MAXSTR, "%s/dev", basedir);
+    snprintf(file_path, OS_SIZE_1024, "%s/dev", basedir);
 
     read_dev_dir(file_path);
 
     if(_dev_errors == 0)
     {
-        char op_msg[OS_MAXSTR +1];
-        snprintf(op_msg, OS_MAXSTR, "No problem detected on the /dev "
+        char op_msg[OS_SIZE_1024 +1];
+        snprintf(op_msg, OS_SIZE_1024, "No problem detected on the /dev "
                                     "directory. Analyzed %d files", 
                                     _dev_total);
         notify_rk(ALERT_OK, op_msg);

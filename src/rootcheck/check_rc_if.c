@@ -1,4 +1,4 @@
-/*   $OSSEC, check_rc_if.c, v0.1, 2005/10/07, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -41,9 +41,9 @@
  */
 int run_ifconfig(char *ifconfig)
 {
-    char nt[OS_MAXSTR +1];
+    char nt[OS_SIZE_1024 +1];
 
-    snprintf(nt, OS_MAXSTR, IFCONFIG, ifconfig);
+    snprintf(nt, OS_SIZE_1024, IFCONFIG, ifconfig);
 
     if(system(nt) == 0)
         return(1);
@@ -103,16 +103,16 @@ void check_rc_if()
 
         if ((_ifr.ifr_flags & IFF_PROMISC) )
         {
-            char op_msg[OS_MAXSTR +1];
+            char op_msg[OS_SIZE_1024 +1];
             if(run_ifconfig(_ifr.ifr_name))
             {
-                snprintf(op_msg, OS_MAXSTR, "Interface '%s' in promiscuous"
+                snprintf(op_msg, OS_SIZE_1024,"Interface '%s' in promiscuous"
                                             " mode.", _ifr.ifr_name);
                 notify_rk(ALERT_SYSTEM_CRIT, op_msg);
             }
             else
             {
-                snprintf(op_msg, OS_MAXSTR, "Interface '%s' in promiscuous"
+                snprintf(op_msg, OS_SIZE_1024,"Interface '%s' in promiscuous"
                                  " mode, but ifconfig is not showing it"
                                  "(probably trojaned).", _ifr.ifr_name);
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
@@ -124,8 +124,8 @@ void check_rc_if()
 
     if(_errors == 0)
     {
-        char op_msg[OS_MAXSTR +1];
-        snprintf(op_msg, OS_MAXSTR, "No problem detected on ifconfig/ifs."
+        char op_msg[OS_SIZE_1024 +1];
+        snprintf(op_msg, OS_SIZE_1024, "No problem detected on ifconfig/ifs."
                                     " Analyzed %d interfaces.", _total);
         notify_rk(ALERT_OK, op_msg);
     }

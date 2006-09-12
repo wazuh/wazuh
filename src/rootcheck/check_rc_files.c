@@ -21,8 +21,8 @@
  */
 void check_rc_files(char *basedir, FILE *fp)
 {
-    char buf[OS_MAXSTR +1];
-    char file_path[OS_MAXSTR +1];
+    char buf[OS_SIZE_1024 +1];
+    char file_path[OS_SIZE_1024 +1];
 
     char *file;
     char *name;
@@ -34,7 +34,7 @@ void check_rc_files(char *basedir, FILE *fp)
      
     debug1("%s: DEBUG: Starting on check_rc_files", ARGV0);
      
-    while(fgets(buf, OS_MAXSTR, fp) != NULL)
+    while(fgets(buf, OS_SIZE_1024, fp) != NULL)
     {
         char *nbuf;
     
@@ -188,15 +188,15 @@ void check_rc_files(char *basedir, FILE *fp)
             continue;
         }
         
-        snprintf(file_path, OS_MAXSTR, "%s/%s",basedir, file);
+        snprintf(file_path, OS_SIZE_1024, "%s/%s",basedir, file);
         
         /* Checking if file exists */        
         if(is_file(file_path))
         {
-            char op_msg[OS_MAXSTR +1];
+            char op_msg[OS_SIZE_1024 +1];
             
             _errors = 1;
-            snprintf(op_msg, OS_MAXSTR, "Rootkit '%s' detected "
+            snprintf(op_msg, OS_SIZE_1024, "Rootkit '%s' detected "
                      "by the presence of file '%s'.",name, file_path);
             
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
@@ -208,8 +208,8 @@ void check_rc_files(char *basedir, FILE *fp)
 
     if(_errors == 0)
     {
-        char op_msg[OS_MAXSTR +1];
-        snprintf(op_msg, OS_MAXSTR, "No presence of public rootkits detected."
+        char op_msg[OS_SIZE_1024 +1];
+        snprintf(op_msg,OS_SIZE_1024,"No presence of public rootkits detected."
                                     " Analyzed %d files.", _total);
         notify_rk(ALERT_OK, op_msg);
     }

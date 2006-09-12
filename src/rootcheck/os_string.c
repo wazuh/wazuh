@@ -1,4 +1,4 @@
-/*   $OSSEC, os_strings.c, v0.1, 2005/10/02, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Included and modified strings.c from the OpenBSD project.
  * Copyright bellow.
@@ -164,7 +164,7 @@ int os_string(char *file, char *regex)
     unsigned char *C;
     unsigned char *bfr;
  
-    char line[OS_MAXSTR +1];
+    char line[OS_SIZE_1024 +1];
     char *buf;
     
     EXEC *head;
@@ -195,7 +195,7 @@ int os_string(char *file, char *regex)
     }
 
     /* cleaning the line */
-    memset(line, '\0', OS_MAXSTR +1);
+    memset(line, '\0', OS_SIZE_1024 +1);
     
     /* starting .. (from old strings.c) */
     oss.foff = 0;
@@ -244,14 +244,14 @@ int os_string(char *file, char *regex)
             if (++cnt < STR_MINLEN)
                 continue;
             
-            strncpy(line, (char *)bfr, STR_MINLEN +1);    
+            strncpy(line, (char *)bfr, STR_MINLEN);    
             buf = line;
             buf+=strlen(line);
             
 
             while ((ch = os_getch(&oss)) != EOF && ISSTR(ch))
             {
-                if(cnt < OS_MAXSTR)
+                if(cnt < OS_SIZE_1024)
                 {
                     *buf = (char)ch;
                     buf++;

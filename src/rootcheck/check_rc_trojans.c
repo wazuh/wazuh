@@ -1,4 +1,4 @@
-/*   $OSSEC, check_rc_trojans.c, v0.1, 2005/10/01, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -34,8 +34,8 @@
 void check_rc_trojans(char *basedir, FILE *fp)
 {
     int i, _errors = 0, _total = 0;
-    char buf[OS_MAXSTR +1];
-    char file_path[OS_MAXSTR +1];
+    char buf[OS_SIZE_1024 +1];
+    char file_path[OS_SIZE_1024 +1];
 
     char *file;
     char *string_to_look;
@@ -46,7 +46,7 @@ void check_rc_trojans(char *basedir, FILE *fp)
     debug1("%s: DEBUG: Starting on check_rc_trojans", ARGV0);
 
 
-    while(fgets(buf, OS_MAXSTR, fp) != NULL)
+    while(fgets(buf, OS_SIZE_1024, fp) != NULL)
     {
         char *nbuf;
         char *message = NULL;
@@ -156,23 +156,23 @@ void check_rc_trojans(char *basedir, FILE *fp)
         {
             if(*file != '/')
             {
-                snprintf(file_path, OS_MAXSTR, "%s/%s/%s",basedir, 
+                snprintf(file_path, OS_SIZE_1024, "%s/%s/%s",basedir, 
                         all_paths[i],
                         file);
             }
             else
             {
-                strncpy(file_path, file, OS_MAXSTR);
-                file_path[OS_MAXSTR -1] = '\0';
+                strncpy(file_path, file, OS_SIZE_1024);
+                file_path[OS_SIZE_1024 -1] = '\0';
                 i = 4;
             }
             
             if(is_file(file_path) && os_string(file_path, string_to_look))
             {
-                char op_msg[OS_MAXSTR +1];
+                char op_msg[OS_SIZE_1024 +1];
                 _errors = 1;
             
-                snprintf(op_msg, OS_MAXSTR, "Trojaned version of file "
+                snprintf(op_msg, OS_SIZE_1024, "Trojaned version of file "
                         "'%s' detected. Signature used: '%s' (%s)", 
                                         file_path,
                                         string_to_look,
@@ -189,8 +189,8 @@ void check_rc_trojans(char *basedir, FILE *fp)
 
     if(_errors == 0)
     {
-        char op_msg[OS_MAXSTR +1];
-        snprintf(op_msg, OS_MAXSTR, "No binaries with any trojan detected. "
+        char op_msg[OS_SIZE_1024 +1];
+        snprintf(op_msg,OS_SIZE_1024, "No binaries with any trojan detected. "
                                     "Analyzed %d files", _total);
         notify_rk(ALERT_OK, op_msg);
     }

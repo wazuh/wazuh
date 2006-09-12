@@ -21,12 +21,12 @@ int noproc;
  */
 int proc_read(int pid)
 {
-    char dir[OS_MAXSTR +1];
+    char dir[OS_SIZE_1024 +1];
 
     if(noproc)
         return(0);
         
-    snprintf(dir, OS_MAXSTR, "%d",pid);
+    snprintf(dir, OS_SIZE_1024, "%d", pid);
     if(isfile_ondir(dir, "/proc"))
     {
         return(1);
@@ -41,13 +41,13 @@ int proc_read(int pid)
 int proc_chdir(int pid)
 {
     int ret = 0;
-    char curr_dir[OS_MAXSTR + 1];
-    char dir[OS_MAXSTR + 1];
+    char curr_dir[OS_SIZE_1024 + 1];
+    char dir[OS_SIZE_1024 + 1];
 
     if(noproc)
         return(0);
     
-    if(!getcwd(curr_dir, OS_MAXSTR))
+    if(!getcwd(curr_dir, OS_SIZE_1024))
     {
         return(0);
     }
@@ -55,7 +55,7 @@ int proc_chdir(int pid)
     if(chdir("/proc") == -1)
         return(0);    
         
-    snprintf(dir, OS_MAXSTR, "/proc/%d", pid);
+    snprintf(dir, OS_SIZE_1024, "/proc/%d", pid);
     if(chdir(dir) == 0)
     {
         ret = 1;
@@ -73,12 +73,12 @@ int proc_chdir(int pid)
  */
 int proc_stat(int pid)
 {
-    char proc_dir[OS_MAXSTR + 1];
+    char proc_dir[OS_SIZE_1024 + 1];
     
     if(noproc)
         return(0);
         
-    snprintf(proc_dir, OS_MAXSTR, "%s/%d", "/proc", pid);
+    snprintf(proc_dir, OS_SIZE_1024, "%s/%d", "/proc", pid);
     
     if(is_file(proc_dir))
     {
@@ -108,7 +108,7 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
     pid_t i = 1;
     pid_t my_pid;
 
-    char command[OS_MAXSTR +1];
+    char command[OS_SIZE_1024 +1];
 
     my_pid = getpid();
     
@@ -176,8 +176,8 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         /* Checking the number of errors */ 
         if((*_errors) > 15)
         {
-            char op_msg[OS_MAXSTR +1];
-            snprintf(op_msg, OS_MAXSTR, "Excessive number of hidden processes"
+            char op_msg[OS_SIZE_1024 +1];
+            snprintf(op_msg,OS_SIZE_1024,"Excessive number of hidden processes"
                     ". It maybe a false-positive or "
                     "something really bad is going on.");
             notify_rk(ALERT_SYSTEM_CRIT, op_msg);
@@ -188,7 +188,7 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         /* checking if process appears on ps */
         if(*ps)
         {
-            snprintf(command, OS_MAXSTR, "%s -p %d > /dev/null 2>&1", 
+            snprintf(command, OS_SIZE_1024, "%s -p %d > /dev/null 2>&1", 
                                                         ps, 
                                                         (int)i);
 
@@ -256,9 +256,9 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
              */
             if(!((_kill0 == 1)&&(_gsid0 == 0)&&(_gpid0 == 0)&&(_gsid1 == 0)))
             {
-                char op_msg[OS_MAXSTR +1];
+                char op_msg[OS_SIZE_1024 +1];
 
-                snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
+                snprintf(op_msg, OS_SIZE_1024, "Process '%d' hidden from "
                         "kill (%d) or getsid (%d). Possible kernel-level"
                         " rootkit.", (int)i, _kill0, _gsid0);
 
@@ -273,8 +273,8 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
             /* See defunct process comment above. */
             if(!((_kill1 == 1)&&(_gsid1 == 0)&&(_gpid0 == 0)&&(_gsid1 == 0)))
             {
-                char op_msg[OS_MAXSTR +1];
-                snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
+                char op_msg[OS_SIZE_1024 +1];
+                snprintf(op_msg, OS_SIZE_1024, "Process '%d' hidden from "
                         "kill (%d), getsid (%d) or getpgid. Possible "
                         "kernel-level rootkit.", (int)i, _kill1, _gsid1);
 
@@ -289,8 +289,8 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
             /* checking if the pid is a thread (not showing on proc */
             if(!noproc && !check_rc_readproc((int)i))
             {
-                char op_msg[OS_MAXSTR +1];
-                snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
+                char op_msg[OS_SIZE_1024 +1];
+                snprintf(op_msg, OS_SIZE_1024, "Process '%d' hidden from "
                         "/proc. Possible kernel level rootkit.", (int)i);
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
                 (*_errors)++;
@@ -301,8 +301,8 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
             /* checking if the pid is a thread (not showing on ps */
             if(!check_rc_readproc((int)i))
             {
-                char op_msg[OS_MAXSTR +1];
-                snprintf(op_msg, OS_MAXSTR, "Process '%d' hidden from "
+                char op_msg[OS_SIZE_1024 +1];
+                snprintf(op_msg, OS_SIZE_1024, "Process '%d' hidden from "
                              "ps. Possible trojaned version installed.",
                              (int)i);
            
@@ -322,17 +322,17 @@ void check_rc_pids()
     int _total = 0;
     int _errors = 0;
     
-    char ps[OS_MAXSTR +1];
+    char ps[OS_SIZE_1024 +1];
     pid_t max_pid = MAX_PID;
 
     noproc = 1;
     
     /* Checking where ps is */
-    memset(ps, '\0', OS_MAXSTR +1);
-    strncpy(ps, "/bin/ps", OS_MAXSTR);
+    memset(ps, '\0', OS_SIZE_1024 +1);
+    strncpy(ps, "/bin/ps", OS_SIZE_1024);
     if(!is_file(ps))
     {
-        strncpy(ps, "/usr/bin/ps", OS_MAXSTR);
+        strncpy(ps, "/usr/bin/ps", OS_SIZE_1024);
         if(!is_file(ps))
             ps[0] = '\0';
     }
@@ -348,8 +348,8 @@ void check_rc_pids()
 
     if(_errors == 0)
     {
-        char op_msg[OS_MAXSTR +1];
-        snprintf(op_msg, OS_MAXSTR, "No hidden process by Kernel-level "
+        char op_msg[OS_SIZE_1024 +1];
+        snprintf(op_msg, OS_SIZE_1024, "No hidden process by Kernel-level "
                                     "rootkits.\n      %s is not trojaned. "
                                     "Analyzed %d processes.", ps, _total);
         notify_rk(ALERT_OK, op_msg);

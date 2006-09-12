@@ -1,4 +1,4 @@
-/*   $OSSEC, check_rc_pids.c, v0.1, 2005/10/05, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -44,12 +44,12 @@
 
 int run_netstat(int proto, int port)
 {
-    char nt[OS_MAXSTR +1];
+    char nt[OS_SIZE_1024 +1];
 
     if(proto == IPPROTO_TCP)
-        snprintf(nt, OS_MAXSTR, NETSTAT, "tcp", port);
+        snprintf(nt, OS_SIZE_1024, NETSTAT, "tcp", port);
     else if(proto == IPPROTO_UDP)
-        snprintf(nt, OS_MAXSTR, NETSTAT, "udp", port);
+        snprintf(nt, OS_SIZE_1024, NETSTAT, "udp", port);
     else
     {
         merror("%s: Netstat error (wrong protocol)", ARGV0);
@@ -136,11 +136,11 @@ void test_ports(int proto, int *_errors, int *_total)
 
             if(!run_netstat(proto, i) && conn_port(proto, i))
             {
-                char op_msg[OS_MAXSTR +1];
+                char op_msg[OS_SIZE_1024 +1];
 
                 (*_errors)++;
 
-                snprintf(op_msg, OS_MAXSTR, "Port '%d'(%s) hidden. "
+                snprintf(op_msg, OS_SIZE_1024, "Port '%d'(%s) hidden. "
                         "Kernel-level rootkit or trojaned "
                         "version of netstat.", i, 
                         (proto == IPPROTO_UDP)? "udp" : "tcp");
@@ -151,8 +151,8 @@ void test_ports(int proto, int *_errors, int *_total)
 
         if((*_errors) > 20)
         {
-            char op_msg[OS_MAXSTR +1];
-            snprintf(op_msg, OS_MAXSTR, "Excessive number of '%s' ports "
+            char op_msg[OS_SIZE_1024 +1];
+            snprintf(op_msg, OS_SIZE_1024, "Excessive number of '%s' ports "
                              "hidden. It maybe a false-positive or "
                              "something really bad is going on.",
                              (proto == IPPROTO_UDP)? "udp" : "tcp" );
@@ -189,8 +189,8 @@ void check_rc_ports()
 
     if(_errors == 0)
     {
-        char op_msg[OS_MAXSTR +1];
-        snprintf(op_msg, OS_MAXSTR,"No kernel-level rootkit hiding any port."
+        char op_msg[OS_SIZE_1024 +1];
+        snprintf(op_msg,OS_SIZE_1024,"No kernel-level rootkit hiding any port."
                                    "\n      Netstat is acting correctly."
                                     " Analyzed %d ports.", _total);
         notify_rk(ALERT_OK, op_msg);
