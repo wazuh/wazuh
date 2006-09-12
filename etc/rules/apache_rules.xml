@@ -10,7 +10,6 @@
 <group name="apache">
   <rule id="30100" level="0">
     <decoded_as>apache-errorlog</decoded_as>
-    <category>web-log</category>
     <description>Apache messages grouped.</description>
   </rule>    
 

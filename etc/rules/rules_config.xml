@@ -32,7 +32,7 @@
 <group name="web-log">
   <rule id="04" level="0" noalert="1">
     <category>web-log</category>
-    <description>Generic template for all apache rules.</description>
+    <description>Generic template for all web rules.</description>
   </rule>  
 </group>            
 
