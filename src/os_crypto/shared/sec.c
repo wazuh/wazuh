@@ -743,10 +743,11 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     c_comp_size+= cmp_size;
     if(evt_count > _s_comp_print)
     {
-        verbose("%s: Event sizes: %u->%u (%d%%)", __local_name,
+        verbose("%s: Event count after '%u': %u->%u (%d%%)", __local_name,
+                    evt_count,
                     c_orig_size, 
                     c_comp_size,
-                    (c_comp_size/c_orig_size) * 100);
+                    (c_comp_size * 100)/c_orig_size);
         evt_count = 0;
         c_orig_size = 0;
         c_comp_size = 0;
