@@ -13,19 +13,19 @@
     <description>Apache messages grouped.</description>
   </rule>    
 
-  <rule id="30101" level="0" noalert="1">
+  <rule id="30101" level="0">
     <if_sid>30100</if_sid>
     <match>^[error] </match>
     <description>Apache error messages grouped.</description>
   </rule>
   
-  <rule id="30102" level="0" noalert="1">
+  <rule id="30102" level="0">
     <if_sid>30100</if_sid>
     <match>^[warn] </match>
     <description>Apache warn messages grouped.</description>
   </rule>
   
-  <rule id="30103" level="0" noalert="1">
+  <rule id="30103" level="0">
     <if_sid>30100</if_sid>
     <match>^[notice] </match>
     <description>Apache notice messages grouped.</description>
@@ -33,52 +33,51 @@
 
   <rule id="30104" level="12">
     <if_sid>30103</if_sid>
-    <regex>child pid \d+ exit signal Segmentation Fault</regex>
+    <match>exit signal Segmentation Fault</match>
     <description>Apache segmentation fault.</description>
     <info>http://www.securityfocus.com/infocus/1633</info>
   </rule>
 
   <rule id="30105" level="9">
     <if_sid>30101</if_sid>
-    <regex>^[error] [client \S+ \w+ denied by server configuration</regex>
+    <match>denied by server configuration</match>
     <description>Attempt to access forbidden file or directory.</description>
   </rule>
 
   <rule id="30106" level="5">
     <if_sid>30101</if_sid>
-    <regex>^[error] [client \S+ Directory index forbidden by rule</regex>
+    <match>Directory index forbidden by rule</match>
     <description>Attempt to access forbidden directory index.</description>
   </rule>
 
   <rule id="30107" level="6">
     <if_sid>30101</if_sid>
-    <regex>^[error] [client \S+ Client sent malformed Host header</regex>
+    <match>Client sent malformed Host header</match>
     <description>Code Red attack.</description>
     <info>http://www.cert.org/advisories/CA-2001-19.html</info>
   </rule>
 
   <rule id="30108" level="5">
     <if_sid>30102</if_sid>
-    <regex>^[warn] [client \S+ [\d+] auth_ldap authenticate: </regex>
-    <regex>user \S+ authentication failed</regex>
+    <match>authentication failed</match>
     <description>User authentication failed.</description>
   </rule>
 
   <rule id="30109" level="9">
     <if_sid>30101</if_sid>
-    <regex>^[error] [client \S+ user \S+ not found</regex>
+    <regex>user \S+ not found</regex>
     <description>Attempt to login using a non-existent user.</description>
   </rule>
 
   <rule id="30110" level="5">
     <if_sid>30101</if_sid>
-    <regex>^[error] [client \S+ user \S+: authentication failure</regex>
+    <match>authentication failure</match>
     <description>User authentication failed.</description>
   </rule>
 
   <rule id="30111" level="6">
     <if_sid>30101</if_sid>
-    <regex>^[error] [client \S+ File does not exist: \S+default.ida$</regex>
+    <regex>File does not exist: \S+default.ida</regex>
     <description>Code Red 2 attack.</description>
     <info>http://www.cert.org/incident_notes/IN-2001-09.html</info>
   </rule>
@@ -121,6 +120,12 @@
     <same_source_ip />
     <description>Multiple Invalid URI requests from </description>
     <description>same source.</description>
+  </rule>
+
+  <rule id="30117" level="10">
+    <if_sid>30101</if_sid>
+    <match>File name too long|request failed: URI too long</match>
+    <description>Invalid URI, file name too long.</description>
   </rule>
 </group> <!-- ERROR_LOG,APACHE -->
 
