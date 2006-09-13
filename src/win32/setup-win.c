@@ -61,6 +61,8 @@ int dogrep(char *file, char *str)
     return(0);
 }
 
+
+
 /* Check is syscheck is present in the config */
 int config_syscheck()
 {
@@ -130,9 +132,10 @@ int main(int argc, char **argv)
         system(cmd);
 
         /* Run iis-logs */
-        snprintf(cmd, OS_MAXSTR, "iis-logs.bat");
+        snprintf(cmd, OS_MAXSTR, "setup-iis.exe");
         system(cmd);
-                        
+
+
         /* Run manage agents */
         snprintf(cmd, OS_MAXSTR, "manage_agents.exe");
         system(cmd);
@@ -144,7 +147,7 @@ int main(int argc, char **argv)
         /* Look if syscheck is configured, if not, do so */
         config_syscheck();
 
-        /* Call manage-agents if not key */
+        /* Call manage-agents if no key */
         if(!fileexist(CLIENTKEYS))
         {
             /* Run manage agents */
@@ -154,6 +157,7 @@ int main(int argc, char **argv)
             system(cmd);
         }
     }
+
 
     /* Configure ossec for automatic startup */
     system("sc config OssecSvc start= auto");

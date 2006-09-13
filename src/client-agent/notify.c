@@ -98,7 +98,7 @@ char *getsharedfiles()
 }
 
 
-
+#ifndef WIN32
 /* run_notify: Send periodically notification to server */
 void run_notify()
 {
@@ -193,6 +193,7 @@ void *notify_thread(void *none)
     
     return(NULL);
 }
+#endif
 
 
 

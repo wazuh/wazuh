@@ -8,6 +8,8 @@ error_messages error_messages
 addagent addagent
 config config
 syscheckd syscheckd
+rootcheck/db/rootkit_files.txt rootkit_files.txt
+rootcheck/db/rootkit_trojans.txt rootkit_trojans.txt
 os_zlib os_zlib
 external/zlib-1.2.3 zlib-1.2.3
 client-agent/config.c client-agent-config.c
@@ -36,7 +38,7 @@ win32/win_agent.c win_agent.c
 win32/win_service.c win_service.c
 win32/make.bat make.bat
 win32/setup-win.c setup/setup-win.c
-win32/iis-logs.bat iis-logs.bat
+win32/setup-iis.c setup/setup-iis.c
 win32/ossec-win.conf default-ossec.conf
 win32/internal_options-win.conf internal_options.conf
 win32/doc.html doc.html

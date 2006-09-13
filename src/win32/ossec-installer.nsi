@@ -20,7 +20,7 @@ InstallDirRegKey HKLM "ossec" "Install_Dir"
 Function .onInit
     SetOutPath $INSTDIR
     IfFileExists $INSTDIR\ossec.conf 0 +3
-    MessageBox MB_OKCANCEL "${NAME} is already installed. Stopping it before continuing." IDOK NoAbort
+    MessageBox MB_OKCANCEL "${NAME} is already installed. We will stop it before continuing." IDOK NoAbort
     Abort
     NoAbort:
     
@@ -54,7 +54,7 @@ ClearErrors
 ;;
 ;;done:  
 
-File ossec-agent.exe default-ossec.conf manage_agents.exe iis-logs.bat internal_options.conf setup-windows.exe service-start.exe doc.html
+File ossec-agent.exe default-ossec.conf manage_agents.exe iis-logs.bat internal_options.conf setup-windows.exe setup-iis.exe service-start.exe doc.html rootkit_trojans.txt rootkit_files.txt
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"
@@ -75,11 +75,15 @@ done:
 CreateDirectory "$INSTDIR\rids"
 CreateDirectory "$INSTDIR\syscheck"
 CreateDirectory "$INSTDIR\shared"
+Rename "$INSTDIR\rootkit_trojans.txt" "$INSTDIR\shared\rootkit_trojans.txt"
+Rename "$INSTDIR\rootkit_files.txt" "$INSTDIR\shared\rootkit_files.txt"
 CreateDirectory "$SMPROGRAMS\ossec"
 CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
-CreateShortCut "$SMPROGRAMS\ossec\Edit.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
+Delete "$SMPROGRAMS\ossec\Edit.lnk"
+CreateShortCut "$SMPROGRAMS\ossec\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
 CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
 CreateShortCut "$SMPROGRAMS\ossec\Start.lnk" "$INSTDIR\service-start.exe" "" "$INSTDIR\service-start.exe" 0
+CreateShortCut "$SMPROGRAMS\ossec\Logs.lnk" "C:\Windows\notepad.exe $INSTDIR\ossec.log" "" "$INSTDIR\ossec.log" 0
 
 
 ; Install in the services 
@@ -87,6 +91,10 @@ ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"'
 ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
 ExecWait '"C:\Windows\notepad.exe" "$INSTDIR\ossec.conf"'
 
+MessageBox MB_OKCANCEL "Do you wish to start ${NAME} now?" IDOK Startsvc
+    Startsvc:
+    ;; Starting ossec service.
+    ExecWait '"sc" "start" "OssecSvc"'
 SectionEnd
 
 

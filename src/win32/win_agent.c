@@ -395,6 +395,7 @@ void send_win32_info()
         char tmp_msg[OS_MAXSTR +2];
         char crypt_msg[OS_MAXSTR +2];
         char *myuname;
+        char *shared_files;
 
         tmp_msg[OS_MAXSTR +1] = '\0';
         crypt_msg[OS_MAXSTR +1] = '\0';
@@ -413,14 +414,29 @@ void send_win32_info()
             return;
         }
 
+        /* get shared files */
+        shared_files = getsharedfiles();
+        if(!shared_files)
+        {
+            shared_files = strdup("\0");
+            if(!shared_files)
+            {
+                free(uname);
+                merror(MEM_ERROR,ARGV0);
+                return;
+            }
+        }
+
         /* creating message */
-        snprintf(tmp_msg, OS_MAXSTR, "#!-%s\n",myuname);
+        snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s",myuname, shared_files);
+        debug1("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
 
         msg_size = CreateSecMSG(&keys, tmp_msg, crypt_msg, 0);
 
         if(msg_size == 0)
         {
             free(myuname);
+            free(shared_files);
             merror(SEC_ERROR, ARGV0);
             return;
         }
@@ -432,6 +448,7 @@ void send_win32_info()
         }
 
         free(myuname);
+        free(shared_files);
     }
 
     return;

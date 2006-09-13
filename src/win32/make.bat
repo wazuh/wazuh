@@ -4,3 +4,4 @@ echo Making windows agent
 "C:\MinGW\bin\gcc.exe" -o "manage_agents" -Wall  -DARGV0=\"ossec-agent\" -DCLIENT -DWIN32 -DMA os_regex/*.c zlib-1.2.3/*.c os_zlib.c shared/*.c os_crypto/blowfish/*.c os_crypto/md5/*.c os_crypto/shared/*.c addagent/*.c -Iheaders/ -I./ -lwsock32
 "C:\MinGW\bin\gcc.exe" -o setup-windows -Wall os_regex/*.c setup/setup-win.c -I./
 "C:\MinGW\bin\gcc.exe" -o service-start -Wall os_regex/*.c setup/service-start.c -I./
+"C:\MinGW\bin\gcc.exe" -o setup-iis -Wall os_regex/*.c setup/setup-iis.c -I./

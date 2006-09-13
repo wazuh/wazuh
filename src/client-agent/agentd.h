@@ -42,6 +42,9 @@ void *notify_thread(void *none);
 /* Sends message to server */
 int send_msg(int agentid, char *msg);
 
+/* Extract the shared files */
+char *getsharedfiles();
+
 /* Connects to server */
 void start_agent();
 
