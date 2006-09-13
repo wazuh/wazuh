@@ -22,6 +22,8 @@
 #define CLIENTKEYS  "client.keys"
 #define OS_MAXSTR   1024
 
+int total;
+
 int fileexist(char *file)
 {
     FILE *fp;
@@ -65,7 +67,7 @@ int dogrep(char *file, char *str)
 
 
 /* Check is syscheck is present in the config */
-int config_iis(char *file)
+int config_iis(char *name, char *file)
 {
     FILE *fp;
 
@@ -73,15 +75,17 @@ int config_iis(char *file)
     {
         return(0);
     }
+
+    total++;
     
     if(dogrep(OSSECCONF, file))
     {
         printf("%s: Log file already configured: '%s'.\r\n", 
-                    argv[0], file);
+                    name, file);
         return(0);
     }
     
-    printf("%s: Adding IIS log file to be monitored: '%s'.\r\n", argv[0],file);
+    printf("%s: Adding IIS log file to be monitored: '%s'.\r\n", name,file);
     
     /* Add iis config config */
     fp = fopen(OSSECCONF, "a");
@@ -138,6 +142,10 @@ int main(int argc, char **argv)
     p = localtime(&tm);
         
     total = 0;    
+
+    printf("%s: Looking for IIS log files to monitor.\r\n", argv[0]);
+    printf("%s: For more information: http://www.ossec.net/en/win.html\r\n", argv[0]);
+    printf("\r\n");
     
     /* Looking for IIS log files */
     while(i <= 8)
@@ -152,7 +160,7 @@ int main(int argc, char **argv)
                 "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\nc%02d%02d%02d.log",
                 i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
     
-        config_iis(lfile);
+        config_iis(argv[0], lfile);
 
 
         /* Searching for W3C extended */
@@ -161,8 +169,15 @@ int main(int argc, char **argv)
                 "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\ex%02d%02d%02d.log",
                 i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
     
-        config_iis(lfile);
+        config_iis(argv[0], lfile);
     }
 
+    if(total == 0)
+    {
+        printf("%s: No IIS log found. Look at the link above for more "
+               "information.\r\n", argv[0]);
+    }
+    system("pause");
+    
     return(0);
 }

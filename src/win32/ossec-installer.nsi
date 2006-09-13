@@ -54,7 +54,7 @@ ClearErrors
 ;;
 ;;done:  
 
-File ossec-agent.exe default-ossec.conf manage_agents.exe iis-logs.bat internal_options.conf setup-windows.exe setup-iis.exe service-start.exe doc.html rootkit_trojans.txt rootkit_files.txt
+File ossec-agent.exe default-ossec.conf manage_agents.exe internal_options.conf setup-windows.exe setup-iis.exe service-start.exe doc.html rootkit_trojans.txt rootkit_files.txt
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"
@@ -83,7 +83,7 @@ Delete "$SMPROGRAMS\ossec\Edit.lnk"
 CreateShortCut "$SMPROGRAMS\ossec\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
 CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
 CreateShortCut "$SMPROGRAMS\ossec\Start.lnk" "$INSTDIR\service-start.exe" "" "$INSTDIR\service-start.exe" 0
-CreateShortCut "$SMPROGRAMS\ossec\Logs.lnk" "C:\Windows\notepad.exe $INSTDIR\ossec.log" "" "$INSTDIR\ossec.log" 0
+CreateShortCut "$SMPROGRAMS\ossec\View Logs.lnk" "$INSTDIR\ossec.log" "" "$INSTDIR\ossec.log" 0
 
 
 ; Install in the services 

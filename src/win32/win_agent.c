@@ -421,7 +421,7 @@ void send_win32_info()
             shared_files = strdup("\0");
             if(!shared_files)
             {
-                free(uname);
+                free(myuname);
                 merror(MEM_ERROR,ARGV0);
                 return;
             }
