@@ -203,9 +203,6 @@ sub taillog {
 	if (m/^$/){
 		$newrecord=1;
 		next unless $timestamp;
-		# BYPASS
-		# dstip=srcip
-		#$dstip=$srcip;
 		$alerthostip=$alerthost if $alerthost=~ m/^$IP$/;
 		if ($alerthostip){
 			$dstip=$alerthostip;
@@ -263,11 +260,18 @@ sub taillog {
 		$mail=$mail ? $mail : 'nomail';
 #2006 Aug 29 17:19:52 firewall -> /var/log/messages
 #2006 Aug 30 11:52:14 192.168.0.45->/var/log/secure
+#2006 Sep 12 11:12:16 92382-Snort1 -> 172.16.176.132
 #
-	}elsif ( m/^([0-9]+\s\w+\s[0-9]+\s[0-9]+:[0-9]+:[0-9]+)\s+(\S+)\s*->(.*)$/){
-		$date=$1;
-		$alerthost=$2;
-		$datasource=$3;
+        }elsif ( m/^([0-9]+\s\w+\s[0-9]+\s[0-9]+:[0-9]+:[0-9]+)\s+(\S+)\s*->(.*)$/){
+                $date=$1;
+                $alerthost=$2;
+                $datasource=$3;
+                if ($datasource=~ m/(\d+\.\d+\.\d+\.\d+)/){
+                        $alerthost=$1;
+                        $datasource="remoted";
+                }
+
+
 #2006 Aug 29 17:33:31 (recepcao) 10.0.3.154 -> syscheck
 	}elsif ( m/^([0-9]+\s\w+\s[0-9]+\s[0-9]+:[0-9]+:[0-9]+)\s+\((.*?)\)\s+(\S+)\s+->(.*)$/){
 		$date=$1;
