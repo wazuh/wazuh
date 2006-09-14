@@ -179,8 +179,8 @@ $dbi->{sth}->finish;
 my $newrecord=0;
 my %stats;
 my %resolv;
-my ($timestamp,$sec,$mail,$date,$alerthost,$datasource,$rule,$level,$description,
-	$srcip,$dstip,$user,$text)=();
+my ($timestamp,$sec,$mail,$date,$alerthost,$alerthostip,$datasource,$rule,$level,$description,
+        $srcip,$dstip,$user,$text)=();
 my $lasttimestamp=0;
 my $delta=0;
 ########################################################
