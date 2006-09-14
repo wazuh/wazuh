@@ -174,7 +174,7 @@ NULL , ?, ? , NULL , ? , ?, ?
 	$hids_id=$dbi->lastid();
 }
 $dbi->{sth}->finish;
-&iforceprintlog ("SENSOR:$hids; feed:$hids_interface; id:$hids_id; last cid:$last_cid");
+&forceprintlog ("SENSOR:$hids; feed:$hids_interface; id:$hids_id; last cid:$last_cid");
 
 my $newrecord=0;
 my %stats;
