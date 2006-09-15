@@ -115,7 +115,7 @@
 /* Log collector */
 
 /* Remoted */
-#define NO_REM_CONN     "%s(1701): No remote connection configured."
+#define NO_REM_CONN     "%s(1701): No remote connection configured. Exiting."
 
 /* Active response */
 #define AR_CMD_MISS     "%s(1280): Missing command options. " \

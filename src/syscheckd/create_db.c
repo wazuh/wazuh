@@ -62,6 +62,10 @@ int check_file(char *file_name)
     }
 
     /* New file */
+    #ifdef WIN32
+    sleep(1);
+    #endif
+    
     debug2("%s: DEBUG: new file '%s'.", ARGV0, file_name);
     return(0);
 }
@@ -153,6 +157,15 @@ int read_file(char *file_name, int opts, int flag)
             fseek(syscheck.fp, 0, SEEK_SET);
             if(check_file(file_name))
             {
+
+                /* Sleeping in here too */
+                if(__counter >= (6 * syscheck.sleep_after))
+                {
+                    sleep(syscheck.tsleep);
+                    __counter = 0;
+                }
+                __counter++;
+
                 return(0);
             }
             fseek(syscheck.fp, 0, SEEK_END);

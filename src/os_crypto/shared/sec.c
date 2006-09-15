@@ -180,13 +180,17 @@ void ReadKeys(keystruct *keys, int just_read)
     
 
     if(File_DateofChange(KEYS_FILE) < 0)
-        ErrorExit(NO_AUTHFILE, __local_name, KEYS_FILE);
+    {
+        merror(NO_AUTHFILE, __local_name, KEYS_FILE);
+        ErrorExit(NO_REM_CONN, __local_name);
+    }
 
     fp = fopen(KEYS_FILE,"r");
     if(!fp)
     {
         /* We can leave from here */
-        ErrorExit(FOPEN_ERROR, __local_name, KEYS_FILE);
+        merror(FOPEN_ERROR, __local_name, KEYS_FILE);
+        ErrorExit(NO_REM_CONN, __local_name);
     }
 
 
@@ -282,6 +286,14 @@ void ReadKeys(keystruct *keys, int just_read)
 
     /* clear one last time before leaving */
     _MemClear(id,name,ip,key);		
+
+
+    /* Checking if there is any agent available */
+    if(keys->keysize == 0)
+    {
+        ErrorExit(NO_REM_CONN, __local_name);
+    }
+
 
     /* Opening count files */
     if(!just_read)
