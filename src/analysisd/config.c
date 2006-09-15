@@ -71,7 +71,7 @@ int GlobalConf(char * cfgfile)
     }
     fclose(fp);
     /* Setting right permission */
-    chmod(DEFAULTARPATH, 0440);
+    chmod(DEFAULTARPATH, 0444);
     
     
     if(ReadConfig(modules, cfgfile, &Config, NULL)< 0)

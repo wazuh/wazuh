@@ -308,13 +308,13 @@
   </rule>
 
   <rule id="5902" level="8">
-    <regex>^adduser[\d+]: new user:|</regex>
-    <regex>^useradd[\d+]: new user:</regex>
+    <regex>^adduser[\d+]: new user:|^adduser[\d+]: new account added|</regex>
+    <regex>^useradd[\d+]: new user:|^useradd[\d+]: new account added</regex>
     <description>New user added to the system</description>
   </rule>
 
   <rule id="5903" level="2">
-    <regex>^userdel[\d+]: delete user|</regex>
+    <regex>^userdel[\d+]: delete user|^userdel[\d+]: account deleted</regex>
     <regex>^userdel[\d+]: remove group|</regex>
     <regex>^groupdel[\d+]: remove group</regex>
     <description>Group (or user) deleted from the system</description>
