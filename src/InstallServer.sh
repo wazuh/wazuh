@@ -138,12 +138,27 @@ ls ${DIR}/rules/*.xml > /dev/null 2>&1
 
 # Backup previous rules
 if [ $? = 0 ]; then
-    mkdir ${DIR}/rules/rules-backup
-    cp -pr ${DIR}/rules/*.xml ${DIR}/rules/rules-backup/    
-fi    
+    mkdir ${DIR}/rules/backup-rules.$$
+    cp -pr ${DIR}/rules/*.xml ${DIR}/rules/backup-rules.$$/
+    
+    # Checking for the local rules
+    ls ${DIR}/rules/local_rules.xml > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        cp -pr ${DIR}/rules/local_rules.xml ${DIR}/rules/saved_local_rules.xml.$$
+    fi    
+fi
+    
 cp -pr ../etc/rules/* ${DIR}/rules/
+
+# If the local_rules is saved, moved it back
+ls ${DIR}/rules/saved_local_rules.xml.$$ > /dev/null 2>&1
+if [ $? = 0 ]; then
+    mv ${DIR}/rules/saved_local_rules.xml.$$ ${DIR}/rules/local_rules.xml
+fi    
+
 chown -R root:${GROUP} ${DIR}/rules
 chmod -R 550 ${DIR}/rules
+
 
 # For the etc dir
 chmod 550 ${DIR}/etc

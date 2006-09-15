@@ -126,7 +126,7 @@ UpdateOSSECRules()
     OSSEC_CONF_FILE="$DIRECTORY/etc/ossec.conf"
 
     # Backing up the old config
-    cp -pr ${OSSEC_CONF_FILE} "${OSSEC_CONF_FILE}.bak"
+    cp -pr ${OSSEC_CONF_FILE} "${OSSEC_CONF_FILE}.$$.bak"
     
     cat ${OSSEC_CONF_FILE}|grep -v "rules" |grep -v "<include>" > "${OSSEC_CONF_FILE}.$$.tmp"
 
