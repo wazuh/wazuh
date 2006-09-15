@@ -14,12 +14,13 @@
 
   <rule id="31101" level="5">
     <if_sid>31100</if_sid>
-    <id>^40</id>
+    <id>^4</id>
     <description>Web server 400 error code.</description>
   </rule>
 
   <rule id="31102" level="0">
     <if_sid>31101</if_sid>
+    <id>^403|^404</id>
     <url>.jpg$|.gif$|favicon.ico$|.png$|robots.txt$|.css$</url>
     
     <!-- Add any other url to be ignored in here
@@ -73,11 +74,38 @@
 
   <rule id="31115" level="13" maxsize="2900">
     <if_sid>31100</if_sid>
-    <description>Very large HTTP URL. Higher than allowed on most browsers.</description>
-    <description>Possible attack or attempt to bypass detection.</description>
+    <description>URL too long. Higher than allowed on most browsers. Possible attack.</description>
   </rule>
-      
 
+  <!-- 500 error codes, server error
+    - http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
+    -->
+  <rule id="31120" level="5">
+    <if_sid>31100</if_sid>
+    <id>^50</id>
+    <description>Web server 500 error code (server error).</description>
+  </rule>
+
+  <rule id="31121" level="4">
+    <if_sid>31120</if_sid>
+    <id>^501</id>
+    <description>Web server 501 error code (Not Implemented).</description>
+  </rule>
+
+  <rule id="31122" level="5">
+    <if_sid>31120</if_sid>
+    <id>^500</id>
+    <options>alert_by_email</options>
+    <description>Web server 500 error code (Internal Error).</description>
+  </rule>
+  
+  <rule id="31123" level="4">
+    <if_sid>31120</if_sid>
+    <id>^503</id>
+    <options>alert_by_email</options>
+    <description>Web server 503 error code (Service unavailable).</description>
+  </rule>
+  
   <rule id="31151" level="10" frequency="10" timeframe="120">
     <if_matched_sid>31101</if_matched_sid>
     <same_source_ip />
@@ -105,4 +133,21 @@
     <description>from same souce ip.</description>
   </rule>
   
+  <rule id="31161" level="10" frequency="8" timeframe="120">
+    <if_matched_sid>31121</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple web server 501 error code (Not Implemented).</description>
+  </rule>
+  
+  <rule id="31162" level="10" frequency="5" timeframe="120">
+    <if_matched_sid>31122</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple web server 500 error code (Internal Error).</description>
+  </rule>
+  
+  <rule id="31163" level="10" frequency="8" timeframe="120">
+    <if_matched_sid>31123</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple web server 503 error code (Service unavailable).</description>
+  </rule>
 </group> <!-- Web access log -->

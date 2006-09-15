@@ -127,6 +127,19 @@
     <match>File name too long|request failed: URI too long</match>
     <description>Invalid URI, file name too long.</description>
   </rule>
+
+  <!-- Mod security rules by <ossec ( at ) sioban.net -->
+  <rule id="30118" level="6">
+    <if_sid>30101</if_sid>
+    <match>mod_security: Access denied</match>
+    <description>Access attempt blocked by Mod Security.</description>
+  </rule>
+
+  <rule id="30119" level="12" frequency="6" timeframe="120">
+    <if_matched_sid>30118</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple attempts blocked by Mod Security.</description>
+  </rule>
 </group> <!-- ERROR_LOG,APACHE -->
 
 
