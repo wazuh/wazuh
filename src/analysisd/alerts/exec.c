@@ -36,11 +36,12 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
 {
     char exec_msg[OS_SIZE_1024 +1];
     char *ip;
+    char *user;
     char *location;
 
 
     /* Cleaning the IP */
-    if(lf->srcip)
+    if(lf->srcip && (ar->ar_cmd->expect & SRCIP))
     {
         ip = strrchr(lf->srcip, ':');
         if(ip)
@@ -64,9 +65,20 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     }
     else
     {
-        ip = "";
+        ip = "-";
     }
    
+   
+    /* Getting username */
+    if(lf->user && (ar->ar_cmd->expect & USERNAME))
+    {
+        user = lf->user;
+    }
+    else
+    {
+        user = "-";
+    }
+
 
     /* active response on the server. 
      * The response must be here, if the ar->location is set to AS
@@ -82,7 +94,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
         snprintf(exec_msg, OS_SIZE_1024,
                 "%s %s %s",
                 ar->name,
-                lf->user == NULL?"null":lf->user,
+                user,
                 ip);
 
         if(OS_SendUnix(*execq, exec_msg, 0) < 0)
@@ -113,7 +125,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
                 (ar->location & SPECIFIC_AGENT)?SPECIFIC_AGENT_C:NONE_C,
                 ar->agent_id,
                 ar->name,
-                lf->user == NULL?"null":lf->user,
+                user,
                 ip);
        
         if(OS_SendUnix(*arq, exec_msg, 0) < 0)

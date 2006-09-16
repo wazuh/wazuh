@@ -788,34 +788,28 @@ void OS_ReadMSG(int m_queue)
                         do_ar = 1;
                         if((*rule_ar)->ar_cmd->expect & USERNAME)
                         {
-                            if(!lf->user)
+                            if(!lf->user || 
+                                !OS_PRegex(lf->user,"^[a-zA-Z._0-9@?-]*$"))
+                            {
+                                if(lf->user)
+                                    merror(CRAFTED_USER, ARGV0, lf->user);
                                 do_ar = 0;
+                            }
                         }
                         if((*rule_ar)->ar_cmd->expect & SRCIP)
                         {
-                            if(!lf->srcip)
+                            if(!lf->srcip ||
+                                !OS_PRegex(lf->srcip, "^[a-zA-Z.:_0-9-]*$"))
+                            {
+                                if(lf->srcip)
+                                    merror(CRAFTED_IP, ARGV0, lf->srcip);
                                 do_ar = 0;
+                            }
                         }
 
                         if(do_ar)
                         {
-                            /* Verifying the IP and username */
-                            if((lf->srcip)&&
-                                    !OS_PRegex(lf->srcip, "^[a-zA-Z.:_0-9-]*$"))
-                            {
-                                merror(CRAFTED_IP, ARGV0, lf->srcip);
-                                break;
-                            }
-                            else if((lf->user)&&
-                                    !OS_PRegex(lf->user,"^[a-zA-Z._0-9@?-]*$")) 
-                            {
-                                merror(CRAFTED_USER, ARGV0, lf->user);
-                                break;
-                            }
-                            else
-                            {
-                                OS_Exec(&execdq, &arq, lf, *rule_ar);
-                            }
+                            OS_Exec(&execdq, &arq, lf, *rule_ar);
                         }
                         rule_ar++;
                     }
