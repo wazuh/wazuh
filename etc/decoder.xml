@@ -369,6 +369,32 @@
 </decoder>
 
 
+<!-- Vpopmail decoder. (by Ceg Ryan <cegryan ( at ) gmail.com>)
+  - Examples:
+  - vpopmail[32485]: vchkpw-pop3: password fail abc@xxx.com:x.x.x.x
+  - vpopmail[32485]: vchkpw-2110 password fail abc@xxx.com:x.x.x.x
+  - vpopmail[2100]: vchkpw-pop3: vpopmail user not found abc@xxx.com:x.x.x.x
+  -->
+<decoder name="vpopmail">
+  <prematch>^vpopmail[\d+]: </prematch>
+</decoder>
+
+<decoder name="vpopmail-fail">
+  <parent>vpopmail</parent>
+  <prematch offset="after_parent">^vchkpw-pop3: password fail</prematch>
+  <regex offset="after_prematch">^ (\S+)@\S+:(\d+.\d+.\d+.\d+)</regex>
+  <order>user,srcip</order>
+</decoder>
+
+<decoder name="vpopmail-notfound">
+  <parent>vpopmail</parent>
+  <prematch offset="after_parent">^vchkpw-pop3: vpopmail user not </prematch>
+  <regex offset="after_prematch">^found (\S+)@\S+:(\d+.\d+.\d+.\d+)</regex>
+  <order>user,srcip</order>
+</decoder>
+
+
+
 <!-- Named decoder.
   - Will extract the srcip
   - Examples:

@@ -78,6 +78,12 @@
     <description>Squid 500/600 error code (server error).</description>
   </rule>
   
+  <rule id="35010" level="4">
+    <if_sid>35009</if_sid>
+    <id>^503</id>
+    <description>Squid 503 error code (server unavailable).</description>
+  </rule>
+  
   <!-- Special rules for 403/404 errors -->
   <rule id="35021" level="6">
     <if_sid>35006</if_sid>
