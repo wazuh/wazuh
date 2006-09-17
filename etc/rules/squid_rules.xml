@@ -106,8 +106,8 @@
     -  access these pages (causing 403/404 errors).
     -->
   <rule id="35023" level="0">
-    <if_sid>35004, 35005, 35006</if_sid>
-    <url>.jpg|.gif|favicon.ico$|.png|.swf|.txt$|.zip|.css|.xml|.js|</url>
+    <if_sid>35004, 35005, 35006, 35009</if_sid>
+    <url>.jpg$|.gif$|favicon.ico$|.png$|.swf$|.txt$|.zip|.css|.xml|.js|</url>
     <url>windowsupdate/redir/wuredir.cab|</url>
     <url>^http://codecs.microsoft.com/isapi/ocget.dll|</url>
     <url>^http://activex.microsoft.com/objects/ocget.dll|</url>
