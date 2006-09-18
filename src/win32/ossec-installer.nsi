@@ -87,8 +87,8 @@ CreateShortCut "$SMPROGRAMS\ossec\View Logs.lnk" "$INSTDIR\ossec.log" "" "$INSTD
 
 
 ; Install in the services 
-ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"' 
 ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
+ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"' 
 ExecWait '"C:\Windows\notepad.exe" "$INSTDIR\ossec.conf"'
 
 MessageBox MB_OKCANCEL "Do you wish to start ${NAME} now?" IDOK Startsvc
