@@ -66,8 +66,12 @@ void Monitord()
         tm = time(NULL);
         p = localtime(&tm);
 
+
         /* Checking unavailable agents */
-        monitor_agents();
+        if(mond.monitor_agents)
+        {
+            monitor_agents();
+        }
         
         /* Day changed, deal with log files */
         if(today != p->tm_mday)
@@ -79,8 +83,8 @@ void Monitord()
             thisyear = p->tm_year+1900;
         }
 
-        /* We only check every minute */
-        sleep(60);
+        /* We only check every two minutes */
+        sleep(120);
     }
 }
 
