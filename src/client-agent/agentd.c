@@ -29,7 +29,6 @@ void AgentdStart(char *dir, int uid, int gid)
     int rc = 0;
     int pid = 0;
     int maxfd = 0;   
-    int total = 0;
 
     fd_set fdset;
     
@@ -117,10 +116,8 @@ void AgentdStart(char *dir, int uid, int gid)
     /* Creating mutexes */
     pthread_mutex_init(&receiver_mutex, NULL);
     pthread_mutex_init(&forwarder_mutex, NULL);
-    pthread_mutex_init(&notify_mutex, NULL);
     pthread_cond_init (&receiver_cond, NULL);
     pthread_cond_init (&forwarder_cond, NULL);
-    pthread_cond_init (&notify_cond, NULL);
 
 
     /* initializing global variables */
@@ -141,15 +138,6 @@ void AgentdStart(char *dir, int uid, int gid)
      * Receive events/commands from the server
      */
     if(CreateThread(receiver_thread, (void *)NULL) != 0)
-    {
-        ErrorExit(THREAD_ERROR, ARGV0);
-    }
-
-    
-    /* Starting notification thread.
-     * Sends file information to the server
-     */
-    if(CreateThread(notify_thread, (void *)NULL) != 0)
     {
         ErrorExit(THREAD_ERROR, ARGV0);
     }
@@ -178,27 +166,6 @@ void AgentdStart(char *dir, int uid, int gid)
         fdtimeout.tv_usec = 0;
 
         
-        /* Only notify when total is 0 */ 
-        if(!total)
-        { 
-            /* Sending signal to notifier */
-            if(pthread_mutex_lock(&notify_mutex) != 0)
-            {
-                merror(MUTEX_ERROR, ARGV0);
-                return;
-            }
-
-            pthread_cond_signal(&notify_cond);    
-            if(pthread_mutex_unlock(&notify_mutex) != 0)
-            {
-                merror(MUTEX_ERROR, ARGV0);
-                return;
-            }
-
-            total++;
-        }
-        
-        
         /* Wait for 120 seconds at a maximum for any descriptor */
         rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
         if(rc == -1)
@@ -210,21 +177,9 @@ void AgentdStart(char *dir, int uid, int gid)
         /* If timeout, do not signal to other threads */
         else if(rc == 0)
         {
-            total = 0;
             continue;
         }    
-        
-        /* Zero on every 120 events */
-        else if(total >=120)
-        {
-            total = 0;
-        }
 
-        else
-        {
-            total++;
-        }
-        
         
         /* For the receiver */
         if(FD_ISSET(logr->sock, &fdset))

@@ -8,7 +8,7 @@ NAME=ossec-logcollector
 include ../Config.Make
 
 
-logr_OBJS = *.c  ${OS_CONFIG} ${OS_SHARED} ${OS_XML} ${OS_REGEX} ${OS_NET}
+logr_OBJS = *.c  ${OS_CONFIG} ${OS_SHARED} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_CRYPTO} 
 
 logcollector:
 		${CC} ${CFLAGS} -DARGV0=\"${NAME}\" ${logr_OBJS} -o ${NAME}

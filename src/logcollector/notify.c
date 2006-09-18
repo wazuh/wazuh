@@ -14,8 +14,10 @@
 
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
+#include "logcollector.h"
 
-#include "agentd.h"
+time_t g_saved_time = 0;
+
 
 
 /* getfiles: Return the name of the files in a directory
@@ -98,14 +100,27 @@ char *getsharedfiles()
 }
 
 
-#ifndef WIN32
 /* run_notify: Send periodically notification to server */
 void run_notify()
 {
     char tmp_msg[OS_SIZE_1024 +1];
     char *uname;
     char *shared_files;
+
+    time_t curr_time;
     
+    
+    /* Check if time has elapsed */
+    debug1("%s: DEBUG: Testing if time has elapsed for notify.", ARGV0);
+    curr_time = time(0);
+    if((curr_time - g_saved_time) < (NOTIFY_TIME - 90))
+    {
+        return;
+    }
+    g_saved_time = curr_time;
+    debug1("%s: DEBUG: Sending agent notification.", ARGV0);
+                                        
+                
     
     /* Send the message.
      * Message is going to be the 
@@ -141,60 +156,24 @@ void run_notify()
     
     /* creating message */
     snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s",uname, shared_files);
-    
-    send_msg(0, tmp_msg);
-    
+
+
+    /* Sending status message */
+    if(OS_SendUnix(logr_queue, tmp_msg, 0) < 0)
+    {
+        merror(QUEUE_SEND, ARGV0);
+        if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+        {
+            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+        }
+    }
+
+
     free(uname);
     free(shared_files);
 
     return;
 }
-
-
-
-/* notify_mgr: Start notify thread */
-void *notify_thread(void *none)
-{
-    time_t curr_time;
-    time_t saved_time;
-
-    saved_time = curr_time = time(0);
-    run_notify();
-    
-    /* We notify the server every NOTIFY_TIME - 30 */
-    while(1)
-    {
-
-        if(pthread_mutex_lock(&notify_mutex) != 0)
-        {
-            merror(MUTEX_ERROR, ARGV0);
-            return(NULL);
-        }
-
-        /* Time not elapsed.. */
-        curr_time = time(0);
-        if((curr_time - saved_time) < (NOTIFY_TIME - 90))
-        {
-            pthread_cond_wait(&notify_cond, &notify_mutex);
-        }
-        else
-        {
-            saved_time = curr_time;
-            run_notify();
-        }
-
-        /* Unlocking mutex */
-        if(pthread_mutex_unlock(&notify_mutex) != 0)
-        {
-            merror(MUTEX_ERROR, ARGV0);
-            return(NULL);
-        }
-    }
-    
-    return(NULL);
-}
-#endif
-
 
 
 /* EOF */

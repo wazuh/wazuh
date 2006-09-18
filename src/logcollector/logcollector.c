@@ -93,6 +93,11 @@ void LogCollectorStart()
         }
     }
 
+    /* Sending initial notication */
+    #ifdef CLIENT
+    run_notify();
+    #endif
+                    
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
@@ -213,9 +218,11 @@ void LogCollectorStart()
             continue;
 
 
-        /* On windows, get system info */
+        /* Send notification to server (if windows or agent) */
         #ifdef WIN32
         send_win32_info();
+        #elif CLIENT
+        run_notify();
         #endif
 
         
