@@ -105,7 +105,7 @@ my($OCT) = '(?:25[012345]|2[0-4]\d|1?\d\d?)';
 
 my($IP) = $OCT . '\.' . $OCT . '\.' . $OCT . '\.' . $OCT;
 
-my $VERSION="0.3";
+my $VERSION="0.4";
 my $sig_class_id=1;
 &help() unless @ARGV;
 my $dump=0;
