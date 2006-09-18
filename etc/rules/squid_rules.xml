@@ -101,18 +101,21 @@
   </rule>
   
   <!-- Ignoring google earth, ms web site access and some other
-    -  common extensions to cause false positives.
-    -  It includes most of the time bugs on ie that always
+    -  common extensions to cause false positives (specially anti virus).
+    -  It includes most of the time bugs on IE that always
     -  access these pages (causing 403/404 errors).
     -->
   <rule id="35023" level="0">
     <if_sid>35004, 35005, 35006, 35009</if_sid>
-    <url>.jpg$|.gif$|favicon.ico$|.png$|.swf$|.txt$|.zip|.css|.xml|.js|</url>
+    <url>.jpg|.gif|favicon.ico$|.png$|.swf|.txt$|.zip|.css|.xml|.js|</url>
     <url>windowsupdate/redir/wuredir.cab|</url>
     <url>^http://codecs.microsoft.com/isapi/ocget.dll|</url>
     <url>^http://activex.microsoft.com/objects/ocget.dll|</url>
     <url>^http://webmessenger.msn.com/session/null|</url>
     <url>^http://sqm.msn.com/sqm/wmp/sqmserver.dll|</url>
+    <url>^http://config.messenger.msn.com/Config/MsgrConfig.asmx|</url>
+    <url>kaspersky-labs.com/|</url>
+    <url>^http://liveupdate.symantecliveupdate.com/|</url>
     <url>_vti_bin/owssvr.dll|MSOffice/cltreq.asp|</url>
     <url>google.com/mt?|</url>
     <url>google.com/kh?|</url>
