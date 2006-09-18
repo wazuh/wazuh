@@ -48,6 +48,9 @@ void *read_snortfull(int pos, int *rc);
 /* Read nmap grepable format */
 void *read_nmapg(int pos, int *rc);
 
+/* sends agent notification to server. */
+void run_notify();
+
 
 #ifdef WIN32
 /* Windows only */
