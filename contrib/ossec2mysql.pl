@@ -5,7 +5,6 @@ use strict;
 # ---------------------------------------------------------------------------
 # Author: Meir Michanie (meirm@riunx.com)
 # Co-Author: J.A.Senger (jorge@br10.com.br)
-# File: ossec2mysql.pl
 # $Id$
 # ---------------------------------------------------------------------------
 # http://www.riunx.com/
