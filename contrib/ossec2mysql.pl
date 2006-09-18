@@ -6,7 +6,7 @@ use strict;
 # Author: Meir Michanie (meirm@riunx.com)
 # Co-Author: J.A.Senger (jorge@br10.com.br)
 # File: ossec2mysql.pl
-# Version 0.7 (09/2006)
+# $Id$
 # ---------------------------------------------------------------------------
 # http://www.riunx.com/
 # http://www.jasenger.com/ossec2mysql
