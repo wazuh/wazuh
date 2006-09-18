@@ -173,7 +173,7 @@ void *notify_thread(void *none)
 
         /* Time not elapsed.. */
         curr_time = time(0);
-        if((curr_time - saved_time) < NOTIFY_TIME)
+        if((curr_time - saved_time) < (NOTIFY_TIME - 90))
         {
             pthread_cond_wait(&notify_cond, &notify_mutex);
         }

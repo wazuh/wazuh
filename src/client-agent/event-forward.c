@@ -52,8 +52,10 @@ void *EventForward(void *none)
             pthread_cond_wait(&forwarder_cond, &forwarder_mutex);
         }
 
+
         /* Setting availables to 0 */
         available_forwarder = 0;
+
 
         /* Unlocking mutex */
         if(pthread_mutex_unlock(&forwarder_mutex) != 0)
