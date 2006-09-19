@@ -363,6 +363,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 /* StartMQ for windows */
 int StartMQ(char * path, short int type)
 {
+    int bmode = 1;
     verbose("%s: Connecting to server (%s:%d).", ARGV0,
                                                  logr->rip,
                                                  logr->port);
@@ -372,6 +373,10 @@ int StartMQ(char * path, short int type)
     if(logr->sock < 0)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
 
+
+    /* Setting socket to non-blocking */
+    ioctlsocket(logr->sock, FIONBIO, (u_long FAR*) &bmode);
+    
     if((path == NULL) && (type == 0))
     {
         return(0);
