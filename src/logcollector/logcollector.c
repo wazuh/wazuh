@@ -95,7 +95,9 @@ void LogCollectorStart()
 
     /* Sending initial notication */
     #ifdef CLIENT
-    run_notify();
+        #ifndef WIN32
+        run_notify();
+        #endif
     #endif
                     
 
