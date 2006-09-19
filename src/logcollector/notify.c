@@ -99,6 +99,7 @@ char *getsharedfiles()
     return(ret);
 }
 
+#ifndef WIN32
 
 /* run_notify: Send periodically notification to server */
 void run_notify()
@@ -174,6 +175,7 @@ void run_notify()
 
     return;
 }
+#endif
 
 
 /* EOF */
