@@ -57,7 +57,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
         /* Checking if IP is to ignored */
         if(Config.white_list)
         {
-            if(OS_IPFoundList(lf->srcip, Config.white_list))
+            if(OS_IPFoundList(ip, Config.white_list))
             {
                 return;
             }

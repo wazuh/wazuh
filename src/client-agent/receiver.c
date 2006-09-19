@@ -74,8 +74,13 @@ void *receiver_thread(void *none)
             merror(MUTEX_ERROR, ARGV0);
             return(NULL);
         }
+        #else
         
+        /* On Windows, we wait 5 seconds before attempting to read again */
+        sleep(5);    
         #endif
+
+        
         /* Read until no more messages are available */ 
         while((recv_b = recv(logr->sock, buffer,OS_SIZE_1024,MSG_DONTWAIT))>0)
         {
