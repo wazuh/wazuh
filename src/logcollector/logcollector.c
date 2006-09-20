@@ -211,6 +211,10 @@ void LogCollectorStart()
         if(f_check <= VCHECK_FILES)
             continue;
 
+            
+        /* Send keep alive message */
+        SendMSG(logr_queue, "--MARK--", "ossec-keepalive", LOCALFILE_MQ);
+
 
         /* Zeroing f_check */    
         f_check = 0;
