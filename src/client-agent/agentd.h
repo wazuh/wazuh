@@ -48,6 +48,9 @@ char *getsharedfiles();
 /* Connects to server */
 void start_agent(int is_startup);
 
+/* notify server */
+void run_notify();
+
 
 /*** Global variables ***/
 

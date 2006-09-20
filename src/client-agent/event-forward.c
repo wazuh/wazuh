@@ -70,22 +70,8 @@ void *EventForward(void *none)
             msg[recv_b] = '\0';
             
             send_msg(0, msg);
-
-            /* Check if the server has responded */
-            if((time(0) - available_server) > (4*NOTIFY_TIME))
-            {
-                /* If response is not available, set lock and
-                 * wait for it.
-                 */
-                verbose(SERVER_UNAV, ARGV0);     
-                os_setwait();
-
-                /* Send sync message */
-                start_agent(0);
-                
-                verbose(SERVER_UP, ARGV0);
-                os_delwait();
-            }
+            
+            run_notify();
         }
     }
     

@@ -166,7 +166,9 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
             ossecServiceStatus.dwCheckPoint             = 0;
             ossecServiceStatus.dwWaitHint               = 0;
 
+            verbose("%s: Received exit signal.", ARGV0);
             SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
+            verbose("%s: Exiting...", ARGV0);
             return;
         default:
             break;
@@ -224,7 +226,7 @@ void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv)
 
     if (ossecServiceStatusHandle == (SERVICE_STATUS_HANDLE)0)
     {
-        merror("%s: RegisterServiceCtrlHandler failed", ARGV0);
+        merror("%s: RegisterServiceCtrlHandler failed.", ARGV0);
         return;
     }
 
@@ -234,7 +236,7 @@ void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv)
 
     if (!SetServiceStatus(ossecServiceStatusHandle, &ossecServiceStatus))
     {
-        merror("%s: SetServiceStatus error", ARGV0);
+        merror("%s: SetServiceStatus error.", ARGV0);
         return;
     }
 

@@ -260,6 +260,9 @@ int local_start()
 int SendMSG(int queue, char *message, char *locmsg, char loc)
 {
     int _ssize;
+    
+    time_t cu_time;
+    
     char *pl;
     char tmpstr[OS_MAXSTR+2];
     char crypt_msg[OS_MAXSTR +2];
@@ -292,28 +295,34 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
 
     /* Check if the server has responded */
-    if((time(0) - available_server) > (3*NOTIFY_TIME))
+    cu_time = time(0);
+    if((cu_time - available_server) > (NOTIFY_TIME - 90))
     {
-        int wi = 1;
-        
-        /* If response is not available, set lock and
-         * wait for it.
-         */
-        verbose(SERVER_UNAV, ARGV0);
+        send_win32_info();
 
-        while((time(0) - available_server) > (3*NOTIFY_TIME))
+        if((cu_time - available_server) > (3*NOTIFY_TIME))
         {
-            /* Sending information to see if server replies */
-            send_win32_info();
+            int wi = 1;
 
-            sleep(wi);
-            wi++;
+            /* If response is not available, set lock and
+             * wait for it.
+             */
+            verbose(SERVER_UNAV, ARGV0);
+
+            while((time(0) - available_server) > (3*NOTIFY_TIME))
+            {
+                /* Sending information to see if server replies */
+                send_win32_info();
+
+                sleep(wi);
+                wi++;
+            }
+
+            verbose(SERVER_UP, ARGV0);
         }
-
-        verbose(SERVER_UP, ARGV0);
     }
-    
 
+    
     /* locmsg cannot have the C:, as we use it as delimiter */
     pl = strchr(locmsg, ':');
     if(pl)

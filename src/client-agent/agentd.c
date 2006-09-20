@@ -149,7 +149,11 @@ void AgentdStart(char *dir, int uid, int gid)
         ErrorExit(THREAD_ERROR, ARGV0);
     }
     
+   
+    /* Sending first notification */
+    run_notify();
     
+     
     /* Maxfd must be higher socket +1 */
     maxfd++;
     

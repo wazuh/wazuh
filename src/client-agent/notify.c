@@ -14,7 +14,7 @@
 
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
-#include "logcollector.h"
+#include "agentd.h"
 
 time_t g_saved_time = 0;
 
@@ -109,25 +109,42 @@ void run_notify()
     char *shared_files;
 
     time_t curr_time;
-    
-    
-    /* Check if time has elapsed */
-    debug1("%s: DEBUG: Testing if time has elapsed for notify.", ARGV0);
+
     curr_time = time(0);
-    if((curr_time - g_saved_time) < (NOTIFY_TIME - 180))
+
+
+    /* Check if the server has responded */
+    if((curr_time - available_server) > (3*NOTIFY_TIME))
+    {
+        /* If response is not available, set lock and
+         * wait for it.
+         */
+        verbose(SERVER_UNAV, ARGV0);
+        os_setwait();
+
+        /* Send sync message */
+        start_agent(0);
+
+        verbose(SERVER_UP, ARGV0);
+        os_delwait();
+    }
+
+
+    /* Check if time has elapsed */
+    if((curr_time - g_saved_time) < (NOTIFY_TIME - 90))
     {
         return;
     }
     g_saved_time = curr_time;
-    debug1("%s: DEBUG: Sending agent notification.", ARGV0);
-                                        
-                
     
+    debug1("%s: DEBUG: Sending agent notification.", ARGV0);
+
+
     /* Send the message.
      * Message is going to be the 
      * uname\n checksum file\n checksum file\n 
      */   
-    
+
     /* Getting uname */
     uname = getuname();
     if(!uname)
@@ -139,8 +156,8 @@ void run_notify()
             return;
         }
     }
-   
-     
+
+
     /* get shared files */
     shared_files = getsharedfiles();
     if(!shared_files)
@@ -153,21 +170,14 @@ void run_notify()
             return;
         }
     }
-    
-    
+
+
     /* creating message */
     snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s",uname, shared_files);
 
 
     /* Sending status message */
-    if(OS_SendUnix(logr_queue, tmp_msg, 0) < 0)
-    {
-        merror(QUEUE_SEND, ARGV0);
-        if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-        {
-            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
-        }
-    }
+    send_msg(0, tmp_msg);
 
 
     free(uname);
