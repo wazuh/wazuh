@@ -129,7 +129,7 @@ void AgentdStart(char *dir, int uid, int gid)
     /* Trying to connect to server */
     os_setwait();
 
-    start_agent();
+    start_agent(1);
     
     os_delwait();
 

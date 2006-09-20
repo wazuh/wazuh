@@ -227,7 +227,7 @@ int local_start()
     /* Checking if server is connected */
     os_setwait();
         
-    start_agent();
+    start_agent(1);
             
     os_delwait();
                     

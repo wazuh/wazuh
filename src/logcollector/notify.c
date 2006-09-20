@@ -114,7 +114,7 @@ void run_notify()
     /* Check if time has elapsed */
     debug1("%s: DEBUG: Testing if time has elapsed for notify.", ARGV0);
     curr_time = time(0);
-    if((curr_time - g_saved_time) < (NOTIFY_TIME - 90))
+    if((curr_time - g_saved_time) < (NOTIFY_TIME - 180))
     {
         return;
     }

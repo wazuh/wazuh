@@ -46,7 +46,7 @@ int send_msg(int agentid, char *msg);
 char *getsharedfiles();
 
 /* Connects to server */
-void start_agent();
+void start_agent(int is_startup);
 
 
 /*** Global variables ***/

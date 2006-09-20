@@ -20,7 +20,7 @@
 /* start_agent: Sends the synchronization message to
  * the server and waits for the ack.
  */
-void start_agent()
+void start_agent(int is_startup)
 {
     int recv_b = 0, attempts = 0, g_attempts = 1;
 
@@ -75,15 +75,19 @@ void start_agent()
                 /* If it is an ack reply */
                 if(strcmp(tmp_msg, HC_ACK) == 0)
                 {
-                    verbose(AG_CONNECTED, ARGV0);
+                    available_server = time(0);
+                    if(is_startup)
+                    {
+                        verbose(AG_CONNECTED, ARGV0);
 
-                    /* Send log message about start up */
-                    snprintf(msg, OS_MAXSTR, OS_AG_STARTED, 
-                                             keys.name[0],
-                                             keys.ips[0]);
-                    snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, 
-                                                          "ossec", msg);
-                    send_msg(0, fmsg);
+                        /* Send log message about start up */
+                        snprintf(msg, OS_MAXSTR, OS_AG_STARTED, 
+                                keys.name[0],
+                                keys.ips[0]);
+                        snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, 
+                                                  "ossec", msg);
+                        send_msg(0, fmsg);
+                    }
                     return;
                 }
             }
