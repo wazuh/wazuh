@@ -36,12 +36,12 @@ char *getsharedfiles()
     os_md5 md5sum;
     
     /* Opening the directory given */
-    dp = opendir(SHAREDCFG_DIRPATH);
+    dp = opendir(SHAREDCFG_DIR);
     if(!dp) 
     {
         merror("%s: Error opening directory: '%s': %s ",
                 ARGV0,
-                SHAREDCFG_DIRPATH,
+                SHAREDCFG_DIR,
                 strerror(errno));
         return(NULL);
     }   
@@ -67,7 +67,7 @@ char *getsharedfiles()
            (entry->d_name[0] == '.'))
             continue;
 
-        snprintf(tmp_dir, 255, "%s/%s", SHAREDCFG_DIRPATH, entry->d_name);
+        snprintf(tmp_dir, 255, "%s/%s", SHAREDCFG_DIR, entry->d_name);
 
         if(OS_MD5_File(tmp_dir, md5sum) != 0)
         {
