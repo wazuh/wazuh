@@ -50,6 +50,9 @@ void start_agent(int is_startup);
 
 /* notify server */
 void run_notify();
+#ifdef WIN32
+void send_win32_info();
+#endif
 
 
 /*** Global variables ***/
