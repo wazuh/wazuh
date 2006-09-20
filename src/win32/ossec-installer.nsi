@@ -100,6 +100,9 @@ SectionEnd
 
 Section "Uninstall"
   
+  ; Stop ossec
+  ExecWait '"sc" "stop" "OssecSvc"'
+  
   ; Uninstall from the services
   Exec '"$INSTDIR\ossec-agent.exe" uninstall-service'
 
