@@ -901,7 +901,6 @@
   <type>windows</type>
   <prematch>^WinEvtLog: </prematch>
   <regex>^WinEvtLog: (\w+): (\w+)\((\d+)\): \w+: (\w+): \S+ (\S+): </regex>
-  <regex>\S+ (\S+):</regex>
   <order>data, action, id, user, system_name</order>
   <fts>name, location, user, system_name</fts>
 </decoder>    
