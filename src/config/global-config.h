@@ -47,6 +47,9 @@ typedef struct __Config
     /* List of ips to never block */
     os_ip **white_list;
 
+    /* List of hostnames to never block */
+    OSMatch **hostname_white_list;
+
     /* List of rules */
     char **includes;
 

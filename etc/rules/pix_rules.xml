@@ -101,21 +101,29 @@
   <rule id="4330" level="8">
     <if_sid>4310</if_sid>
     <id>^1-106021|^1-106022</id>
-    <description>Attack in progress detect by the PIX.</description>
+    <description>Attack in progress detected by the PIX.</description>
   </rule>
   
   <rule id="4331" level="8">
     <if_sid>4311</if_sid>
     <id>^2-106012|^2-106017|^2-106020</id>
-    <description>Attack in progress detect by the PIX.</description>
+    <description>Attack in progress detected by the PIX.</description>
   </rule>
    
   <rule id="4332" level="8">
     <if_sid>4313</if_sid>
     <id>^4-4000</id>
-    <description>Attack in progress detect by the PIX.</description>
+    <description>Attack in progress detected by the PIX.</description>
   </rule>
 
+  <!-- Grouping of attack in progress messages. The three above
+    -  will never be alerted, but this one instead.
+    -->
+  <rule id="4333" level="8">
+    <if_sid>4330, 4331, 4332</if_sid>
+    <description>Attack in progress detected by the PIX.</description>
+  </rule>
+    
   <rule id="4380" level="10" frequency="6" timeframe="360">
     <if_matched_sid>4310</if_matched_sid>
     <description>Multiple PIX alert messages.</description>
@@ -134,6 +142,12 @@
   <rule id="4383" level="10" frequency="8" timeframe="120">
     <if_matched_sid>4313</if_matched_sid>
     <description>Multiple PIX warning messages.</description>
+  </rule>
+
+  <rule id="4385" level="10" frequency="8" timeframe="240" ignore="90">
+    <if_matched_sid>4333</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple attack in progress messages.</description>
   </rule>
 </group> <!-- SYSLOG,PIX -->
 

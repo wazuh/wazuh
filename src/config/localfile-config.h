@@ -19,11 +19,16 @@
 #define VCHECK_FILES    64 
 #define DATE_MODIFIED   1
 
+
+/* For ino_t */
+#include <sys/types.h>
+
+
 /* Logreader config */
 typedef struct _logreader
 {
-    int mtime;
     int ign;
+    ino_t fd;
         
     /* ffile - format file is only used when 
      * the file has format string to retrieve

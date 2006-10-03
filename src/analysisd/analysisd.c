@@ -104,6 +104,7 @@ void DumpLogstats();
 
 /* Hourly alerts */
 int hourly_alerts;
+int hourly_events;
 
 
 /* Main function v0.2: 2005/03/22 */
@@ -125,6 +126,7 @@ int main(int argc, char **argv)
     prev_year = 0;
     memset(prev_month, '\0', 4);
     hourly_alerts = 0;
+    hourly_events = 0;
 
     while((c = getopt(argc, argv, "Vtdhu:g:D:c:")) != -1){
         switch(c){
@@ -342,7 +344,37 @@ int main(int argc, char **argv)
         }
     }
 
-   
+    /* Hostname White list */
+    if(Config.hostname_white_list == NULL)
+    {
+        if(Config.ar)
+            verbose("%s: No Hostname in the white list for active reponse.", 
+            ARGV0);
+    }
+    else
+    {
+        if(Config.ar)
+        {
+            OSMatch **wl;
+            int wlc = 0;
+            wl = Config.hostname_white_list;
+            while(*wl)
+            {
+                char **tmp_pts = (*wl)->patterns;
+                while(*tmp_pts)
+                {
+                    verbose("%s: White listing Hostname: '%s'",ARGV0, 
+                            *tmp_pts);
+                    wlc++;
+                }
+                wl++;
+            }
+            verbose("%s: %d Hostnames in the white list for active response.",
+                    ARGV0, wlc);
+        }
+    }
+
+
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
 
@@ -597,6 +629,10 @@ void OS_ReadMSG(int m_queue)
                     prev_year = lf->year;
                 }
             }
+            
+            
+            /* Incrementing number of events received */
+            hourly_events++;
 
 
             /***  Running plugins/decoders ***/
@@ -1054,10 +1090,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     }
 
 
-    /* Incrementing hourly fired times */
-    currently_rule->firedtimes++;
-
-
     /* Search for dependent rules */
     if(curr_node->child)
     {
@@ -1081,8 +1113,11 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     {
         return(NULL);
     }
+
    
     hourly_alerts++;
+    currently_rule->firedtimes++;
+
     return(currently_rule);  /* Matched */
 }
 
@@ -1094,9 +1129,10 @@ void LoopRule(RuleNode *curr_node, FILE *flog)
 {
     if(curr_node->ruleinfo->firedtimes)
     {
-        fprintf(flog, "%d-%d-%d\n", 
+        fprintf(flog, "%d-%d-%d-%d\n", 
                 thishour, 
                 curr_node->ruleinfo->sigid,
+                curr_node->ruleinfo->level,
                 curr_node->ruleinfo->firedtimes);
         curr_node->ruleinfo->firedtimes = 0;
     }
@@ -1174,10 +1210,11 @@ void DumpLogstats()
 
 
     /* Print total for the hour */
-    fprintf(flog, "Alerts for:%d:%d\n\n",
+    fprintf(flog, "%d--%d--%d\n\n",
                 thishour,
-                hourly_alerts);
+                hourly_alerts, hourly_events);
     hourly_alerts = 0;
+    hourly_events = 0;
    
     fclose(flog);
 }

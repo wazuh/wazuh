@@ -16,6 +16,7 @@
     <ignore>/etc/httpd/logs</ignore>
     <ignore>/etc/utmpx</ignore>
     <ignore>/etc/wtmpx</ignore>
+    <ignore>/etc/cups/certs</ignore>
 
     <!-- Windows files to ignore -->
     <ignore>C:\WINDOWS/System32/LogFiles</ignore>

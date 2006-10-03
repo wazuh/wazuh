@@ -25,13 +25,13 @@
 void *read_syslog(int pos, int *rc)
 {
     int __ms = 0;
-    int __rc = 0;
     char *p;
     char str[OS_MAXSTR+1];
 
     fpos_t fp_pos;
 
     str[OS_MAXSTR]= '\0';
+    *rc = 0;
 
     /* Getting initial file location */
     fgetpos(logff[pos].fp, &fp_pos);
@@ -67,7 +67,14 @@ void *read_syslog(int pos, int *rc)
         }
 
         /* Looking for empty string (only on windows) */
-        if(strlen(str) <= 1)
+        if(strlen(str) <= 2)
+        {
+            fgetpos(logff[pos].fp, &fp_pos);
+            continue;
+        }
+
+        /* Windows can have comment on their logs */
+        if(str[0] == '#')
         {
             fgetpos(logff[pos].fp, &fp_pos);
             continue;
@@ -104,19 +111,9 @@ void *read_syslog(int pos, int *rc)
         }
         
         fgetpos(logff[pos].fp, &fp_pos);
-        __rc++;
         continue;
     }
 
-    /* Nothing was available to be read */
-    if(__rc == 0)
-    {
-        *rc = 1;
-    }
-    else
-    {
-        *rc = 0;
-    }
     return(NULL); 
 }
 

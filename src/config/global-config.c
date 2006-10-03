@@ -139,6 +139,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
     /* White list size */
     int white_size = 1;
+    int hostname_white_size = 1;
     int mailto_size = 1;
 
 
@@ -173,6 +174,19 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         while(*ww != NULL)
         {
             white_size++;
+            ww++;
+        }
+    }
+    
+     /* Getting right white_size */
+    if(Config && Config->hostname_white_list)
+    {
+        OSMatch **ww;
+        ww = Config->hostname_white_list;
+
+        while(*ww != NULL)
+        {
+            hostname_white_size++;
             ww++;
         }
     }
@@ -305,7 +319,11 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         /* whitelist */
         else if(strcmp(node[i]->element, xml_white_list) == 0)
         {
-            if(Config)
+            char *ip_address_regex =
+                 "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
+                 "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
+                      
+            if(Config && OS_PRegex(node[i]->content, ip_address_regex))
             {
                 white_size++;
                 Config->white_list = 
@@ -327,8 +345,38 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     return(OS_INVALID);
                 }
             }
+            /* Adding hostname */
+            else if(Config)
+            {
+                hostname_white_size++;
+                Config->hostname_white_list =
+                    realloc(Config->hostname_white_list,
+                    sizeof(OSMatch *)*hostname_white_size);
+                    
+                if(!Config->hostname_white_list)
+                {
+                    merror(MEM_ERROR, ARGV0);
+                    return(OS_INVALID);
+                }
+                os_calloc(1, 
+                          sizeof(OS_Match), 
+                          Config->hostname_white_list[hostname_white_size -2]);
+                Config->hostname_white_list[hostname_white_size -1] = NULL;
+
+                if(!OSMatch_Compile(
+                        node[i]->content, 
+                        Config->hostname_white_list[hostname_white_size -2], 
+                        0))
+                {
+                    merror(REGEX_COMPILE, ARGV0, node[i]->content,
+                           Config->hostname_white_list
+                           [hostname_white_size -2]->error);
+                    return(-1);
+                }
+            }
+                
         }
-        
+
         /* For the email now 
          * email_to, email_from, smtp_Server and maxperhour.
          * We will use a separate structure for that.

@@ -1,6 +1,6 @@
-/*   $OSSEC, logcollector.c, v0.4, 2005/11/11, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -28,8 +28,11 @@ void LogCollectorStart()
     int i = 0, r = 0;
     int max_file = 0;
     int f_check = 0;
-    int tmtmp = 0;
     
+    /* To check for inode changes */
+    struct stat tmp_stat;
+    
+                
     #ifndef WIN32
     int int_error = 0;
     struct timeval fp_timeout;
@@ -58,11 +61,11 @@ void LogCollectorStart()
             /* Initializing the files */    
             if(logff[i].ffile)
             {
-                /* Day must be zero */
+                /* Day must be zero for all files to be initialized */
                 _cday = 0;
                 if(update_fname(i))
                 {
-                    handle_file(i);
+                    handle_file(i, 1);
                 }
                 else
                 {
@@ -72,7 +75,7 @@ void LogCollectorStart()
             }
             else
             {
-                handle_file(i);
+                handle_file(i, 1);
             }
             
             verbose(READING_FILE, ARGV0, logff[i].file);
@@ -92,6 +95,7 @@ void LogCollectorStart()
             }
         }
     }
+
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
@@ -137,72 +141,60 @@ void LogCollectorStart()
             if(!logff[i].fp)
                 continue;
 
-            /* We check if the date of the file has changed.
-             * If it did, we go and read the file. If for some
-             * reason, there is nothing available to be read,
-             * the file returns 1. On error, ferror is returned.
-             * If nothing is available to be read and the
-             * time of change keep changing, it's probably
-             * because the file has been moved or something
-             * like that. We need to open and close the file
-             * again.
+            /* We check for the end of file. If is returns EOF,
+             * we don't attempt to read it.
              */
-            tmtmp = File_DateofChange(logff[i].file);
-            if(tmtmp != logff[i].mtime)
+            if((r = fgetc(logff[i].fp)) == EOF)
             {
-                /* Reading file */
-                logff[i].read(i, &r);
+                clearerr(logff[i].fp);
+                continue;
+            }
 
-                /* Checking read ret code */
-                if(!ferror(logff[i].fp))
+
+            /* If it is not EOF, we need to return the read character */
+            ungetc(r, logff[i].fp);
+
+
+            /* Finally, send to the function pointer to read it */
+            logff[i].read(i, &r);
+
+
+            /* Checking for error */
+            if(!ferror(logff[i].fp))
+            {
+                /* Clearing EOF */
+                clearerr(logff[i].fp);
+
+                /* Parsing error */
+                if(r != 0)
                 {
-                    /* Clearing EOF */
-                    clearerr(logff[i].fp);
+                    logff[i].ign++;
+                }
+            }
+            /* If ferror is set */
+            else
+            {
+                merror(FREAD_ERROR, ARGV0, logff[i].file);
+                if(fseek(logff[i].fp, 0, SEEK_END) < 0)
+                {
+                    merror(FSEEK_ERROR, ARGV0, logff[i].file);
 
-                    /* Updating mtime */
-                    logff[i].mtime = tmtmp;
+                    /* Closing the file */
+                    if(logff[i].fp)
+                        fclose(logff[i].fp);
+                    logff[i].fp = NULL;
 
-                    /* Nothing was available to be read */
-                    if(r == 0)
-                    {
-                        logff[i].ign = 0;
-                    }
-                    else if(r == 1)
+                    /* Trying to open it again */
+                    if(handle_file(i, 1) != 0)
                     {
                         logff[i].ign++;
-                    }
-                    /* File formatting error */
-                    else
-                    {
-                        logff[i].ign--;
+                        continue;
                     }
                 }
-                /* ferror is set */
-                else
-                {
-                    merror(FREAD_ERROR, ARGV0, logff[i].file);
-                    
-                    if(fseek(logff[i].fp,0,SEEK_END) < 0)
-                    {
-                        merror(FSEEK_ERROR, ARGV0, logff[i].file);
 
-                        /* Closing the file */
-                        if(logff[i].fp)
-                            fclose(logff[i].fp);
-                        logff[i].fp = NULL;
-                        
-                        /* Trying to open it again */
-                        if(handle_file(i) != 0)
-                        {
-                            logff[i].ign--;
-                            continue;
-                        }
-                    }
-                    
-                    /* Increase the error count  */
-                    logff[i].ign--;
-                    clearerr(logff[i].fp);
-                }
+                /* Increase the error count  */
+                logff[i].ign++;
+                clearerr(logff[i].fp);
             }
         }
 
@@ -238,33 +230,41 @@ void LogCollectorStart()
                         fclose(logff[i].fp);
                     }
                     logff[i].fp = NULL;
-                    handle_file(i);
+                    handle_file(i, 0);
+                    continue;
                 }
             }
-                
-            /* File has been changing, but not able to read */
-            if(logff[i].ign > 0)
+            
+            
+            /* Check for file change -- if the file is open already */
+            if(logff[i].fp)
             {
-                if(logff[i].fp)
+                if(stat(logff[i].file, &tmp_stat) == -1)
+                {
                     fclose(logff[i].fp);
-                logff[i].fp = NULL;
-                if(handle_file(i) < 0)
-                {
-                    logff[i].ign = -1;
+                    logff[i].fp = NULL;
+                    
+                    merror(FILE_ERROR, ARGV0, logff[i].file);
                 }
-                else
+
+                else if(logff[i].fd != tmp_stat.st_ino)
                 {
-                    logff[i].ign = -1;
+                    debug1("%s: DEBUG: File inode changed. %s",
+                            ARGV0, logff[i].file);
+                    
+                    fclose(logff[i].fp);
+                    logff[i].fp = NULL;
+                    handle_file(i, 0);
                     continue;
                 }
             }
             
             
             /* Too many errors for the file */ 
-            if(logff[i].ign < (-open_file_attempts))
+            if(logff[i].ign > open_file_attempts)
             {
-                /* -999 Maximum ignore */
-                if(logff[i].ign == -999)
+                /* 999 Maximum ignore */
+                if(logff[i].ign == 999)
                 {
                     continue;
                 }
@@ -283,26 +283,26 @@ void LogCollectorStart()
                 {
                     logff[i].file = NULL;
                 }
-                logff[i].ign = -999;
+                logff[i].ign = 999;
                 continue;
             }
            
-            /* Files  */ 
+           
+            /* File not opened */ 
             if(!logff[i].fp)
             {
-                if(logff[i].ign <= -999)
+                if(logff[i].ign >= 999)
                     continue;
                 else
                 {
                     /* Try for a few times to open the file */
-                    if(handle_file(i) < 0)
+                    if(handle_file(i, 1) < 0)
                     {
-                        logff[i].ign--;
+                        logff[i].ign++;
                     }
                     continue;
                 }
             }
-
         }
     }
 }
@@ -356,8 +356,11 @@ int update_fname(int i)
 
 
 /* handle_file: Open, get the fileno, seek to the end and update mtime */
-int handle_file(int i)
+int handle_file(int i, int do_fseek)
 {
+    int fd;
+    struct stat stat_fd;
+    
     /* We must be able to open the file, fseek and get the
      * time of change from it.
      */
@@ -368,22 +371,32 @@ int handle_file(int i)
         return(-1);
     }
 
-    if(fseek(logff[i].fp, 0, SEEK_END) < 0)
+    /* Only seek the end of the file if set to. */
+    if(do_fseek == 1)
     {
-        merror(FSEEK_ERROR, ARGV0,logff[i].file);
-        fclose(logff[i].fp);
-        logff[i].fp = NULL;
-        return(-1);
+        if(fseek(logff[i].fp, 0, SEEK_END) < 0)
+        {
+            merror(FSEEK_ERROR, ARGV0,logff[i].file);
+            fclose(logff[i].fp);
+            logff[i].fp = NULL;
+            return(-1);
+        }
     }
     
-    if((logff[i].mtime = File_DateofChange(logff[i].file)) < 0)
+    
+    /* Getting inode number for fp */
+    fd = fileno(logff[i].fp);
+    if(fstat(fd, &stat_fd) == -1)
     {
         merror(FILE_ERROR,ARGV0,logff[i].file);
         fclose(logff[i].fp);
         logff[i].fp = NULL;
         return(-1);
     }
-    
+    logff[i].fd = stat_fd.st_ino;
+
+
+    /* Setting ignore to zero */
     logff[i].ign = 0;
     return(0);
 }

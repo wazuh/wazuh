@@ -65,32 +65,41 @@ int dogrep(char *file, char *str)
 
 
 /* Check is syscheck is present in the config */
-int config_iis(char *name, char *file)
+int config_file(char *name, char *file)
 {
+    int add = 0;
     FILE *fp;
 
     if(!fileexist(file))
     {
+        printf("%s: Log file not existent: '%s'.\n", name, file);
         return(0);
     }
-
-    total++;
 
     if(dogrep(OSSECCONF, file))
     {
         printf("%s: Log file already configured: '%s'.\n", 
-                name, file);
+                    name, file);
         return(0);
     }
-
-    printf("%s: Adding IIS log file to be monitored: '%s'.\n", name,file);
+    
+    
+    /* Add iis config config */
+    fp = fopen(OSSECCONF, "a");
+    if(!fp)
+    {
+        printf("%s: Unable to edit configuration file.\n", name);
+        return(0); 
+    }
+   
+    printf("%s: Adding log file to be monitored: '%s'.\n", name,file);
     printf("%s: Continue? (y/n):", name);
     while(1)
     {
         char u_buffer[256];
         memset(u_buffer, '\0', 256);
         if((fgets(u_buffer, 254, stdin) == NULL) &&
-                (strlen(u_buffer) < 250))
+            (strlen(u_buffer) < 250))
         {
             if((u_buffer[0] == 'y') || (u_buffer[0] == 'Y'))
             {
@@ -104,37 +113,30 @@ int config_iis(char *name, char *file)
             }
         }
     }
-
+   
     if(add == 0)
     {
         printf("%s: Action not taken.\n", name);
+        fclose(fp);
         return(0);
     }
-
-
-    /* Add iis config config */
-    fp = fopen(OSSECCONF, "a");
-    if(!fp)
-    {
-        printf("%s: Unable to edit configuration file.\n", name);
-        return(0); 
-    }
-
+    
     fprintf(fp, "\r\n" 
-            "\r\n"    
-            "<!-- IIS log file -->\r\n"
-            "<ossec_config>\r\n"
-            "  <localfile>\r\n"
-            "    <location>%s</location>"
-            "    <log_format>iis</log_format>\r\n"
-            "  </localfile>\r\n"
-            "</ossec_config>\r\n\r\n", file);
+    "\r\n"    
+    "<!-- Extra log file -->\r\n"
+    "<ossec_config>\r\n"
+    "  <localfile>\r\n"
+    "    <location>%s</location>"
+    "    <log_format>syslog</log_format>\r\n"
+    "  </localfile>\r\n"
+    "</ossec_config>\r\n\r\n", file);
+
 
     printf("%s: Action completed.\n", name);
     fclose(fp);
 
     return(0);
-
+                    
 }
 
 /* Setup windows after install */
@@ -146,66 +148,28 @@ int main(int argc, char **argv)
     struct tm *p;
         
     
-    if(argc < 2)
+    if(argc < 3)
     {
         printf("%s: Invalid syntax.\n", argv[0]);
-        printf("Try: '%s directory'\n\n", argv[0]);
-        return(0);
+        printf("Try: '%s <directory> <file_name>'\n\n", argv[0]);
     }
     
-    if(chdir(argv[1]) != 0)
+    else if(chdir(argv[1]) != 0)
     {
         printf("%s: Invalid directory: '%s'.\n", argv[0], argv[1]);
-        return(0);
     }
     
     /* Checking if ossec was installed already */
-    if(!fileexist(OSSECCONF))
+    else if(!fileexist(OSSECCONF))
     {
-        printf("%s: Unable to find ossec config: '%s'", argv[0], OSSECCONF);
-        exit(0);
+        printf("%s: Unable to find ossec config: '%s'.\n", argv[0], OSSECCONF);
     }
 
-    /* Getting todays day */
-    tm = time(NULL);
-    p = localtime(&tm);
-        
-    total = 0;    
-
-    printf("%s: Looking for IIS log files to monitor.\r\n", argv[0]);
-    printf("%s: For more information: http://www.ossec.net/en/win.html\r\n", argv[0]);
-    printf("\r\n");
-    
-    /* Looking for IIS log files */
-    while(i <= 8)
+    else
     {
-        char lfile[OS_MAXSTR +1];
-
-        i++;
-
-        /* Searching for NCSA */
-        snprintf(lfile, 
-                OS_MAXSTR, 
-                "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\nc%02d%02d%02d.log",
-                i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
-    
-        config_iis(argv[0], lfile);
-
-
-        /* Searching for W3C extended */
-        snprintf(lfile, 
-                OS_MAXSTR, 
-                "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\ex%02d%02d%02d.log",
-                i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
-    
-        config_iis(argv[0], lfile);
+        config_file(argv[0], argv[2]);
     }
-
-    if(total == 0)
-    {
-        printf("%s: No IIS log found. Look at the link above for more "
-               "information.\r\n", argv[0]);
-    }
+    
     system("pause");
     
     return(0);

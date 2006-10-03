@@ -99,12 +99,10 @@ int FTS_Init()
  */
 void AddtoIGnore(Eventinfo *lf)
 {
-    char _line[OS_FLSIZE + 1];
-
-    _line[OS_FLSIZE] = '\0';
+    fseek(fp_ignore, 0, SEEK_END);    
 
     /* Assigning the values to the FTS */
-    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s %s %s",
+    fprintf(fp_ignore, "%s %s %s %s %s %s %s %s\n",
             (lf->log_tag && (lf->generated_rule->ignore & FTS_NAME))?
                         lf->log_tag:"",
             (lf->id && (lf->generated_rule->ignore & FTS_ID))?lf->id:"",
@@ -119,8 +117,6 @@ void AddtoIGnore(Eventinfo *lf)
                         lf->systemname:"",            
             (lf->generated_rule->ignore & FTS_LOCATION)?lf->location:"");
 
-    fseek(fp_ignore, 0, SEEK_END);    
-    fprintf(fp_ignore,"%s\n", _line);
     fflush(fp_ignore);
 
     return;

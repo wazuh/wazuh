@@ -5,3 +5,4 @@ echo Making windows agent
 "C:\MinGW\bin\gcc.exe" -o setup-windows -Wall os_regex/*.c setup/setup-win.c -I./
 "C:\MinGW\bin\gcc.exe" -o service-start -Wall os_regex/*.c setup/service-start.c -I./
 "C:\MinGW\bin\gcc.exe" -o setup-iis -Wall os_regex/*.c setup/setup-iis.c -I./
+"C:\MinGW\bin\gcc.exe" -o add-localfile -Wall os_regex/*.c setup/add-localfile.c -I./

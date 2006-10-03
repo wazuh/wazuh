@@ -55,4 +55,11 @@
     <description>DNS update using RFC2136 Dynamic protocol.</description>
     <info>http://www.isc.org/index.pl?/sw/bind/FAQ.php</info>
   </rule>
+
+  <rule id="12108" level="4">
+    <if_sid>12100</if_sid>
+    <match>query (cache) denied</match>
+    <description>Query cache denied (maybe config error).</description>
+    <info>http://www.reedmedia.net/misc/dns/errors.html</info>
+  </rule>
 </group> <!-- SYSLOG,NAMED -->

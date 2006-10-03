@@ -22,7 +22,7 @@ void helpmsg()
     printf("\nOSSEC HIDS %s: List available agents.\n", ARGV0);
     printf("Available options:\n");
     printf("\t-h    This help message.\n");
-    printf("\t-all  List all agents.\n");
+    printf("\t-a    List all agents.\n");
     printf("\t-c    List the connected (active) agents.\n");
     printf("\t-n    List the not connected (active) agents.\n");
     exit(1);
@@ -91,7 +91,7 @@ int main(int argc, char **argv)
     {
         helpmsg();
     }
-    else if(strcmp(argv[1], "-all") == 0)
+    else if(strcmp(argv[1], "-a") == 0)
     {
         flag = GA_ALL;
         msg = "is available.";
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        printf("**No agent active\n");
+        printf("** No agent available.\n");
     }
     return(0);
 }

@@ -1,6 +1,6 @@
-/*   $OSSEC, config.c, v0.3, 2005/08/23, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it

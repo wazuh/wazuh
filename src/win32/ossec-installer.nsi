@@ -54,7 +54,7 @@ ClearErrors
 ;;
 ;;done:  
 
-File ossec-agent.exe default-ossec.conf manage_agents.exe internal_options.conf setup-windows.exe setup-iis.exe service-start.exe doc.html rootkit_trojans.txt rootkit_files.txt
+File ossec-agent.exe default-ossec.conf manage_agents.exe internal_options.conf setup-windows.exe setup-iis.exe service-start.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"

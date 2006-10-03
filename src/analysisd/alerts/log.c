@@ -136,11 +136,14 @@ int FW_Log(Eventinfo *lf)
         /* block */
         case 'b':
         case 'B':
-        /* */
+            os_free(lf->action);
+            os_strdup("DROP", lf->action);
+            break;
+        /* Closed */
         case 'c':
         case 'C':
             os_free(lf->action);
-            os_strdup("DROP", lf->action);
+            os_strdup("CLOSED", lf->action);
             break;
             /* allow, accept, */    
         case 'a':
@@ -148,6 +151,9 @@ int FW_Log(Eventinfo *lf)
             /* pass/permitted */
         case 'p':
         case 'P':
+            /* open */
+        case 'o':
+        case 'O':    
             os_free(lf->action);
             os_strdup("ALLOW", lf->action);        
             break;

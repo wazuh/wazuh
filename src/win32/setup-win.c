@@ -132,7 +132,7 @@ int main(int argc, char **argv)
         system(cmd);
 
         /* Run iis-logs */
-        snprintf(cmd, OS_MAXSTR, "setup-iis.exe");
+        snprintf(cmd, OS_MAXSTR, "setup-iis.exe .");
         system(cmd);
 
 
@@ -158,6 +158,10 @@ int main(int argc, char **argv)
         }
     }
 
+
+    /* Setting up local files */
+    system("add-localfile.exe '.' 'C:\\Windows\pfirewall.log'");
+    
 
     /* Configure ossec for automatic startup */
     system("sc config OssecSvc start= auto");

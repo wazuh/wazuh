@@ -529,6 +529,8 @@ ConfigureServer()
             echo "" >> $NEWCONFIG
             echo "  <global>" >> $NEWCONFIG
             echo "    <white_list>127.0.0.1</white_list>" >> $NEWCONFIG
+            echo "    <white_list>^localhost.localdomain$</white_list>" 
+                                                           >> $NEWCONFIG
             echo ""
             echo "   - ${defaultwhitelist}"
             for ip in ${NAMESERVERS} ${NAMESERVERS2};
