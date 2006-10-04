@@ -16,7 +16,17 @@
  */
 
 #include <string.h>		/* for memcpy() */
+#include <sys/param.h>
+
 #include "md5.h"
+
+/* Checking for endiannes */
+#ifdef __BYTE_ORDER
+#if __BYTE_ORDER == __BIG_ENDIAN
+    #define HIGHFIRST
+#endif /* BIG ENDIAN */    
+#endif /* byte order */
+
 
 #ifndef HIGHFIRST
 #define byteReverse(buf, len)	/* Nothing */
