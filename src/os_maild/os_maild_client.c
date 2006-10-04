@@ -72,6 +72,22 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p)
                                              al_data->location,
                                              al_data->level);
 
+    /* Getting highest level for alert */
+    if(_g_subject)
+    {
+        if(_g_subject_level < al_data->level)
+        {
+            _g_subject = mail->subject;
+            _g_subject_level = al_data->level;
+        }
+    }
+    else
+    {
+        _g_subject = mail->subject;
+        _g_subject_level = al_data->level;
+    }
+
+
     /* fixing subject back */
     if(subject_host)
     {

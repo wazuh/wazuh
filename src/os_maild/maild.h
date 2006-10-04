@@ -55,8 +55,15 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p);
 /* Sends an email */
 int OS_Sendmail(MailConfig *mail, struct tm *p);
 
+
 /* Mail timeout used by the file-queue */
 int mail_timeout;
 int strict_checking;
+
+
+/* Global var for highest level on mail subjects */
+int   _g_subject_level;
+char *_g_subject;
+
 
 #endif

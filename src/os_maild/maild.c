@@ -194,10 +194,16 @@ void OS_Run(MailConfig *mail)
     mail_timeout = DEFAULT_TIMEOUT;
 
     
+    /* Clearing global vars */
+    _g_subject_level = 0;
+    _g_subject = NULL;
+    
+    
     while(1)
     {
         tm = time(NULL);
         p = localtime(&tm);
+
 
         /* If mail_timeout == NEXTMAIL_TIMEOUT, we will try to get
          * more messages, before sending anything
@@ -243,12 +249,18 @@ void OS_Run(MailConfig *mail)
                 FreeMail(mailmsg); 
                 mailmsg = OS_PopLastMail();
             }while(mailmsg);
-            
+    
+    
+            /* Increasing child count */        
             childcount++; 
 
+
+            /* Clearing global vars */
+            _g_subject = NULL;
+            _g_subject_level = 0;
+            
             
             snd_check_hour:
-            
             /* If we sent everything */
             if(p->tm_hour != thishour)
             {
@@ -274,6 +286,7 @@ void OS_Run(MailConfig *mail)
             
             mail_timeout = DEFAULT_TIMEOUT; /* Default timeout */
         }
+
 
         /* Waiting for the childs .. */
         while (childcount) 

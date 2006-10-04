@@ -46,10 +46,10 @@
 /* Error messages - Can be translated */
 #define INTERNAL_ERROR	"os_maild (1701): Memory/configuration error"
 #define BANNER_ERROR	"os_sendmail(1702): Banner not received from server"
-#define HELO_ERROR	"os_sendmail(1703): Hello not accepted by server"
-#define FROM_ERROR	"os_sendmail(1704): Mail from not accepted by server"
-#define TO_ERROR	"os_sendmail(1705): RCPT TO not accepted by server"
-#define DATA_ERROR	"os_sendmail(1706): DATA not accepted by server"
+#define HELO_ERROR	    "os_sendmail(1703): Hello not accepted by server"
+#define FROM_ERROR	    "os_sendmail(1704): Mail from not accepted by server"
+#define TO_ERROR	    "os_sendmail(1705): RCPT TO not accepted by server"
+#define DATA_ERROR	    "os_sendmail(1706): DATA not accepted by server"
 #define END_DATA_ERROR	"os_sendmail(1707): End of DATA not accepted by server"
 
 #define MAIL_DEBUG_FLAG     0
@@ -219,8 +219,22 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     
     /* Sending subject */
     memset(snd_msg,'\0',128);
-    snprintf(snd_msg,127,SUBJECT,mailmsg->mail->subject);	
+
+    /* Checking if global subject is available */
+    if(_g_subject != NULL)
+    {
+        snprintf(snd_msg, 127, SUBJECT, _g_subject);	
+
+        /* Clearing global values */
+        _g_subject = NULL;
+        _g_subject_level = 0;
+    }
+    else
+    {
+        snprintf(snd_msg, 127, SUBJECT, mailmsg->mail->subject);
+    }
     OS_SendTCP(socket,snd_msg);
+
 
 
     /* Sending body */
