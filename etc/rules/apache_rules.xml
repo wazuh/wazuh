@@ -140,6 +140,22 @@
     <same_source_ip />
     <description>Multiple attempts blocked by Mod Security.</description>
   </rule>
+
+  <rule id="30200" level="6" noalert="1">
+    <match>^mod_security-message: </match>
+    <description>Modsecurity alert.</description>
+  </rule>
+
+  <rule id="30201" level="6">
+    <if_sid>30200</if_sid>
+    <match>^mod_security-message: Access denied </match>
+    <description>Modsecurity access denied.</description>
+  </rule>
+  
+  <rule id="30202" level="10" frequency="8" timeframe="120">
+    <if_matched_sid>30201</if_matched_sid>
+    <description>Multiple attempts blocked by Mod Security.</description>
+  </rule>
 </group> <!-- ERROR_LOG,APACHE -->
 
 
