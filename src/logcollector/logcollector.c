@@ -65,7 +65,7 @@ void LogCollectorStart()
                 _cday = 0;
                 if(update_fname(i))
                 {
-                    handle_file(i, 1);
+                    handle_file(i, 1, 1);
                 }
                 else
                 {
@@ -75,7 +75,7 @@ void LogCollectorStart()
             }
             else
             {
-                handle_file(i, 1);
+                handle_file(i, 1, 1);
             }
             
             verbose(READING_FILE, ARGV0, logff[i].file);
@@ -185,7 +185,7 @@ void LogCollectorStart()
                     logff[i].fp = NULL;
 
                     /* Trying to open it again */
-                    if(handle_file(i, 1) != 0)
+                    if(handle_file(i, 1, 1) != 0)
                     {
                         logff[i].ign++;
                         continue;
@@ -230,7 +230,14 @@ void LogCollectorStart()
                         fclose(logff[i].fp);
                     }
                     logff[i].fp = NULL;
-                    handle_file(i, 0);
+                    handle_file(i, 0, 1);
+                    continue;
+                }
+
+                /* Variable file name */
+                else if(!logff[i].fp)
+                {
+                    handle_file(i, 0, 0);
                     continue;
                 }
             }
@@ -254,7 +261,7 @@ void LogCollectorStart()
                     
                     fclose(logff[i].fp);
                     logff[i].fp = NULL;
-                    handle_file(i, 0);
+                    handle_file(i, 0, 1);
                     continue;
                 }
             }
@@ -296,7 +303,7 @@ void LogCollectorStart()
                 else
                 {
                     /* Try for a few times to open the file */
-                    if(handle_file(i, 1) < 0)
+                    if(handle_file(i, 1, 1) < 0)
                     {
                         logff[i].ign++;
                     }
@@ -356,7 +363,7 @@ int update_fname(int i)
 
 
 /* handle_file: Open, get the fileno, seek to the end and update mtime */
-int handle_file(int i, int do_fseek)
+int handle_file(int i, int do_fseek, int do_log)
 {
     int fd;
     struct stat stat_fd;
@@ -367,7 +374,10 @@ int handle_file(int i, int do_fseek)
     logff[i].fp = fopen(logff[i].file, "r");
     if(!logff[i].fp)
     {
-        merror(FOPEN_ERROR, ARGV0, logff[i].file);
+        if(do_log == 1)
+        {
+            merror(FOPEN_ERROR, ARGV0, logff[i].file);
+        }
         return(-1);
     }
 

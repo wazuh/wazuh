@@ -37,7 +37,7 @@ int LogCollectorConfig(char * cfgfile);
 void LogCollectorStart();
 
 /* Handle files */
-int handle_file(int i, int do_fseek);
+int handle_file(int i, int do_fseek, int do_log);
 
 /* Read syslog file */
 void *read_syslog(int pos, int *rc);
