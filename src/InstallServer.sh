@@ -110,17 +110,23 @@ chmod -R 770 ${DIR}/queue/ossec
 
 # To the ossec fts queue
 chown -R ${USER}:${GROUP} ${DIR}/queue/fts
-chmod -R 700 ${DIR}/queue/fts
+chmod -R 750 ${DIR}/queue/fts
+chmod 740 ${DIR}/queue/fts/*
 
 # To the ossec syscheck/rootcheck queue
 chown -R ${USER}:${GROUP} ${DIR}/queue/syscheck
-chmod -R 700 ${DIR}/queue/syscheck
+chmod -R 750 ${DIR}/queue/syscheck
+chmod 740 ${DIR}/queue/syscheck/*
 chown -R ${USER}:${GROUP} ${DIR}/queue/rootcheck
-chmod -R 700 ${DIR}/queue/rootcheck
+chmod -R 750 ${DIR}/queue/rootcheck
+chmod 740 ${DIR}/queue/rootcheck/*
 chown -R ${USER_REM}:${GROUP} ${DIR}/queue/agent-info
 chmod -R 755 ${DIR}/queue/agent-info
+chmod 744 ${DIR}/queue/agent-info/*
 chown -R ${USER_REM}:${GROUP} ${DIR}/queue/rids
 chmod -R 755 ${DIR}/queue/rids
+chmod 744 ${DIR}/queue/rids/*
+
 
 # For the stats directory
 chown -R ${USER}:${GROUP} ${DIR}/stats
