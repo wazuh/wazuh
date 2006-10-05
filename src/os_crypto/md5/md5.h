@@ -26,6 +26,12 @@ typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
 #endif
 
+#if defined HPUX
+typedef uint32_t u_int32_t;
+typedef uint16_t u_int16_t;
+typedef uint8_t u_int8_t;
+#endif
+
 #ifdef WIN32
 typedef unsigned int u_int32_t;
 #endif

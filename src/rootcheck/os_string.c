@@ -52,7 +52,7 @@
 #ifdef SOLARIS
 #include <sys/exechdr.h>
 
-#elif defined Darwin
+#elif defined Darwin || defined HPUX
 
 /* For some reason darwin does not have that */
 struct exec

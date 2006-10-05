@@ -190,7 +190,7 @@ int getDefine_Int(char *high_name, char *low_name, int min, int max)
     pt = value;
     while(*pt != '\0')
     {
-        if(!isdigit(*pt))
+        if(!isdigit((int)*pt))
         {
             ErrorExit(INV_DEF, __local_name, high_name, low_name, value);
         }
@@ -474,7 +474,7 @@ char *__gethour(char *str, char *ossec_hour)
     int cmin = 0;
     
     /* Invalid time format */
-    if(!isdigit(*str))
+    if(!isdigit((int)*str))
     {
         merror(INVALID_TIME, __local_name, str);
     }
@@ -493,7 +493,7 @@ char *__gethour(char *str, char *ossec_hour)
     }
     
     /* Going after the hour */
-    while(isdigit(*str))
+    while(isdigit((int)*str))
     {
         _size++;
         str++;
@@ -511,7 +511,8 @@ char *__gethour(char *str, char *ossec_hour)
     if(*str == ':')
     {
         str++;
-        if((!isdigit(*str) || !isdigit(*(str +1)))&& isdigit(*(str +2)))
+        if((!isdigit((int)*str)||
+            !isdigit((int)*(str +1))) && isdigit((int)*(str +2)))
         {
             merror(INVALID_TIME, __local_name, str);
             return(NULL);

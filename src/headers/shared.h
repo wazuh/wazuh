@@ -35,7 +35,12 @@
 /* Making windows happy */
 #ifndef WIN32
 #include <sys/wait.h>
+
+/* HPUX does not have select.h */
+#ifndef HPUX
 #include <sys/select.h>
+#endif
+
 #include <sys/utsname.h>
 #endif
 #include <stdio.h>
@@ -81,9 +86,22 @@
 
 #ifdef SOLARIS
 #include <limits.h>
+typedef uint32_t u_int32_t;
 typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
 #endif /* SOLARIS */
+
+
+/* For HP-UX */
+#if defined HPUX
+#include <limits.h>
+typedef uint32_t u_int32_t;
+typedef uint16_t u_int16_t;
+typedef uint8_t u_int8_t;
+
+#define MSG_DONTWAIT 0
+#endif
+
 
 /* For Darwin */
 #ifdef Darwin
@@ -112,6 +130,7 @@ typedef unsigned char u_int8_t;
 #ifdef AIX
 #define MSG_DONTWAIT MSG_NONBLOCK
 #endif
+
 
 
 /* Local name */

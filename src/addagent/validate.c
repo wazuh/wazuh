@@ -32,7 +32,7 @@ int OS_IsValidID(char *id)
     /* Check ID if it contains only numeric characters [0-9] */
     for(i = 0; i < id_len; i++)
     {
-      if(!(isdigit(id[i])))
+      if(!(isdigit((int)id[i])))
         return(0);
     }
     
@@ -97,7 +97,7 @@ int OS_IsValidName(char *u_name)
     /* check if it contains any non-alphanumeric characters */
     for(i = 0; i < strlen(u_name); i++)
     {
-      if(!isalnum(u_name[i]) && (u_name[i] != '-') && (u_name[i] != '_'))
+      if(!isalnum((int)u_name[i]) && (u_name[i] != '-') && (u_name[i] != '_'))
         return(0);
     }
 

@@ -62,6 +62,10 @@ if [ "X${ARGV}" = "Xall" ]; then
     if [ "X$OS" = "XSunOS" ]; then
         echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -DHIGHFIRST">>Config.OS
     fi
+
+    if [ "X$OS" = "XHP-UX" ]; then
+        echo "EEXTRA=-DHPUX -D_XOPEN_SOURCE_EXTENDED" >> Config.OS
+    fi    
         
     if [ "X$OS" = "XFreeBSD" ]; then
         echo "TEXTRA=-pthread" >> Config.OS

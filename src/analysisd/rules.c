@@ -1252,7 +1252,7 @@ void Rule_AddAR(RuleInfo *rule_config)
                  * and search for the next digit
                  * available
                  */
-                else if(isdigit(*str_pt))
+                else if(isdigit((int)*str_pt))
                 {
                     r_id = atoi(str_pt);
                     

@@ -10,19 +10,7 @@
  */
 
  
-#include <stdio.h>       
-#include <sys/types.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <netdb.h> 
-#include <netinet/in.h>
-#include <errno.h>
-
-#include "headers/defs.h"
-#include "headers/debug_op.h"
-
+#include "shared.h"
 #include "rootcheck.h"
 
 /* SunOS netstat */

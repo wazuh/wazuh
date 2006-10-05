@@ -96,6 +96,11 @@ void AgentdStart(char *dir, int uid, int gid)
     if(logr->sock < 0)
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
 
+
+    /* Setting socket non-blocking on HPUX */
+    #ifdef HPUX
+    fcntl(logr->sock, O_NONBLOCK);
+    #endif
     
     /* Setting max fd for select */
     if(logr->sock > maxfd)
