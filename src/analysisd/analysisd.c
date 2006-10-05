@@ -105,6 +105,8 @@ void DumpLogstats();
 /* Hourly alerts */
 int hourly_alerts;
 int hourly_events;
+int hourly_syscheck;
+int hourly_firewall;
 
 
 /* Main function v0.2: 2005/03/22 */
@@ -127,6 +129,8 @@ int main(int argc, char **argv)
     memset(prev_month, '\0', 4);
     hourly_alerts = 0;
     hourly_events = 0;
+    hourly_syscheck = 0;
+    hourly_firewall = 0;
 
     while((c = getopt(argc, argv, "Vtdhu:g:D:c:")) != -1){
         switch(c){
@@ -641,6 +645,7 @@ void OS_ReadMSG(int m_queue)
             if(msg[0] == SYSCHECK_MQ)
             {
                 DecodeSyscheck(lf);
+                hourly_syscheck++;
             }
 
             /* Rootcheck decoding */
@@ -681,6 +686,7 @@ void OS_ReadMSG(int m_queue)
                 /* If we could not get any information from
                  * the log, just ignore it
                  */
+                hourly_firewall++;  
                 if(!FW_Log(lf))
                 {
                     goto CLMEM;
@@ -1210,11 +1216,13 @@ void DumpLogstats()
 
 
     /* Print total for the hour */
-    fprintf(flog, "%d--%d--%d\n\n",
+    fprintf(flog, "%d--%d--%d--%d--%d\n\n",
                 thishour,
-                hourly_alerts, hourly_events);
+                hourly_alerts, hourly_events, hourly_syscheck,hourly_firewall);
     hourly_alerts = 0;
     hourly_events = 0;
+    hourly_syscheck = 0;
+    hourly_firewall = 0;
    
     fclose(flog);
 }
