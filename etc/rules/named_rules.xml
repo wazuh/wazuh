@@ -62,4 +62,10 @@
     <description>Query cache denied (maybe config error).</description>
     <info>http://www.reedmedia.net/misc/dns/errors.html</info>
   </rule>
+  
+  <rule id="12109" level="12">
+    <if_sid>12100</if_sid>
+    <match>exiting (due to fatal error)</match>
+    <description>Named fatal error. DNS service going down.</description>
+  </rule>
 </group> <!-- SYSLOG,NAMED -->
