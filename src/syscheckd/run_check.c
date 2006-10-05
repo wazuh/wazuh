@@ -169,6 +169,11 @@ void start_daemon()
             /* Checking for changes */
             run_check();
 
+            /* Sending database completed message */
+            notify_agent(HC_SK_DB_COMPLETED);
+            debug2("%s: DEBUG: Sending database completed message.");
+
+            
             prev_time_sk = curr_time;
         } 
 
@@ -187,12 +192,7 @@ void run_check()
 
     buf[MAX_LINE +1] = '\0';
     
-    
-    /* Sending database completed message */
-    notify_agent(HC_SK_DB_COMPLETED);
-    debug2("%s: DEBUG: Sending database completed message.");
-    
-    
+
     /* fgets garantee the null termination */
     while(fgets(buf, MAX_LINE, syscheck.fp) != NULL)
     {
