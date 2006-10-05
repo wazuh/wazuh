@@ -20,7 +20,7 @@ sh			!proc\.h|/dev/[0-9]|/dev/[hijkz]!
 uname		!bash|^/bin/sh|file\.h|proc\.h|^/bin/.*sh!
 date		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cln]|^/bin/.*sh!
 du			!/dev|w0rm|/prof|file\.h!
-df			!bash|^/bin/sh|file\.h|proc\.h|/dev/[^clu]|^/bin/.*sh!
+df			!bash|^/bin/sh|file\.h|proc\.h|/dev/[^clurdv]|^/bin/.*sh!
 login      	!bash|elite|SucKIT|xlogin|vejeta|porcao|lets_log|sukasuk!
 passwd		!bash|file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[b-s,uvxz]!
 mingetty	!bash|Dimensioni|pacchetto!
@@ -45,7 +45,7 @@ egrep		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh!
 find		!bash|/dev/[^tnlcs]|/prof|/home/virus|file\.h!
 lsof		!/prof|/dev/[^apcmnfk]|proc\.h|bash|^/bin/sh|/dev/ttyo|/dev/ttyp!
 netstat		!bash|^/bin/sh|/dev/[^aik]|/prof|grep|addr\.h!
-top			!/dev/[^npi3t%]|proc\.h|/prof/!
+top			!/dev/[^npi3st%]|proc\.h|/prof/!
 ps			!/dev/ttyo|\.1proc|proc\.h|bash|^/bin/sh!
 tcpdump		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^b]|^/bin/.*sh!
 pidof		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh!

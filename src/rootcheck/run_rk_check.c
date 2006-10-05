@@ -179,7 +179,9 @@ void run_rk_check()
 
         else
         {
+            #ifndef HPUX
             check_rc_trojans(basedir, fp);
+            #endif
 
             fclose(fp);
         }
