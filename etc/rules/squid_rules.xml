@@ -14,7 +14,7 @@
 <var name="SQUID_FREQ">8</var>
 
   
-<group name="squid">
+<group name="squid,">
   <rule id="35000" level="0">
     <decoded_as>squid-accesslog</decoded_as>
     <category>squid</category>

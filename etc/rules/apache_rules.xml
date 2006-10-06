@@ -1,13 +1,11 @@
-<!-- Apache rules.
+<!-- @(#) $Id$
   -  Official rules for apache
-  -
   -  Author: Ahmet Ozturk
   -  Author: Daniel B. Cid
-  -  Date: Jan 18, 2006
   -->
 
   
-<group name="apache">
+<group name="apache,">
   <rule id="30100" level="0">
     <decoded_as>apache-errorlog</decoded_as>
     <description>Apache messages grouped.</description>
@@ -36,18 +34,21 @@
     <match>exit signal Segmentation Fault</match>
     <description>Apache segmentation fault.</description>
     <info>http://www.securityfocus.com/infocus/1633</info>
+    <group>service_availability,</group>
   </rule>
 
   <rule id="30105" level="9">
     <if_sid>30101</if_sid>
     <match>denied by server configuration</match>
     <description>Attempt to access forbidden file or directory.</description>
+    <group>access_denied,</group>
   </rule>
 
   <rule id="30106" level="5">
     <if_sid>30101</if_sid>
     <match>Directory index forbidden by rule</match>
     <description>Attempt to access forbidden directory index.</description>
+    <group>access_denied,</group>
   </rule>
 
   <rule id="30107" level="6">
@@ -55,24 +56,28 @@
     <match>Client sent malformed Host header</match>
     <description>Code Red attack.</description>
     <info>http://www.cert.org/advisories/CA-2001-19.html</info>
+    <group>automatic_attack,</group>
   </rule>
 
   <rule id="30108" level="5">
     <if_sid>30102</if_sid>
     <match>authentication failed</match>
     <description>User authentication failed.</description>
+    <group>authentication_failed,</group>
   </rule>
 
   <rule id="30109" level="9">
     <if_sid>30101</if_sid>
     <regex>user \S+ not found</regex>
     <description>Attempt to login using a non-existent user.</description>
+    <group>invalid_login,</group>
   </rule>
 
   <rule id="30110" level="5">
     <if_sid>30101</if_sid>
     <match>authentication failure</match>
     <description>User authentication failed.</description>
+    <group>authentication_failed,</group>
   </rule>
 
   <rule id="30111" level="6">
@@ -80,6 +85,7 @@
     <regex>File does not exist: \S+default.ida</regex>
     <description>Code Red 2 attack.</description>
     <info>http://www.cert.org/incident_notes/IN-2001-09.html</info>
+    <group>automatic_attack,</group>
   </rule>
 
   <rule id="30112" level="5">
@@ -88,6 +94,7 @@
     <match>failed to open stream: No such file or directory|</match>
     <match>Failed opening </match>
     <description>Attempt to access an non-existent file.</description> 
+    <group>unknown_resource,</group>
   </rule>
 
   <!-- Copied from the web logs. Since we can't parse all the fields,
@@ -104,6 +111,7 @@
     <same_source_ip />
     <description>Multiple attempts to access non-existent </description>
     <description>files (web scan) from same source.</description>
+    <group>web_scan,recon,</group>
   </rule>
 
   <!-- [Tue Mar 07 12:05:15 2006] [error] [client 200.206.165.91] Invalid URI in request %3Bi%3A3%3Bi%3A0%3B%7D; usercookie[password]=d6ed9e1750d0b2aba6b3311cbec087d8; 45befd35f8a0f47b89ed8831f892b8dc=167c4e46a940cd2570b952eea527b27a; PHPSESSID=616hjdg7kj9bln37efsv7vt7g3
@@ -113,6 +121,7 @@
     <if_sid>30101</if_sid>
     <match>Invalid URI in request</match>
     <description>Invalid URI (bad client request).</description>
+    <group>invalid_request,</group>
   </rule>
 
   <rule id="30116" level="10" frequency="8" timeframe="120">
@@ -120,12 +129,14 @@
     <same_source_ip />
     <description>Multiple Invalid URI requests from </description>
     <description>same source.</description>
+    <group>invalid_request,</group>
   </rule>
 
   <rule id="30117" level="10">
     <if_sid>30101</if_sid>
     <match>File name too long|request failed: URI too long</match>
     <description>Invalid URI, file name too long.</description>
+    <group>invalid_request,</group>
   </rule>
 
   <!-- Mod security rules by <ossec ( at ) sioban.net -->
@@ -133,12 +144,14 @@
     <if_sid>30101</if_sid>
     <match>mod_security: Access denied</match>
     <description>Access attempt blocked by Mod Security.</description>
+    <group>access_denied,</group>
   </rule>
 
   <rule id="30119" level="12" frequency="6" timeframe="120">
     <if_matched_sid>30118</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts blocked by Mod Security.</description>
+    <group>access_denied,</group>
   </rule>
 
   <rule id="30200" level="6" noalert="1">
@@ -150,11 +163,13 @@
     <if_sid>30200</if_sid>
     <match>^mod_security-message: Access denied </match>
     <description>Modsecurity access denied.</description>
+    <group>access_denied,</group>
   </rule>
   
   <rule id="30202" level="10" frequency="8" timeframe="120">
     <if_matched_sid>30201</if_matched_sid>
     <description>Multiple attempts blocked by Mod Security.</description>
+    <group>access_denied,</group>
   </rule>
 </group> <!-- ERROR_LOG,APACHE -->
 
