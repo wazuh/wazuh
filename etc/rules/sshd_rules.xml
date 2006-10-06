@@ -6,7 +6,7 @@
 
 
 <!-- SSHD messages -->
-<group name="syslog,sshd">
+<group name="syslog,sshd,">
   <rule id="5700" level="0" noalert="1">
     <decoded_as>sshd</decoded_as>
     <description>SSHD messages grouped.</description>
