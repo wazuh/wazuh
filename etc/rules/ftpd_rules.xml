@@ -1,10 +1,10 @@
-<!-- Official ftpd rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Official ftpd rules for OSSEC.
   -  Author: Ahmet Ozturk
-  -  Date: Jun 8, 2006
   -->
       
 
-<group name="syslog,ftpd">
+<group name="syslog,ftpd,">
   <rule id="11100" level="0" noalert="1">
     <decoded_as>ftpd</decoded_as>
     <description>Grouping for the ftpd rules.</description>
@@ -15,6 +15,7 @@
     <match>FTP LOGIN REFUSED</match>
     <description>FTP Connection blocked by TCP Wrappers </description>
     <description>(or attempt to use an anonymous user).</description>
+    <group>access_denied,</group>
   </rule>
 
   <rule id="11102" level="0">
@@ -51,7 +52,7 @@
   <rule id="11107" level="5">
     <if_sid>11100</if_sid>
     <match>refused connect from</match>
-    <group>connection_attempt</group>
+    <group>access_denied,</group>
     <description>Connection blocked by Tcp Wrappers.</description>
   </rule>
 
@@ -59,12 +60,14 @@
     <if_sid>11100</if_sid>
     <match>warning: can't verify hostname: |gethostbyaddr: </match>
     <description>Reverse lookup error (bad ISP config).</description>
+    <group>client_misconfig,</group>
   </rule>
 
   <rule id="11109" level="10">
     <if_sid>11100</if_sid>
     <match>repeated login failures</match>
     <description>Multiple FTP failed login attempts.</description>
+    <group>authentication_failures,</group>
   </rule>
 
   <rule id="11110" level="3">

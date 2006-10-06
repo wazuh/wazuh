@@ -1,11 +1,11 @@
-<!-- Example of local rules for ossec.
+<!-- @(#) $Id$
+  -  Example of local rules for ossec.
   -  Author: Daniel B. Cid
-  -  Date: Sep 15, 2006
   -->
+
 
 <!-- Modify it at your will. -->
 
-  
 <group name="local,syslog,">
 
   <!-- Note that rule id 5711 is defined at the ssh_rules file

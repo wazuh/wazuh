@@ -1,15 +1,16 @@
-<!-- Official IDS rules for OSSEC
+<!-- @(#) $Id$
+  -  Official IDS rules for OSSEC.
   -  Author: Daniel B. Cid
-  -  Date: Jan 10, 2006
   -->
 
 <var name="IDS_FREQ">8</var>      
 
-<group name="ids">
+<group name="ids,">
   <rule id="20100" level="8">
     <category>ids</category>
     <if_fts></if_fts>
     <description>First time this IDS alert is generated.</description>
+    <group>fts,</group>
   </rule>
 
   <rule id="20101" level="6">

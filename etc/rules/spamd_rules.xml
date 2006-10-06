@@ -1,11 +1,12 @@
-<!-- spamd rules for the OSSEC HIDS (still need much more work)
+<!-- @(#) $Id$
+  -  Spamd rules for OSSEC.
   -  Author: Peter Ahlert <peter@ifup.de>
   -  Author: Daniel B. Cid
-  -  Date: Mar 20, 2006
   -->
-      
+     
+<!-- STILL BETA -->      
 
-<group name="spamd,syslog,">
+<group name="syslog,spamd,">
   <rule id="3500" level="0" noalert="1">
     <match>^spamd</match>
     <description>Grouping for the spamd rules</description>

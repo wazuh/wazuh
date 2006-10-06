@@ -1,14 +1,15 @@
-<!-- Squid rules.
+<!-- @(#) $Id$
   -  Official rules for squid
   -
   -  Author: Ahmet Ozturk
   -  Author: Daniel B. Cid
-  -  Date: May 1, 2006
   -->
+
 
 <!-- More information about squid codes below:
    - http://www.uniar.ukrnet.net/tools/Squid-FAQ/FAQ-6.html
   -->
+
   
 <!-- Squid frequency -->
 <var name="SQUID_FREQ">8</var>
@@ -91,6 +92,7 @@
     <description>Attempt to access a Beagle worm (or variant) </description>
     <description>file.</description>
     <info>http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
+    <group>automatic_attack,</group>
   </rule>
   
   <!-- Other worms -->
@@ -98,6 +100,7 @@
     <if_sid>35006</if_sid>
     <url>/jk/exp.wmf$|/PopupSh.ocx$</url>
     <description>Attempt to access a worm/trojan related site.</description>
+    <group>automatic_attack,</group>
   </rule>
   
   <!-- Ignoring google earth, ms web site access and some other

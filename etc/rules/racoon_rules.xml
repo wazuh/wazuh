@@ -1,10 +1,12 @@
-<!-- Official Racoon VPN rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Racoon VPN rules for OSSEC HIDS.
   -  Author: Daniel B. Cid
-  -  Date: Aug 11, 2006 (v0.1)
   -->
 
 
-<group name="syslog,racoon">
+<!-- BETA -->
+
+<group name="syslog,racoon,">
   <rule id="14100" level="0">
     <decoded_as>racoon</decoded_as>
     <description>Grouping of racoon rules.</description>
@@ -12,8 +14,8 @@
   
   <rule id="14101" level="5">
     <decoded_as>racoon-failed</decoded_as>
-    <group>authentication_failed,connection_attempt</group>
     <description>VPN authentication failed.</description>
+    <group>authentication_failed,</group>
   </rule>
   
   <rule id="14110" level="0">

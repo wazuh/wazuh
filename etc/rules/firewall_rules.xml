@@ -1,10 +1,10 @@
-<!-- Official Firewall rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Official Firewall rules for OSSEC.
   -  Author: Daniel B. Cid
-  -  Date: Apr 20, 2006
   -->
       
 
-<group name="ids">
+<group name="firewall,">
   <rule id="4100" level="0">
     <category>firewall</category>
     <description>Firewall rules grouped.</description>
@@ -18,11 +18,13 @@
     <action>DROP</action>
     <options>no_log</options>
     <description>Firewall drop event.</description>
+    <group>firewall_drop,</group>
   </rule>
 
   <rule id="4151" level="10" frequency="16" timeframe="45" ignore="240">
     <if_matched_sid>4101</if_matched_sid>
     <same_source_ip />
     <description>Multiple Firewall drop events from same source.</description>
+    <group>multiple_drops,</group>
   </rule>  
 </group>

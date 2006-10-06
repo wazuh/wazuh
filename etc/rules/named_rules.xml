@@ -1,11 +1,10 @@
-<!-- Official named rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Official named rules for OSSEC.
   -  Author: Daniel B. Cid
-  -  Date: Feb 28, 2006 (v0.2) - Added rule for log rotation (1904)
-  -  Date: Nov 11, 2005 (v0.1)
   -->
       
 
-<group name="syslog,named">
+<group name="syslog,named,">
   <rule id="12100" level="0" noalert="1">
     <decoded_as>named</decoded_as>
     <description>Grouping of the named rules</description>
@@ -14,33 +13,37 @@
   <rule id="12101" level="12">
     <if_sid>12100</if_sid>
     <match>dropping source port zero packet from</match>
-    <description>Invalid DNS packet. Possibility of attack</description>
+    <description>Invalid DNS packet. Possibility of attack.</description>
+    <group>invalid_access,</group>
   </rule>
 
   <rule id="12102" level="9">
     <if_sid>12100</if_sid>
     <match>denied AXFR from</match>
-    <description>Failed attempt to perform a zone transfer</description>
+    <description>Failed attempt to perform a zone transfer.</description>
+    <group>access_denied,</group>
   </rule>
 
   <rule id="12103" level="4">
     <if_sid>12100</if_sid>
     <match>denied update from|unapproved update from</match>
-    <description>DNS update denied.</description>
+    <description>DNS update denied. </description>
     <description>Generally mis-configuration.</description>
     <info>http://seclists.org/lists/incidents/2000/May/0217.html</info>
+    <group>client_misconfig,</group>
   </rule>
 
   <rule id="12104" level="4">
     <if_sid>12100</if_sid>
     <match>unable to rename log file</match>
-    <description>Log permission misconfiguration in Named</description>
+    <description>Log permission misconfiguration in Named.</description>
+    <group>system_error,</group>
   </rule>
 
   <rule id="12105" level="4">
     <if_sid>12100</if_sid>
     <match>unexpected RCODE </match>
-    <description>Unexpected error while resolving domain</description>
+    <description>Unexpected error while resolving domain.</description>
   </rule>  
 
   <rule id="12106" level="4">
@@ -67,5 +70,6 @@
     <if_sid>12100</if_sid>
     <match>exiting (due to fatal error)</match>
     <description>Named fatal error. DNS service going down.</description>
+    <group>service_availability,</group>
   </rule>
 </group> <!-- SYSLOG,NAMED -->

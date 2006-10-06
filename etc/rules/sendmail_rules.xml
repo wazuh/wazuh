@@ -1,10 +1,11 @@
-<!-- Official sendmail rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Official sendmail rules for OSSEC.
   -  Author: Ahmet Ozturk
-  -  Date: Mar 27, 2006 (v0.1)
+  -  Author: Daniel B. Cid
   -->
       
 
-<group name="syslog,sendmail">
+<group name="syslog,sendmail,">
   <rule id="3100" level="0">
     <decoded_as>sendmail-reject</decoded_as>
     <description>Grouping of the sendmail rules.</description>
@@ -21,6 +22,7 @@
     <match>reject=451 4.1.8 </match>
     <description>Sender domain does not have any valid </description>
     <description>MX record (Requested action aborted).</description>
+    <group>spam,</group>
   </rule>
 
   <rule id="3103" level="6">
@@ -28,6 +30,7 @@
     <match>reject=550 5.0.0 |reject=553 5.3.0</match>
     <description>Rejected by access list </description>
     <description>(55x: Requested action not taken).</description>
+    <group>spam,</group>
   </rule>
 
   <rule id="3104" level="6">
@@ -35,6 +38,7 @@
     <match>reject=550 5.7.1 </match>
     <description>Attepmt to use mail server as relay </description>
     <description>(550: Requested action not taken).</description>
+    <group>spam,</group>
   </rule>
 
   <rule id="3105" level="5">
@@ -42,6 +46,7 @@
     <match>reject=553 5.1.8 </match>
     <description>Sender domain is not found </description>
     <description> (553: Requested action not taken).</description>
+    <group>spam,</group>
   </rule>
 
   <rule id="3106" level="5">
@@ -49,6 +54,7 @@
     <match>reject=553 5.5.4 </match>
     <description>Sender address does not have domain </description>
     <description>(553: Requested action not taken).</description>
+    <group>spam,</group>
   </rule>
 
   <rule id="3107" level="4">
@@ -61,6 +67,7 @@
     <same_source_ip />
     <description>Sender domain has bogus MX record. </description>
     <description>It should not be sending e-mail.</description>
+    <group>multiple_spam,</group>
   </rule>
 
   <rule id="3152" level="6" frequency="6" timeframe="120">
@@ -68,12 +75,14 @@
     <same_source_ip />
     <description>Multiple attempts to send e-mail from a </description>
     <description>previously rejected sender (access).</description>
+    <group>multiple_spam,</group>
   </rule>
 
   <rule id="3153" level="6" frequency="6" timeframe="120">
     <if_matched_sid>3104</if_matched_sid>
     <same_source_ip />
     <description>Multiple relaying attempts of spam.</description>
+    <group>multiple_spam,</group>
   </rule>
 
   <rule id="3154" level="10" frequency="6" timeframe="120">
@@ -81,6 +90,7 @@
     <same_source_ip />
     <description>Multiple attempts to send e-mail </description>
     <description>from invalid/unknown sender domain.</description>
+    <group>multiple_spam,</group>
   </rule>
 
   <rule id="3155" level="10" frequency="6" timeframe="120">
@@ -88,11 +98,13 @@
     <same_source_ip />
     <description>Multiple attempts to send e-mail from </description>
     <description>invalid/unknown sender.</description>
+    <group>multiple_spam,</group>
   </rule>
   
   <rule id="3156" level="10" frequency="10" timeframe="120">
     <if_matched_sid>3107</if_matched_sid>
     <same_source_ip />
     <description>Multiple rejected e-mails from same source ip.</description>
+    <group>multiple_spam,</group>
   </rule>
 </group> <!-- SYSLOG,SENDMAIL -->

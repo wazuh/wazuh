@@ -1,11 +1,11 @@
-<!-- Official Microsoft auth rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Official Microsoft auth rules for OSSEC.
   -  Author: Daniel B. Cid
-  -  Date: Apr 22, 2006
   -->
 
 <var name="MS_FREQ">6</var>      
 
-<group name="windows,event_log">
+<group name="windows,">
   <rule id="18100" level="0">
     <category>windows</category>
     <description>Group of windows rules.</description>
@@ -27,6 +27,7 @@
     <if_sid>18100</if_sid>
     <action>ERROR</action>
     <description>Windows error event.</description>
+    <group>system_error,</group>
   </rule>
 
   <rule id="18104" level="0">
@@ -45,15 +46,15 @@
     <if_sid>18105</if_sid>
     <id>^529|^530|^531|^532|^533|^534|^535|^536|^537|^539|</id>
     <id>^673|^675|^680|^681</id>
-    <group>authentication_failed</group>
     <description>Windows Logon Failure.</description>
+    <group>authentication_failed,</group>
   </rule>
 
   <rule id="18107" level="3">
     <if_sid>18104</if_sid>
     <id>^528|^538|^540|^672|^673|^680</id>
-    <group>authentication_success</group>
     <description>Windows Logon Success.</description>
+    <group>authentication_success,</group>
   </rule>
 
   <rule id="18108" level="4">
@@ -72,67 +73,73 @@
   <rule id="18110" level="8">
     <if_sid>18104</if_sid>
     <id>^624|^626|^645</id>
-    <group>adduser</group>
     <description>User account created.</description>
+    <group>adduser,</group>
   </rule>
 
   <rule id="18111" level="8">
     <if_sid>18104</if_sid>
     <id>^628|^642</id>
-    <group>adduser</group>
     <description>User account changed.</description>
+    <group>adduser,</group>
   </rule>
 
   <rule id="18112" level="8">
     <if_sid>18104</if_sid>
     <id>^630</id>
-    <group>adduser</group>
     <description>User account deleted.</description>
+    <group>adduser,</group>
   </rule>
   
   <rule id="18113" level="8">
     <if_sid>18104</if_sid>
     <id>^612|^643</id>
     <description>Windows Audit Policy changed.</description>
+    <group>policy_changed,</group>
   </rule>
 
   <rule id="18114" level="8">
     <if_sid>18104</if_sid>
     <id>^631|^632|^633|^634|^635|^636|^637|^638|^639|^641</id>
     <description>Group account changed.</description>
+    <group>adduser,</group>
   </rule>
   
   <rule id="18115" level="8">
     <if_sid>18104</if_sid>
     <id>^640</id>
     <description>General account database changed.</description>
+    <group>adduser,</group>
   </rule>
   
   <rule id="18116" level="9">
     <if_sid>18104</if_sid>
     <id>^644</id>
     <description>User account locked out (multiple login errors).</description>
+    <group>authentication_failures,</group>  
   </rule>
 
   <rule id="18117" level="7">
     <if_sid>18104</if_sid>
     <id>^513</id>
     <description>Windows is shutting down.</description>
+    <group>system_shutdown,</group>
   </rule>
   
   <rule id="18118" level="9">
     <if_sid>18104</if_sid>
     <id>^517</id>
     <description>Windows audit log was cleared.</description>
+    <group>logs_cleared,</group>
   </rule>
   
   <rule id="18119" level="3">
     <if_sid>18107</if_sid>
     <options>alert_by_email</options>
     <id>^528|^538|^540|^672|^673</id>
-    <group>authentication_success</group>
     <if_fts />
     <description>First time this user logged in this system.</description>
+    <group>authentication_success,</group>
   </rule>
   
   <rule id="18151" level="10" frequency="$MS_FREQ" timeframe="240">
@@ -144,8 +151,8 @@
 
   <rule id="18152" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>18106</if_matched_sid>
-    <group>authentication_failed</group>
     <description>Multiple Windows Logon Failures.</description>
+    <group>authentication_failures,</group>
   </rule>
   
   <rule id="18153" level="10" frequency="$MS_FREQ" timeframe="240">
@@ -163,3 +170,5 @@
     <description>Multiple Windows warning events.</description>
   </rule>
 </group>
+
+<!-- EOF -->

@@ -1,20 +1,22 @@
-<!-- Official Policy rules for OSSEC
+<!-- @(#) $Id$
+  -  Official Policy rules for OSSEC.
   -  Author: Daniel B. Cid
-  -  Date: Jun 27, 2006
   -->
       
 
-<group name="policy_rules">
+<group name="policy_violation,">
   <rule id="17101" level="9">
     <if_group>authentication_success</if_group>
     <time>6 pm - 8:30 am</time>
     <description>Sucessful login during non-business hours.</description>
+    <group>login_time,</group>
   </rule>
 
   <rule id="17102" level="9">
     <if_group>authentication_success</if_group>
     <weekday>weekends</weekday>
     <description>Sucessful login during weekend.</description>
+    <group>login_day,</group>
   </rule>
 </group> <!-- POLICY_RULES -->
 

@@ -1,11 +1,11 @@
-<!-- Official imapd rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Official imapd rules for OSSEC.
   -  Author: Daniel Cid
-  -  Date: Mar 19, 2006 (v0.1)
   -->
 
 <var name="IMAPD_FREQ">6</var>      
 
-<group name="syslog,imapd">
+<group name="syslog,imapd,">
   <rule id="3600" level="0" noalert="1">
     <decoded_as>imapd</decoded_as>
     <description>Grouping of the imapd rules.</description>
@@ -15,12 +15,14 @@
     <if_sid>3600</if_sid>
     <match>Login failed user=|AUTHENTICATE LOGIN failure</match>
     <description>Imapd user login failed.</description>
+    <group>authentication_failed,</group>
   </rule>
 
   <rule id="3602" level="3">
     <if_sid>3600</if_sid>
     <match>Authenticated user=</match>
     <description>Imapd user login.</description>
+    <group>authentication_success,</group>
   </rule>
   
   <rule id="3603" level="0">
@@ -33,6 +35,7 @@
     <if_matched_sid>3601</if_matched_sid>
     <same_source_ip />
     <description>Multiple failed logins from same source ip.</description>
+    <group>authentication_failures,</group>
   </rule>
 
 </group> <!-- SYSLOG,IMAPD -->

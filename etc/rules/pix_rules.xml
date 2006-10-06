@@ -1,7 +1,6 @@
-<!-- Official pix rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Official pix rules for OSSEC.
   -  Author: Daniel B. Cid
-  -  Date: Nov 11, 2005
-  -  Second revision: Aug 05, 2006
   -->
      
 
@@ -9,8 +8,6 @@
   - http://www.cisco.com/univercd/cc/td/doc/product/multisec/asa_sw/v_7_2/syslog/logsev.htm
   - http://www.cisco.com/univercd/cc/td/doc/product/iaabu/pix/pix_sw/v_61/config/sysmgmt.htm
   -->
-
-<!-- PIX assigned IDs are from 4300 to 4499 -->  
 
 
 <group name="syslog,pix,">
@@ -59,6 +56,7 @@
     <if_sid>4314</if_sid>
     <id>^6-605004</id>
     <description>Failed login attempt at the PIX firewall.</description>
+    <group>authentication_failed,</group>
   </rule>
 
   <rule id="4322" level="3">
@@ -71,6 +69,7 @@
     <if_sid>4314</if_sid>
     <id>^6-605005</id>
     <description>Sucessfull login to the PIX firewall.</description>
+    <group>authentication_success,</group>
   </rule>
 
   <rule id="4324" level="9">
@@ -78,6 +77,7 @@
     <id>^6-308001</id>
     <description>Password mismatch while running 'enable' </description>
     <description>on the PIX.</description>
+    <group>authentication_failed,</group>
   </rule>
 
   <rule id="4325" level="8">
@@ -90,6 +90,7 @@
     <if_sid>4313</if_sid>
     <id>^4-401004</id>
     <description>Attempt to connect from a blocked (shunned) IP.</description>
+    <group>access_denied,</group>
   </rule> 
 
   <rule id="4327" level="8">
@@ -122,6 +123,7 @@
   <rule id="4333" level="8">
     <if_sid>4330, 4331, 4332</if_sid>
     <description>Attack in progress detected by the PIX.</description>
+    <group>ids,</group>
   </rule>
     
   <rule id="4380" level="10" frequency="6" timeframe="360">
@@ -137,6 +139,7 @@
   <rule id="4382" level="10" frequency="8" timeframe="120">
     <if_matched_sid>4312</if_matched_sid>
     <description>Multiple PIX error messages.</description>
+    <group>system_error,</group>
   </rule>
   
   <rule id="4383" level="10" frequency="8" timeframe="120">

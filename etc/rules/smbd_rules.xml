@@ -1,14 +1,15 @@
-<!-- smbd rules for the OSSEC HIDS (still need more work)
+<!-- @(#) $Id$
+  -  SMB rules for OSSEC HIDS.
   -  Author: Daniel B. Cid
-  -  Logs from:  Kayvan A. Sylvan <kayvan@sylvan.com>
-  -  Date: Mar 20, 2006
+  -  Logs from:  Kayvan A. Sylvan <kayvan at sylvan.com>
   -->
       
+<!-- Still BETA -->
 
-<group name="smbd,syslog">
+<group name="syslog,smbd,">
   <rule id="13100" level="0" noalert="1">
     <match>^smbd</match>
-    <description>Grouping for the smbd rules</description>
+    <description>Grouping for the smbd rules.</description>
   </rule>
   
   <rule id="13101" level="0">
@@ -21,6 +22,7 @@
     <if_sid>13100</if_sid>
     <match>Denied connection from|Connection denied from</match>
     <description>Samba connection denied.</description>
+    <group>access_denied,</group>
   </rule>
 
   <rule id="13103" level="0">
@@ -33,6 +35,7 @@
     <if_sid>13100</if_sid>
     <match>Permission denied--</match>
     <description>User action denied by configuration.</description>
+    <group>access_denied,</group>
   </rule>
  
   <rule id="13105" level="3">
@@ -40,7 +43,7 @@
     <match>Unable to connect to CUPS server</match>
     <description>Samba network problems (unable to connect).</description>
   </rule> 
-</group> <!-- SYSLOG,SMBD -->
+</group> <!-- SYSLOG,SMBD, -->
 
 
 <!-- EOF -->

@@ -1,10 +1,10 @@
-<!-- Official ossec rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Official ossec rules for the OSSEC HIDS
   -  Author: Daniel B. Cid
-  -  Date: Aug 23, 2006 (v0.1)
   -->
 
 
-<group name="syslog,ossec">
+<group name="ossec,">
   <rule id="500" level="0">
     <decoded_as>ossec</decoded_as>
     <description>Grouping of ossec rules.</description>
@@ -39,4 +39,4 @@
     <description>Ossec agent disconnected.</description>
   </rule>
 
-</group> <!-- SYSLOG,OSSEC -->
+</group> <!-- OSSEC -->

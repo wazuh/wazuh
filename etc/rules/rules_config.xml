@@ -1,10 +1,9 @@
-<!-- Rules configuration options.
+<!-- @(#) $Id$
+  -  Configuration options.
   -  This file must always be included, otherwise most
   -  of the rules will not work properly.
   -
   -  Author: Daniel B. Cid
-  -  Author Ahmet Ozturk
-  -  Date: Mar 1, 2006
   -->
   
 
@@ -49,4 +48,6 @@
     <description>Generic template for all windows rules.</description>
   </rule>
 </group>            
+
+
 <!-- EOF -->

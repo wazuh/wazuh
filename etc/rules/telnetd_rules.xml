@@ -1,10 +1,10 @@
-<!-- telnetd rules for the OSSEC HIDS 
+<!-- @(#) $Id$
+  -  Telnetd rules for OSSEC.
   -  Author: Ahmet Ozturk
-  -  Date: Jun 02, 2006
   -->
       
 
-<group name="telnetd,syslog">
+<group name="syslog,telnetd">
   <rule id="5600" level="0" noalert="1">
     <match>telnetd</match>
     <description>Grouping for the telnetd rules</description>

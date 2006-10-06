@@ -1,11 +1,10 @@
-<!-- Official proftpd rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Official proftpd rules for OSSEC.
   -  Author: Daniel B. Cid
-  -  Date: Nov 11, 2005
-  -  Last modification: Jun 5, 2006
   -->
       
 
-<group name="proftpd,syslog,">
+<group name="syslog,proftpd,">
   <rule id="11200" level="0" noalert="1">
     <decoded_as>proftpd</decoded_as>
     <description>Grouping for the proftpd rules.</description>
@@ -14,8 +13,8 @@
   <rule id="11201" level="3">
     <if_sid>11200</if_sid>
     <match>FTP session opened.$</match>
-    <group>connection_attempt</group>
     <description>FTP session opened.</description>
+    <group>connection_attempt,</group>
   </rule>
 
   <rule id="11202" level="0">
@@ -27,36 +26,36 @@
   <rule id="11203" level="5">
     <if_sid>11200</if_sid>
     <match> no such user </match>
-    <group>invalid_login</group>
     <description>Attempt to login using a non-existent user.</description>
+    <group>invalid_login,</group>
   </rule>
 
   <rule id="11204" level="5">
     <if_sid>11200</if_sid>
     <match>Incorrect password.$|Login failed</match>
-    <group>authentication_failed</group>
     <description>Login failed accessing the FTP server</description>
+    <group>authentication_failed,</group>
   </rule>
 
   <rule id="11205" level="3">
     <if_sid>11200</if_sid>
     <match>Login successful</match>
-    <group>authentication_success</group>
     <description>FTP Authentication success.</description>
+    <group>authentication_success,</group>
   </rule>
 
   <rule id="11206" level="5">
     <if_sid>11200</if_sid>
-    <group>connection_attempt</group>
     <regex>Connection from \S+ [\S+] denied</regex>
     <description>Connection denied by ProFTPD configuration.</description>
+    <group>access_denied,</group>
   </rule>
   
   <rule id="11207" level="5">
     <if_sid>11200</if_sid>
-    <group>connection_attempt</group>
     <match>refused connect from</match>
     <description>Connection refused by TCP Wrappers.</description>
+    <group>access_denied,</group>
   </rule>
 
   <rule id="11208" level="4">
@@ -78,6 +77,7 @@
     <if_sid>11200</if_sid>
     <match>Maximum login attempts </match>
     <description>Multiple failed login attempts.</description>
+    <group>authentication_failures,</group>
   </rule>
 
   <rule id="11211" level="4">
@@ -95,8 +95,8 @@
   <rule id="11213" level="3">
     <if_sid>11200</if_sid>
     <match>connect from </match>
-    <group>connection_attempt</group>
     <description>Remote host connected to FTP server.</description>
+    <group>connection_attempt,</group>
   </rule>
 
   <rule id="11214" level="3">
@@ -127,12 +127,13 @@
     <if_sid>11200</if_sid>
     <match>ProFTPD terminating (signal 11)</match>
     <description>FTP process crashed.</description>
+    <group>service_availability,</group>
   </rule>
 
   <rule id="11219" level="12">
     <if_sid>11200</if_sid>
     <match>Reallocating sreaddir buffer</match>
-    <description>FTP server Buffer overflow attempt</description>
+    <description>FTP server Buffer overflow attempt.</description>
   </rule>
 
   <rule id="11220" level="4">
@@ -145,12 +146,14 @@
     <if_matched_sid>11204</if_matched_sid>
     <same_source_ip />
     <description>FTP brute force (multiple failed logins).</description>
+    <group>authentication_failures,</group>
   </rule>
 
   <rule id="11252" level="10" frequency="10" timeframe="60">
     <if_matched_sid>11201</if_matched_sid>
     <same_source_ip />
     <description>Multiple connection attempts from same source.</description>
+    <group>recon,</group>
   </rule>
             
   <rule id="11253" level="10" frequency="10" timeframe="120">

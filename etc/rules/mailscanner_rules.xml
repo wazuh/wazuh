@@ -1,11 +1,10 @@
-<!-- Official MailScanner rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Official MailScanner rules for the OSSEC HIDS
   -  Author: Daniel B. Cid
-  -  Date: Aug 11, 2006 (v0.1)
   -->
 
-<var name="MAILS_FREQ">3</var>      
 
-<group name="syslog,mailscanner">
+<group name="syslog,mailscanner,">
   <rule id="3700" level="0">
     <decoded_as>mailscanner</decoded_as>
     <description>Grouping of mailscanner rules.</description>
@@ -21,11 +20,13 @@
     <if_sid>3700</if_sid>
     <action>spam</action>
     <description>Mail Scanner spam detected.</description>
+    <group>spam,</group>
   </rule>
 
-  <rule id="3751" level="6" frequency="$MAILS_FREQ" timeframe="180">
+  <rule id="3751" level="6" frequency="6" timeframe="180">
     <if_matched_sid>3702</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts of spam.</description>
+    <group>multiple_spam,</group>
   </rule>
 </group> <!-- SYSLOG,MAILSCANNER -->

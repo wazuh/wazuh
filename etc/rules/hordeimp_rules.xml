@@ -1,10 +1,10 @@
-<!-- Official Horde IMP rules for OSSEC
+<!-- @(#) $Id$
+  -  Official Horde IMP rules for OSSEC.
   -  Author: Daniel B. Cid
-  -  Date: Jun 15, 2006
   -->
       
 
-<group name="hordeimp,syslog,">
+<group name="syslog,hordeimp,">
   <rule id="9300" level="0">
     <decoded_as>horde_imp</decoded_as>
     <description>Grouping for the Horde imp rules.</description>
@@ -32,31 +32,34 @@
     <if_sid>9300</if_sid>
     <match>^[emergency]</match>
     <description>Horde IMP emergency message.</description>
+    <group>service_availability,</group>
   </rule> 
  
   <rule id="9305" level="3">
     <if_sid>9302</if_sid>
-    <group>authentication_success</group>
     <match>Login success for </match>
     <description>Horde IMP successful login.</description>
+    <group>authentication_success,</group>
   </rule> 
  
   <rule id="9306" level="5">
     <if_sid>9303</if_sid>
     <match>FAILED LOGIN </match>
-    <group>authentication_failed</group>
     <description>Horde IMP Failed login.</description>
+    <group>authentication_failed,</group>
   </rule> 
 
   <rule id="9351" level="10" frequency="6" timeframe="120">
     <if_matched_sid>9306</if_matched_sid>
     <same_source_ip />
     <description>Horde brute force (multiple failed logins).</description>
+    <group>authentication_failures,</group>
   </rule>
 
-  <rule id="9352" level="10" frequency="4" timeframe="300">
+  <rule id="9352" level="10" frequency="4" timeframe="320">
     <if_matched_sid>9304</if_matched_sid>
     <description>Multiple Horde emergency messages.</description>
+    <group>service_availability,</group>
   </rule>
             
 </group> <!-- SYSLOG,HORDE_IMP -->

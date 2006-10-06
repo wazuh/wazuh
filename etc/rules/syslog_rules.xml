@@ -1,14 +1,11 @@
-<!-- Official Syslog rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Official Generic Syslog rules for OSSEC.
   -  Author: Daniel B. Cid
-  -  Date: Mar 03, 2004 v1
-  -  Date: Dec 10, 2004 v2
-  -  Date: Nov 11, 2005 v3
-  -  Date: Apr 19, 2006 v4
   -->
 
 
   
-<!-- Default variables for the OSSEC HIDS SYSLOG rules -->
+<!-- Default variables for the SYSLOG rules. -->
 
 <!-- Bad words matching. Any log containing these messages
   -  will be triggered.
@@ -17,7 +14,7 @@
 
 
 <!-- Syslog errors. -->
-<group name="syslog,errors">
+<group name="syslog,errors,">
   <rule id="1001" level="2">
     <regex>^PAM-securetty[\d+]: Couldn't open /etc/securetty</regex>
     <description>File securetty missing. Root access unrestricted.</description>
@@ -36,7 +33,7 @@
 
 
 <!-- NFS messages -->
-<group name="syslog,nfs">
+<group name="syslog,nfs,">
   <!-- XXX All These NFS rules need to be fixed. -->
   <rule id="2100" level="0" noalert="1">
     <match>^automount[|^mount</match>
@@ -64,7 +61,7 @@
   
 
 <!-- xinetd messages -->  
-<group name="syslog,xinetd">
+<group name="syslog,xinetd,">
   <rule id="2301" level="10">
     <regex>^xinetd[\d+]: Deactivating service \S+ due to excessive </regex>
     <description>Excessive number connections to a service.</description>
@@ -74,20 +71,20 @@
 
 
 <!-- Access control messages -->
-<group name="syslog,accesscontrol,connection_attempt">
+<group name="syslog,access_control,">
   <rule id="2501" level="5">
     <match>FAILED LOGIN |authentication failure|</match>
     <match>Authentication failed for|invalid password for|</match>
     <match>LOGIN FAILURE|auth failure: |authentication error|</match>
     <match>Wrong password given for|login failed|Auth: Login incorrect</match>
-    <group>authentication_failed</group>
+    <group>authentication_failed,</group>
     <description>User authentication failure.</description>
   </rule>
 
   <rule id="2502" level="10">
     <match>more authentication failures;|REPEATED login failures</match>
-    <group>authentication_failed</group>
     <description>User missed the password more than one time</description>
+    <group>authentication_failed,</group>
   </rule>
 
   <rule id="2503" level="5">
@@ -95,28 +92,30 @@
     <regex>^xinetd[\d+]: libwrap refused connection|</regex>
     <regex>Connection from \S+ denied</regex>
     <description>Connection blocked by Tcp Wrappers.</description>
+    <group>access_denied,</group>
   </rule>
 
   <rule id="2504" level="9">
     <match>ILLEGAL ROOT LOGIN|ROOT LOGIN REFUSED</match>
     <description>Illegal root login. </description>
+    <group>invalid_login,</group>
   </rule>
 
   <rule id="2505" level="3">
     <regex>^login[\d+]: ROOT LOGIN  on</regex>
-    <description>Physical root login</description>
+    <description>Physical root login.</description>
   </rule>  
 
   <rule id="2506" level="3">
     <regex>^popa3d[\d+]: Authentication passed</regex>
-    <description>Pop3 Authentication passed</description>
+    <description>Pop3 Authentication passed.</description>
   </rule>
 </group> <!-- SYSLOG,ACESSCONTROL -->
 
 
 
 <!-- Mail/Procmail messages -->
-<group name="syslog,mail">
+<group name="syslog,mail,">
   <rule id="2701" level="0">
     <match>^procmail[</match>
     <description>Ignoring procmail messages.</description>
@@ -126,10 +125,10 @@
 
 
 <!-- Smartd messages -->
-<group name="syslog,smartd">
+<group name="syslog,smartd,">
   <rule id="2800" level="0" noalert="1">
     <match>^smart</match>
-    <description>Pre-match rule for smartd</description>
+    <description>Pre-match rule for smartd.</description>
   </rule>
   
   <rule id="2801" level="0">
@@ -154,7 +153,7 @@
 
 
 <!-- Linux Kernel messages -->
-<group name="syslog,linuxkernel">
+<group name="syslog,linuxkernel,">
   <rule id="5100" level="0" noalert="1">
     <match>^kernel: </match>
     <description>Pre-match rule for kernel messages</description>
@@ -184,6 +183,7 @@
     <regex>Promiscuous mode enabled|</regex>
     <regex>device \S+ entered promiscuous mode</regex>
     <description>Interface entered in promiscuous(sniffing) mode.</description>
+    <group>promisc,</group>
   </rule>
 
   <rule id="5105" level="0">
@@ -210,6 +210,7 @@
     <match>Out of Memory: </match>
     <description>System running out of memory. </description>
     <description>Availability of the system is in risk.</description>
+    <group>service_availability,</group>
   </rule>
 
   <rule id="5109" level="4">
@@ -239,7 +240,7 @@
 
 
 <!-- Cron messages -->
-<group name="syslog,cron">
+<group name="syslog,cron,">
   <rule id="2830" level="0">
     <regex>^crond: unable to exec</regex>
     <description>Wrong crond configuration</description>
@@ -249,7 +250,7 @@
 
 
 <!-- Automount messages -->
-<group name="syslog,automount">
+<group name="syslog,automount,">
   <rule id="2860" level="2">
     <regex>^automount[\d+]: \S+: lookup for \S+ failed</regex>
     <description>Automount informative message</description>
@@ -289,7 +290,7 @@
 
 
 <!-- Tripwire messages -->
-<group name="syslog,tripwire">
+<group name="syslog,tripwire,">
   <rule id="7101" level="8">
     <regex>tripwire\.+ Integrity Check failed: File could not</regex>
     <description>Problems with the tripwire checking</description>
@@ -381,6 +382,7 @@
     <description>First time user logged in.</description>
   </rule>
 </group>
+
                 
 <group name="syslog,squid">
   <rule id="9200" level="0" noalert="1">

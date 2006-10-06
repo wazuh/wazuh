@@ -1,7 +1,6 @@
-<!-- Official SSHD rules for the OSSEC HIDS
+<!-- @(#) $Id$
+  -  Official SSHD rules for OSSEC.
   -  Author: Daniel B. Cid
-  -  Date: Nov 11, 2005 v1
-  -  Date: Apr 19, 2006 v2
   -->
 
 
@@ -15,9 +14,9 @@
               
   <rule id="5701" level="12">
     <if_sid>5700</if_sid>
-    <regex>Bad protocol version identification</regex>
+    <match>Bad protocol version identification</match>
     <description>Possible attack on the ssh server </description>
-    <description>(or version gathering)</description>
+    <description>(or version gathering).</description>
   </rule>
 
   <rule id="5702" level="5">
@@ -47,13 +46,15 @@
   <rule id="5706" level="6">
     <if_sid>5700</if_sid>
     <match>Did not receive identification string from</match>
-    <description>SSH insecure connection attempt (scan)</description>
+    <description>SSH insecure connection attempt (scan).</description>
+    <group>recon,</group>
   </rule>
 
   <rule id="5707" level="14">
     <if_sid>5700</if_sid>
     <match>fatal: buffer_get_string: bad string</match>
     <description>OpenSSH challenge-response exploit</description>
+    <group>exploit_attempt,</group>
   </rule>
 
   <rule id="5708" level="4">
@@ -71,8 +72,8 @@
   <rule id="5710" level="5">
     <if_sid>5700</if_sid>
     <match>illegal user|invalid user</match>
-    <group>invalid_login,connection_attempt</group>
     <description>Attempt to login using a non-existent user</description>
+    <group>invalid_login,</group>
   </rule>
 
   <rule id="5711" level="0">
@@ -86,6 +87,7 @@
     <if_matched_sid>5710</if_matched_sid>
     <description>SSHD brute force trying to get access to </description>
     <description>the system.</description>
+    <group>authentication_failures,</group>
   </rule>
 
   <rule id="5713" level="6">
@@ -96,24 +98,25 @@
   
   <rule id="5714" level="14" timeframe="120" frequency="1">
     <if_matched_sid>5713</if_matched_sid>
-    <regex>Local: crc32 compensation attack</regex>
+    <match>Local: crc32 compensation attack</match>
     <description>SSH CRC-32 Compensation attack</description>
     <cve>2001-0144</cve>
     <info>http://www.securityfocus.com/bid/2347/info/</info>
+    <group>exploit_attempt,</group>
   </rule>  
 
   <rule id="5715" level="3">
     <if_sid>5700</if_sid>
     <regex> Accepted \S+ for </regex>
-    <group>authentication_success,connection_attempt</group>
     <description>SSHD authentication success.</description>
+    <group>authentication_success,</group>
   </rule>
 
   <rule id="5716" level="5">
     <if_sid>5700</if_sid>
     <regex> Failed \S+ for </regex>
-    <group>authentication_failed,connection_attempt</group>
     <description>SSHD authentication failed.</description>
+    <group>authentication_failed,</group>
   </rule>  
 
   <rule id="5717" level="4">
@@ -125,8 +128,8 @@
   <rule id="5718" level="5">
     <if_sid>5700</if_sid>
     <match>not allowed because</match>
-    <group>invalid_login,connection_attempt</group>
     <description>Attempt to login using a denied user.</description>
+    <group>invalid_login,</group>
   </rule>
                       
   <rule id="5719" level="10" frequency="6" timeframe="120" ignore="60">
