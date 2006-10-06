@@ -280,19 +280,19 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
 
         /* Getting name */    
-        saved_name = strchr(sdb.buf,' ');
+        saved_name = strchr(sdb.buf, ' ');
         if(saved_name == NULL)
         {
-            merror("%s: Invalid integrity message in the database",ARGV0);
+            merror("%s: Invalid integrity message in the database.",ARGV0);
             fgetpos(fp, &sdb.init_pos); /* getting next location */
             continue;
         }
-        saved_name = '\0';
+        *saved_name = '\0';
         saved_name++;
         
         
         /* New format - with a timestamp */
-        if(saved_name == '!')
+        if(*saved_name == '!')
         {
             saved_name = strchr(saved_name, ' ');
             if(saved_name == NULL)

@@ -51,12 +51,13 @@ void OS_Log(Eventinfo *lf)
 {
     /* Writting to the alert log file */
     fprintf(_aflog,
-            "** Alert %d.%ld:%s\n"
+            "** Alert %d.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'\n"
             "Src IP: %s\nUser: %s\n%.1256s\n",
             lf->time,
             ftell(_aflog),
             lf->generated_rule->alert_opts & DO_MAILALERT?" mail ":"",
+            lf->generated_rule->group,
             lf->year,
             lf->mon,
             lf->day,
