@@ -180,11 +180,14 @@ int FW_Log(Eventinfo *lf)
 
     /* log to file */
     fprintf(_fflog,
-            "%d %s %02d %s %s %s %s:%s->%s:%s\n",
+            "%d %s %02d %s %s%s%s %s %s %s:%s->%s:%s\n",
             lf->year,
             lf->mon,
             lf->day,
             lf->hour,
+            lf->hostname?lf->hostname:"",
+            lf->hostname?"->":"",
+            lf->location,
             lf->action,
             lf->protocol,
             lf->srcip,
