@@ -113,7 +113,7 @@ runInit()
             chmod +x /etc/init.d/ossec
             chmod go-w /etc/init.d/ossec
             chown root:ossec /etc/init.d/ossec
-            update-rc.d ossec defaults
+            update-rc.d ossec defaults > /dev/null 2>&1
             return 0;    
         else
             echo " - ${noboot}"

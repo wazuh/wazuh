@@ -142,12 +142,6 @@ int config_file(char *name, char *file)
 /* Setup windows after install */
 int main(int argc, char **argv)
 {
-    int i = 0;
-
-    time_t tm;
-    struct tm *p;
-        
-    
     if(argc < 3)
     {
         printf("%s: Invalid syntax.\n", argv[0]);

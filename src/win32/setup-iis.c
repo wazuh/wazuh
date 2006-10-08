@@ -67,6 +67,7 @@ int dogrep(char *file, char *str)
 /* Check is syscheck is present in the config */
 int config_iis(char *name, char *file)
 {
+    int add = 0;
     FILE *fp;
 
     if(!fileexist(file))

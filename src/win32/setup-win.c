@@ -144,15 +144,17 @@ int main(int argc, char **argv)
     /* If it is present, we need to do the upgrade */
     else
     {
+        char cmd[OS_MAXSTR +1];
+
+        
         /* Look if syscheck is configured, if not, do so */
         config_syscheck();
+
 
         /* Call manage-agents if no key */
         if(!fileexist(CLIENTKEYS))
         {
             /* Run manage agents */
-            char cmd[OS_MAXSTR +1];
-
             snprintf(cmd, OS_MAXSTR, "manage_agents.exe");
             system(cmd);
         }
@@ -166,7 +168,7 @@ int main(int argc, char **argv)
 
 
     /* Setting up local files */
-    system("add-localfile.exe '.' 'C:\\Windows\pfirewall.log'");
+    system("add-localfile.exe '.' 'C:\\Windows\\pfirewall.log'");
     
 
     /* Configure ossec for automatic startup */
