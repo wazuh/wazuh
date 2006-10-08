@@ -578,7 +578,6 @@
   - ipsec_logd: #:1 R:p  O:10.0.0.99. S:10.0.0.99 D:10.0.0.25 
     P:udp SP:2063 DP:53 R:l I:en0 F:n T:0 L:81 
  -->
-
 <decoder name="aix-ipsec">
    <type>firewall</type>
    <prematch>^ipsec_logd: </prematch>
@@ -586,24 +585,6 @@
    <regex>D:(\d+.\d+.\d+.\d+) P:(\S+) SP:(\d+) DP:(\d+) </regex>
    <order>action,srcip,dstip,protocol,srcport,dstport</order>
 </decoder>
-
-
-<!-- Windows firewall decoder.
-  - Will extract action, protocol, srcip, dstip, srcport and dstport.
-  - Examples:
-  - 2006-09-18 22:25:30 OPEN TCP 11.12.72.10 12.252.71.6 3311 445 - - - - - - - - -
-  - 2006-09-18 22:26:23 DROP UDP 11.152.183.14 239.255.255.250 65299 1900 310 - - - - - - - RECEIVE
-  - 2006-09-18 22:26:23 DROP UDP 11.152.183.14 239.255.255.250 65299 1900 310 - - - - - - - RECEIVE
-  - 2006-09-18 22:26:23 DROP UDP 11.152.183.14 239.255.255.250 65298 1900 319 - - - - - - - RECEIVE
-  -->
-<decoder name="windows-firewall">
-  <type>firewall</type>
-  <prematch>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d \w+ \w+</prematch>
-  <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d (\w+) (\w+) </regex>
-  <regex>(\S+) (\S+) (\d+) (\d+) </regex>
-  <order>action, protocol, srcip, dstip, srcport, dstport</order>
-</decoder>
-
 
 
 <!-- Netscreen Firewall decoder.
@@ -614,7 +595,6 @@
   - Jun  2 11:24:16 fire00 sav00: NetScreen device_id=sav00  [Root]system-critical-00436: Large ICMP packet! From 210.232.20.7 to 148.100.114.126, proto 1 (zone Untrust, int ethernet1/2). Occurred 1 times. (2006-06-02 11:24:16)
   -  NetScreen device_id=ns5gt [Root]system-critical-00027: Multiple login failures occurred for user netscreen from IP address 1.2.3.4:1567 (2004-10-07)
   -->
-  
 <decoder name="netscreenfw">
   <prematch>^\w+: NetScreen device_id</prematch>
 </decoder>  
@@ -864,20 +844,69 @@
 </decoder>
 
 
-<!-- IIS specific log format.
+<!-- Windows date format.
+  -  Pre match for windows date format. Used on Windows firewall,
+  -  IIS, etc.
+  -  Examples:
+  -  2006-07-23 04:40:02 xxx
+  -->
+<decoder name="windows-date-format">
+  <prematch>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d </prematch>
+</decoder>
+  
+  
+
+<!-- IIS WWW W3C log format.
   - #Fields: date time c-ip cs-username s-sitename s-computername s-ip s-port cs-method cs-uri-stem cs-uri-query sc-status cs-host cs(User-Agent) cs(Referer)
   - Examples:
   - 2006-07-23 04:40:02 1.2.3.4 - W3SVC3 CIN1WEB03 1.2.3.4 443 GET /Default.asp - 200 hiden.com Mozilla/4.0+(compatible;+MSIE+6.0;+Windows+NT+5.1;+Avant+Browser;+Avant+Browser;+.NET+CLR+1.1.4322;+.NET+CLR+2.0.50727) -
-  - 2006-10-02 11:17:51 X.X.X.234 - 195.X.X.X 80 GET /search.aspx?key=<script> 200 Mozilla/4.0+(compatible;+MSIE+6.0;+Windows+NT+5.2;+SV1;+.NET+CLR+1.1.4322;+InfoPath.1;+.NET+CLR+2.0.50727)
   -->
 <decoder name="web-accesslog-iis">
+  <parent>windows-date-format</parent>
   <type>web-log</type>
-  <prematch>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d </prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) \S+ \S+ \S+ \S+ </regex>
+  <use_own_name>true</use_own_name>
+  <prematch offset="after_parent">^\d+.\d+.\d+.\d+ \S+ W3SVC</prematch>
+  <regex offset="after_parent">^(\d+.\d+.\d+.\d+) \S+ \S+ \S+ \S+ </regex>
   <regex>\d+ \S+ (\S+ \S+) (\d+) </regex>
   <order>srcip,url,id</order>
 </decoder>
-        
+
+
+<!-- IIS W3C FTP log format.
+  - Examples:
+  - #Fields: date time c-ip cs-username s-sitename s-computername s-ip s-port cs-method cs-uri-stem cs-uri-query sc-status sc-win32-status sc-bytes cs-bytes time-taken cs-version cs-host cs(User-Agent) cs(Cookie) cs(Referer)
+  - 2006-07-23 17:57:59 192.168.3.64 Administrator MSFTPSVC1 HAIJO2 192.168.1.12 21 [144]USER Administrator - 331 0 0 0 0 FTP - - - -
+  - 2006-07-23 17:57:59 192.168.3.64 Administrator MSFTPSVC1 HAIJO2 192.168.1.12 21 [144]PASS - - 230 0 0 0 16 FTP - - - -
+  -->
+<decoder name="msftp">
+  <parent>windows-date-format</parent>
+  <use_own_name>true</use_own_name>
+  <prematch offset="after_parent">^\d+.\d+.\d+.\d+ \S+ MSFTPSVC</prematch>
+  <regex offset="after_parent">^(\d+.\d+.\d+.\d+) (\S+) \S+ \S+ \S+ </regex>
+  <regex>\d+ (\S+) \S+ \S+ (\d+) </regex>
+  <order>srcip,user,action,id</order>
+</decoder>  
+
+
+<!-- Windows firewall decoder.
+  - Will extract action, protocol, srcip, dstip, srcport and dstport.
+  - Examples:
+  - 2006-09-18 22:25:30 OPEN TCP 11.12.72.10 12.252.71.6 3311 445 - - - - - - - - -
+  - 2006-09-18 22:26:23 DROP UDP 11.152.183.14 239.255.255.250 65299 1900 310 - - - - - - - RECEIVE
+  - 2006-09-18 22:26:23 DROP UDP 11.152.183.14 239.255.255.250 65299 1900 310 - - - - - - - RECEIVE
+  - 2006-09-18 22:26:23 DROP UDP 11.152.183.14 239.255.255.250 65298 1900 319 - - - - - - - RECEIVE
+  -->
+<decoder name="windows-firewall">
+  <parent>windows-date-format</parent>
+  <type>firewall</type>
+  <use_own_name>true</use_own_name>
+  <prematch offset="after_parent">^OPEN|^CLOSE|^DROP</prematch>
+  <regex offset="after_parent">^(\w+) (\w+) </regex>
+  <regex>(\S+) (\S+) (\d+) (\d+) </regex>
+  <order>action, protocol, srcip, dstip, srcport, dstport</order>
+</decoder>
+
+       
 
 <!-- Racoon VPN.
   - Extract id (error or info) and ip address whenever possible.

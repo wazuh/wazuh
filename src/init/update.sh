@@ -112,6 +112,7 @@ UpdateStopOSSEC()
 
    # We also need to remove all syscheck queue file (format changed)
    rm -f $DIRECTORY/queue/syscheck/*
+   rm -f $DIRECTORY/queue/syscheck/.*
    rm -f $DIRECTORY/queue/agent-info/*
 }
 

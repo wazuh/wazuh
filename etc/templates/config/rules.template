@@ -11,6 +11,7 @@
     <include>vsftpd_rules.xml</include>
     <include>pure-ftpd_rules.xml</include>
     <include>proftpd_rules.xml</include>
+    <include>ms_ftpd_rules.xml</include>
     <include>hordeimp_rules.xml</include>
     <include>vpopmail_rules.xml</include>
     <include>web_rules.xml</include>
