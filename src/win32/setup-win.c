@@ -156,6 +156,12 @@ int main(int argc, char **argv)
             snprintf(cmd, OS_MAXSTR, "manage_agents.exe");
             system(cmd);
         }
+
+
+        /* Run iis-logs here too */
+        snprintf(cmd, OS_MAXSTR, "setup-iis.exe .");
+        system(cmd);
+
     }
 
 

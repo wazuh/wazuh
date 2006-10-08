@@ -146,17 +146,13 @@ int main(int argc, char **argv)
     struct tm *p;
         
     
-    if(argc < 2)
+    if(argc >= 2)
     {
-        printf("%s: Invalid syntax.\n", argv[0]);
-        printf("Try: '%s directory'\n\n", argv[0]);
-        return(0);
-    }
-    
-    if(chdir(argv[1]) != 0)
-    {
-        printf("%s: Invalid directory: '%s'.\n", argv[0], argv[1]);
-        return(0);
+        if(chdir(argv[1]) != 0)
+        {
+            printf("%s: Invalid directory: '%s'.\n", argv[0], argv[1]);
+            return(0);
+        }
     }
     
     /* Checking if ossec was installed already */
@@ -172,12 +168,15 @@ int main(int argc, char **argv)
         
     total = 0;    
 
-    printf("%s: Looking for IIS log files to monitor.\r\n", argv[0]);
-    printf("%s: For more information: http://www.ossec.net/en/win.html\r\n", argv[0]);
+    printf("%s: Looking for IIS log files to monitor.\r\n", 
+                argv[0]);
+    printf("%s: For more information: http://www.ossec.net/en/win.html\r\n", 
+                argv[0]);
     printf("\r\n");
     
+    
     /* Looking for IIS log files */
-    while(i <= 8)
+    while(i <= 254)
     {
         char lfile[OS_MAXSTR +1];
 
@@ -197,6 +196,15 @@ int main(int argc, char **argv)
                 OS_MAXSTR, 
                 "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\ex%02d%02d%02d.log",
                 i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
+    
+        config_iis(argv[0], lfile);
+
+
+        /* Searching for FTP Extended format */
+        snprintf(lfile, 
+             OS_MAXSTR, 
+             "C:\\WINDOWS\\System32\\LogFiles\\MSFTPSVC%d\\ex%02d%02d%02d.log",
+             i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
     
         config_iis(argv[0], lfile);
     }
