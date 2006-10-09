@@ -89,12 +89,16 @@ int config_syscheck()
     "    <ignore>C:\\WINDOWS/WindowsUpdate.log</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/system32/wbem/Logs</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/Prefetch</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/Debug</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/PCHEALTH/HELPCTR/DataColl</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/SoftwareDistribution</ignore>\r\n"
     "    <ignore>C:\\Program Files/ossec-agent</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/Temp</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/SchedLgU.Txt</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/system32/config</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/system32/CatRoot</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/system32/wbem/Repository</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/iis6.log</ignore>\r\n"
     "  </syscheck>\r\n"
     "</ossec_config>\r\n");
 

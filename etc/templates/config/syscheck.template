@@ -20,13 +20,16 @@
 
     <!-- Windows files to ignore -->
     <ignore>C:\WINDOWS/System32/LogFiles</ignore>
+    <ignore>C:\WINDOWS/Debug</ignore>
     <ignore>C:\WINDOWS/WindowsUpdate.log</ignore>
+    <ignore>C:\WINDOWS/iis6.log</ignore>
     <ignore>C:\WINDOWS/system32/wbem/Logs</ignore>
+    <ignore>C:\WINDOWS/system32/wbem/Repository</ignore>
     <ignore>C:\WINDOWS/Prefetch</ignore>
     <ignore>C:\WINDOWS/PCHEALTH/HELPCTR/DataColl</ignore>
-    <ignore>C:\WINDOWS/SoftwareDistribution/DataStore</ignore>
-    <ignore>C:\WINDOWS/SoftwareDistribution/ReportingEvents.log</ignore>
+    <ignore>C:\WINDOWS/SoftwareDistribution</ignore>
     <ignore>C:\WINDOWS/Temp</ignore>
-    <ignore>C:\WINDOWS/system32/config/systemprofile/Local Settings</ignore>
     <ignore>C:\WINDOWS/system32/config</ignore>
+    <ignore>C:\WINDOWS/system32/spool</ignore>
+    <ignore>C:\WINDOWS/system32/CatRoot</ignore>
   </syscheck>
