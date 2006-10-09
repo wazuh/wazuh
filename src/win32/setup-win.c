@@ -168,7 +168,7 @@ int main(int argc, char **argv)
 
 
     /* Setting up local files */
-    system("add-localfile.exe '.' 'C:\\Windows\\pfirewall.log'");
+    system("add-localfile.exe \"C:\\Windows\\pfirewall.log\"");
     
 
     /* Configure ossec for automatic startup */

@@ -142,15 +142,10 @@ int config_file(char *name, char *file)
 /* Setup windows after install */
 int main(int argc, char **argv)
 {
-    if(argc < 3)
+    if(argc < 2)
     {
         printf("%s: Invalid syntax.\n", argv[0]);
-        printf("Try: '%s <directory> <file_name>'\n\n", argv[0]);
-    }
-    
-    else if(chdir(argv[1]) != 0)
-    {
-        printf("%s: Invalid directory: '%s'.\n", argv[0], argv[1]);
+        printf("Try: '%s <file_name>'\n\n", argv[0]);
     }
     
     /* Checking if ossec was installed already */
@@ -161,7 +156,7 @@ int main(int argc, char **argv)
 
     else
     {
-        config_file(argv[0], argv[2]);
+        config_file(argv[0], argv[1]);
     }
     
     system("pause");
