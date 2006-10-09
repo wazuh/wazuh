@@ -883,7 +883,7 @@
   <use_own_name>true</use_own_name>
   <prematch offset="after_parent">^\d+.\d+.\d+.\d+ \S+ MSFTPSVC</prematch>
   <regex offset="after_parent">^(\d+.\d+.\d+.\d+) (\S+) \S+ \S+ \S+ </regex>
-  <regex>\d+ (\S+) \S+ \S+ (\d+) </regex>
+  <regex>\d+ [\d+](\S+) \S+ \S+ (\d+) </regex>
   <order>srcip,user,action,id</order>
 </decoder>  
 

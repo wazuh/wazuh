@@ -65,7 +65,7 @@ int dogrep(char *file, char *str)
 
 
 /* Check is syscheck is present in the config */
-int config_iis(char *name, char *file)
+int config_iis(char *name, char *file, char *vfile)
 {
     int add = 0;
     FILE *fp;
@@ -77,14 +77,14 @@ int config_iis(char *name, char *file)
 
     total++;
 
-    if(dogrep(OSSECCONF, file))
+    if(dogrep(OSSECCONF, vfile))
     {
         printf("%s: Log file already configured: '%s'.\n", 
-                name, file);
+                name, vfile);
         return(0);
     }
 
-    printf("%s: Adding IIS log file to be monitored: '%s'.\n", name,file);
+    printf("%s: Adding IIS log file to be monitored: '%s'.\n", name,vfile);
     printf("%s: Continue? (y/n):", name);
     while(1)
     {
@@ -126,10 +126,10 @@ int config_iis(char *name, char *file)
             "<!-- IIS log file -->\r\n"
             "<ossec_config>\r\n"
             "  <localfile>\r\n"
-            "    <location>%s</location>"
+            "    <location>%s</location>\r\n"
             "    <log_format>iis</log_format>\r\n"
             "  </localfile>\r\n"
-            "</ossec_config>\r\n\r\n", file);
+            "</ossec_config>\r\n\r\n", vfile);
 
     printf("%s: Action completed.\n", name);
     fclose(fp);
@@ -180,6 +180,7 @@ int main(int argc, char **argv)
     while(i <= 254)
     {
         char lfile[OS_MAXSTR +1];
+        char vfile[OS_MAXSTR +1];
 
         i++;
 
@@ -188,8 +189,11 @@ int main(int argc, char **argv)
                 OS_MAXSTR, 
                 "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\nc%02d%02d%02d.log",
                 i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
-    
-        config_iis(argv[0], lfile);
+        snprintf(vfile, 
+                OS_MAXSTR, 
+                "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\nc%%y%%m%%d.log",
+                i);
+        config_iis(argv[0], lfile, vfile);
 
 
         /* Searching for W3C extended */
@@ -198,7 +202,11 @@ int main(int argc, char **argv)
                 "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\ex%02d%02d%02d.log",
                 i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
     
-        config_iis(argv[0], lfile);
+        snprintf(vfile, 
+                OS_MAXSTR, 
+                "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\ex%%y%%m%%d.log",
+                i);
+        config_iis(argv[0], lfile, vfile);
 
 
         /* Searching for FTP Extended format */
@@ -206,8 +214,12 @@ int main(int argc, char **argv)
              OS_MAXSTR, 
              "C:\\WINDOWS\\System32\\LogFiles\\MSFTPSVC%d\\ex%02d%02d%02d.log",
              i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
-    
-        config_iis(argv[0], lfile);
+        
+        snprintf(vfile, 
+             OS_MAXSTR, 
+             "C:\\WINDOWS\\System32\\LogFiles\\MSFTPSVC%d\\ex%%y%%m%%d.log",
+             i);
+        config_iis(argv[0], lfile, vfile);
     }
 
     if(total == 0)
