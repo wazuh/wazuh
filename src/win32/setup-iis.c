@@ -90,7 +90,7 @@ int config_iis(char *name, char *file)
     {
         char u_buffer[256];
         memset(u_buffer, '\0', 256);
-        if((fgets(u_buffer, 254, stdin) == NULL) &&
+        if((fgets(u_buffer, 254, stdin) != NULL) &&
                 (strlen(u_buffer) < 250))
         {
             if((u_buffer[0] == 'y') || (u_buffer[0] == 'Y'))
