@@ -95,6 +95,30 @@ int read_file(char *file_name, int opts, int flag)
         }
     }
 
+
+    /* If check_db, we just need to verify that the file is
+     * already present. If not, we add it.
+     */
+    if(flag == CHECK_DB)
+    {
+        /* File in the database already */
+        fseek(syscheck.fp, 0, SEEK_SET);
+        if(check_file(file_name))
+        {
+            /* Sleeping in here too */
+            if(__counter >= (3 * syscheck.sleep_after))
+            {
+                sleep(syscheck.tsleep);
+                __counter = 0;
+            }
+            __counter++;
+
+            return(0);
+        }
+        fseek(syscheck.fp, 0, SEEK_END);
+    }
+
+    
     /* Win32 does not have lstat */
     #ifdef WIN32
     if(stat(file_name, &statbuf) < 0)
@@ -114,6 +138,7 @@ int read_file(char *file_name, int opts, int flag)
 
         return(read_dir(file_name, opts, flag));
     }
+    
     
     /* No S_ISLNK on windows */
     #ifdef WIN32
@@ -151,26 +176,7 @@ int read_file(char *file_name, int opts, int flag)
         }
 
         
-        if(flag == CHECK_DB)
-        {
-            /* File in the database already */
-            fseek(syscheck.fp, 0, SEEK_SET);
-            if(check_file(file_name))
-            {
-
-                /* Sleeping in here too */
-                if(__counter >= (6 * syscheck.sleep_after))
-                {
-                    sleep(syscheck.tsleep);
-                    __counter = 0;
-                }
-                __counter++;
-
-                return(0);
-            }
-            fseek(syscheck.fp, 0, SEEK_END);
-        }
-        
+        /* Adding file */
         fprintf(syscheck.fp,"%c%c%c%c%c%c%d:%d:%d:%d:%s:%s %s\n",
                 opts & CHECK_SIZE?'+':'-',
                 opts & CHECK_PERM?'+':'-',
@@ -188,7 +194,7 @@ int read_file(char *file_name, int opts, int flag)
 
 
         /* Sleeping in here too */
-        if(__counter >= (6 * syscheck.sleep_after))
+        if(__counter >= (3 * syscheck.sleep_after))
         {
             sleep(syscheck.tsleep);
             __counter = 0;

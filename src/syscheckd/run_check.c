@@ -150,7 +150,7 @@ void start_daemon()
         {
             if(syscheck.rootcheck)
                 run_rk_check();
-            prev_time_rk = curr_time;    
+            prev_time_rk = time(0);
         }
         #endif
 
@@ -164,17 +164,19 @@ void start_daemon()
             check_db();
 
             /* Set syscheck.fp to the begining of the file */
-            fseek(syscheck.fp,0, SEEK_SET);
+            fseek(syscheck.fp, 0, SEEK_SET);
+
 
             /* Checking for changes */
             run_check();
+
 
             /* Sending database completed message */
             notify_agent(HC_SK_DB_COMPLETED);
             debug2("%s: DEBUG: Sending database completed message.");
 
             
-            prev_time_sk = curr_time;
+            prev_time_sk = time(0);
         } 
 
         sleep(SYSCHECK_WAIT);
