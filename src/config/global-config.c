@@ -319,12 +319,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         /* whitelist */
         else if(strcmp(node[i]->element, xml_white_list) == 0)
         {
+            /* Windows do not need it */
+            #ifndef WIN32
+
             char *ip_address_regex =
              "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
              "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
                       
-            /* Windows do not need it */
-            #ifndef WIN32
             if(Config && OS_PRegex(node[i]->content, ip_address_regex))
             {
                 white_size++;
