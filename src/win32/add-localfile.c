@@ -112,6 +112,7 @@ int config_file(char *name, char *file)
                 break;
             }
         }
+        printf("%s: Continue? (y/n):", name);
     }
    
     if(add == 0)

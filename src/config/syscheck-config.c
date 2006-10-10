@@ -290,15 +290,7 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
 
     syscheck = (config *)configp;
     
-    /* Cleaning up the dirs */
-    for(i = 0; i<= MAX_DIR_ENTRY; i++)
-    {
-        syscheck->dir[i] = NULL;
-        syscheck->opts[i] = 0;
-    }
-    i = 0;
-
-
+    
     while(node[i])
     {
         if(!node[i]->element)
@@ -371,14 +363,6 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
         }
         i++;
     } 
-    
-    
-    /* We must have at least one directory to check */
-    if(syscheck->dir[0] == NULL)
-    {
-        merror(SK_NO_DIR, ARGV0);
-        return(OS_INVALID);
-    }
     
     return(0);
 }

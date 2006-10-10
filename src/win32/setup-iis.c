@@ -104,6 +104,7 @@ int config_iis(char *name, char *file, char *vfile)
                 break;
             }
         }
+        printf("%s: Continue? (y/n):", name);
     }
 
     if(add == 0)
