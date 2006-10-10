@@ -24,6 +24,7 @@
     <include>sendmail_rules.xml</include>
     <include>imapd_rules.xml</include>
     <include>mailscanner_rules.xml</include>
+    <include>ms-exchange_rules.xml</include>
     <include>racoon_rules.xml</include>
     <include>spamd_rules.xml</include>
     <include>msauth_rules.xml</include>

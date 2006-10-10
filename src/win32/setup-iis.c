@@ -220,6 +220,19 @@ int main(int argc, char **argv)
              "C:\\WINDOWS\\System32\\LogFiles\\MSFTPSVC%d\\ex%%y%%m%%d.log",
              i);
         config_iis(argv[0], lfile, vfile);
+
+
+        /* Searching for IIS SMTP logs */
+        snprintf(lfile, 
+             OS_MAXSTR, 
+             "C:\\WINDOWS\\System32\\LogFiles\\SMTPSVC%d\\ex%02d%02d%02d.log",
+             i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
+        
+        snprintf(vfile, 
+             OS_MAXSTR, 
+             "C:\\WINDOWS\\System32\\LogFiles\\SMTPSVC%d\\ex%%y%%m%%d.log",
+             i);
+        config_iis(argv[0], lfile, vfile);
     }
 
     if(total == 0)

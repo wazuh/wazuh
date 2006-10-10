@@ -81,7 +81,7 @@ void HostinfoInit()
     /* clearing the buffer */
     memset(_hi_buf, '\0', OS_MAXSTR +1);
 
-    /* Creating rule for rootcheck alerts */
+    /* Creating rule for Host information alerts */
     hostinfo_rule = zerorulemember(
                              HOSTINFO_PLUGIN,  /* id */ 
                              Config.hostinfo , /* level */
@@ -91,6 +91,7 @@ void HostinfoInit()
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
+    hostinfo_rule->group = "hostinfo,";
  
  
     _hi_fp = fopen(HOSTINFO_DIR, "r+");

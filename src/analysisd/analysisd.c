@@ -526,6 +526,7 @@ void OS_ReadMSG(int m_queue)
         {
             ErrorExit(MEM_ERROR, ARGV0);
         }
+        stats_rule->group = "stats,";
     }
 
 

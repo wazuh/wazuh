@@ -65,6 +65,7 @@ void RootcheckInit()
  
  
     /* Comment */
+    rootcheck_rule->group = "rootcheck,";
     rootcheck_rule->comment = "Rootkit detection engine message";
     
     return;

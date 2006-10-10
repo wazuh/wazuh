@@ -94,6 +94,7 @@ void SyscheckInit()
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
+    sdb.syscheck_rule->group = "syscheck,";
 
 
     debug1("%s: SyscheckInit completed.", ARGV0);
