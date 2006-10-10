@@ -100,7 +100,10 @@ void LogCollectorStart()
              */
             #ifdef WIN32
             {
-                logff[i].read(i, &r, 1);
+                if(logff[i].fp)
+                {
+                    logff[i].read(i, &r, 1);
+                }
             }
             #endif
         }
