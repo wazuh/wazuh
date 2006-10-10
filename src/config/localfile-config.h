@@ -38,7 +38,7 @@ typedef struct _logreader
 	char *file;
 	char *logformat;
 
-    void (*read)(int i, int *rc);
+    void (*read)(int i, int *rc, int drop_it);
 
     FILE *fp;
 }logreader;

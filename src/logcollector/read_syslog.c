@@ -22,7 +22,7 @@
  */
 
 /* Read syslog files/snort fast/apache files */
-void *read_syslog(int pos, int *rc)
+void *read_syslog(int pos, int *rc, int drop_it)
 {
     int __ms = 0;
     char *p;
@@ -85,13 +85,16 @@ void *read_syslog(int pos, int *rc)
 
         
         /* Sending message to queue */
-        if(SendMSG(logr_queue,str,logff[pos].file,
-                   LOCALFILE_MQ) < 0)
+        if(drop_it == 0)
         {
-            merror(QUEUE_SEND, ARGV0);
-            if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+            if(SendMSG(logr_queue,str,logff[pos].file,
+                        LOCALFILE_MQ) < 0)
             {
-                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                merror(QUEUE_SEND, ARGV0);
+                if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+                {
+                    ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                }
             }
         }
 

@@ -40,13 +40,13 @@ void LogCollectorStart();
 int handle_file(int i, int do_fseek, int do_log);
 
 /* Read syslog file */
-void *read_syslog(int pos, int *rc);
+void *read_syslog(int pos, int *rc, int drop_it);
 
 /* Read snort full file */
-void *read_snortfull(int pos, int *rc);
+void *read_snortfull(int pos, int *rc, int drop_it);
 
 /* Read nmap grepable format */
-void *read_nmapg(int pos, int *rc);
+void *read_nmapg(int pos, int *rc, int drop_it);
 
 
 #ifdef WIN32

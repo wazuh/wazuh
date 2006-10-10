@@ -67,7 +67,9 @@ int dogrep(char *file, char *str)
 int config_syscheck()
 {
     FILE *fp;
-    if(dogrep(OSSECCONF, "syscheck"))
+
+    /* We add here the last entry */
+    if(dogrep(OSSECCONF, "iis6.log</ignore>"))
     {
         return(0);
     }
@@ -79,12 +81,10 @@ int config_syscheck()
    
     fprintf(fp, "%s\r\n", 
     "\r\n"    
-    "<!-- Default syscheck config -->\r\n"
+    "<!-- Updated syscheck config -->\r\n"
     "<ossec_config>\r\n"
     "  <syscheck>\r\n"
     "    <frequency>21600</frequency>\r\n"
-    "    <directories check_all=\"yes\">C:\\WINDOWS,C:\\Program Files</directories>\r\n"
-
     "    <ignore>C:\\WINDOWS/System32/LogFiles</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/WindowsUpdate.log</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/system32/wbem/Logs</ignore>\r\n"

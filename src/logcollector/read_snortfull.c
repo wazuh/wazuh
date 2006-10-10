@@ -19,7 +19,7 @@
 
 
 /* Read snort_full files */
-void *read_snortfull(int pos, int *rc)
+void *read_snortfull(int pos, int *rc, int drop_it)
 {
     int f_msg_size = OS_MAXSTR;
     
@@ -81,13 +81,16 @@ void *read_snortfull(int pos, int *rc)
                     p = NULL;
                     
                     /* Sending the message */
-                    if(SendMSG(logr_queue,f_msg, logff[pos].file,
-                               LOCALFILE_MQ) < 0)
+                    if(drop_it == 0)
                     {
-                        merror(QUEUE_SEND, ARGV0);
-                        if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+                        if(SendMSG(logr_queue,f_msg, logff[pos].file,
+                                    LOCALFILE_MQ) < 0)
                         {
-                            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                            merror(QUEUE_SEND, ARGV0);
+                            if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+                            {
+                                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                            }
                         }
                     }
 
@@ -110,13 +113,16 @@ void *read_snortfull(int pos, int *rc)
                     p = NULL;
 
                     /* Sending the message */
-                    if(SendMSG(logr_queue,f_msg, logff[pos].file,
-                               LOCALFILE_MQ) < 0)
+                    if(drop_it == 0)
                     {
-                        merror(QUEUE_SEND, ARGV0);
-                        if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+                        if(SendMSG(logr_queue,f_msg, logff[pos].file,
+                                    LOCALFILE_MQ) < 0)
                         {
-                            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                            merror(QUEUE_SEND, ARGV0);
+                            if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+                            {
+                                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+                            }
                         }
                     }
                     

@@ -93,6 +93,16 @@ void LogCollectorStart()
             {
                 logff[i].read = (void *)read_syslog;
             }
+
+            /* More tweaks for Windows. For some reason IIS places
+             * some wierd characters at the end of the files and getc
+             * always returns 0 (even after clearerr).
+             */
+            #ifdef WIN32
+            {
+                logff[i].read(i, &r, 1);
+            }
+            #endif
         }
     }
 
@@ -124,7 +134,7 @@ void LogCollectorStart()
         }
         #else
         /* Windows don't like select that way */
-        Sleep((loop_timeout + 2) * 1000);
+        Sleep((loop_timeout + 4) * 1000);
         #endif
 
         #ifdef WIN32
@@ -141,6 +151,12 @@ void LogCollectorStart()
             if(!logff[i].fp)
                 continue;
 
+            /* Windows with IIS logs is very strange.
+             * For some reason it always returns 0 (not EOF)
+             * the fgetc. To solve this problem, we always
+             * pass it to the function pointer directly.
+             */
+            #ifndef WIN32
             /* We check for the end of file. If is returns EOF,
              * we don't attempt to read it.
              */
@@ -153,10 +169,11 @@ void LogCollectorStart()
 
             /* If it is not EOF, we need to return the read character */
             ungetc(r, logff[i].fp);
+            #endif
 
 
             /* Finally, send to the function pointer to read it */
-            logff[i].read(i, &r);
+            logff[i].read(i, &r, 0);
 
 
             /* Checking for error */
@@ -175,7 +192,11 @@ void LogCollectorStart()
             else
             {
                 merror(FREAD_ERROR, ARGV0, logff[i].file);
+                #ifndef WIN32
                 if(fseek(logff[i].fp, 0, SEEK_END) < 0)
+                #else
+                if(1)
+                #endif
                 {
                     merror(FSEEK_ERROR, ARGV0, logff[i].file);
 
@@ -190,6 +211,10 @@ void LogCollectorStart()
                         logff[i].ign++;
                         continue;
                     }
+                    
+                    #ifdef WIN32
+                    logff[i].read(i, &r, 1);
+                    #endif
                 }
 
                 /* Increase the error count  */
@@ -384,6 +409,8 @@ int handle_file(int i, int do_fseek, int do_log)
     /* Only seek the end of the file if set to. */
     if(do_fseek == 1)
     {
+        /* Windows and fseek causes some weird issues.. */
+        #ifndef WIN32
         if(fseek(logff[i].fp, 0, SEEK_END) < 0)
         {
             merror(FSEEK_ERROR, ARGV0,logff[i].file);
@@ -391,6 +418,7 @@ int handle_file(int i, int do_fseek, int do_log)
             logff[i].fp = NULL;
             return(-1);
         }
+        #endif
     }
     
     

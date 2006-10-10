@@ -234,8 +234,26 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
         /* Adding directory - looking for the last available */
         for(i = 0; i< MAX_DIR_ENTRY; i++)
         {
+            int str_len_i;
+            int str_len_dir;
+            
             if(syscheck->dir[i] == NULL)
                 break;
+
+            str_len_dir = strlen(tmp_dir);
+            str_len_i = strlen(syscheck->dir[i]);
+            
+            if(str_len_dir < str_len_i)
+            {
+                str_len_dir = str_len_i;
+            }
+
+            /* Duplicated entry */
+            if(strncmp(syscheck->dir[i], tmp_dir, str_len_dir) == 0)
+            {
+                merror(SK_DUP, ARGV0, tmp_dir);
+                return(1);
+            }
         }
         
         os_strdup(tmp_dir, syscheck->dir[i]);

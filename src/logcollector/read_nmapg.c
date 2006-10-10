@@ -141,7 +141,7 @@ static char *__go_after(char *x, char *y)
 
 
 /* Read Nmap grepable files */
-void *read_nmapg(int pos, int *rc)
+void *read_nmapg(int pos, int *rc, int drop_it)
 {
     int final_msg_s;
     int need_clear = 0;
@@ -280,7 +280,7 @@ void *read_nmapg(int pos, int *rc)
         }while(*p == ',' && (p++));
        
 
-        if(p)
+        if(p && (drop_it == 0))
         { 
             /* Sending message to queue */
             if(SendMSG(logr_queue, final_msg, logff[pos].file, 
