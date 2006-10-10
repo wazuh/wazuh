@@ -14,7 +14,7 @@
 
   <rule id="3801" level="4">
     <if_sid>3800</if_sid>
-    <action>RCPT</match>
+    <action>RCPT</action>
     <id>^550</id>
     <description>E-mail rcpt is not valid (invalid account).</description>
     <group>spam,</group>
