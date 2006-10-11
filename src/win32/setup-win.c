@@ -69,7 +69,7 @@ int config_syscheck()
     FILE *fp;
 
     /* We add here the last entry */
-    if(dogrep(OSSECCONF, "iis6.log</ignore>"))
+    if(dogrep(OSSECCONF, "pfirewall.log</ignore>"))
     {
         return(0);
     }
@@ -99,6 +99,7 @@ int config_syscheck()
     "    <ignore>C:\\WINDOWS/system32/CatRoot</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/system32/wbem/Repository</ignore>\r\n"
     "    <ignore>C:\\WINDOWS/iis6.log</ignore>\r\n"
+    "    <ignore>C:\\WINDOWS/pfirewall.log</ignore>\r\n"
     "  </syscheck>\r\n"
     "</ossec_config>\r\n");
 

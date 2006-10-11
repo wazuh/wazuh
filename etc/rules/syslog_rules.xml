@@ -392,7 +392,7 @@
 
   <rule id="9201" level="0">
     <if_sid>9200</if_sid>
-    <regex>^squid[\d+]: ctx: enter level</regex>
+    <regex>^squid[\d+]: ctx: enter level|^squid[\d+]: sslRead</regex>
     <description>Squid debug message</description>
   </rule>
 

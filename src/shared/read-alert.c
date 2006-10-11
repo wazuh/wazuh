@@ -26,6 +26,7 @@
 #define USER_BEGIN      "User: "
 #define USER_BEGIN_SZ   6
 #define ALERT_MAIL      "mail"
+#define ALERT_MAIL_SZ   4
 #define ALERT_AR        "active-response"
 
 
@@ -114,12 +115,19 @@ alert_data *GetAlertData(int flag, FILE *fp)
         /* Checking for the header */
         if(strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0)
         {
-            p = str+ALERT_BEGIN_SZ;
+            p = str + ALERT_BEGIN_SZ + 1;
             
             /* Searching for email flag */
             if(flag == CRALERT_MAIL_SET)
             {
-                if(strstr(p, ALERT_MAIL) == NULL)
+                p = strchr(p, ' ');
+                if(!p)
+                {
+                    continue;
+                }
+
+                p++;
+                if(strncmp(ALERT_MAIL, p, ALERT_MAIL_SZ) != 0)
                 {
                     continue;
                 }
@@ -139,7 +147,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
         if(_r == 1)
         {
             /* Clear new line */
-            os_clearnl(str,p);
+            os_clearnl(str, p);
              
             p = strchr(str, ':');
             {
