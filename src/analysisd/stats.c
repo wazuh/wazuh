@@ -288,8 +288,7 @@ int Check_Hour(Eventinfo *lf)
             {
                 /* snprintf will null terminate */
                 snprintf(__stats_comment, 191,
-                                     "Excessive number of connections during "
-                                     "this hour.\n The average number of logs"
+                                     "The average number of logs"
                                      " between %d:00 and %d:00 is %d. We "
                                      "reached %d.",__crt_hour,__crt_hour+1,
                                      _RHour[__crt_hour],_CHour[__crt_hour]);
@@ -316,8 +315,7 @@ int Check_Hour(Eventinfo *lf)
                     gethour(_RWHour[__crt_wday][__crt_hour]))
             {
                 snprintf(__stats_comment, 191,
-                                     "Excessive number of connections during "
-                                     "this hour.\n The average number of logs"
+                                     "The average number of logs"
                                      " between %d:00 and %d:00 on %s is %d. We"
                                      " reached %d.",__crt_hour,__crt_hour+1,
                                      weekdays[__crt_wday],

@@ -70,8 +70,7 @@ void OS_Log(Eventinfo *lf)
             lf->generated_rule->comment,
             lf->srcip == NULL?"(none)":lf->srcip,
             lf->user == NULL?"(none)":lf->user,
-            lf->generated_rule->sigid == STATS_PLUGIN?
-            "No Log Available (HOURLY_STATS)":lf->log);
+            lf->log);
 
 
     /* Printing the last events if present */

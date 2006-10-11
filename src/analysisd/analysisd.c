@@ -527,6 +527,7 @@ void OS_ReadMSG(int m_queue)
             ErrorExit(MEM_ERROR, ARGV0);
         }
         stats_rule->group = "stats,";
+        stats_rule->comment = "Excessive number of events (above normal).";
     }
 
 
@@ -713,14 +714,23 @@ void OS_ReadMSG(int m_queue)
             {
                 if(Check_Hour(lf) == 1)
                 {
+                    char *saved_log;
+                    
+                    /* Saving previous log */
+                    saved_log = lf->log;
+                    
                     lf->generated_rule = stats_rule;
-                    lf->generated_rule->comment = __stats_comment;
+                    lf->log = __stats_comment;
+
 
                     /* alert for statistical analysis */
                     if(stats_rule->alert_opts & DO_LOGALERT)
                         OS_Log(lf);
 
+
+                    /* Set lf to the old values */
                     lf->generated_rule = NULL;
+                    lf->log = saved_log;
                 }
             }
 
