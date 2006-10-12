@@ -62,6 +62,13 @@
     <description>Sendmail rejected message.</description>
   </rule>
   
+  <rule id="3108" level="6">
+    <if_sid>3100</if_sid>
+    <match>rejecting commands from</match>
+    <description>Sendmail rejected due to pre-greeting.</description>
+    <group>spam,</group>
+  </rule>
+  
   <rule id="3151" level="10" frequency="6" timeframe="120">
     <if_matched_sid>3102</if_matched_sid>
     <same_source_ip />
@@ -105,6 +112,13 @@
     <if_matched_sid>3107</if_matched_sid>
     <same_source_ip />
     <description>Multiple rejected e-mails from same source ip.</description>
+    <group>multiple_spam,</group>
+  </rule>
+
+  <rule id="3158" level="10" frequency="6" timeframe="120">
+    <if_matched_sid>3108</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple pre-greetings rejects.</description>
     <group>multiple_spam,</group>
   </rule>
 </group> <!-- SYSLOG,SENDMAIL -->

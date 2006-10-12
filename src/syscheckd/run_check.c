@@ -142,15 +142,18 @@ void start_daemon()
     {
         curr_time = time(0);
 
+
         /* If time elapsed is higher than the rootcheck_time,
          * run it.
          */
         #ifndef WIN32
-        if((curr_time - prev_time_rk) > rootcheck.time)
+        if(syscheck.rootcheck)
         {
-            if(syscheck.rootcheck)
+            if((curr_time - prev_time_rk) > rootcheck.time)
+            {
                 run_rk_check();
-            prev_time_rk = time(0);
+                prev_time_rk = time(0);
+            }
         }
         #endif
 

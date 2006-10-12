@@ -484,32 +484,17 @@ int Start_Hour()
  * v0.3: Some performance fixes (2006/03/21).
  * v0.2: 2005/03/17
  * check if the message received is repeated. Doing
- * it to avoid floods
+ * it to avoid floods from same message.
  */
 int LastMsg_Stats(char *log)
 {
-    char *nlog;
-
-    /* Moving the char pointer to after the p_name[pid]. 
-     * BUG 1102
-     */
-    nlog = strchr(log,' ');
-    if(nlog == NULL)
-    {
-        nlog = log;
-    }
-    else
-    {
-        nlog++;
-    }
-
-	if(strcmp(nlog,_lastmsg) == 0)
+	if(strcmp(log,_lastmsg) == 0)
 		return(1);		
 		
-	else if(strcmp(nlog,_prevlast) == 0)
+	else if(strcmp(log,_prevlast) == 0)
 		return(1);
 
-	else if(strcmp(nlog,_pprevlast) == 0)
+	else if(strcmp(log,_pprevlast) == 0)
 		return(1);
 	
 	return(0);
@@ -523,8 +508,6 @@ int LastMsg_Stats(char *log)
  */
 void LastMsg_Change(char *log)
 {
-    char *nlog;
-
     /* Removing the last one */
     free(_pprevlast);
     
@@ -534,18 +517,7 @@ void LastMsg_Change(char *log)
     _prevlast = _lastmsg;
     
 
-    /* Moving to after the proccess ID/PID */
-    nlog = strchr(log,' ');
-    if(nlog == NULL)
-    {
-        nlog = log;
-    }
-    else
-    {
-        nlog++;
-    }
-
-    os_strdup(nlog, _lastmsg);
+    os_strdup(log, _lastmsg);
     return;
 }
 

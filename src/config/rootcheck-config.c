@@ -28,6 +28,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
     char *xml_scanall = "scanall";
     char *xml_readall = "readall";
     char *xml_time = "frequency";
+    char *xml_disabled = "disabled";
 
     rootcheck = (rkconfig *)configp;
     
@@ -62,6 +63,18 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
                 rootcheck->scanall = 1;
             else if(strcmp(node[i]->content, "no") == 0)
                 rootcheck->scanall = 0;
+            else
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+        else if(strcmp(node[i]->element, xml_disabled) == 0)
+        {
+            if(strcmp(node[i]->content, "yes") == 0)
+                rootcheck->disabled = 1;
+            else if(strcmp(node[i]->content, "no") == 0)
+                rootcheck->disabled = 0;
             else
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);

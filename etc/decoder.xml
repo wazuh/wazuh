@@ -450,10 +450,20 @@
   - <rtreter@qffff.com>... Domain of sender address rtreter@qffff.com does not exist
   - sm-msp-queue[13484]: k5TKj6L5012934: to=root, ctladdr=root (0/0), delay=00:04:00, xdelay=00:00:00, mailer=relay, pri=120112, relay=[127.0.0.1], dsn=4.0.0, stat=Deferred: Connection refused by [127.0.0.1]
   - sendmail[7735]: [ID 801593 mail.notice] k856Hah0007735: ruleset=check_rcpt, arg1=<sc@sd.com>, relay=[216.22.33.7], reject=553 5.3.0 <sc@sd.com>... Spammer 216.22.33.7 usergl@displaytoward.net rejected by RBL:http://www.spamhaus.org/
+  - sm-mta[23868]: k9BEQK0c023868: rejecting commands
+  from [200.121.73.169] [200.121.73.169] due to pre-greeting traffic
+  - sendmail[7818]: j6KKHo2d007818: rejecting commands from sv.e103gng.com [66.62.19.10] due to pre-greeting traffic
  -->
 <decoder name="sendmail-reject">
   <prematch>^sendmail[\d+]: |^sm-mta[\d+]: |^sm-msp-queue[\d+]: </prematch>
 </decoder>  
+
+<decoder name="sendmail-pre-greeting">
+  <parent>sendmail-reject</parent>
+  <prematch  offset="after_parent">^\S+: rejecting commands from</prematch>
+  <regex offset="after_prematch">^ \S+ [(\d+.\d+.\d+.\d+)]</regex>
+  <order>srcip</order>
+</decoder>
 
 <decoder name="sendmail-reject-nodns">
   <parent>sendmail-reject</parent>

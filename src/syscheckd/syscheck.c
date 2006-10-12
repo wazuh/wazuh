@@ -163,7 +163,13 @@ int main(int argc, char **argv)
 
     /* Rootcheck config */
     if(rootcheck_init(test_config) == 0)
+    {
         syscheck.rootcheck = 1;
+    }
+    else
+    {
+        merror("%s: Rootcheck module disabled.", ARGV0);
+    }
 
         
     /* Exit if testing config */

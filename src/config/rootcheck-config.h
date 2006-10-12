@@ -27,6 +27,7 @@ typedef struct _rkconfig
     int notify; /* QUEUE or SYSLOG */
     int scanall;
     int readall;
+    int disabled;
 
     int time;
     int queue;

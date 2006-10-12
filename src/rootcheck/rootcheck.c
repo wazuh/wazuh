@@ -96,6 +96,7 @@ int rootcheck_init(int test_config)
     rootcheck.notify = QUEUE;
     rootcheck.scanall = 0;
     rootcheck.readall = 0;
+    rootcheck.disabled = 0;
     rootcheck.time = ROOTCHECK_WAIT;
 
 
@@ -159,9 +160,19 @@ int rootcheck_init(int test_config)
         ErrorExit(CONFIG_ERROR, ARGV0);
     }
 
+
+    /* If testing config, exit here */
     if(test_config)
         return(0);
 
+
+    /* Return 1 disables rootcheck */
+    if(rootcheck.disabled == 1)
+    {
+        return(1);
+    }
+    
+    
     /* Setting default values */
     if(rootcheck.workdir == NULL)
         rootcheck.workdir = DEFAULTDIR;
@@ -192,6 +203,8 @@ int rootcheck_init(int test_config)
     }
     #endif
 
+
+    /* Initializing rk list */
     rk_sys_name = calloc(MAX_RK_SYS +2, sizeof(char *));
     rk_sys_file = calloc(MAX_RK_SYS +2, sizeof(char *));
     if(!rk_sys_name || !rk_sys_file)
@@ -200,6 +213,7 @@ int rootcheck_init(int test_config)
     }
     rk_sys_name[0] = NULL;
     rk_sys_file[0] = NULL;
+
 
     #ifndef OSSECHIDS
     /* Start the signal handling */
