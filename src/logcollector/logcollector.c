@@ -114,6 +114,13 @@ void LogCollectorStart()
     verbose(STARTUP_MSG, ARGV0, getpid());
         
     max_file = i -1;
+
+
+    /* Cannot be zero */
+    if(max_file < 0)
+    {
+        max_file = 0;
+    }
     
     
     /* Daemon loop */

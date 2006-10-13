@@ -118,8 +118,15 @@ int main(int argc, char **argv)
     /* No file available to monitor -- clean exit */
     if(logff == NULL)
     {
+        os_calloc(2, sizeof(logreader), logff);
+        logff[0].file = NULL;
+        logff[0].ffile = NULL;
+        logff[0].logformat = NULL;
+        logff[0].fp = NULL;
+        logff[1].file = NULL;
+        logff[1].logformat = NULL;
+
         merror(NO_FILE, ARGV0);
-        exit(0);
     }
             
 

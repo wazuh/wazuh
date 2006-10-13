@@ -73,6 +73,12 @@ int config_syscheck()
     {
         return(0);
     }
+
+    /* Syscheck not configured, return */
+    if(!dogrep(OSSECCONF, "<syscheck>"))
+    {
+        return(0);
+    }
     
     /* Add syscheck config */
     fp = fopen(OSSECCONF, "a");

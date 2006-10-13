@@ -41,7 +41,7 @@ int Read_Syscheck_Config(char * cfgfile)
     if(syscheck.dir[0] == NULL)
     {
         merror(SK_NO_DIR, ARGV0);
-        return(OS_INVALID);
+        return(1);
     }
                                         
 

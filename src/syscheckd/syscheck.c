@@ -46,6 +46,7 @@ void read_internal()
  */
 int Start_win32_Syscheck()
 {
+    int r = 0;
     char *cfg = DEFAULTCPATH;
 
     /* Zeroing the structure */
@@ -58,9 +59,15 @@ int Start_win32_Syscheck()
 
 
     /* Read syscheck config */
-    if(Read_Syscheck_Config(cfg) < 0)
+    if((r = Read_Syscheck_Config(cfg)) < 0)
     {
         ErrorExit(CONFIG_ERROR, ARGV0);
+    }
+    /* Disabled */
+    else if(r == 1)
+    {
+        merror("%s: Syscheck disabled.", ARGV0);
+        return(0);
     }
 
 
@@ -97,7 +104,7 @@ int Start_win32_Syscheck()
 #ifndef WIN32 
 int main(int argc, char **argv)
 {
-    int c;
+    int c,r;
     int test_config = 0;
     
     char *cfg = DEFAULTCPATH;
@@ -150,9 +157,17 @@ int main(int argc, char **argv)
 
 
     /* Read syscheck config */
-    if(Read_Syscheck_Config(cfg) < 0)
+    if((r = Read_Syscheck_Config(cfg)) < 0)
     {
         ErrorExit(CONFIG_ERROR, ARGV0);
+    }
+    else if(r == 1)
+    {
+        if(!test_config)
+        {
+            merror("%s: Syscheck disabled. Exiting.", ARGV0);
+        }
+        exit(0);
     }
 
 
