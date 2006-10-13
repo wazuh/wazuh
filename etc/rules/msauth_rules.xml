@@ -52,7 +52,7 @@
 
   <rule id="18107" level="3">
     <if_sid>18104</if_sid>
-    <id>^528|^538|^540|^672|^673</id>
+    <id>^528|^540|^672|^673</id>
     <description>Windows Logon Success.</description>
     <group>authentication_success,</group>
   </rule>
@@ -136,7 +136,7 @@
   <rule id="18119" level="3">
     <if_sid>18107</if_sid>
     <options>alert_by_email</options>
-    <id>^528|^538|^540|^672|^673</id>
+    <id>^528|^540|^672|^673</id>
     <if_fts />
     <description>First time this user logged in this system.</description>
     <group>authentication_success,</group>
