@@ -221,12 +221,12 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     memset(snd_msg,'\0',128);
 
     /* Checking if global subject is available */
-    if(_g_subject != NULL)
+    if((_g_subject_level != 0) && (_g_subject[0] != '\0'))
     {
         snprintf(snd_msg, 127, SUBJECT, _g_subject);	
 
         /* Clearing global values */
-        _g_subject = NULL;
+        _g_subject[0] = '\0';
         _g_subject_level = 0;
     }
     else

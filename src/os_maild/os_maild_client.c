@@ -77,13 +77,13 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p)
     {
         if(_g_subject_level < al_data->level)
         {
-            _g_subject = mail->subject;
+            strncpy(_g_subject, mail->subject, SUBJECT_SIZE);
             _g_subject_level = al_data->level;
         }
     }
     else
     {
-        _g_subject = mail->subject;
+        strncpy(_g_subject, mail->subject, SUBJECT_SIZE);
         _g_subject_level = al_data->level;
     }
 

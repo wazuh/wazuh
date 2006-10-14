@@ -196,9 +196,9 @@ void OS_Run(MailConfig *mail)
     
     /* Clearing global vars */
     _g_subject_level = 0;
-    _g_subject = NULL;
-    
-    
+    memset(_g_subject, '\0', SUBJECT_SIZE +2);
+
+
     while(1)
     {
         tm = time(NULL);
@@ -256,7 +256,8 @@ void OS_Run(MailConfig *mail)
 
 
             /* Clearing global vars */
-            _g_subject = NULL;
+            _g_subject[0] = '\0';
+            _g_subject[SUBJECT_SIZE -1] = '\0';
             _g_subject_level = 0;
             
             

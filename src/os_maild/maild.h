@@ -63,7 +63,7 @@ int strict_checking;
 
 /* Global var for highest level on mail subjects */
 int   _g_subject_level;
-char *_g_subject;
+char _g_subject[SUBJECT_SIZE +2];
 
 
 #endif
