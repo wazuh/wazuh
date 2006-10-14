@@ -86,6 +86,8 @@ int dogrep(char *file, char *str)
 int config_dir(char *name, char *dir, char *vfile)
 {
     int add = 0;
+    FILE *fp;
+
     if(!direxist(dir))
     {
         return(0);
@@ -100,11 +102,11 @@ int config_dir(char *name, char *dir, char *vfile)
 
     printf("%s: IIS directory found, but no valid log.\n", name);
     printf("%s: You may have it configured in a format different\n"
-           "     than W3C Extended or you just don't have today's\n"
-           "     log available.\n", name);
+           "               than W3C Extended or you just don't have today's\n"
+           "               log available.\n", name);
     printf("%s: http://www.ossec.net/en/manual.html#iis\n\n", name);
 
-    printf("%s: Do you still want to add it?\n", name);
+    printf("%s: Do you still want to add '%s'?\n", name, dir);
     printf("%s: Continue? (y/n):", name);
     while(1)
     {
@@ -153,6 +155,8 @@ int config_dir(char *name, char *dir, char *vfile)
             "</ossec_config>\r\n\r\n", vfile);
 
     printf("%s: Action completed.\n", name);
+
+    total++;
     fclose(fp);
 
     return(1);
@@ -357,7 +361,7 @@ int main(int argc, char **argv)
 
     if(total == 0)
     {
-        printf("%s: No IIS log found. Look at the link above for more "
+        printf("%s: No IIS log added. Look at the link above for more "
                "information.\r\n", argv[0]);
     }
     system("pause");
