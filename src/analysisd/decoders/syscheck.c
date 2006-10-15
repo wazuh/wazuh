@@ -395,12 +395,14 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
         /* Adding the new entry at the end of the file */
         fseek(fp, 0, SEEK_END);
-        fprintf(fp,"%c%c%c%s %s\n",
+        fprintf(fp,"%c%c%c%s !%d %s\n",
                 '!',
                 p >= 1? '!' : '+',
                 p == 2? '!' : (p > 2)?'?':'+',
                 c_sum,
+                lf->time,
                 f_name);
+        fflush(fp);
 
 
         /* File deleted */
