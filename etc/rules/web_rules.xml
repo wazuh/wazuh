@@ -117,6 +117,7 @@
     <same_source_ip />
     <description>Mutiple web server 400 error codes </description>
     <description>from same source ip.</description>
+    <group>web_scan,recon,</group>
   </rule>
 
   <rule id="31152" level="10" frequency="6" timeframe="120">
@@ -124,12 +125,14 @@
     <same_source_ip />
     <description>Multiple SQL injection attempts from same </description>
     <description>souce ip.</description>
+    <group>attack,sql_injection,</group>
   </rule>
   
   <rule id="31153" level="10" frequency="8" timeframe="120">
     <if_matched_sid>31104</if_matched_sid>
     <same_source_ip />
     <description>Multiple common web attacks from same souce ip.</description>
+    <group>attack,</group>
   </rule>
 
   <rule id="31154" level="10" frequency="8" timeframe="120">
@@ -137,23 +140,27 @@
     <same_source_ip />
     <description>Multiple XSS (Cross Site Scripting) attempts </description>
     <description>from same souce ip.</description>
+    <group>attack,</group>
   </rule>
   
   <rule id="31161" level="10" frequency="8" timeframe="120">
     <if_matched_sid>31121</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 501 error code (Not Implemented).</description>
+    <group>web_scan,recon,</group>
   </rule>
   
   <rule id="31162" level="10" frequency="5" timeframe="120">
     <if_matched_sid>31122</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 500 error code (Internal Error).</description>
+    <group>system_error,</group>
   </rule>
   
   <rule id="31163" level="10" frequency="8" timeframe="120">
     <if_matched_sid>31123</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 503 error code (Service unavailable).</description>
+    <group>web_scan,recon,</group>
   </rule>
 </group> <!-- Web access log -->
