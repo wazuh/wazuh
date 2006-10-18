@@ -139,7 +139,7 @@ int config_syscheck()
     FILE *fp;
 
     /* We add here the last entry */
-    if(dogrep(OSSECCONF, "pfirewall.log</ignore>"))
+    if(dogrep(OSSECCONF, "wiadebug.log</ignore>"))
     {
         return(0);
     }
@@ -179,13 +179,16 @@ int config_syscheck()
             "    <ignore>%s/system32/CatRoot</ignore>\r\n"
             "    <ignore>%s/system32/wbem/Repository</ignore>\r\n"
             "    <ignore>%s/iis6.log</ignore>\r\n"
+            "    <ignore>%s/system32/MsDtc/Trace/dtctrace.log</ignore>\r\n"
             "    <ignore>%s/pfirewall.log</ignore>\r\n"
+            "    <ignore>%s/wiaservc.log</ignore>\r\n"
+            "    <ignore>%s/wiadebug.log</ignore>\r\n"
             "  </syscheck>\r\n"
             "</ossec_config>\r\n",
             win_dir, win_dir, win_dir, win_dir,
             win_dir, win_dir, win_dir, win_dir,
             win_dir, win_dir, win_dir, win_dir,
-            win_dir, win_dir);
+            win_dir, win_dir, win_dir, win_dir, win_dir);
 
     fclose(fp);
 
