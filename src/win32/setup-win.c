@@ -106,6 +106,7 @@ char *get_win_dir()
 int add_syscheck()
 {
     char *win_dir;
+    FILE *fp;
 
     win_dir = get_win_dir();
 
