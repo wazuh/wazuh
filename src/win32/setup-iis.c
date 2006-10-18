@@ -83,6 +83,28 @@ int dogrep(char *file, char *str)
 }
 
 
+/* Getting Windows directory */
+char *get_win_dir()
+{
+    char *win_dir = "C:\\WINDOWS";
+    if(direxist(win_dir))
+    {
+        return(win_dir);
+    }
+
+    win_dir = "C:\\WINNT";
+    if(direxist(win_dir))
+    {
+        return(win_dir);
+    }
+
+    /* Default is WINDOWS */
+    return("C:\\WINDOWS");
+
+}
+
+
+
 int config_dir(char *name, char *dir, char *vfile)
 {
     int add = 0;
@@ -247,7 +269,8 @@ int main(int argc, char **argv)
 
     time_t tm;
     struct tm *p;
-        
+    
+    char *win_dir;    
     
     if(argc >= 2)
     {
@@ -278,6 +301,10 @@ int main(int argc, char **argv)
     printf("\r\n");
     
     
+    /* Getting windows directory */
+    win_dir = get_win_dir();
+    
+    
     /* Looking for IIS log files */
     while(i <= 254)
     {
@@ -289,12 +316,12 @@ int main(int argc, char **argv)
         /* Searching for NCSA */
         snprintf(lfile, 
                 OS_MAXSTR, 
-                "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\nc%02d%02d%02d.log",
-                i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
+                "%s\\System32\\LogFiles\\W3SVC%d\\nc%02d%02d%02d.log",
+                win_dir,i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
         snprintf(vfile, 
                 OS_MAXSTR, 
-                "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\nc%%y%%m%%d.log",
-                i);
+                "%s\\System32\\LogFiles\\W3SVC%d\\nc%%y%%m%%d.log",
+                win_dir, i);
         
         /* Try dir-based */
         config_iis(argv[0], lfile, vfile);
@@ -303,20 +330,20 @@ int main(int argc, char **argv)
         /* Searching for W3C extended */
         snprintf(lfile, 
                 OS_MAXSTR, 
-                "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\ex%02d%02d%02d.log",
-                i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
+                "%s\\System32\\LogFiles\\W3SVC%d\\ex%02d%02d%02d.log",
+                win_dir, i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
     
         snprintf(vfile, 
                 OS_MAXSTR, 
-                "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d\\ex%%y%%m%%d.log",
-                i);
+                "%s\\System32\\LogFiles\\W3SVC%d\\ex%%y%%m%%d.log",
+                win_dir, i);
         
         /* Try dir-based */
         if(config_iis(argv[0], lfile, vfile) == 0)
         {
             snprintf(lfile,
                     OS_MAXSTR,
-                    "C:\\WINDOWS\\System32\\LogFiles\\W3SVC%d",i);
+                    "%s\\System32\\LogFiles\\W3SVC%d", win_dir, i);
             config_dir(argv[0], lfile, vfile);
         }
 
@@ -324,18 +351,18 @@ int main(int argc, char **argv)
         /* Searching for FTP Extended format */
         snprintf(lfile, 
              OS_MAXSTR, 
-             "C:\\WINDOWS\\System32\\LogFiles\\MSFTPSVC%d\\ex%02d%02d%02d.log",
-             i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
+             "%s\\System32\\LogFiles\\MSFTPSVC%d\\ex%02d%02d%02d.log",
+             win_dir, i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
         
         snprintf(vfile, 
              OS_MAXSTR, 
-             "C:\\WINDOWS\\System32\\LogFiles\\MSFTPSVC%d\\ex%%y%%m%%d.log",
-             i);
+             "%s\\System32\\LogFiles\\MSFTPSVC%d\\ex%%y%%m%%d.log",
+             win_dir, i);
         if(config_iis(argv[0], lfile, vfile) == 0)
         {
             snprintf(lfile,
                     OS_MAXSTR,
-                    "C:\\WINDOWS\\System32\\LogFiles\\MSFTPSVC%d",i);
+                    "%s\\System32\\LogFiles\\MSFTPSVC%d", win_dir, i);
             config_dir(argv[0], lfile, vfile);
         }
 
@@ -343,18 +370,18 @@ int main(int argc, char **argv)
         /* Searching for IIS SMTP logs */
         snprintf(lfile, 
              OS_MAXSTR, 
-             "C:\\WINDOWS\\System32\\LogFiles\\SMTPSVC%d\\ex%02d%02d%02d.log",
-             i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
+             "%s\\System32\\LogFiles\\SMTPSVC%d\\ex%02d%02d%02d.log",
+             win_dir, i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
         
         snprintf(vfile, 
              OS_MAXSTR, 
-             "C:\\WINDOWS\\System32\\LogFiles\\SMTPSVC%d\\ex%%y%%m%%d.log",
-             i);
+             "%s\\System32\\LogFiles\\SMTPSVC%d\\ex%%y%%m%%d.log",
+             win_dir, i);
         if(config_iis(argv[0], lfile, vfile) == 0)
         {
             snprintf(lfile,
                     OS_MAXSTR,
-                    "C:\\WINDOWS\\System32\\LogFiles\\SMTPSVC%d",i);
+                    "%s\\System32\\LogFiles\\SMTPSVC%d",win_dir, i);
             config_dir(argv[0], lfile, vfile);
         }
     }
