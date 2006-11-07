@@ -833,7 +833,7 @@
 
 
 
-<!-- NCSA common log decoder (used by apache and IIS NCSA).
+<!-- NCSA common log decoder (used by apache, Lotus Domino and IIS NCSA).
   -  Will extract the srcip, url and id.
   -  Every web access log must use "web-accesslog" as their
   -  name if they want to be matched against the web rules.
@@ -844,13 +844,14 @@
   -  192.168.2.190 - - [18/Jan/2006:13:10:06 -0500] "GET /xxx.html HTTP/1.1"
      200 1732
   -  1.1.1.1 - username [18/Jan/2006:13:10:06 -0500] "GET /xxx.html HTTP/1.1"   
+  -  123.4.5.6 aa.xx.com - [05/Nov/2006:00:46:56 -0500] "GET / HTTP/1.1" 302 -
   -->
 <decoder name="web-accesslog">
   <type>web-log</type>
-  <prematch>^\d+.\d+.\d+.\d+ - </prematch>
-  <regex>^(\d+.\d+.\d+.\d+) - \S+ [\S+ -\d+] </regex>
+  <prematch>^\d+.\d+.\d+.\d+ </prematch>
+  <regex>^(\d+.\d+.\d+.\d+) \S+ \S+ [\S+ -\d+] </regex>
   <regex>"\w+ (\S+) HTTP\S+ (\d+) </regex>
-  <order>srcip,url,id</order>
+  <order>srcip, url, id</order>
 </decoder>
 
 
