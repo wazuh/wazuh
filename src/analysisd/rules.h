@@ -88,6 +88,7 @@ typedef struct _RuleInfo
     OSMatch *user;
     OSMatch *url;
     OSMatch *id;
+    OSMatch *status;
     char *action;
     
     char *comment; /* description in the xml */

@@ -11,6 +11,7 @@
    - id       - event id 
    - url      - url of the event
    - action   - event action (deny, drop, accept, etc)
+   - status   - event status (success, failure, etc)
    - data     - Any extra data
   -->
 
@@ -982,7 +983,7 @@
 
 <!-- Windows decoder
   - Will extract data (as win source),action (as win category), id,
-  - username and computer name (as url).
+  - username and computer name (as system_name).
   - Examples:
   - WinEvtLog: Application: INFORMATION(0x00000064): ESENT: 
     (no user)(no domain): 
@@ -1001,9 +1002,24 @@
   <type>windows</type>
   <prematch>^WinEvtLog: </prematch>
   <regex>^WinEvtLog: (\w+): (\w+)\((\d+)\): \w+: (\w+): \S+ (\S+): </regex>
-  <order>data, action, id, user, system_name</order>
+  <order>data, status, id, user, system_name</order>
   <fts>name, location, user, system_name</fts>
 </decoder>    
+
+
+<!-- Windows decoder -NTsyslog format
+  - Will extract data (as win source),action (as win category), id,
+  - username and computer name (as url).
+  - Examples:
+  - security[failure] 577 IBM17M\Jeremy Lee  Privileged Service Called:  Server:Security  Service:-  Primary User Name:IBM17M$  Primary Domain:LEETHERNET  Primary Logon ID:(0x0,0x3E7)  Client User Name:Jeremy Lee  Client Domain:IBM17M  Client Logon ID:(0x0,0x1447F)  Privileges:SeSecurityPrivilege
+  - security[success] 528 IBM17M\Jeremy Lee  Successful Logon:  User Name:Jeremy Lee  Domain:IBM17M  Logon ID:(0x0,0x3A2E471)  Logon Type:2  Logon Process:User32    Authentication Package:Negotiate  Workstation Name:IBM17M  Logon GUID: {00000000-0000-0000-0000-000000000000}
+  -->
+<decoder name="windows-ntsyslog">
+  <type>windows</type>
+  <prematch>^security[\w+] \d+ </prematch>
+  <regex>^(\w+)[(\w+)] (\d+) </regex>
+  <order>data, status, id</order>
+</decoder>
 
 
 <!-- ossec decoder.

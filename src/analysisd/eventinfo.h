@@ -44,6 +44,7 @@ typedef struct _Eventinfo
     char *user;
     char *dstuser;
     char *id;
+    char *status;
     char *command;
     char *url;
     char *data;

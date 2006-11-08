@@ -99,6 +99,7 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_user = "user";
     char *xml_url = "url";
     char *xml_id = "id";
+    char *xml_status = "status";
     char *xml_action = "action";
     
     char *xml_if_sid = "if_sid";
@@ -316,6 +317,7 @@ int Rules_OP_ReadRules(char * rulefile)
                 char *if_matched_group = NULL;
                 char *user = NULL;
                 char *id = NULL;
+                char *status = NULL;
                 
                 XML_NODE rule_opt = NULL;
                 rule_opt =  OS_GetElementsbyNode(&xml,rule[j]);
@@ -431,6 +433,12 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         id =
                             loadmemory(id,
+                                    rule_opt[k]->content);
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,xml_status)==0)
+                    {
+                        status =
+                            loadmemory(status,
                                     rule_opt[k]->content);
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_action)==0)
@@ -748,6 +756,19 @@ int Rules_OP_ReadRules(char * rulefile)
                     free(id);
                     id = NULL;
                 }
+
+                if(status)
+                {
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->status);
+                    if(!OSMatch_Compile(status, config_ruleinfo->status, 0))
+                    {
+                        merror(REGEX_COMPILE, ARGV0, status,
+                                              config_ruleinfo->status->error);
+                        return(-1);
+                    }
+                    free(status);
+                    status = NULL;
+                }
                 
                 if(user)
                 {
@@ -1003,6 +1024,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->dstip = NULL;
     ruleinfo_pt->url = NULL;
     ruleinfo_pt->id = NULL;
+    ruleinfo_pt->status = NULL;
     ruleinfo_pt->action = NULL;
     
     /* Zeroing last matched events */

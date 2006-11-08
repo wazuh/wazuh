@@ -374,6 +374,10 @@ void ReadDecodeXML(char *file)
                     {
                         pi->order[order_int] = (void *)Data_FP;
                     }
+                    else if(strstr(*norder, "status") != NULL)
+                    {
+                        pi->order[order_int] = (void *)Status_FP;
+                    }
                     else if(strstr(*norder, "system_name") != NULL)
                     {
                         pi->order[order_int] = (void *)SystemName_FP;

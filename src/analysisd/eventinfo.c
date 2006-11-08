@@ -277,6 +277,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->user = NULL;
     lf->dstuser = NULL;
     lf->id = NULL;
+    lf->status = NULL;
     lf->command = NULL;
     lf->url = NULL;
     lf->data = NULL;
@@ -324,6 +325,8 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->action);            
     if(lf->user)
         free(lf->user);
+    if(lf->status)
+        free(lf->status);    
     if(lf->dstuser)
         free(lf->dstuser);    
     if(lf->id)
