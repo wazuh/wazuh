@@ -1,6 +1,6 @@
-/*   $OSSEC, sec.c, v0.2, 2005/02/10, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -10,9 +10,6 @@
  */
 
 
-/* Reads the private keys from the clients
- */
-
 
 #include "shared.h"
 #include "headers/sec.h"
@@ -21,12 +18,14 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/blowfish/bf_op.h"
 
-/** Remote IDS directory */
+
+/** Remote ID directory */
 #ifndef WIN32
-#define RIDS_DIR        "/queue/rids"
+    #define RIDS_DIR        "/queue/rids"
 #else
-#define RIDS_DIR        "rids"
+    #define RIDS_DIR        "rids"
 #endif
+
 #define SENDER_COUNTER  "sender_counter"
 #define KEYSIZE	        128 
 
@@ -34,6 +33,7 @@
 /** Sending counts **/
 unsigned int global_count = 0;
 unsigned int local_count  = 0;
+
 
 /** Average compression rates **/
 int evt_count = 0;
@@ -64,9 +64,12 @@ void _MemClear(char *id, char *name, char *ip, char *key)
 /* _CHash v0.1 -Internal use  */
 void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
 {
+    int v_ip;
+    
 	os_md5 filesum1;
 	os_md5 filesum2;
-    
+   
+    char *tmp_str; 
 	char _finalstr[KEYSIZE];
     
     struct sockaddr_in peer;
@@ -75,8 +78,8 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
 	keys->ids = (char **)realloc(keys->ids,
 			(keys->keysize+1) * sizeof(char *));
 
-    keys->ips = (char **)realloc(keys->ips,
-            (keys->keysize+1)* sizeof(char*));
+    keys->ips = (os_ip **)realloc(keys->ips,
+            (keys->keysize+1)* sizeof(os_ip *));
 
     keys->name = (char **)realloc(keys->name,
             (keys->keysize+1)* sizeof(char*));
@@ -98,8 +101,19 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
     
     /* Setting configured values */
 	keys->ids[keys->keysize] = strdup(id);
-	keys->ips[keys->keysize] = strdup(ip);
-	keys->name[keys->keysize] = strdup(name);
+    os_calloc(1, sizeof(os_ip), keys->ips[keys->keysize]);
+    if((v_ip = OS_IsValidIP(ip, keys->ips[keys->keysize])) == 0)
+    {
+        ErrorExit(INVALID_IP, ARGV0, ip);
+    }
+    
+    /* We need to remove the "/" from the cidr */
+	if((tmp_str = strchr(keys->ips[keys->keysize]->ip, '/')) != NULL)
+    {
+        *tmp_str = '\0';
+    }
+    
+    keys->name[keys->keysize] = strdup(name);
 
 
     /* Initializing the variables */
@@ -141,8 +155,7 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
 
 
     /* Final key is 48 * 4 = 192bits */
-    keys->keys = (char **)realloc(keys->keys,
-			(keys->keysize+1)*sizeof(char *));
+    keys->keys = (char **)realloc(keys->keys,(keys->keysize+1)*sizeof(char *));
 	if(keys->keys == NULL)
        ErrorExit(MEM_ERROR, __local_name); 
 
@@ -178,6 +191,7 @@ void ReadKeys(keystruct *keys, int just_read)
     char id[KEYSIZE +1];
     char key[KEYSIZE +1];
     
+    
 
     if(File_DateofChange(KEYS_FILE) < 0)
     {
@@ -209,6 +223,7 @@ void ReadKeys(keystruct *keys, int just_read)
     _MemClear(id, name, ip, key);
 
     memset(buffer, '\0', OS_BUFFER_SIZE +1);
+
 
     /* Reading each line.
      * lines are divided on id name ip key
@@ -317,7 +332,7 @@ int IsAllowedIP(keystruct *keys, char *srcip)
    
     for(i = 0; i < keys->keysize; i++)
     {
-        if(strcmp(keys->ips[i],srcip) == 0)
+        if(strcmp(keys->ips[i]->ip, srcip) == 0)
             return(i);
     }
     return(-1);
@@ -342,6 +357,38 @@ int IsAllowedID(keystruct *keys, char *id)
 }
 
 
+int IsAllowedName(keystruct *keys, char *name)
+{
+    int i = 0;
+    
+    for(i = 0; i < keys->keysize; i++)
+    {
+        if(strcmp(keys->name[i], name) == 0)
+            return(i);
+    }
+
+    return(-1);
+}
+
+
+int IsAllowedDynamicID(keystruct *keys, char *id, char *srcip)
+{
+    int i = 0;
+    
+    if(id == NULL)
+        return(-1);
+    
+    for(i = 0; i < keys->keysize; i++)
+    {
+        if((strcmp(keys->ids[i],id) == 0) &&
+           (OS_IPFound(srcip, keys->ips[i]))) 
+            return(i);
+    }
+
+    return(-1);
+}
+
+
 /* StartCounter and read saved values */
 void StartCounter(keystruct *keys)
 {
@@ -351,7 +398,7 @@ void StartCounter(keystruct *keys)
     rids_file[OS_FLSIZE] = '\0';
     
     /* Starting receiving counter */
-    for(i = 0;i<=keys->keysize;i++)
+    for(i = 0; i<=keys->keysize; i++)
     {
         /* On i == keysize, we deal with the
          * sender counter.
@@ -370,7 +417,7 @@ void StartCounter(keystruct *keys)
         }
         keys->fps[i] = fopen(rids_file, "r+");
         
-        /* If there nothing there, try to open as write only */
+        /* If nothing is there, try to open as write only */
         if(!keys->fps[i])
         {
             keys->fps[i] = fopen(rids_file, "w");
@@ -497,15 +544,17 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
 
     char *f_msg;
     
-    if(*buffer != ':')
+    
+    if(*buffer == ':')
     {
-        merror(ENCFORMAT_ERROR, __local_name, keys->ips[id]);
+         buffer++;
+    }
+    else
+    {
+        merror(ENCFORMAT_ERROR, __local_name, keys->ips[id]->ip);
         return(NULL);
     }
-
-    buffer++; /* to next : */
-
-
+    
     /* Decrypting message */
     if(!OS_BF_Str(buffer, cleartext, keys->keys[id], buffer_size, OS_DECRYPT)) 
     {
@@ -555,7 +604,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         /* Checking for the right message format */
         if(*f_msg != ':')
         {
-            merror(ENCFORMAT_ERROR, __local_name, keys->ips[id]);
+            merror(ENCFORMAT_ERROR, __local_name, keys->ips[id]->ip);
             return(NULL);
         }
         f_msg++;
@@ -661,7 +710,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         return(NULL);
     }
     
-    merror(ENCFORMAT_ERROR, __local_name, keys->ips[id]);
+    merror(ENCFORMAT_ERROR, __local_name, keys->ips[id]->ip);
     return(NULL);
 }
 
@@ -679,13 +728,15 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     
     u_int16_t rand1;
     
-    char _tmpmsg[OS_MAXSTR +2];
-    char _finmsg[OS_MAXSTR +2];
+    char _tmpmsg[OS_MAXSTR + 2];
+    char _finmsg[OS_MAXSTR + 2];
     
     os_md5 md5sum;
     
     msg_size = strlen(msg);
     
+    
+    /* Checking for invalid msg sizes */
     if((msg_size > (OS_MAXSTR - OS_HEADER_SIZE))||(msg_size < 1))
     {
         merror(ENCSIZE_ERROR, __local_name, msg);
@@ -695,10 +746,13 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     /* Random number */
     rand1 = (u_int16_t)rand();
 
+
     _tmpmsg[OS_MAXSTR +1] = '\0';
     _finmsg[OS_MAXSTR +1] = '\0';
     msg_encrypted[OS_MAXSTR] = '\0';
    
+
+    /* Increasing local and global counters */
     if(local_count >= 9997)
     {
         local_count = 0;
@@ -709,7 +763,7 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     
     snprintf(_tmpmsg, OS_MAXSTR,"%05hu%010u:%04hu:%s",
                               rand1, global_count, local_count,
-                              msg);  
+                              msg);
 
     
     /* Generating md5sum of the unencrypted string */
@@ -766,23 +820,37 @@ int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
     }
     evt_count++;
     
-    /* Setting beginning of the message */
-    msg_encrypted[0] = ':';
-    msg_encrypted++;
+    /* If the ip is dynamic (not single host, append agent id
+     * to the message.
+     */ 
+    if(!isSingleHost(keys->ips[id]) && isAgent)
+    {
+       snprintf(msg_encrypted, 16, "!%s!:", keys->ids[id]); 
+       msg_size = strlen(msg_encrypted);
+    }
+    else
+    {
+        /* Setting beginning of the message */
+        msg_encrypted[0] = ':';
+        msg_size = 1;
+    }
 
+    /* msg_size is the ammount of non-encrypted message
+     * appended to the buffer. On dynamic ips, it will
+     * include the agent id.
+     */
     
     /* Encrypting everything */
-    OS_BF_Str(_tmpmsg + (7 - bfsize), msg_encrypted, 
+    OS_BF_Str(_tmpmsg + (7 - bfsize), msg_encrypted + msg_size, 
                                       keys->keys[id], 
                                       cmp_size, 
                                       OS_ENCRYPT);
     
-    msg_encrypted--;
 
     /* Storing before leaving */
     StoreSenderCounter(keys, global_count, local_count);
 
-    return(cmp_size +1);
+    return(cmp_size + msg_size);
 }
 
 

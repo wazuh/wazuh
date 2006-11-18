@@ -58,17 +58,34 @@ void *AR_Forward(void *arg)
             /* Always zeroing the location */
             ar_location = 0;
             
+            
             /* Getting the location */
             location = msg;
             
-            tmp_str = strchr(msg, ' ');
+            
+            /* Location is going to be the agent name */
+            tmp_str = strchr(msg, ')');
             if(!tmp_str)
             {
                 merror(EXECD_INV_MSG, ARGV0, msg);
                 continue;
             }
             *tmp_str = '\0';
+
+
+            /* Going after the ')' and space */
+            tmp_str+=2;
+
+
+            /* Extracting the source ip */
+            tmp_str = strchr(tmp_str, ' ');
+            if(!tmp_str)
+            {
+                merror(EXECD_INV_MSG, ARGV0, msg);
+                continue;
+            }
             tmp_str++;
+            location++;
 
 
             /* Setting ar_location */
@@ -89,22 +106,6 @@ void *AR_Forward(void *arg)
             }
             
             
-            /***  Extracting the agent ip (NULL if local) ***/
-            tmp_str = strchr(location, '>');
-            if(!tmp_str)
-            {
-                /* It is a local message from
-                 * the AS. Not generated externally.
-                 */
-                location = NULL;
-            }
-            else
-            {
-                tmp_str--;
-                *tmp_str = '\0';
-            }
-
-
             /*** Extracting the active response location ***/
             tmp_str = strchr(ar_location_str, ' ');
             if(!tmp_str)
@@ -147,7 +148,7 @@ void *AR_Forward(void *arg)
             /* Send to the remote agent that generated the event */
             else if((ar_location & REMOTE_AGENT) && (location != NULL))
             {
-                agent_id = IsAllowedIP(&keys, location);
+                agent_id = IsAllowedName(&keys, location);
                 if(agent_id < 0)
                 {
                     merror(AR_NOAGENT_ERROR, ARGV0, location);

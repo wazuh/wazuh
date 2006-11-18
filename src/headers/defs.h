@@ -116,7 +116,7 @@ published by the Free Software Foundation.\n"
 
 /* Wait file */
 #ifndef WIN32
-    #define WAIT_FILE       "/queue/.wait"
+    #define WAIT_FILE       "/queue/ossec/.wait"
 #else
     #define WAIT_FILE       ".wait"
 #endif

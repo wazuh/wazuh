@@ -146,7 +146,7 @@ int main(int argc, char **argv)
         snprintf(final_dir, 1020, "/%s/(%s) %s->syscheck",
                                     "queue/syscheck",
                                     keys.name[i],
-                                    keys.ips[i]);  
+                                    keys.ips[i]->ip);  
        
         fp = fopen(final_dir, "w");
         if(fp)

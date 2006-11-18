@@ -234,6 +234,10 @@ void AgentdStart(char *dir, int uid, int gid)
          * have available.
          */
         sleep(1); 
+
+
+        /* Checking for the lock */
+        os_wait();
     }
 }
 

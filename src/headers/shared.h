@@ -145,13 +145,20 @@ char *__local_name;
 
 #define os_strdup(x,y) (y = strdup(x))?1:ErrorExit(MEM_ERROR, ARGV0)
 
+#define os_malloc(x,y) (y = malloc(x))?1:ErrorExit(MEM_ERROR, ARGV0)
+
 #define os_free(x) (x)?free(x):merror("free a null")
 
 #define os_realloc(x,y,z) (z = realloc(x,y))?1:ErrorExit(MEM_ERROR, ARGV0)
 
 #define os_clearnl(x,p) if((p = strrchr(x, '\n')))*p = '\0';
 
-#endif /* __SHARED_H */
+#ifdef CLIENT
+    #define isAgent 1
+#else
+    #define isAgent 0    
+#endif
+        
 
 
 #include "debug_op.h"
@@ -174,5 +181,7 @@ char *__local_name;
 
 #include "error_messages/error_messages.h"
 
+
+#endif /* __SHARED_H */
 			       
 /* EOF */

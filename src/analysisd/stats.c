@@ -1,6 +1,6 @@
-/*   $OSSEC, stats.c, v0.4, 2006/03/03, Daniel B. Cid$   */
+/* @(#) $Id$ */
                     
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -9,12 +9,6 @@
  * Foundation
  */
 
-
-/* v0.4 (2006/03/03): Fixing timing behavior again. Printing 
- *                    hourly usage daily.        
- * v0.3 (2005/08/22): Fixing gethour behavior.
- * v0.2 (2005/02/17): none
- */
 
 
 #include "shared.h"

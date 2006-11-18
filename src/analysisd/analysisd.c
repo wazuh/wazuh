@@ -196,7 +196,8 @@ int main(int argc, char **argv)
     
     /* Reading configuration file */
     if(GlobalConf(cfg) < 0)
-        ErrorExit(CONFIG_ERROR,ARGV0);
+        ErrorExit(CONFIG_ERROR,ARGV0, cfg);
+
     debug1(READ_CONFIG, ARGV0);
         
 
@@ -359,21 +360,22 @@ int main(int argc, char **argv)
     {
         if(Config.ar)
         {
-            OSMatch **wl;
             int wlc = 0;
+            OSMatch **wl;
+            
             wl = Config.hostname_white_list;
             while(*wl)
             {
                 char **tmp_pts = (*wl)->patterns;
                 while(*tmp_pts)
                 {
-                    verbose("%s: White listing Hostname: '%s'",ARGV0, 
-                            *tmp_pts);
+                    verbose("%s: White listing Hostname: '%s'",ARGV0,*tmp_pts);
                     wlc++;
+                    tmp_pts++;
                 }
                 wl++;
             }
-            verbose("%s: %d Hostnames in the white list for active response.",
+            verbose("%s: %d Hostname(s) in the white list for active response.",
                     ARGV0, wlc);
         }
     }
@@ -895,6 +897,7 @@ void OS_ReadMSG(int m_queue)
 
             /* Cleaning the memory */	
             CLMEM:
+            
 
             /* Only clear the memory if the eventinfo was not
              * added to the stateful memory 

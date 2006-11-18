@@ -34,26 +34,26 @@
   euid=0 tty=ssh ruser= rhost=10.0.3.1  user=root
   -->
 <decoder name="pam">
-  <prematch>^\w+\(pam_unix\)[\d+]: </prematch>
+  <program_name>(pam_unix)$</program_name>
 </decoder>
 
 <decoder name="pam-host-user">
   <parent>pam</parent>
-  <prematch offset="after_parent">rhost=\S+\s+user=\S+</prematch>
-  <regex offset="after_parent">rhost=(\S+)\s+user=(\S+)</regex>
+  <prematch>rhost=\S+\s+user=\S+</prematch>
+  <regex>rhost=(\S+)\s+user=(\S+)</regex>
   <order>srcip, user</order>
 </decoder>
 
 <decoder name="pam-host">
   <parent>pam</parent>
-  <prematch offset="after_parent"> rhost</prematch>
+  <prematch> rhost</prematch>
   <regex offset="after_prematch">^=(\S+) </regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="pam-user">
   <parent>pam</parent>
-  <prematch offset="after_parent">^session opened </prematch>
+  <prematch>^session opened </prematch>
   <regex offset="after_prematch">^for user (\S+) </regex>
   <order>user</order>
 </decoder>  
@@ -80,66 +80,64 @@
   -->
 
 <decoder name="sshd">
-  <prematch>^sshd[\d+]: </prematch>
+  <program_name>^sshd</program_name>
 </decoder>
 
 <decoder name="sshd-success">
   <parent>sshd</parent>
-  <prematch offset="after_parent">^Accepted</prematch>
+  <prematch>^Accepted</prematch>
   <regex offset="after_prematch">^ \S+ for (\S+) from (\S+) port </regex>
-  <order>user,srcip</order>
-  <fts>name,user,location</fts>
-  <ftscomment>First time this user logged in (using ssh)</ftscomment>
+  <order>user, srcip</order>
+  <fts>name, user, location</fts>
 </decoder>
 
 <decoder name="sshd-success-solaris">
   <parent>sshd</parent>
-  <prematch offset="after_parent">^[ID \d+ \w+.\w+] User</prematch>
-  <regex offset="after_prematch">^ (\S+), comming from (\S+), a</regex>
-  <order>user,srcip</order>
-  <fts>name,user,location</fts>
-  <ftscomment>First time this user logged in (using ssh)</ftscomment>
+  <prematch>^User </prematch>
+  <regex offset="after_prematch">^(\S+), comming from (\S+), auth</regex>
+  <order>user, srcip</order>
+  <fts>name, user, location</fts>
 </decoder>
 
 <decoder name="ssh-failed">
   <parent>sshd</parent>
-  <prematch offset="after_parent">^Failed</prematch>
+  <prematch>^Failed</prematch>
   <regex offset="after_prematch">^ \S+ for i\w+ user (\S+) from (\S+) |</regex>
   <regex>^ \S+ for (\S+) from (\S+) port </regex>
-  <order>user,srcip</order>
+  <order>user, srcip</order>
 </decoder>
 
 <decoder name="ssh-error">
   <parent>sshd</parent>
-  <prematch offset="after_parent">^error: PAM: Authentication </prematch>
+  <prematch>^error: PAM: Authentication </prematch>
   <regex offset="after_prematch">^failure for (\S+) from (\S+)$</regex>
-  <order>user,srcip</order>
+  <order>user, srcip</order>
 </decoder>
 
 <decoder name="ssh-reverse-mapping">
   <parent>sshd</parent>
-  <prematch offset="after_parent">^reverse mapping checking</prematch>
-  <regex offset="after_prematch">^\w+ \w+ for (\S+) failed - POSS</regex>
+  <prematch>^reverse mapping checking</prematch>
+  <regex offset="after_prematch">^\w+ \w+ for (\S+) failed - </regex>
   <order>srcip</order>
 </decoder>       
 
 <decoder name="ssh-denied">
   <parent>sshd</parent>
-  <prematch offset="after_parent">^User \S+ from </prematch>
+  <prematch>^User \S+ from </prematch>
   <regex offset="after_parent">^User (\S+) from (\S+) </regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="ssh-invalid-user">
   <parent>sshd</parent>
-  <prematch offset="after_parent">^Invalid user</prematch>
+  <prematch>^Invalid user</prematch>
   <regex offset="after_prematch">^ (\S+) from (\S+)</regex>
-  <order>user,srcip</order>
+  <order>user, srcip</order>
 </decoder>
 
 <decoder name="ssh-generic">
   <parent>sshd</parent>
-  <regex offset="after_parent"> from (\S+)</regex>
+  <regex> from (\S+)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -158,12 +156,12 @@
  -->
 
 <decoder name="telnetd">
-  <prematch>^telnetd[\d+]: |^in.telnetd[\d+]: </prematch>
+  <program_name>^telnetd|^in.telnetd</program_name>
 </decoder>
 
 <decoder name="telnetd-ip">
   <parent>telnetd</parent>
-  <regex offset="after_parent">from (\d+.\d+.\d+.\d+)</regex>
+  <regex>from (\d+.\d+.\d+.\d+)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -179,19 +177,19 @@
   -->
 
 <decoder name="smbd">
-  <prematch>^smbd[\d+]: </prematch>
+  <program_name>^smbd</program_name>
 </decoder>
 
 <decoder name="smbd-user">
   <parent>smbd</parent>
-  <prematch offset="after_parent">User name:</prematch>
+  <prematch>User name:</prematch>
   <regex offset="after_prematch">^ (\S+).</regex>
   <order>user</order>
 </decoder>
 
 <decoder name="smbd-ip">
   <parent>smbd</parent>
-  <regex offset="after_parent"> from \((\d+.\d+.\d+.\d+)\)</regex>
+  <regex> from \((\d+.\d+.\d+.\d+)\)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -209,13 +207,11 @@
   -->
   
 <decoder name="su">
-  <prematch>^su(pam_unix)[\d+]:\s|^su[\d+]:\s|^su:\s</prematch>
-  <regex>^su\Spam_unix\S[\d+]: authentication failure; logname=\S*\s</regex>
-  <regex>uid=\d+ euid=\d+ tty=\S* ruser=(\S+) rhost=\S+ user=(\S+)$|</regex>
-  <regex>^su\S*: BAD SU (\S+) to (\S+) on|</regex>
-  <regex>^su[\d+]: failed: \S+ changing from (\S+) to (\S+)|</regex>
-  <regex>^su[\d+]: - \S+ (\S+)-(\S+)$</regex>
-  <order>user,dstuser</order>
+  <program_name>su</program_name>
+  <regex>^BAD SU (\S+) to (\S+) on|</regex>
+  <regex>^failed: \S+ changing from (\S+) to (\S+)|</regex>
+  <regex>^- \S+ (\S+)-(\S+)$</regex>
+  <order>user, dstuser</order>
   <fts>name,user,location</fts>
   <ftscomment>First time user attempted to use su</ftscomment>
 </decoder>
@@ -230,8 +226,8 @@
   -  Apr 19 14:52:02 enigma sudo:     dcid : TTY=ttyp3 ; PWD=/var/www/alex ; USER=root ; COMMAND=/sbin/chown dcid.dcid .
   -->
 <decoder name="sudo">
-  <prematch>^sudo:\s</prematch>
-  <regex>^sudo:\s+(\S+)\s:</regex>
+  <program_name>sudo</program_name>
+  <regex>^\s+(\S+)\s:</regex>
   <order>user</order>
   <fts>name,user,location</fts>
   <ftscomment>First time user executed the sudo command</ftscomment>
@@ -249,22 +245,21 @@
   -->
 
 <decoder name="proftpd">  
-  <prematch>^proftpd[\d+]: </prematch>
+  <program_name>^proftpd</program_name>
 </decoder>
 
 <decoder name="proftpd-success">
   <parent>proftpd</parent>  
   <prematch>: Login successful</prematch>
-  <regex>^proftpd[\d+]: \S+ \(\S+[(\d+.\d+.\d+.\d+)]\)\s*\S \w+ (\S+): </regex>
+  <regex>^\S+ \(\S+[(\d+.\d+.\d+.\d+)]\)\s*\S \w+ (\S+): </regex>
   <regex>Login successful</regex>
-  <order>srcip,user</order>
-  <fts>name,user,srcip,location</fts>
-  <ftscomment>First time user logged in via FTP.</ftscomment>
+  <order>srcip, user</order>
+  <fts>name, user, srcip, location</fts>
 </decoder>
 
 <decoder name="proftpd-ip">
   <parent>proftpd</parent>
-  <regex>^proftpd[\d+]: \S+ \(\S+[(\d+.\d+.\d+.\d+)]\)</regex>
+  <regex>^\S+ \(\S+[(\d+.\d+.\d+.\d+)]\)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -280,21 +275,20 @@
   - pure-ftpd: (?@59.150.14.54) [WARNING] Authentication failed for user [newuser]
   -->
 <decoder name="pure-ftpd">
-  <prematch>^pure-ftpd</prematch>
+  <program_name>^pure-ftpd</program_name>
 </decoder>
 
 <decoder name="pure-ftpd-login">
   <parent>pure-ftpd</parent>
-  <prematch>[INFO] \S+ is now logged in</prematch>
-  <regex>\(?@(\S+)\) [INFO] (\S+) is now logged in</regex>
-  <order>srcip,user</order>
-  <fts>name,user,srcip,location</fts>
-  <ftscomment>First time user logged in via FTP</ftscomment>
+  <prematch>^\S+ [INFO] \S+ is now logged in</prematch>
+  <regex>^\(?@(\S+)\) [INFO] (\S+) is now logged in</regex>
+  <order>srcip, user</order>
+  <fts>name, user, srcip, location</fts>
 </decoder>
 
 <decoder name="pure-ftpd-generic">
   <parent>pure-ftpd</parent>
-  <regex>: \((\S+)@(\S+)\) [</regex>
+  <regex>^\((\S+)@(\S+)\) [</regex>
   <order>user,srcip</order>
 </decoder>  
 
@@ -324,12 +318,12 @@
   - ftpd[31918]: FTPD: EXPORT file local , remote
   -->
 <decoder name="ftpd">
-  <prematch>^ftpd[\d+]: |^in.ftpd[\d+]: </prematch>
+  <program_name>^ftpd|^in.ftpd</program_name>
 </decoder>
 
 <decoder name="ftpd-ip">
   <parent>ftpd</parent>
-  <regex>FROM (\d+.\d+.\d+.\d+), |from (\d+.\d+.\d+.\d+)</regex>
+  <regex>from (\d+.\d+.\d+.\d+)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -342,16 +336,15 @@
   - arpwatch: new station 192.168.2.10 0:c0:4f:78:32:be
   -->
 <decoder name="arpwatch">
-  <prematch>^arpwatch: </prematch>
+  <program_name>^arpwatch</program_name>
 </decoder>
 
 <decoder name="arpwatch-new">
   <parent>arpwatch</parent>
-  <prematch offset="after_parent">^new station |^bogon </prematch>
+  <prematch>^new station |^bogon </prematch>
   <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) (\S+)</regex>
   <order>srcip, data</order>
   <fts>name, srcip, data</fts>
-  <ftscomment>New host in the network.</ftscomment>
 </decoder>
 
 
@@ -365,8 +358,8 @@
   - imapd[27113]: Logout user=badyy host=a.resenet.com.br [1.2.3.4]  
   -->
 <decoder name="imapd">
-  <prematch>^imapd[\d+]: </prematch>
-  <regex offset="after_prematch">user=(\S+) \.+ [(\d+.\d+.\d+.\d+)]</regex>    
+  <program_name>^imapd</program_name>
+  <regex offset="after_prematch">user=(\S+) \.+ [(\d+.\d+.\d+.\d+)]$</regex>    
   <order>user,srcip</order>
 </decoder>
 
@@ -378,21 +371,21 @@
   - vpopmail[2100]: vchkpw-pop3: vpopmail user not found abc@xxx.com:x.x.x.x
   -->
 <decoder name="vpopmail">
-  <prematch>^vpopmail[\d+]: </prematch>
+  <program_name>^vpopmail</program_name>
 </decoder>
 
 <decoder name="vpopmail-fail">
   <parent>vpopmail</parent>
-  <prematch offset="after_parent">^vchkpw-pop3: password fail</prematch>
-  <regex offset="after_prematch">^ (\S+)@\S+:(\d+.\d+.\d+.\d+)</regex>
-  <order>user,srcip</order>
+  <prematch>^vchkpw-pop3: password fail</prematch>
+  <regex offset="after_prematch">^ (\S+)@\S+:(\d+.\d+.\d+.\d+)$</regex>
+  <order>user, srcip</order>
 </decoder>
 
 <decoder name="vpopmail-notfound">
   <parent>vpopmail</parent>
-  <prematch offset="after_parent">^vchkpw-pop3: vpopmail user not </prematch>
+  <prematch>^vchkpw-pop3: vpopmail user not </prematch>
   <regex offset="after_prematch">^found (\S+)@\S+:(\d+.\d+.\d+.\d+)</regex>
-  <order>user,srcip</order>
+  <order>user, srcip</order>
 </decoder>
 
 
@@ -401,15 +394,15 @@
   - Will extract the srcip
   - Examples:
   -  valhalla named[7885]: client 192.168.1.231#1142: update 'hayaletgemi.edu/IN' denied
-  - named[12637]: client XXX.XXX.XXX.XXX#32769: query (cache) 'somedomain.com/MX/IN' denied
+  - named[12637]: client 1.2.3.4#32769: query (cache) 'somedomain.com/MX/IN' denied
  -->           
 <decoder name="named">
-  <prematch>^named[\d+]: </prematch>
+  <program_name>^named</program_name>
 </decoder>
 
 <decoder name="named_client">
   <parent>named</parent>  
-  <prematch offset="after_parent">^client </prematch>
+  <prematch>^client </prematch>
   <regex offset="after_prematch">^(\d+.\d+.\d+.\d+)#</regex>
   <order>srcip</order>
 </decoder>
@@ -430,7 +423,7 @@
  -->
 
 <decoder name="postfix">
-  <prematch>^postfix/\S+[\d+]: </prematch>
+  <program_name>^postfix</program_name>
 </decoder>
 
 <decoder name="postfix-reject">
@@ -456,26 +449,26 @@
   - sendmail[7818]: j6KKHo2d007818: rejecting commands from sv.e103gng.com [66.62.19.10] due to pre-greeting traffic
  -->
 <decoder name="sendmail-reject">
-  <prematch>^sendmail[\d+]: |^sm-mta[\d+]: |^sm-msp-queue[\d+]: </prematch>
+  <program_name>^sendmail|^sm-mta|^sm-msp-queue</program_name>
 </decoder>  
 
 <decoder name="sendmail-pre-greeting">
   <parent>sendmail-reject</parent>
-  <prematch  offset="after_parent">^\S+: rejecting commands from</prematch>
+  <prematch>^\S+: rejecting commands from</prematch>
   <regex offset="after_prematch">^ \S+ [(\d+.\d+.\d+.\d+)]</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="sendmail-reject-nodns">
   <parent>sendmail-reject</parent>
-  <prematch offset="after_parent">relay=[</prematch>
+  <prematch>relay=[</prematch>
   <regex offset="after_prematch">^(\d+.\d+.\d+.\d+)]</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="sendmail-reject-dns">
   <parent>sendmail-reject</parent>
-  <prematch  offset="after_parent">relay=\S+ [</prematch>
+  <prematch>relay=\S+ [</prematch>
   <regex offset="after_prematch">^(\d+.\d+.\d+.\d+)]</regex>
   <order>srcip</order>
 </decoder>
@@ -495,12 +488,12 @@
   - MailScanner[29107]: Message j0EMandY027564 from xxx.xxx.xxx.xxx(xxxxx@xxxxx.ie) to xxxxx.ie is not spam
   -->
 <decoder name="mailscanner">
-  <prematch>^MailScanner[\d+]: </prematch>
+  <program_name>^MailScanner</program_name>
 </decoder>
 
 <decoder name="mailscanner-ip">
   <parent>mailscanner</parent>
-  <prematch offset="after_parent">^Message \S+ from </prematch>
+  <prematch>^Message \S+ from </prematch>
   <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) \S+ to \S+ is (\w+)</regex>
   <order>srcip, action</order>
 </decoder>
@@ -522,15 +515,15 @@
   - Aug 17 10:03:37 myhostname kernel: SFW2-INext-DROP-DEFLT IN=eth0 OUT= MAC=00:08:02:da:c8:51:00:0f:f7:74:31:8a:08:00 SRC=1.2.3.36 DST=1.2.3.194 LEN=28 TOS=0x00 PREC=0x00 TTL=44 ID=60200 PROTO=ICMP TYPE=8 CODE=0 ID=10466 SEQ=21229   
   -->
 <decoder name="iptables">
-   <prematch>^kernel: </prematch>
+   <program_name>^kernel</program_name>
 </decoder>
      
 <decoder name="iptables-1">
    <parent>iptables</parent>
    <type>firewall</type>
-   <prematch offset="after_parent">^[\d+.\d+] \S+ IN=</prematch>
+   <prematch>^[\d+.\d+] \S+ IN=</prematch>
    
-   <regex offset="after_parent">^[\d+.\d+] (\S+) \.+ SRC=(\S+) DST=(\S+)</regex>
+   <regex>^[\d+.\d+] (\S+) \.+ SRC=(\S+) DST=(\S+)</regex>
    <regex> \.+ PROTO=(\w+) </regex>
    <order>action,srcip,dstip,protocol</order>
 </decoder>
@@ -545,9 +538,9 @@
 <decoder name="iptables-2">
    <parent>iptables</parent>
    <type>firewall</type>
-   <prematch offset="after_parent">^\S+ IN=</prematch>
+   <prematch>^\S+ IN=</prematch>
    
-   <regex offset="after_parent">^(\S+) \.+ SRC=(\S+) DST=(\S+) \.+ </regex>
+   <regex>^(\S+) \.+ SRC=(\S+) DST=(\S+) \.+ </regex>
    <regex>PROTO=(\w+) </regex>
    <order>action,srcip,dstip,protocol</order>
 </decoder>
@@ -574,7 +567,7 @@
 
 <decoder name="ipfilter">
    <type>firewall</type>
-   <prematch>^ipmon[\d+]: </prematch>
+   <program_name>^ipmon</program_name>
    <regex offset="after_prematch"> (\w) (\d+.\d+.\d+.\d+),(\d+) -> </regex>
    <regex>(\d+.\d+.\d+.\d+),(\d+) PR (\w+) </regex>
    <order>action,srcip,srcport,dstip,dstport,protocol</order>
@@ -591,7 +584,7 @@
  -->
 <decoder name="aix-ipsec">
    <type>firewall</type>
-   <prematch>^ipsec_logd: </prematch>
+   <program_name>^ipsec_logd</program_name>
    <regex> R:(\w)  \w:\S+ S:(\d+.\d+.\d+.\d+) </regex>
    <regex>D:(\d+.\d+.\d+.\d+) P:(\S+) SP:(\d+) DP:(\d+) </regex>
    <order>action,srcip,dstip,protocol,srcport,dstport</order>
@@ -607,7 +600,8 @@
   -  NetScreen device_id=ns5gt [Root]system-critical-00027: Multiple login failures occurred for user netscreen from IP address 1.2.3.4:1567 (2004-10-07)
   -->
 <decoder name="netscreenfw">
-  <prematch>^\w+: NetScreen device_id</prematch>
+  <program_name>^sav00|^ns5gt</program_name>
+  <prematch>^NetScreen device_id</prematch>
 </decoder>  
 
 <decoder name="netscreenfw-traffic">
@@ -773,13 +767,12 @@
   -->
 <decoder name="snort">
    <type>ids</type>
-   <prematch>^snort: [\d+:\d+:\d+] |^snort[\d+]: [\d+:\d+:\d+] |</prematch>
-   <prematch>^[**] [\d+:\d+:\d+] </prematch>
+   <program_name>^snort</program_name>
+   <prematch>^[\d+:\d+:\d+] |^[**] [\d+:\d+:\d+] </prematch>
    <regex>^\S+ [(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+)\p*\d* -> </regex>
    <regex>(\d+.\d+.\d+.\d+)</regex>
    <order>id,srcip,dstip</order>
    <fts>name,id,srcip,dstip</fts>
-   <ftscomment>First time Snort rule fired.</ftscomment>
 </decoder>
 
    
@@ -821,7 +814,8 @@
   - httpd[23745]: [error] [client 12.34.56.78] PHP Notice:
   -->
 <decoder name="apache-errorlog">
-  <prematch>^[warn] |^[notice] |^[error] |^httpd[\d+]: [\w+] </prematch>
+  <program_name>^httpd</program_name>
+  <prematch>^[warn] |^[notice] |^[error] </prematch>
 </decoder>  
 
 <decoder name="apache-errorlog-ip">

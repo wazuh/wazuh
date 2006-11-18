@@ -176,6 +176,14 @@ int OS_StrHowClosedMatch(char *str1, char *str2);
 int OS_StrIsNum(char *str);
 
 
+/** int isValidChar(char c)
+ * Checks if a specified char is in the following range:
+ * a-z, A-Z, 0-9, _-.
+ */
+#include "os_regex_maps.h" 
+#define isValidChar(x) (hostname_map[(unsigned char)x])
+
+
 #endif
 
 

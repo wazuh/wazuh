@@ -96,7 +96,6 @@ void HandleSecure()
         /* Nothing received */
         if(recv_b <= 0)
         {
-            merror("%s: XXX 0 size message received", ARGV0);
             continue;
         }
 
@@ -108,20 +107,56 @@ void HandleSecure()
 
 
         /* Getting a valid agentid */ 
-        agentid = IsAllowedIP(&keys, srcip); 
-        if(agentid < 0)
+        if(buffer[0] == '!')
         {
-            merror(DENYIP_ERROR,ARGV0,srcip);
-            continue;
+            tmp_msg = buffer;
+            tmp_msg++;
+            
+            
+            /* We need to make sure that we have a valid id
+             * and that we reduce the recv buffer size.
+             */
+            while(isdigit(*tmp_msg))
+            {
+                tmp_msg++;
+                recv_b--;
+            }
+
+            if(*tmp_msg != '!')
+            {
+                merror(ENCFORMAT_ERROR, __local_name, srcip);
+                continue;
+            }
+
+            *tmp_msg = '\0';
+            tmp_msg++;
+            recv_b-=2;
+
+            agentid = IsAllowedDynamicID(&keys, buffer +1, srcip);
+            if(agentid == -1)
+            {
+                merror(ENC_IP_ERROR, __local_name, srcip);
+                continue;
+            }
+        }
+        else
+        {
+            agentid = IsAllowedIP(&keys, srcip); 
+            if(agentid < 0)
+            {
+                merror(DENYIP_ERROR,ARGV0,srcip);
+                continue;
+            }
+            tmp_msg = buffer;
         }
         
 
         /* Decrypting the message */    
-        tmp_msg = ReadSecMSG(&keys, buffer, cleartext_msg,
-                agentid,recv_b -1);
+        tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg,
+                             agentid, recv_b -1);
         if(tmp_msg == NULL)
         {
-            /* If not duplicated, a warning was already generated */
+            /* If duplicated, a warning was already generated */
             continue;
         }
 
@@ -140,7 +175,8 @@ void HandleSecure()
 
 
         /* Generating srcmsg */
-        snprintf(srcmsg, OS_FLSIZE, "(%s) %s", keys.name[agentid], srcip);
+        snprintf(srcmsg, OS_FLSIZE, "(%s) %s", keys.name[agentid], 
+                                               keys.ips[agentid]->ip);
         
 
         /* If we can't send the message, try to connect to the

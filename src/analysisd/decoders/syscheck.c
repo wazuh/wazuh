@@ -616,8 +616,8 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
 
         /* Creating a new log message */
-        free(lf->log);
-        os_strdup(sdb.comment2, lf->log);
+        free(lf->full_log);
+        os_strdup(sdb.comment2, lf->full_log);
 
         OS_Log(lf);
 
@@ -650,8 +650,8 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         
 
         /* Creating a new log message */
-        free(lf->log);
-        os_strdup(sdb.comment2, lf->log);
+        free(lf->full_log);
+        os_strdup(sdb.comment2, lf->full_log);
 
         OS_Log(lf);
 
@@ -681,6 +681,7 @@ void DecodeSyscheck(Eventinfo *lf)
     /* checking if we need to check it in here */
     if(!(sdb.syscheck_rule->alert_opts & DO_LOGALERT))
         return;
+        
         
         
     /* Every syscheck message must be in the following format:

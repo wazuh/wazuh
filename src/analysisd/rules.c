@@ -1,6 +1,6 @@
-/*   $OSSEC, rules.c, v0.6, 2005/10/30, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -10,26 +10,10 @@
  */
 
 
-/* Functions to handle operation with the rules
- */
-
-/* v0.1: 2004/04/05
- * v0.2: 2004/08/09
- * v0,3: 2005/03/27 (support to new OS_XML)
- * v0.4: 2005/05/30 (using a list instead of an array)
- * v0.5: 2005/09/21: Adding if_matched_sid and fix the priority of level 0
- * v0.6: 2005/10/30: Adding support for the active response
- */
- 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-
+#include "shared.h"
 #include "os_regex/os_regex.h"
 #include "os_xml/os_xml.h"
 
-#include "shared.h"
 
 #include "rules.h"
 #include "config.h"
@@ -155,7 +139,7 @@ int Rules_OP_ReadRules(char * rulefile)
     /* Applying any variable found */
     if(OS_ApplyVariables(&xml) != 0)
     {
-        merror(XML_ERROR_VAR, ARGV0);
+        merror(XML_ERROR_VAR, ARGV0, rulepath);
         return(-1);
     }
 
@@ -164,7 +148,7 @@ int Rules_OP_ReadRules(char * rulefile)
     node = OS_GetElementsbyNode(&xml,NULL);
     if(!node)
     {
-        merror(CONFIG_ERROR, ARGV0);
+        merror(CONFIG_ERROR, ARGV0, rulepath);
         OS_ClearXML(&xml);
         return(-1);    
     }

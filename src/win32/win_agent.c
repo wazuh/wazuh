@@ -178,7 +178,7 @@ int local_start()
     /* Reading logcollector config file */
     debug1("%s: DEBUG: Reading logcollector configuration.", ARGV0);
     if(LogCollectorConfig(cfg) < 0)
-        ErrorExit(CONFIG_ERROR, ARGV0);
+        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     
 
     /* Reading the private keys  */

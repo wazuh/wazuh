@@ -1,4 +1,4 @@
-/*   $OSSEC, decoder.c, 2005/06/21, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -29,6 +29,7 @@
  */
 void DecodeEvent(Eventinfo *lf)
 {
+    int p_name_size = 0;
     PluginNode *node;
     PluginNode *child_node;
     PluginInfo *nnode;
@@ -42,11 +43,15 @@ void DecodeEvent(Eventinfo *lf)
 
 
     /* Return if no node...
-     * This shouldn't happen here anyways
+     * This shouldn't happen here anyways.
      */
     if(!node)
         return;
 
+    if(lf->program_name)
+    {
+        p_name_size = strlen(lf->program_name);
+    }
 
     do 
     {
@@ -54,15 +59,32 @@ void DecodeEvent(Eventinfo *lf)
         {
             nnode = node->plugin;
 
+
+            /* First checking program name */
+            if(nnode->program_name && lf->program_name)
+            {
+                if(!OSMatch_Execute(lf->program_name, p_name_size, 
+                                    nnode->program_name))
+                {
+                    continue;
+                }
+                pmatch = lf->log;
+            }
+
             
             /* If prematch fails, go to the next plugin in the list */
-            if(!(pmatch = OSRegex_Execute(lf->log,nnode->prematch)))
-                continue;
-
-            /* Next character */
-            if(*pmatch != '\0')
-                pmatch++;
+            if(nnode->prematch)
+            {
+                if(!(pmatch = OSRegex_Execute(lf->log,nnode->prematch)))
+                {
+                    continue;
+                }
                 
+                /* Next character */
+                if(*pmatch != '\0')
+                    pmatch++;
+            }
+
             lf->log_tag = nnode->name;
 
             child_node = node->child;

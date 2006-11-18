@@ -21,6 +21,7 @@
 
 	/***  Error messages - English ***/
 
+
 /* SYSTEM ERRORS */
 #define EXITING       "Exiting."
 #define FORK_ERROR	  "%s(1101): Unable to fork. Exiting."
@@ -46,7 +47,7 @@
 
 /* COMMON ERRORS */
 #define CONN_ERROR 	    "%s(1201): No remote connection configured."
-#define CONFIG_ERROR	"%s(1202): Configuration problem. Exiting."
+#define CONFIG_ERROR	"%s(1202): Configuration error at '%s'. Exiting."
 #define USER_ERROR	    "%s(1203): Invalid user '%s' or group '%s' given."
 #define CONNTYPE_ERROR 	"%s(1204): Invalid connection type: '%s'."
 #define PORT_ERROR	    "%s(1205): No port specified. Using default: '%d'."
@@ -68,10 +69,10 @@
 #define QUEUE_SEND      "%s(1224): Error sending message to queue."
 #define SIGNAL_RECV     "%s(1225): SIGNAL Received. Exit Cleaning..."
 #define XML_ERROR       "%s(1226): Error reading XML file '%s': %s (line %d)."
-#define XML_ERROR_VAR   "%s(1227): Error applying XML variables."
+#define XML_ERROR_VAR   "%s(1227): Error applying XML variables: '%s'."
 #define XML_NO_ELEM     "%s(1228): Element '%s' without any option."
 #define XML_INVALID     "%s(1229): Invalid element '%s' on the '%s' config."
-#define XML_INVELEM     "%s(1230): Invalid element in the configuration: %s."
+#define XML_INVELEM     "%s(1230): Invalid element in the configuration: '%s'."
 #define XML_ELEMNULL    "%s(1231): Invalid NULL element in the configuration."
 #define XML_READ_ERROR  "%s(1232): Error reading XML. Unknown."
 #define XML_VALUENULL   "%s(1234): Invalid NULL content for element: %s."
@@ -106,12 +107,12 @@
 
 
 /* Analysisd */
-#define FTS_LIST_ERROR  "%s(1260): Error initiating FTS list"
-#define CRAFTED_IP      "%s(1271): Invalid IP Address '%s'. Possible attack."
-#define CRAFTED_USER    "%s(1272): Invalid username '%s'. Possible attack."
-#define INVALID_CAT     "%s(1273): Invalid category '%s' chosen."
-#define INVALID_CONFIG  "%s(1274): Invalid configuration. Element '%s': %s."
-
+#define FTS_LIST_ERROR   "%s(1260): Error initiating FTS list"
+#define CRAFTED_IP       "%s(1271): Invalid IP Address '%s'. Possible attack."
+#define CRAFTED_USER     "%s(1272): Invalid username '%s'. Possible attack."
+#define INVALID_CAT      "%s(1273): Invalid category '%s' chosen."
+#define INVALID_CONFIG   "%s(1274): Invalid configuration. Element '%s': %s."
+#define INVALID_HOSTNAME "%s(1275): Invalid hostname in syslog message: '%s'."
 
 /* Log collector */
 
@@ -162,9 +163,10 @@
 #define NO_AUTHFILE     "%s(1402): Authentication key file '%s' not found."
 #define ENCFORMAT_ERROR "%s(1403): Incorrectly formated message from '%s'."
 #define ENCKEY_ERROR    "%s(1404): Authentication error. Wrong key from '%s'."
-#define ENCSIZE_ERROR   "%s(1405): Message size not valid: '%s'."                                   
+#define ENCSIZE_ERROR   "%s(1405): Message size not valid: '%s'."
 #define ENCSUM_ERROR    "%s(1406): Checksum mismatch on message from '%s'."
 #define ENCTIME_ERROR   "%s(1407): Duplicated counter for '%s'."
+#define ENC_IP_ERROR    "%s(1408): Invalid ID for the source ip: '%s'."
 
                                    
 /* Regex errors */

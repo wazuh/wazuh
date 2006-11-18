@@ -210,7 +210,6 @@ int getDefine_Int(char *high_name, char *low_name, int min, int max)
 }
 
 
-     
 /** int OS_IPFound(char *ip_address, os_ip *that_ip)
  * Checks if ip_address is present at that_ip.
  * Returns 1 on success or 0 on failure.

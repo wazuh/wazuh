@@ -106,7 +106,7 @@ int main(int argc, char **argv)
     /* Reading config */
     if((c = ExecdConfig(xmlcfg)) < 0)
     {
-        ErrorExit(CONFIG_ERROR, ARGV0);
+        ErrorExit(CONFIG_ERROR, ARGV0, xmlcfg);
     }
 
 

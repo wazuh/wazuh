@@ -1,4 +1,4 @@
-/*   $OSSEC, decode-xml.c, v0.1, 2005/06/21, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -10,17 +10,10 @@
  */
 
 
-/* v0.1: 2005/06/21
- */
- 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
+#include "shared.h"
 #include "os_regex/os_regex.h"
 #include "os_xml/os_xml.h"
 
-#include "shared.h"
 
 #include "eventinfo.h"
 #include "decoder.h"
@@ -77,7 +70,7 @@ int ReadDecodeAttrs(char **names, char **values)
 
 
 /* ReaddecodeXML */
-void ReadDecodeXML(char *file)
+int ReadDecodeXML(char *file)
 {
     
     OS_XML xml;
@@ -90,6 +83,7 @@ void ReadDecodeXML(char *file)
     char *xml_decoder_name = "name";
     char *xml_usename = "use_own_name";
     char *xml_parent = "parent";
+    char *xml_program_name = "program_name";
     char *xml_prematch = "prematch";
     char *xml_regex = "regex";
     char *xml_order = "order";
@@ -104,24 +98,25 @@ void ReadDecodeXML(char *file)
     /* Reading the XML */       
     if(OS_ReadXML(file,&xml) < 0)
     {
-        ErrorExit("decode-xml: XML error: %s",xml.err);
+        merror(XML_ERROR, ARGV0, file, xml.err, xml.err_line);
+        return(0);
     }
 
     
     /* Applying any variable found */
     if(OS_ApplyVariables(&xml) != 0)
     {
-        ErrorExit("decode-xml: Unable to apply the variables.");
+        merror(XML_ERROR_VAR, ARGV0, file);
+        return(0);
     }
 
 
     /* Getting the root elements */
-    node = OS_GetElementsbyNode(&xml,NULL);
+    node = OS_GetElementsbyNode(&xml, NULL);
     if(!node)
     {
-        merror("decode-xml: Bad formated decode.xml file");
-        OS_ClearXML(&xml);
-        ErrorExit("decode-xml: Cannot proceed from here");
+        merror(XML_ERROR_VAR, ARGV0, file);
+        return(0);
     }
 
 
@@ -136,13 +131,14 @@ void ReadDecodeXML(char *file)
         int j = 0;
         char *regex;
         char *prematch;
+        char *p_name;
 
         
         if(!node[i]->element || 
-            strcasecmp(node[i]->element,xml_decoder) != 0)
+            strcasecmp(node[i]->element, xml_decoder) != 0)
         {
-            ErrorExit("decode-xml: Invalid decode option: '%s'",
-                                   node[i]->element);
+            merror(XML_INVELEM, ARGV0, node[i]->element);
+            return(0);
         }
        
         if((!node[i]->attributes) || (!node[i]->values)||
@@ -150,8 +146,8 @@ void ReadDecodeXML(char *file)
            (strcasecmp(node[i]->attributes[0],xml_decoder_name)!= 0)||
            (node[i]->attributes[1]))
         {
-            ErrorExit("decode-xml: Invalid decoder. The only attribute "
-                      "acceptable is the decoder name");
+            merror(XML_INVELEM, ARGV0, node[i]->element);
+            return(0);
         }
 
          
@@ -159,15 +155,16 @@ void ReadDecodeXML(char *file)
         elements = OS_GetElementsbyNode(&xml,node[i]);
         if(elements == NULL)
         {
-            ErrorExit("decode-xml: Decoder '%s' without any option",
-                    node[i]->element);
+            merror(XML_ELEMNULL, ARGV0);
+            return(0);
         }
 
         /* Creating the PluginInfo */
         pi = (PluginInfo *)calloc(1,sizeof(PluginInfo));
         if(pi == NULL)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            merror(MEM_ERROR,ARGV0);
+            return(0);
         }
         
         
@@ -179,6 +176,7 @@ void ReadDecodeXML(char *file)
         pi->fts = 0;
         pi->type = SYSLOG;
         pi->prematch = NULL;
+        pi->program_name = NULL;
         pi->regex = NULL;
         pi->use_own_name = 0;
         pi->get_next = 0;
@@ -187,25 +185,31 @@ void ReadDecodeXML(char *file)
         
         regex = NULL;
         prematch = NULL;
+        p_name = NULL;
        
+       
+        /* Checking if strdup worked */
         if(!pi->name)
         {
-            ErrorExit(MEM_ERROR, ARGV0);
+            merror(MEM_ERROR, ARGV0);
+            return(0);
         }
         
         
         /* Looping on all the elements */
         while(elements[j])
         {
-            /* Checking if the rule name is correct */
-            if((!elements[j]->element)||(!elements[j]->content))
+            if(!elements[j]->element)
             {
-                merror("decode-xml: Invalid element on '%s'",
-                        node[i]->element);
-                OS_ClearXML(&xml);
-                ErrorExit("decode-xml: Leaving..");
+                merror(XML_ELEMNULL, ARGV0);
+                return(0);
             }
-
+            else if(!elements[j]->content)
+            {
+                merror(XML_VALUENULL, ARGV0, elements[j]->element);
+                return(0);
+            }
+                                                                                                                    
             /* Checking if it is a child of a rule */
             else if(strcasecmp(elements[j]->element, xml_parent) == 0)
             {
@@ -221,14 +225,16 @@ void ReadDecodeXML(char *file)
                 
                 if(r_offset & AFTER_ERROR)
                 {
-                    ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+                    merror(DEC_REGEX_ERROR, ARGV0, pi->name);
+                    return(0);
                 }
                 
                 /* Only the first regex entry may have an offset */ 
                 if(regex && r_offset)
                 {
                     merror(DUP_REGEX, ARGV0, pi->name);
-                    ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+                    merror(DEC_REGEX_ERROR, ARGV0, pi->name);
+                    return(0);
                 }
                 
                 /* regex offset */
@@ -267,6 +273,12 @@ void ReadDecodeXML(char *file)
                             elements[j]->content);
             }
 
+            /* Getting program name */
+            else if(strcasecmp(elements[j]->element,xml_program_name) == 0)
+            {
+                p_name = _loadmemory(p_name, elements[j]->content);
+            }
+
             /* Getting the fts comment */
             else if(strcasecmp(elements[j]->element,xml_ftscomment)==0)
             {
@@ -301,8 +313,9 @@ void ReadDecodeXML(char *file)
                     pi->type = HOST_INFO;
                 else
                 {
-                    ErrorExit("decode-xml: Invalid decoder type '%s'.",
-                               elements[j]->content);
+                    merror("%s: Invalid decoder type '%s'.",
+                               ARGV0, elements[j]->content);
+                    return(0);
                 }
             }
                          
@@ -467,11 +480,12 @@ void ReadDecodeXML(char *file)
             }
             else
             {
-                merror("decode-xml: Invalid element '%s' for "
-                        "decoder %s",elements[j]->element,
+                merror("%s: Invalid element '%s' for "
+                        "decoder '%s'",
+                        ARGV0,
+                        elements[j]->element,
                         node[i]->element);
-                OS_ClearXML(&xml);
-                ErrorExit("decode-xml: Bad Configuration");
+                return(0);
             }
 
             /* NEXT */
@@ -483,16 +497,18 @@ void ReadDecodeXML(char *file)
         
 
         /* Prematch must be set */
-        if(!prematch && !pi->parent)
+        if(!prematch && !pi->parent && !p_name)
         {
-            ErrorExit(DECODE_NOPRE, ARGV0, pi->name);
-            ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+            merror(DECODE_NOPRE, ARGV0, pi->name);
+            merror(DEC_REGEX_ERROR, ARGV0, pi->name);
+            return(0);
         }
 
         /* If pi->regex is not set, fts must not be set too */
         if((!regex && (pi->fts || pi->order)) || (regex && !pi->order))
         {
-            ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+            merror(DEC_REGEX_ERROR, ARGV0, pi->name);
+            return(0);
         }
         
 
@@ -500,7 +516,8 @@ void ReadDecodeXML(char *file)
         if(pi->regex_offset & AFTER_PARENT && !pi->parent)
         {
             merror(INV_OFFSET, ARGV0, "after_parent");
-            ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+            merror(DEC_REGEX_ERROR, ARGV0, pi->name);
+            return(0);
         }
         
         if(pi->regex_offset & AFTER_PREMATCH)
@@ -517,7 +534,8 @@ void ReadDecodeXML(char *file)
             else if(!prematch)
             {
                 merror(INV_OFFSET, ARGV0, "after_prematch");
-                ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+                merror(DEC_REGEX_ERROR, ARGV0, pi->name);
+                return(0);
             }
         }
         
@@ -527,7 +545,8 @@ void ReadDecodeXML(char *file)
             if(!pi->parent || !regex)
             {
                 merror(INV_OFFSET, ARGV0, "after_regex");
-                ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+                merror(DEC_REGEX_ERROR, ARGV0, pi->name);
+                return(0);
             }
         }
         
@@ -541,13 +560,14 @@ void ReadDecodeXML(char *file)
                 if(!pi->parent)
                 {
                     merror(INV_OFFSET, ARGV0, "after_parent");
-                    ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
-
+                    merror(DEC_REGEX_ERROR, ARGV0, pi->name);
+                    return(0);
                 }
             }
             else
             {
-                ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
+                merror(DEC_REGEX_ERROR, ARGV0, pi->name);
+                return(0);
             }
         }
 
@@ -558,12 +578,25 @@ void ReadDecodeXML(char *file)
             os_calloc(1, sizeof(OSRegex), pi->prematch);
             if(!OSRegex_Compile(prematch, pi->prematch, 0))
             {
-                ErrorExit(REGEX_COMPILE, ARGV0, prematch, pi->prematch->error);
+                merror(REGEX_COMPILE, ARGV0, prematch, pi->prematch->error);
+                return(0);
             }
 
             free(prematch);
         }
         
+        /* Compiling the p_name */
+        if(p_name)
+        {
+            os_calloc(1, sizeof(OSMatch), pi->program_name);
+            if(!OSMatch_Compile(p_name, pi->program_name, 0))
+            {
+                merror(REGEX_COMPILE, ARGV0, p_name, "compile failed");
+                return(0);
+            }
+
+            free(p_name);
+        }
         
         /* We may not have the pi->regex */
         if(regex)
@@ -571,13 +604,15 @@ void ReadDecodeXML(char *file)
             os_calloc(1, sizeof(OSRegex), pi->regex);
             if(!OSRegex_Compile(regex, pi->regex, OS_RETURN_SUBSTRING))
             {
-                ErrorExit(REGEX_COMPILE, ARGV0, regex, pi->regex->error);
+                merror(REGEX_COMPILE, ARGV0, regex, pi->regex->error);
+                return(0);
             }
 
             /* We must have the sub_strings to retrieve the nodes */
             if(!pi->regex->sub_strings)
             {
-                ErrorExit(REGEX_SUBS, ARGV0, regex);
+                merror(REGEX_SUBS, ARGV0, regex);
+                return(0);
             }
 
             free(regex);
@@ -586,7 +621,8 @@ void ReadDecodeXML(char *file)
         /* Adding plugin to the list */
         if(!OS_AddPlugin(pi))
         {
-            ErrorExit(DECODER_ERROR, ARGV0);        
+            merror(DECODER_ERROR, ARGV0);        
+            return(0);
         }
 
         i++;
@@ -598,7 +634,7 @@ void ReadDecodeXML(char *file)
     OS_ClearXML(&xml);
 
     /* Done over here */
-    return;
+    return(1);
 }
 
 

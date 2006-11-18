@@ -157,7 +157,7 @@ int rootcheck_init(int test_config)
 
     if(Read_Rootcheck_Config(cfg, &rootcheck) < 0)
     {
-        ErrorExit(CONFIG_ERROR, ARGV0);
+        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
 
 

@@ -70,7 +70,7 @@ void OS_Log(Eventinfo *lf)
             lf->generated_rule->comment,
             lf->srcip == NULL?"(none)":lf->srcip,
             lf->user == NULL?"(none)":lf->user,
-            lf->log);
+            lf->full_log);
 
 
     /* Printing the last events if present */

@@ -61,7 +61,7 @@ int Start_win32_Syscheck()
     /* Read syscheck config */
     if((r = Read_Syscheck_Config(cfg)) < 0)
     {
-        ErrorExit(CONFIG_ERROR, ARGV0);
+        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
     /* Disabled */
     else if(r == 1)
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
     /* Read syscheck config */
     if((r = Read_Syscheck_Config(cfg)) < 0)
     {
-        ErrorExit(CONFIG_ERROR, ARGV0);
+        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
     else if(r == 1)
     {

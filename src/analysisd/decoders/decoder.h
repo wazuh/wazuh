@@ -28,17 +28,18 @@
 /* Plugin structure */
 typedef struct
 {
-    u_int8_t get_next;
-    u_int8_t regex_offset;
-    u_int8_t prematch_offset;
-    u_int8_t type;
-    u_int8_t use_own_name;
+    u_int8_t  get_next;
+    u_int16_t regex_offset;
+    u_int16_t prematch_offset;
+    u_int8_t  type;
+    u_int8_t  use_own_name;
     
     int fts;
     char *parent;
     char *name;
     OSRegex *regex;
     OSRegex *prematch;
+    OSMatch *program_name;
     char *ftscomment;
     void (**order)(Eventinfo *lf, char *field);
 }PluginInfo;

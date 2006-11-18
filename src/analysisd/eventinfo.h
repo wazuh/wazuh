@@ -27,8 +27,10 @@ typedef struct _Eventinfo
 {
     /* Extracted from the event */
     char *log;
+    char *full_log;
     char *location;
     char *hostname;
+    char *program_name;
 
     /* A tag for this specific event */
     char *log_tag;
@@ -68,7 +70,7 @@ typedef struct _Eventinfo
     int time;
     int day;
     int year;
-    char *hour;
+    char hour[9];
     char mon[4];
 }Eventinfo;
 

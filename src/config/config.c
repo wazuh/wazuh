@@ -163,7 +163,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
             {
                 if(read_main_elements(xml, modules, chld_node, d1, d2) < 0)
                 {
-                    merror(CONFIG_ERROR, ARGV0);
+                    merror(CONFIG_ERROR, ARGV0, cfgfile);
                     return(OS_INVALID);
                 }
 

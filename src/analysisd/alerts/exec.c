@@ -1,6 +1,6 @@
-/*   $OSSEC, exec.c, v0.2, 2005/02/10, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -11,15 +11,10 @@
 
 /* Basic e-mailing operations */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "alerts.h"
 
 #include "shared.h"
 #include "rules.h"
+#include "alerts.h"
 #include "config.h"
 #include "active-response.h"
 
@@ -37,7 +32,6 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     char exec_msg[OS_SIZE_1024 +1];
     char *ip;
     char *user;
-    char *location;
 
 
     /* Cleaning the IP */
@@ -103,23 +97,13 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
         }
     }
    
-    /* Removing (agent_name) if present */
-    if((location = strchr(lf->location, ')')) != NULL)
-    {
-        /* Going after the ) */
-        location+=2;
-    }
-    else
-    {
-        location = lf->location;
-    }
-    
+
     /* Active response to the forwarder */ 
     if(Config.ar & REMOTE_AR)
     {
         snprintf(exec_msg, OS_SIZE_1024,
                 "%s %c%c%c %s %s %s %s",
-                location,
+                lf->location,
                 (ar->location & ALL_AGENTS)?ALL_AGENTS_C:NONE_C,
                 (ar->location & REMOTE_AGENT)?REMOTE_AGENT_C:NONE_C,
                 (ar->location & SPECIFIC_AGENT)?SPECIFIC_AGENT_C:NONE_C,

@@ -1,6 +1,6 @@
-/*   $OSSEC, main.c, v0.4, 2005/11/09, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2003,2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     /* Return 0 if not configured */
     if(RemotedConfig(cfg, &logr) < 0)
     {
-        ErrorExit(CONFIG_ERROR,ARGV0);
+        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
 
 

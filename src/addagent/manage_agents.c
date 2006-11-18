@@ -87,7 +87,12 @@ int add_agent()
     char name[FILE_SIZE +1];
     char id[FILE_SIZE +1];
     char ip[FILE_SIZE +1];
+    os_ip *c_ip;
 
+
+    /* Allocating for c_ip */
+    os_calloc(1, sizeof(os_ip), c_ip);
+    
     
     /* Checking if we can open the auth_file */
     fp = fopen(AUTH_FILE,"a");
@@ -163,10 +168,13 @@ int add_agent()
                               
       strncpy(ip, _ip, FILE_SIZE -1);
       
-      if(OS_IsValidIP(ip, NULL) != 1)
+      if(!OS_IsValidIP(ip, c_ip))
+      {
           printf(IP_ERROR, ip);
+          _ip = NULL;
+      }
 
-    } while(OS_IsValidIP(ip, NULL) != 1);
+    } while(!_ip);
    
     
     do
@@ -178,9 +186,10 @@ int add_agent()
         i++;
         snprintf(id, 8, "00%d", i);
 
-        if(i >= 249)
+        if(i >= 2048)
         {
             printf(ERROR_KEYS);
+            exit(1);
         }
       }
     
@@ -253,7 +262,7 @@ int add_agent()
         snprintf(str1, STR_SIZE, "%s%d%d%d",md1,(int)getpid(),rand(), time3);
         OS_MD5_Str(str1, md1);
 
-        fprintf(fp,"%s %s %s %s%s\n",id, name, ip, md1,md2);
+        fprintf(fp,"%s %s %s %s%s\n",id, name, c_ip->ip, md1,md2);
 
         fclose(fp);
 

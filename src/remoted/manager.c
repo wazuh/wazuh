@@ -66,7 +66,7 @@ void save_controlmsg(int agentid, char *r_msg)
         return;
     }
 
-    
+     
     if(_msg[agentid])
     {
         /* Check if message changed */
@@ -343,6 +343,7 @@ void read_controlmsg(int agentid, char *msg)
     FILE *fp;
     
     msg_ack[OS_FLSIZE] = '\0';
+
     
     /* Startup message  -- communicate back to the agent */
     if(strcmp(msg, HC_STARTUP) == 0)
@@ -378,7 +379,7 @@ void read_controlmsg(int agentid, char *msg)
     snprintf(agent_file, OS_SIZE_1024, "%s/%s-%s",
                          AGENTINFO_DIR,
                          keys.name[agentid],
-                         keys.ips[agentid]);
+                         keys.ips[agentid]->ip);
         
     fp = fopen(agent_file, "w");
     if(fp)

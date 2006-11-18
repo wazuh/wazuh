@@ -113,6 +113,7 @@ Install()
    
    
     # Generate the /etc/ossec-init.conf
+    chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
     echo "DIRECTORY=\"${INSTALLDIR}\"" > ${OSSEC_INIT}
     echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}
     echo "DATE=\"`date`\"" >> ${OSSEC_INIT}

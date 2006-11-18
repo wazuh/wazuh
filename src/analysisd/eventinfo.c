@@ -1,6 +1,6 @@
-/*   $OSSEC, eventinfo.c, v0.2, 2005/09/08, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004, 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -266,7 +266,9 @@ void Zero_Eventinfo(Eventinfo *lf)
 {
     lf->log_tag = NULL;
     lf->log = NULL;
+    lf->full_log = NULL;
     lf->hostname = NULL;
+    lf->program_name = NULL;
 
     lf->srcip = NULL;
     lf->dstip = NULL;
@@ -289,9 +291,9 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->matched = 0;
     
     lf->year = 0;
-    lf->mon[0] = '\0'; lf->mon[3] = '\0';
+    lf->mon[3] = '\0';
+    lf->hour[9] = '\0';
     lf->day = 0;
-    lf->hour = NULL;
 
     lf->generated_rule = NULL;
     lf->node_to_delete = NULL;
@@ -308,8 +310,8 @@ void Free_Eventinfo(Eventinfo *lf)
         return;
     }
     
-    if(lf->log)
-        free(lf->log);
+    if(lf->full_log)
+        free(lf->full_log);    
 
     if(lf->srcip)
         free(lf->srcip);
@@ -326,7 +328,7 @@ void Free_Eventinfo(Eventinfo *lf)
     if(lf->user)
         free(lf->user);
     if(lf->status)
-        free(lf->status);    
+        free(lf->status);
     if(lf->dstuser)
         free(lf->dstuser);    
     if(lf->id)
@@ -335,13 +337,12 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->command);
     if(lf->url)
         free(lf->url);
+
     if(lf->data)
         free(lf->data);    
     if(lf->systemname)
         free(lf->systemname);    
-        
-    if(lf->hour)
-        free(lf->hour);            
+
 
     /* Freeing node to delete */
     if(lf->node_to_delete)

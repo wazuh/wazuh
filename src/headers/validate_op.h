@@ -106,6 +106,11 @@ int OS_IsonDay(int week_day, char *ossec_day);
  */
 char *OS_IsValidDay(char *day_str);
 
+
+/* Macros */
+
+/* Checks if the ip is a single host, not a network with a netmask */
+#define isSingleHost(x) (x->netmask == 0xFFFFFFFF)
           
 #endif
 
