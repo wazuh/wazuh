@@ -73,7 +73,7 @@ void DecodeEvent(Eventinfo *lf)
 
             
             /* If prematch fails, go to the next plugin in the list */
-            if(nnode->prematch)
+            else if(nnode->prematch)
             {
                 if(!(pmatch = OSRegex_Execute(lf->log,nnode->prematch)))
                 {
@@ -83,6 +83,10 @@ void DecodeEvent(Eventinfo *lf)
                 /* Next character */
                 if(*pmatch != '\0')
                     pmatch++;
+            }
+            else
+            {
+                continue;
             }
 
             lf->log_tag = nnode->name;

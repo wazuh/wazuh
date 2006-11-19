@@ -771,10 +771,20 @@
     [Classification: Potentially Bad Traffic] [Priority: 2]
     {UDP} 192.168.20.32 -> 192.168.20.2  
   -->
+
 <decoder name="snort">
+  <type>ids</type>
+  <program_name>^snort</program_name>
+</decoder>
+
+<decoder name="snort">
+  <type>ids</type>
+  <prematch>^[\d+:\d+:\d+] |^[**] [\d+:\d+:\d+] </prematch>
+</decoder>
+  
+<decoder name="snort2">
+   <parent>snort</parent>
    <type>ids</type>
-   <program_name>^snort</program_name>
-   <prematch>^[\d+:\d+:\d+] |^[**] [\d+:\d+:\d+] </prematch>
    <regex>^\S+ [(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+)\p*\d* -> </regex>
    <regex>(\d+.\d+.\d+.\d+)</regex>
    <order>id,srcip,dstip</order>
