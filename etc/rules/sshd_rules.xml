@@ -107,14 +107,14 @@
 
   <rule id="5715" level="3">
     <if_sid>5700</if_sid>
-    <regex> Accepted \S+ for </regex>
+    <match>^Accepted</match>
     <description>SSHD authentication success.</description>
     <group>authentication_success,</group>
   </rule>
 
   <rule id="5716" level="5">
     <if_sid>5700</if_sid>
-    <regex> Failed \S+ for </regex>
+    <match>^Failed</match>
     <description>SSHD authentication failed.</description>
     <group>authentication_failed,</group>
   </rule>  
