@@ -1064,6 +1064,7 @@ main()
 
     # Installing (calls the respective script 
     # -- InstallAgent.sh pr InstallServer.sh
+    . ./src/init/shared.sh
     Install
 
     # User messages

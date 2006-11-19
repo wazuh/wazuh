@@ -99,7 +99,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
    
 
     /* Active response to the forwarder */ 
-    if(Config.ar & REMOTE_AR)
+    if((Config.ar & REMOTE_AR) && (lf->location[0] == '('))
     {
         snprintf(exec_msg, OS_SIZE_1024,
                 "%s %c%c%c %s %s %s %s",
