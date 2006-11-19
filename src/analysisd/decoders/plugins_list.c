@@ -60,7 +60,8 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
         do
         {
             /* Checking for common names */
-            if(strcmp(tmp_node->plugin->name,pi->name) == 0)
+            if((strcmp(tmp_node->plugin->name,pi->name) == 0) &&
+               (pi->parent != NULL))
             {
                 if(tmp_node->plugin->prematch && pi->regex_offset)
                 {
@@ -94,6 +95,7 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
             
         }while(tmp_node->next && (tmp_node = tmp_node->next));
         
+        
         /* Must have a prematch set */
         if(!rm_f && (pi->regex_offset & AFTER_PREVREGEX))
         {
@@ -110,7 +112,7 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
     
     else
     {
-        /* Must have a previous regex set */
+        /* Must not have a previous regex set */
         if(pi->regex_offset & AFTER_PREVREGEX)
         {
             merror(INV_OFFSET, ARGV0, pi->name);
@@ -136,6 +138,7 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
 
 int OS_AddPlugin(PluginInfo *pi)
 {
+    int added = 0;
     /* Search for parent */
     if(pi->parent)
     {
@@ -151,10 +154,17 @@ int OS_AddPlugin(PluginInfo *pi)
                     merror(DEC_PLUGIN_ERR, ARGV0);
                     return(0);
                 }
-                return(1);
+                added = 1;
             }
             tmp_node = tmp_node->next;
         }
+
+        /* Plugin was added correctly */
+        if(added == 1)
+        {
+            return(1);
+        }
+        
         merror(PPLUGIN_INV, ARGV0, pi->parent);
         return(0); 
     }
