@@ -113,6 +113,8 @@ Install()
    
    
     # Generate the /etc/ossec-init.conf
+    VERSION_FILE="./src/VERSION"
+    VERSION=`cat ${VERSION_FILE}`
     chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
     echo "DIRECTORY=\"${INSTALLDIR}\"" > ${OSSEC_INIT}
     echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}
@@ -1064,7 +1066,6 @@ main()
 
     # Installing (calls the respective script 
     # -- InstallAgent.sh pr InstallServer.sh
-    . ./src/init/shared.sh
     Install
 
     # User messages
