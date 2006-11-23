@@ -654,6 +654,7 @@
   - %PIX-2-106006: Deny inbound UDP from ***/20031 to ***/20031 on  
   interface vpn
   - %PIX-7-710002: TCP access permitted from 10.0.0.1/60749 to db:10.0.0.2/ssh
+  - %PIX-6-305012: Teardown dynamic UDP translation from inside:1.1.1.1/12 to outside:1.2.1.2/11 duration 0:00:11.
   -->
 <decoder name="pix">
   <prematch>^%PIX-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %PIX-</prematch>
@@ -710,6 +711,15 @@
   <prematch offset="after_parent">^6-106015</prematch>
   <regex offset="after_parent">^(\S+): (\w+) (\w+) \S+ \S+ (\S+) from </regex>
   <regex>(\S+)/(\S+) to (\S+)/(\S+)</regex>
+  <order>id, action, protocol srcip, srcport, dstip, dstport</order>
+</decoder>
+
+<decoder name="pix-fw7">
+  <parent>pix</parent>
+  <type>firewall</type>
+  <prematch offset="after_parent">^6-305012</prematch>
+  <regex offset="after_parent">^(\S+): (\w+) \w+ (\w+) translation </regex>
+  <regex>from \w+:(\S+)/(\d+) to \w+:(\S+)/(\d+) </regex>
   <order>id, action, protocol srcip, srcport, dstip, dstport</order>
 </decoder>
 
@@ -1030,6 +1040,23 @@
   <regex>^(\w+)[(\w+)] (\d+) </regex>
   <order>data, status, id</order>
 </decoder>
+
+
+<!-- Symantec AV decoder.
+  - Data provided by: Blackcryptoknight
+  - Source: http://www.ossec.net/wiki/index.php/Symantec_Antivirus
+  - Examples:
+  - 24090D00000A,4,3,7,ACMELABS-SRV2,SYSTEM,,,,,,,16777216,"Update to computer ACMELABS-LU2K3 of virus definition file 81011r succeeded.",0,,0,,,,,0,,,,,,,,,,,,,(IP)-192.168.49.66,ACMELABSav,ACMELABS,,8.1.825
+  - 24090D00000F,4,3,7,ACMELABS-SRV2,SYSTEM,,,,,,,16777216,"Update to computer ACMELABS-APPS-BOX4 of virus definition file 81011r succeeded.",0,,0,,,,,0,,,,,,,,,,,,,(IP)-192.168.49.66,ACMELABSav,ACMELABS,,8.1.825
+  - 240801012128,5,1,720997,RBLWAP,SYSTEM,Trojan.Zlob,C:\WINDOWS\system32\ld100.tmp,5,4,4,256,570441764,"",0,,0,,0,4254,0,0,0,0,0,0,20060830.022,58100,2,4,0,acme-AVSRV,{579642AA-5A5E-46E1-8613-2289349D1F27},,(IP)-192.168.100.237,acmeav,acme,,8.1.825
+  -->
+<decoder name="symantec-av">
+  <prematch>^\w\w\w\w\w\w\w\w\w\w\w\w,</prematch>
+  <regex offset="after_prematch">^(\d+),\d+,\d+,(\S+),(\.+),</regex>
+  <order>id, system_name, data</order>
+  <fts>name, location, id, system_name, data</fts>
+</decoder>
+
 
 
 <!-- ossec decoder.

@@ -38,6 +38,7 @@
 
 07100 - 07199 Tripwire
 07200 - 07299 Arpwatch
+07300 - 07399 Symantec Anti Virus
 
 09100 - 09199 PPTP
 09200 - 09299 Squid syslog

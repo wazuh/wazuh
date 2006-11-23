@@ -65,17 +65,46 @@ int dogrep(char *file, char *str)
 
 
 /* Check is syscheck is present in the config */
-int config_file(char *name, char *file)
+int config_file(char *name, char *file, int quiet)
 {
     int add = 0;
+
+    char ffile[256];
     FILE *fp;
 
-    if(!fileexist(file))
+    ffile[255] = '\0';
+    
+
+    /* Checking if the file has a variable format */
+    if(strchr(file, '%') != NULL)
     {
-        printf("%s: Log file not existent: '%s'.\n", name, file);
+        time_t tm;
+        struct tm *p;
+
+        tm = time(NULL);
+        p = localtime(&tm);
+
+        if(strftime(ffile, 255, file, p) == 0)
+        {
+            return(0);
+        }
+    }
+    else
+    {
+        strncpy(ffile, file, 255);
+    }
+    
+    
+    /* Looking for ffile */
+    if(!fileexist(ffile))
+    {
+        if(quiet == 0)
+        {
+            printf("%s: Log file not existent: '%s'.\n", name, file);
+        }
         return(0);
     }
-
+    
     if(dogrep(OSSECCONF, file))
     {
         printf("%s: Log file already configured: '%s'.\n", 
@@ -143,10 +172,18 @@ int config_file(char *name, char *file)
 /* Setup windows after install */
 int main(int argc, char **argv)
 {
+    int quiet = 0;
+    
     if(argc < 2)
     {
         printf("%s: Invalid syntax.\n", argv[0]);
         printf("Try: '%s <file_name>'\n\n", argv[0]);
+    }
+
+    /* Looking for the quiet option */
+    if((argc == 3) && (strcmp(argv[2],"--quiet") == 0))
+    {
+        quiet = 1;
     }
     
     /* Checking if ossec was installed already */
@@ -157,7 +194,7 @@ int main(int argc, char **argv)
 
     else
     {
-        config_file(argv[0], argv[1]);
+        config_file(argv[0], argv[1], quiet);
     }
     
     system("pause");

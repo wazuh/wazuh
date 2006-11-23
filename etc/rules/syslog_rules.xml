@@ -16,14 +16,14 @@
 <!-- Syslog errors. -->
 <group name="syslog,errors,">
   <rule id="1001" level="2">
-    <regex>^PAM-securetty[\d+]: Couldn't open /etc/securetty</regex>
-    <description>File securetty missing. Root access unrestricted.</description>
+    <match>^Couldn't open /etc/securetty</match>
+    <description>File missing. Root access unrestricted.</description>
   </rule>
 
   <rule id="1002" level="7" accuracy="0">
     <match>$BAD_WORDS</match>
     <description>Unknown problem somewhere in the system.</description>
-  </rule>    
+  </rule>
 
   <rule id="1003" level="13" maxsize="856">
     <description>Non standard syslog message (size too large).</description>
@@ -36,7 +36,7 @@
 <group name="syslog,nfs,">
   <!-- XXX All These NFS rules need to be fixed. -->
   <rule id="2100" level="0" noalert="1">
-    <match>^automount[|^mount</match>
+    <program_name>^automount|^mount</program_name>
     <description>NFS rules grouped.</description>
   </rule>
   
@@ -56,6 +56,12 @@
     <match>^rpc.mountd: refused mount request from</match>
     <description>Unable to mount the NFS directory.</description>
   </rule>
+
+  <rule id="2104" level="2">
+    <if_sid>2100</if_sid>
+    <regex>lookup for \S+ failed</regex>
+    <description>Automount informative message</description>
+  </rule>
 </group> <!-- SYSLOG,NFS -->
   
   
@@ -63,7 +69,7 @@
 <!-- xinetd messages -->  
 <group name="syslog,xinetd,">
   <rule id="2301" level="10">
-    <regex>^xinetd[\d+]: Deactivating service \S+ due to excessive </regex>
+    <match>^Deactivating service </match>
     <description>Excessive number connections to a service.</description>
   </rule>
 </group> <!-- SYSLOG,XINETD -->
@@ -88,8 +94,8 @@
   </rule>
 
   <rule id="2503" level="5">
-    <regex>^\S+[\d+]: refused connect from|</regex>
-    <regex>^xinetd[\d+]: libwrap refused connection|</regex>
+    <regex>^refused connect from|</regex>
+    <regex>^libwrap refused connection|</regex>
     <regex>Connection from \S+ denied</regex>
     <description>Connection blocked by Tcp Wrappers.</description>
     <group>access_denied,</group>
@@ -102,12 +108,12 @@
   </rule>
 
   <rule id="2505" level="3">
-    <regex>^login[\d+]: ROOT LOGIN  on</regex>
+    <match>^ROOT LOGIN  on</match>
     <description>Physical root login.</description>
   </rule>  
 
   <rule id="2506" level="3">
-    <regex>^popa3d[\d+]: Authentication passed</regex>
+    <match>^Authentication passed</match>
     <description>Pop3 Authentication passed.</description>
   </rule>
 </group> <!-- SYSLOG,ACESSCONTROL -->
@@ -117,7 +123,7 @@
 <!-- Mail/Procmail messages -->
 <group name="syslog,mail,">
   <rule id="2701" level="0">
-    <match>^procmail[</match>
+    <program_name>^procmail</program_name>
     <description>Ignoring procmail messages.</description>
   </rule>
 </group> <!-- SYSLOG,SENDMAIL -->
@@ -127,7 +133,7 @@
 <!-- Smartd messages -->
 <group name="syslog,smartd,">
   <rule id="2800" level="0" noalert="1">
-    <match>^smart</match>
+    <program_name>^smart</program_name>
     <description>Pre-match rule for smartd.</description>
   </rule>
   
@@ -139,13 +145,13 @@
 
   <rule id="2802" level="0">
     <if_sid>2800</if_sid>
-    <regex>^smartd\.+Unable to register ATA device</regex>
+    <match>Unable to register ATA device</match>
     <description>Smartd configuration problem</description>
   </rule>
 
   <rule id="2803" level="0">
     <if_sid>2800</if_sid>
-    <regex>^smartd\.+No such device or address, open\(\) failed</regex>
+    <match>No such device or address</match>
     <description>Device configured but not available to Smartd</description>
   </rule>  
 </group> <!-- SYSLOG,SMARTD -->
@@ -155,7 +161,7 @@
 <!-- Linux Kernel messages -->
 <group name="syslog,linuxkernel,">
   <rule id="5100" level="0" noalert="1">
-    <match>^kernel: </match>
+    <program_name>^kernel</program_name>
     <description>Pre-match rule for kernel messages</description>
   </rule>
 
@@ -242,21 +248,11 @@
 <!-- Cron messages -->
 <group name="syslog,cron,">
   <rule id="2830" level="0">
-    <regex>^crond: unable to exec</regex>
+    <program_name>crond</program_name>
+    <match>^unable to exec</match>
     <description>Wrong crond configuration</description>
   </rule>
 </group> <!-- SYSLOG,CRON -->
-
-
-
-<!-- Automount messages -->
-<group name="syslog,automount,">
-  <rule id="2860" level="2">
-    <regex>^automount[\d+]: \S+: lookup for \S+ failed</regex>
-    <description>Automount informative message</description>
-    <info>http://www.cs.arizona.edu/computer.help/policy/DIGITAL_unix/AA-PS2SC-TE_html/netadmin24.html</info>
-  </rule>
-</group> <!-- SYSLOG,AUTOMOUNT -->
 
 
 
@@ -282,7 +278,7 @@
   <rule id="5303" level="3">
     <if_sid>5300</if_sid>
     <regex>session opened for user root|</regex>
-    <regex>^su[\d+]: + \S+ \S+-root$</regex>
+    <regex>^+ \S+ \S+-root$</regex>
     <description>User sucessfully changed UID to root</description>
   </rule>
 </group> <!-- SYSLOG,SU -->
@@ -292,7 +288,7 @@
 <!-- Tripwire messages -->
 <group name="syslog,tripwire,">
   <rule id="7101" level="8">
-    <regex>tripwire\.+ Integrity Check failed: File could not</regex>
+    <match>Integrity Check failed: File could not</match>
     <description>Problems with the tripwire checking</description>
   </rule>
 </group> <!-- SYSLOG,TRIPWIRE -->
@@ -302,27 +298,22 @@
 <!-- Adduser messages -->
 <group name="syslog,adduser">
   <rule id="5901" level="8">
-    <regex>^useradd[\d+]: new group:|</regex>
-    <regex>^groupadd[\d+]: new group:|</regex>
-    <regex>^adduser[\d+]: new group:</regex>
+    <match>^new group</match>
     <description>New group added to the system</description>
   </rule>
 
   <rule id="5902" level="8">
-    <regex>^adduser[\d+]: new user:|^adduser[\d+]: new account added|</regex>
-    <regex>^useradd[\d+]: new user:|^useradd[\d+]: new account added</regex>
+    <match>^new user|^new account added|</match>
     <description>New user added to the system</description>
   </rule>
 
   <rule id="5903" level="2">
-    <regex>^userdel[\d+]: delete user|^userdel[\d+]: account deleted</regex>
-    <regex>^userdel[\d+]: remove group|</regex>
-    <regex>^groupdel[\d+]: remove group</regex>
+    <match>^delete user|^account deleted|^remove group</match>
     <description>Group (or user) deleted from the system</description>
   </rule>
 
   <rule id="5904" level="8">
-    <regex>^chfn[\d+]: changed user</regex>
+    <match>^changed user</match>
     <description>Information from the user was changed</description>
   </rule>
 </group> <!-- SYSLOG,ADDUSER -->
@@ -333,18 +324,18 @@
 <group name="syslog,sudo">
   <rule id="5500" level="0" noalert="1">
     <decoded_as>sudo</decoded_as>
-    <description>Initial match for sudo messages</description>
+    <description>Initial group for sudo messages</description>
   </rule>
   
   <rule id="5501" level="10">
     <if_sid>5500</if_sid>
-    <regex>^sudo:\s+\S+ : 3 incorrect password attempts</regex>
+    <match>3 incorrect password attempts</match>
     <description>Three failed attempts to run sudo</description>
   </rule>
 
   <rule id="5502" level="3">
     <if_sid>5500</if_sid>
-    <regex>^sudo:\s+\S+ : TTY=\S+ ; PWD=\S+ ; USER=root ; COMMAND=</regex>
+    <match> ; USER=root ; COMMAND=</match>
     <description>Successful sudo to ROOT executed</description>
   </rule>
 </group> <!-- SYSLOG, SUDO -->
@@ -353,20 +344,20 @@
 <!-- PPTP messages -->
 <group name="syslog,pptp">
   <rule id="9100" level="0" noalert="1">
-    <match>^pptpd[</match>
+    <program_name>^pptpd</program_name>
     <description>PPTPD messages grouped</description>
   </rule>
   
   <rule id="9101" level="0">
     <if_sid>9100</if_sid>
-    <regex>^pptpd[\d+]: GRE: \S+ from \S+ failed: status = -1 </regex>
+    <regex>^GRE: \S+ from \S+ failed: status = -1 </regex>
     <description>PPTPD failed message (communication error)</description>
     <info>poptop.sourceforge.net/dox/gre-protocol-unavailable.phtml</info>
   </rule>
   
   <rule id="9102" level="0">
     <if_sid>9100</if_sid>
-    <regex>^pptpd[\d+]: tcflush failed: Bad file descriptor</regex>
+    <match>^tcflush failed: Bad file descriptor</match>
     <description>PPTPD communication error</description>
   </rule>
 </group>
@@ -386,34 +377,16 @@
                 
 <group name="syslog,squid">
   <rule id="9200" level="0" noalert="1">
-    <regex>^squid[\d+]: </regex>
+    <program_name>^squid</program_name>
     <description>Squid syslog messages grouped</description>
   </rule>
 
   <rule id="9201" level="0">
     <if_sid>9200</if_sid>
-    <regex>^squid[\d+]: ctx: enter level|^squid[\d+]: sslRead</regex>
+    <match>^ctx: enter level|^sslRead|^urlParse: Illegal character in|</match>
+    <match>^httpReadReply: Request not yet |^httpReadReply: Excess data</match>
     <description>Squid debug message</description>
   </rule>
-
-  <rule id="9202" level="0">
-    <if_sid>9200</if_sid>
-    <regex>^squid[\d+]: urlParse: Illegal character in hostname</regex>
-    <description>Squid debug message</description>
-  </rule>  
-
-  <rule id="9203" level="0">
-    <if_sid>9200</if_sid>
-    <regex>^squid[\d+]: httpReadReply: Request not yet fully sent</regex>
-    <description>Squid debug message</description>
-  </rule>  
-
-  <rule id="9204" level="0">
-    <if_sid>9200</if_sid>
-    <regex>^squid[\d+]: httpReadReply: Excess data from</regex>
-    <description>Squid debug message</description>
-  </rule>  
-  
 </group>
 
 <!-- EOF -->

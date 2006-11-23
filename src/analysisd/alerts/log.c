@@ -142,16 +142,19 @@ int FW_Log(Eventinfo *lf)
         /* Closed */
         case 'c':
         case 'C':
+        /* Teardown */
+        case 't':
+        case 'T':
             os_free(lf->action);
             os_strdup("CLOSED", lf->action);
             break;
-            /* allow, accept, */    
+        /* allow, accept, */    
         case 'a':
         case 'A':
-            /* pass/permitted */
+        /* pass/permitted */
         case 'p':
         case 'P':
-            /* open */
+        /* open */
         case 'o':
         case 'O':    
             os_free(lf->action);

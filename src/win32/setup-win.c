@@ -266,6 +266,7 @@ int main(int argc, char **argv)
 
     /* Setting up local files */
     system("add-localfile.exe \"C:\\Windows\\pfirewall.log\"");
+    system("add-localfile.exe \"C:\\\\Documents and Settings\\All Users\\Application Data\\Symantec\\Symantec AntiVirus Corporate Edition\\7.5\\Logs\\\%m\%d20\%y.log\" --quiet");
     
 
     /* Configure ossec for automatic startup */
