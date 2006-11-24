@@ -303,7 +303,7 @@
   </rule>
 
   <rule id="5902" level="8">
-    <match>^new user|^new account added|</match>
+    <match>^new user|^new account added</match>
     <description>New user added to the system</description>
   </rule>
 

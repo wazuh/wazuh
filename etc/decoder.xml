@@ -52,7 +52,7 @@
 
 <decoder name="pam-user">
   <parent>pam</parent>
-  <prematch>^session opened </prematch>
+  <prematch>session opened </prematch>
   <regex offset="after_prematch">^for user (\S+) </regex>
   <order>user</order>
 </decoder>  
@@ -60,7 +60,7 @@
 <decoder name="pam-host">
   <parent>pam</parent>
   <prematch> rhost</prematch>
-  <regex offset="after_prematch">^=(\S+) </regex>
+  <regex offset="after_prematch">^=(\S+)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -655,6 +655,7 @@
   interface vpn
   - %PIX-7-710002: TCP access permitted from 10.0.0.1/60749 to db:10.0.0.2/ssh
   - %PIX-6-305012: Teardown dynamic UDP translation from inside:1.1.1.1/12 to outside:1.2.1.2/11 duration 0:00:11.
+  - %PIX-3-305005: No translation group found for icmp src outside:x.x.x.x dst inside:x.x.x.x (type 3, code 0)
   -->
 <decoder name="pix">
   <prematch>^%PIX-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %PIX-</prematch>
@@ -711,7 +712,7 @@
   <prematch offset="after_parent">^6-106015</prematch>
   <regex offset="after_parent">^(\S+): (\w+) (\w+) \S+ \S+ (\S+) from </regex>
   <regex>(\S+)/(\S+) to (\S+)/(\S+)</regex>
-  <order>id, action, protocol srcip, srcport, dstip, dstport</order>
+  <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>
 
 <decoder name="pix-fw7">
@@ -720,7 +721,7 @@
   <prematch offset="after_parent">^6-305012</prematch>
   <regex offset="after_parent">^(\S+): (\w+) \w+ (\w+) translation </regex>
   <regex>from \w+:(\S+)/(\d+) to \w+:(\S+)/(\d+) </regex>
-  <order>id, action, protocol srcip, srcport, dstip, dstport</order>
+  <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>
 
 <decoder name="pix-attacks">
