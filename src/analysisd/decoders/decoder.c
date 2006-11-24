@@ -29,7 +29,6 @@
  */
 void DecodeEvent(Eventinfo *lf)
 {
-    int p_name_size = 0;
     PluginNode *node;
     PluginNode *child_node;
     PluginInfo *nnode;
@@ -48,11 +47,6 @@ void DecodeEvent(Eventinfo *lf)
     if(!node)
         return;
 
-    if(lf->program_name)
-    {
-        p_name_size = strlen(lf->program_name);
-    }
-
     do 
     {
         if(node->plugin)
@@ -63,7 +57,7 @@ void DecodeEvent(Eventinfo *lf)
             /* First checking program name */
             if(nnode->program_name && lf->program_name)
             {
-                if(!OSMatch_Execute(lf->program_name, p_name_size, 
+                if(!OSMatch_Execute(lf->program_name, lf->p_name_size, 
                                     nnode->program_name))
                 {
                     continue;

@@ -62,6 +62,7 @@ typedef struct _Eventinfo
     
     /* Extract when the event fires a rule */
     int size;
+    int p_name_size;
 
 
     /* Other internal variables */

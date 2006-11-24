@@ -198,6 +198,12 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                     }
                 }
             }
+
+            /* Getting program name size */
+            if(lf->program_name)
+            {
+                lf->p_name_size = strlen(lf->program_name);
+            }
         }
     }
     

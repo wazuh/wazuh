@@ -963,7 +963,32 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         return(NULL);
     }
 
-    
+    /* Checking program name */
+    if(currently_rule->program_name)
+    {
+        if(!lf->program_name)
+            return(NULL);
+
+        if(!OSMatch_Execute(lf->program_name, 
+                            lf->p_name_size, 
+                            currently_rule->program_name))
+                        return(NULL);
+    }
+
+
+    /* Checking hostname */
+    if(currently_rule->hostname)
+    {
+        if(!lf->hostname)
+            return(NULL);
+            
+        if(!OSMatch_Execute(lf->hostname, 
+                            strlen(lf->hostname),
+                            currently_rule->hostname))
+            return(NULL);
+    }
+
+
     /* Checking if any word to match exists */
     if(currently_rule->match)
     {

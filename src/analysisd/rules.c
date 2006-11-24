@@ -83,6 +83,8 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_user = "user";
     char *xml_url = "url";
     char *xml_id = "id";
+    char *xml_hostname = "hostname";
+    char *xml_program_name = "program_name";
     char *xml_status = "status";
     char *xml_action = "action";
     
@@ -302,6 +304,8 @@ int Rules_OP_ReadRules(char * rulefile)
                 char *user = NULL;
                 char *id = NULL;
                 char *status = NULL;
+                char *hostname = NULL;
+                char *program_name = NULL;
                 
                 XML_NODE rule_opt = NULL;
                 rule_opt =  OS_GetElementsbyNode(&xml,rule[j]);
@@ -423,6 +427,19 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         status =
                             loadmemory(status,
+                                    rule_opt[k]->content);
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,xml_hostname)==0)
+                    {
+                        hostname =
+                            loadmemory(hostname,
+                                    rule_opt[k]->content);
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,
+                                       xml_program_name)==0)
+                    {
+                        program_name =
+                            loadmemory(program_name,
                                     rule_opt[k]->content);
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_action)==0)
@@ -715,6 +732,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     regex = NULL;
                 }
                 
+                /* Adding in match */
                 if(match)
                 {
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->match);
@@ -728,6 +746,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     match = NULL;
                 }
                 
+                /* Adding in id */
                 if(id)
                 {
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->id);
@@ -741,6 +760,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     id = NULL;
                 }
 
+                /* Adding in status */
                 if(status)
                 {
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->status);
@@ -753,7 +773,37 @@ int Rules_OP_ReadRules(char * rulefile)
                     free(status);
                     status = NULL;
                 }
+
+                /* Adding in hostname */
+                if(hostname)
+                {
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->hostname);
+                    if(!OSMatch_Compile(hostname, config_ruleinfo->hostname,0))
+                    {
+                        merror(REGEX_COMPILE, ARGV0, hostname,
+                                config_ruleinfo->hostname->error);
+                        return(-1);
+                    }
+                    free(hostname);
+                    hostname = NULL;
+                }
+
+                /* Adding in program name */
+                if(program_name)
+                {
+                    os_calloc(1,sizeof(OSMatch),config_ruleinfo->program_name);
+                    if(!OSMatch_Compile(program_name,
+                                        config_ruleinfo->program_name,0))
+                    {
+                        merror(REGEX_COMPILE, ARGV0, program_name,
+                                config_ruleinfo->program_name->error);
+                        return(-1);
+                    }
+                    free(program_name);
+                    program_name = NULL;
+                }
                 
+                /* Adding in user */
                 if(user)
                 {
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->user);
@@ -767,6 +817,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     user = NULL;
                 }
                 
+                /* Adding in url */
                 if(url)
                 {
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->url);
@@ -1009,6 +1060,8 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->url = NULL;
     ruleinfo_pt->id = NULL;
     ruleinfo_pt->status = NULL;
+    ruleinfo_pt->hostname = NULL;
+    ruleinfo_pt->program_name = NULL;
     ruleinfo_pt->action = NULL;
     
     /* Zeroing last matched events */
