@@ -20,6 +20,12 @@
   <aatr4>lala-abc</aatr4>
 </test2>
 
+<ossec_config>
+  <active_response>
+    <disabled>yes</disabled>
+  </active_response>
+</ossec_config>
+
 <myxml1 name="name1" value="abc">
   <element1 name="mytestname" value ='element1value'>content1</element1>
    <element2 name = "mysecondname">content2</element2>

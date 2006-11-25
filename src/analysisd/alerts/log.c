@@ -1,6 +1,6 @@
-/*   $OSSEC, log.c, v0.4, 2005/09/10, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -33,12 +33,15 @@ OSMatch FWALLOWpm;
 void OS_Store(Eventinfo *lf)
 {
     fprintf(_eflog,
-            "%d %s %02d %s %s\n",
+            "%d %s %02d %s %s%s%s %s\n",
             lf->year,
             lf->mon,
             lf->day,
             lf->hour,
-            lf->log);
+            lf->hostname?lf->hostname:"",
+            lf->hostname?"->":"",
+            lf->location,
+            lf->full_log);
 
     fflush(_eflog); 
     return;	
