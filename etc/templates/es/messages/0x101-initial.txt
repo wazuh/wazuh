@@ -1,6 +1,7 @@
  
- Usted esta port comenzar el procezo de instalación del OSSEC HIDS.
- Usted debe tener un compilador de C  previamente instalado en el sistema.
- Si tuviera Usted alguna pregunta ó comentatio, por favor mande un mensaje
- electronico a dcid@ossec.net (ó daniel.cid@gmail.com )
 
+ Usted esta por comenzar el proceso de instalación del OSSEC HIDS.
+ Usted debe tener un compilador de C previamente instalado en el sistema.
+ Si usted tiene alguna pregunta o comentario, por favor envie un correo
+ electrónico a dcid@ossec.net <mailto:dcid@ossec.net>  (daniel.cid@gmail.com
+ <mailto:daniel.cid@gmail.com> )
