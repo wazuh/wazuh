@@ -238,7 +238,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
             if(currently_rule->__frequency <= 10)
             {
                 currently_rule->last_events[currently_rule->__frequency] 
-                            = lf->log;
+                            = lf->full_log;
                 currently_rule->last_events[currently_rule->__frequency+1] 
                             = NULL;
             }

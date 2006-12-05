@@ -10,16 +10,8 @@
  */
 
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-
 #include "shared.h"
-
 #include "os_regex/os_regex.h"
-
 #include "execd.h"
 
 char exec_names[MAX_AR +1][OS_FLSIZE +1];
@@ -165,14 +157,13 @@ char *GetCommandbyName(char *name, int *timeout)
 }
 
 
-/** void ExecCmd(char **cmd) v0.1
+/** void ExecCmd(char **cmd, char *extra_data) v0.1
  * Execute command given. Must be a argv** NULL terminated.
  * Void. Prints error to log message in case of problems.
  */
 void ExecCmd(char **cmd)
 {
 	pid_t pid;
-
 	
 	/* Forking and leaving it running */
 	pid = fork();
@@ -183,6 +174,7 @@ void ExecCmd(char **cmd)
             merror(EXEC_CMDERROR, ARGV0, *cmd, strerror(errno));
             exit(1);
         }
+
         exit(0);
     }
     return;

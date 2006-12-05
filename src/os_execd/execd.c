@@ -11,19 +11,8 @@
 
 
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/wait.h>
-
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
 #include "shared.h"
 #include "list_op.h"
-
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
 
@@ -49,10 +38,12 @@ int main(int argc, char **argv)
     int c;
     int test_config = 0;
     int gid = 0,m_queue = 0;
+
     char *dir  = DEFAULTDIR;
     char *group = GROUPGLOBAL;
     char *cfg = DEFAULTARPATH;
     char *xmlcfg = DEFAULTCPATH;
+
 
     /* Setting the name */
     OS_SetName(ARGV0);
@@ -68,16 +59,16 @@ int main(int argc, char **argv)
                 break;
             case 'g':
                 if(!optarg)
-                    ErrorExit("%s: -g needs an argument",ARGV0);
+                    ErrorExit("%s: -g needs an argument.",ARGV0);
                 group = optarg;
                 break;
             case 'D':
                 if(!optarg)
-                    ErrorExit("%s: -D needs an argument",ARGV0);
+                    ErrorExit("%s: -D needs an argument.",ARGV0);
                 dir = optarg;
             case 'c':
                 if(!optarg)
-                    ErrorExit("%s: -c needs an argument",ARGV0);
+                    ErrorExit("%s: -c needs an argument.",ARGV0);
                 cfg = optarg;
                 break;
             case 't':
@@ -203,9 +194,11 @@ void ExecdStart(int q)
     char *tmp_msg = NULL;
     char *name;
     char *command;
+    char *extra_data;
     char *cmd_args[MAX_ARGS +2];
 
-    /* for select */
+
+    /* Select */
     fd_set fdset;
     struct timeval socket_timeout;
 
@@ -230,32 +223,40 @@ void ExecdStart(int q)
     timeout_list = OSList_Create(); 
     if(!timeout_list)
     {
-        ErrorExit("%s: Error creating timeout list", ARGV0);
+        ErrorExit(LIST_ERROR, ARGV0);
     }
     
    
-    /* Receiving loop */
+    /* Main loop. */
     while(1)
     {
         int timeout_value;
         int added_before = 0;
+    
         char **timeout_args;
         timeout_data *timeout_entry;
 
 
-        /* Cleaning up any child .. */
+        /* Cleaning up any child. */
         while (childcount)
         {
             int wp;
             wp = waitpid((pid_t) -1, NULL, WNOHANG);
             if (wp < 0)
+            {
                 merror(WAITPID_ERROR, ARGV0);
+            }
 
             /* if = 0, we still need to wait for the child process */
             else if (wp == 0)
+            {
                 break;
+            }
+            /* Child completed if wp > 0 */
             else
+            {
                 childcount--;
+            }
         }
 
 
@@ -263,7 +264,7 @@ void ExecdStart(int q)
         curr_time = time(0);
 
 
-        /* Checking if there is any timeout command to execute */
+        /* Checking if there is any timeouted command to execute. */
         timeout_node = OSList_GetFirstNode(timeout_list);
         while(timeout_node)
         {
@@ -271,12 +272,13 @@ void ExecdStart(int q)
 
             list_entry = (timeout_data *)timeout_node->data;
             
+            /* Timeouted */
             if((curr_time - list_entry->time_of_addition) > 
                     list_entry->time_to_block)
             {
                 ExecCmd(list_entry->command);
                 
-                /* Deletecurruently node already sets the pointer to next */
+                /* Deletecurrently node already sets the pointer to next */
                 OSList_DeleteCurrentlyNode(timeout_list);
                 timeout_node = OSList_GetCurrentlyNode(timeout_list);
 
@@ -301,24 +303,24 @@ void ExecdStart(int q)
 
         /* Setting FD values */
         FD_ZERO(&fdset);
-
         FD_SET(q, &fdset);
 
         /* Adding timeout */
         if(select(q+1, &fdset, NULL, NULL, &socket_timeout) == 0)
         {
-            /* timeout gone */
+            /* Timeout .. */
             continue;
         }
 
+
+        /* Checking for error */
         if(!FD_ISSET(q, &fdset))
         {
-            merror("%s: Socket error (select). Signal received?",ARGV0);
+            merror(SELECT_ERROR, ARGV0);
             continue;
         }
 
 
-        
         /* Receiving the message */
         if(recv(q, buffer, OS_MAXSTR, 0) == -1)
         {
@@ -333,7 +335,20 @@ void ExecdStart(int q)
 
         /* Getting application name */
         name = buffer;
+        
+        
+        /* Getting any extra data to be sent via stdin.
+         * This value is not passed to the timeout command.
+         */
+        extra_data = strchr(buffer, '\n');
+        if(extra_data)
+        {
+            *extra_data = '\0';
+            extra_data++;
+        }
 
+
+        /* Zeroing the name */
         tmp_msg = strchr(buffer, ' ');
         if(!tmp_msg)
         {
@@ -357,6 +372,7 @@ void ExecdStart(int q)
             }
         }
 
+
         /* Allocating memory for the timeout argument */
         os_calloc(MAX_ARGS+2, sizeof(char *), timeout_args);
         
@@ -371,9 +387,9 @@ void ExecdStart(int q)
         timeout_args[2] = NULL;
 
 
-        /* Getting the arguments */
+        /* Getting the arguments. */
         i = 2;
-        while(i < MAX_ARGS)
+        while(i < (MAX_ARGS -1))
         {
             cmd_args[i] = tmp_msg;
             cmd_args[i+1] = NULL;
@@ -393,40 +409,50 @@ void ExecdStart(int q)
 
             i++;
         }
+        
 
-        /* From ahmet ozturk <oahmet@metu.edu.tr> */
-        /* Check if we executed this command and added it to timeout list */
+        /* Check this command was already executed. */
         timeout_node = OSList_GetFirstNode(timeout_list);
         added_before = 0;
         while(timeout_node)
         {
-          timeout_data *list_entry;
-          
-          list_entry = (timeout_data *)timeout_node->data;
-          if((strcmp(list_entry->command[i], timeout_args[i]) == 0) &&
-             (strcmp(list_entry->command[0], timeout_args[0]) == 0)) 
-          {
-              /* Means we executed this command before
-               * and we don't need to add it again
-               */
-              added_before = 1;
+            timeout_data *list_entry;
 
-              /* updating the timeout */
-              list_entry->time_of_addition = curr_time;
-              break;
-          }
-          
-          /* Continue with the next entry in timeout list*/
-          timeout_node = OSList_GetNextNode(timeout_list);
+            list_entry = (timeout_data *)timeout_node->data;
+            if((strcmp(list_entry->command[i], timeout_args[i]) == 0) &&
+               (strcmp(list_entry->command[0], timeout_args[0]) == 0)) 
+            {
+                /* Means we executed this command before
+                 * and we don't need to add it again.
+                 */
+                added_before = 1;
+
+
+                /* updating the timeout */
+                list_entry->time_of_addition = curr_time;
+                break;
+            }
+
+            /* Continue with the next entry in timeout list*/
+            timeout_node = OSList_GetNextNode(timeout_list);
         }
+
 
         /* If it wasn't added before, do it now */
         if(!added_before)
         {
+            /* Adding extra_data as the last argument */
+            if(extra_data)
+            {
+                i++;
+                cmd_args[i] = extra_data;
+                cmd_args[i + 1] = NULL;
+            }
+            
             /* executing command */
             ExecCmd(cmd_args);
 
-            /* We don't need to add if the timeout_value == 0 */
+            /* We don't need to add to the list if the timeout_value == 0 */
             if(timeout_value)
             {
                 /* Creating the timeout entry */
@@ -443,6 +469,7 @@ void ExecdStart(int q)
                     FreeTimeoutEntry(timeout_entry);
                 } 
             }
+            
             /* If no timeout, we still need to free it in here */
             else
             {
@@ -473,7 +500,6 @@ void ExecdStart(int q)
             }
 
             os_free(ss_ta);
-            ss_ta = NULL;
         }
 
         /* Some cleanup */
@@ -482,8 +508,6 @@ void ExecdStart(int q)
             cmd_args[i] = NULL;
             i--;
         }
-
-        /* Continuing.  */
     }
 }
 

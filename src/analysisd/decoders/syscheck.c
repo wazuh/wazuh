@@ -639,6 +639,9 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     if((Config.syscheck_alert_new == 1) && (DB_IsCompleted(agent_id)))
     {
         lf->generated_rule = sdb.syscheck_rule;
+
+        snprintf(sdb.comment, OS_MAXSTR,
+                            "New file added: '%.756s'.",f_name);
         sdb.syscheck_rule->comment = sdb.comment;
 
 

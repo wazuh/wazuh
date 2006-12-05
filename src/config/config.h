@@ -1,4 +1,4 @@
-/*   $OSSEC, config.h, v0.1, 2006/04/06, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -23,6 +23,7 @@
 #define CREMOTE      0000100
 #define CCLIENT      0000200
 #define CMAIL        0000400
+#define CAR          0001000
 
 #include "os_xml/os_xml.h"
 

@@ -1,12 +1,15 @@
-/*   $OSSEC, execd.h, v0.2, 2005/11/01, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
- * All right reserved.
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
+ * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * Foundation.
+ *
+ * More details at the LICENSE file included with OSSEC or
+ * online at http://www.ossec.net/en/licensing.html .
  */
 
 
@@ -35,7 +38,8 @@
 
 
 
-/* Function prototypes */
+/** Function prototypes **/
+
 void ExecdStart(int queue);
 
 int ReadExecConfig();
@@ -49,7 +53,5 @@ int ExecdConfig(char * cfgfile);
 
 
 #define _EXECD_H
-
-
 
 #endif

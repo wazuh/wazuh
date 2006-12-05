@@ -33,8 +33,8 @@
 int GlobalConf(char * cfgfile)
 {
     int modules = 0;
-    FILE *fp;
-        
+
+
     /* Default values */
     Config.logall = 0;
     Config.stats = 8;
@@ -62,18 +62,7 @@ int GlobalConf(char * cfgfile)
     modules|= CALERTS;
 
 
-    /* Cleaning ar file */
-    fp = fopen(DEFAULTARPATH, "w");
-    if(!fp)
-    {
-        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
-        return(OS_INVALID);
-    }
-    fclose(fp);
-    /* Setting right permission */
-    chmod(DEFAULTARPATH, 0444);
-    
-    
+    /* Reading config */
     if(ReadConfig(modules, cfgfile, &Config, NULL)< 0)
     {
         return(OS_INVALID);

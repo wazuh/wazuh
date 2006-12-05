@@ -19,6 +19,8 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 {
     int pl = 0;
     int i = 0;
+    
+    int glob_set = 0, glob_offset = 0;
 
     /* XML Definitions */
     char *xml_localfile_location = "location";
@@ -29,7 +31,8 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
     log_config = (logreader_config *)d1;
 
-    
+
+    /* If config is not set, we need to create it */ 
     if(!log_config->config)
     {
         os_calloc(2, sizeof(logreader), log_config->config);
@@ -46,6 +49,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         {
             pl++;
         }
+        
         /* Allocating more memory */
         os_realloc(logf, (pl +2)*sizeof(logreader), log_config->config);
         logf = log_config->config;
@@ -57,6 +61,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     logf[pl].logformat = NULL;
     logf[pl].fp = NULL;
     logf[pl].ffile = NULL;
+    
     
     /* Searching for entries related to files */
     i = 0;
@@ -74,7 +79,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         }
         else if(strcmp(node[i]->element,xml_localfile_location) == 0)
         {
-            /* We need the format file */
+            /* We need the format file (based on date) */
             if(strchr(node[i]->content, '%'))
             {
                 struct tm *p;
@@ -94,9 +99,68 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
                 os_strdup(node[i]->content, logf[pl].ffile);
             }
-            os_strdup(node[i]->content, logf[pl].file);
+            
+            /* This is a glob*.
+             * We will call this file multiple times until
+             * there is no one else available.
+             */
+            else if(strchr(node[i]->content, '*') ||
+                    strchr(node[i]->content, '?') ||
+                    strchr(node[i]->content, '['))
+            {
+                glob_t g;
+                
+                /* Setting ot the first entry of the glob */
+                if(glob_set == 0)
+                    glob_set = pl;
+                
+                if(glob(node[i]->content, 0, NULL, &g) != 0)
+                {
+                    merror(GLOB_ERROR, ARGV0, node[i]->content);
+                    return(OS_INVALID);
+                }
+             
+                /* Checking for the last entry */
+                if((g.gl_pathv[glob_offset]) == NULL)
+                {
+                    /* Checking when nothing is found. */
+                    if(glob_offset == 0)
+                    {
+                        merror(GLOB_NFOUND, ARGV0, node[i]->content);
+                        return(OS_INVALID);
+                    }
+                    i++;
+                    continue;
+                }
+                os_strdup(g.gl_pathv[glob_offset], logf[pl].file);
+                glob_offset++;
+
+                globfree(&g);
+
+                /* Now we need to create another file entry */
+                pl++;
+                os_realloc(logf, (pl +2)*sizeof(logreader), log_config->config);
+                logf = log_config->config;
+                
+                logf[pl].file = NULL;
+                logf[pl].logformat = NULL;
+                logf[pl].fp = NULL;
+                logf[pl].ffile = NULL;
+                            
+                logf[pl +1].file = NULL;
+                logf[pl +1].logformat = NULL;
+
+                /* We can not increment the file count in here */
+                continue;
+            }
+            /* Normal file */
+            else
+            {
+                os_strdup(node[i]->content, logf[pl].file);
+            }
         }
 
+        /* Getting log format */
         else if(strcasecmp(node[i]->element,xml_localfile_logformat) == 0)
         {
             os_strdup(node[i]->content, logf[pl].logformat);
@@ -135,10 +199,51 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         {
             merror(XML_INVELEM, ARGV0, node[i]->element);
             return(OS_INVALID);
-
         }
 
         i++;
+    }
+
+    /* Validating glob entries */
+    if(glob_set)
+    {
+        char *format;
+        
+        /* Getting log format */
+        if(logf[pl].logformat)
+        {
+            format = logf[pl].logformat;
+        }
+        else if(logf[glob_set].logformat)
+        {
+            format = logf[glob_set].logformat;
+        }
+        else
+        {
+            merror(MISS_LOG_FORMAT, ARGV0);
+            return(OS_INVALID);
+        }
+
+        /* The last entry is always null on glob */
+        pl--;
+
+
+        /* Setting format for all entries */
+        for(i = glob_set; i<= pl; i++)
+        {
+            /* Every entry must be valid */
+            if(!logf[i].file)
+            {
+                merror(MISS_FILE, ARGV0);
+                return(OS_INVALID);
+            }
+            
+            if(logf[i].logformat == NULL)
+            {
+                logf[i].logformat = format;
+            }
+
+        }
     }
 
     /* Missing log format */

@@ -9,16 +9,10 @@
  * Foundation
  */
 
-/* v0.4(2005/09/08): Multiple additions.
- * v0.1:
+
+/* ossec-analysisd.
+ * Responsible for correlation and log decoding.
  */
-
-
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
 
 #ifndef ARGV0
    #define ARGV0 "ossec-analysisd"
@@ -34,7 +28,7 @@
 #include "os_net/os_net.h"
 
 
-/* local headers */
+/** Local headers **/
 #include "active-response.h"
 #include "config.h"
 #include "rules.h"
@@ -43,6 +37,7 @@
 #include "analysisd.h"
 
 
+/** Global data **/
 
 /* execd queue */
 int execdq = 0;
@@ -51,7 +46,7 @@ int execdq = 0;
 int arq = 0;
 
 
-/* Internal Functions */
+/** Internal Functions **/
 void OS_ReadMSG(int m_queue);
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 
@@ -109,7 +104,8 @@ int hourly_syscheck;
 int hourly_firewall;
 
 
-/* Main function v0.2: 2005/03/22 */
+/** int main(int argc, char **argv)
+ */
 int main(int argc, char **argv)
 {
     int c = 0, m_queue = 0, test_config = 0;
@@ -190,13 +186,19 @@ int main(int argc, char **argv)
 
     
     /* Initializing Active response */
-    AS_Init();
+    AR_Init();
+    if(AR_ReadConfig(test_config, cfg) < 0)
+    {
+        ErrorExit(CONFIG_ERROR,ARGV0, cfg);
+    }
     debug1(ASINIT, ARGV0);
     
     
     /* Reading configuration file */
     if(GlobalConf(cfg) < 0)
+    {
         ErrorExit(CONFIG_ERROR,ARGV0, cfg);
+    }
 
     debug1(READ_CONFIG, ARGV0);
         
@@ -917,7 +919,8 @@ void OS_ReadMSG(int m_queue)
  */
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
 {
-    /* We must check for a decoded,
+    /* We check for:
+     * decoded_as,
      * fts,
      * word match (fast regex),
      * regex,
@@ -932,6 +935,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
      * dstport,
      * time,
      * weekday,
+     * status,
      */
     RuleInfo *currently_rule = curr_node->ruleinfo;
    
@@ -988,6 +992,19 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
     }
 
+
+    /* Checking for status */
+    if(currently_rule->status)
+    {
+        if(!lf->status)
+            return(NULL);
+            
+        if(!OSMatch_Execute(lf->status, 
+                            strlen(lf->status),
+                            currently_rule->status))
+            return(NULL);
+    }
+    
 
     /* Checking if any word to match exists */
     if(currently_rule->match)

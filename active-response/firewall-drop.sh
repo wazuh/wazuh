@@ -28,7 +28,7 @@ LOCAL=`dirname $0`;
 cd $LOCAL
 cd ../
 PWD=`pwd`
-echo "`date` $0 $1 $2 $3" >> ${PWD}/ossec-hids-responses.log
+echo "`date` $0 $1 $2 $3 $4" >> ${PWD}/../logs/active-responses.log
 
 
 # Checking for an IP

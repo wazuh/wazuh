@@ -10,31 +10,60 @@
  */
 
  
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "os_regex/os_regex.h"
-#include "os_xml/os_xml.h"
-
 #include "shared.h"
-
 #include "active-response.h"
 
-#include "config.h"
 
-
-/* Initiatiating active response */
-void AS_Init()
+/** void AR_Init()
+ * Initializing active response.
+ */
+void AR_Init()
 {
     ar_commands = OSList_Create();
     active_responses = OSList_Create();
+    ar_flag = 0;
 
     if(!ar_commands || !active_responses)
     {
         ErrorExit(LIST_ERROR, ARGV0);
     }
-    ar_flag = 0;
+}
+
+
+/** int AR_ReadConfig(int test_config, char *cfgfile)
+ * Reads active response configuration and write them
+ * to the appropriate lists.
+ */
+int AR_ReadConfig(int test_config, char *cfgfile)
+{
+    FILE *fp;
+    int modules = 0;
+
+    modules|= CAR;
+
+
+    /* Cleaning ar file */
+    fp = fopen(DEFAULTARPATH, "w");
+    if(!fp)
+    {
+        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
+        return(OS_INVALID);
+    }
+    fclose(fp);
+
+
+    /* Setting right permission */
+    chmod(DEFAULTARPATH, 0444);
+
+
+    /* Reading configuration */
+    if(ReadConfig(modules, cfgfile, ar_commands, active_responses) < 0)
+    {
+        return(OS_INVALID);
+    }
+
+
+    return(0);
 }
 
 /* EOF */

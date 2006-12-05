@@ -115,7 +115,7 @@ int main(int argc, char **argv)
         exit(0);
         
 
-    /* No file available to monitor -- clean exit */
+    /* No file available to monitor -- continue */
     if(logff == NULL)
     {
         os_calloc(2, sizeof(logreader), logff);

@@ -1,4 +1,4 @@
-/*   $OSSEC, active-response.c, v0.1, 2005/10/28, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -15,10 +15,11 @@
 #include "os_regex/os_regex.h"
 
 #include "active-response.h"
-#include "config.h"
 
 
-/* get the list of all active responses */
+/** int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
+ * Generates a list with all active responses.
+ */
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 {
     FILE *fp;
@@ -27,6 +28,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     int l_ar = 0;
 
 
+    /* Xml options */
     char *xml_ar_command = "command";
     char *xml_ar_location = "location";
     char *xml_ar_agent_id = "agent_id";
@@ -37,10 +39,13 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     char *xml_ar_disabled = "disabled";
 
     char *tmp_location;
+
+
+    /* Currently active response */
     active_response *tmp_ar;
 
 
-    /* Openning shared ar file */
+    /* Opening shared ar file */
     fp = fopen(DEFAULTARPATH, "a");
     if(!fp)
     {
@@ -63,10 +68,10 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     tmp_ar->command = NULL;
     tmp_ar->location = 0;
     tmp_ar->timeout = 0;
+    tmp_ar->level = 0;
     tmp_ar->agent_id = NULL;
     tmp_ar->rules_id = NULL;
     tmp_ar->rules_group = NULL;
-    tmp_ar->level = NULL;
     tmp_ar->ar_cmd = NULL;
     tmp_location = NULL;
 
@@ -110,7 +115,21 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         }
         else if(strcmp(node[i]->element, xml_ar_level) == 0)
         {
-            tmp_ar->level = strdup(node[i]->content);
+            /* Level must be numeric */
+            if(!OS_StrIsNum(node[i]->content))
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+                                                                            
+            tmp_ar->level = atoi(node[i]->content);
+
+            /* Making sure the level is valid */
+            if((tmp_ar->level < 0) || (tmp_ar->level > 20))
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
         }
         else if(strcmp(node[i]->element, xml_ar_timeout) == 0)
         {
@@ -140,6 +159,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         i++;
     } 
 
+    /* Checking if ar is disabled */
     if(ar_flag == -1)
     {
         fclose(fp);
@@ -198,7 +218,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     {
         OSListNode *my_commands_node;
 
-        my_commands_node = OSList_GetFirstNode(ar_commands);
+        my_commands_node = OSList_GetFirstNode(d1);
         while(my_commands_node)
         {
             ar_command *my_command;
@@ -210,9 +230,10 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
                 break;
             }
 
-            my_commands_node = OSList_GetNextNode(ar_commands);
+            my_commands_node = OSList_GetNextNode(d1);
         }
 
+        /* Didn't find a valid command */
         if(tmp_ar->ar_cmd == NULL)
         {
             merror(AR_INV_CMD, ARGV0, tmp_ar->command);
@@ -227,7 +248,8 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         return(-1);
     }
 
-    if(!OSList_AddData(active_responses, (void *)tmp_ar))
+    /* d1 is the active response list */
+    if(!OSList_AddData(d2, (void *)tmp_ar))
     {
         merror(LIST_ADD_ERROR, ARGV0);
         return(-1);
@@ -252,7 +274,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
             tmp_ar->timeout);
 
 
-    /* Settin the configs to start the right queues */ 
+    /* Settin the configs to start the right queues */
     if(tmp_ar->location & AS_ONLY)
     {
         r_ar = 1;
@@ -281,8 +303,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     {
         ar_flag|= LOCAL_AR;
     }
-
-
+    
     /* Closing shared file for active response */
     fclose(fp);
 
@@ -292,13 +313,15 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
 
 
-/* get the list of active response commands */
+/** int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
+ */
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
 {
     int i = 0;
 
     char *tmp_str = NULL;
 
+    /* Xml values */
     char *command_name = "name";
     char *command_expect = "expect";
     char *command_executable = "executable";
@@ -306,7 +329,8 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
 
     ar_command *tmp_command;
 
-    /* Allocating for the active-response */
+
+    /* Allocating the active-response command */
     tmp_command = calloc(1, sizeof(ar_command));
     if(!tmp_command)
     {
@@ -365,8 +389,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
         i++;
     }
 
-    if(!tmp_command->name || !tmp_str
-            || !tmp_command->executable)
+    if(!tmp_command->name || !tmp_str || !tmp_command->executable)
     {
         merror(AR_CMD_MISS, ARGV0);
         return(-1);
@@ -383,7 +406,8 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
     tmp_str = NULL;
 
 
-    if(!OSList_AddData(ar_commands, (void *)tmp_command))
+    /* Adding command to the list */
+    if(!OSList_AddData(d1, (void *)tmp_command))
     {
         merror(LIST_ADD_ERROR, ARGV0);
         return(-1);

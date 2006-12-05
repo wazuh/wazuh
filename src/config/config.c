@@ -1,4 +1,4 @@
-/*   $OSSEC, config.c, v0.1, 2006/04/06, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -100,12 +100,12 @@ int read_main_elements(OS_XML xml, int modules,
         }
         else if(strcmp(node[i]->element, oscommand) == 0)
         {
-            if((modules & CGLOBAL)&&(ReadActiveCommands(chld_node, d1, d2)<0))
+            if((modules & CAR)&&(ReadActiveCommands(chld_node, d1, d2)<0))
                 return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, osactive_response) == 0)
         {
-            if((modules & CGLOBAL)&&(ReadActiveResponses(chld_node, d1, d2)<0))
+            if((modules & CAR)&&(ReadActiveResponses(chld_node, d1, d2)<0))
                 return(OS_INVALID);
         }
         else

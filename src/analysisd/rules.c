@@ -1269,15 +1269,14 @@ void Rule_AddAR(RuleInfo *rule_config)
     {
         active_response *my_ar;
 
+
         my_ar = (active_response *)my_ars_node->data;
         mark_to_ar = 0;
 
         /* Checking if the level for the ar is higher */
         if(my_ar->level)
         {
-            int ar_level = atoi(my_ar->level);
-
-            if(rule_real_level >= ar_level)
+            if(rule_real_level >= my_ar->level)
             {
                 mark_to_ar = 1;
             }

@@ -179,6 +179,24 @@ int local_start()
     debug1("%s: DEBUG: Reading logcollector configuration.", ARGV0);
     if(LogCollectorConfig(cfg) < 0)
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+
+
+    /* If there is not file to monitor, create a clean entry
+     * for the mark messages.
+     */
+    if(logff == NULL)
+    {
+        os_calloc(2, sizeof(logreader), logff);
+        logff[0].file = NULL;
+        logff[0].ffile = NULL;
+        logff[0].logformat = NULL;
+        logff[0].fp = NULL;
+        logff[1].file = NULL;
+        logff[1].logformat = NULL;
+
+        merror(NO_FILE, ARGV0);
+    }
+                                                                                        
     
 
     /* Reading the private keys  */

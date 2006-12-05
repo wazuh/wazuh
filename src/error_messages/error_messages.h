@@ -43,6 +43,9 @@
 #define FILE_ERROR    "%s(1117): Error handling file '%s' (date of change)."
 #define SYSTEM_ERROR  "%s(1118): Internal error. Exiting.."
 #define FGETS_ERROR   "%s(1119): Invalid line on file '%s': %s."
+#define PIPE_ERROR    "%s(1120): Pipe error."
+#define GLOB_ERROR    "%s(1121): Glob error. Invalid pattern: '%s'."
+#define GLOB_NFOUND   "%s(1122): No file found by pattern: '%s'."
 
 
 /* COMMON ERRORS */

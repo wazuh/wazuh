@@ -52,6 +52,7 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <signal.h>
+#include <glob.h>
 
 /* Making Windows happy */
 #ifndef WIN32
