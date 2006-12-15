@@ -194,7 +194,6 @@ void ExecdStart(int q)
     char *tmp_msg = NULL;
     char *name;
     char *command;
-    char *extra_data;
     char *cmd_args[MAX_ARGS +2];
 
 
@@ -337,17 +336,6 @@ void ExecdStart(int q)
         name = buffer;
         
         
-        /* Getting any extra data to be sent via stdin.
-         * This value is not passed to the timeout command.
-         */
-        extra_data = strchr(buffer, '\n');
-        if(extra_data)
-        {
-            *extra_data = '\0';
-            extra_data++;
-        }
-
-
         /* Zeroing the name */
         tmp_msg = strchr(buffer, ' ');
         if(!tmp_msg)
@@ -414,12 +402,21 @@ void ExecdStart(int q)
         /* Check this command was already executed. */
         timeout_node = OSList_GetFirstNode(timeout_list);
         added_before = 0;
+
+
+        /* Checking for the username and ip argument */
+        if(!timeout_args[2] || !timeout_args[3])
+        {
+            added_before = 1;
+            merror("%s: Invalid number of arguments.", ARGV0);
+        }
+        
         while(timeout_node)
         {
             timeout_data *list_entry;
 
             list_entry = (timeout_data *)timeout_node->data;
-            if((strcmp(list_entry->command[i], timeout_args[i]) == 0) &&
+            if((strcmp(list_entry->command[3], timeout_args[3]) == 0) &&
                (strcmp(list_entry->command[0], timeout_args[0]) == 0)) 
             {
                 /* Means we executed this command before
@@ -441,14 +438,6 @@ void ExecdStart(int q)
         /* If it wasn't added before, do it now */
         if(!added_before)
         {
-            /* Adding extra_data as the last argument */
-            if(extra_data)
-            {
-                i++;
-                cmd_args[i] = extra_data;
-                cmd_args[i + 1] = NULL;
-            }
-            
             /* executing command */
             ExecCmd(cmd_args);
 

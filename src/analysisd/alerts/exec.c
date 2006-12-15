@@ -86,15 +86,14 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
             return;
             
         snprintf(exec_msg, OS_SIZE_1024,
-                "%s %s %s\n%d.%ld %s %d %s",
+                "%s %s %s %d.%ld %s %d",
                 ar->name,
                 user,
                 ip,
                 lf->time,
                 ftell(_aflog),
                 lf->location,
-                lf->generated_rule->sigid,
-                lf->generated_rule->comment);
+                lf->generated_rule->sigid);
 
         if(OS_SendUnix(*execq, exec_msg, 0) < 0)
         {
@@ -107,7 +106,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     if((Config.ar & REMOTE_AR) && (lf->location[0] == '('))
     {
         snprintf(exec_msg, OS_SIZE_1024,
-                "%s %c%c%c %s %s %s %s\n%d.%ld %s %d %s",
+                "%s %c%c%c %s %s %s %s %d.%ld %s %d",
                 lf->location,
                 (ar->location & ALL_AGENTS)?ALL_AGENTS_C:NONE_C,
                 (ar->location & REMOTE_AGENT)?REMOTE_AGENT_C:NONE_C,
@@ -119,8 +118,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
                 lf->time,
                 ftell(_aflog),
                 lf->location,
-                lf->generated_rule->sigid,
-                lf->generated_rule->comment);
+                lf->generated_rule->sigid);
        
         if(OS_SendUnix(*arq, exec_msg, 0) < 0)
         {

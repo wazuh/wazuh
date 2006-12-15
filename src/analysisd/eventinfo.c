@@ -26,6 +26,7 @@
 Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
 {
     Eventinfo *lf;
+    Eventinfo *first_lf;
     OSListNode *lf_node;
     
     
@@ -45,6 +46,8 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
     {
         return(NULL);
     }
+    first_lf = (Eventinfo *)lf_node->data;
+    
 
     do
     {
@@ -115,6 +118,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
         /* If reached here, we matched */
         my_lf->matched = currently_rule->level;
         lf->matched = currently_rule->level;
+        first_lf->matched = currently_rule->level;
 
         return(lf);
 
