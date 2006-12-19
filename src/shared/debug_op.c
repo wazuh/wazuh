@@ -1,6 +1,6 @@
-/*      $OSSEC, debug_op.c, v0.2, 2004/08/02, Daniel B. Cid$      */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -9,13 +9,6 @@
  * Foundation
  */
 
-/* v0.2: 2005/10/27: Better handlers 
- * v0.1: 2004/08/02
- */
-
-/* Part of the OSSEC HIDS
- * Available at http://www.ossec.net/hids/
- */
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -57,11 +50,17 @@ void _log(const char * msg,va_list args)
     time_t tm;
     struct tm *p;
 
+    /* For the stderr print */
+    va_list args2;
+
     FILE *fp;
     
     tm = time(NULL);
     p = localtime(&tm);
 
+    /* Duplicating args */
+    va_copy(args2, args);
+    
 
     /* If under chroot, log directly to /logs/ossec.log */
     if(chroot_flag == 1)
@@ -79,6 +78,7 @@ void _log(const char * msg,va_list args)
         fp = fopen(_logfile, "a");
     }
 
+    /* Maybe log to syslog if the log file is not available. */
     if(fp)
     {
         (void)fprintf(fp,"%d/%02d/%02d %02d:%02d:%02d ",
@@ -102,13 +102,17 @@ void _log(const char * msg,va_list args)
         (void)fprintf(stderr,"%d/%02d/%02d %02d:%02d:%02d ",
                       p->tm_year+1900,p->tm_mon+1 ,p->tm_mday,
                       p->tm_hour,p->tm_min,p->tm_sec);
-        (void)vfprintf(stderr, msg, args);
+        (void)vfprintf(stderr, msg, args2);
         #ifdef WIN32
         (void)fprintf(stderr, "\r\n");
         #else
         (void)fprintf(stderr, "\n");
         #endif
     }
+
+
+    /* args2 must be ended here */
+    va_end(args2);
 }
 
 
