@@ -367,7 +367,7 @@ void readel(os_el *el, int printit)
                 final_msg[OS_MAXSTR - OS_LOG_HEADER -1] = '\0'; 
                 
                 snprintf(final_msg, OS_MAXSTR - OS_LOG_HEADER -1, 
-                        "WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s\n", 
+                        "WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s", 
                         el->name,
                         category, 
                         id,
