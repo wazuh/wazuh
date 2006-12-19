@@ -10,7 +10,6 @@
     <decoded_as>sshd</decoded_as>
     <description>SSHD messages grouped.</description>
   </rule>
-            
               
   <rule id="5701" level="12">
     <if_sid>5700</if_sid>
@@ -33,7 +32,8 @@
 
   <rule id="5704" level="4">
     <if_sid>5700</if_sid>
-    <match>fatal: Timeout before authentication for</match>
+    <match>fatal: Timeout before authentication for|</match>
+    <match>fatal: Read from socket failed: </match>
     <description>Timeout while logging in (sshd).</description>
   </rule>
 
@@ -57,12 +57,6 @@
     <group>exploit_attempt,</group>
   </rule>
 
-  <rule id="5708" level="4">
-    <if_sid>5700</if_sid>
-    <match>fatal: Read from socket failed: Connection reset</match>
-    <description>Timeout while logging in (sshd)</description>
-  </rule>
-  
   <rule id="5709" level="0">
     <if_sid>5700</if_sid>
     <match>error: Could not get shadow information for NOUSER</match>
@@ -136,7 +130,13 @@
     <if_matched_sid>5718</if_matched_sid>
     <description>Multiple access attempts using a denied user.</description>
   </rule>
-                                      
+  
+  <rule id="5720" level="10" frequency="6">
+    <if_matched_sid>5716</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple SSHD authentication failures.</description>
+    <group>authentication_failures,</group>
+  </rule>                                       
 </group> <!-- SYSLOG, SSHD -->
 
 <!-- EOF -->

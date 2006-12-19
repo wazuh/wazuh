@@ -238,6 +238,12 @@
     <description>Kernel device error.</description>
   </rule>
 
+  <rule id="5112" level="0">
+    <if_sid>5100</if_sid>
+    <match>usbhid: probe of</match>
+    <description>Kernel usbhid probe error (ignored).</description>
+  </rule>
+
   <rule id="5200" level="0">
     <match>^hpiod: unable to ParDevice</match>
     <description>Ignoring hpiod for producing useless logs.</description>
