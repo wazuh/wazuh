@@ -28,6 +28,22 @@
   <rule id="1003" level="13" maxsize="856">
     <description>Non standard syslog message (size too large).</description>
   </rule>  
+
+  <rule id="1004" level="7">
+    <match>^exiting on signal</match>
+    <description>Syslogd exiting (logging stopped).</description>
+  </rule>
+  
+  <rule id="1005" level="7">
+    <program_name>syslogd</program_name>
+    <match>^restart</match>
+    <description>Syslogd restarted.</description>
+  </rule>
+
+  <rule id="1006" level="7">
+    <regex>^syslogd \S+ restart</regex>
+    <description>Syslogd restarted.</description>
+  </rule>
 </group> <!-- SYSLOG,ERRORS -->
 
 
