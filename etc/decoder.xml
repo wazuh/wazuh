@@ -784,7 +784,6 @@
   -->
 
 <decoder name="snort">
-  <type>ids</type>
   <program_name>^snort</program_name>
 </decoder>
 
