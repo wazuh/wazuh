@@ -20,7 +20,12 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     int pl = 0;
     int i = 0;
     
-    int glob_set = 0, glob_offset = 0;
+    int glob_set = 0; 
+    
+    #ifndef WIN32
+    int glob_offset = 0;
+    #endif
+
 
     /* XML Definitions */
     char *xml_localfile_location = "location";
@@ -98,12 +103,14 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 }
 
                 os_strdup(node[i]->content, logf[pl].ffile);
+                os_strdup(node[i]->content, logf[pl].file);
             }
             
             /* This is a glob*.
              * We will call this file multiple times until
              * there is no one else available.
              */
+            #ifndef WIN32 /* No windows support for glob */ 
             else if(strchr(node[i]->content, '*') ||
                     strchr(node[i]->content, '?') ||
                     strchr(node[i]->content, '['))
@@ -153,6 +160,8 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 /* We can not increment the file count in here */
                 continue;
             }
+            #endif /* WIN32 */
+            
             /* Normal file */
             else
             {
