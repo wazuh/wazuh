@@ -1,4 +1,4 @@
-!define VERSION "0.9-3"
+!define VERSION "1.0"
 !define NAME "Ossec HIDS"
 !define /date CDATE "%H:%M:%S %d %b, %Y"
 
@@ -10,7 +10,7 @@ DirText "${NAME} v${VERSION} Windows Agent Installer."
 ComponentText  "${NAME} Windows Agent Installer"
 CompletedText "${NAME} Windows Agent Installer is finished"
 UninstallText "${NAME} Windows Agent Uninstaller"
-BrandingText "Copyright © Daniel B. Cid"
+BrandingText "Copyright © 2005-2007 Daniel B. Cid"
 OutFile "C:\ossec-win32-agent.exe"
 
 
@@ -25,7 +25,7 @@ Function .onInit
     NoAbort:
     
     ;; Stopping ossec service.
-    ExecWait '"sc" "stop" "OssecSvc"'  
+    ExecWait '"net" "stop" "OssecSvc"'  
     
     ;;MessageBox MB_YESNO "This will install. Continue?" IDYES NoAbort
     ;;Abort ; causes installer to quit.
@@ -54,7 +54,7 @@ ClearErrors
 ;;
 ;;done:  
 
-File ossec-agent.exe default-ossec.conf manage_agents.exe internal_options.conf setup-windows.exe setup-iis.exe service-start.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe
+File ossec-agent.exe default-ossec.conf manage_agents.exe internal_options.conf setup-windows.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"
@@ -62,6 +62,7 @@ WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "Un
 WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "NoModify" 1
 WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "NoRepair" 1
 WriteUninstaller "uninstall.exe"
+
 
 ; Writing version and install information
 FileOpen $0 $INSTDIR\VERSION.txt w
@@ -82,7 +83,9 @@ CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$I
 Delete "$SMPROGRAMS\ossec\Edit.lnk"
 CreateShortCut "$SMPROGRAMS\ossec\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
 CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
-CreateShortCut "$SMPROGRAMS\ossec\Start.lnk" "$INSTDIR\service-start.exe" "" "$INSTDIR\service-start.exe" 0
+CreateShortCut "$SMPROGRAMS\ossec\Start OSSEC.lnk" "$INSTDIR\service-start.exe" "" "$INSTDIR\service-start.exe" 0
+CreateShortCut "$SMPROGRAMS\ossec\Stop OSSEC.lnk" "$INSTDIR\service-stop.exe" "" "$INSTDIR\service-stop.exe" 0
+CreateShortCut "$SMPROGRAMS\ossec\Import Keys.lnk" "$INSTDIR\manage_agents.exe" "" "$INSTDIR\manage_agents.exe" 0
 CreateShortCut "$SMPROGRAMS\ossec\View Logs.lnk" "$INSTDIR\ossec.log" "" "$INSTDIR\ossec.log" 0
 
 
@@ -94,14 +97,14 @@ ExecWait '"C:\Windows\notepad.exe" "$INSTDIR\ossec.conf"'
 MessageBox MB_OKCANCEL "Do you wish to start ${NAME} now?" IDOK Startsvc
     Startsvc:
     ;; Starting ossec service.
-    ExecWait '"sc" "start" "OssecSvc"'
+    ExecWait '"net" "start" "OssecSvc"'
 SectionEnd
 
 
 Section "Uninstall"
   
   ; Stop ossec
-  ExecWait '"sc" "stop" "OssecSvc"'
+  ExecWait '"net" "stop" "OssecSvc"'
   
   ; Uninstall from the services
   Exec '"$INSTDIR\ossec-agent.exe" uninstall-service'
