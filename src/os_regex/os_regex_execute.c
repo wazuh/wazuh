@@ -111,7 +111,7 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
 }    
 
 #define PRTS(x) ((prts(*x) && x++) || 1)
-#define ENDOFFILE(x) ( PRTS(x) && ((*x == '\0') || (*x == ENDREGEX)))
+#define ENDOFFILE(x) ( PRTS(x) && (*x == '\0'))
 
 /** int _OS_Regex(char *pattern, char *str, char **prts_closure,
               char **prts_str, int flags) v0.1
@@ -145,8 +145,10 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
     {
         switch(*pt)
         {
-            case '\0':    
-                return(r_code);
+            case '\0':
+                if(!(flags & END_SET) || (flags & END_SET && (*st == '\0')))
+                    return(r_code);
+                break;
 
                 /* If it is a parenthesis do not match against the character */
             case '(':
@@ -167,7 +169,10 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
 
                 pt++;
                 if(*pt == '\0')
-                    return(r_code);
+                {
+                    if(!(flags & END_SET) || (flags & END_SET && (*st == '\0')))
+                        return(r_code);
+                }
                 break;
         }
 
@@ -347,7 +352,8 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
             else if((*(pt+3) == '\0') && (_regex_matched == 1)&&(r_code))
             {
                 r_code = st;
-                return(r_code);
+                if(!(flags & END_SET) || (flags & END_SET && (*st == '\0')))
+                    return(r_code);
             }
             
             /* If we didn't match regex, but _regex_matched == 1, jump

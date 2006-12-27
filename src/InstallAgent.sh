@@ -66,7 +66,19 @@ else
     grep "^${USER}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
 	/usr/sbin/groupadd ${GROUP}
-	/usr/sbin/useradd -d ${DIR} -s /sbin/nologin -g ${GROUP} ${USER}
+
+    # We first check if /sbin/nologin is present. If it is not,
+    # we look for bin/false. If none of them is present, we
+    # just stick with nologin (no need to fail the install for that).
+    OSMYSHELL="/sbin/nologin"
+    ls -la ${OSMYSHELL} > /dev/null 2>&1
+    if [ ! $? = 0 ]; then
+        ls -la /bin/false > /dev/null 2>&1
+        if [ $? = 0 ]; then
+            OSMYSHELL="/bin/false"
+        fi
+    fi        
+	/usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER}
     fi
 fi
 

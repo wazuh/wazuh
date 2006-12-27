@@ -77,9 +77,12 @@
   -  sshd[8813]: Failed none for root from 192.168.10.161 port 1066 ssh2
   -  sshd[12675]: Failed password for invalid user lala11 from x.x.x.x ..
   -  sshd[12914]: Failed password for invalid user lala6 from ...
+  -  sshd[8267]: Failed password for illegal user test from 62.67.45.4 port 39141 ssh2
+  -  sshd[11259]: Invalid user abc from 127.0.0.1
   -  "" Failed keyboard-interactive for root from 192.1.1.1 port 1066 ssh2    
   -  sshd[23857]: [ID 702911 auth.notice] User xxx, coming from zzzz,
   -  authenticated. 
+  -  sshd[23578]: reverse mapping checking getaddrinfo for pib4.catv-bauer.at failed - POSSIBLE BREAKIN ATTEMPT!
   -  sshd[61834]: reverse mapping checking getaddrinfo for sv.tvcm.ch
   -  failed - POSSIBLE BREAKIN ATTEMPT!
   -  sshd[3251]: User root not allowed because listed in DenyUsers
@@ -105,11 +108,17 @@
   <fts>name, user, location</fts>
 </decoder>
 
+<decoder name="ssh-invfailed">
+  <parent>sshd</parent>
+  <prematch>^Failed \S+ for invalid user|^Failed \S+ for illegal user</prematch>
+  <regex offset="after_prematch">from (\S+) port \d+ \w+$</regex>
+  <order>srcip</order>
+</decoder>
+
 <decoder name="ssh-failed">
   <parent>sshd</parent>
-  <prematch>^Failed</prematch>
-  <regex offset="after_prematch">^ \S+ for i\w+ user (\S+) from (\S+) |</regex>
-  <regex>^ \S+ for (\S+) from (\S+) port </regex>
+  <prematch>^Failed \S+ </prematch>
+  <regex offset="after_prematch">^for (\S+) from (\S+) port \d+ \w+$</regex>
   <order>user, srcip</order>
 </decoder>
 
@@ -122,8 +131,8 @@
 
 <decoder name="ssh-reverse-mapping">
   <parent>sshd</parent>
-  <prematch>^reverse mapping checking</prematch>
-  <regex offset="after_prematch">^\w+ \w+ for (\S+) failed - </regex>
+  <prematch>^reverse mapping checking </prematch>
+  <regex offset="after_prematch">^\w+ for (\S+) failed - </regex>
   <order>srcip</order>
 </decoder>       
 
@@ -136,14 +145,14 @@
 
 <decoder name="ssh-invalid-user">
   <parent>sshd</parent>
-  <prematch>^Invalid user</prematch>
-  <regex offset="after_prematch">^ (\S+) from (\S+)</regex>
-  <order>user, srcip</order>
+  <prematch>^Invalid user|^Illegal user</prematch>
+  <regex offset="after_prematch"> from (\S+)$</regex>
+  <order>srcip</order>
 </decoder>
 
 <decoder name="ssh-generic">
   <parent>sshd</parent>
-  <regex> from (\S+)</regex>
+  <regex> from (\S+)$</regex>
   <order>srcip</order>
 </decoder>
 

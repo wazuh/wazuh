@@ -538,7 +538,7 @@ ConfigureServer()
             echo "   - ${defaultwhitelist}"
             for ip in ${NAMESERVERS} ${NAMESERVERS2};
             do
-            if [ "X${ip}" != "X" ]; then
+            if [ ! "X${ip}" = "X" ]; then
                 echo "      - ${ip}"
                 echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
             fi
