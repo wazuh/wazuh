@@ -34,13 +34,13 @@
     <description>Syslogd exiting (logging stopped).</description>
   </rule>
   
-  <rule id="1005" level="7">
+  <rule id="1005" level="5">
     <program_name>syslogd</program_name>
     <match>^restart</match>
     <description>Syslogd restarted.</description>
   </rule>
 
-  <rule id="1006" level="7">
+  <rule id="1006" level="5">
     <regex>^syslogd \S+ restart</regex>
     <description>Syslogd restarted.</description>
   </rule>
