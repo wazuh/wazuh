@@ -345,22 +345,29 @@
 
 <!-- Sudo messages -->
 <group name="syslog,sudo">
-  <rule id="5500" level="0" noalert="1">
+  <rule id="5400" level="0" noalert="1">
     <decoded_as>sudo</decoded_as>
     <description>Initial group for sudo messages</description>
   </rule>
   
-  <rule id="5501" level="10">
-    <if_sid>5500</if_sid>
+  <rule id="5401" level="10">
+    <if_sid>5400</if_sid>
     <match>3 incorrect password attempts</match>
     <description>Three failed attempts to run sudo</description>
   </rule>
 
-  <rule id="5502" level="3">
-    <if_sid>5500</if_sid>
+  <rule id="5402" level="3">
+    <if_sid>5400</if_sid>
     <match> ; USER=root ; COMMAND=</match>
     <description>Successful sudo to ROOT executed</description>
   </rule>
+
+  <rule id="5403" level="4">
+    <if_sid>5400</if_sid>
+    <options>alert_by_email</options>
+    <if_fts></if_fts>
+    <description>First time user executed sudo.</description>
+  </rule>                  
 </group> <!-- SYSLOG, SUDO -->
 
 

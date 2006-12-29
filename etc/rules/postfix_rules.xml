@@ -66,7 +66,8 @@
 
   <rule id="3330" level="10" ignore="720">
     <if_sid>3320</if_sid>
-    <match>defer service failure|Resource temporarily unavailable</match>
+    <match>defer service failure|Resource temporarily unavailable|</match>
+    <match>^fatal: the Postfix mail system is not running</match>
     <description>Postfix process error.</description>
     <group>service_availability,</group>
   </rule>

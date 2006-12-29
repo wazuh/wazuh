@@ -70,7 +70,8 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Assigning the values in the strucuture (lf->full_log) */
     os_malloc((2*loglen) +1, lf->full_log);
     
-    
+   
+    /* Setting the whole message at full_log */ 
     strncpy(lf->full_log, pieces, loglen);
 
 
@@ -83,7 +84,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Checking for the syslog date format. 
      * ( ex: Dec 29 10:00:01 ) 
      */	
-    if( (loglen > 16) && 
+    if( (loglen > 17) && 
         (pieces[3] == ' ') && 
         (pieces[6] == ' ') && 
         (pieces[9] == ':') && 
@@ -220,7 +221,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             (pieces[24] == ' ')&&
             (pieces[26] == ' '))
     {
-        /* Moving pieces to the beginning of the message */
+        /* Moving log to the beginning of the message */
         lf->log+=24;
     }
     
@@ -228,7 +229,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Checking for snort date format
      * ex: 01/28-09:13:16.240702  [**] 
      */ 
-    else if( (loglen > 23) && 
+    else if( (loglen > 24) && 
              (pieces[2] == '/') && 
              (pieces[5] == '-') &&
              (pieces[8] == ':') && 
@@ -252,6 +253,111 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
              (pieces[25]== ']') )
     {
         lf->log+=27;
+    }
+    
+    /* Checking for the osx asl log format.
+     * Examples:
+     * [Time 2006.12.28 15:53:55 UTC] [Facility auth] [Sender sshd] [PID 483] [Message error: PAM: Authentication failure for username from 192.168.0.2] [Level 3] [UID -2] [GID -2] [Host Hostname]
+     * [Time 2006.11.02 14:02:11 UTC] [Facility auth] [Sender sshd] [PID 856]
+     [Message refused connect from 59.124.44.34] [Level 4] [UID -2] [GID -2]
+     [Host robert-wyatts-emac]
+     */
+    else if((loglen > 26) &&
+            (pieces[0] == '[')  &&
+            (pieces[1] == 'T')  &&
+            (pieces[5] == ' ')  &&
+            (pieces[10] == '.') &&
+            (pieces[13] == '.') &&
+            (pieces[16] == ' ') &&
+            (pieces[19] == ':'))
+    {
+        /* Do not read more than 1 message entry -> log tampering */
+        short unsigned int done_message = 0;
+        
+        
+        /* Removing the date */
+        lf->log+=25;
+
+        /* Getting the desired values */
+        pieces = strchr(lf->log, '[');
+        while(pieces)
+        {
+            pieces++;
+
+            /* Getting the sender (set to program name) */
+            if((strncmp(pieces, "Sender ", 7) == 0) &&
+               (lf->program_name == NULL))
+            {
+                pieces+=7;
+                lf->program_name = pieces;
+
+                /* Getting the closing brackets */
+                pieces = strchr(pieces, ']');
+                if(pieces)
+                {
+                    *pieces = '\0';
+                    
+                    /* Setting program_name size */
+                    lf->p_name_size = strlen(lf->program_name);
+                    
+                    pieces++;
+                }
+                /* Invalid program name */
+                else
+                {
+                    lf->program_name = NULL;
+                    break;
+                }
+            }
+            
+            /* Getting message */
+            else if((strncmp(pieces, "Message ", 8) == 0) &&
+                    (done_message == 0))
+            {
+                pieces+=8;
+                done_message = 1;
+                
+                lf->log = pieces;
+
+                /* Getting the closing brackets */
+                pieces = strchr(pieces, ']');
+                if(pieces)
+                {
+                    *pieces = '\0';
+                    pieces++;
+                }
+                /* Invalid log closure */
+                else
+                {
+                    break;
+                }
+            }
+
+            /* Getting hostname */
+            else if(strncmp(pieces, "Host ", 5) == 0)
+            {
+                pieces+=5;
+                lf->hostname = pieces;
+
+                /* Getting the closing brackets */
+                pieces = strchr(pieces, ']');
+                if(pieces)
+                {
+                    *pieces = '\0';
+                    pieces++;
+                }
+                
+                /* Invalid hostname */
+                else
+                {
+                    lf->hostname = NULL;
+                }
+                break;
+            }
+
+            /* Getting next entry */
+            pieces = strchr(pieces, '[');
+        }
     }
     
     /* Checking for squid date format
@@ -283,17 +389,14 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
 
     /* Setting hostname for local messages */
-    if(strchr(lf->location, '>') != NULL)
+    if(lf->location[0] == '(')
     {
         /* Messages from an agent */
-        lf->hostname = NULL;
+        lf->hostname = lf->location;
     }
-    else
+    else if(lf->hostname == NULL)
     {
-        if(lf->hostname == NULL)
-        {
-           lf->hostname = __shost; 
-        }
+        lf->hostname = __shost;
     }
 
     

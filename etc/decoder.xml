@@ -86,6 +86,8 @@
   -  sshd[61834]: reverse mapping checking getaddrinfo for sv.tvcm.ch
   -  failed - POSSIBLE BREAKIN ATTEMPT!
   -  sshd[3251]: User root not allowed because listed in DenyUsers
+  -  [Time 2006.12.28 15:53:55 UTC] [Facility auth] [Sender sshd] [PID 483] [Message error: PAM: Authentication failure for username from 192.168.0.2] [Level 3] [UID -2] [GID -2] [Host Hostname]
+  -  [Time 2006.11.02 11:41:44 UTC] [Facility auth] [Sender sshd] [PID 800] [Message refused connect from 51.124.44.34] [Level 4] [UID -2] [GID -2] [Host test2-emac]
   -->
 
 <decoder name="sshd">
@@ -209,6 +211,22 @@
 </decoder>
 
 
+<!-- Sudo decoder.
+  -  Will extract the username
+  -  Examples:
+  -  Apr 27 15:22:23 niban sudo:     dcid : TTY=pts/4 ; PWD=/home/dcid ; USER=root ; COMMAND=/usr/bin/tail /var/log/snort/alert.fast
+  -  Apr 27 15:25:08 niban sudo:     dcid : TTY=pts/4 ; PWD=/home/dcid ; USER=root ; COMMAND=/usr/bin/tail /var/log/snort/alert.fast
+  -  Apr 14 10:59:01 enigma sudo:     dcid : TTY=ttyp3 ; PWD=/home/dcid/ossec-hids.0.1a/src/analysisd ; USER=root ; COMMAND=/bin/cp -pr ../../bin/addagent ../../bin/osaudit-logaudit ../../bin/ossec-execd ../../bin/ossec-logcollector ../../bin/ossec-maild ../../bin/ossec-remoted /var/ossec/bin
+  -  Apr 19 14:52:02 enigma sudo:     dcid : TTY=ttyp3 ; PWD=/var/www/alex ; USER=root ; COMMAND=/sbin/chown dcid.dcid .
+  -->
+<decoder name="sudo">
+  <program_name>^sudo</program_name>
+  <regex>^\s+(\S+)\s:</regex>
+  <order>user</order>
+  <fts>name,user,location</fts>
+  <ftscomment>First time user executed the sudo command</ftscomment>
+</decoder>  
+
 
 <!-- Su decoder.
   -  Will extract the username.
@@ -220,9 +238,8 @@
   -  Jul  5 12:17:38 lili su[2702]: - pts/5 ab-dc-root
   -  Jul  5 12:13:15 lili su[2614]: - pts/6 dcid-root
   -->
-  
 <decoder name="su">
-  <program_name>su</program_name>
+  <program_name>^su$</program_name>
   <regex>^BAD SU (\S+) to (\S+) on|</regex>
   <regex>^failed: \S+ changing from (\S+) to (\S+)|</regex>
   <regex>^- \S+ (\S+)-(\S+)$</regex>
@@ -230,23 +247,6 @@
   <fts>name,user,location</fts>
   <ftscomment>First time user attempted to use su</ftscomment>
 </decoder>
-
-
-<!-- Sudo decoder.
-  -  Will extract the username
-  -  Examples:
-  -  Apr 27 15:22:23 niban sudo:     dcid : TTY=pts/4 ; PWD=/home/dcid ; USER=root ; COMMAND=/usr/bin/tail /var/log/snort/alert.fast
-  -  Apr 27 15:25:08 niban sudo:     dcid : TTY=pts/4 ; PWD=/home/dcid ; USER=root ; COMMAND=/usr/bin/tail /var/log/snort/alert.fast
-  -  Apr 14 10:59:01 enigma sudo:     dcid : TTY=ttyp3 ; PWD=/home/dcid/ossec-hids.0.1a/src/analysisd ; USER=root ; COMMAND=/bin/cp -pr ../../bin/addagent ../../bin/osaudit-logaudit ../../bin/ossec-execd ../../bin/ossec-logcollector ../../bin/ossec-maild ../../bin/ossec-remoted /var/ossec/bin
-  -  Apr 19 14:52:02 enigma sudo:     dcid : TTY=ttyp3 ; PWD=/var/www/alex ; USER=root ; COMMAND=/sbin/chown dcid.dcid .
-  -->
-<decoder name="sudo">
-  <program_name>sudo</program_name>
-  <regex>^\s+(\S+)\s:</regex>
-  <order>user</order>
-  <fts>name,user,location</fts>
-  <ftscomment>First time user executed the sudo command</ftscomment>
-</decoder>  
 
 
 <!-- ProFTPD decoder.
@@ -444,7 +444,7 @@
 <decoder name="postfix-reject">
   <use_own_name>true</use_own_name>
   <parent>postfix</parent>  
-  <prematch offset="after_parent">^NOQUEUE: reject: RCPT from </prematch>
+  <prematch>^NOQUEUE: reject: RCPT from </prematch>
   <regex offset="after_prematch">[(\d+.\d+.\d+.\d+)]: (\d+) </regex>
   <order>srcip,id</order>
 </decoder>
