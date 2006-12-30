@@ -2,179 +2,204 @@
 #include <stdio.h>
 #include <tchar.h>
 
+/* Default values */
 #define MAX_KEY_LENGTH 255
 #define MAX_KEY	2048
 #define MAX_VALUE_NAME 16383
  
-char *(ignore_list[]) = {"SOFTWARE\\Classes","test123",NULL};
-HKEY hk;
-int open_key(char *subkey);
-int max_deep = 4;
-	
-void QueryKey(HKEY hKey, char *p_key) 
-{ 
-    TCHAR    achKey[MAX_KEY_LENGTH];   // buffer for subkey name
-    DWORD    cbName;                   // size of name string 
-    TCHAR    achClass[MAX_PATH] = TEXT("");  // buffer for class name 
-    DWORD    cchClassName = MAX_PATH;  // size of class string 
-    DWORD    cSubKeys=0;               // number of subkeys 
-    DWORD    cbMaxSubKey;              // longest subkey size 
-    DWORD    cchMaxClass;              // longest class string 
-    DWORD    cValues;              // number of values for key 
-    DWORD    cchMaxValue;          // longest value name 
-    DWORD    cbMaxValueData;       // longest value data 
-    DWORD    cbSecurityDescriptor; // size of security descriptor 
-    FILETIME ftLastWriteTime;      // last write time 
+char *(os_winreg_ignore_list[]) = {"SOFTWARE\\Classes","test123",NULL};
 
-    DWORD i, retCode; 
+HKEY sub_tree;
+int os_winreg_open_key(char *subkey);
 
-    TCHAR  achValue[MAX_VALUE_NAME +1]; 
-    TCHAR  achData[MAX_VALUE_NAME +1]; 
-    DWORD cchValue = MAX_VALUE_NAME; 
-    DWORD cchData = MAX_VALUE_NAME; 
+void os_winreg_querykey(HKEY hKey, char *p_key) 
+{
+    int i, rc;
+    DWORD j;
 
-    // Get the class name and the value count. 
-    retCode = RegQueryInfoKey(
-            hKey,                    // key handle 
-            achClass,                // buffer for class name 
-            &cchClassName,           // size of class string 
-            NULL,                    // reserved 
-            &cSubKeys,               // number of subkeys 
-            &cbMaxSubKey,            // longest subkey size 
-            &cchMaxClass,            // longest class string 
-            &cValues,                // number of values for this key 
-            &cchMaxValue,            // longest value name 
-            &cbMaxValueData,         // longest value data 
-            &cbSecurityDescriptor,   // security descriptor 
-            &ftLastWriteTime);       // last write time 
+    /* QueryInfo and EnumKey variables */
+    TCHAR sub_key_name_b[MAX_KEY_LENGTH +1];
+    TCHAR class_name_b[MAX_PATH +1];
+    DWORD sub_key_name_s;
+    DWORD class_name_s = MAX_PATH;
 
-    // Enumerate the subkeys, until RegEnumKeyEx fails.
+    /* Number of sub keys */
+    DWORD subkey_count = 0;
 
-    if (cSubKeys)
+    /* Number of values */
+    DWORD value_count;
+
+    /* Variables for RegEnumValue */
+    TCHAR value_buffer[MAX_VALUE_NAME +1]; 
+    TCHAR data_buffer[MAX_VALUE_NAME +1]; 
+    DWORD value_size;
+    DWORD data_size;
+
+    /* Data type for RegEnumValue */
+    DWORD data_type = 0;
+
+
+    /* Initializing the memory for some variables */
+    class_name_b[0] = '\0';
+    class_name_b[MAX_PATH] = '\0';
+    sub_key_name_b[0] = '\0';
+    sub_key_name_b[MAX_KEY_LENGTH] = '\0';
+    
+
+    /* We use the class_name, subkey_count and the value count. */
+    rc = RegQueryInfoKey(hKey, class_name_b, &class_name_s, NULL,
+            &subkey_count, NULL, NULL, &value_count,
+            NULL, NULL, NULL, NULL);
+
+    /* Check return code of QueryInfo */
+    if(rc != ERROR_SUCCESS)
     {
-        printf( "\nNumber of subkeys: %d\n", cSubKeys);
+        return;
+    }
 
-        for (i=0; i<cSubKeys; i++) 
+
+
+    /* Checking if we have sub keys */
+    if(subkey_count)
+    {
+        /* We open each subkey and call open_key */
+        for(i=0;i<subkey_count;i++) 
         { 
-            cbName = MAX_KEY_LENGTH;
-            retCode = RegEnumKeyEx(hKey, i,
-                    achKey, 
-                    &cbName, 
-                    NULL, 
-                    NULL, 
-                    NULL, 
-                    &ftLastWriteTime); 
-            if (retCode == ERROR_SUCCESS) 
+            sub_key_name_s = MAX_KEY_LENGTH;
+            rc = RegEnumKeyEx(hKey, i, sub_key_name_b, &sub_key_name_s,
+                              NULL, NULL, NULL, NULL); 
+            
+            /* Checking for the rc. */
+            if(rc == ERROR_SUCCESS) 
             {
-                char f_key[1024];
+                char new_key[MAX_KEY_LENGTH + 2];
+                new_key[MAX_KEY_LENGTH +1] = '\0';
 
-                f_key[1023] = '\0';
                 if(p_key)
                 {
-                    snprintf(f_key, 1023, TEXT("%s\\%s"),p_key, achKey);
+                    snprintf(new_key, MAX_KEY_LENGTH, 
+                                      "%s\\%s", p_key, sub_key_name_b);
                 }
                 else
                 {
-                    snprintf(f_key, 1023, "%s",achKey);
+                    snprintf(new_key, MAX_KEY_LENGTH, "%s", sub_key_name_b);
                 }
-                _tprintf(TEXT("KEY: (%d) %s\n"), i+1, f_key);
 
-                open_key(f_key);
-
+                /* Opening subkey */
+                os_winreg_open_key(new_key);
             }
         }
-    } 
-
-
-    /* Getting cvalues */
-    if (cValues) 
+    }
+    
+    /* Getting Values (if available) */
+    if (value_count) 
     {
-	int i = 0;    
-        FILE *fp;
-	char tmp_file[MAX_KEY +1];
-	tmp_file[MAX_KEY] = '\0';
+        printf("XXX Values for: %s - %d\n", p_key, (int)value_count);
+        
+        /* Clearing the values for value_size and data_size */
+        value_buffer[MAX_VALUE_NAME] = '\0';
+        data_buffer[MAX_VALUE_NAME] = '\0';
 
-	printf("h?\n");
-	strncpy(tmp_file, p_key, MAX_KEY);
-	while(tmp_file[i] != '\0')
-	{
-	   if(tmp_file[i] == '\\')
-	      tmp_file[i] = '-';
-	   i++;	   
-	}
-
-        fp = fopen(tmp_file, "w");
-        if(!fp)
-        {
-            printf("error opening %s\n", tmp_file);
-            return;
-        }
-
-        fprintf(fp, "Number of values: %d\r\n", cValues);
-
-        for (i=0, retCode=ERROR_SUCCESS; i<cValues; i++) 
+        for(i=0;i<value_count;i++) 
         { 
-            cchValue = MAX_VALUE_NAME; 
-            achValue[0] = '\0'; 
-            retCode = RegEnumValue(hKey, i, 
-                    achValue, 
-                    &cchValue, 
-                    NULL, 
-                    NULL,
-                    achData,
-                    &cchData);
+            value_size = MAX_VALUE_NAME; 
+            data_size = MAX_VALUE_NAME;
+            
+            value_buffer[0] = '\0';
+            data_buffer[0] = '\0';
+            
+            rc = RegEnumValue(hKey, i, value_buffer, &value_size,
+                              NULL, &data_type, data_buffer, &data_size);
 
-            if (retCode == ERROR_SUCCESS ) 
+            /* No more values available */
+            if(rc != ERROR_SUCCESS)
             {
-                fprintf(fp, "VALUE: (%d) %s - %s\r\n", i+1, achValue, achData); 
-            } 
+                break;
+            }
+
+            /* Checking if no value name is specified */
+            if(value_buffer[0] == '\0')
+            {
+                value_buffer[0] = '@';
+                value_buffer[1] = '\0';
+            }
+            printf("   (%d) %s=", i+1, value_buffer);
+            switch(data_type)
+            {
+                case REG_SZ:
+                case REG_EXPAND_SZ:
+                    printf("%s\n", data_buffer);
+                    break;
+                case REG_MULTI_SZ:
+                    /* Printing multiple strings */
+                    printf("MULTI_SZ:");
+                    char *mt_data;
+
+                    mt_data = data_buffer;
+                    while(*mt_data)
+                    {
+                        printf("%s ", mt_data);
+                        mt_data += strlen(mt_data) +1;
+                    }
+                    printf("\n");
+                    break;
+                case REG_DWORD:
+                    printf("%08x\n", (unsigned int)*data_buffer);	
+                    break;
+                default:
+                    printf("UNSUPPORTED(%d-%d):", (int)data_type, data_size);
+                    for(j = 0;j<data_size;j++)
+                    {
+                        printf("%02x", (unsigned int)data_buffer[j]);
+                    }
+                    printf("\n");
+                    break;	
+            }
         }
-        fclose(fp);
     }
 }
 
-int open_key(char *subkey)
+
+/* Open the registry key */
+int os_winreg_open_key(char *subkey)
 {
-   int i = 0;	
-   HKEY hTestKey;
+    int i = 0;	
+    HKEY oshkey;
 
-   /* List to ignore */
-   if(subkey)
-   {
-      while(ignore_list[i] != NULL)
-      {
-         if(strcasecmp(ignore_list[i], subkey) == 0)
-            return(0);
-         i++;      
-      }
-   }
 
-   if( RegOpenKeyEx(hk,
-	subkey,
-        0,
-        KEY_READ,
-        &hTestKey) == ERROR_SUCCESS
-      )
-   {
-      QueryKey(hTestKey, subkey);
-      RegCloseKey(hk);
-   }
-   else
-   {
-	   printf("Error opening: %s\n", subkey);
-   }
+    /* Registry ignore list */
+    if(subkey)
+    {
+        while(os_winreg_ignore_list[i] != NULL)
+        {
+            if(strcasecmp(os_winreg_ignore_list[i], subkey) == 0)
+            {
+                return(0);
+            }
+            i++;      
+        }
+    }
 
+    if(RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ, &oshkey) != ERROR_SUCCESS)
+    {
+        printf("XXX Error opening key: %s\n", subkey);
+        return(0);
+    }
+
+    os_winreg_querykey(oshkey, subkey);
+    RegCloseKey(sub_tree);
 }
 
 
+/* Main function to read the registry.
+ */
 int main(void)
 {
-	hk = HKEY_LOCAL_MACHINE;
-	char *rk = NULL;
+    sub_tree = HKEY_LOCAL_MACHINE;
+    char *rk = NULL;
 
-	printf("starting\n");
-	open_key(rk);
+    os_winreg_open_key(rk);
 
-	return(0);
+    return(0);
 }
 
