@@ -47,6 +47,11 @@ int create_db();
  */
 int check_db();
   
+/** void os_winreg_check()
+ * Checks the registry for changes.
+ */  
+void os_winreg_check();
+
 
 #endif
 

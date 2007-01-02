@@ -23,6 +23,7 @@ int Read_Syscheck_Config(char * cfgfile)
 
     syscheck.rootcheck = 0;
     syscheck.time = SYSCHECK_WAIT*2;
+    syscheck.reg_fp = NULL;
 
 
     /* Cleaning up the dirs */
@@ -30,9 +31,14 @@ int Read_Syscheck_Config(char * cfgfile)
     {
         syscheck.dir[i] = NULL;
         syscheck.opts[i] = 0;
+
+        #ifdef WIN32
+        syscheck.registry[i] = NULL;
+        #endif
     }
 
 
+    /* Reading config */
     if(ReadConfig(modules, cfgfile, &syscheck, NULL) < 0)
         return(OS_INVALID);
 

@@ -163,6 +163,11 @@ void start_daemon()
          */
         if((curr_time - prev_time_sk) > syscheck.time)
         {
+            #ifdef WIN32
+            /* Checking for registry changes on Windows */
+            os_winreg_check();
+            #endif
+
             /* Looking for new files */
             check_db();
 

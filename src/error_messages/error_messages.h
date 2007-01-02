@@ -107,6 +107,8 @@
 #define SK_CREATE_DB    "%s(1750): Creating new database for integrity check"
 #define SK_INV_MSG      "%s(1755): Invalid syscheck message received."
 #define SK_DUP          "%s(1756): Duplicated directory given: '%s'."
+#define SK_INV_REG      "%s(1757): Invalid syscheck registry entry: '%s'."
+#define SK_REG_OPEN     "%s(1758): Unable to open registry key: '%s'."
 
 
 /* Analysisd */

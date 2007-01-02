@@ -41,6 +41,7 @@ void read_internal()
 }
 
 
+#ifdef WIN32
 /* int Start_win32_Syscheck()
  * syscheck main for windows
  */
@@ -75,6 +76,7 @@ int Start_win32_Syscheck()
     read_internal();
 
 
+    /* Opening syscheck db file */
     syscheck.db = (char *)calloc(1024,sizeof(char));
     if(syscheck.db == NULL)
         ErrorExit(MEM_ERROR,ARGV0);
@@ -82,6 +84,24 @@ int Start_win32_Syscheck()
     snprintf(syscheck.db,1023,"%s",SYS_WIN_DB);
 
 
+    /* Printing options */
+    r = 0;
+    while(syscheck.registry[r] != NULL)
+    {
+        verbose("%s: Monitoring registry entry: '%s'.", 
+                ARGV0, syscheck.registry[r]);
+        r++;
+    }
+    
+    r = 0;
+    while(syscheck.dir[r] != NULL)
+    {
+        verbose("%s: Monitoring directory: '%s'.",
+                ARGV0, syscheck.dir[r]);
+        r++;
+    }
+        
+        
     /* Will create the db to store syscheck data */
     create_db();
     fflush(syscheck.fp);
@@ -97,6 +117,7 @@ int Start_win32_Syscheck()
 
     exit(0);
 }                
+#endif
 
 
 /* Syscheck unix main.

@@ -14,6 +14,94 @@
 
 #include "syscheck-config.h"
 
+/* Read Windows registry configuration */
+#ifdef WIN32
+int read_reg(config *syscheck, char *entries)
+{
+    int i;
+    char **entry;
+    char *tmp_str;
+
+    
+    /* Getting each entry separately */
+    entry = OS_StrBreak(',', entries, MAX_DIR_SIZE); /* Max number */
+
+
+    /* entry can not be null */
+    if(entry == NULL)
+    {
+        merror(SK_NO_DIR, ARGV0);
+        return(0);
+    }
+
+
+    /* Doing it for each Entry */
+    while(*entry)
+    {
+        char *tmp_entry;
+
+        tmp_entry = *entry;
+
+        /* Removing spaces at the beginning */
+        while(*tmp_entry == ' ')
+        {
+            tmp_entry++;
+        }
+
+        /* Removing spaces at the end */
+        tmp_str = strchr(tmp_entry, ' ');
+        if(tmp_str)
+        {
+            tmp_str++;
+
+            /* Checking if it is really at the end */
+            if((*tmp_str == '\0') || (*tmp_str == ' '))
+            {
+                tmp_str--;
+                *tmp_str = '\0';
+            }
+        }
+
+
+        /* Adding entries - looking for the last available */
+        for(i = 0; i< MAX_DIR_ENTRY; i++)
+        {
+            int str_len_i;
+            int str_len_dir;
+            
+            if(syscheck->registry[i] == NULL)
+                break;
+
+            str_len_dir = strlen(tmp_entry);
+            str_len_i = strlen(syscheck->registry[i]);
+            
+            if(str_len_dir > str_len_i)
+            {
+                str_len_dir = str_len_i;
+            }
+
+            /* Duplicated entry */
+            if(strncmp(syscheck->registry[i], tmp_entry, str_len_dir) == 0)
+            {
+                merror(SK_DUP, ARGV0, tmp_entry);
+                return(1);
+            }
+        }
+        
+        /* Adding new entry */
+        os_strdup(tmp_entry, syscheck->registry[i]);
+        
+        
+        /* Next entry */
+        entry++;    
+    }
+    
+    return(1);
+}
+#endif /* For read_reg */
+
+
+/* Read directories attributes */            
 int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
 {
     char *xml_check_all = "check_all";
@@ -275,8 +363,10 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
 
     /* XML Definitions */
     char *xml_directories = "directories";
+    char *xml_registry = "windows_registry";
     char *xml_time = "frequency";
     char *xml_ignore = "ignore";
+    char *xml_registry_ignore = "registry_ignore";
     char *xml_auto_ignore = "auto_ignore";
     char *xml_alert_new_files = "alert_new_files";
 
@@ -315,6 +405,16 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
                 return(OS_INVALID);
             }
         }
+        /* Getting windows registry */
+        else if(strcmp(node[i]->element,xml_registry) == 0)
+        {
+            #ifdef WIN32
+            if(!read_reg(syscheck, node[i]->content))
+            {
+                return(OS_INVALID);
+            }
+            #endif
+        }
         /* Getting frequency */
         else if(strcmp(node[i]->element,xml_time) == 0)
         {        
@@ -326,6 +426,7 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
 
             syscheck->time = atoi(node[i]->content);
         }
+        /* Getting file/dir ignore */
         else if(strcmp(node[i]->element,xml_ignore) == 0)
         {
             int ign_size = 0;
@@ -347,6 +448,32 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
                 syscheck->ignore[ign_size +1] = NULL;
             }
             os_strdup(node[i]->content,syscheck->ignore[ign_size]);
+        }
+        /* Getting registry ignore list */
+        else if(strcmp(node[i]->element,xml_registry_ignore) == 0)
+        {
+            #ifdef WIN32
+            int ign_size = 0;
+
+            if(!syscheck->registry_ignore)
+            {
+                os_calloc(2, sizeof(char *), syscheck->registry_ignore);
+                syscheck->registry_ignore[0] = NULL;
+                syscheck->registry_ignore[1] = NULL;
+            }
+            else
+            {
+                while(syscheck->registry_ignore[ign_size] != NULL)
+                    ign_size++;
+
+                os_realloc(syscheck->registry_ignore,
+                        sizeof(char *)*(ign_size +2),
+                        syscheck->registry_ignore);
+                syscheck->registry_ignore[ign_size +1] = NULL;
+            }
+            os_strdup(node[i]->content,syscheck->registry_ignore[ign_size]);
+            
+            #endif
         }
         else if(strcmp(node[i]->element,xml_auto_ignore) == 0)
         {

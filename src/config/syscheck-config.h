@@ -20,8 +20,11 @@
 
 #define SYSCHECK_DB     "/queue/syscheck/syschecklocal.db"
 #define SYS_WIN_DB      "syscheck/syschecklocal.db"
+#define SYS_WIN_REG     "syscheck/syscheckregistry.db"
+#define SYS_REG_TMP     "syscheck/syscheck_sum.tmp"
 #define SYSCHECK_WAIT   3600
 #define SYSCHECK        "syscheck"
+#define SYSCHECK_REG    "syscheck-registry"
 
 
 /* Checking options */
@@ -50,8 +53,16 @@ typedef struct _config
     char *db;
     
 	char **ignore;
+    
 	char *dir[MAX_DIR_ENTRY +1];
 
+    /* Windows only registry checking */
+    #ifdef WIN32
+	char **registry_ignore;
+	char *registry[MAX_DIR_ENTRY +1];
+    FILE *reg_fp;
+    #endif
+    
     FILE *fp;
 
 }config;

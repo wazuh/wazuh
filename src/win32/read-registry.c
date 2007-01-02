@@ -1,6 +1,6 @@
-#include <windows.h>
-#include <stdio.h>
-#include <tchar.h>
+#include "shared.h"
+#include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha1/sha1_op.h"
 
 /* Default values */
 #define MAX_KEY_LENGTH 255
@@ -94,8 +94,12 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
     /* Getting Values (if available) */
     if (value_count) 
     {
-        printf("XXX Values for: %s - %d\n", p_key, (int)value_count);
+        /* md5 and sha1 sum */
+        os_md5 mf_sum;
+        os_sha1 sf_sum;
         
+        printf("XXX Values for: %s - %d\n", p_key, (int)value_count);
+
         /* Clearing the values for value_size and data_size */
         value_buffer[MAX_VALUE_NAME] = '\0';
         data_buffer[MAX_VALUE_NAME] = '\0';
@@ -104,12 +108,12 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
         { 
             value_size = MAX_VALUE_NAME; 
             data_size = MAX_VALUE_NAME;
-            
+
             value_buffer[0] = '\0';
             data_buffer[0] = '\0';
-            
+
             rc = RegEnumValue(hKey, i, value_buffer, &value_size,
-                              NULL, &data_type, data_buffer, &data_size);
+                    NULL, &data_type, data_buffer, &data_size);
 
             /* No more values available */
             if(rc != ERROR_SUCCESS)
@@ -155,6 +159,9 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
                     printf("\n");
                     break;	
             }
+
+            /* Generating checksum of the values */
+
         }
     }
 }

@@ -7,7 +7,6 @@ shared shared
 error_messages error_messages
 addagent addagent
 config config
-syscheckd syscheckd
 rootcheck/db/rootkit_files.txt rootkit_files.txt
 rootcheck/db/rootkit_trojans.txt rootkit_trojans.txt
 os_zlib os_zlib
@@ -30,6 +29,7 @@ syscheckd/create_db.c create_db.c
 syscheckd/run_check.c run_check.c
 syscheckd/syscheck.c syscheck.c
 syscheckd/syscheck.h syscheck.h
+syscheckd/win-registry.c win-registry.c
 external/zlib-1.2.3/zlib.h zlib.h
 external/zlib-1.2.3/zconf.h zconf.h
 os_zlib/os_zlib.c os_zlib.c
