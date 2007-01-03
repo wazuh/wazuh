@@ -1,6 +1,7 @@
 <!-- @(#) $Id$
   -  Official imapd rules for OSSEC.
   -  Author: Daniel Cid
+  -  License: http://www.ossec.net/en/licensing.html
   -->
 
 <var name="IMAPD_FREQ">6</var>      

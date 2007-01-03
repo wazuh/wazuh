@@ -1,6 +1,7 @@
 <!-- @(#) $Id$
   -  Official arpwatch rules for the OSSEC HIDS
   -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
   -->
 
 <group name="syslog,arpwatch,">

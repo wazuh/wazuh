@@ -1,4 +1,4 @@
-/*      $OSSEC, os_net.c, v0.2, 2004/08/02, Daniel B. Cid$      */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2004 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.

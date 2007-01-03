@@ -1,3 +1,10 @@
+<!-- @(#) $Id$
+  -  OSSEC log decoder.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  -->
+        
+
 <!--
    - Allowed fields:
    - location - where the log came from (only on FTS)

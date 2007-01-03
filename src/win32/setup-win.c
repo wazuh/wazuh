@@ -122,7 +122,7 @@ int add_syscheck()
             "  <syscheck>\r\n"
             "    <frequency>21600</frequency>\r\n"
             "    <directories check_all=\"yes\">"
-            "%s,C:\\Program Files</directories>\r\n"
+            "%s</directories>\r\n"
             "  </syscheck>\r\n"
             "</ossec_config>\r\n", win_dir);
     fclose(fp);

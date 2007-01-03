@@ -125,14 +125,16 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
         /* Error on the socket */
         if(__mq_rcode == OS_SOCKTERR)
         {
-            merror("%s: socketerr.", __local_name);
+            merror("%s: socketerr (not available).", __local_name);
+            close(queue);
+            queue = -1;
             return(-1);
         }
 
         
         /* Unable to send. Socket busy */
         sleep(1);
-        if(OS_SendUnix(queue, tmpstr,0) < 0)
+        if(OS_SendUnix(queue, tmpstr, 0) < 0)
         {
             /* When the socket is to busy, we may get some
              * error here. Just sleep 2 second and try
@@ -143,11 +145,11 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
             if(OS_SendUnix(queue, tmpstr,0) < 0)
             {
                 sleep(5);
-                merror("%s: socket busy", __local_name);
+                merror("%s: socket busy ..", __local_name);
                 if(OS_SendUnix(queue, tmpstr,0) < 0)
                 {
                     sleep(10);
-                    merror("%s: socket busy", __local_name);
+                    merror("%s: socket busy ..", __local_name);
                     if(OS_SendUnix(queue, tmpstr,0) < 0)
                     {
                         /* Message is going to be lost

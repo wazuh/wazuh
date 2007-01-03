@@ -23,7 +23,10 @@ int Read_Syscheck_Config(char * cfgfile)
 
     syscheck.rootcheck = 0;
     syscheck.time = SYSCHECK_WAIT*2;
+    
+    #ifdef WIN32
     syscheck.reg_fp = NULL;
+    #endif
 
 
     /* Cleaning up the dirs */

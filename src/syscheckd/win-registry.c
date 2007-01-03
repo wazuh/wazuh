@@ -28,9 +28,10 @@
  
 /* Global variable */
 HKEY sub_tree;
+int ig_count = 0;
 
 /** Function prototypes 8*/
-void os_winreg_open_key(char *subkey);
+void os_winreg_open_key(char *subkey, char *fullkey_name);
 
 
 int os_winreg_changed(char *key, char *md5, char *sha1)
@@ -88,6 +89,14 @@ int os_winreg_changed(char *key, char *md5, char *sha1)
  */
 int notify_registry(char *msg)
 {
+    /* sleep X every Y files */
+    if(ig_count >= syscheck.sleep_after)
+    {
+        sleep(syscheck.tsleep);
+        ig_count = 0;
+    }
+    ig_count++;
+
     if(SendMSG(syscheck.queue, msg, SYSCHECK_REG, SYSCHECK_MQ) < 0)
     {
         merror(QUEUE_SEND, ARGV0);
@@ -156,7 +165,7 @@ char *os_winreg_sethkey(char *reg_entry)
 /* void os_winreg_querykey(HKEY hKey, char *p_key)
  * Query the key and get all its values.
  */
-void os_winreg_querykey(HKEY hKey, char *p_key) 
+void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name) 
 {
     int i, rc;
     DWORD j;
@@ -217,20 +226,26 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
             if(rc == ERROR_SUCCESS) 
             {
                 char new_key[MAX_KEY_LENGTH + 2];
+                char new_key_full[MAX_KEY_LENGTH + 2];
                 new_key[MAX_KEY_LENGTH +1] = '\0';
+                new_key_full[MAX_KEY_LENGTH +1] = '\0';
 
                 if(p_key)
                 {
                     snprintf(new_key, MAX_KEY_LENGTH, 
-                                      "%s\\%s", p_key, sub_key_name_b);
+                             "%s\\%s", p_key, sub_key_name_b);
+                    snprintf(new_key_full, MAX_KEY_LENGTH, 
+                             "%s\\%s", full_key_name, sub_key_name_b);
                 }
                 else
                 {
                     snprintf(new_key, MAX_KEY_LENGTH, "%s", sub_key_name_b);
+                    snprintf(new_key_full, MAX_KEY_LENGTH, 
+                             "%s\\%s", full_key_name, sub_key_name_b);
                 }
 
                 /* Opening subkey */
-                os_winreg_open_key(new_key);
+                os_winreg_open_key(new_key, full_key_name);
             }
         }
     }
@@ -334,7 +349,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
         {
             char reg_changed[MAX_LINE +1];
             snprintf(reg_changed, MAX_LINE, "0:0:0:0:%s:%s %s",
-                                  mf_sum, sf_sum, p_key); 
+                                  mf_sum, sf_sum, full_key_name); 
 
             /* Notifying server */
             notify_registry(reg_changed);
@@ -346,18 +361,18 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
 /* int os_winreg_open_key(char *subkey)
  * Open the registry key
  */
-void os_winreg_open_key(char *subkey)
+void os_winreg_open_key(char *subkey, char *full_key_name)
 {
     int i = 0;	
     HKEY oshkey;
 
 
     /* Registry ignore list */
-    if(subkey)
+    if(full_key_name && syscheck.registry_ignore)
     {
         while(syscheck.registry_ignore[i] != NULL)
         {
-            if(strcasecmp(syscheck.registry_ignore[i], subkey) == 0)
+            if(strcasecmp(syscheck.registry_ignore[i], full_key_name) == 0)
             {
                 return;
             }
@@ -371,7 +386,7 @@ void os_winreg_open_key(char *subkey)
         return;
     }
 
-    os_winreg_querykey(oshkey, subkey);
+    os_winreg_querykey(oshkey, subkey, full_key_name);
     RegCloseKey(sub_tree);
     return;
 }
@@ -385,6 +400,13 @@ void os_winreg_check()
     int i = 0;
     char *rk;
 
+    /* Debug entries */
+    debug1("%s: DEBUG: Starting os_winreg_check", ARGV0);
+    
+    
+    /* Zeroing ig_count before checking */
+    ig_count = 0;
+    
 
     /* Checking if the registry fp is open */
     if(syscheck.reg_fp == NULL)
@@ -404,9 +426,16 @@ void os_winreg_check()
         sub_tree = NULL;
         rk = NULL;
         
+        /* Reading syscheck registry entry */
+        debug1("%s: DEBUG: Attempt to read: %s", ARGV0, syscheck.registry[i]);
+        
+        
         /* Ignored entries are zeroed */
         if(*syscheck.registry[i] == '\0')
+        {
+            i++;
             continue;
+        }
             
         rk = os_winreg_sethkey(syscheck.registry[i]);
         if(sub_tree == NULL)
@@ -417,7 +446,7 @@ void os_winreg_check()
             continue;
         }
 
-        os_winreg_open_key(rk);
+        os_winreg_open_key(rk, syscheck.registry[i]);
         i++;
     }
     return;

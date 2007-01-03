@@ -2,6 +2,7 @@
   -  SMB rules for OSSEC HIDS.
   -  Author: Daniel B. Cid
   -  Logs from:  Kayvan A. Sylvan <kayvan at sylvan.com>
+  -  License: http://www.ossec.net/en/licensing.html
   -->
       
 <!-- Still BETA -->
