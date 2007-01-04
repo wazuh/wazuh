@@ -3,7 +3,7 @@ ZLIB DATA COMPRESSION LIBRARY
 *OSSEC note:
 
 -- Included on OSSEC to avoid problems with some old systems.
--- Not developed or changed in any ways by OSSEC developers.
+-- Not developed or changed in any way by OSSEC developers.
 -- Copyright bellow.
 
 

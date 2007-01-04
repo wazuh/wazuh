@@ -1,6 +1,6 @@
-/*   $OSSEC, mq_op.h, v0.3, 2005/07/20, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it

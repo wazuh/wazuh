@@ -1,4 +1,4 @@
-/*   $OSSEC, ar.h, v0.1, 2005/11/06, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.

@@ -1,4 +1,4 @@
-/*      $OSSEC, pthreads_op.c, v0.1, 2005/09/23, Daniel B. Cid$      */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.

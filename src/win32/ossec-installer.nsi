@@ -39,6 +39,8 @@ Page instfiles
 UninstPage uninstConfirm
 UninstPage instfiles
 
+LicenseText "You must agree to this license before installing."
+LicenseData "LICENSE.txt"
 
 Section "OSSEC HIDS Windows Agent (required)"
 
@@ -54,7 +56,7 @@ ClearErrors
 ;;
 ;;done:  
 
-File ossec-agent.exe default-ossec.conf manage_agents.exe internal_options.conf setup-windows.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe
+File ossec-agent.exe default-ossec.conf manage_agents.exe internal_options.conf setup-windows.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe LICENSE.txt
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"

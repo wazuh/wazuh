@@ -26,9 +26,11 @@
 #define MAX_VALUE_NAME 16383
  
  
-/* Global variable */
+/* Global variables */
 HKEY sub_tree;
 int ig_count = 0;
+int run_count = 0;
+
 
 /** Function prototypes 8*/
 void os_winreg_open_key(char *subkey, char *fullkey_name);
@@ -245,7 +247,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
                 }
 
                 /* Opening subkey */
-                os_winreg_open_key(new_key, full_key_name);
+                os_winreg_open_key(new_key, new_key_full);
             }
         }
     }
@@ -345,7 +347,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
         }
 
         /* Looking for p_key on the reg db */
-        if(os_winreg_changed(p_key, mf_sum, sf_sum))
+        if(os_winreg_changed(full_key_name, mf_sum, sf_sum))
         {
             char reg_changed[MAX_LINE +1];
             snprintf(reg_changed, MAX_LINE, "0:0:0:0:%s:%s %s",
@@ -426,17 +428,18 @@ void os_winreg_check()
         sub_tree = NULL;
         rk = NULL;
         
-        /* Reading syscheck registry entry */
-        debug1("%s: DEBUG: Attempt to read: %s", ARGV0, syscheck.registry[i]);
-        
-        
         /* Ignored entries are zeroed */
         if(*syscheck.registry[i] == '\0')
         {
             i++;
             continue;
         }
+        
             
+        /* Reading syscheck registry entry */
+        debug1("%s: DEBUG: Attempt to read: %s", ARGV0, syscheck.registry[i]);
+        
+        
         rk = os_winreg_sethkey(syscheck.registry[i]);
         if(sub_tree == NULL)
         {
@@ -448,7 +451,15 @@ void os_winreg_check()
 
         os_winreg_open_key(rk, syscheck.registry[i]);
         i++;
+        sleep(syscheck.tsleep *5);
     }
+
+    /* Notify of db completed. */
+    if(run_count > 1)
+    {
+        notify_registry(HC_SK_DB_COMPLETED);
+    }
+    run_count++;
     return;
 }
 

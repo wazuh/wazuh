@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -49,7 +49,8 @@
 #define __license   "\
 This program is free software; you can redistribute it and/or modify\n\
 it under the terms of the GNU General Public License (version 2) as \n\
-published by the Free Software Foundation.\n"
+published by the Free Software Foundation. For more details, go to \n\
+http://www.ossec.net/en/licensing.html\n"
 
 /* Maximum allowed PID */
 #ifdef SOLARIS

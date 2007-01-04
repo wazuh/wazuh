@@ -61,8 +61,7 @@ void *AR_Forward(void *arg)
             
             /* Getting the location */
             location = msg;
-            
-            
+
             /* Location is going to be the agent name */
             tmp_str = strchr(msg, ')');
             if(!tmp_str)

@@ -9,6 +9,7 @@ WINPKG="win-pkg"
 # Generating configs
 ./unix2dos.pl ossec.conf > ossec-win.conf
 ./unix2dos.pl ../../etc/internal_options.conf > internal_options-win.conf
+./unix2dos.pl ../../LICENSE.txt > LICENSE.txt
 
 # Going to the source dir
 cd ${DIR}

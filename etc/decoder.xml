@@ -674,7 +674,8 @@
   - %PIX-3-305005: No translation group found for icmp src outside:x.x.x.x dst inside:x.x.x.x (type 3, code 0)
   -->
 <decoder name="pix">
-  <prematch>^%PIX-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %PIX-</prematch>
+  <prematch>^%PIX-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %PIX-|</prematch>
+  <prematch>^%ASA-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %ASA-</prematch>
 </decoder>
 
 <decoder name="pix-fw1">

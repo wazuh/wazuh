@@ -1,6 +1,6 @@
-/*      $OSSEC, debug_op.h, v0.2, 2005/10/27, Daniel B. Cid$      */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2003,2004 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -10,12 +10,8 @@
  */
 
 
-/* v0.2: 2005/10/27: Better handlers 
- * v0.1: 2004/08/02
- */
- 
 /* Part of the OSSEC HIDS
- * Available at http://www.ossec.net/hids/
+ * Available at http://www.ossec.net
  */
 
 /* Functions to generate debug/verbose/err reports.

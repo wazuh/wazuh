@@ -120,11 +120,104 @@ int add_syscheck()
             "<!-- Default syscheck config -->\r\n"
             "<ossec_config>\r\n"
             "  <syscheck>\r\n"
-            "    <frequency>21600</frequency>\r\n"
+            "    <frequency>43200</frequency>\r\n"
             "    <directories check_all=\"yes\">"
             "%s</directories>\r\n"
             "  </syscheck>\r\n"
             "</ossec_config>\r\n", win_dir);
+    fclose(fp);
+
+    return(0);
+
+}
+
+
+/* Adds the registry checking entries */
+int config_registry()
+{
+    int add_reg_ig = 1;
+    int add_reg_entries = 1;
+    FILE *fp;
+
+
+    /* We add here the last entry */
+    if(dogrep(OSSECCONF, "</registry_ignore>"))
+    {
+        add_reg_ig = 0;
+    }
+
+    /* Registry entries already added */
+    if(dogrep(OSSECCONF, "<windows_registry>"))
+    {
+        add_reg_entries = 0;
+    }
+
+    /* Nothing to add */
+    if((add_reg_ig == 0) && (add_reg_entries == 0))
+    {
+        return(0);
+    }
+
+    /* Add syscheck config */
+    fp = fopen(OSSECCONF, "a");
+    if(!fp)
+        return(0); 
+
+    /* Adding registry */
+    if(add_reg_entries)
+    {
+        fprintf(fp, 
+                "\r\n"    
+                "<!-- Syscheck registry config -->\r\n"
+                "<ossec_config>\r\n"
+                "  <syscheck>\r\n"
+                "    <windows_registry>%s</windows_registry>\r\n"
+                "    <windows_registry>%s</windows_registry>\r\n"
+                "    <windows_registry>%s</windows_registry>\r\n"
+                "    <windows_registry>%s</windows_registry>\r\n"
+                "    <windows_registry>%s</windows_registry>\r\n"
+                "    <windows_registry>%s</windows_registry>\r\n"
+                "  </syscheck>\r\n"
+                "</ossec_config>\r\n",
+                "HKEY_LOCAL_MACHINE\\Software\\Classes",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft",
+                "HKEY_LOCAL_MACHINE\\Software\\Policies",
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control",
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services",
+                "HKEY_LOCAL_MACHINE\\Security"
+                );
+    }
+
+    /* Adding ignore entries */
+    if(add_reg_ig)
+    {
+        fprintf(fp,
+                "\r\n"
+                "<!-- Syscheck registry config -->\r\n"
+                "<ossec_config>\r\n"
+                "  <syscheck>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "  </syscheck>\r\n"
+                "</ossec_config>\r\n",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Installer\\UserData",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Group Policy\\State",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Cryptography\\RNG",
+                "HKEY_LOCAL_MACHINE\\SAM\\SAM\\Domains\\Account\\Users",
+                "HKEY_LOCAL_MACHINE\\Security\\SAM\\Domains\\Account\\Users"
+               );
+            /*
+            SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update
+            SOFTWARE\Microsoft\PCHealth\PchSvc
+            SOFTWARE\Microsoft\Dfrg\BootOptimizeFunction
+            SOFTWARE\Microsoft\Dfrg\BootOptimizeFunction
+            SYSTEM\CurrentControlSet\Services\kmixer\Enum
+            */
+    }
+    
     fclose(fp);
 
     return(0);
@@ -164,7 +257,7 @@ int config_syscheck()
             "<!-- Updated syscheck config -->\r\n"
             "<ossec_config>\r\n"
             "  <syscheck>\r\n"
-            "    <frequency>21600</frequency>\r\n"
+            "    <frequency>43200</frequency>\r\n"
             "    <ignore>%s/System32/LogFiles</ignore>\r\n"
             "    <ignore>%s/WindowsUpdate.log</ignore>\r\n"
             "    <ignore>%s/system32/wbem/Logs</ignore>\r\n"
@@ -225,6 +318,7 @@ int main(int argc, char **argv)
         /* Adding syscheck */
         add_syscheck();
         config_syscheck();
+        config_registry();
         
 
         /* Run iis-logs */
@@ -245,6 +339,7 @@ int main(int argc, char **argv)
 
         
         /* Look if syscheck is configured, if it is, update it */
+        config_registry();
         config_syscheck();
 
 

@@ -1,4 +1,4 @@
-/*   $OSSEC, fts.h, v0.2, 2005/01/28, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.

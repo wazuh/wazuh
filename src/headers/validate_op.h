@@ -1,6 +1,6 @@
-/*   $OSSEC, validate_op.h, v0.1, 2006/01/24, Daniel B. Cid$    */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005,2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
