@@ -672,6 +672,7 @@
   - %PIX-7-710002: TCP access permitted from 10.0.0.1/60749 to db:10.0.0.2/ssh
   - %PIX-6-305012: Teardown dynamic UDP translation from inside:1.1.1.1/12 to outside:1.2.1.2/11 duration 0:00:11.
   - %PIX-3-305005: No translation group found for icmp src outside:x.x.x.x dst inside:x.x.x.x (type 3, code 0)
+  - %ASA-2-106001: Inbound TCP connection denied from 1.2.3.4/1234 to 213.207.99.248/445 flags SYN on interface outside (Message repeated 2 times)
   -->
 <decoder name="pix">
   <prematch>^%PIX-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %PIX-|</prematch>
