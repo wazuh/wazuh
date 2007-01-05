@@ -1,13 +1,32 @@
 
- Copyright 2003-2006 Daniel B. Cid (dcid@ossec.net). All rights reserved.
+ Copyright 2003-2007 Daniel B. Cid (dcid@ossec.net). All rights reserved.
 
- OSSEC is a free software; you can redistribute it and/or modify it 
- under the terms of the GNU General Public License (version 2) as published 
- by the FSF - Free Software Foundation. 
+ OSSEC HIDS is a free software; you can redistribute it and/or modify 
+ it under the terms of the GNU General Public License (version 2) as
+ published by the FSF - Free Software Foundation.
  
+ Note that this license applies to all the source code, as well as 
+ decoders, rules and any other file included with OSSEC (unless
+ otherwise specified). 
+
+ The GPL license does not provide a detailed information on what 
+ constitutes a derived work, so for the purpose of this license, we
+ consider an application to constitute a "derivative  work" if it does 
+ any of the following:
+ 
+  * Integrates source code from OSSEC.
+  * Includes OSSEC copyrighted material, including rules and decoders.
+  * Includes OSSEC into a executable installer.
+  * Links to a library or executes a program that does any of the above.
+ 
+ This list is not exclusive, but just a clarification of our interpretation
+ of derived works. These restrictions only apply if you actually redistribute
+ OSSEC (or parts of it).
+  
  OSSEC HIDS is distributed in the hope that it will be useful, but WITHOUT 
- ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
+ FITNESS FOR A PARTICULAR PURPOSE.
+ See the GNU General Public License below for more details.
 
  ------------------------------------------------------------------------------
 
