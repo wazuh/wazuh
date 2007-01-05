@@ -806,14 +806,16 @@
 
 <decoder name="snort">
   <type>ids</type>
-  <prematch>^[\d+:\d+:\d+] |^[**] [\d+:\d+:\d+] </prematch>
+  <prematch>^[**] [\d+:\d+:\d+] </prematch>
 </decoder>
   
 <decoder name="snort2">
    <parent>snort</parent>
    <type>ids</type>
-   <regex>^\S+ [(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+)\p*\d* -> </regex>
-   <regex>(\d+.\d+.\d+.\d+)</regex>
+   <prematch>^[**] |^[\d+:\d+:\d+] </prematch>
+   <regex>^[**] [(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+)\p*\d* -> </regex>
+   <regex>(\d+.\d+.\d+.\d+)|^[(\d+:\d+:\d+)] \.+ </regex>
+   <regex>(\d+.\d+.\d+.\d+)\p*\d* -> (\d+.\d+.\d+.\d+)</regex>
    <order>id,srcip,dstip</order>
    <fts>name,id,srcip,dstip</fts>
 </decoder>
