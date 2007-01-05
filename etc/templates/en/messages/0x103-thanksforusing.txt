@@ -3,7 +3,7 @@
     If you have any question, suggestion or if you find any bug,
     contact us at contact@ossec.net or using our public maillist at
     ossec-list@ossec.net
-    (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list).
+    ( http://www.ossec.net/en/mailing_lists.html ).
 
     More information can be found at http://www.ossec.net
 
