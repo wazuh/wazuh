@@ -124,11 +124,14 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
         if((rc = OS_SendUnix(*arq, exec_msg, 0)) < 0)
         {
             if(rc == OS_SOCKBUSY)
-                merror("XXXX BUSY");
+            {
+                merror("%s: AR socket busy.", ARGV0);
+            }
             else
-                merror("XXXX nonbusy");   
-            merror("XXXX error: %d", rc);
-            merror("%s: Error communicating with ar queue.", ARGV0);
+            {
+                merror("%s: AR socket error (shutdown?).", ARGV0);   
+            }
+            merror("%s: Error communicating with ar queue (%d).", ARGV0, rc);
         }
     }
     

@@ -33,6 +33,7 @@ Function .onInit
 FunctionEnd
             
 
+Page license
 Page directory
 Page instfiles
 
@@ -81,8 +82,9 @@ CreateDirectory "$INSTDIR\shared"
 Rename "$INSTDIR\rootkit_trojans.txt" "$INSTDIR\shared\rootkit_trojans.txt"
 Rename "$INSTDIR\rootkit_files.txt" "$INSTDIR\shared\rootkit_files.txt"
 CreateDirectory "$SMPROGRAMS\ossec"
-CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 Delete "$SMPROGRAMS\ossec\Edit.lnk"
+Delete "$SMPROGRAMS\ossec\*.*"
+CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 CreateShortCut "$SMPROGRAMS\ossec\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
 CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
 CreateShortCut "$SMPROGRAMS\ossec\Start OSSEC.lnk" "$INSTDIR\service-start.exe" "" "$INSTDIR\service-start.exe" 0
@@ -96,10 +98,11 @@ ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
 ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"' 
 ExecWait '"C:\Windows\notepad.exe" "$INSTDIR\ossec.conf"'
 
-MessageBox MB_OKCANCEL "Do you wish to start ${NAME} now?" IDOK Startsvc
-    Startsvc:
+MessageBox MB_OKCANCEL "Do you wish to start ${NAME} now?" IDCANCEL NoStartsvc
     ;; Starting ossec service.
     ExecWait '"net" "start" "OssecSvc"'
+
+    NoStartsvc:
 SectionEnd
 
 

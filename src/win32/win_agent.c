@@ -391,14 +391,27 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 int StartMQ(char * path, short int type)
 {
     int bmode = 1;
+    int conn_wait = 5;
+
     verbose("%s: Connecting to server (%s:%d).", ARGV0,
                                                  logr->rip,
                                                  logr->port);
     
     /* Connecting UDP */
-    logr->sock = OS_ConnectUDP(logr->port, logr->rip);
-    if(logr->sock < 0)
-        ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
+    while(1)
+    {
+        logr->sock = OS_ConnectUDP(logr->port, logr->rip);
+        if(logr->sock < 0)
+        {
+            merror(CONNS_ERROR, ARGV0, logr->rip);
+            sleep(conn_wait);
+            conn_wait+=5;
+        }
+        else
+        {
+            break;
+        }
+    }
 
 
     /* Setting socket to non-blocking */

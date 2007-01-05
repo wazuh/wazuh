@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2006,2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -141,7 +141,7 @@ int config_registry()
 
 
     /* We add here the last entry */
-    if(dogrep(OSSECCONF, "</registry_ignore>"))
+    if(dogrep(OSSECCONF, "MediaCategories</registry_ignore>"))
     {
         add_reg_ig = 0;
     }
@@ -178,7 +178,7 @@ int config_registry()
                 "    <windows_registry>%s</windows_registry>\r\n"
                 "    <windows_registry>%s</windows_registry>\r\n"
                 "  </syscheck>\r\n"
-                "</ossec_config>\r\n",
+                "</ossec_config>\r\n\r\n",
                 "HKEY_LOCAL_MACHINE\\Software\\Classes",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft",
                 "HKEY_LOCAL_MACHINE\\Software\\Policies",
@@ -193,7 +193,7 @@ int config_registry()
     {
         fprintf(fp,
                 "\r\n"
-                "<!-- Syscheck registry config -->\r\n"
+                "<!-- Syscheck registry ignored entries -->\r\n"
                 "<ossec_config>\r\n"
                 "  <syscheck>\r\n"
                 "    <registry_ignore>%s</registry_ignore>\r\n"
@@ -201,17 +201,32 @@ int config_registry()
                 "    <registry_ignore>%s</registry_ignore>\r\n"
                 "    <registry_ignore>%s</registry_ignore>\r\n"
                 "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
                 "  </syscheck>\r\n"
-                "</ossec_config>\r\n",
+                "</ossec_config>\r\n\r\n",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Installer\\UserData",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Group Policy\\State",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Cryptography\\RNG",
                 "HKEY_LOCAL_MACHINE\\SAM\\SAM\\Domains\\Account\\Users",
-                "HKEY_LOCAL_MACHINE\\Security\\SAM\\Domains\\Account\\Users"
+                "HKEY_LOCAL_MACHINE\\Security\\SAM\\Domains\\Account\\Users",
+                "HKEY_LOCAL_MACHINE\\Software\\Classes\\Interface",
+                "HKEY_LOCAL_MACHINE\\Software\\Classes\\TypeLib",
+                "HKEY_LOCAL_MACHINE\\Software\\Classes\\MIME",
+                "HKEY_LOCAL_MACHINE\\Software\\Classes\\Software",
+                "HKEY_LOCAL_MACHINE\\Software\\Classes\\CLSID",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\PCHealth\\PchSvc",
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\DeviceClasses",
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\MediaCategories"
                );
             /*
             SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update
-            SOFTWARE\Microsoft\PCHealth\PchSvc
             SOFTWARE\Microsoft\Dfrg\BootOptimizeFunction
             SOFTWARE\Microsoft\Dfrg\BootOptimizeFunction
             SYSTEM\CurrentControlSet\Services\kmixer\Enum

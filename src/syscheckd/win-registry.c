@@ -159,7 +159,11 @@ char *os_winreg_sethkey(char *reg_entry)
     /* Checking if ret has nothing else. */
     if(ret && (*ret == '\0'))
         ret = NULL;
-        
+    
+    /* fixing tmp_str and the real name of the registry */    
+    if(tmp_str && (*tmp_str == '\0'))
+            *tmp_str = '\\';
+            
     return(ret);
 }
 
