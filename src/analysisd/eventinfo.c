@@ -9,10 +9,10 @@
  * Foundation
  */
 
-/* v0.2(2005/09/08): Multiple additions.
- * v0.1:
+/* Part of the OSSEC.
+ * Available at http://www.ossec.net
  */
-
+  
 
 
 #include "config.h"
