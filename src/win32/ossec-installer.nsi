@@ -40,7 +40,7 @@ Page instfiles
 UninstPage uninstConfirm
 UninstPage instfiles
 
-LicenseText "You must agree to this license before installing."
+LicenseText "You must agree with our license (GPL) before installing."
 LicenseData "LICENSE.txt"
 
 Section "OSSEC HIDS Windows Agent (required)"

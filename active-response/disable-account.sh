@@ -18,7 +18,7 @@ LOCAL=`dirname $0`;
 cd $LOCAL
 cd ../
 PWD=`pwd`
-echo "`date` $0 $1 $2 $3 $4" >> ${PWD}/../log/active-responses.log
+echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/../log/active-responses.log
 
 
 if [ "x${USER}" = "x" ]; then

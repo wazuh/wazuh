@@ -77,7 +77,7 @@ unlock()
 
 
 # Logging the call
-echo "`date` $0 $1 $2 $3 $4" >> ${PWD}/../logs/active-responses.log
+echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/../logs/active-responses.log
 
 
 # IP Address must be provided

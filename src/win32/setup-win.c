@@ -167,7 +167,7 @@ int config_registry()
     if(add_reg_entries)
     {
         fprintf(fp, 
-                "\r\n"    
+                "\r\n\r\n"    
                 "<!-- Syscheck registry config -->\r\n"
                 "<ossec_config>\r\n"
                 "  <syscheck>\r\n"
@@ -178,7 +178,7 @@ int config_registry()
                 "    <windows_registry>%s</windows_registry>\r\n"
                 "    <windows_registry>%s</windows_registry>\r\n"
                 "  </syscheck>\r\n"
-                "</ossec_config>\r\n\r\n",
+                "</ossec_config>\r\n",
                 "HKEY_LOCAL_MACHINE\\Software\\Classes",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft",
                 "HKEY_LOCAL_MACHINE\\Software\\Policies",
@@ -192,7 +192,7 @@ int config_registry()
     if(add_reg_ig)
     {
         fprintf(fp,
-                "\r\n"
+                "\r\n\r\n"
                 "<!-- Syscheck registry ignored entries -->\r\n"
                 "<ossec_config>\r\n"
                 "  <syscheck>\r\n"
@@ -375,7 +375,7 @@ int main(int argc, char **argv)
 
 
     /* Setting up local files */
-    system("add-localfile.exe \"C:\\Windows\\pfirewall.log\"");
+    system("add-localfile.exe \"C:\\Windows\\pfirewall.log\" --quiet");
     system("add-localfile.exe \"C:\\\\Documents and Settings\\All Users\\Application Data\\Symantec\\Symantec AntiVirus Corporate Edition\\7.5\\Logs\\\%m\%d20\%y.log\" --quiet");
     
 

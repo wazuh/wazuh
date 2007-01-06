@@ -102,7 +102,7 @@ int config_file(char *name, char *file, int quiet)
         {
             printf("%s: Log file not existent: '%s'.\n", name, file);
         }
-        return(0);
+        return(-1);
     }
     
     if(dogrep(OSSECCONF, file))
@@ -173,6 +173,7 @@ int config_file(char *name, char *file, int quiet)
 int main(int argc, char **argv)
 {
     int quiet = 0;
+    int pause_me = 1;
     
     if(argc < 2)
     {
@@ -194,10 +195,15 @@ int main(int argc, char **argv)
 
     else
     {
-        config_file(argv[0], argv[1], quiet);
+        if(config_file(argv[0], argv[1], quiet) == -1)
+            pause_me = 0;
     }
     
-    system("pause");
+    /* Pause or not */
+    if(pause_me)
+    {
+        system("pause");
+    }
     
     return(0);
 }
