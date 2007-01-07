@@ -193,9 +193,28 @@ int config_registry()
     {
         fprintf(fp,
                 "\r\n\r\n"
-                "<!-- Syscheck registry ignored entries -->\r\n"
+                "<!-- Syscheck registry ignored entries (too big or change too often) -->\r\n"
                 "<ossec_config>\r\n"
                 "  <syscheck>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore>%s</registry_ignore>\r\n"
                 "    <registry_ignore>%s</registry_ignore>\r\n"
                 "    <registry_ignore>%s</registry_ignore>\r\n"
                 "    <registry_ignore>%s</registry_ignore>\r\n"
@@ -213,24 +232,37 @@ int config_registry()
                 "</ossec_config>\r\n\r\n",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Installer\\UserData",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Group Policy\\State",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Cache",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Cryptography\\RNG",
-                "HKEY_LOCAL_MACHINE\\SAM\\SAM\\Domains\\Account\\Users",
-                "HKEY_LOCAL_MACHINE\\Security\\SAM\\Domains\\Account\\Users",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\PCHealth\\PchSvc",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Dfrg",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\WBEM",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Rpc",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\DirectDraw",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Direct3D",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\COM3",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Prefetcher",
                 "HKEY_LOCAL_MACHINE\\Software\\Classes\\Interface",
                 "HKEY_LOCAL_MACHINE\\Software\\Classes\\TypeLib",
                 "HKEY_LOCAL_MACHINE\\Software\\Classes\\MIME",
                 "HKEY_LOCAL_MACHINE\\Software\\Classes\\Software",
                 "HKEY_LOCAL_MACHINE\\Software\\Classes\\CLSID",
-                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\PCHealth\\PchSvc",
+                "HKEY_LOCAL_MACHINE\\Security\\Policy\\Secrets",
+                "HKEY_LOCAL_MACHINE\\Security\\SAM\\Domains\\Account\\Users",
                 "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\DeviceClasses",
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Watchdog",
                 "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\MediaCategories"
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Windows",
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\hivelist",
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\ServiceCurrent",
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Print",
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Session Manager",
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\Eventlog",
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\RemoteAccess\\Performance",
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\TimeProviders\\NtpClient"
                );
-            /*
-            SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update
-            SOFTWARE\Microsoft\Dfrg\BootOptimizeFunction
-            SOFTWARE\Microsoft\Dfrg\BootOptimizeFunction
-            SYSTEM\CurrentControlSet\Services\kmixer\Enum
-            */
     }
     
     fclose(fp);
@@ -290,12 +322,15 @@ int config_syscheck()
             "    <ignore>%s/system32/MsDtc/Trace/dtctrace.log</ignore>\r\n"
             "    <ignore>%s/pfirewall.log</ignore>\r\n"
             "    <ignore>%s/wiaservc.log</ignore>\r\n"
+            "    <ignore>%s/setupapi.log</ignore>\r\n"
+            "    <ignore>%s/LastGood.Tmp</ignore>\r\n"
+            "    <ignore>%s/LastGood</ignore>\r\n"
             "    <ignore>%s/wiadebug.log</ignore>\r\n"
             "  </syscheck>\r\n"
             "</ossec_config>\r\n",
-            win_dir, win_dir, win_dir, win_dir,
-            win_dir, win_dir, win_dir, win_dir,
-            win_dir, win_dir, win_dir, win_dir,
+            win_dir, win_dir, win_dir, win_dir, win_dir,
+            win_dir, win_dir, win_dir, win_dir, win_dir,
+            win_dir, win_dir, win_dir, win_dir, win_dir,
             win_dir, win_dir, win_dir, win_dir, win_dir);
 
     fclose(fp);

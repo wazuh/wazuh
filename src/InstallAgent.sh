@@ -59,9 +59,11 @@ elif [ "$UNAME" = "AIX" ]; then
 
 # Thanks Chuck L. for the mac addusers
 elif [ "$UNAME" = "Darwin" ]; then
-    chmod +x ./init/darwin-addusers.pl
-    ./init/darwin-addusers.pl
-    
+    id -u ossec > /dev/null 2>&1
+    if [ ! $? = 0 ]; then
+        chmod +x ./init/darwin-addusers.pl
+        ./init/darwin-addusers.pl
+    fi
 else
     grep "^${USER}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
