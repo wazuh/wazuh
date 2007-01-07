@@ -253,7 +253,7 @@ int config_registry()
                 "HKEY_LOCAL_MACHINE\\Security\\SAM\\Domains\\Account\\Users",
                 "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\DeviceClasses",
                 "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Watchdog",
-                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\MediaCategories"
+                "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\MediaCategories",
                 "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Windows",
                 "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\hivelist",
                 "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\ServiceCurrent",
