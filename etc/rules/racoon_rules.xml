@@ -39,8 +39,8 @@
   
   <rule id="14120" level="3">
     <if_sid>14110</if_sid>
-    <group>authentication_success</group>
     <match>ISAKMP-SA established </match>
+    <group>authentication_success</group>
     <description>VPN established.</description>
   </rule>
   
@@ -67,4 +67,4 @@
     <same_source_ip />
     <description>Multiple failed VPN logins.</description>
   </rule>
-</group> <!-- SYSLOG,MAILSCANNER -->
+</group> <!-- SYSLOG,RACOON -->

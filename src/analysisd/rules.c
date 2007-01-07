@@ -368,7 +368,8 @@ int Rules_OP_ReadRules(char * rulefile)
                         {
                             merror(INVALID_CONFIG, ARGV0,
                                     rule_opt[k]->element,
-                                    rule_opt[k]->content);                                                  return(-1);
+                                    rule_opt[k]->content);
+                            return(-1);
                         }
 
                     }

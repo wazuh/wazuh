@@ -80,8 +80,8 @@ xml_node **OS_GetElementsbyNode(OS_XML *_lxml, xml_node *node)
 
     if(node == NULL)
     {
-        j=-1;
-        i=0;
+        j = -1;
+        i = 0;
     }
     else
     {
@@ -107,10 +107,10 @@ xml_node **OS_GetElementsbyNode(OS_XML *_lxml, xml_node *node)
                 if(ret[k] == NULL)
                     return(NULL);
     
-                ret[k]->element=NULL;
-                ret[k]->content=NULL;
-                ret[k]->attributes=NULL;
-                ret[k]->values=NULL;
+                ret[k]->element = NULL;
+                ret[k]->content = NULL;
+                ret[k]->attributes = NULL;
+                ret[k]->values = NULL;
                                 
                 /* Getting the element */
                 ret[k]->element=strdup(_lxml->el[i]);
@@ -128,10 +128,10 @@ xml_node **OS_GetElementsbyNode(OS_XML *_lxml, xml_node *node)
                         return(NULL);
                 }
                 /* Assigning the key */
-                ret[k]->key=i;
+                ret[k]->key = i;
 
                 /* Getting attributes */
-                while(1)
+                while(l < _lxml->cur)
                 {
                     if((_lxml->tp[l] == XML_ATTR)&&(_lxml->rl[l] == j+1)&&
                         (_lxml->el[l]) && (_lxml->ct[l]))
@@ -153,12 +153,14 @@ xml_node **OS_GetElementsbyNode(OS_XML *_lxml, xml_node *node)
                             l++;                    
                         }
                     else
+                    {
                         break;
+                    }
                 }
                 if(ret[k]->attributes)
                 {
-                    ret[k]->attributes[l-i-1]=NULL;
-                    ret[k]->values[l-i-1]=NULL;
+                    ret[k]->attributes[l-i-1] = NULL;
+                    ret[k]->values[l-i-1] = NULL;
                 }
                 k++;
                 continue;
