@@ -30,7 +30,8 @@ int OS_PRegex(char *str, char *regex)
     
     if(regcomp(&preg, regex, REG_EXTENDED|REG_NOSUB) != 0)
     {
-        merror("%s: Posix Regex compile error (%s)\n", __local_name, regex);
+        merror("%s: Posix Regex compile error (%s).", __local_name, regex);
+        return(0);
     }
 
     if(regexec(&preg, str, strlen(str), NULL, 0) != 0)

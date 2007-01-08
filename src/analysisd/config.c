@@ -50,6 +50,7 @@ int GlobalConf(char * cfgfile)
 
     Config.syscheck_ignore = NULL;
     Config.white_list = NULL;
+    Config.hostname_white_list = NULL;
     
     /* Default actions -- only log above level 1 */
     Config.mailbylevel = 7;

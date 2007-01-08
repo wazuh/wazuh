@@ -362,7 +362,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     return(OS_INVALID);
                 }
                 os_calloc(1, 
-                          sizeof(OS_Match), 
+                          sizeof(OSMatch), 
                           Config->hostname_white_list[hostname_white_size -2]);
                 Config->hostname_white_list[hostname_white_size -1] = NULL;
 
