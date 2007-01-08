@@ -56,6 +56,23 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
                 return;
             }
         }
+
+        /* Checking if it is a hostname */
+        if(Config.hostname_white_list)
+        {
+            int srcip_size;
+            OSMatch **wl;
+
+            srcip_size = strlen(ip);
+        
+            wl = Config.hostname_white_list;
+            while(*wl)
+            {
+                if(OSMatch_Execute(ip, srcip_size, *wl))
+                    return;
+                wl++;
+            }
+        }
     }
     else
     {
