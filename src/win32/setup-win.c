@@ -263,6 +263,11 @@ int config_registry()
                 "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\RemoteAccess\\Performance",
                 "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\TimeProviders\\NtpClient"
                );
+
+        /*
+        HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\splitter\Enum 190
+        HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\{8A7A3521-B100-4315-BD39-C56990BB5C3F} mobile
+        */
     }
     
     fclose(fp);
