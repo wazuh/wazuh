@@ -28,6 +28,7 @@ HANDLE hMutex;
 
 /** Prototypes **/
 int Start_win32_Syscheck();
+void send_win32_info(time_t curr_time);
 
 
 /* Help message */
@@ -263,7 +264,7 @@ int local_start()
     
     
     /* Sending agent information message */
-    send_win32_info();
+    send_win32_info(time(0));
     
     
     /* Startting logcollector -- main process here */
@@ -293,30 +294,48 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     debug2("%s: DEBUG: Attempting to send message to server.", ARGV0);
     
     /* Using a mutex to synchronize the writes */
-    dwWaitResult = WaitForSingleObject(hMutex, 5000L);
-
-    if(dwWaitResult != WAIT_OBJECT_0) 
+    while(1)
     {
-        switch(dwWaitResult)
+        dwWaitResult = WaitForSingleObject(hMutex, 10000L);
+
+        if(dwWaitResult != WAIT_OBJECT_0) 
         {
-            case WAIT_TIMEOUT:
-                merror("%s: Error waiting mutex (timeout).", ARGV0);            
-                return(0);
-            case WAIT_ABANDONED:
-                merror("%s: Error waiting mutex (abandoned).", ARGV0);
-                return(0);
-            default:    
-                merror("%s: Error waiting mutex.", ARGV0);    
-                return(0);
+            switch(dwWaitResult)
+            {
+                case WAIT_TIMEOUT:
+                    merror("%s: Error waiting mutex (timeout).", ARGV0);
+                    sleep(5);
+                    continue;
+                case WAIT_ABANDONED:
+                    merror("%s: Error waiting mutex (abandoned).", ARGV0);
+                    return(0);
+                default:    
+                    merror("%s: Error waiting mutex.", ARGV0);    
+                    return(0);
+            }
+        }
+        else
+        {
+            /* Lock acquired */
+            break;
         }
     }
 
 
-    /* Check if the server has responded */
     cu_time = time(0);
+    
+
+    /* Send notification */
+    if((curr_time - __win32_curr_time) > (NOTIFY_TIME - 90))
+    {
+        send_win32_info(cu_time);
+    }
+
+    
+    /* Check if the server has responded */
     if((cu_time - available_server) > (NOTIFY_TIME - 90))
     {
-        send_win32_info();
+        send_win32_info(cu_time);
 
         if((cu_time - available_server) > (3*NOTIFY_TIME))
         {
@@ -327,12 +346,14 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
              */
             verbose(SERVER_UNAV, ARGV0);
 
-            while((time(0) - available_server) > (3*NOTIFY_TIME))
+            cu_time = time(0);
+            while((cu_time - available_server) > (3*NOTIFY_TIME))
             {
                 /* Sending information to see if server replies */
-                send_win32_info();
+                send_win32_info(cu_time);
 
                 sleep(wi);
+                cu_time = time(0);
                 wi++;
             }
 
@@ -427,74 +448,66 @@ int StartMQ(char * path, short int type)
 
 
 /* Send win32 info to server */
-void send_win32_info()
+void send_win32_info(time_t curr_time)
 {
     int msg_size;
-    time_t curr_time;
+    char tmp_msg[OS_MAXSTR +2];
+    char crypt_msg[OS_MAXSTR +2];
+    char *myuname;
+    char *shared_files;
 
-    curr_time = time(0);
-    debug2("%s: DEBUG: Checking if time elapsed to send keep alive.", ARGV0);
+    tmp_msg[OS_MAXSTR +1] = '\0';
+    crypt_msg[OS_MAXSTR +1] = '\0';
 
-    if((curr_time - __win32_curr_time) > NOTIFY_TIME)
+
+    debug1("%s: DEBUG: Sending keep alive message.", ARGV0);
+
+
+    /* fixing time */
+    __win32_curr_time = curr_time;
+
+    myuname = getuname();
+    if(!myuname)
     {
-        char tmp_msg[OS_MAXSTR +2];
-        char crypt_msg[OS_MAXSTR +2];
-        char *myuname;
-        char *shared_files;
+        merror("%s: Error generating system information.", ARGV0);
+        return;
+    }
 
-        tmp_msg[OS_MAXSTR +1] = '\0';
-        crypt_msg[OS_MAXSTR +1] = '\0';
-
-
-        debug1("%s: DEBUG: Sending keep alive message.", ARGV0);
-
-        
-        /* fixing time */
-        __win32_curr_time = curr_time;
-
-        myuname = getuname();
-        if(!myuname)
-        {
-            merror("%s: Error generating system information.", ARGV0);
-            return;
-        }
-
-        /* get shared files */
-        shared_files = getsharedfiles();
+    /* get shared files */
+    shared_files = getsharedfiles();
+    if(!shared_files)
+    {
+        shared_files = strdup("\0");
         if(!shared_files)
         {
-            shared_files = strdup("\0");
-            if(!shared_files)
-            {
-                free(myuname);
-                merror(MEM_ERROR,ARGV0);
-                return;
-            }
-        }
-
-        /* creating message */
-        snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s",myuname, shared_files);
-        debug1("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
-
-        msg_size = CreateSecMSG(&keys, tmp_msg, crypt_msg, 0);
-
-        if(msg_size == 0)
-        {
             free(myuname);
-            free(shared_files);
-            merror(SEC_ERROR, ARGV0);
+            merror(MEM_ERROR,ARGV0);
             return;
         }
+    }
 
-        /* Sending UDP message */
-        if(OS_SendUDPbySize(logr->sock, msg_size, crypt_msg) < 0)
-        {
-            merror(SEND_ERROR, ARGV0, "server");
-        }
+    /* creating message */
+    snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s",myuname, shared_files);
+    debug1("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
 
+    msg_size = CreateSecMSG(&keys, tmp_msg, crypt_msg, 0);
+
+    if(msg_size == 0)
+    {
         free(myuname);
         free(shared_files);
+        merror(SEC_ERROR, ARGV0);
+        return;
     }
+
+    /* Sending UDP message */
+    if(OS_SendUDPbySize(logr->sock, msg_size, crypt_msg) < 0)
+    {
+        merror(SEND_ERROR, ARGV0, "server");
+    }
+
+    free(myuname);
+    free(shared_files);
 
     return;
 }
