@@ -113,6 +113,11 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         /* Extracting the hostname */ 
         if(*pieces != ' ')
         {
+            /* Getting solaris 8/9 messages without hostname.
+             * In these cases, the process_name should be there.
+             * http://www.ossec.net/wiki/index.php/Log_Samples_Solaris
+             */
+             
             /* Invalid hostname */
             lf->hostname = NULL;
             
@@ -120,7 +125,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         }
         else
         {
-
             /* Ending the hostname string */
             *pieces = '\0';
 

@@ -86,7 +86,7 @@ int config_file(char *name, char *file, int quiet)
 
         if(strftime(ffile, 255, file, p) == 0)
         {
-            return(0);
+            return(-1);
         }
     }
     else

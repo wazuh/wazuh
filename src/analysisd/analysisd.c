@@ -1108,7 +1108,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
         }
         
-        if(!OS_IPFound(lf->srcip, currently_rule->srcip))
+        if(!OS_IPFoundList(lf->srcip, currently_rule->srcip))
         {
             return(NULL);
         }
@@ -1122,7 +1122,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
         }
         
-        if(!OS_IPFound(lf->dstip, currently_rule->dstip))
+        if(!OS_IPFoundList(lf->dstip, currently_rule->dstip))
         {
             return(NULL);
         }

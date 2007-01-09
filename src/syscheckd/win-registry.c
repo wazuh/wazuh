@@ -91,14 +91,6 @@ int os_winreg_changed(char *key, char *md5, char *sha1)
  */
 int notify_registry(char *msg)
 {
-    /* sleep X every Y files */
-    if(ig_count >= syscheck.sleep_after)
-    {
-        sleep(syscheck.tsleep);
-        ig_count = 0;
-    }
-    ig_count++;
-
     if(SendMSG(syscheck.queue, msg, SYSCHECK_REG, SYSCHECK_MQ) < 0)
     {
         merror(QUEUE_SEND, ARGV0);
@@ -372,7 +364,15 @@ void os_winreg_open_key(char *subkey, char *full_key_name)
     int i = 0;	
     HKEY oshkey;
 
+    /* sleep X every Y files */
+    if(ig_count >= syscheck.sleep_after)
+    {
+        sleep(syscheck.tsleep);
+        ig_count = 0;
+    }
+    ig_count++;
 
+    
     /* Registry ignore list */
     if(full_key_name && syscheck.registry_ignore)
     {

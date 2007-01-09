@@ -10,7 +10,7 @@ DirText "${NAME} v${VERSION} Windows Agent Installer."
 ComponentText  "${NAME} Windows Agent Installer"
 CompletedText "${NAME} Windows Agent Installer is finished"
 UninstallText "${NAME} Windows Agent Uninstaller"
-BrandingText "Copyright © 2005-2007 Daniel B. Cid"
+BrandingText "Copyright © 2007 Daniel B. Cid"
 OutFile "C:\ossec-win32-agent.exe"
 
 

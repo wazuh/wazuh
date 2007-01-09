@@ -330,13 +330,17 @@ int config_syscheck()
             "    <ignore>%s/setupapi.log</ignore>\r\n"
             "    <ignore>%s/LastGood.Tmp</ignore>\r\n"
             "    <ignore>%s/LastGood</ignore>\r\n"
+            "    <ignore>%s/Help</ignore>\r\n"
+            "    <ignore>%s/Fonts</ignore>\r\n"
+            "    <ignore>%s/PCHEALTH</ignore>\r\n"
             "    <ignore>%s/wiadebug.log</ignore>\r\n"
             "  </syscheck>\r\n"
             "</ossec_config>\r\n",
             win_dir, win_dir, win_dir, win_dir, win_dir,
             win_dir, win_dir, win_dir, win_dir, win_dir,
             win_dir, win_dir, win_dir, win_dir, win_dir,
-            win_dir, win_dir, win_dir, win_dir, win_dir);
+            win_dir, win_dir, win_dir, win_dir, win_dir,
+            win_dir, win_dir, win_dir);
 
     fclose(fp);
 
@@ -416,7 +420,7 @@ int main(int argc, char **argv)
 
     /* Setting up local files */
     system("add-localfile.exe \"C:\\Windows\\pfirewall.log\" --quiet");
-    system("add-localfile.exe \"C:\\\\Documents and Settings\\All Users\\Application Data\\Symantec\\Symantec AntiVirus Corporate Edition\\7.5\\Logs\\\%m\%d20\%y.log\" --quiet");
+    system("add-localfile.exe \"C:\\Documents and Settings\\All Users\\Application Data\\Symantec\\Symantec AntiVirus Corporate Edition\\7.5\\Logs\\\%m\%d20\%y.log\" --quiet");
     
 
     /* Configure ossec for automatic startup */

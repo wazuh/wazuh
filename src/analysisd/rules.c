@@ -393,9 +393,29 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_srcip)==0)
                     {
-                        os_calloc(1, sizeof(os_ip), config_ruleinfo->srcip);
+                        int ip_s = 0;
+                        
+                        /* Getting size of source ip list */
+                        while(config_ruleinfo->srcip && 
+                              config_ruleinfo->srcip[ip_s])
+                        {
+                            ip_s++;
+                        }
+                        
+                        config_ruleinfo->srcip = 
+                                    realloc(config_ruleinfo->srcip,
+                                    (ip_s + 2) * sizeof(os_ip *));
+                        
+                        
+                        /* Allocating memory for the individual entries */
+                        os_calloc(1, sizeof(os_ip), 
+                                     config_ruleinfo->srcip[ip_s]);
+                        config_ruleinfo->srcip[ip_s +1] = NULL;
+                        
+                        
+                        /* Checking if the ip is valid */
                         if(!OS_IsValidIP(rule_opt[k]->content, 
-                                         config_ruleinfo->srcip))
+                                         config_ruleinfo->srcip[ip_s +1]))
                         {
                             merror(INVALID_IP, ARGV0, rule_opt[k]->content);
                             return(-1);
@@ -403,14 +423,33 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_dstip)==0)
                     {
-                        os_calloc(1, sizeof(os_ip), config_ruleinfo->dstip);
+                        int ip_s = 0;
+
+                        /* Getting size of source ip list */
+                        while(config_ruleinfo->dstip &&
+                                config_ruleinfo->dstip[ip_s])
+                        {
+                            ip_s++;
+                        }
+
+                        config_ruleinfo->dstip =
+                                    realloc(config_ruleinfo->dstip,
+                                    (ip_s + 2) * sizeof(os_ip *));
+
+
+                        /* Allocating memory for the individual entries */
+                        os_calloc(1, sizeof(os_ip),
+                                config_ruleinfo->dstip[ip_s]);
+                        config_ruleinfo->dstip[ip_s +1] = NULL;
+
+
+                        /* Checking if the ip is valid */
                         if(!OS_IsValidIP(rule_opt[k]->content,
-                                         config_ruleinfo->dstip))
+                                    config_ruleinfo->dstip[ip_s +1]))
                         {
                             merror(INVALID_IP, ARGV0, rule_opt[k]->content);
                             return(-1);
                         }
-
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_user)==0)
                     {
