@@ -415,7 +415,7 @@ int Rules_OP_ReadRules(char * rulefile)
                         
                         /* Checking if the ip is valid */
                         if(!OS_IsValidIP(rule_opt[k]->content, 
-                                         config_ruleinfo->srcip[ip_s +1]))
+                                         config_ruleinfo->srcip[ip_s]))
                         {
                             merror(INVALID_IP, ARGV0, rule_opt[k]->content);
                             return(-1);
@@ -445,7 +445,7 @@ int Rules_OP_ReadRules(char * rulefile)
 
                         /* Checking if the ip is valid */
                         if(!OS_IsValidIP(rule_opt[k]->content,
-                                    config_ruleinfo->dstip[ip_s +1]))
+                                    config_ruleinfo->dstip[ip_s]))
                         {
                             merror(INVALID_IP, ARGV0, rule_opt[k]->content);
                             return(-1);
