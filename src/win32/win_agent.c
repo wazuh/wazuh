@@ -326,7 +326,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     
 
     /* Send notification */
-    if((curr_time - __win32_curr_time) > (NOTIFY_TIME - 90))
+    if((cu_time - __win32_curr_time) > (NOTIFY_TIME - 90))
     {
         send_win32_info(cu_time);
     }
