@@ -8,10 +8,9 @@ who helped us since our first release (0.1).
 
 -Development
   - Daniel B. Cid <dcid ( at ) ossec.net>
-  - Ahmet ozturk <oahmet ( at )  metu.edu.tr>
+  - Ahmet Ozturk <oahmet ( at )  metu.edu.tr>
   - Rafael Capovilla <under ( at ) underlinux.com.br>
-  - Jorge Augusto Senger <jorge ( at ) br10.com.br> - ossec2mysql (contrib)
-  - Meir Michanie <meirgotroot ( at ) gmail.com> - ossec-report (contrib)
+  - Meir Michanie <meirgotroot ( at ) gmail.com>
 
 
 -Testing/Patches and other contributions.
@@ -26,6 +25,9 @@ who helped us since our first release (0.1).
   - Meir Michanie <meirgotroot@ ( at ) gmail.com>
   - Stephen Bunn <sbunn ( at ) roguesoftware.net>
   - Jonathan Scheidell <jscheidell ( at ) secnap.net>
+  - |SaMaN| <saman ( at ) ttnet.net.tr>
+  - ChuckD <mdmonk at gmail.com>
+  - Jorge Augusto Senger <jorge ( at ) br10.com.br> - ossec2mysql (contrib)
   
   
 -Translations
