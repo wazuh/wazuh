@@ -725,10 +725,10 @@ void OS_ReadMSG(int m_queue)
                     char *saved_log;
                     
                     /* Saving previous log */
-                    saved_log = lf->log;
+                    saved_log = lf->full_log;
                     
                     lf->generated_rule = stats_rule;
-                    lf->log = __stats_comment;
+                    lf->full_log = __stats_comment;
 
 
                     /* alert for statistical analysis */
@@ -738,7 +738,7 @@ void OS_ReadMSG(int m_queue)
 
                     /* Set lf to the old values */
                     lf->generated_rule = NULL;
-                    lf->log = saved_log;
+                    lf->full_log = saved_log;
                 }
             }
 

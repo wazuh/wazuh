@@ -101,7 +101,7 @@
 
   <rule id="18114" level="8">
     <if_sid>18104</if_sid>
-    <id>^631|^632|^633|^634|^635|^636|^637|^638|^639|^641</id>
+    <id>^631|^632|^633|^634|^635|^636|^637|^638|^639|^641|^664|^668</id>
     <description>Group account changed.</description>
     <group>adduser,</group>
   </rule>
@@ -161,6 +161,20 @@
     <id>^20158</id>
     <description>Remote access login success.</description>
     <group>authentication_success,</group>
+  </rule>
+  
+  <rule id="18127" level="8">
+    <if_sid>18104</if_sid>
+    <id>^646|^647</id>
+    <description>Computer account changed/deleted.</description>
+    <group>account_changed,</group>
+  </rule>
+  
+  <rule id="18128" level="8">
+    <if_sid>18104</if_sid>
+    <id>^65|^66</id>
+    <description>Group account added/changed/deleted.</description>
+    <group>account_changed,</group>
   </rule>
   
   <rule id="18151" level="10" frequency="$MS_FREQ" timeframe="240">

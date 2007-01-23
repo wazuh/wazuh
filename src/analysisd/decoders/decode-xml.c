@@ -453,10 +453,6 @@ int ReadDecodeXML(char *file)
                     {
                         pi->fts|=FTS_LOCATION;
                     }
-                    else if(strstr(*norder, "name") != NULL)
-                    {
-                        pi->fts|=FTS_NAME;
-                    }
                     else if(strstr(*norder, "data") != NULL)
                     {
                         pi->fts|=FTS_DATA;
@@ -464,6 +460,10 @@ int ReadDecodeXML(char *file)
                     else if(strstr(*norder, "system_name") != NULL)
                     {
                         pi->fts|=FTS_SYSTEMNAME;
+                    }
+                    else if(strstr(*norder, "name") != NULL)
+                    {
+                        pi->fts|=FTS_NAME;
                     }
                     else
                     {

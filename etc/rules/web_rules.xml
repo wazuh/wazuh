@@ -33,7 +33,8 @@
   
   <rule id="31103" level="6">
     <if_sid>31100</if_sid>
-    <url>='|select%20|insert%20|%20from%20|%20where%20|union%20</url>
+    <url>='|select%20|select+|insert%20|%20from%20|%20where%20|union%20|</url>
+    <url>union+|where+|null,null</url>
     <description>SQL injection attempt.</description>
     <group>attack,sql_injection,</group>
   </rule>
@@ -43,7 +44,7 @@
     
     <!-- Attempt to do directory transversal, simple sql injections,
       -  or access to the etc or bin directory (unix). -->
-    <url>%027|%00|%7f|%2E%2E|%0A|%0D|../..|..\..|echo;|..</url>
+    <url>%027|%00|%01|%7f|%2E%2E|%0A|%0D|../..|..\..|echo;|..</url>
     <url>cmd.exe|root.exe|_mem_bin|msadc|/winnt/|</url>
     <url>/x90/|default.ida|/sumthin|nsiislog.dll|chmod%|wget%|cd%|</url>
     <url>cat%|exec%|rm%20</url>
@@ -55,7 +56,7 @@
   <rule id="31105" level="6">
     <if_sid>31100</if_sid>
     <url>%3Cscript|%2Fscript|script>|script%3E|SRC=javascript|IMG%20|</url>
-    <url>%20ONLOAD=|INPUT%20</url>
+    <url>%20ONLOAD=|INPUT%20|iframe%20</url>
     <description>XSS (Cross Site Scripting) attempt.</description>
     <group>attack,</group>
   </rule>

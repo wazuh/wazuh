@@ -927,13 +927,12 @@
 </decoder>
  
   
-
-<!-- IIS WWW W3C log format.
+<!-- IIS 5 WWW W3C log format.
   - #Fields: date time c-ip cs-username s-sitename s-computername s-ip s-port cs-method cs-uri-stem cs-uri-query sc-status cs-host cs(User-Agent) cs(Referer)
   - Examples:
   - 2006-07-23 04:40:02 1.2.3.4 - W3SVC3 CIN1WEB03 1.2.3.4 443 GET /Default.asp - 200 hiden.com Mozilla/4.0+(compatible;+MSIE+6.0;+Windows+NT+5.1;+Avant+Browser;+Avant+Browser;+.NET+CLR+1.1.4322;+.NET+CLR+2.0.50727) -
   -->
-<decoder name="web-accesslog-iis">
+<decoder name="web-accesslog-iis5">
   <parent>windows-date-format</parent>
   <type>web-log</type>
   <use_own_name>true</use_own_name>
@@ -944,8 +943,26 @@
 </decoder>
 
 
+<!-- IIS6 WWW W3C log format.
+  - #Fields: date time s-sitename s-computername s-ip cs-method cs-uri-stem
+  cs-uri-query s-port cs-username c-ip cs-version cs(User-Agent)
+  cs(Cookie) cs(Referer) cs-host sc-status sc-substatus sc-win32-status
+  sc-bytes cs-bytes time-taken
+  - Examples:
+  - 2007-01-22 05:00:11 W3SVC1 HOSTNAME 1.1.1.1 POST /SimpleAuthWebService/SimpleAuth.asmx - 80 - 2.2.2.2 HTTP/1.1 Windows-Update-Agent - - hostname 200 0 0 1467 841 31
+  -->
+<decoder name="web-accesslog-iis6">
+  <parent>windows-date-format</parent>
+  <type>web-log</type>
+  <use_own_name>true</use_own_name>
+  <prematch offset="after_parent">^W3SVC\d+ \S+ \S+ \S+ </prematch>
+  <regex offset="after_prematch">^(\S+) \S+ \d+ \S+ (\d+.\d+.\d+.\d+) </regex>
+  <regex>\S+ \S+ \S+ \S+ \S+ (\d+) </regex>
+  <order>url, srcip, id</order>
+</decoder>
 
-<!-- IIS W3C FTP log format.
+
+<!-- IIS 5 W3C FTP log format.
   - Examples:
   - #Fields: date time c-ip cs-username s-sitename s-computername s-ip s-port cs-method cs-uri-stem cs-uri-query sc-status sc-win32-status sc-bytes cs-bytes time-taken cs-version cs-host cs(User-Agent) cs(Cookie) cs(Referer)
   - 2006-07-23 17:57:59 192.168.3.64 Administrator MSFTPSVC1 HAIJO2 192.168.1.12 21 [144]USER Administrator - 331 0 0 0 0 FTP - - - -
@@ -962,7 +979,7 @@
 
 
 
-<!-- IIS W3C SMTP log format (Exchange).
+<!-- IIS 5 W3C SMTP log format (Exchange).
   - Examples:
   - #Fields: date time c-ip cs-username s-sitename s-computername s-ip s-port cs-method cs-uri-stem cs-uri-query sc-status sc-win32-status sc-bytes cs-bytes time-taken cs-version cs-host cs(User-Agent) cs(Cookie) cs(Referer)
   - 2006-10-09 14:04:46 69.217.186.117 - SMTPSVC1 MEE-PDC 192.168.X.X 0 xxxx -
@@ -1041,7 +1058,8 @@
 <decoder name="windows">
   <type>windows</type>
   <prematch>^WinEvtLog: </prematch>
-  <regex>^WinEvtLog: \w+: (\w+)\((\d+)\): (\w+): (\w+): \S+ (\S+): </regex>
+  <regex offset="after_prematch">^\w+: (\w+)\((\d+)\): (\w+): </regex>
+  <regex>(\w+): \S+ (\S+): </regex>
   <order>status, id, data, user, system_name</order>
   <fts>name, location, user, system_name</fts>
 </decoder>    
@@ -1059,6 +1077,41 @@
   <prematch>^security[\w+] \d+ </prematch>
   <regex>^(\w+)[(\w+)] (\d+) </regex>
   <order>data, status, id</order>
+</decoder>
+
+
+<!-- Windows decoder - Snare format. 
+  - Will extract data (as win source), action (as category), id,
+  - username and computer name (as system_name).
+  -
+  - These logs must be tab-separated (as specified in the Snare format)
+  -
+  - Examples:
+  - Aug 11 11:11:11 xx.org MSWinEventLog  1       System 59221    Thu Aug 11 01:11:11 2006        17      Windows Update Agent    Unknown User
+  - Jan 16 05:52:15 hostname.xx.org MSWinEventLog 1
+  Security        13049   Tue Jan 16 05:52:15 2007        680     Security
+  SYSTEM  User    Success Audit   ACTUATE Account Logon
+  Account Used for Logon by: MICROSOFT_AUTHENTICATION_PACKAGE_V1_0
+  Account Name:     IUSR_HOSTNAME    Workstation:      ACTUATE
+  12653
+  - Jan 16 13:02:24 hostname.yy.org MSWinEventLog 1
+  Application     14539   Tue Jan 16 13:02:24 2007        1704    SceCli
+  Unknown User    N/A     Information     ACTUATE None      Security
+  policy in the Group policy objects are applied successfully.    67
+  - Jan 16 15:41:37 hostname.zz.org MSWinEventLog 1       System
+  15059   Tue Jan 16 15:41:37 2007        10      Print   username User
+  Information     HOSTNAME None            Document 76,
+  /directory/directory/directory/directory/directory/date/Afilename owned
+  by username was printed on hostname_duplex via port hostname_duplex.
+  Size in bytes: 19543296; pages printed: 162        361
+  -->
+<decoder name="windows-snare">
+  <type>windows</type>
+  <prematch>^MSWinEventLog\t\d\t\w+\t\d+\t\w\w\w \w\w\w \d\d \d\d</prematch>
+  <regex offset="after_prematch">^:\d\d:\d\d \d\d\d\d\t(\d+)\t(\.+)</regex>
+  <regex>\t(\.+)\t\.+\t(\.+)\t(\.+)\t</regex>
+  <order>id, data, user, status, system_name</order>
+  <fts>name, id, location, user, system_name</fts>
 </decoder>
 
 

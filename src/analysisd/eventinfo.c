@@ -98,6 +98,20 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
                 continue;
         }
 
+        /* Checking for different urls */
+        if(currently_rule->context_opts & DIFFERENT_URL)
+        {
+            if((!lf->url)||(!my_lf->url))
+            {
+                continue;
+            }
+
+            if(strcmp(lf->url, my_lf->url) == 0)
+            {
+                continue;
+            }
+        }
+
 
         /* Checking if the number of matches worked */
         if(currently_rule->__frequency < currently_rule->frequency)
@@ -137,6 +151,8 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
 {
     EventNode *eventnode_pt;
     Eventinfo *lf;
+    Eventinfo *first_lf;
+    
 
     /* Last sids search */
     if(currently_rule->if_matched_sid)
@@ -146,7 +162,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
     
     /* Last events */
     eventnode_pt = OS_GetLastEvent();
-
     if(!eventnode_pt)
     {
         /* Nothing found */
@@ -155,6 +170,8 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
     
     /* Setting frequency to 0 */
     currently_rule->__frequency = 0;
+    first_lf = (Eventinfo *)eventnode_pt->event;
+    
     
     /* Searching all previous events */
     do
@@ -198,7 +215,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         if(currently_rule->if_matched_group)
         {
             if(!OSMatch_Execute(lf->generated_rule->group, 
-                                lf->size,
+                                strlen(lf->generated_rule->group),
                                 currently_rule->if_matched_group))
             {
                 continue; /* Didn't match */
@@ -234,7 +251,21 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
             if(strcmp(lf->srcip,my_lf->srcip) != 0)
                 continue;
         }
-       
+
+        /* Checking for different urls */
+        if(currently_rule->context_opts & DIFFERENT_URL)
+        {
+            if((!lf->url)||(!my_lf->url))
+            {
+                continue;
+            }
+
+            if(strcmp(lf->url, my_lf->url) == 0)
+            {
+                continue;
+            }
+        }
+
         
         /* Checking if the number of matches worked */ 
         if(currently_rule->__frequency < currently_rule->frequency)
@@ -255,6 +286,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         /* If reached here, we matched */
         my_lf->matched = currently_rule->level;
         lf->matched = currently_rule->level;
+        first_lf->matched = currently_rule->level;
        
         return(lf);    
         

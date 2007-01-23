@@ -101,6 +101,8 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_same_user = "same_user";
     char *xml_same_agent = "same_agent";
     char *xml_same_id = "same_id";
+
+    char *xml_different_url = "different_url";
     
     char *xml_notsame_source_ip = "not_same_source_ip";
     char *xml_notsame_user = "not_same_user";
@@ -602,6 +604,10 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         config_ruleinfo->context = 1;
                         config_ruleinfo->context_opts|= SAME_ID;
+                    }
+                    else if(strcmp(rule_opt[k]->element,xml_different_url)== 0)
+                    {
+                        config_ruleinfo->context_opts|= DIFFERENT_URL;
                     }
                     else if(strcmp(rule_opt[k]->element, xml_notsame_id) == 0)
                     {
@@ -1369,6 +1375,13 @@ void Rule_AddAR(RuleInfo *rule_config)
                     {
                         break;
                     }
+                }
+
+                /* Checking for duplicate commas */
+                else if(*str_pt == ',')
+                {
+                    str_pt++;
+                    continue;
                 }
 
                 else

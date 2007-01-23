@@ -224,8 +224,17 @@ int FTS(Eventinfo *lf)
     {
         _fline_size = strlen(_fline) -1;
 
-        if(strncmp(_fline, _line, _fline_size) != 0)
-            continue;
+        /* Windows is case insensitive */
+        if(lf->type == WINDOWS)
+        {
+            if(strncasecmp(_fline, _line, _fline_size) != 0)
+                continue;
+        }
+        else
+        {
+            if(strncmp(_fline, _line, _fline_size) != 0)
+                continue;
+        }
 
         /* If we match, we can return 0 and keep going */
         return(0);
@@ -235,28 +244,31 @@ int FTS(Eventinfo *lf)
      * at least 3 "similars" before. If yes, we just
      * ignore it.
      */
-    fts_node = OSList_GetLastNode(fts_list);
-    while(fts_node)
+    if(lf->type == IDS)
     {
-        if(OS_StrHowClosedMatch((char *)fts_node->data, _line) > 
-                fts_minsize_for_str)
+        fts_node = OSList_GetLastNode(fts_list);
+        while(fts_node)
         {
-            number_of_matches++;
-
-            /* We go and add this new entry to the list */
-            if(number_of_matches > 2)
+            if(OS_StrHowClosedMatch((char *)fts_node->data, _line) > 
+                    fts_minsize_for_str)
             {
-                _line[fts_minsize_for_str] = '\0';
-                break;
+                number_of_matches++;
+
+                /* We go and add this new entry to the list */
+                if(number_of_matches > 2)
+                {
+                    _line[fts_minsize_for_str] = '\0';
+                    break;
+                }
             }
+
+            fts_node = OSList_GetPrevNode(fts_list);
         }
 
-        fts_node = OSList_GetPrevNode(fts_list);
+        os_strdup(_line, line_for_list);
+        OSList_AddData(fts_list, line_for_list);
     }
-
-    os_strdup(_line, line_for_list);
-    OSList_AddData(fts_list, line_for_list);
-
+    
 
     /* Rule has not being fired */	
     fprintf(fp_list,"%s\n", _line);
