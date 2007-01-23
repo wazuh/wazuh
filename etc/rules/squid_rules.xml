@@ -136,6 +136,7 @@
   <rule id="35051" level="10" frequency="$SQUID_FREQ" timeframe="120">
     <if_matched_sid>35005</if_matched_sid>
     <same_source_ip />
+    <different_url />
     <description>Multiple attempts to access forbidden file </description>
     <description>or directory from same source ip.</description>
   </rule>
@@ -149,6 +150,7 @@
   <rule id="35053" level="10" frequency="$SQUID_FREQ" timeframe="120">
     <if_matched_sid>35003</if_matched_sid>
     <same_source_ip />
+    <different_url />
     <description>Multiple Bad requests/Invalid syntax.</description>
   </rule>
 
@@ -162,6 +164,7 @@
   <rule id="35055" level="10" frequency="$SQUID_FREQ" timeframe="90">
     <if_matched_sid>35006</if_matched_sid>
     <same_source_ip />
+    <different_url />
     <description>Multiple attempts to access a non-existent file.</description>
   </rule>
 
@@ -175,12 +178,14 @@
   <rule id="35057" level="10" frequency="$SQUID_FREQ" timeframe="240">
     <if_matched_sid>35008</if_matched_sid>
     <same_source_ip />
+    <different_url />
     <description>Multiple 400 error codes (requests failed).</description>
   </rule>
 
   <rule id="35058" level="10" frequency="$SQUID_FREQ" timeframe="240">
     <if_matched_sid>35009</if_matched_sid>
     <same_source_ip />
+    <different_url />
     <description>Multiple 500/600 error codes (server error).</description>
   </rule>
 

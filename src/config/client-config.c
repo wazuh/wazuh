@@ -13,6 +13,7 @@
 
 #include "shared.h"
 #include "client-config.h"
+#include "os_net/os_net.h"
 
 
 int Read_Client(XML_NODE node, void *d1, void *d2) 
@@ -21,6 +22,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
     
     /* XML definitions */
     char *xml_client_ip = "server-ip";
+    char *xml_client_hostname = "server-hostname";
     char *xml_client_port = "port";
     char *xml_ar_disabled = "disable-active-response";
 
@@ -43,7 +45,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
             return(OS_INVALID);
         }
 
-        /* Getting server */
+        /* Getting server ip */
         else if(strcmp(node[i]->element,xml_client_ip) == 0)
         {
             os_strdup(node[i]->content, logr->rip);
@@ -51,6 +53,34 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
             {
                 merror(INVALID_IP, ARGV0, logr->rip);
                 return(OS_INVALID);
+            }
+        }
+        else if(strcmp(node[i]->element,xml_client_hostname) == 0)
+        {
+            /* We only attempt to read the hostname if the ip is not set */
+            if(logr->rip)
+            {
+                merror(AG_USINGIP, ARGV0, logr->rip);
+            }
+            else
+            {
+                char *s_ip;
+                s_ip = OS_GetHost(node[i]->content);
+                if(s_ip)
+                {
+                    if(OS_IsValidIP(s_ip, NULL) != 1)
+                    {
+                        merror(INVALID_IP, ARGV0, logr->rip);
+                    }
+                    else
+                    {
+                        logr->rip = s_ip;
+                    }
+                }
+                else
+                {
+                    merror(AG_INV_HOST, ARGV0, node[i]->content);
+                }
             }
         }
         else if(strcmp(node[i]->element,xml_client_port) == 0)

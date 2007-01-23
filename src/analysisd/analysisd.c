@@ -743,16 +743,6 @@ void OS_ReadMSG(int m_queue)
             }
 
 
-            /** FTS CHECKS **/
-            if(lf->fts)
-            {
-                if(!FTS(lf))
-                {
-                    lf->fts = 0;
-                }
-            }
-
-
             /* Checking the rules */
             DEBUG_MSG("%s: DEBUG: Checking the rules - %d ", ARGV0, lf->type);
 
@@ -965,11 +955,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     }
    
     
-    /* Checking for th FTS flag */
-    if((currently_rule->alert_opts & DO_FTS) && (!lf->fts))
-    {
-        return(NULL);
-    }
+    
 
     /* Checking program name */
     if(currently_rule->program_name)
@@ -1145,6 +1131,25 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
         }
     }
+
+
+    /* Checking for th FTS flag */
+    if(currently_rule->alert_opts & DO_FTS)
+    {
+        /** FTS CHECKS **/
+        if(lf->fts)
+        {
+            if(!FTS(lf))
+            {
+                return(NULL);
+            }
+        }
+        else
+        {
+            return(NULL);
+        }
+    }
+
         
     /* If it is a context rule, search for it */
     if(currently_rule->context == 1)

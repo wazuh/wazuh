@@ -98,7 +98,10 @@ int main(int argc, char **argv)
         ErrorExit(CLIENT_ERROR,ARGV0);
 
     if(!logr->rip)
+    {
+        merror(AG_INV_IP, ARGV0);
         ErrorExit(CLIENT_ERROR,ARGV0);        
+    }
 
 
     /* Exit if test config */

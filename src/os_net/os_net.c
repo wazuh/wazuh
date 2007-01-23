@@ -433,7 +433,7 @@ char *OS_GetHost(char *host)
         return(NULL);	
     
     sz = strlen(inet_ntoa(*((struct in_addr *)h->h_addr)))+1;
-    if((ip = (char *) calloc(sz,sizeof(char))) == NULL)
+    if((ip = (char *) calloc(sz, sizeof(char))) == NULL)
         return(NULL);
 
     strncpy(ip,inet_ntoa(*((struct in_addr *)h->h_addr)),sz-1);
