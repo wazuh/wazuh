@@ -23,4 +23,7 @@ void HandleSIGPIPE();
 /* Start signal manipulation */
 void StartSIG(char *process_name);
 
+/* Start signal manipulation -- function as an argument */
+void StartSIG2(char *process_name, void (*func)(int));
+
 #endif

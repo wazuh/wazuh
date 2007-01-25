@@ -56,6 +56,7 @@
 13100 - 13299 Samba (smbd)
 
 14100 - 14199 Racoon SSL
+14200 - 14299 Cisco VPN Concentrator
 
 17100 - 17399 Policy
 

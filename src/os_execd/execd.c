@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -28,6 +28,37 @@ typedef struct _timeout_data
     char **command;
 }timeout_data;
 
+
+/* Timeout list */
+OSList *timeout_list;
+OSListNode *timeout_node;
+            
+
+
+/** 
+ * Shudowns execd properly.
+ */
+void execd_shutdown()
+{
+    /* Removing pending active responses. */
+    merror(EXEC_SHUTDOWN, ARGV0);
+    
+    timeout_node = OSList_GetFirstNode(timeout_list);
+    while(timeout_node)
+    {
+        timeout_data *list_entry;
+
+        list_entry = (timeout_data *)timeout_node->data;
+
+        ExecCmd(list_entry->command);
+
+        /* Deletecurrently node already sets the pointer to next */
+        OSList_DeleteCurrentlyNode(timeout_list);
+        timeout_node = OSList_GetCurrentlyNode(timeout_list);
+    }
+
+    HandleSIG();
+}
 
 
 
@@ -107,7 +138,7 @@ int main(int argc, char **argv)
         
         
     /* Signal manipulation */
-    StartSIG(ARGV0);
+    StartSIG2(ARGV0, execd_shutdown);
 
     
     /* Going daemon */
@@ -201,11 +232,6 @@ void ExecdStart(int q)
     fd_set fdset;
     struct timeval socket_timeout;
 
-    
-    /* OSList */
-    OSList *timeout_list;
-    OSListNode *timeout_node;
-    
     
     /* Clearing the buffer */
     memset(buffer, '\0', OS_MAXSTR +1);

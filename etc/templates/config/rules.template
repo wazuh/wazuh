@@ -27,6 +27,7 @@
     <include>mailscanner_rules.xml</include>
     <include>ms-exchange_rules.xml</include>
     <include>racoon_rules.xml</include>
+    <include>vpn_concentrator_rules.xml</include>
     <include>spamd_rules.xml</include>
     <include>msauth_rules.xml</include>
     <!-- <include>policy_rules.xml</include> -->

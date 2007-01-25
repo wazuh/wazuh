@@ -57,5 +57,17 @@ void StartSIG(char *process_name)
     signal(SIGPIPE, HandleSIGPIPE);
 }
 
+void StartSIG2(char *process_name, void (*func)(int))
+{
+    pidfile = process_name;
+
+    signal(SIGHUP, SIG_IGN);
+    signal(SIGINT, func);
+    signal(SIGQUIT, func);
+    signal(SIGTERM, func);
+    signal(SIGALRM, func);
+    signal(SIGPIPE, HandleSIGPIPE);
+}
+
 #endif
 /* EOF */
