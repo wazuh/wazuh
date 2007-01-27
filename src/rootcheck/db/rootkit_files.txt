@@ -451,6 +451,7 @@ proc/kset                   ! Suspicious file ::rootkits/Suspicious.php
 usr/bin/gib                 ! Suspicious file ::rootkits/Suspicious.php
 usr/bin/snick               ! Suspicious file ::rootkits/Suspicious.php
 usr/bin/kfl                 ! Suspicious file ::rootkits/Suspicious.php
+tmp/.dump                   ! Suspicious file ::rootkits/Suspicious.php
 */.log                      ! Suspicious file ::rootkits/Suspicious.php
 */ecmf                      ! Suspicious file ::rootkits/Suspicious.php
 */mirkforce                 ! Suspicious file ::rootkits/Suspicious.php
