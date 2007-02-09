@@ -170,6 +170,13 @@ int local_start()
         ErrorExit("%s: Configuration file '%s' not found",ARGV0,cfg);
 
 
+    /* Starting Winsock */
+    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
+    {
+        ErrorExit("%s: WSAStartup() failed", ARGV0);
+    }
+                                
+
     /* Read agent config */
     debug1("%s: DEBUG: Reading agent configuration.", ARGV0);
     if((binds = ClientConf(cfg)) == 0)
@@ -197,9 +204,8 @@ int local_start()
 
         merror(NO_FILE, ARGV0);
     }
-                                                                                        
-    
 
+    
     /* Reading the private keys  */
     debug1("%s: DEBUG: Reading private keys.", ARGV0);
     ReadKeys(&keys, 0);
@@ -208,13 +214,6 @@ int local_start()
     /* Initial random numbers */
     srand(time(0));
     rand();
-
-
-    /* Starting winsock stuff */
-    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
-    {
-        ErrorExit("%s: WSAStartup() failed", ARGV0);
-    }
 
 
     /* Socket connection */

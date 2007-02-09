@@ -118,6 +118,11 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
         i++;
     }
 
+    if(!logr->rip)
+    {
+        return(OS_INVALID);
+    }
+
     return(0);
 }
 
