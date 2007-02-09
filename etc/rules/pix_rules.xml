@@ -148,6 +148,13 @@
     <group>authentication_failed,</group>
   </rule>
   
+  <rule id="4337" level="8">
+    <if_sid>4312</if_sid>
+    <id>^%3-201008</id>
+    <description>The PIX is disallowing new connections.</description>
+    <group>service_availability,</group>
+  </rule>
+  
   <rule id="4380" level="10" frequency="6" timeframe="360">
     <if_matched_sid>4310</if_matched_sid>
     <description>Multiple PIX alert messages.</description>

@@ -13,6 +13,7 @@
 
 #ifndef _MCCONFIG__H
 #define _MCCONFIG__H
+#include "shared.h"
 
 
 /* Mail config structure */
@@ -23,6 +24,12 @@ typedef struct _MailConfig
     char **to;
     char *from;
     char *smtpserver;
+
+    /* Granular e-mail options */
+    int *gran_level;
+    int *gran_set;
+    char **gran_to;
+    OSMatch **gran_location;
 }MailConfig;
 
 

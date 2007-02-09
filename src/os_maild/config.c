@@ -29,6 +29,10 @@ int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
     Mail->smtpserver = NULL;
     Mail->mn = 0;
     Mail->maxperhour = 12;
+    Mail->gran_to = NULL;
+    Mail->gran_level = NULL;
+    Mail->gran_location = NULL;
+    Mail->gran_set = NULL;
 
     if(ReadConfig(modules, cfgfile, NULL, Mail) < 0)
         return(OS_INVALID);

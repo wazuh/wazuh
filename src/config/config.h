@@ -37,6 +37,7 @@ int Read_Rules(XML_NODE node, void *d1, void *d2);
 int Read_Syscheck(XML_NODE node, void *d1, void *d2);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Alerts(XML_NODE node, void *d1, void *d2);
+int Read_EmailAlerts(XML_NODE node, void *d1, void *d2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Remote(XML_NODE node, void *d1, void *d2);
 int Read_Client(XML_NODE node, void *d1, void *d2);

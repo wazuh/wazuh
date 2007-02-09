@@ -430,49 +430,148 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element,xml_ignore) == 0)
         {
             int ign_size = 0;
-
-            if(!syscheck->ignore)
+            
+            /* Adding if regex */
+            if(node[i]->attributes && node[i]->values)
             {
-                os_calloc(2, sizeof(char *), syscheck->ignore);
-                syscheck->ignore[0] = NULL;
-                syscheck->ignore[1] = NULL;
+                if(node[i]->attributes[0] && node[i]->values[0] &&
+                   (strcmp(node[i]->attributes[0], "type") == 0) && 
+                   (strcmp(node[i]->values[0], "sregex") == 0))
+                {
+                    OSMatch *mt_pt;
+                    
+                    if(!syscheck->ignore_regex)
+                    {
+                        os_calloc(2, sizeof(OSMatch *),syscheck->ignore_regex);
+                        syscheck->ignore_regex[0] = NULL;
+                        syscheck->ignore_regex[1] = NULL;
+                    }
+                    else
+                    {
+                        while(syscheck->ignore_regex[ign_size] != NULL)
+                            ign_size++;
+
+                        os_realloc(syscheck->ignore_regex,
+                                sizeof(OSMatch *)*(ign_size +2),
+                                syscheck->ignore_regex);
+                        syscheck->ignore_regex[ign_size +1] = NULL;
+                    }
+                    os_calloc(1, sizeof(OSMatch), 
+                            syscheck->ignore_regex[ign_size]);
+
+                    if(!OSMatch_Compile(node[i]->content,
+                                        syscheck->ignore_regex[ign_size], 0))
+                    {
+                        mt_pt = (OSMatch *)syscheck->ignore_regex[ign_size];
+                        merror(REGEX_COMPILE, ARGV0, node[i]->content,
+                              mt_pt->error);
+                        return(0);
+                    }
+                }
+                else
+                {
+                    merror(SK_INV_ATTR, ARGV0, node[i]->attributes[0]);
+                    return(OS_INVALID);
+                }
             }
+
+            /* Adding if simple entry */
             else
             {
-                while(syscheck->ignore[ign_size] != NULL)
-                    ign_size++;
-                
-                os_realloc(syscheck->ignore, 
-                           sizeof(char *)*(ign_size +2),
-                           syscheck->ignore);
-                syscheck->ignore[ign_size +1] = NULL;
+
+                if(!syscheck->ignore)
+                {
+                    os_calloc(2, sizeof(char *), syscheck->ignore);
+                    syscheck->ignore[0] = NULL;
+                    syscheck->ignore[1] = NULL;
+                }
+                else
+                {
+                    while(syscheck->ignore[ign_size] != NULL)
+                        ign_size++;
+
+                    os_realloc(syscheck->ignore, 
+                            sizeof(char *)*(ign_size +2),
+                            syscheck->ignore);
+                    syscheck->ignore[ign_size +1] = NULL;
+                }
+                os_strdup(node[i]->content,syscheck->ignore[ign_size]);
             }
-            os_strdup(node[i]->content,syscheck->ignore[ign_size]);
         }
+
         /* Getting registry ignore list */
         else if(strcmp(node[i]->element,xml_registry_ignore) == 0)
         {
             #ifdef WIN32
             int ign_size = 0;
 
-            if(!syscheck->registry_ignore)
+            /* Adding if regex */
+            if(node[i]->attributes && node[i]->values)
             {
-                os_calloc(2, sizeof(char *), syscheck->registry_ignore);
-                syscheck->registry_ignore[0] = NULL;
-                syscheck->registry_ignore[1] = NULL;
+                if(node[i]->attributes[0] && node[i]->values[0] &&
+                   (strcmp(node[i]->attributes[0], "type") == 0) &&
+                   (strcmp(node[i]->values[0], "sregex") == 0))
+                {
+                    OSMatch *mt_pt;
+
+                    if(!syscheck->registry_ignore_regex)
+                    {
+                        os_calloc(2, sizeof(OSMatch *),
+                                     syscheck->registry_ignore_regex);
+                        syscheck->registry_ignore_regex[0] = NULL;
+                        syscheck->registry_ignore_regex[1] = NULL;
+                    }
+                    else
+                    {
+                        while(syscheck->registry_ignore_regex[ign_size] !=NULL)
+                            ign_size++;
+
+                        os_realloc(syscheck->registry_ignore_regex,
+                                sizeof(OSMatch *)*(ign_size +2),
+                                syscheck->registry_ignore_regex);
+                        syscheck->registry_ignore_regex[ign_size +1] = NULL;
+                    }
+                    
+                    os_calloc(1, sizeof(OSMatch),
+                            syscheck->registry_ignore_regex[ign_size]);
+
+                    if(!OSMatch_Compile(node[i]->content,
+                                syscheck->registry_ignore_regex[ign_size], 0))
+                    {
+                        mt_pt = (OSMatch *)
+                                syscheck->registry_ignore_regex[ign_size];
+                        merror(REGEX_COMPILE, ARGV0, node[i]->content,
+                             mt_pt->error);
+                        return(0);
+                    }
+                }
+                else
+                {
+                    merror(SK_INV_ATTR, ARGV0, node[i]->attributes[0]);
+                    return(OS_INVALID);
+                }
             }
             else
             {
-                while(syscheck->registry_ignore[ign_size] != NULL)
-                    ign_size++;
 
-                os_realloc(syscheck->registry_ignore,
-                        sizeof(char *)*(ign_size +2),
-                        syscheck->registry_ignore);
-                syscheck->registry_ignore[ign_size +1] = NULL;
+                if(!syscheck->registry_ignore)
+                {
+                    os_calloc(2, sizeof(char *), syscheck->registry_ignore);
+                    syscheck->registry_ignore[0] = NULL;
+                    syscheck->registry_ignore[1] = NULL;
+                }
+                else
+                {
+                    while(syscheck->registry_ignore[ign_size] != NULL)
+                        ign_size++;
+
+                    os_realloc(syscheck->registry_ignore,
+                            sizeof(char *)*(ign_size +2),
+                            syscheck->registry_ignore);
+                    syscheck->registry_ignore[ign_size +1] = NULL;
+                }
+                os_strdup(node[i]->content,syscheck->registry_ignore[ign_size]);
             }
-            os_strdup(node[i]->content,syscheck->registry_ignore[ign_size]);
-            
             #endif
         }
         else if(strcmp(node[i]->element,xml_auto_ignore) == 0)

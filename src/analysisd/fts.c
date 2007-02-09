@@ -17,7 +17,10 @@
 #include "eventinfo.h"
 
 int fts_minsize_for_str = 0;
+
 OSList *fts_list = NULL;
+OSStore *fts_store = NULL;
+
 FILE *fp_list = NULL;
 FILE *fp_ignore = NULL;
 
@@ -28,6 +31,10 @@ FILE *fp_ignore = NULL;
 int FTS_Init()
 {
     int fts_list_size;
+    char _line[OS_FLSIZE + 1];
+
+    _line[OS_FLSIZE] = '\0';
+            
     
     fts_list = OSList_Create();
     if(!fts_list)
@@ -36,6 +43,14 @@ int FTS_Init()
         return(0);
     }
 
+    /* Creating store data */
+    fts_store = OSStore_Create();
+    if(!fts_store)
+    {
+        merror(LIST_ERROR, ARGV0);
+        return(0);
+    }
+    
     /* Getting default list size */
     fts_list_size = getDefine_Int("analysisd",
                                   "fts_list_size",
@@ -51,11 +66,7 @@ int FTS_Init()
         merror(LIST_SIZE_ERROR, ARGV0);
         return(0);
     }
-    if(!OSList_SetFreeDataPointer(fts_list, free))
-    {
-        merror(LIST_FREE_ERROR, ARGV0);
-        return(0);
-    }
+
 
     /* creating fts list */
     fp_list = fopen(FTS_QUEUE, "r+");
@@ -75,6 +86,29 @@ int FTS_Init()
     }
 
 
+    /* Adding content from the files to memory */
+    fseek(fp_list, 0, SEEK_SET);
+    while(fgets(_line, OS_FLSIZE , fp_list) != NULL)
+    {
+        char *tmp_s;
+
+        /* Removing new lines */
+        tmp_s = strchr(_line, '\n');
+        if(tmp_s)
+        {
+            *tmp_s = '\0';
+        }
+
+
+        os_strdup(_line, tmp_s);
+        if(!OSStore_Put(fts_store, tmp_s, NULL))
+        {
+            merror(LIST_ADD_ERROR, ARGV0);
+            merror("line: %s", tmp_s);
+        }
+    }
+
+    
     /* Creating ignore list */
     fp_ignore = fopen(IG_QUEUE, "r+");
     if(!fp_ignore)
@@ -177,21 +211,19 @@ int IGnore(Eventinfo *lf)
  */ 
 int FTS(Eventinfo *lf)
 {
-    int msgsize;
     int number_of_matches = 0;
-    int _fline_size;
 
     char _line[OS_FLSIZE + 1];
-    char _fline[OS_FLSIZE +1];
     
-    char *line_for_list;
+    char *line_for_list = NULL;
 
     OSListNode *fts_node;
 
     _line[OS_FLSIZE] = '\0';
 
+
     /* Assigning the values to the FTS */
-    snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s %s %s %s",
+    snprintf(_line, OS_FLSIZE, "%s %s %s %s %s %s %s %s %s",
             (lf->log_tag && (lf->fts & FTS_NAME))?lf->log_tag:"",
             (lf->id && (lf->fts & FTS_ID))?lf->id:"",
             (lf->user && (lf->fts & FTS_USER))?lf->user:"",
@@ -203,43 +235,21 @@ int FTS(Eventinfo *lf)
             (lf->fts & FTS_LOCATION)?lf->location:"");
 
 
-    /* Getting the msgsize size */
-    msgsize = strlen(_line);
-
-
-    /* Maximum size is OS_FLSIZE */
-    if(msgsize >= OS_FLSIZE)
-    {
-        merror(SIZE_ERROR, ARGV0, _line);
-        return(0);
-    }
-
-    _fline[OS_FLSIZE] = '\0';
-    
-
     /** Checking if FTS is already present **/
-    /* Pointing to the beginning of the file */
-    fseek(fp_list, 0, SEEK_SET);
-    while(fgets(_fline, OS_FLSIZE , fp_list) != NULL)
+    if(lf->type == WINDOWS)
     {
-        _fline_size = strlen(_fline) -1;
-
         /* Windows is case insensitive */
-        if(lf->type == WINDOWS)
+        if(OSStore_NCaseCheck(fts_store, _line))
         {
-            if(strncasecmp(_fline, _line, _fline_size) != 0)
-                continue;
+            return(0);
         }
-        else
-        {
-            if(strncmp(_fline, _line, _fline_size) != 0)
-                continue;
-        }
-
-        /* If we match, we can return 0 and keep going */
+    }
+    else if(OSStore_NCheck(fts_store, _line))
+    {
         return(0);
     }
 
+    
     /* Checking if from the last FTS events, we had
      * at least 3 "similars" before. If yes, we just
      * ignore it.
@@ -269,8 +279,21 @@ int FTS(Eventinfo *lf)
         OSList_AddData(fts_list, line_for_list);
     }
     
+    
+    /* Storing new entry */
+    if(line_for_list == NULL)
+    {
+        os_strdup(_line, line_for_list);
+    }
 
-    /* Rule has not being fired */	
+    if(!OSStore_Put(fts_store, line_for_list, NULL))
+    {
+        merror(LIST_ADD_ERROR, ARGV0);
+    }
+
+    
+    /* Saving to fts fp */	
+    fseek(fp_list, 0, SEEK_END);
     fprintf(fp_list,"%s\n", _line);
     fflush(fp_list);
 

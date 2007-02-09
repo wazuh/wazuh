@@ -24,7 +24,7 @@ int StartMQ(char * path, short int type)
     
     if(type == READ)
     {
-        return(OS_BindUnixDomain(path,0660));
+        return(OS_BindUnixDomain(path, 0660, OS_MAXSTR + 512));
     }
     
     /* We give up to 21 seconds for the other end to
@@ -54,19 +54,21 @@ int StartMQ(char * path, short int type)
         /* Wait up to 3 seconds to connect to the unix domain.
          * After three errors, exit.
          */
-        if((rc = OS_ConnectUnixDomain(path)) < 0)
+        if((rc = OS_ConnectUnixDomain(path, OS_MAXSTR + 256)) < 0)
         {
             sleep(1);
-            if((rc = OS_ConnectUnixDomain(path)) < 0)
+            if((rc = OS_ConnectUnixDomain(path, OS_MAXSTR + 256)) < 0)
             {
                 sleep(2);
-                if((rc = OS_ConnectUnixDomain(path)) < 0)
+                if((rc = OS_ConnectUnixDomain(path, OS_MAXSTR + 256)) < 0)
                 {
                     merror(QUEUE_ERROR, __local_name, path);
                     return(-1);
                 }
             }
         }
+
+        debug1(MSG_SOCKET_SIZE, __local_name, OS_getsocketsize(rc));
         return(rc);
     }
 }

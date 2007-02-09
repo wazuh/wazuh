@@ -186,6 +186,38 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     }
 
 
+    /* Additional RCPT to */
+    if(mail->gran_to)
+    {
+        i = 0;
+        while(mail->gran_to[i] != NULL)
+        {
+            if(mail->gran_set[i] != 1)
+            {
+                i++;
+                continue;
+            }
+
+            memset(snd_msg,'\0',128);
+            snprintf(snd_msg,127,RCPTTO, mail->gran_to[i]);
+            OS_SendTCP(socket,snd_msg);
+            msg = OS_RecvTCP(socket, OS_SIZE_1024);
+            if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
+            {
+                merror(TO_ERROR);
+                if(msg)
+                    free(msg);
+                close(socket);
+                return(OS_INVALID);
+            }
+            MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
+            free(msg);
+            i++;
+            continue;
+        }
+    }
+
+    
     /* Sending the "DATA" msg */
     OS_SendTCP(socket,DATAMSG);
     msg = OS_RecvTCP(socket, OS_SIZE_1024);

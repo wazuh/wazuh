@@ -111,9 +111,11 @@ int OS_Bindportudp(unsigned int _port, char *_ip)
 /* OS_BindUnixDomain v0.1, 2004/07/29
  * Bind to a Unix domain, using DGRAM sockets
  */
-int OS_BindUnixDomain(char * path, int mode)
+int OS_BindUnixDomain(char * path, int mode, int max_msg_size)
 {
+    int len;
     int ossock = 0;
+    socklen_t optlen = sizeof(len);
 
     /* Making sure the path isn't there */
     unlink(path);
@@ -134,6 +136,19 @@ int OS_BindUnixDomain(char * path, int mode)
     /* Changing permissions */
     chmod(path,mode);
     
+    
+    /* Getting current maximum size */
+    if(getsockopt(ossock, SOL_SOCKET, SO_RCVBUF, &len, &optlen) == -1)
+        return(OS_SOCKTERR);
+    
+                    
+    /* Setting socket opt */
+    if(len < max_msg_size)
+    {
+        len = max_msg_size;
+        setsockopt(ossock, SOL_SOCKET, SO_RCVBUF, &len, optlen);
+    }
+                                            
     return(ossock);
 }
 
@@ -142,9 +157,11 @@ int OS_BindUnixDomain(char * path, int mode)
  * ("/tmp/lala-socket",0666));
  *
  */
-int OS_ConnectUnixDomain(char * path)
+int OS_ConnectUnixDomain(char * path, int max_msg_size)
 {
+    int len;
     int ossock = 0;
+    socklen_t optlen = sizeof(len);
 
     memset(&n_us, 0, sizeof(n_us));
 
@@ -164,9 +181,36 @@ int OS_ConnectUnixDomain(char * path)
         return(OS_SOCKTERR);
 
 
+    /* Getting current maximum size */
+    if(getsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, &optlen) == -1)
+        return(OS_SOCKTERR);
+
+
+    /* Setting maximum message size */
+    if(len < max_msg_size)
+    {
+        len = max_msg_size;
+        setsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, optlen);
+    }
+    
+    
     /* Returning the socket */	
     return(ossock);
 }
+
+
+int OS_getsocketsize(int ossock)
+{
+    int len = 0;
+    socklen_t optlen = sizeof(len);
+
+    /* Getting current maximum size */
+    if(getsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, &optlen) == -1)
+        return(OS_SOCKTERR);
+    
+    return(len);    
+}
+
 #endif
 
 /* OS_Connect v 0.1, 2004/07/21
@@ -410,35 +454,39 @@ int OS_SendUnix(int socket, char * msg, int size)
 
 
 /* OS_GetHost, v0.1, 2005/01/181
- * Calls gethostbyname
+ * Calls gethostbyname (tries x attempts)
  */
-char *OS_GetHost(char *host)
+char *OS_GetHost(char *host, int attempts)
 {
+    int i = 0;
     int sz;
     
     char *ip;
     struct hostent *h;
 
-    #ifndef AIX
-    extern int h_errno;
-    #endif
-
     if(host == NULL)
         return(NULL);
+    
+    while(i <= attempts)
+    {
+        sleep(i);
         
-    if((h = gethostbyname(host)) == NULL)
-        return(NULL);
+        if((h = gethostbyname(host)) == NULL)
+        {
+            i++;
+            continue;
+        }
 
-    if(h_errno < 0 || h_errno > 2)
-        return(NULL);	
-    
-    sz = strlen(inet_ntoa(*((struct in_addr *)h->h_addr)))+1;
-    if((ip = (char *) calloc(sz, sizeof(char))) == NULL)
-        return(NULL);
+        sz = strlen(inet_ntoa(*((struct in_addr *)h->h_addr)))+1;
+        if((ip = (char *) calloc(sz, sizeof(char))) == NULL)
+            return(NULL);
 
-    strncpy(ip,inet_ntoa(*((struct in_addr *)h->h_addr)),sz-1);
-    
-    return(ip);
+        strncpy(ip,inet_ntoa(*((struct in_addr *)h->h_addr)), sz-1);
+
+        return(ip);
+    }
+
+    return(NULL);
 }
 #endif
 

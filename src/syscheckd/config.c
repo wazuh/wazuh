@@ -23,6 +23,8 @@ int Read_Syscheck_Config(char * cfgfile)
 
     syscheck.rootcheck = 0;
     syscheck.time = SYSCHECK_WAIT*2;
+    syscheck.ignore = NULL;
+    syscheck.ignore_regex = NULL;
     
     #ifdef WIN32
     syscheck.reg_fp = NULL;

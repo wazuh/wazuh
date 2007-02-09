@@ -53,12 +53,14 @@ typedef struct _config
     char *db;
     
 	char **ignore;
+    void **ignore_regex;
     
 	char *dir[MAX_DIR_ENTRY +1];
 
     /* Windows only registry checking */
     #ifdef WIN32
 	char **registry_ignore;
+    void **registry_ignore_regex;
 	char *registry[MAX_DIR_ENTRY +1];
     FILE *reg_fp;
     #endif

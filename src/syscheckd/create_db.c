@@ -95,6 +95,21 @@ int read_file(char *file_name, int opts, int flag)
         }
     }
 
+    /* Checking in the regex entry */
+    if(syscheck.ignore_regex)
+    {
+        int i = 0;
+        while(syscheck.ignore_regex[i] != NULL)
+        {
+            if(OSMatch_Execute(file_name, strlen(file_name), 
+                                          syscheck.ignore_regex[i]))
+            {
+                return(0);
+            }
+            i++;
+        }
+    }
+
 
     /* If check_db, we just need to verify that the file is
      * already present. If not, we add it.

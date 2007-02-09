@@ -28,7 +28,7 @@
 int ClientConf(char *cfgfile);
 
 /* Agentd init function */
-void AgentdStart(char *dir, int uid, int gid);
+void AgentdStart(char *dir, int uid, int gid, char *user, char *group);
 
 /* Event Forwarder */
 void *EventForward(void *none);

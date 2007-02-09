@@ -142,7 +142,15 @@
     <match>listen() failed in</match>
     <description>Unable to bind to adress.</description>
   </rule>
-
+  
+  <rule id="11221" level="0">
+    <if_sid>11200</if_sid>
+    <match>error setting IPV6_V6ONLY: Protocol not available|</match>
+    <match> - mod_delay/|PAM(setcred): System error|</match>
+    <match>PAM(close_session): System error</match>
+    <description>IPv6 error and mod-delay info (ignored).</description>
+  </rule>
+  
   <rule id="11251" level="10" frequency="6" timeframe="120">
     <if_matched_sid>11204</if_matched_sid>
     <same_source_ip />

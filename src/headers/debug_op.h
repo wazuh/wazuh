@@ -36,6 +36,8 @@ void verbose(const char *msg,...);
 
 void print_out(const char *msg,...);
 
+void log2file(const char * msg,... );
+
 void ErrorExit(const char *msg,...);
 
 

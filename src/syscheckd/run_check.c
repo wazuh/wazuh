@@ -21,36 +21,64 @@
 #endif
 
 
-
 /** Prototypes **/
-int c_read_file(char *file_name, char *oldsum);
+int c_read_file(char *file_name, char *oldsum, char *newsum);
 
 
-/* Global variables -- currently checksum, msg to alert  */
-char c_sum[256 +2];
-char alert_msg[912 +2];
+/** Notify list values **/
+char *notify_list[NOTIFY_LIST_SIZE + 3];
+int notify_list_size = 0;
 
 
 /* notify_agent
  * Send a message to the agent client with notification
  */
-int notify_agent(char *msg)
+int notify_agent(char *msg, int send_now)
 {
-    if(SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ) < 0)
+    int i = 0;
+    
+    
+    /* msg can be null to flag send_now */
+    if(msg)
     {
-        merror(QUEUE_SEND, ARGV0);
-
-        if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+        /* Storing message in the notify list */
+        os_strdup(msg, notify_list[notify_list_size]);
+        if(notify_list_size >= NOTIFY_LIST_SIZE)
         {
-            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+            send_now = 1;
         }
-
-        /* If we reach here, we can try to send it again */
-        SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ);
-        
+        notify_list_size++;
     }
 
-    return(0);        
+
+    /* Delay sending */
+    if(!send_now)
+        return(0);
+
+    
+    /* Sending all available messages */
+    while(i < notify_list_size)
+    {
+        if(SendMSG(syscheck.queue, notify_list[i], SYSCHECK, SYSCHECK_MQ) < 0)
+        {
+            merror(QUEUE_SEND, ARGV0);
+
+            if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+            {
+                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+            }
+
+            /* If we reach here, we can try to send it again */
+            SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ);
+        }
+
+        os_free(notify_list[i]);
+        notify_list[i] = NULL;
+        i++;
+    }
+
+    notify_list_size = 0;
+    return(0);
 }
    
  
@@ -74,8 +102,13 @@ void start_daemon()
   
   
     /* Zeroing memory */
-    memset(c_sum, '\0', 256 +2);
-    memset(alert_msg, '\0', 912 +2);
+    notify_list_size = NOTIFY_LIST_SIZE + 2;
+    while(notify_list_size >= 0)
+    {
+        notify_list[notify_list_size] = NULL;
+        notify_list_size--;
+    }
+    notify_list_size = 0;
      
     
     /* some time to settle */
@@ -113,7 +146,7 @@ void start_daemon()
                 n_buf = buf;
                 n_buf+=6;
                     
-                notify_agent(n_buf);
+                notify_agent(n_buf, 0);
 
 
                 /* A count and a sleep to avoid flooding the server. 
@@ -180,13 +213,15 @@ void start_daemon()
 
 
             /* Sending database completed message */
-            notify_agent(HC_SK_DB_COMPLETED);
+            notify_agent(HC_SK_DB_COMPLETED, 1);
             debug2("%s: DEBUG: Sending database completed message.");
 
             
             prev_time_sk = time(0);
         } 
 
+        /* Check for any message needing to be sended */
+        notify_agent(NULL, 1);
         sleep(SYSCHECK_WAIT);
     }
 }
@@ -197,10 +232,16 @@ void start_daemon()
  */
 void run_check()
 {
+    char c_sum[256 +2];
+    char alert_msg[912 +2];
     char buf[MAX_LINE +2];
     int file_count = 0;
 
-    buf[MAX_LINE +1] = '\0';
+
+    /* Cleaning buffer */
+    memset(buf, '\0', MAX_LINE +1);
+    memset(alert_msg, '\0', 912 +1);
+    memset(c_sum, '\0', 256 +1);
     
 
     /* fgets garantee the null termination */
@@ -242,7 +283,7 @@ void run_check()
         }
 
         /* Zeroing the ' ' and messing up with buf */
-        *n_file ='\0';
+        *n_file = '\0';
 
 
         /* Setting n_file to the begining of the file name */
@@ -261,17 +302,22 @@ void run_check()
         n_sum = buf;
 
 
+        /* Cleaning up c_sum */
+        memset(c_sum, '\0', 16);        
+        c_sum[255] = '\0';
+        
+
         /* If it returns < 0, we will already have alerted if necessary */
-        if(c_read_file(n_file, n_sum) < 0)
+        if(c_read_file(n_file, n_sum, c_sum) < 0)
             continue;
 
 
-        if(strcmp(c_sum,n_sum+6) != 0)
+        if(strcmp(c_sum, n_sum+6) != 0)
         {
             /* Sending the new checksum to the analysis server */
             alert_msg[912 +1] = '\0';
-            snprintf(alert_msg, 912, "%s %s",c_sum,n_file);
-            notify_agent(alert_msg);
+            snprintf(alert_msg, 912, "%s %s", c_sum, n_file);
+            notify_agent(alert_msg, 0);
 
             continue;
         }
@@ -285,7 +331,7 @@ void run_check()
  * Read file information and return a pointer
  * to the checksum
  */
-int c_read_file(char *file_name, char *oldsum)
+int c_read_file(char *file_name, char *oldsum, char *newsum)
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0;
     
@@ -308,9 +354,11 @@ int c_read_file(char *file_name, char *oldsum)
     if(lstat(file_name, &statbuf) < 0)
     #endif
     {
+        char alert_msg[912 +2];
+
         alert_msg[912 +1] = '\0';
-        snprintf(alert_msg, 912,"-1 %s",file_name);
-        notify_agent(alert_msg);
+        snprintf(alert_msg, 912,"-1 %s", file_name);
+        notify_agent(alert_msg, 0);
 
         return(-1);
     }
@@ -368,9 +416,10 @@ int c_read_file(char *file_name, char *oldsum)
             }
         }
     }
-                            
-    c_sum[255] = '\0';
-    snprintf(c_sum,255,"%d:%d:%d:%d:%s:%s",
+    
+    newsum[0] = '\0';
+    newsum[255] = '\0';
+    snprintf(newsum,255,"%d:%d:%d:%d:%s:%s",
             size == 0?0:(int)statbuf.st_size,
             perm == 0?0:(int)statbuf.st_mode,
             owner== 0?0:(int)statbuf.st_uid,

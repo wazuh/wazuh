@@ -50,7 +50,7 @@ int MailConf(int test_config, char *cfgfile, MailConfig *Mail);
 
 
 /* Receive the e-mail message */
-MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p);
+MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *mail);
 
 /* Sends an email */
 int OS_Sendmail(MailConfig *mail, struct tm *p);

@@ -648,19 +648,31 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         if(OS_Regex("alert_by_email", rule_opt[k]->content))
                         {
-                            config_ruleinfo->alert_opts|= DO_MAILALERT;
+                            if(!(config_ruleinfo->alert_opts & DO_MAILALERT))
+                            {
+                                config_ruleinfo->alert_opts|= DO_MAILALERT;
+                            }
                         }
                         else if(OS_Regex("no_email_alert",rule_opt[k]->content))
                         {
-                            config_ruleinfo->alert_opts&= 0xfff - DO_MAILALERT;
+                            if(config_ruleinfo->alert_opts & DO_MAILALERT)
+                            {
+                              config_ruleinfo->alert_opts&=0xfff-DO_MAILALERT;
+                            }
                         }
                         if(OS_Regex("log_alert", rule_opt[k]->content))
                         {
-                            config_ruleinfo->alert_opts|= DO_LOGALERT;
+                            if(!(config_ruleinfo->alert_opts & DO_LOGALERT))
+                            {
+                                config_ruleinfo->alert_opts|= DO_LOGALERT;
+                            }
                         }
                         else if(OS_Regex("no_log", rule_opt[k]->content))
                         {
-                            config_ruleinfo->alert_opts &= 0xfff - DO_LOGALERT;
+                            if(config_ruleinfo->alert_opts & DO_LOGALERT)
+                            {
+                              config_ruleinfo->alert_opts &=0xfff-DO_LOGALERT;
+                            }
                         }
                     }
                     else if(strcasecmp(rule_opt[k]->element,

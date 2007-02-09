@@ -32,6 +32,7 @@ int read_main_elements(OS_XML xml, int modules,
     char *ossyscheck = "syscheck";
     char *osrootcheck = "rootcheck";
     char *osalerts = "alerts";
+    char *osemailalerts = "email_alerts";
     char *oslocalfile = "localfile";
     char *osremote = "remote";
     char *osclient = "client";
@@ -59,6 +60,11 @@ int read_main_elements(OS_XML xml, int modules,
         {
             if(((modules & CGLOBAL) || (modules & CMAIL)) 
                 && (Read_Global(chld_node, d1, d2) < 0))
+                return(OS_INVALID);
+        }
+        else if(strcmp(node[i]->element, osemailalerts) == 0)
+        {
+            if((modules & CMAIL) && (Read_EmailAlerts(chld_node, d1, d2) < 0))
                 return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, osrules) == 0)

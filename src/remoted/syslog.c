@@ -91,7 +91,13 @@ void HandleSyslog()
         /* null terminating the message */
         buffer[recv_b] = '\0';
 
-        
+
+        /* Removing new line */
+        if(buffer[recv_b -1] == '\n')
+        {
+            buffer[recv_b -1] = '\0';
+        }
+
         /* Setting the source ip */
         strncpy(srcip, inet_ntoa(peer_info.sin_addr), IPSIZE);
         srcip[IPSIZE] = '\0';

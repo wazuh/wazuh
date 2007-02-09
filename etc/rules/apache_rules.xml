@@ -154,7 +154,14 @@
     <description>Multiple attempts blocked by Mod Security.</description>
     <group>access_denied,</group>
   </rule>
-
+  
+  <rule id="30120" level="12">
+    <if_sid>30101</if_sid>
+    <match>Resource temporarily unavailable:</match>
+    <description>Apache without resources to run.</description>
+    <group>service_availability,</group>
+  </rule>
+  
   <rule id="30200" level="6" noalert="1">
     <match>^mod_security-message: </match>
     <description>Modsecurity alert.</description>

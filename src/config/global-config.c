@@ -202,7 +202,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             ww++;
         }
     }
-    
+
     while(node[i])
     {
         if(!node[i]->element)
@@ -418,7 +418,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             #ifndef WIN32
             if(Mail && (Mail->mn))
             {
-                Mail->smtpserver = OS_GetHost(node[i]->content);
+                Mail->smtpserver = OS_GetHost(node[i]->content, 5);
                 if(!Mail->smtpserver)
                 {
                     merror(INVALID_SMTP, ARGV0, node[i]->content);

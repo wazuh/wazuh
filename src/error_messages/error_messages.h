@@ -55,7 +55,7 @@
 #define CONNTYPE_ERROR 	"%s(1204): Invalid connection type: '%s'."
 #define PORT_ERROR	    "%s(1205): No port specified. Using default: '%d'."
 #define BIND_ERROR	    "%s(1206): Unable to Bind port '%d'"
-#define SETGID_ERROR	"%s(1207): Unable to switch to group: '%s'."	
+#define SETGID_ERROR	"%s(1207): Unable to switch to group: '%s'."
 #define SETUID_ERROR	"%s(1208): Unable to switch to user: '%s'."
 #define CHROOT_ERROR	"%s(1209): Unable to chroot to directory: '%s'."
 #define QUEUE_ERROR	    "%s(1210): Queue '%s' not accessible."
@@ -90,6 +90,7 @@
 #define MAILQ_ERROR	    "%s(1221): No Mail queue at %s"
 #define IMSG_ERROR	    "%s(1222): Invalid msg: %s"
 #define SNDMAIL_ERROR	"%s(1223): Error Sending email to %s (smtp server)"
+#define XML_INV_GRAN_MAIL "%s(1224): Invalid 'email_alerts' config (missing parameters)."
 
 
 /* rootcheck */
@@ -215,6 +216,7 @@
 /* Verbose messages */
 #define STARTUP_MSG	"%s: Started (pid: %d)."
 #define PRIVSEP_MSG	"%s: Chrooted to directory: %s, using user: %s"
+#define MSG_SOCKET_SIZE "%s: (unix_domain) Maximum send buffer set to: '%d'."
 
 #define NO_SYSLOG       "%s(1501): No IP or network allowed in the access list" \
                         " for syslog. No reason for running it. Exiting."

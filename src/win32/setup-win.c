@@ -228,6 +228,7 @@ int config_registry()
                 "    <registry_ignore>%s</registry_ignore>\r\n"
                 "    <registry_ignore>%s</registry_ignore>\r\n"
                 "    <registry_ignore>%s</registry_ignore>\r\n"
+                "    <registry_ignore type=\"sregex\">\\Enum$</registry_ignore>\r\n"
                 "  </syscheck>\r\n"
                 "</ossec_config>\r\n\r\n",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Installer\\UserData",
@@ -284,7 +285,7 @@ int config_syscheck()
     FILE *fp;
 
     /* We add here the last entry */
-    if(dogrep(OSSECCONF, "wiadebug.log</ignore>"))
+    if(dogrep(OSSECCONF, "dllcache</ignore>"))
     {
         return(0);
     }
@@ -311,36 +312,30 @@ int config_syscheck()
             "  <syscheck>\r\n"
             "    <frequency>43200</frequency>\r\n"
             "    <ignore>%s/System32/LogFiles</ignore>\r\n"
-            "    <ignore>%s/WindowsUpdate.log</ignore>\r\n"
             "    <ignore>%s/system32/wbem/Logs</ignore>\r\n"
             "    <ignore>%s/Prefetch</ignore>\r\n"
             "    <ignore>%s/Debug</ignore>\r\n"
             "    <ignore>%s/PCHEALTH/HELPCTR/DataColl</ignore>\r\n"
             "    <ignore>%s/SoftwareDistribution</ignore>\r\n"
-            "    <ignore>C:\\Program Files/ossec-agent</ignore>\r\n"
             "    <ignore>%s/Temp</ignore>\r\n"
             "    <ignore>%s/SchedLgU.Txt</ignore>\r\n"
             "    <ignore>%s/system32/config</ignore>\r\n"
             "    <ignore>%s/system32/CatRoot</ignore>\r\n"
             "    <ignore>%s/system32/wbem/Repository</ignore>\r\n"
-            "    <ignore>%s/iis6.log</ignore>\r\n"
-            "    <ignore>%s/system32/MsDtc/Trace/dtctrace.log</ignore>\r\n"
-            "    <ignore>%s/pfirewall.log</ignore>\r\n"
-            "    <ignore>%s/wiaservc.log</ignore>\r\n"
-            "    <ignore>%s/setupapi.log</ignore>\r\n"
             "    <ignore>%s/LastGood.Tmp</ignore>\r\n"
             "    <ignore>%s/LastGood</ignore>\r\n"
             "    <ignore>%s/Help</ignore>\r\n"
             "    <ignore>%s/Fonts</ignore>\r\n"
             "    <ignore>%s/PCHEALTH</ignore>\r\n"
-            "    <ignore>%s/wiadebug.log</ignore>\r\n"
+            "    <ignore>%s/system32/dllcache</ignore>\r\n"
+            "    <ignore type=\"sregex\">.log$|.htm$|.jpg$|.png$|.chm$|.pnf$</ignore>\r\n"
             "  </syscheck>\r\n"
             "</ossec_config>\r\n",
             win_dir, win_dir, win_dir, win_dir, win_dir,
             win_dir, win_dir, win_dir, win_dir, win_dir,
             win_dir, win_dir, win_dir, win_dir, win_dir,
             win_dir, win_dir, win_dir, win_dir, win_dir,
-            win_dir, win_dir, win_dir);
+            win_dir, win_dir, win_dir, win_dir);
 
     fclose(fp);
 

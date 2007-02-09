@@ -24,7 +24,7 @@
 /* AgentdStart v0.2, 2005/11/09
  * Starts the agent daemon.
  */
-void AgentdStart(char *dir, int uid, int gid)
+void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
 {
     int rc = 0;
     int pid = 0;
@@ -43,7 +43,7 @@ void AgentdStart(char *dir, int uid, int gid)
     
     /* Setting group ID */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR, ARGV0, gid);
+        ErrorExit(SETGID_ERROR, ARGV0, group);
 
     
     /* chrooting */
@@ -55,7 +55,7 @@ void AgentdStart(char *dir, int uid, int gid)
 
 
     if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR, ARGV0, uid);
+        ErrorExit(SETUID_ERROR, ARGV0, user);
 
 
     /* Create the queue. In this case we are going to create

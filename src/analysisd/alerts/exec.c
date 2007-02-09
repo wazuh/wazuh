@@ -92,7 +92,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
 
 
     /* active response on the server. 
-     * The response must be here, if the ar->location is set to AS
+     * The response must be here if the ar->location is set to AS
      * or the ar->location is set to local (REMOTE_AGENT) and the
      * event location is from here.
      */         
@@ -120,7 +120,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
    
 
     /* Active response to the forwarder */ 
-    if((Config.ar & REMOTE_AR) && (lf->location[0] == '('))
+    else if((Config.ar & REMOTE_AR) && (lf->location[0] == '('))
     {
         int rc;
         snprintf(exec_msg, OS_SIZE_1024,

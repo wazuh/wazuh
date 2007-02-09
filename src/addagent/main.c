@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
-	    ErrorExit(SETGID_ERROR,ARGV0,gid);
+	    ErrorExit(SETGID_ERROR, ARGV0, group);
     }
     
     

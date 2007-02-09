@@ -122,7 +122,7 @@ int main(int argc, char **argv)
 
 
     /* Agentd Start */
-    AgentdStart(dir, uid, gid);
+    AgentdStart(dir, uid, gid, user, group);
 
     
     return(0);

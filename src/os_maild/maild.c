@@ -164,6 +164,7 @@ void OS_Run(MailConfig *mail)
     time_t tm;     
     struct tm *p;       
 
+    int i = 0;
     int mailsent = 0;
     int childcount = 0;
     int today = 0;		        
@@ -260,6 +261,18 @@ void OS_Run(MailConfig *mail)
             _g_subject[SUBJECT_SIZE -1] = '\0';
             _g_subject_level = 0;
             
+           
+            /* Cleaning up set values */
+            if(mail->gran_to)
+            {
+                i = 0;
+                while(mail->gran_to[i] != NULL)
+                {
+                    mail->gran_set[i] = 0;
+                    i++;
+                }
+            }
+
             
             snd_check_hour:
             /* If we sent everything */
@@ -272,7 +285,7 @@ void OS_Run(MailConfig *mail)
         }
         
         /* Receive message from queue */
-        if((msg = OS_RecvMailQ(fileq, p)) != NULL)
+        if((msg = OS_RecvMailQ(fileq, p, mail)) != NULL)
         {
             OS_AddMailtoList(msg);
             

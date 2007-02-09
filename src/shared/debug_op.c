@@ -156,6 +156,23 @@ void verbose(const char * msg,... )
     va_end(args);
 }
 
+/* Only logs to a file */
+void log2file(const char * msg,... )
+{
+    int dbg_tmp;
+    va_list args;
+    va_start(args, msg);
+
+    /* We set daemon flag to 1, so nothing is printed to the terminal */
+    dbg_tmp = daemon_flag;
+    daemon_flag = 1;
+    _log(msg, args);
+
+    daemon_flag = dbg_tmp;
+    
+    va_end(args);
+}
+
 void ErrorExit(const char *msg, ...)
 {
     va_list args;

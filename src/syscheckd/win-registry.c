@@ -32,6 +32,12 @@ int ig_count = 0;
 int run_count = 0;
 
 
+/** Notify list values **/
+char *registry_list[NOTIFY_LIST_SIZE + 3];
+int registry_list_size = 0;
+
+
+
 /** Function prototypes 8*/
 void os_winreg_open_key(char *subkey, char *fullkey_name);
 
@@ -89,20 +95,52 @@ int os_winreg_changed(char *key, char *md5, char *sha1)
 /** int notify_registry(char *msg)
  * Notifies of registry changes.
  */
-int notify_registry(char *msg)
+int notify_registry(char *msg, int send_now)
 {
-    if(SendMSG(syscheck.queue, msg, SYSCHECK_REG, SYSCHECK_MQ) < 0)
-    {
-        merror(QUEUE_SEND, ARGV0);
+    int i = 0;
 
-        if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+
+    /* msg can be null to flag send_now */
+    if(msg)
+    {
+        /* Storing message in the notify list */
+        os_strdup(msg, registry_list[registry_list_size]);
+        if(registry_list_size >= NOTIFY_LIST_SIZE)
         {
-            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+            send_now = 1;
+        }
+        registry_list_size++;
+    }
+
+
+    /* Delay sending */
+    if(!send_now)
+        return(0);
+
+
+    /* Sending all available messages */
+    while(i < registry_list_size)
+    {
+        if(SendMSG(syscheck.queue, registry_list[i], 
+                                   SYSCHECK_REG, SYSCHECK_MQ) < 0)
+        {
+            merror(QUEUE_SEND, ARGV0);
+
+            if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+            {
+                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+            }
+
+            /* If we reach here, we can try to send it again */
+            SendMSG(syscheck.queue, registry_list[i],SYSCHECK_REG,SYSCHECK_MQ);
         }
 
-        /* If we reach here, we can try to send it again */
-        SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ);
+        os_free(registry_list[i]);
+        registry_list[i] = NULL;
+        i++;
     }
+
+    registry_list_size = 0;
     return(0);
 }
 
@@ -350,7 +388,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
                                   mf_sum, sf_sum, full_key_name); 
 
             /* Notifying server */
-            notify_registry(reg_changed);
+            notify_registry(reg_changed, 0);
         }
     }
 }
@@ -385,6 +423,20 @@ void os_winreg_open_key(char *subkey, char *full_key_name)
             i++;
         }
     }
+    else if(full_key_name && syscheck.registry_ignore_regex)
+    {
+        i = 0;
+        while(syscheck.registry_ignore_regex[i] != NULL)
+        {
+            if(OSMatch_Execute(full_key_name, strlen(full_key_name),
+                               syscheck.registry_ignore_regex[i]))
+            {
+                return;
+            }
+            i++;
+        }
+    }
+
 
     if(RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ, &oshkey) != ERROR_SUCCESS)
     {
@@ -424,6 +476,17 @@ void os_winreg_check()
             return;
         }
     }
+
+
+    /* Zeroing list memory */
+    registry_list_size = NOTIFY_LIST_SIZE + 2;
+    while(registry_list_size >= 0)
+    {
+        registry_list[registry_list_size] = NULL;
+        registry_list_size--;
+    }
+    registry_list_size = 0;
+                                                
     
 
     /* Getting sub class and a valid registry entry */
@@ -461,8 +524,10 @@ void os_winreg_check()
     /* Notify of db completed. */
     if(run_count > 1)
     {
-        notify_registry(HC_SK_DB_COMPLETED);
+        notify_registry(HC_SK_DB_COMPLETED, 1);
     }
+
+    notify_registry(NULL, 1);
     run_count++;
     return;
 }

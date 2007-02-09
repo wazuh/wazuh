@@ -65,7 +65,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
             else
             {
                 char *s_ip;
-                s_ip = OS_GetHost(node[i]->content);
+                s_ip = OS_GetHost(node[i]->content, 5);
                 if(s_ip)
                 {
                     if(OS_IsValidIP(s_ip, NULL) != 1)

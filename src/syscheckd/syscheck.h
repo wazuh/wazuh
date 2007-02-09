@@ -17,6 +17,10 @@
 #include "config/syscheck-config.h"
 #define MAX_LINE PATH_MAX+256
 
+/* Notify list size */
+#define NOTIFY_LIST_SIZE    32
+
+
 /* Global config */
 config syscheck;
 

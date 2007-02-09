@@ -31,8 +31,10 @@ int OS_Bindportudp(unsigned int _port, char *_ip);
  * Bind to a specific file, using the "mode" permissions in
  * a Unix Domain socket.
  */ 
-int OS_BindUnixDomain(char * path, int mode);
-int OS_ConnectUnixDomain(char * path); 
+int OS_BindUnixDomain(char * path, int mode, int max_msg_size);
+int OS_ConnectUnixDomain(char * path, int max_msg_size); 
+int OS_getsocketsize(int ossock);
+
 
 /* OS_Connect
  * Connect to a TCP/UDP socket
@@ -76,7 +78,7 @@ int OS_SendUDPbySize(int socket, int size, char *msg);
 /* OS_GetHost
  * Calls gethostbyname
  */
-char *OS_GetHost(char *host);
+char *OS_GetHost(char *host, int attempts);
 
 #endif
 

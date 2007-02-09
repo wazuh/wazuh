@@ -137,7 +137,6 @@
   <rule id="18119" level="3">
     <if_sid>18107</if_sid>
     <options>alert_by_email</options>
-    <id>^528|^540|^672|^673</id>
     <if_fts />
     <description>First time this user logged in this system.</description>
     <group>authentication_success,</group>
@@ -147,6 +146,17 @@
     <if_sid>18105</if_sid>
     <id>^680</id>
     <description>Windows login attempt (ignored). Duplicated.</description>
+  </rule>
+
+  <!-- Ignore Login events, type 5, from Advapi for:
+    -  LOCAL SERVICE and NETWORK SERVICE.
+    -->
+  <rule id="18121" level="0">
+    <if_sid>18119</if_sid>
+    <id>^528</id>
+    <user>^LOCAL SERVICE|^NETWORK SERVICE</user>
+    <match>Logon Type: 5 Logon Process: Advapi</match>
+    <description>Windows Logon Success (ignored).</description>
   </rule>
   
   <rule id="18125" level="5">

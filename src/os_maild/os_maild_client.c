@@ -19,7 +19,7 @@
  * Receive a Message on the Mail queue
  * v0,2: Using the new file-queue.
  */
-MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p)
+MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail)
 {
     int i = 0, body_size = OS_MAXSTR -1, log_size;
     char logs[OS_MAXSTR + 1];
@@ -103,6 +103,29 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p)
             al_data->comment,
             logs);
 
+
+    /* Checking for granular email configs */
+    if(Mail->gran_to)
+    {
+        i = 0;
+        while(Mail->gran_to[i] != NULL)
+        {
+            if(Mail->gran_level[i] >= al_data->level)
+            {
+                Mail->gran_set[i] = 1;
+            }
+            else if(Mail->gran_location[i])
+            {
+                if(OSMatch_Execute(al_data->location, strlen(al_data->location),
+                            Mail->gran_location[i]))
+                {
+                    Mail->gran_set[i] = 1;
+                }
+            }
+            i++;
+        }
+    }
+    
     
     /* Clearing the memory */
     FreeAlertData(al_data);
