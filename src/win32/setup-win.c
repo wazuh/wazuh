@@ -334,8 +334,7 @@ int config_syscheck()
             win_dir, win_dir, win_dir, win_dir, win_dir,
             win_dir, win_dir, win_dir, win_dir, win_dir,
             win_dir, win_dir, win_dir, win_dir, win_dir,
-            win_dir, win_dir, win_dir, win_dir, win_dir,
-            win_dir, win_dir, win_dir, win_dir);
+            win_dir, win_dir);
 
     fclose(fp);
 

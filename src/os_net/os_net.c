@@ -451,6 +451,7 @@ int OS_SendUnix(int socket, char * msg, int size)
     
     return(OS_SUCESS);
 }
+#endif
 
 
 /* OS_GetHost, v0.1, 2005/01/181
@@ -488,6 +489,5 @@ char *OS_GetHost(char *host, int attempts)
 
     return(NULL);
 }
-#endif
 
 /* EOF */
