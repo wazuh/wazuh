@@ -150,7 +150,7 @@
   
   <rule id="4337" level="8">
     <if_sid>4312</if_sid>
-    <id>^%3-201008</id>
+    <id>^3-201008</id>
     <description>The PIX is disallowing new connections.</description>
     <group>service_availability,</group>
   </rule>

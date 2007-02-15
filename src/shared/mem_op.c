@@ -12,6 +12,28 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+
+/* Check if String is on array (Must be NULL terminated) */
+int IsStrOnArray(char *str, char **array)
+{
+    if(!str || !array)
+    {
+        return(0);
+    }
+
+    while(*array)
+    {
+        if(strcmp(*array, str) == 0)
+        {
+            return(1);
+        }
+        array++;
+    }
+    return(0);
+}
+
 
 /* Clear the memory of one char and one char** */
 void ClearStrMem(char *ch1, char **ch2)

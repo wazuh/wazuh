@@ -387,6 +387,10 @@ int ReadDecodeXML(char *file)
                     {
                         pi->order[order_int] = (void *)Data_FP;
                     }
+                    else if(strstr(*norder, "extra_data") != NULL)
+                    {
+                        pi->order[order_int] = (void *)Data_FP;
+                    }
                     else if(strstr(*norder, "status") != NULL)
                     {
                         pi->order[order_int] = (void *)Status_FP;
@@ -454,6 +458,10 @@ int ReadDecodeXML(char *file)
                         pi->fts|=FTS_LOCATION;
                     }
                     else if(strstr(*norder, "data") != NULL)
+                    {
+                        pi->fts|=FTS_DATA;
+                    }
+                    else if(strstr(*norder, "extra_data") != NULL)
                     {
                         pi->fts|=FTS_DATA;
                     }

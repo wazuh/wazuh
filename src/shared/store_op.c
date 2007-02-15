@@ -171,6 +171,7 @@ void OSStore_Delete(OSStore *list, char *key)
  */
 int OSStore_Put(OSStore *list, char *key, void *data)
 {
+    int chk_rc;
     OSStoreNode *newnode;    
 
 
@@ -203,8 +204,14 @@ int OSStore_Put(OSStore *list, char *key, void *data)
         list->cur_node = list->first_node;
         while(list->cur_node)
         {
-            if(strcmp(list->cur_node->key, key) >= 0)
+            if((chk_rc = strcmp(list->cur_node->key, key)) >= 0)
             {
+                /* Duplicated entry */
+                if(chk_rc == 0)
+                {
+                    return(1);
+                }
+                
                 /* If there is no prev node, it is because
                  * this is the first node. 
                  */

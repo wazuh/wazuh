@@ -1132,7 +1132,18 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         }
     }
 
+    /* Getting extra data */
+    if(currently_rule->extra_data)
+    {
+        if(!lf->data)
+            return(NULL);
 
+        if(!OSMatch_Execute(lf->data,
+                    strlen(lf->data),
+                    currently_rule->extra_data))
+            return(NULL);
+    }
+                                                                    
     /* Checking for th FTS flag */
     if(currently_rule->alert_opts & DO_FTS)
     {

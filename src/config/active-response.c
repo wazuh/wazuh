@@ -277,7 +277,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     /* Settin the configs to start the right queues */
     if(tmp_ar->location & AS_ONLY)
     {
-        r_ar = 1;
+        l_ar = 1;
     }
     if(tmp_ar->location & ALL_AGENTS)
     {

@@ -83,6 +83,7 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_user = "user";
     char *xml_url = "url";
     char *xml_id = "id";
+    char *xml_data = "extra_data";
     char *xml_hostname = "hostname";
     char *xml_program_name = "program_name";
     char *xml_status = "status";
@@ -307,6 +308,7 @@ int Rules_OP_ReadRules(char * rulefile)
                 char *id = NULL;
                 char *status = NULL;
                 char *hostname = NULL;
+                char *extra_data = NULL;
                 char *program_name = NULL;
                 
                 XML_NODE rule_opt = NULL;
@@ -475,6 +477,12 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         hostname =
                             loadmemory(hostname,
+                                    rule_opt[k]->content);
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,xml_data)==0)
+                    {
+                        extra_data =
+                            loadmemory(extra_data,
                                     rule_opt[k]->content);
                     }
                     else if(strcasecmp(rule_opt[k]->element,
@@ -844,6 +852,21 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     free(hostname);
                     hostname = NULL;
+                }
+
+                /* Adding extra data */
+                if(extra_data)
+                {
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->extra_data);
+                    if(!OSMatch_Compile(extra_data, 
+                                        config_ruleinfo->extra_data, 0))
+                    {
+                        merror(REGEX_COMPILE, ARGV0, extra_data,
+                                config_ruleinfo->extra_data->error);
+                        return(-1);
+                    }
+                    free(extra_data);
+                    extra_data = NULL;
                 }
 
                 /* Adding in program name */

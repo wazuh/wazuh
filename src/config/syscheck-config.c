@@ -331,7 +331,7 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
             str_len_dir = strlen(tmp_dir);
             str_len_i = strlen(syscheck->dir[i]);
             
-            if(str_len_dir < str_len_i)
+            if(str_len_dir > str_len_i)
             {
                 str_len_dir = str_len_i;
             }
@@ -475,10 +475,9 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
                 }
             }
 
-            /* Adding if simple entry */
-            else
+            /* Adding if simple entry -- checking for duplicates */
+            else if(!IsStrOnArray(node[i]->content, syscheck->ignore))
             {
-
                 if(!syscheck->ignore)
                 {
                     os_calloc(2, sizeof(char *), syscheck->ignore);
@@ -551,9 +550,9 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
                     return(OS_INVALID);
                 }
             }
-            else
+            /* We do not add duplicated entries */
+            else if(!IsStrOnArray(node[i]->content, syscheck->registry_ignore))
             {
-
                 if(!syscheck->registry_ignore)
                 {
                     os_calloc(2, sizeof(char *), syscheck->registry_ignore);

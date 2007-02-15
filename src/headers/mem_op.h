@@ -15,5 +15,6 @@
 #define __MEM_H
 
 void ClearStrMem(char *ch1, char **ch2);
+int IsStrOnArray(char *str, char **array);
 
 #endif

@@ -19,7 +19,7 @@
    - url      - url of the event
    - action   - event action (deny, drop, accept, etc)
    - status   - event status (success, failure, etc)
-   - data     - Any extra data
+   - extra_data     - Any extra data
   -->
 
 
@@ -244,15 +244,23 @@
   -  su(pam_unix)[2298]: authentication failure; logname= uid=1342 euid=0 tty= ruser=dcid rhost=  user=root
   -  Jul  5 12:17:38 lili su[2702]: - pts/5 ab-dc-root
   -  Jul  5 12:13:15 lili su[2614]: - pts/6 dcid-root
+  -  su[29149]: + pts/5 dcid:root
+  -  SU 07/23 01:24 + pts/4 lcid-root
   -->
 <decoder name="su">
   <program_name>^su$</program_name>
   <regex>^BAD SU (\S+) to (\S+) on|</regex>
   <regex>^failed: \S+ changing from (\S+) to (\S+)|</regex>
-  <regex>^- \S+ (\S+)-(\S+)$</regex>
+  <regex>^\S \S+ (\S+)\p(\S+)$|^(\S+) to (\S+) on </regex>
   <order>user, dstuser</order>
-  <fts>name,user,location</fts>
-  <ftscomment>First time user attempted to use su</ftscomment>
+  <fts>name, user, location</fts>
+</decoder>
+
+<decoder name="su">
+  <prematch>^SU \S+ \S+ </prematch>
+  <regex offset="after_prematch">^\S \S+ (\S+)-(\S+)$</regex>
+  <order>user, dstuser</order>
+  <fts>name, user, location</fts>
 </decoder>
 
 
@@ -365,8 +373,8 @@
   <parent>arpwatch</parent>
   <prematch>^new station |^bogon </prematch>
   <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) (\S+)</regex>
-  <order>srcip, data</order>
-  <fts>name, srcip, data</fts>
+  <order>srcip, extra_data</order>
+  <fts>name, srcip, extra_data</fts>
 </decoder>
 
 
@@ -1091,7 +1099,7 @@
 
 
 <!-- Windows decoder
-  - Will extract data (as win source),action (as win category), id,
+  - Will extract extra_data (as win source),action (as win category), id,
   - username and computer name (as system_name).
   - Examples:
   - WinEvtLog: Application: INFORMATION(0x00000064): ESENT: 
@@ -1112,13 +1120,13 @@
   <prematch>^WinEvtLog: </prematch>
   <regex offset="after_prematch">^\w+: (\w+)\((\d+)\): (\.+): </regex>
   <regex>(\.+): \.+: (\S+): </regex>
-  <order>status, id, data, user, system_name</order>
+  <order>status, id, extra_data, user, system_name</order>
   <fts>name, location, user, system_name</fts>
 </decoder>    
 
 
 <!-- Windows decoder -NTsyslog format
-  - Will extract data (as win source),action (as win category), id,
+  - Will extract extra_data (as win source),action (as win category), id,
   - username and computer name (as url).
   - Examples:
   - security[failure] 577 IBM17M\Jeremy Lee  Privileged Service Called:  Server:Security  Service:-  Primary User Name:IBM17M$  Primary Domain:LEETHERNET  Primary Logon ID:(0x0,0x3E7)  Client User Name:Jeremy Lee  Client Domain:IBM17M  Client Logon ID:(0x0,0x1447F)  Privileges:SeSecurityPrivilege
@@ -1128,12 +1136,12 @@
   <type>windows</type>
   <prematch>^security[\w+] \d+ </prematch>
   <regex>^(\w+)[(\w+)] (\d+) </regex>
-  <order>data, status, id</order>
+  <order>extra_data, status, id</order>
 </decoder>
 
 
 <!-- Windows decoder - Snare format. 
-  - Will extract data (as win source), action (as category), id,
+  - Will extract extra_data (as win source), action (as category), id,
   - username and computer name (as system_name).
   -
   - These logs must be tab-separated (as specified in the Snare format)
@@ -1162,7 +1170,7 @@
   <prematch>^MSWinEventLog\t\d\t\w+\t\d+\t\w\w\w \w\w\w \d\d \d\d</prematch>
   <regex offset="after_prematch">^:\d\d:\d\d \d\d\d\d\t(\d+)\t(\.+)</regex>
   <regex>\t(\.+)\t\.+\t(\.+)\t(\.+)\t</regex>
-  <order>id, data, user, status, system_name</order>
+  <order>id, extra_data, user, status, system_name</order>
   <fts>name, id, location, user, system_name</fts>
 </decoder>
 
@@ -1178,8 +1186,8 @@
 <decoder name="symantec-av">
   <prematch>^\w\w\w\w\w\w\w\w\w\w\w\w,</prematch>
   <regex offset="after_prematch">^(\d+),\d+,\d+,(\S+),(\.+),</regex>
-  <order>id, system_name, data</order>
-  <fts>name, location, id, system_name, data</fts>
+  <order>id, system_name, extra_data</order>
+  <fts>name, location, id, system_name, extra_data</fts>
 </decoder>
 
 
@@ -1195,8 +1203,8 @@
   <parent>ossec</parent>
   <prematch offset="after_parent">^Agent started:</prematch>
   <regex offset="after_prematch">^ '(\S+)'</regex>
-  <order>data</order>
-  <fts>name, location, data</fts>
+  <order>extra_data</order>
+  <fts>name, location, extra_data</fts>
 </decoder>
 
 

@@ -46,7 +46,7 @@
   <rule id="18106" level="5">
     <if_sid>18105</if_sid>
     <id>^529|^530|^531|^532|^533|^534|^535|^536|^537|^539|</id>
-    <id>^673|^675|^681</id>
+    <id>^672|^673|^675|^676|^681</id>
     <description>Windows Logon Failure.</description>
     <group>authentication_failed,</group>
   </rule>

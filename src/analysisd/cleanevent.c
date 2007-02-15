@@ -76,7 +76,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
 
     /* Log is the one used for parsing in the decoders and rules */
-    lf->log=lf->full_log+loglen;
+    lf->log = lf->full_log+loglen;
     strncpy(lf->log, pieces, loglen);
 
     

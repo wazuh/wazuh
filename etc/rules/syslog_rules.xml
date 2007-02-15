@@ -293,29 +293,47 @@
 
 
 <!-- Su messages -->
-<group name="syslog,su">
+<group name="syslog, su,">
   <rule id="5300" level="0" noalert="1">
     <decoded_as>su</decoded_as>
-    <description>Initial matching for su messages</description>
+    <description>Initial grouping for su messages.</description>
   </rule>
   
   <rule id="5301" level="5">
    <if_sid>5300</if_sid>
-   <match>: authentication failure; | failed |BAD su</match>
-   <description>User missed the password to change UID (user id)</description> 
+   <match>authentication failure; |failed|BAD su|^-| - </match>
+   <description>User missed the password to change UID (user id).</description> 
+   <group>authentication_failed,</group>
   </rule>
 
   <rule id="5302" level="9">
-    <if_sid>5300</if_sid>
-    <user>root</user>
-    <description>User missed the password to change UID to root</description>
+    <if_sid>5301</if_sid>
+    <user>^root</user>
+    <description>User missed the password to change UID to root.</description>
+    <group>authentication_failed,</group>
   </rule>
 
   <rule id="5303" level="3">
     <if_sid>5300</if_sid>
     <regex>session opened for user root|</regex>
-    <regex>^+ \S+ \S+-root$</regex>
-    <description>User sucessfully changed UID to root</description>
+    <regex>^+ \S+ \S+\proot$|^\S+ to root on|^SU \S+ \S+ + \S+ \S+-root$</regex>
+    <description>User sucessfully changed UID to root.</description>
+    <group>authentication_success,</group>
+  </rule>
+
+  <rule id="5304" level="3">
+    <if_sid>5300</if_sid>
+    <regex>session opened for user|</regex>
+    <regex>^+|^\S+ to |^SU \S+ \S+ + </regex>
+    <description>User sucessfully changed UID.</description>
+    <group>authentication_success,</group>
+  </rule>
+
+  <rule id="5305" level="4">
+    <if_sid>5303, 5304</if_sid>
+    <if_fts></if_fts>
+    <options>alert_by_email</options>
+    <description>First time (su) is executed by user.</description>
   </rule>
 </group> <!-- SYSLOG,SU -->
 
