@@ -599,18 +599,15 @@ int Rules_OP_ReadRules(char * rulefile)
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_same_source_ip)==0)
                     {
-                        config_ruleinfo->context = 1;
                         config_ruleinfo->context_opts|= SAME_SRCIP;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_notsame_source_ip)==0)
                     {
-                        config_ruleinfo->context = 1;
                         config_ruleinfo->context_opts&= NOT_SAME_SRCIP;
                     }
                     else if(strcmp(rule_opt[k]->element, xml_same_id) == 0)
                     {
-                        config_ruleinfo->context = 1;
                         config_ruleinfo->context_opts|= SAME_ID;
                     }
                     else if(strcmp(rule_opt[k]->element,xml_different_url)== 0)
@@ -619,7 +616,6 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcmp(rule_opt[k]->element, xml_notsame_id) == 0)
                     {
-                        config_ruleinfo->context = 1;
                         config_ruleinfo->context_opts&= NOT_SAME_ID;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
@@ -630,25 +626,21 @@ int Rules_OP_ReadRules(char * rulefile)
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_same_user)==0)
                     {
-                        config_ruleinfo->context = 1;
                         config_ruleinfo->context_opts|= SAME_USER;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_notsame_user)==0)
                     {
-                        config_ruleinfo->context = 1;
                         config_ruleinfo->context_opts&= NOT_SAME_USER;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_same_agent)==0)
                     {
-                        config_ruleinfo->context = 1;
                         config_ruleinfo->context_opts|= SAME_AGENT;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_notsame_agent)==0)
                     {
-                        config_ruleinfo->context = 1;
                         config_ruleinfo->context_opts&= NOT_SAME_AGENT;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
@@ -783,7 +775,7 @@ int Rules_OP_ReadRules(char * rulefile)
                                   config_ruleinfo->if_group);        
                     }
                 }
-
+                
                 /* Checking the regexes */
                 if(regex)
                 {
@@ -912,6 +904,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     url = NULL;
                 }
                 
+                /* Adding matched_group */
                 if(if_matched_group)
                 {
                     os_calloc(1, sizeof(OSMatch), 
@@ -929,6 +922,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     if_matched_group = NULL;
                 }
                 
+                /* Adding matched_regex */
                 if(if_matched_regex)
                 {
                     os_calloc(1, sizeof(OSRegex), 
@@ -951,6 +945,21 @@ int Rules_OP_ReadRules(char * rulefile)
 
             j++; /* next rule */
 
+
+            /* Creating the last_events if necessary */
+            if(config_ruleinfo->context)
+            {
+                int ii = 0;
+                os_calloc(MAX_LAST_EVENTS + 1, sizeof(char *), 
+                          config_ruleinfo->last_events);
+                
+                /* Zeroing each entry */
+                for(;ii<=MAX_LAST_EVENTS;ii++)
+                {
+                    config_ruleinfo->last_events[ii] = NULL;
+                }
+            }
+
             
             /* Adding the rule to the rules list.
              * Only the template rules are supposed
@@ -972,6 +981,7 @@ int Rules_OP_ReadRules(char * rulefile)
                 free(config_ruleinfo->if_group);
                 config_ruleinfo->if_group = NULL;
             }
+
         } /* while(rule[j]) */
         OS_ClearNode(rule);
         i++;
@@ -1147,14 +1157,7 @@ RuleInfo *zerorulemember(int id, int level,
     
     /* Zeroing last matched events */
     ruleinfo_pt->__frequency = 0;
-    {
-        int i = 0;
-        while(i <= MAX_LAST_EVENTS)
-        { 
-            ruleinfo_pt->last_events[i] = NULL;
-            i++;
-        }
-    }
+    ruleinfo_pt->last_events = NULL;
 
     /* zeroing the list of previous matches */
     ruleinfo_pt->prev_matched = NULL;

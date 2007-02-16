@@ -57,7 +57,7 @@ typedef struct _RuleInfo
     int ckignore;
 
     int __frequency;
-    char *last_events[MAX_LAST_EVENTS+1];
+    char **last_events;
     
 
     /* Not an option in the rule */

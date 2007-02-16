@@ -90,6 +90,21 @@ int _AddtoRule(int sid, int level, int none, char *group,
                     /* Assigning the parent pointer to it */
                     read_rule->sid_search = r_node->ruleinfo->prev_matched;
                 }
+
+                /* If no context for rule, check if the parent has
+                 * and use it.
+                 */
+                if((read_rule->context == 0) && r_node->ruleinfo->context)
+                {
+                    if(!read_rule->last_events && r_node->ruleinfo->last_events)
+                    {
+                        read_rule->last_events = r_node->ruleinfo->last_events;
+                    }
+                    else
+                    {
+                        merror("XXX WEIRD ERROR! CRY CRY!XXXX");
+                    }
+                }
                 
                 r_node->child=
                     _OS_AddRule(r_node->child, read_rule);
@@ -100,8 +115,23 @@ int _AddtoRule(int sid, int level, int none, char *group,
         /* Checking if the group matches */
         else if(group)
         {
-            if(OS_WordMatch(group,r_node->ruleinfo->group))
+            if(OS_WordMatch(group, r_node->ruleinfo->group))
             {
+                /* If no context for rule, check if the parent has
+                 * and use it.
+                 */
+                if((read_rule->context == 0) && r_node->ruleinfo->context)
+                {
+                    if(!read_rule->last_events && r_node->ruleinfo->last_events)
+                    {
+                        read_rule->last_events = r_node->ruleinfo->last_events;
+                    }
+                    else
+                    {
+                        merror("XXX WEIRD ERROR! CRY CRY!XXXX");
+                    }
+                }
+
                 /* We will loop on all rules until we find */
                 r_node->child =
                     _OS_AddRule(r_node->child, read_rule);

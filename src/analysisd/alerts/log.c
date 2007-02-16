@@ -77,7 +77,7 @@ void OS_Log(Eventinfo *lf)
 
 
     /* Printing the last events if present */
-    if(lf->generated_rule->last_events[0])
+    if(lf->generated_rule->last_events)
     {
         char **lasts = lf->generated_rule->last_events;
         while(*lasts)

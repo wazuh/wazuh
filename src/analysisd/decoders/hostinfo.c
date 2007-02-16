@@ -76,24 +76,34 @@ static char *__go_after(char *x, char *y)
  */
 void HostinfoInit()
 {
+    int i = 0;
     hi_err = 0;
-    
+
     /* clearing the buffer */
     memset(_hi_buf, '\0', OS_MAXSTR +1);
 
     /* Creating rule for Host information alerts */
     hostinfo_rule = zerorulemember(
-                             HOSTINFO_PLUGIN,  /* id */ 
-                             Config.hostinfo , /* level */
-                             0,0,0,0,0);
+            HOSTINFO_PLUGIN,  /* id */ 
+            Config.hostinfo , /* level */
+            0,0,0,0,0);
 
     if(!hostinfo_rule)
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
     hostinfo_rule->group = "hostinfo,";
- 
- 
+    os_calloc(MAX_LAST_EVENTS + 1, sizeof(char *),
+              hostinfo_rule->last_events);
+
+
+    /* Zeroing each entry */
+    for(;i<=MAX_LAST_EVENTS;i++)
+    {
+        hostinfo_rule->last_events[i] = NULL;
+    }
+
+
     _hi_fp = fopen(HOSTINFO_DIR, "r+");
     if(!_hi_fp)
     {
@@ -104,10 +114,10 @@ void HostinfoInit()
             _hi_fp = fopen(HOSTINFO_DIR, "r+");
         }
 
-       if(!_hi_fp)
-       {
-           merror(FOPEN_ERROR, ARGV0, HOSTINFO_DIR);
-       } 
+        if(!_hi_fp)
+        {
+            merror(FOPEN_ERROR, ARGV0, HOSTINFO_DIR);
+        } 
     }
     return;
 }
@@ -239,6 +249,7 @@ void HI_Search(Eventinfo *lf)
     /* Setting rule */
     lf->generated_rule = hostinfo_rule;
     
+
     /* Setting comment */
     if(changed == 1)
     {
