@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -15,8 +15,16 @@
 #define __CRAGENT_H
 
 
+/* Delete syscheck db */
+int delete_syscheck(char *sk_name, char *sk_ip);
+
+/* Delete agent information */
+int delete_agentinfo(char *name);
+
+/* Get all available agents */
 char **get_agents(int flag);
 
+/* Free the agent list */
 void free_agents(char **agent_list);
 
 

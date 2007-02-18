@@ -16,6 +16,7 @@
 #undef ARGV0
 #define ARGV0 "syscheck_update"
 
+
 /** help **/
 void helpmsg()
 {
@@ -23,6 +24,7 @@ void helpmsg()
     printf("Available options:\n");
     printf("\t-h       This help message.\n");
     printf("\t-l       List available agents.\n");
+    printf("\t-a       Update syscheck database for all agents.\n");
     printf("\t-u <id>  Update syscheck database for a specific agent.\n");
     printf("\t-u local Update syscheck database locally.\n\n");
     exit(1);
@@ -103,6 +105,37 @@ int main(int argc, char **argv)
             helpmsg();
         }
     }
+    else if(strcmp(argv[1], "-a") == 0)
+    {
+        DIR *sys_dir;
+        struct dirent *entry;
+
+        sys_dir = opendir("/queue/syscheck");
+        if(!sys_dir)
+        {
+            ErrorExit("%s: Unable to open: '%s'", ARGV0, "/queue/syscheck");
+        }
+
+        while((entry = readdir(sys_dir)) != NULL)
+        {
+            char full_path[OS_MAXSTR +1];
+
+            /* Do not even attempt to delete . and .. :) */
+            if((strcmp(entry->d_name,".") == 0)||
+               (strcmp(entry->d_name,"..") == 0))
+            {
+                continue;
+            }
+
+            snprintf(full_path, OS_MAXSTR,"/queue/syscheck/%s",entry->d_name);
+            
+            unlink(full_path);
+        }
+
+        closedir(sys_dir);
+        printf("\n** Integrity check database updated.\n\n"); 
+        exit(0);
+    }
     else
     {
         printf("\n** Invalid option '%s'.\n", argv[1]);
@@ -124,14 +157,24 @@ int main(int argc, char **argv)
             fclose(fp);
         }
         unlink(final_dir);
+
+
+        /* Deleting cpt file */
+        snprintf(final_dir, 1020, "/%s/.syscheck.cpt",
+                                  "queue/syscheck");  
+        
+        fp = fopen(final_dir, "w");
+        if(fp)
+        {
+            fclose(fp);
+        }
+        unlink(final_dir);
     }
 
     /* external agents */
     else
     {
         int i;
-        char final_dir[1024];
-        FILE *fp;
         keystruct keys;
 
         ReadKeys(&keys, 1);
@@ -143,18 +186,11 @@ int main(int argc, char **argv)
             helpmsg();
         }
         
-        snprintf(final_dir, 1020, "/%s/(%s) %s->syscheck",
-                                    "queue/syscheck",
-                                    keys.name[i],
-                                    keys.ips[i]->ip);  
-       
-        fp = fopen(final_dir, "w");
-        if(fp)
-            fclose(fp);
-        unlink(final_dir);
+        /* Deleting syscheck */
+        delete_syscheck(keys.name[i], keys.ips[i]->ip);
     }
    
-    printf("\n** Integrity check database updated\n\n"); 
+    printf("\n** Integrity check database updated.\n\n"); 
     return(0);
 }
 

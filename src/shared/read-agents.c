@@ -32,6 +32,98 @@ void free_agents(char **agent_list)
     free(agent_list);
     agent_list = NULL;
 }
+
+
+/* Delete syscheck db */ 
+int delete_syscheck(char *sk_name, char *sk_ip)
+{
+    FILE *fp;
+    char tmp_file[513];
+
+    tmp_file[512] = '\0';
+    
+    /* Deleting related files */
+    snprintf(tmp_file, 512, "%s/(%s) %s->syscheck",
+            SYSCHECK_DIR,
+            sk_name,
+            sk_ip);
+
+    fp = fopen(tmp_file, "w");
+    if(fp)
+        fclose(fp);
+    unlink(tmp_file);
+
+
+    /* Deleting cpt files */
+    snprintf(tmp_file, 512, "%s/.(%s) %s->syscheck.cpt",
+            SYSCHECK_DIR,
+            sk_name,
+            sk_ip);
+
+    fp = fopen(tmp_file, "w");
+    if(fp)
+        fclose(fp);
+    unlink(tmp_file);
+
+
+    /* Deleting registry entries */
+    snprintf(tmp_file, 512, "%s/(%s) %s->syscheck-registry",
+            SYSCHECK_DIR,
+            sk_name,
+            sk_ip);
+
+    fp = fopen(tmp_file, "w");
+    if(fp)
+        fclose(fp);
+    unlink(tmp_file);
+
+
+    /* Deleting cpt files */
+    snprintf(tmp_file, 512, "%s/.(%s) %s->syscheck-registry.cpt",
+            SYSCHECK_DIR,
+            sk_name,
+            sk_ip);
+
+    fp = fopen(tmp_file, "w");
+    if(fp)
+        fclose(fp);
+    unlink(tmp_file);
+
+    return(1);
+}
+
+
+/* Delete agent.
+ */
+int delete_agentinfo(char *name)
+{
+    char *sk_name;
+    char *sk_ip;
+    char tmp_file[513];
+
+    tmp_file[512] = '\0';
+
+
+    /* Deleting agent info */
+    snprintf(tmp_file, 512, "%s/%s", AGENTINFO_DIR, name);
+    unlink(tmp_file);
+
+
+    /* Deleting syscheck */
+    sk_name = name;
+    sk_ip = strrchr(name, '-');
+    if(!sk_ip)
+        return(0);
+
+    *sk_ip = '\0';
+    sk_ip++;
+
+
+    /* Deleting syscheck */
+    delete_syscheck(sk_name, sk_ip);
+    
+    return(1);
+}
  
 
 /* List available agents.
@@ -68,7 +160,7 @@ char **get_agents(int flag)
            (strcmp(entry->d_name,"..") == 0))
             continue;
 
-        snprintf(tmp_file, 512, "%s/%s",AGENTINFO_DIR, entry->d_name);
+        snprintf(tmp_file, 512, "%s/%s", AGENTINFO_DIR, entry->d_name);
 
         if(flag != GA_ALL)
         {

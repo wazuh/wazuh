@@ -149,7 +149,7 @@ int add_agent()
       if(NameExist(name))
         printf(ADD_ERROR_NAME, name);
 
-    } while(NameExist(name) || !OS_IsValidName(name));
+    } while(NameExist(name) && !OS_IsValidName(name));
 
 
     /* Getting IP */
@@ -316,41 +316,46 @@ int remove_agent()
     
     do
     {
-      printf(REMOVE_CONFIRM);
-      fflush(stdout);
-    
-      user_input = read_from_user();
-    
-      /* If user confirm */
-      if(user_input[0] == 'y' || user_input[0] == 'Y')
-      {
-        fp = fopen(AUTH_FILE, "r+");
-        if(!fp)
+        printf(REMOVE_CONFIRM);
+        fflush(stdout);
+
+        user_input = read_from_user();
+
+        /* If user confirm */
+        if(user_input[0] == 'y' || user_input[0] == 'Y')
         {
-            ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
+            /* Getting full agent name */
+            char *full_name = getFullnameById(u_id);
+            
+            
+            fp = fopen(AUTH_FILE, "r+");
+            if(!fp)
+            {
+                ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
+            }
+            #ifndef WIN32
+            chmod(AUTH_FILE, 0440);
+            #endif
+
+
+            fsetpos(fp, &fp_pos);
+            fprintf(fp, "#*#*#*#*#*#*#*#*#*#*#");
+            fclose(fp);
+
+
+            /* Remove counter for id */
+            delete_agentinfo(full_name); 
+            RemoveCounter(u_id);
+
+
+            printf(REMOVE_DONE, u_id);
+            break;
         }
-        #ifndef WIN32
-        chmod(AUTH_FILE, 0440);
-        #endif
-                
-        
-        fsetpos(fp, &fp_pos);
-        fprintf(fp, "#*#*#*#*#*#*#*#*#*#*#");
-        fclose(fp);
-
-
-        /* Remove counter for id */
-        RemoveCounter(u_id);
-        
-
-        printf(REMOVE_DONE, u_id);
-        break;
-      }
-      else if(user_input[0] == 'n' || user_input[0] == 'N')
-      {
-        printf(REMOVE_NOT);
-        break;
-      }
+        else if(user_input[0] == 'n' || user_input[0] == 'N')
+        {
+            printf(REMOVE_NOT);
+            break;
+        }
 
     } while(1);
 

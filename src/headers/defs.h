@@ -115,6 +115,10 @@ http://www.ossec.net/en/licensing.html\n"
 #define AGENTINFO_DIR    "/queue/agent-info"
 
 
+/* Syscheck directory */
+#define SYSCHECK_DIR    "/queue/syscheck"
+
+
 /* Wait file */
 #ifndef WIN32
     #define WAIT_FILE       "/queue/ossec/.wait"

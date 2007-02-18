@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -38,6 +38,78 @@ int OS_IsValidID(char *id)
     
     return(1);
 }
+
+
+/* Get full agent name (name + ip) of ID.
+ */
+char *getFullnameById(char *id)
+{
+    FILE *fp;
+    char line_read[FILE_SIZE +1];
+    line_read[FILE_SIZE] = '\0';
+
+    /* ID must not be null */
+    if(!id)
+        return(NULL);
+
+    fp = fopen(AUTH_FILE, "r");
+    if(!fp)
+        return(NULL);
+
+
+    while(fgets(line_read, FILE_SIZE -1, fp) != NULL)
+    {
+        char *name;
+        char *ip;
+        char *tmp_str;
+
+        if(line_read[0] == '#')
+        {
+            continue;
+        }
+
+        name = strchr(line_read, ' ');
+        if(name)
+        {
+            *name = '\0';
+            /* Didnt match */
+            if(strcmp(line_read,id) != 0)
+            {
+                continue;
+            }
+
+            name++;
+            ip = strchr(name, ' ');
+            if(ip)
+            {
+                *ip = '\0';
+                ip++;
+
+                /* Cleaning up ip */
+                tmp_str = strchr(ip, ' ');
+                if(tmp_str)
+                {
+                    char *final_str;
+                    *tmp_str = '\0';
+                    tmp_str = strchr(ip, '/');
+                    if(tmp_str)
+                        *tmp_str = '\0';
+
+                    /* If we reached here, we found the IP and name */
+                    os_calloc(1, FILE_SIZE, final_str);
+                    snprintf(final_str, FILE_SIZE -1, "%s-%s", name, ip);
+
+                    fclose(fp);
+                    return(final_str);        
+                }
+            }
+        }
+    }
+
+    fclose(fp);
+    return(NULL);
+}
+
 
 /* ID Search (is valid ID) */
 int IDExist(char *id)
@@ -86,6 +158,8 @@ int IDExist(char *id)
 }
 
 
+/* Validate agent name.
+ */
 int OS_IsValidName(char *u_name)
 {
     int i = 0;
@@ -143,7 +217,7 @@ int NameExist(char *u_name)
             if(ip)
             {
                 *ip = '\0';
-                if(strcmp(u_name,name) == 0)
+                if(strcmp(u_name, name) == 0)
                 {
                     fclose(fp);
                     return(1);
@@ -156,7 +230,6 @@ int NameExist(char *u_name)
     fclose(fp);
     return(0);
 }
-
 
 
 /* print available agents */

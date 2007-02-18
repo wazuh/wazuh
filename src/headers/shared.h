@@ -177,6 +177,7 @@ char *__local_name;
 #include "ar.h"
 #include "validate_op.h"
 #include "file-queue.h"
+#include "read-agents.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"

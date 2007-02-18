@@ -32,6 +32,8 @@ int OS_IsValidName(char *u_name);
 int OS_IsValidID(char *id);
 int IDExist(char *id);
 int NameExist(char *u_name);
+char *getFullnameById(char *id);
+
 
 /* Print available agents */
 int print_agents();

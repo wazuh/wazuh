@@ -18,9 +18,6 @@
 #include "alerts/alerts.h"
 
 
-#define SYSCHECK_DIR    "/queue/syscheck"
-
-
 typedef struct __sdb
 {
     char buf[OS_MAXSTR + 1];
