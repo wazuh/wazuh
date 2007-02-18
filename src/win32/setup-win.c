@@ -408,7 +408,6 @@ int main(int argc, char **argv)
         /* Run iis-logs here too */
         snprintf(cmd, OS_MAXSTR, "setup-iis.exe .");
         system(cmd);
-
     }
 
 

@@ -173,7 +173,6 @@ int config_file(char *name, char *file, int quiet)
 int main(int argc, char **argv)
 {
     int quiet = 0;
-    int pause_me = 1;
     
     if(argc < 2)
     {
@@ -195,14 +194,7 @@ int main(int argc, char **argv)
 
     else
     {
-        if(config_file(argv[0], argv[1], quiet) == -1)
-            pause_me = 0;
-    }
-    
-    /* Pause or not */
-    if(pause_me)
-    {
-        system("pause");
+        config_file(argv[0], argv[1], quiet);
     }
     
     return(0);
