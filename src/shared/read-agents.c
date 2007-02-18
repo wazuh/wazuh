@@ -77,7 +77,7 @@ char **get_agents(int flag)
             if(stat(tmp_file, &file_status) < 0)
                 continue;
             
-            if(file_status.st_mtime > (time(0) - (2*NOTIFY_TIME + 360)))
+            if(file_status.st_mtime > (time(0) - (3*NOTIFY_TIME + 30)))
             {
                 if(flag == GA_NOTACTIVE)
                     continue;

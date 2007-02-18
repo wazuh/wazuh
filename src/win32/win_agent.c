@@ -325,14 +325,14 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     
 
     /* Send notification */
-    if((cu_time - __win32_curr_time) > (NOTIFY_TIME - 90))
+    if((cu_time - __win32_curr_time) > (NOTIFY_TIME - 100))
     {
         send_win32_info(cu_time);
     }
 
     
     /* Check if the server has responded */
-    if((cu_time - available_server) > (NOTIFY_TIME - 90))
+    if((cu_time - available_server) > (NOTIFY_TIME - 100))
     {
         send_win32_info(cu_time);
 

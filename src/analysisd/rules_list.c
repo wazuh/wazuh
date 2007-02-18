@@ -94,16 +94,9 @@ int _AddtoRule(int sid, int level, int none, char *group,
                 /* If no context for rule, check if the parent has
                  * and use it.
                  */
-                if((read_rule->context == 0) && r_node->ruleinfo->context)
+                if(!read_rule->last_events && r_node->ruleinfo->last_events)
                 {
-                    if(!read_rule->last_events && r_node->ruleinfo->last_events)
-                    {
-                        read_rule->last_events = r_node->ruleinfo->last_events;
-                    }
-                    else
-                    {
-                        merror("XXX WEIRD ERROR! CRY CRY!XXXX");
-                    }
+                    read_rule->last_events = r_node->ruleinfo->last_events;
                 }
                 
                 r_node->child=
@@ -120,16 +113,9 @@ int _AddtoRule(int sid, int level, int none, char *group,
                 /* If no context for rule, check if the parent has
                  * and use it.
                  */
-                if((read_rule->context == 0) && r_node->ruleinfo->context)
+                if(!read_rule->last_events && r_node->ruleinfo->last_events)
                 {
-                    if(!read_rule->last_events && r_node->ruleinfo->last_events)
-                    {
-                        read_rule->last_events = r_node->ruleinfo->last_events;
-                    }
-                    else
-                    {
-                        merror("XXX WEIRD ERROR! CRY CRY!XXXX");
-                    }
+                    read_rule->last_events = r_node->ruleinfo->last_events;
                 }
 
                 /* We will loop on all rules until we find */

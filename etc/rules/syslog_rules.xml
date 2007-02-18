@@ -444,7 +444,7 @@
 
   <rule id="9201" level="0">
     <if_sid>9200</if_sid>
-    <match>^ctx: enter level|^sslRead|^urlParse: Illegal character in|</match>
+    <match>^ctx: enter level|^sslRead|^urlParse: Illegal |</match>
     <match>^httpReadReply: Request not yet |^httpReadReply: Excess data</match>
     <description>Squid debug message</description>
   </rule>

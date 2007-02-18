@@ -1,21 +1,51 @@
-!define VERSION "1.0"
+;--------------------------------
+;Include Modern UI
+
+!include "MUI.nsh"
+
+;--------------------------------
+;General
+
+!define VERSION "1.1"
 !define NAME "Ossec HIDS"
 !define /date CDATE "%H:%M:%S %d %b, %Y"
 
 
 Name "${NAME} Windows Agent v${VERSION}"
-Caption "${NAME} Windows Agent Installer"
-UninstallCaption "${NAME} Windows Agent Uninstaller"
-DirText "${NAME} v${VERSION} Windows Agent Installer."
-ComponentText  "${NAME} Windows Agent Installer"
-CompletedText "${NAME} Windows Agent Installer is finished"
-UninstallText "${NAME} Windows Agent Uninstaller"
-BrandingText "Copyright © 2007 Daniel B. Cid"
+BrandingText "Copyright © 2003-2007 Daniel B. Cid"
 OutFile "C:\ossec-win32-agent.exe"
 
 
 InstallDir $PROGRAMFILES\ossec-agent
 InstallDirRegKey HKLM "ossec" "Install_Dir"
+
+
+;--------------------------------
+;Interface Settings
+
+!define MUI_ABORTWARNING
+
+;--------------------------------
+;Pages
+
+  !define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the install of ${Name}.\r\n\r\nClick next to continue."
+  !insertmacro MUI_PAGE_WELCOME
+  !insertmacro MUI_PAGE_LICENSE "LICENSE.txt"
+  !insertmacro MUI_PAGE_DIRECTORY
+  !insertmacro MUI_PAGE_INSTFILES
+  !insertmacro MUI_PAGE_FINISH
+
+  !insertmacro MUI_UNPAGE_WELCOME
+  !insertmacro MUI_UNPAGE_CONFIRM
+  !insertmacro MUI_UNPAGE_INSTFILES
+  !insertmacro MUI_UNPAGE_FINISH
+
+;--------------------------------
+;Languages
+
+  !insertmacro MUI_LANGUAGE "English"
+
+;--------------------------------
 
 Function .onInit
     SetOutPath $INSTDIR
@@ -26,36 +56,14 @@ Function .onInit
     
     ;; Stopping ossec service.
     ExecWait '"net" "stop" "OssecSvc"'  
-    
-    ;;MessageBox MB_YESNO "This will install. Continue?" IDYES NoAbort
-    ;;Abort ; causes installer to quit.
-    ;;NoAbort:
 FunctionEnd
             
-
-Page license
-Page directory
-Page instfiles
-
-UninstPage uninstConfirm
-UninstPage instfiles
-
-LicenseText "You must agree with our license (GPL) before installing."
-LicenseData "LICENSE.txt"
 
 Section "OSSEC HIDS Windows Agent (required)"
 
 SetOutPath $INSTDIR
 
 ClearErrors
-
-;;IfFileExists $INSTDIR\ossec.conf 0 +3
-;;  MessageBox MB_OK "${NAME} is already installed. Make sure to turn it off before you continue."
-;;  goto done
-;;  
-;;  File ossec-default.conf  
-;;
-;;done:  
 
 File ossec-agent.exe default-ossec.conf manage_agents.exe internal_options.conf setup-windows.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe LICENSE.txt
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
@@ -105,6 +113,9 @@ MessageBox MB_OKCANCEL "Do you wish to start ${NAME} now?" IDCANCEL NoStartsvc
     NoStartsvc:
 SectionEnd
 
+Section Welcome
+
+SectionEnd
 
 Section "Uninstall"
   

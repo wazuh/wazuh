@@ -110,17 +110,17 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail)
         i = 0;
         while(Mail->gran_to[i] != NULL)
         {
-            if(Mail->gran_level[i] >= al_data->level)
-            {
-                Mail->gran_set[i] = 1;
-            }
-            else if(Mail->gran_location[i])
+            if(Mail->gran_location[i])
             {
                 if(OSMatch_Execute(al_data->location, strlen(al_data->location),
                             Mail->gran_location[i]))
                 {
                     Mail->gran_set[i] = 1;
                 }
+            }
+            else if(al_data->level >= Mail->gran_level[i])
+            {
+                Mail->gran_set[i] = 1;
             }
             i++;
         }
