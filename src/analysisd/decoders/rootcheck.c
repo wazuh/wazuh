@@ -56,7 +56,7 @@ void RootcheckInit()
     rootcheck_rule = zerorulemember(
                              ROOTCHECK_PLUGIN, /* id */ 
                              Config.rootcheck, /* level */
-                             0,0,0,0,0);
+                             0,0,0,0,0,0);
 
     if(!rootcheck_rule)
     {

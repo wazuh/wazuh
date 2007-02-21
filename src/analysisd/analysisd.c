@@ -528,7 +528,7 @@ void OS_ReadMSG(int m_queue)
         stats_rule = zerorulemember(
                 STATS_PLUGIN,
                 Config.stats,
-                0,0,0,0,0);
+                0,0,0,0,0,0);
 
         if(!stats_rule)
         {

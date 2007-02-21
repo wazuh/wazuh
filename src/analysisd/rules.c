@@ -27,7 +27,7 @@ int getattributes(char **attributes,
                   int *id, int *level, 
                   int *maxsize, int *timeframe,
                   int *frequency, int *accuracy, 
-                  int *noalert, int *ignore_time);
+                  int *noalert, int *ignore_time, int *overwrite);
 
 
 void Rule_AddAR(RuleInfo *config_rule);
@@ -240,6 +240,7 @@ int Rules_OP_ReadRules(char * rulefile)
             {
                 int id = -1,level = -1,maxsize = 0,timeframe = 0;
                 int frequency = 0, accuracy = 1, noalert = 0, ignore_time = 0;
+                int overwrite = 0;
                 
                 /* Getting default time frame */
                 timeframe = getDefine_Int("analysisd", 
@@ -248,7 +249,8 @@ int Rules_OP_ReadRules(char * rulefile)
                 
                 if(getattributes(rule[j]->attributes,rule[j]->values,
                             &id,&level,&maxsize,&timeframe,
-                            &frequency,&accuracy,&noalert,&ignore_time) < 0)
+                            &frequency,&accuracy,&noalert,
+                            &ignore_time, &overwrite) < 0)
                 {
                     merror("%s: Invalid attribute for rule.", ARGV0);
                     OS_ClearXML(&xml);
@@ -265,7 +267,8 @@ int Rules_OP_ReadRules(char * rulefile)
 
                 /* Allocating memory and initializing structure */
                 config_ruleinfo = zerorulemember(id, level, maxsize,
-                            frequency,timeframe, noalert,ignore_time);
+                            frequency,timeframe, 
+                            noalert, ignore_time, overwrite);
                 
 
                 /* If rule is 0, set it to level 99 to have high priority.
@@ -970,6 +973,17 @@ int Rules_OP_ReadRules(char * rulefile)
             {    
                 OS_AddRule(config_ruleinfo);
             }
+            else if(config_ruleinfo->alert_opts & DO_OVERWRITE)
+            {
+                if(!OS_AddRuleInfo(NULL, config_ruleinfo, 
+                                   config_ruleinfo->sigid))
+                {
+                    merror("%s: Overwrite rule '%d' not found.",
+                            ARGV0, config_ruleinfo->sigid);
+                    OS_ClearXML(&xml);
+                    return(-1);
+                }
+            }
             else
             {
                 OS_AddChild(config_ruleinfo);
@@ -1078,7 +1092,7 @@ char *loadmemory(char *at, char *str)
 RuleInfo *zerorulemember(int id, int level, 
                          int maxsize, int frequency,
                          int timeframe, int noalert, 
-                         int ignore_time)
+                         int ignore_time, int overwrite)
 {
     RuleInfo *ruleinfo_pt = NULL;
     
@@ -1126,6 +1140,12 @@ RuleInfo *zerorulemember(int id, int level,
     if(Config.logbylevel <= level)    
         ruleinfo_pt->alert_opts |= DO_LOGALERT;
 
+    /* Overwriting a rule */
+    if(overwrite)
+    {
+        ruleinfo_pt->alert_opts |= DO_OVERWRITE;
+    }
+
     ruleinfo_pt->day_time = NULL;
     ruleinfo_pt->week_day = NULL;
 
@@ -1172,7 +1192,7 @@ int getattributes(char **attributes, char **values,
                   int *id, int *level, 
                   int *maxsize, int *timeframe,
                   int *frequency, int *accuracy, 
-                  int *noalert, int *ignore_time)
+                  int *noalert, int *ignore_time, int *overwrite)
 {
     int k=0;
     
@@ -1184,6 +1204,8 @@ int getattributes(char **attributes, char **values,
     char *xml_accuracy = "accuracy";
     char *xml_noalert = "noalert";
     char *xml_ignore_time = "ignore";
+    char *xml_overwrite = "overwrite";
+    
    
     /* Getting attributes */
     while(attributes[k])
@@ -1303,6 +1325,23 @@ int getattributes(char **attributes, char **values,
         else if(strcasecmp(attributes[k],xml_noalert) == 0)
         {
             *noalert = 1;
+        }
+        else if(strcasecmp(attributes[k], xml_overwrite) == 0)
+        {
+            if(strcmp(values[k], "yes") == 0)
+            {
+                *overwrite = 1;
+            }
+            else if(strcmp(values[k], "no") == 0)
+            {
+                *overwrite = 0;
+            }
+            else
+            {
+                merror("rules_op: Invalid overwrite: %s. "
+                       "Can only by 'yes' or 'no'.", values[k]);
+                return(-1);
+            }
         }
         else
         {

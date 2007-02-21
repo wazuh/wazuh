@@ -63,7 +63,6 @@ int _AddtoRule(int sid, int level, int none, char *group,
 
     while(r_node)
     {
-
         /* Checking if the sigid matches */
         if(sid)
         {    
@@ -73,6 +72,7 @@ int _AddtoRule(int sid, int level, int none, char *group,
                  * as they must match
                  */
                 read_rule->category = r_node->ruleinfo->category;
+                
 
                 /* If matched sid */
                 if(read_rule->if_matched_sid)
@@ -343,6 +343,49 @@ RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
 int OS_AddRule(RuleInfo *read_rule)
 {
     rulenode = _OS_AddRule(rulenode,read_rule);
+
+    return(0);
+}
+
+/* Update rule info */
+int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
+{
+    /* If no r_node is given, get first node */
+    if(r_node == NULL)
+    {
+        r_node = OS_GetFirstRule();
+    }
+
+    if(sid == 0)
+        return(0);
+
+    while(r_node)
+    {
+        /* Checking if the sigid matches */
+        if(r_node->ruleinfo->sigid == sid)
+        {
+            newrule->category = r_node->ruleinfo->category;
+            newrule->prev_matched = r_node->ruleinfo->prev_matched;
+            newrule->last_events = r_node->ruleinfo->last_events;
+            newrule->ar = r_node->ruleinfo->ar;
+
+            r_node->ruleinfo = newrule;
+
+            return(1);
+        }
+
+
+        /* Checking if the child has a rule */
+        if(r_node->child)
+        {
+            if(OS_AddRuleInfo(r_node->child, newrule, sid))
+            {
+                return(1);
+            }
+        }
+
+        r_node = r_node->next;
+    }
 
     return(0);
 }

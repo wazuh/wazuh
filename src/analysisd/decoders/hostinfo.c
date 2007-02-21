@@ -86,7 +86,7 @@ void HostinfoInit()
     hostinfo_rule = zerorulemember(
             HOSTINFO_PLUGIN,  /* id */ 
             Config.hostinfo , /* level */
-            0,0,0,0,0);
+            0,0,0,0,0,0);
 
     if(!hostinfo_rule)
     {

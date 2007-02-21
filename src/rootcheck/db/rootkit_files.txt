@@ -127,7 +127,6 @@ usr/bin/mailrc			! Maniac RK ::
 #Showtee / romaniam
 usr/lib/.egcs			! Showtee ::
 usr/lib/.wormie			! Showtee ::
-usr/lib/libfl.so		! Showtee ::
 usr/lib/.kinetic		! Showtee ::
 usr/lib/liblog.o		! Showtee ::
 usr/include/addr.h		! Showtee / Romanian rootkit ::

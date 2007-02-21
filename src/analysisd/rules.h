@@ -38,6 +38,7 @@
 #define DO_MAILALERT    0x002
 #define DO_LOGALERT     0x004
 #define NO_ALERT        0x010
+#define DO_OVERWRITE    0x020
             
 
 typedef struct _RuleInfo
@@ -129,7 +130,8 @@ RuleInfo *zerorulemember(int id,
                          int frequency,
                          int timeframe, 
                          int noalert,
-                         int ignore_time);
+                         int ignore_time,
+                         int overwrite);
 
 
 /** Rule_list Functions **/
@@ -142,6 +144,9 @@ int OS_AddRule(RuleInfo *read_rule);
 
 /* Add rule information as a child */
 int OS_AddChild(RuleInfo *read_rule);
+
+/* Add an overwrite rule */
+int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
 
 /* Get first rule */
 RuleNode *OS_GetFirstRule();

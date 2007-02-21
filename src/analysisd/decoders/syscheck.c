@@ -85,7 +85,7 @@ void SyscheckInit()
     sdb.syscheck_rule = zerorulemember(
                         SYSCHECK_PLUGIN,
                         Config.integrity,
-                        0,0,0,0,0);
+                        0,0,0,0,0,0);
 
     if(!sdb.syscheck_rule)
     {
