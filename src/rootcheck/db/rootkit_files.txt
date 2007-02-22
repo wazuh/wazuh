@@ -1,6 +1,8 @@
-# $rootcheck, rootkit_files.txt, v1.1 2005/10/27, Daniel B. Cid
+# @(#) $Id$
+#
+# rootkit_files.txt, (C) Daniel B. Cid
 # Imported from the rootcheck project.
-
+#
 # Lines starting with '#' are not going to be read.
 # Blank lines are not going to be read too.
 # 

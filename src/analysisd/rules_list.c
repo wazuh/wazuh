@@ -367,7 +367,6 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             newrule->category = r_node->ruleinfo->category;
             newrule->prev_matched = r_node->ruleinfo->prev_matched;
             newrule->last_events = r_node->ruleinfo->last_events;
-            newrule->ar = r_node->ruleinfo->ar;
 
             r_node->ruleinfo = newrule;
 
