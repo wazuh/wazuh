@@ -1,0 +1,6 @@
+  <command>
+    <name>route-null</name>
+    <executable>route-null.sh</executable>
+    <expect>srcip</expect>
+    <timeout_allowed>yes</timeout_allowed>
+  </command>

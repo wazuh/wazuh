@@ -55,6 +55,7 @@ HOST_DENY_TEMPLATE="./etc/templates/config/ar-host-deny.template"
 FIREWALL_DROP_TEMPLATE="./etc/templates/config/ar-firewall-drop.template"
 DISABLE_ACCOUNT_TEMPLATE="./etc/templates/config/ar-disable-account.template"
 ACTIVE_RESPONSE_TEMPLATE="./etc/templates/config/active-response.template"
+ROUTENULL_TEMPLATE="./etc/templates/config/ar-routenull.template"
 RULES_TEMPLATE="./etc/templates/config/rules.template"
 
 

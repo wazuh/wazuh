@@ -635,6 +635,8 @@ ConfigureServer()
         echo "" >> $NEWCONFIG
         cat ${DISABLE_ACCOUNT_TEMPLATE} >> $NEWCONFIG
         echo "" >> $NEWCONFIG
+        cat ${ROUTENULL_TEMPLATE} >> $NEWCONFIG
+        echo "" >> $NEWCONFIG
 
         if [ "X$FIREWALLDROP" = "Xyes" ]; then
             echo "" >> $NEWCONFIG

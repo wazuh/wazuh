@@ -282,7 +282,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     /* Sending end of data \r\n.\r\n */
     OS_SendTCP(socket,ENDDATA);	
     msg = OS_RecvTCP(socket, OS_SIZE_1024);
-    if(strict_checking && ((msg == NULL)||(!OS_Match(VALIDMAIL, msg))))
+    if(mail->strict_checking && ((msg == NULL)||(!OS_Match(VALIDMAIL, msg))))
     {
         merror(END_DATA_ERROR);
         if(msg)

@@ -28,7 +28,7 @@ void OS_Run(MailConfig *mail);
 int main(int argc, char **argv)
 {
     int c, test_config = 0;
-    int uid=0,gid=0;
+    int uid = 0,gid = 0;
     char *dir  = DEFAULTDIR;
     char *user = MAILUSER;
     char *group = GROUPGLOBAL;
@@ -98,9 +98,14 @@ int main(int argc, char **argv)
 
 
     /* Reading internal options */
-    strict_checking = getDefine_Int("maild",
-                                    "strict_checking",
-                                     0, 1);
+    mail.strict_checking = getDefine_Int("maild",
+                                         "strict_checking",
+                                          0, 1);
+    
+    /* Get groupping */
+    mail.groupping = getDefine_Int("maild",
+                                   "groupping",
+                                    0, 1);
     
     /* Exit here if test config is set */
     if(test_config)
@@ -290,8 +295,16 @@ void OS_Run(MailConfig *mail)
             OS_AddMailtoList(msg);
             
             /* Change timeout to see if any new message is coming shortly */
-            mail_timeout = NEXTMAIL_TIMEOUT;   /* 5 seconds only */
-        
+            if(mail->groupping)
+            {
+                /* 5 seconds only */
+                mail_timeout = NEXTMAIL_TIMEOUT;
+            }
+            else
+            {
+                /* Send message by itself */
+                mailsent++;
+            }
         }
         else
         {

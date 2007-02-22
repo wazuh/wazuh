@@ -21,6 +21,8 @@ typedef struct _MailConfig
 {
     int mn;
     int maxperhour;
+    int strict_checking;
+    int groupping;
     char **to;
     char *from;
     char *smtpserver;

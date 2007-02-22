@@ -33,6 +33,8 @@ int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
     Mail->gran_level = NULL;
     Mail->gran_location = NULL;
     Mail->gran_set = NULL;
+    Mail->groupping = 1;
+    Mail->strict_checking = 0;
 
     if(ReadConfig(modules, cfgfile, NULL, Mail) < 0)
         return(OS_INVALID);
