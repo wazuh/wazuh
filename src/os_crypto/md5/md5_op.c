@@ -27,20 +27,24 @@ int OS_MD5_File(char * fname, char * output)
 {
     FILE *fp;
     MD5_CTX ctx;
-    unsigned char buf[1024];
+    unsigned char buf[1024 +1];
     unsigned char digest[16];
     char tmpstr[6];
     int n;
     
     memset(output,0, 33);
+    buf[1024] = '\0';
     
     fp = fopen(fname,"r");
     if(!fp)
         return(-1);
     
     MD5Init(&ctx);
-    while((n = fread(buf, 1, sizeof(buf), fp)) > 0)
+    while((n = fread(buf, 1, sizeof(buf) -1, fp)) > 0)
+    {
+        buf[n] = '\0';
         MD5Update(&ctx,buf,n);
+    }
     
     MD5Final(digest, &ctx);
     

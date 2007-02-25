@@ -197,7 +197,6 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     }
     if(OS_Regex("all", tmp_location))
     {
-        tmp_ar->location|=AS_ONLY;
         tmp_ar->location|=ALL_AGENTS;
     }
 
@@ -282,7 +281,6 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     if(tmp_ar->location & ALL_AGENTS)
     {
         r_ar = 1;
-        l_ar = 1;
     }
     if(tmp_ar->location & REMOTE_AGENT)
     {

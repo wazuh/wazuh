@@ -890,7 +890,7 @@
   - [error] [imp] FAILED LOGIN 210.179.154.213 to xxx:143[imap] as mala1
   -->
 <decoder name="horde_imp">
-  <prematch>^[\w+] [imp] </prematch>
+  <prematch>^[\w+] [imp] |^[\w+] [horde] </prematch>
 </decoder>  
 
 <decoder name="horde_imp_success">
