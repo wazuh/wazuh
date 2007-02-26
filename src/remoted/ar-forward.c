@@ -73,7 +73,7 @@ void *AR_Forward(void *arg)
 
 
             /* Going after the ')' and space */
-            tmp_str+=2;
+            tmp_str += 2;
 
 
             /* Extracting the source ip */

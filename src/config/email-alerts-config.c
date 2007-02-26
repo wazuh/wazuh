@@ -117,6 +117,7 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
         i++;
     }
 
+    /* We must have at least one entry set */
     if((Mail->gran_location[granto_size -1] == NULL &&
        Mail->gran_level[granto_size -1] == 0) ||
        Mail->gran_to[granto_size -1] == NULL)

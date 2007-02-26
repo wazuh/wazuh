@@ -76,6 +76,7 @@ void save_controlmsg(int agentid, char *r_msg)
             os_strdup(r_msg, _msg[agentid]);    
         }
     }
+
     /* If message does not exist, create it */
     else
     {
@@ -491,7 +492,7 @@ void *wait_for_msgs(void *none)
     while(1)
     {
         /* Every 60 minutes, re read the files.
-         * If something change, notify all agents 
+         * If something changed, notify all agents 
          */
         _ctime = time(0);
         if((_ctime - _stime) > (NOTIFY_TIME*6))
