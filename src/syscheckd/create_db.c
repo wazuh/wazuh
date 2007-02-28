@@ -62,9 +62,7 @@ int check_file(char *file_name)
     }
 
     /* New file */
-    #ifdef WIN32
     sleep(1);
-    #endif
     
     debug2("%s: DEBUG: new file '%s'.", ARGV0, file_name);
     return(0);
@@ -86,7 +84,7 @@ int read_file(char *file_name, int opts, int flag)
         while(syscheck.ignore[i] != NULL)
         {
             if(strncasecmp(syscheck.ignore[i], file_name, 
-                                           strlen(syscheck.ignore[i])) == 0)
+                           strlen(syscheck.ignore[i])) == 0)
             {
                 return(0);            
             }

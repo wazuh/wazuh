@@ -45,11 +45,19 @@ int startEL(char *app, os_el *el)
     el->h = OpenEventLog(NULL, app);
     if(!el->h)
     {
+        merror(EVTLOG_OPEN, ARGV0, app);
         return(0);	    
     }
 
     el->name = app;
-    GetOldestEventLogRecord(el->h, &el->record);
+    if(GetOldestEventLogRecord(el->h, &el->record) == 0)
+    {
+        /* Unable to read oldest event log record */
+        merror(EVTLOG_GETLAST, ARGV0, app);
+        CloseEventLog(el->h);
+        el->h = NULL;
+        return(0);
+    }
 
     return(1);
 }
@@ -244,6 +252,12 @@ void readel(os_el *el, int printit)
     final_msg[OS_MAXSTR] = '\0';
     el_sstring[OS_FLSIZE] = NULL;
 
+    /* Event log is not open */
+    if(!el->h)
+    {
+        return;
+    }
+
     /* Reading the event log */	    
     while(ReadEventLog(el->h, 
                 EVENTLOG_FORWARDS_READ | EVENTLOG_SEQUENTIAL_READ,
@@ -403,8 +417,18 @@ void readel(os_el *el, int printit)
  */
 void win_startel(char *evt_log)
 {
-    startEL(evt_log, &el[el_last]);
-    readel(&el[el_last],0);
+    /* Maximum size */
+    if(el_last == 3)
+    {
+        merror(EVTLOG_DUP, ARGV0, evt_log);
+        return;
+    }
+    
+    /* Starting event log -- going to last available record */
+    if(startEL(evt_log, &el[el_last]))
+    {
+        readel(&el[el_last],0);
+    }
     el_last++;
 }
 

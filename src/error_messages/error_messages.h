@@ -211,6 +211,9 @@
 #define AG_USINGIP      "%s(4103): Server IP address already set (to %s)."
 #define AG_INV_HOST     "%s(4104): Invalid hostname: '%s'."
 #define AG_INV_IP       "%s(4105): No valid server IP found."
+#define EVTLOG_OPEN     "%s(4106): Unable to open event log: '%s'."
+#define EVTLOG_GETLAST  "%s(4107): Unable to query last event log from: '%s'."
+#define EVTLOG_DUP      "%s(4108): Duplicated event log entry: '%s'."
 
 
 /* Verbose messages */

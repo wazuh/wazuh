@@ -242,7 +242,6 @@ void run_check()
     memset(buf, '\0', MAX_LINE +1);
     memset(alert_msg, '\0', 912 +1);
     memset(c_sum, '\0', 256 +1);
-    
 
     /* fgets garantee the null termination */
     while(fgets(buf, MAX_LINE, syscheck.fp) != NULL)
