@@ -402,6 +402,14 @@ usr/X11R6/.zk/echo              ! ZK rootkit ::
 */.owned$               | Sniffer log ::
 
 
+# Solaris worm -
+# http://blogs.sun.com/security/entry/solaris_in_telnetd_worm_seen
+var/adm/.profile        ! Solaris Worm ::
+var/spool/lp/.profile   ! Solaris Worm ::
+var/adm/sa/.adm         ! Solaris Worm ::
+var/spool/lp/admins/.lp ! Solaris Worm ::
+
+
 #Suspicious files
 etc/rc.d/init.d/rc.modules	! Suspicious file ::rootkits/Suspicious.php
 lib/ldd.so			        ! Suspicious file ::rootkits/Suspicious.php

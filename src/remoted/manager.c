@@ -266,7 +266,6 @@ int send_file_toagent(int agentid, char *name, char *sum)
         return(-1);
     }
     
-    sleep(1);
 
     /* Sending the file content */
     while(fgets(buf, OS_SIZE_1024 , fp) != NULL)
@@ -290,8 +289,8 @@ int send_file_toagent(int agentid, char *name, char *sum)
         }
 
 
-        /* Sleep 1 every 5 messages -- no flood */
-        if(i > 4)
+        /* Sleep 1 every 13 messages -- no flood */
+        if(i > 12)
         {
             sleep(1);
             i = 0;
@@ -299,7 +298,6 @@ int send_file_toagent(int agentid, char *name, char *sum)
         i++;
     }
 
-    sleep(1);
     
     /* Sending the message to close the file */
     snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
