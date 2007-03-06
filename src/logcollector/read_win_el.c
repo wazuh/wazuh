@@ -227,7 +227,7 @@ void readel(os_el *el, int printit)
     int size_left;
     int str_size;
 
-    char mbuffer[BUFFER_SIZE];
+    char mbuffer[BUFFER_SIZE +1];
     LPSTR sstr = NULL;
 
     char *tmp_str = NULL;
@@ -245,12 +245,14 @@ void readel(os_el *el, int printit)
     /* Er must point to the mbuffer */
     el->er = (EVENTLOGRECORD *) &mbuffer; 
 
-    /* Zeroing the last values */
+    /* Zeroing the values */
     el_string[OS_MAXSTR] = '\0';
     el_user[OS_FLSIZE] = '\0';
     el_domain[OS_FLSIZE] = '\0';
     final_msg[OS_MAXSTR] = '\0';
+    el_sstring[0] = NULL;
     el_sstring[OS_FLSIZE] = NULL;
+
 
     /* Event log is not open */
     if(!el->h)
@@ -297,7 +299,10 @@ void readel(os_el *el, int printit)
                      * if available. XXX todo.
                      */
                     str_size = strlen(sstr);
-                    strncat(el_string, sstr, size_left);
+                    if(size_left > 1)
+                    {
+                        strncat(el_string, sstr, size_left);
+                    }
 
                     tmp_str = strchr(el_string, '\0');
                     if(tmp_str)
@@ -305,10 +310,18 @@ void readel(os_el *el, int printit)
                         *tmp_str = ' ';		
                         tmp_str++; *tmp_str = '\0';
                     }
-                    size_left-=str_size + 1;
+                    else
+                    {
+                        merror("%s: Invalid application string (size+)",
+                               ARGV0); 
+                    }
+                    size_left-=str_size + 2;
 
-                    if(nstr <= 54)
+                    if(nstr <= 92)
+                    {
                         el_sstring[nstr] = (LPSTR)sstr;
+                        el_sstring[nstr +1] = NULL;
+                    }
 
                     sstr = strchr( (LPSTR)sstr, '\0');
                     if(sstr)
@@ -347,7 +360,7 @@ void readel(os_el *el, int printit)
 
 
             /* Getting username */
-            if (el->er->UserSidLength)
+            if(el->er->UserSidLength)
             {
                 SID_NAME_USE account_type;
                 if(!LookupAccountSid(NULL, 
@@ -399,7 +412,9 @@ void readel(os_el *el, int printit)
             }
 
             if(descriptive_msg != NULL)
+            {
                 LocalFree(descriptive_msg);
+            }
 
             /* Changing the point to the er */
             read -= el->er->Length;

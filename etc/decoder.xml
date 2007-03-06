@@ -713,7 +713,8 @@
   -->
 <decoder name="pix">
   <prematch>^%PIX-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %PIX-|</prematch>
-  <prematch>^%ASA-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %ASA-</prematch>
+  <prematch>^%ASA-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %ASA-|</prematch>
+  <prematch>^%FWSM-|^\w\w\w \d\d \d\d\d\d \d\d:\d\d:\d\d: %FWSM-</prematch>
 </decoder>
 
 <decoder name="pix-fw1">
