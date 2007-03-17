@@ -107,7 +107,7 @@ runInit()
             return 0;
         # Taken from Stephen Bunn ossec howto.    
         elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
-            echo " - ${systemis} Ubuntu Linux."
+            echo " - ${systemis} Debian (Ubuntu or derivative)."
             echo " - ${modifiedinit}"
             cp -pr ./src/init/ossec-hids.init  /etc/init.d/ossec
             chmod +x /etc/init.d/ossec

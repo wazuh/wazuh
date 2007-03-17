@@ -73,4 +73,19 @@
     <description>Named fatal error. DNS service going down.</description>
     <group>service_availability,</group>
   </rule>
+
+  <rule id="12110" level="8">
+    <regex>^zone \S+ serial number \S+ received from master </regex>
+    <regex>\S+ \S ours (\S+)</regex>
+    <description>Serial number from master is lower </description>
+    <description>than stored.</description>
+    <group>system_error,</group>
+  </rule>
+  
+  <rule id="12111" level="8">
+    <regex>^transfer of \S+ from \S+ failed while receiving \S+ REFUSED</regex>
+    <description>Unable to perform zone transfer.</description>
+    <group>system_error,</group>
+  </rule>
+  
 </group> <!-- SYSLOG,NAMED -->
