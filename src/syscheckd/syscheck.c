@@ -246,13 +246,13 @@ int main(int argc, char **argv)
     /* Connect to the queue  */
     if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
     {   
-        merror(QUEUE_ERROR,ARGV0,DEFAULTQPATH);
+        merror(QUEUE_ERROR, ARGV0, DEFAULTQPATH, strerror(errno));
 
         sleep(5);
         if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         {
             /* more 10 seconds of wait.. */
-            merror(QUEUE_ERROR,ARGV0,DEFAULTQPATH);
+            merror(QUEUE_ERROR, ARGV0, DEFAULTQPATH, strerror(errno));
             sleep(10);
             if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
                 ErrorExit(QUEUE_FATAL,ARGV0,DEFAULTQPATH);

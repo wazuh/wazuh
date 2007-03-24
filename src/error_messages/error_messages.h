@@ -58,7 +58,7 @@
 #define SETGID_ERROR	"%s(1207): Unable to switch to group: '%s'."
 #define SETUID_ERROR	"%s(1208): Unable to switch to user: '%s'."
 #define CHROOT_ERROR	"%s(1209): Unable to chroot to directory: '%s'."
-#define QUEUE_ERROR	    "%s(1210): Queue '%s' not accessible."
+#define QUEUE_ERROR	    "%s(1210): Queue '%s' not accessible: '%s'."
 #define QUEUE_FATAL	    "%s(1211): Unable to access queue: '%s'. Giving up.."
 #define PID_ERROR	    "%s(1212): Unable to create PID file."
 #define DENYIP_ERROR	"%s(1213): Message from %s not allowed."

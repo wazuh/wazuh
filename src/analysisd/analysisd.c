@@ -329,7 +329,7 @@ int main(int argc, char **argv)
 
     /* Setting the queue */
     if((m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
-        ErrorExit(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
+        ErrorExit(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
 
 
     /* White list */

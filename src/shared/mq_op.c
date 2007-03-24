@@ -41,7 +41,7 @@ int StartMQ(char * path, short int type)
                 sleep(5);
                 if(File_DateofChange(path) < 0)
                 {
-                    merror(QUEUE_ERROR, __local_name, path);
+                    merror(QUEUE_ERROR, __local_name, path, "Queue not found");
                     sleep(15);
                     if(File_DateofChange(path) < 0)
                     {
@@ -62,7 +62,8 @@ int StartMQ(char * path, short int type)
                 sleep(2);
                 if((rc = OS_ConnectUnixDomain(path, OS_MAXSTR + 256)) < 0)
                 {
-                    merror(QUEUE_ERROR, __local_name, path);
+                    merror(QUEUE_ERROR, __local_name, path, 
+                           strerror(errno));
                     return(-1);
                 }
             }

@@ -33,8 +33,7 @@
 
   <rule id="5704" level="4">
     <if_sid>5700</if_sid>
-    <match>fatal: Timeout before authentication for|</match>
-    <match>fatal: Read from socket failed: </match>
+    <match>fatal: Timeout before authentication for</match>
     <description>Timeout while logging in (sshd).</description>
   </rule>
 
@@ -54,14 +53,15 @@
   <rule id="5707" level="14">
     <if_sid>5700</if_sid>
     <match>fatal: buffer_get_string: bad string</match>
-    <description>OpenSSH challenge-response exploit</description>
+    <description>OpenSSH challenge-response exploit.</description>
     <group>exploit_attempt,</group>
   </rule>
 
   <rule id="5709" level="0">
     <if_sid>5700</if_sid>
-    <match>error: Could not get shadow information for NOUSER</match>
-    <description>Useless SSHD message without a user/ip</description>
+    <match>error: Could not get shadow information for NOUSER|</match>
+    <match>fatal: Read from socket failed: </match>
+    <description>Useless SSHD message without an user/ip.</description>
   </rule>
   
   <rule id="5710" level="5">

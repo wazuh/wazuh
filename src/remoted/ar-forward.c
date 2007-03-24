@@ -45,7 +45,7 @@ void *AR_Forward(void *arg)
     /* Creating the unix queue */
     if((arq = StartMQ(ARQUEUE, READ)) < 0)
     {
-        ErrorExit(QUEUE_ERROR, ARGV0, ARQUEUE);
+        ErrorExit(QUEUE_ERROR, ARGV0, ARQUEUE, strerror(errno));
     }
 
     memset(msg, '\0', OS_SIZE_1024 +1);

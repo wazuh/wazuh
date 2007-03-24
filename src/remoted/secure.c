@@ -63,7 +63,7 @@ void HandleSecure()
      */
     if((logr.m_queue = StartMQ(DEFAULTQUEUE,WRITE)) < 0)
     {
-        ErrorExit(QUEUE_FATAL,ARGV0, DEFAULTQUEUE);
+        ErrorExit(QUEUE_FATAL,ARGV0, DEFAULTQUEUE, strerror(errno));
     }
         
 

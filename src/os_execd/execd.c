@@ -160,7 +160,7 @@ int main(int argc, char **argv)
     
     /* Starting queue (exec queue) */
     if((m_queue = StartMQ(EXECQUEUEPATH,READ)) < 0)
-        ErrorExit(QUEUE_ERROR,ARGV0,EXECQUEUEPATH);
+        ErrorExit(QUEUE_ERROR, ARGV0, EXECQUEUEPATH, strerror(errno));
 
 
     /* Start up message */
@@ -349,7 +349,7 @@ void ExecdStart(int q)
         /* Receiving the message */
         if(recv(q, buffer, OS_MAXSTR, 0) == -1)
         {
-            merror(QUEUE_ERROR, ARGV0, EXECQUEUEPATH);
+            merror(QUEUE_ERROR, ARGV0, EXECQUEUEPATH, strerror(errno));
             continue;
         }
 

@@ -130,7 +130,7 @@ void HandleSyslog()
         else if(SendMSG(logr.m_queue, buffer_pt, srcip,
                         SYSLOG_MQ) < 0)
         {
-            merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
+            merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE, strerror(errno));
             if((logr.m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
             {
                 ErrorExit(QUEUE_FATAL,ARGV0,DEFAULTQUEUE);

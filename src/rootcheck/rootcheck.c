@@ -19,31 +19,14 @@
 /* Included from the Rootcheck project */
 
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include "headers/shared.h"
 
-#include <sys/types.h>
-#include <time.h>
-
-#include "headers/sig_op.h"
-#include "headers/file_op.h"
-
-#ifdef OSSECHIDS
-#include "headers/mq_op.h"
-#endif
-
-#include "headers/defs.h"
-#include "headers/help.h"
-#include "headers/debug_op.h"
 #include "rootcheck.h"
 
 #ifndef ARGV0
 #define ARGV0 "rootcheck"
 #endif
 
-#include "error_messages/error_messages.h"
 
 
 /** Prototypes **/
@@ -187,14 +170,14 @@ int rootcheck_init(int test_config)
         /* Starting the queue. */
         if((rootcheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         {   
-            merror(QUEUE_ERROR,ARGV0,DEFAULTQPATH);
+            merror(QUEUE_ERROR,ARGV0,DEFAULTQPATH, strerror(errno));
             
             /* 5 seconds to see if the agent starts */
             sleep(5);
             if((rootcheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
             {
                 /* more 10 seconds wait.. */
-                merror(QUEUE_ERROR,ARGV0,DEFAULTQPATH);
+                merror(QUEUE_ERROR,ARGV0,DEFAULTQPATH, strerror(errno));
                 sleep(10);
                 if((rootcheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
                     ErrorExit(QUEUE_FATAL,ARGV0,DEFAULTQPATH);

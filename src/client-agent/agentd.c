@@ -63,7 +63,7 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
      * Exit if fails.
      */
     if((logr->m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
-        ErrorExit(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
+        ErrorExit(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
 
     maxfd = logr->m_queue;
     
