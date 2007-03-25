@@ -22,6 +22,7 @@
 
 /* Prototypes */
 int read_sys_dir(char *dir_name);
+int ads_found = 0;
 
 
 /* Print out streams of a file */
@@ -87,7 +88,8 @@ int os_get_streams(char *full_path)
                 {
                     *tmp_pt = '\0';
                 }
-                printf("Found file: '%s' \n", final_name);
+                printf("Found NTFS ADS: '%s' \n", final_name);
+                ads_found = 1;
             }
         }
 
@@ -188,6 +190,10 @@ int read_sys_dir(char *dir_name)
 
 int main(int argc, char **argv)
 {
+    printf("%s: NTFS ADS dumper (GPL v2)\n", argv[0]);
+    printf("by Daniel B. Cid - dcid at ossec.net\n\n");
+
+
     /* Going to print every NTFS ADS found */
     if(argc < 2)
     {
@@ -199,6 +205,11 @@ int main(int argc, char **argv)
     /* Getting streams */
     read_sys_file(argv[1]);
 
+
+    if(ads_found == 0)
+    {
+        printf("No NTFS ADS found.\n");
+    }
     return(0);
 }
 /* EOF */
