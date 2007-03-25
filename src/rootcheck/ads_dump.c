@@ -99,6 +99,7 @@ int os_get_streams(char *full_path)
         }
     }
 
+    CloseHandle(file_h);
     return(0);
 }
 
