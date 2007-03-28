@@ -102,6 +102,7 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
                  (*pt == 'p') ||
                  (*pt == 't') ||
                  (*pt == '$') ||
+                 (*pt == '|') ||
                  (*pt == '\\')))
             {
                 reg->error = OS_REGEX_BADREGEX;
@@ -124,6 +125,7 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
                 case '.': *pt = 11;break;
                 case 't': *pt = 12;break;
                 case '$': *pt = 13;break;
+                case '|': *pt = 14;break;
             }
             pt++;
 

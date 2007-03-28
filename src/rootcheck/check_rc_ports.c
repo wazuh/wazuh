@@ -17,6 +17,9 @@
 #if defined(sun) || defined(__sun__)
 #define NETSTAT "netstat -an -P %s | "\
                 "grep \"[^0-9]%d \" > /dev/null 2>&1"
+#elif WIN32
+#define NETSTAT "netstat -an -p %s | "\
+                "find \":%d\""
 #elif defined(Linux)
 #define NETSTAT_LIST "netstat -an | grep \"^%s\" | "\
                      "cut -d ':' -f 2 | cut -d ' ' -f 1"

@@ -651,8 +651,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         /* New file message */
         snprintf(sdb.comment2,OS_MAXSTR,
                               "New file '%.756s' "
-                              "added to directory. Checksum: %s.",
-                              f_name,c_sum);
+                              "added to the file system.", f_name);
         
 
         /* Creating a new log message */

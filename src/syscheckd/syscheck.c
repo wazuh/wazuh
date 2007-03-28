@@ -24,9 +24,7 @@
 #include "shared.h"
 #include "syscheck.h"
 
-#ifndef WIN32
 #include "rootcheck/rootcheck.h"
-#endif
 
 
 /* void read_internal()
@@ -76,6 +74,18 @@ int Start_win32_Syscheck()
     read_internal();
 
 
+    /* Rootcheck config */
+    if(rootcheck_init(test_config) == 0)
+    {
+        syscheck.rootcheck = 1;
+    }
+    else
+    {
+        merror("%s: Rootcheck module disabled.", ARGV0);
+    }
+                                                            
+
+
     /* Opening syscheck db file */
     syscheck.db = (char *)calloc(1024,sizeof(char));
     if(syscheck.db == NULL)
@@ -118,6 +128,7 @@ int Start_win32_Syscheck()
     exit(0);
 }                
 #endif
+
 
 
 /* Syscheck unix main.

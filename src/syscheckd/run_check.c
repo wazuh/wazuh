@@ -15,10 +15,7 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 
-
-#ifndef WIN32
 #include "rootcheck/rootcheck.h"
-#endif
 
 
 /** Prototypes **/
@@ -89,10 +86,7 @@ void start_daemon()
 {
     time_t curr_time = 0;
     
-    #ifndef WIN32
     time_t prev_time_rk = 0;
-    #endif
-    
     time_t prev_time_sk = 0;
     
             
@@ -179,7 +173,6 @@ void start_daemon()
         /* If time elapsed is higher than the rootcheck_time,
          * run it.
          */
-        #ifndef WIN32
         if(syscheck.rootcheck)
         {
             if((curr_time - prev_time_rk) > rootcheck.time)
@@ -188,7 +181,6 @@ void start_daemon()
                 prev_time_rk = time(0);
             }
         }
-        #endif
 
         
         /* If time elapsed is higher than the syscheck time,
