@@ -1,16 +1,12 @@
-/*   $OSSEC, eventinfo.h, v0.2, 2005/09/08, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2004, 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
- */
-
-/* v0.2(2005/09/08): Multiple additions.
- * v0.1:
  */
 
 
@@ -20,6 +16,7 @@
 #define _EVTINFO__H
 
 #include "rules.h"
+#include "decoders/decoder.h"
 
 
 /* Event Information structure */
@@ -32,11 +29,8 @@ typedef struct _Eventinfo
     char *hostname;
     char *program_name;
 
-    /* A tag for this specific event */
-    char *log_tag;
 
     /* Extracted from the decoders */
-    short int type;
     char *srcip;
     char *dstip;
     char *srcport;
@@ -53,11 +47,9 @@ typedef struct _Eventinfo
     char *systemname;
 
 
-    /* FTS fields */
-    int fts;
-
     /* Pointer to the rule that generated it */
     RuleInfo *generated_rule;
+    OSDecoderInfo *decoder_info;
     OSListNode *node_to_delete;
     
     /* Extract when the event fires a rule */
@@ -86,7 +78,7 @@ typedef struct _EventNode
 
 
 
-/** Types of events (plugin usage) **/
+/** Types of events (from decoders) **/
 #define UNKNOWN		0   /* Unkown */
 #define SYSLOG		1   /* syslog messages */
 #define IDS 		2   /* IDS alerts */
@@ -130,6 +122,24 @@ EventNode *OS_GetLastEvent();
 
 /* Create the event list. Maxsize must be specified */
 void OS_CreateEventList(int maxsize);
+
+
+/* Pointers to the event decoders */
+void *DstUser_FP(Eventinfo *lf, char *field);
+void *User_FP(Eventinfo *lf, char *field);
+void *SrcIP_FP(Eventinfo *lf, char *field);
+void *DstIP_FP(Eventinfo *lf, char *field);
+void *SrcPort_FP(Eventinfo *lf, char *field);
+void *DstPort_FP(Eventinfo *lf, char *field);
+void *Protocol_FP(Eventinfo *lf, char *field);
+void *Action_FP(Eventinfo *lf, char *field);
+void *ID_FP(Eventinfo *lf, char *field);
+void *Url_FP(Eventinfo *lf, char *field);
+void *Data_FP(Eventinfo *lf, char *field);
+void *Status_FP(Eventinfo *lf, char *field);
+void *SystemName_FP(Eventinfo *lf, char *field);
+void *None_FP(Eventinfo *lf, char *field);
+
 
 
 #endif /* _EVTINFO__H */

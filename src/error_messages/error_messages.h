@@ -185,15 +185,18 @@
 #define INVALID_MAIL    "%s(1502): Invalid Email Address: %s"
 
 /* Decoders */
-#define PPLUGIN_INV     "%s(2101): Parent decoder name invalid: '%s'"
-#define PDUP_INV        "%s(2102): Duplicated decoder with prematch: '%s'"
-#define PDUPFTS_INV     "%s(2103): Duplicated decoder with fts set: '%s'"
-#define DUP_INV         "%s(2104): Invalid duplicated decoder: '%s'"
+#define PPLUGIN_INV     "%s(2101): Parent decoder name invalid: '%s'."
+#define PDUP_INV        "%s(2102): Duplicated decoder with prematch: '%s'."
+#define PDUPFTS_INV     "%s(2103): Duplicated decoder with fts set: '%s'."
+#define DUP_INV         "%s(2104): Invalid duplicated decoder: '%s'."
 #define DEC_PLUGIN_ERR  "%s(2105): Error loading decoder options."
 #define DECODER_ERROR   "%s(2106): Error adding decoder plugin."
-#define DEC_REGEX_ERROR "%s(2107): Decoder configuration error: '%s'"
-#define DECODE_NOPRE    "%s(2108): No 'prematch' found in decoder: '%s'"
-#define DUP_REGEX       "%s(2109): Duplicated offsets for same regex: '%s'"
+#define DEC_REGEX_ERROR "%s(2107): Decoder configuration error: '%s'."
+#define DECODE_NOPRE    "%s(2108): No 'prematch' found in decoder: '%s'."
+#define DUP_REGEX       "%s(2109): Duplicated offsets for same regex: '%s'."
+#define INV_DECOPTION   "%s(2110): Invalid decoder argument for %s: '%s'."
+#define DECODE_ADD      "%s(2111): Additional data to plugin decoder: '%s'."
+                                          
 #define INV_OFFSET      "%s(2120): Invalid offset value: '%s'"
 #define INV_ATTR        "%s(2121): Invalid decoder attribute: '%s'"
 

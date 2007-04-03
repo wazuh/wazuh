@@ -83,7 +83,7 @@ void SyscheckInit()
 
     /* Zeroring syscheck rule */
     sdb.syscheck_rule = zerorulemember(
-                        SYSCHECK_PLUGIN,
+                        SYSCHECK_MODULE,
                         Config.integrity,
                         0,0,0,0,0,0);
 
@@ -679,10 +679,6 @@ void DecodeSyscheck(Eventinfo *lf)
     char *f_name;
    
    
-    /* Setting lf type */
-    lf->type = SYSCHECK; 
-   
-
     /* checking if we need to check it in here */
     if(!(sdb.syscheck_rule->alert_opts & DO_LOGALERT))
         return;

@@ -118,6 +118,9 @@ http://www.ossec.net/en/licensing.html\n"
 /* Syscheck directory */
 #define SYSCHECK_DIR    "/queue/syscheck"
 
+/* Rule path */
+#define RULEPATH        "/rules"
+
 
 /* Wait file */
 #ifndef WIN32

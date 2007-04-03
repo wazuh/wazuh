@@ -8,7 +8,7 @@ include ${PT}LOCATION
 include ${PT}Config.OS
 
 
-CFLAGS = -Wall -I${PT} -I${PT}headers ${CPATH} ${CEXTRA} ${DEXTRA} ${EEXTRA} -DARGV0=\"${NAME}\" -DXML_VAR=\"var\" -DOSSECHIDS
+CFLAGS = -g -Wall -I${PT} -I${PT}headers ${CPATH} ${CEXTRA} ${DEXTRA} ${EEXTRA} -DARGV0=\"${NAME}\" -DXML_VAR=\"var\" -DOSSECHIDS
 
 SOURCES = *.c
 OBJECTS = *.o

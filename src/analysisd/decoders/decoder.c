@@ -23,22 +23,21 @@
 
 
 
-
 /* DecodeEvent.
- * Will use the plugins to decode the received event.
+ * Will use the osdecoders to decode the received event.
  */
 void DecodeEvent(Eventinfo *lf)
 {
-    PluginNode *node;
-    PluginNode *child_node;
-    PluginInfo *nnode;
+    OSDecoderNode *node;
+    OSDecoderNode *child_node;
+    OSDecoderInfo *nnode;
 
     char *llog;
     char *pmatch;
     char *cmatch;
     char *regex_prev = NULL;
 
-    node = OS_GetFirstPlugin();
+    node = OS_GetFirstOSDecoder();
 
 
     /* Return if no node...
@@ -49,236 +48,219 @@ void DecodeEvent(Eventinfo *lf)
 
     do 
     {
-        if(node->plugin)
+        nnode = node->osdecoder;
+
+
+        /* First checking program name */
+        if(nnode->program_name && lf->program_name)
         {
-            nnode = node->plugin;
-
-
-            /* First checking program name */
-            if(nnode->program_name && lf->program_name)
+            if(!OSMatch_Execute(lf->program_name, lf->p_name_size, 
+                        nnode->program_name))
             {
-                if(!OSMatch_Execute(lf->program_name, lf->p_name_size, 
-                                    nnode->program_name))
-                {
-                    continue;
-                }
-                pmatch = lf->log;
+                continue;
             }
+            pmatch = lf->log;
+        }
 
-            
-            /* If prematch fails, go to the next plugin in the list */
-            else if(nnode->prematch)
-            {
-                if(!(pmatch = OSRegex_Execute(lf->log,nnode->prematch)))
-                {
-                    continue;
-                }
-                
-                /* Next character */
-                if(*pmatch != '\0')
-                    pmatch++;
-            }
-            else
+
+        /* If prematch fails, go to the next osdecoder in the list */
+        else if(nnode->prematch)
+        {
+            if(!(pmatch = OSRegex_Execute(lf->log, nnode->prematch)))
             {
                 continue;
             }
 
-            lf->log_tag = nnode->name;
-
-            child_node = node->child;
-
-
-            /* Setting the type */
-            if(nnode->type)
-            {
-                lf->type = nnode->type;
-            }
+            /* Next character */
+            if(*pmatch != '\0')
+                pmatch++;
+        }
+        else
+        {
+            continue;
+        }
 
 
-            /* If no child node is set, set the child node
-             * as if it were the child (ugh)
-             */
-            if(!child_node)
-            {
-                child_node = node;
-            }
+        lf->decoder_info = nnode;
+        
 
-            else
-            {
-                /* Check if we have any child plugin */
-                while(child_node)
-                {
-                    nnode = child_node->plugin;
+        child_node = node->child;
 
 
-                    /* If we have a pre match and it matches, keep
-                     * going. If we don't have a prematch, stop
-                     * and go for the regexes.
-                     */
-                    if(nnode->prematch)
-                    {
-                        char *llog;
+        /* If no child node is set, set the child node
+         * as if it were the child (ugh)
+         */
+        if(!child_node)
+        {
+            child_node = node;
+        }
 
-                        /* If we have an offset set, use it */     
-                        if(nnode->prematch_offset & AFTER_PARENT)
-                        {
-                            llog = pmatch;
-                        }
-                        else
-                        {
-                            llog = lf->log;
-                        }
-
-                        if((cmatch = OSRegex_Execute(llog, nnode->prematch)))
-                        {
-                            if(*cmatch != '\0')
-                                cmatch++;
-
-                            if(nnode->use_own_name)
-                            {
-                                lf->log_tag = nnode->name;
-                            }
-
-                            /* Setting the type */
-                            if(nnode->type)
-                            {
-                                lf->type = nnode->type;
-                            }
-
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        break;
-                    }
-
-                    /* If we have multiple regex only childs,
-                     * do not attempt to go any further with them.
-                     */
-                    if(child_node->plugin->get_next)
-                    {
-                        do
-                        {
-                            child_node = child_node->next;
-                        }while(child_node && child_node->plugin->get_next);
-
-                        if(!child_node)
-                            return;
-
-                        child_node = child_node->next;
-                        nnode = NULL;   
-                    }
-                    else
-                    {
-                        child_node = child_node->next;
-                        nnode = NULL;
-                    }
-                }
-            }
-            
-            /* Nothing matched */
-            if(!nnode)
-                return;
-
-
-            /* Getting the regex */
+        else
+        {
+            /* Check if we have any child osdecoder */
             while(child_node)
             {
-                if(nnode->regex)
-                {
-                    int i = 0;
+                nnode = child_node->osdecoder;
 
-                    /* With regex we have multiple options
-                     * regarding the offset:
-                     * after the prematch,
-                     * after the parent,
-                     * after some previous regex,
-                     * or any offset
-                     */
-                    if(nnode->regex_offset)
+
+                /* If we have a pre match and it matches, keep
+                 * going. If we don't have a prematch, stop
+                 * and go for the regexes.
+                 */
+                if(nnode->prematch)
+                {
+                    char *llog;
+
+                    /* If we have an offset set, use it */     
+                    if(nnode->prematch_offset & AFTER_PARENT)
                     {
-                        if(nnode->regex_offset & AFTER_PARENT)
-                        {
-                            llog = pmatch;
-                        }
-                        else if(nnode->regex_offset & AFTER_PREMATCH)
-                        {
-                            llog = cmatch;
-                        }
-                        else if(nnode->regex_offset & AFTER_PREVREGEX)
-                        {
-                            if(!regex_prev)
-                                llog = cmatch;
-                            else
-                                llog = regex_prev;
-                        }
+                        llog = pmatch;
                     }
                     else
                     {
                         llog = lf->log;
                     }
-                    
-                    /* If Regex does not match, return */
-                    if(!(regex_prev = OSRegex_Execute(llog, nnode->regex)))
-                    {
-                        if(nnode->get_next)
-                        {
-                            child_node = child_node->next;
-                            nnode = child_node->plugin;
-                            continue;
-                        }
-                        return;
-                    }
 
-                    
-                    /* Fixing next pointer */
-                    if(*regex_prev != '\0')
-                        regex_prev++;
-
-                    while(nnode->regex->sub_strings[i])
+                    if((cmatch = OSRegex_Execute(llog, nnode->prematch)))
                     {
-                        if(nnode->order[i])
-                        {
-                            nnode->order[i](lf, nnode->regex->sub_strings[i]);
-                            nnode->regex->sub_strings[i] = NULL;
-                            i++;
-                            continue;
-                        }
+                        if(*cmatch != '\0')
+                            cmatch++;
 
-                        /* We do not free any memory used above */
-                        os_free(nnode->regex->sub_strings[i]);
-                        nnode->regex->sub_strings[i] = NULL;
-                        i++;
-                    }
-
-                    /* If we have a next regex, try getting it */
-                    if(nnode->get_next)
-                    {
-                        child_node = child_node->next;
-                        nnode = child_node->plugin;
-                        continue;
-                    }
-                    else
-                    {
-                        /* Checking if the FTS is set */
-                        if(nnode->fts)
-                        {
-                            lf->fts = nnode->fts;
-                        }
+                        lf->decoder_info = nnode;
 
                         break;
                     }
                 }
+                else
+                {
+                    break;
+                }
 
-                /* If we don't have a regex, we may leave now */
-                return;
+
+                /* If we have multiple regex-only childs,
+                 * do not attempt to go any further with them.
+                 */
+                if(child_node->osdecoder->get_next)
+                {
+                    do
+                    {
+                        child_node = child_node->next;
+                    }while(child_node && child_node->osdecoder->get_next);
+
+                    if(!child_node)
+                        return;
+
+                    child_node = child_node->next;
+                    nnode = NULL;   
+                }
+                else
+                {
+                    child_node = child_node->next;
+                    nnode = NULL;
+                }
             }
-
-            /* ok to return  */
-            return;         
         }
 
+        /* Nothing matched */
+        if(!nnode)
+            return;
+
+
+        /* If we have a external decoder, execute it */
+        if(nnode->plugindecoder)
+        {
+            nnode->plugindecoder(lf);
+            return;
+        }
+        
+        
+        /* Getting the regex */
+        while(child_node)
+        {
+            if(nnode->regex)
+            {
+                int i = 0;
+
+                /* With regex we have multiple options
+                 * regarding the offset:
+                 * after the prematch,
+                 * after the parent,
+                 * after some previous regex,
+                 * or any offset
+                 */
+                if(nnode->regex_offset)
+                {
+                    if(nnode->regex_offset & AFTER_PARENT)
+                    {
+                        llog = pmatch;
+                    }
+                    else if(nnode->regex_offset & AFTER_PREMATCH)
+                    {
+                        llog = cmatch;
+                    }
+                    else if(nnode->regex_offset & AFTER_PREVREGEX)
+                    {
+                        if(!regex_prev)
+                            llog = cmatch;
+                        else
+                            llog = regex_prev;
+                    }
+                }
+                else
+                {
+                    llog = lf->log;
+                }
+
+                /* If Regex does not match, return */
+                if(!(regex_prev = OSRegex_Execute(llog, nnode->regex)))
+                {
+                    if(nnode->get_next)
+                    {
+                        child_node = child_node->next;
+                        nnode = child_node->osdecoder;
+                        continue;
+                    }
+                    return;
+                }
+
+
+                /* Fixing next pointer */
+                if(*regex_prev != '\0')
+                    regex_prev++;
+
+                while(nnode->regex->sub_strings[i])
+                {
+                    if(nnode->order[i])
+                    {
+                        nnode->order[i](lf, nnode->regex->sub_strings[i]);
+                        nnode->regex->sub_strings[i] = NULL;
+                        i++;
+                        continue;
+                    }
+
+                    /* We do not free any memory used above */
+                    os_free(nnode->regex->sub_strings[i]);
+                    nnode->regex->sub_strings[i] = NULL;
+                    i++;
+                }
+
+                /* If we have a next regex, try getting it */
+                if(nnode->get_next)
+                {
+                    child_node = child_node->next;
+                    nnode = child_node->osdecoder;
+                    continue;
+                }
+
+                break;
+            }
+
+            /* If we don't have a regex, we may leave now */
+            return;
+        }
+
+        /* ok to return  */
+        return;         
     }while((node=node->next) != NULL);
 }
 

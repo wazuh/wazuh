@@ -10,15 +10,10 @@
  */
 
 
-#include "shared.h"
-#include "os_regex/os_regex.h"
-#include "os_xml/os_xml.h"
-
 
 #include "rules.h"
 #include "config.h"
 #include "eventinfo.h"
-#include "active-response.h"
 
 
 /* Internal functions */
@@ -32,6 +27,7 @@ int getattributes(char **attributes,
 
 void Rule_AddAR(RuleInfo *config_rule);
 char *loadmemory(char *at, char *str);
+int getDecoderfromlist(char *name);
 
 extern int _max_freq;
 
@@ -344,9 +340,16 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element, xml_decoded)==0)
                     {
-                        config_ruleinfo->plugin_decoded =
-                            loadmemory(config_ruleinfo->plugin_decoded,
-                                    rule_opt[k]->content);
+                        config_ruleinfo->decoded_as = 
+                            getDecoderfromlist(rule_opt[k]->content);
+                        
+                        if(config_ruleinfo->decoded_as == 0)
+                        {
+                            merror("%s: Invalid decoder name: '%s'.",
+                                   ARGV0, rule_opt[k]->content);
+                            OS_ClearXML(&xml);
+                            return(-1); 
+                        }
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_info)==0)
                     {
@@ -1152,7 +1155,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->group = NULL;
     ruleinfo_pt->regex = NULL;
     ruleinfo_pt->match = NULL;
-    ruleinfo_pt->plugin_decoded = NULL;
+    ruleinfo_pt->decoded_as = 0;
 
     ruleinfo_pt->comment = NULL;
     ruleinfo_pt->info = NULL;

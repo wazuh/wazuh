@@ -82,10 +82,15 @@ int read_dev_dir(char *dir_name)
     #endif
                             NULL};    
     
+
+    /* Full path ignore */
+    char *(ignore_dev_full_path[]) = {"/dev/shm/sysconfig",
+                                      "/dev/bus/usb/.usbfs",  
+                                      NULL};
     
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
     {
-        merror("%s: Invalid directory given",ARGV0);
+        merror("%s: Invalid directory given.",ARGV0);
         return(-1);
     }
     
@@ -119,6 +124,14 @@ int read_dev_dir(char *dir_name)
              
         f_name[PATH_MAX +1] = '\0';     
         snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);
+       
+
+        /* Do not look for the full ignored files */
+        for(i = 0;ignore_dev_full_path[i] != NULL;i++)
+        {
+            if(strcmp(ignore_dev_full_path[i], f_name) == 0)
+                break;
+        }
         
         read_dev_file(f_name);
 

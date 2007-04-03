@@ -148,6 +148,7 @@ pstatus()
         return 0;
     fi
         
+    #for i in `cat /var/ossec/var/run/ossec-*`;do echo $i; kill -0 $i; echo $?; 
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         kill -0 `cat ${DIR}/var/run/${pfile}*.pid` > /dev/null 2>&1

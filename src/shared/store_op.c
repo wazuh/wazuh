@@ -77,6 +77,35 @@ int OSStore_SetFreeDataPointer(OSStore *list, void *free_data_function)
 }
 
 
+/* Get key position from storage
+ * Returns 0 if not present or the key
+ * if available.
+ * (position may change after each PUT)
+ */
+int OSStore_GetPosition(OSStore *list, char *key)
+{
+    int chk_rc, pos = 1;
+    list->cur_node = list->first_node;
+
+    while(list->cur_node)
+    {
+        if((chk_rc = strcmp(list->cur_node->key, key)) >= 0)
+        {
+            /* Found */
+            if(chk_rc == 0)
+                return(pos);
+
+            /* Not found */
+            return(0);
+        }
+
+        list->cur_node = list->cur_node->next;
+        pos++;
+    }
+    return(0);
+}
+
+
 
 /* Check if key is present on storage.
  * Returns 0 if not present.

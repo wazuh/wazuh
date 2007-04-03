@@ -104,7 +104,6 @@ int FTS_Init()
         if(!OSStore_Put(fts_store, tmp_s, NULL))
         {
             merror(LIST_ADD_ERROR, ARGV0);
-            merror("line: %s", tmp_s);
         }
     }
 
@@ -137,8 +136,8 @@ void AddtoIGnore(Eventinfo *lf)
 
     /* Assigning the values to the FTS */
     fprintf(fp_ignore, "%s %s %s %s %s %s %s %s\n",
-            (lf->log_tag && (lf->generated_rule->ignore & FTS_NAME))?
-                        lf->log_tag:"",
+            (lf->decoder_info->name && (lf->generated_rule->ignore & FTS_NAME))?
+                        lf->decoder_info->name:"",
             (lf->id && (lf->generated_rule->ignore & FTS_ID))?lf->id:"",
             (lf->user && (lf->generated_rule->ignore & FTS_USER))?lf->user:"",
             (lf->srcip && (lf->generated_rule->ignore & FTS_SRCIP))?
@@ -171,8 +170,8 @@ int IGnore(Eventinfo *lf)
 
     /* Assigning the values to the FTS */
     snprintf(_line,OS_FLSIZE, "%s %s %s %s %s %s %s %s\n",
-            (lf->log_tag && (lf->generated_rule->ckignore & FTS_NAME))?
-                            lf->log_tag:"",
+            (lf->decoder_info->name && (lf->generated_rule->ckignore & FTS_NAME))?
+                            lf->decoder_info->name:"",
             (lf->id && (lf->generated_rule->ckignore & FTS_ID))?lf->id:"",
             (lf->user && (lf->generated_rule->ckignore & FTS_USER))?
                             lf->user:"",
@@ -224,19 +223,19 @@ int FTS(Eventinfo *lf)
 
     /* Assigning the values to the FTS */
     snprintf(_line, OS_FLSIZE, "%s %s %s %s %s %s %s %s %s",
-            (lf->log_tag && (lf->fts & FTS_NAME))?lf->log_tag:"",
-            (lf->id && (lf->fts & FTS_ID))?lf->id:"",
-            (lf->user && (lf->fts & FTS_USER))?lf->user:"",
-            (lf->dstuser && (lf->fts & FTS_DSTUSER))?lf->dstuser:"",
-            (lf->srcip && (lf->fts & FTS_SRCIP))?lf->srcip:"",
-            (lf->dstip && (lf->fts & FTS_DSTIP))?lf->dstip:"",
-            (lf->data && (lf->fts & FTS_DATA))?lf->data:"",
-            (lf->systemname && (lf->fts & FTS_SYSTEMNAME))?lf->systemname:"",
-            (lf->fts & FTS_LOCATION)?lf->location:"");
+            lf->decoder_info->name,
+            (lf->id && (lf->decoder_info->fts & FTS_ID))?lf->id:"",
+            (lf->user && (lf->decoder_info->fts & FTS_USER))?lf->user:"",
+            (lf->dstuser && (lf->decoder_info->fts & FTS_DSTUSER))?lf->dstuser:"",
+            (lf->srcip && (lf->decoder_info->fts & FTS_SRCIP))?lf->srcip:"",
+            (lf->dstip && (lf->decoder_info->fts & FTS_DSTIP))?lf->dstip:"",
+            (lf->data && (lf->decoder_info->fts & FTS_DATA))?lf->data:"",
+            (lf->systemname && (lf->decoder_info->fts & FTS_SYSTEMNAME))?lf->systemname:"",
+            (lf->decoder_info->fts & FTS_LOCATION)?lf->location:"");
 
 
     /** Checking if FTS is already present **/
-    if(lf->type == WINDOWS)
+    if(lf->decoder_info->type == WINDOWS)
     {
         /* Windows is case insensitive */
         if(OSStore_NCaseCheck(fts_store, _line))
@@ -254,7 +253,7 @@ int FTS(Eventinfo *lf)
      * at least 3 "similars" before. If yes, we just
      * ignore it.
      */
-    if(lf->type == IDS)
+    if(lf->decoder_info->type == IDS)
     {
         fts_node = OSList_GetLastNode(fts_list);
         while(fts_node)

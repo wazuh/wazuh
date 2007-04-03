@@ -84,7 +84,7 @@ void HostinfoInit()
 
     /* Creating rule for Host information alerts */
     hostinfo_rule = zerorulemember(
-            HOSTINFO_PLUGIN,  /* id */ 
+            HOSTINFO_MODULE,  /* id */ 
             Config.hostinfo , /* level */
             0,0,0,0,0,0);
 
@@ -278,8 +278,6 @@ void HI_Search(Eventinfo *lf)
  */
 void DecodeHostinfo(Eventinfo *lf)
 {
-    lf->type = HOST_INFO; 
-
     /* Too many errors */
     if(hi_err > 10)
         return;

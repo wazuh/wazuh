@@ -1,4 +1,4 @@
-/*   $OSSEC, plugins_list.c, v0.1, 2005/06/21, Daniel B. Cid$   */
+/*   $OSSEC, osdecoders_list.c, v0.1, 2005/06/21, Daniel B. Cid$   */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -19,37 +19,37 @@
 
 #include "error_messages/error_messages.h"
 
-PluginNode *pluginnode;
+OSDecoderNode *osdecodernode;
 
 
 /* Create the Event List */
-void OS_CreatePluginList()
+void OS_CreateOSDecoderList()
 {
-    pluginnode = NULL;
+    osdecodernode = NULL;
 
     return;
 }
 
-/* Get first plugin */
-PluginNode *OS_GetFirstPlugin()
+/* Get first osdecoder */
+OSDecoderNode *OS_GetFirstOSDecoder()
 {
-    PluginNode *pluginnode_pt = pluginnode;
+    OSDecoderNode *osdecodernode_pt = osdecodernode;
 
-    return(pluginnode_pt);    
+    return(osdecodernode_pt);    
 }
 
 
-/* Add a plugin to the list */
-PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
+/* Add a osdecoder to the list */
+OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
 {
-    PluginNode *tmp_node = s_node;
+    OSDecoderNode *tmp_node = s_node;
     int rm_f = 0;
     
     if(tmp_node)
     {
-        PluginNode *new_node;
+        OSDecoderNode *new_node;
         
-        new_node = (PluginNode *)calloc(1,sizeof(PluginNode));
+        new_node = (OSDecoderNode *)calloc(1,sizeof(OSDecoderNode));
         if(new_node == NULL)
         {
             merror(MEM_ERROR,ARGV0);
@@ -60,10 +60,10 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
         do
         {
             /* Checking for common names */
-            if((strcmp(tmp_node->plugin->name,pi->name) == 0) &&
+            if((strcmp(tmp_node->osdecoder->name,pi->name) == 0) &&
                (pi->parent != NULL))
             {
-                if(tmp_node->plugin->prematch && pi->regex_offset)
+                if(tmp_node->osdecoder->prematch && pi->regex_offset)
                 {
                     rm_f = 1;                    
                 }
@@ -82,9 +82,9 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
                     return(NULL);
                 }
 
-                if(tmp_node->plugin->regex && pi->regex)
+                if(tmp_node->osdecoder->regex && pi->regex)
                 {
-                    tmp_node->plugin->get_next = 1;
+                    tmp_node->osdecoder->get_next = 1;
                 }
                 else
                 {
@@ -106,7 +106,7 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
         tmp_node->next = new_node;
         
         new_node->next = NULL;
-        new_node->plugin = pi; 
+        new_node->osdecoder = pi; 
         new_node->child = NULL;
     }
     
@@ -119,7 +119,7 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
             return(NULL);
         }
 
-        tmp_node = (PluginNode *)calloc(1, sizeof(PluginNode));
+        tmp_node = (OSDecoderNode *)calloc(1, sizeof(OSDecoderNode));
 
         if(tmp_node == NULL)
         {
@@ -128,7 +128,7 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
 
         tmp_node->child = NULL;
         tmp_node->next = NULL;
-        tmp_node->plugin = pi;
+        tmp_node->osdecoder = pi;
 
         s_node = tmp_node;
     }
@@ -136,19 +136,22 @@ PluginNode *_OS_AddPlugin(PluginNode *s_node, PluginInfo *pi)
     return (s_node);
 }
 
-int OS_AddPlugin(PluginInfo *pi)
+
+int OS_AddOSDecoder(OSDecoderInfo *pi)
 {
     int added = 0;
+
+    
     /* Search for parent */
     if(pi->parent)
     {
-        PluginNode *tmp_node = pluginnode;
+        OSDecoderNode *tmp_node = osdecodernode;
 
         while(tmp_node)
         {
-            if(strcmp(tmp_node->plugin->name, pi->parent) == 0)
+            if(strcmp(tmp_node->osdecoder->name, pi->parent) == 0)
             {
-                tmp_node->child = _OS_AddPlugin(tmp_node->child, pi);
+                tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi);
                 if(!tmp_node->child)
                 {
                     merror(DEC_PLUGIN_ERR, ARGV0);
@@ -159,7 +162,7 @@ int OS_AddPlugin(PluginInfo *pi)
             tmp_node = tmp_node->next;
         }
 
-        /* Plugin was added correctly */
+        /* OSDecoder was added correctly */
         if(added == 1)
         {
             return(1);
@@ -170,8 +173,8 @@ int OS_AddPlugin(PluginInfo *pi)
     }
     else
     {
-        pluginnode = _OS_AddPlugin(pluginnode, pi);
-        if(!pluginnode)
+        osdecodernode = _OS_AddOSDecoder(osdecodernode, pi);
+        if(!osdecodernode)
         {
             merror(DEC_PLUGIN_ERR, ARGV0);
             return(0);

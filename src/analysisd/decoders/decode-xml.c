@@ -15,13 +15,127 @@
 #include "os_xml/os_xml.h"
 
 
+#include "analysisd.h"
 #include "eventinfo.h"
 #include "decoder.h"
+#include "plugin_decoders.h"
 
 
 
 /* Internal functions */
 char *_loadmemory(char *at, char *str);
+OSStore *os_decoder_store = NULL;
+
+
+/* Gets decoder id */
+int getDecoderfromlist(char *name)
+{
+    if(os_decoder_store)
+    {
+        return(OSStore_GetPosition(os_decoder_store, name));
+    }
+    
+    return(0);
+}
+
+
+/* Adds decoder id */
+int addDecoder2list(char *name)
+{
+    if(os_decoder_store == NULL)
+    {
+        os_decoder_store = OSStore_Create();
+        if(os_decoder_store == NULL)
+        {
+            merror(LIST_ERROR, ARGV0);
+            return(0);
+        }
+    }
+
+    /* Storing data */
+    if(!OSStore_Put(os_decoder_store, name, NULL))
+    {
+        merror(LIST_ADD_ERROR, ARGV0);
+        return(0);
+    }
+
+    return(1);
+}
+
+
+/* Set decoder ids */
+int os_setdecoderids()
+{
+    OSDecoderNode *node;
+    OSDecoderNode *child_node;
+    OSDecoderInfo *nnode;
+
+
+    node = OS_GetFirstOSDecoder();
+
+
+    /* Return if no node...
+     * This shouldn't happen here anyways.
+     */
+    if(!node)
+        return(0);
+
+    do
+    {
+        int p_id = 0;
+        char *p_name;
+        
+        nnode = node->osdecoder;
+        nnode->id = getDecoderfromlist(nnode->name);        
+        
+        /* Id can noit be 0 */
+        if(nnode->id == 0)
+        {
+            return(0);
+        }
+
+        child_node = node->child;
+
+        if(!child_node)
+        {
+            continue;
+        }
+
+
+        /* Setting parent id */
+        p_id = nnode->id;
+        p_name = nnode->name;
+
+
+        /* Also setting on the child nodes */
+        while(child_node)
+        {
+            nnode = child_node->osdecoder;
+
+            if(nnode->use_own_name)
+            {
+                nnode->id = getDecoderfromlist(nnode->name);
+            }
+            else
+            {
+                nnode->id = p_id;
+
+                /* Setting parent name */
+                nnode->name = p_name;
+            }
+            
+            
+            /* Id can noit be 0 */
+            if(nnode->id == 0)
+            {
+                return(0);
+            }
+            child_node = child_node->next;
+        }
+    }while((node=node->next) != NULL);
+
+    return(1);
+}
 
 
 /* Read attributes */
@@ -79,6 +193,7 @@ int ReadDecodeXML(char *file)
     /* XML variables */ 
     /* These are the available options for the rule configuration */
     
+    char *xml_plugindecoder = "plugin_decoder";
     char *xml_decoder = "decoder";
     char *xml_decoder_name = "name";
     char *xml_usename = "use_own_name";
@@ -90,6 +205,8 @@ int ReadDecodeXML(char *file)
     char *xml_type = "type";
     char *xml_fts = "fts";
     char *xml_ftscomment = "ftscomment";
+
+    OSDecoderInfo *NULL_Decoder_tmp = NULL;
     
    
     int i = 0;
@@ -111,6 +228,14 @@ int ReadDecodeXML(char *file)
     }
 
 
+    /* Zeroing NULL_decoder */
+    os_calloc(1, sizeof(OSDecoderInfo), NULL_Decoder_tmp);
+    NULL_Decoder_tmp->id = 0;
+    NULL_Decoder_tmp->type = SYSLOG;
+    NULL_Decoder_tmp->name = NULL;
+    NULL_Decoder_tmp->fts = 0;
+    NULL_Decoder = (void *)NULL_Decoder_tmp;
+    
     /* Getting the root elements */
     node = OS_GetElementsbyNode(&xml, NULL);
     if(!node)
@@ -121,12 +246,12 @@ int ReadDecodeXML(char *file)
 
 
     /* Initializing the list */
-    OS_CreatePluginList(); 
+    OS_CreateOSDecoderList(); 
     
     while(node[i])
     {
         XML_NODE elements = NULL;
-        PluginInfo *pi;
+        OSDecoderInfo *pi;
 
         int j = 0;
         char *regex;
@@ -159,8 +284,8 @@ int ReadDecodeXML(char *file)
             return(0);
         }
 
-        /* Creating the PluginInfo */
-        pi = (PluginInfo *)calloc(1,sizeof(PluginInfo));
+        /* Creating the OSDecoderInfo */
+        pi = (OSDecoderInfo *)calloc(1,sizeof(OSDecoderInfo));
         if(pi == NULL)
         {
             merror(MEM_ERROR,ARGV0);
@@ -170,9 +295,10 @@ int ReadDecodeXML(char *file)
         
         /* Default values to the list */
         pi->parent = NULL;
+        pi->id = 0;
         pi->name = strdup(node[i]->values[0]);
         pi->order = NULL;
-        pi->ftscomment = NULL;
+        pi->plugindecoder = NULL;
         pi->fts = 0;
         pi->type = SYSLOG;
         pi->prematch = NULL;
@@ -195,7 +321,13 @@ int ReadDecodeXML(char *file)
             return(0);
         }
         
-        
+        /* Add decoder */
+        if(!addDecoder2list(pi->name))
+        {
+            merror(MEM_ERROR, ARGV0);
+            return(0);
+        }
+
         /* Looping on all the elements */
         while(elements[j])
         {
@@ -252,22 +384,30 @@ int ReadDecodeXML(char *file)
             /* Getting the pre match */
             else if(strcasecmp(elements[j]->element,xml_prematch)==0)
             {
-                pi->prematch_offset = ReadDecodeAttrs(
+                int r_offset;
+                
+                r_offset = ReadDecodeAttrs(
                                       elements[j]->attributes,
                                       elements[j]->values);
 
-                if(pi->prematch_offset & AFTER_ERROR)
+                if(r_offset & AFTER_ERROR)
                 {
                     ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
                 }
 
-                /* Only the first regex entry may have an offset */
-                if(prematch && pi->prematch_offset)
+                
+                /* Only the first prematch entry may have an offset */
+                if(prematch && r_offset)
                 {
                     merror(DUP_REGEX, ARGV0, pi->name);
                     ErrorExit(DEC_REGEX_ERROR, ARGV0, pi->name);
                 }
 
+                if(r_offset)
+                {
+                    pi->prematch_offset = r_offset;
+                }
+                
                 prematch =
                     _loadmemory(prematch,
                             elements[j]->content);
@@ -282,15 +422,38 @@ int ReadDecodeXML(char *file)
             /* Getting the fts comment */
             else if(strcasecmp(elements[j]->element,xml_ftscomment)==0)
             {
-                pi->ftscomment =
-                    _loadmemory(pi->ftscomment,
-                            elements[j]->content);
             }
 
             else if(strcasecmp(elements[j]->element,xml_usename)==0)
             {
                 if(strcmp(elements[j]->content,"true") == 0)
                     pi->use_own_name = 1;
+            }
+
+            else if(strcasecmp(elements[j]->element, xml_plugindecoder) == 0)
+            {
+                int ed_c = 0;
+                for(ed_c = 0; plugin_decoders[ed_c] != NULL; ed_c++)
+                {
+                    if(strcmp(plugin_decoders[ed_c], 
+                              elements[j]->content) == 0)
+                    {
+                        /* Initializing plugin */
+                        void (*dec_init)() = plugin_decoders_init[ed_c];
+
+                        dec_init();
+                        pi->plugindecoder = plugin_decoders_exec[ed_c];
+                        break;
+                    }
+                }
+
+                /* Decoder not found */
+                if(pi->plugindecoder == NULL)
+                {
+                    merror(INV_DECOPTION, ARGV0, elements[j]->element,
+                                          elements[j]->content);
+                    return(0);
+                }
             }
                                                                                 
             
@@ -625,9 +788,17 @@ int ReadDecodeXML(char *file)
 
             free(regex);
         }
+
+
+        /* Validating arguments */
+        if(pi->plugindecoder && (pi->regex || pi->order))
+        {
+            merror(DECODE_ADD, ARGV0, pi->name);
+            return(0);
+        }
         
-        /* Adding plugin to the list */
-        if(!OS_AddPlugin(pi))
+        /* Adding osdecoder to the list */
+        if(!OS_AddOSDecoder(pi))
         {
             merror(DECODER_ERROR, ARGV0);        
             return(0);
@@ -636,10 +807,21 @@ int ReadDecodeXML(char *file)
         i++;
     } /* while (node[i]) */
 
+
     /* Cleaning  node and XML structures */
     OS_ClearNode(node);
+
     
     OS_ClearXML(&xml);
+
+
+    /* Setting ids */
+    if(!os_setdecoderids())
+    {
+        merror(DECODER_ERROR, ARGV0);
+        return(0);
+    }
+    
 
     /* Done over here */
     return(1);

@@ -54,7 +54,7 @@ void RootcheckInit()
 
     /* Creating rule for rootcheck alerts */
     rootcheck_rule = zerorulemember(
-                             ROOTCHECK_PLUGIN, /* id */ 
+                             ROOTCHECK_MODULE, /* id */ 
                              Config.rootcheck, /* level */
                              0,0,0,0,0,0);
 
@@ -205,8 +205,6 @@ void RK_Search(Eventinfo *lf)
  */
 void DecodeRootcheck(Eventinfo *lf)
 {
-    lf->type = ROOTCHECK; 
-    
     if(rootcheck_rule->alert_opts & DO_LOGALERT)
         RK_Search(lf);
    

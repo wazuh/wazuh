@@ -44,6 +44,8 @@ int OSStore_Put(OSStore *list, char *key, void *data);
 int OSStore_Check(OSStore *list, char *key);
 int OSStore_NCheck(OSStore *list, char *key);
 int OSStore_NCaseCheck(OSStore *list, char *key);
+int OSStore_GetPosition(OSStore *list, char *key);
+   
 
 
 #endif

@@ -85,8 +85,8 @@ void DecodeRootcheck(Eventinfo *lf);
 void DecodeHostinfo(Eventinfo *lf);
  
 
-/* For Decoder Plugins */
-void ReadDecodeXML(char *file);
+/* For Decoders */
+int ReadDecodeXML(char *file);
 
 
 /* For syscheckd (integrity checking) */
@@ -253,7 +253,10 @@ int main(int argc, char **argv)
     
 
     /* Reading decoders */
-    ReadDecodeXML(XML_DECODER);
+    if(!ReadDecodeXML(XML_DECODER))
+    {
+        ErrorExit(CONFIG_ERROR, ARGV0,  XML_DECODER);
+    }
 
     
     /* Creating the rules list */
@@ -401,9 +404,9 @@ int main(int argc, char **argv)
 
 
 
-/* OS_ReadMSG: v0.2: 2005/03/22
- * Receive the message from the queue and
- * forward to the necessary plugins/actions 
+/* OS_ReadMSG.
+ * Main function. Receives the messages(events)
+ * and analyze them all.
  */
 void OS_ReadMSG(int m_queue)
 {
@@ -526,7 +529,7 @@ void OS_ReadMSG(int m_queue)
     {
         /* Initializing stats rules */
         stats_rule = zerorulemember(
-                STATS_PLUGIN,
+                STATS_MODULE,
                 Config.stats,
                 0,0,0,0,0,0);
 
@@ -649,28 +652,37 @@ void OS_ReadMSG(int m_queue)
             hourly_events++;
 
 
-            /***  Running plugins/decoders ***/
+            /***  Running decoders ***/
 
             /* Integrity check from syscheck */
             if(msg[0] == SYSCHECK_MQ)
             {
                 DecodeSyscheck(lf);
                 hourly_syscheck++;
+
+                /* We don't process syscheck events further */
+                goto CLMEM;
             }
 
             /* Rootcheck decoding */
             else if(msg[0] == ROOTCHECK_MQ)
             {
                 DecodeRootcheck(lf);
+
+                /* We don't process rootcheck events further */
+                goto CLMEM;
             }
 
             /* Host information special decoder */
             else if(msg[0] == HOSTINFO_MQ)
             {
                 DecodeHostinfo(lf);
+
+                /* We don't process hostinfo events further */
+                goto CLMEM;
             }
 
-            /* Run the Decoder plugins */
+            /* Run the general Decoders  */
             else
             {
                 /* Getting log size */
@@ -680,18 +692,8 @@ void OS_ReadMSG(int m_queue)
             }
             
 
-            /* Dont need to go further if syscheck/rootcheck message */
-            if((lf->type == SYSCHECK) || (lf->type == ROOTCHECK))
-            {
-                /* We don't process syscheck/rootcheck events
-                 * any further.
-                 */
-                goto CLMEM;
-            }
-
-
             /* Firewall event */
-            else if(lf->type == FIREWALL)
+            if(lf->decoder_info->type == FIREWALL)
             {
                 /* If we could not get any information from
                  * the log, just ignore it
@@ -707,7 +709,7 @@ void OS_ReadMSG(int m_queue)
             /* We only check if the last message is
              * duplicated on syslog
              */
-            else if(lf->type == SYSLOG)
+            else if(lf->decoder_info->type == SYSLOG)
             {
                 /* Checking if the message is duplicated */
                 if(LastMsg_Stats(lf->log) == 1)
@@ -744,7 +746,8 @@ void OS_ReadMSG(int m_queue)
 
 
             /* Checking the rules */
-            DEBUG_MSG("%s: DEBUG: Checking the rules - %d ", ARGV0, lf->type);
+            DEBUG_MSG("%s: DEBUG: Checking the rules - %d ", 
+                           ARGV0, lf->decoder_info->type);
 
             
             /* Looping all the rules */
@@ -758,7 +761,7 @@ void OS_ReadMSG(int m_queue)
             do
             {
                 /* The categories must match */
-                if(rulenode_pt->ruleinfo->category != lf->type)
+                if(rulenode_pt->ruleinfo->category != lf->decoder_info->type)
                 {
                     continue;
                 }
@@ -942,16 +945,11 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     }
    
      
-    /* Checking if any plugin pre-matched here */
-    if(currently_rule->plugin_decoded)
+    /* Checking if any decoder pre-matched here */
+    if(currently_rule->decoded_as && 
+       currently_rule->decoded_as != lf->decoder_info->id)
     {
-        /* Must have the log tag decoded */
-        if(!lf->log_tag)
-            return(NULL);
-            
-        if(strcmp(currently_rule->plugin_decoded,
-                  lf->log_tag) != 0)
-            return(NULL);  
+        return(NULL);
     }
    
     
@@ -1148,7 +1146,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     if(currently_rule->alert_opts & DO_FTS)
     {
         /** FTS CHECKS **/
-        if(lf->fts)
+        if(lf->decoder_info->fts)
         {
             if(!FTS(lf))
             {

@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -9,9 +9,6 @@
  * Foundation
  */
 
-/* v0.3: 2005/09/15: Adding ignore time for rule
- * v0.2: 2004/08/03
- */
 
 #ifndef _OS_RULES
 
@@ -70,6 +67,9 @@ typedef struct _RuleInfo
     /* category */
     u_int8_t category;
    
+    /* Decoded as */
+    u_int16_t decoded_as;
+
     /* List of matched */
     OSList *prev_matched;
 
@@ -77,7 +77,6 @@ typedef struct _RuleInfo
     OSList *sid_search;
 
     char *group;
-    char *plugin_decoded;
     OSMatch *match;
     OSRegex *regex;
 
@@ -156,15 +155,12 @@ RuleNode *OS_GetFirstRule();
  ** These SIGIDs cannot be used       **
  **                                   **/
    
-#define STATS_PLUGIN        11
-#define FTS_PLUGIN          12
-#define SYSCHECK_PLUGIN     13   
-#define ROOTCHECK_PLUGIN    14   
-#define HOSTINFO_PLUGIN     15
+#define STATS_MODULE        11
+#define FTS_MODULE          12
+#define SYSCHECK_MODULE     13   
+#define ROOTCHECK_MODULE    14   
+#define HOSTINFO_MODULE     15
 
-
-/** Rule Path **/
-#define RULEPATH "/rules"
 
 
 #endif /* _OS_RULES */

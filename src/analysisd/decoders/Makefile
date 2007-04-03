@@ -1,6 +1,6 @@
-# Makefile for the decoder plugins 
-# Daniel B. Cid <dcid@sourcefire.com>||<daniel.cid@gmail.com>
-# http://www.ossec.net/hids/
+# Makefile for the decoders
+# Daniel B. Cid <dcid@ossec.net>
+# http://www.ossec.net
 
 PT=../../
 NAME=ossec-analysisd
@@ -8,10 +8,12 @@ NAME=ossec-analysisd
 include ../../Config.Make
 
 
-plugins:
+dc:
+		cd plugins; make;
 		$(CC) $(CFLAGS) -I../ -c $(SOURCES)
-		ar cru decoders.a $(OBJECTS)
+		ar cru decoders.a $(OBJECTS) plugins/*.o
 		ranlib decoders.a
 
 clean:
+		cd plugins; make clean;
 		-${CLEAN}

@@ -20,6 +20,7 @@
 #include "eventinfo.h"
 #include "os_regex/os_regex.h"
 
+
 /* Search last times a signature fired
  * Will look for only that specific signature.
  */
@@ -195,7 +196,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         
         
         /* The category must be the same */
-        else if(lf->type != my_lf->type)
+        else if(lf->decoder_info->type != my_lf->decoder_info->type)
         {
             continue;    
         }
@@ -300,7 +301,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
 /* Zero the loginfo structure */
 void Zero_Eventinfo(Eventinfo *lf)
 {
-    lf->log_tag = NULL;
     lf->log = NULL;
     lf->full_log = NULL;
     lf->hostname = NULL;
@@ -320,9 +320,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->url = NULL;
     lf->data = NULL;
     lf->systemname = NULL;
-    lf->fts = 0;
 
-    lf->type = SYSLOG; /* default type is syslog */        
     lf->time = 0;
     lf->matched = 0;
     
@@ -333,6 +331,7 @@ void Zero_Eventinfo(Eventinfo *lf)
 
     lf->generated_rule = NULL;
     lf->node_to_delete = NULL;
+    lf->decoder_info = NULL_Decoder;
     
     return;
 }
@@ -388,7 +387,6 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     
     /* We dont need to free:
-     * log_tag
      * fts
      * comment
      */

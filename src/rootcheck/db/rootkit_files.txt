@@ -378,18 +378,17 @@ usr/share/.home.ph1     ! PHALANX rootkit ::
 usr/share/.home.ph1/tty ! PHALANX rootkit ::
 etc/host.ph1            ! PHALANX rootkit ::
 bin/host.ph1            ! PHALANX rootkit ::
-*/phalanx               ! PHALANX rootkit ::
 
 
 # ZK rootkit (http://honeyblog.org/junkyard/reports/redhat-compromise2.pdf)
 # and from chkrootkit
 usr/share/.zk                   ! ZK rootkit ::
 usr/share/.zk/zk                ! ZK rootkit ::
-etc/sysconfig/console/load.zk   ! ZK rootkit ::
 etc/1ssue.net                   ! ZK rootkit ::
 usr/X11R6/.zk                   ! ZK rootkit ::
 usr/X11R6/.zk/xfs               ! ZK rootkit ::
 usr/X11R6/.zk/echo              ! ZK rootkit ::
+etc/sysconfig/console/load.zk   ! ZK rootkit ::
 
 
 # Public sniffers

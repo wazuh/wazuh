@@ -16,7 +16,6 @@
 
 
 /* We need the eventinfo and os_regex in here */
-#include "eventinfo.h"
 #include "os_regex/os_regex.h"
 
 #define AFTER_PARENT    0x001   /* 1   */
@@ -25,58 +24,48 @@
 #define AFTER_ERROR     0x010   
 
 
-/* Plugin structure */
+
+/* Decoder structure */
 typedef struct
 {
     u_int8_t  get_next;
-    u_int16_t regex_offset;
-    u_int16_t prematch_offset;
     u_int8_t  type;
     u_int8_t  use_own_name;
+
+    u_int16_t  id;
+    u_int16_t regex_offset;
+    u_int16_t prematch_offset;
     
     int fts;
     char *parent;
     char *name;
+    char *ftscomment;
+    
     OSRegex *regex;
     OSRegex *prematch;
     OSMatch *program_name;
-    char *ftscomment;
-    void (**order)(Eventinfo *lf, char *field);
-}PluginInfo;
+    
+    void (*plugindecoder)(void *lf);
+    void (**order)(void *lf, char *field);
+}OSDecoderInfo;
 
 /* List structure */
-typedef struct _PluginNode
+typedef struct _OSDecoderNode
 {
-    struct _PluginNode *next;
-    struct _PluginNode *child;
-    PluginInfo *plugin;
-}PluginNode;
+    struct _OSDecoderNode *next;
+    struct _OSDecoderNode *child;
+    OSDecoderInfo *osdecoder;
+}OSDecoderNode;
 
 
 
-/* Functions to Create the list, Add a plugin to the
- * list and to get the first plugin.
+/* Functions to Create the list, Add a osdecoder to the
+ * list and to get the first osdecoder.
  */
-void OS_CreatePluginList();
-int OS_AddPlugin(PluginInfo *pi);
-PluginNode *OS_GetFirstPlugin();
+void OS_CreateOSDecoderList();
+int OS_AddOSDecoder(OSDecoderInfo *pi);
+OSDecoderNode *OS_GetFirstOSDecoder();
 
-
-/* Interfaces for the event decoders */
-void *DstUser_FP(Eventinfo *lf, char *field);
-void *User_FP(Eventinfo *lf, char *field);
-void *SrcIP_FP(Eventinfo *lf, char *field);
-void *DstIP_FP(Eventinfo *lf, char *field);
-void *SrcPort_FP(Eventinfo *lf, char *field);
-void *DstPort_FP(Eventinfo *lf, char *field);
-void *Protocol_FP(Eventinfo *lf, char *field);
-void *Action_FP(Eventinfo *lf, char *field);
-void *ID_FP(Eventinfo *lf, char *field);
-void *Url_FP(Eventinfo *lf, char *field);
-void *Data_FP(Eventinfo *lf, char *field);
-void *Status_FP(Eventinfo *lf, char *field);
-void *SystemName_FP(Eventinfo *lf, char *field);
-void *None_FP(Eventinfo *lf, char *field);
 
 #endif
 

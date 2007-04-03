@@ -84,4 +84,10 @@ kill		!/dev/[ab,d-k,m-z]|/dev/[F-Z]|/dev/[A-D]|/dev/[0-9]|proc\.h|bash|tmp!
 /etc/rc.d/rc.sysinit    !enyelkmHIDE! enye-sec Rootkit
 
 
+# ZK rootkit (http://honeyblog.org/junkyard/reports/redhat-compromise2.pdf)
+/etc/sysconfig/console/load.zk   !/bin/sh! ZK rootkit ::
+/etc/sysconfig/console/load.zk   !usr/bin/run! ZK rootkit ::
+
+
+
 # EOF #
