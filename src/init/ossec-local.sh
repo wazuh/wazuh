@@ -150,10 +150,12 @@ pstatus()
         
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
-        kill -0 `cat ${DIR}/var/run/${pfile}*.pid` > /dev/null 2>&1
-        if [ $? = 0 ]; then
-          return 1;  
-        fi           
+        for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
+            kill -0 $j > /dev/null 2>&1
+            if [ $? = 0 ]; then
+                return 1;
+            fi    
+        done    
     fi
     
     return 0;    
@@ -182,9 +184,7 @@ stopa()
 }
 
 
-
 ### MAIN HERE ###
-
 
 case "$1" in
   start)
