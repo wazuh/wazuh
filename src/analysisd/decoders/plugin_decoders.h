@@ -1,4 +1,4 @@
-/*   $OSSEC, decoder.h, v0.2, 2006/01/04, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.

@@ -1,4 +1,4 @@
-/*   $OSSEC, eventinfo_list.c, v0.1, 2005/05/30, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.

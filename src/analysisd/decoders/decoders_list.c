@@ -1,6 +1,6 @@
-/*   $OSSEC, osdecoders_list.c, v0.1, 2005/06/21, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -19,23 +19,36 @@
 
 #include "error_messages/error_messages.h"
 
-OSDecoderNode *osdecodernode;
+
+/* We have two internal lists. One with the program_name
+ * and one without. This is going to improve greatly the
+ * performance of our decoder matching.
+ */
+OSDecoderNode *osdecodernode_forpname;
+OSDecoderNode *osdecodernode_nopname;
 
 
 /* Create the Event List */
 void OS_CreateOSDecoderList()
 {
-    osdecodernode = NULL;
+    osdecodernode_forpname = NULL;
+    osdecodernode_nopname = NULL;
 
     return;
 }
 
-/* Get first osdecoder */
-OSDecoderNode *OS_GetFirstOSDecoder()
-{
-    OSDecoderNode *osdecodernode_pt = osdecodernode;
 
-    return(osdecodernode_pt);    
+/* Get first osdecoder */
+OSDecoderNode *OS_GetFirstOSDecoder(char *p_name)
+{
+    /* If program name is set, we return the forpname list.
+     */
+    if(p_name)
+    {
+        return(osdecodernode_forpname);
+    }
+    
+    return(osdecodernode_nopname);
 }
 
 
@@ -140,6 +153,20 @@ OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
 int OS_AddOSDecoder(OSDecoderInfo *pi)
 {
     int added = 0;
+    OSDecoderNode *osdecodernode;
+
+
+    /* We can actually have two lists. One with program
+     * name and the other without.
+     */
+    if(pi->program_name)     
+    {
+        osdecodernode = osdecodernode_forpname;
+    }
+    else
+    {
+        osdecodernode = osdecodernode_nopname;
+    }
 
     
     /* Search for parent */
@@ -178,6 +205,16 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
         {
             merror(DEC_PLUGIN_ERR, ARGV0);
             return(0);
+        }
+
+        /* Updating global decoders pointers */
+        if(pi->program_name)
+        {
+            osdecodernode_forpname = osdecodernode;
+        }
+        else
+        {
+            osdecodernode_nopname = osdecodernode;
         }
     }
     return(1);

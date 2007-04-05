@@ -64,14 +64,14 @@ int addDecoder2list(char *name)
 
 
 /* Set decoder ids */
-int os_setdecoderids()
+int os_setdecoderids(char *p_name)
 {
     OSDecoderNode *node;
     OSDecoderNode *child_node;
     OSDecoderInfo *nnode;
 
 
-    node = OS_GetFirstOSDecoder();
+    node = OS_GetFirstOSDecoder(p_name);
 
 
     /* Return if no node...
@@ -815,13 +815,18 @@ int ReadDecodeXML(char *file)
     OS_ClearXML(&xml);
 
 
-    /* Setting ids */
-    if(!os_setdecoderids())
+    /* Setting ids - for our two lists */
+    if(!os_setdecoderids(NULL))
     {
         merror(DECODER_ERROR, ARGV0);
         return(0);
     }
-    
+    if(!os_setdecoderids(ARGV0))
+    {
+        merror(DECODER_ERROR, ARGV0);
+        return(0);
+    }
+
 
     /* Done over here */
     return(1);

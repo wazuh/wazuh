@@ -1,4 +1,4 @@
-/*   $OSSEC, response/log.h, v0.2, 2005/02/08, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.

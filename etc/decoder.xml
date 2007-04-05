@@ -955,6 +955,9 @@
   -->
 <decoder name="apache-errorlog">
   <program_name>^httpd</program_name>
+</decoder>  
+
+<decoder name="apache-errorlog">
   <prematch>^[warn] |^[notice] |^[error] </prematch>
 </decoder>  
 

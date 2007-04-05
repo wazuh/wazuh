@@ -37,7 +37,8 @@ void DecodeEvent(Eventinfo *lf)
     char *cmatch;
     char *regex_prev = NULL;
 
-    node = OS_GetFirstOSDecoder();
+
+    node = OS_GetFirstOSDecoder(lf->program_name);
 
 
     /* Return if no node...
@@ -52,7 +53,7 @@ void DecodeEvent(Eventinfo *lf)
 
 
         /* First checking program name */
-        if(nnode->program_name && lf->program_name)
+        if(lf->program_name)
         {
             if(!OSMatch_Execute(lf->program_name, lf->p_name_size, 
                         nnode->program_name))

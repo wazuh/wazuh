@@ -1,4 +1,4 @@
-/*   $OSSEC, decoder.h, v0.2, 2006/01/04, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005,2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -64,7 +64,7 @@ typedef struct _OSDecoderNode
  */
 void OS_CreateOSDecoderList();
 int OS_AddOSDecoder(OSDecoderInfo *pi);
-OSDecoderNode *OS_GetFirstOSDecoder();
+OSDecoderNode *OS_GetFirstOSDecoder(char *pname);
 
 
 #endif
