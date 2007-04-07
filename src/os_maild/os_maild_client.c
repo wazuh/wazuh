@@ -68,10 +68,23 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail)
         subject_host--;
         *subject_host = '\0';
     }
-    snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT, 
+
+    /* We have two subject options - full and normal */
+    if(Mail->subject_full)
+    {
+         snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT_FULL, 
+                                             al_data->location,
+                                             al_data->level,
+                                             al_data->comment);
+    }
+    else
+    {
+        snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT, 
                                              al_data->location,
                                              al_data->level);
+    }
 
+    
     /* Getting highest level for alert */
     if(_g_subject)
     {
@@ -86,6 +99,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail)
         strncpy(_g_subject, mail->subject, SUBJECT_SIZE);
         _g_subject_level = al_data->level;
     }
+
 
 
     /* fixing subject back */

@@ -954,7 +954,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
    
     
     
-
     /* Checking program name */
     if(currently_rule->program_name)
     {
@@ -968,28 +967,17 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     }
 
 
-    /* Checking hostname */
-    if(currently_rule->hostname)
+    /* Checking for the id */
+    if(currently_rule->id)
     {
-        if(!lf->hostname)
+        if(!lf->id)
+        {
             return(NULL);
-            
-        if(!OSMatch_Execute(lf->hostname, 
-                            strlen(lf->hostname),
-                            currently_rule->hostname))
-            return(NULL);
-    }
-
-
-    /* Checking for status */
-    if(currently_rule->status)
-    {
-        if(!lf->status)
-            return(NULL);
-            
-        if(!OSMatch_Execute(lf->status, 
-                            strlen(lf->status),
-                            currently_rule->status))
+        }
+        
+        if(!OSMatch_Execute(lf->id,
+                            strlen(lf->id),
+                            currently_rule->id))
             return(NULL);
     }
     
@@ -1000,6 +988,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         if(!OSMatch_Execute(lf->log,lf->size,currently_rule->match))
             return(NULL);
     }	   	   
+
 
     
     /* Checking if exist any regex for this rule */
@@ -1035,112 +1024,166 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         }
     }
 
-    
-    /* Checking for the id */
-    if(currently_rule->id)
+
+
+    /* Getting tcp/ip packet information */
+    if(currently_rule->alert_opts & DO_PACKETINFO)
     {
-        if(!lf->id)
+        /* Checking for the srcip */
+        if(currently_rule->srcip)
         {
-            return(NULL);
+            if(!lf->srcip)
+            {
+                return(NULL);
+            }
+
+            if(!OS_IPFoundList(lf->srcip, currently_rule->srcip))
+            {
+                return(NULL);
+            }
         }
-        
-        if(!OSMatch_Execute(lf->id,
-                            strlen(lf->id),
-                            currently_rule->id))
-            return(NULL);
-    }
+
+        /* Checking for the dstip */
+        if(currently_rule->dstip)
+        {
+            if(!lf->dstip)
+            {
+                return(NULL);
+            }
+
+            if(!OS_IPFoundList(lf->dstip, currently_rule->dstip))
+            {
+                return(NULL);
+            }
+        }
+
+        if(currently_rule->srcport)
+        {
+            if(!lf->srcport)
+            {
+                return(NULL);
+            }
+            
+            if(!OSMatch_Execute(lf->srcport,
+                                strlen(lf->srcport),
+                                currently_rule->srcport))
+            {
+                return(NULL);
+            }
+        }
+        if(currently_rule->dstport)
+        {
+            if(!lf->dstport)
+            {
+                return(NULL);
+            }
+            
+            if(!OSMatch_Execute(lf->dstport,
+                                strlen(lf->dstport),
+                                currently_rule->dstport))
+            {
+                return(NULL);
+            }
+        }
+    } /* END PACKET_INFO */
     
 
-    
-    /* Checking if exist any user to match */
-    if(currently_rule->user)
+    /* Extra information from event */
+    if(currently_rule->alert_opts & DO_EXTRAINFO)
     {
-        if(lf->dstuser)
+
+        /* Checking if exist any user to match */
+        if(currently_rule->user)
         {
-            if(!OSMatch_Execute(lf->dstuser,
-                                strlen(lf->dstuser),
-                                currently_rule->user))
+            if(lf->dstuser)
+            {
+                if(!OSMatch_Execute(lf->dstuser,
+                            strlen(lf->dstuser),
+                            currently_rule->user))
+                    return(NULL);
+            }
+            else if(lf->user)
+            {
+                if(!OSMatch_Execute(lf->user,
+                            strlen(lf->user),
+                            currently_rule->user))
+                    return(NULL);
+            }
+            else
+            {
+                /* no user set */
+                return(NULL);
+            }
+        }
+
+
+        /* Checking if any rule related to the size exist */
+        if(currently_rule->maxsize)
+        {
+            if(lf->size < currently_rule->maxsize)
                 return(NULL);
         }
-        else if(lf->user)
+
+
+        /* Checking if we are in the right time */
+        if(currently_rule->day_time)
         {
-            if(!OSMatch_Execute(lf->user,
-                                strlen(lf->user),
-                                currently_rule->user))
+            if(!OS_IsonTime(lf->hour, currently_rule->day_time))
+            {
+                return(NULL);
+            }
+        }
+
+
+        /* Checking week day */
+        if(currently_rule->week_day)
+        {
+            if(!OS_IsonDay(__crt_wday, currently_rule->week_day))
+            {
+                return(NULL);
+            }
+        }
+
+
+        /* Getting extra data */
+        if(currently_rule->extra_data)
+        {
+            if(!lf->data)
+                return(NULL);
+
+            if(!OSMatch_Execute(lf->data,
+                        strlen(lf->data),
+                        currently_rule->extra_data))
                 return(NULL);
         }
-        else
+
+
+        /* Checking hostname */
+        if(currently_rule->hostname)
         {
-            /* no user set */
-            return(NULL);
+            if(!lf->hostname)
+                return(NULL);
+
+            if(!OSMatch_Execute(lf->hostname,
+                        strlen(lf->hostname),
+                        currently_rule->hostname))
+                return(NULL);
+        }
+
+
+        /* Checking for status */
+        if(currently_rule->status)
+        {
+            if(!lf->status)
+                return(NULL);
+
+            if(!OSMatch_Execute(lf->status,
+                        strlen(lf->status),
+                        currently_rule->status))
+                return(NULL);
         }
     }
 
-    
-    /* Checking if any rule related to the size exist */
-    if(currently_rule->maxsize)
-    {
-        if(lf->size < currently_rule->maxsize)
-            return(NULL);
-    }
-   
-    /* Checking for the srcip */
-    if(currently_rule->srcip)
-    {
-        if(!lf->srcip)
-        {
-            return(NULL);
-        }
-        
-        if(!OS_IPFoundList(lf->srcip, currently_rule->srcip))
-        {
-            return(NULL);
-        }
-    }
-    
-    /* Checking for the dstip */
-    if(currently_rule->dstip)
-    {
-        if(!lf->dstip)
-        {
-            return(NULL);
-        }
-        
-        if(!OS_IPFoundList(lf->dstip, currently_rule->dstip))
-        {
-            return(NULL);
-        }
-    }
-
-    /* Checking if we are in the right time */
-    if(currently_rule->day_time)
-    {
-        if(!OS_IsonTime(lf->hour, currently_rule->day_time))
-        {
-            return(NULL);
-        }
-    }
-
-    /* Checking week day */
-    if(currently_rule->week_day)
-    {
-        if(!OS_IsonDay(__crt_wday, currently_rule->week_day))
-        {
-            return(NULL);
-        }
-    }
-
-    /* Getting extra data */
-    if(currently_rule->extra_data)
-    {
-        if(!lf->data)
-            return(NULL);
-
-        if(!OSMatch_Execute(lf->data,
-                    strlen(lf->data),
-                    currently_rule->extra_data))
-            return(NULL);
-    }
                                                                     
     /* Checking for th FTS flag */
     if(currently_rule->alert_opts & DO_FTS)
@@ -1187,6 +1230,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             child_node = child_node->next;
         }
     }
+
     
     /* If we are set to no alert, keep going */
     if(currently_rule->alert_opts & NO_ALERT)

@@ -63,51 +63,71 @@ int is_file(char *file_name)
     file_basename = strrchr(file_name, '/');
     if(!file_basename)
     {
-        merror("%s: XYZ: Invalid file name: %s!", ARGV0, file_name);
-    }
-
-
-    /* Dir name and base name are now set */
-    *file_basename = '\0';
-    file_basename++;
-    file_dirname = file_name;
-                                        
-
-    /** chdir test **/
-    if(chdir(file_dirname) == 0)
-    {
-        if(chdir(file_basename) == 0)
-        {
-            ret = 1;
-        }
-        /* Checking errno (if file exists, but it is not
-         * a directory.
-         */
-        else if(errno == ENOTDIR)
-        {
-            ret = 1;
-        }
-
-        /** Trying open dir **/
-        dp = opendir(file_basename);
-        if(dp)
-        {
-            closedir(dp);
-            ret = 1;
-        }
-        else if(errno == ENOTDIR)
-        {
-            ret = 1;
-        }
-
-        /* Returning to the previous directory */
-        chdir(curr_dir);
+        merror("%s: RK: Invalid file name: %s!", ARGV0, file_name);
     }
 
     
-    file_basename--;
-    *file_basename = '/';
+    /* If file_basename == file_name, then the file
+     * only has one slash at the beginning.
+     */
+    if(file_basename != file_name)
+    {
+        /* Dir name and base name are now set */
+        *file_basename = '\0';
+        file_basename++;
+        file_dirname = file_name;
 
+        /** chdir test **/
+        if(chdir(file_dirname) == 0)
+        {
+            if(chdir(file_basename) == 0)
+            {
+                ret = 1;
+            }
+            /* Checking errno (if file exists, but it is not
+             * a directory.
+             */
+            else if(errno == ENOTDIR)
+            {
+                ret = 1;
+            }
+
+            /** Trying open dir **/
+            dp = opendir(file_basename);
+            if(dp)
+            {
+                closedir(dp);
+                ret = 1;
+            }
+            else if(errno == ENOTDIR)
+            {
+                ret = 1;
+            }
+
+            /* Returning to the previous directory */
+            chdir(curr_dir);
+        }
+
+
+        file_basename--;
+        *file_basename = '/';
+
+    }
+    else
+    {
+        if(chdir(file_name) == 0)
+        {
+            ret = 1;
+
+            /* Returning to the previous directory */
+            chdir(curr_dir);
+        }
+        else if(errno == ENOTDIR)
+        {
+            ret = 1;
+        }
+    }
+    
 
     /* Trying other calls */
     if( (lstat(file_name, &statbuf) < 0) &&

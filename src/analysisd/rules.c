@@ -75,7 +75,9 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_check_if_ignored = "check_if_ignored";
     
     char *xml_srcip = "srcip";
+    char *xml_srcport = "srcport";
     char *xml_dstip = "dstip";
+    char *xml_dstport = "dstport";
     char *xml_user = "user";
     char *xml_url = "url";
     char *xml_id = "id";
@@ -95,6 +97,8 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_if_matched_sid = "if_matched_sid";
     
     char *xml_same_source_ip = "same_source_ip";
+    char *xml_same_src_port = "same_src_port";
+    char *xml_same_dst_port = "same_dst_port";
     char *xml_same_user = "same_user";
     char *xml_same_agent = "same_agent";
     char *xml_same_id = "same_id";
@@ -283,8 +287,15 @@ int Rules_OP_ReadRules(char * rulefile)
                  {
                      config_ruleinfo->level *= 100;
                  }
-                     
 
+                 if(config_ruleinfo->maxsize > 0)
+                 {
+                     if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                     {
+                         config_ruleinfo->alert_opts |= DO_EXTRAINFO;
+                     }
+                 }
+                                                 
             } /* end attributes/memory allocation block */
 
 
@@ -305,6 +316,8 @@ int Rules_OP_ReadRules(char * rulefile)
                 char *if_matched_group = NULL;
                 char *user = NULL;
                 char *id = NULL;
+                char *srcport = NULL;
+                char *dstport = NULL;
                 char *status = NULL;
                 char *hostname = NULL;
                 char *extra_data = NULL;
@@ -368,6 +381,9 @@ int Rules_OP_ReadRules(char * rulefile)
                                     rule_opt[k]->content);
                             return(-1);
                         }
+
+                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_week_day)==0)
                     {
@@ -381,7 +397,8 @@ int Rules_OP_ReadRules(char * rulefile)
                                     rule_opt[k]->content);
                             return(-1);
                         }
-
+                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_group)==0)
                     {
@@ -430,6 +447,9 @@ int Rules_OP_ReadRules(char * rulefile)
                             merror(INVALID_IP, ARGV0, rule_opt[k]->content);
                             return(-1);
                         }
+
+                        if(!(config_ruleinfo->alert_opts & DO_PACKETINFO))
+                            config_ruleinfo->alert_opts |= DO_PACKETINFO;
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_dstip)==0)
                     {
@@ -460,12 +480,18 @@ int Rules_OP_ReadRules(char * rulefile)
                             merror(INVALID_IP, ARGV0, rule_opt[k]->content);
                             return(-1);
                         }
+
+                        if(!(config_ruleinfo->alert_opts & DO_PACKETINFO))
+                            config_ruleinfo->alert_opts |= DO_PACKETINFO;
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_user)==0)
                     {
                         user =
                             loadmemory(user,
                                     rule_opt[k]->content);
+
+                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_id)==0)
                     {
@@ -473,23 +499,49 @@ int Rules_OP_ReadRules(char * rulefile)
                             loadmemory(id,
                                     rule_opt[k]->content);
                     }
+                    else if(strcasecmp(rule_opt[k]->element,xml_srcport)==0)
+                    {
+                        srcport =
+                            loadmemory(srcport,
+                                    rule_opt[k]->content);
+                        if(!(config_ruleinfo->alert_opts & DO_PACKETINFO))
+                            config_ruleinfo->alert_opts |= DO_PACKETINFO;
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,xml_dstport)==0)
+                    {
+                        dstport =
+                            loadmemory(dstport,
+                                    rule_opt[k]->content);
+
+                        if(!(config_ruleinfo->alert_opts & DO_PACKETINFO))
+                            config_ruleinfo->alert_opts |= DO_PACKETINFO;
+                    }
                     else if(strcasecmp(rule_opt[k]->element,xml_status)==0)
                     {
                         status =
                             loadmemory(status,
                                     rule_opt[k]->content);
+                        
+                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_hostname)==0)
                     {
                         hostname =
                             loadmemory(hostname,
                                     rule_opt[k]->content);
+                        
+                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_data)==0)
                     {
                         extra_data =
                             loadmemory(extra_data,
                                     rule_opt[k]->content);
+
+                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                        xml_program_name)==0)
@@ -608,6 +660,22 @@ int Rules_OP_ReadRules(char * rulefile)
                         config_ruleinfo->context_opts|= SAME_SRCIP;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
+                                xml_same_src_port)==0)
+                    {
+                        config_ruleinfo->context_opts|= SAME_SRCPORT;
+                        
+                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,
+                                xml_same_dst_port) == 0)
+                    {
+                        config_ruleinfo->context_opts|= SAME_DSTPORT;
+                        
+                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,
                                 xml_notsame_source_ip)==0)
                     {
                         config_ruleinfo->context_opts&= NOT_SAME_SRCIP;
@@ -619,6 +687,9 @@ int Rules_OP_ReadRules(char * rulefile)
                     else if(strcmp(rule_opt[k]->element,xml_different_url)== 0)
                     {
                         config_ruleinfo->context_opts|= DIFFERENT_URL;
+                        
+                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                     else if(strcmp(rule_opt[k]->element, xml_notsame_id) == 0)
                     {
@@ -633,6 +704,9 @@ int Rules_OP_ReadRules(char * rulefile)
                                 xml_same_user)==0)
                     {
                         config_ruleinfo->context_opts|= SAME_USER;
+                        
+                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_notsame_user)==0)
@@ -824,6 +898,34 @@ int Rules_OP_ReadRules(char * rulefile)
                     id = NULL;
                 }
 
+                /* Adding srcport */
+                if(srcport)
+                {
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->srcport);
+                    if(!OSMatch_Compile(srcport, config_ruleinfo->srcport, 0))
+                    {
+                        merror(REGEX_COMPILE, ARGV0, srcport, 
+                                              config_ruleinfo->id->error);
+                        return(-1);
+                    }
+                    free(srcport);
+                    srcport = NULL;
+                }
+
+                /* Adding dstport */
+                if(dstport)
+                {
+                    os_calloc(1, sizeof(OSMatch), config_ruleinfo->dstport);
+                    if(!OSMatch_Compile(dstport, config_ruleinfo->dstport, 0))
+                    {
+                        merror(REGEX_COMPILE, ARGV0, dstport, 
+                                              config_ruleinfo->id->error);
+                        return(-1);
+                    }
+                    free(dstport);
+                    dstport = NULL;
+                }
+
                 /* Adding in status */
                 if(status)
                 {
@@ -999,6 +1101,7 @@ int Rules_OP_ReadRules(char * rulefile)
                 config_ruleinfo->if_group = NULL;
             }
 
+
         } /* while(rule[j]) */
         OS_ClearNode(rule);
         i++;
@@ -1170,7 +1273,9 @@ RuleInfo *zerorulemember(int id, int level,
    
     ruleinfo_pt->user = NULL; 
     ruleinfo_pt->srcip = NULL;
+    ruleinfo_pt->srcport = NULL;
     ruleinfo_pt->dstip = NULL;
+    ruleinfo_pt->dstport = NULL;
     ruleinfo_pt->url = NULL;
     ruleinfo_pt->id = NULL;
     ruleinfo_pt->status = NULL;

@@ -169,11 +169,12 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
     }
 
     
-    /* Search for parent */
+    /* Search for parent on both lists */
     if(pi->parent)
     {
-        OSDecoderNode *tmp_node = osdecodernode;
+        OSDecoderNode *tmp_node = osdecodernode_forpname;
 
+        /* List with p_name */
         while(tmp_node)
         {
             if(strcmp(tmp_node->osdecoder->name, pi->parent) == 0)
@@ -188,6 +189,25 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
             }
             tmp_node = tmp_node->next;
         }
+        
+
+        /* List without p name */
+        tmp_node = osdecodernode_nopname;
+        while(tmp_node)
+        {
+            if(strcmp(tmp_node->osdecoder->name, pi->parent) == 0)
+            {
+                tmp_node->child = _OS_AddOSDecoder(tmp_node->child, pi);
+                if(!tmp_node->child)
+                {
+                    merror(DEC_PLUGIN_ERR, ARGV0);
+                    return(0);
+                }
+                added = 1;
+            }
+            tmp_node = tmp_node->next;
+        }
+
 
         /* OSDecoder was added correctly */
         if(added == 1)

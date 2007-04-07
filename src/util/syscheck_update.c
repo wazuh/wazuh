@@ -118,6 +118,7 @@ int main(int argc, char **argv)
 
         while((entry = readdir(sys_dir)) != NULL)
         {
+            FILE *fp;
             char full_path[OS_MAXSTR +1];
 
             /* Do not even attempt to delete . and .. :) */
@@ -129,7 +130,15 @@ int main(int argc, char **argv)
 
             snprintf(full_path, OS_MAXSTR,"/queue/syscheck/%s",entry->d_name);
             
-            unlink(full_path);
+            fp = fopen(full_path, "w");
+            if(fp)
+            {
+                fclose(fp);
+            }
+            if(entry->d_name[0] == '.')
+            {
+                unlink(full_path);
+            }
         }
 
         closedir(sys_dir);
@@ -168,7 +177,7 @@ int main(int argc, char **argv)
         {
             fclose(fp);
         }
-        unlink(final_dir);
+        /* unlink(final_dir); */
     }
 
     /* external agents */
@@ -187,7 +196,7 @@ int main(int argc, char **argv)
         }
         
         /* Deleting syscheck */
-        delete_syscheck(keys.name[i], keys.ips[i]->ip);
+        delete_syscheck(keys.name[i], keys.ips[i]->ip, 0);
     }
    
     printf("\n** Integrity check database updated.\n\n"); 

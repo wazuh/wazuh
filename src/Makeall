@@ -64,9 +64,9 @@ if [ "X${ARGV}" = "Xall" ]; then
     fi
 
     if [ "X$OS" = "XHP-UX" ]; then
-        echo "EEXTRA=-DHPUX -D_XOPEN_SOURCE_EXTENDED" >> Config.OS
-    fi    
-        
+        echo "EEXTRA=-DHPUX -D_XOPEN_SOURCE_EXTENDED -DHIGHFIRST" >> Config.OS
+    fi
+
     if [ "X$OS" = "XFreeBSD" ]; then
         echo "TEXTRA=-pthread" >> Config.OS
     else

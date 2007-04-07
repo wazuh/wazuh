@@ -25,6 +25,8 @@
 #define SAME_ID         0x004 /* 4   */
 #define SAME_AGENT      0x008 /* 8   */
 #define DIFFERENT_URL   0x010 /* */
+#define SAME_SRCPORT    0x020
+#define SAME_DSTPORT    0x040
 #define NOT_SAME_USER   0xffe /* 0xfff - 0x001  */
 #define NOT_SAME_SRCIP  0xffd /* 0xfff - 0x002  */
 #define NOT_SAME_ID     0xffb /* 0xfff - 0x004  */
@@ -36,7 +38,10 @@
 #define DO_LOGALERT     0x004
 #define NO_ALERT        0x010
 #define DO_OVERWRITE    0x020
-            
+#define DO_PACKETINFO   0x040
+#define DO_EXTRAINFO    0x100
+#define SAME_EXTRAINFO  0x200
+
 
 typedef struct _RuleInfo
 {
@@ -59,10 +64,10 @@ typedef struct _RuleInfo
     
 
     /* Not an option in the rule */
-    u_int8_t alert_opts;
+    u_int16_t alert_opts;
 
     /* Context options */
-    u_int8_t context_opts;
+    u_int16_t context_opts;
 
     /* category */
     u_int8_t category;
@@ -86,6 +91,8 @@ typedef struct _RuleInfo
 
     os_ip **srcip;
     os_ip **dstip;
+    OSMatch *srcport;
+    OSMatch *dstport;
     OSMatch *user;
     OSMatch *url;
     OSMatch *id;

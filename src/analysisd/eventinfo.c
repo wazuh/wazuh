@@ -69,15 +69,6 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
         }
 
 
-        /* Checking for repetitions on user error */
-        if(currently_rule->context_opts & SAME_USER)
-        {
-            if((!lf->user)||(!my_lf->user))
-                continue;
-
-            if(strcmp(lf->user,my_lf->user) != 0)
-                continue;
-        }
 
         /* Checking for same id */
         if(currently_rule->context_opts & SAME_ID)
@@ -99,17 +90,53 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
                 continue;
         }
 
-        /* Checking for different urls */
-        if(currently_rule->context_opts & DIFFERENT_URL)
+
+        /* Grouping of additional data */
+        if(currently_rule->alert_opts & SAME_EXTRAINFO)
         {
-            if((!lf->url)||(!my_lf->url))
+            /* Checking for same source port */
+            if(currently_rule->context_opts & SAME_SRCPORT)
             {
-                continue;
+                if((!lf->srcport)||(!my_lf->srcport))
+                    continue;
+
+                if(strcmp(lf->srcport, my_lf->srcport) != 0)
+                    continue;
             }
 
-            if(strcmp(lf->url, my_lf->url) == 0)
+            /* Checking for same dst port */
+            if(currently_rule->context_opts & SAME_DSTPORT)
             {
-                continue;
+                if((!lf->dstport)||(!my_lf->dstport))
+                    continue;
+
+                if(strcmp(lf->dstport, my_lf->dstport) != 0)
+                    continue;
+            }
+
+            /* Checking for repetitions on user error */
+            if(currently_rule->context_opts & SAME_USER)
+            {
+                if((!lf->user)||(!my_lf->user))
+                    continue;
+
+                if(strcmp(lf->user,my_lf->user) != 0)
+                    continue;
+            }
+
+
+            /* Checking for different urls */
+            if(currently_rule->context_opts & DIFFERENT_URL)
+            {
+                if((!lf->url)||(!my_lf->url))
+                {
+                    continue;
+                }
+
+                if(strcmp(lf->url, my_lf->url) == 0)
+                {
+                    continue;
+                }
             }
         }
 

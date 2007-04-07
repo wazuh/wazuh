@@ -188,22 +188,31 @@ void run_rk_check()
     }
    
     /*** Third check, looking for files on the /dev ***/
+    debug1("%s: DEBUG: Going into check_rc_dev", ARGV0);
     check_rc_dev(basedir);
     
     /*** Fourth check,  scan the whole system looking for additional issues */
+    debug1("%s: DEBUG: Going into check_rc_sys", ARGV0);
     check_rc_sys(basedir);
     
     /*** Process checking ***/
+    debug1("%s: DEBUG: Going into check_rc_pids", ARGV0); 
     check_rc_pids();         
 
     /*** Check all the ports ***/
+    debug1("%s: DEBUG: Going into check_rc_ports", ARGV0); 
     check_rc_ports();    
 
     /*** Check open ports ***/
+    debug1("%s: DEBUG: Going into check_open_ports", ARGV0); 
     check_open_ports();
         
     /*** Check interfaces ***/
-    check_rc_if();    
+    debug1("%s: DEBUG: Going into check_rc_if", ARGV0); 
+    check_rc_if();
+    
+    
+    debug1("%s: DEBUG: Completed with all checks.", ARGV0);    
    
    
     /* Cleaning the global memory */

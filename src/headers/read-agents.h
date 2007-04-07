@@ -16,7 +16,7 @@
 
 
 /* Delete syscheck db */
-int delete_syscheck(char *sk_name, char *sk_ip);
+int delete_syscheck(char *sk_name, char *sk_ip, int full_delete);
 
 /* Delete agent information */
 int delete_agentinfo(char *name);

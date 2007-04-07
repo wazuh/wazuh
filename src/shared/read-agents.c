@@ -35,7 +35,7 @@ void free_agents(char **agent_list)
 
 
 /* Delete syscheck db */ 
-int delete_syscheck(char *sk_name, char *sk_ip)
+int delete_syscheck(char *sk_name, char *sk_ip, int full_delete)
 {
     FILE *fp;
     char tmp_file[513];
@@ -51,7 +51,9 @@ int delete_syscheck(char *sk_name, char *sk_ip)
     fp = fopen(tmp_file, "w");
     if(fp)
         fclose(fp);
-    unlink(tmp_file);
+
+    if(full_delete)    
+        unlink(tmp_file);
 
 
     /* Deleting cpt files */
@@ -75,7 +77,8 @@ int delete_syscheck(char *sk_name, char *sk_ip)
     fp = fopen(tmp_file, "w");
     if(fp)
         fclose(fp);
-    unlink(tmp_file);
+    if(full_delete)
+        unlink(tmp_file);
 
 
     /* Deleting cpt files */
@@ -120,7 +123,7 @@ int delete_agentinfo(char *name)
 
 
     /* Deleting syscheck */
-    delete_syscheck(sk_name, sk_ip);
+    delete_syscheck(sk_name, sk_ip, 1);
     
     return(1);
 }
