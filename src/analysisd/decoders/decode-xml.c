@@ -474,6 +474,8 @@ int ReadDecodeXML(char *file)
                     pi->type = WINDOWS;        
                 else if(strcmp(elements[j]->content, "host-information") == 0)
                     pi->type = HOST_INFO;
+                else if(strcmp(elements[j]->content, "ossec") == 0)
+                    pi->type = OSSEC_RL;    
                 else
                 {
                     merror("%s: Invalid decoder type '%s'.",
@@ -813,6 +815,11 @@ int ReadDecodeXML(char *file)
 
     
     OS_ClearXML(&xml);
+
+    
+    /* Adding rootcheck decoder to list */
+    addDecoder2list(ROOTCHECK_MOD);
+    addDecoder2list("syscheck");
 
 
     /* Setting ids - for our two lists */

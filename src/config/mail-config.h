@@ -31,9 +31,14 @@ typedef struct _MailConfig
     /* Granular e-mail options */
     int *gran_level;
     int *gran_set;
+    int *gran_format;
     char **gran_to;
     OSMatch **gran_location;
 }MailConfig;
 
+
+/** Email message formats **/
+#define FULL_FORMAT     2
+#define SMS_FORMAT      3
 
 #endif

@@ -165,9 +165,9 @@ RuleNode *OS_GetFirstRule();
 #define STATS_MODULE        11
 #define FTS_MODULE          12
 #define SYSCHECK_MODULE     13   
-#define ROOTCHECK_MODULE    14   
 #define HOSTINFO_MODULE     15
 
 
+#define ROOTCHECK_MOD   "rootcheck"
 
 #endif /* _OS_RULES */

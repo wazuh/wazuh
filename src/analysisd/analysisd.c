@@ -81,7 +81,7 @@ int IGnore(Eventinfo *lf);
 /* For decoders */
 void DecodeEvent(Eventinfo *lf);
 void DecodeSyscheck(Eventinfo *lf);
-void DecodeRootcheck(Eventinfo *lf);
+int DecodeRootcheck(Eventinfo *lf);
 void DecodeHostinfo(Eventinfo *lf);
  
 
@@ -667,10 +667,11 @@ void OS_ReadMSG(int m_queue)
             /* Rootcheck decoding */
             else if(msg[0] == ROOTCHECK_MQ)
             {
-                DecodeRootcheck(lf);
-
-                /* We don't process rootcheck events further */
-                goto CLMEM;
+                if(!DecodeRootcheck(lf))
+                {
+                    /* We don't process rootcheck events further */
+                    goto CLMEM;
+                }
             }
 
             /* Host information special decoder */

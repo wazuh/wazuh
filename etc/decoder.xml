@@ -1204,7 +1204,7 @@
   -->
 <decoder name="windows-snare">
   <type>windows</type>
-  <prematch>^MSWinEventLog\t\d\t\w+\t\d+\t\w\w\w \w\w\w \d\d \d\d</prematch>
+  <prematch>^MSWinEventLog\t\d\t\.+\t\d+\t\w\w\w \w\w\w \d\d \d\d</prematch>
   <regex offset="after_prematch">^:\d\d:\d\d \d\d\d\d\t(\d+)\t(\.+)</regex>
   <regex>\t(\.+)\t\.+\t(\.+)\t(\.+)\t</regex>
   <order>id, extra_data, user, status, system_name</order>
@@ -1234,6 +1234,7 @@
   -->
 <decoder name="ossec">
   <prematch>^ossec: </prematch>
+  <type>ossec</type>
 </decoder>  
 
 <decoder name="ossec-agent">

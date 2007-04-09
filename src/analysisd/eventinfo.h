@@ -89,6 +89,7 @@ typedef struct _EventNode
 #define SQUID       8   /* Squid logs */
 #define WINDOWS     9   /* Windows logs */
 #define HOST_INFO   10  /* Host information logs (from nmap or similar) */
+#define OSSEC_RL    11  /* Ossec rules */
 
 
 /* FTS allowed values */

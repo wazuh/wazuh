@@ -21,7 +21,7 @@
  */
 MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail)
 {
-    int i = 0, body_size = OS_MAXSTR -1, log_size;
+    int i = 0, body_size = OS_MAXSTR -3, log_size;
     char logs[OS_MAXSTR + 1];
     char *subject_host;
     
@@ -45,6 +45,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail)
     /* Generating the logs */
     logs[0] = '\0';
     logs[OS_MAXSTR] = '\0';
+    
     while(al_data->log[i])
     {
         log_size = strlen(al_data->log[i]) + 4;
@@ -60,6 +61,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail)
         body_size -= log_size;
         i++;
     }
+
 
     /* Subject */
     subject_host = strchr(al_data->location, '>');
@@ -107,6 +109,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail)
     {
         *subject_host = '-';
     }
+
     
     /* Body */
     snprintf(mail->body, BODY_SIZE -1, MAIL_BODY,
@@ -133,7 +136,6 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail)
                 {
                     Mail->gran_set[i] = 1;
                 }
-
             }
             else if(Mail->gran_location[i])
             {
@@ -154,6 +156,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail)
     
     /* Clearing the memory */
     FreeAlertData(al_data);
+
     
     return(mail);
 

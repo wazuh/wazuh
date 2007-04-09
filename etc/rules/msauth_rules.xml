@@ -186,7 +186,14 @@
     <description>Group account added/changed/deleted.</description>
     <group>account_changed,</group>
   </rule>
-  
+
+  <rule id="18129" level="8">
+    <if_sid>18103</if_sid>
+    <id>^13570</id>
+    <description>Windows file system full.</description>
+    <group>low_diskspace,</group>
+  </rule>
+
   <rule id="18151" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>18108</if_matched_sid>
     <same_user />

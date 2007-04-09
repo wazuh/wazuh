@@ -17,9 +17,11 @@
 #include "os_regex/os_regex.h"
 #include "eventinfo.h"
 #include "alerts/alerts.h"
+#include "decoder.h"
 
 
 #define ROOTCHECK_DIR    "/queue/rootcheck"
+
 
 /** Global variables **/
 char _rk_buf[1025];
@@ -30,8 +32,8 @@ FILE *rk_agent_fps[MAX_AGENTS];
 
 int rk_err;
 
-/* Rootcheck rule */
-RuleInfo *rootcheck_rule;
+/* Rootcheck decoder */
+OSDecoderInfo *rootcheck_dec = NULL;
 
 
 /* SyscheckInit
@@ -52,21 +54,13 @@ void RootcheckInit()
     /* clearing the buffer */
     memset(_rk_buf, '\0', 1025);
 
-    /* Creating rule for rootcheck alerts */
-    rootcheck_rule = zerorulemember(
-                             ROOTCHECK_MODULE, /* id */ 
-                             Config.rootcheck, /* level */
-                             0,0,0,0,0,0);
 
-    if(!rootcheck_rule)
-    {
-        ErrorExit(MEM_ERROR, ARGV0);
-    }
- 
- 
-    /* Comment */
-    rootcheck_rule->group = "rootcheck,";
-    rootcheck_rule->comment = "Rootkit detection engine message";
+    /* Zeroing decoder */
+    os_calloc(1, sizeof(OSDecoderInfo), rootcheck_dec);
+    rootcheck_dec->id = getDecoderfromlist(ROOTCHECK_MOD);
+    rootcheck_dec->type = OSSEC_RL;
+    rootcheck_dec->name = ROOTCHECK_MOD;
+    rootcheck_dec->fts = 0;
     
     return;
 }
@@ -137,10 +131,11 @@ FILE *RK_File(char *agent, int *agent_id)
 }
 
 
-/* RK_Search
- * Search the RK DB for any entry related.
+/* Special decoder for rootcheck
+ * Not using the default rendering tools for simplicity
+ * and to be less resource intensive
  */
-void RK_Search(Eventinfo *lf)
+int DecodeRootcheck(Eventinfo *lf)
 {
     int agent_id;
 
@@ -155,7 +150,7 @@ void RK_Search(Eventinfo *lf)
         merror("%s: Error handling rootcheck database",ARGV0);
         rk_err++; /* Increment rk error */
 
-        return;
+        return(0);
     }
 
     /* Reads the file and search for a possible
@@ -178,37 +173,19 @@ void RK_Search(Eventinfo *lf)
         /* Cannot use strncmp to avoid errors with crafted files */    
         if(strcmp(lf->log, _rk_buf) == 0)
         {
-            return;
+            return(0);
         }
     }                
 
-    lf->generated_rule = rootcheck_rule;
-    
     
     /* Adding the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
     fprintf(fp,"%s\n",lf->log);
 
-    OS_Log(lf);
 
-
-    /* Removing pointer to rootcheck_rule */
-    lf->generated_rule = NULL;
-
-    return; 
+    lf->decoder_info = rootcheck_dec;
+    return(1); 
 }
 
-
-/* Special decoder for rootcheck
- * Not using the default rendering tools for simplicity
- * and to be less resource intensive
- */
-void DecodeRootcheck(Eventinfo *lf)
-{
-    if(rootcheck_rule->alert_opts & DO_LOGALERT)
-        RK_Search(lf);
-   
-    return;
-}
 
 /* EOF */

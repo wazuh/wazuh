@@ -47,8 +47,9 @@
   </rule>
   
   <rule id="1007" level="7">
-    <match>file system full</match>
+    <match>file system full|No space left on device</match>
     <description>File system full.</description>
+    <group>low_diskspace,</group>
   </rule>
 </group> <!-- SYSLOG,ERRORS -->
 

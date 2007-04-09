@@ -32,7 +32,7 @@ typedef struct
     u_int8_t  type;
     u_int8_t  use_own_name;
 
-    u_int16_t  id;
+    u_int16_t id;
     u_int16_t regex_offset;
     u_int16_t prematch_offset;
     
@@ -65,6 +65,7 @@ typedef struct _OSDecoderNode
 void OS_CreateOSDecoderList();
 int OS_AddOSDecoder(OSDecoderInfo *pi);
 OSDecoderNode *OS_GetFirstOSDecoder(char *pname);
+int getDecoderfromlist(char *name);
 
 
 #endif

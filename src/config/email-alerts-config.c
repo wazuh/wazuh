@@ -24,6 +24,7 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
 
     /* XML definitions */
     char *xml_email_to = "email_to";
+    char *xml_email_format = "sms";
     char *xml_email_level = "level";
     char *xml_email_location = "event_location";
 
@@ -57,6 +58,8 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
                    sizeof(int)*(granto_size +1), Mail->gran_level);
         os_realloc(Mail->gran_set, 
                    sizeof(int)*(granto_size +1), Mail->gran_set);
+        os_realloc(Mail->gran_format, 
+                   sizeof(int)*(granto_size +1), Mail->gran_format);
         os_realloc(Mail->gran_location, 
                    sizeof(OSMatch)*(granto_size +1), Mail->gran_location);
         
@@ -66,6 +69,8 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
         Mail->gran_location[granto_size] = NULL;
         Mail->gran_level[granto_size -1] = 0;
         Mail->gran_level[granto_size] = 0;
+        Mail->gran_format[granto_size -1] = FULL_FORMAT; 
+        Mail->gran_format[granto_size] = FULL_FORMAT; 
         Mail->gran_set[granto_size -1] = 0;
         Mail->gran_set[granto_size] = 0;
     }
@@ -98,6 +103,22 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
         {
             os_strdup(node[i]->content, Mail->gran_to[granto_size -1]);
         }
+        else if(strcmp(node[i]->element, xml_email_format) == 0)
+        {
+            if(strcmp(node[i]->content, "sms") == 0)
+            {
+                Mail->gran_format[granto_size] = SMS_FORMAT;
+            }
+            else if(strcmp(node[i]->content, "default") == 0)
+            {
+                Mail->gran_format[granto_size] = FULL_FORMAT;
+            }
+            else
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
         else if(strcmp(node[i]->element, xml_email_location) == 0)
         {
             os_calloc(1, sizeof(OSMatch),Mail->gran_location[granto_size -1]);
@@ -125,6 +146,7 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
            merror(XML_INV_GRAN_MAIL, ARGV0);
            return(OS_INVALID);
        }
+       
     return(0);
 }
 

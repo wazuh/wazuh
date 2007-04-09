@@ -7,6 +7,7 @@
 
 <group name="ossec,">
   <rule id="500" level="0">
+    <category>ossec</category>
     <decoded_as>ossec</decoded_as>
     <description>Grouping of ossec rules.</description>
   </rule>
@@ -40,4 +41,17 @@
     <description>Ossec agent disconnected.</description>
   </rule>
 
+  <rule id="510" level="7">
+    <if_sid>500</if_sid>
+    <decoded_as>rootcheck</decoded_as>
+    <description>Host-based anomaly detection event (rootcheck).</description>
+    <group>rootcheck,</group>
+  </rule>
+
+  <rule id="520" level="7">
+    <if_sid>500</if_sid>
+    <decoded_as>syscheck</decoded_as>
+    <description>Host-based anomaly detection event (rootcheck).</description>
+    <group>syscheck,</group>
+  </rule>
 </group> <!-- OSSEC -->

@@ -50,5 +50,12 @@
   </rule>
 </group>            
 
+<group name="ossec">
+  <rule id="07" level="0" noalert="1">
+    <category>ossec</category>
+    <description>Generic template for all ossec rules.</description>
+  </rule>
+</group>
+
 
 <!-- EOF -->

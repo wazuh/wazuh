@@ -171,12 +171,13 @@ int main(int argc, char **argv)
 void OS_Run(MailConfig *mail)
 {
     MailMsg *msg;
+    MailMsg *msg_sms;
 
     time_t tm;     
     struct tm *p;       
 
     int i = 0;
-    int mailsent = 0;
+    int mailtosend = 0;
     int childcount = 0;
     int today = 0;		        
     int thishour = 0;
@@ -216,6 +217,34 @@ void OS_Run(MailConfig *mail)
         tm = time(NULL);
         p = localtime(&tm);
 
+        
+        /* SMS messages are sent without delay */
+        if(msg_sms)
+        {
+            pid_t pid;
+            
+            pid = fork();
+            
+            if(pid < 0)
+            {
+                merror(FORK_ERROR, ARGV0);
+                continue;
+            }
+            else if (pid == 0)
+            {
+                if(OS_Sendmail(mail, p, msg_sms) < 0)
+                    merror(SNDMAIL_ERROR, ARGV0, mail->smtpserver);
+
+                exit(0);
+            }
+
+            /* Freeing sms structure */
+            FreeMail(msg_sms);
+
+            /* Increasing child count */
+            childcount++;
+        }
+        
 
         /* If mail_timeout == NEXTMAIL_TIMEOUT, we will try to get
          * more messages, before sending anything
@@ -225,9 +254,10 @@ void OS_Run(MailConfig *mail)
             /* getting more messages */
         }
         
+        
         /* Hour changed. Send all supressed mails */ 
-        else if(((mailsent < mail->maxperhour) && (mailsent != 0))||
-                ((p->tm_hour != thishour)&&(childcount < MAXCHILDPROCESS)) )
+        else if(((mailtosend < mail->maxperhour) && (mailtosend != 0))||
+                ((p->tm_hour != thishour) && (childcount < MAXCHILDPROCESS)))
         {
             MailNode *mailmsg;
             pid_t pid;
@@ -248,7 +278,7 @@ void OS_Run(MailConfig *mail)
             }
             else if (pid == 0)
             {
-                if(OS_Sendmail(mail, p) < 0)
+                if(OS_Sendmail(mail, p, NULL) < 0)
                     merror(SNDMAIL_ERROR,ARGV0,mail->smtpserver);
                 
                 exit(0);    
@@ -291,12 +321,13 @@ void OS_Run(MailConfig *mail)
             {
                 thishour = p->tm_hour;    
 
-                mailsent = 0;
+                mailtosend = 0;
             }
         }
         
+        
         /* Receive message from queue */
-        if((msg = OS_RecvMailQ(fileq, p, mail)) != NULL)
+        if((msg = OS_RecvMailQ(fileq, p, mail, &msg_sms)) != NULL)
         {
             OS_AddMailtoList(msg);
             
@@ -309,13 +340,13 @@ void OS_Run(MailConfig *mail)
             else
             {
                 /* Send message by itself */
-                mailsent++;
+                mailtosend++;
             }
         }
         else
         {
             if(mail_timeout == NEXTMAIL_TIMEOUT)
-                mailsent++;
+                mailtosend++;
             
             mail_timeout = DEFAULT_TIMEOUT; /* Default timeout */
         }

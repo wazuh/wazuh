@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -12,23 +12,17 @@
 
 /* Basic e-mailing operations */
 
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
 
+#include "shared.h"
 #include "maild.h"
 #include "mail_list.h"
 
-#include "shared.h"
-
-#include "os_net/os_net.h"
-#include "os_regex/os_regex.h"
 
 /* Return codes (from SMTP server) */
 #define VALIDBANNER		"220"
 #define VALIDMAIL		"250"
 #define VALIDDATA		"354"
+
 
 /* Default values use to connect */
 #define SMTP_DEFAULT_PORT	25
@@ -52,31 +46,43 @@
 #define DATA_ERROR	    "os_sendmail(1706): DATA not accepted by server"
 #define END_DATA_ERROR	"os_sendmail(1707): End of DATA not accepted by server"
 
+
 #define MAIL_DEBUG_FLAG     0
 #define MAIL_DEBUG(x,y,z) if(MAIL_DEBUG_FLAG) merror(x,y,z)
 
 
+
 /* OS_Sendmail v0.1: 2005/03/18
  */
-int OS_Sendmail(MailConfig *mail, struct tm *p)
+int OS_Sendmail(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 {
     int socket,i=0;
     char *msg;
     char snd_msg[128];
 
     MailNode *mailmsg;
-   
-    mailmsg = OS_PopLastMail();
+
     
-    if(mailmsg == NULL)
+    /* If there is no sms message, we attempt to get from the
+     * email list.
+     */
+    if(!sms_msg)
     {
-        merror("%s: No email to be sent. Inconsistent state.",ARGV0);
+        mailmsg = OS_PopLastMail();
+
+        if(mailmsg == NULL)
+        {
+            merror("%s: No email to be sent. Inconsistent state.",ARGV0);
+        }
     }
-     
+    
+
     /* Connecting to the smtp server */	
     socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver);
     if(socket < 0)
+    {
         return(socket);
+    }
 
 
     /* Receiving the banner */
@@ -91,6 +97,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     }
     MAIL_DEBUG("DEBUG: Received banner: '%s' %s", msg, "");
     free(msg);
+
 
 
     /* Sending HELO message */
@@ -134,19 +141,19 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
             return(OS_INVALID);
         }
     }
-    
+
     MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", HELOMSG, msg);
     free(msg);	
 
 
     /* Building "Mail from" msg */
     memset(snd_msg,'\0',128);
-    snprintf(snd_msg,127,MAILFROM, mail->from);
-    OS_SendTCP(socket,snd_msg);
+    snprintf(snd_msg,127, MAILFROM, mail->from);
+    OS_SendTCP(socket, snd_msg);
     msg = OS_RecvTCP(socket, OS_SIZE_1024);
     if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
     {
-        merror("%s:%s",FROM_ERROR,msg);
+        merror(FROM_ERROR);
         if(msg)
             free(msg);
         close(socket);
@@ -217,7 +224,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         }
     }
 
-    
+
     /* Sending the "DATA" msg */
     OS_SendTCP(socket,DATAMSG);
     msg = OS_RecvTCP(socket, OS_SIZE_1024);
@@ -235,11 +242,11 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     /* Building "From" and "To" in the e-mail header */
     memset(snd_msg,'\0',128);
-    snprintf(snd_msg,127,TO,mail->to[0]);
+    snprintf(snd_msg,127, TO, mail->to[0]);
     OS_SendTCP(socket, snd_msg);
 
     memset(snd_msg,'\0',128);
-    snprintf(snd_msg,127,FROM,mail->from);
+    snprintf(snd_msg,127, FROM, mail->from);
     OS_SendTCP(socket, snd_msg);
 
 
@@ -248,9 +255,10 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     strftime(snd_msg, 127, "Date: %a, %d %b %Y %T %Z\r\n",p);
     OS_SendTCP(socket,snd_msg);
 
-    
+
     /* Sending subject */
     memset(snd_msg,'\0',128);
+
 
     /* Checking if global subject is available */
     if((_g_subject_level != 0) && (_g_subject[0] != '\0'))
@@ -274,11 +282,11 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     /* Sending multiple emails together if we have to */
     do
     {
-        OS_SendTCP(socket,mailmsg->mail->body);
+        OS_SendTCP(socket, mailmsg->mail->body);
         mailmsg = OS_PopLastMail();
     }while(mailmsg);
-    
-    
+
+
     /* Sending end of data \r\n.\r\n */
     OS_SendTCP(socket,ENDDATA);	
     msg = OS_RecvTCP(socket, OS_SIZE_1024);
@@ -294,17 +302,20 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     if(msg)
         free(msg);
 
+
     /* quitting and closing socket */
     OS_SendTCP(socket,QUITMSG);
     msg = OS_RecvTCP(socket, OS_SIZE_1024);
-    
+
     if(msg)
         free(msg);
-    
+
     memset(snd_msg,'\0',128);	
+
 
     /* Returning 0 (sucess) */
     close(socket);
+
     return(0);
 }
 /* EOF */

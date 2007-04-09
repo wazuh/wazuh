@@ -590,6 +590,10 @@ int Rules_OP_ReadRules(char * rulefile)
                         {
                             config_ruleinfo->category = WINDOWS;
                         }
+                        else if(strcmp(rule_opt[k]->content,"ossec") == 0)
+                        {
+                            config_ruleinfo->category = OSSEC_RL;
+                        }
                         else
                         {
                             merror(INVALID_CAT, ARGV0, rule_opt[k]->content);
