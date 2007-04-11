@@ -47,6 +47,10 @@ void FreeAlertData(alert_data *al_data)
     {
         free(al_data->comment);
     }
+    if(al_data->group)
+    {
+        free(al_data->group);
+    }
     if(al_data->srcip)
     {
         free(al_data->srcip);
@@ -81,6 +85,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *location = NULL;
     char *srcip = NULL;
     char *user = NULL;
+    char *group = NULL;
     char **log = NULL;
     int level, rule;
     
@@ -103,10 +108,12 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 al_data->rule = rule;
                 al_data->location = location;
                 al_data->comment = comment;
+                al_data->group = group;
                 al_data->log = log;
                 al_data->srcip = srcip;
                 al_data->user = user;
                 al_data->date = date;
+               
                 return(al_data);
             }
             _r = 0;
@@ -131,6 +138,16 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 {
                     continue;
                 }
+
+                p = strchr(p, '-');
+                if(p)
+                {
+                    p++;
+                    os_strdup(p, group);
+
+                    /* Cleaning new line from group */
+                    os_clearnl(group, p);
+                }
             }
 
             /* Searching for active-response flag */
@@ -150,28 +167,27 @@ alert_data *GetAlertData(int flag, FILE *fp)
             os_clearnl(str, p);
              
             p = strchr(str, ':');
+            if(p)
             {
+                p = strchr(p, ' ');
                 if(p)
                 {
-                    p = strchr(p, ' ');
-                    if(p)
-                    {
-                        *p = '\0';
-                        p++;
-                    }
+                    *p = '\0';
+                    p++;
+                }
+                else
+                {
+                    /* If p is null it is because strchr failed */
+                    merror("ZZZ: 1() Merror date or location not NULL");
+                    _r = 0;
+                    goto l_error;
                 }
             }
 
-            /* If p is null it is because strchr failed */
-            if(!p)
-            {
-                _r = 0;
-                continue;
-            }
 
             /* If not, str is date and p is the location */
             if(date || location)
-                merror("Merror date or location not NULL");
+                merror("ZZZ Merror date or location not NULL");
             
             os_strdup(str, date);
             os_strdup(p, location);    
@@ -282,6 +298,11 @@ alert_data *GetAlertData(int flag, FILE *fp)
         {
             free(user);
             user = NULL;
+        }
+        if(group)
+        {
+            free(group);
+            group = NULL;
         }
         while(log_size > 0)
         {

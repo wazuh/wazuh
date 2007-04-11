@@ -67,6 +67,22 @@ MailNode *OS_PopLastMail()
     return(oldlast);    
 }
 
+
+void FreeMailMsg(MailMsg *ml)
+{
+    if(ml == NULL)
+        return;
+    
+    if(ml->subject)
+        free(ml->subject);
+    
+    if(ml->body)
+        free(ml->body);
+        
+    free(ml);            
+}
+
+
 /* Free mail node */
 void FreeMail(MailNode *ml)
 {
@@ -78,9 +94,8 @@ void FreeMail(MailNode *ml)
     if(ml->mail->body)
         free(ml->mail->body);
 
-        
+    free(ml->mail);    
     free(ml);
-
 }
 
 

@@ -19,19 +19,21 @@
  * Receive a Message on the Mail queue
  * v0,2: Using the new file-queue.
  */
-MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail)
+MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, 
+                      MailConfig *Mail, MailMsg **msg_sms)
 {
-    int i = 0, body_size = OS_MAXSTR -3, log_size;
+    int i = 0, body_size = OS_MAXSTR -3, log_size, sms_set = 0;
     char logs[OS_MAXSTR + 1];
     char *subject_host;
     
     MailMsg *mail;
     alert_data *al_data;
 
+    Mail->priority = 0;
+
 
     /* Get message if available */
     al_data = Read_FileMon(fileq, p, mail_timeout);
-
     if(!al_data)
         return(NULL);
 
@@ -127,31 +129,132 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail)
         i = 0;
         while(Mail->gran_to[i] != NULL)
         {
-            if(Mail->gran_location[i] && Mail->gran_level[i])
+            int gr_set = 0;
+            
+            /* Looking if location is set */
+            if(Mail->gran_location[i])
             {
-                if(OSMatch_Execute(al_data->location, 
+                if(OSMatch_Execute(al_data->location,
                                    strlen(al_data->location),
-                                   Mail->gran_location[i]) &&
-                   (al_data->level >= Mail->gran_level[i]))
+                                   Mail->gran_location[i]))
                 {
-                    Mail->gran_set[i] = 1;
+                    gr_set = 1;
+                }
+                else
+                {
+                    i++;
+                    continue;
                 }
             }
-            else if(Mail->gran_location[i])
+            
+            /* Looking for the level */
+            if(Mail->gran_level[i])
             {
-                if(OSMatch_Execute(al_data->location, strlen(al_data->location),
-                            Mail->gran_location[i]))
+                if(al_data->level >= Mail->gran_level[i])
                 {
-                    Mail->gran_set[i] = 1;
+                    gr_set = 1;
+                }
+                else
+                {
+                    i++;
+                    continue;
                 }
             }
-            else if(al_data->level >= Mail->gran_level[i])
+
+            /* Options */
+            if(Mail->gran_format[i] == FORWARD_NOW)
             {
-                Mail->gran_set[i] = 1;
+                Mail->priority = 1;
+            }
+
+            /* Looking for rule id */
+            if(Mail->gran_id[i])
+            {
+                int id_i = 0;
+                while(Mail->gran_id[i][id_i] != 0)
+                {
+                    if(Mail->gran_id[i][id_i] == al_data->rule)
+                    {
+                        break;
+                    }
+                    id_i++;
+                }
+
+                /* If we found, id is going to be a valid rule */
+                if(Mail->gran_id[i][id_i])
+                {
+                    gr_set = 1;
+                }
+                else
+                {
+                    i++;
+                    continue;
+                }
+            }
+            
+
+            /* Looking for the group */
+            if(Mail->gran_group[i])
+            {
+                if(OSMatch_Execute(al_data->group,
+                                   strlen(al_data->group),
+                                   Mail->gran_group[i]))
+                {
+                    gr_set = 1;
+                }
+                else
+                {
+                    i++;
+                    continue;
+                }
+            }
+
+
+            /* If we got in here, it is because everything
+             * matched. Set this e-mail to be used.
+             */
+            if(gr_set)
+            {
+                if(Mail->gran_format[i] == SMS_FORMAT)
+                {
+                    Mail->gran_set[i] = SMS_FORMAT;
+
+                    /* Setting the SMS flag */
+                    sms_set = 1;
+                }
+                else
+                {
+                    Mail->gran_set[i] = FULL_FORMAT;
+                }
             }
             i++;
         }
     }
+    
+    
+    /* If sms is set, create the sms output */
+    if(sms_set)
+    {
+        MailMsg *msg_sms_tmp;
+        
+        /* Allocate memory for sms */
+        os_calloc(1,sizeof(MailMsg), msg_sms_tmp);
+        os_calloc(BODY_SIZE, sizeof(char), msg_sms_tmp->body);
+        os_calloc(SUBJECT_SIZE, sizeof(char), msg_sms_tmp->subject);
+
+        snprintf(msg_sms_tmp->subject, SUBJECT_SIZE -1, SMS_SUBJECT,
+                                      al_data->level,
+                                      al_data->rule,
+                                      al_data->comment);
+
+
+        strncpy(msg_sms_tmp->body, logs, 128);
+        msg_sms_tmp->body[127] = '\0';
+        
+        /* Assigning msg_sms */
+        *msg_sms = msg_sms_tmp;
+    }
+    
     
     
     /* Clearing the memory */

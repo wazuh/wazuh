@@ -101,7 +101,8 @@
 
   <rule id="18114" level="8">
     <if_sid>18104</if_sid>
-    <id>^631|^632|^633|^634|^635|^636|^637|^638|^639|^641|^664|^668</id>
+    <id>^631|^632|^633|^634|^635|^636|^637|^638|^639|^641|^664|^659|</id>
+    <id>^660|^668</id>
     <description>Group account changed.</description>
     <group>adduser,</group>
   </rule>

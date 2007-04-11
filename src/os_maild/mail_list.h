@@ -40,4 +40,7 @@ void OS_CreateMailList(int maxsize);
 /* Free an email node */
 void FreeMail(MailNode *ml);
 
+/* Free email msg */
+void FreeMailMsg(MailMsg *ml);
+
 #endif

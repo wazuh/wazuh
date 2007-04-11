@@ -28,11 +28,15 @@ int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
     Mail->from = NULL;
     Mail->smtpserver = NULL;
     Mail->mn = 0;
+    Mail->priority = 0;
     Mail->maxperhour = 12;
     Mail->gran_to = NULL;
+    Mail->gran_id = NULL;
     Mail->gran_level = NULL;
     Mail->gran_location = NULL;
+    Mail->gran_group = NULL;
     Mail->gran_set = NULL;
+    Mail->gran_format = NULL;
     Mail->groupping = 1;
     Mail->strict_checking = 0;
 

@@ -24,9 +24,12 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
 
     /* XML definitions */
     char *xml_email_to = "email_to";
-    char *xml_email_format = "sms";
+    char *xml_email_format = "format";
     char *xml_email_level = "level";
+    char *xml_email_id = "rule_id";
+    char *xml_email_group = "group";
     char *xml_email_location = "event_location";
+    char *xml_email_donotdelay = "do_not_delay";
 
     MailConfig *Mail;
      
@@ -54,6 +57,8 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
     {
         os_realloc(Mail->gran_to, 
                    sizeof(char *)*(granto_size +1), Mail->gran_to);
+        os_realloc(Mail->gran_id, 
+                   sizeof(int *)*(granto_size +1), Mail->gran_id);
         os_realloc(Mail->gran_level, 
                    sizeof(int)*(granto_size +1), Mail->gran_level);
         os_realloc(Mail->gran_set, 
@@ -62,15 +67,27 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
                    sizeof(int)*(granto_size +1), Mail->gran_format);
         os_realloc(Mail->gran_location, 
                    sizeof(OSMatch)*(granto_size +1), Mail->gran_location);
+        os_realloc(Mail->gran_group, 
+                   sizeof(OSMatch)*(granto_size +1), Mail->gran_group);
         
         Mail->gran_to[granto_size -1] = NULL;
         Mail->gran_to[granto_size] = NULL;
+        
+        Mail->gran_id[granto_size -1] = NULL;
+        Mail->gran_id[granto_size] = NULL;
+        
         Mail->gran_location[granto_size -1] = NULL;
         Mail->gran_location[granto_size] = NULL;
+
+        Mail->gran_group[granto_size -1] = NULL;
+        Mail->gran_group[granto_size] = NULL;
+        
         Mail->gran_level[granto_size -1] = 0;
         Mail->gran_level[granto_size] = 0;
+        
         Mail->gran_format[granto_size -1] = FULL_FORMAT; 
         Mail->gran_format[granto_size] = FULL_FORMAT; 
+        
         Mail->gran_set[granto_size -1] = 0;
         Mail->gran_set[granto_size] = 0;
     }
@@ -103,20 +120,99 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
         {
             os_strdup(node[i]->content, Mail->gran_to[granto_size -1]);
         }
+        else if(strcmp(node[i]->element, xml_email_id) == 0)
+        {
+            int r_id = 0;
+            char *str_pt = node[i]->content;
+
+            while(*str_pt != '\0')
+            {
+                /* We allow spaces in between */
+                if(*str_pt == ' ')
+                {
+                    str_pt++;
+                    continue;
+                }
+
+                /* If is digit, we get the value
+                 * and search for the next digit
+                 * available
+                 */
+                else if(isdigit((int)*str_pt))
+                {
+                    int id_i = 0;
+                    
+                    r_id = atoi(str_pt);
+                    debug1("%s: DEBUG: Adding '%d' to granular e-mail",
+                           ARGV0, r_id);
+                    
+                    if(!Mail->gran_id[granto_size -1])
+                    {
+                        os_calloc(2,sizeof(int),Mail->gran_id[granto_size -1]);
+                        Mail->gran_id[granto_size -1][0] = 0;
+                        Mail->gran_id[granto_size -1][1] = 0;
+                    }
+                    else
+                    {
+                        while(Mail->gran_id[granto_size -1][id_i] != 0)
+                        {
+                            id_i++;
+                        }
+                        
+                        os_realloc(Mail->gran_id[granto_size -1],
+                                   id_i +2* sizeof(int),
+                                   Mail->gran_id[granto_size -1]);     
+                        Mail->gran_id[granto_size -1][id_i +1] = 0;
+                    }
+                    Mail->gran_id[granto_size -1][id_i] = r_id;
+                    
+
+                    str_pt = strchr(str_pt, ',');
+                    if(str_pt)
+                    {
+                        str_pt++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                /* Checking for duplicate commas */
+                else if(*str_pt == ',')
+                {
+                    str_pt++;
+                    continue;
+                }
+
+                else
+                {
+                    break;
+                }
+            }
+
+        }
         else if(strcmp(node[i]->element, xml_email_format) == 0)
         {
             if(strcmp(node[i]->content, "sms") == 0)
             {
-                Mail->gran_format[granto_size] = SMS_FORMAT;
+                Mail->gran_format[granto_size -1] = SMS_FORMAT;
             }
             else if(strcmp(node[i]->content, "default") == 0)
             {
-                Mail->gran_format[granto_size] = FULL_FORMAT;
+                Mail->gran_format[granto_size -1] = FULL_FORMAT;
             }
             else
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                 return(OS_INVALID);
+            }
+        }
+        else if(strcmp(node[i]->element, xml_email_donotdelay) == 0)
+        {
+            if(Mail->gran_format[granto_size -1] != SMS_FORMAT)
+            {
+                Mail->gran_format[granto_size -1] = FORWARD_NOW;
             }
         }
         else if(strcmp(node[i]->element, xml_email_location) == 0)
@@ -130,6 +226,17 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
                 return(-1);
             }
         }
+        else if(strcmp(node[i]->element, xml_email_group) == 0)
+        {
+            os_calloc(1, sizeof(OSMatch),Mail->gran_group[granto_size -1]);
+            if(!OSMatch_Compile(node[i]->content, 
+                                Mail->gran_group[granto_size -1], 0))
+            {
+                merror(REGEX_COMPILE, ARGV0, node[i]->content,
+                        Mail->gran_group[granto_size -1]->error);
+                return(-1);
+            }
+        }
         else
         {
             merror(XML_INVELEM, ARGV0, node[i]->element);
@@ -140,7 +247,10 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
 
     /* We must have at least one entry set */
     if((Mail->gran_location[granto_size -1] == NULL &&
-       Mail->gran_level[granto_size -1] == 0) ||
+       Mail->gran_level[granto_size -1] == 0 &&
+       Mail->gran_group[granto_size -1] == NULL &&
+       Mail->gran_id[granto_size -1] == NULL &&
+       Mail->gran_format[granto_size -1] == FULL_FORMAT) ||
        Mail->gran_to[granto_size -1] == NULL)
        {
            merror(XML_INV_GRAN_MAIL, ARGV0);

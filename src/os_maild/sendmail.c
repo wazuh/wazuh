@@ -14,6 +14,7 @@
 
 
 #include "shared.h"
+#include "os_net/os_net.h"
 #include "maild.h"
 #include "mail_list.h"
 
@@ -51,10 +52,223 @@
 #define MAIL_DEBUG(x,y,z) if(MAIL_DEBUG_FLAG) merror(x,y,z)
 
 
+/* OS_Sendsms.
+ */
+int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
+{
+    int socket, i = 0, final_to_sz;
+    char *msg;
+    char snd_msg[128];
+    char final_to[512];
+
+
+    /* Connecting to the smtp server */	
+    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver);
+    if(socket < 0)
+    {
+        return(socket);
+    }
+
+
+    /* Receiving the banner */
+    msg = OS_RecvTCP(socket, OS_SIZE_1024);
+    if((msg == NULL)||(!OS_Match(VALIDBANNER, msg)))
+    {
+        merror(BANNER_ERROR);
+        if(msg)
+            free(msg);
+        close(socket);
+        return(OS_INVALID);	
+    }
+    MAIL_DEBUG("DEBUG: Received banner: '%s' %s", msg, "");
+    free(msg);
+
+
+
+    /* Sending HELO message */
+    OS_SendTCP(socket,HELOMSG);
+    msg = OS_RecvTCP(socket, OS_SIZE_1024);
+    if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
+    {
+        if(msg)
+        {
+            /* Ugly fix warning :) */
+            /* In some cases (with virus scans in the middle)
+             * we may get two banners. Check for that in here.
+             */
+            if(OS_Match(VALIDBANNER, msg))
+            {
+                free(msg);
+
+                /* Try again */
+                msg = OS_RecvTCP(socket, OS_SIZE_1024);
+                if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
+                {
+                    merror("%s:%s",HELO_ERROR,msg!= NULL?msg:"null");
+                    if(msg)
+                        free(msg);
+                    close(socket);
+                    return(OS_INVALID);    
+                }
+            }
+            else
+            {
+                merror("%s:%s",HELO_ERROR,msg);
+                free(msg);
+                close(socket);
+                return(OS_INVALID);
+            }
+        }
+        else
+        {
+            merror("%s:%s",HELO_ERROR,"null");
+            close(socket);
+            return(OS_INVALID);
+        }
+    }
+
+    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", HELOMSG, msg);
+    free(msg);	
+
+
+    /* Building "Mail from" msg */
+    memset(snd_msg,'\0',128);
+    snprintf(snd_msg,127, MAILFROM, mail->from);
+    OS_SendTCP(socket, snd_msg);
+    msg = OS_RecvTCP(socket, OS_SIZE_1024);
+    if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
+    {
+        merror(FROM_ERROR);
+        if(msg)
+            free(msg);
+        close(socket);
+        return(OS_INVALID);	
+    }
+    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
+    free(msg);	
+
+
+    /* Additional RCPT to */
+    final_to[0] = '\0';
+    final_to_sz = sizeof(final_to) -2;
+    
+    if(mail->gran_to)
+    {
+        i = 0;
+        while(mail->gran_to[i] != NULL)
+        {
+            if(mail->gran_set[i] != SMS_FORMAT)
+            {
+                i++;
+                continue;
+            }
+
+            memset(snd_msg,'\0',128);
+            snprintf(snd_msg,127, RCPTTO, mail->gran_to[i]);
+            OS_SendTCP(socket, snd_msg);
+            msg = OS_RecvTCP(socket, OS_SIZE_1024);
+            if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
+            {
+                merror(TO_ERROR);
+                if(msg)
+                    free(msg);
+                close(socket);
+                return(OS_INVALID);
+            }
+            MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
+            free(msg);
+
+
+            /* Creating header for to */
+            memset(snd_msg,'\0',128);
+            snprintf(snd_msg,127, TO, mail->gran_to[i]);
+            strncat(final_to, snd_msg, final_to_sz);
+            final_to_sz -= strlen(snd_msg) +2;
+            
+            i++;
+            continue;
+        }
+    }
+
+
+    /* Sending the "DATA" msg */
+    OS_SendTCP(socket,DATAMSG);
+    msg = OS_RecvTCP(socket, OS_SIZE_1024);
+    if((msg == NULL)||(!OS_Match(VALIDDATA, msg)))
+    {
+        merror(DATA_ERROR);
+        if(msg)
+            free(msg);
+        close(socket);
+        return(OS_INVALID);	
+    }
+    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", DATAMSG, msg);
+    free(msg);
+
+
+    /* Building "From" and "To" in the e-mail header */
+    OS_SendTCP(socket, final_to);
+
+
+    memset(snd_msg,'\0',128);
+    snprintf(snd_msg,127, FROM, mail->from);
+    OS_SendTCP(socket, snd_msg);
+
+
+    /* Sending date */
+    memset(snd_msg,'\0',128);
+    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T %Z\r\n",p);
+    OS_SendTCP(socket,snd_msg);
+
+
+    /* Sending subject */
+    memset(snd_msg,'\0',128);
+    snprintf(snd_msg, 127, SUBJECT, sms_msg->subject);
+    OS_SendTCP(socket,snd_msg);
+
+
+
+    /* Sending body */
+    OS_SendTCP(socket, sms_msg->body);
+
+
+    /* Sending end of data \r\n.\r\n */
+    OS_SendTCP(socket,ENDDATA);	
+    msg = OS_RecvTCP(socket, OS_SIZE_1024);
+    if(mail->strict_checking && ((msg == NULL)||(!OS_Match(VALIDMAIL, msg))))
+    {
+        merror(END_DATA_ERROR);
+        if(msg)
+            free(msg);
+        close(socket);
+        return(OS_INVALID);	
+    }
+    /* Checking msg in here, since it may be null */
+    if(msg)
+        free(msg);
+
+
+    /* quitting and closing socket */
+    OS_SendTCP(socket,QUITMSG);
+    msg = OS_RecvTCP(socket, OS_SIZE_1024);
+
+    if(msg)
+        free(msg);
+
+    memset(snd_msg,'\0',128);	
+
+
+    /* Returning 0 (sucess) */
+    close(socket);
+
+    return(0);
+}
+
+
 
 /* OS_Sendmail v0.1: 2005/03/18
  */
-int OS_Sendmail(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
+int OS_Sendmail(MailConfig *mail, struct tm *p)
 {
     int socket,i=0;
     char *msg;
@@ -66,14 +280,11 @@ int OS_Sendmail(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     /* If there is no sms message, we attempt to get from the
      * email list.
      */
-    if(!sms_msg)
-    {
-        mailmsg = OS_PopLastMail();
+    mailmsg = OS_PopLastMail();
 
-        if(mailmsg == NULL)
-        {
-            merror("%s: No email to be sent. Inconsistent state.",ARGV0);
-        }
+    if(mailmsg == NULL)
+    {
+        merror("%s: No email to be sent. Inconsistent state.",ARGV0);
     }
     
 
@@ -199,7 +410,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
         i = 0;
         while(mail->gran_to[i] != NULL)
         {
-            if(mail->gran_set[i] != 1)
+            if(mail->gran_set[i] != FULL_FORMAT)
             {
                 i++;
                 continue;

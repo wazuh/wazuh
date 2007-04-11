@@ -24,8 +24,8 @@ typedef struct _alert_data
     int level;
     char *date;
     char *location;
-    char *command;
     char *comment;
+    char *group;
     char *srcip;
     char *user;
     char **log;

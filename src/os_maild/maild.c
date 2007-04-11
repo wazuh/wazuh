@@ -171,7 +171,7 @@ int main(int argc, char **argv)
 void OS_Run(MailConfig *mail)
 {
     MailMsg *msg;
-    MailMsg *msg_sms;
+    MailMsg *msg_sms = NULL;
 
     time_t tm;     
     struct tm *p;       
@@ -232,14 +232,17 @@ void OS_Run(MailConfig *mail)
             }
             else if (pid == 0)
             {
-                if(OS_Sendmail(mail, p, msg_sms) < 0)
+                if(OS_Sendsms(mail, p, msg_sms) < 0)
                     merror(SNDMAIL_ERROR, ARGV0, mail->smtpserver);
 
                 exit(0);
             }
 
+
             /* Freeing sms structure */
-            FreeMail(msg_sms);
+            FreeMailMsg(msg_sms);
+            msg_sms = NULL;
+
 
             /* Increasing child count */
             childcount++;
@@ -278,7 +281,7 @@ void OS_Run(MailConfig *mail)
             }
             else if (pid == 0)
             {
-                if(OS_Sendmail(mail, p, NULL) < 0)
+                if(OS_Sendmail(mail, p) < 0)
                     merror(SNDMAIL_ERROR,ARGV0,mail->smtpserver);
                 
                 exit(0);    
@@ -336,6 +339,13 @@ void OS_Run(MailConfig *mail)
             {
                 /* 5 seconds only */
                 mail_timeout = NEXTMAIL_TIMEOUT;
+
+                /* If priority is setm send email now */
+                if(mail->priority)
+                {
+                    mail_timeout = DEFAULT_TIMEOUT;
+                    mailtosend++;
+                }
             }
             else
             {
@@ -346,9 +356,12 @@ void OS_Run(MailConfig *mail)
         else
         {
             if(mail_timeout == NEXTMAIL_TIMEOUT)
+            {
                 mailtosend++;
-            
-            mail_timeout = DEFAULT_TIMEOUT; /* Default timeout */
+
+                /* Default timeout */
+                mail_timeout = DEFAULT_TIMEOUT;
+            }
         }
 
 

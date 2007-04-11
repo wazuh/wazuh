@@ -25,6 +25,7 @@
  /* Maximum body size */
 #define BODY_SIZE           OS_MAXSTR + OS_SIZE_1024
 
+#define SMS_SUBJECT         "OSSEC %d - %d - %s"
 #define MAIL_SUBJECT        "OSSEC Notification - %s - Alert level %d"
 #define MAIL_SUBJECT_FULL   "OSSEC Alert - %s - Level %d - %s"
 #define MAIL_BODY           "\r\nOSSEC HIDS Notification.\r\n" \
@@ -51,10 +52,12 @@ int MailConf(int test_config, char *cfgfile, MailConfig *Mail);
 
 
 /* Receive the e-mail message */
-MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *mail);
+MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *mail,
+                      MailMsg **msg_sms);
 
 /* Sends an email */
 int OS_Sendmail(MailConfig *mail, struct tm *p);
+int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg);
 
 
 /* Mail timeout used by the file-queue */
