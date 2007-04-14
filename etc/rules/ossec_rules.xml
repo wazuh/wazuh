@@ -47,11 +47,4 @@
     <description>Host-based anomaly detection event (rootcheck).</description>
     <group>rootcheck,</group>
   </rule>
-
-  <rule id="520" level="7">
-    <if_sid>500</if_sid>
-    <decoded_as>syscheck</decoded_as>
-    <description>Host-based anomaly detection event (rootcheck).</description>
-    <group>syscheck,</group>
-  </rule>
 </group> <!-- OSSEC -->

@@ -143,7 +143,7 @@
   <!-- Mod security rules by <ossec ( at ) sioban.net -->
   <rule id="30118" level="6">
     <if_sid>30101</if_sid>
-    <match>mod_security: Access denied</match>
+    <match>mod_security: Access denied|ModSecurity: Access denied</match>
     <description>Access attempt blocked by Mod Security.</description>
     <group>access_denied,</group>
   </rule>
