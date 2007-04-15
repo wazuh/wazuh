@@ -154,6 +154,13 @@
     <description>The PIX is disallowing new connections.</description>
     <group>service_availability,</group>
   </rule>
+
+  <rule id="4338" level="8">
+    <if_sid>4310</if_sid>
+    <id>^1-105005|^1-105009|^1-105043</id>
+    <match>Failed|Lost Failover</match>
+    <description>Firewall failover pair communication problem.</description>
+  </rule>
   
   <rule id="4380" level="10" frequency="6" timeframe="360">
     <if_matched_sid>4310</if_matched_sid>
