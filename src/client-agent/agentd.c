@@ -114,6 +114,7 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
         if((logr->execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
         {
             merror(ARQ_ERROR, ARGV0);
+            logr->execdq = -1;
         }
     }
 
