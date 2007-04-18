@@ -9,6 +9,7 @@
  * Foundation
  */
 
+#ifndef WIN32
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -134,3 +135,10 @@ void check_rc_if()
 }
 
 /* EOF */
+
+#else
+void check_rc_if()
+{
+    return;
+}
+#endif

@@ -50,8 +50,13 @@ int is_file(char *file_name);
  */ 
 int os_string(char *file, char *regex);
 
+/* check for NTFS ADS (Windows only)
+ */
+int os_check_ads(char *full_path);
+
 /* Used to report messages */
 int notify_rk(int rk_type, char *msg);
+
 
 
 /* rootcheck_init: Starts the rootcheck externally

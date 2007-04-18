@@ -199,8 +199,11 @@ int rootcheck_init(int test_config)
 
 
     #ifndef OSSECHIDS
+    
+    #ifndef WIN32
     /* Start the signal handling */
     StartSIG(ARGV0);
+    #endif
 
     #else
     return(0);

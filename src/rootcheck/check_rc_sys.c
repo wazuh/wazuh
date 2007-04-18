@@ -30,6 +30,10 @@ int read_sys_file(char *file_name, int do_read)
    
     _sys_total++;
 
+    /* Check for NTFS ADS on Windows */
+    os_check_ads(file_name);
+
+
     if(lstat(file_name, &statbuf) < 0)
     {
         char op_msg[OS_SIZE_1024 +1];
@@ -82,7 +86,7 @@ int read_sys_file(char *file_name, int do_read)
             {
                 struct stat statbuf2;
 
-                if((lstat(file_name, &statbuf2) == 0) && 
+                if((lstat(file_name, &statbuf2) == 0) &&
                    (total != statbuf2.st_size))
                 {
                     char op_msg[OS_SIZE_1024 +1];
@@ -99,6 +103,7 @@ int read_sys_file(char *file_name, int do_read)
      
     
     /* If has OTHER write and exec permission, alert */
+    #ifndef WIN32
     if(((statbuf.st_mode & S_IWOTH) == S_IWOTH) && 
          (S_ISREG(statbuf.st_mode)))
     {
@@ -139,6 +144,7 @@ int read_sys_file(char *file_name, int do_read)
         if(_suid)
             fprintf(_suid,"%s\n", file_name);
     }
+    #endif
 
     return(0);
 }
@@ -352,6 +358,9 @@ void check_rc_sys(char *basedir)
         _suid = NULL;
     }
 
+    #ifdef WIN32
+    rootcheck.scanall = 1;
+    #endif
         
     /* Scan the whole file system -- may be slow */
     if(rootcheck.scanall)    

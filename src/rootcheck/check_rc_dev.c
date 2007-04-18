@@ -10,6 +10,7 @@
  */
 
  
+#ifndef WIN32
 #include "shared.h"
 #include "rootcheck.h"
 
@@ -171,3 +172,11 @@ void check_rc_dev(char *basedir)
 }
 
 /* EOF */
+
+#else
+/* Windows */
+void check_rc_dev(char *basedir)
+{
+    return;
+}
+#endif

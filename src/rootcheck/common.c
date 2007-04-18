@@ -130,8 +130,7 @@ int is_file(char *file_name)
     
 
     /* Trying other calls */
-    if( (lstat(file_name, &statbuf) < 0) &&
-        (stat(file_name, &statbuf) < 0) &&   
+    if( (stat(file_name, &statbuf) < 0) &&
         (access(file_name, F_OK) < 0) &&
         ((fp = fopen(file_name, "r")) == NULL))
     {

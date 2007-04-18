@@ -196,6 +196,7 @@ int ReadDecodeXML(char *file)
     char *xml_plugindecoder = "plugin_decoder";
     char *xml_decoder = "decoder";
     char *xml_decoder_name = "name";
+    char *xml_decoder_status = "status";
     char *xml_usename = "use_own_name";
     char *xml_parent = "parent";
     char *xml_program_name = "program_name";
@@ -266,13 +267,31 @@ int ReadDecodeXML(char *file)
             return(0);
         }
        
+
+        /* Getting name */
         if((!node[i]->attributes) || (!node[i]->values)||
            (!node[i]->values[0])  || (!node[i]->attributes[0])||
-           (strcasecmp(node[i]->attributes[0],xml_decoder_name)!= 0)||
-           (node[i]->attributes[1]))
+           (strcasecmp(node[i]->attributes[0],xml_decoder_name)!= 0))
         {
             merror(XML_INVELEM, ARGV0, node[i]->element);
             return(0);
+        }
+
+        
+        /* Checking for additional entries */
+        if(node[i]->attributes[1] && node[i]->values[1])
+        {
+            if(strcasecmp(node[i]->attributes[0],xml_decoder_status)!= 0)
+            {
+                merror(XML_INVELEM, ARGV0, node[i]->element);
+                return(0);
+            }
+            
+            if(node[i]->attributes[2])
+            {
+                merror(XML_INVELEM, ARGV0, node[i]->element);
+                return(0);
+            }
         }
 
          

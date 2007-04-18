@@ -9,6 +9,7 @@
  * Foundation
  */
 
+#ifndef WIN32
 #include "shared.h"
 #include "rootcheck.h"
 
@@ -359,3 +360,9 @@ void check_rc_pids()
 }
 
 /* EOF */
+#else
+void check_rc_pids()
+{
+    return;
+}
+#endif

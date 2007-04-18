@@ -241,8 +241,10 @@ void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv)
     }
 
 
+    #ifdef OSSECHIDS
     /* Starting process */
     local_start();
+    #endif
 }
 
 

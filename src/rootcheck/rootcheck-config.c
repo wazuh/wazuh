@@ -10,6 +10,7 @@
  */
 
 
+#ifndef OSSECHIDS
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -158,3 +159,4 @@ int Read_Rootcheck_Config(char * cfgfile)
 }
 
 /* EOF */
+#endif

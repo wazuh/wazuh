@@ -10,6 +10,7 @@
  */
 
  
+#ifndef WIN32
 #include "shared.h"
 #include "rootcheck.h"
 
@@ -150,3 +151,4 @@ int check_rc_readproc(int pid)
 }
 
 /* EOF */
+#endif

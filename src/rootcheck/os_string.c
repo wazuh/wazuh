@@ -34,6 +34,7 @@
  */
 
 
+#ifndef WIN32
 #include <sys/types.h>
 
 #include <ctype.h>
@@ -306,3 +307,9 @@ int os_getch(os_strings *oss)
 }
 
 /* EOF */
+#else
+int os_string(char *file, char *regex)
+{
+    return(0);
+}
+#endif

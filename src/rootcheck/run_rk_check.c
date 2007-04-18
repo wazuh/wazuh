@@ -101,11 +101,12 @@ void run_rk_check()
 {
     time_t time1;
     time_t time2;
-    int i;
 
     FILE *fp;
    
+    #ifndef WIN32
     /* Hard coding basedir */ 
+    int i;
     char basedir[] = "/";
 
     /* Removing the last / from basedir */
@@ -117,6 +118,11 @@ void run_rk_check()
             basedir[i-1] = '\0';
         }
     }
+    #else
+    /* Basedir for Windows */
+    char basedir[] = "C:\\";
+    #endif
+    
   
     time1 = time(0);
     
@@ -124,7 +130,7 @@ void run_rk_check()
     if(rootcheck.notify != QUEUE)
     {
         printf("\n");
-        printf("** Starting Rootcheck v0.7 by Daniel B. Cid        **\n");
+        printf("** Starting Rootcheck v0.8 by Daniel B. Cid        **\n");
         printf("** http://www.ossec.net/en/about.html#dev-team     **\n");
         printf("** http://www.ossec.net/rootcheck/                 **\n\n");
         printf("Be patient, it may take a few minutes to complete...\n");
