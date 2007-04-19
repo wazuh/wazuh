@@ -291,8 +291,10 @@ int read_sys_dir(char *dir_name, int do_read)
     if((entry_count != statbuf.st_nlink) && 
        ((did_changed == 0) || ((entry_count + 1) != statbuf.st_nlink)))
     {
+        #ifndef WIN32
         struct stat statbuf2;
         char op_msg[OS_SIZE_1024 +1];
+        
 
         if((lstat(dir_name, &statbuf2) == 0) && 
             (statbuf2.st_nlink != entry_count))
@@ -321,6 +323,8 @@ int read_sys_dir(char *dir_name, int do_read)
             _sys_errors++;
             #endif
         }
+
+        #endif
     }
     
     closedir(dp);

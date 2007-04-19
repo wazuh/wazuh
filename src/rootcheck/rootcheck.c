@@ -83,7 +83,7 @@ int rootcheck_init(int test_config)
     rootcheck.time = ROOTCHECK_WAIT;
 
 
-#ifndef OSSECHIDS
+    #ifndef OSSECHIDS
     rootcheck.notify = SYSLOG;
     rootcheck.daemon = 0;
     while((c = getopt(argc, argv, "VstrdhD:c:")) != -1)
@@ -125,7 +125,17 @@ int rootcheck_init(int test_config)
 
     }
 
-#endif
+    
+    /* Starting Winsock */
+    {
+        WSADATA wsaData;
+        if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
+        {
+            ErrorExit("%s: WSAStartup() failed", ARGV0);
+        }
+    }
+                                    
+    #endif
 
     /* Staring message */
     debug1(STARTED_MSG,ARGV0);
