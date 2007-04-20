@@ -47,10 +47,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     msg+=2;
 
 
-    /* Setting location */
-    lf->location = msg;
-    
-    
+
     /* Setting pieces as the message */
     pieces = strchr(msg, ':');
     if(!pieces)
@@ -62,6 +59,10 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     *pieces = '\0';
     pieces++;    
     
+    
+    /* Dumping location */
+    os_strdup(msg, lf->location);
+        
     
     /* Getting the log length */
     loglen = strlen(pieces) + 1;

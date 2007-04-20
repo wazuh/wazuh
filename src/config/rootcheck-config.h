@@ -21,6 +21,7 @@ typedef struct _rkconfig
     char *workdir;
     char *rootkit_files;
     char *rootkit_trojans;
+    char *winpolicy;
 
     FILE *fp;
     int daemon;

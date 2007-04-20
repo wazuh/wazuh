@@ -42,7 +42,7 @@
   </rule>
 
   <rule id="510" level="7">
-    <if_sid>500</if_sid>
+    <category>ossec</category>
     <decoded_as>rootcheck</decoded_as>
     <description>Host-based anomaly detection event (rootcheck).</description>
     <group>rootcheck,</group>

@@ -25,6 +25,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
     /* XML Definitions */
     char *xml_rootkit_files = "rootkit_files";
     char *xml_rootkit_trojans = "rootkit_trojans";
+    char *xml_winpolicy = "windows_policy";
     char *xml_scanall = "scanall";
     char *xml_readall = "readall";
     char *xml_time = "frequency";
@@ -100,6 +101,10 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element,xml_rootkit_trojans) == 0)
         {
             os_strdup(node[i]->content, rootcheck->rootkit_trojans);
+        }
+        else if(strcmp(node[i]->element, xml_winpolicy) == 0)
+        {
+            os_strdup(node[i]->content, rootcheck->winpolicy);
         }
         else
         {

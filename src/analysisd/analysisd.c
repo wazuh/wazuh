@@ -870,6 +870,7 @@ void OS_ReadMSG(int m_queue)
                     }
                 }
 
+
                 /* Copy the strucuture to the state memory */
                 if(currently_rule->prev_matched)
                 {

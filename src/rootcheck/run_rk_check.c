@@ -120,7 +120,7 @@ void run_rk_check()
     }
     #else
     /* Basedir for Windows */
-    char basedir[] = "C:\\";
+    char basedir[] = "C:";
     #endif
     
   
@@ -192,6 +192,30 @@ void run_rk_check()
             fclose(fp);
         }
     }
+
+
+    #ifdef WIN32
+    /*** Windows policy check ***/
+    if(!rootcheck.winpolicy)
+    {
+        merror("%s: No winpolicy file configured.", ARGV0);
+    }
+    else
+    {
+        fp = fopen(rootcheck.winpolicy, "r");
+        if(!fp)
+        {
+            merror("%s: No winpolicy file: '%s'",ARGV0,
+                                rootcheck.winpolicy);
+        }
+        else
+        {
+            check_rc_winpolicy(basedir, fp);
+            fclose(fp);
+        }
+    }
+    #endif
+    
    
     /*** Third check, looking for files on the /dev ***/
     debug1("%s: DEBUG: Going into check_rc_dev", ARGV0);

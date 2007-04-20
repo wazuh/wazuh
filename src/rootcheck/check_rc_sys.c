@@ -30,8 +30,11 @@ int read_sys_file(char *file_name, int do_read)
    
     _sys_total++;
 
+
+    #ifdef WIN32
     /* Check for NTFS ADS on Windows */
     os_check_ads(file_name);
+    #endif
 
 
     if(lstat(file_name, &statbuf) < 0)
@@ -154,7 +157,7 @@ int read_sys_file(char *file_name, int do_read)
  */
 int read_sys_dir(char *dir_name, int do_read)
 {
-    int i;
+    int i = 0;
     unsigned int entry_count = 0;
     int did_changed = 0;
     DIR *dp;
@@ -162,9 +165,13 @@ int read_sys_dir(char *dir_name, int do_read)
 	struct dirent *entry;
     struct stat statbuf;	
    
+    #ifndef WIN32
     char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
                                  "/usr/sbin", "/dev", "/etc", 
                                  "/boot", NULL };
+    #else
+    char *(dirs_to_doread[]) = { "C:", NULL };
+    #endif
     
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
     {
@@ -197,15 +204,14 @@ int read_sys_dir(char *dir_name, int do_read)
     }
    
     /* Check if the do_read is valid for this directory */
-    for(i = 0; i< 24; i++)
+    while(dirs_to_doread[i])
     {
-        if(dirs_to_doread[i] == NULL)
-            break;
         if(strcmp(dir_name, dirs_to_doread[i]) == 0)
         {
             do_read = 1;
             break;
         }
+        i++;
     }
      
     /* Opening the directory given */

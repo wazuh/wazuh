@@ -10,6 +10,8 @@
  */
 
  
+#ifndef WIN32
+ 
 #include "shared.h"
 #include "rootcheck.h"
 
@@ -17,9 +19,13 @@
 #if defined(sun) || defined(__sun__)
 #define NETSTAT "netstat -an -P %s | "\
                 "grep \"[^0-9]%d \" > /dev/null 2>&1"
+
+/*
 #elif WIN32
 #define NETSTAT "netstat -an -p %s | "\
                 "find \":%d\""
+*/
+
 #elif defined(Linux)
 #define NETSTAT_LIST "netstat -an | grep \"^%s\" | "\
                      "cut -d ':' -f 2 | cut -d ' ' -f 1"
@@ -190,5 +196,14 @@ void check_rc_ports()
     
     return;
 }
+
+
+#else
+void check_rc_ports()
+{
+    return;
+}
+#endif
+
 
 /* EOF */

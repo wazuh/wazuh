@@ -124,6 +124,13 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
                     continue;
             }
 
+            /* Checking for same location */
+            if(currently_rule->context_opts & SAME_LOCATION)
+            {
+                if(strcmp(lf->hostname, my_lf->hostname) != 0)
+                    continue;
+            }
+
 
             /* Checking for different urls */
             if(currently_rule->context_opts & DIFFERENT_URL)
@@ -138,6 +145,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
                     continue;
                 }
             }
+
         }
 
 
@@ -332,6 +340,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->full_log = NULL;
     lf->hostname = NULL;
     lf->program_name = NULL;
+    lf->location = NULL;
 
     lf->srcip = NULL;
     lf->dstip = NULL;
@@ -374,6 +383,8 @@ void Free_Eventinfo(Eventinfo *lf)
     
     if(lf->full_log)
         free(lf->full_log);    
+    if(lf->location)
+        free(lf->location);    
 
     if(lf->srcip)
         free(lf->srcip);

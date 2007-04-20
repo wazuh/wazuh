@@ -8,7 +8,7 @@ include ../Config.Make
 
 LOCAL = *.c
 
-OBJS = ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_ZLIB}
+OBJS = ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_CRYPTO} ${OS_ZLIB}
 
 mmonitor:
 		${CC} ${CFLAGS} ${LOCAL} ${OBJS} -o ${NAME}

@@ -100,7 +100,7 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_same_src_port = "same_src_port";
     char *xml_same_dst_port = "same_dst_port";
     char *xml_same_user = "same_user";
-    char *xml_same_agent = "same_agent";
+    char *xml_same_location = "same_location";
     char *xml_same_id = "same_id";
 
     char *xml_different_url = "different_url";
@@ -718,9 +718,11 @@ int Rules_OP_ReadRules(char * rulefile)
                         config_ruleinfo->context_opts&= NOT_SAME_USER;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
-                                xml_same_agent)==0)
+                                xml_same_location)==0)
                     {
-                        config_ruleinfo->context_opts|= SAME_AGENT;
+                        config_ruleinfo->context_opts|= SAME_LOCATION;
+                        if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_notsame_agent)==0)

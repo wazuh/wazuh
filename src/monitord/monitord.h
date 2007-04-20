@@ -40,6 +40,9 @@ void manage_files(int cday, int cmon, int cyear);
 /* monitor_agents */
 void monitor_agents();
 
+/* Sign a log */
+void OS_SignLog(char *logfile, char *logfile_old);
+
 /* Compress log */
 void OS_CompressLog(char *logfile);
 

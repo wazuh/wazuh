@@ -23,7 +23,7 @@
 #define SAME_USER       0x001 /* 1   */
 #define SAME_SRCIP      0x002 /* 2   */
 #define SAME_ID         0x004 /* 4   */
-#define SAME_AGENT      0x008 /* 8   */
+#define SAME_LOCATION   0x008 /* 8   */
 #define DIFFERENT_URL   0x010 /* */
 #define SAME_SRCPORT    0x020
 #define SAME_DSTPORT    0x040
