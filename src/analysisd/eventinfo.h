@@ -49,8 +49,16 @@ typedef struct _Eventinfo
 
     /* Pointer to the rule that generated it */
     RuleInfo *generated_rule;
+
+    /* Pointer to the decoder that matched */
     OSDecoderInfo *decoder_info;
-    OSListNode *node_to_delete;
+
+    /* Sid node to delete */
+    OSListNode *sid_node_to_delete;
+    
+    /* Group node to delete */
+    OSListNode *group_node_to_delete;
+
     
     /* Extract when the event fires a rule */
     int size;
@@ -108,6 +116,8 @@ typedef struct _EventNode
 
 /* Search for matches in the last events */
 Eventinfo *Search_LastEvents(Eventinfo *lf, RuleInfo *currently_rule);
+Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule);
+Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *currently_rule);
 
 /* Zero the eventinfo structure */
 void Zero_Eventinfo(Eventinfo *lf);

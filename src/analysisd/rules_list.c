@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -10,17 +10,8 @@
  */
 
  
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-
+#include "shared.h"
 #include "rules.h"
-#include "headers/debug_op.h"
-
-#include "os_regex/os_regex.h"
-
-#include "error_messages/error_messages.h"
 
 /* Rulenode global  */
 RuleNode *rulenode;
@@ -78,17 +69,17 @@ int _AddtoRule(int sid, int level, int none, char *group,
                 if(read_rule->if_matched_sid)
                 {
                     /* If child does not have a list, create one */
-                    if(!r_node->ruleinfo->prev_matched)
+                    if(!r_node->ruleinfo->sid_prev_matched)
                     {
-                        r_node->ruleinfo->prev_matched = OSList_Create();
-                        if(!r_node->ruleinfo->prev_matched)
+                        r_node->ruleinfo->sid_prev_matched = OSList_Create();
+                        if(!r_node->ruleinfo->sid_prev_matched)
                         {
                             ErrorExit(MEM_ERROR, ARGV0);
                         }
                     }
 
                     /* Assigning the parent pointer to it */
-                    read_rule->sid_search = r_node->ruleinfo->prev_matched;
+                    read_rule->sid_search = r_node->ruleinfo->sid_prev_matched;
                 }
 
                 /* If no context for rule, check if the parent has
@@ -347,7 +338,8 @@ int OS_AddRule(RuleInfo *read_rule)
     return(0);
 }
 
-/* Update rule info */
+
+/* Update rule info for overwritten ones */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
 {
     /* If no r_node is given, get first node */
@@ -365,7 +357,13 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
         if(r_node->ruleinfo->sigid == sid)
         {
             newrule->category = r_node->ruleinfo->category;
-            newrule->prev_matched = r_node->ruleinfo->prev_matched;
+            
+            newrule->sid_prev_matched = r_node->ruleinfo->sid_prev_matched;
+            newrule->group_prev_matched = r_node->ruleinfo->group_prev_matched;
+            
+            newrule->sid_search = r_node->ruleinfo->sid_search;
+            newrule->group_search = r_node->ruleinfo->group_search;
+            
             newrule->last_events = r_node->ruleinfo->last_events;
 
             r_node->ruleinfo = newrule;
@@ -381,6 +379,54 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             {
                 return(1);
             }
+        }
+
+        r_node = r_node->next;
+    }
+
+    return(0);
+}
+
+/* Mark rules that match specific group (for if_matched_group) */
+int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
+{
+    /* If no r_node is given, get first node */
+    if(r_node == NULL)
+    {
+        r_node = OS_GetFirstRule();
+    }
+
+    while(r_node)
+    {
+        if(OSMatch_Execute(r_node->ruleinfo->group, 
+                           strlen(r_node->ruleinfo->group),
+                           orig_rule->if_matched_group))
+        {
+            int rule_g = 0;
+            if(r_node->ruleinfo->group_prev_matched)
+            {
+                while(r_node->ruleinfo->group_prev_matched[rule_g])
+                {
+                    rule_g++;
+                }
+            }
+            
+            os_realloc(r_node->ruleinfo->group_prev_matched, 
+                       (rule_g + 2)*sizeof(OSList *),
+                       r_node->ruleinfo->group_prev_matched); 
+            
+            r_node->ruleinfo->group_prev_matched[rule_g] = NULL;
+            r_node->ruleinfo->group_prev_matched[rule_g +1] = NULL;
+            
+            r_node->ruleinfo->group_prev_matched[rule_g] = 
+                              orig_rule->group_search;
+        }
+
+
+        /* Checking if the child has a rule */
+        if(r_node->child)
+        {
+            OS_MarkGroup(r_node->child, orig_rule);
         }
 
         r_node = r_node->next;

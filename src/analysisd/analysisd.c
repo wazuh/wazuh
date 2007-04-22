@@ -871,19 +871,41 @@ void OS_ReadMSG(int m_queue)
                 }
 
 
-                /* Copy the strucuture to the state memory */
-                if(currently_rule->prev_matched)
+                /* Copy the structure to the state memory of if_matched_sid */
+                if(currently_rule->sid_prev_matched)
                 {
-                    if(!OSList_AddData(currently_rule->prev_matched, lf))
+                    if(!OSList_AddData(currently_rule->sid_prev_matched, lf))
                     {
                         merror("%s: Unable to add data to sig list.", ARGV0);
                     }
                     else
                     {
-                        lf->node_to_delete = 
-                            currently_rule->prev_matched->last_node;
+                        lf->sid_node_to_delete = 
+                            currently_rule->sid_prev_matched->last_node;
                     }
                 }
+                /* Group list */
+                else if(currently_rule->group_prev_matched)
+                {
+                    OSList **pr_group;
+                    
+                    pr_group = currently_rule->group_prev_matched;
+                    
+                    while(*pr_group)
+                    {
+                        if(!OSList_AddData(*pr_group, lf))
+                        {
+                           merror("%s: Unable to add data to grp list.",ARGV0);
+                        }
+                        else
+                        {
+                            lf->group_node_to_delete = 
+                                (*pr_group)->last_node;
+                        }
+                        pr_group++;
+                    }
+                }
+                
                 OS_AddEvent(lf);
 
                 break;
@@ -1208,10 +1230,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* If it is a context rule, search for it */
     if(currently_rule->context == 1)
     {
-        if(!Search_LastEvents(lf, currently_rule))
-        {
+        if(!currently_rule->event_search(lf, currently_rule))
             return(NULL);
-        }
     }
 
 

@@ -179,6 +179,165 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
 }
 
 
+
+/* Search last times a group fired
+ * Will look for only that specific group on that rule.
+ */
+Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *currently_rule)
+{
+    Eventinfo *lf;
+    Eventinfo *first_lf;
+    OSListNode *lf_node;
+
+
+    /* Setting frequency to 0 */
+    currently_rule->__frequency = 0;
+
+
+    /* checking sid search is valid */
+    if(!currently_rule->group_search)
+    {
+        merror("%s: No group search!! XXX", ARGV0);
+    }
+
+    /* Getting last node */
+    lf_node = OSList_GetLastNode(currently_rule->group_search);
+    if(!lf_node)
+    {
+        return(NULL);
+    }
+    first_lf = (Eventinfo *)lf_node->data;
+
+
+    do
+    {
+        lf = (Eventinfo *)lf_node->data;
+
+        /* If time is outside the timeframe, return */
+        if((c_time - lf->time) > currently_rule->timeframe)
+        {
+            return(NULL);
+        }
+
+        /* We avoid multiple triggers for the same rule
+         * or rules with a lower level.
+         */
+        else if(lf->matched >= currently_rule->level)
+        {
+            return(NULL);
+        }
+
+
+
+        /* Checking for same id */
+        if(currently_rule->context_opts & SAME_ID)
+        {
+            if((!lf->id) || (!my_lf->id))
+                continue;
+
+            if(strcmp(lf->id,my_lf->id) != 0)
+                continue;
+        }
+
+        /* Checking for repetitions from same src_ip */
+        if(currently_rule->context_opts & SAME_SRCIP)
+        {
+            if((!lf->srcip)||(!my_lf->srcip))
+                continue;
+
+            if(strcmp(lf->srcip,my_lf->srcip) != 0)
+                continue;
+        }
+
+
+        /* Grouping of additional data */
+        if(currently_rule->alert_opts & SAME_EXTRAINFO)
+        {
+            /* Checking for same source port */
+            if(currently_rule->context_opts & SAME_SRCPORT)
+            {
+                if((!lf->srcport)||(!my_lf->srcport))
+                    continue;
+
+                if(strcmp(lf->srcport, my_lf->srcport) != 0)
+                    continue;
+            }
+
+            /* Checking for same dst port */
+            if(currently_rule->context_opts & SAME_DSTPORT)
+            {
+                if((!lf->dstport)||(!my_lf->dstport))
+                    continue;
+
+                if(strcmp(lf->dstport, my_lf->dstport) != 0)
+                    continue;
+            }
+
+            /* Checking for repetitions on user error */
+            if(currently_rule->context_opts & SAME_USER)
+            {
+                if((!lf->user)||(!my_lf->user))
+                    continue;
+
+                if(strcmp(lf->user,my_lf->user) != 0)
+                    continue;
+            }
+
+            /* Checking for same location */
+            if(currently_rule->context_opts & SAME_LOCATION)
+            {
+                if(strcmp(lf->hostname, my_lf->hostname) != 0)
+                    continue;
+            }
+
+
+            /* Checking for different urls */
+            if(currently_rule->context_opts & DIFFERENT_URL)
+            {
+                if((!lf->url)||(!my_lf->url))
+                {
+                    continue;
+                }
+
+                if(strcmp(lf->url, my_lf->url) == 0)
+                {
+                    continue;
+                }
+            }
+
+        }
+
+
+        /* Checking if the number of matches worked */
+        if(currently_rule->__frequency < currently_rule->frequency)
+        {
+            if(currently_rule->__frequency <= 10)
+            {
+                currently_rule->last_events[currently_rule->__frequency]
+                    = lf->full_log;
+                currently_rule->last_events[currently_rule->__frequency+1]
+                    = NULL;
+            }
+
+            currently_rule->__frequency++;
+            continue;
+        }
+
+
+        /* If reached here, we matched */
+        my_lf->matched = currently_rule->level;
+        lf->matched = currently_rule->level;
+        first_lf->matched = currently_rule->level;
+
+        return(lf);
+
+
+    }while((lf_node = lf_node->prev) != NULL);
+
+    return(NULL);
+}
+
+
 /* Search LastEvents.  
  * Will look if any of the last events (inside the timeframe)
  * match the specified rule. 
@@ -190,12 +349,9 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
     Eventinfo *first_lf;
     
 
-    /* Last sids search */
-    if(currently_rule->if_matched_sid)
-    {
-        return(Search_LastSids(my_lf, currently_rule));
-    }
-    
+    merror("XXXX : remove me!");
+
+
     /* Last events */
     eventnode_pt = OS_GetLastEvent();
     if(!eventnode_pt)
@@ -247,17 +403,6 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
             }
         }
 
-        /* Group match */
-        if(currently_rule->if_matched_group)
-        {
-            if(!OSMatch_Execute(lf->generated_rule->group, 
-                                strlen(lf->generated_rule->group),
-                                currently_rule->if_matched_group))
-            {
-                continue; /* Didn't match */
-            }
-        }
-      
         /* Checking for repetitions on user error */
         if(currently_rule->context_opts & SAME_USER)
         {
@@ -366,7 +511,8 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->day = 0;
 
     lf->generated_rule = NULL;
-    lf->node_to_delete = NULL;
+    lf->sid_node_to_delete = NULL;
+    lf->group_node_to_delete = NULL;
     lf->decoder_info = NULL_Decoder;
     
     return;
@@ -418,10 +564,22 @@ void Free_Eventinfo(Eventinfo *lf)
 
 
     /* Freeing node to delete */
-    if(lf->node_to_delete)
+    if(lf->sid_node_to_delete)
     {
-        OSList_DeleteThisNode(lf->generated_rule->prev_matched, 
-                              lf->node_to_delete);
+        OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched, 
+                              lf->sid_node_to_delete);
+    }
+    else if(lf->group_node_to_delete)
+    {
+        OSList **pr_group;
+
+        pr_group = lf->generated_rule->group_prev_matched;
+
+        while(*pr_group)
+        {
+            OSList_DeleteThisNode(*pr_group, 
+                                  lf->group_node_to_delete);
+        } 
     }
     
     /* We dont need to free:

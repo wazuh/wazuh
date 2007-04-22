@@ -75,11 +75,25 @@ typedef struct _RuleInfo
     /* Decoded as */
     u_int16_t decoded_as;
 
-    /* List of matched */
-    OSList *prev_matched;
+    /* List of previously matched events */
+    OSList *sid_prev_matched;
 
-    /* Pointer to a list */
+    /* Pointer to a list (points to sid_prev_matched of if_matched_sid */
     OSList *sid_search;
+
+    /* List of previously matched events in this group.
+     * Every rule that has if_matched_group will have this
+     * list. Every rule that matches this group, it going to
+     * have a pointer to it (group_search).
+     */
+    OSList **group_prev_matched;
+
+    /* Pointer to group_prev_matched */
+    OSList *group_search;
+
+    /* Function pointer to the event_search. */
+    void *(*event_search)(void *lf, void *rule);
+    
 
     char *group;
     OSMatch *match;
@@ -153,6 +167,9 @@ int OS_AddChild(RuleInfo *read_rule);
 
 /* Add an overwrite rule */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
+
+/* Mark groups (if_matched_group */
+int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule);
 
 /* Get first rule */
 RuleNode *OS_GetFirstRule();

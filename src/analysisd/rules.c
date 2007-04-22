@@ -1107,6 +1107,35 @@ int Rules_OP_ReadRules(char * rulefile)
                 config_ruleinfo->if_group = NULL;
             }
 
+            /* Setting the event_search pointer */
+            if(config_ruleinfo->if_matched_sid)
+            {
+                config_ruleinfo->event_search = 
+                                 (void *)Search_LastSids;
+            }
+            
+            /* Marking the rules that match if_matched_group */
+            else if(config_ruleinfo->if_matched_group)
+            {
+                /* Creating list */
+                config_ruleinfo->group_search = OSList_Create();
+                if(!config_ruleinfo->group_search)
+                {
+                    ErrorExit(MEM_ERROR, ARGV0);
+                }
+
+                /* Marking rules that match this group */
+                OS_MarkGroup(NULL, config_ruleinfo);
+
+                /* Setting function pointer */
+                config_ruleinfo->event_search = 
+                                 (void *)Search_LastGroups;
+            }
+            else if(config_ruleinfo->context)
+            {
+                config_ruleinfo->event_search = 
+                                 (void *)Search_LastEvents;
+            }
 
         } /* while(rule[j]) */
         OS_ClearNode(rule);
@@ -1294,8 +1323,13 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->last_events = NULL;
 
     /* zeroing the list of previous matches */
-    ruleinfo_pt->prev_matched = NULL;
+    ruleinfo_pt->sid_prev_matched = NULL;
+    ruleinfo_pt->group_prev_matched = NULL;
+    
     ruleinfo_pt->sid_search = NULL;
+    ruleinfo_pt->group_search = NULL;
+    
+    ruleinfo_pt->event_search = NULL;
 
     return(ruleinfo_pt);
 }
