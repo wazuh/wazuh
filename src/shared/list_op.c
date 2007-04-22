@@ -133,6 +133,31 @@ OSListNode *OSList_GetCurrentlyNode(OSList *list)
 }
 
 
+/* Delete first node from list */
+void OSList_DeleteOldestNode(OSList *list)
+{
+    OSListNode *next;
+    
+    if(list->first_node)
+    {
+        next = list->first_node->next;
+        if(next)
+            next->prev = NULL;
+        else
+            list->last_node = next;    
+        
+        free(list->first_node);
+        list->first_node = next;
+    }
+    else
+    {
+        merror("%s: No Oldest node to delete", __local_name);
+    }
+
+    return;
+}
+
+
 /* Delete this node from list
  * Pointer goes to the next node available.
  */

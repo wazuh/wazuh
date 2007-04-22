@@ -58,6 +58,7 @@ typedef struct _RuleInfo
     int ignore_time;
     int ignore;
     int ckignore;
+    int group_prev_matched_sz;
 
     int __frequency;
     char **last_events;

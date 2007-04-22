@@ -49,6 +49,7 @@ OSListNode *OSList_GetCurrentlyNode(OSList *list);
 
 void OSList_DeleteCurrentlyNode(OSList *list);
 void OSList_DeleteThisNode(OSList *list, OSListNode *thisnode);
+void OSList_DeleteOldestNode(OSList *list);
 
 int OSList_AddData(OSList *list, void *data);
 

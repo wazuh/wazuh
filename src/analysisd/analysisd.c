@@ -410,6 +410,7 @@ int main(int argc, char **argv)
  */
 void OS_ReadMSG(int m_queue)
 {
+    int i;
     char msg[OS_MAXSTR +1];
     Eventinfo *lf;
 
@@ -516,6 +517,7 @@ void OS_ReadMSG(int m_queue)
             }
         }
     }
+    debug1("%s: Active response Init completed.", ARGV0);
 
 
     /* Getting currently time before starting */
@@ -544,6 +546,7 @@ void OS_ReadMSG(int m_queue)
 
     /* Doing some cleanup */
     memset(msg, '\0', OS_MAXSTR +1);
+    
     
     /* Initializing the logs */
     {
@@ -887,22 +890,17 @@ void OS_ReadMSG(int m_queue)
                 /* Group list */
                 else if(currently_rule->group_prev_matched)
                 {
-                    OSList **pr_group;
+                    i = 0;  
                     
-                    pr_group = currently_rule->group_prev_matched;
-                    
-                    while(*pr_group)
+                    while(i < currently_rule->group_prev_matched_sz)
                     {
-                        if(!OSList_AddData(*pr_group, lf))
+                        if(!OSList_AddData(
+                                currently_rule->group_prev_matched[i], 
+                                lf))
                         {
                            merror("%s: Unable to add data to grp list.",ARGV0);
                         }
-                        else
-                        {
-                            lf->group_node_to_delete = 
-                                (*pr_group)->last_node;
-                        }
-                        pr_group++;
+                        i++;
                     }
                 }
                 

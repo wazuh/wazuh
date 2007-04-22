@@ -61,6 +61,8 @@ void RootcheckInit()
     rootcheck_dec->type = OSSEC_RL;
     rootcheck_dec->name = ROOTCHECK_MOD;
     rootcheck_dec->fts = 0;
+
+    debug1("%s: RootcheckInit completed.", ARGV0);
     
     return;
 }

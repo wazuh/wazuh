@@ -360,6 +360,8 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             
             newrule->sid_prev_matched = r_node->ruleinfo->sid_prev_matched;
             newrule->group_prev_matched = r_node->ruleinfo->group_prev_matched;
+            newrule->group_prev_matched_sz = 
+                                    r_node->ruleinfo->group_prev_matched_sz;
             
             newrule->sid_search = r_node->ruleinfo->sid_search;
             newrule->group_search = r_node->ruleinfo->group_search;
@@ -417,6 +419,9 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
             
             r_node->ruleinfo->group_prev_matched[rule_g] = NULL;
             r_node->ruleinfo->group_prev_matched[rule_g +1] = NULL;
+            
+            /* Setting the size */
+            r_node->ruleinfo->group_prev_matched_sz = rule_g +1;
             
             r_node->ruleinfo->group_prev_matched[rule_g] = 
                               orig_rule->group_search;

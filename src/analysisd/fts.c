@@ -124,6 +124,8 @@ int FTS_Init()
             return(0);
         }
     }
+
+    debug1("%s: DEBUG: FTSInit completed.", ARGV0);
                                                             
     return(1);
 }

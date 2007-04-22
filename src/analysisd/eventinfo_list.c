@@ -9,15 +9,10 @@
  * Foundation
  */
 
- 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
-#include "headers/debug_op.h"
+#include "shared.h" 
 #include "eventinfo.h"
 
-#include "error_messages/error_messages.h"
 
 EventNode *eventnode;
 EventNode *lastnode;
@@ -35,6 +30,8 @@ void OS_CreateEventList(int maxsize)
     _memorymaxsize = maxsize;
 
     _memoryused = 0;
+
+    debug1("%s: OS_CreateEventList completed.", ARGV0);
     return;
 }
 

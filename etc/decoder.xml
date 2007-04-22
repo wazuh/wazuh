@@ -246,6 +246,7 @@
   -  Jul  5 12:13:15 lili su[2614]: - pts/6 dcid-root
   -  su[29149]: + pts/5 dcid:root
   -  SU 07/23 01:24 + pts/4 lcid-root
+  -  Apr 22 17:51:51 enigma su: dcid to root on /dev/ttyp1
   -->
 <decoder name="su">
   <program_name>^su$</program_name>
@@ -262,6 +263,7 @@
   <order>user, dstuser</order>
   <fts>name, user, location</fts>
 </decoder>
+
 
 
 <!-- ProFTPD decoder.

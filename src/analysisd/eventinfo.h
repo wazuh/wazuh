@@ -55,11 +55,7 @@ typedef struct _Eventinfo
 
     /* Sid node to delete */
     OSListNode *sid_node_to_delete;
-    
-    /* Group node to delete */
-    OSListNode *group_node_to_delete;
 
-    
     /* Extract when the event fires a rule */
     int size;
     int p_name_size;

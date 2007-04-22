@@ -512,7 +512,6 @@ void Zero_Eventinfo(Eventinfo *lf)
 
     lf->generated_rule = NULL;
     lf->sid_node_to_delete = NULL;
-    lf->group_node_to_delete = NULL;
     lf->decoder_info = NULL_Decoder;
     
     return;
@@ -569,16 +568,14 @@ void Free_Eventinfo(Eventinfo *lf)
         OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched, 
                               lf->sid_node_to_delete);
     }
-    else if(lf->group_node_to_delete)
+    else if(lf->generated_rule && lf->generated_rule->group_prev_matched)
     {
-        OSList **pr_group;
+        int i = 0;
 
-        pr_group = lf->generated_rule->group_prev_matched;
-
-        while(*pr_group)
+        while(i < lf->generated_rule->group_prev_matched_sz)
         {
-            OSList_DeleteThisNode(*pr_group, 
-                                  lf->group_node_to_delete);
+            OSList_DeleteOldestNode(lf->generated_rule->group_prev_matched[i]);
+            i++;
         } 
     }
     
