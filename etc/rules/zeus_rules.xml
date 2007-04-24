@@ -19,26 +19,26 @@
 
   <rule id="31201" level="0">
     <if_sid>31200</if_sid>
-    <match>^[\S+ \S+] INFO:|^[\S+ \S+] SSL:</match>
+    <regex>^[\S+ \S+] INFO:|^[\S+ \S+] SSL:</regex>
     <description>Grouping of Zeus informational logs.</description>
   </rule>
   
   <rule id="31202" level="4">
     <if_sid>31200</if_sid>
-    <match>^[\S+ \S+] WARN:</match>
-    <description>Grouping of Zeus warning logs.</description>
+    <regex>^[\S+ \S+] WARN:</regex>
+    <description>Zeus warning log.</description>
   </rule>
   
   <rule id="31203" level="9">
     <if_sid>31200</if_sid>
-    <match>^[\S+ \S+] SERIOUS:</match>
-    <description>Grouping of Zeus serious logs.</description>
+    <regex>^[\S+ \S+] SERIOUS:</regex>
+    <description>Zeus serious log.</description>
   </rule>
   
   <rule id="31204" level="12">
     <if_sid>31200</if_sid>
-    <match>^[\S+ \S+] FATAL:</match>
-    <description>Grouping of Zeus fatal logs.</description>
+    <regex>^[\S+ \S+] FATAL:</regex>
+    <description>Zeus fatal log.</description>
   </rule>
 
   <rule id="31205" level="8">
