@@ -43,14 +43,14 @@
 
   <rule id="31205" level="8">
     <if_sid>31202</if_sid>
-    <match>admin:Authentication failure</id>
+    <match>admin:Authentication failure</match>
     <description>Admin authentication failed.</description>
     <group>authentication_failed,</group>
   </rule>
 
   <rule id="31206" level="0">
     <if_sid>31202</if_sid>
-    <match>Unknown directive</id>
+    <match>Unknown directive</match>
     <description>Configuration warning (ignored).</description>
   </rule>
   

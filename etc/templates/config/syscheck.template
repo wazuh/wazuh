@@ -1,5 +1,5 @@
   <syscheck>
-    <!-- Frequency that syscheck is executed - default every 2 hours -->
+    <!-- Frequency that syscheck is executed - default to every 6 hours -->
     <frequency>21600</frequency>
     
     <!-- Directories to check  (perform all possible verifications) -->

@@ -83,11 +83,11 @@ void OS_SignLog(char *logfile, char *logfile_old)
     }
 
 
-    fprintf(fp, "Current checksums\n");
+    fprintf(fp, "Current checksum:\n");
     fprintf(fp, "MD5  (%s) = %s\n", logfile, mf_sum);
     fprintf(fp, "SHA1 (%s) = %s\n\n", logfile, sf_sum);
     
-    fprintf(fp, "Chain checksums:\n");
+    fprintf(fp, "Chained checksum:\n");
     fprintf(fp, "MD5  (%s) = %s\n", logfilesum_old, mf_sum_old);
     fprintf(fp, "SHA1 (%s) = %s\n\n", logfilesum_old, sf_sum_old);
     fclose(fp);
