@@ -156,7 +156,7 @@ int config_file(char *name, char *file, int quiet)
     "<!-- Extra log file -->\r\n"
     "<ossec_config>\r\n"
     "  <localfile>\r\n"
-    "    <location>%s</location>"
+    "    <location>%s</location>\r\n"
     "    <log_format>syslog</log_format>\r\n"
     "  </localfile>\r\n"
     "</ossec_config>\r\n\r\n", file);
@@ -185,9 +185,10 @@ int main(int argc, char **argv)
     {
         quiet = 1;
     }
+
     
     /* Checking if ossec was installed already */
-    else if(!fileexist(OSSECCONF))
+    if(!fileexist(OSSECCONF))
     {
         printf("%s: Unable to find ossec config: '%s'.\n", argv[0], OSSECCONF);
     }
