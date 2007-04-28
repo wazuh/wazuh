@@ -10,11 +10,8 @@
  */
  
 #ifdef WIN32 
-#include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <dirent.h> 
-#include <windows.h>
+#include "shared.h"
+#include "rootcheck.h"
 
 
 /* os_check_ads.
@@ -75,6 +72,8 @@ int os_check_ads(char *full_path)
             if(dwRead != 0)
             {
                 char *tmp_pt;
+                char op_msg[OS_SIZE_1024 +1];
+
                 snprintf(final_name, MAX_PATH, "%s%S", full_path, 
                         (WCHAR *)stream_name);
                 tmp_pt = strrchr(final_name, ':');
@@ -82,7 +81,12 @@ int os_check_ads(char *full_path)
                 {
                     *tmp_pt = '\0';
                 }
-                printf("Found NTFS ADS: '%s' \n", final_name);
+
+                snprintf(op_msg, OS_SIZE_1024, "NTFS Alternate data stream "
+                                               "found: '%s'. Possible hidden"
+                                               " content.",
+                                               final_name);
+                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             }
         }
 

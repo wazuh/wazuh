@@ -39,6 +39,7 @@ int read_sys_file(char *file_name, int do_read)
 
     if(lstat(file_name, &statbuf) < 0)
     {
+        #ifndef WIN32
         char op_msg[OS_SIZE_1024 +1];
         snprintf(op_msg, OS_SIZE_1024, "Anomaly detected in file '%s'. "
                 "Hidden from stats, but showing up on readdir. "
@@ -47,6 +48,7 @@ int read_sys_file(char *file_name, int do_read)
         notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
         _sys_errors++;
 
+        #endif
         return(-1);
     }
    
@@ -76,6 +78,7 @@ int read_sys_file(char *file_name, int do_read)
         unsigned long int total = 0;
 
         fd = open(file_name, O_RDONLY, 0);
+
         /* It may not necessarily open */
         if(fd >= 0)
         {
@@ -90,7 +93,8 @@ int read_sys_file(char *file_name, int do_read)
                 struct stat statbuf2;
 
                 if((lstat(file_name, &statbuf2) == 0) &&
-                   (total != statbuf2.st_size))
+                   (total != statbuf2.st_size) &&
+                   (statbuf.st_size == statbuf2.st_size))
                 {
                     char op_msg[OS_SIZE_1024 +1];
                     snprintf(op_msg, OS_SIZE_1024, "Anomaly detected in file "
@@ -169,8 +173,6 @@ int read_sys_dir(char *dir_name, int do_read)
     char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
                                  "/usr/sbin", "/dev", "/etc", 
                                  "/boot", NULL };
-    #else
-    char *(dirs_to_doread[]) = { "C:", NULL };
     #endif
     
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
@@ -203,6 +205,8 @@ int read_sys_dir(char *dir_name, int do_read)
         return(-1);
     }
    
+
+    #ifndef WIN32
     /* Check if the do_read is valid for this directory */
     while(dirs_to_doread[i])
     {
@@ -213,6 +217,10 @@ int read_sys_dir(char *dir_name, int do_read)
         }
         i++;
     }
+    #else
+    do_read = 0;
+    #endif
+     
      
     /* Opening the directory given */
     dp = opendir(dir_name);
@@ -228,6 +236,7 @@ int read_sys_dir(char *dir_name, int do_read)
             return(-1);
         }
     }
+
 
     /* Reading every entry in the directory */
     while((entry = readdir(dp)) != NULL)
@@ -354,6 +363,7 @@ void check_rc_sys(char *basedir)
     
     snprintf(file_path, OS_SIZE_1024, "%s", basedir);
 
+
     /* Opening output files */
     if(rootcheck.notify != QUEUE)
     {
@@ -371,10 +381,12 @@ void check_rc_sys(char *basedir)
     #ifdef WIN32
     rootcheck.scanall = 1;
     #endif
+
         
     /* Scan the whole file system -- may be slow */
     if(rootcheck.scanall)    
         read_sys_dir(file_path, rootcheck.readall);
+
     
     /* Scan only specific directories */
     else

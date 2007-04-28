@@ -34,7 +34,7 @@ rkconfig rootcheck;
 #define ROOTCHECK           "rootcheck"
 
 /* Default to 10 hours */
-#define ROOTCHECK_WAIT          36000
+#define ROOTCHECK_WAIT          72000
 
 /** Prototypes **/
 

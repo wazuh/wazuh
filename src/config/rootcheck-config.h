@@ -19,6 +19,7 @@
 typedef struct _rkconfig
 {
     char *workdir;
+    char *basedir;
     char *rootkit_files;
     char *rootkit_trojans;
     char *winpolicy;

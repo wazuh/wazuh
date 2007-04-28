@@ -75,6 +75,7 @@ int rootcheck_init(int test_config)
     
     /* Zeroing the structure */
     rootcheck.workdir = NULL;
+    rootcheck.basedir = NULL;
     rootcheck.daemon = 1;
     rootcheck.notify = QUEUE;
     rootcheck.scanall = 0;
@@ -178,7 +179,7 @@ int rootcheck_init(int test_config)
     
 
     /* Start up message */
-    verbose(STARTUP_MSG, "rootcheck", getpid());
+    verbose(STARTUP_MSG, "ossec-rootcheck", getpid());
 
         
     /* Connect to the queue if configured to do so */

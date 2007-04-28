@@ -30,6 +30,8 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
     char *xml_readall = "readall";
     char *xml_time = "frequency";
     char *xml_disabled = "disabled";
+    char *xml_base_dir = "base_directory";
+
 
     rootcheck = (rkconfig *)configp;
     
@@ -105,6 +107,10 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element, xml_winpolicy) == 0)
         {
             os_strdup(node[i]->content, rootcheck->winpolicy);
+        }
+        else if(strcmp(node[i]->element, xml_base_dir) == 0)
+        {
+            os_strdup(node[i]->content, rootcheck->basedir);
         }
         else
         {

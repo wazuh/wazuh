@@ -124,6 +124,13 @@ void run_rk_check()
     #endif
     
   
+    /* Setting basedir */
+    if(rootcheck.basedir == NULL)
+    {
+        rootcheck.basedir = basedir;
+    }
+
+    
     time1 = time(0);
     
     /*** Initial message ***/
@@ -163,7 +170,7 @@ void run_rk_check()
 
         else
         {
-            check_rc_files(basedir, fp);
+            check_rc_files(rootcheck.basedir, fp);
 
             fclose(fp);
         }
@@ -190,7 +197,7 @@ void run_rk_check()
         else
         {
             #ifndef HPUX
-            check_rc_trojans(basedir, fp);
+            check_rc_trojans(rootcheck.basedir, fp);
             #endif
 
             fclose(fp);
@@ -215,7 +222,7 @@ void run_rk_check()
         }
         else
         {
-            check_rc_winpolicy(basedir, fp);
+            check_rc_winpolicy(rootcheck.basedir, fp);
             fclose(fp);
         }
     }
@@ -224,11 +231,11 @@ void run_rk_check()
    
     /*** Third check, looking for files on the /dev ***/
     debug1("%s: DEBUG: Going into check_rc_dev", ARGV0);
-    check_rc_dev(basedir);
+    check_rc_dev(rootcheck.basedir);
     
     /*** Fourth check,  scan the whole system looking for additional issues */
     debug1("%s: DEBUG: Going into check_rc_sys", ARGV0);
-    check_rc_sys(basedir);
+    check_rc_sys(rootcheck.basedir);
     
     /*** Process checking ***/
     debug1("%s: DEBUG: Going into check_rc_pids", ARGV0); 
