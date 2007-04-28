@@ -47,4 +47,40 @@
     <description>Host-based anomaly detection event (rootcheck).</description>
     <group>rootcheck,</group>
   </rule>
+  
+  <rule id="550" level="7">
+    <category>ossec</category>
+    <decoded_as>syscheck_integrity_changed</decoded_as>
+    <description>Integrity checksum changed.</description>
+    <group>syscheck,</group>
+  </rule>
+  
+  <rule id="551" level="7">
+    <category>ossec</category>
+    <decoded_as>syscheck_integrity_changed_2nd</decoded_as>
+    <description>Integrity checksum changed again (2nd time).</description>
+    <group>syscheck,</group>
+  </rule>
+  
+  <rule id="552" level="7">
+    <category>ossec</category>
+    <decoded_as>syscheck_integrity_changed_3rd</decoded_as>
+    <description>Integrity checksum changed again (3rd time).</description>
+    <group>syscheck,</group>
+  </rule>
+  
+  <rule id="553" level="7">
+    <category>ossec</category>
+    <decoded_as>syscheck_deleted</decoded_as>
+    <description>File deleted. Unable to retrieve checksum.</description>
+    <group>syscheck,</group>
+  </rule>
+  
+  <rule id="554" level="0">
+    <category>ossec</category>
+    <decoded_as>syscheck_new_entry</decoded_as>
+    <description>File added to the system.</description>
+    <group>syscheck,</group>
+  </rule>
+  
 </group> <!-- OSSEC -->

@@ -46,6 +46,8 @@
 #define PIPE_ERROR    "%s(1120): Pipe error."
 #define GLOB_ERROR    "%s(1121): Glob error. Invalid pattern: '%s'."
 #define GLOB_NFOUND   "%s(1122): No file found by pattern: '%s'."
+#define UNLINK_ERROR  "%s(1123): Unable to delete file: '%s'."
+#define RENAME_ERROR  "%s(1124): Unable to rename file: '%s'."
 
 
 /* COMMON ERRORS */

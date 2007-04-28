@@ -15,7 +15,7 @@
 
 
 /* Signs a log file */
-void OS_SignLog(char *logfile, char *logfile_old)
+void OS_SignLog(char *logfile, char *logfile_old, int log_missing)
 {
     os_md5 mf_sum;
     os_md5 mf_sum_old;
@@ -61,7 +61,8 @@ void OS_SignLog(char *logfile, char *logfile_old)
     /* Generating md5 of the current file */
     if(OS_MD5_File(logfile, mf_sum) < 0)
     {
-        merror("%s: File '%s' not found. MD5 checksum skipped.", 
+        if(log_missing)
+            merror("%s: File '%s' not found. MD5 checksum skipped.", 
                                          ARGV0, logfile);
         strncpy(mf_sum, "none", 6);
     }
@@ -69,7 +70,8 @@ void OS_SignLog(char *logfile, char *logfile_old)
     /* Generating sha1 of the current file */
     if(OS_SHA1_File(logfile, sf_sum) < 0)
     {
-        merror("%s: File '%s' not found. SHA1 checksum skipped.",
+        if(log_missing)
+            merror("%s: File '%s' not found. SHA1 checksum skipped.",
                                         ARGV0, logfile);
         strncpy(sf_sum, "none", 6);
     }

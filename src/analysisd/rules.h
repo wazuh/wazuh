@@ -187,5 +187,11 @@ RuleNode *OS_GetFirstRule();
 
 
 #define ROOTCHECK_MOD   "rootcheck"
+#define SYSCHECK_MOD    "syscheck_integrity_changed"
+#define SYSCHECK_MOD2   "syscheck_integrity_changed_2nd"
+#define SYSCHECK_MOD3   "syscheck_integrity_changed_3rd"
+#define SYSCHECK_NEW    "syscheck_new_entry"
+#define SYSCHECK_DEL    "syscheck_deleted"
+
 
 #endif /* _OS_RULES */

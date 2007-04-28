@@ -455,6 +455,7 @@ void read_controlmsg(int agentid, char *msg)
            (f_sum[i]->mark == 0))
         {
             
+            debug1("%s: Sending file '%s' to agent.", ARGV0, f_sum[i]->name);
             if(send_file_toagent(agentid,f_sum[i]->name,f_sum[i]->sum) < 0)
             {
                 merror("%s: Error sending file '%s' to agent.",
@@ -584,7 +585,7 @@ void manager_init()
 
     /* Initializing mutexes */
     pthread_mutex_init(&lastmsg_mutex, NULL);
-    pthread_cond_init (&awake_mutex, NULL);
+    pthread_cond_init(&awake_mutex, NULL);
 
     modified_agentid = -1;
 

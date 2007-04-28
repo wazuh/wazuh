@@ -80,7 +80,7 @@ int IGnore(Eventinfo *lf);
 
 /* For decoders */
 void DecodeEvent(Eventinfo *lf);
-void DecodeSyscheck(Eventinfo *lf);
+int DecodeSyscheck(Eventinfo *lf);
 int DecodeRootcheck(Eventinfo *lf);
 void DecodeHostinfo(Eventinfo *lf);
  
@@ -660,11 +660,13 @@ void OS_ReadMSG(int m_queue)
             /* Integrity check from syscheck */
             if(msg[0] == SYSCHECK_MQ)
             {
-                DecodeSyscheck(lf);
                 hourly_syscheck++;
-
-                /* We don't process syscheck events further */
-                goto CLMEM;
+                
+                if(!DecodeSyscheck(lf))
+                {
+                    /* We don't process syscheck events further */
+                    goto CLMEM;
+                }
             }
 
             /* Rootcheck decoding */

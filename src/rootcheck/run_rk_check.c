@@ -120,7 +120,7 @@ void run_rk_check()
     }
     #else
     /* Basedir for Windows */
-    char basedir[] = "C:";
+    char basedir[] = "C:\\";
     #endif
     
   
@@ -147,7 +147,9 @@ void run_rk_check()
     /* Open rootkit_files and pass the pointer to check_rc_files */
     if(!rootcheck.rootkit_files)
     {
+        #ifndef WIN32
         merror("%s: No rootcheck_files file configured.", ARGV0);
+        #endif
     }
 
     else
@@ -171,7 +173,9 @@ void run_rk_check()
     /*** Second check. look for trojan entries in common binaries ***/
     if(!rootcheck.rootkit_trojans)
     {
+        #ifndef WIN32
         merror("%s: No rootcheck_trojans file configured.", ARGV0);
+        #endif
     }
     
     else
@@ -194,7 +198,8 @@ void run_rk_check()
     }
 
 
-    #ifdef WIN32
+    /* #ifdef WIN32 */
+    #ifdef NOTDEFINEDMACRO
     /*** Windows policy check ***/
     if(!rootcheck.winpolicy)
     {

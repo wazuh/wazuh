@@ -110,6 +110,11 @@ int Start_win32_Syscheck()
                 ARGV0, syscheck.dir[r]);
         r++;
     }
+
+
+    /* Start up message */
+    verbose(STARTUP_MSG, ARGV0, getpid());
+            
         
         
     /* Will create the db to store syscheck data */

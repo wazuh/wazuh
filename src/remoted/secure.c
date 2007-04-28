@@ -37,8 +37,9 @@ void HandleSecure()
     struct sockaddr_in peer_info;
     socklen_t peer_size;
 
+
     /* Send msg init */
-    void send_msg_init();
+    send_msg_init();
 
 
     /* Initializing manager */

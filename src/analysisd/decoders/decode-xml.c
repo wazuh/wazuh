@@ -838,7 +838,11 @@ int ReadDecodeXML(char *file)
     
     /* Adding rootcheck decoder to list */
     addDecoder2list(ROOTCHECK_MOD);
-    addDecoder2list("syscheck");
+    addDecoder2list(SYSCHECK_MOD);
+    addDecoder2list(SYSCHECK_MOD2);
+    addDecoder2list(SYSCHECK_MOD3);
+    addDecoder2list(SYSCHECK_NEW);
+    addDecoder2list(SYSCHECK_DEL);
 
 
     /* Setting ids - for our two lists */

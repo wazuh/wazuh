@@ -77,7 +77,7 @@ void *receiver_thread(void *none)
         #else
         
         /* On Windows, we wait 5 seconds before attempting to read again */
-        sleep(5);    
+        sleep(3);    
         #endif
 
         
@@ -189,6 +189,13 @@ void *receiver_thread(void *none)
                     /* no error */
                     os_md5 currently_md5;
 
+                    /* Making sure to close for the rename to work */
+                    if(fp)
+                    {
+                        fclose(fp);
+                        fp = NULL;
+                    }
+                    
                     if(file[0] == '\0')
                     {
                         /* nada */
@@ -203,14 +210,17 @@ void *receiver_thread(void *none)
                     else
                     {
                         if(strcmp(currently_md5, file_sum) != 0)
+                        {
+                            debug1("%s: Failed md5 for: %s -- deleting.",
+                                   ARGV0, file); 
                             unlink(file);
+                        }
                         else
                         {
                             char *final_file;
                             char _ff[OS_SIZE_1024 +1];
 
                             /* Renaming the file to its orignal name */
-
                             final_file = strchr(file, '.');
                             if(final_file)
                             {
@@ -218,7 +228,15 @@ void *receiver_thread(void *none)
                                 snprintf(_ff, OS_SIZE_1024, "%s/%s",
                                         SHAREDCFG_DIR,
                                         final_file);
-                                rename(file, _ff);
+                                
+                                if(unlink(_ff) != 0)
+                                {
+                                    merror(UNLINK_ERROR, ARGV0, _ff);
+                                }
+                                if(rename(file, _ff) != 0)
+                                {
+                                    merror(RENAME_ERROR, ARGV0, file);
+                                }
                             }
                         }
 

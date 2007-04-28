@@ -41,7 +41,7 @@ void manage_files(int cday, int cmon, int cyear);
 void monitor_agents();
 
 /* Sign a log */
-void OS_SignLog(char *logfile, char *logfile_old);
+void OS_SignLog(char *logfile, char *logfile_old, int log_missing);
 
 /* Compress log */
 void OS_CompressLog(char *logfile);

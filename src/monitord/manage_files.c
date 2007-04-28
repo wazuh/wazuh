@@ -68,7 +68,7 @@ void manage_files(int cday, int cmon, int cyear)
             "archive",
             p_old.tm_mday);
 
-    OS_SignLog(elogfile, elogfile_old);
+    OS_SignLog(elogfile, elogfile_old, 0);
     OS_CompressLog(elogfile);
 
 
@@ -86,7 +86,7 @@ void manage_files(int cday, int cmon, int cyear)
             months[p_old.tm_mon],
             "alerts",
             p_old.tm_mday);
-    OS_SignLog(alogfile, alogfile_old);
+    OS_SignLog(alogfile, alogfile_old, 1);
     OS_CompressLog(alogfile);
 
 
@@ -104,7 +104,7 @@ void manage_files(int cday, int cmon, int cyear)
             months[p_old.tm_mon],
             "firewall",
             p_old.tm_mday);
-    OS_SignLog(flogfile, flogfile_old);
+    OS_SignLog(flogfile, flogfile_old, 0);
     OS_CompressLog(flogfile);
 
     return;

@@ -16,13 +16,13 @@
 #include "os_regex/os_regex.h"
 #include "config.h"
 #include "alerts/alerts.h"
+#include "decoder.h"
 
 
 typedef struct __sdb
 {
     char buf[OS_MAXSTR + 1];
     char comment[OS_MAXSTR +1];
-    char comment2[OS_MAXSTR +1];
 
     char size[OS_FLSIZE +1];
     char perm[OS_FLSIZE +1];
@@ -37,8 +37,17 @@ typedef struct __sdb
 
     int db_err;
 
+
+    /* Ids for decoder */
+    int id1;
+    int id2;
+    int id3;
+    int idn;
+    int idd;
+    
+
     /* Syscheck rule */
-    RuleInfo *syscheck_rule;
+    OSDecoderInfo  *syscheck_dec;
 
 
     /* File search variables */
@@ -71,7 +80,6 @@ void SyscheckInit()
     /* Clearing db memory */
     memset(sdb.buf, '\0', OS_MAXSTR +1);
     memset(sdb.comment, '\0', OS_MAXSTR +1);
-    memset(sdb.comment2, '\0', OS_MAXSTR +1);
     
     memset(sdb.size, '\0', OS_FLSIZE +1);
     memset(sdb.perm, '\0', OS_FLSIZE +1);
@@ -81,19 +89,19 @@ void SyscheckInit()
     memset(sdb.sha1, '\0', OS_FLSIZE +1);
 
 
-    /* Zeroring syscheck rule */
-    sdb.syscheck_rule = zerorulemember(
-                        SYSCHECK_MODULE,
-                        Config.integrity,
-                        0,0,0,0,0,0);
-
-    if(!sdb.syscheck_rule)
-    {
-        ErrorExit(MEM_ERROR, ARGV0);
-    }
-    sdb.syscheck_rule->group = "syscheck,";
-
-
+    /* Creating decoder */
+    os_calloc(1, sizeof(OSDecoderInfo), sdb.syscheck_dec);
+    sdb.syscheck_dec->id = getDecoderfromlist(SYSCHECK_MOD);
+    sdb.syscheck_dec->name = SYSCHECK_MOD;
+    sdb.syscheck_dec->type = OSSEC_RL;
+    sdb.syscheck_dec->fts = 0;
+    
+    sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
+    sdb.id2 = getDecoderfromlist(SYSCHECK_MOD2);
+    sdb.id3 = getDecoderfromlist(SYSCHECK_MOD3);
+    sdb.idn = getDecoderfromlist(SYSCHECK_NEW);
+    sdb.idd = getDecoderfromlist(SYSCHECK_DEL);
+    
     debug1("%s: SyscheckInit completed.", ARGV0);
     return;
 }
@@ -156,6 +164,11 @@ void DB_SetCompleted(Eventinfo *lf)
             }
             
             __setcompleted(lf->location);
+
+
+            /* Setting as completed in memory */
+            sdb.agent_cp[i][0] = '1';
+            return;
         }
 
         i++;
@@ -175,7 +188,7 @@ FILE *DB_File(char *agent, int *agent_id)
     {
         if(strcmp(sdb.agent_ips[i], agent) == 0)
         {
-            /* pointing to the beginning of the file */
+            /* Pointing to the beginning of the file */
             fseek(sdb.agent_fps[i],0, SEEK_SET);
             *agent_id = i;
             return(sdb.agent_fps[i]);
@@ -234,7 +247,7 @@ FILE *DB_File(char *agent, int *agent_id)
 /* DB_Search
  * Search the DB for any entry related to the file being received
  */
-void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
+int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 {
     int p = 0;
     int sn_size;
@@ -252,7 +265,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     {
         merror("%s: Error handling integrity database.",ARGV0);
         sdb.db_err++; /* Increment db error */
-        return;
+        return(0);
     }
 
 
@@ -262,7 +275,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     if(fgetpos(fp, &sdb.init_pos) == -1)
     {
         merror("%s: Error handling integrity database (fgetpos).",ARGV0);
-        return;
+        return(0);
     }
     
     
@@ -328,7 +341,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
         /* checksum match, we can just return and keep going */
         if(strcmp(saved_sum,c_sum) == 0)
-            return;
+            return(0);
 
 
         /* If we reached here, the checksum of the file has changed */
@@ -354,33 +367,22 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 if((p >= 3) && Config.syscheck_auto_ignore)
                 {
                     /* Ignoring it.. */
-                    return;
+                    return(0);
                 }
 
-                /* Third change */
-                snprintf(sdb.comment,OS_MAXSTR,
-                        "Integrity checksum of file '%.756s'"
-                        " has changed again (third time or more).%s",
-                        f_name, 
-                        Config.syscheck_auto_ignore == 1?
-                        "Ignoring it.":"");
+                sdb.syscheck_dec->id = sdb.id3;
+
             }
             else
             {
-                /* Second change */
-                snprintf(sdb.comment,OS_MAXSTR,
-                        "Integrity checksum of file '%.756s'"
-                        " has changed again (2nd time)",
-                        f_name);   
+                sdb.syscheck_dec->id = sdb.id2;
             }
         }
 
         /* First change */ 
         else
         {
-            snprintf(sdb.comment,OS_MAXSTR,
-                    "Integrity checksum of file '%.756s' "
-                    "has changed.",f_name);
+            sdb.syscheck_dec->id = sdb.id1;
         }
 
 
@@ -405,14 +407,16 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         /* File deleted */
         if(c_sum[0] == '-' && c_sum[1] == '1')
         {
-            snprintf(sdb.comment2, OS_MAXSTR,
+            sdb.syscheck_dec->id = sdb.idd;
+            snprintf(sdb.comment, OS_MAXSTR,
                     "File '%.756s' was deleted. Unable to retrieve "
                     "checksum.", f_name);
         }
         /* If file was re-added, do not compare changes */
         else if(saved_sum[0] == '-' && saved_sum[1] == '1')
         {
-            snprintf(sdb.comment2, OS_MAXSTR,
+            sdb.syscheck_dec->id = sdb.idn;
+            snprintf(sdb.comment, OS_MAXSTR,
                      "File '%.756s' was re-added.", f_name);
         }
 
@@ -596,7 +600,7 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
 
             /* Provide information about the file */    
-            snprintf(sdb.comment2,512,"Integrity checksum changed for: "
+            snprintf(sdb.comment, 512, "Integrity checksum changed for: "
                     "'%.756s'\n"
                     "%s"
                     "%s"
@@ -614,20 +618,16 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         }
 
 
-        lf->generated_rule = sdb.syscheck_rule;
-        sdb.syscheck_rule->comment = sdb.comment;
-
-
         /* Creating a new log message */
         free(lf->full_log);
-        os_strdup(sdb.comment2, lf->full_log);
+        os_strdup(sdb.comment, lf->full_log);
 
-        OS_Log(lf);
+        
+        /* Setting decoder */
+        lf->decoder_info = sdb.syscheck_dec;
+                        
 
-        /* Removing pointer to rule */
-        lf->generated_rule = NULL;
-
-        return; 
+        return(1); 
 
     } /* continuiing... */
 
@@ -641,31 +641,26 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     /* Alert if configured to notify on new files */
     if((Config.syscheck_alert_new == 1) && (DB_IsCompleted(agent_id)))
     {
-        lf->generated_rule = sdb.syscheck_rule;
-
-        snprintf(sdb.comment, OS_MAXSTR,
-                            "New file added: '%.756s'.",f_name);
-        sdb.syscheck_rule->comment = sdb.comment;
-
+        sdb.syscheck_dec->id = sdb.idn;
 
         /* New file message */
-        snprintf(sdb.comment2,OS_MAXSTR,
+        snprintf(sdb.comment, OS_MAXSTR,
                               "New file '%.756s' "
                               "added to the file system.", f_name);
         
 
         /* Creating a new log message */
         free(lf->full_log);
-        os_strdup(sdb.comment2, lf->full_log);
+        os_strdup(sdb.comment, lf->full_log);
 
-        OS_Log(lf);
 
-        /* Removing pointer to rule */
-        lf->generated_rule = NULL;
+        /* Setting decoder */
+        lf->decoder_info = sdb.syscheck_dec;
 
+        return(1);
     }
 
-    return;
+    return(0);
 }
 
 
@@ -673,18 +668,12 @@ void DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
  * Not using the default decoding lib for simplicity
  * and to be less resource intensive
  */
-void DecodeSyscheck(Eventinfo *lf)
+int DecodeSyscheck(Eventinfo *lf)
 {
     char *c_sum;
     char *f_name;
    
    
-    /* checking if we need to check it in here */
-    if(!(sdb.syscheck_rule->alert_opts & DO_LOGALERT))
-        return;
-        
-        
-        
     /* Every syscheck message must be in the following format:
      * checksum filename     
      */
@@ -697,11 +686,11 @@ void DecodeSyscheck(Eventinfo *lf)
         if(strcmp(lf->log, HC_SK_DB_COMPLETED) == 0)
         {
             DB_SetCompleted(lf);
-            return;    
+            return(0);
         }
          
         merror(SK_INV_MSG, ARGV0);
-        return;
+        return(0);
     }
     
     
@@ -719,7 +708,7 @@ void DecodeSyscheck(Eventinfo *lf)
         {
             if(strncasecmp(*ff_ig, f_name, strlen(*ff_ig)) == 0)
             {
-                return;
+                return(0);
             }
             
             ff_ig++;
@@ -732,9 +721,7 @@ void DecodeSyscheck(Eventinfo *lf)
     
     
     /* Searching for file changes */
-    DB_Search(f_name,c_sum,lf);
-   
-    return;
+    return(DB_Search(f_name,c_sum,lf));
 }
 
 /* EOF */

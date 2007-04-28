@@ -140,6 +140,7 @@ int rootcheck_init(int test_config)
     /* Staring message */
     debug1(STARTED_MSG,ARGV0);
 
+
     /* Checking if the configuration is present */
     if(File_DateofChange(cfg) < 0)
     {
@@ -148,6 +149,7 @@ int rootcheck_init(int test_config)
     }
 
 
+    /* Reading configuration  --function specified twice (check makefile) */
     if(Read_Rootcheck_Config(cfg, &rootcheck) < 0)
     {
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
@@ -162,6 +164,7 @@ int rootcheck_init(int test_config)
     /* Return 1 disables rootcheck */
     if(rootcheck.disabled == 1)
     {
+        verbose("%s: Rootcheck disabled. Exiting.", ARGV0);
         return(1);
     }
     
@@ -172,6 +175,12 @@ int rootcheck_init(int test_config)
 
 
     #ifdef OSSECHIDS
+    
+
+    /* Start up message */
+    verbose(STARTUP_MSG, "rootcheck", getpid());
+
+        
     /* Connect to the queue if configured to do so */
     if(rootcheck.notify == QUEUE)
     {
