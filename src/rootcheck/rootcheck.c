@@ -179,7 +179,9 @@ int rootcheck_init(int test_config)
     
 
     /* Start up message */
+    #ifdef WIN32
     verbose(STARTUP_MSG, "ossec-rootcheck", getpid());
+    #endif
 
         
     /* Connect to the queue if configured to do so */

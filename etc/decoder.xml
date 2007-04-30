@@ -1245,6 +1245,7 @@
 
 <decoder name="ossec-agent">
   <parent>ossec</parent>
+  <type>ossec</type>
   <prematch offset="after_parent">^Agent started:</prematch>
   <regex offset="after_prematch">^ '(\S+)'</regex>
   <order>extra_data</order>

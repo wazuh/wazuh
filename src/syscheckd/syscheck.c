@@ -287,6 +287,11 @@ int main(int argc, char **argv)
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
+
+    if(syscheck.rootcheck)
+    {
+        verbose(STARTUP_MSG, "ossec-rootcheck", getpid());
+    }
         
     
     /* Create local database */
