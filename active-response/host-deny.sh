@@ -87,6 +87,14 @@ if [ "x${IP}" = "x" ]; then
 fi
 
 
+# Checking for invalid entries (lacking ".", etc)
+echo "${IP}" | grep "\." > /dev/null 2>&1
+if [ ! $? = 0 ]; then
+    echo "`date` Invalid ip/hostname entry: ${IP}" >> ${PWD}/../logs/active-responses.log
+    exit 1;
+fi
+
+
 # Adding the ip to hosts.deny
 if [ "x${ACTION}" = "xadd" ]; then
    lock;     

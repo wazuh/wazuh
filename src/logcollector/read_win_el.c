@@ -338,19 +338,25 @@ void readel(os_el *el, int printit)
                 if(descriptive_msg != NULL)
                 {
                     /* Remove any \n or \r */
+                    /* Replace tabs from the argument field to spaces.
+                     * So whenever we have option:\tvalue\t, it will
+                     * become option: value\t
+                     */
                     tmp_str = descriptive_msg;    
-                    while((tmp_str = strchr(tmp_str, '\n')))
+                    while(*tmp_str != '\0')
                     {
-                        *tmp_str = ' ';
-                        tmp_str++;		    
-                    }			
-
-                    tmp_str = descriptive_msg;    
-                    while((tmp_str = strchr(tmp_str, '\r')))
-                    {
-                        *tmp_str = ' ';
-                        tmp_str++;		    
-                    }			
+                        if(*tmp_str == '\n')
+                            *tmp_str = ' ';
+                        else if(*tmp_str == '\r')
+                            *tmp_str = ' ';
+                        else if((*tmp_str == ':') && (tmp_str[1] == '\t'))
+                        {
+                            tmp_str[1] = ' ';
+                            tmp_str++;
+                        }
+                                    
+                        tmp_str++;
+                    }
                 }
             }
             else

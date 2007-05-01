@@ -86,8 +86,8 @@
 
   <rule id="18112" level="8">
     <if_sid>18104</if_sid>
-    <id>^630</id>
-    <description>User account deleted.</description>
+    <id>^630|^629</id>
+    <description>User account disabled or deleted.</description>
     <group>adduser,</group>
   </rule>
   
@@ -273,6 +273,13 @@
     <id>^672|^673|^675|^676|^681</id>
     <description>Windows DC Logon Failure.</description>
     <group>win_authentication_failed,</group>
+  </rule>
+  
+  <rule id="18140" level="7">
+    <if_sid>18104</if_sid>
+    <id>^520</id>
+    <description>System time changed.</description>
+    <group>time_changed,</group>
   </rule>
   
   <rule id="18151" level="10" frequency="$MS_FREQ" timeframe="240">

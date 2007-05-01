@@ -47,6 +47,14 @@
     <description>Host-based anomaly detection event (rootcheck).</description>
     <group>rootcheck,</group>
   </rule>
+
+  <rule id="511" level="0">
+    <if_sid>510</if_sid>
+    <match>^NTFS Alternate data stream found</match>
+    <regex>Thumbs.db:encryptable'.|:Zone.Identifier'.</regex>
+    <description>Ignored common NTFS ADS entries.</description>
+    <group>rootcheck,</group>
+  </rule>
   
   <rule id="550" level="7">
     <category>ossec</category>
