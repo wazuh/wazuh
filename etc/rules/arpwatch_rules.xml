@@ -20,7 +20,7 @@
                   
   <rule id="7202" level="9">
     <if_sid>7200</if_sid>
-    <match> flip flop </match>
+    <match>flip flop </match>
     <description>Arpwatch "flip flop" message. </description>
     <description>IP address/MAC relation changing too often.</description>
     <group>ip_spoof,</group>
