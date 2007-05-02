@@ -46,14 +46,16 @@ void OS_SignLog(char *logfile, char *logfile_old, int log_missing)
     /* generating md5 of the old file */
     if(OS_MD5_File(logfilesum_old, mf_sum_old) < 0)
     {
-        merror("%s: No previous md5 checksum found. Starting over.", ARGV0);
+        merror("%s: No previous md5 checksum found: '%s'. "
+               "Starting over.", ARGV0, logfilesum_old);
         strncpy(mf_sum_old, "none", 6);
     }
 
     /* generating sha1 of the old file.  */
     if(OS_SHA1_File(logfilesum_old, sf_sum_old) < 0)
     {
-        merror("%s: No previous sha1 checksum found. Starting over.", ARGV0);
+        merror("%s: No previous sha1 checksum found: '%s'. " 
+               "Starting over.", ARGV0, logfilesum_old);
         strncpy(sf_sum_old, "none", 6);
     }
 
