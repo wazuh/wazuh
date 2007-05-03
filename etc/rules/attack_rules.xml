@@ -69,7 +69,7 @@
     <group>authentication_failures,</group>
   </rule>
 
-  <rule id="40112" level="12" frequency="8" timeframe="240">
+  <rule id="40112" level="12" timeframe="240">
     <if_group>authentication_success</if_group>
     <if_matched_group>authentication_failures</if_matched_group>
     <same_source_ip />
