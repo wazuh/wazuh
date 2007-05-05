@@ -16,6 +16,7 @@
 
 
 /* We need the eventinfo and os_regex in here */
+#include "shared.h"
 #include "os_regex/os_regex.h"
 
 #define AFTER_PARENT    0x001   /* 1   */
