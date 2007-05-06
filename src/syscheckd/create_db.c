@@ -109,29 +109,6 @@ int read_file(char *file_name, int opts, int flag)
     }
 
 
-    /* If check_db, we just need to verify that the file is
-     * already present. If not, we add it.
-     */
-    if(flag == CHECK_DB)
-    {
-        /* File in the database already */
-        fseek(syscheck.fp, 0, SEEK_SET);
-        if(check_file(file_name))
-        {
-            /* Sleeping in here too */
-            if(__counter >= (3 * syscheck.sleep_after))
-            {
-                sleep(syscheck.tsleep);
-                __counter = 0;
-            }
-            __counter++;
-
-            return(0);
-        }
-        fseek(syscheck.fp, 0, SEEK_END);
-    }
-
-    
     /* Win32 does not have lstat */
     #ifdef WIN32
     if(stat(file_name, &statbuf) < 0)
@@ -163,6 +140,30 @@ int read_file(char *file_name, int opts, int flag)
         os_md5 mf_sum;
         os_sha1 sf_sum;
 
+
+        /* If check_db, we just need to verify that the file is
+         * already present. If not, we add it.
+         */
+        if(flag == CHECK_DB)
+        {
+            /* File in the database already */
+            fseek(syscheck.fp, 0, SEEK_SET);
+            if(check_file(file_name))
+            {
+                /* Sleeping in here too */
+                if(__counter >= (3 * syscheck.sleep_after))
+                {
+                    sleep(syscheck.tsleep);
+                    __counter = 0;
+                }
+                __counter++;
+
+                return(0);
+            }
+            fseek(syscheck.fp, 0, SEEK_END);
+        }
+
+
         /* Cleaning sums */
         strncpy(mf_sum, "xxx", 4);
         strncpy(sf_sum, "xxx", 4);
@@ -188,7 +189,7 @@ int read_file(char *file_name, int opts, int flag)
             }
         }
 
-        
+
         /* Adding file */
         fprintf(syscheck.fp,"%c%c%c%c%c%c%d:%d:%d:%d:%s:%s %s\n",
                 opts & CHECK_SIZE?'+':'-',
@@ -214,10 +215,10 @@ int read_file(char *file_name, int opts, int flag)
         }
         __counter++;
 
-        
-        #ifdef DEBUG 
+
+    #ifdef DEBUG 
         verbose("%s: file '%s %s'",ARGV0, file_name, mf_sum);
-        #endif
+    #endif
     }
     else
     {

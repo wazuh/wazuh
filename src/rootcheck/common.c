@@ -64,6 +64,7 @@ int is_file(char *file_name)
     if(!file_basename)
     {
         merror("%s: RK: Invalid file name: %s!", ARGV0, file_name);
+        return(0);
     }
 
     

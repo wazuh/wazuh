@@ -324,6 +324,10 @@ void check_rc_pids()
     int _errors = 0;
     
     char ps[OS_SIZE_1024 +1];
+    
+    char proc_0[] = "/proc";
+    char proc_1[] = "/proc/1";
+
     pid_t max_pid = MAX_PID;
 
     noproc = 1;
@@ -340,7 +344,7 @@ void check_rc_pids()
     
     
     /* Proc is mounted */
-    if(is_file("/proc") && is_file("/proc/1"))
+    if(is_file(proc_0) && is_file(proc_1))
     {
         noproc = 0;
     }
