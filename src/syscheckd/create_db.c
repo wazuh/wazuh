@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2005,2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -22,6 +22,7 @@ int __counter = 0;
 
 /** Prototypes **/
 int read_dir(char *dir_name, int opts, int flag);
+
 
 /* int check_file(char *file_name)
  * Checks if the file is already in the database.
@@ -75,6 +76,7 @@ int check_file(char *file_name)
  */
 int read_file(char *file_name, int opts, int flag)
 {
+    int check_file_new = 0;
     struct stat statbuf;
     
     /* Checking if file is to be ignored */
@@ -161,6 +163,7 @@ int read_file(char *file_name, int opts, int flag)
                 return(0);
             }
             fseek(syscheck.fp, 0, SEEK_END);
+            check_file_new = 1;
         }
 
 
@@ -207,6 +210,24 @@ int read_file(char *file_name, int opts, int flag)
                 file_name);
 
 
+        /* Send new file */
+        if(check_file_new)
+        {
+            char alert_msg[912 +2];
+
+            /* Sending the new checksum to the analysis server */
+            alert_msg[912 +1] = '\0';
+            snprintf(alert_msg, 912, "%d:%d:%d:%d:%s:%s %s", 
+                                     opts & CHECK_SIZE?(int)statbuf.st_size:0,
+                                     opts & CHECK_PERM?(int)statbuf.st_mode:0,
+                                     opts & CHECK_OWNER?(int)statbuf.st_uid:0,
+                                     opts & CHECK_GROUP?(int)statbuf.st_gid:0,
+                                     opts & CHECK_MD5SUM?mf_sum:"xxx",
+                                     opts & CHECK_SHA1SUM?sf_sum:"xxx",
+                                     file_name);
+            notify_agent(alert_msg, 0);
+        }
+        
         /* Sleeping in here too */
         if(__counter >= (3 * syscheck.sleep_after))
         {
@@ -216,9 +237,9 @@ int read_file(char *file_name, int opts, int flag)
         __counter++;
 
 
-    #ifdef DEBUG 
+        #ifdef DEBUG 
         verbose("%s: file '%s %s'",ARGV0, file_name, mf_sum);
-    #endif
+        #endif
     }
     else
     {

@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -55,6 +55,8 @@ int check_db();
  * Checks the registry for changes.
  */  
 void os_winreg_check();
+
+int notify_agent(char *msg, int send_now);
 
 
 #endif
