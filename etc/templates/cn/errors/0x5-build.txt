@@ -1,0 +1,6 @@
+
+ Error 0x5.
+ Building error. Unable to finish the installation.
+ 
+ 错误代码 0x5.
+ 编译错误. 不能完成安装.

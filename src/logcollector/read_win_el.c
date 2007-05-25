@@ -153,10 +153,12 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
     event[MAX_PATH] = '\0';
     tmp_str[256] = '\0';
 
+
     /* Flags for format event */
     fm_flags |= FORMAT_MESSAGE_FROM_HMODULE;
     fm_flags |= FORMAT_MESSAGE_ALLOCATE_BUFFER;
     fm_flags |= FORMAT_MESSAGE_ARGUMENT_ARRAY;
+
 
     /* Get the file name from the registry (stored on event) */
     if(!el_getEventDLL(name, source, event))

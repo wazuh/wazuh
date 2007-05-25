@@ -1,0 +1,10 @@
+
+
+    感谢使用 OSSEC HIDS.
+    如果您有任何疑问,建议或您找到任何bug,
+    请通过　contact@ossec.net 或邮件列表 ossec-list@ossec.net 联系我们.    
+    ( http://www.ossec.net/en/mailing_lists.html ).
+
+    您可以在　http://www.ossec.net 获得更多信息
+
+    --- 请按　ENTER 结束安装 (下面可能有更多信息). ---

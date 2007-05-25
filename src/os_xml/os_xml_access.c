@@ -387,10 +387,10 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
                 j=_lxml->rl[i+1];
         }
 
-        if((matched == 1) &&(j > _lxml->rl[i]))
+        if(j > _lxml->rl[i])
         {
-            j=0;
-            matched=0;
+            j = 0;
+            matched = 0;
         }
     }
     if(ret ==NULL)

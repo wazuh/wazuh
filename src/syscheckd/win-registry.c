@@ -445,7 +445,7 @@ void os_winreg_open_key(char *subkey, char *full_key_name)
     }
 
     os_winreg_querykey(oshkey, subkey, full_key_name);
-    RegCloseKey(sub_tree);
+    RegCloseKey(oshkey);
     return;
 }
 
