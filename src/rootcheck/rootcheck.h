@@ -30,6 +30,7 @@ rkconfig rootcheck;
 #define ALERT_SYSTEM_ERROR      1 
 #define ALERT_SYSTEM_CRIT       2
 #define ALERT_ROOTKIT_FOUND     3
+#define ALERT_POLICY_VIOLATION  4
 
 #define ROOTCHECK           "rootcheck"
 
@@ -44,6 +45,13 @@ int isfile_ondir(char *file, char *dir);
 
 /* common is_file: Check if a file exist (using stat, fopen and opendir) */
 int is_file(char *file_name);
+
+/** char *normalize_string
+ * Normalizes a string, removing white spaces and tabs
+ * from the begining and the end of it.
+ */
+char *normalize_string(char *str);
+   
 
 /* Check if regex is present on the file.
  * Similar to `strings file | grep -r regex`

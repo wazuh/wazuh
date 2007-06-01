@@ -281,6 +281,14 @@
     <description>System time changed.</description>
     <group>time_changed,</group>
   </rule>
+
+  <rule id="18141" level="7">
+    <if_sid>18102</if_sid>
+    <id>^1076</id>
+    <match>unexpected shutdown</match>
+    <group>system_error, system_shutdown,</group>
+    <description>Unexpected Windows shutdown.</description>
+  </rule>
   
   <rule id="18151" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>18108</if_matched_sid>

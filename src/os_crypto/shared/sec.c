@@ -644,7 +644,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
                 keys->global[id],
                 keys->local[id]);
 
-        merror(ENCTIME_ERROR, __local_name, keys->ips[id]);
+        merror(ENCTIME_ERROR, __local_name, keys->name[id]);
         return(NULL);
     }
 
@@ -706,7 +706,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
                 keys->local[id],
                 keys->global[id]);
 
-        merror(ENCTIME_ERROR, __local_name, keys->ips[id]);
+        merror(ENCTIME_ERROR, __local_name, keys->name[id]);
         return(NULL);
     }
     

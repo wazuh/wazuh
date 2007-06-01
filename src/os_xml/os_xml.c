@@ -206,14 +206,14 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
     unsigned int _currentlycont = 0;
     short int location = -1;
 
-    char elem[XML_MAXSIZE];
-    char cont[XML_MAXSIZE];
-    char closedelem[XML_MAXSIZE];
+    char elem[XML_MAXSIZE +1];
+    char cont[XML_MAXSIZE +1];
+    char closedelem[XML_MAXSIZE +1];
 
     
-    memset(elem,'\0',XML_MAXSIZE);
-    memset(cont,'\0',XML_MAXSIZE);
-    memset(closedelem,'\0',XML_MAXSIZE);
+    memset(elem,'\0',XML_MAXSIZE +1);
+    memset(cont,'\0',XML_MAXSIZE +1);
+    memset(closedelem,'\0',XML_MAXSIZE +1);
 
     while((c=FGETC(fp)) != EOF)
     {

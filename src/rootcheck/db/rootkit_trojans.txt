@@ -2,12 +2,13 @@
 #
 # rootkit_trojans.txt, (C) Daniel B. Cid
 # Imported from the rootcheck project.
+# Some entries taken from the chkrootkit project.
 #
-# Lines starting with '#' are not going to be read.
+# Lines starting with '#' are not going to be read (comments).
 # Blank lines are not going to be read too.
 # 
 # Each line must be in the following format:
-# file_name !string_to_search
+# file_name !string_to_search!Description
 
 # Commom binaries and public trojan entries
 ls          !bash|^/bin/sh|dev/[^clu]|\.tmp/lsfile|duarawkz|/prof|/security|file\.h!
@@ -85,9 +86,34 @@ kill		!/dev/[ab,d-k,m-z]|/dev/[F-Z]|/dev/[A-D]|/dev/[0-9]|proc\.h|bash|tmp!
 
 
 # ZK rootkit (http://honeyblog.org/junkyard/reports/redhat-compromise2.pdf)
-/etc/sysconfig/console/load.zk   !/bin/sh! ZK rootkit ::
-/etc/sysconfig/console/load.zk   !usr/bin/run! ZK rootkit ::
+/etc/sysconfig/console/load.zk   !/bin/sh! ZK rootkit
+/etc/sysconfig/console/load.zk   !usr/bin/run! ZK rootkit
 
 
+# Modified /etc/hosts entries
+# Idea taken from:
+# http://blog.tenablesecurity.com/2006/12/detecting_compr.html
+# http://www.sophos.com/security/analyses/trojbagledll.html
+# http://www.f-secure.com/v-descs/fantibag_b.shtml
+/etc/hosts  !^[^#]*avp.ch!Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*avp.ru!Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*awaps.net! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*ca.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*mcafee.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*microsoft.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*f-secure.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*sophos.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*symantec.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*my-etrust.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*nai.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*networkassociates.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*viruslist.ru! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*kaspersky! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*symantecliveupdate.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*grisoft.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*clamav.net! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*bitdefender.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*antivirus.com! Anti-virus site on the hosts file
+/etc/hosts  !^[^#]*sans.org! Security site on the hosts file
 
 # EOF #

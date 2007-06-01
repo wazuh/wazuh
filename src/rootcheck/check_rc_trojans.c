@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005,2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -10,20 +10,7 @@
  */
 
  
-#include <stdio.h>       
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-
-#include <sys/param.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <errno.h>
-
-#include "headers/defs.h"
-#include "headers/debug_op.h"
-
+#include "shared.h"
 #include "rootcheck.h"
 
 
@@ -33,15 +20,18 @@
  */
 void check_rc_trojans(char *basedir, FILE *fp)
 {
-    int i, _errors = 0, _total = 0;
+    int i = 0, _errors = 0, _total = 0;
     char buf[OS_SIZE_1024 +1];
     char file_path[OS_SIZE_1024 +1];
 
     char *file;
     char *string_to_look;
 
-    char *(all_paths[]) = {"bin","sbin","usr/bin","usr/sbin"};
-
+    #ifndef WIN32
+    char *(all_paths[]) = {"bin","sbin","usr/bin","usr/sbin", NULL};
+    #else
+    char *(all_paths[]) = {"C:\\Windows\\", "D:\\Windows\\", NULL};
+    #endif
 
     debug1("%s: DEBUG: Starting on check_rc_trojans", ARGV0);
 
@@ -51,6 +41,8 @@ void check_rc_trojans(char *basedir, FILE *fp)
         char *nbuf;
         char *message = NULL;
 
+        i = 0;
+
         /* Removing end of line */
         nbuf = strchr(buf, '\n');
         if(nbuf)
@@ -58,101 +50,52 @@ void check_rc_trojans(char *basedir, FILE *fp)
             *nbuf = '\0';
         }
 
-        /* Assigning buf to be used */
-        nbuf = buf;
 
-        /* Excluding commented lines or blanked ones */ 
-        while(*nbuf != '\0')
+        /* Normalizing line */
+        nbuf = normalize_string(buf);
+        
+
+        if(*nbuf == '\0' || *nbuf == '#')
         {
-            if(*nbuf == ' ' || *nbuf == '\t')
-            {
-                nbuf++;
-                continue;
-            }
-            else if(*nbuf == '#')
-            {
-                *nbuf = '\0';
-                break;
-            }
-            else
-                break;
-        }
-
-        if(*nbuf == '\0')
             continue;
+        }
 
 
         /* File now may be valid */
         file = nbuf;
-        string_to_look = nbuf; 
 
         string_to_look = strchr(file, '!');
         if(!string_to_look)
         {
-            goto newline;
+            continue;
         }
         
         *string_to_look = '\0';
         string_to_look++;
-        
-        /* Cleaning the file */
-        while(*file != '\0')
-        {
-            if(*file != ' ' && *file != '\t')
-                break;
-            file++;    
-        }
 
-        /* Cleaning spaces */
-        nbuf = strchr(file, ' ');
-        if(nbuf)
-            *nbuf = '\0';
-        nbuf = strchr(file, '\t');
-        if(nbuf)
-            *nbuf = '\0';
-        
-                
-        /* Cleaning the string to look */
-        while(*string_to_look != '\0')
+        message = strchr(string_to_look, '!');
+        if(!message)
         {
-            if(*string_to_look != ' ' && *string_to_look != '\t')
-                break;
-            string_to_look++;
+            continue;
         }
+        *message = '\0';
+        message++;
         
-        /* Cleaning spaces */
-        nbuf = strchr(string_to_look, '!');
-        if(nbuf)
+        string_to_look = normalize_string(string_to_look);
+        file = normalize_string(file);
+        message = normalize_string(message);
+        
+        
+        if(*file == '\0' || *string_to_look == '\0')
         {
-            *nbuf = '\0';
-            nbuf++;
-        }
-        else
-        {
-            goto newline;    
+            continue;
         }
         
-        /* Getting any possible message */
-        message = nbuf;
-        
-        /* Cleaning the message */
-        while(*message != '\0')
-        {
-            if(*message != ' ' && *message != '\t')
-                break;
-            message++;    
-        }
-                                                                                    
-        if(!string_to_look)
-        {
-            goto newline;
-        }
-
-
         _total++;
         
+        
         /* Trying with all possible paths */
-        for(i = 0;i<=3;i++)
+        while(all_paths[i] != NULL)
         {
             if(*file != '/')
             {
@@ -164,25 +107,30 @@ void check_rc_trojans(char *basedir, FILE *fp)
             {
                 strncpy(file_path, file, OS_SIZE_1024);
                 file_path[OS_SIZE_1024 -1] = '\0';
-                i = 4;
             }
             
+            /* Checking if entry is found */
             if(is_file(file_path) && os_string(file_path, string_to_look))
             {
                 char op_msg[OS_SIZE_1024 +1];
                 _errors = 1;
             
                 snprintf(op_msg, OS_SIZE_1024, "Trojaned version of file "
-                        "'%s' detected. Signature used: '%s' (%s)", 
+                        "'%s' detected. Signature used: '%s' (%s).", 
                                         file_path,
                                         string_to_look,
-                                        *message == '\0'?"Trojan":message);
+                                        *message == '\0'?
+                                        "Generic":message);
 
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             }
-        }
 
-    newline:
+            if(*file == '/')
+            {
+                break;
+            }
+            i++;
+        }
         continue;        
     }
 
@@ -191,7 +139,7 @@ void check_rc_trojans(char *basedir, FILE *fp)
     {
         char op_msg[OS_SIZE_1024 +1];
         snprintf(op_msg,OS_SIZE_1024, "No binaries with any trojan detected. "
-                                    "Analyzed %d files", _total);
+                                    "Analyzed %d files.", _total);
         notify_rk(ALERT_OK, op_msg);
     }
 }

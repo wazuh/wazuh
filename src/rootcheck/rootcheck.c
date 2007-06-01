@@ -127,6 +127,7 @@ int rootcheck_init(int test_config)
     }
 
     
+    #ifdef WIN32
     /* Starting Winsock */
     {
         WSADATA wsaData;
@@ -135,6 +136,8 @@ int rootcheck_init(int test_config)
             ErrorExit("%s: WSAStartup() failed", ARGV0);
         }
     }
+    #endif
+    
                                     
     #endif
 

@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -11,6 +11,38 @@
 
  
 #include "shared.h"
+
+
+/** char *normalize_string
+ * Normalizes a string, removing white spaces and tabs
+ * from the begining and the end of it.
+ */
+char *normalize_string(char *str)
+{
+    int str_sz = strlen(str) -1;
+    
+    while(*str != '\0')
+    {
+        if(*str == ' ' || *str == '\t')
+        {
+            str++;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    while(str[str_sz] == ' ' || str[str_sz] == '\t')
+    {
+        str[str_sz] = '\0';
+        str_sz--;
+    }
+
+    return(str);
+}
+
+
 
 /** int isfile_ondir(char *file, char *dir)
  * Checks is 'file' is present on 'dir' using readdir
@@ -144,7 +176,6 @@ int is_file(char *file_name)
     
     return(1);
 }
-
 
 
 /* EOF */

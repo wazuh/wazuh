@@ -47,6 +47,8 @@ int notify_rk(int rk_type, char *msg)
             printf("[OK]: %s\n", msg);
         else if(rk_type == ALERT_SYSTEM_ERROR)
             printf("[ERR]: %s\n", msg);
+        else if(rk_type == ALERT_POLICY_VIOLATION)
+            printf("[INFO]: %s\n", msg);    
         else
         {
             printf("[FAILED]: %s\n", msg);

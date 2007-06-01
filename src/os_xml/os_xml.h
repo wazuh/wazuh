@@ -18,7 +18,7 @@
 #define __OS_XML_H
 
 #ifndef XML_MAXSIZE
-   #define XML_MAXSIZE          1024
+   #define XML_MAXSIZE          2048
 #endif /* XML_MAXSIZE */
 
 #ifndef XML_VAR

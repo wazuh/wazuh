@@ -356,19 +356,38 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
         /* Checking if the sigid matches */
         if(r_node->ruleinfo->sigid == sid)
         {
-            newrule->category = r_node->ruleinfo->category;
-            
-            newrule->sid_prev_matched = r_node->ruleinfo->sid_prev_matched;
-            newrule->group_prev_matched = r_node->ruleinfo->group_prev_matched;
-            newrule->group_prev_matched_sz = 
-                                    r_node->ruleinfo->group_prev_matched_sz;
-            
-            newrule->sid_search = r_node->ruleinfo->sid_search;
-            newrule->group_search = r_node->ruleinfo->group_search;
-            
-            newrule->last_events = r_node->ruleinfo->last_events;
+            r_node->ruleinfo->level = newrule->level;
+            r_node->ruleinfo->maxsize = newrule->maxsize;
+            r_node->ruleinfo->frequency = newrule->frequency;
+            r_node->ruleinfo->timeframe = newrule->timeframe;
 
-            r_node->ruleinfo = newrule;
+            r_node->ruleinfo->group = newrule->group;
+            r_node->ruleinfo->match = newrule->match;
+            r_node->ruleinfo->regex = newrule->regex;
+            r_node->ruleinfo->day_time = newrule->day_time;
+            r_node->ruleinfo->week_day = newrule->week_day;
+            r_node->ruleinfo->srcip = newrule->srcip;
+            r_node->ruleinfo->dstip = newrule->dstip;
+            r_node->ruleinfo->srcport = newrule->srcport;
+            r_node->ruleinfo->dstport = newrule->dstport;
+            r_node->ruleinfo->user = newrule->user;
+            r_node->ruleinfo->url = newrule->url;
+            r_node->ruleinfo->id = newrule->id;
+            r_node->ruleinfo->status = newrule->status;
+            r_node->ruleinfo->hostname = newrule->hostname;
+            r_node->ruleinfo->program_name = newrule->program_name;
+            r_node->ruleinfo->extra_data = newrule->extra_data;
+            r_node->ruleinfo->action = newrule->action;
+            r_node->ruleinfo->comment = newrule->comment;
+            r_node->ruleinfo->info = newrule->info;
+            r_node->ruleinfo->cve = newrule->cve;
+            r_node->ruleinfo->if_matched_regex = newrule->if_matched_regex;
+            r_node->ruleinfo->if_matched_group = newrule->if_matched_group;
+            r_node->ruleinfo->if_matched_sid = newrule->if_matched_sid;
+            r_node->ruleinfo->alert_opts = newrule->alert_opts;
+            r_node->ruleinfo->context_opts = newrule->context_opts;
+            r_node->ruleinfo->context = newrule->context;
+            r_node->ruleinfo->decoded_as = newrule->decoded_as;
 
             return(1);
         }
