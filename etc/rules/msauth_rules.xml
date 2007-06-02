@@ -294,7 +294,7 @@
     <if_sid>18104</if_sid>
     <id>^671</id>
     <description>User account unlocked.</description>
-    <info>http://www.ultimatewindowssecurity.com/events/com291.html<info>
+    <info>http://www.ultimatewindowssecurity.com/events/com291.html</info>
     <group>account_changed,</group>
   </rule>
 
