@@ -60,6 +60,14 @@ if [ "X${ARGV}" = "Xall" ]; then
     fi
 
     if [ "X$OS" = "XSunOS" ]; then
+        # Set CPU optimization for Sun UltraSparc
+        # by Eric Straavaldsen
+        # Disabled by default. To enable it, just uncomment the following
+        # lines and comment the EEXTRA below.
+        #PROC=`isainfo -n`
+        #if [ $PROC = sparcv9 ]; then
+        #    echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -DHIGHFIRST -O3 -mcpu=ultrasparc">>Config.OS
+        #fi
         echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -DHIGHFIRST">>Config.OS
     fi
 

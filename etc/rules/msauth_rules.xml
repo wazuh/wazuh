@@ -73,22 +73,22 @@
   <rule id="18110" level="8">
     <if_sid>18104</if_sid>
     <id>^624|^626|^645</id>
-    <description>User account created.</description>
-    <group>adduser,</group>
+    <description>User account enabled or created.</description>
+    <group>adduser,account_changed,</group>
   </rule>
 
   <rule id="18111" level="8">
     <if_sid>18104</if_sid>
-    <id>^628|^642</id>
+    <id>^628|^642|^685</id>
     <description>User account changed.</description>
-    <group>adduser,</group>
+    <group>adduser,account_changed,</group>
   </rule>
 
   <rule id="18112" level="8">
     <if_sid>18104</if_sid>
     <id>^630|^629</id>
     <description>User account disabled or deleted.</description>
-    <group>adduser,</group>
+    <group>adduser,account_changed,</group>
   </rule>
   
   <rule id="18113" level="8">
@@ -100,17 +100,17 @@
 
   <rule id="18114" level="8">
     <if_sid>18104</if_sid>
-    <id>^631|^632|^633|^634|^635|^636|^637|^638|^639|^641|^664|^659|</id>
-    <id>^660|^668</id>
+    <id>^63|^641|^664|^658|^659|^660|^662|^668</id>
     <description>Group account changed.</description>
-    <group>adduser,</group>
+    <group>adduser,account_changed,</group>
   </rule>
   
   <rule id="18115" level="8">
     <if_sid>18104</if_sid>
     <id>^640</id>
     <description>General account database changed.</description>
-    <group>adduser,</group>
+    <info>http://www.ultimatewindowssecurity.com/events/com259.html</info>
+    <group>adduser,account_changed,</group>
   </rule>
   
   <rule id="18116" level="9">
@@ -289,7 +289,58 @@
     <group>system_error, system_shutdown,</group>
     <description>Unexpected Windows shutdown.</description>
   </rule>
+
+  <rule id="18142" level="5">
+    <if_sid>18104</if_sid>
+    <id>^671</id>
+    <description>User account unlocked.</description>
+    <info>http://www.ultimatewindowssecurity.com/events/com291.html<info>
+    <group>account_changed,</group>
+  </rule>
+
+  <rule id="18143" level="8">
+    <if_sid>18114</if_sid>
+    <id>^631|^635|^658</id>
+    <description>Security enabled group created.</description>
+    <group>adduser,account_changed,</group>
+  </rule>
+
+  <rule id="18144" level="8">
+    <if_sid>18114</if_sid>
+    <id>^634|^638|^662</id>
+    <description>Security enabled group deleted.</description>
+    <group>adduser,account_changed,</group>
+  </rule>
   
+  
+  <!-- Kerberos failures that may indicate an attack -->
+  <rule id="18170" level="10">
+    <if_sid>18139</if_sid>
+    <match>Failure Code: 0x1F</match>
+    <description>Windows DC integrity check on decrypted </description>
+    <description>field failed.</description>
+    <info>http://www.ultimatewindowssecurity.com/kerberrors.html</info>
+    <group>win_authentication_failed,attacks,</group>
+  </rule>
+  
+  <rule id="18171" level="10">
+    <if_sid>18139</if_sid>
+    <match>Failure Code: 0x22</match>
+    <description>Windows DC - Possible replay attack.</description>
+    <info>http://www.ultimatewindowssecurity.com/kerberrors.html</info>
+    <group>win_authentication_failed,attacks,</group>
+  </rule>
+
+  <rule id="18172" level="7">
+    <if_sid>18139</if_sid>
+    <match>Failure Code: 0x25</match>
+    <description>Windows DC - Clock skew too great.</description>
+    <info>http://www.ultimatewindowssecurity.com/kerberrors.html</info>
+    <group>win_authentication_failed,attacks,</group>
+  </rule>
+  
+  
+  <!-- Composite rules -->
   <rule id="18151" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>18108</if_matched_sid>
     <same_user />
