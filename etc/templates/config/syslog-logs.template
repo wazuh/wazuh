@@ -8,6 +8,8 @@
 /var/log/ipfilter.log
 /var/adm/ipsec.log
 /var/adm/syslog
+/var/adm/auth.log
+/var/adm/syslog.log
 /var/log/userlog 
 /var/log/security
 /var/log/xferlog
