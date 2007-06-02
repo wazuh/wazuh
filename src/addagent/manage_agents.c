@@ -132,24 +132,24 @@ int add_agent()
 
     do
     {
-      printf(ADD_NAME);
-      fflush(stdout);
-      _name = read_from_user();
+        printf(ADD_NAME);
+        fflush(stdout);
+        _name = read_from_user();
 
-      if(strcmp(_name, QUIT) == 0)
-        return(0);
+        if(strcmp(_name, QUIT) == 0)
+            return(0);
 
-      strncpy(name, _name, FILE_SIZE -1);
+        strncpy(name, _name, FILE_SIZE -1);
 
-      /* check the name */
-      if(!OS_IsValidName(name))
-        printf(INVALID_NAME,name);
+        /* check the name */
+        if(!OS_IsValidName(name))
+            printf(INVALID_NAME,name);
 
-      /* Search for name  -- no duplicates */
-      if(NameExist(name))
-        printf(ADD_ERROR_NAME, name);
+        /* Search for name  -- no duplicates */
+        if(NameExist(name))
+            printf(ADD_ERROR_NAME, name);
 
-    } while(NameExist(name) && !OS_IsValidName(name));
+    } while(NameExist(name) || !OS_IsValidName(name));
 
 
     /* Getting IP */
@@ -179,45 +179,47 @@ int add_agent()
     
     do
     {
-      /* Default ID */
-      snprintf(id, 8, "00%d", i);
-      while(IDExist(id))
-      {
-        i++;
-        snprintf(id, 8, "00%d", i);
-
-        if(i >= 2048)
+        /* Default ID */
+        i = 1024;
+        snprintf(id, 8, "%03d", i);
+        while(!IDExist(id))
         {
-            printf(ERROR_KEYS);
-            exit(1);
+            i--;
+            snprintf(id, 8, "%03d", i);
+
+            if(i <= 1)
+            {
+                printf(ERROR_KEYS);
+                exit(1);
+            }
         }
-      }
-    
-      /* Getting ID */
-      printf(ADD_ID, id);
-      fflush(stdout);
-    
-      _id = read_from_user();
+        snprintf(id, 8, "%03d", i+1);
+
+        /* Getting ID */
+        printf(ADD_ID, id);
+        fflush(stdout);
+
+        _id = read_from_user();
 
 
 
-      /* quit */
-      if(strcmp(_id, QUIT) == 0)
-          return(0);
-                          
-                          
-      if(_id[0] != '\0')
-      {
-          strncpy(id, _id, FILE_SIZE -1);
-      }
+        /* quit */
+        if(strcmp(_id, QUIT) == 0)
+            return(0);
 
-      if(!OS_IsValidID(id))
-        printf(INVALID_ID, id);
 
-      /* Search for ID KEY  -- no duplicates */
-      if(IDExist(id))
-        printf(ADD_ERROR_ID, id);
-      
+        if(_id[0] != '\0')
+        {
+            strncpy(id, _id, FILE_SIZE -1);
+        }
+
+        if(!OS_IsValidID(id))
+            printf(INVALID_ID, id);
+
+        /* Search for ID KEY  -- no duplicates */
+        if(IDExist(id))
+            printf(ADD_ERROR_ID, id);
+
     } while(IDExist(id) || !OS_IsValidID(id));
     
     

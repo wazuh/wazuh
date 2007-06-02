@@ -80,14 +80,14 @@ fpos_t fp_pos;
 #define PRESS_ENTER     "** Press ENTER to return to the main menu.\n"
 
 /* Add errors */
-#define ADD_ERROR_ID    "\n** ID '%s' already present. Starting over again.\n"
-#define ADD_ERROR_NAME  "\n** Name '%s' already present. Please enter a new name.\n"
-#define IP_ERROR        "\n** Invalid IP '%s'. Please enter a valid IP Address.\n"
+#define ADD_ERROR_ID    "\n** ID '%s' already present. They must be unique.\n\n"
+#define ADD_ERROR_NAME  "\n** Name '%s' already present. Please enter a new name.\n\n"
+#define IP_ERROR        "\n** Invalid IP '%s'. Please enter a valid IP Address.\n\n"
 #define NO_AGENT        "\n** No agent available. You need to add one first.\n"
 #define NO_ID           "\n** Invalid ID '%s' given. ID is not present.\n"
 #define NO_KEY          "\n** Invalid authentication key. Starting over again.\n"
-#define INVALID_ID      "\n** Invalid ID '%s' given. ID must be numeric (max 5 digits).\n"
-#define INVALID_NAME    "\n** Invalid name '%s' given. Name must contain only alphanumeric characters (min=2, max=32).\n"
+#define INVALID_ID      "\n** Invalid ID '%s' given. ID must be numeric (max 5 digits).\n\n"
+#define INVALID_NAME    "\n** Invalid name '%s' given. Name must contain only alphanumeric characters (min=2, max=32).\n\n"
 
 /* Remove agent */
 #define REMOVE_ID       "Provide the ID of the agent to be removed (or '\\q' to quit): "
