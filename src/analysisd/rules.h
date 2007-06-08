@@ -169,8 +169,12 @@ int OS_AddChild(RuleInfo *read_rule);
 /* Add an overwrite rule */
 int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid);
 
-/* Mark groups (if_matched_group */
+/* Mark groups (if_matched_group) */
 int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule);
+
+/* Mark IDs (if_matched_sid) */
+int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule);
+
 
 /* Get first rule */
 RuleNode *OS_GetFirstRule();

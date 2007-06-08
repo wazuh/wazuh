@@ -65,23 +65,6 @@ int _AddtoRule(int sid, int level, int none, char *group,
                 read_rule->category = r_node->ruleinfo->category;
                 
 
-                /* If matched sid */
-                if(read_rule->if_matched_sid)
-                {
-                    /* If child does not have a list, create one */
-                    if(!r_node->ruleinfo->sid_prev_matched)
-                    {
-                        r_node->ruleinfo->sid_prev_matched = OSList_Create();
-                        if(!r_node->ruleinfo->sid_prev_matched)
-                        {
-                            ErrorExit(MEM_ERROR, ARGV0);
-                        }
-                    }
-
-                    /* Assigning the parent pointer to it */
-                    read_rule->sid_search = r_node->ruleinfo->sid_prev_matched;
-                }
-
                 /* If no context for rule, check if the parent has
                  * and use it.
                  */
@@ -407,6 +390,49 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
 
     return(0);
 }
+
+
+/* Mark rules that match specific id (for if_matched_sid) */
+int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
+{
+    /* If no r_node is given, get first node */
+    if(r_node == NULL)
+    {
+        r_node = OS_GetFirstRule();
+    }
+
+    while(r_node)
+    {
+        if(r_node->ruleinfo->sigid == orig_rule->if_matched_sid)
+        {
+            /* If child does not have a list, create one */
+            if(!r_node->ruleinfo->sid_prev_matched)
+            {
+                r_node->ruleinfo->sid_prev_matched = OSList_Create();
+                if(!r_node->ruleinfo->sid_prev_matched)
+                {
+                    ErrorExit(MEM_ERROR, ARGV0);
+                }
+            }
+
+            /* Assigning the parent pointer to it */
+            orig_rule->sid_search = r_node->ruleinfo->sid_prev_matched;
+        }
+
+
+        /* Checking if the child has a rule */
+        if(r_node->child)
+        {
+            OS_MarkID(r_node->child, orig_rule);
+        }
+
+        r_node = r_node->next;
+    }
+
+    return(0);
+}
+
+
 
 /* Mark rules that match specific group (for if_matched_group) */
 int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)

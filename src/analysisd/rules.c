@@ -653,10 +653,6 @@ int Rules_OP_ReadRules(char * rulefile)
                         config_ruleinfo->if_matched_sid = 
                             atoi(rule_opt[k]->content);
 
-                        /* If_matched_sid, we need to get the if_sid */
-                        config_ruleinfo->if_sid=
-                            loadmemory(config_ruleinfo->if_sid,
-                                    rule_opt[k]->content);
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_same_source_ip)==0)
@@ -860,6 +856,16 @@ int Rules_OP_ReadRules(char * rulefile)
                         os_strdup(if_matched_group, 
                                   config_ruleinfo->if_group);        
                     }
+                }
+
+                /* If_matched_sid, we need to get the if_sid */
+                if(config_ruleinfo->if_matched_sid && 
+                   !config_ruleinfo->if_sid &&
+                   !config_ruleinfo->if_group)
+                {
+                    os_calloc(16, sizeof(char), config_ruleinfo->if_sid);
+                    snprintf(config_ruleinfo->if_sid, 15, "%d", 
+                             config_ruleinfo->if_matched_sid);
                 }
                 
                 /* Checking the regexes */
@@ -1112,6 +1118,9 @@ int Rules_OP_ReadRules(char * rulefile)
             {
                 config_ruleinfo->event_search = 
                                  (void *)Search_LastSids;
+            
+                /* Marking rules that match this id */
+                OS_MarkID(NULL, config_ruleinfo);                     
             }
             
             /* Marking the rules that match if_matched_group */
@@ -1183,7 +1192,7 @@ char *loadmemory(char *at, char *str)
     if(at == NULL)
     {
         int strsize = 0;
-        if((strsize = strlen(str)) < OS_SIZE_1024)
+        if((strsize = strlen(str)) < OS_SIZE_2048)
         {
             at = calloc(strsize+1,sizeof(char));
             if(at == NULL)
@@ -1206,7 +1215,7 @@ char *loadmemory(char *at, char *str)
         int atsize = strlen(at);
         int finalsize = atsize+strsize+1;
         
-        if((atsize > OS_SIZE_1024) || (strsize > OS_SIZE_1024))
+        if((atsize > OS_SIZE_2048) || (strsize > OS_SIZE_2048))
         {
             merror(SIZE_ERROR,ARGV0,str);
             return(NULL);
@@ -1305,6 +1314,7 @@ RuleInfo *zerorulemember(int id, int level,
     
     ruleinfo_pt->if_matched_regex = NULL;
     ruleinfo_pt->if_matched_group = NULL;
+    ruleinfo_pt->if_matched_sid = 0;
    
     ruleinfo_pt->user = NULL; 
     ruleinfo_pt->srcip = NULL;
