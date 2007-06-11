@@ -1,0 +1,58 @@
+<!-- @(#) $Id$
+  -  Official Courier rules for OSSEC.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  -->
+      
+<!-- Using logs from: http://www.ossec.net/wiki/index.php/Courier -->
+
+<group name="syslog,courier,">
+  <rule id="3900" level="0">
+    <decoded_as>courier</decoded_as>
+    <description>Grouping for the courier rules.</description>
+  </rule>
+  
+  <rule id="3901" level="3">
+    <if_sid>3900</if_sid>
+    <match>^Connection, </match>
+    <description>New courier (imap/pop3) connection.</description>
+    <group>connection_attempt,</group>
+  </rule>
+
+  <rule id="3902" level="5">
+    <if_sid>3900</if_sid>
+    <match>^LOGIN FAILED,</match>
+    <description>Courier (imap/pop3) authentication failed.</description>
+    <group>authentication_failed,</group>
+  </rule>
+
+  <rule id="3903" level="0">
+    <if_sid>3900</if_sid>
+    <match>^LOGOUT,|^DISCONNECTED</match>
+    <description>Courier logout/timeout.</description>
+  </rule>
+
+  <rule id="3904" level="3">
+    <if_sid>3900</if_sid> 
+    <match>^LOGIN,</match>
+    <description>Courier (imap/pop3) authentication success.</description>
+    <group>authentication_success,</group>
+  </rule>  
+  
+  <rule id="3910" level="10" frequency="6" timeframe="240">
+    <if_matched_sid>3902</if_matched_sid>
+    <description>Courier brute force (multiple failed logins).</description>
+    <group>authentication_failures,</group>
+    <same_source_ip />
+  </rule>
+
+  <rule id="3911" level="10" frequency="10" timeframe="60">
+    <if_matched_sid>3901</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple connection attempts from same source.</description>
+    <group>recon,</group>
+  </rule>
+</group> <!-- SYSLOG,COURIER -->
+
+
+<!-- EOF -->
