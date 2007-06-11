@@ -16,6 +16,7 @@ CREATE TABLE `acid_event` (
   `ip_proto` int(11) default NULL,
   `layer4_sport` int(10) unsigned default NULL,
   `layer4_dport` int(10) unsigned default NULL,
+  `username` varchar(255) default NULL,
   PRIMARY KEY  (`sid`,`cid`),
   KEY `signature` (`signature`),
   KEY `sig_name` (`sig_name`),

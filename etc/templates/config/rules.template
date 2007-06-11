@@ -15,6 +15,7 @@
     <include>ms_ftpd_rules.xml</include>
     <include>hordeimp_rules.xml</include>
     <include>vpopmail_rules.xml</include>
+    <include>courier_rules.xml</include>
     <include>web_rules.xml</include>
     <include>apache_rules.xml</include>
     <include>ids_rules.xml</include>
