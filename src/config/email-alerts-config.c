@@ -30,6 +30,7 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
     char *xml_email_group = "group";
     char *xml_email_location = "event_location";
     char *xml_email_donotdelay = "do_not_delay";
+    char *xml_email_donotgroup = "do_not_group";
 
     MailConfig *Mail;
      
@@ -200,7 +201,7 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
             }
             else if(strcmp(node[i]->content, "default") == 0)
             {
-                Mail->gran_format[granto_size -1] = FULL_FORMAT;
+                /* Default is full format */
             }
             else
             {
@@ -210,9 +211,17 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
         }
         else if(strcmp(node[i]->element, xml_email_donotdelay) == 0)
         {
-            if(Mail->gran_format[granto_size -1] != SMS_FORMAT)
+            if((Mail->gran_format[granto_size -1] != SMS_FORMAT) &&
+               (Mail->gran_format[granto_size -1] != DONOTGROUP))
             {
                 Mail->gran_format[granto_size -1] = FORWARD_NOW;
+            }
+        }
+        else if(strcmp(node[i]->element, xml_email_donotgroup) == 0)
+        {
+            if(Mail->gran_format[granto_size -1] != SMS_FORMAT)
+            {
+                Mail->gran_format[granto_size -1] = DONOTGROUP;
             }
         }
         else if(strcmp(node[i]->element, xml_email_location) == 0)

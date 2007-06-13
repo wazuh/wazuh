@@ -44,5 +44,6 @@ typedef struct _MailConfig
 #define FULL_FORMAT     2
 #define SMS_FORMAT      3
 #define FORWARD_NOW     4
+#define DONOTGROUP      5
 
 #endif

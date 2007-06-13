@@ -161,11 +161,6 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
                 }
             }
 
-            /* Options */
-            if(Mail->gran_format[i] == FORWARD_NOW)
-            {
-                Mail->priority = 1;
-            }
 
             /* Looking for rule id */
             if(Mail->gran_id[i])
@@ -224,7 +219,21 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
                 }
                 else
                 {
-                    Mail->gran_set[i] = FULL_FORMAT;
+                    /* Options */
+                    if(Mail->gran_format[i] == FORWARD_NOW)
+                    {
+                        Mail->priority = 1;
+                        Mail->gran_set[i] = FULL_FORMAT;
+                    }
+                    else if(Mail->gran_format[i] == DONOTGROUP)
+                    {
+                        Mail->priority = DONOTGROUP;
+                        Mail->gran_set[i] = DONOTGROUP;
+                    }
+                    else
+                    {
+                        Mail->gran_set[i] = FULL_FORMAT;
+                    }
                 }
             }
             i++;

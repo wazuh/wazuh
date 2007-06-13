@@ -171,6 +171,7 @@ int main(int argc, char **argv)
 void OS_Run(MailConfig *mail)
 {
     MailMsg *msg;
+    MailMsg *s_msg = NULL;
     MailMsg *msg_sms = NULL;
 
     time_t tm;     
@@ -312,12 +313,18 @@ void OS_Run(MailConfig *mail)
                 i = 0;
                 while(mail->gran_to[i] != NULL)
                 {
-                    mail->gran_set[i] = 0;
+                    if(s_msg && mail->gran_set[i] == DONOTGROUP)
+                    {
+                        mail->gran_set[i] = FULL_FORMAT;
+                    }
+                    else
+                    {
+                        mail->gran_set[i] = 0;
+                    }
                     i++;
                 }
             }
 
-            
             snd_check_hour:
             /* If we sent everything */
             if(p->tm_hour != thishour)
@@ -328,23 +335,72 @@ void OS_Run(MailConfig *mail)
             }
         }
         
+        /* Saved message for the do_not_group option.
+         */
+        if(s_msg)
+        {
+            /* We need to set the remaining do no group to
+             * full format.
+             */
+            if(mail->gran_to)
+            {
+                i = 0;
+                while(mail->gran_to[i] != NULL)
+                {
+                    if(mail->gran_set[i] == DONOTGROUP)
+                    {
+                        mail->gran_set[i] = FULL_FORMAT;
+                    }
+                    i++;
+                }
+            }
+            
+            OS_AddMailtoList(s_msg);
+
+            s_msg = NULL;
+            mailtosend++;
+            continue;
+        }
+        
         
         /* Receive message from queue */
         if((msg = OS_RecvMailQ(fileq, p, mail, &msg_sms)) != NULL)
         {
-            OS_AddMailtoList(msg);
+            /* If the e-mail priority is do_not_group, we first will
+             * flush all previous entries and then send it.
+             * We use s_msg to hold the pointer to the message
+             * while we flush it.
+             */
+            if(mail->priority == DONOTGROUP)
+            {
+                s_msg = msg;
+            }
+            else
+            {
+                OS_AddMailtoList(msg);
+            }
             
+
             /* Change timeout to see if any new message is coming shortly */
             if(mail->groupping)
             {
-                /* 5 seconds only */
-                mail_timeout = NEXTMAIL_TIMEOUT;
-
                 /* If priority is setm send email now */
                 if(mail->priority)
                 {
                     mail_timeout = DEFAULT_TIMEOUT;
-                    mailtosend++;
+
+                    /* If do_not_group is set, we do not increase the
+                     * list count in here.
+                     */
+                    if(mail->priority != DONOTGROUP)
+                    {
+                        mailtosend++;
+                    }
+                }
+                else
+                {
+                    /* 5 seconds only */
+                    mail_timeout = NEXTMAIL_TIMEOUT;
                 }
             }
             else

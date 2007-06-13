@@ -33,6 +33,7 @@
 #define DATAMSG 		"DATA\r\n"
 #define FROM			"From: OSSEC HIDS <%s>\r\n"
 #define TO			    "To: <%s>\r\n"
+#define CC			    "Cc: <%s>\r\n"
 #define SUBJECT			"Subject: %s\r\n"
 #define ENDDATA			"\r\n.\r\n"
 #define QUITMSG 		"QUIT\r\n"
@@ -273,9 +274,11 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     int socket,i=0;
     char *msg;
     char snd_msg[128];
+    char additional_to[512];
 
     MailNode *mailmsg;
 
+    additional_to[0] = '\0';
     
     /* If there is no sms message, we attempt to get from the
      * email list.
@@ -459,6 +462,47 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     memset(snd_msg,'\0',128);
     snprintf(snd_msg,127, FROM, mail->from);
     OS_SendTCP(socket, snd_msg);
+
+
+    /* Adding CCs */
+    if(mail->to[1])
+    {
+        i = 1;
+        while(1)
+        {
+            if(mail->to[i] == NULL)
+            {
+                break;
+            }
+            
+            memset(snd_msg,'\0',128);
+            snprintf(snd_msg,127, CC, mail->to[i]);
+            OS_SendTCP(socket,snd_msg);
+
+            i++;
+        }
+    }
+
+
+    /* More CCs - from granular options */
+    if(mail->gran_to)
+    {
+        i = 0;
+        while(mail->gran_to[i] != NULL)
+        {
+            if(mail->gran_set[i] != FULL_FORMAT)
+            {
+                i++;
+                continue;
+            }
+
+            memset(snd_msg,'\0',128);
+            snprintf(snd_msg,127, CC, mail->gran_to[i]);
+            OS_SendTCP(socket, snd_msg);
+            i++;
+            continue;
+        }
+    }
 
 
     /* Sending date */
