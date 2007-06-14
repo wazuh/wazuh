@@ -23,7 +23,7 @@
 
 
 /* Pattern maximum size */
-#define OS_PATTERN_MAXSIZE    1256
+#define OS_PATTERN_MAXSIZE      2048   
 
 
 /* Error codes */

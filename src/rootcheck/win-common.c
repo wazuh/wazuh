@@ -103,5 +103,13 @@ int os_check_ads(char *full_path)
 }
 
 
+
+/* is_registry: Check if the entry is present in the registry
+ */
+int is_registry(char *entry_name)
+{
+}
+  
+
 #endif
 /* EOF */

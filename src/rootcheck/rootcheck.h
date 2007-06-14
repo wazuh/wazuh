@@ -21,6 +21,7 @@ rkconfig rootcheck;
 #define QUEUE   101
 #define SYSLOG  102
 
+
 /* Maximum files to search on the whole system */
 #define MAX_RK_SYS      512
 
@@ -37,6 +38,9 @@ rkconfig rootcheck;
 /* Default to 10 hours */
 #define ROOTCHECK_WAIT          72000
 
+
+
+
 /** Prototypes **/
 
 /* common isfile_ondir: Check if file is present on dir */
@@ -45,6 +49,10 @@ int isfile_ondir(char *file, char *dir);
 
 /* common is_file: Check if a file exist (using stat, fopen and opendir) */
 int is_file(char *file_name);
+
+/* win_common is_registry: Check if a entry is in the registry */
+int is_registry(char *entry_name);
+
 
 /** char *normalize_string
  * Normalizes a string, removing white spaces and tabs
