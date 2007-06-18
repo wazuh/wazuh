@@ -53,6 +53,9 @@ int is_file(char *file_name);
 /* win_common is_registry: Check if a entry is in the registry */
 int is_registry(char *entry_name);
 
+/* int rkcl_get_entry: Reads cl configuration file. */
+int rkcl_get_entry(FILE *fp, char *msg);
+ 
 
 /** char *normalize_string
  * Normalizes a string, removing white spaces and tabs
@@ -93,6 +96,8 @@ void start_rk_daemon();
 void check_rc_files(char *basedir, FILE *fp);
 
 void check_rc_trojans(char *basedir, FILE *fp);
+
+void check_rc_winpolicy(char *basedir, FILE *fp);
 
 void check_rc_dev(char *basedir);
 

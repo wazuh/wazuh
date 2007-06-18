@@ -90,6 +90,11 @@
 typedef uint32_t u_int32_t;
 typedef uint16_t u_int16_t;
 typedef uint8_t u_int8_t;
+
+#ifndef va_copy
+#define va_copy __va_copy
+#endif
+
 #endif /* SOLARIS */
 
 

@@ -39,6 +39,7 @@ int Read_Rootcheck_Config(char * cfgfile)
     char *(xml_workdir[])={xml_rootcheck, "work_directory", NULL};
     char *(xml_rootkit_files[])={xml_rootcheck, "rootkit_files", NULL};
     char *(xml_rootkit_trojans[])={xml_rootcheck, "rootkit_trojans", NULL};
+    char *(xml_rootkit_winpolicy[])={xml_rootcheck, "windows_policy", NULL};
     char *(xml_scanall[])={xml_rootcheck, "scanall", NULL};
     char *(xml_readall[])={xml_rootcheck, "readall", NULL};
     char *(xml_time[])={xml_rootcheck, "frequency", NULL};
@@ -149,6 +150,9 @@ int Read_Rootcheck_Config(char * cfgfile)
     
     rootcheck.rootkit_files  = OS_GetOneContentforElement(&xml,xml_rootkit_files);
     rootcheck.rootkit_trojans  = OS_GetOneContentforElement(&xml,xml_rootkit_trojans);
+    
+    rootcheck.winpolicy  = OS_GetOneContentforElement(&xml,xml_rootkit_winpolicy);
+    
     rootcheck.basedir  = OS_GetOneContentforElement(&xml, xml_base_dir);
 
 

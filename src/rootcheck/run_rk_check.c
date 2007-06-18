@@ -207,8 +207,8 @@ void run_rk_check()
     }
 
 
-    /* #ifdef WIN32 */
-    #ifdef NOTDEFINEDMACRO
+    #ifdef WIN32
+
     /*** Windows policy check ***/
     if(!rootcheck.winpolicy)
     {

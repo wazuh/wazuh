@@ -10,20 +10,7 @@
  */
 
 
-#include <sys/types.h>
-#include <sys/stat.h>
-     
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#ifndef WIN32
-#include <syslog.h>
-#endif
-#include <stdarg.h>
-#include <time.h>
-
-#include "headers/defs.h"
-#include "headers/debug_op.h"
+#include "headers/shared.h"
 
 
 int dbg_flag = 0;

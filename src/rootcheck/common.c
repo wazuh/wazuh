@@ -77,15 +77,21 @@ int is_file(char *file_name)
 {
     int ret = 0;
     
+    struct stat statbuf;
+    FILE *fp = NULL;
+
+
+    #ifndef WIN32
+    
+    char curr_dir[1024];
+    
     char *file_dirname;
     char *file_basename;
     
-    struct stat statbuf;
-    char curr_dir[1024];
-    FILE *fp = NULL;
     DIR *dp = NULL;
-    
+
     curr_dir[1023] = '\0';
+
     if(!getcwd(curr_dir, 1022))
     {
         return(0);
@@ -161,7 +167,9 @@ int is_file(char *file_name)
         }
     }
     
+    #endif /* WIN32 */
 
+    
     /* Trying other calls */
     if( (stat(file_name, &statbuf) < 0) &&
         (access(file_name, F_OK) < 0) &&
