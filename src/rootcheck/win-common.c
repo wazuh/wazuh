@@ -149,6 +149,10 @@ char *__os_winreg_getkey(char *reg_entry)
     {
         rk_sub_tree = HKEY_USERS;
     }
+    else if(strcmp(reg_entry, "HKCU") == 0)
+    {
+        rk_sub_tree = HKEY_CURRENT_USER;
+    }
     else
     {
         /* Returning tmp_str to the previous value */

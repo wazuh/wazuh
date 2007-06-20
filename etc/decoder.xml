@@ -47,6 +47,7 @@
 </decoder>
 
 <decoder name="pam">
+  <program_name>^vsftpd</program_name>
   <prematch>^\(pam_unix\)|^pam_unix</prematch>
 </decoder>
 
