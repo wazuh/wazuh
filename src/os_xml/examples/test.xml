@@ -1,5 +1,8 @@
 <var name="lala">xx</var>
+<var name="lala2">my name is daniel</var>
 <var name="bebe">xx2</var>
+<var name="davi">Davi Alves Cid</var>
+<var name="lili">Liliane Cid</var>
 
 <a></a>
 
@@ -16,7 +19,7 @@
   <aatr gaga="$lala">$lala</aatr>
   <aatr1>$lala2</aatr1>
   <aatr2>$lala</aatr2>
-  <aatr3>$lala2</aatr3>
+  <aatr3>PARA $lala2,$lala ola $davi|$lili$lala.$lala OIIIIII</aatr3>
   <aatr4>lala-abc</aatr4>
 </test2>
 

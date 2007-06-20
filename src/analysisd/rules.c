@@ -137,17 +137,23 @@ int Rules_OP_ReadRules(char * rulefile)
         return(-1);	
     }
 
-    /* Zeroing the rule memory -- not used anymore */
-    free(rulepath);
+
+    /* Debug wrapper */
+    debug2("%s: DEBUG: read xml for rule.", ARGV0);
     
+
     
     /* Applying any variable found */
     if(OS_ApplyVariables(&xml) != 0)
     {
-        merror(XML_ERROR_VAR, ARGV0, rulepath);
+        merror(XML_ERROR_VAR, ARGV0, rulepath, xml.err);
         return(-1);
     }
 
+
+    /* Debug wrapper */
+    debug2("%s: DEBUG: XML Variables applied.", ARGV0);
+    
 
     /* Getting the root elements */
     node = OS_GetElementsbyNode(&xml,NULL);
@@ -158,6 +164,10 @@ int Rules_OP_ReadRules(char * rulefile)
         return(-1);    
     }
 
+
+    /* Zeroing the rule memory -- not used anymore */
+    free(rulepath);
+    
 
     /* Checking if there is any invalid global option */
     while(node[i])

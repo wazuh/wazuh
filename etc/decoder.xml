@@ -43,12 +43,7 @@
   - Nov 11 22:46:29 localhost vsftpd: pam_unix(vsftpd:auth): authentication failure; logname= uid=0 euid=0 tty= ruser= rhost=1.2.3.4
   -->
 <decoder name="pam">
-  <program_name>(pam_unix)$</program_name>
-</decoder>
-
-<decoder name="pam">
-  <program_name>^vsftpd</program_name>
-  <prematch>^\(pam_unix\)|^pam_unix</prematch>
+  <program_name>(pam_unix)$|^vsftpd</program_name>
 </decoder>
 
 <decoder name="pam-host-user">

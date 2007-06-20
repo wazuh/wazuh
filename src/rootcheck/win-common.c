@@ -115,6 +115,7 @@ int os_check_ads(char *full_path)
 }
 
 
+
 /** char *__os_winreg_getkey(char *reg_entry)
  * Gets registry high level key.
  */
@@ -173,11 +174,172 @@ char *__os_winreg_getkey(char *reg_entry)
 }
 
 
+
+/* int __os_winreg_querykey
+ * Query the key and get the value of a specific entry.
+  */
+int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
+                                    char *reg_option, char *reg_value)
+{
+    int i, rc;
+    DWORD j;
+
+    /* QueryInfo and EnumKey variables */
+    TCHAR sub_key_name_b[MAX_KEY_LENGTH +1];
+    TCHAR class_name_b[MAX_PATH +1];
+    DWORD sub_key_name_s;
+    DWORD class_name_s = MAX_PATH;
+
+    /* Number of sub keys */
+    DWORD subkey_count = 0;
+
+    /* Number of values */
+    DWORD value_count;
+
+    /* Variables for RegEnumValue */
+    TCHAR value_buffer[MAX_VALUE_NAME +1];
+    TCHAR data_buffer[MAX_VALUE_NAME +1];
+    DWORD value_size;
+    DWORD data_size;
+
+    /* Data type for RegEnumValue */
+    DWORD data_type = 0;
+
+
+    /* Storage var */
+    char var_storage[MAX_VALUE_NAME +1];
+
+
+    /* Initializing the memory for some variables */
+    class_name_b[0] = '\0';
+    class_name_b[MAX_PATH] = '\0';
+    sub_key_name_b[0] = '\0';
+    sub_key_name_b[MAX_KEY_LENGTH] = '\0';
+
+
+    /* We use the class_name, subkey_count and the value count. */
+    rc = RegQueryInfoKey(hKey, class_name_b, &class_name_s, NULL,
+            &subkey_count, NULL, NULL, &value_count,
+            NULL, NULL, NULL, NULL);
+
+
+    /* Check return code of QueryInfo */
+    if(rc != ERROR_SUCCESS)
+    {
+        return(0);
+    }
+
+
+
+    /* Getting Values (if available) */
+    if (value_count)
+    {
+        char *mt_data;
+
+
+        /* Clearing the values for value_size and data_size */
+        value_buffer[MAX_VALUE_NAME] = '\0';
+        data_buffer[MAX_VALUE_NAME] = '\0';
+        var_storage[MAX_VALUE_NAME] = '\0';
+        
+
+        /* Getting each value */
+        for(i=0;i<value_count;i++)
+        {
+            value_size = MAX_VALUE_NAME;
+            data_size = MAX_VALUE_NAME;
+
+            value_buffer[0] = '\0';
+            data_buffer[0] = '\0';
+            var_storage[0] = '\0';
+
+            rc = RegEnumValue(hKey, i, value_buffer, &value_size,
+                              NULL, &data_type, data_buffer, &data_size);
+
+
+            /* No more values available */
+            if(rc != ERROR_SUCCESS)
+            {
+                break;
+            }
+
+            /* Checking if no value name is specified */
+            if(value_buffer[0] == '\0')
+            {
+                value_buffer[0] = '@';
+                value_buffer[1] = '\0';
+            }
+
+
+            /* Check if the entry name matches the reg_option */
+            if(strcasecmp(value_buffer, reg_option) != 0)
+            {
+                continue;
+            }
+
+
+            /* If a value is not present and the option matches,
+             * we can return ok.
+             */
+            if(!reg_value)
+            {
+                return(1); 
+            }
+            
+
+            /* Writing value into a string */
+            fprintf(checksum_fp, "%s=", value_buffer);
+            switch(data_type)
+            {
+                case REG_SZ:
+                case REG_EXPAND_SZ:
+                    snprintf(var_storage, MAX_VALUE_NAME, "%s", data_buffer);
+                    break;
+                case REG_MULTI_SZ:
+                
+                    /* Printing multiple strings */
+                    int size_available = MAX_VALUE_NAME -2;
+                    mt_data = data_buffer;
+
+                    while(*mt_data)
+                    {
+                        if(size_available > 2)
+                        {
+                            strncat(var_storage, 
+                                    size_available, "%s ", mt_data);
+                            size_available = MAX_VALUE_NAME - 
+                                             (strlen(var_storage) +2);
+                        }
+                        mt_data += strlen(mt_data) +1;
+                    }
+                     
+                    break;
+                case REG_DWORD:
+                    snprintf(var_storage, MAX_VALUE_NAME, 
+                            "%08x\n",(unsigned int)*data_buffer);
+                    break;
+                default:
+                    for(j = 0;j<data_size;j++)
+                    {
+                        fprintf(checksum_fp, "%02x",
+                                (unsigned int)data_buffer[j]);
+                    }
+                    fprintf(checksum_fp, "\n");
+                    break;
+            }
+        }
+    }
+}
+  
+
+
 /* int __os_winreg_open_key(char *subkey)
  * Open the registry key
  */
-int __os_winreg_open_key(char *subkey, char *full_key_name)
+int __os_winreg_open_key(char *subkey, char *full_key_name, 
+                         char *reg_option, char *reg_value)
 {
+    int ret = 1;
     HKEY oshkey;
 
     
@@ -187,14 +349,24 @@ int __os_winreg_open_key(char *subkey, char *full_key_name)
         return(0);
     }
 
+
+    /* If option is set, return the value of query key */
+    if(reg_option)
+    {
+        ret = __os_winreg_querykey(oshkey, subkey, full_key_name,
+                                   reg_option, reg_value);
+    }
+    
+    
     RegCloseKey(oshkey);
-    return(1);
+    return(ret);
 }
+
 
 
 /* is_registry: Check if the entry is present in the registry
  */
-int is_registry(char *entry_name)
+int is_registry(char *entry_name, char *reg_option, char *reg_value)
 {
 
     char *rk;
@@ -206,7 +378,7 @@ int is_registry(char *entry_name)
         return(0);
     }
 
-    if(__os_winreg_open_key(rk, entry_name) == 0)
+    if(__os_winreg_open_key(rk, entry_name, reg_option, reg_value) == 0)
     {
         return(0);
     }

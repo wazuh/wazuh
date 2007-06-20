@@ -224,7 +224,7 @@ int ReadDecodeXML(char *file)
     /* Applying any variable found */
     if(OS_ApplyVariables(&xml) != 0)
     {
-        merror(XML_ERROR_VAR, ARGV0, file);
+        merror(XML_ERROR_VAR, ARGV0, file, xml.err);
         return(0);
     }
 
@@ -241,7 +241,7 @@ int ReadDecodeXML(char *file)
     node = OS_GetElementsbyNode(&xml, NULL);
     if(!node)
     {
-        merror(XML_ERROR_VAR, ARGV0, file);
+        merror(XML_ERROR_VAR, ARGV0, file, xml.err);
         return(0);
     }
 

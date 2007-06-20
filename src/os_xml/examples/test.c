@@ -28,7 +28,7 @@ int main(int argc, char ** argv)
 
     if(OS_ApplyVariables(&xml) != 0)
     {
-        printf("OS_ReadXML error: Applying variables.\n");
+        printf("OS_ReadXML error: Applying variables: %s\n", xml.err);
         return(1);
     }
 
