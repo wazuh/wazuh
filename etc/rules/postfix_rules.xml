@@ -72,6 +72,13 @@
     <description>Postfix process error.</description>
     <group>service_availability,</group>
   </rule>
+
+  <rule id="3331" level="10" ignore="720">
+    <if_sid>3320</if_sid>
+    <match>452 Insufficient system storage</match>
+    <description>Postfix disk space error.</description>
+    <group>service_availability,</group>
+  </rule>
             
   <rule id="3351" level="6" frequency="$POSTFIX_FREQ" timeframe="90">
     <if_matched_sid>3301</if_matched_sid>

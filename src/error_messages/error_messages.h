@@ -48,6 +48,7 @@
 #define GLOB_NFOUND   "%s(1122): No file found by pattern: '%s'."
 #define UNLINK_ERROR  "%s(1123): Unable to delete file: '%s'."
 #define RENAME_ERROR  "%s(1124): Unable to rename file: '%s'."
+#define INT_ERROR     "%s(1125): Internal error (undefined)."
 
 
 /* COMMON ERRORS */

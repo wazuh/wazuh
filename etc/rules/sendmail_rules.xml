@@ -122,4 +122,21 @@
     <description>Multiple pre-greetings rejects.</description>
     <group>multiple_spam,</group>
   </rule>
+
+
+   <!-- Rules for SMF-SAV -->
+   <rule id="3190" level="0">
+     <decoded_as>smf-sav-reject</decoded_as>
+     <description>Grouping of the smf-sav sendmail milter rules.</description>
+     <group>smf-sav,</group>
+   </rule>
+
+   <rule id="3191" level="6">
+     <if_sid>3190</if_sid>
+     <match>^sender check failed</match>
+     <description>SMF-SAV sendmail milter unable to verify </description>
+     <description>address (REJECTED).</description>
+     <group>smf-sav,spam,</group>
+   </rule>
+
 </group> <!-- SYSLOG,SENDMAIL -->

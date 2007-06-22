@@ -19,6 +19,11 @@
 #define RKCL_TYPE_REGISTRY  2
 #define RKCL_TYPE_PROCESS   3
 
+#define RKCL_COND_ALL       1
+#define RKCL_COND_ANY       2
+#define RKCL_COND_INV       -1
+
+
 
 /** char *_rkcl_getfp: Get next available buffer in file.
  */
@@ -87,16 +92,62 @@ int _rkcl_is_name(char *buf)
 
 /** int _rkcl_get_name
  */
-char *_rkcl_get_name(char *buf)
+char *_rkcl_get_name(char *buf, int *condition)
 {
-    if(*buf == '[' && buf[strlen(buf) -1] == ']')
+    char *tmp_location;
+    char *tmp_location2;
+    
+    *condition = 0;
+
+    /* Checking if name is valid */
+    if(!_rkcl_is_name(buf))
     {
-        buf[strlen(buf) -1] = '\0';
-        buf++;
-        return(strdup(buf));
+        return(NULL);
     }
 
-    return(NULL);
+    /* Setting name */
+    buf++;
+    tmp_location = strchr(buf, ']');
+    if(!tmp_location)
+    {
+        return(NULL);
+    }
+    *tmp_location = '\0';
+    
+    
+    /* Getting condition */
+    tmp_location++;
+    if(*tmp_location != '[')
+    {
+        return(NULL);
+    }
+    tmp_location++;
+
+    tmp_location2 = strchr(tmp_location, ']');
+    if(!tmp_location2)
+    {
+        return(NULL);
+    }
+    *tmp_location2 = '\0';
+    
+    
+    /* Getting condition */
+    if(strcmp(tmp_location,"all") == 0)
+    {
+        *condition = RKCL_COND_ALL;
+    }
+    else if(strcmp(tmp_location,"any") == 0)
+    {
+        *condition = RKCL_COND_ANY;
+    }
+    else
+    {
+        *condition = RKCL_COND_INV;
+        return(NULL);
+    }
+
+
+    return(strdup(buf));
 }
 
 
@@ -157,7 +208,7 @@ char *_rkcl_get_value(char *buf, int *type)
  */
 int rkcl_get_entry(FILE *fp, char *msg)
 {
-    int type = 0;
+    int type = 0, condition = 0;
     char *nbuf;
     char buf[OS_SIZE_1024 +2];
 
@@ -165,8 +216,8 @@ int rkcl_get_entry(FILE *fp, char *msg)
     char *name = NULL;
     char *tmp_str;
 
-
     memset(buf, '\0', sizeof(buf));
+
 
     do
     {
@@ -180,10 +231,15 @@ int rkcl_get_entry(FILE *fp, char *msg)
             }
 
             /* Veryfying that the name is valid */
-            name = _rkcl_get_name(nbuf);
+            name = _rkcl_get_name(nbuf, &condition);
 
             if(name == NULL)
             {
+                if(condition == RKCL_COND_INV)
+                {
+                    merror(INVALID_RKCL_NAME, ARGV0);
+                }
+                
                 merror(INVALID_RKCL_NAME, ARGV0, nbuf);
                 return(0);
             }
@@ -204,17 +260,31 @@ int rkcl_get_entry(FILE *fp, char *msg)
                 }
                 return(0);
             }
+
             
             /* We first try to get the name, looking for new entries */
-            tmp_str = _rkcl_get_name(nbuf);
-            if(tmp_str)
+            if(_rkcl_is_name(nbuf))
             {
-                if(name)
+                tmp_str = _rkcl_get_name(nbuf, &condition);
+                if(tmp_str)
                 {
-                    free(name);
+                    if(name)
+                    {
+                        free(name);
+                    }
+                    name = tmp_str;
+                    break;
                 }
-                name = tmp_str;
-                break;
+                else
+                {
+                    if(condition == RKCL_COND_INV)
+                    {
+                        merror(INVALID_RKCL_NAME, ARGV0);
+                    }
+
+                    merror(INVALID_RKCL_NAME, ARGV0, nbuf);
+                    return(0);
+                }
             }
             
             value = _rkcl_get_value(nbuf, &type);
@@ -244,6 +314,7 @@ int rkcl_get_entry(FILE *fp, char *msg)
                 
                 if(is_file(value))
                 {
+                    found = 1;
                 }
                 
                 #endif
@@ -260,11 +331,10 @@ int rkcl_get_entry(FILE *fp, char *msg)
             {
                 char op_msg[OS_SIZE_1024 +1];
 
-                snprintf(op_msg, OS_SIZE_1024, "%s: %s",
-                        msg, name);
+                snprintf(op_msg, OS_SIZE_1024, "%s: %s %s",
+                        msg, name, value);
 
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
-
             }
             
             /* Checking if the specified entry is present on the system */

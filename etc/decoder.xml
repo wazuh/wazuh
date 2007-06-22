@@ -46,6 +46,12 @@
   <program_name>(pam_unix)$|^vsftpd</program_name>
 </decoder>
 
+<decoder name="pam">
+  <program_name>^vsftpd</program_name>
+  <prematch>^pam_unix</prematch>
+</decoder>
+
+
 <decoder name="pam-host-user">
   <parent>pam</parent>
   <prematch>rhost=\S+\s+user=\S+</prematch>
@@ -183,7 +189,7 @@
 
 <decoder name="telnetd-ip">
   <parent>telnetd</parent>
-  <regex>from (\d+.\d+.\d+.\d+)</regex>
+  <regex>from (\d+.\d+.\d+.\d+)$</regex>
   <order>srcip</order>
 </decoder>
 
@@ -214,6 +220,7 @@
   <regex> from \((\d+.\d+.\d+.\d+)\)</regex>
   <order>srcip</order>
 </decoder>
+
 
 
 <!-- Sudo decoder.
@@ -273,7 +280,6 @@
   - proftpd[2344]: refused connect from 192.168.1.2 (192.168.1.2)
   - proftpd[15181]: valhalla (crawl-66-249-66-80.googlebot.com[66.249.66.80]) - Connection from crawl-66-249-66-80.googlebot.com [66.249.66.80] denied.
   -->
-
 <decoder name="proftpd">  
   <program_name>^proftpd</program_name>
 </decoder>
@@ -292,6 +298,7 @@
   <regex>^\S+ \(\S+[(\S+)]\)</regex>
   <order>srcip</order>
 </decoder>
+
 
 
 <!-- Pure-FTPd decoder.
@@ -323,6 +330,7 @@
 </decoder>  
 
 
+
 <!-- vsftpd decoder.
   - Will extract the srcip.
   - Examples:
@@ -341,6 +349,7 @@
 </decoder>
 
 
+
 <!-- FTPD decoder (Solaris).
   - Examples:
   - ftpd[811166]: refused connect from 88.225.42.182
@@ -356,6 +365,7 @@
   <regex>from (\d+.\d+.\d+.\d+)$</regex>
   <order>srcip</order>
 </decoder>
+
 
 
 <!-- Arpwatch decoder.
@@ -378,6 +388,7 @@
 </decoder>
 
 
+
 <!-- Imapd decoder.
   - Will extract the username/srcip
   - Examples:
@@ -392,6 +403,7 @@
   <regex offset="after_prematch">user=(\S+) \.+ [(\d+.\d+.\d+.\d+)]$</regex>    
   <order>user,srcip</order>
 </decoder>
+
 
 
 <!-- Vpopmail decoder. (by Ceg Ryan <cegryan ( at ) gmail.com>)
@@ -470,6 +482,7 @@
 </decoder>
 
 
+
 <!-- Postfix  decoder.
   - Will extract the srcip
   - Examples: 
@@ -529,7 +542,25 @@
   <order>srcip</order>
 </decoder>
 
-         
+
+
+
+<!-- SMF-SAV Sendmail Milter decoder.
+  - Will extract the srcip
+  - Examples:
+  - smf-sav[513]: [ID 987462 mail.notice] sender check failed: <xkyjywqvophshu@mypersonalemail.com>, 125.133.22.112, [125.133.22.112], [00:00:01]
+  - smf-sav[513]: [ID 407019 mail.info] sender check succeeded (cached): <asterisk-users-bounces@lists.digium.com>, 216.207.245.17, lists.digium.com
+  - smf-sav[513]: [ID 987894 mail.notice] sender check tempfailed: <31363****-org@targetedpages.com>, 69.8.190.101, smtp101.tramailer.info, [00:00:05]
+  -->
+<decoder name="smf-sav-reject">
+  <program_name>^smf-sav</program_name>
+  <prematch>sender check failed: \S+, </prematch>
+  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+),</regex>
+  <order>srcip</order>
+</decoder>
+
+
+
 <!-- Mail scanner
   - Will extract the srcip/action
   - Examples:
@@ -624,7 +655,7 @@
 <decoder name="ipfilter">
    <type>firewall</type>
    <program_name>^ipmon</program_name>
-   <regex offset="after_prematch"> (\w) (\d+.\d+.\d+.\d+),(\d+) -> </regex>
+   <regex> (\w) (\d+.\d+.\d+.\d+),(\d+) -> </regex>
    <regex>(\d+.\d+.\d+.\d+),(\d+) PR (\w+) </regex>
    <order>action,srcip,srcport,dstip,dstport,protocol</order>
 </decoder>

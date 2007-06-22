@@ -82,7 +82,8 @@ int _AddtoRule(int sid, int level, int none, char *group,
         /* Checking if the group matches */
         else if(group)
         {
-            if(OS_WordMatch(group, r_node->ruleinfo->group))
+            if(OS_WordMatch(group, r_node->ruleinfo->group) && 
+               (r_node->ruleinfo->sigid != read_rule->sigid))
             {
                 /* If no context for rule, check if the parent has
                  * and use it.

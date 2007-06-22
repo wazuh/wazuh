@@ -65,7 +65,7 @@ void DecodeEvent(Eventinfo *lf)
 
 
         /* If prematch fails, go to the next osdecoder in the list */
-        else if(nnode->prematch)
+        if(nnode->prematch)
         {
             if(!(pmatch = OSRegex_Execute(lf->log, nnode->prematch)))
             {
@@ -75,10 +75,6 @@ void DecodeEvent(Eventinfo *lf)
             /* Next character */
             if(*pmatch != '\0')
                 pmatch++;
-        }
-        else
-        {
-            continue;
         }
 
 
