@@ -24,6 +24,35 @@
 #define RKCL_COND_INV       -1
 
 
+/** char *_rkcl_getrootdir()
+ */
+char *_rkcl_getrootdir(char *root_dir, int dir_size)
+{
+    #ifdef WIN32
+    char final_file[2048 +1];
+    char *tmp;
+
+    final_file[0] = '\0';
+    final_file[2048] = '\0';
+    
+    ExpandEnvironmentStrings("%WINDIR%", final_file, 2047);
+
+    tmp = strchr(final_file, '\\');
+    if(tmp)
+    {
+        *tmp = '\0';
+        strncpy(root_dir, final_file, dir_size);
+        return(root_dir);
+    }
+    
+    return(NULL);
+
+    #endif
+
+    return(NULL);
+}
+
+
 
 /** char *_rkcl_getfp: Get next available buffer in file.
  */
@@ -117,11 +146,11 @@ char *_rkcl_get_name(char *buf, int *condition)
     
     /* Getting condition */
     tmp_location++;
-    if(*tmp_location != '[')
+    if(*tmp_location != ' ' && tmp_location[1] != '[')
     {
         return(NULL);
     }
-    tmp_location++;
+    tmp_location+=2;
 
     tmp_location2 = strchr(tmp_location, ']');
     if(!tmp_location2)
@@ -148,6 +177,28 @@ char *_rkcl_get_name(char *buf, int *condition)
 
 
     return(strdup(buf));
+}
+
+
+
+/** char *_rkcl_get_pattern(char *value)
+ */
+char *_rkcl_get_pattern(char *value)
+{
+    while(*value != '\0')
+    {
+        if((*value == ' ') && (value[1] == '-') &&
+           (value[2] == '>') && (value[3] == ' '))
+        {
+            *value = '\0';
+            value+=4;
+
+            return(value);
+        }
+        value++;
+    }
+
+    return(NULL);
 }
 
 
@@ -181,7 +232,12 @@ char *_rkcl_get_value(char *buf, int *type)
     *tmp_str = '\0';
     
 
-    /* Getting types */
+    /* Getting types - removing negate flag (using later) */
+    if(*buf == '!')
+    {
+        buf++;
+    }
+    
     if(strcmp(buf, "f") == 0)
     {
         *type = RKCL_TYPE_FILE;
@@ -208,16 +264,29 @@ char *_rkcl_get_value(char *buf, int *type)
  */
 int rkcl_get_entry(FILE *fp, char *msg)
 {
-    int type = 0, condition = 0;
+    int type = 0, condition = 0, root_dir_len;
     char *nbuf;
     char buf[OS_SIZE_1024 +2];
+    char root_dir[OS_SIZE_1024 +2];
+    char final_file[2048 +1];
 
     char *value;
     char *name = NULL;
     char *tmp_str;
 
     memset(buf, '\0', sizeof(buf));
+    memset(root_dir, '\0', sizeof(root_dir));
+    memset(final_file, '\0', sizeof(final_file));
+    
+    root_dir_len = sizeof(root_dir) -1;
 
+    /* Getting Windows rootdir */
+    _rkcl_getrootdir(root_dir, root_dir_len);
+    if(root_dir[0] == '\0')
+    {
+        merror(INVALID_ROOTDIR, ARGV0);    
+    }
+    
 
     do
     {
@@ -300,16 +369,29 @@ int rkcl_get_entry(FILE *fp, char *msg)
 
             if(type == RKCL_TYPE_FILE)
             {
-                #ifdef WIN32
-                char final_file[2048 +1];
+                char *pattern = NULL;
 
+                pattern = _rkcl_get_pattern(value);
+
+                #ifdef WIN32
                 final_file[0] = '\0';
                 final_file[2048] = '\0';
-                ExpandEnvironmentStrings(value, final_file, 2047);
+                
+                if(value[0] == '\\')
+                {
+                    snprintf(final_file, 2047, "%s%s", root_dir, value);
+                }
+                else
+                {
+                    ExpandEnvironmentStrings(value, final_file, 2047);
+                }
+
                 if(is_file(final_file))
                 {
                     found = 1;
                 }
+
+                value = final_file;
                 #else
                 
                 if(is_file(value))
@@ -321,7 +403,19 @@ int rkcl_get_entry(FILE *fp, char *msg)
             }
             else if(type == RKCL_TYPE_REGISTRY)
             {
-                if(is_registry(value))
+                char *entry = NULL;
+                char *pattern = NULL;
+                
+                /* Looking for additional entries in the registry
+                 * and a pattern to match.
+                 */
+                entry = _rkcl_get_pattern(value);
+                if(entry)
+                {
+                    pattern = _rkcl_get_pattern(entry);
+                }
+                
+                if(is_registry(value, entry, pattern))
                 {
                     found = 1;
                 }

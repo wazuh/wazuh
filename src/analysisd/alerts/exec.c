@@ -129,7 +129,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
                 (ar->location & ALL_AGENTS)?ALL_AGENTS_C:NONE_C,
                 (ar->location & REMOTE_AGENT)?REMOTE_AGENT_C:NONE_C,
                 (ar->location & SPECIFIC_AGENT)?SPECIFIC_AGENT_C:NONE_C,
-                ar->agent_id,
+                ar->agent_id != NULL? ar->agent_id: "(null)",
                 ar->name,
                 user,
                 ip,

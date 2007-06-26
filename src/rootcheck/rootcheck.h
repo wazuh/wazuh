@@ -51,7 +51,7 @@ int isfile_ondir(char *file, char *dir);
 int is_file(char *file_name);
 
 /* win_common is_registry: Check if a entry is in the registry */
-int is_registry(char *entry_name);
+int is_registry(char *entry_name, char *reg_option, char *reg_value);
 
 /* int rkcl_get_entry: Reads cl configuration file. */
 int rkcl_get_entry(FILE *fp, char *msg);
@@ -97,7 +97,11 @@ void check_rc_files(char *basedir, FILE *fp);
 
 void check_rc_trojans(char *basedir, FILE *fp);
 
-void check_rc_winpolicy(char *basedir, FILE *fp);
+void check_rc_winaudit(char *basedir, FILE *fp);
+
+void check_rc_winmalware(char *basedir, FILE *fp);
+
+void check_rc_winapps(char *basedir, FILE *fp);
 
 void check_rc_dev(char *basedir);
 

@@ -150,12 +150,16 @@ char *__os_winreg_getkey(char *reg_entry)
     {
         rk_sub_tree = HKEY_USERS;
     }
-    else if(strcmp(reg_entry, "HKCU") == 0)
+    else if((strcmp(reg_entry, "HKCU") == 0) ||
+            (strcmp(reg_entry, "HKEY_CURRENT_USER") == 0))
     {
         rk_sub_tree = HKEY_CURRENT_USER;
     }
     else
     {
+        /* Setting sub tree to null */
+        rk_sub_tree = NULL;
+        
         /* Returning tmp_str to the previous value */
         if(tmp_str && (*tmp_str == '\0'))
             *tmp_str = '\\';
@@ -187,7 +191,6 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
     /* QueryInfo and EnumKey variables */
     TCHAR sub_key_name_b[MAX_KEY_LENGTH +1];
     TCHAR class_name_b[MAX_PATH +1];
-    DWORD sub_key_name_s;
     DWORD class_name_s = MAX_PATH;
 
     /* Number of sub keys */
@@ -287,10 +290,14 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
             }
             
 
+            merror("XXX COMP: '%s'", reg_value);
+
+
             /* Writing value into a string */
-            fprintf(checksum_fp, "%s=", value_buffer);
             switch(data_type)
             {
+                int size_available;
+                
                 case REG_SZ:
                 case REG_EXPAND_SZ:
                     snprintf(var_storage, MAX_VALUE_NAME, "%s", data_buffer);
@@ -298,15 +305,15 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
                 case REG_MULTI_SZ:
                 
                     /* Printing multiple strings */
-                    int size_available = MAX_VALUE_NAME -2;
+                    size_available = MAX_VALUE_NAME -3;
                     mt_data = data_buffer;
 
                     while(*mt_data)
                     {
                         if(size_available > 2)
                         {
-                            strncat(var_storage, 
-                                    size_available, "%s ", mt_data);
+                            strncat(var_storage, mt_data, size_available);
+                            strncat(var_storage, " ", 2);
                             size_available = MAX_VALUE_NAME - 
                                              (strlen(var_storage) +2);
                         }
@@ -315,20 +322,43 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
                      
                     break;
                 case REG_DWORD:
+                    merror("REGDWORD");
                     snprintf(var_storage, MAX_VALUE_NAME, 
-                            "%08x\n",(unsigned int)*data_buffer);
+                            "%x",(unsigned int)*data_buffer);
                     break;
                 default:
+
+                    merror("DEFAULT");
+                    size_available = MAX_VALUE_NAME -2;
                     for(j = 0;j<data_size;j++)
                     {
-                        fprintf(checksum_fp, "%02x",
+                        char tmp_c[12];
+
+                        snprintf(tmp_c, 12, "%02x",
                                 (unsigned int)data_buffer[j]);
+
+                        if(size_available > 2)
+                        {
+                            strncat(var_storage, tmp_c, size_available);
+                            size_available = MAX_VALUE_NAME -
+                                (strlen(var_storage) +2);
+                        }
                     }
-                    fprintf(checksum_fp, "\n");
                     break;
             }
+
+            merror("XXX WITH: '%s'", var_storage);
+            /* Checking if value matches */
+            if(strcasecmp(reg_value, var_storage) == 0)
+            {
+                return(1);
+            }
+
+            return(0);
         }
     }
+
+    return(0);
 }
   
 
@@ -345,7 +375,6 @@ int __os_winreg_open_key(char *subkey, char *full_key_name,
     
     if(RegOpenKeyEx(rk_sub_tree, subkey, 0, KEY_READ,&oshkey) != ERROR_SUCCESS)
     {
-        merror(SK_REG_OPEN, ARGV0, subkey);
         return(0);
     }
 
@@ -372,7 +401,7 @@ int is_registry(char *entry_name, char *reg_option, char *reg_value)
     char *rk;
     
     rk = __os_winreg_getkey(entry_name);
-    if(rk_sub_tree == NULL)
+    if(rk_sub_tree == NULL || rk == NULL)
     {
         merror(SK_INV_REG, ARGV0, entry_name);
         return(0);
@@ -388,6 +417,19 @@ int is_registry(char *entry_name, char *reg_option, char *reg_value)
   
 
 
-#endif /* WIN32 */
+#else /* WIN32 */
 
+
+/* Non windows defs for them. */
+int os_check_ads(char *full_path)
+{
+    return(0);
+}
+int is_registry(char *entry_name, char *reg_option, char *reg_value)
+{
+    return(0);
+}
+
+
+#endif
 /* EOF */

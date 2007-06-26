@@ -22,7 +22,9 @@ typedef struct _rkconfig
     char *basedir;
     char *rootkit_files;
     char *rootkit_trojans;
-    char *winpolicy;
+    char *winaudit;
+    char *winmalware;
+    char *winapps;
 
     FILE *fp;
     int daemon;

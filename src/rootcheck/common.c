@@ -79,6 +79,7 @@ int is_file(char *file_name)
     
     struct stat statbuf;
     FILE *fp = NULL;
+    DIR *dp = NULL;
 
 
     #ifndef WIN32
@@ -88,7 +89,6 @@ int is_file(char *file_name)
     char *file_dirname;
     char *file_basename;
     
-    DIR *dp = NULL;
 
     curr_dir[1023] = '\0';
 
@@ -167,6 +167,14 @@ int is_file(char *file_name)
         }
     }
     
+    #else
+    dp = opendir(file_name);
+    if(dp)
+    {
+        closedir(dp);
+        ret = 1;
+    }
+                                                                                
     #endif /* WIN32 */
 
     

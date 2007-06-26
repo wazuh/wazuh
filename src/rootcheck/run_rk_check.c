@@ -209,25 +209,66 @@ void run_rk_check()
 
     #ifdef WIN32
 
-    /*** Windows policy check ***/
-    if(!rootcheck.winpolicy)
+    /*** Windows audit check ***/
+    if(!rootcheck.winaudit)
     {
-        merror("%s: No winpolicy file configured.", ARGV0);
+        merror("%s: No winaudit file configured.", ARGV0);
     }
     else
     {
-        fp = fopen(rootcheck.winpolicy, "r");
+        fp = fopen(rootcheck.winaudit, "r");
         if(!fp)
         {
-            merror("%s: No winpolicy file: '%s'",ARGV0,
-                                rootcheck.winpolicy);
+            merror("%s: No winaudit file: '%s'",ARGV0,
+                                rootcheck.winaudit);
         }
         else
         {
-            check_rc_winpolicy(rootcheck.basedir, fp);
+            check_rc_winaudit(rootcheck.basedir, fp);
             fclose(fp);
         }
     }
+
+    /* Windows malware */
+    if(!rootcheck.winmalware)
+    {
+        merror("%s: No winmalware file configured.", ARGV0);
+    }
+    else
+    {
+        fp = fopen(rootcheck.winmalware, "r");
+        if(!fp)
+        {
+            merror("%s: No winmalware file: '%s'",ARGV0,
+                                                  rootcheck.winmalware);
+        }
+        else
+        {
+            check_rc_winmalware(rootcheck.basedir, fp);
+            fclose(fp);
+        }
+    }
+    
+    /* Windows Apps */
+    if(!rootcheck.winapps)
+    {
+        merror("%s: No winapps file configured.", ARGV0);
+    }
+    else
+    {
+        fp = fopen(rootcheck.winapps, "r");
+        if(!fp)
+        {
+            merror("%s: No winapps file: '%s'",ARGV0,
+                                               rootcheck.winapps);
+        }
+        else
+        {
+            check_rc_winapps(rootcheck.basedir, fp);
+            fclose(fp);
+        }
+    }
+    
     #endif
     
    
