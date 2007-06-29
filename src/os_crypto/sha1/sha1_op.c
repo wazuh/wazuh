@@ -33,12 +33,10 @@ int OS_SHA1_File(char * fname, char * output)
 {
     SHA_CTX c;
     FILE *fp;
-    char tmpstr[4];
     unsigned char buf[2048 +2];
     unsigned char md[SHA_DIGEST_LENGTH];
     int n;
     
-    tmpstr[3] = '\0';
     memset(output,0, 65);
     buf[2049] = '\0';
     
@@ -57,8 +55,8 @@ int OS_SHA1_File(char * fname, char * output)
     
     for (n=0; n<SHA_DIGEST_LENGTH; n++)
     {
-        snprintf(tmpstr, 3, "%02x", md[n]);
-        strncpy(output + (n * 2), tmpstr, 3);
+        snprintf(output, 3, "%02x", md[n]);
+        output+=2;
     }
                 
     /* Closing it */

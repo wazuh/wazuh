@@ -121,8 +121,11 @@ void run_rk_check()
         }
     }
     #else
+    
     /* Basedir for Windows */
     char basedir[] = "C:\\";
+    OSList *win32_plist;
+    
     #endif
     
   
@@ -208,6 +211,10 @@ void run_rk_check()
 
 
     #ifdef WIN32
+    
+    /*** Getting process list ***/
+    win32_plist = os_get_win32_process_list();
+
 
     /*** Windows audit check ***/
     if(!rootcheck.winaudit)
@@ -269,6 +276,10 @@ void run_rk_check()
         }
     }
     
+
+    /* Freeing process list */
+    free(win32_plist);
+
     #endif
     
    

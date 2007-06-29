@@ -9,9 +9,11 @@
  * Foundation
  */
  
-#ifdef WIN32 
+ 
 #include "shared.h"
 #include "rootcheck.h"
+
+#ifdef WIN32 
 
 
 /** Registry checking values **/
@@ -290,8 +292,6 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
             }
             
 
-            merror("XXX COMP: '%s'", reg_value);
-
 
             /* Writing value into a string */
             switch(data_type)
@@ -322,13 +322,11 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
                      
                     break;
                 case REG_DWORD:
-                    merror("REGDWORD");
                     snprintf(var_storage, MAX_VALUE_NAME, 
                             "%x",(unsigned int)*data_buffer);
                     break;
                 default:
 
-                    merror("DEFAULT");
                     size_available = MAX_VALUE_NAME -2;
                     for(j = 0;j<data_size;j++)
                     {
@@ -347,9 +345,8 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
                     break;
             }
 
-            merror("XXX WITH: '%s'", var_storage);
             /* Checking if value matches */
-            if(strcasecmp(reg_value, var_storage) == 0)
+            if(pt_matches(var_storage, reg_value))
             {
                 return(1);
             }
@@ -414,6 +411,71 @@ int is_registry(char *entry_name, char *reg_option, char *reg_value)
 
     return(1);
 }
+
+
+
+/*  del_plist:. Deletes the process list
+ */
+int del_plist(OSList *p_list)
+{
+    OSListNode *l_node;
+    if(p_list == NULL)
+    {
+        return(0);
+    }
+
+    l_node = OSList_GetFirstNode(p_list);
+    while(l_node)
+    {
+        Win32Proc_Info *pinfo;
+
+        pinfo = (Win32Proc_Info *)p_list->data;
+
+        free(pinfo->p_name);
+        free(pinfo->p_path);
+        free(p_list->data);
+        free(l_node);
+
+        l_node = OSList_GetNextNode(p_list);
+    }
+
+    free(p_list);
+
+    return(1);
+}
+
+
+
+/* is_process: Check is a process is running.
+ */
+int is_process(char *value, void *p_list_p)
+{
+    OSList *p_list = (OSList *)p_list_p;
+    OSListNode *l_node;
+    if(p_list == NULL)
+    {
+        return(0);
+    }
+
+    l_node = OSList_GetFirstNode(p_list);
+    while(l_node)
+    {
+        Win32Proc_Info *pinfo;
+
+        pinfo = (Win32Proc_Info *)p_list->data;
+        
+        /* Checking if value matches */
+        if(pt_matches(pinfo.p_path, reg_value))
+        {
+            return(1);
+        }
+                                                                    
+        l_node = OSList_GetNextNode(p_list);
+    }
+
+    return(0);
+
+}
   
 
 
@@ -426,6 +488,10 @@ int os_check_ads(char *full_path)
     return(0);
 }
 int is_registry(char *entry_name, char *reg_option, char *reg_value)
+{
+    return(0);
+}
+int is_process(char *value, void *p_list)
 {
     return(0);
 }

@@ -46,6 +46,9 @@ rkconfig rootcheck;
 /* common isfile_ondir: Check if file is present on dir */
 int isfile_ondir(char *file, char *dir);
 
+/* pt_matches: Checks if pattern is present on string */
+int pt_matches(char *str, char *pattern);
+
 
 /* common is_file: Check if a file exist (using stat, fopen and opendir) */
 int is_file(char *file_name);
@@ -54,7 +57,7 @@ int is_file(char *file_name);
 int is_registry(char *entry_name, char *reg_option, char *reg_value);
 
 /* int rkcl_get_entry: Reads cl configuration file. */
-int rkcl_get_entry(FILE *fp, char *msg);
+int rkcl_get_entry(FILE *fp, char *msg, void *p_list);
  
 
 /** char *normalize_string
@@ -72,6 +75,20 @@ int os_string(char *file, char *regex);
 /* check for NTFS ADS (Windows only)
  */
 int os_check_ads(char *full_path);
+
+/* os_get_win32_process_list: Get list of win32 processes 
+ */
+char **os_get_win32_process_list();
+
+/* is_process: Check is a process is running.
+ */
+int is_process(char *value, void *p_list);
+ 
+
+/*  del_plist:. Deletes the process list
+ */
+int del_plist(void *p_list);
+ 
 
 /* Used to report messages */
 int notify_rk(int rk_type, char *msg);
@@ -97,11 +114,11 @@ void check_rc_files(char *basedir, FILE *fp);
 
 void check_rc_trojans(char *basedir, FILE *fp);
 
-void check_rc_winaudit(char *basedir, FILE *fp);
+void check_rc_winaudit(FILE *fp, void *p_list);
 
-void check_rc_winmalware(char *basedir, FILE *fp);
+void check_rc_winmalware(FILE *fp, void *p_list);
 
-void check_rc_winapps(char *basedir, FILE *fp);
+void check_rc_winapps(FILE *fp, void *p_list);
 
 void check_rc_dev(char *basedir);
 
@@ -124,9 +141,18 @@ char **rk_sys_file;
 char **rk_sys_name;
 int rk_sys_count;
 
+
 /* All the ports */
 char total_ports_udp[65535 +1];
 char total_ports_tcp[65535 +1];
+
+
+/* Win32 process struct */
+typedef struct _Win32Proc_Info
+{
+    char *p_name;
+    char *p_path;
+}Win32Proc_Info;
 
 
 #endif

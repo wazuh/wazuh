@@ -29,7 +29,6 @@ int OS_MD5_File(char * fname, char * output)
     MD5_CTX ctx;
     unsigned char buf[1024 +1];
     unsigned char digest[16];
-    char tmpstr[6];
     int n;
     
     memset(output,0, 33);
@@ -37,7 +36,9 @@ int OS_MD5_File(char * fname, char * output)
     
     fp = fopen(fname,"r");
     if(!fp)
+    {
         return(-1);
+    }
     
     MD5Init(&ctx);
     while((n = fread(buf, 1, sizeof(buf) -1, fp)) > 0)
@@ -50,9 +51,8 @@ int OS_MD5_File(char * fname, char * output)
     
     for(n = 0;n < 16; n++)
     {
-        memset(tmpstr,0,6);
-        snprintf(tmpstr,6,"%02x",digest[n]++);
-        strncat(output, tmpstr,6);
+        snprintf(output, 3, "%02x", digest[n]);
+        output+=2;
     }
 
     /* Closing it */
@@ -65,13 +65,10 @@ int OS_MD5_File(char * fname, char * output)
 int OS_MD5_Str(char * str, char * output)
 {
     unsigned char digest[16];
-    char tmpstr[6];
     
     int n;
     
     MD5_CTX ctx;
-
-    memset(output,0, 33);
 
     MD5Init(&ctx);
     
@@ -81,10 +78,11 @@ int OS_MD5_Str(char * str, char * output)
     
     for(n = 0;n < 16;n++)
     {
-        memset(tmpstr,0,6);
-        snprintf(tmpstr,6,"%02x",digest[n]++);
-        strncat(output,tmpstr,6);
+        snprintf(output, 3, "%02x", digest[n]);
+        output+=2;
     }
+
+    output[32] = '\0';
     return(0);
 }
 

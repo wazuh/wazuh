@@ -262,7 +262,7 @@ char *_rkcl_get_value(char *buf, int *type)
 
 /** int rkcl_get_entry:
  */
-int rkcl_get_entry(FILE *fp, char *msg)
+int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
 {
     int type = 0, condition = 0, root_dir_len;
     char *nbuf;
@@ -273,6 +273,8 @@ int rkcl_get_entry(FILE *fp, char *msg)
     char *value;
     char *name = NULL;
     char *tmp_str;
+
+    OSList *p_list = (OSList *)p_list_p;
 
     memset(buf, '\0', sizeof(buf));
     memset(root_dir, '\0', sizeof(root_dir));
@@ -416,6 +418,13 @@ int rkcl_get_entry(FILE *fp, char *msg)
                 }
                 
                 if(is_registry(value, entry, pattern))
+                {
+                    found = 1;
+                }
+            }
+            else if(type == RKCL_TYPE_PROCESS)
+            {
+                if(is_process(value, p_list))
                 {
                     found = 1;
                 }

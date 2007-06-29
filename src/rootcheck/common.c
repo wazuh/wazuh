@@ -13,6 +13,118 @@
 #include "shared.h"
 
 
+/** int pt_matches(char *str, char *pattern)
+ * Checks if the specific pattern is present on str.
+ * A pattern can be preceeded by:
+ *                                =: (for equal) - default - strcasecmp
+ *                                r: (for ossec regexes)
+ *                                >: (for strcmp greater)
+ *                                <: (for strcmp  lower)    
+ *
+ * Multiple patterns can be specified by using " && " between them.
+ * All of them must match for it to return true.
+ */
+int pt_matches(char *str, char *pattern)
+{
+    int neg = 0;
+    int ret_code = 0;
+    char *tmp_pt = pattern;
+
+    /* If string we null, we don't match */
+    if(str == NULL)
+    {
+        return(0);
+    }
+    
+    while(tmp_pt != NULL)
+    {
+        /* We first look for " && " */
+        tmp_pt = strchr(pattern, ' ');
+        if(tmp_pt && tmp_pt[1] == '&' && tmp_pt[2] == '&' && tmp_pt[3] == ' ')
+        {
+            *tmp_pt = '\0';
+            tmp_pt += 4;
+        }
+
+
+        /* Checking for negate values */
+        neg = 0;
+        ret_code = 0;
+        if(*pattern == '!')
+        {
+            pattern++;
+            neg = 1;
+        }
+        
+
+        /* Doing strcasecmp */
+        if(strncasecmp(pattern, "=:", 2) == 0)
+        {
+            pattern += 2;
+            if(strcasecmp(pattern, str) == 0)
+            {
+                ret_code = 1;
+            }
+        }
+        else if(strncasecmp(pattern, "r:", 2) == 0)
+        {
+            pattern += 2;
+            if(OS_Regex(pattern, str))
+            {
+                ret_code = 1;
+            }
+        }
+        else if(strncasecmp(pattern, "<:", 2) == 0)
+        {
+            pattern += 2;
+            if(strcmp(pattern, str) < 0)
+            {
+                ret_code = 1;
+            }
+        }
+        else if(strncasecmp(pattern, ">:", 2) == 0)
+        {
+            pattern += 2;
+            if(strcmp(pattern, str) > 0)
+            {
+                ret_code = 1;
+            }
+        }
+        else
+        {
+            if(strcasecmp(pattern, str) == 0)
+            {
+                ret_code = 1;
+            }
+        }
+
+        /* If we have "!", return true if we don't match */
+        if(neg == 1)
+        {
+            if(ret_code)
+            {
+                ret_code = 0;
+                break;
+            }
+        }
+        else
+        {
+            if(!ret_code)
+            {
+                ret_code = 0;
+                break;
+            }
+        }
+        
+        ret_code = 1;
+        pattern = tmp_pt;
+    }
+
+    return(ret_code);
+}
+
+
+
 /** char *normalize_string
  * Normalizes a string, removing white spaces and tabs
  * from the begining and the end of it.
