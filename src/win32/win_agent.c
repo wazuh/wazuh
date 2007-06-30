@@ -248,6 +248,12 @@ int local_start()
     start_agent(1);
             
     os_delwait();
+
+
+    /* Sending integrity message for agent configs */
+    intcheck_file(cfg, "");
+    intcheck_file(OSSEC_DEFINES, "");
+                
                     
 
     /* Starting receiver thread */

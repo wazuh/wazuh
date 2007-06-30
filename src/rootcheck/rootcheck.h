@@ -78,7 +78,7 @@ int os_check_ads(char *full_path);
 
 /* os_get_win32_process_list: Get list of win32 processes 
  */
-char **os_get_win32_process_list();
+void *os_get_win32_process_list();
 
 /* is_process: Check is a process is running.
  */

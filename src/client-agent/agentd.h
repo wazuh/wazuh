@@ -39,6 +39,11 @@ void *receiver_thread(void *none);
 /* Notifier thread */
 void *notify_thread(void *none);
 
+/* intcheck_file: 
+ * Sends integrity checking information about a file to the server.
+ */
+int intcheck_file(char *file_name, char *dir);
+
 /* Sends message to server */
 int send_msg(int agentid, char *msg);
 

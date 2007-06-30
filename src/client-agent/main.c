@@ -1,4 +1,4 @@
-/*   $OSSEC, main.c, v0.3, 2005/11/09, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -10,7 +10,7 @@
  */
 
 /* Part of the OSSEC HIDS
- * Available at http://www.ossec.net/hids/
+ * Available at http://www.ossec.net
  */
 
 

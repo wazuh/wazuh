@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2006, 2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -45,7 +45,7 @@ void start_agent(int is_startup)
         send_msg(0, msg);
         attempts = 0;
 
-        /* Read until are reply comes back */
+        /* Read until our reply comes back */
         while(
            ((recv_b = recv(logr->sock, buffer, OS_MAXSTR, MSG_DONTWAIT)) > 0)||
            (attempts < 5))

@@ -23,8 +23,6 @@
 #define SYS_WIN_REG     "syscheck/syscheckregistry.db"
 #define SYS_REG_TMP     "syscheck/syscheck_sum.tmp"
 #define SYSCHECK_WAIT   3600
-#define SYSCHECK        "syscheck"
-#define SYSCHECK_REG    "syscheck-registry"
 
 
 /* Checking options */

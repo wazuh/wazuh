@@ -118,6 +118,11 @@ http://www.ossec.net/en/licensing.html\n"
 /* Syscheck directory */
 #define SYSCHECK_DIR    "/queue/syscheck"
 
+/* Syscheck data */
+#define SYSCHECK        "syscheck"
+#define SYSCHECK_REG    "syscheck-registry"
+
+
 /* Rule path */
 #define RULEPATH        "/rules"
 
@@ -171,11 +176,15 @@ http://www.ossec.net/en/licensing.html\n"
 
 /* Built in defines */
 #define DEFAULTQPATH	DEFAULTDIR DEFAULTQUEUE
+
 #ifndef WIN32
-#define DEFAULTCPATH    DEFAULTDIR "/etc/ossec.conf"
+#define OSSECCONF       "/etc/ossec.conf"
+#define DEFAULTCPATH    DEFAULTDIR OSSECCONF
 #else
+#define OSSECCONF       "ossec.conf"
 #define DEFAULTCPATH "ossec.conf"
 #endif
+
 #define DEFAULTARPATH   DEFAULTDIR DEFAULTAR
 #define AR_BINDIRPATH   DEFAULTDIR AR_BINDIR
 #define EXECQUEUEPATH   DEFAULTDIR EXECQUEUE

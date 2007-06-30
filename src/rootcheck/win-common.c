@@ -416,9 +416,12 @@ int is_registry(char *entry_name, char *reg_option, char *reg_value)
 
 /*  del_plist:. Deletes the process list
  */
-int del_plist(OSList *p_list)
+int del_plist(void *p_list_p)
 {
+    OSList *p_list = (OSList *)p_list_p;
     OSListNode *l_node;
+    OSListNode *p_node = NULL;
+    
     if(p_list == NULL)
     {
         return(0);
@@ -429,16 +432,28 @@ int del_plist(OSList *p_list)
     {
         Win32Proc_Info *pinfo;
 
-        pinfo = (Win32Proc_Info *)p_list->data;
+        pinfo = (Win32Proc_Info *)l_node->data;
 
         free(pinfo->p_name);
         free(pinfo->p_path);
-        free(p_list->data);
-        free(l_node);
+        free(l_node->data);
+        
+        if(p_node)
+        {
+            free(p_node);
+            p_node = NULL;
+        }
+        p_node = l_node;
 
         l_node = OSList_GetNextNode(p_list);
     }
 
+    if(p_node)
+    {
+        free(p_node);
+        p_node = NULL;
+    }
+    
     free(p_list);
 
     return(1);
@@ -462,10 +477,10 @@ int is_process(char *value, void *p_list_p)
     {
         Win32Proc_Info *pinfo;
 
-        pinfo = (Win32Proc_Info *)p_list->data;
+        pinfo = (Win32Proc_Info *)l_node->data;
         
         /* Checking if value matches */
-        if(pt_matches(pinfo.p_path, reg_value))
+        if(pt_matches(pinfo->p_path, value))
         {
             return(1);
         }

@@ -10,29 +10,8 @@
  */
 
   
-#include <stdio.h>       
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <time.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/param.h>
-#include <dirent.h>
-#include <errno.h>
-
-
-#include "headers/defs.h"
-#include "headers/debug_op.h"
-
-#ifdef OSSECHIDS
-#include "headers/mq_op.h"
-#endif
-
+#include "shared.h"
 #include "rootcheck.h"
-
-#include "error_messages/error_messages.h"
 
 
 /* notify_rk
@@ -231,7 +210,7 @@ void run_rk_check()
         }
         else
         {
-            check_rc_winaudit(rootcheck.basedir, fp);
+            check_rc_winaudit(fp, win32_plist);
             fclose(fp);
         }
     }
@@ -251,7 +230,7 @@ void run_rk_check()
         }
         else
         {
-            check_rc_winmalware(rootcheck.basedir, fp);
+            check_rc_winmalware(fp, win32_plist);
             fclose(fp);
         }
     }
@@ -271,14 +250,14 @@ void run_rk_check()
         }
         else
         {
-            check_rc_winapps(rootcheck.basedir, fp);
+            check_rc_winapps(fp, win32_plist);
             fclose(fp);
         }
     }
     
 
     /* Freeing process list */
-    free(win32_plist);
+    del_plist((void *)win32_plist);
 
     #endif
     

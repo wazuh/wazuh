@@ -62,7 +62,7 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
      * and read from it
      * Exit if fails.
      */
-    if((logr->m_queue = StartMQ(DEFAULTQUEUE,READ)) < 0)
+    if((logr->m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0)
         ErrorExit(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
 
     maxfd = logr->m_queue;
@@ -94,7 +94,9 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
 
     logr->sock = OS_ConnectUDP(logr->port,logr->rip);
     if(logr->sock < 0)
+    {
         ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
+    }
 
 
     /* Setting socket non-blocking on HPUX */
@@ -138,6 +140,12 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     start_agent(1);
     
     os_delwait();
+
+
+    /* Sending integrity message for agent configs */
+    intcheck_file(OSSECCONF, dir);
+    intcheck_file(OSSEC_DEFINES, dir);
+
 
 
     /* Starting receiver thread.
