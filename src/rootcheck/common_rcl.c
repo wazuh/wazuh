@@ -292,6 +292,8 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
 
     do
     {
+        int g_found = 0;
+        
         /* Getting entry name */
         if(name == NULL)
         {
@@ -430,19 +432,33 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
                 }
             }
 
-            if(found)
+            if(condition == RKCL_COND_ANY)
             {
-                char op_msg[OS_SIZE_1024 +1];
-
-                snprintf(op_msg, OS_SIZE_1024, "%s: %s %s",
-                        msg, name, value);
-
-                notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
+                if(found)
+                {
+                    g_found = 1;
+                }
             }
-            
-            /* Checking if the specified entry is present on the system */
+            /* Condition for ALL */
+            else
+            {
+                if(found && (g_found != -1))
+                {
+                    g_found = 1;
+                }
+                else
+                {
+                    g_found = -1;
+                }
+            }
         }while(value != NULL);
         
+        if(g_found == 1)
+        {
+            char op_msg[OS_SIZE_1024 +1];
+            snprintf(op_msg, OS_SIZE_1024, "%s %s",msg, name);
+            notify_rk(ALERT_POLICY_VIOLATION, op_msg);
+        }
         
     }while(nbuf != NULL);
 

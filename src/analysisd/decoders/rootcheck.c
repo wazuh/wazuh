@@ -24,9 +24,6 @@
 
 
 /** Global variables **/
-char _rk_buf[1025];
-
-
 char *rk_agent_ips[MAX_AGENTS];
 FILE *rk_agent_fps[MAX_AGENTS];
 
@@ -51,9 +48,6 @@ void RootcheckInit()
         rk_agent_fps[i] = NULL;
     }
 
-    /* clearing the buffer */
-    memset(_rk_buf, '\0', 1025);
-
 
     /* Zeroing decoder */
     os_calloc(1, sizeof(OSDecoderInfo), rootcheck_dec);
@@ -74,6 +68,7 @@ void RootcheckInit()
 FILE *RK_File(char *agent, int *agent_id)
 {
     int i = 0;
+    char rk_buf[OS_SIZE_1024 +1];
 
     while(rk_agent_ips[i] != NULL)
     {
@@ -93,23 +88,23 @@ FILE *RK_File(char *agent, int *agent_id)
 
     if(rk_agent_ips[i] != NULL)
     {
-        snprintf(_rk_buf,1024,"%s/%s",ROOTCHECK_DIR,agent);
+        snprintf(rk_buf,OS_SIZE_1024, "%s/%s", ROOTCHECK_DIR,agent);
         
         /* r+ to read and write. Do not truncate */
-        rk_agent_fps[i] = fopen(_rk_buf,"r+");
+        rk_agent_fps[i] = fopen(rk_buf,"r+");
         if(!rk_agent_fps[i])
         {
             /* try opening with a w flag, file probably does not exist */
-            rk_agent_fps[i] = fopen(_rk_buf, "w");
+            rk_agent_fps[i] = fopen(rk_buf, "w");
             if(rk_agent_fps[i])
             {
                 fclose(rk_agent_fps[i]);
-                rk_agent_fps[i] = fopen(_rk_buf, "r+");
+                rk_agent_fps[i] = fopen(rk_buf, "r+");
             }
         }
         if(!rk_agent_fps[i])
         {
-            merror(FOPEN_ERROR, ARGV0,_rk_buf);
+            merror(FOPEN_ERROR, ARGV0, rk_buf);
             
             free(rk_agent_ips[i]);
             rk_agent_ips[i] = NULL;
@@ -142,39 +137,88 @@ int DecodeRootcheck(Eventinfo *lf)
     int agent_id;
 
     char *tmpstr;
+    char rk_buf[OS_SIZE_2048 +1];
 
     FILE *fp;
+
+    fpos_t fp_pos;
+
+    /* Zeroing rk_buf */
+    rk_buf[0] = '\0';
+    rk_buf[OS_SIZE_2048] = '\0';
 
     fp = RK_File(lf->location, &agent_id);
 
     if(!fp)
     {
-        merror("%s: Error handling rootcheck database",ARGV0);
+        merror("%s: Error handling rootcheck database.",ARGV0);
         rk_err++; /* Increment rk error */
 
         return(0);
     }
 
+    /* Getting initial position */
+    if(fgetpos(fp, &fp_pos) == -1)
+    {
+        merror("%s: Error handling rootcheck database (fgetpos).",ARGV0);
+        return(0);
+    }
+                                    
+
     /* Reads the file and search for a possible
      * entry
      */
-    while(fgets(_rk_buf, 1024, fp) != NULL)
+    while(fgets(rk_buf, OS_SIZE_2048 -1, fp) != NULL)
     {
         /* Ignore blank lines and lines with a comment */
-        if(_rk_buf[0] == '\n' || _rk_buf[0] == '#')
+        if(rk_buf[0] == '\n' || rk_buf[0] == '#')
         {
+            if(fgetpos(fp, &fp_pos) == -1)
+            {
+                merror("%s: Error handling rootcheck database "
+                       "(fgetpos2).",ARGV0);
+                return(0);
+            }
             continue;
         }
 
         /* Removing new line */
-        tmpstr = strchr(_rk_buf, '\n');
+        tmpstr = strchr(rk_buf, '\n');
         if(tmpstr)
-            *tmpstr = '\0';    
-
-
-        /* Cannot use strncmp to avoid errors with crafted files */    
-        if(strcmp(lf->log, _rk_buf) == 0)
         {
+            *tmpstr = '\0';    
+        }
+
+        
+        /* Old format without the time stampts */
+        if(rk_buf[0] != '!')
+        {
+            /* Cannot use strncmp to avoid errors with crafted files */    
+            if(strcmp(lf->log, rk_buf) == 0)
+            {
+                return(0);
+            }
+        }
+        /* New format */
+        else
+        {
+            /* Going past time: !1183431603!1183431603  (last, first saw) */
+            tmpstr = rk_buf + 23;
+            
+            /* Matches, we need to upgrade last time saw */
+            if(strcmp(lf->log, tmpstr) == 0)
+            {
+                fsetpos(fp, &fp_pos);
+                fprintf(fp, "%d", lf->time);
+                        
+                return(0);
+            }
+        }
+
+        /* Getting current position */
+        if(fgetpos(fp, &fp_pos) == -1)
+        {
+            merror("%s: Error handling rootcheck database (fgetpos3).",ARGV0);
             return(0);
         }
     }                
@@ -182,7 +226,7 @@ int DecodeRootcheck(Eventinfo *lf)
     
     /* Adding the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
-    fprintf(fp,"%s\n",lf->log);
+    fprintf(fp,"!%d!%d %s\n",lf->time, lf->time, lf->log);
 
 
     lf->decoder_info = rootcheck_dec;
