@@ -11,6 +11,73 @@
 
  
 #include "shared.h"
+#include "rootcheck.h"
+
+
+/** int rk_check_file(char *value, char *pattern)
+ */
+int rk_check_file(char *file, char *pattern)
+{
+    FILE *fp;
+    char buf[OS_SIZE_2048 +1];
+    
+    /* If string we null, we don't match */
+    if(file == NULL)
+    {
+        return(0);
+    }
+
+    /* If we don't have a pattern, just check if the file/dir is there */
+    if(pattern == NULL)
+    {
+        if(is_file(file))
+        {
+            return(1);
+        }
+
+        return(0);
+    }
+    
+    
+    fp = fopen(file, "r");
+    if(!fp)
+    {
+        return(0);
+    }
+
+    buf[OS_SIZE_2048] = '\0';
+    while(fgets(buf, OS_SIZE_2048, fp) != NULL)
+    {
+        char *nbuf;
+
+        /* Removing end of line */
+        nbuf = strchr(buf, '\n');
+        if(nbuf)
+        {
+            *nbuf = '\0';
+        }
+
+        #ifdef WIN32
+        /* Removing end of line */
+        nbuf = strchr(buf, '\r');
+        if(nbuf)
+        {
+            *nbuf = '\0';
+        }
+        #endif
+
+        /* Matched */
+        if(pt_matches(buf, pattern))
+        {
+            fclose(fp);
+            return(1);
+        }
+    }
+
+    fclose(fp);
+    return(0);
+}
+
 
 
 /** int pt_matches(char *str, char *pattern)
@@ -29,6 +96,8 @@ int pt_matches(char *str, char *pattern)
     int neg = 0;
     int ret_code = 0;
     char *tmp_pt = pattern;
+    char *tmp_ret = NULL;
+
 
     /* If string we null, we don't match */
     if(str == NULL)
@@ -42,6 +111,9 @@ int pt_matches(char *str, char *pattern)
         tmp_pt = strchr(pattern, ' ');
         if(tmp_pt && tmp_pt[1] == '&' && tmp_pt[2] == '&' && tmp_pt[3] == ' ')
         {
+            /* Marking pointer to clean it up */        
+            tmp_ret = tmp_pt;
+                    
             *tmp_pt = '\0';
             tmp_pt += 4;
         }
@@ -92,12 +164,45 @@ int pt_matches(char *str, char *pattern)
         }
         else
         {
+            #ifdef WIN32
+            char final_file[2048 +1];
+            
+            /* Try to get Windows variable */
+            if(*pattern == '%')
+            {
+                final_file[0] = '\0';
+                final_file[2048] = '\0';
+
+                ExpandEnvironmentStrings(pattern, final_file, 2047);
+            }
+            else
+            {
+                strncpy(final_file, pattern, 2047);
+            }
+
+            /* Comparing against the expanded variable */
+            if(strcasecmp(final_file, str) == 0)
+            {
+                ret_code = 1;
+            }
+            
+            #else
             if(strcasecmp(pattern, str) == 0)
             {
                 ret_code = 1;
             }
+
+            #endif
         }
 
+        /* Fixing tmp_ret entry */
+        if(tmp_ret != NULL)
+        {
+            *tmp_ret = ' ';
+            tmp_ret = NULL;
+        }
+
+        
         /* If we have "!", return true if we don't match */
         if(neg == 1)
         {

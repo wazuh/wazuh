@@ -390,7 +390,7 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
                     ExpandEnvironmentStrings(value, final_file, 2047);
                 }
 
-                if(is_file(final_file))
+                if(rk_check_file(final_file, pattern))
                 {
                     found = 1;
                 }
@@ -398,7 +398,7 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
                 value = final_file;
                 #else
                 
-                if(is_file(value))
+                if(rk_check_file(value, pattern))
                 {
                     found = 1;
                 }

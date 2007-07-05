@@ -46,6 +46,9 @@ rkconfig rootcheck;
 /* common isfile_ondir: Check if file is present on dir */
 int isfile_ondir(char *file, char *dir);
 
+/* int rk_check_file(char *value, char *pattern) */
+int rk_check_file(char *file, char *pattern);
+
 /* pt_matches: Checks if pattern is present on string */
 int pt_matches(char *str, char *pattern);
 
