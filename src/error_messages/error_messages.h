@@ -223,6 +223,7 @@
 #define EVTLOG_OPEN     "%s(4106): Unable to open event log: '%s'."
 #define EVTLOG_GETLAST  "%s(4107): Unable to query last event log from: '%s'."
 #define EVTLOG_DUP      "%s(4108): Duplicated event log entry: '%s'."
+#define AG_NOKEYS_EXIT "%s(4109): Unable to start without auth keys. Exiting."
 
 
 /* Verbose messages */

@@ -46,9 +46,8 @@ void start_agent(int is_startup)
         attempts = 0;
 
         /* Read until our reply comes back */
-        while(
-           ((recv_b = recv(logr->sock, buffer, OS_MAXSTR, MSG_DONTWAIT)) > 0)||
-           (attempts < 5))
+        while(((recv_b = recv(logr->sock, buffer, OS_MAXSTR,
+                              MSG_DONTWAIT)) >= 0)|| (attempts < 5))
         {
             if(recv_b <= 0)
             {
@@ -57,6 +56,13 @@ void start_agent(int is_startup)
                  */
                 attempts++;
                 sleep(attempts);
+
+                /* Sending message again (after three attempts) */
+                if(attempts == 3)
+                {
+                    send_msg(0, msg);
+                }
+                
                 continue;
             }
             

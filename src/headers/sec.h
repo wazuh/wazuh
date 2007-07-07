@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -29,6 +29,10 @@ typedef struct _keystruct
 
     int keysize;
 }keystruct;
+
+
+/* int CheckKeys(): Checks if the authentication keys are present */
+int CheckKeys();
 
 /* Read the keys */
 void ReadKeys(keystruct *keys, int just_read);

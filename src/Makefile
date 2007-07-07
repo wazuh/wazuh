@@ -40,3 +40,5 @@ setagent:
 		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
 setlocal:
 		@echo "CEXTRA=-DLOCAL" >> ./Config.OS
+setfullsubject:
+		@echo "FEXTRA=-DCLEANFULL" >> ./Config.OS

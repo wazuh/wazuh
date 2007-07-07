@@ -178,6 +178,35 @@ void _CHash(keystruct *keys, char *id, char *name, char *ip, char *key)
 }
 
 
+/* int CheckKeys(): Checks if the authentication keys are present */
+int CheckKeys()
+{
+    FILE *fp;
+
+    if(File_DateofChange(KEYSFILE_PATH) < 0)
+    {
+        merror(NO_AUTHFILE, __local_name, KEYSFILE_PATH);
+        merror(NO_REM_CONN, __local_name);
+        return(0);
+    }
+
+    fp = fopen(KEYSFILE_PATH, "r");
+    if(!fp)
+    {
+        /* We can leave from here */
+        merror(FOPEN_ERROR, __local_name, KEYSFILE_PATH);
+        merror(NO_AUTHFILE, __local_name, KEYSFILE_PATH);
+        merror(NO_REM_CONN, __local_name);
+        return(0);
+    }
+
+    fclose(fp);
+
+
+    /* Authentication keys are present */
+    return(1);
+}
+
 
 /* ReadKeys v0.1: 2005/02/01 */
 void ReadKeys(keystruct *keys, int just_read)
@@ -527,7 +556,9 @@ char *CheckSum(char *msg)
 
     OS_MD5_Str(msg, checksum);
     if(strncmp(checksum,recvd_sum,32) != 0)
+    {
         return(NULL);
+    }
     
     return(msg);
 }

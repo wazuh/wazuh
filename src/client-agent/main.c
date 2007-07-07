@@ -95,7 +95,9 @@ int main(int argc, char **argv)
     
     /* Reading config */
     if(ClientConf(DEFAULTCPATH) < 0)
+    {
         ErrorExit(CLIENT_ERROR,ARGV0);
+    }
 
     if(!logr->rip)
     {
@@ -104,17 +106,26 @@ int main(int argc, char **argv)
     }
 
 
-    /* Exit if test config */
-    if(test_config)
-        exit(0);
-        
+    /* Checking auth keys */
+    if(!CheckKeys())
+    {
+        ErrorExit(AG_NOKEYS_EXIT, ARGV0);
+    }
+
         
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if((uid < 0)||(gid < 0))
+    {
         ErrorExit(USER_ERROR,ARGV0,user,group);
+    }
 
+
+
+    /* Exit if test config */
+    if(test_config)
+        exit(0);
 
 
     /* Starting the signal manipulation */

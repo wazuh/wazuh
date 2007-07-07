@@ -76,13 +76,13 @@ int OS_MD5_Str(char * str, char * output)
     
     MD5Final(digest, &ctx);
     
+    output[32] = '\0';
     for(n = 0;n < 16;n++)
     {
         snprintf(output, 3, "%02x", digest[n]);
         output+=2;
     }
 
-    output[32] = '\0';
     return(0);
 }
 

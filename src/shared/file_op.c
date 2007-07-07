@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -110,12 +110,25 @@ char *getuname()
         if(ret == NULL)
             return(NULL);
 
-        snprintf(ret, 255, "%s %s %s %s %s", 
+        snprintf(ret, 255, "%s %s %s %s %s - %s %s", 
                                  uts_buf.sysname,
                                  uts_buf.nodename,
                                  uts_buf.release,
                                  uts_buf.version,
-                                 uts_buf.machine);
+                                 uts_buf.machine,
+                                 __name, __version);
+
+        return(ret);
+    }
+    else
+    {
+        char *ret;
+        ret = calloc(256, sizeof(char));
+        if(ret == NULL)
+            return(NULL);
+        
+        snprintf(ret, 255, "No system info available -  %s %s",
+                           __name, __version);     
 
         return(ret);
     }
@@ -200,6 +213,7 @@ char *getuname()
 {
     int ret_size = OS_SIZE_1024 -2;
     char *ret = NULL;
+    char os_v[128 +1];
 
     typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
 
@@ -504,6 +518,12 @@ char *getuname()
             break;
     }
 
+
+    /* Adding ossec version */
+    snprintf(os_v, 128, " - %s %s", __name, __version);
+    strncat(ret, os_v, ret_size -1);
+     
+     
     /* Returning system information */
     return(ret); 
 

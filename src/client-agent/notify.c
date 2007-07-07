@@ -131,7 +131,7 @@ void run_notify()
 
 
     /* Check if time has elapsed */
-    if((curr_time - g_saved_time) < (NOTIFY_TIME - 90))
+    if((curr_time - g_saved_time) < (NOTIFY_TIME - 120))
     {
         return;
     }
@@ -149,12 +149,8 @@ void run_notify()
     uname = getuname();
     if(!uname)
     {
-        uname = strdup("No system info available");
-        if(!uname)
-        {
-            merror(MEM_ERROR,ARGV0);
-            return;
-        }
+        merror(MEM_ERROR,ARGV0);
+        return;
     }
 
 

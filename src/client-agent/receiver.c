@@ -82,7 +82,7 @@ void *receiver_thread(void *none)
 
         
         /* Read until no more messages are available */ 
-        while((recv_b = recv(logr->sock, buffer,OS_SIZE_1024,MSG_DONTWAIT))>0)
+        while((recv_b = recv(logr->sock,buffer,OS_SIZE_1024,MSG_DONTWAIT))>0)
         {
             
             /* Id of zero -- only one key allowed */

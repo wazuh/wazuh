@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2006,2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -139,7 +139,6 @@ int main(int argc, char **argv)
 int local_start()
 {
     int debug_level;
-    int binds;
     char *cfg = DEFAULTCPATH;
     WSADATA wsaData;
     DWORD  threadID;
@@ -179,14 +178,26 @@ int local_start()
 
     /* Read agent config */
     debug1("%s: DEBUG: Reading agent configuration.", ARGV0);
-    if((binds = ClientConf(cfg)) == 0)
+    if(ClientConf(cfg) < 0)
+    {
         ErrorExit(CLIENT_ERROR,ARGV0);
+    }
 
 
     /* Reading logcollector config file */
     debug1("%s: DEBUG: Reading logcollector configuration.", ARGV0);
     if(LogCollectorConfig(cfg) < 0)
+    {
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+    }
+
+
+    /* Checking auth keys */
+    if(!CheckKeys())
+    {
+        ErrorExit(AG_NOKEYS_EXIT, ARGV0);
+    }
+                                
 
 
     /* If there is not file to monitor, create a clean entry
@@ -331,18 +342,18 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     
 
     /* Send notification */
-    if((cu_time - __win32_curr_time) > (NOTIFY_TIME - 100))
+    if((cu_time - __win32_curr_time) > (NOTIFY_TIME - 150))
     {
         send_win32_info(cu_time);
     }
 
     
     /* Check if the server has responded */
-    if((cu_time - available_server) > (NOTIFY_TIME - 100))
+    if((cu_time - available_server) > (NOTIFY_TIME - 120))
     {
         send_win32_info(cu_time);
 
-        if((cu_time - available_server) > (3*NOTIFY_TIME))
+        if((cu_time - available_server) > (3 * NOTIFY_TIME))
         {
             int wi = 1;
 

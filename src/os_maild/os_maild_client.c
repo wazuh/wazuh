@@ -76,10 +76,18 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
     /* We have two subject options - full and normal */
     if(Mail->subject_full)
     {
-         snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT_FULL, 
-                                             al_data->location,
-                                             al_data->level,
-                                             al_data->comment);
+        /* Option for a clean full subject (without ossec in the name) */
+        #ifdef CLEANFULL
+        snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT_FULL2, 
+                                al_data->level,
+                                al_data->comment,
+                                al_data->location);
+        #else
+        snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT_FULL, 
+                                al_data->location,
+                                al_data->level,
+                                al_data->comment);
+        #endif
     }
     else
     {

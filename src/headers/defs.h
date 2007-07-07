@@ -42,7 +42,7 @@
 
 /* Some Global names */
 #define __name      "OSSEC HIDS"
-#define __version   "v1.2"
+#define __version   "v1.3"
 #define __author    "Daniel B. Cid"
 #define __contact   "contact@ossec.net"
 #define __site      "http://www.ossec.net"
@@ -161,9 +161,12 @@ http://www.ossec.net/en/licensing.html\n"
 /* Authentication keys file */
 #ifndef WIN32
 #define KEYS_FILE       "/etc/client.keys"
+#define KEYSFILE_PATH   DEFAULTDIR KEYS_FILE
 #else
 #define KEYS_FILE       "client.keys"
+#define KEYSFILE_PATH   KEYS_FILE
 #endif
+
 #define AUTH_FILE       KEYS_FILE
 
 

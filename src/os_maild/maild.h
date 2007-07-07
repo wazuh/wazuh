@@ -28,6 +28,12 @@
 #define SMS_SUBJECT         "OSSEC %d - %d - %s"
 #define MAIL_SUBJECT        "OSSEC Notification - %s - Alert level %d"
 #define MAIL_SUBJECT_FULL   "OSSEC Alert - %s - Level %d - %s"
+
+/* Full subject without ossec in the name */
+#ifdef CLEANFULL
+#define MAIL_SUBJECT_FULL2   "%d - %s - %s"
+#endif
+
 #define MAIL_BODY           "\r\nOSSEC HIDS Notification.\r\n" \
                             "%s\r\n\r\n" \
                             "Received From: %s\r\n" \

@@ -227,6 +227,7 @@ int DecodeRootcheck(Eventinfo *lf)
     /* Adding the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
     fprintf(fp,"!%d!%d %s\n",lf->time, lf->time, lf->log);
+    fflush(fp);
 
 
     lf->decoder_info = rootcheck_dec;

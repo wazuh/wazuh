@@ -289,8 +289,8 @@ int send_file_toagent(int agentid, char *name, char *sum)
         }
 
 
-        /* Sleep 1 every 13 messages -- no flood */
-        if(i > 12)
+        /* Sleep 1 every 45 messages -- no flood */
+        if(i > 45)
         {
             sleep(1);
             i = 0;
@@ -445,6 +445,7 @@ void read_controlmsg(int agentid, char *msg)
         }
     }
 
+
     /* Updating each file marked */
     for(i = 0;;i++)
     {
@@ -528,6 +529,12 @@ void *wait_for_msgs(void *none)
         /* Checking if any agent is ready */
         for(i = 0;i<keys.keysize; i++)
         {
+            /* If agent wasn't changed, try next */
+            if(_changed[i] != 1)
+            {
+                continue;
+            }
+            
             id = 0;
             
             /* locking mutex */
@@ -537,14 +544,16 @@ void *wait_for_msgs(void *none)
                 break;
             }
 
-            if((_changed[i] == 1)&&(_msg[i]))
+            if(_msg[i])
             {
                 /* Copying the message to be analyzed */
                 strncpy(msg, _msg[i], OS_SIZE_1024);
                 _changed[i] = 0;
 
                 if(modified_agentid >= i)
+                {
                     modified_agentid = -1;
+                }
 
                 id = 1;
             }
