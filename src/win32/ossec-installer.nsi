@@ -8,7 +8,7 @@
 
 !define VERSION "1.2"
 !define NAME "Ossec HIDS"
-!define /date CDATE "%H:%M:%S %d %b, %Y"
+!define /date CDATE "%b %d %Y at %H:%M:%S"
 
 
 Name "${NAME} Windows Agent v${VERSION}"
@@ -79,7 +79,7 @@ WriteUninstaller "uninstall.exe"
 FileOpen $0 $INSTDIR\VERSION.txt w
 IfErrors done
 FileWrite $0 "${NAME} v${VERSION} - "
-FileWrite $0 "Installed at: ${CDATE}"
+FileWrite $0 "Installed on ${CDATE}"
 FileClose $0
 done:
 

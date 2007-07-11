@@ -52,3 +52,4 @@ win32/service-stop.c setup/service-stop.c
 win32/LICENSE.txt LICENSE.txt
 win32/favicon.ico favicon.ico
 win32/icofile.rc icofile.rc
+win32/ui ui

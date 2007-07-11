@@ -31,6 +31,112 @@ static SERVICE_STATUS_HANDLE   ossecServiceStatusHandle;
 void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv);
 
 
+
+/* os_start_service: Starts ossec service */
+int os_start_service()
+{
+    int rc = 0;
+    SC_HANDLE schSCManager, schService;
+
+
+    /* Removing from the services database */
+    schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (schSCManager)
+    {
+        schService = OpenService(schSCManager,g_lpszServiceName,
+                                 SC_MANAGER_ALL_ACCESS);
+        if(schService)
+        {
+
+            if(StartService(schService, 0, NULL))
+            {
+                rc = 1;
+            }
+            else
+            {
+                if(GetLastError() == ERROR_SERVICE_ALREADY_RUNNING)
+                {
+                    rc = -1;
+                }
+            }
+            
+            CloseServiceHandle(schService);
+        }
+
+        CloseServiceHandle(schSCManager);
+    }
+
+    return(rc);
+}
+
+
+/* os_start_service: Starts ossec service */
+int os_stop_service()
+{
+    int rc = 0;
+    SC_HANDLE schSCManager, schService;
+
+
+    /* Removing from the services database */
+    schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (schSCManager)
+    {
+        schService = OpenService(schSCManager,g_lpszServiceName,
+                                 SC_MANAGER_ALL_ACCESS);
+        if(schService)
+        {
+            SERVICE_STATUS lpServiceStatus;
+            
+            if(ControlService(schService, 
+                              SERVICE_CONTROL_STOP, &lpServiceStatus))
+            {
+                rc = 1;
+            }
+            
+            CloseServiceHandle(schService);
+        }
+
+        CloseServiceHandle(schSCManager);
+    }
+
+    return(rc);
+}
+
+
+/* int QueryService(): Checks if service is running. */
+int CheckServiceRunning()
+{
+    int rc = 0;
+    SC_HANDLE schSCManager, schService;
+
+
+    /* Removing from the services database */
+    schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (schSCManager)
+    {
+        schService = OpenService(schSCManager,g_lpszServiceName,
+                                 SC_MANAGER_ALL_ACCESS);
+        if(schService)
+        {
+            /* Checking status */
+            SERVICE_STATUS lpServiceStatus;
+            
+            if(QueryServiceStatus(schService, &lpServiceStatus))
+            {
+                if(lpServiceStatus.dwCurrentState == SERVICE_RUNNING)
+                {
+                    rc = 1;
+                }
+            }
+            CloseServiceHandle(schService);
+        }
+        
+        CloseServiceHandle(schSCManager);
+    }
+
+    return(rc);
+}
+
                     
 /* int InstallService()
  * Install the OSSEC HIDS agent service.
@@ -67,7 +173,7 @@ int InstallService(char *path)
                                g_lpszServiceDisplayName,
                                SERVICE_ALL_ACCESS,
                                SERVICE_WIN32_OWN_PROCESS,
-                               SERVICE_DEMAND_START,
+                               SERVICE_AUTO_START,
                                SERVICE_ERROR_NORMAL,
                                lpszBinaryPathName,
                                NULL, NULL, NULL, NULL, NULL);

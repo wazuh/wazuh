@@ -319,8 +319,8 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
         tmp_ip = ip_address;
         while(*tmp_ip != '\0')
         {
-            if(*tmp_ip < '0'  && 
-               *tmp_ip > '9'  && 
+            if((*tmp_ip < '0' || 
+               *tmp_ip > '9') &&   
                *tmp_ip != '.' &&
                *tmp_ip != '/')
             {

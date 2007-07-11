@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -23,6 +23,21 @@ int InstallService(char *path);
  * Uninstall the OSSEC HIDS agent service.
  */
 int UninstallService(); 
+
+
+/** int QueryService(): 
+ * Checks if service is running. 
+ * Return 1 on success (running) or 0 if not.
+ */
+int CheckServiceRunning();
+
+
+/* os_start_service: Starts ossec service */
+int os_start_service();
+
+
+/* os_stop_service: Stops ossec service */
+int os_stop_service();
 
 
 /** int os_WinMain(int argc, char **argv)
