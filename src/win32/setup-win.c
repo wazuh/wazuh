@@ -378,11 +378,6 @@ int main(int argc, char **argv)
         snprintf(cmd, OS_MAXSTR, "setup-iis.exe .");
         system(cmd);
 
-
-        /* Run manage agents */
-        printf("\n\nSetting up Authentication keys...\n\n");
-        snprintf(cmd, OS_MAXSTR, "manage_agents.exe");
-        system(cmd);
     }
 
     /* If it is present, we need to do the upgrade */

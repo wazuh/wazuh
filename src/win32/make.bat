@@ -9,3 +9,5 @@ echo Making windows agent
 "C:\MinGW\bin\gcc.exe" -o service-stop -Wall os_regex/*.c setup/service-stop.c -I./
 "C:\MinGW\bin\gcc.exe" -o setup-iis -Wall os_regex/*.c setup/setup-iis.c -I./
 "C:\MinGW\bin\gcc.exe" -o add-localfile -Wall os_regex/*.c setup/add-localfile.c -I./
+cd ui\
+make

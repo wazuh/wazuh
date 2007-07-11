@@ -6,7 +6,7 @@
 ;--------------------------------
 ;General
 
-!define VERSION "1.2"
+!define VERSION "1.3"
 !define NAME "Ossec HIDS"
 !define /date CDATE "%b %d %Y at %H:%M:%S"
 
@@ -65,7 +65,7 @@ SetOutPath $INSTDIR
 
 ClearErrors
 
-File ossec-agent.exe default-ossec.conf manage_agents.exe internal_options.conf setup-windows.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe LICENSE.txt
+File ossec-agent.exe default-ossec.conf manage_agents.exe os_win32ui.exe internal_options.conf setup-windows.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe LICENSE.txt
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"
@@ -95,16 +95,13 @@ Delete "$SMPROGRAMS\ossec\*.*"
 CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 CreateShortCut "$SMPROGRAMS\ossec\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
 CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
-CreateShortCut "$SMPROGRAMS\ossec\Start OSSEC.lnk" "$INSTDIR\service-start.exe" "" "$INSTDIR\service-start.exe" 0
-CreateShortCut "$SMPROGRAMS\ossec\Stop OSSEC.lnk" "$INSTDIR\service-stop.exe" "" "$INSTDIR\service-stop.exe" 0
-CreateShortCut "$SMPROGRAMS\ossec\Import Keys.lnk" "$INSTDIR\manage_agents.exe" "" "$INSTDIR\manage_agents.exe" 0
-CreateShortCut "$SMPROGRAMS\ossec\View Logs.lnk" "$INSTDIR\ossec.log" "" "$INSTDIR\ossec.log" 0
+CreateShortCut "$SMPROGRAMS\ossec\Manage Agent.lnk" "$INSTDIR\os_win32ui.exe" "" "$INSTDIR\os_win32ui.exe" 0
 
 
 ; Install in the services 
 ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
 ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"' 
-ExecWait '"C:\Windows\notepad.exe" "$INSTDIR\ossec.conf"'
+ExecWait '"$INSTDIR\os_win32ui.exe" "$INSTDIR"' 
 
 MessageBox MB_OKCANCEL "Do you wish to start ${NAME} now?" IDCANCEL NoStartsvc
     ;; Starting ossec service.
