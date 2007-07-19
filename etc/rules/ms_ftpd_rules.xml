@@ -1,9 +1,17 @@
 <!-- @(#) $Id$
-  -  Official Microsoft FTP rules for OSSEC.
-  -  Author: Daniel B. Cid
-  -  License: http://www.ossec.net/en/licensing.html
+  -  Example of Microsoft FTP rules for OSSEC.
+  -
+  -  Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+  -  All rights reserved.
+  -
+  -  This program is a free software; you can redistribute it
+  -  and/or modify it under the terms of the GNU General Public
+  -  License (version 3) as published by the FSF - Free Software
+  -  Foundation.
+  -
+  -  License details: http://www.ossec.net/en/licensing.html
   -->
-      
+
 
 <group name="syslog,msftp,">
   <rule id="11500" level="0">

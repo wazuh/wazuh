@@ -114,7 +114,7 @@
   <rule id="3355" level="10" frequency="$POSTFIX_FREQ" timeframe="120">
     <if_matched_sid>3305</if_matched_sid>
     <same_source_ip />
-    <description>Multiple attepmts to send e-mail to </description>
+    <description>Multiple attempts to send e-mail to </description>
     <description>invalid recipient or from unknown sender domain.</description>
     <group>multiple_spam,</group>
   </rule>

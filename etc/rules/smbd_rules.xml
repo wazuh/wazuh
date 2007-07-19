@@ -1,10 +1,19 @@
 <!-- @(#) $Id$
-  -  SMB rules for OSSEC HIDS.
-  -  Author: Daniel B. Cid
-  -  Logs from:  Kayvan A. Sylvan <kayvan at sylvan.com>
-  -  License: http://www.ossec.net/en/licensing.html
+  -  Official SMB rules for OSSEC.
+  -
+  -  Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+  -  All rights reserved.
+  -
+  -  This program is a free software; you can redistribute it
+  -  and/or modify it under the terms of the GNU General Public
+  -  License (version 3) as published by the FSF - Free Software
+  -  Foundation.
+  -
+  -  License details: http://www.ossec.net/en/licensing.html
+  -
+  -  Test logs sent by: Kayvan A. Sylvan <kayvan at sylvan.com>
   -->
-      
+
 <!-- Still BETA -->
 
 <group name="syslog,smbd,">

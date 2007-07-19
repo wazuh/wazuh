@@ -1,10 +1,18 @@
-<!-- @(#) $Id$ 
+<!-- @(#) $Id$
   -  Official "attack" correlation rules for OSSEC.
-  -  Author: Daniel B. Cid
-  -  License: http://www.ossec.net/en/licensing.html
+  -
+  -  Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+  -  All rights reserved.
+  -
+  -  This program is a free software; you can redistribute it
+  -  and/or modify it under the terms of the GNU General Public
+  -  License (version 3) as published by the FSF - Free Software
+  -  Foundation.
+  -
+  -  License details: http://www.ossec.net/en/licensing.html
   -->
 
-
+  
 <!-- System users. They should never log in to the system -->
 <var name="SYS_USERS">^apache$|^mysql$|^www$|^nobody$|^nogroup$|^portmap$|^named$|^rpc$|^mail$|^ftp$|^shutdown$|^halt$|^daemon$|^bin$|^postfix$|^shell$|^info$|^guest$|^psql$|^user$|^users$|^console$|^uucp$|^lp$|^sync$|^sshd$|^cdrom$|^ossec$</var>
 

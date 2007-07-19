@@ -1,11 +1,19 @@
 <!-- @(#) $Id$
-  -  Official rules for squid
+  -  Official Squid rules for OSSEC.
   -
-  -  Author: Ahmet Ozturk
-  -  Author: Daniel B. Cid
-  -  License: http://www.ossec.net/en/licensing.html
+  -  Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+  -  All rights reserved.
+  -
+  -  This program is a free software; you can redistribute it
+  -  and/or modify it under the terms of the GNU General Public
+  -  License (version 3) as published by the FSF - Free Software
+  -  Foundation.
+  -
+  -  License details: http://www.ossec.net/en/licensing.html
+  -
+  -  Contributed by: Ahmet Ozturk
   -->
-
+  
 
 <!-- More information about squid codes below:
    - http://www.uniar.ukrnet.net/tools/Squid-FAQ/FAQ-6.html

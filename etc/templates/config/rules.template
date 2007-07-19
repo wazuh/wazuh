@@ -6,6 +6,7 @@
     <include>syslog_rules.xml</include>
     <include>arpwatch_rules.xml</include>
     <include>symantec-av_rules.xml</include>
+    <include>symantec-ws_rules.xml</include>
     <include>pix_rules.xml</include>
     <include>named_rules.xml</include>
     <include>smbd_rules.xml</include>
@@ -21,6 +22,7 @@
     <include>ids_rules.xml</include>
     <include>squid_rules.xml</include>
     <include>firewall_rules.xml</include>
+    <include>cisco-ios_rules.xml</include>
     <include>netscreenfw_rules.xml</include>
     <include>postfix_rules.xml</include>
     <include>sendmail_rules.xml</include>

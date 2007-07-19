@@ -1,11 +1,20 @@
 <!-- @(#) $Id$
-  -  Official rules for apache
-  -  Author: Daniel B. Cid
-  -  Author: Ahmet Ozturk
-  -  License: http://www.ossec.net/en/licensing.html
+  -  Official Apache rules for OSSEC.
+  -
+  -  Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+  -  All rights reserved.
+  -
+  -  This program is a free software; you can redistribute it
+  -  and/or modify it under the terms of the GNU General Public
+  -  License (version 3) as published by the FSF - Free Software
+  -  Foundation.
+  -
+  -  License details: http://www.ossec.net/en/licensing.html
+  -
+  -  Contributed by: Ahmet Ozturk
   -->
+                        
 
-  
 <group name="apache,">
   <rule id="30100" level="0">
     <decoded_as>apache-errorlog</decoded_as>

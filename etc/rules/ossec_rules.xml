@@ -1,8 +1,17 @@
 <!-- @(#) $Id$
-  -  Official ossec rules for the OSSEC HIDS
-  -  Author: Daniel B. Cid
-  -  License: http://www.ossec.net/en/licensing.html
+  -  Official ossec rules for OSSEC.
+  -
+  -  Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+  -  All rights reserved.
+  -
+  -  This program is a free software; you can redistribute it
+  -  and/or modify it under the terms of the GNU General Public
+  -  License (version 3) as published by the FSF - Free Software
+  -  Foundation.
+  -
+  -  License details: http://www.ossec.net/en/licensing.html
   -->
+
 
 
 <group name="ossec,">
@@ -53,6 +62,34 @@
     <match>^NTFS Alternate data stream found</match>
     <regex>Thumbs.db:encryptable'.|:Zone.Identifier'.</regex>
     <description>Ignored common NTFS ADS entries.</description>
+    <group>rootcheck,</group>
+  </rule>
+
+  <rule id="512" level="3">
+    <if_sid>510</if_sid>
+    <match>^winaudit</match>
+    <description>Windows Audit event.</description>
+    <group>rootcheck,</group>
+  </rule>
+  
+  <rule id="513" level="9">
+    <if_sid>510</if_sid>
+    <match>^winmalware</match>
+    <description>Windows malware detected.</description>
+    <group>rootcheck,</group>
+  </rule>
+  
+  <rule id="514" level="2">
+    <if_sid>510</if_sid>
+    <match>^winapps</match>
+    <description>Windows application monitor event.</description>
+    <group>rootcheck,</group>
+  </rule>
+  
+  <rule id="518" level="9">
+    <if_sid>514</if_sid>
+    <match>Adware|Spyware</match>
+    <description>Windows Adware/Spyware application found.</description>
     <group>rootcheck,</group>
   </rule>
   
