@@ -43,7 +43,7 @@
   - Nov 11 22:46:29 localhost vsftpd: pam_unix(vsftpd:auth): authentication failure; logname= uid=0 euid=0 tty= ruser= rhost=1.2.3.4
   -->
 <decoder name="pam">
-  <program_name>(pam_unix)$|^vsftpd</program_name>
+  <program_name>(pam_unix)$</program_name>
 </decoder>
 
 <decoder name="pam">
@@ -886,21 +886,56 @@
 </decoder>
 
 
+<!-- Cisco IOS
+  - Group for Cisco IOS messages.
+  -->
+<decoder name="cisco-ios">
+  <prematch>^%\w+-\d-\w+: </prematch>
+</decoder>
+            
+  
+<!-- Cisco IOS
+  - Will extract the action, srcip, srcport, dstip and dstport
+  - Samples:
+  -
+  - %SEC-6-IPACCESSLOGP: list 102 denied tcp 10.0.6.56(3067) -> 172.36.4.7(139), 1 packet
+  - %SEC-6-IPACCESSLOGP: list 199 denied tcp 10.0.61.108(1477) -> 10.0.127.20(445), 1 packet
+  -->
+<decoder name="cisco-ios-acl">
+  <parent>cisco-ios</parent>
+  <type>firewall</type>
+  <prematch>^%SEC-6-IPACCESSLOGP: </prematch>
+  <regex offset="after_prematch">^list \d+ (\w+) (\w+) </regex>
+  <regex>(\S+)\((\d+)\) -> (\S+)\((\d+)\),</regex>
+  <order>action, protocol, srcip, srcport, dstip, dstport</order>
+</decoder>
+
+
 <!-- Cisco IOS IDS/IPS module 
   - Will extract the id, srcip, srcport, dstip and dstport
-  - Sep  1 10:25:29 10.10.10.1 426: *Sep  1 17:23:26.743: %IPS-4-SIGNATURE: Sig:3051 Subsig:1 Sev:4 TCP Connection Window Size DoS [192.168.100.11:51654 -> 10.10.10.10:4444]
-  - Sep  1 10:25:29 10.10.10.1 427: *Sep  1 17:23:26.755: %IPS-4-SIGNATURE: Sig:3051 Subsig:1 Sev:4 TCP Connection Window Size DoS [192.168.100.11:60797 -> 10.10.10.10:80]
-  - Sep  1 10:25:29 10.10.10.1 428: *Sep  1 17:23:26.759: %IPS-4-SIGNATURE: Sig:5123 Subsig:2 Sev:5 WWW IIS Internet Printing Overflow [192.168.100.11:60797 -> 10.10.10.10:80]
+  - Sep  1 10:25:29 10.10.10.1 %IPS-4-SIGNATURE: Sig:3051 Subsig:1 Sev:4 TCP Connection Window Size DoS [192.168.100.11:51654 -> 10.10.10.10:4444]
+  - Sep  1 10:25:29 10.10.10.1 %IPS-4-SIGNATURE: Sig:3051 Subsig:1 Sev:4 TCP Connection Window Size DoS [192.168.100.11:60797 -> 10.10.10.10:80]
+  - Sep  1 10:25:29 10.10.10.1 %IPS-4-SIGNATURE: Sig:5123 Subsig:2 Sev:5 WWW IIS Internet Printing Overflow [192.168.100.11:60797 -> 10.10.10.10:80]
   -->
 <decoder name="cisco-ios-ids">
+  <parent>cisco-ios</parent>
   <type>ids</type>
-  <prematch>^%IPS-4-SIGNATURE: |</prematch>
-  <prematch>^\d+: \S+\s+\d+ \S+: %IPS-4-SIGNATURE: </prematch>
+  <prematch>^%IPS-4-SIGNATURE: </prematch>
   <regex offset="after_prematch">^Sig:(\d+) \.+[(\S+):(\d+) -> </regex>
   <regex>(\S+):(\d+)]</regex>
   <order>id, srcip, srcport, dstip, dstport</order>
   <fts>name, id, srcip, dstip</fts>
   <ftscomment>First time Cisco IOS IDS/IPS module rule fired.</ftscomment>
+</decoder>
+
+
+<!-- Cisco IOS
+  - Extracts the ID of cisco ios messages.
+  -->
+<decoder name="cisco-ios-generic">
+  <parent>cisco-ios</parent>
+  <regex>^(%\w+-\d-\w+): </regex>
+  <order>id</order>
 </decoder>
 
 
@@ -1272,7 +1307,6 @@
 
 
 <!-- Symantec AV decoder.
-  - Data provided by: Blackcryptoknight
   - Source: http://www.ossec.net/wiki/index.php/Symantec_Antivirus
   - Examples:
   - 24090D00000A,4,3,7,ACMELABS-SRV2,SYSTEM,,,,,,,16777216,"Update to computer ACMELABS-LU2K3 of virus definition file 81011r succeeded.",0,,0,,,,,0,,,,,,,,,,,,,(IP)-192.168.49.66,ACMELABSav,ACMELABS,,8.1.825
@@ -1286,6 +1320,18 @@
   <fts>name, location, id, system_name, extra_data</fts>
 </decoder>
 
+
+<!-- Symantec Web Security.
+  - Source: http://www.ossec.net/wiki/index.php/Symantec_Websecurity
+  - Examples:
+  - 20070717,30517,1=3,41=SWS-3.0.1.86/vendor-config,100=Version 3.0.6,3=7,2=29
+  - 20070717,73556,1=5,100=Logoff due to timeout.,11=1.2.3.4,10=usera,3=1,2=2
+    20070717,73559,1=5,11=2.3.4.5,10=userb,3=2,2=1
+  -->
+<decoder name="symantec-websecurity">
+  <prematch>^\d\d\d\d\d\d\d\d,\d\d\d+,</prematch>
+  <plugin_decoder>SymantecWS_Decoder</plugin_decoder>
+</decoder>
 
 
 <!-- ossec decoder.
