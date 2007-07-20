@@ -121,7 +121,7 @@ int _rkcl_is_name(char *buf)
 
 /** int _rkcl_get_name
  */
-char *_rkcl_get_name(char *buf, int *condition)
+char *_rkcl_get_name(char *buf, char *ref, int *condition)
 {
     char *tmp_location;
     char *tmp_location2;
@@ -158,6 +158,7 @@ char *_rkcl_get_name(char *buf, int *condition)
         return(NULL);
     }
     *tmp_location2 = '\0';
+    tmp_location2++;
     
     
     /* Getting condition */
@@ -175,6 +176,23 @@ char *_rkcl_get_name(char *buf, int *condition)
         return(NULL);
     }
 
+
+    /* Getting reference */
+    if(*tmp_location2 != ' ' && tmp_location2[1] != '[')
+    {
+        return(NULL);
+    }
+
+    tmp_location2+=2;
+    tmp_location = strchr(tmp_location2, ']');
+    if(!tmp_location)
+    {
+        return(NULL);
+    }
+    *tmp_location = '\0';
+
+    /* Copying reference */
+    strncpy(ref, tmp_location2, 255);    
 
     return(strdup(buf));
 }
@@ -269,6 +287,7 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
     char buf[OS_SIZE_1024 +2];
     char root_dir[OS_SIZE_1024 +2];
     char final_file[2048 +1];
+    char ref[255 +1];
 
     char *value;
     char *name = NULL;
@@ -279,6 +298,7 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
     memset(buf, '\0', sizeof(buf));
     memset(root_dir, '\0', sizeof(root_dir));
     memset(final_file, '\0', sizeof(final_file));
+    memset(ref, '\0', sizeof(ref));
     
     root_dir_len = sizeof(root_dir) -1;
 
@@ -304,7 +324,7 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
             }
 
             /* Veryfying that the name is valid */
-            name = _rkcl_get_name(nbuf, &condition);
+            name = _rkcl_get_name(nbuf, ref, &condition);
 
             if(name == NULL)
             {
@@ -318,6 +338,7 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
             }
         }
 
+        debug2("%s: DEBUG: Checking entry: '%s'.", ARGV0, name);
 
         /* Getting each value */
         do
@@ -327,50 +348,31 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
             nbuf = _rkcl_getfp(fp, buf);
             if(nbuf == NULL)
             {
-                if(name) 
-                {
-                    free(name);
-                }
-                return(0);
+                break;
             }
 
             
             /* We first try to get the name, looking for new entries */
             if(_rkcl_is_name(nbuf))
             {
-                tmp_str = _rkcl_get_name(nbuf, &condition);
-                if(tmp_str)
-                {
-                    if(name)
-                    {
-                        free(name);
-                    }
-                    name = tmp_str;
-                    break;
-                }
-                else
-                {
-                    if(condition == RKCL_COND_INV)
-                    {
-                        merror(INVALID_RKCL_NAME, ARGV0);
-                    }
-
-                    merror(INVALID_RKCL_NAME, ARGV0, nbuf);
-                    return(0);
-                }
+                break;
             }
             
+            
+            /* Getting value to look for */
             value = _rkcl_get_value(nbuf, &type);
             if(value == NULL)
             {
                 if(name)
                 {
                     free(name);
+                    name = NULL;
                 }
                 merror(INVALID_RKCL_VALUE, ARGV0, nbuf);
                 return(0);
             }
 
+            /* Checking for a file. */
             if(type == RKCL_TYPE_FILE)
             {
                 char *pattern = NULL;
@@ -390,14 +392,18 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
                     ExpandEnvironmentStrings(value, final_file, 2047);
                 }
 
+
+                debug2("%s: DEBUG: Checking file: '%s'.", ARGV0, final_file);
                 if(rk_check_file(final_file, pattern))
                 {
+                    debug2("%s: DEBUG: found file.", ARGV0);
                     found = 1;
                 }
 
                 value = final_file;
                 #else
                 
+                debug2("%s: DEBUG: Checking file: '%s'.", ARGV0, value);
                 if(rk_check_file(value, pattern))
                 {
                     found = 1;
@@ -419,21 +425,26 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
                     pattern = _rkcl_get_pattern(entry);
                 }
                 
+                debug2("%s: DEBUG: Checking registry: '%s'.", ARGV0, value);
                 if(is_registry(value, entry, pattern))
                 {
+                    debug2("%s: DEBUG: found registry.", ARGV0);
                     found = 1;
                 }
             }
             else if(type == RKCL_TYPE_PROCESS)
             {
+                debug2("%s: DEBUG: Checking process: '%s'.", ARGV0, value);
                 if(is_process(value, p_list))
                 {
+                    debug2("%s: DEBUG: found process.", ARGV0);
                     found = 1;
                 }
             }
 
             if(condition == RKCL_COND_ANY)
             {
+                debug2("%s: DEBUG: Condition ANY.", ARGV0);
                 if(found)
                 {
                     g_found = 1;
@@ -442,6 +453,7 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
             /* Condition for ALL */
             else
             {
+                debug2("%s: DEBUG: Condition ALL.", ARGV0);
                 if(found && (g_found != -1))
                 {
                     g_found = 1;
@@ -453,13 +465,56 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
             }
         }while(value != NULL);
         
+        /* Alerting if necessary */
         if(g_found == 1)
         {
             char op_msg[OS_SIZE_1024 +1];
-            snprintf(op_msg, OS_SIZE_1024, "%s %s",msg, name);
+            if(ref[0] != '\0')
+            {
+                snprintf(op_msg, OS_SIZE_1024, "%s %s. "
+                                 "Reference: %s .",msg, name, ref);
+            }
+            else
+            {
+                snprintf(op_msg, OS_SIZE_1024, "%s %s.",msg, name);
+            }
             notify_rk(ALERT_POLICY_VIOLATION, op_msg);
         }
-        
+
+        /* Ending if we don't have anything else. */
+        if(!nbuf)
+        {
+            if(name)
+            {
+                free(name);
+                name = NULL;
+            }
+            return(0);
+        }
+
+        /* Getting name already read */
+        if(_rkcl_is_name(nbuf))
+        {
+            tmp_str = _rkcl_get_name(nbuf, ref, &condition);
+            if(tmp_str)
+            {
+                if(name)
+                {
+                    free(name);
+                }
+                name = tmp_str;
+            }
+            else
+            {
+                if(condition == RKCL_COND_INV)
+                {
+                    merror(INVALID_RKCL_NAME, ARGV0);
+                }
+
+                merror(INVALID_RKCL_NAME, ARGV0, nbuf);
+                return(0);
+            }
+        }
     }while(nbuf != NULL);
 
     return(1);

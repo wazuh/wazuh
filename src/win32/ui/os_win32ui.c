@@ -438,7 +438,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     LPSTR lpCmdLine, int nCmdShow)
 {
-
+    int ret;
+    
     /* Initializing config */
     init_config();
 
@@ -446,7 +447,25 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     InitCommonControls();
 
     /* Creating main dialogbox */
-    return DialogBox(hInstance, MAKEINTRESOURCE(IDD_MAIN), NULL, DlgProc);
+    DialogBox(hInstance, MAKEINTRESOURCE(IDD_MAIN), NULL, DlgProc);
+
+
+    /* Check if service is running and try to start it */
+    if((strcmp(config_inst.key, FL_NOKEY) != 0)&&
+       (strcmp(config_inst.server, FL_NOSERVER) != 0) &&
+       !CheckServiceRunning())
+    {
+        ret = MessageBox(NULL, "OSSEC Agent not running. "
+                                "Do you wish to start it?",
+                                "Wish to start the agent?", MB_OKCANCEL);
+        if(ret == IDOK)
+        {
+            /* Starting the service */
+            os_start_service();
+        }
+    }
+
+    return(0);
 }
 
 

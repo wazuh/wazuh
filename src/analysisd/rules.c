@@ -1,12 +1,15 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
- * All right reserved.
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+ * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * License (version 3) as published by the FSF - Free Software
+ * Foundation.
+ *
+ * License details at the LICENSE file included with OSSEC or 
+ * online at: http://www.ossec.net/en/licensing.html
  */
 
 
@@ -636,21 +639,24 @@ int Rules_OP_ReadRules(char * rulefile)
                             loadmemory(config_ruleinfo->if_group,
                                     rule_opt[k]->content);
                     }
-                    else if(strcasecmp(rule_opt[k]->element,xml_if_matched_regex)==0)
+                    else if(strcasecmp(rule_opt[k]->element,
+                                       xml_if_matched_regex) == 0)
                     {
                         config_ruleinfo->context = 1;
                         if_matched_regex=
                             loadmemory(if_matched_regex,
                                     rule_opt[k]->content);
                     }
-                    else if(strcasecmp(rule_opt[k]->element,xml_if_matched_group)==0)
+                    else if(strcasecmp(rule_opt[k]->element,
+                                       xml_if_matched_group) == 0)
                     {
                         config_ruleinfo->context = 1;
                         if_matched_group=
                             loadmemory(if_matched_group,
                                     rule_opt[k]->content);
                     }
-                    else if(strcasecmp(rule_opt[k]->element,xml_if_matched_sid)==0)
+                    else if(strcasecmp(rule_opt[k]->element,
+                                       xml_if_matched_sid) == 0)
                     {
                         config_ruleinfo->context = 1;
                         if(!OS_StrIsNum(rule_opt[k]->content))
@@ -694,14 +700,15 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         config_ruleinfo->context_opts|= SAME_ID;
                     }
-                    else if(strcmp(rule_opt[k]->element,xml_different_url)== 0)
+                    else if(strcmp(rule_opt[k]->element,
+                                   xml_different_url) == 0)
                     {
                         config_ruleinfo->context_opts|= DIFFERENT_URL;
                         
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
-                    else if(strcmp(rule_opt[k]->element, xml_notsame_id) == 0)
+                    else if(strcmp(rule_opt[k]->element,xml_notsame_id) == 0)
                     {
                         config_ruleinfo->context_opts&= NOT_SAME_ID;
                     }
@@ -738,34 +745,48 @@ int Rules_OP_ReadRules(char * rulefile)
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_options) == 0)
                     {
-                        if(OS_Regex("alert_by_email", rule_opt[k]->content))
+                        if(strcmp("alert_by_email", 
+                                  rule_opt[k]->content) == 0)
                         {
                             if(!(config_ruleinfo->alert_opts & DO_MAILALERT))
                             {
                                 config_ruleinfo->alert_opts|= DO_MAILALERT;
                             }
                         }
-                        else if(OS_Regex("no_email_alert",rule_opt[k]->content))
+                        else if(strcmp("no_email_alert",
+                                       rule_opt[k]->content) == 0)
                         {
                             if(config_ruleinfo->alert_opts & DO_MAILALERT)
                             {
                               config_ruleinfo->alert_opts&=0xfff-DO_MAILALERT;
                             }
                         }
-                        if(OS_Regex("log_alert", rule_opt[k]->content))
+                        else if(strcmp("log_alert", 
+                                       rule_opt[k]->content) == 0)
                         {
                             if(!(config_ruleinfo->alert_opts & DO_LOGALERT))
                             {
                                 config_ruleinfo->alert_opts|= DO_LOGALERT;
                             }
                         }
-                        else if(OS_Regex("no_log", rule_opt[k]->content))
+                        else if(strcmp("no_log", rule_opt[k]->content) == 0)
                         {
                             if(config_ruleinfo->alert_opts & DO_LOGALERT)
                             {
                               config_ruleinfo->alert_opts &=0xfff-DO_LOGALERT;
                             }
                         }
+                        else
+                        {               
+                            merror(XML_VALUEERR, ARGV0, xml_options,
+                                                        rule_opt[k]->content);
+
+                            merror("%s: Invalid option '%s' for "
+                                   "rule '%d'.",ARGV0, rule_opt[k]->element,
+                                   config_ruleinfo->sigid);
+                            OS_ClearXML(&xml);
+                            return(-1);
+                        }   
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_ignore) == 0)
@@ -850,13 +871,27 @@ int Rules_OP_ReadRules(char * rulefile)
                     else
                     {
                         merror("%s: Invalid option '%s' for "
-                                "rule '%d'",ARGV0, rule_opt[k]->element,
+                                "rule '%d'.",ARGV0, rule_opt[k]->element,
                                 config_ruleinfo->sigid);
                         OS_ClearXML(&xml);
                         return(-1);
                     }
                     k++;
                 }
+
+
+                /* Checking for a valid use of frequency */
+                if((config_ruleinfo->context_opts || 
+                   config_ruleinfo->frequency) &&
+                   !config_ruleinfo->context)
+                {
+                    merror("%s: Invalid use of frequency/context options. "
+                           "Missing if_matched on rule '%d'." 
+                           ARGV0, config_ruleinfo->sigid);
+                    OS_ClearXML(&xml);
+                    return(-1);
+                }
+                
 
                 /* If if_matched_group we must have a if_sid or if_group */
                 if(if_matched_group)

@@ -47,7 +47,7 @@ void check_rc_winapps(FILE *fp, void *p_list)
 {
     debug1("%s: DEBUG: Starting on check_rc_winapps", ARGV0);
      
-    rkcl_get_entry(fp, "winapps:", p_list);
+    rkcl_get_entry(fp, "winapps: Found: ", p_list);
 }
 
 

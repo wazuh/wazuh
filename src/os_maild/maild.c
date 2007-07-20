@@ -1,12 +1,15 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * License (version 3) as published by the FSF - Free Software
+ * Foundation.
+ *
+ * License details at the LICENSE file included with OSSEC or 
+ * online at: http://www.ossec.net/en/licensing.html
  */
 
 
@@ -384,7 +387,7 @@ void OS_Run(MailConfig *mail)
             /* Change timeout to see if any new message is coming shortly */
             if(mail->groupping)
             {
-                /* If priority is setm send email now */
+                /* If priority is set, send email now */
                 if(mail->priority)
                 {
                     mail_timeout = DEFAULT_TIMEOUT;

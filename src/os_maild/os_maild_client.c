@@ -22,7 +22,7 @@
 MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, 
                       MailConfig *Mail, MailMsg **msg_sms)
 {
-    int i = 0, body_size = OS_MAXSTR -3, log_size, sms_set = 0;
+    int i = 0, body_size = OS_MAXSTR -3, log_size, sms_set = 0,donotgroup = 0;
     char logs[OS_MAXSTR + 1];
     char *subject_host;
     
@@ -97,23 +97,6 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
     }
 
     
-    /* Getting highest level for alert */
-    if(_g_subject)
-    {
-        if(_g_subject_level < al_data->level)
-        {
-            strncpy(_g_subject, mail->subject, SUBJECT_SIZE);
-            _g_subject_level = al_data->level;
-        }
-    }
-    else
-    {
-        strncpy(_g_subject, mail->subject, SUBJECT_SIZE);
-        _g_subject_level = al_data->level;
-    }
-
-
-
     /* fixing subject back */
     if(subject_host)
     {
@@ -237,6 +220,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
                     {
                         Mail->priority = DONOTGROUP;
                         Mail->gran_set[i] = DONOTGROUP;
+                        donotgroup = 1;
                     }
                     else
                     {
@@ -245,6 +229,26 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
                 }
             }
             i++;
+        }
+    }
+
+
+    /* If DONOTGROUP is set, we can't assign the new subject */
+    if(!donotgroup)
+    {
+        /* Getting highest level for alert */
+        if(_g_subject[0] != '\0')
+        {
+            if(_g_subject_level < al_data->level)
+            {
+                strncpy(_g_subject, mail->subject, SUBJECT_SIZE);
+                _g_subject_level = al_data->level;
+            }
+        }
+        else
+        {
+            strncpy(_g_subject, mail->subject, SUBJECT_SIZE);
+            _g_subject_level = al_data->level;
         }
     }
     

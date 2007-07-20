@@ -92,10 +92,10 @@ Rename "$INSTDIR\rootkit_files.txt" "$INSTDIR\shared\rootkit_files.txt"
 CreateDirectory "$SMPROGRAMS\ossec"
 Delete "$SMPROGRAMS\ossec\Edit.lnk"
 Delete "$SMPROGRAMS\ossec\*.*"
-CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
-CreateShortCut "$SMPROGRAMS\ossec\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
-CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
 CreateShortCut "$SMPROGRAMS\ossec\Manage Agent.lnk" "$INSTDIR\os_win32ui.exe" "" "$INSTDIR\os_win32ui.exe" 0
+CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
+CreateShortCut "$SMPROGRAMS\ossec\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
+CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 
 
 ; Install in the services 
@@ -103,11 +103,6 @@ ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
 ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"' 
 ExecWait '"$INSTDIR\os_win32ui.exe" "$INSTDIR"' 
 
-MessageBox MB_OKCANCEL "Do you wish to start ${NAME} now?" IDCANCEL NoStartsvc
-    ;; Starting ossec service.
-    ExecWait '"net" "start" "OssecSvc"'
-
-    NoStartsvc:
 SectionEnd
 
 Section Welcome

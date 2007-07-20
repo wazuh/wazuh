@@ -1,22 +1,21 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
- * All right reserved.
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+ * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * License (version 3) as published by the FSF - Free Software
+ * Foundation.
+ *
+ * License details at the LICENSE file included with OSSEC or 
+ * online at: http://www.ossec.net/en/licensing.html
  */
+
 
 /* Functions to handle the configuration files
  */
 
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
 #include "shared.h"
 
