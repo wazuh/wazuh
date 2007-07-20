@@ -1,12 +1,15 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * License (version 3) as published by the FSF - Free Software
+ * Foundation.
+ *
+ * License details at the LICENSE file included with OSSEC or 
+ * online at: http://www.ossec.net/en/licensing.html
  */
 
 
@@ -44,6 +47,7 @@ char *chomp(char *str);
 
 
 /* Shared variables */
+int restart_necessary;
 int time1;
 int time2;
 int time3;
@@ -78,6 +82,8 @@ fpos_t fp_pos;
 #define ADDED           "Added.\n"
 #define ADD_NOT         "Not Adding ..\n"
 #define PRESS_ENTER     "** Press ENTER to return to the main menu.\n"
+#define MUST_RESTART    "\n** You must restart the server for your changes" \
+                        " to have effect.\n\n"
 
 /* Add errors */
 #define ADD_ERROR_ID    "\n** ID '%s' already present. They must be unique.\n\n"
@@ -110,8 +116,8 @@ fpos_t fp_pos;
 /* Commom errors */
 #define ERROR_KEYS      "Unable to handle keys file. Exiting.\n"
 #define EXTRACT_ERROR   "Unable to extract agent key.\n"
-#define INPUT_LARGE     ARGV0": Input too large. Not adding it.\n"
-#define EXIT            "\n" ARGV0 ": Exiting ..\n"
+#define INPUT_LARGE     ARGV0 ": Input too large. Not adding it.\n"
+#define EXIT            ARGV0 ": Exiting ..\n"
 
 #define BANNER          "\n****************************************" \
                         "\n* %s %s Agent manager.       *" \

@@ -1,12 +1,15 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * License (version 3) as published by the FSF - Free Software
+ * Foundation.
+ *
+ * License details at the LICENSE file included with OSSEC or 
+ * online at: http://www.ossec.net/en/licensing.html
  */
 
 
@@ -269,6 +272,7 @@ int add_agent()
         fclose(fp);
 
         printf(AGENT_ADD);
+        restart_necessary = 1;
         break;
       }
       else if(user_input[0] == 'n' || user_input[0] == 'N')
@@ -351,6 +355,7 @@ int remove_agent()
 
 
             printf(REMOVE_DONE, u_id);
+            restart_necessary = 1;
             break;
         }
         else if(user_input[0] == 'n' || user_input[0] == 'N')

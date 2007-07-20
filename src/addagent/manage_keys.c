@@ -1,14 +1,16 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation
+ * License (version 3) as published by the FSF - Free Software
+ * Foundation.
+ *
+ * License details at the LICENSE file included with OSSEC or 
+ * online at: http://www.ossec.net/en/licensing.html
  */
-
 
 
 #include "manage_agents.h"
@@ -96,6 +98,7 @@ int k_import()
                     printf(ADDED);
                     printf(PRESS_ENTER);
                     read_from_user();
+                    restart_necessary = 1;
                     return(1);
                 }
                 else if(user_input[0] == 'n' || user_input[0] == 'N')

@@ -29,6 +29,24 @@ void print_banner()
 }
 
 
+/* Clean shutdown on kill */
+void manage_shutdown()
+{
+    /* Checking if restart message is necessary */
+    if(restart_necessary)
+    {
+        printf(MUST_RESTART);
+    }
+    else
+    {
+        printf("\n");
+    }
+    printf(EXIT);
+
+    exit(0);
+}
+
+
 /** main **/
 int main(int argc, char **argv)
 {
@@ -41,6 +59,7 @@ int main(int argc, char **argv)
     #endif
     
     if(argv[argc -1]){}    
+    
 
     /* Setting the name */
     OS_SetName(ARGV0);
@@ -48,6 +67,8 @@ int main(int argc, char **argv)
    
     /* Getting currently time */
     time1 = time(0);
+    restart_necessary = 0;
+    
     
     #ifndef WIN32 
     /* Getting the group name */
@@ -74,12 +95,17 @@ int main(int argc, char **argv)
 
     /* Inside chroot now */
     nowChroot();
-    
+
+
+    /* Starting signal handler */
+    StartSIG2(ARGV0, manage_shutdown);
     #endif
+
 
     /* Little shell */
     while(1)
     {
+        int leave_s = 0;
         print_banner();
    
         user_msg = read_from_user();
@@ -109,19 +135,36 @@ int main(int argc, char **argv)
                 break;
             case 'q':
             case 'Q':
-                printf(EXIT);
-                exit(0);    
-	    case 'V':
-		print_version();   
-		break;
+                leave_s = 1;
+                break;
+	        case 'V':
+		        print_version();   
+		        break;
             default:    
                 printf("\n ** Invalid Action ** \n\n");
                 break;            
         }
 
+        if(leave_s)
+        {
+            break;       
+        }
+        
         continue;
         
     }
+
+    /* Checking if restart message is necessary */
+    if(restart_necessary)
+    {
+        printf(MUST_RESTART);
+    }
+    else
+    {
+        printf("\n");
+    }
+    printf(EXIT);
+    
     return(0);
 }
 
