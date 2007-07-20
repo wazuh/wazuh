@@ -1,0 +1,9 @@
+Jul 10 16:07:14 cisco2621 %SEC-6-IPACCESSLOGP: list 102 denied tcp 10.0.6.56(3067) -> 172.36.4.7(139), 1 packet
+%SEC-6-IPACCESSLOGP: list 199 permitted tcp 10.0.40.16(3059) -> 10.0.4.101(1060), 2 packets
+%SEC-6-IPACCESSLOGP: list 199 permitted tcp 10.0.16.16(2179) -> 10.0.4.101(1060), 1 packet
+%SEC-6-IPACCESSLOGP: list 199 permitted tcp 10.0.32.16(4206) -> 10.0.4.101(1060), 2 packets
+%SEC-6-IPACCESSLOGP: list 199 denied tcp 10.0.61.108(1477) -> 10.0.127.20(445), 1 packet
+Jul 10 16:07:14 1.2.3.4 %SEC-6-IPACCESSLOGP: list 199 denied tcp 10.0.61.108(1469) -> 10.0.127.12(445), 1 packet
+%SEC-6-IPACCESSLOGP: list 199 denied tcp 10.0.61.108(1496) -> 10.0.127.39(445), 1 packet
+%SEC-6-IPACCESSLOGP: list 100 denied udp 200.174.153.126(1028) -> 66.81.85.65(137), 1 packet
+Jul 10 16:07:14 myhost1 %SEC-6-IPACCESSLOGP: list 100 denied udp 195.23.72.148(1026) -> 66.81.85.65(137), 1 packet
