@@ -67,21 +67,21 @@
 
   <rule id="512" level="3">
     <if_sid>510</if_sid>
-    <match>^winaudit</match>
+    <match>^Windows Audit</match>
     <description>Windows Audit event.</description>
     <group>rootcheck,</group>
   </rule>
   
   <rule id="513" level="9">
     <if_sid>510</if_sid>
-    <match>^winmalware</match>
+    <match>^Windows Malware</match>
     <description>Windows malware detected.</description>
     <group>rootcheck,</group>
   </rule>
   
   <rule id="514" level="2">
     <if_sid>510</if_sid>
-    <match>^winapps</match>
+    <match>^Application Found</match>
     <description>Windows application monitor event.</description>
     <group>rootcheck,</group>
   </rule>

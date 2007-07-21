@@ -65,7 +65,7 @@ SetOutPath $INSTDIR
 
 ClearErrors
 
-File ossec-agent.exe default-ossec.conf manage_agents.exe os_win32ui.exe internal_options.conf setup-windows.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe LICENSE.txt
+File ossec-agent.exe default-ossec.conf manage_agents.exe os_win32ui.exe internal_options.conf setup-windows.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe LICENSE.txt rootcheck\db\win_applications_rcl.txt rootcheck\db\win_malware_rcl.txt rootcheck\db\win_audit_rcl.txt
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"
@@ -89,8 +89,14 @@ CreateDirectory "$INSTDIR\syscheck"
 CreateDirectory "$INSTDIR\shared"
 Rename "$INSTDIR\rootkit_trojans.txt" "$INSTDIR\shared\rootkit_trojans.txt"
 Rename "$INSTDIR\rootkit_files.txt" "$INSTDIR\shared\rootkit_files.txt"
+Rename "$INSTDIR\win_malware_rcl.txt" "$INSTDIR\shared\win_malware_rcl.txt"
+Rename "$INSTDIR\win_audit_rcl.txt" "$INSTDIR\shared\win_audit_rcl.txt"
+Rename "$INSTDIR\win_applications_rcl.txt" "$INSTDIR\shared\win_applications_rcl.txt"
 CreateDirectory "$SMPROGRAMS\ossec"
 Delete "$SMPROGRAMS\ossec\Edit.lnk"
+Delete "$SMPROGRAMS\ossec\Uninstall.lnk"
+Delete "$SMPROGRAMS\ossec\Documentation.lnk"
+Delete "$SMPROGRAMS\ossec\Edit Config.lnk"
 Delete "$SMPROGRAMS\ossec\*.*"
 CreateShortCut "$SMPROGRAMS\ossec\Manage Agent.lnk" "$INSTDIR\os_win32ui.exe" "" "$INSTDIR\os_win32ui.exe" 0
 CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
