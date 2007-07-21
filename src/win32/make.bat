@@ -11,5 +11,3 @@ echo Making windows agent
 "C:\MinGW\bin\gcc.exe" -o add-localfile -Wall os_regex/*.c setup/add-localfile.c -I./
 cd ui\
 make
-cd ..
-copy ui\os_win32ui.exe os_win32ui.exe

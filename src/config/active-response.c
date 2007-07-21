@@ -174,7 +174,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     }
 
     /* analysisd */
-    if(OS_Regex("AS|analysisd", tmp_location))
+    if(OS_Regex("AS|analysisd|analysis-server|server", tmp_location))
     {
         tmp_ar->location|= AS_ONLY;
     }

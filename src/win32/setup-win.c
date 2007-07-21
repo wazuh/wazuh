@@ -85,6 +85,8 @@ int direxist(char *dir)
 /* Getting Windows directory */
 char *get_win_dir()
 {
+    /* Ok, I should be getting %WINDIR% .. no reason to do that in here.
+     */
     char *win_dir = "C:\\WINDOWS";
     if(direxist(win_dir))
     {
@@ -92,6 +94,12 @@ char *get_win_dir()
     }
     
     win_dir = "C:\\WINNT";
+    if(direxist(win_dir))
+    {
+        return(win_dir);
+    }
+
+    win_dir = "D:\\WINDOWS";
     if(direxist(win_dir))
     {
         return(win_dir);
@@ -120,7 +128,7 @@ int add_syscheck()
             "<!-- Default syscheck config -->\r\n"
             "<ossec_config>\r\n"
             "  <syscheck>\r\n"
-            "    <frequency>43200</frequency>\r\n"
+            "    <frequency>64800</frequency>\r\n"
             "    <directories check_all=\"yes\">"
             "%s</directories>\r\n"
             "  </syscheck>\r\n"
@@ -284,33 +292,53 @@ int config_syscheck()
     char *win_dir;
     FILE *fp;
 
-    /* We add here the last entry */
-    if(dogrep(OSSECCONF, "dllcache</ignore>"))
-    {
-        return(0);
-    }
-
-    /* Syscheck not configured, return */
-    if(!dogrep(OSSECCONF, "<syscheck>"))
-    {
-        return(0);
-    }
-
-
-    win_dir = get_win_dir();
-
 
     /* Add syscheck config */
     fp = fopen(OSSECCONF, "a");
     if(!fp)
         return(0); 
 
+    /* We will also add rootcheck stuff if not present */
+    if(!dogrep(OSSECCONF, "<rootcheck>") && !dogrep(OSSECCONF,"windows_audit"))
+    {
+        fprintf(fp,
+                "\r\n"
+                "<!-- Rootcheck config -->\r\n"
+                "<ossec_config>\r\n"
+                "  <rootcheck>\r\n"
+                "    <windows_audit>./shared/win_audit_rcl.txt</windows_audit>\r\n"
+                "    <windows_apps>./shared/win_applications_rcl.txt</windows_apps>\r\n"
+                "    <windows_malware>./shared/win_malware_rcl.txt</windows_malware>\r\n"
+                "  </rootcheck>\r\n"
+                "</ossec_config>\r\n"
+               );
+
+    }
+    
+
+    /* We add here the last entry */
+    if(dogrep(OSSECCONF, "dllcache</ignore>"))
+    {
+        fclose(fp);
+        return(0);
+    }
+
+    /* Syscheck not configured, return */
+    if(!dogrep(OSSECCONF, "<syscheck>"))
+    {
+        fclose(fp);
+        return(0);
+    }
+
+
+    win_dir = get_win_dir();
+
     fprintf(fp, 
             "\r\n"    
             "<!-- Updated syscheck config -->\r\n"
             "<ossec_config>\r\n"
             "  <syscheck>\r\n"
-            "    <frequency>43200</frequency>\r\n"
+            "    <frequency>64800</frequency>\r\n"
             "    <ignore>%s/System32/LogFiles</ignore>\r\n"
             "    <ignore>%s/system32/wbem/Logs</ignore>\r\n"
             "    <ignore>%s/Prefetch</ignore>\r\n"
@@ -389,15 +417,6 @@ int main(int argc, char **argv)
         /* Look if syscheck is configured, if it is, update it */
         config_registry();
         config_syscheck();
-
-
-        /* Call manage-agents if no key */
-        if(!fileexist(CLIENTKEYS))
-        {
-            /* Run manage agents */
-            snprintf(cmd, OS_MAXSTR, "manage_agents.exe");
-            system(cmd);
-        }
 
 
         /* Run iis-logs here too */

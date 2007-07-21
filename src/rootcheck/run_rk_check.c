@@ -133,6 +133,10 @@ void run_rk_check()
     rk_sys_file[rk_sys_count] = NULL;
     rk_sys_name[rk_sys_count] = NULL;
 
+    
+    /* Sending scan start message */
+    notify_rk(ALERT_POLICY_VIOLATION, "Starting rootcheck scan.");
+
 
     /***  First check, look for rootkits ***/
     /* Open rootkit_files and pass the pointer to check_rc_files */
