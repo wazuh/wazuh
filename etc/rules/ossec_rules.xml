@@ -85,6 +85,13 @@
     <description>Windows application monitor event.</description>
     <group>rootcheck,</group>
   </rule>
+
+  <rule id="515" level="0">
+    <if_sid>510</if_sid>
+    <match>^Starting rootcheck scan</match>
+    <description>Ignoring rootcheck scan messages.</description>
+    <group>rootcheck,</group>
+  </rule>
   
   <rule id="518" level="9">
     <if_sid>514</if_sid>
