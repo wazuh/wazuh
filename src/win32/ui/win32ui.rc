@@ -15,7 +15,7 @@ BEGIN
                    IDC_STATIC,7,7,245,82
     CTEXT   "This program is a free software; you can redistribute it" \
             " and/or modify it under the terms of the GNU General" \
-            " Public License (GPL) version 2 as published by the FSF" \
+            " Public License (GPL) version 3 as published by the FSF" \
             " - Free Software Foundation\r\n\r\n" \
             "For more information, visit us online at http://www.ossec.net",
             IDC_STATIC,16,18,200,63

@@ -209,7 +209,7 @@ int DecodeRootcheck(Eventinfo *lf)
             if(strcmp(lf->log, tmpstr) == 0)
             {
                 fsetpos(fp, &fp_pos);
-                fprintf(fp, "%d", lf->time);
+                fprintf(fp, "!%d", lf->time);
                         
                 return(0);
             }
