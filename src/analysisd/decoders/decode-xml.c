@@ -240,6 +240,7 @@ int ReadDecodeXML(char *file)
     NULL_Decoder_tmp->fts = 0;
     NULL_Decoder = (void *)NULL_Decoder_tmp;
     
+
     /* Getting the root elements */
     node = OS_GetElementsbyNode(&xml, NULL);
     if(!node)
