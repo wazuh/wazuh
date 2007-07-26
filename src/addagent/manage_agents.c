@@ -190,10 +190,11 @@ int add_agent()
             i--;
             snprintf(id, 8, "%03d", i);
 
-            if(i <= 1)
+            /* No key present, use id 0 */
+            if(i <= 0)
             {
-                printf(ERROR_KEYS);
-                exit(1);
+                i = 0;
+                break;
             }
         }
         snprintf(id, 8, "%03d", i+1);

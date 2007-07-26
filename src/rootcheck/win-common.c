@@ -471,7 +471,12 @@ int is_process(char *value, void *p_list_p)
     {
         return(0);
     }
+    if(!value)
+    {
+        return(0);
+    }
 
+    
     l_node = OSList_GetFirstNode(p_list);
     while(l_node)
     {
@@ -484,7 +489,7 @@ int is_process(char *value, void *p_list_p)
         {
             return(1);
         }
-                                                                    
+        
         l_node = OSList_GetNextNode(p_list);
     }
 

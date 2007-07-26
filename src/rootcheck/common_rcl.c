@@ -343,6 +343,7 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
         /* Getting each value */
         do
         {
+            int negate = 0;
             int found = 0;
             
             nbuf = _rkcl_getfp(fp, buf);
@@ -370,6 +371,14 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
                 }
                 merror(INVALID_RKCL_VALUE, ARGV0, nbuf);
                 return(0);
+            }
+
+
+            /* Getting negate value */
+            if(*value == '!')
+            {
+                negate = 1;
+                value++;
             }
 
             /* Checking for a file. */
@@ -441,6 +450,20 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
                     found = 1;
                 }
             }
+
+            /* Switching the values if ! is present */
+            if(negate)
+            {
+                if(found)
+                {
+                    found = 0;
+                }
+                else
+                {
+                    found = 1;
+                }
+            }
+
 
             if(condition == RKCL_COND_ANY)
             {

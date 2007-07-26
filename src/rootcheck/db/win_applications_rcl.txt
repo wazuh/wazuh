@@ -35,7 +35,7 @@ f:\Documents and Settings\Skype;
 f:\Documents and Settings\All Users\Start Menu\Programs\Skype;
 r:HKLM\SOFTWARE\Skype;
 r:HKEY_LOCAL_MACHINE\Software\Policies\Skype;
-p:Skype.exe;
+p:r:Skype.exe;
 
 
 [Chat/IM - Yahoo] [any] []
@@ -53,7 +53,7 @@ r:HKEY_CLASSES_ROOT\aim\shell\open\command;
 r:HKEY_CLASSES_ROOT\AIM.Protocol;
 r:HKEY_CLASSES_ROOT\MIME\Database\Content Type\application/x-aim;
 f:\Program Files\AIM95;
-p:aim.exe;
+p:r:aim.exe;
 
 
 [Chat/IM - MSN] [any] [http://www.msn.com]
@@ -61,7 +61,7 @@ r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\MSNMessenger;
 r:HKEY_CURRENT_USER\SOFTWARE\Microsoft\MSNMessenger;
 f:\Program Files\MSN Messenger;
 f:\Program Files\Messenger;
-p:msnmsgr.exe;
+p:r:msnmsgr.exe;
 
 
 [Chat/IM - ICQ] [any] [http://www.icq.com]
@@ -69,7 +69,7 @@ r:HKLM\SOFTWARE\Mirabilis\ICQ;
 
 
 [P2P - UTorrent] [any] []
-p:utorrent.exe;
+p:r:utorrent.exe;
 
 
 [P2P - LimeWire] [any] []
@@ -118,8 +118,8 @@ f:\Program Files\expertcity\GoToMyPC;
 r:HKLM\software\microsoft\windows\currentversion\run -> gotomypc;
 r:HKEY_LOCAL_MACHINE\software\citrix\gotomypc;
 r:HKEY_LOCAL_MACHINE\system\currentcontrolset\services\gotomypc;
-p:g2svc.exe;
-p:g2pre.exe;
+p:r:g2svc.exe;
+p:r:g2pre.exe;
 
 
 [Spyware - Twain Tec Spyware] [any] []

@@ -117,6 +117,10 @@ int pt_matches(char *str, char *pattern)
             *tmp_pt = '\0';
             tmp_pt += 4;
         }
+        else
+        {
+            tmp_pt = NULL;
+        }
 
 
         /* Checking for negate values */
