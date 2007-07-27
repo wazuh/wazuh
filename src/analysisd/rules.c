@@ -1579,7 +1579,7 @@ void Rule_AddAR(RuleInfo *rule_config)
     if(rule_config->level == 9900)
         rule_real_level = 0;
     
-    if(rule_config->level > 100)
+    else if(rule_config->level > 100)
         rule_real_level = rule_config->level/100;
     
     
