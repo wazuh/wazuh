@@ -344,13 +344,6 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     cu_time = time(0);
     
 
-    /* Send notification */
-    if((cu_time - __win32_curr_time) > (NOTIFY_TIME - 150))
-    {
-        send_win32_info(cu_time);
-    }
-
-    
     /* Check if the server has responded */
     if((cu_time - available_server) > (NOTIFY_TIME - 120))
     {
@@ -379,6 +372,13 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
             verbose(SERVER_UP, ARGV0);
         }
     }
+    
+    /* Send notification */
+    else if((cu_time - __win32_curr_time) > (NOTIFY_TIME - 150))
+    {
+        send_win32_info(cu_time);
+    }
+
 
     
     /* locmsg cannot have the C:, as we use it as delimiter */
