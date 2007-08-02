@@ -171,7 +171,8 @@ int OS_IsValidName(char *u_name)
     /* check if it contains any non-alphanumeric characters */
     for(i = 0; i < strlen(u_name); i++)
     {
-      if(!isalnum((int)u_name[i]) && (u_name[i] != '-') && (u_name[i] != '_'))
+      if(!isalnum((int)u_name[i]) && (u_name[i] != '-') && 
+         (u_name[i] != '_') && (u_name[i] != '.'))
         return(0);
     }
 
