@@ -153,7 +153,11 @@ int read_file(char *file_name, int opts, int flag)
             if(check_file(file_name))
             {
                 /* Sleeping in here too */
+                #ifndef WIN32
                 if(__counter >= (3 * syscheck.sleep_after))
+                #else
+                if(__counter >= (syscheck.sleep_after))
+                #endif
                 {
                     sleep(syscheck.tsleep);
                     __counter = 0;
@@ -228,8 +232,13 @@ int read_file(char *file_name, int opts, int flag)
             notify_agent(alert_msg, 0);
         }
         
+        
         /* Sleeping in here too */
+        #ifndef WIN32
         if(__counter >= (3 * syscheck.sleep_after))
+        #else
+        if(__counter >= (2 * syscheck.sleep_after))
+        #endif    
         {
             sleep(syscheck.tsleep);
             __counter = 0;
