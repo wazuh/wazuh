@@ -32,7 +32,7 @@ GetOptions(
   'a|add'       => \$add,         # Add a new agent
   'r|remove=s'  => \$remove,      # Remove an agent
   'e|extract=s' => \$extract,     # Extract a key
-  'm|import'    => \$import,        # Import a key
+  'm|import'    => \$import,      # Import a key
   'l|list'      => \$listagents,  # List all agents
   'i|id=s'      => \$agentid,     # Unique agent id
   'n|name=s'    => \$agentname,   # Agent name. 32 char max
@@ -41,7 +41,6 @@ GetOptions(
 
 # Spit out a list of available agents, their names, and ip information
 if ($listagents) {
-  print "Available agents:\n";
   list_agents();
 }
 # Decode and extract the key for $agentid
@@ -64,25 +63,25 @@ elsif ($add) {
       # Autogenerate an id incremented 1 from the last in a sorted list of
       # all current ones if it isn't specified from the command line.
       if (!$agentid) {
-        my @used_agent_ids = ();
 
         # Make a list of all of the used agentids and then sort it.
-        open (FH, "<", AUTH_KEY_FILE) or die "Error: $!\n";
-        while (<FH>) {
-            my ($id, $name, $ip, $key) = split;
-            push(@used_agent_ids, $id);
-        }
-        close(FH);
+        if (-r AUTH_KEY_FILE) {
+          my @used_agent_ids = ();
+          open (FH, "<", AUTH_KEY_FILE);
+          while (<FH>) {
+              my ($id, $name, $ip, $key) = split;
+              push(@used_agent_ids, $id);
+          }
+          close(FH);
 
-      if (@used_agent_ids) {
-        @used_agent_ids = sort(@used_agent_ids);
-        $agentid = sprintf("%03d", $used_agent_ids[-1] + 1);
-      }
-      else {
-        # If the client.keys is empty, create the first entry
-        $agentid = sprintf("%03d", 001);
-      }
-    }
+          if (@used_agent_ids) {
+            @used_agent_ids = sort(@used_agent_ids);
+            $agentid = sprintf("%03d", $used_agent_ids[-1] + 1);
+          }
+        }
+        # If the client.keys is empty or doesn't exist set the id to 001
+        $agentid = sprintf("%03d", 001) if (!$agentid);
+        }
 
     # Autogenerate a key unless one was specified on the command line
     if (!$key) {
@@ -149,11 +148,12 @@ sub list_agents {
 	  open (FH, "<", AUTH_KEY_FILE);
   }
   else {
-    die "No ".AUTH_KEY_FILE."!\n";
+    die "Error reading ".AUTH_KEY_FILE.": $!\n";
   }
-  print "ID",    " " x (25 - length('ID')),
-        "NAME",  " " x (25 - length('NAME')),
-        "IP",    " " x (25 - length('IP'));
+  print "Available Agents:\n";
+  print "ID",     " " x (25 - length('ID')),
+        "NAME",   " " x (25 - length('NAME')),
+        "IP",     " " x (25 - length('IP'));
   print "\n";
 	while (<FH>) {
 		chomp;
@@ -195,7 +195,7 @@ sub add_agent {
   my $ip = shift;
   my $agentkey = shift;
 
-  if ($name && $ip && $agentkey && -e AUTH_KEY_FILE) {
+  if ($name && $ip && $agentkey) {
     # Valid example key:
     # 5a832efb8f93660857ce2acf8eec66a19fd9d4fa58e3221bbd2927ca8a0b40c3
     if ($agentkey !~ m/[a-z0-9]{64}/) { 
@@ -207,7 +207,13 @@ sub add_agent {
     my $exists = check_if_exists(\@newagent);
 
     if ($exists == 0) {
-      open (FH, ">>", AUTH_KEY_FILE) or die "Error: $!\n";
+      # Append if client.keys exists and create it if it doesn't
+      if (-e AUTH_KEY_FILE) {
+        open(FH, ">>", AUTH_KEY_FILE) or die AUTH_KEY_FILE." error: $!\n";
+      }
+      else {
+        open(FH, ">", AUTH_KEY_FILE) or die AUTH_KEY_FILE." error: $!\n";
+      }
       print FH join(' ', @newagent), "\n";
       close(FH);
     }
@@ -222,7 +228,7 @@ sub add_agent {
     }
   }
   else {
-    warn "Missing options to add agent or problem with ".AUTH_KEY_FILE."!\n";
+    warn "Missing options to --add or problem with ".AUTH_KEY_FILE.": $!\n";
     usage();
   }
 }
@@ -231,25 +237,29 @@ sub remove_agent {
   my $removeid = shift;
   my @agent_array;
 
-	open (FH, "<", AUTH_KEY_FILE) if -e AUTH_KEY_FILE or die "No ".AUTH_KEY_FILE."!\n";
+  if (-r AUTH_KEY_FILE) {
+	  open (FH, "<", AUTH_KEY_FILE);
+  }
+  else {
+    die "Error: with ".AUTH_KEY_FILE.": $!\n";
+  }
   while (<FH>) {
     push(@agent_array, $_);
   }
   close(FH);
 
-	open (FHRW, ">", AUTH_KEY_FILE) if -e AUTH_KEY_FILE or die "No ".AUTH_KEY_FILE."!\n";
+  if (-w AUTH_KEY_FILE) {
+	  open (FHRW, ">", AUTH_KEY_FILE);
+  }
+  else {
+    die "Error writing ".AUTH_KEY_FILE.": $!\n";
+  }
   foreach my $line (@agent_array) {
     if ($line !~ $removeid) {
       print FHRW "$line";
     }
   }
   close(FHRW);
-  exit 0;
-}
-
-sub import_key {
-  my $keydata = shift;
-  warn "Importing keys not implemented yet!\n";
   exit 0;
 }
 
@@ -262,14 +272,17 @@ sub check_if_exists {
   $newname = $agentlist_ref->[1];
   $newip = $agentlist_ref->[2];
 
-	open (FH, AUTH_KEY_FILE) if -e AUTH_KEY_FILE or die "No ".AUTH_KEY_FILE."!\n";
-	while (<FH>) {
-    chomp;
-    my ($id, $name, $ip, $key) = split;
-    $rval = 1 if ($id == $newid && $rval == 0);
-    $rval = 2 if ($name eq $newname && $rval == 0); 
-    $rval = 3 if ($ip eq $newip && $rval == 0);
+  # If the file isn't readable, the id probably isn't already in it
+  if (-r AUTH_KEY_FILE) {
+	  open (FH, "<", AUTH_KEY_FILE);
+	  while (<FH>) {
+      chomp;
+      my ($id, $name, $ip, $key) = split;
+      $rval = 1 if ($id == $newid && $rval == 0);
+      $rval = 2 if ($name eq $newname && $rval == 0); 
+      $rval = 3 if ($ip eq $newip && $rval == 0);
+    }
+	  close(FH);
   }
-	close(FH);
   return $rval;
 }
