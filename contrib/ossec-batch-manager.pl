@@ -69,8 +69,8 @@ elsif ($add) {
           my @used_agent_ids = ();
           open (FH, "<", AUTH_KEY_FILE);
           while (<FH>) {
-              my ($id, $name, $ip, $key) = split;
-              push(@used_agent_ids, $id);
+            my ($id, $name, $ip, $key) = split;
+            push(@used_agent_ids, $id);
           }
           close(FH);
 
@@ -145,7 +145,7 @@ sub usage {
 
 sub list_agents {
   if (-r AUTH_KEY_FILE) {
-	  open (FH, "<", AUTH_KEY_FILE);
+    open (FH, "<", AUTH_KEY_FILE);
   }
   else {
     die "Error reading ".AUTH_KEY_FILE.": $!\n";
@@ -155,36 +155,36 @@ sub list_agents {
         "NAME",   " " x (25 - length('NAME')),
         "IP",     " " x (25 - length('IP'));
   print "\n";
-	while (<FH>) {
-		chomp;
-		my ($id, $name, $ip, $key) = split;
+  while (<FH>) {
+    chomp;
+    my ($id, $name, $ip, $key) = split;
     print "$id",    " " x (25 - length($id)),
           "$name",  " " x (25 - length($name)),
           "$ip",    " " x (25 - length($ip)) . "\n";
-	  }
+  }
   close(FH);
   exit 0;
 }
 
 sub extract_key {
-	my $extractid = shift;
-	my ($encoded, $decoded);
+  my $extractid = shift;
+  my ($encoded, $decoded);
 
   if (-r AUTH_KEY_FILE) {
-	  open (FH, "<", AUTH_KEY_FILE);
+    open (FH, "<", AUTH_KEY_FILE);
   }
   else {
     die "No ".AUTH_KEY_FILE."!\n";
   }
-	while (<FH>) {
-		chomp;
-		my ($id, $name, $ip, $key) = split;
-	  if ($id == $extractid) {
-		  # Newlines are valid base64 characters so use '' instead for \n
-		  $decoded = MIME::Base64::encode($key, '');
-		  print "$decoded\n";
+  while (<FH>) {
+    chomp;
+    my ($id, $name, $ip, $key) = split;
+    if ($id == $extractid) {
+      # Newlines are valid base64 characters so use '' instead for \n
+      $decoded = MIME::Base64::encode($key, '');
+      print "$decoded\n";
       exit 0;
-	  }
+    }
   }
   warn "Error: Agent ID $extractid doesn't exist!\n";
 }
@@ -238,7 +238,7 @@ sub remove_agent {
   my @agent_array;
 
   if (-r AUTH_KEY_FILE) {
-	  open (FH, "<", AUTH_KEY_FILE);
+    open (FH, "<", AUTH_KEY_FILE);
   }
   else {
     die "Error: with ".AUTH_KEY_FILE.": $!\n";
@@ -249,7 +249,7 @@ sub remove_agent {
   close(FH);
 
   if (-w AUTH_KEY_FILE) {
-	  open (FHRW, ">", AUTH_KEY_FILE);
+    open (FHRW, ">", AUTH_KEY_FILE);
   }
   else {
     die "Error writing ".AUTH_KEY_FILE.": $!\n";
@@ -264,7 +264,7 @@ sub remove_agent {
 }
 
 sub check_if_exists {
-	my $agentlist_ref = shift;
+  my $agentlist_ref = shift;
   my ($newid, $newname, $newip);
   my $rval = 0;
 
@@ -274,15 +274,15 @@ sub check_if_exists {
 
   # If the file isn't readable, the id probably isn't already in it
   if (-r AUTH_KEY_FILE) {
-	  open (FH, "<", AUTH_KEY_FILE);
-	  while (<FH>) {
+    open (FH, "<", AUTH_KEY_FILE);
+    while (<FH>) {
       chomp;
       my ($id, $name, $ip, $key) = split;
       $rval = 1 if ($id == $newid && $rval == 0);
       $rval = 2 if ($name eq $newname && $rval == 0); 
       $rval = 3 if ($ip eq $newip && $rval == 0);
     }
-	  close(FH);
+    close(FH);
   }
   return $rval;
 }
