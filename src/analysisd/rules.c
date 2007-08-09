@@ -886,7 +886,7 @@ int Rules_OP_ReadRules(char * rulefile)
                    !config_ruleinfo->context)
                 {
                     merror("%s: Invalid use of frequency/context options. "
-                           "Missing if_matched on rule '%d'." 
+                           "Missing if_matched on rule '%d'.",
                            ARGV0, config_ruleinfo->sigid);
                     OS_ClearXML(&xml);
                     return(-1);
