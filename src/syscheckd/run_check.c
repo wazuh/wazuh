@@ -5,10 +5,16 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
+
+/* SCHED_BATCH is Linux specific and is only picked up with _GNU_SOURCE */
+#ifdef __linux__
+	#define _GNU_SOURCE
+	#include <sched.h>
+#endif
 
 #include "shared.h"
 #include "syscheck.h"
@@ -89,6 +95,20 @@ void start_daemon()
     time_t prev_time_rk = 0;
     time_t prev_time_sk = 0;
     
+    /*
+     * SCHED_BATCH forces the kernel to assume this is a cpu intensive process
+     * and gives it a lower priority. This keeps ossec-syscheckd from reducing
+     * the interactity of an ssh session when checksumming large files.
+     * This is available in kernel flavors >= 2.6.16
+     */
+    #ifdef SCHED_BATCH
+    struct sched_param pri;
+    pri.sched_priority = 0;
+    
+    int status = sched_setscheduler(0, SCHED_BATCH, &pri);
+    
+    debug1("%s: Setting SCHED_BATCH returned: %d", ARGV0, status);
+    #endif
             
     #ifdef DEBUG
     verbose("%s: Starting daemon ..",ARGV0);
