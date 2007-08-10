@@ -1,4 +1,4 @@
-/*   $OSSEC, list_op.c, v0.1, 2005/10/28, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.

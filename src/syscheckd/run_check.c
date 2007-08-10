@@ -109,7 +109,7 @@ void start_daemon()
     sleep(syscheck.tsleep * 10);
     
     
-    /* Send the integrity database to the agent */
+    /* Send the integrity database to the server */
     {
         char buf[MAX_LINE +1];
         int file_count = 0;
@@ -161,6 +161,7 @@ void start_daemon()
 
 
     /* Before entering in daemon mode itself */
+    prev_time_sk = time(0);
     sleep(syscheck.tsleep * 10);
     
     

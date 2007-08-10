@@ -178,6 +178,7 @@ char *__local_name;
 #include "regex_op.h"
 #include "sig_op.h"
 #include "list_op.h"
+#include "dirtree_op.h"
 #include "store_op.h"
 #include "rc.h"
 #include "ar.h"
