@@ -10,13 +10,11 @@
  */
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "mem_op.h"
 
 
 /* Check if String is on array (Must be NULL terminated) */
-int IsStrOnArray(char *str, char **array)
+int os_IsStrOnArray(char *str, char **array)
 {
     if(!str || !array)
     {
@@ -36,7 +34,7 @@ int IsStrOnArray(char *str, char **array)
 
 
 /* Clear the memory of one char and one char** */
-void ClearStrMem(char *ch1, char **ch2)
+void os_FreeArray(char *ch1, char **ch2)
 {
     /* Cleaning char * */
     if(ch1)
@@ -62,5 +60,64 @@ void ClearStrMem(char *ch1, char **ch2)
     
     return;
 }
+
+
+/* os_LoadString: v0.1
+ * Allocate memory at "*at" and copy *str to it.
+ * If *at already exist, realloc the memory and strcat str
+ * on it.
+ * It will return the new string on success or NULL on memory error.
+ */
+char *os_LoadString(char *at, char *str)
+{
+    if(at == NULL)
+    {
+        int strsize = 0;
+        if((strsize = strlen(str)) < OS_SIZE_2048)
+        {
+            at = calloc(strsize+1,sizeof(char));
+            if(at == NULL)
+            {
+                merror(MEM_ERROR,ARGV0);
+                return(NULL);
+            }
+            strncpy(at, str, strsize);
+            return(at);
+        }
+        else
+        {
+            merror(SIZE_ERROR,ARGV0,str);
+            return(NULL);
+        }
+    }
+    else /*at is not null. Need to reallocat its memory and copy str to it*/
+    {
+        int strsize = strlen(str);
+        int atsize = strlen(at);
+        int finalsize = atsize+strsize+1;
+
+        if((atsize > OS_SIZE_2048) || (strsize > OS_SIZE_2048))
+        {
+            merror(SIZE_ERROR,ARGV0,str);
+            return(NULL);
+        }
+
+        at = realloc(at, (finalsize)*sizeof(char));
+
+        if(at == NULL)
+        {
+            merror(MEM_ERROR,ARGV0);
+            return(NULL);
+        }
+
+        strncat(at,str,strsize);
+
+        at[finalsize-1] = '\0';
+
+        return(at);
+    }
+    return(NULL);
+}
+
 
 /* EOF */

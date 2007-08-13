@@ -99,6 +99,7 @@
   -  [Time 2006.11.02 11:41:44 UTC] [Facility auth] [Sender sshd] [PID 800] [Message refused connect from 51.124.44.34] [Level 4] [UID -2] [GID -2] [Host test2-emac]
   -  Apr 23 07:03:53 machinename sshd[29961]: User root from 12.3.4.5
   not allowed because not listed in AllowUsers
+  -  sshd[9815]: scanned from 127.0.0.1 with SSH-1.99-AKASSH_Version_Mapper1.  Don't panic.
   -->
 
 <decoder name="sshd">
@@ -163,11 +164,13 @@
   <order>srcip</order>
 </decoder>
 
-<decoder name="ssh-generic">
+<decoder name="ssh-scan">
   <parent>sshd</parent>
-  <regex> from (\S+)$</regex>
+  <prematch>^scanned from</prematch>
+  <regex offset="after_prematch"> (\S+) </regex>
   <order>srcip</order>
 </decoder>
+
 
 
 <!--
@@ -651,7 +654,6 @@
   - ipmon[11523]: [ID 702911 local0.notice] 09:30:40.398290 ce0 @0:14
     p 10.4.122.243,123 -> 10.4.122.16,123 PR udp len 20 76 K-S OUT
   -->
-
 <decoder name="ipfilter">
    <type>firewall</type>
    <program_name>^ipmon</program_name>
@@ -676,6 +678,7 @@
    <regex>D:(\d+.\d+.\d+.\d+) P:(\S+) SP:(\d+) DP:(\d+) </regex>
    <order>action,srcip,dstip,protocol,srcport,dstport</order>
 </decoder>
+
 
 
 <!-- OpenBSD pf decoder (as a plugin - compiled).
@@ -1116,7 +1119,7 @@
   <order>action, protocol, srcip, dstip, srcport, dstport</order>
 </decoder>
  
-  
+ 
 <!-- IIS 5 WWW W3C log format.
   - #Fields: date time c-ip cs-username s-sitename s-computername s-ip s-port cs-method cs-uri-stem cs-uri-query sc-status cs-host cs(User-Agent) cs(Referer)
   - Examples:

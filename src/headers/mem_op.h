@@ -1,11 +1,11 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2004 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -14,7 +14,10 @@
 
 #define __MEM_H
 
-void ClearStrMem(char *ch1, char **ch2);
-int IsStrOnArray(char *str, char **array);
+#include "shared.h"
+
+void os_FreeArray(char *ch1, char **ch2);
+int os_IsStrOnArray(char *str, char **array);
+char *os_LoadString(char *at, char *str);
 
 #endif

@@ -476,7 +476,7 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
             }
 
             /* Adding if simple entry -- checking for duplicates */
-            else if(!IsStrOnArray(node[i]->content, syscheck->ignore))
+            else if(!os_IsStrOnArray(node[i]->content, syscheck->ignore))
             {
                 if(!syscheck->ignore)
                 {
@@ -551,7 +551,8 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
                 }
             }
             /* We do not add duplicated entries */
-            else if(!IsStrOnArray(node[i]->content, syscheck->registry_ignore))
+            else if(!os_IsStrOnArray(node[i]->content, 
+                     syscheck->registry_ignore))
             {
                 if(!syscheck->registry_ignore)
                 {

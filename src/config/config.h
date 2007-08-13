@@ -1,12 +1,15 @@
 /* @(#) $Id$ */
 
 /* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
- * All right reserved.
+ * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
+ *
+ * License details at the LICENSE file included with OSSEC or
+ * online at: http://www.ossec.net/en/licensing.html
  */
 
  
@@ -24,8 +27,10 @@
 #define CCLIENT      0000200
 #define CMAIL        0000400
 #define CAR          0001000
+#define CDBD         0002000
 
 #include "os_xml/os_xml.h"
+
 
 /* Main function to read the config */
 int ReadConfig(int modules, char *cfgfile, void *d1, void *d2);

@@ -28,8 +28,9 @@
     <description>File missing. Root access unrestricted.</description>
   </rule>
 
-  <rule id="1002" level="7">
+  <rule id="1002" level="2">
     <match>$BAD_WORDS</match>
+    <options>alert_by_email</options>
     <description>Unknown problem somewhere in the system.</description>
   </rule>
 

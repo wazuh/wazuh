@@ -69,7 +69,7 @@ int read_main_elements(OS_XML xml, int modules,
         }
         else if(strcmp(node[i]->element, osrules) == 0)
         {
-            if((modules & CGLOBAL) && (Read_Rules(chld_node, d1, d2) < 0))
+            if((modules & CRULES) && (Read_Rules(chld_node, d1, d2) < 0))
                 return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, ossyscheck) == 0)

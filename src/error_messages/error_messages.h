@@ -126,10 +126,13 @@
 #define INVALID_CONFIG   "%s(1274): Invalid configuration. Element '%s': %s."
 #define INVALID_HOSTNAME "%s(1275): Invalid hostname in syslog message: '%s'."
 
+
 /* Log collector */
+
 
 /* Remoted */
 #define NO_REM_CONN     "%s(1701): No remote connection configured. Exiting."
+
 
 /* Active response */
 #define AR_CMD_MISS     "%s(1280): Missing command options. " \
@@ -159,6 +162,7 @@
 #define LIST_SIZE_ERROR "%s(1292): Error setting error size."
 #define LIST_FREE_ERROR "%s(1293): Error setting data free pointer."
 
+
 /* Log collector messages */
 #define MISS_LOG_FORMAT "%s(1901): Missing 'log_format' element."
 #define MISS_FILE       "%s(1902): Missing 'location' element."
@@ -186,9 +190,11 @@
 #define REGEX_COMPILE   "%s(1450): Syntax error on regex: '%s': %d."
 #define REGEX_SUBS      "%s(1451): Missing sub_strings on regex: '%s'."
 
+
 /* Mail errors */
 #define INVALID_SMTP    "%s(1501): Invalid SMTP Server: %s"
 #define INVALID_MAIL    "%s(1502): Invalid Email Address: %s"
+
 
 /* Decoders */
 #define PPLUGIN_INV     "%s(2101): Parent decoder name invalid: '%s'."
@@ -206,13 +212,16 @@
 #define INV_OFFSET      "%s(2120): Invalid offset value: '%s'"
 #define INV_ATTR        "%s(2121): Invalid decoder attribute: '%s'"
 
+
 /* os_zlib */
 #define COMPRESS_ERR    "%s(2201): Error compressing string: '%s'."
 #define UNCOMPRESS_ERR  "%s(2202): Error uncompressing string."
 
+
 /* read defines */
 #define DEF_NOT_FOUND   "%s(2301): Definition not found for: '%s.%s'."
 #define INV_DEF         "%s(2302): Invalid definition for %s.%s: '%s'."
+
 
 /* Agent errors */
 #define AG_WAIT_SERVER  "%s(4101): Waiting for server reply (not started)."
@@ -224,6 +233,25 @@
 #define EVTLOG_GETLAST  "%s(4107): Unable to query last event log from: '%s'."
 #define EVTLOG_DUP      "%s(4108): Duplicated event log entry: '%s'."
 #define AG_NOKEYS_EXIT "%s(4109): Unable to start without auth keys. Exiting."
+
+
+/* Rules reading errors */
+#define RL_INV_ROOT     "%s(5101): Invalid root element: '%s'." 
+#define RL_INV_RULE     "%s(5102): Invalid rule element: '%s'."
+#define RL_INV_ENTRY    "%s(5103): Invalid rule on '%s'. Missing id/level."
+#define RL_EMPTY_ATTR   "%s(5104): Rule attribute '%s' empty."
+#define RL_INV_ATTR     "%s(5105): Invalid rule attributes inside file: '%s'."
+#define RL_NO_OPT       "%s(5106): Rule '%d' without any options. "\
+                        "It may lead to false positives. Exiting. "
+
+
+
+/* Database messages */
+#define DBINIT_ERROR    "%s(5201): Error initializing database handler."
+#define DBCONN_ERROR    "%s(5202): Error connecting to database '%s'(%s): %s."
+#define DBQUERY_ERROR   "%s(5203): Error executing query '%s'. Error: '%s'."
+#define DB_MAINERROR    "%s(5204): Database error. Unable to continue."
+
 
 
 /* Verbose messages */

@@ -1,11 +1,11 @@
-/*   $OSSEC, rules-config.c, v0.1, 2005/04/02, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -48,7 +48,8 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element, xml_rules_include) == 0)
         {
             rules_size++;
-            Config->includes = realloc(Config->includes, sizeof(char *)*rules_size);
+            Config->includes = realloc(Config->includes, 
+                                       sizeof(char *)*rules_size);
             if(!Config->includes)
             {
                 merror(MEM_ERROR, ARGV0);

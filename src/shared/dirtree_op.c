@@ -107,7 +107,7 @@ OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
     if(!curnode)
     {
         os_calloc(1, sizeof(OSTreeNode), newnode);
-        printf("XXXX Adding node: %s\n", str);
+        //printf("XXXX Adding node: %s\n", str);
         
 
         if(!tree->first_node && !tree->last_node)
@@ -117,10 +117,6 @@ OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
         }
         else
         {
-            if(!tree->first_node)
-            {
-                tree->first_node = newnode;
-            }
             tree->last_node->next = newnode;
         }
 
@@ -157,7 +153,7 @@ OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
         
 
 
-/** void *OSDirTree_AddToTree
+/** void OSDirTree_AddToTree
  * Adds a new string to the tree, setting the data at the final leaf.
  * The tree will be divided by the "separator", where each token
  * will delimiter the child.
@@ -182,7 +178,6 @@ void OSDirTree_AddToTree(OSDirTree *tree, char *str, void *data, char sep)
     }
     
     
-    /* If our tree is not empty, look for the main entry */
     curnode = tree->first_node;
     while(curnode)
     {
@@ -214,15 +209,12 @@ void OSDirTree_AddToTree(OSDirTree *tree, char *str, void *data, char sep)
         }
         else
         {
-            if(!tree->first_node)
-            {
-                tree->first_node = newnode;
-            }
+            printf("XXX last new node: %s\n", tree->last_node->value);
             tree->last_node->next = newnode;
+            tree->last_node = newnode;
         }
         
         newnode->next = NULL;
-        tree->last_node = newnode;
         os_strdup(str, newnode->value);
 
 
@@ -246,6 +238,8 @@ void OSDirTree_AddToTree(OSDirTree *tree, char *str, void *data, char sep)
     {
         *tmp_str = sep;
     }
+
+    return;
 }
 
 
