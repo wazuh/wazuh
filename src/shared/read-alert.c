@@ -1,12 +1,15 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
+ *
+ * License details at the LICENSE file included with OSSEC or
+ * online at: http://www.ossec.net/en/licensing.html
  */
 
 
@@ -14,6 +17,7 @@
 
 #include "shared.h"
 #include "read-alert.h"
+
 
 /* ** Alert xyz: email active-response ** */
 
@@ -119,36 +123,39 @@ alert_data *GetAlertData(int flag, FILE *fp)
             _r = 0;
         }
         
+        
         /* Checking for the header */
         if(strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0)
         {
             p = str + ALERT_BEGIN_SZ + 1;
             
             /* Searching for email flag */
-            if(flag == CRALERT_MAIL_SET)
+            p = strchr(p, ' ');
+            if(!p)
             {
-                p = strchr(p, ' ');
-                if(!p)
-                {
-                    continue;
-                }
-
-                p++;
-                if(strncmp(ALERT_MAIL, p, ALERT_MAIL_SZ) != 0)
-                {
-                    continue;
-                }
-
-                p = strchr(p, '-');
-                if(p)
-                {
-                    p++;
-                    os_strdup(p, group);
-
-                    /* Cleaning new line from group */
-                    os_clearnl(group, p);
-                }
+                continue;
             }
+
+            p++;
+        
+        
+            /* Checking for the flags */    
+            if((flag & CRALERT_MAIL_SET) && 
+               (strncmp(ALERT_MAIL, p, ALERT_MAIL_SZ) != 0))
+            {
+                continue;
+            }
+
+            p = strchr(p, '-');
+            if(p)
+            {
+                p++;
+                os_strdup(p, group);
+
+                /* Cleaning new line from group */
+                os_clearnl(group, p);
+            }
+
 
             /* Searching for active-response flag */
             _r = 1;
@@ -157,6 +164,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
 
         if(_r < 1)
             continue;
+            
             
         /*** Extract information from the event ***/
         

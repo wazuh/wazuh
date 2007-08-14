@@ -18,11 +18,34 @@
 
 #ifdef DBD
 #include "shared.h"
+#include "db_op.h"
 
 /* Using Mysql */
 #ifdef UMYSQL
 #include <mysql.h>
 #endif
+
+
+/** void osdb_escapestr
+ * Escapes a null terminated string before inserting into the database.
+ * We built a white list of allowed characters at insert_map. Everything
+ * not allowed will become spaces.
+ */
+void osdb_escapestr(char *str)
+{
+    while(*str)
+    {
+        if(*str == '\'')
+        {
+            *str = '`';
+        }
+        else if(insert_map[(unsigned char)*str] != '\001')
+        {
+            *str = ' ';
+        }
+        str++;
+    }
+}
 
 
 /* Create the tree 
@@ -54,6 +77,9 @@ void osdb_close(void *db_conn)
 }
 
 
+/** int osdb_query(void *db_conn, char *query)
+ * Sends query to database. 
+ */
 int osdb_query(void *db_conn, char *query)
 {
     if(mysql_query(db_conn, query) != 0)

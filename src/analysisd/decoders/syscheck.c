@@ -628,7 +628,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         
 
         f_name--;
-        *fname = '\0';
+        *f_name = ' ';
         return(1); 
 
     } /* continuiing... */
@@ -660,7 +660,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         lf->decoder_info = sdb.syscheck_dec;
 
         f_name--;
-        *fname = '\0';
+        *f_name = ' ';
                         
 
         return(1);

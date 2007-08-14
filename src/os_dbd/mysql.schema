@@ -1,0 +1,35 @@
+CREATE TABLE category
+    (
+    cat_id      SMALLINT    UNSIGNED NOT NULL   AUTO_INCREMENT,
+    cat_name    VARCHAR(32) NOT NULL    UNIQUE,
+    PRIMARY KEY (cat_id),
+    INDEX       (cat_name)
+    );
+
+CREATE TABLE signature 
+    ( 
+    id          SMALLINT    UNSIGNED NOT NULL   AUTO_INCREMENT,
+    rule_id     MEDIUMINT   UNSIGNED NOT NULL   UNIQUE,
+    level       TINYINT     UNSIGNED,
+    category    VARCHAR(64)          NOT NULL,
+    description VARCHAR(255)         NOT NULL,
+    PRIMARY KEY (id),
+    INDEX       (level),
+    INDEX       (rule_id)
+    );
+
+CREATE TABLE alert 
+    (
+    id              INT         UNSIGNED NOT NULL  AUTO_INCREMENT, 
+    signature_id    SMALLINT    UNSIGNED NOT NULL,    
+    timestamp       INT         UNSIGNED NOT NULL,
+    src_ip          INT         UNSIGNED,
+    dst_ip          INT         UNSIGNED,
+    src_port        SMALLINT    UNSIGNED,
+    dst_port        SMALLINT    UNSIGNED,
+    user            VARCHAR(32),
+    full_log        VARCHAR(255),
+    PRIMARY KEY (id,signature_id),
+    INDEX       time (timestamp),
+    INDEX       (src_ip)
+    );

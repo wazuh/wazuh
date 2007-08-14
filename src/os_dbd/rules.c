@@ -22,7 +22,28 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
     memset(sql_query, '\0', OS_SIZE_1024);
 
     
-    merror("XXX inserting: %d", rule->sigid);
+    /* Escaping strings */
+    osdb_escapestr(rule->group);
+    osdb_escapestr(rule->comment);
+
+
+    /* Checking level limit */
+    if(rule->level > 20)
+        rule->level = 20;
+    if(rule->level < 0)
+        rule->level = 0;
+    
+    
+    
+    /* Checking rule limit */
+    if(rule->sigid < 0 || rule->sigid > 9999999)
+    {
+        merror("%s: Invalid rule id: %u", rule->sigid);
+        return(NULL);
+    }
+
+    
+    debug2("%s: DEBUG: Inserting: %d", ARGV0, rule->sigid);
 
     
     /* Generating SQL */
@@ -34,6 +55,8 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
              rule->sigid, rule->level, rule->group, rule->comment,
              rule->level);
     
+    
+    /* Checking return code. */
     if(!osdb_query(dbc->conn, sql_query))
     {
         merror(DB_MAINERROR, ARGV0);

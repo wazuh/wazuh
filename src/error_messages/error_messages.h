@@ -251,6 +251,9 @@
 #define DBCONN_ERROR    "%s(5202): Error connecting to database '%s'(%s): %s."
 #define DBQUERY_ERROR   "%s(5203): Error executing query '%s'. Error: '%s'."
 #define DB_MAINERROR    "%s(5204): Database error. Unable to continue."
+#define DB_MISS_CONFIG  "%s(5205): Missing database configuration. "\
+                        "It requires host, user, pass and database."
+#define DB_CONFIGERR    "%s(5206): Database configuration error."
 
 
 

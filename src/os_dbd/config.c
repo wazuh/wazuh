@@ -49,6 +49,18 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
      */
     db_config->includes = tmp_config->includes;
     free(tmp_config);
+
+
+    /* Checking for a valid config. */
+    if(!db_config->host ||
+       !db_config->user ||
+       !db_config->pass ||
+       !db_config->db)
+    {
+        merror(DB_MISS_CONFIG, ARGV0);
+        return(OS_INVALID);
+    }
+                                        
     
     return(0);
 }

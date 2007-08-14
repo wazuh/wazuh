@@ -23,16 +23,20 @@ typedef struct _file_queue
     int last_change;
     int year;
     int day;
+    int flags;
+    
     char mon[4];
-    FILE *fp;
     char file_name[MAX_FQUEUE +1];
+    
+    FILE *fp;
     struct stat f_status;
 }file_queue;
 
 
 /*** Prototypes */
 #include "read-alert.h"
-int Init_FileQueue(file_queue *fileq, struct tm *p);
+int Init_FileQueue(file_queue *fileq, struct tm *p, int flags);
+
 alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout);
 
 #endif

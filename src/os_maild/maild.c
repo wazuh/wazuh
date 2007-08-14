@@ -199,8 +199,10 @@ void OS_Run(MailConfig *mail)
 
 
     /* Init file queue */
+    i = 0;
+    i |= CRALERT_MAIL_SET;
     os_calloc(1, sizeof(file_queue), fileq);
-    Init_FileQueue(fileq, p);
+    Init_FileQueue(fileq, p, i);
 
 
     /* Creating the list */

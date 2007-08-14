@@ -1,12 +1,15 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
+ *
+ * License details at the LICENSE file included with OSSEC or
+ * online at: http://www.ossec.net/en/licensing.html
  */
 
 
@@ -15,9 +18,10 @@
 #include "shared.h"
 #include "file-queue.h"
 
+
 /* To translante between month (int) to month (char) */
 char *(s_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
-                "Sep","Oct","Nov","Dec"};
+                   "Sep","Oct","Nov","Dec"};
 
 
 /** void file_sleep();
@@ -73,6 +77,7 @@ int Handle_Queue(file_queue *fileq, u_int8_t seek_end)
         fileq->fp = NULL;
     }
     
+    
     /* We must be able to open the file, fseek and get the
      * time of change from it.
      */
@@ -82,6 +87,7 @@ int Handle_Queue(file_queue *fileq, u_int8_t seek_end)
         /* Queue not available */
         return(0);
     }
+
 
     /* Seeking the end of file */
     if(seek_end)
@@ -94,6 +100,7 @@ int Handle_Queue(file_queue *fileq, u_int8_t seek_end)
             return(-1);
         }
     }
+
    
     /* File change time */
     if(fstat(fileno(fileq->fp), &fileq->f_status) < 0)
@@ -113,21 +120,33 @@ int Handle_Queue(file_queue *fileq, u_int8_t seek_end)
 /** int Init_FileQueue(file_queue *fileq)
  * Initiates the file monitoring.
  */
-int Init_FileQueue(file_queue *fileq, struct tm *p)
+int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
 {
+    /* Initializing file_queue fields. */
     fileq->fp = NULL;
     fileq->last_change = 0;
-    memset(fileq->file_name, '\0',MAX_FQUEUE + 1);
+    fileq->flags = 0;
+    
     fileq->day = p->tm_mday;
     fileq->year = p->tm_year+1900;
+    
     strncpy(fileq->mon, s_month[p->tm_mon], 4);
+    memset(fileq->file_name, '\0',MAX_FQUEUE + 1);
+
+
+    /* Setting the supplied flags */
+    fileq->flags = flags;
+    
 
     /* Getting latest file */
     GetFile_Queue(fileq);
+
     
     /* Always seek end when starting the queue */
     if(Handle_Queue(fileq, 1) < 0)
+    {
         return(-1);
+    }
 
     return(0);    
 }
@@ -140,6 +159,7 @@ alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
 {
     int i = 0;
     alert_data *al_data;
+    
     
     /* Getting currently file */
     if(p->tm_mday != fileq->day)
@@ -168,13 +188,16 @@ alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
             return(NULL);
         }
     }
+    
 
     /* Try up to timeout times to get an event */
     while(i < timeout)
     {
-        al_data = GetAlertData(CRALERT_MAIL_SET, fileq->fp);
+        al_data = GetAlertData(fileq->flags, fileq->fp);
         if(al_data)
+        {
             return(al_data);
+        }
             
         i++;    
         file_sleep();
