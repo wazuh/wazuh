@@ -1,0 +1,248 @@
+/* @(#) $Id$ */
+
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+ * All rights reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 3) as published by the FSF - Free Software
+ * Foundation.
+ *
+ * License details at the LICENSE file included with OSSEC or
+ * online at: http://www.ossec.net/en/licensing.html
+ */
+          
+
+/* Common API for dealing with hashes/maps */ 
+
+
+#include "shared.h"
+
+
+
+/** OSHash *OSHash_Create()
+ * Creates the Hash.
+ * Returns NULL on error.
+ */
+OSHash *OSHash_Create()
+{
+    int i = 0;
+    OSHash *self;
+
+    /* Allocating memory for the hash */
+    self = calloc(1, sizeof(OSHash));
+    if(!self)
+    {
+        return(NULL);
+    }
+
+
+    /* Setting default row size */
+    self->rows = os_getprime(1024);
+    if(self->rows == 0)
+    {
+        free(self);
+        return(NULL);
+    }
+
+
+    /* Creating hashing table */
+    self->table = (OSHashNode **)calloc(self->rows +1, sizeof(OSHashNode *));
+    if(!self->table)
+    {
+        free(self);
+        return(NULL);
+    }
+
+
+    /* Zeroing our tables */
+    for(i = 0; i <= self->rows; i++)
+    {
+        self->table[i] = NULL;
+    }
+
+
+    /* Getting seed */
+    srand(time(0));
+    self->initial_seed = os_getprime(rand() % self->rows);
+    self->constant = os_getprime(rand() % self->rows);
+
+    
+    return(self);
+}
+
+
+/** int _os_genhash(OSHash *self, char *key)
+ * Generates hash for key
+ */
+int _os_genhash(OSHash *self, char *key)
+{
+    unsigned int hash_key = self->initial_seed;
+
+    /* What we have here is a simple polynomial hash.
+     * x0 * a^k-1 .. xk * a^k-k +1
+     */
+    while(*key)
+    {
+        hash_key *= self->constant;
+        hash_key += *key;
+        key++;
+    }
+
+    return(hash_key);
+}
+
+
+
+/** int OSHash_setSize(OSHash *self, int size)
+ * Sets new size for hash.
+ * Returns 0 on error (out of memory).
+ */
+int OSHash_setSize(OSHash *self, int new_size)
+{
+    int i = 0;
+
+    /* We can't decrease the size */
+    if(new_size <= self->rows)
+    {
+        return(1);
+    }
+
+    
+    /* Getting next prime */
+    self->rows = os_getprime(new_size);
+    if(self->rows == 0)
+    {
+        return(0);
+    }
+
+    
+    /* If we fail, the hash should not be used anymore */
+    self->table = realloc(self->table, (self->rows +1) * sizeof(OSHashNode *));
+    if(!self->table)
+    {
+        return(0);
+    }
+
+
+    /* Zeroing our tables */
+    for(i = 0; i <= self->rows; i++)
+    {
+        self->table[i] = NULL;
+    }
+
+
+    /* New seed */
+    self->initial_seed = os_getprime(rand() % self->rows);
+    self->constant = os_getprime(rand() % self->rows);
+
+    return(1);
+}
+
+
+
+/** int OSHash_Add(OSHash *self, char *key, void *data)
+ * Returns 0 on error.
+ * Returns 1 on duplicated key (not added)
+ * Returns 2 on success
+ * Key must not be NULL.
+ */
+int OSHash_Add(OSHash *self, char *key, void *data)
+{
+    unsigned int hash_key;
+    unsigned int index;
+
+    OSHashNode *curr_node;
+    OSHashNode *new_node;
+    
+
+    /* Generating hash of the message */
+    hash_key = _os_genhash(self, key);
+
+
+    /* Getting array index */
+    index = hash_key % self->rows;
+         
+
+    /* Checking for duplicated entries in the index */
+    curr_node = self->table[index];
+    while(curr_node)
+    {
+        /* Checking for duplicated key -- not adding */
+        if(strcmp(curr_node->key, key) == 0)
+        {
+            /* Not adding */
+            return(1);
+        }
+        curr_node = curr_node->next;
+    }
+
+    
+    /* Creating new node */
+    new_node = calloc(1, sizeof(OSHashNode));
+    if(!new_node)
+    {
+        return(0);
+    }
+    new_node->next = NULL;
+    new_node->data = data;
+    new_node->key = key;
+
+
+    /* Adding to table */
+    if(!self->table[index])
+    {
+        self->table[index] = new_node;
+    }
+    /* If there is duplicated, add to the beginning */
+    else
+    {
+        new_node->next = self->table[index];
+        self->table[index] = new_node;
+    }
+    
+    return(2);
+}
+
+
+
+/** void *OSHash_Get(OSHash *self, char *key)
+ * Returns NULL on error (key not found).
+ * Returns the key otherwise.
+ * Key must not be NULL.
+ */
+void *OSHash_Get(OSHash *self, char *key)
+{
+    unsigned int hash_key;
+    unsigned int index;
+
+    OSHashNode *curr_node;
+    
+
+    /* Generating hash of the message */
+    hash_key = _os_genhash(self, key);
+
+
+    /* Getting array index */
+    index = hash_key % self->rows;
+         
+
+    /* Getting entry */
+    curr_node = self->table[index];
+    while(curr_node)
+    {
+        /* We may have colisions, so double check with strcmp */
+        if(strcmp(curr_node->key, key) == 0)
+        {
+            return(curr_node->data);
+        }
+        
+        curr_node = curr_node->next;
+    }
+
+    return(NULL);
+}
+
+
+
+/* EOF */
