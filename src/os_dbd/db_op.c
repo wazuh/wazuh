@@ -110,6 +110,7 @@ int osdb_query_select(void *db_conn, char *query)
     MYSQL_RES *result_data;
     MYSQL_ROW result_row;
     
+
     /* Sending the query. It can not fail. */
     if(mysql_query(db_conn, query) != 0)
     {
@@ -131,11 +132,12 @@ int osdb_query_select(void *db_conn, char *query)
 
     /* Getting row. We only care about the first result. */
     result_row = mysql_fetch_row(result_data);
-    if(result_row[0] != NULL)
+    if(result_row && (result_row[0] != NULL))
     {
         result_int = atoi(result_row[0]);
     }
     
+
     mysql_free_result(result_data);
 
 

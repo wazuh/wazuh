@@ -121,6 +121,7 @@ int main(int argc, char **argv)
         merror(DB_CONFIGERR, ARGV0);
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
+    debug1("%s: DEBUG: db connected.", ARGV0);
 
     
     /* Going on daemon mode */

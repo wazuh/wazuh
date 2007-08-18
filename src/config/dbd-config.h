@@ -18,7 +18,8 @@
 /* Database config structure */
 typedef struct _DBConfig
 {
-    int server_id;
+    unsigned int alert_id;
+    unsigned int server_id;
 
     char *host;
     char *user;
@@ -26,6 +27,7 @@ typedef struct _DBConfig
     char *db;
 
     void *conn;
+    void *location_hash;
 
     char **includes;
 }DBConfig;

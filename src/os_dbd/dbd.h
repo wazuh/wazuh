@@ -36,6 +36,14 @@ int OS_Server_ReadInsertDB(void *db_config);
 int OS_InsertRulesDB(DBConfig *db_config);
 
 
+/* Get maximum ID */
+int OS_SelectMaxID(DBConfig *db_config);
+
+
+/* Insert alerts in to the database */
+int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config);
+
+
 /* Database inserting main function */
 void OS_DBD(DBConfig *db_config);
 

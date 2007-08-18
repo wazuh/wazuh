@@ -83,9 +83,11 @@ int OS_Server_ReadInsertDB(void *db_config)
     char *info;
 
    
+    debug1("%s: DEBUG: entering OS_Server_ReadInsertDB()", ARGV0);
+
+    
     /* Getting servers hostname */
     memset(__shost, '\0', 512);
-    memset(info, '\0', 512);
     if(gethostname(__shost, 512 -1) != 0)
     {
         merror("%s: Error: gethostname() failed", ARGV0);

@@ -1,0 +1,40 @@
+# Simple readme with some query examples.
+
+
+1- View all rules:
+
+> SELECT rule_id, level, description FROM signature;
+
+
+2- View all categories (groups)
+
+> SELECT * FROM category;
+
+
+3- View all categories of a specific rule (1002 for example):
+
+> SELECT rule_id, cat_name from category, signature_category_mapping WHERE rule_id = 1002 AND signature_category_mapping.cat_id = category.cat_id;
+
+
+4- View all alerts (without data):
+
+> SELECT * FROM alert;
+
+
+5- View all alerts (with IP as string):
+
+> SELECT rule_id, timestamp, INET_ATON(src_ip) srcip from alert;
+
+
+6- View all alerts, including locations (IP as string and time as string):
+
+>SELECT FROM_UNIXTIME(timestamp) time, rule_id,location.name location, full_log FROM alert,location, data WHERE location.id = alert.location_id;
+
+Output:
+
++---------------------+---------+---------------------------+-----------------------------------------------------+
+| time                | rule_id | location                  | full_log                                            |
++---------------------+---------+---------------------------+-----------------------------------------------------+
+| 2007-08-18 00:28:49 |    1002 | enigma->/var/log/messages | Aug 18 00:28:49 enigma dcid: Segmentation Fault 1q2 |
++---------------------+---------+---------------------------+-----------------------------------------------------+
+

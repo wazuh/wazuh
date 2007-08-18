@@ -57,15 +57,16 @@ CREATE TABLE location
 
 CREATE TABLE data
     (
-    id              INT         UNSIGNED NOT NULL  AUTO_INCREMENT,
+    id              INT         UNSIGNED NOT NULL,
+    server_id       SMALLINT    UNSIGNED NOT NULL,
     user            TEXT        NOT NULL,
-    full_log        TEXT        NOT NULL
-    PRIMARY KEY  (id)
+    full_log        TEXT        NOT NULL,
+    PRIMARY KEY  (id, server_id)
     );
     
 CREATE TABLE alert 
     (
-    id              INT         UNSIGNED NOT NULL  AUTO_INCREMENT, 
+    id              INT         UNSIGNED NOT NULL, 
     server_id       SMALLINT    UNSIGNED NOT NULL,
     rule_id         SMALLINT    UNSIGNED NOT NULL,    
     timestamp       INT         UNSIGNED NOT NULL,
@@ -74,7 +75,7 @@ CREATE TABLE alert
     dst_ip          INT         UNSIGNED,
     src_port        SMALLINT    UNSIGNED,
     dst_port        SMALLINT    UNSIGNED,
-    PRIMARY KEY (id,rule_id),
+    PRIMARY KEY (id, rule_id, server_id),
     INDEX       time (timestamp),
     INDEX       (src_ip)
     );

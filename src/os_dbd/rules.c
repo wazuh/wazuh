@@ -126,16 +126,26 @@ int __Groups_InsertGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
 
 
 
-/** void *_Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
+/** void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
  * Insert groups (categories) in to the db.
  */
-void *_Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
+void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
 {
     /* We must insert each group separately. */
     int cat_id;
     char *tmp_group;
     char *tmp_str;
 
+    
+    debug1("%s: DEBUG: entering _Groups_ReadInsertDB", ARGV0);
+
+
+    /* If group is null, just return */
+    if(rule->group == NULL)
+    {
+        return;
+    }
+    
     tmp_str = strchr(rule->group, ',');
     tmp_group = rule->group;
 
@@ -199,7 +209,7 @@ void *_Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
         }
     }
     
-    return(NULL);
+    return;
 }
 
 
@@ -225,6 +235,8 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
     if(rule->level < 0)
         rule->level = 0;
     
+    
+    debug1("%s: DEBUG: entering _Rules_ReadInsertDB()", ARGV0);
     
     
     /* Checking rule limit */
