@@ -1,12 +1,15 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
- * All right reserved.
+/* Copyright (C) 2004-2007 Daniel B. Cid <dcid@ossec.net>
+ * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 3) as published by the FSF - Free Software 
  * Foundation
+ *
+ * License details at the LICENSE file included with OSSEC or
+ * online at: http://www.ossec.net/en/licensing.html
  */
 
 /* OS_net Library. 
@@ -18,15 +21,16 @@
 
 
 #include "shared.h"
-
 #include "os_net.h"
 
 
 struct sockaddr_in _c;	    /* Client socket */
 socklen_t _cl;              /* Client socket length */
 
+
+/* Unix socket -- not for windows */
 #ifndef WIN32
-struct sockaddr_un n_us;    /* Unix socket  */
+struct sockaddr_un n_us;
 socklen_t us_l = sizeof(n_us);
 
 /* UNIX SOCKET */
@@ -44,28 +48,37 @@ int ENOBUFS = 0;
  * Bind a specific port
  * v0.2: Added REUSEADDR.
  */
-int OS_Bindport(unsigned int _port,unsigned int _proto,char *_ip)
+int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip)
 {
     int ossock;
     struct sockaddr_in server;
 
+    
     if(_proto == IPPROTO_UDP)
     {
-        if((ossock = socket(PF_INET,SOCK_DGRAM,IPPROTO_UDP)) < 0)
+        if((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
+        {
             return OS_SOCKTERR;
+        }
     }
     else if(_proto == IPPROTO_TCP)
     {
-        int flag=1;
-        if((ossock = socket(PF_INET,SOCK_STREAM,IPPROTO_TCP)) < 0)
+        int flag = 1;
+        if((ossock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+        {
             return(int)(OS_SOCKTERR);
+        }
             
-        if(setsockopt(ossock, SOL_SOCKET,SO_REUSEADDR, (char *)&flag,
-                    sizeof(flag)) < 0)
+        if(setsockopt(ossock, SOL_SOCKET, SO_REUSEADDR, 
+                              (char *)&flag,  sizeof(flag)) < 0)
+        {
             return(OS_SOCKTERR);
+        }
     }
     else
+    {
         return(OS_INVALID);
+    }
 
     memset(&server, 0, sizeof(server));
     server.sin_family = AF_INET;
@@ -77,13 +90,18 @@ int OS_Bindport(unsigned int _port,unsigned int _proto,char *_ip)
         server.sin_addr.s_addr = inet_addr(_ip);
 
     if(bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0)
+    {
         return(OS_SOCKTERR);
+    }
 
     if(_proto == IPPROTO_TCP)
     {
         if(listen(ossock, 32) < 0)
+        {
             return(OS_SOCKTERR);
+        }
     }
+    
     
     _cl = sizeof(_c);
     return(ossock);

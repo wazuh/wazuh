@@ -100,6 +100,9 @@ void OS_DBD(DBConfig *db_config)
         osdb_escapestr(al_data->log[0]);
          
 
+        /* We first need to insert the location */
+
+
         /* Generating SQL */
         snprintf(sql_query, OS_SIZE_2048,
                  "INSERT INTO "
@@ -111,7 +114,7 @@ void OS_DBD(DBConfig *db_config)
 
 
         /* Inserting into the db */
-        if(!osdb_query(db_config->conn, sql_query))
+        if(!osdb_query_insert(db_config->conn, sql_query))
         {
             merror(DB_MAINERROR, ARGV0);
         }

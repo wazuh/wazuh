@@ -22,8 +22,11 @@
 /* Connects to the database */
 void *osdb_connect(char *host, char *user, char *pass, char *db);
 
-/* Queries the database */
-int osdb_query(void *db_conn, char *query);
+/* Sends insert query to the database */
+int osdb_query_insert(void *db_conn, char *query);
+
+/* Sends select query to the database */
+int osdb_query_select(void *db_conn, char *query);
 
 /* escape strings before inserting. */
 void osdb_escapestr(char *str);

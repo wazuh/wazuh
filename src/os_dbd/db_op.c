@@ -45,6 +45,12 @@ void osdb_escapestr(char *str)
         }
         str++;
     }
+
+    /* It can not end with \\ */
+    if(*(str -1) == '\\')
+    {
+        *(str-1) = '\0';
+    }
 }
 
 
@@ -77,10 +83,10 @@ void osdb_close(void *db_conn)
 }
 
 
-/** int osdb_query(void *db_conn, char *query)
- * Sends query to database. 
+/** int osdb_query_insert(void *db_conn, char *query)
+ * Sends insert query to database. 
  */
-int osdb_query(void *db_conn, char *query)
+int osdb_query_insert(void *db_conn, char *query)
 {
     if(mysql_query(db_conn, query) != 0)
     {
@@ -93,6 +99,52 @@ int osdb_query(void *db_conn, char *query)
 }
 
 
+
+/** int osdb_query_select(void *db_conn, char *query)
+ * Sends a select query to database. Returns the value of it.
+ * Returns 0 on error (not found).
+ */
+int osdb_query_select(void *db_conn, char *query)
+{
+    int result_int = 0;
+    MYSQL_RES *result_data;
+    MYSQL_ROW result_row;
+    
+    /* Sending the query. It can not fail. */
+    if(mysql_query(db_conn, query) != 0)
+    {
+        /* failure; report error */
+        merror(DBQUERY_ERROR, ARGV0, query, mysql_error(db_conn));
+        return(0);
+    }
+
+    
+    /* Getting result */
+    result_data = mysql_use_result(db_conn);
+    if(result_data == NULL)
+    {
+        /* failure; report error */
+        merror(DBQUERY_ERROR, ARGV0, query, mysql_error(db_conn));
+        return(0);
+    }
+    
+
+    /* Getting row. We only care about the first result. */
+    result_row = mysql_fetch_row(result_data);
+    if(result_row[0] != NULL)
+    {
+        result_int = atoi(result_row[0]);
+    }
+    
+    mysql_free_result(result_data);
+
+
+    return(result_int);
+}
+
+
 #endif /* DBD */
+
+
 
 /* EOF */

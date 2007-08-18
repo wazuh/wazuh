@@ -145,6 +145,14 @@ int main(int argc, char **argv)
     nowChroot();
 
 
+    /* Inserting server info into the db */
+    db_config.server_id = OS_Server_ReadInsertDB(&db_config);
+    if(db_config.server_id <= 0)
+    {
+        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+    }
+
+
     /* Read rules and insert into the db */
     if(OS_InsertRulesDB(&db_config) < 0)
     {

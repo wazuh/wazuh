@@ -3,16 +3,33 @@
 
 PT=../
 NAME=ossec-dbd
-DBFLAGS=-I/usr/local/include/mysql -L/usr/local/lib/mysql -lmysqlclient
+
+# Uncomment the following if you know what you are doing.
+#DBFLAGS=-I/usr/local/include/mysql -L/usr/local/lib/mysql -lmysqlclient
 
 include ../Config.Make
 
 LOCAL = *.c
 
+
+# Getting database cflags
+DBCHECK = `./dbmake.sh`
+DBMYSQL = `./dbmake.sh mysql 2> /dev/null`
+DBPOSTGRES =  `./dbmake.sh postgres 2> /dev/null` 
+
+
 OBJS = ${OS_CONFIG} ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_XML}
 
-dbd:
-		${CC} ${CFLAGS} ${DBFLAGS} -DDBD -DUMYSQL ${LOCAL} ${OBJS} -o ${NAME}
+default:
+		@if [ "X${DBMYSQL}" = "X" -a "X${DBPOSTGRES}" = "X" ]; then ./dbmake.sh mysql; exit 1; fi;
+		@echo "Compiling DB support with: ${DBMYSQL} ${DBPOSTGRES}"
+		${CC} ${CFLAGS} ${DBFLAGS} ${DBMYSQL} ${DBPOSTGRES} ${LOCAL} ${OBJS} -o ${NAME}
+mysql:
+		@if [ "X${DBMYSQL}" = "X" ]; then ./dbmake.sh mysql; exit 1; fi;
+		@echo "Compiling MySQL DB support with: ${DBVAL}"
+		${CC} ${CFLAGS} ${DBFLAGS} ${DBVAL} ${LOCAL} ${OBJS} -o ${NAME}
+postgres:
+		${CC} ${CFLAGS} ${DBFLAGS} -DDBD -DUPOSTGRES ${LOCAL} ${OBJS} -o ${NAME}
 clean:
 		${CLEAN}
 build:

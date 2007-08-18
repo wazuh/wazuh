@@ -130,10 +130,9 @@ f:%WINDIR%\twaintec.dll;
 
 # http://www.symantec.com/security_response/writeup.jsp?docid=2004-062611-4548-99&tabid=2
 [Spyware - SpyBuddy] [any] []
-f:\ProgramFiles\ExploreAnywhere\SpyBuddy\sb32mon.exe;
-f:\ProgramFiles\ExploreAnywhere\SpyBuddy;
-f:\ProgramFiles\ExploreAnywhere;
-f:%WINDIR%\System32\pthreadVC.dll;
+f:\Program Files\ExploreAnywhere\SpyBuddy\sb32mon.exe;
+f:\Program Files\ExploreAnywhere\SpyBuddy;
+f:\Program Files\ExploreAnywhere;
 f:%WINDIR%\System32\sysicept.dll;
 r:HKEY_LOCAL_MACHINE\Software\ExploreAnywhere Software\SpyBuddy;
 

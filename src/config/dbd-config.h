@@ -18,6 +18,8 @@
 /* Database config structure */
 typedef struct _DBConfig
 {
+    int server_id;
+
     char *host;
     char *user;
     char *pass;

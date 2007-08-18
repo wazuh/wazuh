@@ -28,11 +28,23 @@
 int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config);
 
 
+/* Inserts server info to the db. */
+int OS_Server_ReadInsertDB(void *db_config);
+   
+
 /* Insert rules in to the database */
 int OS_InsertRulesDB(DBConfig *db_config);
 
 
 /* Database inserting main function */
 void OS_DBD(DBConfig *db_config);
+
+
+
+/** Global vars **/
+
+/* System hostname */
+char __shost[512];
+
 
 #endif
