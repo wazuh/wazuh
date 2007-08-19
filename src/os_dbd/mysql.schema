@@ -75,8 +75,9 @@ CREATE TABLE alert
     dst_ip          INT         UNSIGNED,
     src_port        SMALLINT    UNSIGNED,
     dst_port        SMALLINT    UNSIGNED,
-    PRIMARY KEY (id, rule_id, server_id),
+    PRIMARY KEY (id, server_id),
     INDEX       time (timestamp),
+    INDEX       (rule_id),
     INDEX       (src_ip)
     );
     
