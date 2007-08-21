@@ -9,9 +9,25 @@
  * Foundation
  */
 
-/* v0.2 (2005/12/23): Adding 'u_int16_t' for Solaris.
+/* v0.3 (2007/12/23): Adding SSP & FORTIFY_SOURCE <jeffschroeder@computer.org>
+ * v0.2 (2005/12/23): Adding 'u_int16_t' for Solaris.
  * v0.1 (2005/10/27): first version.
  */
+
+/*
+ *  The stack smashing protector defeats some BoF via: gcc -fstack-protector
+ *  Reference: http://gcc.gnu.org/onlinedocs/gcc-4.1.2/cpp.pdf
+ */
+#if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 1) && (__GNUC_PATCHLEVEL__ >= 2)) || \
+                          ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 2)) || \
+                           (__GNUC__ >= 5))
+
+/* Heuristicly enable the stack protector on sensitive functions */
+#define __SSP__ 1
+
+/* FORTIFY_SOURCE is Redhat / Fedora specific */
+#define FORTIFY_SOURCE
+#endif
 
 #ifndef __SHARED_H
 
