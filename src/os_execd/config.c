@@ -18,7 +18,7 @@
  */
 int ExecdConfig(char * cfgfile)
 {
-    char *(xmlf[]) = {"ossec_config", "active_response", "disabled", NULL};
+    char *(xmlf[]) = {"ossec_config", "active-response", "disabled", NULL};
     char *disable_entry;
 
     OS_XML xml;
