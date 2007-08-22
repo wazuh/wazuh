@@ -21,9 +21,8 @@ DBPOSTGRES =  `./dbmake.sh postgres 2> /dev/null`
 OBJS = ${OS_CONFIG} ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_XML}
 
 default:
-		@if [ "X${DBMYSQL}" = "X" -a "X${DBPOSTGRES}" = "X" ]; then ./dbmake.sh mysql; exit 1; fi;
-		@echo "Compiling DB support with: ${DBMYSQL} ${DBPOSTGRES}"
-		${CC} ${CFLAGS} ${DBFLAGS} ${DBMYSQL} ${DBPOSTGRES} ${LOCAL} ${OBJS} -o ${NAME}
+		@echo "Compiling DB support with: ${DBCHECK}"
+		${CC} ${CFLAGS} ${DBFLAGS} ${DBCHECK} ${LOCAL} ${OBJS} -o ${NAME}
 mysql:
 		@if [ "X${DBMYSQL}" = "X" ]; then ./dbmake.sh mysql; exit 1; fi;
 		@echo "Compiling MySQL DB support with: ${DBVAL}"

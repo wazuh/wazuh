@@ -135,4 +135,18 @@
     <group>syscheck,</group>
   </rule>
   
+  <rule id="580" level="8">
+    <category>ossec</category>
+    <decoded_as>hostinfo_modified</decoded_as>
+    <description>Host information changed.</description>
+    <group>hostinfo,</group>
+  </rule>
+  
+  <rule id="581" level="8">
+    <category>ossec</category>
+    <decoded_as>hostinfo_new</decoded_as>
+    <description>Host information added.</description>
+    <group>hostinfo,</group>
+  </rule>
+  
 </group> <!-- OSSEC -->

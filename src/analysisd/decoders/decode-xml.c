@@ -847,6 +847,8 @@ int ReadDecodeXML(char *file)
     addDecoder2list(SYSCHECK_MOD3);
     addDecoder2list(SYSCHECK_NEW);
     addDecoder2list(SYSCHECK_DEL);
+    addDecoder2list(HOSTINFO_NEW);
+    addDecoder2list(HOSTINFO_MOD);
 
 
     /* Setting ids - for our two lists */

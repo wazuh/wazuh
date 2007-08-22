@@ -191,6 +191,8 @@ RuleNode *OS_GetFirstRule();
 
 
 #define ROOTCHECK_MOD   "rootcheck"
+#define HOSTINFO_NEW    "hostinfo_new"
+#define HOSTINFO_MOD    "hostinfo_modified"
 #define SYSCHECK_MOD    "syscheck_integrity_changed"
 #define SYSCHECK_MOD2   "syscheck_integrity_changed_2nd"
 #define SYSCHECK_MOD3   "syscheck_integrity_changed_3rd"

@@ -16,7 +16,6 @@
 /* Common lib for dealing with databases */
 
 
-#ifdef DBD
 #include "shared.h"
 #include "db_op.h"
 
@@ -52,6 +51,10 @@ void osdb_escapestr(char *str)
         *(str-1) = '\0';
     }
 }
+
+
+/** MySQL calls **/
+#ifdef UMYSQL
 
 
 /* Create the tree 
@@ -143,9 +146,67 @@ int osdb_query_select(void *db_conn, char *query)
 
     return(result_int);
 }
+/** End of MYSQL calls **/
 
 
-#endif /* DBD */
+/** PostGRES Calls **/
+#elif defined UPOSTGRES
+
+
+
+/** End of PostGRES calls **/
+
+
+
+/* Everything else when db is not defined. */
+#else
+
+
+
+void *osdb_connect(char *host, char *user, char *pass, char *db)
+{
+    char *tmp;
+
+
+    /* Just to avoid warnings. */
+    tmp = host; tmp = user; tmp = pass; tmp = db;
+    
+    
+    merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
+    return(NULL);
+}
+void osdb_close(void *db_conn)
+{
+    void *tmp;
+
+    tmp = db_conn;
+    merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
+    return;
+}
+int osdb_query_insert(void *db_conn, char *query)
+{
+    void *tmp;
+
+    tmp = db_conn; tmp = query;
+
+    merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
+    return(0);
+}
+int osdb_query_select(void *db_conn, char *query)
+{
+    void *tmp;
+
+    tmp = db_conn; tmp = query;
+    
+    merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
+    return(0);
+}
+
+
+
+
+/** End of not defined db calls **/
+#endif
 
 
 

@@ -5,7 +5,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -18,8 +18,12 @@
  */
 int rk_check_file(char *file, char *pattern)
 {
+    char *split_file;
+    char *tmp_str;
+    
     FILE *fp;
     char buf[OS_SIZE_2048 +1];
+    
     
     /* If string we null, we don't match */
     if(file == NULL)
@@ -27,54 +31,75 @@ int rk_check_file(char *file, char *pattern)
         return(0);
     }
 
-    /* If we don't have a pattern, just check if the file/dir is there */
-    if(pattern == NULL)
-    {
-        if(is_file(file))
-        {
-            return(1);
-        }
 
-        return(0);
-    }
-    
-    
-    fp = fopen(file, "r");
-    if(!fp)
+    /* Checking if the file is divided */
+    split_file = file;
+    tmp_str = strchr(file, ',');
+    if(tmp_str)
     {
-        return(0);
+        *tmp_str = '\0';
     }
 
-    buf[OS_SIZE_2048] = '\0';
-    while(fgets(buf, OS_SIZE_2048, fp) != NULL)
+
+    /* Getting each file */
+    while(split_file)
     {
-        char *nbuf;
 
-        /* Removing end of line */
-        nbuf = strchr(buf, '\n');
-        if(nbuf)
+        /* If we don't have a pattern, just check if the file/dir is there */
+        if(pattern == NULL)
         {
-            *nbuf = '\0';
+            if(is_file(split_file))
+            {
+                return(1);
+            }
+
+            continue;
         }
 
-        #ifdef WIN32
-        /* Removing end of line */
-        nbuf = strchr(buf, '\r');
-        if(nbuf)
-        {
-            *nbuf = '\0';
-        }
-        #endif
 
-        /* Matched */
-        if(pt_matches(buf, pattern))
+        /* Checking for a content in the file */
+        fp = fopen(file, "r");
+        if(!fp)
         {
-            fclose(fp);
-            return(1);
+            continue;
         }
+
+        buf[OS_SIZE_2048] = '\0';
+        while(fgets(buf, OS_SIZE_2048, fp) != NULL)
+        {
+            char *nbuf;
+
+            /* Removing end of line */
+            nbuf = strchr(buf, '\n');
+            if(nbuf)
+            {
+                *nbuf = '\0';
+            }
+
+
+            #ifdef WIN32
+            /* Removing end of line */
+            nbuf = strchr(buf, '\r');
+            if(nbuf)
+            {
+                *nbuf = '\0';
+            }
+            #endif
+
+
+            /* Matched */
+            if(pt_matches(buf, pattern))
+            {
+                fclose(fp);
+                return(1);
+            }
+        }
+
+        fclose(fp);
+        continue;
     }
 
-    fclose(fp);
+
     return(0);
 }
 

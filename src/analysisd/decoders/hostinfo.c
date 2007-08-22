@@ -1,16 +1,16 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2006-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
 
-/* Rootcheck decoder */
+/* Hostinfo decoder */
 
 
 #include "config.h"
@@ -29,14 +29,19 @@
 
 
 /** Global variables **/
+int hi_err = 0;
+int id_new = 0;
+int id_mod = 0;
 char _hi_buf[OS_MAXSTR +1];
-FILE *_hi_fp = NULL;
 
 
-int hi_err;
+/* Agent hash */
+OSHash *agent_hash = NULL;
 
-/* Hostinformation rule */
-RuleInfo *hostinfo_rule;
+
+/* Hostinfo decoder */
+OSDecoderInfo *hostinfo_dec = NULL;
+
 
 
 /* Check if the string matches.
@@ -76,71 +81,106 @@ static char *__go_after(char *x, char *y)
  */
 void HostinfoInit()
 {
-    int i = 0;
     hi_err = 0;
 
+
+    /* Zeroing decoder */
+    os_calloc(1, sizeof(OSDecoderInfo), hostinfo_dec);
+    hostinfo_dec->id = getDecoderfromlist(HOSTINFO_MOD);
+    hostinfo_dec->type = OSSEC_RL;
+    hostinfo_dec->name = HOSTINFO_MOD;
+    hostinfo_dec->fts = 0;
+    id_new = getDecoderfromlist(HOSTINFO_NEW);
+    id_mod = getDecoderfromlist(HOSTINFO_MOD);
+
+    
     /* clearing the buffer */
     memset(_hi_buf, '\0', OS_MAXSTR +1);
 
-    /* Creating rule for Host information alerts */
-    hostinfo_rule = zerorulemember(
-            HOSTINFO_MODULE,  /* id */ 
-            Config.hostinfo , /* level */
-            0,0,0,0,0,0);
 
-    if(!hostinfo_rule)
+    /* Creating agent hash */
+    agent_hash = OSHash_Create();
+    if(!agent_hash)
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
-    hostinfo_rule->group = "hostinfo,";
-    os_calloc(MAX_LAST_EVENTS + 1, sizeof(char *),
-              hostinfo_rule->last_events);
 
-
-    /* Zeroing each entry */
-    for(;i<=MAX_LAST_EVENTS;i++)
-    {
-        hostinfo_rule->last_events[i] = NULL;
-    }
-
-
-    _hi_fp = fopen(HOSTINFO_DIR, "r+");
-    if(!_hi_fp)
-    {
-        _hi_fp = fopen(HOSTINFO_DIR, "w");
-        if(_hi_fp)
-        {
-            fclose(_hi_fp);
-            _hi_fp = fopen(HOSTINFO_DIR, "r+");
-        }
-
-        if(!_hi_fp)
-        {
-            merror(FOPEN_ERROR, ARGV0, HOSTINFO_DIR);
-        } 
-    }
+    
     return;
 }
+
 
 
 /* HI_File
  * Return the file pointer to be used
  */
-FILE *HI_File()
+FILE *HI_File(char *agent)
 {
-    if(!_hi_fp)
+    FILE *fp;
+    char *agent_pt = NULL;
+
+    fp = OSHash_Get(agent_hash, agent);
+    if(fp)
+    {
+        fseek(fp, 0, SEEK_SET);
+        return(fp);
+    }
+
+
+    /* If here, our agent wasn't found */
+    agent_pt = strdup(agent);
+
+    if(agent_pt != NULL)
+    {
+        char hi_buf[OS_SIZE_1024 +1];
+        snprintf(hi_buf,OS_SIZE_1024, "%s/%s", HOSTINFO_DIR, agent);
+
+        /* r+ to read and write. Do not truncate */
+        fp = fopen(hi_buf,"r+");
+        if(!fp)
+        {
+            /* try opening with a w flag, file probably does not exist */
+            fp = fopen(hi_buf, "w");
+            if(fp)
+            {
+                fclose(fp);
+                fp = fopen(hi_buf, "r+");
+            }
+        }
+        if(!fp)
+        {
+            merror(FOPEN_ERROR, ARGV0, hi_buf);
+
+            free(agent_pt);
+            return(NULL);
+        }
+
+
+        /* Adding to the hash */
+        OSHash_Add(agent_hash, agent_pt, fp);
+
+
+        /* Returning the opened pointer (the beginning of it) */
+        fseek(fp, 0, SEEK_SET);
+        return(fp);
+    }
+
+    else
+    {
+        merror(MEM_ERROR, ARGV0);
         return(NULL);
-    
-    /* pointing to the beginning of the file */
-    fseek(_hi_fp, 0, SEEK_SET);
-    return(_hi_fp);
+    }
+
+    return(NULL);
 }
 
 
-/* HI_Search
- * Search the HI DB for any entry related.
+
+/* Special decoder for Hostinformation
+ * Not using the default rendering tools for simplicity
+ * and to be less resource intensive.
  */
-void HI_Search(Eventinfo *lf)
+int DecodeHostinfo(Eventinfo *lf)
 {
     int changed = 0;
     int bf_size;
@@ -153,17 +193,24 @@ void HI_Search(Eventinfo *lf)
     char opened[OS_MAXSTR + 1];
     FILE *fp;
 
+    
+    /* Checking maximum number of errors */
+    if(hi_err > 10)
+        return(0);
+                
+
+    /* Zeroing buffers */
     buffer[OS_MAXSTR] = '\0';
     opened[OS_MAXSTR] = '\0';
-    fp = HI_File();
-
+    fp = HI_File(lf->location);
     if(!fp)
     {
         merror("%s: Error handling host information database.",ARGV0);
         hi_err++; /* Increment hi error */
 
-        return;
+        return(0);
     }
+
 
     /* Copying log to buffer */
     strncpy(buffer,lf->log, OS_MAXSTR);
@@ -176,7 +223,7 @@ void HI_Search(Eventinfo *lf)
         merror("%s: Error handling host information database.",ARGV0);
         hi_err++;
 
-        return;
+        return(0);
     }
 
     
@@ -188,7 +235,7 @@ void HI_Search(Eventinfo *lf)
         merror("%s: Error handling host information database.",ARGV0);
         hi_err++;
 
-        return;
+        return(0);
     }
     *tmpstr = '\0';
     tmpstr++;
@@ -201,7 +248,6 @@ void HI_Search(Eventinfo *lf)
     {
         *tmpstr = '\0';
     }
-
     bf_size = strlen(ip);
     
     
@@ -228,7 +274,7 @@ void HI_Search(Eventinfo *lf)
             /* Cannot use strncmp to avoid errors with crafted files */    
             if(strcmp(portss, _hi_buf + bf_size) == 0)
             {
-                return;
+                return(0);
             }
             else
             {
@@ -246,46 +292,26 @@ void HI_Search(Eventinfo *lf)
     fseek(fp, 0, SEEK_END);
     fprintf(fp,"%s%s\n", ip, portss);
 
-    /* Setting rule */
-    lf->generated_rule = hostinfo_rule;
-    
 
+    /* Setting decoder */
+    lf->decoder_info = hostinfo_dec;
+
+    
     /* Setting comment */
     if(changed == 1)
     {
-        lf->generated_rule->comment = HOST_CHANGED;
-        lf->generated_rule->last_events[0] = opened;
+        hostinfo_dec->id = id_mod;
+        //lf->generated_rule->last_events[0] = opened;
     }
     else
     {
-        lf->generated_rule->comment = HOST_NEW;
+        hostinfo_dec->id = id_new;
     }
     
-    OS_Log(lf);
 
-
-    /* Removing pointer to hostinfo_rule */
-    lf->generated_rule = NULL;
-    hostinfo_rule->last_events[0] = NULL;
-
-    return; 
+    return(1);
 }
 
 
-/* Special decoder for Hostinformation 
- * Not using the default rendering tools for simplicity
- * and to be less resource intensive.
- */
-void DecodeHostinfo(Eventinfo *lf)
-{
-    /* Too many errors */
-    if(hi_err > 10)
-        return;
- 
-    if(hostinfo_rule->alert_opts & DO_LOGALERT)
-        HI_Search(lf);
-   
-    return;
-}
 
 /* EOF */
