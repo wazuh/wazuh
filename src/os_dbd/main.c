@@ -25,6 +25,31 @@
 #include "dbd.h"
 
 
+/* Prints information regarding enabled databases */
+void db_info()
+{
+    print_out("");
+    print_out("%s %s - %s", __name, __version, __author);
+    
+    #ifdef UMYSQL
+    print_out("Compiled with MySQL support.");
+    #endif
+
+    #ifdef UPOSTGRES
+    print_out("Compiled with PostgreSQL support.");
+    #endif
+
+    #if !defined(UMYSQL) && !defined(UPOSTGRES)
+    print_out("Compiled without any Database support.");
+    #endif
+    
+    print_out("");
+    print_out("%s",__license);
+
+    exit(1);
+}
+
+
 
 int main(int argc, char **argv)
 {
@@ -51,6 +76,9 @@ int main(int argc, char **argv)
             case 'V':
                 print_version();
                 break;
+            case 'v':
+                db_info();
+                break;    
             case 'h':
                 help();
                 break;
@@ -101,12 +129,31 @@ int main(int argc, char **argv)
 
 
     /* Reading configuration */
-    if(OS_ReadDBConf(test_config, cfg, &db_config) < 0)
+    if((c = OS_ReadDBConf(test_config, cfg, &db_config)) < 0)
     {
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
 
 
+    /* Exit here if test config is set */
+    if(test_config)
+        exit(0);
+        
+        
+    /* Going on daemon mode */
+    nowDaemon();
+    goDaemon();
+
+
+    
+    /* Not configured */
+    if(c == 0)
+    {
+        verbose("%s: Database not configured. Clean exit.", ARGV0);
+        exit(0);
+    }
+
+    
     /* Maybe disable this debug? */
     debug1("%s: DEBUG: Connecting to '%s', using '%s', '%s', '%s'.",
            ARGV0, db_config.host, db_config.user, 
@@ -122,14 +169,6 @@ int main(int argc, char **argv)
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
     debug1("%s: DEBUG: db connected.", ARGV0);
-
-    
-    /* Going on daemon mode */
-    if(!test_config)
-    {
-        nowDaemon();
-        goDaemon();
-    }
 
     
     /* Privilege separation */	
@@ -161,11 +200,6 @@ int main(int argc, char **argv)
     }
 
     
-    /* Exit here if test config is set */
-    if(test_config)
-        exit(0);
-        
-        
     /* Changing user */        
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0,user);

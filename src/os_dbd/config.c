@@ -37,6 +37,7 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
     db_config->user = NULL;
     db_config->pass = NULL;
     db_config->db = NULL;
+    db_config->db_type = 0;
 
 
     /* Reading configuration */
@@ -51,18 +52,30 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
     free(tmp_config);
 
 
+    /* Checking if dbd isn't supposed to run. */
+    if(!db_config->host &&
+       !db_config->user &&
+       !db_config->pass &&
+       !db_config->db &&
+       !db_config->db_type)
+    {
+        return(0);
+    }
+    
+
     /* Checking for a valid config. */
     if(!db_config->host ||
        !db_config->user ||
        !db_config->pass ||
-       !db_config->db)
+       !db_config->db ||
+       !db_config->db_type)
     {
         merror(DB_MISS_CONFIG, ARGV0);
         return(OS_INVALID);
     }
                                         
     
-    return(0);
+    return(1);
 }
 
 /* EOF */

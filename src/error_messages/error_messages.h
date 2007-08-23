@@ -254,6 +254,7 @@
 #define DB_MISS_CONFIG  "%s(5205): Missing database configuration. "\
                         "It requires host, user, pass and database."
 #define DB_CONFIGERR    "%s(5206): Database configuration error."
+#define DB_COMPILED     "%s(5207): OSSEC not compiled with support for '%s'." 
 
 
 
