@@ -1,12 +1,15 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 3) as published by the FSF - Free Software
- * Foundation
+ * Foundation.
+ *
+ * License details at the LICENSE file included with OSSEC or
+ * online at: http://www.ossec.net/en/licensing.html
  */
 
 
@@ -15,6 +18,9 @@
 #include "config/config.h"
 
 
+/** int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
+ * Reads database configuration.
+ */
 int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
 {
     int modules = 0;
@@ -73,8 +79,37 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
         merror(DB_MISS_CONFIG, ARGV0);
         return(OS_INVALID);
     }
-                                        
+
+    osdb_connect = NULL;
+
+    /* Assigning the proper location for the function calls */
+    #ifdef UMYSQL
+    if(db_config->db_type == MYSQLDB)
+    {
+        osdb_connect = mysql_osdb_connect;
+        osdb_query_insert = mysql_osdb_query_insert;
+        osdb_query_select = mysql_osdb_query_select;
+        osdb_close = mysql_osdb_close;
+    }
+    #endif
     
+    #ifdef UPOSTGRES
+    if(db_config->db_type == POSTGDB)
+    {
+        osdb_connect = postgresql_osdb_connect;
+        osdb_query_insert = postgresql_osdb_query_insert;
+        osdb_query_select = postgresql_osdb_query_select;
+        osdb_close = postgresql_osdb_close;
+    }
+    #endif
+    
+
+    if(osdb_connect == NULL)
+    {
+        merror("%s: Invalid DB configuration (Internal error?). ", ARGV0);
+        return(OS_INVALID);
+    }
+
     return(1);
 }
 

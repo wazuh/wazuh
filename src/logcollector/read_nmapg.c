@@ -16,7 +16,7 @@
 
 #define NMAPG_HOST  "Host: "
 #define NMAPG_PORT  "Ports:"
-#define NMAPG_OPEN  "open"
+#define NMAPG_OPEN  "open/"
 #define NMAPG_STAT  "Status:"
 
 
@@ -34,11 +34,13 @@ static char *__get_port(char *str, char *proto, char *port, int msize)
     int filtered = 0;
     char *p, *q;
 
+
     /* Removing white spaces */
     while(*str == ' ')
     {
         str++;
     }
+
     
     /* Getting port */
     p = strchr(str, '/');
@@ -51,25 +53,31 @@ static char *__get_port(char *str, char *proto, char *port, int msize)
     /* Getting port */
     strncpy(port, str, msize);
     port[msize -1] = '\0';
+
+    
     
     /* Checking if the port is open */
     q = __go_after(p, NMAPG_OPEN);
     if(!q)
     {
         /* Port is not open */
-        filtered = 1;    
+        filtered = 1;
         q = p;
+
+
+        /* Going to the start of protocol field */
+        p = strchr(q, '/');
+        if(!p)
+            return(NULL);
+        p++;        
+    }
+    else
+    {
+        p = q;
     }
     
-
     
-    /* Going to the start of protocol field */
-    p = strchr(q, '/');
-    if(!p)
-        return(NULL);
-    p++;
 
-    
     /* Getting protocol */
     str = p;
     p = strchr(str, '/');
@@ -248,6 +256,7 @@ void *read_nmapg(int pos, int *rc, int drop_it)
         snprintf(final_msg, OS_MAXSTR, "Host: %s, open ports:",
                             ip);
         final_msg_s = OS_MAXSTR - ((strlen(final_msg) +3));
+        
 
         /* Getting port and protocol */
         do
@@ -261,9 +270,10 @@ void *read_nmapg(int pos, int *rc, int drop_it)
             p = __get_port(p, proto, port, 9);
             if(!p)
             {
-                merror("%s: Bad formated nmap grepable file (port).", ARGV0);
+                debug1("%s: Bad formated nmap grepable file (port).", ARGV0);
                 break;
             }
+
             
             /* Port not open */
             if(proto[0] == '\0')
@@ -280,7 +290,7 @@ void *read_nmapg(int pos, int *rc, int drop_it)
         }while(*p == ',' && (p++));
        
 
-        if(p && (drop_it == 0))
+        if(drop_it == 0)
         { 
             /* Sending message to queue */
             if(SendMSG(logr_queue, final_msg, logff[pos].file, 
@@ -293,6 +303,7 @@ void *read_nmapg(int pos, int *rc, int drop_it)
                 }
             }
         }
+
         
         /* Getting next */
         continue;

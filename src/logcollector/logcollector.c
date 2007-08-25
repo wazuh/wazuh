@@ -89,6 +89,10 @@ void LogCollectorStart()
             {
                 logff[i].read = (void *)read_nmapg;
             }
+            else if(strcmp("mysql_log", logff[i].logformat) == 0)
+            {
+                logff[i].read = (void *)read_mysql_log;
+            }
             else
             {
                 logff[i].read = (void *)read_syslog;

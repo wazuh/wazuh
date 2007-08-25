@@ -132,9 +132,11 @@ chmod 740 ${DIR}/queue/fts/* > /dev/null 2>&1
 chown -R ${USER}:${GROUP} ${DIR}/queue/syscheck
 chmod -R 750 ${DIR}/queue/syscheck
 chmod 740 ${DIR}/queue/syscheck/* > /dev/null 2>&1
+
 chown -R ${USER}:${GROUP} ${DIR}/queue/rootcheck
 chmod -R 750 ${DIR}/queue/rootcheck
 chmod 740 ${DIR}/queue/rootcheck/* > /dev/null 2>&1
+
 chown -R ${USER_REM}:${GROUP} ${DIR}/queue/agent-info
 chmod -R 755 ${DIR}/queue/agent-info
 chmod 744 ${DIR}/queue/agent-info/* > /dev/null 2>&1

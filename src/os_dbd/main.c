@@ -65,6 +65,7 @@ int main(int argc, char **argv)
 
     /* Database Structure */
     DBConfig db_config;
+    db_config.error_count = 0;
 
 
     /* Setting the name */

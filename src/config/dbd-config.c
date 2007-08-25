@@ -79,7 +79,7 @@ int Read_DB(XML_NODE node, void *config1, void *config2)
 
                 db_config->db_type = MYSQLDB;
             }
-            if(strcmp(node[i]->content, "postgresql") == 0)
+            else if(strcmp(node[i]->content, "postgresql") == 0)
             {
                 #ifndef UPOSTGRES
                 merror(DB_COMPILED, ARGV0, node[i]->content);

@@ -59,7 +59,8 @@ int __DBInsertServer(char *server, char *info, DBConfig *db_config)
             "server(id, last_contact, version, hostname, information) "
             "VALUES (NULL, '%u', '%s', '%s', '%s') ON DUPLICATE KEY UPDATE "
             "last_contact='%u',version='%s',information='%s'",
-            time(0), __version, server, info, time(0), __version, info);
+            (unsigned int)time(0), __version, server, info, 
+            (unsigned int)time(0), __version, info);
 
 
     /* Checking return code. */

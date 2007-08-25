@@ -73,6 +73,7 @@
   <order>srcip</order>
 </decoder>
 
+
   
 <!-- SSH decoder.
   -  Will extract username and srcip from the logs.
@@ -185,7 +186,6 @@
  - Jun  2 09:54:28 valhalla in.telnetd[19723]: [ID 927837 local2.info] connect from external.example.net
  - Jun  2 09:54:28 valhalla telnetd[19723]: [ID 485252 daemon.info] ttloop:  peer died: Error 0
  -->
-
 <decoder name="telnetd">
   <program_name>^telnetd|^in.telnetd</program_name>
 </decoder>
@@ -195,6 +195,7 @@
   <regex>from (\d+.\d+.\d+.\d+)$</regex>
   <order>srcip</order>
 </decoder>
+
 
 
 <!--
@@ -388,6 +389,19 @@
   <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) (\S+)</regex>
   <order>srcip, extra_data</order>
   <fts>name, srcip, extra_data</fts>
+</decoder>
+
+
+
+<!-- MySQL decoder.
+  - Examples:
+  - MySQL log: 060516 22:38:46 mysqld started
+  - MySQL log: 060516 22:38:46 mysqld ended
+  - MySQL log: 070823 21:23:08 2 Query       INSERT INTO signature(id, rule_id, level, description) VALUES (NULL, '18103','5','Windows error event.') ON DUPLICATE KEY UPDATE level='5'
+  - 070824 11:33:51       6 Connect     Access denied for user 'roota'@'localhost' (using password: YES)
+  -->
+<decoder name="mysql_log">
+  <prematch>^MySQL log:</prematch>
 </decoder>
 
 

@@ -86,7 +86,7 @@ int IGnore(Eventinfo *lf);
 void DecodeEvent(Eventinfo *lf);
 int DecodeSyscheck(Eventinfo *lf);
 int DecodeRootcheck(Eventinfo *lf);
-void DecodeHostinfo(Eventinfo *lf);
+int DecodeHostinfo(Eventinfo *lf);
  
 
 /* For Decoders */
@@ -686,10 +686,11 @@ void OS_ReadMSG(int m_queue)
             /* Host information special decoder */
             else if(msg[0] == HOSTINFO_MQ)
             {
-                DecodeHostinfo(lf);
-
-                /* We don't process hostinfo events further */
-                goto CLMEM;
+                if(!DecodeHostinfo(lf))
+                {
+                    /* We don't process hostinfo events further */
+                    goto CLMEM;
+                }
             }
 
             /* Run the general Decoders  */

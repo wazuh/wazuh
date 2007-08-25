@@ -48,6 +48,9 @@ void *read_snortfull(int pos, int *rc, int drop_it);
 /* Read nmap grepable format */
 void *read_nmapg(int pos, int *rc, int drop_it);
 
+/* Read mysql log format */
+void *read_mysql_log(int pos, int *rc, int drop_it);
+
 
 #ifdef WIN32
 /* Windows only */

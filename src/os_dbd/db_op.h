@@ -20,13 +20,25 @@
 
 
 /* Connects to the database */
-void *osdb_connect(char *host, char *user, char *pass, char *db);
+void *(*osdb_connect)(char *host, char *user, char *pass, char *db);
+void *mysql_osdb_connect(char *host, char *user, char *pass, char *db);
+void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db);
 
 /* Sends insert query to the database */
-int osdb_query_insert(void *db_conn, char *query);
+int (* osdb_query_insert)(void *db_conn, char *query);
+int mysql_osdb_query_insert(void *db_conn, char *query);
+int postgresql_osdb_query_insert(void *db_conn, char *query);
 
 /* Sends select query to the database */
-int osdb_query_select(void *db_conn, char *query);
+int (* osdb_query_select)(void *db_conn, char *query);
+int mysql_osdb_query_select(void *db_conn, char *query);
+int postgresql_osdb_query_select(void *db_conn, char *query);
+
+/* Closes connection to the database */
+void *(*osdb_close)(void *db_conn);
+void *mysql_osdb_close(void *db_conn);
+void *postgresql_osdb_close(void *db_conn);
+
 
 /* escape strings before inserting. */
 void osdb_escapestr(char *str);

@@ -19,7 +19,7 @@
 #include "alerts/alerts.h"
 
 
-#define HOSTINFO_DIR    "/queue/fts/hostinfo"
+#define HOSTINFO_FILE   "/queue/fts/hostinfo"
 #define HOST_HOST       "Host: "
 #define HOST_PORT       " open ports: "
 
@@ -33,10 +33,7 @@ int hi_err = 0;
 int id_new = 0;
 int id_mod = 0;
 char _hi_buf[OS_MAXSTR +1];
-
-
-/* Agent hash */
-OSHash *agent_hash = NULL;
+FILE *_hi_fp = NULL;
 
 
 /* Hostinfo decoder */
@@ -93,19 +90,34 @@ void HostinfoInit()
     id_new = getDecoderfromlist(HOSTINFO_NEW);
     id_mod = getDecoderfromlist(HOSTINFO_MOD);
 
+
+
+    /* Opening HOSTINFO_FILE */
+    snprintf(_hi_buf,OS_SIZE_1024, "%s", HOSTINFO_FILE);
+    
+
+    /* r+ to read and write. Do not truncate */
+    _hi_fp = fopen(_hi_buf,"r+");
+    if(!_hi_fp)
+    {
+        /* try opening with a w flag, file probably does not exist */
+        _hi_fp = fopen(_hi_buf, "w");
+        if(_hi_fp)
+        {
+            fclose(_hi_fp);
+            _hi_fp = fopen(_hi_buf, "r+");
+        }
+    }
+    if(!_hi_fp)
+    {
+        merror(FOPEN_ERROR, ARGV0, _hi_buf);
+        return;
+    }
+
     
     /* clearing the buffer */
     memset(_hi_buf, '\0', OS_MAXSTR +1);
 
-
-    /* Creating agent hash */
-    agent_hash = OSHash_Create();
-    if(!agent_hash)
-    {
-        ErrorExit(MEM_ERROR, ARGV0);
-    }
-
-    
     return;
 }
 
@@ -114,61 +126,12 @@ void HostinfoInit()
 /* HI_File
  * Return the file pointer to be used
  */
-FILE *HI_File(char *agent)
+FILE *HI_File()
 {
-    FILE *fp;
-    char *agent_pt = NULL;
-
-    fp = OSHash_Get(agent_hash, agent);
-    if(fp)
+    if(_hi_fp)
     {
-        fseek(fp, 0, SEEK_SET);
-        return(fp);
-    }
-
-
-    /* If here, our agent wasn't found */
-    agent_pt = strdup(agent);
-
-    if(agent_pt != NULL)
-    {
-        char hi_buf[OS_SIZE_1024 +1];
-        snprintf(hi_buf,OS_SIZE_1024, "%s/%s", HOSTINFO_DIR, agent);
-
-        /* r+ to read and write. Do not truncate */
-        fp = fopen(hi_buf,"r+");
-        if(!fp)
-        {
-            /* try opening with a w flag, file probably does not exist */
-            fp = fopen(hi_buf, "w");
-            if(fp)
-            {
-                fclose(fp);
-                fp = fopen(hi_buf, "r+");
-            }
-        }
-        if(!fp)
-        {
-            merror(FOPEN_ERROR, ARGV0, hi_buf);
-
-            free(agent_pt);
-            return(NULL);
-        }
-
-
-        /* Adding to the hash */
-        OSHash_Add(agent_hash, agent_pt, fp);
-
-
-        /* Returning the opened pointer (the beginning of it) */
-        fseek(fp, 0, SEEK_SET);
-        return(fp);
-    }
-
-    else
-    {
-        merror(MEM_ERROR, ARGV0);
-        return(NULL);
+        fseek(_hi_fp, 0, SEEK_SET);
+        return(_hi_fp);
     }
 
     return(NULL);
@@ -195,14 +158,18 @@ int DecodeHostinfo(Eventinfo *lf)
 
     
     /* Checking maximum number of errors */
-    if(hi_err > 10)
+    if(hi_err > 30)
+    {
+        merror("%s: Too many errors handling host information db. "
+               "Ignoring it.", ARGV0);
         return(0);
+    }
                 
 
     /* Zeroing buffers */
     buffer[OS_MAXSTR] = '\0';
     opened[OS_MAXSTR] = '\0';
-    fp = HI_File(lf->location);
+    fp = HI_File();
     if(!fp)
     {
         merror("%s: Error handling host information database.",ARGV0);

@@ -24,6 +24,12 @@
 #include <mysql.h>
 #endif
 
+/* Using PostgreSQL */
+#ifdef UPOSTGRES
+#include <libpq-fe.h>
+#endif
+
+
 
 /** void osdb_escapestr
  * Escapes a null terminated string before inserting into the database.
@@ -53,14 +59,15 @@ void osdb_escapestr(char *str)
 }
 
 
+
 /** MySQL calls **/
 #ifdef UMYSQL
 
 
-/* Create the tree 
- * Return NULL on error
+/* Create the database connection.
+ * Returns NULL on error
  */
-void *osdb_connect(char *host, char *user, char *pass, char *db)
+void *mysql_osdb_connect(char *host, char *user, char *pass, char *db)
 {
     MYSQL *conn;
     conn = mysql_init(NULL);
@@ -80,16 +87,21 @@ void *osdb_connect(char *host, char *user, char *pass, char *db)
 }
 
 
-void osdb_close(void *db_conn)
+
+/* Closes the database connection.
+ */
+void *mysql_osdb_close(void *db_conn)
 {
     mysql_close(db_conn);
+    return(NULL);
 }
 
 
-/** int osdb_query_insert(void *db_conn, char *query)
+
+/** int mysql_osdb_query_insert(void *db_conn, char *query)
  * Sends insert query to database. 
  */
-int osdb_query_insert(void *db_conn, char *query)
+int mysql_osdb_query_insert(void *db_conn, char *query)
 {
     if(mysql_query(db_conn, query) != 0)
     {
@@ -103,11 +115,11 @@ int osdb_query_insert(void *db_conn, char *query)
 
 
 
-/** int osdb_query_select(void *db_conn, char *query)
+/** int mysql_osdb_query_select(void *db_conn, char *query)
  * Sends a select query to database. Returns the value of it.
  * Returns 0 on error (not found).
  */
-int osdb_query_select(void *db_conn, char *query)
+int mysql_osdb_query_select(void *db_conn, char *query)
 {
     int result_int = 0;
     MYSQL_RES *result_data;
@@ -146,24 +158,114 @@ int osdb_query_select(void *db_conn, char *query)
 
     return(result_int);
 }
+#endif
 /** End of MYSQL calls **/
 
 
+
+
 /** PostGRES Calls **/
-#elif defined UPOSTGRES
+#if defined UPOSTGRES
+
+
+/** void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db) 
+ * Create the PostgreSQL database connection. 
+ * Return NULL on error
+ */
+void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db)
+{
+    PGconn *conn;
+
+
+    conn = PQsetdbLogin(host, NULL, NULL, NULL,db,user,pass);
+    if(PQstatus(conn) == CONNECTION_BAD)
+    {
+        merror(DBCONN_ERROR, ARGV0, host, db, PQerrorMessage(conn));
+        PQfinish(conn);
+        return(NULL);
+    }
+
+    return(conn);
+}
 
 
 
+/** void postgresql_osdb_close(void *db_conn)
+ * Terminates db connection.
+ */
+void *postgresql_osdb_close(void *db_conn)
+{
+    PQfinish(db_conn);
+    return(NULL);
+}
+
+
+
+/** int postgresql_osdb_query_insert(void *db_conn, char *query)
+ * Sends insert query to database. 
+ */
+int postgresql_osdb_query_insert(void *db_conn, char *query)
+{
+    PGresult *result;
+    
+    
+    result = PQexec(db_conn,query);
+    if(PQresultStatus(result) != PGRES_COMMAND_OK)
+    {
+        merror(DBQUERY_ERROR, ARGV0, query, PQerrorMessage(db_conn));
+        PQclear(result);
+        return(0);
+    }
+
+    
+    PQclear(result);
+    return(1);
+}
+
+
+
+/** int postgresql_osdb_query_select(void *db_conn, char *query)
+ * Sends a select query to database. Returns the value of it.
+ * Returns 0 on error (not found).
+ */
+int postgresql_osdb_query_select(void *db_conn, char *query)
+{
+    int result_int = 0;
+    PGresult *result;
+
+    result = PQexec(db_conn,query);
+    if((PQresultStatus(result) == PGRES_TUPLES_OK))
+    {
+        if(PQntuples(result) == 1)
+        {
+            result_int = atoi(PQgetvalue(result,0,0));
+        }
+    }
+
+
+    /* Report error */
+    if(result_int == 0)
+    {
+        merror(DBQUERY_ERROR, ARGV0, query, PQerrorMessage(db_conn));
+    }
+
+    
+    PQclear(result);
+
+
+    return(result_int);
+}
 /** End of PostGRES calls **/
+#endif
 
 
 
 /* Everything else when db is not defined. */
-#else
+#if !defined(UPOSTGRES) && !defined(UMYSQL)
 
 
 
-void *osdb_connect(char *host, char *user, char *pass, char *db)
+void *none_osdb_connect(char *host, char *user, char *pass, char *db)
 {
     char *tmp;
 
@@ -175,15 +277,15 @@ void *osdb_connect(char *host, char *user, char *pass, char *db)
     merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
     return(NULL);
 }
-void osdb_close(void *db_conn)
+void *none_osdb_close(void *db_conn)
 {
     void *tmp;
 
     tmp = db_conn;
     merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
-    return;
+    return(NULL);
 }
-int osdb_query_insert(void *db_conn, char *query)
+void *none_osdb_query_insert(void *db_conn, char *query)
 {
     void *tmp;
 
@@ -192,7 +294,7 @@ int osdb_query_insert(void *db_conn, char *query)
     merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
     return(0);
 }
-int osdb_query_select(void *db_conn, char *query)
+void *none_osdb_query_select(void *db_conn, char *query)
 {
     void *tmp;
 

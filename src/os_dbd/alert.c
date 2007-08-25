@@ -184,7 +184,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
             "alert(id,server_id,rule_id,timestamp,location_id,src_ip) "
             "VALUES ('%u', '%u', '%u','%u', '%u', '%lu')",
             db_config->alert_id, db_config->server_id, al_data->rule,
-            time(0), *loc_id, (unsigned long)ntohl(s_ip));
+            (unsigned int)time(0), *loc_id, (unsigned long)ntohl(s_ip));
 
 
     /* Inserting into the db */
