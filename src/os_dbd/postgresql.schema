@@ -1,0 +1,86 @@
+BEGIN;
+
+CREATE TABLE category
+    (
+    cat_id      SERIAL  NOT NULL,
+    cat_name    VARCHAR(32) NOT NULL    UNIQUE,
+    PRIMARY KEY (cat_id)
+    );
+CREATE INDEX cat_name ON category (cat_name);    
+
+CREATE TABLE signature 
+    ( 
+    id          SERIAL          NOT NULL,
+    rule_id     INT8           NOT NULL UNIQUE,
+    level       INT4,
+    description VARCHAR(255)    NOT NULL,
+    PRIMARY KEY (id)
+    );
+CREATE INDEX level ON signature (level);
+CREATE INDEX rule_id ON signature (rule_id);
+
+CREATE TABLE signature_category_mapping
+    (
+    id          SERIAL      NOT NULL,
+    rule_id     INT8       NOT NULL,
+    cat_id      INT4       NOT NULL,
+    PRIMARY KEY  (id, rule_id, cat_id)       
+    );    
+
+CREATE TABLE server 
+    (
+    id              SERIAL               NOT NULL,
+    last_contact    INT8                 NOT NULL,
+    version         VARCHAR(32)          NOT NULL,
+    hostname        VARCHAR(64)          NOT NULL   UNIQUE,
+    information     VARCHAR(128)         NOT NULL,    
+    PRIMARY KEY  (id) 
+    ); 
+
+CREATE TABLE agent 
+    (
+    id              SERIAL       NOT NULL,
+    server_id       INT8         NOT NULL,        
+    last_contact    INT8         NOT NULL,
+    ip_address      INT8         NOT NULL,
+    version         VARCHAR(32)  NOT NULL,
+    name            VARCHAR(64)  NOT NULL,
+    information     VARCHAR(128) NOT NULL,    
+    PRIMARY KEY  (id, server_id) 
+    );
+
+CREATE TABLE location
+    (
+    id              SERIAL          NOT NULL,
+    server_id       INT8            NOT NULL,        
+    name            VARCHAR(128)    NOT NULL,
+    PRIMARY KEY  (id, server_id)
+    );        
+
+CREATE TABLE data
+    (
+    id              INT8        NOT NULL,
+    server_id       INT4        NOT NULL,
+    "user"          TEXT        NOT NULL,
+    full_log        TEXT        NOT NULL,
+    PRIMARY KEY  (id, server_id)
+    );
+    
+CREATE TABLE alert 
+    (
+    id              INT8        NOT NULL, 
+    server_id       INT4        NOT NULL,
+    rule_id         INT8        NOT NULL,    
+    timestamp       INT8        NOT NULL,
+    location_id     INT4        NOT NULL,
+    src_ip          INT8,
+    dst_ip          INT8,
+    src_port        INT4,
+    dst_port        INT4,
+    PRIMARY KEY (id, server_id)
+    );
+CREATE INDEX time on alert(timestamp);    
+CREATE INDEX ruleid on alert(rule_id);    
+CREATE INDEX src_ip on alert(src_ip);    
+    
+COMMIT;
