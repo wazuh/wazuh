@@ -31,6 +31,11 @@
 
 
 
+/* Error count */
+int _db_err = 0;
+
+
+
 /** void osdb_escapestr
  * Escapes a null terminated string before inserting into the database.
  * We built a white list of allowed characters at insert_map. Everything
@@ -55,6 +60,20 @@ void osdb_escapestr(char *str)
     if(*(str -1) == '\\')
     {
         *(str-1) = '\0';
+    }
+}
+
+
+
+/** void osdb_checkerror(void *db_conn)
+ * Checks for errors and handle it appropriately.
+ */
+void osdb_checkerror(void *db_conn)
+{
+    /* If error count is too large, we try to reconnect. */
+    if(_db_err > 10)
+    {
+        osdb_close(db_conn);
     }
 }
 

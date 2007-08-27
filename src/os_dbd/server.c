@@ -53,20 +53,42 @@ int __DBInsertServer(char *server, char *info, DBConfig *db_config)
     
     memset(sql_query, '\0', OS_SIZE_1024);
 
-    /* Generating SQL */
+    /* Checking if the server is present */
     snprintf(sql_query, OS_SIZE_1024 -1,
-            "INSERT INTO "
-            "server(id, last_contact, version, hostname, information) "
-            "VALUES (NULL, '%u', '%s', '%s', '%s') ON DUPLICATE KEY UPDATE "
-            "last_contact='%u',version='%s',information='%s'",
-            (unsigned int)time(0), __version, server, info, 
-            (unsigned int)time(0), __version, info);
-
-
-    /* Checking return code. */
-    if(!osdb_query_insert(db_config->conn, sql_query))
+            "SELECT id from server where hostname = '%s'",
+            server);
+    
+    /* If not present, we insert */
+    if(osdb_query_select(db_config->conn, sql_query) == 0)
     {
-        merror(DB_MAINERROR, ARGV0);
+        snprintf(sql_query, OS_SIZE_1024 -1,
+                "INSERT INTO "
+                "server(id, last_contact, version, hostname, information) "
+                "VALUES (NULL, '%u', '%s', '%s', '%s')",
+                (unsigned int)time(0), __version, server, info);
+
+        /* Checking return code. */
+        if(!osdb_query_insert(db_config->conn, sql_query))
+        {
+            merror(DB_MAINERROR, ARGV0);
+        }
+    }
+
+    /* If it is, we update it */
+    else
+    {
+
+        snprintf(sql_query, OS_SIZE_1024 -1,
+                "UPDATE server SET "
+                "last_contact='%u',version='%s',information='%s' "
+                "WHERE hostname = '%s'",
+                (unsigned int)time(0), __version, info, server);
+
+        /* Checking return code. */
+        if(!osdb_query_insert(db_config->conn, sql_query))
+        {
+            merror(DB_MAINERROR, ARGV0);
+        }
     }
 
     return(0);

@@ -169,7 +169,11 @@ int main(int argc, char **argv)
         merror(DB_CONFIGERR, ARGV0);
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
-    debug1("%s: DEBUG: db connected.", ARGV0);
+    
+
+    /* We must notify that we connected -- easy debugging */
+    verbose("%s: Connected to database '%s' at '%s'.", 
+            ARGV0, db_config.db, db_config.host);
 
     
     /* Privilege separation */	
