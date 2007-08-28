@@ -295,6 +295,16 @@ void LogCollectorStart()
 
                 else if(logff[i].fd != tmp_stat.st_ino)
                 {
+                    char msg_alert[512 +1];
+
+                    snprintf(msg_alert, 512, "ossec: File rotated (inode "
+                                             "changed): '%s'.",
+                                             logff[i].file);
+                     
+                    /* Send message about log rotated  */
+                    SendMSG(logr_queue, msg_alert, 
+                            "ossec-logcollector", LOCALFILE_MQ);
+                            
                     debug1("%s: DEBUG: File inode changed. %s",
                             ARGV0, logff[i].file);
                     
@@ -302,6 +312,25 @@ void LogCollectorStart()
                     logff[i].fp = NULL;
                     handle_file(i, 0, 1);
                     continue;
+                }
+                else if(logff[i].size > tmp_stat.st_size)
+                {
+                    char msg_alert[512 +1];
+
+                    snprintf(msg_alert, 512, "ossec: File size reduced "
+                                             "(inode remained): '%s'.",
+                                             logff[i].file);
+                     
+                    /* Send message about log rotated  */
+                    SendMSG(logr_queue, msg_alert, 
+                            "ossec-logcollector", LOCALFILE_MQ);
+                            
+                    debug1("%s: DEBUG: File size reduced. %s",
+                            ARGV0, logff[i].file);
+
+
+                    /* Fixing size so we don't alert more than once */
+                    logff[i].size = tmp_stat.st_size;
                 }
             }
             
@@ -352,6 +381,7 @@ void LogCollectorStart()
         }
     }
 }
+
 
 
 /**int update_fname(int i): updates file name */
@@ -446,6 +476,7 @@ int handle_file(int i, int do_fseek, int do_log)
         return(-1);
     }
     logff[i].fd = stat_fd.st_ino;
+    logff[i].size =  stat_fd.st_size;
 
 
     /* Setting ignore to zero */

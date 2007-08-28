@@ -250,11 +250,14 @@
 #define DBINIT_ERROR    "%s(5201): Error initializing database handler."
 #define DBCONN_ERROR    "%s(5202): Error connecting to database '%s'(%s): %s."
 #define DBQUERY_ERROR   "%s(5203): Error executing query '%s'. Error: '%s'."
-#define DB_MAINERROR    "%s(5204): Database error. Unable to continue."
+#define DB_GENERROR     "%s(5204): Database error. Unable to run query."
 #define DB_MISS_CONFIG  "%s(5205): Missing database configuration. "\
                         "It requires host, user, pass and database."
 #define DB_CONFIGERR    "%s(5206): Database configuration error."
 #define DB_COMPILED     "%s(5207): OSSEC not compiled with support for '%s'." 
+#define DB_MAINERROR    "%s(5208): Multiple database errors. Exiting."
+#define DB_CLOSING      "%s(5209): Closing connection to database."
+#define DB_ATTEMPT      "%s(5210): Attempting to reconnect to database."
 
 
 

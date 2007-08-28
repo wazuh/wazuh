@@ -134,7 +134,8 @@
     <description>File added to the system.</description>
     <group>syscheck,</group>
   </rule>
-  
+
+  <!-- Hostinfo rules -->  
   <rule id="580" level="8">
     <category>ossec</category>
     <decoded_as>hostinfo_modified</decoded_as>
@@ -148,5 +149,19 @@
     <description>Host information added.</description>
     <group>hostinfo,</group>
   </rule>
+
+
+  <!-- File rotation/reducded rules -->
+  <rule id="591" level="3">
+    <if_sid>500</if_sid>
+    <match>^ossec: File rotated </match>
+    <description>Log file rotated.</description>
+  </rule>
   
+  <rule id="592" level="8">
+    <if_sid>500</if_sid>
+    <match>^ossec: File size reduced</match>
+    <description>Log file size reduced.</description>
+    <group>attacks,</group>
+  </rule>
 </group> <!-- OSSEC -->

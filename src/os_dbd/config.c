@@ -44,6 +44,7 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
     db_config->pass = NULL;
     db_config->db = NULL;
     db_config->db_type = 0;
+    db_config->maxreconnect = 0;
 
 
     /* Reading configuration */

@@ -63,14 +63,14 @@ int __DBInsertServer(char *server, char *info, DBConfig *db_config)
     {
         snprintf(sql_query, OS_SIZE_1024 -1,
                 "INSERT INTO "
-                "server(id, last_contact, version, hostname, information) "
-                "VALUES (NULL, '%u', '%s', '%s', '%s')",
+                "server(last_contact, version, hostname, information) "
+                "VALUES ('%u', '%s', '%s', '%s')",
                 (unsigned int)time(0), __version, server, info);
 
         /* Checking return code. */
         if(!osdb_query_insert(db_config->conn, sql_query))
         {
-            merror(DB_MAINERROR, ARGV0);
+            merror(DB_GENERROR, ARGV0);
         }
     }
 
@@ -87,7 +87,7 @@ int __DBInsertServer(char *server, char *info, DBConfig *db_config)
         /* Checking return code. */
         if(!osdb_query_insert(db_config->conn, sql_query))
         {
-            merror(DB_MAINERROR, ARGV0);
+            merror(DB_GENERROR, ARGV0);
         }
     }
 

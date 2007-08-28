@@ -1,4 +1,5 @@
 # Simple readme with some query examples.
+# Examples for MySQL and PostgreSQL
 
 
 1- View all rules:
@@ -28,7 +29,11 @@
 
 6- View all alerts, including locations (IP as string and time as string):
 
+MySQL:
 >SELECT FROM_UNIXTIME(timestamp) time, rule_id,location.name location, INET_NTOA(src_ip) srcip, full_log FROM alert,location, data WHERE location.id = alert.location_id AND data.id = alert.id AND data.server_id = alert.server_id;
+
+PostgreSQL:
+>SELECT to_timestamp(timestamp), rule_id, location.name, full_log FROM alert,location, data WHERE location.id = alert.location_id AND data.id = alert.id AND data.server_id = alert.server_id;
 
 Output:
 

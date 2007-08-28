@@ -57,15 +57,15 @@ int __Groups_InsertGroup(char *group, DBConfig *db_config)
     /* Generating SQL */
     snprintf(sql_query, OS_SIZE_1024 -1,
             "INSERT INTO "
-            "category(cat_id, cat_name) "
-            "VALUES (NULL, '%s')",
+            "category(cat_name) "
+            "VALUES ('%s')",
             group);
 
 
     /* Checking return code. */
     if(!osdb_query_insert(db_config->conn, sql_query))
     {
-        merror(DB_MAINERROR, ARGV0);
+        merror(DB_GENERROR, ARGV0);
     }
 
     return(0);
@@ -110,15 +110,15 @@ int __Groups_InsertGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
     /* Generating SQL */
     snprintf(sql_query, OS_SIZE_1024 -1,
             "INSERT INTO "
-            "signature_category_mapping(id, cat_id, rule_id) "
-            "VALUES (NULL, '%u', '%u')",
+            "signature_category_mapping(cat_id, rule_id) "
+            "VALUES ('%u', '%u')",
             cat_id, rule_id);
 
 
     /* Checking return code. */
     if(!osdb_query_insert(db_config->conn, sql_query))
     {
-        merror(DB_MAINERROR, ARGV0);
+        merror(DB_GENERROR, ARGV0);
     }
 
     return(0);
@@ -257,18 +257,31 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
     
     /* Generating SQL */
     snprintf(sql_query, OS_SIZE_1024 -1,
-             "INSERT INTO "
-             "signature(id, rule_id, level, description) "
-             "VALUES (NULL, '%u','%u','%s') "
-             "ON DUPLICATE KEY UPDATE level='%u'", 
-             rule->sigid, rule->level, rule->comment,
-             rule->level);
+             "SELECT id FROM signature "
+             "where rule_id = %u",
+             rule->sigid);
     
+    if(osdb_query_select(dbc->conn, sql_query) == 0)
+    {
+        snprintf(sql_query, OS_SIZE_1024 -1,
+                "INSERT INTO "
+                "signature(rule_id, level, description) "
+                "VALUES ('%u','%u','%s')",
+                rule->sigid, rule->level, rule->comment);
+    }
+    else
+    {
+        snprintf(sql_query, OS_SIZE_1024 -1,
+                "UPDATE signature SET level='%u',description='%s' "
+                "WHERE id='%u'",
+                rule->level, rule->comment,rule->sigid);
+    }
+
     
     /* Checking return code. */
     if(!osdb_query_insert(dbc->conn, sql_query))
     {
-        merror(DB_MAINERROR, ARGV0);
+        merror(DB_GENERROR, ARGV0);
     }
 
     return(NULL);

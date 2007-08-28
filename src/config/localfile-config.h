@@ -27,6 +27,7 @@
 /* Logreader config */
 typedef struct _logreader
 {
+    unsigned int size;
     int ign;
     ino_t fd;
         

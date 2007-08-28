@@ -83,15 +83,15 @@ int __DBInsertLocation(char *location, DBConfig *db_config)
     /* Generating SQL */
     snprintf(sql_query, OS_SIZE_1024 -1,
             "INSERT INTO "
-            "location(id, server_id, name) "
-            "VALUES (NULL, '%u', '%s')",
+            "location(server_id, name) "
+            "VALUES ('%u', '%s')",
             db_config->server_id, location);
 
 
     /* Checking return code. */
     if(!osdb_query_insert(db_config->conn, sql_query))
     {
-        merror(DB_MAINERROR, ARGV0);
+        merror(DB_GENERROR, ARGV0);
     }
 
     return(0);
@@ -165,7 +165,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     /* Inserting data */
     snprintf(sql_query, OS_SIZE_2048,
             "INSERT INTO "
-            "data(id, server_id, user,full_log) "
+            "data(id, server_id, \"user\",full_log) "
             "VALUES ('%u', '%u', '%s', '%s') ",
             db_config->alert_id, db_config->server_id, 
             al_data->user, al_data->log[0]);
@@ -173,7 +173,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     /* Inserting into the db */
     if(!osdb_query_insert(db_config->conn, sql_query))
     {
-        merror(DB_MAINERROR, ARGV0);
+        merror(DB_GENERROR, ARGV0);
     }
                                 
 
@@ -190,7 +190,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     /* Inserting into the db */
     if(!osdb_query_insert(db_config->conn, sql_query))
     {
-        merror(DB_MAINERROR, ARGV0);
+        merror(DB_GENERROR, ARGV0);
     }
 
     

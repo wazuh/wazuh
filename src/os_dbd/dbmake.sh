@@ -51,7 +51,8 @@ if [ $? = 0 ]; then
         do
             ls $j > /dev/null 2>&1
             if [ $? = 0 ]; then
-                PL="$j -lpq";
+                PG_MAIN=`dirname $j`;
+                PL="-L$j -L${PG_MAIN} -lpq";
                 break
             fi    
         done
@@ -89,7 +90,7 @@ fi
 if [ "X$PI" = "X" -o "X$PL" = "X" ]; then
     POSTGRES_FINAL=""
 else
-    POSTGRES_FINAL="-I$PI -L$PL -DDBD -DUPOSTGRES"    
+    POSTGRES_FINAL="-I$PI $PL -DDBD -DUPOSTGRES"    
 fi
 
 

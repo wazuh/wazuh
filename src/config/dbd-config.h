@@ -22,6 +22,7 @@ typedef struct _DBConfig
     unsigned int alert_id;
     unsigned int server_id;
     unsigned int error_count;
+    unsigned int maxreconnect;
 
     char *host;
     char *user;

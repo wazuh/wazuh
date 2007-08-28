@@ -159,11 +159,35 @@ int main(int argc, char **argv)
     debug1("%s: DEBUG: Connecting to '%s', using '%s', '%s', '%s'.",
            ARGV0, db_config.host, db_config.user, 
            db_config.pass, db_config.db);
+
+
+    /* Setting config pointer */
+    osdb_setconfig(&db_config);
+
+
+    /* Getting maximum reconned attempts */
+    db_config.maxreconnect = getDefine_Int("dbd",
+                                           "reconnect_attempts", 1, 9999);
     
     
     /* Connecting to the database */
-    db_config.conn = osdb_connect(db_config.host, db_config.user, 
-                                  db_config.pass, db_config.db);
+    c = 0;
+    while(c <= db_config.maxreconnect)
+    {
+        db_config.conn = osdb_connect(db_config.host, db_config.user, 
+                                      db_config.pass, db_config.db);
+
+        /* If we are able to reconnect, keep going */
+        if(db_config.conn)
+        {
+            break;
+        }
+
+        sleep(c + 2);
+    }
+
+
+    /* If after the maxreconnect attempts, it still didn't work, exit here. */
     if(!db_config.conn)
     {
         merror(DB_CONFIGERR, ARGV0);

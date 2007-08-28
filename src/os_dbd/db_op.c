@@ -16,8 +16,7 @@
 /* Common lib for dealing with databases */
 
 
-#include "shared.h"
-#include "db_op.h"
+#include "dbd.h"
 
 /* Using Mysql */
 #ifdef UMYSQL
@@ -31,8 +30,8 @@
 
 
 
-/* Error count */
-int _db_err = 0;
+/* Config pointer */
+DBConfig *db_config_pt = NULL;
 
 
 
@@ -65,16 +64,78 @@ void osdb_escapestr(char *str)
 
 
 
-/** void osdb_checkerror(void *db_conn)
+/** void osdb_checkerror()
  * Checks for errors and handle it appropriately.
  */
-void osdb_checkerror(void *db_conn)
+void osdb_checkerror()
 {
-    /* If error count is too large, we try to reconnect. */
-    if(_db_err > 10)
+    int sleep_time = 3;
+    if(!db_config_pt)
     {
-        osdb_close(db_conn);
+        ErrorExit(DB_MAINERROR, ARGV0);
     }
+
+    
+    /* If error count is too large, we try to reconnect. */
+    if(db_config_pt->error_count > 5)
+    {
+        int i = 0;
+        if(db_config_pt->conn)
+        {
+            osdb_close(db_config_pt->conn);       
+            db_config_pt->conn = NULL;
+        }
+
+        while(i <= db_config_pt->maxreconnect)
+        {
+            merror(DB_ATTEMPT, ARGV0);
+            db_config_pt->conn = osdb_connect(db_config_pt->host, 
+                                              db_config_pt->user,
+                                              db_config_pt->pass, 
+                                              db_config_pt->db);
+            
+            /* If we were able to reconnect, keep going. */
+            if(db_config_pt->conn)
+            {
+                break;
+            }
+            sleep(sleep_time);
+            sleep_time *= 3;
+            i++;
+        }
+
+
+        /* If we weren't able to connect, exit */
+        if(!db_config_pt->conn)
+        {
+            ErrorExit(DB_MAINERROR, ARGV0);
+        }
+        
+        
+        db_config_pt->error_count = 0;
+        verbose("%s: Connected to database '%s' at '%s'.",
+                ARGV0, db_config_pt->db, db_config_pt->host);
+        
+    }
+}
+
+
+/** void osdb_seterror()
+ * Sets the error counter.
+ */
+void osdb_seterror()
+{
+    db_config_pt->error_count++;
+    osdb_checkerror();
+}
+
+
+/** void osdb_setconfig(DBConfig *db_config)
+ * Creates an internal pointer to the db configuration.
+ */
+void osdb_setconfig(DBConfig *db_config)
+{
+    db_config_pt = db_config;
 }
 
 
@@ -111,6 +172,7 @@ void *mysql_osdb_connect(char *host, char *user, char *pass, char *db)
  */
 void *mysql_osdb_close(void *db_conn)
 {
+    merror(DB_CLOSING, ARGV0);
     mysql_close(db_conn);
     return(NULL);
 }
@@ -126,6 +188,7 @@ int mysql_osdb_query_insert(void *db_conn, char *query)
     {
         /* failure; report error */
         merror(DBQUERY_ERROR, ARGV0, query, mysql_error(db_conn));
+        osdb_seterror();
         return(0);
     }
 
@@ -150,6 +213,7 @@ int mysql_osdb_query_select(void *db_conn, char *query)
     {
         /* failure; report error */
         merror(DBQUERY_ERROR, ARGV0, query, mysql_error(db_conn));
+        osdb_seterror();
         return(0);
     }
 
@@ -160,6 +224,7 @@ int mysql_osdb_query_select(void *db_conn, char *query)
     {
         /* failure; report error */
         merror(DBQUERY_ERROR, ARGV0, query, mysql_error(db_conn));
+        osdb_seterror();
         return(0);
     }
     
@@ -214,6 +279,7 @@ void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db)
  */
 void *postgresql_osdb_close(void *db_conn)
 {
+    merror(DB_CLOSING, ARGV0);
     PQfinish(db_conn);
     return(NULL);
 }
@@ -229,10 +295,19 @@ int postgresql_osdb_query_insert(void *db_conn, char *query)
     
     
     result = PQexec(db_conn,query);
+    if(!result)
+    {
+        merror(DBQUERY_ERROR, ARGV0, query, PQerrorMessage(db_conn));
+        osdb_seterror();
+        return(0);
+    }
+    
+    
     if(PQresultStatus(result) != PGRES_COMMAND_OK)
     {
         merror(DBQUERY_ERROR, ARGV0, query, PQerrorMessage(db_conn));
         PQclear(result);
+        osdb_seterror();
         return(0);
     }
 
@@ -253,6 +328,13 @@ int postgresql_osdb_query_select(void *db_conn, char *query)
     PGresult *result;
 
     result = PQexec(db_conn,query);
+    if(!result)
+    {
+        merror(DBQUERY_ERROR, ARGV0, query, PQerrorMessage(db_conn));
+        osdb_seterror();
+        return(0);
+    }
+    
     if((PQresultStatus(result) == PGRES_TUPLES_OK))
     {
         if(PQntuples(result) == 1)
@@ -260,15 +342,15 @@ int postgresql_osdb_query_select(void *db_conn, char *query)
             result_int = atoi(PQgetvalue(result,0,0));
         }
     }
-
-
-    /* Report error */
-    if(result_int == 0)
+    else
     {
         merror(DBQUERY_ERROR, ARGV0, query, PQerrorMessage(db_conn));
+        osdb_seterror();
+        return(0);
     }
 
-    
+
+    /* Clear result */
     PQclear(result);
 
 

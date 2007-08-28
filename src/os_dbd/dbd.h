@@ -48,6 +48,10 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config);
 void OS_DBD(DBConfig *db_config);
 
 
+/* Setting config pointer for osbd_op */
+void osdb_setconfig(DBConfig *db_config);
+
+
 
 /** Global vars **/
 

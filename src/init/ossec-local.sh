@@ -4,17 +4,28 @@
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 
+# Getting where we are installed
 LOCAL=`dirname $0`;
 cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
+PLIST=${DIR}/bin/.process_list;
 cd $OLDPWD >/dev/null 2>&1;
 
+
 ###  Do not modify bellow here ###
+
+# Getting additional processes
+ls -la ${PLIST} > /dev/null 2>&1
+if [ $? = 0 ]; then
+. ${PLIST};
+fi
+
+
 NAME="OSSEC HIDS"
 VERSION="v1.3"
 AUTHOR="Daniel B. Cid"
-DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-dbd ossec-execd"
+DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON}"
 
 
 ## Locking for the start/stop
@@ -77,8 +88,34 @@ unlock()
 help()
 {
     # Help message
-    echo "Usage: $0 {start|stop|restart|status}";
+    echo ""
+    echo "Usage: $0 {start|stop|restart|status|enable}";
     exit 1;
+}
+
+
+# Enables/disables additional daemons
+enable()
+{
+    if [ "X$2" = "X" ]; then
+        echo ""
+        echo "Enable options: database"
+        echo "Usage: $0 enable database"
+        exit 1;
+    fi
+    
+    if [ "X$2" = "Xdatabase" ]; then
+        echo "DB_DAEMON=ossec-dbd" >> ${PLIST};
+    else
+        echo ""
+        echo "Invalid enable option."
+        echo ""
+        echo "Enable options: database"
+        echo "Usage: $0 enable database"
+        exit 1;
+    fi         
+
+    
 }
 
 
@@ -99,7 +136,7 @@ status()
 # Start function
 start()
 {
-    SDAEMONS="ossec-maild ossec-dbd ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
+    SDAEMONS="${DB_DAEMON} ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
     
     echo "Starting $NAME $VERSION (by $AUTHOR)..."
     lock;
@@ -203,6 +240,9 @@ case "$1" in
   help)  
     help
     ;;
+  enable)
+    enable $1 $2;
+    ;;  
   *)
     help
 esac
