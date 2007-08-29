@@ -70,7 +70,7 @@ void osdb_escapestr(char *str)
 void osdb_checkerror()
 {
     int sleep_time = 3;
-    if(!db_config_pt)
+    if(!db_config_pt || db_config_pt->error_count > 10)
     {
         ErrorExit(DB_MAINERROR, ARGV0);
     }
@@ -112,7 +112,6 @@ void osdb_checkerror()
         }
         
         
-        db_config_pt->error_count = 0;
         verbose("%s: Connected to database '%s' at '%s'.",
                 ARGV0, db_config_pt->db, db_config_pt->host);
         

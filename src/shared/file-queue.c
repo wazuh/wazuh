@@ -24,6 +24,7 @@ char *(s_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
                    "Sep","Oct","Nov","Dec"};
 
 
+
 /** void file_sleep();
  * file_sleep
  */
@@ -47,6 +48,7 @@ void file_sleep()
 }
 
 
+
 /** void GetFile_Queue(file_queue *fileq)
  * Get the file queue for that specific hour
  */
@@ -63,6 +65,7 @@ void GetFile_Queue(file_queue *fileq)
                                fileq->mon,
                                fileq->day);  
 }
+
 
 
 /** int Handle_Queue(file_queue *fileq)
@@ -117,7 +120,8 @@ int Handle_Queue(file_queue *fileq, u_int8_t seek_end)
 }
 
 
-/** int Init_FileQueue(file_queue *fileq)
+
+/** int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
  * Initiates the file monitoring.
  */
 int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
@@ -152,31 +156,14 @@ int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
 }
 
 
-/** int Read_FileMon(file_queue *file, char *buffer, int buffer_size)
+
+/** int Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
  * Reads from the monitored file.
  */
 alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
 {
     int i = 0;
     alert_data *al_data;
-    
-    
-    /* Getting currently file */
-    if(p->tm_mday != fileq->day)
-    {
-        fileq->day = p->tm_mday;
-        fileq->year = p->tm_year+1900;
-        strncpy(fileq->mon, s_month[p->tm_mon], 4);
-
-        /* Getting latest file */
-        GetFile_Queue(fileq);
-
-        if(Handle_Queue(fileq, 0) == -1)
-        {
-            file_sleep();
-            return(NULL);
-        }
-    }
 
     
     /* If the file queue is not available, try to access it */
@@ -188,8 +175,35 @@ alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
             return(NULL);
         }
     }
-    
 
+    
+    /* Getting currently file */
+    if(p->tm_mday != fileq->day)
+    {
+        /* If the day changes, we need to get all remaining alerts. */
+        al_data = GetAlertData(fileq->flags, fileq->fp);
+        if(!al_data)
+        {
+            fileq->day = p->tm_mday;
+            fileq->year = p->tm_year+1900;
+            strncpy(fileq->mon, s_month[p->tm_mon], 4);
+
+            /* Getting latest file */
+            GetFile_Queue(fileq);
+
+            if(Handle_Queue(fileq, 0) == -1)
+            {
+                file_sleep();
+                return(NULL);
+            }
+        }
+        else
+        {
+            return(al_data);
+        }
+    }
+
+    
     /* Try up to timeout times to get an event */
     while(i < timeout)
     {
@@ -203,6 +217,8 @@ alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
         file_sleep();
     }
 
+    
+    /* Returning NULL if timeout expires. */
     return(NULL);
 }
 
