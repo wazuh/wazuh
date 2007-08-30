@@ -70,6 +70,13 @@
     <group>spam,</group>
   </rule>
   
+  <rule id="3109" level="8">
+    <if_sid>3100</if_sid>
+    <match>savemail panic</match>
+    <description>Sendmail save mail panic.</description>
+    <group>system_error,</group>
+  </rule>
+  
   <rule id="3151" level="10" frequency="6" timeframe="120">
     <if_matched_sid>3102</if_matched_sid>
     <same_source_ip />

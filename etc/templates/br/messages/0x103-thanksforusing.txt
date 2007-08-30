@@ -3,7 +3,7 @@
     Se você tiver alguma pergunta, sugestão ou encontrar algum 
     "bug", nos contate através do e-mail contact@ossec.net ou
     utilize nossa lista de e-mail: 
-    ( http://www.ossec.net/en/mailing_lists.html ).
+    ( http://www.ossec.net/main/support/ ).
 
     Maiores informações podem ser encontradas em http://www.ossec.net
 

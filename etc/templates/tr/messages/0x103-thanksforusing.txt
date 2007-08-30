@@ -4,7 +4,7 @@
     bulursanız contact@ossec.net adresi ile veya kamuya açık
     e-posta listemiz ile ossec-list@ossec.net adresinden iletişime 
     geçiniz.   
-    (http://mailman.underlinux.com.br/mailman/listinfo/ossec-list).
+    ( http://www.ossec.net/main/support/ ).
 
     http://www.ossec.net adresinde daha fazla bilgi bulunabilir.
 

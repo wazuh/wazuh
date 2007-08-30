@@ -334,6 +334,7 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
             if(strcmp(_lxml->el[i],element_name[j]) == 0)
             {
                 j++;
+                matched = 1;
                 if(element_name[j] == NULL)
                 {	
                     if(attr != NULL)
@@ -382,9 +383,6 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
                 }
                 continue;
             }
-            if((i<_lxml->cur-1)&&(_lxml->tp[i+1]==XML_ELEM)&&
-                    (j!=0))
-                j=_lxml->rl[i+1];
         }
 
         if(j > _lxml->rl[i])

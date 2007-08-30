@@ -19,6 +19,7 @@
     <include>courier_rules.xml</include>
     <include>web_rules.xml</include>
     <include>apache_rules.xml</include>
+    <include>mysql_rules.xml</include>
     <include>ids_rules.xml</include>
     <include>squid_rules.xml</include>
     <include>firewall_rules.xml</include>
