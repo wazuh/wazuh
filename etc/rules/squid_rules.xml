@@ -26,7 +26,6 @@
   
 <group name="squid,">
   <rule id="35000" level="0">
-    <decoded_as>squid-accesslog</decoded_as>
     <category>squid</category>
     <description>Squid messages grouped.</description>
   </rule>    

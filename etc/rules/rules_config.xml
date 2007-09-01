@@ -46,7 +46,7 @@
 <group name="squid">
   <rule id="05" level="0" noalert="1">
     <category>squid</category>
-    <description>Generic template for all squid rules.</description>
+    <description>Generic template for all web proxy rules.</description>
   </rule>
 </group>
 
