@@ -356,13 +356,14 @@ int config_syscheck()
             "    <ignore>%s/Fonts</ignore>\r\n"
             "    <ignore>%s/PCHEALTH</ignore>\r\n"
             "    <ignore>%s/system32/dllcache</ignore>\r\n"
+            "    <ignore>%s/system32/spool</ignore>\r\n"
             "    <ignore type=\"sregex\">.log$|.htm$|.jpg$|.png$|.chm$|.pnf$</ignore>\r\n"
             "  </syscheck>\r\n"
             "</ossec_config>\r\n",
             win_dir, win_dir, win_dir, win_dir, win_dir,
             win_dir, win_dir, win_dir, win_dir, win_dir,
             win_dir, win_dir, win_dir, win_dir, win_dir,
-            win_dir, win_dir);
+            win_dir, win_dir, win_dir);
 
     fclose(fp);
 

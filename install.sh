@@ -282,6 +282,22 @@ SetupLogs()
           echo "    -- $i (apache log)"
         fi
     done
+
+    # Getting postgresql logs
+    PGSQL_FILES=`cat ${PGSQL_TEMPLATE}`
+    for i in ${PGSQL_FILES}; do
+        ls $i > /dev/null 2>&1
+        if [ $? = 0 ]; then
+          echo "" >> $NEWCONFIG
+          echo "  <localfile>" >> $NEWCONFIG
+          echo "    <log_format>postgresql_log</log_format>" >> $NEWCONFIG
+          echo "    <location>$i</location>" >>$NEWCONFIG
+          echo "  </localfile>" >> $NEWCONFIG
+          
+          echo "    -- $i (postgresql log)"
+        fi
+    done
+   
    
     echo "" 
     catMsg "0x106-logs"

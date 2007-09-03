@@ -93,6 +93,10 @@ void LogCollectorStart()
             {
                 logff[i].read = (void *)read_mysql_log;
             }
+            else if(strcmp("postgresql_log", logff[i].logformat) == 0)
+            {
+                logff[i].read = (void *)read_postgresql_log;
+            }
             else
             {
                 logff[i].read = (void *)read_syslog;

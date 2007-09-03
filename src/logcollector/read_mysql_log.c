@@ -159,7 +159,7 @@ void *read_mysql_log(int pos, int *rc, int drop_it)
         /* Sending message to queue */
         if(drop_it == 0)
         {
-            if(SendMSG(logr_queue, buffer, logff[pos].file,LOCALFILE_MQ) < 0)
+            if(SendMSG(logr_queue, buffer, logff[pos].file, MYSQL_MQ) < 0)
             {
                 merror(QUEUE_SEND, ARGV0);
                 if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
