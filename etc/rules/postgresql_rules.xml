@@ -52,7 +52,7 @@
   
   <rule id="50510" level="0">
     <if_sid>50501</if_sid>
-    <match> duration: </regex>
+    <match> duration: </match>
     <description>Database query.</description>
   </rule>
   
