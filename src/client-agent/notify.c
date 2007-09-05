@@ -52,7 +52,7 @@ char *getsharedfiles()
     if(!ret)
     {
         closedir(dp);
-        merror(MEM_ERROR);
+        merror(MEM_ERROR, ARGV0);
         return(NULL);
     }
     tmp_ret = ret;

@@ -243,7 +243,7 @@ int Rules_OP_ReadRules(char * rulefile)
             if((!rule[j]->attributes) || (!rule[j]->values))
             {
                 merror("%s: Invalid rule '%d'. You must specify"
-                        " an ID and a level at least.",j);
+                        " an ID and a level at least.", ARGV0, j);
                 OS_ClearXML(&xml);
                 return(-1);
             }
@@ -1700,8 +1700,7 @@ void printRuleinfo(RuleInfo *rule, int node)
             node,
             rule->sigid, 
             rule->level,
-            rule->ignore_time,
-            rule->frequency);
+            rule->ignore_time);
 }
 
 

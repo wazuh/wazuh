@@ -188,7 +188,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     {
         if(!tmp_ar->agent_id)
         {
-            merror(AR_DEF_AGENT);
+            merror(AR_DEF_AGENT, ARGV0);
             return(-1);
         }
 

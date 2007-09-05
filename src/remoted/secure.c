@@ -64,7 +64,7 @@ void HandleSecure()
      */
     if((logr.m_queue = StartMQ(DEFAULTQUEUE,WRITE)) < 0)
     {
-        ErrorExit(QUEUE_FATAL,ARGV0, DEFAULTQUEUE, strerror(errno));
+        ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
     }
         
 
@@ -186,7 +186,7 @@ void HandleSecure()
         if(SendMSG(logr.m_queue, tmp_msg, srcmsg, 
                     SECURE_MQ) < 0)
         {
-            merror(QUEUE_ERROR,ARGV0,DEFAULTQUEUE);
+            merror(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
 
             if((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0)
             {

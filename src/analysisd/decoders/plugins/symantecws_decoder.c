@@ -19,7 +19,7 @@
 /* Symantec Web Security decoder init */
 void *SymantecWS_Decoder_Init()
 {
-    debug1("%s: Initializing SymantecWS decoder..");
+    debug1("%s: Initializing SymantecWS decoder..", ARGV0);
 
     /* There is nothing to do over here */
     return(NULL);

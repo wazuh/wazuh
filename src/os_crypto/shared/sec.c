@@ -592,7 +592,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
     /* Decrypting message */
     if(!OS_BF_Str(buffer, cleartext, keys->keys[id], buffer_size, OS_DECRYPT)) 
     {
-        merror(ENCKEY_ERROR, __local_name, keys->ips[id]);
+        merror(ENCKEY_ERROR, __local_name, keys->ips[id]->ip);
         return(NULL);
     }
 
@@ -623,7 +623,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         f_msg = CheckSum(buffer);
         if(f_msg == NULL)
         {
-            merror(ENCSUM_ERROR, __local_name, keys->ips[id]);
+            merror(ENCSUM_ERROR, __local_name, keys->ips[id]->ip);
             return(NULL);
         }
 
@@ -697,7 +697,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
         f_msg = CheckSum(cleartext);
         if(f_msg == NULL)
         {
-            merror(ENCSUM_ERROR, __local_name, keys->ips[id]);
+            merror(ENCSUM_ERROR, __local_name, keys->ips[id]->ip);
             return(NULL);
         }
 
@@ -732,7 +732,7 @@ char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext,
 
 
         /* Warn about duplicated message */
-        merror("%s: Duplicate error:  msg_count: %d, time: %d, "
+        merror("%s: Duplicate error:  msg_count: %d, time: %ld, "
                 "saved count: %d, saved_time:%d",
                 __local_name,
                 msg_count,

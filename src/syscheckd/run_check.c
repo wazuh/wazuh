@@ -227,7 +227,7 @@ void start_daemon()
 
             /* Sending database completed message */
             notify_agent(HC_SK_DB_COMPLETED, 1);
-            debug2("%s: DEBUG: Sending database completed message.");
+            debug2("%s: DEBUG: Sending database completed message.", ARGV0);
 
             
             prev_time_sk = time(0);

@@ -155,7 +155,7 @@ int k_extract()
     fp = fopen(AUTH_FILE, "r");
     if(!fp)
     {
-        ErrorExit(FOPEN_ERROR, ARGV0);
+        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
     }
     
     fsetpos(fp, &fp_pos);

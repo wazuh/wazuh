@@ -75,7 +75,7 @@ int main(int argc, char **argv)
     gid = Privsep_GetGroup(group);
     if(gid < 0)
     {
-	    ErrorExit(USER_ERROR,"",group);
+	    ErrorExit(USER_ERROR, ARGV0, "", group);
     }
 	
     

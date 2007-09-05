@@ -70,7 +70,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
                 {
                     if(OS_IsValidIP(s_ip, NULL) != 1)
                     {
-                        merror(INVALID_IP, ARGV0, logr->rip);
+                        merror(INVALID_IP, ARGV0, s_ip);
                     }
                     else
                     {

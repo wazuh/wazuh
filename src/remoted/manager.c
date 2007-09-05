@@ -360,7 +360,7 @@ void read_controlmsg(int agentid, char *msg)
     if(!msg)
     {
         merror("%s: Invalid message from '%s' (uname)",ARGV0, 
-                                                       keys.ips[agentid]);
+                                                       keys.ips[agentid]->ip);
         return;
     }
 
@@ -407,7 +407,7 @@ void read_controlmsg(int agentid, char *msg)
         {
             merror("%s: Invalid message from '%s' (strchr \\n)",
                         ARGV0, 
-                        keys.ips[agentid]);
+                        keys.ips[agentid]->ip);
             break;
         }
 
@@ -419,7 +419,7 @@ void read_controlmsg(int agentid, char *msg)
         {
             merror("%s: Invalid message from '%s' (strchr ' ')",
                         ARGV0, 
-                        keys.ips[agentid]);
+                        keys.ips[agentid]->ip);
             break;
         }
 

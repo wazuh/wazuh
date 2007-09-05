@@ -54,6 +54,8 @@
 /* Pre-def fields */
 #define FL_NOKEY        "<insert_auth_key_here>"
 #define FL_NOSERVER     "<insert_server_ip_here>"
+#define SERVER_IP_USED      1
+#define SERVER_HOST_USED    2
 
 
 /* Prototypes */
@@ -64,6 +66,7 @@ char *encode_base64(int size, char *src);
 /* Global ossec config structure */
 typedef struct _ossec_config
 {
+    unsigned short int server_type;
     unsigned long int msg_sent;
     char *dir;
     char *config;

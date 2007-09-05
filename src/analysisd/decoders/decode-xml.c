@@ -787,7 +787,7 @@ int ReadDecodeXML(char *file)
             os_calloc(1, sizeof(OSMatch), pi->program_name);
             if(!OSMatch_Compile(p_name, pi->program_name, 0))
             {
-                merror(REGEX_COMPILE, ARGV0, p_name, "compile failed");
+                merror(REGEX_COMPILE, ARGV0, p_name, pi->program_name->error);
                 return(0);
             }
 

@@ -372,13 +372,8 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
             /* Veryfying that the name is valid */
             name = _rkcl_get_name(nbuf, ref, &condition);
 
-            if(name == NULL)
+            if(name == NULL || condition == RKCL_COND_INV)
             {
-                if(condition == RKCL_COND_INV)
-                {
-                    merror(INVALID_RKCL_NAME, ARGV0);
-                }
-                
                 merror(INVALID_RKCL_NAME, ARGV0, nbuf);
                 return(0);
             }
@@ -597,11 +592,6 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
             }
             else
             {
-                if(condition == RKCL_COND_INV)
-                {
-                    merror(INVALID_RKCL_NAME, ARGV0);
-                }
-
                 merror(INVALID_RKCL_NAME, ARGV0, nbuf);
                 return(0);
             }

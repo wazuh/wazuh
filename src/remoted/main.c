@@ -81,7 +81,7 @@ int main(int argc, char **argv)
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if((uid < 0)||(gid < 0))
-        ErrorExit(USER_ERROR,user,group);
+        ErrorExit(USER_ERROR, ARGV0, user, group);
 
 
     /* pid before going daemon */

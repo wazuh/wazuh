@@ -319,8 +319,10 @@ int get_ossec_server()
 
     char *str = NULL;
 
+
     /* Definitions */
     char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
+    char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
 
 
     /* Reading XML */
@@ -330,18 +332,22 @@ int get_ossec_server()
     }
 
 
-    /* run as a daemon */
+    /* We need to remove the entry for the server */
+    if(config_inst.server)
+    {
+        free(config_inst.server);
+        config_inst.server = NULL;
+    }
+    config_inst.server_type = 0;
+
+
+    /* Getting ip */
     str = OS_GetOneContentforElement(&xml, xml_serverip);
     if(str)
     {
         if(OS_IsValidIP(str, NULL) == 1)
         {
-            if(config_inst.server)
-            {
-                free(config_inst.server);
-                config_inst.server = NULL;
-            }
-                                                            
+            config_inst.server_type = SERVER_IP_USED;
             config_inst.server = str;
         
             OS_ClearXML(&xml);
@@ -350,6 +356,33 @@ int get_ossec_server()
 
         free(str);
     }
+    /* If we dont find the ip, try the server-hostname */
+    else
+    {
+        str = OS_GetOneContentforElement(&xml, xml_serverhost);
+        if(str)
+        {
+            char *s_ip;
+            s_ip = OS_GetHost(node[i]->content, 5);
+            if(s_ip)
+            {
+                /* Clearing the host memory */
+                free(s_ip);
+
+                /* Assigning the hostname to the server info */
+                config_inst.server_type = SERVER_HOST_USED;
+                config_inst.server = str;
+                OS_ClearXML(&xml);
+                return(1);
+            }
+            free(str);
+        }
+    }
+
+
+    /* Setting up final server name when not available */
+    config_inst.server = strdup(FL_NOSERVER);
+    
 
     OS_ClearXML(&xml);
     return(0);
@@ -359,21 +392,38 @@ int get_ossec_server()
 /* Set OSSEC Server IP */
 int set_ossec_server(char *ip, HWND hwnd)
 {
+    char **xml_pt = NULL;
     char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
+    char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
     
+
     /* Verifying IP Address */
     if(OS_IsValidIP(ip, NULL) != 1)
     {
-        MessageBox(hwnd, "Invalid Server IP Address.\r\n"
-                   "It must be the valid Ipv4 address of the "
-                   "OSSEC server.",
-                   "Invalid Server IP Address",MB_OK);
-        return(0);
+        char *s_ip;
+        s_ip = OS_GetHost(ip, 5);
+
+        if(!s_ip)
+        {
+            MessageBox(hwnd, "Invalid Server IP Address.\r\n"
+                             "It must be the valid Ipv4 address of the "
+                             "OSSEC server or its resolvable hostname.",
+                             "Invalid Server IP Address.",MB_OK);
+            return(0);
+        }
+        config_inst.server_type = SERVER_HOST_USED;
+        xml_pt = xml_serverhost;
+    }
+    else
+    {
+        config_inst.server_type = SERVER_IP_USED;
+        xml_pt = xml_serverip;
     }
 
 
+
     /* Reading the XML. Printing error and line number */
-    if(OS_WriteXML(CONFIG, NEWCONFIG, xml_serverip, 
+    if(OS_WriteXML(CONFIG, NEWCONFIG, xml_pt, 
                    NULL, NULL, ip, 0) != 0)
     {
         MessageBox(hwnd, "Unable to set OSSEC Server IP Address.\r\n"

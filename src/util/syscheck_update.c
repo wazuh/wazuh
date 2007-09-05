@@ -56,7 +56,7 @@ int main(int argc, char **argv)
     uid = Privsep_GetUser(user);
     if(gid < 0)
     {
-	    ErrorExit(USER_ERROR,user,group);
+	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
 	
     

@@ -20,7 +20,7 @@
 /* OpenBSD PF decoder init */
 void *PF_Decoder_Init()
 {
-    debug1("%s: Initializing PF decoder..");
+    debug1("%s: Initializing PF decoder..", ARGV0);
 
     /* There is nothing to do over here */
     return(NULL);
