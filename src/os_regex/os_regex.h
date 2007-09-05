@@ -10,7 +10,6 @@
  */
 
 /* See README for details */
-/* http://www.ossec.net/c/os_regex/ */
 
 
 #ifndef __OS_REGEX_H

@@ -10,7 +10,6 @@
  */
 
 /* os_xml Library.
- * Available at http://www.ossec.net/c/os_xml/
  */
 
 

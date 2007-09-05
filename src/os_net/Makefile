@@ -1,6 +1,5 @@
 # Makefile for os_net
 # Daniel B. Cid <daniel.cid@gmail.com>||<daniel@underlinux.com.br>
-# http://www.ossec.net/c/os_net/
 
 PT=../
 NAME=os_net

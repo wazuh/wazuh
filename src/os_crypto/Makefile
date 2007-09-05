@@ -1,6 +1,5 @@
 # Makefile for os_crypto
 # Daniel B. Cid <daniel.cid@gmail.com>||<daniel@underlinux.com.br>
-# http://www.ossec.net/c/os_crypto/
 
 PT=../
 NAME=os_crypto

@@ -1,6 +1,5 @@
 # Makefile for os_crypto md5
 # Daniel B. Cid <dcid@sourcefire.com>||<daniel@underlinux.com.br>
-# http://www.ossec.net/c/os_crypto/
 
 PT=../../
 NAME=md5_op

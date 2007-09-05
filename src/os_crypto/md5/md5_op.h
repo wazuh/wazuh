@@ -11,7 +11,6 @@
 
 /* OS_crypto/md5 Library.
  * APIs for many crypto operations.
- * Available at http://www.ossec.net/c/os_crypto/
  */
 
 #ifndef __MD5_OP_H

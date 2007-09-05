@@ -14,7 +14,6 @@
 
 /* OS_net Library. 
  * APIs for many network operations.
- * Available at http://www.ossec.net/c/os_net/
  */
  
  

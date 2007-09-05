@@ -16,7 +16,7 @@
 /*
  * Syscheck v 0.3
  * Copyright (C) 2003 Daniel B. Cid <daniel@underlinux.com.br>
- * http://www.ossec.net/syscheck/
+ * http://www.ossec.net
  *
  * syscheck.c, 2004/03/17, Daniel B. Cid
  */

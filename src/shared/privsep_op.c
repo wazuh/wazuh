@@ -5,12 +5,12 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
 /* Part of the OSSEC HIDS
- * Available at http://www.ossec.net/ossec/
+ * Available at http://www.ossec.net
  */
 
 /* Functions for privilege separation.

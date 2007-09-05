@@ -9,7 +9,7 @@
  * Foundation
  */
 
-/* Part of OSSEC HIDS (http://www.ossec.net/ossec/)
+/* Part of OSSEC HIDS ( http://www.ossec.net )
  * Error/debug messages
  */
 

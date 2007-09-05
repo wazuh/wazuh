@@ -1,6 +1,5 @@
 # Makefile for os_regex
 # Daniel B. Cid <daniel.cid@gmail.com>||<daniel@underlinux.com.br>
-# http://www.ossec.net/c/os_regex/
 
 PT=../
 NAME=os_regex
