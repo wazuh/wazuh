@@ -259,7 +259,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     memset(snd_msg,'\0',128);	
 
 
-    /* Returning 0 (sucess) */
+    /* Returning 0 (success) */
     close(socket);
 
     return(0);
@@ -568,7 +568,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     memset(snd_msg,'\0',128);	
 
 
-    /* Returning 0 (sucess) */
+    /* Returning 0 (success) */
     close(socket);
 
     return(0);

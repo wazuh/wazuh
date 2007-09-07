@@ -130,7 +130,7 @@ typedef uint8_t u_int8_t;
 typedef int sock2len_t;
 #endif
 
-/* For Windows (so high maintanence :)) */
+/* For Windows (so high maintenance :)) */
 #ifdef WIN32
 typedef int uid_t;
 typedef int gid_t;

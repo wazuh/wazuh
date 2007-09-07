@@ -466,7 +466,7 @@ int OS_SendUnix(int socket, char * msg, int size)
         return(OS_SOCKTERR);
     }
     
-    return(OS_SUCESS);
+    return(OS_SUCCESS);
 }
 #endif
 

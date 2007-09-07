@@ -326,7 +326,7 @@
     <if_sid>5300</if_sid>
     <regex>session opened for user root|</regex>
     <regex>^+ \S+ \S+\proot$|^\S+ to root on|^SU \S+ \S+ + \S+ \S+-root$</regex>
-    <description>User sucessfully changed UID to root.</description>
+    <description>User successfully changed UID to root.</description>
     <group>authentication_success,</group>
   </rule>
 
@@ -334,7 +334,7 @@
     <if_sid>5300</if_sid>
     <regex>session opened for user|</regex>
     <regex>^+|^\S+ to |^SU \S+ \S+ + </regex>
-    <description>User sucessfully changed UID.</description>
+    <description>User successfully changed UID.</description>
     <group>authentication_success,</group>
   </rule>
 

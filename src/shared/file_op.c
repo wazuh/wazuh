@@ -17,7 +17,7 @@
 #include "shared.h"
 
 
-/* Sets the name of the starting progran */
+/* Sets the name of the starting program */
 void OS_SetName(char *name)
 {
     __local_name = name;
@@ -176,7 +176,7 @@ void goDaemon()
     }
 
 
-    /* Dup stdin, stdout and stderr to dev/null */
+    /* Dup stdin, stdout and stderr to /dev/null */
     if((fd = open("/dev/null", O_RDWR)) >= 0)
     {
         dup2(fd, 0);
@@ -196,7 +196,7 @@ void goDaemon()
     fclose(stderr);
     */
 
-    /* Openining stdin, stdout and stderr to dev null */
+    /* Openining stdin, stdout and stderr to /dev/null */
     /*
     open("/dev/null", O_RDONLY);
     open("/dev/null", O_RDWR);

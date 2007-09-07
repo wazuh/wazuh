@@ -76,7 +76,7 @@ void HandleSyslog()
     }
         
 
-    /* Infinit loop in here */
+    /* Infinite loop in here */
     while(1)
     {
         /* Receiving message  */

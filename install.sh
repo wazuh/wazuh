@@ -18,7 +18,7 @@ LOCAL=`dirname $0`;
 cd $LOCAL
 
 
-### Looking for for echo -n
+### Looking for echo -n
 ECHO="echo -n"
 hs=`echo -n "a"`
 if [ ! "X$hs" = "Xa" ]; then
@@ -1082,7 +1082,7 @@ main()
     fi    
 
     # Installing (calls the respective script 
-    # -- InstallAgent.sh pr InstallServer.sh
+    # -- InstallAgent.sh or InstallServer.sh
     Install
 
     # User messages

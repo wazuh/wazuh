@@ -34,7 +34,6 @@ INSTYPE="server"
 DEFAULT_DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 INSTALLDIR="$DEFAULT_DIR";
 WORKDIR="$INSTALLDIR"
-NEWCONFIG="./etc/ossec.mc"
 CEXTRA=""
 
 # Internal definitions

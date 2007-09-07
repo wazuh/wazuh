@@ -16,7 +16,7 @@
 #ifndef __OS_ERR /* Definition of the __OS_ERR */
 #define __OS_ERR
 
-#define OS_SUCESS   	 0      /* Sucess */
+#define OS_SUCCESS   	 0      /* Success */
 #define OS_INVALID	-1	/* Invalid entry */
 #define OS_NOTFOUND	-2	/* Entry not found */
 #define	OS_FILERR	-3	/* Error in the file */

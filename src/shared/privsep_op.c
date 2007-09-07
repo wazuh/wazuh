@@ -58,7 +58,7 @@ int Privsep_SetUser(uid_t uid)
         return(OS_INVALID);
     #endif
 
-    return(OS_SUCESS);
+    return(OS_SUCCESS);
 }
 
 int Privsep_SetGroup(gid_t gid)
@@ -74,7 +74,7 @@ int Privsep_SetGroup(gid_t gid)
     if(setgid(gid) < 0)
         return(OS_INVALID);
         
-    return(OS_SUCESS);
+    return(OS_SUCCESS);
 }
 
 int Privsep_Chroot(char * path)
@@ -87,7 +87,7 @@ int Privsep_Chroot(char * path)
         
     chdir("/");
         
-    return(OS_SUCESS);
+    return(OS_SUCCESS);
 }
 
 #endif

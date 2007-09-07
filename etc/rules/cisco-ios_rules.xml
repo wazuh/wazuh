@@ -78,7 +78,7 @@
   <rule id="4722" level="3">
     <if_sid>4715</if_sid>
     <id>^%SEC_LOGIN-5-LOGIN_SUCCESS</id>
-    <description>Sucessfull login to the router.</description>
+    <description>Successful login to the router.</description>
     <group>authentication_success,</group>
   </rule>
 

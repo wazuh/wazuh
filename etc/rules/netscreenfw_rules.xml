@@ -55,14 +55,14 @@
   <rule id="4506" level="8">
     <if_sid>4501</if_sid>
     <id>^00002</id>
-    <description>Sucessfull admin login to the Netscreen firewall</description>
+    <description>Successfull admin login to the Netscreen firewall</description>
     <group>authentication_success,</group>
   </rule>
   
   <rule id="4507" level="8">
     <if_sid>4502</if_sid>
     <id>^00515</id>
-    <description>Sucessfull admin login to the Netscreen firewall</description>
+    <description>Successfull admin login to the Netscreen firewall</description>
     <group>authentication_success,</group>
   </rule>
 

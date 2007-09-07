@@ -50,7 +50,7 @@ them or after them.
      the modification of binaries or the presence of rootkits (by
      rootcheck). If you just modified your system configuration
      you should be fine regarding the "syscheck" messages. They
-     may indicate a sucessful attack. Also included IDS events
+     may indicate a successful attack. Also included IDS events
      that will be ignored (high number of repetitions).
 12 - High importancy event - They include error or warning messages
      from the system, kernel, etc. They may indicate an attack against 

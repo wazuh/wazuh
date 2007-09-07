@@ -186,7 +186,7 @@ char **_GetElements(OS_XML *_lxml, char **element_name,int type)
  */
 char *OS_GetOneContentforElement(OS_XML *_lxml, char **element_name)
 {
-    int sucess=0;
+    int success=0;
     char *uniqret=NULL;
     char **ret=NULL;
 
@@ -204,7 +204,7 @@ char *OS_GetOneContentforElement(OS_XML *_lxml, char **element_name)
             if(uniqret != NULL)
             {
                 strncpy(uniqret,ret[0],retsize-1);
-                sucess=1;
+                success=1;
             }
         }
     }
@@ -214,7 +214,7 @@ char *OS_GetOneContentforElement(OS_XML *_lxml, char **element_name)
             break;
         free(*ret++);	
     }
-    if(sucess)
+    if(success)
         return(uniqret);
     return(NULL);
 }
@@ -252,7 +252,7 @@ char **OS_GetContents(OS_XML *_lxml, char **element_name)
 char *OS_GetAttributeContent(OS_XML *_lxml, char **element_name,
 	char *attribute_name)
 {
-    int sucess=0;
+    int success=0;
     char *uniqret=NULL;
     char **ret=NULL;
 
@@ -272,7 +272,7 @@ char *OS_GetAttributeContent(OS_XML *_lxml, char **element_name,
             if(uniqret != NULL)
             {
                 strncpy(uniqret,ret[0],retsize-1);
-                sucess=1;
+                success=1;
             }
         }
     }
@@ -282,7 +282,7 @@ char *OS_GetAttributeContent(OS_XML *_lxml, char **element_name,
             break;
         free(*ret++);	
     }
-    if(sucess)
+    if(success)
         return(uniqret);
     return(NULL);
 }

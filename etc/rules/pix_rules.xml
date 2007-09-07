@@ -77,7 +77,7 @@
   <rule id="4323" level="3">
     <if_sid>4314</if_sid>
     <id>^6-605005</id>
-    <description>Sucessfull login to the PIX firewall.</description>
+    <description>Successful login to the PIX firewall.</description>
     <group>authentication_success,</group>
   </rule>
 

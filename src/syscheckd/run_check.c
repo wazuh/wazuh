@@ -270,7 +270,7 @@ void run_check()
         /* Avoiding wrong formats in the database. Alert about them */
         if(buf[0] == '#' || buf[0] == ' ' || buf[0] == '\n')
         {
-            merror("%s: Invalid entry in the integrity datase: '%s'",
+            merror("%s: Invalid entry in the integrity database: '%s'",
                                                             ARGV0, buf);
             continue;
         }

@@ -258,7 +258,7 @@ void OSList_DeleteCurrentlyNode(OSList *list)
 
 
 /* Add data to the list
- * Returns 1 on sucess and 0 on failure
+ * Returns 1 on success and 0 on failure
  */
 int OSList_AddData(OSList *list, void *data)
 {

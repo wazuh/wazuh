@@ -224,7 +224,7 @@ void OSStore_Delete(OSStore *list, char *key)
 
 
 /* Add data to the list
- * Returns 1 on sucess and 0 on failure
+ * Returns 1 on success and 0 on failure
  */
 int OSStore_Put(OSStore *list, char *key, void *data)
 {

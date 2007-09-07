@@ -22,7 +22,7 @@
   <rule id="40101" level="12">
     <if_group>authentication_success</if_group>
     <user>$SYS_USERS</user>
-    <description>System user sucessfully logged to the system.</description>
+    <description>System user successfully logged to the system.</description>
     <group>invalid_login,</group>
   </rule>
 

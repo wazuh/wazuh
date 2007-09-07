@@ -16,7 +16,7 @@
  */  
 
 
-/* Logcolletor daemon.
+/* Logcollector daemon.
  * Monitor some files and forward the output to our analysis system.
  */
 

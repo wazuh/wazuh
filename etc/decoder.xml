@@ -77,7 +77,7 @@
   
 <!-- SSH decoder.
   -  Will extract username and srcip from the logs.
-  -  Only add to the FTS if the login was sucessfull
+  -  Only add to the FTS if the login was successful
   -  If the login failed, just extract the username/srcip for correlation
   -  Examples:
   -  sshd[8813]: Accepted password for root from 192.168.10.1 port 1066 ssh2
