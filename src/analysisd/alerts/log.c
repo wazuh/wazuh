@@ -72,7 +72,7 @@ void OS_Log(Eventinfo *lf)
             lf->generated_rule->level,
             lf->generated_rule->comment,
             lf->srcip == NULL?"(none)":lf->srcip,
-            lf->user == NULL?"(none)":lf->user,
+            lf->dstuser == NULL?"(none)":lf->dstuser,
             lf->full_log);
 
 

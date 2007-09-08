@@ -145,7 +145,8 @@ void AddtoIGnore(Eventinfo *lf)
             (lf->decoder_info->name && (lf->generated_rule->ignore & FTS_NAME))?
                         lf->decoder_info->name:"",
             (lf->id && (lf->generated_rule->ignore & FTS_ID))?lf->id:"",
-            (lf->user && (lf->generated_rule->ignore & FTS_USER))?lf->user:"",
+            (lf->dstuser&&(lf->generated_rule->ignore & FTS_DSTUSER))?
+                        lf->dstuser:"",
             (lf->srcip && (lf->generated_rule->ignore & FTS_SRCIP))?
                         lf->srcip:"",
             (lf->dstip && (lf->generated_rule->ignore & FTS_DSTIP))?
@@ -179,8 +180,8 @@ int IGnore(Eventinfo *lf)
             (lf->decoder_info->name && (lf->generated_rule->ckignore & FTS_NAME))?
                             lf->decoder_info->name:"",
             (lf->id && (lf->generated_rule->ckignore & FTS_ID))?lf->id:"",
-            (lf->user && (lf->generated_rule->ckignore & FTS_USER))?
-                            lf->user:"",
+            (lf->dstuser && (lf->generated_rule->ckignore & FTS_DSTUSER))?
+                            lf->dstuser:"",
             (lf->srcip && (lf->generated_rule->ckignore & FTS_SRCIP))?
                             lf->srcip:"",
             (lf->dstip && (lf->generated_rule->ckignore & FTS_DSTIP))?
@@ -231,8 +232,8 @@ int FTS(Eventinfo *lf)
     snprintf(_line, OS_FLSIZE, "%s %s %s %s %s %s %s %s %s",
             lf->decoder_info->name,
             (lf->id && (lf->decoder_info->fts & FTS_ID))?lf->id:"",
-            (lf->user && (lf->decoder_info->fts & FTS_USER))?lf->user:"",
             (lf->dstuser && (lf->decoder_info->fts & FTS_DSTUSER))?lf->dstuser:"",
+            (lf->srcuser && (lf->decoder_info->fts & FTS_SRCUSER))?lf->srcuser:"",
             (lf->srcip && (lf->decoder_info->fts & FTS_SRCIP))?lf->srcip:"",
             (lf->dstip && (lf->decoder_info->fts & FTS_DSTIP))?lf->dstip:"",
             (lf->data && (lf->decoder_info->fts & FTS_DATA))?lf->data:"",

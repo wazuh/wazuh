@@ -8,8 +8,9 @@
 <!--
    - Allowed fields:
    - location - where the log came from (only on FTS)
-   - user     - extract the user name
-   - dstuser  - the destination username (from su)
+   - srcuser  - extracts the source username
+   - dstuser  - extracts the destination (target) username
+   - user     - an alias to dstuser (only one of the two can be used)
    - srcip    - source ip
    - dstip    - dst ip
    - srcport  - source port
@@ -262,15 +263,15 @@
   <regex>^BAD SU (\S+) to (\S+) on|</regex>
   <regex>^failed: \S+ changing from (\S+) to (\S+)|</regex>
   <regex>^\S \S+ (\S+)\p(\S+)$|^(\S+) to (\S+) on </regex>
-  <order>user, dstuser</order>
-  <fts>name, user, location</fts>
+  <order>srcuser, dstuser</order>
+  <fts>name, srcuser, location</fts>
 </decoder>
 
 <decoder name="su">
   <prematch>^SU \S+ \S+ </prematch>
   <regex offset="after_prematch">^\S \S+ (\S+)-(\S+)$</regex>
-  <order>user, dstuser</order>
-  <fts>name, user, location</fts>
+  <order>srcuser, dstuser</order>
+  <fts>name, srcuser, location</fts>
 </decoder>
 
 

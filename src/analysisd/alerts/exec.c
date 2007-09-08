@@ -81,9 +81,9 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
    
    
     /* Getting username */
-    if(lf->user && (ar->ar_cmd->expect & USERNAME))
+    if(lf->dstuser && (ar->ar_cmd->expect & USERNAME))
     {
-        user = lf->user;
+        user = lf->dstuser;
     }
     else
     {

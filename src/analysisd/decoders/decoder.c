@@ -268,9 +268,9 @@ void *DstUser_FP(Eventinfo *lf, char *field)
     lf->dstuser = field;
     return(NULL);
 }
-void *User_FP(Eventinfo *lf, char *field)
+void *SrcUser_FP(Eventinfo *lf, char *field)
 {
-    lf->user = field;
+    lf->srcuser = field;
     return(NULL);
 }
 void *SrcIP_FP(Eventinfo *lf, char *field)

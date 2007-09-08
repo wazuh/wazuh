@@ -317,7 +317,7 @@ int main(int argc, char **argv)
 
         
     /* Verbose message */
-    debug1(PRIVSEP_MSG,ARGV0,dir,user);
+    debug1(PRIVSEP_MSG, ARGV0, dir, user);
 
 
     /* Signal manipulation	*/
@@ -853,11 +853,11 @@ void OS_ReadMSG(int m_queue)
                         do_ar = 1;
                         if((*rule_ar)->ar_cmd->expect & USERNAME)
                         {
-                            if(!lf->user || 
-                                !OS_PRegex(lf->user,"^[a-zA-Z._0-9@?-]*$"))
+                            if(!lf->dstuser || 
+                                !OS_PRegex(lf->dstuser,"^[a-zA-Z._0-9@?-]*$"))
                             {
-                                if(lf->user)
-                                    merror(CRAFTED_USER, ARGV0, lf->user);
+                                if(lf->dstuser)
+                                    merror(CRAFTED_USER, ARGV0, lf->dstuser);
                                 do_ar = 0;
                             }
                         }
@@ -1131,10 +1131,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                             currently_rule->user))
                     return(NULL);
             }
-            else if(lf->user)
+            else if(lf->srcuser)
             {
-                if(!OSMatch_Execute(lf->user,
-                            strlen(lf->user),
+                if(!OSMatch_Execute(lf->srcuser,
+                            strlen(lf->srcuser),
                             currently_rule->user))
                     return(NULL);
             }

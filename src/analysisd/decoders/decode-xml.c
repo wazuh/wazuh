@@ -535,9 +535,14 @@ int ReadDecodeXML(char *file)
                     {
                         pi->order[order_int] = (void *)DstUser_FP;
                     }
+                    else if(strstr(*norder, "srcuser") != NULL)
+                    {
+                        pi->order[order_int] = (void *)SrcUser_FP;
+                    }
+                    /* User is an alias to dstuser */
                     else if(strstr(*norder, "user") != NULL)
                     {
-                        pi->order[order_int] = (void *)User_FP;
+                        pi->order[order_int] = (void *)DstUser_FP;
                     }
                     else if(strstr(*norder, "srcip") != NULL)
                     {
@@ -625,9 +630,13 @@ int ReadDecodeXML(char *file)
                     {
                         pi->fts|=FTS_DSTUSER;
                     }
-                    else if(strstr(*norder, "user") != NULL)
+                    if(strstr(*norder, "user") != NULL)
                     {
-                        pi->fts|=FTS_USER;
+                        pi->fts|=FTS_DSTUSER;
+                    }
+                    else if(strstr(*norder, "srcuser") != NULL)
+                    {
+                        pi->fts|=FTS_SRCUSER;
                     }
                     else if(strstr(*norder, "srcip") != NULL)
                     {

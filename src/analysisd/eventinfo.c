@@ -121,10 +121,10 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
             /* Checking for repetitions on user error */
             if(currently_rule->context_opts & SAME_USER)
             {
-                if((!lf->user)||(!my_lf->user))
+                if((!lf->dstuser)||(!my_lf->dstuser))
                     continue;
 
-                if(strcmp(lf->user,my_lf->user) != 0)
+                if(strcmp(lf->dstuser,my_lf->dstuser) != 0)
                     continue;
             }
 
@@ -280,10 +280,10 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *currently_rule)
             /* Checking for repetitions on user error */
             if(currently_rule->context_opts & SAME_USER)
             {
-                if((!lf->user)||(!my_lf->user))
+                if((!lf->dstuser)||(!my_lf->dstuser))
                     continue;
 
-                if(strcmp(lf->user,my_lf->user) != 0)
+                if(strcmp(lf->dstuser,my_lf->dstuser) != 0)
                     continue;
             }
 
@@ -410,10 +410,10 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         /* Checking for repetitions on user error */
         if(currently_rule->context_opts & SAME_USER)
         {
-            if((!lf->user)||(!my_lf->user))
+            if((!lf->dstuser)||(!my_lf->dstuser))
                 continue;
                 
-            if(strcmp(lf->user,my_lf->user) != 0)
+            if(strcmp(lf->dstuser,my_lf->dstuser) != 0)
                 continue;
         }
        
@@ -497,7 +497,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->dstport = NULL;
     lf->protocol = NULL;
     lf->action = NULL;
-    lf->user = NULL;
+    lf->srcuser = NULL;
     lf->dstuser = NULL;
     lf->id = NULL;
     lf->status = NULL;
@@ -547,10 +547,10 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->protocol);
     if(lf->action)
         free(lf->action);            
-    if(lf->user)
-        free(lf->user);
     if(lf->status)
         free(lf->status);
+    if(lf->srcuser)
+        free(lf->srcuser);
     if(lf->dstuser)
         free(lf->dstuser);    
     if(lf->id)

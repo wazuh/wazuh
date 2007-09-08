@@ -37,7 +37,7 @@ typedef struct _Eventinfo
     char *dstport;
     char *protocol;
     char *action;
-    char *user;
+    char *srcuser;
     char *dstuser;
     char *id;
     char *status;
@@ -96,7 +96,7 @@ typedef struct _EventNode
 
 /* FTS allowed values */
 #define FTS_NAME        001000
-#define FTS_USER        002000
+#define FTS_SRCUSER     002000
 #define FTS_DSTUSER     004000
 #define FTS_SRCIP       000100
 #define FTS_DSTIP       000200
@@ -130,8 +130,8 @@ void OS_CreateEventList(int maxsize);
 
 
 /* Pointers to the event decoders */
+void *SrcUser_FP(Eventinfo *lf, char *field);
 void *DstUser_FP(Eventinfo *lf, char *field);
-void *User_FP(Eventinfo *lf, char *field);
 void *SrcIP_FP(Eventinfo *lf, char *field);
 void *DstIP_FP(Eventinfo *lf, char *field);
 void *SrcPort_FP(Eventinfo *lf, char *field);

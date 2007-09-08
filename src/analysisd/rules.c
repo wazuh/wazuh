@@ -793,7 +793,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         if(strstr(rule_opt[k]->content, "user") != NULL)
                         {
-                            config_ruleinfo->ignore|=FTS_USER;
+                            config_ruleinfo->ignore|=FTS_DSTUSER;
                         }
                         if(strstr(rule_opt[k]->content, "srcip") != NULL)
                         {
@@ -833,7 +833,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         if(strstr(rule_opt[k]->content, "user") != NULL)
                         {
-                            config_ruleinfo->ckignore|=FTS_USER;
+                            config_ruleinfo->ckignore|=FTS_DSTUSER;
                         }
                         if(strstr(rule_opt[k]->content, "srcip") != NULL)
                         {

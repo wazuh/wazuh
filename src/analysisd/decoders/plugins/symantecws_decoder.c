@@ -72,9 +72,9 @@ void *SymantecWS_Decoder_Exec(Eventinfo *lf)
             }
             buf_str[count] = '\0';
 
-            if(!lf->user)
+            if(!lf->dstuser)
             {
-                os_strdup(buf_str, lf->user);
+                os_strdup(buf_str, lf->dstuser);
             }
         }
         
