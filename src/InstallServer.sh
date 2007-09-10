@@ -23,7 +23,6 @@ DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 GROUP="ossec"
 USER="ossec"
 USER_MAIL="ossecm"
-USER_EXEC="ossece"
 USER_REM="ossecr"
 subdirs="logs logs/archives logs/alerts logs/firewall bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck queue/rootcheck queue/agent-info queue/rids tmp var var/run etc etc/shared active-response active-response/bin"
 
@@ -51,7 +50,6 @@ if [ "$UNAME" = "FreeBSD" ]; then
     /usr/sbin/pw groupadd ${GROUP}
 	/usr/sbin/pw useradd ${USER} -d ${DIR} -s /sbin/nologin -g ${GROUP}
 	/usr/sbin/pw useradd ${USER_MAIL} -d ${DIR} -s /sbin/nologin -g ${GROUP}
-	/usr/sbin/pw useradd ${USER_EXEC} -d ${DIR} -s /sbin/nologin -g ${GROUP}
 	/usr/sbin/pw useradd ${USER_REM} -d ${DIR} -s /sbin/nologin -g ${GROUP}
     fi
 
@@ -61,7 +59,6 @@ elif [ "$UNAME" = "SunOS" ]; then
     /usr/sbin/groupadd ${GROUP}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_MAIL}
-    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_EXEC}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_REM}
     fi
 
@@ -71,7 +68,6 @@ elif [ "$UNAME" = "AIX" ]; then
     /usr/bin/mkgroup ${GROUP}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_MAIL}
-    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_EXEC}
     /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_REM}
     fi
 # Thanks Chuck L. for the mac addusers    
@@ -99,7 +95,6 @@ else
     fi    
 	/usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER}
 	/usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER_MAIL}
-	/usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER_EXEC}
 	/usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER_REM}
     fi
 fi

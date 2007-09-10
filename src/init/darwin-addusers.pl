@@ -73,7 +73,7 @@ sub createUsersGroups {
 
 	$niPid = open (NIFH, "| $SUDO $NILOAD -v group /");
 	print "Adding ossec group\n" if $debug;
-    print NIFH "ossec:*:" . $oGid . ":ossec,ossecm,ossece,ossecr\n";
+    print NIFH "ossec:*:" . $oGid . ":ossec,ossecm,ossecr\n";
 	close (NIFH);
 
     $fh = open (NITMP, ">$fName") or die "Unable to create temp file: $!\n";
@@ -81,7 +81,6 @@ sub createUsersGroups {
 	print "Adding ossec users\n" if $debug;
     print NITMP "ossec:*:" . $oUid . ":" . $oGid . "::0:0:ossec acct:/var/ossec:/sbin/nologin\n";
     print NITMP "ossecm:*:" . $oUidM . ":" . $oGid . "::0:0:ossecm acct:/var/ossec:/sbin/nologin\n";
-    print NITMP "ossece:*:" . $oUidE . ":" . $oGid . "::0:0:ossece acct:/var/ossec:/sbin/nologin\n";
     print NITMP "ossecr:*:" . $oUidR . ":" . $oGid . "::0:0:ossecr acct:/var/ossec:/sbin/nologin\n";
 
 	close ($fh);

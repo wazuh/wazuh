@@ -6,7 +6,7 @@ rpm -e ossec-hids-agent-FC7
 
 rm -fr /var/ossec/ 
 
-for A in ossec ossecm ossece ossecr ; do /usr/sbin/userdel -r $A ; done 
+for A in ossec ossecm ossecr ; do /usr/sbin/userdel -r $A ; done 
 
 /usr/sbin/groupdel ossec
 

@@ -131,7 +131,7 @@ EOF
 [ -f /etc/init.d/ossec ] && rm /etc/init.d/ossec
 
 # Remove ossec users
-for USER in ossec ossecm ossece ossecr ; do
+for USER in ossec ossecm ossecr ; do
   if grep "^${USER}" /etc/passwd > /dev/null ; then
     /usr/sbin/userdel -r ${USER}
   fi
