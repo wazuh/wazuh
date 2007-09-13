@@ -79,6 +79,13 @@ char *getFullnameById(char *id)
             }
 
             name++;
+
+            /* Removed entry */
+            if(*name == '#')
+            {
+                continue;
+            }
+            
             ip = strchr(name, ' ');
             if(ip)
             {
@@ -143,6 +150,8 @@ int IDExist(char *id)
         if(name)
         {
             *name = '\0';
+            name++;
+
             if(strcmp(line_read,id) == 0)
             {
                 fclose(fp);
@@ -214,6 +223,12 @@ int NameExist(char *u_name)
         {
             char *ip;
             name++;
+
+            if(*name == '#')
+            {
+                continue;
+            }
+            
             ip = strchr(name, ' ');
             if(ip)
             {
@@ -262,6 +277,14 @@ int print_agents()
             char *ip;
             *name = '\0';
             name++;
+
+
+            /* Removed agent. */
+            if(*name == '#')
+            {
+                continue;
+            }
+            
             ip = strchr(name, ' ');
             if(ip)
             {

@@ -72,6 +72,41 @@ OSHash *OSHash_Create()
 }
 
 
+
+/** void *OSHash_Free(OSHash *self)
+ * Frees the memory used by the hash.
+ */
+void *OSHash_Free(OSHash *self)
+{
+    int i = 0;
+    OSHashNode *curr_node;
+    OSHashNode *next_node;
+    
+    
+    /* Freeing each entry */
+    while(i <= self->rows)
+    {
+        curr_node = self->table[i];
+        next_node = curr_node;
+        while(next_node)
+        {
+            next_node = next_node->next;
+            free(curr_node);
+            curr_node = next_node;
+        }
+        i++;
+    }
+
+
+    /* Freeing the hash table */
+    free(self->table);
+
+    free(self);
+    return(NULL); 
+}
+
+
+
 /** int _os_genhash(OSHash *self, char *key)
  * Generates hash for key
  */

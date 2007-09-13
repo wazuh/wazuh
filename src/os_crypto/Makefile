@@ -11,7 +11,7 @@ os_crypto:
 		@cd md5; make 
 		@cd sha1; make 
 		@cd shared; make 
-		ar cru os_crypto.a blowfish/bf_op.o blowfish/bf_skey.o blowfish/bf_enc.o md5/md5_op.o md5/md5.o sha1/sha1_op.o shared/sec.o
+		ar cru os_crypto.a blowfish/bf_op.o blowfish/bf_skey.o blowfish/bf_enc.o md5/md5_op.o md5/md5.o sha1/sha1_op.o shared/*.o
 		ranlib os_crypto.a
 clean:
 		@cd blowfish; make clean

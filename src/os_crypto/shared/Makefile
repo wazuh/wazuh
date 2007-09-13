@@ -6,8 +6,8 @@ NAME=shared
 
 include ../../Config.Make
 
-SRCS = sec.c
-OBJS = sec.o
+SRCS = *.c
+OBJS = *.o
 
 
 shared:

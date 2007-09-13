@@ -60,7 +60,7 @@ void send_msg_init();
 
 /*** Global variables ***/
 
-keystruct keys;
+keystore keys;
 remoted logr;
 
 #endif

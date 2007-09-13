@@ -228,7 +228,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
 
     
     /* If rcvd is not set, do not send (agent didn't connect to me yet */
-    if(keys.rcvd[agentid] < (time(0) - (2*NOTIFY_TIME)))
+    if(keys.keyentries[agentid]->rcvd < (time(0) - (2*NOTIFY_TIME)))
     {
         return(-1);    
     }
@@ -258,11 +258,11 @@ int send_file_toagent(int agentid, char *name, char *sum)
 
     /* Sending initial message */
     if(sendto(logr.sock, crypt_msg, msg_size, 0,
-                         (struct sockaddr *)&keys.peer_info[agentid],
-                         logr.peer_size) < 0) 
+                       (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
+                       logr.peer_size) < 0) 
     {
         fclose(fp);
-        merror(SEND_ERROR,ARGV0, keys.ids[agentid]);
+        merror(SEND_ERROR,ARGV0, keys.keyentries[agentid]->id);
         return(-1);
     }
     
@@ -280,11 +280,11 @@ int send_file_toagent(int agentid, char *name, char *sum)
         }
 
         if(sendto(logr.sock, crypt_msg, msg_size, 0,
-                         (struct sockaddr *)&keys.peer_info[agentid],
-                         logr.peer_size) < 0)  
+                       (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
+                       logr.peer_size) < 0)  
         {
             fclose(fp);
-            merror(SEND_ERROR,ARGV0, keys.ids[agentid]);
+            merror(SEND_ERROR,ARGV0, keys.keyentries[agentid]->id);
             return(-1);
         }
 
@@ -312,13 +312,14 @@ int send_file_toagent(int agentid, char *name, char *sum)
 
     /* Sending final message */
     if(sendto(logr.sock, crypt_msg, msg_size, 0,
-                         (struct sockaddr *)&keys.peer_info[agentid],
-                         logr.peer_size) < 0) 
+                       (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
+                       logr.peer_size) < 0) 
     {
-        merror(SEND_ERROR,ARGV0, keys.ids[agentid]);
+        merror(SEND_ERROR,ARGV0, keys.keyentries[agentid]->id);
         fclose(fp);
         return(-1);
     }
+
     
     fclose(fp);
     
@@ -360,7 +361,7 @@ void read_controlmsg(int agentid, char *msg)
     if(!msg)
     {
         merror("%s: Invalid message from '%s' (uname)",ARGV0, 
-                                                       keys.ips[agentid]->ip);
+                                         keys.keyentries[agentid]->ip->ip);
         return;
     }
 
@@ -377,8 +378,8 @@ void read_controlmsg(int agentid, char *msg)
     /* Writting to the agent file */
     snprintf(agent_file, OS_SIZE_1024, "%s/%s-%s",
                          AGENTINFO_DIR,
-                         keys.name[agentid],
-                         keys.ips[agentid]->ip);
+                         keys.keyentries[agentid]->name,
+                         keys.keyentries[agentid]->ip->ip);
         
     fp = fopen(agent_file, "w");
     if(fp)
@@ -407,7 +408,7 @@ void read_controlmsg(int agentid, char *msg)
         {
             merror("%s: Invalid message from '%s' (strchr \\n)",
                         ARGV0, 
-                        keys.ips[agentid]->ip);
+                        keys.keyentries[agentid]->ip->ip);
             break;
         }
 
@@ -419,7 +420,7 @@ void read_controlmsg(int agentid, char *msg)
         {
             merror("%s: Invalid message from '%s' (strchr ' ')",
                         ARGV0, 
-                        keys.ips[agentid]->ip);
+                        keys.keyentries[agentid]->ip->ip);
             break;
         }
 

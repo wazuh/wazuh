@@ -70,7 +70,7 @@ void run_notify();
 #include "shared.h"
 #include "sec.h"
 
-keystruct keys;
+keystore keys;
 agent *logr;
 
 

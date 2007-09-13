@@ -184,6 +184,8 @@
 #define ENCSUM_ERROR    "%s(1406): Checksum mismatch on message from '%s'."
 #define ENCTIME_ERROR   "%s(1407): Duplicated counter for '%s'."
 #define ENC_IP_ERROR    "%s(1408): Invalid ID for the source ip: '%s'."
+#define ENCFILE_CHANGED "%s(1409): Authentication file changed. Updating."
+#define ENC_READ        "%s(1410): Reading authentication keys file."
 
                                    
 /* Regex errors */

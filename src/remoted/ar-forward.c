@@ -147,7 +147,7 @@ void *AR_Forward(void *arg)
             /* Send to the remote agent that generated the event */
             else if((ar_location & REMOTE_AGENT) && (location != NULL))
             {
-                agent_id = IsAllowedName(&keys, location);
+                agent_id = OS_IsAllowedName(&keys, location);
                 if(agent_id < 0)
                 {
                     merror(AR_NOAGENT_ERROR, ARGV0, location);
@@ -162,7 +162,7 @@ void *AR_Forward(void *arg)
             {
                 ar_location++;
 
-                agent_id = IsAllowedID(&keys, ar_agent_id);
+                agent_id = OS_IsAllowedID(&keys, ar_agent_id);
                 
                 if(agent_id < 0)
                 {
@@ -195,7 +195,7 @@ int send_msg(int agentid, char *msg)
 
 
     /* If we don't have the agent id, ignore it */
-    if(keys.rcvd[agentid] < (time(0) - (2*NOTIFY_TIME)))
+    if(keys.keyentries[agentid]->rcvd < (time(0) - (2*NOTIFY_TIME)))
     {
         return(-1);
     }
@@ -219,10 +219,10 @@ int send_msg(int agentid, char *msg)
 
     /* Sending initial message */
     if(sendto(logr.sock, crypt_msg, msg_size, 0,
-                         (struct sockaddr *)&keys.peer_info[agentid],
-                         logr.peer_size) < 0) 
+                       (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
+                       logr.peer_size) < 0) 
     {
-        merror(SEND_ERROR,ARGV0, keys.ids[agentid]);
+        merror(SEND_ERROR,ARGV0, keys.keyentries[agentid]->id);
     }
     
     

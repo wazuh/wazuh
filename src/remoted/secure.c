@@ -70,7 +70,8 @@ void HandleSecure()
 
     
     /* Reading authentication keys */
-    ReadKeys(&keys, 0);
+    OS_ReadKeys(&keys);
+    OS_StartCounter(&keys);
 
 
     /* setting up peer size */
@@ -133,7 +134,7 @@ void HandleSecure()
             tmp_msg++;
             recv_b-=2;
 
-            agentid = IsAllowedDynamicID(&keys, buffer +1, srcip);
+            agentid = OS_IsAllowedDynamicID(&keys, buffer +1, srcip);
             if(agentid == -1)
             {
                 merror(ENC_IP_ERROR, __local_name, srcip);
@@ -142,7 +143,7 @@ void HandleSecure()
         }
         else
         {
-            agentid = IsAllowedIP(&keys, srcip); 
+            agentid = OS_IsAllowedIP(&keys, srcip); 
             if(agentid < 0)
             {
                 merror(DENYIP_ERROR,ARGV0,srcip);
@@ -166,8 +167,8 @@ void HandleSecure()
         if(IsValidHeader(tmp_msg))
         {
             /* We need to save the peerinfo if it is a control msg */
-            memcpy(&keys.peer_info[agentid], &peer_info, peer_size);
-            keys.rcvd[agentid] = time(0);
+            memcpy(&keys.keyentries[agentid]->peer_info,&peer_info, peer_size);
+            keys.keyentries[agentid]->rcvd = time(0);
 
             save_controlmsg(agentid, tmp_msg);
 
@@ -176,8 +177,8 @@ void HandleSecure()
 
 
         /* Generating srcmsg */
-        snprintf(srcmsg, OS_FLSIZE, "(%s) %s", keys.name[agentid], 
-                                               keys.ips[agentid]->ip);
+        snprintf(srcmsg, OS_FLSIZE,"(%s) %s",keys.keyentries[agentid]->name, 
+                                             keys.keyentries[agentid]->ip->ip);
         
 
         /* If we can't send the message, try to connect to the

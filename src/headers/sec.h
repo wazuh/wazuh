@@ -5,7 +5,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -14,51 +14,102 @@
 #define __SEC_H
 
 
-/* Key structure. */
-typedef struct _keystruct
+/* Unique key for each agent. */
+typedef struct _keyentry
 {
-    char **ids;
-    char **keys;
-    os_ip **ips;
-    char **name;
-    struct sockaddr_in *peer_info;
-    FILE **fps;
-    unsigned int *global;
-    unsigned int *local;
-    unsigned int *rcvd;
+    unsigned int rcvd;
+    unsigned int local;
+    unsigned int keyid;
+    unsigned int global;
+    
+    char *id;
+    char *key;
+    char *name;
 
+    os_ip *ip;
+    struct sockaddr_in peer_info;
+    FILE *fp;
+}keyentry;
+
+
+/* Key storage. */
+typedef struct _keystore
+{
+    /* Array with all the keys */
+    keyentry **keyentries;
+    
+    
+    /* Hashes, based on the id/ip to lookup the keys. */
+    void *keyhash_id;
+    void *keyhash_ip;
+
+
+    /* Total key size */
     int keysize;
-}keystruct;
 
+    /* Key file stat */
+    int file_change;
+}keystore;
+
+
+
+/** Function prototypes -- key management **/
 
 /* int CheckKeys(): Checks if the authentication keys are present */
-int CheckKeys();
+int OS_CheckKeys();
 
 /* Read the keys */
-void ReadKeys(keystruct *keys, int just_read);
+void OS_ReadKeys(keystore *keys);
 
-/* Decrypt and decompress a ossec message. */
-char *ReadSecMSG(keystruct *keys, char *buffer, char *cleartext, 
-                                  int id, int buffer_size);
+/* Frees the auth keys. */
+void OS_FreeKeys(keystore *keys);
+  
 
-/* Creates an ossec message (encrypts and compress) */
-int CreateSecMSG(keystruct *keys, char *msg, char *msg_encrypted,
-                                  int id);
-
-/* Checks if the ip is allowed */
-int IsAllowedIP(keystruct *keys, char *srcip);
-
-/* Checks if the id is allowed */
-int IsAllowedID(keystruct *keys, char *id);
-
-/* Checks for a valid name */
-int IsAllowedName(keystruct *keys, char *name);
-
-/* Check if the id is valid and dynamic */
-int IsAllowedDynamicID(keystruct *keys, char *id, char *srcip);
+/* Starts counter for all agents */
+void OS_StartCounter(keystore *keys);
 
 /* Remove counter for id. */
-void RemoveCounter(char *id);
+void OS_RemoveCounter(char *id);
+
+
+/** Function prototypes -- agent authorization **/
+
+/* Checks if the ip is allowed */
+int OS_IsAllowedIP(keystore *keys, char *srcip);
+
+/* Checks if the id is allowed */
+int OS_IsAllowedID(keystore *keys, char *id);
+
+/* Checks if name is valid */
+int OS_IsAllowedName(keystore *keys, char *name);
+
+/* Check if the id is valid and dynamic */
+int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip);
+
+
+
+/** Function prototypes -- send/recv messages **/
+
+/* Decrypt and decompress a remote message. */
+char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, 
+                 int id, int buffer_size);
+
+/* Creates an ossec message (encrypts and compress) */
+int CreateSecMSG(keystore *keys, char *msg, char *msg_encrypted, int id);
+
+
+
+
+/** Remote IDs directories and internal definitions */
+#ifndef WIN32
+    #define RIDS_DIR        "/queue/rids"
+#else
+    #define RIDS_DIR        "rids"
+#endif
+
+#define SENDER_COUNTER  "sender_counter"
+#define KEYSIZE         128 
+
 
 #endif
 

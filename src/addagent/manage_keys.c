@@ -94,6 +94,9 @@ int k_import()
                     #ifndef WIN32
                     chmod(KEYS_FILE, 0440);
                     #endif
+
+                    /* Removing sender counter. */
+                    OS_RemoveCounter("sender");
                             
                     printf(ADDED);
                     printf(PRESS_ENTER);

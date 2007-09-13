@@ -49,6 +49,14 @@ typedef struct _OSHash
 OSHash *OSHash_Create();
 
 
+
+/** void *OSHash_Free(OSHash *self)
+ * Frees the memory used by the hash.
+ */
+void *OSHash_Free(OSHash *self);
+  
+
+
 /** void OSHash_Add(OSHash *hash, char *key, void *data)
  * Returns 0 on error.
  * Returns 1 on duplicated key (not added)

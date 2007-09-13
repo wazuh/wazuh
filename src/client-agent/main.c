@@ -107,7 +107,7 @@ int main(int argc, char **argv)
 
 
     /* Checking auth keys */
-    if(!CheckKeys())
+    if(!OS_CheckKeys())
     {
         ErrorExit(AG_NOKEYS_EXIT, ARGV0);
     }

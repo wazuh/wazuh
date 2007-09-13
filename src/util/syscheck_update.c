@@ -184,11 +184,11 @@ int main(int argc, char **argv)
     else
     {
         int i;
-        keystruct keys;
+        keystore keys;
 
-        ReadKeys(&keys, 1);
+        OS_ReadKeys(&keys);
 
-        i = IsAllowedID(&keys, argv[2]);
+        i = OS_IsAllowedID(&keys, argv[2]);
         if(i < 0)
         {
             printf("\n** Invalid agent id '%s'.\n", argv[2]);
@@ -196,7 +196,7 @@ int main(int argc, char **argv)
         }
         
         /* Deleting syscheck */
-        delete_syscheck(keys.name[i], keys.ips[i]->ip, 0);
+        delete_syscheck(keys.keyentries[i]->name,keys.keyentries[i]->ip->ip,0);
     }
    
     printf("\n** Integrity check database updated.\n\n"); 

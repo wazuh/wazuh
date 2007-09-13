@@ -76,6 +76,13 @@
     <match>timed out after</match>
     <description>User disconnected due to time out.</description>
   </rule>
+
+  <rule id="11111" level="9">
+    <if_sid>11100</if_sid>
+    <match>PAM_ERROR_MSG: Account is disabled</match>
+    <description>Attempt to login with disabled account.</description>
+    <group>authentication_failed,</group>
+  </rule>
 </group> <!-- SYSLOG,FTPD -->
 
 

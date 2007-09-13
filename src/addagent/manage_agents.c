@@ -333,7 +333,10 @@ int remove_agent()
         {
             /* Getting full agent name */
             char *full_name = getFullnameById(u_id);
-            
+            if(!full_name)
+            {
+                ErrorExit(MEM_ERROR, ARGV0);
+            }
             
             fp = fopen(AUTH_FILE, "r+");
             if(!fp)
@@ -345,14 +348,17 @@ int remove_agent()
             #endif
 
 
+            /* Removing the agent, but keeping the id. */
             fsetpos(fp, &fp_pos);
-            fprintf(fp, "#*#*#*#*#*#*#*#*#*#*#");
+            fprintf(fp, "%s #*#*#*#*#*#*#*#*#*#*#", u_id);
+
             fclose(fp);
 
 
             /* Remove counter for id */
             delete_agentinfo(full_name); 
-            RemoveCounter(u_id);
+            OS_RemoveCounter(u_id);
+            free(full_name);
 
 
             printf(REMOVE_DONE, u_id);

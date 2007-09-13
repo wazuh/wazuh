@@ -20,7 +20,7 @@
     <description>SSHD messages grouped.</description>
   </rule>
               
-  <rule id="5701" level="12">
+  <rule id="5701" level="8">
     <if_sid>5700</if_sid>
     <match>Bad protocol version identification</match>
     <description>Possible attack on the ssh server </description>
