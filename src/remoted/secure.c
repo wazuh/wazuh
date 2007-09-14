@@ -5,7 +5,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -42,8 +42,12 @@ void HandleSecure()
     send_msg_init();
 
 
+    /* Initializing key mutex. */
+    keyupdate_init();
+
+
     /* Initializing manager */
-    manager_init();
+    manager_init(0);
 
 
     /* Creating Ar forwarder thread */
@@ -137,8 +141,20 @@ void HandleSecure()
             agentid = OS_IsAllowedDynamicID(&keys, buffer +1, srcip);
             if(agentid == -1)
             {
-                merror(ENC_IP_ERROR, __local_name, srcip);
-                continue;
+                if(check_keyupdate())
+                {
+                    agentid = OS_IsAllowedDynamicID(&keys, buffer +1, srcip);
+                    if(agentid == -1)
+                    {
+                        merror(ENC_IP_ERROR, ARGV0, srcip);
+                        continue;
+                    }
+                }
+                else
+                {
+                    merror(ENC_IP_ERROR, ARGV0, srcip);
+                    continue;
+                }
             }
         }
         else
@@ -146,8 +162,20 @@ void HandleSecure()
             agentid = OS_IsAllowedIP(&keys, srcip); 
             if(agentid < 0)
             {
-                merror(DENYIP_ERROR,ARGV0,srcip);
-                continue;
+                if(check_keyupdate())
+                {
+                    agentid = OS_IsAllowedIP(&keys, srcip);
+                    if(agentid == -1)
+                    {
+                        merror(DENYIP_ERROR,ARGV0,srcip);
+                        continue;
+                    }
+                }
+                else
+                {
+                    merror(DENYIP_ERROR,ARGV0,srcip);
+                    continue;
+                }
             }
             tmp_msg = buffer;
         }
@@ -194,7 +222,6 @@ void HandleSecure()
                 ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
             }
         }
-
     }
 }
 

@@ -220,22 +220,11 @@ int send_file_toagent(int agentid, char *name, char *sum)
     int i = 0;
     char file[OS_SIZE_1024 +1];
     char buf[OS_SIZE_1024 +1];
-    char crypt_msg[OS_MAXSTR +1];
-
-    int msg_size;
     
     FILE *fp;
 
     
-    /* If rcvd is not set, do not send (agent didn't connect to me yet */
-    if(keys.keyentries[agentid]->rcvd < (time(0) - (2*NOTIFY_TIME)))
-    {
-        return(-1);    
-    }
-    
-    
     snprintf(file, OS_SIZE_1024, "%s/%s",SHAREDCFG_DIR, name);
-
     fp = fopen(file, "r");
     if(!fp)
     {
@@ -248,43 +237,21 @@ int send_file_toagent(int agentid, char *name, char *sum)
     snprintf(buf, OS_SIZE_1024, "%s%s%s %s\n", 
                              CONTROL_HEADER, FILE_UPDATE_HEADER, sum, name);
 
-    msg_size = CreateSecMSG(&keys, buf, crypt_msg, agentid);
-    if(msg_size == 0)
+    if(send_msg(agentid, buf) == -1)
     {
         merror(SEC_ERROR,ARGV0);
         fclose(fp);
         return(-1);
     }
 
-    /* Sending initial message */
-    if(sendto(logr.sock, crypt_msg, msg_size, 0,
-                       (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
-                       logr.peer_size) < 0) 
-    {
-        fclose(fp);
-        merror(SEND_ERROR,ARGV0, keys.keyentries[agentid]->id);
-        return(-1);
-    }
-    
 
     /* Sending the file content */
     while(fgets(buf, OS_SIZE_1024 , fp) != NULL)
     {
-        msg_size = CreateSecMSG(&keys, buf, crypt_msg, agentid);
-
-        if(msg_size == 0)
+        if(send_msg(agentid, buf) == -1)
         {
-            fclose(fp);
             merror(SEC_ERROR,ARGV0);
-            return(-1);
-        }
-
-        if(sendto(logr.sock, crypt_msg, msg_size, 0,
-                       (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
-                       logr.peer_size) < 0)  
-        {
             fclose(fp);
-            merror(SEND_ERROR,ARGV0, keys.keyentries[agentid]->id);
             return(-1);
         }
 
@@ -301,26 +268,14 @@ int send_file_toagent(int agentid, char *name, char *sum)
     
     /* Sending the message to close the file */
     snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
-
-    msg_size = CreateSecMSG(&keys, buf, crypt_msg, agentid);
-    if(msg_size == 0)
+    if(send_msg(agentid, buf) == -1)
     {
         merror(SEC_ERROR,ARGV0);
         fclose(fp);
         return(-1);
     }
-
-    /* Sending final message */
-    if(sendto(logr.sock, crypt_msg, msg_size, 0,
-                       (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
-                       logr.peer_size) < 0) 
-    {
-        merror(SEND_ERROR,ARGV0, keys.keyentries[agentid]->id);
-        fclose(fp);
-        return(-1);
-    }
-
     
+
     fclose(fp);
     
     return(0);
@@ -344,13 +299,12 @@ void read_controlmsg(int agentid, char *msg)
     
     msg_ack[OS_FLSIZE] = '\0';
 
-    
+
     /* Startup message  -- communicate back to the agent */
     if(strcmp(msg, HC_STARTUP) == 0)
     {
         snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
         send_msg(agentid, msg_ack);
-        
         return;    
     }
     
@@ -376,10 +330,13 @@ void read_controlmsg(int agentid, char *msg)
 
 
     /* Writting to the agent file */
+    key_lock();
     snprintf(agent_file, OS_SIZE_1024, "%s/%s-%s",
                          AGENTINFO_DIR,
                          keys.keyentries[agentid]->name,
                          keys.keyentries[agentid]->ip->ip);
+    key_unlock();
+    
         
     fp = fopen(agent_file, "w");
     if(fp)
@@ -518,7 +475,6 @@ void *wait_for_msgs(void *none)
             pthread_cond_wait(&awake_mutex, &lastmsg_mutex);
         }
 
-
         /* Unlocking mutex */
         if(pthread_mutex_unlock(&lastmsg_mutex) != 0)
         {
@@ -579,13 +535,15 @@ void *wait_for_msgs(void *none)
 
 
 /* manager_init: Should be called before anything here */
-void manager_init()
+void manager_init(int isUpdate)
 {
     int i;
     _stime = time(0);
+
+    f_files();
     c_files();
 
-    debug1("%s: DEBUG: Starting manager_unit", ARGV0);
+    debug1("%s: DEBUG: Running manager_unit", ARGV0);
 
     for(i=0;i<MAX_AGENTS;i++)
     {
@@ -594,9 +552,12 @@ void manager_init()
     }
 
     /* Initializing mutexes */
-    pthread_mutex_init(&lastmsg_mutex, NULL);
-    pthread_cond_init(&awake_mutex, NULL);
-
+    if(isUpdate == 0)
+    {
+        pthread_mutex_init(&lastmsg_mutex, NULL);
+        pthread_cond_init(&awake_mutex, NULL);
+    }
+    
     modified_agentid = -1;
 
     return;

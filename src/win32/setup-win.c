@@ -130,7 +130,7 @@ int add_syscheck()
             "  <syscheck>\r\n"
             "    <frequency>64800</frequency>\r\n"
             "    <directories check_all=\"yes\">"
-            "%s</directories>\r\n"
+            "%s/system32</directories>\r\n"
             "  </syscheck>\r\n"
             "</ossec_config>\r\n", win_dir);
     fclose(fp);
@@ -185,10 +185,14 @@ int config_registry()
                 "    <windows_registry>%s</windows_registry>\r\n"
                 "    <windows_registry>%s</windows_registry>\r\n"
                 "    <windows_registry>%s</windows_registry>\r\n"
+                "    <windows_registry>%s</windows_registry>\r\n"
+                "    <windows_registry>%s</windows_registry>\r\n"
                 "  </syscheck>\r\n"
                 "</ossec_config>\r\n",
                 "HKEY_LOCAL_MACHINE\\Software\\Classes",
-                "HKEY_LOCAL_MACHINE\\Software\\Microsoft",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Internet Explorer",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion",
+                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows NT\\CurrentVersion",
                 "HKEY_LOCAL_MACHINE\\Software\\Policies",
                 "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control",
                 "HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services",
@@ -228,14 +232,6 @@ int config_registry()
                 "    <registry_ignore>%s</registry_ignore>\r\n"
                 "    <registry_ignore>%s</registry_ignore>\r\n"
                 "    <registry_ignore>%s</registry_ignore>\r\n"
-                "    <registry_ignore>%s</registry_ignore>\r\n"
-                "    <registry_ignore>%s</registry_ignore>\r\n"
-                "    <registry_ignore>%s</registry_ignore>\r\n"
-                "    <registry_ignore>%s</registry_ignore>\r\n"
-                "    <registry_ignore>%s</registry_ignore>\r\n"
-                "    <registry_ignore>%s</registry_ignore>\r\n"
-                "    <registry_ignore>%s</registry_ignore>\r\n"
-                "    <registry_ignore>%s</registry_ignore>\r\n"
                 "    <registry_ignore type=\"sregex\">\\Enum$</registry_ignore>\r\n"
                 "  </syscheck>\r\n"
                 "</ossec_config>\r\n\r\n",
@@ -243,14 +239,6 @@ int config_registry()
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Group Policy\\State",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Cache",
-                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Cryptography\\RNG",
-                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\PCHealth\\PchSvc",
-                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Dfrg",
-                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\WBEM",
-                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Rpc",
-                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\DirectDraw",
-                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Direct3D",
-                "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\COM3",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList",
                 "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Prefetcher",
                 "HKEY_LOCAL_MACHINE\\Software\\Classes\\Interface",

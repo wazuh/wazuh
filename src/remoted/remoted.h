@@ -43,7 +43,7 @@ void HandleSecure();
 void *AR_Forward(void *arg);
 
 /* Initialize the manager */
-void manager_init();
+void manager_init(int isUpdate);
 
 /* Wait for messages from the agent to analyze */
 void *wait_for_msgs(void *none);
@@ -56,6 +56,14 @@ int send_msg(int agentid, char *msg);
 
 /* Initializing send_msg */
 void send_msg_init();
+
+int check_keyupdate();
+
+void key_lock();
+
+void key_unlock();
+
+void keyupdate_init();
 
 
 /*** Global variables ***/

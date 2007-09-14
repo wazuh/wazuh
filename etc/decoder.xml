@@ -1046,8 +1046,8 @@
 
 <!-- NCSA common log decoder (used by apache, Lotus Domino and IIS NCSA).
   -  Will extract the srcip, url and id.
-  -  Every web access log must use "web-accesslog" as their
-  -  name if they want to be matched against the web rules.
+  -  Every web access log must use "web-log" as their
+  -  type if they want to be matched against the web rules.
   - Examples:
   -  63.91.167.39 - - [03/Aug/2001:21:56:18 -0700] "GET /default.ida?NNNN
   -  206.78.62.16 - - [06/Aug/2001:08:57:08 -0700] "GET /default.ida?XX

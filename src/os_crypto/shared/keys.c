@@ -23,18 +23,6 @@
 
 
 
-/* int __check_keychange(keystore *keys)
- */
-int __check_keychange(keystore *keys)
-{
-    if(keys->file_change !=  File_DateofChange(KEYS_FILE))
-    {
-        return(1);
-    }
-    return(0);
-}
-
-
 /* __memclear: Clears keys entries. 
  */
 void __memclear(char *id, char *name, char *ip, char *key, int size)
@@ -338,13 +326,31 @@ void OS_ReadKeys(keystore *keys)
 void OS_FreeKeys(keystore *keys)
 {
     int i = 0;
+    int _keysize = 0;
+    void *hashid;
+    void *haship;
+
+    _keysize = keys->keysize;
+    hashid = keys->keyhash_id;
+    haship = keys->keyhash_ip;
+
+
+    /* Zeroing the entries. */
+    keys->keysize = 0;
+    keys->keyhash_id =NULL;
+    keys->keyhash_ip = NULL;
+    
+    
+    /* Sleeping to give time to other threads to stop using them. */
+    sleep(1);
+    
     
     /* Freeing the hashes */
-    keys->keyhash_id = OSHash_Free(keys->keyhash_id);
-    keys->keyhash_ip = OSHash_Free(keys->keyhash_ip);
+    OSHash_Free(hashid);
+    OSHash_Free(haship);
 
 
-    for(i = 0; i<= keys->keysize; i++)
+    for(i = 0; i<= _keysize; i++)
     {
         if(keys->keyentries[i])
         {
@@ -379,6 +385,37 @@ void OS_FreeKeys(keystore *keys)
 }
 
 
+/* int OS_CheckUpdateKeys(keystore *keys)
+ * Checks if key changed.
+ */
+int OS_CheckUpdateKeys(keystore *keys)
+{
+    if(keys->file_change !=  File_DateofChange(KEYS_FILE))
+    {
+        return(1);
+    }
+    return(0);
+}
+
+
+/* OS_UpdateKeys(keystore *keys)
+ * Update the keys if changed.
+ */
+int OS_UpdateKeys(keystore *keys)
+{
+    if(keys->file_change !=  File_DateofChange(KEYS_FILE))
+    {
+        merror(ENCFILE_CHANGED, __local_name);
+        OS_FreeKeys(keys);
+        OS_ReadKeys(keys);
+        OS_StartCounter(keys);
+
+        return(1);
+    }
+    return(0);
+}
+
+
 /* OS_IsAllowedIP()
  * Checks if an IP address is allowed to connect. 
  */
@@ -394,16 +431,7 @@ int OS_IsAllowedIP(keystore *keys, char *srcip)
     {
         return(entry->keyid);
     }
-    
 
-    /* Checking if the key file changed. */
-    if(__check_keychange(keys))
-    {
-        merror(ENCFILE_CHANGED, __local_name);
-        OS_FreeKeys(keys);
-        OS_ReadKeys(keys);
-        OS_StartCounter(keys);
-    }
     return(-1);
 }
 
@@ -460,17 +488,6 @@ int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip)
         }
     }
 
-
-    /* Checking if the key file changed. */
-    if(__check_keychange(keys))
-    {
-        merror(ENCFILE_CHANGED, __local_name);
-        OS_FreeKeys(keys);
-        OS_ReadKeys(keys);
-        OS_StartCounter(keys);
-    }
-                                                
-                                    
     return(-1);
 }
 

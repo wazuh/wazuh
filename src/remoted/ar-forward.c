@@ -1,11 +1,11 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2005,2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -15,10 +15,6 @@
 
 #include "remoted.h"
 #include "os_net/os_net.h"
-
-
-/* pthread send_msg mutex */
-pthread_mutex_t sendmsg_mutex;
 
 
 
@@ -61,6 +57,7 @@ void *AR_Forward(void *arg)
             
             /* Getting the location */
             location = msg;
+
 
             /* Location is going to be the agent name */
             tmp_str = strchr(msg, ')');
@@ -135,6 +132,10 @@ void *AR_Forward(void *arg)
                                              tmp_str);
 
             
+            /* Lock use of keys */
+            key_lock();
+            
+            
             /* Sending to ALL agents */
             if(ar_location & ALL_AGENTS)
             {
@@ -150,6 +151,7 @@ void *AR_Forward(void *arg)
                 agent_id = OS_IsAllowedName(&keys, location);
                 if(agent_id < 0)
                 {
+                    key_unlock();
                     merror(AR_NOAGENT_ERROR, ARGV0, location);
                     continue;
                 }
@@ -166,77 +168,20 @@ void *AR_Forward(void *arg)
                 
                 if(agent_id < 0)
                 {
+                    key_unlock();
                     merror(AR_NOAGENT_ERROR, ARGV0, ar_agent_id);
                     continue;
                 }
 
                 send_msg(agent_id, msg_to_send);
             }
+
+            /* Lock use of keys */
+            key_unlock();
         }
     }
 }
 
  
-void send_msg_init()
-{
-    /* Initializing mutex */
-    pthread_mutex_init(&sendmsg_mutex, NULL);
-}
-
-
-/* send_msg: 
- * Send message to an agent.
- * Returns -1 on error
- */
-int send_msg(int agentid, char *msg)
-{
-    int msg_size;
-    char crypt_msg[OS_MAXSTR +1];
-
-
-    /* If we don't have the agent id, ignore it */
-    if(keys.keyentries[agentid]->rcvd < (time(0) - (2*NOTIFY_TIME)))
-    {
-        return(-1);
-    }
-
-    
-    msg_size = CreateSecMSG(&keys, msg, crypt_msg, agentid);
-    if(msg_size == 0)
-    {
-        merror(SEC_ERROR,ARGV0);
-        return(-1);
-    }
-
-    
-    /* Locking before using */
-    if(pthread_mutex_lock(&sendmsg_mutex) != 0)
-    {
-        merror(MUTEX_ERROR, ARGV0);
-        return(-1);
-    }
-
-
-    /* Sending initial message */
-    if(sendto(logr.sock, crypt_msg, msg_size, 0,
-                       (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
-                       logr.peer_size) < 0) 
-    {
-        merror(SEND_ERROR,ARGV0, keys.keyentries[agentid]->id);
-    }
-    
-    
-    /* Unlocking mutex */
-    if(pthread_mutex_unlock(&sendmsg_mutex) != 0)
-    {
-        merror(MUTEX_ERROR, ARGV0);
-        return(-1);
-    }
-                                        
-
-    return(0);
-}
-
-
 
 /* EOF */

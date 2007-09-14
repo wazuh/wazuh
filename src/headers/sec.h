@@ -63,7 +63,13 @@ void OS_ReadKeys(keystore *keys);
 
 /* Frees the auth keys. */
 void OS_FreeKeys(keystore *keys);
+
+/* Checks if key changed. */
+int OS_CheckUpdateKeys(keystore *keys);
   
+/* Update the keys if they changed on the system. */
+int OS_UpdateKeys(keystore *keys);
+
 
 /* Starts counter for all agents */
 void OS_StartCounter(keystore *keys);

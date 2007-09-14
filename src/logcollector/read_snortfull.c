@@ -68,6 +68,14 @@ void *read_snortfull(int pos, int *rc, int drop_it)
                     f_msg_size -= strlen(str)+1;
                     p = two;
                 }
+                else if(strncmp(str, "[Priority: ", 10) == 0)
+                {
+                    strncat(f_msg, "[Classification: Preprocessor] "
+                                   "[Priority: 3] ", f_msg_size);
+                    f_msg_size -= strlen(str)+1;
+                    p = two;
+                }
+                
                 /* If it is a preprocessor message, it will not have
                  * the classification.
                  */
