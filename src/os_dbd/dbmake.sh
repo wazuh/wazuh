@@ -8,7 +8,7 @@ PL=""
 
 
 # Looking for mysql
-ls "`which mysql`" > /dev/null 2>&1
+ls "`which mysql 2>/dev/null`" > /dev/null 2>&1
 if [ $? = 0 ]; then
     for i in /usr /usr/local $1
     do    
@@ -34,7 +34,7 @@ fi
 
 
 # Looking for postgresql
-ls "`which psql`" > /dev/null 2>&1
+ls "`which psql 2>/dev/null`" > /dev/null 2>&1
 if [ $? = 0 ]; then
     for i in /usr /usr/local /usr/pgsql /usr/postgresql $1
     do    

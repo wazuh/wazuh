@@ -521,6 +521,7 @@
   - postfix/smtpd[32297]: NOQUEUE: reject: RCPT from unknown[213.255.237.245]: 554 
     <ce101@ce.metu.edu.tr>: Relay access denied; from=<kryonomm@yahoo.com> 
     to=<e10445@jubiipost.dk> proto=SMTP helo=<SM01.net>
+  - postfix/smtpd[27712]: NOQUEUE: reject: MAIL from localhost[127.0.0.1]: 452 Insufficient system storage
  -->
 
 <decoder name="postfix">
@@ -530,7 +531,7 @@
 <decoder name="postfix-reject">
   <use_own_name>true</use_own_name>
   <parent>postfix</parent>  
-  <prematch>^NOQUEUE: reject: RCPT from </prematch>
+  <prematch>^NOQUEUE: reject: \w\w\w\w from </prematch>
   <regex offset="after_prematch">[(\d+.\d+.\d+.\d+)]: (\d+) </regex>
   <order>srcip,id</order>
 </decoder>
