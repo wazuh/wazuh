@@ -196,7 +196,7 @@ int local_start()
 
 
     /* Checking auth keys */
-    if(!CheckKeys())
+    if(!OS_CheckKeys())
     {
         ErrorExit(AG_NOKEYS_EXIT, ARGV0);
     }
@@ -222,7 +222,8 @@ int local_start()
     
     /* Reading the private keys  */
     debug1("%s: DEBUG: Reading private keys.", ARGV0);
-    ReadKeys(&keys, 0);
+    OS_ReadKeys(&keys);
+    OS_StartCounter(&keys);
 
 
     /* Initial random numbers */

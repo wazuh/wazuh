@@ -442,7 +442,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     LPSTR lpCmdLine, int nCmdShow)
 {
     int ret;
-    
+    WSADATA wsaData;
+
+
+    /* Starting Winsock -- for name resolution. */
+    WSAStartup(MAKEWORD(2, 0), &wsaData);
+
+
     /* Initializing config */
     init_config();
 
@@ -455,12 +461,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     /* Check if service is running and try to start it */
     if((strcmp(config_inst.key, FL_NOKEY) != 0)&&
-       (strcmp(config_inst.server, FL_NOSERVER) != 0) &&
-       !CheckServiceRunning())
+            (strcmp(config_inst.server, FL_NOSERVER) != 0) &&
+            !CheckServiceRunning())
     {
         ret = MessageBox(NULL, "OSSEC Agent not running. "
-                                "Do you wish to start it?",
-                                "Wish to start the agent?", MB_OKCANCEL);
+                "Do you wish to start it?",
+                "Wish to start the agent?", MB_OKCANCEL);
         if(ret == IDOK)
         {
             /* Starting the service */

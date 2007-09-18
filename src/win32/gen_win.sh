@@ -41,3 +41,4 @@ done
 rm ${WINPKG}/os_crypto/md5/main.c
 rm ${WINPKG}/os_crypto/blowfish/main.c
 rm ${WINPKG}/os_crypto/sha1/main.c
+rm ${WINPKG}/shared/rules_op.c

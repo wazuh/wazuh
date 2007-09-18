@@ -75,6 +75,12 @@ int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
     FILE *fp_out;
 
 
+    /* Nodes and newval must be set. */
+    if(!nodes || !newval)
+    {
+        return(XMLW_ERROR);
+    }
+
     /* Opening infile */
     fp_in = fopen(infile,"r");
     if(!fp_in)
@@ -100,6 +106,42 @@ int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
         return(XMLW_ERROR);
     }
 
+    /* We didn't find an entry, add at the end. */
+    if(!oldval && r == 0)
+    {
+        int r = 0;
+        int rwidth = 0;
+        
+        fseek(fp_out, 0, SEEK_END);
+        fprintf(fp_out, "\n");
+        
+        /* Printing each node. */
+        while(nodes[r])
+        {
+            fprintf(fp_out, "%*c<%s>", rwidth, ' ', nodes[r]);
+            r++;
+            rwidth += 3;
+
+            if(nodes[r])
+                fprintf(fp_out, "\n");
+        }
+    
+        /* Printing val. */
+        r--;
+        rwidth -=6;
+        fprintf(fp_out, "%s</%s>\n", newval, nodes[r]);
+        r--;
+        
+
+        /* Closing each node. */
+        while(r >= 0)
+        {
+            fprintf(fp_out, "%*c</%s>\n", rwidth, ' ', nodes[r]);
+            r--;
+            rwidth -= 3;
+        }
+    }
+    
     fclose(fp_in);
     fclose(fp_out);
     return(0);
@@ -163,6 +205,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
               int position, int parent, char **nodes, char *val, int node_pos)
 {
     int c;
+    int ret_code = 0;
     unsigned int count = 0;
     short int location = -1;
 
@@ -262,7 +305,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
                 
                 if(parent > 0)
                 {
-                    return(0);
+                    return(ret_code);
                 }
             }
             /* Location == means we are getting the content */
@@ -288,6 +331,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
                 /* Latest node, printint value */
                 if(!nodes[node_pos])
                 {
+                    ret_code = 1;
                     fprintf(fp_out, "%s", val);
 
                     while((c = fgetc(fp_in)) != EOF)
@@ -318,7 +362,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
             location = -1;
             if(parent > 0)
             {
-                return(0);
+                return(ret_code);
             }
         }
 
@@ -335,15 +379,23 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
             }	
             else
             {
+                int wret_code;
                 ungetc(c,fp_in);
                 ungetc(_R_CONFS,fp_in);
                 fseek(fp_out, -1, SEEK_CUR);
 
-                if(_WReadElem(fp_in, fp_out, position+1, parent+1,
-                             nodes, val, node_pos)< 0)
+                if((wret_code = _WReadElem(fp_in, fp_out, position+1, parent+1,
+                             nodes, val, node_pos))< 0)
                 {
                     return(-1);
                 }
+
+                /* Setting final return code. */
+                if(wret_code == 1)
+                {
+                    ret_code = 1;
+                }
+                
                 count = 0;
             }
         }
@@ -366,7 +418,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
     
     if(location == -1)
     {
-        return(0);
+        return(ret_code);
     }
 
 
