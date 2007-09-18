@@ -60,7 +60,8 @@ int __DBSelectLocation(char *location, DBConfig *db_config)
     /* Generating SQL */
     snprintf(sql_query, OS_SIZE_1024 -1,
             "SELECT id FROM "
-            "location WHERE name = '%s' AND server_id = '%d'",
+            "location WHERE name = '%s' AND server_id = '%d' "
+            "LIMIT 1",
             location, db_config->server_id);
 
 
@@ -150,7 +151,8 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
 
         if(!location_id)
         {
-            merror("%s: Unable to insert location.", ARGV0);
+            merror("%s: Unable to insert location: '%s'.", 
+                   ARGV0, al_data->location);
             return(0);
         }
 
