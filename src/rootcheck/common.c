@@ -7,11 +7,16 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 3) as published by the FSF - Free Software
  * Foundation
+ *
+ * License details at the LICENSE file included with OSSEC or 
+ * online at: http://www.ossec.net/main/license/ .
  */
 
  
 #include "shared.h"
 #include "rootcheck.h"
+#include "os_regex/os_regex.h" 
+
 
 
 /** int rk_check_file(char *value, char *pattern)
@@ -19,13 +24,12 @@
 int rk_check_file(char *file, char *pattern)
 {
     char *split_file;
-    char *tmp_str;
     
     FILE *fp;
     char buf[OS_SIZE_2048 +1];
     
     
-    /* If string we null, we don't match */
+    /* If string is null, we don't match */
     if(file == NULL)
     {
         return(0);
@@ -33,71 +37,82 @@ int rk_check_file(char *file, char *pattern)
 
 
     /* Checking if the file is divided */
-    split_file = file;
-    tmp_str = strchr(file, ',');
-    if(tmp_str)
+    split_file = strchr(file, ',');
+    if(split_file)
     {
-        *tmp_str = '\0';
+        *split_file = '\0';
+        split_file++;
     }
 
 
     /* Getting each file */
-    while(split_file)
+    do
     {
+        
 
         /* If we don't have a pattern, just check if the file/dir is there */
         if(pattern == NULL)
         {
-            if(is_file(split_file))
+            if(is_file(file))
             {
                 return(1);
             }
-
-            continue;
         }
 
-
-        /* Checking for a content in the file */
-        fp = fopen(file, "r");
-        if(!fp)
+        else
         {
-            continue;
-        }
-
-        buf[OS_SIZE_2048] = '\0';
-        while(fgets(buf, OS_SIZE_2048, fp) != NULL)
-        {
-            char *nbuf;
-
-            /* Removing end of line */
-            nbuf = strchr(buf, '\n');
-            if(nbuf)
+            /* Checking for a content in the file */
+            fp = fopen(file, "r");
+            if(fp)
             {
-                *nbuf = '\0';
-            }
+
+                buf[OS_SIZE_2048] = '\0';
+                while(fgets(buf, OS_SIZE_2048, fp) != NULL)
+                {
+                    char *nbuf;
+
+                    /* Removing end of line */
+                    nbuf = strchr(buf, '\n');
+                    if(nbuf)
+                    {
+                        *nbuf = '\0';
+                    }
 
 
-            #ifdef WIN32
-            /* Removing end of line */
-            nbuf = strchr(buf, '\r');
-            if(nbuf)
-            {
-                *nbuf = '\0';
-            }
-            #endif
+                    #ifdef WIN32
+                    /* Removing end of line */
+                    nbuf = strchr(buf, '\r');
+                    if(nbuf)
+                    {
+                        *nbuf = '\0';
+                    }
+                    #endif
 
 
-            /* Matched */
-            if(pt_matches(buf, pattern))
-            {
+                    /* Matched */
+                    if(pt_matches(buf, pattern))
+                    {
+                        fclose(fp);
+                        return(1);
+                    }
+                }
+
                 fclose(fp);
-                return(1);
             }
         }
 
-        fclose(fp);
-        continue;
-    }
+        if(split_file)
+        {
+            file = split_file;
+            split_file = strchr(split_file, ',');
+            if(split_file)
+            {
+                split_file++;
+            }
+        }
+        
+        
+    }while(split_file);
 
 
     return(0);
@@ -316,6 +331,7 @@ int isfile_ondir(char *file, char *dir)
 }
 
 
+
 /* is_file: Check if the file is present
  * by different attempts (to try to avoid syscall hidding).
  */
@@ -439,5 +455,99 @@ int is_file(char *file_name)
     return(1);
 }
 
+
+
+/*  del_plist:. Deletes the process list
+ */
+int del_plist(void *p_list_p)
+{
+    OSList *p_list = (OSList *)p_list_p;
+    OSListNode *l_node;
+    OSListNode *p_node = NULL;
+
+    if(p_list == NULL)
+    {
+        return(0);
+    }
+
+    l_node = OSList_GetFirstNode(p_list);
+    while(l_node)
+    {
+        Proc_Info *pinfo;
+
+        pinfo = (Proc_Info *)l_node->data;
+
+        if(pinfo->p_name)
+        {
+            free(pinfo->p_name);
+        }
+
+        if(pinfo->p_path)
+        {
+            free(pinfo->p_path);
+        }
+        
+        free(l_node->data);
+
+        if(p_node)
+        {
+            free(p_node);
+            p_node = NULL;
+        }
+        p_node = l_node;
+
+        l_node = OSList_GetNextNode(p_list);
+    }
+
+    if(p_node)
+    {
+        free(p_node);
+        p_node = NULL;
+    }
+
+    free(p_list);
+
+    return(1);
+}
+
+
+
+/* is_process: Check is a process is running.
+ */
+int is_process(char *value, void *p_list_p)
+{
+    OSList *p_list = (OSList *)p_list_p;
+    OSListNode *l_node;
+    if(p_list == NULL)
+    {
+        return(0);
+    }
+    if(!value)
+    {
+        return(0);
+    }
+
+
+    l_node = OSList_GetFirstNode(p_list);
+    while(l_node)
+    {
+        Proc_Info *pinfo;
+
+        pinfo = (Proc_Info *)l_node->data;
+
+        /* Checking if value matches */
+        if(pt_matches(pinfo->p_path, value))
+        {
+            return(1);
+        }
+
+        l_node = OSList_GetNextNode(p_list);
+    }
+
+    return(0);
+
+}
+ 
+ 
 
 /* EOF */

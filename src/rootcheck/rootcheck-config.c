@@ -39,6 +39,7 @@ int Read_Rootcheck_Config(char * cfgfile)
     char *(xml_workdir[])={xml_rootcheck, "work_directory", NULL};
     char *(xml_rootkit_files[])={xml_rootcheck, "rootkit_files", NULL};
     char *(xml_rootkit_trojans[])={xml_rootcheck, "rootkit_trojans", NULL};
+    char *(xml_rootkit_unixaudit[])={xml_rootcheck, "system_audit", NULL};
     char *(xml_rootkit_winaudit[])={xml_rootcheck, "windows_audit", NULL};
     char *(xml_rootkit_winapps[])={xml_rootcheck, "windows_apps", NULL};
     char *(xml_rootkit_winmalware[])={xml_rootcheck, "windows_malware", NULL};
@@ -155,6 +156,9 @@ int Read_Rootcheck_Config(char * cfgfile)
     rootcheck.rootkit_trojans  = OS_GetOneContentforElement
                                (&xml,xml_rootkit_trojans);
     
+    rootcheck.unixaudit = OS_GetOneContentforElement
+                                (&xml,xml_rootkit_unixaudit);
+
     rootcheck.winaudit  = OS_GetOneContentforElement
                                 (&xml,xml_rootkit_winaudit);
 

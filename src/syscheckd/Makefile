@@ -9,7 +9,7 @@ NAME=ossec-syscheckd
 include ../Config.Make
 
 
-OBJS = syscheck.c config.c create_db.c run_check.c ${OS_CONFIG} ${OS_SHARED} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_CRYPTO} ${OS_ROOTCHECK}
+OBJS = syscheck.c config.c create_db.c run_check.c ${OS_CONFIG} ${OS_ROOTCHECK} ${OS_SHARED} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_CRYPTO}
 
 syscheck:
 		$(CC) $(CFLAGS) $(OBJS) -o ${NAME}

@@ -84,30 +84,20 @@ int dogrep(char *file, char *str)
 
 
 /* Getting Windows directory */
-char *get_win_dir()
+static void get_win_dir(char *file, int f_size)
 {
-    char *win_dir = "C:\\WINDOWS";
-    if(direxist(win_dir))
+    ExpandEnvironmentStrings("%WINDIR%", file, f_size);
+
+    if(!direxist(file))
     {
-        return(win_dir);
+        strncpy(file, "C:\\WINDOWS", f_size);
     }
-
-    win_dir = "C:\\WINNT";
-    if(direxist(win_dir))
-    {
-        return(win_dir);
-    }
-
-    /* Default is WINDOWS */
-    return("C:\\WINDOWS");
-
 }
 
 
 
 int config_dir(char *name, char *dir, char *vfile)
 {
-    int add = 0;
     FILE *fp;
 
     if(!direxist(dir))
@@ -127,35 +117,6 @@ int config_dir(char *name, char *dir, char *vfile)
            "               than W3C Extended or you just don't have today's\n"
            "               log available.\n", name);
     printf("%s: http://www.ossec.net/en/manual.html#iis\n\n", name);
-
-    printf("%s: Do you still want to add '%s'?\n", name, dir);
-    printf("%s: Continue? (y/n):", name);
-    while(1)
-    {
-        char u_buffer[256];
-        memset(u_buffer, '\0', 256);
-        if((fgets(u_buffer, 254, stdin) != NULL) &&
-                (strlen(u_buffer) < 250))
-        {
-            if((u_buffer[0] == 'y') || (u_buffer[0] == 'Y'))
-            {
-                add = 1;
-                break;
-            }
-            else if((u_buffer[0] == 'n') || (u_buffer[0] == 'N'))
-            {
-                add = 0;
-                break;
-            }
-        }
-        printf("%s: Continue? (y/n):", name);
-    }
-
-    if(add == 0)
-    {
-        printf("%s: Action not taken.\n", name);
-        return(1);
-    }
 
 
     /* Add iis config config */
@@ -190,7 +151,6 @@ int config_dir(char *name, char *dir, char *vfile)
 /* Check if the iis file is present in the config */
 int config_iis(char *name, char *file, char *vfile)
 {
-    int add = 0;
     FILE *fp;
 
     if(!fileexist(file))
@@ -208,33 +168,6 @@ int config_iis(char *name, char *file, char *vfile)
     }
 
     printf("%s: Adding IIS log file to be monitored: '%s'.\n", name,vfile);
-    printf("%s: Continue? (y/n):", name);
-    while(1)
-    {
-        char u_buffer[256];
-        memset(u_buffer, '\0', 256);
-        if((fgets(u_buffer, 254, stdin) != NULL) &&
-                (strlen(u_buffer) < 250))
-        {
-            if((u_buffer[0] == 'y') || (u_buffer[0] == 'Y'))
-            {
-                add = 1;
-                break;
-            }
-            else if((u_buffer[0] == 'n') || (u_buffer[0] == 'N'))
-            {
-                add = 0;
-                break;
-            }
-        }
-        printf("%s: Continue? (y/n):", name);
-    }
-
-    if(add == 0)
-    {
-        printf("%s: Action not taken.\n", name);
-        return(1);
-    }
 
 
     /* Add iis config config */
@@ -270,7 +203,8 @@ int main(int argc, char **argv)
     time_t tm;
     struct tm *p;
     
-    char *win_dir;    
+    char win_dir[2048];    
+    
     
     if(argc >= 2)
     {
@@ -302,7 +236,7 @@ int main(int argc, char **argv)
     
     
     /* Getting windows directory */
-    win_dir = get_win_dir();
+    get_win_dir(win_dir, sizeof(win_dir) -1);
     
     
     /* Looking for IIS log files */
@@ -391,7 +325,6 @@ int main(int argc, char **argv)
         printf("%s: No IIS log added. Look at the link above for more "
                "information.\r\n", argv[0]);
     }
-    system("pause");
     
     return(0);
 }

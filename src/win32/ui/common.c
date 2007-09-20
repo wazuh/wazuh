@@ -364,7 +364,7 @@ int get_ossec_server()
         if(str)
         {
             char *s_ip;
-            s_ip = OS_GetHost(str, 5);
+            s_ip = OS_GetHost(str, 0);
             if(s_ip)
             {
                 /* Clearing the host memory */
@@ -402,7 +402,7 @@ int set_ossec_server(char *ip, HWND hwnd)
     if(OS_IsValidIP(ip, NULL) != 1)
     {
         char *s_ip;
-        s_ip = OS_GetHost(ip, 5);
+        s_ip = OS_GetHost(ip, 0);
 
         if(!s_ip)
         {

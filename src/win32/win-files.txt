@@ -44,6 +44,9 @@ win32/win_service.c win_service.c
 win32/make.bat make.bat
 win32/setup-win.c setup/setup-win.c
 win32/setup-iis.c setup/setup-iis.c
+win32/setup-shared.c setup/setup-shared.c
+win32/setup-shared.h setup/setup-shared.h
+win32/setup-syscheck.c setup/setup-syscheck.c
 win32/add-localfile.c setup/add-localfile.c
 win32/ossec-win.conf default-ossec.conf
 win32/internal_options-win.conf internal_options.conf

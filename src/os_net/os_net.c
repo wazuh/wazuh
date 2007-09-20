@@ -487,11 +487,9 @@ char *OS_GetHost(char *host, int attempts)
     
     while(i <= attempts)
     {
-        sleep(i);
-        
         if((h = gethostbyname(host)) == NULL)
         {
-            i++;
+            sleep(i++);
             continue;
         }
 

@@ -6,7 +6,7 @@
 ;--------------------------------
 ;General
 
-!define VERSION "1.3"
+!define VERSION "1.4-BETA"
 !define NAME "Ossec HIDS"
 !define /date CDATE "%b %d %Y at %H:%M:%S"
 
@@ -30,8 +30,23 @@ InstallDirRegKey HKLM "ossec" "Install_Dir"
   !define MUI_ICON favicon.ico
   !define MUI_UNICON ossec-uninstall.ico
   !define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the install of ${Name}.\r\n\r\nClick next to continue."
+
+  ; Page for choosing components.
+  !define MUI_COMPONENTSPAGE_TEXT_TOP "Select the options you want to be executed. Click next to continue."
+
+  ;!define MUI_COMPONENTSPAGE_TEXT_COMPLIST "text complist"
+
+  ;!define MUI_COMPONENTSPAGE_TEXT_INSTTYPE "Select components to install:"
+
+  ;!define MUI_COMPONENTSPAGE_TEXT_DESCRIPTION_TITLE "text abac"
+
+  ;!define MUI_COMPONENTSPAGE_TEXT_DESCRIPTION_INFO "text info oi"
+  
+  !define MUI_COMPONENTSPAGE_NODESC 
+
   !insertmacro MUI_PAGE_WELCOME
   !insertmacro MUI_PAGE_LICENSE "LICENSE.txt"
+  !insertmacro MUI_PAGE_COMPONENTS
   !insertmacro MUI_PAGE_DIRECTORY
   !insertmacro MUI_PAGE_INSTFILES
   !insertmacro MUI_PAGE_FINISH
@@ -60,8 +75,10 @@ Function .onInit
 FunctionEnd
             
 
-Section "OSSEC HIDS Windows Agent (required)"
+Section "OSSEC Agent (required)" MainSec
 
+;Required section.
+SectionIn RO
 SetOutPath $INSTDIR
 
 ClearErrors
@@ -114,13 +131,23 @@ CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$I
 ; Install in the services 
 ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
 ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"' 
-ExecWait '"$INSTDIR\os_win32ui.exe" "$INSTDIR"' 
+Exec '"$INSTDIR\os_win32ui.exe" "$INSTDIR"' 
 
 SectionEnd
 
-Section Welcome
+Section "Scan and monitor IIS logs (recommended)" IISLogs
+
+ExecWait '"$INSTDIR\setup-iis.exe" "$INSTDIR"'
 
 SectionEnd
+
+Section "Enable integrity checking (recommended)" IntChecking
+
+ExecWait '"$INSTDIR\setup-syscheck.exe" "$INSTDIR"'
+
+SectionEnd
+
+
 
 Section "Uninstall"
   

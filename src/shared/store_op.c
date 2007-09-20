@@ -39,6 +39,43 @@ OSStore *OSStore_Create()
 }
 
 
+/* Deletes the list storage 
+ * Return NULL on error
+ */
+OSStore *OSStore_Free(OSStore *list)
+{
+    OSStoreNode *delnode;
+    list->cur_node = list->first_node;
+
+    while(list->cur_node)
+    {
+        if(list->cur_node->key)
+        {
+            free(list->cur_node->key);
+            list->cur_node->key = NULL;
+        }
+        if(list->cur_node->data)
+        {
+            free(list->cur_node->data);
+            list->cur_node->data = NULL;
+        }
+
+        /* Deleting each node. */
+        delnode = list->cur_node;
+        list->cur_node = list->cur_node->next;
+        free(delnode);
+    }
+
+    list->first_node = NULL;
+    list->last_node = NULL;
+
+    free(list);
+    list = NULL;
+    
+    return(list);
+}
+
+
 /* Set the maximum number of elements
  * in the storage. Returns 0 on error or
  * 1 on success.

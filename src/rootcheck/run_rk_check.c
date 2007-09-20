@@ -84,6 +84,7 @@ void run_rk_check()
     time_t time2;
 
     FILE *fp;
+    OSList *plist;
    
     #ifndef WIN32
     /* Hard coding basedir */ 
@@ -103,7 +104,6 @@ void run_rk_check()
     
     /* Basedir for Windows */
     char basedir[] = "C:\\";
-    OSList *win32_plist;
     
     #endif
     
@@ -121,12 +121,13 @@ void run_rk_check()
     if(rootcheck.notify != QUEUE)
     {
         printf("\n");
-        printf("** Starting Rootcheck v0.8 by Daniel B. Cid        **\n");
+        printf("** Starting Rootcheck v0.9 by Daniel B. Cid        **\n");
         printf("** http://www.ossec.net/en/about.html#dev-team     **\n");
         printf("** http://www.ossec.net/rootcheck/                 **\n\n");
         printf("Be patient, it may take a few minutes to complete...\n");
         printf("\n");
     }
+    
  
     /* Cleaning the global variables */
     rk_sys_count = 0;
@@ -134,8 +135,10 @@ void run_rk_check()
     rk_sys_name[rk_sys_count] = NULL;
 
     
+    
     /* Sending scan start message */
     notify_rk(ALERT_POLICY_VIOLATION, "Starting rootcheck scan.");
+
 
 
     /***  First check, look for rootkits ***/
@@ -163,6 +166,7 @@ void run_rk_check()
             fclose(fp);
         }
     }
+
   
   
     /*** Second check. look for trojan entries in common binaries ***/
@@ -193,10 +197,11 @@ void run_rk_check()
     }
 
 
+
     #ifdef WIN32
     
     /*** Getting process list ***/
-    win32_plist = os_get_win32_process_list();
+    plist = os_get_process_list();
 
 
     /*** Windows audit check ***/
@@ -214,7 +219,7 @@ void run_rk_check()
         }
         else
         {
-            check_rc_winaudit(fp, win32_plist);
+            check_rc_winaudit(fp, plist);
             fclose(fp);
         }
     }
@@ -234,7 +239,7 @@ void run_rk_check()
         }
         else
         {
-            check_rc_winmalware(fp, win32_plist);
+            check_rc_winmalware(fp, plist);
             fclose(fp);
         }
     }
@@ -254,15 +259,50 @@ void run_rk_check()
         }
         else
         {
-            check_rc_winapps(fp, win32_plist);
+            check_rc_winapps(fp, plist);
             fclose(fp);
         }
     }
     
 
     /* Freeing process list */
-    del_plist((void *)win32_plist);
+    del_plist((void *)plist);
 
+
+
+    /** Checks for other non Windows. **/
+    #else
+    
+
+
+    /*** Unix audit check ***/
+    if(!rootcheck.unixaudit)
+    {
+        merror("%s: No unixaudit file configured.", ARGV0);
+    }
+    else
+    {
+        fp = fopen(rootcheck.unixaudit, "r");
+        if(!fp)
+        {
+            merror("%s: No unixaudit file: '%s'",ARGV0,
+                    rootcheck.unixaudit);
+        }
+        else
+        {
+            /* Getting process list. */
+            plist = os_get_process_list();
+            
+            /* Running unix audit. */
+            check_rc_unixaudit(fp, plist);
+            
+            /* Freeing list */
+            del_plist((void *)plist);
+            fclose(fp);
+        }
+    }
+
+    
     #endif
     
    

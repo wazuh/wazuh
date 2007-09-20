@@ -9,8 +9,8 @@ NAME=ossec-rootcheck
 include ../Config.Make
 
 
-OBJS = check_open_ports.c check_rc_pids.c check_rc_trojans.c run_rk_check.c check_rc_dev.c check_rc_ports.c common.c common_rcl.c win-common.c check_rc_files.c check_rc_readproc.c os_string.c check_rc_if.c check_rc_sys.c rootcheck.c
-OBJS2 = ${OS_SHARED} ${OS_XML}
+OBJS = check_open_ports.c check_rc_pids.c check_rc_trojans.c run_rk_check.c check_rc_dev.c check_rc_ports.c check_rc_policy.c common.c common_rcl.c win-common.c unix-process.c check_rc_files.c check_rc_readproc.c os_string.c check_rc_if.c check_rc_sys.c rootcheck.c
+OBJS2 = ${OS_SHARED} ${OS_XML} ${OS_REGEX}
 
 rootcheck:
 		$(CC) $(CFLAGS) -c ${OBJS} config.c -D_GNU_SOURCE

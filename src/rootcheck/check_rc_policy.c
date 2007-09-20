@@ -5,13 +5,27 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
  
 #include "shared.h"
 #include "rootcheck.h"
+
+
+ 
+/* check_rc_unixaudit:
+ * Read the file pointer specified
+ * and check if the configured file is there
+ */
+void check_rc_unixaudit(FILE *fp, void *p_list)
+{
+    debug1("%s: DEBUG: Starting on check_rc_unixaudit", ARGV0);
+     
+    rkcl_get_entry(fp, "System Audit:", p_list);
+    
+}
 
 
 

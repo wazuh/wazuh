@@ -71,8 +71,8 @@ int os_win32_setdebugpriv(HANDLE h, int en)
 
 
 
-/* os_get_win32_process_list: Get list of win32 processes */
-void *os_get_win32_process_list()
+/* os_get_process_list: Get list of win32 processes */
+void *os_get_process_list()
 {
     OSList *p_list = NULL;
     
@@ -155,7 +155,7 @@ void *os_get_win32_process_list()
     {
         char *p_name;
         char *p_path;
-        Win32Proc_Info *p_info;
+        Proc_Info *p_info;
 
         /* Setting process name */
         os_strdup(p_entry.szExeFile, p_name);
@@ -187,7 +187,7 @@ void *os_get_win32_process_list()
             CloseHandle(hmod);
         }
 
-        os_calloc(1, sizeof(Win32Proc_Info), p_info);
+        os_calloc(1, sizeof(Proc_Info), p_info);
         p_info->p_name = p_name;
         p_info->p_path = p_path;
         OSList_AddData(p_list, p_info);

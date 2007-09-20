@@ -97,10 +97,11 @@
 
 
 /* rootcheck */
-#define MAX_RK_MSG      "%s(1250): Maximum number of global files reached: %d"
+#define MAX_RK_MSG        "%s(1250): Maximum number of global files reached: %d"
 #define INVALID_RKCL_NAME  "%s(1251): Invalid rk configuration name: '%s'."
 #define INVALID_RKCL_VALUE "%s(1252): Invalid rk configuration value: '%s'."
-#define INVALID_ROOTDIR "%s(1253): Invalid rootdir (unable to retrieve)."
+#define INVALID_ROOTDIR    "%s(1253): Invalid rootdir (unable to retrieve)."
+#define INVALID_RKCL_VAR   "%s(1254): Invalid rk variable: '%s'." 
 
 
 /* syscheck */

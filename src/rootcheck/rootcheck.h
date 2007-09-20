@@ -79,9 +79,9 @@ int os_string(char *file, char *regex);
  */
 int os_check_ads(char *full_path);
 
-/* os_get_win32_process_list: Get list of win32 processes 
+/* os_get_process_list: Get list of processes 
  */
-void *os_get_win32_process_list();
+void *os_get_process_list();
 
 /* is_process: Check is a process is running.
  */
@@ -117,6 +117,8 @@ void check_rc_files(char *basedir, FILE *fp);
 
 void check_rc_trojans(char *basedir, FILE *fp);
 
+void check_rc_unixaudit(FILE *fp, void *p_list);
+
 void check_rc_winaudit(FILE *fp, void *p_list);
 
 void check_rc_winmalware(FILE *fp, void *p_list);
@@ -150,12 +152,12 @@ char total_ports_udp[65535 +1];
 char total_ports_tcp[65535 +1];
 
 
-/* Win32 process struct */
-typedef struct _Win32Proc_Info
+/* Process struct */
+typedef struct _Proc_Info
 {
     char *p_name;
     char *p_path;
-}Win32Proc_Info;
+}Proc_Info;
 
 
 #endif
