@@ -47,7 +47,7 @@ int main(int argc, char **argv)
 
 
     /* Checking status. */
-    if(strcmp(argv[2],"enable") == 0)
+    if(strcmp(argv[2], "enable") == 0)
     {
         status = "no";
     }

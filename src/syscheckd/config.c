@@ -22,6 +22,7 @@ int Read_Syscheck_Config(char * cfgfile)
     modules|= CSYSCHECK;
 
     syscheck.rootcheck = 0;
+    syscheck.disabled = 0;
     syscheck.time = SYSCHECK_WAIT * 2;
     syscheck.ignore = NULL;
     syscheck.ignore_regex = NULL;

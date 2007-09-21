@@ -143,7 +143,7 @@ SectionEnd
 
 Section "Enable integrity checking (recommended)" IntChecking
 
-ExecWait '"$INSTDIR\setup-syscheck.exe" "$INSTDIR"'
+ExecWait '"$INSTDIR\setup-syscheck.exe" "$INSTDIR" "enable"'
 
 SectionEnd
 

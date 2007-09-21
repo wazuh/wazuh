@@ -370,6 +370,7 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
     char *xml_registry_ignore = "registry_ignore";
     char *xml_auto_ignore = "auto_ignore";
     char *xml_alert_new_files = "alert_new_files";
+    char *xml_disabled = "disabled";
 
     /* Configuration example 
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -435,6 +436,20 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
 
             syscheck->time = atoi(node[i]->content);
         }
+        /* Getting if disabled. */
+        else if(strcmp(node[i]->element,xml_disabled) == 0)
+        {
+            if(strcmp(node[i]->content, "yes") == 0)
+                syscheck->disabled = 1;
+            else if(strcmp(node[i]->content, "no") == 0)
+                syscheck->disabled = 0;
+            else
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+        
         /* Getting file/dir ignore */
         else if(strcmp(node[i]->element,xml_ignore) == 0)
         {

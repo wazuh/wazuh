@@ -40,6 +40,7 @@ typedef struct _config
     int tsleep;
     int sleep_after;
     int rootcheck;
+    int disabled;
     
     int time;
     int queue;
