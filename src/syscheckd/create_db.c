@@ -5,14 +5,19 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
+ *
+ * License details at the LICENSE file included with OSSEC or 
+ * online at: http://www.ossec.net/en/licensing.html
  */
+
 
 #include "shared.h"
 #include "syscheck.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
+
 
 /* flags for read_dir and read_file */
 #define CREATE_DB   1
@@ -357,6 +362,7 @@ int check_db()
 }
 
 
+
 /* int create_db
  * Creates the file database.
  */
@@ -364,7 +370,7 @@ int create_db()
 {
     int i = 0;
     
-    syscheck.fp = fopen(syscheck.db,"w+"); /* Read and write */
+    syscheck.fp = fopen(syscheck.db, "w+"); /* Read and write */
     if(!syscheck.fp)
     {
         ErrorExit("%s: Unable to create syscheck database "
@@ -373,7 +379,7 @@ int create_db()
     }
 
 
-    /* Creating an local fp only */
+    /* Creating a local fp only */
     unlink(syscheck.db);
 
     

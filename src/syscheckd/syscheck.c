@@ -51,6 +51,7 @@ int Start_win32_Syscheck()
     int r = 0;
     char *cfg = DEFAULTCPATH;
 
+
     /* Zeroing the structure */
     syscheck.workdir = DEFAULTDIR;
 
@@ -69,7 +70,6 @@ int Start_win32_Syscheck()
     else if(r == 1)
     {
         merror("%s: Syscheck disabled.", ARGV0);
-        return(0);
     }
 
 
@@ -90,10 +90,7 @@ int Start_win32_Syscheck()
 
 
     /* Opening syscheck db file */
-    syscheck.db = (char *)calloc(1024,sizeof(char));
-    if(syscheck.db == NULL)
-        ErrorExit(MEM_ERROR,ARGV0);
-
+    os_calloc(1024,sizeof(char), syscheck.db);
     snprintf(syscheck.db,1023,"%s",SYS_WIN_DB);
 
 

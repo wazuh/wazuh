@@ -5,7 +5,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -13,6 +13,7 @@
 #include "shared.h"
 
 #include "syscheck-config.h"
+
 
 /* Read Windows registry configuration */
 #ifdef WIN32
@@ -397,8 +398,16 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
         /* Getting directories */
         else if(strcmp(node[i]->element,xml_directories) == 0)
         {
+            char dirs[OS_MAXSTR];
+            
+            #ifdef WIN32
+            ExpandEnvironmentStrings(node[i]->content, dirs, sizeof(dirs) -1);
+            #else
+            strncpy(dirs, node[i]->content, sizeof(dirs) -1);
+            #endif
+            
             if(!read_attr(syscheck,
-                        node[i]->content, 
+                        dirs, 
                         node[i]->attributes, 
                         node[i]->values))
             {
@@ -430,6 +439,17 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element,xml_ignore) == 0)
         {
             int ign_size = 0;
+
+            /* For Windows, we attempt to expand environment variables. */
+            #ifdef WIN32
+            char *new_ig = NULL;
+            os_calloc(2048, sizeof(char), new_ig);
+            
+            ExpandEnvironmentStrings(node[i]->content, new_ig, 2047);        
+
+            free(node[i]->content);
+            node[i]->content = new_ig;
+            #endif
             
             /* Adding if regex */
             if(node[i]->attributes && node[i]->values)

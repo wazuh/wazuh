@@ -313,7 +313,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                 _spawnlp( _P_NOWAIT, "notepad", "notepad " CONFIG, NULL );
                 break;
             case UI_MENU_HELP_HELP:
-                system("doc.html");
+                //system("doc.html");
                 break;
             case UI_MENU_HELP_ABOUT:
                 {
