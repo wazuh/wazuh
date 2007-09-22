@@ -60,6 +60,11 @@
  * [including the GNU Public Licence.]
  */
 
+
+#ifndef _SHA_LOCL__H
+#define _SHA_LOCL__H
+
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -607,3 +612,6 @@ void HASH_BLOCK_DATA_ORDER (SHA_CTX *c, const void *p, size_t num)
 #endif
 
 #endif
+
+
+#endif /* _SHA_LOCL__H */

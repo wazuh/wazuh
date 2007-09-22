@@ -5,4 +5,5 @@
     <!-- Local of the rootkit_files and rootkit_trojans files -->
     <rootkit_files>/var/ossec/etc/shared/rootkit_files.txt</rootkit_files>
     <rootkit_trojans>/var/ossec/etc/shared/rootkit_trojans.txt</rootkit_trojans>
+    <system_audit>system_audit_rcl.txt</system_audit>
   </rootcheck>

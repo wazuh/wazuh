@@ -139,7 +139,8 @@ int rootcheck_init(int test_config)
     #endif
     
                                     
-    #endif
+    #endif /* OSSECHIDS */
+    
 
     /* Staring message */
     debug1(STARTED_MSG,ARGV0);
@@ -170,6 +171,15 @@ int rootcheck_init(int test_config)
     {
         verbose("%s: Rootcheck disabled. Exiting.", ARGV0);
         return(1);
+    }
+    
+    
+    /* Checking if Unix audit file is configured. */
+    if(!rootcheck.unixaudit)
+    {
+        #ifndef WIN32
+        merror("%s: System audit file not configured.", ARGV0);
+        #endif
     }
     
     

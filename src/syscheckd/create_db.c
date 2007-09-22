@@ -17,6 +17,7 @@
 #include "syscheck.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
+#include "os_crypto/md5_sha1/md5_sha1_op.h"
 
 
 /* flags for read_dir and read_file */
@@ -181,27 +182,17 @@ int read_file(char *file_name, int opts, int flag)
         strncpy(sf_sum, "xxx", 4);
 
 
-        /* getting md5sum */
-        if(opts & CHECK_MD5SUM)
+        /* Generating checksums. */
+        if((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM))
         {
-            /* generating md5 of the file */
-            if(OS_MD5_File(file_name, mf_sum) < 0)
+            if(OS_MD5_SHA1_File(file_name, mf_sum, sf_sum) < 0)
             {
                 strncpy(mf_sum, "xxx", 4);
-            }
-        }
-
-        /* getting sha1sum */
-        if(opts & CHECK_SHA1SUM)
-        {
-            /* generating md5 of the file */
-            if(OS_SHA1_File(file_name, sf_sum) < 0)
-            {
                 strncpy(sf_sum, "xxx", 4);
             }
         }
-
-
+        
+        
         /* Adding file */
         fprintf(syscheck.fp,"%c%c%c%c%c%c%d:%d:%d:%d:%s:%s %s\n",
                 opts & CHECK_SIZE?'+':'-',
@@ -227,13 +218,13 @@ int read_file(char *file_name, int opts, int flag)
             /* Sending the new checksum to the analysis server */
             alert_msg[912 +1] = '\0';
             snprintf(alert_msg, 912, "%d:%d:%d:%d:%s:%s %s", 
-                                     opts & CHECK_SIZE?(int)statbuf.st_size:0,
-                                     opts & CHECK_PERM?(int)statbuf.st_mode:0,
-                                     opts & CHECK_OWNER?(int)statbuf.st_uid:0,
-                                     opts & CHECK_GROUP?(int)statbuf.st_gid:0,
-                                     opts & CHECK_MD5SUM?mf_sum:"xxx",
-                                     opts & CHECK_SHA1SUM?sf_sum:"xxx",
-                                     file_name);
+                     opts & CHECK_SIZE?(int)statbuf.st_size:0,
+                     opts & CHECK_PERM?(int)statbuf.st_mode:0,
+                     opts & CHECK_OWNER?(int)statbuf.st_uid:0,
+                     opts & CHECK_GROUP?(int)statbuf.st_gid:0,
+                     opts & CHECK_MD5SUM?mf_sum:"xxx",
+                     opts & CHECK_SHA1SUM?sf_sum:"xxx",
+                     file_name);
             notify_agent(alert_msg, 0);
         }
         

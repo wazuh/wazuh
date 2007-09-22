@@ -131,6 +131,11 @@
  *					<appro@fy.chalmers.se>
  */
 
+
+#ifndef _MD32_COMMON__H
+#define _MD32_COMMON__H
+
+
 #if !defined(DATA_ORDER_IS_BIG_ENDIAN) && !defined(DATA_ORDER_IS_LITTLE_ENDIAN)
 #error "DATA_ORDER must be defined!"
 #endif
@@ -624,3 +629,6 @@ int HASH_FINAL (unsigned char *md, HASH_CTX *c)
  *				<appro@fy.chalmers.se>
  */
 #endif
+
+
+#endif /* _MD32_COMMON__H */ 

@@ -24,7 +24,6 @@
 #endif
 */
 
-#include "sha.h"
 #include "sha_locl.h"
 
 

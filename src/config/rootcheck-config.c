@@ -5,7 +5,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -26,6 +26,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
     char *xml_rootkit_files = "rootkit_files";
     char *xml_rootkit_trojans = "rootkit_trojans";
     char *xml_winaudit = "windows_audit";
+    char *xml_unixaudit = "system_audit";
     char *xml_winapps = "windows_apps";
     char *xml_winmalware = "windows_malware";
     char *xml_scanall = "scanall";
@@ -109,6 +110,10 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element, xml_winaudit) == 0)
         {
             os_strdup(node[i]->content, rootcheck->winaudit);
+        }
+        else if(strcmp(node[i]->element, xml_unixaudit) == 0)
+        {
+            os_strdup(node[i]->content, rootcheck->unixaudit);
         }
         else if(strcmp(node[i]->element, xml_winmalware) == 0)
         {

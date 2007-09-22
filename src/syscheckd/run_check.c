@@ -20,6 +20,7 @@
 #include "syscheck.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
+#include "os_crypto/md5_sha1/md5_sha1_op.h"
 
 #include "rootcheck/rootcheck.h"
 
@@ -319,7 +320,7 @@ void run_check()
         c_sum[255] = '\0';
         
 
-        /* If it returns < 0, we will already have alerted if necessary */
+        /* If it returns < 0, we will already have alerted. */
         if(c_read_file(n_file, n_sum, c_sum) < 0)
             continue;
 
@@ -409,21 +410,12 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
     if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
     #endif
     {
-        if(sha1sum)
+        if(sha1sum || md5sum)
         {
-            /* generating md5 of the file */
-            if(OS_SHA1_File(file_name, sf_sum) < 0)
+            /* Generating checksums of the file. */
+            if(OS_MD5_SHA1_File(file_name, mf_sum, sf_sum) < 0)
             {
                 strncpy(sf_sum, "xxx", 4);
-            }
-
-        }
-
-        if(md5sum)
-        {
-            /* generating md5 of the file */
-            if(OS_MD5_File(file_name, mf_sum) < 0)
-            {
                 strncpy(mf_sum, "xxx", 4);
             }
         }

@@ -276,11 +276,7 @@ void run_rk_check()
 
 
     /*** Unix audit check ***/
-    if(!rootcheck.unixaudit)
-    {
-        merror("%s: No unixaudit file configured.", ARGV0);
-    }
-    else
+    if(rootcheck.unixaudit) 
     {
         fp = fopen(rootcheck.unixaudit, "r");
         if(!fp)

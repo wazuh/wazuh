@@ -67,8 +67,10 @@ int Start_win32_Syscheck()
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
     /* Disabled */
-    else if(r == 1)
+    else if((r == 1) || (syscheck.disabled == 1))
     {
+        syscheck.dir[0] = NULL;
+        syscheck.registry[0] = NULL;
         merror("%s: Syscheck disabled.", ARGV0);
     }
 
@@ -198,13 +200,13 @@ int main(int argc, char **argv)
     {
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
-    else if(r == 1)
+    else if((r == 1) || (syscheck.disabled == 1))
     {
+        syscheck.dir[0] = NULL;
         if(!test_config)
         {
-            merror("%s: Syscheck disabled. Exiting.", ARGV0);
+            merror("%s: Syscheck disabled.", ARGV0);
         }
-        exit(0);
     }
 
 
