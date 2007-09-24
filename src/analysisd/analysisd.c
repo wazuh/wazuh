@@ -573,7 +573,7 @@ void OS_ReadMSG(int m_queue)
 
         if(OS_GetLogLocation(lf) < 0)
         {
-            ErrorExit("%s: Error alocating log files", ARGV0);
+            ErrorExit("%s: Error allocating log files", ARGV0);
         }
 
         Free_Eventinfo(lf);
@@ -655,7 +655,7 @@ void OS_ReadMSG(int m_queue)
 
                     if(OS_GetLogLocation(lf) < 0)
                     {
-                        ErrorExit("%s: Error alocating log files", ARGV0);
+                        ErrorExit("%s: Error allocating log files", ARGV0);
                     }
 
                     today = lf->day;

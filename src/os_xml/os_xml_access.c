@@ -332,7 +332,7 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
             return(NULL);
 
 
-        /* If the type is not an element and the relation doesn match,
+        /* If the type is not an element and the relation doesn't match,
          * keep going.
          */
         if((_lxml->tp[i] != XML_ELEM) || (_lxml->rl[i] != j))

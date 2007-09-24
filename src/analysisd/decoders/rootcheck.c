@@ -62,7 +62,7 @@ void RootcheckInit()
 }
 
 
-/* RkDB_File
+/* RK_File
  * Return the file pointer to be used
  */
 FILE *RK_File(char *agent, int *agent_id)

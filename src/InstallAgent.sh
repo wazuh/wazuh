@@ -161,7 +161,8 @@ cp -pr ../bin/manage_agents ${DIR}/bin/
 
 # Copying active response modules
 sh ./init/fw-check.sh execute
-cp -pr ../active-response/* ${DIR}/active-response/bin/
+cp -pr ../active-response/*.sh ${DIR}/active-response/bin/
+cp -pr ../active-response/firewalls/*.sh ${DIR}/active-response/bin/
 chmod 755 ${DIR}/active-response/bin/*
 chown root:${GROUP} ${DIR}/active-response/bin/*
 

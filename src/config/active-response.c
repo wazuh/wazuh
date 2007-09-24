@@ -273,7 +273,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
             tmp_ar->timeout);
 
 
-    /* Settin the configs to start the right queues */
+    /* Setting the configs to start the right queues */
     if(tmp_ar->location & AS_ONLY)
     {
         l_ar = 1;

@@ -72,7 +72,7 @@ char *getFullnameById(char *id)
         if(name)
         {
             *name = '\0';
-            /* Didnt match */
+            /* Didn't match */
             if(strcmp(line_read,id) != 0)
             {
                 continue;
