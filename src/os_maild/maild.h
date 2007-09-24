@@ -16,7 +16,6 @@
 #ifndef _MAILD_H
 #define _MAILD_H
 
-#define MAILQUEUE	    "queue/alerts/mailq"
 #define MAIL_LIST_SIZE      96   /* Max number of emails to be saved */
 #define MAXCHILDPROCESS     6    /* Maximum simultaneos childs */
 

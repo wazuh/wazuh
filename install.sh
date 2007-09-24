@@ -14,8 +14,7 @@
 
 
 ### Looking up for the execution directory
-LOCAL=`dirname $0`;
-cd $LOCAL
+cd `dirname $0`
 
 
 ### Looking for echo -n

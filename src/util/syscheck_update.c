@@ -110,10 +110,10 @@ int main(int argc, char **argv)
         DIR *sys_dir;
         struct dirent *entry;
 
-        sys_dir = opendir("/queue/syscheck");
+        sys_dir = opendir(SYSCHECK_DIR);
         if(!sys_dir)
         {
-            ErrorExit("%s: Unable to open: '%s'", ARGV0, "/queue/syscheck");
+            ErrorExit("%s: Unable to open: '%s'", ARGV0, SYSCHECK_DIR);
         }
 
         while((entry = readdir(sys_dir)) != NULL)
@@ -128,7 +128,7 @@ int main(int argc, char **argv)
                 continue;
             }
 
-            snprintf(full_path, OS_MAXSTR,"/queue/syscheck/%s",entry->d_name);
+            snprintf(full_path, OS_MAXSTR,"%s/%s", SYSCHECK_DIR, entry->d_name);
             
             fp = fopen(full_path, "w");
             if(fp)
@@ -157,8 +157,7 @@ int main(int argc, char **argv)
     {
         char final_dir[1024];
         FILE *fp;
-        snprintf(final_dir, 1020, "/%s/syscheck",
-                                  "queue/syscheck");  
+        snprintf(final_dir, 1020, "/%s/syscheck", SYSCHECK_DIR);
         
         fp = fopen(final_dir, "w");
         if(fp)
@@ -169,8 +168,7 @@ int main(int argc, char **argv)
 
 
         /* Deleting cpt file */
-        snprintf(final_dir, 1020, "/%s/.syscheck.cpt",
-                                  "queue/syscheck");  
+        snprintf(final_dir, 1020, "/%s/.syscheck.cpt", SYSCHECK_DIR);
         
         fp = fopen(final_dir, "w");
         if(fp)

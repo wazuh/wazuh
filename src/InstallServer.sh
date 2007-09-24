@@ -10,8 +10,7 @@ if [ $? != 0 ]; then
 fi
 
 # Getting any argument
-UARG=$1;
-if [ "X$UARG" = "Xlocal" ]; then
+if [ "X$1" = "Xlocal" ]; then
     # Setting local install
     LOCAL="local"
 fi
@@ -72,7 +71,7 @@ elif [ "$UNAME" = "AIX" ]; then
     fi
 # Thanks Chuck L. for the mac addusers    
 elif [ "$UNAME" = "Darwin" ]; then
-    id -u ossec > /dev/null 2>&1
+    id -u ${USER} > /dev/null 2>&1
     if [ ! $? = 0 ]; then
         chmod +x ./init/darwin-addusers.pl
         ./init/darwin-addusers.pl    
@@ -238,7 +237,7 @@ chmod 440 ${DIR}/etc/shared/*
 sh ./init/fw-check.sh execute
 cp -p ../active-response/*.sh ${DIR}/active-response/bin/
 chmod 755 ${DIR}/active-response/bin/*
-chown root:ossec ${DIR}/active-response/bin/*
+chown root:${GROUP} ${DIR}/active-response/bin/*
 
 chown root:${GROUP} ${DIR}/bin/*
 chmod 550 ${DIR}/bin/*

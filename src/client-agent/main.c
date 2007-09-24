@@ -21,10 +21,6 @@
 #include "shared.h"
 #include "agentd.h"
 
-#ifndef LOGCLIENT
-   #define LOGCLIENT
-#endif
-
 #ifndef ARGV0
    #define ARGV0 "ossec-agentd"
 #endif

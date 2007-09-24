@@ -15,7 +15,6 @@
 
 #define _ALERT__H
 
-#include "mail.h"
 #include "log.h"
 #include "exec.h"
 #include "getloglocation.h"
