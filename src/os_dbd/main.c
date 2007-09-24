@@ -81,7 +81,7 @@ int main(int argc, char **argv)
                 db_info();
                 break;    
             case 'h':
-                help();
+                help(ARGV0);
                 break;
             case 'd':
                 nowDebug();
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
                 test_config = 1;    
                 break;
             default:
-                help();
+                help(ARGV0);
                 break;
         }
 

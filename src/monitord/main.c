@@ -36,7 +36,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help();
+                help(ARGV0);
                 break;
             case 'd':
                 nowDebug();
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
                 test_config = 1;    
                 break;
             default:
-                help();
+                help(ARGV0);
                 break;
         }
 

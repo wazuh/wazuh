@@ -55,7 +55,7 @@ typedef struct _keystore
 
 /** Function prototypes -- key management **/
 
-/* int CheckKeys(): Checks if the authentication keys are present */
+/* Checks if the authentication keys are present */
 int OS_CheckKeys();
 
 /* Read the keys */

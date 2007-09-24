@@ -31,13 +31,13 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
     
-    while((c = getopt(argc, argv, "Vdthu:g:D:")) != -1){
+    while((c = getopt(argc, argv, "Vdthu:g:c:D:")) != -1){
         switch(c){
             case 'V':
                 print_version();
                 break;
             case 'h':
-                help();
+                help(ARGV0);
                 break;
             case 'd':
                 nowDebug();
@@ -54,6 +54,11 @@ int main(int argc, char **argv)
                 break;		
             case 't':
                 test_config = 1;    
+                break;
+            case 'c':
+                if (!optarg)
+                    ErrorExit("%s: -c need an argument", ARGV0);
+                cfg = optarg;
                 break;
             case 'D':
                 if(!optarg)

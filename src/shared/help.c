@@ -19,29 +19,21 @@
 
 #include "shared.h"
 
-void help()
+void help(const char *prog)
 {
-    int i = 0;
-    char *daemons[] = {"ossec-maild", "ossec-execd", 
-                      "ossec-analysisd", "ossec-logcollector",
-                      "ossec-remoted", "ossec-syscheckd", NULL};
-    
     print_out("");
     print_out("%s %s - %s (%s)", __name, __version, __author, __contact);
     print_out("%s", __site);
-    while(daemons[i])
-    {
-        print_out("");
-        print_out("  %s: -[thd] [-u user] [-g group] [-c config]",daemons[i]);
-        print_out("    -V          Version and license message");
-        print_out("    -h          This help message");
-        print_out("    -d          Execute in debug mode");
-        print_out("    -t          Test configuration");
-        print_out("    -u <user>   Run as 'user'");
-        print_out("    -g <group>  Run as 'group'");
-        print_out("    -c <config> Read the 'config' file");
-        i++;
-    }
+    print_out("");
+    print_out("  %s: -[Vhdt] [-u user] [-g group] [-c config] [-D dir]", prog);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode");
+    print_out("    -t          Test configuration");
+    print_out("    -u <user>   Run as 'user'");
+    print_out("    -g <group>  Run as 'group'");
+    print_out("    -c <config> Read the 'config' file");
+    print_out("    -D <dir>    Chroot to 'dir'");
     print_out("");
     exit(1);
 }

@@ -686,7 +686,6 @@ setEnv()
                 echo $ANSWER |grep -E "^/[a-zA-Z0-9/-]{3,128}$">/dev/null 2>&1
                 if [ $? = 0 ]; then
                     INSTALLDIR=$ANSWER;
-                    WORKDIR=$ANSWER;
                     break;
                 fi 
             else
@@ -695,11 +694,10 @@ setEnv()
         done
     else
         INSTALLDIR=${USER_DIR}
-        WORKDIR=${USER_DIR}
     fi    
 
     
-    CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${WORKDIR}\\\""
+    CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${INSTALLDIR}\\\""
     
     echo ""
     echo "    - ${installat} ${INSTALLDIR} ."
@@ -1090,12 +1088,12 @@ main()
     echo " - ${configurationdone}."
     echo ""
     echo " - ${tostart}:"
-    echo "		$WORKDIR/bin/ossec-control start"
+    echo "		$INSTALLDIR/bin/ossec-control start"
     echo ""
     echo " - ${tostop}:"
-    echo "		$WORKDIR/bin/ossec-control stop"
+    echo "		$INSTALLDIR/bin/ossec-control stop"
     echo ""
-    echo " - ${configat} $WORKDIR/etc/ossec.conf"
+    echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
     echo ""
 
 
@@ -1141,7 +1139,7 @@ main()
       
     elif [ "X$INSTYPE" = "Xagent" ]; then
         catMsg "0x104-client"	
-        echo "   $WORKDIR/bin/manage_agents"
+        echo "   $INSTALLDIR/bin/manage_agents"
         echo ""
         echo "   ${moreinfo}"
         echo "   http://www.ossec.net/en/manual.html#ma"
@@ -1150,7 +1148,7 @@ main()
 
     if [ "X$notmodified" = "Xyes" ]; then
         catMsg "0x105-noboot"
-        echo "		$WORKDIR/bin/ossec-control start" 
+        echo "		$INSTALLDIR/bin/ossec-control start"
         echo ""
     fi
 }

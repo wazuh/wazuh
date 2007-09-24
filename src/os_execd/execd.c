@@ -80,10 +80,13 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
         
 
-    while((c = getopt(argc, argv, "tdhu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vtdhu:g:D:c:")) != -1){
         switch(c){
+            case 'V':
+                print_version();
+                break;
             case 'h':
-                help();
+                help(ARGV0);
                 break;
             case 'd':
                 nowDebug();
@@ -106,7 +109,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;    
             default:
-                help();
+                help(ARGV0);
                 break;
         }
 

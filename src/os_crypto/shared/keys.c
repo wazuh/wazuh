@@ -133,7 +133,7 @@ void __chash(keystore *keys, char *id, char *name, char *ip, char *key)
 }
 
 
-/* int CheckKeys(): 
+/* int OS_CheckKeys(): 
  * Checks if the authentication key file is present 
  */
 int OS_CheckKeys()
@@ -166,6 +166,7 @@ int OS_CheckKeys()
 
 
 /* void OS_ReadKeys(keystore *keys)
+ * Read the authentication keys.
  */
 void OS_ReadKeys(keystore *keys)
 {
@@ -437,6 +438,7 @@ int OS_IsAllowedIP(keystore *keys, char *srcip)
 
 
 /* int IsAllowedName
+ * Checks if the agent name is valid.
  */
 int OS_IsAllowedName(keystore *keys, char *name)
 {
