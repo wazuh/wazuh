@@ -44,6 +44,10 @@
 #include "eventinfo.h"
 #include "analysisd.h"
 
+#ifdef PRELUDE
+#include "prelude.h"
+#endif
+
 
 /** Global data **/
 
@@ -396,6 +400,12 @@ int main(int argc, char **argv)
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
+
+
+    /* Starting prelude */
+    #ifdef PRELUDE
+    prelude_start(argc, argv);
+    #endif
 
     
     /* Going to main loop */	
@@ -838,6 +848,12 @@ void OS_ReadMSG(int m_queue)
                 {
                     OS_Log(lf);
                 }
+
+
+                /* Log to prelude */
+                #ifdef PRELUDE
+                OS_PreludeLog(lf);
+                #endif
 
 
                 /* Execute an active response */

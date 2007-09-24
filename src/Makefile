@@ -12,6 +12,7 @@ none:
 		@echo "\"make clean\" to clean anything built"
 		@echo "\"make setagent\" to set agent install"
 		@echo "\"make setlocal\" to set local install"
+		@echo "\"make setprelude\" to set local install"
 
 clean:
 		@/bin/sh ./Makeall clean
@@ -38,7 +39,12 @@ agent:
         
 setagent:
 		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
+
+setprelude:
+		@echo "CPRELUDE=-DPRELUDE `libprelude-config --cflags`" >> ./Config.OS
+
 setlocal:
 		@echo "CEXTRA=-DLOCAL" >> ./Config.OS
+
 setfullsubject:
 		@echo "FEXTRA=-DCLEANFULL" >> ./Config.OS

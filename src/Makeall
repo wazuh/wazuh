@@ -43,7 +43,7 @@ fi
 # Cleaning Config.OS
 if [ "X${ARGV}" = "Xall" ]; then
     ls ./Config.OS >/dev/null 2>&1
-    if [ $? != 0 ]; then
+    if [ ! $? = 0 ]; then
         echo "" > Config.OS
     fi
 
@@ -89,8 +89,7 @@ fi
 
 # Cleaning
 if [ "X${ARGV}" = "Xclean" ]; then
-    #echo "" > ./Config.OS
-    echo " "
+    echo "" > ./Config.OS
 fi
    
     

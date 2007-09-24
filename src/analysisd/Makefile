@@ -7,12 +7,11 @@ NAME=ossec-analysisd
 
 include ../Config.Make
 
-LOCAL= analysisd.c stats.c rules.c rules_list.c config.c fts.c eventinfo.c eventinfo_list.c cleanevent.c active-response.c ${OS_CONFIG}
+LOCAL= analysisd.c stats.c rules.c rules_list.c config.c fts.c eventinfo.c eventinfo_list.c cleanevent.c active-response.c prelude.c ${OS_CONFIG}
 PLUGINS = decoders/decoders.a
 ALERTS  = alerts/alerts.a
 
-loga_OBJS = ${LOCAL} ${PLUGINS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB}
-
+loga_OBJS = ${LOCAL} ${PLUGINS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE}
 
 
 logaudit:
