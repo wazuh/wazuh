@@ -29,6 +29,11 @@
 
 #include "rootcheck/rootcheck.h"
 
+/* Definitions only used in here. */
+#define SYSCHECK_DB     SYSCHECK_DIR "/syschecklocal.db"
+#define SYS_WIN_DB      "syscheck/syschecklocal.db"
+
+
 
 /* void read_internal()
  * Reads syscheck internal options.

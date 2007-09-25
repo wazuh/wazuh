@@ -16,12 +16,6 @@
 
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
-
-
-#define SYSCHECK_DB     "/queue/syscheck/syschecklocal.db"
-#define SYS_WIN_DB      "syscheck/syschecklocal.db"
-#define SYS_WIN_REG     "syscheck/syscheckregistry.db"
-#define SYS_REG_TMP     "syscheck/syscheck_sum.tmp"
 #define SYSCHECK_WAIT   3600
 
 

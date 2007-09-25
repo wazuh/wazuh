@@ -27,6 +27,11 @@
 #define MAX_KEY_LENGTH 255
 #define MAX_KEY	2048
 #define MAX_VALUE_NAME 16383
+
+/* Places to story the registry values. */
+#define SYS_WIN_REG     "syscheck/syscheckregistry.db"
+#define SYS_REG_TMP     "syscheck/syscheck_sum.tmp"
+
  
  
 /* Global variables */
