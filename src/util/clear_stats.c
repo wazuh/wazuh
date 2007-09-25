@@ -1,11 +1,11 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
+ * License (version 3) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -24,7 +24,7 @@ void helpmsg()
     printf("\nOSSEC HIDS %s: Clear the events stats (averages).\n", ARGV0);
     printf("Available options:\n");
     printf("\t-h       This help message.\n");
-    printf("\t-c       Clear all the stats (averages).\n");
+    printf("\t-a       Clear all the stats (averages).\n");
     printf("\t-d       Clear the daily averages.\n");
     printf("\t-w       Clear the weekly averages.\n\n");
     exit(1);
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     {
         helpmsg();
     }
-    else if(strcmp(argv[1], "-c") == 0)
+    else if(strcmp(argv[1], "-a") == 0)
     {
         clear_daily = 1;
         clear_weekly = 1;
