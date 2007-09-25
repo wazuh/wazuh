@@ -86,6 +86,7 @@ int Start_win32_Syscheck()
     }
     else
     {
+        syscheck.rootcheck = 0;
         merror("%s: Rootcheck module disabled.", ARGV0);
     }
                                                             
@@ -222,6 +223,7 @@ int main(int argc, char **argv)
     }
     else
     {
+        syscheck.rootcheck = 0;
         merror("%s: Rootcheck module disabled.", ARGV0);
     }
 

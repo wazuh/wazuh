@@ -437,7 +437,7 @@ int OS_IsAllowedIP(keystore *keys, char *srcip)
 }
 
 
-/* int IsAllowedName
+/* int OS_IsAllowedName
  * Checks if the agent name is valid.
  */
 int OS_IsAllowedName(keystore *keys, char *name)

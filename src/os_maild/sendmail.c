@@ -218,7 +218,15 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
     /* Sending date */
     memset(snd_msg,'\0',128);
-    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T %Z\r\n",p);
+    
+
+    /* Solaris doesn't have the "%z", so we set the timezone to 0. */
+    #ifdef SOLARIS
+    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T -0000\r\n",p);
+    #else
+    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T %z\r\n",p);
+    #endif
+    
     OS_SendTCP(socket,snd_msg);
 
 
@@ -507,7 +515,15 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     /* Sending date */
     memset(snd_msg,'\0',128);
-    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T %Z\r\n",p);
+
+
+    /* Solaris doesn't have the "%z", so we set the timezone to 0. */
+    #ifdef SOLARIS
+    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T -0000\r\n",p);
+    #else
+    strftime(snd_msg, 127, "Date: %a, %d %b %Y %T %z\r\n",p);
+    #endif
+                            
     OS_SendTCP(socket,snd_msg);
 
 

@@ -95,5 +95,10 @@
     <description>Unable to perform zone transfer.</description>
     <group>system_error,</group>
   </rule>
+
+  <rule id="12112" level="4">
+    <regex>^zone \S+: expired</regex>
+    <description>Zone transfer error.</description>
+  </rule>
   
 </group> <!-- SYSLOG,NAMED -->

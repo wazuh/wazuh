@@ -178,7 +178,7 @@ int rootcheck_init(int test_config)
     if(!rootcheck.unixaudit)
     {
         #ifndef WIN32
-        merror("%s: System audit file not configured.", ARGV0);
+        log2file("%s: System audit file not configured.", ARGV0);
         #endif
     }
     
