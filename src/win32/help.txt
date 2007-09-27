@@ -1,0 +1,57 @@
+** OSSEC Windows Agent v1.4 **
+** Copyright (c) 2003-2007 Daniel B. Cid <dcid@ossec.net> **
+
+
+Thanks for installing 'OSSEC Windows Agent version 1.4'. Before you continue,
+make sure that you have an instance of the OSSEC server running and configured
+to accept this system as an agent.
+
+For more information on how to install the server version of OSSEC, look at:
+http://www.ossec.net/main/manual/#installtypes
+http://www.ossec.net/wiki/index.php/InstallGuides
+
+
+
+** Table of contents **
+
+1- How to obtain more information?
+2- What this agent does?
+3- Questions/Support?
+
+
+
+** Responses **
+
+1- How to obtain more information?
+
+You can obtain more information about OSSEC on the following links:
+http://www.ossec.net/main/manual/ (Manual)
+http://www.ossec.net/wiki/index.php/FAQ (FAQ)
+http://www.ossec.net (OSSEC site)
+http://www.ossec.net/dcid/ (OSSEC blog)
+
+
+2- What this agent does?
+
+The Windows agent does the following tasks:
+
+-Monitors the Windows event log on real time.
+-Monitors IIS logs (Web, FTP, SMTP) and any other logs present on your
+ system (including Symantec Anti-Virus, MySQL, Apache, etc) on real time.
+-Periodically checks the Windows Registry for changes.
+-Periodically checks your Windows folders for changes.
+-Periodically does policy verifications to make sure your system is
+ configured properly.
+
+
+3- Questions/Support?
+
+Visit the following link for information on how to get help or
+support for OSSEC:
+
+http://www.ossec.net/main/support/
+
+For commercial support, please send an e-mail to contact@ossec.net
+
+
+** EOF ** 

@@ -21,6 +21,7 @@
 #include "syscheck.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
+#include "os_crypto/md5_sha1/md5_sha1_op.h"       
 
 
 /* Default values */
@@ -377,16 +378,12 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
         /* Generating checksum of the values */
         fclose(checksum_fp);
 
-        if(OS_MD5_File(SYS_REG_TMP, mf_sum) == -1)
+        if(OS_MD5_SHA1_File(SYS_REG_TMP, mf_sum, sf_sum) == -1)
         {
             merror(FOPEN_ERROR, ARGV0, SYS_REG_TMP);
             return;
         }
-        if(OS_SHA1_File(SYS_REG_TMP, sf_sum) == -1)
-        {
-            merror(FOPEN_ERROR, ARGV0, SYS_REG_TMP);
-            return;
-        }
+
 
         /* Looking for p_key on the reg db */
         if(os_winreg_changed(full_key_name, mf_sum, sf_sum))

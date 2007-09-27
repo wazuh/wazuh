@@ -253,13 +253,12 @@ void *receiver_thread(void *none)
             else if(fp)
             {
                 fprintf(fp, "%s", tmp_msg);
-                fflush(fp);
             }
 
             else
             {
                 merror("%s: Unknown message received. No action defined.",
-                                                      ARGV0);
+                       ARGV0);
             }
         }    
     }

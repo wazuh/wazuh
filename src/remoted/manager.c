@@ -217,7 +217,7 @@ void c_files()
  */
 int send_file_toagent(int agentid, char *name, char *sum)
 {
-    int i = 0;
+    int i = 0, n = 0;
     char file[OS_SIZE_1024 +1];
     char buf[OS_SIZE_1024 +1];
     
@@ -246,8 +246,10 @@ int send_file_toagent(int agentid, char *name, char *sum)
 
 
     /* Sending the file content */
-    while(fgets(buf, OS_SIZE_1024 , fp) != NULL)
+    while((n = fread(buf, 1, 512, fp)) > 0)
     {
+        buf[n] = '\0';
+
         if(send_msg(agentid, buf) == -1)
         {
             merror(SEC_ERROR,ARGV0);
@@ -255,9 +257,8 @@ int send_file_toagent(int agentid, char *name, char *sum)
             return(-1);
         }
 
-
-        /* Sleep 1 every 45 messages -- no flood */
-        if(i > 45)
+        /* Sleep 1 every 30 messages -- no flood */
+        if(i > 30)
         {
             sleep(1);
             i = 0;
