@@ -28,7 +28,7 @@
 /* Prints information regarding enabled databases */
 void db_info()
 {
-    print_out("");
+    print_out(" ");
     print_out("%s %s - %s", __name, __version, __author);
     
     #ifdef UMYSQL
@@ -43,7 +43,7 @@ void db_info()
     print_out("Compiled without any Database support.");
     #endif
     
-    print_out("");
+    print_out(" ");
     print_out("%s",__license);
 
     exit(1);

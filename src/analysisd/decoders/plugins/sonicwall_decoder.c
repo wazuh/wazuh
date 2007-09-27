@@ -41,7 +41,7 @@ OSRegex *__sonic_regex_prox = NULL;
 /* SonicWall decoder init */
 void *SonicWall_Decoder_Init()
 {
-    debug1("%s: Initializing SonicWall decoder..");
+    debug1("%s: Initializing SonicWall decoder..", ARGV0);
 
 
     /* Allocating memory */

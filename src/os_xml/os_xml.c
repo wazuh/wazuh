@@ -38,6 +38,8 @@ int _checkmemory(char *str,OS_XML *_lxml);
 int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml);
 int _getattributes(FILE *fp,int parent,OS_XML *_lxml);
 
+void xml_error(OS_XML *_lxml, const char *msg,...) __attribute__((format(printf, 2, 3)));
+
 /* Currently line */
 int _line;
 

@@ -114,7 +114,7 @@ void *read_postgresql_log(int pos, int *rc, int drop_it)
        
 
         /* PostgreSQL messages have the following format:
-         * [2007-08-31 19:17:32.186 ADT] <192.168.2.99>:
+         * [2007-08-31 19:17:32.186 ADT] 192.168.2.99:db_name
          */
         if((str_len > 32) &&
            (str[0] == '[') && 

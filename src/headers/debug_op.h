@@ -26,19 +26,23 @@
 
 #define __DEBUG_H
 
-void debug1(const char *msg,...);
+#ifndef __GNUC__
+#define __attribute__(x)
+#endif
 
-void debug2(const char *msg,...);
+void debug1(const char *msg,...) __attribute__((format(printf, 1, 2)));
 
-void merror(const char *msg,...);
+void debug2(const char *msg,...) __attribute__((format(printf, 1, 2)));
 
-void verbose(const char *msg,...);
+void merror(const char *msg,...) __attribute__((format(printf, 1, 2)));
 
-void print_out(const char *msg,...);
+void verbose(const char *msg,...) __attribute__((format(printf, 1, 2)));
 
-void log2file(const char * msg,... );
+void print_out(const char *msg,...) __attribute__((format(printf, 1, 2)));
 
-void ErrorExit(const char *msg,...);
+void log2file(const char * msg,... ) __attribute__((format(printf, 1, 2)));
+
+void ErrorExit(const char *msg,...) __attribute__((format(printf, 1, 2)));
 
 
 /* Use these three functions to set when you

@@ -181,7 +181,7 @@ void OS_ReadKeys(keystore *keys)
     
     
     /* Reading keys */
-    verbose(ENC_READ, __local_name, KEYS_FILE);
+    verbose(ENC_READ, __local_name);
     
     
     /* Checking if the keys file is present and we can read it. */

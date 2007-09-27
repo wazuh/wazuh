@@ -242,7 +242,7 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
     /* Checking rule limit */
     if(rule->sigid < 0 || rule->sigid > 9999999)
     {
-        merror("%s: Invalid rule id: %u", rule->sigid);
+        merror("%s: Invalid rule id: %u", ARGV0, rule->sigid);
         return(NULL);
     }
 

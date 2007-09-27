@@ -69,15 +69,15 @@ void osdb_escapestr(char *str)
  */
 void osdb_checkerror()
 {
-    int sleep_time = 3;
-    if(!db_config_pt || db_config_pt->error_count > 10)
+    int sleep_time = 2;
+    if(!db_config_pt || db_config_pt->error_count > 20)
     {
         ErrorExit(DB_MAINERROR, ARGV0);
     }
 
     
     /* If error count is too large, we try to reconnect. */
-    if(db_config_pt->error_count > 5)
+    if(db_config_pt->error_count > 0)
     {
         int i = 0;
         if(db_config_pt->conn)
@@ -100,7 +100,7 @@ void osdb_checkerror()
                 break;
             }
             sleep(sleep_time);
-            sleep_time *= 3;
+            sleep_time *= 2;
             i++;
         }
 
