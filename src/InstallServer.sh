@@ -221,6 +221,13 @@ fi
 
 # Moving the decoders/internal_conf file.
 cp -pr ../etc/decoder.xml ${DIR}/etc/
+
+# Backup currently internal_options file.
+ls ${DIR}/etc/internal_options.conf > /dev/null 2>&1
+if [ $? = 0 ]; then
+  cp -pr ${DIR}/etc/internal_options.conf ${DIR}/etc/backup-internal_options.$$
+fi
+  
 cp -pr ../etc/internal_options.conf ${DIR}/etc/
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
 chown root:${GROUP} ${DIR}/etc/decoder.xml

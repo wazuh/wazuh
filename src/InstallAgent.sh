@@ -137,6 +137,13 @@ fi
 
 # For the /etc/shared
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
+
+# Backup currently internal_options file.
+ls ${DIR}/etc/internal_options.conf > /dev/null 2>&1
+if [ $? = 0 ]; then
+  cp -pr ${DIR}/etc/internal_options.conf ${DIR}/etc/backup-internal_options.$$
+fi
+      
 cp -pr ../etc/internal_options.conf ${DIR}/etc/
 chown root:${GROUP} ${DIR}/etc/internal_options.conf
 chown -R root:${GROUP} ${DIR}/etc/shared
