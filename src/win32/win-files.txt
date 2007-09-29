@@ -51,6 +51,7 @@ win32/add-localfile.c setup/add-localfile.c
 win32/ossec-win.conf default-ossec.conf
 win32/internal_options-win.conf internal_options.conf
 win32/doc.html doc.html
+win32/help_win.txt help.txt
 win32/ossec-installer.nsi ossec-installer.nsi
 win32/ossec-uninstall.ico ossec-uninstall.ico
 win32/service-start.c setup/service-start.c
