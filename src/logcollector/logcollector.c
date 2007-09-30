@@ -335,6 +335,12 @@ void LogCollectorStart()
 
                     /* Fixing size so we don't alert more than once */
                     logff[i].size = tmp_stat.st_size;
+
+
+                    /* Getting new file. */
+                    fclose(logff[i].fp);
+                    logff[i].fp = NULL;
+                    handle_file(i, 1, 1);
                 }
             }
             
