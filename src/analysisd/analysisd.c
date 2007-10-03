@@ -681,6 +681,9 @@ void OS_ReadMSG(int m_queue)
                     /* We don't process syscheck events further */
                     goto CLMEM;
                 }
+
+                /* Getting log size */
+                lf->size = strlen(lf->log);
             }
 
             /* Rootcheck decoding */
@@ -691,6 +694,7 @@ void OS_ReadMSG(int m_queue)
                     /* We don't process rootcheck events further */
                     goto CLMEM;
                 }
+                lf->size = strlen(lf->log);
             }
 
             /* Host information special decoder */
@@ -701,6 +705,7 @@ void OS_ReadMSG(int m_queue)
                     /* We don't process hostinfo events further */
                     goto CLMEM;
                 }
+                lf->size = strlen(lf->log);
             }
 
             /* Run the general Decoders  */
@@ -1030,7 +1035,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking if any word to match exists */
     if(currently_rule->match)
     {
-        if(!OSMatch_Execute(lf->log,lf->size,currently_rule->match))
+        if(!OSMatch_Execute(lf->log, lf->size, currently_rule->match))
             return(NULL);
     }	   	   
 
@@ -1039,7 +1044,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Checking if exist any regex for this rule */
     if(currently_rule->regex)
     {
-        if(!OSRegex_Execute(lf->log,currently_rule->regex))
+        if(!OSRegex_Execute(lf->log, currently_rule->regex))
             return(NULL);
     }
     

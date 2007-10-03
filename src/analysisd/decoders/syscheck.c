@@ -247,7 +247,7 @@ FILE *DB_File(char *agent, int *agent_id)
 /* DB_Search
  * Search the DB for any entry related to the file being received
  */
-int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
+int DB_Search(char *f_name, char *new_sum, Eventinfo *lf)
 {
     int p = 0;
     int sn_size;
@@ -340,7 +340,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
 
         /* checksum match, we can just return and keep going */
-        if(strcmp(saved_sum,c_sum) == 0)
+        if(strcmp(saved_sum, new_sum) == 0)
             return(0);
 
 
@@ -398,14 +398,14 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 '!',
                 p >= 1? '!' : '+',
                 p == 2? '!' : (p > 2)?'?':'+',
-                c_sum,
+                new_sum,
                 lf->time,
                 f_name);
         fflush(fp);
 
 
         /* File deleted */
-        if(c_sum[0] == '-' && c_sum[1] == '1')
+        if(new_sum[0] == '-' && new_sum[1] == '1')
         {
             sdb.syscheck_dec->id = sdb.idd;
             snprintf(sdb.comment, OS_MAXSTR,
@@ -422,6 +422,8 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
         else    
         {
+            int oldperm = 0, newperm = 0;
+            
             /* Providing more info about the file change */
             char *oldsize = NULL, *newsize = NULL;
             char *olduid = NULL, *newuid = NULL;
@@ -430,7 +432,9 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             char *oldmd5 = NULL, *newmd5 = NULL;
             char *oldsha1 = NULL, *newsha1 = NULL;
 
-            int oldperm = 0, newperm = 0;
+            char c_sum[256];
+            c_sum[255] = '\0';
+            strncpy(c_sum, new_sum, 255);
 
             oldsize = saved_sum;
             newsize = c_sum;
@@ -637,7 +641,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     /* If we reach here, this file is not present on our database */
     fseek(fp, 0, SEEK_END);
     
-    fprintf(fp,"+++%s !%d %s\n",c_sum, lf->time, f_name);
+    fprintf(fp,"+++%s !%d %s\n", new_sum, lf->time, f_name);
 
 
     /* Alert if configured to notify on new files */
@@ -727,7 +731,7 @@ int DecodeSyscheck(Eventinfo *lf)
     
     
     /* Searching for file changes */
-    return(DB_Search(f_name,c_sum,lf));
+    return(DB_Search(f_name, c_sum, lf));
 }
 
 /* EOF */
