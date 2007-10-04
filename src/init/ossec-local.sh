@@ -23,7 +23,7 @@ fi
 
 
 NAME="OSSEC HIDS"
-VERSION="v1.3"
+VERSION="v1.4"
 AUTHOR="Daniel B. Cid"
 DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON}"
 

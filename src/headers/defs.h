@@ -46,7 +46,7 @@
 
 /* Some Global names */
 #define __name      "OSSEC HIDS"
-#define __version   "v1.3"
+#define __version   "v1.4"
 #define __author    "Daniel B. Cid"
 #define __contact   "contact@ossec.net"
 #define __site      "http://www.ossec.net"
