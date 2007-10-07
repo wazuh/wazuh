@@ -1385,7 +1385,7 @@
   <parent>cisco-ios</parent>
   <type>firewall</type>
   <prematch>^%SEC-6-IPACCESSLOGP: </prematch>
-  <regex offset="after_prematch">^list \d+ (\w+) (\w+) </regex>
+  <regex offset="after_prematch">^list \S+ (\w+) (\w+) </regex>
   <regex>(\S+)\((\d+)\) -> (\S+)\((\d+)\),</regex>
   <order>action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>

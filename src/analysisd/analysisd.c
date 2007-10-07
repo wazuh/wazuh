@@ -684,6 +684,7 @@ void OS_ReadMSG(int m_queue)
 
                 /* Getting log size */
                 lf->size = strlen(lf->log);
+                merror("DEBUG: XXXX syscheck event: %d, '%s'", lf->size, lf->log);
             }
 
             /* Rootcheck decoding */
