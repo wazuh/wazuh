@@ -252,6 +252,7 @@ void OS_PreludeLog(Eventinfo *lf)
                              (prelude_client_get_analyzer(prelude_client)),
                              IDMEF_LIST_PREPEND);
 
+    prelude_client_send_idmef(prelude_client, idmef);
     idmef_message_destroy(idmef);
 }
 

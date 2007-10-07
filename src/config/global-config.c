@@ -149,6 +149,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     char *xml_integrity = "integrity_checking";
     char *xml_rootcheckd = "rootkit_detection";
     char *xml_hostinfo = "host_information";
+    char *xml_prelude = "prelude_output";
     char *xml_stats = "stats";
     char *xml_memorysize = "memory_size";
     char *xml_white_list = "white_list";
@@ -234,6 +235,23 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 return(OS_INVALID);
             }
         }
+        else if(strcmp(node[i]->element, xml_prelude) == 0)
+        {
+            if(strcmp(node[i]->content, "yes") == 0)
+            { 
+                if(Config) Config->prelude = 1; 
+            }
+            else if(strcmp(node[i]->content, "no") == 0)
+            { 
+                if(Config) Config->prelude = 0; 
+            }
+            else
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element, node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+        
         /* Log all */
         else if(strcmp(node[i]->element, xml_logall) == 0)
         {

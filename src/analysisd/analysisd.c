@@ -244,6 +244,14 @@ int main(int argc, char **argv)
         goDaemon();
     }
     
+
+    /* Starting prelude */
+    #ifdef PRELUDE
+    if(Config.prelude)
+    {
+        prelude_start(argc, argv);
+    }
+    #endif
     
     
     /* Setting the group */	
@@ -402,12 +410,6 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, getpid());
 
 
-    /* Starting prelude */
-    #ifdef PRELUDE
-    prelude_start(argc, argv);
-    #endif
-
-    
     /* Going to main loop */	
     OS_ReadMSG(m_queue);
 
@@ -857,7 +859,10 @@ void OS_ReadMSG(int m_queue)
 
                 /* Log to prelude */
                 #ifdef PRELUDE
-                OS_PreludeLog(lf);
+                if(Config.prelude)
+                {
+                    OS_PreludeLog(lf);
+                }
                 #endif
 
 
