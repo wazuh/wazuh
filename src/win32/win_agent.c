@@ -227,8 +227,8 @@ int local_start()
 
 
     /* Initial random numbers */
-    srand(time(0));
-    rand();
+    srandom(time(0));
+    random();
 
 
     /* Socket connection */

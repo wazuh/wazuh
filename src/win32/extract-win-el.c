@@ -419,6 +419,8 @@ int main(int argc, char **argv)
    win_startel("Application");	
    win_startel("System");	
    win_startel("Security");	
+
+   fclose(fp);
    return(0);
 }
 

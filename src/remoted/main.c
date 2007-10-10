@@ -115,8 +115,13 @@ int main(int argc, char **argv)
 
 
     /* Creating some randoness  */
-    srand( time(0) + getpid()+ i);
-    rand();
+    #ifdef __OpenBSD__
+    srandomdev();
+    #else
+    srandom( time(0) + getpid()+ i);
+    #endif
+    
+    random();
     
 
     /* Start up message */

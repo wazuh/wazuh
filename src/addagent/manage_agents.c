@@ -93,10 +93,6 @@ int add_agent()
     os_ip *c_ip;
 
 
-    /* Allocating for c_ip */
-    os_calloc(1, sizeof(os_ip), c_ip);
-    
-    
     /* Checking if we can open the auth_file */
     fp = fopen(AUTH_FILE,"a");
     if(!fp)
@@ -105,6 +101,11 @@ int add_agent()
     }
     fclose(fp);
 
+
+    /* Allocating for c_ip */
+    os_calloc(1, sizeof(os_ip), c_ip);
+    
+    
     #ifndef WIN32
     chmod(AUTH_FILE, 0440);
     #endif
@@ -115,11 +116,16 @@ int add_agent()
     
     /* Source is time1+ time2 +pid + ppid */
     #ifndef WIN32
-    srand(time2 + time1 + getpid() + getppid());
+        #ifdef __OpenBSD__
+        srandomdev();
+        #else
+        srandom(time2 + time1 + getpid() + getppid());
+        #endif
     #else
-    srand(time2 + time1 + getpid());
+    srandom(time2 + time1 + getpid());
     #endif
-    rand1 = rand();
+
+    rand1 = random();
 
     
     /* Zeroing strings */
@@ -240,7 +246,7 @@ int add_agent()
       if(user_input[0] == 'y' || user_input[0] == 'Y')
       {
         time3 = time(0);
-        rand2 = rand();
+        rand2 = random();
 
         fp = fopen(AUTH_FILE,"a");
         if(!fp)
@@ -265,7 +271,8 @@ int add_agent()
         OS_MD5_Str(str1, md1);
         OS_MD5_Str(str2, md2);
 
-        snprintf(str1, STR_SIZE, "%s%d%d%d",md1,(int)getpid(),rand(), time3);
+        snprintf(str1, STR_SIZE, "%s%d%d%d",md1,(int)getpid(), (int)random(), 
+                                            time3);
         OS_MD5_Str(str1, md1);
 
         fprintf(fp,"%s %s %s %s%s\n",id, name, c_ip->ip, md1,md2);
@@ -341,6 +348,7 @@ int remove_agent()
             fp = fopen(AUTH_FILE, "r+");
             if(!fp)
             {
+                free(full_name);
                 ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
             }
             #ifndef WIN32

@@ -65,6 +65,7 @@ int OS_GetLogLocation(Eventinfo *lf)
         if(ftell(_eflog) == 0)
             unlink(__elogfile);
         fclose(_eflog);
+        _eflog = NULL;
     }
     
     snprintf(__elogfile,OS_FLSIZE,"%s/%d/", EVENTS, lf->year);
@@ -107,6 +108,7 @@ int OS_GetLogLocation(Eventinfo *lf)
         if(ftell(_aflog) == 0)
             unlink(__alogfile);
         fclose(_aflog);
+        _aflog = NULL;
     }
                             
     snprintf(__alogfile,OS_FLSIZE,"%s/%d/", ALERTS, lf->year);
@@ -149,6 +151,7 @@ int OS_GetLogLocation(Eventinfo *lf)
         if(ftell(_fflog) == 0)
             unlink(__flogfile);
         fclose(_fflog);
+        _fflog = NULL;
     }
                             
     snprintf(__flogfile,OS_FLSIZE,"%s/%d/", FWLOGS, lf->year);

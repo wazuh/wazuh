@@ -41,7 +41,7 @@ setagent:
 		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
 
 setprelude:
-		@echo "CPRELUDE=-DPRELUDE `libprelude-config --cflags`" >> ./Config.OS
+		@echo "CPRELUDE=-DPRELUDE `libprelude-config --cflags` `libprelude-config --libs`" >> ./Config.OS
 
 setlocal:
 		@echo "CEXTRA=-DLOCAL" >> ./Config.OS

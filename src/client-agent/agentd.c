@@ -84,8 +84,13 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
 
     
     /* Initial random numbers */
-    srand( time(0) + getpid() + pid + getppid() );
-    rand();
+    #ifdef __OpenBSD__
+    srandomdev();
+    #else
+    srandom( time(0) + getpid()+ pid + getppid());
+    #endif
+                    
+    random();
 
 
     /* Connecting UDP */

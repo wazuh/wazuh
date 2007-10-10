@@ -73,7 +73,7 @@ Install()
         CEXTRA="${CEXTRA} -DDEBUGAD"
     fi
         
-    echo "CEXTRA=${CEXTRA}" > ./src/Config.OS
+    echo "CEXTRA=${CEXTRA}" >> ./src/Config.OS
     
     # Makefile
 	echo " - ${runningmake}"

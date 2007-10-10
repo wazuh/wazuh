@@ -406,7 +406,7 @@ int CreateSecMSG(keystore *keys, char *msg, char *msg_encrypted, int id)
     }
     
     /* Random number */
-    rand1 = (u_int16_t)rand();
+    rand1 = (u_int16_t)random();
 
 
     _tmpmsg[OS_MAXSTR +1] = '\0';

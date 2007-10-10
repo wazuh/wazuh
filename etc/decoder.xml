@@ -54,19 +54,19 @@
   <prematch>^pam_unix</prematch>
 </decoder>
 
+<decoder name="pam-user">
+  <parent>pam</parent>
+  <prematch>^session \w+ </prematch>
+  <regex offset="after_prematch">^for user (\S+) </regex>
+  <order>user</order>
+</decoder>  
+
 <decoder name="pam-host-user">
   <parent>pam</parent>
   <prematch>rhost=\S+\s+user=\S+</prematch>
   <regex>rhost=(\S+)\s+user=(\S+)</regex>
   <order>srcip, user</order>
 </decoder>
-
-<decoder name="pam-user">
-  <parent>pam</parent>
-  <prematch>session opened </prematch>
-  <regex offset="after_prematch">^for user (\S+) </regex>
-  <order>user</order>
-</decoder>  
 
 <decoder name="pam-host">
   <parent>pam</parent>

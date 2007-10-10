@@ -49,9 +49,11 @@ int k_import()
         read_from_user();
         return(0);
     }
+
     
     memset(line_read, '\0', FILE_SIZE +1);
     strncpy(line_read, b64_dec, FILE_SIZE);
+
 
     name = strchr(b64_dec, ' ');
     if(name && strlen(line_read) < FILE_SIZE)
@@ -170,6 +172,7 @@ int k_extract()
     if(fgets(line_read, FILE_SIZE, fp) == NULL)
     {
         printf(ERROR_KEYS);
+        fclose(fp);
         exit(1);
     }
     chomp(line_read);
@@ -179,6 +182,7 @@ int k_extract()
     if(b64_enc == NULL)
     {
         printf(EXTRACT_ERROR);
+        fclose(fp);
         exit(1);
     }
 
@@ -186,6 +190,7 @@ int k_extract()
     read_from_user();
 
     free(b64_enc);
+    fclose(fp);
 
     return(0);
 }

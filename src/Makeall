@@ -82,7 +82,7 @@ if [ "X${ARGV}" = "Xall" ]; then
     fi    
 
     if [ "X$OS" = "XDarwin" ]; then
-        echo "EEXTRA=-DDarwin" >> Config.OS
+        echo "EEXTRA=-DDarwin -DHIGHFIRST" >> Config.OS
     fi    
 fi
 
