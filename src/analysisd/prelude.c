@@ -86,7 +86,8 @@ add_idmef_object(idmef_message_t *msg, const char *object, const char *value)
     ret = idmef_path_set(path, msg, val);
     if(ret < 0) 
     {
-        merror("%s: OSSEC2Prelude: IDMEF: Cannot add object '%s'", ARGV0, msg);
+        merror("%s: OSSEC2Prelude: IDMEF: Cannot add object '%s': %s.", 
+               ARGV0, msg, prelude_strerror(ret));
     }
 
     idmef_value_destroy(val);
@@ -171,6 +172,16 @@ void prelude_start(int argc, char **argv)
     }
 
 
+    ret = prelude_client_set_flags(prelude_client, 
+          prelude_client_get_flags(prelude_client) 
+          | PRELUDE_CLIENT_FLAGS_ASYNC_TIMER);
+    if(ret < 0)
+    {
+        merror("%s: %s: Unable to set prelude client flags: %s.",
+               ARGV0, prelude_strsource(ret), prelude_strerror(ret)); 
+    }
+
+
     ret = prelude_client_start(prelude_client);
     if (ret < 0) 
     {
@@ -237,15 +248,15 @@ void OS_PreludeLog(Eventinfo *lf)
 
 
     /* Setting source file. */
-    add_idmef_object(idmef, "alert.additional_data(1).type", "string");
-    add_idmef_object(idmef, "alert.additional_data(1).meaning", "Source file");
-    add_idmef_object(idmef, "alert.additional_data(1).data", lf->location);
+    add_idmef_object(idmef, "alert.additional_data(0).type", "string");
+    add_idmef_object(idmef, "alert.additional_data(0).meaning", "Source file");
+    add_idmef_object(idmef, "alert.additional_data(0).data", lf->location);
     
 
     /* Setting full log. */
-    add_idmef_object(idmef, "alert.additional_data(3).type", "string");
-    add_idmef_object(idmef, "alert.additional_data(3).meaning", "Full Log");
-    add_idmef_object(idmef, "alert.additional_data(3).data", lf->full_log);
+    add_idmef_object(idmef, "alert.additional_data(1).type", "string");
+    add_idmef_object(idmef, "alert.additional_data(1).meaning", "Full Log");
+    add_idmef_object(idmef, "alert.additional_data(1).data", lf->full_log);
 
     idmef_alert_set_analyzer(idmef_message_get_alert(idmef),
                              idmef_analyzer_ref
