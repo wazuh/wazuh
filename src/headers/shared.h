@@ -137,6 +137,8 @@ typedef int uid_t;
 typedef int gid_t;
 typedef int socklen_t;
 #define sleep(x) Sleep(x * 1000)
+#define srandom(x) srand(x)
+#define random(x) rand(x)
 #define lstat(x,y) stat(x,y)
 void WinSetError();
 typedef unsigned short int u_int16_t;
