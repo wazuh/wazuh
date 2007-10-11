@@ -57,7 +57,7 @@
 <decoder name="pam-user">
   <parent>pam</parent>
   <prematch>^session \w+ </prematch>
-  <regex offset="after_prematch">^for user (\S+) </regex>
+  <regex offset="after_prematch">^for user (\S+)</regex>
   <order>user</order>
 </decoder>  
 
