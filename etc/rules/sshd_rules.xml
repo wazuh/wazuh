@@ -110,7 +110,7 @@
 
   <rule id="5715" level="3">
     <if_sid>5700</if_sid>
-    <match>^Accepted</match>
+    <match>^Accepted|authenticated.$</match>
     <description>SSHD authentication success.</description>
     <group>authentication_success,</group>
   </rule>

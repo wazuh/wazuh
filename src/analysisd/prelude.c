@@ -43,8 +43,7 @@ char *(ossec2prelude_sev[])={"info","info","info","info",
 static prelude_client_t *prelude_client;
 
 
-static void
-prelude_idmef_debug(idmef_message_t *idmef)
+void prelude_idmef_debug(idmef_message_t *idmef)
 {
 	prelude_io_t *pio;
 
@@ -52,7 +51,6 @@ prelude_idmef_debug(idmef_message_t *idmef)
 	prelude_io_set_file_io(pio, stderr);
 	idmef_message_print(idmef, pio);
 	prelude_io_destroy(pio);
-
 }
 
 
@@ -87,7 +85,7 @@ add_idmef_object(idmef_message_t *msg, const char *object, const char *value)
     if(ret < 0) 
     {
         merror("%s: OSSEC2Prelude: IDMEF: Cannot add object '%s': %s.", 
-               ARGV0, msg, prelude_strerror(ret));
+               ARGV0, object, prelude_strerror(ret));
     }
 
     idmef_value_destroy(val);

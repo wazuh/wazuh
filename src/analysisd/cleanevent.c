@@ -147,6 +147,8 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
              * p_name:   
              * p_name[pid]:
              * p_name[pid]: [ID xx facility.severity]
+             * auth|security:info p_name:
+             * 
              */    
             while(isValidChar(*pieces) == 1)
             {
@@ -173,6 +175,72 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 {
                     pieces+=3;
                 }
+                else
+                {
+                    pieces = NULL;
+                    lf->program_name = NULL;
+                }
+            }
+            /* AIX syslog. */
+            else if((*pieces == '|') && islower(pieces[1]))
+            {
+                pieces+=2;
+
+                /* Removing facility */
+                while(isalnum(*pieces))
+                    pieces++;
+
+
+                if(*pieces == ':')
+                {
+                    /* Removing severity. */
+                    pieces++;
+                    while(isalnum(*pieces))
+                        pieces++;
+                
+                    if(*pieces == ' ')
+                    {
+                        pieces++;
+                        lf->program_name = pieces;
+
+
+                        /* Getting program name again. */
+                        while(isValidChar(*pieces) == 1)
+                            pieces++;
+
+                        /* Checking for the first format: p_name: */
+                        if((*pieces == ':') && (pieces[1] == ' '))
+                        {
+                            *pieces = '\0';
+                            pieces+=2;
+                        }
+
+                        /* Checking for the second format: p_name[pid]: */
+                        else if((*pieces == '[') && (isdigit(pieces[1])))
+                        {
+                            *pieces = '\0';
+                            pieces+=2;
+                            while(isdigit(*pieces))
+                                pieces++;
+
+                            if((*pieces == ']') && (pieces[1] == ':'))
+                            {
+                                pieces+=3;
+                            }
+                            else
+                            {
+                                pieces = NULL;
+                                lf->program_name = NULL;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        pieces = NULL;
+                        lf->program_name = NULL;
+                    }
+                }
+                /* Invalid AIX. */
                 else
                 {
                     pieces = NULL;

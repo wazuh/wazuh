@@ -127,7 +127,7 @@
 <decoder name="sshd-success-solaris">
   <parent>sshd</parent>
   <prematch>^User </prematch>
-  <regex offset="after_prematch">^(\S+), comming from (\S+), auth</regex>
+  <regex offset="after_prematch">^(\S+), coming from (\S+), </regex>
   <order>user, srcip</order>
   <fts>name, user, location</fts>
 </decoder>
