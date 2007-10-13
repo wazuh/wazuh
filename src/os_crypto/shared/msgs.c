@@ -361,7 +361,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 
 
         /* Warn about duplicated message */
-        merror("%s: Duplicate error:  msg_count: %d, time: %ld, "
+        merror("%s: Duplicate error:  msg_count: %d, time: %d, "
                 "saved count: %d, saved_time:%d",
                 __local_name,
                 msg_count,
