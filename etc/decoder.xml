@@ -148,8 +148,8 @@
 
 <decoder name="ssh-error">
   <parent>sshd</parent>
-  <prematch>^error: PAM: Authentication </prematch>
-  <regex offset="after_prematch">^failure for (\S+) from (\S+)$</regex>
+  <prematch>^error: PAM: Authentication \w+ </prematch>
+  <regex offset="after_prematch">^for (\S+) from (\S+)$</regex>
   <order>user, srcip</order>
 </decoder>
 
