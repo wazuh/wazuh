@@ -72,7 +72,7 @@ if [ "X${ARGV}" = "Xall" ]; then
     fi
 
     if [ "X$OS" = "XHP-UX" ]; then
-        echo "EEXTRA=-DHPUX -D_XOPEN_SOURCE_EXTENDED -DHIGHFIRST" >> Config.OS
+        echo "EEXTRA=-DHPUX -D_XOPEN_SOURCE_EXTENDED -DHIGHFIRST -D_REENTRANT" >> Config.OS
     fi
 
     if [ "X$OS" = "XFreeBSD" ]; then

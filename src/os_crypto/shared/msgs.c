@@ -365,7 +365,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
                 "saved count: %d, saved_time:%d",
                 __local_name,
                 msg_count,
-                msg_time,
+                (int)msg_time,
                 keys->keyentries[id]->local,
                 keys->keyentries[id]->global);
 
