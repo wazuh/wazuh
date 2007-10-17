@@ -21,7 +21,7 @@
 #include "eventinfo.h"
 
 #define DEFAULT_ANALYZER_NAME __name
-#define ANALYZER_CLASS "Host IDS"
+#define ANALYZER_CLASS "Host IDS, File Integrity Checker, Log Analyzer"
 #define ANALYZER_MODEL "Ossec"
 #define ANALYZER_MANUFACTURER __site
 #define ANALYZER_VERSION __version
