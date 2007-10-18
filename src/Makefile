@@ -9,10 +9,12 @@ none:
 		@echo "\"make local\" to build the local."
 		@echo "\"make agent\" to build the agent."
 		@echo "\"make libs\" to build the libraries only."
-		@echo "\"make clean\" to clean anything built"
-		@echo "\"make setagent\" to set agent install"
-		@echo "\"make setlocal\" to set local install"
-		@echo "\"make setprelude\" to set local install"
+		@echo "\"make clean\" to clean anything built."
+		@echo "\"make setagent\" to set agent install."
+		@echo "\"make setlocal\" to set local install."
+		@echo "\"make setprelude\" to enable prelude output."
+		@echo "\"make setdb\" to enable database support."
+		@echo "\"make unsetdb\" to disable database support."
 
 clean:
 		@/bin/sh ./Makeall clean
@@ -42,7 +44,11 @@ setagent:
 
 setprelude:
 		@echo "CPRELUDE=-DPRELUDE -lprelude `libprelude-config --pthread-cflags` `libprelude-config --libs`" >> ./Config.OS
-
+        
+setdb:
+		@cd ./os_dbd; echo "CDB=`./dbmake.sh`" >> ../Config.OS;
+unsetdb:
+		@echo "CDB=" >> ./Config.OS;
 setlocal:
 		@echo "CEXTRA=-DLOCAL" >> ./Config.OS
 

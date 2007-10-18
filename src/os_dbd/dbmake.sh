@@ -63,7 +63,7 @@ fi
 
 
 # Printing error if mysql is not found
-if [ "X$1" = "Xmysql" -a "X$MI" = "X" -a "X$ML" = "X" ]; then
+if [ "X$MI" = "X" -a "X$ML" = "X" ]; then
     echo "" >&2
     echo "Error: MySQL client libraries not installed." >&2
     echo "" >&2
@@ -71,7 +71,7 @@ if [ "X$1" = "Xmysql" -a "X$MI" = "X" -a "X$ML" = "X" ]; then
 fi
 
 # Printing error if postgresql is not found
-if [ "X$1" = "Xpostgresql" -a "X$PI" = "X" -a "X$PL" = "X" ]; then
+if [ "X$PI" = "X" -a "X$PL" = "X" ]; then
     echo "" >&2
     echo "Error: PostgreSQL client libraries not installed." >&2
     echo "" >&2
@@ -83,6 +83,7 @@ fi
 if [ "X$MI" = "X" -o "X$ML" = "X" ]; then
     MYSQL_FINAL=""
 else
+    echo "Info: Compiled with MySQL support." >&2
     MYSQL_FINAL="-I$MI -L$ML -DDBD -DUMYSQL"    
 fi
 
@@ -90,6 +91,7 @@ fi
 if [ "X$PI" = "X" -o "X$PL" = "X" ]; then
     POSTGRES_FINAL=""
 else
+    echo "Info: Compiled with PostgreSQL support." >&2
     POSTGRES_FINAL="-I$PI $PL -DDBD -DUPOSTGRES"    
 fi
 

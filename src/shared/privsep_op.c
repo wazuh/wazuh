@@ -28,24 +28,32 @@
 
 int Privsep_GetUser(char * name)
 {
+    int os_uid = -1;
+    
     struct passwd *pw;
     pw = getpwnam(name);
     if(pw == NULL)
         return(OS_INVALID);
 
+    os_uid = (int)pw->pw_uid;
     endpwent();    
-    return(pw->pw_uid);
+    
+    return(os_uid);
 }
 
 int Privsep_GetGroup(char * name)
 {
+    int os_gid = -1;
+    
     struct group *grp;
     grp = getgrnam(name);
     if(grp == NULL)
         return(OS_INVALID);
 
+    os_gid = (int)grp->gr_gid;
     endgrent();    
-    return(grp->gr_gid);
+    
+    return(os_gid);
 }
 
 int Privsep_SetUser(uid_t uid)

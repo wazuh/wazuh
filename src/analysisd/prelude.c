@@ -20,7 +20,7 @@
 #include "shared.h"
 #include "eventinfo.h"
 
-#define DEFAULT_ANALYZER_NAME __name
+#define DEFAULT_ANALYZER_NAME "OSSEC"
 #define ANALYZER_CLASS "Host IDS, File Integrity Checker, Log Analyzer"
 #define ANALYZER_MODEL "Ossec"
 #define ANALYZER_MANUFACTURER __site
@@ -178,6 +178,13 @@ void prelude_start(int argc, char **argv)
         merror("%s: %s: Unable to set prelude client flags: %s.",
                ARGV0, prelude_strsource(ret), prelude_strerror(ret)); 
     }
+
+
+    /* Setting uid and gid of ossec. */
+    prelude_client_profile_set_uid(prelude_client_get_profile(prelude_client),
+                                   Privsep_GetUser(USER));
+    prelude_client_profile_set_gid(prelude_client_get_profile(prelude_client),
+                                   Privsep_GetGroup(GROUPGLOBAL));
 
 
     ret = prelude_client_start(prelude_client);
