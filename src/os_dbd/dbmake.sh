@@ -67,7 +67,6 @@ if [ "X$MI" = "X" -a "X$ML" = "X" ]; then
     echo "" >&2
     echo "Error: MySQL client libraries not installed." >&2
     echo "" >&2
-    exit 1; 
 fi
 
 # Printing error if postgresql is not found
@@ -75,7 +74,6 @@ if [ "X$PI" = "X" -a "X$PL" = "X" ]; then
     echo "" >&2
     echo "Error: PostgreSQL client libraries not installed." >&2
     echo "" >&2
-    exit 1; 
 fi
 
 
@@ -95,6 +93,11 @@ else
     POSTGRES_FINAL="-I$PI $PL -DDBD -DUPOSTGRES"    
 fi
 
+
+if [ "X${MYSQL_FINAL}" = "X" -a "X${POSTGRES_FINAL}" = "X" ]; then
+    echo "Error: DB libraries not installed." >&2
+    exit 1;
+fi    
 
 echo "${MYSQL_FINAL} ${POSTGRES_FINAL}"
 
