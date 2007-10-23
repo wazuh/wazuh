@@ -88,7 +88,12 @@ int read_sys_file(char *file_name, int do_read)
             }
             close(fd);
 
-            if(total != statbuf.st_size)
+            if(strcmp(file_name, "/dev/bus/usb/.usbfs/devices") == 0)
+            {
+                /* Ignore .usbfs/devices. */
+            }
+
+            else if(total != statbuf.st_size)
             {
                 struct stat statbuf2;
 
@@ -294,7 +299,7 @@ int read_sys_dir(char *dir_name, int do_read)
         }
 
         /* Ignoring /proc */
-        if(strcmp(f_name, "/proc") == 0)
+        if((strcmp(f_name, "/proc") == 0) || (strcmp(f_name, "/sys") == 0))
             continue;
 
         read_sys_file(f_name, do_read);

@@ -133,6 +133,14 @@ int read_dev_dir(char *dir_name)
             if(strcmp(ignore_dev_full_path[i], f_name) == 0)
                 break;
         }
+
+        
+        /* Checking against the full path. */
+        if(ignore_dev_full_path[i] != NULL)
+        {
+            continue;
+        }
+
         
         read_dev_file(f_name);
 
