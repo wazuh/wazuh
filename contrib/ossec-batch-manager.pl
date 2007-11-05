@@ -13,6 +13,10 @@
 ##########################################################
 
 #$Id$
+# TODO:
+# 	- Add check for ossec 1.4 and support longer agent names
+#	- Add in eval so that older version of perl without
+#	  Time::HiRes still can use this script.
 
 use strict;
 use warnings;
