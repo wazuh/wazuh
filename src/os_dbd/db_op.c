@@ -42,6 +42,11 @@ DBConfig *db_config_pt = NULL;
  */
 void osdb_escapestr(char *str)
 {
+    if(!str)
+    {
+        return;
+    }
+    
     while(*str)
     {
         if(*str == '\'')

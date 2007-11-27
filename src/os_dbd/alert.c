@@ -165,12 +165,26 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     
 
     /* Inserting data */
-    snprintf(sql_query, OS_SIZE_2048,
-            "INSERT INTO "
-            "data(id, server_id, \"user\",full_log) "
-            "VALUES ('%u', '%u', '%s', '%s') ",
-            db_config->alert_id, db_config->server_id, 
-            al_data->user, al_data->log[0]);
+    if(db_config->db_type == POSTGDB)
+    {
+        /* On postgres we need to escape the user field. */
+        snprintf(sql_query, OS_SIZE_2048,
+                "INSERT INTO "
+                "data(id, server_id, 'user', full_log) "
+                "VALUES ('%u', '%u', '%s', '%s') ",
+                db_config->alert_id, db_config->server_id, 
+                al_data->user, al_data->log[0]);
+    }
+    else
+    {
+        snprintf(sql_query, OS_SIZE_2048,
+                "INSERT INTO "
+                "data(id, server_id, user, full_log) "
+                "VALUES ('%u', '%u', '%s', '%s') ",
+                db_config->alert_id, db_config->server_id, 
+                al_data->user, al_data->log[0]);
+    }
+    
     
     /* Inserting into the db */
     if(!osdb_query_insert(db_config->conn, sql_query))

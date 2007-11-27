@@ -10,6 +10,7 @@
 /var/adm/syslog
 /var/adm/auth.log
 /var/adm/syslog.log
+/var/adm/messages
 /var/log/userlog 
 /var/log/security
 /var/log/xferlog

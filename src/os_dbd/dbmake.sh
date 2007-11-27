@@ -10,22 +10,36 @@ PL=""
 # Looking for mysql
 ls "`which mysql 2>/dev/null`" > /dev/null 2>&1
 if [ $? = 0 ]; then
+    
+    # Checking if mysql_config is installed to use it.
+    mysql_config --port > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        MI=`mysql_config --cflags`
+        ML=`mysql_config --libs`
+    fi    
+
+    
+    # Checking on a few dirs if mysql_config is not there.
     for i in /usr /usr/local $1
     do    
     for j in $i/include/mysql/mysql.h $i/include/mysql.h
         do
             ls $j > /dev/null 2>&1 
             if [ $? = 0 ]; then
-                MI=`dirname $j`;
+                if [ "X$MI" = "X" ]; then 
+                    MI="-I `dirname $j`";
+                fi    
                 break;
             fi
         done
     
-    for j in $i/lib/mysql
+    for j in $i/lib/mysql $i/lib64/mysql
         do
             ls $j > /dev/null 2>&1
             if [ $? = 0 ]; then
-                ML="$j -lmysqlclient";
+                if [ "X$ML" = "X" ]; then
+                    ML="-L $j -lmysqlclient";
+                fi
                 break
             fi    
         done
@@ -47,7 +61,7 @@ if [ $? = 0 ]; then
             fi
         done
     
-    for j in $i/lib/pgsql $i/lib/postgresql
+    for j in $i/lib/pgsql $i/lib/postgresql $i/lib64/pgsql $i/lib64/postgresql
         do
             ls $j > /dev/null 2>&1
             if [ $? = 0 ]; then
@@ -82,7 +96,7 @@ if [ "X$MI" = "X" -o "X$ML" = "X" ]; then
     MYSQL_FINAL=""
 else
     echo "Info: Compiled with MySQL support." >&2
-    MYSQL_FINAL="-I$MI -L$ML -DDBD -DUMYSQL"    
+    MYSQL_FINAL="$MI $ML -DDBD -DUMYSQL"    
 fi
 
 # For postgresql

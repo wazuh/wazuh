@@ -161,7 +161,7 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
                         }
                         
                         os_realloc(Mail->gran_id[granto_size -1],
-                                   id_i +2* sizeof(int),
+                                   (id_i +2) * sizeof(int),
                                    Mail->gran_id[granto_size -1]);     
                         Mail->gran_id[granto_size -1][id_i +1] = 0;
                     }
