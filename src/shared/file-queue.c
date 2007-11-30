@@ -191,7 +191,7 @@ alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
             /* Getting latest file */
             GetFile_Queue(fileq);
 
-            if(Handle_Queue(fileq, 0) == -1)
+            if(Handle_Queue(fileq, 0) != 1)
             {
                 file_sleep();
                 return(NULL);
