@@ -273,7 +273,7 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
     {
         snprintf(sql_query, OS_SIZE_1024 -1,
                 "UPDATE signature SET level='%u',description='%s' "
-                "WHERE id='%u'",
+                "WHERE rule_id='%u'",
                 rule->level, rule->comment,rule->sigid);
     }
 
