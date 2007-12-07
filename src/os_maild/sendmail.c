@@ -484,7 +484,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
             }
             
             memset(snd_msg,'\0',128);
-            snprintf(snd_msg,127, CC, mail->to[i]);
+            snprintf(snd_msg,127, TO, mail->to[i]);
             OS_SendTCP(socket,snd_msg);
 
             i++;
@@ -505,7 +505,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
             }
 
             memset(snd_msg,'\0',128);
-            snprintf(snd_msg,127, CC, mail->gran_to[i]);
+            snprintf(snd_msg,127, TO, mail->gran_to[i]);
             OS_SendTCP(socket, snd_msg);
             i++;
             continue;

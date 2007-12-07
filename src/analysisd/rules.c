@@ -1579,7 +1579,7 @@ void Rule_AddAR(RuleInfo *rule_config)
     if(rule_config->level == 9900)
         rule_real_level = 0;
     
-    else if(rule_config->level > 100)
+    else if(rule_config->level >= 100)
         rule_real_level = rule_config->level/100;
     
     
@@ -1713,7 +1713,7 @@ int _setlevels(RuleNode *node, int nnode)
         if(node->ruleinfo->level == 9900)
             node->ruleinfo->level = 0;
 
-        if(node->ruleinfo->level > 100)
+        if(node->ruleinfo->level >= 100)
             node->ruleinfo->level/=100;
 
         l_size++;
