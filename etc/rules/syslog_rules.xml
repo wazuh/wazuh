@@ -285,7 +285,7 @@
   <rule id="5130" level="7">
     <if_sid>5100</if_sid>
     <match>ADSL line is down</match>
-    <description>Monitor ASAL line is down.</description>
+    <description>Monitor ADSL line is down.</description>
   </rule>
   
   <rule id="5131" level="3">
