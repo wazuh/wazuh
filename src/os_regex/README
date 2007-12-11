@@ -7,7 +7,6 @@ Copyright (c) 2004,2005,2006 Daniel B. Cid   <daniel.cid@gmail.com>
 
 
 Fast and simple library for regular expressions in C.
-Available at http://www.ossec.net/c/os_regex/
 
 This library is designed to be simple, but support
 the most common regular expressions. It was design

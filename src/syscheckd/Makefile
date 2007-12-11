@@ -1,7 +1,6 @@
 # Makefile for OSSEC syscheckd
-# Daniel B. Cid <daniel.cid@gmail.com>||<daniel@underlinux.com.br>
-# http://www.ossec.net/hids/
-# http://www.ossec.net/syscheck/
+# Daniel B. Cid <dcid @ ossec.net>
+# http://www.ossec.net
 
 PT=../
 NAME=ossec-syscheckd
