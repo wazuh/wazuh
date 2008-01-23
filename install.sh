@@ -96,16 +96,16 @@ Install()
     if [ "X${update_only}" = "Xyes" ]; then
         UpdateStopOSSEC
     fi    
-    
+
     # Making the right installation type
 	if [ "X$INSTYPE" = "Xserver" ]; then
-		make server
+        ./InstallServer.sh
 	
     elif [ "X$INSTYPE" = "Xagent" ]; then 
-		make agent
+        ./InstallAgent.sh
 
     elif [ "X$INSTYPE" = "Xlocal" ]; then
-        make local    
+        ./InstallServer.sh local
 	fi
 
     cd ../
