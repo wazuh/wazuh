@@ -249,7 +249,7 @@ int main(int argc, char **argv)
     #ifdef PRELUDE
     if(Config.prelude)
     {
-        prelude_start(argc, argv);
+        prelude_start(Config.prelude_profile, argc, argv);
     }
     #endif
     
@@ -861,7 +861,10 @@ void OS_ReadMSG(int m_queue)
                 #ifdef PRELUDE
                 if(Config.prelude)
                 {
-                    OS_PreludeLog(lf);
+                    if(Config.prelude_log_level <= currently_rule->level)
+                    {
+                        OS_PreludeLog(lf, prelude_log_level);
+                    }
                 }
                 #endif
 

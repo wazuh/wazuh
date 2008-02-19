@@ -21,10 +21,10 @@
 #include "eventinfo.h"
 
 /* Starts prelude client. */
-void prelude_start(int argc, char **argv);
+void prelude_start(char *profile, int argc, char **argv);
 
 /* Logs to prelude. */
-void OS_PreludeLog(Eventinfo *lf);
+void OS_PreludeLog(Eventinfo *lf, int prelude_log_level);
 
 #endif /* _PRELUDE_H_ */
 

@@ -133,7 +133,7 @@ setup_analyzer(idmef_analyzer_t *analyzer)
 
 
 
-void prelude_start(int argc, char **argv)
+void prelude_start(char *profile, int argc, char **argv)
 {
     int ret;
     prelude_client = NULL;
@@ -147,7 +147,8 @@ void prelude_start(int argc, char **argv)
         return;
     }
 
-    ret = prelude_client_new(&prelude_client, DEFAULT_ANALYZER_NAME);
+    ret = prelude_client_new(&prelude_client, 
+                             profile!=NULL?profile:DEFAULT_ANALYZER_NAME);
     if (!prelude_client) 
     {
         merror("%s: %s: Unable to create a prelude client object: %s.",
@@ -206,7 +207,7 @@ void prelude_start(int argc, char **argv)
 
 
 
-void OS_PreludeLog(Eventinfo *lf)
+void OS_PreludeLog(Eventinfo *lf, int prelude_log_level)
 {
     int ret;
     idmef_message_t *idmef;

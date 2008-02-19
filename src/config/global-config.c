@@ -1,4 +1,4 @@
-/*   $OSSEC, global-config.c, v0.1, 2005/04/02, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -150,6 +150,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     char *xml_rootcheckd = "rootkit_detection";
     char *xml_hostinfo = "host_information";
     char *xml_prelude = "prelude_output";
+    char *xml_prelude_profile = "prelude_profile";
+    char *xml_prelude_log_level = "prelude_log_level";
     char *xml_stats = "stats";
     char *xml_memorysize = "memory_size";
     char *xml_white_list = "white_list";
@@ -235,6 +237,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 return(OS_INVALID);
             }
         }
+        /* Prelude support */
         else if(strcmp(node[i]->element, xml_prelude) == 0)
         {
             if(strcmp(node[i]->content, "yes") == 0)
@@ -251,7 +254,26 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 return(OS_INVALID);
             }
         }
-        
+        else if(strcmp(node[i]->element, xml_prelude_profile) == 0)
+        {
+            if(Config)
+            {
+                Config->prelude_profile = strdup(node[i]->content);
+            }
+        }
+        else if(strcmp(node[i]->element, xml_prelude_log_level) == 0)
+        {
+            if(!OS_StrIsNum(node[i]->content))
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+
+            if(Config)
+            {
+                Config->prelude_log_level = atoi(node[i]->content);
+            }
+        }
         /* Log all */
         else if(strcmp(node[i]->element, xml_logall) == 0)
         {

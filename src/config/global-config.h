@@ -1,4 +1,4 @@
-/*   $OSSEC, global-config.h, v0.1, 2006/04/06, Daniel B. Cid$   */
+/* @(#) $Id$ */
 
 /* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
@@ -26,10 +26,17 @@ typedef struct __Config
     u_int8_t syscheck_alert_new;
     u_int8_t rootcheck;
     u_int8_t hostinfo;
-    u_int8_t prelude;
     u_int8_t mailbylevel;
     u_int8_t logbylevel;
     
+    /* Prelude support */
+    u_int8_t prelude;
+    /* which min. level the alert must be sent to prelude */
+    u_int8_t prelude_log_level;
+    /* prelude profile name */
+    char *prelude_profile;
+
+
     /* Not currently used */
     u_int8_t keeplogdate;
 
