@@ -863,7 +863,7 @@ void OS_ReadMSG(int m_queue)
                 {
                     if(Config.prelude_log_level <= currently_rule->level)
                     {
-                        OS_PreludeLog(lf, prelude_log_level);
+                        OS_PreludeLog(lf);
                     }
                 }
                 #endif

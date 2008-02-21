@@ -24,7 +24,7 @@
 void prelude_start(char *profile, int argc, char **argv);
 
 /* Logs to prelude. */
-void OS_PreludeLog(Eventinfo *lf, int prelude_log_level);
+void OS_PreludeLog(Eventinfo *lf);
 
 #endif /* _PRELUDE_H_ */
 

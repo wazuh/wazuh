@@ -41,12 +41,14 @@ int el_last = 0;
  */
 int startEL(char *app, os_el *el)
 {
+    DWORD NumberOfRecords = 0;
+    
     /* Opening the event log */
     el->h = OpenEventLog(NULL, app);
     if(!el->h)
     {
         merror(EVTLOG_OPEN, ARGV0, app);
-        return(0);	    
+        return(-1);	    
     }
 
     el->name = app;
@@ -56,10 +58,23 @@ int startEL(char *app, os_el *el)
         merror(EVTLOG_GETLAST, ARGV0, app);
         CloseEventLog(el->h);
         el->h = NULL;
-        return(0);
+        return(-1);
     }
 
-    return(1);
+    if(GetNumberOfEventLogRecords(el->h, &NumberOfRecords) == 0)
+    {
+        merror(EVTLOG_GETLAST, ARGV0, app);
+        CloseEventLog(el->h);
+        el->h = NULL;
+        return(-1);
+    }
+    
+    if(NumberOfRecords <= 0)
+    {
+        return(0);
+    }
+    
+    return((int)NumberOfRecords);
 }
 
 
@@ -268,6 +283,14 @@ void readel(os_el *el, int printit)
                 0,
                 el->er, BUFFER_SIZE -1, &read, &needed))
     {
+        if(!printit)
+        {
+            /* Setting er to the beginning of the buffer */
+            el->er = (EVENTLOGRECORD *)&mbuffer;
+            continue;
+        }
+
+        
         while(read > 0)
         {
 
@@ -440,6 +463,8 @@ void readel(os_el *el, int printit)
  */
 void win_startel(char *evt_log)
 {
+    int entries_count = 0;
+    
     /* Maximum size */
     if(el_last == 3)
     {
@@ -448,7 +473,11 @@ void win_startel(char *evt_log)
     }
     
     /* Starting event log -- going to last available record */
-    if(startEL(evt_log, &el[el_last]))
+    if((entries_count = startEL(evt_log, &el[el_last])) < 0)
+    {
+        return;
+    }
+    else
     {
         readel(&el[el_last],0);
     }
