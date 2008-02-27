@@ -40,6 +40,7 @@ void LogCollectorStart()
 
     debug1("%s: DEBUG: Entering LogCollectorStart().", ARGV0);
     
+    
     /* Initializing each file and structure */
     for(i = 0;;i++)
     {
@@ -366,7 +367,10 @@ void LogCollectorStart()
                  */
                 if(!logff[i].ffile)
                 {
-                    logff[i].file = NULL;
+                    /* Variable log files should always be attempted
+                     * to be open...
+                     */
+                    //logff[i].file = NULL;
                 }
                 logff[i].ign = 999;
                 continue;
@@ -403,7 +407,9 @@ int update_fname(int i)
     char lfile[OS_FLSIZE + 1];
     size_t ret;
 
+
     p = localtime(&__ctime);
+    
 
     /* Handle file */
     if(p->tm_mday == _cday)

@@ -47,14 +47,14 @@ int read_main_elements(OS_XML xml, int modules,
         
         chld_node = OS_GetElementsbyNode(&xml,node[i]);
         
-        if(!chld_node)
+        if(!node[i]->element)
         {
             merror(XML_ELEMNULL, ARGV0);
             return(OS_INVALID);
         }
-        else if(!node[i]->element)
+        else if(!chld_node)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_INVELEM, ARGV0, node[i]->element);
             return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, osglobal) == 0)

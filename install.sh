@@ -682,7 +682,7 @@ setEnv()
             $ECHO " - ${wheretoinstall} [$INSTALLDIR]: "
             read ANSWER
             if [ ! "X$ANSWER" = "X" ]; then
-                echo $ANSWER |grep -E "^/[a-zA-Z0-9/-]{3,128}$">/dev/null 2>&1
+                echo $ANSWER |grep -E "^/[a-zA-Z0-9./_-]{3,128}$">/dev/null 2>&1
                 if [ $? = 0 ]; then
                     INSTALLDIR=$ANSWER;
                     break;

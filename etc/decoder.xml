@@ -481,7 +481,7 @@
   - Nov 24 18:18:28 gandalf pop3d: LOGIN FAILED, ip=[::ffff:1.2.3.4]
   -->
 <decoder name="courier">
-  <program_name>^pop3d|^courierpop3login|^imaplogin|</program_name>
+  <program_name>^pop3d|^courierpop3login|^imaplogin</program_name>
 </decoder>
 
 <decoder name="courier-login">
@@ -1352,6 +1352,34 @@
 <decoder name="zeus">
   <prematch>^[\d\d/\w\w\w/\d\d\d\d:\d\d:\d\d:\d\d \S+] </prematch>
   <regex offset="after_prematch"> host=(\S+), </regex>
+  <order>srcip</order>
+</decoder>
+
+
+
+<!-- Solaris BSM
+  - Examples:
+  - Nov 21 15:12:56 unknown audit: [ID 905220 audit.notice] system booted
+    text booting kernel
+  - Nov 21 15:16:22 unknown audit: [ID 984917 audit.notice] login - telnet
+    failed session 2740580090 by root as root:root from 1.254.168.192
+  - failed session 2740580090 by root as root:root from 1.254.168.192
+  - ok session 347344759 by 500959152 as root:root from 3.11.8.4 obj   
+  -->
+<decoder name="solaris_bsm">
+  <program_name>^audit$</program_name>
+</decoder>
+
+<decoder name="solaris_bsm_session">
+  <parent>solaris_bsm</parent>
+  <prematch> \w+ session \d+ by </prematch>
+  <regex> (\w+) session \d+ by</regex>
+  <order>status</order>
+</decoder>
+
+<decoder name="solaris_bsm_session">
+  <parent>solaris_bsm</parent>
+  <regex offset="after_regex">^ \S+ as \S+:\S+ from (\S+)</regex>
   <order>srcip</order>
 </decoder>
 
