@@ -217,7 +217,7 @@ void HandleSyslogTCP()
         /* Checking if IP is allowed here */
         if(OS_IPNotAllowed(srcip))
         {
-            merror(DENYIP_ERROR,ARGV0,srcip);
+            merror(DENYIP_WARN,ARGV0,srcip);
             close(client_socket);
         }
 

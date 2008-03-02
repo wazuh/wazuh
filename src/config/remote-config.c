@@ -219,6 +219,7 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
     if(logr->conn[pl] == 0)
     {
         merror(CONN_ERROR, ARGV0);
+        return(OS_INVALID);
     }
     
     /* Set port in here */

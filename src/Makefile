@@ -47,6 +47,8 @@ setprelude:
         
 setdb:
 		@cd ./os_dbd; echo "CDB=`./dbmake.sh`" >> ../Config.OS;
+setmaxagents:
+		@/bin/sh ./Makeall setmaxagents
 unsetdb:
 		@echo "CDB=" >> ./Config.OS;
 setlocal:

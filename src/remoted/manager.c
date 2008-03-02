@@ -544,7 +544,7 @@ void manager_init(int isUpdate)
     f_files();
     c_files();
 
-    debug1("%s: DEBUG: Running manager_unit", ARGV0);
+    debug1("%s: DEBUG: Running manager_init", ARGV0);
 
     for(i=0;i<MAX_AGENTS;i++)
     {

@@ -71,6 +71,8 @@ void HandleSecure()
         ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
     }
         
+    
+    verbose(AG_AX_AGENTS, ARGV0, MAX_AGENTS);    
 
     
     /* Reading authentication keys */
@@ -167,13 +169,13 @@ void HandleSecure()
                     agentid = OS_IsAllowedIP(&keys, srcip);
                     if(agentid == -1)
                     {
-                        merror(DENYIP_ERROR,ARGV0,srcip);
+                        merror(DENYIP_WARN,ARGV0,srcip);
                         continue;
                     }
                 }
                 else
                 {
-                    merror(DENYIP_ERROR,ARGV0,srcip);
+                    merror(DENYIP_WARN,ARGV0,srcip);
                     continue;
                 }
             }
@@ -195,7 +197,7 @@ void HandleSecure()
         if(IsValidHeader(tmp_msg))
         {
             /* We need to save the peerinfo if it is a control msg */
-            memcpy(&keys.keyentries[agentid]->peer_info,&peer_info, peer_size);
+            memcpy(&keys.keyentries[agentid]->peer_info, &peer_info, peer_size);
             keys.keyentries[agentid]->rcvd = time(0);
 
             save_controlmsg(agentid, tmp_msg);

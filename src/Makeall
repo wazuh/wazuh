@@ -15,6 +15,16 @@ if [ "X${ARGV}" = "X" ]; then
     exit 1;
 fi
 
+# Increasing maximum number of agents
+if [ "X$1" = "Xsetmaxagents" ]; then
+    echo -n "Specify maximum number of agents: "; 
+    read AGMAX
+    echo "HEXTRA=-DMAX_AGENTS=$AGMAX" >> ./Config.OS
+    echo "Maximum number of agents set to $AGMAX."
+    exit 0;
+fi
+
+
 ZLIBV="external/zlib-1.2.3/"
 
 # CPU information

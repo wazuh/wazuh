@@ -124,7 +124,7 @@ void HandleSyslog()
         /* Checking if IP is allowed here */
         if(OS_IPNotAllowed(srcip))
         {
-            merror(DENYIP_ERROR,ARGV0,srcip);
+            merror(DENYIP_WARN,ARGV0,srcip);
         }
 
         else if(SendMSG(logr.m_queue, buffer_pt, srcip,

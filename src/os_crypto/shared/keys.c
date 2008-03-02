@@ -294,6 +294,13 @@ void OS_ReadKeys(keystore *keys)
         __memclear(id, name, ip, key, KEYSIZE +1); 
         
 
+        /* Checking for maximum agent size */
+        if(keys->keysize >= (MAX_AGENTS -2))
+        {
+            merror(AG_MAX_ERROR, __local_name, MAX_AGENTS -2);
+            ErrorExit(CONFIG_ERROR, __local_name, KEYS_FILE);
+        }
+        
         continue;
     }
     

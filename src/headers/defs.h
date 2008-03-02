@@ -65,7 +65,9 @@ http://www.ossec.net/en/licensing.html\n"
 
     
 /* Max limit of 256 agents */
-#define MAX_AGENTS  256
+#ifndef MAX_AGENTS
+    #define MAX_AGENTS  256
+#endif    
 
 
 /* manager notification */
