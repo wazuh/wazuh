@@ -182,8 +182,9 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf)
             tmp_str++;
             if(strncmp(tmp_str, "proto=", 6) == 0)
             {
-                i = 0;
                 char *proto = NULL;
+
+                i = 0;
                 tmp_str += 6;
                 
 
