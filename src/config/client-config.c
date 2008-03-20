@@ -48,19 +48,49 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
         /* Getting server ip */
         else if(strcmp(node[i]->element,xml_client_ip) == 0)
         {
-            os_strdup(node[i]->content, logr->rip);
-            if(OS_IsValidIP(logr->rip, NULL) != 1)
+            int ip_id = 0;
+
+            /* Getting last ip */
+            if(logr->rip)
             {
-                merror(INVALID_IP, ARGV0, logr->rip);
+                while(logr->rip[ip_id])
+                {
+                    ip_id++;
+                }
+            }
+            os_realloc(logr->rip, (ip_id + 2) * sizeof(char*), logr->rip);
+            logr->rip[ip_id] = NULL;
+            logr->rip[ip_id +1] = NULL;
+            
+            os_strdup(node[i]->content, logr->rip[ip_id]);
+            if(OS_IsValidIP(logr->rip[ip_id], NULL) != 1)
+            {
+                merror(INVALID_IP, ARGV0, logr->rip[ip_id]);
                 return(OS_INVALID);
             }
+            logr->rip_id++;
         }
         else if(strcmp(node[i]->element,xml_client_hostname) == 0)
         {
+            int ip_id = 0;
+
+            /* Getting last ip */
+            if(logr->rip)
+            {
+                while(logr->rip[ip_id])
+                {
+                    ip_id++;
+                }
+            }
+            os_realloc(logr->rip, (ip_id + 2) * sizeof(char*), logr->rip);
+            logr->rip[ip_id] = NULL;
+            logr->rip[ip_id +1] = NULL;
+            
+
             /* We only attempt to read the hostname if the ip is not set */
             if(logr->rip)
             {
-                merror(AG_USINGIP, ARGV0, logr->rip);
+                merror(AG_USINGIP, ARGV0);
             }
             else
             {
@@ -74,7 +104,8 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
                     }
                     else
                     {
-                        logr->rip = s_ip;
+                        logr->rip[ip_id] = s_ip;
+                        logr->rip_id++;
                     }
                 }
                 else

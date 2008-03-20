@@ -16,7 +16,7 @@
 
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
-#define SYSCHECK_WAIT   3600
+#define SYSCHECK_WAIT   300
 
 
 /* Checking options */

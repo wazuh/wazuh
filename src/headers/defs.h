@@ -139,6 +139,23 @@ http://www.ossec.net/en/licensing.html\n"
 #else
     #define WAIT_FILE       ".wait"
 #endif
+
+
+/* Agent information file */
+#ifndef WIN32
+    #define AGENT_INFO_FILE "/queue/ossec/.agent_info"
+#else
+    #define AGENT_INFO_FILE ".agent_info"
+#endif
+
+
+/* Syscheck restart */
+#ifndef WIN32
+    #define SYSCHECK_RESTART    "/queue/syscheck/.syscheck_run"
+#else
+    #define SYSCHECK_RESTART    ".syscheck_run"
+#endif        
+
     
         
 /* Internal definitions files */

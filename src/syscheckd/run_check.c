@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2005-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005-2008 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -29,62 +29,51 @@
 int c_read_file(char *file_name, char *oldsum, char *newsum);
 
 
-/** Notify list values **/
-char *notify_list[NOTIFY_LIST_SIZE + 3];
-int notify_list_size = 0;
-
-
-/* notify_agent
- * Send a message to the agent client with notification
+/* Send syscheck message.
+ * Send a message related to syscheck change/addition.
  */
-int notify_agent(char *msg, int send_now)
+int send_syscheck_msg(char *msg)
 {
-    int i = 0;
-    
-    
-    /* msg can be null to flag send_now */
-    if(msg)
+    if(SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ) < 0)
     {
-        /* Storing message in the notify list */
-        os_strdup(msg, notify_list[notify_list_size]);
-        if(notify_list_size >= NOTIFY_LIST_SIZE)
+        merror(QUEUE_SEND, ARGV0);
+
+        if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         {
-            send_now = 1;
-        }
-        notify_list_size++;
-    }
-
-
-    /* Delay sending */
-    if(!send_now)
-        return(0);
-
-    
-    /* Sending all available messages */
-    while(i < notify_list_size)
-    {
-        if(SendMSG(syscheck.queue, notify_list[i], SYSCHECK, SYSCHECK_MQ) < 0)
-        {
-            merror(QUEUE_SEND, ARGV0);
-
-            if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-            {
-                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
-            }
-
-            /* If we reach here, we can try to send it again */
-            SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ);
+            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
         }
 
-        os_free(notify_list[i]);
-        notify_list[i] = NULL;
-        i++;
+        /* If we reach here, we can try to send it again */
+        SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ);
     }
 
-    notify_list_size = 0;
     return(0);
 }
-   
+
+
+
+/* Send rootcheck message.
+ * Send a message related to rootcheck change/addition.
+ */
+int send_rootcheck_msg(char *msg)
+{
+    if(SendMSG(syscheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0)
+    {
+        merror(QUEUE_SEND, ARGV0);
+
+        if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
+        {
+            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+        }
+
+        /* If we reach here, we can try to send it again */
+        SendMSG(syscheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ);
+    }
+
+    return(0);
+}
+
+     
  
 /* start_daemon
  * Run periodicaly the integrity checking 
@@ -116,15 +105,6 @@ void start_daemon()
     #endif
   
   
-    /* Zeroing memory */
-    notify_list_size = NOTIFY_LIST_SIZE + 2;
-    while(notify_list_size >= 0)
-    {
-        notify_list[notify_list_size] = NULL;
-        notify_list_size--;
-    }
-    notify_list_size = 0;
-     
     
     /* some time to settle */
     sleep(syscheck.tsleep * 10);
@@ -161,7 +141,7 @@ void start_daemon()
                 n_buf = buf;
                 n_buf+=6;
                     
-                notify_agent(n_buf, 0);
+                send_syscheck_msg(n_buf);
 
 
                 /* A count and a sleep to avoid flooding the server. 
@@ -189,15 +169,21 @@ void start_daemon()
     /* Check every SYSCHECK_WAIT */    
     while(1)
     {
+        int run_now = 0;
         curr_time = time(0);
+        
 
+        /* Checking if syscheck should be restarted, */
+        run_now = os_check_restart_syscheck();
+
+        
 
         /* If time elapsed is higher than the rootcheck_time,
          * run it.
          */
         if(syscheck.rootcheck)
         {
-            if((curr_time - prev_time_rk) > rootcheck.time)
+            if(((curr_time - prev_time_rk) > rootcheck.time) || run_now)
             {
                 run_rk_check();
                 prev_time_rk = time(0);
@@ -208,7 +194,7 @@ void start_daemon()
         /* If time elapsed is higher than the syscheck time,
          * run syscheck time.
          */
-        if((curr_time - prev_time_sk) > syscheck.time)
+        if(((curr_time - prev_time_sk) > syscheck.time) || run_now)
         {
             #ifdef WIN32
             /* Checking for registry changes on Windows */
@@ -227,15 +213,14 @@ void start_daemon()
 
 
             /* Sending database completed message */
-            notify_agent(HC_SK_DB_COMPLETED, 1);
+            send_syscheck_msg(HC_SK_DB_COMPLETED);
             debug2("%s: DEBUG: Sending database completed message.", ARGV0);
 
             
             prev_time_sk = time(0);
         } 
 
-        /* Check for any message needing to be sended */
-        notify_agent(NULL, 1);
+
         sleep(SYSCHECK_WAIT);
     }
 }
@@ -330,7 +315,7 @@ void run_check()
             /* Sending the new checksum to the analysis server */
             alert_msg[912 +1] = '\0';
             snprintf(alert_msg, 912, "%s %s", c_sum, n_file);
-            notify_agent(alert_msg, 0);
+            send_syscheck_msg(alert_msg);
 
             continue;
         }
@@ -371,7 +356,7 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
 
         alert_msg[912 +1] = '\0';
         snprintf(alert_msg, 912,"-1 %s", file_name);
-        notify_agent(alert_msg, 0);
+        send_syscheck_msg(alert_msg);
 
         return(-1);
     }

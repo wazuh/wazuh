@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2008 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -66,6 +66,7 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
         ErrorExit(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
 
     maxfd = logr->m_queue;
+    logr->sock = -1;
     
 
 
@@ -94,27 +95,27 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
 
 
     /* Connecting UDP */
-    verbose("%s: Connecting to server (%s:%d).", ARGV0,
-                                                 logr->rip,
-                                                 logr->port);
-
-    logr->sock = OS_ConnectUDP(logr->port,logr->rip);
-    if(logr->sock < 0)
+    rc = 0;
+    while(rc < logr->rip_id)
     {
-        ErrorExit(CONNS_ERROR,ARGV0,logr->rip);
+        verbose("%s: INFO: Server IP Address: %s", ARGV0, logr->rip[rc]);
+        rc++;
     }
 
 
-    /* Setting socket non-blocking on HPUX */
-    #ifdef HPUX
-    fcntl(logr->sock, O_NONBLOCK);
-    #endif
+    /* Trying to connect to the server */
+    if(!connect_server(0))
+    {
+        ErrorExit(UNABLE_CONN, ARGV0);
+    }
     
+
     /* Setting max fd for select */
     if(logr->sock > maxfd)
     {
         maxfd = logr->sock;
     }
+
 
     /* Connecting to the execd queue */
     if(logr->execdq == 0)

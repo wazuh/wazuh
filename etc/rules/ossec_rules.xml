@@ -89,9 +89,10 @@
 
   <rule id="515" level="0">
     <if_sid>510</if_sid>
-    <match>^Starting rootcheck scan</match>
-    <description>Ignoring rootcheck scan messages.</description>
-    <group>rootcheck,</group>
+    <match>^Starting rootcheck scan|^Ending rootcheck scan.|</match>
+    <match>^Starting syscheck scan|^Ending syscheck scan.</match>
+    <description>Ignoring rootcheck/syscheck scan messages.</description>
+    <group>rootcheck,syscheck</group>
   </rule>
 
   <rule id="516" level="3">

@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2008 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -320,7 +320,7 @@ void OS_ReadKeys(keystore *keys)
     }
 
 
-    /* Adding additional entry for sensder == keysize */
+    /* Adding additional entry for sender == keysize */
     os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
 
 
@@ -414,10 +414,17 @@ int OS_UpdateKeys(keystore *keys)
     if(keys->file_change !=  File_DateofChange(KEYS_FILE))
     {
         merror(ENCFILE_CHANGED, __local_name);
+        debug1("%s: DEBUG: Freekeys", __local_name);
+        
         OS_FreeKeys(keys);
+        debug1("%s: DEBUG: OS_ReadKeys", __local_name);
+        
         OS_ReadKeys(keys);
+        debug1("%s: DEBUG: OS_StartCounter", __local_name);
+        
         OS_StartCounter(keys);
-
+        debug1("%s: DEBUG: OS_UpdateKeys completed", __local_name);
+        
         return(1);
     }
     return(0);

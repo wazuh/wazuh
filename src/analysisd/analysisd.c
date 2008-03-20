@@ -286,7 +286,7 @@ int main(int argc, char **argv)
         while(rulesfiles && *rulesfiles)
         {
             if(!test_config)
-                verbose("%s: Reading rules file: '%s'", ARGV0, *rulesfiles);
+                verbose("%s: INFO: Reading rules file: '%s'", ARGV0, *rulesfiles);
             if(Rules_OP_ReadRules(*rulesfiles) < 0)
                 ErrorExit(RULES_ERROR, ARGV0, *rulesfiles);
                 
@@ -306,7 +306,7 @@ int main(int argc, char **argv)
 
         total_rules = _setlevels(tmp_node, 0);
         if(!test_config)
-            verbose("%s: Total rules enabled: '%d'", ARGV0, total_rules);    
+            verbose("%s: INFO: Total rules enabled: '%d'", ARGV0, total_rules);    
     }
    
    
@@ -317,7 +317,7 @@ int main(int argc, char **argv)
         while(files && *files)
         {
             if(!test_config)
-                verbose("%s: Ignoring file: '%s'", ARGV0, *files);
+                verbose("%s: INFO: Ignoring file: '%s'", ARGV0, *files);
             files++;    
         }
     }
@@ -355,7 +355,7 @@ int main(int argc, char **argv)
     if(Config.white_list == NULL)
     {
         if(Config.ar)
-            verbose("%s: No IP in the white list for active reponse.", ARGV0);
+            verbose("%s: INFO: No IP in the white list for active reponse.", ARGV0);
     }
     else
     {
@@ -366,10 +366,10 @@ int main(int argc, char **argv)
             wl = Config.white_list;
             while(*wl)
             {
-                verbose("%s: White listing IP: '%s'",ARGV0, (*wl)->ip);
+                verbose("%s: INFO: White listing IP: '%s'",ARGV0, (*wl)->ip);
                 wl++;wlc++;
             }
-            verbose("%s: %d IPs in the white list for active response.",
+            verbose("%s: INFO: %d IPs in the white list for active response.",
                     ARGV0, wlc);
         }
     }
@@ -378,7 +378,7 @@ int main(int argc, char **argv)
     if(Config.hostname_white_list == NULL)
     {
         if(Config.ar)
-            verbose("%s: No Hostname in the white list for active reponse.", 
+            verbose("%s: INFO: No Hostname in the white list for active reponse.", 
             ARGV0);
     }
     else
@@ -394,13 +394,13 @@ int main(int argc, char **argv)
                 char **tmp_pts = (*wl)->patterns;
                 while(*tmp_pts)
                 {
-                    verbose("%s: White listing Hostname: '%s'",ARGV0,*tmp_pts);
+                    verbose("%s: INFO: White listing Hostname: '%s'",ARGV0,*tmp_pts);
                     wlc++;
                     tmp_pts++;
                 }
                 wl++;
             }
-            verbose("%s: %d Hostname(s) in the white list for active response.",
+            verbose("%s: INFO: %d Hostname(s) in the white list for active response.",
                     ARGV0, wlc);
         }
     }
@@ -533,7 +533,7 @@ void OS_ReadMSG(int m_queue)
             }
         }
     }
-    debug1("%s: Active response Init completed.", ARGV0);
+    debug1("%s: DEBUG: Active response Init completed.", ARGV0);
 
 
     /* Getting currently time before starting */

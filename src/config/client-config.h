@@ -21,7 +21,8 @@ typedef struct _agent
     int m_queue;
     int sock;
     int execdq;
-	char *rip; /* remote (server) ip */
+    int rip_id;
+	char **rip; /* remote (server) ip */
 }agent;
 
 

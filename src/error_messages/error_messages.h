@@ -66,7 +66,8 @@
 #define DENYIP_WARN 	"%s(1213): WARN: Message from %s not allowed."
 #define MSG_ERROR	    "%s(1214): ERROR: Problem receiving message from %s."
 #define CLIENT_ERROR	"%s(1215): ERROR: No client configured. Exiting."
-#define CONNS_ERROR	    "%s(1216): ERROR: Connection error to %s."
+#define CONNS_ERROR	    "%s(1216): ERROR: Unable to connect to '%s'."
+#define UNABLE_CONN     "%s(1242): ERROR: Unable to connect to server. Exausted all options."
 #define SEC_ERROR	    "%s(1217): ERROR: Error creating encrypted message."
 #define SEND_ERROR	    "%s(1218): ERROR: Unable to send message to %s."
 #define RULESLOAD_ERROR	"%s(1219): ERROR: Unable to access the rules directory."
@@ -223,9 +224,9 @@
 
 
 /* Agent errors */
-#define AG_WAIT_SERVER  "%s(4101): WARN: Waiting for server reply (not started)."
+#define AG_WAIT_SERVER  "%s(4101): WARN: Waiting for server reply (not started). Tried: '%s'."
 #define AG_CONNECTED    "%s(4102): INFO: Connected to the server."
-#define AG_USINGIP      "%s(4103): INFO: Server IP address already set (to %s)."
+#define AG_USINGIP      "%s(4103): INFO: Server IP address already set. Trying that before the hostname."
 #define AG_INV_HOST     "%s(4104): ERROR: Invalid hostname: '%s'."
 #define AG_INV_IP       "%s(4105): ERROR: No valid server IP found."
 #define EVTLOG_OPEN     "%s(4106): ERROR: Unable to open event log: '%s'."
@@ -263,28 +264,28 @@
 
 
 /* Verbose messages */
-#define STARTUP_MSG	"%s: Started (pid: %d)."
-#define PRIVSEP_MSG	"%s: Chrooted to directory: %s, using user: %s"
-#define MSG_SOCKET_SIZE "%s: (unix_domain) Maximum send buffer set to: '%d'."
+#define STARTUP_MSG	"%s: INFO: Started (pid: %d)."
+#define PRIVSEP_MSG	"%s: INFO: Chrooted to directory: %s, using user: %s"
+#define MSG_SOCKET_SIZE "%s: INFO: (unix_domain) Maximum send buffer set to: '%d'."
 
 #define NO_SYSLOG       "%s(1501): ERROR: No IP or network allowed in the access list" \
                         " for syslog. No reason for running it. Exiting."
-#define CONN_TO     "%s: Connected to '%s' (%s queue)"
-#define MAIL_DIS    "%s: E-Mail notification disabled. Clean Exit."
+#define CONN_TO     "%s: INFO: Connected to '%s' (%s queue)"
+#define MAIL_DIS    "%s: INFO: E-Mail notification disabled. Clean Exit."
 
                         
 /* Debug Messages */
-#define STARTED_MSG "%s: Starting ..."
-#define FOUND_USER  "%s: Found user/group ..."
-#define ASINIT      "%s: Active response initialized ..."
-#define READ_CONFIG "%s: Read configuration ..."
+#define STARTED_MSG "%s: DEBUG: Starting ..."
+#define FOUND_USER  "%s: DEBUG: Found user/group ..."
+#define ASINIT      "%s: DEBUG: Active response initialized ..."
+#define READ_CONFIG "%s: DEBUG: Read configuration ..."
 
 
 /* Wait operations */
-#define WAITING_MSG     "%s: Process locked. Waiting for permission..."
-#define WAITING_FREE    "%s: Lock free. Continuing..."
-#define SERVER_UNAV     "%s: Server unavailable. Setting lock."
-#define SERVER_UP       "%s: Server responded. Releasing lock."
+#define WAITING_MSG     "%s: WARN: Process locked. Waiting for permission..."
+#define WAITING_FREE    "%s: INFO: Lock free. Continuing..."
+#define SERVER_UNAV     "%s: WARN: Server unavailable. Setting lock."
+#define SERVER_UP       "%s: INFO: Server responded. Releasing lock."
 
 
 /* Ossec alert messages */

@@ -147,14 +147,18 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
     /** XML definitions **/
     /* Global */
     char *xml_start_ossec = "ossec_config";
+    char *xml_start_agent = "agent_config";
+    
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
         merror(XML_ERROR, ARGV0, cfgfile, xml.err, xml.err_line);
         return(OS_INVALID);
     }
+    
 
     node = OS_GetElementsbyNode(&xml, NULL);
+
 
     /* Reading the main configuration */
     i = 0;
@@ -165,10 +169,30 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
             merror(XML_ELEMNULL, ARGV0);
             return(OS_INVALID);
         }
-        else if(strcmp(node[i]->element, xml_start_ossec) == 0)
+        else if(!(modules & CAGENT_CONFIG) &&
+                (strcmp(node[i]->element, xml_start_ossec) == 0))
         {
             XML_NODE chld_node = NULL;
             chld_node = OS_GetElementsbyNode(&xml,node[i]);
+
+            /* Main element does not need to have any child */
+            if(chld_node)
+            {
+                if(read_main_elements(xml, modules, chld_node, d1, d2) < 0)
+                {
+                    merror(CONFIG_ERROR, ARGV0, cfgfile);
+                    return(OS_INVALID);
+                }
+
+                OS_ClearNode(chld_node);    
+            }
+        }
+        else if((modules & CAGENT_CONFIG) &&
+                (strcmp(node[i]->element, xml_start_agent) == 0))
+        {
+            XML_NODE chld_node = NULL;
+            chld_node = OS_GetElementsbyNode(&xml,node[i]);
+
 
             /* Main element does not need to have any child */
             if(chld_node)

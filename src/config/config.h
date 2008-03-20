@@ -17,17 +17,19 @@
 #ifndef _HCONFIG__H
 #define _HCONFIG__H
 
-#define CGLOBAL      0000001
-#define CRULES       0000002
-#define CSYSCHECK    0000004
-#define CROOTCHECK   0000010
-#define CALERTS      0000020
-#define CLOCALFILE   0000040
-#define CREMOTE      0000100
-#define CCLIENT      0000200
-#define CMAIL        0000400
-#define CAR          0001000
-#define CDBD         0002000
+#define CGLOBAL       0000001
+#define CRULES        0000002
+#define CSYSCHECK     0000004
+#define CROOTCHECK    0000010
+#define CALERTS       0000020
+#define CLOCALFILE    0000040
+#define CREMOTE       0000100
+#define CCLIENT       0000200
+#define CMAIL         0000400
+#define CAR           0001000
+#define CDBD          0002000
+
+#define CAGENT_CONFIG 0010000
 
 #include "os_xml/os_xml.h"
 

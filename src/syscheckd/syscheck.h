@@ -56,7 +56,11 @@ int check_db();
  */  
 void os_winreg_check();
 
-int notify_agent(char *msg, int send_now);
+
+/** Sends syscheck message.
+ */
+int send_syscheck_msg(char *msg);
+int send_rootcheck_msg(char *msg);
 
 
 #endif

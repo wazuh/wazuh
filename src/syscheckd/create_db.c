@@ -225,7 +225,7 @@ int read_file(char *file_name, int opts, int flag)
                      opts & CHECK_MD5SUM?mf_sum:"xxx",
                      opts & CHECK_SHA1SUM?sf_sum:"xxx",
                      file_name);
-            notify_agent(alert_msg, 0);
+            send_syscheck_msg(alert_msg);
         }
         
         

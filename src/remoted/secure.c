@@ -76,8 +76,12 @@ void HandleSecure()
 
     
     /* Reading authentication keys */
+    debug1("%s: DEBUG: Reading keys.", ARGV0);
     OS_ReadKeys(&keys);
+    
+    debug1("%s: DEBUG: OS_StartCounter.", ARGV0);
     OS_StartCounter(&keys);
+    debug1("%s: DEBUG: OS_StartCounter completed.", ARGV0);
 
 
     /* setting up peer size */

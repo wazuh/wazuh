@@ -50,6 +50,9 @@ void OS_StartCounter(keystore *keys)
 
     rids_file[OS_FLSIZE] = '\0';
     
+
+    debug1("%s: OS_StartCounter: keysize: %d", __local_name, keys->keysize);
+    
     
     /* Starting receiving counter */
     for(i = 0; i<=keys->keysize; i++)
@@ -72,13 +75,27 @@ void OS_StartCounter(keystore *keys)
 
         keys->keyentries[i]->fp = fopen(rids_file, "r+");
 
-    
         /* If nothing is there, try to open as write only */
         if(!keys->keyentries[i]->fp)
         {
             keys->keyentries[i]->fp = fopen(rids_file, "w");
             if(!keys->keyentries[i]->fp)
             {
+                int my_error = errno;
+                
+                /* Just in case we run out of file descriptiors */
+                if((keys->keyentries[i -1]->fp) && (i > 10))
+                {
+                    fclose(keys->keyentries[i -1]->fp);
+
+                    if(keys->keyentries[i -2]->fp)
+                    {
+                        fclose(keys->keyentries[i -2]->fp);
+                    }
+                }
+
+                merror("%s: Unable to open agent file. errno: %d", 
+                       __local_name, my_error);
                 ErrorExit(FOPEN_ERROR, __local_name, rids_file);
             }
         }
@@ -89,11 +106,11 @@ void OS_StartCounter(keystore *keys)
             {
                 if(i == keys->keysize)
                 {
-                    verbose("%s: No previous sender counter.", __local_name);
+                    verbose("%s: INFO: No previous sender counter.", __local_name);
                 }
                 else
                 {
-                    verbose("%s: No previous counter available for '%s'.",
+                    verbose("%s: INFO: No previous counter available for '%s'.",
                                             __local_name, 
                                             keys->keyentries[i]->name);
                 }
@@ -104,14 +121,14 @@ void OS_StartCounter(keystore *keys)
 
             if(i == keys->keysize)
             {
-                verbose("%s: Assigning sender counter: %d:%d",
+                verbose("%s: INFO: Assigning sender counter: %d:%d",
                             __local_name, g_c, l_c);
                 global_count = g_c;
                 local_count = l_c;
             }
             else
             {
-                verbose("%s: Assigning counter for agent %s: '%d:%d'.",
+                verbose("%s: INFO: Assigning counter for agent %s: '%d:%d'.",
                             __local_name, keys->keyentries[i]->name, g_c, l_c);
                             
                 keys->keyentries[i]->global = g_c;
@@ -120,16 +137,23 @@ void OS_StartCounter(keystore *keys)
         }
     }
 
+    debug2("%s: DEBUG: Stored counter.", __local_name);
 
     /* Getting counter values */
-    _s_recv_flush = getDefine_Int("remoted",
-                                  "recv_counter_flush",
-                                  10, 999999);
+    if(_s_recv_flush == 0)
+    {
+        _s_recv_flush = getDefine_Int("remoted",
+                                      "recv_counter_flush",
+                                      10, 999999);
+    }
 
     /* Average printout values */
-    _s_comp_print = getDefine_Int("remoted",
-                                  "comp_average_printout",
-                                  10, 999999);
+    if(_s_comp_print == 0)
+    {
+        _s_comp_print = getDefine_Int("remoted",
+                                      "comp_average_printout",
+                                      10, 999999);
+    }
 }
 
 
@@ -297,7 +321,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 
 
         /* Warn about duplicated messages */
-        merror("%s: Duplicate error:  global: %d, local: %d, "
+        merror("%s: WARN: Duplicate error:  global: %d, local: %d, "
                 "saved global: %d, saved local:%d",
                 __local_name,
                 msg_global,
@@ -361,7 +385,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 
 
         /* Warn about duplicated message */
-        merror("%s: Duplicate error:  msg_count: %d, time: %d, "
+        merror("%s: WARN: Duplicate error:  msg_count: %d, time: %d, "
                 "saved count: %d, saved_time:%d",
                 __local_name,
                 msg_count,
@@ -471,7 +495,7 @@ int CreateSecMSG(keystore *keys, char *msg, char *msg_encrypted, int id)
     c_comp_size+= cmp_size;
     if(evt_count > _s_comp_print)
     {
-        verbose("%s: Event count after '%u': %u->%u (%d%%)", __local_name,
+        verbose("%s: INFO: Event count after '%u': %u->%u (%d%%)", __local_name,
                     evt_count,
                     c_orig_size, 
                     c_comp_size,

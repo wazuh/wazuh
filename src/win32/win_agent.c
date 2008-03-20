@@ -368,6 +368,25 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
                 sleep(wi);
                 cu_time = time(0);
                 wi++;
+
+
+                /* If we have more than one server, try all. */
+                if((logr->rip[1]) && (wi > 5))
+                {
+                    int curr_rip = logr->rip_id;
+                    merror("%s: INFO: Trying next server ip in the line: '%s'.", 
+                            ARGV0,
+                            logr->rip[logr->rip_id + 1] != NULL?
+                            logr->rip[logr->rip_id + 1]:
+                            logr->rip[0]);
+                    
+                    connect_server(logr->rip_id +1);
+
+                    if(logr->rip_id != curr_rip)
+                    {
+                        wi = 1;
+                    }
+                }
             }
 
             verbose(SERVER_UP, ARGV0);
@@ -431,32 +450,8 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 /* StartMQ for windows */
 int StartMQ(char * path, short int type)
 {
-    int bmode = 1;
-    int conn_wait = 5;
-
-    verbose("%s: Connecting to server (%s:%d).", ARGV0,
-                                                 logr->rip,
-                                                 logr->port);
-    
-    /* Connecting UDP */
-    while(1)
-    {
-        logr->sock = OS_ConnectUDP(logr->port, logr->rip);
-        if(logr->sock < 0)
-        {
-            merror(CONNS_ERROR, ARGV0, logr->rip);
-            sleep(conn_wait);
-            conn_wait+=5;
-        }
-        else
-        {
-            break;
-        }
-    }
-
-
-    /* Setting socket to non-blocking */
-    ioctlsocket(logr->sock, FIONBIO, (u_long FAR*) &bmode);
+    /* Connecting to the server. */
+    connect_server(0);
     
     if((path == NULL) && (type == 0))
     {

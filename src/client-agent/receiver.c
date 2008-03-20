@@ -76,8 +76,8 @@ void *receiver_thread(void *none)
         }
         #else
         
-        /* On Windows, we wait 5 seconds before attempting to read again */
-        sleep(3);    
+        /* On Windows, we wait 2 second before attempting to read again */
+        sleep(2);    
         #endif
 
         
@@ -89,7 +89,7 @@ void *receiver_thread(void *none)
             tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b -1);
             if(tmp_msg == NULL)
             {
-                merror(MSG_ERROR,ARGV0,logr->rip);
+                merror(MSG_ERROR,ARGV0,logr->rip[logr->rip_id]);
                 continue;
             }
 
@@ -120,6 +120,14 @@ void *receiver_thread(void *none)
                 } 
 
 
+                /* Restart syscheck. */
+                else if(strcmp(tmp_msg, SYSCHECK_RESTART) == 0)
+                {
+                    os_set_restart_syscheck();
+                    continue;
+                }
+
+                
                 /* Ack from server */
                 else if(strcmp(tmp_msg, HC_ACK) == 0)
                 {
@@ -246,18 +254,19 @@ void *receiver_thread(void *none)
 
                 else
                 {
-                    merror("%s: Unknown message received.", ARGV0);
+                    merror("%s: WARN: Unknown message received from server.", ARGV0);
                 }
             }
 
             else if(fp)
             {
+                available_server = (int)time(NULL);
                 fprintf(fp, "%s", tmp_msg);
             }
 
             else
             {
-                merror("%s: Unknown message received. No action defined.",
+                merror("%s: WARN: Unknown message received. No action defined.",
                        ARGV0);
             }
         }    

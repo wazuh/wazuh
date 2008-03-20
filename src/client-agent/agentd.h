@@ -50,8 +50,11 @@ int send_msg(int agentid, char *msg);
 /* Extract the shared files */
 char *getsharedfiles();
 
-/* Connects to server */
+/* Initializes handshake to server */
 void start_agent(int is_startup);
+
+/* Connects to the server. */
+int connect_server(int initial_id);
 
 /* notify server */
 void run_notify();

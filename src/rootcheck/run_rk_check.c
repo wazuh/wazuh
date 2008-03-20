@@ -352,7 +352,12 @@ void run_rk_check()
         printf("\n");
         printf("- Scan completed in %d seconds.\n\n", (int)(time2 - time1));
     }
-                                                                        
+
+
+    /* Sending scan ending message */
+    notify_rk(ALERT_POLICY_VIOLATION, "Ending rootcheck scan.");
+    
+            
     debug1("%s: DEBUG: Leaving run_rk_check",ARGV0); 
     return;
 }

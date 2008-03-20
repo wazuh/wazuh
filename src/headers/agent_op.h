@@ -1,0 +1,62 @@
+/* @(#) $Id$ */
+
+/* Copyright (C) 2008 Daniel B. Cid <dcid@ossec.net>
+ * All rights reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 3) as published by the FSF - Free Software
+ * Foundation
+ */
+
+
+#ifndef __AGENT_OP_H
+#define __AGENT_OP_H 
+
+
+
+/** Checks if syscheck is to be executed/restarted.
+ *  Returns 1 on success or 0 on failure (shouldn't be executed now).
+ */
+int os_check_restart_syscheck() ;
+
+
+/** Sets syscheck to be restarted.
+ *  Returns 1 on success or 0 on failure.
+ */
+int os_set_restart_syscheck();
+
+
+/** char *os_read_agent_name()
+ *  Reads the agent name for the current agent.
+ *  Returns NULL on error.
+ */
+char *os_read_agent_name();
+
+
+/** char *os_read_agent_ip()
+ *  Reads the agent ip for the current agent.
+ *  Returns NULL on error.
+ */
+char *os_read_agent_ip();
+
+
+/** char *os_read_agent_id()
+ *  Reads the agent id for the current agent.
+ *  Returns NULL on error.
+ */
+char *os_read_agent_id();
+
+
+/** int os_write_agent_info(char *agent_name, char *agent_ip, char *agent_id)
+ *  Writes the agent info inside the queue, for the other processes to read.
+ *  Returns 1 on success or <= 0 on failure.
+ */
+int os_write_agent_info(char *agent_name, char *agent_ip, char *agent_id);
+
+
+int os_agent_config_changed();
+
+
+#endif
+/* EOF */
