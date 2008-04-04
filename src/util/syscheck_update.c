@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     {
         printf("\nOSSEC HIDS %s: Updates the integrity check database.", 
                                  ARGV0);
-        print_agents();
+        print_agents(0, 0, 0);
         printf("\n");
         exit(0);
     }

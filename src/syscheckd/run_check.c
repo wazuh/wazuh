@@ -108,6 +108,12 @@ void start_daemon()
     
     /* some time to settle */
     sleep(syscheck.tsleep * 10);
+
+
+    
+    /* Sending scan start message */
+    send_rootcheck_msg("Starting syscheck scan.");
+        
     
     
     /* Send the integrity database to the server */
@@ -161,12 +167,16 @@ void start_daemon()
     }
 
 
+    /* Sending scan ending message */
+    send_rootcheck_msg("Ending syscheck scan.");
+    
+    
     /* Before entering in daemon mode itself */
     prev_time_sk = time(0);
     sleep(syscheck.tsleep * 10);
     
     
-    /* Check every SYSCHECK_WAIT */    
+    /* Checking every SYSCHECK_WAIT */    
     while(1)
     {
         int run_now = 0;
@@ -196,6 +206,10 @@ void start_daemon()
          */
         if(((curr_time - prev_time_sk) > syscheck.time) || run_now)
         {
+            /* Sending scan start message */
+            send_rootcheck_msg("Starting syscheck scan.");
+
+                
             #ifdef WIN32
             /* Checking for registry changes on Windows */
             os_winreg_check();
@@ -210,6 +224,11 @@ void start_daemon()
 
             /* Checking for changes */
             run_check();
+
+            
+            /* Sending scan ending message */
+            send_rootcheck_msg("Ending syscheck scan.");
+                
 
 
             /* Sending database completed message */

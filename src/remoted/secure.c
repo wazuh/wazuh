@@ -76,7 +76,8 @@ void HandleSecure()
 
     
     /* Reading authentication keys */
-    debug1("%s: DEBUG: Reading keys.", ARGV0);
+    verbose(ENC_READ, ARGV0);
+        
     OS_ReadKeys(&keys);
     
     debug1("%s: DEBUG: OS_StartCounter.", ARGV0);

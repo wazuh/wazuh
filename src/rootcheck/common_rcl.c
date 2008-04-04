@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2005-2007 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005-2008 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -21,6 +21,7 @@
 #define RKCL_TYPE_FILE      1
 #define RKCL_TYPE_REGISTRY  2
 #define RKCL_TYPE_PROCESS   3
+#define RKCL_TYPE_DIR       4
 
 #define RKCL_COND_ALL       1
 #define RKCL_COND_ANY       2
@@ -324,6 +325,10 @@ char *_rkcl_get_value(char *buf, int *type)
     {
         *type = RKCL_TYPE_PROCESS;
     }
+    else if(strcmp(buf, "d") == 0)
+    {
+        *type = RKCL_TYPE_DIR;
+    }
     else
     {
         return(NULL);
@@ -357,6 +362,8 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
     memset(root_dir, '\0', sizeof(root_dir));
     memset(final_file, '\0', sizeof(final_file));
     memset(ref, '\0', sizeof(ref));
+    memset(rootcheck.alert_msg, '\0',OS_SIZE_1024 +1);
+
     
     root_dir_len = sizeof(root_dir) -1;
 
@@ -544,6 +551,77 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
             }
 
 
+            /* Checking for a directory. */
+            else if(type == RKCL_TYPE_DIR)
+            {
+                char *file = NULL;
+                char *pattern = NULL;
+                char *f_value = NULL;
+                char *dir = NULL;
+
+                
+                file = _rkcl_get_pattern(value);
+                if(file)
+                {
+                    pattern = _rkcl_get_pattern(file);
+                }
+
+
+                /* Getting any variable. */
+                if(value[0] == '$')
+                {
+                    f_value = OSStore_Get(vars, value);
+                    if(!f_value)
+                    {
+                        merror(INVALID_RKCL_VAR, ARGV0, value);
+                        continue;
+                    }
+                }
+                else
+                {
+                    f_value = value;
+                }
+
+                
+                /* Checking for multiple, comma separated directories. */
+                dir = f_value;
+                f_value = strchr(dir, ',');
+                if(f_value)
+                {
+                    *f_value = '\0';
+                }
+                
+
+                while(dir)
+                {
+                    debug2("%s: Checking dir: %s", ARGV0, dir);
+                    if(rk_check_dir(dir, file, pattern))
+                    {
+                        debug2("%s: DEBUG: Found dir.", ARGV0);
+                        found = 1;
+                    }
+                    
+                    if(f_value)
+                    {
+                        *f_value = ',';
+                        f_value++;
+                        
+                        dir = f_value;
+                        
+                        f_value = strchr(dir, ',');
+                        if(f_value)
+                        {
+                            *f_value = '\0';
+                        }
+                    }
+                    else
+                    {
+                        dir = NULL;
+                    }
+                }
+            }
+            
+
             /* Checking for a process. */
             else if(type == RKCL_TYPE_PROCESS)
             {
@@ -601,17 +679,24 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
             char op_msg[OS_SIZE_1024 +1];
             if(ref[0] != '\0')
             {
-                snprintf(op_msg, OS_SIZE_1024, "%s %s. "
-                                 "Reference: %s .",msg, name, ref);
+                snprintf(op_msg, OS_SIZE_1024, "%s %s.%s"
+                                 " Reference: %s .",msg, name, 
+                                 rootcheck.alert_msg,
+                                 ref);
             }
             else
             {
-                snprintf(op_msg, OS_SIZE_1024, "%s %s.",msg, name);
+                snprintf(op_msg, OS_SIZE_1024, "%s %s.%s",msg, 
+                                 name, rootcheck.alert_msg);
             }
             notify_rk(ALERT_POLICY_VIOLATION, op_msg);
         }
 
 
+        /* Cleaning up alert msg. */
+        rootcheck.alert_msg[0] = '\0';
+
+        
         /* Ending if we don't have anything else. */
         if(!nbuf)
         {

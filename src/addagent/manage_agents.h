@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2008 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -39,7 +39,7 @@ char *getFullnameById(char *id);
 
 
 /* Print available agents */
-int print_agents();
+int print_agents(int print_status, int active_only, int csv_output);
 int list_agents();
     
 /* clear a line */
@@ -67,6 +67,8 @@ fpos_t fp_pos;
 /* Print agents */
 #define PRINT_AVAILABLE     "\nAvailable agents: \n"
 #define PRINT_AGENT         "   ID: %s, Name: %s, IP: %s\n"
+#define PRINT_AGENT_STATUS  "   ID: %s, Name: %s, IP: %s, %s\n"
+
 
 /* Add new agent */
 #define ADD_NEW         "\n- Adding a new agent"\

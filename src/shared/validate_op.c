@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2004-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2008 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -130,6 +130,29 @@ static char *_read_file(char *high_name, char *low_name)
     fclose(fp);
     return(NULL);
 }
+
+
+
+/* Getting the netmask based on the integer value. */
+int getNetmask(int mask, char *strmask, int size)
+{
+    int i = 0;
+
+    strmask[0] = '\0';
+        
+    for(i = 0;i<=31;i++)
+    {
+        if(htonl(_netmasks[i]) == mask)
+        {
+            snprintf(strmask, size, "/%d", i);
+            break;
+        }
+    }
+
+    return(1);
+}
+
+
 
 /* Initialize netmasks -- took from snort util.c */
 void _init_masks()

@@ -124,6 +124,10 @@ http://www.ossec.net/en/licensing.html\n"
 /* Syscheck directory */
 #define SYSCHECK_DIR    "/queue/syscheck"
 
+/* Rootcheck directory */
+#define ROOTCHECK_DIR    "/queue/rootcheck"
+
+
 /* Syscheck data */
 #define SYSCHECK        "syscheck"
 #define SYSCHECK_REG    "syscheck-registry"
@@ -151,7 +155,8 @@ http://www.ossec.net/en/licensing.html\n"
 
 /* Syscheck restart */
 #ifndef WIN32
-    #define SYSCHECK_RESTART    "/queue/syscheck/.syscheck_run"
+    #define SYSCHECK_RESTART        "/queue/syscheck/.syscheck_run"
+    #define SYSCHECK_RESTART_PATH   DEFAULTDIR SYSCHECK_RESTART
 #else
     #define SYSCHECK_RESTART    ".syscheck_run"
 #endif        

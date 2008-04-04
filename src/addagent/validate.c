@@ -249,7 +249,7 @@ int NameExist(char *u_name)
 
 
 /* print available agents */
-int print_agents()
+int print_agents(int print_status, int active_only, int csv_output)
 {
     int total = 0;
     FILE *fp;
@@ -295,10 +295,34 @@ int print_agents()
                 if(key)
                 {
                     *key = '\0';
-                    if(!total)
+                    if(!total && !print_status)
                         printf(PRINT_AVAILABLE);
-                    printf(PRINT_AGENT, line_read, name, ip);
                     total++;
+
+                    
+                    if(print_status)
+                    {
+                        int agt_status = get_agent_status(name, ip);
+                        if(active_only && (agt_status != GA_STATUS_ACTIVE))
+                        {
+                            continue;
+                        }
+            
+                        if(csv_output)
+                        {
+                            printf("%s,%s,%s,%s,", line_read, name, ip, 
+                                                  print_agent_status(agt_status));  
+                        }
+                        else
+                        {
+                            printf(PRINT_AGENT_STATUS, line_read, name, ip, 
+                                   print_agent_status(agt_status));
+                        }
+                    }
+                    else
+                    {
+                        printf(PRINT_AGENT, line_read, name, ip);
+                    }
                 }
                 
             }

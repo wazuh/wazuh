@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2004,2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2008 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -22,10 +22,14 @@
 #define SPECIFIC_AGENT  0000004
 #define AS_ONLY         0000010
 
+/* We now also support non active response messages in here. */
+#define NO_AR_MSG       0000020
+
 #define ALL_AGENTS_C     'A'
 #define REMOTE_AGENT_C   'R'
 #define SPECIFIC_AGENT_C 'S'
 #define NONE_C           'N'
+#define NO_AR_C          '!'
 
 
 /* AR  Queues to use */

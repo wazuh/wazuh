@@ -95,6 +95,10 @@ void *AR_Forward(void *arg)
             {
                 ar_location|=REMOTE_AGENT;
             }
+            else if(*tmp_str == NO_AR_C)
+            {
+                ar_location|=NO_AR_MSG;
+            }
             tmp_str++;
             if(*tmp_str == SPECIFIC_AGENT_C)
             {
@@ -126,10 +130,19 @@ void *AR_Forward(void *arg)
             
             
             /*** Creating the new message ***/
-            snprintf(msg_to_send, OS_SIZE_1024, "%s%s%s", 
-                                             CONTROL_HEADER,
-                                             EXECD_HEADER,
-                                             tmp_str);
+            if(ar_location & NO_AR_MSG)
+            {
+                snprintf(msg_to_send, OS_SIZE_1024, "%s%s", 
+                                      CONTROL_HEADER,
+                                      tmp_str);
+            }
+            else
+            {
+                snprintf(msg_to_send, OS_SIZE_1024, "%s%s%s", 
+                                      CONTROL_HEADER,
+                                      EXECD_HEADER,
+                                      tmp_str);
+            }
 
             
             /* Lock use of keys */

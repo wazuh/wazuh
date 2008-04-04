@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2004-2007 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2008 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -25,6 +25,10 @@ typedef struct _os_ip
     unsigned int ip_address;
     unsigned int netmask;
 }os_ip;
+
+
+/* Getting the netmask based on the integer value. */
+int getNetmask(int mask, char *strmask, int size);
 
 
 /* Run time definitions. */

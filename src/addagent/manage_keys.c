@@ -132,7 +132,7 @@ int k_extract()
     char line_read[FILE_SIZE +1];
     char n_id[USER_SIZE +1];
 
-    if(!print_agents())
+    if(!print_agents(0, 0, 0))
     {
         printf(NO_AGENT);
         printf(PRESS_ENTER);

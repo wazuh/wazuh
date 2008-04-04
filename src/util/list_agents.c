@@ -116,11 +116,15 @@ int main(int argc, char **argv)
     agent_list = get_agents(flag);
     if(agent_list)
     {
+        char **agent_list_pt = agent_list;
+        
         while(*agent_list)
         {
             printf("%s %s\n", *agent_list, msg);
             agent_list++;
         }
+
+        free_agents(agent_list_pt);
     }
     else
     {

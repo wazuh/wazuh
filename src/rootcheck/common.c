@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2005-2007 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005-2008 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -16,6 +16,75 @@
 #include "shared.h"
 #include "rootcheck.h"
 #include "os_regex/os_regex.h" 
+
+
+
+/** int rk_check_dir(char *dir, char *file, char *pattern)
+ */
+int rk_check_dir(char *dir, char *file, char *pattern)
+{
+    char f_name[PATH_MAX +2];
+    struct dirent *entry;
+    struct stat statbuf_local;
+    DIR *dp = NULL;
+
+
+    f_name[PATH_MAX +1] = '\0';
+
+
+    dp = opendir(dir);
+    if(!dp)
+        return(0);
+
+
+    while((entry = readdir(dp)) != NULL)
+    {
+        /* Just ignore . and ..  */
+        if((strcmp(entry->d_name,".") == 0) ||
+           (strcmp(entry->d_name,"..") == 0)) 
+        {
+            continue;
+        }
+
+
+        /* Creating new file + path string */
+        snprintf(f_name, PATH_MAX +1, "%s/%s",dir, entry->d_name);
+
+        
+        /* Checking if the read entry, matches the provided file name. */
+        if(OS_Match2(file, entry->d_name))
+        {
+            if(rk_check_file(f_name, pattern))
+            {
+                snprintf(rootcheck.alert_msg, OS_SIZE_1024, " File: %s.",
+                                              f_name);
+                closedir(dp);
+                return(1);
+            }
+        }
+
+        
+        /* Checking if file is a directory */
+        if(lstat(f_name, &statbuf_local) == 0)
+        {
+            /* On all the systems, except darwin, the
+             * link count is only increased on directories.
+             */
+            if(S_ISDIR(statbuf_local.st_mode))
+            {
+                if(rk_check_dir(f_name, file, pattern))
+                {
+                    closedir(dp);
+                    return(1);
+                }
+            }
+        }
+    }
+
+    closedir(dp);
+    return(0);
+
+}
 
 
 

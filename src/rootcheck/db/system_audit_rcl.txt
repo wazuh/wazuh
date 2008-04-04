@@ -12,6 +12,7 @@
 # Type can be:
 #             - f (for file or directory)
 #             - p (process running)
+#             - d (any file inside the directory)
 #
 # Additional values:
 # For the registry , use "->" to look for a specific entry and another
@@ -27,6 +28,8 @@
  
 
 $php.ini=/var/www/conf/php.ini,/etc/php5/apache2/php.ini;
+$web_dirs=/var/www,/var/htdocs,/home/httpd,/usr/local/apache,/usr/local/apache2,/usr/local/www;
+
 
 # PHP checks
 [PHP - Register globals are enabled] [any] [http://www.ossec.net/wiki]
@@ -56,5 +59,133 @@ f:$php.ini -> r:^display_errors = On;
 # PHP checks - consider open_basedir && disable_functions
 
 
+## Looking for common web exploits (might indicate that you are owned).
+## Using http://www.ossec.net/wiki/index.php/WebAttacks_links as a reference.
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^echo$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^id.txt$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^stringa.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^cmd1.gif$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^mambo1.txt$|^hai.txt$|^iyes.txt$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^57.txt$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^r57.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^evilx$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^cmd$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^root.gif -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^bn.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^kk.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^graba.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^no.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^ddos.pl -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^rox.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^lila.jpg -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^safe.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^rootlab.jpg -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^tool25.dat -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^sela.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^zero.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^paged.gif -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^hh.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^metodi.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^idpitbull.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^echo.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^ban.gif -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^c.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^gay.txt -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^genlog.txt$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^safe$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^safe3$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^tool25.txt$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^test.txt$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^safeon.txt$ -> r:<?|^#!;
+
+
+## Looking for common web exploits files (might indicate that you are owned).
+## There are not specific, like the above.
+## Using http://www.ossec.net/wiki/index.php/WebAttacks_links as a reference.
+[Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^.yop$;
+
+[Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^id$;
+
+[Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^.ssh$;
+
+[Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^...$;
+
+[Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^.shell$;
 
 # EOF #

@@ -180,10 +180,6 @@ void OS_ReadKeys(keystore *keys)
     char key[KEYSIZE +1];
     
     
-    /* Reading keys */
-    verbose(ENC_READ, __local_name);
-    
-    
     /* Checking if the keys file is present and we can read it. */
     if((keys->file_change = File_DateofChange(KEYS_FILE)) < 0)
     {
@@ -419,6 +415,10 @@ int OS_UpdateKeys(keystore *keys)
         OS_FreeKeys(keys);
         debug1("%s: DEBUG: OS_ReadKeys", __local_name);
         
+        /* Reading keys */
+        verbose(ENC_READ, __local_name);
+
+            
         OS_ReadKeys(keys);
         debug1("%s: DEBUG: OS_StartCounter", __local_name);
         

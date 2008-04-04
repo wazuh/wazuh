@@ -220,8 +220,9 @@ int local_start()
     }
 
     
-    /* Reading the private keys  */
-    debug1("%s: DEBUG: Reading private keys.", ARGV0);
+    /* Reading keys */
+    verbose(ENC_READ, ARGV0);
+        
     OS_ReadKeys(&keys);
     OS_StartCounter(&keys);
 
