@@ -1385,6 +1385,26 @@
 
 
 
+<!-- Asterisk logs
+  - Examples:
+  - Dec 16 18:02:04 asterisk1 asterisk[31774]: NOTICE[31787]:
+  chan_sip.c:11242 in handle_request_register: Registration from
+  '"503"<sip:503@192.168.1.107>' failed for '192.168.1.137' - Wrong
+  password
+  -->
+<decoder name="asterisk">
+  <program_name>^asterisk</program_name>
+</decoder>
+
+<decoder name="asterisk-denied">
+  <parent>asterisk</parent>
+  <prematch>^NOTICE[\d+]: \S+ in \S+: Registration from </prematch>
+  <regex offset="after_prematch">^\S+ failed for '(\d+.\d+.\d+.\d+)'</regex>
+  <order>srcip</order>
+</decoder>
+
+
+
 <!-- Cisco IOS
   - Group for Cisco IOS messages.
   - We would need to support multiple formats, but currently we require
