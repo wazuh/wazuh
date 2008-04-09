@@ -298,6 +298,17 @@ int main(int argc, char **argv)
     if(restart_all_agents && restart_syscheck)
     {
 
+        /* Connecting to remoted. */
+        debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
+        arq = connect_to_remoted();
+        if(arq < 0)
+        {
+            printf("\n** Unable to connect to remoted.\n");
+            exit(1);
+        }
+        debug1("%s: DEBUG: Connected...", ARGV0);
+
+
         /* Sending restart message to all agents. */
         if(send_msg_to_agent(arq, SYSCHECK_RESTART, NULL) == 0)
         {
