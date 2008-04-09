@@ -43,6 +43,9 @@
 /* Syscheck database completed */
 #define HC_SK_DB_COMPLETED  "syscheck-db-completed"
 
+/* Syscheck restart msg. */
+#define HC_SK_RESTART       "syscheck restart"
+
 
 #endif
 

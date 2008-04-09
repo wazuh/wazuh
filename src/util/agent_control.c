@@ -310,7 +310,7 @@ int main(int argc, char **argv)
 
 
         /* Sending restart message to all agents. */
-        if(send_msg_to_agent(arq, SYSCHECK_RESTART, NULL) == 0)
+        if(send_msg_to_agent(arq, HC_SK_RESTART, NULL) == 0)
         {
             printf("\nOSSEC HIDS %s: Restarting Syscheck/Rootcheck on all agents.",
                     ARGV0);
@@ -353,7 +353,7 @@ int main(int argc, char **argv)
         debug1("%s: DEBUG: Connected...", ARGV0);
 
 
-        if(send_msg_to_agent(arq, SYSCHECK_RESTART, agent_id) == 0)
+        if(send_msg_to_agent(arq, HC_SK_RESTART, agent_id) == 0)
         {
             printf("\nOSSEC HIDS %s: Restarting Syscheck/Rootcheck on agent: %s\n",
                     ARGV0, agent_id);

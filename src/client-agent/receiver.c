@@ -121,7 +121,7 @@ void *receiver_thread(void *none)
 
 
                 /* Restart syscheck. */
-                else if(strcmp(tmp_msg, SYSCHECK_RESTART) == 0)
+                else if(strcmp(tmp_msg, HC_SK_RESTART) == 0)
                 {
                     os_set_restart_syscheck();
                     continue;
