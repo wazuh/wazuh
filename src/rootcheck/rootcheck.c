@@ -39,7 +39,7 @@ int Read_Rootcheck_Config(char * cfgfile, rkconfig *cfg);
 void rootcheck_help()
 {
     printf("\n");
-    printf("Rootcheck v0.7 (Marc/12/2006):\n");
+    printf("Rootcheck v0.8 (Mar/12/2008):\n");
     printf("http://www.ossec.net/rootcheck/\n");
     printf("Available options:\n");
     printf("\t\t-h\t  This Help message\n");
@@ -76,6 +76,12 @@ int rootcheck_init(int test_config)
     /* Zeroing the structure */
     rootcheck.workdir = NULL;
     rootcheck.basedir = NULL;
+    rootcheck.unixaudit = NULL;
+    rootcheck.rootkit_files = NULL;
+    rootcheck.rootkit_trojans = NULL;
+    rootcheck.winaudit = NULL;
+    rootcheck.winmalware = NULL;
+    rootcheck.winapps = NULL;
     rootcheck.daemon = 1;
     rootcheck.notify = QUEUE;
     rootcheck.scanall = 0;
