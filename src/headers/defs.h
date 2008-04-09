@@ -158,7 +158,8 @@ http://www.ossec.net/en/licensing.html\n"
     #define SYSCHECK_RESTART        "/var/run/.syscheck_run"
     #define SYSCHECK_RESTART_PATH   DEFAULTDIR SYSCHECK_RESTART
 #else
-    #define SYSCHECK_RESTART    "syscheck/.syscheck_run"
+    #define SYSCHECK_RESTART        "syscheck/.syscheck_run"
+    #define SYSCHECK_RESTART_PATH   "syscheck/.syscheck_run"
 #endif        
 
     

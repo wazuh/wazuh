@@ -154,6 +154,9 @@ char *print_agent_status(int status)
 }
 
 
+/* non-windows functions from now on. */
+#ifndef WIN32
+
 
 /** int send_msg_to_agent(int socket, char *msg)
  * Sends a message to an agent.
@@ -214,6 +217,8 @@ int connect_to_remoted()
 }
 
 
+#endif
+
 
 /* Internal funtion. Extract last time of scan from rootcheck/syscheck. */
 int _get_time_rkscan(char *agent_name, char *agent_ip, agent_info *agt_info)
@@ -260,10 +265,10 @@ int _get_time_rkscan(char *agent_name, char *agent_ip, agent_info *agt_info)
         tmp_str = strstr(buf, "Starting syscheck scan");
         if(tmp_str)
         {
-            int s_time = 0;
+            time_t s_time = 0;
             tmp_str = buf + 1;
 
-            s_time = atoi(tmp_str);
+            s_time = (time_t)atoi(tmp_str);
 
             os_strdup(ctime(&s_time), agt_info->syscheck_time);
 
@@ -278,10 +283,10 @@ int _get_time_rkscan(char *agent_name, char *agent_ip, agent_info *agt_info)
         tmp_str = strstr(buf, "Ending syscheck scan");
         if(tmp_str)
         {
-            int s_time = 0;
+            time_t s_time = 0;
             tmp_str = buf + 1;
 
-            s_time = atoi(tmp_str);
+            s_time = (time_t)atoi(tmp_str);
 
             os_strdup(ctime(&s_time), agt_info->syscheck_endtime);
 
@@ -297,10 +302,10 @@ int _get_time_rkscan(char *agent_name, char *agent_ip, agent_info *agt_info)
         tmp_str = strstr(buf, "Starting rootcheck scan");
         if(tmp_str)
         {
-            int s_time = 0;
+            time_t s_time = 0;
             tmp_str = buf + 1;
 
-            s_time = atoi(tmp_str);
+            s_time = (time_t)atoi(tmp_str);
 
             os_strdup(ctime(&s_time), agt_info->rootcheck_time);
 
@@ -315,10 +320,10 @@ int _get_time_rkscan(char *agent_name, char *agent_ip, agent_info *agt_info)
         tmp_str = strstr(buf, "Ending rootcheck scan");
         if(tmp_str)
         {
-            int s_time = 0;
+            time_t s_time = 0;
             tmp_str = buf + 1;
 
-            s_time = atoi(tmp_str);
+            s_time = (time_t)atoi(tmp_str);
 
             os_strdup(ctime(&s_time), agt_info->rootcheck_endtime);
 
@@ -469,11 +474,6 @@ int _get_agent_os(char *agent_name, char *agent_ip, agent_info *agt_info)
 
 /** agent_info *get_agent_info(char *agent_name, char *agent_ip)
  * Get information from an agent.
- * Returns array with:
- * 0 - OS
- * 1 - Last keep alive
- * 2 - Last syscheck executed start time/End time
- * 3 - Last rootcheck executed start/End time
  */
 agent_info *get_agent_info(char *agent_name, char *agent_ip)
 {
@@ -674,5 +674,4 @@ char **get_agents(int flag)
 }
 
  
-
 /* EOF */
