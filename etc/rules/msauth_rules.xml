@@ -320,6 +320,29 @@
     <description>Security enabled group deleted.</description>
     <group>adduser,account_changed,</group>
   </rule>
+
+  <!-- Some services change their startup type automatically -->
+  <rule id="18145" level="3">
+    <if_sid>18101</if_sid>
+    <id>^7040</id>
+    <group>policy_changed,</group>
+    <description>Service startup type was changed.</description>
+    <info>This does not appear to be logged on Windows 2000.</info>
+  </rule>
+
+  <rule id="18146" level="5">
+    <if_sid>18101</if_sid>
+    <id>^11724</id>
+    <options>alert_by_email</options>
+    <description>Application Uninstalled.</description>
+  </rule>
+
+  <rule id="18147" level="5">
+    <if_sid>18101</if_sid>
+    <id>^11707</id>
+    <options>alert_by_email</options>
+    <description>Application Installed.</description>
+  </rule>
   
   
   <!-- Kerberos failures that may indicate an attack -->
