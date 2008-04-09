@@ -442,10 +442,10 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      */
     else if((loglen > 32) && 
             (pieces[0] == '1') &&
-            (pieces[1] == '1') &&
             (pieces[10] == '.') &&
             (pieces[14] == ' ') &&
             (isdigit((int)pieces[13])) &&
+            (isdigit((int)pieces[1])) &&
             ((pieces[21] == ' ')||(pieces[22] == ' ')))
     {
         lf->log+=14;
