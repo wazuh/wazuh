@@ -80,10 +80,18 @@ int send_rootcheck_msg(char *msg)
  */
 void start_daemon()
 {
+    int day_scanned = 0;
+    int curr_day = 0;
+    
     time_t curr_time = 0;
     
     time_t prev_time_rk = 0;
     time_t prev_time_sk = 0;
+
+    char curr_hour[12];
+
+    struct tm *p;
+   
     
     /*
      * SCHED_BATCH forces the kernel to assume this is a cpu intensive process
@@ -93,12 +101,14 @@ void start_daemon()
      */
     #ifdef SCHED_BATCH
     struct sched_param pri;
-    pri.sched_priority = 0;
+    int status;
     
-    int status = sched_setscheduler(0, SCHED_BATCH, &pri);
+    pri.sched_priority = 0;
+    status = sched_setscheduler(0, SCHED_BATCH, &pri);
     
     debug1("%s: Setting SCHED_BATCH returned: %d", ARGV0, status);
     #endif
+    
             
     #ifdef DEBUG
     verbose("%s: Starting daemon ..",ARGV0);
@@ -107,8 +117,17 @@ void start_daemon()
   
     
     /* some time to settle */
+    memset(curr_hour, '\0', 12);
     sleep(syscheck.tsleep * 10);
 
+
+    /* If the scan time/day is set, reset the syscheck.time and rootcheck.time */
+    if(syscheck.scan_time || syscheck.scan_day)
+    {
+        /* At least once a week. */
+        syscheck.time = 604800;
+        rootcheck.time = 604800;
+    }
 
     
     /* Sending scan start message */
@@ -116,7 +135,7 @@ void start_daemon()
         
     
     
-    /* Send the integrity database to the server */
+    /* Sending the integrity database to the server */
     {
         char buf[MAX_LINE +1];
         int file_count = 0;
@@ -165,15 +184,54 @@ void start_daemon()
             }
         }
     }
+    
 
 
     /* Sending scan ending message */
     send_rootcheck_msg("Ending syscheck scan.");
     
     
+    
     /* Before entering in daemon mode itself */
     prev_time_sk = time(0);
     sleep(syscheck.tsleep * 10);
+    
+
+    /* If the scan_time or scan_day is set, we need to handle the
+     * current day/time on the loop.
+     */
+    if(syscheck.scan_time || syscheck.scan_day)
+    {
+        curr_time = time(0); 
+        p = localtime(&curr_time);
+
+
+        /* Assign hour/min/sec values */
+        snprintf(curr_hour, 9, "%02d:%02d:%02d",
+                p->tm_hour,
+                p->tm_min,
+                p->tm_sec);
+
+
+        curr_day = p->tm_mday;
+
+
+        if(syscheck.scan_time)
+        {
+            if(OS_IsAfterTime(curr_hour, syscheck.scan_time))
+            {
+                day_scanned = 1;
+            }
+        }
+        if(syscheck.scan_day)
+        {
+            if(OS_IsonDay(p->tm_wday, syscheck.scan_day))
+            {
+                day_scanned = 1;
+            }
+        }
+    }
+
     
     
     /* Checking every SYSCHECK_WAIT */    
@@ -186,6 +244,46 @@ void start_daemon()
         /* Checking if syscheck should be restarted, */
         run_now = os_check_restart_syscheck();
 
+        
+        /* Checking if a day_time or scan_time is set. */
+        if(syscheck.scan_time || syscheck.scan_day)
+        {
+            p = localtime(&curr_time);
+
+
+            /* Day changed. */
+            if(curr_day != p->tm_mday)
+            {
+                day_scanned = 0;
+                curr_day = p->tm_mday;
+            }
+            
+            
+            /* Checking for the time of the scan. */
+            if(!day_scanned && syscheck.scan_time)
+            {
+                /* Assign hour/min/sec values */
+                snprintf(curr_hour, 9, "%02d:%02d:%02d", 
+                                       p->tm_hour, p->tm_min, p->tm_sec);
+
+                if(OS_IsAfterTime(curr_hour, syscheck.scan_time))
+                {
+                    run_now = 1;
+                    day_scanned = 1;
+                }
+            }
+
+            /* Checking for the day of the scan. */
+            if(!day_scanned && syscheck.scan_day)
+            {
+                if(OS_IsonDay(p->tm_wday, syscheck.scan_day))
+                {
+                    run_now = 1;
+                    day_scanned = 1;
+                }
+            }
+        }
+        
         
 
         /* If time elapsed is higher than the rootcheck_time,

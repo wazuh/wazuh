@@ -77,7 +77,11 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip);
  * hh:mm am - hh:mm pm (12 hour format)
  * hh am - hh pm (12 hour format)
  */
-char *OS_IsValidTime(char *time_str);            
+char *OS_IsValidTime(char *time_str);      
+
+/* Same as above, but only accepts a unique time, not a range. */      
+char *OS_IsValidUniqueTime(char *time_str);
+
 
 
 /** int OS_IsonTime(char *time_str, char *ossec_time)
@@ -85,6 +89,10 @@ char *OS_IsValidTime(char *time_str);
  * Returns 1 on success or 0 on failure.
  */
 int OS_IsonTime(char *time_str, char *ossec_time);
+
+/* Same as above, but checks if time is the same or has passed a specified one. */
+int OS_IsAfterTime(char *time_str, char *ossec_time);
+
 
 
 /** Day validations **/

@@ -441,6 +441,7 @@ usr/bin/atm			        ! Suspicious file ::rootkits/Suspicious.php
 tmp/.cheese			        ! Suspicious file ::rootkits/Suspicious.php
 dev/.arctic			        ! Suspicious file ::rootkits/Suspicious.php
 dev/.xman			        ! Suspicious file ::rootkits/Suspicious.php
+dev/.golf			        ! Suspicious file ::rootkits/Suspicious.php
 dev/srd0			        ! Suspicious file ::rootkits/Suspicious.php
 dev/ptyzx			        ! Suspicious file ::rootkits/Suspicious.php
 dev/ptyzg			        ! Suspicious file ::rootkits/Suspicious.php

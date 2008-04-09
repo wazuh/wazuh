@@ -666,6 +666,49 @@ char *OS_IsValidTime(char *time_str)
 
 
 
+/** int OS_IsAfterTime(char *time_str, char *ossec_time)
+ *  Checks if the current time is the same or has passed the
+ *  specified one.
+ */
+int OS_IsAfterTime(char *time_str, char *ossec_time)
+{
+    /* Unique times can't have a !. */
+    if(*ossec_time == '!')
+        return(0);
+    
+        
+    ossec_time++;
+
+    /* Comparing against min/max value */
+    if(strncmp(time_str, ossec_time, 5) >= 0)
+    {
+        return(1);
+    }
+
+    return(0);
+}
+
+
+
+/** char *OS_IsValidUniqueTime(char *time_str)
+ *  Creates a unique time, not a range. Must be used with OS_IsAfterTime.
+ */
+char *OS_IsValidUniqueTime(char *time_str)
+{
+    char mytime[128 +1];
+
+    if(*time_str == '!')
+        return(NULL);
+
+    memset(mytime, '\0', 128 +1);
+    snprintf(mytime, 128, "%s-%s", time_str, time_str);
+
+
+    return(OS_IsValidTime(mytime));
+}
+
+
+
 /** int OS_IsonDay(int week_day, char *ossec_day)
  * Checks if the specified week day is in the
  * range.

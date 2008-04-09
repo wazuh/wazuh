@@ -44,6 +44,9 @@ typedef struct _config
     char *workdir;
     char *remote_db;
     char *db;
+
+    char *scan_day;
+    char *scan_time;
     
 	char **ignore;
     void **ignore_regex;

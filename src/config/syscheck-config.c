@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2008 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -366,6 +366,8 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
     char *xml_directories = "directories";
     char *xml_registry = "windows_registry";
     char *xml_time = "frequency";
+    char *xml_scanday = "scan_day";
+    char *xml_scantime = "scan_time";
     char *xml_ignore = "ignore";
     char *xml_registry_ignore = "registry_ignore";
     char *xml_auto_ignore = "auto_ignore";
@@ -436,6 +438,28 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
 
             syscheck->time = atoi(node[i]->content);
         }
+        /* Getting scan time */
+        else if(strcmp(node[i]->element,xml_scantime) == 0)
+        {
+            syscheck->scan_time = OS_IsValidUniqueTime(node[i]->content);
+            if(!syscheck->scan_time)
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+
+        /* Getting scan day */
+        else if(strcmp(node[i]->element,xml_scanday) == 0)
+        {
+            syscheck->scan_day = OS_IsValidUniqueTime(node[i]->content);
+            if(!syscheck->scan_day)
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+        
         /* Getting if disabled. */
         else if(strcmp(node[i]->element,xml_disabled) == 0)
         {
