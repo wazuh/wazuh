@@ -54,6 +54,11 @@ void *read_mysql_log(int pos, int *rc, int drop_it);
 /* Read postgresql log format */
 void *read_postgresql_log(int pos, int *rc, int drop_it);
 
+/* Read DJB multilog format */
+/* Initializes multilog. */
+int init_djbmultilog(int pos);
+void *read_djbmultilog(int pos, int *rc, int drop_it);
+
 
 #ifdef WIN32
 /* Windows only */

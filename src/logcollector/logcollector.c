@@ -98,6 +98,20 @@ void LogCollectorStart()
             {
                 logff[i].read = (void *)read_postgresql_log;
             }
+            else if(strcmp("djb-multilog", logff[i].logformat) == 0)
+            {
+                if(!init_djbmultilog(i))
+                {
+                    merror(INV_MULTILOG, ARGV0, logff[i].file);
+                    if(logff[i].fp)
+                    {
+                        fclose(logff[i].fp);
+                        logff[i].fp = NULL;
+                    }
+                    logff[i].file = NULL;
+                }
+                logff[i].read = (void *)read_djbmultilog;
+            }
             else
             {
                 logff[i].read = (void *)read_syslog;
@@ -108,11 +122,9 @@ void LogCollectorStart()
              * always returns 0 (even after clearerr).
              */
             #ifdef WIN32
+            if(logff[i].fp)
             {
-                if(logff[i].fp)
-                {
-                    logff[i].read(i, &r, 1);
-                }
+                logff[i].read(i, &r, 1);
             }
             #endif
         }

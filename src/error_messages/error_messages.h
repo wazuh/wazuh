@@ -171,6 +171,7 @@
 #define READING_FILE    "%s(1950): INFO: Analyzing file: '%s'."
 #define READING_EVTLOG  "%s(1951): INFO: Analyzing event log: '%s'."
 #define VAR_LOG_MON     "%s(1952): INFO: Monitoring variable log file: '%s'."
+#define INV_MULTILOG    "%s(1953): ERROR: Invalid DJB multilog file: '%s'."
 
 
 /* Encryption/ auth errors */

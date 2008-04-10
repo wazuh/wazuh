@@ -66,6 +66,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     logf[pl].logformat = NULL;
     logf[pl].fp = NULL;
     logf[pl].ffile = NULL;
+    logf[pl].djb_program_name = NULL;
     
     
     /* Searching for entries related to files */
@@ -199,6 +200,9 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             {
             }
             else if(strcmp(logf[pl].logformat, "postgresql_log") == 0)
+            {
+            }
+            else if(strcmp(logf[pl].logformat, "djb-multilog") == 0)
             {
             }
             else if(strcmp(logf[pl].logformat, EVENTLOG) == 0)
