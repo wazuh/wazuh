@@ -310,7 +310,7 @@ int print_agents(int print_status, int active_only, int csv_output)
             
                         if(csv_output)
                         {
-                            printf("%s,%s,%s,%s,", line_read, name, ip, 
+                            printf("%s,%s,%s,%s,\n", line_read, name, ip, 
                                                   print_agent_status(agt_status));  
                         }
                         else
