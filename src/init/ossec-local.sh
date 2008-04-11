@@ -10,7 +10,6 @@ cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
-cd $OLDPWD >/dev/null 2>&1;
 
 
 ###  Do not modify bellow here ###
