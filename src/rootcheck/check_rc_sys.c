@@ -258,7 +258,14 @@ int read_sys_dir(char *dir_name, int do_read)
         }
 
         /* Creating new file + path string */
-        snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);
+        if(strcmp(dir_name, "/") == 0)
+        {
+            snprintf(f_name, PATH_MAX +1, "/%s", entry->d_name);
+        }
+        else
+        {
+            snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);
+        }
 
         /* Checking if file is a directory */
         if(lstat(f_name, &statbuf_local) == 0)
