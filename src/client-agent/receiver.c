@@ -171,7 +171,7 @@ void *receiver_thread(void *none)
                         *validate_file = '\0';
                     }
 
-                    if((validate_file = strchr(tmp_msg, '/')) != NULL)
+                    while((validate_file = strchr(tmp_msg, '/')) != NULL)
                     {
                         *validate_file = '-';
                     }

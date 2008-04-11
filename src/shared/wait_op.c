@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2006-2008 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -12,12 +12,18 @@
 
 #include "shared.h"
 #define LOCK_LOOP   5
+int __wait_lock = 0;
 
 
 /* Creates global lock */
 void os_setwait()
 {
     FILE *fp = NULL;
+
+    /* For same threads. */
+    __wait_lock = 1;
+
+    
     if(isChroot())
     {
         fp = fopen(WAIT_FILE, "w");
@@ -40,6 +46,8 @@ void os_setwait()
 /* Removes global lock */
 void os_delwait()
 {
+    __wait_lock = 0;
+    
     if(isChroot())
     {
         unlink(WAIT_FILE);
@@ -57,10 +65,37 @@ void os_delwait()
  * Works as a simple inter process lock (only the main
  * process is allowed to lock).
  */
+#ifdef WIN32 
+void os_wait()
+{
+    if(!__wait_lock)
+        return;
+
+
+    /* Wait until the lock is gone. */
+    verbose(WAITING_MSG, __local_name);
+    while(1)
+    {
+        if(!__wait_lock)
+            break;
+
+        /* Sleep LOCK_LOOP seconds and check it lock is gone. */
+        sleep(LOCK_LOOP);
+    }
+
+
+    verbose(WAITING_FREE, __local_name);
+    return;
+
+}
+#else
+
+
 void os_wait()
 {
     struct stat file_status;
     
+
     /* If the wait file is not present, keep going.
      */
     if(isChroot())
@@ -97,7 +132,7 @@ void os_wait()
     verbose(WAITING_FREE, __local_name);
     return;
 }
-
+#endif
 
 
 /* EOF */

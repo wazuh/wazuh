@@ -245,6 +245,7 @@ int local_start()
     }
 
 
+
     /* Starting syscheck thread */
     if(CreateThread(NULL, 
                     0, 
@@ -270,7 +271,6 @@ int local_start()
     intcheck_file(cfg, "");
     intcheck_file(OSSEC_DEFINES, "");
                 
-                    
 
     /* Starting receiver thread */
     if(CreateThread(NULL, 
@@ -312,6 +312,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     tmpstr[OS_MAXSTR +1] = '\0';
     crypt_msg[OS_MAXSTR +1] = '\0';
 
+
     debug2("%s: DEBUG: Attempting to send message to server.", ARGV0);
     
     /* Using a mutex to synchronize the writes */
@@ -347,21 +348,40 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     
 
     /* Check if the server has responded */
-    if((cu_time - available_server) > (NOTIFY_TIME - 120))
+    if((cu_time - available_server) > (NOTIFY_TIME - 180))
     {
         send_win32_info(cu_time);
 
-        if((cu_time - available_server) > (3 * NOTIFY_TIME))
+        if((cu_time - available_server) > ((3 * NOTIFY_TIME) - 180))
         {
             int wi = 1;
 
-            /* If response is not available, set lock and
-             * wait for it.
-             */
-            verbose(SERVER_UNAV, ARGV0);
 
+            /* Last attempt before going into reconnect mode. */
+            debug1("%s: DEBUG: Sending info to server...", ARGV0);
+            sleep(1);
+            send_win32_info(cu_time);
+            if((cu_time - available_server) > ((3 * NOTIFY_TIME) - 180))
+            {
+                sleep(1);
+                send_win32_info(cu_time);
+                sleep(1);
+            }
+
+
+            /* Checking and generating log if unavailable. */
+            if((cu_time - available_server) > ((3 * NOTIFY_TIME) - 180))
+            {
+                /* If response is not available, set lock and
+                 * wait for it.
+                 */
+                verbose(SERVER_UNAV, ARGV0);
+            }
+            
+
+            /* Going into reconnect mode. */
             cu_time = time(0);
-            while((cu_time - available_server) > (3*NOTIFY_TIME))
+            while((cu_time - available_server) > ((3*NOTIFY_TIME) - 180))
             {
                 /* Sending information to see if server replies */
                 send_win32_info(cu_time);
@@ -395,7 +415,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     }
     
     /* Send notification */
-    else if((cu_time - __win32_curr_time) > (NOTIFY_TIME - 150))
+    else if((cu_time - __win32_curr_time) > (NOTIFY_TIME - 180))
     {
         send_win32_info(cu_time);
     }

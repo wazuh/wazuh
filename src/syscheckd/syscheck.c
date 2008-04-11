@@ -126,14 +126,19 @@ int Start_win32_Syscheck()
         
         
     /* Will create the db to store syscheck data */
+    sleep(syscheck.tsleep +2);
     create_db();
     fflush(syscheck.fp);
 
 
     /* Some sync time */
-    sleep(syscheck.tsleep);
+    sleep(syscheck.tsleep +2);
 
 
+    /* Waiting if agent started properly. */
+    os_wait();
+
+    
     /* Start the daemon checking against the syscheck.db */
     start_daemon();
 
