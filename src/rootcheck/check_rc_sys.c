@@ -390,7 +390,10 @@ void check_rc_sys(char *basedir)
         
     /* Scan the whole file system -- may be slow */
     if(rootcheck.scanall)    
+    {
+        snprintf(file_path, 3, "%s", "/");
         read_sys_dir(file_path, rootcheck.readall);
+    }
 
     
     /* Scan only specific directories */
