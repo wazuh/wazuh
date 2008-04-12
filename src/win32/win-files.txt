@@ -27,6 +27,7 @@ logcollector/read_win_el.c read_win_el.c
 logcollector/read_nmapg.c read_nmapg.c
 logcollector/read_mysql_log.c read_mysql_log.c
 logcollector/read_postgresql_log.c read_postgresql_log.c
+logcollector/read_djb_multilog.c read_djb_multilog.c
 syscheckd/config.c syscheckd-config.c
 syscheckd/create_db.c create_db.c
 syscheckd/run_check.c run_check.c

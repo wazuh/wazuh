@@ -398,7 +398,9 @@ void check_rc_sys(char *basedir)
     /* Scan the whole file system -- may be slow */
     if(rootcheck.scanall)    
     {
+        #ifndef WIN32
         snprintf(file_path, 3, "%s", "/");
+        #endif
         read_sys_dir(file_path, rootcheck.readall);
     }
 
