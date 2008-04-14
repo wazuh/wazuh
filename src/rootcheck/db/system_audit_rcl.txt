@@ -68,6 +68,9 @@ d:$web_dirs -> ^echo$ -> r:<?|^#!;
 d:$web_dirs -> ^id.txt$ -> r:<?|^#!;
 
 [Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+d:$web_dirs -> ^irc.txt$ -> r:<?|^#!;
+
+[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
 d:$web_dirs -> ^stringa.txt -> r:<?|^#!;
 
 [Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]

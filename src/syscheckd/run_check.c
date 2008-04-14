@@ -188,6 +188,7 @@ void start_daemon()
 
 
     /* Sending scan ending message */
+    sleep(syscheck.tsleep);
     send_rootcheck_msg("Ending syscheck scan.");
     
     
@@ -325,6 +326,7 @@ void start_daemon()
 
             
             /* Sending scan ending message */
+            sleep(syscheck.tsleep);
             send_rootcheck_msg("Ending syscheck scan.");
                 
 

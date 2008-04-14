@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     int gid = 0;
     int uid = 0;
     int c = 0, restart_syscheck = 0, restart_all_agents = 0, list_agents = 0;
-    int info_agent = 0, agt_id = 0, active_only = 0, csv_output = 0;
+    int info_agent = 0, agt_id = 0, active_only = 0, csv_output = 0, end_time = 0;
 
     char shost[512];
     
@@ -65,7 +65,7 @@ int main(int argc, char **argv)
     }
 
 
-    while((c = getopt(argc, argv, "Vhdlcsaru:i:")) != -1)
+    while((c = getopt(argc, argv, "Vehdlcsaru:i:")) != -1)
     {
         switch(c){
             case 'V':
@@ -77,6 +77,9 @@ int main(int argc, char **argv)
             case 'd':
                 nowDebug();
                 break;
+            case 'e':
+                end_time = 1;
+                break;     
             case 'r':
                 restart_syscheck = 1;
                 break;
@@ -272,6 +275,9 @@ int main(int argc, char **argv)
         printf("   Client version:      %s\n", agt_info->version);
         printf("   Last keep alive:     %s\n\n", agt_info->last_keepalive);
         
+
+        if(end_time)
+        {
         printf("   Syscheck last started at:  %s\n", agt_info->syscheck_time);
         printf("   Syscheck last ended   at:  %s\n", agt_info->syscheck_endtime);
         printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
@@ -279,14 +285,18 @@ int main(int argc, char **argv)
         }
         else
         {
-            printf("%s,%s,%s,%s,%s,%s,%s,\n", 
+        printf("   Syscheck last started  at: %s\n", agt_info->syscheck_time);
+        printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
+        }
+        }
+        else
+        {
+            printf("%s,%s,%s,%s,%s,\n", 
                    agt_info->os,
                    agt_info->version,
                    agt_info->last_keepalive,
                    agt_info->syscheck_time,
-                   agt_info->syscheck_endtime,
-                   agt_info->rootcheck_time,
-                   agt_info->rootcheck_endtime);
+                   agt_info->rootcheck_time);
         }
         
         exit(0);

@@ -352,6 +352,10 @@ void run_rk_check()
         printf("\n");
         printf("- Scan completed in %d seconds.\n\n", (int)(time2 - time1));
     }
+    else
+    {
+        sleep(3);
+    }
 
 
     /* Sending scan ending message */
