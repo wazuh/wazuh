@@ -251,7 +251,7 @@ chmod 440 ${DIR}/etc/shared/*
 
 
 # Copying active response modules
-sh ./init/fw-check.sh execute
+sh ./init/fw-check.sh execute > /dev/null
 cp -p ../active-response/*.sh ${DIR}/active-response/bin/
 cp -p ../active-response/firewalls/*.sh ${DIR}/active-response/bin/
 

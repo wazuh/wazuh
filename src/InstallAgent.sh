@@ -167,7 +167,7 @@ cp -pr ./init/ossec-client.sh ${DIR}/bin/ossec-control
 cp -pr ../bin/manage_agents ${DIR}/bin/
 
 # Copying active response modules
-sh ./init/fw-check.sh execute
+sh ./init/fw-check.sh execute > /dev/null
 cp -pr ../active-response/*.sh ${DIR}/active-response/bin/
 cp -pr ../active-response/firewalls/*.sh ${DIR}/active-response/bin/
 chmod 755 ${DIR}/active-response/bin/*

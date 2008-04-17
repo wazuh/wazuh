@@ -111,7 +111,7 @@ UpdateStopOSSEC()
    $DIRECTORY/bin/ossec-control stop 
 
    # We also need to remove all syscheck queue file (format changed)
-   if [[ "X$VERSION" < "X0.9-3" ]]; then
+   if [ "X$VERSION" = "X0.9-3" ]; then
         rm -f $DIRECTORY/queue/syscheck/* > /dev/null 2>&1
         rm -f $DIRECTORY/queue/agent-info/* > /dev/null 2>&1
    fi

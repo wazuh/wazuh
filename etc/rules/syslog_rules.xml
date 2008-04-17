@@ -1,7 +1,7 @@
 <!-- @(#) $Id$
   -  Official Generic Syslog rules for OSSEC.
   -
-  -  Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+  -  Copyright (C) 2003-2008 Daniel B. Cid <dcid@ossec.net>
   -  All rights reserved.
   -
   -  This program is a free software; you can redistribute it
@@ -482,7 +482,7 @@
 </group>
 
                 
-<group name="syslog,squid">
+<group name="syslog,squid,">
   <rule id="9200" level="0" noalert="1">
     <program_name>^squid</program_name>
     <description>Squid syslog messages grouped</description>
@@ -495,5 +495,35 @@
     <description>Squid debug message</description>
   </rule>
 </group>
+
+
+<group name="syslog,dpkg,">
+  <rule id="2900" level="0">
+    <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d \w+ </regex>
+    <description>Dpkg (Debian Package) log.</description>
+  </rule>
+  
+  <rule id="2901" level="3">
+    <if_sid>2900</if_sid>
+    <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d install</regex>
+    <description>New dpkg (Debian Package) requested to install.</description>
+  </rule>
+
+ <rule id="2902" level="7">
+    <if_sid>2900</if_sid>
+    <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d status installed</regex>
+    <description>New dpkg (Debian Package) installed.</description>
+    <group>config_changed,</group>
+  </rule>
+
+  <rule id="2903" level="7">
+    <if_sid>2900</if_sid>
+    <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d remove|</regex>
+    <regex>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d purge</regex>
+    <description>Dpkg (Debian Package) removed.</description>
+    <group>config_changed,</group>
+  </rule>
+</group>
+
 
 <!-- EOF -->

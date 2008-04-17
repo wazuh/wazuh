@@ -25,3 +25,4 @@
 /var/log/squid/access.log
 /var/log/horde.log
 /var/log/asl.log
+/var/log/dpkg.log

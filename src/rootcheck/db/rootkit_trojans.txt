@@ -37,7 +37,7 @@ gpm			!bash|mingetty!
 ifconfig	!bash|^/bin/sh|/dev/tux|session.null|/dev/[^cludisopt]!
 diff		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh!
 md5sum		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh!
-hdparm		!bash|/dev/ida|/dev/!
+hdparm		!bash|/dev/ida!
 ldd			!/dev/[^n]|proc\.h|libshow.so|libproc.a!
 
 
