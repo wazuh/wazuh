@@ -545,6 +545,12 @@
   <order>srcip,id</order>
 </decoder>
 
+<decoder name="postfix-sasl">
+  <parent>postfix</parent>  
+  <prematch>^warning: \S+: SASL </prematch>
+  <regex>^warning: \S+[(\d+.\d+.\d+.\d+)]:</regex>
+  <order>srcip</order>
+</decoder>
 
 
 <!-- Sendmail decoder.
