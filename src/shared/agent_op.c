@@ -77,7 +77,7 @@ char* os_read_agent_name()
     char buf[1024 + 1];
     FILE *fp;
 
-    fp = fopen(AGENT_INFO_FILE, "w");
+    fp = fopen(AGENT_INFO_FILE, "r");
     if(!fp)
     {
         merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
@@ -112,7 +112,7 @@ char *os_read_agent_ip()
     char buf[1024 + 1];
     FILE *fp;
 
-    fp = fopen(AGENT_INFO_FILE, "w");
+    fp = fopen(AGENT_INFO_FILE, "r");
     if(!fp)
     {
         merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
@@ -147,7 +147,7 @@ char *os_read_agent_id()
     char buf[1024 + 1];
     FILE *fp;
 
-    fp = fopen(AGENT_INFO_FILE, "w");
+    fp = fopen(AGENT_INFO_FILE, "r");
     if(!fp)
     {
         merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
