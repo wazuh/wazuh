@@ -52,7 +52,7 @@ void execd_shutdown()
 
         ExecCmd(list_entry->command);
 
-        /* Deletecurrently node already sets the pointer to next */
+        /* Delete currently node - already sets the pointer to next */
         OSList_DeleteCurrentlyNode(timeout_list);
         timeout_node = OSList_GetCurrentlyNode(timeout_list);
     }
