@@ -372,6 +372,7 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             r_node->ruleinfo->context_opts = newrule->context_opts;
             r_node->ruleinfo->context = newrule->context;
             r_node->ruleinfo->decoded_as = newrule->decoded_as;
+            r_node->ruleinfo->ar = newrule->ar;
 
             return(1);
         }
