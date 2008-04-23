@@ -15,6 +15,7 @@ cd ../
 PWD=`pwd`
 LOCK="${PWD}/host-deny-lock"
 LOCK_PID="${PWD}/host-deny-lock/pid"
+UNAME=`uname`
 
 
 # This number should be more than enough (even if a hundred
@@ -98,7 +99,11 @@ fi
 # Adding the ip to hosts.deny
 if [ "x${ACTION}" = "xadd" ]; then
    lock;     
-   echo "ALL:${IP}" >> /etc/hosts.deny
+   if [ "X$UNAME" = "XFreeBSD" ]; then
+    echo "ALL : ${IP} : deny" >> /etc/hosts.allow
+   else    
+    echo "ALL:${IP}" >> /etc/hosts.deny
+   fi 
    unlock;
    exit 0;
 
@@ -106,8 +111,13 @@ if [ "x${ACTION}" = "xadd" ]; then
 # Deleting from hosts.deny   
 elif [ "x${ACTION}" = "xdelete" ]; then   
    lock;
-   cat /etc/hosts.deny | grep -v "ALL:${IP}$"> /tmp/hosts.deny.$$
-   mv /tmp/hosts.deny.$$ /etc/hosts.deny
+   if [ "X$UNAME" = "XFreeBSD" ]; then
+    cat /etc/hosts.allow | grep -v "ALL : ${IP} : deny$"> /tmp/hosts.deny.$$
+    mv /tmp/hosts.deny.$$ /etc/hosts.allow
+   else
+    cat /etc/hosts.deny | grep -v "ALL:${IP}$"> /tmp/hosts.deny.$$
+    mv /tmp/hosts.deny.$$ /etc/hosts.deny
+   fi 
    unlock;
    exit 0;
 
