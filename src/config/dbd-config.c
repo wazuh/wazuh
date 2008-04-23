@@ -28,6 +28,8 @@ int Read_DB(XML_NODE node, void *config1, void *config2)
     char *xml_dbuser = "username";
     char *xml_dbpass = "password";
     char *xml_dbdb = "database";
+    char *xml_dbport = "port";
+    char *xml_dbsock = "socket";
     char *xml_dbtype = "type";
 
     
@@ -67,6 +69,14 @@ int Read_DB(XML_NODE node, void *config1, void *config2)
         else if(strcmp(node[i]->element, xml_dbdb) == 0)
         {
             os_strdup(node[i]->content, db_config->db);
+        }
+        else if(strcmp(node[i]->element, xml_dbport) == 0)
+        {
+            db_config->port = atoi(node[i]->content);
+        }
+        else if(strcmp(node[i]->element, xml_dbsock) == 0)
+        {
+            os_strdup(node[i]->content, db_config->sock);
         }
         else if(strcmp(node[i]->element, xml_dbtype) == 0)
         {

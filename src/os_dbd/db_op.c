@@ -97,7 +97,9 @@ void osdb_checkerror()
             db_config_pt->conn = osdb_connect(db_config_pt->host, 
                                               db_config_pt->user,
                                               db_config_pt->pass, 
-                                              db_config_pt->db);
+                                              db_config_pt->db,
+                                              db_config_pt->port,
+                                              db_config_pt->sock);
             
             /* If we were able to reconnect, keep going. */
             if(db_config_pt->conn)
@@ -151,7 +153,8 @@ void osdb_setconfig(DBConfig *db_config)
 /* Create the database connection.
  * Returns NULL on error
  */
-void *mysql_osdb_connect(char *host, char *user, char *pass, char *db)
+void *mysql_osdb_connect(char *host, char *user, char *pass, char *db,
+                         int port, char *sock)
 {
     MYSQL *conn;
     conn = mysql_init(NULL);
@@ -160,7 +163,15 @@ void *mysql_osdb_connect(char *host, char *user, char *pass, char *db)
         merror(DBINIT_ERROR, ARGV0);
         return(NULL);
     }
-    if(mysql_real_connect(conn, host, user, pass, db, 0, NULL, 0) == NULL)
+
+
+    /* if host is 127.0.0.1 or localhost and sock is enabled, use socket */
+    if ((sock != NULL) && ((strcmp(host, "127.0.0.1") == 0) ||
+                          (strcmp(host, "localhost") == 0)))
+    {
+        mysql_options(conn, MYSQL_OPT_NAMED_PIPE, NULL);
+    }    
+    if(mysql_real_connect(conn, host, user, pass, db, port, sock, 0) == NULL)
     {
         merror(DBCONN_ERROR, ARGV0, host, db, mysql_error(conn));
         mysql_close(conn);
@@ -260,12 +271,13 @@ int mysql_osdb_query_select(void *db_conn, char *query)
  * Create the PostgreSQL database connection. 
  * Return NULL on error
  */
-void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db)
+void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db, 
+                              int port, char *sock)
 {
     PGconn *conn;
 
 
-    conn = PQsetdbLogin(host, NULL, NULL, NULL,db,user,pass);
+    conn = PQsetdbLogin(host, NULL, NULL, NULL, db, user, pass);
     if(PQstatus(conn) == CONNECTION_BAD)
     {
         merror(DBCONN_ERROR, ARGV0, host, db, PQerrorMessage(conn));
@@ -370,7 +382,8 @@ int postgresql_osdb_query_select(void *db_conn, char *query)
 
 
 
-void *none_osdb_connect(char *host, char *user, char *pass, char *db)
+void *none_osdb_connect(char *host, char *user, char *pass, char *db, 
+                        int port, char *sock)
 {
     char *tmp;
 

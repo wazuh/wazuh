@@ -156,9 +156,9 @@ int main(int argc, char **argv)
 
     
     /* Maybe disable this debug? */
-    debug1("%s: DEBUG: Connecting to '%s', using '%s', '%s', '%s'.",
+    debug1("%s: DEBUG: Connecting to '%s', using '%s', '%s', '%s', %d,'%s'.",
            ARGV0, db_config.host, db_config.user, 
-           db_config.pass, db_config.db);
+           db_config.pass, db_config.db,db_config.port,db_config.sock);
 
 
     /* Setting config pointer */
@@ -175,7 +175,8 @@ int main(int argc, char **argv)
     while(c <= db_config.maxreconnect)
     {
         db_config.conn = osdb_connect(db_config.host, db_config.user, 
-                                      db_config.pass, db_config.db);
+                                      db_config.pass, db_config.db,
+                                      db_config.port,db_config.sock);
 
         /* If we are able to reconnect, keep going */
         if(db_config.conn)

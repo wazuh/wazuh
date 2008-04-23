@@ -20,9 +20,9 @@
 
 
 /* Connects to the database */
-void *(*osdb_connect)(char *host, char *user, char *pass, char *db);
-void *mysql_osdb_connect(char *host, char *user, char *pass, char *db);
-void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db);
+void *(*osdb_connect)(char *host, char *user, char *pass, char *db, int port, char *sock);
+void *mysql_osdb_connect(char *host, char *user, char *pass, char *db, int port, char *sock);
+void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db, int port, char *sock);
 
 /* Sends insert query to the database */
 int (* osdb_query_insert)(void *db_conn, char *query);

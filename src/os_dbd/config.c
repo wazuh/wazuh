@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2008 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -43,6 +43,8 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
     db_config->user = NULL;
     db_config->pass = NULL;
     db_config->db = NULL;
+    db_config->port = 0;
+    db_config->sock = NULL;
     db_config->db_type = 0;
     db_config->maxreconnect = 0;
 
@@ -64,6 +66,8 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
        !db_config->user &&
        !db_config->pass &&
        !db_config->db &&
+       !db_config->sock &&
+       !db_config->port &&
        !db_config->db_type)
     {
         return(0);
