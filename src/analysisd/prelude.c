@@ -258,7 +258,7 @@ void OS_PreludeLog(Eventinfo *lf)
         char new_prelude_target[256];
 
         new_prelude_target[255] = '\0';
-        strncpy(new_prelude_target, lf->dstip, 255);
+        strncpy(new_prelude_target, lf->hostname, 255);
 
         /* The messages can have the file, so we need to remove it.
          * formats can be:
