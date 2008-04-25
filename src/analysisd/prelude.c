@@ -246,8 +246,33 @@ void OS_PreludeLog(Eventinfo *lf)
     /* Setting target */
     add_idmef_object(idmef, "alert.target(0).Service.name", lf->program_name);
     add_idmef_object(idmef, "alert.target(0).Spoofed", "no");
-    add_idmef_object(idmef, "alert.target(0).Node.Address(0).address", 
-                            lf->dstip);
+
+    if(lf->dstip)
+    {
+        add_idmef_object(idmef, "alert.target(0).Node.Address(0).address", 
+                                lf->dstip);
+    }
+    else
+    {
+        char *tmp_str;
+        char new_prelude_target[256];
+
+        new_prelude_target[255] = '\0';
+        strncpy(new_prelude_target, lf->dstip, 255);
+
+        /* The messages can have the file, so we need to remove it.
+         * formats can be:
+         * enigma->/var/log/authlog
+         * (esqueleto2) 192.168.2.99->/var/log/squid/access.log
+         */
+        tmp_str = strstr(new_prelude_target, "->");
+        if(tmp_str)
+        {
+            *tmp_str = '\0';
+        }
+        add_idmef_object(idmef, "alert.target(0).Node.Address(0).address", 
+                                new_prelude_target);
+    }
     add_idmef_object(idmef, "alert.target(0).Service.name", lf->hostname);
     add_idmef_object(idmef, "alert.target(0).Service.port", lf->dstport);
     add_idmef_object(idmef, "alert.target(0).User.UserId(0).name", lf->dstuser);
