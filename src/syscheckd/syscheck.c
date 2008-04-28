@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2008 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -76,7 +76,7 @@ int Start_win32_Syscheck()
     {
         syscheck.dir[0] = NULL;
         syscheck.registry[0] = NULL;
-        merror("%s: Syscheck disabled.", ARGV0);
+        merror("%s: WARN: Syscheck disabled.", ARGV0);
     }
 
 
@@ -92,7 +92,7 @@ int Start_win32_Syscheck()
     else
     {
         syscheck.rootcheck = 0;
-        merror("%s: Rootcheck module disabled.", ARGV0);
+        merror("%s: WARN: Rootcheck module disabled.", ARGV0);
     }
                                                             
 
@@ -106,7 +106,7 @@ int Start_win32_Syscheck()
     r = 0;
     while(syscheck.registry[r] != NULL)
     {
-        verbose("%s: Monitoring registry entry: '%s'.", 
+        verbose("%s: INFO: Monitoring registry entry: '%s'.", 
                 ARGV0, syscheck.registry[r]);
         r++;
     }
@@ -114,7 +114,7 @@ int Start_win32_Syscheck()
     r = 0;
     while(syscheck.dir[r] != NULL)
     {
-        verbose("%s: Monitoring directory: '%s'.",
+        verbose("%s: INFO: Monitoring directory: '%s'.",
                 ARGV0, syscheck.dir[r]);
         r++;
     }
@@ -216,7 +216,7 @@ int main(int argc, char **argv)
         syscheck.dir[0] = NULL;
         if(!test_config)
         {
-            merror("%s: Syscheck disabled.", ARGV0);
+            merror("%s: WARN: Syscheck disabled.", ARGV0);
         }
     }
 
@@ -234,7 +234,7 @@ int main(int argc, char **argv)
     else
     {
         syscheck.rootcheck = 0;
-        merror("%s: Rootcheck module disabled.", ARGV0);
+        merror("%s: WARN: Rootcheck module disabled.", ARGV0);
     }
 
         
