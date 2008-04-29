@@ -46,7 +46,7 @@
 
 /* Some Global names */
 #define __name      "OSSEC HIDS"
-#define __version   "v1.4"
+#define __version   "v1.5"
 #define __author    "Daniel B. Cid"
 #define __contact   "contact@ossec.net"
 #define __site      "http://www.ossec.net"
@@ -54,7 +54,7 @@
 This program is free software; you can redistribute it and/or modify\n\
 it under the terms of the GNU General Public License (version 3) as \n\
 published by the Free Software Foundation. For more details, go to \n\
-http://www.ossec.net/en/licensing.html\n"
+http://www.ossec.net/main/license/\n"
 
 /* Maximum allowed PID */
 #ifdef SOLARIS
