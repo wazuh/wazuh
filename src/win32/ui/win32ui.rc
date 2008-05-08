@@ -18,6 +18,8 @@
 #include "os_win32ui.h"
 
 IDI_OSSECICON ICON "favicon.ico"
+UI_MANIFEST_ID RT_MANIFEST "os_win32ui.exe.manifest"
+
 
 
 IDD_ABOUT DIALOG DISCARDABLE  0, 0, 259, 106

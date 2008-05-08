@@ -100,6 +100,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                     (LPARAM)statwidths);
             SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://www.ossec.net");
 
+	    
 
             /* Initializing config */
             config_read(hwnd);

@@ -98,7 +98,8 @@ HWND hStatus;
 
 
 /* Ossec icon */
-#define IDI_OSSECICON 201
+#define IDI_OSSECICON  201
+#define UI_MANIFEST_ID 202
 
 /* User input */
 #define UI_SERVER_TEXT      1501
