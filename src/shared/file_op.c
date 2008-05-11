@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2004-2007 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2004-2008 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -15,6 +15,206 @@
 
 
 #include "shared.h"
+
+
+/* Vista product information. */
+#ifdef WIN32
+#ifndef PRODUCT_UNLICENSED
+#define PRODUCT_UNLICENSED 0xABCDABCD
+#define PRODUCT_UNLICENSED_C "Product Unlicensed"
+#endif
+
+#ifndef PRODUCT_BUSINESS
+#define PRODUCT_BUSINESS 0x00000006
+#define PRODUCT_BUSINESS_C "Business Edition"
+#endif
+
+#ifndef PRODUCT_BUSINESS_N
+#define PRODUCT_BUSINESS_N 0x00000010
+#define PRODUCT_BUSINESS_N_C "Business Edition"
+#endif
+
+#ifndef PRODUCT_CLUSTER_SERVER
+#define PRODUCT_CLUSTER_SERVER 0x00000012
+#define PRODUCT_CLUSTER_SERVER_C "Cluster Server Edition"
+#endif
+
+#ifndef PRODUCT_DATACENTER_SERVER
+#define PRODUCT_DATACENTER_SERVER 0x00000008
+#define PRODUCT_DATACENTER_SERVER_C "Datacenter Edition (full)"
+#endif
+
+#ifndef PRODUCT_DATACENTER_SERVER_CORE
+#define PRODUCT_DATACENTER_SERVER_CORE 0x0000000C
+#define PRODUCT_DATACENTER_SERVER_CORE_C "Datacenter Edition (core)"
+#endif
+
+#ifndef PRODUCT_DATACENTER_SERVER_CORE_V
+#define PRODUCT_DATACENTER_SERVER_CORE_V 0x00000027
+#define PRODUCT_DATACENTER_SERVER_CORE_V_C "Datacenter Edition (core)"
+#endif
+
+#ifndef PRODUCT_DATACENTER_SERVER_V
+#define PRODUCT_DATACENTER_SERVER_V 0x00000025
+#define PRODUCT_DATACENTER_SERVER_V_C "Datacenter Edition (full)"
+#endif
+
+#ifndef PRODUCT_ENTERPRISE
+#define PRODUCT_ENTERPRISE 0x00000004
+#define PRODUCT_ENTERPRISE_C "Enterprise Edition"
+#endif
+
+#ifndef PRODUCT_ENTERPRISE_N
+#define PRODUCT_ENTERPRISE_N 0x00000004
+#define PRODUCT_ENTERPRISE_N_C "Enterprise Edition"
+#endif
+
+#ifndef PRODUCT_ENTERPRISE_SERVER
+#define PRODUCT_ENTERPRISE_SERVER 0x0000000A
+#define PRODUCT_ENTERPRISE_SERVER_C "Enterprise Edition (full)"
+#endif
+
+#ifndef PRODUCT_ENTERPRISE_SERVER_CORE
+#define PRODUCT_ENTERPRISE_SERVER_CORE 0x0000000E
+#define PRODUCT_ENTERPRISE_SERVER_CORE_C "Enterprise Edition (core)"
+#endif
+
+#ifndef PRODUCT_ENTERPRISE_SERVER_CORE_V
+#define PRODUCT_ENTERPRISE_SERVER_CORE_V 0x00000029
+#define PRODUCT_ENTERPRISE_SERVER_CORE_V_C "Enterprise Edition (core)"
+#endif
+
+#ifndef PRODUCT_ENTERPRISE_SERVER_IA64
+#define PRODUCT_ENTERPRISE_SERVER_IA64 0x0000000F
+#define PRODUCT_ENTERPRISE_SERVER_IA64_C "Enterprise Edition for Itanium-based Systems"
+#endif
+
+#ifndef PRODUCT_ENTERPRISE_SERVER_V
+#define PRODUCT_ENTERPRISE_SERVER_V 0x00000026
+#define PRODUCT_ENTERPRISE_SERVER_V_C "Enterprise Edition (full)"
+#endif
+
+#ifndef PRODUCT_HOME_BASIC
+#define PRODUCT_HOME_BASIC 0x00000002
+#define PRODUCT_HOME_BASIC_C "Home Basic Edition"
+#endif
+
+#ifndef PRODUCT_HOME_BASIC_N
+#define PRODUCT_HOME_BASIC_N 0x00000005
+#define PRODUCT_HOME_BASIC_N_C "Home Basic Edition"
+#endif
+
+#ifndef PRODUCT_HOME_PREMIUM
+#define PRODUCT_HOME_PREMIUM 0x00000003
+#define PRODUCT_HOME_PREMIUM_C "Home Premium Edition"
+#endif
+
+#ifndef PRODUCT_HOME_PREMIUM_N
+#define PRODUCT_HOME_PREMIUM_N 0x0000001A
+#define PRODUCT_HOME_PREMIUM_N_C "Home Premium Edition"
+#endif
+
+#ifndef PRODUCT_HOME_SERVER
+#define PRODUCT_HOME_SERVER 0x00000013
+#define PRODUCT_HOME_SERVER_C "Home Server Edition"
+#endif
+
+#ifndef PRODUCT_MEDIUMBUSINESS_SERVER_MANAGEMENT
+#define PRODUCT_MEDIUMBUSINESS_SERVER_MANAGEMENT 0x0000001E
+#define PRODUCT_MEDIUMBUSINESS_SERVER_MANAGEMENT_C "Essential Business Server Management Server"
+#endif
+
+#ifndef PRODUCT_MEDIUMBUSINESS_SERVER_MESSAGING
+#define PRODUCT_MEDIUMBUSINESS_SERVER_MESSAGING 0x00000020
+#define PRODUCT_MEDIUMBUSINESS_SERVER_MESSAGING_C "Essential Business Server Messaging Server"
+#endif
+
+#ifndef PRODUCT_MEDIUMBUSINESS_SERVER_SECURITY
+#define PRODUCT_MEDIUMBUSINESS_SERVER_SECURITY 0x0000001F
+#define PRODUCT_MEDIUMBUSINESS_SERVER_SECURITY_C "Essential Business Server Security Server"
+#endif
+
+#ifndef PRODUCT_SERVER_FOR_SMALLBUSINESS
+#define PRODUCT_SERVER_FOR_SMALLBUSINESS 0x00000018
+#define PRODUCT_SERVER_FOR_SMALLBUSINESS_C "Small Business Edition"
+#endif
+
+#ifndef PRODUCT_SMALLBUSINESS_SERVER
+#define PRODUCT_SMALLBUSINESS_SERVER 0x00000009
+#define PRODUCT_SMALLBUSINESS_SERVER_C "Small Business Server"
+#endif
+
+#ifndef PRODUCT_SMALLBUSINESS_SERVER_PREMIUM
+#define PRODUCT_SMALLBUSINESS_SERVER_PREMIUM 0x00000019
+#define PRODUCT_SMALLBUSINESS_SERVER_PREMIUM_C "Small Business Server Premium Edition"
+#endif
+
+#ifndef PRODUCT_STANDARD_SERVER
+#define PRODUCT_STANDARD_SERVER 0x00000007
+#define PRODUCT_STANDARD_SERVER_C "Standard Edition"
+#endif
+
+#ifndef PRODUCT_STANDARD_SERVER_CORE
+#define PRODUCT_STANDARD_SERVER_CORE 0x0000000D
+#define PRODUCT_STANDARD_SERVER_CORE_C "Standard Edition (core)"
+#endif
+
+#ifndef PRODUCT_STANDARD_SERVER_CORE_V
+#define PRODUCT_STANDARD_SERVER_CORE_V 0x00000028
+#define PRODUCT_STANDARD_SERVER_CORE_V_C "Standard Edition"
+#endif
+
+#ifndef PRODUCT_STANDARD_SERVER_V
+#define PRODUCT_STANDARD_SERVER_V 0x00000024
+#define PRODUCT_STANDARD_SERVER_V_C "Standard Edition"
+#endif
+
+#ifndef PRODUCT_STARTER
+#define PRODUCT_STARTER 0x0000000B
+#define PRODUCT_STARTER_C "Starter Edition"
+#endif
+
+#ifndef PRODUCT_STORAGE_ENTERPRISE_SERVER
+#define PRODUCT_STORAGE_ENTERPRISE_SERVER 0x00000017
+#define PRODUCT_STORAGE_ENTERPRISE_SERVER_C "Storage Server Enterprise Edition"
+#endif
+
+#ifndef PRODUCT_STORAGE_EXPRESS_SERVER
+#define PRODUCT_STORAGE_EXPRESS_SERVER 0x00000014
+#define PRODUCT_STORAGE_EXPRESS_SERVER_C "Storage Server Express Edition"
+#endif
+
+#ifndef PRODUCT_STORAGE_STANDARD_SERVER
+#define PRODUCT_STORAGE_STANDARD_SERVER 0x00000015
+#define PRODUCT_STORAGE_STANDARD_SERVER_C "Storage Server Standard Edition"
+#endif
+
+#ifndef PRODUCT_STORAGE_WORKGROUP_SERVER
+#define PRODUCT_STORAGE_WORKGROUP_SERVER 0x00000016
+#define PRODUCT_STORAGE_WORKGROUP_SERVER_C "Storage Server Workgroup Edition"
+#endif
+
+#ifndef PRODUCT_ULTIMATE
+#define PRODUCT_ULTIMATE 0x00000001
+#define PRODUCT_ULTIMATE_C "Ultimate Edition"
+#endif
+
+#ifndef PRODUCT_ULTIMATE_N
+#define PRODUCT_ULTIMATE_N 0x0000001C
+#define PRODUCT_ULTIMATE_N_C "Ultimate Edition"
+#endif
+
+#ifndef PRODUCT_WEB_SERVER
+#define PRODUCT_WEB_SERVER 0x00000011
+#define PRODUCT_WEB_SERVER_C "Web Server Edition"
+#endif
+
+#ifndef PRODUCT_WEB_SERVER_CORE
+#define PRODUCT_WEB_SERVER_CORE 0x0000001D
+#define PRODUCT_WEB_SERVER_CORE_C "Web Server Edition"
+#endif
+#endif /* WIN32 */
+
 
 
 /* Sets the name of the starting program */
@@ -216,6 +416,7 @@ char *getuname()
     char os_v[128 +1];
 
     typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
+    typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 
 
     /* Extracted from ms web site 
@@ -224,7 +425,9 @@ char *getuname()
     OSVERSIONINFOEX osvi;
     SYSTEM_INFO si;
     PGNSI pGNSI;
+    PGPI pGPI;
     BOOL bOsVersionInfoEx;
+    DWORD dwType;
 
     ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
@@ -250,8 +453,140 @@ char *getuname()
                     strncat(ret, "Microsoft Windows Vista ", ret_size -1);
                 else
                 {
-                    strncat(ret, "Windows Server Longhorn ", ret_size -1);
+                    strncat(ret, "Microsoft Windows Server 2008 ", ret_size -1);
                 }
+
+                ret_size-=strlen(ret) +1;
+
+
+                /* Getting product version. */
+                pGPI = (PGPI) GetProcAddress(
+                              GetModuleHandle(TEXT("kernel32.dll")), 
+                                                   "GetProductInfo");
+
+                pGPI( 6, 0, 0, 0, &dwType);
+
+                switch(dwType)
+                {
+                    case PRODUCT_UNLICENSED:
+                        strncat(ret, PRODUCT_UNLICENSED_C, ret_size -1);
+                        break;
+                    case PRODUCT_BUSINESS:
+                        strncat(ret, PRODUCT_BUSINESS_C, ret_size -1);
+                        break;
+                    case PRODUCT_BUSINESS_N:
+                        strncat(ret, PRODUCT_BUSINESS_N_C, ret_size -1);
+                        break;
+                    case PRODUCT_CLUSTER_SERVER:
+                        strncat(ret, PRODUCT_CLUSTER_SERVER_C, ret_size -1);
+                        break;
+                    case PRODUCT_DATACENTER_SERVER:
+                        strncat(ret, PRODUCT_DATACENTER_SERVER_C, ret_size -1);
+                        break;
+                    case PRODUCT_DATACENTER_SERVER_CORE:
+                        strncat(ret, PRODUCT_DATACENTER_SERVER_CORE_C, ret_size -1);
+                        break;
+                    case PRODUCT_DATACENTER_SERVER_CORE_V:
+                        strncat(ret, PRODUCT_DATACENTER_SERVER_CORE_V_C, ret_size -1);
+                        break;
+                    case PRODUCT_DATACENTER_SERVER_V:
+                        strncat(ret, PRODUCT_DATACENTER_SERVER_V_C, ret_size -1);
+                        break;
+                    case PRODUCT_ENTERPRISE:
+                        strncat(ret, PRODUCT_ENTERPRISE_C, ret_size -1);
+                        break;
+                    case PRODUCT_ENTERPRISE_N:
+                        strncat(ret, PRODUCT_ENTERPRISE_N_C, ret_size -1);
+                        break;
+                    case PRODUCT_ENTERPRISE_SERVER:
+                        strncat(ret, PRODUCT_ENTERPRISE_SERVER_C, ret_size -1);
+                        break;
+                    case PRODUCT_ENTERPRISE_SERVER_CORE:
+                        strncat(ret, PRODUCT_ENTERPRISE_SERVER_CORE_C, ret_size -1);
+                        break;
+                    case PRODUCT_ENTERPRISE_SERVER_CORE_V:
+                        strncat(ret, PRODUCT_ENTERPRISE_SERVER_CORE_V_C, ret_size -1);
+                        break;
+                    case PRODUCT_ENTERPRISE_SERVER_IA64:
+                        strncat(ret, PRODUCT_ENTERPRISE_SERVER_IA64_C, ret_size -1);
+                        break;
+                    case PRODUCT_ENTERPRISE_SERVER_V:
+                        strncat(ret, PRODUCT_ENTERPRISE_SERVER_V_C, ret_size -1);
+                        break;
+                    case PRODUCT_HOME_BASIC:
+                        strncat(ret, PRODUCT_HOME_BASIC_C, ret_size -1);
+                        break;
+                    case PRODUCT_HOME_BASIC_N:
+                        strncat(ret, PRODUCT_HOME_BASIC_N_C, ret_size -1);
+                        break;
+                    case PRODUCT_HOME_PREMIUM:
+                        strncat(ret, PRODUCT_HOME_PREMIUM_C, ret_size -1);
+                        break;
+                    case PRODUCT_HOME_PREMIUM_N:
+                        strncat(ret, PRODUCT_HOME_PREMIUM_N_C, ret_size -1);
+                        break;
+                    case PRODUCT_HOME_SERVER:
+                        strncat(ret, PRODUCT_HOME_SERVER_C, ret_size -1);
+                        break;
+                    case PRODUCT_MEDIUMBUSINESS_SERVER_MANAGEMENT:
+                        strncat(ret, PRODUCT_MEDIUMBUSINESS_SERVER_MANAGEMENT_C, ret_size -1);
+                        break;
+                    case PRODUCT_MEDIUMBUSINESS_SERVER_MESSAGING:
+                        strncat(ret, PRODUCT_MEDIUMBUSINESS_SERVER_MESSAGING_C, ret_size -1);
+                        break;
+                    case PRODUCT_MEDIUMBUSINESS_SERVER_SECURITY:
+                        strncat(ret, PRODUCT_MEDIUMBUSINESS_SERVER_SECURITY_C, ret_size -1);
+                        break;
+                    case PRODUCT_SERVER_FOR_SMALLBUSINESS:
+                        strncat(ret, PRODUCT_SERVER_FOR_SMALLBUSINESS_C, ret_size -1);
+                        break;
+                    case PRODUCT_SMALLBUSINESS_SERVER:
+                        strncat(ret, PRODUCT_SMALLBUSINESS_SERVER_C, ret_size -1);
+                        break;
+                    case PRODUCT_SMALLBUSINESS_SERVER_PREMIUM:
+                        strncat(ret, PRODUCT_SMALLBUSINESS_SERVER_PREMIUM_C, ret_size -1);
+                        break;
+                    case PRODUCT_STANDARD_SERVER:
+                        strncat(ret, PRODUCT_STANDARD_SERVER_C, ret_size -1);
+                        break;
+                    case PRODUCT_STANDARD_SERVER_CORE:
+                        strncat(ret, PRODUCT_STANDARD_SERVER_CORE_C, ret_size -1);
+                        break;
+                    case PRODUCT_STANDARD_SERVER_CORE_V:
+                        strncat(ret, PRODUCT_STANDARD_SERVER_CORE_V_C, ret_size -1);
+                        break;
+                    case PRODUCT_STANDARD_SERVER_V:
+                        strncat(ret, PRODUCT_STANDARD_SERVER_V_C, ret_size -1);
+                        break;
+                    case PRODUCT_STARTER:
+                        strncat(ret, PRODUCT_STARTER_C, ret_size -1);
+                        break;
+                    case PRODUCT_STORAGE_ENTERPRISE_SERVER:
+                        strncat(ret, PRODUCT_STORAGE_ENTERPRISE_SERVER_C, ret_size -1);
+                        break;
+                    case PRODUCT_STORAGE_EXPRESS_SERVER:
+                        strncat(ret, PRODUCT_STORAGE_EXPRESS_SERVER_C, ret_size -1);
+                        break;
+                    case PRODUCT_STORAGE_STANDARD_SERVER:
+                        strncat(ret, PRODUCT_STORAGE_STANDARD_SERVER_C, ret_size -1);
+                        break;
+                    case PRODUCT_STORAGE_WORKGROUP_SERVER:
+                        strncat(ret, PRODUCT_STORAGE_WORKGROUP_SERVER_C, ret_size -1);
+                        break;
+                    case PRODUCT_ULTIMATE:
+                        strncat(ret, PRODUCT_ULTIMATE_C, ret_size -1);
+                        break;
+                    case PRODUCT_ULTIMATE_N:
+                        strncat(ret, PRODUCT_ULTIMATE_N_C, ret_size -1);
+                        break;
+                    case PRODUCT_WEB_SERVER:
+                        strncat(ret, PRODUCT_WEB_SERVER_C, ret_size -1);
+                        break;
+                    case PRODUCT_WEB_SERVER_CORE:
+                        strncat(ret, PRODUCT_WEB_SERVER_CORE_C, ret_size -1);
+                        break;
+                }
+                
 
                 ret_size-=strlen(ret) +1;
             }
@@ -390,7 +725,7 @@ char *getuname()
 
                         ret_size-=strlen(ret) +1;        
                     }
-                    else  /* Windows NT 4.0  */
+                    else if(osvi.dwMajorVersion <= 4)  /* Windows NT 4.0  */
                     {
                         if( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
                             strncat(ret, "Server 4.0, Enterprise Edition ",

@@ -68,6 +68,7 @@ char *encode_base64(int size, char *src);
 typedef struct _ossec_config
 {
     unsigned short int server_type;
+    unsigned short int admin_access;
     unsigned long int msg_sent;
     char *dir;
     char *config;

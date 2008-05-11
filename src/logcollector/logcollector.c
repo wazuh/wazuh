@@ -164,11 +164,11 @@ void LogCollectorStart()
             continue;
         }
         #else
+        
         /* Windows don't like select that way */
-        Sleep((loop_timeout + 4) * 1000);
-        #endif
+        sleep(loop_timeout + 2);
 
-        #ifdef WIN32
+        
         /* Check for messages in the event viewer */
         win_readel();
         #endif

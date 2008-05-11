@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2005 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2005-2008 Daniel B. Cid <dcid@ossec.net>
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -42,8 +42,9 @@ time_t _stime;
 
 
 /* For the last message tracking */
-char *_msg[MAX_AGENTS];
-int _changed[MAX_AGENTS];
+char *_msg[MAX_AGENTS +1];
+char *_keep_alive[MAX_AGENTS +1];
+int _changed[MAX_AGENTS +1];
 int modified_agentid;
 
 
@@ -59,7 +60,91 @@ pthread_cond_t awake_mutex;
  */
 void save_controlmsg(int agentid, char *r_msg)
 {
-    /* Locking before using */
+    char msg_ack[OS_FLSIZE +1];
+
+    
+    /* Replying to the agent. */
+    snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
+    send_msg(agentid, msg_ack);
+
+
+    /* Checking if there is a keep alive already for this agent. */
+    if(_keep_alive[agentid] && _msg[agentid] &&
+       (strcmp(_msg[agentid], r_msg) == 0))
+    {
+        utimes(_keep_alive[agentid], NULL);
+    }
+        
+    else
+    {
+        FILE *fp;
+        char *uname = r_msg;
+
+
+        /* locking mutex. */
+        if(pthread_mutex_lock(&lastmsg_mutex) != 0)
+        {
+            merror(MUTEX_ERROR, ARGV0);
+            return;
+        }
+
+
+        /* Update rmsg. */
+        if(_msg[agentid])
+        {
+            free(_msg[agentid]);
+        }
+        os_strdup(r_msg, _msg[agentid]);
+
+
+        /* Unlocking mutex. */
+        if(pthread_mutex_unlock(&lastmsg_mutex) != 0)
+        {
+            merror(MUTEX_ERROR, ARGV0);
+            return;
+        }
+
+
+        r_msg = strchr(r_msg, '\n');
+        if(!r_msg)
+        {
+            merror("%s: WARN: Invalid message from agent id: '%d'(uname)",
+                    ARGV0,
+                    agentid);
+            return;
+        }
+
+
+        *r_msg = '\0';
+
+
+        /* Updating the keep alive. */
+        if(!_keep_alive[agentid])
+        {
+            char agent_file[OS_SIZE_1024 +1];
+            agent_file[OS_SIZE_1024] = '\0';
+
+            /* Writting to the agent file */
+            snprintf(agent_file, OS_SIZE_1024, "%s/%s-%s",
+                    AGENTINFO_DIR,
+                    keys.keyentries[agentid]->name,
+                    keys.keyentries[agentid]->ip->ip);
+
+            os_strdup(agent_file, _keep_alive[agentid]);
+        }
+        
+
+        /* Writing to the file. */
+        fp = fopen(_keep_alive[agentid], "w");
+        if(fp)
+        {
+            fprintf(fp, "%s\n", uname);
+            fclose(fp);
+        }
+    }
+
+    
+    /* Locking now to notify of change.  */
     if(pthread_mutex_lock(&lastmsg_mutex) != 0)
     {
         merror(MUTEX_ERROR, ARGV0);
@@ -67,23 +152,6 @@ void save_controlmsg(int agentid, char *r_msg)
     }
 
      
-    if(_msg[agentid])
-    {
-        /* Check if message changed */
-        if(strcmp(_msg[agentid], r_msg) != 0)
-        {
-            free(_msg[agentid]);
-            os_strdup(r_msg, _msg[agentid]);    
-        }
-    }
-
-    /* If message does not exist, create it */
-    else
-    {
-        os_strdup(r_msg, _msg[agentid]);
-    }
-    
-    
     /* Assign new values */
     _changed[agentid] = 1;
     modified_agentid = agentid;
@@ -292,12 +360,8 @@ void read_controlmsg(int agentid, char *msg)
 {   
     int i;
 
-    char *uname;
-    char agent_file[OS_SIZE_1024 +1];
     char msg_ack[OS_FLSIZE +1];
 
-    FILE *fp;
-    
     msg_ack[OS_FLSIZE] = '\0';
 
 
@@ -310,47 +374,25 @@ void read_controlmsg(int agentid, char *msg)
     }
     
     
-    /* Get uname */
-    uname = msg;
+    /* Remove uname */
     msg = strchr(msg,'\n');
     if(!msg)
     {
-        merror("%s: Invalid message from '%s' (uname)",ARGV0, 
-                                         keys.keyentries[agentid]->ip->ip);
+        merror("%s: Invalid message from '%d' (uname)",ARGV0, agentid);
         return;
     }
 
 
-    /* Uname received, send ok to agent */
-    snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-    send_msg(agentid, msg_ack);
-    
-
     *msg = '\0';
     msg++;
 
-
-    /* Writting to the agent file */
-    key_lock();
-    snprintf(agent_file, OS_SIZE_1024, "%s/%s-%s",
-                         AGENTINFO_DIR,
-                         keys.keyentries[agentid]->name,
-                         keys.keyentries[agentid]->ip->ip);
-    key_unlock();
-    
-        
-    fp = fopen(agent_file, "w");
-    if(fp)
-    {
-        fprintf(fp, "%s\n", uname);
-        fclose(fp);
-    }        
 
     if(!f_sum)
     {
         /* Nothing to share with agent */
         return;
     }
+
 
     /* Parse message */ 
     while(*msg != '\0')
@@ -546,8 +588,9 @@ void manager_init(int isUpdate)
 
     debug1("%s: DEBUG: Running manager_init", ARGV0);
 
-    for(i=0;i<MAX_AGENTS;i++)
+    for(i=0; i<MAX_AGENTS +1; i++)
     {
+        _keep_alive[i] = NULL;
         _msg[i] = NULL;
         _changed[i] = 0;
     }

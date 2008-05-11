@@ -179,7 +179,35 @@ void init_config()
     config_inst.install_date = NULL;
     config_inst.status = ST_UNKNOWN;
     config_inst.msg_sent = 0;
+    config_inst.admin_access = 1;
 
+
+    /* Checking if ui is on the right path */
+    if(!is_file(CONFIG))
+    {
+        chdir(DEFDIR);
+        if(!is_file(CONFIG))
+        {
+            config_inst.admin_access = -1;
+            /* MessageBox(hwnd, "Unable to find OSSEC Config.","Warning",MB_OK); */
+        }
+    }
+
+
+    /* Testing for permission. */
+    {
+        FILE *fp;
+        fp = fopen(CONFIG, "r+");
+        if(fp)
+        {
+            fclose(fp);
+        }
+        else
+        {
+            config_inst.admin_access = 0;
+        }
+
+    }
 }
 
 
@@ -201,17 +229,6 @@ int config_read(HWND hwnd)
     else
     {
         config_inst.status = ST_STOPPED;
-    }
-
-
-    /* Checking if ui is on the right path */	
-    if(!is_file(CONFIG))
-    {
-        chdir(DEFDIR);
-        if(!is_file(CONFIG))
-        {
-            MessageBox(hwnd, "Unable to find OSSEC Config.","Warning",MB_OK);
-        }
     }
 
 

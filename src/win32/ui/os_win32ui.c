@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2008 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -52,6 +52,7 @@ BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message,
 BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
     int ret_code = 0;
+
     
     switch(Message)
     {
@@ -60,15 +61,22 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
             int statwidths[] = {130, -1};
             HMENU hMenu, hSubMenu;
 
+            UINT menuflags = MF_STRING;
+
+            if(config_inst.admin_access == 0)
+            {
+                menuflags = MF_STRING|MF_GRAYED;
+            }
+
             hMenu = CreateMenu();
 
             /* Creating management menu */
             hSubMenu = CreatePopupMenu();
-            AppendMenu(hSubMenu, MF_STRING,UI_MENU_MANAGE_START,"&Start OSSEC");
-            AppendMenu(hSubMenu, MF_STRING,UI_MENU_MANAGE_STOP,"&Stop OSSEC");
+            AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_START,"&Start OSSEC");
+            AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_STOP,"&Stop OSSEC");
             AppendMenu(hSubMenu, MF_SEPARATOR, UI_MENU_NONE,"");
-            AppendMenu(hSubMenu, MF_STRING,UI_MENU_MANAGE_RESTART,"&Restart");
-            AppendMenu(hSubMenu, MF_STRING,UI_MENU_MANAGE_STATUS,"&Status");
+            AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_RESTART,"&Restart");
+            AppendMenu(hSubMenu, menuflags, UI_MENU_MANAGE_STATUS,"&Status");
             AppendMenu(hSubMenu, MF_SEPARATOR, UI_MENU_NONE,"");
             AppendMenu(hSubMenu, MF_STRING,UI_MENU_MANAGE_EXIT,"&Exit");
             AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT)hSubMenu,"&Manage");
@@ -114,6 +122,15 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
             SendMessage(hwnd, WM_SETICON, ICON_BIG, 
                     (LPARAM)LoadIcon(GetModuleHandle(NULL), 
                                      MAKEINTRESOURCE(IDI_OSSECICON)));
+
+            if(config_inst.admin_access == 0)
+            {
+                MessageBox(hwnd, "Admin access required. Some features may not work properly. \n\n"
+                        "**If on Vista (or Server 2008), choose the \"Run as administrator\" option.",
+                        "Admin access required.", MB_OK);
+                break;
+            }
+                                                                                            
         }
         break;
 
@@ -126,6 +143,14 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                 int chd = 0;
                 int len;
 
+
+                if(config_inst.admin_access == 0)
+                {
+                    MessageBox(hwnd, "Unable to edit configuration. "
+                                     "Admin access required.",
+                                     "Error Saving.", MB_OK);
+                    break;
+                }
 
                 /** Getting values from the user (if chosen save) 
                  * We should probably create another function for it...
@@ -463,7 +488,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     /* Check if service is running and try to start it */
     if((strcmp(config_inst.key, FL_NOKEY) != 0)&&
             (strcmp(config_inst.server, FL_NOSERVER) != 0) &&
-            !CheckServiceRunning())
+            !CheckServiceRunning() &&
+            (config_inst.admin_access != 0))
     {
         ret = MessageBox(NULL, "OSSEC Agent not running. "
                 "Do you wish to start it?",

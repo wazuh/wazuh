@@ -167,13 +167,20 @@ Section "Uninstall"
   Delete "$INSTDIR\ossec.conf"
   Delete "$INSTDIR\uninstall.exe"
   Delete "$INSTDIR\*"
+  Delete "$INSTDIR\rids\*"
+  Delete "$INSTDIR\syscheck\*"
+  Delete "$INSTDIR\shared\*"
   Delete "$INSTDIR"
 
   ; Remove shortcuts, if any
   Delete "$SMPROGRAMS\ossec\*.*"
+  Delete "$SMPROGRAMS\ossec\*"
 
   ; Remove directories used
   RMDir "$SMPROGRAMS\ossec"
+  RMDir "$INSTDIR\shared"
+  RMDir "$INSTDIR\syscheck"
+  RMDir "$INSTDIR\rids"
   RMDir "$INSTDIR"
 
 SectionEnd

@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2008 Daniel B. Cid <dcid@ossec.net>
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -26,6 +26,9 @@
 #endif
 
 time_t __win32_curr_time = 0;
+time_t __win32_shared_time = 0;
+char *__win32_uname = NULL;
+char *__win32_shared = NULL;
 HANDLE hMutex;
 
 
@@ -350,15 +353,32 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     /* Check if the server has responded */
     if((cu_time - available_server) > (NOTIFY_TIME - 180))
     {
+        debug1("%s: DEBUG: Sending info to server (c1)...", ARGV0);
         send_win32_info(cu_time);
 
+
+        /* Attempting to send message again. */
+        if((cu_time - available_server) > NOTIFY_TIME)
+        {
+            sleep(1);
+            send_win32_info(cu_time);
+            sleep(1);
+
+            if((cu_time - available_server) > NOTIFY_TIME)
+            {
+                send_win32_info(cu_time);
+            }
+        }
+
+
+        /* If we reached here, the server is unavailable for a while. */
         if((cu_time - available_server) > ((3 * NOTIFY_TIME) - 180))
         {
             int wi = 1;
 
 
             /* Last attempt before going into reconnect mode. */
-            debug1("%s: DEBUG: Sending info to server...", ARGV0);
+            debug1("%s: DEBUG: Sending info to server (c3)...", ARGV0);
             sleep(1);
             send_win32_info(cu_time);
             if((cu_time - available_server) > ((3 * NOTIFY_TIME) - 180))
@@ -370,53 +390,55 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
 
             /* Checking and generating log if unavailable. */
+            cu_time = time(0);
             if((cu_time - available_server) > ((3 * NOTIFY_TIME) - 180))
             {
                 /* If response is not available, set lock and
                  * wait for it.
                  */
                 verbose(SERVER_UNAV, ARGV0);
-            }
-            
-
-            /* Going into reconnect mode. */
-            cu_time = time(0);
-            while((cu_time - available_server) > ((3*NOTIFY_TIME) - 180))
-            {
-                /* Sending information to see if server replies */
-                send_win32_info(cu_time);
-
-                sleep(wi);
-                cu_time = time(0);
-                wi++;
 
 
-                /* If we have more than one server, try all. */
-                if((logr->rip[1]) && (wi > 5))
+                /* Going into reconnect mode. */
+                while((cu_time - available_server) > ((3*NOTIFY_TIME) - 180))
                 {
-                    int curr_rip = logr->rip_id;
-                    merror("%s: INFO: Trying next server ip in the line: '%s'.", 
-                            ARGV0,
-                            logr->rip[logr->rip_id + 1] != NULL?
-                            logr->rip[logr->rip_id + 1]:
-                            logr->rip[0]);
-                    
-                    connect_server(logr->rip_id +1);
+                    /* Sending information to see if server replies */
+                    send_win32_info(cu_time);
 
-                    if(logr->rip_id != curr_rip)
+                    sleep(wi);
+                    cu_time = time(0);
+                    wi++;
+
+
+                    /* If we have more than one server, try all. */
+                    if((logr->rip[1]) && (wi > 5))
                     {
-                        wi = 1;
+                        int curr_rip = logr->rip_id;
+                        merror("%s: INFO: Trying next server ip in line: '%s'.", 
+                                ARGV0,
+                                logr->rip[logr->rip_id + 1] != NULL?
+                                logr->rip[logr->rip_id + 1]:
+                                logr->rip[0]);
+
+                        connect_server(logr->rip_id +1);
+
+                        if(logr->rip_id != curr_rip)
+                        {
+                            wi = 1;
+                        }
                     }
                 }
-            }
 
-            verbose(SERVER_UP, ARGV0);
+                verbose(SERVER_UP, ARGV0);
+            }
         }
     }
     
+
     /* Send notification */
-    else if((cu_time - __win32_curr_time) > (NOTIFY_TIME - 180))
+    else if((cu_time - __win32_curr_time) > (NOTIFY_TIME - 200))
     {
+        debug1("%s: DEBUG: Sending info to server (ctime2)...", ARGV0);
         send_win32_info(cu_time);
     }
 
@@ -489,8 +511,6 @@ void send_win32_info(time_t curr_time)
     int msg_size;
     char tmp_msg[OS_MAXSTR +2];
     char crypt_msg[OS_MAXSTR +2];
-    char *myuname;
-    char *shared_files;
 
     tmp_msg[OS_MAXSTR +1] = '\0';
     crypt_msg[OS_MAXSTR +1] = '\0';
@@ -502,36 +522,56 @@ void send_win32_info(time_t curr_time)
     /* fixing time */
     __win32_curr_time = curr_time;
 
-    myuname = getuname();
-    if(!myuname)
-    {
-        merror("%s: Error generating system information.", ARGV0);
-        return;
-    }
 
-    /* get shared files */
-    shared_files = getsharedfiles();
-    if(!shared_files)
+    /* Getting uname. */
+    if(!__win32_uname)
     {
-        shared_files = strdup("\0");
-        if(!shared_files)
+        __win32_uname = getuname();
+        if(!__win32_uname)
         {
-            free(myuname);
-            merror(MEM_ERROR,ARGV0);
-            return;
+            merror("%s: Error generating system information.", ARGV0);
+            os_strdup("Microsoft Windows - Unknown (unable to get system info)", __win32_uname);
         }
     }
 
+
+    /* Getting shared files list -- every 30 seconds only. */
+    if((__win32_curr_time - __win32_shared_time) > 30)
+    {
+        if(__win32_shared)
+        {
+            free(__win32_shared);
+            __win32_shared = NULL;
+        }
+
+        __win32_shared_time = __win32_curr_time;
+    }
+    
+    
+    /* get shared files */
+    if(!__win32_shared)
+    {
+        __win32_shared = getsharedfiles();
+        if(!__win32_shared)
+        {
+            __win32_shared = strdup("\0");
+            if(!__win32_shared)
+            {
+                merror(MEM_ERROR, ARGV0);
+                return;
+            }
+        }
+    }
+
+
     /* creating message */
-    snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s",myuname, shared_files);
+    snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s", __win32_uname, __win32_shared);
     debug1("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
 
     msg_size = CreateSecMSG(&keys, tmp_msg, crypt_msg, 0);
 
     if(msg_size == 0)
     {
-        free(myuname);
-        free(shared_files);
         merror(SEC_ERROR, ARGV0);
         return;
     }
@@ -541,9 +581,6 @@ void send_win32_info(time_t curr_time)
     {
         merror(SEND_ERROR, ARGV0, "server");
     }
-
-    free(myuname);
-    free(shared_files);
 
     return;
 }
