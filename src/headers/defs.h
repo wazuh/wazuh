@@ -196,7 +196,9 @@ http://www.ossec.net/main/license/\n"
 #define KEYSFILE_PATH   KEYS_FILE
 #endif
 
+#ifndef AUTH_FILE
 #define AUTH_FILE       KEYS_FILE
+#endif
 
 
 /* Shared config directory */

@@ -65,7 +65,7 @@
 #endif
 
 #ifndef PRODUCT_ENTERPRISE_N
-#define PRODUCT_ENTERPRISE_N 0x00000004
+#define PRODUCT_ENTERPRISE_N 0x0000001B
 #define PRODUCT_ENTERPRISE_N_C "Enterprise Edition"
 #endif
 
