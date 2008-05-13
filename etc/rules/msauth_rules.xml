@@ -164,7 +164,7 @@
     <if_sid>18119</if_sid>
     <id>^528</id>
     <user>^LOCAL SERVICE|^NETWORK SERVICE</user>
-    <match>Logon Type: 5 Logon Process: Advapi</match>
+    <regex>Logon Type: 5\tLogon Process: Advapi</regex>
     <description>Windows Logon Success (ignored).</description>
   </rule>
   

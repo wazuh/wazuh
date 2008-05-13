@@ -216,7 +216,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
     DWORD j;
 
     /* QueryInfo and EnumKey variables */
-    TCHAR sub_key_name_b[MAX_KEY_LENGTH +1];
+    TCHAR sub_key_name_b[MAX_KEY_LENGTH +2];
     TCHAR class_name_b[MAX_PATH +1];
     DWORD sub_key_name_s;
     DWORD class_name_s = MAX_PATH;
@@ -242,6 +242,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
     class_name_b[MAX_PATH] = '\0';
     sub_key_name_b[0] = '\0';
     sub_key_name_b[MAX_KEY_LENGTH] = '\0';
+    sub_key_name_b[MAX_KEY_LENGTH +1] = '\0';
     
 
     /* We use the class_name, subkey_count and the value count. */
@@ -270,22 +271,22 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
             /* Checking for the rc. */
             if(rc == ERROR_SUCCESS) 
             {
-                char new_key[MAX_KEY_LENGTH + 2];
-                char new_key_full[MAX_KEY_LENGTH + 2];
-                new_key[MAX_KEY_LENGTH +1] = '\0';
-                new_key_full[MAX_KEY_LENGTH +1] = '\0';
+                char new_key[MAX_KEY + 2];
+                char new_key_full[MAX_KEY + 2];
+                new_key[MAX_KEY +1] = '\0';
+                new_key_full[MAX_KEY +1] = '\0';
 
                 if(p_key)
                 {
-                    snprintf(new_key, MAX_KEY_LENGTH, 
+                    snprintf(new_key, MAX_KEY, 
                              "%s\\%s", p_key, sub_key_name_b);
-                    snprintf(new_key_full, MAX_KEY_LENGTH, 
+                    snprintf(new_key_full, MAX_KEY, 
                              "%s\\%s", full_key_name, sub_key_name_b);
                 }
                 else
                 {
-                    snprintf(new_key, MAX_KEY_LENGTH, "%s", sub_key_name_b);
-                    snprintf(new_key_full, MAX_KEY_LENGTH, 
+                    snprintf(new_key, MAX_KEY, "%s", sub_key_name_b);
+                    snprintf(new_key_full, MAX_KEY, 
                              "%s\\%s", full_key_name, sub_key_name_b);
                 }
 
