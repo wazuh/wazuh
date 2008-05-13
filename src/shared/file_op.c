@@ -21,197 +21,197 @@
 #ifdef WIN32
 #ifndef PRODUCT_UNLICENSED
 #define PRODUCT_UNLICENSED 0xABCDABCD
-#define PRODUCT_UNLICENSED_C "Product Unlicensed"
+#define PRODUCT_UNLICENSED_C "Product Unlicensed "
 #endif
 
 #ifndef PRODUCT_BUSINESS
 #define PRODUCT_BUSINESS 0x00000006
-#define PRODUCT_BUSINESS_C "Business Edition"
+#define PRODUCT_BUSINESS_C "Business Edition "
 #endif
 
 #ifndef PRODUCT_BUSINESS_N
 #define PRODUCT_BUSINESS_N 0x00000010
-#define PRODUCT_BUSINESS_N_C "Business Edition"
+#define PRODUCT_BUSINESS_N_C "Business Edition "
 #endif
 
 #ifndef PRODUCT_CLUSTER_SERVER
 #define PRODUCT_CLUSTER_SERVER 0x00000012
-#define PRODUCT_CLUSTER_SERVER_C "Cluster Server Edition"
+#define PRODUCT_CLUSTER_SERVER_C "Cluster Server Edition "
 #endif
 
 #ifndef PRODUCT_DATACENTER_SERVER
 #define PRODUCT_DATACENTER_SERVER 0x00000008
-#define PRODUCT_DATACENTER_SERVER_C "Datacenter Edition (full)"
+#define PRODUCT_DATACENTER_SERVER_C "Datacenter Edition (full) "
 #endif
 
 #ifndef PRODUCT_DATACENTER_SERVER_CORE
 #define PRODUCT_DATACENTER_SERVER_CORE 0x0000000C
-#define PRODUCT_DATACENTER_SERVER_CORE_C "Datacenter Edition (core)"
+#define PRODUCT_DATACENTER_SERVER_CORE_C "Datacenter Edition (core) "
 #endif
 
 #ifndef PRODUCT_DATACENTER_SERVER_CORE_V
 #define PRODUCT_DATACENTER_SERVER_CORE_V 0x00000027
-#define PRODUCT_DATACENTER_SERVER_CORE_V_C "Datacenter Edition (core)"
-#endif
+#define PRODUCT_DATACENTER_SERVER_CORE_V_C "Datacenter Edition (core) "
+#endif 
 
 #ifndef PRODUCT_DATACENTER_SERVER_V
 #define PRODUCT_DATACENTER_SERVER_V 0x00000025
-#define PRODUCT_DATACENTER_SERVER_V_C "Datacenter Edition (full)"
+#define PRODUCT_DATACENTER_SERVER_V_C "Datacenter Edition (full) "
 #endif
 
 #ifndef PRODUCT_ENTERPRISE
 #define PRODUCT_ENTERPRISE 0x00000004
-#define PRODUCT_ENTERPRISE_C "Enterprise Edition"
+#define PRODUCT_ENTERPRISE_C "Enterprise Edition "
 #endif
 
 #ifndef PRODUCT_ENTERPRISE_N
 #define PRODUCT_ENTERPRISE_N 0x0000001B
-#define PRODUCT_ENTERPRISE_N_C "Enterprise Edition"
+#define PRODUCT_ENTERPRISE_N_C "Enterprise Edition "
 #endif
 
 #ifndef PRODUCT_ENTERPRISE_SERVER
 #define PRODUCT_ENTERPRISE_SERVER 0x0000000A
-#define PRODUCT_ENTERPRISE_SERVER_C "Enterprise Edition (full)"
+#define PRODUCT_ENTERPRISE_SERVER_C "Enterprise Edition (full) "
 #endif
 
 #ifndef PRODUCT_ENTERPRISE_SERVER_CORE
 #define PRODUCT_ENTERPRISE_SERVER_CORE 0x0000000E
-#define PRODUCT_ENTERPRISE_SERVER_CORE_C "Enterprise Edition (core)"
+#define PRODUCT_ENTERPRISE_SERVER_CORE_C "Enterprise Edition (core) "
 #endif
 
 #ifndef PRODUCT_ENTERPRISE_SERVER_CORE_V
 #define PRODUCT_ENTERPRISE_SERVER_CORE_V 0x00000029
-#define PRODUCT_ENTERPRISE_SERVER_CORE_V_C "Enterprise Edition (core)"
+#define PRODUCT_ENTERPRISE_SERVER_CORE_V_C "Enterprise Edition (core) "
 #endif
 
 #ifndef PRODUCT_ENTERPRISE_SERVER_IA64
 #define PRODUCT_ENTERPRISE_SERVER_IA64 0x0000000F
-#define PRODUCT_ENTERPRISE_SERVER_IA64_C "Enterprise Edition for Itanium-based Systems"
+#define PRODUCT_ENTERPRISE_SERVER_IA64_C "Enterprise Edition for Itanium-based Systems "
 #endif
 
 #ifndef PRODUCT_ENTERPRISE_SERVER_V
 #define PRODUCT_ENTERPRISE_SERVER_V 0x00000026
-#define PRODUCT_ENTERPRISE_SERVER_V_C "Enterprise Edition (full)"
+#define PRODUCT_ENTERPRISE_SERVER_V_C "Enterprise Edition (full) "
 #endif
 
 #ifndef PRODUCT_HOME_BASIC
 #define PRODUCT_HOME_BASIC 0x00000002
-#define PRODUCT_HOME_BASIC_C "Home Basic Edition"
+#define PRODUCT_HOME_BASIC_C "Home Basic Edition "
 #endif
 
 #ifndef PRODUCT_HOME_BASIC_N
 #define PRODUCT_HOME_BASIC_N 0x00000005
-#define PRODUCT_HOME_BASIC_N_C "Home Basic Edition"
+#define PRODUCT_HOME_BASIC_N_C "Home Basic Edition "
 #endif
 
 #ifndef PRODUCT_HOME_PREMIUM
 #define PRODUCT_HOME_PREMIUM 0x00000003
-#define PRODUCT_HOME_PREMIUM_C "Home Premium Edition"
+#define PRODUCT_HOME_PREMIUM_C "Home Premium Edition "
 #endif
 
 #ifndef PRODUCT_HOME_PREMIUM_N
 #define PRODUCT_HOME_PREMIUM_N 0x0000001A
-#define PRODUCT_HOME_PREMIUM_N_C "Home Premium Edition"
+#define PRODUCT_HOME_PREMIUM_N_C "Home Premium Edition "
 #endif
 
 #ifndef PRODUCT_HOME_SERVER
 #define PRODUCT_HOME_SERVER 0x00000013
-#define PRODUCT_HOME_SERVER_C "Home Server Edition"
+#define PRODUCT_HOME_SERVER_C "Home Server Edition "
 #endif
 
 #ifndef PRODUCT_MEDIUMBUSINESS_SERVER_MANAGEMENT
 #define PRODUCT_MEDIUMBUSINESS_SERVER_MANAGEMENT 0x0000001E
-#define PRODUCT_MEDIUMBUSINESS_SERVER_MANAGEMENT_C "Essential Business Server Management Server"
+#define PRODUCT_MEDIUMBUSINESS_SERVER_MANAGEMENT_C "Essential Business Server Management Server "
 #endif
 
 #ifndef PRODUCT_MEDIUMBUSINESS_SERVER_MESSAGING
 #define PRODUCT_MEDIUMBUSINESS_SERVER_MESSAGING 0x00000020
-#define PRODUCT_MEDIUMBUSINESS_SERVER_MESSAGING_C "Essential Business Server Messaging Server"
+#define PRODUCT_MEDIUMBUSINESS_SERVER_MESSAGING_C "Essential Business Server Messaging Server "
 #endif
 
 #ifndef PRODUCT_MEDIUMBUSINESS_SERVER_SECURITY
 #define PRODUCT_MEDIUMBUSINESS_SERVER_SECURITY 0x0000001F
-#define PRODUCT_MEDIUMBUSINESS_SERVER_SECURITY_C "Essential Business Server Security Server"
+#define PRODUCT_MEDIUMBUSINESS_SERVER_SECURITY_C "Essential Business Server Security Server "
 #endif
 
 #ifndef PRODUCT_SERVER_FOR_SMALLBUSINESS
 #define PRODUCT_SERVER_FOR_SMALLBUSINESS 0x00000018
-#define PRODUCT_SERVER_FOR_SMALLBUSINESS_C "Small Business Edition"
+#define PRODUCT_SERVER_FOR_SMALLBUSINESS_C "Small Business Edition "
 #endif
 
 #ifndef PRODUCT_SMALLBUSINESS_SERVER
 #define PRODUCT_SMALLBUSINESS_SERVER 0x00000009
-#define PRODUCT_SMALLBUSINESS_SERVER_C "Small Business Server"
+#define PRODUCT_SMALLBUSINESS_SERVER_C "Small Business Server "
 #endif
 
 #ifndef PRODUCT_SMALLBUSINESS_SERVER_PREMIUM
 #define PRODUCT_SMALLBUSINESS_SERVER_PREMIUM 0x00000019
-#define PRODUCT_SMALLBUSINESS_SERVER_PREMIUM_C "Small Business Server Premium Edition"
+#define PRODUCT_SMALLBUSINESS_SERVER_PREMIUM_C "Small Business Server Premium Edition "
 #endif
 
 #ifndef PRODUCT_STANDARD_SERVER
 #define PRODUCT_STANDARD_SERVER 0x00000007
-#define PRODUCT_STANDARD_SERVER_C "Standard Edition"
+#define PRODUCT_STANDARD_SERVER_C "Standard Edition "
 #endif
 
 #ifndef PRODUCT_STANDARD_SERVER_CORE
 #define PRODUCT_STANDARD_SERVER_CORE 0x0000000D
-#define PRODUCT_STANDARD_SERVER_CORE_C "Standard Edition (core)"
+#define PRODUCT_STANDARD_SERVER_CORE_C "Standard Edition (core) "
 #endif
 
 #ifndef PRODUCT_STANDARD_SERVER_CORE_V
 #define PRODUCT_STANDARD_SERVER_CORE_V 0x00000028
-#define PRODUCT_STANDARD_SERVER_CORE_V_C "Standard Edition"
+#define PRODUCT_STANDARD_SERVER_CORE_V_C "Standard Edition "
 #endif
 
 #ifndef PRODUCT_STANDARD_SERVER_V
 #define PRODUCT_STANDARD_SERVER_V 0x00000024
-#define PRODUCT_STANDARD_SERVER_V_C "Standard Edition"
+#define PRODUCT_STANDARD_SERVER_V_C "Standard Edition "
 #endif
 
 #ifndef PRODUCT_STARTER
 #define PRODUCT_STARTER 0x0000000B
-#define PRODUCT_STARTER_C "Starter Edition"
+#define PRODUCT_STARTER_C "Starter Edition "
 #endif
 
 #ifndef PRODUCT_STORAGE_ENTERPRISE_SERVER
 #define PRODUCT_STORAGE_ENTERPRISE_SERVER 0x00000017
-#define PRODUCT_STORAGE_ENTERPRISE_SERVER_C "Storage Server Enterprise Edition"
+#define PRODUCT_STORAGE_ENTERPRISE_SERVER_C "Storage Server Enterprise Edition "
 #endif
 
 #ifndef PRODUCT_STORAGE_EXPRESS_SERVER
 #define PRODUCT_STORAGE_EXPRESS_SERVER 0x00000014
-#define PRODUCT_STORAGE_EXPRESS_SERVER_C "Storage Server Express Edition"
+#define PRODUCT_STORAGE_EXPRESS_SERVER_C "Storage Server Express Edition "
 #endif
 
 #ifndef PRODUCT_STORAGE_STANDARD_SERVER
 #define PRODUCT_STORAGE_STANDARD_SERVER 0x00000015
-#define PRODUCT_STORAGE_STANDARD_SERVER_C "Storage Server Standard Edition"
+#define PRODUCT_STORAGE_STANDARD_SERVER_C "Storage Server Standard Edition "
 #endif
 
 #ifndef PRODUCT_STORAGE_WORKGROUP_SERVER
 #define PRODUCT_STORAGE_WORKGROUP_SERVER 0x00000016
-#define PRODUCT_STORAGE_WORKGROUP_SERVER_C "Storage Server Workgroup Edition"
+#define PRODUCT_STORAGE_WORKGROUP_SERVER_C "Storage Server Workgroup Edition "
 #endif
 
 #ifndef PRODUCT_ULTIMATE
 #define PRODUCT_ULTIMATE 0x00000001
-#define PRODUCT_ULTIMATE_C "Ultimate Edition"
+#define PRODUCT_ULTIMATE_C "Ultimate Edition "
 #endif
 
 #ifndef PRODUCT_ULTIMATE_N
 #define PRODUCT_ULTIMATE_N 0x0000001C
-#define PRODUCT_ULTIMATE_N_C "Ultimate Edition"
+#define PRODUCT_ULTIMATE_N_C "Ultimate Edition "
 #endif
 
 #ifndef PRODUCT_WEB_SERVER
 #define PRODUCT_WEB_SERVER 0x00000011
-#define PRODUCT_WEB_SERVER_C "Web Server Edition"
+#define PRODUCT_WEB_SERVER_C "Web Server Edition "
 #endif
 
 #ifndef PRODUCT_WEB_SERVER_CORE
 #define PRODUCT_WEB_SERVER_CORE 0x0000001D
-#define PRODUCT_WEB_SERVER_CORE_C "Web Server Edition"
+#define PRODUCT_WEB_SERVER_CORE_C "Web Server Edition "
 #endif
 #endif /* WIN32 */
 

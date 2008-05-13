@@ -43,7 +43,6 @@ runInit()
         cp -pr ./src/init/ossec-hids-suse.init  /etc/init.d/ossec
         chmod 555 /etc/init.d/ossec
         chown root:ossec /etc/init.d/ossec
-        ln -s /etc/init.d/ossec /etc/init.d/rcossec
 
         /sbin/chkconfig --add ossec
         return 0;

@@ -3,13 +3,10 @@
 #
 # /etc/init.d/ossec
 #
-#   and its symbolic link
-#
-# /etc/init.d/rcossec
 #
 ### BEGIN INIT INFO
 # Provides:       ossec
-# Required-Start: syslog
+# Required-Start: $syslog
 # Required-Stop:
 # Default-Start:  2 3 5
 # Default-Stop:
