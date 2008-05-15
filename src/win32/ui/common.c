@@ -197,7 +197,7 @@ void init_config()
     /* Testing for permission. */
     {
         FILE *fp;
-        fp = fopen(CONFIG, "r+");
+        fp = fopen(CONFIG, "a");
         if(fp)
         {
             fclose(fp);
@@ -207,6 +207,20 @@ void init_config()
             config_inst.admin_access = 0;
         }
 
+
+        fp = fopen(".test-file.tst", "w");
+        if(fp)
+        {
+            fclose(fp);
+            if(!unlink(".test-file.tst"))
+            {
+                config_inst.admin_access = 0;
+            }
+        }
+        else
+        {
+            config_inst.admin_access = 0;
+        }
     }
 }
 

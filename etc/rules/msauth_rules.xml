@@ -54,14 +54,14 @@
 
   <rule id="18106" level="5">
     <if_sid>18105</if_sid>
-    <id>^529|^530|^531|^532|^533|^534|^535|^536|^537|^539</id>
+    <id>^529|^530|^531|^532|^533|^534|^535|^536|^537|^539|^4625</id>
     <description>Windows Logon Failure.</description>
     <group>win_authentication_failed,</group>
   </rule>
 
   <rule id="18107" level="3">
     <if_sid>18104</if_sid>
-    <id>^528|^540|^672|^673</id>
+    <id>^528|^540|^672|^673|^4624</id>
     <description>Windows Logon Success.</description>
     <group>authentication_success,</group>
   </rule>
@@ -109,7 +109,7 @@
 
   <rule id="18114" level="8">
     <if_sid>18104</if_sid>
-    <id>^63|^641|^664|^658|^659|^660|^662|^668</id>
+    <id>^63|^641|^664|^658|^659|^660|^662|^668|^4907</id>
     <description>Group account changed.</description>
     <group>adduser,account_changed,</group>
   </rule>
@@ -131,7 +131,7 @@
 
   <rule id="18117" level="7">
     <if_sid>18104</if_sid>
-    <id>^513</id>
+    <id>^513|^4609</id>
     <description>Windows is shutting down.</description>
     <group>system_shutdown,</group>
   </rule>
@@ -343,6 +343,19 @@
     <options>alert_by_email</options>
     <description>Application Installed.</description>
   </rule>
+  
+  <rule id="18148" level="3">
+    <if_sid>18104</if_sid>
+    <id>^4608</id>
+    <description>Windows is starting up.</description>
+  </rule>
+
+  <rule id="18149" level="3">
+    <if_sid>18104</if_sid>
+    <id>^538|^4634</id>
+    <description>Windows User Logoff.</description>
+  </rule>
+
   
   
   <!-- Kerberos failures that may indicate an attack -->
