@@ -212,7 +212,7 @@ void init_config()
         if(fp)
         {
             fclose(fp);
-            if(!unlink(".test-file.tst"))
+            if(unlink(".test-file.tst"))
             {
                 config_inst.admin_access = 0;
             }
