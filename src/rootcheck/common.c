@@ -511,7 +511,9 @@ int is_file(char *file_name)
     
     /* Trying other calls */
     if( (stat(file_name, &statbuf) < 0) &&
+        #ifndef WIN32
         (access(file_name, F_OK) < 0) &&
+        #endif
         ((fp = fopen(file_name, "r")) == NULL))
     {
         return(ret);

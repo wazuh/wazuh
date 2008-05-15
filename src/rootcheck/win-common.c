@@ -85,11 +85,28 @@ int os_check_ads(char *full_path)
         {
             if(dwRead != 0)
             {
+                int i = 0, max_path_size = 0;
                 char *tmp_pt;
                 char op_msg[OS_SIZE_1024 +1];
 
-                snprintf(final_name, MAX_PATH, "%s%S", full_path, 
-                        (WCHAR *)stream_name);
+                snprintf(final_name, MAX_PATH, "%s", full_path);
+                
+                max_path_size = strlen(final_name);
+                
+
+                /* Copying from wide char to char. */
+                while((i < dwRead) && (max_path_size < MAX_PATH))
+                {
+                    if(stream_name[i] != 0)
+                    {
+                        final_name[max_path_size] = stream_name[i];
+                        max_path_size++;
+                        final_name[max_path_size] = '\0';
+                    }
+                    i++;
+                }
+
+
                 tmp_pt = strrchr(final_name, ':');
                 if(tmp_pt)
                 {

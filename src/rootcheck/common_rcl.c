@@ -496,19 +496,19 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
                 else if(value[0] == '\\')
                 {
                     final_file[0] = '\0';
-                    final_file[sizeof(final_file -1)] = '\0';
+                    final_file[sizeof(final_file) -1] = '\0';
                     
-                    snprintf(final_file, sizeof(final_file -2), "%s%s", 
+                    snprintf(final_file, sizeof(final_file) -2, "%s%s", 
                              root_dir, value);
                     f_value = final_file;
                 }
                 else
                 {
                     final_file[0] = '\0';
-                    final_file[sizeof(final_file -1)] = '\0';
+                    final_file[sizeof(final_file) -1] = '\0';
                      
                     ExpandEnvironmentStrings(value, final_file, 
-                                             sizeof(final_file -2));
+                                             sizeof(final_file) -2);
                     f_value = final_file;
                 }
                 #endif
