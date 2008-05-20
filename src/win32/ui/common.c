@@ -189,12 +189,14 @@ void init_config()
         if(!is_file(CONFIG))
         {
             config_inst.admin_access = -1;
-            /* MessageBox(hwnd, "Unable to find OSSEC Config.","Warning",MB_OK); */
         }
     }
 
 
-    /* Testing for permission. */
+    /* Testing for permission - this is a vista thing. 
+     * For some reason vista is not reporting the return codes
+     * properly.
+     */
     {
         FILE *fp;
         fp = fopen(CONFIG, "a");
@@ -211,7 +213,24 @@ void init_config()
         fp = fopen(".test-file.tst", "w");
         if(fp)
         {
+            if(fprintf(fp, ".test\n") == -1)
+            {
+                config_inst.admin_access = 0;
+            }
+            
             fclose(fp);
+
+            /* trying to open it to read. */
+            fp = fopen(".test-file.tst", "r");
+            if(fp)
+            {
+                fclose(fp);
+            }
+            else
+            {
+                config_inst.admin_access = 0;
+            }
+            
             if(unlink(".test-file.tst"))
             {
                 config_inst.admin_access = 0;

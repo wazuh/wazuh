@@ -140,7 +140,7 @@
 
    <rule id="3191" level="6">
      <if_sid>3190</if_sid>
-     <match>^sender check failed</match>
+     <match>^sender check failed|^sender check tmpfailed</match>
      <description>SMF-SAV sendmail milter unable to verify </description>
      <description>address (REJECTED).</description>
      <group>smf-sav,spam,</group>
