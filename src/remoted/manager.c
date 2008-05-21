@@ -75,6 +75,11 @@ void save_controlmsg(int agentid, char *r_msg)
         utimes(_keep_alive[agentid], NULL);
     }
         
+    else if(strcmp(r_msg, HC_STARTUP) == 0)
+    {
+        return;
+    }
+    
     else
     {
         FILE *fp;
@@ -360,20 +365,7 @@ void read_controlmsg(int agentid, char *msg)
 {   
     int i;
 
-    char msg_ack[OS_FLSIZE +1];
 
-    msg_ack[OS_FLSIZE] = '\0';
-
-
-    /* Startup message  -- communicate back to the agent */
-    if(strcmp(msg, HC_STARTUP) == 0)
-    {
-        snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-        send_msg(agentid, msg_ack);
-        return;    
-    }
-    
-    
     /* Remove uname */
     msg = strchr(msg,'\n');
     if(!msg)
