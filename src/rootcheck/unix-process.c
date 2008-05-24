@@ -61,11 +61,11 @@ char *_os_get_runps(char *ps, int mpid)
                 tmp_str = '\0';
             }
 
-            fclose(fp);
+            pclose(fp);
             return(strdup(nbuf));
         }
 
-        fclose(fp);
+        pclose(fp);
     }
 
     return(NULL);

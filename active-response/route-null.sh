@@ -38,7 +38,7 @@ if [ "x${ACTION}" = "xadd" ]; then
   fi
 
   if [ "X${UNAME}" = "XFreeBSD" ]; then
-   route -q add ${IP} 0.0.0.0 -blackhole
+   route -q add ${IP} 127.0.0.1 -blackhole
    exit 0;
   fi
 
@@ -51,7 +51,7 @@ elif [ "x${ACTION}" = "xdelete" ]; then
   fi
 
   if [ "X${UNAME}" = "XFreeBSD" ]; then
-   route -q delete ${IP} 0.0.0.0 -blackhole
+   route -q delete ${IP} 127.0.0.1 -blackhole
    exit 0;
   fi
 
