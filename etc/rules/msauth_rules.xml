@@ -81,28 +81,28 @@
 
   <rule id="18110" level="8">
     <if_sid>18104</if_sid>
-    <id>^624|^626|^645</id>
+    <id>^624|^626|^645|^4720|^4722</id>
     <description>User account enabled or created.</description>
     <group>adduser,account_changed,</group>
   </rule>
 
   <rule id="18111" level="8">
     <if_sid>18104</if_sid>
-    <id>^628|^642|^685</id>
+    <id>^628|^642|^685|^4738|^4781</id>
     <description>User account changed.</description>
     <group>account_changed,</group>
   </rule>
 
   <rule id="18112" level="8">
     <if_sid>18104</if_sid>
-    <id>^630|^629</id>
+    <id>^630|^629|^4725|^4726</id>
     <description>User account disabled or deleted.</description>
     <group>adduser,account_changed,</group>
   </rule>
   
   <rule id="18113" level="8">
     <if_sid>18104</if_sid>
-    <id>^612|^643</id>
+    <id>^612|^643|^4719|^4907|^4912</id>
     <description>Windows Audit Policy changed.</description>
     <group>policy_changed,</group>
   </rule>
@@ -124,7 +124,7 @@
   
   <rule id="18116" level="9">
     <if_sid>18104</if_sid>
-    <id>^644</id>
+    <id>^644|^4740</id>
     <description>User account locked out (multiple login errors).</description>
     <group>authentication_failures,</group>  
   </rule>
@@ -301,7 +301,7 @@
 
   <rule id="18142" level="5">
     <if_sid>18104</if_sid>
-    <id>^671</id>
+    <id>^671|^4767</id>
     <description>User account unlocked.</description>
     <info>http://www.ultimatewindowssecurity.com/events/com291.html</info>
     <group>account_changed,</group>
