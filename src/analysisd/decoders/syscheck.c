@@ -412,6 +412,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                     "File '%.756s' was deleted. Unable to retrieve "
                     "checksum.", f_name);
         }
+        
         /* If file was re-added, do not compare changes */
         else if(saved_sum[0] == '-' && saved_sum[1] == '1')
         {

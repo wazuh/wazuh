@@ -1,14 +1,13 @@
 #!/bin/sh
 # Author: Rafael M. Capovilla
-# Last modified: Jul 15, 2006 - Rafael M. Capovilla
-# 15/Jul - Added support to OpenBSD/FreeBSD pf rules
+# Last modified: Daniel B. Cid
 
 UNAME=`uname`
 GREP=`which grep`
 PFCTL="/sbin/pfctl"
 
 # Getting pf rules file.
-PFCTL_RULES=`${GREP} pf_rules /etc/rc.conf | awk -F"=" '{print $2}' | awk '{print $1}'`
+PFCTL_RULES=`${GREP} pf_rules /etc/rc.conf | awk -F"=" '{print $2}' | awk '{print $1}' | awk -F"\"" '{print $1 $2}'`
 if [ "X${PFCTL_RULES}" = "X" ]; then
     PFCTL_RULES="/etc/pf.conf"
 fi    

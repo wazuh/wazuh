@@ -11,6 +11,7 @@ if [ "X${ARGV}" = "X" ]; then
     echo "  $0 all"
     echo "  $0 build"
     echo "  $0 libs"
+    echo "  $0 rootcheck"
     echo ""
     exit 1;
 fi
@@ -40,6 +41,7 @@ LIBS="os_xml os_regex os_net os_crypto"
 SOURCES="shared config"
 # Binaries
 BINARIES="os_maild os_dbd os_execd analysisd logcollector remoted client-agent addagent util rootcheck syscheckd monitord"
+ROOTCHECKBIN="rootcheck"
 DIRECTORIES=""      # Directories to make
 
 
@@ -51,7 +53,7 @@ fi
             
 
 # Cleaning Config.OS
-if [ "X${ARGV}" = "Xall" ]; then
+if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" ]; then
     ls ./Config.OS >/dev/null 2>&1
     if [ ! $? = 0 ]; then
         echo "" > Config.OS
@@ -109,8 +111,9 @@ if [ "X${ARGV}" = "Xall" ]; then
     DOZLIB="x"
 elif [ "X${ARGV}" = "Xlibs" ]; then
     DIRECTORIES="${LIBS} ${SOURCES}"
-
     DOZLIB="x"
+elif [ "X${ARGV}" = "Xrootcheck" ]; then
+    DIRECTORIES="os_xml os_regex os_net ${SOURCES} ${ROOTCHECKBIN}"    
 elif [ "X${ARGV}" = "Xbuild" ]; then
     DIRECTORIES="${BINARIES}"   # Only binaries need to be built
 else
@@ -137,9 +140,15 @@ fi
 
 # Checking if the bin directory is present
 ls ../bin >/dev/null 2>&1
-if [ $? != 0 ]; then
-    mkdir -p ../bin
-fi
+if [ ! "X${ARGV}" = "Xrootcheck" ]; then
+  if [ $? != 0 ]; then
+      mkdir -p ../bin
+  fi
+else
+  echo "Compiling Rootcheck..."
+  echo ""      
+fi  
+
 
                     
 # Making each directory
@@ -160,6 +169,18 @@ for i in ${DIRECTORIES}; do
             echo "Error Making the binaries"
             exit 1;
         fi        
+    elif [ "X${ARGV}" = "Xrootcheck" ]; then    
+        echo "Making $i"
+        if [ $i = "rootcheck" ]; then
+            make binary
+        else
+            make
+        fi        
+        if [ $? != 0 ]; then
+            echo ""
+            echo "Error Making $i"
+            exit 1;
+        fi    
     else
         echo ""
         echo ""
@@ -174,6 +195,18 @@ for i in ${DIRECTORIES}; do
     fi    
     cd ../
 done
+
+
+if [ "X${ARGV}" = "Xrootcheck" ]; then
+    cp -pr ./rootcheck/ossec-rootcheck ../
+    cp -pr ./rootcheck/db ../
+    cp -pr ./rootcheck/rootcheck.conf ../
+    echo ""
+    echo "Rootcheck compilation completed."
+    echo "Just run './ossec-rootcheck' to execute it."
+    echo ""
+fi    
+
 
 exit 0;
 # EOF #
