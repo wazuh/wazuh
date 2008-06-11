@@ -116,7 +116,8 @@ elif [ "x${ACTION}" = "xdelete" ]; then
     mv /tmp/hosts.deny.$$ /etc/hosts.allow
    else
     cat /etc/hosts.deny | grep -v "ALL:${IP}$"> /tmp/hosts.deny.$$
-    mv /tmp/hosts.deny.$$ /etc/hosts.deny
+    cat /tmp/hosts.deny.$$ > /etc/hosts.deny
+    rm /tmp/hosts.deny.$$
    fi 
    unlock;
    exit 0;
