@@ -170,7 +170,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
         /* On postgres we need to escape the user field. */
         snprintf(sql_query, OS_SIZE_2048,
                 "INSERT INTO "
-                "data(id, server_id, 'user', full_log) "
+                "data(id, server_id, \"user\", full_log) "
                 "VALUES ('%u', '%u', '%s', '%s') ",
                 db_config->alert_id, db_config->server_id, 
                 al_data->user, al_data->log[0]);
