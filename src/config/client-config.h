@@ -1,6 +1,6 @@
 /*   $OSSEC, client-config.h, v0.2, 2005/11/09, Daniel B. Cid$   */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2008 Third Brigade, Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it

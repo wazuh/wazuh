@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2005-2007 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2008 Third Brigade, Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it

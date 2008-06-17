@@ -22,8 +22,8 @@ fi
 
 
 NAME="OSSEC HIDS"
-VERSION="v1.5"
-AUTHOR="Daniel B. Cid"
+VERSION="v1.5.1"
+AUTHOR="Third Brigade, Inc."
 DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON}"
 
 

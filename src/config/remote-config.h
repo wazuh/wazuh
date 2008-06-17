@@ -1,6 +1,6 @@
 /*   $OSSEC, remote-config.h, v0.3, 2005/02/09, Daniel B. Cid$   */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2008 Third Brigade, Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it

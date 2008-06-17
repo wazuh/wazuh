@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2003-2007 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2008 Third Brigade, Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -46,8 +46,8 @@
 
 /* Some Global names */
 #define __name      "OSSEC HIDS"
-#define __version   "v1.5"
-#define __author    "Daniel B. Cid"
+#define __version   "v1.5.1"
+#define __author    "Third Brigade, Inc."
 #define __contact   "contact@ossec.net"
 #define __site      "http://www.ossec.net"
 #define __license   "\

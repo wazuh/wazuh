@@ -11,8 +11,8 @@ DIR=`dirname $PWD`;
 
 ###  Do not modify bellow here ###
 NAME="OSSEC HIDS"
-VERSION="v1.5"
-AUTHOR="Daniel B. Cid"
+VERSION="v1.5.1"
+AUTHOR="Third Brigade, Inc."
 DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd"
 
 

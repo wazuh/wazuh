@@ -1,6 +1,6 @@
 /*   $OSSEC, alerts-config.c, v0.1, 2005/04/02, Daniel B. Cid$   */
 
-/* Copyright (C) 2003-2006 Daniel B. Cid <dcid@ossec.net>
+/* Copyright (C) 2003-2008 Third Brigade, Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
