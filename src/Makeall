@@ -139,8 +139,8 @@ fi
 
 
 # Checking if the bin directory is present
-ls ../bin >/dev/null 2>&1
 if [ ! "X${ARGV}" = "Xrootcheck" ]; then
+  ls ../bin >/dev/null 2>&1
   if [ $? != 0 ]; then
       mkdir -p ../bin
   fi
