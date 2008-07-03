@@ -357,7 +357,7 @@ int check_db()
 /* int create_db
  * Creates the file database.
  */
-int create_db()
+int create_db(int delete_db)
 {
     int i = 0;
     
@@ -365,13 +365,16 @@ int create_db()
     if(!syscheck.fp)
     {
         ErrorExit("%s: Unable to create syscheck database "
-                  "at '%s'. Exiting..",ARGV0,syscheck.db);
+                  "at '%s'. Exiting.",ARGV0,syscheck.db);
         return(0);    
     }
 
 
     /* Creating a local fp only */
-    unlink(syscheck.db);
+    if(delete_db)
+    {
+        unlink(syscheck.db);
+    }
 
     
     /* dir_name can't be null */

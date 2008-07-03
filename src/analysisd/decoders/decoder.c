@@ -47,6 +47,11 @@ void DecodeEvent(Eventinfo *lf)
     if(!node)
         return;
 
+
+    #ifdef TESTRULE
+    print_out("\n**Phase 2: Completed decoding.");
+    #endif    
+
     do 
     {
         nnode = node->osdecoder;
@@ -77,6 +82,11 @@ void DecodeEvent(Eventinfo *lf)
                 pmatch++;
         }
 
+
+        #ifdef TESTRULE
+        print_out("       decoder: '%s'", nnode->name);
+        #endif    
+        
 
         lf->decoder_info = nnode;
         
@@ -157,6 +167,7 @@ void DecodeEvent(Eventinfo *lf)
                 }
             }
         }
+
 
         /* Nothing matched */
         if(!nnode)
@@ -259,72 +270,129 @@ void DecodeEvent(Eventinfo *lf)
         /* ok to return  */
         return;         
     }while((node=node->next) != NULL);
+
+    #ifdef TESTRULE
+    print_out("       No decoder matched.");
+    #endif
+                
 }
 
 
 /*** Event decoders ****/
 void *DstUser_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       dstuser: '%s'", field);
+    #endif
+                    
     lf->dstuser = field;
     return(NULL);
 }
 void *SrcUser_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       srcuser: '%s'", field);
+    #endif
+                    
     lf->srcuser = field;
     return(NULL);
 }
 void *SrcIP_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       srcip: '%s'", field);
+    #endif
+                    
     lf->srcip = field;
     return(NULL);
 }
 void *DstIP_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       dstip: '%s'", field);
+    #endif
+                    
     lf->dstip = field;
     return(NULL);
 }
 void *SrcPort_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       srcport: '%s'", field);
+    #endif
+                    
     lf->srcport = field;
     return(NULL);
 }
 void *DstPort_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       dstport: '%s'", field);
+    #endif
+                    
     lf->dstport = field;
     return(NULL);
 }
 void *Protocol_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       proto: '%s'", field);
+    #endif
+                    
     lf->protocol = field;
     return(NULL);
 }
 void *Action_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       action: '%s'", field);
+    #endif
+                    
     lf->action = field;
     return(NULL);
 }
 void *ID_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       id: '%s'", field);
+    #endif
+                    
     lf->id = field;
     return(NULL);
 }
 void *Url_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       url: '%s'", field);
+    #endif
+                    
     lf->url = field;
     return(NULL);
 }
 void *Data_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       extra_data: '%s'", field);
+    #endif
+                    
     lf->data = field;
     return(NULL);
 }
 void *Status_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       status: '%s'", field);
+    #endif
+                    
     lf->status = field;
     return(NULL);
 }
 void *SystemName_FP(Eventinfo *lf, char *field)
 {
+    #ifdef TESTRULE
+    print_out("       system_name: '%s'", field);
+    #endif
+
     lf->systemname = field;
     return(NULL);
 }

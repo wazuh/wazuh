@@ -35,6 +35,7 @@ typedef struct _config
     int sleep_after;
     int rootcheck;
     int disabled;
+    int scan_on_start;
     
     int time;
     int queue;

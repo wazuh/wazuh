@@ -73,7 +73,70 @@ int send_rootcheck_msg(char *msg)
     return(0);
 }
 
+
+/* Sends syscheck db to the server.
+ */
+void send_sk_db()
+{
+    char buf[MAX_LINE +1];
+    int file_count = 0;
+
+    buf[MAX_LINE] = '\0';
+
+    if(fseek(syscheck.fp, 0, SEEK_SET) == -1)
+    {
+        ErrorExit(FSEEK_ERROR, ARGV0, "syscheck_db");
+    }
+
+
+    /* Sending scan start message */
+    send_rootcheck_msg("Starting syscheck scan.");
+        
+
+
+    while(fgets(buf,MAX_LINE, syscheck.fp) != NULL)
+    {
+        if((buf[0] != '#') && (buf[0] != ' ') && (buf[0] != '\n'))
+        {
+            char *n_buf;
+
+            /* Removing the \n before sending to the analysis server */
+            n_buf = strchr(buf,'\n');
+            if(n_buf == NULL)
+                continue;
+
+            *n_buf = '\0';
+
+
+            /* First 6 characters are for internal use */
+            n_buf = buf;
+            n_buf+=6;
+
+            send_syscheck_msg(n_buf);
+
+
+            /* A count and a sleep to avoid flooding the server.
+             * Time or speed are not requirements in here
+             */
+            file_count++;
+
+
+            /* sleep X every Y files */
+            if(file_count >= syscheck.sleep_after)
+            {
+                sleep(syscheck.tsleep);
+                file_count = 0;
+            }
+        }
+    }
+
+
+    /* Sending scan ending message */
+    sleep(syscheck.tsleep);
+    send_rootcheck_msg("Ending syscheck scan.");
+}
      
+
  
 /* start_daemon
  * Run periodicaly the integrity checking 
@@ -116,12 +179,13 @@ void start_daemon()
   
   
     
-    /* some time to settle */
+    /* Some time to settle */
     memset(curr_hour, '\0', 12);
     sleep(syscheck.tsleep * 10);
 
 
-    /* If the scan time/day is set, reset the syscheck.time and rootcheck.time */
+
+    /* If the scan time/day is set, reset the syscheck.time/rootcheck.time */
     if(syscheck.scan_time || syscheck.scan_day)
     {
         /* At least once a week. */
@@ -129,69 +193,18 @@ void start_daemon()
         rootcheck.time = 604800;
     }
 
-    
-    /* Sending scan start message */
-    send_rootcheck_msg("Starting syscheck scan.");
-        
-    
-    
-    /* Sending the integrity database to the server */
+
+    /* Will create the db to store syscheck data */
+    if(syscheck.scan_on_start)
     {
-        char buf[MAX_LINE +1];
-        int file_count = 0;
-        
-        buf[MAX_LINE] = '\0';
-        
-        if(fseek(syscheck.fp, 0, SEEK_SET) == -1)
-        {
-            ErrorExit(FSEEK_ERROR, ARGV0, "syscheck_db");
-        }
-    
-    
-        while(fgets(buf,MAX_LINE,syscheck.fp) != NULL)
-        {
-            if((buf[0] != '#') && (buf[0] != ' ') && (buf[0] != '\n'))
-            {
-                char *n_buf;
-                
-                /* Removing the \n before sending to the analysis server */
-                n_buf = strchr(buf,'\n');
-                if(n_buf == NULL)
-                    continue;
-                
-                *n_buf = '\0';
-                
-                
-                /* First 6 characters are for internal use */
-                n_buf = buf;
-                n_buf+=6;
-                    
-                send_syscheck_msg(n_buf);
+        create_db(1);
+        fflush(syscheck.fp);
 
-
-                /* A count and a sleep to avoid flooding the server. 
-                 * Time or speed are not requirements in here
-                 */
-                file_count++;
-
-
-                /* sleep X every Y files */
-                if(file_count >= syscheck.sleep_after)
-                {
-                    sleep(syscheck.tsleep);
-                    file_count = 0;
-                }
-            }
-        }
+        sleep(syscheck.tsleep * 10);
+        send_sk_db();
     }
-    
+               
 
-
-    /* Sending scan ending message */
-    sleep(syscheck.tsleep);
-    send_rootcheck_msg("Ending syscheck scan.");
-    
-    
     
     /* Before entering in daemon mode itself */
     prev_time_sk = time(0);
@@ -217,14 +230,24 @@ void start_daemon()
         curr_day = p->tm_mday;
 
 
-        if(syscheck.scan_time)
+        
+        if(syscheck.scan_time && syscheck.scan_day)
+        {
+            if((OS_IsAfterTime(curr_hour, syscheck.scan_time)) &&
+               (OS_IsonDay(p->tm_wday, syscheck.scan_day)))
+            {
+                day_scanned = 1;
+            }
+        }
+
+        else if(syscheck.scan_time)
         {
             if(OS_IsAfterTime(curr_hour, syscheck.scan_time))
             {
                 day_scanned = 1;
             }
         }
-        if(syscheck.scan_day)
+        else if(syscheck.scan_day)
         {
             if(OS_IsonDay(p->tm_wday, syscheck.scan_day))
             {
@@ -261,7 +284,17 @@ void start_daemon()
             
             
             /* Checking for the time of the scan. */
-            if(!day_scanned && syscheck.scan_time)
+            if(!day_scanned && syscheck.scan_time && syscheck.scan_day)
+            {
+                if((OS_IsAfterTime(curr_hour, syscheck.scan_time)) &&
+                   (OS_IsonDay(p->tm_wday, syscheck.scan_day)))
+                {
+                    day_scanned = 1;
+                    run_now = 1;
+                }
+            }
+            
+            else if(!day_scanned && syscheck.scan_time)
             {
                 /* Assign hour/min/sec values */
                 snprintf(curr_hour, 9, "%02d:%02d:%02d", 
@@ -275,7 +308,7 @@ void start_daemon()
             }
 
             /* Checking for the day of the scan. */
-            if(!day_scanned && syscheck.scan_day)
+            else if(!day_scanned && syscheck.scan_day)
             {
                 if(OS_IsonDay(p->tm_wday, syscheck.scan_day))
                 {
@@ -305,6 +338,18 @@ void start_daemon()
          */
         if(((curr_time - prev_time_sk) > syscheck.time) || run_now)
         {
+            /* We need to create the db, if scan on start is not set. */
+            if(syscheck.scan_on_start == 0)
+            {
+                create_db(1);
+                fflush(syscheck.fp);
+
+                sleep(syscheck.tsleep * 10);
+                send_sk_db();
+                sleep(syscheck.tsleep * 10);
+            }
+            
+            
             /* Sending scan start message */
             send_rootcheck_msg("Starting syscheck scan.");
 
@@ -314,15 +359,22 @@ void start_daemon()
             os_winreg_check();
             #endif
 
+
             /* Looking for new files */
-            check_db();
+            if(syscheck.scan_on_start == 0)
+            {
+                check_db();
 
-            /* Set syscheck.fp to the begining of the file */
-            fseek(syscheck.fp, 0, SEEK_SET);
+                /* Set syscheck.fp to the begining of the file */
+                fseek(syscheck.fp, 0, SEEK_SET);
 
 
-            /* Checking for changes */
-            run_check();
+                /* Checking for changes */
+                run_check();
+
+
+                syscheck.scan_on_start = 1;
+            }
 
             
             /* Sending scan ending message */

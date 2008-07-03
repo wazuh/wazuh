@@ -19,6 +19,14 @@
 #include "eventinfo.h"
 
 
+/* Chaging path for test rule. */
+#ifdef TESTRULE
+  #undef RULEPATH
+  #define RULEPATH "rules/"
+#endif
+
+
+
 /* Internal functions */
 int getattributes(char **attributes, 
                   char **values,
@@ -1585,6 +1593,11 @@ void Rule_AddAR(RuleInfo *rule_config)
     
     /* No AR for ignored rules */
     if(rule_real_level == 0)
+    {
+        return;
+    }
+
+    if(!active_responses)
     {
         return;
     }

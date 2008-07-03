@@ -19,6 +19,11 @@ logaudit:
 		cd ./decoders; make
 		$(CC) $(CFLAGS) -I./ ${loga_OBJS} -o ${NAME}
 
+logtest:
+		cd ./alerts; make
+		cd ./decoders; make logtest
+		$(CC) $(CFLAGS) -DTESTRULE -I./ testrule.c ${loga_OBJS} -o ossec-logtest 
+
 clean:
 		cd ./alerts; make clean
 		cd ./decoders; make clean

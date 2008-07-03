@@ -19,6 +19,7 @@
 #include <time.h>
 #include <windows.h>
 #include "os_regex/os_regex.h"
+#include "headers/file_op.h"
 
 #define OSSECCONF   "ossec.conf"
 #define OSSECDEF    "default-ossec.conf"

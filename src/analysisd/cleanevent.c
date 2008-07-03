@@ -498,6 +498,14 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     __crt_wday = p->tm_wday;   
   
     
+
+    #ifdef TESTRULE
+    print_out("**Phase 1: Completed pre-decoding.");
+    print_out("       full event: '%s'", lf->full_log);
+    print_out("       hostname: '%s'", lf->hostname);
+    print_out("       program_name: '%s'", lf->program_name);
+    print_out("       log: '%s'", lf->log);
+    #endif
     return(0);
 
 }

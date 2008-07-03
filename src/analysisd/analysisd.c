@@ -118,7 +118,11 @@ int hourly_firewall;
 
 /** int main(int argc, char **argv)
  */
+#ifndef TESTRULE 
 int main(int argc, char **argv)
+#else
+int main_analysisd(int argc, char **argv)
+#endif
 {
     int c = 0, m_queue = 0, test_config = 0;
     char *dir = DEFAULTDIR;
@@ -424,7 +428,11 @@ int main(int argc, char **argv)
  * Main function. Receives the messages(events)
  * and analyze them all.
  */
+#ifndef TESTRULE 
 void OS_ReadMSG(int m_queue)
+#else
+void OS_ReadMSG_analysisd(int m_queue)
+#endif
 {
     int i;
     char msg[OS_MAXSTR +1];
@@ -1002,6 +1010,13 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         return(NULL);
     }
    
+
+    #ifdef TESTRULE
+    if(full_output)
+    print_out("    Trying rule: %d - %s", currently_rule->sigid,
+                                          currently_rule->comment);
+    #endif
+   
      
     /* Checking if any decoder pre-matched here */
     if(currently_rule->decoded_as && 
@@ -1268,12 +1283,22 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
     }
 
-
+    #ifdef TESTRULE
+    if(full_output)
+    print_out("       *Rule %d matched.", currently_rule->sigid);
+    #endif
+    
+        
     /* Search for dependent rules */
     if(curr_node->child)
     {
         RuleNode *child_node = curr_node->child;
         RuleInfo *child_rule = NULL;
+        
+        #ifdef TESTRULE
+        if(full_output)
+        print_out("       *Trying child rules.");
+        #endif
         
         while(child_node)
         {

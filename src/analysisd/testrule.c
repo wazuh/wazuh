@@ -1,0 +1,486 @@
+/* @(#) $Id$ */
+
+/* Copyright (C) 2008 Third Brigade, Inc.
+ * All rights reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 3) as published by the FSF - Free Software
+ * Foundation.
+ *
+ * License details at the LICENSE file included with OSSEC or 
+ * online at: http://www.ossec.net/en/licensing.html
+ */
+
+
+/* Part of the OSSEC
+ * Available at http://www.ossec.net
+ */
+  
+
+/* ossec-analysisd.
+ * Responsible for correlation and log decoding.
+ */
+
+#ifdef ARGV0
+   #undef ARGV0
+   #define ARGV0 "ossec-testrule"
+#endif
+
+#include "shared.h"
+
+#include "alerts/alerts.h"
+#include "alerts/getloglocation.h"
+#include "os_execd/execd.h"
+
+#include "os_regex/os_regex.h"
+#include "os_net/os_net.h"
+
+
+/** Local headers **/
+#include "active-response.h"
+#include "config.h"
+#include "rules.h"
+#include "stats.h"
+#include "eventinfo.h"
+#include "analysisd.h"
+
+
+
+/** Internal Functions **/
+void OS_ReadMSG(int m_queue);
+RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
+
+
+/** External functions prototypes (only called here) **/
+
+/* For config  */
+int GlobalConf(char * cfgfile);
+
+
+/* For rules */
+void Rules_OP_CreateRules();
+int Rules_OP_ReadRules(char * cfgfile);
+int _setlevels(RuleNode *node, int nnode);
+
+
+/* For cleanmsg */
+int OS_CleanMSG(char *msg, Eventinfo *lf);
+
+
+/* for FTS */
+int FTS_Init();
+int FTS(Eventinfo *lf);
+int AddtoIGnore(Eventinfo *lf);
+int IGnore(Eventinfo *lf);
+
+
+/* For decoders */
+void DecodeEvent(Eventinfo *lf);
+int DecodeSyscheck(Eventinfo *lf);
+int DecodeRootcheck(Eventinfo *lf);
+int DecodeHostinfo(Eventinfo *lf);
+
+
+/* For Decoders */
+int ReadDecodeXML(char *file);
+
+
+
+
+/** int main(int argc, char **argv)
+ */
+int main(int argc, char **argv)
+{
+    int c = 0, m_queue = 0;
+    char *dir = DEFAULTDIR;
+    char *user = USER;
+    char *group = GROUPGLOBAL;
+
+    char *cfg = DEFAULTCPATH;
+
+    /* Setting the name */
+    OS_SetName(ARGV0);
+
+    thishour = 0;
+    today = 0;
+    prev_year = 0;
+    full_output = 0;
+    active_responses = NULL;
+    memset(prev_month, '\0', 4);
+
+    while((c = getopt(argc, argv, "Vfdhu:g:D:c:")) != -1){
+        switch(c){
+	    case 'V':
+		print_version();
+		break;
+            case 'h':
+                help(ARGV0);
+                break;
+            case 'd':
+                nowDebug();
+                break;
+            case 'u':
+                if(!optarg)
+                    ErrorExit("%s: -u needs an argument",ARGV0);
+                user = optarg;
+                break;
+            case 'g':
+                if(!optarg)
+                    ErrorExit("%s: -g needs an argument",ARGV0);
+                group = optarg;
+                break;
+            case 'D':
+                if(!optarg)
+                    ErrorExit("%s: -D needs an argument",ARGV0);
+                dir = optarg;
+            case 'c':
+                if(!optarg)
+                    ErrorExit("%s: -c needs an argument",ARGV0);
+                cfg = optarg;
+                break;
+            case 'f':
+                full_output = 1;    
+                break;
+            default:
+                help(ARGV0);
+                break;
+        }
+
+    }
+
+
+    /* Reading configuration file */
+    if(GlobalConf(cfg) < 0)
+    {
+        ErrorExit(CONFIG_ERROR,ARGV0, cfg);
+    }
+
+    debug1(READ_CONFIG, ARGV0);
+        
+
+    
+    /* Getting servers hostname */
+    memset(__shost, '\0', 512);
+    if(gethostname(__shost, 512 -1) != 0)
+    {
+        strncpy(__shost, OSSEC_SERVER, 512 -1);    
+    }
+    else
+    {
+        char *_ltmp;
+
+        /* Remove domain part if available */
+        _ltmp = strchr(__shost, '.');
+        if(_ltmp)
+            *_ltmp = '\0';
+    }
+    
+
+
+    if(chdir(dir) != 0)
+        ErrorExit(CHROOT_ERROR,ARGV0,dir);
+
+
+
+    /* Reading decoders */
+    if(!ReadDecodeXML("etc/decoder.xml"))
+    {
+        ErrorExit(CONFIG_ERROR, ARGV0,  XML_DECODER);
+    }
+
+    
+    /* Creating the rules list */
+    Rules_OP_CreateRules();
+
+   
+    /* Reading the rules */
+    {
+        char **rulesfiles;
+        rulesfiles = Config.includes;
+        while(rulesfiles && *rulesfiles)
+        {
+            debug1("%s: INFO: Reading rules file: '%s'", ARGV0, *rulesfiles);
+            if(Rules_OP_ReadRules(*rulesfiles) < 0)
+                ErrorExit(RULES_ERROR, ARGV0, *rulesfiles);
+                
+            free(*rulesfiles);    
+            rulesfiles++;    
+        }
+
+        free(Config.includes);
+        Config.includes = NULL;
+    }
+    
+    
+    /* Fixing the levels/accuracy */
+    {
+        int total_rules;
+        RuleNode *tmp_node = OS_GetFirstRule();
+
+        total_rules = _setlevels(tmp_node, 0);
+        debug1("%s: INFO: Total rules enabled: '%d'", ARGV0, total_rules);    
+    }
+   
+        
+    
+    /* Start up message */
+    verbose(STARTUP_MSG, ARGV0, getpid());
+
+
+    /* Going to main loop */	
+    OS_ReadMSG(m_queue);
+
+
+    exit(0);
+    
+}
+
+
+
+/* OS_ReadMSG.
+ * Main function. Receives the messages(events)
+ * and analyze them all.
+ */
+void OS_ReadMSG(int m_queue)
+{
+    int i;
+    char msg[OS_MAXSTR +1];
+    Eventinfo *lf;
+
+
+    /* Null to global currently pointers */
+    currently_rule = NULL;
+
+
+    /* Creating the event list */
+    OS_CreateEventList(Config.memorysize);
+
+
+    /* Getting currently time before starting */
+    c_time = time(NULL);
+
+
+    /* Doing some cleanup */
+    memset(msg, '\0', OS_MAXSTR +1);
+    
+
+    print_out("%s: Type one log per line.\n", ARGV0);
+    
+    
+    /* Daemon loop */
+    while(1)
+    {
+        lf = (Eventinfo *)calloc(1,sizeof(Eventinfo));
+        
+        /* This shouldn't happen .. */
+        if(lf == NULL)
+        {
+            ErrorExit(MEM_ERROR,ARGV0);
+        }
+
+
+        /* Fixing the msg. */
+        strncpy(msg, "1:a:", 5);
+        
+    
+        
+        /* Receive message from queue */
+        if(fgets(msg +4, OS_MAXSTR, stdin))
+        {
+            RuleNode *rulenode_pt;
+
+            /* Getting the time we received the event */
+            c_time = time(NULL);
+
+
+            /* Removing new line. */
+            if(msg[strlen(msg) -1] == '\n')
+                msg[strlen(msg) -1] = '\0';
+
+
+            /* Make sure we ignore blank lines. */
+            if(strlen(msg) < 6)
+            {
+                continue;
+            }
+            
+            
+            print_out("\n");
+            
+
+            /* Default values for the log info */
+            Zero_Eventinfo(lf);
+
+
+            /* Clean the msg appropriately */
+            if(OS_CleanMSG(msg, lf) < 0)
+            {
+                merror(IMSG_ERROR,ARGV0,msg);
+
+                Free_Eventinfo(lf);
+
+                continue;
+            }
+
+
+            /* Currently rule must be null in here */
+            currently_rule = NULL;
+
+
+            /***  Running decoders ***/
+
+            /* Getting log size */
+            lf->size = strlen(lf->log);
+
+
+            /* Decoding event. */
+            DecodeEvent(lf);
+            
+
+            /* Looping all the rules */
+            rulenode_pt = OS_GetFirstRule();
+            if(!rulenode_pt) 
+            {
+                ErrorExit("%s: Rules in an inconsistent state. Exiting.",
+                        ARGV0);
+            }
+
+            
+            #ifdef TESTRULE
+            if(full_output)
+                print_out("\n**Rule debugging:");
+            #endif
+
+
+            do
+            {
+                /* The categories must match */
+                if(rulenode_pt->ruleinfo->category != lf->decoder_info->type)
+                {
+                    continue;
+                }
+
+                /* Checking each rule. */
+                if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt)) 
+                        == NULL)
+                {
+                    continue;
+                }
+
+                #ifdef TESTRULE
+                  print_out("\n**Phase 3: Completed filtering (rules).");
+                  print_out("       Rule id: '%d'", currently_rule->sigid);
+                  print_out("       Level: '%d'", currently_rule->level);
+                  print_out("       Description: '%s'",currently_rule->comment);
+                #endif
+                                            
+
+
+                /* Ignore level 0 */
+                if(currently_rule->level == 0)
+                {
+                    break;
+                }
+
+
+                /* Checking ignore time */ 
+                if(currently_rule->ignore_time)
+                {
+                    if(currently_rule->time_ignored == 0)
+                    {
+                        currently_rule->time_ignored = lf->time;
+                    }
+                    /* If the currently time - the time the rule was ignored
+                     * is less than the time it should be ignored,
+                     * leave (do not alert again).
+                     */
+                    else if((lf->time - currently_rule->time_ignored) 
+                            < currently_rule->ignore_time)
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        currently_rule->time_ignored = 0;
+                    }
+                }
+
+                /* Pointer to the rule that generated it */
+                lf->generated_rule = currently_rule;
+
+                
+                /* Checking if we should ignore it */
+                if(currently_rule->ckignore && IGnore(lf))
+                {
+                    /* Ignoring rule */
+                    lf->generated_rule = NULL;
+                    break;
+                }
+                
+                /* Checking if we need to add to ignore list */
+                if(currently_rule->ignore)
+                {
+                    AddtoIGnore(lf);
+                }
+
+
+                /* Log the alert if configured to ... */
+                if(currently_rule->alert_opts & DO_LOGALERT)
+                {
+                    print_out("**Alert to be generated.\n\n");
+                }
+
+
+                /* Copy the structure to the state memory of if_matched_sid */
+                if(currently_rule->sid_prev_matched)
+                {
+                    if(!OSList_AddData(currently_rule->sid_prev_matched, lf))
+                    {
+                        merror("%s: Unable to add data to sig list.", ARGV0);
+                    }
+                    else
+                    {
+                        lf->sid_node_to_delete = 
+                            currently_rule->sid_prev_matched->last_node;
+                    }
+                }
+                /* Group list */
+                else if(currently_rule->group_prev_matched)
+                {
+                    i = 0;  
+                    
+                    while(i < currently_rule->group_prev_matched_sz)
+                    {
+                        if(!OSList_AddData(
+                                currently_rule->group_prev_matched[i], 
+                                lf))
+                        {
+                           merror("%s: Unable to add data to grp list.",ARGV0);
+                        }
+                        i++;
+                    }
+                }
+                
+                OS_AddEvent(lf);
+
+                break;
+
+            }while((rulenode_pt = rulenode_pt->next) != NULL);
+
+
+            /* Only clear the memory if the eventinfo was not
+             * added to the stateful memory 
+             * -- message is free inside clean event --
+             */
+            if(lf->generated_rule == NULL)
+                Free_Eventinfo(lf);
+
+        }
+    }
+    return;
+}
+
+
+
+/* EOF */

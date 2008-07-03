@@ -51,6 +51,17 @@ int main(int argc, char **argv)
 
 
     /* Changing permissions. */
-    system("echo y|cacls . /T /G Administrators:f ");
+    checkVista();
+
+    
+    if(isVista)
+    {
+        system("echo y|cacls * /T /G Administrators:f ");
+    }
+    else
+    {
+        system("echo y|cacls . /T /G Administrators:f ");
+    }
+
     return(0);
 }

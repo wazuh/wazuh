@@ -125,14 +125,8 @@ int Start_win32_Syscheck()
             
         
         
-    /* Will create the db to store syscheck data */
-    sleep(syscheck.tsleep +2);
-    create_db();
-    fflush(syscheck.fp);
-
-
     /* Some sync time */
-    sleep(syscheck.tsleep +2);
+    sleep(syscheck.tsleep + 10);
 
 
     /* Waiting if agent started properly. */
@@ -270,7 +264,7 @@ int main(int argc, char **argv)
 
    
     /* Initial time to settle */
-    sleep(syscheck.tsleep); 
+    sleep(syscheck.tsleep + 2); 
     
     
     /* Connect to the queue  */
@@ -308,14 +302,8 @@ int main(int argc, char **argv)
     }
         
     
-    /* Create local database */
-    create_db();    
-    
-
-    fflush(syscheck.fp);
-
     /* Some sync time */
-    sleep(syscheck.tsleep);
+    sleep(syscheck.tsleep + 10);
 
 
     /* Start the daemon */

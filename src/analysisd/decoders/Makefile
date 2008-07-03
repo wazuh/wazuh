@@ -14,6 +14,12 @@ dc:
 		ar cru decoders.a $(OBJECTS) plugins/*.o
 		ranlib decoders.a
 
+logtest:
+		cd plugins; make;
+		$(CC) $(CFLAGS) -DTESTRULE -I../ -c $(SOURCES)
+		ar cru decoders.a $(OBJECTS) plugins/*.o
+		ranlib decoders.a
+
 clean:
 		cd plugins; make clean;
 		-${CLEAN}

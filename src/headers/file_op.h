@@ -39,4 +39,10 @@ void goDaemon();
 /* not really a file operation, but returns the uname */
 char *getuname();
 
+/* Checks for vista. */
+#ifdef WIN32
+int checkVista();
+int isVista = 0;
+#endif
+
 #endif

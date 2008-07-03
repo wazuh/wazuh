@@ -408,6 +408,33 @@ void goDaemon()
 
 
 #else
+int checkVista()
+{
+    char *m_uname;
+
+    m_uname = getuname();
+    if(!m_uname)
+    {
+        merror(MEM_ERROR, __local_name);
+        return(0);
+    }
+
+
+    /* We check if the system is vista (most be called during the startup. */
+    if(strstr(m_uname, "Windows Server 2008") ||
+       strstr(m_uname, "Vista"))
+    {
+        isVista = 1;
+    }
+    isVista = 0;
+
+    free(m_uname);
+
+    return(isVista);
+}
+
+
+
 /** get uname for windows **/
 char *getuname()
 {

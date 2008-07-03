@@ -82,7 +82,7 @@ int read_reg(config *syscheck, char *entries)
             }
 
             /* Duplicated entry */
-            if(strncmp(syscheck->registry[i], tmp_entry, str_len_dir) == 0)
+            if(strcmp(syscheck->registry[i], tmp_entry) == 0)
             {
                 merror(SK_DUP, ARGV0, tmp_entry);
                 return(1);
@@ -337,8 +337,8 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
                 str_len_dir = str_len_i;
             }
 
-            /* Duplicated entry */
-            if(strncmp(syscheck->dir[i], tmp_dir, str_len_dir) == 0)
+            /* Duplicate entry */
+            if(strcmp(syscheck->dir[i], tmp_dir) == 0)
             {
                 merror(SK_DUP, ARGV0, tmp_dir);
                 return(1);
@@ -373,6 +373,7 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
     char *xml_auto_ignore = "auto_ignore";
     char *xml_alert_new_files = "alert_new_files";
     char *xml_disabled = "disabled";
+    char *xml_scan_on_start = "scan_on_start";
 
     /* Configuration example 
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -456,6 +457,20 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
             if(!syscheck->scan_day)
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+    
+        /* Getting if xml_scan_on_start. */
+        else if(strcmp(node[i]->element, xml_scan_on_start) == 0)
+        {
+            if(strcmp(node[i]->content, "yes") == 0)
+                syscheck->scan_on_start = 1;
+            else if(strcmp(node[i]->content, "no") == 0)
+                syscheck->scan_on_start = 0;
+            else
+            {
+                merror(XML_VALUEERR,ARGV0, node[i]->element, node[i]->content);
                 return(OS_INVALID);
             }
         }
