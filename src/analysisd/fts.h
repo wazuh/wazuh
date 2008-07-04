@@ -16,7 +16,12 @@
 
 
 /* FTS queues */
-#define FTS_QUEUE "/queue/fts/fts-queue"
-#define IG_QUEUE  "/queue/fts/ig-queue"
+#ifdef TESTRULE
+  #define FTS_QUEUE "queue/fts/fts-queue"
+  #define IG_QUEUE  "queue/fts/ig-queue"
+#else
+  #define FTS_QUEUE "/queue/fts/fts-queue"
+  #define IG_QUEUE  "/queue/fts/ig-queue"
+#endif
 
 #endif
