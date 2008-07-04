@@ -257,6 +257,14 @@ void OS_ReadMSG(int m_queue)
     OS_CreateEventList(Config.memorysize);
 
 
+    /* Initiating the FTS list */
+    if(!FTS_Init())
+    {
+        ErrorExit(FTS_LIST_ERROR, ARGV0);
+    }
+                                
+
+
     /* Getting currently time before starting */
     c_time = time(NULL);
 

@@ -1258,7 +1258,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     }
 
                                                                     
-    /* Checking for th FTS flag */
+    /* Checking for the FTS flag */
     if(currently_rule->alert_opts & DO_FTS)
     {
         /** FTS CHECKS **/

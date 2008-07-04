@@ -140,6 +140,10 @@ void AddtoIGnore(Eventinfo *lf)
 {
     fseek(fp_ignore, 0, SEEK_END);    
 
+    #ifdef TESTRULE
+    return;
+    #endif
+    
     /* Assigning the values to the FTS */
     fprintf(fp_ignore, "%s %s %s %s %s %s %s %s\n",
             (lf->decoder_info->name && (lf->generated_rule->ignore & FTS_NAME))?
@@ -297,6 +301,11 @@ int FTS(Eventinfo *lf)
         merror(LIST_ADD_ERROR, ARGV0);
     }
 
+    
+    #ifdef TESTRULE
+    return(1);
+    #endif
+    
     
     /* Saving to fts fp */	
     fseek(fp_list, 0, SEEK_END);
