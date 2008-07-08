@@ -177,6 +177,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 }
                 else
                 {
+                    lf->program_name[0] = '[';
                     pieces = NULL;
                     lf->program_name = NULL;
                 }
