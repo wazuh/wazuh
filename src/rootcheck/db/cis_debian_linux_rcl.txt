@@ -89,7 +89,7 @@ f:!/etc/Bastille;
 # Section 2.6 Ensure sources.list Sanity
 [CIS - Debian Linux 2.6 - Sources list sanity - Security updates not enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:!/etc/apt/sources.list;
-f:/etc/apt/sources.list -> !r:^# && !r:http://security.debian|http://security.ubuntu;
+f:!/etc/apt/sources.list -> !r:^# && r:http://security.debian|http://security.ubuntu;
 
 
 
@@ -203,10 +203,10 @@ f:/etc/lilo.conf -> !r:^# && !r:password=;
 f:/boot/grub/menu.lst -> !r:^# && !r:password;
 
 [CIS - Debian Linux 9.2 - Account with empty password present] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
-f:/etc/shadow -> r:^\S+::;
+f:/etc/shadow -> r:^\w+::;
 
 [CIS - Debian Linux 13.11 - Non-root account with uid 0] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
-f:/etc/passwd -> !r:^# && !r:^root: && r:^\S+:\S+:0:;
+f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
 
 
 # EOF
