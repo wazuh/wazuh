@@ -104,40 +104,40 @@ f:/etc/init.d/functions -> !r:^# && r:^umask && <:umask 027;
 f:/etc/inittab -> !r:^# && r:id:5;
 
 [CIS - RHEL5 4.7 - Disable standard boot services - Samba Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-d:$web_dirs -> ^S\d\dsamba$;
-d:$web_dirs -> ^S\d\dsmb$;
+d:$rc_dirs -> ^S\d\dsamba$;
+d:$rc_dirs -> ^S\d\dsmb$;
 
 [CIS - RHEL5 4.8 - Disable standard boot services - NFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-d:$web_dirs -> ^S\d\dnfs$;
-d:$web_dirs -> ^S\d\dnfslock$;
+d:$rc_dirs -> ^S\d\dnfs$;
+d:$rc_dirs -> ^S\d\dnfslock$;
 
 [CIS - RHEL5 4.10 - Disable standard boot services - NIS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-d:$web_dirs -> ^S\d\dypbind$;
-d:$web_dirs -> ^S\d\dypserv$;
+d:$rc_dirs -> ^S\d\dypbind$;
+d:$rc_dirs -> ^S\d\dypserv$;
 
 [CIS - RHEL5 4.13 - Disable standard boot services - NetFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-d:$web_dirs -> ^S\d\dnetfs$;
+d:$rc_dirs -> ^S\d\dnetfs$;
 
 [CIS - RHEL5 4.15 - Disable standard boot services - Apache web server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-d:$web_dirs -> ^S\d\dapache$;
+d:$rc_dirs -> ^S\d\dapache$;
 
 [CIS - RHEL5 4.16 - Disable standard boot services - SNMPD process Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-d:$web_dirs -> ^S\d\dsnmpd$;
+d:$rc_dirs -> ^S\d\dsnmpd$;
 
 [CIS - RHEL5 4.17 - Disable standard boot services - DNS server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-d:$web_dirs -> ^S\d\dnamed$;
+d:$rc_dirs -> ^S\d\dnamed$;
 
 [CIS - RHEL5 4.18 - Disable standard boot services - MySQL server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-d:$web_dirs -> ^S\d\dmysqld$;
+d:$rc_dirs -> ^S\d\dmysqld$;
 
 [CIS - RHEL5 4.18 - Disable standard boot services - PostgreSQL server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-d:$web_dirs -> ^S\d\dpostgresql$;
+d:$rc_dirs -> ^S\d\dpostgresql$;
 
 [CIS - RHEL5 4.19 - Disable standard boot services - Squid Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-d:$web_dirs -> ^S\d\dsquid$;
+d:$rc_dirs -> ^S\d\dsquid$;
 
 [CIS - RHEL5 4.20 - Disable standard boot services - Kudzu hardware detection Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-d:$web_dirs -> ^S\d\dkudzu$;
+d:$rc_dirs -> ^S\d\dkudzu$;
 
 
 

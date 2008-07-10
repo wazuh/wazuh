@@ -126,47 +126,47 @@ f:/etc/init.d/functions -> !r:^# && r:^umask && >:umask 027;
 f:/etc/inittab -> !r:^# && r:id:5;
 
 [CIS - Red Hat Linux 3.7 - Disable standard boot services - Samba Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dsamba$;
-d:$web_dirs -> ^S\d\dsmb$;
+d:$rc_dirs -> ^S\d\dsamba$;
+d:$rc_dirs -> ^S\d\dsmb$;
 
 [CIS - Red Hat Linux 3.8 - Disable standard boot services - NFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dnfs$;
-d:$web_dirs -> ^S\d\dnfslock$;
+d:$rc_dirs -> ^S\d\dnfs$;
+d:$rc_dirs -> ^S\d\dnfslock$;
 
 [CIS - Red Hat Linux 3.10 - Disable standard boot services - NIS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dypbind$;
-d:$web_dirs -> ^S\d\dypserv$;
+d:$rc_dirs -> ^S\d\dypbind$;
+d:$rc_dirs -> ^S\d\dypserv$;
 
 [CIS - Red Hat Linux 3.13 - Disable standard boot services - NetFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dnetfs$;
+d:$rc_dirs -> ^S\d\dnetfs$;
 
 [CIS - Red Hat Linux 3.15 - Disable standard boot services - Apache web server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dapache$;
-d:$web_dirs -> ^S\d\dhttpd$;
+d:$rc_dirs -> ^S\d\dapache$;
+d:$rc_dirs -> ^S\d\dhttpd$;
 
 [CIS - Red Hat Linux 3.15 - Disable standard boot services - TUX web server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dtux$;
+d:$rc_dirs -> ^S\d\dtux$;
 
 [CIS - Red Hat Linux 3.16 - Disable standard boot services - SNMPD process Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dsnmpd$;
+d:$rc_dirs -> ^S\d\dsnmpd$;
 
 [CIS - Red Hat Linux 3.17 - Disable standard boot services - DNS server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dnamed$;
+d:$rc_dirs -> ^S\d\dnamed$;
 
 [CIS - Red Hat Linux 3.18 - Disable standard boot services - MySQL server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dmysqld$;
+d:$rc_dirs -> ^S\d\dmysqld$;
 
 [CIS - Red Hat Linux 3.18 - Disable standard boot services - PostgreSQL server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dpostgresql$;
+d:$rc_dirs -> ^S\d\dpostgresql$;
 
 [CIS - Red Hat Linux 3.19 - Disable standard boot services - Webmin Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dwebmin$;
+d:$rc_dirs -> ^S\d\dwebmin$;
 
 [CIS - Red Hat Linux 3.20 - Disable standard boot services - Squid Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dsquid$;
+d:$rc_dirs -> ^S\d\dsquid$;
 
 [CIS - Red Hat Linux 3.21 - Disable standard boot services - Kudzu hardware detection Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-d:$web_dirs -> ^S\d\dkudzu$;
+d:$rc_dirs -> ^S\d\dkudzu$;
 
 
 
