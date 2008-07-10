@@ -39,7 +39,7 @@ $rc_dirs=/etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
 
 # Main one. Only valid for Red Hat 5.
 [CIS - Testing against the CIS Red Hat Enterprise Linux 5 Benchmark v1.1] [any required] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \\S+ release 5;
+f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 5;
 
 
 

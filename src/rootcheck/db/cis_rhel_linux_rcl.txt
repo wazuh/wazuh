@@ -39,9 +39,9 @@ $rc_dirs=/etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
 
 # Main one. Only valid for Red Hat/Fedora.
 [CIS - Testing against the CIS Red Hat Enterprise Linux Benchmark v1.0.5] [any required] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \\S+ release 4;
-f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \\S+ release 3;
-f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \\S+ release 2.1;
+f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 4;
+f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 3;
+f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 2.1;
 f:/etc/fedora-release -> r:^Fedora && r:release 1;
 f:/etc/fedora-release -> r:^Fedora && r:release 2;
 f:/etc/fedora-release -> r:^Fedora && r:release 3;
