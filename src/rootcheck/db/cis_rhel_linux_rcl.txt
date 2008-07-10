@@ -217,10 +217,10 @@ f:/etc/lilo.conf -> !r:^# && !r:password=;
 f:/boot/grub/menu.lst -> !r:^# && !r:password;
 
 [CIS - Red Hat Linux 8.2 - Account with empty password present] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-f:/etc/shadow -> r:^\S+::;
+f:/etc/shadow -> r:^\w+::;
 
 [CIS - Red Hat Linux SN.11 - Non-root account with uid 0] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-f:/etc/passwd -> !r:^# && !r:^root: && r:^\S+:\S+:0:;
+f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
 
 
 # EOF

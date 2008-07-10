@@ -178,10 +178,10 @@ f:/etc/security/console.perms -> r:^<console>  \d+ <floppy>;
 f:/boot/grub/menu.lst -> !r:^# && !r:password;
 
 [CIS - RHEL5 9.2 - Account with empty password present] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-f:/etc/shadow -> r:^\S+::;
+f:/etc/shadow -> r:^\w+::;
 
 [CIS - RHEL5 SN.11 - Non-root account with uid 0] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-f:/etc/passwd -> !r:^# && !r:^root: && r:^\S+:\S+:0:;
+f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
 
 
 # EOF
