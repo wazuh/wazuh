@@ -52,14 +52,28 @@ int rk_check_dir(char *dir, char *file, char *pattern)
 
         
         /* Checking if the read entry, matches the provided file name. */
-        if(OS_Match2(file, entry->d_name))
+        if(strncasecmp(file, "r:", 2) == 0)
         {
-            if(rk_check_file(f_name, pattern))
+            if(OS_Regex(file +2, entry->d_name))
             {
-                snprintf(rootcheck.alert_msg, OS_SIZE_1024, " File: %s.",
-                                              f_name);
-                closedir(dp);
-                return(1);
+                if(rk_check_file(f_name, pattern))
+                {
+                    closedir(dp);
+                    return(1);
+                }
+            }
+        }
+        
+        /* Trying without regex. */
+        else
+        {
+            if(OS_Match2(file, entry->d_name))
+            {
+                if(rk_check_file(f_name, pattern))
+                {
+                    closedir(dp);
+                    return(1);
+                }
             }
         }
 
@@ -124,6 +138,9 @@ int rk_check_file(char *file, char *pattern)
         {
             if(is_file(file))
             {
+                snprintf(rootcheck.alert_msg, OS_SIZE_1024, " File: %s.",
+                         file);
+
                 return(1);
             }
         }
@@ -162,6 +179,10 @@ int rk_check_file(char *file, char *pattern)
                     if(pt_matches(buf, pattern))
                     {
                         fclose(fp);
+
+                        snprintf(rootcheck.alert_msg, OS_SIZE_1024, 
+                                 " File: %s.", file);
+                        
                         return(1);
                     }
                 }

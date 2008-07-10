@@ -278,24 +278,33 @@ void run_rk_check()
     /*** Unix audit check ***/
     if(rootcheck.unixaudit) 
     {
-        fp = fopen(rootcheck.unixaudit, "r");
-        if(!fp)
+        /* Getting process list. */
+        plist = os_get_process_list();
+
+
+        i = 0;
+        while(rootcheck.unixaudit[i])
         {
-            merror("%s: No unixaudit file: '%s'",ARGV0,
-                    rootcheck.unixaudit);
+            fp = fopen(rootcheck.unixaudit[i], "r");
+            if(!fp)
+            {
+                merror("%s: No unixaudit file: '%s'",ARGV0,
+                        rootcheck.unixaudit[i]);
+            }
+            else
+            {
+                /* Running unix audit. */
+                check_rc_unixaudit(fp, plist);
+
+                fclose(fp);
+            }
+
+            i++;
         }
-        else
-        {
-            /* Getting process list. */
-            plist = os_get_process_list();
-            
-            /* Running unix audit. */
-            check_rc_unixaudit(fp, plist);
-            
-            /* Freeing list */
-            del_plist((void *)plist);
-            fclose(fp);
-        }
+
+
+        /* Freeing list */
+        del_plist((void *)plist);
     }
 
     

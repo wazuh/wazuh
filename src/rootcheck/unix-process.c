@@ -51,14 +51,21 @@ char *_os_get_runps(char *ps, int mpid)
             {
                 continue;
             }
+            tmp_str++;
 
-            nbuf = tmp_str++;
 
+            /* Removing white spaces. */
+            while(*tmp_str == ' ')
+                 tmp_str++;
+
+                 
+            nbuf = tmp_str;
+            
 
             tmp_str = strchr(nbuf, '\n');
             if(tmp_str)
             {
-                tmp_str = '\0';
+                *tmp_str = '\0';
             }
 
             pclose(fp);

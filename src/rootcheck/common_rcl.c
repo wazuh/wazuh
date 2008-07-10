@@ -23,9 +23,10 @@
 #define RKCL_TYPE_PROCESS   3
 #define RKCL_TYPE_DIR       4
 
-#define RKCL_COND_ALL       1
-#define RKCL_COND_ANY       2
-#define RKCL_COND_INV       -1
+#define RKCL_COND_ALL       0x001
+#define RKCL_COND_ANY       0x002
+#define RKCL_COND_REQ       0x004
+#define RKCL_COND_INV       0x010 
 
 
 
@@ -219,13 +220,23 @@ char *_rkcl_get_name(char *buf, char *ref, int *condition)
     
     
     /* Getting condition */
-    if(strcmp(tmp_location,"all") == 0)
+    if(strcmp(tmp_location, "all") == 0)
     {
-        *condition = RKCL_COND_ALL;
+        *condition |= RKCL_COND_ALL;
     }
     else if(strcmp(tmp_location,"any") == 0)
     {
-        *condition = RKCL_COND_ANY;
+        *condition |= RKCL_COND_ANY;
+    }
+    else if(strcmp(tmp_location,"any required") == 0)
+    {
+        *condition |= RKCL_COND_ANY;
+        *condition |= RKCL_COND_REQ;
+    }
+    else if(strcmp(tmp_location, "all required") == 0)
+    {
+        *condition |= RKCL_COND_ALL;
+        *condition |= RKCL_COND_REQ;
     }
     else
     {
@@ -649,7 +660,7 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
 
 
             /** Checking the conditions **/
-            if(condition == RKCL_COND_ANY)
+            if(condition & RKCL_COND_ANY)
             {
                 debug2("%s: DEBUG: Condition ANY.", ARGV0);
                 if(found)
@@ -690,6 +701,12 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
                                  name, rootcheck.alert_msg);
             }
             notify_rk(ALERT_POLICY_VIOLATION, op_msg);
+        }
+
+        /* Checking if this entry is required for the rest of the file. */
+        else if(condition & RKCL_COND_REQ)
+        {
+            goto clean_return;
         }
 
 

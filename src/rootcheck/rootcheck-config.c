@@ -156,7 +156,7 @@ int Read_Rootcheck_Config(char * cfgfile)
     rootcheck.rootkit_trojans  = OS_GetOneContentforElement
                                (&xml,xml_rootkit_trojans);
     
-    rootcheck.unixaudit = OS_GetOneContentforElement
+    rootcheck.unixaudit = OS_GetContents 
                                 (&xml,xml_rootkit_unixaudit);
 
     rootcheck.winaudit  = OS_GetOneContentforElement

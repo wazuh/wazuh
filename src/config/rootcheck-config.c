@@ -113,7 +113,15 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
         }
         else if(strcmp(node[i]->element, xml_unixaudit) == 0)
         {
-            os_strdup(node[i]->content, rootcheck->unixaudit);
+            int j = 0;
+            if(rootcheck->unixaudit && rootcheck->unixaudit[j])
+                j++;
+            
+            os_realloc(rootcheck->unixaudit, j+2, rootcheck->unixaudit);
+            rootcheck->unixaudit[j] = NULL;
+            rootcheck->unixaudit[j + 1] = NULL;
+                
+            os_strdup(node[i]->content, rootcheck->unixaudit[j]);
         }
         else if(strcmp(node[i]->element, xml_winmalware) == 0)
         {
