@@ -354,8 +354,16 @@
   - Sat Jun  3 07:51:42 2006 [pid 25073] [Administrator] FAIL LOGIN: Client
   "211.100.27.101"
   - Sun Aug 27 16:28:20 2006 [pid 13962] [xx] OK UPLOAD: Client "1.2.3.4", "/a.php", 8338 bytes, 18.77Kbyte/sec
+  - Jul 13 12:31:20 www vsftpd: Sun Jul 13 10:31:20 2008 [pid 27528] [anonymous] FAIL LOGIN: Client "84.140.234.76"
   -->
 <decoder name="vsftpd">
+  <prematch>^\w\w\w \w\w\w\s+\d+ \S+ \d+ [pid \d+] </prematch>
+  <regex offset="after_prematch">Client "(\d+.\d+.\d+.\d+)"$</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="vsftpd">
+  <program_name>^vsftpd</program_name>
   <prematch>^\w\w\w \w\w\w\s+\d+ \S+ \d+ [pid \d+] </prematch>
   <regex offset="after_prematch">Client "(\d+.\d+.\d+.\d+)"$</regex>
   <order>srcip</order>

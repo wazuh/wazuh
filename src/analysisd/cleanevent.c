@@ -171,15 +171,20 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 while(isdigit(*pieces))
                     pieces++;
 
-                if((*pieces == ']') && (pieces[1] == ':'))
+                if((*pieces == ']') && (pieces[1] == ':') && (pieces[2] == ' '))
                 {
                     pieces+=3;
                 }
+                /* Some systems are not terminating the program name with
+                 * the ':'. Working around this in here..
+                 */
+                else if((*pieces == ']') && (pieces[1] == ' '))
+                {
+                    pieces+=2;
+                }
                 else
                 {
-                    lf->program_name[0] = '[';
                     pieces = NULL;
-                    lf->program_name = NULL;
                 }
             }
             /* AIX syslog. */
@@ -224,14 +229,14 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                             while(isdigit(*pieces))
                                 pieces++;
 
-                            if((*pieces == ']') && (pieces[1] == ':'))
+                            if((*pieces == ']') && (pieces[1] == ':') &&
+                               (pieces[2] == ' '))
                             {
                                 pieces+=3;
                             }
                             else
                             {
                                 pieces = NULL;
-                                lf->program_name = NULL;
                             }
                         }
                     }
