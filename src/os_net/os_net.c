@@ -325,7 +325,7 @@ int OS_SendUDPbySize(int socket, int size, char *msg)
         }
 
         i++;    
-        merror("Remote socket busy, waiting %d s.", i);
+        merror("%s: INFO: Remote socket busy, waiting %d s.", __local_name, i);
         sleep(i);    
     }
         

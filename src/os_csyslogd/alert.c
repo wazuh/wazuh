@@ -15,6 +15,7 @@
 
 #include "csyslogd.h"
 #include "config/config.h"
+#include "os_net/os_net.h"
 
 
 
@@ -27,8 +28,18 @@
 int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
 {
     char *tstamp;
+    char user_msg[256];
+    char srcip_msg[256];
+    
     char syslog_msg[OS_SIZE_2048 +1];
 
+
+    /* Invalid socket. */
+    if(syslog_config->socket < 0)
+    {
+        return(0);
+    }
+    
 
     /* Clearing the memory before insert */
     memset(syslog_msg, '\0', OS_SIZE_2048 +1);
@@ -105,6 +116,33 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     }
     
 
+    /* Adding source ip. */
+    if(al_data->srcip && 
+       (al_data->srcip[0] != '(') &&
+       (al_data->srcip[1] != 'n') &&
+       (al_data->srcip[2] != 'o'))
+    {
+        snprintf(srcip_msg, 255, " srcip: %s;", al_data->srcip);
+    }
+    else
+    {
+        srcip_msg[0] = '\0';    
+    }
+
+
+    /* Adding username. */
+    if(al_data->user && 
+       (al_data->user[0] != '(') &&
+       (al_data->user[1] != 'n') &&
+       (al_data->user[2] != 'o'))
+    {
+        snprintf(user_msg, 255, " user: %s;", al_data->user);
+    }
+    else
+    {
+        user_msg[0] = '\0';    
+    }
+
 
     /* Inserting data */
     if(syslog_config->format == DEFAULT_CSYSLOG)
@@ -112,19 +150,20 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         /* Building syslog message. */
         snprintf(syslog_msg, OS_SIZE_2048,
                 "<%d>%s %s ossec: Alert Level: %d; Rule: %d - %s; "
-                "Location: %s; %s%s%s %s",
+                "Location: %s;%s%s  %s",
                 syslog_config->priority, tstamp, __shost,
                 al_data->level, al_data->rule, al_data->comment,
                 al_data->location, 
 
                 /* Source ip. */
-                al_data->srcip?"srcip: ":"",
-                al_data->srcip?al_data->srcip:"",
-                al_data->srcip?";":"",
+                srcip_msg,
+                user_msg,
                 al_data->log[0]);
     }
 
 
+    OS_SendUDPbySize(syslog_config->socket, strlen(syslog_msg), syslog_msg);
+    
     merror("XXXXX ARG '%s'", syslog_msg);
     return(1);
 }

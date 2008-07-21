@@ -55,7 +55,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
     syslog_config[s]->group = NULL;
     syslog_config[s]->location = NULL;
     syslog_config[s]->level = 0;
-    syslog_config[s]->port = 0;
+    syslog_config[s]->port = 514;
     /* local 0 facility (16) + severity 4 - warning. --default */
     syslog_config[s]->priority = (16 * 8) + 4;
 

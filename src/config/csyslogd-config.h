@@ -25,6 +25,7 @@ typedef struct _SyslogConfig
     unsigned int level;
     unsigned int *rule_id;
     unsigned int priority;
+    int socket;
 
     char *server;
     OSMatch *group;
