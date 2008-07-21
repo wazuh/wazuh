@@ -64,6 +64,7 @@ void *read_djbmultilog(int pos, int *rc, int drop_it);
 /* Windows only */
 void win_startel();
 void win_readel();
+void win_read_vista_sec();
 #endif
 
 

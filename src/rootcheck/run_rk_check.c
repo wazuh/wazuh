@@ -138,6 +138,10 @@ void run_rk_check()
     
     /* Sending scan start message */
     notify_rk(ALERT_POLICY_VIOLATION, "Starting rootcheck scan.");
+    if(rootcheck.notify == QUEUE)
+    {
+        merror("%s: INFO: Starting rootcheck scan.", ARGV0);
+    }
 
 
 
@@ -363,12 +367,16 @@ void run_rk_check()
     }
     else
     {
-        sleep(3);
+        sleep(5);
     }
 
 
     /* Sending scan ending message */
     notify_rk(ALERT_POLICY_VIOLATION, "Ending rootcheck scan.");
+    if(rootcheck.notify == QUEUE)
+    {
+        merror("%s: INFO: Ending rootcheck scan.", ARGV0);
+    }
     
             
     debug1("%s: DEBUG: Leaving run_rk_check",ARGV0); 

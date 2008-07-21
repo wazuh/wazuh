@@ -390,9 +390,6 @@ void check_rc_sys(char *basedir)
         _suid = NULL;
     }
 
-    #ifdef WIN32
-    rootcheck.scanall = 1;
-    #endif
 
         
     /* Scan the whole file system -- may be slow */
@@ -401,6 +398,7 @@ void check_rc_sys(char *basedir)
         #ifndef WIN32
         snprintf(file_path, 3, "%s", "/");
         #endif
+
         read_sys_dir(file_path, rootcheck.readall);
     }
 
@@ -409,6 +407,8 @@ void check_rc_sys(char *basedir)
     else
     {
         int _i = 0;
+        
+        #ifndef WIN32
         char *(dirs_to_scan[]) = {"/bin", "/sbin", "/usr/bin",
                                   "/usr/sbin", "/dev", "/lib",
                                   "/etc", "/root", "/var/log",
@@ -417,14 +417,25 @@ void check_rc_sys(char *basedir)
                                   "/tmp", "/boot", "/usr/local", 
                                   "/var/tmp", "/sys", NULL};
 
+        #else
+        char *(dirs_to_scan[]) = {"C:\\WINDOWS", "C:\\Program Files", NULL};
+        #endif
+        
         for(_i = 0; _i <= 24; _i++)
         {
             if(dirs_to_scan[_i] == NULL)
                 break;
+                
+            #ifndef WIN32    
             snprintf(file_path, OS_SIZE_1024, "%s%s", 
                                             basedir, 
                                             dirs_to_scan[_i]);
             read_sys_dir(file_path, rootcheck.readall);
+
+            #else
+            read_sys_dir(dirs_to_scan[_i], rootcheck.readall);
+            #endif
+            
         }
     }
     

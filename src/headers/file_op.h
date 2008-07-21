@@ -42,7 +42,7 @@ char *getuname();
 /* Checks for vista. */
 #ifdef WIN32
 int checkVista();
-int isVista = 0;
+int isVista;
 #endif
 
 #endif

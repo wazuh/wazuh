@@ -287,7 +287,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
            (strcmp(logf[pl].file, "Security") != 0))
          {
              /* Invalid event log */
-             merror(INV_EVTLOG, ARGV0, logf[pl].file);
+             merror(NSTD_EVTLOG, ARGV0, logf[pl].file);
              return(OS_INVALID);
          }
     }

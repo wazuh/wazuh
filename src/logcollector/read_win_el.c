@@ -31,9 +31,18 @@ typedef struct _os_el
     HANDLE h;
 
     DWORD record;
+
 }os_el;
-os_el el[3];
+
+
+/** Global variables **/
+
+/* Maximum of 9 event log sources. */
+os_el el[9];
 int el_last = 0;
+void *vista_sec_id_hash = NULL;
+void *dll_hash = NULL;
+
 
 
 /** int startEL(char *app, os_el *el)
@@ -110,11 +119,13 @@ char *el_getCategory(int category_id)
 }
 
 
-/** int el_getEventDLL(char *evt_name, char *source, char *event)
+
+/** char *el_getEventDLL(char *evt_name, char *source, char *event)
  * Returns the event.
  */
-int el_getEventDLL(char *evt_name, char *source, char *event) 
+char *el_getEventDLL(char *evt_name, char *source, char *event) 
 {
+    char *ret_str;
     HKEY key;
     DWORD ret;
     char keyname[512];
@@ -127,11 +138,20 @@ int el_getEventDLL(char *evt_name, char *source, char *event)
             evt_name, 
             source);
 
-    /* Opening registry */	    
-    if(RegOpenKeyEx(HKEY_LOCAL_MACHINE, keyname, 0, KEY_ALL_ACCESS, &key)
-            != ERROR_SUCCESS)
+
+    /* Checking if we have it in memory. */
+    ret_str = OSHash_Get(dll_hash, keyname + 42);
+    if(ret_str)
     {
-        return(0);    
+        return(ret_str);
+    }
+
+
+    /* Opening registry */	    
+    if(RegOpenKeyEx(HKEY_LOCAL_MACHINE, keyname, 0, 
+                    KEY_ALL_ACCESS, &key) != ERROR_SUCCESS)
+    {
+        return(NULL);    
     }
 
 
@@ -140,11 +160,68 @@ int el_getEventDLL(char *evt_name, char *source, char *event)
                 NULL, (LPBYTE)event, &ret) != ERROR_SUCCESS)
     {
         event[0] = '\0';	
-        return(0);
+        return(NULL);
+    }
+    else
+    {
+        /* Adding to memory. */
+        char *skey;
+        char *sval;
+
+        skey = strdup(keyname + 42);
+        sval = strdup(event);
+        
+        if(skey && sval)
+        {
+            OSHash_Add(dll_hash, skey, sval); 
+        }
+        else
+        {
+            merror(MEM_ERROR, ARGV0);
+        }
+    }
+    
+    RegCloseKey(key);
+    return(event);
+}
+
+
+
+/** char *el_vista_getmessage() 
+ * Returns a descriptive message of the event - Vista only.
+ */
+char *el_vista_getMessage(int evt_id_int, LPTSTR *el_sstring)
+{
+    DWORD fm_flags = 0;
+    LPSTR message = NULL;
+    char *desc_string;
+    char evt_id[16];
+
+
+    /* Flags for format event */
+    fm_flags |= FORMAT_MESSAGE_FROM_STRING;
+    fm_flags |= FORMAT_MESSAGE_ALLOCATE_BUFFER;
+    fm_flags |= FORMAT_MESSAGE_ARGUMENT_ARRAY;
+
+
+    /* Getting descriptive message. */
+    evt_id[15] = '\0';
+    snprintf(evt_id, 15, "%d", evt_id_int);
+    
+    desc_string = OSHash_Get(vista_sec_id_hash, evt_id);
+    if(!desc_string)
+    {
+        return(NULL);
+    }
+    
+
+    if(!FormatMessage(fm_flags, desc_string, 0, 0, 
+                      (LPTSTR) &message, 0, el_sstring))
+    {
+        return(NULL);
     }
 
-    RegCloseKey(key);
-    return(1);
+    return(message);
 }
 
 
@@ -175,42 +252,54 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
     fm_flags |= FORMAT_MESSAGE_ARGUMENT_ARRAY;
 
 
+
     /* Get the file name from the registry (stored on event) */
-    if(!el_getEventDLL(name, source, event))
+    if(!(curr_str = el_getEventDLL(name, source, event)))
     {
         return(NULL);	    
     }	    
 
-    curr_str = event;
+
 
     /* If our event has multiple libraries, try each one of them */ 
     while((next_str = strchr(curr_str, ';')))
     {
         *next_str = '\0';
-        next_str++;
 
         ExpandEnvironmentStrings(curr_str, tmp_str, 255);
-        hevt = LoadLibraryEx(tmp_str, NULL, DONT_RESOLVE_DLL_REFERENCES);
+
+        /* Reverting back old value. */
+        *next_str = ';';
+        
+
+        /* Loading library. */
+        hevt = LoadLibraryEx(tmp_str, NULL, 
+                             DONT_RESOLVE_DLL_REFERENCES |
+                             LOAD_LIBRARY_AS_DATAFILE);
         if(hevt)
         {
-            if(!FormatMessage(fm_flags, hevt, er->EventID, 
-                        0,
-                        (LPTSTR) &message, 0, el_sstring))
+            if(!FormatMessage(fm_flags, hevt, er->EventID, 0,
+                              (LPTSTR) &message, 0, el_sstring))
             {
                 message = NULL;		  
             }
-            FreeLibrary(hevt);
+            /* FreeLibrary(hevt); -- no need to free in here */
 
             /* If we have a message, we can return it */
             if(message)
                 return(message);
         }
 
-        curr_str = next_str;		
+
+        curr_str = next_str +1;
     }
 
+    
+    /* Getting last value. */
     ExpandEnvironmentStrings(curr_str, tmp_str, 255);
-    hevt = LoadLibraryEx(tmp_str, NULL, DONT_RESOLVE_DLL_REFERENCES);
+    hevt = LoadLibraryEx(tmp_str, NULL, 
+                         DONT_RESOLVE_DLL_REFERENCES |
+                         LOAD_LIBRARY_AS_DATAFILE);
     if(hevt)
     {
         int hr;    
@@ -220,7 +309,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
         {
             message = NULL;		  
         }
-        FreeLibrary(hevt);
+        /* FreeLibrary(hevt); -- no need to free in here. */
 
         /* If we have a message, we can return it */
         if(message)
@@ -237,12 +326,14 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
  */ 
 void readel(os_el *el, int printit)
 {
+    DWORD _evtid = 65535;
     DWORD nstr;
     DWORD user_size;
     DWORD domain_size;
     DWORD read, needed;
     int size_left;
     int str_size;
+    int id;
 
     char mbuffer[BUFFER_SIZE +1];
     LPSTR sstr = NULL;
@@ -301,10 +392,16 @@ void readel(os_el *el, int printit)
             descriptive_msg = NULL;
 
 
+            /* Getting event id. */
+            id = (int)el->er->EventID & _evtid;
+                            
+
+
             /* Initialing domain/user size */
             user_size = 255; domain_size = 255;
             el_domain[0] = '\0';
             el_user[0] = '\0';
+
 
 
             /* We must have some description */
@@ -317,12 +414,6 @@ void readel(os_el *el, int printit)
 
                 for (nstr = 0;nstr < el->er->NumStrings;nstr++)
                 {
-                    /* Depending on the event, we may need to
-                     * get the username, because the one in the
-                     * structure is not accurate.
-                     * We may also get the source IP address 
-                     * if available. XXX todo.
-                     */
                     str_size = strlen(sstr);
                     if(size_left > 1)
                     {
@@ -356,10 +447,19 @@ void readel(os_el *el, int printit)
                 }
 
                 /* Get a more descriptive message (if available) */
-                descriptive_msg = el_getMessage(el->er, 
-                                                el->name, 
-                                                source, 
-                                                el_sstring);
+                if(isVista && strcmp(el->name, "Security") == 0)
+                {
+                    descriptive_msg = el_vista_getMessage(id, el_sstring);
+                }
+
+                else
+                {
+                    descriptive_msg = el_getMessage(el->er, 
+                                                    el->name, 
+                                                    source, 
+                                                    el_sstring);
+                }
+                
                 if(descriptive_msg != NULL)
                 {
                     /* Remove any \n or \r */
@@ -409,6 +509,40 @@ void readel(os_el *el, int printit)
 
             }
 
+            else if(isVista && strcmp(el->name, "Security") == 0)
+            {
+                int uid_array_id = -1;
+
+                switch(id)
+                {
+                    case 4624:
+                        uid_array_id = 5;
+                        break;
+                    case 4634:
+                        uid_array_id = 1;
+                        break;    
+                    case 4647:
+                        uid_array_id = 1;
+                        break;    
+                    case 4769:
+                        uid_array_id = 0;
+                        break;
+                }
+
+                if((uid_array_id >= 0) && 
+                   el_sstring[uid_array_id] &&
+                   el_sstring[uid_array_id +1])
+                {
+                    strncpy(el_user, el_sstring[uid_array_id], OS_FLSIZE);
+                    strncpy(el_domain, el_sstring[uid_array_id +1], OS_FLSIZE);
+                }
+                else
+                {
+                    strncpy(el_user, "(no user)", 255);
+                    strncpy(el_domain, "no domain", 255);
+                }
+            }
+            
             else
             {
                 strncpy(el_user, "(no user)", 255);	
@@ -458,6 +592,81 @@ void readel(os_el *el, int printit)
 }
 
 
+/** void win_read_vista_sec()
+ * Reads vista security description.
+ */
+void win_read_vista_sec()
+{
+    char *p;
+    char buf[OS_MAXSTR +1];
+    FILE *fp;
+
+
+    /* Vista security csv. */
+    fp = fopen("vista_sec.csv", "r");
+    if(!fp)
+    {
+        merror("%s: ERROR: Unable to read vista security descriptions.",
+               ARGV0);
+    }
+
+
+    /* Creating the hash. */
+    vista_sec_id_hash = OSHash_Create();
+    if(!vista_sec_id_hash)
+    {
+        merror("%s: ERROR: Unable to read vista security descriptions.",
+               ARGV0);
+    }
+
+    
+    /* Reading the whole file and adding to memory. */
+    while(fgets(buf, OS_MAXSTR, fp) != NULL)
+    {
+        char *key;
+        char *desc;
+        
+        /* Getting the last occurence of \n */
+        if ((p = strrchr(buf, '\n')) != NULL)
+        {
+            *p = '\0';
+        }
+
+        p = strchr(buf, ',');
+        if(!p)
+        {
+            merror("%s: ERROR: Invalid entry on the Vista security "
+                   "description.", ARGV0);
+            continue;
+        }
+
+        *p = '\0';
+        p++;
+
+        /* Removing white spaces. */
+        while(*p == ' ')
+            p++;
+
+        
+        /* Allocating memory. */
+        desc = strdup(p);
+        key = strdup(buf);
+        if(!key || !desc)
+        {
+            merror("%s: ERROR: Invalid entry on the Vista security "
+                   "description.", ARGV0);
+            continue;
+        }
+        
+        
+        /* Inserting on hash. */    
+        OSHash_Add(vista_sec_id_hash, key, desc);
+    }
+
+    fclose(fp);
+}
+
+
 /** void win_startel()
  * Starts the event logging for windows
  */
@@ -466,20 +675,34 @@ void win_startel(char *evt_log)
     int entries_count = 0;
     
     /* Maximum size */
-    if(el_last == 3)
+    if(el_last == 9)
     {
         merror(EVTLOG_DUP, ARGV0, evt_log);
         return;
     }
+
+
+    /* Creating the dll hash. */
+    if(!dll_hash)
+    {
+        dll_hash = OSHash_Create();
+        if(!dll_hash)
+        {
+            merror("%s: ERROR: Unable to create DLL hash.",
+                    ARGV0);
+        }
+    }
+
     
     /* Starting event log -- going to last available record */
     if((entries_count = startEL(evt_log, &el[el_last])) < 0)
     {
+        merror(INV_EVTLOG, ARGV0, evt_log);
         return;
     }
     else
     {
-        readel(&el[el_last],0);
+        readel(&el[el_last], 0);
     }
     el_last++;
 }

@@ -41,10 +41,6 @@ int ig_count = 0;
 int run_count = 0;
 
 
-/** Notify list values **/
-char *registry_list[NOTIFY_LIST_SIZE + 3];
-int registry_list_size = 0;
-
 
 
 /** Function prototypes 8*/
@@ -106,50 +102,20 @@ int os_winreg_changed(char *key, char *md5, char *sha1)
  */
 int notify_registry(char *msg, int send_now)
 {
-    int i = 0;
-
-
-    /* msg can be null to flag send_now */
-    if(msg)
+    if(SendMSG(syscheck.queue, msg,
+               SYSCHECK_REG, SYSCHECK_MQ) < 0)
     {
-        /* Storing message in the notify list */
-        os_strdup(msg, registry_list[registry_list_size]);
-        if(registry_list_size >= NOTIFY_LIST_SIZE)
+        merror(QUEUE_SEND, ARGV0);
+
+        if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         {
-            send_now = 1;
-        }
-        registry_list_size++;
-    }
-
-
-    /* Delay sending */
-    if(!send_now)
-        return(0);
-
-
-    /* Sending all available messages */
-    while(i < registry_list_size)
-    {
-        if(SendMSG(syscheck.queue, registry_list[i], 
-                                   SYSCHECK_REG, SYSCHECK_MQ) < 0)
-        {
-            merror(QUEUE_SEND, ARGV0);
-
-            if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-            {
-                ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
-            }
-
-            /* If we reach here, we can try to send it again */
-            SendMSG(syscheck.queue, registry_list[i],SYSCHECK_REG,SYSCHECK_MQ);
+            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
         }
 
-        os_free(registry_list[i]);
-        registry_list[i] = NULL;
-        i++;
+        /* If we reach here, we can try to send it again */
+        SendMSG(syscheck.queue, msg, SYSCHECK_REG, SYSCHECK_MQ);
     }
 
-    registry_list_size = 0;
     return(0);
 }
 
@@ -486,17 +452,6 @@ void os_winreg_check()
     }
 
 
-    /* Zeroing list memory */
-    registry_list_size = NOTIFY_LIST_SIZE + 2;
-    while(registry_list_size >= 0)
-    {
-        registry_list[registry_list_size] = NULL;
-        registry_list_size--;
-    }
-    registry_list_size = 0;
-                                                
-    
-
     /* Getting sub class and a valid registry entry */
     while(syscheck.registry[i] != NULL)
     {
@@ -529,13 +484,14 @@ void os_winreg_check()
         sleep(syscheck.tsleep *5);
     }
 
+
     /* Notify of db completed. */
     if(run_count > 1)
     {
+        sleep(syscheck.tsleep *5);
         notify_registry(HC_SK_DB_COMPLETED, 1);
     }
 
-    notify_registry(NULL, 1);
     run_count++;
     return;
 }

@@ -411,6 +411,7 @@ void goDaemon()
 int checkVista()
 {
     char *m_uname;
+    isVista = 0;
 
     m_uname = getuname();
     if(!m_uname)
@@ -426,7 +427,6 @@ int checkVista()
     {
         isVista = 1;
     }
-    isVista = 0;
 
     free(m_uname);
 

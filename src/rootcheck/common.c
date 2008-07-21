@@ -630,6 +630,9 @@ int is_process(char *value, void *p_list_p)
         /* Checking if value matches */
         if(pt_matches(pinfo->p_path, value))
         {
+            snprintf(rootcheck.alert_msg, OS_SIZE_1024, " Process: %s.",
+                     pinfo->p_path);
+            
             return(1);
         }
 

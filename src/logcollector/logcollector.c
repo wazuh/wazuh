@@ -34,8 +34,22 @@ void LogCollectorStart()
     
                 
     #ifndef WIN32
+    
     int int_error = 0;
     struct timeval fp_timeout;
+    
+    #else
+    
+    /* Checking if we are on vista. */
+    checkVista();
+
+
+    /* Reading vista descriptions. */
+    if(isVista)
+    {
+        win_read_vista_sec();
+    }
+    
     #endif
 
     debug1("%s: DEBUG: Entering LogCollectorStart().", ARGV0);
@@ -50,8 +64,10 @@ void LogCollectorStart()
         if(strcmp(logff[i].logformat,"eventlog") == 0)
         {
             #ifdef WIN32
+            
             verbose(READING_EVTLOG, ARGV0, logff[i].file);
             win_startel(logff[i].file);
+            
             #endif
             logff[i].file = NULL;
             logff[i].fp = NULL;

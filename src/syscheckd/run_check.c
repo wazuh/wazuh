@@ -90,6 +90,7 @@ void send_sk_db()
 
 
     /* Sending scan start message */
+    merror("%s: INFO: Starting syscheck scan (db).", ARGV0);
     send_rootcheck_msg("Starting syscheck scan.");
         
 
@@ -132,7 +133,8 @@ void send_sk_db()
 
 
     /* Sending scan ending message */
-    sleep(syscheck.tsleep);
+    sleep(syscheck.tsleep +10);
+    merror("%s: INFO: Ending syscheck scan (db).", ARGV0);
     send_rootcheck_msg("Ending syscheck scan.");
 }
      
@@ -200,7 +202,7 @@ void start_daemon()
         create_db(1);
         fflush(syscheck.fp);
 
-        sleep(syscheck.tsleep * 10);
+        sleep(syscheck.tsleep * 60);
         send_sk_db();
     }
                
@@ -347,23 +349,26 @@ void start_daemon()
                 sleep(syscheck.tsleep * 10);
                 send_sk_db();
                 sleep(syscheck.tsleep * 10);
+
+                syscheck.scan_on_start = 1;
             }
             
             
-            /* Sending scan start message */
-            send_rootcheck_msg("Starting syscheck scan.");
-
-                
-            #ifdef WIN32
-            /* Checking for registry changes on Windows */
-            os_winreg_check();
-            #endif
-
-
-            /* Looking for new files */
-            if(syscheck.scan_on_start == 0)
+            else
             {
+                /* Sending scan start message */
+                merror("%s: INFO: Starting syscheck scan.", ARGV0);
+                send_rootcheck_msg("Starting syscheck scan.");
+
+
+                #ifdef WIN32
+                /* Checking for registry changes on Windows */
+                os_winreg_check();
+                #endif
+
+
                 check_db();
+
 
                 /* Set syscheck.fp to the begining of the file */
                 fseek(syscheck.fp, 0, SEEK_SET);
@@ -371,14 +376,12 @@ void start_daemon()
 
                 /* Checking for changes */
                 run_check();
-
-
-                syscheck.scan_on_start = 1;
             }
 
             
             /* Sending scan ending message */
-            sleep(syscheck.tsleep);
+            sleep(syscheck.tsleep + 20);
+            merror("%s: INFO: Ending syscheck scan.", ARGV0);
             send_rootcheck_msg("Ending syscheck scan.");
                 
 
@@ -436,7 +439,7 @@ void run_check()
          * on the client side -- speed not necessary
          */
          file_count++;
-         if(file_count >= (2*syscheck.sleep_after))
+         if(file_count >= (syscheck.sleep_after))
          {
              sleep(syscheck.tsleep);
              file_count = 0;

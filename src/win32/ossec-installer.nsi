@@ -83,7 +83,7 @@ SetOutPath $INSTDIR
 
 ClearErrors
 
-File ossec-agent.exe default-ossec.conf manage_agents.exe os_win32ui.exe win32ui.exe ossec-rootcheck.exe internal_options.conf setup-windows.exe setup-syscheck.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe LICENSE.txt rootcheck\rootcheck.conf rootcheck\db\win_applications_rcl.txt rootcheck\db\win_malware_rcl.txt rootcheck\db\win_audit_rcl.txt help.txt
+File ossec-agent.exe default-ossec.conf manage_agents.exe os_win32ui.exe win32ui.exe ossec-rootcheck.exe internal_options.conf setup-windows.exe setup-syscheck.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe LICENSE.txt rootcheck\rootcheck.conf rootcheck\db\win_applications_rcl.txt rootcheck\db\win_malware_rcl.txt rootcheck\db\win_audit_rcl.txt help.txt vista_sec.csv
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"

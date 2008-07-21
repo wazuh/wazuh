@@ -13,24 +13,17 @@
  */
 
 
-#ifndef DBD
-   #define DBD
-#endif
 
-#ifndef ARGV0
-   #define ARGV0 "ossec-dbd"
-#endif
-
-#include "shared.h"
-#include "dbd.h"
+#include "csyslogd.h"
 
 
 
-/* OS_DBD: Monitor the alerts and insert them into the database.
+/* OS_SyslogD: Monitor the alerts and sends them via syslog.
  * Only return in case of error.
  */
-void OS_DBD(DBConfig *db_config)
+void OS_CSyslogD(SyslogConfig **syslog_config)
 {
+    int s = 0;
     time_t tm;     
     struct tm *p;       
 
@@ -48,19 +41,6 @@ void OS_DBD(DBConfig *db_config)
     Init_FileQueue(fileq, p, 0);
 
 
-    /* Creating location hash */
-    db_config->location_hash = OSHash_Create();
-    if(!db_config->location_hash)
-    {
-        ErrorExit(MEM_ERROR, ARGV0);
-    }
-
-
-    /* Getting maximum ID */
-    db_config->alert_id = OS_SelectMaxID(db_config);
-    db_config->alert_id++;
-
-
     /* Infinite loop reading the alerts and inserting them. */
     while(1)
     {
@@ -76,8 +56,14 @@ void OS_DBD(DBConfig *db_config)
         }
 
 
-        /* Inserting into the db */
-        OS_Alert_InsertDB(al_data, db_config);
+
+        /* Sending via syslog */
+        s = 0;
+        while(syslog_config[s])
+        {
+            OS_Alert_SendSyslog(al_data, syslog_config[s]);
+            s++;
+        }
 
 
         /* Clearing the memory */

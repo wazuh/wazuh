@@ -165,6 +165,7 @@
 #define MISS_LOG_FORMAT "%s(1901): ERROR: Missing 'log_format' element."
 #define MISS_FILE       "%s(1902): ERROR: Missing 'location' element."
 #define INV_EVTLOG      "%s(1903): ERROR: Invalid event log: '%s'."
+#define NSTD_EVTLOG     "%s(1907): INFO: Non-standard event log set: '%s'."
 #define LOGC_FILE_ERROR "%s(1904): INFO: File not available, ignoring it: '%s'."
 #define NO_FILE         "%s(1905): INFO: No file configured to monitor."
 #define PARSE_ERROR     "%s(1906): ERROR: Error parsing file: '%s'."
@@ -246,6 +247,10 @@
 #define RL_INV_ATTR     "%s(5105): ERROR: Invalid rule attributes inside file: '%s'."
 #define RL_NO_OPT       "%s(5106): ERROR: Rule '%d' without any options. "\
                         "It may lead to false positives. Exiting. "
+
+
+/* Syslog output */
+#define XML_INV_CSYSLOG "%s(5301): ERROR Invalid client-syslog configuration."
 
 
 

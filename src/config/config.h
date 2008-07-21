@@ -28,6 +28,7 @@
 #define CMAIL         0000400
 #define CAR           0001000
 #define CDBD          0002000
+#define CSYSLOGD      0004000
 
 #define CAGENT_CONFIG 0010000
 
@@ -45,6 +46,7 @@ int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_Alerts(XML_NODE node, void *d1, void *d2);
 int Read_EmailAlerts(XML_NODE node, void *d1, void *d2);
 int Read_DB(XML_NODE node, void *config1, void *config2);
+int Read_CSyslog(XML_NODE node, void *config1, void *config2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Remote(XML_NODE node, void *d1, void *d2);
 int Read_Client(XML_NODE node, void *d1, void *d2);
@@ -52,6 +54,12 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 void AssignIgnore_Global(char **ignores, void *configp);
 
+
+/* General config, for passing blobs of data. */
+typedef struct _GeneralConfig
+{
+    void *data;
+}GeneralConfig;
 
 
 #endif
