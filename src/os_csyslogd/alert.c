@@ -164,7 +164,6 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
 
     OS_SendUDPbySize(syslog_config->socket, strlen(syslog_msg), syslog_msg);
     
-    merror("XXXXX ARG '%s'", syslog_msg);
     return(1);
 }
 
