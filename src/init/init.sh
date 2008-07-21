@@ -20,7 +20,7 @@ runInit()
             cp -pr ./src/init/ossec-hids-rh.init /etc/rc.d/init.d/ossec
             chmod 555 /etc/rc.d/init.d/ossec
             chown root:ossec /etc/rc.d/init.d/ossec
-            /sbin/chkconfig --add ossec
+            /sbin/chkconfig --add ossec > /dev/null 2>&1
             return 0;
         fi
     fi
@@ -44,7 +44,7 @@ runInit()
         chmod 555 /etc/init.d/ossec
         chown root:ossec /etc/init.d/ossec
 
-        /sbin/chkconfig --add ossec
+        /sbin/chkconfig --add ossec > /dev/null 2>&1
         return 0;
     fi
     

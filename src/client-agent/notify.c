@@ -24,7 +24,7 @@ time_t g_saved_time = 0;
  */
 char *getsharedfiles()
 {
-    int m_size = 512;
+    int m_size = 1596;
 
     DIR *dp;
 
@@ -48,7 +48,7 @@ char *getsharedfiles()
 
 
     /* we control these files, max size is m_size */
-    ret = (char *)calloc(m_size, sizeof(char));
+    ret = (char *)calloc(m_size +1, sizeof(char));
     if(!ret)
     {
         closedir(dp);
