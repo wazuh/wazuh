@@ -237,10 +237,9 @@ void *receiver_thread(void *none)
                                         SHAREDCFG_DIR,
                                         final_file);
                                 
-                                if(unlink(_ff) != 0)
-                                {
-                                    merror(UNLINK_ERROR, ARGV0, _ff);
-                                }
+                                unlink(_ff);
+
+
                                 if(rename(file, _ff) != 0)
                                 {
                                     merror(RENAME_ERROR, ARGV0, file);
