@@ -92,6 +92,7 @@ typedef struct _EventNode
 #define WINDOWS     9   /* Windows logs */
 #define HOST_INFO   10  /* Host information logs (from nmap or similar) */
 #define OSSEC_RL    11  /* Ossec rules */
+#define OSSEC_ALERT 12  /* Ossec Alerts */
 
 
 /* FTS allowed values */

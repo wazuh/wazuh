@@ -1372,6 +1372,11 @@
   <fts>name, location, extra_data</fts>
 </decoder>
 
+<decoder name="ossec-alert">
+  <program_name>^ossec$</program_name>
+  <plugin_decoder>OSSECAlert_Decoder</plugin_decoder>
+</decoder>  
+
 
 
 <!-- Zeus decoder.

@@ -333,9 +333,14 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
     /* checking against the basic regex */
     if(!OS_PRegex(ip_address, ip_address_regex))
     {
-        return(0);
+        if(strcmp(ip_address, "any") != 0)
+        {
+            return(0);
+        }
     }
     #else
+
+    if(strcmp(ip_address, "any") != 0)
     {
         char *tmp_ip;
         int dots = 0;
@@ -359,6 +364,8 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
     }
     #endif
 
+
+
     /* Getting the cidr/netmask if available */ 
     tmp_str = strchr(ip_address,'/');
     if(tmp_str)
@@ -373,7 +380,7 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
         if(strlen(tmp_str) <= 2)
         {
             cidr = atoi(tmp_str);
-            if((cidr >= 1) && (cidr <= 32))
+            if((cidr >= 0) && (cidr <= 32))
             {
                 if(!_mask_inited)
                     _init_masks();
@@ -407,7 +414,14 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
         
         if((net.s_addr = inet_addr(ip_address)) <= 0)
         {
-            return(0);
+            if(strcmp("0.0.0.0", ip_address) == 0)
+            {
+                net.s_addr = 0;
+            }
+            else
+            {
+                return(0);
+            }
         }
 
         if(final_ip)
@@ -426,7 +440,14 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
     else
     {
         struct in_addr net;
-        if((net.s_addr = inet_addr(ip_address)) <= 0)
+        nmask = 32;
+        
+        if(strcmp("any", ip_address) == 0)
+        {
+            net.s_addr = 0;
+            nmask = 0;
+        }
+        else if((net.s_addr = inet_addr(ip_address)) <= 0)
         {
             return(0);
         }
@@ -438,11 +459,16 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
             if(!_mask_inited)
                 _init_masks();
         
-            final_ip->netmask = htonl(_netmasks[32]);
+            final_ip->netmask = htonl(_netmasks[nmask]);
         }
 
         /* Ip without cidr */
-        return(1);
+        if(nmask)
+        {
+            return(1);
+        }
+
+        return(2);
     }
 
     /* Should never reach here */

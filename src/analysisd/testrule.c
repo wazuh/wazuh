@@ -62,6 +62,7 @@ int GlobalConf(char * cfgfile);
 void Rules_OP_CreateRules();
 int Rules_OP_ReadRules(char * cfgfile);
 int _setlevels(RuleNode *node, int nnode);
+int AddHash_Rule(RuleNode *node);
 
 
 /* For cleanmsg */
@@ -221,8 +222,20 @@ int main(int argc, char **argv)
         total_rules = _setlevels(tmp_node, 0);
         debug1("%s: INFO: Total rules enabled: '%d'", ARGV0, total_rules);    
     }
-   
-        
+
+
+    /* Creating a rules hash (for reading alerts from other servers). */
+    {
+        RuleNode *tmp_node = OS_GetFirstRule();
+        Config.g_rules_hash = OSHash_Create();
+        if(!Config.g_rules_hash)
+        {
+            ErrorExit(MEM_ERROR, ARGV0);
+        }
+        AddHash_Rule(tmp_node);
+    }
+
+
     
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
@@ -363,14 +376,27 @@ void OS_ReadMSG(int m_queue)
 
             do
             {
+                if(lf->decoder_info->type == OSSEC_ALERT)
+                {
+                    if(!lf->generated_rule)
+                    {
+                        break;
+                    }
+
+                    /* We go ahead in here and process the alert. */
+                    currently_rule = lf->generated_rule;
+                }
+                                                                                                                                                                                            
                 /* The categories must match */
-                if(rulenode_pt->ruleinfo->category != lf->decoder_info->type)
+                else if(rulenode_pt->ruleinfo->category != 
+                        lf->decoder_info->type)
                 {
                     continue;
                 }
 
+
                 /* Checking each rule. */
-                if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt)) 
+                else if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt)) 
                         == NULL)
                 {
                     continue;

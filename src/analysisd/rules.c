@@ -1717,6 +1717,34 @@ void printRuleinfo(RuleInfo *rule, int node)
 }
 
 
+
+/* Add Rule to hash. */
+int AddHash_Rule(RuleNode *node)
+{
+    while(node)
+    {
+        char _id_key[15];
+        char *id_key;
+
+        snprintf(_id_key, 14, "%d", node->ruleinfo->sigid);
+        os_strdup(_id_key, id_key);
+        
+        
+        /* Adding key to hash. */
+        OSHash_Add(Config.g_rules_hash, id_key, node->ruleinfo);
+        if(node->child)
+        {
+            AddHash_Rule(node->child);
+        }
+
+        node = node->next;
+    }
+
+    return(0);
+}
+
+
+
 /* _set levels */
 int _setlevels(RuleNode *node, int nnode)
 {
@@ -1747,5 +1775,6 @@ int _setlevels(RuleNode *node, int nnode)
 
     return(l_size);
 }
+
 
 /* EOF */

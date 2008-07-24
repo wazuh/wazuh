@@ -73,6 +73,7 @@ int GlobalConf(char * cfgfile);
 void Rules_OP_CreateRules();
 int Rules_OP_ReadRules(char * cfgfile);
 int _setlevels(RuleNode *node, int nnode);
+int AddHash_Rule(RuleNode *node);
 
 
 /* For cleanmsg */
@@ -312,6 +313,20 @@ int main_analysisd(int argc, char **argv)
         if(!test_config)
             verbose("%s: INFO: Total rules enabled: '%d'", ARGV0, total_rules);    
     }
+
+
+
+    /* Creating a rules hash (for reading alerts from other servers). */
+    {
+        RuleNode *tmp_node = OS_GetFirstRule();
+        Config.g_rules_hash = OSHash_Create();
+        if(!Config.g_rules_hash)
+        {
+            ErrorExit(MEM_ERROR, ARGV0);
+        }
+        AddHash_Rule(tmp_node);
+    }
+
    
    
     /* Ignored files on syscheck */
@@ -760,6 +775,7 @@ void OS_ReadMSG_analysisd(int m_queue)
             {
                 if(Check_Hour(lf) == 1)
                 {
+                    void *saved_rule = lf->generated_rule;
                     char *saved_log;
                     
                     /* Saving previous log */
@@ -775,7 +791,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
 
                     /* Set lf to the old values */
-                    lf->generated_rule = NULL;
+                    lf->generated_rule = saved_rule;
                     lf->full_log = saved_log;
                 }
             }
@@ -794,16 +810,29 @@ void OS_ReadMSG_analysisd(int m_queue)
                         ARGV0);
             }
 
+
             do
             {
+                if(lf->decoder_info->type == OSSEC_ALERT)
+                {
+                    if(!lf->generated_rule)
+                    {
+                        goto CLMEM;            
+                    }
+                    
+                    /* We go ahead in here and process the alert. */
+                    currently_rule = lf->generated_rule;
+                }
+                
                 /* The categories must match */
-                if(rulenode_pt->ruleinfo->category != lf->decoder_info->type)
+                else if(rulenode_pt->ruleinfo->category != 
+                        lf->decoder_info->type)
                 {
                     continue;
                 }
 
                 /* Checking each rule. */
-                if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt)) 
+                else if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt)) 
                         == NULL)
                 {
                     continue;
@@ -839,6 +868,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                     }
                 }
 
+
                 /* Pointer to the rule that generated it */
                 lf->generated_rule = currently_rule;
 
@@ -850,6 +880,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                     lf->generated_rule = NULL;
                     break;
                 }
+                
                 
                 /* Checking if we need to add to ignore list */
                 if(currently_rule->ignore)
