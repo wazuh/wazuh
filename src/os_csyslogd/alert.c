@@ -117,30 +117,30 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     
 
     /* Adding source ip. */
-    if(al_data->srcip && 
-       (al_data->srcip[0] != '(') &&
-       (al_data->srcip[1] != 'n') &&
-       (al_data->srcip[2] != 'o'))
+    if(!al_data->srcip || 
+       ((al_data->srcip[0] == '(') &&
+        (al_data->srcip[1] == 'n') &&
+        (al_data->srcip[2] == 'o')))
     {
-        snprintf(srcip_msg, 255, " srcip: %s;", al_data->srcip);
+        srcip_msg[0] = '\0';
     }
     else
     {
-        srcip_msg[0] = '\0';    
+        snprintf(srcip_msg, 255, " srcip: %s;", al_data->srcip);
     }
 
 
     /* Adding username. */
-    if(al_data->user && 
-       (al_data->user[0] != '(') &&
-       (al_data->user[1] != 'n') &&
-       (al_data->user[2] != 'o'))
+    if(!al_data->user || 
+       ((al_data->user[0] == '(') &&
+        (al_data->user[1] == 'n') &&
+        (al_data->user[2] == 'o')))
     {
-        snprintf(user_msg, 255, " user: %s;", al_data->user);
+        user_msg[0] = '\0';
     }
     else
     {
-        user_msg[0] = '\0';    
+        snprintf(user_msg, 255, " user: %s;", al_data->user);
     }
 
 
