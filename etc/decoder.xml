@@ -480,6 +480,23 @@
 
 
 
+<!-- VM-POP3 - Virtual Mail Pop3
+  - Examples:
+  -->
+<decoder name="vm-pop3d">
+  <program_name>^vm-pop3d</program_name>
+</decoder>
+
+<decoder name="vm-pop3d-fail">
+  <parent>vm-pop3d</parent>
+  <prematch>^User '</prematch>
+  <regex offset="after_prematch">^(\S+)' - \w+ auth, </regex>
+  <regex>from=(\d+.\d+.\d+.\d+)$</regex>
+  <order>user, srcip</order>
+</decoder>
+
+
+
 <!-- Courier decoder
   - Examples:
   - pop3d-ssl: LOGIN FAILED, ip=[::ffff:192.168.0.200]
@@ -607,11 +624,16 @@
   - smf-sav[513]: [ID 987462 mail.notice] sender check failed: <xkyjywqvophshu@mypersonalemail.com>, 125.133.22.112, [125.133.22.112], [00:00:01]
   - smf-sav[513]: [ID 407019 mail.info] sender check succeeded (cached): <asterisk-users-bounces@lists.digium.com>, 216.207.245.17, lists.digium.com
   - smf-sav[513]: [ID 987894 mail.notice] sender check tempfailed: <31363****-org@targetedpages.com>, 69.8.190.101, smtp101.tramailer.info, [00:00:05]
+  - smf-sav[1883]: sender check tempfailed (cached): <k@vooC7b>, 87.103.236.97, [87.103.236.97]
+  - smf-sav[1883]: sender check failed (cached): <clahaiclahai@email.iis.com.br
+   >, 91.146.176.140, pool176-140.cable.tolna.net
   -->
 <decoder name="smf-sav-reject">
   <program_name>^smf-sav</program_name>
-  <prematch>sender check failed: \S+, </prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+),</regex>
+  <prematch>^sender check failed|</prematch>
+  <prematch>^sender check tempfailed</prematch>
+  <regex offset="after_prematch">^ \(cached\): \S+, (\d+.\d+.\d+.\d+),|</regex>
+  <regex>^: \S+, (\d+.\d+.\d+.\d+),</regex>
   <order>srcip</order>
 </decoder>
 

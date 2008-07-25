@@ -44,6 +44,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
 {
     char *oa_id = 0;
     char *oa_location;
+    char *oa_val;
     char oa_newlocation[256];
     char *tmp_str = NULL;
     void *rule_pointer;
@@ -111,14 +112,53 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
 
     /* Setting new location. */
     oa_newlocation[255] = '\0';
-    snprintf(oa_newlocation, 255, "%s/%s", lf->location, oa_location);
-    free(lf->location);
-    os_strdup(oa_newlocation, lf->location);
-    lf->hostname = lf->location;
+
+    if(lf->hostname == lf->location)
+    {
+        snprintf(oa_newlocation, 255, "%s|%s", lf->location, oa_location);
+        free(lf->location);
+        os_strdup(oa_newlocation, lf->location);
+        lf->hostname = lf->location;
+    }
+    else
+    {
+        snprintf(oa_newlocation, 255, "%s->%s|%s", lf->hostname, 
+                 lf->location, oa_location);
+        free(lf->location);
+        os_strdup(oa_newlocation, lf->location);
+        lf->hostname = lf->location;
+    }
 
     *tmp_str = ';';
     tmp_str++;
 
+    
+    /* Getting additional fields. */
+    while((*tmp_str == ' ') && (tmp_str[1] != ' '))
+    {
+        tmp_str++;
+        oa_val = tmp_str;
+
+        tmp_str = strchr(tmp_str, ';');
+        if(!tmp_str)
+        {
+            return(NULL);
+        }
+        *tmp_str = '\0';
+
+        if(strncmp(oa_val, "srcip: ", 7) == 0)
+        {
+            os_strdup(oa_val + 7, lf->srcip);
+        }
+        if(strncmp(oa_val, "user: ", 6) == 0)
+        {
+            os_strdup(oa_val + 6, lf->dstuser);
+        }
+
+        *tmp_str = ';';
+        tmp_str++;
+    }
+    
 
     /* Removing space. */
     while(*tmp_str == ' ')

@@ -199,6 +199,13 @@ void start_agent(int is_startup)
                 g_attempts = 1;
             }
         }
+        else
+        {
+            sleep(g_attempts);
+            g_attempts+=(attempts * 3);
+            
+            connect_server(0);
+        }
     }
     
     return;
