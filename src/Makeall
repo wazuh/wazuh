@@ -40,7 +40,7 @@ LIBS="os_xml os_regex os_net os_crypto"
 # Shares sources
 SOURCES="shared config"
 # Binaries
-BINARIES="os_maild os_dbd os_execd analysisd logcollector remoted client-agent addagent util rootcheck syscheckd monitord"
+BINARIES="os_maild os_dbd os_csyslogd os_execd analysisd logcollector remoted client-agent addagent util rootcheck syscheckd monitord"
 ROOTCHECKBIN="rootcheck"
 DIRECTORIES=""      # Directories to make
 
