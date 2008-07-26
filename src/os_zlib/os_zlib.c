@@ -15,14 +15,16 @@
 /* os_compress: Compress a string with zlib. */
 int os_compress(char *src, char *dst, int src_size, int dst_size)
 {
+    unsigned long int zl_dst = dst_size;
+    
     /* We make sure to do not allow long sizes */
     if(compress2((unsigned char *)dst, 
-                (unsigned long int*)&dst_size, 
-                (unsigned char *)src,
-                (unsigned long int)src_size, 9) == Z_OK)
+                 &zl_dst, 
+                 (unsigned char *)src,
+                 (unsigned long int)src_size, 9) == Z_OK)
     {
-        dst[dst_size] = '\0';
-        return(dst_size);
+        dst[zl_dst] = '\0';
+        return(zl_dst);
     }
 
     return(0);
@@ -32,13 +34,15 @@ int os_compress(char *src, char *dst, int src_size, int dst_size)
 /* os_uncompress: Uncompress a string with zlib. */
 int os_uncompress(char *src, char *dst, int src_size, int dst_size)
 {
+    unsigned long int zl_dst = dst_size;
+    
     if(uncompress((unsigned char *)dst, 
-                 (unsigned long int*)&dst_size, 
-                 (unsigned char *)src, 
-                 (unsigned long int)src_size) == Z_OK)
+                  &zl_dst,
+                  (unsigned char *)src, 
+                  (unsigned long int)src_size) == Z_OK)
     {
-        dst[dst_size] = '\0';
-        return(dst_size);
+        dst[zl_dst] = '\0';
+        return(zl_dst);
     }
     return(0);
 }
