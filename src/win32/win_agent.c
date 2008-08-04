@@ -321,7 +321,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     /* Using a mutex to synchronize the writes */
     while(1)
     {
-        dwWaitResult = WaitForSingleObject(hMutex, 10000L);
+        dwWaitResult = WaitForSingleObject(hMutex, 100000L);
 
         if(dwWaitResult != WAIT_OBJECT_0) 
         {
@@ -433,6 +433,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
                     }
                 }
 
+                verbose(AG_CONNECTED, ARGV0, logr->rip[rc], logr->port);
                 verbose(SERVER_UP, ARGV0);
             }
         }

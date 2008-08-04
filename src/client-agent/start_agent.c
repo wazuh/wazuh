@@ -41,13 +41,18 @@ int connect_server(int initial_id)
         /* Waiting for other threads to settle. */
         sleep(2);
         close(logr->sock);
+
+        verbose("%s: INFO: Closing connection to server (%s:%d).", ARGV0,
+                logr->rip[rc],
+                logr->port);
+        
         logr->sock = -1;
     }
     
     
     while(logr->rip[rc])
     {
-        verbose("%s: INFO: Connecting to server (%s:%d).", ARGV0,
+        verbose("%s: INFO: Trying to connect to server (%s:%d).", ARGV0,
                 logr->rip[rc],
                 logr->port);
 
@@ -159,10 +164,12 @@ void start_agent(int is_startup)
                 if(strcmp(tmp_msg, HC_ACK) == 0)
                 {
                     available_server = time(0);
+
+                    verbose(AG_CONNECTED, ARGV0, logr->rip[logr->rip_id], 
+                                                 logr->port);
+                    
                     if(is_startup)
                     {
-                        verbose(AG_CONNECTED, ARGV0);
-
                         /* Send log message about start up */
                         snprintf(msg, OS_MAXSTR, OS_AG_STARTED, 
                                 keys.keyentries[0]->name,
@@ -196,7 +203,8 @@ void start_agent(int is_startup)
             }
             else
             {
-                g_attempts = 1;
+                g_attempts++;
+                sleep(g_attempts);
             }
         }
         else
