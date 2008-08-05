@@ -433,7 +433,8 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
                     }
                 }
 
-                verbose(AG_CONNECTED, ARGV0, logr->rip[rc], logr->port);
+                verbose(AG_CONNECTED, ARGV0, logr->rip[logr->rip_id], 
+                                             logr->port);
                 verbose(SERVER_UP, ARGV0);
             }
         }

@@ -371,7 +371,7 @@
 
 
 
-<!-- FTPD decoder (Solaris).
+<!-- FTPD decoder - Solaris, MacOS and Wu-ftpd).
   - Examples:
   - ftpd[811166]: refused connect from 88.225.42.182
   - in.ftpd[18561]: [ID 484914 daemon.notice] gethostbyaddr: nameservices.net. != 216.117.134.168
@@ -379,6 +379,21 @@
   -->
 <decoder name="ftpd">
   <program_name>^ftpd|^in.ftpd</program_name>
+</decoder>
+
+<decoder name="ftpd-mac-failure">
+  <parent>ftpd</parent>
+  <prematch>^Failed authentication from: \S+ |</prematch>
+  <prematch>^repeated login failures from </prematch>
+  <regex offset="after_prematch">[(\d+.\d+.\d+.\d+)]$</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="ftpd-refused">
+  <parent>ftpd</parent>
+  <prematch>^FTP LOGIN REFUSED </prematch>
+  <regex offset="after_prematch">[(\d+.\d+.\d+.\d+)]$</regex>
+  <order>srcip</order>
 </decoder>
 
 <decoder name="ftpd-ip">

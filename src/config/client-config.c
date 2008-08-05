@@ -72,6 +72,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
         }
         else if(strcmp(node[i]->element,xml_client_hostname) == 0)
         {
+            char *s_ip;
             int ip_id = 0;
 
             /* Getting last ip */
@@ -87,31 +88,22 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
             logr->rip[ip_id +1] = NULL;
             
 
-            /* We only attempt to read the hostname if the ip is not set */
-            if(logr->rip)
+            s_ip = OS_GetHost(node[i]->content, 5);
+            if(s_ip)
             {
-                merror(AG_USINGIP, ARGV0);
-            }
-            else
-            {
-                char *s_ip;
-                s_ip = OS_GetHost(node[i]->content, 5);
-                if(s_ip)
+                if(OS_IsValidIP(s_ip, NULL) != 1)
                 {
-                    if(OS_IsValidIP(s_ip, NULL) != 1)
-                    {
-                        merror(INVALID_IP, ARGV0, s_ip);
-                    }
-                    else
-                    {
-                        logr->rip[ip_id] = s_ip;
-                        logr->rip_id++;
-                    }
+                    merror(INVALID_IP, ARGV0, s_ip);
                 }
                 else
                 {
-                    merror(AG_INV_HOST, ARGV0, node[i]->content);
+                    logr->rip[ip_id] = s_ip;
+                    logr->rip_id++;
                 }
+            }
+            else
+            {
+                merror(AG_INV_HOST, ARGV0, node[i]->content);
             }
         }
         else if(strcmp(node[i]->element,xml_client_port) == 0)
