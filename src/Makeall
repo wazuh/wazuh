@@ -53,7 +53,7 @@ fi
             
 
 # Cleaning Config.OS
-if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" ]; then
+if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ]; then
     ls ./Config.OS >/dev/null 2>&1
     if [ ! $? = 0 ]; then
         echo "" > Config.OS

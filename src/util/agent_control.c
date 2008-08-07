@@ -29,7 +29,7 @@ void helpmsg()
     printf("\t-i <id>     Extracts information from an agent.\n");
     printf("\t-r -a       Runs the integrity/rootkit checking on all agents now.\n");
     printf("\t-r -u <id>  Runs the integrity/rootkit checking on one agent now.\n\n");
-    printf("\t-s          Changed the output to CSV (comma delimited).\n");
+    printf("\t-s          Changes the output to CSV (comma delimited).\n");
     exit(1);
 }
 

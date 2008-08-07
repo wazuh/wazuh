@@ -28,6 +28,9 @@ typedef struct _agent_info
 }agent_info;
 
 
+/* Print syscheck db (of modified files). */
+int print_syscheck(char *sk_name, char *sk_ip, char *fname, int print_registry, 
+                   int all_files, int csv_output, int update_counter);
 
 /* Delete syscheck db */
 int delete_syscheck(char *sk_name, char *sk_ip, int full_delete);

@@ -37,6 +37,482 @@ void free_agents(char **agent_list)
 
 
 
+/* Print syscheck attributes. */
+#define sk_strchr(x,y,z) z = strchr(x, y); if(z == NULL) return(0); else { *z = '\0'; z++; } 
+int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, int csv_output, 
+                             int is_win, int number_of_changes)
+{
+    char *p_size, *p_perm, *p_uid, *p_gid, *p_md5, *p_sha1;
+    char *size, *perm, *uid, *gid, *md5, *sha1;
+    int perm_int;
+    char perm_str[36];
+
+
+    /* Setting each value. */
+    size = attrs;
+    sk_strchr(size, ':', perm);
+    sk_strchr(perm, ':', uid);
+    sk_strchr(uid, ':', gid);
+    sk_strchr(gid, ':', md5);
+    sk_strchr(md5, ':', sha1);
+    
+    if(strcmp(attrs, "-1") == 0)
+    {
+        printf("File deleted. ");
+        return(0);
+    }
+    else if(prev_attrs && (strcmp(prev_attrs, "-1") == 0))
+    {
+        printf("File restored. ");
+    }
+    else if(prev_attrs)
+    {
+        printf("File changed. ");
+        p_size = prev_attrs;
+        sk_strchr(p_size, ':', p_perm);
+        sk_strchr(p_perm, ':', p_uid);
+        sk_strchr(p_uid, ':', p_gid);
+        sk_strchr(p_gid, ':', p_md5);
+        sk_strchr(p_md5, ':', p_sha1);
+    }
+    else
+    {
+        p_size = size;
+        p_perm = perm;
+        p_uid = uid;
+        p_gid = gid;
+        p_md5 = md5;
+        p_sha1 = sha1;
+        printf("File added to the database. ");
+    }
+
+
+    /* Fixing number of changes. */
+    if(prev_attrs && !number_of_changes)
+    {
+        number_of_changes = 1;
+    }
+
+
+    if(number_of_changes)
+    {
+        switch(number_of_changes)
+        {
+            case 1:
+                printf("- 1st time modified.\n");
+                break;
+            case 2:    
+                printf("- 2nd time modified.\n");
+                break;
+            case 3:    
+                printf("- 3rd time modified.\n");
+                break;
+            default:
+                printf("- Being ignored (3 or more changes).\n");       
+        }
+    }
+    else
+    {
+        printf("\n");
+    }
+
+
+    perm_str[35] = '\0';
+    perm_int = atoi(perm);
+    snprintf(perm_str, 35, 
+             "%c%c%c%c%c%c%c%c%c",
+             (perm_int & S_IRUSR)? 'r' : '-',
+             (perm_int & S_IWUSR)? 'w' : '-',
+             (perm_int & S_IXUSR)? 'x' : '-',
+             (perm_int & S_IRGRP)? 'r' : '-',
+             (perm_int & S_IWGRP)? 'w' : '-',
+             (perm_int & S_IXGRP)? 'x' : '-',
+             (perm_int & S_IROTH)? 'r' : '-',
+             (perm_int & S_IWOTH)? 'w' : '-',
+             (perm_int & S_IXOTH)? 'x' : '-');
+
+
+    printf("Integrity checking values:\n");
+    printf("   Size:%s%s\n", (strcmp(size,p_size) == 0)? " ": " >", size);
+    if(!is_win)
+    {
+      printf("   Perm:%s%s\n", (strcmp(perm,p_perm) == 0)? " ": " >", perm_str);
+      printf("   Uid: %s%s\n", (strcmp(uid,p_uid) == 0)? " ": " >", uid);
+      printf("   Gid: %s%s\n", (strcmp(gid,p_gid) == 0)? " ": " >", gid);
+    }
+    printf("   Md5: %s%s\n", (strcmp(md5,p_md5) == 0)? " ": " >", md5);
+    printf("   Sha1:%s%s\n", (strcmp(sha1,p_sha1) == 0)? " ": " >", sha1);
+    
+
+    /* Fixing entries. */
+    perm[-1] = ':';
+    uid[-1] = ':';
+    gid[-1] = ':';
+    md5[-1] = ':';
+    sha1[-1] = ':';
+
+    return(0);
+}
+
+
+
+/* Print information about a specific file. */
+int _do_print_file_syscheck(FILE *fp, char *fname, 
+                            int update_counter, int csv_output)
+{
+    int f_found = 0;
+    struct tm *tm_time;
+    
+    char read_day[24 +1];
+    char buf[OS_MAXSTR + 1];
+
+    OSMatch reg;
+    OSStore *files_list;
+
+    fpos_t init_pos;
+    
+    buf[OS_MAXSTR] = '\0';
+    read_day[24] = '\0';
+
+
+    /* If the compilation failed, we don't need to free anything */
+    if(!OSMatch_Compile(fname, &reg, 0))
+    {
+        printf("\n** ERROR: Invalid file name: '%s'\n", fname);
+        return(0);
+    }
+
+
+    /* Creating list with files. */
+    files_list = OSStore_Create();
+    if(!files_list)
+    {
+        OSMatch_FreePattern(&reg);
+        return(0);
+    }
+
+
+    /* Getting initial position. */
+    if(fgetpos(fp, &init_pos) != 0)
+    {
+        printf("\n** ERROR: fgetpos failed.\n");
+        return(0);
+    }
+                                                    
+    
+    while(fgets(buf, OS_MAXSTR, fp) != NULL)
+    {
+        if(buf[0] == '!' || buf[0] == '#')
+        {
+            int number_changes = 0;
+            int change_time = 0;
+            char *changed_file_name;
+            char *changed_attrs;
+            char *prev_attrs;
+
+            
+            if(strlen(buf) < 16)
+            {
+                fgetpos(fp, &init_pos);
+                continue;
+            }
+                
+            /* Removing new line. */    
+            buf[strlen(buf) -1] = '\0';    
+
+
+            /* with update counter, we only modify the last entry. */
+            if(update_counter && buf[0] == '#')
+            {
+                fgetpos(fp, &init_pos);
+                continue;
+            }
+
+
+            /* Checking number of changes. */
+            if(buf[1] == '!')
+            {
+                number_changes = 2;
+                if(buf[2] == '!')
+                {
+                    number_changes = 3;
+                }
+                else if(buf[2] == '?')
+                {
+                    number_changes = 4;
+                }
+            }
+
+            changed_attrs = buf + 3;
+
+            
+            changed_file_name = strchr(changed_attrs, '!');
+            if(!changed_file_name)
+            {
+                fgetpos(fp, &init_pos);
+                continue;
+            }
+            
+            
+            /* Getting time of change. */
+            changed_file_name[-1] = '\0';
+            changed_file_name++;
+            change_time = atoi(changed_file_name);
+            
+            changed_file_name = strchr(changed_file_name, ' ');
+            changed_file_name++; 
+    
+
+            /* Checking if the name should be printed. */
+            if(!OSMatch_Execute(changed_file_name, strlen(changed_file_name), 
+                                &reg))
+            {
+                fgetpos(fp, &init_pos);
+                continue;
+            }
+
+
+            f_found = 1;
+            
+            
+            /* Reset the values. */
+            if(update_counter)
+            {
+                if(fsetpos(fp, &init_pos) != 0)
+                {
+                    printf("\n** ERROR: fsetpos failed (unable to update "
+                           "counter).\n");
+                    return(0);
+                }
+
+                if(update_counter == 2)
+                {
+                    if(fputs("!!?", fp) != 0)
+                    {
+                        printf("\n** ERROR: fputs failed (unable to update "
+                                "counter).\n");
+                        return(0);
+                    }
+                }
+
+                else
+                {
+                    if(fputs("!++", fp) != 0)
+                    {
+                        printf("\n** ERROR: fputs failed (unable to update "
+                                "counter).\n");
+                        return(0);
+                    }
+                }
+
+                printf("\n**Counter updated for file '%s'\n\n", 
+                       changed_file_name);
+                return(0);
+            }
+
+            
+            tm_time = localtime(&change_time);
+            strftime(read_day, 23, "%Y %h %d %T", tm_time);
+            
+            if(!csv_output)           
+                printf("\n%s,%d - %s\n", read_day, number_changes, 
+                                       changed_file_name);
+            else    
+                printf("%s,%s,%d\n", read_day, changed_file_name, 
+                                     number_changes);
+            
+           
+            prev_attrs = OSStore_Get(files_list, changed_file_name);
+            if(prev_attrs)
+            {
+                char *new_attrs;
+                os_strdup(changed_attrs, new_attrs);
+                _do_print_attrs_syscheck(prev_attrs, changed_attrs, 
+                                         csv_output, 
+                                         changed_file_name[0] == '/'?0:1,
+                                         number_changes);
+                
+                free(files_list->cur_node->data);
+                files_list->cur_node->data = new_attrs;    
+            }
+            else
+            {
+                char *new_name;
+                char *new_attrs;
+                
+                os_strdup(changed_attrs, new_attrs);
+                os_strdup(changed_file_name, new_name);
+                OSStore_Put(files_list, new_name, new_attrs);
+                _do_print_attrs_syscheck(NULL, 
+                                         changed_attrs, csv_output,
+                                         changed_file_name[0] == '/'?0:1,
+                                         number_changes);
+            }
+
+            fgetpos(fp, &init_pos);
+        }
+    }
+
+    if(!f_found)
+    {
+        printf("\n** No entries found.\n");
+    }
+    OSMatch_FreePattern(&reg);
+    
+    return(0);
+}
+
+
+
+/* Print syscheck db (of modified files. */
+int _do_print_syscheck(FILE *fp, int all_files, int csv_output)
+{
+    int f_found = 0;
+    struct tm *tm_time;
+    
+    char read_day[24 +1];
+    char saved_read_day[24 +1];
+    char buf[OS_MAXSTR + 1];
+    
+    buf[OS_MAXSTR] = '\0';
+    read_day[24] = '\0';
+    saved_read_day[0] = '\0';
+    saved_read_day[24] = '\0';
+    
+    while(fgets(buf, OS_MAXSTR, fp) != NULL)
+    {
+        if(buf[0] == '!' || buf[0] == '#')
+        {
+            int number_changes = 0;
+            int change_time = 0;
+            char *changed_file_name;
+
+            
+            if(strlen(buf) < 16)
+                continue;
+                
+            /* Removing new line. */    
+            buf[strlen(buf) -1] = '\0';    
+                
+
+            /* Checking number of changes. */
+            if(buf[1] == '!')
+            {
+                number_changes = 2;
+                if(buf[2] == '!')
+                {
+                    number_changes = 3;
+                }
+                else if(buf[2] == '?')
+                {
+                    number_changes = 4;
+                }
+            }
+            
+
+            changed_file_name = strchr(buf +3, '!');
+            if(!changed_file_name)
+                continue;
+    
+    
+            f_found = 1;
+                    
+            
+            /* Getting time of change. */
+            changed_file_name++;
+            change_time = atoi(changed_file_name);
+            
+            changed_file_name = strchr(changed_file_name, ' ');
+            changed_file_name++; 
+    
+            tm_time = localtime(&change_time);
+            strftime(read_day, 23, "%Y %h %d", tm_time);
+            if(strcmp(read_day, saved_read_day) != 0)
+            {
+                if(!csv_output)
+                    printf("\nChanges for %s:\n", read_day);
+                strncpy(saved_read_day, read_day, 23);
+            }
+            strftime(read_day, 23, "%Y %h %d %T", tm_time);
+            
+            if(!csv_output)           
+                printf("%s,%d - %s\n", read_day, number_changes, 
+                                       changed_file_name);
+            else    
+                printf("%s,%s,%d\n", read_day, changed_file_name, 
+                                     number_changes);
+        }
+    }
+
+    if(!f_found && !csv_output)
+    {
+        printf("\n** No entries found.\n");
+    }
+                            
+    return(0);
+}
+
+
+/* Print syscheck db (of modified files. */
+int print_syscheck(char *sk_name, char *sk_ip, char *fname, int print_registry, 
+                   int all_files, int csv_output, int update_counter)
+{
+    FILE *fp;
+    char tmp_file[513];
+
+    tmp_file[512] = '\0';
+
+
+    if(sk_name == NULL)
+    {
+        /* Printing database */
+        snprintf(tmp_file, 512, "%s/syscheck",
+                SYSCHECK_DIR);
+
+        fp = fopen(tmp_file, "r+");
+    }
+    
+    else if(!print_registry)
+    {
+        /* Printing database */
+        snprintf(tmp_file, 512, "%s/(%s) %s->syscheck",
+                SYSCHECK_DIR,
+                sk_name,
+                sk_ip);
+
+        fp = fopen(tmp_file, "r+");
+    }
+
+    else
+    {
+        /* Printing database for the windows registry. */
+        snprintf(tmp_file, 512, "%s/(%s) %s->syscheck-registry",
+                SYSCHECK_DIR,
+                sk_name,
+                sk_ip);
+
+        fp = fopen(tmp_file, "r+");
+    }
+
+
+    if(fp)
+    {
+        if(!fname)
+        {
+            _do_print_syscheck(fp, all_files, csv_output);
+        }
+        else
+        {
+            _do_print_file_syscheck(fp, fname, update_counter, csv_output);
+        }
+        fclose(fp);
+    }
+
+    return(0);
+}
+
+
+
 /* Delete syscheck db */ 
 int delete_syscheck(char *sk_name, char *sk_ip, int full_delete)
 {

@@ -15,6 +15,7 @@ me:
 		$(CC) $(CFLAGS) clear_stats.c $(OBJS) -o clear_stats
 		$(CC) $(CFLAGS) list_agents.c $(OBJS) -o list_agents
 		$(CC) $(CFLAGS) ${SUP} agent_control.c $(OBJS) -o agent_control
+		$(CC) $(CFLAGS) ${SUP} syscheck_control.c $(OBJS) -o syscheck_control
 clean:
 		$(CLEAN) syscheck_update clear_stats list_agents agent_control
 build:

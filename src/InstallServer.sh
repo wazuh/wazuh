@@ -221,6 +221,7 @@ cp -pr ../bin/syscheck_update ${DIR}/bin/
 cp -pr ../bin/clear_stats ${DIR}/bin/
 cp -pr ../bin/list_agents ${DIR}/bin/
 cp -pr ../bin/agent_control ${DIR}/bin/
+cp -pr ../bin/syscheck_control ${DIR}/bin/
 
 # Local install chosen
 if [ "X$LOCAL" = "Xlocal" ]; then
