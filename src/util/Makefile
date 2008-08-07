@@ -19,4 +19,4 @@ me:
 clean:
 		$(CLEAN) syscheck_update clear_stats list_agents agent_control
 build:
-		cp -pr syscheck_update clear_stats list_agents agent_control ${PT}../bin
+		cp -pr syscheck_update clear_stats list_agents syscheck_control agent_control ${PT}../bin
