@@ -96,6 +96,7 @@ int DecodeHostinfo(Eventinfo *lf);
 
 /* For Decoders */
 int ReadDecodeXML(char *file);
+int SetDecodeXML();
 
 
 /* For syscheckd (integrity checking) */
@@ -273,11 +274,29 @@ int main_analysisd(int argc, char **argv)
     
     
 
+    /* Initializing the list */
+    OS_CreateOSDecoderList();
+        
+
     /* Reading decoders */
     if(!ReadDecodeXML(XML_DECODER))
     {
         ErrorExit(CONFIG_ERROR, ARGV0,  XML_DECODER);
     }
+
+    /* Reading local ones. */
+    c = ReadDecodeXML(XML_LDECODER);
+    if(!c)
+    {
+        if((c != -2))
+            ErrorExit(CONFIG_ERROR, ARGV0,  XML_LDECODER);
+    }
+    else
+    {
+        if(!test_config)
+            verbose("%s: INFO: Reading local decoder file.", ARGV0);
+    }
+    SetDecodeXML();
 
     
     /* Creating the rules list */

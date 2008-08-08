@@ -29,7 +29,7 @@ int _netmasks[33];
  * format: high_name.low_name.
  * If return is not null, value must be free.
  */
-static char *_read_file(char *high_name, char *low_name)
+static char *_read_file(char *high_name, char *low_name, char *defines_file)
 {
     FILE *fp;
     char def_file[OS_FLSIZE +1];
@@ -41,21 +41,24 @@ static char *_read_file(char *high_name, char *low_name)
     #ifndef WIN32
     if(isChroot())
     {
-        snprintf(def_file,OS_FLSIZE,"%s", OSSEC_DEFINES);
+        snprintf(def_file,OS_FLSIZE,"%s", defines_file);
     }
     else
     {
-        snprintf(def_file,OS_FLSIZE,"%s%s",DEFAULTDIR, OSSEC_DEFINES);
+        snprintf(def_file,OS_FLSIZE,"%s%s",DEFAULTDIR, defines_file);
     }
     #else
-    snprintf(def_file,OS_FLSIZE,"%s", OSSEC_DEFINES);
+    snprintf(def_file,OS_FLSIZE,"%s", defines_file);
     #endif
 
                                                         
     fp = fopen(def_file, "r");
     if(!fp)
     {
-        merror(FOPEN_ERROR, __local_name, def_file);
+        if(strcmp(defines_file, OSSEC_LDEFINES) != 0)
+        {
+            merror(FOPEN_ERROR, __local_name, def_file);
+        }
         return(NULL);
     }
 
@@ -204,10 +207,14 @@ int getDefine_Int(char *high_name, char *low_name, int min, int max)
     char *value;
     char *pt;
 
-    value = _read_file(high_name, low_name);
+    
+    /* We first try to read from the local define file. */
+    value = _read_file(high_name, low_name, OSSEC_LDEFINES);
     if(!value)
     {
-        ErrorExit(DEF_NOT_FOUND, __local_name, high_name, low_name);
+        value = _read_file(high_name, low_name, OSSEC_DEFINES);
+        if(!value)
+            ErrorExit(DEF_NOT_FOUND, __local_name, high_name, low_name);
     }
 
     pt = value;

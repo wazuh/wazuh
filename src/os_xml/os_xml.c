@@ -124,7 +124,7 @@ int OS_ReadXML(char *file, OS_XML *_lxml)
     if(!fp)
     {
         xml_error(_lxml, "XMLERR: File '%s' not found.",file);
-        return(-1);
+        return(-2);
     }
 
     _lxml->cur = 0;

@@ -210,10 +210,8 @@ int ReadDecodeXML(char *file)
     char *xml_fts = "fts";
     char *xml_ftscomment = "ftscomment";
 
-    OSDecoderInfo *NULL_Decoder_tmp = NULL;
-    
-   
     int i = 0;
+    OSDecoderInfo *NULL_Decoder_tmp = NULL;
     
      
     /* Reading the XML */       
@@ -232,15 +230,6 @@ int ReadDecodeXML(char *file)
     }
 
 
-    /* Zeroing NULL_decoder */
-    os_calloc(1, sizeof(OSDecoderInfo), NULL_Decoder_tmp);
-    NULL_Decoder_tmp->id = 0;
-    NULL_Decoder_tmp->type = SYSLOG;
-    NULL_Decoder_tmp->name = NULL;
-    NULL_Decoder_tmp->fts = 0;
-    NULL_Decoder = (void *)NULL_Decoder_tmp;
-    
-
     /* Getting the root elements */
     node = OS_GetElementsbyNode(&xml, NULL);
     if(!node)
@@ -250,8 +239,15 @@ int ReadDecodeXML(char *file)
     }
 
 
-    /* Initializing the list */
-    OS_CreateOSDecoderList(); 
+    /* Zeroing NULL_decoder */
+    os_calloc(1, sizeof(OSDecoderInfo), NULL_Decoder_tmp);
+    NULL_Decoder_tmp->id = 0;
+    NULL_Decoder_tmp->type = SYSLOG;
+    NULL_Decoder_tmp->name = NULL;
+    NULL_Decoder_tmp->fts = 0;
+    NULL_Decoder = (void *)NULL_Decoder_tmp;
+
+
     
     while(node[i])
     {
@@ -848,7 +844,15 @@ int ReadDecodeXML(char *file)
     
     OS_ClearXML(&xml);
 
-    
+
+    /* Done over here */
+    return(1);
+}
+
+
+
+int SetDecodeXML()
+{    
     /* Adding rootcheck decoder to list */
     addDecoder2list(ROOTCHECK_MOD);
     addDecoder2list(SYSCHECK_MOD);

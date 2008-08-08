@@ -115,6 +115,7 @@ http://www.ossec.net/main/license/\n"
 
 /* Decoder file */
 #define XML_DECODER     "/etc/decoder.xml"
+#define XML_LDECODER    "/etc/local_decoder.xml"
 
         
 /* Agent information location */
@@ -167,8 +168,10 @@ http://www.ossec.net/main/license/\n"
 /* Internal definitions files */
 #ifndef WIN32
     #define OSSEC_DEFINES   "/etc/internal_options.conf"
+    #define OSSEC_LDEFINES   "/etc/local_internal_options.conf"
 #else
     #define OSSEC_DEFINES   "internal_options.conf"
+    #define OSSEC_LDEFINES   "local_internal_options.conf"
 #endif
 
 

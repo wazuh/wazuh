@@ -85,6 +85,7 @@ int DecodeHostinfo(Eventinfo *lf);
 
 /* For Decoders */
 int ReadDecodeXML(char *file);
+int SetDecodeXML();
 
 
 
@@ -185,10 +186,17 @@ int main(int argc, char **argv)
 
 
     /* Reading decoders */
+    OS_CreateOSDecoderList();
     if(!ReadDecodeXML("etc/decoder.xml"))
     {
         ErrorExit(CONFIG_ERROR, ARGV0,  XML_DECODER);
     }
+    c = ReadDecodeXML("etc/local_decoder.xml");
+    if(!c && (c != -2))    
+    {
+        ErrorExit(CONFIG_ERROR, ARGV0,  XML_DECODER);
+    }
+    SetDecodeXML();
 
     
     /* Creating the rules list */
