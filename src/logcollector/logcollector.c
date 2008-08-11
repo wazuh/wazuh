@@ -494,21 +494,6 @@ int handle_file(int i, int do_fseek, int do_log)
         return(-1);
     }
 
-    /* Only seek the end of the file if set to. */
-    if(do_fseek == 1)
-    {
-        /* Windows and fseek causes some weird issues.. */
-        #ifndef WIN32
-        if(fseek(logff[i].fp, 0, SEEK_END) < 0)
-        {
-            merror(FSEEK_ERROR, ARGV0,logff[i].file);
-            fclose(logff[i].fp);
-            logff[i].fp = NULL;
-            return(-1);
-        }
-        #endif
-    }
-    
     
     /* Getting inode number for fp */
     fd = fileno(logff[i].fp);
@@ -522,6 +507,23 @@ int handle_file(int i, int do_fseek, int do_log)
     logff[i].fd = stat_fd.st_ino;
     logff[i].size =  stat_fd.st_size;
 
+
+
+    /* Only seek the end of the file if set to. */
+    if(do_fseek == 1 && S_ISREG(stat_fd.st_mode))
+    {
+        /* Windows and fseek causes some weird issues.. */
+        #ifndef WIN32
+        if(fseek(logff[i].fp, 0, SEEK_END) < 0)
+        {
+            merror(FSEEK_ERROR, ARGV0,logff[i].file);
+            fclose(logff[i].fp);
+            logff[i].fp = NULL;
+            return(-1);
+        }
+        #endif
+    }
+    
 
     /* Setting ignore to zero */
     logff[i].ign = 0;

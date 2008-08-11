@@ -205,6 +205,9 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             else if(strcmp(logf[pl].logformat, "djb-multilog") == 0)
             {
             }
+            else if(strcmp(logf[pl].logformat, "syslog-pipe") == 0)
+            {
+            }
             else if(strcmp(logf[pl].logformat, EVENTLOG) == 0)
             {
             }
