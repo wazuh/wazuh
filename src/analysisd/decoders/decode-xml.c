@@ -24,6 +24,11 @@
 #include "plugin_decoders.h"
 
 
+#ifdef TESTRULE
+  #undef XML_LDECODER
+  #define XML_LDECODER "etc/local_decoder.xml"
+#endif
+
 
 /* Internal functions */
 char *_loadmemory(char *at, char *str);
@@ -215,8 +220,13 @@ int ReadDecodeXML(char *file)
     
      
     /* Reading the XML */       
-    if(OS_ReadXML(file,&xml) < 0)
+    if((i = OS_ReadXML(file,&xml)) < 0)
     {
+        if((i == -2) && (strcmp(file, XML_LDECODER) == 0))
+        {
+            return(-2);
+        }
+        
         merror(XML_ERROR, ARGV0, file, xml.err, xml.err_line);
         return(0);
     }
@@ -234,8 +244,13 @@ int ReadDecodeXML(char *file)
     node = OS_GetElementsbyNode(&xml, NULL);
     if(!node)
     {
-        merror(XML_ERROR_VAR, ARGV0, file, xml.err);
-        return(0);
+        if(strcmp(file, XML_LDECODER) != 0)
+        {
+            merror(XML_ELEMNULL, ARGV0);
+            return(0);
+        }
+
+        return(-2);
     }
 
 
@@ -249,6 +264,7 @@ int ReadDecodeXML(char *file)
 
 
     
+    i = 0;
     while(node[i])
     {
         XML_NODE elements = NULL;

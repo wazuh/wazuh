@@ -191,10 +191,12 @@ int main(int argc, char **argv)
     {
         ErrorExit(CONFIG_ERROR, ARGV0,  XML_DECODER);
     }
+
     c = ReadDecodeXML("etc/local_decoder.xml");
-    if(!c && (c != -2))    
+    if(!c)
     {
-        ErrorExit(CONFIG_ERROR, ARGV0,  XML_DECODER);
+        if((c != -2))
+            ErrorExit(CONFIG_ERROR, ARGV0,  XML_LDECODER);
     }
     SetDecodeXML();
 

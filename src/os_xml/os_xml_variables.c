@@ -27,6 +27,11 @@ int OS_ApplyVariables(OS_XML *_lxml)
     char **value = NULL;
 
 
+    /* No variables. */
+    if(!_lxml->cur)
+        return(0);
+
+
     /* Getting all variables */
     for(;i<_lxml->cur;i++)
     {
