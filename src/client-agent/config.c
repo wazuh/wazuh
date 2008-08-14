@@ -32,6 +32,7 @@ int ClientConf(char *cfgfile)
     logr->port = DEFAULT_SECURE;
     logr->rip = NULL;
     logr->rip_id = 0;
+    logr->execdq = 0;
 
     modules|= CCLIENT;
 

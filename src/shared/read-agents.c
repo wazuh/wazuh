@@ -36,6 +36,7 @@ void free_agents(char **agent_list)
 }
 
 
+#ifndef WIN32
 
 /* Print syscheck attributes. */
 #define sk_strchr(x,y,z) z = strchr(x, y); if(z == NULL) return(0); else { *z = '\0'; z++; } 
@@ -123,12 +124,21 @@ int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, int csv_output,
              "%c%c%c%c%c%c%c%c%c",
              (perm_int & S_IRUSR)? 'r' : '-',
              (perm_int & S_IWUSR)? 'w' : '-',
+             
+             (perm_int & S_ISUID)? 's' :
              (perm_int & S_IXUSR)? 'x' : '-',
+
+             
              (perm_int & S_IRGRP)? 'r' : '-',
              (perm_int & S_IWGRP)? 'w' : '-',
+             
+             (perm_int & S_ISGID)? 's' :
              (perm_int & S_IXGRP)? 'x' : '-',
+             
+             
              (perm_int & S_IROTH)? 'r' : '-',
              (perm_int & S_IWOTH)? 'w' : '-',
+             (perm_int & S_ISVTX)? 't' :
              (perm_int & S_IXOTH)? 'x' : '-');
 
 
@@ -511,6 +521,7 @@ int print_syscheck(char *sk_name, char *sk_ip, char *fname, int print_registry,
     return(0);
 }
 
+#endif
 
 
 /* Delete syscheck db */ 
@@ -638,22 +649,39 @@ char *print_agent_status(int status)
  * Sends a message to an agent.
  * returns -1 on error.
  */
-int send_msg_to_agent(int msocket, char *msg, char *agt_id)
+int send_msg_to_agent(int msocket, char *msg, char *agt_id, char *exec)
 {
     int rc;
     char agt_msg[OS_SIZE_1024 +1];
 
     agt_msg[OS_SIZE_1024] = '\0';
     
-    snprintf(agt_msg, OS_SIZE_1024,
-            "%s %c%c%c %s %s",
-            "(msg_to_agent) []",
-            (agt_id == NULL)?ALL_AGENTS_C:NONE_C,
-            NO_AR_C,
-            (agt_id != NULL)?SPECIFIC_AGENT_C:NONE_C,
-            agt_id != NULL? agt_id: "(null)",
-            msg);
 
+    if(!exec)
+    {
+        snprintf(agt_msg, OS_SIZE_1024,
+                "%s %c%c%c %s %s",
+                "(msg_to_agent) []",
+                (agt_id == NULL)?ALL_AGENTS_C:NONE_C,
+                NO_AR_C,
+                (agt_id != NULL)?SPECIFIC_AGENT_C:NONE_C,
+                agt_id != NULL? agt_id: "(null)",
+                msg);
+    }
+    else
+    {
+        snprintf(agt_msg, OS_SIZE_1024,
+                "%s %c%c%c %s %s - %s (from_the_server) (no_rule_id)",
+                "(msg_to_agent) []",
+                (agt_id == NULL)?ALL_AGENTS_C:NONE_C,
+                NONE_C,
+                (agt_id != NULL)?SPECIFIC_AGENT_C:NONE_C,
+                agt_id != NULL? agt_id: "(null)",
+                msg, exec);
+
+    }
+
+    
     if((rc = OS_SendUnix(msocket, agt_msg, 0)) < 0)
     {
         if(rc == OS_SOCKBUSY)

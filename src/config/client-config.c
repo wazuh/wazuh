@@ -30,7 +30,6 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
 
     logr = (agent *)d1;
 
-    logr->execdq = 0;
 
     while(node[i])
     {

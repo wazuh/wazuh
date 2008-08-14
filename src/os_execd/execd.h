@@ -42,13 +42,23 @@
 
 void ExecdStart(int queue);
 
+void WinExecdRun(char *exec_msg);
+
 int ReadExecConfig();
 
 char *GetCommandbyName(char *name, int *timeout);
 
 void ExecCmd(char **cmd);
 
+void ExecCmd_Win32(char *cmd);
+
 int ExecdConfig(char * cfgfile);
+
+int WinExecd_Start();
+
+void WinTimeoutRun(int timeout);
+
+void FreeTimeoutEntry(void *timeout_entry);
 
 
 

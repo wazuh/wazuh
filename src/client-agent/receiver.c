@@ -12,6 +12,12 @@
 
 #include "shared.h"
 
+
+#ifdef WIN32
+#include "os_execd/execd.h"
+#endif
+
+
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
 
@@ -100,12 +106,19 @@ void *receiver_thread(void *none)
                 /* This is the only thread that modifies it */
                 available_server = (int)time(NULL);
                 
+
+                #ifdef WIN32
+                /* Run timeout commands. */
+                if(logr->execdq >= 0)
+                    WinTimeoutRun(available_server);
+                #endif
                 
                 /* If it is an active response message */
                 if(strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0)
                 {
-                    #ifndef WIN32
                     tmp_msg+=strlen(EXECD_HEADER);
+                    
+                    #ifndef WIN32
                     if(logr->execdq >= 0)
                     {
                         if(OS_SendUnix(logr->execdq, tmp_msg, 0) < 0)
@@ -115,7 +128,18 @@ void *receiver_thread(void *none)
                         }
                     }
 
-                    #endif    
+                    #else
+                    
+
+                    /* Run on windows. */
+                    if(logr->execdq >= 0)
+                    {
+                        WinExecdRun(tmp_msg);
+                    }
+
+                    #endif
+                    
+                        
                     continue;
                 } 
 

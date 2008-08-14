@@ -29,6 +29,9 @@ void helpmsg()
     printf("\t-i <id>     Extracts information from an agent.\n");
     printf("\t-r -a       Runs the integrity/rootkit checking on all agents now.\n");
     printf("\t-r -u <id>  Runs the integrity/rootkit checking on one agent now.\n\n");
+    printf("\t-b <ip>     Blocks the specified ip address.\n");
+    printf("\t-f <ar>     Used with -b, specifies which response to run.\n");
+    printf("\t-L          List available active responses.\n");
     printf("\t-s          Changes the output to CSV (comma delimited).\n");
     exit(1);
 }
@@ -41,12 +44,15 @@ int main(int argc, char **argv)
     char *group = GROUPGLOBAL;
     char *user = USER;
     char *agent_id = NULL;
+    char *ip_address = NULL;
+    char *ar = NULL;
 
     int arq = 0;
     int gid = 0;
     int uid = 0;
     int c = 0, restart_syscheck = 0, restart_all_agents = 0, list_agents = 0;
-    int info_agent = 0, agt_id = 0, active_only = 0, csv_output = 0, end_time = 0;
+    int info_agent = 0, agt_id = 0, active_only = 0, csv_output = 0; 
+    int list_responses = 0, end_time = 0;
 
     char shost[512];
     
@@ -65,7 +71,7 @@ int main(int argc, char **argv)
     }
 
 
-    while((c = getopt(argc, argv, "Vehdlcsaru:i:")) != -1)
+    while((c = getopt(argc, argv, "VehdlLcsaru:i:b:f:")) != -1)
     {
         switch(c){
             case 'V':
@@ -77,6 +83,9 @@ int main(int argc, char **argv)
             case 'd':
                 nowDebug();
                 break;
+            case 'L':
+                list_responses = 1;
+                break;    
             case 'e':
                 end_time = 1;
                 break;     
@@ -100,6 +109,22 @@ int main(int argc, char **argv)
                     helpmsg();
                 }
                 agent_id = optarg;
+                break;
+            case 'b':
+                if(!optarg)
+                {
+                    merror("%s: -b needs an argument",ARGV0);
+                    helpmsg();
+                }
+                ip_address = optarg;
+                break;
+            case 'f':
+                if(!optarg)
+                {
+                    merror("%s: -e needs an argument",ARGV0);
+                    helpmsg();
+                }
+                ar = optarg;
                 break;
             case 'a':
                 restart_all_agents = 1;
@@ -155,6 +180,57 @@ int main(int argc, char **argv)
         return(0);
     }
 
+
+    /* Listing responses. */
+    if(list_responses)
+    {
+        FILE *fp;
+        if(!csv_output)
+        {
+            printf("\nOSSEC HIDS %s. Available active responses:\n", ARGV0);
+        }
+        
+        fp = fopen(DEFAULTAR, "r");
+        if(fp)
+        {
+            char buffer[256];
+
+            while(fgets(buffer, 255, fp) != NULL)
+            {
+                char *r_name;
+                char *r_cmd;
+                char *r_timeout;
+
+                r_name = buffer;
+                r_cmd = strchr(buffer, ' ');
+                if(!r_cmd)
+                    continue;
+                
+                *r_cmd = '\0';
+                r_cmd++;
+                if(*r_cmd == '-')
+                    r_cmd++;
+                if(*r_cmd == ' ')
+                    r_cmd++;
+
+                r_timeout = strchr(r_cmd, ' ');
+                if(!r_timeout)
+                    continue;
+                *r_timeout = '\0';        
+                            
+                printf("\n   Response name: %s, command: %s", r_name, r_cmd);
+            }
+
+            printf("\n\n");
+            fclose(fp);
+        }
+        else
+        {
+            printf("\n   No active response available.\n\n");
+        }
+
+        exit(0);
+    }
 
     
     /* Listing available agents. */
@@ -320,7 +396,7 @@ int main(int argc, char **argv)
 
 
         /* Sending restart message to all agents. */
-        if(send_msg_to_agent(arq, HC_SK_RESTART, NULL) == 0)
+        if(send_msg_to_agent(arq, HC_SK_RESTART, NULL, NULL) == 0)
         {
             printf("\nOSSEC HIDS %s: Restarting Syscheck/Rootcheck on all agents.",
                     ARGV0);
@@ -363,10 +439,40 @@ int main(int argc, char **argv)
         debug1("%s: DEBUG: Connected...", ARGV0);
 
 
-        if(send_msg_to_agent(arq, HC_SK_RESTART, agent_id) == 0)
+        if(send_msg_to_agent(arq, HC_SK_RESTART, agent_id, NULL) == 0)
         {
             printf("\nOSSEC HIDS %s: Restarting Syscheck/Rootcheck on agent: %s\n",
                     ARGV0, agent_id);
+        }
+        else
+        {
+            printf("\n** Unable to restart syscheck on agent: %s\n", agent_id);
+            exit(1);
+        }
+
+        exit(0);
+    }
+    
+
+
+    /* running active response on the specified agent id. */
+    if(ip_address && ar && agent_id)
+    {
+        /* Connecting to remoted. */
+        debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
+        arq = connect_to_remoted();
+        if(arq < 0)
+        {
+            printf("\n** Unable to connect to remoted.\n");
+            exit(1);
+        }
+        debug1("%s: DEBUG: Connected...", ARGV0);
+
+
+        if(send_msg_to_agent(arq, ar, agent_id, ip_address) == 0)
+        {
+            printf("\nOSSEC HIDS %s: Running active response '%s' on: %s\n",
+                    ARGV0, ar, agent_id);
         }
         else
         {

@@ -57,10 +57,14 @@ void execd_shutdown()
         timeout_node = OSList_GetCurrentlyNode(timeout_list);
     }
 
+    #ifndef WIN32
     HandleSIG();
+    #endif
+
 }
 
 
+#ifndef WIN32
 
 /** int main(int argc, char **argv) v0.1
  */
@@ -177,15 +181,20 @@ int main(int argc, char **argv)
 }
 
 
+#endif
+
 
 
 /** void FreeTimeoutEntry(timeout_data *timeout_entry) v0.1
  * Free the timeout entry. Must be called after popping it
  * from the timeout list
  */
-void FreeTimeoutEntry(timeout_data *timeout_entry)
+void FreeTimeoutEntry(void *timeout_entry_pt)
 {
+    timeout_data *timeout_entry;
     char **tmp_str;
+
+    timeout_entry = (timeout_data *)timeout_entry_pt;
 
     if(!timeout_entry)
     {
@@ -214,6 +223,7 @@ void FreeTimeoutEntry(timeout_data *timeout_entry)
 }
 
 
+#ifndef WIN32
 
 
 /** void ExecdStart(int q) v0.2
@@ -390,6 +400,11 @@ void ExecdStart(int q)
         }
 
 
+        /* Command not present. */
+        if(command[0] == '\0')
+            return;
+
+
         /* Allocating memory for the timeout argument */
         os_calloc(MAX_ARGS+2, sizeof(char *), timeout_args);
         
@@ -528,5 +543,8 @@ void ExecdStart(int q)
         }
     }
 }
+
+
+#endif
 
 /* EOF */

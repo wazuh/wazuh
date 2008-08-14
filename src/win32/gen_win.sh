@@ -11,6 +11,7 @@ WINPKG="win-pkg"
 ./unix2dos.pl help.txt > help_win.txt
 ./unix2dos.pl ../../etc/internal_options.conf > internal_options-win.conf
 ./unix2dos.pl ../../LICENSE > LICENSE.txt
+./unix2dos.pl ../../active-response/win/route-null.cmd > route-null.cmd
 
 # Going to the source dir
 cd ${DIR}

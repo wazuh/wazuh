@@ -20,6 +20,7 @@
 #include "logcollector.h"
 #include "os_win.h"
 #include "os_net/os_net.h"
+#include "os_execd/execd.h"
 
 #ifndef ARGV0
 #define ARGV0 "ossec-agent"
@@ -222,6 +223,13 @@ int local_start()
         merror(NO_FILE, ARGV0);
     }
 
+
+    /* Reading execd config. */
+    if(!WinExecd_Start())
+    {
+        logr->execdq = -1;
+    }
+    
     
     /* Reading keys */
     verbose(ENC_READ, ARGV0);
@@ -236,6 +244,7 @@ int local_start()
 
 
     /* Socket connection */
+    logr->sock = -1;
     StartMQ(NULL, 0);
 
 

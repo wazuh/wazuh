@@ -532,22 +532,41 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         "to '%c%c%c%c%c%c%c%c%c'\n",
                         (oldperm & S_IRUSR)? 'r' : '-',
                         (oldperm & S_IWUSR)? 'w' : '-',
+                        
+                        (oldperm & S_ISUID)? 's' :
                         (oldperm & S_IXUSR)? 'x' : '-',
+                        
                         (oldperm & S_IRGRP)? 'r' : '-',
                         (oldperm & S_IWGRP)? 'w' : '-',
+
+                        (oldperm & S_ISGID)? 's' :
                         (oldperm & S_IXGRP)? 'x' : '-',
+                        
                         (oldperm & S_IROTH)? 'r' : '-',
                         (oldperm & S_IWOTH)? 'w' : '-',
+
+                        (oldperm & S_ISVTX)? 't' :
                         (oldperm & S_IXOTH)? 'x' : '-',
+
+
 
                         (newperm & S_IRUSR)? 'r' : '-',
                         (newperm & S_IWUSR)? 'w' : '-',
+
+                        (newperm & S_ISUID)? 's' :
                         (newperm & S_IXUSR)? 'x' : '-',
+
+                        
                         (newperm & S_IRGRP)? 'r' : '-',
                         (newperm & S_IWGRP)? 'w' : '-',
+                        
+                        (newperm & S_ISGID)? 's' :
                         (newperm & S_IXGRP)? 'x' : '-',
+
                         (newperm & S_IROTH)? 'r' : '-',
                         (newperm & S_IWOTH)? 'w' : '-',
+
+                        (newperm & S_ISVTX)? 't' :
                         (newperm & S_IXOTH)? 'x' : '-');
             }
 

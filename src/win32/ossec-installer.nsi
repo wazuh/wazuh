@@ -83,7 +83,7 @@ SetOutPath $INSTDIR
 
 ClearErrors
 
-File ossec-agent.exe default-ossec.conf manage_agents.exe os_win32ui.exe win32ui.exe ossec-rootcheck.exe internal_options.conf setup-windows.exe setup-syscheck.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe LICENSE.txt rootcheck\rootcheck.conf rootcheck\db\win_applications_rcl.txt rootcheck\db\win_malware_rcl.txt rootcheck\db\win_audit_rcl.txt help.txt vista_sec.csv
+File ossec-agent.exe default-ossec.conf manage_agents.exe os_win32ui.exe win32ui.exe ossec-rootcheck.exe internal_options.conf setup-windows.exe setup-syscheck.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe LICENSE.txt rootcheck\rootcheck.conf rootcheck\db\win_applications_rcl.txt rootcheck\db\win_malware_rcl.txt rootcheck\db\win_audit_rcl.txt help.txt vista_sec.csv route-null.cmd
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"
@@ -105,11 +105,14 @@ done:
 CreateDirectory "$INSTDIR\rids"
 CreateDirectory "$INSTDIR\syscheck"
 CreateDirectory "$INSTDIR\shared"
+CreateDirectory "$INSTDIR\active-response"
+CreateDirectory "$INSTDIR\active-response\bin"
 Rename "$INSTDIR\rootkit_trojans.txt" "$INSTDIR\shared\rootkit_trojans.txt"
 Rename "$INSTDIR\rootkit_files.txt" "$INSTDIR\shared\rootkit_files.txt"
 Rename "$INSTDIR\win_malware_rcl.txt" "$INSTDIR\shared\win_malware_rcl.txt"
 Rename "$INSTDIR\win_audit_rcl.txt" "$INSTDIR\shared\win_audit_rcl.txt"
 Rename "$INSTDIR\win_applications_rcl.txt" "$INSTDIR\shared\win_applications_rcl.txt"
+Rename "$INSTDIR\route-null.cmd" "$INSTDIR\active-response\bin\route-null.cmd"
 Delete "$SMPROGRAMS\ossec\Edit.lnk"
 Delete "$SMPROGRAMS\ossec\Uninstall.lnk"
 Delete "$SMPROGRAMS\ossec\Documentation.lnk"
@@ -170,6 +173,8 @@ Section "Uninstall"
   Delete "$INSTDIR\rids\*"
   Delete "$INSTDIR\syscheck\*"
   Delete "$INSTDIR\shared\*"
+  Delete "$INSTDIR\active-response\bin\*"
+  Delete "$INSTDIR\active-response\*"
   Delete "$INSTDIR"
 
   ; Remove shortcuts, if any
@@ -181,6 +186,8 @@ Section "Uninstall"
   RMDir "$INSTDIR\shared"
   RMDir "$INSTDIR\syscheck"
   RMDir "$INSTDIR\rids"
+  RMDir "$INSTDIR\active-response\bin"
+  RMDir "$INSTDIR\active-response"
   RMDir "$INSTDIR"
 
 SectionEnd

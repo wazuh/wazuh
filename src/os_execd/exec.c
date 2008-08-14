@@ -18,6 +18,7 @@ char exec_names[MAX_AR +1][OS_FLSIZE +1];
 char exec_cmd[MAX_AR +1][OS_FLSIZE +1];
 int  exec_timeout[MAX_AR +1];
 int  exec_size = 0;
+int  f_time_reading = 1;
 
 
 /** int ReadExecConfig() v0.1: 
@@ -29,6 +30,7 @@ int ReadExecConfig()
 {
     int i = 0;
     FILE *fp;
+    FILE *process_file;
     char buffer[OS_MAXSTR +1];
 
     /* Cleaning up */
@@ -102,6 +104,23 @@ int ReadExecConfig()
                                       "%s/%s", 
                                       AR_BINDIRPATH, 
                                       str_pt);
+        process_file = fopen(exec_cmd[exec_size], "r");
+        if(!process_file)
+        {
+            if(f_time_reading)
+            {
+                verbose("%s: INFO: Active response command not present: '%s'. "
+                        "Not using it on this system.",
+                        ARGV0, exec_cmd[exec_size]);
+                f_time_reading = 0;
+            }
+
+            exec_cmd[exec_size][0] = '\0'; 
+        }
+        else
+        {
+            fclose(process_file);
+        }
 
         
         /* Searching for ' ' and - */
@@ -163,11 +182,13 @@ char *GetCommandbyName(char *name, int *timeout)
  */
 void ExecCmd(char **cmd)
 {
-	pid_t pid;
-	
-	/* Forking and leaving it running */
-	pid = fork();
-	if(pid == 0)
+    #ifndef WIN32
+    pid_t pid;
+
+
+    /* Forking and leaving it running */
+    pid = fork();
+    if(pid == 0)
     {
         if(execv(*cmd, cmd) < 0)
         {
@@ -177,6 +198,43 @@ void ExecCmd(char **cmd)
 
         exit(0);
     }
+
+    #endif
+
+    return;
+}
+
+
+void ExecCmd_Win32(char *cmd)
+{
+    /* Windows code now. */
+    #ifdef WIN32
+
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+
+    ZeroMemory( &si, sizeof(si) );
+    si.cb = sizeof(si);
+    ZeroMemory( &pi, sizeof(pi) );
+
+    if(!CreateProcess(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL,
+                      &si, &pi))
+    {
+        merror("%s: ERROR: Unable to create active response process. ", ARGV0);
+        return;
+    }
+
+
+    /* Wait until process exits. */
+    WaitForSingleObject(pi.hProcess, INFINITE );
+
+    /* Close process and thread */
+    CloseHandle( pi.hProcess );
+    CloseHandle( pi.hThread );
+
+
+    #endif
+
     return;
 }
 

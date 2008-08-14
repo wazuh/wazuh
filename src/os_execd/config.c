@@ -18,6 +18,11 @@
  */
 int ExecdConfig(char * cfgfile)
 {
+    #ifdef WIN32
+    int is_disabled = 1;
+    #else
+    int is_disabled = 0;
+    #endif
     char *(xmlf[]) = {"ossec_config", "active-response", "disabled", NULL};
     char *disable_entry;
 
@@ -36,10 +41,11 @@ int ExecdConfig(char * cfgfile)
     {
         if(strcmp(disable_entry, "yes") == 0)
         {
-            return(1);
+            is_disabled = 1;
         }
         else if(strcmp(disable_entry, "no") == 0)
         {
+            is_disabled = 0;
         }
         else
         {
@@ -51,7 +57,7 @@ int ExecdConfig(char * cfgfile)
     }
     
     OS_ClearXML(&xml);
-    return(0);
+    return(is_disabled);
 }
 
 /* EOF */

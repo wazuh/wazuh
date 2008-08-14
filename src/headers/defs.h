@@ -101,8 +101,13 @@ http://www.ossec.net/main/license/\n"
 
 
 /* Active response files */
-#define DEFAULTAR       "/etc/shared/ar.conf"
-#define AR_BINDIR       "/active-response/bin"
+#ifndef WIN32
+    #define DEFAULTAR       "/etc/shared/ar.conf"
+    #define AR_BINDIR       "/active-response/bin"
+#else
+#define DEFAULTAR           "shared/ar.conf"
+#define AR_BINDIR           "active-response/bin"
+#endif        
 
 
 /* Exec queue */
@@ -222,8 +227,13 @@ http://www.ossec.net/main/license/\n"
 #define DEFAULTCPATH "ossec.conf"
 #endif
 
-#define DEFAULTARPATH   DEFAULTDIR DEFAULTAR
-#define AR_BINDIRPATH   DEFAULTDIR AR_BINDIR
+#ifndef WIN32
+    #define DEFAULTARPATH   DEFAULTDIR DEFAULTAR
+    #define AR_BINDIRPATH   DEFAULTDIR AR_BINDIR
+#else
+    #define DEFAULTARPATH   "shared/ar.conf"
+    #define AR_BINDIRPATH   "active-response/bin"
+#endif
 #define EXECQUEUEPATH   DEFAULTDIR EXECQUEUE
 
 #ifdef WIN32

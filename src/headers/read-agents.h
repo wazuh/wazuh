@@ -70,7 +70,7 @@ int connect_to_remoted();
  * Sends a message to an agent.
  * returns -1 on error.
  */ 
-int send_msg_to_agent(int msocket, char *msg, char *agt_id);
+int send_msg_to_agent(int msocket, char *msg, char *agt_id, char *exec);
    
 
 
