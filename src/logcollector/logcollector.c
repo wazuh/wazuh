@@ -148,7 +148,7 @@ void LogCollectorStart()
 
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, getpid());
+    verbose(STARTUP_MSG, ARGV0, (int)getpid());
         
     max_file = i -1;
 

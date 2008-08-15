@@ -11,7 +11,7 @@ LOCAL = *.c
 OBJS = ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_CRYPTO} ${OS_ZLIB}
 
 mmonitor:
-		${CC} ${CFLAGS} ${LOCAL} ${OBJS} -o ${NAME}
+		${CC} ${CFLAGS} ${OS_LINK} ${LOCAL} ${OBJS} -o ${NAME}
 clean:
 		${CLEAN}
 build:

@@ -11,11 +11,11 @@ include $(PT)Config.Make
 OBJS = ${OS_ZLIB} ${OS_CRYPTO} ${OS_SHARED} ${OS_REGEX} ${OS_NET}
 
 me:
-		$(CC) $(CFLAGS) ${SUP} syscheck_update.c $(OBJS) -o syscheck_update
-		$(CC) $(CFLAGS) clear_stats.c $(OBJS) -o clear_stats
-		$(CC) $(CFLAGS) list_agents.c $(OBJS) -o list_agents
-		$(CC) $(CFLAGS) ${SUP} agent_control.c $(OBJS) -o agent_control
-		$(CC) $(CFLAGS) ${SUP} syscheck_control.c $(OBJS) -o syscheck_control
+		$(CC) $(CFLAGS) ${OS_LINK} ${SUP} syscheck_update.c $(OBJS) -o syscheck_update
+		$(CC) $(CFLAGS) ${OS_LINK} clear_stats.c $(OBJS) -o clear_stats
+		$(CC) $(CFLAGS) ${OS_LINK} list_agents.c $(OBJS) -o list_agents
+		$(CC) $(CFLAGS) ${OS_LINK} ${SUP} agent_control.c $(OBJS) -o agent_control
+		$(CC) $(CFLAGS) ${OS_LINK} ${SUP} syscheck_control.c $(OBJS) -o syscheck_control
 clean:
 		$(CLEAN) syscheck_update clear_stats list_agents agent_control
 build:

@@ -164,11 +164,11 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             }
             
             /* Checking for the second format: p_name[pid]: */
-            else if((*pieces == '[') && (isdigit(pieces[1])))
+            else if((*pieces == '[') && (isdigit((int)pieces[1])))
             {
                 *pieces = '\0';
                 pieces+=2;
-                while(isdigit(*pieces))
+                while(isdigit((int)*pieces))
                     pieces++;
 
                 if((*pieces == ']') && (pieces[1] == ':') && (pieces[2] == ' '))
@@ -188,12 +188,12 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 }
             }
             /* AIX syslog. */
-            else if((*pieces == '|') && islower(pieces[1]))
+            else if((*pieces == '|') && islower((int)pieces[1]))
             {
                 pieces+=2;
 
                 /* Removing facility */
-                while(isalnum(*pieces))
+                while(isalnum((int)*pieces))
                     pieces++;
 
 
@@ -201,7 +201,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 {
                     /* Removing severity. */
                     pieces++;
-                    while(isalnum(*pieces))
+                    while(isalnum((int)*pieces))
                         pieces++;
                 
                     if(*pieces == ' ')
@@ -222,11 +222,11 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                         }
 
                         /* Checking for the second format: p_name[pid]: */
-                        else if((*pieces == '[') && (isdigit(pieces[1])))
+                        else if((*pieces == '[') && (isdigit((int)pieces[1])))
                         {
                             *pieces = '\0';
                             pieces+=2;
-                            while(isdigit(*pieces))
+                            while(isdigit((int)*pieces))
                                 pieces++;
 
                             if((*pieces == ']') && (pieces[1] == ':') &&

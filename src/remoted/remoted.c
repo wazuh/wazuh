@@ -92,7 +92,7 @@ void HandleRemote(int position, int uid)
 
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, getpid());
+    verbose(STARTUP_MSG, ARGV0, (int)getpid());
         
 
     /* If Secure connection, deal with it */

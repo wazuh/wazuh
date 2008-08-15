@@ -155,11 +155,11 @@ int main(int argc, char **argv)
 
     /* Creating PID files */
     if(CreatePID(ARGV0, getpid()) < 0)
-        ErrorExit(PID_ERROR,ARGV0);
+        ErrorExit(PID_ERROR, ARGV0);
 
     
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, getpid());
+    verbose(STARTUP_MSG, ARGV0, (int)getpid());
     
 
     /* the real daemon now */	

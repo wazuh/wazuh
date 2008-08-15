@@ -302,7 +302,7 @@ char *getuname()
 {
     struct utsname uts_buf;
 
-    if(uname(&uts_buf) == 0)
+    if(uname(&uts_buf) >= 0)
     {
         char *ret;
 

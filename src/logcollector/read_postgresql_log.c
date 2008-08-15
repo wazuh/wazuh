@@ -123,8 +123,8 @@ void *read_postgresql_log(int pos, int *rc, int drop_it)
            (str[11] == ' ') && 
            (str[14] == ':') && 
            (str[17] == ':') && 
-           isdigit(str[1]) &&
-           isdigit(str[12]))
+           isdigit((int)str[1]) &&
+           isdigit((int)str[12]))
         {
             
             /* If the saved message is empty, set it and continue. */

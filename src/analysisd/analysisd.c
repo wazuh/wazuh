@@ -445,7 +445,7 @@ int main_analysisd(int argc, char **argv)
 
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, getpid());
+    verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
     /* Going to main loop */	

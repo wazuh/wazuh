@@ -162,7 +162,7 @@ int main(int argc, char **argv)
     
     /* Creating the PID file */
     if(CreatePID(ARGV0, getpid()) < 0)
-        merror(PID_ERROR,ARGV0);
+        merror(PID_ERROR, ARGV0);
 
     
     /* Starting queue (exec queue) */
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
 
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, getpid());
+    verbose(STARTUP_MSG, ARGV0, (int)getpid());
         
 
     /* The real daemon Now */  

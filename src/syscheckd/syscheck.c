@@ -294,11 +294,11 @@ int main(int argc, char **argv)
 
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, getpid());
+    verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
     if(syscheck.rootcheck)
     {
-        verbose(STARTUP_MSG, "ossec-rootcheck", getpid());
+        verbose(STARTUP_MSG, "ossec-rootcheck", (int)getpid());
     }
         
     

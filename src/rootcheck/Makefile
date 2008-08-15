@@ -18,7 +18,7 @@ rootcheck:
 		ranlib rootcheck_lib.a
         
 binary:        
-		$(CC) $(CFLAGS) ${OBJS} rootcheck-config.c ${OBJS2} -UOSSECHIDS -D_GNU_SOURCE -o ${NAME}
+		$(CC) $(CFLAGS) ${OS_LINK} ${OBJS} rootcheck-config.c ${OBJS2} -UOSSECHIDS -D_GNU_SOURCE -o ${NAME}
 clean:
 		${CLEAN} rootcheck_lib.a
 build:        

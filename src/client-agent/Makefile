@@ -11,7 +11,7 @@ include ../Config.Make
 clog_OBJS = *.c ${OS_CONFIG} ${OS_ZLIB} ${OS_CRYPTO} ${OS_SHARED} ${OS_XML} ${OS_REGEX} ${OS_NET} ${TEXTRA} -DCLIENT
 
 agent:
-		$(CC) $(CFLAGS) $(clog_OBJS) -o ${NAME}
+		$(CC) $(CFLAGS) ${OS_LINK} $(clog_OBJS) -o ${NAME}
 clean:
 		${CLEAN}
 build:

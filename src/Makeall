@@ -80,7 +80,8 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ];
         #if [ $PROC = sparcv9 ]; then
         #    echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -DHIGHFIRST -O3 -mcpu=ultrasparc">>Config.OS
         #fi
-        echo "EEXTRA=-lsocket -lnsl -lresolv -DSOLARIS -DHIGHFIRST">>Config.OS
+        echo "EEXTRA=-DSOLARIS -DHIGHFIRST">>Config.OS
+        echo "IEXTRA=-lsocket -lnsl -lresolv" >> Config.OS
     fi
 
     if [ "X$OS" = "XHP-UX" ]; then

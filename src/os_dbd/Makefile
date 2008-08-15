@@ -19,7 +19,7 @@ OBJS = ${OS_CONFIG} ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_XML}
 
 default:
 		@echo "Compiling DB support with: ${DBCHECK}"
-		${CC} ${CFLAGS} ${DBFLAGS} ${CDB} ${LOCAL} ${OBJS} -o ${NAME}
+		${CC} ${CFLAGS} ${OS_LINK} ${DBFLAGS} ${CDB} ${LOCAL} ${OBJS} -o ${NAME}
 clean:
 		${CLEAN}
 build:

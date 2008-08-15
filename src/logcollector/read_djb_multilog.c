@@ -150,10 +150,10 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
          */
         if((str_len > 26) &&
            (str[0] == '@') && 
-           isalnum(str[1]) &&
-           isalnum(str[2]) &&
-           isalnum(str[3]) &&
-           isalnum(str[24]) &&
+           isalnum((int)str[1]) &&
+           isalnum((int)str[2]) &&
+           isalnum((int)str[3]) &&
+           isalnum((int)str[24]) &&
            (str[25] == ' '))
         {
             /* Removing spaces and tabs */

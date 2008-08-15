@@ -92,14 +92,14 @@ void *read_mysql_log(int pos, int *rc, int drop_it)
            (str[6] == ' ') && 
            (str[9] == ':') && 
            (str[12] == ':') && 
-           isdigit(str[0]) &&
-           isdigit(str[1]) &&
-           isdigit(str[2]) &&
-           isdigit(str[3]) &&
-           isdigit(str[4]) &&
-           isdigit(str[5]) &&
-           isdigit(str[7]) &&
-           isdigit(str[8]))
+           isdigit((int)str[0]) &&
+           isdigit((int)str[1]) &&
+           isdigit((int)str[2]) &&
+           isdigit((int)str[3]) &&
+           isdigit((int)str[4]) &&
+           isdigit((int)str[5]) &&
+           isdigit((int)str[7]) &&
+           isdigit((int)str[8]))
         {
             /* Saving last time */
             strncpy(__mysql_last_time, str, 16);

@@ -125,7 +125,7 @@ int main(int argc, char **argv)
     
 
     /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, getpid());
+    verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
     /* Really starting the program. */

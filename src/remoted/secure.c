@@ -129,7 +129,7 @@ void HandleSecure()
             /* We need to make sure that we have a valid id
              * and that we reduce the recv buffer size.
              */
-            while(isdigit(*tmp_msg))
+            while(isdigit((int)*tmp_msg))
             {
                 tmp_msg++;
                 recv_b--;

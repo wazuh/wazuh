@@ -17,12 +17,12 @@ loga_OBJS = ${LOCAL} ${PLUGINS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_S
 logaudit:
 		cd ./alerts; make
 		cd ./decoders; make
-		$(CC) $(CFLAGS) -I./ ${loga_OBJS} -o ${NAME}
+		$(CC) $(CFLAGS) ${OS_LINK} -I./ ${loga_OBJS} -o ${NAME}
 
 logtest:
 		cd ./alerts; make
 		cd ./decoders; make logtest
-		$(CC) $(CFLAGS) -DTESTRULE -I./ testrule.c ${loga_OBJS} -o ossec-logtest 
+		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ testrule.c ${loga_OBJS} -o ossec-logtest 
 
 clean:
 		cd ./alerts; make clean
