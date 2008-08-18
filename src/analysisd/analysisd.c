@@ -361,6 +361,12 @@ int main_analysisd(int argc, char **argv)
     }
 
 
+    /* Checking if log_fw is enabled. */
+    Config.logfw = getDefine_Int("analysisd",
+                                 "log_fw",
+                                 0, 1);
+
+    
     /* Success on the configuration test */
     if(test_config)
         exit(0);
@@ -769,9 +775,12 @@ void OS_ReadMSG_analysisd(int m_queue)
                  * the log, just ignore it
                  */
                 hourly_firewall++;  
-                if(!FW_Log(lf))
+                if(Config.logfw)
                 {
-                    goto CLMEM;
+                    if(!FW_Log(lf))
+                    {
+                        goto CLMEM;
+                    }
                 }
             }
 

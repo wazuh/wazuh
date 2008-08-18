@@ -126,6 +126,7 @@ int Rules_OP_ReadRules(char * rulefile)
     char *rulepath;
     
     int i;
+    int default_timeframe = 360;
 
 
     /* Building the rule file name + path */
@@ -178,7 +179,13 @@ int Rules_OP_ReadRules(char * rulefile)
 
     /* Zeroing the rule memory -- not used anymore */
     free(rulepath);
-    
+
+
+    /* Getting default time frame */
+    default_timeframe = getDefine_Int("analysisd",
+                                      "default_timeframe",
+                                      60, 3600);
+
 
     /* Checking if there is any invalid global option */
     while(node[i])
@@ -264,9 +271,8 @@ int Rules_OP_ReadRules(char * rulefile)
                 int overwrite = 0;
                 
                 /* Getting default time frame */
-                timeframe = getDefine_Int("analysisd", 
-                                          "default_timeframe", 
-                                          60, 3600);
+                timeframe = default_timeframe;
+
                 
                 if(getattributes(rule[j]->attributes,rule[j]->values,
                             &id,&level,&maxsize,&timeframe,

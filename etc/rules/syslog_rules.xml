@@ -360,7 +360,7 @@
 
   <rule id="5303" level="3">
     <if_sid>5300</if_sid>
-    <regex>session opened for user root|</regex>
+    <regex>session opened for user root|^'su root'|</regex>
     <regex>^+ \S+ \S+\proot$|^\S+ to root on|^SU \S+ \S+ + \S+ \S+-root$</regex>
     <description>User successfully changed UID to root.</description>
     <group>authentication_success,</group>
@@ -368,7 +368,7 @@
 
   <rule id="5304" level="3">
     <if_sid>5300</if_sid>
-    <regex>session opened for user|</regex>
+    <regex>session opened for user|succeeded for|</regex>
     <regex>^+|^\S+ to |^SU \S+ \S+ + </regex>
     <description>User successfully changed UID.</description>
     <group>authentication_success,</group>

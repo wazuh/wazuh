@@ -28,6 +28,7 @@ typedef struct __Config
     u_int8_t hostinfo;
     u_int8_t mailbylevel;
     u_int8_t logbylevel;
+    u_int8_t logfw;
     
     /* Prelude support */
     u_int8_t prelude;
