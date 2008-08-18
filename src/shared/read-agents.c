@@ -321,7 +321,7 @@ int _do_print_file_syscheck(FILE *fp, char *fname,
             }
 
             
-            tm_time = localtime(&change_time);
+            tm_time = localtime((time_t *)&change_time);
             strftime(read_day, 23, "%Y %h %d %T", tm_time);
             
             if(!csv_output)           
@@ -435,7 +435,7 @@ int _do_print_syscheck(FILE *fp, int all_files, int csv_output)
             changed_file_name = strchr(changed_file_name, ' ');
             changed_file_name++; 
     
-            tm_time = localtime(&change_time);
+            tm_time = localtime((time_t *)&change_time);
             strftime(read_day, 23, "%Y %h %d", tm_time);
             if(strcmp(read_day, saved_read_day) != 0)
             {

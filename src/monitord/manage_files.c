@@ -23,7 +23,10 @@ void manage_files(int cday, int cmon, int cyear)
     time_t tm_old;
 
     struct tm *pp_old;
+
+    #ifndef SOLARIS
     struct tm p_old;
+    #endif
             
     char elogfile[OS_FLSIZE +1];
     char elogfile_old[OS_FLSIZE +1];
