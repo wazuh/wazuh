@@ -402,7 +402,7 @@ void ExecdStart(int q)
 
         /* Command not present. */
         if(command[0] == '\0')
-            return;
+            continue;
 
 
         /* Allocating memory for the timeout argument */

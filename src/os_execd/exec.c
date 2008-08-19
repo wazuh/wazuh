@@ -112,7 +112,6 @@ int ReadExecConfig()
                 verbose("%s: INFO: Active response command not present: '%s'. "
                         "Not using it on this system.",
                         ARGV0, exec_cmd[exec_size]);
-                f_time_reading = 0;
             }
 
             exec_cmd[exec_size][0] = '\0'; 
@@ -147,6 +146,8 @@ int ReadExecConfig()
         
         exec_size++;
     }
+
+    f_time_reading = 0;
 
     return(1);
 }
