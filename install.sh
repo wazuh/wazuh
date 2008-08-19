@@ -722,6 +722,9 @@ setEnv()
         case $ANSWER in
             $yesmatch)
                 rm -rf $INSTALLDIR
+                if [ ! $? = 0 ]; then
+                    exit 2;
+                fi    
                 ;;
         esac
     fi
