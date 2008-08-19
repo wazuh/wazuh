@@ -50,8 +50,8 @@
 </decoder>
 
 <decoder name="pam">
-  <program_name>^vsftpd|^login</program_name>
-  <prematch>^pam_unix</prematch>
+  <program_name>^vsftpd|^login|^sudo$</program_name>
+  <prematch>^pam_unix|^(pam_unix)$</prematch>
 </decoder>
 
 <decoder name="pam-user">
