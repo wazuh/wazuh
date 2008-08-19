@@ -214,7 +214,10 @@ UseRootcheck()
         echo "  <rootcheck>" >> $NEWCONFIG
         echo "    <rootkit_files>$INSTALLDIR/etc/shared/rootkit_files.txt</rootkit_files>" >> $NEWCONFIG
         echo "    <rootkit_trojans>$INSTALLDIR/etc/shared/rootkit_trojans.txt</rootkit_trojans>" >> $NEWCONFIG
-        echo "    <system_audit>/var/ossec/etc/shared/system_audit_rcl.txt</system_audit>" >> $NEWCONFIG
+        echo "    <system_audit>$INSTALLDIR/etc/shared/system_audit_rcl.txt</system_audit>" >> $NEWCONFIG
+        echo "    <system_audit>$INSTALLDIR/etc/shared/cis_debian_linux_rcl.txt</system_audit>" >> $NEWCONFIG
+        echo "    <system_audit>$INSTALLDIR/etc/shared/cis_rhel_linux_rcl.txt</system_audit>" >> $NEWCONFIG
+        echo "    <system_audit>$INSTALLDIR/etc/shared/cis_rhel5_linux_rcl.txt</system_audit>" >> $NEWCONFIG
         echo "  </rootcheck>" >> $NEWCONFIG
     fi            
 }
