@@ -38,6 +38,23 @@ LOCK_PID="${LOCK}/pid"
 MAX_ITERATION="10"
 
 
+
+# Check pid
+checkpid()
+{
+    for i in ${DAEMONS}; do
+        for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
+            echo "j is: $j"
+            ps -p $j |grep ossec >/dev/null 2>&1
+            if [ ! $? = 0 ]; then
+                echo "Deleting PID file '${DIR}/var/run/${i}*.pid' not used..."
+            fi    
+        done    
+    done    
+}
+
+
+
 # Lock function
 lock()
 {
@@ -170,6 +187,7 @@ start()
     
     echo "Starting $NAME $VERSION (by $AUTHOR)..."
     lock;
+    checkpid;
 
     # We first loop to check the config. 
     for i in ${SDAEMONS}; do
