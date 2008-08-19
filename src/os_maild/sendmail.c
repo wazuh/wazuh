@@ -40,13 +40,13 @@
 
 
 /* Error messages - Can be translated */
-#define INTERNAL_ERROR	"os_maild (1701): Memory/configuration error"
-#define BANNER_ERROR	"os_sendmail(1702): Banner not received from server"
-#define HELO_ERROR	    "os_sendmail(1703): Hello not accepted by server"
-#define FROM_ERROR	    "os_sendmail(1704): Mail from not accepted by server"
-#define TO_ERROR	    "os_sendmail(1705): RCPT TO not accepted by server"
-#define DATA_ERROR	    "os_sendmail(1706): DATA not accepted by server"
-#define END_DATA_ERROR	"os_sendmail(1707): End of DATA not accepted by server"
+#define INTERNAL_ERROR	"os_maild (1760): ERROR: Memory/configuration error"
+#define BANNER_ERROR	"os_sendmail(1762): WARN: Banner not received from server"
+#define HELO_ERROR	    "os_sendmail(1763): WARN: Hello not accepted by server"
+#define FROM_ERROR	    "os_sendmail(1764): WARN: Mail from not accepted by server"
+#define TO_ERROR	    "os_sendmail(1765): WARN: RCPT TO not accepted by server - '%s'."
+#define DATA_ERROR	    "os_sendmail(1766): WARN: DATA not accepted by server"
+#define END_DATA_ERROR	"os_sendmail(1767): WARN: End of DATA not accepted by server"
 
 
 #define MAIL_DEBUG_FLAG     0
@@ -170,7 +170,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
             msg = OS_RecvTCP(socket, OS_SIZE_1024);
             if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
             {
-                merror(TO_ERROR);
+                merror(TO_ERROR, mail->gran_to[i]);
                 if(msg)
                     free(msg);
                 close(socket);
@@ -404,7 +404,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         msg = OS_RecvTCP(socket, OS_SIZE_1024);
         if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
         {
-            merror(TO_ERROR);
+            merror(TO_ERROR, mail->to[i -1]);
             if(msg)
                 free(msg);
             close(socket);
@@ -433,12 +433,14 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
             msg = OS_RecvTCP(socket, OS_SIZE_1024);
             if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
             {
-                merror(TO_ERROR);
+                merror(TO_ERROR, mail->gran_to[i]);
                 if(msg)
                     free(msg);
-                close(socket);
-                return(OS_INVALID);
+
+                i++;
+                continue;    
             }
+            
             MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
             free(msg);
             i++;

@@ -156,7 +156,7 @@
 <decoder name="ssh-reverse-mapping">
   <parent>sshd</parent>
   <prematch>^reverse mapping checking </prematch>
-  <regex offset="after_prematch">^\w+ for (\S+) failed - </regex>
+  <regex offset="after_prematch">^\w+ for (\S+) </regex>
   <order>srcip</order>
 </decoder>       
 

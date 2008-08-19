@@ -50,13 +50,27 @@ fi
 # Looking for postgresql
 ls "`which psql 2>/dev/null`" > /dev/null 2>&1
 if [ $? = 0 ]; then
-    for i in /usr /usr/local /usr/pgsql /usr/postgresql $1
+
+    # Checking if pg_config is installed to use it.
+    pg_config --version > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        PGID=`pg_config --includedir`
+        PGPI=`pg_config --pkgincludedir`
+        PGLD=`pg_config --libdir`
+        PGLI=`pg_config --pkglibdir`
+        PI="${PGID} -I${PGPI}"
+        PL="-L${PGLD} -L${PGLI}"
+    fi
+                                
+    for i in /usr /usr/local /usr/local/pgsql /usr/pgsql /usr/postgresql $1
     do    
     for j in $i/include/pgsql/libpq-fe.h $i/include/libpq-fe.h $i/include/postgresql/libpq-fe.h
         do
             ls $j > /dev/null 2>&1 
             if [ $? = 0 ]; then
-                PI=`dirname $j`;
+                if [ "X$PI" = "X" ]; then
+                    PI=`dirname $j`;
+                fi    
                 break;
             fi
         done
@@ -65,8 +79,10 @@ if [ $? = 0 ]; then
         do
             ls $j > /dev/null 2>&1
             if [ $? = 0 ]; then
-                PG_MAIN=`dirname $j`;
-                PL="-L$j -L${PG_MAIN} -lpq";
+                if [ "X$PL" = "X" ]; then
+                    PG_MAIN=`dirname $j`;
+                    PL="-L$j -L${PG_MAIN}";
+                fi
                 break
             fi    
         done
@@ -104,7 +120,7 @@ if [ "X$PI" = "X" -o "X$PL" = "X" ]; then
     POSTGRES_FINAL=""
 else
     echo "Info: Compiled with PostgreSQL support." >&2
-    POSTGRES_FINAL="-I$PI $PL -DDBD -DUPOSTGRES"    
+    POSTGRES_FINAL="-I$PI $PL -lpq -DDBD -DUPOSTGRES"    
 fi
 
 

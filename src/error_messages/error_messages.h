@@ -129,7 +129,10 @@
 
 
 /* Remoted */
-#define NO_REM_CONN     "%s(1701): ERROR: No remote connection configured. Exiting."
+#define NO_REM_CONN     "%s(1750): ERROR: No remote connection configured. Exiting."
+
+
+/* 1760 - 1769 -- reserver for maild */
 
 
 /* Active response */
