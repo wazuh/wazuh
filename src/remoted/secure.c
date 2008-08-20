@@ -213,14 +213,14 @@ void HandleSecure()
 
         /* Generating srcmsg */
         snprintf(srcmsg, OS_FLSIZE,"(%s) %s",keys.keyentries[agentid]->name, 
-                                             srcip);
+                                             keys.keyentries[agentid]->ip->ip);
         
 
         /* If we can't send the message, try to connect to the
          * socket again. If it not exit.
          */
         if(SendMSG(logr.m_queue, tmp_msg, srcmsg, 
-                    SECURE_MQ) < 0)
+                   SECURE_MQ) < 0)
         {
             merror(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
 

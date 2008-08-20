@@ -26,7 +26,7 @@
 
 /* To translante between month (int) to month (char) */
 char *(month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
-	            "Sep","Oct","Nov","Dec"};
+	             "Sep","Oct","Nov","Dec"};
 
 
 
@@ -63,7 +63,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     pieces++;    
     
     
-    /* Dumping location */
     os_strdup(msg, lf->location);
         
     
@@ -466,7 +465,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
     /* Every message must be in the format 
      * hostname->location or
-     * agent(ip)->location.
+     * (agent) ip->location.
      */
 
 

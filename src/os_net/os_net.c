@@ -445,7 +445,7 @@ int OS_RecvUnix(int socket, int sizet, char *ret)
         return(0);
 
     ret[recvd] = '\0';
-    return(1);
+    return((int)recvd);
 }
 
 

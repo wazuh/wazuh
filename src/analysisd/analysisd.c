@@ -648,7 +648,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
         
         /* Receive message from queue */
-        if(OS_RecvUnix(m_queue, OS_MAXSTR, msg))
+        if((i = OS_RecvUnix(m_queue, OS_MAXSTR, msg)))
         {
             RuleNode *rulenode_pt;
 
@@ -660,6 +660,15 @@ void OS_ReadMSG_analysisd(int m_queue)
             Zero_Eventinfo(lf);
 
 
+            /* Checking for a valid message. */
+            if(i < 4)
+            {
+                merror(IMSG_ERROR, ARGV0, msg);
+                Free_Eventinfo(lf);
+                continue;
+            }
+            
+
             /* Message before extracting header */
             DEBUG_MSG("%s: DEBUG: Received msg: %s ", ARGV0, msg);
 
@@ -667,10 +676,8 @@ void OS_ReadMSG_analysisd(int m_queue)
             /* Clean the msg appropriately */
             if(OS_CleanMSG(msg, lf) < 0)
             {
-                merror(IMSG_ERROR,ARGV0,msg);
-
+                merror(IMSG_ERROR,ARGV0, msg);
                 Free_Eventinfo(lf);
-
                 continue;
             }
 
@@ -1030,6 +1037,10 @@ void OS_ReadMSG_analysisd(int m_queue)
             if(lf->generated_rule == NULL)
                 Free_Eventinfo(lf);
 
+        }
+        else
+        {
+            free(lf);
         }
     }
     return;
