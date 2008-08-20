@@ -249,7 +249,6 @@ void WinExecdRun(char *exec_msg)
                                     ADD_ENTRY,tmp_msg);
         /* executing command */
 
-        merror("XXX: executing: '%s'", buffer);
         ExecCmd_Win32(buffer);
 
         /* We don't need to add to the list if the timeout_value == 0 */
