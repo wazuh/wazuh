@@ -213,7 +213,7 @@ void HandleSecure()
 
         /* Generating srcmsg */
         snprintf(srcmsg, OS_FLSIZE,"(%s) %s",keys.keyentries[agentid]->name, 
-                                             keys.keyentries[agentid]->ip->ip);
+                                             srcip);
         
 
         /* If we can't send the message, try to connect to the
