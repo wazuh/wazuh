@@ -233,6 +233,12 @@ fi
 # Moving the decoders/internal_conf file.
 cp -pr ../etc/decoder.xml ${DIR}/etc/
 
+# Copying local files.
+cp -pr ../etc/local_decoder.xml ${DIR}/etc/ > /dev/null 2>&1
+cp -pr ../etc/local_internal_options.conf ${DIR}/etc/ > /dev/null 2>&1
+cp -pr ../etc/client.keys ${DIR}/etc/ > /dev/null 2>&1
+
+
 # Backup currently internal_options file.
 ls ${DIR}/etc/internal_options.conf > /dev/null 2>&1
 if [ $? = 0 ]; then
@@ -242,10 +248,16 @@ fi
 cp -pr ../etc/internal_options.conf ${DIR}/etc/
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
 chown root:${GROUP} ${DIR}/etc/decoder.xml
+chown root:${GROUP} ${DIR}/etc/local_decoder.xml >/dev/null 2>&1
 chown root:${GROUP} ${DIR}/etc/internal_options.conf
+chown root:${GROUP} ${DIR}/etc/local_internal_options.conf >/dev/null 2>&1
+chown root:${GROUP} ${DIR}/etc/client.keys >/dev/null 2>&1
 chown root:${GROUP} ${DIR}/etc/shared/*
 chmod 440 ${DIR}/etc/decoder.xml
+chmod 440 ${DIR}/etc/local_decoder.xml >/dev/null 2>&1
 chmod 440 ${DIR}/etc/internal_options.conf
+chmod 440 ${DIR}/etc/local_internal_options.conf >/dev/null 2>&1
+chmod 440 ${DIR}/etc/client.keys >/dev/null 2>&1
 chmod 550 ${DIR}/etc
 chmod 550 ${DIR}/etc/shared
 chmod 440 ${DIR}/etc/shared/*
