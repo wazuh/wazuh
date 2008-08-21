@@ -62,3 +62,5 @@ To compile everything by yourself:
 
 *Before running make server, make sure to have the necessary users created.
 The Makefile will not do that.
+
+EOF
