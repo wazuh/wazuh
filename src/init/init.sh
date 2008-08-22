@@ -85,7 +85,17 @@ runInit()
         ln -s /etc/init.d/ossec /etc/rc3.d/S97ossec
         return 0;    
     fi    
-         
+
+    if [ "X${UN}" = "XAIX" ]; then
+        echo " - ${systemis} AIX."
+        echo " - ${modifiedinit}"
+        cp -pr ./src/init/ossec-hids-aix.init /etc/init.d/ossec
+        chmod 755 /etc/init.d/ossec
+        ln -s /etc/init.d/ossec /etc/rc2.d/S97ossec
+        ln -s /etc/init.d/ossec /etc/rc3.d/S97ossec
+        return 0;    
+    fi    
+
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" ]; then
         # Checking for the presence of ossec-control on rc.local
         grep ossec-control /etc/rc.local > /dev/null 2>&1
