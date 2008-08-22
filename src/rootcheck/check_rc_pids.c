@@ -247,6 +247,25 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
             }
         }
         
+        #ifdef AIX
+        /* Ignoring AIX wait and sched programs. */
+        if((_gsid0 == _gsid1) &&
+           (_kill0 == _kill1) &&
+           (_gpid0 == _gpid1) &&
+           (_ps0 == 1) && 
+           (_gsid0 == 1) && 
+           (_kill0 == 0))
+        {
+            /* The wait and sched programs do not respond to kill 0.
+             * So, if everything else finds it, including ps, getpid, getsid,
+             * but not
+             * kill, we can safely ignore on AIX.
+             * A malicious program would specially try to hide from ps..
+             */
+            continue;
+        }
+        #endif
+
         
         if((_gsid0 == _gsid1)&&
            (_kill0 == _kill1)&&
