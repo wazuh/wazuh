@@ -75,6 +75,16 @@ runInit()
         sh ./src/init/darwin-init.sh
         return 0;
     fi
+
+    if [ "X${UN}" = "XSunOS" ]; then
+        echo " - ${systemis} Solaris (SunOS)."
+        echo " - ${modifiedinit}"
+        cp -pr ./src/init/ossec-hids-solaris.init /etc/init.d/ossec
+        chmod 755 /etc/init.d/ossec
+        ln -s /etc/init.d/ossec /etc/rc2.d/S97ossec
+        ln -s /etc/init.d/ossec /etc/rc3.d/S97ossec
+        return 0;    
+    fi    
          
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" ]; then
         # Checking for the presence of ossec-control on rc.local

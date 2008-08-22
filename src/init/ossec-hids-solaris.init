@@ -1,0 +1,73 @@
+#!/bin/sh
+# OSSEC         Controls OSSEC HIDS on Solaris systems
+# Author:       Kayvan A. Sylvan <kayvan@sylvan.com>
+# Author:       Daniel B. Cid <dcid@ossec.net>
+#
+# chkconfig: 2345 99 15
+# description: Starts and stops OSSEC HIDS (Host Intrusion Detection System)
+#
+# This will work on Solaris systems (maybe others too)
+#
+# Modified by Chris Cuevas and Darryl Marsee to work on Solaris
+#
+# Source function library.
+LANG=C
+export $LANG
+
+. /etc/ossec-init.conf
+
+if [ "X${DIRECTORY}" = "X" ]; then
+   DIRECTORY="/var/ossec"
+fi
+
+start() {
+       echo -n "Starting OSSEC: "
+       ${DIRECTORY}/bin/ossec-control start > /dev/null
+       RETVAL=$?
+       if [ $RETVAL -eq 0 ]; then
+               echo success
+       else
+               echo failure
+       fi
+       echo
+       return $RETVAL
+}
+
+stop() {
+       echo -n "Stopping OSSEC: "
+       ${DIRECTORY}/bin/ossec-control stop > /dev/null
+       RETVAL=$?
+       if [ $RETVAL -eq 0 ]; then
+               echo success
+       else
+               echo failure
+       fi
+       echo
+       return $RETVAL
+}
+
+status() {
+       ${DIRECTORY}/bin/ossec-control status
+}
+
+
+case "$1" in
+ start)
+       start
+       ;;
+ stop)
+       stop
+       ;;
+ restart)
+       stop
+       start
+       ;;
+ status)
+   status
+       ;;
+ *)
+       echo "*** Usage: ossec {start|stop|restart|status}"
+       exit 1
+esac
+
+exit $?
