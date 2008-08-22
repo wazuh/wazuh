@@ -15,13 +15,13 @@
 
 
 #undef ARGV0
-#define ARGV0 "syscheck_control"
+#define ARGV0 "rootcheck_control"
 
 
 /** help **/
 void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: Manages the integrity checking database.\n", 
+    printf("\nOSSEC HIDS %s: Manages the policy and auditing database.\n", 
            ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
@@ -29,12 +29,9 @@ void helpmsg()
     printf("\t-lc         List only active agents.\n");
     printf("\t-u <id>     Updates (clear) the database for the agent.\n");
     printf("\t-u all      Updates (clear) the database for all agents.\n");
-    printf("\t-i <id>     List modified files for the agent.\n");
-    printf("\t-r -i <id>  List modified registry entries for the agent "
-           "(Windows only).\n");
-    printf("\t-f <file>   Prints information about a modified file.\n");
-    printf("\t-z          Used with the -f, zeroes the auto-ignore counter.\n");
-    printf("\t-d          Used with the -f, ignores that file.\n");
+    printf("\t-i <id>     Prints database for the agent.\n");
+    printf("\t-r          Used with -i, prints all the resolved issues.\n");
+    printf("\t-q          Used with -i, prints all the outstanding issues.\n");
     printf("\t-s          Changes the output to CSV (comma delimited).\n");
     exit(1);
 }
@@ -47,13 +44,12 @@ int main(int argc, char **argv)
     char *group = GROUPGLOBAL;
     char *user = USER;
     char *agent_id = NULL;
-    char *fname = NULL;
 
     int gid = 0;
     int uid = 0;
-    int c = 0, info_agent = 0, update_syscheck = 0,
-               list_agents = 0, zero_counter = 0,
-               registry_only = 0;
+    int c = 0, info_agent = 0, update_rootcheck = 0,
+               list_agents = 0, 
+               resolved_only = 0;
     int agt_id = 0, active_only = 0, csv_output = 0;
 
     char shost[512];
@@ -71,7 +67,7 @@ int main(int argc, char **argv)
     }
 
 
-    while((c = getopt(argc, argv, "VhzrDdlcsu:i:f:")) != -1)
+    while((c = getopt(argc, argv, "VhqrDdlcsu:i:")) != -1)
     {
         switch(c){
             case 'V':
@@ -86,19 +82,16 @@ int main(int argc, char **argv)
             case 'l':
                 list_agents++;
                 break;
-            case 'z':
-                zero_counter = 1;
-                break;
-            case 'd':
-                zero_counter = 2;
-                break;        
             case 's':
                 csv_output = 1;    
             case 'c':
                 active_only++;
                 break;    
             case 'r':
-                registry_only = 1;
+                resolved_only = 1;
+                break;    
+            case 'q':
+                resolved_only = 2;
                 break;    
             case 'i':
                 info_agent++;
@@ -109,14 +102,6 @@ int main(int argc, char **argv)
                 }
                 agent_id = optarg;
                 break;
-            case 'f':
-                if(!optarg)
-                {
-                    merror("%s: -u needs an argument",ARGV0);
-                    helpmsg();
-                }
-                fname = optarg;
-                break;
             case 'u':
                 if(!optarg)
                 {
@@ -124,7 +109,7 @@ int main(int argc, char **argv)
                     helpmsg();
                 }
                 agent_id = optarg;
-                update_syscheck = 1;
+                update_rootcheck = 1;
                 break;
             default:
                 helpmsg();
@@ -200,8 +185,8 @@ int main(int argc, char **argv)
     
 
 
-    /* Update syscheck database. */
-    if(update_syscheck)
+    /* Update rootcheck database. */
+    if(update_rootcheck)
     {
         /* Cleaning all agents (and server) db. */
         if(strcmp(agent_id, "all") == 0)
@@ -209,10 +194,10 @@ int main(int argc, char **argv)
             DIR *sys_dir;
             struct dirent *entry;
 
-            sys_dir = opendir(SYSCHECK_DIR);
+            sys_dir = opendir(ROOTCHECK_DIR);
             if(!sys_dir)
             {
-                ErrorExit("%s: Unable to open: '%s'", ARGV0, SYSCHECK_DIR);
+                ErrorExit("%s: Unable to open: '%s'", ARGV0, ROOTCHECK_DIR);
             }
 
             while((entry = readdir(sys_dir)) != NULL)
@@ -227,7 +212,7 @@ int main(int argc, char **argv)
                     continue;
                 }
 
-                snprintf(full_path, OS_MAXSTR,"%s/%s", SYSCHECK_DIR, 
+                snprintf(full_path, OS_MAXSTR,"%s/%s", ROOTCHECK_DIR, 
                          entry->d_name);
 
                 fp = fopen(full_path, "w");
@@ -242,7 +227,7 @@ int main(int argc, char **argv)
             }
 
             closedir(sys_dir);
-            printf("\n** Integrity check database updated.\n\n");
+            printf("\n** Policy and auditing database updated.\n\n");
             exit(0);
         }
 
@@ -251,7 +236,7 @@ int main(int argc, char **argv)
         {
             char final_dir[1024];
             FILE *fp;
-            snprintf(final_dir, 1020, "/%s/syscheck", SYSCHECK_DIR);
+            snprintf(final_dir, 1020, "/%s/rootcheck", ROOTCHECK_DIR);
 
             fp = fopen(final_dir, "w");
             if(fp)
@@ -259,19 +244,7 @@ int main(int argc, char **argv)
                 fclose(fp);
             }
             unlink(final_dir);
-
-
-            /* Deleting cpt file */
-            snprintf(final_dir, 1020, "/%s/.syscheck.cpt", SYSCHECK_DIR);
-
-            fp = fopen(final_dir, "w");
-            if(fp)
-            {
-                fclose(fp);
-            }
-            unlink(final_dir);
-
-            printf("\n** Integrity check database updated.\n\n");
+            printf("\n** Policy and auditing database updated.\n\n");
             exit(0);
         }
 
@@ -291,10 +264,10 @@ int main(int argc, char **argv)
             }
 
             /* Deleting syscheck */
-            delete_syscheck(keys.keyentries[i]->name,
-                            keys.keyentries[i]->ip->ip, 0);
+            delete_rootcheck(keys.keyentries[i]->name,
+                             keys.keyentries[i]->ip->ip, 0);
 
-            printf("\n** Integrity check database updated.\n\n");
+            printf("\n** Policy and auditing database updated.\n\n");
             exit(0);
         }
     }
@@ -312,17 +285,12 @@ int main(int argc, char **argv)
         if((strcmp(agent_id, "000") == 0) ||
            (strcmp(agent_id, "local") == 0))
         {
-            printf("\nIntegrity checking changes for local system '%s - %s':\n",
+            if(!csv_output)
+            printf("\nPolicy and auditing events for local system '%s - %s':\n",
                     shost, "127.0.0.1");
-            if(fname)
-            {
-                printf("Detailed information for entries matching: '%s'\n", 
-                       fname);
-            }
             
-            print_syscheck(NULL,
-                           NULL, fname, 0, 0, 
-                           csv_output, zero_counter);
+            print_rootcheck(NULL,
+                            NULL, NULL, resolved_only, csv_output); 
         }
         else
         {
@@ -341,31 +309,17 @@ int main(int argc, char **argv)
             final_mask[128] = '\0';
             getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 128);
             snprintf(final_ip, 128, "%s%s",keys.keyentries[agt_id]->ip->ip,
-                    final_mask);
+                     final_mask);
 
-            if(registry_only)
-            {
-                printf("\nIntegrity changes for 'Windows Registry' of"
-                       " agent '%s (%s) - %s':\n",
-                       keys.keyentries[i]->name, keys.keyentries[i]->id, 
-                       final_ip);   
-            }
-            else
-            {
-                printf("\nIntegrity changes for agent "
+            if(!csv_output)
+            printf("\nPolicy and auditing events for agent "
                        "'%s (%s) - %s':\n",
                        keys.keyentries[i]->name, keys.keyentries[i]->id, 
                        final_ip);
-            }
 
-            if(fname)
-            {
-                printf("Detailed information for entries matching: '%s'\n", 
-                       fname);
-            }
-            print_syscheck(keys.keyentries[i]->name,
-                    keys.keyentries[i]->ip->ip, fname, 
-                    registry_only, 0, csv_output, zero_counter);
+            print_rootcheck(keys.keyentries[i]->name,
+                            keys.keyentries[i]->ip->ip, NULL, 
+                            resolved_only, csv_output);
 
         }
         

@@ -521,6 +521,255 @@ int print_syscheck(char *sk_name, char *sk_ip, char *fname, int print_registry,
     return(0);
 }
 
+
+
+int _do_get_rootcheckscan(FILE *fp)
+{
+    char *tmp_str;
+    char buf[OS_MAXSTR + 1];
+
+    while(fgets(buf, OS_MAXSTR, fp) != NULL)
+    {
+        tmp_str = strstr(buf, "Starting rootcheck scan");
+        if(tmp_str)
+        {
+            time_t s_time = 0;
+            tmp_str = buf + 1;
+
+            s_time = (time_t)atoi(tmp_str);
+
+            return((int)s_time);
+        }
+    }
+
+    return((int)time(NULL));
+}
+
+
+
+/* Print syscheck db (of modified files. */
+int _do_print_rootcheck(FILE *fp, int resolved, int time_last_scan, 
+                        int csv_output)
+{
+    int i = 0;
+    int f_found = 0;
+    
+    /* Current time. */
+    time_t c_time;
+
+    /* Time from the message. */
+    time_t s_time = 0;
+    time_t i_time = 0;
+    struct tm *tm_time;
+    
+    char old_day[24 +1];
+    char read_day[24 +1];
+    char buf[OS_MAXSTR + 1];
+    char *tmp_str;
+
+
+    char *(ig_events[]) = {"Starting rootcheck scan",
+                           "Ending rootcheck scan",
+                           "Starting syscheck scan",
+                           "Ending syscheck scan",
+                           NULL};
+
+    char *(ns_events[]) = {"Application Found:",
+                           "Windows Audit:",
+                           "Windows Malware:",
+                           NULL}; 
+                           
+
+    buf[OS_MAXSTR] = '\0';
+    old_day[24] = '\0';
+    read_day[24] = '\0';
+
+    
+    c_time = time(0);
+    fseek(fp, 0, SEEK_SET);
+
+
+    if(!csv_output)
+    {
+        if(resolved)
+            printf("\nResolved events: \n\n");
+        else
+            printf("\nOutstanding events: \n\n");    
+    }
+
+
+    while(fgets(buf, OS_MAXSTR, fp) != NULL)
+    {
+        /* Removing first ! */
+        tmp_str = buf + 1;
+        s_time = (time_t)atoi(tmp_str);
+
+
+        /* Removing new line. */
+        tmp_str = strchr(buf, '\n');
+        if(tmp_str)
+            *tmp_str = '\0';
+
+        
+        /* Getting initial time. */
+        tmp_str = strchr(buf + 1, '!');
+        if(!tmp_str)
+            continue;
+        tmp_str++;
+
+        i_time = (time_t)atoi(tmp_str);
+
+
+        /* Getting the actual message. */
+        tmp_str = strchr(tmp_str, ' ');
+        if(!tmp_str)
+            continue;
+        tmp_str++;    
+                
+
+       
+        /* Checking for resolved. */
+        if(time_last_scan > (s_time + 86400))
+        {
+            if(!resolved)
+            {
+                continue;
+            }
+        }
+        else
+        {
+            if(resolved)
+            {
+                continue;
+            }
+        }
+
+
+        /* Checking events to ignore. */
+        i = 0;
+        while(ig_events[i])
+        {
+            if(strncmp(tmp_str, ig_events[i], strlen(ig_events[i]) -1) == 0)
+                break;
+            i++;        
+        }
+        if(ig_events[i])
+            continue;
+
+        
+        /* Checking events that are not system audit. */
+        i = 0;
+        while(ns_events[i])
+        {
+            if(strncmp(tmp_str, ns_events[i], strlen(ns_events[i]) -1) == 0)
+                break;
+            i++;
+        }
+        
+
+        tm_time = localtime((time_t *)&s_time);
+        strftime(read_day, 23, "%Y %h %d %T", tm_time);
+        tm_time = localtime((time_t *)&i_time);
+        strftime(old_day, 23, "%Y %h %d %T", tm_time);
+        
+
+        if(!csv_output)
+        {
+            printf("%s (first time detected: %s)\n", read_day, old_day);
+
+            if(ns_events[i])
+            {
+                printf("%s\n\n", tmp_str);
+            }
+            else
+            {
+                printf("System Audit: %s\n\n", tmp_str);
+            }
+        }
+        else
+        {
+            printf("%s,%s,%s,%s%s\n", resolved == 0?"outstanding":"resolved",
+                                       read_day, old_day,
+                                       ns_events[i] != NULL?"":"System Audit: ",
+                                       tmp_str); 
+        }
+        
+        
+        
+        f_found++;
+    }
+
+    if(!f_found && !csv_output)
+    {
+        printf("** No entries found.\n");
+    }
+                            
+    return(0);
+}
+
+
+
+/* Print rootcheck db */
+int print_rootcheck(char *sk_name, char *sk_ip, char *fname, int resolved, 
+                    int csv_output)
+{
+    int ltime = 0;
+    FILE *fp;
+    char tmp_file[513];
+
+    tmp_file[512] = '\0';
+
+
+    if(sk_name == NULL)
+    {
+        /* Printing database */
+        snprintf(tmp_file, 512, "%s/rootcheck",
+                ROOTCHECK_DIR);
+
+        fp = fopen(tmp_file, "r+");
+    }
+    
+    else
+    {
+        /* Printing database */
+        snprintf(tmp_file, 512, "%s/(%s) %s->rootcheck",
+                ROOTCHECK_DIR,
+                sk_name,
+                sk_ip);
+
+        fp = fopen(tmp_file, "r+");
+    }
+
+
+    if(fp)
+    {
+        /* Getting last time of scan. */
+        ltime = _do_get_rootcheckscan(fp);
+        if(!fname)
+        {
+            if(resolved == 1)
+            {
+                _do_print_rootcheck(fp, 1, ltime, csv_output);
+            }
+            else if(resolved == 2)
+            {
+                _do_print_rootcheck(fp, 0, ltime, csv_output);
+            }
+            else
+            {
+                _do_print_rootcheck(fp, 1, ltime, csv_output);
+                _do_print_rootcheck(fp, 0, ltime, csv_output);
+            }
+        }
+        else
+        {
+        }
+        fclose(fp);
+    }
+
+    return(0);
+}
+
 #endif
 
 
@@ -581,6 +830,33 @@ int delete_syscheck(char *sk_name, char *sk_ip, int full_delete)
     if(fp)
         fclose(fp);
     unlink(tmp_file);
+
+    return(1);
+}
+
+
+
+/* Delete rootcheck db */ 
+int delete_rootcheck(char *sk_name, char *sk_ip, int full_delete)
+{
+    FILE *fp;
+    char tmp_file[513];
+
+    tmp_file[512] = '\0';
+    
+    /* Deleting related files */
+    snprintf(tmp_file, 512, "%s/(%s) %s->rootcheck",
+            ROOTCHECK_DIR,
+            sk_name,
+            sk_ip);
+
+    fp = fopen(tmp_file, "w");
+    if(fp)
+        fclose(fp);
+
+    if(full_delete)    
+        unlink(tmp_file);
+
 
     return(1);
 }

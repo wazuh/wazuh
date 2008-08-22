@@ -32,8 +32,15 @@ typedef struct _agent_info
 int print_syscheck(char *sk_name, char *sk_ip, char *fname, int print_registry, 
                    int all_files, int csv_output, int update_counter);
 
+/* Print rootcheck db. */
+int print_rootcheck(char *sk_name, char *sk_ip, char *fname, int resolved,
+                    int csv_output);
+
 /* Delete syscheck db */
 int delete_syscheck(char *sk_name, char *sk_ip, int full_delete);
+
+/* Delete rootcheck db. */
+int delete_rootcheck(char *sk_name, char *sk_ip, int full_delete);
 
 /* Delete agent information */
 int delete_agentinfo(char *name);
