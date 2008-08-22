@@ -39,12 +39,15 @@ int connect_server(int initial_id)
     if(logr->sock >= 0)
     {
         /* Waiting for other threads to settle. */
-        sleep(2);
+        sleep(3);
         close(logr->sock);
 
-        verbose("%s: INFO: Closing connection to server (%s:%d).", ARGV0,
-                logr->rip[rc],
-                logr->port);
+        if(logr->rip[1])
+        {
+            verbose("%s: INFO: Closing connection to server (%s:%d).", ARGV0,
+                    logr->rip[rc],
+                    logr->port);
+        }
         
         logr->sock = -1;
     }
@@ -52,14 +55,52 @@ int connect_server(int initial_id)
     
     while(logr->rip[rc])
     {
+        char *tmp_str;
+
+        /* Checking if we have a hostname. */
+        tmp_str = strchr(logr->rip[rc], '/');
+        if(tmp_str)
+        {
+            char *f_ip;
+            *tmp_str = '\0';
+            
+            f_ip = OS_GetHost(logr->rip[rc], 5);
+            if(f_ip)
+            {
+                char ip_str[128];
+                ip_str[127] = '\0';
+
+                snprintf(ip_str, 127, "%s/%s", logr->rip[rc], f_ip);
+                
+                free(f_ip);
+                free(logr->rip[rc]);
+
+                os_strdup(ip_str, logr->rip[rc]);
+                tmp_str = strchr(logr->rip[rc], '/');
+                tmp_str++;
+            }
+            else
+            {
+                merror("%s: WARN: Unable to get hostname for '%s'.", 
+                       ARGV0, logr->rip[rc]);
+                *tmp_str = '/';
+                tmp_str++;
+            }
+        }
+        else
+        {
+            tmp_str = logr->rip[rc];
+        }
+        
+        
         verbose("%s: INFO: Trying to connect to server (%s:%d).", ARGV0,
                 logr->rip[rc],
                 logr->port);
 
-        logr->sock = OS_ConnectUDP(logr->port, logr->rip[rc]);
+        logr->sock = OS_ConnectUDP(logr->port, tmp_str);
         if(logr->sock < 0)
         {
-            merror(CONNS_ERROR, ARGV0, logr->rip[rc]);
+            merror(CONNS_ERROR, ARGV0, tmp_str);
             rc++;
 
             if(logr->rip[rc] == NULL)
@@ -68,7 +109,7 @@ int connect_server(int initial_id)
                 
                 /* Only log that if we have more than 1 server configured. */
                 if(logr->rip[1])
-                    merror("%s: ERROR: Unable to connect to any server.", ARGV0);
+                    merror("%s: ERROR: Unable to connect to any server.",ARGV0);
                     
                 sleep(attempts);
                 rc = 0;
@@ -192,8 +233,7 @@ void start_agent(int is_startup)
         {
             int curr_rip = logr->rip_id;
             merror("%s: INFO: Trying next server ip in the line: '%s'.", ARGV0,
-                   logr->rip[logr->rip_id + 1] != NULL?logr->rip[logr->rip_id + 1]:
-                                                       logr->rip[0]);
+                   logr->rip[logr->rip_id + 1] != NULL?logr->rip[logr->rip_id + 1]:logr->rip[0]);
             connect_server(logr->rip_id +1);
 
             if(logr->rip_id == curr_rip)
@@ -203,7 +243,7 @@ void start_agent(int is_startup)
             }
             else
             {
-                g_attempts++;
+                g_attempts+=5;
                 sleep(g_attempts);
             }
         }

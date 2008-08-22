@@ -420,18 +420,15 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
 
                     /* If we have more than one server, try all. */
-                    if(wi > 5)
+                    if(wi > 5 && logr->rip[1])
                     {
                         int curr_rip = logr->rip_id;
-                        if(logr->rip[1])
-                        {
-                            merror("%s: INFO: Trying next server ip in "
-                                   "line: '%s'.", 
-                                ARGV0,
-                                logr->rip[logr->rip_id + 1] != NULL?
-                                logr->rip[logr->rip_id + 1]:
-                                logr->rip[0]);
-                        }
+                        merror("%s: INFO: Trying next server ip in "
+                               "line: '%s'.", 
+                               ARGV0,
+                               logr->rip[logr->rip_id + 1] != NULL?
+                               logr->rip[logr->rip_id + 1]:
+                               logr->rip[0]);
                         
                         connect_server(logr->rip_id +1);
 
@@ -439,6 +436,11 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
                         {
                             wi = 1;
                         }
+                    }
+                    else if(wi > 20)
+                    {
+                        connect_server(logr->rip_id +1);
+                        wi+=10;
                     }
                 }
 
