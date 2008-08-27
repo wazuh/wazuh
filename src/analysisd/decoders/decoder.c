@@ -140,6 +140,7 @@ void DecodeEvent(Eventinfo *lf)
                 }
                 else
                 {
+                    cmatch = pmatch;
                     break;
                 }
 

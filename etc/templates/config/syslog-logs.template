@@ -26,3 +26,4 @@
 /var/log/horde.log
 /var/log/asl.log
 /var/log/dpkg.log
+/var/log/vmware/hostd.log

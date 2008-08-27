@@ -79,7 +79,8 @@ OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
             if((strcmp(tmp_node->osdecoder->name,pi->name) == 0) &&
                (pi->parent != NULL))
             {
-                if(tmp_node->osdecoder->prematch && pi->regex_offset)
+                if((tmp_node->osdecoder->prematch ||
+                    tmp_node->osdecoder->regex) && pi->regex_offset)
                 {
                     rm_f = 1;                    
                 }
