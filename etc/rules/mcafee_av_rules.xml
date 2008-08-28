@@ -57,7 +57,7 @@
   </rule>
 
   <rule id="7506" level="7">
-    <if_sid>7503</if_sid>
+    <if_sid>7504</if_sid>
     <match>Will be deleted</match>
     <group>virus</group>
     <description>McAfee Windows AV - Virus detected and file will be deleted.</description>
