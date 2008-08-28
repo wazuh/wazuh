@@ -114,10 +114,11 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element, xml_unixaudit) == 0)
         {
             int j = 0;
-            if(rootcheck->unixaudit && rootcheck->unixaudit[j])
+            while(rootcheck->unixaudit && rootcheck->unixaudit[j])
                 j++;
             
-            os_realloc(rootcheck->unixaudit, j+2, rootcheck->unixaudit);
+            os_realloc(rootcheck->unixaudit, sizeof(char *)*(j+2), 
+                       rootcheck->unixaudit);
             rootcheck->unixaudit[j] = NULL;
             rootcheck->unixaudit[j + 1] = NULL;
                 

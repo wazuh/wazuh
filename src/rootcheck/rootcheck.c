@@ -64,6 +64,7 @@ int main(int argc, char **argv)
 
 int rootcheck_init(int test_config)
 {
+    int c;
     
 #endif    
    
@@ -87,8 +88,19 @@ int rootcheck_init(int test_config)
     rootcheck.scanall = 0;
     rootcheck.readall = 0;
     rootcheck.disabled = 0;
+    rootcheck.alert_msg = NULL;
     rootcheck.time = ROOTCHECK_WAIT;
 
+
+    /* We store up to 255 alerts in there. */
+    os_calloc(256, sizeof(char *), rootcheck.alert_msg);
+    c = 0;
+    while(c <= 255)
+    {
+        rootcheck.alert_msg[c] = NULL;
+        c++;
+    }
+    
 
     #ifndef OSSECHIDS
     rootcheck.notify = SYSLOG;

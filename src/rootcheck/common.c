@@ -19,10 +19,28 @@
 
 
 
+/** Checks if the specified string is already in the array.
+ */
+int _is_str_in_array(char **ar, char *str)
+{
+    while(*ar)
+    {
+        if(strcmp(*ar, str) == 0)
+        {
+            return(1);
+        }
+        ar++;
+    }
+    return(0);
+}
+
+
+
 /** int rk_check_dir(char *dir, char *file, char *pattern)
  */
 int rk_check_dir(char *dir, char *file, char *pattern)
 {
+    int ret_code = 0;
     char f_name[PATH_MAX +2];
     struct dirent *entry;
     struct stat statbuf_local;
@@ -58,8 +76,7 @@ int rk_check_dir(char *dir, char *file, char *pattern)
             {
                 if(rk_check_file(f_name, pattern))
                 {
-                    closedir(dp);
-                    return(1);
+                    ret_code = 1;
                 }
             }
         }
@@ -71,8 +88,7 @@ int rk_check_dir(char *dir, char *file, char *pattern)
             {
                 if(rk_check_file(f_name, pattern))
                 {
-                    closedir(dp);
-                    return(1);
+                    ret_code = 1;
                 }
             }
         }
@@ -81,22 +97,18 @@ int rk_check_dir(char *dir, char *file, char *pattern)
         /* Checking if file is a directory */
         if(lstat(f_name, &statbuf_local) == 0)
         {
-            /* On all the systems, except darwin, the
-             * link count is only increased on directories.
-             */
             if(S_ISDIR(statbuf_local.st_mode))
             {
                 if(rk_check_dir(f_name, file, pattern))
                 {
-                    closedir(dp);
-                    return(1);
+                    ret_code = 1;
                 }
             }
         }
     }
 
     closedir(dp);
-    return(0);
+    return(ret_code);
 
 }
 
@@ -138,8 +150,24 @@ int rk_check_file(char *file, char *pattern)
         {
             if(is_file(file))
             {
-                snprintf(rootcheck.alert_msg, OS_SIZE_1024, " File: %s.",
+                int i = 0;
+                char _b_msg[OS_SIZE_1024 +1];
+
+                _b_msg[OS_SIZE_1024] = '\0';
+                snprintf(_b_msg, OS_SIZE_1024, " File: %s.",
                          file);
+
+                /* Already present. */
+                if(_is_str_in_array(rootcheck.alert_msg, _b_msg))
+                {
+                    return(1);
+                }
+
+                while(rootcheck.alert_msg[i] && (i < 255))
+                    i++;
+                
+                if(!rootcheck.alert_msg[i])
+                    os_strdup(_b_msg, rootcheck.alert_msg[i]);
 
                 return(1);
             }
@@ -178,11 +206,30 @@ int rk_check_file(char *file, char *pattern)
                     /* Matched */
                     if(pt_matches(buf, pattern))
                     {
+                        int i = 0;
+                        char _b_msg[OS_SIZE_1024 +1];
+
+
+                        /* Closing the file before dealing with the alert. */
                         fclose(fp);
 
-                        snprintf(rootcheck.alert_msg, OS_SIZE_1024, 
-                                 " File: %s.", file);
+                        /* Generating the alert itself. */
+                        _b_msg[OS_SIZE_1024] = '\0';
+                        snprintf(_b_msg, OS_SIZE_1024, " File: %s.",
+                                 file);
                         
+                        /* Already present. */
+                        if(_is_str_in_array(rootcheck.alert_msg, _b_msg))
+                        {
+                            return(1);
+                        }
+
+                        while(rootcheck.alert_msg[i] && (i < 255))
+                            i++;
+
+                        if(!rootcheck.alert_msg[i])
+                        os_strdup(_b_msg, rootcheck.alert_msg[i]);
+
                         return(1);
                     }
                 }
@@ -630,9 +677,26 @@ int is_process(char *value, void *p_list_p)
         /* Checking if value matches */
         if(pt_matches(pinfo->p_path, value))
         {
-            snprintf(rootcheck.alert_msg, OS_SIZE_1024, " Process: %s.",
-                     pinfo->p_path);
+            int i = 0;
+            char _b_msg[OS_SIZE_1024 +1];
+
+            _b_msg[OS_SIZE_1024] = '\0';
             
+            snprintf(_b_msg, OS_SIZE_1024, " Process: %s.",
+                     pinfo->p_path);
+
+            /* Already present. */
+            if(_is_str_in_array(rootcheck.alert_msg, _b_msg))
+            {
+                return(1);
+            }
+            
+            while(rootcheck.alert_msg[i] && (i< 255))
+                i++;
+
+            if(!rootcheck.alert_msg[i])
+                os_strdup(_b_msg, rootcheck.alert_msg[i]);
+
             return(1);
         }
 

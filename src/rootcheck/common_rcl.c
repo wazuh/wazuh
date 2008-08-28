@@ -373,7 +373,6 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
     memset(root_dir, '\0', sizeof(root_dir));
     memset(final_file, '\0', sizeof(final_file));
     memset(ref, '\0', sizeof(ref));
-    memset(rootcheck.alert_msg, '\0',OS_SIZE_1024 +1);
 
     
     root_dir_len = sizeof(root_dir) -1;
@@ -687,33 +686,64 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
         /* Alerting if necessary */
         if(g_found == 1)
         {
+            int j = 0;
             char op_msg[OS_SIZE_1024 +1];
-            if(ref[0] != '\0')
-            {
-                snprintf(op_msg, OS_SIZE_1024, "%s %s.%s"
-                                 " Reference: %s .",msg, name, 
-                                 rootcheck.alert_msg,
-                                 ref);
-            }
-            else
-            {
-                snprintf(op_msg, OS_SIZE_1024, "%s %s.%s",msg, 
-                                 name, rootcheck.alert_msg);
-            }
-            notify_rk(ALERT_POLICY_VIOLATION, op_msg);
-        }
+            char **p_alert_msg = rootcheck.alert_msg;
 
-        /* Checking if this entry is required for the rest of the file. */
-        else if(condition & RKCL_COND_REQ)
+            while(1) 
+            {
+                if(ref[0] != '\0')
+                {
+                    snprintf(op_msg, OS_SIZE_1024, "%s %s.%s"
+                            " Reference: %s .",msg, name, 
+                            p_alert_msg[j]?p_alert_msg[j]:"\0",
+                            ref);
+                }
+                else
+                {
+                    snprintf(op_msg, OS_SIZE_1024, "%s %s.%s",msg, 
+                            name, p_alert_msg[j]?p_alert_msg[j]:"\0");
+                }
+
+                if((type == RKCL_TYPE_DIR) || (j == 0))
+                {
+                    notify_rk(ALERT_POLICY_VIOLATION, op_msg);
+                }
+
+                if(p_alert_msg[j])
+                {
+                    free(p_alert_msg[j]);
+                    p_alert_msg[j] = NULL;
+                    j++;
+
+                    if(!p_alert_msg[j])
+                        break;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+        else
         {
-            goto clean_return;
+            int j = 0;
+            while(rootcheck.alert_msg[j])
+            {
+                free(rootcheck.alert_msg[j]);
+                rootcheck.alert_msg[j] = NULL;
+                j++;
+            }
+
+
+            /* Checking if this entry is required for the rest of the file. */
+            if(condition & RKCL_COND_REQ)
+            {
+                goto clean_return;
+            }
         }
-
-
-        /* Cleaning up alert msg. */
-        rootcheck.alert_msg[0] = '\0';
-
         
+
         /* Ending if we don't have anything else. */
         if(!nbuf)
         {

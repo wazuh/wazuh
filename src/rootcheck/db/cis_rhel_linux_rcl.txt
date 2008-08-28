@@ -223,4 +223,74 @@ f:/etc/shadow -> r:^\w+::;
 f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
 
 
+
+# Tests specific for VMware ESX - Runs on Red Hat Linux
+# Will not be tested anywhere else.
+[VMware ESX - Testing against the Security Harderning benchmark VI3 for ESX 3.5] [any required] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+f:/etc/vmware-release -> r:^VMware ESX;
+
+
+# Virtual Machine Files and Settings - 1
+# 1.1
+[VMware ESX - VM settings - Copy operation between guest and console enabled] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> !r:^isolation.tools.copy.disable;
+d:/vmfs/volumes -> .vmx$ -> r:^isolation.tools.copy.disable && r:false;
+
+# 1.2
+[VMware ESX - VM settings - Paste operation between guest and console enabled] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> !r:^isolation.tools.paste.disable;
+d:/vmfs/volumes -> .vmx$ -> r:^isolation.tools.paste.disable && r:false;
+
+# 1.3
+[VMware ESX - VM settings - GUI Options enabled] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> r:^isolation.tools.setGUIOptions.enable && r:true;
+
+# 1.4
+[VMware ESX - VM settings - Data Flow from the Virtual Machine to the Datastore not limited - Rotate size not 100KB] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> !r:^log.rotateSize;
+d:/vmfs/volumes -> .vmx$ -> r:^log.rotateSize && !r:"100000";
+
+# 1.5
+[VMware ESX - VM settings - Data Flow from the Virtual Machine to the Datastore not limited - Maximum number of logs not 10] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> !r:^log.keepOld;
+d:/vmfs/volumes -> .vmx$ -> r:^log.keepOld && r:"10";
+
+# 1.6
+[VMware ESX - VM settings - Data Flow from the Virtual Machine to the Datastore not limited - Guests allowed to write SetInfo data to config] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> !r:^isolation.tools.setinfo.disable;
+d:/vmfs/volumes -> .vmx$ -> r:^isolation.tools.setinfo.disable && r:false;
+
+# 1.7
+[VMware ESX - VM settings - Nonpersistent Disks being used] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> r:^scsi\d:\d.mode && r:!independent-nonpersistent;
+
+# 1.8
+[VMware ESX - VM settings - Floppy drive present] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> r:^floppy\d+.present && r:!false;
+
+[VMware ESX - VM settings - Serial port present] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> r:^serial\d+.present && r:!false;
+
+[VMware ESX - VM settings - Parallel port present] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> r:^parallel\d+.present && r:!false;
+
+# 1.9
+[VMware ESX - VM settings - Unauthorized Removal or Connection of Devices allowed] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> !r:^Isolation.tools.connectable.disable;
+d:/vmfs/volumes -> .vmx$ -> r:^Isolation.tools.connectable.disable && r:false;
+
+# 1.10
+[VMware ESX - VM settings - Avoid Denial of Service Caused by Virtual Disk Modification Operations - diskWiper enabled] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> !r:^isolation.tools.diskWiper.disable;
+d:/vmfs/volumes -> .vmx$ -> r:^isolation.tools.diskWiper.disable && r:false;
+
+[VMware ESX - VM settings - Avoid Denial of Service Caused by Virtual Disk Modification Operations - diskShrink enabled] [any] [http://www.ossec.net/wiki/index.php/SecurityHardening_VMwareESX]
+d:/vmfs/volumes -> .vmx$ -> !r:^isolation.tools.diskShrink.disable;
+d:/vmfs/volumes -> .vmx$ -> r:^isolation.tools.diskShrink.disable && r:false;
+
+
+# Configuring the Service Console in ESX 3.5 - 2
+# 2.1
+
+
 # EOF
