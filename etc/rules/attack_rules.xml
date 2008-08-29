@@ -84,6 +84,12 @@
     <description>Multiple authentication failures followed </description>
     <description>by a success.</description>
   </rule>
+
+  <rule id="40113" level="12" frequency="6" timeframe="360">
+    <if_matched_group>virus</if_matched_group>
+    <description>Multiple viruses detected - Possible outbreak.</description>
+    <group>virus,</group>
+  </rule>
   
 </group> <!-- SYSLOG, ATTACKS, -->
 

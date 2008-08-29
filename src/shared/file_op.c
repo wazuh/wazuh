@@ -426,6 +426,8 @@ int checkVista()
        strstr(m_uname, "Vista"))
     {
         isVista = 1;
+        verbose("%s: INFO: System is Vista or Windows Server 2008.", 
+                __local_name);
     }
 
     free(m_uname);

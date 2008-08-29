@@ -402,22 +402,23 @@ int get_ossec_server()
 
     /* Getting ip */
     str = OS_GetOneContentforElement(&xml, xml_serverip);
-    if(str)
+    if(str && (OS_IsValidIP(str, NULL) == 1))
     {
-        if(OS_IsValidIP(str, NULL) == 1)
-        {
-            config_inst.server_type = SERVER_IP_USED;
-            config_inst.server = str;
-        
-            OS_ClearXML(&xml);
-            return(1);
-        }
+        config_inst.server_type = SERVER_IP_USED;
+        config_inst.server = str;
 
-        free(str);
+        OS_ClearXML(&xml);
+        return(1);
     }
     /* If we dont find the ip, try the server-hostname */
     else
     {
+        if(str)
+        {
+            free(str);
+            str = NULL;
+        }
+        
         str = OS_GetOneContentforElement(&xml, xml_serverhost);
         if(str)
         {

@@ -64,7 +64,7 @@
 #define QUEUE_FATAL	    "%s(1211): ERROR: Unable to access queue: '%s'. Giving up.."
 #define PID_ERROR	    "%s(1212): ERROR: Unable to create PID file."
 #define DENYIP_WARN 	"%s(1213): WARN: Message from %s not allowed."
-#define MSG_ERROR	    "%s(1214): ERROR: Problem receiving message from %s."
+#define MSG_ERROR	    "%s(1214): WARN: Problem receiving message from %s."
 #define CLIENT_ERROR	"%s(1215): ERROR: No client configured. Exiting."
 #define CONNS_ERROR	    "%s(1216): ERROR: Unable to connect to '%s'."
 #define UNABLE_CONN     "%s(1242): ERROR: Unable to connect to server. Exausted all options."
