@@ -34,7 +34,7 @@ int print_syscheck(char *sk_name, char *sk_ip, char *fname, int print_registry,
 
 /* Print rootcheck db. */
 int print_rootcheck(char *sk_name, char *sk_ip, char *fname, int resolved,
-                    int csv_output);
+                    int csv_output, int show_last);
 
 /* Delete syscheck db */
 int delete_syscheck(char *sk_name, char *sk_ip, int full_delete);

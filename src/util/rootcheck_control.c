@@ -32,6 +32,7 @@ void helpmsg()
     printf("\t-i <id>     Prints database for the agent.\n");
     printf("\t-r          Used with -i, prints all the resolved issues.\n");
     printf("\t-q          Used with -i, prints all the outstanding issues.\n");
+    printf("\t-L          Used with -i, prints the last scan.\n");
     printf("\t-s          Changes the output to CSV (comma delimited).\n");
     exit(1);
 }
@@ -48,7 +49,7 @@ int main(int argc, char **argv)
     int gid = 0;
     int uid = 0;
     int c = 0, info_agent = 0, update_rootcheck = 0,
-               list_agents = 0, 
+               list_agents = 0, show_last = 0,
                resolved_only = 0;
     int agt_id = 0, active_only = 0, csv_output = 0;
 
@@ -67,7 +68,7 @@ int main(int argc, char **argv)
     }
 
 
-    while((c = getopt(argc, argv, "VhqrDdlcsu:i:")) != -1)
+    while((c = getopt(argc, argv, "VhqrDdLlcsu:i:")) != -1)
     {
         switch(c){
             case 'V':
@@ -93,6 +94,9 @@ int main(int argc, char **argv)
             case 'q':
                 resolved_only = 2;
                 break;    
+            case 'L':
+                show_last = 1;
+                break;
             case 'i':
                 info_agent++;
                 if(!optarg)
@@ -290,7 +294,7 @@ int main(int argc, char **argv)
                     shost, "127.0.0.1");
             
             print_rootcheck(NULL,
-                            NULL, NULL, resolved_only, csv_output); 
+                            NULL, NULL, resolved_only, csv_output, show_last); 
         }
         else
         {
@@ -319,7 +323,7 @@ int main(int argc, char **argv)
 
             print_rootcheck(keys.keyentries[i]->name,
                             keys.keyentries[i]->ip->ip, NULL, 
-                            resolved_only, csv_output);
+                            resolved_only, csv_output, show_last);
 
         }
         

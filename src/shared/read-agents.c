@@ -549,7 +549,7 @@ int _do_get_rootcheckscan(FILE *fp)
 
 /* Print syscheck db (of modified files. */
 int _do_print_rootcheck(FILE *fp, int resolved, int time_last_scan, 
-                        int csv_output)
+                        int csv_output, int show_last)
 {
     int i = 0;
     int f_found = 0;
@@ -591,7 +591,14 @@ int _do_print_rootcheck(FILE *fp, int resolved, int time_last_scan,
 
     if(!csv_output)
     {
-        if(resolved)
+        if(show_last)
+        {
+            tm_time = localtime((time_t *)&time_last_scan);
+            strftime(read_day, 23, "%Y %h %d %T", tm_time);
+                    
+            printf("\nLast scan: %s\n\n", read_day);
+        }
+        else if(resolved)
             printf("\nResolved events: \n\n");
         else
             printf("\nOutstanding events: \n\n");    
@@ -675,7 +682,8 @@ int _do_print_rootcheck(FILE *fp, int resolved, int time_last_scan,
 
         if(!csv_output)
         {
-            printf("%s (first time detected: %s)\n", read_day, old_day);
+            if(!show_last)
+                printf("%s (first time detected: %s)\n", read_day, old_day);
 
             if(ns_events[i])
             {
@@ -711,7 +719,7 @@ int _do_print_rootcheck(FILE *fp, int resolved, int time_last_scan,
 
 /* Print rootcheck db */
 int print_rootcheck(char *sk_name, char *sk_ip, char *fname, int resolved, 
-                    int csv_output)
+                    int csv_output, int show_last)
 {
     int ltime = 0;
     FILE *fp;
@@ -749,16 +757,16 @@ int print_rootcheck(char *sk_name, char *sk_ip, char *fname, int resolved,
         {
             if(resolved == 1)
             {
-                _do_print_rootcheck(fp, 1, ltime, csv_output);
+                _do_print_rootcheck(fp, 1, ltime, csv_output, 0);
             }
             else if(resolved == 2)
             {
-                _do_print_rootcheck(fp, 0, ltime, csv_output);
+                _do_print_rootcheck(fp, 0, ltime, csv_output, show_last);
             }
             else
             {
-                _do_print_rootcheck(fp, 1, ltime, csv_output);
-                _do_print_rootcheck(fp, 0, ltime, csv_output);
+                _do_print_rootcheck(fp, 1, ltime, csv_output, 0);
+                _do_print_rootcheck(fp, 0, ltime, csv_output, show_last);
             }
         }
         else
