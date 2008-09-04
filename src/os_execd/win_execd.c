@@ -143,6 +143,8 @@ void WinExecdRun(char *exec_msg)
     char *tmp_msg = NULL;
     char *name;
     char *command;
+    char *cmd_user;
+    char *cmd_ip;
     char buffer[OS_MAXSTR + 1];
     
 
@@ -170,6 +172,30 @@ void WinExecdRun(char *exec_msg)
     tmp_msg++;
 
 
+    /* Getting user. */
+    cmd_user = tmp_msg;
+    tmp_msg = strchr(tmp_msg, ' ');
+    if(!tmp_msg)
+    {
+        merror(EXECD_INV_MSG, ARGV0, cmd_user);
+        return;
+    }
+    *tmp_msg = '\0';
+    tmp_msg++;
+
+
+    /* Getting ip. */
+    cmd_ip = tmp_msg;
+    tmp_msg = strchr(tmp_msg, ' ');
+    if(!tmp_msg)
+    {
+        merror(EXECD_INV_MSG, ARGV0, cmd_ip);
+        return;
+    }
+    *tmp_msg = '\0';
+    tmp_msg++;
+    
+
     /* Getting the command to execute (valid name) */
     command = GetCommandbyName(name, &timeout_value);
     if(!command)
@@ -194,8 +220,8 @@ void WinExecdRun(char *exec_msg)
 
 
     /* Adding initial variables to the timeout cmd */
-    snprintf(buffer, OS_MAXSTR, "\"%s\" %s %s", command, 
-             DELETE_ENTRY,tmp_msg);
+    snprintf(buffer, OS_MAXSTR, "\"%s\" %s \"%s\" \"%s\" \"%s\"", 
+             command, DELETE_ENTRY, cmd_user, cmd_ip, tmp_msg); 
     os_strdup(buffer, timeout_args[0]);
     timeout_args[1] = NULL;
     
@@ -245,8 +271,8 @@ void WinExecdRun(char *exec_msg)
     /* If it wasn't added before, do it now */
     if(!added_before)
     {
-        snprintf(buffer, OS_MAXSTR, "\"%s\" %s %s", command, 
-                                    ADD_ENTRY,tmp_msg);
+        snprintf(buffer, OS_MAXSTR, "\"%s\" %s \"%s\" \"%s\" \"%s\"", command, 
+                                    ADD_ENTRY, cmd_user, cmd_ip, tmp_msg);
         /* executing command */
 
         ExecCmd_Win32(buffer);
