@@ -160,6 +160,7 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
                 NULL, (LPBYTE)event, &ret) != ERROR_SUCCESS)
     {
         event[0] = '\0';	
+        RegCloseKey(key);
         return(NULL);
     }
     else
