@@ -107,6 +107,25 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
         osdb_close = postgresql_osdb_close;
     }
     #endif
+
+
+
+    /* Checking for config errros (moving from config.c).
+     */
+    if(db_config->db_type == MYSQLDB)
+    {
+        #ifndef UMYSQL
+        merror(DB_COMPILED, ARGV0, "mysql");
+        return(OS_INVALID); 
+        #endif
+    }
+    else if(db_config->db_type == POSTGDB)
+    {
+        #ifndef UPOSTGRES
+        merror(DB_COMPILED, ARGV0, "postgresql");
+        return(OS_INVALID); 
+        #endif
+    }
     
 
     if(osdb_connect == NULL)

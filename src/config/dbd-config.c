@@ -82,20 +82,10 @@ int Read_DB(XML_NODE node, void *config1, void *config2)
         {
             if(strcmp(node[i]->content, "mysql") == 0)
             {
-                #ifndef UMYSQL
-                merror(DB_COMPILED, ARGV0, node[i]->content);
-                return(OS_INVALID);
-                #endif
-
                 db_config->db_type = MYSQLDB;
             }
             else if(strcmp(node[i]->content, "postgresql") == 0)
             {
-                #ifndef UPOSTGRES
-                merror(DB_COMPILED, ARGV0, node[i]->content);
-                return(OS_INVALID);
-                #endif
-
                 db_config->db_type = POSTGDB;
             }
             else
