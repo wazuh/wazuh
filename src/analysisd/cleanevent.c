@@ -170,7 +170,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 while(isdigit((int)*pieces))
                     pieces++;
 
-                if((*pieces == ']') && (pieces[1] == ':') && (pieces[2] == ' '))
+                if((*pieces == ']')&& (pieces[1] == ':')&& (pieces[2] == ' '))
                 {
                     pieces+=3;
                 }
@@ -183,7 +183,17 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 }
                 else
                 {
+                    /* Fixing for some weird log formats. */
+                    pieces--;
+                    while(isdigit((int)*pieces))
+                    {
+                        pieces--;
+                    }
+
+                    if(*pieces == '\0')
+                        *pieces = '[';
                     pieces = NULL;
+                    lf->program_name = NULL;
                 }
             }
             /* AIX syslog. */
