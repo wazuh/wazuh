@@ -284,7 +284,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
             {
                 message = NULL;		  
             }
-            /* FreeLibrary(hevt); -- no need to free in here */
+            FreeLibrary(hevt);
 
             /* If we have a message, we can return it */
             if(message)
@@ -310,7 +310,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
         {
             message = NULL;		  
         }
-        /* FreeLibrary(hevt); -- no need to free in here. */
+        FreeLibrary(hevt);
 
         /* If we have a message, we can return it */
         if(message)
