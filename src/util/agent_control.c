@@ -97,6 +97,7 @@ int main(int argc, char **argv)
                 break;
             case 's':
                 csv_output = 1;    
+                break;    
             case 'c':
                 active_only++;
                 break;    
