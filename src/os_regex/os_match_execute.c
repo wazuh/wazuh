@@ -75,6 +75,11 @@ int _os_strcmp(char *pattern, char *str, int str_len, int size)
     return(FALSE);    
 }
 
+int _os_strmatch(char *pattern, char *str, int str_len, int size)
+{
+    return(TRUE);
+}
+
 
 /** Internal matching **/
 int _os_strcmp_last(char *pattern, char *str, int str_len, int size)

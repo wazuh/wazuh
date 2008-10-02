@@ -23,6 +23,7 @@ int _OS_Match(char *pattern, char *str, int str_len, int size);
 int _os_strncmp(char *pattern, char *str, int str_len, int size);
 int _os_strcmp_last(char *pattern, char *str, int str_len, int size);
 int _os_strcmp(char *pattern, char *str, int str_len, int size);
+int _os_strmatch(char *pattern, char *str, int str_len, int size);
 
 
 /** int OSMatch_Compile(char *pattern, OSMatch *reg, int flags) v0.1
@@ -84,7 +85,7 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
     
     
     /* Getting the number of sub patterns */
-    do
+    while(*pt != '\0')
     {
         /* The pattern must be always lower case if 
          * case sensitive is set
@@ -100,7 +101,7 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
             count++;
         }
         pt++;    
-    }while(*pt != '\0');
+    }
     
     
     /* For the last pattern */
@@ -164,6 +165,11 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
                 reg->match_fp[i] = _os_strcmp;
                 reg->size[i] = strlen(reg->patterns[i]) -1;
                 reg->patterns[i][reg->size[i]] = '\0';
+            }
+            else if(strlen(new_str) == 0)
+            {
+                reg->match_fp[i] = _os_strmatch;
+                reg->size[i] = 0;
             }
 
             /* String only has $ */
