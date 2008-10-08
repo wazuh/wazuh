@@ -46,7 +46,7 @@
 
 /* Some Global names */
 #define __name      "OSSEC HIDS"
-#define __version   "v1.6"
+#define __version   "v1.6.1"
 #define __author    "Third Brigade, Inc."
 #define __contact   "contact@ossec.net"
 #define __site      "http://www.ossec.net"

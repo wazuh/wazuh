@@ -122,7 +122,7 @@ fpos_t fp_pos;
 #define EXIT            ARGV0 ": Exiting ..\n"
 
 #define BANNER          "\n****************************************" \
-                        "\n* %s %s Agent manager.       *" \
+                        "\n* %s %s Agent manager.     *" \
                         "\n* The following options are available: *" \
                         "\n****************************************\n"
     

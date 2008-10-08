@@ -125,7 +125,9 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 if(glob(node[i]->content, 0, NULL, &g) != 0)
                 {
                     merror(GLOB_ERROR, ARGV0, node[i]->content);
-                    return(OS_INVALID);
+                    os_strdup(node[i]->content, logf[pl].file);
+                    i++;
+                    continue;
                 }
              
                 /* Checking for the last entry */
