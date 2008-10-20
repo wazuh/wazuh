@@ -82,7 +82,7 @@ CREATE TABLE alert
     (
     id              INT         UNSIGNED NOT NULL, 
     server_id       SMALLINT    UNSIGNED NOT NULL,
-    rule_id         SMALLINT    UNSIGNED NOT NULL,    
+    rule_id         MEDIUMINT   UNSIGNED NOT NULL,    
     timestamp       INT         UNSIGNED NOT NULL,
     location_id     SMALLINT    UNSIGNED NOT NULL,
     src_ip          INT         UNSIGNED,
