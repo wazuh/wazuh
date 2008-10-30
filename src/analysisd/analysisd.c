@@ -1234,6 +1234,15 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     /* Extra information from event */
     if(currently_rule->alert_opts & DO_EXTRAINFO)
     {
+        /* Checking compiled rule. */
+        if(currently_rule->compiled_rule)
+        {
+            if(!currently_rule->compiled_rule(lf))
+            {
+                return(NULL);
+            }
+        }
+
 
         /* Checking if exist any user to match */
         if(currently_rule->user)

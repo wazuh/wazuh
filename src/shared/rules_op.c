@@ -68,6 +68,7 @@ int OS_ReadXMLRules(char *rulefile,
     char *xml_program_name = "program_name";
     char *xml_status = "status";
     char *xml_action = "action";
+    char *xml_compiled = "compiled_rule";
     
     char *xml_if_sid = "if_sid";
     char *xml_if_group = "if_group";
@@ -472,6 +473,11 @@ int OS_ReadXMLRules(char *rulefile,
                 else if(strcasecmp(rule_opt[k]->element,xml_url) == 0)
                 {
                     url= os_LoadString(url, rule_opt[k]->content);
+                }
+
+                else if(strcasecmp(rule_opt[k]->element, xml_compiled)==0)
+                {
+                    /* Not using this in here. */
                 }
 
                 /* We allow these categories so far */

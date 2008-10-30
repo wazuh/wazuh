@@ -129,6 +129,7 @@ typedef struct _RuleInfo
     OSMatch *if_matched_group;
     int if_matched_sid;
     
+    void *(*compiled_rule)(void *lf);
     active_response **ar;
 
 }RuleInfo;

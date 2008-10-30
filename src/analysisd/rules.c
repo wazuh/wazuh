@@ -17,6 +17,7 @@
 #include "rules.h"
 #include "config.h"
 #include "eventinfo.h"
+#include "compiled_rules/compiled_rules.h"
 
 
 /* Chaging path for test rule. */
@@ -97,6 +98,7 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_program_name = "program_name";
     char *xml_status = "status";
     char *xml_action = "action";
+    char *xml_compiled = "compiled_rule";
     
     char *xml_if_sid = "if_sid";
     char *xml_if_group = "if_group";
@@ -588,6 +590,33 @@ int Rules_OP_ReadRules(char * rulefile)
                         url=
                             loadmemory(url,
                                     rule_opt[k]->content);
+                    }
+                    else if(strcasecmp(rule_opt[k]->element, xml_compiled)==0)
+                    {
+                        int it_id = 0;
+
+                        while(compiled_rules_name[it_id])
+                        {
+                            if(strcmp(compiled_rules_name[it_id], 
+                                      rule_opt[k]->content) == 0)
+                                break;
+                            it_id++;
+                        }
+
+                        /* checking if the name is valid. */
+                        if(!compiled_rules_name[it_id])
+                        {
+                            merror("%s: ERROR: Compiled rule not found: '%s'", 
+                                   ARGV0, rule_opt[k]->content); 
+                            merror(INVALID_CONFIG, ARGV0, 
+                                   rule_opt[k]->element, rule_opt[k]->content);
+                            return(-1);
+
+                        }
+
+                        config_ruleinfo->compiled_rule = compiled_rules_list[it_id];
+                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     }
 
                     /* We allow these four categories so far */
@@ -1399,6 +1428,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->group_search = NULL;
     
     ruleinfo_pt->event_search = NULL;
+    ruleinfo_pt->compiled_rule = NULL;
 
     return(ruleinfo_pt);
 }
