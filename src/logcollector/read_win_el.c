@@ -17,7 +17,7 @@
 /* This is only for windows */
 #ifdef WIN32
 
-#define BUFFER_SIZE 2048*64
+#define BUFFER_SIZE 2048*256
 
 
 
@@ -589,6 +589,37 @@ void readel(os_el *el, int printit)
 
         /* Setting er to the beginning of the buffer */	
         el->er = (EVENTLOGRECORD *)&mbuffer;
+    }
+
+
+    id = GetLastError();
+    if(id == ERROR_HANDLE_EOF)
+    {
+        return;
+    }
+
+
+    /* Event log was cleared. */
+    else if(id == ERROR_EVENTLOG_FILE_CHANGED)
+    {
+        merror("%s: WARN: Event log cleared: '%s'", ARGV0, el->name);
+
+        
+        /* Closing the event log and reopenning. */
+        CloseEventLog(el->h);
+        el->h = NULL;
+
+        /* Reopening. */
+        if(startEL(el->name, el) < 0)
+        {
+            merror("%s: ERROR: Unable to reopen event log '%s'", 
+                   ARGV0, el->name);
+        }
+    }
+
+    else
+    {
+        debug1("%s: WARN: Error reading event log: %d", ARGV0, id);
     }
 }
 
