@@ -273,6 +273,7 @@
 
 <decoder name="su-detail">
   <parent>su</parent>  
+  <prematch>^'su </prematch>
   <regex>^'su (\S+)' \S+ for (\S+) on \S+$</regex>
   <order>dstuser, srcuser</order>
   <fts>name, srcuser, location</fts>
