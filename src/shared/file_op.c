@@ -336,6 +336,61 @@ char *getuname()
     return(NULL);
 }
 
+
+
+/* goDaemon: Daemonize a process without closing stdin/stdout/stderr..
+ *
+ */
+void goDaemonLight()
+{
+    pid_t pid;
+
+    pid = fork();
+
+    if(pid < 0)
+    {
+        merror(FORK_ERROR, __local_name);
+        return;
+    }
+    else if(pid)
+    {
+        exit(0);
+    }
+
+
+    /* becoming session leader */
+    if(setsid() < 0)
+    {
+        merror(SETSID_ERROR, __local_name);
+        return;
+    }
+
+
+    /* forking again */
+    pid = fork();
+    if(pid < 0)
+    {
+        merror(FORK_ERROR, __local_name);
+        return;
+    }
+    else if(pid)
+    {
+        exit(0);
+    }
+
+
+    dup2(1, 2);
+
+
+    /* Going to / */
+    chdir("/");
+
+    
+    return;
+}
+
+
+
 /* goDaemon: Daemonize a process..
  *
  */

@@ -293,7 +293,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
          {
              /* Invalid event log */
              merror(NSTD_EVTLOG, ARGV0, logf[pl].file);
-             return(OS_INVALID);
+             return(0);
          }
     }
     return(0);

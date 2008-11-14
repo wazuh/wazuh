@@ -35,6 +35,7 @@ int read_main_elements(OS_XML xml, int modules,
     char *osemailalerts = "email_alerts";
     char *osdbd = "database_output";
     char *oscsyslogd = "syslog_output";
+    char *oscagentless = "agentless";
     char *oslocalfile = "localfile";
     char *osremote = "remote";
     char *osclient = "client";
@@ -77,6 +78,11 @@ int read_main_elements(OS_XML xml, int modules,
         else if(strcmp(node[i]->element, oscsyslogd) == 0)
         {
             if((modules & CSYSLOGD) && (Read_CSyslog(chld_node, d1, d2) < 0))
+                return(OS_INVALID);
+        }
+        else if(strcmp(node[i]->element, oscagentless) == 0)
+        {
+            if((modules & CAGENTLESS) && (Read_CAgentless(chld_node, d1, d2) < 0))
                 return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, osrules) == 0)

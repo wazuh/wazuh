@@ -36,6 +36,9 @@ int DeletePID(char *name);
 /* daemonize a process */
 void goDaemon();
 
+/* daemonize a process without closing stdin/stdou/stderr */
+void goDaemonLight();
+
 /* not really a file operation, but returns the uname */
 char *getuname();
 

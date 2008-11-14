@@ -15,7 +15,7 @@ UNAME=`uname`;
 DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 GROUP="ossec"
 USER="ossec"
-subdirs="logs bin queue queue/ossec queue/alerts queue/syscheck queue/rids var var/run etc etc/shared active-response active-response/bin"
+subdirs="logs bin queue queue/ossec queue/alerts queue/syscheck queue/rids var var/run etc etc/shared active-response active-response/bin agentless .ssh"
 
 
 # ${DIR} must be set 
@@ -147,9 +147,13 @@ fi
 cp -pr ../etc/internal_options.conf ${DIR}/etc/
 cp -pr ../etc/local_internal_options.conf ${DIR}/etc/ > /dev/null 2>&1
 cp -pr ../etc/client.keys ${DIR}/etc/ > /dev/null 2>&1
+cp -pr agentlessd/scripts/* ${DIR}/agentless/
+
 chown root:${GROUP} ${DIR}/etc/internal_options.conf
 chown root:${GROUP} ${DIR}/etc/local_internal_options.conf > /dev/null 2>&1
 chown root:${GROUP} ${DIR}/etc/client.keys > /dev/null 2>&1
+chown root:${GROUP} ${DIR}/agentless/*
+chown ${USER}:${GROUP} ${DIR}/.ssh
 chown -R root:${GROUP} ${DIR}/etc/shared
 
 chmod 550 ${DIR}/etc
@@ -157,6 +161,8 @@ chmod 440 ${DIR}/etc/internal_options.conf
 chmod 440 ${DIR}/etc/local_internal_options.conf > /dev/null 2>&1
 chmod 440 ${DIR}/etc/client.keys > /dev/null 2>&1
 chmod -R 770 ${DIR}/etc/shared # ossec must be able to write to it
+chmod 550 ${DIR}/agentless/*
+chmod 700 ${DIR}/.ssh
 
 
 # For the /var/run
