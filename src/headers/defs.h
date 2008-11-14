@@ -239,6 +239,8 @@ http://www.ossec.net/main/license/\n"
 #else
     #define DEFAULTARPATH   "shared/ar.conf"
     #define AR_BINDIRPATH   "active-response/bin"
+    #define AGENTLESSDIRPATH    AGENTLESSDIR
+    #define AGENTLESSPASSPATH   AGENTLESSPASS
 #endif
 #define EXECQUEUEPATH   DEFAULTDIR EXECQUEUE
 
