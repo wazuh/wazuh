@@ -58,12 +58,20 @@ void GetFile_Queue(file_queue *fileq)
     fileq->file_name[0] = '\0';
     fileq->file_name[MAX_FQUEUE] = '\0';
 
-    snprintf(fileq->file_name, MAX_FQUEUE,
-                               "%s/%d/%s/ossec-alerts-%02d.log",
-                               ALERTS,
-                               fileq->year,
-                               fileq->mon,
-                               fileq->day);  
+    if(fileq->flags & CRALERT_FP_SET)
+    {
+        snprintf(fileq->file_name, MAX_FQUEUE,
+                 "<stdin>");
+    }
+    else
+    {
+        snprintf(fileq->file_name, MAX_FQUEUE,
+                                   "%s/%d/%s/ossec-alerts-%02d.log",
+                                   ALERTS,
+                                   fileq->year,
+                                   fileq->mon,
+                                   fileq->day);  
+    }
 }
 
 
@@ -71,29 +79,32 @@ void GetFile_Queue(file_queue *fileq)
 /** int Handle_Queue(file_queue *fileq)
  * Re Handle the file queue.
  */
-int Handle_Queue(file_queue *fileq, u_int8_t seek_end) 
+int Handle_Queue(file_queue *fileq, int flags) 
 {
     /* Closing if it is open */
-    if(fileq->fp)
+    if(!(flags & CRALERT_FP_SET))
     {
-        fclose(fileq->fp);
-        fileq->fp = NULL;
-    }
-    
-    
-    /* We must be able to open the file, fseek and get the
-     * time of change from it.
-     */
-    fileq->fp = fopen(fileq->file_name, "r");
-    if(!fileq->fp)
-    {
-        /* Queue not available */
-        return(0);
+        if(fileq->fp)
+        {
+            fclose(fileq->fp);
+            fileq->fp = NULL;
+        }
+
+
+        /* We must be able to open the file, fseek and get the
+         * time of change from it.
+         */
+        fileq->fp = fopen(fileq->file_name, "r");
+        if(!fileq->fp)
+        {
+            /* Queue not available */
+            return(0);
+        }
     }
 
 
     /* Seeking the end of file */
-    if(seek_end)
+    if(!(flags & CRALERT_READ_ALL))
     {
         if(fseek(fileq->fp, 0, SEEK_END) < 0)
         {
@@ -127,7 +138,10 @@ int Handle_Queue(file_queue *fileq, u_int8_t seek_end)
 int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
 {
     /* Initializing file_queue fields. */
-    fileq->fp = NULL;
+    if(!(flags & CRALERT_FP_SET))
+    {
+        fileq->fp = NULL;
+    }
     fileq->last_change = 0;
     fileq->flags = 0;
     
@@ -147,7 +161,7 @@ int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
 
     
     /* Always seek end when starting the queue */
-    if(Handle_Queue(fileq, 1) < 0)
+    if(Handle_Queue(fileq, fileq->flags) < 0)
     {
         return(-1);
     }

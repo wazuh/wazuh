@@ -139,11 +139,16 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
         {
             if(strcmp(node[i]->content, "periodic") == 0)
             {
-                lessd_config->entries[s]->state = LESSD_STATE_PERIODIC;
+                lessd_config->entries[s]->state |= LESSD_STATE_PERIODIC;
             }
             else if(strcmp(node[i]->content, "stay_connected") == 0)
             {
-                lessd_config->entries[s]->state = LESSD_STATE_CONNECTED;
+                lessd_config->entries[s]->state |= LESSD_STATE_CONNECTED;
+            }
+            else if(strcmp(node[i]->content, "periodic_diff") == 0)
+            {
+                lessd_config->entries[s]->state |= LESSD_STATE_PERIODIC;
+                lessd_config->entries[s]->state |= LESSD_STATE_DIFF;
             }
             else
             {

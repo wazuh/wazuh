@@ -48,6 +48,8 @@ int OSStore_NCheck(OSStore *list, char *key);
 int OSStore_NCaseCheck(OSStore *list, char *key);
 int OSStore_GetPosition(OSStore *list, char *key);
 void *OSStore_Get(OSStore *list, char *key);
+OSStoreNode *OSStore_GetFirstNode(OSStore *list);
+int OSStore_Sort(OSStore *list, void*(sort_data_function)(void *d1, void *d2));
    
 
 

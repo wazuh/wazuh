@@ -39,6 +39,7 @@ OSStore *OSStore_Create()
 }
 
 
+
 /* Deletes the list storage 
  * Return NULL on error
  */
@@ -76,6 +77,7 @@ OSStore *OSStore_Free(OSStore *list)
 }
 
 
+
 /* Set the maximum number of elements
  * in the storage. Returns 0 on error or
  * 1 on success.
@@ -99,6 +101,7 @@ int OSStore_SetMaxSize(OSStore *list, int max_size)
 }
 
 
+
 /* Set the pointer to the function to free the memory
  * data.
  */
@@ -110,6 +113,94 @@ int OSStore_SetFreeDataPointer(OSStore *list, void *free_data_function)
     }
     
     list->free_data_function = free_data_function;
+    return(1);
+}
+
+
+
+/* Sorts the storage by size.
+ *
+ */
+int OSStore_Sort(OSStore *list, void*(sort_data_function)(void *d1, void *d2))
+{
+    OSStoreNode *newnode = NULL;
+    OSStoreNode *movenode = NULL;
+    list->cur_node = list->first_node;
+
+    while(list->cur_node)
+    {
+        movenode = list->cur_node->prev;
+
+        /* Here we check for all the previous entries, using the sort . */
+        while(movenode)
+        {
+
+            if(sort_data_function(list->cur_node->data, movenode->data))
+            {
+                movenode = movenode->prev;
+            }
+
+            /* In here, this node should stay where it is. */
+            else if(movenode == list->cur_node->prev)
+            {
+                break;   
+            }
+
+            /* In here we need to replace the nodes. */
+            else
+            {
+                newnode = list->cur_node;
+                
+                if(list->cur_node->prev)
+                    list->cur_node->prev->next = list->cur_node->next;
+                        
+                if(list->cur_node->next)
+                    list->cur_node->next->prev = list->cur_node->prev;
+                else
+                    list->last_node = list->cur_node->prev;    
+                
+                list->cur_node = list->cur_node->prev;       
+
+                
+                newnode->next = movenode->next;
+                newnode->prev = movenode;
+
+                if(movenode->next)
+                    movenode->next->prev = newnode;
+                    
+                movenode->next = newnode;
+
+                
+                break;
+            }
+        }
+
+
+        /* If movenode is not set, we need to put the current node in first.*/
+        if(!movenode && (list->cur_node != list->first_node))
+        {
+            newnode = list->cur_node;
+
+            if(list->cur_node->prev)
+                list->cur_node->prev->next = list->cur_node->next;
+            
+            if(list->cur_node->next)
+                list->cur_node->next->prev = list->cur_node->prev;
+            else    
+                list->last_node = list->cur_node->prev;    
+            
+            list->cur_node = list->cur_node->prev;
+            
+            newnode->prev = NULL;
+            newnode->next = list->first_node;
+            list->first_node->prev = newnode;
+            
+            list->first_node = newnode;    
+        }
+        
+        list->cur_node = list->cur_node->next;
+    }
+
     return(1);
 }
 
@@ -141,6 +232,16 @@ int OSStore_GetPosition(OSStore *list, char *key)
         pos++;
     }
     return(0);
+}
+
+
+
+/* Get first node from storage.
+ * Returns NULL if not present.
+ */
+OSStoreNode *OSStore_GetFirstNode(OSStore *list)
+{
+    return(list->first_node);
 }
 
 

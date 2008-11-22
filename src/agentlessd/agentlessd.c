@@ -44,11 +44,12 @@ int send_intcheck_msg(char *host, char *msg)
 /* Run periodic commands. */
 int run_periodic_cmd(agentlessd_entries *entry, int test_it)
 {
-    int i = 0;
+    int i = 0, store = 0;
     char *tmp_str;
     char buf[OS_SIZE_2048 +1];
     char command[OS_SIZE_1024 +1];
     FILE *fp;
+    FILE *fp_store = NULL;
     
     
     buf[0] = '\0';
@@ -87,6 +88,14 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                     tmp_str = buf + 5;
                     send_intcheck_msg(entry->server[i], tmp_str);
                 }
+                else if((entry->state & LESSD_STATE_DIFF) &&
+                        (strncmp(buf, "STORE: ", 7) == 0))
+                {
+                    store = 1;
+                }
+                else if(store && fp_store)
+                {
+                }
                 else
                 {
                     debug1("%s: DEBUG: buffer: %s", ARGV0, buf);
@@ -105,6 +114,11 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
         i++;
     }
 
+    if(fp_store)
+    {
+        fclose(fp_store);
+    }
+    
     return(0);
 }
 
@@ -181,7 +195,7 @@ void Agentlessd()
 
             
             /* Run the check again if the frequency has elapsed. */
-            if((lessdc.entries[i]->state == LESSD_STATE_PERIODIC) &&
+            if((lessdc.entries[i]->state & LESSD_STATE_PERIODIC) &&
                ((lessdc.entries[i]->current_state + 
                  lessdc.entries[i]->frequency) < tm))
             {

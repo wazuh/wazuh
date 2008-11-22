@@ -15,8 +15,9 @@
 
 
 /* Entry states. */
-#define LESSD_STATE_CONNECTED   1
-#define LESSD_STATE_PERIODIC    2
+#define LESSD_STATE_CONNECTED       0x001
+#define LESSD_STATE_PERIODIC        0x002
+#define LESSD_STATE_DIFF            0x004
 
 
 /* Structure for each entry. */
