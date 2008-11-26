@@ -207,6 +207,7 @@ char *__local_name;
 #include "validate_op.h"
 #include "file-queue.h"
 #include "read-agents.h"
+#include "report_op.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"

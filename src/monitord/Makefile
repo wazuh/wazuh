@@ -12,8 +12,10 @@ OBJS = ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_CRYPTO} ${OS_ZLIB}
 
 mmonitor:
 		${CC} ${CFLAGS} ${OS_LINK} ${LOCAL} ${OBJS} -o ${NAME}
-		${CC} ${CFLAGS} ${OS_LINK} -UARGV0 -DARGV0=\"ossec-reportd\" report.c ${OBJS} -o ossec-report
+		${CC} ${CFLAGS} ${OS_LINK} -UARGV0 -DARGV0=\"ossec-reportd\" report.c ${OBJS} -o ossec-reportd
 clean:
 		${CLEAN}
+		rm -f ossec-reportd
 build:
 		${BUILD}
+		cp -pr ossec-reportd ${PT}../bin
