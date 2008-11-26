@@ -1,0 +1,672 @@
+/* @(#) $Id$ */
+
+/* Copyright (C) 2008 Third Brigade, Inc.
+ * All rights reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 3) as published by the FSF - Free Software
+ * Foundation
+ */
+
+
+#include "shared.h"
+
+
+/** Helper functions. */
+
+/* Sort function used by OSStore sort.
+ * Returns if d1 > d2. 
+ */
+void *_os_report_sort_compare(void *d1, void *d2)
+{
+   OSList *d1l = (OSList *)d1;
+   OSList *d2l = (OSList *)d2; 
+
+   if(d1l->currently_size > d2l->currently_size)
+   {
+       return(d1l);
+   }
+
+   return(NULL);
+}
+
+
+/* Compares if the id is present in the string. */
+int _os_report_str_int_compare(char *str, int id)
+{
+    int pt_check = 0;
+    
+    do
+    {
+        if((*str == ',')||(*str == ' '))
+        {
+            pt_check = 0;
+            continue;
+        }
+        else if(*str == '\0')
+        {
+            break;
+        }
+        else if(isdigit((int)*str))
+        {
+            if(pt_check == 0)
+            {
+                if(id == atoi(str))
+                {
+                    return(1);
+                }
+            }
+            pt_check = 1;
+        }
+        else
+        {
+            return(-1);
+        }
+    }while(*str++ != '\0');
+
+    return(0);
+}
+
+
+
+/* Check if the al_data should be filtered. */
+int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
+{
+    /* Checking for the filters. */
+    if(r_filter->group)
+    {
+        if(!strstr(al_data->group, r_filter->group))
+        {
+            return(0);
+        }
+    }
+    if(r_filter->rule)
+    {
+        if(_os_report_str_int_compare(r_filter->rule, al_data->rule) != 1)
+        {
+            return(0);
+        }
+    }
+    if(r_filter->location)
+    {
+        if(!OS_Match2(r_filter->location, al_data->location))
+        {
+            return(0);
+        }
+    }
+    if(r_filter->level)
+    {
+        if(al_data->level < atoi(r_filter->level))
+        {
+            return(0);
+        }
+    }
+
+    return(1);
+}
+
+
+
+/* Sets the proper value for the related entries. */
+int _report_filter_value(char *filter_by, int prev_filter)
+{
+    if(strcmp(filter_by, "group") == 0)
+    {
+        if(!(prev_filter & REPORT_REL_GROUP))
+        {
+            prev_filter|=REPORT_REL_GROUP;
+        }
+        return(prev_filter);
+    }
+    else if(strcmp(filter_by, "rule") == 0)
+    {
+        if(!(prev_filter & REPORT_REL_RULE))
+        {
+            prev_filter|=REPORT_REL_RULE;
+        }
+        return(prev_filter);
+    }
+    else if(strcmp(filter_by, "level") == 0)
+    {
+        if(!(prev_filter & REPORT_REL_LEVEL))
+        {
+            prev_filter|=REPORT_REL_LEVEL;
+        }
+        return(prev_filter);
+    }
+    else if(strcmp(filter_by, "location") == 0)
+    {
+        if(!(prev_filter & REPORT_REL_LOCATION))
+        {
+            prev_filter|=REPORT_REL_LOCATION;
+        }
+        return(prev_filter);
+    }
+    else if(strcmp(filter_by, "srcip") == 0)
+    {
+        if(!(prev_filter & REPORT_REL_SRCIP))
+        {
+            prev_filter|=REPORT_REL_SRCIP;
+        }
+        return(prev_filter);
+    }
+    else if(strcmp(filter_by, "user") == 0)
+    {
+        if(!(prev_filter & REPORT_REL_USER))
+        {
+            prev_filter|=REPORT_REL_USER;
+        }
+        return(prev_filter);
+    }
+    else
+    {
+        merror("%s: ERROR: Invalid relation '%s'.", ARGV0, filter_by);
+        return(-1);
+    }   
+}
+
+
+
+/* Prints related entries. */
+int _os_report_print_related(int print_related, OSList *st_data)
+{
+    OSListNode *list_entry;
+    alert_data *list_aldata;
+    alert_data *saved_aldata;
+    
+                
+    list_entry = OSList_GetFirstNode(st_data);
+    while(list_entry)
+    {
+        saved_aldata = (alert_data *)list_entry->data;
+        
+        /* Removing duplicates. */
+        list_entry = list_entry->prev;
+        while(list_entry)
+        {
+            if(print_related & REPORT_REL_LOCATION)
+            {
+                list_aldata = (alert_data *)list_entry->data;
+                if(strcmp(list_aldata->location, saved_aldata->location) == 0)
+                {
+                    break;
+                }
+            }
+
+            else if(print_related & REPORT_REL_GROUP)
+            {
+                list_aldata = (alert_data *)list_entry->data;
+                if(strcmp(list_aldata->group, saved_aldata->group) == 0)
+                {
+                    break;
+                }
+            }
+
+            else if(print_related & REPORT_REL_RULE)
+            {
+                list_aldata = (alert_data *)list_entry->data;
+                if(list_aldata->rule == saved_aldata->rule)
+                {
+                    break;
+                }
+            }
+
+            else if(print_related & REPORT_REL_USER)
+            {
+                list_aldata = (alert_data *)list_entry->data;
+                if(strcmp(list_aldata->user, saved_aldata->user) == 0)
+                {
+                    break;
+                }
+            }
+
+            else if(print_related & REPORT_REL_SRCIP)
+            {
+                list_aldata = (alert_data *)list_entry->data;
+                if(strcmp(list_aldata->srcip, saved_aldata->srcip) == 0)
+                {
+                    break;
+                }
+            }
+
+            else if(print_related & REPORT_REL_LEVEL)
+            {
+                list_aldata = (alert_data *)list_entry->data;
+                if(list_aldata->level == saved_aldata->level)
+                {
+                    break;
+                }
+            }
+            list_entry = list_entry->prev;
+        }
+
+        if(!list_entry)
+        {
+            if(print_related & REPORT_REL_LOCATION)
+                print_out("   location: '%s'", saved_aldata->location);
+            else if(print_related & REPORT_REL_GROUP)
+                print_out("   group: '%s'", saved_aldata->group);
+            else if(print_related & REPORT_REL_RULE)
+                print_out("   rule: '%d'", saved_aldata->rule);
+            else if(print_related & REPORT_REL_SRCIP)
+                print_out("   srcip: '%s'", saved_aldata->srcip);
+            else if(print_related & REPORT_REL_USER)
+                print_out("   user: '%s'", saved_aldata->user);
+            else if(print_related & REPORT_REL_LEVEL)
+                print_out("   level: '%d'", saved_aldata->level);
+        }
+
+        list_entry = OSList_GetNextNode(st_data);
+    }
+
+    return(0);
+}
+
+
+
+/* Add the entry to the hash. */
+int _os_report_add_tostore(char *key, OSStore *top, void *data)
+{
+    OSList *top_list;
+
+    /* Adding data to the hash. */
+    top_list = OSStore_Get(top, key);
+    if(top_list)
+    {
+        OSList_AddData(top_list, data);
+    }
+    else
+    {
+        top_list = OSList_Create();
+        if(!top_list)
+        {
+            merror(MEM_ERROR, ARGV0);
+            return(0);
+        }
+        OSList_AddData(top_list, data);
+
+        OSStore_Put(top, key, top_list);
+    }
+
+    return(1);
+}
+
+
+
+void os_report_printtop(void *topstore_pt, char *hname, int print_related)
+{
+    OSStore *topstore = (OSStore *)topstore_pt;
+    OSStoreNode *next_node;
+    
+    if(!print_related)
+    {
+        print_out("Top entries for '%s':", hname);
+        print_out("------------------------------------------------");
+    }
+    else
+    {
+        print_out("Related entries for '%s':", hname);
+        print_out("------------------------------------------------");
+    }
+    
+
+    next_node = OSStore_GetFirstNode(topstore);
+    while(next_node)
+    {
+        OSList *st_data = (OSList *)next_node->data;
+        char *lkey = (char *)next_node->key;
+
+
+        /* With location we leave more space to be clearer. */
+        if(!print_related)
+        {
+            if(strlen(lkey) > 46)
+            {
+                lkey[44] = '.';
+                lkey[45] = '.';
+                lkey[46] = '\0';
+            }
+
+            print_out("%-48s|%-8d|", (char *)next_node->key, st_data->currently_size);
+        }
+
+
+        /* Print each destination. */
+        else
+        {
+            print_out("%-48s|%-8d|", (char *)next_node->key, st_data->currently_size);
+
+            if(print_related & REPORT_REL_LOCATION)
+                _os_report_print_related(REPORT_REL_LOCATION, st_data);
+            if(print_related & REPORT_REL_SRCIP)
+                _os_report_print_related(REPORT_REL_SRCIP, st_data);
+            if(print_related & REPORT_REL_USER)
+                _os_report_print_related(REPORT_REL_USER, st_data);
+            if(print_related & REPORT_REL_RULE)
+                _os_report_print_related(REPORT_REL_RULE, st_data);
+            if(print_related & REPORT_REL_GROUP)
+                _os_report_print_related(REPORT_REL_GROUP, st_data);
+            if(print_related & REPORT_REL_LEVEL)
+                _os_report_print_related(REPORT_REL_LEVEL, st_data);
+
+        }
+
+        next_node = next_node->next;
+    }
+
+
+    print_out(" ");
+    print_out(" ");
+    return; 
+}
+
+
+
+void os_ReportdStart(report_filter *r_filter)
+{
+    int alerts_processed = 0;
+    int alerts_filtered = 0;
+    char *first_alert = NULL;
+    char *last_alert = NULL;
+    
+    
+    time_t tm;     
+    struct tm *p;       
+    
+
+    file_queue *fileq;
+    alert_data *al_data;
+
+
+    /* Getting current time before starting */
+    tm = time(NULL);
+    p = localtime(&tm);	
+
+
+
+    /* Creating top hashes. */
+    r_filter->top_user = OSStore_Create();
+    r_filter->top_srcip = OSStore_Create();
+    r_filter->top_level = OSStore_Create();
+    r_filter->top_rule = OSStore_Create();
+    r_filter->top_group = OSStore_Create();
+    r_filter->top_location = OSStore_Create();
+
+    
+
+    /* Initating file queue - to read the alerts */
+    os_calloc(1, sizeof(file_queue), fileq);
+    fileq->fp = stdin;
+    Init_FileQueue(fileq, p, CRALERT_READ_ALL|CRALERT_FP_SET);
+
+
+    /* Reading the alerts. */
+    while(1)
+    {
+        /* Get message if available */
+        al_data = Read_FileMon(fileq, p, 1);
+        if(!al_data)
+        {
+            verbose("%s: Report completed. Creating output...", ARGV0);
+            break;
+        }
+
+        alerts_processed++;
+        
+
+        /* Checking the filters. */
+        if(!_os_report_check_filters(al_data, r_filter))
+        {
+            FreeAlertData(al_data);
+            continue;
+        }
+        
+        
+        alerts_filtered++;
+
+
+        /* Setting first and last alert for summary. */
+        if(!first_alert)
+            first_alert = al_data->date;
+        last_alert = al_data->date;
+        
+        
+        /* Adding source ip if it is set properly. */
+        if(strcmp(al_data->srcip, "(none)") != 0)
+            _os_report_add_tostore(al_data->srcip, r_filter->top_srcip, al_data);
+
+        
+        /* Adding user if it is set properly. */
+        if(strcmp(al_data->user, "(none)") != 0)
+            _os_report_add_tostore(al_data->user, r_filter->top_user, al_data);
+
+
+        /* Adding level and severity. */
+        {
+            char mlevel[16];
+            char mrule[76 +1];
+            mrule[76] = '\0';
+            snprintf(mlevel, 16, "Severity %d" , al_data->level);
+            snprintf(mrule, 76, "%d - %s" , al_data->rule, al_data->comment);
+            
+            _os_report_add_tostore(strdup(mlevel), r_filter->top_level, 
+                                   al_data);
+            _os_report_add_tostore(strdup(mrule), r_filter->top_rule, 
+                                   al_data);
+        }
+
+        /* Dealing with the group. */
+        {
+            char *tmp_str;
+            char **mgroup;
+
+            mgroup = OS_StrBreak(',', al_data->group, 32);
+            if(mgroup)
+            {
+                while(*mgroup)
+                {
+                    tmp_str = *mgroup;
+                    while(*tmp_str == ' ')
+                        tmp_str++;
+                    if(*tmp_str == '\0')
+                    {
+                        mgroup++;
+                        continue;
+                    }
+                    
+                    _os_report_add_tostore(tmp_str, r_filter->top_group, 
+                                           al_data);
+                    mgroup++;
+                }
+            }
+            else
+            {
+                tmp_str = al_data->group;
+                while(*tmp_str == ' ')
+                    tmp_str++;
+                if(*tmp_str != '\0')
+                {
+                    _os_report_add_tostore(tmp_str, r_filter->top_group, 
+                                           al_data);
+                }
+            }
+        }
+
+
+        /* Adding to the location top filter. */        
+        _os_report_add_tostore(al_data->location, r_filter->top_location, 
+                               al_data);
+    }
+
+
+
+    print_out(" ");
+    if(r_filter->report_name)
+        print_out("Report '%s' completed.", r_filter->report_name);
+    else
+        print_out("Report completed. ==");
+    print_out("------------------------------------------------");
+            
+    print_out("->Processed alerts: %d", alerts_processed);
+    print_out("->Post-filtering alerts: %d", alerts_filtered);
+    print_out("->First alert: %s", first_alert);
+    print_out("->Last alert: %s", last_alert);
+    print_out(" ");
+    print_out(" ");
+    
+    OSStore_Sort(r_filter->top_srcip, _os_report_sort_compare);
+    OSStore_Sort(r_filter->top_user,  _os_report_sort_compare);
+    OSStore_Sort(r_filter->top_level, _os_report_sort_compare);
+    OSStore_Sort(r_filter->top_group, _os_report_sort_compare);
+    OSStore_Sort(r_filter->top_location, _os_report_sort_compare);
+    OSStore_Sort(r_filter->top_rule, _os_report_sort_compare);
+    
+    if(r_filter->top_srcip)
+        os_report_printtop(r_filter->top_srcip, "Source ip", 0);
+    
+    if(r_filter->top_user)
+        os_report_printtop(r_filter->top_user, "Username", 0);
+    
+    if(r_filter->top_level)
+        os_report_printtop(r_filter->top_level, "Level", 0);
+    
+    if(r_filter->top_group)
+        os_report_printtop(r_filter->top_group, "Group", 0);
+    
+    if(r_filter->top_location)
+        os_report_printtop(r_filter->top_location, "Location", 0);
+    
+    if(r_filter->top_rule)
+        os_report_printtop(r_filter->top_rule, "Rule", 0);
+
+
+    /* Print related events. */
+    if(r_filter->related_srcip)
+        os_report_printtop(r_filter->top_srcip, "Source ip", 
+                           r_filter->related_srcip);
+
+    if(r_filter->related_user)
+        os_report_printtop(r_filter->top_user, "Username", 
+                           r_filter->related_user);
+
+    if(r_filter->related_level)
+        os_report_printtop(r_filter->top_level, "Level", 
+                           r_filter->related_level);
+
+    if(r_filter->related_group)
+        os_report_printtop(r_filter->top_group, "Group", 
+                           r_filter->related_group);
+    
+    if(r_filter->related_location)
+        os_report_printtop(r_filter->top_location, "Location", 
+                           r_filter->related_location);
+    
+    if(r_filter->related_rule)
+        os_report_printtop(r_filter->top_rule, "Rule", 
+                           r_filter->related_rule);
+}
+
+
+
+
+
+/** int os_report_check_filters(char *filter_by, char *filter_value,
+ *                              report_filter *r_filter)
+ * Checks the configuration filters.
+ */
+int os_report_configfilter(char *filter_by, char *filter_value, 
+                           report_filter *r_filter, int arg_type)
+{
+    if(!filter_by || !filter_value)
+    {
+        return(-1);
+    }
+    
+    if(arg_type == REPORT_FILTER)
+    {
+        if(strcmp(filter_by, "group") == 0)
+        {
+            r_filter->group = filter_value;    
+        }
+        else if(strcmp(filter_by, "rule") == 0)
+        {
+            r_filter->rule = filter_value;    
+        }
+        else if(strcmp(filter_by, "level") == 0)
+        {
+            r_filter->level = filter_value;    
+        }
+        else if(strcmp(filter_by, "location") == 0)
+        {
+            r_filter->location = filter_value;    
+        }
+        else
+        {
+            merror("%s: ERROR: Invalid filter '%s'.", ARGV0, filter_by);
+            return(-1);
+        }
+    }
+    else
+    {
+        if(strcmp(filter_by, "group") == 0)
+        {
+            r_filter->related_group = 
+            _report_filter_value(filter_value, r_filter->related_group);
+
+            if(r_filter->related_group == -1)
+                return(-1);
+        }
+        else if(strcmp(filter_by, "rule") == 0)
+        {
+            r_filter->related_rule = 
+            _report_filter_value(filter_value, r_filter->related_rule);
+
+            if(r_filter->related_rule == -1)
+                return(-1);
+        }
+        else if(strcmp(filter_by, "level") == 0)
+        {
+            r_filter->related_level = 
+            _report_filter_value(filter_value, r_filter->related_level);
+
+            if(r_filter->related_level == -1)
+                return(-1);
+        }
+        else if(strcmp(filter_by, "location") == 0)
+        {
+            r_filter->related_location = 
+            _report_filter_value(filter_value, r_filter->related_location);
+
+            if(r_filter->related_location == -1)
+                return(-1);
+        }
+        else if(strcmp(filter_by, "srcip") == 0)
+        {
+            r_filter->related_srcip = 
+            _report_filter_value(filter_value, r_filter->related_srcip);
+
+            if(r_filter->related_srcip == -1)
+                return(-1);
+        }
+        else if(strcmp(filter_by, "user") == 0)
+        {
+            r_filter->related_user = 
+            _report_filter_value(filter_value, r_filter->related_user);
+        
+            if(r_filter->related_user == -1)
+                return(-1);
+        }
+        else
+        {
+            merror("%s: ERROR: Invalid related entry '%s'.", ARGV0, filter_by);
+            return(-1);
+        }
+    }
+
+    return(0);
+}
+
+
+
+/* EOF */

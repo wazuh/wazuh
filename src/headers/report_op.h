@@ -1,0 +1,64 @@
+/* @(#) $Id$ */
+
+/* Copyright (C) 2008 Third Brigade, Inc.
+ * All rights reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 3) as published by the FSF - Free Software
+ * Foundation
+ */
+
+
+#ifndef __REPORT_OP_H
+#define __REPORT_OP_H
+
+
+#define REPORT_RELATED      1 
+#define REPORT_FILTER       2
+
+                    
+#define REPORT_REL_USER          0x001
+#define REPORT_REL_SRCIP         0x002
+#define REPORT_REL_LEVEL         0x004
+#define REPORT_REL_RULE          0x010
+#define REPORT_REL_GROUP         0x020
+#define REPORT_REL_LOCATION      0x040
+           
+
+
+typedef struct _report_filter
+{
+    char *report_name;
+
+    char *group;
+    char *rule;
+    char *level;
+    char *location;
+
+    void *top_user;
+    void *top_srcip;
+    void *top_level;
+    void *top_rule;
+    void *top_group;
+    void *top_location;
+
+    int related_user;
+    int related_srcip;
+    int related_level;
+    int related_rule;
+    int related_group;
+    int related_location;
+     
+}report_filter;
+
+
+
+
+int os_report_configfilter(char *filter_by, char *filter_value, 
+                           report_filter *r_filter, int arg_type);
+void os_report_printtop(void *topstore, char *hname, int print_related);
+void os_ReportdStart(report_filter *r_filter);
+
+
+#endif
