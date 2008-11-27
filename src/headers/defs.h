@@ -133,6 +133,13 @@ http://www.ossec.net/main/license/\n"
 /* Rootcheck directory */
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
+/* Diff queue */
+#define DIFF_DIR        "/queue/diff"
+#define DIFF_DIR_PATH   DEFAULTDIR DIFF_DIR
+#define DIFF_NEW_TMP    "new-entry"
+#define DIFF_NEW_FINAL  ".new-entry"
+#define DIFF_LAST       "last-entry"
+
 
 /* Syscheck data */
 #define SYSCHECK        "syscheck"

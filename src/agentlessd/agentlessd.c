@@ -41,10 +41,73 @@ int send_intcheck_msg(char *host, char *msg)
 
 
 
+/* Renames the diff file after completed. */
+int rename_diff_file(char *host, char *script)
+{
+    char sys_location[1024 +1];
+    char new_location[1024 +1];
+          
+    sys_location[1024] = '\0';
+    new_location[1024] = '\0';
+    snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
+             DIFF_NEW_TMP);
+    snprintf(new_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
+             DIFF_NEW_FINAL);
+
+    if(rename(sys_location, new_location) != 0)
+    {
+        merror(RENAME_ERROR, ARGV0, sys_location);
+    }
+    return(0);
+}
+
+
+
+/* get the diff file. */
+FILE *open_diff_file(char *host, char *script)
+{
+    FILE *fp = NULL;
+    char sys_location[1024 +1];
+          
+    sys_location[1024] = '\0';
+    snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
+             DIFF_NEW_TMP);
+
+
+    fp = fopen(sys_location, "w");
+
+    /* If we can't open, try creating the directory. */
+    if(!fp)
+    {
+        snprintf(sys_location, 1024, "%s/%s->%s", DIFF_DIR_PATH, host, script);
+        if(IsDir(sys_location) == -1)
+        {
+            if(mkdir(sys_location, 0770) == -1)
+            {
+                merror(MKDIR_ERROR, ARGV0, sys_location);
+                return(NULL);
+            }
+        }
+
+        snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, 
+                 script, DIFF_NEW_TMP);
+        fp = fopen(sys_location, "w");
+        if(!fp)
+        {
+            merror(FOPEN_ERROR, ARGV0, sys_location);
+            return(NULL);
+        }
+    }
+
+    return(fp);
+}
+
+
+
 /* Run periodic commands. */
 int run_periodic_cmd(agentlessd_entries *entry, int test_it)
 {
-    int i = 0, store = 0;
+    int i = 0;
     char *tmp_str;
     char buf[OS_SIZE_2048 +1];
     char command[OS_SIZE_1024 +1];
@@ -91,10 +154,11 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 else if((entry->state & LESSD_STATE_DIFF) &&
                         (strncmp(buf, "STORE: ", 7) == 0))
                 {
-                    store = 1;
+                    fp_store = open_diff_file(entry->server[i], entry->type);
                 }
-                else if(store && fp_store)
+                else if(fp_store)
                 {
+                    fprintf(fp_store, "%s\n", buf);
                 }
                 else
                 {
@@ -102,6 +166,13 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 }
             }
 
+            if(fp_store)
+            {
+                fclose(fp_store);
+                fp_store = NULL;
+
+                rename_diff_file(entry->server[i], entry->type);
+            }
             pclose(fp);
         }
         else
@@ -121,9 +192,6 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
     
     return(0);
 }
-
-
-
 
 
 

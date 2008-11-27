@@ -99,6 +99,14 @@ expect {
         send_user "ERROR: Unable to connect to remote host: $hostname .\n"
         exit 1;
     }
+    "*Connection refused*" {
+        send_user "ERROR: Unable to connect to remote host: $hostname .\n"
+        exit 1;
+    }
+    "*Connection closed by remote host*" {
+        send_user "ERROR: Unable to connect to remote host: $hostname .\n"
+        exit 1;
+    }
     "* password:*" {
         send "$pass\r"
         set timeout 120

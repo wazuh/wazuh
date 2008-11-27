@@ -23,7 +23,7 @@ GROUP="ossec"
 USER="ossec"
 USER_MAIL="ossecm"
 USER_REM="ossecr"
-subdirs="logs logs/archives logs/alerts logs/firewall bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck queue/rootcheck queue/agent-info queue/rids tmp var var/run etc etc/shared active-response active-response/bin agentless .ssh"
+subdirs="logs logs/archives logs/alerts logs/firewall bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck queue/rootcheck queue/diff queue/agent-info queue/rids tmp var var/run etc etc/shared active-response active-response/bin agentless .ssh"
 
 # ${DIR} must be set 
 if [ "X${DIR}" = "X" ]; then
@@ -139,6 +139,10 @@ chmod 740 ${DIR}/queue/syscheck/* > /dev/null 2>&1
 chown -R ${USER}:${GROUP} ${DIR}/queue/rootcheck
 chmod -R 750 ${DIR}/queue/rootcheck
 chmod 740 ${DIR}/queue/rootcheck/* > /dev/null 2>&1
+
+chown -R ${USER}:${GROUP} ${DIR}/queue/diff
+chmod -R 750 ${DIR}/queue/diff
+chmod 740 ${DIR}/queue/diff/* > /dev/null 2>&1
 
 chown -R ${USER_REM}:${GROUP} ${DIR}/queue/agent-info
 chmod -R 755 ${DIR}/queue/agent-info

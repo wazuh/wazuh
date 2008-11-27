@@ -24,7 +24,7 @@ fi
 NAME="OSSEC HIDS"
 VERSION="v1.6.1"
 AUTHOR="Third Brigade, Inc."
-DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON}"
+DAEMONS="ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON}"
 
 
 ## Locking for the start/stop
@@ -115,8 +115,8 @@ enable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Enable options: database, client-syslog"
-        echo "Usage: $0 enable [database|client-syslog]"
+        echo "Enable options: database, client-syslog, agentless"
+        echo "Usage: $0 enable [database|client-syslog|agentless]"
         exit 1;
     fi
     
@@ -124,12 +124,14 @@ enable()
         echo "DB_DAEMON=ossec-dbd" >> ${PLIST};
     elif [ "X$2" = "Xclient-syslog" ]; then
         echo "CSYSLOG_DAEMON=ossec-csyslogd" >> ${PLIST};
+    elif [ "X$2" = "Xagentless" ]; then
+        echo "AGENTLESS_DAEMON=ossec-agentlessd" >> ${PLIST};    
     else
         echo ""
         echo "Invalid enable option."
         echo ""
-        echo "Enable options: database, client-syslog"
-        echo "Usage: $0 enable [database|client-syslog]"
+        echo "Enable options: database, client-syslog, agentless"
+        echo "Usage: $0 enable [database|client-syslog|agentless]"
         exit 1;
     fi         
 
@@ -143,8 +145,8 @@ disable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Disable options: database, client-syslog"
-        echo "Usage: $0 disable [database|client-syslog]"
+        echo "Disable options: database, client-syslog, agentless"
+        echo "Usage: $0 disable [database|client-syslog|agentless]"
         exit 1;
     fi
     
@@ -152,12 +154,14 @@ disable()
         echo "DB_DAEMON=\"\"" >> ${PLIST};
     elif [ "X$2" = "Xclient-syslog" ]; then
         echo "CSYSLOG_DAEMON=\"\"" >> ${PLIST};
+    elif [ "X$2" = "Xagentless" ]; then
+        echo "AGENTLESS_DAEMON=\"\"" >> ${PLIST};    
     else
         echo ""
         echo "Invalid disable option."
         echo ""
-        echo "Disable options: database, client-syslog"
-        echo "Usage: $0 disable [database|client-syslog]"
+        echo "Disable options: database, client-syslog, agentless"
+        echo "Usage: $0 disable [database|client-syslog|agentless]"
         exit 1;
     fi         
 
@@ -183,7 +187,7 @@ status()
 # Start function
 start()
 {
-    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
+    SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
     
     echo "Starting $NAME $VERSION (by $AUTHOR)..."
     lock;
