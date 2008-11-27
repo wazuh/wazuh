@@ -219,6 +219,11 @@ UseRootcheck()
         echo "    <system_audit>$INSTALLDIR/etc/shared/cis_rhel_linux_rcl.txt</system_audit>" >> $NEWCONFIG
         echo "    <system_audit>$INSTALLDIR/etc/shared/cis_rhel5_linux_rcl.txt</system_audit>" >> $NEWCONFIG
         echo "  </rootcheck>" >> $NEWCONFIG
+    else
+      echo "" >> $NEWCONFIG
+      echo "  <rootcheck>" >> $NEWCONFIG
+        echo "    <disabled>yes</disabled>" >> $NEWCONFIG
+      echo "  </rootcheck>" >> $NEWCONFIG
     fi            
 }
 
