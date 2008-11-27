@@ -6,45 +6,6 @@ use POSIX 'setsid';
 # Author: Meir Michanie (meirm@riunx.com)
 # File: ossectop.pl
 # Version 0.1 (09/2006)
-# ---------------------------------------------------------------------------
-# http://www.riunx.com/
-# ---------------------------------------------------------------------------
-#
-# ---------------------------------------------------------------------------
-# About this script
-# ---------------------------------------------------------------------------
-#
-# "Ossec to Mysql" records the OSSEC HIDS alert logs in MySQL database.
-# It can run as a daemon (ossec2mysqld.pl), recording in real-time the logs in database or
-# as a simple script (ossec2mysql.pl).
-#
-# ---------------------------------------------------------------------------
-# Prerequisites
-# ---------------------------------------------------------------------------
-#
-# MySQL Server
-# Perl DBD::mysql module
-# Perl DBI module
-#
-# ---------------------------------------------------------------------------
-# Installation steps
-# ---------------------------------------------------------------------------
-# 
-# 1) Create new database
-# 2a) Run ossec2mysql.sql to create MySQL tables in your database
-# 2b) Create BASE tables with snort tables extention
-# 3) Create a user to access the database;
-# 4) Copy ossec2mysql.conf to /etc/ossec2mysql.conf with 0600 permissions
-# 3) Edit /etc/ossec2mysql.conf according to your configuration:
-#	dbhost=localhost
-#	database=ossecbase
-#	debug=5
-#	dbport=3306
-#	dbpasswd=mypassword
-#	dbuser=ossecuser
-#	daemonize=0
-#	resolve=1
-#	
 #
 # ---------------------------------------------------------------------------
 # License
@@ -273,22 +234,6 @@ sub help(){
 	exit 0;
 }
 
-
-sub daemonize {
-        chdir '/'               or die "Can't chdir to /: $!";
-        open STDIN, '/dev/null' or die "Can't read /dev/null: $!";
-        open STDOUT, ">>$DAEMONLOGFILE"
-                               or die "Can't write to $DAEMONLOGFILE: $!";
-        defined(my $pid = fork) or die "Can't fork: $!";
-        if ($pid){
-                open (PIDFILE , ">/var/run/ossec2base2.pid") ;
-                print PIDFILE "$pid\n";
-                close (PIDFILE);
-                exit 0;
-        }
-        setsid                  or die "Can't start a new session: $!";
-        open STDERR, ">>$DAEMONLOGERRORFILE" or die "Can't write to $DAEMONLOGERRORFILE: $!";
-}
 
 sub gracefulend(){
         my ($signal)=@_;
