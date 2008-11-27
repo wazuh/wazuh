@@ -184,7 +184,7 @@ int main(int argc, char **argv)
             break;
         }
 
-        sleep(c + 2);
+        sleep(c + 20);
     }
 
 
