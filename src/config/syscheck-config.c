@@ -453,7 +453,7 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
         /* Getting scan day */
         else if(strcmp(node[i]->element,xml_scanday) == 0)
         {
-            syscheck->scan_day = OS_IsValidUniqueTime(node[i]->content);
+            syscheck->scan_day = OS_IsValidDay(node[i]->content);
             if(!syscheck->scan_day)
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);

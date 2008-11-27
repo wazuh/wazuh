@@ -566,7 +566,7 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
     #ifdef WIN32
     if(S_ISREG(statbuf.st_mode))
     #else
-    if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
+    if(S_ISREG(statbuf.st_mode))
     #endif
     {
         if(sha1sum || md5sum)
@@ -579,6 +579,28 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
             }
         }
     }
+    #ifndef WIN32
+    /* If it is a link, we need to check if the actual file is valid. */
+    else if(S_ISLNK(statbuf.st_mode))
+    {
+        struct stat statbuf_lnk;
+        if(stat(file_name, &statbuf_lnk) == 0)
+        {
+            if(S_ISREG(statbuf_lnk.st_mode))
+            {
+                if(sha1sum || md5sum)
+                {
+                    /* Generating checksums of the file. */
+                    if(OS_MD5_SHA1_File(file_name, mf_sum, sf_sum) < 0)
+                    {
+                        strncpy(sf_sum, "xxx", 4);
+                        strncpy(mf_sum, "xxx", 4);
+                    }
+                }
+            }
+        }
+    }
+    #endif
     
     newsum[0] = '\0';
     newsum[255] = '\0';

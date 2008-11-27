@@ -185,7 +185,24 @@ int read_file(char *file_name, int opts, int flag)
         /* Generating checksums. */
         if((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM))
         {
-            if(OS_MD5_SHA1_File(file_name, mf_sum, sf_sum) < 0)
+            /* If it is a link, we need to check if the dest is valid. */
+            if(S_ISLNK(statbuf.st_mode))
+            {
+                struct stat statbuf_lnk;
+                if(stat(file_name, &statbuf_lnk) == 0)
+                {
+                    if(S_ISREG(statbuf_lnk.st_mode))
+                    {
+                        if(OS_MD5_SHA1_File(file_name, mf_sum, sf_sum) < 0)
+                        {
+                            strncpy(mf_sum, "xxx", 4);
+                            strncpy(sf_sum, "xxx", 4);
+                        }
+                    }
+                }
+            }
+            
+            else if(OS_MD5_SHA1_File(file_name, mf_sum, sf_sum) < 0)
             {
                 strncpy(mf_sum, "xxx", 4);
                 strncpy(sf_sum, "xxx", 4);
