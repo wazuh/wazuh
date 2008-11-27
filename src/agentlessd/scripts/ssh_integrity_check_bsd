@@ -69,7 +69,7 @@ expect {
         send "yes\r"
         expect "* password:*" {
             send "$pass\r"
-            set timeout 120
+            set timeout 600
 
             expect {
                 "Permission denied" {
@@ -77,7 +77,7 @@ expect {
                     exit 1;
                 }
                 eof {
-                    send_user "INFO: Finishing ok.\n"
+                    send_user "INFO: Finished.\n"
                     exit 0;
                 }
                 timeout {
@@ -109,7 +109,7 @@ expect {
     }
     "* password:*" {
         send "$pass\r"
-        set timeout 120
+        set timeout 600
         
         expect {
             "Permission denied" {
@@ -117,7 +117,7 @@ expect {
                 exit 1;
             }
             eof {
-                send_user "INFO: Finishing ok.\n"
+                send_user "INFO: Finished.\n"
                 exit 0;
             }
             timeout {

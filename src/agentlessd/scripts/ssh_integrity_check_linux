@@ -76,7 +76,7 @@ expect {
                     exit 1;
                 }
                 eof {
-                    send_user "INFO: Finishing ok.\n"
+                    send_user "INFO: Finished.\n"
                     exit 0;
                 }
                 timeout {
@@ -116,7 +116,7 @@ expect {
                 exit 1;
             }
             eof {
-                send_user "INFO: Finishing ok.\n"
+                send_user "INFO: Finished.\n"
                 exit 0;
             }
             timeout {

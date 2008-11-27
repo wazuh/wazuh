@@ -136,8 +136,8 @@ http://www.ossec.net/main/license/\n"
 /* Diff queue */
 #define DIFF_DIR        "/queue/diff"
 #define DIFF_DIR_PATH   DEFAULTDIR DIFF_DIR
-#define DIFF_NEW_TMP    "new-entry"
-#define DIFF_NEW_FINAL  ".new-entry"
+#define DIFF_NEW_TMP    ".new-entry"
+#define DIFF_NEW_FINAL  "new-entry"
 #define DIFF_LAST       "last-entry"
 
 

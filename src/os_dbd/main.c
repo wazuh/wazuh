@@ -172,7 +172,7 @@ int main(int argc, char **argv)
     
     /* Connecting to the database */
     c = 0;
-    while(c <= db_config.maxreconnect)
+    while(c <= (db_config.maxreconnect * 10))
     {
         db_config.conn = osdb_connect(db_config.host, db_config.user, 
                                       db_config.pass, db_config.db,
@@ -184,7 +184,9 @@ int main(int argc, char **argv)
             break;
         }
 
-        sleep(c + 20);
+        c++;
+        sleep(c * 60);
+        
     }
 
 

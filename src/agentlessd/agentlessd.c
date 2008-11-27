@@ -49,6 +49,7 @@ int rename_diff_file(char *host, char *script)
           
     sys_location[1024] = '\0';
     new_location[1024] = '\0';
+
     snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
              DIFF_NEW_TMP);
     snprintf(new_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
@@ -58,6 +59,7 @@ int rename_diff_file(char *host, char *script)
     {
         merror(RENAME_ERROR, ARGV0, sys_location);
     }
+
     return(0);
 }
 
@@ -142,9 +144,15 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                     
                 if(strncmp(buf, "ERROR: ", 7) == 0)
                 {
-                    merror("%s: ERROR: from '%s': %s", ARGV0, entry->type, buf);
+                    merror("%s: ERROR: %s: %s: %s", ARGV0, 
+                           entry->type, entry->server[i], buf +7);
                     entry->error_flag++;
                     break;
+                }
+                else if(strncmp(buf, "INFO: ", 6) == 0)
+                {
+                    verbose("%s: INFO: %s: %s: %s", ARGV0, 
+                            entry->type, entry->server[i], buf +6);
                 }
                 else if(strncmp(buf, "FWD: ", 4) == 0)
                 {
