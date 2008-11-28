@@ -16,7 +16,7 @@ set addpass "x"
 set timeout 20 
 
 if {[string compare $hostname "test"] == 0} {
-    if {[string compare $dirs "test"] == 0} {
+    if {[string compare $commands "test"] == 0} {
         exit 0;
     }
 }

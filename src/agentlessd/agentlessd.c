@@ -126,7 +126,10 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
     {
         /* Ignored entry. */
         if(entry->server[i][0] == '\0')
+        {
+            i++;
             continue;
+        }
         
         
         /* We only test for the first server entry. */ 
@@ -148,11 +151,11 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 }
                 merror("%s: ERROR: Test failed for '%s' (%d). Ignoring.",
                        ARGV0, entry->type, ret_code/256);
-                entry->type[0] = '\0';
                 entry->error_flag = 99;
                 return(-1);
             }
 
+            verbose("%s: INFO: Test passed for '%s'.", ARGV0, entry->type);
             return(0);
         }
         
@@ -294,12 +297,16 @@ void Agentlessd()
         {
             if(lessdc.entries[i]->error_flag >= 10)
             {
-                if(lessdc.entries[i]->error_flag == 99)
-                    continue;
+                if(lessdc.entries[i]->error_flag != 99)
+                {
+                    merror("%s: ERROR: Too many failures for '%s'. Ignoring it.",
+                           ARGV0, lessdc.entries[i]->type); 
+                    lessdc.entries[i]->error_flag = 99;
+                }
 
-                merror("%s: ERROR: Too many failures for '%s'. Ignoring it.",
-                       ARGV0, lessdc.entries[i]->type); 
-                lessdc.entries[i]->error_flag = 99;
+                i++;
+                sleep(i);
+                continue;
             }
 
             
@@ -308,12 +315,13 @@ void Agentlessd()
                ((lessdc.entries[i]->current_state + 
                  lessdc.entries[i]->frequency) < tm))
             {
-                lessdc.entries[i]->current_state = tm;
-
                 run_periodic_cmd(lessdc.entries[i], test_it);
+                lessdc.entries[i]->current_state = tm;
             }
             
             i++;
+
+            sleep(i);
         }
         
         /* We only check every minute */
