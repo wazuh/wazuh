@@ -2,7 +2,7 @@
 
 
 if {$argc <= 1} {
-    send_user "ERROR: ssh_integrity_check <hostname> <directories>\n";
+    send_user "ERROR: ssh_pixconfig_diff <hostname> <commands>\n";
     exit 1;
 }
 
@@ -10,18 +10,16 @@ if {$argc <= 1} {
 # NOTE: this script must be called from within /var/ossec for it to work.
 set passlist "agentless/.passlist"
 set hostname [lindex $argv 0]
-set dirs [lrange $argv 1 end]
+set commands [lrange $argv 1 end]
 set pass "x"
 set addpass "x"
 set timeout 20 
-
 
 if {[string compare $hostname "test"] == 0} {
     if {[string compare $dirs "test"] == 0} {
         exit 0;
     }
 }
-
 
 # Reading the password list.
 if [catch {
@@ -71,9 +69,8 @@ if {[string compare $pass "x"] == 0} {
 
 
 # SSHing to the box and passing the directories to check.
-# echo a |md5 > /dev/null 2>&1 && echo md5 || (echo a | md5sum > /dev/null 2>&1 && echo md5sum || echo "md5 command not found"; exit 1)
 if [catch {
-    spawn ssh $hostname "echo \"INFO: Starting.\"; for i in `find  $dirs 2>/dev/null`;do tail \$i >/dev/null 2>&1 &&  md5=`md5 \$i | cut -d \"=\" -f 2|cut -d \" \" -f 2` && sha1=`sha1 \$i | cut -d \"=\" -f 2|cut -d \" \" -f 2` && echo FWD: `stat -f \"%Dz:%Dp:%Du:%Dg\" \$i`:\$md5:\$sha1 \$i; done" 
+    spawn ssh -c des $hostname
 } loc_error] {
     send_user "ERROR: Opening connection: $loc_error.\n"
     exit 1;
@@ -88,26 +85,20 @@ expect {
         send "yes\r"
         expect "* password:*" {
             send "$pass\r"
-            set timeout 600
 
             expect {
                 "Permission denied" {
                     send_user "ERROR: Incorrect password to remote host: $hostname .\n"
                     exit 1;
                 }
-                eof {
-                    send_user "INFO: Finished.\n"
-                    exit 0;
-                }
                 timeout {
-                    send_user "ERROR: Timeout while running on host: $hostname .\n"
+                    send_user "ERROR: Timeout while running on host (too long to finish): $hostname .\n"
                     exit 1;
                 }
-                
+                "*>" {
+                    send_user "\nINFO: Started.\n"
+                }
             }
-
-            send_user "ERROR: Unable to finish properly (but connected ok).\n"
-            exit 1;
         }
     }
     "ssh: connect to host*" {
@@ -128,25 +119,20 @@ expect {
     }
     "* password:*" {
         send "$pass\r"
-        set timeout 600
         
         expect {
             "Permission denied" {
                 send_user "ERROR: Incorrect password to remote host: $hostname .\n"
                 exit 1;
             }
-            eof {
-                send_user "INFO: Finished.\n"
-                exit 0;
-            }
             timeout {
-                send_user "ERROR: Timeout while running on host: $hostname .\n"
+                send_user "ERROR: Timeout while running on host (too long to finish): $hostname .\n"
                 exit 1;
             }
+            "*>" {
+                send_user "INFO: Starting.\n"
+            }
         }
-
-        send_user "ERROR: Unable to finish properly (but connected ok).\n"
-        exit 1;
     }
     timeout {
         send_user "ERROR: Timeout while connecting to host: $hostname . \n"
@@ -154,8 +140,61 @@ expect {
     }
 }
 
+# Going into enable mode.
+send "enable\r"
+expect {
+    "Password:" {
+        send "$addpass\r"
+
+        expect {
+            "*asswor*" {
+                send_user "ERROR: Incorrect enable password to remote host: $hostname .\n"
+                exit 1;
+            }
+            "*rror in authenticatio*" {
+                send_user "ERROR: Incorrect enable password to remote host: $hostname .\n"
+                exit 1;
+            }
+            timeout {
+                send_user "ERROR: Timeout while going to enable mode on host: $hostname .\n"
+                exit 1;
+            }
+            "*#" {
+                send_user "ok on enable pass\n"
+            }
+        }
+    }
+    timeout {
+        send_user "ERROR: Timeout while running enable on host: $hostname .\n"
+        exit 1;
+    }
+}
+
+
+# Sending commands
+set timeout 60 
+send_user "\nSTORE: now\n"
+
+send "no pager\r"
+send "term len 0\r"
+send "terminal pager 0\r"
+
+# Excluding uptime from the output
+send "show version | exclude up\r"
+send "show running-config\r"
+send "$commands\r"
+send "exit\r"
+
+expect {
+    timeout {
+        send_user "ERROR: Timeout while running commands on host: $hostname .\n"
+        exit 1;
+    }
+    eof {
+        send_user "\nINFO: Finished.\n"
+        exit 0;
+    }
+}
+
 send_user "ERROR: Unable to finish properly.\n"
 exit 1;
-
-
-

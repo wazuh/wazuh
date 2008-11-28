@@ -2,7 +2,7 @@
 
 
 if {$argc <= 1} {
-    send_user "ERROR: ssh_integrity_check <hostname> <directories>\n";
+    send_user "ERROR: ssh_integrity_check <hostname> <commands>\n";
     exit 1;
 }
 
@@ -10,18 +10,16 @@ if {$argc <= 1} {
 # NOTE: this script must be called from within /var/ossec for it to work.
 set passlist "agentless/.passlist"
 set hostname [lindex $argv 0]
-set dirs [lrange $argv 1 end]
+set commands [lrange $argv 1 end]
 set pass "x"
 set addpass "x"
 set timeout 20 
-
 
 if {[string compare $hostname "test"] == 0} {
     if {[string compare $dirs "test"] == 0} {
         exit 0;
     }
 }
-
 
 # Reading the password list.
 if [catch {
@@ -71,9 +69,8 @@ if {[string compare $pass "x"] == 0} {
 
 
 # SSHing to the box and passing the directories to check.
-# echo a |md5 > /dev/null 2>&1 && echo md5 || (echo a | md5sum > /dev/null 2>&1 && echo md5sum || echo "md5 command not found"; exit 1)
 if [catch {
-    spawn ssh $hostname "echo \"INFO: Starting.\"; for i in `find  $dirs 2>/dev/null`;do tail \$i >/dev/null 2>&1 &&  md5=`md5 \$i | cut -d \"=\" -f 2|cut -d \" \" -f 2` && sha1=`sha1 \$i | cut -d \"=\" -f 2|cut -d \" \" -f 2` && echo FWD: `stat -f \"%Dz:%Dp:%Du:%Dg\" \$i`:\$md5:\$sha1 \$i; done" 
+    spawn ssh $hostname "echo \"STORE: now\";$commands" 
 } loc_error] {
     send_user "ERROR: Opening connection: $loc_error.\n"
     exit 1;
@@ -100,7 +97,7 @@ expect {
                     exit 0;
                 }
                 timeout {
-                    send_user "ERROR: Timeout while running on host: $hostname .\n"
+                    send_user "ERROR: Timeout while running on host (too long to finish): $hostname .\n"
                     exit 1;
                 }
                 
@@ -140,7 +137,7 @@ expect {
                 exit 0;
             }
             timeout {
-                send_user "ERROR: Timeout while running on host: $hostname .\n"
+                send_user "ERROR: Timeout while running on host (too long to finish): $hostname .\n"
                 exit 1;
             }
         }

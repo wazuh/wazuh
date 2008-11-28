@@ -23,15 +23,19 @@ fi
 # Arguments
 if [ "x$1" = "x" -o "x$1" = "xhelp" -o "x$1" = "x-h" ]; then
     echo "$0 options:"
-    echo "        add <user@host> [<passwd>]"
-    echo "        list"
+    echo "        add <user@host> [<passwd>] (<additional_pass>)"
+    echo "        list (passwords)"
     exit 0;
 fi
 
 
 if [ "x$1" = "xlist" ]; then
     echo "*Available hosts: "
-    cat $MYPASS | sort | uniq;
+    if [ "x$2" = "xpasswords" ]; then
+        cat $MYPASS | sort | uniq;
+    else    
+        cat $MYPASS | cut -d "|" -f 1 | sort | uniq;
+    fi    
     exit 0;
 
 
@@ -39,11 +43,11 @@ if [ "x$1" = "xlist" ]; then
 elif [ "x$1" = "xadd" ]; then
     if [ "x$2" = "x" ]; then
         echo "ERROR: Missing hostname name.";
-        echo "ex: $0 add <user@host> [<passwd>]";
+        echo "ex: $0 add <user@host> [<passwd>] (<additional_pass>)";
         exit 1;
     fi
     
-    grep $2 $MYPASS > /dev/null 2>&1
+    grep "$2|" $MYPASS > /dev/null 2>&1
     if [ $? = 0 ]; then
         echo "ERROR: Host '$2' already added.";
         exit 1;
@@ -61,7 +65,7 @@ elif [ "x$1" = "xadd" ]; then
         INPASS=$3    
     fi
     
-    echo "$2|$INPASS" >> $MYPASS;
+    echo "$2|$INPASS|$4" >> $MYPASS;
     if [ ! $? = 0 ]; then
         echo "ERROR: Unable to creating entry (echo failed)."
         exit 1;

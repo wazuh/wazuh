@@ -124,6 +124,38 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
     
     while(entry->server[i])
     {
+        /* Ignored entry. */
+        if(entry->server[i][0] == '\0')
+            continue;
+        
+        
+        /* We only test for the first server entry. */ 
+        else if(test_it)
+        {
+            int ret_code = 0;
+            snprintf(command, OS_SIZE_1024, "%s/%s test test >/dev/null 2>&1", 
+                    AGENTLESSDIRPATH, entry->type);
+            ret_code = system(command);
+
+            /* Checking if the test worked. */
+            if(ret_code != 0)
+            {
+                if(ret_code == 32512)
+                {
+                    merror("%s: ERROR: Expect command not found (or bad "
+                           "arguments) for '%s'.",
+                           ARGV0, entry->type); 
+                }
+                merror("%s: ERROR: Test failed for '%s' (%d). Ignoring.",
+                       ARGV0, entry->type, ret_code/256);
+                entry->type[0] = '\0';
+                entry->error_flag = 99;
+                return(-1);
+            }
+
+            return(0);
+        }
+        
         snprintf(command, OS_SIZE_1024, "%s/%s \"%s\" %s 2>&1", 
                 AGENTLESSDIRPATH, entry->type, entry->server[i], 
                 entry->options);
@@ -212,6 +244,7 @@ void Agentlessd()
     int today = 0;		        
     int thismonth = 0;
     int thisyear = 0;
+    int test_it = 1;
 
     char str[OS_SIZE_1024 +1];
 
@@ -277,13 +310,14 @@ void Agentlessd()
             {
                 lessdc.entries[i]->current_state = tm;
 
-                run_periodic_cmd(lessdc.entries[i], 0);
+                run_periodic_cmd(lessdc.entries[i], test_it);
             }
             
             i++;
         }
         
         /* We only check every minute */
+        test_it = 0;
         sleep(60);
     }
 }
