@@ -1,7 +1,7 @@
 #!/usr/bin/env expect
 
 
-if {$argc <= 1} {
+if {$argc < 1} {
     send_user "ERROR: ssh_pixconfig_diff <hostname> <commands>\n";
     exit 1;
 }

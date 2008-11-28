@@ -52,7 +52,7 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
     /* Zeroing the elements. */
     lessd_config->entries[s]->server = NULL;
     lessd_config->entries[s]->command = NULL;
-    lessd_config->entries[s]->options = NULL;
+    lessd_config->entries[s]->options = "";
     lessd_config->entries[s]->type = NULL;
     lessd_config->entries[s]->frequency = 86400;
     lessd_config->entries[s]->state = 0;
