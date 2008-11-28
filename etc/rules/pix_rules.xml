@@ -188,12 +188,12 @@
   <rule id="4341" level="3">
     <if_sid>4314</if_sid>
     <id>^5-111008|^7-111009</id>
-    <description>Firewall command executed (for accouting only).</description>
+    <description>Firewall command executed (for accounting only).</description>
   </rule>
   
   <rule id="4342" level="8">
     <if_sid>4314</if_sid>
-    <id>^5-502101|^5-502102|^5-502103</id>
+    <id>^5-502101|^5-502102</id>
     <description>User created or modified on the Firewall.</description>
     <group>adduser,account_changed,</group>
   </rule>
