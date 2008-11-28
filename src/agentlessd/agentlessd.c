@@ -316,7 +316,8 @@ void Agentlessd()
                  lessdc.entries[i]->frequency) < tm))
             {
                 run_periodic_cmd(lessdc.entries[i], test_it);
-                lessdc.entries[i]->current_state = tm;
+                if(!test_it)
+                    lessdc.entries[i]->current_state = tm;
             }
             
             i++;
