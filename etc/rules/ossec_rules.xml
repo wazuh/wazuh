@@ -144,6 +144,13 @@
     <group>syscheck,</group>
   </rule>
 
+  <rule id="555" level="7">
+    <if_sid>550</if_sid>
+    <match>^ossec: agentless: </match>
+    <description>Integrity checksum for agentless device changed.</description>
+    <group>syscheck,agentless</group>
+  </rule>
+
   <!-- Hostinfo rules -->  
   <rule id="580" level="8">
     <category>ossec</category>

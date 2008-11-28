@@ -12,6 +12,7 @@
 
 
 #include "shared.h"
+#include "os_crypto/md5/md5_op.h"
 #include "agentlessd.h"
 
 
@@ -41,24 +42,175 @@ int send_intcheck_msg(char *host, char *msg)
 
 
 
-/* Renames the diff file after completed. */
-int rename_diff_file(char *host, char *script)
+/* Generate diffs alerts. */
+int gen_diff_alert(char *host, char *script, int alert_diff_time)
 {
-    char sys_location[1024 +1];
-    char new_location[1024 +1];
-          
-    sys_location[1024] = '\0';
-    new_location[1024] = '\0';
+    int n = 0;
+    FILE *fp;
+    char *tmp_str;
+    char buf[2048 +1];
+    char diff_alert[4096 +1];
 
-    snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
-             DIFF_NEW_TMP);
-    snprintf(new_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
-             DIFF_NEW_FINAL);
+    buf[2048] = '\0';
+    diff_alert[4096] = '\0';
 
-    if(rename(sys_location, new_location) != 0)
+    snprintf(buf, 2048, "%s/%s->%s/diff.%d",
+             DIFF_DIR_PATH, host, script,  alert_diff_time);
+    
+    fp = fopen(buf, "r");
+    if(!fp)
     {
-        merror(RENAME_ERROR, ARGV0, sys_location);
+        merror("%s: ERROR: Unable to generate diff alert.", ARGV0);
+        return(0);
     }
+
+    n = fread(buf, 1, 2048 -1, fp);
+    if(n <= 0)
+    {
+        merror("%s: ERROR: Unable to generate diff alert (fread).", ARGV0);
+        fclose(fp);
+        return(0);
+    }
+    else if(n >= 2040)
+    {
+        /* We need to clear the last new line. */
+        buf[n] = '\0';
+        tmp_str = strrchr(buf, '\n');
+        if(tmp_str)
+            *tmp_str = '\0';
+        else
+        {
+            /* Weird diff with only one large line. */
+            buf[256] = '\0';    
+        }
+    }
+    else
+    {
+        buf[n] = '\0';
+    }
+
+    n = 0;
+
+
+    /* Getting up to 8 line changes. */
+    tmp_str = buf;
+    
+    while(tmp_str && (*tmp_str != '\0'))
+    {
+        tmp_str = strchr(tmp_str, '\n');
+        if(!tmp_str)
+            break;    
+        else if(n >= 7)
+        {
+            *tmp_str = '\0';    
+            break;
+        }
+        n++;
+        tmp_str++;    
+    }
+
+
+    /* Creating alert. */
+    snprintf(diff_alert, 4096 -1, "ossec: agentless: Change detected:\n%s%s",
+             host, script, buf, n>=7?
+             "\nMore changes..":
+             "");
+    
+    
+    snprintf(buf, 1024, "%s->%s", host, script);
+    
+    if(SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ) < 0)
+    {
+        merror(QUEUE_SEND, ARGV0);
+
+        if((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0)
+        {
+            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+        }
+
+        /* If we reach here, we can try to send it again */
+        SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ);
+    }
+
+    return(0);
+}
+
+
+
+/* Checks if the file has changed */
+int check_diff_file(char *host, char *script)
+{
+    int date_of_change;
+    char old_location[1024 +1];
+    char new_location[1024 +1];
+    char tmp_location[1024 +1];
+    char diff_cmd[2048 +1];
+
+    os_md5 md5sum_old;
+    os_md5 md5sum_new;
+    
+    old_location[1024] = '\0';
+    new_location[1024] = '\0';
+    tmp_location[1024] = '\0';
+    diff_cmd[2048] = '\0';
+
+    snprintf(new_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
+             DIFF_NEW_FILE);
+    snprintf(old_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
+             DIFF_LAST_FILE);
+
+
+    /* If the file is not there, rename new location to last location. */
+    if(OS_MD5_File(old_location, md5sum_old) != 0)
+    {
+        if(rename(new_location, old_location) != 0)
+        {
+            merror(RENAME_ERROR, ARGV0, new_location);
+        }
+        return(0);
+    }
+
+    /* Get md5sum of the new file. */
+    if(OS_MD5_File(new_location, md5sum_new) != 0)
+    {
+        merror("%s: ERROR: Invalid internal state (missing '%s').",
+               ARGV0, new_location); 
+        return(0);
+    }
+
+    /* If they match, keep the old file and remove the new. */
+    if(strcmp(md5sum_new, md5sum_old) == 0)
+    {
+        unlink(new_location);
+        return(0);
+    }
+
+
+    /* Saving the old file at timestamp and renaming new to last. */
+    date_of_change = File_DateofChange(old_location);
+    snprintf(tmp_location, 1024, "%s/%s->%s/state.%d", DIFF_DIR_PATH, host, script,
+             date_of_change);
+    rename(old_location, tmp_location);
+    rename(new_location, old_location);
+
+
+    /* Run diff. */
+    date_of_change = File_DateofChange(old_location);
+    snprintf(diff_cmd, 2048, "diff \"%s\" \"%s\" > \"%s/%s->%s/diff.%d\" " 
+             "2>/dev/null",
+             tmp_location, old_location, 
+             DIFF_DIR_PATH, host, script, date_of_change);
+    if(system(diff_cmd) != 256)
+    {
+        merror("%s: ERROR: Unable to run diff for %s->%s",
+               ARGV0,  host, script);
+        return(0); 
+    }
+
+
+    /* Generate alert. */
+    gen_diff_alert(host, script, date_of_change);
+
 
     return(0);
 }
@@ -73,7 +225,7 @@ FILE *open_diff_file(char *host, char *script)
           
     sys_location[1024] = '\0';
     snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
-             DIFF_NEW_TMP);
+             DIFF_NEW_FILE);
 
 
     fp = fopen(sys_location, "w");
@@ -92,7 +244,7 @@ FILE *open_diff_file(char *host, char *script)
         }
 
         snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, 
-                 script, DIFF_NEW_TMP);
+                 script, DIFF_NEW_FILE);
         fp = fopen(sys_location, "w");
         if(!fp)
         {
@@ -214,7 +366,7 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 fclose(fp_store);
                 fp_store = NULL;
 
-                rename_diff_file(entry->server[i], entry->type);
+                check_diff_file(entry->server[i], entry->type);
             }
             pclose(fp);
         }

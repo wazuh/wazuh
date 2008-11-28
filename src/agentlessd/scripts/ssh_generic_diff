@@ -70,7 +70,7 @@ if {[string compare $pass "x"] == 0} {
 
 # SSHing to the box and passing the directories to check.
 if [catch {
-    spawn ssh $hostname "echo \"STORE: now\";$commands" 
+    spawn ssh $hostname "echo \"INFO: Starting.\"; echo \"STORE: now\";$commands" 
 } loc_error] {
     send_user "ERROR: Opening connection: $loc_error.\n"
     exit 1;

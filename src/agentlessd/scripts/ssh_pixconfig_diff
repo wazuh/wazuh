@@ -96,7 +96,7 @@ expect {
                     exit 1;
                 }
                 "*>" {
-                    send_user "\nINFO: Started.\n"
+                    send_user "\nINFO: Starting.\n"
                 }
             }
         }
@@ -180,7 +180,7 @@ send "term len 0\r"
 send "terminal pager 0\r"
 
 # Excluding uptime from the output
-send "show version | exclude up\r"
+send "show version | grep -v Configuration last| up\r"
 send "show running-config\r"
 send "$commands\r"
 send "exit\r"
