@@ -178,6 +178,7 @@ http://www.ossec.net/main/license/\n"
 /* Agentless directories. */    
 #define AGENTLESSDIR    "/agentless"
 #define AGENTLESSPASS   "/agentless/.passlist"
+#define AGENTLESS_ENTRYDIR  "/queue/agentless"
         
 
 /* Internal definitions files */
@@ -242,11 +243,13 @@ http://www.ossec.net/main/license/\n"
     #define AR_BINDIRPATH   DEFAULTDIR AR_BINDIR
     #define AGENTLESSDIRPATH    DEFAULTDIR AGENTLESSDIR
     #define AGENTLESSPASSPATH   DEFAULTDIR AGENTLESSPASS
+    #define AGENTLESS_ENTRYDIRPATH  DEFAULTDIR AGENTLESS_ENTRYDIR
 #else
     #define DEFAULTARPATH   "shared/ar.conf"
     #define AR_BINDIRPATH   "active-response/bin"
     #define AGENTLESSDIRPATH    AGENTLESSDIR
     #define AGENTLESSPASSPATH   AGENTLESSPASS
+    #define AGENTLESS_ENTRYDIRPATH  AGENTLESS_ENTRYDIR
 #endif
 #define EXECQUEUEPATH   DEFAULTDIR EXECQUEUE
 

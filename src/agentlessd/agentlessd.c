@@ -16,13 +16,39 @@
 #include "agentlessd.h"
 
 
+
+/* Saves agentless entry for the control tools to gather. */
+int save_agentless_entry(char *host, char *script, char *agttype)
+{
+    FILE *fp;
+    char sys_location[1024 +1];
+
+    sys_location[1024] = '\0';
+    snprintf(sys_location, 1024, "(%s) %s", script, host);
+
+    fp = fopen(sys_location, "w");
+    if(fp)
+    {
+        fprintf(fp, "type: %s\n", agttype);
+        fclose(fp);
+    }
+    else
+    {
+        merror(FOPEN_ERROR, ARGV0, sys_location);
+    }
+
+    return(0);
+}
+
+
+
 /* send integrity checking message. */
-int send_intcheck_msg(char *host, char *msg)
+int send_intcheck_msg(char *script, char *host, char *msg)
 {
     char sys_location[1024 +1];
 
     sys_location[1024] = '\0';
-    snprintf(sys_location, 1024, "%s->%s", host, SYSCHECK);
+    snprintf(sys_location, 1024, "(%s) %s->%s", script, host, SYSCHECK);
     
     if(SendMSG(lessdc.queue, msg, sys_location, SYSCHECK_MQ) < 0)
     {
@@ -112,12 +138,12 @@ int gen_diff_alert(char *host, char *script, int alert_diff_time)
 
     /* Creating alert. */
     snprintf(diff_alert, 4096 -1, "ossec: agentless: Change detected:\n%s%s",
-             host, script, buf, n>=7?
+             buf, n>=7?
              "\nMore changes..":
              "");
     
     
-    snprintf(buf, 1024, "%s->%s", host, script);
+    snprintf(buf, 1024, "(%s) %s->agentless", script, host);
     
     if(SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ) < 0)
     {
@@ -132,6 +158,7 @@ int gen_diff_alert(char *host, char *script, int alert_diff_time)
         SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ);
     }
 
+    save_agentless_entry(host, script, "diff");
     return(0);
 }
 
@@ -344,7 +371,7 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 else if(strncmp(buf, "FWD: ", 4) == 0)
                 {
                     tmp_str = buf + 5;
-                    send_intcheck_msg(entry->server[i], tmp_str);
+                    send_intcheck_msg(entry->type, entry->server[i], tmp_str);
                 }
                 else if((entry->state & LESSD_STATE_DIFF) &&
                         (strncmp(buf, "STORE: ", 7) == 0))
@@ -367,6 +394,10 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 fp_store = NULL;
 
                 check_diff_file(entry->server[i], entry->type);
+            }
+            else
+            {
+                save_agentless_entry(entry->server[i], entry->type, "syscheck");
             }
             pclose(fp);
         }

@@ -145,7 +145,7 @@
   </rule>
 
   <rule id="555" level="7">
-    <if_sid>550</if_sid>
+    <if_sid>500</if_sid>
     <match>^ossec: agentless: </match>
     <description>Integrity checksum for agentless device changed.</description>
     <group>syscheck,agentless</group>
