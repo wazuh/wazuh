@@ -24,7 +24,8 @@ int save_agentless_entry(char *host, char *script, char *agttype)
     char sys_location[1024 +1];
 
     sys_location[1024] = '\0';
-    snprintf(sys_location, 1024, "(%s) %s", script, host);
+    snprintf(sys_location, 1024, "%s/(%s) %s", 
+             AGENTLESS_ENTRYDIRPATH, script, host);
 
     fp = fopen(sys_location, "w");
     if(fp)
