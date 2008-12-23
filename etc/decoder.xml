@@ -1320,7 +1320,7 @@
 <decoder name="windows">
   <type>windows</type>
   <prematch>^WinEvtLog: </prematch>
-  <regex offset="after_prematch">^\w+: (\w+)\((\d+)\): (\.+): </regex>
+  <regex offset="after_prematch">^\.+: (\w+)\((\d+)\): (\.+): </regex>
   <regex>(\.+): \.+: (\S+): </regex>
   <order>status, id, extra_data, user, system_name</order>
   <fts>name, location, user, system_name</fts>
