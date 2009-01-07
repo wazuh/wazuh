@@ -123,8 +123,6 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
              
             /* Invalid hostname */
             lf->hostname = NULL;
-            
-            merror(INVALID_HOSTNAME, ARGV0, lf->full_log);
         }
         else
         {
