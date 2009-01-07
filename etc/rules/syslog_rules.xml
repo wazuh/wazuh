@@ -526,4 +526,38 @@
 </group>
 
 
+<group name="syslog,yum,">
+  <rule id="2930" level="0">
+    <program_name>^yum</program_name>
+    <description>Yum logs.</description>
+  </rule>
+
+  <rule id="2931" level="0">
+    <match>^Installed|^Updated|^Erased</match>
+    <description>Yum logs.</description>
+  </rule>
+
+  <rule id="2932" level="7">
+    <if_sid>2930,2931</if_sid>
+    <match>^Installed</match>
+    <group>config_changed,</group>
+    <description>New Yum package installed.</description>
+  </rule>
+
+  <rule id="2933" level="7">
+    <if_sid>2930,2931</if_sid>
+    <match>^Updated</match>
+    <group>config_changed,</group>
+    <description>Yum package updated.</description>
+  </rule>
+
+  <rule id="2934" level="7">
+    <if_sid>2930,2931</if_sid>
+    <match>^Erased</match>
+    <group>config_changed,</group>
+    <description>Yum package deleted.</description>
+  </rule>
+</group>
+
+
 <!-- EOF -->
