@@ -61,11 +61,18 @@ elif [ "x$1" = "xadd" ]; then
         stty -echo
         read INPASS
         stty echo
+        
+        echo "Please provide additional password for host $2 (<enter> for empty)."
+        echo -n "Password: ";
+        stty -echo
+        read ADDPASS
+        stty echo
     else
         INPASS=$3    
+        ADDPASS=$4
     fi
     
-    echo "$2|$INPASS|$4" >> $MYPASS;
+    echo "$2|$INPASS|$ADDPASS" >> $MYPASS;
     if [ ! $? = 0 ]; then
         echo "ERROR: Unable to creating entry (echo failed)."
         exit 1;

@@ -1,158 +1,25 @@
 #!/usr/bin/env expect
 
 
-if {$argc <= 1} {
-    send_user "ERROR: ssh_integrity_check <hostname> <directories>\n";
-    exit 1;
-}
-
-
-# NOTE: this script must be called from within /var/ossec for it to work.
-set passlist "agentless/.passlist"
-set hostname [lindex $argv 0]
-set dirs [lrange $argv 1 end]
-set pass "x"
-set addpass "x"
-set timeout 20 
-
-if {[string compare $hostname "test"] == 0} {
-    if {[string compare $dirs "test"] == 0} {
-        exit 0;
-    }
-}
-
-# Reading the password list.
-if [catch {
-    set in [open "$passlist" r]
-} loc_error] {
-    send_user "ERROR: Password list not present (use \"register_host\" first).\n"
-    exit 1;
-}
-
-while {[gets $in line] != -1} {
-        set me [string first "|" $line]
-        set me2 [string last "|" $line]
-        set length [string length $line]
-        
-        if {$me == -1} {
-            continue;
-        }
-        if {$me2 == -1} {
-            continue;
-        }
-        if {$me == $me2} {
-            continue;
-        }
-        
-        set me [expr $me-1]
-        set me2 [expr $me2-1]
-        
-        set host_list [string range $line 0 $me]
-        set me [expr $me+2]
-        set pass_list [string range $line $me $me2]
-        set me2 [expr $me2+2]
-        set addpass_list [string range $line $me2 $length]
-
-        if {[string compare $host_list $hostname] == 0} {
-            set pass "$pass_list"
-            set addpass "$addpass_list"
-            break
-        }
-}
-close $in
-
-
-if {[string compare $pass "x"] == 0} {
-    send_user "ERROR: Password for '$hostname' not found.\n"
-    exit 1;
-}
+# Main script.
+source "agentless/main.exp"
 
 
 # SSHing to the box and passing the directories to check.
 if [catch {
-    spawn ssh $hostname "echo \"INFO: Starting.\"; for i in `find  $dirs 2>/dev/null`;do tail \$i >/dev/null 2>&1 &&  md5=`md5sum \$i | cut -d \" \" -f 1` && sha1=`sha1sum \$i | cut -d \" \" -f 1` && echo FWD: `stat --printf \"%s:%a:%u:%g\" \$i`:\$md5:\$sha1 \$i; done" 
+    spawn ssh $hostname
 } loc_error] {
     send_user "ERROR: Opening connection: $loc_error.\n"
     exit 1;
 }
 
-expect {
-    "WARNING: REMOTE HOST" {
-        send_user "ERROR: RSA host key for '$hostname' has changed. Unable to access.\n"
-        exit 1;
-    }
-    "*sure you want to continue connecting*" {
-        send "yes\r"
-        expect "* password:*" {
-            send "$pass\r"
-            set timeout 600
 
-            expect {
-                "Permission denied" {
-                    send_user "ERROR: Incorrect password to remote host: $hostname .\n"
-                    exit 1;
-                }
-                eof {
-                    send_user "INFO: Finished.\n"
-                    exit 0;
-                }
-                timeout {
-                    send_user "ERROR: Timeout while running on host (too long to finish): $hostname .\n"
-                    exit 1;
-                }
-                
-            }
+source $sshsrc
+source $susrc
 
-            send_user "ERROR: Unable to finish properly (but connected ok).\n"
-            exit 1;
-        }
-    }
-    "ssh: connect to host*" {
-        send_user "ERROR: Unable to connect to remote host: $hostname .\n"
-        exit 1;
-    }
-    "no address associated with name" {
-        send_user "ERROR: Unable to connect to remote host: $hostname .\n"
-        exit 1;
-    }
-    "*Connection refused*" {
-        send_user "ERROR: Unable to connect to remote host: $hostname .\n"
-        exit 1;
-    }
-    "*Connection closed by remote host*" {
-        send_user "ERROR: Unable to connect to remote host: $hostname .\n"
-        exit 1;
-    }
-    "* password:*" {
-        send "$pass\r"
-        set timeout 600
-        
-        expect {
-            "Permission denied" {
-                send_user "ERROR: Incorrect password to remote host: $hostname .\n"
-                exit 1;
-            }
-            eof {
-                send_user "INFO: Finished.\n"
-                exit 0;
-            }
-            timeout {
-                send_user "ERROR: Timeout while running on host (too long to finish): $hostname .\n"
-                exit 1;
-            }
-        }
+set timeout 600
+send "echo \"INFO: Starting.\"; for i in `find  $dirs         2>/dev/null`;do tail \$i >/dev/null 2>&1 &&  md5=`md5sum \$i | cut -d \        " \" -f 1` && sha1=`sha1sum \$i | cut -d \" \" -f 1` && echo FWD: `stat         --printf \"%s:%a:%u:%g\" \$i`:\$md5:\$sha1 \$i; done\r"
+send "exit\r"
 
-        send_user "ERROR: Unable to finish properly (but connected ok).\n"
-        exit 1;
-    }
-    timeout {
-        send_user "ERROR: Timeout while connecting to host: $hostname . \n"
-        exit 1;
-    }
-}
-
-send_user "ERROR: Unable to finish properly.\n"
-exit 1;
-
-
-
+interact
+exit 0;

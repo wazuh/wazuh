@@ -1,0 +1,46 @@
+#!/usr/bin/env expect
+
+
+# If su was chosen
+if {[string compare $use_su "su;"] == 0} {
+
+    # Run su command
+    send "\rsu\r"
+
+    expect {
+        "Password:" {
+            send "$addpass\r"
+        }
+        timeout {
+            send_user "ERROR: Unable to run su.\n"
+            exit 1;
+        }
+    }
+
+
+    expect {
+        "Permission denied" {
+            send_user "ERROR: Incorrect su password to host: $hostname .\n"
+            exit 1;
+        }
+        "Password:" {
+            send_user "ERROR: Incorrect su password to host: $hostname .\n"
+            exit 1;
+        }
+        "Sorry" {
+            send_user "ERROR: Incorrect su password to remote host: $hostname .\n"
+            exit 1;
+        }
+        eof {
+            send_user "ERROR: EOF while running su on host: $hostname .\n"
+            exit 1;
+        }
+        timeout {
+            send_user "ERROR: Timeout while running on host: $hostname .\n"
+            exit 1;
+        }
+        "*#" {
+            send_user "INFO: su accepted.\n"
+        }
+    }
+}
