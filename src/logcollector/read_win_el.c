@@ -640,6 +640,7 @@ void win_read_vista_sec()
     {
         merror("%s: ERROR: Unable to read vista security descriptions.",
                ARGV0);
+        exit(1);
     }
 
 
@@ -649,6 +650,7 @@ void win_read_vista_sec()
     {
         merror("%s: ERROR: Unable to read vista security descriptions.",
                ARGV0);
+        exit(1);
     }
 
     
