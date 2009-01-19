@@ -316,7 +316,8 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
         else if(test_it)
         {
             int ret_code = 0;
-            snprintf(command, OS_SIZE_1024, "%s/%s test test >/dev/null 2>&1", 
+            snprintf(command, OS_SIZE_1024, 
+                    "%s/%s test test >/dev/null 2>&1", 
                     AGENTLESSDIRPATH, entry->type);
             ret_code = system(command);
 
@@ -339,10 +340,24 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
             return(0);
         }
         
-        snprintf(command, OS_SIZE_1024, "%s/%s \"%s\" %s 2>&1", 
-                AGENTLESSDIRPATH, entry->type, entry->server[i], 
+        if(entry->server[i][0] == 's')
+        {
+            snprintf(command, OS_SIZE_1024, "%s/%s \"use_su\" \"%s\" %s 2>&1", 
+                AGENTLESSDIRPATH, entry->type, entry->server[i] +1, 
                 entry->options);
-
+        }
+        else if(entry->server[i][0] == 'o')
+        {
+            snprintf(command, OS_SIZE_1024, "%s/%s \"use_sudo\" \"%s\" %s 2>&1", 
+                AGENTLESSDIRPATH, entry->type, entry->server[i] +1, 
+                entry->options);
+        }
+        else
+        {
+            snprintf(command, OS_SIZE_1024, "%s/%s \"%s\" %s 2>&1", 
+                AGENTLESSDIRPATH, entry->type, entry->server[i] +1, 
+                entry->options);
+        }
 
         fp = popen(command, "r");
         if(fp)
@@ -360,24 +375,26 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 if(strncmp(buf, "ERROR: ", 7) == 0)
                 {
                     merror("%s: ERROR: %s: %s: %s", ARGV0, 
-                           entry->type, entry->server[i], buf +7);
+                           entry->type, entry->server[i] +1, buf +7);
                     entry->error_flag++;
                     break;
                 }
                 else if(strncmp(buf, "INFO: ", 6) == 0)
                 {
                     verbose("%s: INFO: %s: %s: %s", ARGV0, 
-                            entry->type, entry->server[i], buf +6);
+                            entry->type, entry->server[i] +1, buf +6);
                 }
                 else if(strncmp(buf, "FWD: ", 4) == 0)
                 {
                     tmp_str = buf + 5;
-                    send_intcheck_msg(entry->type, entry->server[i], tmp_str);
+                    send_intcheck_msg(entry->type, entry->server[i]+1, 
+                                      tmp_str);
                 }
                 else if((entry->state & LESSD_STATE_DIFF) &&
                         (strncmp(buf, "STORE: ", 7) == 0))
                 {
-                    fp_store = open_diff_file(entry->server[i], entry->type);
+                    fp_store = open_diff_file(entry->server[i]+1, 
+                                              entry->type);
                 }
                 else if(fp_store)
                 {
@@ -394,18 +411,19 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 fclose(fp_store);
                 fp_store = NULL;
 
-                check_diff_file(entry->server[i], entry->type);
+                check_diff_file(entry->server[i] +1, entry->type);
             }
             else
             {
-                save_agentless_entry(entry->server[i], entry->type, "syscheck");
+                save_agentless_entry(entry->server[i] +1, 
+                                     entry->type, "syscheck");
             }
             pclose(fp);
         }
         else
         {
             merror("%s: ERROR: popen failed on '%s' for '%s'.", ARGV0, 
-                   entry->type, entry->server[i]);
+                   entry->type, entry->server[i] +1);
             entry->error_flag++;
         }
 

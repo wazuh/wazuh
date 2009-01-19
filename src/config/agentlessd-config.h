@@ -18,6 +18,8 @@
 #define LESSD_STATE_CONNECTED       0x001
 #define LESSD_STATE_PERIODIC        0x002
 #define LESSD_STATE_DIFF            0x004
+#define LESSD_USE_SU                0x010
+#define LESSD_USE_SUDO              0x020
 
 
 /* Structure for each entry. */

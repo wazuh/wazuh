@@ -96,6 +96,9 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
         }
         else if(strcmp(node[i]->element, xml_lessd_server) == 0)
         {
+            char s_content[1024 +1];
+            s_content[1024] = '\0';
+            
             /* Getting any configured entry. */
             j = 0;
             if(lessd_config->entries[s]->server)
@@ -107,7 +110,21 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
             os_realloc(lessd_config->entries[s]->server, (j + 2) * 
                        sizeof(char *), 
                        lessd_config->entries[s]->server);
-            os_strdup(node[i]->content, lessd_config->entries[s]->server[j]);
+            if(strncmp(node[i]->content, "use_su ", 7) == 0)
+            {
+                snprintf(s_content, 1024, "s%s", node[i]->content);
+            }
+            else if(strncmp(node[i]->content, "use_sudo ", 9) == 0)
+            {
+                snprintf(s_content, 1024, "o%s", node[i]->content);
+            }
+            else
+            {
+                snprintf(s_content, 1024, " %s", node[i]->content);
+            }
+            
+            os_strdup(s_content, 
+                      lessd_config->entries[s]->server[j]);
             lessd_config->entries[s]->server[j + 1] = NULL;
         }
         else if(strcmp(node[i]->element, xml_lessd_type) == 0)

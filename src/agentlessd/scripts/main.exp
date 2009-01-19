@@ -36,7 +36,7 @@ if {[string compare $hostname "use_su"] == 0} {
 }
 # Checking if the hostname (first argument) is an option.
 if {[string compare $hostname "use_sudo"] == 0} {
-    set use_su "sudo sh;"
+    set use_sudo "sudo sh;"
     set hostname [lindex $argv 1]
     set args [lrange $argv 2 end]
 }
