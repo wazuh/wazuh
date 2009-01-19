@@ -112,11 +112,11 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
                        lessd_config->entries[s]->server);
             if(strncmp(node[i]->content, "use_su ", 7) == 0)
             {
-                snprintf(s_content, 1024, "s%s", node[i]->content);
+                snprintf(s_content, 1024, "s%s", node[i]->content +7);
             }
             else if(strncmp(node[i]->content, "use_sudo ", 9) == 0)
             {
-                snprintf(s_content, 1024, "o%s", node[i]->content);
+                snprintf(s_content, 1024, "o%s", node[i]->content +9);
             }
             else
             {
