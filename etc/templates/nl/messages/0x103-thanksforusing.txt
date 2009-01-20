@@ -1,0 +1,11 @@
+
+    Bedankt voor het gebruiken van OSSEC HIDS.
+    Heeft u een vraag of suggestie of een andere vorm van opmerking,
+    neem contact met ons op via contact@ossec.net of gebruik de mailinglijst
+    ossec-list@ossec.net
+    ( http://www.ossec.net/main/support/ ).
+
+    Meer informatie vindt u op http://www.ossec.net
+
+    ---  Druk op ENTER om te finaliseren (wellicht meer informatie hieronder). ---
+    

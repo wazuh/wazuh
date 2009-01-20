@@ -1,0 +1,8 @@
+
+  3.4- Actief handelen stelt u in staat om een specifiek
+       commando uit te voeren op basis van de ontvangen
+       events. Bijvoorbeeld, u kunt een IP adres blokkeren
+       of de toegang ontzeggen voor een bepaalde gebruiker.
+       Meer informatie vindt u op:
+       http://www.ossec.net/en/manual.html#active-response
+       

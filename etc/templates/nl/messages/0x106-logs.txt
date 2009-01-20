@@ -1,0 +1,10 @@
+ - Als u een ander bestand in de gaten wilt houden,
+   kunt u het bestand ossec.conf wijzigen door een
+   nieuwe localfile in te brengen.
+   Vragen over het configuratie bestand kunnen worden
+   beantwoord door ons online te bezoeken op
+   http://www.ossec.net .
+   
+   
+   --- Druk op ENTER om door te gaan ---
+                            
