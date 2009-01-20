@@ -18,7 +18,7 @@ source $sshsrc
 source $susrc
 
 set timeout 600
-send "echo \"INFO: Starting.\"; for i in `find  $args 2>/dev/null`;do tail \$i >/dev/null 2>&1 &&  md5=`md5 \$i | cut -d \"=\" -f 2|cut -d \" \" -f 2` && sha1=`sha1 \$i | cut -d \"=\" -f 2|cut -d \" \" -f 2` && echo FWD: `stat -f \"%Dz:%Dp:%Du:%Dg\" \$i`:\$md5:\$sha1 \$i; done\r"
+send "for i in `find  $args 2>/dev/null`;do tail \$i >/dev/null 2>&1 &&  md5=`md5 \$i | cut -d \"=\" -f 2|cut -d \" \" -f 2` && sha1=`sha1 \$i | cut -d \"=\" -f 2|cut -d \" \" -f 2` && echo FWD: `stat -f \"%Dz:%Dp:%Du:%Dg\" \$i`:\$md5:\$sha1 \$i; done; exit\r"
 send "exit\r"
 
 expect {

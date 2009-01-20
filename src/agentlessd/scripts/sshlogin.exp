@@ -14,10 +14,10 @@ expect {
         send_user "ERROR: Timeout while running on host: $hostname .\n"
         exit 1;
     }
-    "*\$" {
-        send_user "INFO: Started.\n"
+    "*\\\$" {
+        send_user "\nINFO: Started.\n"
     }
     "*#" {
-        send_user "INFO: Started.\n"
+        send_user "\nINFO: Started.\n"
     }
 }

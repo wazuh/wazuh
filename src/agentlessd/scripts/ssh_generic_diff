@@ -18,7 +18,7 @@ source $sshsrc
 source $susrc
 
 set timeout 600
-send "echo \"INFO: Starting.\"; echo \"STORE: now\";$commands\r"
+send "echo \"INFO: Starting.\"; echo \"STORE: now\";$commands; exit\r"
 send "exit\r"
 
 expect {

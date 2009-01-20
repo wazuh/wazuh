@@ -2,6 +2,7 @@
 
 
 # If su was chosen
+set timeout 10
 if {[string compare $use_su "su;"] == 0} {
 
     # Run su command
