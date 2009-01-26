@@ -50,7 +50,7 @@ lsof		!/prof|/dev/[^apcmnfk]|proc\.h|bash|^/bin/sh|/dev/ttyo|/dev/ttyp!
 netstat		!bash|^/bin/sh|/dev/[^aik]|/prof|grep|addr\.h!
 top			!/dev/[^npi3st%]|proc\.h|/prof/!
 ps			!/dev/ttyo|\.1proc|proc\.h|bash|^/bin/sh!
-tcpdump		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^b]|^/bin/.*sh!
+tcpdump		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^bu]|^/bin/.*sh!
 pidof		!bash|^/bin/sh|file\.h|proc\.h|/dev/|^/bin/.*sh!
 fuser		!bash|^/bin/sh|file\.h|proc\.h|/dev/[a-dtz]|^/bin/.*sh!
 w			!uname -a|proc\.h|bash!
