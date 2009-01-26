@@ -61,8 +61,16 @@ elif [ "$UNAME" = "AIX" ]; then
 elif [ "$UNAME" = "Darwin" ]; then
     id -u ${USER} > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-        chmod +x ./init/darwin-addusers.pl
-        ./init/darwin-addusers.pl
+
+        # Creating for 10.5
+        /usr/bin/sw_vers 2>/dev/null| grep "ProductVersion" | grep "10.5." > /dev/null 2>&1
+        if [ $? = 0 ]; then
+            chmod +x ./init/osx105-addusers.sh
+            ./init/osx105-addusers.sh
+        else
+            chmod +x ./init/darwin-addusers.pl
+            ./init/darwin-addusers.pl    
+        fi        
     fi
 else
     grep "^${USER}" /etc/passwd > /dev/null 2>&1
