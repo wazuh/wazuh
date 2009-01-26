@@ -34,7 +34,7 @@ deletedir="De installatie map bestaat reeds. Zal ik deze verwijderen?"
 
 # Part 3
 configuring="Configureren van"
-mailnotify="Wilt u email notificatie uitschakelen?"
+mailnotify="Wilt u email notificatie inschakelen?"
 nomail="Email notificatie uitgeschakeld"
 whatsemail="Wat is uw emailadres?"
 yoursmtp="We hebben uw SMTP server gevonden als: "
