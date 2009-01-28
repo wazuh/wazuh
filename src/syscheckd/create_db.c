@@ -185,7 +185,8 @@ int read_file(char *file_name, int opts, int flag)
         /* Generating checksums. */
         if((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM))
         {
-            /* If it is a link, we need to check if the dest is valid. */
+            /* If it is a link, we need to check if dest is valid. */
+            #ifndef WIN32
             if(S_ISLNK(statbuf.st_mode))
             {
                 struct stat statbuf_lnk;
@@ -201,8 +202,12 @@ int read_file(char *file_name, int opts, int flag)
                     }
                 }
             }
-            
             else if(OS_MD5_SHA1_File(file_name, mf_sum, sf_sum) < 0)
+
+            #else
+            if(OS_MD5_SHA1_File(file_name, mf_sum, sf_sum) < 0)
+            #endif
+            
             {
                 strncpy(mf_sum, "xxx", 4);
                 strncpy(sf_sum, "xxx", 4);
