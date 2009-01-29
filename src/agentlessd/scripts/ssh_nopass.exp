@@ -13,7 +13,7 @@
 
 expect {
     "WARNING: REMOTE HOST" {
-        send_user "ERROR: RSA host key for '$hostname' has changed. Unable to access.\n"
+        send_user "\nERROR: RSA host key for '$hostname' has changed. Unable to access.\n"
         exit 1;
     }
     "*sure you want to continue connecting*" {
@@ -22,23 +22,23 @@ expect {
         return
     }
     "ssh: connect to host*" {
-        send_user "ERROR: Unable to connect to remote host: $hostname .\n"
+        send_user "\nERROR: Unable to connect to remote host: $hostname .\n"
         exit 1;
     }
     "no address associated with name" {
-        send_user "ERROR: Unable to connect to remote host: $hostname .\n"
+        send_user "\nERROR: Unable to connect to remote host: $hostname .\n"
         exit 1;
     }
     "*Connection refused*" {
-        send_user "ERROR: Unable to connect to remote host: $hostname .\n"
+        send_user "\nERROR: Unable to connect to remote host: $hostname .\n"
         exit 1;
     }
     "*Connection closed by remote host*" {
-        send_user "ERROR: Unable to connect to remote host: $hostname .\n"
+        send_user "\nERROR: Unable to connect to remote host: $hostname .\n"
         exit 1;
     }
     "* password:*" {
-        send_user "ERROR: Public key authentication failed to host: $hostname .\n"
+        send_user "\nERROR: Public key authentication failed to host: $hostname .\n"
         exit 1
     }
     "*\\\$" {
@@ -48,7 +48,7 @@ expect {
         send_user "\nINFO: Started.\n"
     }
     timeout {
-        send_user "ERROR: Timeout while connecting to host: $hostname . \n"
+        send_user "\nERROR: Timeout while connecting to host: $hostname . \n"
         exit 1;
     }
 }

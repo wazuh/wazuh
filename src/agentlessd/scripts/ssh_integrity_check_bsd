@@ -20,7 +20,7 @@ source "agentless/main.exp"
 if [catch {
     spawn ssh $hostname
 } loc_error] {
-    send_user "ERROR: Opening connection: $loc_error.\n"
+    send_user "\nERROR: Opening connection: $loc_error.\n"
     exit 1;
 }
 
@@ -34,7 +34,7 @@ send "exit\r"
 
 expect {
     timeout {
-        send_user "ERROR: Timeout while running commands on host: $hostname .\n"
+        send_user "\nERROR: Timeout while running commands on host: $hostname .\n"
         exit 1;
     }
     eof {

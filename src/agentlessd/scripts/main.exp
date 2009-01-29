@@ -13,7 +13,7 @@
 
 
 if {$argc <= 1} {
-    send_user "ERROR: ssh_integrity_check <hostname> <arguments>\n";
+    send_user "\nERROR: ssh_integrity_check <hostname> <arguments>\n";
     exit 1;
 }
 
@@ -58,7 +58,7 @@ if {[string compare $hostname "use_sudo"] == 0} {
 if [catch {
     set in [open "$passlist" r]
 } loc_error] {
-    send_user "ERROR: Password list not present (use \"register_host\" first).\n"
+    send_user "\nERROR: Password list not present (use \"register_host\" first).\n"
     exit 1;
 }
 
@@ -96,6 +96,6 @@ close $in
 
 
 if {[string compare $pass "x"] == 0} {
-    send_user "ERROR: Password for '$hostname' not found.\n"
+    send_user "\nERROR: Password for '$hostname' not found.\n"
     exit 1;
 }
