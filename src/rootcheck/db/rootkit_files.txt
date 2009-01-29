@@ -57,7 +57,6 @@ sbin/xlogin			    ! t0rn Rootkit ::rootkits/torn.php
 */ldlib.tk              ! t0rn Rootkit ::rootkits/torn.php
 */.t0rn                 ! t0rn Rootkit ::rootkits/torn.php
 */.puta                 ! t0rn Rootkit ::rootkits/torn.php
-*/libproc.a             ! t0rn Rootkit ::rootkits/torn.php
 
 
 #RK17
