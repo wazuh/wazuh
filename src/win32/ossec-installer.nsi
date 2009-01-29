@@ -6,13 +6,13 @@
 ;--------------------------------
 ;General
 
-!define VERSION "1.6.1"
+!define VERSION "2.0"
 !define NAME "Ossec HIDS"
 !define /date CDATE "%b %d %Y at %H:%M:%S"
 
 
 Name "${NAME} Windows Agent v${VERSION}"
-BrandingText "Copyright (C) 2008 Third Brigade, Inc."
+BrandingText "Copyright (C) 2008,2009 Third Brigade, Inc."
 OutFile "C:\ossec-win32-agent.exe"
 
 

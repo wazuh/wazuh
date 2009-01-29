@@ -1,5 +1,16 @@
 #!/usr/bin/env expect
 
+# @(#) $Id$
+# Agentless monitoring
+#
+# Copyright (C) 2009 Third Brigade, Inc.
+# All rights reserved.
+# 
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 3) as published by the FSF - Free Software
+# Foundation.
+
 
 if {$argc <= 1} {
     send_user "ERROR: ssh_integrity_check <hostname> <arguments>\n";
@@ -12,6 +23,7 @@ set passlist "agentless/.passlist"
 set sshsrc "agentless/ssh.exp"
 set susrc "agentless/su.exp"
 set sshloginsrc "agentless/sshlogin.exp"
+set sshnopasssrc "agentless/ssh_nopass.exp"
 set hostname [lindex $argv 0]
 set args [lrange $argv 1 end]
 set pass "x"

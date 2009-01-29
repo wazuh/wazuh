@@ -1,5 +1,16 @@
 #!/bin/sh
 
+# @(#) $Id$
+# Agentless monitoring
+#
+# Copyright (C) 2009 Third Brigade, Inc.
+# All rights reserved.
+# 
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 3) as published by the FSF - Free Software
+# Foundation.
+
 
 MYNAME="register_host.sh"
 MYPASS=".passlist"
