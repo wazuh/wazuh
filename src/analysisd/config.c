@@ -40,6 +40,7 @@ int GlobalConf(char * cfgfile)
     Config.integrity = 8;
     Config.rootcheck = 8;
     Config.hostinfo = 8;
+    Config.picviz = 0;
     Config.prelude = 0;
     Config.memorysize = 1024;
     Config.mailnotify = -1;

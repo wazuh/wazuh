@@ -37,6 +37,9 @@ typedef struct __Config
     /* prelude profile name */
     char *prelude_profile;
 
+    /* Picviz support */
+    u_int8_t picviz;
+    char *picviz_socket;
 
     /* Not currently used */
     u_int8_t keeplogdate;

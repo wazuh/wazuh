@@ -149,6 +149,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     char *xml_integrity = "integrity_checking";
     char *xml_rootcheckd = "rootkit_detection";
     char *xml_hostinfo = "host_information";
+    char *xml_picviz = "picviz_output";
+    char *xml_picviz_socket = "picviz_socket";
     char *xml_prelude = "prelude_output";
     char *xml_prelude_profile = "prelude_profile";
     char *xml_prelude_log_level = "prelude_log_level";
@@ -235,6 +237,30 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                 return(OS_INVALID);
+            }
+        }
+        /* Picviz support */
+        else if(strcmp(node[i]->element, xml_picviz) == 0)
+        {
+            if(strcmp(node[i]->content, "yes") == 0)
+            {
+                if(Config) Config->picviz = 1;
+            }
+            else if(strcmp(node[i]->content, "no") == 0)
+            {
+                if(Config) Config->picviz = 0;
+            }
+            else
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element, node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+        else if(strcmp(node[i]->element, xml_picviz_socket) == 0)
+        {
+            if(Config)
+            {
+                os_strdup(node[i]->content, Config->picviz_socket);
             }
         }
         /* Prelude support */

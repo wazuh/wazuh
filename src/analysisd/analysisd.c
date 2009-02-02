@@ -44,6 +44,8 @@
 #include "eventinfo.h"
 #include "analysisd.h"
 
+#include "picviz.h"
+
 #ifdef PRELUDE
 #include "prelude.h"
 #endif
@@ -258,12 +260,18 @@ int main_analysisd(int argc, char **argv)
         prelude_start(Config.prelude_profile, argc, argv);
     }
     #endif
+
+
+    /* Opening the Picviz socket */
+    if(Config.picviz)
+    {
+        OS_PicvizOpen(Config.picviz_socket);
+    }
     
     
     /* Setting the group */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
-
 
     /* Chrooting */
     if(Privsep_Chroot(dir) < 0)
@@ -457,6 +465,10 @@ int main_analysisd(int argc, char **argv)
     /* Going to main loop */	
     OS_ReadMSG(m_queue);
 
+    if (Config.picviz) 
+    {
+        OS_PicvizClose();
+    }
 
     exit(0);
     
@@ -942,6 +954,13 @@ void OS_ReadMSG_analysisd(int m_queue)
                 }
                 #endif
 
+
+                /* Log to Picviz */
+                if (Config.picviz)
+                {
+                    OS_PicvizLog(lf);
+                }
+                
 
                 /* Execute an active response */
                 if(currently_rule->ar)
