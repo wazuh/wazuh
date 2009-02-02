@@ -120,7 +120,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 
                 /* Setting ot the first entry of the glob */
                 if(glob_set == 0)
-                    glob_set = pl;
+                    glob_set = pl +1;
                 
                 if(glob(node[i]->content, 0, NULL, &g) != 0)
                 {
@@ -238,9 +238,9 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         {
             format = logf[pl].logformat;
         }
-        else if(logf[glob_set].logformat)
+        else if(logf[glob_set -1].logformat)
         {
-            format = logf[glob_set].logformat;
+            format = logf[glob_set -1].logformat;
         }
         else
         {
@@ -253,7 +253,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
 
         /* Setting format for all entries */
-        for(i = glob_set; i<= pl; i++)
+        for(i = (glob_set -1); i<= pl; i++)
         {
             /* Every entry must be valid */
             if(!logf[i].file)
