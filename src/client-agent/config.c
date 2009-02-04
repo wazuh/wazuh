@@ -31,6 +31,7 @@ int ClientConf(char *cfgfile)
     int modules = 0;
     logr->port = DEFAULT_SECURE;
     logr->rip = NULL;
+    logr->lip = NULL;
     logr->rip_id = 0;
     logr->execdq = 0;
 

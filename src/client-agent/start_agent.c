@@ -44,7 +44,8 @@ int connect_server(int initial_id)
 
         if(logr->rip[1])
         {
-            verbose("%s: INFO: Closing connection to server (%s:%d).", ARGV0,
+            verbose("%s: INFO: Closing connection to server (%s:%d).", 
+                    ARGV0,
                     logr->rip[rc],
                     logr->port);
         }

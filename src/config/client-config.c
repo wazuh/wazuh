@@ -23,6 +23,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
     /* XML definitions */
     char *xml_client_ip = "server-ip";
     char *xml_client_hostname = "server-hostname";
+    char *xml_local_ip = "local_ip";
     char *xml_client_port = "port";
     char *xml_ar_disabled = "disable-active-response";
 
@@ -43,7 +44,16 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
             merror(XML_VALUENULL, ARGV0, node[i]->element);
             return(OS_INVALID);
         }
-
+        /* Getting local ip. */
+        else if(strcmp(node[i]->element, xml_local_ip) == 0)
+        {
+            os_strdup(node[i]->content, logr->lip);
+            if(OS_IsValidIP(logr->lip, NULL) != 1)
+            {
+                merror(INVALID_IP, ARGV0, logr->lip);
+                return(OS_INVALID);
+            }
+        }
         /* Getting server ip */
         else if(strcmp(node[i]->element,xml_client_ip) == 0)
         {

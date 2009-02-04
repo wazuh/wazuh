@@ -1677,7 +1677,7 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
 <decoder name="checkpoint-syslog-ids">
   <parent>checkpoint-syslog</parent>
   <type>ids</type>
-  <prematch offset="after_parent">^monitor</prematch>
+  <prematch offset="after_parent">^monitor|^drop</prematch>
   <regex offset="after_prematch">attack: (\.+); </regex>
   <regex>src: (\d+.\d+.\d+.\d+); dst: (\d+.\d+.\d+.\d+); </regex>
   <regex>proto: (\S+);</regex>

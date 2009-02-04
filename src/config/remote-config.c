@@ -157,7 +157,8 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,ARGV0,node[i]->element,
+                       node[i]->content);
                 return(OS_INVALID);
             }
         }
