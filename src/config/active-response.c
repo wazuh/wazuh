@@ -195,7 +195,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         tmp_ar->location|= SPECIFIC_AGENT;
 
     }
-    if(OS_Regex("all", tmp_location))
+    if(OS_Regex("all|any", tmp_location))
     {
         tmp_ar->location|=ALL_AGENTS;
     }

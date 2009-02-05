@@ -266,6 +266,7 @@ int main_analysisd(int argc, char **argv)
     if(Config.picviz)
     {
         OS_PicvizOpen(Config.picviz_socket);
+        chown(Config.picviz_socket, uid, gid);
     }
     
     
