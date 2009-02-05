@@ -165,13 +165,15 @@ void *mysql_osdb_connect(char *host, char *user, char *pass, char *db,
     }
 
 
-    /* if host is 127.0.0.1 or localhost and sock is enabled, use socket */
+    /* If host is 127.0.0.1 or localhost, use tcp socket */
     if ((sock != NULL) && ((strcmp(host, "127.0.0.1") == 0) ||
                           (strcmp(host, "localhost") == 0)))
     {
-        mysql_options(conn, MYSQL_OPT_NAMED_PIPE, NULL);
+        unsigned int p_type = MYSQL_PROTOCOL_TCP;
+        mysql_options(conn, MYSQL_OPT_PROTOCOL, (char *)&p_type);
     }    
-    if(mysql_real_connect(conn, host, user, pass, db, port, sock, 0) == NULL)
+    if(mysql_real_connect(conn, host, user, pass, db, 
+                          port, sock, 0) == NULL)
     {
         merror(DBCONN_ERROR, ARGV0, host, db, mysql_error(conn));
         mysql_close(conn);
