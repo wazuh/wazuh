@@ -159,8 +159,10 @@ void start_daemon()
    
     
     /*
-     * SCHED_BATCH forces the kernel to assume this is a cpu intensive process
-     * and gives it a lower priority. This keeps ossec-syscheckd from reducing
+     * SCHED_BATCH forces the kernel to assume this is a cpu intensive 
+     * process
+     * and gives it a lower priority. This keeps ossec-syscheckd 
+     * from reducing
      * the interactity of an ssh session when checksumming large files.
      * This is available in kernel flavors >= 2.6.16
      */
@@ -187,7 +189,9 @@ void start_daemon()
 
 
 
-    /* If the scan time/day is set, reset the syscheck.time/rootcheck.time */
+    /* If the scan time/day is set, reset the 
+     * syscheck.time/rootcheck.time 
+     */
     if(syscheck.scan_time || syscheck.scan_day)
     {
         /* At least once a week. */
@@ -204,6 +208,10 @@ void start_daemon()
 
         sleep(syscheck.tsleep * 60);
         send_sk_db();
+    }
+    else
+    {
+        prev_time_rk = time(0);
     }
                
 
@@ -300,7 +308,7 @@ void start_daemon()
             {
                 /* Assign hour/min/sec values */
                 snprintf(curr_hour, 9, "%02d:%02d:%02d", 
-                                       p->tm_hour, p->tm_min, p->tm_sec);
+                                    p->tm_hour, p->tm_min, p->tm_sec);
 
                 if(OS_IsAfterTime(curr_hour, syscheck.scan_time))
                 {
