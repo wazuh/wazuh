@@ -89,6 +89,7 @@ int read_dev_dir(char *dir_name)
     char *(ignore_dev_full_path[]) = {"/dev/shm/sysconfig",
                                       "/dev/bus/usb/.usbfs",  
                                       "/dev/shm",
+                                      "/dev/gpmctl",
                                       NULL};
     
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))

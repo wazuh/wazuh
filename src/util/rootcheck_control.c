@@ -51,7 +51,7 @@ int main(int argc, char **argv)
     int c = 0, info_agent = 0, update_rootcheck = 0,
                list_agents = 0, show_last = 0,
                resolved_only = 0;
-    int agt_id = 0, active_only = 0, csv_output = 0;
+    int active_only = 0, csv_output = 0;
 
     char shost[512];
     
@@ -312,8 +312,9 @@ int main(int argc, char **argv)
             /* Getting netmask from ip. */
             final_ip[128] = '\0';
             final_mask[128] = '\0';
-            getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 128);
-            snprintf(final_ip, 128, "%s%s",keys.keyentries[agt_id]->ip->ip,
+            getNetmask(keys.keyentries[i]->ip->netmask, 
+                       final_mask, 128);
+            snprintf(final_ip, 128, "%s%s",keys.keyentries[i]->ip->ip,
                      final_mask);
 
             if(!csv_output)
