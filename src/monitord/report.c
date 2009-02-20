@@ -26,7 +26,7 @@ void report_help()
     printf("Examples:\n");
     printf("\t-f group authentication success (to filter on login success).\n");
     printf("\t-f level 10  (to filter on level >= 10).\n");
-    printf("\t-f group authentication success -r user srcip (to show the srcip for all users).\n");
+    printf("\t-f group authentication -r user srcip (to show the srcip for all users).\n");
     exit(1);
 }
 
@@ -73,7 +73,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help(ARGV0);
+                report_help(ARGV0);
                 break;
             case 'd':
                 nowDebug();
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
                 test_config = 1;    
                 break;
             default:
-                help(ARGV0);
+                report_help(ARGV0);
                 break;
         }
 
