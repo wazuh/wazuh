@@ -63,7 +63,11 @@ int read_sys_file(char *file_name, int do_read)
         if(strcmp("/dev/fd", file_name) == 0)
             return(0);
         #endif
-                
+
+        /* Ignoring /proc directory (it has the size 0). */
+        if(statbuf.st_size == 0)
+            return(0);
+
         return(read_sys_dir(file_name, do_read));
     }
 
