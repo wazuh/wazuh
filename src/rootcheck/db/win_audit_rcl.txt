@@ -60,9 +60,10 @@ r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Security Center -> firewalldisableoverri
 
 
 
-[Microsoft Firewall disabled] [any] []
-r:HKEY_LOCAL_MACHINE\software\policies\microsoft\windowsfirewall\domainprofile -> enablefirewall -> !0;
-r:HKEY_LOCAL_MACHINE\software\policies\microsoft\windowsfirewall\standardprofile -> enablefirewall -> !0;
+# Checking for the microsoft firewall.
+[Microsoft Firewall disabled] [all] []
+r:HKEY_LOCAL_MACHINE\software\policies\microsoft\windowsfirewall\domainprofile -> enablefirewall -> 0;
+r:HKEY_LOCAL_MACHINE\software\policies\microsoft\windowsfirewall\standardprofile -> enablefirewall -> 0;
 
 
 

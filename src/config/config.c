@@ -160,6 +160,10 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
     /* Global */
     char *xml_start_ossec = "ossec_config";
     char *xml_start_agent = "agent_config";
+
+    char *xml_agent_name = "name";
+    char *xml_agent_os = "os";
+    char *xml_agent_overwrite = "overwrite";
     
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
@@ -202,10 +206,32 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
         else if((modules & CAGENT_CONFIG) &&
                 (strcmp(node[i]->element, xml_start_agent) == 0))
         {
+            int attrs = 0;
             XML_NODE chld_node = NULL;
             chld_node = OS_GetElementsbyNode(&xml,node[i]);
 
 
+            /* Checking if this is specific to any agent. */
+            while(node[i]->attributes[attrs] && node[i]->values[attrs])
+            {
+                if(strcmp(xml_agent_name, node[i]->attributes[attrs]) == 0)
+                {
+                }
+                else if(strcmp(xml_agent_os, node[i]->attributes[attrs]) == 0)
+                {
+                }
+                else if(strcmp(xml_agent_overwrite, node[i]->attributes[attrs]) == 0)
+                {
+                }
+                else
+                {
+                    merror(XML_INVATTR, ARGV0, node[i]->attributes[attrs],
+                           cfgfile);
+                }
+                attrs++;
+            }
+
+            
             /* Main element does not need to have any child */
             if(chld_node)
             {

@@ -79,6 +79,7 @@
 #define XML_NO_ELEM     "%s(1228): ERROR: Element '%s' without any option."
 #define XML_INVALID     "%s(1229): ERROR: Invalid element '%s' on the '%s' config."
 #define XML_INVELEM     "%s(1230): ERROR: Invalid element in the configuration: '%s'."
+#define XML_INVATTR     "%s(1243): ERROR: Invalid attribute '%s' in the configuration: '%s'."
 #define XML_ELEMNULL    "%s(1231): ERROR: Invalid NULL element in the configuration."
 #define XML_READ_ERROR  "%s(1232): ERROR: Error reading XML. Unknown cause."
 #define XML_VALUENULL   "%s(1234): ERROR: Invalid NULL content for element: %s."
@@ -107,7 +108,7 @@
 /* syscheck */
 #define SYSCHECK_NO_OPT "%s(1701): WARN: No option provided for directories: '%s', ignoring it."
 #define SK_NO_DIR       "%s(1702): INFO: No directory provided for syscheck to monitor."
-#define SK_INV_ATTR     "%s(1703): ERROR: Invalid attribute '%s' for directory option"
+#define SK_INV_ATTR     "%s(1703): ERROR: Invalid attribute '%s' for directory option."
 #define SK_INV_OPT      "%s(1704): ERROR: Invalid option '%s' for attribute '%s'"
 #define SK_NO_DB        "%s(1705): ERROR: No integrity database found at '%s'."
 #define SK_INV_MSG      "%s(1755): ERROR: Invalid syscheck message received."

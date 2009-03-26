@@ -28,8 +28,11 @@ if [catch {
 source $sshsrc
 source $susrc
 
+
 set timeout 600
-send "echo \"INFO: Starting.\"; echo \"STORE: now\";$args; exit\r"
+send_user "INFO: Starting.\n"
+send_user "\nSTORE: now\n"
+send "$args\r"
 send "exit\r"
 
 expect {

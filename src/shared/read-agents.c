@@ -394,7 +394,7 @@ int _do_print_syscheck(FILE *fp, int all_files, int csv_output)
         if(buf[0] == '!' || buf[0] == '#')
         {
             int number_changes = 0;
-            int change_time = 0;
+            time_t change_time = 0;
             char *changed_file_name;
 
             
@@ -435,7 +435,7 @@ int _do_print_syscheck(FILE *fp, int all_files, int csv_output)
             changed_file_name = strchr(changed_file_name, ' ');
             changed_file_name++; 
     
-            tm_time = localtime((time_t *)&change_time);
+            tm_time = localtime(&change_time);
             strftime(read_day, 23, "%Y %h %d", tm_time);
             if(strcmp(read_day, saved_read_day) != 0)
             {
