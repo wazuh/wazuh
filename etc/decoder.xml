@@ -863,7 +863,8 @@
 
 <decoder name="netscreenfw-critical">
   <parent>netscreenfw</parent>
-  <prematch offset="after_parent">system-critical-\.+ from </prematch>
+  <prematch offset="after_parent">system-critical-\.+ from |</prematch>
+  <prematch>system-alert-\.+ from </prematch>
   
   <regex offset="after_parent">system-(\w+)-(\d+): \.+ </regex>
   <regex>from\.+(\d+.\d+.\d+.\d+) </regex>

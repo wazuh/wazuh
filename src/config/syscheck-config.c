@@ -15,6 +15,71 @@
 #include "syscheck-config.h"
 
 
+
+int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg)
+{
+    int pl = 0;
+    
+    if(reg == 1)
+    {
+        #ifdef WIN32
+        if(syscheck->registry == NULL)
+        {
+            os_calloc(2, sizeof(char *), syscheck->registry);
+            syscheck->registry[pl + 1] = NULL;
+            os_strdup(entry, syscheck->registry[pl]);        
+        }
+        else
+        {
+            while(syscheck->registry[pl] != NULL)
+            {
+                pl++;
+            }
+            os_realloc(syscheck->registry, (pl +2) * sizeof(char *), 
+                        syscheck->registry);
+            syscheck->registry[pl + 1] = NULL;
+            os_strdup(entry, syscheck->registry[pl]);
+        }
+        #endif
+        
+    }
+
+    
+    else
+    {
+        if(syscheck->dir == NULL)
+        {
+            os_calloc(2, sizeof(char *), syscheck->dir);
+            syscheck->dir[pl + 1] = NULL;
+            os_strdup(entry, syscheck->dir[pl]);
+
+            os_calloc(2, sizeof(int), syscheck->opts);
+            syscheck->opts[pl + 1] = 0;
+            syscheck->opts[pl] = vals;         
+        }
+        else
+        {
+            while(syscheck->dir[pl] != NULL)
+            {
+                pl++;
+            }
+            os_realloc(syscheck->dir, (pl +2) * sizeof(char *), 
+                       syscheck->dir);
+            syscheck->dir[pl + 1] = NULL;
+            os_strdup(entry, syscheck->dir[pl]);
+
+            os_realloc(syscheck->opts, (pl +2) * sizeof(int), 
+                       syscheck->opts);
+            syscheck->opts[pl + 1] = 0;
+            syscheck->opts[pl] = vals;         
+        }
+    }
+
+    return(1);
+}
+
+
+
 /* Read Windows registry configuration */
 #ifdef WIN32
 int read_reg(config *syscheck, char *entries)
@@ -65,14 +130,12 @@ int read_reg(config *syscheck, char *entries)
 
 
         /* Adding entries - looking for the last available */
-        for(i = 0; i< MAX_DIR_ENTRY; i++)
+        i = 0;
+        while(syscheck->registry && syscheck->registry[i])
         {
             int str_len_i;
             int str_len_dir;
             
-            if(syscheck->registry[i] == NULL)
-                break;
-
             str_len_dir = strlen(tmp_entry);
             str_len_i = strlen(syscheck->registry[i]);
             
@@ -87,10 +150,11 @@ int read_reg(config *syscheck, char *entries)
                 merror(SK_DUP, ARGV0, tmp_entry);
                 return(1);
             }
+            i++;
         }
         
         /* Adding new entry */
-        os_strdup(tmp_entry, syscheck->registry[i]);
+        dump_syscheck_entry(syscheck, tmp_entry, 0, 1);
         
         
         /* Next entry */
@@ -100,6 +164,8 @@ int read_reg(config *syscheck, char *entries)
     return(1);
 }
 #endif /* For read_reg */
+
+
 
 
 /* Read directories attributes */            
@@ -313,6 +379,7 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
             attrs++; values++;
         }
 
+
         /* You must have something set */
         if(opts == 0)
         {
@@ -320,15 +387,14 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
             return(0);
         }
         
+        
         /* Adding directory - looking for the last available */
-        for(i = 0; i< MAX_DIR_ENTRY; i++)
+        i = 0;
+        while(syscheck->dir && syscheck->dir[i])
         {
             int str_len_i;
             int str_len_dir;
             
-            if(syscheck->dir[i] == NULL)
-                break;
-
             str_len_dir = strlen(tmp_dir);
             str_len_i = strlen(syscheck->dir[i]);
             
@@ -343,10 +409,44 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
                 merror(SK_DUP, ARGV0, tmp_dir);
                 return(1);
             }
+
+            i++;
         }
-        
-        os_strdup(tmp_dir, syscheck->dir[i]);
-        syscheck->opts[i] = opts;
+
+
+        /* Checking for glob. */
+        if(strchr(tmp_dir, '*') ||
+           strchr(tmp_dir, '?') ||
+           strchr(tmp_dir, '['))
+        {
+            int gindex = 0;
+            glob_t g;
+
+            if(glob(tmp_dir, 0, NULL, &g) != 0)
+            {
+                merror(GLOB_ERROR, ARGV0, tmp_dir);
+                return(1);
+            }
+
+            if(g.gl_pathv[0] == NULL)
+            {
+                merror(GLOB_NFOUND, ARGV0, tmp_dir);
+                return(1);
+            }
+            
+            while(g.gl_pathv[gindex])
+            {
+                dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0);
+                gindex++;
+            }
+            
+            globfree(&g);
+        }
+
+        else
+        {
+            dump_syscheck_entry(syscheck, tmp_dir, opts, 0);
+        }
         
         
         /* Next entry */

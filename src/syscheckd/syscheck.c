@@ -300,6 +300,16 @@ int main(int argc, char **argv)
     {
         verbose(STARTUP_MSG, "ossec-rootcheck", (int)getpid());
     }
+
+
+    /* Printing directories to be monitored. */
+    r = 0;
+    while(syscheck.dir[r] != NULL)
+    {
+        verbose("%s: INFO: Monitoring directory: '%s'.",
+                ARGV0, syscheck.dir[r]);
+        r++;
+    }
         
     
     /* Some sync time */

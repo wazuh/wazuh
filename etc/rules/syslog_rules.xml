@@ -534,6 +534,7 @@
   </rule>
 
   <rule id="2931" level="0">
+    <hostname>yum.log$</hostname>
     <match>^Installed|^Updated|^Erased</match>
     <description>Yum logs.</description>
   </rule>

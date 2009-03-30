@@ -40,7 +40,7 @@ typedef struct _config
     int time;
     int queue;
     
-    int opts[MAX_DIR_ENTRY +1];
+    int *opts;
 
     char *workdir;
     char *remote_db;
@@ -52,13 +52,13 @@ typedef struct _config
 	char **ignore;
     void **ignore_regex;
     
-	char *dir[MAX_DIR_ENTRY +1];
+	char **dir;
 
     /* Windows only registry checking */
     #ifdef WIN32
 	char **registry_ignore;
     void **registry_ignore_regex;
-	char *registry[MAX_DIR_ENTRY +1];
+	char **registry;
     FILE *reg_fp;
     #endif
     

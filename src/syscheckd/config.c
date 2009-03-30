@@ -29,22 +29,12 @@ int Read_Syscheck_Config(char * cfgfile)
     syscheck.ignore_regex = NULL;
     syscheck.scan_day = NULL;
     syscheck.scan_time = NULL;
-    
+    syscheck.dir = NULL;
+    syscheck.opts = NULL;
     #ifdef WIN32
+    syscheck.registry = NULL;
     syscheck.reg_fp = NULL;
     #endif
-
-
-    /* Cleaning up the dirs */
-    for(i = 0; i<= MAX_DIR_ENTRY; i++)
-    {
-        syscheck.dir[i] = NULL;
-        syscheck.opts[i] = 0;
-
-        #ifdef WIN32
-        syscheck.registry[i] = NULL;
-        #endif
-    }
 
 
     /* Reading config */
@@ -53,7 +43,7 @@ int Read_Syscheck_Config(char * cfgfile)
 
 
     /* We must have at least one directory to check */
-    if(syscheck.dir[0] == NULL)
+    if(!syscheck.dir || syscheck.dir[0] == NULL)
     {
         merror(SK_NO_DIR, ARGV0);
         return(1);
