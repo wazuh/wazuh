@@ -17,7 +17,6 @@
 int Read_Syscheck_Config(char * cfgfile)
 {
     int modules = 0;
-    int i = 0;
 
     modules|= CSYSCHECK;
 

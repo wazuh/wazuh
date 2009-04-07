@@ -19,9 +19,9 @@ logaudit:
 		cd ./decoders; make
 		cd ./compiled_rules; make;
 		$(CC) $(CFLAGS) ${OS_LINK} -I./ ${loga_OBJS} -o ${NAME}
+		make logtest
 
 logtest:
-		cd ./alerts; make
 		cd ./decoders; make logtest
 		cd ./compiled_rules; make;
 		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ testrule.c ${loga_OBJS} -o ossec-logtest 
@@ -34,3 +34,4 @@ clean:
 
 build:
 		${BUILD}
+		cp -pr ossec-logtest ${PT}../bin
