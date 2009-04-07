@@ -85,19 +85,32 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     
     
     /* Checking for the syslog date format. 
-     * ( ex: Dec 29 10:00:01 ) 
+     * ( ex: Dec 29 10:00:01  
+     *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate)
      */	
-    if( (loglen > 17) && 
+    if(
+        (
+        (loglen > 17) && 
         (pieces[3] == ' ') && 
         (pieces[6] == ' ') && 
         (pieces[9] == ':') && 
         (pieces[12] == ':') && 
-        (pieces[15] == ' ') )
+        (pieces[15] == ' ') && (lf->log+=16)
+        ) 
+        ||
+        (
+        (loglen > 28) &&
+        (pieces[4] == '-') &&
+        (pieces[7] == '-') &&
+        (pieces[10] == 'T') &&
+        (pieces[13] == ':') &&
+        (pieces[16] == ':') &&
+        (pieces[19] == '-') &&
+        (pieces[22] == ':') &&
+        (pieces[25] == ' ') && (lf->log+=26)
+        )
+      )  
     {
-        /* Removing the date */
-        lf->log+=16;
-
-
         /* Checking for an extra space in here */
         if(*lf->log == ' ')
             lf->log++;
