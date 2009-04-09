@@ -119,6 +119,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         /* Hostname */
         pieces = lf->hostname = lf->log;
         
+        
         /* Checking for a valid hostname */
         while(isValidChar(*pieces) == 1)
         {
@@ -126,16 +127,30 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         }
         
         
-        /* Extracting the hostname */ 
-        if(*pieces != ' ')
+        /* Checking if it is a syslog without hostname (common on Solaris. */
+        if(*pieces == ':' && pieces[1] == ' ')
         {
             /* Getting solaris 8/9 messages without hostname.
              * In these cases, the process_name should be there.
              * http://www.ossec.net/wiki/index.php/Log_Samples_Solaris
              */
-             
+            lf->program_name = lf->hostname;
+            lf->hostname = NULL;
+
+            /* Ending the program name string. */
+            *pieces = '\0';
+
+            pieces+=2;
+            lf->log = pieces;
+        }
+
+        
+        /* Extracting the hostname */ 
+        else if(*pieces != ' ')
+        {
             /* Invalid hostname */
             lf->hostname = NULL;
+            pieces = NULL;
         }
         else
         {
@@ -278,35 +293,36 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 pieces = NULL;
                 lf->program_name = NULL;
             }
+        }
+        
+        
+        /* Removing [ID xx facility.severity] */
+        if(pieces)
+        {
+            /* Setting log after program name */
+            lf->log = pieces;
 
-            /* Removing [ID xx facility.severity] */
-            if(pieces)
+            if((pieces[0] == '[') && 
+               (pieces[1] == 'I') &&
+               (pieces[2] == 'D') &&
+               (pieces[3] == ' '))
             {
-                /* Setting log after program name */
-                lf->log = pieces;
-                
-                if((pieces[0] == '[') && 
-                   (pieces[1] == 'I') &&
-                   (pieces[2] == 'D') &&
-                   (pieces[3] == ' '))
-                {
-                    pieces+=4;
+                pieces+=4;
 
-                    /* Going after the ] */
-                    pieces = strchr(pieces, ']');
-                    if(pieces)
-                    {
-                        pieces+=2;
-                        lf->log = pieces;
-                    }
+                /* Going after the ] */
+                pieces = strchr(pieces, ']');
+                if(pieces)
+                {
+                    pieces+=2;
+                    lf->log = pieces;
                 }
             }
+        }
 
-            /* Getting program name size */
-            if(lf->program_name)
-            {
-                lf->p_name_size = strlen(lf->program_name);
-            }
+        /* Getting program name size */
+        if(lf->program_name)
+        {
+            lf->p_name_size = strlen(lf->program_name);
         }
     }
     
