@@ -30,6 +30,7 @@ int Read_Syscheck_Config(char * cfgfile)
     syscheck.scan_time = NULL;
     syscheck.dir = NULL;
     syscheck.opts = NULL;
+    syscheck.realtime = NULL;
     #ifdef WIN32
     syscheck.registry = NULL;
     syscheck.reg_fp = NULL;

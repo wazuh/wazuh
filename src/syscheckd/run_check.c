@@ -90,7 +90,7 @@ void send_sk_db()
 
 
     /* Sending scan start message */
-    merror("%s: INFO: Starting syscheck scan (db).", ARGV0);
+    merror("%s: INFO: Starting syscheck scan (forwarding database).", ARGV0);
     send_rootcheck_msg("Starting syscheck scan.");
         
 
@@ -134,7 +134,7 @@ void send_sk_db()
 
     /* Sending scan ending message */
     sleep(syscheck.tsleep +10);
-    merror("%s: INFO: Ending syscheck scan (db).", ARGV0);
+    merror("%s: INFO: Ending syscheck scan (forwarding database).", ARGV0);
     send_rootcheck_msg("Ending syscheck scan.");
 }
      
@@ -157,6 +157,13 @@ void start_daemon()
 
     struct tm *p;
    
+
+    /* To be used by select. */
+    #ifdef USEINOTIFY
+    struct timeval selecttime;
+    fd_set rfds;
+    #endif
+
     
     /*
      * SCHED_BATCH forces the kernel to assume this is a cpu intensive 
@@ -267,7 +274,12 @@ void start_daemon()
     }
 
     
+    #ifdef USEINOTIFY
+    if(syscheck.realtime->fd >= 0)
+        verbose("%s: INFO: Starting real time file monitoring.", ARGV0);
+    #endif
     
+
     /* Checking every SYSCHECK_WAIT */    
     while(1)
     {
@@ -403,7 +415,40 @@ void start_daemon()
         } 
 
 
+        #ifdef USEINOTIFY
+        selecttime.tv_sec = SYSCHECK_WAIT;
+        selecttime.tv_usec = 0;
+
+        /* zero-out the fd_set */
+        FD_ZERO (&rfds);
+
+
+        if(syscheck.realtime->fd >= 0)
+            FD_SET(syscheck.realtime->fd, &rfds);
+
+        run_now = select (syscheck.realtime->fd + 1, &rfds, 
+                          NULL, NULL, &selecttime);
+        if(run_now < 0)
+        {
+            merror("%s: ERROR: Select failed (for realtime fim).", ARGV0);
+            sleep(SYSCHECK_WAIT);
+        }
+        else if(run_now == 0)
+        {
+            /* Timeout. */
+        }
+        else if (FD_ISSET (syscheck.realtime->fd, &rfds))
+        {
+            realtime_process();
+        }
+
+        sleep(10);
+
+        #else
         sleep(SYSCHECK_WAIT);
+        #endif
+
+
     }
 }
 

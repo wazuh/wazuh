@@ -26,9 +26,16 @@
 #define CHECK_OWNER         0000010
 #define CHECK_GROUP         0000020
 #define CHECK_SHA1SUM       0000040
+#define CHECK_REALTIME      0000100
 
 
 #include <stdio.h>
+typedef struct _rtfim
+{
+    int fd;
+    void *dirtb;
+}rtfim;
+
 typedef struct _config
 {
     int tsleep;
@@ -63,6 +70,8 @@ typedef struct _config
     #endif
     
     FILE *fp;
+
+    rtfim *realtime;
 
 }config;
 

@@ -179,6 +179,7 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
     char *xml_check_owner = "check_owner";
     char *xml_check_group = "check_group";
     char *xml_check_perm = "check_perm";
+    char *xml_real_time = "realtime";
 
     char **dir;
     char *tmp_str;
@@ -361,6 +362,21 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
                 if(strcmp(*values, "yes") == 0)
                 {
                     opts|=CHECK_GROUP;
+                }
+                else if(strcmp(*values, "no") == 0)
+                {
+                }
+                else
+                {
+                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    return(0);
+                }
+            }
+            else if(strcmp(*attrs, xml_real_time) == 0)
+            {
+                if(strcmp(*values, "yes") == 0)
+                {
+                    opts|=CHECK_REALTIME;
                 }
                 else if(strcmp(*values, "no") == 0)
                 {

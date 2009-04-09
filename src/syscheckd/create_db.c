@@ -293,6 +293,7 @@ int read_dir(char *dir_name, int opts, int flag)
 
     f_name[PATH_MAX +1] = '\0';
 	
+
     /* Directory should be valid */
     if((dir_name == NULL)||((dir_size = strlen(dir_name)) > PATH_MAX))
     {
@@ -315,7 +316,7 @@ int read_dir(char *dir_name, int opts, int flag)
         
         if(flag == CREATE_DB)
         {
-            merror("%s: Error opening directory: '%s': %s ",
+            merror("%s: WARN: Error opening directory: '%s': %s ",
                                               ARGV0,
                                               dir_name,
                                               strerror(errno));
@@ -324,6 +325,15 @@ int read_dir(char *dir_name, int opts, int flag)
         return(-1);
     }
     
+
+    /* Checking for real time flag. */
+    if(opts & CHECK_REALTIME)
+    {
+        #ifdef USEINOTIFY
+        realtime_adddir(dir_name);
+        #endif
+    }
+
 
     while((entry = readdir(dp)) != NULL)
     {
@@ -407,6 +417,9 @@ int create_db(int delete_db)
     }
     
 
+    merror("%s: INFO: Starting syscheck database (pre-scan).", ARGV0);
+
+
     /* Read all available directories */
     __counter = 0;
     do
@@ -415,6 +428,9 @@ int create_db(int delete_db)
         i++;
     }while(syscheck.dir[i] != NULL);
 
+    
+    merror("%s: INFO: Finished creating syscheck database (pre-scan "
+           "completed).", ARGV0);
     return(0);
 
 }

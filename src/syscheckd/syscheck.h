@@ -56,6 +56,11 @@ int check_db();
  */  
 void os_winreg_check();
 
+/* Adds a directory to real time monitoring. */
+int realtime_adddir(char *dir);
+
+/* Process real time queue. */
+int realtime_process();
 
 /** Sends syscheck message.
  */

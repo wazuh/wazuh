@@ -310,6 +310,23 @@ int main(int argc, char **argv)
                 ARGV0, syscheck.dir[r]);
         r++;
     }
+
+    /* Checking directories set for real time. */
+    r = 0;
+    while(syscheck.dir[r] != NULL)
+    {
+        if(syscheck.opts[r] & CHECK_REALTIME)
+        {
+            #ifdef USEINOTIFY
+            verbose("%s: INFO: Directory set for real time monitoring: "
+                    "'%s'.", ARGV0, syscheck.dir[r]);
+            #else
+            verbose("%s: WARN: Ignoring flag for real time monitoring on "
+                    "directory: '%s'.", ARGV0, syscheck.dir[r]);
+            #endif
+        }
+        r++;
+    }
         
     
     /* Some sync time */
