@@ -26,7 +26,7 @@
 #include "debug_op.h"
 #include "syscheck.h"
 
-#define REALTIME_MONITOR_FLAGS  IN_MODIFY|IN_ATTRIB
+#define REALTIME_MONITOR_FLAGS  IN_MODIFY|IN_ATTRIB|IN_MOVED_TO|IN_DELETE|IN_MOVED_FROM
 #define REALTIME_EVENT_SIZE     (sizeof (struct inotify_event))
 #define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
