@@ -1,6 +1,6 @@
   <syscheck>
-    <!-- Frequency that syscheck is executed - default to every 6 hours -->
-    <frequency>21600</frequency>
+    <!-- Frequency that syscheck is executed - default to every 22 hours -->
+    <frequency>79200</frequency>
     
     <!-- Directories to check  (perform all possible verifications) -->
     <directories check_all="yes">/etc,/usr/bin,/usr/sbin</directories>
