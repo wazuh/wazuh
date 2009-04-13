@@ -17,14 +17,14 @@
 #include <unistd.h>
 #include <limits.h>
 
-
-#ifdef USEINOTIFY
-#include <sys/inotify.h>
-#endif
-
 #include "hash_op.h"
 #include "debug_op.h"
 #include "syscheck.h"
+
+
+#ifdef USEINOTIFY
+#include <sys/inotify.h>
+
 
 #define REALTIME_MONITOR_FLAGS  IN_MODIFY|IN_ATTRIB|IN_MOVED_TO|IN_DELETE|IN_MOVED_FROM
 #define REALTIME_EVENT_SIZE     (sizeof (struct inotify_event))
@@ -73,8 +73,6 @@ int realtime_adddir(char *dir)
     }
     else
     {
-
-        #ifdef USEINOTIFY
         int wd = 0;
 
         wd = inotify_add_watch(syscheck.realtime->fd,
@@ -99,8 +97,6 @@ int realtime_adddir(char *dir)
                        "'%s'.", ARGV0, dir);
             }
         }
-        #endif
-
     }
 
     return(1);
@@ -219,4 +215,22 @@ int realtime_process()
     return(0);
 }
 
+#else
+int realtime_start()
+{
+    verbose("%s: ERROR: Unable to initalize real time file monitoring.", ARGV0);
+    return(0);
+}
+
+int realtime_adddir(char *dir)
+{
+    return(0);
+}
+
+int realtime_process()
+{
+    return(0);
+}
+
+#endif
 /* EOF */
