@@ -4,8 +4,8 @@
 
 
 # Change these values!
-TWEETERUSER=""
-TWEETERPASS=''
+TWITTERUSER=""
+TWITTERPASS=''
 DIRECTMSGUSER=""
 SOURCE="ossec2tweeter"
 
@@ -48,11 +48,11 @@ ls "`which curl`" > /dev/null 2>&1
 if [ ! $? = 0 ]; then
     ls "`which wget`" > /dev/null 2>&1
     if [ $? = 0 ]; then
-        wget --keep-session-cookies --http-user=$TWEETERUSER --http-password=$TWEETERPASS --post-data="source=$SOURCE&$REQUESTUSER$REQUESTMSG" $SITE 2>>${PWD}/../logs/active-responses.log
+        wget --keep-session-cookies --http-user=$TWITTERUSER --http-password=$TWITTERPASS --post-data="source=$SOURCE&$REQUESTUSER$REQUESTMSG" $SITE 2>>${PWD}/../logs/active-responses.log
         exit 0;
     fi    
 else
-    curl -u "$TWEETERUSER:$TWEETERPASS" -d "source=$SOURCE&$REQUESTUSER$REQUESTMSG" $SITE 2>>${PWD}/../logs/active-responses.log    
+    curl -u "$TWITTERUSER:$TWITTERPASS" -d "source=$SOURCE&$REQUESTUSER$REQUESTMSG" $SITE 2>>${PWD}/../logs/active-responses.log    
     exit 0;
 fi    
 
