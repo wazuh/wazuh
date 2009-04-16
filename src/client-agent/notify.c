@@ -24,78 +24,33 @@ time_t g_saved_time = 0;
  */
 char *getsharedfiles()
 {
-    int m_size = 1596;
-
-    DIR *dp;
-
-    struct dirent *entry;
+    int m_size = 512;
 
     char *ret;
-    char *tmp_ret;
     
     os_md5 md5sum;
     
-    /* Opening the directory given */
-    dp = opendir(SHAREDCFG_DIR);
-    if(!dp) 
+
+    if(OS_MD5_File(SHAREDCFG_FILE, md5sum) != 0)
     {
-        merror("%s: Error opening directory: '%s': %s ",
-                ARGV0,
-                SHAREDCFG_DIR,
-                strerror(errno));
-        return(NULL);
-    }   
+        md5sum[0] = 'x';
+        md5sum[1] = 'x';
+        md5sum[1] = '\0';
+    }
 
 
     /* we control these files, max size is m_size */
     ret = (char *)calloc(m_size +1, sizeof(char));
     if(!ret)
     {
-        closedir(dp);
         merror(MEM_ERROR, ARGV0);
         return(NULL);
     }
-    tmp_ret = ret;
 
-    while((entry = readdir(dp)) != NULL)
-    {
-        char tmp_dir[256];
-        
-        /* Just ignore . and ..  */
-        if((strcmp(entry->d_name,".") == 0) ||
-           (strcmp(entry->d_name,"..") == 0) ||
-           (entry->d_name[0] == '.'))
-            continue;
 
-        snprintf(tmp_dir, 255, "%s/%s", SHAREDCFG_DIR, entry->d_name);
-
-        if(OS_MD5_File(tmp_dir, md5sum) != 0)
-        {
-            merror("%s: Error accessing file '%s': %s",ARGV0, 
-                                                 tmp_dir, strerror(errno));
-            continue;
-        }
-        
-        snprintf(tmp_ret, m_size, "%s %s\n", md5sum, entry->d_name);
-        
-        m_size-=strlen(tmp_ret);
-
-        tmp_ret+=strlen(tmp_ret);
-       
-        if(*tmp_ret == '\n')
-            tmp_ret++;
-        
-    }
-
-    closedir(dp);
-
-    /* If we didn't use ret, free it and return null */
-    if(*ret == '\0')
-    {
-        free(ret);
-        ret = NULL;
-    }
+    snprintf(ret, m_size, "%s %s\n", md5sum, SHAREDCFG_FILE);
     
+
     return(ret);
 }
 

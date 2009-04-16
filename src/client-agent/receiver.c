@@ -212,24 +212,20 @@ void *receive_msg()
                     else
                     {
                         char *final_file;
-                        char _ff[OS_SIZE_1024 +1];
 
                         /* Renaming the file to its orignal name */
-                        final_file = strchr(file, '.');
-                        if(final_file)
+                        final_file = file;
+                        if(final_file[0] == '.')
                         {
-                            final_file++;
-                            snprintf(_ff, OS_SIZE_1024, "%s/%s",
-                                    SHAREDCFG_DIR,
-                                    final_file);
-
-                            unlink(_ff);
-
-
-                            if(rename(file, _ff) != 0)
+                            if(strcmp(final_file + 1, "merged.mg") == 0)
                             {
-                                merror(RENAME_ERROR, ARGV0, file);
+                                UnmergeFiles(final_file);
                             }
+                        }
+                        else
+                        {
+                            /* Removing file. */
+                            unlink(file);
                         }
                     }
 
