@@ -220,6 +220,18 @@ void c_files()
 
     f_sum = NULL;
 
+
+    /* Creating merged file. */
+    os_realloc(f_sum, (f_size +2) * sizeof(file_sum *), f_sum);
+    os_calloc(1, sizeof(file_sum), f_sum[f_size]);
+    f_sum[f_size]->mark = 0;
+    f_sum[f_size]->name = NULL;
+    f_sum[f_size]->sum[0] = '\0';
+    MergeAppendFile(SHAREDCFG_FILE, NULL);
+    f_size++;
+
+
+
     /* Opening the directory given */
     dp = opendir(SHAREDCFG_DIR);
     if(!dp) 
@@ -239,10 +251,19 @@ void c_files()
         
         /* Just ignore . and ..  */
         if((strcmp(entry->d_name,".") == 0) ||
-                (strcmp(entry->d_name,"..") == 0))
+           (strcmp(entry->d_name,"..") == 0))
+        {
             continue;
+        }
 
         snprintf(tmp_dir, 512, "%s/%s", SHAREDCFG_DIR, entry->d_name);
+
+
+        /* Leaving the shared config file for later. */
+        if(strcmp(tmp_dir, SHAREDCFG_FILE) == 0)
+        {
+            continue;
+        }
 
         
         if(OS_MD5_File(tmp_dir, md5sum) != 0)
@@ -266,13 +287,11 @@ void c_files()
 
         
         strncpy(f_sum[f_size]->sum, md5sum, 32);
-        f_sum[f_size]->name = strdup(entry->d_name);
-        if(!f_sum[f_size]->name)
-        {
-            ErrorExit(MEM_ERROR,ARGV0);
-        }
-
+        os_strdup(entry->d_name, f_sum[f_size]->name);
         f_sum[f_size]->mark = 0;
+
+
+        MergeAppendFile(SHAREDCFG_FILE, tmp_dir);
         f_size++;
     }
     
@@ -280,6 +299,16 @@ void c_files()
         f_sum[f_size] = NULL;
 
     closedir(dp);
+
+
+    if(OS_MD5_File(SHAREDCFG_FILE, md5sum) != 0)
+    {
+        merror("%s: Error accessing file '%s'",ARGV0, SHAREDCFG_FILE);
+        f_sum[0]->sum[0] = '\0';
+    }
+    strncpy(f_sum[0]->sum, md5sum, 32);    
+    os_strdup(strrchr(SHAREDCFG_FILE, '/'), f_sum[0]->name);
+
     return;    
 }
 
@@ -319,7 +348,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
 
 
     /* Sending the file content */
-    while((n = fread(buf, 1, 512, fp)) > 0)
+    while((n = fread(buf, 1, 900, fp)) > 0)
     {
         buf[n] = '\0';
 
@@ -419,7 +448,34 @@ void read_controlmsg(int agentid, char *msg)
         *file = '\0';
         file++;
 
-        for(i = 0;;i++)
+
+        /* New agents only have merged.mg. */
+        if(strcmp(file, "merged.mg") == 0)
+        {
+            if(strcmp(f_sum[0]->sum, md5) != 0)
+            {
+                debug1("%s: DEBUG Sending file '%s' to agent.", ARGV0, 
+                       f_sum[0]->name);
+                if(send_file_toagent(agentid,f_sum[0]->name,f_sum[0]->sum)<0)
+                {
+                    merror("%s: ERROR: Unable to send file '%s' to agent.",
+                            ARGV0,
+                            f_sum[0]->name);
+                }
+            }
+
+            i = 0;
+            while(f_sum[i])
+            {
+                f_sum[i]->mark = 0;        
+                i++;
+            }
+
+            return;
+        }
+
+
+        for(i = 1;;i++)
         {
             if(f_sum[i] == NULL)
                 break;
@@ -440,7 +496,7 @@ void read_controlmsg(int agentid, char *msg)
 
 
     /* Updating each file marked */
-    for(i = 0;;i++)
+    for(i = 1;;i++)
     {
         if(f_sum[i] == NULL)
             break;
@@ -484,11 +540,11 @@ void *wait_for_msgs(void *none)
     /* should never leave this loop */
     while(1)
     {
-        /* Every 60 minutes, re read the files.
+        /* Every NOTIFY * 30 minutes, re read the files.
          * If something changed, notify all agents 
          */
         _ctime = time(0);
-        if((_ctime - _stime) > (NOTIFY_TIME*6))
+        if((_ctime - _stime) > (NOTIFY_TIME*30))
         {
             f_files();
             c_files();

@@ -401,6 +401,71 @@ int UnmergeFiles(char *finalpath)
 }
 
 
+int MergeAppendFile(char *finalpath, char *files)
+{
+    int n = 0;
+    long files_size = 0;
+
+    char buf[2048 + 1];
+    FILE *fp;
+    FILE *finalfp;
+
+
+    /* Creating a new entry. */
+    if(files == NULL)
+    {
+        finalfp = fopen(finalpath, "w");
+        if(!finalfp)
+        {
+            merror("%s: ERROR: Unable to create merged file: '%s'.", 
+                    __local_name, finalpath);
+            return(0);
+        }
+        fclose(finalfp);
+
+        return(1);
+    }
+
+
+    finalfp = fopen(finalpath, "a");
+    if(!finalfp)
+    {
+        merror("%s: ERROR: Unable to create merged file: '%s'.", 
+                __local_name, finalpath);
+        return(0);
+    }
+
+
+    fp = fopen(files,"r");
+    if(!fp)
+    {
+        merror("%s: ERROR: Unable to merge file '%s'.", __local_name, files);
+        fclose(finalfp);
+        return(0);
+    }
+
+
+    fseek(fp, 0, SEEK_END);
+    files_size = ftell(fp);
+
+    fprintf(finalfp, "!%ld %s\n", files_size, files);
+
+    fseek(fp, 0, SEEK_SET);
+
+    while((n = fread(buf, 1, sizeof(buf) -1, fp)) > 0)
+    {
+        buf[n] = '\0';
+        fwrite(buf, n, 1, finalfp);
+    }
+
+    fclose(fp);
+
+    fclose(finalfp);
+    return(1);
+}
+
+
+
 int MergeFiles(char *finalpath, char **files)
 {
     int i = 0, n = 0, ret = 1;

@@ -35,6 +35,8 @@ int DeletePID(char *name);
 
 int MergeFiles(char *finalpath, char **files);
 
+int MergeAppendFile(char *finalpath, char *files);
+
 int UnmergeFiles(char *finalpath);
 
 /* daemonize a process */
