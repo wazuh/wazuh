@@ -48,7 +48,7 @@ char *getsharedfiles()
     }
 
 
-    snprintf(ret, m_size, "%s %s\n", md5sum, SHAREDCFG_FILE);
+    snprintf(ret, m_size, "%s merged.mg\n", md5sum);
     
 
     return(ret);
