@@ -273,7 +273,7 @@ chmod 440 ${DIR}/etc/internal_options.conf
 chmod 440 ${DIR}/etc/local_internal_options.conf >/dev/null 2>&1
 chmod 440 ${DIR}/etc/client.keys >/dev/null 2>&1
 chmod 550 ${DIR}/etc
-chmod 550 ${DIR}/etc/shared
+chmod 770 ${DIR}/etc/shared
 chmod 440 ${DIR}/etc/shared/*
 chmod 550 ${DIR}/agentless/*
 chmod 700 ${DIR}/.ssh
