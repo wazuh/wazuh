@@ -37,7 +37,7 @@ int MergeFiles(char *finalpath, char **files);
 
 int MergeAppendFile(char *finalpath, char *files);
 
-int UnmergeFiles(char *finalpath);
+int UnmergeFiles(char *finalpath, char *optdir);
 
 /* daemonize a process */
 void goDaemon();

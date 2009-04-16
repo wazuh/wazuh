@@ -166,7 +166,7 @@ void *receive_msg()
                     tmp_msg[0] = '-';            
 
 
-                snprintf(file, OS_SIZE_1024, "%s/.%s", 
+                snprintf(file, OS_SIZE_1024, "%s/%s", 
                         SHAREDCFG_DIR,
                         tmp_msg);
 
@@ -214,12 +214,12 @@ void *receive_msg()
                         char *final_file;
 
                         /* Renaming the file to its orignal name */
-                        final_file = file;
-                        if(final_file[0] == '.')
+                        final_file = strchr(file, '/');
+                        if(final_file)
                         {
                             if(strcmp(final_file + 1, "merged.mg") == 0)
                             {
-                                UnmergeFiles(final_file);
+                                UnmergeFiles(final_file, SHAREDCFG_DIR);
                             }
                         }
                         else

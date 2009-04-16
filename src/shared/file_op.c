@@ -295,12 +295,13 @@ int DeletePID(char *name)
 }
 
 
-int UnmergeFiles(char *finalpath)
+int UnmergeFiles(char *finalpath, char *optdir)
 {
     int i = 0, n = 0, ret = 1;
     long files_size = 0;
 
     char *files;
+    char final_name[2048 +1];
     char buf[2048 + 1];
     FILE *fp;
     FILE *finalfp;
@@ -343,13 +344,24 @@ int UnmergeFiles(char *finalpath)
         files++;
 
 
+        if(optdir)
+        {
+            snprintf(final_name, 2048, "%s/%s", optdir, files);
+        }
+        else
+        {
+            strncpy(final_name, files, 2048);
+            final_name[2048] = '\0';
+        }
+
+
         /* Opening file name. */
-        fp = fopen(files,"w");
+        fp = fopen(final_name,"w");
         if(!fp)
         {
             ret = 0;
             merror("%s: ERROR: Unable to unmerge file '%s'.", 
-                    __local_name, files);
+                    __local_name, final_name);
         }
 
 
@@ -407,6 +419,7 @@ int MergeAppendFile(char *finalpath, char *files)
     long files_size = 0;
 
     char buf[2048 + 1];
+    char *tmpfile;
     FILE *fp;
     FILE *finalfp;
 
@@ -448,7 +461,16 @@ int MergeAppendFile(char *finalpath, char *files)
     fseek(fp, 0, SEEK_END);
     files_size = ftell(fp);
 
-    fprintf(finalfp, "!%ld %s\n", files_size, files);
+    tmpfile = strrchr(files, '/');
+    if(tmpfile)
+    {
+        tmpfile++;
+    }
+    else
+    {
+        tmpfile = files;
+    }
+    fprintf(finalfp, "!%ld %s\n", files_size, tmpfile);
 
     fseek(fp, 0, SEEK_SET);
 
@@ -471,6 +493,7 @@ int MergeFiles(char *finalpath, char **files)
     int i = 0, n = 0, ret = 1;
     long files_size = 0;
 
+    char *tmpfile;
     char buf[2048 + 1];
     FILE *fp;
     FILE *finalfp;
@@ -497,7 +520,18 @@ int MergeFiles(char *finalpath, char **files)
         fseek(fp, 0, SEEK_END);
         files_size = ftell(fp);
 
-        fprintf(finalfp, "!%ld %s\n", files_size, files[i]);
+        /* Removing last entry. */
+        tmpfile = strrchr(files[i], '/');
+        if(tmpfile)
+        {
+            tmpfile++;
+        }
+        else
+        {
+            tmpfile = files[i];
+        }
+
+        fprintf(finalfp, "!%ld %s\n", files_size, tmpfile);
 
         fseek(fp, 0, SEEK_SET);
 
