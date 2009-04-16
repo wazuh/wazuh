@@ -276,6 +276,7 @@ chmod 550 ${DIR}/etc
 chmod 770 ${DIR}/etc/shared
 chmod 440 ${DIR}/etc/shared/*
 chmod 550 ${DIR}/agentless/*
+rm ${DIR}/etc/shared/merged.mg >/dev/null 2>&1
 chmod 700 ${DIR}/.ssh
 
 
