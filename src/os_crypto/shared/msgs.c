@@ -509,17 +509,9 @@ int CreateSecMSG(keystore *keys, char *msg, char *msg_encrypted, int id)
     /* If the ip is dynamic (not single host, append agent id
      * to the message.
      */ 
-    if(!isSingleHost(keys->keyentries[id]->ip) && isAgent)
-    {
-       snprintf(msg_encrypted, 16, "!%s!:", keys->keyentries[id]->id); 
-       msg_size = strlen(msg_encrypted);
-    }
-    else
-    {
-        /* Setting beginning of the message */
-        msg_encrypted[0] = ':';
-        msg_size = 1;
-    }
+    snprintf(msg_encrypted, 16, "!%s!:", keys->keyentries[id]->id); 
+    msg_size = strlen(msg_encrypted);
+
 
     /* msg_size is the ammount of non-encrypted message
      * appended to the buffer. On dynamic ips, it will

@@ -206,6 +206,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
         else if((modules & CAGENT_CONFIG) &&
                 (strcmp(node[i]->element, xml_start_agent) == 0))
         {
+            int passed_agent_test = 1;
             int attrs = 0;
             XML_NODE chld_node = NULL;
             chld_node = OS_GetElementsbyNode(&xml,node[i]);
@@ -219,6 +220,20 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                 }
                 else if(strcmp(xml_agent_os, node[i]->attributes[attrs]) == 0)
                 {
+                    char *agentos = getuname();
+
+                    if(agentos)
+                    {
+                        if(!OS_Match2(xml_agent_os, agentos))
+                        {
+                            passed_agent_test = 0;
+                        }
+                        free(agentos);
+                    }
+                    else
+                    {
+                        merror("%s: ERROR: Unable to retrieve uname.", ARGV0);
+                    }
                 }
                 else if(strcmp(xml_agent_overwrite, node[i]->attributes[attrs]) == 0)
                 {

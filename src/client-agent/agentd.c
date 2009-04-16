@@ -37,6 +37,7 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     
     /* Going daemon */
     pid = getpid();
+    available_server = 0;
     nowDaemon();
     goDaemon();
 
@@ -124,25 +125,14 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     {
         if((logr->execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
         {
-            merror(ARQ_ERROR, ARGV0);
+            merror("%s: INFO: Unable to connect to the active response "
+                   "queue (disabled).", ARGV0);
             logr->execdq = -1;
         }
     }
 
 
-    /* Creating mutexes */
-    pthread_mutex_init(&receiver_mutex, NULL);
-    pthread_mutex_init(&forwarder_mutex, NULL);
-    pthread_cond_init (&receiver_cond, NULL);
-    pthread_cond_init (&forwarder_cond, NULL);
 
-
-    /* initializing global variables */
-    available_server = 0;     
-    available_forwarder = 0;     
-    available_receiver = 0;     
-
-     
     /* Trying to connect to server */
     os_setwait();
 
@@ -155,23 +145,6 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     intcheck_file(OSSECCONF, dir);
     intcheck_file(OSSEC_DEFINES, dir);
 
-
-
-    /* Starting receiver thread.
-     * Receive events/commands from the server
-     */
-    if(CreateThread(receiver_thread, (void *)NULL) != 0)
-    {
-        ErrorExit(THREAD_ERROR, ARGV0);
-    }
-
-    
-    /* Starting the Event Forwarder */
-    if(CreateThread(EventForward, (void *)NULL) != 0)
-    {
-        ErrorExit(THREAD_ERROR, ARGV0);
-    }
-    
    
     /* Sending first notification */
     run_notify();
@@ -201,7 +174,6 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
         }
        
         
-        /* If timeout, do not signal to other threads */
         else if(rc == 0)
         {
             continue;
@@ -211,51 +183,15 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
         /* For the receiver */
         if(FD_ISSET(logr->sock, &fdset))
         {
-            if(pthread_mutex_lock(&receiver_mutex) != 0)
-            {
-                merror(MUTEX_ERROR, ARGV0);
-                return;
-            }
-
-            available_receiver = 1;
-            pthread_cond_signal(&receiver_cond);
-            
-            if(pthread_mutex_unlock(&receiver_mutex) != 0)
-            {
-                merror(MUTEX_ERROR, ARGV0);
-                return;
-            }
-
+            receive_msg();
         }
 
         
         /* For the forwarder */
         if(FD_ISSET(logr->m_queue, &fdset))
         {
-             if(pthread_mutex_lock(&forwarder_mutex) != 0)
-            {
-                merror(MUTEX_ERROR, ARGV0);
-                return;
-            }
-
-            available_forwarder = 1; 
-            pthread_cond_signal(&forwarder_cond);
-            
-            if(pthread_mutex_unlock(&forwarder_mutex) != 0)
-            {
-                merror(MUTEX_ERROR, ARGV0);
-                return;
-            }
+            EventForward();
         }
-
-        /* Sleep in here. Each thread is already reading what they
-         * have available.
-         */
-        sleep(1); 
-
-
-        /* Checking for the lock */
-        os_wait();
     }
 }
 

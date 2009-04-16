@@ -38,8 +38,7 @@ int connect_server(int initial_id)
     /* Closing socket if available. */
     if(logr->sock >= 0)
     {
-        /* Waiting for other threads to settle. */
-        sleep(3);
+        sleep(1);
         close(logr->sock);
 
         if(logr->rip[1])
@@ -257,6 +256,7 @@ void start_agent(int is_startup)
         }
     }
     
+
     return;
 }
 

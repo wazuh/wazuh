@@ -35,7 +35,7 @@ int send_msg(int agentid, char *msg)
         merror(SEND_ERROR,ARGV0, "server");
         return(-1);
     }
-                                    
+
     return(0);
 }
 

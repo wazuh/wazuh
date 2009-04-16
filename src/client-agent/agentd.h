@@ -31,13 +31,10 @@ int ClientConf(char *cfgfile);
 void AgentdStart(char *dir, int uid, int gid, char *user, char *group);
 
 /* Event Forwarder */
-void *EventForward(void *none);
+void *EventForward();
 
-/* Receiver thread */
-void *receiver_thread(void *none);
-
-/* Notifier thread */
-void *notify_thread(void *none);
+/* Receiver messages */
+void *receive_msg();
 
 /* intcheck_file: 
  * Sends integrity checking information about a file to the server.
@@ -63,35 +60,16 @@ void run_notify();
 /*** Global variables ***/
 
 /* Global variables. Only modified
- * during startup. Shared by all
- * threads and functions
+ * during startup. 
  */
 
-#ifndef WIN32
-#include <pthread.h>
-#endif
 #include "shared.h"
 #include "sec.h"
 
+int available_server;
 keystore keys;
 agent *logr;
 
 
-/* Not for windows */
-#ifndef WIN32
-pthread_mutex_t receiver_mutex;
-pthread_mutex_t forwarder_mutex;
-pthread_cond_t  receiver_cond;
-pthread_cond_t  forwarder_cond;
 #endif
-
-
-int available_server;
-int available_receiver;
-int available_forwarder;
-
-#endif
-
-
-
 /* EOF */

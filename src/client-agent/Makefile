@@ -8,7 +8,7 @@ NAME=ossec-agentd
 include ../Config.Make
 
 
-clog_OBJS = *.c ${OS_CONFIG} ${OS_ZLIB} ${OS_CRYPTO} ${OS_SHARED} ${OS_XML} ${OS_REGEX} ${OS_NET} ${TEXTRA} -DCLIENT
+clog_OBJS = *.c ${OS_CONFIG} ${OS_ZLIB} ${OS_CRYPTO} ${OS_SHARED} ${OS_XML} ${OS_REGEX} ${OS_NET} -DCLIENT
 
 agent:
 		$(CC) $(CFLAGS) ${OS_LINK} $(clog_OBJS) -o ${NAME}

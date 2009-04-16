@@ -33,6 +33,10 @@ int CreatePID(char *name, int pid);
 
 int DeletePID(char *name);
 
+int MergeFiles(char *finalpath, char **files);
+
+int UnmergeFiles(char *finalpath);
+
 /* daemonize a process */
 void goDaemon();
 

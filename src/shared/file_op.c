@@ -294,6 +294,163 @@ int DeletePID(char *name)
     return(0);
 }
 
+
+int UnmergeFiles(char *finalpath)
+{
+    int i = 0, n = 0, ret = 1;
+    long files_size = 0;
+
+    char *files;
+    char buf[2048 + 1];
+    FILE *fp;
+    FILE *finalfp;
+
+    finalfp = fopen(finalpath, "r");
+    if(!finalfp)
+    {
+        merror("%s: ERROR: Unable to read merged file: '%s'.", 
+                __local_name, finalpath);
+        return(0);
+    }
+
+    while(1)
+    {
+        /* Reading header portion. */
+        if(fgets(buf, sizeof(buf) -1, finalfp) == NULL)
+        {
+            break;
+        }
+
+        
+        /* Initiator. */
+        if(buf[0] != '!')
+            continue;
+
+
+        /* Getting file size and name. */
+        files_size = atol(buf +1);
+
+        files = strchr(buf, '\n');
+        if(files)
+            *files = '\0';
+
+        files = strchr(buf, ' ');
+        if(!files)
+        {
+            ret = 0;
+            continue;
+        }
+        files++;
+
+
+        /* Opening file name. */
+        fp = fopen(files,"w");
+        if(!fp)
+        {
+            ret = 0;
+            merror("%s: ERROR: Unable to unmerge file '%s'.", 
+                    __local_name, files);
+        }
+
+
+        if(files_size < sizeof(buf) -1)
+        {
+            i = files_size;
+            files_size = 0;
+        }
+        else
+        {
+            i = sizeof(buf) -1;
+            files_size -= sizeof(buf) -1;
+        }
+
+        while((n = fread(buf, 1, i, finalfp)) > 0)
+        {
+            buf[n] = '\0';
+
+            if(fp)
+            {
+                fwrite(buf, n, 1, fp);
+            }
+
+            if(files_size == 0)
+            {
+                break;
+            }
+            else
+            {
+                if(files_size < sizeof(buf) -1)
+                {
+                    i = files_size;
+                    files_size = 0;
+                }
+                else
+                {
+                    i = sizeof(buf) -1;
+                    files_size -= sizeof(buf) -1;
+                }
+            }
+        }
+
+        if(fp)
+            fclose(fp);
+    }
+
+    fclose(finalfp);
+    return(ret);
+}
+
+
+int MergeFiles(char *finalpath, char **files)
+{
+    int i = 0, n = 0, ret = 1;
+    long files_size = 0;
+
+    char buf[2048 + 1];
+    FILE *fp;
+    FILE *finalfp;
+
+    finalfp = fopen(finalpath, "w");
+    if(!finalfp)
+    {
+        merror("%s: ERROR: Unable to create merged file: '%s'.", 
+               __local_name, finalpath);
+        return(0);
+    }
+
+    while(files[i])
+    {
+        fp = fopen(files[i],"r");
+        if(!fp)
+        {
+            merror("%s: ERROR: Unable to merge file '%s'.", __local_name, files[i]);
+            i++;
+            ret = 0;
+            continue;
+        }
+
+        fseek(fp, 0, SEEK_END);
+        files_size = ftell(fp);
+
+        fprintf(finalfp, "!%ld %s\n", files_size, files[i]);
+
+        fseek(fp, 0, SEEK_SET);
+
+        while((n = fread(buf, 1, sizeof(buf) -1, fp)) > 0)
+        {
+            buf[n] = '\0';
+            fwrite(buf, n, 1, finalfp);
+        }
+
+        fclose(fp);
+        i++;
+    }
+
+    fclose(finalfp);
+    return(ret);
+}
+
+
 #ifndef WIN32
 /* getuname; Get uname and returns a string with it.
  * Memory must be freed after use
