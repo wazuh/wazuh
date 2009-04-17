@@ -202,7 +202,7 @@ void *receiver_thread(void *none)
                             {
                                 if(strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0)
                                 {
-                                    UnmergeFiles(final_file, SHAREDCFG_DIR);
+                                    UnmergeFiles(file, SHAREDCFG_DIR);
                                 }
                             }
                             else
