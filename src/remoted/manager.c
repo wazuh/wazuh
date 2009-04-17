@@ -307,7 +307,9 @@ void c_files()
         f_sum[0]->sum[0] = '\0';
     }
     strncpy(f_sum[0]->sum, md5sum, 32);    
-    os_strdup(strrchr(SHAREDCFG_FILE, '/'), f_sum[0]->name);
+
+
+    os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
 
     return;    
 }
@@ -450,7 +452,7 @@ void read_controlmsg(int agentid, char *msg)
 
 
         /* New agents only have merged.mg. */
-        if(strcmp(file, "merged.mg") == 0)
+        if(strcmp(file, SHAREDCFG_FILENAME) == 0)
         {
             if(strcmp(f_sum[0]->sum, md5) != 0)
             {

@@ -261,6 +261,7 @@ http://www.ossec.net/main/license/\n"
 
 #define SHAREDCFG_FILE      SHAREDCFG_DIR "/merged.mg"
 #define SHAREDCFG_FILEPATH  SHAREDCFG_DIRPATH "/merged.mg"
+#define SHAREDCFG_FILENAME  "merged.mg"
 
 
 #define WAIT_FILE_PATH  DEFAULTDIR WAIT_FILE

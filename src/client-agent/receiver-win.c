@@ -197,10 +197,10 @@ void *receiver_thread(void *none)
                             char *final_file;
 
                             /* Renaming the file to its orignal name */
-                            final_file = strchr(file, '/');
+                            final_file = strrchr(file, '/');
                             if(final_file)
                             {
-                                if(strcmp(final_file + 1, "merged.mg") == 0)
+                                if(strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0)
                                 {
                                     UnmergeFiles(final_file, SHAREDCFG_DIR);
                                 }

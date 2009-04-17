@@ -132,6 +132,7 @@ void *receive_msg()
                        strlen(FILE_UPDATE_HEADER)) == 0)
             {
                 char *validate_file;
+
                 tmp_msg += strlen(FILE_UPDATE_HEADER);
 
                 /* Going to after the file sum */
@@ -169,6 +170,7 @@ void *receive_msg()
                 snprintf(file, OS_SIZE_1024, "%s/%s", 
                         SHAREDCFG_DIR,
                         tmp_msg);
+
 
                 fp = fopen(file, "w");
                 if(!fp)
@@ -214,10 +216,10 @@ void *receive_msg()
                         char *final_file;
 
                         /* Renaming the file to its orignal name */
-                        final_file = strchr(file, '/');
+                        final_file = strrchr(file, '/');
                         if(final_file)
                         {
-                            if(strcmp(final_file + 1, "merged.mg") == 0)
+                            if(strcmp(final_file + 1, SHAREDCFG_FILENAME) == 0)
                             {
                                 UnmergeFiles(final_file, SHAREDCFG_DIR);
                             }
