@@ -184,7 +184,7 @@ sub taillog {
 		$alerthost=$2;
 		$datasource=$3;
 #2006 Aug 29 17:33:31 (recepcao) 10.0.3.154 -> syscheck
-	}elsif ( m/^([0-9]+\s\w+\s[0-9]+\s[0-9]+:[0-9]+:[0-9]+)\s+\((.*?)\)\s+(\S+)\s+->(.*)$/){
+	}elsif ( m/^([0-9]+\s\w+\s[0-9]+\s[0-9]+:[0-9]+:[0-9]+)\s+\((.*?)\)\s+(\S+)\s*->(.*)$/){
 		$date=$1;
 		$alerthost=$2;
 		$alerthostip=$3;
