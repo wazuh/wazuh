@@ -59,10 +59,8 @@ int read_sys_file(char *file_name, int do_read)
          * when I read /dev/fd, it goes forever on
          * /dev/fd5, /dev/fd6, etc.. weird
          */
-        #ifdef Darwin
-        if(strcmp("/dev/fd", file_name) == 0)
+        if(strstr(file_name, "/dev/fd") != NULL)
             return(0);
-        #endif
 
         /* Ignoring /proc directory (it has the size 0). */
         if(statbuf.st_size == 0)
