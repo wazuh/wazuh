@@ -443,6 +443,14 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_comment)==0)
                     {
+                        char *newline;
+
+                        newline = strchr(rule_opt[k]->content, '\n');
+                        if(newline)
+                        {
+                            *newline = ' ';
+                        }
+                        
                         config_ruleinfo->comment=
                             loadmemory(config_ruleinfo->comment,
                                     rule_opt[k]->content);
