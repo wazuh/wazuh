@@ -147,6 +147,7 @@ int ReadExecConfig()
         exec_size++;
     }
 
+    fclose(fp);
     f_time_reading = 0;
 
     return(1);
