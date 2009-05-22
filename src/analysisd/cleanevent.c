@@ -86,7 +86,8 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     
     /* Checking for the syslog date format. 
      * ( ex: Dec 29 10:00:01  
-     *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate)
+     *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate
+     *   or  2009-05-22T09:36:46.214994-07:00 for rsyslog )
      */	
     if(
         (
@@ -99,15 +100,21 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         ) 
         ||
         (
-        (loglen > 28) &&
+        (loglen > 33) &&
         (pieces[4] == '-') &&
         (pieces[7] == '-') &&
         (pieces[10] == 'T') &&
         (pieces[13] == ':') &&
         (pieces[16] == ':') &&
-        (pieces[19] == '-') &&
-        (pieces[22] == ':') &&
-        (pieces[25] == ' ') && (lf->log+=26)
+        
+        (
+         ((pieces[22] == ':') &&
+          (pieces[25] == ' ') && (lf->log+=26)) ||
+
+         ((pieces[19] == '.') &&
+          (pieces[29] == ':') && (lf->log+=32))
+        )
+        
         )
       )  
     {
