@@ -160,6 +160,8 @@ int gen_diff_alert(char *host, char *script, int alert_diff_time)
     }
 
     save_agentless_entry(host, script, "diff");
+
+    fclose(fp);
     return(0);
 }
 
