@@ -1689,4 +1689,34 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
 
 
 
+<!-- Microsoft Windows 2003 ipv4, 2008 ipv4/ipv6 DHCP decoder for OSSEC
+  -  Author: phishphreek@gmail.com
+  -->
+  
+<!--
+  -  Server 2008 DHCP IPv4 Decoder (must go first)
+  -  ID,Date,Time,Description,IP Address,Host Name,MAC Address,User Name, TransactionID, QResult,Probationtime, CorrelationID.
+  -  24,3/10/2009,0:00:46,Database Cleanup Begin,,,,
+  -  0,3/10/2009,0:00:46,DNS Update Request,201.10.168.192,OPS03W034.,,
+-->
+
+<decoder name="ms-dhcp-ipv4">
+  <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,</prematch>
+  <regex>^(\d\d),</regex>
+  <order>id</order>
+</decoder>
+
+<!--
+  -  Server 2008 DHCP IPv6 Decoder (must go second)
+  -  ID,Date,Time,Description,IPV6 Address,Host Name,Error Code, Duid Length, Duid Bytes(Hex),User Name.
+-->
+11020,05/05/09,00:00:38,DHCPV6
+<decoder name="ms-dhcp-ipv6">
+  <prematch>^\d\d\d\d\d,\d\d/\d\d/\d\d,\d\d:\d\d:\d\d,</prematch>
+  <regex>^(\d\d\d\d\d),</regex>
+  <order>id</order>
+</decoder>
+
+
+
 <!-- EOF -->
