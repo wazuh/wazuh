@@ -324,6 +324,16 @@ int main(int argc, char **argv)
                            NULL, fname, 0, 0, 
                            csv_output, zero_counter);
         }
+        else if(strchr(agent_id, '@'))
+        {
+            if(fname)
+            {
+                printf("Detailed information for entries matching: '%s'\n", 
+                       fname);
+            }
+            print_syscheck(agent_id, NULL, fname, registry_only, 0,
+                           csv_output, zero_counter);
+        }
         else
         {
 

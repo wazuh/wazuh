@@ -17,9 +17,9 @@ ECHO "Invalid argument. %1"
 GOTO Exit;
 
 
-:: Adding to the blocked.
-
 :ADD
+net stop OssecSvc
+net start OssecSvc
 
 GOTO Exit;
 

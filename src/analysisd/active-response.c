@@ -49,6 +49,8 @@ int AR_ReadConfig(int test_config, char *cfgfile)
         merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
         return(OS_INVALID);
     }
+    fprintf(fp, "restart-ossec0 - restart-ossec.sh - 0\n");
+    fprintf(fp, "restart-ossec0 - restart-ossec.cmd - 0\n");
     fclose(fp);
 
 

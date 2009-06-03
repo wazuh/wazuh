@@ -4,3 +4,10 @@
     <expect>user</expect>
     <timeout_allowed>yes</timeout_allowed>
   </command>  
+
+  <command>
+    <name>restart-ossec</name>
+    <executable>restart-ossec.sh</executable>
+    <expect></expect>
+  </command>
+                  

@@ -27,6 +27,7 @@ void helpmsg()
     printf("\t-l          List available (active or not) agents.\n");
     printf("\t-lc         List active agents.\n");
     printf("\t-i <id>     Extracts information from an agent.\n");
+    printf("\t-R <id>     Restarts agent.\n");
     printf("\t-r -a       Runs the integrity/rootkit checking on all agents now.\n");
     printf("\t-r -u <id>  Runs the integrity/rootkit checking on one agent now.\n\n");
     printf("\t-b <ip>     Blocks the specified ip address.\n");
@@ -52,7 +53,7 @@ int main(int argc, char **argv)
     int uid = 0;
     int c = 0, restart_syscheck = 0, restart_all_agents = 0, list_agents = 0;
     int info_agent = 0, agt_id = 0, active_only = 0, csv_output = 0; 
-    int list_responses = 0, end_time = 0;
+    int list_responses = 0, end_time = 0, restart_agent = 0;
 
     char shost[512];
     
@@ -71,7 +72,7 @@ int main(int argc, char **argv)
     }
 
 
-    while((c = getopt(argc, argv, "VehdlLcsaru:i:b:f:")) != -1)
+    while((c = getopt(argc, argv, "VehdlLcsaru:i:b:f:R:")) != -1)
     {
         switch(c){
             case 'V':
@@ -127,6 +128,14 @@ int main(int argc, char **argv)
                 }
                 ar = optarg;
                 break;
+            case 'R':
+                if(!optarg)
+                {
+                    merror("%s: -R needs an argument",ARGV0);
+                    helpmsg();
+                }
+                agent_id = optarg;
+                restart_agent = 1;    
             case 'a':
                 restart_all_agents = 1;
                 break;
@@ -219,6 +228,10 @@ int main(int argc, char **argv)
                     continue;
                 *r_timeout = '\0';        
                             
+                if(strcmp(r_name, "restart-ossec0") == 0)
+                {
+                    continue;
+                }
                 printf("\n   Response name: %s, command: %s", r_name, r_cmd);
             }
 
@@ -454,6 +467,33 @@ int main(int argc, char **argv)
         exit(0);
     }
     
+    
+    if(restart_agent && agent_id)
+    {
+        /* Connecting to remoted. */
+        debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
+        arq = connect_to_remoted();
+        if(arq < 0)
+        {
+            printf("\n** Unable to connect to remoted.\n");
+            exit(1);
+        }
+        debug1("%s: DEBUG: Connected...", ARGV0);
+
+
+        if(send_msg_to_agent(arq, "restart-ossec0", agent_id, "null") == 0)
+        {
+            printf("\nOSSEC HIDS %s: Restarting agent: %s\n",
+                    ARGV0, agent_id);
+        }
+        else
+        {
+            printf("\n** Unable to restart agent: %s\n", agent_id);
+            exit(1);
+        }
+
+        exit(0);
+    }
 
 
     /* running active response on the specified agent id. */

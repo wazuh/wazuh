@@ -481,6 +481,14 @@ int print_syscheck(char *sk_name, char *sk_ip, char *fname, int print_registry,
 
         fp = fopen(tmp_file, "r+");
     }
+
+    else if(sk_ip == NULL)
+    {
+        /* Printing database */
+        snprintf(tmp_file, 512, "%s/%s->syscheck",SYSCHECK_DIR, sk_name);
+
+        fp = fopen(tmp_file, "r+");
+    }
     
     else if(!print_registry)
     {

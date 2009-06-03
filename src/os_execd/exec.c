@@ -28,7 +28,7 @@ int  f_time_reading = 1;
  */
 int ReadExecConfig()
 {
-    int i = 0;
+    int i = 0, j = 0, dup_entry = 0;
     FILE *fp;
     FILE *process_file;
     char buffer[OS_MAXSTR +1];
@@ -81,7 +81,8 @@ int ReadExecConfig()
             merror(EXEC_INV_CONF, ARGV0, DEFAULTARPATH);
             continue;
         }
-        
+
+
         
         /* Setting the name */
         strncpy(exec_names[exec_size], str_pt, OS_FLSIZE);
@@ -143,8 +144,38 @@ int ReadExecConfig()
         
         /* Getting the exec timeout */
         exec_timeout[exec_size] = atoi(str_pt);
+
+
+        /* Checking if name is duplicated. */
+        dup_entry = 0;
+        for(j = 0; j< exec_size; j++)
+        {
+            if(strcmp(exec_names[j], exec_names[exec_size]) == 0)
+            {
+                if(exec_cmd[j][0] == '\0')
+                {
+                    strncpy(exec_cmd[j], exec_cmd[exec_size], OS_FLSIZE);
+                    exec_cmd[j][OS_FLSIZE] = '\0';
+                    dup_entry = 1;
+                    break;
+                }
+                else if(exec_cmd[exec_size][0] == '\0')
+                {
+                    dup_entry = 1;
+                }
+            }
+        }
         
-        exec_size++;
+        if(dup_entry)
+        {
+            exec_cmd[exec_size][0] = '\0';
+            exec_names[exec_size][0] = '\0';
+            exec_timeout[exec_size] = 0;
+        }
+        else
+        {
+            exec_size++;
+        }
     }
 
     fclose(fp);
