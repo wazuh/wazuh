@@ -36,6 +36,9 @@ void *EventForward();
 /* Receiver messages */
 void *receive_msg();
 
+/* Receiver messages for Windows */
+void *receiver_thread(void *none);
+
 /* intcheck_file: 
  * Sends integrity checking information about a file to the server.
  */

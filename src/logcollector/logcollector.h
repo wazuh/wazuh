@@ -51,6 +51,9 @@ void *read_nmapg(int pos, int *rc, int drop_it);
 /* Read mysql log format */
 void *read_mysql_log(int pos, int *rc, int drop_it);
 
+/* Read mysql log format */
+void *read_mssql_log(int pos, int *rc, int drop_it);
+
 /* Read postgresql log format */
 void *read_postgresql_log(int pos, int *rc, int drop_it);
 

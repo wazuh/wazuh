@@ -431,6 +431,7 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
 
 
         /* Checking for glob. */
+        #ifndef WIN32
         if(strchr(tmp_dir, '*') ||
            strchr(tmp_dir, '?') ||
            strchr(tmp_dir, '['))
@@ -463,6 +464,9 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
         {
             dump_syscheck_entry(syscheck, tmp_dir, opts, 0);
         }
+        #else
+        dump_syscheck_entry(syscheck, tmp_dir, opts, 0);
+        #endif
         
         
         /* Next entry */
