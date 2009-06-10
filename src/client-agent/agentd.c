@@ -81,6 +81,7 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
         
     OS_ReadKeys(&keys);
     OS_StartCounter(&keys);
+    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id);
 
 
     /* Start up message */

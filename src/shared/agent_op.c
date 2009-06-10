@@ -188,7 +188,7 @@ int os_write_agent_info(char *agent_name, char *agent_ip, char *agent_id)
         return(0);
     }
 
-    fprintf(fp, "%s\n%s\n%s\n", agent_name, agent_ip, agent_id);
+    fprintf(fp, "%s\n-\n%s\n", agent_name, agent_id);
     fclose(fp);
     return(1);
 }

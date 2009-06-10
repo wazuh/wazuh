@@ -168,7 +168,13 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
-        merror(XML_ERROR, ARGV0, cfgfile, xml.err, xml.err_line);
+        if(modules & CAGENT_CONFIG)
+        {
+        }
+        else
+        {
+            merror(XML_ERROR, ARGV0, cfgfile, xml.err, xml.err_line);
+        }
         return(OS_INVALID);
     }
     
@@ -217,6 +223,20 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
             {
                 if(strcmp(xml_agent_name, node[i]->attributes[attrs]) == 0)
                 {
+                    char *agentname = os_read_agent_name();
+
+                    if(!agentname)
+                    {
+                        passed_agent_test = 0;
+                    }
+                    else
+                    {
+                        if(!OS_Match2(node[i]->values[attrs], agentname))
+                        {
+                            passed_agent_test = 0;
+                        }
+                        free(agentname);
+                    }
                 }
                 else if(strcmp(xml_agent_os, node[i]->attributes[attrs]) == 0)
                 {
@@ -224,7 +244,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
 
                     if(agentos)
                     {
-                        if(!OS_Match2(xml_agent_os, agentos))
+                        if(!OS_Match2(node[i]->values[attrs], agentos))
                         {
                             passed_agent_test = 0;
                         }
@@ -232,6 +252,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                     }
                     else
                     {
+                        passed_agent_test = 0;
                         merror("%s: ERROR: Unable to retrieve uname.", ARGV0);
                     }
                 }
@@ -250,7 +271,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
             /* Main element does not need to have any child */
             if(chld_node)
             {
-                if(read_main_elements(xml, modules, chld_node, d1, d2) < 0)
+                if(passed_agent_test && read_main_elements(xml, modules, chld_node, d1, d2) < 0)
                 {
                     merror(CONFIG_ERROR, ARGV0, cfgfile);
                     return(OS_INVALID);
