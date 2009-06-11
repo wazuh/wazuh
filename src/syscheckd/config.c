@@ -44,7 +44,7 @@ int Read_Syscheck_Config(char * cfgfile)
 
     /* Reading shared config */
     modules|= CAGENT_CONFIG;
-    ReadConfig(modules, cfgfile, &syscheck, NULL);
+    ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
               
 
     /* We must have at least one directory to check */

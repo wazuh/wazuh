@@ -104,9 +104,11 @@ http://www.ossec.net/main/license/\n"
 #ifndef WIN32
     #define DEFAULTAR       "/etc/shared/ar.conf"
     #define AR_BINDIR       "/active-response/bin"
+    #define AGENTCONFIG     DEFAULTDIR "/etc/shared/agent.conf"
 #else
-#define DEFAULTAR           "shared/ar.conf"
-#define AR_BINDIR           "active-response/bin"
+    #define DEFAULTAR           "shared/ar.conf"
+    #define AR_BINDIR           "active-response/bin"
+    #define AGENTCONFIG         "shared/agent.conf"
 #endif        
 
 

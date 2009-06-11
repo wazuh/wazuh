@@ -37,7 +37,7 @@ int LogCollectorConfig(char * cfgfile)
         return(OS_INVALID);
     
     modules|= CAGENT_CONFIG;
-    ReadConfig(modules, cfgfile, &log_config, NULL);
+    ReadConfig(modules, AGENTCONFIG, &log_config, NULL);
 
     logff = log_config.config;       
 
