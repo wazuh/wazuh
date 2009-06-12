@@ -13,7 +13,7 @@
 
 Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2008,2009 Third Brigade, Inc."
-OutFile "C:\ossec-win32-agent.exe"
+OutFile "ossec-win32-agent.exe"
 
 
 InstallDir $PROGRAMFILES\ossec-agent

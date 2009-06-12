@@ -59,6 +59,7 @@ win32/doc.html doc.html
 win32/help_win.txt help.txt
 win32/ossec-installer.nsi ossec-installer.nsi
 win32/ui.nsi ui.nsi
+win32/make.sh make.sh
 win32/ossec-uninstall.ico ossec-uninstall.ico
 win32/service-start.c setup/service-start.c
 win32/service-stop.c setup/service-stop.c

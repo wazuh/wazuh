@@ -17,7 +17,7 @@
 
 #include "shared.h"
 #include "os_win.h"
-#include <Winsvc.h>
+#include <winsvc.h>
 
 #ifndef ARGV0
 #define ARGV0 "ossec-agent"
