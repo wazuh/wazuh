@@ -13,6 +13,7 @@ i586-mingw32msvc-gcc -o add-localfile.exe -Wall os_regex/*.c setup/add-localfile
 
 cd ui
 sh ./make.sh
+cd ../
 
 makensis ui.nsi
 makensis ossec-installer.nsi
