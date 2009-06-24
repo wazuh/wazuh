@@ -8,7 +8,7 @@
 
 
 Name "${NAME} Windows Agent v${VERSION}"
-BrandingText "Copyright (C) 2008 Third Brigade, Inc."
+BrandingText "Copyright (C) 2009 Trend Micro Inc."
 OutFile "win32ui.exe"
 
 
