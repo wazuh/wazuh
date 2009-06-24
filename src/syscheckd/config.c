@@ -42,9 +42,11 @@ int Read_Syscheck_Config(char * cfgfile)
         return(OS_INVALID);
 
 
+    #ifdef CLIENT
     /* Reading shared config */
     modules|= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
+    #endif
               
 
     /* We must have at least one directory to check */

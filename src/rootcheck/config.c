@@ -28,9 +28,11 @@ int Read_Rootcheck_Config(char * cfgfile)
         return(OS_INVALID);
 
 
+    #ifdef CLIENT
     /* Reading shared config */
     modules|= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &rootcheck, NULL);
+    #endif
                   
     return(0);
 }

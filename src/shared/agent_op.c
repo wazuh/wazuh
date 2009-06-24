@@ -74,10 +74,25 @@ int os_set_restart_syscheck()
  */
 char* os_read_agent_name()
 {
+    int i = 0;
     char buf[1024 + 1];
-    FILE *fp;
+    FILE *fp = NULL;
 
-    fp = fopen(AGENT_INFO_FILE, "r");
+    while(i < 10)
+    {
+        if(isChroot())
+            fp = fopen(AGENT_INFO_FILE, "r");
+        else
+            fp = fopen(AGENT_INFO_FILEP, "r");        
+        
+        if(fp)
+        {
+            break;
+        }
+        i++;
+        sleep(i);    
+    }
+    
     if(!fp)
     {
         merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);

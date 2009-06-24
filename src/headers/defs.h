@@ -162,8 +162,10 @@ http://www.ossec.net/main/license/\n"
 /* Agent information file */
 #ifndef WIN32
     #define AGENT_INFO_FILE "/queue/ossec/.agent_info"
+    #define AGENT_INFO_FILEP DEFAULTDIR AGENT_INFO_FILE
 #else
     #define AGENT_INFO_FILE ".agent_info"
+    #define AGENT_INFO_FILEP AGENT_INFO_FILE
 #endif
 
 
