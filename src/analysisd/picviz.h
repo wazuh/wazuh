@@ -1,7 +1,7 @@
 /* @(#) $Id$ */
 
 /* Copyright (C) 2009 Sebastien Tricaud
- * Copyright (C) 2004-2009 Third Brigade, Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it

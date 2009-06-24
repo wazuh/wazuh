@@ -1,5 +1,5 @@
 OSSEC v0.9
-Copyright (c) 2003-2008 Third Brigade, Inc.
+Copyright (C) 2009 Trend Micro Inc.
 
 
 OSSEC Logging

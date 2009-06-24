@@ -1,5 +1,5 @@
 == OSSEC, os_xml "library" ==
-Copyright (C) 2004,2008 Third Brigade, Inc.
+Copyright (C) 2009 Trend Micro Inc.
 
 This "library" is a set of very simple functions to read
 a XML configuration file.

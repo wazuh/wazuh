@@ -1,6 +1,6 @@
 /*   $OSSEC, client-config.h, v0.2, 2005/11/09, Daniel B. Cid$   */
 
-/* Copyright (C) 2003-2008 Third Brigade, Inc.
+/* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it

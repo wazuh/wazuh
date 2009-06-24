@@ -1,6 +1,6 @@
 /*   $OSSEC, rootcheck.h, v0.1, 2005/10/03, Daniel B. Cid$   */
 
-/* Copyright (C) 2008 Third Brigade, Inc.
+/* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it

@@ -1,5 +1,5 @@
 OSSEC
-Copyright (c) 2008 Third Brigade, Inc.
+Copyright (C) 2009 Trend Micro Inc.
 
 
 ** Nmap correlation **

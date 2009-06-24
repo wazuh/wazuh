@@ -3,7 +3,7 @@
 # @(#) $Id$
 # Agentless monitoring
 #
-# Copyright (C) 2009 Third Brigade, Inc.
+# Copyright (C) 2009 Trend Micro Inc.
 # All rights reserved.
 # 
 # This program is a free software; you can redistribute it

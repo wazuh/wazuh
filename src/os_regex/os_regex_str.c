@@ -1,6 +1,6 @@
 /*   $OSSEC, os_regex_str.c, v0.1, 2005/12/29, Daniel B. Cid$   */
 
-/* Copyright (C) 2003,2004,2008 Third Brigade, Inc.
+/* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it

@@ -22,8 +22,8 @@ fi
 
 
 NAME="OSSEC HIDS"
-VERSION="v2.0"
-AUTHOR="Third Brigade, Inc."
+VERSION="v2.1"
+AUTHOR="Trend Micro Inc."
 DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON}"
 
 

@@ -1,6 +1,6 @@
 /*      $OSSEC, os_crypto/md5_op.c, v0.2, 2005/09/17, Daniel B. Cid$      */
 
-/* Copyright (C) 2004,2008 Third Brigade, Inc.
+/* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it

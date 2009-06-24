@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2008 Third Brigade, Inc.
+/* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -46,8 +46,8 @@
 
 /* Some Global names */
 #define __name      "OSSEC HIDS"
-#define __version   "v2.0"
-#define __author    "Third Brigade, Inc."
+#define __version   "v2.1"
+#define __author    "Trend Micro Inc."
 #define __contact   "contact@ossec.net"
 #define __site      "http://www.ossec.net"
 #define __license   "\
