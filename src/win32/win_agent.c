@@ -582,8 +582,27 @@ void send_win32_info(time_t curr_time)
     }
 
 
+
     /* creating message */
-    snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s", __win32_uname, __win32_shared);
+    if(File_DateofChange(AGENTCONFIGINT) > 0)
+    {
+        os_md5 md5sum;
+        if(OS_MD5_File(AGENTCONFIGINT, md5sum) != 0)
+        {
+            snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s", __win32_uname, __win32_shared);
+        }
+        else
+        {
+            snprintf(tmp_msg, OS_SIZE_1024, "#!-%s / %s\n%s", __win32_uname, md5sum, __win32_shared);
+        }
+    }
+    else
+    {
+        snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s", __win32_uname, __win32_shared);
+    }
+
+
+    /* creating message */
     debug1("%s: DEBUG: Sending keep alive: %s", ARGV0, tmp_msg);
 
     msg_size = CreateSecMSG(&keys, tmp_msg, crypt_msg, 0);
