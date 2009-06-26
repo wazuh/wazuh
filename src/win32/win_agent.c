@@ -21,6 +21,7 @@
 #include "os_win.h"
 #include "os_net/os_net.h"
 #include "os_execd/execd.h"
+#include "os_crypto/md5/md5_op.h"
 
 #ifndef ARGV0
 #define ARGV0 "ossec-agent"
