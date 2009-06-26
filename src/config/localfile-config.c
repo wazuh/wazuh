@@ -99,7 +99,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 ret = strftime(lfile, OS_FLSIZE, node[i]->content, p);
                 if(ret == 0)
                 {
-                    merror(PARSE_ERROR, ARGV0, logf[i].ffile);
+                    merror(PARSE_ERROR, ARGV0, node[i]->content);
                     return(OS_INVALID);
                 }
 
@@ -142,9 +142,36 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                     i++;
                     continue;
                 }
-                os_strdup(g.gl_pathv[glob_offset], logf[pl].file);
-                glob_offset++;
 
+
+                /* Checking for strftime on globs too. */
+                if(strchr(g.gl_pathv[glob_offset], '%'))
+                {
+                    struct tm *p;
+                    time_t l_time = time(0);
+                    char lfile[OS_FLSIZE + 1];
+                    size_t ret;
+
+                    p = localtime(&l_time);
+
+                    lfile[OS_FLSIZE] = '\0';
+                    ret = strftime(lfile, OS_FLSIZE, g.gl_pathv[glob_offset], p);
+                    if(ret == 0)
+                    {
+                        merror(PARSE_ERROR, ARGV0, g.gl_pathv[glob_offset]);
+                        return(OS_INVALID);
+                    }
+
+                    os_strdup(g.gl_pathv[glob_offset], logf[pl].ffile);
+                    os_strdup(g.gl_pathv[glob_offset], logf[pl].file);
+                }
+                else
+                {
+                    os_strdup(g.gl_pathv[glob_offset], logf[pl].file);
+                }
+
+                
+                glob_offset++;
                 globfree(&g);
 
                 /* Now we need to create another file entry */

@@ -35,27 +35,27 @@ cat <<EOF >/Library/StartupItems/OSSEC/OSSEC
 
 . /etc/rc.common
 . /etc/ossec-init.conf
-if [ "X${DIRECTORY}" = "X" ]; then
+if [ "X\${DIRECTORY}" = "X" ]; then
     DIRECTORY="/var/ossec"
 fi
 
 
 StartService ()
 {
-        ${DIRECTORY}/bin/ossec-control start
+        \${DIRECTORY}/bin/ossec-control start
 }
 
 StopService ()
 {
-        ${DIRECTORY}/bin/ossec-control stop
+        \${DIRECTORY}/bin/ossec-control stop
 }
 
 RestartService ()
 {
-        ${DIRECTORY}/bin/ossec-control restart
+        \${DIRECTORY}/bin/ossec-control restart
 }
 
-RunService "$1"
+RunService "\$1"
 EOF
 chmod 755 /Library/StartupItems/OSSEC
 chmod 644 /Library/StartupItems/OSSEC/StartupParameters.plist

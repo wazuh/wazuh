@@ -67,7 +67,7 @@ runInit()
     fi    
     
     # Darwin init script (by Lorenzo Costanzia di Costigliole <mummie@tin.it>)
-    if [ "X${NUNAME}" = "Darwin" ]; then
+    if [ "X${NUNAME}" = "XDarwin" ]; then
         # Generating darwin init script.
 
         echo " - ${systemis} Darwin."
