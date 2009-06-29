@@ -85,36 +85,14 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         }
         else if(strcmp(node[i]->element,xml_localfile_location) == 0)
         {
-            /* We need the format file (based on date) */
-            if(strchr(node[i]->content, '%'))
-            {
-                struct tm *p;
-                time_t l_time = time(0);
-                char lfile[OS_FLSIZE + 1];
-                size_t ret;
-
-                p = localtime(&l_time);
-
-                lfile[OS_FLSIZE] = '\0';
-                ret = strftime(lfile, OS_FLSIZE, node[i]->content, p);
-                if(ret == 0)
-                {
-                    merror(PARSE_ERROR, ARGV0, node[i]->content);
-                    return(OS_INVALID);
-                }
-
-                os_strdup(node[i]->content, logf[pl].ffile);
-                os_strdup(node[i]->content, logf[pl].file);
-            }
-            
             /* This is a glob*.
              * We will call this file multiple times until
              * there is no one else available.
              */
             #ifndef WIN32 /* No windows support for glob */ 
-            else if(strchr(node[i]->content, '*') ||
-                    strchr(node[i]->content, '?') ||
-                    strchr(node[i]->content, '['))
+            if(strchr(node[i]->content, '*') ||
+               strchr(node[i]->content, '?') ||
+               strchr(node[i]->content, '['))
             {
                 glob_t g;
                 
@@ -190,7 +168,32 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 /* We can not increment the file count in here */
                 continue;
             }
+            else if(strchr(node[i]->content, '%'))
+            #else
+            if(strchr(node[i]->content, '%'))    
             #endif /* WIN32 */
+
+            /* We need the format file (based on date) */
+            {
+                struct tm *p;
+                time_t l_time = time(0);
+                char lfile[OS_FLSIZE + 1];
+                size_t ret;
+
+                p = localtime(&l_time);
+
+                lfile[OS_FLSIZE] = '\0';
+                ret = strftime(lfile, OS_FLSIZE, node[i]->content, p);
+                if(ret == 0)
+                {
+                    merror(PARSE_ERROR, ARGV0, node[i]->content);
+                    return(OS_INVALID);
+                }
+
+                os_strdup(node[i]->content, logf[pl].ffile);
+                os_strdup(node[i]->content, logf[pl].file);
+            }
+            
             
             /* Normal file */
             else
