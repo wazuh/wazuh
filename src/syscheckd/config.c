@@ -37,10 +37,6 @@ int Read_Syscheck_Config(char * cfgfile)
     #endif
 
 
-    /* Starting realtime */
-    realtime_start();
-
-
     /* Reading config */
     if(ReadConfig(modules, cfgfile, &syscheck, NULL) < 0)
         return(OS_INVALID);

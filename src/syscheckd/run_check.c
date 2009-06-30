@@ -416,33 +416,40 @@ void start_daemon()
 
 
         #ifdef USEINOTIFY
-        selecttime.tv_sec = SYSCHECK_WAIT;
-        selecttime.tv_usec = 0;
-
-        /* zero-out the fd_set */
-        FD_ZERO (&rfds);
-
-
-        if(syscheck.realtime->fd >= 0)
-            FD_SET(syscheck.realtime->fd, &rfds);
-
-        run_now = select (syscheck.realtime->fd + 1, &rfds, 
-                          NULL, NULL, &selecttime);
-        if(run_now < 0)
+        if(syscheck.realtime)
         {
-            merror("%s: ERROR: Select failed (for realtime fim).", ARGV0);
+            selecttime.tv_sec = SYSCHECK_WAIT;
+            selecttime.tv_usec = 0;
+
+            /* zero-out the fd_set */
+            FD_ZERO (&rfds);
+
+
+            if(syscheck.realtime->fd >= 0)
+                FD_SET(syscheck.realtime->fd, &rfds);
+
+            run_now = select (syscheck.realtime->fd + 1, &rfds, 
+                    NULL, NULL, &selecttime);
+            if(run_now < 0)
+            {
+                merror("%s: ERROR: Select failed (for realtime fim).", ARGV0);
+                sleep(SYSCHECK_WAIT);
+            }
+            else if(run_now == 0)
+            {
+                /* Timeout. */
+            }
+            else if (FD_ISSET (syscheck.realtime->fd, &rfds))
+            {
+                realtime_process();
+            }
+
+            sleep(10);
+        }
+        else
+        {
             sleep(SYSCHECK_WAIT);
         }
-        else if(run_now == 0)
-        {
-            /* Timeout. */
-        }
-        else if (FD_ISSET (syscheck.realtime->fd, &rfds))
-        {
-            realtime_process();
-        }
-
-        sleep(10);
 
         #else
         sleep(SYSCHECK_WAIT);
