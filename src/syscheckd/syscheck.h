@@ -56,6 +56,9 @@ int check_db();
  */  
 void os_winreg_check();
 
+/* starts real time */
+int realtime_start();
+
 /* Adds a directory to real time monitoring. */
 int realtime_adddir(char *dir);
 
