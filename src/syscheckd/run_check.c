@@ -275,7 +275,7 @@ void start_daemon()
 
     
     #ifdef USEINOTIFY
-    if(syscheck.realtime->fd >= 0)
+    if(syscheck.realtime && (syscheck.realtime->fd >= 0))
         verbose("%s: INFO: Starting real time file monitoring.", ARGV0);
     #endif
     
