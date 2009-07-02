@@ -48,10 +48,11 @@ void *receiver_thread(void *none)
     
     while(1)
     {
+        sleep(2);
+        
         /* Read until no more messages are available */ 
         while((recv_b = recv(logr->sock,buffer,OS_SIZE_1024, 0))>0)
         {
-            
             /* Id of zero -- only one key allowed */
             tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b -1);
             if(tmp_msg == NULL)
