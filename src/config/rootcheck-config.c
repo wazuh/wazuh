@@ -34,6 +34,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
     char *xml_time = "frequency";
     char *xml_disabled = "disabled";
     char *xml_base_dir = "base_directory";
+    char *xml_ignore = "ignore";
 
 
     rootcheck = (rkconfig *)configp;
@@ -123,6 +124,19 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
             rootcheck->unixaudit[j + 1] = NULL;
                 
             os_strdup(node[i]->content, rootcheck->unixaudit[j]);
+        }
+        else if(strcmp(node[i]->element, xml_ignore) == 0)
+        {
+            int j = 0;
+            while(rootcheck->ignore && rootcheck->ignore[j])
+                j++;
+            
+            os_realloc(rootcheck->ignore, sizeof(char *)*(j+2), 
+                       rootcheck->ignore);
+            rootcheck->ignore[j] = NULL;
+            rootcheck->ignore[j + 1] = NULL;
+                
+            os_strdup(node[i]->content, rootcheck->ignore[j]);
         }
         else if(strcmp(node[i]->element, xml_winmalware) == 0)
         {

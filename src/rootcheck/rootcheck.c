@@ -78,6 +78,7 @@ int rootcheck_init(int test_config)
     rootcheck.workdir = NULL;
     rootcheck.basedir = NULL;
     rootcheck.unixaudit = NULL;
+    rootcheck.ignore = NULL;
     rootcheck.rootkit_files = NULL;
     rootcheck.rootkit_trojans = NULL;
     rootcheck.winaudit = NULL;

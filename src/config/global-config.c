@@ -454,6 +454,14 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
          */
         else if(strcmp(node[i]->element, xml_emailto) == 0)
         {
+            #ifndef WIN32
+            if(!OS_PRegex(node[i]->content, "[a-zA-Z0-9\\._-]+@[a-zA-Z0-9\\._-]"))
+            {
+                merror("%s: ERROR: Invalid Email address: %s.", ARGV0, node[i]->content);
+                return(OS_INVALID);
+            }
+            #endif
+                
             if(Mail)
             {
                 mailto_size++;

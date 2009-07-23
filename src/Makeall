@@ -78,9 +78,8 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ];
         echo "EEXTRA=-DAIX -DHIGHFIRST" >> Config.OS
         PATH=$PATH:/usr/vac/bin
         export  PATH
-    fi
 
-    if [ "X$OS" = "XSunOS" ]; then
+    elif [ "X$OS" = "XSunOS" ]; then
         # Set CPU optimization for Sun UltraSparc
         # by Eric Straavaldsen
         # Disabled by default. To enable it, just uncomment the following
@@ -91,20 +90,31 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ];
         #fi
         echo "EEXTRA=-DSOLARIS -DHIGHFIRST">>Config.OS
         echo "IEXTRA=-lsocket -lnsl -lresolv" >> Config.OS
-    fi
 
-    if [ "X$OS" = "XHP-UX" ]; then
+    elif [ "X$OS" = "XHP-UX" ]; then
         echo "EEXTRA=-DHPUX -D_XOPEN_SOURCE_EXTENDED -DHIGHFIRST -D_REENTRANT" >> Config.OS
+
+    elif [ "X$OS" = "XDarwin" ]; then
+        echo "EEXTRA=-DDarwin -DHIGHFIRST" >> Config.OS
+    
+    else
+        
+        echo 'int main() { short one = 1; char *cp = (char*)&one; if ( *cp == 0 ) return(1); else return(0); }' > isbigendian.c
+        gcc -o isbigendian isbigendian.c
+        ./isbigendian
+        if [ $? = 1 ]; then
+            echo "INFO: Big endian set."
+            echo "GEXTRA=-DHIGHFIRST" >> Config.OS
+        else
+            echo "INFO: Little endian set."
+        fi
     fi
+        
 
     if [ "X$OS" = "XFreeBSD" ]; then
         echo "TEXTRA=-pthread" >> Config.OS
     else
         echo "TEXTRA=-lpthread" >> Config.OS
-    fi    
-
-    if [ "X$OS" = "XDarwin" ]; then
-        echo "EEXTRA=-DDarwin -DHIGHFIRST" >> Config.OS
     fi    
 fi
 
