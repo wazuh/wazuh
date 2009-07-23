@@ -8,5 +8,3 @@
 /var/log/httpd/access_log
 /var/log/apache2/error.log
 /var/log/apache2/access.log
-/etc/httpd/logs/access_log
-/etc/httpd/logs/error_log
