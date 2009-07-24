@@ -1363,7 +1363,11 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         /** FTS CHECKS **/
         if(lf->decoder_info->fts)
         {
-            if(!FTS(lf))
+            if(lf->decoder_info->fts & FTS_DONE)
+            {
+                /* We already did the fts in here. */
+            }
+            else if(!FTS(lf))
             {
                 return(NULL);
             }

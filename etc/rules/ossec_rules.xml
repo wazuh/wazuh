@@ -49,12 +49,19 @@
     <match>Agent disconnected</match>
     <description>Ossec agent disconnected.</description>
   </rule>
-
-  <rule id="510" level="7">
+  
+  <rule id="509" level="0">
     <category>ossec</category>
     <decoded_as>rootcheck</decoded_as>
+    <description>Rootcheck event.</description>
+    <group>rootcheck,</group>
+  </rule>
+
+  <rule id="510" level="7">
+    <if_sid>509</if_sid>
     <description>Host-based anomaly detection event (rootcheck).</description>
     <group>rootcheck,</group>
+    <if_fts />
   </rule>
 
   <rule id="511" level="0">

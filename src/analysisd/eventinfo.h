@@ -105,6 +105,7 @@ typedef struct _EventNode
 #define FTS_ID          000010
 #define FTS_DATA        000020
 #define FTS_SYSTEMNAME  000040
+#define FTS_DONE        010000
 
 
 /** Functions for events **/

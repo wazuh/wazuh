@@ -196,7 +196,9 @@ int DecodeRootcheck(Eventinfo *lf)
             /* Cannot use strncmp to avoid errors with crafted files */    
             if(strcmp(lf->log, rk_buf) == 0)
             {
-                return(0);
+                rootcheck_dec->fts = 0;
+                lf->decoder_info = rootcheck_dec;
+                return(1);
             }
         }
         /* New format */
@@ -210,8 +212,9 @@ int DecodeRootcheck(Eventinfo *lf)
             {
                 fsetpos(fp, &fp_pos);
                 fprintf(fp, "!%d", lf->time);
-                        
-                return(0);
+                rootcheck_dec->fts = 0;
+                lf->decoder_info = rootcheck_dec;        
+                return(1);
             }
         }
 
@@ -229,7 +232,8 @@ int DecodeRootcheck(Eventinfo *lf)
     fprintf(fp,"!%d!%d %s\n",lf->time, lf->time, lf->log);
     fflush(fp);
 
-
+    rootcheck_dec->fts = 0;
+    rootcheck_dec->fts |= FTS_DONE;
     lf->decoder_info = rootcheck_dec;
     return(1); 
 }
