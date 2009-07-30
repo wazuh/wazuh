@@ -33,6 +33,8 @@ void *receiver_thread(void *none)
     char *tmp_msg;
    
     char file_sum[34];
+
+    fd_set fdset;
      
     FILE *fp;
 
@@ -48,8 +50,26 @@ void *receiver_thread(void *none)
     
     while(1)
     {
-        sleep(2);
+        FD_ZERO(&fdset);
+        FD_SET(logr->sock, &fdset);
         
+        
+        /* Wait for 120 seconds at a maximum for any descriptor */
+        recv_b = select(0, &fdset, NULL, NULL, NULL);
+        if(recv_b == -1)
+        {
+            merror(SELECT_ERROR, ARGV0);
+            sleep(30);
+            continue;
+        }
+        /* timeout */
+        else if(recv_b == 0)
+        {
+            merror(SELECT_ERROR, ARGV0);
+            sleep(30);
+            continue;
+        }
+
         /* Read until no more messages are available */ 
         while((recv_b = recv(logr->sock,buffer,OS_SIZE_1024, 0))>0)
         {
