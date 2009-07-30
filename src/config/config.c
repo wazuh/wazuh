@@ -219,52 +219,55 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
 
 
             /* Checking if this is specific to any agent. */
-            while(node[i]->attributes[attrs] && node[i]->values[attrs])
-            {
-                if(strcmp(xml_agent_name, node[i]->attributes[attrs]) == 0)
+            if(node[i]->attributes && node[i]->values)
+            {    
+                while(node[i]->attributes[attrs] && node[i]->values[attrs])
                 {
-                    char *agentname = os_read_agent_name();
+                    if(strcmp(xml_agent_name, node[i]->attributes[attrs]) == 0)
+                    {
+                        char *agentname = os_read_agent_name();
 
-                    if(!agentname)
-                    {
-                        passed_agent_test = 0;
-                    }
-                    else
-                    {
-                        if(!OS_Match2(node[i]->values[attrs], agentname))
+                        if(!agentname)
                         {
                             passed_agent_test = 0;
                         }
-                        free(agentname);
+                        else
+                        {
+                            if(!OS_Match2(node[i]->values[attrs], agentname))
+                            {
+                                passed_agent_test = 0;
+                            }
+                            free(agentname);
+                        }
                     }
-                }
-                else if(strcmp(xml_agent_os, node[i]->attributes[attrs]) == 0)
-                {
-                    char *agentos = getuname();
-
-                    if(agentos)
+                    else if(strcmp(xml_agent_os, node[i]->attributes[attrs]) == 0)
                     {
-                        if(!OS_Match2(node[i]->values[attrs], agentos))
+                        char *agentos = getuname();
+
+                        if(agentos)
+                        {
+                            if(!OS_Match2(node[i]->values[attrs], agentos))
+                            {
+                                passed_agent_test = 0;
+                            }
+                            free(agentos);
+                        }
+                        else
                         {
                             passed_agent_test = 0;
+                            merror("%s: ERROR: Unable to retrieve uname.", ARGV0);
                         }
-                        free(agentos);
+                    }
+                    else if(strcmp(xml_agent_overwrite, node[i]->attributes[attrs]) == 0)
+                    {
                     }
                     else
                     {
-                        passed_agent_test = 0;
-                        merror("%s: ERROR: Unable to retrieve uname.", ARGV0);
+                        merror(XML_INVATTR, ARGV0, node[i]->attributes[attrs],
+                                cfgfile);
                     }
+                    attrs++;
                 }
-                else if(strcmp(xml_agent_overwrite, node[i]->attributes[attrs]) == 0)
-                {
-                }
-                else
-                {
-                    merror(XML_INVATTR, ARGV0, node[i]->attributes[attrs],
-                           cfgfile);
-                }
-                attrs++;
             }
 
             
