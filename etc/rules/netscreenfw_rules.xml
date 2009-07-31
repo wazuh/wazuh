@@ -33,7 +33,13 @@
 
   <rule id="4503" level="5">
     <if_sid>4500</if_sid>
-    <action>critical|alert</action>
+    <action>critical</action>
+    <description>Netscreen critical/alert message.</description>
+  </rule>
+
+  <rule id="4513" level="5">
+    <if_sid>4500</if_sid>
+    <action>alert</action>
     <description>Netscreen critical/alert message.</description>
   </rule>
   
@@ -83,12 +89,24 @@
   <rule id="4550" level="10" frequency="4" timeframe="180" ignore="60">
     <if_matched_sid>4503</if_matched_sid>
     <same_source_ip />
-    <description>Multiple Netscreen critical/alert messages from </description>
+    <description>Multiple Netscreen critical messages from </description>
     <description>same source IP.</description>
   </rule>
 
   <rule id="4551" level="10" frequency="6" timeframe="180" ignore="60">
     <if_matched_sid>4503</if_matched_sid>
     <description>Multiple Netscreen critical messages.</description>
+  </rule>
+
+  <rule id="4552" level="10" frequency="4" timeframe="180" ignore="60">
+    <if_matched_sid>4513</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple Netscreen alert messages from </description>
+    <description>same source IP.</description>
+  </rule>
+
+  <rule id="4553" level="10" frequency="8" timeframe="100" ignore="60">
+    <if_matched_sid>4513</if_matched_sid>
+    <description>Multiple Netscreen alert messages.</description>
   </rule>
 </group> <!-- SYSLOG,NETSCREENFW -->

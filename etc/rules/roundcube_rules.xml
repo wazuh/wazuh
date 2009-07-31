@@ -1,0 +1,36 @@
+<!-- @(#) $Id$
+  -  Official Roundcube rules for OSSEC.
+  -
+  -  Author: Michael Starks
+  -
+  -  This program is a free software; you can redistribute it
+  -  and/or modify it under the terms of the GNU General Public
+  -  License (version 3) as published by the FSF - Free Software
+  -  Foundation.
+  -
+  -  License details: http://www.ossec.net/en/licensing.html
+  -->
+
+<group name="syslog,roundcube,"> 
+  <rule id="9400" level="0">
+    <decoded_as>roundcube</decoded_as>
+    <description>Roundcube messages groupe.d</description>
+  </rule>
+   
+  <rule id="9401" level="5">
+    <if_sid>9400</if_sid>
+    <match>failed (LOGIN)</match>
+    <description>Roundcube authentication failed.</description>
+    <group>authentication_failed,</group>
+  </rule>
+       
+  <rule id="9402" level="3">
+    <if_sid>9400</if_sid>
+    <match>Successful login</match>
+    <description>Roundcube authentication succeeded.</description>
+    <group>authentication_success,</group>
+  </rule> 
+</group>
+  
+
+<!-- EOF -->
