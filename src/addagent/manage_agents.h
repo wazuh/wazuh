@@ -27,8 +27,8 @@ int add_agent();
 int remove_agent();
 
 /* Extract or import a key */
-int k_extract();
-int k_import();
+int k_extract(char *cmdextract);
+int k_import(char *cmdimport);
 
 /* Validation functions */
 int OS_IsValidName(char *u_name);
@@ -40,7 +40,7 @@ char *getFullnameById(char *id);
 
 /* Print available agents */
 int print_agents(int print_status, int active_only, int csv_output);
-int list_agents();
+int list_agents(int cmdlist);
     
 /* clear a line */
 char *chomp(char *str);
@@ -112,9 +112,9 @@ fpos_t fp_pos;
 /* extract key */    
 #define EXTRACT_KEY     "Provide the ID of the agent to extract " \
                         "the key (or '\\q' to quit): "
-#define EXTRACT_MSG     "\nAgent key information for '%s' is: \n%s\n" \
-                        "\n** Press ENTER to return to the main menu.\n"
-   
+#define EXTRACT_MSG     "\nAgent key information for '%s' is: \n%s\n"
+
+
 /* Commom errors */
 #define ERROR_KEYS      "Unable to handle keys file. Exiting.\n"
 #define EXTRACT_ERROR   "Unable to extract agent key.\n"

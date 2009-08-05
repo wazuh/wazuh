@@ -385,14 +385,17 @@ int remove_agent()
 }
 
 
-int list_agents()
+int list_agents(int cmdlist)
 {
     if(!print_agents(0, 0, 0))
         printf(NO_AGENT);
 
     printf("\n");
-    printf(PRESS_ENTER);
-    read_from_user();
+    if(!cmdlist)
+    {
+        printf(PRESS_ENTER);
+        read_from_user();
+    }
 
     return(0);
 

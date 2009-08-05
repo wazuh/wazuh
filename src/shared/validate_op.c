@@ -142,7 +142,13 @@ int getNetmask(int mask, char *strmask, int size)
     int i = 0;
 
     strmask[0] = '\0';
-        
+
+    if(mask == 0)
+    {
+        snprintf(strmask, size, "/any");
+        return(1);
+    }
+
     for(i = 0;i<=31;i++)
     {
         if(htonl(_netmasks[i]) == mask)

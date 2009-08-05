@@ -22,7 +22,7 @@ char *encode_base64(int size, char *src);
 
 
 /* Import a key */
-int k_import()
+int k_import(char *cmdimport)
 {
     FILE *fp;
     char *user_input;
@@ -33,9 +33,18 @@ int k_import()
     char line_read[FILE_SIZE +1];
     
 
-    printf(IMPORT_KEY);
+    /* Parsing user argument. */
+    if(cmdimport)
+    {
+        user_input = cmdimport;
+    }
+    else
+    {
+        printf(IMPORT_KEY);
 
-    user_input = read_from_user();
+        user_input = read_from_user();
+    }
+
 
     /* quit */
     if(strcmp(user_input, QUIT) == 0)
@@ -124,7 +133,7 @@ int k_import()
 
 
 /* extract base64 for a specific agent */
-int k_extract()
+int k_extract(char *cmdextract)
 {
     FILE *fp;
     char *user_input;
@@ -132,28 +141,43 @@ int k_extract()
     char line_read[FILE_SIZE +1];
     char n_id[USER_SIZE +1];
 
-    if(!print_agents(0, 0, 0))
-    {
-        printf(NO_AGENT);
-        printf(PRESS_ENTER);
-        read_from_user();
-        return(0);
-    }
 
-    do
+    if(cmdextract)
     {
-        printf(EXTRACT_KEY);
-        fflush(stdout);
-        user_input = read_from_user();
-
-        /* quit */
-        if(strcmp(user_input, QUIT) == 0)
-            return(0);
+        user_input = cmdextract;
 
         if(!IDExist(user_input))
+        {
             printf(NO_ID, user_input);
+            exit(1);
+        }
+    }
 
-    } while(!IDExist(user_input));
+    else
+    {
+        if(!print_agents(0, 0, 0))
+        {
+            printf(NO_AGENT);
+            printf(PRESS_ENTER);
+            read_from_user();
+            return(0);
+        }
+
+        do
+        {
+            printf(EXTRACT_KEY);
+            fflush(stdout);
+            user_input = read_from_user();
+
+            /* quit */
+            if(strcmp(user_input, QUIT) == 0)
+                return(0);
+
+            if(!IDExist(user_input))
+                printf(NO_ID, user_input);
+
+        } while(!IDExist(user_input));
+    }
 
     
     /* Trying to open the auth file */
@@ -187,7 +211,11 @@ int k_extract()
     }
 
     printf(EXTRACT_MSG, n_id, b64_enc);
-    read_from_user();
+    if(!cmdextract)
+    {
+        printf("\n" PRESS_ENTER);
+        read_from_user();
+    }
 
     free(b64_enc);
     fclose(fp);

@@ -13,6 +13,21 @@
 
 #include "manage_agents.h"
 
+
+/** help **/
+void helpmsg()
+{
+    printf("\nOSSEC HIDS %s: Manage agents.\n", ARGV0);
+    printf("Available options:\n");
+    printf("\t-h          This help message.\n");
+    printf("\t-V          Display OSSEC version.\n");
+    printf("\t-l          List available agents.\n");
+    printf("\t-e <id>     Extracts key for an agent (Manager only).\n");
+    printf("\t-i <id>     Import authentication key (Agent only).\n\n");
+    exit(1);
+}
+
+
 /* print banner */
 void print_banner()
 {
@@ -51,6 +66,10 @@ void manage_shutdown()
 int main(int argc, char **argv)
 {
     char *user_msg;
+
+    int c = 0, cmdlist = 0;
+    char *cmdexport = NULL;
+    char *cmdimport = NULL;
     
     #ifndef WIN32
     char *dir = DEFAULTDIR;
@@ -58,12 +77,49 @@ int main(int argc, char **argv)
     int gid;
     #endif
     
-    if(argv[argc -1]){}    
-    
 
     /* Setting the name */
     OS_SetName(ARGV0);
         
+
+    while((c = getopt(argc, argv, "Vhle:i:")) != -1){
+        switch(c){
+	        case 'V':
+		        print_version();
+		        break;
+            case 'h':
+                helpmsg();
+                break;
+            case 'd':
+                nowDebug();
+                break;
+            case 'e':
+                #ifdef CLIENT
+                ErrorExit("%s: You can't export keys on an agent", ARGV0);
+                #endif
+                if(!optarg)
+                    ErrorExit("%s: -e needs an argument",ARGV0);
+                cmdexport = optarg;
+                break;
+            case 'i':
+                #ifndef CLIENT
+                ErrorExit("%s: You can't import keys on the manager.", ARGV0);
+                #endif
+                if(!optarg)
+                    ErrorExit("%s: -i needs an argument",ARGV0);
+                cmdimport = optarg;
+                break;
+            case 'l':
+                cmdlist = 1;
+                break;
+            default:
+                helpmsg();
+                break;
+        }
+
+    }
+    
+
    
     /* Getting currently time */
     time1 = time(0);
@@ -102,6 +158,24 @@ int main(int argc, char **argv)
     #endif
 
 
+    if(cmdlist == 1)
+    {
+        list_agents(cmdlist);
+        exit(0);
+    }
+    else if(cmdimport)
+    {
+        k_import(cmdimport);
+        exit(0);
+    }
+    else if(cmdexport)
+    {
+        k_extract(cmdexport);
+        exit(0);
+    }
+
+
+
     /* Little shell */
     while(1)
     {
@@ -119,15 +193,15 @@ int main(int argc, char **argv)
                 break;
             case 'e':
             case 'E':
-                k_extract();
+                k_extract(NULL);
                 break;
             case 'i':
             case 'I':
-                k_import();
+                k_import(NULL);
                 break;    
             case 'l':
             case 'L':
-                list_agents();
+                list_agents(0);
                 break;    
             case 'r':
             case 'R':
