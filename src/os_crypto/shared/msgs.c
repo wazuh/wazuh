@@ -38,6 +38,7 @@ unsigned int c_comp_size = 0;
 int _s_comp_print = 0;
 int _s_recv_flush = 0;
 
+int _s_verify_counter = 1;
 
 
 /** OS_StartCounter.
@@ -154,7 +155,11 @@ void OS_StartCounter(keystore *keys)
                                       "comp_average_printout",
                                       10, 999999);
     }
+
+
+    _s_verify_counter = getDefine_Int("remoted", "verify_msg_id" , 0, 1);
 }
+
 
 
 /** OS_RemoveCounter(char *id)
@@ -296,6 +301,23 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
         msg_local = atoi(f_msg);
         f_msg+=5;
 
+        
+        /* Returning the message if we don't need to verify the counbter. */
+        if(!_s_verify_counter)
+        {
+            /* Updating currently counts */
+            keys->keyentries[id]->global = msg_global;
+            keys->keyentries[id]->local = msg_local;
+            if(rcv_count >= _s_recv_flush)
+            {
+                StoreCounter(keys, id, msg_global, msg_local);
+                rcv_count = 0; 
+            }
+            rcv_count++;
+            return(f_msg);
+        }
+
+
         if((msg_global > keys->keyentries[id]->global)||
            ((msg_global == keys->keyentries[id]->global) && 
             (msg_local > keys->keyentries[id]->local)))
@@ -312,6 +334,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
             rcv_count++;
             return(f_msg);
         }
+
 
         /* Checking if it is a duplicated message */
         if(msg_global == keys->keyentries[id]->global)
@@ -359,6 +382,23 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 
         msg_count = atoi(f_msg);
         f_msg+=5;
+
+
+        /* Returning the message if we don't need to verify the counbter. */
+        if(!_s_verify_counter)
+        {
+            /* Updating currently counts */
+            keys->keyentries[id]->global = msg_time;
+            keys->keyentries[id]->local = msg_local;
+
+            f_msg = strchr(f_msg, ':');
+            if(f_msg)
+            {
+                f_msg++;
+                return(f_msg);
+            }
+        }
+
 
         if((msg_time > keys->keyentries[id]->global) ||
            ((msg_time == keys->keyentries[id]->global)&&
