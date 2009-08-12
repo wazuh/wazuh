@@ -43,6 +43,12 @@
     <description>Wordpress plugin deactivated.</description>
   </rule> 
 
+  <rule id="9510" level="7">
+    <if_sid>9500</if_sid>
+    <match>Warning: IDS:</match>
+    <description>Attack against Wordpress detected.</description>
+  </rule> 
+
   <rule id="9551" level="10">
     <if_matched_sid>9501</if_matched_sid>
     <same_source_ip />
