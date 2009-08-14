@@ -41,6 +41,7 @@
     <include>spamd_rules.xml</include>
     <include>msauth_rules.xml</include>
     <include>mcafee_av_rules.xml</include>
+    <include>trend-osce_rules.xml</include>
     <!-- <include>policy_rules.xml</include> -->
     <include>zeus_rules.xml</include>
     <include>solaris_bsm_rules.xml</include>

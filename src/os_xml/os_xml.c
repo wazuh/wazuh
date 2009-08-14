@@ -207,9 +207,11 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
     unsigned int _currentlycont = 0;
     short int location = -1;
 
+    char prevv = 0;
     char elem[XML_MAXSIZE +1];
     char cont[XML_MAXSIZE +1];
     char closedelem[XML_MAXSIZE +1];
+
 
     
     memset(elem,'\0',XML_MAXSIZE +1);
@@ -218,12 +220,22 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
 
     while((c=FGETC(fp)) != EOF)
     {
+        if(c == '\\')
+            prevv = c;
+        else if(prevv == '\\')
+        {
+            if(c != _R_CONFS)
+                prevv = 0;
+        }
+
+
         /* Max size */
         if(count >= XML_MAXSIZE)
         {
             xml_error(_lxml,"XML ERR: String overflow. Exiting.");
             return(-1);
         }
+
 
         /* Checking for comments */
         if(c == _R_CONFS)
@@ -239,7 +251,7 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
         }
         
         /* real checking */
-        if(location == -1)
+        if((location == -1) && (prevv == 0))
         {
             if(c == _R_CONFS)
             {
@@ -320,7 +332,7 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
             if(parent > 0)
                 return(0);
         }
-        else if((location == 1) &&(c == _R_CONFS))
+        else if((location == 1) && (c == _R_CONFS) && (prevv == 0))
         {
             if((c=fgetc(fp)) == '/')
             {
@@ -348,6 +360,11 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
                 cont[count++] = c;
             else if(location == 2)
                 closedelem[count++] = c;
+
+            if((_R_CONFS == c) && (prevv != 0))
+            {
+                prevv = 0;
+            }
         }
     }
     if(location == -1)

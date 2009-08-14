@@ -10,7 +10,7 @@
   <aatr>$lala</aatr>
 <!-- 
   <lala></2lala>
-  <aart2>test</aart2>
+  <aart2>test lala</aart2>
 -->
   <aatr2/>lele<aatr2/>
 </test>
@@ -25,7 +25,7 @@
 
 <ossec_config>
   <active_response>
-    <disabled>yes</disabled>
+    <disabled>yes please \< lala</disabled>
   </active_response>
 </ossec_config>
 
@@ -35,7 +35,7 @@
 </myxml1>
 
 <myxml2 name="name2" value="def" value2="test">
-  <element3>content3</element3>
+  <element3>content3lala \< lala\<</element3>
   <element4 value="myvalueforelement4">content4</element4>
   <element5>content5
     <element51>content51</element51>
