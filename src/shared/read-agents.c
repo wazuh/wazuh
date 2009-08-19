@@ -215,7 +215,7 @@ int _do_print_file_syscheck(FILE *fp, char *fname,
         if(buf[0] == '!' || buf[0] == '#')
         {
             int number_changes = 0;
-            int change_time = 0;
+            time_t change_time = 0;
             char *changed_file_name;
             char *changed_attrs;
             char *prev_attrs;
@@ -267,7 +267,7 @@ int _do_print_file_syscheck(FILE *fp, char *fname,
             /* Getting time of change. */
             changed_file_name[-1] = '\0';
             changed_file_name++;
-            change_time = atoi(changed_file_name);
+            change_time = (time_t)atoi(changed_file_name);
             
             changed_file_name = strchr(changed_file_name, ' ');
             changed_file_name++; 
@@ -297,7 +297,7 @@ int _do_print_file_syscheck(FILE *fp, char *fname,
 
                 if(update_counter == 2)
                 {
-                    if(fputs("!!?", fp) != 0)
+                    if(fprintf(fp, "!!?") <= 0)
                     {
                         printf("\n** ERROR: fputs failed (unable to update "
                                 "counter).\n");
@@ -307,7 +307,7 @@ int _do_print_file_syscheck(FILE *fp, char *fname,
 
                 else
                 {
-                    if(fputs("!++", fp) != 0)
+                    if(fprintf(fp, "!++") <= 0)
                     {
                         printf("\n** ERROR: fputs failed (unable to update "
                                 "counter).\n");
@@ -321,7 +321,7 @@ int _do_print_file_syscheck(FILE *fp, char *fname,
             }
 
             
-            tm_time = localtime((time_t *)&change_time);
+            tm_time = localtime(&change_time);
             strftime(read_day, 23, "%Y %h %d %T", tm_time);
             
             if(!csv_output)           

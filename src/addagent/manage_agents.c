@@ -367,6 +367,7 @@ int remove_agent()
             delete_agentinfo(full_name); 
             OS_RemoveCounter(u_id);
             free(full_name);
+            full_name = NULL;
 
 
             printf(REMOVE_DONE, u_id);
