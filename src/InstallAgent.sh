@@ -51,10 +51,15 @@ elif [ "$UNAME" = "SunOS" ]; then
     fi
 
 elif [ "$UNAME" = "AIX" ]; then
+    AIXSH=""
+    ls -la /bin/false > /dev/null 2>&1
+    if [ $? = 0 ]; then
+        AIXSH="-s /bin/false"
+    fi
     grep "^${USER}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
     /usr/bin/mkgroup ${GROUP}
-    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
+    /usr/sbin/useradd -d ${DIR} ${AIXSH} -g ${GROUP} ${USER}
     fi
 
 # Thanks Chuck L. for the mac addusers
