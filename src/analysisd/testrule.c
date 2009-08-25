@@ -521,6 +521,10 @@ void OS_ReadMSG(int m_queue)
                 Free_Eventinfo(lf);
 
         }
+        else
+        {
+            exit(0);   
+        }
     }
     return;
 }
