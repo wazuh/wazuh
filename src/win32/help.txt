@@ -1,4 +1,4 @@
-** OSSEC Windows Agent v2.1 **
+** OSSEC Windows Agent v2.2 **
 ** Copyright (C) 2009 Trend Micro Inc. **
 
 
