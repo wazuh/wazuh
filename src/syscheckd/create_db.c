@@ -316,10 +316,39 @@ int read_dir(char *dir_name, int opts, int flag)
         
         if(flag == CREATE_DB)
         {
+            #ifdef WIN32
+            int di = 0;
+            char *(defaultfilesn[])= {
+                                     "C:\\autoexec.bat",
+                                     "C:\\config.sys",
+                                     "C:\\WINDOWS/System32/eventcreate.exe",
+                                     "C:\\WINDOWS/System32/eventtriggers.exe",
+                                     "C:\\WINDOWS/System32/tlntsvr.exe",
+                                     "C:\\WINDOWS/System32/Tasks",
+                                     NULL
+                                     };
+            while(defaultfilesn[di] != NULL)
+            {
+                if(strcmp(defaultfilesn[di], dir_name) == 0)
+                {
+                    break;
+                }
+                di++;
+            }
+
+            if(defaultfilesn[di] == NULL)
+            {
+                merror("%s: WARN: Error opening directory: '%s': %s ",
+                        ARGV0, dir_name, strerror(errno)); 
+            }
+            
+            #else
+            
             merror("%s: WARN: Error opening directory: '%s': %s ",
                                               ARGV0,
                                               dir_name,
                                               strerror(errno));
+            #endif
         }
         
         return(-1);
