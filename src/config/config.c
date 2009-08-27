@@ -180,6 +180,10 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
     
 
     node = OS_GetElementsbyNode(&xml, NULL);
+    if(!node)
+    {
+        return(0);
+    }
 
 
     /* Reading the main configuration */
