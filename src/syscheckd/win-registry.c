@@ -379,8 +379,8 @@ void os_winreg_open_key(char *subkey, char *full_key_name)
     /* sleep X every Y files */
     if(ig_count >= syscheck.sleep_after)
     {
-        sleep(syscheck.tsleep);
-        ig_count = 0;
+        sleep(syscheck.tsleep +1);
+        ig_count = 1;
     }
     ig_count++;
 
@@ -437,7 +437,7 @@ void os_winreg_check()
     
     
     /* Zeroing ig_count before checking */
-    ig_count = 0;
+    ig_count = 1;
     
 
     /* Checking if the registry fp is open */
