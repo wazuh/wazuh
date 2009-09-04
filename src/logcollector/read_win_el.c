@@ -602,9 +602,16 @@ void readel(os_el *el, int printit)
     /* Event log was cleared. */
     else if(id == ERROR_EVENTLOG_FILE_CHANGED)
     {
+        char msg_alert[512 +1];
+        msg_alert[512] = '\0';
         merror("%s: WARN: Event log cleared: '%s'", ARGV0, el->name);
-
         
+
+        /* Send message about cleared */
+        snprintf(msg_alert, 512, "ossec: Event log cleared: '%s'", el->name);
+        SendMSG(logr_queue, msg_alert, "WinEvtLog", LOCALFILE_MQ);
+
+
         /* Closing the event log and reopenning. */
         CloseEventLog(el->h);
         el->h = NULL;

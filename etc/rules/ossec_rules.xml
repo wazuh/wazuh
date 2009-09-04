@@ -187,4 +187,11 @@
     <description>Log file size reduced.</description>
     <group>attacks,</group>
   </rule>
+
+  <rule id="593" level="9">
+    <if_sid>500</if_sid>
+    <match>^ossec: Event log cleared</match>
+    <description>Microsoft Event log cleared.</description>
+    <group>logs_cleared,</group>
+  </rule>
 </group> <!-- OSSEC -->
