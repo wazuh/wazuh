@@ -1079,6 +1079,24 @@
 </decoder>
 
 
+
+<!-- Suhosin decoder.
+  - Will extract the attack name and srcip.
+  - Examples:
+  - suhosin[76366]: ALERT - canary mismatch on efree() - heap overflow detected (attacker '200.139.164.149', file 'xyz')
+  - suhosin[24239]: ALERT - configured request variable value length limit exceeded - dropped variable 'introtext' (attacker '192.168.1.2', file '/var/www/site/administrator/index2.php')
+  - suhosin[32150]: ALERT - configured POST variable limit exceeded - dropped variable 'setting[sg_allow_delete_empty_group]' (attacker '32.104.x.y', file '/home/htdocs/admincp/options.php') 
+  -->
+<decoder name="suhosin">
+  <program_name>^suhosin</program_name>
+  <type>ids</type>
+  <regex>^ALERT - (\.+) \(attacker '(\d+.\d+.\d+.\d+)', </regex>
+  <order>id, srcip</order>
+  <fts>name, location, id</fts>
+</decoder>
+
+
+
 <!-- Dragon Decoder
   - Will extract srcip, dstip and id
   - Examples:
