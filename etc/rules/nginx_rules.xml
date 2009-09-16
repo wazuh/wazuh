@@ -1,0 +1,62 @@
+<!-- @(#) $Id$
+  -  Official Nginx rules for OSSEC.
+  -
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  All rights reserved.
+  -
+  -  This program is a free software; you can redistribute it
+  -  and/or modify it under the terms of the GNU General Public
+  -  License (version 3) as published by the FSF - Free Software
+  -  Foundation.
+  -
+  -  License details: http://www.ossec.net/en/licensing.html
+  -->
+                        
+
+<group name="apache,">
+  <rule id="31300" level="0">
+    <decoded_as>nginx-errorlog</decoded_as>
+    <description>Nginx messages grouped.</description>
+  </rule>    
+
+  <rule id="31301" level="3">
+    <if_sid>31300</if_sid>
+    <regex>^\S+ \S+ [error] </regex>
+    <description>Nginx error message.</description>
+  </rule>
+  
+  <rule id="31302" level="3">
+    <if_sid>31300</if_sid>
+    <regex>^\S+ \S+ [warn] </regex>
+    <description>Nginx warning message.</description>
+  </rule>
+  
+  <rule id="31303" level="5">
+    <if_sid>31300</if_sid>
+    <regex>^\S+ \S+ [crit] </regex>
+    <description>Nginx critical message.</description>
+  </rule>
+
+  <rule id="31310" level="0">
+    <if_sid>31301</if_sid>
+    <match>failed (2: No such file or directory)</match>
+    <description>Server returned 404 (reported in the access.log).</description>
+  </rule>
+
+  <rule id="31311" level="0">
+    <if_sid>31301</if_sid>
+    <match>accept() failed (53: Software caused connection abort)</match>
+    <description>Incomplete client request.</description>
+  </rule>
+
+  <rule id="31320" level="10">
+    <if_sid>31303</if_sid>
+    <match>failed (63: File name too long)</match>
+    <description>Invalid URI, file name too long.</description>
+    <group>invalid_request,</group>
+  </rule>
+</group> <!-- ERROR_LOG,NGINX -->
+
+
+<!-- EOF -->
+
