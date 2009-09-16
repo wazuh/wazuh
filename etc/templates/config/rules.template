@@ -24,6 +24,7 @@
     <include>web_rules.xml</include>
     <include>apache_rules.xml</include>
     <include>nginx_rules.xml</include>
+    <include>php_rules.xml</include>
     <include>mysql_rules.xml</include>
     <include>postgresql_rules.xml</include>
     <include>ids_rules.xml</include>
