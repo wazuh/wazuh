@@ -334,19 +334,45 @@ void LogCollectorStart()
             /* Check for file change -- if the file is open already */
             if(logff[i].fp)
             {
+                #ifndef WIN32
                 if(stat(logff[i].file, &tmp_stat) == -1)
                 {
                     fclose(logff[i].fp);
-                    #ifdef WIN32
-                    CloseHandle(logff[i].h);
-                    #endif
-                    
                     logff[i].fp = NULL;
                     
                     merror(FILE_ERROR, ARGV0, logff[i].file);
                 }
 
+                #else
+                BY_HANDLE_FILE_INFORMATION lpFileInformation;
+                HANDLE h1;
+
+                h1 = CreateFile(logff[i].file, GENERIC_READ,
+                            FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
+                            NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                if(h1 == INVALID_HANDLE_VALUE)
+                {
+                    fclose(logff[i].fp);
+                    CloseHandle(logff[i].h);
+                    logff[i].fp = NULL;
+                    merror(FILE_ERROR, ARGV0, logff[i].file);
+                }
+                else if(GetFileInformationByHandle(h1, &lpFileInformation) == 0)
+                {
+                    fclose(logff[i].fp);
+                    CloseHandle(logff[i].h);
+                    CloseHandle(h1);
+                    logff[i].fp = NULL;
+                    merror(FILE_ERROR, ARGV0, logff[i].file);;
+                }
+                #endif
+
+
+                #ifdef WIN32
+                else if(logff[i].fd != (lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh))
+                #else
                 else if(logff[i].fd != tmp_stat.st_ino)
+                #endif
                 {
                     char msg_alert[512 +1];
 
@@ -365,13 +391,18 @@ void LogCollectorStart()
 
                     #ifdef WIN32
                     CloseHandle(logff[i].h);
+                    CloseHandle(h1);
                     #endif
                     
                     logff[i].fp = NULL;
                     handle_file(i, 0, 1);
                     continue;
                 }
+                #ifdef WIN32
+                else if(logff[i].size > (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow))
+                #else
                 else if(logff[i].size > tmp_stat.st_size)
+                #endif
                 {
                     char msg_alert[512 +1];
 
@@ -396,11 +427,18 @@ void LogCollectorStart()
 
                     #ifdef WIN32
                     CloseHandle(logff[i].h);
+                    CloseHandle(h1);
                     #endif
                     
                     logff[i].fp = NULL;
                     handle_file(i, 1, 1);
                 }
+                #ifdef WIN32
+                else
+                {
+                    CloseHandle(h1);
+                }
+                #endif
             }
             
             
@@ -520,7 +558,6 @@ int handle_file(int i, int do_fseek, int do_log)
      * time of change from it.
      */
     #ifndef WIN32
-
     logff[i].fp = fopen(logff[i].file, "r");
     if(!logff[i].fp)
     {
@@ -532,7 +569,18 @@ int handle_file(int i, int do_fseek, int do_log)
     }
     /* Getting inode number for fp */
     fd = fileno(logff[i].fp);
+    if(fstat(fd, &stat_fd) == -1)
+    {
+        merror(FILE_ERROR,ARGV0,logff[i].file);
+        fclose(logff[i].fp);
+        logff[i].fp = NULL;
+        return(-1);
+    }
     
+    logff[i].fd = stat_fd.st_ino;
+    logff[i].size =  stat_fd.st_size;
+    
+
     #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
 
@@ -577,27 +625,8 @@ int handle_file(int i, int do_fseek, int do_log)
     }
 
     logff[i].fd = lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh;
+    logff[i].size = lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow;
     #endif
-
-    if(fstat(fd, &stat_fd) == -1)
-    {
-        merror(FILE_ERROR,ARGV0,logff[i].file);
-        fclose(logff[i].fp);
-
-        #ifdef WIN32
-        CloseHandle(logff[i].h);
-        #endif
-
-        logff[i].fp = NULL;
-        return(-1);
-    }
-    
-    #ifndef WIN32
-    logff[i].fd = stat_fd.st_ino;
-    #endif
-    
-    logff[i].size =  stat_fd.st_size;
-
 
 
     /* Only seek the end of the file if set to. */
