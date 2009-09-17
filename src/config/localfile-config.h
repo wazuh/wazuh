@@ -30,14 +30,19 @@ typedef struct _logreader
     unsigned int size;
     int ign;
     ino_t fd;
+    
+    #ifdef WIN32
+    HANDLE h;
+    #endif
+    
         
     /* ffile - format file is only used when 
      * the file has format string to retrieve
      * the date,
      */    
     char *ffile;        
-	char *file;
-	char *logformat;
+    char *file;
+    char *logformat;
     char *djb_program_name;
 
     void (*read)(int i, int *rc, int drop_it);

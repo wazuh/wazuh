@@ -81,6 +81,7 @@
 #else
 #include <windows.h>
 #include <winsock.h>
+#include <io.h>
 #endif
 
 #include <time.h>

@@ -253,8 +253,14 @@ void LogCollectorStart()
 
                     /* Closing the file */
                     if(logff[i].fp)
+                    {
                         fclose(logff[i].fp);
+                        #ifdef WIN32
+                        CloseHandle(logff[i].h);
+                        #endif
+                    }
                     logff[i].fp = NULL;
+
 
                     /* Trying to open it again */
                     if(handle_file(i, 1, 1) != 0)
@@ -304,6 +310,9 @@ void LogCollectorStart()
                     if(logff[i].fp)
                     {
                         fclose(logff[i].fp);
+                        #ifdef WIN32
+                        CloseHandle(logff[i].h);
+                        #endif
                     }
                     logff[i].fp = NULL;
                     handle_file(i, 0, 1);
@@ -325,6 +334,10 @@ void LogCollectorStart()
                 if(stat(logff[i].file, &tmp_stat) == -1)
                 {
                     fclose(logff[i].fp);
+                    #ifdef WIN32
+                    CloseHandle(logff[i].h);
+                    #endif
+                    
                     logff[i].fp = NULL;
                     
                     merror(FILE_ERROR, ARGV0, logff[i].file);
@@ -346,6 +359,11 @@ void LogCollectorStart()
                             ARGV0, logff[i].file);
                     
                     fclose(logff[i].fp);
+
+                    #ifdef WIN32
+                    CloseHandle(logff[i].h);
+                    #endif
+                    
                     logff[i].fp = NULL;
                     handle_file(i, 0, 1);
                     continue;
@@ -372,6 +390,11 @@ void LogCollectorStart()
 
                     /* Getting new file. */
                     fclose(logff[i].fp);
+
+                    #ifdef WIN32
+                    CloseHandle(logff[i].h);
+                    #endif
+                    
                     logff[i].fp = NULL;
                     handle_file(i, 1, 1);
                 }
@@ -389,7 +412,12 @@ void LogCollectorStart()
                 
                 merror(LOGC_FILE_ERROR, ARGV0, logff[i].file);
                 if(logff[i].fp)
+                {
                     fclose(logff[i].fp);
+                    #ifdef WIN32
+                    CloseHandle(logff[i].h);
+                    #endif
+                }
                     
                 logff[i].fp = NULL;
 
@@ -488,6 +516,7 @@ int handle_file(int i, int do_fseek, int do_log)
     /* We must be able to open the file, fseek and get the
      * time of change from it.
      */
+    #ifndef WIN32
     logff[i].fp = fopen(logff[i].file, "r");
     if(!logff[i].fp)
     {
@@ -497,14 +526,50 @@ int handle_file(int i, int do_fseek, int do_log)
         }
         return(-1);
     }
-
-    
     /* Getting inode number for fp */
     fd = fileno(logff[i].fp);
+    
+    #else
+
+    logff[i].fp = NULL;
+    logff[i].h = CreateFile(logff[i].file, GENERIC_READ,
+                            FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
+                            NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if(logff[i].h == INVALID_HANDLE_VALUE)
+    {
+        if(do_log == 1)
+        {
+            merror(FOPEN_ERROR, ARGV0, logff[i].file);
+        }
+        return(-1);
+    }
+    fd = _open_osfhandle((long)logff[i].h, 0);
+    if(fd == -1)
+    {
+        merror(FOPEN_ERROR, ARGV0, logff[i].file);
+        CloseHandle(logff[i].h);
+        return(-1);
+    }
+    logff[i].fp = _fdopen(fd, "r");
+    if(logff[i].fp == NULL)
+    {
+        merror(FOPEN_ERROR, ARGV0, logff[i].file);
+        CloseHandle(logff[i].h);
+        return(-1);
+    }
+
+    #endif
+
+    
     if(fstat(fd, &stat_fd) == -1)
     {
         merror(FILE_ERROR,ARGV0,logff[i].file);
         fclose(logff[i].fp);
+
+        #ifdef WIN32
+        CloseHandle(logff[i].h);
+        #endif
+
         logff[i].fp = NULL;
         return(-1);
     }
