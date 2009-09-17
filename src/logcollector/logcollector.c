@@ -249,7 +249,10 @@ void LogCollectorStart()
                 if(1)
                 #endif
                 {
+
+                    #ifndef WIN32
                     merror(FSEEK_ERROR, ARGV0, logff[i].file);
+                    #endif
 
                     /* Closing the file */
                     if(logff[i].fp)
@@ -517,6 +520,7 @@ int handle_file(int i, int do_fseek, int do_log)
      * time of change from it.
      */
     #ifndef WIN32
+
     logff[i].fp = fopen(logff[i].file, "r");
     if(!logff[i].fp)
     {
@@ -530,6 +534,7 @@ int handle_file(int i, int do_fseek, int do_log)
     fd = fileno(logff[i].fp);
     
     #else
+    BY_HANDLE_FILE_INFORMATION lpFileInformation;
 
     logff[i].fp = NULL;
     logff[i].h = CreateFile(logff[i].file, GENERIC_READ,
@@ -558,9 +563,22 @@ int handle_file(int i, int do_fseek, int do_log)
         return(-1);
     }
 
+
+    /* On windows, we also need the real inode, which is the combination
+     * of the index low + index high numbers.
+     */
+    if(GetFileInformationByHandle(logff[i].h, &lpFileInformation) == 0)
+    {
+        merror("%s: Unable to get file information by handle.", ARGV0);
+        fclose(logff[i].fp);
+        CloseHandle(logff[i].h);
+        logff[i].fp = NULL;
+        return(-1);
+    }
+
+    logff[i].fd = lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh;
     #endif
 
-    
     if(fstat(fd, &stat_fd) == -1)
     {
         merror(FILE_ERROR,ARGV0,logff[i].file);
@@ -573,7 +591,11 @@ int handle_file(int i, int do_fseek, int do_log)
         logff[i].fp = NULL;
         return(-1);
     }
+    
+    #ifndef WIN32
     logff[i].fd = stat_fd.st_ino;
+    #endif
+    
     logff[i].size =  stat_fd.st_size;
 
 
