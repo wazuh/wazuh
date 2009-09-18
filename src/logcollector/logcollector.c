@@ -377,8 +377,8 @@ void LogCollectorStart()
                     char msg_alert[512 +1];
 
                     snprintf(msg_alert, 512, "ossec: File rotated (inode "
-                                             "changed): '%s'.",
-                                             logff[i].file);
+                                             "changed): '%s' %d %d -%d:%d.",
+                                             logff[i].file, logff[i].fd, lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh, lpFileInformation.nFileIndexLow, lpFileInformation.nFileIndexHigh);
                      
                     /* Send message about log rotated  */
                     SendMSG(logr_queue, msg_alert, 
