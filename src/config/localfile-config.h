@@ -29,10 +29,12 @@ typedef struct _logreader
 {
     unsigned int size;
     int ign;
-    ino_t fd;
     
     #ifdef WIN32
     HANDLE h;
+    int fd;
+    #else
+    ino_t fd;
     #endif
     
         
