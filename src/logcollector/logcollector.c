@@ -624,8 +624,10 @@ int handle_file(int i, int do_fseek, int do_log)
         return(-1);
     }
 
-    logff[i].fd = lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh;
-    logff[i].size = lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow;
+    logff[i].fd = (lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh);
+    logff[i].size = (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow);
+
+    merror("setting fd: %d %d %d", logff[i].fd, lpFileInformation.nFileIndexLow, lpFileInformation.nFileIndexHigh);
     #endif
 
 
