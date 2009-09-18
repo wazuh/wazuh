@@ -60,8 +60,27 @@ void LogCollectorStart()
     {
         if(logff[i].file == NULL)
             break;
+
+        /* Removing duplicate entries. */
+        for(r = 0; r < i; r++)
+        {
+            if(logff[r].file && strcmp(logff[i].file, logff[r].file) == 0)
+            {
+                merror("%s: WARN: Duplicated log file given: '%s'.", 
+                       ARGV0, logff[i].file);
+                logff[i].file = NULL;
+                logff[i].fp = NULL;
+
+                break;
+            }
+        }
+
+        if(logff[i].file == NULL)
+        {
+            /* do nothing, duplicated entry. */
+        }
        
-        if(strcmp(logff[i].logformat,"eventlog") == 0)
+        else if(strcmp(logff[i].logformat,"eventlog") == 0)
         {
             #ifdef WIN32
             
@@ -377,8 +396,8 @@ void LogCollectorStart()
                     char msg_alert[512 +1];
 
                     snprintf(msg_alert, 512, "ossec: File rotated (inode "
-                                             "changed): '%s' %d %d -%d:%d.",
-                                             logff[i].file, logff[i].fd, lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh, lpFileInformation.nFileIndexLow, lpFileInformation.nFileIndexHigh);
+                                             "changed): '%s'.",
+                                             logff[i].file);
                      
                     /* Send message about log rotated  */
                     SendMSG(logr_queue, msg_alert, 
@@ -627,7 +646,6 @@ int handle_file(int i, int do_fseek, int do_log)
     logff[i].fd = (lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh);
     logff[i].size = (lpFileInformation.nFileSizeHigh + lpFileInformation.nFileSizeLow);
 
-    merror("setting fd: %d %d %d", logff[i].fd, lpFileInformation.nFileIndexLow, lpFileInformation.nFileIndexHigh);
     #endif
 
 
