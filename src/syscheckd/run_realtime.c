@@ -10,11 +10,16 @@
  */
 
 
-#include "shared.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <limits.h>
 
+#include "hash_op.h"
+#include "debug_op.h"
 #include "syscheck.h"
-
 
 #ifdef USEINOTIFY
 #include <sys/inotify.h>
@@ -88,10 +93,15 @@ int realtime_adddir(char *dir)
             {
                 char *ndir;
 
-                os_strdup(dir, ndir);
+                ndir = strdup(dir);
+                if(ndir == NULL)
+                {
+                    ErrorExit("%s: ERROR: Out of memory. Exiting.", ARGV0);
+                }
+
                 OSHash_Add(syscheck.realtime->dirtb, strdup(wdchar), ndir);
                 debug1("%s: DEBUG: Directory added for real time monitoring: "
-                       "'%s'.", ARGV0, dir);
+                       "'%s'.", ARGV0, ndir);
             }
         }
     }
