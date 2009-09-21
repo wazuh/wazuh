@@ -92,7 +92,10 @@ int realtime_adddir(char *dir)
             /* Entry not present. */
             if(!OSHash_Get(syscheck.realtime->dirtb, wdchar))
             {
-                OSHash_Add(syscheck.realtime->dirtb, strdup(wdchar), dir);
+                char *ndir;
+
+                os_strdup(dir, ndir);
+                OSHash_Add(syscheck.realtime->dirtb, strdup(wdchar), ndir);
                 debug1("%s: DEBUG: Directory added for real time monitoring: "
                        "'%s'.", ARGV0, dir);
             }

@@ -443,8 +443,6 @@ void start_daemon()
             {
                 realtime_process();
             }
-
-            sleep(10);
         }
         else
         {
