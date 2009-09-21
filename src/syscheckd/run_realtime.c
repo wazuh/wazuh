@@ -10,15 +10,9 @@
  */
 
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include "shared.h"
 #include <limits.h>
 
-#include "hash_op.h"
-#include "debug_op.h"
 #include "syscheck.h"
 
 
