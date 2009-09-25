@@ -57,7 +57,6 @@
     <url>/x90/|default.ida|/sumthin|nsiislog.dll|chmod%|wget%|cd%|</url>
     <url>cat%|exec%|rm%20</url>
     <description>Common web attack.</description>
-    <info>http://www.armbrustconsulting.com/LogEntries.html</info>
     <group>attack,</group>
   </rule>
 

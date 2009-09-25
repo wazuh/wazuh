@@ -233,7 +233,9 @@ void OS_Run(MailConfig *mail)
             
             if(pid < 0)
             {
+                merror("%s: Fork failed. cause: %d - %s", ARGV0, errno, strerror(errno));
                 merror(FORK_ERROR, ARGV0);
+                sleep(30);
                 continue;
             }
             else if (pid == 0)
@@ -282,7 +284,9 @@ void OS_Run(MailConfig *mail)
             pid = fork();
             if(pid < 0)
             {
+                merror("%s: Fork failed. cause: %d - %s", ARGV0, errno, strerror(errno));
                 merror(FORK_ERROR, ARGV0);
+                sleep(30);
                 continue;
             }
             else if (pid == 0)
