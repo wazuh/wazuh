@@ -187,6 +187,22 @@ int read_sys_dir(char *dir_name, int do_read)
         merror("%s: Invalid directory given.",ARGV0);
         return(-1);
     }
+
+
+    /* Ignoring user-supplied list. */
+    if(rootcheck.ignore)
+    {
+        while(rootcheck.ignore[i])
+        {
+            if(strcmp(dir_name, rootcheck.ignore[i]) == 0)
+            {
+                return(1);
+            }
+            i++;
+        }
+        i = 0;
+    }
+
     
     
     /* Getting the number of nodes. The total number on opendir
