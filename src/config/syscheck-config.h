@@ -43,6 +43,7 @@ typedef struct _config
     int rootcheck;
     int disabled;
     int scan_on_start;
+    int realtime_count;
     
     int time;
     int queue;

@@ -39,6 +39,10 @@ int realtime_start()
     verbose("%s: INFO: Initializing real time file monitoring (not started).", ARGV0);
 
     syscheck.realtime = calloc(1, sizeof(rtfim));
+    if(syscheck.realtime == NULL)
+    {
+        ErrorExit(MEM_ERROR, ARGV0);
+    }
     syscheck.realtime->dirtb = (void *)OSHash_Create();
     syscheck.realtime->fd = -1;
 
@@ -77,10 +81,11 @@ int realtime_adddir(char *dir)
         wd = inotify_add_watch(syscheck.realtime->fd,
                                dir,
                                REALTIME_MONITOR_FLAGS); 
+        merror("XXXX: wd: %d", wd);
         if(wd < 0)
         {
             merror("%s: ERROR: Unable to add directory to real time " 
-                   "monitoring: '%s'.", ARGV0, dir);
+                   "monitoring: '%s'. %d %d", ARGV0, dir, wd, errno);
         }
         else
         {
@@ -221,6 +226,158 @@ int realtime_process()
 
     return(0);
 }
+
+#elif WIN32
+
+typedef struct _win32rtfim
+{
+    HANDLE h;
+    OVERLAPPED overlap;
+
+    char *dir;
+    TCHAR buffer[12288];
+}win32rtfim;
+
+
+int realtime_start()
+{
+    verbose("%s: INFO: Initializing real time file monitoring (not started).", ARGV0);
+
+    syscheck.realtime = calloc(1, sizeof(rtfim));
+    syscheck.realtime->dirtb = (void *)OSHash_Create();
+    syscheck.realtime->fd = -1;
+    syscheck.realtime_count = 1;
+    return(0);
+}
+
+int realtime_adddir(char *dir)
+{
+    char wdchar[32 +1];
+    win32rtfim *rtlocald;
+
+
+    /* Maximum limit for realtime on Windows. */
+    if(syscheck.realtime_count > 256)
+    {
+        merror("%s: ERROR: Unable to add directory to real time "
+               "monitoring: '%s' - Maximum size permitted.", ARGV0, dir);
+        return(0);
+    }
+
+
+    os_calloc(1, sizeof(win32rtfim), rtlocald);
+    
+
+    rtlocald->h = CreateFile(dir,
+                             FILE_LIST_DIRECTORY,
+                             FILE_SHARE_DELETE|FILE_SHARE_READ|FILE_SHARE_WRITE,
+                             NULL,
+                             OPEN_EXISTING,
+                             FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
+                             NULL);
+
+
+    if(rtlocald->h == INVALID_HANDLE_VALUE || 
+       rtlocald->h == NULL) 
+    {
+        free(rtlocald);
+        rtlocald = NULL;
+        merror("%s: ERROR: Unable to add directory to real time "
+               "monitoring: '%s'.", ARGV0, dir);
+        return(0);
+    }
+
+    rtlocald->overlap.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    rtlocald->overlap.Offset = syscheck.realtime_count++;
+
+
+    /* Setting key for hash. */
+    wdchar[32] = '\0';
+    snprintf(wdchar, 32, "%d", rtlocald->overlap.Offset);
+
+
+    if(OSHash_Get(syscheck.realtime->dirtb, wdchar))
+    {
+        merror("%s: ERROR: Entry already in the real time hash: %s", 
+               ARGV0, wdchar);
+        CloseHandle(rtlocald->overlap.hEvent);
+        free(rtlocald);
+        rtlocald = NULL;
+        return(0);
+    }
+
+
+    /* Adding final elements to the hash. */
+    os_strdup(dir, rtlocald->dir);
+
+    OSHash_Add(syscheck.realtime->dirtb, strdup(wdchar), rtlocald);
+}
+
+void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
+{
+    int lcount;
+    size_t offset = 0;
+    char wdchar[32 +1];
+
+    win32rtfim *rtlocald;
+
+    PFILE_NOTIFY_INFORMATION pinfo;
+    TCHAR finalfile[MAX_PATH];
+
+    if(dwBytes == 0)
+    {
+        merror("%s: ERROR: real time call back called, but 0 bytes.", ARGV0);
+        return;
+    }
+
+    if(dwerror != ERROR_SUCCESS)
+    {
+        merror("%s: ERROR: real time call back called, but error is set.", 
+               ARGV0);
+        return;
+    }
+
+
+    /* Getting hash to parse the data. */
+    wdchar[32] = '\0';
+    snprintf(wdchar, 32, "%d", overlap.Offset);
+    rtlocald = OSHash_Get(syscheck.realtime->dirtb, wdchar);
+    if(rtlocald == NULL)
+    {
+        merror("%s: ERROR: real time call back called, but hash is empty.", 
+               ARGV0);
+        return;
+    }
+
+        
+
+    do
+    {
+        pinfo = (PFILE_NOTIFY_INFORMATION) &rtlocald->buffer[offset];
+        offset += pinfo->NextEntryOffset;
+
+        lcount = WideCharToMultiByte(CP_ACP, 0, pinfo->FileName,
+                                     pinfo->FileNameLength / sizeof(WCHAR),
+                                     finalfile, MAX_PATH - 1, NULL, NULL);
+        finalfile[lcount] = TEXT('\0');
+
+        merror("XXXX dir: %d, file: %s\n", rtlocald->dir, finalfile);
+    }while(pinfo->NextEntryOffset != 0);
+
+
+    merror("XXXX completed call back...");
+
+    return;
+}
+
+
+
+int realtime_process()
+{
+}
+
+
+
 
 #else
 int realtime_start()
