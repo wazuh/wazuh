@@ -34,6 +34,7 @@ logcollector/read_djb_multilog.c read_djb_multilog.c
 syscheckd/config.c syscheckd-config.c
 syscheckd/create_db.c create_db.c
 syscheckd/run_check.c run_check.c
+syscheckd/run_realtime.c run_realtime.c
 syscheckd/syscheck.c syscheck.c
 syscheckd/syscheck.h syscheck.h
 syscheckd/win-registry.c win-registry.c

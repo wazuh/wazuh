@@ -453,7 +453,15 @@ int create_db(int delete_db)
     __counter = 0;
     do
     {
-        read_dir(syscheck.dir[i], syscheck.opts[i], CREATE_DB);
+        if(read_dir(syscheck.dir[i], syscheck.opts[i], CREATE_DB) == 0)
+        {
+            #ifdef WIN32
+            if(syscheck.opts[i] & CHECK_REALTIME)
+            {
+                realtime_adddir(syscheck.dir[i]);
+            }
+            #endif
+        }
         i++;
     }while(syscheck.dir[i] != NULL);
 

@@ -34,6 +34,9 @@ typedef struct _rtfim
 {
     int fd;
     void *dirtb;
+    #ifdef WIN32
+    HANDLE evt;
+    #endif
 }rtfim;
 
 typedef struct _config

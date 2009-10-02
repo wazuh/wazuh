@@ -274,7 +274,7 @@ void start_daemon()
     }
 
     
-    #ifdef USEINOTIFY
+    #if defined (USEINOTIFY) || defined (WIN32)
     if(syscheck.realtime && (syscheck.realtime->fd >= 0))
         verbose("%s: INFO: Starting real time file monitoring.", ARGV0);
     #endif
@@ -416,7 +416,7 @@ void start_daemon()
 
 
         #ifdef USEINOTIFY
-        if(syscheck.realtime)
+        if(syscheck.realtime && (syscheck.realtime->fd >= 0))
         {
             selecttime.tv_sec = SYSCHECK_WAIT;
             selecttime.tv_usec = 0;
@@ -424,12 +424,10 @@ void start_daemon()
             /* zero-out the fd_set */
             FD_ZERO (&rfds);
 
+            FD_SET(syscheck.realtime->fd, &rfds);
 
-            if(syscheck.realtime->fd >= 0)
-                FD_SET(syscheck.realtime->fd, &rfds);
-
-            run_now = select (syscheck.realtime->fd + 1, &rfds, 
-                    NULL, NULL, &selecttime);
+            run_now = select(syscheck.realtime->fd + 1, &rfds, 
+                             NULL, NULL, &selecttime);
             if(run_now < 0)
             {
                 merror("%s: ERROR: Select failed (for realtime fim).", ARGV0);
@@ -449,11 +447,34 @@ void start_daemon()
             sleep(SYSCHECK_WAIT);
         }
 
+        #elif WIN32
+        if(syscheck.realtime && (syscheck.realtime->fd >= 0))
+        {
+            run_now = WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE);
+            if(run_now == WAIT_FAILED)
+            {
+                merror("%s: ERROR: WaitForSingleObjectEx failed (for realtime fim).", ARGV0);
+                sleep(SYSCHECK_WAIT);
+            }
+            else if(run_now == WAIT_TIMEOUT)
+            {
+                /* Timeout. */
+                merror("XXXX: timeout....");
+            }
+            else
+            {
+                merror("XXXX: completed properly....");
+            }
+        }
+        else
+        {
+            sleep(SYSCHECK_WAIT);
+        }
+
+
         #else
         sleep(SYSCHECK_WAIT);
         #endif
-
-
     }
 }
 
