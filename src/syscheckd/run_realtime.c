@@ -303,6 +303,32 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
         finalfile[lcount] = TEXT('\0');
 
         merror("XXXX dir: %s, file: %s\n", rtlocald->dir, finalfile);
+
+        if(pinfo->Action == FILE_ACTION_ADDED)
+        {
+            merror("XXXX action FILE_ACTION_ADDED");
+        }
+        else if(pinfo->Action == FILE_ACTION_REMOVED)
+        {
+            merror("XXXX action FILE_ACTION_REMOVED");
+        }
+        else if(pinfo->Action == FILE_ACTION_MODIFIED)
+        {
+            merror("XXXX action FILE_ACTION_MODIFIED");
+        }
+        else if(pinfo->Action == FILE_ACTION_RENAMED_OLD_NAME)
+        {
+            merror("XXXX action FILE_ACTION_RENAMED_OLD_NAME");
+        }
+        else if(pinfo->Action == FILE_ACTION_RENAMED_NEW_NAME)
+        {
+            merror("XXXX action FILE_ACTION_RENAMED_NEW_NAME");
+        }
+        else
+        {
+            merror("XXXX action UNDEF???????????????");
+        }
+
     }while(pinfo->NextEntryOffset != 0);
 
 
