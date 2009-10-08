@@ -456,14 +456,9 @@ void start_daemon()
                 merror("%s: ERROR: WaitForSingleObjectEx failed (for realtime fim).", ARGV0);
                 sleep(SYSCHECK_WAIT);
             }
-            else if(run_now == WAIT_TIMEOUT)
-            {
-                /* Timeout. */
-                merror("XXXX: timeout....");
-            }
             else
             {
-                merror("XXXX: completed properly....");
+                sleep(1);
             }
         }
         else

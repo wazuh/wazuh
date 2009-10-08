@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <errno.h>
 
+
 #ifdef WIN32
 #include <windows.h>
 #include <winsock.h>
@@ -26,8 +27,8 @@
 #define sleep(x) Sleep(x * 1000)
 #define os_calloc(x,y,z) (z = calloc(x,y))?(void)1:ErrorExit(MEM_ERROR, ARGV0)
 #define os_strdup(x,y) (y = strdup(x))?(void)1:ErrorExit(MEM_ERROR, ARGV0)
-
 #endif
+
 
 #include "hash_op.h"
 #include "debug_op.h"
@@ -37,96 +38,12 @@
 
 #ifdef USEINOTIFY
 #include <sys/inotify.h>
+#endif
 
 
-#define REALTIME_MONITOR_FLAGS  IN_MODIFY|IN_ATTRIB|IN_MOVED_TO|IN_DELETE|IN_MOVED_FROM
-#define REALTIME_EVENT_SIZE     (sizeof (struct inotify_event))
-#define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
 
+/** Global functions for all realtime options. **/
 int c_read_file(char *file_name, char *oldsum, char *newsum);
-
-
-
-/* Starts real time monitoring using inotify. */
-int realtime_start()
-{
-    verbose("%s: INFO: Initializing real time file monitoring (not started).", ARGV0);
-
-    syscheck.realtime = calloc(1, sizeof(rtfim));
-    if(syscheck.realtime == NULL)
-    {
-        ErrorExit(MEM_ERROR, ARGV0);
-    }
-    syscheck.realtime->dirtb = (void *)OSHash_Create();
-    syscheck.realtime->fd = -1;
-
-    #ifdef USEINOTIFY
-    syscheck.realtime->fd = inotify_init();
-    if(syscheck.realtime->fd < 0)
-    {
-        merror("%s: ERROR: Unable to initialize inotify.", ARGV0);
-        return(-1);
-    }
-    #endif    
-
-    return(1);
-}
-
-
-
-/* Adds a directory to real time checking. */
-int realtime_adddir(char *dir)
-{
-    if(!syscheck.realtime)
-    {
-        realtime_start();
-    }
-
-
-    /* Checking if it is ready to use. */
-    if(syscheck.realtime->fd < 0)
-    {
-        return(-1);
-    }
-    else
-    {
-        int wd = 0;
-
-        wd = inotify_add_watch(syscheck.realtime->fd,
-                               dir,
-                               REALTIME_MONITOR_FLAGS); 
-        merror("XXXX: wd: %d", wd);
-        if(wd < 0)
-        {
-            merror("%s: ERROR: Unable to add directory to real time " 
-                   "monitoring: '%s'. %d %d", ARGV0, dir, wd, errno);
-        }
-        else
-        {
-            char wdchar[32 +1];
-            wdchar[32] = '\0';
-            snprintf(wdchar, 32, "%d", wd);
-
-            /* Entry not present. */
-            if(!OSHash_Get(syscheck.realtime->dirtb, wdchar))
-            {
-                char *ndir;
-
-                ndir = strdup(dir);
-                if(ndir == NULL)
-                {
-                    ErrorExit("%s: ERROR: Out of memory. Exiting.", ARGV0);
-                }
-
-                OSHash_Add(syscheck.realtime->dirtb, strdup(wdchar), ndir);
-                debug1("%s: DEBUG: Directory added for real time monitoring: "
-                       "'%s'.", ARGV0, ndir);
-            }
-        }
-    }
-
-    return(1);
-}
 
 
 /* Checking sum of the realtime file being monitored. */
@@ -134,6 +51,7 @@ int realtime_checksumfile(char *file_name)
 {
     char buf[MAX_LINE +2];
     buf[MAX_LINE +1] = '\0';
+
 
     fseek(syscheck.fp, 0, SEEK_SET);
     while(fgets(buf, MAX_LINE, syscheck.fp) != NULL)
@@ -191,9 +109,103 @@ int realtime_checksumfile(char *file_name)
         }
     }
 
+
     /* Adding entry if not in there. */
     fseek(syscheck.fp, 0, SEEK_END);
     return(0);
+}
+
+
+
+
+#ifdef USEINOTIFY
+#include <sys/inotify.h>
+
+
+#define REALTIME_MONITOR_FLAGS  IN_MODIFY|IN_ATTRIB|IN_MOVED_TO|IN_DELETE|IN_MOVED_FROM
+#define REALTIME_EVENT_SIZE     (sizeof (struct inotify_event))
+#define REALTIME_EVENT_BUFFER   (2048 * (REALTIME_EVENT_SIZE + 16))
+
+
+
+/* Starts real time monitoring using inotify. */
+int realtime_start()
+{
+    verbose("%s: INFO: Initializing real time file monitoring (not started).", ARGV0);
+
+    syscheck.realtime = calloc(1, sizeof(rtfim));
+    if(syscheck.realtime == NULL)
+    {
+        ErrorExit(MEM_ERROR, ARGV0);
+    }
+    syscheck.realtime->dirtb = (void *)OSHash_Create();
+    syscheck.realtime->fd = -1;
+
+    #ifdef USEINOTIFY
+    syscheck.realtime->fd = inotify_init();
+    if(syscheck.realtime->fd < 0)
+    {
+        merror("%s: ERROR: Unable to initialize inotify.", ARGV0);
+        return(-1);
+    }
+    #endif    
+
+    return(1);
+}
+
+
+
+/* Adds a directory to real time checking. */
+int realtime_adddir(char *dir)
+{
+    if(!syscheck.realtime)
+    {
+        realtime_start();
+    }
+
+
+    /* Checking if it is ready to use. */
+    if(syscheck.realtime->fd < 0)
+    {
+        return(-1);
+    }
+    else
+    {
+        int wd = 0;
+
+        wd = inotify_add_watch(syscheck.realtime->fd,
+                               dir,
+                               REALTIME_MONITOR_FLAGS); 
+        if(wd < 0)
+        {
+            merror("%s: ERROR: Unable to add directory to real time " 
+                   "monitoring: '%s'. %d %d", ARGV0, dir, wd, errno);
+        }
+        else
+        {
+            char wdchar[32 +1];
+            wdchar[32] = '\0';
+            snprintf(wdchar, 32, "%d", wd);
+
+            /* Entry not present. */
+            if(!OSHash_Get(syscheck.realtime->dirtb, wdchar))
+            {
+                char *ndir;
+
+                ndir = strdup(dir);
+                if(ndir == NULL)
+                {
+                    ErrorExit("%s: ERROR: Out of memory. Exiting.", ARGV0);
+                }
+
+                OSHash_Add(syscheck.realtime->dirtb, strdup(wdchar), ndir);
+                debug1("%s: DEBUG: Directory added for real time monitoring: "
+                       "'%s'.", ARGV0, ndir);
+            }
+        }
+    }
+
+    return(1);
 }
 
 
@@ -241,8 +253,9 @@ int realtime_process()
     return(0);
 }
 
-#elif WIN32
 
+
+#elif WIN32
 typedef struct _win32rtfim
 {
     HANDLE h;
@@ -258,7 +271,10 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 {
     int lcount;
     size_t offset = 0;
+
+    char *ptfile;
     char wdchar[32 +1];
+    char final_path[MAX_LINE +1];
 
     win32rtfim *rtlocald;
 
@@ -302,8 +318,26 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
                                      finalfile, MAX_PATH - 1, NULL, NULL);
         finalfile[lcount] = TEXT('\0');
 
-        merror("XXXX dir: %s, file: %s\n", rtlocald->dir, finalfile);
 
+        /* Change forward slashes to backslashes on finalfile. */
+        ptfile = strchr(finalfile, '\\');
+        while(ptfile)
+        {
+            *ptfile = '/';
+            ptfile++;
+
+            ptfile = strchr(ptfile, '\\');
+        }
+
+        final_path[MAX_LINE] = '\0';
+        snprintf(final_path, MAX_LINE, "%s/%s", rtlocald->dir, finalfile);
+
+
+        /* Checking the change. */
+        realtime_checksumfile(final_path);
+
+
+        /*
         if(pinfo->Action == FILE_ACTION_ADDED)
         {
             merror("XXXX action FILE_ACTION_ADDED");
@@ -328,13 +362,12 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
         {
             merror("XXXX action UNDEF???????????????");
         }
+        */
 
     }while(pinfo->NextEntryOffset != 0);
 
 
-    merror("XXXX completed call back...");
     realtime_win32read(rtlocald);
-    merror("XXXX completed call back 2...");
 
 
     return;
@@ -380,8 +413,6 @@ int realtime_adddir(char *dir)
     char wdchar[32 +1];
     win32rtfim *rtlocald;
 
-
-    merror("XXXXXXXXXXXXXXX Adding: %s to real time monitoring...", dir);
 
     if(!syscheck.realtime)
     {
@@ -444,6 +475,7 @@ int realtime_adddir(char *dir)
     os_strdup(dir, rtlocald->dir);
 
     OSHash_Add(syscheck.realtime->dirtb, strdup(wdchar), rtlocald);
+
 
     /* Adding directory to be monitored. */
     realtime_win32read(rtlocald);

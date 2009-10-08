@@ -320,6 +320,9 @@ int main(int argc, char **argv)
             #ifdef USEINOTIFY
             verbose("%s: INFO: Directory set for real time monitoring: "
                     "'%s'.", ARGV0, syscheck.dir[r]);
+            #elif WIN32
+            verbose("%s: INFO: Directory set for real time monitoring: "
+                    "'%s'.", ARGV0, syscheck.dir[r]);
             #else
             verbose("%s: WARN: Ignoring flag for real time monitoring on "
                     "directory: '%s'.", ARGV0, syscheck.dir[r]);
