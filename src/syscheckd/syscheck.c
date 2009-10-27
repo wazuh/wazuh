@@ -33,6 +33,8 @@
 #define SYSCHECK_DB     SYSCHECK_DIR "/syschecklocal.db"
 #define SYS_WIN_DB      "syscheck/syschecklocal.db"
 
+int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg);
+
 
 
 /* void read_internal()
@@ -74,8 +76,18 @@ int Start_win32_Syscheck()
     /* Disabled */
     else if((r == 1) || (syscheck.disabled == 1))
     {
+        if(!syscheck.dir)
+        {
+            dump_syscheck_entry(&syscheck, "", 0, 0);
+        }
         syscheck.dir[0] = NULL;
+
+        if(!syscheck.registry)
+        {
+            dump_syscheck_entry(&syscheck, "", 0, 1);
+        }
         syscheck.registry[0] = NULL;
+
         merror("%s: WARN: Syscheck disabled.", ARGV0);
     }
 
@@ -207,6 +219,10 @@ int main(int argc, char **argv)
     }
     else if((r == 1) || (syscheck.disabled == 1))
     {
+        if(!syscheck.dir)
+        {
+            dump_syscheck_entry(&syscheck, "", 0, 0);
+        }
         syscheck.dir[0] = NULL;
         if(!test_config)
         {
