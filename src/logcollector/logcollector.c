@@ -61,6 +61,7 @@ void LogCollectorStart()
         if(logff[i].file == NULL)
             break;
 
+
         /* Removing duplicate entries. */
         for(r = 0; r < i; r++)
         {

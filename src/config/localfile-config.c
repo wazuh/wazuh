@@ -85,6 +85,28 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         }
         else if(strcmp(node[i]->element,xml_localfile_location) == 0)
         {
+
+            #ifdef WIN32
+            /* Expand variables on Windows. */
+            if(strchr(node[i]->content, '%'))
+            {
+                int expandreturn = 0;   
+                char newfile[OS_MAXSTR +1];
+
+                newfile[OS_MAXSTR] = '\0';
+                expandreturn = ExpandEnvironmentStrings(node[i]->content, 
+                                                        newfile, OS_MAXSTR);
+
+                if((expandreturn > 0) && (expandreturn < OS_MAXSTR))
+                {
+                    free(node[i]->content);
+
+                    os_strdup(newfile, node[i]->content);
+                }
+            }   
+            #endif
+
+
             /* This is a glob*.
              * We will call this file multiple times until
              * there is no one else available.
