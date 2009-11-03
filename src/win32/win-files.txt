@@ -31,6 +31,7 @@ logcollector/read_mysql_log.c read_mysql_log.c
 logcollector/read_mssql_log.c read_mssql_log.c
 logcollector/read_postgresql_log.c read_postgresql_log.c
 logcollector/read_djb_multilog.c read_djb_multilog.c
+logcollector/read_command.c read_command.c
 syscheckd/config.c syscheckd-config.c
 syscheckd/create_db.c create_db.c
 syscheckd/run_check.c run_check.c
