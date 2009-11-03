@@ -70,6 +70,7 @@ void LogCollectorStart()
                 merror("%s: WARN: Duplicated log file given: '%s'.", 
                        ARGV0, logff[i].file);
                 logff[i].file = NULL;
+                logff[i].command = NULL;
                 logff[i].fp = NULL;
 
                 break;
@@ -90,11 +91,31 @@ void LogCollectorStart()
             
             #endif
             logff[i].file = NULL;
+            logff[i].command = NULL;
             logff[i].fp = NULL;
+        }
+
+        else if(strcmp(logff[i].logformat, "command") == 0)
+        {
+            logff[i].file = NULL;
+            logff[i].fp = NULL;
+
+            if(logff[i].command)
+            {
+                logff[i].read = (void *)read_command;
+            }
+            else
+            {
+                merror("%s: ERROR: Missing command argument. Ignoring it.", 
+                       ARGV0);
+            }
         }
         
         else
         {
+            logff[i].command = NULL;
+
+
             /* Initializing the files */    
             if(logff[i].ffile)
             {
@@ -220,7 +241,14 @@ void LogCollectorStart()
         for(i = 0; i <= max_file; i++)
         {
             if(!logff[i].fp)
+            {
+                /* Run the command. */
+                if((f_check == VCHECK_FILES) && logff[i].command)
+                {
+                    logff[i].read(i, &r, 0);
+                }
                 continue;
+            }
 
             /* Windows with IIS logs is very strange.
              * For some reason it always returns 0 (not EOF)

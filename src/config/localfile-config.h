@@ -46,6 +46,7 @@ typedef struct _logreader
     char *file;
     char *logformat;
     char *djb_program_name;
+    char *command;
 
     void (*read)(int i, int *rc, int drop_it);
 

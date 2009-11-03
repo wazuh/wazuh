@@ -29,7 +29,9 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
     /* XML Definitions */
     char *xml_localfile_location = "location";
+    char *xml_localfile_command = "command";
     char *xml_localfile_logformat = "log_format";
+
 
     logreader *logf;
     logreader_config *log_config;
@@ -43,8 +45,10 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         os_calloc(2, sizeof(logreader), log_config->config);
         logf = log_config->config;
         logf[0].file = NULL;
+        logf[0].command = NULL;
         logf[0].logformat = NULL;
         logf[1].file = NULL;
+        logf[1].command = NULL;
         logf[1].logformat = NULL;
     }
     else
@@ -59,10 +63,12 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         os_realloc(logf, (pl +2)*sizeof(logreader), log_config->config);
         logf = log_config->config;
         logf[pl +1].file = NULL;
+        logf[pl +1].command = NULL;
         logf[pl +1].logformat = NULL;
     }
     
     logf[pl].file = NULL;
+    logf[pl].command = NULL;
     logf[pl].logformat = NULL;
     logf[pl].fp = NULL;
     logf[pl].ffile = NULL;
@@ -83,9 +89,13 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             merror(XML_VALUENULL, ARGV0, node[i]->element);
             return(OS_INVALID);
         }
+        else if(strcmp(node[i]->element,xml_localfile_command) == 0)
+        {
+            os_strdup(node[i]->content, logf[pl].file);
+            logf[pl].command = logf[pl].file;
+        }
         else if(strcmp(node[i]->element,xml_localfile_location) == 0)
         {
-
             #ifdef WIN32
             /* Expand variables on Windows. */
             if(strchr(node[i]->content, '%'))
@@ -265,6 +275,9 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             else if(strcmp(logf[pl].logformat, "syslog-pipe") == 0)
             {
             }
+            else if(strcmp(logf[pl].logformat, "command") == 0)
+            {
+            }
             else if(strcmp(logf[pl].logformat, EVENTLOG) == 0)
             {
             }
@@ -282,6 +295,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
         i++;
     }
+
 
     /* Validating glob entries */
     if(glob_set)
@@ -351,6 +365,16 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
              return(0);
          }
     }
+
+    if(strcmp(logf[pl].logformat, "command") == 0)
+    {
+        if(!logf[pl].command)
+        {
+            merror("%s: ERROR: Missing 'command' argument. "
+                   "This option will be ignored.", ARGV0);
+        }
+    }
+
     return(0);
 }
 
