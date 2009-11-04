@@ -226,12 +226,14 @@ int main(int argc, char **argv)
     {
         if(!syscheck.dir)
         {
-            merror(SK_NO_DIR, ARGV0);
+            if(!test_config)
+                merror(SK_NO_DIR, ARGV0);
             dump_syscheck_entry(&syscheck, "", 0, 0);
         }
         else if(!syscheck.dir[0])
         {
-            merror(SK_NO_DIR, ARGV0);
+            if(!test_config)
+                merror(SK_NO_DIR, ARGV0);
         }
         syscheck.dir[0] = NULL;
         if(!test_config)
