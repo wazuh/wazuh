@@ -36,7 +36,7 @@ int GlobalConf(char * cfgfile)
 
     /* Default values */
     Config.logall = 0;
-    Config.stats = 8;
+    Config.stats = 4;
     Config.integrity = 8;
     Config.rootcheck = 8;
     Config.hostinfo = 8;

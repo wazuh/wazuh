@@ -52,7 +52,6 @@ int Read_Syscheck_Config(char * cfgfile)
     /* We must have at least one directory to check */
     if(!syscheck.dir || syscheck.dir[0] == NULL)
     {
-        merror(SK_NO_DIR, ARGV0);
         return(1);
     }
                                         

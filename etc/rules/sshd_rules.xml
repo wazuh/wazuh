@@ -69,8 +69,8 @@
   <rule id="5709" level="0">
     <if_sid>5700</if_sid>
     <match>error: Could not get shadow information for NOUSER|</match>
-    <match>fatal: Read from socket failed: </match>
-    <description>Useless SSHD message without an user/ip.</description>
+    <match>fatal: Read from socket failed: |error: ssh_msg_send: write</match>
+    <description>Useless SSHD message without an user/ip and context.</description>
   </rule>
   
   <rule id="5710" level="5">

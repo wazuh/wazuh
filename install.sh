@@ -82,7 +82,6 @@ Install()
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         make all
-    
         if [ $? != 0 ]; then
             cd ../
             catError "0x5-build"
@@ -90,6 +89,10 @@ Install()
         
         # Building everything    
         make build
+        if [ $? != 0 ]; then
+            cd ../
+            catError "0x5-build"
+        fi    
     fi
     
     # If update, stop ossec

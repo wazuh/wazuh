@@ -44,7 +44,7 @@ void *read_command(int pos, int *rc, int drop_it)
 
 
     snprintf(str, 256, "ossec: output: '%s': ", logff[pos].command);
-    cmd_size = strlen(str) + 1;
+    cmd_size = strlen(str);
 
 
     while(fgets(str + cmd_size, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output) != NULL)

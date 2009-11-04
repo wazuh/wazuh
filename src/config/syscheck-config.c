@@ -96,7 +96,6 @@ int read_reg(config *syscheck, char *entries)
     /* entry can not be null */
     if(entry == NULL)
     {
-        merror(SK_NO_DIR, ARGV0);
         return(0);
     }
 
@@ -188,7 +187,6 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
     /* Dir can not be null */
     if(dir == NULL)
     {
-        merror(SK_NO_DIR, ARGV0);
         return(0);
     }
 
