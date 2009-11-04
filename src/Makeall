@@ -111,7 +111,7 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ];
     fi
         
 
-    if [ "X$OS" = "XFreeBSD" ]; then
+    if [ "X$OS" = "XFreeBSD" -o "X$OS" = "XDragonFly" ]; then
         echo "TEXTRA=-pthread" >> Config.OS
     else
         echo "TEXTRA=-lpthread" >> Config.OS

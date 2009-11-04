@@ -43,7 +43,7 @@ fi
 
 
 # Creating groups/users
-if [ "$UNAME" = "FreeBSD" ]; then
+if [ "$UNAME" = "FreeBSD" -o "$UNAME" = "DragonFly" ]; then
     grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
     /usr/sbin/pw groupadd ${GROUP}

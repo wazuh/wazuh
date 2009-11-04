@@ -96,7 +96,7 @@ runInit()
         return 0;    
     fi    
 
-    if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" ]; then
+    if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
         # Checking for the presence of ossec-control on rc.local
         grep ossec-control /etc/rc.local > /dev/null 2>&1
         if [ $? != 0 ]; then
