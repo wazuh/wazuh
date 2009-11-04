@@ -43,6 +43,12 @@
     <description>Wordpress plugin deactivated.</description>
   </rule> 
 
+  <rule id="9505" level="7">
+    <if_sid>9500</if_sid>
+    <match>Warning: Comment flood attempt</match>
+    <description>Wordpress Comment Flood Attempt.</description>
+  </rule>
+
   <rule id="9510" level="7">
     <if_sid>9500</if_sid>
     <match>Warning: IDS:</match>

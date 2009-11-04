@@ -115,6 +115,28 @@
     <description>Windows Adware/Spyware application found.</description>
     <group>rootcheck,</group>
   </rule>
+
+  <!-- Process monitoring rules -->
+  <rule id="530" level="0">
+    <if_sid>500</if_sid>
+    <match>^ossec: output: </match>
+    <description>OSSEC process monitoring rules.</description>
+    <group>process_monitor,</group>
+  </rule>
+
+  <rule id="531" level="7" ignore="7200">
+    <if_sid>530</if_sid>
+    <match>ossec: output: 'df -h': /dev/</match>
+    <regex>100%</regex>
+    <description>Partition usage reached 100% (disk space monitor).</description> 
+    <group>low_diskspace,</group>
+  </rule>
+
+ <rule id="532" level="0">
+    <if_sid>531</if_sid>
+    <match>cdrom|/media|usb|/mount|floppy|dvd</match>
+    <description>Ignoring external medias.</description> 
+  </rule>
   
   <rule id="550" level="7">
     <category>ossec</category>

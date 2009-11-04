@@ -360,29 +360,30 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
 
         /* Checking the number of changes */
-        if(p >= 1)
-        {
-            if(p >= 2)
-            {
-                if((p >= 3) && Config.syscheck_auto_ignore)
-                {
-                    /* Ignoring it.. */
-                    return(0);
-                }
-
-                sdb.syscheck_dec->id = sdb.id3;
-
-            }
-            else
-            {
-                sdb.syscheck_dec->id = sdb.id2;
-            }
-        }
-
-        /* First change */ 
-        else
+        if(!Config.syscheck_auto_ignore)
         {
             sdb.syscheck_dec->id = sdb.id1;
+        }
+        else
+        {
+            switch(p)
+            {
+                case 0:
+                sdb.syscheck_dec->id = sdb.id1;
+                break;
+
+                case 1:
+                sdb.syscheck_dec->id = sdb.id2;
+                break;
+
+                case 2:
+                sdb.syscheck_dec->id = sdb.id3;
+                break;
+
+                default:
+                return(0);
+                break;
+            }
         }
 
 

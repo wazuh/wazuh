@@ -1566,7 +1566,7 @@ int getattributes(char **attributes, char **values,
         {
             if(OS_StrIsNum(values[k]))
             {
-                sscanf(values[k],"%4d",ignore_time);
+                sscanf(values[k],"%6d",ignore_time);
             }
             else
             {
