@@ -50,7 +50,7 @@
   <rule id="5521" level="0">
     <if_sid>5501</if_sid>
     <program_name>^CRON$</program_name>
-    <match>^pam_unix(cron:session): session opened for user root by (uid=0)$</match>
+    <match>^pam_unix(cron:session): session opened for user </match>
     <description>Ignoring Annoying Ubuntu/debian cron login events.</description>
   </rule>
   
