@@ -168,6 +168,13 @@ pstatus()
     ls ${DIR}/var/run/${pfile}*.pid > /dev/null 2>&1
     if [ $? = 0 ]; then
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
+            ps -p $j |grep ${pfile} >/dev/null 2>&1
+            if [ ! $? = 0 ]; then
+                echo "${pfile}: Process $j not used by ossec, removing .."
+                rm ${DIR}/var/run/${pfile}-$j.pid
+                continue;
+            fi
+                
             kill -0 $j > /dev/null 2>&1
             if [ $? = 0 ]; then
                 return 1;
@@ -187,6 +194,14 @@ stopa()
         pstatus ${i};
         if [ $? = 1 ]; then
             echo "Killing ${i} .. ";
+            for j in `cat ${DIR}/var/run/${i}*.pid`; do
+                ps -p $j |grep ${i} >/dev/null 2>&1
+                if [ ! $? = 0 ]; then
+                    echo "${i}: Process $j not used by ossec, removing it.."
+                    rm ${DIR}/var/run/${i}-$j.pid 
+                fi    
+            done    
+            
             kill `cat ${DIR}/var/run/${i}*.pid`;
         else
             echo "${i} not running .."; 
