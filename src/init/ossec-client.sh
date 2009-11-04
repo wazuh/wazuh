@@ -35,8 +35,8 @@ checkpid()
         for j in `cat ${DIR}/var/run/${i}*.pid 2>/dev/null`; do
             ps -p $j |grep ossec >/dev/null 2>&1
             if [ ! $? = 0 ]; then
-                echo "Deleting PID file '${DIR}/var/run/${i}*.pid' not used..."
-                rm ${DIR}/var/run/${i}*.pid
+                echo "Deleting PID file '${DIR}/var/run/${i}-${j}.pid' not used..."
+                rm ${DIR}/var/run/${i}-${j}.pid
             fi    
         done    
     done    
