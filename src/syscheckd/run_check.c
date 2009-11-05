@@ -90,8 +90,16 @@ void send_sk_db()
 
 
     /* Sending scan start message */
-    merror("%s: INFO: Starting syscheck scan (forwarding database).", ARGV0);
-    send_rootcheck_msg("Starting syscheck scan.");
+    if(syscheck.dir[0])
+    {
+        merror("%s: INFO: Starting syscheck scan (forwarding database).", ARGV0);
+        send_rootcheck_msg("Starting syscheck scan.");
+    }
+    else
+    {
+        sleep(syscheck.tsleep +10);
+        return;
+    }
         
 
 
@@ -134,8 +142,12 @@ void send_sk_db()
 
     /* Sending scan ending message */
     sleep(syscheck.tsleep +10);
-    merror("%s: INFO: Ending syscheck scan (forwarding database).", ARGV0);
-    send_rootcheck_msg("Ending syscheck scan.");
+
+    if(syscheck.dir[0])
+    {
+        merror("%s: INFO: Ending syscheck scan (forwarding database).", ARGV0);
+        send_rootcheck_msg("Ending syscheck scan.");
+    }
 }
      
 
@@ -377,8 +389,11 @@ void start_daemon()
             else
             {
                 /* Sending scan start message */
-                merror("%s: INFO: Starting syscheck scan.", ARGV0);
-                send_rootcheck_msg("Starting syscheck scan.");
+                if(syscheck.dir[0])
+                {
+                    merror("%s: INFO: Starting syscheck scan.", ARGV0);
+                    send_rootcheck_msg("Starting syscheck scan.");
+                }
 
 
                 #ifdef WIN32
@@ -401,8 +416,11 @@ void start_daemon()
             
             /* Sending scan ending message */
             sleep(syscheck.tsleep + 20);
-            merror("%s: INFO: Ending syscheck scan.", ARGV0);
-            send_rootcheck_msg("Ending syscheck scan.");
+            if(syscheck.dir[0])
+            {
+                merror("%s: INFO: Ending syscheck scan.", ARGV0);
+                send_rootcheck_msg("Ending syscheck scan.");
+            }
                 
 
 
