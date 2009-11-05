@@ -61,7 +61,7 @@ void *read_command(int pos, int *rc, int drop_it)
         /* Sending message to queue */
         if(drop_it == 0)
         {
-            if(SendMSG(logr_queue,str,logff[pos].file,
+            if(SendMSG(logr_queue,str,logff[pos].command,
                         LOCALFILE_MQ) < 0)
             {
                 merror(QUEUE_SEND, ARGV0);
