@@ -912,7 +912,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                     }
                     else
                     {
-                        currently_rule->time_ignored = 0;
+                        currently_rule->time_ignored = lf->time;
                     }
                 }
 
