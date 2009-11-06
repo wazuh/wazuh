@@ -345,6 +345,7 @@
     <description>Windows User Logoff.</description>
   </rule>
 
+
   <!-- Ignore Login events, type 5, from Advapi for:
     -  LOCAL SERVICE and NETWORK SERVICE.
     -->
@@ -381,6 +382,23 @@
     <info>http://www.ultimatewindowssecurity.com/kerberrors.html</info>
     <group>win_authentication_failed,attacks,</group>
   </rule>
+
+
+  <!-- MS SQL rules -->
+  <rule id="18180" level="5">
+    <if_sid>18105</if_sid>
+    <id>^18456</id>
+    <group>win_authentication_failed,</group>
+    <description>MS SQL Server Logon Failure.</description>
+  </rule>
+
+  <rule id="18181" level="3">
+    <if_sid>18104</if_sid>
+    <id>^18454|^18453</id>
+    <description>MS SQL Server Logon Success.</description>
+    <group>authentication_success,</group>
+  </rule>
+
   
   
   <!-- Composite rules -->
