@@ -240,7 +240,11 @@ void OS_PreludeLog(Eventinfo *lf)
     add_idmef_object(idmef, "alert.source(0).Node.Address(0).address", 
                             lf->srcip);
     add_idmef_object(idmef, "alert.source(0).Service.port", lf->srcport);
-    add_idmef_object(idmef, "alert.source(0).User.UserId(0).name", lf->srcuser);
+
+    if(lf->srcuser)
+    {
+        add_idmef_object(idmef, "alert.source(0).User.UserId(0).name", lf->srcuser);
+    }
 
 
     /* Setting target */
@@ -275,7 +279,12 @@ void OS_PreludeLog(Eventinfo *lf)
     }
     add_idmef_object(idmef, "alert.target(0).Service.name", lf->hostname);
     add_idmef_object(idmef, "alert.target(0).Service.port", lf->dstport);
-    add_idmef_object(idmef, "alert.target(0).User.UserId(0).name", lf->dstuser);
+
+    if(lf->dstuser)
+    {
+        add_idmef_object(idmef, "alert.target(0).User.category", "2");
+        add_idmef_object(idmef, "alert.target(0).User.UserId(0).name", lf->dstuser);
+    }
 
 
     /* Setting source file. */

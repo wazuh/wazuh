@@ -77,20 +77,22 @@
     <if_sid>5700</if_sid>
     <match>illegal user|invalid user</match>
     <description>Attempt to login using a non-existent user</description>
-    <group>invalid_login,</group>
+    <group>invalid_login,authentication_failed,</group>
   </rule>
 
   <rule id="5711" level="0">
     <if_sid>5700</if_sid>
     <match>authentication failure; logname= uid=0 euid=0 tty=ssh|</match>
-    <match>input_userauth_request: invalid user</match>
-    <description>Useless SSHD message without a user/ip.</description>
+    <match>input_userauth_request: invalid user|</match>
+    <match>PAM: User not known to the underlying authentication module for illegal user</match>
+    <description>Useless/Duplicated SSHD message without a user/ip.</description>
   </rule>
 
   <rule id="5712" level="10" frequency="6" timeframe="120" ignore="60">
     <if_matched_sid>5710</if_matched_sid>
     <description>SSHD brute force trying to get access to </description>
     <description>the system.</description>
+    <same_source_ip />
     <group>authentication_failures,</group>
   </rule>
 
