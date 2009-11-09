@@ -589,11 +589,6 @@
   <program_name>^dovecot</program_name>
 </decoder>
 
-<decoder name="dovecot">
-  <prematch>^dovecot: \w\w\w \d\d \d\d:\d\d:\d\d </prematch>
-  <regex offset="after_prematch">^Info: |Warn: |Err: |Crit: </regex>
-</decoder>
-
 <decoder name="dovecot-success">
   <parent>dovecot</parent>
   <prematch offset="after_parent">^\w\w\w\w-login: Login: </prematch>
@@ -607,16 +602,6 @@
   <regex offset="after_prematch"> user=\p\S+>, method=\w+, rip=(\S+), lip=\S+</regex>
   <order>srcip</order>
 </decoder>
-
-<!--
-<decoder name="dovecot-fail">
-  <parent>dovecot</parent>
-  <prematch offset="after_parent">^auth\S+: </prematch>
-  <regex offset="after_prematch">^\S+\((\S+),::ffff:(\d+.\d+.\d+.\d+)\):|</regex>
-  <regex>^\S+\((\S+),(\d+.\d+.\d+.\d+)\)</regex>
-  <order>user, srcip</order>
-</decoder>
--->
 
 <decoder name="dovecot-disconnect">
   <parent>dovecot</parent>
