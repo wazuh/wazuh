@@ -18,7 +18,7 @@
 
 int main(int argc, char **argv)
 {
-    int c, test_config = 0;
+    int c, test_config = 0, run_foreground = 0;
     int uid=0,gid=0;
     char *dir  = DEFAULTDIR;
     char *user = USER;
@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
         
 
-    while((c = getopt(argc, argv, "Vdhtu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1){
         switch(c){
             case 'V':
                 print_version();
@@ -41,6 +41,9 @@ int main(int argc, char **argv)
             case 'd':
                 nowDebug();
                 break;
+            case 'f':
+                run_foreground = 1;
+            break;
             case 'u':
                 if(!optarg)
                     ErrorExit("%s: -u needs an argument",ARGV0);
@@ -100,8 +103,11 @@ int main(int argc, char **argv)
 
         
     /* Going on daemon mode */
-    nowDaemon();
-    goDaemonLight();
+    if(!run_foreground) 
+    {
+        nowDaemon();
+        goDaemonLight();
+    }
     chdir(dir);
 
     

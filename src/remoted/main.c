@@ -19,7 +19,7 @@ int main(int argc, char **argv)
 {
     int i = 0,c = 0;
     int uid = 0, gid = 0;
-    int test_config = 0;
+    int test_config = 0,run_foreground = 0;
     
     char *cfg = DEFAULTCPATH;
     char *dir = DEFAULTDIR;
@@ -31,7 +31,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
     
-    while((c = getopt(argc, argv, "Vdthu:g:c:D:")) != -1){
+    while((c = getopt(argc, argv, "Vdthfu:g:c:D:")) != -1){
         switch(c){
             case 'V':
                 print_version();
@@ -41,6 +41,9 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                break;
+            case 'f':
+                run_foreground = 1;
                 break;
             case 'u':
                 if(!optarg)
@@ -93,9 +96,11 @@ int main(int argc, char **argv)
     i = getpid();
 
 
-    /* Going on daemon */
-    nowDaemon();
-    goDaemon();
+    if(!run_foreground) 
+    {
+        nowDaemon();
+        goDaemon();
+    }
 
     
     /* Setting new group */

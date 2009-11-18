@@ -71,7 +71,7 @@ void execd_shutdown()
 int main(int argc, char **argv)
 {
     int c;
-    int test_config = 0;
+    int test_config = 0,run_foreground = 0;
     int gid = 0,m_queue = 0;
 
     char *dir  = DEFAULTDIR;
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
         
 
-    while((c = getopt(argc, argv, "Vtdhu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vtdhfu:g:D:c:")) != -1){
         switch(c){
             case 'V':
                 print_version();
@@ -94,6 +94,9 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                break;
+            case 'f':
+                run_foreground = 1;
                 break;
             case 'g':
                 if(!optarg)
@@ -148,9 +151,12 @@ int main(int argc, char **argv)
     StartSIG2(ARGV0, execd_shutdown);
 
     
-    /* Going daemon */
-    nowDaemon();
-    goDaemon();
+    if (!run_foreground) 
+    {
+        /* Going daemon */
+        nowDaemon();
+        goDaemon();
+    } 
 
 
     /* Active response disabled */

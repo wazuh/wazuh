@@ -30,7 +30,7 @@ void OS_Run(MailConfig *mail);
 
 int main(int argc, char **argv)
 {
-    int c, test_config = 0;
+    int c, test_config = 0,run_foreground = 0;
     int uid = 0,gid = 0;
     char *dir  = DEFAULTDIR;
     char *user = MAILUSER;
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
         
 
-    while((c = getopt(argc, argv, "Vdhtu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1){
         switch(c){
             case 'V':
                 print_version();
@@ -55,6 +55,9 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                break;
+            case 'f':
+                run_foreground = 1;
                 break;
             case 'u':
                 if(!optarg)
@@ -121,9 +124,11 @@ int main(int argc, char **argv)
         exit(0);
 
         
-    /* Going on daemon mode */
-    nowDaemon();
-    goDaemon();
+    if(!run_foreground) 
+    {
+        nowDaemon();
+        goDaemon();
+    }
 
     
     /* Privilege separation */	

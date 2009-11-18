@@ -128,7 +128,7 @@ int main(int argc, char **argv)
 int main_analysisd(int argc, char **argv)
 #endif
 {
-    int c = 0, m_queue = 0, test_config = 0;
+    int c = 0, m_queue = 0, test_config = 0,run_foreground = 0;
     char *dir = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
@@ -148,7 +148,7 @@ int main_analysisd(int argc, char **argv)
     hourly_syscheck = 0;
     hourly_firewall = 0;
 
-    while((c = getopt(argc, argv, "Vtdhu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vtdhfu:g:D:c:")) != -1){
         switch(c){
 	    case 'V':
 		print_version();
@@ -158,6 +158,9 @@ int main_analysisd(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                break;
+            case 'f':
+                run_foreground = 1;
                 break;
             case 'u':
                 if(!optarg)
@@ -246,7 +249,7 @@ int main_analysisd(int argc, char **argv)
     }
     
     /* going on Daemon mode */
-    if(!test_config)
+    if(!test_config || !run_foreground)
     {
         nowDaemon();
         goDaemon();

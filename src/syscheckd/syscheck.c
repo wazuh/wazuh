@@ -166,7 +166,7 @@ int Start_win32_Syscheck()
 int main(int argc, char **argv)
 {
     int c,r;
-    int test_config = 0;
+    int test_config = 0,run_foreground = 0;
     
     char *cfg = DEFAULTCPATH;
     
@@ -179,7 +179,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
         
     
-    while((c = getopt(argc, argv, "VtdhD:c:")) != -1)
+    while((c = getopt(argc, argv, "VtdhfD:c:")) != -1)
     {
         switch(c)
         {
@@ -191,6 +191,9 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                break;
+            case 'f':
+                run_foreground = 1;
                 break;
             case 'D':
                 if(!optarg)
@@ -283,13 +286,11 @@ int main(int argc, char **argv)
 
 
 
-    /* Setting daemon flag */
-    nowDaemon();
-
-
-    /* Entering in daemon mode now */
-    goDaemon();
-
+    if (!run_foreground) 
+    {
+        nowDaemon();
+        goDaemon();
+    }
    
     /* Initial time to settle */
     sleep(syscheck.tsleep + 2); 

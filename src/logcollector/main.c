@@ -40,7 +40,7 @@ int main(int argc, char **argv)
 {
     int c;
     int debug_flag = 0;
-    int test_config = 0;
+    int test_config = 0,run_foreground = 0;
     char *cfg = DEFAULTCPATH;
     char *dir = DEFAULTDIR;
 
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
         
 
-    while((c = getopt(argc, argv, "VtdhD:c:")) != -1)
+    while((c = getopt(argc, argv, "VtdhfD:c:")) != -1)
     {
         switch(c)
         {
@@ -61,6 +61,9 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                break;
+            case 'f':
+                run_foreground = 1;
                 break;
             case 'D':
                 if(!optarg)
@@ -134,9 +137,12 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);	
 
 
-    /* Going on daemon mode */
-    nowDaemon();
-    goDaemon();
+    if (!run_foreground) 
+    {
+        /* Going on daemon mode */
+        nowDaemon();
+        goDaemon();
+    }
 
 
     /* Creating PID file */
