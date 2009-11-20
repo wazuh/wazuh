@@ -108,7 +108,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
                 user,
                 ip,
                 lf->time,
-                ftell(_aflog),
+                __crt_ftell,
                 lf->generated_rule->sigid,
                 lf->location);
 
@@ -134,7 +134,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
                 user,
                 ip,
                 lf->time,
-                ftell(_aflog),
+                __crt_ftell,
                 lf->generated_rule->sigid,
                 lf->location);
        

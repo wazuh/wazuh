@@ -18,6 +18,7 @@
 #include "config/config.h"
 #include "config/global-config.h"
 
+long int __crt_ftell; /* Global ftell pointer. */
 _Config Config;  /* Global Config structure */
 
 
