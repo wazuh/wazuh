@@ -20,7 +20,7 @@
 </rule>
 
 <rule id="9702" level="5">
-  <if_sid>100500</if_sid>
+  <if_sid>9700</if_sid>
   <match>Password mismatch$</match>
   <description>Dovecot Authentication Failed.</description>
   <group>authentication_failed,</group>

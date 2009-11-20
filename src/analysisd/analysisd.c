@@ -838,7 +838,10 @@ void OS_ReadMSG_analysisd(int m_queue)
 
                     /* alert for statistical analysis */
                     if(stats_rule->alert_opts & DO_LOGALERT)
+                    {
+                        __crt_ftell = ftell(_aflog);
                         OS_Log(lf);
+                    }
 
 
                     /* Set lf to the old values */
