@@ -8,10 +8,10 @@ who helped us since our first release (0.1).
 
 -Development
   - Daniel B. Cid <dcid ( at ) ossec.net>
-  - Ahmet Ozturk <oahmet ( at )  metu.edu.tr>
-  - Rafael Capovilla <under ( at ) underlinux.com.br>
   - Meir Michanie <meirgotroot ( at ) gmail.com>
   - Slava Semushin <php-coder at altlinux.org>
+  - Jeremy Rossi
+  - Ahmet Ozturk <oahmet ( at )  metu.edu.tr>
 
 
 -Testing/Patches and other contributions.
@@ -23,7 +23,7 @@ who helped us since our first release (0.1).
   - Peter Ahlert <peter ( at ) ifup.de>
   - Rafael Capovilla <under ( at ) underlinux.com.br>  
   - Andre Alexandre Gaio <aagaio ( at ) linwork.com.br>
-  - Liliane A. Cid <liliane.alves ( at ) gmail.com> 
+  - Liliane A. Cid <liliane.cid ( at ) gmail.com> 
   - Marcus Maciel - <marcus @ ( at ) underlinux.com.br>
   - Kayvan A. Sylvan <kayvan@ ( at ) sylvan.com>
   - Dianzhi Wang <wangdz@ ( at ) leadsec.com.cn>
@@ -38,6 +38,7 @@ who helped us since our first release (0.1).
   - Michael Starks
   - Robert Millan [ackstorm] <rmillan at ackstorm.es>
   - Martin West <martin at objectgizmos.com>
+  - Rafael Capovilla <under ( at ) underlinux.com.br>
   
   
 -Translations
@@ -46,7 +47,7 @@ who helped us since our first release (0.1).
   - Daniel Barcellos <danielpoa.rs ( at ) gmail.com>
   - Allan Soares <allan.soares ( at ) gmail.com>
   - Willian Itiho Amano <itihoitiho ( at ) gmail.com>
-  - Liliane Cid - <liliane.alves ( at ) gmail.com>
+  - Liliane Cid - <liliane.cid ( at ) gmail.com>
 
   -German:
   - Peter Ahlert <peter ( at ) ifup.de>

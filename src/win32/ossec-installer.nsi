@@ -6,7 +6,7 @@
 ;--------------------------------
 ;General
 
-!define VERSION "2.2"
+!define VERSION "2.3"
 !define NAME "Ossec HIDS"
 !define /date CDATE "%b %d %Y at %H:%M:%S"
 
