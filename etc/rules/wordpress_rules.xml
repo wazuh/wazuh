@@ -33,7 +33,7 @@
 
   <rule id="9503" level="3">
     <if_sid>9500</if_sid>
-    <match>WPsyslog was successfully initialized</match>
+    <match>WPsyslog was successfully initiali</match>
     <description>WPsyslog was successfully initialized.</description>
   </rule> 
 
