@@ -416,7 +416,10 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
                 while((cu_time - available_server) > ((3*NOTIFY_TIME) - 180))
                 {
                     /* Sending information to see if server replies */
-                    send_win32_info(cu_time);
+                    if(logr->sock != -1)
+                    {
+                        send_win32_info(cu_time);
+                    }
 
                     sleep(wi);
                     cu_time = time(0);
