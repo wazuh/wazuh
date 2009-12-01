@@ -449,7 +449,8 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
                             wi = 1;
                         }
                     }
-                    else if(global_sleep == 1 || ((global_sleep % 10) == 0))
+                    else if(global_sleep == 1 || ((global_sleep % 12) == 0) ||
+                            (logr->sock == -1))
                     {
                         connect_server(logr->rip_id +1);
                         sleep(global_sleep);
