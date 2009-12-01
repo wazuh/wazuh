@@ -404,7 +404,8 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
             cu_time = time(0);
             if((cu_time - available_server) > ((3 * NOTIFY_TIME) - 180))
             {
-                int global_sleep = 0;
+                int global_sleep = 1;
+                int mod_sleep = 12;
 
                 /* If response is not available, set lock and
                  * wait for it.
@@ -452,11 +453,23 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
                             wi = 1;
                         }
                     }
-                    else if(global_sleep == 1 || ((global_sleep % 12) == 0) ||
+                    else if(global_sleep == 2 || ((global_sleep % mod_sleep) == 0) ||
                             (logr->sock == -1))
                     {
                         connect_server(logr->rip_id +1);
-                        sleep(global_sleep);
+                        if(logr->sock == -1)
+                        {
+                            sleep(wi + global_sleep);
+                        }
+                        else
+                        {
+                            sleep(global_sleep);
+                        }
+
+                        if(global_sleep > 30)
+                        {
+                            mod_sleep = 50;
+                        }
                     }
                 }
 
@@ -513,6 +526,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     if(OS_SendUDPbySize(logr->sock, _ssize, crypt_msg) < 0)
     {
         merror(SEND_ERROR,ARGV0, "server");
+        sleep(1);
     }
 
     if(!ReleaseMutex(hMutex))
@@ -632,6 +646,7 @@ void send_win32_info(time_t curr_time)
     if(OS_SendUDPbySize(logr->sock, msg_size, crypt_msg) < 0)
     {
         merror(SEND_ERROR, ARGV0, "server");
+        sleep(1);
     }
 
     return;

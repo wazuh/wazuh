@@ -78,24 +78,25 @@ char* os_read_agent_name()
     char buf[1024 + 1];
     FILE *fp = NULL;
 
-    while(i < 10)
+    if(isChroot())
+        fp = fopen(AGENT_INFO_FILE, "r");
+    else
+        fp = fopen(AGENT_INFO_FILEP, "r");
+        
+    /* We give 1 second for the file to be created... */ 
+    if(!fp)
     {
+        sleep(1);
+
         if(isChroot())
             fp = fopen(AGENT_INFO_FILE, "r");
         else
             fp = fopen(AGENT_INFO_FILEP, "r");        
-        
-        if(fp)
-        {
-            break;
-        }
-        i++;
-        sleep(i);    
     }
     
     if(!fp)
     {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
+        debug1(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
         return(NULL);
     }
 

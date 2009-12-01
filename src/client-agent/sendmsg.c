@@ -33,6 +33,7 @@ int send_msg(int agentid, char *msg)
     if(OS_SendUDPbySize(logr->sock, msg_size, crypt_msg) < 0)
     {
         merror(SEND_ERROR,ARGV0, "server");
+        sleep(1);
         return(-1);
     }
 
