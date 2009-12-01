@@ -332,7 +332,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     /* Using a mutex to synchronize the writes */
     while(1)
     {
-        dwWaitResult = WaitForSingleObject(hMutex, 100000L);
+        dwWaitResult = WaitForSingleObject(hMutex, 1000000L);
 
         if(dwWaitResult != WAIT_OBJECT_0) 
         {
