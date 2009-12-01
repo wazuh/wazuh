@@ -53,6 +53,10 @@ void osdb_escapestr(char *str)
         {
             *str = '`';
         }
+        else if(*str == '\\')
+        {
+            *str = '/';
+        }
         else if(insert_map[(unsigned char)*str] != '\001')
         {
             *str = ' ';
