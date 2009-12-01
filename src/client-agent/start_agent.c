@@ -40,6 +40,7 @@ int connect_server(int initial_id)
     {
         sleep(1);
         close(logr->sock);
+        logr->sock = -1;
 
         if(logr->rip[1])
         {
@@ -49,7 +50,6 @@ int connect_server(int initial_id)
                     logr->port);
         }
         
-        logr->sock = -1;
     }
     
     
@@ -100,6 +100,7 @@ int connect_server(int initial_id)
         logr->sock = OS_ConnectUDP(logr->port, tmp_str);
         if(logr->sock < 0)
         {
+            logr->sock = -1;
             merror(CONNS_ERROR, ARGV0, tmp_str);
             rc++;
 

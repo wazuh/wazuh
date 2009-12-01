@@ -404,6 +404,8 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
             cu_time = time(0);
             if((cu_time - available_server) > ((3 * NOTIFY_TIME) - 180))
             {
+                int global_sleep = 0;
+
                 /* If response is not available, set lock and
                  * wait for it.
                  */
@@ -418,11 +420,19 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
                     sleep(wi);
                     cu_time = time(0);
-                    wi++;
+
+                    if(wi < 20)
+                    {
+                        wi++;
+                    }
+                    else
+                    {
+                        global_sleep++;
+                    }
 
 
                     /* If we have more than one server, try all. */
-                    if(wi > 5 && logr->rip[1])
+                    if(wi > 12 && logr->rip[1])
                     {
                         int curr_rip = logr->rip_id;
                         merror("%s: INFO: Trying next server ip in "
@@ -439,10 +449,10 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
                             wi = 1;
                         }
                     }
-                    else if(wi > 20)
+                    else if(global_sleep == 1 || ((global_sleep % 10) == 0))
                     {
                         connect_server(logr->rip_id +1);
-                        wi+=10;
+                        sleep(global_sleep);
                     }
                 }
 

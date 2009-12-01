@@ -35,6 +35,7 @@ void *receiver_thread(void *none)
     char file_sum[34];
 
     fd_set fdset;
+    struct timeval selecttime;
      
     FILE *fp;
 
@@ -50,23 +51,32 @@ void *receiver_thread(void *none)
     
     while(1)
     {
+        /* sock must be set. */
+        if(logr->sock == -1)
+        {
+            sleep(5);
+            continue;
+        }
+
         FD_ZERO(&fdset);
         FD_SET(logr->sock, &fdset);
         
+
+        /* Wait for 30 seconds. */
+        selecttime.tv_sec = 30;
+        selecttime.tv_usec = 0;
+
         
         /* Wait for 120 seconds at a maximum for any descriptor */
-        recv_b = select(0, &fdset, NULL, NULL, NULL);
+        recv_b = select(0, &fdset, NULL, NULL, &selecttime);
         if(recv_b == -1)
         {
             merror(SELECT_ERROR, ARGV0);
             sleep(30);
             continue;
         }
-        /* timeout */
         else if(recv_b == 0)
         {
-            merror(SELECT_ERROR, ARGV0);
-            sleep(30);
             continue;
         }
 

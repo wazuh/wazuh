@@ -98,7 +98,6 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
         os_md5 mf_sum;
         os_sha1 sf_sum;
         
-        printf("XXX Values for: %s - %d\n", p_key, (int)value_count);
 
         /* Clearing the values for value_size and data_size */
         value_buffer[MAX_VALUE_NAME] = '\0';
@@ -189,7 +188,6 @@ int os_winreg_open_key(char *subkey)
 
     if(RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ, &oshkey) != ERROR_SUCCESS)
     {
-        printf("XXX Error opening key: %s\n", subkey);
         return(0);
     }
 
