@@ -102,7 +102,20 @@ int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
             return(0);
         }
     }
-
+    if(r_filter->srcip)
+    {
+        if(!strstr(al_data->srcip, r_filter->srcip))
+        {
+            return(0);
+        }
+    }
+    if(r_filter->user)
+    {
+        if(!strstr(al_data->user, r_filter->user))
+        {
+            return(0);
+        }
+    }
     return(1);
 }
 
@@ -600,6 +613,14 @@ int os_report_configfilter(char *filter_by, char *filter_value,
         else if(strcmp(filter_by, "location") == 0)
         {
             r_filter->location = filter_value;    
+        }
+        else if(strcmp(filter_by, "user") == 0)
+        {
+            r_filter->user = filter_value;    
+        }
+        else if(strcmp(filter_by, "srcip") == 0)
+        {
+            r_filter->srcip = filter_value;    
         }
         else
         {

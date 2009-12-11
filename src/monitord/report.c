@@ -56,6 +56,8 @@ int main(int argc, char **argv)
     r_filter.rule = NULL;
     r_filter.level = NULL;
     r_filter.location = NULL;
+    r_filter.srcip = NULL;
+    r_filter.user = NULL;
 
     r_filter.related_group = 0;
     r_filter.related_rule = 0;

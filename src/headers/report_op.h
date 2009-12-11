@@ -35,6 +35,8 @@ typedef struct _report_filter
     char *rule;
     char *level;
     char *location;
+    char *user;
+    char *srcip;
 
     void *top_user;
     void *top_srcip;
