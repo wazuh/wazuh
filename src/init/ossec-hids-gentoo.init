@@ -26,7 +26,7 @@ configtest() {
 
 checkconfig() {
 	
-	CONFIGFILE="${CONFIGFILE:-/var/ossec/etc/ossec.conf}"
+	CONFIGFILE="${CONFIGFILE:-${DIRECTORY}/etc/ossec.conf}"
 	if [ ! -r "${CONFIGFILE}" ]; then
 		eerror "Unable to read configuration file: ${CONFIGFILE}"
 		return 1
