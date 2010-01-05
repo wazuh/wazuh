@@ -1,0 +1,35 @@
+<!-- @(#) $Id$
+  -  Official Compaq Insight Manager (cimserver) rules for OSSEC.
+  -
+  -  Author: Stephen Kreusch
+  -
+  -  This program is a free software; you can redistribute it
+  -  and/or modify it under the terms of the GNU General Public
+  -  License (version 3) as published by the FSF - Free Software
+  -  Foundation.
+  -
+  -  License details: http://www.ossec.net/en/licensing.html
+  -->
+
+<group name="syslog,cimserver,">
+  <rule id="9600" level="0" noalert="1">
+    <decoded_as>cimserver</decoded_as>
+    <description>cimserver messages grouped.</description>
+  </rule>
+
+  <rule id="9610" level="5">
+    <if_sid>9600</if_sid>
+    <match>Authentication failed</match>
+    <description>Compaq Insight Manager authentication failure.</description>
+    <group>authentication_failed,</group>
+  </rule> 
+
+  <rule id="9611" level="12">
+    <if_sid>9600</if_sid>
+    <match>Server stopped</match>
+    <description>Compaq Insight Manager stopped.</description>
+    <group>service_availability,</group>
+  </rule> 
+</group>
+  
+<!-- EOF -->

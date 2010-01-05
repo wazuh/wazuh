@@ -152,6 +152,23 @@
 
 
 
+<!-- rshd -->
+<group name="syslog,access_control,">
+  <rule id="2550" level="0" noalert="1">
+    <decoded_as>rshd</decoded_as>
+    <description>rshd messages grouped.</description>
+  </rule>
+
+  <rule id="2551" level="10">
+    <if_sid>2550</if_sid>
+    <regex>^Connection from \S+ on illegal port$</regex>
+    <description>Connection to rshd from unprivileged port. Possible network scan.</description>
+    <group>connection_attempt,</group>
+  </rule>
+</group>
+
+
+
 <!-- Mail/Procmail messages -->
 <group name="syslog,mail,">
   <rule id="2701" level="0">

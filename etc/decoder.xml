@@ -208,6 +208,42 @@
 
 
 <!--
+ - rshd decoder
+ - Example message:
+ - Dec 17 10:49:23 hostname rshd[347339]: Connection from 10.217.223.31 on illegal port
+ -->
+<decoder name="rshd">
+  <program_name>^rshd$</program_name>
+</decoder>
+                          
+<decoder name="rshd-illegal-connection">
+  <parent>rshd</parent>
+  <regex>^Connection from (\S+) on illegal port$</regex>
+  <order>srcip</order>
+</decoder>
+
+
+
+<!--
+ - cimserver decoder
+ - Example messages:
+ - Dec 18 18:06:28 hostname cimserver[18575]: PGS17200: Authentication failed for user jones_b.
+ - Dec 18 18:06:29 hostname cimserver[18575]: PGS17200: Authentication failed for user domain\jones_b.
+ -->
+<decoder name="cimserver">
+  <program_name>^cimserver$</program_name>
+</decoder>
+
+<decoder name="cimserver-failed-authentication">
+  <parent>cimserver</parent>
+  <prematch>^\w+: Authentication failed for user </prematch>
+  <regex offset="after_prematch">^(\S+).$</regex>
+  <order>user</order>
+</decoder>
+
+
+
+<!--
  - Samba decoder.
  - Will extraxt the username/srcip
  - Examples:
@@ -389,6 +425,7 @@
   - ftpd[811166]: refused connect from 88.225.42.182
   - in.ftpd[18561]: [ID 484914 daemon.notice] gethostbyaddr: nameservices.net. != 216.117.134.168
   - ftpd[31918]: FTPD: EXPORT file local , remote
+  - Dec 21 12:21:20 hostname ftpd[323115]: login jones_b from client.example.org failed.
   -->
 <decoder name="ftpd">
   <program_name>^ftpd|^in.ftpd</program_name>
@@ -413,6 +450,13 @@
   <parent>ftpd</parent>
   <regex>from (\d+.\d+.\d+.\d+)$</regex>
   <order>srcip</order>
+</decoder>
+
+<decoder name="ftpd-tru64">
+  <parent>ftpd</parent>
+  <prematch>^login \S+ from \S+ failed.</prematch>
+  <regex>^login (\S+) from (\S+) failed.$</regex>
+  <order>user, srcip</order>
 </decoder>
 
 
