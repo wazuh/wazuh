@@ -39,7 +39,7 @@ int connect_server(int initial_id)
     if(logr->sock >= 0)
     {
         sleep(1);
-        close(logr->sock);
+        CloseSocket(logr->sock);
         logr->sock = -1;
 
         if(logr->rip[1])

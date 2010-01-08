@@ -26,8 +26,7 @@
 # Multiple patterns can be specified by using " && " between them.
 # (All of them must match for it to return true).
  
-
-$php.ini=/var/www/conf/php.ini,/etc/php5/apache2/php.ini;
+$php.ini=/etc/php.ini,/var/www/conf/php.ini,/etc/php5/apache2/php.ini;
 $web_dirs=/var/www,/var/htdocs,/home/httpd,/usr/local/apache,/usr/local/apache2,/usr/local/www;
 
 

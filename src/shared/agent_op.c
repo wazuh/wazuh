@@ -74,7 +74,6 @@ int os_set_restart_syscheck()
  */
 char* os_read_agent_name()
 {
-    int i = 0;
     char buf[1024 + 1];
     FILE *fp = NULL;
 
