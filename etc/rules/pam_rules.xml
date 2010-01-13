@@ -57,7 +57,7 @@
   <rule id="5522" level="0">
     <if_sid>5502</if_sid>
     <program_name>^CRON$</program_name>
-    <match>^pam_unix(cron:session): session closed for user root$</match>
+    <match>^pam_unix(cron:session): session closed for user </match>
     <description>Ignoring Annoying Ubuntu/debian cron login events.</description>
   </rule>
 
