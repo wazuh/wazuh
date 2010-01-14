@@ -338,6 +338,9 @@ int Rules_OP_ReadRules(char * rulefile)
             /* Rule elements block */
             {
                 int k = 0;
+                int info_type = 0;
+                int count_info_detail = 0;
+                RuleInfoDetail *last_info_detail = NULL;
                 char *regex = NULL;
                 char *match = NULL;
                 char *url = NULL;
@@ -393,8 +396,61 @@ int Rules_OP_ReadRules(char * rulefile)
                             return(-1); 
                         }
                     }
+                    else if(strcasecmp(rule_opt[k]->element,xml_cve)==0)
+                    {
+                        if(config_ruleinfo->info_details == NULL)
+                        {
+                            config_ruleinfo->info_details = zeroinfodetails(RULEINFODETAIL_CVE,
+                                    rule_opt[k]->content);
+                        }
+                        else
+                        {
+                            for (last_info_detail = config_ruleinfo->info_details;
+                                    last_info_detail->next != NULL; 
+                                    last_info_detail = last_info_detail->next)
+                            {
+                                count_info_detail++;
+                            }
+                            /* Silently Drop info messages if their are more then MAX_RULEINFODETAIL */
+                            if (count_info_detail <= MAX_RULEINFODETAIL)
+                            {
+                                last_info_detail->next = zeroinfodetails(RULEINFODETAIL_CVE,
+                                        rule_opt[k]->content);
+                            }
+                        }
+
+                        /* keep old methods for now */
+                        config_ruleinfo->cve=
+                            loadmemory(config_ruleinfo->cve,
+                                    rule_opt[k]->content);
+                    }
                     else if(strcasecmp(rule_opt[k]->element,xml_info)==0)
                     {
+
+                        info_type = get_info_attributes(rule_opt[k]->attributes,
+                                                        rule_opt[k]->values);
+                        debug1("info_type = %d", info_type);
+
+                        if(config_ruleinfo->info_details == NULL)
+                        {
+                            config_ruleinfo->info_details = zeroinfodetails(info_type, 
+                                    rule_opt[k]->content);
+                        }
+                        else
+                        {
+                            for (last_info_detail = config_ruleinfo->info_details;
+                                    last_info_detail->next != NULL; 
+                                    last_info_detail = last_info_detail->next) {
+                                count_info_detail++;
+                            }
+                            /* Silently Drop info messages if their are more then MAX_RULEINFODETAIL */
+                            if (count_info_detail <= MAX_RULEINFODETAIL) {
+                                last_info_detail->next = zeroinfodetails(info_type, rule_opt[k]->content);
+                            }
+                        }
+
+
+                        /* keep old methods for now */
                         config_ruleinfo->info=
                             loadmemory(config_ruleinfo->info,
                                     rule_opt[k]->content);
@@ -433,12 +489,6 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         config_ruleinfo->group =
                             loadmemory(config_ruleinfo->group,
-                                    rule_opt[k]->content);
-                    }
-                    else if(strcasecmp(rule_opt[k]->element,xml_cve)==0)
-                    {
-                        config_ruleinfo->cve=
-                            loadmemory(config_ruleinfo->cve,
                                     rule_opt[k]->content);
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_comment)==0)
@@ -1335,6 +1385,29 @@ char *loadmemory(char *at, char *str)
 }
 
 
+RuleInfoDetail *zeroinfodetails(int type, char *data)
+{
+    RuleInfoDetail *info_details_pt = NULL;
+
+    info_details_pt = (RuleInfoDetail *)calloc(1,sizeof(RuleInfoDetail));
+
+    if (info_details_pt == NULL)
+    {
+        ErrorExit(MEM_ERROR,ARGV0);
+    }
+    /* type */
+    info_details_pt->type = type;
+
+    /* data */
+    os_strdup(data, info_details_pt->data);
+
+    info_details_pt->next = NULL;
+    
+
+    return(info_details_pt);
+}
+
+
 RuleInfo *zerorulemember(int id, int level, 
                          int maxsize, int frequency,
                          int timeframe, int noalert, 
@@ -1403,6 +1476,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->comment = NULL;
     ruleinfo_pt->info = NULL;
     ruleinfo_pt->cve = NULL;
+    ruleinfo_pt->info_details = NULL;
     
     ruleinfo_pt->if_sid = NULL;
     ruleinfo_pt->if_group = NULL;
@@ -1441,6 +1515,43 @@ RuleInfo *zerorulemember(int id, int level,
     return(ruleinfo_pt);
 }
 
+int get_info_attributes(char **attributes, char **values)
+{
+    char *xml_type = "type";
+    int k=0;
+    if(!attributes)
+        return(RULEINFODETAIL_TEXT);
+
+    while(attributes[k])
+    {
+        if (!values[k])
+        {
+            merror("rules_op: Entry info type \"%s\" does not have a value", 
+                    attributes[k]);
+            return (-1);
+        }
+        else if(strcasecmp(attributes[k],xml_type) == 0)
+        {
+            if(strcmp(values[k], "text") == 0)
+            {
+                return(RULEINFODETAIL_TEXT);
+            } 
+            else if(strcmp(values[k], "link") == 0)
+            {
+                return(RULEINFODETAIL_LINK);
+            }
+            else if(strcmp(values[k], "cve") == 0)
+            {
+                return(RULEINFODETAIL_CVE);
+            }
+            else if(strcmp(values[k], "osvdb") == 0)
+            {
+                return(RULEINFODETAIL_OSVDB);
+            }
+        }
+    }
+    return(RULEINFODETAIL_TEXT);
+}
 
 /* Get the attributes */
 int getattributes(char **attributes, char **values,

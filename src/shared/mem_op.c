@@ -72,50 +72,34 @@ char *os_LoadString(char *at, char *str)
 {
     if(at == NULL)
     {
-        int strsize = 0;
-        if((strsize = strlen(str)) < OS_SIZE_2048)
+        at = strdup(str);
+        if(!at)
         {
-            at = calloc(strsize+1,sizeof(char));
-            if(at == NULL)
-            {
-                merror(MEM_ERROR,ARGV0);
-                return(NULL);
-            }
-            strncpy(at, str, strsize);
-            return(at);
+            merror(MEM_ERROR,ARGV0);
         }
-        else
-        {
-            merror(SIZE_ERROR,ARGV0,str);
-            return(NULL);
-        }
+        return(at);
     }
     else /*at is not null. Need to reallocat its memory and copy str to it*/
     {
+        char *newat;
         int strsize = strlen(str);
-        int atsize = strlen(at);
-        int finalsize = atsize+strsize+1;
+        int finalsize = strsize + strlen(at) + 1;
 
-        if((atsize > OS_SIZE_2048) || (strsize > OS_SIZE_2048))
+        newat = realloc(at, finalsize*sizeof(char));
+        if(newat == NULL)
         {
-            merror(SIZE_ERROR,ARGV0,str);
-            return(NULL);
-        }
-
-        at = realloc(at, (finalsize)*sizeof(char));
-
-        if(at == NULL)
-        {
+            free(at);
             merror(MEM_ERROR,ARGV0);
             return(NULL);
         }
+        at = newat;
 
-        strncat(at,str,strsize);
-
-        at[finalsize-1] = '\0';
+        strncat(at, str, strsize);
+        at[finalsize -1] = '\0';
 
         return(at);
     }
+
     return(NULL);
 }
 

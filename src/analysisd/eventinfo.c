@@ -517,7 +517,23 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->generated_rule = NULL;
     lf->sid_node_to_delete = NULL;
     lf->decoder_info = NULL_Decoder;
-    
+
+    #ifdef PRELUDE
+    lf->filename = NULL;
+    lf->perm_before = 0;      
+    lf->perm_after = 0;          
+    lf->md5_before = NULL;                 
+    lf->md5_after = NULL;               
+    lf->sha1_before = NULL;       
+    lf->sha1_after = NULL;                 
+    lf->size_before = NULL;       
+    lf->size_after = NULL;        
+    lf->owner_before = NULL;      
+    lf->owner_after = NULL;       
+    lf->gowner_before = NULL; 
+    lf->gowner_after = NULL;  
+    #endif
+
     return;
 }
 
@@ -565,6 +581,30 @@ void Free_Eventinfo(Eventinfo *lf)
     if(lf->systemname)
         free(lf->systemname);    
 
+    #ifdef PRELUDE
+    if(lf->filename)
+        free(lf->filename);
+    if (lf->md5_before)
+        free(lf->md5_before);                 
+    if (lf->md5_after)
+        free(lf->md5_after);               
+    if (lf->sha1_before)
+        free(lf->sha1_before);       
+    if (lf->sha1_after)
+        free(lf->sha1_after);                 
+    if (lf->size_before)
+        free(lf->size_before);       
+    if (lf->size_after)
+        free(lf->size_after);        
+    if (lf->owner_before)
+        free(lf->owner_before);      
+    if (lf->owner_after)
+        free(lf->owner_after);       
+    if (lf->gowner_before)
+        free(lf->gowner_before); 
+    if (lf->gowner_after)
+        free(lf->gowner_after);  
+    #endif
 
     /* Freeing node to delete */
     if(lf->sid_node_to_delete)

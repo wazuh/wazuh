@@ -269,6 +269,8 @@ void OS_ReadMSG(int m_queue)
 {
     int i;
     char msg[OS_MAXSTR +1];
+           
+    RuleInfoDetail *last_info_detail;
     Eventinfo *lf;
 
 
@@ -413,10 +415,15 @@ void OS_ReadMSG(int m_queue)
                 }
 
                 #ifdef TESTRULE
+                  char *(ruleinfodetail_text[])={"Text","Link","CVE","OSVDB","BUGTRACKID"};
                   print_out("\n**Phase 3: Completed filtering (rules).");
                   print_out("       Rule id: '%d'", currently_rule->sigid);
                   print_out("       Level: '%d'", currently_rule->level);
                   print_out("       Description: '%s'",currently_rule->comment);
+                  for (last_info_detail = currently_rule->info_details; last_info_detail != NULL; last_info_detail = last_info_detail->next) 
+                  {
+                      print_out("       Info - %s: '%s'", ruleinfodetail_text[last_info_detail->type], last_info_detail->data);
+                  }
                 #endif
                                             
 

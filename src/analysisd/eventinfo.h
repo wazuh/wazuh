@@ -69,6 +69,23 @@ typedef struct _Eventinfo
     int year;
     char hour[9];
     char mon[4];
+
+    /* SYSCHECK Results variables -- only used by prelude for now */
+    #ifdef PRELUDE
+    char *filename;
+    int perm_before;
+    int perm_after;
+    char *md5_before;
+    char *md5_after;
+    char *sha1_before;
+    char *sha1_after;
+    char *size_before;
+    char *size_after;
+    char *owner_before;
+    char *owner_after;
+    char *gowner_before;
+    char *gowner_after;
+    #endif
 }Eventinfo;
 
 

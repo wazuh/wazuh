@@ -69,6 +69,30 @@ int send_intcheck_msg(char *script, char *host, char *msg)
 
 
 
+/* Send generic log message. */
+int send_log_msg(char *script, char *host, char *msg)
+{
+    char sys_location[1024 +1];
+
+    sys_location[1024] = '\0';
+    snprintf(sys_location, 1024, "(%s) %s->%s", script, host, SYSCHECK);
+    
+    if(SendMSG(lessdc.queue, msg, sys_location, LOCALFILE_MQ) < 0)
+    {
+        merror(QUEUE_SEND, ARGV0);
+        if((lessdc.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0)
+        {
+            ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
+        }
+
+        /* If we reach here, we can try to send it again */
+        SendMSG(lessdc.queue, msg, sys_location, LOCALFILE_MQ);
+    }
+    return(0);
+}
+
+
+
 /* Generate diffs alerts. */
 int gen_diff_alert(char *host, char *script, int alert_diff_time)
 {
@@ -391,6 +415,12 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                     tmp_str = buf + 5;
                     send_intcheck_msg(entry->type, entry->server[i]+1, 
                                       tmp_str);
+                }
+                else if(strncmp(buf, "LOG: ", 4) == 0)
+                {
+                    tmp_str = buf + 5;
+                    send_log_msg(entry->type, entry->server[i]+1,
+                                 tmp_str);
                 }
                 else if((entry->state & LESSD_STATE_DIFF) &&
                         (strncmp(buf, "STORE: ", 7) == 0))

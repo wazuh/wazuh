@@ -106,9 +106,11 @@ int __DBInsertLocation(char *location, DBConfig *db_config)
  */
 int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
 {
+    int i;
     unsigned int s_ip = 0, d_ip = 0, location_id = 0;
     int *loc_id;
     char sql_query[OS_SIZE_2048 +1];
+    char *fulllog = NULL;
 
 
     /* Clearing the memory before insert */
@@ -163,6 +165,14 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
         OSHash_Add(db_config->location_hash, al_data->location, loc_id);
     }
     
+
+    i = 0;
+    while(al_data->log[i])
+    {
+        fulllog = os_LoadString(fulllog, al_data->log[i]);
+        i++;
+    }
+
 
     /* Inserting data */
     if(db_config->db_type == POSTGDB)

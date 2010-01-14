@@ -42,6 +42,20 @@
 #define DO_EXTRAINFO    0x100
 #define SAME_EXTRAINFO  0x200
 
+#define RULEINFODETAIL_TEXT     0
+#define RULEINFODETAIL_LINK     1
+#define RULEINFODETAIL_CVE      2
+#define RULEINFODETAIL_OSVDB    3
+#define RULEINFODETAIL_BUGTRACK 4
+
+#define MAX_RULEINFODETAIL  32
+
+typedef struct _RuleInfoDetail
+{
+    int type;
+    char *data;
+    struct _RuleInfoDetail *next;
+}RuleInfoDetail;
 
 typedef struct _RuleInfo
 {
@@ -120,6 +134,7 @@ typedef struct _RuleInfo
     char *comment; /* description in the xml */
     char *info;
     char *cve;
+    RuleInfoDetail *info_details;
     
     char *if_sid;
     char *if_level;
@@ -144,6 +159,9 @@ typedef struct _RuleNode
 
 
 RuleInfo *currently_rule; /* */
+
+RuleInfoDetail *zeroinfodetails(int type, char *data);
+int get_info_attributes(char **attributes, char **values);
 
 /* RuleInfo functions */
 RuleInfo *zerorulemember(int id, 
