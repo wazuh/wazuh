@@ -109,12 +109,13 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     int i;
     unsigned int s_ip = 0, d_ip = 0, location_id = 0;
     int *loc_id;
-    char sql_query[OS_SIZE_2048 +1];
+    char sql_query[OS_SIZE_8192 +1];
     char *fulllog = NULL;
 
 
     /* Clearing the memory before insert */
-    memset(sql_query, '\0', OS_SIZE_2048 +1);
+    sql_query[0] = '\0';
+    sql_query[OS_SIZE_8192] = '\0';
     
 
     /* Converting srcip to int */
@@ -178,7 +179,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     if(db_config->db_type == POSTGDB)
     {
         /* On postgres we need to escape the user field. */
-        snprintf(sql_query, OS_SIZE_2048,
+        snprintf(sql_query, OS_SIZE_8192,
                 "INSERT INTO "
                 "data(id, server_id, \"user\", full_log) "
                 "VALUES ('%u', '%u', '%s', '%s') ",
@@ -187,7 +188,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     }
     else
     {
-        snprintf(sql_query, OS_SIZE_2048,
+        snprintf(sql_query, OS_SIZE_8192,
                 "INSERT INTO "
                 "data(id, server_id, user, full_log) "
                 "VALUES ('%u', '%u', '%s', '%s') ",
@@ -208,7 +209,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
 
 
     /* Generating final SQL */
-    snprintf(sql_query, OS_SIZE_2048,
+    snprintf(sql_query, OS_SIZE_8192,
             "INSERT INTO "
             "alert(id,server_id,rule_id,timestamp,location_id,src_ip) "
             "VALUES ('%u', '%u', '%u','%u', '%u', '%lu')",
