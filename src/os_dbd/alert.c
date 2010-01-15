@@ -133,7 +133,6 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
 
     /* Escaping strings */
     osdb_escapestr(al_data->user);
-    osdb_escapestr(al_data->log[0]);
 
 
     /* We first need to insert the location */
@@ -172,6 +171,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
         fulllog = os_LoadString(fulllog, al_data->log[i]);
         i++;
     }
+    osdb_escapestr(fulllog);
 
 
     /* Inserting data */
