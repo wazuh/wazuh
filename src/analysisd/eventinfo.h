@@ -99,6 +99,13 @@ typedef struct _EventNode
 
 
 
+/* For test rule only. */
+#ifdef TESTRULE
+int full_output;
+int alert_only;
+#endif
+
+
 /** Types of events (from decoders) **/
 #define UNKNOWN		0   /* Unkown */
 #define SYSLOG		1   /* syslog messages */

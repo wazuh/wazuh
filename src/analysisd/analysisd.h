@@ -32,10 +32,6 @@ int __crt_hour;
 int __crt_wday;
 
 
-/* For test rule only. */
-#ifdef TESTRULE
-int full_output;
-#endif
 
 
 time_t c_time; /* Current time of event. Used everywhere */

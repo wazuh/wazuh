@@ -48,6 +48,52 @@ void OS_Store(Eventinfo *lf)
 }
 
 
+
+void OS_LogOutput(Eventinfo *lf)
+{
+    printf(
+           "** Alert %d.%ld:%s - %s\n"
+            "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'\n"
+            "Src IP: %s\nUser: %s\n%.1256s\n",
+            lf->time,
+            __crt_ftell,
+            lf->generated_rule->alert_opts & DO_MAILALERT?" mail ":"",
+            lf->generated_rule->group,
+            lf->year,
+            lf->mon,
+            lf->day,
+            lf->hour,
+            lf->hostname != lf->location?lf->hostname:"",
+            lf->hostname != lf->location?"->":"",
+            lf->location,
+            lf->generated_rule->sigid,
+            lf->generated_rule->level,
+            lf->generated_rule->comment,
+            lf->srcip == NULL?"(none)":lf->srcip,
+            lf->dstuser == NULL?"(none)":lf->dstuser,
+            lf->full_log);
+
+
+    /* Printing the last events if present */
+    if(lf->generated_rule->last_events)
+    {
+        char **lasts = lf->generated_rule->last_events;
+        while(*lasts)
+        {
+            printf("%.1256s\n",*lasts);
+            lasts++;
+        }
+        lf->generated_rule->last_events[0] = NULL;
+    }
+
+    printf("\n");
+
+    fflush(stdout);
+    return;	
+}
+
+
+
 /* OS_Log: v0.3, 2006/03/04 */
 /* _writefile: v0.2, 2005/02/09 */
 void OS_Log(Eventinfo *lf)

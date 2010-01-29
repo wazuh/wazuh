@@ -19,6 +19,7 @@
 #define FWDROP "drop"
 #define FWALLOW "accept"
 
+void OS_LogOutput(Eventinfo *lf);
 void OS_Log(Eventinfo *lf);
 void OS_Store(Eventinfo *lf);
 int FW_Log(Eventinfo *lf);

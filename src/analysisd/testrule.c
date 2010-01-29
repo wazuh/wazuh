@@ -108,10 +108,11 @@ int main(int argc, char **argv)
     today = 0;
     prev_year = 0;
     full_output = 0;
+    alert_only = 0;
     active_responses = NULL;
     memset(prev_month, '\0', 4);
 
-    while((c = getopt(argc, argv, "Vfdhu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vafdhu:g:D:c:")) != -1){
         switch(c){
 	    case 'V':
 		print_version();
@@ -141,6 +142,9 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -c needs an argument",ARGV0);
                 cfg = optarg;
                 break;
+            case 'a':
+                alert_only = 1;
+                break;    
             case 'f':
                 full_output = 1;    
                 break;
@@ -289,6 +293,8 @@ void OS_ReadMSG(int m_queue)
     }
                                 
 
+    __crt_ftell = 1;
+
 
     /* Getting currently time before starting */
     c_time = time(NULL);
@@ -298,6 +304,7 @@ void OS_ReadMSG(int m_queue)
     memset(msg, '\0', OS_MAXSTR +1);
     
 
+    if(!alert_only)
     print_out("%s: Type one log per line.\n", ARGV0);
     
     
@@ -314,12 +321,12 @@ void OS_ReadMSG(int m_queue)
 
 
         /* Fixing the msg. */
-        strncpy(msg, "1:a:", 5);
+        snprintf(msg, 15, "1:stdin:");
         
     
         
         /* Receive message from queue */
-        if(fgets(msg +4, OS_MAXSTR, stdin))
+        if(fgets(msg +8, OS_MAXSTR, stdin))
         {
             RuleNode *rulenode_pt;
 
@@ -339,7 +346,7 @@ void OS_ReadMSG(int m_queue)
             }
             
             
-            print_out("\n");
+            if(!alert_only)print_out("\n");
             
 
             /* Default values for the log info */
@@ -381,7 +388,7 @@ void OS_ReadMSG(int m_queue)
 
             
             #ifdef TESTRULE
-            if(full_output)
+            if(full_output && !alert_only)
                 print_out("\n**Rule debugging:");
             #endif
 
@@ -415,6 +422,8 @@ void OS_ReadMSG(int m_queue)
                 }
 
                 #ifdef TESTRULE
+                if(!alert_only)
+                {
                   char *(ruleinfodetail_text[])={"Text","Link","CVE","OSVDB","BUGTRACKID"};
                   print_out("\n**Phase 3: Completed filtering (rules).");
                   print_out("       Rule id: '%d'", currently_rule->sigid);
@@ -424,6 +433,7 @@ void OS_ReadMSG(int m_queue)
                   {
                       print_out("       Info - %s: '%s'", ruleinfodetail_text[last_info_detail->type], last_info_detail->data);
                   }
+                }
                 #endif
                                             
 
@@ -479,7 +489,15 @@ void OS_ReadMSG(int m_queue)
                 /* Log the alert if configured to ... */
                 if(currently_rule->alert_opts & DO_LOGALERT)
                 {
-                    print_out("**Alert to be generated.\n\n");
+                    if(alert_only)
+                    {
+                        OS_LogOutput(lf);
+                        __crt_ftell++;
+                    }
+                    else
+                    {
+                        print_out("**Alert to be generated.\n\n");
+                    }
                 }
 
 

@@ -1109,7 +1109,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
    
 
     #ifdef TESTRULE
-    if(full_output)
+    if(full_output && !alert_only)
     print_out("    Trying rule: %d - %s", currently_rule->sigid,
                                           currently_rule->comment);
     #endif
@@ -1394,7 +1394,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     }
 
     #ifdef TESTRULE
-    if(full_output)
+    if(full_output && !alert_only)
     print_out("       *Rule %d matched.", currently_rule->sigid);
     #endif
     
@@ -1406,7 +1406,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         RuleInfo *child_rule = NULL;
         
         #ifdef TESTRULE
-        if(full_output)
+        if(full_output && !alert_only)
         print_out("       *Trying child rules.");
         #endif
         

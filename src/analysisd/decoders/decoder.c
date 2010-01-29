@@ -49,7 +49,10 @@ void DecodeEvent(Eventinfo *lf)
 
 
     #ifdef TESTRULE
-    print_out("\n**Phase 2: Completed decoding.");
+    if(!alert_only)
+    {
+        print_out("\n**Phase 2: Completed decoding.");
+    }
     #endif    
 
     do 
@@ -84,7 +87,7 @@ void DecodeEvent(Eventinfo *lf)
 
 
         #ifdef TESTRULE
-        print_out("       decoder: '%s'", nnode->name);
+        if(!alert_only)print_out("       decoder: '%s'", nnode->name);
         #endif    
         
 
@@ -273,7 +276,10 @@ void DecodeEvent(Eventinfo *lf)
     }while((node=node->next) != NULL);
 
     #ifdef TESTRULE
-    print_out("       No decoder matched.");
+    if(!alert_only)
+    {
+        print_out("       No decoder matched.");
+    }
     #endif
                 
 }
@@ -283,7 +289,7 @@ void DecodeEvent(Eventinfo *lf)
 void *DstUser_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       dstuser: '%s'", field);
+    if(!alert_only)print_out("       dstuser: '%s'", field);
     #endif
                     
     lf->dstuser = field;
@@ -292,7 +298,7 @@ void *DstUser_FP(Eventinfo *lf, char *field)
 void *SrcUser_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       srcuser: '%s'", field);
+    if(!alert_only)print_out("       srcuser: '%s'", field);
     #endif
                     
     lf->srcuser = field;
@@ -301,7 +307,7 @@ void *SrcUser_FP(Eventinfo *lf, char *field)
 void *SrcIP_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       srcip: '%s'", field);
+    if(!alert_only)print_out("       srcip: '%s'", field);
     #endif
                     
     lf->srcip = field;
@@ -310,7 +316,7 @@ void *SrcIP_FP(Eventinfo *lf, char *field)
 void *DstIP_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       dstip: '%s'", field);
+    if(!alert_only)print_out("       dstip: '%s'", field);
     #endif
                     
     lf->dstip = field;
@@ -319,7 +325,7 @@ void *DstIP_FP(Eventinfo *lf, char *field)
 void *SrcPort_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       srcport: '%s'", field);
+    if(!alert_only)print_out("       srcport: '%s'", field);
     #endif
                     
     lf->srcport = field;
@@ -328,7 +334,7 @@ void *SrcPort_FP(Eventinfo *lf, char *field)
 void *DstPort_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       dstport: '%s'", field);
+    if(!alert_only)print_out("       dstport: '%s'", field);
     #endif
                     
     lf->dstport = field;
@@ -337,7 +343,7 @@ void *DstPort_FP(Eventinfo *lf, char *field)
 void *Protocol_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       proto: '%s'", field);
+    if(!alert_only)print_out("       proto: '%s'", field);
     #endif
                     
     lf->protocol = field;
@@ -346,7 +352,7 @@ void *Protocol_FP(Eventinfo *lf, char *field)
 void *Action_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       action: '%s'", field);
+    if(!alert_only)print_out("       action: '%s'", field);
     #endif
                     
     lf->action = field;
@@ -355,7 +361,7 @@ void *Action_FP(Eventinfo *lf, char *field)
 void *ID_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       id: '%s'", field);
+    if(!alert_only)print_out("       id: '%s'", field);
     #endif
                     
     lf->id = field;
@@ -364,7 +370,7 @@ void *ID_FP(Eventinfo *lf, char *field)
 void *Url_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       url: '%s'", field);
+    if(!alert_only)print_out("       url: '%s'", field);
     #endif
                     
     lf->url = field;
@@ -373,7 +379,7 @@ void *Url_FP(Eventinfo *lf, char *field)
 void *Data_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       extra_data: '%s'", field);
+    if(!alert_only)print_out("       extra_data: '%s'", field);
     #endif
                     
     lf->data = field;
@@ -382,7 +388,7 @@ void *Data_FP(Eventinfo *lf, char *field)
 void *Status_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       status: '%s'", field);
+    if(!alert_only)print_out("       status: '%s'", field);
     #endif
                     
     lf->status = field;
@@ -391,7 +397,7 @@ void *Status_FP(Eventinfo *lf, char *field)
 void *SystemName_FP(Eventinfo *lf, char *field)
 {
     #ifdef TESTRULE
-    print_out("       system_name: '%s'", field);
+    if(!alert_only)print_out("       system_name: '%s'", field);
     #endif
 
     lf->systemname = field;
