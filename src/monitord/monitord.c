@@ -73,13 +73,12 @@ void Monitord()
         {
             monitor_agents();
         }
-            generate_reports(p);
         
         /* Day changed, deal with log files */
         if(today != p->tm_mday)
         {
             /* Generate reports. */
-            //generate_reports();
+            generate_reports();
 
             manage_files(today, thismonth, thisyear);
 
