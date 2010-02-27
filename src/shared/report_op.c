@@ -14,6 +14,25 @@
 
 
 /** Helper functions. */
+FILE *__g_rtype = NULL;
+void l_print_out(const char *msg, ...)
+{
+    va_list args;
+    va_start(args, msg);
+
+    if(__g_rtype)
+    {
+        (void)vfprintf(__g_rtype, msg, args);
+        (void)fprintf(__g_rtype, "\n");
+    }
+    else
+    {
+        (void)vfprintf(stderr, msg, args);
+        (void)fprintf(stderr, "\n");
+    }
+    va_end(args);
+}
+
 
 /* Sort function used by OSStore sort.
  * Returns if d1 > d2. 
@@ -29,6 +48,22 @@ void *_os_report_sort_compare(void *d1, void *d2)
    }
 
    return(NULL);
+}
+
+
+/* Print output header. */
+void _os_header_print(int t, char *hname)
+{
+    if(!t)
+    {
+        l_print_out("Top entries for '%s':", hname);
+        l_print_out("------------------------------------------------");
+    }
+    else
+    {
+        l_print_out("Related entries for '%s':", hname);
+        l_print_out("------------------------------------------------");
+    }
 }
 
 
@@ -174,7 +209,7 @@ int _report_filter_value(char *filter_by, int prev_filter)
     }
     else
     {
-        merror("%s: ERROR: Invalid relation '%s'.", ARGV0, filter_by);
+        merror("%s: ERROR: Invalid relation '%s'.", __local_name, filter_by);
         return(-1);
     }   
 }
@@ -257,17 +292,17 @@ int _os_report_print_related(int print_related, OSList *st_data)
         if(!list_entry)
         {
             if(print_related & REPORT_REL_LOCATION)
-                print_out("   location: '%s'", saved_aldata->location);
+                l_print_out("   location: '%s'", saved_aldata->location);
             else if(print_related & REPORT_REL_GROUP)
-                print_out("   group: '%s'", saved_aldata->group);
+                l_print_out("   group: '%s'", saved_aldata->group);
             else if(print_related & REPORT_REL_RULE)
-                print_out("   rule: '%d'", saved_aldata->rule);
+                l_print_out("   rule: '%d'", saved_aldata->rule);
             else if(print_related & REPORT_REL_SRCIP)
-                print_out("   srcip: '%s'", saved_aldata->srcip);
+                l_print_out("   srcip: '%s'", saved_aldata->srcip);
             else if(print_related & REPORT_REL_USER)
-                print_out("   user: '%s'", saved_aldata->user);
+                l_print_out("   user: '%s'", saved_aldata->user);
             else if(print_related & REPORT_REL_LEVEL)
-                print_out("   level: '%d'", saved_aldata->level);
+                l_print_out("   level: '%d'", saved_aldata->level);
         }
 
         list_entry = OSList_GetNextNode(st_data);
@@ -294,7 +329,7 @@ int _os_report_add_tostore(char *key, OSStore *top, void *data)
         top_list = OSList_Create();
         if(!top_list)
         {
-            merror(MEM_ERROR, ARGV0);
+            merror(MEM_ERROR, __local_name);
             return(0);
         }
         OSList_AddData(top_list, data);
@@ -309,21 +344,10 @@ int _os_report_add_tostore(char *key, OSStore *top, void *data)
 
 void os_report_printtop(void *topstore_pt, char *hname, int print_related)
 {
+    int dopdout = 0;
     OSStore *topstore = (OSStore *)topstore_pt;
     OSStoreNode *next_node;
     
-    if(!print_related)
-    {
-        print_out("Top entries for '%s':", hname);
-        print_out("------------------------------------------------");
-    }
-    else
-    {
-        print_out("Related entries for '%s':", hname);
-        print_out("------------------------------------------------");
-    }
-    
-
     next_node = OSStore_GetFirstNode(topstore);
     while(next_node)
     {
@@ -341,14 +365,24 @@ void os_report_printtop(void *topstore_pt, char *hname, int print_related)
                 lkey[46] = '\0';
             }
 
-            print_out("%-48s|%-8d|", (char *)next_node->key, st_data->currently_size);
+            if(!dopdout)
+            {
+                _os_header_print(print_related, hname);
+                dopdout = 1;
+            }
+            l_print_out("%-48s|%-8d|", (char *)next_node->key, st_data->currently_size);
         }
 
 
         /* Print each destination. */
         else
         {
-            print_out("%-48s|%-8d|", (char *)next_node->key, st_data->currently_size);
+            if(!dopdout)
+            {
+                _os_header_print(print_related, hname);
+                dopdout = 1;
+            }
+            l_print_out("%-48s|%-8d|", (char *)next_node->key, st_data->currently_size);
 
             if(print_related & REPORT_REL_LOCATION)
                 _os_report_print_related(REPORT_REL_LOCATION, st_data);
@@ -369,8 +403,11 @@ void os_report_printtop(void *topstore_pt, char *hname, int print_related)
     }
 
 
-    print_out(" ");
-    print_out(" ");
+    if(dopdout == 1)
+    {
+        l_print_out(" ");
+        l_print_out(" ");
+    }
     return; 
 }
 
@@ -382,6 +419,7 @@ void os_ReportdStart(report_filter *r_filter)
     int alerts_filtered = 0;
     char *first_alert = NULL;
     char *last_alert = NULL;
+    void **data_to_clean = NULL;
     
     
     time_t tm;     
@@ -398,6 +436,29 @@ void os_ReportdStart(report_filter *r_filter)
 
 
 
+
+    /* Initating file queue - to read the alerts */
+    os_calloc(1, sizeof(file_queue), fileq);
+
+    if(r_filter->report_type == REPORT_TYPE_DAILY)
+    {
+        fileq->fp = fopen(ALERTS_DAILY, "r");
+        if(!fileq->fp)
+        {
+            merror("%s: ERROR: Unable to open alerts file to generate report.", __local_name);
+            return;
+        }
+        if(r_filter->fp)
+        {
+            __g_rtype = r_filter->fp;
+        }
+    }
+    else
+    {
+        fileq->fp = stdin;
+    }
+
+
     /* Creating top hashes. */
     r_filter->top_user = OSStore_Create();
     r_filter->top_srcip = OSStore_Create();
@@ -405,12 +466,7 @@ void os_ReportdStart(report_filter *r_filter)
     r_filter->top_rule = OSStore_Create();
     r_filter->top_group = OSStore_Create();
     r_filter->top_location = OSStore_Create();
-
     
-
-    /* Initating file queue - to read the alerts */
-    os_calloc(1, sizeof(file_queue), fileq);
-    fileq->fp = stdin;
     Init_FileQueue(fileq, p, CRALERT_READ_ALL|CRALERT_FP_SET);
 
 
@@ -421,7 +477,6 @@ void os_ReportdStart(report_filter *r_filter)
         al_data = Read_FileMon(fileq, p, 1);
         if(!al_data)
         {
-            verbose("%s: Report completed. Creating output...", ARGV0);
             break;
         }
 
@@ -437,6 +492,7 @@ void os_ReportdStart(report_filter *r_filter)
         
         
         alerts_filtered++;
+        data_to_clean = os_AddPtArray(al_data, data_to_clean);
 
 
         /* Setting first and last alert for summary. */
@@ -512,21 +568,36 @@ void os_ReportdStart(report_filter *r_filter)
                                al_data);
     }
 
+    /* No report available */
+    if(alerts_filtered == 0)
+    {
+        if(!r_filter->report_name)
+            merror("%s: INFO: Report completed and zero alerts post-filter.", __local_name);
+        else
+            merror("%s: INFO: Report '%s' completed and zero alerts post-filter.", __local_name, r_filter->report_name);    
+        return;
+    }
 
-
-    print_out(" ");
+    
     if(r_filter->report_name)
-        print_out("Report '%s' completed.", r_filter->report_name);
+        verbose("%s: INFO: Report '%s' completed. Creating output...", __local_name, r_filter->report_name);
     else
-        print_out("Report completed. ==");
-    print_out("------------------------------------------------");
+        verbose("%s: INFO: Report completed. Creating output...", __local_name);    
+
+
+    l_print_out(" ");
+    if(r_filter->report_name)
+        l_print_out("Report '%s' completed.", r_filter->report_name);
+    else
+        l_print_out("Report completed. ==");
+    l_print_out("------------------------------------------------");
             
-    print_out("->Processed alerts: %d", alerts_processed);
-    print_out("->Post-filtering alerts: %d", alerts_filtered);
-    print_out("->First alert: %s", first_alert);
-    print_out("->Last alert: %s", last_alert);
-    print_out(" ");
-    print_out(" ");
+    l_print_out("->Processed alerts: %d", alerts_processed);
+    l_print_out("->Post-filtering alerts: %d", alerts_filtered);
+    l_print_out("->First alert: %s", first_alert);
+    l_print_out("->Last alert: %s", last_alert);
+    l_print_out(" ");
+    l_print_out(" ");
     
     OSStore_Sort(r_filter->top_srcip, _os_report_sort_compare);
     OSStore_Sort(r_filter->top_user,  _os_report_sort_compare);
@@ -578,6 +649,29 @@ void os_ReportdStart(report_filter *r_filter)
     if(r_filter->related_rule)
         os_report_printtop(r_filter->top_rule, "Rule", 
                            r_filter->related_rule);
+    
+    
+    /* If we have to dump the alerts. */
+    if(data_to_clean)
+    {
+        int i = 0;
+
+        if(r_filter->show_alerts)
+        {
+            l_print_out("Log dump:");
+            l_print_out("------------------------------------------------");
+        }
+        while(data_to_clean[i])
+        {
+            alert_data *md = data_to_clean[i];
+            if(r_filter->show_alerts)
+                l_print_out("%s %s\nRule: %d (level %d) -> '%s'\n%s\n\n", md->date, md->location, md->rule, md->level, md->comment, md->log[0]);
+            FreeAlertData(md);
+            i++;
+        }
+        free(data_to_clean);
+        data_to_clean = NULL;
+    }
 }
 
 
@@ -624,7 +718,7 @@ int os_report_configfilter(char *filter_by, char *filter_value,
         }
         else
         {
-            merror("%s: ERROR: Invalid filter '%s'.", ARGV0, filter_by);
+            merror("%s: ERROR: Invalid filter '%s'.", __local_name, filter_by);
             return(-1);
         }
     }
@@ -680,7 +774,7 @@ int os_report_configfilter(char *filter_by, char *filter_value,
         }
         else
         {
-            merror("%s: ERROR: Invalid related entry '%s'.", ARGV0, filter_by);
+            merror("%s: ERROR: Invalid related entry '%s'.", __local_name, filter_by);
             return(-1);
         }
     }

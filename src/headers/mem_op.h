@@ -16,6 +16,8 @@
 
 #include "shared.h"
 
+void **os_AddPtArray(void *pt, void **array);
+char **os_AddStrArray(char *str, char **array);
 void os_FreeArray(char *ch1, char **ch2);
 int os_IsStrOnArray(char *str, char **array);
 char *os_LoadString(char *at, char *str);

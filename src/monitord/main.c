@@ -11,7 +11,9 @@
 
 
 #include "shared.h"
+#include "config/config.h"
 #include "monitord.h"
+#include "os_net/os_net.h"
 
 
 int main(int argc, char **argv)
@@ -95,6 +97,57 @@ int main(int argc, char **argv)
     mond.monitor_agents = getDefine_Int("monitord","monitor_agents",0,1);
 
     mond.agents = NULL;
+    mond.smtpserver = NULL;
+    mond.emailfrom = NULL;
+
+
+    c = 0;
+    c|= CREPORTS;
+    if(ReadConfig(c, cfg, &mond, NULL) < 0)
+    {
+        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+    }
+
+    /* If we have any reports configured, read smtp/emailfrom */
+    if(mond.reports)
+    {
+        OS_XML xml;
+        char *tmpsmtp;
+
+        char *(xml_smtp[])={"ossec_config", "global", "smtp_server", NULL};
+        char *(xml_from[])={"ossec_config", "global", "email_from", NULL};
+
+        if(OS_ReadXML(cfg, &xml) < 0)
+        {
+            ErrorExit(CONFIG_ERROR, ARGV0, cfg);
+        }
+
+        tmpsmtp = OS_GetOneContentforElement(&xml,xml_smtp);
+        mond.emailfrom = OS_GetOneContentforElement(&xml,xml_from);
+
+        if(tmpsmtp && mond.emailfrom)
+        {
+            mond.smtpserver = OS_GetHost(tmpsmtp, 5);
+            if(!mond.smtpserver)
+            {
+                merror(INVALID_SMTP, ARGV0, tmpsmtp);
+                if(mond.emailfrom) free(mond.emailfrom);
+                mond.emailfrom = NULL;
+                merror("%s: Invalid SMTP server.  Disabling email reports.", ARGV0);
+            }
+        }
+        else
+        {
+            if(tmpsmtp) free(tmpsmtp);
+            if(mond.emailfrom) free(mond.emailfrom);
+
+            mond.emailfrom = NULL;
+
+            merror("%s: SMTP server or 'email from' missing. Disabling email reports.", ARGV0);
+        }
+
+        OS_ClearXML(&xml);
+    }
 
 
     /* Exit here if test config is set */

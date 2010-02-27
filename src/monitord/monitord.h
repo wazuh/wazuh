@@ -16,17 +16,9 @@
 #ifndef ARGV0
    #define ARGV0 "ossec-monitord"
 #endif
-   
-typedef struct _monitor_config
-{
-    short int day_wait;
-    short int compress;
-    short int sign;
-    short int monitor_agents;
-    int a_queue;
 
-    char **agents;
-}monitor_config;
+#include "config/reports-config.h"
+
 
 
 /** Prototypes **/
@@ -36,6 +28,9 @@ void Monitord();
 
 /*manage_files */
 void manage_files(int cday, int cmon, int cyear);
+
+/* generate reports. */
+void generate_reports();
 
 /* monitor_agents */
 void monitor_agents();

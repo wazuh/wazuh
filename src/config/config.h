@@ -30,6 +30,7 @@
 #define CDBD          0002000
 #define CSYSLOGD      0004000
 #define CAGENTLESS    0020000
+#define CREPORTS      0040000 
 
 #define CAGENT_CONFIG 0010000
 
@@ -54,6 +55,7 @@ int Read_Remote(XML_NODE node, void *d1, void *d2);
 int Read_Client(XML_NODE node, void *d1, void *d2);
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
+int Read_CReports(XML_NODE node, void *config1, void *config2);
 void AssignIgnore_Global(char **ignores, void *configp);
 
 

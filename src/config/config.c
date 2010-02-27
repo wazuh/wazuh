@@ -40,6 +40,7 @@ int read_main_elements(OS_XML xml, int modules,
     char *osremote = "remote";
     char *osclient = "client";
     char *oscommand = "command";
+    char *osreports = "reports";
     char *osactive_response = "active-response";
 
     
@@ -48,7 +49,7 @@ int read_main_elements(OS_XML xml, int modules,
         XML_NODE chld_node = NULL;
         
         chld_node = OS_GetElementsbyNode(&xml,node[i]);
-        
+
         if(!node[i]->element)
         {
             merror(XML_ELEMNULL, ARGV0);
@@ -130,6 +131,11 @@ int read_main_elements(OS_XML xml, int modules,
         else if(strcmp(node[i]->element, osactive_response) == 0)
         {
             if((modules & CAR)&&(ReadActiveResponses(chld_node, d1, d2)<0))
+                return(OS_INVALID);
+        }
+        else if(strcmp(node[i]->element, osreports) == 0)
+        {
+            if((modules & CREPORTS)&&(Read_CReports(chld_node, d1, d2)<0))
                 return(OS_INVALID);
         }
         else

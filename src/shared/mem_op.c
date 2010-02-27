@@ -13,6 +13,49 @@
 #include "mem_op.h"
 
 
+/* Add pointer to array. */
+void **os_AddPtArray(void *pt, void **array)
+{
+    int i = 0;
+    void **ret = NULL;
+
+    if(array)
+    {
+        while(array[i])
+        {
+            i++;
+        }
+    }
+
+    os_realloc(array, (i + 2)*sizeof(char *), ret);
+    ret[i] = pt;
+    ret[i + 1] = NULL;
+
+    return(ret);
+}
+
+
+/* Add a string to an array. */
+char **os_AddStrArray(char *str, char **array)
+{
+    int i = 0;
+    char **ret = NULL;
+    if(array)
+    {
+        while(array[i])
+        {
+            i++;
+        }
+    }
+
+    os_realloc(array, (i + 2)*sizeof(char *), ret);
+    os_strdup(str, ret[i]);
+    ret[i + 1] = NULL;
+
+    return(ret);
+}
+
+
 /* Check if String is on array (Must be NULL terminated) */
 int os_IsStrOnArray(char *str, char **array)
 {

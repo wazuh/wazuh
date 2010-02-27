@@ -24,6 +24,7 @@
 #define REPORT_REL_RULE          0x010
 #define REPORT_REL_GROUP         0x020
 #define REPORT_REL_LOCATION      0x040
+#define REPORT_TYPE_DAILY        0x100
            
 
 
@@ -51,6 +52,10 @@ typedef struct _report_filter
     int related_rule;
     int related_group;
     int related_location;
+
+    int report_type;
+    int show_alerts;
+    void *fp;
      
 }report_filter;
 
