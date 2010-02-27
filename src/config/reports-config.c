@@ -1,0 +1,238 @@
+/* @(#) $Id$ */
+
+/* Copyright (C) 2009 Trend Micro Inc.
+ * All right reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 3) as published by the FSF - Free Software
+ * Foundation
+ */
+
+/* Functions to handle the configuration files
+ */
+
+
+#include "shared.h"
+#include "reports-config.h"
+
+
+/* Filter argument. */
+static int _filter_arg(char *mystr)
+{
+    if(!mystr)
+    {
+        return(0);
+    }
+
+    while(*mystr)
+    {
+        if((*mystr >= 'a' && *mystr <= 'z') ||
+           (*mystr >= 'A' && *mystr <= 'Z') ||
+           (*mystr >= '0' && *mystr <= '9') ||
+           *mystr == '-' || *mystr == '_')
+        {
+            mystr++;
+        }
+        else
+        {
+            *mystr = '-';
+            mystr++;
+        }
+    }
+
+    return(1);
+}
+
+
+int Read_CReports(XML_NODE node, void *config, void *config2)
+{
+    int i = 0,s = 0;
+
+    /* XML definitions */
+    char *xml_title = "title";
+    char *xml_type = "type";
+    char *xml_categories = "category";
+    char *xml_group = "group";
+    char *xml_rule = "rule";
+    char *xml_level = "level";
+    char *xml_location = "location";
+    char *xml_srcip = "srcip";
+    char *xml_user = "user";
+    char *xml_frequency = "frequency";
+    char *xml_email = "email_to";
+
+
+    monitor_config *mon_config = (monitor_config *)config;
+
+     
+    /* Getting any configured entry. */
+    if(mon_config->reports)
+    {
+        while(mon_config->reports[s])
+            s++;
+    }
+
+    
+    /* Allocating the memory for the config. */
+    os_realloc(mon_config->reports, (s + 2) * sizeof(report_config *), 
+               mon_config->reports);
+    os_calloc(1, sizeof(report_config), mon_config->reports[s]);
+    mon_config->reports[s + 1] = NULL;
+
+
+    /* Zeroing the elements. */
+    mon_config->reports[s]->title = NULL;
+    mon_config->reports[s]->args = NULL;
+    mon_config->reports[s]->relations = NULL;
+    mon_config->reports[s]->type = NULL;
+    mon_config->reports[s]->emailto = NULL;
+
+    mon_config->reports[s]->r_filter.group = NULL;
+    mon_config->reports[s]->r_filter.rule = NULL;
+    mon_config->reports[s]->r_filter.level = NULL;
+    mon_config->reports[s]->r_filter.location = NULL;
+    mon_config->reports[s]->r_filter.srcip = NULL;
+    mon_config->reports[s]->r_filter.user = NULL;
+    mon_config->reports[s]->r_filter.related_group = 0;
+    mon_config->reports[s]->r_filter.related_rule = 0;
+    mon_config->reports[s]->r_filter.related_level = 0;
+    mon_config->reports[s]->r_filter.related_location = 0;
+    mon_config->reports[s]->r_filter.related_srcip = 0;
+    mon_config->reports[s]->r_filter.related_user = 0;
+    mon_config->reports[s]->r_filter.report_name = NULL;
+
+
+    
+    /* Reading the XML. */
+    while(node[i])
+    {
+        if(!node[i]->element)
+        {
+            merror(XML_ELEMNULL, __local_name);
+            return(OS_INVALID);
+        }
+        else if(!node[i]->content)
+        {
+            merror(XML_VALUENULL, __local_name, node[i]->element);
+            return(OS_INVALID);
+        }
+        else if(strcmp(node[i]->element, xml_title) == 0)
+        {
+            if(!mon_config->reports[s]->title)
+            {
+                os_strdup(node[i]->content, mon_config->reports[s]->title);
+            }
+        }
+        else if(strcmp(node[i]->element, xml_type) == 0)
+        {
+            if(strcmp(node[i]->content, "email") == 0)
+            {
+                if(!mon_config->reports[s]->type)
+                {
+                    os_strdup(node[i]->content, mon_config->reports[s]->type);
+                }
+            }
+            else
+            {
+                merror(XML_VALUEERR, __local_name,node[i]->element,node[i]->content);
+            }
+        }
+        else if(strcmp(node[i]->element, xml_frequency) == 0)
+        {
+        }
+        else if(strcmp(node[i]->element, xml_categories) == 0)
+        {
+            char *ncat = NULL;
+            _filter_arg(node[i]->content);
+
+
+            os_strdup(node[i]->content, ncat);
+
+            if(os_report_configfilter("group", ncat,
+                                      &mon_config->reports[s]->r_filter, REPORT_FILTER) < 0)
+            {
+                merror(CONFIG_ERROR, __local_name, "user argument");
+            }
+        }
+        else if((strcmp(node[i]->element, xml_group) == 0)||
+                (strcmp(node[i]->element, xml_rule) == 0)||
+                (strcmp(node[i]->element, xml_level) == 0)||
+                (strcmp(node[i]->element, xml_location) == 0)||
+                (strcmp(node[i]->element, xml_srcip) == 0)||
+                (strcmp(node[i]->element, xml_user) == 0))
+        {
+            int reportf = REPORT_FILTER;
+            char *ncat = NULL;
+            _filter_arg(node[i]->content);
+
+            if(node[i]->attributes && node[i]->values)
+            {
+                if(node[i]->attributes[0] && node[i]->values[0])
+                {
+                    if(strcmp(node[i]->attributes[0], "type") == 0)
+                    {
+                        if(strcmp(node[i]->values[0], "relation") == 0)
+                        {
+                            reportf = REPORT_RELATED;
+                        }
+                        else
+                        {
+                            merror("%s: WARN: Invalid value for 'relation' attribute: '%s'. (ignored).", __local_name, node[i]->values[0]);
+                            i++;
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        merror("%s: WARN: Invalid attribute: %s (ignored). ", __local_name, node[i]->attributes[0]);
+                        i++;
+                        continue;
+                    }
+                }
+            }
+
+            os_strdup(node[i]->content, ncat);
+
+            if(os_report_configfilter(node[i]->content, ncat, 
+                                      &mon_config->reports[s]->r_filter, reportf) < 0)
+            {
+                merror("%s: Invalid filter: %s:%s (ignored).", __local_name, node[i]->element, node[i]->content);
+            }
+        }
+        else if(strcmp(node[i]->element, xml_email) == 0)
+        {
+            mon_config->reports[s]->emailto = os_AddStrArray(node[i]->content, mon_config->reports[s]->emailto);
+        }
+        else
+        {
+            merror(XML_INVELEM, __local_name, node[i]->element);
+            return(OS_INVALID);
+        }
+        i++;
+    }
+
+
+    /* Setting proper report type. */
+    mon_config->reports[s]->r_filter.report_type = REPORT_TYPE_DAILY;
+    mon_config->reports[s]->r_filter.show_alerts = 1;
+
+    if(mon_config->reports[s]->emailto == NULL)
+    {
+        if(mon_config->reports[s]->title)
+            merror("%s: No \"email to\" configured for the report '%s'. Ignoring it.", __local_name, mon_config->reports[s]->title);
+        else
+            merror("%s: No \"email to\" and title configured for report. Ignoring it.", __local_name);    
+    }
+
+    if(!mon_config->reports[s]->title)
+    {
+        os_strdup("OSSEC Report (unnamed)", mon_config->reports[s]->title);
+    }
+    mon_config->reports[s]->r_filter.report_name = mon_config->reports[s]->title;
+
+    return(0);
+}
+
+
+/* EOF */
