@@ -13,10 +13,11 @@
 #include "shared.h"
 #include "monitord.h"
 int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, FILE *fp, struct tm *p);
+char *(monthss[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
+                  "Sep","Oct","Nov","Dec"};
 
 
-
-void generate_reports(struct tm *p)
+void generate_reports(int cday, int cmon, int cyear,struct tm *p)
 {
     int s = 0;
 
@@ -51,7 +52,9 @@ void generate_reports(struct tm *p)
             else if(pid == 0)
             {
                 char fname[256];
+                char aname[256];
                 fname[255] = '\0';
+                aname[255] = '\0';
                 snprintf(fname, 255, "/logs/.report-%d.log", getpid());
 
                 merror("%s: INFO: Starting daily reporting for '%s'", ARGV0, mond.reports[s]->title);
@@ -62,9 +65,17 @@ void generate_reports(struct tm *p)
                     s++;
                     continue;
                 }
-                fflush(mond.reports[s]->r_filter.fp);
 
+
+                /* Opening the log file. */
+                snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.log",
+                         ALERTS, cyear, monthss[cmon], "alerts", cday);
+                os_strdup(aname, mond.reports[s]->r_filter.filename);
+
+
+                /* Starting report */
                 os_ReportdStart(&mond.reports[s]->r_filter);
+                fflush(mond.reports[s]->r_filter.fp);
 
                 if(ftell(mond.reports[s]->r_filter.fp) < 10)
                 {
@@ -77,6 +88,8 @@ void generate_reports(struct tm *p)
                 }
                 fclose(mond.reports[s]->r_filter.fp);
                 unlink(fname);
+                free(mond.reports[s]->r_filter.filename);
+                mond.reports[s]->r_filter.filename = NULL;
 
                 exit(0);
             }

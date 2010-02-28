@@ -30,7 +30,7 @@ void Monitord();
 void manage_files(int cday, int cmon, int cyear);
 
 /* generate reports. */
-void generate_reports();
+void generate_reports(int cday, int cmon, int cyear, struct tm *p);
 
 /* monitor_agents */
 void monitor_agents();

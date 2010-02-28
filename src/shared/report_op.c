@@ -440,9 +440,9 @@ void os_ReportdStart(report_filter *r_filter)
     /* Initating file queue - to read the alerts */
     os_calloc(1, sizeof(file_queue), fileq);
 
-    if(r_filter->report_type == REPORT_TYPE_DAILY)
+    if(r_filter->report_type == REPORT_TYPE_DAILY && r_filter->filename)
     {
-        fileq->fp = fopen(ALERTS_DAILY, "r");
+        fileq->fp = fopen(r_filter->filename, "r");
         if(!fileq->fp)
         {
             merror("%s: ERROR: Unable to open alerts file to generate report.", __local_name);
