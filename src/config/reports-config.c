@@ -194,7 +194,7 @@ int Read_CReports(XML_NODE node, void *config, void *config2)
 
             os_strdup(node[i]->content, ncat);
 
-            if(os_report_configfilter(node[i]->content, ncat, 
+            if(os_report_configfilter(node[i]->element, ncat, 
                                       &mon_config->reports[s]->r_filter, reportf) < 0)
             {
                 merror("%s: Invalid filter: %s:%s (ignored).", __local_name, node[i]->element, node[i]->content);
