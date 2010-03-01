@@ -344,6 +344,7 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             r_node->ruleinfo->maxsize = newrule->maxsize;
             r_node->ruleinfo->frequency = newrule->frequency;
             r_node->ruleinfo->timeframe = newrule->timeframe;
+            r_node->ruleinfo->ignore_time = newrule->ignore_time;
 
             r_node->ruleinfo->group = newrule->group;
             r_node->ruleinfo->match = newrule->match;

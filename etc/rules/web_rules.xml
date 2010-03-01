@@ -54,8 +54,8 @@
       -  or access to the etc or bin directory (unix). -->
     <url>%027|%00|%01|%7f|%2E%2E|%0A|%0D|../..|..\..|echo;|..</url>
     <url>cmd.exe|root.exe|_mem_bin|msadc|/winnt/|</url>
-    <url>/x90/|default.ida|/sumthin|nsiislog.dll|chmod%|wget%|cd%|</url>
-    <url>cat%|exec%|rm%20</url>
+    <url>/x90/|default.ida|/sumthin|nsiislog.dll|chmod%|wget%|cd%20|</url>
+    <url>cat%20|exec%20|rm%20</url>
     <description>Common web attack.</description>
     <group>attack,</group>
   </rule>
