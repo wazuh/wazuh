@@ -13,6 +13,9 @@ ECHO="/bin/echo"
 GREP="/bin/grep"
 IPTABLES="/sbin/iptables"
 IPFILTER="/sbin/ipf"
+if [ "X$UNAME" = "XSunOS" ]; then
+    IPFILTER="/usr/sbin/ipf"
+fi    
 GENFILT="/usr/sbin/genfilt"
 LSFILT="/usr/sbin/lsfilt"
 MKFILT="/usr/sbin/mkfilt"
