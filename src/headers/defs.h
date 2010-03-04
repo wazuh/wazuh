@@ -5,7 +5,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 3) as published by the FSF - Free Software
+ * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
  * License details at the LICENSE file included with OSSEC or 
@@ -52,7 +52,7 @@
 #define __site      "http://www.ossec.net"
 #define __license   "\
 This program is free software; you can redistribute it and/or modify\n\
-it under the terms of the GNU General Public License (version 3) as \n\
+it under the terms of the GNU General Public License (version 2) as \n\
 published by the Free Software Foundation. For more details, go to \n\
 http://www.ossec.net/main/license/\n"
 
