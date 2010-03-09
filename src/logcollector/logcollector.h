@@ -65,6 +65,7 @@ void *read_djbmultilog(int pos, int *rc, int drop_it);
 
 /* Read events from output of command */
 void *read_command(int pos, int *rc, int drop_it);
+void *read_fullcommand(int pos, int *rc, int drop_it);
 
 
 #ifdef WIN32

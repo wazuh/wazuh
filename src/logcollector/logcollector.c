@@ -110,6 +110,20 @@ void LogCollectorStart()
                        ARGV0);
             }
         }
+        else if(strcmp(logff[i].logformat, "full_command") == 0)
+        {
+            logff[i].file = NULL;
+            logff[i].fp = NULL;
+            if(logff[i].command)
+            {
+                logff[i].read = (void *)read_fullcommand;
+            }
+            else
+            {
+                merror("%s: ERROR: Missing command argument. Ignoring it.",
+                       ARGV0); 
+            }
+        }
         
         else
         {

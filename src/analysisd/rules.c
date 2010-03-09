@@ -115,6 +115,7 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_same_user = "same_user";
     char *xml_same_location = "same_location";
     char *xml_same_id = "same_id";
+    char *xml_dodiff = "check_diff";
 
     char *xml_different_url = "different_url";
     
@@ -785,6 +786,14 @@ int Rules_OP_ReadRules(char * rulefile)
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
                     else if(strcasecmp(rule_opt[k]->element,
+                               xml_dodiff)==0)
+                    {
+                        config_ruleinfo->context++;
+                        config_ruleinfo->context_opts|= SAME_DODIFF;
+                        if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                            config_ruleinfo->alert_opts |= DO_EXTRAINFO;
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,
                                 xml_same_dst_port) == 0)
                     {
                         config_ruleinfo->context_opts|= SAME_DSTPORT;
@@ -1288,8 +1297,16 @@ int Rules_OP_ReadRules(char * rulefile)
             }
             else if(config_ruleinfo->context)
             {
-                config_ruleinfo->event_search = 
+                if((config_ruleinfo->context == 1) && 
+                   (config_ruleinfo->context_opts & SAME_DODIFF))
+                {
+                    config_ruleinfo->context = 0;
+                }
+                else
+                {
+                    config_ruleinfo->event_search = 
                                  (void *)Search_LastEvents;
+                }
             }
 
         } /* while(rule[j]) */

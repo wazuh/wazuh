@@ -129,5 +129,54 @@ void *comp_mswin_targetuser_calleruser_diff(Eventinfo *lf)
 }
 
 
+/* Example 4:
+ * Checks if a HTTP request is a simple GET/POST without a query.
+ * This avoid that we call the attack rules for no reason.
+ */
+void *is_simple_http_request(Eventinfo *lf)
+{
+
+    /* Simple GET / request. */
+    if(strcmp(lf->url,"/") == 0)
+    {
+        return(lf);
+    }
+
+    
+    /* Simple request, no query. */
+    if(!strchr(lf->url,'?'))
+    {
+        return(lf);
+    }
+
+
+    /* In here, we have an additional query to be checked. */
+    return(NULL);
+}
+
+
+/* Example 5:
+ * Checks if the source ip is from a valid bot.
+ */
+void *is_valid_crawler(Eventinfo *lf)
+{
+    if((strncmp(lf->log, "66.249.",7) == 0)|| /* Google bot */
+       (strncmp(lf->log, "72.14.",6) == 0)||  /* Feedfetcher-Google */
+       (strncmp(lf->log, "209.85.",7) == 0)||  /* Feedfetcher-Google */
+       (strncmp(lf->log, "65.55.",6) == 0)||  /* MSN/Bing */
+       (strncmp(lf->log, "207.46.",7) == 0)||  /* MSN/Bing */
+       (strncmp(lf->log, "74.6.",5) == 0)||  /* Yahoo */
+       (strncmp(lf->log, "72.30.",6) == 0)||  /* Yahoo */
+       (strncmp(lf->log, "67.195.",7) == 0)  /* Yahoo */
+      )
+    {
+        return(lf);
+    }
+
+    return(NULL);
+}
+
+
+
 /* END generic samples. */
 

@@ -20,6 +20,13 @@
     <description>Access log messages grouped.</description>
   </rule>
 
+  <rule id="31108" level="0">
+    <if_sid>31100</if_sid>
+    <id>^2|^3</id>
+    <compiled_rule>is_simple_http_request</compiled_rule>
+    <description>Ignored URLs (simple queries).</description>
+   </rule>
+
   <rule id="31101" level="5">
     <if_sid>31100</if_sid>
     <id>^4</id>
@@ -29,13 +36,8 @@
   <rule id="31102" level="0">
     <if_sid>31101</if_sid>
     <id>^403|^404</id>
-    <url>.jpg$|.gif$|favicon.ico$|.png$|robots.txt$|.css$</url>
-    
-    <!-- Add any other url to be ignored in here
-         (to avoid too many false positives from your site)
-    <url>|.html$|.jpe$</url>
-    -->
-    
+    <url>.jpg$|.gif$|favicon.ico$|.png$|robots.txt$|.css$|.js$</url>
+    <compiled_rule>is_simple_http_request</compiled_rule>
     <description>Ignored extensions on 400 error codes.</description>
   </rule>
   
@@ -62,13 +64,13 @@
 
   <rule id="31105" level="6">
     <if_sid>31100</if_sid>
-    <url>%3Cscript|%2Fscript|script>|script%3E|SRC=javascript|IMG%20|</url>
+    <url>%3Cscript|%3C%2Fscript|script>|script%3E|SRC=javascript|IMG%20|</url>
     <url>%20ONLOAD=|INPUT%20|iframe%20</url>
     <description>XSS (Cross Site Scripting) attempt.</description>
     <group>attack,</group>
   </rule>
   
-  <rule id="31106" level="12">
+  <rule id="31106" level="6">
     <if_sid>31103, 31104, 31105</if_sid>
     <id>^200</id>
     <description>A web attack returned code 200 (success).</description>
@@ -80,7 +82,7 @@
     -->
   <rule id="31107" level="0">
     <if_sid>31103, 31104, 31105</if_sid>
-    <url>^/search.php?search=|^index.php?searchword=</url>
+    <url>^/search.php?search=|^/index.php?searchword=</url>
     <description>Ignored URLs for the web attacks</description>
   </rule>
 
@@ -120,6 +122,15 @@
     <options>alert_by_email</options>
     <description>Web server 503 error code (Service unavailable).</description>
   </rule>
+
+
+  <!-- Rules to ignore crawlers -->
+  <rule id="31140" level="0">
+    <if_sid>31101</if_sid>
+    <compiled_rule>is_valid_crawler</compiled_rule>
+    <description>Ignoring google/msn/yahoo bots.</description>
+  </rule>
+
   
   <rule id="31151" level="10" frequency="10" timeframe="120">
     <if_matched_sid>31101</if_matched_sid>

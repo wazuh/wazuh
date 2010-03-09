@@ -87,6 +87,7 @@ int FTS_Init();
 int FTS(Eventinfo *lf);
 int AddtoIGnore(Eventinfo *lf);
 int IGnore(Eventinfo *lf);
+int doDiff(RuleInfo *currently_rule, Eventinfo *lf);
 
 
 /* For decoders */
@@ -1360,6 +1361,16 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                         strlen(lf->status),
                         currently_rule->status))
                 return(NULL);
+        }
+
+
+        /* Do diff check. */
+        if(currently_rule->context_opts & SAME_DODIFF)
+        {
+            if(!doDiff(currently_rule, lf))
+            {
+                return(NULL);
+            }
         }
     }
 

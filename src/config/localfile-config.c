@@ -278,6 +278,9 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             else if(strcmp(logf[pl].logformat, "command") == 0)
             {
             }
+            else if(strcmp(logf[pl].logformat, "full_command") == 0)
+            {
+            }
             else if(strcmp(logf[pl].logformat, EVENTLOG) == 0)
             {
             }
@@ -366,7 +369,8 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
          }
     }
 
-    if(strcmp(logf[pl].logformat, "command") == 0)
+    if((strcmp(logf[pl].logformat, "command") == 0)||
+       (strcmp(logf[pl].logformat, "full_command") == 0)) 
     {
         if(!logf[pl].command)
         {
