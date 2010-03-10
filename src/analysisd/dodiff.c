@@ -18,7 +18,7 @@
 #include "shared.h"
 
 char flastcontent[OS_SIZE_8192 +1];
-char *fmsglast = "\nPrevious output:";
+char *fmsglast = "Previous output:";
 
 static int _add2last(char *str, int strsize, char *file)
 {

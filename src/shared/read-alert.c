@@ -266,7 +266,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_strdup(p, user);
             }
             /* It is a log message */
-            else if(log_size < 10)
+            else if(log_size < 20)
             {
                 os_clearnl(str,p);
                 
