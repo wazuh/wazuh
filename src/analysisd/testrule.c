@@ -340,7 +340,7 @@ void OS_ReadMSG(int m_queue)
 
 
             /* Make sure we ignore blank lines. */
-            if(strlen(msg) < 6)
+            if(strlen(msg) < 10)
             {
                 continue;
             }
