@@ -59,6 +59,12 @@
     <description>File system full.</description>
     <group>low_diskspace,</group>
   </rule>
+
+  <rule id="1008" level="5">
+    <match>killed by SIGTERM</match>
+    <description>Process exiting (killed).</description>
+    <group>service_availability,</group>
+  </rule>
 </group> <!-- SYSLOG,ERRORS -->
 
 

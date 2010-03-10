@@ -86,7 +86,20 @@
     <description>Postfix insufficient disk space error.</description>
     <group>service_availability,</group>
   </rule>
-            
+
+  <rule id="3332" level="3">
+    <if_sid>3320</if_sid>
+    <match>^daemon started </match>
+    <description>Postfix started.</description>
+  </rule>
+
+  <rule id="3333" level="7">
+    <if_sid>3320</if_sid>
+    <match>^terminating on signal</match>
+    <description>Postfix stopped.</description>
+    <group>service_availability,</group>
+  </rule>
+
   <rule id="3351" level="6" frequency="$POSTFIX_FREQ" timeframe="90">
     <if_matched_sid>3301</if_matched_sid>
     <same_source_ip />
