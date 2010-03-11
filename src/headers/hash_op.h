@@ -73,6 +73,7 @@ int OSHash_Add(OSHash *hash, char *key, void *data);
  */
 void *OSHash_Get(OSHash *self, char *key);
 
+int OSHash_setSize(OSHash *self, int new_size);
 
 #endif
 

@@ -23,7 +23,7 @@
 int fts_minsize_for_str = 0;
 
 OSList *fts_list = NULL;
-OSStore *fts_store = NULL;
+OSHash *fts_store = NULL;
 
 FILE *fp_list = NULL;
 FILE *fp_ignore = NULL;
@@ -48,13 +48,19 @@ int FTS_Init()
     }
 
     /* Creating store data */
-    fts_store = OSStore_Create();
+    fts_store = OSHash_Create();
     if(!fts_store)
     {
         merror(LIST_ERROR, ARGV0);
         return(0);
     }
+    if(!OSHash_setSize(fts_store, 2048))
+    {
+        merror(LIST_ERROR, ARGV0);
+        return(0);
+    }
     
+
     /* Getting default list size */
     fts_list_size = getDefine_Int("analysisd",
                                   "fts_list_size",
@@ -105,8 +111,9 @@ int FTS_Init()
 
 
         os_strdup(_line, tmp_s);
-        if(!OSStore_Put(fts_store, tmp_s, NULL))
+        if(OSHash_Add(fts_store, tmp_s, tmp_s) != 2)
         {
+            free(tmp_s);
             merror(LIST_ADD_ERROR, ARGV0);
         }
     }
@@ -246,18 +253,10 @@ int FTS(Eventinfo *lf)
 
 
     /** Checking if FTS is already present **/
-    if(lf->decoder_info->type == WINDOWS)
-    {
-        /* Windows is case insensitive */
-        if(OSStore_NCaseCheck(fts_store, _line))
-        {
-            return(0);
-        }
-    }
-    else if(OSStore_NCheck(fts_store, _line))
+    if(OSHash_Get(fts_store, _line))
     {
         return(0);
-    }
+    }        
 
     
     /* Checking if from the last FTS events, we had
@@ -296,7 +295,7 @@ int FTS(Eventinfo *lf)
         os_strdup(_line, line_for_list);
     }
 
-    if(!OSStore_Put(fts_store, line_for_list, NULL))
+    if(!OSHash_Add(fts_store, line_for_list, line_for_list))
     {
         merror(LIST_ADD_ERROR, ARGV0);
     }
