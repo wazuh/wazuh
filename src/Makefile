@@ -15,6 +15,7 @@ none:
 		@echo "\"make setprelude\" to enable prelude output."
 		@echo "\"make setdb\" to enable database support."
 		@echo "\"make unsetdb\" to disable database support."
+		@echo "\"make setoneway\" to enable one-way connection to the manager."
 
 clean:
 		@/bin/sh ./Makeall clean
@@ -56,3 +57,5 @@ setlocal:
 
 setfullsubject:
 		@echo "FEXTRA=-DCLEANFULL" >> ./Config.OS
+setoneway:
+		@echo "FEXTRA=-DONEWAY" >> ./Config.OS

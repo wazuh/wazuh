@@ -68,6 +68,7 @@ void run_notify()
     curr_time = time(0);
 
 
+    #ifndef ONEWAY
     /* Check if the server has responded */
     if((curr_time - available_server) > (3*NOTIFY_TIME))
     {
@@ -83,6 +84,7 @@ void run_notify()
         verbose(SERVER_UP, ARGV0);
         os_delwait();
     }
+    #endif
 
 
     /* Check if time has elapsed */

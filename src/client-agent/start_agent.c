@@ -159,6 +159,11 @@ void start_agent(int is_startup)
     memset(cleartext, '\0', OS_MAXSTR +1);
     memset(fmsg, '\0', OS_MAXSTR +1);
     snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
+
+
+    #ifdef ONEWAY
+    return;
+    #endif
     
     
     /* Sending start message and waiting for the ack */	

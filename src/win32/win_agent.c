@@ -361,6 +361,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     cu_time = time(0);
     
 
+    #ifndef ONEWAY
     /* Check if the server has responded */
     if((cu_time - available_server) > (NOTIFY_TIME - 180))
     {
@@ -479,7 +480,12 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
             }
         }
     }
-    
+    #else
+    if(0)
+    {
+    }
+    #endif
+
 
     /* Send notification */
     else if((cu_time - __win32_curr_time) > (NOTIFY_TIME - 200))
