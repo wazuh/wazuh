@@ -18,7 +18,7 @@
 
 <group name="syslog,smbd,">
   <rule id="13100" level="0" noalert="1">
-    <match>^smbd</match>
+    <decoded_as>smbd</decoded_as>
     <description>Grouping for the smbd rules.</description>
   </rule>
   
