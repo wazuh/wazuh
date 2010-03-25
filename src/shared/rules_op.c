@@ -85,6 +85,7 @@ int OS_ReadXMLRules(char *rulefile,
     char *xml_same_user = "same_user";
     char *xml_same_location = "same_location";
     char *xml_same_id = "same_id";
+    char *xml_dodiff = "check_diff";
 
     char *xml_different_url = "different_url";
     
@@ -593,6 +594,16 @@ int OS_ReadXMLRules(char *rulefile,
 
                     if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
                         config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
+                }
+                else if(strcasecmp(rule_opt[k]->element,
+                                   xml_dodiff)==0)
+                {
+                    config_ruleinfo->context++;
+                    config_ruleinfo->context_opts|= SAME_DODIFF;
+                    if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
+                    {
+                        config_ruleinfo->alert_opts |= DO_EXTRAINFO;
+                    }
                 }
                 else if(strcasecmp(rule_opt[k]->element,
                             xml_same_dst_port) == 0)

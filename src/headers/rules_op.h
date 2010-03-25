@@ -29,6 +29,7 @@
 #define DIFFERENT_URL   0x010 /* */
 #define SAME_SRCPORT    0x020
 #define SAME_DSTPORT    0x040
+#define SAME_DODIFF     0x100
 #define NOT_SAME_USER   0xffe /* 0xfff - 0x001  */
 #define NOT_SAME_SRCIP  0xffd /* 0xfff - 0x002  */
 #define NOT_SAME_ID     0xffb /* 0xfff - 0x004  */
