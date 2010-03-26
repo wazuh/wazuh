@@ -57,6 +57,7 @@ int Read_CReports(XML_NODE node, void *config, void *config2)
     char *xml_rule = "rule";
     char *xml_level = "level";
     char *xml_location = "location";
+    char *xml_showlogs = "showlogs";
     char *xml_srcip = "srcip";
     char *xml_user = "user";
     char *xml_frequency = "frequency";
@@ -101,6 +102,7 @@ int Read_CReports(XML_NODE node, void *config, void *config2)
     mon_config->reports[s]->r_filter.related_srcip = 0;
     mon_config->reports[s]->r_filter.related_user = 0;
     mon_config->reports[s]->r_filter.report_name = NULL;
+    mon_config->reports[s]->r_filter.show_alerts = 0;
 
 
     
@@ -140,6 +142,13 @@ int Read_CReports(XML_NODE node, void *config, void *config2)
         }
         else if(strcmp(node[i]->element, xml_frequency) == 0)
         {
+        }
+        else if(strcmp(node[i]->element, xml_showlogs) == 0)
+        {
+            if(strcasecmp(node[i]->content, "yes") == 0)
+            {
+                mon_config->reports[s]->r_filter.show_alerts = 1;
+            }
         }
         else if(strcmp(node[i]->element, xml_categories) == 0)
         {
@@ -215,7 +224,6 @@ int Read_CReports(XML_NODE node, void *config, void *config2)
 
     /* Setting proper report type. */
     mon_config->reports[s]->r_filter.report_type = REPORT_TYPE_DAILY;
-    mon_config->reports[s]->r_filter.show_alerts = 1;
 
     if(mon_config->reports[s]->emailto == NULL)
     {
