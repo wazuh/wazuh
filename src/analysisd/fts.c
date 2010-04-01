@@ -111,7 +111,7 @@ int FTS_Init()
 
 
         os_strdup(_line, tmp_s);
-        if(OSHash_Add(fts_store, tmp_s, tmp_s) != 2)
+        if(OSHash_Add(fts_store, tmp_s, tmp_s) <= 0)
         {
             free(tmp_s);
             merror(LIST_ADD_ERROR, ARGV0);
@@ -295,9 +295,9 @@ int FTS(Eventinfo *lf)
         os_strdup(_line, line_for_list);
     }
 
-    if(!OSHash_Add(fts_store, line_for_list, line_for_list))
+    if(OSHash_Add(fts_store, line_for_list, line_for_list) <= 1)
     {
-        merror(LIST_ADD_ERROR, ARGV0);
+        return(0);
     }
 
     
