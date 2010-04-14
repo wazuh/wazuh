@@ -80,6 +80,15 @@ int _os_strmatch(char *pattern, char *str, int str_len, int size)
     return(TRUE);
 }
 
+int _os_strstr(char *pattern, char *str, int str_len, int size)
+{
+    if(strstr(str, pattern) != NULL)
+    {
+        return(TRUE);
+    }
+    return(FALSE);
+}
+
 
 /** Internal matching **/
 int _os_strcmp_last(char *pattern, char *str, int str_len, int size)

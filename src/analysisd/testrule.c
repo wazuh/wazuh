@@ -412,7 +412,7 @@ void OS_ReadMSG(int m_queue)
                 {
                     continue;
                 }
-
+            
 
                 /* Checking each rule. */
                 else if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt)) 

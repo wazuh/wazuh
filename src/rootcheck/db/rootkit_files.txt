@@ -353,7 +353,6 @@ etc/.bmbl/sk            ! BMBL rootkit
 # Cback Linux worm
 tmp/cback              ! cback worm ::/rootkits/cback.php
 tmp/derfiq             ! cback worm ::/rootkits/cback.php
-*/cback                ! cback worm ::/rootkits/cback.php
 
 
 # aPa Kit (from rkhunter)

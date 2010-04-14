@@ -24,6 +24,7 @@ int _os_strncmp(char *pattern, char *str, int str_len, int size);
 int _os_strcmp_last(char *pattern, char *str, int str_len, int size);
 int _os_strcmp(char *pattern, char *str, int str_len, int size);
 int _os_strmatch(char *pattern, char *str, int str_len, int size);
+int _os_strstr(char *pattern, char *str, int str_len, int size);
 
 
 /** int OSMatch_Compile(char *pattern, OSMatch *reg, int flags) v0.1
@@ -35,6 +36,7 @@ int _os_strmatch(char *pattern, char *str, int str_len, int size);
  */
 int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
 {
+    int usstrstr = 0;
     int i = 0;
     int count = 0;
     int end_of_string = 0;
@@ -83,6 +85,7 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
     new_str_free = new_str;
     pt = new_str;
     
+
     
     /* Getting the number of sub patterns */
     while(*pt != '\0')
@@ -99,6 +102,10 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
         if(*pt == OR)
         {
             count++;
+        }
+        else if(*pt == -29)
+        {
+            usstrstr = 1;
         }
         pt++;    
     }
@@ -179,13 +186,20 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
                 reg->size[i] = strlen(reg->patterns[i]) -1;
                 reg->patterns[i][reg->size[i]] = '\0';
             }
-            
+
             /* If string starts with ^, use strncmp */
             else if(*new_str == BEGINREGEX)
             {
                 reg->match_fp[i] = _os_strncmp;
                 reg->size[i] = strlen(reg->patterns[i]);
             }
+
+            else if(usstrstr == 1)
+            {
+                reg->match_fp[i] = _os_strstr;
+                reg->size[i] = strlen(reg->patterns[i]);
+            }
+            
             else
             {
                 reg->match_fp[i] = _OS_Match;
