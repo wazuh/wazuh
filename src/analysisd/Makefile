@@ -11,7 +11,7 @@ LOCAL= analysisd.c stats.c rules.c rules_list.c config.c fts.c dodiff.c eventinf
 PLUGINS = decoders/decoders.a
 ALERTS  = alerts/alerts.a
 
-loga_OBJS = ${LOCAL} ${PLUGINS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE}
+loga_OBJS = ${LOCAL} ${PLUGINS} ${ALERTS} ${OS_XML} ${OS_NET} ${OS_SHARED} ${OS_REGEX} ${OS_ZLIB} ${CPRELUDE}
 
 
 logaudit:

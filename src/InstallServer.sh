@@ -232,6 +232,7 @@ chown root:${GROUP} ${DIR}/var/run
 cp -pr ../bin/ossec* ${DIR}/bin/
 cp -pr ../bin/manage_agents ${DIR}/bin/
 cp -pr ../bin/syscheck_update ${DIR}/bin/
+cp -pr ../bin/verify-agent-conf ${DIR}/bin/
 cp -pr ../bin/clear_stats ${DIR}/bin/
 cp -pr ../bin/list_agents ${DIR}/bin/
 cp -pr ../bin/agent_control ${DIR}/bin/

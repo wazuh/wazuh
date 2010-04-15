@@ -14,10 +14,11 @@ me:
 		$(CC) $(CFLAGS) ${OS_LINK} ${SUP} syscheck_update.c $(OBJS) -o syscheck_update
 		$(CC) $(CFLAGS) ${OS_LINK} clear_stats.c $(OBJS) -o clear_stats
 		$(CC) $(CFLAGS) ${OS_LINK} list_agents.c $(OBJS) -o list_agents
+		$(CC) $(CFLAGS) ${OS_LINK} verify-agent-conf.c $(OS_CONFIG) $(OBJS) ${OS_XML} -o verify-agent-conf
 		$(CC) $(CFLAGS) ${OS_LINK} ${SUP} agent_control.c $(OBJS) -o agent_control
 		$(CC) $(CFLAGS) ${OS_LINK} ${SUP} syscheck_control.c $(OBJS) -o syscheck_control
 		$(CC) $(CFLAGS) ${OS_LINK} ${SUP} rootcheck_control.c $(OBJS) -o rootcheck_control
 clean:
-		$(CLEAN) syscheck_update clear_stats list_agents agent_control syscheck_control rootcheck_control
+		$(CLEAN) syscheck_update clear_stats list_agents agent_control syscheck_control rootcheck_control verify-agent-conf
 build:
-		cp -pr syscheck_update clear_stats list_agents syscheck_control rootcheck_control agent_control ${PT}../bin
+		cp -pr syscheck_update clear_stats list_agents syscheck_control rootcheck_control agent_control verify-agent-conf ${PT}../bin

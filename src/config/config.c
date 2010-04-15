@@ -176,6 +176,9 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
     {
         if(modules & CAGENT_CONFIG)
         {
+            #ifndef CLIENT
+            merror(XML_ERROR, ARGV0, cfgfile, xml.err, xml.err_line);
+            #endif
         }
         else
         {
@@ -235,6 +238,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                 {
                     if(strcmp(xml_agent_name, node[i]->attributes[attrs]) == 0)
                     {
+                        #ifdef CLIENT
                         char *agentname = os_read_agent_name();
 
                         if(!agentname)
@@ -249,9 +253,11 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                             }
                             free(agentname);
                         }
+                        #endif
                     }
                     else if(strcmp(xml_agent_os, node[i]->attributes[attrs]) == 0)
                     {
+                        #ifdef CLIENT
                         char *agentos = getuname();
 
                         if(agentos)
@@ -267,6 +273,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                             passed_agent_test = 0;
                             merror("%s: ERROR: Unable to retrieve uname.", ARGV0);
                         }
+                        #endif
                     }
                     else if(strcmp(xml_agent_overwrite, node[i]->attributes[attrs]) == 0)
                     {
