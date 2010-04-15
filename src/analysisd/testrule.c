@@ -94,6 +94,7 @@ int SetDecodeXML();
  */
 int main(int argc, char **argv)
 {
+    int t_config = 0;
     int c = 0, m_queue = 0;
     char *dir = DEFAULTDIR;
     char *user = USER;
@@ -112,11 +113,14 @@ int main(int argc, char **argv)
     active_responses = NULL;
     memset(prev_month, '\0', 4);
 
-    while((c = getopt(argc, argv, "Vafdhu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vatfdhu:g:D:c:")) != -1){
         switch(c){
 	    case 'V':
 		print_version();
 		break;
+            case 't':
+                t_config = 1;
+                break;
             case 'h':
                 help(ARGV0);
                 break;
@@ -249,6 +253,11 @@ int main(int argc, char **argv)
         AddHash_Rule(tmp_node);
     }
 
+
+    if(t_config == 1)
+    {
+        exit(0);
+    }
 
     
     /* Start up message */

@@ -87,7 +87,7 @@
     <group>service_availability,</group>
   </rule>
 
-  <rule id="3332" level="3">
+  <rule id="3334" level="3">
     <if_sid>3320</if_sid>
     <match>^daemon started </match>
     <description>Postfix started.</description>
