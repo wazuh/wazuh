@@ -71,7 +71,7 @@ Function .onInit
     NoAbort:
     
     ;; Stopping ossec service.
-    ExecWait /B '"net" "stop" "OssecSvc"'  
+    ExecWait '"net" "stop" "OssecSvc"'  
 FunctionEnd
             
 
@@ -135,21 +135,21 @@ CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$I
 
 
 ; Install in the services 
-ExecWait /B '"$INSTDIR\ossec-agent.exe" install-service'
-ExecWait /B '"$INSTDIR\setup-windows.exe" "$INSTDIR"' 
+ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
+ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"' 
 Exec '"$INSTDIR\os_win32ui.exe" "$INSTDIR"' 
 
 SectionEnd
 
 Section "Scan and monitor IIS logs (recommended)" IISLogs
 
-ExecWait /B '"$INSTDIR\setup-iis.exe" "$INSTDIR"'
+ExecWait '"$INSTDIR\setup-iis.exe" "$INSTDIR"'
 
 SectionEnd
 
 Section "Enable integrity checking (recommended)" IntChecking
 
-ExecWait /B '"$INSTDIR\setup-syscheck.exe" "$INSTDIR" "enable"'
+ExecWait '"$INSTDIR\setup-syscheck.exe" "$INSTDIR" "enable"'
 
 SectionEnd
 
@@ -158,7 +158,7 @@ SectionEnd
 Section "Uninstall"
   
   ; Stop ossec
-  ExecWait /B '"net" "stop" "OssecSvc"'
+  ExecWait '"net" "stop" "OssecSvc"'
   
   ; Uninstall from the services
   Exec '"$INSTDIR\ossec-agent.exe" uninstall-service'
