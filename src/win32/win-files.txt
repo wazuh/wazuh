@@ -33,6 +33,7 @@ logcollector/read_postgresql_log.c read_postgresql_log.c
 logcollector/read_djb_multilog.c read_djb_multilog.c
 logcollector/read_command.c read_command.c
 logcollector/read_fullcommand.c read_fullcommand.c
+logcollector/read_multiline.c read_multiline.c
 syscheckd/config.c syscheckd-config.c
 syscheckd/create_db.c create_db.c
 syscheckd/run_check.c run_check.c
