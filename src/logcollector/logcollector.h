@@ -57,6 +57,9 @@ void *read_mssql_log(int pos, int *rc, int drop_it);
 /* Read postgresql log format */
 void *read_postgresql_log(int pos, int *rc, int drop_it);
 
+/* read multi line logs. */
+void *read_multiline(int pos, int *rc, int drop_it);
+
 /* Read DJB multilog format */
 /* Initializes multilog. */
 int init_djbmultilog(int pos);

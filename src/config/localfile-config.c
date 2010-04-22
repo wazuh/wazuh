@@ -242,6 +242,9 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             if(strcmp(logf[pl].logformat, "syslog") == 0)
             {
             }
+            else if(strcmp(logf[pl].logformat, "generic") == 0)
+            {
+            }
             else if(strcmp(logf[pl].logformat, "snort-full") == 0)
             {
             }
@@ -280,6 +283,36 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             }
             else if(strcmp(logf[pl].logformat, "full_command") == 0)
             {
+            }
+            else if(strncmp(logf[pl].logformat, "multi-line", 10) == 0)
+            {
+                int x = 0;
+                logf[pl].logformat+=10;
+
+                while(logf[pl].logformat[0] == ' ')
+                    logf[pl].logformat++;
+                
+                if(logf[pl].logformat[0] != ':')
+                {
+                    merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                    return(OS_INVALID);
+                }
+                logf[pl].logformat++;
+
+                while(*logf[pl].logformat == ' ')
+                    logf[pl].logformat++;
+                
+                while(logf[pl].logformat[x] >= '0' && logf[pl].logformat[x] <= '9')    
+                    x++;
+
+                while(logf[pl].logformat[x] == ' ')
+                    x++;
+
+                if(logf[pl].logformat[x] != '\0')
+                {
+                    merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                    return(OS_INVALID);
+                }
             }
             else if(strcmp(logf[pl].logformat, EVENTLOG) == 0)
             {

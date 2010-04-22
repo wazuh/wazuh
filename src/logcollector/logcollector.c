@@ -187,6 +187,10 @@ void LogCollectorStart()
                 }
                 logff[i].read = (void *)read_djbmultilog;
             }
+            else if(logff[i].logformat[0] >= '0' && logff[i].logformat[0] <= '9')
+            {
+                logff[i].read = (void *)read_multiline;
+            }
             else
             {
                 logff[i].read = (void *)read_syslog;
