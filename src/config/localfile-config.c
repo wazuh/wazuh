@@ -31,6 +31,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     char *xml_localfile_location = "location";
     char *xml_localfile_command = "command";
     char *xml_localfile_logformat = "log_format";
+    char *xml_localfile_frequency = "frequency";
 
 
     logreader *logf;
@@ -73,6 +74,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     logf[pl].fp = NULL;
     logf[pl].ffile = NULL;
     logf[pl].djb_program_name = NULL;
+    logf[pl].ign = 360;
     
     
     /* Searching for entries related to files */
@@ -93,6 +95,16 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         {
             os_strdup(node[i]->content, logf[pl].file);
             logf[pl].command = logf[pl].file;
+        }
+        else if(strcmp(node[i]->element,xml_localfile_frequency) == 0)
+        {
+            if(!OS_StrIsNum(node[i]->content))
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+
+            logf[pl].ign = atoi(node[i]->content);
         }
         else if(strcmp(node[i]->element,xml_localfile_location) == 0)
         {

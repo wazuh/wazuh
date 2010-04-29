@@ -28,6 +28,7 @@ void LogCollectorStart()
     int i = 0, r = 0;
     int max_file = 0;
     int f_check = 0;
+    int curr_time = 0;
     
     /* To check for inode changes */
     struct stat tmp_stat;
@@ -99,10 +100,13 @@ void LogCollectorStart()
         {
             logff[i].file = NULL;
             logff[i].fp = NULL;
+            logff[i].size = 0;
 
             if(logff[i].command)
             {
                 logff[i].read = (void *)read_command;
+
+                verbose("%s: INFO: Monitoring output of command(%d): %s", ARGV0, logff[i].ign, logff[i].command);
             }
             else
             {
@@ -114,9 +118,12 @@ void LogCollectorStart()
         {
             logff[i].file = NULL;
             logff[i].fp = NULL;
+            logff[i].size = 0;
             if(logff[i].command)
             {
                 logff[i].read = (void *)read_fullcommand;
+
+                verbose("%s: INFO: Monitoring full output of command(%d): %s", ARGV0, logff[i].ign, logff[i].command);
             }
             else
             {
@@ -261,9 +268,14 @@ void LogCollectorStart()
             if(!logff[i].fp)
             {
                 /* Run the command. */
-                if((f_check == VCHECK_FILES) && logff[i].command)
+                if(logff[i].command && (f_check %2))
                 {
-                    logff[i].read(i, &r, 0);
+                    curr_time = time(0);
+                    if((curr_time - logff[i].size) >= logff[i].ign)
+                    {
+                        logff[i].size = curr_time;
+                        logff[i].read(i, &r, 0);
+                    }
                 }
                 continue;
             }
