@@ -24,7 +24,7 @@ uname		!bash|^/bin/sh|file\.h|proc\.h|^/bin/.*sh!
 date		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^cln]|^/bin/.*sh!
 du			!w0rm|/prof|file\.h!
 df			!bash|^/bin/sh|file\.h|proc\.h|/dev/[^clurdv]|^/bin/.*sh!
-login      	!bash|elite|SucKIT|xlogin|vejeta|porcao|lets_log|sukasuk!
+login      	!elite|SucKIT|xlogin|vejeta|porcao|lets_log|sukasuk!
 passwd		!bash|file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[b-s,uvxz]!
 mingetty	!bash|Dimensioni|pacchetto!
 chfn		!bash|file\.h|proc\.h|/dev/ttyo|/dev/[A-Z]|/dev/[a-s,uvxz]!

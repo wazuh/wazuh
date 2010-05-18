@@ -21,7 +21,7 @@ GOTO Exit;
 
 :ADD
 :: Extracts last ip address from ipconfig.
-FOR /F "TOKENS=2* DELIMS=:" %%A IN ('IPCONFIG /ALL ^| FIND "IP Address"') DO FOR %%B IN (%%A) DO SET IPADDR=%%B
+FOR /F "TOKENS=2* DELIMS=:" %%A IN ('IPCONFIG ^| FIND "IP"') DO FOR %%B IN (%%A) DO SET IPADDR=%%B
 route add %3  mask 255.255.255.255 %IPADDR%
 GOTO Exit;
 
