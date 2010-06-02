@@ -29,10 +29,6 @@
 
 #include "rootcheck/rootcheck.h"
 
-/* Definitions only used in here. */
-#define SYSCHECK_DB     SYSCHECK_DIR "/syschecklocal.db"
-#define SYS_WIN_DB      "syscheck/syschecklocal.db"
-
 int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg);
 
 
@@ -114,11 +110,6 @@ int Start_win32_Syscheck()
                                                             
 
 
-    /* Opening syscheck db file */
-    os_calloc(1024,sizeof(char), syscheck.db);
-    snprintf(syscheck.db,1023,"%s",SYS_WIN_DB);
-
-
     /* Printing options */
     r = 0;
     while(syscheck.registry[r] != NULL)
@@ -150,7 +141,6 @@ int Start_win32_Syscheck()
     os_wait();
 
     
-    /* Start the daemon checking against the syscheck.db */
     start_daemon();
 
 
@@ -273,20 +263,7 @@ int main(int argc, char **argv)
         syscheck.workdir = DEFAULTDIR;
 
 
-    /* Creating a temporary fp */
-    syscheck.db = (char *)calloc(1024,sizeof(char));
-    if(syscheck.db == NULL)
-        ErrorExit(MEM_ERROR,ARGV0);
-        
-    snprintf(syscheck.db,1023,"%s%s-%d%d.tmp",
-                              syscheck.workdir,
-                              SYSCHECK_DB,
-                              (int)time(NULL),
-                              (int)getpid());    
-
-
-
-    if (!run_foreground) 
+    if(!run_foreground) 
     {
         nowDaemon();
         goDaemon();

@@ -41,6 +41,7 @@
 #include "config.h"
 #include "rules.h"
 #include "stats.h"
+
 #include "eventinfo.h"
 #include "analysisd.h"
 
@@ -73,6 +74,7 @@ int GlobalConf(char * cfgfile);
 
 /* For rules */
 void Rules_OP_CreateRules();
+void Lists_OP_CreateLists();
 int Rules_OP_ReadRules(char * cfgfile);
 int _setlevels(RuleNode *node, int nnode);
 int AddHash_Rule(RuleNode *node);
@@ -311,9 +313,10 @@ int main_analysisd(int argc, char **argv)
     }
     SetDecodeXML();
 
-    
+
     /* Creating the rules list */
     Rules_OP_CreateRules();
+
 
    
     /* Reading the rules */
@@ -333,6 +336,26 @@ int main_analysisd(int argc, char **argv)
 
         free(Config.includes);
         Config.includes = NULL;
+    }
+
+    /* Creating the lists for use in rules */
+    Lists_OP_CreateLists();
+
+    /* Reading the lists */
+    {
+        char **listfiles;
+        listfiles = Config.lists;
+        while(listfiles && *listfiles)
+        {
+            if(!test_config)
+                verbose("%s: INFO: Reading loading the lists file: '%s'", ARGV0, *listfiles);
+            if(Lists_OP_LoadList(*listfiles) < 0)
+                ErrorExit(LISTS_ERROR, ARGV0, *listfiles);
+            free(*listfiles);
+            listfiles++;
+        }
+        free(Config.lists);
+        Config.lists = NULL;
     }
     
     
@@ -1137,6 +1160,16 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                         return(NULL);
     }
 
+    /*
+    if(currently_rule->program_name_list)
+    {
+        if(!lf->program_name)
+            return(NULL);
+        if(OS_SearchKey(currently_rule->program_name_list, lf->program_name)) 
+            printf("OS_MatchKey found\n");
+        else
+            return(NULL);
+    }*/
 
     /* Checking for the id */
     if(currently_rule->id)
@@ -1150,6 +1183,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                             strlen(lf->id),
                             currently_rule->id))
             return(NULL);
+        #ifdef CDBLOOKUP
+
+        #endif
     }
     
 
@@ -1193,6 +1229,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         {
             return(NULL);
         }
+        #ifdef CDBLOOKUP
+
+        #endif
     }
 
 
@@ -1212,6 +1251,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             {
                 return(NULL);
             }
+            #ifdef CDBLOOKUP
+
+            #endif
         }
 
         /* Checking for the dstip */
@@ -1226,6 +1268,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             {
                 return(NULL);
             }
+            #ifdef CDBLOOKUP
+
+            #endif
         }
 
         if(currently_rule->srcport)
@@ -1241,6 +1286,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             {
                 return(NULL);
             }
+            #ifdef CDBLOOKUP
+
+            #endif
         }
         if(currently_rule->dstport)
         {
@@ -1255,6 +1303,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             {
                 return(NULL);
             }
+            #ifdef CDBLOOKUP
+
+            #endif
         }
     } /* END PACKET_INFO */
     
@@ -1290,6 +1341,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                     return(NULL);
             }
             else
+            #ifdef CDBLOOKUP
+
+            #endif
             {
                 /* no user set */
                 return(NULL);
@@ -1393,6 +1447,99 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         else
         {
             return(NULL);
+        }
+    }
+
+
+    /* List lookups */
+    if(currently_rule->lists)
+    {
+        ListRule *list_holder = currently_rule->lists;
+        while(list_holder)
+        {
+            switch(list_holder->field)
+            {
+                case RULE_SRCIP:
+                    if(!lf->srcip)
+                        return(NULL);
+                    if(!OS_SearchKey(list_holder->db->filename,lf->srcip))
+                        return(NULL);
+                    break;
+                case RULE_SRCPORT:
+                    if(!lf->srcport)
+                        return(NULL);
+                    if(!OS_SearchKey(list_holder->db->filename,lf->srcport))
+                        return(NULL);
+                    break;
+                case RULE_DSTIP:
+                    if(!lf->dstip)
+                        return(NULL);
+                    if(!OS_SearchKey(list_holder->db->filename,lf->dstip))
+                        return(NULL);
+                    break;
+                case RULE_DSTPORT:
+                    if(!lf->dstport)
+                        return(NULL);
+                    if(!OS_SearchKey(list_holder->db->filename,lf->dstport))
+                        return(NULL);
+                    break;
+                case RULE_USER:
+                    if(lf->srcuser)
+                    {
+                        if(!OS_SearchKey(list_holder->db->filename,lf->srcuser))
+                            return(NULL);
+                    }
+                    else if(lf->dstuser)
+                    {
+                        if(!OS_SearchKey(list_holder->db->filename,lf->dstuser))
+                            return(NULL);
+                    }
+                    else
+                    {
+                        return(NULL);
+                    }
+                    break;
+                case RULE_URL:
+                    if(!lf->url)
+                        return(NULL);
+                    if(!OS_SearchKey(list_holder->db->filename,lf->url))
+                        return(NULL);
+                    break;
+                case RULE_ID:
+                    if(!lf->id)
+                        return(NULL);
+                    if(!OS_SearchKey(list_holder->db->filename,lf->id))
+                        return(NULL);
+                    break;
+                case RULE_HOSTNAME:
+                    if(!lf->hostname)
+                        return(NULL);
+                    if(!OS_SearchKey(list_holder->db->filename,lf->hostname))
+                        return(NULL);
+                    break;
+                case RULE_PROGRAM_NAME:
+                    if(!lf->program_name)
+                        return(NULL);
+                    if(!OS_SearchKey(list_holder->db->filename,lf->program_name))
+                        return(NULL);
+                    break;
+                case RULE_STATUS:
+                    if(!lf->status)
+                        return(NULL);
+                    if(!OS_SearchKey(list_holder->db->filename,lf->status))
+                        return(NULL);
+                    break;
+                case RULE_ACTION:
+                    if(!lf->action)
+                        return(NULL);
+                    if(!OS_SearchKey(list_holder->db->filename,lf->action))
+                        return(NULL);
+                    break;
+                default:
+                    return(NULL);
+            }
+
+            list_holder = list_holder->next;
         }
     }
 

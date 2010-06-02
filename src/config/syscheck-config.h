@@ -27,6 +27,7 @@
 #define CHECK_GROUP         0000020
 #define CHECK_SHA1SUM       0000040
 #define CHECK_REALTIME      0000100
+#define CHECK_SEECHANGES    0000200
 
 
 #include <stdio.h>
@@ -64,6 +65,7 @@ typedef struct _config
     void **ignore_regex;
     
 	char **dir;
+    void **filerestrict;
 
     /* Windows only registry checking */
     #ifdef WIN32
@@ -73,7 +75,7 @@ typedef struct _config
     FILE *reg_fp;
     #endif
     
-    FILE *fp;
+    void *fp;
 
     rtfim *realtime;
 

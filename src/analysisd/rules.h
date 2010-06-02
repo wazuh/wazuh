@@ -18,6 +18,8 @@
 
 #include "shared.h"
 #include "active-response.h"
+#include "lists.h"
+
 
 /* Event context  - stored on a uint8 */
 #define SAME_USER       0x001 /* 1   */
@@ -42,6 +44,20 @@
 #define DO_PACKETINFO   0x040
 #define DO_EXTRAINFO    0x100
 #define SAME_EXTRAINFO  0x200
+
+#define RULE_MASTER     1
+#define RULE_SRCIP      2
+#define RULE_SRCPORT    4
+#define RULE_DSTIP      8
+#define RULE_DSTPORT    16
+#define RULE_USER       32
+#define RULE_URL        64
+#define RULE_ID         128
+#define RULE_HOSTNAME   256
+#define RULE_PROGRAM_NAME 512
+#define RULE_STATUS     1024
+#define RULE_ACTION     2048
+
 
 #define RULEINFODETAIL_TEXT     0
 #define RULEINFODETAIL_LINK     1
@@ -136,6 +152,7 @@ typedef struct _RuleInfo
     char *info;
     char *cve;
     RuleInfoDetail *info_details;
+    ListRule *lists;
     
     char *if_sid;
     char *if_level;

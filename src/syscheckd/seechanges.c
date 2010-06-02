@@ -1,0 +1,267 @@
+/* @(#) $Id$ */
+
+/* Copyright (C) 2009 Trend Micro Inc.
+ * All rights reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
+
+
+
+#include "shared.h"
+#include "os_crypto/md5/md5_op.h"
+
+
+
+/* Generate diffs alerts. */
+char *gen_diff_alert(char *filename, int alert_diff_time)
+{
+    int n = 0;
+    FILE *fp;
+    char *tmp_str;
+    char buf[OS_MAXSTR +1];
+    char diff_alert[OS_MAXSTR +1];
+
+    buf[OS_MAXSTR] = '\0';
+    diff_alert[OS_MAXSTR] = '\0';
+
+    snprintf(buf, OS_MAXSTR, "%s/local/%s/diff.%d",
+             DIFF_DIR_PATH, filename,  alert_diff_time);
+    
+    fp = fopen(buf, "r");
+    if(!fp)
+    {
+        merror("%s: ERROR: Unable to generate diff alert.", ARGV0);
+        return(NULL);
+    }
+
+    n = fread(buf, 1, 4096 -1, fp);
+    if(n <= 0)
+    {
+        merror("%s: ERROR: Unable to generate diff alert (fread).", ARGV0);
+        fclose(fp);
+        return(NULL);
+    }
+    else if(n >= 4000)
+    {
+        /* We need to clear the last new line. */
+        buf[n] = '\0';
+        tmp_str = strrchr(buf, '\n');
+        if(tmp_str)
+            *tmp_str = '\0';
+        else
+        {
+            /* Weird diff with only one large line. */
+            buf[256] = '\0';    
+        }
+    }
+    else
+    {
+        buf[n] = '\0';
+    }
+
+    n = 0;
+
+
+    /* Getting up to 20 line changes. */
+    tmp_str = buf;
+
+    
+    while(tmp_str && (*tmp_str != '\0'))
+    {
+        tmp_str = strchr(tmp_str, '\n');
+        if(!tmp_str)
+            break;    
+        else if(n >= 19)
+        {
+            *tmp_str = '\0';    
+            break;
+        }
+        n++;
+        tmp_str++;    
+    }
+
+
+    /* Creating alert. */
+    snprintf(diff_alert, 4096 -1, "%s%s",
+             buf, n>=19?
+             "\nMore changes..":
+             "");
+    
+    
+    fclose(fp);
+    return(strdup(diff_alert));
+}
+
+
+int seechanges_dupfile(char *old, char *new)
+{
+    int n;
+    FILE *fpr;
+    FILE *fpw;
+    unsigned char buf[2048 +1];
+
+    buf[2048] = '\0';
+
+    fpr = fopen(old,"r");
+    fpw = fopen(new,"w");
+
+    if(!fpr || !fpw)
+    {
+        return(0);
+    }
+
+    while((n = fread(buf, 1, 2048, fpr)) > 0)
+    {
+        buf[n] = '\0';
+        fwrite(buf, n, 1, fpw);
+
+    }
+
+    fclose(fpr);
+    fclose(fpw);
+    return(1);
+}
+
+
+int seechanges_createpath(char *filename)
+{
+    char *buffer = NULL;
+    char *tmpstr = NULL;
+    char *newdir = NULL;
+
+    
+    os_strdup(filename, buffer);
+    newdir = buffer;
+    tmpstr = strchr(buffer +1, '/');
+    if(!tmpstr)
+    {
+        merror("%s: ERROR: Invalid path name: '%s'", ARGV0, filename);
+        free(buffer);
+        return(0);
+    }
+    *tmpstr = '\0';
+    tmpstr++;
+
+
+    while(1)
+    {
+        if(IsDir(newdir) != 0)
+        {
+            if(mkdir(newdir, 0770) == -1)
+            {
+                merror(MKDIR_ERROR, ARGV0, newdir);
+                free(buffer);
+                return(0);
+            }
+        }
+
+        if(*tmpstr == '\0')
+        {
+            break;
+        }
+
+        tmpstr[-1] = '/';
+        tmpstr = strchr(tmpstr, '/');
+        if(!tmpstr)
+        {
+            break;
+        }
+        *tmpstr = '\0';
+        tmpstr++;
+    }
+
+    free(buffer);
+    return(1);
+}
+
+
+/* Checks if the file has changed */
+char *seechanges_addfile(char *filename)
+{
+    int date_of_change;
+    char old_location[OS_MAXSTR +1];
+    char tmp_location[OS_MAXSTR +1];
+    char diff_cmd[OS_MAXSTR +1];
+
+    os_md5 md5sum_old;
+    os_md5 md5sum_new;
+    
+    old_location[OS_MAXSTR] = '\0';
+    tmp_location[OS_MAXSTR] = '\0';
+    diff_cmd[OS_MAXSTR] = '\0';
+    md5sum_new[0] = '\0';
+    md5sum_old[0] = '\0';
+
+
+    snprintf(old_location, OS_MAXSTR, "%s/local/%s/%s", DIFF_DIR_PATH, filename +1,
+             DIFF_LAST_FILE);
+
+
+    /* If the file is not there, rename new location to last location. */
+    if(OS_MD5_File(old_location, md5sum_old) != 0)
+    {
+        seechanges_createpath(old_location);
+        if(seechanges_dupfile(filename, old_location) != 1)
+        {
+            merror(RENAME_ERROR, ARGV0, filename);
+        }
+        return(NULL);
+    }
+
+
+    /* Get md5sum of the new file. */
+    if(OS_MD5_File(filename, md5sum_new) != 0)
+    {
+        merror("%s: ERROR: Invalid internal state (missing '%s').",
+               ARGV0, filename); 
+        return(NULL);
+    }
+
+
+    /* If they match, keep the old file and remove the new. */
+    if(strcmp(md5sum_new, md5sum_old) == 0)
+    {
+        return(NULL);
+    }
+
+
+    /* Saving the old file at timestamp and renaming new to last. */
+    date_of_change = File_DateofChange(old_location);
+    snprintf(tmp_location, OS_MAXSTR, "%s/local/%s/state.%d", DIFF_DIR_PATH, filename +1,
+             date_of_change);
+    rename(old_location, tmp_location);
+    if(seechanges_dupfile(filename, old_location) != 1)
+    {
+        merror("%s: ERROR: Unable to create snapshot for %s",ARGV0, filename);
+        return(NULL);
+    }
+
+
+    /* Run diff. */
+    date_of_change = File_DateofChange(old_location);
+    snprintf(diff_cmd, 2048, "diff \"%s\" \"%s\" > \"%s/local/%s/diff.%d\" " 
+             "2>/dev/null",
+             tmp_location, old_location, 
+             DIFF_DIR_PATH, filename +1, date_of_change);
+    if(system(diff_cmd) != 256)
+    {
+        merror("%s: ERROR: Unable to run diff for %s",
+               ARGV0,  filename);
+        return(NULL); 
+    }
+
+
+    /* Generate alert. */
+    return(gen_diff_alert(filename, date_of_change));
+
+
+    return(NULL);
+}
+
+
+
+/* EOF */

@@ -23,10 +23,12 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
 
     /* White list size */
     int rules_size = 1;
+    int lists_size = 1;
 
 
     /* XML definitions */
     char *xml_rules_include = "include";
+    char *xml_rules_lists = "lists";
 
     _Config *Config;
      
@@ -56,8 +58,26 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
                 return(OS_INVALID);
             }
 
+            printf("adding %s to rules\n", node[i]->content);
             os_strdup(node[i]->content,Config->includes[rules_size -2]);
+            printf("got %s\n", Config->includes[rules_size -2]);
             Config->includes[rules_size -1] = NULL;
+        }
+        else if(strcmp(node[i]->element, xml_rules_lists) == 0)
+        {
+            lists_size++;
+            Config->lists = realloc(Config->lists,
+                                    sizeof(char *)*lists_size);
+            if(!Config->lists)
+            {
+                merror(MEM_ERROR, ARGV0);
+                return(OS_INVALID);
+            }
+            printf("adding %s to lists\n", node[i]->content);
+            os_strdup(node[i]->content,Config->lists[lists_size -2]);
+            printf("got %s\n", Config->lists[lists_size -2]);
+            Config->lists[lists_size -1] = NULL;
+
         }
         else
         {

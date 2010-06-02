@@ -58,6 +58,7 @@ int GlobalConf(char * cfgfile)
     Config.logbylevel  = 1;
 
     Config.includes = NULL;
+    Config.lists = NULL;
 
     modules|= CGLOBAL;
     modules|= CRULES;

@@ -34,6 +34,7 @@
 #include "debug_op.h"
 #include "syscheck.h"
 #include "error_messages/error_messages.h"
+#include "shared.h"
 
 
 #ifdef USEINOTIFY
@@ -49,69 +50,56 @@ int c_read_file(char *file_name, char *oldsum, char *newsum);
 /* Checking sum of the realtime file being monitored. */
 int realtime_checksumfile(char *file_name)
 {
-    char buf[MAX_LINE +2];
-    buf[MAX_LINE +1] = '\0';
+    char *buf;
 
-
-    fseek(syscheck.fp, 0, SEEK_SET);
-    while(fgets(buf, MAX_LINE, syscheck.fp) != NULL)
+    buf = OSHash_Get(syscheck.fp, file_name);
+    if(buf != NULL)
     {
-        if((buf[0] != '#') && (buf[0] != ' ') && (buf[0] != '\n'))
-        {
-            char *n_buf;
+        char c_sum[256 +2];
 
-            /* Removing the new line */
-            n_buf = strchr(buf,'\n');
-            if(n_buf == NULL)
-                continue;
-
-            *n_buf = '\0';
+        c_sum[0] = '\0';
+        c_sum[255] = '\0';
 
 
-            /* First 6 characters are for internal use */
-            n_buf = buf;
-            n_buf+=6;
-
-            n_buf = strchr(n_buf, ' ');
-            if(n_buf)
-            {
-                n_buf++;
-
-                /* Checking if name matches */
-                if(strcmp(n_buf, file_name) == 0)
-                {
-                    char c_sum[256 +2];
-                    c_sum[0] = '\0';
-                    c_sum[255] = '\0';
+         /* If it returns < 0, we will already have alerted. */
+         if(c_read_file(file_name, buf, c_sum) < 0)
+         {
+             return(0);
+         }
 
 
-                    /* If it returns < 0, we will already have alerted. */
-                    if(c_read_file(file_name, buf, c_sum) < 0)
-                        continue;
+         if(strcmp(c_sum, buf+6) != 0)
+         {
+             char *fullalert = NULL;
+             char alert_msg[OS_MAXSTR +1];
+             alert_msg[OS_MAXSTR] = '\0';
+             if(buf[5] == 's' || buf[5] == 'n')
+             {
+                 fullalert = seechanges_addfile(file_name);
+                 if(fullalert)
+                 {
+                    snprintf(alert_msg, OS_MAXSTR, "%s %s\n%s", c_sum, file_name, fullalert);
+                    free(fullalert);
+                    fullalert = NULL;
+                 }
+                 else
+                 {
+                     snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
+                 }
+             }
+             else
+             {
+                 snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
+             }
+             send_syscheck_msg(alert_msg);
 
+             return(1);
+         }
 
-                    if(strcmp(c_sum, buf+6) != 0)
-                    {
-                        char alert_msg[912 +2];
+         return(0);
 
-                        /* Sending the new checksum to the analysis server */
-                        alert_msg[912 +1] = '\0';
-                        snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
-                        send_syscheck_msg(alert_msg);
-
-                        return(1);
-                    }
-
-                    return(0);
-
-                }
-            }
-        }
     }
 
-
-    /* Adding entry if not in there. */
-    fseek(syscheck.fp, 0, SEEK_END);
     return(0);
 }
 

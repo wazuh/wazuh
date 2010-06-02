@@ -15,7 +15,7 @@ UNAME=`uname`;
 DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 GROUP="ossec"
 USER="ossec"
-subdirs="logs bin queue queue/ossec queue/alerts queue/syscheck queue/rids var var/run etc etc/shared active-response active-response/bin agentless .ssh"
+subdirs="logs bin queue queue/ossec queue/alerts queue/syscheck queue/rids queue/diff var var/run etc etc/shared active-response active-response/bin agentless .ssh"
 
 
 # ${DIR} must be set 
@@ -119,6 +119,11 @@ chmod -R 775 ${DIR}/queue/rids
 touch ${DIR}/logs/ossec.log
 chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
 chmod 664 ${DIR}/logs/ossec.log
+
+chown -R ${USER}:${GROUP} ${DIR}/queue/diff
+chmod -R 750 ${DIR}/queue/diff
+chmod 740 ${DIR}/queue/diff/* > /dev/null 2>&1
+
 
 
 

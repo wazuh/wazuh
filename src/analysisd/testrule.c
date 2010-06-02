@@ -42,6 +42,7 @@
 #include "config.h"
 #include "rules.h"
 #include "stats.h"
+
 #include "eventinfo.h"
 #include "analysisd.h"
 
@@ -60,6 +61,7 @@ int GlobalConf(char * cfgfile);
 
 /* For rules */
 void Rules_OP_CreateRules();
+void Lists_OP_CreateLists();
 int Rules_OP_ReadRules(char * cfgfile);
 int _setlevels(RuleNode *node, int nnode);
 int AddHash_Rule(RuleNode *node);
@@ -194,12 +196,12 @@ int main(int argc, char **argv)
 
 
     /* Reading decoders */
-    OS_CreateOSDecoderList();
     if(!ReadDecodeXML("etc/decoder.xml"))
     {
         ErrorExit(CONFIG_ERROR, ARGV0,  XML_DECODER);
     }
 
+    /* Reading local ones. */
     c = ReadDecodeXML("etc/local_decoder.xml");
     if(!c)
     {
@@ -229,6 +231,25 @@ int main(int argc, char **argv)
 
         free(Config.includes);
         Config.includes = NULL;
+    }
+    
+    /* Createing the lists for use in rules */
+    Lists_OP_CreateLists();
+
+    /* Reading the lists */
+    {
+        char **listfiles;
+        listfiles = Config.lists;
+        while(listfiles && *listfiles)
+        {
+            debug1("%s: INFO: Reading loading the lists file: '%s'", ARGV0, *listfiles);
+            if(Lists_OP_LoadList(*listfiles) < 0)
+                ErrorExit(LISTS_ERROR, ARGV0, *listfiles);
+            free(*listfiles);
+            listfiles++;
+        }
+        free(Config.lists);
+        Config.lists = NULL;
     }
     
     

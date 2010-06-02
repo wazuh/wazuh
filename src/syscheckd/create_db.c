@@ -20,14 +20,11 @@
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
 
 
-/* flags for read_dir and read_file */
-#define CREATE_DB   1
-#define CHECK_DB    2    
 int __counter = 0;
 
 
 /** Prototypes **/
-int read_dir(char *dir_name, int opts, int flag);
+int read_dir(char *dir_name, int opts, char *restriction);
 
 
 /* int check_file(char *file_name)
@@ -35,37 +32,9 @@ int read_dir(char *dir_name, int opts, int flag);
  */
 int check_file(char *file_name)
 {
-    char buf[MAX_LINE +2];
-    buf[MAX_LINE +1] = '\0';
-    
-    while(fgets(buf, MAX_LINE, syscheck.fp) != NULL)
+    if(OSHash_Get(syscheck.fp, file_name))
     {
-        if((buf[0] != '#') && (buf[0] != ' ') && (buf[0] != '\n'))
-        {
-            char *n_buf;
-
-            /* Removing the new line */
-            n_buf = strchr(buf,'\n');
-            if(n_buf == NULL)
-                continue;
-
-            *n_buf = '\0';
-
-
-            /* First 6 characters are for internal use */
-            n_buf = buf;
-            n_buf+=6;
-
-            n_buf = strchr(n_buf, ' ');
-            if(n_buf)
-            {
-                n_buf++;
-
-                /* Checking if name matches */
-                if(strcmp(n_buf, file_name) == 0)
-                    return(1);
-            }
-        }
+        return(1);
     }
 
     /* New file */
@@ -80,11 +49,13 @@ int check_file(char *file_name)
 /* int read_file(char *file_name, int opts, int flag)
  * Reads and generates the integrity data of a file.
  */
-int read_file(char *file_name, int opts, int flag)
+int read_file(char *file_name, int opts, char *restriction)
 {
-    int check_file_new = 0;
+    char *buf;
+    char sha1s = '+';
     struct stat statbuf;
     
+
     /* Checking if file is to be ignored */
     if(syscheck.ignore)
     {
@@ -134,7 +105,7 @@ int read_file(char *file_name, int opts, int flag)
         verbose("%s: Reading dir: %s\n",ARGV0, file_name);
         #endif
 
-        return(read_dir(file_name, opts, flag));
+        return(read_dir(file_name, opts, restriction));
     }
     
     
@@ -147,34 +118,6 @@ int read_file(char *file_name, int opts, int flag)
     {
         os_md5 mf_sum;
         os_sha1 sf_sum;
-
-
-        /* If check_db, we just need to verify that the file is
-         * already present. If not, we add it.
-         */
-        if(flag == CHECK_DB)
-        {
-            /* File in the database already */
-            fseek(syscheck.fp, 0, SEEK_SET);
-            if(check_file(file_name))
-            {
-                /* Sleeping in here too */
-                #ifndef WIN32
-                if(__counter >= (3 * syscheck.sleep_after))
-                #else
-                if(__counter >= (syscheck.sleep_after))
-                #endif
-                {
-                    sleep(syscheck.tsleep);
-                    __counter = 0;
-                }
-                __counter++;
-
-                return(0);
-            }
-            fseek(syscheck.fp, 0, SEEK_END);
-            check_file_new = 1;
-        }
 
 
         /* Cleaning sums */
@@ -211,31 +154,64 @@ int read_file(char *file_name, int opts, int flag)
             {
                 strncpy(mf_sum, "xxx", 4);
                 strncpy(sf_sum, "xxx", 4);
+
             }
+
+            if(opts & CHECK_SEECHANGES)
+            {
+                sha1s = 's';
+            }
+        }
+        else
+        {
+            if(opts & CHECK_SEECHANGES)
+                sha1s = 'n';
+            else
+                sha1s = '-';    
         }
         
         
-        /* Adding file */
-        fprintf(syscheck.fp,"%c%c%c%c%c%c%d:%d:%d:%d:%s:%s %s\n",
+        buf = OSHash_Get(syscheck.fp, file_name);
+        if(!buf)
+        {
+            char alert_msg[912 +1];
+            char *nfile;
+            char *nmsg;
+           
+            alert_msg[912] = '\0';
+
+            if(opts & CHECK_SEECHANGES)
+            {
+                char *alertdump = seechanges_addfile(file_name);
+                if(alertdump)
+                {
+                    free(alertdump);
+                    alertdump = NULL;
+                }
+            }
+
+                   
+            snprintf(alert_msg, 912, "%c%c%c%c%c%c%d:%d:%d:%d:%s:%s",
                 opts & CHECK_SIZE?'+':'-',
                 opts & CHECK_PERM?'+':'-',
                 opts & CHECK_OWNER?'+':'-',
                 opts & CHECK_GROUP?'+':'-',
                 opts & CHECK_MD5SUM?'+':'-',
-                opts & CHECK_SHA1SUM?'+':'-',
+                sha1s,
                 opts & CHECK_SIZE?(int)statbuf.st_size:0,
                 opts & CHECK_PERM?(int)statbuf.st_mode:0,
                 opts & CHECK_OWNER?(int)statbuf.st_uid:0,
                 opts & CHECK_GROUP?(int)statbuf.st_gid:0,
                 opts & CHECK_MD5SUM?mf_sum:"xxx",
-                opts & CHECK_SHA1SUM?sf_sum:"xxx",
-                file_name);
+                opts & CHECK_SHA1SUM?sf_sum:"xxx");
 
+            os_strdup(file_name, nfile);
+            os_strdup(alert_msg, nmsg);
+            if(OSHash_Add(syscheck.fp, strdup(file_name), strdup(alert_msg)) <= 0)
+            {
+                merror("%s: ERROR: Unable to add file to db: %s", ARGV0, file_name);
+            }
 
-        /* Send new file */
-        if(check_file_new)
-        {
-            char alert_msg[912 +2];
 
             /* Sending the new checksum to the analysis server */
             alert_msg[912 +1] = '\0';
@@ -249,14 +225,50 @@ int read_file(char *file_name, int opts, int flag)
                      file_name);
             send_syscheck_msg(alert_msg);
         }
+        else
+        {
+            char alert_msg[OS_MAXSTR +1];
+            char c_sum[256 +2];
+            
+            c_sum[0] = '\0';
+            c_sum[256] = '\0';
+            alert_msg[0] = '\0';
+            alert_msg[OS_MAXSTR] = '\0';
+
+            /* If it returns < 0, we will already have alerted. */
+            if(c_read_file(file_name, buf, c_sum) < 0)
+                return(0);
+
+            if(strcmp(c_sum, buf+6) != 0)
+            {
+                /* Sending the new checksum to the analysis server */
+                char *fullalert = NULL;
+                alert_msg[OS_MAXSTR] = '\0';
+                if(buf[5] == 's' || buf[5] == 'n')
+                {
+                    fullalert = seechanges_addfile(file_name);
+                    if(fullalert)
+                    {
+                        snprintf(alert_msg, OS_MAXSTR, "%s %s\n%s", c_sum, file_name, fullalert);
+                        free(fullalert);
+                        fullalert = NULL;
+                    }
+                    else
+                    {
+                        snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
+                    }
+                }
+                else
+                {
+                    snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
+                }
+                send_syscheck_msg(alert_msg);
+            }
+        }
         
         
         /* Sleeping in here too */
-        #ifndef WIN32
-        if(__counter >= (3 * syscheck.sleep_after))
-        #else
-        if(__counter >= (2 * syscheck.sleep_after))
-        #endif    
+        if(__counter >= (syscheck.sleep_after))
         {
             sleep(syscheck.tsleep);
             __counter = 0;
@@ -282,7 +294,7 @@ int read_file(char *file_name, int opts, int flag)
 /* read_dir v0.1
  *
  */
-int read_dir(char *dir_name, int opts, int flag)
+int read_dir(char *dir_name, int opts, char *restriction)
 {
     int dir_size;
    
@@ -297,8 +309,7 @@ int read_dir(char *dir_name, int opts, int flag)
     /* Directory should be valid */
     if((dir_name == NULL)||((dir_size = strlen(dir_name)) > PATH_MAX))
     {
-        if(flag == CREATE_DB)
-            merror(NULL_ERROR, ARGV0);
+        merror(NULL_ERROR, ARGV0);
         
         return(-1);
     }
@@ -310,15 +321,13 @@ int read_dir(char *dir_name, int opts, int flag)
     {
         if(errno == ENOTDIR)
         {
-            if(read_file(dir_name, opts, flag) == 0)
+            if(read_file(dir_name, opts, restriction) == 0)
                 return(0);
         }
         
-        if(flag == CREATE_DB)
-        {
-            #ifdef WIN32
-            int di = 0;
-            char *(defaultfilesn[])= {
+        #ifdef WIN32
+        int di = 0;
+        char *(defaultfilesn[])= {
                                      "C:\\autoexec.bat",
                                      "C:\\config.sys",
                                      "C:\\WINDOWS/System32/eventcreate.exe",
@@ -327,29 +336,28 @@ int read_dir(char *dir_name, int opts, int flag)
                                      "C:\\WINDOWS/System32/Tasks",
                                      NULL
                                      };
-            while(defaultfilesn[di] != NULL)
+        while(defaultfilesn[di] != NULL)
+        {
+            if(strcmp(defaultfilesn[di], dir_name) == 0)
             {
-                if(strcmp(defaultfilesn[di], dir_name) == 0)
-                {
-                    break;
-                }
-                di++;
+                break;
             }
-
-            if(defaultfilesn[di] == NULL)
-            {
-                merror("%s: WARN: Error opening directory: '%s': %s ",
-                        ARGV0, dir_name, strerror(errno)); 
-            }
-            
-            #else
-            
-            merror("%s: WARN: Error opening directory: '%s': %s ",
-                                              ARGV0,
-                                              dir_name,
-                                              strerror(errno));
-            #endif
+            di++;
         }
+
+        if(defaultfilesn[di] == NULL)
+        {
+            merror("%s: WARN: Error opening directory: '%s': %s ",
+                    ARGV0, dir_name, strerror(errno)); 
+        }
+            
+        #else
+            
+        merror("%s: WARN: Error opening directory: '%s': %s ",
+                                          ARGV0,
+                                          dir_name,
+                                          strerror(errno));
+        #endif
         
         return(-1);
     }
@@ -387,7 +395,7 @@ int read_dir(char *dir_name, int opts, int flag)
         *s_name = '\0';
         
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size -2);
-        read_file(f_name, opts, flag);
+        read_file(f_name, opts, restriction);
     }
 
     closedir(dp);
@@ -395,18 +403,15 @@ int read_dir(char *dir_name, int opts, int flag)
 }
 
 
-/* int check_db()
- * Checks database for new files.
- */
-int check_db()
+/* int run_dbcheck */
+int run_dbcheck()
 {
     int i = 0;
 
-    /* Read all available directories */
     __counter = 0;
     do
     {
-        read_dir(syscheck.dir[i], syscheck.opts[i], CHECK_DB);
+        read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]);
         i++;
     }while(syscheck.dir[i] != NULL);
 
@@ -414,27 +419,26 @@ int check_db()
 }
 
 
-
 /* int create_db
  * Creates the file database.
  */
-int create_db(int delete_db)
+int create_db()
 {
     int i = 0;
-    
-    syscheck.fp = fopen(syscheck.db, "w+"); /* Read and write */
+
+    /* Creating store data */
+    syscheck.fp = OSHash_Create();
     if(!syscheck.fp)
     {
-        ErrorExit("%s: Unable to create syscheck database "
-                  "at '%s'. Exiting.",ARGV0,syscheck.db);
+        ErrorExit("%s: Unable to create syscheck database."
+                  ". Exiting.",ARGV0);
         return(0);    
     }
 
-
-    /* Creating a local fp only */
-    if(delete_db)
+    if(!OSHash_setSize(syscheck.fp, 2048))
     {
-        unlink(syscheck.db);
+        merror(LIST_ERROR, ARGV0);
+        return(0);
     }
 
     
@@ -453,7 +457,7 @@ int create_db(int delete_db)
     __counter = 0;
     do
     {
-        if(read_dir(syscheck.dir[i], syscheck.opts[i], CREATE_DB) == 0)
+        if(read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]) == 0)
         {
             #ifdef WIN32
             if(syscheck.opts[i] & CHECK_REALTIME)

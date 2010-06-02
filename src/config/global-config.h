@@ -65,6 +65,9 @@ typedef struct __Config
     /* List of rules */
     char **includes;
 
+    /* List of Lists */
+    char **lists;
+
     /* Global rule hash. */
     void *g_rules_hash;
 

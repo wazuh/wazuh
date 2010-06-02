@@ -57,8 +57,6 @@ void Rules_OP_CreateRules()
     return;
 }
 
-
-
 /* Rules_OP_ReadRules, v0.3, 2005/03/21
  * Read the log rules.
  * v0.3: Fixed many memory problems.
@@ -99,6 +97,7 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_status = "status";
     char *xml_action = "action";
     char *xml_compiled = "compiled_rule";
+    char *xml_list = "list";
     
     char *xml_if_sid = "if_sid";
     char *xml_if_group = "if_group";
@@ -643,6 +642,66 @@ int Rules_OP_ReadRules(char * rulefile)
                         config_ruleinfo->action = 
                             loadmemory(config_ruleinfo->action,
                                     rule_opt[k]->content);
+                    }
+                    else if(strcasecmp(rule_opt[k]->element,xml_list)==0)
+                    {
+                        if (rule_opt[k]->attributes && rule_opt[k]->values && rule_opt[k]->content)
+                        {
+                            int list_att_num = 0;
+                            int rule_type = 0;
+                            while(rule_opt[k]->attributes[list_att_num] && rule_opt[k]->values[list_att_num])
+                            {
+                                if(strcasecmp(rule_opt[k]->values[list_att_num],xml_srcip) )
+                                	rule_type = RULE_SRCIP;
+                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_srcport) )
+                                	rule_type = RULE_SRCPORT;
+                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_srcip) )
+                                	rule_type = RULE_SRCIP;
+                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_dstport) )
+                                	rule_type = RULE_DSTPORT;
+                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_user) )
+                                	rule_type = RULE_USER;
+                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_url) )
+                                	rule_type = RULE_URL;
+                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_id) )
+                                	rule_type = RULE_ID;
+                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_hostname) )
+                                	rule_type = RULE_HOSTNAME;
+                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_program_name) )
+                                	rule_type = RULE_PROGRAM_NAME;
+                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_status) )
+                                	rule_type = RULE_STATUS;
+                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_action) )
+                                	rule_type = RULE_ACTION;
+
+                                if (rule_type)
+                                {   
+                                	OS_AddListRule(config_ruleinfo->lists, 
+                                                   rule_type,
+                                                   rule_opt[k]->content);
+                                    printf("DEBUG\n");
+                                } 
+                                else
+                                {
+                                	merror("%s: ERROR: List field '%s' is not valid",ARGV0,
+                                           rule_opt[k]->values[list_att_num]);
+                                    merror(INVALID_CONFIG, ARGV0, 
+                                           rule_opt[k]->element, rule_opt[k]->content);
+                                    return(-1);
+                                }
+                                list_att_num++;
+                            }
+                        }
+                        else
+                        {
+                            merror("%s: ERROR: List must have a correctly formtted field attribute",
+                                   ARGV0);
+                            merror(INVALID_CONFIG, 
+                                   ARGV0, 
+                                   rule_opt[k]->element, 
+                                   rule_opt[k]->content);
+                            return(-1);
+                        }                        
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_url)==0)
                     {
@@ -1528,6 +1587,7 @@ RuleInfo *zerorulemember(int id, int level,
     
     ruleinfo_pt->event_search = NULL;
     ruleinfo_pt->compiled_rule = NULL;
+    ruleinfo_pt->lists = NULL;
 
     return(ruleinfo_pt);
 }

@@ -1,6 +1,6 @@
 /* @(#) $Id$ */
 
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2010 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -78,17 +78,6 @@ int send_rootcheck_msg(char *msg)
  */
 void send_sk_db()
 {
-    char buf[MAX_LINE +1];
-    int file_count = 0;
-
-    buf[MAX_LINE] = '\0';
-
-    if(fseek(syscheck.fp, 0, SEEK_SET) == -1)
-    {
-        ErrorExit(FSEEK_ERROR, ARGV0, "syscheck_db");
-    }
-
-
     /* Sending scan start message */
     if(syscheck.dir[0])
     {
@@ -100,45 +89,9 @@ void send_sk_db()
         sleep(syscheck.tsleep +10);
         return;
     }
+
+    create_db(1);
         
-
-
-    while(fgets(buf,MAX_LINE, syscheck.fp) != NULL)
-    {
-        if((buf[0] != '#') && (buf[0] != ' ') && (buf[0] != '\n'))
-        {
-            char *n_buf;
-
-            /* Removing the \n before sending to the analysis server */
-            n_buf = strchr(buf,'\n');
-            if(n_buf == NULL)
-                continue;
-
-            *n_buf = '\0';
-
-
-            /* First 6 characters are for internal use */
-            n_buf = buf;
-            n_buf+=6;
-
-            send_syscheck_msg(n_buf);
-
-
-            /* A count and a sleep to avoid flooding the server.
-             * Time or speed are not requirements in here
-             */
-            file_count++;
-
-
-            /* sleep X every Y files */
-            if(file_count >= syscheck.sleep_after)
-            {
-                sleep(syscheck.tsleep);
-                file_count = 0;
-            }
-        }
-    }
-
 
     /* Sending scan ending message */
     sleep(syscheck.tsleep +10);
@@ -222,10 +175,7 @@ void start_daemon()
     /* Will create the db to store syscheck data */
     if(syscheck.scan_on_start)
     {
-        create_db(1);
-        fflush(syscheck.fp);
-
-        sleep(syscheck.tsleep * 60);
+        sleep(syscheck.tsleep * 15);
         send_sk_db();
     }
     else
@@ -375,9 +325,6 @@ void start_daemon()
             /* We need to create the db, if scan on start is not set. */
             if(syscheck.scan_on_start == 0)
             {
-                create_db(1);
-                fflush(syscheck.fp);
-
                 sleep(syscheck.tsleep * 10);
                 send_sk_db();
                 sleep(syscheck.tsleep * 10);
@@ -402,15 +349,8 @@ void start_daemon()
                 #endif
 
 
-                check_db();
-
-
-                /* Set syscheck.fp to the begining of the file */
-                fseek(syscheck.fp, 0, SEEK_SET);
-
-
                 /* Checking for changes */
-                run_check();
+                run_dbcheck();
             }
 
             
@@ -492,103 +432,6 @@ void start_daemon()
 }
 
 
-/* run_check: v0.1
- * Read the database and check if the binary has changed
- */
-void run_check()
-{
-    char c_sum[256 +2];
-    char alert_msg[912 +2];
-    char buf[MAX_LINE +2];
-    int file_count = 0;
-
-
-    /* Cleaning buffer */
-    memset(buf, '\0', MAX_LINE +1);
-    memset(alert_msg, '\0', 912 +1);
-    memset(c_sum, '\0', 256 +1);
-
-    /* fgets garantee the null termination */
-    while(fgets(buf, MAX_LINE, syscheck.fp) != NULL)
-    {
-        /* Buf should be in the following format:
-         * header checksum file_name (checksum space filename)
-         */
-        char *n_file; /* file read from the db */
-        char *n_sum;  /* md5sum read from the db */
-        char *tmp_c;  /* tmp_char */
-        
-        
-        /* Avoiding wrong formats in the database. Alert about them */
-        if(buf[0] == '#' || buf[0] == ' ' || buf[0] == '\n')
-        {
-            merror("%s: Invalid entry in the integrity database: '%s'",
-                                                            ARGV0, buf);
-            continue;
-        }
-        
-        /* Adding a sleep in here -- avoid floods and extreme CPU usage
-         * on the client side -- speed not necessary
-         */
-         file_count++;
-         if(file_count >= (syscheck.sleep_after))
-         {
-             sleep(syscheck.tsleep);
-             file_count = 0;
-         }
-        
-         
-        /* Finding the file name */
-        n_file = strchr(buf, ' ');
-        if(n_file == NULL)
-        {
-            merror("%s: Invalid entry in the integrity check database.",ARGV0);
-            continue;
-        }
-
-        /* Zeroing the ' ' and messing up with buf */
-        *n_file = '\0';
-
-
-        /* Setting n_file to the begining of the file name */
-        n_file++;
-
-
-        /* Removing the '\n' if present and setting it to \0 */
-        tmp_c = strchr(n_file,'\n');
-        if(tmp_c)
-        {
-            *tmp_c = '\0';
-        }
-        
-        
-        /* Setting n_sum to the begining of buf */
-        n_sum = buf;
-
-
-        /* Cleaning up c_sum */
-        memset(c_sum, '\0', 16);        
-        c_sum[255] = '\0';
-        
-
-        /* If it returns < 0, we will already have alerted. */
-        if(c_read_file(n_file, n_sum, c_sum) < 0)
-            continue;
-
-
-        if(strcmp(c_sum, n_sum+6) != 0)
-        {
-            /* Sending the new checksum to the analysis server */
-            alert_msg[912 +1] = '\0';
-            snprintf(alert_msg, 912, "%s %s", c_sum, n_file);
-            send_syscheck_msg(alert_msg);
-
-            continue;
-        }
-
-        /* FILE OK if reached here */
-    }
-}
 
 
 /* c_read_file
@@ -597,7 +440,7 @@ void run_check()
  */
 int c_read_file(char *file_name, char *oldsum, char *newsum)
 {
-    int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0;
+    int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, seechanges = 0;
     
     struct stat statbuf;
 
@@ -652,6 +495,17 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
     /* sha1 sum */
     if(oldsum[5] == '+')
         sha1sum = 1;
+
+    else if(oldsum[5] == 's')
+    {
+        sha1sum = 1;
+        seechanges = 1;
+    }
+    else if(oldsum[5] == 'n')
+    {
+        sha1sum = 0;
+        seechanges = 1;
+    }
     
     
     /* Generating new checksum */

@@ -16,7 +16,7 @@
 
 
 
-int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg)
+int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg, char *restrictfile)
 {
     int pl = 0;
     
@@ -55,7 +55,11 @@ int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg)
 
             os_calloc(2, sizeof(int), syscheck->opts);
             syscheck->opts[pl + 1] = 0;
-            syscheck->opts[pl] = vals;         
+            syscheck->opts[pl] = vals;
+            
+            os_calloc(2, sizeof(OSMatch *), syscheck->filerestrict);
+            syscheck->filerestrict[pl] = NULL;
+            syscheck->filerestrict[pl + 1] = NULL;
         }
         else
         {
@@ -72,6 +76,26 @@ int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg)
                        syscheck->opts);
             syscheck->opts[pl + 1] = 0;
             syscheck->opts[pl] = vals;         
+
+            os_realloc(syscheck->filerestrict, (pl +2) * sizeof(char *), 
+                       syscheck->filerestrict);
+            syscheck->filerestrict[pl] = NULL;
+            syscheck->filerestrict[pl + 1] = NULL;
+        }
+        if(restrictfile)
+        {
+            os_calloc(1, sizeof(OSMatch), syscheck->filerestrict[pl]);
+            if(!OSMatch_Compile(restrictfile, syscheck->filerestrict[pl], 0))
+            {
+                OSMatch *ptm;
+
+                ptm = syscheck->filerestrict[pl];
+
+                merror(REGEX_COMPILE, ARGV0, restrictfile,
+                       ptm->error);
+                free(syscheck->filerestrict[pl]);
+                syscheck->filerestrict[pl] = NULL;
+            }
         }
     }
 
@@ -153,7 +177,7 @@ int read_reg(config *syscheck, char *entries)
         }
         
         /* Adding new entry */
-        dump_syscheck_entry(syscheck, tmp_entry, 0, 1);
+        dump_syscheck_entry(syscheck, tmp_entry, 0, 1, NULL);
         
         
         /* Next entry */
@@ -179,7 +203,10 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
     char *xml_check_group = "check_group";
     char *xml_check_perm = "check_perm";
     char *xml_real_time = "realtime";
+    char *xml_report_changes = "report_changes";
+    char *xml_restrict = "restrict";
 
+    char *restrictfile = NULL;
     char **dir;
     char *tmp_str;
     dir = OS_StrBreak(',', dirs, MAX_DIR_SIZE); /* Max number */
@@ -202,6 +229,7 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
         char **values = NULL;
         
         tmp_dir = *dir;
+        restrictfile = NULL;
 
         /* Removing spaces at the beginning */
         while(*tmp_dir == ' ')
@@ -385,6 +413,25 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
                     return(0);
                 }
             }
+            else if(strcmp(*attrs, xml_report_changes) == 0)
+            {
+                if(strcmp(*values, "yes") == 0)
+                {
+                    opts|=CHECK_SEECHANGES;
+                }
+                else if(strcmp(*values, "no") == 0)
+                {
+                }
+                else
+                {
+                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    return(0);
+                }
+            }
+            else if(strcmp(*attrs, xml_restrict) == 0)
+            {
+                os_strdup(*values, restrictfile);
+            }
             else
             {
                 merror(SK_INV_ATTR, ARGV0, *attrs);
@@ -398,6 +445,7 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
         if(opts == 0)
         {
             merror(SYSCHECK_NO_OPT, ARGV0, dirs);
+            if(restrictfile) free(restrictfile);
             return(0);
         }
         
@@ -451,7 +499,7 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
             
             while(g.gl_pathv[gindex])
             {
-                dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0);
+                dump_syscheck_entry(syscheck, g.gl_pathv[gindex], opts, 0, restrictfile);
                 gindex++;
             }
             
@@ -460,11 +508,17 @@ int read_attr(config *syscheck, char *dirs, char **g_attrs, char **g_values)
 
         else
         {
-            dump_syscheck_entry(syscheck, tmp_dir, opts, 0);
+            dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile);
         }
         #else
-        dump_syscheck_entry(syscheck, tmp_dir, opts, 0);
+        dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile);
         #endif
+
+        if(restrictfile)
+        {
+            free(restrictfile);
+            restrictfile = NULL;
+        }
         
         
         /* Next entry */

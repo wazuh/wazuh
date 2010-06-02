@@ -48,6 +48,7 @@
 #define UNLINK_ERROR  "%s(1123): ERROR: Unable to delete file: '%s'."
 #define RENAME_ERROR  "%s(1124): ERROR: Unable to rename file: '%s'."
 #define INT_ERROR     "%s(1125): ERROR: Internal error (undefined)."
+#define OPEN_ERROR    "%s(1126): ERROR: Unable to open file '%s' reason '%s'"
 
 
 /* COMMON ERRORS */
@@ -72,6 +73,7 @@
 #define SEND_ERROR	    "%s(1218): ERROR: Unable to send message to %s."
 #define RULESLOAD_ERROR	"%s(1219): ERROR: Unable to access the rules directory."
 #define RULES_ERROR	    "%s(1220): ERROR: Error loading the rules: '%s'."
+#define LISTS_ERROR     "%s(1221): ERROR: Error loading the list: '%s'."
 #define QUEUE_SEND      "%s(1224): ERROR: Error sending message to queue."
 #define SIGNAL_RECV     "%s(1225): INFO: SIGNAL Received. Exit Cleaning..."
 #define XML_ERROR       "%s(1226): ERROR: Error reading XML file '%s': %s (line %d)."
@@ -301,7 +303,6 @@
 #define WAITING_FREE    "%s: INFO: Lock free. Continuing..."
 #define SERVER_UNAV     "%s: WARN: Server unavailable. Setting lock."
 #define SERVER_UP       "%s: INFO: Server responded. Releasing lock."
-
 
 /* Ossec alert messages */
 #define OS_AD_STARTED   "ossec: Ossec started."

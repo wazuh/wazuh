@@ -652,22 +652,30 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             #endif
 
 
+if(lf->data)
+{
+    merror("XXX changed: %s",lf->data);
+}
             /* Provide information about the file */    
-            snprintf(sdb.comment, 512, "Integrity checksum changed for: "
+            snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
                     "'%.756s'\n"
                     "%s"
                     "%s"
                     "%s"
                     "%s"
                     "%s"
-                    "%s",
+                    "%s"
+                    "%s%s",
                     f_name, 
                     sdb.size,
                     sdb.perm,
                     sdb.owner,
                     sdb.gowner,
                     sdb.md5,
-                    sdb.sha1);
+                    sdb.sha1,
+                    lf->data == NULL?"":"What changed:\n",
+                    lf->data == NULL?"":lf->data
+                    );
         }
 
 
@@ -675,6 +683,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         free(lf->full_log);
         os_strdup(sdb.comment, lf->full_log);
         lf->log = lf->full_log;
+        lf->data = NULL;
 
         
         /* Setting decoder */
@@ -747,12 +756,27 @@ int DecodeSyscheck(Eventinfo *lf)
         merror(SK_INV_MSG, ARGV0);
         return(0);
     }
-    
-    
+
+
     /* Zeroing to get the check sum */
     *f_name = '\0';
     f_name++;
 
+
+    /* Getting diff. */
+    lf->data = strchr(f_name, '\n');
+    if(lf->data)
+    {
+        *lf->data = '\0';
+        lf->data++;
+        merror("XXXX syscheck data: %s", lf->data);
+    }
+    else
+    {
+        lf->data = NULL;
+    }
+    
+   
 
     /* Checking if file is supposed to be ignored */
     if(Config.syscheck_ignore)

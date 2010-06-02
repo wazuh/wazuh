@@ -46,10 +46,10 @@ int Read_Syscheck_Config(char * cfgfile);
 int create_db();
 
 
-/* int check_db()
- * Checks database for new files.
+/* int run_dbcheck()
+ * Checks database for changes.
  */
-int check_db();
+int run_dbcheck(); 
   
 /** void os_winreg_check()
  * Checks the registry for changes.
@@ -64,6 +64,12 @@ int realtime_adddir(char *dir);
 
 /* Process real time queue. */
 int realtime_process();
+
+/* Process the content of the file changes. */
+char *seechanges_addfile(char *filename);
+
+/* get checksum changes. */
+int c_read_file(char *file_name, char *oldsum, char *newsum);
 
 /** Sends syscheck message.
  */
