@@ -151,7 +151,11 @@ int seechanges_createpath(char *filename)
     {
         if(IsDir(newdir) != 0)
         {
+            #ifndef WIN32
             if(mkdir(newdir, 0770) == -1)
+            #else    
+            if(mkdir(newdir) == -1)
+            #endif    
             {
                 merror(MKDIR_ERROR, ARGV0, newdir);
                 free(buffer);
