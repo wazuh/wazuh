@@ -14,7 +14,9 @@ OBJS = cdb.o cdb_hash.o cdb_make.o uint32_pack.o uint32_unpack.o
 response:
 		$(CC) -I../ $(CFLAGS) -c $(SRCS)
 		ar cru cdb.a $(OBJS)
+		ar cru cdb_make.a $(OBJS)
 		ranlib cdb.a
+		ranlib cdb_make.a
 
 clean:
 		${CLEAN}

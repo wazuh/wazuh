@@ -125,7 +125,7 @@ int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
     }
     if(r_filter->location)
     {
-        if(!OS_Match2(r_filter->location, al_data->location))
+        if(!OS_Match(r_filter->location, al_data->location))
         {
             return(0);
         }

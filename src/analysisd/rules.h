@@ -59,6 +59,20 @@
 #define RULE_ACTION     2048
 
 
+#define RULE_MASTER     1
+#define RULE_SRCIP      2
+#define RULE_SRCPORT    4
+#define RULE_DSTIP      8
+#define RULE_DSTPORT    16
+#define RULE_USER       32
+#define RULE_URL        64
+#define RULE_ID         128
+#define RULE_HOSTNAME   256
+#define RULE_PROGRAM_NAME 512
+#define RULE_STATUS     1024
+#define RULE_ACTION     2048
+
+
 #define RULEINFODETAIL_TEXT     0
 #define RULEINFODETAIL_LINK     1
 #define RULEINFODETAIL_CVE      2

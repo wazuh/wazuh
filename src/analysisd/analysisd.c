@@ -313,32 +313,7 @@ int main_analysisd(int argc, char **argv)
     }
     SetDecodeXML();
 
-
-    /* Creating the rules list */
-    Rules_OP_CreateRules();
-
-
-   
-    /* Reading the rules */
-    {
-        char **rulesfiles;
-        rulesfiles = Config.includes;
-        while(rulesfiles && *rulesfiles)
-        {
-            if(!test_config)
-                verbose("%s: INFO: Reading rules file: '%s'", ARGV0, *rulesfiles);
-            if(Rules_OP_ReadRules(*rulesfiles) < 0)
-                ErrorExit(RULES_ERROR, ARGV0, *rulesfiles);
-                
-            free(*rulesfiles);    
-            rulesfiles++;    
-        }
-
-        free(Config.includes);
-        Config.includes = NULL;
-    }
-
-    /* Creating the lists for use in rules */
+    /* Createing the lists for use in rules */
     Lists_OP_CreateLists();
 
     /* Reading the lists */
@@ -358,6 +333,55 @@ int main_analysisd(int argc, char **argv)
         Config.lists = NULL;
     }
     
+
+    /* Creating the rules list */
+    Rules_OP_CreateRules();
+
+
+   
+   
+    /* Reading the rules */
+    {
+        char **rulesfiles;
+        rulesfiles = Config.includes;
+        while(rulesfiles && *rulesfiles)
+        {
+            if(!test_config)
+                verbose("%s: INFO: Reading rules file: '%s'", ARGV0, *rulesfiles);
+            if(Rules_OP_ReadRules(*rulesfiles) < 0)
+                ErrorExit(RULES_ERROR, ARGV0, *rulesfiles);
+                
+            free(*rulesfiles);    
+            rulesfiles++;    
+        }
+
+        free(Config.includes);
+        Config.includes = NULL;
+    }
+    
+    /* Creating the lists for use in rules */
+    Lists_OP_CreateLists();
+
+    /* Reading the lists */
+    {
+        char **listfiles;
+        listfiles = Config.lists;
+        while(listfiles && *listfiles)
+        {
+            if(!test_config)
+                verbose("%s: INFO: Reading loading the lists file: '%s'", ARGV0, *listfiles);
+            if(Lists_OP_LoadList(*listfiles) < 0)
+                ErrorExit(LISTS_ERROR, ARGV0, *listfiles);
+            free(*listfiles);
+            listfiles++;
+        }
+        free(Config.lists);
+        Config.lists = NULL;
+    }
+
+    /* complete loading all lists as the rules have been loaded also */
+    OS_ListLoadRules();
+
     
     /* Fixing the levels/accuracy */
     {
@@ -1160,16 +1184,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                         return(NULL);
     }
 
-    /*
-    if(currently_rule->program_name_list)
-    {
-        if(!lf->program_name)
-            return(NULL);
-        if(OS_SearchKey(currently_rule->program_name_list, lf->program_name)) 
-            printf("OS_MatchKey found\n");
-        else
-            return(NULL);
-    }*/
 
     /* Checking for the id */
     if(currently_rule->id)
@@ -1450,11 +1464,10 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         }
     }
 
-
     /* List lookups */
-    if(currently_rule->lists)
+    if(currently_rule->lists != NULL)
     {
-        ListRule *list_holder = currently_rule->lists;
+        ListRule *list_holder=currently_rule->lists;
         while(list_holder)
         {
             switch(list_holder->field)
@@ -1462,36 +1475,36 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                 case RULE_SRCIP:
                     if(!lf->srcip)
                         return(NULL);
-                    if(!OS_SearchKey(list_holder->db->filename,lf->srcip))
+                    if(!OS_DBSearch(list_holder,lf->srcip))
                         return(NULL);
                     break;
                 case RULE_SRCPORT:
                     if(!lf->srcport)
                         return(NULL);
-                    if(!OS_SearchKey(list_holder->db->filename,lf->srcport))
+                    if(!OS_DBSearch(list_holder,lf->srcport))
                         return(NULL);
                     break;
                 case RULE_DSTIP:
                     if(!lf->dstip)
                         return(NULL);
-                    if(!OS_SearchKey(list_holder->db->filename,lf->dstip))
+                    if(!OS_DBSearch(list_holder,lf->dstip))
                         return(NULL);
                     break;
                 case RULE_DSTPORT:
                     if(!lf->dstport)
                         return(NULL);
-                    if(!OS_SearchKey(list_holder->db->filename,lf->dstport))
+                    if(!OS_DBSearch(list_holder,lf->dstport))
                         return(NULL);
                     break;
                 case RULE_USER:
                     if(lf->srcuser)
                     {
-                        if(!OS_SearchKey(list_holder->db->filename,lf->srcuser))
+                        if(!OS_DBSearch(list_holder,lf->srcuser))
                             return(NULL);
                     }
                     else if(lf->dstuser)
                     {
-                        if(!OS_SearchKey(list_holder->db->filename,lf->dstuser))
+                        if(!OS_DBSearch(list_holder,lf->dstuser))
                             return(NULL);
                     }
                     else
@@ -1502,37 +1515,37 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
                 case RULE_URL:
                     if(!lf->url)
                         return(NULL);
-                    if(!OS_SearchKey(list_holder->db->filename,lf->url))
+                    if(!OS_DBSearch(list_holder,lf->url))
                         return(NULL);
                     break;
                 case RULE_ID:
                     if(!lf->id)
                         return(NULL);
-                    if(!OS_SearchKey(list_holder->db->filename,lf->id))
+                    if(!OS_DBSearch(list_holder,lf->id))
                         return(NULL);
                     break;
                 case RULE_HOSTNAME:
                     if(!lf->hostname)
                         return(NULL);
-                    if(!OS_SearchKey(list_holder->db->filename,lf->hostname))
+                    if(!OS_DBSearch(list_holder,lf->hostname))
                         return(NULL);
                     break;
                 case RULE_PROGRAM_NAME:
                     if(!lf->program_name)
                         return(NULL);
-                    if(!OS_SearchKey(list_holder->db->filename,lf->program_name))
+                    if(!OS_DBSearch(list_holder,lf->program_name))
                         return(NULL);
                     break;
                 case RULE_STATUS:
                     if(!lf->status)
                         return(NULL);
-                    if(!OS_SearchKey(list_holder->db->filename,lf->status))
+                    if(!OS_DBSearch(list_holder,lf->status))
                         return(NULL);
                     break;
                 case RULE_ACTION:
                     if(!lf->action)
                         return(NULL);
-                    if(!OS_SearchKey(list_holder->db->filename,lf->action))
+                    if(!OS_DBSearch(list_holder,lf->action))
                         return(NULL);
                     break;
                 default:

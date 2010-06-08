@@ -97,8 +97,18 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_status = "status";
     char *xml_action = "action";
     char *xml_compiled = "compiled_rule";
+
     char *xml_list = "list";
-    
+    char *xml_list_lookup = "lookup";
+    char *xml_list_field = "field";
+    char *xml_list_cvalue = "check_value";
+    char *xml_match_key = "match_key";
+    char *xml_not_match_key = "not_match_key";
+    char *xml_match_key_value = "match_key_value";
+    char *xml_address_key = "address_match_key";
+    char *xml_not_address_key = "not_address_match_key";
+    char *xml_address_key_value = "address_match_key_value";         
+
     char *xml_if_sid = "if_sid";
     char *xml_if_group = "if_group";
     char *xml_if_level = "if_level";
@@ -647,43 +657,88 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         if (rule_opt[k]->attributes && rule_opt[k]->values && rule_opt[k]->content)
                         {
-                            int list_att_num = 0;
-                            int rule_type = 0;
-                            while(rule_opt[k]->attributes[list_att_num] && rule_opt[k]->values[list_att_num])
+                            int list_att_num=0;
+                            int rule_type=0;
+                            OSMatch *matcher=NULL;
+                            int lookup_type = LR_STRING_MATCH;
+                            while(rule_opt[k]->attributes[list_att_num])
                             {
-                                if(strcasecmp(rule_opt[k]->values[list_att_num],xml_srcip) )
-                                	rule_type = RULE_SRCIP;
-                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_srcport) )
-                                	rule_type = RULE_SRCPORT;
-                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_srcip) )
-                                	rule_type = RULE_SRCIP;
-                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_dstport) )
-                                	rule_type = RULE_DSTPORT;
-                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_user) )
-                                	rule_type = RULE_USER;
-                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_url) )
-                                	rule_type = RULE_URL;
-                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_id) )
-                                	rule_type = RULE_ID;
-                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_hostname) )
-                                	rule_type = RULE_HOSTNAME;
-                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_program_name) )
-                                	rule_type = RULE_PROGRAM_NAME;
-                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_status) )
-                                	rule_type = RULE_STATUS;
-                                else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_action) )
-                                	rule_type = RULE_ACTION;
-
-                                if (rule_type)
-                                {   
-                                	OS_AddListRule(config_ruleinfo->lists, 
-                                                   rule_type,
-                                                   rule_opt[k]->content);
-                                    printf("DEBUG\n");
-                                } 
+                                if(strcasecmp(rule_opt[k]->attributes[list_att_num], xml_list_lookup) == 0)
+                                {
+                                    if(strcasecmp(rule_opt[k]->values[list_att_num],xml_match_key) == 0)
+                                        lookup_type = LR_STRING_MATCH;
+                                    else if(strcasecmp(rule_opt[k]->values[list_att_num],xml_not_match_key)==0)
+                                        lookup_type = LR_STRING_NOT_MATCH;
+                                    else if(strcasecmp(rule_opt[k]->values[list_att_num],xml_match_key_value)==0)
+                                        lookup_type = LR_STRING_MATCH_VALUE;
+                                    else if(strcasecmp(rule_opt[k]->values[list_att_num],xml_address_key)==0)
+                                        lookup_type = LR_ADDRESS_MATCH;
+                                    else if(strcasecmp(rule_opt[k]->values[list_att_num],xml_not_address_key)==0)
+                                        lookup_type = LR_ADDRESS_NOT_MATCH;
+                                    else if(strcasecmp(rule_opt[k]->values[list_att_num],xml_address_key_value)==0)
+                                        lookup_type = LR_ADDRESS_MATCH_VALUE;
+                                    else 
+                                    {
+                                        merror(INVALID_CONFIG, ARGV0, 
+                                               rule_opt[k]->element, 
+                                               rule_opt[k]->content);
+                                        merror("%s: List match lookup=\"%s\" is not valid.", 
+                                                ARGV0,rule_opt[k]->values[list_att_num]);
+                                        return(-1);
+                                     }
+                                }
+                                else if(strcasecmp(rule_opt[k]->attributes[list_att_num], xml_list_field)==0)
+                                {
+                                    if(strcasecmp(rule_opt[k]->values[list_att_num],xml_srcip)==0)
+                                        rule_type = RULE_SRCIP;
+                                    else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_srcport)==0)
+                                        rule_type = RULE_SRCPORT;
+                                    else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_dstip)==0)
+                                        rule_type = RULE_DSTIP;
+                                    else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_dstport)==0)
+                                        rule_type = RULE_DSTPORT;
+                                    else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_user)==0)
+                                        rule_type = RULE_USER;
+                                    else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_url)==0)
+                                        rule_type = RULE_URL;
+                                    else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_id)==0)
+                                        rule_type = RULE_ID;
+                                    else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_hostname)==0)
+                                        rule_type = RULE_HOSTNAME;
+                                    else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_program_name)==0)
+                                        rule_type = RULE_PROGRAM_NAME;
+                                    else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_status)==0)
+                                        rule_type = RULE_STATUS;
+                                    else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_action)==0)
+                                        rule_type = RULE_ACTION;
+                                    else 
+                                    {
+                                        merror(INVALID_CONFIG, ARGV0, 
+                                               rule_opt[k]->element, 
+                                               rule_opt[k]->content);
+                                        merror("%s: List match field=\"%s\" is not valid.", 
+                                                ARGV0,rule_opt[k]->values[list_att_num]);
+                                        return(-1);
+                                     }
+                                }
+                                else if(strcasecmp(rule_opt[k]->attributes[list_att_num], xml_list_cvalue)==0)
+                                {
+                                    os_calloc(1, sizeof(OSMatch), matcher);
+                                    if(!OSMatch_Compile(rule_opt[k]->values[list_att_num], matcher, 0))
+                                    {
+                                        merror(INVALID_CONFIG, ARGV0, 
+                                               rule_opt[k]->element, 
+                                               rule_opt[k]->content);
+                                        merror(REGEX_COMPILE, 
+                                               ARGV0, 
+                                               rule_opt[k]->values[list_att_num], 
+                                               matcher->error);
+                                        return(-1);
+                                    }
+                                }
                                 else
                                 {
-                                	merror("%s: ERROR: List field '%s' is not valid",ARGV0,
+                                	merror("%s:List feild=\"%s\" is not valid",ARGV0,
                                            rule_opt[k]->values[list_att_num]);
                                     merror(INVALID_CONFIG, ARGV0, 
                                            rule_opt[k]->element, rule_opt[k]->content);
@@ -691,10 +746,29 @@ int Rules_OP_ReadRules(char * rulefile)
                                 }
                                 list_att_num++;
                             }
+                            if(rule_type == 0)
+                            {
+                                merror("%s:List requires the field=\"\" Attrubute",ARGV0);
+                                merror(INVALID_CONFIG, ARGV0, 
+                                       rule_opt[k]->element, rule_opt[k]->content);
+                                return(-1);
+                            }
+
+                            /* Wow it's all ready - this seams too complex to get to this point */
+                            config_ruleinfo->lists = OS_AddListRule(config_ruleinfo->lists,
+                                           lookup_type, 
+                                           rule_type, 
+                                           rule_opt[k]->content,
+                                           matcher);
+                            if (config_ruleinfo->lists == NULL)
+                            {
+                                merror("%s: List error: Could not load %s", ARGV0, rule_opt[k]->content);
+                                return(-1);
+                            }
                         }
                         else
                         {
-                            merror("%s: ERROR: List must have a correctly formtted field attribute",
+                            merror("%s:List must have a correctly formatted feild attribute",
                                    ARGV0);
                             merror(INVALID_CONFIG, 
                                    ARGV0, 
@@ -702,6 +776,7 @@ int Rules_OP_ReadRules(char * rulefile)
                                    rule_opt[k]->content);
                             return(-1);
                         }                        
+                        /* xml_list eval is done */
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_url)==0)
                     {

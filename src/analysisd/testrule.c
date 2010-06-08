@@ -211,17 +211,34 @@ int main(int argc, char **argv)
     SetDecodeXML();
 
     
+    /* Createing the lists for use in rules */
+    Lists_OP_CreateLists();
+
+    /* Reading the lists */
+    {
+        char **listfiles;
+        listfiles = Config.lists;
+        while(listfiles && *listfiles)
+        {
+            if(Lists_OP_LoadList(*listfiles) < 0)
+                ErrorExit(LISTS_ERROR, ARGV0, *listfiles);
+            free(*listfiles);
+            listfiles++;
+        }
+        free(Config.lists);
+        Config.lists = NULL;
+    }
+    
+
     /* Creating the rules list */
     Rules_OP_CreateRules();
 
-   
     /* Reading the rules */
     {
         char **rulesfiles;
         rulesfiles = Config.includes;
         while(rulesfiles && *rulesfiles)
         {
-            debug1("%s: INFO: Reading rules file: '%s'", ARGV0, *rulesfiles);
             if(Rules_OP_ReadRules(*rulesfiles) < 0)
                 ErrorExit(RULES_ERROR, ARGV0, *rulesfiles);
                 
@@ -251,6 +268,9 @@ int main(int argc, char **argv)
         free(Config.lists);
         Config.lists = NULL;
     }
+
+    /* complete loading all lists as the rules have been loaded also */
+    OS_ListLoadRules();
     
     
     /* Fixing the levels/accuracy */
@@ -442,7 +462,7 @@ void OS_ReadMSG(int m_queue)
                 {
                     continue;
                 }
-            
+
 
                 /* Checking each rule. */
                 else if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt)) 
