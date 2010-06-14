@@ -333,6 +333,9 @@ int main_analysisd(int argc, char **argv)
         Config.lists = NULL;
     }
     
+    /* complete loading all lists as the rules have been loaded also */
+    OS_ListLoadRules();
+
 
     /* Creating the rules list */
     Rules_OP_CreateRules();

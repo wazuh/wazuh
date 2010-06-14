@@ -210,6 +210,8 @@ int main(int argc, char **argv)
     }
     SetDecodeXML();
 
+    OS_ListLoadRules();
+
     
     /* Createing the lists for use in rules */
     Lists_OP_CreateLists();
