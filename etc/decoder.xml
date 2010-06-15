@@ -156,7 +156,7 @@
 <decoder name="ssh-reverse-mapping">
   <parent>sshd</parent>
   <prematch>^reverse mapping checking </prematch>
-  <regex offset="after_prematch">^\w+ for (\S+) </regex>
+  <regex offset="after_prematch">^\w+ for \S+ [(\S+)] |^\w+ for (\S+) </regex>
   <order>srcip</order>
 </decoder>       
 
@@ -178,6 +178,13 @@
   <parent>sshd</parent>
   <prematch>^Did not receive identification|^Bad protocol version</prematch>
   <regex offset="after_prematch"> from (\S+)$</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="ssh-osx-refuse">
+  <parent>sshd</parent>
+  <prematch>^refused connect </prematch>
+  <regex offset="after_prematch">^from (\S+)$</regex>
   <order>srcip</order>
 </decoder>
 

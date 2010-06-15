@@ -67,7 +67,7 @@ typedef struct _Eventinfo
     int time;
     int day;
     int year;
-    char hour[9];
+    char hour[10];
     char mon[4];
 
     /* SYSCHECK Results variables -- only used by prelude for now */
