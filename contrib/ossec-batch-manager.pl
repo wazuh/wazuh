@@ -185,7 +185,7 @@ sub extract_key {
     my ($id, $name, $ip, $key) = split;
     if ($id == $extractid) {
       # Newlines are valid base64 characters so use '' instead for \n
-      $decoded = MIME::Base64::encode($key, '');
+      $decoded = MIME::Base64::encode($_, '');
       print "$decoded\n";
       exit 0;
     }
