@@ -111,6 +111,18 @@ status()
     done             
 }
 
+testconfig()
+{
+    # We first loop to check the config. 
+    for i in ${SDAEMONS}; do
+        ${DIR}/bin/${i} -t;
+        if [ $? != 0 ]; then
+            echo "${i}: Configuration error. Exiting"
+            unlock;
+            exit 1;
+        fi    
+    done
+}
 
 # Start function
 start()
@@ -121,15 +133,6 @@ start()
     lock;
     checkpid;
 
-    # We first loop to check the config. 
-    for i in ${SDAEMONS}; do
-        ${DIR}/bin/${i} -t;
-        if [ $? != 0 ]; then
-            echo "${i}: Configuration error. Exiting"
-            unlock;
-            exit 1;
-        fi    
-    done
     
     # We actually start them now.
     for i in ${SDAEMONS}; do
@@ -214,12 +217,14 @@ stopa()
 
 case "$1" in
   start)
+    testconfig
 	start
 	;;
   stop) 
 	stopa
 	;;
   restart)
+    testconfig
 	stopa
 	start
 	;;

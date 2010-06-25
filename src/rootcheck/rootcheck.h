@@ -55,6 +55,9 @@ int rk_check_dir(char *dir, char *file, char *pattern);
 /* pt_matches: Checks if pattern is present on string */
 int pt_matches(char *str, char *pattern);
 
+/* pt_check_negate: checks if the patterns is made up 
+ * completely of negate matches */
+int pt_check_negate(char *pattern);
 
 /* common is_file: Check if a file exist (using stat, fopen and opendir) */
 int is_file(char *file_name);

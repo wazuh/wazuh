@@ -274,8 +274,7 @@ int main_analysisd(int argc, char **argv)
         OS_PicvizOpen(Config.picviz_socket);
         chown(Config.picviz_socket, uid, gid);
     }
-    
-    
+
     /* Setting the group */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
@@ -289,101 +288,89 @@ int main_analysisd(int argc, char **argv)
     
     
 
-    /* Initializing the list */
-    OS_CreateOSDecoderList();
-        
-
-    /* Reading decoders */
-    if(!ReadDecodeXML(XML_DECODER))
+    /*
+     * Anonymous Section: Load rules, decoders, and lists 
+     *
+     * As lists require two pass loading of rules that make use of list lookups
+     * are created with blank database structs, and need to be filled in after 
+     * completion of all rules and lists. 
+     */
     {
-        ErrorExit(CONFIG_ERROR, ARGV0,  XML_DECODER);
-    }
-
-    /* Reading local ones. */
-    c = ReadDecodeXML(XML_LDECODER);
-    if(!c)
-    {
-        if((c != -2))
-            ErrorExit(CONFIG_ERROR, ARGV0,  XML_LDECODER);
-    }
-    else
-    {
-        if(!test_config)
-            verbose("%s: INFO: Reading local decoder file.", ARGV0);
-    }
-    SetDecodeXML();
-
-    /* Createing the lists for use in rules */
-    Lists_OP_CreateLists();
-
-    /* Reading the lists */
-    {
-        char **listfiles;
-        listfiles = Config.lists;
-        while(listfiles && *listfiles)
         {
-            if(!test_config)
-                verbose("%s: INFO: Reading loading the lists file: '%s'", ARGV0, *listfiles);
-            if(Lists_OP_LoadList(*listfiles) < 0)
-                ErrorExit(LISTS_ERROR, ARGV0, *listfiles);
-            free(*listfiles);
-            listfiles++;
+            /* Initializing the decoders list */
+            OS_CreateOSDecoderList();
+
+            /* Reading decoders */
+            if(!ReadDecodeXML(XML_DECODER))
+            {
+                ErrorExit(CONFIG_ERROR, ARGV0,  XML_DECODER);
+            }
+
+            /* Reading local ones. */
+            c = ReadDecodeXML(XML_LDECODER);
+            if(!c)
+            {
+                if((c != -2))
+                    ErrorExit(CONFIG_ERROR, ARGV0,  XML_LDECODER);
+            }
+            else
+            {
+                if(!test_config)
+                    verbose("%s: INFO: Reading local decoder file.", ARGV0);
+            }
+            /* Load decoders */
+            SetDecodeXML();
         }
-        free(Config.lists);
-        Config.lists = NULL;
-    }
-    
-    /* complete loading all lists as the rules have been loaded also */
-    OS_ListLoadRules();
-
-
-    /* Creating the rules list */
-    Rules_OP_CreateRules();
-
-
-   
-   
-    /* Reading the rules */
-    {
-        char **rulesfiles;
-        rulesfiles = Config.includes;
-        while(rulesfiles && *rulesfiles)
-        {
-            if(!test_config)
-                verbose("%s: INFO: Reading rules file: '%s'", ARGV0, *rulesfiles);
-            if(Rules_OP_ReadRules(*rulesfiles) < 0)
-                ErrorExit(RULES_ERROR, ARGV0, *rulesfiles);
-                
-            free(*rulesfiles);    
-            rulesfiles++;    
+        { /* Load Lists */
+            /* Initializing the lists of list struct */
+            Lists_OP_CreateLists(); 
+            /* Load each list into list struct */
+            {
+                char **listfiles;
+                listfiles = Config.lists;
+                while(listfiles && *listfiles)
+                {
+                    if(!test_config)
+                        verbose("%s: INFO: Reading loading the lists file: '%s'", ARGV0, *listfiles);
+                    if(Lists_OP_LoadList(*listfiles) < 0)
+                        ErrorExit(LISTS_ERROR, ARGV0, *listfiles);
+                    free(*listfiles);
+                    listfiles++;
+                }
+                free(Config.lists);
+                Config.lists = NULL;
+            }
         }
+        { /* Load Rules */
+            /* Creating the rules list */
+            Rules_OP_CreateRules();
 
-        free(Config.includes);
-        Config.includes = NULL;
-    }
-    
-    /* Creating the lists for use in rules */
-    Lists_OP_CreateLists();
+            /* Reading the rules */
+            {
+                char **rulesfiles;
+                rulesfiles = Config.includes;
+                while(rulesfiles && *rulesfiles)
+                {
+                    if(!test_config)
+                        verbose("%s: INFO: Reading rules file: '%s'", ARGV0, *rulesfiles);
+                    if(Rules_OP_ReadRules(*rulesfiles) < 0)
+                        ErrorExit(RULES_ERROR, ARGV0, *rulesfiles);
+                        
+                    free(*rulesfiles);    
+                    rulesfiles++;    
+                }
 
-    /* Reading the lists */
-    {
-        char **listfiles;
-        listfiles = Config.lists;
-        while(listfiles && *listfiles)
-        {
-            if(!test_config)
-                verbose("%s: INFO: Reading loading the lists file: '%s'", ARGV0, *listfiles);
-            if(Lists_OP_LoadList(*listfiles) < 0)
-                ErrorExit(LISTS_ERROR, ARGV0, *listfiles);
-            free(*listfiles);
-            listfiles++;
+                free(Config.includes);
+                Config.includes = NULL;
+            }
+            
+            /* Find all rules with that require list lookups and attache the
+             * the correct list struct to the rule.  This keeps rules from having to 
+             * search thought the list of lists for the correct file during rule evaluation.
+             */
+            OS_ListLoadRules();
         }
-        free(Config.lists);
-        Config.lists = NULL;
     }
-
-    /* complete loading all lists as the rules have been loaded also */
-    OS_ListLoadRules();
 
     
     /* Fixing the levels/accuracy */
@@ -1713,3 +1700,4 @@ void DumpLogstats()
 
 
 /* EOF */
+

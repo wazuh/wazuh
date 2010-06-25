@@ -119,6 +119,8 @@ int rk_check_dir(char *dir, char *file, char *pattern)
 int rk_check_file(char *file, char *pattern)
 {
     char *split_file;
+    int full_negate = 0; 
+    int pt_result = 0; 
     
     FILE *fp;
     char buf[OS_SIZE_2048 +1];
@@ -175,11 +177,14 @@ int rk_check_file(char *file, char *pattern)
 
         else
         {
+            full_negate = pt_check_negate(pattern); 
             /* Checking for a content in the file */
+            debug1("checking file: %s", file); 
             fp = fopen(file, "r");
             if(fp)
             {
 
+                debug1(" starting new file: %s", file); 
                 buf[OS_SIZE_2048] = '\0';
                 while(fgets(buf, OS_SIZE_2048, fp) != NULL)
                 {
@@ -204,8 +209,13 @@ int rk_check_file(char *file, char *pattern)
 
 
                     /* Matched */
-                    if(pt_matches(buf, pattern))
+                    pt_result = pt_matches(buf, pattern);
+                    debug1("Buf == \"%s\"", buf); 
+                    debug1("Pattern == \"%s\"", pattern);
+                    debug1("pt_result == %d and full_negate == %d", pt_result, full_negate);
+                    if((pt_result == 1 && full_negate == 0) )
                     {
+                        debug1("alerting file %s on line %s", file, buf);
                         int i = 0;
                         char _b_msg[OS_SIZE_1024 +1];
 
@@ -232,9 +242,45 @@ int rk_check_file(char *file, char *pattern)
 
                         return(1);
                     }
+                    else if((pt_result == 0 && full_negate == 1) )
+                    {
+                        /* found a full+negate match so no longer need to search
+                         * break out of loop and amke sure the full negate does 
+                         * not alertin 
+                         */
+                        debug1("found a complete match for full_negate");
+                        full_negate = 0; 
+                        break; 
+                    }
                 }
 
                 fclose(fp);
+
+                if(full_negate == 1) 
+                {
+                    debug1("full_negate alerting - file %s",file);
+                    int i = 0;
+                    char _b_msg[OS_SIZE_1024 +1];
+
+                    /* Generating the alert itself. */
+                    _b_msg[OS_SIZE_1024] = '\0';
+                    snprintf(_b_msg, OS_SIZE_1024, " File: %s.",
+                             file);
+                    
+                    /* Already present. */
+                    if(_is_str_in_array(rootcheck.alert_msg, _b_msg))
+                    {
+                        return(1);
+                    }
+
+                    while(rootcheck.alert_msg[i] && (i < 255))
+                        i++;
+
+                    if(!rootcheck.alert_msg[i])
+                    os_strdup(_b_msg, rootcheck.alert_msg[i]);
+
+                    return(1);
+                }
             }
         }
 
@@ -256,6 +302,49 @@ int rk_check_file(char *file, char *pattern)
 }
 
 
+/** int pt_check_negate(char *pattern)
+ * Checks if the patterns is all negate values and if so returns 1
+ * else return 0
+ */
+int pt_check_negate(char *pattern)
+{
+    char *mypattern = NULL;
+    os_strdup(pattern, mypattern);
+    char *tmp_pt = mypattern;
+    char *tmp_pattern = mypattern; 
+    char *tmp_ret = NULL;
+
+
+    while(tmp_pt != NULL)
+    {
+        /* We first look for " && " */
+        tmp_pt = strchr(tmp_pattern, ' ');
+        if(tmp_pt && tmp_pt[1] == '&' && tmp_pt[2] == '&' && tmp_pt[3] == ' ')
+        {
+            /* Marking pointer to clean it up */        
+            tmp_ret = tmp_pt;
+                    
+            *tmp_pt = '\0';
+            tmp_pt += 4;
+        }
+        else
+        {
+            tmp_pt = NULL;
+        }
+
+        if(*tmp_pattern != '!')
+        {
+            free(mypattern);
+            return 0;
+        }
+        
+        tmp_pattern = tmp_pt;
+    }
+
+    debug1("pattern: %s is fill_negate",pattern);
+    free(mypattern);
+    return(1);
+}
 
 /** int pt_matches(char *str, char *pattern)
  * Checks if the specific pattern is present on str.
@@ -324,6 +413,7 @@ int pt_matches(char *str, char *pattern)
             pattern += 2;
             if(OS_Regex(pattern, str))
             {
+                debug1("pattern: %s matches %s.",pattern, str);
                 ret_code = 1;
             }
         }

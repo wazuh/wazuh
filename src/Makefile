@@ -12,6 +12,8 @@ none:
 		@echo "\"make clean\" to clean anything built."
 		@echo "\"make setagent\" to set agent install."
 		@echo "\"make setlocal\" to set local install."
+		@echo "\"make setclang\" to use clang for building ossec."
+		@echo "\"make unsetclang\" to use gcc for building ossec."
 		@echo "\"make setprelude\" to enable prelude output."
 		@echo "\"make setdb\" to enable database support."
 		@echo "\"make unsetdb\" to disable database support."
@@ -42,6 +44,12 @@ agent:
         
 setagent:
 		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
+
+setclang:
+		@sed -i '' -e "s/^CC=.*/CC=clang/g" LOCATION
+
+unsetclang:
+		@sed -i '' -e "s/^CC=.*/CC=gcc/g" LOCATION
 
 setprelude:
 		@echo "CPRELUDE=-DPRELUDE -lprelude `libprelude-config --pthread-cflags` `libprelude-config --libs`" >> ./Config.OS
