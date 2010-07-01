@@ -6,19 +6,18 @@
 ;--------------------------------
 ;General
 
+!define MUI_ICON favicon.ico
+!define MUI_UNICON ossec-uninstall.ico
 !define VERSION "2.4.1"
-!define NAME "Ossec HIDS"
+!define NAME "OSSEC HIDS"
 !define /date CDATE "%b %d %Y at %H:%M:%S"
-
 
 Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2010 Trend Micro Inc."
 OutFile "ossec-win32-agent.exe"
 
-
-InstallDir $PROGRAMFILES\ossec-agent
-InstallDirRegKey HKLM "ossec" "Install_Dir"
-
+InstallDir "$PROGRAMFILES\ossec-agent"
+InstallDirRegKey HKLM Software\OSSEC ""
 
 ;--------------------------------
 ;Interface Settings
@@ -27,21 +26,14 @@ InstallDirRegKey HKLM "ossec" "Install_Dir"
 
 ;--------------------------------
 ;Pages
-  !define MUI_ICON favicon.ico
-  !define MUI_UNICON ossec-uninstall.ico
+  !define MUI_WELCOMEPAGE_TITLE_3LINES
   !define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the install of ${Name}.\r\n\r\nClick next to continue."
-
+  !define MUI_FINISHPAGE_TITLE_3LINES
+  !define MUI_FINISHPAGE_RUN "$INSTDIR\win32ui.exe"
+  !define  MUI_FINISHPAGE_RUN_TEXT "Run OSSEC Agent Manager"
+  
   ; Page for choosing components.
   !define MUI_COMPONENTSPAGE_TEXT_TOP "Select the options you want to be executed. Click next to continue."
-
-  ;!define MUI_COMPONENTSPAGE_TEXT_COMPLIST "text complist"
-
-  ;!define MUI_COMPONENTSPAGE_TEXT_INSTTYPE "Select components to install:"
-
-  ;!define MUI_COMPONENTSPAGE_TEXT_DESCRIPTION_TITLE "text abac"
-
-  ;!define MUI_COMPONENTSPAGE_TEXT_DESCRIPTION_INFO "text info oi"
-  
   !define MUI_COMPONENTSPAGE_NODESC 
 
   !insertmacro MUI_PAGE_WELCOME
@@ -51,6 +43,9 @@ InstallDirRegKey HKLM "ossec" "Install_Dir"
   !insertmacro MUI_PAGE_INSTFILES
   !insertmacro MUI_PAGE_FINISH
 
+  ; These have to be defined again to work with the uninstall pages
+  !define MUI_WELCOMEPAGE_TITLE_3LINES
+  !define MUI_FINISHPAGE_TITLE_3LINES
   !insertmacro MUI_UNPAGE_WELCOME
   !insertmacro MUI_UNPAGE_CONFIRM
   !insertmacro MUI_UNPAGE_INSTFILES
@@ -62,36 +57,64 @@ InstallDirRegKey HKLM "ossec" "Install_Dir"
   !insertmacro MUI_LANGUAGE "English"
 
 ;--------------------------------
+; Function to stop OSSEC service if running
 
 Function .onInit
-    SetOutPath $INSTDIR
     IfFileExists $INSTDIR\ossec.conf 0 +3
-    MessageBox MB_OKCANCEL "${NAME} is already installed. We will stop it before continuing." IDOK NoAbort
+    MessageBox MB_OKCANCEL "${NAME} is already installed. It will be stopped before continuing." IDOK NoAbort
     Abort
     NoAbort:
     
-    ;; Stopping ossec service.
-    ExecWait '"net" "stop" "OssecSvc"'  
+   ;; Stopping ossec service.
+   nsExec::ExecToStack '"net" "stop" "OssecSvc"'
 FunctionEnd
             
+;--------------------------------
+;Main install section
 
 Section "OSSEC Agent (required)" MainSec
 
-;Required section.
 SectionIn RO
 SetOutPath $INSTDIR
 
 ClearErrors
 
-File ossec-agent.exe default-ossec.conf manage_agents.exe os_win32ui.exe win32ui.exe ossec-rootcheck.exe internal_options.conf setup-windows.exe setup-syscheck.exe setup-iis.exe service-start.exe service-stop.exe doc.html rootkit_trojans.txt rootkit_files.txt add-localfile.exe LICENSE.txt rootcheck\rootcheck.conf rootcheck\db\win_applications_rcl.txt rootcheck\db\win_malware_rcl.txt rootcheck\db\win_audit_rcl.txt help.txt vista_sec.csv route-null.cmd restart-ossec.cmd
-WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
+File \
+ossec-agent.exe \
+default-ossec.conf \
+manage_agents.exe \
+os_win32ui.exe \
+ossec-rootcheck.exe \
+internal_options.conf \
+setup-windows.exe \
+setup-syscheck.exe \
+setup-iis.exe \
+service-start.exe \
+service-stop.exe \
+doc.html \
+rootkit_trojans.txt \
+rootkit_files.txt \
+add-localfile.exe \
+LICENSE.txt \
+rootcheck\rootcheck.conf \
+rootcheck\db\win_applications_rcl.txt \
+rootcheck\db\win_malware_rcl.txt \
+rootcheck\db\win_audit_rcl.txt \
+help.txt \
+vista_sec.csv \
+route-null.cmd \
+restart-ossec.cmd
 
-WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "DisplayName" "OSSEC Hids Agent"
+WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
+WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayName" "${NAME} ${VERSION}"
+WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayVersion" "${VERSION}"
+WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayIcon" "${MUI_ICON}"
+WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "HelpLink" "http://www.ossec.net/main/support/"
+WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "URLInfoAbout" "http://www.ossec.net"
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "UninstallString" '"$INSTDIR\uninstall.exe"'
 WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "NoModify" 1
 WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "NoRepair" 1
 WriteUninstaller "uninstall.exe"
-
 
 ; Writing version and install information
 FileOpen $0 $INSTDIR\VERSION.txt w
@@ -100,7 +123,6 @@ FileWrite $0 "${NAME} v${VERSION} - "
 FileWrite $0 "Installed on ${CDATE}"
 FileClose $0
 done:
-
 
 CreateDirectory "$INSTDIR\rids"
 CreateDirectory "$INSTDIR\syscheck"
@@ -116,58 +138,58 @@ Rename "$INSTDIR\win_audit_rcl.txt" "$INSTDIR\shared\win_audit_rcl.txt"
 Rename "$INSTDIR\win_applications_rcl.txt" "$INSTDIR\shared\win_applications_rcl.txt"
 Rename "$INSTDIR\route-null.cmd" "$INSTDIR\active-response\bin\route-null.cmd"
 Rename "$INSTDIR\restart-ossec.cmd" "$INSTDIR\active-response\bin\restart-ossec.cmd"
-Delete "$SMPROGRAMS\ossec\Edit.lnk"
-Delete "$SMPROGRAMS\ossec\Uninstall.lnk"
-Delete "$SMPROGRAMS\ossec\Documentation.lnk"
-Delete "$SMPROGRAMS\ossec\Edit Config.lnk"
-Delete "$SMPROGRAMS\ossec\*.*"
+Rename "$INSTDIR\os_win32ui.exe" "$INSTDIR\win32ui.exe"
+Delete "$SMPROGRAMS\OSSEC\Edit.lnk"
+Delete "$SMPROGRAMS\OSSEC\Uninstall.lnk"
+Delete "$SMPROGRAMS\OSSEC\Documentation.lnk"
+Delete "$SMPROGRAMS\OSSEC\Edit Config.lnk"
+Delete "$SMPROGRAMS\OSSEC\*.*"
 
-; Remove directories used
-RMDir "$SMPROGRAMS\ossec"
+; Remove start menu entry. 
+RMDir "$SMPROGRAMS\OSSEC"
 
-; Creating SMS directory
-CreateDirectory "$SMPROGRAMS\ossec"
-      
-CreateShortCut "$SMPROGRAMS\ossec\Manage Agent.lnk" "$INSTDIR\win32ui.exe" "" "$INSTDIR\win32ui.exe" 0
-CreateShortCut "$SMPROGRAMS\ossec\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
-CreateShortCut "$SMPROGRAMS\ossec\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
-CreateShortCut "$SMPROGRAMS\ossec\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
+; Creating start menu directory
+CreateDirectory "$SMPROGRAMS\OSSEC"
+CreateShortCut "$SMPROGRAMS\OSSEC\Manage Agent.lnk" "$INSTDIR\win32ui.exe" "" "$INSTDIR\win32ui.exe" 0
+CreateShortCut "$SMPROGRAMS\OSSEC\Documentation.lnk" "$INSTDIR\doc.html" "" "$INSTDIR\doc.html" 0
+CreateShortCut "$SMPROGRAMS\OSSEC\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$INSTDIR\ossec.conf" 0
+CreateShortCut "$SMPROGRAMS\OSSEC\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 
-
-; Install in the services 
-ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
-ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"' 
-Exec '"$INSTDIR\os_win32ui.exe" "$INSTDIR"' 
+; Install in the services  (perhaps it would be better to use a plug-in here?)
+nsExec::ExecToStack '"$INSTDIR\ossec-agent.exe" install-service'
+nsExec::ExecToStack '"$INSTDIR\setup-windows.exe" "$INSTDIR"'
 
 SectionEnd
 
 Section "Scan and monitor IIS logs (recommended)" IISLogs
 
-ExecWait '"$INSTDIR\setup-iis.exe" "$INSTDIR"'
+nsExec::ExecToStack '"$INSTDIR\setup-iis.exe" "$INSTDIR"'
 
 SectionEnd
 
 Section "Enable integrity checking (recommended)" IntChecking
 
-ExecWait '"$INSTDIR\setup-syscheck.exe" "$INSTDIR" "enable"'
+nsExec::ExecToStack '"$INSTDIR\setup-syscheck.exe" "$INSTDIR" "enable"'
 
 SectionEnd
 
-
-
+;--------------------------------
+;Uninstall section
 Section "Uninstall"
   
-  ; Stop ossec
-  ExecWait '"net" "stop" "OssecSvc"'
+  ;Need a step to check for a running agent manager, otherwise it and the INSTDIR directory will not be removed.
   
-  ; Uninstall from the services
-  Exec '"$INSTDIR\ossec-agent.exe" uninstall-service'
+  ; Stop ossec. Perhaps we should look for an exit status here. Also, may be a good place to use a plug-in.
+  nsExec::ExecToStack '"net" "stop" "OssecSvc"'
+  
+  ; Uninstall from the services. Again, maybe use a plugin here.
+  nsExec::ExecToStack '"$INSTDIR\ossec-agent.exe" uninstall-service'
 
   ; Remove registry keys
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec"
-  DeleteRegKey HKLM SOFTWARE\ossec
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC"
+  DeleteRegKey HKLM SOFTWARE\OSSEC
 
-  ; Remove files and uninstaller
+  ; Remove files and uninstaller. There have been instances where the ossec-agent directory and executable is left. Why?
   Delete "$INSTDIR\ossec-agent.exe"
   Delete "$INSTDIR\manage_agents.exe"
   Delete "$INSTDIR\ossec.conf"
@@ -181,11 +203,11 @@ Section "Uninstall"
   Delete "$INSTDIR"
 
   ; Remove shortcuts, if any
-  Delete "$SMPROGRAMS\ossec\*.*"
-  Delete "$SMPROGRAMS\ossec\*"
+  Delete "$SMPROGRAMS\OSSEC\*.*"
+  Delete "$SMPROGRAMS\OSSEC\*"
 
   ; Remove directories used
-  RMDir "$SMPROGRAMS\ossec"
+  RMDir "$SMPROGRAMS\OSSEC"
   RMDir "$INSTDIR\shared"
   RMDir "$INSTDIR\syscheck"
   RMDir "$INSTDIR\rids"
@@ -194,4 +216,3 @@ Section "Uninstall"
   RMDir "$INSTDIR"
 
 SectionEnd
-
