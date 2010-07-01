@@ -183,8 +183,9 @@
   </rule>
   
   <rule id="18128" level="8">
-    <!-- if_sid>18104</if_sid -->
-    <!-- id>^65|^66</id -->
+    <if_sid>18127</if_sid>
+    <id>^00</id>
+    <match>^rule deprecated</match>
     <description>Group account added/changed/deleted.</description>
     <info>This rule has been deprecated</info>
     <group>account_changed,</group>
