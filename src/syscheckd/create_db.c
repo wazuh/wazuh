@@ -24,7 +24,7 @@ int __counter = 0;
 
 
 /** Prototypes **/
-int read_dir(char *dir_name, int opts, char *restriction);
+int read_dir(char *dir_name, int opts, OSMatch *restriction);
 
 
 /* int check_file(char *file_name)
@@ -49,7 +49,7 @@ int check_file(char *file_name)
 /* int read_file(char *file_name, int opts, int flag)
  * Reads and generates the integrity data of a file.
  */
-int read_file(char *file_name, int opts, char *restriction)
+int read_file(char *file_name, int opts, OSMatch *restriction)
 {
     char *buf;
     char sha1s = '+';
@@ -106,6 +106,17 @@ int read_file(char *file_name, int opts, char *restriction)
         #endif
 
         return(read_dir(file_name, opts, restriction));
+    }
+
+
+    /* restricting file types. */
+    if(restriction)
+    {
+        if(!OSMatch_Execute(file_name, strlen(file_name), 
+                            restriction))
+        {
+            return(0);
+        }
     }
     
     
@@ -294,7 +305,7 @@ int read_file(char *file_name, int opts, char *restriction)
 /* read_dir v0.1
  *
  */
-int read_dir(char *dir_name, int opts, char *restriction)
+int read_dir(char *dir_name, int opts, OSMatch *restriction)
 {
     int dir_size;
    
