@@ -32,7 +32,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     char *xml_localfile_command = "command";
     char *xml_localfile_logformat = "log_format";
     char *xml_localfile_frequency = "frequency";
-
+    char *xml_localfile_alias = "alias";
 
     logreader *logf;
     logreader_config *log_config;
@@ -47,9 +47,11 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         logf = log_config->config;
         logf[0].file = NULL;
         logf[0].command = NULL;
+        logf[0].alias = NULL;
         logf[0].logformat = NULL;
         logf[1].file = NULL;
         logf[1].command = NULL;
+        logf[1].alias = NULL;
         logf[1].logformat = NULL;
     }
     else
@@ -65,17 +67,19 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         logf = log_config->config;
         logf[pl +1].file = NULL;
         logf[pl +1].command = NULL;
+        logf[pl +1].alias = NULL;
         logf[pl +1].logformat = NULL;
     }
     
     logf[pl].file = NULL;
     logf[pl].command = NULL;
+    logf[pl].alias = NULL;
     logf[pl].logformat = NULL;
     logf[pl].fp = NULL;
     logf[pl].ffile = NULL;
     logf[pl].djb_program_name = NULL;
     logf[pl].ign = 360;
-    
+
     
     /* Searching for entries related to files */
     i = 0;
@@ -334,6 +338,10 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
+        }
+        else if(strcasecmp(node[i]->element,xml_localfile_alias) == 0)
+        {
+            os_strdup(node[i]->content, logf[pl].alias);
         }
         else
         {

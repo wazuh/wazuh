@@ -43,7 +43,10 @@ void *read_command(int pos, int *rc, int drop_it)
     }
 
 
-    snprintf(str, 256, "ossec: output: '%s': ", logff[pos].command);
+    snprintf(str, 256, "ossec: output: '%s': ", 
+             (NULL != logff[pos].alias) 
+             ? logff[pos].alias 
+             : logff[pos].command);
     cmd_size = strlen(str);
 
 
@@ -61,7 +64,8 @@ void *read_command(int pos, int *rc, int drop_it)
         /* Sending message to queue */
         if(drop_it == 0)
         {
-            if(SendMSG(logr_queue,str,logff[pos].command,
+            if(SendMSG(logr_queue,str,
+                        (NULL != logff[pos].alias) ? logff[pos].alias : logff[pos].command,
                         LOCALFILE_MQ) < 0)
             {
                 merror(QUEUE_SEND, ARGV0);
