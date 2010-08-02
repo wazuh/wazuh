@@ -115,8 +115,8 @@ enable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Enable options: database, client-syslog, agentless"
-        echo "Usage: $0 enable [database|client-syslog|agentless]"
+        echo "Enable options: database, client-syslog, agentless, debug"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug]"
         exit 1;
     fi
     
@@ -126,12 +126,14 @@ enable()
         echo "CSYSLOG_DAEMON=ossec-csyslogd" >> ${PLIST};
     elif [ "X$2" = "Xagentless" ]; then
         echo "AGENTLESS_DAEMON=ossec-agentlessd" >> ${PLIST};    
+    elif [ "X$2" = "Xdebug" ]; then 
+        echo "DEBUG_CLI=\"-d\"" >> ${PLIST}; 
     else
         echo ""
         echo "Invalid enable option."
         echo ""
-        echo "Enable options: database, client-syslog, agentless"
-        echo "Usage: $0 enable [database|client-syslog|agentless]"
+        echo "Enable options: database, client-syslog, agentless, debug"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug]"
         exit 1;
     fi         
 
@@ -145,8 +147,8 @@ disable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Disable options: database, client-syslog, agentless"
-        echo "Usage: $0 disable [database|client-syslog|agentless]"
+        echo "Disable options: database, client-syslog, agentless, debug"
+        echo "Usage: $0 disable [database|client-syslog|agentless|debug]"
         exit 1;
     fi
     
@@ -156,12 +158,14 @@ disable()
         echo "CSYSLOG_DAEMON=\"\"" >> ${PLIST};
     elif [ "X$2" = "Xagentless" ]; then
         echo "AGENTLESS_DAEMON=\"\"" >> ${PLIST};    
+    elif [ "X$2" = "Xdebug" ]; then 
+        echo "DEBUG_CLI=\"\"" >> ${PLIST}; 
     else
         echo ""
         echo "Invalid disable option."
         echo ""
-        echo "Disable options: database, client-syslog, agentless"
-        echo "Usage: $0 disable [database|client-syslog|agentless]"
+        echo "Disable options: database, client-syslog, agentless, debug"
+        echo "Usage: $0 disable [database|client-syslog|agentless|debug]"
         exit 1;
     fi         
 
@@ -187,7 +191,7 @@ testconfig()
 {
     # We first loop to check the config. 
     for i in ${SDAEMONS}; do
-        ${DIR}/bin/${i} -t;
+        ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             echo "${i}: Configuration error. Exiting"
             unlock;
@@ -214,7 +218,7 @@ start()
     for i in ${SDAEMONS}; do
         pstatus ${i};
         if [ $? = 0 ]; then
-            ${DIR}/bin/${i};
+            ${DIR}/bin/${i} ${DEBUG_CLI};
             if [ $? != 0 ]; then
                 unlock;
                 exit 1;

@@ -102,13 +102,13 @@ int OS_ReadXMLRules(char *rulefile,
 
 
     /* Building the rule file name + path */
-    i = strlen(RULEPATH) + strlen(rulefile) + 2;
+    i = strlen(rulefile) + 2;
     rulepath = (char *)calloc(i,sizeof(char));
     if(!rulepath)
     {
         ErrorExit(MEM_ERROR,__local_name);
     }
-    snprintf(rulepath,i,"%s/%s",RULEPATH,rulefile);
+    snprintf(rulepath,i,"%s",rulefile);
     
     
     /* Reading the XML */       

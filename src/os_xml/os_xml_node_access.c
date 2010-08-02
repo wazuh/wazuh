@@ -32,9 +32,13 @@ void OS_ClearNode(xml_node **node)
         while(node[i])
         {
             if(node[i]->element)
+            {
                 free(node[i]->element);
+            }
             if(node[i]->content)
+            {
                 free(node[i]->content);
+            }
             if(node[i]->attributes)
             {
                 int j=0;

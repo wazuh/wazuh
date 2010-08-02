@@ -141,15 +141,25 @@ int Rules_OP_ReadRules(char * rulefile)
     int default_timeframe = 360;
 
 
-    /* Building the rule file name + path */
-    i = strlen(RULEPATH) + strlen(rulefile) + 2;
-    rulepath = (char *)calloc(i,sizeof(char));
-    if(!rulepath)
+    /* If no directory in the rulefile add the default */
+    if((strchr(rulefile, '/')) == NULL)
     {
-        ErrorExit(MEM_ERROR,ARGV0);
+        /* Building the rule file name + path */
+        i = strlen(RULEPATH) + strlen(rulefile) + 2;
+        rulepath = (char *)calloc(i,sizeof(char));
+        if(!rulepath)
+        {
+            ErrorExit(MEM_ERROR,ARGV0);
+        }
+        snprintf(rulepath,i,"%s/%s",RULEPATH,rulefile);
+    }
+    else
+    {
+        os_strdup(rulefile, rulepath);
+        debug1("%s is the rulefile", rulefile);
+        debug1("Not modifing the rule path");
     }
     
-    snprintf(rulepath,i,"%s/%s",RULEPATH,rulefile);
     
     i = 0;    
     
@@ -655,6 +665,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_list)==0)
                     {
+                        debug1("-> %s == %s",rule_opt[k]->element, xml_list);
                         if (rule_opt[k]->attributes && rule_opt[k]->values && rule_opt[k]->content)
                         {
                             int list_att_num=0;

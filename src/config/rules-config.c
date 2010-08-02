@@ -17,18 +17,51 @@
 #include "global-config.h"
 
 
+
+static int cmpr(const void *a, const void *b) { 
+    /*printf("%s - %s\n", *(char **)a, *(char **)b);*/
+    return strcmp(*(char **)a, *(char **)b);
+}
+
+static int file_in_list(int list_size, char *f_name, char *d_name, char **alist)
+{
+    int i = 0; 
+    for(i=0; i<(list_size-1); i++)
+    {
+        if((strcmp(alist[i], f_name) == 0 || strcmp(alist[i], d_name) == 0))
+        {
+            return(1);
+        }
+    }
+    return(0); 
+}
+
 int Read_Rules(XML_NODE node, void *configp, void *mailp)
 {
     int i = 0;
 
-    /* White list size */
     int rules_size = 1;
     int lists_size = 1;
+    int decoders_size = 1;
+
+    
+    char path[PATH_MAX +2];
+    char f_name[PATH_MAX +2];
+    int start_point = 0; 
+    int att_count = 0;
+    struct dirent *entry;
+    DIR *dfd; 
+    OSRegex regex; 
 
 
     /* XML definitions */
     char *xml_rules_include = "include";
+    char *xml_rules_rule = "rule";
+    char *xml_rules_rules_dir = "rule_dir";
     char *xml_rules_lists = "list";
+    char *xml_rules_lists_dir = "list_dir";
+    char *xml_rules_decoders = "decoder";
+    char *xml_rules_decoders_dir = "decoder_dir";
 
     _Config *Config;
      
@@ -47,7 +80,8 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
             return(OS_INVALID);
         }
         /* Mail notification */
-        else if(strcmp(node[i]->element, xml_rules_include) == 0)
+        else if((strcmp(node[i]->element, xml_rules_include) == 0) || 
+                (strcmp(node[i]->element, xml_rules_rule) == 0))
         {
             rules_size++;
             Config->includes = realloc(Config->includes, 
@@ -60,6 +94,22 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
 
             os_strdup(node[i]->content,Config->includes[rules_size -2]);
             Config->includes[rules_size -1] = NULL;
+            debug1("adding rule: %s", node[i]->content);
+        }
+        else if(strcmp(node[i]->element, xml_rules_decoders) == 0)
+        {
+            decoders_size++;
+            Config->decoders = realloc(Config->decoders,
+                                       sizeof(char *)*decoders_size);
+            if(!Config->decoders)
+            {
+                merror(MEM_ERROR, ARGV0);
+                return(OS_INVALID);
+            }
+
+            os_strdup(node[i]->content,Config->decoders[decoders_size -2]);
+            Config->decoders[decoders_size -1] = NULL;
+            debug1("adding decoder: %s", node[i]->content);
         }
         else if(strcmp(node[i]->element, xml_rules_lists) == 0)
         {
@@ -88,6 +138,159 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
             os_strdup(node[i]->content,Config->lists[lists_size -2]);
             Config->lists[lists_size -1] = NULL;
 
+        }
+        else if(strcmp(node[i]->element, xml_rules_decoders_dir) == 0)
+        {
+
+            if(node[i]->attributes && node[i]->values)
+            {
+                while(node[i]->attributes[att_count])
+                {
+                    if((strcasecmp(node[i]->attributes[att_count], "pattern") == 0))
+                    {
+                        if(node[i]->values[att_count])
+                        {
+                            if(!OSRegex_Compile(node[i]->values[att_count], &regex, 0))
+                            {
+                                merror(CONFIG_ERROR, ARGV0, "pattern in decoders_dir does not compile");
+                                merror("%s: ERROR: Regex would not compile", ARGV0);
+                                return(-1);
+                            }
+                        }
+                    }
+                    att_count++;
+                }
+            }
+            else
+            {
+                OSRegex_Compile(".xml$", &regex, 0);
+            }
+
+            #ifdef TESTRULE
+            snprintf(path,PATH_MAX +1,"%s", node[i]->content);
+            #else
+            snprintf(path,PATH_MAX +1,"%s/%s", DEFAULTDIR, node[i]->content);
+            #endif
+
+            f_name[PATH_MAX +1] = '\0';
+            dfd = opendir(path);
+
+            if(dfd != NULL) {
+                start_point = decoders_size- 1;
+                while((entry = readdir(dfd)) != NULL)
+                {
+                    snprintf(f_name, PATH_MAX +1, "%s/%s", node[i]->content, entry->d_name);
+
+                    /* Just ignore . and ..  */
+                    if((strcmp(entry->d_name,".") == 0) || (strcmp(entry->d_name,"..") == 0)) 
+                        continue;
+
+                    /* no dups allowed */
+                    if(file_in_list(decoders_size, f_name, entry->d_name, Config->decoders))
+                        continue;
+
+                    if(OSRegex_Execute(f_name, &regex))
+                    {
+                        decoders_size++;
+                        Config->decoders= realloc(Config->decoders, sizeof(char *)*decoders_size);
+                        if(!Config->decoders)
+                        {
+                            merror(MEM_ERROR, ARGV0);
+                            return(-1);
+                        }
+
+                        os_strdup(f_name, Config->decoders[decoders_size -2]);
+                        Config->decoders[decoders_size -1] = NULL;
+                        debug1("adding decoder: %s", f_name);
+                    }
+                    else
+                    {
+                        debug1("Regex does not match \"%s\"",  f_name);
+                    }
+                }
+                
+                closedir(dfd);
+                /* Sort just then newly added items */
+                qsort(Config->decoders + start_point , decoders_size- start_point -1, sizeof(char *), cmpr);
+            }
+            int ii=0;
+            debug1("decoders_size %d", decoders_size);
+            for(ii=0;ii<decoders_size-1;ii++)
+                debug1("- %s", Config->decoders[ii]);
+        }
+        else if(strcmp(node[i]->element, xml_rules_rules_dir) == 0)
+        {
+            if(node[i]->attributes && node[i]->values)
+            {
+                while(node[i]->attributes[att_count])
+                {
+                    if((strcasecmp(node[i]->attributes[att_count], "pattern") == 0))
+                    {
+                        if(node[i]->values[att_count])
+                        {
+                            if(!OSRegex_Compile(node[i]->values[att_count], &regex, 0))
+                            {
+                                merror(CONFIG_ERROR, ARGV0, "pattern in rules_dir does not compile");
+                                merror("%s: ERROR: Regex would not compile", ARGV0);
+                                return(-1);
+                            }
+                        }
+                    }
+                    att_count++;
+                }
+            }
+            else
+            {
+                OSRegex_Compile(".xml$", &regex, 0);
+            }
+
+            #ifdef TESTRULE
+            snprintf(path,PATH_MAX +1,"%s", node[i]->content);
+            #else
+            snprintf(path,PATH_MAX +1,"%s/%s", DEFAULTDIR, node[i]->content);
+            #endif
+
+            f_name[PATH_MAX +1] = '\0';
+            dfd = opendir(path);
+
+            if(dfd != NULL) {
+                start_point = rules_size - 1;
+                while((entry = readdir(dfd)) != NULL)
+                {
+                    snprintf(f_name, PATH_MAX +1, "%s/%s", node[i]->content, entry->d_name);
+
+                    /* Just ignore . and ..  */
+                    if((strcmp(entry->d_name,".") == 0) || (strcmp(entry->d_name,"..") == 0)) 
+                        continue;
+
+                    /* no dups allowed */
+                    if(file_in_list(rules_size, f_name, entry->d_name, Config->includes))
+                        continue;
+
+                    if(OSRegex_Execute(f_name, &regex))
+                    {
+                        rules_size++;
+                        Config->includes = realloc(Config->includes, sizeof(char *)*rules_size);
+                        if(!Config->includes)
+                        {
+                            merror(MEM_ERROR, ARGV0);
+                            return(-1);
+                        }
+
+                        os_strdup(f_name, Config->includes[rules_size -2]);
+                        Config->includes[rules_size -1] = NULL;
+                        debug1("adding rule: %s", f_name);
+                    }
+                    else
+                    {
+                        debug1("Regex does not match \"%s\"",  f_name);
+                    }
+                }
+                
+                closedir(dfd);
+                /* Sort just then newly added items */
+                qsort(Config->includes + start_point , rules_size - start_point -1, sizeof(char *), cmpr);
+            }
         }
         else
         {

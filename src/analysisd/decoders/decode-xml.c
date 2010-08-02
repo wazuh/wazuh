@@ -195,6 +195,7 @@ int ReadDecodeAttrs(char **names, char **values)
 int ReadDecodeXML(char *file)
 {
     
+    debug1("ReadDecoderXML File = %s", file);
     OS_XML xml;
     XML_NODE node = NULL;
 

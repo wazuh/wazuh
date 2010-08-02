@@ -144,7 +144,9 @@ int read_main_elements(OS_XML xml, int modules,
             return(OS_INVALID);
         }
         
+        //printf("before\n");
         OS_ClearNode(chld_node);
+        //printf("after\n");
         i++;
     }
 

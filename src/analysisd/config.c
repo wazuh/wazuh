@@ -59,6 +59,7 @@ int GlobalConf(char * cfgfile)
 
     Config.includes = NULL;
     Config.lists = NULL;
+    Config.decoders = NULL;
 
     modules|= CGLOBAL;
     modules|= CRULES;
