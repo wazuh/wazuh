@@ -481,7 +481,7 @@
     <if_sid>9100</if_sid>
     <regex>^GRE: \S+ from \S+ failed: status = -1 </regex>
     <description>PPTPD failed message (communication error)</description>
-    <info>poptop.sourceforge.net/dox/gre-protocol-unavailable.phtml</info>
+    <info type="link">http://poptop.sourceforge.net/dox/gre-protocol-unavailable.phtml</info>
   </rule>
   
   <rule id="9102" level="0">

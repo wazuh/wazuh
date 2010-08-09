@@ -122,7 +122,8 @@
     <if_sid>18104</if_sid>
     <id>^640</id>
     <description>General account database changed.</description>
-    <info>http://www.ultimatewindowssecurity.com/events/com259.html</info>
+    <!--<info>http://www.ultimatewindowssecurity.com/events/com259.html</info> page no found-->
+    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=640</info>
     <group>adduser,account_changed,</group>
   </rule>
   
@@ -130,6 +131,8 @@
     <if_sid>18104</if_sid>
     <id>^644|^4740</id>
     <description>User account locked out (multiple login errors).</description>
+    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=644</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=4740</info>
     <group>authentication_failures,</group>  
   </rule>
 
@@ -204,7 +207,7 @@
     <if_sid>18106</if_sid>
     <id>^529</id>
     <description>Logon Failure - Unknown user or bad password.</description>
-    <info>http://www.ultimatewindowssecurity.com/events/com190.html</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=529</info>
     <group>win_authentication_failed,</group>
   </rule>
 
@@ -213,7 +216,7 @@
     <id>^530</id>
     <description>Logon Failure - Account logon time restriction </description>
     <description>violation.</description>
-    <info>http://www.ultimatewindowssecurity.com/events/com191.html</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=530</info>
     <group>win_authentication_failed,login_denied,</group>
   </rule>
 
@@ -221,7 +224,7 @@
     <if_sid>18106</if_sid>
     <id>^531</id>
     <description>Logon Failure - Account currently disabled.</description>
-    <info>http://www.ultimatewindowssecurity.com/events/com192.html</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=531</info>
     <group>win_authentication_failed,login_denied,</group>
   </rule>
 
@@ -229,7 +232,7 @@
     <if_sid>18106</if_sid>
     <id>^532</id>
     <description>Logon Failure - Specified account expired.</description>
-    <info>http://www.ultimatewindowssecurity.com/events/com193.html</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=532</info>
     <group>win_authentication_failed,login_denied,</group>
   </rule>
 
@@ -238,7 +241,7 @@
     <id>^533</id>
     <description>Logon Failure - User not allowed to login at </description>
     <description>this computer.</description>
-    <info>http://www.ultimatewindowssecurity.com/events/com194.html</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=533</info>
     <group>win_authentication_failed,login_denied,</group>
   </rule>
 
@@ -246,7 +249,7 @@
     <if_sid>18106</if_sid>
     <id>^534</id>
     <description>Logon Failure - User not granted logon type.</description>
-    <info>http://www.ultimatewindowssecurity.com/events/com195.html</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=534</info>
     <group>win_authentication_failed,</group>
   </rule>
   
@@ -254,7 +257,7 @@
     <if_sid>18106</if_sid>
     <id>^535</id>
     <description>Logon Failure - Account's password expired.</description>
-    <info>http://www.ultimatewindowssecurity.com/events/com196.html</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=535</info>
     <group>win_authentication_failed,</group>
   </rule>
 
@@ -298,7 +301,8 @@
     <if_sid>18104</if_sid>
     <id>^671|^4767</id>
     <description>User account unlocked.</description>
-    <info>http://www.ultimatewindowssecurity.com/events/com291.html</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=671</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=4767</info>
     <group>account_changed,</group>
   </rule>
 
@@ -322,7 +326,7 @@
     <id>^7040</id>
     <group>policy_changed,</group>
     <description>Service startup type was changed.</description>
-    <info>This does not appear to be logged on Windows 2000.</info>
+    <info type="text">This does not appear to be logged on Windows 2000.</info>
   </rule>
 
   <rule id="18146" level="5">
@@ -825,7 +829,7 @@
     <match>Failure Code: 0x1F</match>
     <description>Windows DC integrity check on decrypted </description>
     <description>field failed.</description>
-    <info>http://www.ultimatewindowssecurity.com/kerberrors.html</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/kerberrors.html</info>
     <group>win_authentication_failed,attacks,</group>
   </rule>
   
@@ -833,7 +837,7 @@
     <if_sid>18139</if_sid>
     <match>Failure Code: 0x22</match>
     <description>Windows DC - Possible replay attack.</description>
-    <info>http://www.ultimatewindowssecurity.com/kerberrors.html</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/kerberrors.html</info>
     <group>win_authentication_failed,attacks,</group>
   </rule>
 
@@ -841,7 +845,7 @@
     <if_sid>18139</if_sid>
     <match>Failure Code: 0x25</match>
     <description>Windows DC - Clock skew too great.</description>
-    <info>http://www.ultimatewindowssecurity.com/kerberrors.html</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/kerberrors.html</info>
     <group>win_authentication_failed,attacks,</group>
   </rule>
 

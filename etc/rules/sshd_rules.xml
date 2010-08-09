@@ -107,8 +107,8 @@
     <if_matched_sid>5713</if_matched_sid>
     <match>Local: crc32 compensation attack</match>
     <description>SSH CRC-32 Compensation attack</description>
-    <cve>2001-0144</cve>
-    <info>http://www.securityfocus.com/bid/2347/info/</info>
+    <info type="cve">2001-0144</info>
+    <info type="link">http://www.securityfocus.com/bid/2347/info/</info>
     <group>exploit_attempt,</group>
   </rule>  
 

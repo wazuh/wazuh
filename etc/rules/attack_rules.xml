@@ -59,7 +59,7 @@
   <rule id="40107" level="14">
     <regex>cachefsd: Segmentation Fault - core dumped</regex>
     <description>Heap overflow in the Solaris cachefsd service.</description>
-    <cve>2002-0033</cve>
+    <info type='cve'>2002-0033</info>
     <group>exploit_attempt,</group>
   </rule>
 
@@ -67,7 +67,7 @@
     <match>attempt to execute code on stack by</match>
     <description>Stack overflow attempt or program exiting </description>
     <description>with SEGV (Solaris).</description>
-    <info>http://snap.nlc.dcccd.edu/reference/sysadmin/julian/ch18/389-392.html</info>
+    <info type="link">http://snap.nlc.dcccd.edu/reference/sysadmin/julian/ch18/389-392.html</info>
     <group>exploit_attempt,</group>
   </rule>
 
@@ -113,7 +113,7 @@
     <if_matched_group>connection_attempt</if_matched_group>
     <description>Network scan from same source ip.</description>
     <same_source_ip />
-    <info>http://project.honeynet.org/papers/enemy2/</info>
+    <info type="link">http://project.honeynet.org/papers/enemy2/</info>
   </rule>
 </group> <!-- SYSLOG,SCANS -->
 

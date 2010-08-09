@@ -34,11 +34,14 @@
 #include "debug_op.h"
 #include "syscheck.h"
 #include "error_messages/error_messages.h"
-#include "shared.h"
 
 
 #ifdef USEINOTIFY
 #include <sys/inotify.h>
+#define OS_SIZE_6144    6144
+#define OS_MAXSTR       OS_SIZE_6144    /* Size for logs, sockets, etc */
+#else
+#include "shared.h"
 #endif
 
 

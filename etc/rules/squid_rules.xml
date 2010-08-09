@@ -99,7 +99,8 @@
     <url>blst.php|xxx3.php|ngr7.php|ngr2.php|/nul.php$|/mul.php$|/444.php</url>
     <description>Attempt to access a Beagle worm (or variant) </description>
     <description>file.</description>
-    <info>http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
+    <info type="link">http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
+    <info type="text">W32.Beagle.DP is a Worm that drops Trojan.Lodear and opens a back door on the compromised computer.</info>
     <group>automatic_attack,</group>
   </rule>
   
@@ -165,7 +166,8 @@
     <if_matched_sid>35021</if_matched_sid>
     <same_source_ip />
     <description>Infected machine with W32.Beagle.DP.</description>
-    <info>http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
+    <info type="link">http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
+    <info type="text">W32.Beagle.DP is a Worm that drops Trojan.Lodear and opens a back door on the compromised computer.</info>
   </rule>
   
   <rule id="35055" level="10" frequency="$SQUID_FREQ" timeframe="90">

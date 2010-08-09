@@ -43,7 +43,7 @@
     <if_sid>30103</if_sid>
     <match>exit signal Segmentation Fault</match>
     <description>Apache segmentation fault.</description>
-    <info>http://www.securityfocus.com/infocus/1633</info>
+    <info type="link">http://www.securityfocus.com/infocus/1633</info>
     <group>service_availability,</group>
   </rule>
 
@@ -65,7 +65,8 @@
     <if_sid>30101</if_sid>
     <match>Client sent malformed Host header</match>
     <description>Code Red attack.</description>
-    <info>http://www.cert.org/advisories/CA-2001-19.html</info>
+    <info type="link">http://www.cert.org/advisories/CA-2001-19.html</info>
+    <info type="text">CERT: Advisory CA-2001-19 "Code Red" Worm Exploiting Buffer Overflow In IIS Indexing Service DLL</info>
     <group>automatic_attack,</group>
   </rule>
 
