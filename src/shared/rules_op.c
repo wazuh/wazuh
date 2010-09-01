@@ -16,6 +16,12 @@
 
 #include "rules_op.h"
 
+/* Chaging path for test rule. */
+#ifdef TESTRULE
+  #undef RULEPATH
+  #define RULEPATH "rules/"
+#endif
+
 
 /** Prototypes **/
 int _OS_GetRulesAttributes(char **attributes, 
@@ -101,14 +107,24 @@ int OS_ReadXMLRules(char *rulefile,
     int i;
 
 
-    /* Building the rule file name + path */
-    i = strlen(rulefile) + 2;
-    rulepath = (char *)calloc(i,sizeof(char));
-    if(!rulepath)
+    /* If no directory in the rulefile add the default */
+    if((strchr(rulefile, '/')) == NULL)
     {
-        ErrorExit(MEM_ERROR,__local_name);
+        /* Building the rule file name + path */
+        i = strlen(RULEPATH) + strlen(rulefile) + 2;
+        rulepath = (char *)calloc(i,sizeof(char));
+        if(!rulepath)
+        {
+            ErrorExit(MEM_ERROR,ARGV0);
+        }
+        snprintf(rulepath,i,"%s/%s",RULEPATH,rulefile);
     }
-    snprintf(rulepath,i,"%s",rulefile);
+    else
+    {
+        os_strdup(rulefile, rulepath);
+        debug1("%s is the rulefile", rulefile);
+        debug1("Not modifing the rule path");
+    }
     
     
     /* Reading the XML */       
@@ -792,12 +808,22 @@ int OS_ReadXMLRules(char *rulefile,
                         return(-1);
                     }
                 }
+                /* XXX As new features are added into ../analysisd/rules.c 
+                 * This code needs to be updated to match, but is out of date 
+                 * it's become a nightmare to correct with out just make the 
+                 * problem for someone later.   
+                 *
+                 * This hack will allow any crap xml to pass without an 
+                 * error.  The correct fix is to refactor the code so that 
+                 * ../analysisd/rules* and this code are not duplicates
+                 *
                 else
                 {
                     merror(XML_INVELEM, __local_name, rule_opt[k]->element);
                     OS_ClearXML(&xml);
                     return(-1);
                 }
+                */
 
                 k++;
             }
