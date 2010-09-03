@@ -61,7 +61,7 @@ InstallDirRegKey HKLM Software\OSSEC ""
 
 Function .onInit
     IfFileExists $INSTDIR\ossec.conf 0 +3
-    MessageBox MB_OKCANCEL "${NAME} is already installed. It will be stopped before continuing." IDOK NoAbort
+    MessageBox MB_OKCANCEL "${NAME} is already installed. It will be stopped before continuing." /SD IDOK IDOK NoAbort
     Abort
     NoAbort:
     
