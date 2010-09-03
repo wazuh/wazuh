@@ -9,6 +9,7 @@ include ../../Config.Make
 
 SRCS = sha1_op.c
 sha1_OBJS = sha1_op.o
+CC=$(GCC)
 
 
 sha1:

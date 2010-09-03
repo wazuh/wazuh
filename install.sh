@@ -67,6 +67,7 @@ Install()
 	echo "DIR=\"${INSTALLDIR}\"" > ${LOCATION}
     echo "CC=${CC}" >> ${LOCATION}
     echo "GCC=${CC}" >> ${LOCATION}
+    echo "CLANG=clang" >> ${LOCATION}
     
     # Changing Config.OS with the new C flags
     # Checking if debug is enabled
