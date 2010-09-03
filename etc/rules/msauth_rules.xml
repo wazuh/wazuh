@@ -122,8 +122,7 @@
     <if_sid>18104</if_sid>
     <id>^640</id>
     <description>General account database changed.</description>
-    <!--<info>http://www.ultimatewindowssecurity.com/events/com259.html</info> page no found-->
-    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=640</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/events/com259.html</info>
     <group>adduser,account_changed,</group>
   </rule>
   
@@ -131,8 +130,6 @@
     <if_sid>18104</if_sid>
     <id>^644|^4740</id>
     <description>User account locked out (multiple login errors).</description>
-    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=644</info>
-    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=4740</info>
     <group>authentication_failures,</group>  
   </rule>
 
@@ -186,9 +183,8 @@
   </rule>
   
   <rule id="18128" level="8">
-    <if_sid>18127</if_sid>
-    <id>^00</id>
-    <match>^rule deprecated</match>
+    <!-- if_sid>18104</if_sid -->
+    <id>^65xxx</id>
     <description>Group account added/changed/deleted.</description>
     <info>This rule has been deprecated</info>
     <group>account_changed,</group>
@@ -207,7 +203,7 @@
     <if_sid>18106</if_sid>
     <id>^529</id>
     <description>Logon Failure - Unknown user or bad password.</description>
-    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=529</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/events/com190.html</info>
     <group>win_authentication_failed,</group>
   </rule>
 
@@ -216,7 +212,7 @@
     <id>^530</id>
     <description>Logon Failure - Account logon time restriction </description>
     <description>violation.</description>
-    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=530</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/events/com191.html</info>
     <group>win_authentication_failed,login_denied,</group>
   </rule>
 
@@ -224,7 +220,7 @@
     <if_sid>18106</if_sid>
     <id>^531</id>
     <description>Logon Failure - Account currently disabled.</description>
-    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=531</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/events/com192.html</info>
     <group>win_authentication_failed,login_denied,</group>
   </rule>
 
@@ -232,7 +228,7 @@
     <if_sid>18106</if_sid>
     <id>^532</id>
     <description>Logon Failure - Specified account expired.</description>
-    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=532</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/events/com193.html</info>
     <group>win_authentication_failed,login_denied,</group>
   </rule>
 
@@ -241,7 +237,7 @@
     <id>^533</id>
     <description>Logon Failure - User not allowed to login at </description>
     <description>this computer.</description>
-    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=533</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/events/com194.html</info>
     <group>win_authentication_failed,login_denied,</group>
   </rule>
 
@@ -249,7 +245,7 @@
     <if_sid>18106</if_sid>
     <id>^534</id>
     <description>Logon Failure - User not granted logon type.</description>
-    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=534</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/events/com195.html</info>
     <group>win_authentication_failed,</group>
   </rule>
   
@@ -257,7 +253,7 @@
     <if_sid>18106</if_sid>
     <id>^535</id>
     <description>Logon Failure - Account's password expired.</description>
-    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=535</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/events/com196.html</info>
     <group>win_authentication_failed,</group>
   </rule>
 
@@ -301,8 +297,7 @@
     <if_sid>18104</if_sid>
     <id>^671|^4767</id>
     <description>User account unlocked.</description>
-    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=671</info>
-    <info type="link">http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=4767</info>
+    <info type="link">http://www.ultimatewindowssecurity.com/events/com291.html</info>
     <group>account_changed,</group>
   </rule>
 
@@ -357,7 +352,7 @@
 
 <!-- Granular group rules -->
 
-  <rule id="18150" level="5">
+  <rule id="18200" level="5">
     <if_sid>18104</if_sid>
     <id>^631$|^4727$|^635$|^4731$|^658$|^4754$|^648$|^4744$|^653$|^4749$|</id>
     <id>^663$|^4759$</id>
@@ -365,7 +360,7 @@
     <group>group_created,win_group_created,</group>
   </rule>
   
-  <rule id="18151" level="5">
+  <rule id="18201" level="5">
     <if_sid>18104</if_sid>
     <id>^634$|^4730$|^638$|^4734$|^662$|^4758$|^652$|^4748$|^657$|^4753$|</id>
     <id>^667$|^4763$</id>
@@ -373,15 +368,15 @@
     <group>group_deleted,win_group_deleted,</group>
   </rule>
 
-  <rule id="18152" level="5">
-    <if_sid>18150</if_sid>
+  <rule id="18202" level="5">
+    <if_sid>18200</if_sid>
     <id>^631$|^4727$</id>
     <description>Security Enabled Global Group Created</description>
     <group>group_created,win_group_created,</group>
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=631</info>
   </rule>
   
-  <rule id="18153" level="5">
+  <rule id="18203" level="5">
     <if_sid>18114</if_sid>
     <id>^632$|^4728$</id>
     <description>Security Enabled Global Group Member Added</description>
@@ -389,7 +384,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=632</info>
   </rule>
   
-  <rule id="18154" level="5">
+  <rule id="18204" level="5">
     <if_sid>18114</if_sid>
     <id>^633$|^4729$</id>
     <description>Security Enabled Global Group Member Removed</description>
@@ -397,23 +392,23 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=633</info>
   </rule>
 
-  <rule id="18155" level="5">
-    <if_sid>18151</if_sid>
+  <rule id="18205" level="5">
+    <if_sid>18201</if_sid>
     <id>^634$|^4730$</id>
     <description>Security Enabled Global Group Deleted</description>
     <group>group_deleted,win_group_deleted,</group>
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=634</info>
   </rule>
 
-  <rule id="18156" level="5">
-    <if_sid>18150</if_sid>
+  <rule id="18206" level="5">
+    <if_sid>18200</if_sid>
     <id>^635$|^4731$</id>
     <description>Security Enabled Local Group Created</description>
     <group>group_created,win_group_created,</group>
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=635</info>
   </rule>
   
-  <rule id="18157" level="5">
+  <rule id="18207" level="5">
     <if_sid>18114</if_sid>
     <id>^636$|^4732$</id>
     <description>Security Enabled Local Group Member Added</description>
@@ -421,7 +416,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=636</info>
   </rule>
   
-  <rule id="18158" level="5">
+  <rule id="18208" level="5">
     <if_sid>18114</if_sid>
     <id>^637$|^4733$</id>
     <description>Security Enabled Local Group Member Removed</description>
@@ -429,15 +424,15 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=637</info>
   </rule>
   
-  <rule id="18159" level="5">
-    <if_sid>18151</if_sid>
+  <rule id="18209" level="5">
+    <if_sid>18201</if_sid>
     <id>^638$|^4734$</id>
     <description>Security Enabled Local Group Deleted</description>
     <group>group_deleted,win_group_deleted,</group>
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=638</info>
   </rule>
   
-  <rule id="18160" level="5">
+  <rule id="18210" level="5">
     <if_sid>18114</if_sid>
     <id>^639$|^4735$</id>
     <description>Security Enabled Local Group Changed</description>
@@ -445,7 +440,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=639</info>
   </rule>
   
-  <rule id="18161" level="5">
+  <rule id="18211" level="5">
     <if_sid>18114</if_sid>
     <id>^641$|^4737$</id>
     <description>Security Enabled Global Group Changed</description>
@@ -453,15 +448,15 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=641</info>
   </rule>
   
-  <rule id="18162" level="5">
-    <if_sid>18150</if_sid>
+  <rule id="18212" level="5">
+    <if_sid>18200</if_sid>
     <id>^658$|^4754$</id>
     <description>Security Enabled Universal Group Created</description>
     <group>group_created,win_group_created,</group>
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=658</info>
   </rule>
   
-  <rule id="18163" level="5">
+  <rule id="18213" level="5">
     <if_sid>18114</if_sid>
     <id>^659$|^4755$</id>
     <description>Security Enabled Universal Group Changed</description>
@@ -469,7 +464,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=659</info>
   </rule>
   
-  <rule id="18164" level="5">
+  <rule id="18214" level="5">
     <if_sid>18114</if_sid>
     <id>^660$|^4756$</id>
     <description>Security Enabled Universal Group Member Added</description>
@@ -477,7 +472,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=660</info>
   </rule>
   
-  <rule id="18165" level="5">
+  <rule id="18215" level="5">
     <if_sid>18114</if_sid>
     <id>^661$|^4757$</id>
     <description>Security Enabled Universal Group Member Removed</description>
@@ -485,327 +480,327 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=661</info>
   </rule>
   
-  <rule id="18166" level="5">
-    <if_sid>18151</if_sid>
+  <rule id="18216" level="5">
+    <if_sid>18201</if_sid>
     <id>^662$|^4758$</id>
     <description>Security Enabled Universal Group Deleted</description>
     <group>group_deleted,win_group_deleted,</group>
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=662</info>
   </rule>
 
-  <rule id="18167" level="12">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18217" level="12">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-544\p*</regex>
     <description>Administrators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18168" level="5">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18218" level="5">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-1-0\p*</regex>
     <description>Everyone Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18169" level="12">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18219" level="12">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-9\p*</regex>
     <description>Enterprise Domain Controllers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18170" level="5">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18220" level="5">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-11\p*</regex>
     <description>Authenticated Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18171" level="5">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18221" level="5">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-13\p*</regex>
     <description>Terminal Server Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18172" level="12">
-    <if_sid>18153,18154</if_sid>
+  <rule id="18222" level="12">
+    <if_sid>18203,18204</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-21\.+-512\p*</regex>
     <description>Domain Admins Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18173" level="5">
-    <if_sid>18153,18154</if_sid>
+  <rule id="18223" level="5">
+    <if_sid>18203,18204</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-21\.+-513\p*</regex>
     <description>Domain Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-    <rule id="18174" level="0">
-      <if_sid>18173,18153</if_sid>
+    <rule id="18224" level="0">
+      <if_sid>18223,18203</if_sid>
       <match>Target Account Name: None</match>
       <description>Local User Group NONE</description>
       <info>Bogus group user added to upon creation</info>
     </rule>
 
-  <rule id="18175" level="12">
-    <if_sid>18153,18154</if_sid>
+  <rule id="18225" level="12">
+    <if_sid>18203,18204</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-21\.+-514\p*</regex>
     <description>Domain Guests Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18176" level="5">
-    <if_sid>18153,18154</if_sid>
+  <rule id="18226" level="5">
+    <if_sid>18203,18204</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-21\.+-515\p*</regex>
     <description>Domain Computers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18177" level="12">
-    <if_sid>18153,18154</if_sid>
+  <rule id="18227" level="12">
+    <if_sid>18203,18204</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-21\.+-516\p*</regex>
     <description>Domain Controllers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18178" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18228" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-21\.+-517\p*</regex>
     <description>Cert Publishers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18179" level="12">
-    <if_sid>18153,18154</if_sid>
+  <rule id="18229" level="12">
+    <if_sid>18203,18204</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-21\.+-518\p*</regex>
     <description>Schema Admins Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18180" level="12">
-    <if_sid>18153,18154</if_sid>
+  <rule id="18230" level="12">
+    <if_sid>18203,18204</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-21\.+-519\p*</regex>
     <description>Enterprise Admins Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18181" level="10">
-    <if_sid>18153,18154</if_sid>
+  <rule id="18231" level="10">
+    <if_sid>18203,18204</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-21\.+-520\p*</regex>
     <description>Group Policy Creator Owners Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18182" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18232" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-21\.+-553\p*</regex>
     <description>RAS and IAS Servers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18183" level="5">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18233" level="5">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-545\p*</regex>
     <description>Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18184" level="12">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18234" level="12">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-546\p*</regex>
     <description>Guests Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18185" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18235" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-547\p*</regex>
     <description>Power Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18186" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18236" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-548\p*</regex>
     <description>Account Operators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18187" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18237" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-549\p*</regex>
     <description>Server Operators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18188" level="8">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18238" level="8">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-550\p*</regex>
     <description>Print Operators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18189" level="12">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18239" level="12">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-551\p*</regex>
     <description>Backup Operators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18190" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18240" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-552\p*</regex>
     <description>Replicators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18191" level="8">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18241" level="8">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-554\p*</regex>
     <description>Pre-Windows 2000 Compatible Access Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18192" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18242" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-555\p*</regex>
     <description>Remote Desktop Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18193" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18243" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-556\p*</regex>
     <description>Network Configuration Operators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18194" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18244" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-557\p*</regex>
     <description>Incoming Forest Trust Builders Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18195" level="8">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18245" level="8">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-558\p*</regex>
     <description>Performance Monitor Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18196" level="8">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18246" level="8">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-559\p*</regex>
     <description>Performance Log Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18197" level="8">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18247" level="8">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-560\p*</regex>
     <description>Windows Authorization Access Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18198" level="8">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18248" level="8">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-561\p*</regex>
     <description>Terminal Server License Servers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18199" level="8">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18249" level="8">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-562\p*</regex>
     <description>Distributed COM Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18200" level="12">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18250" level="12">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-\s*21\.+\s*-498\p*</regex>
     <description>Enterprise Read-only Domain Controllers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18201" level="12">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18251" level="12">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-\s*21\.+\s*-529\p*</regex>
     <description>Read-only Domain Controllers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18202" level="12">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18252" level="12">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-569\p*</regex>
     <description>Cryptographic Operators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18203" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18253" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-\s*21\.+\s*-571\p*</regex>
     <description>Allowed RODC Password Replication Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18204" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18254" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-\s*21\.+\s*-572\p*</regex>
     <description>Denied RODC Password Replication Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18205" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18255" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-573\p*</regex>
     <description>Event Log Readers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="18206" level="10">
-    <if_sid>18157,18158</if_sid>
+  <rule id="18256" level="10">
+    <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+\p*S-1-5-32-574\p*</regex>
     <description>Certificate Service DCOM Access Group Changed</description>
     <group>group_changed,win_group_changed,</group>
