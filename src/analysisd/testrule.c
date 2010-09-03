@@ -51,7 +51,7 @@
 
 
 /** Internal Functions **/
-void OS_ReadMSG(int m_queue);
+void OS_ReadMSG(int m_queue, char *ut_str);
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 
 
@@ -100,6 +100,8 @@ int main(int argc, char **argv)
 {
     int t_config = 0;
     int c = 0, m_queue = 0;
+    char *ut_str = NULL; 
+
     char *dir = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
@@ -114,10 +116,11 @@ int main(int argc, char **argv)
     prev_year = 0;
     full_output = 0;
     alert_only = 0;
+
     active_responses = NULL;
     memset(prev_month, '\0', 4);
 
-    while((c = getopt(argc, argv, "Vatfdhu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "VatfdhU:u:g:D:c:")) != -1){
         switch(c){
 	    case 'V':
 		print_version();
@@ -130,6 +133,11 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                break;
+            case 'U':
+                if(!optarg)
+                    ErrorExit("%s: -U needs an argument",ARGV0);
+                ut_str = optarg;
                 break;
             case 'u':
                 if(!optarg)
@@ -162,6 +170,8 @@ int main(int argc, char **argv)
         }
 
     }
+
+
 
 
     /* Reading configuration file */
@@ -330,7 +340,7 @@ int main(int argc, char **argv)
 
 
     /* Going to main loop */	
-    OS_ReadMSG(m_queue);
+    OS_ReadMSG(m_queue, ut_str);
 
 
     exit(0);
@@ -343,11 +353,43 @@ int main(int argc, char **argv)
  * Main function. Receives the messages(events)
  * and analyze them all.
  */
-void OS_ReadMSG(int m_queue)
+void OS_ReadMSG(int m_queue, char *ut_str)
 {
     int i;
     char msg[OS_MAXSTR +1];
-           
+    int exit_code = 0;
+    char *ut_alertlevel = NULL;
+    char *ut_rulelevel = NULL;
+    char *ut_decoder_name = NULL; 
+
+    if(ut_str)
+    {
+        /* XXX Break apart string */
+        ut_rulelevel = ut_str; 
+        ut_alertlevel =  strchr(ut_rulelevel, ':');
+        if(!ut_alertlevel)
+        {
+            ErrorExit("%s: -U requires the matching format to be "
+                      "\"<rule_id>:<alert_level>:<decoder_name>\"", ARGV0);
+        }
+        else
+        {
+            *ut_alertlevel = '\0';
+            ut_alertlevel++; 
+        }
+        ut_decoder_name = strchr(ut_alertlevel, ':');
+        if(!ut_decoder_name)
+        {
+            ErrorExit("%s: -U requires the matching format to be "
+                      "\"<rule_id>:<alert_level>:<decoder_name>\"", ARGV0);
+        }
+        else
+        {
+            *ut_decoder_name = '\0';
+            ut_decoder_name++;
+        }
+    }
+
     RuleInfoDetail *last_info_detail;
     Eventinfo *lf;
 
@@ -611,6 +653,29 @@ void OS_ReadMSG(int m_queue)
 
             }while((rulenode_pt = rulenode_pt->next) != NULL);
 
+            if(ut_str)
+            {
+                /*setup exit code if we are doing unit testing*/
+                char holder[1024];
+                holder[1] = '\0';
+                exit_code = 3;
+                if(strcasecmp(ut_decoder_name, lf->decoder_info->name) == 0)
+                {
+                    exit_code--;
+                    snprintf(holder, 1023, "%d", currently_rule->sigid);
+                    if(strcasecmp(ut_rulelevel, holder) == 0)
+                    {
+                        exit_code--;
+                        snprintf(holder, 1023, "%d", currently_rule->level);
+                        if(strcasecmp(ut_alertlevel, holder) == 0)
+                        {
+                            exit_code--;
+                            printf("%d\n",exit_code);
+                        }
+                    }
+                }
+            }
+
 
             /* Only clear the memory if the eventinfo was not
              * added to the stateful memory 
@@ -622,9 +687,10 @@ void OS_ReadMSG(int m_queue)
         }
         else
         {
-            exit(0);   
+            exit(exit_code);   
         }
     }
+    exit(exit_code);
     return;
 }
 
