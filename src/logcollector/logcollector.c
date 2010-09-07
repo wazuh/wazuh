@@ -107,6 +107,11 @@ void LogCollectorStart()
                 logff[i].read = (void *)read_command;
 
                 verbose("%s: INFO: Monitoring output of command(%d): %s", ARGV0, logff[i].ign, logff[i].command);
+
+                if(!logff[i].alias)
+                {
+                    os_strdup(logff[i].command, logff[i].alias);
+                }
             }
             else
             {
@@ -124,6 +129,9 @@ void LogCollectorStart()
                 logff[i].read = (void *)read_fullcommand;
 
                 verbose("%s: INFO: Monitoring full output of command(%d): %s", ARGV0, logff[i].ign, logff[i].command);
+
+                if(!logff[i].alias)
+                    os_strdup(logff[i].command, logff[i].alias);
             }
             else
             {
@@ -213,6 +221,19 @@ void LogCollectorStart()
                 logff[i].read(i, &r, 1);
             }
             #endif
+        }
+
+        if(logff[i].alias)
+        {
+            int ii = 0;
+            while(logff[i].alias[ii] != '\0')
+            {
+                if(logff[i].alias[ii] == ':')
+                {
+                    logff[i].alias[ii] = '\\';
+                }
+                ii++;
+            }
         }
     }
 

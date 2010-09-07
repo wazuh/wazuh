@@ -1180,7 +1180,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     }
    
     
-    
     /* Checking program name */
     if(currently_rule->program_name)
     {
@@ -1451,7 +1450,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         }
     }
 
-                                                                    
     /* Checking for the FTS flag */
     if(currently_rule->alert_opts & DO_FTS)
     {
