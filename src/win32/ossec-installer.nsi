@@ -156,8 +156,10 @@ CreateShortCut "$SMPROGRAMS\OSSEC\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$IN
 CreateShortCut "$SMPROGRAMS\OSSEC\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 
 ; Install in the services  (perhaps it would be better to use a plug-in here?)
-nsExec::ExecToStack '"$INSTDIR\ossec-agent.exe" install-service'
-nsExec::ExecToStack '"$INSTDIR\setup-windows.exe" "$INSTDIR"'
+;nsExec::ExecToStack '"$INSTDIR\ossec-agent.exe" install-service'
+ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
+;nsExec::ExecToStack '"$INSTDIR\setup-windows.exe" "$INSTDIR"'
+ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"'
 
 SectionEnd
 
