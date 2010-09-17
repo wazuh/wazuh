@@ -122,35 +122,6 @@ int config_file(char *name, char *file, int quiet)
     }
    
     printf("%s: Adding log file to be monitored: '%s'.\n", name,file);
-    printf("%s: Continue? (y/n):", name);
-    while(1)
-    {
-        char u_buffer[256];
-        memset(u_buffer, '\0', 256);
-        if((fgets(u_buffer, 254, stdin) != NULL) &&
-            (strlen(u_buffer) < 250))
-        {
-            if((u_buffer[0] == 'y') || (u_buffer[0] == 'Y'))
-            {
-                add = 1;
-                break;
-            }
-            else if((u_buffer[0] == 'n') || (u_buffer[0] == 'N'))
-            {
-                add = 0;
-                break;
-            }
-        }
-        printf("%s: Continue? (y/n):", name);
-    }
-   
-    if(add == 0)
-    {
-        printf("%s: Action not taken.\n", name);
-        fclose(fp);
-        return(0);
-    }
-    
     fprintf(fp, "\r\n" 
     "\r\n"    
     "<!-- Extra log file -->\r\n"
