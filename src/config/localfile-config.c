@@ -97,6 +97,26 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         }
         else if(strcmp(node[i]->element,xml_localfile_command) == 0)
         {
+            #ifdef WIN32
+            /* Expand variables on Windows. */
+            if(strchr(node[i]->content, '%'))
+            {
+                int expandreturn = 0;   
+                char newcmd[OS_MAXSTR +1];
+
+                newcmd[OS_MAXSTR] = '\0';
+                expandreturn = ExpandEnvironmentStrings(node[i]->content, 
+                                                        newcmd, OS_MAXSTR);
+
+                if((expandreturn > 0) && (expandreturn < OS_MAXSTR))
+                {
+                    free(node[i]->content);
+
+                    os_strdup(newcmd, node[i]->content);
+                }
+            }   
+            #endif
+
             os_strdup(node[i]->content, logf[pl].file);
             logf[pl].command = logf[pl].file;
         }
