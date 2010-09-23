@@ -1031,6 +1031,13 @@ int Rules_OP_ReadRules(char * rulefile)
                               config_ruleinfo->alert_opts &=0xfff-DO_LOGALERT;
                             }
                         }
+                        else if(strcmp("no_ar", rule_opt[k]->content) == 0)
+                        {
+                            if(!(config_ruleinfo->alert_opts & NO_AR))
+                            {
+                                config_ruleinfo->alert_opts|= NO_AR;
+                            }
+                        }
                         else
                         {               
                             merror(XML_VALUEERR, ARGV0, xml_options,
@@ -1911,6 +1918,12 @@ void Rule_AddAR(RuleInfo *rule_config)
     
     /* No AR for ignored rules */
     if(rule_real_level == 0)
+    {
+        return;
+    }
+
+    /* No AR when options no_ar is set */
+    if(rule_config->alert_opts & NO_AR)
     {
         return;
     }
