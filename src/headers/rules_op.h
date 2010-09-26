@@ -40,6 +40,7 @@
 #define DO_FTS          0x001
 #define DO_MAILALERT    0x002
 #define DO_LOGALERT     0x004
+#define NO_AR           0x008
 #define NO_ALERT        0x010
 #define DO_OVERWRITE    0x020
 #define DO_PACKETINFO   0x040

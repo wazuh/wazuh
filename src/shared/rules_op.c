@@ -714,6 +714,13 @@ int OS_ReadXMLRules(char *rulefile,
                             config_ruleinfo->alert_opts &=0xfff-DO_LOGALERT;
                         }
                     }
+                    else if(strcmp("no_ar", rule_opt[k]->content) == 0)
+                    {
+                        if(!(config_ruleinfo->alert_opts & NO_AR))
+                        {
+                            config_ruleinfo->alert_opts|= NO_AR;
+                        }
+                    }
                     else
                     {               
                         merror(XML_VALUEERR, __local_name, xml_options,
