@@ -206,11 +206,13 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 logf = log_config->config;
                 
                 logf[pl].file = NULL;
+                logf[pl].alias = NULL;
                 logf[pl].logformat = NULL;
                 logf[pl].fp = NULL;
                 logf[pl].ffile = NULL;
                             
                 logf[pl +1].file = NULL;
+                logf[pl +1].alias = NULL;
                 logf[pl +1].logformat = NULL;
 
                 /* We can not increment the file count in here */
