@@ -129,11 +129,15 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
     {
         os_md5 mf_sum;
         os_sha1 sf_sum;
+        os_sha1 sf_sum2;
+        os_sha1 sf_sum3;
 
 
         /* Cleaning sums */
         strncpy(mf_sum, "xxx", 4);
         strncpy(sf_sum, "xxx", 4);
+        strncpy(sf_sum2, "xxx", 4);
+        strncpy(sf_sum3, "xxx", 4);
 
 
         /* Generating checksums. */
@@ -186,8 +190,6 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
         if(!buf)
         {
             char alert_msg[912 +1];
-            char *nfile;
-            char *nmsg;
            
             alert_msg[912] = '\0';
 
@@ -216,8 +218,6 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
                 opts & CHECK_MD5SUM?mf_sum:"xxx",
                 opts & CHECK_SHA1SUM?sf_sum:"xxx");
 
-            os_strdup(file_name, nfile);
-            os_strdup(alert_msg, nmsg);
             if(OSHash_Add(syscheck.fp, strdup(file_name), strdup(alert_msg)) <= 0)
             {
                 merror("%s: ERROR: Unable to add file to db: %s", ARGV0, file_name);
