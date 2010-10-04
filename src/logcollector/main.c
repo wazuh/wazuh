@@ -45,6 +45,17 @@ int main(int argc, char **argv)
     char *dir = DEFAULTDIR;
 
 
+    /* Setuping up random */
+    #ifndef WIN32
+        #ifdef __OpenBSD__
+        srandomdev();
+        #else
+        srandom(time(0));
+        #endif
+    #else
+    srandom(time(0))
+    #endif
+
     /* Setting the name */
     OS_SetName(ARGV0);
         

@@ -20,6 +20,21 @@ int _cday = 0;
 int update_fname(int i);
 
 
+char *rand_keepalive_str(char *dst, int size)
+{
+    static const char text[] = "abcdefghijklmnopqrstuvwxyz"
+                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                               "0123456789"
+                               "!@#$%^&*()_+-=;'[],./?";
+    int i, len = rand() % (size - 1);
+    for ( i = 0; i < len; ++i )
+    {
+        dst[i] = text[rand() % (sizeof text - 1)];
+    }
+    dst[i] = '\0';
+    return dst;
+}
+
 /** void LogCollectorStart() v0.4
  * Handle file management.
  */
@@ -29,6 +44,9 @@ void LogCollectorStart()
     int max_file = 0;
     int f_check = 0;
     int curr_time = 0;
+    char keepalive[1024];
+
+
     
     /* To check for inode changes */
     struct stat tmp_stat;
@@ -389,7 +407,12 @@ void LogCollectorStart()
 
             
         /* Send keep alive message */
-        SendMSG(logr_queue, "--MARK--", "ossec-keepalive", LOCALFILE_MQ);
+
+        rand_keepalive_str(keepalive, 700);
+        snprintf(keepalive, 1024, "--MARK--:%s", keepalive);
+
+
+        SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);
 
 
         /* Zeroing f_check */    
