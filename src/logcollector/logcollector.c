@@ -26,8 +26,9 @@ char *rand_keepalive_str(char *dst, int size)
                                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                "0123456789"
                                "!@#$%^&*()_+-=;'[],./?";
-    int i, len = rand() % (size - 1);
-    for ( i = 0; i < len; ++i )
+    int i, len = rand() % (size - 10);
+    strncpy(dst, "--MARK--: ", 12);
+    for ( i = 10; i < len; ++i )
     {
         dst[i] = text[rand() % (sizeof text - 1)];
     }
