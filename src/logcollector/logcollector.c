@@ -409,9 +409,6 @@ void LogCollectorStart()
         /* Send keep alive message */
 
         rand_keepalive_str(keepalive, 700);
-        snprintf(keepalive, 1024, "--MARK--:%s", keepalive);
-
-
         SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);
 
 
