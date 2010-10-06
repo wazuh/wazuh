@@ -19,6 +19,20 @@
 time_t g_saved_time = 0;
 
 
+char *rand_keepalive_str(char *dst, int size)
+{
+    static const char text[] = "abcdefghijklmnopqrstuvwxyz"
+                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                               "0123456789"
+                               "!@#$%^&*()_+-=;'[],./?";
+    int i, len = rand() % (size - 1);
+    for ( i = 0; i < len; ++i )
+    {
+        dst[i] = text[rand() % (sizeof text - 1)];
+    }
+    dst[i] = '\0';
+    return dst;
+}
 
 /* getfiles: Return the name of the files in a directory
  */
@@ -59,9 +73,14 @@ char *getsharedfiles()
 /* run_notify: Send periodically notification to server */
 void run_notify()
 {
+    char keep_alive_random[1024];
     char tmp_msg[OS_SIZE_1024 +1];
     char *uname;
     char *shared_files;
+    os_md5 md5sum;
+
+
+    keep_alive_random[0] = '\0';'
 
     time_t curr_time;
 
@@ -124,23 +143,20 @@ void run_notify()
         }
     }
 
+    rand_keepalive_str(keep_alive_random, 700);
+
 
     /* creating message */
-    if(File_DateofChange(AGENTCONFIGINT) > 0)
+    if((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
+       (OS_MD5_File(AGENTCONFIGINT, md5sum) == 0))
     {
-        os_md5 md5sum;
-        if(OS_MD5_File(AGENTCONFIGINT, md5sum) != 0)
-        {
-            snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s",uname, shared_files);
-        }
-        else
-        {
-            snprintf(tmp_msg, OS_SIZE_1024, "#!-%s / %s\n%s",uname, md5sum, shared_files);
-        }
+        snprintf(tmp_msg, OS_SIZE_1024, "#!-%s / %s\n%s\n%s",
+                 uname, md5sum, shared_files, keep_alive_random);
     }
     else
     {
-        snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s",uname, shared_files);
+        snprintf(tmp_msg, OS_SIZE_1024, "#!-%s\n%s\n%s",
+                 uname, shared_files, keep_alive_random);
     }
 
 

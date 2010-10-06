@@ -84,6 +84,7 @@ void save_controlmsg(int agentid, char *r_msg)
     {
         FILE *fp;
         char *uname = r_msg;
+        char *random_leftovers;
 
 
         /* locking mutex. */
@@ -121,6 +122,11 @@ void save_controlmsg(int agentid, char *r_msg)
 
 
         *r_msg = '\0';
+        random_leftovers = strchr(r_msg, '\n');
+        if(random_leftovers)
+        {
+            *random_leftovers = '\0';
+        }
 
 
         /* Updating the keep alive. */
