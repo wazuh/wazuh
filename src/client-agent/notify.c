@@ -80,7 +80,7 @@ void run_notify()
     os_md5 md5sum;
 
 
-    keep_alive_random[0] = '\0';'
+    keep_alive_random[0] = '\0';
 
     time_t curr_time;
 
