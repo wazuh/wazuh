@@ -8,7 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -20,7 +20,7 @@
 
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
-
+#include <stdlib.h>
 
 
 /* Global internal variables */
@@ -36,8 +36,8 @@ char *chomp(char *str)
     /* Removing spaces from the beginning */
     while(*str == ' ' || *str == '\t')
         str++;
-    
-    
+
+
     /* Removing any trailing new lines or \r */
     do
     {
@@ -55,17 +55,17 @@ char *chomp(char *str)
         }
     }while(tmp_str != NULL);
 
-    
+
     /* Removing spaces at the end of the string */
     tmp_str = str;
     size = strlen(str)-1;
-    
+
     while((size >= 0) && (tmp_str[size] == ' ' || tmp_str[size] == '\t'))
     {
         tmp_str[size] = '\0';
         size--;
     }
-    
+
     return(str);
 }
 
@@ -78,10 +78,10 @@ int add_agent()
     FILE *fp;
     char str1[STR_SIZE +1];
     char str2[STR_SIZE +1];
-    
+
     os_md5 md1;
     os_md5 md2;
-    
+
     char *user_input;
     char *_name;
     char *_id;
@@ -104,16 +104,16 @@ int add_agent()
 
     /* Allocating for c_ip */
     os_calloc(1, sizeof(os_ip), c_ip);
-    
-    
+
+
     #ifndef WIN32
     chmod(AUTH_FILE, 0440);
     #endif
-    
+
     /* Setting time 2 */
     time2 = time(0);
 
-    
+
     /* Source is time1+ time2 +pid + ppid */
     #ifndef WIN32
         #ifdef __OpenBSD__
@@ -127,7 +127,7 @@ int add_agent()
 
     rand1 = random();
 
-    
+
     /* Zeroing strings */
     memset(str1,'\0', STR_SIZE +1);
     memset(str2,'\0', STR_SIZE +1);
@@ -135,7 +135,7 @@ int add_agent()
 
     printf(ADD_NEW);
 
-    
+
     /* Getting the name */
     memset(name, '\0', FILE_SIZE +1);
 
@@ -143,7 +143,8 @@ int add_agent()
     {
         printf(ADD_NAME);
         fflush(stdout);
-        _name = read_from_user();
+        _name = getnv("OSSEC_AGENT_NAME");
+        if (_name == NULL) _name = read_from_user();
 
         if(strcmp(_name, QUIT) == 0)
             return(0);
@@ -168,15 +169,16 @@ int add_agent()
     {
       printf(ADD_IP);
       fflush(stdout);
-    
-      _ip = read_from_user();
-      
+
+      _ip = getenv("OSSEC_AGENT_IP");
+      if (_ip == NULL) _ip = read_from_user();
+
       /* quit */
       if(strcmp(_ip, QUIT) == 0)
           return(0);
-                              
+
       strncpy(ip, _ip, FILE_SIZE -1);
-      
+
       if(!OS_IsValidIP(ip, c_ip))
       {
           printf(IP_ERROR, ip);
@@ -184,8 +186,8 @@ int add_agent()
       }
 
     } while(!_ip);
-   
-    
+
+
     do
     {
         /* Default ID */
@@ -209,9 +211,14 @@ int add_agent()
         printf(ADD_ID, id);
         fflush(stdout);
 
-        _id = read_from_user();
-
-
+        /* Get Agent id from environment. If 0, use default. If null,
+         * get from user input */
+        _id = getenv("OSSEC_AGENT_ID");
+        if (_id[0] = '0') {
+          _id = id;
+        else if (_id == NULL) {
+          _id = read_from_user();
+        }
 
         /* quit */
         if(strcmp(_id, QUIT) == 0)
@@ -231,8 +238,8 @@ int add_agent()
             printf(ADD_ERROR_ID, id);
 
     } while(IDExist(id) || !OS_IsValidID(id));
-    
-    
+
+
 
     printf(AGENT_INFO, id, name, ip);
     fflush(stdout);
@@ -240,9 +247,10 @@ int add_agent()
     do
     {
       printf(ADD_CONFIRM);
-      user_input = read_from_user();
-   
-      /* If user accepts to add */ 
+      user_input = getenv("OSSEC_AGENT_CONFIRMED");
+      if (user_input == NULL) user_input = read_from_user();
+
+      /* If user accepts to add */
       if(user_input[0] == 'y' || user_input[0] == 'Y')
       {
         time3 = time(0);
@@ -256,22 +264,22 @@ int add_agent()
         #ifndef WIN32
         chmod(AUTH_FILE, 0440);
         #endif
-                
-        
+
+
         /* Random 1: Time took to write the agent information.
          * Random 2: Time took to choose the action.
          * Random 3: All of this + time + pid
          * Random 4: Md5 all of this + the name, key and ip
          * Random 5: Final key
          */
-        
+
         snprintf(str1, STR_SIZE, "%d%s%d",time3-time2, name, rand1);
         snprintf(str2, STR_SIZE, "%d%s%s%d", time2-time1, ip, id, rand2);
 
         OS_MD5_Str(str1, md1);
         OS_MD5_Str(str2, md2);
 
-        snprintf(str1, STR_SIZE, "%s%d%d%d",md1,(int)getpid(), (int)random(), 
+        snprintf(str1, STR_SIZE, "%s%d%d%d",md1,(int)getpid(), (int)random(),
                                             time3);
         OS_MD5_Str(str1, md1);
 
@@ -301,7 +309,7 @@ int remove_agent()
     FILE *fp;
     char *user_input;
     char u_id[FILE_SIZE +1];
-    
+
     u_id[FILE_SIZE] = '\0';
 
     if(!print_agents(0, 0, 0))
@@ -327,7 +335,7 @@ int remove_agent()
         printf(NO_ID, user_input);
       }
     } while(!IDExist(user_input));
-    
+
     do
     {
         printf(REMOVE_CONFIRM);
@@ -344,7 +352,7 @@ int remove_agent()
             {
                 ErrorExit(MEM_ERROR, ARGV0);
             }
-            
+
             fp = fopen(AUTH_FILE, "r+");
             if(!fp)
             {
@@ -364,7 +372,7 @@ int remove_agent()
 
 
             /* Remove counter for id */
-            delete_agentinfo(full_name); 
+            delete_agentinfo(full_name);
             OS_RemoveCounter(u_id);
             free(full_name);
             full_name = NULL;
