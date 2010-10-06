@@ -143,8 +143,11 @@ int add_agent()
     {
         printf(ADD_NAME);
         fflush(stdout);
+        /* Read the agent's name from user environment. If it is invalid
+         * we should force user to provide a name from input device. */
         _name = getnv("OSSEC_AGENT_NAME");
-        if (_name == NULL) _name = read_from_user();
+        if (_name == NULL || NameExist(_name) || !OS_IsValidName(_name))
+          _name = read_from_user();
 
         if(strcmp(_name, QUIT) == 0)
             return(0);
@@ -170,8 +173,11 @@ int add_agent()
       printf(ADD_IP);
       fflush(stdout);
 
+      /* Read IP address from user's environment. If that IP is invalid,
+       * force user to provide IP from input device */
       _ip = getenv("OSSEC_AGENT_IP");
-      if (_ip == NULL) _ip = read_from_user();
+      if (_ip == NULL || !OS_IsValidIP(_ip, c_ip))
+        _ip = read_from_user();
 
       /* quit */
       if(strcmp(_ip, QUIT) == 0)
@@ -212,11 +218,16 @@ int add_agent()
         fflush(stdout);
 
         /* Get Agent id from environment. If 0, use default. If null,
-         * get from user input */
+         * get from user input. */
         _id = getenv("OSSEC_AGENT_ID");
         if (_id[0] = '0') {
-          _id = id;
-        else if (_id == NULL) {
+          strncpy(_id, id, FILE_SIZE -1);
+        }
+        /* If _id is NULL, or user specifies a wrong ID, we should
+         * force user to specify an ID from the terminal. Without this
+         * forcing, the program goes to infinite loop if OSSEC_AGENT_ID
+         * is an invalid/existing entry. */
+        if (_id == NULL || IDExist(_id) || !OS_IsValidID(_id)) {
           _id = read_from_user();
         }
 
@@ -247,6 +258,11 @@ int add_agent()
     do
     {
       printf(ADD_CONFIRM);
+      /* Confirmation by an environment variable. The valid value is y/Y.
+       * If the user provide anything other string, it is considered as
+       * n/N; please note that the old code only accepts y/Y/n/N. So if
+       * the variable OSSEC_AGENT_CONFIRMED is 'foobar', the program will
+       * go into an infinite loop. */
       user_input = getenv("OSSEC_AGENT_CONFIRMED");
       if (user_input == NULL) user_input = read_from_user();
 
@@ -291,7 +307,7 @@ int add_agent()
         restart_necessary = 1;
         break;
       }
-      else if(user_input[0] == 'n' || user_input[0] == 'N')
+      else /* if(user_input[0] == 'n' || user_input[0] == 'N') */
       {
         printf(ADD_NOT);
         break;
