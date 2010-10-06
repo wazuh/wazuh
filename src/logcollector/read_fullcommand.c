@@ -24,10 +24,12 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
     int cmd_size = 0;
     char *p;
     char str[OS_MAXSTR+1];
+    char strfinal[OS_MAXSTR+1];
 
     FILE *cmd_output;
 
     str[OS_MAXSTR]= '\0';
+    strfinal[OS_MAXSTR]= '\0';
     *rc = 0;
 
 
@@ -60,14 +62,36 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
         {
             *p = '\0';
         }
+
         
         debug2("%s: DEBUG: Reading command message: '%s'", ARGV0, str);
+
+        /* Removing empty lines. */
+        n = 0;
+        p = str;
+        while(*p != '\0')
+        {
+            if(p[0] == '\r')
+            {
+                p++;
+                continue;
+            }
+
+            if(p[0] == '\n' && p[1] == '\n')
+            {
+                p++;
+            }
+            strfinal[n] = *p;
+            n++;
+            p++;
+        }
+        strfinal[n] = '\0';
 
         
         /* Sending message to queue */
         if(drop_it == 0)
         {
-            if(SendMSG(logr_queue,str,
+            if(SendMSG(logr_queue,strfinal,
                         (NULL != logff[pos].alias) ? logff[pos].alias : logff[pos].command,
                         LOCALFILE_MQ) < 0)
             {

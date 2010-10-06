@@ -57,6 +57,19 @@ void *read_command(int pos, int *rc, int drop_it)
         {
             *p = '\0';
         }
+
+        /* Removing empty lines. */
+        #ifdef WIN32
+        if(str[0] == '\r' && str[1] == '\0')
+        {
+            continue;
+        }
+        #endif
+        if(str[0] == '\0')
+        {
+            continue;
+        }
+        
         
         debug2("%s: DEBUG: Reading command message: '%s'", ARGV0, str);
 
