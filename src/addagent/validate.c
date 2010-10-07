@@ -18,14 +18,14 @@ int OS_IsValidID(char *id)
 {
     int id_len = 0;
     int i = 0;
-    
-    /* ID must not be null */ 
+
+    /* ID must not be null */
     if(!id)
       return(0);
 
     id_len = strlen(id);
 
-    /* Check ID length, it should contain max. 5 characters */
+    /* Check ID length, it should contain max. 8 characters */
     if (id_len > 8)
       return(0);
 
@@ -35,7 +35,7 @@ int OS_IsValidID(char *id)
       if(!(isdigit((int)id[i])))
         return(0);
     }
-    
+
     return(1);
 }
 
@@ -85,7 +85,7 @@ char *getFullnameById(char *id)
             {
                 continue;
             }
-            
+
             ip = strchr(name, ' ');
             if(ip)
             {
@@ -107,7 +107,7 @@ char *getFullnameById(char *id)
                     snprintf(final_str, FILE_SIZE -1, "%s-%s", name, ip);
 
                     fclose(fp);
-                    return(final_str);        
+                    return(final_str);
                 }
             }
         }
@@ -124,18 +124,18 @@ int IDExist(char *id)
     FILE *fp;
     char line_read[FILE_SIZE +1];
     line_read[FILE_SIZE] = '\0';
-   
-    /* ID must not be null */ 
+
+    /* ID must not be null */
     if(!id)
         return(0);
 
     fp = fopen(AUTH_FILE, "r");
     if(!fp)
         return(0);
-        
+
     fseek(fp, 0, SEEK_SET);
     fgetpos(fp, &fp_pos);
-    
+
     while(fgets(line_read,FILE_SIZE -1, fp) != NULL)
     {
         char *name;
@@ -145,7 +145,7 @@ int IDExist(char *id)
             fgetpos(fp, &fp_pos);
             continue;
         }
-        
+
         name = strchr(line_read, ' ');
         if(name)
         {
@@ -180,7 +180,7 @@ int OS_IsValidName(char *u_name)
     /* check if it contains any non-alphanumeric characters */
     for(i = 0; i < strlen(u_name); i++)
     {
-      if(!isalnum((int)u_name[i]) && (u_name[i] != '-') && 
+      if(!isalnum((int)u_name[i]) && (u_name[i] != '-') &&
          (u_name[i] != '_') && (u_name[i] != '.'))
         return(0);
     }
@@ -228,7 +228,7 @@ int NameExist(char *u_name)
             {
                 continue;
             }
-            
+
             ip = strchr(name, ' ');
             if(ip)
             {
@@ -261,16 +261,16 @@ int print_agents(int print_status, int active_only, int csv_output)
         return(0);
 
     fseek(fp, 0, SEEK_SET);
-    
+
     memset(line_read,'\0',FILE_SIZE);
-    
+
     while(fgets(line_read, FILE_SIZE -1, fp) != NULL)
     {
         char *name;
 
         if(line_read[0] == '#')
             continue;
-            
+
         name = strchr(line_read, ' ');
         if(name)
         {
@@ -284,7 +284,7 @@ int print_agents(int print_status, int active_only, int csv_output)
             {
                 continue;
             }
-            
+
             ip = strchr(name, ' ');
             if(ip)
             {
@@ -299,7 +299,7 @@ int print_agents(int print_status, int active_only, int csv_output)
                         printf(PRINT_AVAILABLE);
                     total++;
 
-                    
+
                     if(print_status)
                     {
                         int agt_status = get_agent_status(name, ip);
@@ -307,15 +307,15 @@ int print_agents(int print_status, int active_only, int csv_output)
                         {
                             continue;
                         }
-            
+
                         if(csv_output)
                         {
-                            printf("%s,%s,%s,%s,\n", line_read, name, ip, 
-                                                  print_agent_status(agt_status));  
+                            printf("%s,%s,%s,%s,\n", line_read, name, ip,
+                                                  print_agent_status(agt_status));
                         }
                         else
                         {
-                            printf(PRINT_AGENT_STATUS, line_read, name, ip, 
+                            printf(PRINT_AGENT_STATUS, line_read, name, ip,
                                    print_agent_status(agt_status));
                         }
                     }
@@ -324,7 +324,7 @@ int print_agents(int print_status, int active_only, int csv_output)
                         printf(PRINT_AGENT, line_read, name, ip);
                     }
                 }
-                
+
             }
         }
     }
@@ -336,7 +336,7 @@ int print_agents(int print_status, int active_only, int csv_output)
         char *aip = NULL;
         DIR *dirp;
         struct dirent *dp;
-        
+
         if(!csv_output)
         {
             printf("\nList of agentless devices:\n");
@@ -379,8 +379,8 @@ int print_agents(int print_status, int active_only, int csv_output)
     fclose(fp);
     if(total)
         return(1);
-    
-    return(0);    
+
+    return(0);
 }
 
 
