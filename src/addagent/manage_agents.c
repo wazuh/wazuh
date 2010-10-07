@@ -145,7 +145,7 @@ int add_agent()
         fflush(stdout);
         /* Read the agent's name from user environment. If it is invalid
          * we should force user to provide a name from input device. */
-        _name = getnv("OSSEC_AGENT_NAME");
+        _name = getenv("OSSEC_AGENT_NAME");
         if (_name == NULL || NameExist(_name) || !OS_IsValidName(_name))
           _name = read_from_user();
 
