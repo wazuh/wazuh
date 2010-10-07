@@ -12,7 +12,7 @@
 
 
 #include "manage_agents.h"
-
+#include <stdlib.h>
 
 /** help **/
 void helpmsg()
@@ -70,17 +70,17 @@ int main(int argc, char **argv)
     int c = 0, cmdlist = 0;
     char *cmdexport = NULL;
     char *cmdimport = NULL;
-    
+
     #ifndef WIN32
     char *dir = DEFAULTDIR;
     char *group = GROUPGLOBAL;
     int gid;
     #endif
-    
+
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
+
 
     while((c = getopt(argc, argv, "Vhle:i:")) != -1){
         switch(c){
@@ -118,30 +118,30 @@ int main(int argc, char **argv)
         }
 
     }
-    
 
-   
+
+
     /* Getting currently time */
     time1 = time(0);
     restart_necessary = 0;
-    
-    
-    #ifndef WIN32 
+
+
+    #ifndef WIN32
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     if(gid < 0)
     {
 	    ErrorExit(USER_ERROR, ARGV0, "", group);
     }
-	
-    
+
+
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
 	    ErrorExit(SETGID_ERROR, ARGV0, group);
     }
-    
-    
+
+
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
     {
@@ -181,9 +181,17 @@ int main(int argc, char **argv)
     {
         int leave_s = 0;
         print_banner();
-   
-        user_msg = read_from_user();
-        
+
+        /* Get ACTION from the environment. If ACTION is specified,
+         * we must set leave_s = 1 to ensure that the loop will end */
+        user_msg = getenv("OSSEC_ACTION");
+        if (user_msg == NULL) {
+          user_msg = read_from_user();
+        }
+        else{
+          leave_s = 1;
+        }
+
         /* All the allowed actions */
         switch(user_msg[0])
         {
@@ -198,11 +206,11 @@ int main(int argc, char **argv)
             case 'i':
             case 'I':
                 k_import(NULL);
-                break;    
+                break;
             case 'l':
             case 'L':
                 list_agents(0);
-                break;    
+                break;
             case 'r':
             case 'R':
                 remove_agent();
@@ -212,20 +220,20 @@ int main(int argc, char **argv)
                 leave_s = 1;
                 break;
 	        case 'V':
-		        print_version();   
+		        print_version();
 		        break;
-            default:    
+            default:
                 printf("\n ** Invalid Action ** \n\n");
-                break;            
+                break;
         }
 
         if(leave_s)
         {
-            break;       
+            break;
         }
-        
+
         continue;
-        
+
     }
 
     /* Checking if restart message is necessary */
@@ -238,7 +246,7 @@ int main(int argc, char **argv)
         printf("\n");
     }
     printf(EXIT);
-    
+
     return(0);
 }
 
