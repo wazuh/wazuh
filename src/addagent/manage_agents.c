@@ -217,18 +217,16 @@ int add_agent()
         printf(ADD_ID, id);
         fflush(stdout);
 
-        /* Get Agent id from environment. If 0, use default. If null,
-         * get from user input. */
+        /* Get Agent id from environment. If 0, use default ID. If null,
+         * get from user input. If value from environment is invalid,
+         * we force user to specify an ID from the terminal. Otherwise,
+         * our program goes to infinite loop. */
         _id = getenv("OSSEC_AGENT_ID");
-        if (_id[0] = '0') {
-          strncpy(_id, id, FILE_SIZE -1);
-        }
-        /* If _id is NULL, or user specifies a wrong ID, we should
-         * force user to specify an ID from the terminal. Without this
-         * forcing, the program goes to infinite loop if OSSEC_AGENT_ID
-         * is an invalid/existing entry. */
         if (_id == NULL || IDExist(_id) || !OS_IsValidID(_id)) {
           _id = read_from_user();
+        }
+        else {
+          strncpy(_id, id, FILE_SIZE -1);
         }
 
         /* quit */
