@@ -265,6 +265,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     {
         merror("%s: Error handling integrity database.",ARGV0);
         sdb.db_err++; /* Increment db error */
+        lf->data = NULL;
         return(0);
     }
 
@@ -341,7 +342,10 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
         /* checksum match, we can just return and keep going */
         if(strcmp(saved_sum, c_sum) == 0)
+        {
+            lf->data = NULL;
             return(0);
+        }
 
 
         /* If we reached here, the checksum of the file has changed */
@@ -381,6 +385,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 break;
 
                 default:
+                lf->data = NULL;
                 return(0);
                 break;
             }
@@ -652,10 +657,6 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             #endif
 
 
-if(lf->data)
-{
-    merror("XXX changed: %s",lf->data);
-}
             /* Provide information about the file */    
             snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
                     "'%.756s'\n"
@@ -720,10 +721,12 @@ if(lf->data)
 
         /* Setting decoder */
         lf->decoder_info = sdb.syscheck_dec;
+        lf->data = NULL;
 
         return(1);
     }
 
+    lf->data = NULL;
     return(0);
 }
 
@@ -769,7 +772,6 @@ int DecodeSyscheck(Eventinfo *lf)
     {
         *lf->data = '\0';
         lf->data++;
-        merror("XXXX syscheck data: %s", lf->data);
     }
     else
     {
@@ -787,6 +789,7 @@ int DecodeSyscheck(Eventinfo *lf)
         {
             if(strncasecmp(*ff_ig, f_name, strlen(*ff_ig)) == 0)
             {
+                lf->data = NULL;
                 return(0);
             }
             
