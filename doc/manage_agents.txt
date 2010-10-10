@@ -1,0 +1,29 @@
+
+== How to add an agent without any keyboard input ==
+
+By default, to add an agent from server side, you must provide your agent
+information  to `manage_agents` program, by using its interactive mode.
+This is really tedious if you have many servers / agents to add. Luckily,
+you can use following environment variables as responses
+
+     | variable name         | value   | description          |
+     +-----------------------+---------+----------------------+
+     | OSSEC_ACTION          | A/a     | add an agent         |
+     | OSSEC_AGENT_NAME      | string  | name of agent        |
+     | OSSEC_AGENT_IP        | CIDR    | ip address of agent  |
+     | OSSEC_AGENT_ID        | integer | max length = 8       |
+     | OSSEC_AGENT_CONFIRMED | y/Y/n/N | y -> confirmed       |
+
+Please note that it's your duty to ensure that name, ip,... of agent are
+valid. Otherwise, the program will fall back to interactive mode. In most
+case, you should ensure that you new agent has an unique name/id. You can
+simply know that by using `manage_agents -l` to list all known agents.
+
+For more details, please refer to OSSEC document
+    http://www.ossec.net/doc/manual/agent/agent-management.html
+
+PS: you may use some (`expect`) to send strings to `manage_agent`, insead
+of using the above environment variables. It's your choice.
+
+--
+Anh K. Huynh <kyanh@viettug.org>
