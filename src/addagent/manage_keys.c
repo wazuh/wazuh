@@ -44,7 +44,7 @@ int k_import(char *cmdimport)
 
         user_input = getenv("OSSEC_AGENT_KEY");
         if (user_input == NULL) {
-          use_input = read_from_user();
+          user_input = read_from_user();
         }
     }
 
