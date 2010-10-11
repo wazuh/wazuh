@@ -228,7 +228,7 @@ int add_agent()
 
         /* If user specified 0 as Agent ID, he meant use default value.
          * NOTE: a bad condistion can cause infinite loop. */
-        if (_id[0] == '0') {
+        if (strcmp(_id,"0") == 0) {
           strncpy(_id, id, FILE_SIZE -1);
         }
 
