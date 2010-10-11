@@ -225,7 +225,10 @@ int add_agent()
         if (_id == NULL || IDExist(_id) || !OS_IsValidID(_id)) {
           _id = read_from_user();
         }
-        else {
+
+        /* If user specified 0 as Agent ID, he meant use default value.
+         * NOTE: a bad condistion can cause infinite loop. */
+        if (_id[0] == '0') {
           strncpy(_id, id, FILE_SIZE -1);
         }
 
