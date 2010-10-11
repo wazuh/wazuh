@@ -8,13 +8,13 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
 
 #include "manage_agents.h"
-
+#include <stdlib.h>
 
 /* b64 function prototypes */
 char *decode_base64(const char *src);
@@ -27,11 +27,11 @@ int k_import(char *cmdimport)
     FILE *fp;
     char *user_input;
     char *b64_dec;
-   
+
     char *name; char *ip; char *tmp_key;
-     
+
     char line_read[FILE_SIZE +1];
-    
+
 
     /* Parsing user argument. */
     if(cmdimport)
@@ -42,14 +42,17 @@ int k_import(char *cmdimport)
     {
         printf(IMPORT_KEY);
 
-        user_input = read_from_user();
+        user_input = getenv("OSSEC_AGENT_KEY");
+        if (user_input == NULL) {
+          use_input = read_from_user();
+        }
     }
 
 
     /* quit */
     if(strcmp(user_input, QUIT) == 0)
         return(0);
-    
+
     b64_dec = decode_base64(user_input);
     if(b64_dec == NULL)
     {
@@ -59,7 +62,7 @@ int k_import(char *cmdimport)
         return(0);
     }
 
-    
+
     memset(line_read, '\0', FILE_SIZE +1);
     strncpy(line_read, b64_dec, FILE_SIZE);
 
@@ -82,16 +85,19 @@ int k_import(char *cmdimport)
                 return(0);
             }
             *tmp_key = '\0';
-        
-            printf("\n");   
+
+            printf("\n");
             printf(AGENT_INFO, b64_dec, name, ip);
-            
+
             while(1)
             {
                 printf(ADD_CONFIRM);
                 fflush(stdout);
 
-                user_input = read_from_user();
+                user_input = getenv("OSSEC_ACTION_CONFIRMED");
+                if (user_input == NULL) {
+                  user_input = read_from_user();
+                }
 
                 if(user_input[0] == 'y' || user_input[0] == 'Y')
                 {
@@ -108,14 +114,14 @@ int k_import(char *cmdimport)
 
                     /* Removing sender counter. */
                     OS_RemoveCounter("sender");
-                            
+
                     printf(ADDED);
                     printf(PRESS_ENTER);
                     read_from_user();
                     restart_necessary = 1;
                     return(1);
                 }
-                else if(user_input[0] == 'n' || user_input[0] == 'N')
+                else /* if(user_input[0] == 'n' || user_input[0] == 'N') */
                 {
                     printf("%s", ADD_NOT);
                     return(0);
@@ -123,7 +129,7 @@ int k_import(char *cmdimport)
             }
         }
     }
-    
+
     printf(NO_KEY);
     printf(PRESS_ENTER);
     read_from_user();
@@ -179,20 +185,20 @@ int k_extract(char *cmdextract)
         } while(!IDExist(user_input));
     }
 
-    
+
     /* Trying to open the auth file */
     fp = fopen(AUTH_FILE, "r");
     if(!fp)
     {
         ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
     }
-    
+
     fsetpos(fp, &fp_pos);
 
     memset(n_id, '\0', USER_SIZE +1);
     strncpy(n_id, user_input, USER_SIZE -1);
-    
-    
+
+
     if(fgets(line_read, FILE_SIZE, fp) == NULL)
     {
         printf(ERROR_KEYS);
@@ -201,7 +207,7 @@ int k_extract(char *cmdextract)
     }
     chomp(line_read);
 
-    
+
     b64_enc = encode_base64(strlen(line_read),line_read);
     if(b64_enc == NULL)
     {

@@ -262,9 +262,9 @@ int add_agent()
       /* Confirmation by an environment variable. The valid value is y/Y.
        * If the user provide anything other string, it is considered as
        * n/N; please note that the old code only accepts y/Y/n/N. So if
-       * the variable OSSEC_AGENT_CONFIRMED is 'foobar', the program will
+       * the variable OSSEC_ACTION_CONFIRMED is 'foobar', the program will
        * go into an infinite loop. */
-      user_input = getenv("OSSEC_AGENT_CONFIRMED");
+      user_input = getenv("OSSEC_ACTION_CONFIRMED");
       if (user_input == NULL) user_input = read_from_user();
 
       /* If user accepts to add */
@@ -340,7 +340,10 @@ int remove_agent()
       printf(REMOVE_ID);
       fflush(stdout);
 
-      user_input = read_from_user();
+      user_input = getenv("OSSEC_AGENT_ID");
+      if (user_input == NULL || !IDExist(user_input)) {
+        user_input = read_from_user();
+      }
 
       if(strcmp(user_input, QUIT) == 0)
           return(0);
@@ -358,8 +361,10 @@ int remove_agent()
         printf(REMOVE_CONFIRM);
         fflush(stdout);
 
-        user_input = read_from_user();
-
+        user_input = getenv("OSSEC_ACTION_CONFIRMED");
+        if (user_input == NULL) {
+          user_input = read_from_user();
+        }
         /* If user confirm */
         if(user_input[0] == 'y' || user_input[0] == 'Y')
         {
@@ -399,7 +404,7 @@ int remove_agent()
             restart_necessary = 1;
             break;
         }
-        else if(user_input[0] == 'n' || user_input[0] == 'N')
+        else /* if(user_input[0] == 'n' || user_input[0] == 'N') */
         {
             printf(REMOVE_NOT);
             break;

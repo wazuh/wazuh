@@ -6,13 +6,16 @@ information  to `manage_agents` program, by using its interactive mode.
 This is really tedious if you have many servers / agents to add. Luckily,
 you can use following environment variables as responses
 
-     | variable name         | value   | description          |
-     +-----------------------+---------+----------------------+
-     | OSSEC_ACTION          | A/a     | add an agent         |
-     | OSSEC_AGENT_NAME      | string  | name of agent        |
-     | OSSEC_AGENT_IP        | CIDR    | ip address of agent  |
-     | OSSEC_AGENT_ID        | integer | max length = 8       |
-     | OSSEC_AGENT_CONFIRMED | y/Y/n/N | y -> confirmed       |
+     | variable name          | value   | description          |
+     +------------------------+---------+----------------------+
+     | OSSEC_ACTION           | A/a     | add an agent         |
+     | OSSEC_AGENT_NAME       | string  | name of agent        |
+     | OSSEC_AGENT_IP         | CIDR    | ip address of agent  |
+     | OSSEC_AGENT_ID         | integer | max length = 8       |
+     | OSSEC_AGENT_KEY        | string  | base64 format        | (*)
+     | OSSEC_ACTION_CONFIRMED | y/Y/n/N | y -> confirmed       |
+
+    (*) OSSEC_AGENT_KEY is used only on agent (when key is being imported)
 
 Please note that it's your duty to ensure that name, ip,... of agent are
 valid. Otherwise, the program will fall back to interactive mode. In most
