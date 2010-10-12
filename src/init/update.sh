@@ -17,6 +17,7 @@ isUpdate()
     if [ $? = 0 ]; then
         . ${OSSEC_INIT}
         if [ "X$DIRECTORY" = "X" ]; then
+            echo "# ERROR: The variable DIRECTORY was not set" 1>&2
             echo "${FALSE}"
             return 1;
         fi
@@ -24,30 +25,32 @@ isUpdate()
         if [ $? = 0 ]; then
             echo "${TRUE}"
             return 0;
-        fi    
+        fi
+    else
+        echo "# ERROR: Cannot access the file #{OSSEC_INIT}" 1>&2
     fi
-    
     echo "${FALSE}"
-    return 1;    
+    return 1;
 }
 
 
 ##########
-# doUpdatecleanup 
+# doUpdatecleanup
 ##########
 doUpdatecleanup()
 {
     . ${OSSEC_INIT}
 
     if [ "X$DIRECTORY" = "X" ]; then
-        # Invalid ossec init file. Unable to update
+        echo "# ERROR: The variable DIRECTORY wasn't not set." 1>&2
         echo "${FALSE}"
         return 1;
     fi
-    
+
     # Checking if the directory is valid.
     echo $DIRECTORY | grep -E "^/[a-zA-Z0-9/-]{3,128}$" > /dev/null 2>&1
     if [ ! $? = 0 ]; then
+        echo "# ERROR: directory name ($DIRECTORY) isn't valid" 1>&2
         echo "${FALSE}"
         return 1;
     fi
@@ -55,7 +58,7 @@ doUpdatecleanup()
 
 
 ##########
-# getPreinstalled 
+# getPreinstalled
 ##########
 getPreinstalled()
 {
@@ -67,15 +70,15 @@ getPreinstalled()
         echo "agent"
         return 0;
     fi
-    
+
     cat $DIRECTORY/etc/ossec.conf | grep "<remote>" > /dev/null 2>&1
     if [ $? = 0 ]; then
         echo "server"
         return 0;
     fi
-    
+
     echo "local"
-    return 0;   
+    return 0;
 }
 
 
@@ -96,8 +99,8 @@ getPreinstalledDir()
 UpdateStartOSSEC()
 {
    . ${OSSEC_INIT}
-   
-   $DIRECTORY/bin/ossec-control start 
+
+   $DIRECTORY/bin/ossec-control start
 }
 
 
@@ -107,8 +110,8 @@ UpdateStartOSSEC()
 UpdateStopOSSEC()
 {
    . ${OSSEC_INIT}
-   
-   $DIRECTORY/bin/ossec-control stop 
+
+   $DIRECTORY/bin/ossec-control stop
 
    # We also need to remove all syscheck queue file (format changed)
    if [ "X$VERSION" = "X0.9-3" ]; then
@@ -120,7 +123,7 @@ UpdateStopOSSEC()
 
 
 ##########
-# UpdateOSSECRules 
+# UpdateOSSECRules
 ##########
 UpdateOSSECRules()
 {
@@ -130,7 +133,7 @@ UpdateOSSECRules()
 
     # Backing up the old config
     cp -pr ${OSSEC_CONF_FILE} "${OSSEC_CONF_FILE}.$$.bak"
-    
+
     cat ${OSSEC_CONF_FILE}|grep -v "<rules>" |grep -v "</rules>" |grep -v "<include>" > "${OSSEC_CONF_FILE}.$$.tmp"
 
     cat "${OSSEC_CONF_FILE}.$$.tmp" > ${OSSEC_CONF_FILE}
@@ -139,4 +142,4 @@ UpdateOSSECRules()
     echo "<ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
     cat ${RULES_TEMPLATE} >> ${OSSEC_CONF_FILE}
     echo "</ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
-} 
+}
