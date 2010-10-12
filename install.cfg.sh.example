@@ -18,37 +18,40 @@
 #   2. ./install.sh
 #
 
-export SET_DEBUG=''                # turn on debug mode (for daemons)
-export USER_BINARYINSTALL=''       # install binaries
-export USER_ENABLE_SYSCHECK=yes    # enable system checking
-export USER_ENABLE_ROOTCHECK=yes   # enable rootkit checking
-export USER_AGENT_SERVER_IP="123.123.123.123"
-                                   # IP of master host, in numeric format
-export USER_ENABLE_ACTIVE_RESPONSE=yes
-                                   # enable active response
-export USER_ENABLE_EMAIL=yes       # Email notification is YES
-export USER_EMAIL_ADDRESS="root@example.net"
-                                   # Email receivier
-export USER_EMAIL_SMTP=localhost   # SMTP host
-export USER_ENABLE_ACTIVE_RESPONSE=yes
-                                   # active response / firewall
-export USER_ENABLE_FIREWALL_RESPONSE=no
-                                   # firewall on-the-fly modification
-export USER_ENABLE_SYSLOG=no       # enable remote syslog
-export USER_DELETE_DIR=no          # delete existing directory
-export USER_WHITE_LIST=n           # Whilelist; we don't support it
-export USER_WHITE_LIST="10.0.0.1 192.168.1.1"
+export SET_DEBUG=''                # debug/n  turn on debug mode (for daemons)
+export USER_BINARYINSTALL=''       # yes/n    install binaries
+export USER_ENABLE_SYSCHECK=y      # y/n      enable system checking
+export USER_ENABLE_ROOTCHECK=y     # y/n      enable rootkit checking
+export USER_AGENT_SERVER_IP="<ip>"
+                                   # ip       IP of ossec server
+export USER_ENABLE_ACTIVE_RESPONSE=y
+                                   # y/n      enable active response
+export USER_ENABLE_EMAIL=y         # y/n      email notification is YES
+export USER_EMAIL_ADDRESS="<email>"
+                                   # email    email receivier
+export USER_EMAIL_SMTP=localhost   # host     SMTP host
+export USER_ENABLE_ACTIVE_RESPONSE=y
+                                   # y/n      active response / firewall
+export USER_ENABLE_FIREWALL_RESPONSE=n
+                                   # y/n      firewall on-the-fly modification
+export USER_ENABLE_SYSLOG=n        # y/n      enable remote syslog
+export USER_DELETE_DIR=n           # y/n      delete existing directory
+export USER_WHITE_LIST=n           # y/n      Whilelist; we don't support it
+export USER_WHITE_LIST="<ip list>"
+                                   # iplist   while list, space separator
+export USER_LANGUAGE=en            # en       user language
+export USER_NO_STOP=y              # y/n      donot wait for any key
+export USER_UPDATE=n               # y/n      update current OSSEC or not
+                                   #          ^^ require => (isUpdate => TRUE)
+export USER_UPDATE_RULES=y         # y/n      update? rules on server/master
+                                   #          ^^ require => update_only
+export USER_INSTALL_TYPE='server'  # server/agent
+                                   #          installation type
+export USER_DIR='/opt/ossec.server'#          installation path
+#
+# Unknown variables
+#
 # PREDEF_FILE=/path/to/local/config
-                                   # path to pre-defined config
-export USER_LANGUAGE=en            # user language
-# ME=root                          # current user (auto detect?)
-                                   # ^^ require => root account
-export USER_NO_STOP=yes            # donot wait for any key
-export USER_UPDATE=no              # update current OSSEC or not
-                                   # ^^ require => (isUpdate => TRUE)
-export USER_UPDATE_RULES=yes       # update? rules on server/master
-                                   # ^^ require => update_only
-export USER_INSTALL_TYPE='server'  # installation type (server or agent)
-export USER_DIR='/opt/ossec.server'# path to installation
-                                   # on a share environment, shouldnot use
-                                   # /opt/ossec/. Use ossec.server instead.
+#                                  #          path to pre-defined config
+# ME=root                          #          current user (auto detect?)
+#                                  #          ^^ require => root account
