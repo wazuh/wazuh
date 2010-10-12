@@ -490,7 +490,7 @@
 
   <rule id="18217" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-544\p*</regex>
+    <regex> ID:\s+\p*S-1-5-32-544\p*</regex>
     <description>Administrators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -498,7 +498,7 @@
 
   <rule id="18218" level="5">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-1-0\p*</regex>
+    <regex> ID:\s+%{S-1-1-0}</regex>
     <description>Everyone Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -506,7 +506,7 @@
 
   <rule id="18219" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-9\p*</regex>
+    <regex> ID:\s+%{S-1-5-9}</regex>
     <description>Enterprise Domain Controllers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -514,7 +514,7 @@
 
   <rule id="18220" level="5">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-11\p*</regex>
+    <regex> ID:\s+%{S-1-5-11}</regex>
     <description>Authenticated Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -522,7 +522,7 @@
 
   <rule id="18221" level="5">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-13\p*</regex>
+    <regex> ID:\s+%{S-1-5-13}</regex>
     <description>Terminal Server Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -530,7 +530,7 @@
 
   <rule id="18222" level="12">
     <if_sid>18203,18204</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-21\.+-512\p*</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-512}</regex>
     <description>Domain Admins Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -538,7 +538,7 @@
 
   <rule id="18223" level="5">
     <if_sid>18203,18204</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-21\.+-513\p*</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-513}</regex>
     <description>Domain Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -553,7 +553,7 @@
 
   <rule id="18225" level="12">
     <if_sid>18203,18204</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-21\.+-514\p*</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-514}</regex>
     <description>Domain Guests Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -561,7 +561,7 @@
 
   <rule id="18226" level="5">
     <if_sid>18203,18204</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-21\.+-515\p*</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-515}</regex>
     <description>Domain Computers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -569,7 +569,7 @@
 
   <rule id="18227" level="12">
     <if_sid>18203,18204</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-21\.+-516\p*</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-516}</regex>
     <description>Domain Controllers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -577,7 +577,7 @@
 
   <rule id="18228" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-21\.+-517\p*</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-517}</regex>
     <description>Cert Publishers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -585,7 +585,7 @@
 
   <rule id="18229" level="12">
     <if_sid>18203,18204</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-21\.+-518\p*</regex>
+    <regex> ID:\s+%{S-1-5-21\.+-518}</regex>
     <description>Schema Admins Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -593,7 +593,7 @@
 
   <rule id="18230" level="12">
     <if_sid>18203,18204</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-21\.+-519\p*</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-519}</regex>
     <description>Enterprise Admins Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -601,7 +601,7 @@
 
   <rule id="18231" level="10">
     <if_sid>18203,18204</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-21\.+-520\p*</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-520}</regex>
     <description>Group Policy Creator Owners Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -609,7 +609,7 @@
 
   <rule id="18232" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-21\.+-553\p*</regex>
+    <regex>\w* ID:\s+%{S-1-5-21\S+-553}</regex>
     <description>RAS and IAS Servers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -617,7 +617,7 @@
 
   <rule id="18233" level="5">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-545\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-545}</regex>
     <description>Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -625,7 +625,7 @@
 
   <rule id="18234" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-546\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-546}</regex>
     <description>Guests Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -633,7 +633,7 @@
 
   <rule id="18235" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-547\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-547}</regex>
     <description>Power Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -641,7 +641,7 @@
 
   <rule id="18236" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-548\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-548}</regex>
     <description>Account Operators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -649,7 +649,7 @@
 
   <rule id="18237" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-549\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-549}</regex>
     <description>Server Operators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -657,7 +657,7 @@
 
   <rule id="18238" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-550\p*</regex>
+    <regex>\w* ID:\s+%{S-1-5-32-550}</regex>
     <description>Print Operators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -665,7 +665,7 @@
 
   <rule id="18239" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-551\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-551}</regex>
     <description>Backup Operators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -673,7 +673,7 @@
 
   <rule id="18240" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-552\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-552}</regex>
     <description>Replicators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -681,7 +681,7 @@
 
   <rule id="18241" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-554\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-554}</regex>
     <description>Pre-Windows 2000 Compatible Access Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -689,7 +689,7 @@
 
   <rule id="18242" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-555\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-555}</regex>
     <description>Remote Desktop Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -697,7 +697,7 @@
 
   <rule id="18243" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-556\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-556}</regex>
     <description>Network Configuration Operators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -705,7 +705,7 @@
 
   <rule id="18244" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-557\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-557}</regex>
     <description>Incoming Forest Trust Builders Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -713,7 +713,7 @@
 
   <rule id="18245" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-558\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-558}</regex>
     <description>Performance Monitor Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -721,7 +721,7 @@
 
   <rule id="18246" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-559\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-559}</regex>
     <description>Performance Log Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -729,7 +729,7 @@
 
   <rule id="18247" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-560\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-560}</regex>
     <description>Windows Authorization Access Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -737,7 +737,7 @@
 
   <rule id="18248" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-561\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-561}</regex>
     <description>Terminal Server License Servers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -745,7 +745,7 @@
 
   <rule id="18249" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-562\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-562}</regex>
     <description>Distributed COM Users Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -753,7 +753,7 @@
 
   <rule id="18250" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-\s*21\.+\s*-498\p*</regex>
+    <regex> ID:\s+%{S-1-5-\s*21\.+\s*-498}</regex>
     <description>Enterprise Read-only Domain Controllers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -761,7 +761,7 @@
 
   <rule id="18251" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-\s*21\.+\s*-529\p*</regex>
+    <regex> ID:\s+%{S-1-5-\s*21\.+\s*-529}</regex>
     <description>Read-only Domain Controllers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -769,7 +769,7 @@
 
   <rule id="18252" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-569\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-569}</regex>
     <description>Cryptographic Operators Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -777,7 +777,7 @@
 
   <rule id="18253" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-\s*21\.+\s*-571\p*</regex>
+    <regex> ID:\s+%{S-1-5-\s*21\.+\s*-571}</regex>
     <description>Allowed RODC Password Replication Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -785,7 +785,7 @@
 
   <rule id="18254" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-\s*21\.+\s*-572\p*</regex>
+    <regex> ID:\s+%{S-1-5-\s*21\.+\s*-572}</regex>
     <description>Denied RODC Password Replication Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -793,7 +793,7 @@
 
   <rule id="18255" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-573\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-573}</regex>
     <description>Event Log Readers Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
@@ -801,7 +801,7 @@
 
   <rule id="18256" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex>\w* ID:\s+\p*S-1-5-32-574\p*</regex>
+    <regex> ID:\s+%{S-1-5-32-574}</regex>
     <description>Certificate Service DCOM Access Group Changed</description>
     <group>group_changed,win_group_changed,</group>
     <info>http://support.microsoft.com/kb/243330</info>
