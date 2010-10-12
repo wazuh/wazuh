@@ -17,7 +17,7 @@ isUpdate()
     if [ $? = 0 ]; then
         . ${OSSEC_INIT}
         if [ "X$DIRECTORY" = "X" ]; then
-            echo "# ERROR: The variable DIRECTORY was not set" 1>&2
+            echo "# ($FUNCNAME) ERROR: The variable DIRECTORY wasn't set" 1>&2
             echo "${FALSE}"
             return 1;
         fi
@@ -27,7 +27,7 @@ isUpdate()
             return 0;
         fi
     else
-        echo "# ERROR: Cannot access the file #{OSSEC_INIT}" 1>&2
+        echo "# ($FUNCNAME) ERROR: Cannot access the file ${OSSEC_INIT}" 1>&2
     fi
     echo "${FALSE}"
     return 1;
@@ -42,7 +42,7 @@ doUpdatecleanup()
     . ${OSSEC_INIT}
 
     if [ "X$DIRECTORY" = "X" ]; then
-        echo "# ERROR: The variable DIRECTORY wasn't not set." 1>&2
+        echo "# ($FUNCNAME) ERROR: The variable DIRECTORY wasn't set." 1>&2
         echo "${FALSE}"
         return 1;
     fi
@@ -50,7 +50,7 @@ doUpdatecleanup()
     # Checking if the directory is valid.
     echo $DIRECTORY | grep -E "^/[a-zA-Z0-9/-]{3,128}$" > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-        echo "# ERROR: directory name ($DIRECTORY) isn't valid" 1>&2
+        echo "# ($FUNCNAME) ERROR: directory name ($DIRECTORY) isn't valid" 1>&2
         echo "${FALSE}"
         return 1;
     fi
