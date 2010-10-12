@@ -220,8 +220,8 @@ char *seechanges_addfile(char *filename)
     /* Get md5sum of the new file. */
     if(OS_MD5_File(filename, md5sum_new) != 0)
     {
-        merror("%s: ERROR: Invalid internal state (missing '%s').",
-               ARGV0, filename); 
+        //merror("%s: ERROR: Invalid internal state (missing '%s').",
+        //       ARGV0, filename); 
         return(NULL);
     }
 
