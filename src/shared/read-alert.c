@@ -90,6 +90,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
     int _r = 0, log_size;
     char *p;
 
+    char *alertid = NULL;
     char *date = NULL;
     char *comment = NULL;
     char *location = NULL;
@@ -115,6 +116,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             {
                 alert_data *al_data;
                 os_calloc(1, sizeof(alert_data), al_data);
+                al_data->alertid = alertid;
                 al_data->level = level;
                 al_data->rule = rule;
                 al_data->location = location;
@@ -138,6 +140,17 @@ alert_data *GetAlertData(int flag, FILE *fp)
         if(strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0)
         {
             p = str + ALERT_BEGIN_SZ + 1;
+
+            char * m = strstr(p, ":");
+            if (!m)
+            {
+                continue;
+            }
+
+            int z = strlen(p) - strlen(m);
+            os_realloc(alertid, (z + 1)*sizeof(char *), alertid);
+            strncpy(alertid, p, z);
+            alertid[z] = '\0';
             
             /* Searching for email flag */
             p = strchr(p, ' ');
