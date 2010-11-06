@@ -57,6 +57,13 @@ int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, int csv_output,
     sk_strchr(gid, ':', md5);
     sk_strchr(md5, ':', sha1);
     
+    p_size = size;
+    p_perm = perm;
+    p_uid = uid;
+    p_gid = gid;
+    p_md5 = md5;
+    p_sha1 = sha1;
+
     if(strcmp(attrs, "-1") == 0)
     {
         printf("File deleted. ");
@@ -78,12 +85,6 @@ int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, int csv_output,
     }
     else
     {
-        p_size = size;
-        p_perm = perm;
-        p_uid = uid;
-        p_gid = gid;
-        p_md5 = md5;
-        p_sha1 = sha1;
         printf("File added to the database. ");
     }
 
