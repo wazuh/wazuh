@@ -27,6 +27,12 @@
 #define RULE_BEGIN_SZ   6
 #define SRCIP_BEGIN     "Src IP: "
 #define SRCIP_BEGIN_SZ  8
+#define SRCPORT_BEGIN     "Src Port: "
+#define SRCPORT_BEGIN_SZ  10
+#define DSTIP_BEGIN     "Dst IP: "
+#define DSTIP_BEGIN_SZ  8
+#define DSTPORT_BEGIN     "Dst Port: "
+#define DSTPORT_BEGIN_SZ  10
 #define USER_BEGIN      "User: "
 #define USER_BEGIN_SZ   6
 #define ALERT_MAIL      "mail"
@@ -88,10 +94,11 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *comment = NULL;
     char *location = NULL;
     char *srcip = NULL;
+    char *dstip = NULL;
     char *user = NULL;
     char *group = NULL;
     char **log = NULL;
-    int level, rule;
+    int level, rule, srcport, dstport;
     
     char str[OS_BUFFER_SIZE+1];
     str[OS_BUFFER_SIZE]='\0';
@@ -101,7 +108,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
     {
         
         /* Enf of alert */
-        if(strcmp(str, "\n") == 0)
+        if(strcmp(str, "\n") == 0 && log_size > 0)
         {
             /* Found in here */
             if(_r == 2)
@@ -115,6 +122,9 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 al_data->group = group;
                 al_data->log = log;
                 al_data->srcip = srcip;
+                al_data->srcport = srcport;
+                al_data->dstip = dstip;
+                al_data->dstport = dstport;
                 al_data->user = user;
                 al_data->date = date;
                
@@ -256,6 +266,30 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 
                 p = str + SRCIP_BEGIN_SZ;
                 os_strdup(p, srcip);
+            }
+            /* srcport */
+            else if(strncmp(SRCPORT_BEGIN, str, SRCPORT_BEGIN_SZ) == 0)
+            {
+                os_clearnl(str,p);
+                
+                p = str + SRCPORT_BEGIN_SZ;
+                srcport = atoi(p);
+            }
+            /* dstip */
+            else if(strncmp(DSTIP_BEGIN, str, DSTIP_BEGIN_SZ) == 0)
+            {
+                os_clearnl(str,p);
+                
+                p = str + DSTIP_BEGIN_SZ;
+                os_strdup(p, dstip);
+            }
+            /* dstport */
+            else if(strncmp(DSTPORT_BEGIN, str, DSTPORT_BEGIN_SZ) == 0)
+            {
+                os_clearnl(str,p);
+                
+                p = str + DSTPORT_BEGIN_SZ;
+                dstport = atoi(p);
             }
             /* username */
             else if(strncmp(USER_BEGIN, str, USER_BEGIN_SZ) == 0)

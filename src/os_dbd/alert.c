@@ -108,6 +108,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
 {
     int i;
     unsigned int s_ip = 0, d_ip = 0, location_id = 0;
+    unsigned short s_port = 0, d_port = 0;
     int *loc_id;
     char sql_query[OS_SIZE_8192 +1];
     char *fulllog = NULL;
@@ -129,7 +130,24 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
             s_ip = net.s_addr;
         }
     }
-    d_ip = 0;
+
+    /* Converting dstip to int */
+    if(al_data->dstip)
+    {
+        struct in_addr net;
+
+        /* Extracting ip address */
+        if(inet_aton(al_data->dstip, &net))
+        {
+            d_ip = net.s_addr;
+        }
+    }
+
+    /* Source Port */
+    s_port = al_data->srcport;
+
+    /* Destination Port */
+    d_port = al_data->dstport;
 
 
     /* Escaping strings */
@@ -211,10 +229,12 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     /* Generating final SQL */
     snprintf(sql_query, OS_SIZE_8192,
             "INSERT INTO "
-            "alert(id,server_id,rule_id,timestamp,location_id,src_ip) "
-            "VALUES ('%u', '%u', '%u','%u', '%u', '%lu')",
+            "alert(id,server_id,rule_id,timestamp,location_id,src_ip,src_port,dst_ip,dst_port) "
+            "VALUES ('%u', '%u', '%u','%u', '%u', '%lu', '%u', '%lu', '%u')",
             db_config->alert_id, db_config->server_id, al_data->rule,
-            (unsigned int)time(0), *loc_id, (unsigned long)ntohl(s_ip));
+            (unsigned int)time(0), *loc_id,
+            (unsigned long)ntohl(s_ip), (unsigned short)s_port,
+            (unsigned long)ntohl(d_ip), (unsigned short)d_port);
 
 
     /* Inserting into the db */

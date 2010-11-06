@@ -54,7 +54,7 @@ void OS_LogOutput(Eventinfo *lf)
     printf(
            "** Alert %d.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'\n"
-            "Src IP: %s\nUser: %s\n%.1256s\n",
+            "Src IP: %s\nSrc Port: %s\nDst IP: %s\nDst Port: %s\nUser: %s\n%.1256s\n",
             lf->time,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT?" mail ":"",
@@ -70,6 +70,9 @@ void OS_LogOutput(Eventinfo *lf)
             lf->generated_rule->level,
             lf->generated_rule->comment,
             lf->srcip == NULL?"(none)":lf->srcip,
+            lf->srcport == NULL?"(none)":lf->srcport,
+            lf->dstip == NULL?"(none)":lf->dstip,
+            lf->dstport == NULL?"(none)":lf->dstport,
             lf->dstuser == NULL?"(none)":lf->dstuser,
             lf->full_log);
 
@@ -102,7 +105,7 @@ void OS_Log(Eventinfo *lf)
     fprintf(_aflog,
             "** Alert %d.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'\n"
-            "Src IP: %s\nUser: %s\n%.1256s\n",
+            "Src IP: %s\nSrc Port: %s\nDst IP: %s\nDst Port: %s\nUser: %s\n%.1256s\n",
             lf->time,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT?" mail ":"",
@@ -118,6 +121,9 @@ void OS_Log(Eventinfo *lf)
             lf->generated_rule->level,
             lf->generated_rule->comment,
             lf->srcip == NULL?"(none)":lf->srcip,
+            lf->srcport == NULL?"(none)":lf->srcport,
+            lf->dstip == NULL?"(none)":lf->dstip,
+            lf->dstport == NULL?"(none)":lf->dstport,
             lf->dstuser == NULL?"(none)":lf->dstuser,
             lf->full_log);
 

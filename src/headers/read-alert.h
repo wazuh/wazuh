@@ -30,6 +30,9 @@ typedef struct _alert_data
     char *comment;
     char *group;
     char *srcip;
+    int srcport;
+    char *dstip;
+    int dstport;
     char *user;
     char **log;
 }alert_data;
