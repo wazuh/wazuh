@@ -262,6 +262,14 @@ int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip)
 
     server.sin_addr.s_addr = inet_addr(_ip);
 
+    #ifdef HPUX
+    {
+    int flags;
+    flags = fcntl(ossock,F_GETFL,0);
+    fcntl(ossock, F_SETFL, flags | O_NONBLOCK);
+    }
+    #endif
+
     if(connect(ossock,(struct sockaddr *)&server, _cl) < 0)
         return(OS_SOCKTERR);
 

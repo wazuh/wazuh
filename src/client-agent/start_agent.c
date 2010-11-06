@@ -120,7 +120,7 @@ int connect_server(int initial_id)
         {
             /* Setting socket non-blocking on HPUX */
             #ifdef HPUX
-            fcntl(logr->sock, O_NONBLOCK);
+            //fcntl(logr->sock, O_NONBLOCK);
             #endif
 
             #ifdef WIN32
