@@ -19,7 +19,7 @@
 time_t g_saved_time = 0;
 
 
-char *rand_keepalive_str(char *dst, int size)
+char *rand_keepalive_str2(char *dst, int size)
 {
     static const char text[] = "abcdefghijklmnopqrstuvwxyz"
                                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -143,7 +143,7 @@ void run_notify()
         }
     }
 
-    rand_keepalive_str(keep_alive_random, 700);
+    rand_keepalive_str2(keep_alive_random, 700);
 
 
     /* creating message */
