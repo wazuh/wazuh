@@ -70,7 +70,7 @@
     <if_sid>5700</if_sid>
     <match>error: Could not get shadow information for NOUSER|</match>
     <match>fatal: Read from socket failed: |error: ssh_msg_send: write|</match>
-    <match>^syslogin_perform_logout: </match>
+    <match>^syslogin_perform_logout: |^pam_succeed_if(sshd:auth): error retrieving information about user</match>
     <description>Useless SSHD message without an user/ip and context.</description>
   </rule>
   

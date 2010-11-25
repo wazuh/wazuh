@@ -39,6 +39,7 @@ static int file_in_list(int list_size, char *f_name, char *d_name, char **alist)
 int Read_Rules(XML_NODE node, void *configp, void *mailp)
 {
     int i = 0;
+    int ii = 0;
 
     int rules_size = 1;
     int lists_size = 1;
@@ -213,7 +214,6 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
                 /* Sort just then newly added items */
                 qsort(Config->decoders + start_point , decoders_size- start_point -1, sizeof(char *), cmpr);
             }
-            int ii=0;
             debug1("decoders_size %d", decoders_size);
             for(ii=0;ii<decoders_size-1;ii++)
                 debug1("- %s", Config->decoders[ii]);
