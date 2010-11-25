@@ -1936,4 +1936,14 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
 
 
 
+<!-- OpenLDAP decoder.
+  - Jan 11 09:26:57 hostname slapd2.4[20872]: conn=999999 fd=64 ACCEPT from IP=10.10.248.27:33957 (IP=10.10.241.77:389)
+  -->
+<decoder name="openldap">
+   <program_name>^slapd</program_name>
+   <regex>^conn=(\d+) </regex>
+   <order>id</order>
+</decoder>
+
+
 <!-- EOF -->

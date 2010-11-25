@@ -154,19 +154,20 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
 
 
         /* Checking if the number of matches worked */
+        if(currently_rule->__frequency <= 10)
+        {
+            currently_rule->last_events[currently_rule->__frequency]
+                = lf->full_log;
+            currently_rule->last_events[currently_rule->__frequency+1]
+                = NULL;
+        }
+
         if(currently_rule->__frequency < currently_rule->frequency)
         {
-            if(currently_rule->__frequency <= 10)
-            {
-                currently_rule->last_events[currently_rule->__frequency]
-                    = lf->full_log;
-                currently_rule->last_events[currently_rule->__frequency+1]
-                    = NULL;
-            }
-
             currently_rule->__frequency++;
             continue;
         }
+        currently_rule->__frequency++;
 
 
         /* If reached here, we matched */
