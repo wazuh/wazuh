@@ -139,15 +139,17 @@ alert_data *GetAlertData(int flag, FILE *fp)
         /* Checking for the header */
         if(strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0)
         {
+            char *m;
+            int z = 0;
             p = str + ALERT_BEGIN_SZ + 1;
 
-            char * m = strstr(p, ":");
+            m = strstr(p, ":");
             if (!m)
             {
                 continue;
             }
 
-            int z = strlen(p) - strlen(m);
+            z = strlen(p) - strlen(m);
             os_realloc(alertid, (z + 1)*sizeof(char *), alertid);
             strncpy(alertid, p, z);
             alertid[z] = '\0';
