@@ -102,6 +102,11 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
         }
         
         message++; /* Pointing now to the location */
+
+        if(strncmp(message, "keepalive",9) == 0)
+        {
+            return(0);
+        }
         
         snprintf(tmpstr,OS_MAXSTR,"%c:%s->%s",loc, locmsg, message);
     }
