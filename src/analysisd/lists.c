@@ -33,13 +33,13 @@ int Lists_OP_LoadList(char * listfile)
     /* XXX Jeremy: I hate this.  I think I'm missing something dumb here */
     char *holder;
     char a_filename[OS_MAXSTR];
-    a_filename[OS_MAXSTR - 2] = '\0';
     char b_filename[OS_MAXSTR];
+    ListNode *tmp_listnode_pt = NULL;
+
+    a_filename[OS_MAXSTR - 2] = '\0';
     b_filename[OS_MAXSTR - 2] = '\0';
 
-    ListNode *tmp_listnode_pt = NULL;
     tmp_listnode_pt = (ListNode *)calloc(1,sizeof(ListNode));
-    debug1("crated new listnode for %s\n", listfile);
     if (tmp_listnode_pt == NULL)
         ErrorExit(MEM_ERROR,ARGV0);
     snprintf(a_filename, OS_MAXSTR-1, "%s", listfile);
