@@ -68,10 +68,10 @@
     <!-- <info>http://www.isc.org/index.pl?/sw/bind/FAQ.php</info> dead link, and don't know what the issue is with this -->
   </rule>
 
-  <rule id="12108" level="4">
+  <rule id="12108" level="0">
     <if_sid>12100</if_sid>
-    <match>query (cache) denied</match>
-    <description>Query cache denied (maybe config error).</description>
+    <match>query (cache) denied|: query (cache)</match>
+    <description>Query cache denied (probably config error).</description>
     <info type="link">http://www.reedmedia.net/misc/dns/errors.html</info>
   </rule>
   
