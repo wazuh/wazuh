@@ -14,6 +14,8 @@
 #include "syscheck.h"
 #include "config/config.h"
 
+char *SYSCHECK_EMPTY[] = { NULL };
+
 int Read_Syscheck_Config(char * cfgfile)
 {
     int modules = 0;
@@ -49,11 +51,27 @@ int Read_Syscheck_Config(char * cfgfile)
     #endif
               
 
+    #ifndef WIN32
     /* We must have at least one directory to check */
     if(!syscheck.dir || syscheck.dir[0] == NULL)
     {
         return(1);
     }
+
+    #else
+    /* We must have at least one directory or registry key to check. Since
+       it's possible on Windows to have syscheck enabled but only monitoring
+       either the filesystem or the registry, both lists must be valid,
+       even if empty.
+     */
+    if(!syscheck.dir) syscheck.dir = SYSCHECK_EMPTY;
+    if(!syscheck.registry) syscheck.registry = SYSCHECK_EMPTY;
+
+    if((syscheck.dir[0] == NULL) && (syscheck.registry[0] == NULL))
+    {
+        return(1);
+    }
+    #endif
                                         
 
     return(0);
