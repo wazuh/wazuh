@@ -97,7 +97,18 @@ int connect_server(int initial_id)
                 logr->rip[rc],
                 logr->port);
 
-        logr->sock = OS_ConnectUDP(logr->port, tmp_str);
+        /* IPv6 address: */
+        if(strchr(tmp_str,':') != NULL)
+        {
+            verbose("%s: INFO: Using IPv6 for: %s .", ARGV0, tmp_str);
+            logr->sock = OS_ConnectUDP(logr->port, tmp_str, 1);
+        }
+        else
+        {
+            verbose("%s: INFO: Using IPv4 for: %s .", ARGV0, tmp_str);
+            logr->sock = OS_ConnectUDP(logr->port, tmp_str, 0);
+        }
+
         if(logr->sock < 0)
         {
             logr->sock = -1;

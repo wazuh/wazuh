@@ -23,8 +23,6 @@
 #include "os_net.h"
 
 
-struct sockaddr_in _c;	    /* Client socket */
-socklen_t _cl;              /* Client socket length */
 
 
 /* Unix socket -- not for windows */
@@ -47,15 +45,16 @@ int ENOBUFS = 0;
  * Bind a specific port
  * v0.2: Added REUSEADDR.
  */
-int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip)
+int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
 {
     int ossock;
     struct sockaddr_in server;
+    struct sockaddr_in6 server6;
 
     
     if(_proto == IPPROTO_UDP)
     {
-        if((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
+        if((ossock = socket(ipv6 == 1?PF_INET6:PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
         {
             return OS_SOCKTERR;
         }
@@ -63,7 +62,7 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip)
     else if(_proto == IPPROTO_TCP)
     {
         int flag = 1;
-        if((ossock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+        if((ossock = socket(ipv6 == 1?PF_INET6:PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
         {
             return(int)(OS_SOCKTERR);
         }
@@ -79,19 +78,39 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip)
         return(OS_INVALID);
     }
 
-    memset(&server, 0, sizeof(server));
-    server.sin_family = AF_INET;
-    server.sin_port = htons( _port );
-
-    if((_ip == NULL)||(_ip[0] == '\0'))
-        server.sin_addr.s_addr = htonl(INADDR_ANY);
-    else
-        server.sin_addr.s_addr = inet_addr(_ip);
-
-    if(bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0)
+    if(ipv6)
     {
-        return(OS_SOCKTERR);
+        memset(&server6, 0, sizeof(server6));
+        server6.sin6_family = AF_INET6;
+        server6.sin6_port = htons( _port );
+        server6.sin6_addr = in6addr_any;
+
+
+        if(bind(ossock, (struct sockaddr *) &server6, sizeof(server6)) < 0)
+        {
+            return(OS_SOCKTERR);
+        }
     }
+    else
+    {
+        memset(&server, 0, sizeof(server));
+        server.sin_family = AF_INET;
+        server.sin_port = htons( _port );
+
+
+        if((_ip == NULL)||(_ip[0] == '\0'))
+            server.sin_addr.s_addr = htonl(INADDR_ANY);
+        else
+            server.sin_addr.s_addr = inet_addr(_ip);
+
+
+        if(bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0)
+        {
+            return(OS_SOCKTERR);
+        }
+    }
+
+
 
     if(_proto == IPPROTO_TCP)
     {
@@ -102,7 +121,6 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip)
     }
     
     
-    _cl = sizeof(_c);
     return(ossock);
 }
 
@@ -110,18 +128,18 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip)
 /* OS_Bindporttcp v 0.1
  * Bind a TCP port, using the OS_Bindport
  */
-int OS_Bindporttcp(unsigned int _port, char *_ip)
+int OS_Bindporttcp(unsigned int _port, char *_ip, int ipv6)
 {
-    return(OS_Bindport(_port, IPPROTO_TCP, _ip));
+    return(OS_Bindport(_port, IPPROTO_TCP, _ip, ipv6));
 }
 
 
 /* OS_Bindportudp v 0.1
  * Bind a UDP port, using the OS_Bindport
  */
-int OS_Bindportudp(unsigned int _port, char *_ip)
+int OS_Bindportudp(unsigned int _port, char *_ip, int ipv6)
 {
-    return(OS_Bindport(_port, IPPROTO_UDP, _ip));
+    return(OS_Bindport(_port, IPPROTO_UDP, _ip, ipv6));
 }
 
 #ifndef WIN32
@@ -233,34 +251,26 @@ int OS_getsocketsize(int ossock)
 /* OS_Connect v 0.1, 2004/07/21
  * Open a TCP/UDP client socket 
  */
-int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip)
+int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6)
 {
     int ossock;
     struct sockaddr_in server;
+    struct sockaddr_in6 server6;
 
     if(protocol == IPPROTO_TCP)
     {
-        if((ossock = socket(PF_INET,SOCK_STREAM,IPPROTO_TCP)) < 0)
+        if((ossock = socket(ipv6 == 1?PF_INET6:PF_INET,SOCK_STREAM,IPPROTO_TCP)) < 0)
             return(OS_SOCKTERR);
     }
     else if(protocol == IPPROTO_UDP)
     {
-        if((ossock = socket(PF_INET,SOCK_DGRAM,IPPROTO_UDP)) < 0)
+        if((ossock = socket(ipv6 == 1?PF_INET6:PF_INET,SOCK_DGRAM,IPPROTO_UDP)) < 0)
             return(OS_SOCKTERR);
     }
     else
         return(OS_INVALID);
 
-    _cl = sizeof(server);	
 
-    memset(&server, 0, _cl);
-    server.sin_family = AF_INET;
-    server.sin_port = htons( _port );
-
-    if((_ip == NULL)||(_ip[0] == '\0'))
-        return(OS_INVALID);        
-
-    server.sin_addr.s_addr = inet_addr(_ip);
 
     #ifdef HPUX
     {
@@ -270,8 +280,34 @@ int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip)
     }
     #endif
 
-    if(connect(ossock,(struct sockaddr *)&server, _cl) < 0)
-        return(OS_SOCKTERR);
+
+
+    if((_ip == NULL)||(_ip[0] == '\0'))
+        return(OS_INVALID);        
+
+
+    if(ipv6 == 1)
+    {
+        memset(&server6, 0, sizeof(server6));
+        server6.sin6_family = AF_INET6;
+        server6.sin6_port = htons( _port );
+        inet_pton(AF_INET6, _ip, &server6.sin6_addr.s6_addr);
+
+        if(connect(ossock,(struct sockaddr *)&server6, sizeof(server6)) < 0)
+            return(OS_SOCKTERR);
+    }
+    else
+    {
+        memset(&server, 0, sizeof(server));
+        server.sin_family = AF_INET;
+        server.sin_port = htons( _port );
+        server.sin_addr.s_addr = inet_addr(_ip);
+
+
+        if(connect(ossock,(struct sockaddr *)&server, sizeof(server)) < 0)
+            return(OS_SOCKTERR);
+    }
+
 
     return(ossock);
 }
@@ -280,18 +316,18 @@ int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip)
 /* OS_ConnectTCP, v0.1
  * Open a TCP socket
  */
-int OS_ConnectTCP(unsigned int _port, char *_ip)
+int OS_ConnectTCP(unsigned int _port, char *_ip, int ipv6)
 {
-    return(OS_Connect(_port, IPPROTO_TCP,_ip));
+    return(OS_Connect(_port, IPPROTO_TCP, _ip, ipv6));
 }
 
 
 /* OS_ConnectUDP, v0.1
  * Open a UDP socket 
  */
-int OS_ConnectUDP(unsigned int _port, char *_ip)
+int OS_ConnectUDP(unsigned int _port, char *_ip, int ipv6)
 {
-    return(OS_Connect(_port, IPPROTO_UDP,_ip));
+    return(OS_Connect(_port, IPPROTO_UDP, _ip, ipv6));
 }
 
 /* OS_SendTCP v0.1, 2004/07/21
@@ -419,7 +455,7 @@ char *OS_RecvUDP(int socket, int sizet)
     if(ret == NULL)
         return(NULL);
 
-    if((recvfrom(socket,ret,sizet-1,0,(struct sockaddr *)&_c,&_cl))<0)
+    if((recv(socket,ret,sizet-1,0))<0)
         return(NULL);
 
     return(ret);

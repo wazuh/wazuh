@@ -23,8 +23,8 @@
  * If the IP is not set, it is going to use ADDR_ANY
  * Return the socket.
  */
-int OS_Bindporttcp(unsigned int _port, char *_ip);
-int OS_Bindportudp(unsigned int _port, char *_ip);
+int OS_Bindporttcp(unsigned int _port, char *_ip, int ipv6);
+int OS_Bindportudp(unsigned int _port, char *_ip, int ipv6);
 
 /* OS_BindUnixDomain
  * Bind to a specific file, using the "mode" permissions in
@@ -38,8 +38,8 @@ int OS_getsocketsize(int ossock);
 /* OS_Connect
  * Connect to a TCP/UDP socket
  */
-int OS_ConnectTCP(unsigned int _port, char *_ip);
-int OS_ConnectUDP(unsigned int _port, char *_ip);
+int OS_ConnectTCP(unsigned int _port, char *_ip, int ipv6);
+int OS_ConnectUDP(unsigned int _port, char *_ip, int ipv6);
 
 /* OS_RecvUDP
  * Receive a UDP packet. Return NULL if failed

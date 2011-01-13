@@ -67,7 +67,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, F
 
 
     /* Connecting to the smtp server */	
-    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, smtpserver);
+    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, smtpserver, 0);
     if(socket < 0)
     {
         return(socket);

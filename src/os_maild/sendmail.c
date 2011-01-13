@@ -64,7 +64,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
 
     /* Connecting to the smtp server */	
-    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver);
+    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver, 0);
     if(socket < 0)
     {
         return(socket);
@@ -300,7 +300,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     
 
     /* Connecting to the smtp server */	
-    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver);
+    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver, 0);
     if(socket < 0)
     {
         return(socket);

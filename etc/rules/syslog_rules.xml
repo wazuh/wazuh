@@ -65,6 +65,12 @@
     <description>Process exiting (killed).</description>
     <group>service_availability,</group>
   </rule>
+
+  <rule id="1009" level="0">
+    <if_sid>1002</if_sid>
+    <match>terminated without error</match>
+    <description>Ignoring known false positives on rule 1002..</description>
+  </rule>
 </group> <!-- SYSLOG,ERRORS -->
 
 

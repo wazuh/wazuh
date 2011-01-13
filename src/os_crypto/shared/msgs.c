@@ -227,8 +227,8 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
                                  int id, int buffer_size)
 {
     int cmp_size;
-    unsigned int msg_global;
-    unsigned int msg_local;
+    unsigned int msg_global = 0;
+    unsigned int msg_local = 0;
 
     char *f_msg;
     

@@ -27,6 +27,7 @@ typedef struct _remoted
     int *proto;
     int *port;
     int *conn;
+    int *ipv6;
 
     char **lip;
 	os_ip **allowips;

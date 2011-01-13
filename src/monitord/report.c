@@ -23,6 +23,7 @@ void report_help()
     printf("\t-f <filter> <value> Filter the results.\n");
     printf("\t-r <filter> <value> Show related entries.\n");
     printf("\t-n                  Creates a description for the report.\n");
+    printf("\t-s                  Show the alert dump.\n");
     printf("Examples:\n");
     printf("\t-f group authentication success (to filter on login success).\n");
     printf("\t-f level 10  (to filter on level >= 10).\n");
@@ -58,6 +59,7 @@ int main(int argc, char **argv)
     r_filter.location = NULL;
     r_filter.srcip = NULL;
     r_filter.user = NULL;
+    r_filter.show_alerts = 0;
 
     r_filter.related_group = 0;
     r_filter.related_rule = 0;
@@ -68,7 +70,7 @@ int main(int argc, char **argv)
     
     r_filter.report_name = NULL;
 
-    while((c = getopt(argc, argv, "Vdhtu:g:D:c:f:v:n:r:")) != -1)
+    while((c = getopt(argc, argv, "Vdhstu:g:D:c:f:v:n:r:")) != -1)
     {
         switch(c){
             case 'V':
@@ -133,6 +135,8 @@ int main(int argc, char **argv)
             case 't':
                 test_config = 1;    
                 break;
+            case 's':
+                r_filter.show_alerts = 1;
             default:
                 report_help();
                 break;
