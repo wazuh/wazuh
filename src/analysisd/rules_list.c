@@ -375,6 +375,10 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid)
             r_node->ruleinfo->decoded_as = newrule->decoded_as;
             r_node->ruleinfo->ar = newrule->ar;
             r_node->ruleinfo->compiled_rule = newrule->compiled_rule;
+            if((newrule->context_opts & SAME_DODIFF) && r_node->ruleinfo->last_events == NULL)
+            {
+                r_node->ruleinfo->last_events = newrule->last_events;
+            }
 
             return(1);
         }
