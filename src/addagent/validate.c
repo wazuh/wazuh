@@ -12,6 +12,72 @@
 
 
 #include "manage_agents.h"
+#include "os_crypto/md5/md5_op.h"
+
+char *OS_AddNewAgent(char *name, char *ip, char *id, char *key)
+{
+    int i = 0;
+    FILE *fp;
+    int rand1;
+    os_md5 md1;
+    os_md5 md2;
+    char str1[STR_SIZE +1];
+    char str2[STR_SIZE +1];
+    char *muname = NULL;
+    char *finals = NULL;
+
+    char nid[9];
+
+
+    #ifndef WIN32
+        #ifdef __OpenBSD__
+        srandomdev();
+        #else
+        srandom(time(0) + getpid() + getppid());
+        #endif
+    #else
+        srandom(time() + getpid());
+    #endif
+
+    rand1 = random();
+    muname = getuname();
+
+    snprintf(str1, STR_SIZE, "%d%s%d%s",(int)time(0), name, rand1, muname);
+    snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, random());
+    OS_MD5_Str(str1, md1);
+    OS_MD5_Str(str2, md2);
+
+
+    nid[8] = '\0';
+    if(id == NULL)
+    {
+        i = 1024;
+        snprintf(nid, 6, "%d", i);
+        while(IDExist(nid))
+        {
+            i++;
+            snprintf(nid, 6, "%d", i);
+            if(i >= 4000)
+            {
+                return(NULL);
+            }
+        }
+        id = nid;
+    }
+
+    fp = fopen(KEYSFILE_PATH,"a");
+    if(!fp)
+    {
+        return(NULL);
+    }
+
+    os_calloc(2048, sizeof(char), finals);
+    snprintf(finals, 2048, "%s %s any %s%s",id, name, md1,md2);
+    fprintf(fp, "%s\n",finals);
+
+    fclose(fp);
+    return(finals);
+}
 
 
 int OS_IsValidID(char *id)
@@ -129,7 +195,11 @@ int IDExist(char *id)
     if(!id)
         return(0);
 
-    fp = fopen(AUTH_FILE, "r");
+    if(isChroot())
+      fp = fopen(AUTH_FILE, "r");
+    else
+      fp = fopen(KEYSFILE_PATH, "r");
+
     if(!fp)
         return(0);
 
@@ -202,7 +272,11 @@ int NameExist(char *u_name)
        (*u_name == '\n'))
         return(0);
 
-    fp = fopen(AUTH_FILE, "r");
+    if(isChroot())
+      fp = fopen(AUTH_FILE, "r");
+    else
+      fp = fopen(KEYSFILE_PATH, "r");
+
     if(!fp)
         return(0);
 
