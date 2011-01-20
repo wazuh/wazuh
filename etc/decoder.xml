@@ -1,4 +1,4 @@
-<!-- @(#) $Id$
+<!-- @(#) $Id: decoder.xml,v 1.166 2010/06/15 12:52:01 dcid Exp $
   -  OSSEC log decoder.
   -  Author: Daniel B. Cid
   -  License: http://www.ossec.net/en/licensing.html
@@ -61,6 +61,14 @@
   <order>user</order>
 </decoder>  
 
+<!--XXXX<decoder name="pam-user2">
+  <parent>pam</parent>
+  <prematch>^session \S+ </prematch>
+  <regex>for user (\S+)</regex>
+  <order>user</order>
+</decoder>
+-->
+
 <decoder name="pam-host-user">
   <parent>pam</parent>
   <prematch>rhost=\S+\s+user=\S+</prematch>
@@ -74,7 +82,6 @@
   <regex offset="after_prematch">^=(\S+)</regex>
   <order>srcip</order>
 </decoder>
-
 
   
 <!-- SSH decoder.
@@ -103,6 +110,26 @@
   -  Apr 23 07:03:53 machinename sshd[29961]: User root from 12.3.4.5
   not allowed because not listed in AllowUsers
   -  sshd[9815]: scanned from 127.0.0.1 with SSH-1.99-AKASSH_Version_Mapper1.  Don't panic.
+  -  Sep  4 23:58:33 junction sshd[9351]: fatal: Write failed: Broken pipe
+  -  Sep 18 14:58:47 ix sshd[11816]: error: Could not load host key: /etc/ssh/ssh_host_ecdsa_key
+  -  Sep 23 10:32:25 server sshd[25209]: pam_ldap: error trying to bind as user "uid=user123,ou=People,dc=domain,dc=com" (Invalid credentials)
+  -  Aug 10 08:38:40 junction sshd[20013]: error: connect_to 192.168.179 port 8080: failed
+  -  Jun  9 00:00:01 ix sshd[9815]: scanned from 127.0.0.1 with SSH-1.99-AKASSH_Version_Mapper1.  Don't panic.
+  -  Jan 26 11:57:26 ix sshd[14879]: error: connect to ix.example.com port 7777 failed: Connection refused
+  -  Oct  8 10:07:27 y sshd[7644]: debug1: attempt 2 failures 2
+  -  Oct  8 08:58:37 y sshd[6956]: fatal: PAM: pam_setcred(): Authentication service cannot retrieve user credentials
+  -  Oct  8 08:48:33 y sshd[6856]: error: Bind to port 22 on 0.0.0.0 failed: Address already in use.
+  -  Oct  8 11:18:26 172.16.51.132 sshd[7618]: error: PAM: Module is unknown for ddp from 172.16.51.1
+  -  Jun 19 20:56:00 tiny sshd[11605]: fatal: Write failed: Host is down
+  -  Jun 11 06:32:17 gorilla sshd[28293]: fatal: buffer_get_bignum2: buffer error
+  -  Jun 11 06:32:17 gorilla sshd[28293]: error: buffer_get_bignum2_ret: negative numbers not supported
+  -  Apr 14 19:28:21 gorilla sshd[31274]: Connection closed by 192.168.1.33
+  -  Jun 22 12:01:13 junction sshd[11283]: Received disconnect from 212.14.228.46: 11: Bye Bye
+  -  Nov  9 07:40:25 ginaz sshd[5973]: error: setsockopt SO_KEEPALIVE: Connection reset by peer
+  -  Nov  2 12:08:27 192.168.17.7 sshd[9665]: fatal: Cannot bind any address.
+  -  Nov  2 12:11:40 192.168.17.7 sshd[9814]: pam_loginuid(sshd:session): set_loginuid failed opening loginuid
+  -  Nov  6 09:53:38 hagal sshd[697]: error: accept: Software caused connection abort
+  -  Nov  9 11:36:55 ecaz sshd[26967]: pam_succeed_if(sshd:auth): error retrieving information about user _z9xxbBW
   -->
 
 <decoder name="sshd">
@@ -186,6 +213,55 @@
   <prematch>^refused connect </prematch>
   <regex offset="after_prematch">^from (\S+)$</regex>
   <order>srcip</order>
+</decoder>
+
+<decoder name="ssh-closed">
+  <parent>sshd</parent>
+  <prematch>^Connection closed </prematch>
+  <regex offset="after_prematch">^by (\S+)$</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="ssh-disconnect">
+  <parent>sshd</parent>
+  <prematch>^Received disconnect </prematch>
+  <regex offset="after_prematch">^from (\S+):</regex>
+  <order>srcip</order>
+</decoder>
+
+<!--XXX
+<decoder name="ssh-pam">
+  <parent>sshd</parent>
+  <prematch>PAM: Module</prematch>
+  <regex>for (\S+) from (\S+)$</regex>
+  <order>user, srcip</order>
+</decoder>
+
+<decoder name="ssh-connect-to">
+  <parent>sshd</parent>
+  <prematch>connect_to</prematch>
+  <regex>connect_to: (\S+) port (\d+):</regex>
+  <order>dstip,dstport</order>
+</decoder>
+-->
+
+<decoder name="sshd-ldap">
+  <parent>sshd</parent>
+  <prematch>^pam_ldap: </prematch>
+  <regex>user "uid=(\S+),ou=\w+,dc=\w+,dc=\w+"</regex>
+  <order>user</order>
+</decoder>
+
+
+<!-- Dropbear rules -->
+<decoder name="dropbear">
+  <program_name>^dropbear</program_name>
+</decoder>
+
+<decoder name="dropbear-from">
+  <parent>dropbear</parent>
+  <regex>for '(\S+)' from (\S+):\d+$</regex>
+  <order>dstuser,srcip</order>
 </decoder>
 
 
@@ -277,6 +353,23 @@
   <order>srcip</order>
 </decoder>
 
+<decoder name="smbd-from">
+  <parent>smbd</parent>
+  <prematch> from (\S+)$</prematch>
+  <regex> from (\S+)$</regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="smbd-client">
+  <parent>smbd</parent>
+  <prematch>to client \S+.</prematch>
+  <regex>to client (\S+). </regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="nmbd">
+  <program_name>^nmbd</program_name>
+</decoder>
 
 
 <!-- Sudo decoder.
@@ -320,6 +413,13 @@
   <regex>^'su (\S+)' \S+ for (\S+) on \S+$</regex>
   <order>dstuser, srcuser</order>
   <fts>name, srcuser, location</fts>
+</decoder>
+
+<decoder name="su-ldap">
+  <parent>su</parent>
+  <prematch>pam_ldap</prematch>                                                                                                                                        
+  <regex>user "uid=(\S+),</regex>
+  <order>user</order>
 </decoder>
 
 <decoder name="su-detail2">
@@ -442,7 +542,8 @@
   <parent>ftpd</parent>
   <prematch>^Failed authentication from: \S+ |</prematch>
   <prematch>^repeated login failures from </prematch>
-  <regex offset="after_prematch">[(\d+.\d+.\d+.\d+)]$</regex>
+  <!--<regex offset="after_prematch">(\S+)</regex>-->
+  <regex offset="after_prematch">^\S+ [(\d+.\d+.\d+.\d+)]$|^(\S+)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -474,6 +575,8 @@
   - arpwatch: new station 192.168.1.103 0:11:43:5e:5d:80 eth0
   - arpwatch: bogon 172.16.150.149 0:2:b3:d6:e5:68 eth0
   - arpwatch: new station 192.168.2.10 0:c0:4f:78:32:be
+  - arpwatch: pcap open re0: /dev/bpf0: Permission denied
+  - arpwatch: reused old ethernet address 192.168.17.248 0:e:3b:a:cb:67 (0:1e:8c:72:b0:d0)
   -->
 <decoder name="arpwatch">
   <program_name>^arpwatch</program_name>
@@ -675,10 +778,20 @@
   - Examples:
   -  valhalla named[7885]: client 192.168.1.231#1142: update 'hayaletgemi.edu/IN' denied
   - named[12637]: client 1.2.3.4#32769: query (cache) 'somedomain.com/MX/IN' denied
+  -  Oct 22 10:12:33 junction named[31687]: /etc/blocked.slave:9892: syntax error near ';'
+  -  Oct 22 10:12:33 junction named[31687]: reloading configuration failed: unexpected token
  -->           
 <decoder name="named">
   <program_name>^named</program_name>
 </decoder>
+
+<decoder name="named-query">
+  <parent>named</parent>
+  <prematch>: query: </prematch>
+  <regex>client (\S+)#\d+: query: (\S+) IN </regex>
+  <order>srcip,url</order>
+</decoder>
+
 
 <decoder name="named_client">
   <parent>named</parent>  
@@ -693,6 +806,12 @@
   <order>srcip</order>
 </decoder>
 
+<decoder name="named-master">
+  <parent>named</parent>
+  <prematch> for master</prematch>
+  <regex>for master (\d+.\d+.\d+.\d+):(\d+) \S+ \(source (\d+.\d+.\d+.\d+)#d+\)$</regex>
+  <order>dstip,dstport,srcip</order>
+</decoder>
 
 
 <!-- Postfix  decoder.
@@ -810,6 +929,28 @@
 </decoder>
 
 
+<!-- OpenBSD smtpd decoders -->
+
+<decoder name="smtpd">
+  <program_name>smtpd</program_name>
+</decoder>
+
+<decoder name="smtpd-client">
+  <parent>smtpd</parent>
+  <prematch offset="after_parent">^client</prematch>
+  <regex>^client (\S+) </regex>
+  <order>srcip</order>
+</decoder>
+
+<decoder name="smtpd-relay">
+  <parent>smtpd</parent>
+  <prematch>relay=</prematch>
+  <regex>relay=\S+ [(\S+)], </regex>
+  <order>srcip</order>
+</decoder>
+
+
+
 <!-- Iptables decoder.
   - Will extract the srcip, dstip, srcport, dstport, protocol
   - Examples:
@@ -880,6 +1021,14 @@
    <order>srcport,dstport</order>
 </decoder>   
 
+<decoder name="iptables-shorewall2">
+  <parent>iptables</parent>
+  <type>firewall</type>
+  <prematch>^\p\S+\p Shorewall:\S+:</prematch>
+  <regex offset="after_prematch">^(\S+):\.+ SRC=(\S+) DST=(\S+) \.+ </regex>
+  <regex>PROTO=(\w+) </regex>
+  <order>action,srcip,dstip,protocol</order>
+</decoder>
 
 
 <!-- Solaris IPFilter decoder.
@@ -1183,6 +1332,28 @@
 
 
 
+<!-- OpenBSD isakmpd decoders -->
+
+<decoder name="isakmpd">
+  <program_name>^isakmpd</program_name>
+</decoder>
+
+<decoder name="isakmpd-from">
+  <parent>isakmpd</parent>
+  <prematch>message from </prematch>
+  <regex>from (\S+) port (\d+)</regex>
+  <order>srcip,srcport</order>
+</decoder>
+
+<decoder name="isakmpd-peer">
+  <parent>isakmpd</parent>
+  <prematch>from peer</prematch>
+  <regex>from peer (\S+):(\d+)$</regex>
+  <order>srcip,srcport</order>
+</decoder>
+
+
+
 <!-- Suhosin decoder.
   - Will extract the attack name and srcip.
   - Examples:
@@ -1349,10 +1520,11 @@
      200 1732
   -  1.1.1.1 - username [18/Jan/2006:13:10:06 -0500] "GET /xxx.html HTTP/1.1"   
   -  123.4.5.6 aa.xx.com - [05/Nov/2006:00:46:56 -0500] "GET / HTTP/1.1" 302 -
+  - ::ffff:202.194.15.192 190.7.138.180 - [18/Oct/2010:10:48:55 -0500] "GET //php-my-admin/config/config.inc.php?p=phpinfo(); HTTP/1.1" 404 345 "-"  "Mozilla/4.0 (compatible; MSIE 6.0; Windows 98)"
   -->
 <decoder name="web-accesslog">
   <type>web-log</type>
-  <prematch>^\d+.\d+.\d+.\d+ </prematch>
+  <prematch>^\d+.\d+.\d+.\d+ |^::ffff:\d+.\d+.\d+.\d+ </prematch>
   <regex>^(\d+.\d+.\d+.\d+) \S+ \S+ [\S+ \S\d+] </regex>
   <regex>"\w+ (\S+) HTTP\S+ (\d+) </regex>
   <order>srcip, url, id</order>
@@ -1747,6 +1919,13 @@
   <program_name>^asterisk</program_name>
 </decoder>
 
+<decoder name="asterisk-hijacking">
+  <parent>asterisk</parent>
+  <prematch>^WARNING[\d+]: \S+ in \S+: Don't know </prematch>
+  <regex offset="after_prematch">^\S+ how to respond via '(\w+/\d.\d/\w+)'</regex>
+  <order>user</order>
+</decoder>
+
 <decoder name="asterisk-denied">
   <parent>asterisk</parent>
   <prematch>^NOTICE[\d+]: \S+ in \S+: Registration from </prematch>
@@ -1754,7 +1933,19 @@
   <order>srcip</order>
 </decoder>
 
+<decoder name="asterisk-denied2">
+  <parent>asterisk</parent>
+  <prematch>Registration from </prematch>
+  <regex offset="after_prematch">failed for '(\d+.\d+.\d+.\d+)'</regex>
+  <order>srcip</order>
+</decoder>
 
+<decoder name="asterisk-iax-authentication-denied">
+  <parent>asterisk</parent>
+  <prematch>^NOTICE[\d+]: \S+ in \S+: Host </prematch>
+  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) failed MD5 authentication for (\S+)</regex>
+  <order>srcip, user</order>
+</decoder>
 
 <!-- Cisco IOS
   - Group for Cisco IOS messages.
@@ -1927,13 +2118,143 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
   -  Server 2008 DHCP IPv6 Decoder (must go second)
   -  ID,Date,Time,Description,IPV6 Address,Host Name,Error Code, Duid Length, Duid Bytes(Hex),User Name.
 -->
-11020,05/05/09,00:00:38,DHCPV6
 <decoder name="ms-dhcp-ipv6">
   <prematch>^\d\d\d\d\d,\d\d/\d\d/\d\d,\d\d:\d\d:\d\d,</prematch>
   <regex>^(\d\d\d\d\d),</regex>
   <order>id</order>
 </decoder>
 
+
+<!-- OpenBSD kernel messages -->
+<decoder name="bsd_kernel">
+  <program_name>^/bsd</program_name>
+</decoder>
+
+<decoder name="bsd_arp">
+  <parent>bsd_kernel</parent>
+  <prematch offset="after_parent">^arp </prematch>
+  <regex offset="after_prematch"> for (\S+) by (\S+) on \S+</regex>
+  <order>dstip, extra_data</order>
+</decoder>
+
+
+<!-- OpenBSD mountd decoder
+- Apr 11 20:01:02 ix mountd[11618]: Refused mount RPC from host 192.168.17.10 port 45659
+-->
+
+<decoder name="mountd">
+  <program_name>^mountd</program_name>
+</decoder>
+
+<decoder name="mountd-host">
+  <parent>mountd</parent>
+  <prematch>from host </prematch>
+  <regex offset="after_prematch">(\S+) port \d+$</regex>
+  <order>srcip</order>
+</decoder>
+
+
+<!-- bro-ids decoders
+  - Aug 25 08:52:10 junction bro: no=PortScanSummary na=NOTICE_ALARM_ALWAYS es=bro sa=192.168.17.8 num=988 msg=192.168.17.8\\\\ scanned\\\\ a\\\\ total\\\\ of\\\\ 988\\\\ ports tag=@ef-24ad-af
+  - Aug 26 12:34:27 junction bro: no=PortScan na=NOTICE_ALARM_ALWAYS es=bro sa=192.168.17.8 p=17/tcp num=250 msg=192.168.17.8\\ has\\ scanned\\ 250\\ ports\\ of\\ 192.168.17.17 tag=@11-68e9-5
+  - junction bro: Starting incremental serialization...
+  - junction bro: Finished incremental serialization.
+  - ix bro: no=NoticeTally na=NOTICE_ALARM_ALWAYS es=bro num=307 msg=AckAboveHole\\ (307\\ times) tag=@81-2fd-1f9
+  - ix bro: no=NoticeTally na=NOTICE_ALARM_ALWAYS es=bro num=7 msg=ContentGap\\ (7\\ times) tag=@81-2fd-1fa
+  - ix bro: no=ResourceSummary na=NOTICE_ALARM_ALWAYS es=bro msg=elapsed\\ time\\ \\=\\ 376.0\\ msecs\\ 174.0\\ usecs,\\ total\\ CPU\\ \\=\\ 390.0\\ msecs,\\ maximum\\ memory\\ \\=\\ 0\\ KB,\\ peak\\ connections\\ \\=\\ 0,\\ peak\\ timers\\ \\=\\ 84,\\ peak\\ fragments\\ \\=\\ 0 tag=@69-1f25-1
+  - junction bro: no=PortScanSummary na=NOTICE_ALARM_ALWAYS es=bro sa=192.168.17.8 num=988 msg=192.168.17.8\\\\ scanned\\\\ a\\\\ total\\\\ of\\\\ 988\\\\ ports tag=@ef-24ad-af
+  - junction bro: no=ZoneTransfer na=NOTICE_ALARM_ALWAYS es=bro sa=192.168.1.9 sp=4175/tcp da=192.168.1.17 dp=53/tcp p=53/tcp msg=transfer\\ of\\example.com\\ requested\\ by\\ 192.168.1.9 tag=@61-3a46-d
+  - ix bro: no=SensitivePortmapperAccess na=NOTICE_ALARM_ALWAYS es=bro sa=192.168.17.8 sp=2957/tcp da=192.168.17.9 dp=111/tcp p=111/tcp msg=rpc:\\ 192.168.17.8/2957\\ >\\ 192.168.17.9/portmap\\ pm_dump:\\ (done) tag=@46-764d-5d
+  - junction bro: no=PortScan na=NOTICE_ALARM_ALWAYS es=bro sa=192.168.17.8 p=17/tcp num=250 msg=192.168.17.8\\ has\\ scanned\\ 250\\ ports\\ of\\ 192.168.17.17 tag=@11-68e9-5
+-->
+
+<decoder name="bro-ids">
+  <program_name>^bro</program_name>
+</decoder>
+
+<decoder name="bro-portscan">
+  <parent>bro-ids</parent>
+  <prematch>no=PortscanSummary</prematch>
+  <regex>sa=(\S+) num=(\d+) msg=</regex>
+  <order>srcip,extra_data</order>
+</decoder>
+
+<decoder name="bro-portscan2">
+  <parent>bro-ids</parent>
+  <prematch>no=PortScan </prematch>
+  <regex>sa=(\S+) p=(\d+)/(\S+) num=(\d+)</regex>
+  <order>srcip,srcport,protocol,extra_data</order>
+</decoder>
+
+<decoder name="bro-typical">
+  <parent>bro-ids</parent>
+  <prematch>na=NOTICE</prematch>
+  <regex>sa=(\S+) sp=(\d+)/(\S+) da=(\S+) dp=(\d+)/\S+</regex>
+  <order>srcip,srcport,protocol,dstip,dstport</order>
+</decoder>
+
+
+
+<!-- nss ldap decoders
+- Jun 26 08:19:25 servername sh: nss_ldap: reconnecting to LDAP server (sleeping 32 seconds)...
+- Aug 16 10:58:12 client nscd: nss_ldap: failed to bind to LDAP server ldap://ldap.example.com: Can't contact LDAP server
+-->
+<!--
+<decoder name="nss-ldap">
+  <program_name>^sh$|^nscd$</program_name>
+  <prematch>^nss_ldap</prematch>
+</decoder>
+
+<decoder name="ldap-server">
+  <parent>nss-ldap</parent>
+  <prematch> server </prematch>
+  <regex offset="after_prematch">ldap://(\S+):</regex>
+  <order>system_name</order>
+</decoder>
+-->
+
+
+
+<!-- OpenBSD groupdel
+  - May 28 09:15:43 ix groupdel[25984]: group deleted: name=_dbus
+-->
+<decoder name="groupdel">
+  <program_name>groupdel</program_name>
+  <regex>^group deleted: name=(\S+)$</regex>
+  <order>extra_data</order>
+</decoder>
+
+
+<!-- Portsentry -->
+<decoder name="portsentry">
+  <program_name>^portsentry</program_name>
+</decoder>
+
+<decoder name="portsentry-attackalert">
+  <parent>portsentry</parent>
+  <prematch>attackalert: Connect from host: </prematch>
+  <regex offset="after_prematch">(\S+)/\S+ to (\S+) port: (\d+)$</regex>
+  <order>srcip,protocol,dstport</order>
+</decoder>
+
+<decoder name="portsentry-blocked">
+  <parent>portsentry</parent>
+  <prematch>is already blocked. Ignoring$</prematch>
+  <regex>Host: (\S+) is</regex>
+  <order>srcip</order>
+</decoder>
+
+
+<!-- Clamav and Freshclam decoder
+  -  Nov  5 22:59:19 ix freshclam[32349]: Incremental update failed, trying to download daily.cvd
+-->
+<decoder name="clamd">
+  <program_name>^clamd</program_name>
+</decoder>
+
+<decoder name="freshclam">
+  <program_name>^freshclam</program_name>
+</decoder>
 
 
 <!-- OpenLDAP decoder.
@@ -1943,6 +2264,32 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
    <program_name>^slapd</program_name>
    <regex>^conn=(\d+) </regex>
    <order>id</order>
+</decoder>
+
+
+
+<!-- NTP decoder 
+  - gorilla ntpd[27379]: bad sensor nmea0
+  - tiny ntpd[25875]: bad peer 192.168.1.233 (192.168.1.233)
+  - gorilla ntpd[29719]: bind on 192.168.1.233 failed, skipping: Can't assign requested address
+  - ix ntpd[8392]: bind on 192.168.17.9 failed, skipping: Address already in use
+  - ix ntpd[11685]: bad peer from pool pool.ntp.org (64.73.32.135)
+  - richese ntpd[3465]: bad peer ix (192.168.17.9)
+  - ix ntpd[11685]: bad peer from pool pool.ntp.org (69.50.219.51)
+  - ix ntpd[7045]: recvmsg 192.168.17.17: Connection refused
+  - ix ntpd[29411]: 2 out of 3 peers valid
+  - bridge ntpd[5877]: logconfig: illegal argument  - ignored
+  - bridge ntpd[5902]: offset 0.000000 sec freq 0.000 ppm error 0.000011 poll 6
+-->
+<decoder name="ntpd">
+  <program_name>^ntpd</program_name>
+</decoder>
+
+<decoder name="ntpd-bad-peer">
+  <parent>ntpd</parent>
+  <prematch offset="after_parent">^bad peer </prematch>
+  <regex>^bad peer \S+ \p(\S+)\p$|^bad peer from pool \S+ \p(\S+)\p$</regex>
+  <order>srcip</order>
 </decoder>
 
 
