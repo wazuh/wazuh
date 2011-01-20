@@ -65,7 +65,6 @@
     <if_sid>12100</if_sid>
     <regex>update \S+ denied</regex>
     <description>DNS update using RFC2136 Dynamic protocol.</description>
-    <!-- <info>http://www.isc.org/index.pl?/sw/bind/FAQ.php</info> dead link, and don't know what the issue is with this -->
   </rule>
 
   <rule id="12108" level="0">
@@ -100,5 +99,199 @@
     <regex>^zone \S+: expired</regex>
     <description>Zone transfer error.</description>
   </rule>
-  
+
+  <rule id="12113" level="0">
+    <if_sid>12100</if_sid>
+    <match>zone transfer deferred due to quota</match>
+    <description>Zone transfer deferred.</description>
+  </rule>
+
+  <rule id="12114" level="1">
+    <if_sid>12100</if_sid>
+    <match>bad owner name (check-names)</match>
+    <description>Hostname contains characters that check-names does not like.</description>
+  </rule>
+
+  <rule id="12115" level="0">
+    <if_sid>12100</if_sid>
+    <match>loaded serial|transferred serial</match>
+    <description>Zone transfer.</description>
+  </rule>
+
+  <rule id="12116" level="1">
+    <if_sid>12100</if_sid>
+    <match>syntax error near|</match>
+    <match>reloading configuration failed: unexpected token</match>
+    <description>Syntax error in a named configuration file.</description>
+  </rule>
+
+
+  <rule id="12117" level="1">
+    <if_sid>12100</if_sid>
+    <regex>refresh: retry limit for master \S+ exceeded</regex>
+    <description>Zone transfer rety limit exceeded</description>
+  </rule>
+
+  <rule id="12118" level="1">
+    <if_sid>12100</if_sid>
+    <match>already exists previous definition</match>
+    <description>Zone has been duplicated.</description>
+  </rule>
+
+  <rule id="12119" level="3">
+    <if_sid>12100</if_sid>
+    <match>starting BIND</match>
+    <description>BIND has been started</description>
+  </rule>
+
+  <rule id="12120" level="1">
+    <if_sid>12100</if_sid>
+    <match>has no address records</match>
+    <description>Missing A or AAAA record</description>
+  </rule>
+
+  <rule id="12121" level="1">
+    <if_sid>12100</if_sid>
+    <regex>zone \S+: \(master\) removed</regex>
+    <description>Zone has been removed from a master server</description>
+  </rule>
+
+  <rule id="12122" level="1">
+    <if_sid>12100</if_sid>
+    <regex>loading from master file \S+ failed: not at top of zone$</regex>
+    <description>Origin of zone and owner name of SOA do not match.</description>
+  </rule>
+
+  <rule id="12123" level="0">
+    <if_sid>12100</if_sid>
+    <match>already exists previous definition</match>
+    <description>Zone has been duplicated</description>
+  </rule>
+
+  <rule id="12125" level="3">
+    <if_sid>12100</if_sid>
+    <match>reloading configuration failed: unexpected end of input</match>
+    <description>BIND Configuration error.</description>
+  </rule>
+
+  <rule id="12126" level="0">
+    <if_sid>12100</if_sid>
+    <regex>zone \S+: \(master\) removed</regex>
+    <description>Zone has been removed from a master server</description>
+  </rule>
+
+  <rule id="12127" level="1">
+    <if_sid>12100</if_sid>
+    <regex>loading from master file \S+ failed: not at top of zone$</regex>
+    <description>Origin of zone and owner name of SOA do not match.</description>
+  </rule>
+
+  <rule id="12128" level="1">
+    <if_sid>12100</if_sid>
+    <match>^transfer of</match>
+    <description>Zone transfer.</description>
+  </rule>
+
+  <rule id="12129" level="4">
+    <if_sid>12128</if_sid>
+    <match>failed to connect: connection refused</match>
+    <description>Zone transfer failed, unable to connect to master.</description>
+  </rule>
+
+  <rule id="12130" level="2">
+    <if_sid>12100</if_sid>
+    <match>IPv6 interfaces failed</match>
+    <description>Could not listen on IPv6 interface.</description>
+  </rule>
+
+  <rule id="12131" level="2">
+    <if_sid>12100</if_sid>
+    <match>failed; interface ignored</match>
+    <description>Could not bind to an interface.</description>
+  </rule>
+
+  <rule id="12132" level="0">
+    <if_sid>12128</if_sid>
+    <match>failed while receiving responses: not authoritative</match>
+    <description>Master is not authoritative for zone.</description>
+  </rule>
+
+  <rule id="12133" level="4">
+    <if_sid>12100</if_sid>
+    <regex>open: \S+: permission denied$</regex>
+    <description>Could not open configuration file, permission denied.</description>
+  </rule>
+
+  <rule id="12134" level="4">
+    <if_sid>12100</if_sid>
+    <match>loading configuration: permission denied</match>
+    <description>Could not open configuration file, permission denied.</description>
+  </rule>
+
+  <rule id="12135" level="0">
+    <if_sid>12100</if_sid>
+    <match>IN SOA -E</match>
+    <description>Domain in SOA -E.</description>
+  </rule>
+
+  <rule id="12136" level="4">
+    <if_sid>12128</if_sid>
+    <match>failed to connect: host unreachable</match>
+    <description>Master appears to be down.</description>
+  </rule>
+
+  <rule id="12137" level="0">
+    <if_sid>12100</if_sid>
+    <match>IN AXFR -</match>
+    <description>Domain is queried for a zone transferred.</description>
+  </rule>
+
+  <rule id="12138" level="0">
+    <if_sid>12100</if_sid>
+    <match> IN A +</match>
+    <description>Domain A record found.</description>
+  </rule>
+
+  <rule id="12139" level="3">
+    <if_sid>12100</if_sid>
+    <regex>client \S+: bad zone transfer request: \S+: non-authoritative zone \(NOTAUTH\)</regex>
+    <description>Bad zone transfer request.</description>
+  </rule>
+
+  <rule id="12140" level="2">
+    <if_sid>12100</if_sid>
+    <match>refresh: failure trying master</match>
+    <description>Cannot refresh a domain from the master server.</description>
+  </rule>
+
+  <rule id="12141" level="1">
+    <if_sid>12100</if_sid>
+    <match>SOA record not at top of zone</match>
+    <description>Origin of zone and owner name of SOA do not match.</description>
+  </rule>
+
+  <rule id="12142" level="0">
+    <if_sid>12100</if_sid>
+    <match>command channel listening on</match>
+    <description>named command channel is listening.</description>
+  </rule>
+
+  <rule id="12143" level="0">
+    <if_sid>12100</if_sid>
+    <match>automatic empty zone</match>
+    <description>named has created an automatic empty zone.</description>
+  </rule>
+
+  <rule id="12144" level="9">
+    <if_sid>12100</if_sid>
+    <match>reloading configuration failed: out of memory</match>
+    <description>Server does not have enough memory to reload the configuration.</description>
+  </rule>
+
+  <rule id="12145" level="1">
+    <if_sid>12100</if_sid>
+    <regex>zone transfer \S+ denied</regex>
+    <description>zone transfer denied</description>
+  </rule>
+
 </group> <!-- SYSLOG,NAMED -->
