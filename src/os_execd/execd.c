@@ -32,6 +32,8 @@ typedef struct _timeout_data
 /* Timeout list */
 OSList *timeout_list;
 OSListNode *timeout_node;
+OSHash *repeated_hash;
+int repeated_offenders_timeout[] = {0,0,0,0,0,0,0};
             
 
 
@@ -269,6 +271,17 @@ void ExecdStart(int q)
     {
         ErrorExit(LIST_ERROR, ARGV0);
     }
+
+
+    if(repeated_offenders_timeout[0] != 0)
+    {
+        repeated_hash = OSHash_Create();
+    }
+    else
+    {
+        repeated_hash = NULL;
+    }
+
     
    
     /* Main loop. */
@@ -460,6 +473,8 @@ void ExecdStart(int q)
             added_before = 1;
             merror("%s: Invalid number of arguments.", ARGV0);
         }
+
+        
         
         while(timeout_node)
         {
@@ -477,6 +492,42 @@ void ExecdStart(int q)
 
                 /* updating the timeout */
                 list_entry->time_of_addition = curr_time;
+
+                if(repeated_offenders_timeout[0] != 0 && 
+                   repeated_hash != NULL &&
+                   strncmp(timeout_args[3],"-", 1) != 0)
+                {
+                    char *ntimes = NULL;
+                    char rkey[256];
+                    rkey[255] = '\0';
+                    snprintf(rkey, 255, "%s%s", list_entry->command[0],
+                                                timeout_args[3]);
+
+                    if((ntimes = OSHash_Get(repeated_hash, rkey)))
+                    {
+                        int ntimes_int = 0;
+                        int i2 = 0;
+                        int new_timeout = 0;
+                        ntimes_int = atoi(ntimes);
+                        while(repeated_offenders_timeout[i2] != 0)
+                        {
+                            i2++;
+                        }
+                        if(ntimes_int >= i2)
+                        {
+                            new_timeout = repeated_offenders_timeout[i2 - 1]*60;
+                        }
+                        else
+                        {
+                            os_calloc(10, sizeof(char), ntimes);
+                            new_timeout = repeated_offenders_timeout[ntimes_int]*60;
+                            ntimes_int++;
+                            snprintf(ntimes, 9, "%d", ntimes_int);
+                            OSHash_Update(repeated_hash,rkey,ntimes);
+                        }
+                        list_entry->time_to_block = new_timeout;
+                    }
+                }
                 break;
             }
 
@@ -494,6 +545,45 @@ void ExecdStart(int q)
             /* We don't need to add to the list if the timeout_value == 0 */
             if(timeout_value)
             {
+                char *ntimes;
+                char rkey[256];
+                rkey[255] = '\0';
+                snprintf(rkey, 255, "%s%s", timeout_args[0],
+                                            timeout_args[3]);
+
+                if((ntimes = OSHash_Get(repeated_hash, rkey)))
+                {
+                    int ntimes_int = 0;
+                    int i2 = 0;
+                    int new_timeout = 0;
+
+                    ntimes_int = atoi(ntimes);
+                    while(repeated_offenders_timeout[i2] != 0)
+                    {
+                        i2++;
+                    }
+                    if(ntimes_int >= i2)
+                    {
+                        new_timeout = repeated_offenders_timeout[i2 - 1]*60;
+                    }
+                    else
+                    {
+                        os_calloc(10, sizeof(char), ntimes);
+                        new_timeout = repeated_offenders_timeout[ntimes_int]*60;
+                        ntimes_int++;
+                        snprintf(ntimes, 9, "%d", ntimes_int);
+                        OSHash_Update(repeated_hash, rkey, ntimes);
+                    }
+                    timeout_value = new_timeout;
+                }
+                else
+                {
+                    /* Adding to the repeated offenders list. */
+                    OSHash_Add(repeated_hash, 
+                           strdup(rkey),strdup("0"));
+                }
+
+
                 /* Creating the timeout entry */
                 os_calloc(1, sizeof(timeout_data), timeout_entry);
                 timeout_entry->command = timeout_args;

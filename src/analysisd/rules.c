@@ -933,7 +933,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     else if(strcasecmp(rule_opt[k]->element,
                                xml_dodiff)==0)
                     {
-                        config_ruleinfo->context++;
+                        config_ruleinfo->context = 1;
                         config_ruleinfo->context_opts|= SAME_DODIFF;
                         if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;

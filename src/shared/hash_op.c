@@ -175,6 +175,45 @@ int OSHash_setSize(OSHash *self, int new_size)
 }
 
 
+/** int OSHash_Update(OSHash *self, char *key, void *data)
+ * Returns 0 on error (not found).
+ * Returns 1 on successduplicated key (not added)
+ * Key must not be NULL.
+ */
+int OSHash_Update(OSHash *self, char *key, void *data)
+{
+    unsigned int hash_key;
+    unsigned int index;
+
+    OSHashNode *curr_node;
+    OSHashNode *new_node;
+    
+
+    /* Generating hash of the message */
+    hash_key = _os_genhash(self, key);
+
+
+    /* Getting array index */
+    index = hash_key % self->rows;
+         
+
+    /* Checking for duplicated entries in the index */
+    curr_node = self->table[index];
+    while(curr_node)
+    {
+        /* Checking for duplicated key -- not adding */
+        if(strcmp(curr_node->key, key) == 0)
+        {
+            free(curr_node->data);
+            curr_node->data = data;
+            return(1);
+        }
+        curr_node = curr_node->next;
+    }
+    return(0);
+}
+
+
 
 /** int OSHash_Add(OSHash *self, char *key, void *data)
  * Returns 0 on error.

@@ -53,8 +53,8 @@ void OS_LogOutput(Eventinfo *lf)
 {
     printf(
            "** Alert %d.%ld:%s - %s\n"
-            "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'\n"
-            "Src IP: %s\nSrc Port: %s\nDst IP: %s\nDst Port: %s\nUser: %s\n%.1256s\n",
+            "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
+            "%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
             lf->time,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT?" mail ":"",
@@ -69,11 +69,22 @@ void OS_LogOutput(Eventinfo *lf)
             lf->generated_rule->sigid,
             lf->generated_rule->level,
             lf->generated_rule->comment,
-            lf->srcip == NULL?"(none)":lf->srcip,
-            lf->srcport == NULL?"(none)":lf->srcport,
-            lf->dstip == NULL?"(none)":lf->dstip,
-            lf->dstport == NULL?"(none)":lf->dstport,
-            lf->dstuser == NULL?"(none)":lf->dstuser,
+
+            lf->srcip == NULL?"":"\nSrc IP: ",
+            lf->srcip == NULL?"":lf->srcip,
+
+            lf->srcport == NULL?"":"\nSrc Port: ",
+            lf->srcport == NULL?"":lf->srcport,
+
+            lf->dstip == NULL?"":"\nDst IP: ",
+            lf->dstip == NULL?"":lf->dstip,
+
+            lf->dstport == NULL?"":"\nDst Port: ",
+            lf->dstport == NULL?"":lf->dstport,
+
+            lf->dstuser == NULL?"":"\nUser: ",
+            lf->dstuser == NULL?"":lf->dstuser,
+
             lf->full_log);
 
 
@@ -104,8 +115,8 @@ void OS_Log(Eventinfo *lf)
     /* Writting to the alert log file */
     fprintf(_aflog,
             "** Alert %d.%ld:%s - %s\n"
-            "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'\n"
-            "Src IP: %s\nSrc Port: %s\nDst IP: %s\nDst Port: %s\nUser: %s\n%.1256s\n",
+            "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
+            "%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
             lf->time,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT?" mail ":"",
@@ -120,11 +131,22 @@ void OS_Log(Eventinfo *lf)
             lf->generated_rule->sigid,
             lf->generated_rule->level,
             lf->generated_rule->comment,
-            lf->srcip == NULL?"(none)":lf->srcip,
-            lf->srcport == NULL?"(none)":lf->srcport,
-            lf->dstip == NULL?"(none)":lf->dstip,
-            lf->dstport == NULL?"(none)":lf->dstport,
-            lf->dstuser == NULL?"(none)":lf->dstuser,
+
+            lf->srcip == NULL?"":"\nSrc IP: ",
+            lf->srcip == NULL?"":lf->srcip,
+
+            lf->srcport == NULL?"":"\nSrc Port: ",
+            lf->srcport == NULL?"":lf->srcport,
+
+            lf->dstip == NULL?"":"\nDst IP: ",
+            lf->dstip == NULL?"":lf->dstip,
+
+            lf->dstport == NULL?"":"\nDst Port: ",
+            lf->dstport == NULL?"":lf->dstport,
+
+            lf->dstuser == NULL?"":"\nUser: ",
+            lf->dstuser == NULL?"":lf->dstuser,
+
             lf->full_log);
 
 

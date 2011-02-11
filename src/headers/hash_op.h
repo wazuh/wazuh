@@ -64,6 +64,7 @@ void *OSHash_Free(OSHash *self);
  * Key must not be NULL.
  */
 int OSHash_Add(OSHash *hash, char *key, void *data);
+int OSHash_Update(OSHash *hash, char *key, void *data);
 
 
 /** void *OSHash_Get(OSHash *self, char *key)

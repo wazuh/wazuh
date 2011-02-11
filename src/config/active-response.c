@@ -26,6 +26,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     int i = 0;
     int r_ar = 0;
     int l_ar = 0;
+    int rpt = 0;
 
 
     /* Xml options */
@@ -37,6 +38,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     char *xml_ar_level = "level";
     char *xml_ar_timeout = "timeout";
     char *xml_ar_disabled = "disabled";
+    char *xml_ar_repeated = "repeated_offenders";
 
     char *tmp_location;
 
@@ -151,6 +153,11 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
                 return(OS_INVALID);
             }
         }
+        else if(strcmp(node[i]->element, xml_ar_repeated) == 0)
+        {
+            /* Nothing - we deal with it on execd. */
+            rpt = 1;
+        }
         else
         {
             merror(XML_INVELEM, ARGV0, node[i]->element);
@@ -169,6 +176,11 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     /* Command and location must be there */
     if(!tmp_ar->command || !tmp_location)
     {
+        if(rpt == 1)
+        {
+            fclose(fp);
+            return(0);
+        }
         merror(AR_MISS, ARGV0);
         return(-1);
     }

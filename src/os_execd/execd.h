@@ -14,6 +14,7 @@
 
 
 #ifndef _EXECD_H
+#define _EXECD_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-execd"
@@ -59,6 +60,7 @@ int WinExecd_Start();
 void WinTimeoutRun(int timeout);
 
 void FreeTimeoutEntry(void *timeout_entry);
+
 
 
 
