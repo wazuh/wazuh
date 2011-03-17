@@ -26,8 +26,6 @@ isUpdate()
             echo "${TRUE}"
             return 0;
         fi
-    else
-        echo "# ($FUNCNAME) ERROR: Cannot access the file ${OSSEC_INIT}" 1>&2
     fi
     echo "${FALSE}"
     return 1;
