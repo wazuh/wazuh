@@ -407,10 +407,13 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
 
 
     /* Getting the expect */
-    if(OS_Regex("user", tmp_str))
-        tmp_command->expect |= USERNAME;
-    if(OS_Regex("srcip", tmp_str))
-        tmp_command->expect |= SRCIP;
+    if(strlen(tmp_str) > 4)
+    {
+        if(OS_Regex("user", tmp_str))
+            tmp_command->expect |= USERNAME;
+        if(OS_Regex("srcip", tmp_str))
+            tmp_command->expect |= SRCIP;
+    }
 
     free(tmp_str);
     tmp_str = NULL;
