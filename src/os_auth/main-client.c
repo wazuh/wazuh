@@ -10,6 +10,10 @@
  */
 
 
+#ifndef USE_OPENSSL
+
+#endif
+
 #include <openssl/ssl.h>
 #include "shared.h"
 #include "auth.h"

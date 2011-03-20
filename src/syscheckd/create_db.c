@@ -420,7 +420,7 @@ int run_dbcheck()
     int i = 0;
 
     __counter = 0;
-    while(syscheck.dir[i] != NULL);
+    while(syscheck.dir[i] != NULL)
     {
         read_dir(syscheck.dir[i], syscheck.opts[i], syscheck.filerestrict[i]);
         i++;
