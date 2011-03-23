@@ -60,7 +60,6 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
     char *xml_rules_rule = "rule";
     char *xml_rules_rules_dir = "rule_dir";
     char *xml_rules_lists = "list";
-    char *xml_rules_lists_dir = "list_dir";
     char *xml_rules_decoders = "decoder";
     char *xml_rules_decoders_dir = "decoder_dir";
 

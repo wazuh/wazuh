@@ -186,7 +186,6 @@ int OSHash_Update(OSHash *self, char *key, void *data)
     unsigned int index;
 
     OSHashNode *curr_node;
-    OSHashNode *new_node;
     
 
     /* Generating hash of the message */
