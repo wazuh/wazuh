@@ -157,7 +157,7 @@
     <if_sid>11200</if_sid>
     <match>error setting IPV6_V6ONLY: Protocol not available|</match>
     <match> - mod_delay/|PAM(setcred): System error|</match>
-    <match>PAM(close_session): System error|cap_set_proc failed|reverting to normal operation</match>
+    <match>PAM(close_session): System error|cap_set_proc failed|reverting to normal operation|error retrieving information about user</match>
     <description>IPv6 error and mod-delay info (ignored).</description>
   </rule>
   

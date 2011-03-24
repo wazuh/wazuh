@@ -732,9 +732,10 @@ int checkVista()
     }
 
 
-    /* We check if the system is vista (most be called during the startup. */
+    /* We check if the system is vista (must be called during the startup.) */
     if(strstr(m_uname, "Windows Server 2008") ||
-       strstr(m_uname, "Vista"))
+       strstr(m_uname, "Vista") ||
+       strstr(m_uname, "Windows 7"))
     {
         isVista = 1;
         verbose("%s: INFO: System is Vista or Windows Server 2008.", 
@@ -787,13 +788,25 @@ char *getuname()
     {
         /* Test for the Windows NT product family. */
         case VER_PLATFORM_WIN32_NT:
-            if(osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 0 )
+            if(osvi.dwMajorVersion == 6)
             {
-                if(osvi.wProductType == VER_NT_WORKSTATION )
-                    strncat(ret, "Microsoft Windows Vista ", ret_size -1);
-                else
+                if(osvi.dwMinorVersion == 0)
                 {
-                    strncat(ret, "Microsoft Windows Server 2008 ", ret_size -1);
+                    if(osvi.wProductType == VER_NT_WORKSTATION )
+                        strncat(ret, "Microsoft Windows Vista ", ret_size -1);
+                    else
+                    {
+                        strncat(ret, "Microsoft Windows Server 2008 ", ret_size -1);
+                    }
+                }
+                else if(osvi.dwMinorVersion == 1)
+                {
+                    if(osvi.wProductType == VER_NT_WORKSTATION )
+                        strncat(ret, "Microsoft Windows 7 ", ret_size -1);
+                    else
+                    {
+                        strncat(ret, "Microsoft Windows Server 2008 R2 ", ret_size -1);
+                    }
                 }
 
                 ret_size-=strlen(ret) +1;
