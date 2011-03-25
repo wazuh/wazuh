@@ -551,8 +551,10 @@ void ExecdStart(int q)
                 snprintf(rkey, 255, "%s%s", timeout_args[0],
                                             timeout_args[3]);
 
-                if((ntimes = OSHash_Get(repeated_hash, rkey)))
+                if(repeated_hash != NULL)
                 {
+                  if((ntimes = OSHash_Get(repeated_hash, rkey)))
+                  {
                     int ntimes_int = 0;
                     int i2 = 0;
                     int new_timeout = 0;
@@ -575,12 +577,13 @@ void ExecdStart(int q)
                         OSHash_Update(repeated_hash, rkey, ntimes);
                     }
                     timeout_value = new_timeout;
-                }
-                else
-                {
-                    /* Adding to the repeated offenders list. */
-                    OSHash_Add(repeated_hash, 
+                  }
+                  else
+                  {
+                      /* Adding to the repeated offenders list. */
+                      OSHash_Add(repeated_hash, 
                            strdup(rkey),strdup("0"));
+                  }
                 }
 
 
