@@ -52,6 +52,7 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
         while(reg->patterns[i])
         {
             /* Cleaning the prts_str */
+            j = 0;
             while(reg->prts_closure[i][j])
             {
                 reg->prts_str[i][j] = NULL;
