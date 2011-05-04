@@ -191,6 +191,12 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
         i++;
     }
     osdb_escapestr(fulllog);
+    if(strlen(fulllog) >  7456)
+    {
+        fulllog[7454] = '.';
+        fulllog[7455] = '.';
+        fulllog[7456] = '\0';
+    }
 
 
     /* Inserting data */
