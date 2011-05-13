@@ -56,6 +56,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
     syslog_config[s]->location = NULL;
     syslog_config[s]->level = 0;
     syslog_config[s]->port = 514;
+    syslog_config[s]->format = DEFAULT_CSYSLOG;
     /* local 0 facility (16) + severity 4 - warning. --default */
     syslog_config[s]->priority = (16 * 8) + 4;
 
@@ -164,6 +165,11 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
             if(strcmp(node[i]->content, "default") == 0)
             {
                 /* Default is full format */
+            }
+            else if (strcmp(node[i]->content, "cef") == 0)
+            {
+                /* Enable the CEF format */
+                syslog_config[s]->format = CEF_CSYSLOG;
             }
             else
             {
