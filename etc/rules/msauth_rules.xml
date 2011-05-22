@@ -68,7 +68,7 @@
 
   <rule id="18108" level="4">
     <if_sid>18105</if_sid>
-    <id>^577</id>
+    <id>^577$</id>
     <description>Failed attempt to perform a privileged </description>
     <description>operation.</description>
   </rule>
