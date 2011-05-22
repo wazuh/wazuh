@@ -147,20 +147,68 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     /* Inserting data */
     if(syslog_config->format == DEFAULT_CSYSLOG)
     {
-        /* Building syslog message. */
-        snprintf(syslog_msg, OS_SIZE_2048,
-                "<%d>%s %s ossec: Alert Level: %d; Rule: %d - %s; "
-                "Location: %s;%s%s  %s",
-                syslog_config->priority, tstamp, __shost,
-                al_data->level, al_data->rule, al_data->comment,
-                al_data->location, 
+       	/* Building syslog message. */
+       	snprintf(syslog_msg, OS_SIZE_2048,
+               	"<%d>%s %s ossec: Alert Level: %d; Rule: %d - %s; "
+               	"Location: %s;%s%s  %s",
+               	syslog_config->priority, tstamp, __shost,
+               	al_data->level, al_data->rule, al_data->comment,
+               	al_data->location, 
 
-                /* Source ip. */
-                srcip_msg,
-                user_msg,
-                al_data->log[0]);
+               	/* Source ip. */
+               	srcip_msg,
+               	user_msg,
+               	al_data->log[0]);
     }
+    else if(syslog_config->format == CEF_CSYSLOG)
+    {
+    	/* Adding source ip. */
+    	if(!al_data->srcip ||
+	       ((al_data->srcip[0] == '(') &&
+        	(al_data->srcip[1] == 'n') &&
+        	(al_data->srcip[2] == 'o')))
+    	{
+    	    srcip_msg[0] = '\0';
+    	}
+    	else
+    	{
+    	    snprintf(srcip_msg, 255, "%s", al_data->srcip);
+    	}
 
+	/* Adding username. */
+	if(!al_data->user ||
+	       ((al_data->user[0] == '(') &&
+	        (al_data->user[1] == 'n') &&
+        	(al_data->user[2] == 'o')))
+   	 {
+  	      user_msg[0] = '\0';
+  	  }
+  	  else
+  	  {
+  	      snprintf(user_msg, 255, "%s", al_data->user);
+ 	   }
+
+       	snprintf(syslog_msg, OS_SIZE_2048,
+
+               	"<%d>%s CEF:0|%s|%s|%s|%d|%s|%d|dvc=%s cs2=%s cs2Label=Location src=%s suser=%s msg=%s",
+               	syslog_config->priority,
+		tstamp,
+		__author,
+		__name,
+		__version,
+		al_data->rule,
+		al_data->comment,
+		(al_data->level > 10) ? 10 : al_data->level,
+		 __shost, al_data->location, 
+
+               	/* Source ip. */
+               	srcip_msg,
+               	user_msg,
+
+		/* Message */
+               	al_data->log[0]);
+
+    }
 
     OS_SendUDPbySize(syslog_config->socket, strlen(syslog_msg), syslog_msg);
     
