@@ -70,7 +70,7 @@ int read_dev_dir(char *dir_name)
                             "MAKEDEV.README", ".udevdb",
                             ".udev.tdb", ".initramfs-tools",
                             "MAKEDEV.local", ".udev", ".initramfs",
-                            "oprofile","fd",
+                            "oprofile","fd","cgroup",
     #ifdef SOLARIS                            
                             ".devfsadm_dev.lock",
                             ".devlink_db_lock",
