@@ -12,7 +12,7 @@
 
 #ifndef USE_OPENSSL
 
-#endif
+#else
 
 #include <openssl/ssl.h>
 #include "shared.h"
@@ -290,5 +290,5 @@ int main(int argc, char **argv)
     exit(0);
 }
 
-
+#endif
 /* EOF */
