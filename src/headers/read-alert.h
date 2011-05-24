@@ -35,6 +35,7 @@ typedef struct _alert_data
     char *dstip;
     int dstport;
     char *user;
+    char *filename;
     char **log;
 }alert_data;
 
