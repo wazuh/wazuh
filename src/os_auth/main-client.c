@@ -12,6 +12,13 @@
 
 #ifndef USE_OPENSSL
 
+int main()
+{
+    printf("ERROR: Not compiled. Missing OpenSSL support.\n");
+    exit(0);
+}
+
+
 #else
 
 #include <openssl/ssl.h>

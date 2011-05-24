@@ -10,6 +10,8 @@
  */
 
 
+#ifdef USE_OPENSSL
+
 #include "shared.h"
 #include "auth.h"
 
@@ -85,5 +87,6 @@ void *os_ssl_keys(int isclient, char *dir)
 }
 
 
+#endif
 
 /* EOF */
