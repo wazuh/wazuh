@@ -216,4 +216,64 @@
     <description>Microsoft Event log cleared.</description>
     <group>logs_cleared,</group>
   </rule>
+
+<!-- active response rules
+Example:
+Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh delete - 172.16.0.1 1304756247.60385 31151
+-->
+
+<rule id="600" level="0">
+    <decoded_as>ar_log</decoded_as>
+    <description>Active Response Messages Grouped</description>
+    <group>active_response,</group>
+  </rule>
+
+  <rule id="601" level="3">
+    <if_sid>600</if_sid>
+    <action>firewall-drop.sh</action>
+    <status>add</status>
+    <description>Host Blocked by firewall-drop.sh Active Response</description>
+    <group>active_response,</group>
+  </rule>
+
+  <rule id="602" level="3">
+    <if_sid>600</if_sid>
+    <action>firewall-drop.sh</action>
+    <status>delete</status>
+    <description>Host Unblocked by firewall-drop.sh Active Response</description>
+    <group>active_response,</group>
+  </rule>
+
+  <rule id="603" level="3">
+    <if_sid>600</if_sid>
+    <action>host-deny.sh</action>
+    <status>add</status>
+    <description>Host Blocked by host-deny.sh Active Response</description>
+    <group>active_response,</group>
+  </rule>
+
+  <rule id="604" level="3">
+    <if_sid>600</if_sid>
+    <action>host-deny.sh</action>
+    <status>delete</status>
+    <description>Host Unblocked by host-deny.sh Active Response</description>
+    <group>active_response,</group>
+  </rule>
+
+  <rule id="605" level="3">
+    <if_sid>600</if_sid>
+    <action>route-null.sh</action>
+    <status>add</status>
+    <description>Host Blocked by route-null.sh Active Response</description>
+    <group>active_response,</group>
+  </rule>
+
+  <rule id="606" level="3">
+    <if_sid>600</if_sid>
+    <action>route-null.sh</action>
+    <status>delete</status>
+    <description>Host Unblocked by route-null.sh Active Response</description>
+    <group>active_response,</group>
+  </rule>
+
 </group> <!-- OSSEC -->

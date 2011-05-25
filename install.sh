@@ -262,6 +262,7 @@ SetupLogs()
         fi
     done
 
+
     # Getting snort files
     SNORT_FILES=`cat ${SNORT_TEMPLATE}`
     for i in ${SNORT_FILES}; do

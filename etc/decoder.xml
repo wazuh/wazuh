@@ -1817,7 +1817,19 @@
   <plugin_decoder>OSSECAlert_Decoder</plugin_decoder>
 </decoder>  
 
+<!-- decoder for active responses as logged by an OSSEC agent or server 
+- Examples
+Sat May  7 03:17:27 CDT 2011 /var/ossec/active-response/bin/host-deny.sh add - 172.16.0.1 1304756247.60385 31151
+Sat May  7 03:17:27 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh add - 172.16.0.1 1304756247.60385 31151
+Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/host-deny.sh delete - 172.16.0.1 1304756247.60385 31151
+Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh delete - 172.16.0.1 1304756247.60385 31151
+-->
 
+<decoder name="ar_log"> 
+        <prematch>^Mon|^Tue|^Wed|^Thu|^Fri|^Sat|^Sun \S+\s+\d+ \d\d:\d\d:\d\d \S+ \d+ /\.+/active-response</prematch>
+        <regex offset="after_prematch">/bin/(\S+) (\S+) - (\S+) (\d+.\d+) (\d+)</regex> 
+        <order>action, status, srcip, id, extra_data</order> 
+</decoder>
 
 <!-- Zeus decoder.
   - Will extract the severity and the srcip/username when available.
