@@ -30,7 +30,7 @@ void *os_ssl_keys(int isclient, char *dir)
 
     
     /* Create our context */
-    sslmeth = SSLv23_method();
+    sslmeth = (SSL_METHOD *)SSLv23_method();
     ctx = SSL_CTX_new(sslmeth);
 
     if(isclient)
