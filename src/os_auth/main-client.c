@@ -9,6 +9,7 @@
  * Foundation
  */
 
+#include "shared.h"
 
 #ifndef USE_OPENSSL
 
@@ -22,7 +23,6 @@ int main()
 #else
 
 #include <openssl/ssl.h>
-#include "shared.h"
 #include "auth.h"
 
 
