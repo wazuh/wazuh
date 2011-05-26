@@ -53,6 +53,50 @@
     <match>Unable to connect to CUPS server</match>
     <description>Samba network problems (unable to connect).</description>
   </rule> 
+
+  <rule id="13106" level="0" noalert="1">
+    <decoded_as>nmbd</decoded_as>
+  </rule>
+
+  <rule id="13107" level="1">
+    <decoded_as>launchproxy</decoded_as>
+    <match>resolution</match>
+    <description>Failure in name resolution.</description>
+  </rule>
+
+  <rule id="13108" level="1">
+    <if_sid>13100</if_sid>
+    <match>smbd is already running</match>
+    <description>An attempt has been made to start smbd but the process is already running.</description>
+  </rule>
+
+  <rule id="13109" level="1">
+    <if_sid>13106</if_sid>
+    <match>nmbd is already running</match>
+    <description>An attempt has been made to start nmbd but the process is already running.</description>
+  </rule>
+
+  <rule id="13110" level="2">
+    <if_sid>13100</if_sid>
+    <match>Connection denied from</match>
+    <description>Connection was denied.</description>
+  </rule>
+
+  <rule id="13111" level="3">
+    <if_sid>13100</if_sid>
+    <match>Socket is not connected</match>
+    <description>Socket is not connected, write failed.</description>
+  </rule>
+
+  <rule id="13112" level="3">
+    <decoded_as>iptables</decoded_as>
+    <match>gvfsd-smb</match>
+    <regex>segfault at \S+ ip \S+ sp \S+ error \d+ in</regex>
+    <description>Segfault in gvfs-smb.</description>
+  </rule>
+
+
+
 </group> <!-- SYSLOG,SMBD, -->
 
 

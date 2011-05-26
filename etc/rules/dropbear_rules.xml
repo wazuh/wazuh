@@ -1,4 +1,4 @@
-<!-- Copyright 2010 Dan Parriott (ddpbsd@gmail.com)
+  <!-- Copyright 2010 Dan Parriott (ddpbsd@gmail.com)
   -  This program is a free software; you can redistribute it
   -  and/or modify it under the terms of the GNU General Public
   -  License (version 2) as published by the FSF - Free Software
@@ -10,6 +10,7 @@
 
 
 <!-- Modify it at your will. -->
+
 <group name="syslog,sshd,dropbear">
 
   <rule id="51000" level="0" noalert="1">
@@ -17,11 +18,10 @@
     <description>Grouping for dropbear rules.</description>
   </rule>
 
-  <rule id="51001" level="2">
+  <rule id="51001" level="1">
     <if_sid>51000</if_sid>
-    <match>exit before auth</match>
-    <description>Client exited before authentication.</description>
-    <group>recon,</group>
+    <match>Failed to get kex value</match>
+    <description>Failed to get key exchange value</description>
   </rule>
 
   <rule id="51002" level="1">
@@ -50,10 +50,11 @@
     <description>User disconnected.</description>
   </rule>
 
-  <rule id="51006" level="1">
-    <if_sid>51001</if_sid>
-    <match>Failed to get kex value</match>
-    <description>Failed to get key exchange value</description>
+  <rule id="51006" level="2">
+    <if_sid>51005</if_sid>
+    <match>exit before auth</match>
+    <description>Client exited before authentication.</description>
+    <group>recon,</group>
   </rule>
 
   <rule id="51007" level="10" frequency="6" timeframe="120" ignore="60">
@@ -62,6 +63,7 @@
     <description>dropbear brute force attempt.</description> 
     <group>authentication_failures,</group>
   </rule>
+
 
   <rule id="51008" level="1">
     <if_sid>51000</if_sid>
@@ -80,3 +82,5 @@
    
 </group> <!-- SYSLOG,LOCAL -->
 
+
+<!-- EOF -->

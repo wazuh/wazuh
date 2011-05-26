@@ -1,4 +1,4 @@
-<!-- @(#) $Id$
+<!-- @(#) $Id: syslog_rules.xml,v 1.22 2010/11/25 17:06:17 ddp Exp $
   -  Official Generic Syslog rules for OSSEC.
   -
   -  Copyright (C) 2009 Trend Micro Inc.
@@ -179,6 +179,7 @@
     <match>RESULT tag=97 err=49</match>
     <description>OpenLDAP authentication failed.</description>
   </rule>
+
 </group> <!-- SYSLOG,ACESSCONTROL -->
 
 
@@ -428,6 +429,14 @@
     <options>alert_by_email</options>
     <description>First time (su) is executed by user.</description>
   </rule>
+
+  <rule id="5306" level="0">
+    <if_sid>5300</if_sid>
+    <match>unknown class</match>
+    <info>OpenBSD uses login classes, and an inappropriate login class was used.</info>
+    <description>A user has attempted to su to an unknown class.</description>
+  </rule>
+
 </group> <!-- SYSLOG,SU -->
 
 

@@ -76,6 +76,46 @@
     <same_source_ip />
     <description>Extension enumeration.</description>
   </rule>
+
+  <!--From Javi Benito jabi.benito@gmail.com-->
+  <!--http://sysbrain.wordpress.com/2010/05/24/asterisk-ossec-part-ii/-->
+  <rule id="6253" level="5">
+    <if_sid>6201</if_sid>
+    <match>No registration for peer</match>
+    <description>Login session failed (invalid iax user).</description>
+    <group>invalid_login,</group>
+  </rule>
+
+  <!--From Javi Benito jabi.benito@gmail.com-->
+  <rule id="6254" level="10" frequency="3" timeframe="300">
+    <if_matched_sid>6253</if_matched_sid>
+    <same_source_ip />
+    <description>Extension IAX Enumeration.</description>
+  </rule>
+
+  <!--From Javi Benito jabi.benito@gmail.com-->
+  <rule id="6255" level="5">
+    <if_sid>6202</if_sid>
+    <match>Don't know how to respond via</match>
+    <description>Possible Registration Hijacking.</description>
+    <group>invalid_login,</group>
+  </rule>
+
+  <!--From Javi Benito jabi.benito@gmail.com-->
+  <rule id="6256" level="5">
+    <if_sid>6201</if_sid>
+    <match>failed MD5 authentication</match>
+    <description>IAX peer Wrong Password.</description>
+    <group>invalid_login,</group>
+  </rule>
+
+  <!--From Javi Benito jabi.benito@gmail.com-->
+  <rule id="6257" level="10" frequency="3" timeframe="300">
+    <if_matched_sid>6256</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple failed logins.</description>
+  </rule>
+
   
 </group> <!-- ASTERISK -->
 
