@@ -36,14 +36,14 @@ char *OS_AddNewAgent(char *name, char *ip, char *id, char *key)
         srandom(time(0) + getpid() + getppid());
         #endif
     #else
-        srandom(time() + getpid());
+        srandom(time(0) + getpid());
     #endif
 
     rand1 = random();
     muname = getuname();
 
     snprintf(str1, STR_SIZE, "%d%s%d%s",(int)time(0), name, rand1, muname);
-    snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, random());
+    snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)random());
     OS_MD5_Str(str1, md1);
     OS_MD5_Str(str2, md2);
 
