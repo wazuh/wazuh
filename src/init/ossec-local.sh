@@ -207,7 +207,7 @@ start()
     SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-syscheckd ossec-monitord"
     
     echo "Starting $NAME $VERSION (by $AUTHOR)..."
-    ${DIR}/bin/ossec-logtest -t
+    echo | ${DIR}/ossec-logtest > /dev/null 2>&1; echo $?
     if [ ! $? = 0 ]; then
         echo "ossec-analysisd: Configuration error. Exiting."
     fi    
