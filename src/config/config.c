@@ -27,21 +27,25 @@ int read_main_elements(OS_XML xml, int modules,
                                    void *d2)
 {
     int i = 0;
-    char *osglobal = "global";
-    char *osrules = "rules";
-    char *ossyscheck = "syscheck";
-    char *osrootcheck = "rootcheck";
-    char *osalerts = "alerts";
-    char *osemailalerts = "email_alerts";
-    char *osdbd = "database_output";
-    char *oscsyslogd = "syslog_output";
-    char *oscagentless = "agentless";
-    char *oslocalfile = "localfile";
-    char *osremote = "remote";
-    char *osclient = "client";
-    char *oscommand = "command";
-    char *osreports = "reports";
-    char *osactive_response = "active-response";
+    char *osglobal = "global";                    /*Server Config*/
+    char *osrules = "rules";                      /*Server Config*/
+    char *ossyscheck = "syscheck";                /*Agent Config*/
+    char *osrootcheck = "rootcheck";              /*Agent Config*/
+    char *osalerts = "alerts";                    /*Server Config*/
+    char *osemailalerts = "email_alerts";         /*Server Config*/
+    char *osdbd = "database_output";              /*Server Config*/
+    char *oscsyslogd = "syslog_output";           /*Server Config*/
+    char *oscagentless = "agentless";             /*Server Config*/
+    char *oslocalfile = "localfile";              /*Agent Config*/
+    char *osremote = "remote";                    /*Agent Config*/
+    char *osclient = "client";                    /*Agent Config*/
+    char *oscommand = "command";                  /*? Config*/
+    char *osreports = "reports";                  /*Server Config*/
+    char *osactive_response = "active-response";  /*Agent Config*/
+    /*cmoraes*/
+    char *osprofile = "profile";                  /*Agent Config*/
+    char *osagent_profile = "agent-profile";      /*Agent Config*/
+    /*cmoraes*/
 
     
     while(node[i])
