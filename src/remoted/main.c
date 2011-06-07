@@ -84,6 +84,11 @@ int main(int argc, char **argv)
     if(test_config)
         exit(0);
 
+    if(logr.conn == NULL)
+    {
+        /* Not configured. */
+        exit(0);
+    }
         
     /* Check if the user and group given are valid */
     uid = Privsep_GetUser(user);

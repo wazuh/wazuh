@@ -2,13 +2,13 @@
 ; my template correctly. 
 
 !include "MUI.nsh"
-!define VERSION "2.5.1"
+!define VERSION "2.6"
 !define NAME "Ossec HIDS"
 !define /date CDATE "%b %d %Y at %H:%M:%S"
 
 
 Name "${NAME} Windows Agent v${VERSION}"
-BrandingText "Copyright (C) 2010 Trend Micro Inc."
+BrandingText "Copyright (C) 2011 Trend Micro Inc."
 OutFile "win32ui.exe"
 
 
