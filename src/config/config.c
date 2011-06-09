@@ -42,10 +42,6 @@ int read_main_elements(OS_XML xml, int modules,
     char *oscommand = "command";                  /*? Config*/
     char *osreports = "reports";                  /*Server Config*/
     char *osactive_response = "active-response";  /*Agent Config*/
-    /*cmoraes*/
-    char *osprofile = "profile";                  /*Agent Config*/
-    char *osagent_profile = "agent-profile";      /*Agent Config*/
-    /*cmoraes*/
 
     
     while(node[i])
@@ -173,9 +169,12 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
     char *xml_start_ossec = "ossec_config";
     char *xml_start_agent = "agent_config";
 
+    /* Attributes of the <agent_config> tag */
     char *xml_agent_name = "name";
     char *xml_agent_os = "os";
     char *xml_agent_overwrite = "overwrite";
+    /* cmoraes */
+    char *xml_agent_profile = "profile";
     
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
@@ -242,6 +241,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
             {    
                 while(node[i]->attributes[attrs] && node[i]->values[attrs])
                 {
+                    /* Checking if there is an "name=" attribute */
                     if(strcmp(xml_agent_name, node[i]->attributes[attrs]) == 0)
                     {
                         #ifdef CLIENT
@@ -281,6 +281,30 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                         }
                         #endif
                     }
+                    /* cmoraes: added this else if loop to check for "profile=" */
+                    else if(strcmp(xml_agent_profile, node[i]->attributes[attrs]) == 0)
+                    {
+                        #ifdef CLIENT
+                        char *agentprofile = os_read_agent_profile();
+
+                        if(!agentprofile)
+                        {
+                            passed_agent_test = 0;
+                        }
+                        else
+                        {
+                            /* if the agent's profile name matches with the value
+                             * in the agent.conf file
+                             */
+                            if(!OS_Match2(node[i]->values[attrs], agentprofile))
+                            {
+                                passed_agent_test = 0;
+                            }
+                            free(agentprofile);
+                        }
+                        #endif
+                    }
+                    /* cmoraes: end add */
                     else if(strcmp(xml_agent_overwrite, node[i]->attributes[attrs]) == 0)
                     {
                     }

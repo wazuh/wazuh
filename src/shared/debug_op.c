@@ -13,7 +13,7 @@
 #include "headers/shared.h"
 
 
-int dbg_flag = 0;
+int dbg_flag = 2;
 int chroot_flag = 0;
 int daemon_flag = 0;
 

@@ -77,6 +77,8 @@ char* os_read_agent_name()
     char buf[1024 + 1];
     FILE *fp = NULL;
 
+    debug2("%s: calling os_read_agent_name().", ARGV0);
+
     if(isChroot())
         fp = fopen(AGENT_INFO_FILE, "r");
     else
@@ -109,6 +111,8 @@ char* os_read_agent_name()
         os_strdup(buf, ret);
         fclose(fp);
         
+        debug2("%s: os_read_agent_name returned (%s).", ARGV0, ret);
+
         return(ret);
     }
 
@@ -126,6 +130,8 @@ char *os_read_agent_ip()
 {
     char buf[1024 + 1];
     FILE *fp;
+
+    debug2("%s: calling os_read_agent_ip().", ARGV0);
 
     fp = fopen(AGENT_INFO_FILE, "r");
     if(!fp)
@@ -162,6 +168,8 @@ char *os_read_agent_id()
     char buf[1024 + 1];
     FILE *fp;
 
+    debug2("%s: calling os_read_agent_id().", ARGV0);
+
     fp = fopen(AGENT_INFO_FILE, "r");
     if(!fp)
     {
@@ -187,12 +195,65 @@ char *os_read_agent_id()
 }
 
 
+/*  cmoraes: begin add */
+
+/** char *os_read_agent_profile()
+ *  Reads the agent profile name for the current agent.
+ *  Returns NULL on error.
+ *
+ *  Description:
+ *  The profile name is a string used to identify what type of configuration
+ *  is used for this agent.
+ *  The profile name is set in the agent's etc/ossec.conf file
+ *  It is matched with the ossec manager's agent.conf file to read configuration
+ *  only applicable to this profile name.
+ */
+char* os_read_agent_profile()
+{
+    char buf[1024 + 1];
+    FILE *fp;
+
+    debug2("%s: calling os_read_agent_profile().", ARGV0);
+
+    if(isChroot())
+        fp = fopen(AGENT_INFO_FILE, "r");
+    else
+        fp = fopen(AGENT_INFO_FILEP, "r");
+
+    if(!fp)
+    {
+        debug2("%s: Failed to open file. Errno=%d.", ARGV0, errno);
+        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
+        return(NULL);
+    }
+
+    buf[1024] = '\0';
+
+
+    /* Getting profile */
+    if(fgets(buf, 1024, fp) && fgets(buf, 1024, fp) && 
+       fgets(buf, 1024, fp) && fgets(buf, 1024, fp))
+    {
+        char *ret = NULL;
+        os_strdup(buf, ret);
+        fclose(fp);
+
+        return(ret);
+    }
+
+    fclose(fp);
+    return(NULL);
+}
+/* cmoraes: end add */
+
 
 /** int os_write_agent_info(char *agent_name, char *agent_ip, char *agent_id)
  *  Writes the agent info inside the queue, for the other processes to read.
  *  Returns 1 on success or <= 0 on failure.
  */
-int os_write_agent_info(char *agent_name, char *agent_ip, char *agent_id)
+/* cmoraes: changed function. added cfg_profile_name parameter */
+int os_write_agent_info(char *agent_name, char *agent_ip, 
+                        char *agent_id,   char *cfg_profile_name)
 {
     FILE *fp;
 
@@ -203,7 +264,8 @@ int os_write_agent_info(char *agent_name, char *agent_ip, char *agent_id)
         return(0);
     }
 
-    fprintf(fp, "%s\n-\n%s\n", agent_name, agent_id);
+    /*cmoraes: added cfg_profile_name parameter*/
+    fprintf(fp, "%s\n-\n%s\n%s\n", agent_name, agent_id, cfg_profile_name);
     fclose(fp);
     return(1);
 }

@@ -23,7 +23,8 @@ typedef struct _agent
     int execdq;
     int rip_id;
     char *lip;
-	char **rip; /* remote (server) ip */
+    char **rip; /* remote (server) ip */
+    char *profile;
 }agent;
 
 

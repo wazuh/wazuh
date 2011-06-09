@@ -39,12 +39,16 @@ int Read_Syscheck_Config(char * cfgfile)
     #endif
 
 
+    debug2("%s: Reading Configuration [%s]", "syscheckd", cfgfile);
+
     /* Reading config */
     if(ReadConfig(modules, cfgfile, &syscheck, NULL) < 0)
         return(OS_INVALID);
 
 
     #ifdef CLIENT
+    debug2("%s: Reading Client Configuration [%s]", "syscheckd", cfgfile);
+
     /* Reading shared config */
     modules|= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
