@@ -286,6 +286,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                     {
                         #ifdef CLIENT
                         char *agentprofile = os_read_agent_profile();
+                        debug2("Read agent config profile name [%s]", agentprofile);
 
                         if(!agentprofile)
                         {
@@ -293,12 +294,19 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                         }
                         else
                         {
-                            /* if the agent's profile name matches with the value
-                             * in the agent.conf file
+                            /* match the profile name of this <agent_config> section
+                             * with a comma separated list of values in agent's
+                             * <config-profile> tag. 
                              */
-                            if(!OS_Match2(node[i]->values[attrs], agentprofile))
+                            if(!OS_Match3(node[i]->values[attrs], agentprofile, ","))
                             {
                                 passed_agent_test = 0;
+                                debug2("[%s] did not match agent config profile name [%s]", 
+                                       node[i]->values[attrs], agentprofile);
+                            }
+                            else
+                            {
+                                debug2("Matched agent config profile name [%s]", agentprofile);
                             }
                             free(agentprofile);
                         }

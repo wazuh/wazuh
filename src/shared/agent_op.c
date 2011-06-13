@@ -202,18 +202,19 @@ char *os_read_agent_id()
  *  Returns NULL on error.
  *
  *  Description:
- *  The profile name is a string used to identify what type of configuration
- *  is used for this agent.
+ *  Comma separated list of strings that used to identify what type 
+ *  of configuration is used for this agent.
  *  The profile name is set in the agent's etc/ossec.conf file
- *  It is matched with the ossec manager's agent.conf file to read configuration
- *  only applicable to this profile name.
+ *  It is matched with the ossec manager's agent.conf file to read
+ *  configuration only applicable to this profile name.
+ *  
  */
 char* os_read_agent_profile()
 {
     char buf[1024 + 1];
     FILE *fp;
 
-    debug2("%s: calling os_read_agent_profile().", ARGV0);
+    debug2("%s: calling os_read_agent_profile().", __local_name);
 
     if(isChroot())
         fp = fopen(AGENT_INFO_FILE, "r");
@@ -235,7 +236,13 @@ char* os_read_agent_profile()
        fgets(buf, 1024, fp) && fgets(buf, 1024, fp))
     {
         char *ret = NULL;
+
+        /* Trim the /n and/or /r at the end of the string */
+        os_trimcrlf(buf);
+
         os_strdup(buf, ret);
+        debug2("%s: os_read_agent_profile() = [%s]", __local_name, ret);
+
         fclose(fp);
 
         return(ret);

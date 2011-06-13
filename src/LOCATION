@@ -1,4 +1,4 @@
-DIR="/var/agent27"
+DIR="/var/agent26"
 CC=gcc
 GCC=gcc
 CLANG=clang
