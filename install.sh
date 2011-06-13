@@ -356,12 +356,15 @@ ConfigureClient()
     fi
 
     # cmoraes: begin change
+    echo ""
+
     if [ "X${USER_AGENT_CONFIG_PROFILE}" = "X" ]; then
         # Asking for agent's config profile. Default is none.
 	$ECHO "  3.1.2- ${configprofile}: "
 	    read CFGANSWER
         if [ "X$CFGANSWER" != "X" ]; then
             CFG=$CFGANSWER
+	    echo ""
 	    echo "   - ${addingcfg} $CFG"
         else
             CFG=""
