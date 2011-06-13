@@ -111,7 +111,7 @@ char* os_read_agent_name()
         os_strdup(buf, ret);
         fclose(fp);
         
-        debug2("%s: os_read_agent_name returned (%s).", ARGV0, ret);
+        debug2("%s: os_read_agent_name returned (%s).", __local_name, ret);
 
         return(ret);
     }
