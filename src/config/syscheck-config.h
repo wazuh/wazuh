@@ -42,36 +42,36 @@ typedef struct _rtfim
 
 typedef struct _config
 {
-    int tsleep;
+    int tsleep;            /* sleep for sometime for daemon to settle */
     int sleep_after;
-    int rootcheck;
-    int disabled;
+    int rootcheck;         /* set to 0 when rootcheck is disabled */
+    int disabled;          /* is syscheck disabled? */
     int scan_on_start;
     int realtime_count;
     
-    int time;
-    int queue;
+    int time;              /* frequency (secs) for syscheck to run */
+    int queue;             /* file descriptor of socket to write to queue */
     
-    int *opts;
+    int *opts;             /* attributes set in the <directories> tag element */
 
-    char *workdir;
+    char *workdir;         /* set to the DEFAULTDIR (/var/ossec) */
     char *remote_db;
     char *db;
 
-    char *scan_day;
-    char *scan_time;
+    char *scan_day;        /* run syscheck on this day */
+    char *scan_time;       /* run syscheck at this time */
     
-	char **ignore;
-    void **ignore_regex;
+    char **ignore;         /* list of files/dirs to ignore */
+    void **ignore_regex;   /* regex of files/dirs to ignore */
     
-	char **dir;
+    char **dir;            /* array of directories to be scanned */
     void **filerestrict;
 
     /* Windows only registry checking */
     #ifdef WIN32
-	char **registry_ignore;
-    void **registry_ignore_regex;
-	char **registry;
+    char **registry_ignore;         /* list of registry entries to ignore */
+    void **registry_ignore_regex;   /* regex of registry entries to ignore */
+    char **registry;        /* array of registry entries to be scanned */
     FILE *reg_fp;
     #endif
     
