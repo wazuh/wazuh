@@ -302,6 +302,7 @@ void ExecdStart(int q)
             if (wp < 0)
             {
                 merror(WAITPID_ERROR, ARGV0);
+                break;
             }
 
             /* if = 0, we still need to wait for the child process */
