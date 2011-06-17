@@ -71,7 +71,7 @@ typedef struct _config
     #ifdef WIN32
     char **registry_ignore;         /* list of registry entries to ignore */
     void **registry_ignore_regex;   /* regex of registry entries to ignore */
-    char **registry;        /* array of registry entries to be scanned */
+    char **registry;                /* array of registry entries to be scanned */
     FILE *reg_fp;
     #endif
     
