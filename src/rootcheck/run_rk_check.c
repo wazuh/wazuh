@@ -317,28 +317,69 @@ void run_rk_check()
    
     /*** Third check, looking for files on the /dev ***/
     debug1("%s: DEBUG: Going into check_rc_dev", ARGV0);
-    check_rc_dev(rootcheck.basedir);
+    if (rootcheck.check_dev_disabled == FALSE)
+    {
+        check_rc_dev(rootcheck.basedir);
+    }
+    else
+    {
+        merror("%s: INFO: Scan of /dev disabled.", ARGV0);
+    }
     
     /*** Fourth check,  scan the whole system looking for additional issues */
     debug1("%s: DEBUG: Going into check_rc_sys", ARGV0);
-    check_rc_sys(rootcheck.basedir);
+    if (rootcheck.check_sys_disabled == FALSE)
+    {
+        check_rc_sys(rootcheck.basedir);
+    }
+    else
+    {
+        merror("%s: INFO: Scan of entire system disabled.", ARGV0);
+    }
     
     /*** Process checking ***/
     debug1("%s: DEBUG: Going into check_rc_pids", ARGV0); 
-    check_rc_pids();         
+    if (rootcheck.check_proc_disabled == FALSE)
+    {
+        check_rc_pids();         
+    }
+    else
+    {
+        merror("%s: INFO: Scan of processes disabled.", ARGV0);
+    }
 
     /*** Check all the ports ***/
     debug1("%s: DEBUG: Going into check_rc_ports", ARGV0); 
-    check_rc_ports();    
+    if (rootcheck.check_allports_disabled == FALSE)
+    {
+        check_rc_ports();    
+    }
+    else
+    {
+        merror("%s: INFO: Scan of all ports disabled.", ARGV0);
+    }
 
     /*** Check open ports ***/
     debug1("%s: DEBUG: Going into check_open_ports", ARGV0); 
-    check_open_ports();
+    if (rootcheck.check_openports_disabled == FALSE)
+    {
+        check_open_ports();
+    }
+    else
+    {
+        merror("%s: INFO: Scan of open ports disabled.", ARGV0);
+    }
         
     /*** Check interfaces ***/
     debug1("%s: DEBUG: Going into check_rc_if", ARGV0); 
-    check_rc_if();
-    
+    if (rootcheck.check_intf_disabled == FALSE)
+    {
+        check_rc_if();
+    } 
+    else
+    {
+        merror("%s: INFO: Scan of interfaces disabled.", ARGV0);
+    }
     
     debug1("%s: DEBUG: Completed with all checks.", ARGV0);    
    

@@ -36,6 +36,14 @@ typedef struct _rkconfig
     int readall;
     int disabled;
 
+    /* cmoraes: added */
+    int check_dev_disabled;       /*looking for files on /dev */
+    int check_sys_disabled;       /* scan whole system looking for other issues */
+    int check_proc_disabled;      /* process checking */
+    int check_allports_disabled;  /* scan all ports */
+    int check_openports_disabled; /* scan open ports */
+    int check_intf_disabled;      /* scan interfaces */
+
     int time;
     int queue;
 }rkconfig;

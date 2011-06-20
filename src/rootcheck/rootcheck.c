@@ -91,6 +91,12 @@ int rootcheck_init(int test_config)
     rootcheck.disabled = 0;
     rootcheck.alert_msg = NULL;
     rootcheck.time = ROOTCHECK_WAIT;
+    rootcheck.check_dev_disabled = FALSE;
+    rootcheck.check_sys_disabled = FALSE;
+    rootcheck.check_proc_disabled = FALSE;
+    rootcheck.check_allports_disabled = FALSE;
+    rootcheck.check_openports_disabled = FALSE;
+    rootcheck.check_intf_disabled = FALSE;
 
 
     /* We store up to 255 alerts in there. */
