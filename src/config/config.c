@@ -324,8 +324,25 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                     attrs++;
                 }
             }
+            #ifdef CLIENT
+            else
+            {
+                debug2("agent_config element does not have any attributes.");
 
-            
+                /* if node does not have any attributes, it is a generic config block.
+                 * check if agent has a profile name
+                 * if agent does not have profile name, then only read this generic 
+                 * agent_config block
+                 */
+
+                if (!os_read_agent_profile())
+                {
+                    debug2("but agent has a profile name.");
+                    passed_agent_test = 0;
+                }
+            }
+            #endif
+
             /* Main element does not need to have any child */
             if(chld_node)
             {
@@ -334,7 +351,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                     merror(CONFIG_ERROR, ARGV0, cfgfile);
                     return(OS_INVALID);
                 }
-
+      
                 OS_ClearNode(chld_node);    
             }
         }
