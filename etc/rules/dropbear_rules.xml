@@ -51,7 +51,7 @@
   </rule>
 
   <rule id="51006" level="2">
-    <if_sid>51005</if_sid>
+    <if_sid>51000</if_sid>
     <match>exit before auth</match>
     <description>Client exited before authentication.</description>
     <group>recon,</group>

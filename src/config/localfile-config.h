@@ -56,6 +56,7 @@ typedef struct _logreader
 
 typedef struct _logreader_config
 {
+    int agent_cfg;
     logreader *config;
 }logreader_config;
 
