@@ -9,7 +9,9 @@
   -  Foundation.
   -->
 
-<var name="MCAFEE_ERROR">^259|^100|^1000|^1001|^1002|^1003|^1004|^1005|^1006|^1007|^1008|^5003|^5005|^5008|^5010|^5011|^5019|^5020|^5021|^5022|^5030|^5031|^5032|^5033|^5034|^5035|^5046|^5047|^5048|^5049|^5051|^5054|^5057|^5059|^5060|^5063|^5063</var> 
+<var name="MCAFEE_ERROR">^259$|^100$|^1000$|^1001$|^1002$|^1003$|^1004$|^1005$|^1006$|^1007$|^1008$|^5003$|^5005$|^5008$|^5010$|^5011$|^5019$|^5020$|^5021$|^5022$|^5030$|^5031$|^5032$|^5033$|^5034$|^5035$|^5046$|^5047$|^5048$|^5049$|^5051$|^5054$|^5057$|^5059$|^5060$|^5063$|^5063$</var>
+<var name="MCAFEE_WARN">^258$|^5001$|^5028$|^5036$|^5037$|^5038$|^5039$|^5040$|^5041$|^5053$|^5056$|^5061$|^5062$|^5065$</var>
+<var name="MCAFEE_INFO">^257$|^5000$|^5026$|^5052$|^5055$</var> 
 <var name="MCAFEE_WARN">^258|^5001|^5028|^5036|^5037|^5038|^5039|^5040|^5041|^5053|^5056|^5061|^5062|^5065</var> 
 <var name="MCAFEE_INFO">^257|^5000|^5026|^5052|^5055</var> 
 <var name="MCAFEE_VIRUS_OK">quarantined|moved to quarantine|file was deleted|deleted successfully|has been deleted|message deleted|deleted after|cleaned|successfully deleted</var> 
@@ -76,7 +78,7 @@
     <description>McAfee Windows AV - Scan completed with no viruses found.</description>
   </rule>
 
-  <rule id="7509" level="7">
+  <rule id="7509" level="5">
     <if_sid>7500</if_sid>
     <match>scan was cancelled |has taken too long</match>
     <description>McAfee Windows AV - Virus scan cancelled.</description>
