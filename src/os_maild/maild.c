@@ -454,6 +454,7 @@ void OS_Run(MailConfig *mail)
             {
                 if(p_status != 0)
                 {
+                    merror(CHLDWAIT_ERROR,ARGV0,p_status);
                     merror(SNDMAIL_ERROR,ARGV0,mail->smtpserver);
                     n_errs++;
                 }
@@ -463,6 +464,7 @@ void OS_Run(MailConfig *mail)
             /* Too many errors */
             if(n_errs > 6)
             {
+                merror(TOOMANY_WAIT_ERROR,ARGV0);
                 merror(SNDMAIL_ERROR,ARGV0,mail->smtpserver);
                 exit(1);
             }
