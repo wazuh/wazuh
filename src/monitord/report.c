@@ -24,6 +24,10 @@ void report_help()
     printf("\t-r <filter> <value> Show related entries.\n");
     printf("\t-n                  Creates a description for the report.\n");
     printf("\t-s                  Show the alert dump.\n");
+    printf("\n");
+    printf("\tFilters allowed: group, rule, level, location,\n");
+    printf("\t                 user, srcip, filename\n");
+    printf("\n");
     printf("Examples:\n");
     printf("\t-f group authentication_success (to filter on login success).\n");
     printf("\t-f level 10  (to filter on level >= 10).\n");
