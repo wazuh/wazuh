@@ -49,7 +49,12 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
 {
     int ossock;
     struct sockaddr_in server;
+
+    #ifndef WIN32
     struct sockaddr_in6 server6;
+    #else
+    ipv6 = 0;
+    #endif
 
     
     if(_proto == IPPROTO_UDP)
@@ -80,6 +85,7 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
 
     if(ipv6)
     {
+        #ifndef WIN32
         memset(&server6, 0, sizeof(server6));
         server6.sin6_family = AF_INET6;
         server6.sin6_port = htons( _port );
@@ -90,6 +96,7 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
         {
             return(OS_SOCKTERR);
         }
+        #endif
     }
     else
     {
@@ -255,7 +262,12 @@ int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6)
 {
     int ossock;
     struct sockaddr_in server;
+
+    #ifndef WIN32
     struct sockaddr_in6 server6;
+    #else
+    ipv6 = 0;
+    #endif
 
     if(protocol == IPPROTO_TCP)
     {
@@ -288,6 +300,7 @@ int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6)
 
     if(ipv6 == 1)
     {
+        #ifndef WIN32
         memset(&server6, 0, sizeof(server6));
         server6.sin6_family = AF_INET6;
         server6.sin6_port = htons( _port );
@@ -295,6 +308,7 @@ int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6)
 
         if(connect(ossock,(struct sockaddr *)&server6, sizeof(server6)) < 0)
             return(OS_SOCKTERR);
+        #endif
     }
     else
     {

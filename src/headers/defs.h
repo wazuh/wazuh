@@ -46,7 +46,7 @@
 
 /* Some Global names */
 #define __name      "OSSEC HIDS"
-#define __version   "v2.5.1"
+#define __version   "v2.6"
 #define __author    "Trend Micro Inc."
 #define __contact   "contact@ossec.net"
 #define __site      "http://www.ossec.net"

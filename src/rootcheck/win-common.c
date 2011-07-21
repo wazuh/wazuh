@@ -276,7 +276,7 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
             var_storage[0] = '\0';
 
             rc = RegEnumValue(hKey, i, value_buffer, &value_size,
-                              NULL, &data_type, data_buffer, &data_size);
+                              NULL, &data_type, (LPBYTE)data_buffer, &data_size);
 
 
             /* No more values available */

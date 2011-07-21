@@ -262,17 +262,6 @@ SetupLogs()
         fi
     done
 
-   OSSEC_AR_FILES="${INSTALLDIR}/logs/active-responses.log"
-   if [ "$ACTIVERESPONSE" = "yes" ]; then
-   for i in ${OSSEC_AR_FILES}; do
-	echo "    -- $i"
-	    echo "" >> $NEWCONFIG
-            echo "  <localfile>" >> $NEWCONFIG
-	echo "    <log_format>syslog</log_format>" >> $NEWCONFIG
-            echo "    <location>$i</location>" >>$NEWCONFIG
-            echo "  </localfile>" >> $NEWCONFIG
-    done
-    fi
 
     # Getting snort files
     SNORT_FILES=`cat ${SNORT_TEMPLATE}`

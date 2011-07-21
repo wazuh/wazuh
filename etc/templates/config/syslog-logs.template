@@ -28,3 +28,4 @@
 /var/log/asl.log
 /var/log/dpkg.log
 /var/log/vmware/hostd.log
+/var/log/proftpd/proftpd.log

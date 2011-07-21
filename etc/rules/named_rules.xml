@@ -14,7 +14,7 @@
 
 
 <group name="syslog,named,">
-  <rule id="12100" level="0" noalert="1">
+  <rule id="12100" level="0">
     <decoded_as>named</decoded_as>
     <description>Grouping of the named rules</description>
   </rule>
@@ -188,7 +188,8 @@
 
   <rule id="12128" level="1">
     <if_sid>12100</if_sid>
-    <match>^transfer of</match>
+    <match>^transfer of|</match>
+    <match>AXFR started$</match>
     <description>Zone transfer.</description>
   </rule>
 
@@ -292,6 +293,24 @@
     <if_sid>12100</if_sid>
     <regex>zone transfer \S+ denied</regex>
     <description>zone transfer denied</description>
+  </rule>
+
+  <rule id="12146" level="0">
+    <if_sid>12100</if_sid>
+    <match>error sending response: host unreachable$</match>
+    <description>Cannot send a DNS response.</description>
+  </rule>
+
+  <rule id="12147" level="0">
+    <if_sid>12100</if_sid>
+    <regex>update forwarding \.+ denied$</regex>
+    <description>Cannot update forwarding domain.</description>
+  </rule>
+
+  <rule id="12148" level="0">
+    <if_sid>12100</if_sid>
+    <match>: parsing failed$</match>
+    <description>Parsing of a configuration file has failed.</description>
   </rule>
 
 </group> <!-- SYSLOG,NAMED -->

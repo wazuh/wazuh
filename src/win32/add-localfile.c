@@ -67,8 +67,6 @@ int dogrep(char *file, char *str)
 /* Check is syscheck is present in the config */
 int config_file(char *name, char *file, int quiet)
 {
-    int add = 0;
-
     char ffile[256];
     FILE *fp;
 

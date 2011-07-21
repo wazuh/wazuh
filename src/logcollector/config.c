@@ -32,13 +32,16 @@ int LogCollectorConfig(char * cfgfile)
     modules|= CLOCALFILE;
 
     log_config.config = NULL;
+    log_config.agent_cfg = 0;
 
     if(ReadConfig(modules, cfgfile, &log_config, NULL) < 0)
         return(OS_INVALID);
     
     #ifdef CLIENT
     modules|= CAGENT_CONFIG;
+    log_config.agent_cfg = 1;
     ReadConfig(modules, AGENTCONFIG, &log_config, NULL);
+    log_config.agent_cfg = 0;
     #endif
 
     logff = log_config.config;       

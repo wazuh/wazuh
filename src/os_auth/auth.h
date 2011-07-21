@@ -17,6 +17,8 @@
    #define ARGV0 "ossec-authd"
 #endif
 
+#ifdef USE_OPENSSL
+
 void *os_ssl_keys(int isclient, char *dir);
 
 #include <openssl/ssl.h>
@@ -29,5 +31,6 @@ BIO *bio_err;
 #define KEYFILE  "/etc/sslmanager.key"
 #define CERTFILE  "/etc/sslmanager.cert"
 
+#endif
 
 #endif

@@ -69,6 +69,10 @@ void FreeAlertData(alert_data *al_data)
     {
         free(al_data->user);
     }
+    if(al_data->filename)
+    {
+        free(al_data->filename);
+    }
     if(al_data->log)
     {
         while(*(al_data->log))
@@ -87,7 +91,7 @@ void FreeAlertData(alert_data *al_data)
  */
 alert_data *GetAlertData(int flag, FILE *fp)
 {
-    int _r = 0, log_size;
+    int _r = 0, log_size, issyscheck = 0;
     char *p;
 
     char *alertid = NULL;
@@ -98,8 +102,10 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *dstip = NULL;
     char *user = NULL;
     char *group = NULL;
+    char *filename = NULL;
     char **log = NULL;
     int level, rule, srcport, dstport;
+  
     
     char str[OS_BUFFER_SIZE+1];
     str[OS_BUFFER_SIZE]='\0';
@@ -129,6 +135,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 al_data->dstport = dstport;
                 al_data->user = user;
                 al_data->date = date;
+                al_data->filename = filename;
+
                
                 return(al_data);
             }
@@ -179,6 +187,10 @@ alert_data *GetAlertData(int flag, FILE *fp)
 
                 /* Cleaning new line from group */
                 os_clearnl(group, p);
+                if(group != NULL && strstr(group, "syscheck") != NULL)
+                {
+                    issyscheck = 1;
+                }
             }
 
 
@@ -318,6 +330,19 @@ alert_data *GetAlertData(int flag, FILE *fp)
             else if(log_size < 20)
             {
                 os_clearnl(str,p);
+
+                if(str != NULL && issyscheck == 1)
+                {
+                    if(strncmp(str, "Integrity checksum changed for: '",33) == 0)
+                    {
+                        filename = strdup(str+33);
+                        if(filename)
+                        {
+                            filename[strlen(filename) -1] = '\0';
+                        }
+                    } 
+                    issyscheck = 0;
+                }
                 
                 os_realloc(log, (log_size +2)*sizeof(char *), log);
                 os_strdup(str, log[log_size]); 
@@ -355,6 +380,11 @@ alert_data *GetAlertData(int flag, FILE *fp)
         {
             free(user);
             user = NULL;
+        }
+        if(filename)
+        {
+            free(filename);
+            filename = NULL;
         }
         if(group)
         {

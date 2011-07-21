@@ -25,6 +25,7 @@
 #define REPORT_REL_GROUP         0x020
 #define REPORT_REL_LOCATION      0x040
 #define REPORT_TYPE_DAILY        0x100
+#define REPORT_REL_FILE          0x200
            
 
 
@@ -38,6 +39,7 @@ typedef struct _report_filter
     char *location;
     char *user;
     char *srcip;
+    char *files;
     char *filename;
 
     void *top_user;
@@ -46,8 +48,10 @@ typedef struct _report_filter
     void *top_rule;
     void *top_group;
     void *top_location;
+    void *top_files;
 
     int related_user;
+    int related_file;
     int related_srcip;
     int related_level;
     int related_rule;

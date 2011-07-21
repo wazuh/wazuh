@@ -8,7 +8,7 @@ include ../Config.Make
 
 LOCAL = ssl.c 
 
-OBJS = ${OS_CONFIG} ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_CRYPTO} ${OS_ZLIB} -lssl -lcrypto
+OBJS = ${OS_CONFIG} ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_CRYPTO} ${OS_ZLIB} ${OPENSSLCMD}
 
 auth1:
 		${CC} ${CFLAGS} ${OS_LINK} main-server.c ${LOCAL} ../addagent/validate.c ${OBJS} -o ${NAME}

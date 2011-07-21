@@ -60,6 +60,20 @@
     <match>sent bad addr len</match>
     <description>Arpwatch detected bad address len (ignored).</description>
   </rule> 
+
+  <rule id="7207" level="1">
+    <if_sid>7200</if_sid>
+    <match>/dev/bpf0: Permission denied</match>
+    <description>arpwatch probably run with wrong permissions</description>
+  </rule>
+
+  <rule id="7208" level="1">
+    <if_sid>7200</if_sid>
+    <match>reused old ethernet address</match>
+    <description>An IP has reverted to an old ethernet address.</description>
+  </rule>
+
+
 </group> <!-- SYSLOG,arpwatch, -->
 
 

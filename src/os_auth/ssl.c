@@ -10,6 +10,8 @@
  */
 
 
+#ifdef USE_OPENSSL
+
 #include "shared.h"
 #include "auth.h"
 
@@ -28,7 +30,7 @@ void *os_ssl_keys(int isclient, char *dir)
 
     
     /* Create our context */
-    sslmeth = SSLv23_method();
+    sslmeth = (SSL_METHOD *)SSLv23_method();
     ctx = SSL_CTX_new(sslmeth);
 
     if(isclient)
@@ -85,5 +87,6 @@ void *os_ssl_keys(int isclient, char *dir)
 }
 
 
+#endif
 
 /* EOF */

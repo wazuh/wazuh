@@ -1,0 +1,69 @@
+
+<group name="clamd,freshclam,">
+
+  <rule id="52500" level="0" noalert="1">
+    <decoded_as>clamd</decoded_as>
+    <description>Grouping of the clamd rules.</description>
+  </rule>
+
+  <rule id="52501" level="0" noalert="1">
+    <decoded_as>freshclam</decoded_as>
+    <description>ClamAV database update</description>
+  </rule>
+
+  <rule id="52502" level="8">
+    <if_sid>52500</if_sid>
+    <match>FOUND</match>
+    <description>Virus detected</description>
+    <group>virus</group>
+  </rule>
+  
+  <rule id="52503" level="10">
+    <if_sid>52500</if_sid>
+    <match>^ERROR: </match>
+    <description>Clamd error</description>
+    <group>virus</group>
+  </rule>
+  
+  <rule id="52504" level="7">
+    <if_sid>52500</if_sid>
+    <match>^WARNING: </match>
+    <description>Clamd warning</description>
+    <group>virus</group>
+  </rule>
+  
+  <rule id="52505" level="3">
+    <if_sid>52500</if_sid>
+    <match>clamd daemon</match>
+    <description>Clamd restarted</description>
+    <group>virus</group>
+  </rule>
+
+  <rule id="52506" level="3">
+    <if_sid>52500</if_sid>
+    <match>Database modification detected</match>
+    <description>Clamd database updated</description>
+    <group>virus</group>
+  </rule>
+
+  <rule id="52507" level="3">
+    <if_sid>52501</if_sid>
+    <match>ClamAV update process started </match>
+    <description>ClamAV database update</description>
+    <group>virus</group>
+  </rule>
+
+  <rule id="52508" level="3">
+    <if_sid>52501</if_sid>
+    <match>Database updated </match>
+    <description>ClamAV database updated</description>
+    <group>virus</group>
+  </rule>
+
+  <rule id="52509" level="1">
+    <if_sid>52501</if_sid>
+    <match>Incremental update failed</match>
+    <description>Could not download the incremental virus definition updates.</description>
+  </rule>
+
+</group> <!-- clamd, freshclam -->

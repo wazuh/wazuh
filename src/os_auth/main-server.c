@@ -19,6 +19,13 @@ void report_help()
 {
 }
 
+#ifndef USE_OPENSSL
+int main()
+{
+    printf("ERROR: Not compiled. Missing OpenSSL support.\n");
+    exit(0);
+}
+#else
 
 
 int main(int argc, char **argv)
@@ -299,4 +306,5 @@ int main(int argc, char **argv)
 }
 
 
+#endif
 /* EOF */

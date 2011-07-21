@@ -357,7 +357,7 @@ int config_read(HWND hwnd)
     /* Getting server ip */
     if(!get_ossec_server())
     {
-        if(config_inst.status == ST_MISSING_IMPORT)
+        if(strcmp(config_inst.status, ST_MISSING_IMPORT) == 0)
         {
             config_inst.status = ST_MISSING_ALL;
         }

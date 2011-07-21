@@ -9,13 +9,20 @@
  * Foundation
  */
 
+#include "shared.h"
 
 #ifndef USE_OPENSSL
 
-#endif
+int main()
+{
+    printf("ERROR: Not compiled. Missing OpenSSL support.\n");
+    exit(0);
+}
+
+
+#else
 
 #include <openssl/ssl.h>
-#include "shared.h"
 #include "auth.h"
 
 
@@ -290,5 +297,5 @@ int main(int argc, char **argv)
     exit(0);
 }
 
-
+#endif
 /* EOF */

@@ -11,6 +11,28 @@
 # started as a hack to properly script manage_agents.   #  #
 #                                                       # #
 ##########################################################
+# Modified by Tim Meader (Timothy.A.Meader@nasa.gov)
+# on 2010/12/08
+#            
+# - fixed two errors that were popping up during add or
+#   remove operations due to the code not taking into
+#   account the old key entries that have the "#*#*#*"
+#   pattern after the ID number. Simple fix was to do
+#   a "if (defined(xxx))" on the vars
+# - fixed the "list" operation to only show valid key
+#   entries
+# - changed the extract operation to store options
+#   in an array, and subsequently rewrote the 
+#   "extract_key" (now called "extract_keys") func
+#   to accept this new behavior
+# - modified "extract_keys" func to accept either ID,
+#   name, or IP address as the argument after the
+#   "-e" operator. Output of key extraction now
+#   includes the name and IP address by default in the
+#   format: "name,IP  extracted_key"
+#
+#########################################################
+
 
 #$Id$
 # TODO:
@@ -28,14 +50,14 @@ use Getopt::Long;
 
 use constant AUTH_KEY_FILE => "/var/ossec/etc/client.keys";
 
-my ($key, $add, $remove, $extract, $import, $listagents);
+my ($key, $add, $remove, @extracts, $import, $listagents);
 my ($agentid, $agentname, $ipaddress);
 
 GetOptions(
   'k|key=s'     => \$key,         # Unencoded ssh key
   'a|add'       => \$add,         # Add a new agent
   'r|remove=s'  => \$remove,      # Remove an agent
-  'e|extract=s' => \$extract,     # Extract a key
+  'e|extract=s' => \@extracts,     # Extract a key
   'm|import'    => \$import,      # Import a key
   'l|list'      => \$listagents,  # List all agents
   'i|id=s'      => \$agentid,     # Unique agent id
@@ -48,10 +70,9 @@ if ($listagents) {
   list_agents();
 }
 # Decode and extract the key for $agentid
-elsif ($extract) {
-  $agentid = $extract;
-  if ($agentid) {
-    extract_key($agentid);
+elsif (@extracts) {
+  if (@extracts) {
+    extract_keys(@extracts);
   }
   else {
     usage();
@@ -79,7 +100,7 @@ elsif ($add) {
           close(FH);
 
           if (@used_agent_ids) {
-            @used_agent_ids = sort(@used_agent_ids);
+            @used_agent_ids = sort { $a <=> $b } @used_agent_ids;
             $agentid = sprintf("%03d", $used_agent_ids[-1] + 1);
           }
         }
@@ -134,16 +155,16 @@ else {
 sub usage {
   warn "Usage: $0 [OPERATION] [OPTIONS]\n";
   warn "  [operations]\n";
-  warn "    -a or --add               = Add a new agent\n";
-  warn "    -r or --remove  [id]      = Remove agent\n";
-  warn "    -e or --extract [id]      = Extract key\n";
-  warn "    -m or --import  [keydata] = Import key\n";
-  warn "    -l or --list              = List available agents\n";
+  warn "    -a or --add                    = Add a new agent\n";
+  warn "    -r or --remove  [id]           = Remove agent\n";
+  warn "    -e or --extract [id|name|ip]   = Extract key\n";
+  warn "    -m or --import  [keydata]      = Import key\n";
+  warn "    -l or --list                   = List available agents\n";
   warn "  [options]\n";
-  warn "    -k or --key     [keydata] = Key data\n";
-  warn "    -n or --name    [name]    = Agent name (32 character max)\n";
-  warn "    -i or --id      [id]      = Agent identification (integer)\n";
-  warn "    -p or --ip      [ip]      = IP address\n\n";
+  warn "    -k or --key     [keydata]  = Key data\n";
+  warn "    -n or --name    [name]     = Agent name (32 character max)\n";
+  warn "    -i or --id      [id]       = Agent identification (integer)\n";
+  warn "    -p or --ip      [ip]       = IP address\n\n";
   exit 1;
 }
 
@@ -162,35 +183,56 @@ sub list_agents {
   while (<FH>) {
     chomp;
     my ($id, $name, $ip, $key) = split;
-    print "$id",    " " x (25 - length($id)),
-          "$name",  " " x (25 - length($name)),
-          "$ip",    " " x (25 - length($ip)) . "\n";
+    if (defined($key)) {
+      print "$id",    " " x (25 - length($id)),
+            "$name",  " " x (25 - length($name)),
+            "$ip",    " " x (25 - length($ip)) . "\n";
+    }
   }
   close(FH);
   exit 0;
 }
 
-sub extract_key {
-  my $extractid = shift;
-  my ($encoded, $decoded);
-
+sub extract_keys {
   if (-r AUTH_KEY_FILE) {
     open (FH, "<", AUTH_KEY_FILE);
   }
   else {
     die "No ".AUTH_KEY_FILE."!\n";
   }
-  while (<FH>) {
-    chomp;
-    my ($id, $name, $ip, $key) = split;
-    if ($id == $extractid) {
-      # Newlines are valid base64 characters so use '' instead for \n
-      $decoded = MIME::Base64::encode($_, '');
-      print "$decoded\n";
-      exit 0;
+  
+  foreach my $extract (@_) {
+    my ($encoded, $decoded);
+    my $found = 0;
+
+    while (<FH>) {
+      chomp;
+      my ($id, $name, $ip, $key) = split;
+      # Check to make sure it's a valid entry
+      if (defined($key)) {
+        if (($extract =~ /^\d+$/) && ($id == $extract)) {
+          $found = 1;
+        }
+        elsif ($name eq $extract) {
+          $found = 1;
+        }
+        elsif ($ip eq $extract) {
+          $found = 1;
+        }
+        else {
+          next;
+        }
+        # Newlines are valid base64 characters so use '' instead for \n
+        $decoded = MIME::Base64::encode($_, '');
+        print "$name,$ip  $decoded\n";
+        next;
+      }
     }
+    if (!$found) {
+      warn "Error: Agent $extract doesn't exist!\n";
+    }
+    seek FH,0,0;
   }
-  warn "Error: Agent ID $extractid doesn't exist!\n";
 }
 
 sub add_agent {
@@ -282,9 +324,11 @@ sub check_if_exists {
     while (<FH>) {
       chomp;
       my ($id, $name, $ip, $key) = split;
-      $rval = 1 if ($id == $newid && $rval == 0);
-      $rval = 2 if ($name eq $newname && $rval == 0); 
-      $rval = 3 if ($ip eq $newip && $rval == 0);
+      if(defined($key)) {
+        $rval = 1 if ($id == $newid && $rval == 0);
+        $rval = 2 if ($name eq $newname && $rval == 0); 
+        $rval = 3 if ($ip eq $newip && $rval == 0);
+      }
     }
     close(FH);
   }
