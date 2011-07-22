@@ -54,14 +54,14 @@
 
   <rule id="18106" level="5">
     <if_sid>18105</if_sid>
-    <id>^529|^530|^531|^532|^533|^534|^535|^536|^537|^539|^4625</id>
+    <id>^529$|^530$|^531$|^532$|^533$|^534$|^535$|^536$|^537$|^539$|^4625$</id>
     <description>Windows Logon Failure.</description>
     <group>win_authentication_failed,</group>
   </rule>
 
   <rule id="18107" level="3">
     <if_sid>18104</if_sid>
-    <id>^528|^540|^672|^673|^4624|^4769</id>
+    <id>^528$|^540$|^672$|^673$|^4624$|^4769$</id>
     <description>Windows Logon Success.</description>
     <group>authentication_success,</group>
   </rule>
@@ -75,34 +75,34 @@
 
   <rule id="18109" level="3">
     <if_sid>18104</if_sid>
-    <id>^682|^683</id>
+    <id>^682$|^683$</id>
     <description>Session reconnected/disconnected to winstation.</description>
   </rule>
 
   <rule id="18110" level="8">
     <if_sid>18104</if_sid>
-    <id>^624|^626|^645|^4720|^4722|^4741</id>
+    <id>^624$|^626$|^645$|^4720$|^4722$|^4741$</id>
     <description>User account enabled or created.</description>
     <group>adduser,account_changed,</group>
   </rule>
 
   <rule id="18111" level="8">
     <if_sid>18104</if_sid>
-    <id>^628|^642|^685|^4738|^4781</id>
+    <id>^628$|^642$|^685$|^4738$|^4781$</id>
     <description>User account changed.</description>
     <group>account_changed,</group>
   </rule>
 
   <rule id="18112" level="8">
     <if_sid>18104</if_sid>
-    <id>^630|^629|^4725|^4726</id>
+    <id>^630$|^629$|^4725$|^4726$</id>
     <description>User account disabled or deleted.</description>
     <group>adduser,account_changed,</group>
   </rule>
   
   <rule id="18113" level="8">
     <if_sid>18104</if_sid>
-    <id>^612|^643|^4719|^4907|^4912</id>
+    <id>^612$|^643$|^4719$|^4907$|^4912$</id>
     <description>Windows Audit Policy changed.</description>
     <group>policy_changed,</group>
   </rule>
@@ -120,7 +120,7 @@
   
   <rule id="18115" level="8">
     <if_sid>18104</if_sid>
-    <id>^640</id>
+    <id>^640$</id>
     <description>General account database changed.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com259.html</info>
     <group>adduser,account_changed,</group>
@@ -128,21 +128,21 @@
   
   <rule id="18116" level="9">
     <if_sid>18104</if_sid>
-    <id>^644|^4740</id>
+    <id>^644$|^4740$</id>
     <description>User account locked out (multiple login errors).</description>
     <group>authentication_failures,</group>  
   </rule>
 
   <rule id="18117" level="7">
     <if_sid>18104</if_sid>
-    <id>^513|^4609</id>
+    <id>^513$|^4609$</id>
     <description>Windows is shutting down.</description>
     <group>system_shutdown,</group>
   </rule>
   
   <rule id="18118" level="9">
     <if_sid>18104</if_sid>
-    <id>^517</id>
+    <id>^517$</id>
     <description>Windows audit log was cleared.</description>
     <group>logs_cleared,</group>
   </rule>
@@ -157,27 +157,27 @@
 
   <rule id="18120" level="0">
     <if_sid>18105</if_sid>
-    <id>^680</id>
+    <id>^680$</id>
     <description>Windows login attempt (ignored). Duplicated.</description>
   </rule>
 
   <rule id="18125" level="5">
     <if_sid>18102, 18103</if_sid>
-    <id>^20187|^20014|^20078|^20050|^20049|^20189</id>
+    <id>^20187$|^20014$|^20078$|^20050$|^20049$|^20189$</id>
     <description>Remote access login failure.</description>
     <group>authentication_failed,</group>
   </rule>
   
   <rule id="18126" level="3">
     <if_sid>18101</if_sid>
-    <id>^20158</id>
+    <id>^20158$</id>
     <description>Remote access login success.</description>
     <group>authentication_success,</group>
   </rule>
   
   <rule id="18127" level="8">
     <if_sid>18104</if_sid>
-    <id>^646|^647</id>
+    <id>^646$|^647$</id>
     <description>Computer account changed/deleted.</description>
     <group>account_changed,</group>
   </rule>
@@ -192,7 +192,7 @@
 
   <rule id="18129" level="8">
     <if_sid>18103</if_sid>
-    <id>^13570</id>
+    <id>^13570$</id>
     <description>Windows file system full.</description>
     <group>low_diskspace,</group>
   </rule>
@@ -201,7 +201,7 @@
   <!-- Granular windows login rules -->
   <rule id="18130" level="5">
     <if_sid>18106</if_sid>
-    <id>^529</id>
+    <id>^529$</id>
     <description>Logon Failure - Unknown user or bad password.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com190.html</info>
     <group>win_authentication_failed,</group>
@@ -209,7 +209,7 @@
 
   <rule id="18131" level="5">
     <if_sid>18106</if_sid>
-    <id>^530</id>
+    <id>^530$</id>
     <description>Logon Failure - Account logon time restriction </description>
     <description>violation.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com191.html</info>
@@ -218,7 +218,7 @@
 
   <rule id="18132" level="5">
     <if_sid>18106</if_sid>
-    <id>^531</id>
+    <id>^531$</id>
     <description>Logon Failure - Account currently disabled.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com192.html</info>
     <group>win_authentication_failed,login_denied,</group>
@@ -226,7 +226,7 @@
 
   <rule id="18133" level="5">
     <if_sid>18106</if_sid>
-    <id>^532</id>
+    <id>^532$</id>
     <description>Logon Failure - Specified account expired.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com193.html</info>
     <group>win_authentication_failed,login_denied,</group>
@@ -234,7 +234,7 @@
 
   <rule id="18134" level="7">
     <if_sid>18106</if_sid>
-    <id>^533</id>
+    <id>^533$</id>
     <description>Logon Failure - User not allowed to login at </description>
     <description>this computer.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com194.html</info>
@@ -243,7 +243,7 @@
 
   <rule id="18135" level="5">
     <if_sid>18106</if_sid>
-    <id>^534</id>
+    <id>^534$</id>
     <description>Logon Failure - User not granted logon type.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com195.html</info>
     <group>win_authentication_failed,</group>
@@ -251,7 +251,7 @@
   
   <rule id="18136" level="5">
     <if_sid>18106</if_sid>
-    <id>^535</id>
+    <id>^535$</id>
     <description>Logon Failure - Account's password expired.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com196.html</info>
     <group>win_authentication_failed,</group>
@@ -259,35 +259,35 @@
 
   <rule id="18137" level="5">
     <if_sid>18106</if_sid>
-    <id>^536|^537</id>
+    <id>^536$|^537$</id>
     <description>Logon Failure - Internal error.</description>
     <group>win_authentication_failed,</group>
   </rule>
 
   <rule id="18138" level="7">
     <if_sid>18106</if_sid>
-    <id>^539</id>
+    <id>^539$</id>
     <description>Logon Failure - Account locked out.</description>
     <group>win_authentication_failed,</group>
   </rule>
   
   <rule id="18139" level="5">
     <if_sid>18105</if_sid>
-    <id>^672|^673|^675|^676|^681|^4769</id>
+    <id>^672$|^673$|^675$|^676$|^681$|^4769$</id>
     <description>Windows DC Logon Failure.</description>
     <group>win_authentication_failed,</group>
   </rule>
   
   <rule id="18140" level="5">
     <if_sid>18104</if_sid>
-    <id>^520</id>
+    <id>^520$</id>
     <description>System time changed.</description>
     <group>time_changed,</group>
   </rule>
 
   <rule id="18141" level="7">
     <if_sid>18102</if_sid>
-    <id>^1076</id>
+    <id>^1076$</id>
     <match>unexpected shutdown</match>
     <group>system_error, system_shutdown,</group>
     <description>Unexpected Windows shutdown.</description>
@@ -295,7 +295,7 @@
 
   <rule id="18142" level="5">
     <if_sid>18104</if_sid>
-    <id>^671|^4767</id>
+    <id>^671$|^4767$</id>
     <description>User account unlocked.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com291.html</info>
     <group>account_changed,</group>
@@ -303,14 +303,14 @@
 
   <rule id="18143" level="8">
     <if_sid>18114</if_sid>
-    <id>^631|^635|^658</id>
+    <id>^631$|^635$|^658$</id>
     <description>Security enabled group created.</description>
     <group>adduser,account_changed,</group>
   </rule>
 
   <rule id="18144" level="8">
     <if_sid>18114</if_sid>
-    <id>^634|^638|^662</id>
+    <id>^634$|^638$|^662$</id>
     <description>Security enabled group deleted.</description>
     <group>adduser,account_changed,</group>
   </rule>
@@ -318,7 +318,7 @@
   <!-- Some services change their startup type automatically -->
   <rule id="18145" level="3">
     <if_sid>18101</if_sid>
-    <id>^7040</id>
+    <id>^7040$</id>
     <group>policy_changed,</group>
     <description>Service startup type was changed.</description>
     <info type="text">This does not appear to be logged on Windows 2000.</info>
@@ -326,27 +326,27 @@
 
   <rule id="18146" level="5">
     <if_sid>18101</if_sid>
-    <id>^11724</id>
+    <id>^11724$</id>
     <options>alert_by_email</options>
     <description>Application Uninstalled.</description>
   </rule>
 
   <rule id="18147" level="5">
     <if_sid>18101</if_sid>
-    <id>^11707</id>
+    <id>^11707$</id>
     <options>alert_by_email</options>
     <description>Application Installed.</description>
   </rule>
   
   <rule id="18148" level="3">
     <if_sid>18104</if_sid>
-    <id>^4608</id>
+    <id>^4608$</id>
     <description>Windows is starting up.</description>
   </rule>
 
   <rule id="18149" level="3">
     <if_sid>18104</if_sid>
-    <id>^538|^4634|^4647</id>
+    <id>^538$|^4634$|^4647$</id>
     <description>Windows User Logoff.</description>
   </rule>
 
@@ -812,7 +812,7 @@
     -->
   <rule id="18121" level="0">
     <if_sid>18107,18149</if_sid>
-    <id>^528|^538|^540</id>
+    <id>^528$|^538$|^540$</id>
     <user>^LOCAL SERVICE|^NETWORK SERVICE|^ANONYMOUS LOGON</user>
     <description>Windows Logon Success (ignored).</description>
   </rule>
@@ -848,14 +848,14 @@
   <!-- MS SQL rules -->
   <rule id="18180" level="5">
     <if_sid>18105</if_sid>
-    <id>^18456</id>
+    <id>^18456$</id>
     <group>win_authentication_failed,</group>
     <description>MS SQL Server Logon Failure.</description>
   </rule>
 
   <rule id="18181" level="3">
     <if_sid>18104</if_sid>
-    <id>^18454|^18453</id>
+    <id>^18454$|^18453$</id>
     <description>MS SQL Server Logon Success.</description>
     <group>authentication_success,</group>
   </rule>
