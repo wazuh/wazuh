@@ -41,6 +41,7 @@
 
 int run_netstat(int proto, int port)
 {
+    int ret;
     char nt[OS_SIZE_1024 +1];
 
     if(proto == IPPROTO_TCP)
@@ -53,10 +54,17 @@ int run_netstat(int proto, int port)
         return(0);
     }
 
-    if(system(nt) == 0)    
+    ret = system(nt);
+
+    if(ret == 0)    
         return(1);
+
+    else if(ret == 1)
+    {
+        return(0);
+    }
     
-    return(0);    
+    return(1);
 }
 
 
