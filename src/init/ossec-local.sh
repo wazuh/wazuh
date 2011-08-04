@@ -309,6 +309,7 @@ case "$1" in
   restart)
     testconfig
 	stopa
+        sleep 1;
 	start
 	;;
   status)
