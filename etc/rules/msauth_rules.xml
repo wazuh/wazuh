@@ -278,7 +278,7 @@
     <group>win_authentication_failed,</group>
   </rule>
   
-  <rule id="18140" level="5">
+  <rule id="18140" level="0">
     <if_sid>18104</if_sid>
     <id>^520$</id>
     <description>System time changed.</description>
