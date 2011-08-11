@@ -26,7 +26,6 @@ int main()
 #include "auth.h"
 
 
-#define TEST "GET / HTTP/1.0\r\n\r\n\r\n"
 
 void report_help()
 {
@@ -45,7 +44,11 @@ void report_help()
 int main(int argc, char **argv)
 {
     int c, test_config = 0;
-    int gid = 0, sock = 0, port = 1515, ret = 0;
+    #ifndef WIN32
+    int gid = 0
+    #endif
+
+    int sock = 0, port = 1515, ret = 0;
     char *dir  = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
@@ -129,6 +132,7 @@ int main(int argc, char **argv)
     debug1(STARTED_MSG,ARGV0);
 
 
+    #ifndef WIN32
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if(gid < 0)
@@ -150,6 +154,7 @@ int main(int argc, char **argv)
     /* Creating PID files */
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
+    #endif
 
     
     /* Start up message */
