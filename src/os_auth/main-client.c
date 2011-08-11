@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 {
     int c, test_config = 0;
     #ifndef WIN32
-    int gid = 0
+    int gid = 0;
     #endif
 
     int sock = 0, port = 1515, ret = 0;
