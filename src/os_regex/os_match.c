@@ -14,8 +14,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "os_regex.h"
-
+#include <shared.h>
 
 /** int OS_Match2(char *pattern, char *str) v0.4
  *
@@ -40,6 +39,45 @@ int OS_Match2(char *pattern, char *str)
         OSMatch_FreePattern(&reg);
     }
     
+    return(r_code);
+}
+
+
+/** int OS_Match3(char *pattern, char *str) v2.6
+ *
+ *  This function is used
+ *  to match any values from a delimited string
+ *  e.g. match pattern "abc" from string "123,abc,xyz"
+ */
+int OS_Match3(char *pattern, char *str, char *delimiter)
+{
+    int r_code = 0;
+    char *token = NULL;
+    char *dupstr = NULL;
+    char *saveptr = NULL;
+   
+    /* debug2("1. str [%s], dupstr [%s], token[%s], delim [%s]", str, dupstr, token, delimiter); */
+
+    os_strdup(str, dupstr);
+    /* debug2("2. str [%s], dupstr [%s], token[%s], delim [%s]", str, dupstr, token, delimiter); */
+
+    token = strtok_r(dupstr, delimiter, &saveptr);
+    /* debug2("3. str [%s], dupstr [%s], token[%s], delim [%s]", str, dupstr, token, delimiter); */
+
+    while (token != NULL)
+    {
+        debug2("Matching [%s] with [%s]", pattern, token);
+        if (!strcmp(pattern, token))
+        {
+            r_code = 1;
+            break;
+        }
+
+        token = strtok_r(NULL, delimiter, &saveptr);
+    }
+    
+    /* debug2("4. str [%s], dupstr [%s], token[%s], delim [%s]", str, dupstr, token, delimiter); */
+    free(dupstr);
     return(r_code);
 }
 

@@ -34,6 +34,7 @@ int ClientConf(char *cfgfile)
     logr->lip = NULL;
     logr->rip_id = 0;
     logr->execdq = 0;
+    logr->profile = NULL;   /*cmoraes*/
 
     modules|= CCLIENT;
 

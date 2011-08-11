@@ -27,21 +27,21 @@ int read_main_elements(OS_XML xml, int modules,
                                    void *d2)
 {
     int i = 0;
-    char *osglobal = "global";
-    char *osrules = "rules";
-    char *ossyscheck = "syscheck";
-    char *osrootcheck = "rootcheck";
-    char *osalerts = "alerts";
-    char *osemailalerts = "email_alerts";
-    char *osdbd = "database_output";
-    char *oscsyslogd = "syslog_output";
-    char *oscagentless = "agentless";
-    char *oslocalfile = "localfile";
-    char *osremote = "remote";
-    char *osclient = "client";
-    char *oscommand = "command";
-    char *osreports = "reports";
-    char *osactive_response = "active-response";
+    char *osglobal = "global";                    /*Server Config*/
+    char *osrules = "rules";                      /*Server Config*/
+    char *ossyscheck = "syscheck";                /*Agent Config*/
+    char *osrootcheck = "rootcheck";              /*Agent Config*/
+    char *osalerts = "alerts";                    /*Server Config*/
+    char *osemailalerts = "email_alerts";         /*Server Config*/
+    char *osdbd = "database_output";              /*Server Config*/
+    char *oscsyslogd = "syslog_output";           /*Server Config*/
+    char *oscagentless = "agentless";             /*Server Config*/
+    char *oslocalfile = "localfile";              /*Agent Config*/
+    char *osremote = "remote";                    /*Agent Config*/
+    char *osclient = "client";                    /*Agent Config*/
+    char *oscommand = "command";                  /*? Config*/
+    char *osreports = "reports";                  /*Server Config*/
+    char *osactive_response = "active-response";  /*Agent Config*/
 
     
     while(node[i])
@@ -169,9 +169,12 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
     char *xml_start_ossec = "ossec_config";
     char *xml_start_agent = "agent_config";
 
+    /* Attributes of the <agent_config> tag */
     char *xml_agent_name = "name";
     char *xml_agent_os = "os";
     char *xml_agent_overwrite = "overwrite";
+    /* cmoraes */
+    char *xml_agent_profile = "profile";
     
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
@@ -238,6 +241,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
             {    
                 while(node[i]->attributes[attrs] && node[i]->values[attrs])
                 {
+                    /* Checking if there is an "name=" attribute */
                     if(strcmp(xml_agent_name, node[i]->attributes[attrs]) == 0)
                     {
                         #ifdef CLIENT
@@ -277,6 +281,38 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                         }
                         #endif
                     }
+                    /* cmoraes: added this else if loop to check for "profile=" */
+                    else if(strcmp(xml_agent_profile, node[i]->attributes[attrs]) == 0)
+                    {
+                        #ifdef CLIENT
+                        char *agentprofile = os_read_agent_profile();
+                        debug2("Read agent config profile name [%s]", agentprofile);
+
+                        if(!agentprofile)
+                        {
+                            passed_agent_test = 0;
+                        }
+                        else
+                        {
+                            /* match the profile name of this <agent_config> section
+                             * with a comma separated list of values in agent's
+                             * <config-profile> tag. 
+                             */
+                            if(!OS_Match3(node[i]->values[attrs], agentprofile, ","))
+                            {
+                                passed_agent_test = 0;
+                                debug2("[%s] did not match agent config profile name [%s]", 
+                                       node[i]->values[attrs], agentprofile);
+                            }
+                            else
+                            {
+                                debug2("Matched agent config profile name [%s]", agentprofile);
+                            }
+                            free(agentprofile);
+                        }
+                        #endif
+                    }
+                    /* cmoraes: end add */
                     else if(strcmp(xml_agent_overwrite, node[i]->attributes[attrs]) == 0)
                     {
                     }
@@ -288,8 +324,25 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                     attrs++;
                 }
             }
+            #ifdef CLIENT
+            else
+            {
+                debug2("agent_config element does not have any attributes.");
 
-            
+                /* if node does not have any attributes, it is a generic config block.
+                 * check if agent has a profile name
+                 * if agent does not have profile name, then only read this generic 
+                 * agent_config block
+                 */
+
+                if (!os_read_agent_profile())
+                {
+                    debug2("but agent has a profile name.");
+                    passed_agent_test = 0;
+                }
+            }
+            #endif
+
             /* Main element does not need to have any child */
             if(chld_node)
             {
@@ -298,7 +351,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                     merror(CONFIG_ERROR, ARGV0, cfgfile);
                     return(OS_INVALID);
                 }
-
+      
                 OS_ClearNode(chld_node);    
             }
         }

@@ -26,6 +26,8 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
     char *xml_local_ip = "local_ip";
     char *xml_client_port = "port";
     char *xml_ar_disabled = "disable-active-response";
+    /* cmoraes */
+    char *xml_profile_name = "config-profile";
 
     agent *logr;
 
@@ -146,6 +148,12 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
+        }
+        /* cmoraes */
+        else if(strcmp(node[i]->element,xml_profile_name) == 0)
+        {
+            /* profile name can be anything hence no validation */
+            os_strdup(node[i]->content, logr->profile);
         }
         else
         {

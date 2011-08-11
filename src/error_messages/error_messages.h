@@ -97,6 +97,8 @@
 #define IMSG_ERROR	    "%s(1222): ERROR: Invalid msg: %s"
 #define SNDMAIL_ERROR	"%s(1223): ERROR: Error Sending email to %s (smtp server)"
 #define XML_INV_GRAN_MAIL "%s(1224): ERROR: Invalid 'email_alerts' config (missing parameters)."
+#define CHLDWAIT_ERROR  "%s(1261): ERROR: Waiting for child process. (status: %d)."
+#define TOOMANY_WAIT_ERROR "%s(1262): ERROR: Too many errors waiting for child process(es)."
 
 
 /* rootcheck */

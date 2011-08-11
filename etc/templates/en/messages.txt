@@ -45,6 +45,8 @@ whatsmtp="What's your SMTP server ip/host?"
 # Part 3.1/agent
 serverip="What's the IP Address of the OSSEC HIDS server?"
 addingip="Adding Server IP"
+configprofile="Enter the agent's config profile name (default: blank)"
+addingcfg="Setting agent's config profile name"
 
 
 # Part 3.2

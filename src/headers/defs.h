@@ -21,6 +21,11 @@
 #define __OS_HEADERS
 
 
+/* TRUE / FALSE definitions 
+ */
+#define TRUE            1
+#define FALSE           0
+
 /* Read / Write definitions
  */
 #define READ 		1

@@ -312,7 +312,7 @@ int read_dir(char *dir_name, int opts, OSMatch *restriction)
     char f_name[PATH_MAX +2]; 
     DIR *dp;
     
-	struct dirent *entry;
+    struct dirent *entry;
 
     f_name[PATH_MAX +1] = '\0';
 	
@@ -328,7 +328,7 @@ int read_dir(char *dir_name, int opts, OSMatch *restriction)
     
     /* Opening the directory given */
     dp = opendir(dir_name);
-	if(!dp)
+    if(!dp)
     {
         if(errno == ENOTDIR)
         {
@@ -406,6 +406,8 @@ int read_dir(char *dir_name, int opts, OSMatch *restriction)
         *s_name = '\0';
         
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size -2);
+
+        /* Check integrity of the file */
         read_file(f_name, opts, restriction);
     }
 
