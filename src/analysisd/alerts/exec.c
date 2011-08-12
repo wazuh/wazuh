@@ -37,16 +37,14 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     /* Cleaning the IP */
     if(lf->srcip && (ar->ar_cmd->expect & SRCIP))
     {
-        ip = strrchr(lf->srcip, ':');
-        if(ip)
+        if(strncmp(lf->srcip, "::ffff:", 7) == 0)
         {
-            ip++;
-        }
+            ip = lf->srcip + 7;
+        } 
         else
         {
             ip = lf->srcip;
         }
-
 
         /* Checking if IP is to ignored */
         if(Config.white_list)
