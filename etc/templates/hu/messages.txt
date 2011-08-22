@@ -1,0 +1,108 @@
+# Configuration
+yes="i"
+no="n"
+yesmatch="i"
+nomatch="n"
+agent="agent"
+local="lokális"
+server="szerver"
+help="segítség"
+
+# Global
+moreinfo="További információk: "
+starting="OSSEC HIDS Indítása"
+systemis="A rendszer"
+modifiedinit="Init script módosítva, hogy bootoláskor automatikusan indítsa az OSSEC HIDS-et."
+noboot="Ismeretlen rendszer. Nincs init script hozzáadva."
+
+# Part 1
+installscript="Telepítő Script"
+system="Rendszer"
+user="Felhasználó"
+host="Hoszt"
+hitanyorabort="Nyomjon ENTER-t a folytatáshoz vagy Ctrl-C-t a megszakításhoz."
+whattoinstall="Milyen típusú telepítést szeretne? (szerver, agent, lokális vagy segítség)?"
+serverchose="Szerver telepítés kiválasztva"
+clientchose="Agent(kliens) telepítés kiválasztva"
+localchose="Lokális telepítés kiválasztva"
+
+# Part 2
+settingupenv="A telepítési környezet létrehozása"
+wheretoinstall="Válassza ki az OSSEC HIDS telepítési helyét"
+installat="A telepítés a következő helyre történik: "
+deletedir="A célkönyvtár már létezik. Törölhetem?"
+
+# Part 3
+configuring="A következő konfigurálása: "
+mailnotify="Szeretne e-mail értesítést?"
+nomail="E-mail értesítés kikapcsolva"
+whatsemail="Mi az ön e-mail címe?"
+yoursmtp="Az ön SMTP szerverének állapota: "
+usesmtp="Szeretné használni?"
+usingsmtp="SMTP szerver használata: "
+whatsmtp="Mi az ön SMTP szerverének ip címe/hoszt neve?"
+
+# Part 3.1/agent
+serverip="Mi az IP címe az OSSEC HIDS szervernek?"
+addingip="Szerver IP hozzáadása"
+
+
+# Part 3.2
+runsyscheck="Szeretné futtatni az integritás ellenőrző démont?"
+nosyscheck="Rendszerellenőrzés mellőzése (integritás ellenőrző démon)"
+yessyscheck="Rendszerellenőrzés futtatása (integritás ellenőrző démon)"
+
+# Part 3.3
+runrootcheck="Szeretné futtatni a rootkit detektáló motort?"
+norootcheck="Gyökérellenőrzés mellőzése (rootkit detektálás)"
+yesrootcheck="Gyökérellenőrzés futtatása (rootkit detektálás)"
+
+# Part 3.4/server/local
+enable_ar="Szeretné bekapcsolni az active response funkciót?"
+noactive="Active response kikapcsolva"
+nohosts="host-deny kikapcsolva"
+yeshosts="host-deny bekapcsolva (lokális) for levels >= 6"
+firewallar="Szeretné bekapcsolni a firewall-drop response funkciót?"
+nofirewall="firewall-drop kikapcsolva."
+yesfirewall="firewall-drop bekapcsolva (lokális) for levels >= 6"
+defaultwhitelist="Alapértelmezett fehér lista az active response számára:"
+addwhite="Szeretne további IP címeket hozzáadni a fehér listához?"
+ipswhite="IP-k (szóközzel elválasztva): "
+
+# Part 3.5/server/local
+syslog="Be szeretné kapcsolni a távoli rendszernaplózást (port 514 udp)?"
+nosyslog="Távoli rendszernaplózás kikapcsolva"
+yessyslog="Távoli rendszernaplózás bekapcsolva"
+
+# Part 3.4/3.5
+readlogs="A konfiguráció beállítása a következő naplók elemzéséhez:"
+
+# Part 5
+installing="A rendszer telepítése"
+runningmake="A Make fájl futtatása" 
+
+# Final
+configurationdone="A konfiguráció sikeresen befejeződött"
+tostart="Az OSSEC HIDS indítása"
+tostop="Az OSSEC HIDS leállítása"
+configat="A konfigurációs fájl megtekinthető vagy módosítható itt: "
+addserveragent="A kliens és szerver összekapcsolásához, minden egyes klienst 
+   hozzá kell adnia a szerverhez."
+runma="Futtassa a 'manage_agents' parancsot a kliensek hozzáadásához 
+   vagy eltávolításához."
+presskey="A folytatáshoz nyomja meg az ENTER-t"
+
+# Update
+wanttoupdate="Az OSSEC már telepítve van. Szeretné frissíteni?"
+unabletoupdate="A frissítés nem lehetséges. Egy teljesen új installáció szükséges."
+updatecompleted="A frissítés sikeresen befejeződött."
+updatefailed="A frissítés meghiúsult."
+updaterules="Szeretné frissíteni a szabályokat?"
+updatingrules="A szabályok frissítése."
+notupdatingrules="Nincs szabály frissítés."
+
+# Pf support
+pfenable="Szeretné alkalmazni a PF tűzfalat az active response során?"
+nopf="PF response kikapcsolva."
+pftablename="Az alkalmazandó PF tábla neve?"
+pfmessage="Adja hozzá a következő sorokat a PF szabályainak kezdetéhez"
