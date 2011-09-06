@@ -190,4 +190,19 @@ d:$web_dirs -> ^...$;
 [Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
 d:$web_dirs -> ^.shell$;
 
+
+## Looking for outdated Web applications
+## Taken from http://sucuri.net/latest-versions
+[Web vulnerability - Outdated WordPress installation] [any] [http://sucuri.net/latest-versions]
+d:$web_dirs -> ^version.php$ -> r:^\.wp_version && >:$wp_version = '3.2.1';
+
+[Web vulnerability - Outdated Joomla (v1.0) installation] [any] [http://sucuri.net/latest-versions]
+d:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:'1.0';
+
+[Web vulnerability - Outdated Joomla (v1.5) installation] [any] [http://sucuri.net/latest-versions]
+d:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:'1.5' && r:'23'
+
+[Web vulnerability - Outdated osCommerce (v2.2) installation] [any] [http://sucuri.net/latest-versions]
+d:$web_dirs -> ^application_top.php$ -> r:'osCommerce 2.2-;
+
 # EOF #

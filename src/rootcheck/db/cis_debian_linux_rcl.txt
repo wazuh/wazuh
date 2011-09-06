@@ -70,19 +70,19 @@ f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;
 
 
 # Section 2.4 Enable system accounting
-[CIS - Debian Linux 2.4 - System Accounting - Sysstat not installed] [all] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
-f:!/etc/default/sysstat;
-f:!/var/log/sysstat;
+#[CIS - Debian Linux 2.4 - System Accounting - Sysstat not installed] [all] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
+#f:!/etc/default/sysstat;
+#f:!/var/log/sysstat;
 
-[CIS - Debian Linux 2.4 - System Accounting - Sysstat not enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
-f:!/etc/default/sysstat;
-f:/etc/default/sysstat -> !r:^# && r:ENABLED="false";
+#[CIS - Debian Linux 2.4 - System Accounting - Sysstat not enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
+#f:!/etc/default/sysstat;
+#f:/etc/default/sysstat -> !r:^# && r:ENABLED="false";
 
 
 
 # Section 2.5 Install and run Bastille
-[CIS - Debian Linux 2.5 - System harderning - Bastille is not installed] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
-f:!/etc/Bastille;
+#[CIS - Debian Linux 2.5 - System harderning - Bastille is not installed] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
+#f:!/etc/Bastille;
 
 
 
