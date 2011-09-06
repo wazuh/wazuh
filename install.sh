@@ -315,15 +315,15 @@ SetupLogs()
     done
 
    if [ "X$NUNAME" = "XLinux" ]; then
-      echo "  <localfile" >> $NEWCONFIG
+      echo "  <localfile>" >> $NEWCONFIG
       echo "    <log_format>command</log_format>" >> $NEWCONFIG
       echo "    <command>df -h</command>" >> $NEWCONFIG
-      echo "  </localfile" >> $NEWCONFIG
+      echo "  </localfile>" >> $NEWCONFIG
       echo "" >> $NEWCONFIG
-      echo "  <localfile" >> $NEWCONFIG
+      echo "  <localfile>" >> $NEWCONFIG
       echo "    <log_format>full_command</log_format>" >> $NEWCONFIG
       echo "    <command>netstat -tanep |grep LISTEN |grep -v 127.0.0.1 | sort</command>" >> $NEWCONFIG
-      echo "  </localfile" >> $NEWCONFIG
+      echo "  </localfile>" >> $NEWCONFIG
    fi
 
     

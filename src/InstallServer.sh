@@ -135,7 +135,7 @@ chmod -R 770 ${DIR}/queue/ossec
 # To the ossec fts queue
 chown -R ${USER}:${GROUP} ${DIR}/queue/fts
 chmod -R 750 ${DIR}/queue/fts
-chmod 740 ${DIR}/queue/fts/* > /dev/null 2>&1
+chmod 750 ${DIR}/queue/fts/* > /dev/null 2>&1
 
 # To the ossec syscheck/rootcheck queue
 chown -R ${USER}:${GROUP} ${DIR}/queue/syscheck
