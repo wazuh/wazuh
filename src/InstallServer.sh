@@ -238,6 +238,9 @@ cp -pr ../bin/list_agents ${DIR}/bin/
 cp -pr ../bin/agent_control ${DIR}/bin/
 cp -pr ../bin/syscheck_control ${DIR}/bin/
 cp -pr ../bin/rootcheck_control ${DIR}/bin/
+cp -pr ../contrib/util.sh ${DIR}/bin/
+chown root:${GROUP} ${DIR}/bin/util.sh
+chmod +x ${DIR}/bin/util.sh
 
 # Local install chosen
 if [ "X$LOCAL" = "Xlocal" ]; then
