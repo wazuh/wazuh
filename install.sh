@@ -344,8 +344,6 @@ SetupLogs()
 ##########
 # ConfigureClient()
 ##########
-# edited by cmoraes: to add prompt for config-profile
-
 ConfigureClient()
 {
 	echo ""
@@ -355,7 +353,7 @@ ConfigureClient()
     if [ "X${USER_AGENT_SERVER_IP}" = "X" ]; then
         # Looping and asking for server ip
         while [ 1 ]; do
-	    $ECHO "  3.1.1- ${serverip}: "
+	    $ECHO "  3.1- ${serverip}: "
 	        read IPANSWER
             echo $IPANSWER | grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" > /dev/null 2>&1
             if [ $? = 0 ]; then
@@ -369,33 +367,11 @@ ConfigureClient()
         IP=${USER_AGENT_SERVER_IP}
     fi
 
-    # cmoraes: begin change
-    echo ""
-
-    if [ "X${USER_AGENT_CONFIG_PROFILE}" = "X" ]; then
-        # Asking for agent's config profile. Default is none.
-	$ECHO "  3.1.2- ${configprofile}: "
-	    read CFGANSWER
-        if [ "X$CFGANSWER" != "X" ]; then
-            CFG=$CFGANSWER
-	    echo ""
-	    echo "   - ${addingcfg} $CFG"
-        else
-            CFG=""
-        fi
-    else
-        CFG=${USER_AGENT_CONFIG_PROFILE}
-    fi
-
     echo "<ossec_config>" > $NEWCONFIG
     echo "  <client>" >> $NEWCONFIG
-    echo "    <server-ip>$IP</server-ip>" >> $NEWCONFIG
-    if [ "X$CFG" != "X" ]; then
-       echo "    <config-profile>$CFG</config-profile>" >> $NEWCONFIG
-    fi
-    echo "  </client>" >> $NEWCONFIG
+	echo "    <server-ip>$IP</server-ip>" >> $NEWCONFIG
+	echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
-    # cmoraes: end change
 
     # Syscheck?
     UseSyscheck
