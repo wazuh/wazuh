@@ -73,10 +73,10 @@
     <description>An IP has reverted to an old ethernet address.</description>
   </rule>
 
-  <rule id="7209" level="12">
+  <rule id="7209" level="7">
     <if_sid>7200</if_sid>
     <match>ethernet mismatch</match>
-    <description>Probable aprspoofing attempt.</description>
+    <description>Possible arpspoofing attempt.</description>
     <group>ip_spoof,</group>
   </rule>
 
