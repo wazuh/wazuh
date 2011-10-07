@@ -41,6 +41,7 @@ int main(int argc, char **argv)
     int c;
     int debug_flag = 0;
     int test_config = 0,run_foreground = 0;
+    int accept_manager_commands = 0;
     char *cfg = DEFAULTCPATH;
     char *dir = DEFAULTDIR;
 
@@ -99,8 +100,12 @@ int main(int argc, char **argv)
     debug1(STARTED_MSG,ARGV0);
 
 
+    accept_manager_commands = getDefine_Int("logcollector", "remote_commands",
+                                       0, 1);
+
+
     /* Reading config file */
-    if(LogCollectorConfig(cfg) < 0)
+    if(LogCollectorConfig(cfg, accept_manager_commands) < 0)
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     
     
@@ -115,6 +120,8 @@ int main(int argc, char **argv)
     debug_flag = getDefine_Int("logcollector",
                                "debug",
                                0,2);
+    accept_manager_commands = getDefine_Int("logcollector", "remote_commands",
+                                       0, 1);
     
     /* Getting debug values */
     while(debug_flag != 0)

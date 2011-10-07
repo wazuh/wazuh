@@ -47,7 +47,7 @@ typedef struct _logreader
     char *logformat;
     char *djb_program_name;
     char *command;
-	char *alias;
+    char *alias;
 	
     void (*read)(int i, int *rc, int drop_it);
 
@@ -57,6 +57,7 @@ typedef struct _logreader
 typedef struct _logreader_config
 {
     int agent_cfg;
+    int accept_remote;
     logreader *config;
 }logreader_config;
 

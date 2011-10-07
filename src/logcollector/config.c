@@ -23,7 +23,7 @@
  * Read the config file (the localfiles)
  * v0.3: Changed for the new OS_XML
  */
-int LogCollectorConfig(char * cfgfile)
+int LogCollectorConfig(char * cfgfile, int accept_remote)
 {
     int modules = 0;
 
@@ -33,6 +33,7 @@ int LogCollectorConfig(char * cfgfile)
 
     log_config.config = NULL;
     log_config.agent_cfg = 0;
+    log_config.accept_remote = accept_remote;
 
     if(ReadConfig(modules, cfgfile, &log_config, NULL) < 0)
         return(OS_INVALID);

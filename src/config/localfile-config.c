@@ -98,7 +98,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         else if(strcmp(node[i]->element,xml_localfile_command) == 0)
         {
             /* We don't accept remote commands from the manager - just in case. */
-            if(log_config->agent_cfg == 1)
+            if(log_config->agent_cfg == 1 && log_config->accept_remote == 0)
             {
                 merror("%s: Remote commands are not accepted from the manager. "
                        "Ignoring it on the agent.conf", ARGV0);
