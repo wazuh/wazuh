@@ -74,6 +74,25 @@
     <group>authentication_failures,</group>
   </rule>
 
+  <rule id="5552" level="0">
+    <if_sid>5500</if_sid>
+    <match>gdm:auth): conversation failed</match>
+    <description>PAM and gdm are not playing nicely.</description>
+  </rule>
+
+   <rule id="5553" level="4">
+    <program_name>login</program_name>
+    <match>cannot open shared object file: No such file or directory</match>
+    <description>PAM misconfiguration.</description>
+  </rule>
+
+  <rule id="5554" level="4">
+    <program_name>login</program_name>
+    <match>illegal module type: </match>
+    <description>PAM misconfiguration.</description>
+  </rule>
+
+
 </group> <!-- SYSLOG,pam -->
 
 
