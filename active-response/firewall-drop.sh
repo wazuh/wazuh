@@ -11,7 +11,9 @@
 UNAME=`uname`
 ECHO="/bin/echo"
 GREP="/bin/grep"
-IPTABLES="/sbin/iptables"
+IPTABLES=""
+IP4TABLES="/sbin/iptables"
+IP6TABLES="/sbin/ip6tables"
 IPFILTER="/sbin/ipf"
 if [ "X$UNAME" = "XSunOS" ]; then
     IPFILTER="/usr/sbin/ipf"
@@ -26,6 +28,9 @@ RULEID=""
 ACTION=$1
 USER=$2
 IP=$3
+LOCK="${PWD}/fw-drop"
+LOCK_PID="${PWD}/fw-drop/pid"
+
 
 LOCAL=`dirname $0`;
 cd $LOCAL
@@ -39,6 +44,64 @@ if [ "x${IP}" = "x" ]; then
    echo "$0: <action> <username> <ip>" 
    exit 1;
 fi
+
+case "${IP}" in
+    *:* ) IPTABLES=$IP6TABLES;;
+    *.* ) IPTABLES=$IP4TABLES;;
+    * ) echo "`date` Unable to run active response (invalid IP)." >> ${PWD}/../logs/active-responses.log && exit 1;;
+esac
+
+# Lock function
+lock()
+{
+    i=0;
+    # Providing a lock.
+    while [ 1 ]; do
+        mkdir ${LOCK} > /dev/null 2>&1
+        MSL=$?
+        if [ "${MSL}" = "0" ]; then
+            # Lock aquired (setting the pid)
+            echo "$$" > ${LOCK_PID}
+            return;
+        fi
+
+        # Getting currently/saved PID locking the file
+        C_PID=`cat ${LOCK_PID} 2>/dev/null`
+        if [ "x" = "x${S_PID}" ]; then
+            S_PID=${C_PID}
+        fi    
+
+        # Breaking out of the loop after X attempts
+        if [ "x${C_PID}" = "x${S_PID}" ]; then
+            i=`expr $i + 1`;
+        fi
+   
+        # Sleep 1 after 10/25 interactions
+        if [ "$i" = "10" -o "$i" = "25" ]; then
+            sleep 1;
+        fi
+             
+        i=`expr $i + 1`;
+        
+        # So i increments 2 by 2 if the pid does not change.
+        # If the pid keeps changing, we will increments one
+        # by one and fail after MAX_ITERACTION
+        if [ "$i" = "${MAX_ITERATION}" ]; then
+            echo "`date` Unable to execute. Locked: $0" \
+                        >> ${PWD}/ossec-hids-responses.log
+            
+            # Unlocking and exiting
+            unlock;
+            exit 1;                
+        fi
+    done
+}
+
+# Unlock function
+unlock()
+{
+   rm -rf ${LOCK} 
+}
 
 
 
@@ -61,17 +124,16 @@ if [ "X${UNAME}" = "XLinux" ]; then
    fi
    
    # Checking if iptables is present
-   ls ${IPTABLES} >> /dev/null 2>&1
-   if [ $? != 0 ]; then
+   if [ ! -x ${IPTABLES} ]; then
       IPTABLES="/usr"${IPTABLES}
-      ls ${IPTABLES} >> /dev/null 2>&1
-      if [ $? != 0 ]; then
+      if [ ! -x ${IPTABLES} ]; then
          exit 0;
       fi
    fi
 
    # Executing and exiting
    COUNT=0;
+   lock;
    while [ 1 ]; do
        echo ".."
         ${IPTABLES} ${ARG1}
@@ -104,6 +166,7 @@ if [ "X${UNAME}" = "XLinux" ]; then
             fi       
         fi
    done
+   unlock;
             
    exit 0;
    
