@@ -153,14 +153,14 @@
     <description>No core dumps.</description>
   </rule>
 
-  <rule id="51524" level="1">
+  <rule id="51524" level="4">
     <program_name>reboot</program_name>
     <match>rebooted by</match>
     <description>System was rebooted.</description>
   </rule>
 
   <rule id="51525" level="0">
-    <decoded_as>ftp-proxy</decoded_as>
+    <program_name>^ftp-proxy</program_name>
     <match>proxy cannot connect to server</match>
     <description>ftp-proxy cannot connect to a server.</description>
   </rule>
@@ -192,7 +192,7 @@
   </rule>
 
   <rule id="51529" level="0">
-    <decoded_as>hotplugd</decoded_as>
+    <program_name>^hotplugd</program_name>
     <match>Permission denied$</match>
     <description>hotplugd could not open a file.</description>
   </rule>

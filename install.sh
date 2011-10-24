@@ -457,12 +457,13 @@ ConfigureServer()
 
             ls ${HOST_CMD} > /dev/null 2>&1
             if [ $? = 0 ]; then
-              HOSTTMP=`${HOST_CMD} -W 5 -t mx devmail.ossec.net 2>/dev/null`
+              HOSTTMP=`${HOST_CMD} -W 5 -t mx ossec.net 2>/dev/null`
               if [ $? = 1 ]; then
                  # Trying without the -W
-                 HOSTTMP=`${HOST_CMD} -t mx devmail.ossec.net 2>/dev/null`
+                 HOSTTMP=`${HOST_CMD} -t mx ossec.net 2>/dev/null`
               fi
-              if [ "X$HOSTTMP" = "X${OSSECMX}" -o "X$HOSTTMP" = "X${OSSECMX2}" -o "X$HOSTTMP" = "X${OSSECMX3}" ];then
+              echo "x$HOSTTMP" | grep "ossec.net mail is handled" > /dev/null 2>&1
+              if [ $? = 0 ]; then
                  # Breaking down the user e-mail
                  EMAILHOST=`echo ${EMAIL} | cut -d "@" -f 2`
                  if [ "X${EMAILHOST}" = "Xlocalhost" ]; then
