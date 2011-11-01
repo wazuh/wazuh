@@ -281,7 +281,6 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                         }
                         #endif
                     }
-                    /* cmoraes: added this else if loop to check for "profile=" */
                     else if(strcmp(xml_agent_profile, node[i]->attributes[attrs]) == 0)
                     {
                         #ifdef CLIENT
@@ -298,7 +297,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                              * with a comma separated list of values in agent's
                              * <config-profile> tag. 
                              */
-                            if(!OS_Match3(node[i]->values[attrs], agentprofile, ","))
+                            if(!OS_Match2(node[i]->values[attrs], agentprofile))
                             {
                                 passed_agent_test = 0;
                                 debug2("[%s] did not match agent config profile name [%s]", 

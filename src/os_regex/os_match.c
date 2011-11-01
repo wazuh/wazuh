@@ -13,8 +13,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "os_regex.h"
 
-#include <shared.h>
+
 
 /** int OS_Match2(char *pattern, char *str) v0.4
  *
@@ -43,6 +44,7 @@ int OS_Match2(char *pattern, char *str)
 }
 
 
+#ifdef NOTHINGEMPTY
 /** int OS_Match3(char *pattern, char *str) v2.6
  *
  *  This function is used
@@ -80,6 +82,7 @@ int OS_Match3(char *pattern, char *str, char *delimiter)
     free(dupstr);
     return(r_code);
 }
+#endif
 
 
 /* EOF */

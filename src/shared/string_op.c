@@ -33,21 +33,5 @@ void os_trimcrlf(char *str)
     } 
 }
 
-/**  os_substring
- *   Breaks a string into fields based on the delimiter
- *   and returns field in numbered position
- *   Parameters:
- *      str - the string to be searched
- *      delimiter - the string to be used as delimiter
- *      pos - the field to be returned
- */
-char* os_substring(char *str, char *pattern, int pos)
-{
-   char *ret;
-   int  i;
-
-   return(ret);
-}
-
 
 /* EOF */
