@@ -225,7 +225,7 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
 
 
             /* Sending the new checksum to the analysis server */
-            alert_msg[912 +1] = '\0';
+            alert_msg[912] = '\0';
             snprintf(alert_msg, 912, "%d:%d:%d:%d:%s:%s %s", 
                      opts & CHECK_SIZE?(int)statbuf.st_size:0,
                      opts & CHECK_PERM?(int)statbuf.st_mode:0,
