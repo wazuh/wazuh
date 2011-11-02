@@ -1,0 +1,17 @@
+**Phase 1: Completed pre-decoding.
+       full event: 'Nov 11 22:46:29 localhost vsftpd: pam_unix(vsftpd:auth): authentication failure; logname= uid=0 euid=0 tty= ruser= rhost=1.2.3.4'
+       hostname: 'localhost'
+       program_name: 'vsftpd'
+       log: 'pam_unix(vsftpd:auth): authentication failure; logname= uid=0 euid=0 tty= ruser= rhost=1.2.3.4'
+
+**Phase 2: Completed decoding.
+       decoder: 'pam'
+       srcip: '1.2.3.4'
+
+**Phase 3: Completed filtering (rules).
+       Rule id: '5503'
+       Level: '5'
+       Description: 'User login failed.'
+**Alert to be generated.
+
+

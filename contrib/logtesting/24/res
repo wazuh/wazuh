@@ -1,0 +1,8 @@
+**Phase 1: Completed pre-decoding.
+       full event: 'Apr 5 16:19:49 niban adduser[16188]: new user: name=port4, uid=12006, gid=0, home=/home/port4, shell=/bin/bash'
+       hostname: 'melancia'
+       program_name: '(null)'
+       log: 'Apr 5 16:19:49 niban adduser[16188]: new user: name=port4, uid=12006, gid=0, home=/home/port4, shell=/bin/bash'
+
+**Phase 2: Completed decoding.
+       No decoder matched.

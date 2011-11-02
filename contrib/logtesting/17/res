@@ -1,0 +1,16 @@
+**Phase 1: Completed pre-decoding.
+       full event: 'Jul 5 12:13:15 lili su[2614]: Authentication failed for root'
+       hostname: 'melancia'
+       program_name: '(null)'
+       log: 'Jul 5 12:13:15 lili su[2614]: Authentication failed for root'
+
+**Phase 2: Completed decoding.
+       No decoder matched.
+
+**Phase 3: Completed filtering (rules).
+       Rule id: '2501'
+       Level: '5'
+       Description: 'User authentication failure.'
+**Alert to be generated.
+
+

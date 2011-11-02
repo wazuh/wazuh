@@ -1,0 +1,8 @@
+**Phase 1: Completed pre-decoding.
+       full event: 'Nov  2 13:24:34 melancia pam: gdm-password[1600]: pam_unix(gdm-password:session): session closed for user dcid11'
+       hostname: 'melancia'
+       program_name: 'pam'
+       log: 'gdm-password[1600]: pam_unix(gdm-password:session): session closed for user dcid11'
+
+**Phase 2: Completed decoding.
+       No decoder matched.

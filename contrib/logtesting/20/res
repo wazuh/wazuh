@@ -1,0 +1,16 @@
+**Phase 1: Completed pre-decoding.
+       full event: 'May 28 10:48:29 niban useradd[32421]: new group: name=logr, gid=12000'
+       hostname: 'niban'
+       program_name: 'useradd'
+       log: 'new group: name=logr, gid=12000'
+
+**Phase 2: Completed decoding.
+       No decoder matched.
+
+**Phase 3: Completed filtering (rules).
+       Rule id: '5901'
+       Level: '8'
+       Description: 'New group added to the system'
+**Alert to be generated.
+
+

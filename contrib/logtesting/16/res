@@ -1,0 +1,8 @@
+**Phase 1: Completed pre-decoding.
+       full event: 'Jul 5 00:30:21 lili su[2190]: + pts/4 dcid-root'
+       hostname: 'melancia'
+       program_name: '(null)'
+       log: 'Jul 5 00:30:21 lili su[2190]: + pts/4 dcid-root'
+
+**Phase 2: Completed decoding.
+       No decoder matched.

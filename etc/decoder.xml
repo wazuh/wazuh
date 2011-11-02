@@ -2313,7 +2313,6 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
 166   - Future enhancements should ensure that all log samples regress properly due to the complexity of these decoders
 167   - Examples: 
 
-<!-- CentOS 5.5 -->
 type=USER_ACCT msg=audit(1310592861.936:1222): user pid=24675 uid=0 auid=501 ses=188 subj=system_u:system_r:unconfined_t:s0 msg='op=PAM:accounting acct="username" exe="/usr/bin/sudo" (hostname=?, addr=?, terminal=pts/5 res=success)'
 type=CRED_ACQ msg=audit(1305666154.831:51859): user pid=21250 uid=0 auid=4294967295 subj=system_u:system_r:unconfined_t:s0-s0:c0.c1023 msg='PAM: setcred acct="username" : exe="/usr/sbin/sshd" (hostname=lala.example.com, addr=172.16.0.1, terminal=ssh res=success)'
 type=CRED_ACQ msg=audit(1273182001.226:148635): user pid=29770 uid=0 auid=4294967295 subj=system_u:system_r:crond_t:s0-s0:c0.c1023 msg='PAM: setcred acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=?, terminal=cron
@@ -2323,17 +2322,14 @@ type=CRED_ACQ msg=audit(1306939201.751:67935): user pid=4401 uid=0 auid=42949672
 type=USER_START msg=audit(1306939201.756:67937): user pid=4401 uid=0 auid=0 subj=system_u:system_r:crond_t:s0-s0:c0.c1023 msg='PAM: session open acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=?, terminal=cron res=success)'
 type=USER_CHAUTHTOK msg=audit(1304523288.952:37394): user pid=7258 uid=0 auid=500 subj=user_u:system_r:unconfined_t:s0 msg='op=change password id=505 exe="/usr/bin/passwd" (hostname=?, addr=?, terminal=pts/1 res=success)'
 
-<!-- Unknown source -->
 type=USER_ACCT msg=audit(1310592861.936:1222): user pid=24675 uid=0 auid=501 ses=188 subj=system_u:system_r:unconfined_t:s0 msg='op=PAM:accounting acct="username" exe="/usr/bin/sudo" (hostname=?, addr=?, terminal=pts/5 res=success)'
 
-<!-- Ubuntu 10.04 LTS -->
 type=SYSCALL msg=audit(1307045440.943:148): arch=c000003e syscall=59 success=yes exit=0 a0=de1fa8 a1=de23a8 a2=dc3008 a3=7fff1db3cc60 items=2 ppid=11719 pid=12140 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts8 ses=4294967295 comm="wget" exe="/tmp/wget" key="webserver-watch-tmp"
 type=SYSCALL msg=audit(1307045820.403:151): arch=c000003e syscall=59 success=no exit=-13 a0=de24c8 a1=de2408 a2=dc3008 a3=7fff1db3cc60 items=1 ppid=11719 pid=12347 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts8 ses=4294967295 comm="bash" exe="/bin/bash" key=(null)
 type=SYSCALL msg=audit(1306939143.715:67933): arch=40000003 syscall=94 success=yes exit=0 a0=5 a1=180 a2=8ebd360 a3=8ec4978 items=1 ppid=4383 pid=4388 auid=500 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=8038 comm="less" exe="/usr/bin/less" subj=user_u:system_r:unconfined_t:s0 key="perm_mod"
 type=USER_ROLE_CHANGE msg=audit(1280266360.845:51): user pid=1978 uid=0 auid=500 subj=system_u:system_r:local_login_t:s0-s0:c0.c1023 msg='pam: default-context=user_u:system_r:unconfined_t:s0 selected-context=user_u:system_r:unconfined_t:s0: exe="/bin/login" (hostname=?, addr=?, terminal=tty1 res=success)'
 type=PATH msg=audit(1306967989.163:119): item=0 name="./ls" inode=261813 dev=fb:00 mode=0100755 ouid=0 ogid=0 rdev=00:00
 
-<!-- Will not decode due to null name, that's OK -->
 type=PATH msg=audit(1273924468.947:179534): item=0 name=(null) inode=424783 dev=fd:07 mode=0100640 ouid=0 ogid=502 rdev=00:00 obj=user_u:object_r:file_t:s0
 
 -->

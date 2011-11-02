@@ -1,0 +1,13 @@
+**Phase 1: Completed pre-decoding.
+       full event: 'Sun Aug 27 16:28:20 2006 [pid 13962] [xx] OK UPLOAD: Client "1.2.3.4", "/a.php", 8338 bytes, 18.77Kbyte/sec'
+       hostname: 'melancia'
+       program_name: '(null)'
+       log: 'Sun Aug 27 16:28:20 2006 [pid 13962] [xx] OK UPLOAD: Client "1.2.3.4", "/a.php", 8338 bytes, 18.77Kbyte/sec'
+
+**Phase 2: Completed decoding.
+       decoder: 'vsftpd'
+
+**Phase 3: Completed filtering (rules).
+       Rule id: '11404'
+       Level: '0'
+       Description: 'FTP server file upload.'
