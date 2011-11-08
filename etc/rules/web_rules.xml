@@ -76,6 +76,15 @@
     <group>attack,</group>
   </rule>
 
+  <rule id="31109" level="6">
+    <if_sid>31100</if_sid>
+    <url>+as+varchar(8000)</url>
+    <regex>%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)</regex>
+    <description>MSSQL Injection attempt (/ur.php, urchin.js)</description>
+    <group>attack,</group>
+  </rule>
+
+
   <!-- If your site have a search engine, you may need to ignore
     - it in here.
     -->
