@@ -65,6 +65,10 @@ void FreeAlertData(alert_data *al_data)
     {
         free(al_data->srcip);
     }
+    if(al_data->dstip)
+    {
+        free(al_data->dstip);
+    }
     if(al_data->user)
     {
         free(al_data->user);
