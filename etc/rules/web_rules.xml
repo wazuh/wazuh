@@ -143,7 +143,7 @@
   <rule id="31151" level="10" frequency="10" timeframe="120">
     <if_matched_sid>31101</if_matched_sid>
     <same_source_ip />
-    <description>Mutiple web server 400 error codes </description>
+    <description>Multiple web server 400 error codes </description>
     <description>from same source ip.</description>
     <group>web_scan,recon,</group>
   </rule>
