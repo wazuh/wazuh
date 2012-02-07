@@ -283,7 +283,7 @@ int main(int argc, char **argv)
             case SSL_ERROR_ZERO_RETURN:
             case SSL_ERROR_SYSCALL:
                 printf("INFO: Connection closed.\n");
-                exit(1);
+                exit(0);
                 break;
             default:
                 printf("ERROR: SSL read (unable to receive message)\n");
