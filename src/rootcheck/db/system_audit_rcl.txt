@@ -45,10 +45,6 @@ f:$php.ini -> r:^expose_php = On;
 f:$php.ini -> r:^allow_url_fopen = On;
 
 
-# PHP checks
-[PHP - Safe mode disabled] [any] []
-f:$php.ini -> r:^safe_mode = Off;
-
 
 # PHP checks
 [PHP - Displaying of errors is enabled] [any] []
@@ -60,8 +56,8 @@ f:$php.ini -> r:^display_errors = On;
 
 ## Looking for common web exploits (might indicate that you are owned).
 ## Using http://www.ossec.net/wiki/index.php/WebAttacks_links as a reference.
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> .txt$ -> r:^<?php|^#!;
+#[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+#d:$web_dirs -> .txt$ -> r:^<?php|^#!;
 
 
 ## Looking for common web exploits files (might indicate that you are owned).

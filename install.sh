@@ -315,6 +315,7 @@ SetupLogs()
     done
 
    if [ "X$NUNAME" = "XLinux" ]; then
+      echo "" >> $NEWCONFIG
       echo "  <localfile>" >> $NEWCONFIG
       echo "    <log_format>command</log_format>" >> $NEWCONFIG
       echo "    <command>df -h</command>" >> $NEWCONFIG
@@ -322,7 +323,7 @@ SetupLogs()
       echo "" >> $NEWCONFIG
       echo "  <localfile>" >> $NEWCONFIG
       echo "    <log_format>full_command</log_format>" >> $NEWCONFIG
-      echo "    <command>netstat -tanep |grep LISTEN |grep -v 127.0.0.1 | sort</command>" >> $NEWCONFIG
+      echo "    <command>netstat -tan |grep LISTEN |grep -v 127.0.0.1 | sort</command>" >> $NEWCONFIG
       echo "  </localfile>" >> $NEWCONFIG
    fi
 
@@ -350,6 +351,7 @@ ConfigureClient()
 	echo "3- ${configuring} $NAME."
 	echo ""
 
+    USINGHNAME=""
     if [ "X${USER_AGENT_SERVER_IP}" = "X" ]; then
         # Looping and asking for server ip
         while [ 1 ]; do
@@ -362,6 +364,21 @@ ConfigureClient()
 	            echo "   - ${addingip} $IP"
                 break;
             fi
+
+            # Checking if it is a hostname
+            if [ "X$NUNAME" = "XLinux" ]; then
+                echo $IPANSWER | grep -E "^[0-9a-zA-Z-][0-9a-zA-Z-]*\.[0-9a-zA-Z-][0-9a-zA-Z\.-]*$" > /dev/null 2>&1
+                if [ $? = 0 ]; then
+                    host $IPANSWER | grep "had address" >/dev/null 2>&1
+                    if [ $? = 0 ]; then
+                        echo ""
+                        IP=$IPANSWER
+                        echo "   - ${addingip} $IP"
+                        USINGHNAME=$IP
+                        break;
+                    fi
+                fi
+            fi
         done
     else
         IP=${USER_AGENT_SERVER_IP}
@@ -369,8 +386,12 @@ ConfigureClient()
 
     echo "<ossec_config>" > $NEWCONFIG
     echo "  <client>" >> $NEWCONFIG
+    if [ "x$USINGHNAME" = "x" ]; then
 	echo "    <server-ip>$IP</server-ip>" >> $NEWCONFIG
-	echo "  </client>" >> $NEWCONFIG
+    else
+	echo "    <server-hostname>$IP</server-hostname>" >> $NEWCONFIG
+    fi
+    echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Syscheck?
