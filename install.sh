@@ -369,7 +369,7 @@ ConfigureClient()
             if [ "X$NUNAME" = "XLinux" ]; then
                 echo $IPANSWER | grep -E "^[0-9a-zA-Z-][0-9a-zA-Z-]*\.[0-9a-zA-Z-][0-9a-zA-Z\.-]*$" > /dev/null 2>&1
                 if [ $? = 0 ]; then
-                    host $IPANSWER | grep "had address" >/dev/null 2>&1
+                    host $IPANSWER | grep "has address" >/dev/null 2>&1
                     if [ $? = 0 ]; then
                         echo ""
                         IP=$IPANSWER
