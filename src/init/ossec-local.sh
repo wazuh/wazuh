@@ -238,6 +238,14 @@ start()
     # to internally create their PID files.
     sleep 2;
     unlock;
+
+    ls -la "${DIR}/ossec-agent/" >/dev/null 2>&1
+    if [ $? = 0 ]; then
+        echo ""
+        echo "Starting sub agent directory (for hybrid mode)"
+        ${DIR}/ossec-agent/bin/ossec-control start
+    fi
+    
     echo "Completed."
 }
 
@@ -292,6 +300,13 @@ stopa()
      done    
     
     unlock;
+
+    ls -la "${DIR}/ossec-agent/" >/dev/null 2>&1
+    if [ $? = 0 ]; then
+        echo ""
+        echo "Stopping sub agent directory (for hybrid mode)"
+        ${DIR}/ossec-agent/bin/ossec-control stop
+    fi
     echo "$NAME $VERSION Stopped"
 }
 

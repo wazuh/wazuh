@@ -109,6 +109,9 @@ Install()
     elif [ "X$INSTYPE" = "Xagent" ]; then
         ./InstallAgent.sh
 
+    elif [ "X$INSTYPE" = "Xhybrid" ]; then
+        ./InstallHybrid.sh
+
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         ./InstallServer.sh local
 	fi
@@ -242,6 +245,16 @@ UseRootcheck()
 ##########
 SetupLogs()
 {
+    if [ "x${USER_CLEANINSTALL}" = "xy" ]; then
+        OPENDIR=`dirname $INSTALLDIR`
+        echo "" >> $NEWCONFIG
+        echo "  <localfile>" >> $NEWCONFIG
+        echo "    <log_format>ossecalert</log_format>" >> $NEWCONFIG
+        echo "    <location>$OPENDIR/logs/alerts/alerts.log</location>" >>$NEWCONFIG
+        echo "  </localfile>" >> $NEWCONFIG
+        echo "" >> $NEWCONFIG
+        return;
+    fi
 
     NB=$1
     echo ""
@@ -991,7 +1004,7 @@ main()
 
     . ./src/init/update.sh
     # Is this an update?
-    if [ "`isUpdate`" = "${TRUE}" ]; then
+    if [ "`isUpdate`" = "${TRUE}" -a "x${USER_CLEANINSTALL}" = "x" ]; then
         echo ""
         ct="1"
         while [ $ct = "1" ]; do
@@ -1068,6 +1081,9 @@ main()
         echo ""
     fi
 
+    hybrid="hybrid"
+    HYBID=""
+    hybridm=`echo ${hybrid} | cut -b 1`
     serverm=`echo ${server} | cut -b 1`
     localm=`echo ${local} | cut -b 1`
     agentm=`echo ${agent} | cut -b 1`
@@ -1103,6 +1119,13 @@ main()
 	            break;
 	            ;;
 
+                ${hybrid}|${hybridm})
+                echo ""
+	            echo "  - ${localchose} (hybrid)."
+	            INSTYPE="local"
+                    HYBID="go"
+	            break;
+	            ;;
                 ${local}|${localm})
                 echo ""
                 echo "  - ${localchose}."
@@ -1218,9 +1241,36 @@ fi
 main
 
 
+if [ "x$HYBID" = "xgo" ]; then
+    echo "   --------------------------------------------"
+    echo "   Finishing Hybrid setup (agent configuration)"
+    echo "   --------------------------------------------"
+    echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo "USER_DIR=\"$INSTALLDIR/ossec-agent\"" >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_ENABLE_ACTIVE_RESPONSE="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_UPDATE_RULES="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_CLEANINSTALL="y"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+   ./install.sh
+fi
+
+
 exit 0
 
 
 
-## EOF ##
-
+#### exit ? ###

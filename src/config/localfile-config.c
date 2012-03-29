@@ -299,6 +299,9 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             else if(strcmp(logf[pl].logformat, "mysql_log") == 0)
             {
             }
+            else if(strcmp(logf[pl].logformat, "ossecalert") == 0)
+            {
+            }
             else if(strcmp(logf[pl].logformat, "mssql_log") == 0)
             {
             }

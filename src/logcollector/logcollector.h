@@ -45,6 +45,9 @@ void *read_syslog(int pos, int *rc, int drop_it);
 /* Read snort full file */
 void *read_snortfull(int pos, int *rc, int drop_it);
 
+/* Read ossec alert file */
+void *read_ossecalert(int pos, int *rc, int drop_it);
+
 /* Read nmap grepable format */
 void *read_nmapg(int pos, int *rc, int drop_it);
 

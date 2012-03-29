@@ -54,7 +54,8 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
 
 
     /* Checking the alert level. */
-    if(strncmp("Alert Level: ", lf->log, 12) != 0)
+    if(strncmp("Alert Level: ", lf->log, 12) != 0 &&
+       strncmp("ossec: Alert Level:", lf->log, 18) != 0)
     {
         return(NULL);
     }

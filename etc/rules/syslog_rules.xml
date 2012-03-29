@@ -68,7 +68,8 @@
 
   <rule id="1009" level="0">
     <if_sid>1002</if_sid>
-    <match>terminated without error|can't verify hostname: getaddrinfo</match>
+    <match>terminated without error|can't verify hostname: getaddrinfo|</match>
+    <match>PPM exceeds tolerance</match>
     <description>Ignoring known false positives on rule 1002..</description>
   </rule>
 </group> <!-- SYSLOG,ERRORS -->

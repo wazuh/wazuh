@@ -43,7 +43,6 @@ int main(int argc, char **argv)
     int test_config = 0,run_foreground = 0;
     int accept_manager_commands = 0;
     char *cfg = DEFAULTCPATH;
-    char *dir = DEFAULTDIR;
 
 
     /* Setuping up random */
@@ -80,7 +79,6 @@ int main(int argc, char **argv)
             case 'D':
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
-                dir = optarg;
                 break;
             case 'c':
                 if(!optarg)
