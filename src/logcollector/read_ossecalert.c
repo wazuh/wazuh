@@ -66,8 +66,10 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
     }
 
 
-    /* Building syslog message. */
-    snprintf(syslog_msg, OS_SIZE_2048,
+    if(al_data->log[1] == NULL)
+    {
+        /* Building syslog message. */
+        snprintf(syslog_msg, OS_SIZE_2048,
           	"ossec: Alert Level: %d; Rule: %d - %s; "
                	"Location: %s;%s%s  %s",
                	al_data->level, al_data->rule, al_data->comment,
@@ -75,6 +77,44 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
                	srcip_msg,
                	user_msg,
                	al_data->log[0]);
+    }
+    else
+    {
+        char *tmp_msg = NULL;
+        short int j = 0;
+        
+        tmp_msg = os_LoadString(tmp_msg, al_data->log[0]);
+        if(tmp_msg == NULL)
+        {
+            FreeAlertData(al_data);
+            return(NULL);
+        }
+        while(al_data->log[j] != NULL)
+        {
+            tmp_msg = os_LoadString(tmp_msg, al_data->log[j]);
+            if(tmp_msg == NULL)
+            {
+                FreeAlertData(al_data);
+                return(NULL);
+            }
+            j++;
+        }
+        if(strlen(tmp_msg) > 1596)
+        {
+            tmp_msg[1594] = ".";
+            tmp_msg[1595] = ".";
+            tmp_msg[1596] = ".";
+            tmp_msg[1597] = "\0";
+        } 
+        snprintf(syslog_msg, OS_SIZE_2048,
+          	"ossec: Alert Level: %d; Rule: %d - %s; "
+               	"Location: %s;%s%s  %s",
+               	al_data->level, al_data->rule, al_data->comment,
+               	al_data->location, 
+               	srcip_msg,
+               	user_msg,
+               	tmp_msg);
+    }
 
 
     /* Clearing the memory */
