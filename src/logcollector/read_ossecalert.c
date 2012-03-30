@@ -101,10 +101,10 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
         }
         if(strlen(tmp_msg) > 1596)
         {
-            tmp_msg[1594] = ".";
-            tmp_msg[1595] = ".";
-            tmp_msg[1596] = ".";
-            tmp_msg[1597] = "\0";
+            tmp_msg[1594] = '.';
+            tmp_msg[1595] = '.';
+            tmp_msg[1596] = '.';
+            tmp_msg[1597] = '\0';
         } 
         snprintf(syslog_msg, OS_SIZE_2048,
           	"ossec: Alert Level: %d; Rule: %d - %s; "
