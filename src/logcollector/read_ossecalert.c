@@ -83,15 +83,10 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
         char *tmp_msg = NULL;
         short int j = 0;
         
-        tmp_msg = os_LoadString(tmp_msg, al_data->log[0]);
-        if(tmp_msg == NULL)
-        {
-            FreeAlertData(al_data);
-            return(NULL);
-        }
         while(al_data->log[j] != NULL)
         {
             tmp_msg = os_LoadString(tmp_msg, al_data->log[j]);
+            tmp_msg = os_LoadString(tmp_msg, "\n");
             if(tmp_msg == NULL)
             {
                 FreeAlertData(al_data);

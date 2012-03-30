@@ -32,6 +32,11 @@ OSMatch FWALLOWpm;
  */
 void OS_Store(Eventinfo *lf)
 {
+
+    if(strcmp(lf->location, "ossec-keepalive") == 0)
+    {
+        return;
+    }
     fprintf(_eflog,
             "%d %s %02d %s %s%s%s %s\n",
             lf->year,
