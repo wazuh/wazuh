@@ -32,7 +32,10 @@ OSMatch FWALLOWpm;
  */
 void OS_Store(Eventinfo *lf)
 {
-
+    if(strcmp(lf->location, "ossec-keepalive") == 0)
+    {
+        return;
+    }
     if(strstr(lf->location, "->ossec-keepalive") != NULL)
     {
         return;
