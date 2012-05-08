@@ -78,7 +78,7 @@
 
   <rule id="31110" level="6">
     <if_sid>31100</if_sid>
-    <url>?-d|?-s</url>
+    <url>?-d|?-s|?-a|?-b|?-w</url>
     <description>PHP CGI-bin vulnerability attempt.</description>
     <group>attack,</group>
   </rule>
