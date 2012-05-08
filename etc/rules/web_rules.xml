@@ -76,6 +76,13 @@
     <group>attack,</group>
   </rule>
 
+  <rule id="31110" level="6">
+    <if_sid>31100</if_sid>
+    <url>?-d|?-s</url>
+    <description>PHP CGI-bin vulnerability attempt.</description>
+    <group>attack,</group>
+  </rule>
+
   <rule id="31109" level="6">
     <if_sid>31100</if_sid>
     <url>+as+varchar(8000)</url>
