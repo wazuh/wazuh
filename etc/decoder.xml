@@ -1230,7 +1230,7 @@
   <parent>pix</parent>
   <type>firewall</type>
   <prematch offset="after_parent">^6-106015</prematch>
-  <regex offset="after_parent">^(\S+): (\w+) (\w+) \S+ \S+ (\S+) from </regex>
+  <regex offset="after_parent">^(\S+): (\w+) (\w+) \S+ \S+ from </regex>
   <regex>(\S+)/(\S+) to (\S+)/(\S+)</regex>
   <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>

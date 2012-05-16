@@ -70,6 +70,13 @@
     <options>alert_by_email</options>
   </rule>
 
+  <rule id="31413" level="5" ignore="1200">
+    <if_sid>31410</if_sid>
+    <match>bytes written, possibly out of free disk space in</match>
+    <description>PHP internal error (server out of space).</description>
+    <options>alert_by_email</options>
+    <group>low_diskspace,</group>
+  </rule>
 
 
   <!-- PHP Fatal errors
