@@ -92,6 +92,11 @@
     <description>PAM misconfiguration.</description>
   </rule>
 
+  <rule id="5555" level="3">
+    <match>: password changed for</match>
+    <description>User changed password.</description>
+  </rule>
+
 
 </group> <!-- SYSLOG,pam -->
 

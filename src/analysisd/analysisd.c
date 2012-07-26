@@ -252,7 +252,7 @@ int main_analysisd(int argc, char **argv)
     }
     
     /* going on Daemon mode */
-    if(!test_config || !run_foreground)
+    if(!test_config && !run_foreground)
     {
         nowDaemon();
         goDaemon();

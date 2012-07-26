@@ -88,6 +88,7 @@ elif [ "x$1" = "xadd" ]; then
         echo "ERROR: Unable to creating entry (echo failed)."
         exit 1;
     fi    
+    chmod 744 $MYPASS
     echo "*Host $2 added."
 
 else
