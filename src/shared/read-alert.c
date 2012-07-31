@@ -45,45 +45,65 @@
  */
 void FreeAlertData(alert_data *al_data)
 {
+    char **p;
+
+    if(al_data->alertid)
+    {
+        free(al_data->alertid);
+        al_data->alertid = NULL;
+    }
     if(al_data->date)
     {
         free(al_data->date);
+        al_data->date = NULL;
     }
     if(al_data->location)
     {
         free(al_data->location);
+        al_data->location = NULL;
     }
     if(al_data->comment)
     {
         free(al_data->comment);
+        al_data->comment = NULL;
     }
     if(al_data->group)
     {
         free(al_data->group);
+        al_data->group = NULL;
     }
     if(al_data->srcip)
     {
         free(al_data->srcip);
+        al_data->srcip = NULL;
     }
     if(al_data->dstip)
     {
         free(al_data->dstip);
+        al_data->dstip = NULL;
     }
     if(al_data->user)
     {
         free(al_data->user);
+        al_data->user = NULL;
     }
     if(al_data->filename)
     {
         free(al_data->filename);
+        al_data->filename = NULL;
     }
     if(al_data->log)
     {
-        while(*(al_data->log))
+        p = al_data->log;
+
+        while(*(p))
         {
-            free(*(al_data->log));
-            al_data->log++;
+            free(*(p));
+            *(p) = NULL;
+            p++;
         }
+        free(al_data->log);
+        al_data->log = NULL;
     }
     free(al_data);
     al_data = NULL;
