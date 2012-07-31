@@ -99,6 +99,7 @@ int doDiff(RuleInfo *currently_rule, Eventinfo *lf)
     currently_rule->last_events[0] = NULL;
 
 
+
     if(lf->hostname[0] == '(')
     {
         htpt = strchr(lf->hostname, ')');

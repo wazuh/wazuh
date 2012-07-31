@@ -659,7 +659,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
                 char holder[1024];
                 holder[1] = '\0';
                 exit_code = 3;
-                if(strcasecmp(ut_decoder_name, lf->decoder_info->name) == 0)
+                if(lf->decoder_info->name != NULL && strcasecmp(ut_decoder_name, lf->decoder_info->name) == 0)
                 {
                     exit_code--;
                     snprintf(holder, 1023, "%d", currently_rule->sigid);
