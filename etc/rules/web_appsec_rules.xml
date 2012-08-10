@@ -18,7 +18,7 @@
   -  The real goal is to stop bots and automated attacks from doing further damage
   -  on sites that are not updated. 
   -->  
-<group name="web,appsec,">
+<group name="web,appsec,attack">
 
 
 
@@ -76,6 +76,21 @@
     <regex> "GET /\S+cart.php?\S+templatefile=../</regex>
     <description>Cart.php directory transversal attempt.</description>
    </rule>
+
+  <!-- MSSQL IIS inject rules -->
+  <rule id="31507" level="6">
+    <if_sid>31100</if_sid>
+    <url>DECLARE%20@S%20CHAR|%20AS%20CHAR</url>
+    <description>MSSQL Injection attempt (ur.php, urchin.js).</description>
+  </rule>
+
+  <!-- BAD/Annoying user agents -->
+  <rule id="31508" level="6">
+    <if_sid>31100</if_sid>
+    <match> "ZmEu"</match>
+    <description>Blacklisted user agent (know malicious user agent).</description>
+  </rule>
+
 
 
   <!-- Anomaly rules - Used on common web attacks -->
