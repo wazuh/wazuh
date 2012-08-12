@@ -1,6 +1,6 @@
 <!-- @(#) $Id$
   -
-  -  Web specific rules for OSSEC.
+  -  Web attacks/vulns specific rules for OSSEC.
   -
   -  Copyright (C) 2012 Daniel B. Cid (dcid@dcid.me)
   -  All rights reserved.
@@ -28,7 +28,7 @@
     <if_sid>31100</if_sid>
     <match>POST /</match>
     <url>/wp-comments-post.php</url>
-    <regex>Googlebot|MSNBot|Bing</regex>
+    <regex>Googlebot|MSNBot|BingBot</regex>
     <description>WordPress Comment Spam (coming from a fake search engine UA).</description>
    </rule>
 
@@ -87,8 +87,8 @@
   <!-- BAD/Annoying user agents -->
   <rule id="31508" level="6">
     <if_sid>31100</if_sid>
-    <match> "ZmEu"</match>
-    <description>Blacklisted user agent (know malicious user agent).</description>
+    <match> "ZmEu"| "libwww-perl/</match>
+    <description>Blacklisted user agent (known malicious user agent).</description>
   </rule>
 
 
