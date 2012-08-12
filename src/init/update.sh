@@ -136,7 +136,7 @@ UpdateOSSECRules()
     grep -Ev "</*rules>|<include>|rules global entry" ${OSSEC_CONF_FILE} > "${OSSEC_CONF_FILE}.$$.tmp"
 
     # Check for custom files that may have been added in <rules> element
-    for i in $(grep '<include>' ${OSSEC_CONF_FILE} | grep -v '<!--')
+    for i in $(grep -E '<include>|<list>' ${OSSEC_CONF_FILE} | grep -v '<!--')
     do
       grep "$i" ${RULES_TEMPLATE}>/dev/null || echo "    $i" >> "${OSSEC_CONF_FILE}.$$.tmp2"
     done
