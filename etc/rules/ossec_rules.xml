@@ -116,6 +116,13 @@
     <group>rootcheck,</group>
   </rule>
 
+  <rule id="519" level="7">
+    <if_sid>516</if_sid>
+    <match>^System Audit: Web vulnerability</match>
+    <description>System Audit: Vulnerable web application found.</description>
+    <group>rootcheck,</group>
+  </rule>
+
   <!-- Process monitoring rules -->
   <rule id="530" level="0">
     <if_sid>500</if_sid>
@@ -137,7 +144,28 @@
     <match>cdrom|/media|usb|/mount|floppy|dvd</match>
     <description>Ignoring external medias.</description> 
   </rule>
-  
+
+  <rule id="533" level="7">
+    <if_sid>530</if_sid>
+    <match>ossec: output: 'netstat -tan</match>
+    <check_diff />
+    <description>Listened ports status (netstat) changed (new port opened or closed).</description> 
+  </rule>
+
+  <rule id="534" level="1">
+    <if_sid>530</if_sid>
+    <match>ossec: output: 'w'</match>
+    <check_diff />
+    <description>List of logged in users. It will not be alerted by default.</description> 
+  </rule>
+
+  <rule id="535" level="1">
+    <if_sid>530</if_sid>
+    <match>ossec: output: 'last -n </match>
+    <check_diff />
+    <description>List of the last logged in users.</description> 
+  </rule>
+
   <rule id="550" level="7">
     <category>ossec</category>
     <decoded_as>syscheck_integrity_changed</decoded_as>

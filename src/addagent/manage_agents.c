@@ -197,7 +197,7 @@ int add_agent()
     do
     {
         /* Default ID */
-        i = 1024;
+        i = MAX_AGENTS + 768;
         snprintf(id, 8, "%03d", i);
         while(!IDExist(id))
         {

@@ -1,0 +1,16 @@
+**Phase 1: Completed pre-decoding.
+       full event: 'Feb 15 16:08:14 triumph PAM-securetty[741]: Couldn't open /etc/securetty'
+       hostname: 'triumph'
+       program_name: 'PAM-securetty'
+       log: 'Couldn't open /etc/securetty'
+
+**Phase 2: Completed decoding.
+       No decoder matched.
+
+**Phase 3: Completed filtering (rules).
+       Rule id: '1001'
+       Level: '2'
+       Description: 'File missing. Root access unrestricted.'
+**Alert to be generated.
+
+

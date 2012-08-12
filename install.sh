@@ -109,6 +109,9 @@ Install()
     elif [ "X$INSTYPE" = "Xagent" ]; then
         ./InstallAgent.sh
 
+    elif [ "X$INSTYPE" = "Xhybrid" ]; then
+        ./InstallHybrid.sh
+
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         ./InstallServer.sh local
 	fi
@@ -242,6 +245,16 @@ UseRootcheck()
 ##########
 SetupLogs()
 {
+    if [ "x${USER_CLEANINSTALL}" = "xy" ]; then
+        OPENDIR=`dirname $INSTALLDIR`
+        echo "" >> $NEWCONFIG
+        echo "  <localfile>" >> $NEWCONFIG
+        echo "    <log_format>ossecalert</log_format>" >> $NEWCONFIG
+        echo "    <location>$OPENDIR/logs/alerts/alerts.log</location>" >>$NEWCONFIG
+        echo "  </localfile>" >> $NEWCONFIG
+        echo "" >> $NEWCONFIG
+        return;
+    fi
 
     NB=$1
     echo ""
@@ -314,6 +327,26 @@ SetupLogs()
         fi
     done
 
+   if [ "X$NUNAME" = "XLinux" ]; then
+      echo "" >> $NEWCONFIG
+      echo "  <localfile>" >> $NEWCONFIG
+      echo "    <log_format>command</log_format>" >> $NEWCONFIG
+      echo "    <command>df -h</command>" >> $NEWCONFIG
+      echo "  </localfile>" >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+      echo "  <localfile>" >> $NEWCONFIG
+      echo "    <log_format>full_command</log_format>" >> $NEWCONFIG
+      echo "    <command>netstat -tan |grep LISTEN |grep -v 127.0.0.1 | sort</command>" >> $NEWCONFIG
+      echo "  </localfile>" >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+      echo "  <localfile>" >> $NEWCONFIG
+      echo "    <log_format>full_command</log_format>" >> $NEWCONFIG
+      echo "    <command>last -n 5</command>" >> $NEWCONFIG
+      echo "  </localfile>" >> $NEWCONFIG
+   fi
+
+    
+
 
     echo ""
     catMsg "0x106-logs"
@@ -336,6 +369,7 @@ ConfigureClient()
 	echo "3- ${configuring} $NAME."
 	echo ""
 
+    USINGHNAME=""
     if [ "X${USER_AGENT_SERVER_IP}" = "X" ]; then
         # Looping and asking for server ip
         while [ 1 ]; do
@@ -348,6 +382,21 @@ ConfigureClient()
 	            echo "   - ${addingip} $IP"
                 break;
             fi
+
+            # Checking if it is a hostname
+            if [ "X$NUNAME" = "XLinux" ]; then
+                echo $IPANSWER | grep -E "^[0-9a-zA-Z-][0-9a-zA-Z-]*\.[0-9a-zA-Z-][0-9a-zA-Z\.-]*$" > /dev/null 2>&1
+                if [ $? = 0 ]; then
+                    host $IPANSWER | grep "has address" >/dev/null 2>&1
+                    if [ $? = 0 ]; then
+                        echo ""
+                        IP=$IPANSWER
+                        echo "   - ${addingip} $IP"
+                        USINGHNAME=$IP
+                        break;
+                    fi
+                fi
+            fi
         done
     else
         IP=${USER_AGENT_SERVER_IP}
@@ -355,8 +404,12 @@ ConfigureClient()
 
     echo "<ossec_config>" > $NEWCONFIG
     echo "  <client>" >> $NEWCONFIG
+    if [ "x$USINGHNAME" = "x" ]; then
 	echo "    <server-ip>$IP</server-ip>" >> $NEWCONFIG
-	echo "  </client>" >> $NEWCONFIG
+    else
+	echo "    <server-hostname>$IP</server-hostname>" >> $NEWCONFIG
+    fi
+    echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Syscheck?
@@ -443,12 +496,13 @@ ConfigureServer()
 
             ls ${HOST_CMD} > /dev/null 2>&1
             if [ $? = 0 ]; then
-              HOSTTMP=`${HOST_CMD} -W 5 -t mx devmail.ossec.net 2>/dev/null`
+              HOSTTMP=`${HOST_CMD} -W 5 -t mx ossec.net 2>/dev/null`
               if [ $? = 1 ]; then
                  # Trying without the -W
-                 HOSTTMP=`${HOST_CMD} -t mx devmail.ossec.net 2>/dev/null`
+                 HOSTTMP=`${HOST_CMD} -t mx ossec.net 2>/dev/null`
               fi
-              if [ "X$HOSTTMP" = "X${OSSECMX}" -o "X$HOSTTMP" = "X${OSSECMX2}" -o "X$HOSTTMP" = "X${OSSECMX3}" ];then
+              echo "x$HOSTTMP" | grep "ossec.net mail is handled" > /dev/null 2>&1
+              if [ $? = 0 ]; then
                  # Breaking down the user e-mail
                  EMAILHOST=`echo ${EMAIL} | cut -d "@" -f 2`
                  if [ "X${EMAILHOST}" = "Xlocalhost" ]; then
@@ -955,7 +1009,7 @@ main()
 
     . ./src/init/update.sh
     # Is this an update?
-    if [ "`isUpdate`" = "${TRUE}" ]; then
+    if [ "`isUpdate`" = "${TRUE}" -a "x${USER_CLEANINSTALL}" = "x" ]; then
         echo ""
         ct="1"
         while [ $ct = "1" ]; do
@@ -1032,6 +1086,9 @@ main()
         echo ""
     fi
 
+    hybrid="hybrid"
+    HYBID=""
+    hybridm=`echo ${hybrid} | cut -b 1`
     serverm=`echo ${server} | cut -b 1`
     localm=`echo ${local} | cut -b 1`
     agentm=`echo ${agent} | cut -b 1`
@@ -1067,6 +1124,13 @@ main()
 	            break;
 	            ;;
 
+                ${hybrid}|${hybridm})
+                echo ""
+	            echo "  - ${localchose} (hybrid)."
+	            INSTYPE="local"
+                    HYBID="go"
+	            break;
+	            ;;
                 ${local}|${localm})
                 echo ""
                 echo "  - ${localchose}."
@@ -1182,9 +1246,36 @@ fi
 main
 
 
+if [ "x$HYBID" = "xgo" ]; then
+    echo "   --------------------------------------------"
+    echo "   Finishing Hybrid setup (agent configuration)"
+    echo "   --------------------------------------------"
+    echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo "USER_DIR=\"$INSTALLDIR/ossec-agent\"" >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_ENABLE_ROOTCHECK="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_ENABLE_SYSCHECK="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_ENABLE_ACTIVE_RESPONSE="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_UPDATE_RULES="n"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+    echo 'USER_CLEANINSTALL="y"' >> ./etc/preloaded-vars.conf
+    echo "" >> ./etc/preloaded-vars.conf
+   ./install.sh
+fi
+
+
 exit 0
 
 
 
-## EOF ##
-
+#### exit ? ###

@@ -196,6 +196,9 @@ cp -pr ../bin/ossec-syscheckd ${DIR}/bin/
 cp -pr ../bin/ossec-execd ${DIR}/bin/
 cp -pr ./init/ossec-client.sh ${DIR}/bin/ossec-control
 cp -pr ../bin/manage_agents ${DIR}/bin/
+cp -pr ../contrib/util.sh ${DIR}/bin/
+chown root:${GROUP} ${DIR}/bin/util.sh
+chmod +x ${DIR}/bin/util.sh
 
 # Copying active response modules
 sh ./init/fw-check.sh execute > /dev/null

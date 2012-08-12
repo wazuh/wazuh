@@ -147,6 +147,7 @@ int main(int argc, char **argv)
 int local_start()
 {
     int debug_level;
+    int accept_manager_commands = 0;
     char *cfg = DEFAULTCPATH;
     WSADATA wsaData;
     DWORD  threadID;
@@ -169,6 +170,9 @@ int local_start()
         nowDebug();
         debug_level--;
     }
+    accept_manager_commands = getDefine_Int("logcollector", 
+                              "remote_commands", 0, 1);
+
     
     
     
@@ -194,7 +198,7 @@ int local_start()
 
     /* Reading logcollector config file */
     debug1("%s: DEBUG: Reading logcollector configuration.", ARGV0);
-    if(LogCollectorConfig(cfg) < 0)
+    if(LogCollectorConfig(cfg, accept_manager_commands) < 0)
     {
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
@@ -237,7 +241,7 @@ int local_start()
         
     OS_ReadKeys(&keys);
     OS_StartCounter(&keys);
-    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id);
+    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id, NULL);
 
 
     /* Initial random numbers */

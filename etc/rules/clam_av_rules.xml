@@ -60,9 +60,9 @@
     <group>virus</group>
   </rule>
 
-  <rule id="52509" level="1">
+  <rule id="52509" level="0">
     <if_sid>52501</if_sid>
-    <match>Incremental update failed</match>
+    <match>Incremental update failed|Error while reading database from|Update failed.</match>
     <description>Could not download the incremental virus definition updates.</description>
   </rule>
 

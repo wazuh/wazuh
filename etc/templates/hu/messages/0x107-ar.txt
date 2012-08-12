@@ -1,0 +1,7 @@
+
+  3.4- Az active response funkció lehetővé teszi
+       specifikus parancsok végrehajtását a beérkezett események alapján.
+       Például, önnek így lehetősége van blokkolni egy IP címet
+       vagy egy adott felhasználó hozzáférését.
+       További információk:
+       http://www.ossec.net/en/manual.html#active-response

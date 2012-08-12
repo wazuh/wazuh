@@ -1,0 +1,8 @@
+**Phase 1: Completed pre-decoding.
+       full event: 'Aug 4 15:14:14 niban groupadd[26477]: new group: name=osaudit, gid=12002'
+       hostname: 'melancia'
+       program_name: '(null)'
+       log: 'Aug 4 15:14:14 niban groupadd[26477]: new group: name=osaudit, gid=12002'
+
+**Phase 2: Completed decoding.
+       No decoder matched.

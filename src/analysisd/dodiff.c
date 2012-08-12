@@ -99,6 +99,7 @@ int doDiff(RuleInfo *currently_rule, Eventinfo *lf)
     currently_rule->last_events[0] = NULL;
 
 
+
     if(lf->hostname[0] == '(')
     {
         htpt = strchr(lf->hostname, ')');
@@ -133,7 +134,6 @@ int doDiff(RuleInfo *currently_rule, Eventinfo *lf)
     date_of_change = File_DateofChange(flastfile);
     if(date_of_change <= 0)
     {
-        merror("last file: %s",flastfile);
         if(!_add2last(lf->log, lf->size, flastfile))
         {
             merror("%s: ERROR: unable to create last file: %s", ARGV0, flastfile);

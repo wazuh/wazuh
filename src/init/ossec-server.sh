@@ -206,9 +206,10 @@ start()
     SDAEMONS="${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ossec-maild ossec-execd ossec-analysisd ossec-logcollector ossec-remoted ossec-syscheckd ossec-monitord"
     
     echo "Starting $NAME $VERSION (by $AUTHOR)..."
-    echo | ${DIR}/ossec-logtest > /dev/null 2>&1;
+    echo | ${DIR}/bin/ossec-logtest > /dev/null 2>&1;
     if [ ! $? = 0 ]; then
         echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
+        exit 1;
     fi    
     lock;
     checkpid;
@@ -306,6 +307,7 @@ case "$1" in
   restart)
     testconfig
 	stopa
+        sleep 1;
 	start
 	;;
   status)

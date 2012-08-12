@@ -135,6 +135,8 @@ void OSMatch_FreePattern(OSMatch *reg);
 
 int OS_Match2(char *pattern, char *str);
 
+int OS_Match3(char *pattern, char *str, char* delimiter);
+
     
 /* OS_WordMatch v0.3:
  * Searches for  pattern in the string

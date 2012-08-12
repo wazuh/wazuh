@@ -4,6 +4,7 @@ os_xml os_xml
 os_crypto os_crypto
 headers headers
 shared shared
+os_auth os_auth
 error_messages error_messages
 addagent addagent
 config config

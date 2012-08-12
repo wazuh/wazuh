@@ -153,7 +153,7 @@ void DB_SetCompleted(Eventinfo *lf)
     int i = 0;
 
     /* Finding file pointer */
-    while(sdb.agent_ips[i] != NULL)
+    while(sdb.agent_ips[i] != NULL &&  i < MAX_AGENTS)
     {
         if(strcmp(sdb.agent_ips[i], lf->location) == 0)
         {
@@ -184,7 +184,7 @@ FILE *DB_File(char *agent, int *agent_id)
     int i = 0;
 
     /* Finding file pointer */
-    while(sdb.agent_ips[i] != NULL)
+    while(sdb.agent_ips[i] != NULL  &&  i < MAX_AGENTS)
     {
         if(strcmp(sdb.agent_ips[i], agent) == 0)
         {
@@ -198,6 +198,12 @@ FILE *DB_File(char *agent, int *agent_id)
     }
 
     /* If here, our agent wasn't found */
+    if (i == MAX_AGENTS)
+    {
+        merror("%s: Unable to open integrity file. Increase MAX_AGENTS.",ARGV0);
+        return(NULL);
+    }
+
     os_strdup(agent, sdb.agent_ips[i]);
 
 

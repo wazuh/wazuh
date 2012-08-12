@@ -79,14 +79,14 @@ f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;
 
 
 # Section 1.4 Enable system accounting
-[CIS - Red Hat Linux 1.4 - System Accounting - Sysstat not installed] [all] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-f:!/var/log/sa;
+#[CIS - Red Hat Linux 1.4 - System Accounting - Sysstat not installed] [all] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
+#f:!/var/log/sa;
 
 
 
 # Section 2.5 Install and run Bastille
-[CIS - Red Hat Linux 1.5 - System harderning - Bastille is not installed] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
-f:!/etc/Bastille;
+#[CIS - Red Hat Linux 1.5 - System harderning - Bastille is not installed] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL]
+#f:!/etc/Bastille;
 
 
 

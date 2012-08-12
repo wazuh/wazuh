@@ -191,6 +191,10 @@ void LogCollectorStart()
             {
                 logff[i].read = (void *)read_snortfull;
             }
+            if(strcmp("ossecalert", logff[i].logformat) == 0)
+            {
+                logff[i].read = (void *)read_ossecalert;
+            }
             else if(strcmp("nmapg", logff[i].logformat) == 0)
             {
                 logff[i].read = (void *)read_nmapg;

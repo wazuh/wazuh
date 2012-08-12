@@ -1,0 +1,16 @@
+**Phase 1: Completed pre-decoding.
+       full event: 'MySQL log: 060516 22:38:46 mysqld ended'
+       hostname: 'melancia'
+       program_name: '(null)'
+       log: 'MySQL log: 060516 22:38:46 mysqld ended'
+
+**Phase 2: Completed decoding.
+       decoder: 'mysql_log'
+
+**Phase 3: Completed filtering (rules).
+       Rule id: '50120'
+       Level: '12'
+       Description: 'Database shutdown messge.'
+**Alert to be generated.
+
+

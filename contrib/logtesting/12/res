@@ -1,0 +1,16 @@
+**Phase 1: Completed pre-decoding.
+       full event: 'May 4 11:17:42 niban su(pam_unix)[2298]: authentication failure; logname= uid=1342 euid=0 tty= ruser=dcid rhost= user=root'
+       hostname: 'melancia'
+       program_name: '(null)'
+       log: 'May 4 11:17:42 niban su(pam_unix)[2298]: authentication failure; logname= uid=1342 euid=0 tty= ruser=dcid rhost= user=root'
+
+**Phase 2: Completed decoding.
+       No decoder matched.
+
+**Phase 3: Completed filtering (rules).
+       Rule id: '2501'
+       Level: '5'
+       Description: 'User authentication failure.'
+**Alert to be generated.
+
+

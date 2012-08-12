@@ -46,7 +46,7 @@ doUpdatecleanup()
     fi
 
     # Checking if the directory is valid.
-    local _dir_pattern="^/[a-zA-Z0-9/-\.]{3,128}$"
+    local _dir_pattern="^/[a-zA-Z0-9/\.-]{3,128}$"
     echo $DIRECTORY | grep -E "$_dir_pattern" > /dev/null 2>&1
     if [ ! $? = 0 ]; then
         echo "# ($FUNCNAME) ERROR: directory name ($DIRECTORY) doesn't match the pattern $_dir_pattern" 1>&2

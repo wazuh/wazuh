@@ -68,7 +68,7 @@ xinetd		!bash|file\.h|proc\.h!
 in.telnetd	!cterm100|vt350|VT100|ansi-term|bash|^/bin/sh|/dev[A-R]|/dev/[a-z]/!
 in.fingerd	!bash|^/bin/sh|cterm100|/dev/!
 identd		!bash|^/bin/sh|file\.h|proc\.h|/dev/[^n]|^/bin/.*sh!
-init		!bash|/dev/h|HOME!
+init		!bash|/dev/h
 tcpd		!bash|proc\.h|p1r0c4|hack|/dev/[^n]!
 rlogin		!p1r0c4|r00t|bash|/dev/[^nt]!
 
@@ -80,8 +80,6 @@ kill		!/dev/[ab,d-k,m-z]|/dev/[F-Z]|/dev/[A-D]|/dev/[0-9]|proc\.h|bash|tmp!
 
 
 # Rootkit entries
-/sbin/init              !HOME! Suckit rootkit
-/proc/1/maps            !init.! Suckit rootkit
 /etc/rc.d/rc.sysinit    !enyelkmHIDE! enye-sec Rootkit
 
 

@@ -1,0 +1,8 @@
+**Phase 1: Completed pre-decoding.
+       full event: 'Sep 1 10:29:33 10.10.10.1 %IPS-4-SIGNATURE: Sig:3051 Subsig:1 Sev:4 TCP Connection Window Size DoS [192.168.100.12:1234 -> 192.168.100.1:443]'
+       hostname: 'melancia'
+       program_name: '(null)'
+       log: 'Sep 1 10:29:33 10.10.10.1 %IPS-4-SIGNATURE: Sig:3051 Subsig:1 Sev:4 TCP Connection Window Size DoS [192.168.100.12:1234 -> 192.168.100.1:443]'
+
+**Phase 2: Completed decoding.
+       No decoder matched.

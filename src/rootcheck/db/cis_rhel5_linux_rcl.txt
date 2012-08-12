@@ -69,8 +69,8 @@ f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;
 
 
 # Section 2.4 Enable system accounting
-[CIS - RHEL5 2.4 - System Accounting - Sysstat not installed] [all] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
-f:!/var/log/sa;
+#[CIS - RHEL5 2.4 - System Accounting - Sysstat not installed] [all] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+#f:!/var/log/sa;
 
 
 

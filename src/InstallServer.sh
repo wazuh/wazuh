@@ -135,7 +135,7 @@ chmod -R 770 ${DIR}/queue/ossec
 # To the ossec fts queue
 chown -R ${USER}:${GROUP} ${DIR}/queue/fts
 chmod -R 750 ${DIR}/queue/fts
-chmod 740 ${DIR}/queue/fts/* > /dev/null 2>&1
+chmod 750 ${DIR}/queue/fts/* > /dev/null 2>&1
 
 # To the ossec syscheck/rootcheck queue
 chown -R ${USER}:${GROUP} ${DIR}/queue/syscheck
@@ -238,6 +238,9 @@ cp -pr ../bin/list_agents ${DIR}/bin/
 cp -pr ../bin/agent_control ${DIR}/bin/
 cp -pr ../bin/syscheck_control ${DIR}/bin/
 cp -pr ../bin/rootcheck_control ${DIR}/bin/
+cp -pr ../contrib/util.sh ${DIR}/bin/
+chown root:${GROUP} ${DIR}/bin/util.sh
+chmod +x ${DIR}/bin/util.sh
 
 # Local install chosen
 if [ "X$LOCAL" = "Xlocal" ]; then

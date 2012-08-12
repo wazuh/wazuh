@@ -45,10 +45,6 @@ f:$php.ini -> r:^expose_php = On;
 f:$php.ini -> r:^allow_url_fopen = On;
 
 
-# PHP checks
-[PHP - Safe mode disabled] [any] []
-f:$php.ini -> r:^safe_mode = Off;
-
 
 # PHP checks
 [PHP - Displaying of errors is enabled] [any] []
@@ -60,116 +56,8 @@ f:$php.ini -> r:^display_errors = On;
 
 ## Looking for common web exploits (might indicate that you are owned).
 ## Using http://www.ossec.net/wiki/index.php/WebAttacks_links as a reference.
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^echo$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^id.txt$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^irc.txt$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^stringa.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^cmd1.gif$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^mambo1.txt$|^hai.txt$|^iyes.txt$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^57.txt$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^r57.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^evilx$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^cmd$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^root.gif -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^bn.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^kk.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^graba.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^no.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^ddos.pl -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^rox.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^lila.jpg -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^safe.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^rootlab.jpg -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^tool25.dat -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^sela.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^zero.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^paged.gif -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^hh.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^metodi.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^idpitbull.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^echo.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^ban.gif -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^c.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^gay.txt -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^genlog.txt$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^safe$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^safe3$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^tool25.txt$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^test.txt$ -> r:<?|^#!;
-
-[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
-d:$web_dirs -> ^safeon.txt$ -> r:<?|^#!;
+#[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
+#d:$web_dirs -> .txt$ -> r:^<?php|^#!;
 
 
 ## Looking for common web exploits files (might indicate that you are owned).
@@ -189,5 +77,35 @@ d:$web_dirs -> ^...$;
 
 [Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
 d:$web_dirs -> ^.shell$;
+
+
+## Looking for outdated Web applications
+## Taken from http://sucuri.net/latest-versions
+[Web vulnerability - Outdated WordPress installation] [any] [http://sucuri.net/latest-versions]
+d:$web_dirs -> ^version.php$ -> r:^\.wp_version && >:$wp_version = '3.2.1';
+
+[Web vulnerability - Outdated Joomla (v1.0) installation] [any] [http://sucuri.net/latest-versions]
+d:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:'1.0';
+
+#[Web vulnerability - Outdated Joomla (v1.5) installation] [any] [http://sucuri.net/latest-versions]
+#d:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:'1.5' && r:'23'
+
+[Web vulnerability - Outdated osCommerce (v2.2) installation] [any] [http://sucuri.net/latest-versions]
+d:$web_dirs -> ^application_top.php$ -> r:'osCommerce 2.2-;
+
+
+## Looking for known backdoors
+[Web vulnerability - Backdoors / Web based malware found - eval(base64_decode] [any] []
+d:$web_dirs -> .php$ -> r:eval\(base64_decode\(\paWYo;
+
+[Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST] [any] []
+d:$web_dirs -> .php$ -> r:eval\(base64_decode\(\S_POST;
+
+[Web vulnerability - .htaccess file compromised] [any] [http://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html]
+d:$web_dirs -> ^.htaccess$ -> r:RewriteCond \S+HTTP_REFERERS \S+google;
+
+[Web vulnerability - .htaccess file compromised - auto append] [any] [http://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html]
+d:$web_dirs -> ^.htaccess$ -> r:php_value auto_append_file;
+
 
 # EOF #

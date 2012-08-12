@@ -1,0 +1,12 @@
+
+    Köszönjük, hogy az OSSEC HIDS programot használja!
+    Ha egyéb kérdése, javaslata van, illetve valamilyen bugot talált
+    a programban, lépjen velünk kapcsolatba a contact@ossec.net,
+    vagy a nyilvános levelezőlistánkat használva az
+    ossec-list@ossec.net e-mail címeken.
+    ( http://www.ossec.net/main/support/ ).
+
+    További információkért látogasson el a http://www.ossec.net weboldalra.
+
+    ---  A befejezéshez nyomjon ENTER-t (alább további információkat talál). ---
+    
