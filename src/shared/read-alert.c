@@ -38,6 +38,14 @@
 #define ALERT_MAIL      "mail"
 #define ALERT_MAIL_SZ   4
 #define ALERT_AR        "active-response"
+#define OLDMD5_BEGIN      "Old md5sum was: "
+#define OLDMD5_BEGIN_SZ   16
+#define NEWMD5_BEGIN      "New md5sum is : "
+#define NEWMD5_BEGIN_SZ   16
+#define OLDSHA1_BEGIN     "Old sha1sum was: "
+#define OLDSHA1_BEGIN_SZ  17 
+#define NEWSHA1_BEGIN     "New sha1sum is : "
+#define NEWSHA1_BEGIN_SZ  17 
 
 
 /** void FreeAlertData(alert_data *al_data)
@@ -46,7 +54,7 @@
 void FreeAlertData(alert_data *al_data)
 {
     char **p;
-
+ 
     if(al_data->alertid)
     {
         free(al_data->alertid);
@@ -92,6 +100,26 @@ void FreeAlertData(alert_data *al_data)
         free(al_data->filename);
         al_data->filename = NULL;
     }
+    if(al_data->old_md5)
+    {
+        free(al_data->old_md5);
+        al_data->old_md5 = NULL;
+    }
+    if(al_data->new_md5)
+    {
+        free(al_data->new_md5);
+        al_data->new_md5 = NULL;
+    }
+    if(al_data->old_sha1)
+    {
+        free(al_data->old_sha1);
+        al_data->old_sha1 = NULL;
+    }
+    if(al_data->new_sha1)
+    {
+        free(al_data->new_sha1);
+        al_data->new_sha1 = NULL;
+    }    
     if(al_data->log)
     {
         p = al_data->log;
@@ -127,6 +155,10 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *user = NULL;
     char *group = NULL;
     char *filename = NULL;
+    char *old_md5 = NULL;
+    char *new_md5 = NULL;
+    char *old_sha1 = NULL;
+    char *new_sha1 = NULL;
     char **log = NULL;
     int level, rule, srcport, dstport;
   
@@ -160,6 +192,10 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 al_data->user = user;
                 al_data->date = date;
                 al_data->filename = filename;
+                al_data->old_md5 = old_md5;
+                al_data->new_md5 = new_md5;
+                al_data->old_sha1 = old_sha1;
+                al_data->new_sha1 = new_sha1;
 
                
                 return(al_data);
@@ -350,6 +386,38 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 p = str + USER_BEGIN_SZ;
                 os_strdup(p, user);
             }
+            /* Old MD5 */
+            else if(strncmp(OLDMD5_BEGIN, str, OLDMD5_BEGIN_SZ) == 0)
+            {
+                os_clearnl(str,p);
+
+                p = str + OLDMD5_BEGIN_SZ;
+                os_strdup(p, old_md5);
+            }
+            /* New MD5 */
+            else if(strncmp(NEWMD5_BEGIN, str, NEWMD5_BEGIN_SZ) == 0)
+            {
+                os_clearnl(str,p);
+
+                p = str + NEWMD5_BEGIN_SZ;
+                os_strdup(p, new_md5);
+            }
+            /* Old SHA1 */
+            else if(strncmp(OLDSHA1_BEGIN, str, OLDSHA1_BEGIN_SZ) == 0)
+            {
+                os_clearnl(str,p);
+
+                p = str + OLDSHA1_BEGIN_SZ;
+                os_strdup(p, old_sha1);
+            }
+            /* New SHA1 */
+            else if(strncmp(NEWSHA1_BEGIN, str, NEWSHA1_BEGIN_SZ) == 0)
+            {
+                os_clearnl(str,p);
+
+                p = str + NEWSHA1_BEGIN_SZ;
+                os_strdup(p, new_sha1);
+            }
             /* It is a log message */
             else if(log_size < 20)
             {
@@ -414,6 +482,29 @@ alert_data *GetAlertData(int flag, FILE *fp)
         {
             free(group);
             group = NULL;
+        }
+        if(old_md5)
+        {
+            free(old_md5);
+            old_md5 = NULL;
+        }
+
+        if(new_md5)
+        {
+            free(new_md5);
+            new_md5 = NULL;
+        }
+
+        if(old_sha1)
+        {
+            free(old_sha1);
+            old_sha1 = NULL;
+        }
+
+        if(new_sha1)
+        {
+            free(new_sha1);
+            new_sha1 = NULL;
         }
         while(log_size > 0)
         {

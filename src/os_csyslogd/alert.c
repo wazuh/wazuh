@@ -30,6 +30,10 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     char *tstamp;
     char user_msg[256];
     char srcip_msg[256];
+    char old_md5_msg[256];
+    char new_md5_msg[256];
+    char old_sha1_msg[256];
+    char new_sha1_msg[256];
     
     char syslog_msg[OS_SIZE_2048 +1];
 
@@ -143,14 +147,66 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         snprintf(user_msg, 255, " user: %s;", al_data->user);
     }
 
+    /* Adding old md5. */
+    if(!al_data->old_md5 ||
+       ((al_data->old_md5[0] == '(') &&
+        (al_data->old_md5[1] == 'n') &&
+        (al_data->old_md5[2] == 'o')))
+    {
+        old_md5_msg[0] = '\0';
+    }
+    else
+    {
+        snprintf(old_md5_msg, 255, " Previous MD5: %s;", al_data->old_md5);
+    }
 
+    /* Adding new md5. */
+    if(!al_data->new_md5 ||
+       ((al_data->new_md5[0] == '(') &&
+        (al_data->new_md5[1] == 'n') &&
+        (al_data->new_md5[2] == 'o')))
+    {
+        new_md5_msg[0] = '\0';
+    }
+    else
+    {
+        snprintf(new_md5_msg, 255, " Current MD5: %s;", al_data->new_md5);
+    }
+
+    /* Adding old sha1. */
+    if(!al_data->old_sha1 ||
+       ((al_data->old_sha1[0] == '(') &&
+        (al_data->old_sha1[1] == 'n') &&
+        (al_data->old_sha1[2] == 'o')))
+    {
+        old_sha1_msg[0] = '\0';
+    }
+    else
+    {
+        snprintf(old_sha1_msg, 255, " Previous SHA1: %s;", al_data->old_sha1);
+    }
+
+    /* Adding new sha1. */
+    if(!al_data->new_sha1 ||
+       ((al_data->new_sha1[0] == '(') &&
+        (al_data->new_sha1[1] == 'n') &&
+        (al_data->new_sha1[2] == 'o')))
+    {
+        new_sha1_msg[0] = '\0';
+    }
+    else
+    {
+        snprintf(new_sha1_msg, 255, " Current SHA1: %s;", al_data->new_sha1);
+    }
+
+    
     /* Inserting data */
     if(syslog_config->format == DEFAULT_CSYSLOG)
     {
        	/* Building syslog message. */
        	snprintf(syslog_msg, OS_SIZE_2048,
                	"<%d>%s %s ossec: Alert Level: %d; Rule: %d - %s; "
-               	"Location: %s;%s%s  %s",
+               	"Location: %s;%s%s%s%s%s%s  %s",
                	syslog_config->priority, tstamp, __shost,
                	al_data->level, al_data->rule, al_data->comment,
                	al_data->location, 
@@ -158,7 +214,11 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
                	/* Source ip. */
                	srcip_msg,
                	user_msg,
-               	al_data->log[0]);
+               	old_md5_msg,
+                new_md5_msg,
+                old_sha1_msg,
+                new_sha1_msg,
+                al_data->log[0]);
     }
     else if(syslog_config->format == CEF_CSYSLOG)
     {

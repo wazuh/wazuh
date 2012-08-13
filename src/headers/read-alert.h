@@ -36,6 +36,10 @@ typedef struct _alert_data
     int dstport;
     char *user;
     char *filename;
+    char *old_md5;
+    char *new_md5;
+    char *old_sha1;
+    char *new_sha1;
     char **log;
 }alert_data;
 
