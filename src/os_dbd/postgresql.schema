@@ -92,6 +92,7 @@ CREATE TABLE alert
     dst_ip          INT8,
     src_port        INT4,
     dst_port        INT4,
+    alertid         TEXT        DEFAULT NULL,
     PRIMARY KEY (id, server_id)
     );
 CREATE INDEX time on alert(timestamp);    
