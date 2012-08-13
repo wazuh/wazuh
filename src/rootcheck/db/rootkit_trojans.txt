@@ -1,4 +1,5 @@
-# @(#) $Id$
+# @(#) $Id: ./src/rootcheck/db/rootkit_trojans.txt, 2012/04/26 dcid Exp $
+
 #
 # rootkit_trojans.txt, (C) Daniel B. Cid
 # Imported from the rootcheck project.

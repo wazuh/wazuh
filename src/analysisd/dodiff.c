@@ -1,4 +1,5 @@
-/* @(#) $Id$ */
+/* @(#) $Id: ./src/analysisd/dodiff.c, 2012/07/23 dcid Exp $
+ */
 
 /* Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.

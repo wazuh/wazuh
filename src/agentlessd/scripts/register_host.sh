@@ -1,6 +1,7 @@
 #!/bin/sh
 
-# @(#) $Id$
+# @(#) $Id: ./src/agentlessd/scripts/register_host.sh, 2012/07/23 dcid Exp $
+
 # Agentless monitoring
 #
 # Copyright (C) 2009 Trend Micro Inc.

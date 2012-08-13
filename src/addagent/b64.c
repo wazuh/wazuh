@@ -1,4 +1,5 @@
-/* @(#) $Id$ */
+/* @(#) $Id: ./src/addagent/b64.c, 2011/09/08 dcid Exp $
+ */
 /*
  * Copyright (C), 2000-2004 by the monit project group.
  * All Rights Reserved.

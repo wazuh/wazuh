@@ -1,4 +1,5 @@
-/* @(#) $Id$ */
+/* @(#) $Id: ./src/analysisd/picviz.c, 2011/09/08 dcid Exp $
+ */
 
 /* Copyright (C) 2009 Sebastien Tricaud
  * Copyright (C) 2009 Trend Micro Inc.

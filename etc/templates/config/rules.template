@@ -23,6 +23,7 @@
     <include>vmpop3d_rules.xml</include>
     <include>courier_rules.xml</include>
     <include>web_rules.xml</include>
+    <include>web_appsec_rules.xml</include>
     <include>apache_rules.xml</include>
     <include>nginx_rules.xml</include>
     <include>php_rules.xml</include>

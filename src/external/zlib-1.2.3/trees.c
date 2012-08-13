@@ -29,7 +29,8 @@
  *          Addison-Wesley, 1983. ISBN 0-201-06672-6.
  */
 
-/* @(#) $Id$ */
+/* @(#) $Id: ./src/external/zlib-1.2.3/trees.c, 2011/09/08 dcid Exp $
+ */
 
 /* #define GEN_TREES_H */
 

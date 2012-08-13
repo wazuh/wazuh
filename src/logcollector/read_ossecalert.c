@@ -1,4 +1,5 @@
-/* @(#) $Id$ */
+/* @(#) $Id: ./src/logcollector/read_ossecalert.c, 2012/03/30 dcid Exp $
+ */
 
 /* Copyright (C) 2012 Daniel B. Cid (http://dcid.me)
  * All right reserved.

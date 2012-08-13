@@ -1,4 +1,5 @@
-/* @(#) $Id$ */
+/* @(#) $Id: ./src/monitord/report.c, 2011/09/08 dcid Exp $
+ */
 
 /* Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
