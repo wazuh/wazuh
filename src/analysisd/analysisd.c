@@ -1,6 +1,7 @@
-/* @(#) $Id$ */
+/* @(#) $Id: ./src/analysisd/analysisd.c, 2012/07/26 dcid Exp $
+ */
 
-/* Copyright (C) 2010 Trend Micro Inc.
+/* Copyright (C) 2010-2012 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it

@@ -1,4 +1,5 @@
-/* @(#) $Id$ */
+/* @(#) $Id: ./src/os_crypto/sha1/sha_locl.h, 2011/09/08 dcid Exp $
+ */
 /* Included on ossec */
 
 

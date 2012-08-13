@@ -1,4 +1,5 @@
-# @(#) $Id$
+# @(#) $Id: ./src/rootcheck/db/system_audit_rcl.txt, 2012/02/13 dcid Exp $
+
 #
 # OSSEC Linux Audit - (C) 2007 Daniel B. Cid - dcid@ossec.net
 #

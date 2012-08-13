@@ -47,7 +47,8 @@
  *
  */
 
-/* @(#) $Id$ */
+/* @(#) $Id: ./src/external/zlib-1.2.3/deflate.c, 2011/09/08 dcid Exp $
+ */
 
 #include "deflate.h"
 

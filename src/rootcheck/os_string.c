@@ -1,4 +1,5 @@
-/* @(#) $Id$ */
+/* @(#) $Id: ./src/rootcheck/os_string.c, 2011/09/08 dcid Exp $
+ */
 
 /* Included and modified strings.c from the OpenBSD project.
  * Copyright bellow.

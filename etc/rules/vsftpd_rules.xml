@@ -1,4 +1,5 @@
-<!-- @(#) $Id$
+<!-- @(#) $Id: ./etc/rules/vsftpd_rules.xml, 2011/09/08 dcid Exp $
+
   -  Official vsftpd rules for OSSEC.
   -  Author: Joachim Vorrath <joachim.vorrath@vorrath-net.de>
   -  Author: Jorge Augusto Senger <jorge@br10.com.br>

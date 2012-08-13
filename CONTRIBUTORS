@@ -1,5 +1,5 @@
 OSSEC v2.6
-Copyright (C) 2011 Trend Micro Inc.
+Copyright (C) 2012 Trend Micro Inc.
 
 Many thanks to everyone who contributed and helped with
 the ossec project. Below is the list of all the people
@@ -14,6 +14,7 @@ who helped us since our first release (0.1).
   - Meir Michanie <meirgotroot ( at ) gmail.com>
   - Slava Semushin <php-coder at altlinux.org>
   - Ahmet Ozturk <oahmet ( at )  metu.edu.tr>
+  - Scott R. Shinn 
 
 
 -Testing/Patches and other contributions.

@@ -1,4 +1,5 @@
-<!-- @(#) $Id$
+<!-- @(#) $Id: ./etc/rules/pam_rules.xml, 2012/07/23 dcid Exp $
+
   -  Official Unix Pam rules for OSSEC.
   -
   -  Copyright (C) 2009 Trend Micro Inc.

@@ -1,4 +1,5 @@
-/* @(#) $Id$ */
+/* @(#) $Id: ./src/os_auth/main-client.c, 2012/02/07 dcid Exp $
+ */
 
 /* Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
