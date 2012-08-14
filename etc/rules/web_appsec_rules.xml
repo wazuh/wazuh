@@ -94,7 +94,7 @@
 
   <!-- WordPress wp-login.php brute force -->
   <rule id="31509" level="3">
-    <if_sid>31100</if_sid>
+    <if_sid>31108</if_sid>
     <url>wp-login.php</url>
     <match>] "POST \S+wp-login.php</match>
     <description>WordPress login attempt.</description>
