@@ -120,7 +120,6 @@ UpdateStopOSSEC()
    rm -f $DIRECTORY/queue/syscheck/.* > /dev/null 2>&1
 }
 
-
 ##########
 # UpdateOSSECRules
 ##########
@@ -133,12 +132,23 @@ UpdateOSSECRules()
     # Backing up the old config
     cp -pr ${OSSEC_CONF_FILE} "${OSSEC_CONF_FILE}.$$.bak"
 
-    cat ${OSSEC_CONF_FILE}|grep -v "<rules>" |grep -v "</rules>" |grep -v "<include>" > "${OSSEC_CONF_FILE}.$$.tmp"
+    # Getting rid of old rules entries
+    grep -Ev "</*rules>|<include>|rules global entry" ${OSSEC_CONF_FILE} > "${OSSEC_CONF_FILE}.$$.tmp"
 
+    # Check for custom files that may have been added in <rules> element
+    for i in $(grep -E '<include>|<list>' ${OSSEC_CONF_FILE} | grep -v '<!--')
+    do
+      grep "$i" ${RULES_TEMPLATE}>/dev/null || echo "    $i" >> "${OSSEC_CONF_FILE}.$$.tmp2"
+    done
+
+    # Putting everything back together
     cat "${OSSEC_CONF_FILE}.$$.tmp" > ${OSSEC_CONF_FILE}
     rm "${OSSEC_CONF_FILE}.$$.tmp"
     echo "" >> ${OSSEC_CONF_FILE}
     echo "<ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
-    cat ${RULES_TEMPLATE} >> ${OSSEC_CONF_FILE}
+    grep -v '</rules>' ${RULES_TEMPLATE} >> ${OSSEC_CONF_FILE}
+    cat "${OSSEC_CONF_FILE}.$$.tmp2" >> ${OSSEC_CONF_FILE}
+    echo "</rules>" >> ${OSSEC_CONF_FILE}
     echo "</ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
+    rm "${OSSEC_CONF_FILE}.$$.tmp"
 }

@@ -359,55 +359,48 @@ SetupLogs()
 
 
 
+# install.sh
 
 ##########
 # ConfigureClient()
 ##########
 ConfigureClient()
 {
-	echo ""
-	echo "3- ${configuring} $NAME."
-	echo ""
+        echo ""
+        echo "3- ${configuring} $NAME."
+        echo ""
 
-    USINGHNAME=""
-    if [ "X${USER_AGENT_SERVER_IP}" = "X" ]; then
-        # Looping and asking for server ip
+    if [[ "X${USER_AGENT_SERVER_IP}" = "X" && "X${USER_AGENT_SERVER_NAME}" = "X" ]]; then
+        # Looping and asking for server ip or hostname
         while [ 1 ]; do
-	    $ECHO "  3.1- ${serverip}: "
-	        read IPANSWER
-            echo $IPANSWER | grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" > /dev/null 2>&1
+            $ECHO "  3.1- ${serveraddr}: "
+                read ADDRANSWER
+            # Is it an IP?
+            echo $ADDRANSWER | grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" > /dev/null 2>&1
             if [ $? = 0 ]; then
-	            echo ""
-                IP=$IPANSWER
-	            echo "   - ${addingip} $IP"
+                    echo ""
+                IP=$ADDRANSWER
+                    echo "   - ${addingip} $IP"
                 break;
-            fi
-
-            # Checking if it is a hostname
-            if [ "X$NUNAME" = "XLinux" ]; then
-                echo $IPANSWER | grep -E "^[0-9a-zA-Z-][0-9a-zA-Z-]*\.[0-9a-zA-Z-][0-9a-zA-Z\.-]*$" > /dev/null 2>&1
-                if [ $? = 0 ]; then
-                    host $IPANSWER | grep "has address" >/dev/null 2>&1
-                    if [ $? = 0 ]; then
-                        echo ""
-                        IP=$IPANSWER
-                        echo "   - ${addingip} $IP"
-                        USINGHNAME=$IP
-                        break;
-                    fi
-                fi
+            # Must be a name
+            elif [ $? != 0 ]; then
+                    echo ""
+                HNAME=$ADDRANSWER
+                    echo "   - ${addingname} $HNAME"
+                break;
             fi
         done
     else
         IP=${USER_AGENT_SERVER_IP}
+        HNAME=${USER_AGENT_SERVER_NAME}
     fi
 
     echo "<ossec_config>" > $NEWCONFIG
     echo "  <client>" >> $NEWCONFIG
-    if [ "x$USINGHNAME" = "x" ]; then
-	echo "    <server-ip>$IP</server-ip>" >> $NEWCONFIG
-    else
-	echo "    <server-hostname>$IP</server-hostname>" >> $NEWCONFIG
+    if [ "X${IP}" != "X" ]; then
+        echo "    <server-ip>$IP</server-ip>" >> $NEWCONFIG
+    elif [ "X${HNAME}" != "X" ]; then
+        echo "    <server-hostname>$HNAME</server-hostname>" >> $NEWCONFIG
     fi
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
