@@ -28,6 +28,8 @@
 #define RULE_BEGIN_SZ   6
 #define SRCIP_BEGIN     "Src IP: "
 #define SRCIP_BEGIN_SZ  8
+#define GEOIP_BEGIN	"Src Location: "
+#define GEOIP_BEGIN_SZ  14
 #define SRCPORT_BEGIN     "Src Port: "
 #define SRCPORT_BEGIN_SZ  10
 #define DSTIP_BEGIN     "Dst IP: "
@@ -134,6 +136,13 @@ void FreeAlertData(alert_data *al_data)
         free(al_data->log);
         al_data->log = NULL;
     }
+#ifdef GEOIP
+    if (al_data->geoipdata)
+    {
+	free(al_data->geoipdata);
+        al_data->geoipdata = NULL;
+    }
+#endif
     free(al_data);
     al_data = NULL;
 }
@@ -161,6 +170,9 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *old_sha1 = NULL;
     char *new_sha1 = NULL;
     char **log = NULL;
+#ifdef GEOIP
+    char *geoipdata = NULL;
+#endif
     int level, rule, srcport, dstport;
   
     
@@ -193,6 +205,9 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 al_data->user = user;
                 al_data->date = date;
                 al_data->filename = filename;
+#ifdef GEOIP
+                al_data->geoipdata = geoipdata;
+#endif
                 al_data->old_md5 = old_md5;
                 al_data->new_md5 = new_md5;
                 al_data->old_sha1 = old_sha1;
@@ -355,6 +370,15 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 p = str + SRCIP_BEGIN_SZ;
                 os_strdup(p, srcip);
             }
+#ifdef GEOIP
+            /* GeoIP */
+            else if (strncmp(GEOIP_BEGIN, str, GEOIP_BEGIN_SZ) == 0)
+            {
+		os_clearnl(str,p);
+		p = str + GEOIP_BEGIN_SZ;
+		os_strdup(p, geoipdata);
+            }
+#endif
             /* srcport */
             else if(strncmp(SRCPORT_BEGIN, str, SRCPORT_BEGIN_SZ) == 0)
             {
@@ -469,6 +493,13 @@ alert_data *GetAlertData(int flag, FILE *fp)
             free(srcip);
             srcip = NULL;
         }
+#ifdef GEOIP
+        if(geoipdata)
+	{
+	    free(geoipdata);
+	    geoipdata = NULL;
+	}
+#endif
         if(user)
         {
             free(user);

@@ -31,6 +31,9 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     char *tstamp;
     char user_msg[256];
     char srcip_msg[256];
+#ifdef GEOIP
+    char geoip_msg[256];
+#endif
     char old_md5_msg[256];
     char new_md5_msg[256];
     char old_sha1_msg[256];
@@ -134,6 +137,24 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         snprintf(srcip_msg, 255, " srcip: %s;", al_data->srcip);
     }
 
+#ifdef GEOIP
+    /* Adding geo ip data, except when it is "(null)" or "Unknown" . */
+    if(!al_data->geoipdata ||
+       ((al_data->geoipdata[0] == '(') &&
+        (al_data->geoipdata[1] == 'n') &&
+        (al_data->geoipdata[2] == 'u')) ||
+       ((al_data->geoipdata[0] == 'U') &&
+        (al_data->geoipdata[1] == 'n') &&
+        (al_data->geoipdata[2] == 'k')) )
+    {
+        geoip_msg[0] = '\0';
+    }
+    else
+    {
+        snprintf(geoip_msg, 255, " geocity: %s;", al_data->geoipdata);
+    }
+#endif
+
 
     /* Adding username. */
     if(!al_data->user || 
@@ -207,13 +228,18 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
        	/* Building syslog message. */
        	snprintf(syslog_msg, OS_SIZE_2048,
                	"<%d>%s %s ossec: Alert Level: %d; Rule: %d - %s; "
-               	"Location: %s;%s%s%s%s%s%s  %s",
+               	"Location: %s;%s%s%s%s%s%s%s  %s",
                	syslog_config->priority, tstamp, __shost,
                	al_data->level, al_data->rule, al_data->comment,
                	al_data->location, 
 
                	/* Source ip. */
                	srcip_msg,
+#ifdef GEOIP
+               	geoip_msg,
+#else
+               	"",
+#endif
                	user_msg,
                	old_md5_msg,
                 new_md5_msg,

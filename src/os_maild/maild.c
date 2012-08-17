@@ -26,7 +26,6 @@
 #include "maild.h"
 #include "mail_list.h"
 
-
 void OS_Run(MailConfig *mail);
 
 int main(int argc, char **argv)
@@ -98,7 +97,6 @@ int main(int argc, char **argv)
     if((uid < 0)||(gid < 0))
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
-
     /* Reading configuration */
     if(MailConf(test_config, cfg, &mail) < 0)
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
@@ -118,6 +116,13 @@ int main(int argc, char **argv)
     mail.subject_full = getDefine_Int("maild",
                                       "full_subject",
                                       0, 1);
+
+#ifdef GEOIP
+    /* Get GeoIP */
+    mail.geoip = getDefine_Int("maild",
+                               "geoip",
+                               0, 1);
+#endif
     
     
     /* Exit here if test config is set */

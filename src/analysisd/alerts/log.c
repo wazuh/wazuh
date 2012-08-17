@@ -19,6 +19,96 @@
 #include "eventinfo.h"
 #include "config.h"
 
+#ifdef GEOIP
+/* GeoIP Stuff */
+#include "GeoIP.h"
+#include "GeoIPCity.h"
+#include <arpa/inet.h>
+
+static const char * _mk_NA( const char * p ){
+	return p ? p : "N/A";
+}
+
+/* check a.b.c.d is a private IP
+ *      10.0.0.0        -   10.255.255.255  (10/8 prefix)
+ * 	00001010.xxxxxxxx.xxxxxxxx.xxxxxxxx
+ * 	0A.xx.xx.xx
+ *      172.16.0.0      -   172.31.255.255  (172.16/12 prefix)
+ * 	10101100.0001xxxx.xxxxxxxx.xxxxxxxx
+ * 	AC.1x.xxxx.xxxx
+ *      192.168.0.0     -   192.168.255.255 (192.168/16 prefix)
+ * 	11000000.10101000.xxxxxxxx.xxxxxxxx
+ * 	C0.A8.xx.xx
+*/
+static int _private_IP(char * ip) {
+ #if HIGHFIRST
+  #define PRIV10   0x0A000000
+  #define MASK10   0xFF000000
+  #define PRIV172  0xAC100000
+  #define MASK172  0xFFF00000
+  #define PRIV192  0xC0A80000
+  #define MASK192  0xFFFF0000
+ #else
+  #define PRIV10   0x0000000A
+  #define MASK10   0x000000FF
+  #define PRIV172  0x000010AC
+  #define MASK172  0x0000F0FF
+  #define PRIV192  0x0000A8C0
+  #define MASK192  0x0000FFFF
+ #endif
+	struct in_addr inp;
+	if(inet_aton(ip, &inp)) { //non-zero if valid IP
+		if ((inp.s_addr & MASK10) == PRIV10) return 1;
+		if ((inp.s_addr & MASK172) == PRIV172) return 1;
+		if ((inp.s_addr & MASK192) == PRIV192) return 1;
+	}
+	return 0;
+}
+
+/* GeoIPLookup */
+/* Use the GeoIP API to locate an IP address
+ */
+char *GeoIPLookup(char *ip)
+{
+	GeoIP	*gi;
+	GeoIPRecord	*gir;
+	char buffer[OS_SIZE_1024 +1];
+
+	/* Dump way to detect an IPv6 address */
+	if (strchr(ip, ':')) {
+		/* Use the IPv6 DB */
+		gi = GeoIP_open(Config.geoip_db_path, GEOIP_INDEX_CACHE);
+		if (gi == NULL) {
+			merror(INVALID_GEOIP_DB, ARGV0, Config.geoip6_db_path);
+			return("Unknown");
+		}
+		gir = GeoIP_record_by_name_v6(gi, (const char *)ip);
+	}
+	else if (strchr(ip, '.') && _private_IP(ip)) {
+		return("");
+	}
+	else {
+		/* Use the IPv4 DB */
+		gi = GeoIP_open(Config.geoip_db_path, GEOIP_INDEX_CACHE);
+		if (gi == NULL) {
+			merror(INVALID_GEOIP_DB, ARGV0, Config.geoip_db_path);
+			return("Unknown");
+		}
+		gir = GeoIP_record_by_name(gi, (const char *)ip);
+	}
+	if (gir != NULL) {
+		sprintf(buffer,"%s,%s,%s",
+				_mk_NA(gir->country_code),
+				_mk_NA(GeoIP_region_name_by_code(gir->country_code, gir->region)),
+				_mk_NA(gir->city)
+		);
+		GeoIP_delete(gi);
+		return(buffer);
+	}
+	GeoIP_delete(gi);
+	return("Unknown");
+}
+#endif /* GEOIP */
 
 /* Drop/allow patterns */
 OSMatch FWDROPpm;
@@ -61,10 +151,17 @@ void OS_Store(Eventinfo *lf)
 
 void OS_LogOutput(Eventinfo *lf)
 {
+#ifdef GEOIP
+    char geoip_msg[OS_SIZE_1024 +1];
+    geoip_msg[0] = '\0';
+    if (Config.loggeoip && lf->srcip) {
+ 	strcpy(geoip_msg, GeoIPLookup(lf->srcip));
+    }
+#endif
     printf(
            "** Alert %d.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
-            "%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
+            "%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
             lf->time,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT?" mail ":"",
@@ -82,6 +179,14 @@ void OS_LogOutput(Eventinfo *lf)
 
             lf->srcip == NULL?"":"\nSrc IP: ",
             lf->srcip == NULL?"":lf->srcip,
+
+#ifdef GEOIP
+            (strlen(geoip_msg) == 0)?"":"\nSrc Location: ",
+            (strlen(geoip_msg) == 0)?"":geoip_msg,
+#else
+	    "",
+            "",
+#endif
 
             lf->srcport == NULL?"":"\nSrc Port: ",
             lf->srcport == NULL?"":lf->srcport,
@@ -122,11 +227,18 @@ void OS_LogOutput(Eventinfo *lf)
 /* _writefile: v0.2, 2005/02/09 */
 void OS_Log(Eventinfo *lf)
 {
+#ifdef GEOIP
+    char geoip_msg[OS_SIZE_1024 +1];
+    geoip_msg[0] = '\0';
+    if (Config.loggeoip && lf->srcip) {
+ 	strcpy(geoip_msg, GeoIPLookup(lf->srcip));
+    }
+#endif
     /* Writting to the alert log file */
     fprintf(_aflog,
             "** Alert %d.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
-            "%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
+            "%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
             lf->time,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT?" mail ":"",
@@ -144,6 +256,14 @@ void OS_Log(Eventinfo *lf)
 
             lf->srcip == NULL?"":"\nSrc IP: ",
             lf->srcip == NULL?"":lf->srcip,
+
+#ifdef GEOIP
+            (strlen(geoip_msg) == 0)?"":"\nSrc Location: ",
+            (strlen(geoip_msg) == 0)?"":geoip_msg,
+#else
+            "",
+            "",
+#endif
 
             lf->srcport == NULL?"":"\nSrc Port: ",
             lf->srcport == NULL?"":lf->srcport,

@@ -165,6 +165,12 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     char *xml_smtpserver = "smtp_server";
     char *xml_mailmaxperhour = "email_maxperhour";
 
+#ifdef GEOIP
+    /* GeoIP */
+    char *xml_geoip_db_path = "geoip_db_path";
+    char *xml_geoip6_db_path = "geoip6_db_path";
+#endif
+
     _Config *Config;
     MailConfig *Mail;
      
@@ -520,6 +526,24 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
             }
         }
+#ifdef GEOIP
+        /* GeoIP v4 DB location */
+        else if(strcmp(node[i]->element, xml_geoip_db_path) == 0)
+        {
+            if(Config)
+            {
+                os_strdup(node[i]->content, Config->geoip_db_path);
+            }
+        }
+        /* GeoIP v6 DB location */
+        else if(strcmp(node[i]->element, xml_geoip6_db_path) == 0)
+        {
+            if(Config)
+            {
+                os_strdup(node[i]->content, Config->geoip6_db_path);
+            }
+        }
+#endif
         else
         {
             merror(XML_INVELEM, ARGV0, node[i]->element);

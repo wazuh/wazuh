@@ -18,6 +18,7 @@ none:
 		@echo "\"make setdb\" to enable database support."
 		@echo "\"make unsetdb\" to disable database support."
 		@echo "\"make setoneway\" to enable one-way connection to the manager."
+		@echo "\"make setgeoip\" to enable source IP geolocalization."
 
 clean:
 		@/bin/sh ./Makeall clean
@@ -54,6 +55,9 @@ unsetclang:
 setprelude:
 		@echo "CPRELUDE=-DPRELUDE -lprelude `libprelude-config --pthread-cflags` `libprelude-config --libs`" >> ./Config.OS
         
+setgeoip:
+		@echo "CGEOIP=-DGEOIP -lGeoIP" >> ./Config.OS
+
 setdb:
 		@cd ./os_dbd; echo "CDB=`./dbmake.sh`" >> ../Config.OS;
 setmaxagents:

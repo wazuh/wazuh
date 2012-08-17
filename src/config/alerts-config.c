@@ -24,6 +24,11 @@ int Read_Alerts(XML_NODE node, void *configp, void *mailp)
     /* XML definitions */
     char *xml_email_level = "email_alert_level";
     char *xml_log_level = "log_alert_level";
+   
+#ifdef GEOIP
+    /* GeoIP */
+    char *xml_log_geoip = "use_geoip";
+#endif
 
     _Config *Config;
      
@@ -63,6 +68,22 @@ int Read_Alerts(XML_NODE node, void *configp, void *mailp)
             }
             Config->logbylevel  = atoi(node[i]->content);
         }
+#ifdef GEOIP
+	/* Enable GeoIP */
+	else if(strcmp(node[i]->element, xml_log_geoip) == 0)
+	{
+            if(strcmp(node[i]->content, "yes") == 0)
+                { if(Config) Config->loggeoip = 1;}
+            else if(strcmp(node[i]->content, "no") == 0)
+                {if(Config) Config->loggeoip = 0;}
+            else
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+
+	}
+#endif
         else
         {
             merror(XML_INVELEM, ARGV0, node[i]->element);
