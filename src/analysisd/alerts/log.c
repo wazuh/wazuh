@@ -23,47 +23,28 @@
 /* GeoIP Stuff */
 #include "GeoIP.h"
 #include "GeoIPCity.h"
-#include <arpa/inet.h>
+
+#define RFC1918_10     (167772160 & 4278190080)        /* 10/8 */
+#define RFC1918_172    (2886729728 & 4293918720)       /* 172.17/12 */
+#define RFC1918_192    (3232235520 & 4294901760)       /* 192.168/16 */
+#define NETMASK_8      4278190080      /* 255.0.0.0    */
+#define NETMASK_12     4293918720      /* 255.240.0.0  */
+#define NETMASK_16     4294901760      /* 255.255.0.0  */
 
 static const char * _mk_NA( const char * p ){
 	return p ? p : "N/A";
 }
 
-/* check a.b.c.d is a private IP
- *      10.0.0.0        -   10.255.255.255  (10/8 prefix)
- * 	00001010.xxxxxxxx.xxxxxxxx.xxxxxxxx
- * 	0A.xx.xx.xx
- *      172.16.0.0      -   172.31.255.255  (172.16/12 prefix)
- * 	10101100.0001xxxx.xxxxxxxx.xxxxxxxx
- * 	AC.1x.xxxx.xxxx
- *      192.168.0.0     -   192.168.255.255 (192.168/16 prefix)
- * 	11000000.10101000.xxxxxxxx.xxxxxxxx
- * 	C0.A8.xx.xx
-*/
-static int _private_IP(char * ip) {
- #if HIGHFIRST
-  #define PRIV10   0x0A000000
-  #define MASK10   0xFF000000
-  #define PRIV172  0xAC100000
-  #define MASK172  0xFFF00000
-  #define PRIV192  0xC0A80000
-  #define MASK192  0xFFFF0000
- #else
-  #define PRIV10   0x0000000A
-  #define MASK10   0x000000FF
-  #define PRIV172  0x000010AC
-  #define MASK172  0x0000F0FF
-  #define PRIV192  0x0000A8C0
-  #define MASK192  0x0000FFFF
- #endif
-	struct in_addr inp;
-	if(inet_aton(ip, &inp)) { //non-zero if valid IP
-		if ((inp.s_addr & MASK10) == PRIV10) return 1;
-		if ((inp.s_addr & MASK172) == PRIV172) return 1;
-		if ((inp.s_addr & MASK192) == PRIV192) return 1;
-	}
-	return 0;
+/* StrIP2Long */
+/* Convert an dot-quad IP address into long format
+ */
+unsigned long StrIP2Int(char *ip) {
+        unsigned int c1,c2,c3,c4;
+       /* IP address is not coming from user input -> We can trust it */
+        sscanf(ip, "%d.%d.%d.%d", &c1, &c2, &c3, &c4);
+        return((unsigned long)c4+c3*256+c2*256*256+c1*256*256*256);
 }
+
 
 /* GeoIPLookup */
 /* Use the GeoIP API to locate an IP address
@@ -73,6 +54,7 @@ char *GeoIPLookup(char *ip)
 	GeoIP	*gi;
 	GeoIPRecord	*gir;
 	char buffer[OS_SIZE_1024 +1];
+        unsigned long longip;
 
 	/* Dump way to detect an IPv6 address */
 	if (strchr(ip, ':')) {
@@ -84,11 +66,14 @@ char *GeoIPLookup(char *ip)
 		}
 		gir = GeoIP_record_by_name_v6(gi, (const char *)ip);
 	}
-	else if (strchr(ip, '.') && _private_IP(ip)) {
-		return("");
-	}
 	else {
 		/* Use the IPv4 DB */
+                /* If we have a RFC1918 IP, do not perform a DB lookup (performance) */
+                longip = StrIP2Int(ip);
+                if ((longip & NETMASK_8)  == RFC1918_10 ||
+                    (longip & NETMASK_12) == RFC1918_172 ||
+                    (longip & NETMASK_16) == RFC1918_192) return("");
+
 		gi = GeoIP_open(Config.geoip_db_path, GEOIP_INDEX_CACHE);
 		if (gi == NULL) {
 			merror(INVALID_GEOIP_DB, ARGV0, Config.geoip_db_path);

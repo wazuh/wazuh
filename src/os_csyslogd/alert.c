@@ -151,7 +151,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     }
     else
     {
-        snprintf(geoip_msg, 255, " geocity: %s;", al_data->geoipdata);
+        snprintf(geoip_msg, 255, " srccity: %s;", al_data->geoipdata);
     }
 #endif
 
