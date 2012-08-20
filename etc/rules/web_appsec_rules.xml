@@ -92,7 +92,20 @@
     <description>Blacklisted user agent (known malicious user agent).</description>
   </rule>
 
+  <!-- WordPress wp-login.php brute force -->
+  <rule id="31509" level="3">
+    <if_sid>31108</if_sid>
+    <url>wp-login.php</url>
+    <regex>] "POST \S+wp-login.php</regex>
+    <description>WordPress login attempt.</description>
+  </rule>
 
+  <!-- If we see frequent wp-login POST's, it is likely a bot. -->
+  <rule id="31510" level="6" frequency="4" timeframe="120" ignore="30">
+    <if_matched_sid>31509</if_matched_sid>
+    <same_source_ip />
+    <description>WordPress wp-login.php brute force attempt.</description>
+  </rule>
 
   <!-- Anomaly rules - Used on common web attacks -->
   <rule id="31550" level="6">
