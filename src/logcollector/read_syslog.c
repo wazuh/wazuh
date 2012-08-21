@@ -102,7 +102,13 @@ void *read_syslog(int pos, int *rc, int drop_it)
         /* Incorrectly message size */
         if(__ms)
         {
-            merror("%s: Large message size: '%s'", ARGV0, str);
+            // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)
+            // truncate str before logging to ossec.log 
+#define OUTSIZE 4096
+            char buf[OUTSIZE + 1];
+            buf[OUTSIZE] = '\0';
+            snprintf(buf, OUTSIZE, "%s", str);
+            merror("%s: Large message size(length=%d): '%s...'", ARGV0, (int)strlen(str), buf);
             while(fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL)
             {
                 /* Getting the last occurence of \n */
