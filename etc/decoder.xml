@@ -1253,6 +1253,23 @@
   <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>
 
+<decoder name="pix-url-success">
+  <parent>pix</parent>
+  <prematch offset="after_parent">^5-304001: </prematch>
+  <regex offset="after_parent">^(\S+): (\d+.\d+.\d+.\d+) Accessed URL </regex>
+  <regex>(\d+.\d+.\d+.\d+):(http\w*://\.+)|</regex>
+  <regex>^(\S+): (\d+.\d+.\d+.\d+) Accessed URL (\d+.\d+.\d+.\d+):</regex>
+  <order>id, srcip, dstip, url</order>
+</decoder>
+
+<decoder name="pix-url-deny">
+  <parent>pix</parent>
+  <prematch offset="after_parent">^5-304002: </prematch>
+  <regex offset="after_parent">^(\S+): Access (denied) URL (http\w*://\.+) </regex>
+  <regex>SRC (\d+.\d+.\d+.\d+) DEST (\d+.\d+.\d+.\d+) on interface</regex>  
+  <order>id, action, url, srcip, dstip</order>
+</decoder>
+
 <decoder name="pix-attacks">
   <parent>pix</parent>
   <prematch offset="after_parent">^2-106012: |^2-106017: |</prematch>
