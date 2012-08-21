@@ -2121,9 +2121,10 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
 -->
 
 <decoder name="ms-dhcp-ipv4">
-  <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,</prematch>
-  <regex>^(\d\d),</regex>
-  <order>id</order>
+  <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,|</prematch>
+  <prematch>^\d\d,\d+/\d+/\d\d,\d+:\d+:\d+,</prematch>
+  <regex>^(\d\d),\d+/\d+/\d\d\d*,\d+:\d+:\d+,(\w+),(\d+.\d+.\d+.\d+)</regex>
+  <order>id,extra_data,srcip</order>
 </decoder>
 
 <!--
