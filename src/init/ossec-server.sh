@@ -177,14 +177,17 @@ disable()
 # Status function
 status()
 {
+    RETVAL=0
     for i in ${DAEMONS}; do
         pstatus ${i};
         if [ $? = 0 ]; then
             echo "${i} not running..."
+            RETVAL=1
         else
             echo "${i} is running..."
         fi
-    done             
+    done
+    exit $RETVAL
 }
 
 testconfig()

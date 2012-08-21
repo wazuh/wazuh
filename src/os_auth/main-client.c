@@ -256,7 +256,7 @@ int main(int argc, char **argv)
                     if(!tmpstr)
                     {
                         printf("ERROR: Invalid key received. Closing connection.\n");
-                        exit(0);
+                        exit(1);
                     }
                     *tmpstr = '\0';
                     entry = OS_StrBreak(' ', key, 4); 
@@ -264,7 +264,7 @@ int main(int argc, char **argv)
                        !OS_IsValidName(entry[2]) || !OS_IsValidName(entry[3]))
                     {
                         printf("ERROR: Invalid key received (2). Closing connection.\n");
-                        exit(0);
+                        exit(1);
                     }
 
                     {
@@ -273,7 +273,7 @@ int main(int argc, char **argv)
                         if(!fp)
                         {
                             printf("ERROR: Unable to open key file: %s", KEYSFILE_PATH);
-                            exit(0);
+                            exit(1);
                         }
                         fprintf(fp, "%s\n", key);
                         fclose(fp);
