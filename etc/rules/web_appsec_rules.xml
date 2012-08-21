@@ -38,7 +38,7 @@
   <rule id="31502" level="6">
     <if_sid>31100</if_sid>
     <url>thumb.php|timthumb.php</url>
-    <regex> "GET \S+thumb.php?src=\S+.php </regex>
+    <regex> "GET \S+thumb.php?src=\S+.php</regex>
     <description>TimThumb vulnerability exploit attempt.</description>
    </rule>
 
@@ -65,7 +65,7 @@
   <rule id="31505" level="6">
     <if_sid>31100</if_sid>
     <url>/cache/external</url>
-    <regex> "GET /\S+/cache/external\S+.php </regex>
+    <regex> "GET /\S+/cache/external\S+.php</regex>
     <description>TimThumb backdoor access attempt.</description>
    </rule>
 
@@ -106,6 +106,33 @@
     <same_source_ip />
     <description>WordPress wp-login.php brute force attempt.</description>
   </rule>
+
+  <!-- Nothing wrong with wget per se, but it misses a lot of links
+     - that generates many 404s. Blocking it to avoid the noise.
+    -->
+  <rule id="31511" level="6">
+    <if_sid>31100</if_sid>
+    <match>" "Wget/</match>
+    <description>Blacklisted user agent (wget).</description>
+  </rule>
+
+  <!-- Uploadify scans.
+    -->
+  <rule id="31512" level="6">
+    <if_sid>31100</if_sid>
+    <url>uploadify.php</url>
+    <regex> "GET /\S+/uploadify.php?src=http://\S+.php</regex>
+    <description>TimThumb vulnerability exploit attempt.</description>
+   </rule>
+
+  <!-- BBS delete.php skin_path.
+    -->
+  <rule id="31513" level="6">
+    <if_sid>31100</if_sid>
+    <url>delete.php</url>
+    <regex> "GET \S+/delete.php?board_skin_path=http://\S+.php</regex>
+    <description>BBS delete.php exploit attempt.</description>
+   </rule>
 
   <!-- Anomaly rules - Used on common web attacks -->
   <rule id="31550" level="6">
