@@ -408,7 +408,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
 
 
     /* Getting the expect */
-    if(strlen(tmp_str) > 4)
+    if(strlen(tmp_str) >= 4)
     {
         if(OS_Regex("user", tmp_str))
             tmp_command->expect |= USERNAME;
