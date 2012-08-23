@@ -310,7 +310,8 @@ int FW_Log(Eventinfo *lf)
      * action, there is no point in going
      * forward over here
      */
-    if(!lf->action || !lf->srcip)
+    if(!lf->action || !lf->srcip || !lf->dstip || !lf->srcport || 
+       !lf->dstport || !lf->protocol)
     {
         return(0);
     }
