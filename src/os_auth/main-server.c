@@ -14,8 +14,6 @@
 #include "shared.h"
 #include "auth.h"
 
-/* TODO: Pulled this value out of the sky, may or may not be sane */
-int POOL_SIZE = 512;
 
 /* ossec-reportd - Runs manual reports. */
 void report_help()
@@ -34,10 +32,7 @@ int main()
 int main(int argc, char **argv)
 {
     FILE *fp;
-    // Bucket to keep pids in.
-    int process_pool[POOL_SIZE];
-    // Count of pids we are wait()ing on.
-    int c = 0, test_config = 0, use_ip_address = 0, pid = 0, status, i = 0, active_processes = 0;
+    int c, test_config = 0;
     int gid = 0, client_sock = 0, sock = 0, port = 1515, ret = 0;
     char *dir  = DEFAULTDIR;
     char *user = USER;
@@ -47,13 +42,11 @@ int main(int argc, char **argv)
     SSL_CTX *ctx;
     SSL *ssl;
     char srcip[IPSIZE +1];
-    struct sockaddr_in _nc;
-    socklen_t _ncl;
+    int use_ip_address = 0;
 
 
     /* Initializing some variables */
     memset(srcip, '\0', IPSIZE + 1);
-    memset(process_pool, 0x0, POOL_SIZE);
 
     bio_err = 0;
 
@@ -97,7 +90,7 @@ int main(int argc, char **argv)
                 cfg = optarg;
                 break;
             case 't':
-                test_config = 1;
+                test_config = 1;    
                 break;
             case 'p':
                if(!optarg)
@@ -115,7 +108,7 @@ int main(int argc, char **argv)
 
     }
 
-    /* Starting daemon -- NB: need to double fork and setsid */
+    /* Starting daemon */
     debug1(STARTED_MSG,ARGV0);
 
     /* Check if the user/group given are valid */
@@ -123,20 +116,19 @@ int main(int argc, char **argv)
     if(gid < 0)
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
-
+    
 
     /* Exit here if test config is set */
     if(test_config)
         exit(0);
 
-
-    /* Privilege separation */
+        
+    /* Privilege separation */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
-
-    /* chrooting -- TODO: this isn't a chroot. Should also close
-       unneeded open file descriptors (like stdin/stdout)*/
+    
+    /* chrooting */
     chdir(dir);
 
 
@@ -144,11 +136,13 @@ int main(int argc, char **argv)
     /* Signal manipulation */
     StartSIG(ARGV0);
 
+    
 
     /* Creating PID files */
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
 
+    
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
@@ -159,9 +153,9 @@ int main(int argc, char **argv)
         merror("%s: ERROR: Unable to open %s (key file)", ARGV0, KEYSFILE_PATH);
         exit(1);
     }
+    
 
-
-    /* Starting SSL */
+    /* Starting SSL */	
     ctx = os_ssl_keys(0, dir);
     if(!ctx)
     {
@@ -169,7 +163,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-
+  
     /* Connecting via TCP */
     sock = OS_Bindporttcp(port, NULL, 0);
     if(sock <= 0)
@@ -177,103 +171,87 @@ int main(int argc, char **argv)
         merror("%s: Unable to bind to port %d", ARGV0, port);
         exit(1);
     }
-    fcntl(sock, F_SETFL, O_NONBLOCK);
 
     debug1("%s: DEBUG: Going into listening mode.", ARGV0);
+
     while(1)
     {
+        client_sock = OS_AcceptTCP(sock, srcip, IPSIZE);
 
-        // no need to completely pin the cpu
-        usleep(0);
-        for (i = 0; i < POOL_SIZE; i++)
+        if(fork())
         {
-            int rv = 0;
-            status = 0;
-            if (process_pool[i])
-            {
-                rv = waitpid(process_pool[i], &status, WNOHANG);
-                if (rv != 0){
-                    debug1("%s: DEBUG: Process %d exited", ARGV0, process_pool[i]);
-                    process_pool[i] = 0;
-                    active_processes = active_processes - 1;
-                }
-            }
+            close(client_sock);
         }
-        memset(&_nc, 0, sizeof(_nc));
-        _ncl = sizeof(_nc);
+        else
+        {
+            char *agentname = NULL;
+            ssl = SSL_new(ctx);
+            SSL_set_fd(ssl, client_sock);
 
-        if((client_sock = accept(sock, (struct sockaddr *) &_nc, &_ncl)) > 0){
-            if (active_processes >= POOL_SIZE)
+            ret = SSL_accept(ssl);
+            if(ret <= 0)
             {
-                merror("%s: Error: Max concurrency reached. Unable to fork", ARGV0);
-                break;
+                merror("%s: ERROR: SSL Accept error (%d)", ARGV0, ret);
+                ERR_print_errors_fp(stderr);
             }
-            pid = fork();
-            if(pid)
+
+            verbose("%s: INFO: New connection from %s", ARGV0, srcip);
+
+            ret = SSL_read(ssl, buf, sizeof(buf));
+            sleep(1);
+            if(ret > 0)
             {
-                active_processes = active_processes + 1;
-                close(client_sock);
-                for (i = 0; i < POOL_SIZE; i++)
+                int parseok = 0;
+                if(strncmp(buf, "OSSEC A:'", 9) == 0)
                 {
-                    if (! process_pool[i])
+                    char *tmpstr = buf;
+                    agentname = tmpstr + 9;
+                    tmpstr += 9;
+                    while(*tmpstr != '\0')
                     {
-                        process_pool[i] = pid;
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                char *agentname = NULL;
-                ssl = SSL_new(ctx);
-                SSL_set_fd(ssl, client_sock);
-
-                ret = SSL_accept(ssl);
-                if(ret <= 0)
-                {
-                    merror("%s: ERROR: SSL Accept error (%d)", ARGV0, ret);
-                    ERR_print_errors_fp(stderr);
-                }
-
-                verbose("%s: INFO: New connection from %s", ARGV0, srcip);
-
-                ret = SSL_read(ssl, buf, sizeof(buf));
-                sleep(1);
-                if(ret > 0)
-                {
-                    int parseok = 0;
-                    if(strncmp(buf, "OSSEC A:'", 9) == 0)
-                    {
-                        char *tmpstr = buf;
-                        agentname = tmpstr + 9;
-                        tmpstr += 9;
-                        while(*tmpstr != '\0')
+                        if(*tmpstr == '\'')
                         {
-                            if(*tmpstr == '\'')
-                            {
-                                *tmpstr = '\0';
-                                verbose("%s: INFO: Received request for a new agent (%s) from: %s", ARGV0, agentname, srcip);
-                                parseok = 1;
-                                break;
-                            }
-                            tmpstr++;
+                            *tmpstr = '\0';
+                            verbose("%s: INFO: Received request for a new agent (%s) from: %s", ARGV0, agentname, srcip);
+                            parseok = 1;
+                            break;
                         }
+                        tmpstr++;
                     }
-                    if(parseok == 0)
+                }
+                if(parseok == 0)
+                {
+                    merror("%s: ERROR: Invalid request for new agent from: %s", ARGV0, srcip);
+                }
+                else
+                {
+                    int acount = 2;
+                    char fname[2048 +1];
+                    char response[2048 +1];
+                    char *finalkey = NULL;
+                    response[2048] = '\0';
+                    fname[2048] = '\0';
+                    if(!OS_IsValidName(agentname))
                     {
-                        merror("%s: ERROR: Invalid request for new agent from: %s", ARGV0, srcip);
+                        merror("%s: ERROR: Invalid agent name: %s from %s", ARGV0, agentname, srcip);
+                        snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
+                        ret = SSL_write(ssl, response, strlen(response));
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        ret = SSL_write(ssl, response, strlen(response));
+                        sleep(1);
+                        exit(0);
                     }
-                    else
+
+
+                    /* Checking for a duplicated names. */
+                    strncpy(fname, agentname, 2048);
+                    while(NameExist(fname))
                     {
-                        int acount = 2;
-                        char fname[2048 +1];
-                        char response[2048 +1];
-                        char *finalkey = NULL;
-                        response[2048] = '\0';
-                        fname[2048] = '\0';
-                        if(!OS_IsValidName(agentname))
+                        snprintf(fname, 2048, "%s%d", agentname, acount);
+                        acount++;
+                        if(acount > 256)
                         {
-                            merror("%s: ERROR: Invalid agent name: %s from %s", ARGV0, agentname, srcip);
+                            merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
                             snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
                             ret = SSL_write(ssl, response, strlen(response));
                             snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
@@ -281,76 +259,57 @@ int main(int argc, char **argv)
                             sleep(1);
                             exit(0);
                         }
+                    }
+                    agentname = fname;
 
 
-                        /* Checking for a duplicated names. */
-                        strncpy(fname, agentname, 2048);
-                        while(NameExist(fname))
-                        {
-                            snprintf(fname, 2048, "%s%d", agentname, acount);
-                            acount++;
-                            if(acount > 256)
-                            {
-                                merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
-                                snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                                ret = SSL_write(ssl, response, strlen(response));
-                                snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                                ret = SSL_write(ssl, response, strlen(response));
-                                sleep(1);
-                                exit(0);
-                            }
-                        }
-                        agentname = fname;
-
-
-                        /* Adding the new agent. */
-                        if (use_ip_address)
-                        {
-                            finalkey = OS_AddNewAgent(agentname, srcip, NULL, NULL);
-                        }
-                        else
-                        {
-                            finalkey = OS_AddNewAgent(agentname, NULL, NULL, NULL);
-                        }
-                        if(!finalkey)
-                        {
-                            merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
-                            snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
-                            ret = SSL_write(ssl, response, strlen(response));
-                            snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                            ret = SSL_write(ssl, response, strlen(response));
-                            sleep(1);
-                            exit(0);
-                        }
-
-
-                        snprintf(response, 2048,"OSSEC K:'%s'\n\n", finalkey);
-                        verbose("%s: INFO: Agent key generated for %s (requested by %s)", ARGV0, agentname, srcip);
+                    /* Adding the new agent. */
+                    if (use_ip_address)
+                    {
+                        finalkey = OS_AddNewAgent(agentname, srcip, NULL, NULL);
+                    }
+                    else
+                    {
+                        finalkey = OS_AddNewAgent(agentname, NULL, NULL, NULL);
+                    }
+                    if(!finalkey)
+                    {
+                        merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
+                        snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
                         ret = SSL_write(ssl, response, strlen(response));
-                        if(ret < 0)
-                        {
-                            merror("%s: ERROR: SSL write error (%d)", ARGV0, ret);
-                            merror("%s: ERROR: Agen key not saved for %s", ARGV0, agentname);
-                            ERR_print_errors_fp(stderr);
-                        }
-                        else
-                        {
-                            verbose("%s: INFO: Agent key created for %s (requested by %s)", ARGV0, agentname, srcip);
-                        }
+                        snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
+                        ret = SSL_write(ssl, response, strlen(response));
+                        sleep(1);
+                        exit(0);
+                    }
+
+
+                    snprintf(response, 2048,"OSSEC K:'%s'\n\n", finalkey);
+                    verbose("%s: INFO: Agent key generated for %s (requested by %s)", ARGV0, agentname, srcip);
+                    ret = SSL_write(ssl, response, strlen(response));
+                    if(ret < 0)
+                    {
+                        merror("%s: ERROR: SSL write error (%d)", ARGV0, ret);
+                        merror("%s: ERROR: Agen key not saved for %s", ARGV0, agentname);
+                        ERR_print_errors_fp(stderr);
+                    }
+                    else
+                    {
+                        verbose("%s: INFO: Agent key created for %s (requested by %s)", ARGV0, agentname, srcip);
                     }
                 }
-                else
-                {
-                    merror("%s: ERROR: SSL read error (%d)", ARGV0, ret);
-                    ERR_print_errors_fp(stderr);
-                }
-                SSL_CTX_free(ctx);
-                close(client_sock);
-                exit(0);
             }
+            else
+            {
+                merror("%s: ERROR: SSL read error (%d)", ARGV0, ret);
+                ERR_print_errors_fp(stderr);
+            }
+            SSL_CTX_free(ctx);
+            close(client_sock);
+            exit(0);
         }
     }
-
+    
 
     /* Shutdown the socket */
     SSL_CTX_free(ctx);
