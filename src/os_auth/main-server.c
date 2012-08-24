@@ -42,6 +42,7 @@ int main(int argc, char **argv)
     SSL_CTX *ctx;
     SSL *ssl;
     char srcip[IPSIZE +1];
+    int use_ip_address = 0;
 
 
     /* Initializing some variables */
@@ -52,8 +53,9 @@ int main(int argc, char **argv)
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
-    while((c = getopt(argc, argv, "Vdhu:g:D:c:m:p:")) != -1)
+    /* add an option to use the ip on the socket to tie the name to a
+       specific address */
+    while((c = getopt(argc, argv, "Vdhiu:g:D:c:m:p:")) != -1)
     {
         switch(c){
             case 'V':
@@ -64,6 +66,9 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                break;
+            case 'i':
+                use_ip_address = 1;
                 break;
             case 'u':
                 if(!optarg)
@@ -259,7 +264,14 @@ int main(int argc, char **argv)
 
 
                     /* Adding the new agent. */
-                    finalkey = OS_AddNewAgent(agentname, NULL, NULL, NULL);
+                    if (use_ip_address)
+                    {
+                        finalkey = OS_AddNewAgent(agentname, srcip, NULL, NULL);
+                    }
+                    else
+                    {
+                        finalkey = OS_AddNewAgent(agentname, NULL, NULL, NULL);
+                    }
                     if(!finalkey)
                     {
                         merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
