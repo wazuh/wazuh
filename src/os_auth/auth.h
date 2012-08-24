@@ -17,7 +17,13 @@
 #ifndef ARGV0
    #define ARGV0 "ossec-authd"
 #endif
-
+/*
+  TODO -- ensure this is as cross platform as required
+*/
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #ifdef USE_OPENSSL
 
 void *os_ssl_keys(int isclient, char *dir);
