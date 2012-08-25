@@ -30,6 +30,7 @@ int remove_agent();
 /* Extract or import a key */
 int k_extract(char *cmdextract);
 int k_import(char *cmdimport);
+int k_bulkload(char *cmdbulk);
 
 /* Validation functions */
 int OS_IsValidName(char *u_name);
