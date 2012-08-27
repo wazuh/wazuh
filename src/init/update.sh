@@ -133,7 +133,7 @@ UpdateOSSECRules()
     cp -pr ${OSSEC_CONF_FILE} "${OSSEC_CONF_FILE}.$$.bak"
 
     # Getting rid of old rules entries
-    grep -Ev "</*rules>|<include>|rules global entry" ${OSSEC_CONF_FILE} > "${OSSEC_CONF_FILE}.$$.tmp"
+    grep -Ev "</*rules>|<include>|<list>|rules global entry" ${OSSEC_CONF_FILE} > "${OSSEC_CONF_FILE}.$$.tmp"
 
     # Check for custom files that may have been added in <rules> element
     for i in $(grep -E '<include>|<list>' ${OSSEC_CONF_FILE} | grep -v '<!--')
@@ -150,5 +150,5 @@ UpdateOSSECRules()
     cat "${OSSEC_CONF_FILE}.$$.tmp2" >> ${OSSEC_CONF_FILE}
     echo "</rules>" >> ${OSSEC_CONF_FILE}
     echo "</ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
-    rm "${OSSEC_CONF_FILE}.$$.tmp"
+    rm "${OSSEC_CONF_FILE}.$$.tmp2"
 }
