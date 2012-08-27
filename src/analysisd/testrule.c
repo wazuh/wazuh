@@ -267,7 +267,7 @@ int main(int argc, char **argv)
                 listfiles = Config.lists;
                 while(listfiles && *listfiles)
                 {
-                    verbose("%s: INFO: Reading loading the lists file: '%s'", ARGV0, *listfiles);
+                    verbose("%s: INFO: Reading the lists file: '%s'", ARGV0, *listfiles);
                     if(Lists_OP_LoadList(*listfiles) < 0)
                         ErrorExit(LISTS_ERROR, ARGV0, *listfiles);
                     free(*listfiles);

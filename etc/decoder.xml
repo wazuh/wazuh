@@ -1253,6 +1253,23 @@
   <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>
 
+<decoder name="pix-url-success">
+  <parent>pix</parent>
+  <prematch offset="after_parent">^5-304001: </prematch>
+  <regex offset="after_parent">^(\S+): (\d+.\d+.\d+.\d+) Accessed URL </regex>
+  <regex>(\d+.\d+.\d+.\d+):(http\w*://\.+)|</regex>
+  <regex>^(\S+): (\d+.\d+.\d+.\d+) Accessed URL (\d+.\d+.\d+.\d+):</regex>
+  <order>id, srcip, dstip, url</order>
+</decoder>
+
+<decoder name="pix-url-deny">
+  <parent>pix</parent>
+  <prematch offset="after_parent">^5-304002: </prematch>
+  <regex offset="after_parent">^(\S+): Access (denied) URL (http\w*://\.+) </regex>
+  <regex>SRC (\d+.\d+.\d+.\d+) DEST (\d+.\d+.\d+.\d+) on interface</regex>  
+  <order>id, action, url, srcip, dstip</order>
+</decoder>
+
 <decoder name="pix-attacks">
   <parent>pix</parent>
   <prematch offset="after_parent">^2-106012: |^2-106017: |</prematch>
@@ -2121,9 +2138,10 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
 -->
 
 <decoder name="ms-dhcp-ipv4">
-  <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,</prematch>
-  <regex>^(\d\d),</regex>
-  <order>id</order>
+  <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,|</prematch>
+  <prematch>^\d\d,\d+/\d+/\d\d,\d+:\d+:\d+,</prematch>
+  <regex>^(\d\d),\d+/\d+/\d\d\d*,\d+:\d+:\d+,(\w+),(\d+.\d+.\d+.\d+)</regex>
+  <order>id,extra_data,srcip</order>
 </decoder>
 
 <!--
