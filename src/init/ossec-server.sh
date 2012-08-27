@@ -313,6 +313,11 @@ case "$1" in
         sleep 1;
 	start
 	;;
+  reload)
+        DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON}"
+	stopa
+	start
+        ;;
   status)
     status
 	;;
