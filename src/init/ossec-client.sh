@@ -229,6 +229,11 @@ case "$1" in
         sleep 1;
 	start
 	;;
+  reload)
+	DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd"
+	stopa
+	start
+	;;
   status)
     status
 	;;
@@ -238,3 +243,4 @@ case "$1" in
   *)
     help
 esac
+
