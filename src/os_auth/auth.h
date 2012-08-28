@@ -18,6 +18,11 @@
    #define ARGV0 "ossec-authd"
 #endif
 
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #ifdef USE_OPENSSL
 
 void *os_ssl_keys(int isclient, char *dir);
