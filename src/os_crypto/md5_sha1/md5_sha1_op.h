@@ -18,7 +18,7 @@
 #define __MD5SHA1_OP_H
 
 
-int OS_MD5_SHA1_File(char *fname, char *md5output, char *sha1output);
+int OS_MD5_SHA1_File(char *fname, char *prefilter_cmd, char *md5output, char *sha1output);
 
 
 #endif

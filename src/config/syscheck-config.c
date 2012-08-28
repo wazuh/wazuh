@@ -547,6 +547,7 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
     char *xml_alert_new_files = "alert_new_files";
     char *xml_disabled = "disabled";
     char *xml_scan_on_start = "scan_on_start";
+    char *xml_prefilter_cmd = "prefilter_cmd";
 
     /* Configuration example 
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -828,6 +829,34 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element,xml_alert_new_files) == 0)
         {
             /* alert_new_files option is not read here. */
+        }
+        else if(strcmp(node[i]->element,xml_prefilter_cmd) == 0)
+        {
+            char cmd[OS_MAXSTR];
+            struct stat statbuf;
+
+            #ifdef WIN32
+            ExpandEnvironmentStrings(node[i]->content, cmd, sizeof(cmd) -1);
+            #else
+            strncpy(cmd, node[i]->content, sizeof(cmd)-1);
+            #endif
+
+            if (strlen(cmd) > 0) {
+                char statcmd[OS_MAXSTR];
+                char *ix;
+                strncpy(statcmd, cmd, sizeof(statcmd)-1);
+                if (ix = index(statcmd, ' ')) { *ix = '\0'; }
+                if (stat(statcmd, &statbuf) == 0) {
+                    // More checks needed (perms, owner, etc.)
+                    os_calloc(1, strlen(cmd)+1, syscheck->prefilter_cmd);
+                    strncpy(syscheck->prefilter_cmd, cmd, strlen(cmd));
+                }
+                else
+                {
+                    merror(XML_VALUEERR,ARGV0, node[i]->element, node[i]->content);
+                    return(OS_INVALID);
+                }
+            }
         }
         else
         {

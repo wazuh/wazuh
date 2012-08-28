@@ -80,6 +80,8 @@ typedef struct _config
 
     rtfim *realtime;
 
+    char *prefilter_cmd;
+
 }config;
 
 #endif

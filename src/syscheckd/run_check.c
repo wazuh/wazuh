@@ -519,7 +519,7 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
         if(sha1sum || md5sum)
         {
             /* Generating checksums of the file. */
-            if(OS_MD5_SHA1_File(file_name, mf_sum, sf_sum) < 0)
+            if(OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum) < 0)
             {
                 strncpy(sf_sum, "xxx", 4);
                 strncpy(mf_sum, "xxx", 4);
@@ -538,7 +538,7 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
                 if(sha1sum || md5sum)
                 {
                     /* Generating checksums of the file. */
-                    if(OS_MD5_SHA1_File(file_name, mf_sum, sf_sum) < 0)
+                    if(OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum) < 0)
                     {
                         strncpy(sf_sum, "xxx", 4);
                         strncpy(mf_sum, "xxx", 4);

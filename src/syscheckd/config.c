@@ -38,6 +38,7 @@ int Read_Syscheck_Config(char * cfgfile)
     syscheck.registry = NULL;
     syscheck.reg_fp = NULL;
     #endif
+    syscheck.prefilter_cmd = NULL;
 
 
     debug2("%s: Reading Configuration [%s]", "syscheckd", cfgfile);

@@ -17,16 +17,19 @@
 
 #include "../md5/md5.h"
 #include "../sha1/sha.h"
+#include "headers/defs.h"
 
 
  
-int OS_MD5_SHA1_File(char * fname, char *md5output, char *sha1output)
+int OS_MD5_SHA1_File(char *fname, char *prefilter_cmd, char *md5output, char *sha1output)
 {
     int n;
     FILE *fp;
     unsigned char buf[2048 +2];
     unsigned char sha1_digest[SHA_DIGEST_LENGTH];
     unsigned char md5_digest[16];
+
+    char cmd[OS_MAXSTR];
 
     SHA_CTX sha1_ctx;
     MD5_CTX md5_ctx;
@@ -37,10 +40,19 @@ int OS_MD5_SHA1_File(char * fname, char *md5output, char *sha1output)
     sha1output[0] = '\0';
     buf[2048 +1] = '\0';
 
-    fp = fopen(fname,"r");
-    if(!fp)
-        return(-1);
-
+    /* Use prefilter_cmd if set */
+    if (prefilter_cmd == NULL) {
+	fp = fopen(fname,"r");
+	if(!fp)
+	    return(-1);
+    } else {
+	strncpy(cmd, prefilter_cmd, sizeof(cmd) - 1);
+	strcat(cmd, " ");
+	strncat(cmd, fname, sizeof(cmd) - strlen(cmd) - 1);
+	fp = popen(cmd, "r");
+	if(!fp)
+	    return(-1);
+    }
 
     /* Initializing both hashes */
     MD5Init(&md5_ctx);
@@ -75,7 +87,11 @@ int OS_MD5_SHA1_File(char * fname, char *md5output, char *sha1output)
 
 
     /* Closing it */
-    fclose(fp);
+    if (prefilter_cmd == NULL) {
+        fclose(fp);
+    } else {
+        pclose(fp);
+    }
 
     return(0);
 }
