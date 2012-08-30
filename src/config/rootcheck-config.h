@@ -38,6 +38,32 @@ typedef struct _rkconfig
 
     int time;
     int queue;
+	
+	struct _checks
+	{
+        short rc_dev;
+        short rc_files;
+        short rc_if;
+        short rc_pids;
+        short rc_ports;
+        short rc_sys;
+        short rc_trojans;
+        
+        #ifdef WIN32
+        
+        short rc_winaudit;
+        short rc_winmalware;
+        short rc_winapps;
+        
+        #else
+        
+        short rc_unixaudit;
+        
+        #endif
+        
+        
+    } checks;
+    
 }rkconfig;
 
 #endif

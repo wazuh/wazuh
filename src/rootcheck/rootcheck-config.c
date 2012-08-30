@@ -24,6 +24,26 @@
 #include "rootcheck.h"
 
 
+/*evaluate boolean with two arguments
+ * str: input string, "yes"|"no"
+ * default_val: 1(yes)|0(no)
+ */
+short eval_bool2(char *str, short default_val)
+{
+    short ret = default_val;
+    
+    if (str == NULL)
+        return(ret);
+    else if (strcmp(str, "yes") == 0)
+        ret = 1;
+    else if (strcmp(str, "no") == 0)
+        ret = 0;
+    
+    free(str);
+    return(ret);
+}
+
+
 /* Read_Rootcheck_Config: Reads the rootcheck config
  */
 int Read_Rootcheck_Config(char * cfgfile)
@@ -47,6 +67,26 @@ int Read_Rootcheck_Config(char * cfgfile)
     char *(xml_scanall[])={xml_rootcheck, "scanall", NULL};
     char *(xml_readall[])={xml_rootcheck, "readall", NULL};
     char *(xml_time[])={xml_rootcheck, "frequency", NULL};
+    
+    char *(xml_check_dev[])={xml_rootcheck, "check_dev", NULL};
+    char *(xml_check_files[])={xml_rootcheck, "check_files", NULL};
+    char *(xml_check_if[])={xml_rootcheck, "check_if", NULL};
+    char *(xml_check_pids[])={xml_rootcheck, "check_pids", NULL};
+    char *(xml_check_ports[])={xml_rootcheck, "check_ports", NULL};
+    char *(xml_check_sys[])={xml_rootcheck, "check_sys", NULL};
+    char *(xml_check_trojans[])={xml_rootcheck, "check_trojans", NULL};
+    
+    #ifdef WIN32
+    
+    char *(xml_check_winapps[])={xml_rootcheck, "check_winapps", NULL};
+    char *(xml_check_winaudit[])={xml_rootcheck, "check_winaudit", NULL};
+    char *(xml_check_winmalware[])={xml_rootcheck, "check_winmalware", NULL};
+    
+    #else
+    
+    char *(xml_check_unixaudit[])={xml_rootcheck, "check_unixaudit", NULL};
+    
+    #endif
 
     /* :) */
     xml_time[2] = NULL;
@@ -66,14 +106,7 @@ int Read_Rootcheck_Config(char * cfgfile)
 
 
     /* run as a daemon */
-    str = OS_GetOneContentforElement(&xml,xml_daemon);
-    if(str)
-    {
-        if(str[0] == 'n')
-            rootcheck.daemon = 0;
-        free(str);
-        str = NULL;    
-    }
+    rootcheck.daemon = eval_bool2(OS_GetOneContentforElement(&xml,xml_daemon), rootcheck.daemon);
 
     /* time  */
     #ifdef OSSECHIDS
@@ -93,33 +126,19 @@ int Read_Rootcheck_Config(char * cfgfile)
         str = NULL;
     }
     #endif
-                                                                                                            
+    
     
     /* Scan all flag */
     if(!rootcheck.scanall)
     {
-        str = OS_GetOneContentforElement(&xml,xml_scanall);
-        if(str)
-        {
-            if(str[0] == 'y')
-                rootcheck.scanall = 1;
-            free(str);
-            str = NULL;
-        }
+        rootcheck.scanall = eval_bool2(OS_GetOneContentforElement(&xml,xml_scanall), 0);
     }
 
 
     /* read all flag */
     if(!rootcheck.readall)
     {
-        str = OS_GetOneContentforElement(&xml,xml_readall);
-        if(str)
-        {
-            if(str[0] == 'y')
-                rootcheck.readall = 1;
-            free(str);
-            str = NULL;
-        }
+        rootcheck.readall = eval_bool2(OS_GetOneContentforElement(&xml,xml_readall), 0);
     }
     
     
@@ -171,6 +190,25 @@ int Read_Rootcheck_Config(char * cfgfile)
                                 
     rootcheck.basedir  = OS_GetOneContentforElement(&xml, xml_base_dir);
 
+    rootcheck.checks.rc_dev = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_dev), 1);
+    rootcheck.checks.rc_files = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_files), 1);
+    rootcheck.checks.rc_if = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_if), 1);
+    rootcheck.checks.rc_pids = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_pids), 1);
+    rootcheck.checks.rc_ports = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_ports), 1);
+    rootcheck.checks.rc_sys = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_sys), 1);
+    rootcheck.checks.rc_trojans = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_trojans), 1);
+
+    #ifdef WIN32
+    
+    rootcheck.checks.rc_winapps = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_winapps), 1);
+    rootcheck.checks.rc_winaudit = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_winaudit), 1);
+    rootcheck.checks.rc_winmalware = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_winmalware), 1);
+    
+    #else
+    
+    rootcheck.checks.rc_unixaudit = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_unixaudit), 1);
+    
+    #endif
 
     OS_ClearXML(&xml);
  

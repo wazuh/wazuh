@@ -75,7 +75,7 @@ int rootcheck_init(int test_config)
     char *cfg = "./rootcheck.conf";
     #endif
     
-    /* Zeroing the structure */
+    /* Zeroing the structure, initializing default values */
     rootcheck.workdir = NULL;
     rootcheck.basedir = NULL;
     rootcheck.unixaudit = NULL;
@@ -94,6 +94,26 @@ int rootcheck_init(int test_config)
     rootcheck.time = ROOTCHECK_WAIT;
 
 
+    rootcheck.checks.rc_dev = 1;
+    rootcheck.checks.rc_files = 1;
+    rootcheck.checks.rc_if = 1;
+    rootcheck.checks.rc_pids = 1;
+    rootcheck.checks.rc_ports = 1;
+    rootcheck.checks.rc_sys = 1;
+    rootcheck.checks.rc_trojans = 1;
+    
+    #ifdef WIN32
+    
+    rootcheck.checks.rc_winaudit = 1;
+    rootcheck.checks.rc_winmalware = 1;
+    rootcheck.checks.rc_winapps = 1;
+    
+    #else
+    
+    rootcheck.checks.rc_unixaudit = 1;
+    
+    #endif
+    
     /* We store up to 255 alerts in there. */
     os_calloc(256, sizeof(char *), rootcheck.alert_msg);
     c = 0;
