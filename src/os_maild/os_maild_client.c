@@ -16,7 +16,7 @@
 
 /* GeoIP Stuff */
 #ifdef GEOIP
-#include "config.h"
+#include "config/config.h"
 #endif
 
 /* OS_RecvMailQ, 
