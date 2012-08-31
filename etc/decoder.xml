@@ -1829,6 +1829,12 @@
   <fts>name, location, extra_data</fts>
 </decoder>
 
+<decoder name="ossec-alert1">
+   <parent>ossec</parent>
+   <prematch>^ossec: Alert Level:</prematch>
+   <plugin_decoder>OSSECAlert_Decoder</plugin_decoder>
+</decoder>
+
 <decoder name="ossec-alert">
   <program_name>^ossec$</program_name>
   <plugin_decoder>OSSECAlert_Decoder</plugin_decoder>

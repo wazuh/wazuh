@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installation script for the OSSEC
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
-# Last modification: Mar 02, 2006
+# Last modification: Aug 30, 2012
 
 # Changelog 19/03/2006 - Rafael M. Capovilla <under@underlinux.com.br>
 # New function AddWhite to allow users to add more Ips in the white_list
@@ -10,6 +10,8 @@
 # Bug fix - delete INSTALLDIR - Default is yes but if the user just press enter the script wasn't deleting it as it should
 # Changelog 15/07/2006 - Rafael M. Capovilla <under@underlinux.com.br>
 # New function AddTable to add support for OpenBSD pf rules in firewall-drop active response
+
+# Changelog 29 March 2012 - Adding hybrid mode (standalone + agent) 
 
 
 
@@ -108,9 +110,6 @@ Install()
 
     elif [ "X$INSTYPE" = "Xagent" ]; then
         ./InstallAgent.sh
-
-    elif [ "X$INSTYPE" = "Xhybrid" ]; then
-        ./InstallHybrid.sh
 
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         ./InstallServer.sh local
