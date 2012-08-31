@@ -94,4 +94,52 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     }
 }
 
+/* Remove double quotes from these fields */
+char *strip_double_quotes(char *source) {
+    char *clean = malloc( strlen(source) + 1 );
+    char strip = '"';
+    int i;
+
+    for( i=0; *source; source++ ) {
+        if ( *source != strip ) {
+            clean[i] = *source;
+            i++;
+        }
+    }
+    clean[i] = 0;
+
+    return clean;
+}
+
+/* Format Field for output */
+unsigned int field_add_string(char *dest, unsigned int size, const char *format, const char *value ) {
+    char buffer[255];
+    unsigned int len = 0;
+
+    if(value != NULL &&
+            (
+                ((value[0] != '(') && (value[1] != 'n') && (value[2] != 'o')) ||
+                ((value[0] != '(') && (value[1] != 'u') && (value[2] != 'n')) ||
+                ((value[0] != 'u') && (value[1] != 'n') && (value[4] != 'k'))
+            )
+    ) {
+        len = snprintf(buffer, 255, format, value);
+        strncat(dest, buffer, OS_SIZE_2048);
+    }
+
+    return len;
+}
+
+/* Handle integers in the second position */
+unsigned int field_add_int(char *dest, unsigned int size, const char *format, const int value ) {
+    char buffer[255];
+    unsigned int len = 0;
+
+    if( value > 0 ) {
+        len = snprintf(buffer, 255, format, value);
+        strncat(dest, buffer, OS_SIZE_2048);
+    }
+
+    return len;
+}
 /* EOF */

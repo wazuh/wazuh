@@ -35,6 +35,12 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config);
 /* Database inserting main function */
 void OS_CSyslogD(SyslogConfig **syslog_config);
 
+/* Remove quotes which will mess up the JSON and Key/Value stuff */
+char *strip_double_quotes(char* source);
+
+/* Conditional Field Formatting */
+unsigned int field_add_int(char *dest, unsigned int size, const char *format, const int value );
+unsigned int field_add_string(char *dest, unsigned int size, const char *format, const char *value );
 
 
 /** Global vars **/

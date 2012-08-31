@@ -18,10 +18,6 @@
 #include "config/config.h"
 #include "os_net/os_net.h"
 
-
-
-
-
 /** int OS_Alert_SendSyslog
  * Sends an alert via syslog.
  * Returns 1 on success or 0 on error.
@@ -29,17 +25,11 @@
 int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
 {
     char *tstamp;
-    char user_msg[256];
-    char srcip_msg[256];
-#ifdef GEOIP
-    char geoip_msg[256];
-#endif
-    char old_md5_msg[256];
-    char new_md5_msg[256];
-    char old_sha1_msg[256];
-    char new_sha1_msg[256];
-    
     char syslog_msg[OS_SIZE_2048 +1];
+    
+    /* These will be Malloc'd, so no need to predeclare size, just remember to free! */
+    char *json_safe_comment;
+    char *json_safe_message;
 
 
     /* Invalid socket. */
@@ -124,160 +114,37 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     }
     
 
-    /* Adding source ip. */
-    if(!al_data->srcip || 
-       ((al_data->srcip[0] == '(') &&
-        (al_data->srcip[1] == 'n') &&
-        (al_data->srcip[2] == 'o')))
-    {
-        srcip_msg[0] = '\0';
-    }
-    else
-    {
-        snprintf(srcip_msg, 255, " srcip: %s;", al_data->srcip);
-    }
-
-#ifdef GEOIP
-    /* Adding geo ip data, except when it is "(null)" or "Unknown" . */
-    if(!al_data->geoipdata ||
-       ((al_data->geoipdata[0] == '(') &&
-        (al_data->geoipdata[1] == 'n') &&
-        (al_data->geoipdata[2] == 'u')) ||
-       ((al_data->geoipdata[0] == 'U') &&
-        (al_data->geoipdata[1] == 'n') &&
-        (al_data->geoipdata[2] == 'k')) )
-    {
-        geoip_msg[0] = '\0';
-    }
-    else
-    {
-        snprintf(geoip_msg, 255, " srccity: %s;", al_data->geoipdata);
-    }
-#endif
-
-
-    /* Adding username. */
-    if(!al_data->user || 
-       ((al_data->user[0] == '(') &&
-        (al_data->user[1] == 'n') &&
-        (al_data->user[2] == 'o')))
-    {
-        user_msg[0] = '\0';
-    }
-    else
-    {
-        snprintf(user_msg, 255, " user: %s;", al_data->user);
-    }
-
-    /* Adding old md5. */
-    if(!al_data->old_md5 ||
-       ((al_data->old_md5[0] == '(') &&
-        (al_data->old_md5[1] == 'n') &&
-        (al_data->old_md5[2] == 'o')))
-    {
-        old_md5_msg[0] = '\0';
-    }
-    else
-    {
-        snprintf(old_md5_msg, 255, " Previous MD5: %s;", al_data->old_md5);
-    }
-
-    /* Adding new md5. */
-    if(!al_data->new_md5 ||
-       ((al_data->new_md5[0] == '(') &&
-        (al_data->new_md5[1] == 'n') &&
-        (al_data->new_md5[2] == 'o')))
-    {
-        new_md5_msg[0] = '\0';
-    }
-    else
-    {
-        snprintf(new_md5_msg, 255, " Current MD5: %s;", al_data->new_md5);
-    }
-
-    /* Adding old sha1. */
-    if(!al_data->old_sha1 ||
-       ((al_data->old_sha1[0] == '(') &&
-        (al_data->old_sha1[1] == 'n') &&
-        (al_data->old_sha1[2] == 'o')))
-    {
-        old_sha1_msg[0] = '\0';
-    }
-    else
-    {
-        snprintf(old_sha1_msg, 255, " Previous SHA1: %s;", al_data->old_sha1);
-    }
-
-    /* Adding new sha1. */
-    if(!al_data->new_sha1 ||
-       ((al_data->new_sha1[0] == '(') &&
-        (al_data->new_sha1[1] == 'n') &&
-        (al_data->new_sha1[2] == 'o')))
-    {
-        new_sha1_msg[0] = '\0';
-    }
-    else
-    {
-        snprintf(new_sha1_msg, 255, " Current SHA1: %s;", al_data->new_sha1);
-    }
-
+    /* Remove the double quotes from "dangerous" fields */
+    json_safe_comment = strip_double_quotes(al_data->comment);
+    json_safe_message = strip_double_quotes(al_data->log[0]);
     
     /* Inserting data */
     if(syslog_config->format == DEFAULT_CSYSLOG)
     {
        	/* Building syslog message. */
        	snprintf(syslog_msg, OS_SIZE_2048,
-               	"<%d>%s %s ossec: Alert Level: %d; Rule: %d - %s; "
-               	"Location: %s;%s%s%s%s%s%s%s  %s",
+                "<%d>%s %s ossec: Alert Level: %d; Rule: %d - %s; Location: %s;",
                	syslog_config->priority, tstamp, __shost,
-               	al_data->level, al_data->rule, al_data->comment,
-               	al_data->location, 
-
-               	/* Source ip. */
-               	srcip_msg,
+                al_data->level,
+                al_data->rule, al_data->comment,
+                al_data->location
+        );
+        field_add_string(syslog_msg, OS_SIZE_2048, " srcip: %s;", al_data->srcip );
 #ifdef GEOIP
-               	geoip_msg,
-#else
-               	"",
+        field_add_string(syslog_msg, OS_SIZE_2048, " srccity: %s;", al_data->geoipdata );
 #endif
-               	user_msg,
-               	old_md5_msg,
-                new_md5_msg,
-                old_sha1_msg,
-                new_sha1_msg,
-                al_data->log[0]);
+        field_add_string(syslog_msg, OS_SIZE_2048, " user: %s;", al_data->user );
+        field_add_string(syslog_msg, OS_SIZE_2048, " Previous MD5: %s;", al_data->old_md5 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " Current MD5: %s;", al_data->new_md5 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA1: %s;", al_data->old_sha1 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA1: %s;", al_data->new_sha1 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " %s", al_data->log[0] );
     }
     else if(syslog_config->format == CEF_CSYSLOG)
     {
-    	/* Adding source ip. */
-    	if(!al_data->srcip ||
-	       ((al_data->srcip[0] == '(') &&
-        	(al_data->srcip[1] == 'n') &&
-        	(al_data->srcip[2] == 'o')))
-    	{
-    	    srcip_msg[0] = '\0';
-    	}
-    	else
-    	{
-    	    snprintf(srcip_msg, 255, "%s", al_data->srcip);
-    	}
-
-	/* Adding username. */
-	if(!al_data->user ||
-	       ((al_data->user[0] == '(') &&
-	        (al_data->user[1] == 'n') &&
-        	(al_data->user[2] == 'o')))
-   	 {
-  	      user_msg[0] = '\0';
-  	  }
-  	  else
-  	  {
-  	      snprintf(user_msg, 255, "%s", al_data->user);
- 	   }
-
        	snprintf(syslog_msg, OS_SIZE_2048,
 
-               	"<%d>%s CEF:0|%s|%s|%s|%d|%s|%d|dvc=%s cs2=%s cs2Label=Location src=%s suser=%s msg=%s",
+                "<%d>%s CEF:0|%s|%s|%s|%d|%s|%d|dvc=%s cs2=%s cs2Label=Location",
                	syslog_config->priority,
 		tstamp,
 		__author,
@@ -286,18 +153,86 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
 		al_data->rule,
 		al_data->comment,
 		(al_data->level > 10) ? 10 : al_data->level,
-		 __shost, al_data->location, 
+                __shost, al_data->location);
 
-               	/* Source ip. */
-               	srcip_msg,
-               	user_msg,
+        field_add_string(syslog_msg, OS_SIZE_2048, " src=%s", al_data->srcip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
+        field_add_string(syslog_msg, OS_SIZE_2048, " msg=%s", al_data->log[0] );
+    }
+    else if(syslog_config->format == JSON_CSYSLOG)
+    {
+        /* Build a JSON Object for logging */
+        snprintf(syslog_msg, OS_SIZE_2048,
+                "<%d>%s %s ossec: { \"crit\": %d, \"id\": %d, \"description\": \"%s\", \"component\": \"%s\",",
 
+                /* syslog header */
+                syslog_config->priority, tstamp, __shost,
+
+                /* OSSEC metadata */
+                al_data->level, al_data->rule, json_safe_comment,
+                al_data->location
+        );
+        /* Event specifics */
+        field_add_string(syslog_msg, OS_SIZE_2048, " \"classification\": \"%s\",", al_data->group );
+
+        if( field_add_string(syslog_msg, OS_SIZE_2048, " \"src_ip\": \"%s\",", al_data->srcip ) > 0 )
+            field_add_int(syslog_msg, OS_SIZE_2048, " \"src_port\": %d,", al_data->srcport );
+
+        if ( field_add_string(syslog_msg, OS_SIZE_2048, " \"dst_ip\": \"%s\",", al_data->dstip ) > 0 )
+            field_add_int(syslog_msg, OS_SIZE_2048, " \"dst_port\": %d,", al_data->dstport );
+
+        field_add_string(syslog_msg, OS_SIZE_2048, " \"file\": \"%s\",", al_data->filename );
+        field_add_string(syslog_msg, OS_SIZE_2048, " \"acct\": \"%s\",", al_data->user );
+#ifdef GEOIP
+        field_add_string(syslog_msg, OS_SIZE_2048, " \"city\": \"%s\",", al_data->geoipdata );
+#endif
+        field_add_string(syslog_msg, OS_SIZE_2048, " \"md5_new\": \"%s\",", al_data->new_md5 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " \"md5_old\": \"%s\",", al_data->old_md5 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " \"sha1_new\": \"%s\",", al_data->new_sha1 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " \"sha1_old\": \"%s\",", al_data->old_sha1 );
 		/* Message */
-               	al_data->log[0]);
+        field_add_string(syslog_msg, OS_SIZE_2048, " \"message\": \"%s\" }", json_safe_message );
+    }
+    else if(syslog_config->format == SPLUNK_CSYSLOG)
+    {
+        /* Build a Splunk Style Key/Value string for logging */
+        snprintf(syslog_msg, OS_SIZE_2048,
+                "<%d>%s %s ossec: crit=%d id=%d description=\"%s\" component=\"%s\",",
 
+                /* syslog header */
+                syslog_config->priority, tstamp, __shost,
+
+                /* OSSEC metadata */
+                al_data->level, al_data->rule, json_safe_comment,
+                al_data->location
+        );
+        /* Event specifics */
+        field_add_string(syslog_msg, OS_SIZE_2048, " classification=\"%s\",", al_data->group );
+
+        if( field_add_string(syslog_msg, OS_SIZE_2048, " src_ip=\"%s\",", al_data->srcip ) > 0 )
+            field_add_int(syslog_msg, OS_SIZE_2048, " src_port=%d,", al_data->srcport );
+
+        if( field_add_string(syslog_msg, OS_SIZE_2048, " dst_ip=\"%s\",", al_data->dstip ) > 0 )
+            field_add_int(syslog_msg, OS_SIZE_2048, " dst_port=%d,", al_data->dstport );
+
+        field_add_string(syslog_msg, OS_SIZE_2048, " file=\"%s\",", al_data->filename );
+        field_add_string(syslog_msg, OS_SIZE_2048, " acct=\"%s\",", al_data->user );
+#ifdef GEOIP
+        field_add_string(syslog_msg, OS_SIZE_2048, " city=\"%s\",", al_data->geoipdata );
+#endif
+        field_add_string(syslog_msg, OS_SIZE_2048, " md5_new=\"%s\",", al_data->new_md5 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " md5_old=\"%s\",", al_data->old_md5 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " sha1_new=\"%s\",", al_data->new_sha1 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " sha1_old=\"%s\",", al_data->old_sha1 );
+        /* Message */
+        field_add_string(syslog_msg, OS_SIZE_2048, " message=\"%s\"", json_safe_message );
     }
 
+
     OS_SendUDPbySize(syslog_config->socket, strlen(syslog_msg), syslog_msg);
+    /* Free the malloc'd variables */
+    free(json_safe_comment);
+    free(json_safe_message);
     
     return(1);
 }

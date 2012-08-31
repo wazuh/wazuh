@@ -172,6 +172,16 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
                 /* Enable the CEF format */
                 syslog_config[s]->format = CEF_CSYSLOG;
             }
+            else if (strcmp(node[i]->content, "json") == 0)
+            {
+                /* Enable the JSON format */
+                syslog_config[s]->format = JSON_CSYSLOG;
+            }
+            else if (strcmp(node[i]->content, "splunk") == 0)
+            {
+                /* Enable the Splunk Key/Value format */
+                syslog_config[s]->format = SPLUNK_CSYSLOG;
+            }
             else
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
