@@ -79,7 +79,7 @@
 
   <rule id="30109" level="9">
     <if_sid>30101</if_sid>
-    <regex>user \S+ not found</regex>
+    <regex>user \S+ not found|user \S+ in realm \.* not found</regex>
     <description>Attempt to login using a non-existent user.</description>
     <group>invalid_login,</group>
   </rule>
