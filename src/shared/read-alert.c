@@ -173,7 +173,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
 #ifdef GEOIP
     char *geoipdata = NULL;
 #endif
-    int level, rule, srcport, dstport;
+    int level, rule, srcport = 0, dstport = 0;
   
     
     char str[OS_BUFFER_SIZE+1];
