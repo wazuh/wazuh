@@ -237,12 +237,6 @@ void start_daemon()
     }
 
     
-    #if defined (USEINOTIFY) || defined (WIN32)
-    if(syscheck.realtime && (syscheck.realtime->fd >= 0))
-        verbose("%s: INFO: Starting real time file monitoring.", ARGV0);
-    #endif
-    
-
     /* Checking every SYSCHECK_WAIT */    
     while(1)
     {

@@ -708,6 +708,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     
     fprintf(fp,"+++%s !%d %s\n", c_sum, lf->time, f_name);
 
+    fflush(fp);
 
     /* Alert if configured to notify on new files */
     if((Config.syscheck_alert_new == 1) && (DB_IsCompleted(agent_id)))

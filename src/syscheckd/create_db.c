@@ -483,6 +483,10 @@ int create_db()
         i++;
     }while(syscheck.dir[i] != NULL);
 
+    #if defined (USEINOTIFY) || defined (WIN32)
+    if(syscheck.realtime && (syscheck.realtime->fd >= 0))
+        verbose("%s: INFO: Real time file monitoring started.", ARGV0);
+    #endif
     
     merror("%s: INFO: Finished creating syscheck database (pre-scan "
            "completed).", ARGV0);

@@ -197,6 +197,7 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
                         if(!Config->decoders)
                         {
                             merror(MEM_ERROR, ARGV0);
+                            OSRegex_FreePattern(&regex);
                             return(-1);
                         }
 
@@ -274,6 +275,7 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
                         if(!Config->includes)
                         {
                             merror(MEM_ERROR, ARGV0);
+                            OSRegex_FreePattern(&regex);
                             return(-1);
                         }
 
@@ -298,6 +300,7 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
             return(OS_INVALID);
         }
         i++;
+        OSRegex_FreePattern(&regex);
     }
     return(0);
 }

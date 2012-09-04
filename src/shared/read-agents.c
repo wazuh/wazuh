@@ -50,6 +50,13 @@ int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, int csv_output,
     char perm_str[36];
 
 
+    /* a deleted file has no attributes */
+    if(strcmp(attrs, "-1") == 0)
+    {
+        printf("File deleted.\n");
+        return(0);
+    }
+
     /* Setting each value. */
     size = attrs;
     sk_strchr(size, ':', perm);
@@ -65,12 +72,7 @@ int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, int csv_output,
     p_md5 = md5;
     p_sha1 = sha1;
 
-    if(strcmp(attrs, "-1") == 0)
-    {
-        printf("File deleted. ");
-        return(0);
-    }
-    else if(prev_attrs && (strcmp(prev_attrs, "-1") == 0))
+    if(prev_attrs && (strcmp(prev_attrs, "-1") == 0))
     {
         printf("File restored. ");
     }
@@ -214,7 +216,7 @@ int _do_print_file_syscheck(FILE *fp, char *fname,
     
     while(fgets(buf, OS_MAXSTR, fp) != NULL)
     {
-        if(buf[0] == '!' || buf[0] == '#')
+        if(buf[0] == '!' || buf[0] == '#' || buf[0] == '+')
         {
             int number_changes = 0;
             time_t change_time = 0;
