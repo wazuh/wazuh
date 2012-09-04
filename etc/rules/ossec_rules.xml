@@ -245,6 +245,46 @@
     <group>logs_cleared,</group>
   </rule>
 
+  <rule id="594" level="5">
+    <category>ossec</category>
+    <if_sid>550</if_sid>
+    <hostname>syscheck-registry</hostname>
+    <group>syscheck,</group>
+    <description>Registry Integrity Checksum Changed</description>
+  </rule>
+
+  <rule id="595" level="5">
+    <category>ossec</category>
+    <if_sid>551</if_sid>
+    <hostname>syscheck-registry</hostname>
+    <group>syscheck,</group>
+    <description>Registry Integrity Checksum Changed Again (2nd time)</description>
+  </rule>
+
+  <rule id="596" level="5">
+    <category>ossec</category>
+    <if_sid>552</if_sid>
+    <hostname>syscheck-registry</hostname>
+    <group>syscheck,</group>
+    <description>Registry Integrity Checksum Changed Again (3rd time)</description>
+  </rule>
+
+  <rule id="597" level="5">
+    <category>ossec</category>
+    <if_sid>553</if_sid>
+    <hostname>syscheck-registry</hostname>
+    <group>syscheck,</group>
+    <description>Registry Entry Deleted. Unable to Retrieve Checksum</description>
+  </rule>
+
+  <rule id="598" level="5">
+    <category>ossec</category>
+    <if_sid>554</if_sid>
+    <hostname>syscheck-registry</hostname>
+    <group>syscheck,</group>
+    <description>Registry Entry Added to the System</description>
+  </rule>
+
 <!-- active response rules
 Example:
 Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh delete - 172.16.0.1 1304756247.60385 31151
