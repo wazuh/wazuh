@@ -21,16 +21,15 @@
 /** help **/
 void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: Updates the integrity check database.\n", ARGV0);
+    printf("\nOSSEC HIDS %s: Updates (clears) the integrity check database.\n", ARGV0);
     printf("Available options:\n");
     printf("\t-h       This help message.\n");
     printf("\t-l       List available agents.\n");
-    printf("\t-a       Update syscheck database for all agents.\n");
-    printf("\t-u <id>  Update syscheck database for a specific agent.\n");
-    printf("\t-u local Update syscheck database locally.\n\n");
+    printf("\t-a       Update (clear) syscheck database for all agents.\n");
+    printf("\t-u <id>  Update (clear) syscheck database for a specific agent.\n");
+    printf("\t-u local Update (clear) syscheck database locally.\n\n");
     exit(1);
 }
-
 
 /** main **/
 int main(int argc, char **argv)
