@@ -43,7 +43,8 @@ typedef struct _alert_data
     char *new_sha1;
     char **log;
 #ifdef GEOIP
-    char *geoipdata;
+    char *geoipdatasrc;
+    char *geoipdatadst;
 #endif
 }alert_data;
 

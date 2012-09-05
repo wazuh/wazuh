@@ -28,8 +28,10 @@
 #define RULE_BEGIN_SZ   6
 #define SRCIP_BEGIN     "Src IP: "
 #define SRCIP_BEGIN_SZ  8
-#define GEOIP_BEGIN	"Src Location: "
-#define GEOIP_BEGIN_SZ  14
+#define GEOIP_BEGIN_SRC	"Src Location: "
+#define GEOIP_BEGIN_SRC_SZ  14
+#define GEOIP_BEGIN_DST	"Dst Location: "
+#define GEOIP_BEGIN_DST_SZ  14
 #define SRCPORT_BEGIN     "Src Port: "
 #define SRCPORT_BEGIN_SZ  10
 #define DSTIP_BEGIN     "Dst IP: "
@@ -137,10 +139,15 @@ void FreeAlertData(alert_data *al_data)
         al_data->log = NULL;
     }
 #ifdef GEOIP
-    if (al_data->geoipdata)
+    if (al_data->geoipdatasrc)
     {
-	free(al_data->geoipdata);
-        al_data->geoipdata = NULL;
+	free(al_data->geoipdatasrc);
+        al_data->geoipdatasrc = NULL;
+    }
+    if (al_data->geoipdatadst)
+    {
+	free(al_data->geoipdatadst);
+        al_data->geoipdatadst = NULL;
     }
 #endif
     free(al_data);
@@ -171,7 +178,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *new_sha1 = NULL;
     char **log = NULL;
 #ifdef GEOIP
-    char *geoipdata = NULL;
+    char *geoipdatasrc = NULL;
+    char *geoipdatadst = NULL;
 #endif
     int level, rule, srcport = 0, dstport = 0;
   
@@ -206,7 +214,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 al_data->date = date;
                 al_data->filename = filename;
 #ifdef GEOIP
-                al_data->geoipdata = geoipdata;
+                al_data->geoipdatasrc = geoipdatasrc;
+                al_data->geoipdatadst = geoipdatadst;
 #endif
                 al_data->old_md5 = old_md5;
                 al_data->new_md5 = new_md5;
@@ -371,12 +380,12 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_strdup(p, srcip);
             }
 #ifdef GEOIP
-            /* GeoIP */
-            else if (strncmp(GEOIP_BEGIN, str, GEOIP_BEGIN_SZ) == 0)
+            /* GeoIP Source Location */
+            else if (strncmp(GEOIP_BEGIN_SRC, str, GEOIP_BEGIN_SRC_SZ) == 0)
             {
 		os_clearnl(str,p);
-		p = str + GEOIP_BEGIN_SZ;
-		os_strdup(p, geoipdata);
+		p = str + GEOIP_BEGIN_SRC_SZ;
+		os_strdup(p, geoipdatasrc);
             }
 #endif
             /* srcport */
@@ -395,6 +404,15 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 p = str + DSTIP_BEGIN_SZ;
                 os_strdup(p, dstip);
             }
+#ifdef GEOIP
+            /* GeoIP Destination Location */
+            else if (strncmp(GEOIP_BEGIN_DST, str, GEOIP_BEGIN_DST_SZ) == 0)
+            {
+		os_clearnl(str,p);
+		p = str + GEOIP_BEGIN_DST_SZ;
+		os_strdup(p, geoipdatadst);
+            }
+#endif
             /* dstport */
             else if(strncmp(DSTPORT_BEGIN, str, DSTPORT_BEGIN_SZ) == 0)
             {
@@ -494,10 +512,15 @@ alert_data *GetAlertData(int flag, FILE *fp)
             srcip = NULL;
         }
 #ifdef GEOIP
-        if(geoipdata)
+        if(geoipdatasrc)
 	{
-	    free(geoipdata);
-	    geoipdata = NULL;
+	    free(geoipdatasrc);
+	    geoipdatasrc = NULL;
+	}
+        if(geoipdatadst)
+	{
+	    free(geoipdatadst);
+	    geoipdatadst = NULL;
 	}
 #endif
         if(user)

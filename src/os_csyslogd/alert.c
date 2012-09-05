@@ -131,14 +131,16 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         );
         field_add_string(syslog_msg, OS_SIZE_2048, " srcip: %s;", al_data->srcip );
 #ifdef GEOIP
-        field_add_string(syslog_msg, OS_SIZE_2048, " srccity: %s;", al_data->geoipdata );
+        field_add_string(syslog_msg, OS_SIZE_2048, " srccity: %s;", al_data->geoipdatasrc );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dstcity: %s;", al_data->geoipdatadst );
 #endif
+        field_add_string(syslog_msg, OS_SIZE_2048, " dstip: %s;", al_data->dstip );
         field_add_string(syslog_msg, OS_SIZE_2048, " user: %s;", al_data->user );
         field_add_string(syslog_msg, OS_SIZE_2048, " Previous MD5: %s;", al_data->old_md5 );
         field_add_string(syslog_msg, OS_SIZE_2048, " Current MD5: %s;", al_data->new_md5 );
         field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA1: %s;", al_data->old_sha1 );
         field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA1: %s;", al_data->new_sha1 );
-        field_add_string(syslog_msg, OS_SIZE_2048, " %s", al_data->log[0] );
+        field_add_long_string(syslog_msg, OS_SIZE_2048, " %s", al_data->log[0] );
     }
     else if(syslog_config->format == CEF_CSYSLOG)
     {
@@ -157,15 +159,17 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
 
         field_add_string(syslog_msg, OS_SIZE_2048, " src=%s", al_data->srcip );
 #ifdef GEOIP
-        field_add_string(syslog_msg, OS_SIZE_2048, " cs3Label=SrcCity cs3=%s", al_data->geoipdata );
+        field_add_string(syslog_msg, OS_SIZE_2048, " cs3Label=SrcCity cs3=%s", al_data->geoipdatasrc );
+        field_add_string(syslog_msg, OS_SIZE_2048, " cs4Label=DstCity cs4=%s", al_data->geoipdatadst );
 #endif
         field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
-        field_add_string(syslog_msg, OS_SIZE_2048, " msg=%s", al_data->log[0] );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
+        field_add_long_string(syslog_msg, OS_SIZE_2048, " msg=%s", al_data->log[0] );
     }
     else if(syslog_config->format == JSON_CSYSLOG)
     {
         /* Build a JSON Object for logging */
-        snprintf(syslog_msg, OS_SIZE_2048,
+        snprintf(syslog_msg, OS_SIZE_2048 - 20,
                 "<%d>%s %s ossec: { \"crit\": %d, \"id\": %d, \"description\": \"%s\", \"component\": \"%s\",",
 
                 /* syslog header */
@@ -176,26 +180,28 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
                 al_data->location
         );
         /* Event specifics */
-        field_add_string(syslog_msg, OS_SIZE_2048, " \"classification\": \"%s\",", al_data->group );
+        field_add_string(syslog_msg, OS_SIZE_2048 - 20, " \"classification\": \"%s\",", al_data->group );
 
-        if( field_add_string(syslog_msg, OS_SIZE_2048, " \"src_ip\": \"%s\",", al_data->srcip ) > 0 )
-            field_add_int(syslog_msg, OS_SIZE_2048, " \"src_port\": %d,", al_data->srcport );
+        if( field_add_string(syslog_msg, OS_SIZE_2048 - 20, " \"src_ip\": \"%s\",", al_data->srcip ) > 0 )
+            field_add_int(syslog_msg, OS_SIZE_2048 - 20, " \"src_port\": %d,", al_data->srcport );
 
 #ifdef GEOIP
-        field_add_string(syslog_msg, OS_SIZE_2048, " \"src_city\": \"%s\",", al_data->geoipdata );
+        field_add_string(syslog_msg, OS_SIZE_2048 - 20, " \"src_city\": \"%s\",", al_data->geoipdatasrc );
+        field_add_string(syslog_msg, OS_SIZE_2048 - 20, " \"dst_city\": \"%s\",", al_data->geoipdatadst );
 #endif
 
-        if ( field_add_string(syslog_msg, OS_SIZE_2048, " \"dst_ip\": \"%s\",", al_data->dstip ) > 0 )
-            field_add_int(syslog_msg, OS_SIZE_2048, " \"dst_port\": %d,", al_data->dstport );
+        if ( field_add_string(syslog_msg, OS_SIZE_2048 - 20, " \"dst_ip\": \"%s\",", al_data->dstip ) > 0 )
+            field_add_int(syslog_msg, OS_SIZE_2048 - 20, " \"dst_port\": %d,", al_data->dstport );
 
-        field_add_string(syslog_msg, OS_SIZE_2048, " \"file\": \"%s\",", al_data->filename );
-        field_add_string(syslog_msg, OS_SIZE_2048, " \"acct\": \"%s\",", al_data->user );
-        field_add_string(syslog_msg, OS_SIZE_2048, " \"md5_new\": \"%s\",", al_data->new_md5 );
-        field_add_string(syslog_msg, OS_SIZE_2048, " \"md5_old\": \"%s\",", al_data->old_md5 );
-        field_add_string(syslog_msg, OS_SIZE_2048, " \"sha1_new\": \"%s\",", al_data->new_sha1 );
-        field_add_string(syslog_msg, OS_SIZE_2048, " \"sha1_old\": \"%s\",", al_data->old_sha1 );
+        field_add_string(syslog_msg, OS_SIZE_2048 - 20, " \"file\": \"%s\",", al_data->filename );
+        field_add_string(syslog_msg, OS_SIZE_2048 - 20, " \"acct\": \"%s\",", al_data->user );
+        field_add_string(syslog_msg, OS_SIZE_2048 - 20, " \"md5_old\": \"%s\",", al_data->old_md5 );
+        field_add_string(syslog_msg, OS_SIZE_2048 - 20, " \"md5_new\": \"%s\",", al_data->new_md5 );
+        field_add_string(syslog_msg, OS_SIZE_2048 - 20, " \"sha1_old\": \"%s\",", al_data->old_sha1 );
+        field_add_string(syslog_msg, OS_SIZE_2048 - 20, " \"sha1_new\": \"%s\",", al_data->new_sha1 );
 		/* Message */
-        field_add_string(syslog_msg, OS_SIZE_2048, " \"message\": \"%s\" }", json_safe_message );
+        field_add_long_string(syslog_msg, OS_SIZE_2048 - 4, " \"message\": \"%s", json_safe_message );
+        field_add_string(syslog_msg, OS_SIZE_2048, "\" }", "" ); //always add closing double quote and brace
     }
     else if(syslog_config->format == SPLUNK_CSYSLOG)
     {
@@ -217,7 +223,8 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
             field_add_int(syslog_msg, OS_SIZE_2048, " src_port=%d,", al_data->srcport );
 
 #ifdef GEOIP
-        field_add_string(syslog_msg, OS_SIZE_2048, " src_city=\"%s\",", al_data->geoipdata );
+        field_add_string(syslog_msg, OS_SIZE_2048, " src_city=\"%s\",", al_data->geoipdatasrc );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dst_city=\"%s\",", al_data->geoipdatadst );
 #endif
 
         if( field_add_string(syslog_msg, OS_SIZE_2048, " dst_ip=\"%s\",", al_data->dstip ) > 0 )
@@ -225,10 +232,10 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
 
         field_add_string(syslog_msg, OS_SIZE_2048, " file=\"%s\",", al_data->filename );
         field_add_string(syslog_msg, OS_SIZE_2048, " acct=\"%s\",", al_data->user );
-        field_add_string(syslog_msg, OS_SIZE_2048, " md5_new=\"%s\",", al_data->new_md5 );
         field_add_string(syslog_msg, OS_SIZE_2048, " md5_old=\"%s\",", al_data->old_md5 );
-        field_add_string(syslog_msg, OS_SIZE_2048, " sha1_new=\"%s\",", al_data->new_sha1 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " md5_new=\"%s\",", al_data->new_md5 );
         field_add_string(syslog_msg, OS_SIZE_2048, " sha1_old=\"%s\",", al_data->old_sha1 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " sha1_new=\"%s\",", al_data->new_sha1 );
         /* Message */
         field_add_string(syslog_msg, OS_SIZE_2048, " message=\"%s\"", json_safe_message );
     }

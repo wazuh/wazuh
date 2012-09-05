@@ -137,16 +137,19 @@ void OS_Store(Eventinfo *lf)
 void OS_LogOutput(Eventinfo *lf)
 {
 #ifdef GEOIP
-    char geoip_msg[OS_SIZE_1024 +1];
-    geoip_msg[0] = '\0';
-    if (Config.loggeoip && lf->srcip) {
- 	strcpy(geoip_msg, GeoIPLookup(lf->srcip));
+    char geoip_msg_src[OS_SIZE_1024 +1];
+    char geoip_msg_dst[OS_SIZE_1024 +1];
+    geoip_msg_src[0] = '\0';
+    geoip_msg_dst[0] = '\0';
+    if (Config.loggeoip) {
+ 	if (lf->srcip) { strcpy(geoip_msg_src, GeoIPLookup(lf->srcip)); }
+	if (lf->dstip) { strcpy(geoip_msg_dst, GeoIPLookup(lf->dstip)); }
     }
 #endif
     printf(
            "** Alert %d.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
-            "%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
+            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
             lf->time,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT?" mail ":"",
@@ -166,8 +169,8 @@ void OS_LogOutput(Eventinfo *lf)
             lf->srcip == NULL?"":lf->srcip,
 
 #ifdef GEOIP
-            (strlen(geoip_msg) == 0)?"":"\nSrc Location: ",
-            (strlen(geoip_msg) == 0)?"":geoip_msg,
+            (strlen(geoip_msg_src) == 0)?"":"\nSrc Location: ",
+            (strlen(geoip_msg_src) == 0)?"":geoip_msg_src,
 #else
 	    "",
             "",
@@ -178,6 +181,14 @@ void OS_LogOutput(Eventinfo *lf)
 
             lf->dstip == NULL?"":"\nDst IP: ",
             lf->dstip == NULL?"":lf->dstip,
+
+#ifdef GEOIP
+            (strlen(geoip_msg_dst) == 0)?"":"\nDst Location: ",
+            (strlen(geoip_msg_dst) == 0)?"":geoip_msg_dst,
+#else
+            "",
+            "",
+#endif
 
             lf->dstport == NULL?"":"\nDst Port: ",
             lf->dstport == NULL?"":lf->dstport,
@@ -213,17 +224,20 @@ void OS_LogOutput(Eventinfo *lf)
 void OS_Log(Eventinfo *lf)
 {
 #ifdef GEOIP
-    char geoip_msg[OS_SIZE_1024 +1];
-    geoip_msg[0] = '\0';
-    if (Config.loggeoip && lf->srcip) {
- 	strcpy(geoip_msg, GeoIPLookup(lf->srcip));
+    char geoip_msg_src[OS_SIZE_1024 +1];
+    char geoip_msg_dst[OS_SIZE_1024 +1];
+    geoip_msg_src[0] = '\0';
+    geoip_msg_dst[0] = '\0';
+    if (Config.loggeoip) {
+        if (lf->srcip) { strcpy(geoip_msg_src, GeoIPLookup(lf->srcip)); }
+        if (lf->dstip) { strcpy(geoip_msg_dst, GeoIPLookup(lf->dstip)); }
     }
 #endif
     /* Writting to the alert log file */
     fprintf(_aflog,
             "** Alert %d.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
-            "%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
+            "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
             lf->time,
             __crt_ftell,
             lf->generated_rule->alert_opts & DO_MAILALERT?" mail ":"",
@@ -243,8 +257,8 @@ void OS_Log(Eventinfo *lf)
             lf->srcip == NULL?"":lf->srcip,
 
 #ifdef GEOIP
-            (strlen(geoip_msg) == 0)?"":"\nSrc Location: ",
-            (strlen(geoip_msg) == 0)?"":geoip_msg,
+            (strlen(geoip_msg_src) == 0)?"":"\nSrc Location: ",
+            (strlen(geoip_msg_src) == 0)?"":geoip_msg_src,
 #else
             "",
             "",
@@ -255,6 +269,14 @@ void OS_Log(Eventinfo *lf)
 
             lf->dstip == NULL?"":"\nDst IP: ",
             lf->dstip == NULL?"":lf->dstip,
+
+#ifdef GEOIP
+            (strlen(geoip_msg_dst) == 0)?"":"\nDst Location: ",
+            (strlen(geoip_msg_dst) == 0)?"":geoip_msg_dst,
+#else
+            "",
+            "",
+#endif
 
             lf->dstport == NULL?"":"\nDst Port: ",
             lf->dstport == NULL?"":lf->dstport,

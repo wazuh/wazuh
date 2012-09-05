@@ -31,7 +31,8 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
     char logs[OS_MAXSTR + 1];
     char *subject_host;
 #ifdef GEOIP
-    char geoip_msg[OS_SIZE_1024 +1];
+    char geoip_msg_src[OS_SIZE_1024 +1];
+    char geoip_msg_dst[OS_SIZE_1024 +1];
 #endif
     
     MailMsg *mail;
@@ -114,10 +115,20 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
 #ifdef GEOIP
     /* Get GeoIP information */
     if (Mail->geoip) {
-       sprintf(geoip_msg, "Src Location: %s\r\n", al_data->geoipdata);
+       if (al_data->geoipdatasrc) {
+           sprintf(geoip_msg_src, "Src Location: %s\r\n", al_data->geoipdatasrc);
+       } else {
+           geoip_msg_src[0] = '\0';
+       }
+       if (al_data->geoipdatadst) {
+           sprintf(geoip_msg_dst, "Dst Location: %s\r\n", al_data->geoipdatadst);
+       } else {
+           geoip_msg_dst[0] = '\0';
+       }
     }
     else {
-       geoip_msg[0] = '\0';
+       geoip_msg_src[0] = '\0';
+       geoip_msg_dst[0] = '\0';
     }
 #endif
     
@@ -129,7 +140,8 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
             al_data->rule,
             al_data->level,
             al_data->comment,
-            geoip_msg,
+            geoip_msg_src,
+            geoip_msg_dst,
             logs);
 #else
     snprintf(mail->body, BODY_SIZE -1, MAIL_BODY,

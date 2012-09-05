@@ -130,6 +130,20 @@ unsigned int field_add_string(char *dest, unsigned int size, const char *format,
     return len;
 }
 
+/* Add long string */
+unsigned int field_add_long_string(char *dest, unsigned int size, const char *format, const char *value ) {
+    char buffer[OS_SIZE_2048 + 1];
+    unsigned int len = 0;
+    unsigned int dest_sz = strlen(dest);
+
+    if(value != NULL) {
+        len = snprintf(buffer, OS_SIZE_2048 - dest_sz - 2  , format, value);
+        strncat(dest, buffer, size);
+    }
+
+    return len;
+}
+
 /* Handle integers in the second position */
 unsigned int field_add_int(char *dest, unsigned int size, const char *format, const int value ) {
     char buffer[255];
