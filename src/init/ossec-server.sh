@@ -22,7 +22,7 @@ fi
 
 
 NAME="OSSEC HIDS"
-VERSION="snap2012-08"
+VERSION="v2.7-Beta0"
 AUTHOR="Trend Micro Inc."
 DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON}"
 
