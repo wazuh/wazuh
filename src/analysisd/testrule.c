@@ -152,7 +152,7 @@ int main(int argc, char **argv)
                 t_config = 1;
                 break;
             case 'h':
-                help(ARGV0);
+                logtest_help(ARGV0);
                 break;
             case 'd':
                 nowDebug();
@@ -188,7 +188,7 @@ int main(int argc, char **argv)
                 full_output = 1;    
                 break;
             default:
-                help(ARGV0);
+                logtest_help(ARGV0);
                 break;
         }
 
