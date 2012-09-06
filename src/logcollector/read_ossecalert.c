@@ -20,7 +20,7 @@
 
 
 /* Read syslog files/snort fast/apache files */
-void *read_ossecalert(int pos, int *rc, int drop_it)
+int read_ossecalert(int pos, int drop_it)
 {
     alert_data *al_data;
     char user_msg[256];
@@ -31,7 +31,7 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
     al_data = GetAlertData(0, logff[pos].fp);
     if(!al_data)
     {
-        return(NULL);
+        return 0;
     }
 
 
@@ -91,7 +91,7 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
             if(tmp_msg == NULL)
             {
                 FreeAlertData(al_data);
-                return(NULL);
+                return 0;
             }
             j++;
         }
@@ -131,7 +131,7 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
         }
     }
 
-    return(NULL); 
+    return 0; 
 }
 
 

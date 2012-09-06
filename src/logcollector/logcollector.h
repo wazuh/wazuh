@@ -41,39 +41,47 @@ void LogCollectorStart();
 int handle_file(int i, int do_fseek, int do_log);
 
 /* Read syslog file */
-void *read_syslog(int pos, int *rc, int drop_it);
+int read_syslog(int pos, int drop_it);
 
 /* Read snort full file */
-void *read_snortfull(int pos, int *rc, int drop_it);
+int read_snortfull(int pos, int drop_it);
 
 /* Read ossec alert file */
-void *read_ossecalert(int pos, int *rc, int drop_it);
+int read_ossecalert(int pos, int drop_it);
 
 /* Read nmap grepable format */
-void *read_nmapg(int pos, int *rc, int drop_it);
+int read_nmapg(int pos, int drop_it);
 
 /* Read mysql log format */
-void *read_mysql_log(int pos, int *rc, int drop_it);
+int read_mysql_log(int pos, int drop_it);
 
-/* Read mysql log format */
-void *read_mssql_log(int pos, int *rc, int drop_it);
+/* Read mssql log format */
+int read_mssql_log(int pos, int drop_it);
 
 /* Read postgresql log format */
-void *read_postgresql_log(int pos, int *rc, int drop_it);
+int read_postgresql_log(int pos, int drop_it);
 
 /* read multi line logs. */
-void *read_multiline(int pos, int *rc, int drop_it);
+int read_multiline(int pos, int drop_it);
+
+/* read mod_security audit logs. */
+int read_modsec_audit(int pos, int drop_it);
+
+/* read regex delimited logs. */
+int read_regex_init(int i);
+int read_regex(int pos, int drop_it);
 
 /* Read DJB multilog format */
 /* Initializes multilog. */
 int init_djbmultilog(int pos);
-void *read_djbmultilog(int pos, int *rc, int drop_it);
-
+int read_djbmultilog(int pos, int drop_it);
 
 /* Read events from output of command */
-void *read_command(int pos, int *rc, int drop_it);
-void *read_fullcommand(int pos, int *rc, int drop_it);
+int read_command(int pos, int drop_it);
+int read_fullcommand(int pos, int drop_it);
 
+int read_linux_audit_init(int pos);
+int read_linux_audit(int pos, int drop_it);
 
 #ifdef WIN32
 /* Windows only */

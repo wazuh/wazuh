@@ -23,7 +23,7 @@
  */
 
 /* Read syslog files/snort fast/apache files */
-void *read_syslog(int pos, int *rc, int drop_it)
+int read_syslog(int pos, int drop_it)
 {
     int __ms = 0;
     char *p;
@@ -32,7 +32,6 @@ void *read_syslog(int pos, int *rc, int drop_it)
     fpos_t fp_pos;
 
     str[OS_MAXSTR]= '\0';
-    *rc = 0;
 
     /* Getting initial file location */
     fgetpos(logff[pos].fp, &fp_pos);
@@ -124,7 +123,7 @@ void *read_syslog(int pos, int *rc, int drop_it)
         continue;
     }
 
-    return(NULL); 
+    return 0; 
 }
 
 /* EOF */

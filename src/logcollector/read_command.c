@@ -19,7 +19,7 @@
 
 
 /* Read Output of commands */
-void *read_command(int pos, int *rc, int drop_it)
+int read_command(int pos, int drop_it)
 {
     int cmd_size = 0;
     char *p;
@@ -28,8 +28,6 @@ void *read_command(int pos, int *rc, int drop_it)
     FILE *cmd_output;
 
     str[OS_MAXSTR]= '\0';
-    *rc = 0;
-
 
     debug2("%s: DEBUG: Running command '%s'", ARGV0, logff[pos].command);
 
@@ -95,7 +93,7 @@ void *read_command(int pos, int *rc, int drop_it)
 
     pclose(cmd_output);
 
-    return(NULL); 
+    return 0; 
 }
 
 /* EOF */

@@ -19,7 +19,7 @@
 
 
 /* Read Output of commands */
-void *read_fullcommand(int pos, int *rc, int drop_it)
+int read_fullcommand(int pos, int drop_it)
 {
     int n = 0;
     int cmd_size = 0;
@@ -31,11 +31,8 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
 
     str[OS_MAXSTR]= '\0';
     strfinal[OS_MAXSTR]= '\0';
-    *rc = 0;
-
 
     debug2("%s: DEBUG: Running full command '%s'", ARGV0, logff[pos].command);
-
 
     cmd_output = popen(logff[pos].command, "r");
     if(!cmd_output)
@@ -107,7 +104,7 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
 
     pclose(cmd_output);
 
-    return(NULL); 
+    return 0; 
 }
 
 /* EOF */
