@@ -92,6 +92,7 @@ void *OSHash_Free(OSHash *self)
         while(next_node)
         {
             next_node = next_node->next;
+            free(curr_node->key);
             free(curr_node);
             curr_node = next_node;
         }
@@ -204,7 +205,6 @@ int OSHash_Update(OSHash *self, char *key, void *data)
         /* Checking for duplicated key -- not adding */
         if(strcmp(curr_node->key, key) == 0)
         {
-            free(curr_node->data);
             curr_node->data = data;
             return(1);
         }
@@ -260,7 +260,12 @@ int OSHash_Add(OSHash *self, char *key, void *data)
     }
     new_node->next = NULL;
     new_node->data = data;
-    new_node->key = key;
+    new_node->key = strdup(key);
+    if( new_node->key == NULL ) {
+        free(new_node);
+        debug1("hash_op: DEBUG: strdup() failed!");
+        return(0);
+    }
 
 
     /* Adding to table */
@@ -303,8 +308,12 @@ void *OSHash_Get(OSHash *self, char *key)
 
     /* Getting entry */
     curr_node = self->table[index];
-    while(curr_node)
+    while(curr_node != NULL)
     {
+        /* Skip null pointers */
+        if( curr_node->key == NULL )
+            continue;
+
         /* We may have colisions, so double check with strcmp */
         if(strcmp(curr_node->key, key) == 0)
         {
@@ -317,6 +326,40 @@ void *OSHash_Get(OSHash *self, char *key)
     return(NULL);
 }
 
+/* Returns a pointer to a hash node if found, that hash node is removed from the table */
+void* OSHash_Delete(OSHash *self, char *key)
+{
+    OSHashNode *curr_node;
+    OSHashNode *prev_node = 0;
+    unsigned int hash_key;
+    unsigned int index;
+    void *data;
 
+    /* Generating hash of the message */
+    hash_key = _os_genhash(self, key);
+
+    /* Getting array index */
+    index = hash_key % self->rows;
+
+    curr_node = self->table[index];
+    while( curr_node != NULL ) {
+        if(strcmp(curr_node->key, key) == 0) {
+            if( prev_node == NULL ) {
+                self->table[index] = curr_node->next;
+            }
+            else {
+                prev_node->next = curr_node->next;
+            }
+            free(curr_node->key);
+            data = curr_node->data;
+            free(curr_node);
+            return data;
+        }
+        prev_node = curr_node;
+        curr_node = curr_node->next;
+    }
+
+    return NULL;
+}
 
 /* EOF */

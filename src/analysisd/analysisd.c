@@ -44,6 +44,7 @@
 #include "stats.h"
 
 #include "eventinfo.h"
+#include "accumulator.h"
 #include "analysisd.h"
 
 #include "picviz.h"
@@ -202,7 +203,7 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Check current debug_level
-     * Command line setting takes precedence 
+     * Command line setting takes precedence
      */
     if (debug_level == 0)
     {
@@ -289,7 +290,7 @@ int main_analysisd(int argc, char **argv)
     #endif
 
     /* Starting zeromq */
-    #ifdef ZEROMQ_OUTPUT 
+    #ifdef ZEROMQ_OUTPUT
     if(Config.zeromq_output)
     {
       zeromq_output_start(Config.zeromq_output_uri, argc, argv);
@@ -303,7 +304,7 @@ int main_analysisd(int argc, char **argv)
         chown(Config.picviz_socket, uid, gid);
     }
 
-    /* Setting the group */	
+    /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
@@ -551,7 +552,7 @@ int main_analysisd(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
-    /* Going to main loop */	
+    /* Going to main loop */
     OS_ReadMSG(m_queue);
 
     if (Config.picviz)
@@ -611,6 +612,11 @@ void OS_ReadMSG_analysisd(int m_queue)
         ErrorExit(FTS_LIST_ERROR, ARGV0);
     }
 
+    /* Initialize the Accumulator */
+    if(!Accumulate_Init()) {
+        merror("accumulator: ERROR: Initialization failed");
+        exit(1);
+    }
 
     /* Starting the active response queues */
     if(Config.ar)
@@ -877,6 +883,10 @@ void OS_ReadMSG_analysisd(int m_queue)
                 DecodeEvent(lf);
             }
 
+            /* Run accumulator */
+            if( lf->decoder_info->accumulate == 1 ) {
+                lf = Accumulate(lf);
+            }
 
             /* Firewall event */
             if(lf->decoder_info->type == FIREWALL)
@@ -1066,8 +1076,8 @@ void OS_ReadMSG_analysisd(int m_queue)
                 #endif
 
                 /* Log to zeromq */
-                #ifdef ZEROMQ_OUTPUT 
-                if(Config.zeromq_output) 
+                #ifdef ZEROMQ_OUTPUT
+                if(Config.zeromq_output)
                 {
                     zeromq_output_event(lf);
                 }
@@ -1171,7 +1181,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 OS_Store(lf);
 
 
-            /* Cleaning the memory */	
+            /* Cleaning the memory */
             CLMEM:
 
 
@@ -1277,8 +1287,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     {
         if(!OSMatch_Execute(lf->log, lf->size, currently_rule->match))
             return(NULL);
-    }	   	
-
+    }
 
 
     /* Checking if exist any regex for this rule */
