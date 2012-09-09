@@ -522,6 +522,7 @@ void ExecdStart(int q)
                         }
                         else
                         {
+                            free(ntimes);       // In hash_op.c, data belongs to caller
                             os_calloc(10, sizeof(char), ntimes);
                             new_timeout = repeated_offenders_timeout[ntimes_int]*60;
                             ntimes_int++;

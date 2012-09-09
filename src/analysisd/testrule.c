@@ -47,6 +47,7 @@
 #include "stats.h"
 
 #include "eventinfo.h"
+#include "accumulator.h"
 #include "analysisd.h"
 
 
@@ -363,7 +364,7 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, getpid());
 
 
-    /* Going to main loop */	
+    /* Going to main loop */
     OS_ReadMSG(m_queue, ut_str);
 
 
@@ -432,6 +433,11 @@ void OS_ReadMSG(int m_queue, char *ut_str)
         ErrorExit(FTS_LIST_ERROR, ARGV0);
     }
 
+    /* Initialize the Accumulator */
+    if(!Accumulate_Init()) {
+        merror("accumulator: ERROR: Initialization failed");
+        exit(1);
+    }
 
     __crt_ftell = 1;
 
@@ -517,6 +523,11 @@ void OS_ReadMSG(int m_queue, char *ut_str)
             /* Decoding event. */
             DecodeEvent(lf);
 
+            /* Run accumulator */
+            if( lf->decoder_info->accumulate == 1 ) {
+                print_out("\n**ACCUMULATOR: LEVEL UP!!**\n");
+                lf = Accumulate(lf);
+            }
 
             /* Looping all the rules */
             rulenode_pt = OS_GetFirstRule();
