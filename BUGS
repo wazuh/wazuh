@@ -1,5 +1,5 @@
-OSSEC v2.6
-Copyright (C) 2011 Trend Micro Inc.
+OSSEC v2.7-beta1
+Copyright (C) 2012 Trend Micro Inc.
 
 
 ** Reporting bugs **
@@ -17,4 +17,4 @@ the following information:
 
 
 If you prefer to contact us privately or if it is a security
-issue, send an e-mail to Daniel Cid ( dcid@ossec.net ).
+issue, send an e-mail to OSSEC Project ( ossecproject@gmail.com ).

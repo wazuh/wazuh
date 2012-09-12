@@ -1,8 +1,8 @@
-** OSSEC Windows Agent v2.6 **
-** Copyright (C) 2011 Trend Micro Inc. **
+** OSSEC Windows Agent v2.7-beta1 **
+** Copyright (C) 2012 Trend Micro Inc. **
 
 
-Thanks for installing 'OSSEC Windows Agent version 2.6'. Before you continue,
+Thanks for installing 'OSSEC Windows Agent version 2.7-beta1'. Before you continue,
 make sure that you have an instance of the OSSEC server running and configured
 to accept this system as an agent.
 

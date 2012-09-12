@@ -1,4 +1,4 @@
-OSSEC v2.6
+OSSEC v2.7-beta1
 Copyright (C) 2012 Trend Micro Inc.
 
 Many thanks to everyone who contributed and helped with
@@ -15,6 +15,11 @@ who helped us since our first release (0.1).
   - Slava Semushin <php-coder at altlinux.org>
   - Ahmet Ozturk <oahmet ( at )  metu.edu.tr>
   - Scott R. Shinn 
+  - Jason Stelzer
+  - Stjepan
+  - cmlara
+  - Dominic
+  - JB Cheng
 
 
 -Testing/Patches and other contributions.
@@ -42,6 +47,10 @@ who helped us since our first release (0.1).
   - Robert Millan [ackstorm] <rmillan at ackstorm.es>
   - Martin West <martin at objectgizmos.com>
   - Rafael Capovilla <under ( at ) underlinux.com.br>
+  - Florian Crouzqat
+  - Danny Fullerton
+  - Jeremy Hanmer
+  - Pepe Sanz
   
   
 -Translations
