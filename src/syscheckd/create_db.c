@@ -123,9 +123,9 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
     
     /* No S_ISLNK on windows */
     #ifdef WIN32
-    else if(S_ISREG(statbuf.st_mode))
+    if(S_ISREG(statbuf.st_mode))
     #else
-    else if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
+    if(S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
     #endif    
     {
         os_md5 mf_sum;

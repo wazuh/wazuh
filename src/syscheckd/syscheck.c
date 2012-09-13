@@ -30,7 +30,7 @@
 
 #include "rootcheck/rootcheck.h"
 
-int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg);
+int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg, char *restrictfile);
 
 
 
@@ -76,7 +76,7 @@ int Start_win32_Syscheck()
         if(!syscheck.dir)
         {
             merror(SK_NO_DIR, ARGV0);
-            dump_syscheck_entry(&syscheck, "", 0, 0);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL);
         }
         else if(!syscheck.dir[0])
         {
@@ -86,7 +86,7 @@ int Start_win32_Syscheck()
 
         if(!syscheck.registry)
         {
-            dump_syscheck_entry(&syscheck, "", 0, 1);
+            dump_syscheck_entry(&syscheck, "", 0, 1, NULL);
         }
         syscheck.registry[0] = NULL;
 
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
         {
             if(!test_config)
                 merror(SK_NO_DIR, ARGV0);
-            dump_syscheck_entry(&syscheck, "", 0, 0);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL);
         }
         else if(!syscheck.dir[0])
         {
