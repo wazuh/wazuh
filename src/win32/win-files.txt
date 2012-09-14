@@ -35,6 +35,9 @@ logcollector/read_djb_multilog.c read_djb_multilog.c
 logcollector/read_command.c read_command.c
 logcollector/read_fullcommand.c read_fullcommand.c
 logcollector/read_multiline.c read_multiline.c
+logcollector/read_ossecalert.c read_ossecalert.c
+logcollector/read_modsec_audit.c read_modsec_audit.c
+logcollector/read_regex.c read_regex.c
 syscheckd/config.c syscheckd-config.c
 syscheckd/create_db.c create_db.c
 syscheckd/run_check.c run_check.c
