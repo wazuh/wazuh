@@ -6,7 +6,7 @@ REM This program is a free software; you can redistribute it
 REM and/or modify it under the terms of the GNU General Public
 REM License (version 2) as published by the FSF - Free Software
 REM Foundation
-
+  
 REM Enable delayed variable expansion
 SETLOCAL ENABLEDELAYEDEXPANSION
 SET FILE=win-files.txt
