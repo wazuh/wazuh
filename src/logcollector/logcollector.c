@@ -242,7 +242,6 @@ void LogCollectorStart()
                 } else
                     logff[i].read = read_regex;
             }
-            #ifndef WIN32
             else if(strcmp("linux_auditd", logff[i].logformat) == 0)
             {
                 if(!read_linux_audit_init(i))
@@ -256,7 +255,6 @@ void LogCollectorStart()
                 } else
                     logff[i].read = read_linux_audit;
             }
-            #endif //not WIN32
             else
             {
                 logff[i].read = read_syslog;

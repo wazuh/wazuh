@@ -344,18 +344,14 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                     if (strncmp(node[i]->attributes[a], "start_regex", 11) == 0) {
                         if (logf[pl].start_regex != NULL)
                             os_free(logf[pl].start_regex);
-
-                        os_strdup(node[i]->values[a],logf[pl].start_regex);  //no strndup in Win32 
-                        //logf[pl].start_regex = strndup(node[i]->values[a], OS_PATTERN_MAXSIZE);
+                        logf[pl].start_regex = strndup(node[i]->values[a], OS_PATTERN_MAXSIZE);
                         // @todo Maybe try to immediatelly compile regex so that user knows if it is OK?
                     }
 
                     if (strncmp(node[i]->attributes[a], "end_regex", 9) == 0) {
-                        if (logf[pl].end_regex != NULL)
-                            os_free(logf[pl].end_regex);
-
-                        os_strdup(node[i]->values[a],logf[pl].end_regex);  //no strndup in win32
-                        //logf[pl].start_regex = strndup(node[i]->values[a], OS_PATTERN_MAXSIZE);
+                        if (logf[pl].start_regex != NULL)
+                            os_free(logf[pl].start_regex);
+                        logf[pl].start_regex = strndup(node[i]->values[a], OS_PATTERN_MAXSIZE);
                         // @todo Maybe try to immediatelly compile regex so that user knows if it is OK?
                     }
 

@@ -80,15 +80,14 @@ int read_djbmultilog(int pos, int drop_it);
 int read_command(int pos, int drop_it);
 int read_fullcommand(int pos, int drop_it);
 
+int read_linux_audit_init(int pos);
+int read_linux_audit(int pos, int drop_it);
 
 #ifdef WIN32
 /* Windows only */
 void win_startel();
 void win_readel();
 void win_read_vista_sec();
-#else
-int read_linux_audit_init(int pos);
-int read_linux_audit(int pos, int drop_it);
 #endif
 
 

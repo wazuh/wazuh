@@ -845,7 +845,7 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
                 char statcmd[OS_MAXSTR];
                 char *ix;
                 strncpy(statcmd, cmd, sizeof(statcmd)-1);
-                if (NULL != (ix = strchr(statcmd, ' '))) { *ix = '\0'; }
+                if (ix = index(statcmd, ' ')) { *ix = '\0'; }
                 if (stat(statcmd, &statbuf) == 0) {
                     // More checks needed (perms, owner, etc.)
                     os_calloc(1, strlen(cmd)+1, syscheck->prefilter_cmd);
