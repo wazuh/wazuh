@@ -20,7 +20,7 @@
 
 
 /* Read snort_full files */
-int read_snortfull(int pos, int drop_it)
+void *read_snortfull(int pos, int *rc, int drop_it)
 {
     int f_msg_size = OS_MAXSTR;
     
@@ -32,6 +32,7 @@ int read_snortfull(int pos, int drop_it)
     char str[OS_MAXSTR + 1];
     char f_msg[OS_MAXSTR +1];
     
+    *rc = 0;
     str[OS_MAXSTR]='\0';
     f_msg[OS_MAXSTR] = '\0';
 
@@ -151,12 +152,13 @@ int read_snortfull(int pos, int drop_it)
         file_error:
 
         merror("%s: Bad formated snort full file.", ARGV0);
-        return -1;
+        *rc = -1;
+        return(NULL);
 
     }
 
 
-    return 0;
+    return(NULL);
 }
 
 /* EOF */

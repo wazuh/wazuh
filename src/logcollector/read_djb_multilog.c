@@ -100,7 +100,7 @@ int init_djbmultilog(int pos)
 
 
 /* Read DJB multilog. */
-int read_djbmultilog(int pos, int drop_it)
+void *read_djbmultilog(int pos, int *rc, int drop_it)
 {
     int str_len = 0;
     int need_clear = 0;
@@ -109,12 +109,13 @@ int read_djbmultilog(int pos, int drop_it)
     char buffer[OS_MAXSTR + 1];
 
     str[OS_MAXSTR]= '\0';
+    *rc = 0;
 
 
     /* Must have a valid program name. */
     if(!logff[pos].djb_program_name)
     {
-        return 0;
+        return(NULL);
     }
     
 
@@ -226,7 +227,7 @@ int read_djbmultilog(int pos, int drop_it)
         continue;
     }
 
-    return 0; 
+    return(NULL); 
 }
 
 /* EOF */

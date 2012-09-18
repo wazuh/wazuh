@@ -74,12 +74,14 @@ void LogCollectorStart()
     #endif
 
     debug1("%s: DEBUG: Entering LogCollectorStart().", ARGV0);
-
+    
+    
     /* Initializing each file and structure */
     for(i = 0;;i++)
     {
         if(logff[i].file == NULL)
             break;
+
 
         /* Removing duplicate entries. */
         for(r = 0; r < i; r++)
@@ -122,7 +124,7 @@ void LogCollectorStart()
 
             if(logff[i].command)
             {
-                logff[i].read = read_command;
+                logff[i].read = (void *)read_command;
 
                 verbose("%s: INFO: Monitoring output of command(%d): %s", ARGV0, logff[i].ign, logff[i].command);
 
@@ -144,7 +146,7 @@ void LogCollectorStart()
             logff[i].size = 0;
             if(logff[i].command)
             {
-                logff[i].read = read_fullcommand;
+                logff[i].read = (void *)read_fullcommand;
 
                 verbose("%s: INFO: Monitoring full output of command(%d): %s", ARGV0, logff[i].ign, logff[i].command);
 
@@ -160,6 +162,9 @@ void LogCollectorStart()
         
         else
         {
+            logff[i].command = NULL;
+
+
             /* Initializing the files */    
             if(logff[i].ffile)
             {
@@ -185,27 +190,27 @@ void LogCollectorStart()
             /* Getting the log type */
             if(strcmp("snort-full", logff[i].logformat) == 0)
             {
-                logff[i].read = read_snortfull;
+                logff[i].read = (void *)read_snortfull;
             }
             if(strcmp("ossecalert", logff[i].logformat) == 0)
             {
-                logff[i].read = read_ossecalert;
+                logff[i].read = (void *)read_ossecalert;
             }
             else if(strcmp("nmapg", logff[i].logformat) == 0)
             {
-                logff[i].read = read_nmapg;
+                logff[i].read = (void *)read_nmapg;
             }
             else if(strcmp("mysql_log", logff[i].logformat) == 0)
             {
-                logff[i].read = read_mysql_log;
+                logff[i].read = (void *)read_mysql_log;
             }
             else if(strcmp("mssql_log", logff[i].logformat) == 0)
             {
-                logff[i].read = read_mssql_log;
+                logff[i].read = (void *)read_mssql_log;
             }
             else if(strcmp("postgresql_log", logff[i].logformat) == 0)
             {
-                logff[i].read = read_postgresql_log;
+                logff[i].read = (void *)read_postgresql_log;
             }
             else if(strcmp("djb-multilog", logff[i].logformat) == 0)
             {
@@ -218,46 +223,16 @@ void LogCollectorStart()
                         logff[i].fp = NULL;
                     }
                     logff[i].file = NULL;
-                } else
-                    logff[i].read = read_djbmultilog;
+                }
+                logff[i].read = (void *)read_djbmultilog;
             }
-            else if(strcmp("multi-line", logff[i].logformat) == 0)
+            else if(logff[i].logformat[0] >= '0' && logff[i].logformat[0] <= '9')
             {
-                logff[i].read = read_multiline;
-            }
-            else if(strcmp("modsec_audit", logff[i].logformat) == 0)
-            {
-                logff[i].read = read_modsec_audit;
-            }
-            else if(strcmp("regex", logff[i].logformat) == 0)
-            {
-                if(!read_regex_init(i))
-                {
-                    if(logff[i].fp)
-                    {
-                        fclose(logff[i].fp);
-                        logff[i].fp = NULL;
-                    }
-                    logff[i].file = NULL;
-                } else
-                    logff[i].read = read_regex;
-            }
-            else if(strcmp("linux_auditd", logff[i].logformat) == 0)
-            {
-                if(!read_linux_audit_init(i))
-                {
-                    if(logff[i].fp)
-                    {
-                        fclose(logff[i].fp);
-                        logff[i].fp = NULL;
-                    }
-                    logff[i].file = NULL;
-                } else
-                    logff[i].read = read_linux_audit;
+                logff[i].read = (void *)read_multiline;
             }
             else
             {
-                logff[i].read = read_syslog;
+                logff[i].read = (void *)read_syslog;
             }
 
             /* More tweaks for Windows. For some reason IIS places
@@ -267,12 +242,11 @@ void LogCollectorStart()
             #ifdef WIN32
             if(logff[i].fp)
             {
-                logff[i].read(i, 1);
+                logff[i].read(i, &r, 1);
             }
             #endif
         }
 
-#if 0
         if(logff[i].alias)
         {
             int ii = 0;
@@ -285,7 +259,6 @@ void LogCollectorStart()
                 ii++;
             }
         }
-#endif
     }
 
 
@@ -346,7 +319,7 @@ void LogCollectorStart()
                     if((curr_time - logff[i].size) >= logff[i].ign)
                     {
                         logff[i].size = curr_time;
-                        logff[i].read(i, 0);
+                        logff[i].read(i, &r, 0);
                     }
                 }
                 continue;
@@ -358,30 +331,23 @@ void LogCollectorStart()
              * pass it to the function pointer directly.
              */
             #ifndef WIN32
-
-            /* If this module employs timers then call the
-             * module to process them.
+            /* We check for the end of file. If is returns EOF,
+             * we don't attempt to read it.
              */
-            if (!(logff[i].flags & LOGREADER_FLAG_TIMERS)) {
-
-                /* We check for the end of file. If is returns EOF,
-                 * we don't attempt to read it.
-                 */
-                if((r = fgetc(logff[i].fp)) == EOF)
-                {
-                    clearerr(logff[i].fp);
-                    continue;
-                }
-
-
-                /* If it is not EOF, we need to return the read character */
-                ungetc(r, logff[i].fp);
+            if((r = fgetc(logff[i].fp)) == EOF)
+            {
+                clearerr(logff[i].fp);
+                continue;
             }
+
+
+            /* If it is not EOF, we need to return the read character */
+            ungetc(r, logff[i].fp);
             #endif
 
 
             /* Finally, send to the function pointer to read it */
-            logff[i].read(i, 0);
+            logff[i].read(i, &r, 0);
 
 
             /* Checking for error */
@@ -430,7 +396,7 @@ void LogCollectorStart()
                     }
                     
                     #ifdef WIN32
-                    logff[i].read(i, 1);
+                    logff[i].read(i, &r, 1);
                     #endif
                 }
 

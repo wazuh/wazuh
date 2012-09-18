@@ -25,8 +25,8 @@ char __mysql_last_time[18] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 
 
-/* Read mysql log files */
-int read_mysql_log(int pos, int drop_it)
+/* Read syslog files/snort fast/apache files */
+void *read_mysql_log(int pos, int *rc, int drop_it)
 {
     int str_len = 0;
     int need_clear = 0;
@@ -35,6 +35,7 @@ int read_mysql_log(int pos, int drop_it)
     char buffer[OS_MAXSTR + 1];
 
     str[OS_MAXSTR]= '\0';
+    *rc = 0;
 
 
     /* Getting new entry */
@@ -172,7 +173,7 @@ int read_mysql_log(int pos, int drop_it)
         continue;
     }
 
-    return 0; 
+    return(NULL); 
 }
 
 /* EOF */

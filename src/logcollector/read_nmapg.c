@@ -150,7 +150,7 @@ static char *__go_after(char *x, char *y)
 
 
 /* Read Nmap grepable files */
-int read_nmapg(int pos, int drop_it)
+void *read_nmapg(int pos, int *rc, int drop_it)
 {
     int final_msg_s;
     int need_clear = 0;
@@ -165,6 +165,7 @@ int read_nmapg(int pos, int drop_it)
     char *p;
     char *q;
     
+    *rc = 0;
     str[OS_MAXSTR] = '\0';
     final_msg[OS_MAXSTR] = '\0';
     buffer[OS_MAXSTR] = '\0';
@@ -313,12 +314,13 @@ int read_nmapg(int pos, int drop_it)
         file_error:
         
         merror("%s: Bad formated nmap grepable file.", ARGV0);
-        return -1;
+        *rc = -1;
+        return(NULL);
                 
     }
 
     
-    return 0;
+    return(NULL);
 }
 
 /* EOF */

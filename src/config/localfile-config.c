@@ -40,28 +40,47 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
     log_config = (logreader_config *)d1;
 
+
     /* If config is not set, we need to create it */ 
     if(!log_config->config)
     {
         os_calloc(2, sizeof(logreader), log_config->config);
         logf = log_config->config;
-        logf[0].file = logf[0].ffile = logf[0].alias = NULL;
-        logf[1].file = logf[1].ffile = logf[1].alias = NULL;
+        logf[0].file = NULL;
+        logf[0].command = NULL;
+        logf[0].alias = NULL;
+        logf[0].logformat = NULL;
+        logf[1].file = NULL;
+        logf[1].command = NULL;
+        logf[1].alias = NULL;
+        logf[1].logformat = NULL;
     }
     else
     {
         logf = log_config->config;
         while(logf[pl].file != NULL)
+        {
             pl++;
-
+        }
+        
         /* Allocating more memory */
         os_realloc(logf, (pl +2)*sizeof(logreader), log_config->config);
         logf = log_config->config;
-        logf[pl+1].file = logf[pl+1].ffile = logf[pl+1].alias = NULL;
+        logf[pl +1].file = NULL;
+        logf[pl +1].command = NULL;
+        logf[pl +1].alias = NULL;
+        logf[pl +1].logformat = NULL;
     }
     
-    logf[pl].file = logf[pl].ffile = logf[pl].alias = NULL;
+    logf[pl].file = NULL;
+    logf[pl].command = NULL;
+    logf[pl].alias = NULL;
+    logf[pl].logformat = NULL;
+    logf[pl].fp = NULL;
+    logf[pl].ffile = NULL;
+    logf[pl].djb_program_name = NULL;
     logf[pl].ign = 360;
+
     
     /* Searching for entries related to files */
     i = 0;
@@ -85,7 +104,12 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 merror("%s: Remote commands are not accepted from the manager. "
                        "Ignoring it on the agent.conf", ARGV0);
 
-                logf[pl].file = logf[pl].ffile = logf[pl].alias = NULL;
+                logf[pl].file = NULL;
+                logf[pl].ffile = NULL;
+                logf[pl].command = NULL;
+                logf[pl].alias = NULL;
+                logf[pl].logformat = NULL;
+                logf[pl].fp = NULL;
                 return(OS_INVALID);
             }
 
@@ -197,8 +221,15 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 os_realloc(logf, (pl +2)*sizeof(logreader), log_config->config);
                 logf = log_config->config;
                 
-                logf[pl].file = logf[pl].ffile = logf[pl].alias = NULL;
-                logf[pl+1].file = logf[pl+1].ffile = logf[pl+1].alias = NULL;
+                logf[pl].file = NULL;
+                logf[pl].alias = NULL;
+                logf[pl].logformat = NULL;
+                logf[pl].fp = NULL;
+                logf[pl].ffile = NULL;
+                            
+                logf[pl +1].file = NULL;
+                logf[pl +1].alias = NULL;
+                logf[pl +1].logformat = NULL;
 
                 /* We can not increment the file count in here */
                 continue;
@@ -293,94 +324,30 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             else if(strncmp(logf[pl].logformat, "multi-line", 10) == 0)
             {
                 int x = 0;
-                char *p = logf[pl].logformat+10;
+                logf[pl].logformat+=10;
 
-                while(*p == ' ')
-                    p++;
+                while(logf[pl].logformat[0] == ' ')
+                    logf[pl].logformat++;
                 
-                if(*p != ':')
+                if(logf[pl].logformat[0] != ':')
                 {
                     merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                     return(OS_INVALID);
                 }
-                p++;
+                logf[pl].logformat++;
 
-                while(*p == ' ')
-                    p++;
+                while(*logf[pl].logformat == ' ')
+                    logf[pl].logformat++;
                 
-                while(p[x] >= '0' && p[x] <= '9')    
+                while(logf[pl].logformat[x] >= '0' && logf[pl].logformat[x] <= '9')    
                     x++;
 
-                while(p[x] == ' ')
+                while(logf[pl].logformat[x] == ' ')
                     x++;
 
-                if(p[x] != '\0')
+                if(logf[pl].logformat[x] != '\0')
                 {
                     merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
-                    return(OS_INVALID);
-                }
-
-                logf[pl].lines = atoi(p);
-
-                if (logf[pl].lines == 0)
-                {
-                    merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
-                    return(OS_INVALID);
-                }
-            }
-            else if(strncmp(logf[pl].logformat, "modsec_audit", 10) == 0)
-            {
-            }
-            else if(strncmp(logf[pl].logformat, "regex", 10) == 0)
-            {
-                if (node[i]->attributes == NULL || node[i]->values == NULL) {
-                    merror(XML_INVATTR,ARGV0,node[i]->element,node[i]->content);
-                    return(OS_INVALID);
-                }
-
-                int a = 0;
-
-                while (node[i]->attributes[a] && node[i]->values[a]) {
-                    if (strncmp(node[i]->attributes[a], "start_regex", 11) == 0) {
-                        if (logf[pl].start_regex != NULL)
-                            os_free(logf[pl].start_regex);
-                        logf[pl].start_regex = strndup(node[i]->values[a], OS_PATTERN_MAXSIZE);
-                        // @todo Maybe try to immediatelly compile regex so that user knows if it is OK?
-                    }
-
-                    if (strncmp(node[i]->attributes[a], "end_regex", 9) == 0) {
-                        if (logf[pl].start_regex != NULL)
-                            os_free(logf[pl].start_regex);
-                        logf[pl].start_regex = strndup(node[i]->values[a], OS_PATTERN_MAXSIZE);
-                        // @todo Maybe try to immediatelly compile regex so that user knows if it is OK?
-                    }
-
-                    a++;
-                }
-
-            }
-            else if(strncmp(logf[pl].logformat, "linux_auditd", 12) == 0)
-            {
-                if (node[i]->attributes == NULL || node[i]->values == NULL) {
-                    merror(XML_INVATTR,ARGV0,node[i]->element,node[i]->content);
-                    return(OS_INVALID);
-                }
-
-                int a = 0;
-
-                while (node[i]->attributes[a] && node[i]->values[a]) {
-
-                    if (strncmp(node[i]->attributes[a], "window", 6) == 0)
-                        logf[pl].window = atoi(node[i]->values[a]);
-                    else if (strncmp(node[i]->attributes[a], "timeout", 7) == 0)
-                        logf[pl].timeout = atoi(node[i]->values[a]);
-
-                    a++;
-                }
-
-                if ((logf[pl].window == 0 && logf[pl].timeout == 0) ||
-                        (logf[pl].window != 0 && logf[pl].timeout != 0)) {
-                    merror(XML_INVATTR,ARGV0,node[i]->element,node[i]->content);
                     return(OS_INVALID);
                 }
             }

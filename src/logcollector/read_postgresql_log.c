@@ -42,7 +42,7 @@ void __send_pgsql_msg(int pos, int drop_it, char *buffer)
 
 
 /* Read PostgreSQL log files */
-int read_postgresql_log(int pos, int drop_it)
+void *read_postgresql_log(int pos, int *rc, int drop_it)
 {
     int str_len = 0;
     int need_clear = 0;
@@ -55,6 +55,8 @@ int read_postgresql_log(int pos, int drop_it)
     buffer[0] = '\0';
     buffer[OS_MAXSTR] = '\0';    
     str[OS_MAXSTR]= '\0';
+    *rc = 0;
+
 
     /* Getting new entry */
     while(fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL)
@@ -186,7 +188,7 @@ int read_postgresql_log(int pos, int drop_it)
         __send_pgsql_msg(pos, drop_it, buffer);
     }
     
-    return 0; 
+    return(NULL); 
 }
 
 /* EOF */

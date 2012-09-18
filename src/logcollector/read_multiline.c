@@ -19,9 +19,10 @@
 
 
 /* Read multiline logs. */
-int read_multiline(int pos, int drop_it)
+void *read_multiline(int pos, int *rc, int drop_it)
 {
     int __ms = 0;
+    int linecount;
     int linesgot = 0;
     int buffer_size = 0;
     char *p;
@@ -33,6 +34,9 @@ int read_multiline(int pos, int drop_it)
     buffer[0] = '\0';
     buffer[OS_MAXSTR] = '\0';
     str[OS_MAXSTR]= '\0';
+    *rc = 0;
+
+    linecount = atoi(logff[pos].logformat);
 
     /* Getting initial file location */
     fgetpos(logff[pos].fp, &fp_pos);
@@ -84,7 +88,7 @@ int read_multiline(int pos, int drop_it)
         strncpy(buffer + buffer_size, str, OS_MAXSTR - buffer_size -2);
 
         
-        if(linesgot < logff[pos].lines)
+        if(linesgot < linecount)
         {
             continue;
         }
@@ -126,7 +130,7 @@ int read_multiline(int pos, int drop_it)
         continue;
     }
 
-    return 0; 
+    return(NULL); 
 }
 
 /* EOF */
