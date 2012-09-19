@@ -192,10 +192,12 @@ void LogCollectorStart()
             {
                 logff[i].read = (void *)read_snortfull;
             }
+            #ifndef WIN32 
             if(strcmp("ossecalert", logff[i].logformat) == 0)
             {
                 logff[i].read = (void *)read_ossecalert;
             }
+            #endif 
             else if(strcmp("nmapg", logff[i].logformat) == 0)
             {
                 logff[i].read = (void *)read_nmapg;
