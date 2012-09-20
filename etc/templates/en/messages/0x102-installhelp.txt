@@ -16,7 +16,7 @@
       the agents or external syslog devices.
 
     - If you choose 'hybrid', you get the 'local' installation 
-      plus the 'agent' installatoin. 
+      plus the 'agent' installation. 
 
   - Choose 'server' if you are setting up a log/analysis server.
   

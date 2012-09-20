@@ -39,8 +39,8 @@ void OS_CSyslogD(SyslogConfig **syslog_config);
 char *strip_double_quotes(char* source);
 
 /* Conditional Field Formatting */
-unsigned int field_add_int(char *dest, unsigned int size, const char *format, const int value );
-unsigned int field_add_string(char *dest, unsigned int size, const char *format, const char *value );
+int field_add_int(char *dest, int size, const char *format, const int value );
+int field_add_string(char *dest, int size, const char *format, const char *value );
 
 
 /** Global vars **/
