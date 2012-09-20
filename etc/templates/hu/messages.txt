@@ -44,7 +44,9 @@ whatsmtp="Mi az ön SMTP szerverének ip címe/hoszt neve?"
 
 # Part 3.1/agent
 serverip="Mi az IP címe az OSSEC HIDS szervernek?"
+serveraddr="Mi az IP címe/hoszt neve az OSSEC HIDS szervernek?"
 addingip="Szerver IP hozzáadása"
+addingname="Szerver hoszt neve hozzáadása"
 
 
 # Part 3.2

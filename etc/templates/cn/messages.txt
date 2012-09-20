@@ -44,7 +44,9 @@ whatsmtp="请输入您的 SMTP 服务器IP或主机名 ?"
 
 # Part 3.1/agent
 serverip="请输入 OSSEC HIDS 服务器的IP地址"
+serveraddr="请输入 OSSEC HIDS 服务器的IP地址或主机名"
 addingip="添加服务器IP "
+addingname="添加服务器主机名 "
 
 
 # Part 3.2

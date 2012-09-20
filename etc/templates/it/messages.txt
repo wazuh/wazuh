@@ -44,8 +44,9 @@ whatsmtp="Qual'è l'ip/host del tuo server SMTP?"
 
 # Part 3.1/agent
 serverip="Qual'è l'indirizzo IP del server  OSSEC HIDS?"
+serveraddr="Qual'è l'indirizzo IP/host del server  OSSEC HIDS?"
 addingip="Aggiungo l'IP del Server"
-
+addingname="Aggiunta di host nome del Server"
 
 # Part 3.2
 runsyscheck="Vuoi attivare il demone di controllo dell'integrità?"
