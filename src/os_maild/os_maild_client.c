@@ -116,12 +116,12 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
     /* Get GeoIP information */
     if (Mail->geoip) {
        if (al_data->geoipdatasrc) {
-           sprintf(geoip_msg_src, "Src Location: %s\r\n", al_data->geoipdatasrc);
+           snprintf(geoip_msg_src, OS_SIZE_1024, "Src Location: %s\r\n", al_data->geoipdatasrc);
        } else {
            geoip_msg_src[0] = '\0';
        }
        if (al_data->geoipdatadst) {
-           sprintf(geoip_msg_dst, "Dst Location: %s\r\n", al_data->geoipdatadst);
+           snprintf(geoip_msg_dst, OS_SIZE_1024, "Dst Location: %s\r\n", al_data->geoipdatadst);
        } else {
            geoip_msg_dst[0] = '\0';
        }

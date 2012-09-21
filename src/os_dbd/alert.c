@@ -188,12 +188,13 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     i = 0;
     while(al_data->log[i])
     {
-        char templog[strlen(al_data->log[i])+2];
+        long len = strlen(al_data->log[i]);
+        char templog[len+2];
         if (al_data->log[i+1]) {
-            sprintf(templog, "%s\n", al_data->log[i]);
+            snprintf(templog, len, "%s\n", al_data->log[i]);
         }
         else {
-            sprintf(templog, "%s", al_data->log[i]);
+            snprintf(templog, len, "%s", al_data->log[i]);
         }
         fulllog = os_LoadString(fulllog, templog);
 //      fulllog = os_LoadString(fulllog, al_data->log[i]);

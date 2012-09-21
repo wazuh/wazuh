@@ -41,6 +41,10 @@ static const char * _mk_NA( const char * p ){
 unsigned long StrIP2Int(char *ip) {
         unsigned int c1,c2,c3,c4;
        /* IP address is not coming from user input -> We can trust it */
+       /* only minimal checking is performed */
+        int len = strlen(ip);
+        if ((len < 7) || (len > 15)) return 0;
+
         sscanf(ip, "%d.%d.%d.%d", &c1, &c2, &c3, &c4);
         return((unsigned long)c4+c3*256+c2*256*256+c1*256*256*256);
 }
@@ -56,7 +60,7 @@ char *GeoIPLookup(char *ip)
 	char buffer[OS_SIZE_1024 +1];
         unsigned long longip;
 
-	/* Dump way to detect an IPv6 address */
+	/* Dumb way to detect an IPv6 address */
 	if (strchr(ip, ':')) {
 		/* Use the IPv6 DB */
 		gi = GeoIP_open(Config.geoip_db_path, GEOIP_INDEX_CACHE);
@@ -70,6 +74,7 @@ char *GeoIPLookup(char *ip)
 		/* Use the IPv4 DB */
                 /* If we have a RFC1918 IP, do not perform a DB lookup (performance) */
                 longip = StrIP2Int(ip);
+                if (longip == 0 ) return("Unknown");
                 if ((longip & NETMASK_8)  == RFC1918_10 ||
                     (longip & NETMASK_12) == RFC1918_172 ||
                     (longip & NETMASK_16) == RFC1918_192) return("");
@@ -142,8 +147,8 @@ void OS_LogOutput(Eventinfo *lf)
     geoip_msg_src[0] = '\0';
     geoip_msg_dst[0] = '\0';
     if (Config.loggeoip) {
- 	if (lf->srcip) { strcpy(geoip_msg_src, GeoIPLookup(lf->srcip)); }
-	if (lf->dstip) { strcpy(geoip_msg_dst, GeoIPLookup(lf->dstip)); }
+ 	if (lf->srcip) { strncpy(geoip_msg_src, GeoIPLookup(lf->srcip), OS_SIZE_1024); }
+	if (lf->dstip) { strncpy(geoip_msg_dst, GeoIPLookup(lf->dstip), OS_SIZE_1024); }
     }
 #endif
     printf(
@@ -229,8 +234,8 @@ void OS_Log(Eventinfo *lf)
     geoip_msg_src[0] = '\0';
     geoip_msg_dst[0] = '\0';
     if (Config.loggeoip) {
-        if (lf->srcip) { strcpy(geoip_msg_src, GeoIPLookup(lf->srcip)); }
-        if (lf->dstip) { strcpy(geoip_msg_dst, GeoIPLookup(lf->dstip)); }
+        if (lf->srcip) { strncpy(geoip_msg_src, GeoIPLookup(lf->srcip), OS_SIZE_1024 ); }
+        if (lf->dstip) { strncpy(geoip_msg_dst, GeoIPLookup(lf->dstip), OS_SIZE_1024 ); }
     }
 #endif
     /* Writting to the alert log file */
