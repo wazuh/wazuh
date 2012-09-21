@@ -28,14 +28,14 @@ RULEID=""
 ACTION=$1
 USER=$2
 IP=$3
-LOCK="${PWD}/fw-drop"
-LOCK_PID="${PWD}/fw-drop/pid"
-
 
 LOCAL=`dirname $0`;
 cd $LOCAL
 cd ../
 PWD=`pwd`
+LOCK="${PWD}/fw-drop"
+LOCK_PID="${PWD}/fw-drop/pid"
+
 echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/../logs/active-responses.log
 
 
