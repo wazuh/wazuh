@@ -160,7 +160,7 @@ void FreeAlertData(alert_data *al_data)
  */
 alert_data *GetAlertData(int flag, FILE *fp)
 {
-    int _r = 0, log_size, issyscheck = 0;
+    int _r = 0, log_size = 0, issyscheck = 0;
     char *p;
 
     char *alertid = NULL;
@@ -561,6 +561,11 @@ alert_data *GetAlertData(int flag, FILE *fp)
             free(new_sha1);
             new_sha1 = NULL;
         }
+        if(alertid)
+	{
+	    free(alertid);
+	    alertid = NULL;
+	}
         while(log_size > 0)
         {
             log_size--;
