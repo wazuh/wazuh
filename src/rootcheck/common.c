@@ -509,27 +509,22 @@ int pt_matches(char *str, char *pattern)
 char *normalize_string(char *str)
 {
     int str_sz = strlen(str) -1;
-    
-    while(*str != '\0')
-    {
-        if(*str == ' ' || *str == '\t')
-        {
+    while(str[str_sz] == ' ' || str[str_sz] == '\t') {
+        str[str_sz--] = '\0';
+    }
+
+    while(*str != '\0') {
+        if(*str == ' ' || *str == '\t') {
             str++;
-        }
-        else
-        {
+        } else {
             break;
         }
     }
 
-    while(str[str_sz] == ' ' || str[str_sz] == '\t')
-    {
-        str[str_sz] = '\0';
-        str_sz--;
-    }
-
     return(str);
 }
+
+
 
 
 
