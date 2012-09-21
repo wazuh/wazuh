@@ -29,9 +29,41 @@ void os_trimcrlf(char *str)
 
     while (str[len]=='\n' || str[len]=='\r')
     {
-       str[len]='\0'; 
+       str[len]='\0';
        len--;
-    } 
+    }
+}
+
+/* Remove offending char (e.g., double quotes) from source */
+char *os_strip_char(const char *source, char remove) {
+    char *clean = malloc( strlen(source) + 1 );
+    int i;
+
+    for( i=0; *source; source++ ) {
+        if ( *source != remove ) {
+            clean[i] = *source;
+            i++;
+        }
+    }
+    clean[i] = 0;
+
+    return clean;
+}
+
+/* Do a substring */
+int os_substr(char *dest, const char *src, int position, int length) {
+    dest[0]='\0';
+
+    if( src == NULL ) {
+        return -2;
+    }
+    if( position > strlen(src) ) {
+        return -1;
+    }
+
+    strncat(dest, (src + position), length);
+    // Return Success
+    return 0;
 }
 
 
