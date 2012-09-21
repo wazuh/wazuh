@@ -169,6 +169,9 @@ chmod -R 750 ${DIR}/stats
 # For the logging user
 chown -R ${USER}:${GROUP} ${DIR}/logs
 chmod -R 750 ${DIR}/logs
+touch ${DIR}/logs/active-responses.log
+chown ${USER}:${GROUP} ${DIR}/logs/active-responses.log
+chmod 660 ${DIR}/logs/active-responses.log
 touch ${DIR}/logs/ossec.log
 chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
 chmod 664 ${DIR}/logs/ossec.log
