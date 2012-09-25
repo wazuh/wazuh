@@ -9,14 +9,14 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/main/license/ .
  */
 
- 
+
 #include "shared.h"
 #include "rootcheck.h"
-#include "os_regex/os_regex.h" 
+#include "os_regex/os_regex.h"
 
 
 
@@ -60,7 +60,7 @@ int rk_check_dir(char *dir, char *file, char *pattern)
     {
         /* Just ignore . and ..  */
         if((strcmp(entry->d_name,".") == 0) ||
-           (strcmp(entry->d_name,"..") == 0)) 
+           (strcmp(entry->d_name,"..") == 0))
         {
             continue;
         }
@@ -69,7 +69,7 @@ int rk_check_dir(char *dir, char *file, char *pattern)
         /* Creating new file + path string */
         snprintf(f_name, PATH_MAX +1, "%s/%s",dir, entry->d_name);
 
-        
+
         /* Checking if the read entry, matches the provided file name. */
         if(strncasecmp(file, "r:", 2) == 0)
         {
@@ -81,7 +81,7 @@ int rk_check_dir(char *dir, char *file, char *pattern)
                 }
             }
         }
-        
+
         /* Trying without regex. */
         else
         {
@@ -94,7 +94,7 @@ int rk_check_dir(char *dir, char *file, char *pattern)
             }
         }
 
-        
+
         /* Checking if file is a directory */
         if(lstat(f_name, &statbuf_local) == 0)
         {
@@ -120,13 +120,13 @@ int rk_check_dir(char *dir, char *file, char *pattern)
 int rk_check_file(char *file, char *pattern)
 {
     char *split_file;
-    int full_negate = 0; 
-    int pt_result = 0; 
-    
+    int full_negate = 0;
+    int pt_result = 0;
+
     FILE *fp;
     char buf[OS_SIZE_2048 +1];
-    
-    
+
+
     /* If string is null, we don't match */
     if(file == NULL)
     {
@@ -146,7 +146,7 @@ int rk_check_file(char *file, char *pattern)
     /* Getting each file */
     do
     {
-        
+
 
         /* If we don't have a pattern, just check if the file/dir is there */
         if(pattern == NULL)
@@ -168,7 +168,7 @@ int rk_check_file(char *file, char *pattern)
 
                 while(rootcheck.alert_msg[i] && (i < 255))
                     i++;
-                
+
                 if(!rootcheck.alert_msg[i])
                     os_strdup(_b_msg, rootcheck.alert_msg[i]);
 
@@ -178,14 +178,14 @@ int rk_check_file(char *file, char *pattern)
 
         else
         {
-            full_negate = pt_check_negate(pattern); 
+            full_negate = pt_check_negate(pattern);
             /* Checking for a content in the file */
-            debug1("checking file: %s", file); 
+            debug1("checking file: %s", file);
             fp = fopen(file, "r");
             if(fp)
             {
 
-                debug1(" starting new file: %s", file); 
+                debug1(" starting new file: %s", file);
                 buf[OS_SIZE_2048] = '\0';
                 while(fgets(buf, OS_SIZE_2048, fp) != NULL)
                 {
@@ -211,7 +211,7 @@ int rk_check_file(char *file, char *pattern)
 
                     /* Matched */
                     pt_result = pt_matches(buf, pattern);
-                    debug1("Buf == \"%s\"", buf); 
+                    debug1("Buf == \"%s\"", buf);
                     debug1("Pattern == \"%s\"", pattern);
                     debug1("pt_result == %d and full_negate == %d", pt_result, full_negate);
                     if((pt_result == 1 && full_negate == 0) )
@@ -228,7 +228,7 @@ int rk_check_file(char *file, char *pattern)
                         _b_msg[OS_SIZE_1024] = '\0';
                         snprintf(_b_msg, OS_SIZE_1024, " File: %s.",
                                  file);
-                        
+
                         /* Already present. */
                         if(_is_str_in_array(rootcheck.alert_msg, _b_msg))
                         {
@@ -246,18 +246,18 @@ int rk_check_file(char *file, char *pattern)
                     else if((pt_result == 0 && full_negate == 1) )
                     {
                         /* found a full+negate match so no longer need to search
-                         * break out of loop and amke sure the full negate does 
-                         * not alertin 
+                         * break out of loop and amke sure the full negate does
+                         * not alertin
                          */
                         debug1("found a complete match for full_negate");
-                        full_negate = 0; 
-                        break; 
+                        full_negate = 0;
+                        break;
                     }
                 }
 
                 fclose(fp);
 
-                if(full_negate == 1) 
+                if(full_negate == 1)
                 {
                     debug1("full_negate alerting - file %s",file);
                     int i = 0;
@@ -267,7 +267,7 @@ int rk_check_file(char *file, char *pattern)
                     _b_msg[OS_SIZE_1024] = '\0';
                     snprintf(_b_msg, OS_SIZE_1024, " File: %s.",
                              file);
-                    
+
                     /* Already present. */
                     if(_is_str_in_array(rootcheck.alert_msg, _b_msg))
                     {
@@ -294,8 +294,8 @@ int rk_check_file(char *file, char *pattern)
                 split_file++;
             }
         }
-        
-        
+
+
     }while(split_file);
 
 
@@ -312,7 +312,7 @@ int pt_check_negate(char *pattern)
     char *mypattern = NULL;
     os_strdup(pattern, mypattern);
     char *tmp_pt = mypattern;
-    char *tmp_pattern = mypattern; 
+    char *tmp_pattern = mypattern;
     char *tmp_ret = NULL;
 
 
@@ -322,9 +322,9 @@ int pt_check_negate(char *pattern)
         tmp_pt = strchr(tmp_pattern, ' ');
         if(tmp_pt && tmp_pt[1] == '&' && tmp_pt[2] == '&' && tmp_pt[3] == ' ')
         {
-            /* Marking pointer to clean it up */        
+            /* Marking pointer to clean it up */
             tmp_ret = tmp_pt;
-                    
+
             *tmp_pt = '\0';
             tmp_pt += 4;
         }
@@ -338,7 +338,7 @@ int pt_check_negate(char *pattern)
             free(mypattern);
             return 0;
         }
-        
+
         tmp_pattern = tmp_pt;
     }
 
@@ -353,7 +353,7 @@ int pt_check_negate(char *pattern)
  *                                =: (for equal) - default - strcasecmp
  *                                r: (for ossec regexes)
  *                                >: (for strcmp greater)
- *                                <: (for strcmp  lower)    
+ *                                <: (for strcmp  lower)
  *
  * Multiple patterns can be specified by using " && " between them.
  * All of them must match for it to return true.
@@ -371,16 +371,16 @@ int pt_matches(char *str, char *pattern)
     {
         return(0);
     }
-    
+
     while(tmp_pt != NULL)
     {
         /* We first look for " && " */
         tmp_pt = strchr(pattern, ' ');
         if(tmp_pt && tmp_pt[1] == '&' && tmp_pt[2] == '&' && tmp_pt[3] == ' ')
         {
-            /* Marking pointer to clean it up */        
+            /* Marking pointer to clean it up */
             tmp_ret = tmp_pt;
-                    
+
             *tmp_pt = '\0';
             tmp_pt += 4;
         }
@@ -398,7 +398,7 @@ int pt_matches(char *str, char *pattern)
             pattern++;
             neg = 1;
         }
-        
+
 
         /* Doing strcasecmp */
         if(strncasecmp(pattern, "=:", 2) == 0)
@@ -438,7 +438,7 @@ int pt_matches(char *str, char *pattern)
         {
             #ifdef WIN32
             char final_file[2048 +1];
-            
+
             /* Try to get Windows variable */
             if(*pattern == '%')
             {
@@ -457,7 +457,7 @@ int pt_matches(char *str, char *pattern)
             {
                 ret_code = 1;
             }
-            
+
             #else
             if(strcasecmp(pattern, str) == 0)
             {
@@ -474,7 +474,7 @@ int pt_matches(char *str, char *pattern)
             tmp_ret = NULL;
         }
 
-        
+
         /* If we have "!", return true if we don't match */
         if(neg == 1)
         {
@@ -492,7 +492,7 @@ int pt_matches(char *str, char *pattern)
                 break;
             }
         }
-        
+
         ret_code = 1;
         pattern = tmp_pt;
     }
@@ -536,7 +536,7 @@ int isfile_ondir(char *file, char *dir)
     DIR *dp = NULL;
     struct dirent *entry;
     dp = opendir(dir);
-    
+
     if(!dp)
         return(0);
 
@@ -548,7 +548,7 @@ int isfile_ondir(char *file, char *dir)
             return(1);
         }
     }
-    
+
     closedir(dp);
     return(0);
 }
@@ -561,19 +561,19 @@ int isfile_ondir(char *file, char *dir)
 int is_file(char *file_name)
 {
     int ret = 0;
-    
+
     struct stat statbuf;
     FILE *fp = NULL;
     DIR *dp = NULL;
 
 
     #ifndef WIN32
-    
+
     char curr_dir[1024];
-    
+
     char *file_dirname;
     char *file_basename;
-    
+
 
     curr_dir[1023] = '\0';
 
@@ -590,7 +590,7 @@ int is_file(char *file_name)
         return(0);
     }
 
-    
+
     /* If file_basename == file_name, then the file
      * only has one slash at the beginning.
      */
@@ -651,7 +651,7 @@ int is_file(char *file_name)
             ret = 1;
         }
     }
-    
+
     #else
     dp = opendir(file_name);
     if(dp)
@@ -659,10 +659,10 @@ int is_file(char *file_name)
         closedir(dp);
         ret = 1;
     }
-                                                                                
+
     #endif /* WIN32 */
 
-    
+
     /* Trying other calls */
     if( (stat(file_name, &statbuf) < 0) &&
         #ifndef WIN32
@@ -676,7 +676,7 @@ int is_file(char *file_name)
     /* must close it over here */
     if(fp)
         fclose(fp);
-    
+
     return(1);
 }
 
@@ -711,7 +711,7 @@ int del_plist(void *p_list_p)
         {
             free(pinfo->p_path);
         }
-        
+
         free(l_node->data);
 
         if(p_node)
@@ -767,7 +767,7 @@ int is_process(char *value, void *p_list_p)
             char _b_msg[OS_SIZE_1024 +1];
 
             _b_msg[OS_SIZE_1024] = '\0';
-            
+
             snprintf(_b_msg, OS_SIZE_1024, " Process: %s.",
                      pinfo->p_path);
 
@@ -776,7 +776,7 @@ int is_process(char *value, void *p_list_p)
             {
                 return(1);
             }
-            
+
             while(rootcheck.alert_msg[i] && (i< 255))
                 i++;
 
@@ -792,7 +792,7 @@ int is_process(char *value, void *p_list_p)
     return(0);
 
 }
- 
- 
+
+
 
 /* EOF */

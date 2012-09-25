@@ -6,7 +6,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -106,7 +106,7 @@ OSMatch FWALLOWpm;
 
 
 /* OS_Store: v0.2, 2005/02/10 */
-/* Will store the events in a file 
+/* Will store the events in a file
  * The string must be null terminated and contain
  * any necessary new lines, tabs, etc.
  *
@@ -133,7 +133,7 @@ void OS_Store(Eventinfo *lf)
             lf->location,
             lf->full_log);
 
-    fflush(_eflog); 
+    fflush(_eflog);
     return;	
 }
 
@@ -326,7 +326,7 @@ void OS_InitFwLog()
         ErrorExit(REGEX_COMPILE, ARGV0, FWALLOW,
                 FWALLOWpm.error);
     }
-                    
+
 }
 
 
@@ -337,7 +337,7 @@ int FW_Log(Eventinfo *lf)
      * action, there is no point in going
      * forward over here
      */
-    if(!lf->action || !lf->srcip || !lf->dstip || !lf->srcport || 
+    if(!lf->action || !lf->srcip || !lf->dstip || !lf->srcport ||
        !lf->dstport || !lf->protocol)
     {
         return(0);
@@ -368,7 +368,7 @@ int FW_Log(Eventinfo *lf)
             os_free(lf->action);
             os_strdup("CLOSED", lf->action);
             break;
-        /* allow, accept, */    
+        /* allow, accept, */
         case 'a':
         case 'A':
         /* pass/permitted */
@@ -376,9 +376,9 @@ int FW_Log(Eventinfo *lf)
         case 'P':
         /* open */
         case 'o':
-        case 'O':    
+        case 'O':
             os_free(lf->action);
-            os_strdup("ALLOW", lf->action);        
+            os_strdup("ALLOW", lf->action);
             break;
         default:
             if(OSMatch_Execute(lf->action,strlen(lf->action),&FWDROPpm))
@@ -396,7 +396,7 @@ int FW_Log(Eventinfo *lf)
                 os_free(lf->action);
                 os_strdup("UNKNOWN", lf->action);
             }
-            break;    
+            break;
     }
 
 
@@ -416,7 +416,7 @@ int FW_Log(Eventinfo *lf)
             lf->srcport,
             lf->dstip,
             lf->dstport);
-    
+
     fflush(_fflog);
 
     return(1);

@@ -12,7 +12,7 @@
 
 
 #include "shared.h"
- 
+
 
 #ifndef _CSYSLOGCONFIG__H
 #define _CSYSLOGCONFIG__H

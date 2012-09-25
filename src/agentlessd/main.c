@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
+
 
     while((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1){
         switch(c){
@@ -65,7 +65,7 @@ int main(int argc, char **argv)
                 cfg = optarg;
                 break;
             case 't':
-                test_config = 1;    
+                test_config = 1;
                 break;
             default:
                 help(ARGV0);
@@ -102,30 +102,30 @@ int main(int argc, char **argv)
     if(test_config)
         exit(0);
 
-        
+
     /* Going on daemon mode */
-    if(!run_foreground) 
+    if(!run_foreground)
     {
         nowDaemon();
         goDaemonLight();
     }
     chdir(dir);
 
-    
+
     /* Exiting if not configured. */
     if(!lessdc.entries)
     {
         verbose("%s: INFO: Not configured. Exiting.", ARGV0);
         exit(0);
     }
-    
-    
+
+
     /* Privilege separation */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
-    
-    /* Changing user */        
+
+    /* Changing user */
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0,user);
 
@@ -137,16 +137,16 @@ int main(int argc, char **argv)
     /* Signal manipulation */
     StartSIG(ARGV0);
 
-    
+
 
     /* Creating PID files */
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
 
-    
+
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
-    
+
 
     /* the real daemon now */	
     Agentlessd();

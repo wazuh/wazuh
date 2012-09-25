@@ -45,7 +45,7 @@ typedef struct __sdb
     int id3;
     int idn;
     int idd;
-    
+
 
     /* Syscheck rule */
     OSDecoderInfo  *syscheck_dec;
@@ -53,7 +53,7 @@ typedef struct __sdb
 
     /* File search variables */
     fpos_t init_pos;
-    
+
 }_sdb; /* syscheck db information */
 
 
@@ -70,7 +70,7 @@ void SyscheckInit()
     int i = 0;
 
     sdb.db_err = 0;
-    
+
     for(;i <= MAX_AGENTS;i++)
     {
         sdb.agent_ips[i] = NULL;
@@ -81,7 +81,7 @@ void SyscheckInit()
     /* Clearing db memory */
     memset(sdb.buf, '\0', OS_MAXSTR +1);
     memset(sdb.comment, '\0', OS_MAXSTR +1);
-    
+
     memset(sdb.size, '\0', OS_FLSIZE +1);
     memset(sdb.perm, '\0', OS_FLSIZE +1);
     memset(sdb.owner, '\0', OS_FLSIZE +1);
@@ -96,13 +96,13 @@ void SyscheckInit()
     sdb.syscheck_dec->name = SYSCHECK_MOD;
     sdb.syscheck_dec->type = OSSEC_RL;
     sdb.syscheck_dec->fts = 0;
-    
+
     sdb.id1 = getDecoderfromlist(SYSCHECK_MOD);
     sdb.id2 = getDecoderfromlist(SYSCHECK_MOD2);
     sdb.id3 = getDecoderfromlist(SYSCHECK_MOD3);
     sdb.idn = getDecoderfromlist(SYSCHECK_NEW);
     sdb.idd = getDecoderfromlist(SYSCHECK_DEL);
-    
+
     debug1("%s: SyscheckInit completed.", ARGV0);
     return;
 }
@@ -116,7 +116,7 @@ void SyscheckInit()
 void __setcompleted(char *agent)
 {
     FILE *fp;
-    
+
     /* Getting agent file */
     snprintf(sdb.buf, OS_FLSIZE , "%s/.%s.cpt", SYSCHECK_DIR, agent);
 
@@ -163,7 +163,7 @@ void DB_SetCompleted(Eventinfo *lf)
             {
                 return;
             }
-            
+
             __setcompleted(lf->location);
 
 
@@ -194,8 +194,8 @@ FILE *DB_File(char *agent, int *agent_id)
             *agent_id = i;
             return(sdb.agent_fps[i]);
         }
-        
-        i++;    
+
+        i++;
     }
 
     /* If here, our agent wasn't found */
@@ -210,8 +210,8 @@ FILE *DB_File(char *agent, int *agent_id)
 
     /* Getting agent file */
     snprintf(sdb.buf, OS_FLSIZE , "%s/%s", SYSCHECK_DIR,agent);
-    
-        
+
+
     /* r+ to read and write. Do not truncate */
     sdb.agent_fps[i] = fopen(sdb.buf,"r+");
     if(!sdb.agent_fps[i])
@@ -224,8 +224,8 @@ FILE *DB_File(char *agent, int *agent_id)
             sdb.agent_fps[i] = fopen(sdb.buf, "r+");
         }
     }
-        
-    /* Checking again */    
+
+    /* Checking again */
     if(!sdb.agent_fps[i])
     {
         merror("%s: Unable to open '%s'",ARGV0, sdb.buf);
@@ -239,12 +239,12 @@ FILE *DB_File(char *agent, int *agent_id)
     /* Returning the opened pointer (the beginning of it) */
     fseek(sdb.agent_fps[i],0, SEEK_SET);
     *agent_id = i;
-    
-    
+
+
     /* Getting if the agent was completed */
     if(__iscompleted(agent))
     {
-        sdb.agent_cp[i][0] = '1';    
+        sdb.agent_cp[i][0] = '1';
     }
 
     return(sdb.agent_fps[i]);
@@ -259,10 +259,10 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
     int p = 0;
     int sn_size;
     int agent_id;
-    
+
     char *saved_sum;
     char *saved_name;
-    
+
     FILE *fp;
 
 
@@ -285,8 +285,8 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         merror("%s: Error handling integrity database (fgetpos).",ARGV0);
         return(0);
     }
-    
-    
+
+
     /* Looping the file */
     while(fgets(sdb.buf, OS_MAXSTR, fp) != NULL)
     {
@@ -298,7 +298,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         }
 
 
-        /* Getting name */    
+        /* Getting name */
         saved_name = strchr(sdb.buf, ' ');
         if(saved_name == NULL)
         {
@@ -308,8 +308,8 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         }
         *saved_name = '\0';
         saved_name++;
-        
-        
+
+
         /* New format - with a timestamp */
         if(*saved_name == '!')
         {
@@ -338,7 +338,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             fgetpos(fp, &sdb.init_pos);
             continue;
         }
-        
+
 
         saved_sum = sdb.buf;
 
@@ -362,10 +362,10 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             if(saved_sum[-2] == '!')
             {
                 p++;
-                if(saved_sum[-1] == '!')    
+                if(saved_sum[-1] == '!')
                     p++;
                 else if(saved_sum[-1] == '?')
-                    p+=2;    
+                    p+=2;
             }
         }
 
@@ -425,7 +425,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                     "File '%.756s' was deleted. Unable to retrieve "
                     "checksum.", f_name);
         }
-        
+
         /* If file was re-added, do not compare changes */
         else if(saved_sum[0] == '-' && saved_sum[1] == '1')
         {
@@ -434,10 +434,10 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                      "File '%.756s' was re-added.", f_name);
         }
 
-        else    
+        else
         {
             int oldperm = 0, newperm = 0;
-            
+
             /* Providing more info about the file change */
             char *oldsize = NULL, *newsize = NULL;
             char *olduid = NULL, *newuid = NULL;
@@ -551,16 +551,16 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         "to '%c%c%c%c%c%c%c%c%c'\n",
                         (oldperm & S_IRUSR)? 'r' : '-',
                         (oldperm & S_IWUSR)? 'w' : '-',
-                        
+
                         (oldperm & S_ISUID)? 's' :
                         (oldperm & S_IXUSR)? 'x' : '-',
-                        
+
                         (oldperm & S_IRGRP)? 'r' : '-',
                         (oldperm & S_IWGRP)? 'w' : '-',
 
                         (oldperm & S_ISGID)? 's' :
                         (oldperm & S_IXGRP)? 'x' : '-',
-                        
+
                         (oldperm & S_IROTH)? 'r' : '-',
                         (oldperm & S_IWOTH)? 'w' : '-',
 
@@ -575,10 +575,10 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         (newperm & S_ISUID)? 's' :
                         (newperm & S_IXUSR)? 'x' : '-',
 
-                        
+
                         (newperm & S_IRGRP)? 'r' : '-',
                         (newperm & S_IWGRP)? 'w' : '-',
-                        
+
                         (newperm & S_ISGID)? 's' :
                         (newperm & S_IXGRP)? 'x' : '-',
 
@@ -610,7 +610,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 os_strdup(olduid, lf->owner_before);
                 os_strdup(newuid, lf->owner_after);
                 #endif
-            }    
+            }
 
             /* group ownership message */
             if(!newgid || !oldgid || strcmp(newgid, oldgid) == 0)
@@ -664,7 +664,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             #endif
 
 
-            /* Provide information about the file */    
+            /* Provide information about the file */
             snprintf(sdb.comment, OS_MAXSTR, "Integrity checksum changed for: "
                     "'%.756s'\n"
                     "%s"
@@ -674,7 +674,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                     "%s"
                     "%s"
                     "%s%s",
-                    f_name, 
+                    f_name,
                     sdb.size,
                     sdb.perm,
                     sdb.owner,
@@ -693,19 +693,19 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         lf->log = lf->full_log;
         lf->data = NULL;
 
-        
+
         /* Setting decoder */
         lf->decoder_info = sdb.syscheck_dec;
-                        
 
-        return(1); 
+
+        return(1);
 
     } /* continuiing... */
 
 
     /* If we reach here, this file is not present on our database */
     fseek(fp, 0, SEEK_END);
-    
+
     fprintf(fp,"+++%s !%d %s\n", c_sum, lf->time, f_name);
 
     fflush(fp);
@@ -719,7 +719,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
         snprintf(sdb.comment, OS_MAXSTR,
                               "New file '%.756s' "
                               "added to the file system.", f_name);
-        
+
 
         /* Creating a new log message */
         free(lf->full_log);
@@ -747,10 +747,10 @@ int DecodeSyscheck(Eventinfo *lf)
 {
     char *c_sum;
     char *f_name;
-   
-   
+
+
     /* Every syscheck message must be in the following format:
-     * checksum filename     
+     * checksum filename
      */
     f_name = strchr(lf->log, ' ');
     if(f_name == NULL)
@@ -763,7 +763,7 @@ int DecodeSyscheck(Eventinfo *lf)
             DB_SetCompleted(lf);
             return(0);
         }
-         
+
         merror(SK_INV_MSG, ARGV0);
         return(0);
     }
@@ -785,14 +785,14 @@ int DecodeSyscheck(Eventinfo *lf)
     {
         lf->data = NULL;
     }
-    
-   
+
+
 
     /* Checking if file is supposed to be ignored */
     if(Config.syscheck_ignore)
     {
         char **ff_ig = Config.syscheck_ignore;
-        
+
         while(*ff_ig)
         {
             if(strncasecmp(*ff_ig, f_name, strlen(*ff_ig)) == 0)
@@ -800,16 +800,16 @@ int DecodeSyscheck(Eventinfo *lf)
                 lf->data = NULL;
                 return(0);
             }
-            
+
             ff_ig++;
         }
     }
-    
-    
+
+
     /* Checksum is at the beginning of the log */
     c_sum = lf->log;
-    
-    
+
+
     /* Searching for file changes */
     return(DB_Search(f_name, c_sum, lf));
 }

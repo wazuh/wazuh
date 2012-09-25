@@ -43,7 +43,7 @@ int getDefine_Int(char *high_name, char *low_name, int min, int max);
  */
 int OS_IPFound(char *ip_address, os_ip *that_ip);
 
-    
+
 
 /** int OS_IPFoundList(char *ip_address, char **list_of_ips)
  * Checks if ip_address is present on the "list_of_ips".
@@ -61,8 +61,8 @@ int OS_IPFoundList(char *ip_address, os_ip **list_of_ips);
  * ** On success this function may modify the value of ip_address
  */
 int OS_IsValidIP(char *ip_address, os_ip *final_ip);
-    
-    
+
+
 /** Time range validations **/
 
 /** char *OS_IsValidTime(char *time_str)
@@ -78,9 +78,9 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip);
  * hh:mm am - hh:mm pm (12 hour format)
  * hh am - hh pm (12 hour format)
  */
-char *OS_IsValidTime(char *time_str);      
+char *OS_IsValidTime(char *time_str);
 
-/* Same as above, but only accepts a unique time, not a range. */      
+/* Same as above, but only accepts a unique time, not a range. */
 char *OS_IsValidUniqueTime(char *time_str);
 
 
@@ -104,7 +104,7 @@ int OS_IsAfterTime(char *time_str, char *ossec_time);
  * range.
  */
 int OS_IsonDay(int week_day, char *ossec_day);
-   
+
 
 /** char *OS_IsValidDay(char *day_str)
  * Validates if an day is in an acceptable format
@@ -124,7 +124,7 @@ char *OS_IsValidDay(char *day_str);
 
 /* Checks if the ip is a single host, not a network with a netmask */
 #define isSingleHost(x) (x->netmask == 0xFFFFFFFF)
-          
+
 #endif
 
 /* EOF */

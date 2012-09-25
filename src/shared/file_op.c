@@ -11,7 +11,7 @@
  */
 
 
-/* Functions to handle operation with files 
+/* Functions to handle operation with files
  */
 
 
@@ -53,7 +53,7 @@
 #ifndef PRODUCT_DATACENTER_SERVER_CORE_V
 #define PRODUCT_DATACENTER_SERVER_CORE_V 0x00000027
 #define PRODUCT_DATACENTER_SERVER_CORE_V_C "Datacenter Edition (core) "
-#endif 
+#endif
 
 #ifndef PRODUCT_DATACENTER_SERVER_V
 #define PRODUCT_DATACENTER_SERVER_V 0x00000025
@@ -251,7 +251,7 @@ int CreatePID(char *name, int pid)
 {
     char file[256];
     FILE *fp;
-    
+
     if(isChroot())
     {
         snprintf(file,255,"%s/%s-%d.pid",OS_PIDFILE,name,pid);
@@ -265,18 +265,18 @@ int CreatePID(char *name, int pid)
     fp = fopen(file,"a");
     if(!fp)
         return(-1);
-        
+
     fprintf(fp,"%d\n",pid);
-    
+
     fclose(fp);
-    
+
     return(0);
 }
 
 int DeletePID(char *name)
 {
     char file[256];
-    
+
     if(isChroot())
     {
         snprintf(file,255,"%s/%s-%d.pid",OS_PIDFILE,name,(int)getpid());
@@ -289,9 +289,9 @@ int DeletePID(char *name)
 
     if(File_DateofChange(file) < 0)
         return(-1);
-    
+
     unlink(file);	
-    
+
     return(0);
 }
 
@@ -310,7 +310,7 @@ int UnmergeFiles(char *finalpath, char *optdir)
     finalfp = fopen(finalpath, "r");
     if(!finalfp)
     {
-        merror("%s: ERROR: Unable to read merged file: '%s'.", 
+        merror("%s: ERROR: Unable to read merged file: '%s'.",
                 __local_name, finalpath);
         return(0);
     }
@@ -323,7 +323,7 @@ int UnmergeFiles(char *finalpath, char *optdir)
             break;
         }
 
-        
+
         /* Initiator. */
         if(buf[0] != '!')
             continue;
@@ -361,7 +361,7 @@ int UnmergeFiles(char *finalpath, char *optdir)
         if(!fp)
         {
             ret = 0;
-            merror("%s: ERROR: Unable to unmerge file '%s'.", 
+            merror("%s: ERROR: Unable to unmerge file '%s'.",
                     __local_name, final_name);
         }
 
@@ -431,7 +431,7 @@ int MergeAppendFile(char *finalpath, char *files)
         finalfp = fopen(finalpath, "w");
         if(!finalfp)
         {
-            merror("%s: ERROR: Unable to create merged file: '%s'.", 
+            merror("%s: ERROR: Unable to create merged file: '%s'.",
                     __local_name, finalpath);
             return(0);
         }
@@ -444,7 +444,7 @@ int MergeAppendFile(char *finalpath, char *files)
     finalfp = fopen(finalpath, "a");
     if(!finalfp)
     {
-        merror("%s: ERROR: Unable to create merged file: '%s'.", 
+        merror("%s: ERROR: Unable to create merged file: '%s'.",
                 __local_name, finalpath);
         return(0);
     }
@@ -502,7 +502,7 @@ int MergeFiles(char *finalpath, char **files)
     finalfp = fopen(finalpath, "w");
     if(!finalfp)
     {
-        merror("%s: ERROR: Unable to create merged file: '%s'.", 
+        merror("%s: ERROR: Unable to create merged file: '%s'.",
                __local_name, finalpath);
         return(0);
     }
@@ -567,7 +567,7 @@ char *getuname()
         if(ret == NULL)
             return(NULL);
 
-        snprintf(ret, 255, "%s %s %s %s %s - %s %s", 
+        snprintf(ret, 255, "%s %s %s %s %s - %s %s",
                                  uts_buf.sysname,
                                  uts_buf.nodename,
                                  uts_buf.release,
@@ -583,9 +583,9 @@ char *getuname()
         ret = calloc(256, sizeof(char));
         if(ret == NULL)
             return(NULL);
-        
+
         snprintf(ret, 255, "No system info available -  %s %s",
-                           __name, __version);     
+                           __name, __version);
 
         return(ret);
     }
@@ -642,7 +642,7 @@ void goDaemonLight()
     /* Going to / */
     chdir("/");
 
-    
+
     return;
 }
 
@@ -700,7 +700,7 @@ void goDaemon()
     /* Going to / */
     chdir("/");
 
-    
+
     /* Closing stdin, stdout and stderr */
     /*
     fclose(stdin);
@@ -714,7 +714,7 @@ void goDaemon()
     open("/dev/null", O_RDWR);
     open("/dev/null", O_RDWR);
     */
-    
+
     return;
 }
 
@@ -739,7 +739,7 @@ int checkVista()
        strstr(m_uname, "Windows 7"))
     {
         isVista = 1;
-        verbose("%s: INFO: System is Vista or Windows Server 2008.", 
+        verbose("%s: INFO: System is Vista or Windows Server 2008.",
                 __local_name);
     }
 
@@ -761,7 +761,7 @@ char *getuname()
     typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 
 
-    /* Extracted from ms web site 
+    /* Extracted from ms web site
      * http://msdn.microsoft.com/library/en-us/sysinfo/base/getting_the_system_version.asp
      */
     OSVERSIONINFOEX osvi;
@@ -777,14 +777,14 @@ char *getuname()
     if(!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi)))
     {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-        if (!GetVersionEx((OSVERSIONINFO *)&osvi)) 
+        if (!GetVersionEx((OSVERSIONINFO *)&osvi))
             return(NULL);
     }
 
     /* Allocating the memory */
     os_calloc(OS_SIZE_1024 +1, sizeof(char), ret);
     ret[OS_SIZE_1024] = '\0';
-    
+
     switch(osvi.dwPlatformId)
     {
         /* Test for the Windows NT product family. */
@@ -815,7 +815,7 @@ char *getuname()
 
                 /* Getting product version. */
                 pGPI = (PGPI) GetProcAddress(
-                              GetModuleHandle(TEXT("kernel32.dll")), 
+                              GetModuleHandle(TEXT("kernel32.dll")),
                                                    "GetProductInfo");
 
                 pGPI( 6, 0, 0, 0, &dwType);
@@ -940,7 +940,7 @@ char *getuname()
                         strncat(ret, PRODUCT_WEB_SERVER_CORE_C, ret_size -1);
                         break;
                 }
-                
+
 
                 ret_size-=strlen(ret) +1;
             }
@@ -948,18 +948,18 @@ char *getuname()
             else if(osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2)
             {
                 pGNSI = (PGNSI) GetProcAddress(
-                        GetModuleHandle("kernel32.dll"), 
+                        GetModuleHandle("kernel32.dll"),
                         "GetNativeSystemInfo");
                 if(NULL != pGNSI)
                     pGNSI(&si);
 
                 if( GetSystemMetrics(89) )
-                    strncat(ret, "Microsoft Windows Server 2003 R2 ", 
+                    strncat(ret, "Microsoft Windows Server 2003 R2 ",
                                  ret_size -1);
                 else if(osvi.wProductType == VER_NT_WORKSTATION &&
                         si.wProcessorArchitecture==PROCESSOR_ARCHITECTURE_AMD64)
                 {
-                    strncat(ret, 
+                    strncat(ret,
                             "Microsoft Windows XP Professional x64 Edition ",
                            ret_size -1 );
                 }
@@ -967,7 +967,7 @@ char *getuname()
                 {
                     strncat(ret, "Microsoft Windows Server 2003, ",ret_size-1);
                 }
-                
+
                 ret_size-=strlen(ret) +1;
             }
 
@@ -977,7 +977,7 @@ char *getuname()
 
                 ret_size-=strlen(ret) +1;
             }
-            
+
             else if(osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 0)
             {
                 strncat(ret, "Microsoft Windows 2000 ", ret_size -1);
@@ -1009,15 +1009,15 @@ char *getuname()
                         strncat(ret, "Workstation 4.0 ", ret_size -1);
                     else if( osvi.wSuiteMask & VER_SUITE_PERSONAL )
                         strncat(ret, "Home Edition ", ret_size -1);
-                    else 
+                    else
                         strncat(ret, "Professional ",ret_size -1);
 
                     /* Fixing size */
-                    ret_size-=strlen(ret) +1;    
+                    ret_size-=strlen(ret) +1;
                 }
 
                 /* Test for the server type. */
-                else if( osvi.wProductType == VER_NT_SERVER || 
+                else if( osvi.wProductType == VER_NT_SERVER ||
                         osvi.wProductType == VER_NT_DOMAIN_CONTROLLER )
                 {
                     if(osvi.dwMajorVersion==5 && osvi.dwMinorVersion==2)
@@ -1026,7 +1026,7 @@ char *getuname()
                             PROCESSOR_ARCHITECTURE_IA64 )
                         {
                             if( osvi.wSuiteMask & VER_SUITE_DATACENTER )
-                                strncat(ret, 
+                                strncat(ret,
                                 "Datacenter Edition for Itanium-based Systems ",
                                 ret_size -1);
                             else if( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
@@ -1034,7 +1034,7 @@ char *getuname()
                                 "Enterprise Edition for Itanium-based Systems ",
                                  ret_size -1);
 
-                            ret_size-=strlen(ret) +1;    
+                            ret_size-=strlen(ret) +1;
                         }
 
                         else if ( si.wProcessorArchitecture==
@@ -1046,11 +1046,11 @@ char *getuname()
                             else if( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
                                 strncat(ret, "Enterprise x64 Edition ",
                                              ret_size -1 );
-                            else 
+                            else
                                 strncat(ret, "Standard x64 Edition ",
                                              ret_size -1 );
 
-                            ret_size-=strlen(ret) +1;    
+                            ret_size-=strlen(ret) +1;
                         }
 
                         else
@@ -1062,10 +1062,10 @@ char *getuname()
                                 strncat(ret,"Enterprise Edition ",ret_size -1);
                             else if ( osvi.wSuiteMask == VER_SUITE_BLADE )
                                 strncat(ret,"Web Edition ",ret_size -1 );
-                            else 
+                            else
                                 strncat(ret, "Standard Edition ",ret_size -1);
 
-                            ret_size-=strlen(ret) +1;    
+                            ret_size-=strlen(ret) +1;
                         }
                     }
                     else if(osvi.dwMajorVersion==5 && osvi.dwMinorVersion==0)
@@ -1074,25 +1074,25 @@ char *getuname()
                             strncat(ret, "Datacenter Server ",ret_size -1);
                         else if( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
                             strncat(ret, "Advanced Server ",ret_size -1 );
-                        else 
+                        else
                             strncat(ret, "Server ",ret_size -1);
 
-                        ret_size-=strlen(ret) +1;        
+                        ret_size-=strlen(ret) +1;
                     }
                     else if(osvi.dwMajorVersion <= 4)  /* Windows NT 4.0  */
                     {
                         if( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
                             strncat(ret, "Server 4.0, Enterprise Edition ",
                                          ret_size -1 );
-                        else 
+                        else
                             strncat(ret, "Server 4.0 ",ret_size -1);
-                        
+
                         ret_size-=strlen(ret) +1;
                     }
                 }
             }
             /* Test for specific product on Windows NT 4.0 SP5 and earlier */
-            else  
+            else
             {
                 HKEY hKey;
                 char szProductType[81];
@@ -1105,7 +1105,7 @@ char *getuname()
                 if(lRet == ERROR_SUCCESS)
                 {
                     char __wv[32];
-                    
+
                     lRet = RegQueryValueEx( hKey, "ProductType", NULL, NULL,
                             (LPBYTE) szProductType, &dwBufLen);
                     RegCloseKey( hKey );
@@ -1122,7 +1122,7 @@ char *getuname()
                         ret_size-=strlen(ret) +1;
 
                         memset(__wv, '\0', 32);
-                        snprintf(__wv, 31, 
+                        snprintf(__wv, 31,
                                 "%d.%d ",
                                 (int)osvi.dwMajorVersion,
                                 (int)osvi.dwMinorVersion);
@@ -1135,9 +1135,9 @@ char *getuname()
 
             /* Display service pack (if any) and build number. */
 
-            if( osvi.dwMajorVersion == 4 && 
+            if( osvi.dwMajorVersion == 4 &&
                     lstrcmpi( osvi.szCSDVersion, "Service Pack 6" ) == 0 )
-            { 
+            {
                 HKEY hKey;
                 LONG lRet;
                 char __wp[64];
@@ -1148,8 +1148,8 @@ char *getuname()
                         "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Hotfix\\Q246009",
                         0, KEY_QUERY_VALUE, &hKey );
                 if( lRet == ERROR_SUCCESS )
-                    snprintf(__wp, 63, "Service Pack 6a (Build %d)", 
-                            (int)osvi.dwBuildNumber & 0xFFFF );         
+                    snprintf(__wp, 63, "Service Pack 6a (Build %d)",
+                            (int)osvi.dwBuildNumber & 0xFFFF );
                 else /* Windows NT 4.0 prior to SP6a */
                 {
                     snprintf(__wp, 63, "%s (Build %d)",
@@ -1183,13 +1183,13 @@ char *getuname()
             {
                 strncat(ret, "Microsoft Windows 95 ", ret_size -1);
                 ret_size-=strlen(ret) +1;
-            } 
+            }
 
             if (osvi.dwMajorVersion == 4 && osvi.dwMinorVersion == 10)
             {
                 strncat(ret, "Microsoft Windows 98 ", ret_size -1);
                 ret_size-=strlen(ret) +1;
-            } 
+            }
 
             if (osvi.dwMajorVersion == 4 && osvi.dwMinorVersion == 90)
             {
@@ -1197,7 +1197,7 @@ char *getuname()
                         ret_size -1);
 
                 ret_size-=strlen(ret) +1;
-            } 
+            }
             break;
 
         case VER_PLATFORM_WIN32s:
@@ -1211,10 +1211,10 @@ char *getuname()
     /* Adding ossec version */
     snprintf(os_v, 128, " - %s %s", __name, __version);
     strncat(ret, os_v, ret_size -1);
-     
-     
+
+
     /* Returning system information */
-    return(ret); 
+    return(ret);
 
 }
 #endif

@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -17,7 +17,7 @@
 /* Part of the OSSEC
  * Available at http://www.ossec.net
  */
-  
+
 
 /* ossec-analysisd.
  * Responsible for correlation and log decoding.
@@ -98,7 +98,7 @@ void DecodeEvent(Eventinfo *lf);
 int DecodeSyscheck(Eventinfo *lf);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
- 
+
 
 /* For Decoders */
 int ReadDecodeXML(char *file);
@@ -126,7 +126,7 @@ int hourly_firewall;
 
 /** int main(int argc, char **argv)
  */
-#ifndef TESTRULE 
+#ifndef TESTRULE
 int main(int argc, char **argv)
 #else
 int main_analysisd(int argc, char **argv)
@@ -186,7 +186,7 @@ int main_analysisd(int argc, char **argv)
                 cfg = optarg;
                 break;
             case 't':
-                test_config = 1;    
+                test_config = 1;
                 break;
             default:
                 help(ARGV0);
@@ -200,7 +200,7 @@ int main_analysisd(int argc, char **argv)
     debug1(STARTED_MSG,ARGV0);
     DEBUG_MSG("%s: DEBUG: Starting on debug mode - %d ", ARGV0, (int)time(0));
 
-    
+
     /*Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
@@ -211,7 +211,7 @@ int main_analysisd(int argc, char **argv)
     /* Found user */
     debug1(FOUND_USER, ARGV0);
 
-    
+
     /* Initializing Active response */
     AR_Init();
     if(AR_ReadConfig(test_config, cfg) < 0)
@@ -219,8 +219,8 @@ int main_analysisd(int argc, char **argv)
         ErrorExit(CONFIG_ERROR,ARGV0, cfg);
     }
     debug1(ASINIT, ARGV0);
-    
-    
+
+
     /* Reading configuration file */
     if(GlobalConf(cfg) < 0)
     {
@@ -228,19 +228,19 @@ int main_analysisd(int argc, char **argv)
     }
 
     debug1(READ_CONFIG, ARGV0);
-        
+
 
     /* Fixing Config.ar */
     Config.ar = ar_flag;
     if(Config.ar == -1)
         Config.ar = 0;
-        
-    
+
+
     /* Getting servers hostname */
     memset(__shost, '\0', 512);
     if(gethostname(__shost, 512 -1) != 0)
     {
-        strncpy(__shost, OSSEC_SERVER, 512 -1);    
+        strncpy(__shost, OSSEC_SERVER, 512 -1);
     }
     else
     {
@@ -251,14 +251,14 @@ int main_analysisd(int argc, char **argv)
         if(_ltmp)
             *_ltmp = '\0';
     }
-    
+
     /* going on Daemon mode */
     if(!test_config && !run_foreground)
     {
         nowDaemon();
         goDaemon();
     }
-    
+
 
     /* Starting prelude */
     #ifdef PRELUDE
@@ -286,22 +286,22 @@ int main_analysisd(int argc, char **argv)
 
 
     nowChroot();
-    
-    
+
+
 
     /*
-     * Anonymous Section: Load rules, decoders, and lists 
+     * Anonymous Section: Load rules, decoders, and lists
      *
      * As lists require two pass loading of rules that make use of list lookups
-     * are created with blank database structs, and need to be filled in after 
-     * completion of all rules and lists. 
+     * are created with blank database structs, and need to be filled in after
+     * completion of all rules and lists.
      */
     {
         {
             /* Initializing the decoders list */
             OS_CreateOSDecoderList();
 
-            if(!Config.decoders) 
+            if(!Config.decoders)
             { /* Legacy loading */
                 /* Reading decoders */
                 if(!ReadDecodeXML(XML_DECODER))
@@ -332,9 +332,9 @@ int main_analysisd(int argc, char **argv)
                         verbose("%s: INFO: Reading decoder file %s.", ARGV0, *decodersfiles);
                     if(!ReadDecodeXML(*decodersfiles))
                         ErrorExit(CONFIG_ERROR, ARGV0, *decodersfiles);
-                    
-                    free(*decodersfiles);    
-                    decodersfiles++;    
+
+                    free(*decodersfiles);
+                    decodersfiles++;
                 }
             }
 
@@ -343,7 +343,7 @@ int main_analysisd(int argc, char **argv)
         }
         { /* Load Lists */
             /* Initializing the lists of list struct */
-            Lists_OP_CreateLists(); 
+            Lists_OP_CreateLists();
             /* Load each list into list struct */
             {
                 char **listfiles;
@@ -375,24 +375,24 @@ int main_analysisd(int argc, char **argv)
                         verbose("%s: INFO: Reading rules file: '%s'", ARGV0, *rulesfiles);
                     if(Rules_OP_ReadRules(*rulesfiles) < 0)
                         ErrorExit(RULES_ERROR, ARGV0, *rulesfiles);
-                        
-                    free(*rulesfiles);    
-                    rulesfiles++;    
+
+                    free(*rulesfiles);
+                    rulesfiles++;
                 }
 
                 free(Config.includes);
                 Config.includes = NULL;
             }
-            
+
             /* Find all rules with that require list lookups and attache the
-             * the correct list struct to the rule.  This keeps rules from having to 
+             * the correct list struct to the rule.  This keeps rules from having to
              * search thought the list of lists for the correct file during rule evaluation.
              */
             OS_ListLoadRules();
         }
     }
 
-    
+
     /* Fixing the levels/accuracy */
     {
         int total_rules;
@@ -400,7 +400,7 @@ int main_analysisd(int argc, char **argv)
 
         total_rules = _setlevels(tmp_node, 0);
         if(!test_config)
-            verbose("%s: INFO: Total rules enabled: '%d'", ARGV0, total_rules);    
+            verbose("%s: INFO: Total rules enabled: '%d'", ARGV0, total_rules);
     }
 
 
@@ -416,8 +416,8 @@ int main_analysisd(int argc, char **argv)
         AddHash_Rule(tmp_node);
     }
 
-   
-   
+
+
     /* Ignored files on syscheck */
     {
         char **files;
@@ -426,7 +426,7 @@ int main_analysisd(int argc, char **argv)
         {
             if(!test_config)
                 verbose("%s: INFO: Ignoring file: '%s'", ARGV0, *files);
-            files++;    
+            files++;
         }
     }
 
@@ -436,12 +436,12 @@ int main_analysisd(int argc, char **argv)
                                  "log_fw",
                                  0, 1);
 
-    
+
     /* Success on the configuration test */
     if(test_config)
         exit(0);
 
-        
+
     /* Verbose message */
     debug1(PRIVSEP_MSG, ARGV0, dir, user);
 
@@ -450,11 +450,11 @@ int main_analysisd(int argc, char **argv)
     StartSIG(ARGV0);
 
 
-    /* Setting the user */ 
+    /* Setting the user */
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0,user);
-    
-    
+
+
     /* Creating the PID file */
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
@@ -492,7 +492,7 @@ int main_analysisd(int argc, char **argv)
     if(Config.hostname_white_list == NULL)
     {
         if(Config.ar)
-            verbose("%s: INFO: No Hostname in the white list for active reponse.", 
+            verbose("%s: INFO: No Hostname in the white list for active reponse.",
             ARGV0);
     }
     else
@@ -501,7 +501,7 @@ int main_analysisd(int argc, char **argv)
         {
             int wlc = 0;
             OSMatch **wl;
-            
+
             wl = Config.hostname_white_list;
             while(*wl)
             {
@@ -527,13 +527,13 @@ int main_analysisd(int argc, char **argv)
     /* Going to main loop */	
     OS_ReadMSG(m_queue);
 
-    if (Config.picviz) 
+    if (Config.picviz)
     {
         OS_PicvizClose();
     }
 
     exit(0);
-    
+
 }
 
 
@@ -542,7 +542,7 @@ int main_analysisd(int argc, char **argv)
  * Main function. Receives the messages(events)
  * and analyze them all.
  */
-#ifndef TESTRULE 
+#ifndef TESTRULE
 void OS_ReadMSG(int m_queue)
 #else
 void OS_ReadMSG_analysisd(int m_queue)
@@ -553,7 +553,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     Eventinfo *lf;
 
     RuleInfo *stats_rule;
-    
+
 
     /* Null to global currently pointers */
     currently_rule = NULL;
@@ -568,12 +568,12 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Initializing Rootcheck */
     RootcheckInit();
-    
-   
+
+
     /* Initializing host info */
     HostinfoInit();
-    
-    
+
+
     /* Creating the event list */
     OS_CreateEventList(Config.memorysize);
 
@@ -583,7 +583,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     {
         ErrorExit(FTS_LIST_ERROR, ARGV0);
     }
-    
+
 
     /* Starting the active response queues */
     if(Config.ar)
@@ -591,14 +591,14 @@ void OS_ReadMSG_analysisd(int m_queue)
         /* Waiting the ARQ to settle .. */
         sleep(3);
 
-        
+
         #ifndef LOCAL
         if(Config.ar & REMOTE_AR)
         {
             if((arq = StartMQ(ARQUEUE, WRITE)) < 0)
             {
                 merror(ARQ_ERROR, ARGV0);
-                
+
                 /* If LOCAL_AR is set, keep it there */
                 if(Config.ar & LOCAL_AR)
                 {
@@ -615,7 +615,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 verbose(CONN_TO, ARGV0, ARQUEUE, "active-response");
             }
         }
-        
+
         #else
         /* Only for LOCAL_ONLY installs */
         if(Config.ar & REMOTE_AR)
@@ -631,13 +631,13 @@ void OS_ReadMSG_analysisd(int m_queue)
             }
         }
         #endif
-        
+
         if(Config.ar & LOCAL_AR)
         {
             if((execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
             {
                 merror(ARQ_ERROR, ARGV0);
-                
+
                 /* If REMOTE_AR is set, keep it there */
                 if(Config.ar & REMOTE_AR)
                 {
@@ -684,8 +684,8 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Doing some cleanup */
     memset(msg, '\0', OS_MAXSTR +1);
-    
-    
+
+
     /* Initializing the logs */
     {
         lf = (Eventinfo *)calloc(1,sizeof(Eventinfo));
@@ -702,25 +702,25 @@ void OS_ReadMSG_analysisd(int m_queue)
 
         Free_Eventinfo(lf);
     }
-    
-    
+
+
     debug1("%s: DEBUG: Startup completed. Waiting for new messages..",ARGV0);
-    
+
 
     /* Daemon loop */
     while(1)
     {
         lf = (Eventinfo *)calloc(1,sizeof(Eventinfo));
-        
+
         /* This shouldn't happen .. */
         if(lf == NULL)
         {
             ErrorExit(MEM_ERROR,ARGV0);
         }
-    
+
         DEBUG_MSG("%s: DEBUG: Waiting for msgs - %d ", ARGV0, (int)time(0));
 
-        
+
         /* Receive message from queue */
         if((i = OS_RecvUnix(m_queue, OS_MAXSTR, msg)))
         {
@@ -741,12 +741,12 @@ void OS_ReadMSG_analysisd(int m_queue)
                 Free_Eventinfo(lf);
                 continue;
             }
-            
+
 
             /* Message before extracting header */
             DEBUG_MSG("%s: DEBUG: Received msg: %s ", ARGV0, msg);
 
-            
+
             /* Clean the msg appropriately */
             if(OS_CleanMSG(msg, lf) < 0)
             {
@@ -759,7 +759,7 @@ void OS_ReadMSG_analysisd(int m_queue)
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            
+
             /* Currently rule must be null in here */
             currently_rule = NULL;
 
@@ -794,8 +794,8 @@ void OS_ReadMSG_analysisd(int m_queue)
                     prev_year = lf->year;
                 }
             }
-            
-            
+
+
             /* Incrementing number of events received */
             hourly_events++;
 
@@ -806,7 +806,7 @@ void OS_ReadMSG_analysisd(int m_queue)
             if(msg[0] == SYSCHECK_MQ)
             {
                 hourly_syscheck++;
-                
+
                 if(!DecodeSyscheck(lf))
                 {
                     /* We don't process syscheck events further */
@@ -847,7 +847,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
                 DecodeEvent(lf);
             }
-            
+
 
             /* Firewall event */
             if(lf->decoder_info->type == FIREWALL)
@@ -855,7 +855,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 /* If we could not get any information from
                  * the log, just ignore it
                  */
-                hourly_firewall++;  
+                hourly_firewall++;
                 if(Config.logfw)
                 {
                     if(!FW_Log(lf))
@@ -886,10 +886,10 @@ void OS_ReadMSG_analysisd(int m_queue)
                 {
                     void *saved_rule = lf->generated_rule;
                     char *saved_log;
-                    
+
                     /* Saving previous log */
                     saved_log = lf->full_log;
-                    
+
                     lf->generated_rule = stats_rule;
                     lf->full_log = __stats_comment;
 
@@ -910,13 +910,13 @@ void OS_ReadMSG_analysisd(int m_queue)
 
 
             /* Checking the rules */
-            DEBUG_MSG("%s: DEBUG: Checking the rules - %d ", 
+            DEBUG_MSG("%s: DEBUG: Checking the rules - %d ",
                            ARGV0, lf->decoder_info->type);
 
-            
+
             /* Looping all the rules */
             rulenode_pt = OS_GetFirstRule();
-            if(!rulenode_pt) 
+            if(!rulenode_pt)
             {
                 ErrorExit("%s: Rules in an inconsistent state. Exiting.",
                         ARGV0);
@@ -929,22 +929,22 @@ void OS_ReadMSG_analysisd(int m_queue)
                 {
                     if(!lf->generated_rule)
                     {
-                        goto CLMEM;            
+                        goto CLMEM;
                     }
-                    
+
                     /* We go ahead in here and process the alert. */
                     currently_rule = lf->generated_rule;
                 }
-                
+
                 /* The categories must match */
-                else if(rulenode_pt->ruleinfo->category != 
+                else if(rulenode_pt->ruleinfo->category !=
                         lf->decoder_info->type)
                 {
                     continue;
                 }
 
                 /* Checking each rule. */
-                else if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt)) 
+                else if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt))
                         == NULL)
                 {
                     continue;
@@ -958,7 +958,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 }
 
 
-                /* Checking ignore time */ 
+                /* Checking ignore time */
                 if(currently_rule->ignore_time)
                 {
                     if(currently_rule->time_ignored == 0)
@@ -969,7 +969,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                      * is less than the time it should be ignored,
                      * leave (do not alert again).
                      */
-                    else if((lf->time - currently_rule->time_ignored) 
+                    else if((lf->time - currently_rule->time_ignored)
                             < currently_rule->ignore_time)
                     {
                         break;
@@ -984,7 +984,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 /* Pointer to the rule that generated it */
                 lf->generated_rule = currently_rule;
 
-                
+
                 /* Checking if we should ignore it */
                 if(currently_rule->ckignore && IGnore(lf))
                 {
@@ -992,8 +992,8 @@ void OS_ReadMSG_analysisd(int m_queue)
                     lf->generated_rule = NULL;
                     break;
                 }
-                
-                
+
+
                 /* Checking if we need to add to ignore list */
                 if(currently_rule->ignore)
                 {
@@ -1026,7 +1026,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 {
                     OS_PicvizLog(lf);
                 }
-                
+
 
                 /* Execute an active response */
                 if(currently_rule->ar)
@@ -1041,7 +1041,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                         do_ar = 1;
                         if((*rule_ar)->ar_cmd->expect & USERNAME)
                         {
-                            if(!lf->dstuser || 
+                            if(!lf->dstuser ||
                                 !OS_PRegex(lf->dstuser,"^[a-zA-Z._0-9@?-]*$"))
                             {
                                 if(lf->dstuser)
@@ -1078,19 +1078,19 @@ void OS_ReadMSG_analysisd(int m_queue)
                     }
                     else
                     {
-                        lf->sid_node_to_delete = 
+                        lf->sid_node_to_delete =
                             currently_rule->sid_prev_matched->last_node;
                     }
                 }
                 /* Group list */
                 else if(currently_rule->group_prev_matched)
                 {
-                    i = 0;  
-                    
+                    i = 0;
+
                     while(i < currently_rule->group_prev_matched_sz)
                     {
                         if(!OSList_AddData(
-                                currently_rule->group_prev_matched[i], 
+                                currently_rule->group_prev_matched[i],
                                 lf))
                         {
                            merror("%s: Unable to add data to grp list.",ARGV0);
@@ -1098,7 +1098,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                         i++;
                     }
                 }
-                
+
                 OS_AddEvent(lf);
 
                 break;
@@ -1113,10 +1113,10 @@ void OS_ReadMSG_analysisd(int m_queue)
 
             /* Cleaning the memory */	
             CLMEM:
-            
+
 
             /* Only clear the memory if the eventinfo was not
-             * added to the stateful memory 
+             * added to the stateful memory
              * -- message is free inside clean event --
              */
             if(lf->generated_rule == NULL)
@@ -1156,39 +1156,39 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
      * status,
      */
     RuleInfo *currently_rule = curr_node->ruleinfo;
-   
-    
+
+
     /* Can't be null */
     if(!currently_rule)
     {
         merror("%s: Inconsistent state. currently rule NULL", ARGV0);
         return(NULL);
     }
-   
+
 
     #ifdef TESTRULE
     if(full_output && !alert_only)
     print_out("    Trying rule: %d - %s", currently_rule->sigid,
                                           currently_rule->comment);
     #endif
-   
-     
+
+
     /* Checking if any decoder pre-matched here */
-    if(currently_rule->decoded_as && 
+    if(currently_rule->decoded_as &&
        currently_rule->decoded_as != lf->decoder_info->id)
     {
         return(NULL);
     }
-   
-    
+
+
     /* Checking program name */
     if(currently_rule->program_name)
     {
         if(!lf->program_name)
             return(NULL);
 
-        if(!OSMatch_Execute(lf->program_name, 
-                            lf->p_name_size, 
+        if(!OSMatch_Execute(lf->program_name,
+                            lf->p_name_size,
                             currently_rule->program_name))
                         return(NULL);
     }
@@ -1201,7 +1201,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         {
             return(NULL);
         }
-        
+
         if(!OSMatch_Execute(lf->id,
                             strlen(lf->id),
                             currently_rule->id))
@@ -1210,25 +1210,25 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
 
         #endif
     }
-    
+
 
     /* Checking if any word to match exists */
     if(currently_rule->match)
     {
         if(!OSMatch_Execute(lf->log, lf->size, currently_rule->match))
             return(NULL);
-    }	   	   
+    }	   	
 
 
-    
+
     /* Checking if exist any regex for this rule */
     if(currently_rule->regex)
     {
         if(!OSRegex_Execute(lf->log, currently_rule->regex))
             return(NULL);
     }
-    
-    
+
+
     /* Checking for actions */
     if(currently_rule->action)
     {
@@ -1239,7 +1239,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             return(NULL);
     }
 
-    
+
     /* Checking for the url */
     if(currently_rule->url)
     {
@@ -1247,7 +1247,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         {
             return(NULL);
         }
-        
+
         if(!OSMatch_Execute(lf->url, strlen(lf->url), currently_rule->url))
         {
             return(NULL);
@@ -1302,7 +1302,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             {
                 return(NULL);
             }
-            
+
             if(!OSMatch_Execute(lf->srcport,
                                 strlen(lf->srcport),
                                 currently_rule->srcport))
@@ -1319,7 +1319,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             {
                 return(NULL);
             }
-            
+
             if(!OSMatch_Execute(lf->dstport,
                                 strlen(lf->dstport),
                                 currently_rule->dstport))
@@ -1331,7 +1331,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             #endif
         }
     } /* END PACKET_INFO */
-    
+
 
     /* Extra information from event */
     if(currently_rule->alert_opts & DO_EXTRAINFO)
@@ -1564,7 +1564,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         }
     }
 
-        
+
     /* If it is a context rule, search for it */
     if(currently_rule->context == 1)
     {
@@ -1576,19 +1576,19 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     if(full_output && !alert_only)
     print_out("       *Rule %d matched.", currently_rule->sigid);
     #endif
-    
-        
+
+
     /* Search for dependent rules */
     if(curr_node->child)
     {
         RuleNode *child_node = curr_node->child;
         RuleInfo *child_rule = NULL;
-        
+
         #ifdef TESTRULE
         if(full_output && !alert_only)
         print_out("       *Trying child rules.");
         #endif
-        
+
         while(child_node)
         {
             child_rule = OS_CheckIfRuleMatch(lf, child_node);
@@ -1596,19 +1596,19 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
             {
                 return(child_rule);
             }
-            
+
             child_node = child_node->next;
         }
     }
 
-    
+
     /* If we are set to no alert, keep going */
     if(currently_rule->alert_opts & NO_ALERT)
     {
         return(NULL);
     }
 
-   
+
     hourly_alerts++;
     currently_rule->firedtimes++;
 
@@ -1623,14 +1623,14 @@ void LoopRule(RuleNode *curr_node, FILE *flog)
 {
     if(curr_node->ruleinfo->firedtimes)
     {
-        fprintf(flog, "%d-%d-%d-%d\n", 
-                thishour, 
+        fprintf(flog, "%d-%d-%d-%d\n",
+                thishour,
                 curr_node->ruleinfo->sigid,
                 curr_node->ruleinfo->level,
                 curr_node->ruleinfo->firedtimes);
         curr_node->ruleinfo->firedtimes = 0;
     }
-    
+
     if(curr_node->child)
     {
         RuleNode *child_node = curr_node->child;
@@ -1699,7 +1699,7 @@ void DumpLogstats()
     /* Looping on all the rules and printing the stats from them */
     do
     {
-        LoopRule(rulenode_pt, flog);    
+        LoopRule(rulenode_pt, flog);
     }while((rulenode_pt = rulenode_pt->next) != NULL);
 
 
@@ -1711,7 +1711,7 @@ void DumpLogstats()
     hourly_events = 0;
     hourly_syscheck = 0;
     hourly_firewall = 0;
-   
+
     fclose(flog);
 }
 

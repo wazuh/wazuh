@@ -48,9 +48,9 @@
 #define NEWMD5_BEGIN      "New md5sum is : "
 #define NEWMD5_BEGIN_SZ   16
 #define OLDSHA1_BEGIN     "Old sha1sum was: "
-#define OLDSHA1_BEGIN_SZ  17 
+#define OLDSHA1_BEGIN_SZ  17
 #define NEWSHA1_BEGIN     "New sha1sum is : "
-#define NEWSHA1_BEGIN_SZ  17 
+#define NEWSHA1_BEGIN_SZ  17
 
 
 /** void FreeAlertData(alert_data *al_data)
@@ -59,7 +59,7 @@
 void FreeAlertData(alert_data *al_data)
 {
     char **p;
- 
+
     if(al_data->alertid)
     {
         free(al_data->alertid);
@@ -124,7 +124,7 @@ void FreeAlertData(alert_data *al_data)
     {
         free(al_data->new_sha1);
         al_data->new_sha1 = NULL;
-    }    
+    }
     if(al_data->log)
     {
         p = al_data->log;
@@ -182,15 +182,15 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *geoipdatadst = NULL;
 #endif
     int level, rule, srcport = 0, dstport = 0;
-  
-    
+
+
     char str[OS_BUFFER_SIZE+1];
     str[OS_BUFFER_SIZE]='\0';
 
 
     while(fgets(str, OS_BUFFER_SIZE, fp) != NULL)
     {
-        
+
         /* Enf of alert */
         if(strcmp(str, "\n") == 0 && log_size > 0)
         {
@@ -222,13 +222,13 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 al_data->old_sha1 = old_sha1;
                 al_data->new_sha1 = new_sha1;
 
-               
+
                 return(al_data);
             }
             _r = 0;
         }
-        
-        
+
+
         /* Checking for the header */
         if(strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0)
         {
@@ -246,7 +246,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             os_realloc(alertid, (z + 1)*sizeof(char *), alertid);
             strncpy(alertid, p, z);
             alertid[z] = '\0';
-            
+
             /* Searching for email flag */
             p = strchr(p, ' ');
             if(!p)
@@ -255,10 +255,10 @@ alert_data *GetAlertData(int flag, FILE *fp)
             }
 
             p++;
-        
-        
-            /* Checking for the flags */    
-            if((flag & CRALERT_MAIL_SET) && 
+
+
+            /* Checking for the flags */
+            if((flag & CRALERT_MAIL_SET) &&
                (strncmp(ALERT_MAIL, p, ALERT_MAIL_SZ) != 0))
             {
                 continue;
@@ -286,16 +286,16 @@ alert_data *GetAlertData(int flag, FILE *fp)
 
         if(_r < 1)
             continue;
-            
-            
+
+
         /*** Extract information from the event ***/
-        
+
         /* r1 means: 2006 Apr 13 16:15:17 /var/log/auth.log */
         if(_r == 1)
         {
             /* Clear new line */
             os_clearnl(str, p);
-             
+
             p = strchr(str, ':');
             if(p)
             {
@@ -318,22 +318,22 @@ alert_data *GetAlertData(int flag, FILE *fp)
             /* If not, str is date and p is the location */
             if(date || location)
                 merror("ZZZ Merror date or location not NULL");
-            
+
             os_strdup(str, date);
-            os_strdup(p, location);    
+            os_strdup(p, location);
             _r = 2;
             log_size = 0;
             continue;
         }
 
-        
+
         else if(_r == 2)
         {
             /* Rule begin */
             if(strncmp(RULE_BEGIN, str, RULE_BEGIN_SZ) == 0)
             {
                 os_clearnl(str,p);
-                
+
                 p = str + RULE_BEGIN_SZ;
                 rule = atoi(p);
 
@@ -348,17 +348,17 @@ alert_data *GetAlertData(int flag, FILE *fp)
 
                 if(!p)
                     goto l_error;
-                
+
                 level = atoi(p);
-                
+
                 /* Getting the comment */
                 p = strchr(p, '\'');
                 if(!p)
                     goto l_error;
-                
+
                 p++;
                 os_strdup(p, comment);
-                
+
                 /* Must have the closing \' */
                 p = strrchr(comment, '\'');
                 if(p)
@@ -370,12 +370,12 @@ alert_data *GetAlertData(int flag, FILE *fp)
                     goto l_error;
                 }
             }
-            
+
             /* srcip */
             else if(strncmp(SRCIP_BEGIN, str, SRCIP_BEGIN_SZ) == 0)
             {
                 os_clearnl(str,p);
-                
+
                 p = str + SRCIP_BEGIN_SZ;
                 os_strdup(p, srcip);
             }
@@ -392,7 +392,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             else if(strncmp(SRCPORT_BEGIN, str, SRCPORT_BEGIN_SZ) == 0)
             {
                 os_clearnl(str,p);
-                
+
                 p = str + SRCPORT_BEGIN_SZ;
                 srcport = atoi(p);
             }
@@ -400,7 +400,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             else if(strncmp(DSTIP_BEGIN, str, DSTIP_BEGIN_SZ) == 0)
             {
                 os_clearnl(str,p);
-                
+
                 p = str + DSTIP_BEGIN_SZ;
                 os_strdup(p, dstip);
             }
@@ -417,7 +417,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             else if(strncmp(DSTPORT_BEGIN, str, DSTPORT_BEGIN_SZ) == 0)
             {
                 os_clearnl(str,p);
-                
+
                 p = str + DSTPORT_BEGIN_SZ;
                 dstport = atoi(p);
             }
@@ -425,7 +425,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             else if(strncmp(USER_BEGIN, str, USER_BEGIN_SZ) == 0)
             {
                 os_clearnl(str,p);
-                
+
                 p = str + USER_BEGIN_SZ;
                 os_strdup(p, user);
             }
@@ -475,12 +475,12 @@ alert_data *GetAlertData(int flag, FILE *fp)
                         {
                             filename[strlen(filename) -1] = '\0';
                         }
-                    } 
+                    }
                     issyscheck = 0;
                 }
-                
+
                 os_realloc(log, (log_size +2)*sizeof(char *), log);
-                os_strdup(str, log[log_size]); 
+                os_strdup(str, log[log_size]);
                 log_size++;
                 log[log_size] = NULL;
             }
@@ -488,7 +488,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
 
         continue;
         l_error:
-        
+
         /* Freeing the memory */
         _r = 0;
         if(date)

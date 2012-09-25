@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -63,7 +63,7 @@ int os_start_service()
                     rc = -1;
                 }
             }
-            
+
             CloseServiceHandle(schService);
         }
 
@@ -90,13 +90,13 @@ int os_stop_service()
         if(schService)
         {
             SERVICE_STATUS lpServiceStatus;
-            
-            if(ControlService(schService, 
+
+            if(ControlService(schService,
                               SERVICE_CONTROL_STOP, &lpServiceStatus))
             {
                 rc = 1;
             }
-            
+
             CloseServiceHandle(schService);
         }
 
@@ -124,7 +124,7 @@ int CheckServiceRunning()
         {
             /* Checking status */
             SERVICE_STATUS lpServiceStatus;
-            
+
             if(QueryServiceStatus(schService, &lpServiceStatus))
             {
                 if(lpServiceStatus.dwCurrentState == SERVICE_RUNNING)
@@ -134,14 +134,14 @@ int CheckServiceRunning()
             }
             CloseServiceHandle(schService);
         }
-        
+
         CloseServiceHandle(schSCManager);
     }
 
     return(rc);
 }
 
-                    
+
 /* int InstallService()
  * Install the OSSEC HIDS agent service.
  */
@@ -152,17 +152,17 @@ int InstallService(char *path)
     SC_HANDLE schSCManager, schService;
     LPCTSTR lpszBinaryPathName = NULL;
     SERVICE_DESCRIPTION sdBuf;
-    
+
 
     /* Cleaning up some variables */
     buffer[MAX_PATH] = '\0';
-    
-    
+
+
     /* Executable path -- it must be called with the
      * full path
      */
     lpszBinaryPathName = path;
- 
+
     /* Opening the services database */
     schSCManager = OpenSCManager(NULL,NULL,SC_MANAGER_ALL_ACCESS);
 
@@ -172,7 +172,7 @@ int InstallService(char *path)
     }
 
     /* Creating the service */
-    schService = CreateService(schSCManager, 
+    schService = CreateService(schSCManager,
                                g_lpszServiceName,
                                g_lpszServiceDisplayName,
                                SERVICE_ALL_ACCESS,
@@ -181,7 +181,7 @@ int InstallService(char *path)
                                SERVICE_ERROR_NORMAL,
                                lpszBinaryPathName,
                                NULL, NULL, NULL, NULL, NULL);
-    
+
     if (schService == NULL)
     {
         goto install_error;
@@ -193,7 +193,7 @@ int InstallService(char *path)
     {
         goto install_error;
     }
-    
+
     CloseServiceHandle(schService);
     CloseServiceHandle(schSCManager);
 
@@ -205,7 +205,7 @@ int InstallService(char *path)
     {
         char local_msg[1025];
         LPVOID lpMsgBuf;
-        
+
         memset(local_msg, 0, 1025);
 
         FormatMessage( FORMAT_MESSAGE_ALLOCATE_BUFFER |
@@ -228,11 +228,11 @@ int InstallService(char *path)
 /* int UninstallService()
  * Uninstall the OSSEC HIDS agent service.
  */
-int UninstallService() 
+int UninstallService()
 {
     SC_HANDLE schSCManager, schService;
 
-    
+
     /* Removing from the services database */
     schSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (schSCManager)
@@ -257,7 +257,7 @@ int UninstallService()
 
     fprintf(stderr, " [%s] Error removing from "
                     "the Services database.\n", ARGV0);
-    
+
     return(0);
 }
 
@@ -285,7 +285,7 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
     }
     return;
 }
- 
+
 
 /** void WinSetError()
  * Sets the error code in the services
@@ -295,11 +295,11 @@ void WinSetError()
     OssecServiceCtrlHandler(SERVICE_CONTROL_STOP);
 }
 
- 
+
 /** int os_WinMain(int argc, char **argv)
  * Initializes OSSEC dispatcher
  */
-int os_WinMain(int argc, char **argv) 
+int os_WinMain(int argc, char **argv)
 {
     SERVICE_TABLE_ENTRY   steDispatchTable[] =
     {
@@ -330,8 +330,8 @@ void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv)
     ossecServiceStatus.dwCheckPoint             = 0;
     ossecServiceStatus.dwWaitHint               = 0;
 
-    ossecServiceStatusHandle = 
-        RegisterServiceCtrlHandler(g_lpszServiceName, 
+    ossecServiceStatusHandle =
+        RegisterServiceCtrlHandler(g_lpszServiceName,
                                    OssecServiceCtrlHandler);
 
     if (ossecServiceStatusHandle == (SERVICE_STATUS_HANDLE)0)

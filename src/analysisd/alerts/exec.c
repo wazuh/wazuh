@@ -6,7 +6,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -26,7 +26,7 @@
 #include "eventinfo.h"
 
 
-/* OS_Exec v0.1 
+/* OS_Exec v0.1
  */
 void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
 {
@@ -41,7 +41,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
         if(strncmp(lf->srcip, "::ffff:", 7) == 0)
         {
             ip = lf->srcip + 7;
-        } 
+        }
         else
         {
             ip = lf->srcip;
@@ -63,7 +63,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
             OSMatch **wl;
 
             srcip_size = strlen(ip);
-        
+
             wl = Config.hostname_white_list;
             while(*wl)
             {
@@ -77,8 +77,8 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     {
         ip = "-";
     }
-   
-   
+
+
     /* Getting username */
     if(lf->dstuser && (ar->ar_cmd->expect & USERNAME))
     {
@@ -90,17 +90,17 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     }
 
 
-    /* active response on the server. 
+    /* active response on the server.
      * The response must be here if the ar->location is set to AS
      * or the ar->location is set to local (REMOTE_AGENT) and the
      * event location is from here.
-     */         
+     */
     if((ar->location & AS_ONLY) ||
       ((ar->location & REMOTE_AGENT) && (lf->location[0] != '(')) )
     {
         if(!(Config.ar & LOCAL_AR))
             return;
-            
+
         snprintf(exec_msg, OS_SIZE_1024,
                 "%s %s %s %d.%ld %d %s",
                 ar->name,
@@ -116,9 +116,9 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
             merror("%s: Error communicating with execd.", ARGV0);
         }
     }
-   
 
-    /* Active response to the forwarder */ 
+
+    /* Active response to the forwarder */
     else if((Config.ar & REMOTE_AR))
     {
 	int rc;
@@ -153,7 +153,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
                 	__crt_ftell,
                 	lf->generated_rule->sigid);
 	}
-      
+
         if((rc = OS_SendUnix(*arq, exec_msg, 0)) < 0)
         {
             if(rc == OS_SOCKBUSY)
@@ -162,12 +162,12 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
             }
             else
             {
-                merror("%s: AR socket error (shutdown?).", ARGV0);   
+                merror("%s: AR socket error (shutdown?).", ARGV0);
             }
             merror("%s: Error communicating with ar queue (%d).", ARGV0, rc);
         }
     }
-    
+
     return;
 }
 

@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -17,7 +17,7 @@
 /* Part of the OSSEC
  * Available at http://www.ossec.net
  */
-  
+
 
 /* ossec-analysisd.
  * Responsible for correlation and log decoding.
@@ -123,7 +123,7 @@ int main(int argc, char **argv)
 {
     int t_config = 0;
     int c = 0, m_queue = 0;
-    char *ut_str = NULL; 
+    char *ut_str = NULL;
 
     char *dir = DEFAULTDIR;
     char *user = USER;
@@ -183,9 +183,9 @@ int main(int argc, char **argv)
                 break;
             case 'a':
                 alert_only = 1;
-                break;    
+                break;
             case 'v':
-                full_output = 1;    
+                full_output = 1;
                 break;
             default:
                 logtest_help(ARGV0);
@@ -204,14 +204,14 @@ int main(int argc, char **argv)
     }
 
     debug1(READ_CONFIG, ARGV0);
-        
 
-    
+
+
     /* Getting servers hostname */
     memset(__shost, '\0', 512);
     if(gethostname(__shost, 512 -1) != 0)
     {
-        strncpy(__shost, OSSEC_SERVER, 512 -1);    
+        strncpy(__shost, OSSEC_SERVER, 512 -1);
     }
     else
     {
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
         if(_ltmp)
             *_ltmp = '\0';
     }
-    
+
 
 
     if(chdir(dir) != 0)
@@ -230,18 +230,18 @@ int main(int argc, char **argv)
 
 
     /*
-     * Anonymous Section: Load rules, decoders, and lists 
+     * Anonymous Section: Load rules, decoders, and lists
      *
      * As lists require two pass loading of rules that make use of list lookups
-     * are created with blank database structs, and need to be filled in after 
-     * completion of all rules and lists. 
+     * are created with blank database structs, and need to be filled in after
+     * completion of all rules and lists.
      */
     {
         { /* Lad decders */
             /* Initializing the decoders list */
             OS_CreateOSDecoderList();
 
-            if(!Config.decoders) 
+            if(!Config.decoders)
             { /* Legacy loading */
                 /* Reading decoders */
                 if(!ReadDecodeXML("etc/decoder.xml"))
@@ -271,9 +271,9 @@ int main(int argc, char **argv)
                     verbose("%s: INFO: Reading decoder file %s.", ARGV0, *decodersfiles);
                     if(!ReadDecodeXML(*decodersfiles))
                         ErrorExit(CONFIG_ERROR, ARGV0, *decodersfiles);
-                    
-                    free(*decodersfiles);    
-                    decodersfiles++;    
+
+                    free(*decodersfiles);
+                    decodersfiles++;
                 }
             }
 
@@ -282,7 +282,7 @@ int main(int argc, char **argv)
         }
         { /* Load Lists */
             /* Initializing the lists of list struct */
-            Lists_OP_CreateLists(); 
+            Lists_OP_CreateLists();
             /* Load each list into list struct */
             {
                 char **listfiles;
@@ -312,31 +312,31 @@ int main(int argc, char **argv)
                     debug1("%s: INFO: Reading rules file: '%s'", ARGV0, *rulesfiles);
                     if(Rules_OP_ReadRules(*rulesfiles) < 0)
                         ErrorExit(RULES_ERROR, ARGV0, *rulesfiles);
-                        
-                    free(*rulesfiles);    
-                    rulesfiles++;    
+
+                    free(*rulesfiles);
+                    rulesfiles++;
                 }
 
                 free(Config.includes);
                 Config.includes = NULL;
             }
-            
+
             /* Find all rules with that require list lookups and attache the
-             * the correct list struct to the rule.  This keeps rules from having to 
+             * the correct list struct to the rule.  This keeps rules from having to
              * search thought the list of lists for the correct file during rule evaluation.
              */
             OS_ListLoadRules();
         }
     }
 
-    
+
     /* Fixing the levels/accuracy */
     {
         int total_rules;
         RuleNode *tmp_node = OS_GetFirstRule();
 
         total_rules = _setlevels(tmp_node, 0);
-        debug1("%s: INFO: Total rules enabled: '%d'", ARGV0, total_rules);    
+        debug1("%s: INFO: Total rules enabled: '%d'", ARGV0, total_rules);
     }
 
 
@@ -357,7 +357,7 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    
+
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
 
@@ -367,7 +367,7 @@ int main(int argc, char **argv)
 
 
     exit(0);
-    
+
 }
 
 
@@ -383,12 +383,12 @@ void OS_ReadMSG(int m_queue, char *ut_str)
     int exit_code = 0;
     char *ut_alertlevel = NULL;
     char *ut_rulelevel = NULL;
-    char *ut_decoder_name = NULL; 
+    char *ut_decoder_name = NULL;
 
     if(ut_str)
     {
         /* XXX Break apart string */
-        ut_rulelevel = ut_str; 
+        ut_rulelevel = ut_str;
         ut_alertlevel =  strchr(ut_rulelevel, ':');
         if(!ut_alertlevel)
         {
@@ -398,7 +398,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
         else
         {
             *ut_alertlevel = '\0';
-            ut_alertlevel++; 
+            ut_alertlevel++;
         }
         ut_decoder_name = strchr(ut_alertlevel, ':');
         if(!ut_decoder_name)
@@ -430,7 +430,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
     {
         ErrorExit(FTS_LIST_ERROR, ARGV0);
     }
-                                
+
 
     __crt_ftell = 1;
 
@@ -441,17 +441,17 @@ void OS_ReadMSG(int m_queue, char *ut_str)
 
     /* Doing some cleanup */
     memset(msg, '\0', OS_MAXSTR +1);
-    
+
 
     if(!alert_only)
     print_out("%s: Type one log per line.\n", ARGV0);
-    
-    
+
+
     /* Daemon loop */
     while(1)
     {
         lf = (Eventinfo *)calloc(1,sizeof(Eventinfo));
-        
+
         /* This shouldn't happen .. */
         if(lf == NULL)
         {
@@ -461,9 +461,9 @@ void OS_ReadMSG(int m_queue, char *ut_str)
 
         /* Fixing the msg. */
         snprintf(msg, 15, "1:stdin:");
-        
-    
-        
+
+
+
         /* Receive message from queue */
         if(fgets(msg +8, OS_MAXSTR, stdin))
         {
@@ -483,10 +483,10 @@ void OS_ReadMSG(int m_queue, char *ut_str)
             {
                 continue;
             }
-            
-            
+
+
             if(!alert_only)print_out("\n");
-            
+
 
             /* Default values for the log info */
             Zero_Eventinfo(lf);
@@ -515,17 +515,17 @@ void OS_ReadMSG(int m_queue, char *ut_str)
 
             /* Decoding event. */
             DecodeEvent(lf);
-            
+
 
             /* Looping all the rules */
             rulenode_pt = OS_GetFirstRule();
-            if(!rulenode_pt) 
+            if(!rulenode_pt)
             {
                 ErrorExit("%s: Rules in an inconsistent state. Exiting.",
                         ARGV0);
             }
 
-            
+
             #ifdef TESTRULE
             if(full_output && !alert_only)
                 print_out("\n**Rule debugging:");
@@ -544,9 +544,9 @@ void OS_ReadMSG(int m_queue, char *ut_str)
                     /* We go ahead in here and process the alert. */
                     currently_rule = lf->generated_rule;
                 }
-                                                                                                                                                                                            
+
                 /* The categories must match */
-                else if(rulenode_pt->ruleinfo->category != 
+                else if(rulenode_pt->ruleinfo->category !=
                         lf->decoder_info->type)
                 {
                     continue;
@@ -554,7 +554,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
 
 
                 /* Checking each rule. */
-                else if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt)) 
+                else if((currently_rule = OS_CheckIfRuleMatch(lf, rulenode_pt))
                         == NULL)
                 {
                     continue;
@@ -568,13 +568,13 @@ void OS_ReadMSG(int m_queue, char *ut_str)
                   print_out("       Rule id: '%d'", currently_rule->sigid);
                   print_out("       Level: '%d'", currently_rule->level);
                   print_out("       Description: '%s'",currently_rule->comment);
-                  for (last_info_detail = currently_rule->info_details; last_info_detail != NULL; last_info_detail = last_info_detail->next) 
+                  for (last_info_detail = currently_rule->info_details; last_info_detail != NULL; last_info_detail = last_info_detail->next)
                   {
                       print_out("       Info - %s: '%s'", ruleinfodetail_text[last_info_detail->type], last_info_detail->data);
                   }
                 }
                 #endif
-                                            
+
 
 
                 /* Ignore level 0 */
@@ -584,7 +584,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
                 }
 
 
-                /* Checking ignore time */ 
+                /* Checking ignore time */
                 if(currently_rule->ignore_time)
                 {
                     if(currently_rule->time_ignored == 0)
@@ -595,7 +595,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
                      * is less than the time it should be ignored,
                      * leave (do not alert again).
                      */
-                    else if((lf->time - currently_rule->time_ignored) 
+                    else if((lf->time - currently_rule->time_ignored)
                             < currently_rule->ignore_time)
                     {
                         break;
@@ -609,7 +609,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
                 /* Pointer to the rule that generated it */
                 lf->generated_rule = currently_rule;
 
-                
+
                 /* Checking if we should ignore it */
                 if(currently_rule->ckignore && IGnore(lf))
                 {
@@ -617,7 +617,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
                     lf->generated_rule = NULL;
                     break;
                 }
-                
+
                 /* Checking if we need to add to ignore list */
                 if(currently_rule->ignore)
                 {
@@ -649,19 +649,19 @@ void OS_ReadMSG(int m_queue, char *ut_str)
                     }
                     else
                     {
-                        lf->sid_node_to_delete = 
+                        lf->sid_node_to_delete =
                             currently_rule->sid_prev_matched->last_node;
                     }
                 }
                 /* Group list */
                 else if(currently_rule->group_prev_matched)
                 {
-                    i = 0;  
-                    
+                    i = 0;
+
                     while(i < currently_rule->group_prev_matched_sz)
                     {
                         if(!OSList_AddData(
-                                currently_rule->group_prev_matched[i], 
+                                currently_rule->group_prev_matched[i],
                                 lf))
                         {
                            merror("%s: Unable to add data to grp list.",ARGV0);
@@ -669,7 +669,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
                         i++;
                     }
                 }
-                
+
                 OS_AddEvent(lf);
 
                 break;
@@ -701,7 +701,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
 
 
             /* Only clear the memory if the eventinfo was not
-             * added to the stateful memory 
+             * added to the stateful memory
              * -- message is free inside clean event --
              */
             if(lf->generated_rule == NULL)
@@ -710,7 +710,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
         }
         else
         {
-            exit(exit_code);   
+            exit(exit_code);
         }
     }
     exit(exit_code);

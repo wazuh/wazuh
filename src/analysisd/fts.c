@@ -9,12 +9,12 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
 
-/* First time seen functions 
+/* First time seen functions
  */
 
 
@@ -39,8 +39,8 @@ int FTS_Init()
     char _line[OS_FLSIZE + 1];
 
     _line[OS_FLSIZE] = '\0';
-            
-    
+
+
     fts_list = OSList_Create();
     if(!fts_list)
     {
@@ -60,7 +60,7 @@ int FTS_Init()
         merror(LIST_ERROR, ARGV0);
         return(0);
     }
-    
+
 
     /* Getting default list size */
     fts_list_size = getDefine_Int("analysisd",
@@ -71,7 +71,7 @@ int FTS_Init()
     fts_minsize_for_str = getDefine_Int("analysisd",
                                         "fts_min_size_for_str",
                                         6, 128);
-    
+
     if(!OSList_SetMaxSize(fts_list, fts_list_size))
     {
         merror(LIST_SIZE_ERROR, ARGV0);
@@ -87,7 +87,7 @@ int FTS_Init()
         fp_list = fopen(FTS_QUEUE, "w+");
         if(fp_list)
             fclose(fp_list);
-        
+
         chmod(FTS_QUEUE, 0777);
         fp_list = fopen(FTS_QUEUE, "r+");
         if(!fp_list)
@@ -120,7 +120,7 @@ int FTS_Init()
         }
     }
 
-    
+
     /* Creating ignore list */
     fp_ignore = fopen(IG_QUEUE, "r+");
     if(!fp_ignore)
@@ -129,7 +129,7 @@ int FTS_Init()
         fp_ignore = fopen(IG_QUEUE, "w+");
         if(fp_ignore)
             fclose(fp_ignore);
-        
+
         chmod(IG_QUEUE, 0777);
         fp_ignore = fopen(IG_QUEUE, "r+");
         if(!fp_ignore)
@@ -140,7 +140,7 @@ int FTS_Init()
     }
 
     debug1("%s: DEBUG: FTSInit completed.", ARGV0);
-                                                            
+
     return(1);
 }
 
@@ -148,12 +148,12 @@ int FTS_Init()
  */
 void AddtoIGnore(Eventinfo *lf)
 {
-    fseek(fp_ignore, 0, SEEK_END);    
+    fseek(fp_ignore, 0, SEEK_END);
 
     #ifdef TESTRULE
     return;
     #endif
-    
+
     /* Assigning the values to the FTS */
     fprintf(fp_ignore, "%s %s %s %s %s %s %s %s\n",
             (lf->decoder_info->name && (lf->generated_rule->ignore & FTS_NAME))?
@@ -166,9 +166,9 @@ void AddtoIGnore(Eventinfo *lf)
             (lf->dstip && (lf->generated_rule->ignore & FTS_DSTIP))?
                         lf->dstip:"",
             (lf->data && (lf->generated_rule->ignore & FTS_DATA))?
-                        lf->data:"",            
+                        lf->data:"",
             (lf->systemname && (lf->generated_rule->ignore & FTS_SYSTEMNAME))?
-                        lf->systemname:"",            
+                        lf->systemname:"",
             (lf->generated_rule->ignore & FTS_LOCATION)?lf->location:"");
 
     fflush(fp_ignore);
@@ -203,7 +203,7 @@ int IGnore(Eventinfo *lf)
             (lf->data && (lf->generated_rule->ignore & FTS_DATA))?
                             lf->data:"",
             (lf->systemname && (lf->generated_rule->ignore & FTS_SYSTEMNAME))?
-                            lf->systemname:"",                                
+                            lf->systemname:"",
             (lf->generated_rule->ckignore & FTS_LOCATION)?lf->location:"");
 
     _fline[OS_FLSIZE] = '\0';
@@ -228,13 +228,13 @@ int IGnore(Eventinfo *lf)
 /* FTS v0.1
  *  Check if the word "msg" is present on the "queue".
  *  If it is not, write it there.
- */ 
+ */
 int FTS(Eventinfo *lf)
 {
     int number_of_matches = 0;
 
     char _line[OS_FLSIZE + 1];
-    
+
     char *line_for_list = NULL;
 
     OSListNode *fts_node;
@@ -259,9 +259,9 @@ int FTS(Eventinfo *lf)
     if(OSHash_Get(fts_store, _line))
     {
         return(0);
-    }        
+    }
 
-    
+
     /* Checking if from the last FTS events, we had
      * at least 3 "similars" before. If yes, we just
      * ignore it.
@@ -271,7 +271,7 @@ int FTS(Eventinfo *lf)
         fts_node = OSList_GetLastNode(fts_list);
         while(fts_node)
         {
-            if(OS_StrHowClosedMatch((char *)fts_node->data, _line) > 
+            if(OS_StrHowClosedMatch((char *)fts_node->data, _line) >
                     fts_minsize_for_str)
             {
                 number_of_matches++;
@@ -290,8 +290,8 @@ int FTS(Eventinfo *lf)
         os_strdup(_line, line_for_list);
         OSList_AddData(fts_list, line_for_list);
     }
-    
-    
+
+
     /* Storing new entry */
     if(line_for_list == NULL)
     {
@@ -303,12 +303,12 @@ int FTS(Eventinfo *lf)
         return(0);
     }
 
-    
+
     #ifdef TESTRULE
     return(1);
     #endif
-    
-    
+
+
     /* Saving to fts fp */	
     fseek(fp_list, 0, SEEK_END);
     fprintf(fp_list,"%s\n", _line);

@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -25,8 +25,8 @@
 
 #define AFTER_PARENT    0x001   /* 1   */
 #define AFTER_PREMATCH  0x002   /* 2   */
-#define AFTER_PREVREGEX 0x004   /* 4   */ 
-#define AFTER_ERROR     0x010   
+#define AFTER_PREVREGEX 0x004   /* 4   */
+#define AFTER_ERROR     0x010
 
 
 
@@ -40,16 +40,16 @@ typedef struct
     u_int16_t id;
     u_int16_t regex_offset;
     u_int16_t prematch_offset;
-    
+
     int fts;
     char *parent;
     char *name;
     char *ftscomment;
-    
+
     OSRegex *regex;
     OSRegex *prematch;
     OSMatch *program_name;
-    
+
     void (*plugindecoder)(void *lf);
     void (**order)(void *lf, char *field);
 }OSDecoderInfo;

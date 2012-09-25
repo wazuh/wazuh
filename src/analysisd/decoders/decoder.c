@@ -9,11 +9,11 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
- 
+
 #include "shared.h"
 #include "os_regex/os_regex.h"
 #include "os_xml/os_xml.h"
@@ -54,9 +54,9 @@ void DecodeEvent(Eventinfo *lf)
     {
         print_out("\n**Phase 2: Completed decoding.");
     }
-    #endif    
+    #endif
 
-    do 
+    do
     {
         nnode = node->osdecoder;
 
@@ -64,7 +64,7 @@ void DecodeEvent(Eventinfo *lf)
         /* First checking program name */
         if(lf->program_name)
         {
-            if(!OSMatch_Execute(lf->program_name, lf->p_name_size, 
+            if(!OSMatch_Execute(lf->program_name, lf->p_name_size,
                         nnode->program_name))
             {
                 continue;
@@ -89,11 +89,11 @@ void DecodeEvent(Eventinfo *lf)
 
         #ifdef TESTRULE
         if(!alert_only)print_out("       decoder: '%s'", nnode->name);
-        #endif    
-        
+        #endif
+
 
         lf->decoder_info = nnode;
-        
+
 
         child_node = node->child;
 
@@ -122,7 +122,7 @@ void DecodeEvent(Eventinfo *lf)
                 {
                     char *llog;
 
-                    /* If we have an offset set, use it */     
+                    /* If we have an offset set, use it */
                     if(nnode->prematch_offset & AFTER_PARENT)
                     {
                         llog = pmatch;
@@ -163,7 +163,7 @@ void DecodeEvent(Eventinfo *lf)
                         return;
 
                     child_node = child_node->next;
-                    nnode = NULL;   
+                    nnode = NULL;
                 }
                 else
                 {
@@ -185,8 +185,8 @@ void DecodeEvent(Eventinfo *lf)
             nnode->plugindecoder(lf);
             return;
         }
-        
-        
+
+
         /* Getting the regex */
         while(child_node)
         {
@@ -273,7 +273,7 @@ void DecodeEvent(Eventinfo *lf)
         }
 
         /* ok to return  */
-        return;         
+        return;
     }while((node=node->next) != NULL);
 
     #ifdef TESTRULE
@@ -282,7 +282,7 @@ void DecodeEvent(Eventinfo *lf)
         print_out("       No decoder matched.");
     }
     #endif
-                
+
 }
 
 
@@ -292,7 +292,7 @@ void *DstUser_FP(Eventinfo *lf, char *field)
     #ifdef TESTRULE
     if(!alert_only)print_out("       dstuser: '%s'", field);
     #endif
-                    
+
     lf->dstuser = field;
     return(NULL);
 }
@@ -301,7 +301,7 @@ void *SrcUser_FP(Eventinfo *lf, char *field)
     #ifdef TESTRULE
     if(!alert_only)print_out("       srcuser: '%s'", field);
     #endif
-                    
+
     lf->srcuser = field;
     return(NULL);
 }
@@ -310,7 +310,7 @@ void *SrcIP_FP(Eventinfo *lf, char *field)
     #ifdef TESTRULE
     if(!alert_only)print_out("       srcip: '%s'", field);
     #endif
-                    
+
     lf->srcip = field;
     return(NULL);
 }
@@ -319,7 +319,7 @@ void *DstIP_FP(Eventinfo *lf, char *field)
     #ifdef TESTRULE
     if(!alert_only)print_out("       dstip: '%s'", field);
     #endif
-                    
+
     lf->dstip = field;
     return(NULL);
 }
@@ -328,7 +328,7 @@ void *SrcPort_FP(Eventinfo *lf, char *field)
     #ifdef TESTRULE
     if(!alert_only)print_out("       srcport: '%s'", field);
     #endif
-                    
+
     lf->srcport = field;
     return(NULL);
 }
@@ -337,7 +337,7 @@ void *DstPort_FP(Eventinfo *lf, char *field)
     #ifdef TESTRULE
     if(!alert_only)print_out("       dstport: '%s'", field);
     #endif
-                    
+
     lf->dstport = field;
     return(NULL);
 }
@@ -346,7 +346,7 @@ void *Protocol_FP(Eventinfo *lf, char *field)
     #ifdef TESTRULE
     if(!alert_only)print_out("       proto: '%s'", field);
     #endif
-                    
+
     lf->protocol = field;
     return(NULL);
 }
@@ -355,7 +355,7 @@ void *Action_FP(Eventinfo *lf, char *field)
     #ifdef TESTRULE
     if(!alert_only)print_out("       action: '%s'", field);
     #endif
-                    
+
     lf->action = field;
     return(NULL);
 }
@@ -364,7 +364,7 @@ void *ID_FP(Eventinfo *lf, char *field)
     #ifdef TESTRULE
     if(!alert_only)print_out("       id: '%s'", field);
     #endif
-                    
+
     lf->id = field;
     return(NULL);
 }
@@ -373,7 +373,7 @@ void *Url_FP(Eventinfo *lf, char *field)
     #ifdef TESTRULE
     if(!alert_only)print_out("       url: '%s'", field);
     #endif
-                    
+
     lf->url = field;
     return(NULL);
 }
@@ -382,7 +382,7 @@ void *Data_FP(Eventinfo *lf, char *field)
     #ifdef TESTRULE
     if(!alert_only)print_out("       extra_data: '%s'", field);
     #endif
-                    
+
     lf->data = field;
     return(NULL);
 }
@@ -391,7 +391,7 @@ void *Status_FP(Eventinfo *lf, char *field)
     #ifdef TESTRULE
     if(!alert_only)print_out("       status: '%s'", field);
     #endif
-                    
+
     lf->status = field;
     return(NULL);
 }

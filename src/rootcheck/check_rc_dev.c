@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 #ifndef WIN32
 #include "shared.h"
 #include "rootcheck.h"
@@ -24,12 +24,12 @@ int read_dev_dir(char *dir_name);
 int read_dev_file(char *file_name)
 {
     struct stat statbuf;
-    
+
     if(lstat(file_name, &statbuf) < 0)
     {
         return(-1);
     }
-    
+
     if(S_ISDIR(statbuf.st_mode))
     {
         #ifdef DEBUG
@@ -38,7 +38,7 @@ int read_dev_file(char *file_name)
 
         return(read_dev_dir(file_name));
     }
-        
+
     else if(S_ISREG(statbuf.st_mode))
     {
         char op_msg[OS_SIZE_1024 +1];
@@ -59,11 +59,11 @@ int read_dev_file(char *file_name)
 int read_dev_dir(char *dir_name)
 {
     int i;
-    
+
     DIR *dp;
-    
+
 	struct dirent *entry;
-    
+
     /* when will these people learn that dev is not
      * meant to store log files or other kind of texts..
      */
@@ -72,7 +72,7 @@ int read_dev_dir(char *dir_name)
                             ".udev.tdb", ".initramfs-tools",
                             "MAKEDEV.local", ".udev", ".initramfs",
                             "oprofile","fd","cgroup",
-    #ifdef SOLARIS                            
+    #ifdef SOLARIS
                             ".devfsadm_dev.lock",
                             ".devlink_db_lock",
                             ".devlink_db",
@@ -81,22 +81,22 @@ int read_dev_dir(char *dir_name)
                             ".devfsadm_synch_door",
                             ".zone_reg_door",
     #endif
-                            NULL};    
-    
+                            NULL};
+
 
     /* Full path ignore */
     char *(ignore_dev_full_path[]) = {"/dev/shm/sysconfig",
-                                      "/dev/bus/usb/.usbfs",  
+                                      "/dev/bus/usb/.usbfs",
                                       "/dev/shm",
                                       "/dev/gpmctl",
                                       NULL};
-    
+
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
     {
         merror("%s: Invalid directory given.",ARGV0);
         return(-1);
     }
-    
+
     /* Opening the directory given */
     dp = opendir(dir_name);
 	if(!dp)
@@ -110,24 +110,24 @@ int read_dev_dir(char *dir_name)
 
         /* Just ignore . and ..  */
         if((strcmp(entry->d_name,".") == 0) ||
-           (strcmp(entry->d_name,"..") == 0))  
+           (strcmp(entry->d_name,"..") == 0))
             continue;
-       
+
         _dev_total++;
-         
+
         /* Do not look for the ignored files */
         for(i = 0;ignore_dev[i] != NULL;i++)
         {
             if(strcmp(ignore_dev[i], entry->d_name) == 0)
                 break;
         }
-       
+
         if(ignore_dev[i] != NULL)
             continue;
-             
-        f_name[PATH_MAX +1] = '\0';     
+
+        f_name[PATH_MAX +1] = '\0';
         snprintf(f_name, PATH_MAX +1, "%s/%s",dir_name, entry->d_name);
-       
+
 
         /* Do not look for the full ignored files */
         for(i = 0;ignore_dev_full_path[i] != NULL;i++)
@@ -136,20 +136,20 @@ int read_dev_dir(char *dir_name)
                 break;
         }
 
-        
+
         /* Checking against the full path. */
         if(ignore_dev_full_path[i] != NULL)
         {
             continue;
         }
 
-        
+
         read_dev_file(f_name);
 
     }
 
     closedir(dp);
-    
+
     return(0);
 }
 
@@ -160,7 +160,7 @@ int read_dev_dir(char *dir_name)
 void check_rc_dev(char *basedir)
 {
     char file_path[OS_SIZE_1024 +1];
-    
+
     _dev_total = 0, _dev_errors = 0;
 
     debug1("%s: DEBUG: Starting on check_rc_dev", ARGV0);
@@ -173,11 +173,11 @@ void check_rc_dev(char *basedir)
     {
         char op_msg[OS_SIZE_1024 +1];
         snprintf(op_msg, OS_SIZE_1024, "No problem detected on the /dev "
-                                    "directory. Analyzed %d files", 
+                                    "directory. Analyzed %d files",
                                     _dev_total);
         notify_rk(ALERT_OK, op_msg);
     }
-    
+
     return;
 }
 

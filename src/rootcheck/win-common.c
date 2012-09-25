@@ -9,19 +9,19 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
- 
- 
+
+
 #include "shared.h"
 #include "rootcheck.h"
 
-#ifdef WIN32 
+#ifdef WIN32
 
 
 /** Registry checking values **/
 
 /* Global variables */
 HKEY rk_sub_tree;
- 
+
 /* Default values */
 #define MAX_KEY_LENGTH 255
 #define MAX_KEY	2048
@@ -34,18 +34,18 @@ HKEY rk_sub_tree;
  */
 int os_check_ads(char *full_path)
 {
-    HANDLE file_h; 
+    HANDLE file_h;
     WIN32_STREAM_ID sid;
     void *context = NULL;
 
-    char stream_name[MAX_PATH +1]; 
-    char final_name[MAX_PATH +1]; 
+    char stream_name[MAX_PATH +1];
+    char final_name[MAX_PATH +1];
 
     DWORD dwRead, shs, dw1, dw2;
 
 
     /* Opening file */
-    file_h = CreateFile(full_path, 
+    file_h = CreateFile(full_path,
             GENERIC_READ,
             FILE_SHARE_READ,
             NULL,
@@ -53,8 +53,8 @@ int os_check_ads(char *full_path)
             FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_POSIX_SEMANTICS,
             NULL);
 
-    if (file_h == INVALID_HANDLE_VALUE) 
-    { 
+    if (file_h == INVALID_HANDLE_VALUE)
+    {
         return 0;
     }
 
@@ -68,7 +68,7 @@ int os_check_ads(char *full_path)
 
     while(1)
     {
-        if(BackupRead(file_h, (LPBYTE) &sid, shs, &dwRead, 
+        if(BackupRead(file_h, (LPBYTE) &sid, shs, &dwRead,
                     FALSE, FALSE, &context) == 0)
         {
             break;
@@ -80,8 +80,8 @@ int os_check_ads(char *full_path)
 
         stream_name[0] = '\0';
         stream_name[MAX_PATH] = '\0';
-        if(BackupRead(file_h, (LPBYTE)stream_name, 
-                    sid.dwStreamNameSize, 
+        if(BackupRead(file_h, (LPBYTE)stream_name,
+                    sid.dwStreamNameSize,
                     &dwRead, FALSE, FALSE, &context))
         {
             if(dwRead != 0)
@@ -91,9 +91,9 @@ int os_check_ads(char *full_path)
                 char op_msg[OS_SIZE_1024 +1];
 
                 snprintf(final_name, MAX_PATH, "%s", full_path);
-                
+
                 max_path_size = strlen(final_name);
-                
+
 
                 /* Copying from wide char to char. */
                 while((i < dwRead) && (max_path_size < MAX_PATH))
@@ -123,7 +123,7 @@ int os_check_ads(char *full_path)
         }
 
         /* Getting next */			
-        if(!BackupSeek(file_h, sid.Size.LowPart, sid.Size.HighPart, 
+        if(!BackupSeek(file_h, sid.Size.LowPart, sid.Size.HighPart,
                     &dw1, &dw2, &context))
         {
             break;
@@ -154,7 +154,7 @@ char *__os_winreg_getkey(char *reg_entry)
 
     /* Setting sub tree */
     if((strcmp(reg_entry, "HKEY_LOCAL_MACHINE") == 0) ||
-       (strcmp(reg_entry, "HKLM") == 0)) 
+       (strcmp(reg_entry, "HKLM") == 0))
     {
         rk_sub_tree = HKEY_LOCAL_MACHINE;
     }
@@ -179,7 +179,7 @@ char *__os_winreg_getkey(char *reg_entry)
     {
         /* Setting sub tree to null */
         rk_sub_tree = NULL;
-        
+
         /* Returning tmp_str to the previous value */
         if(tmp_str && (*tmp_str == '\0'))
             *tmp_str = '\\';
@@ -264,7 +264,7 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
         value_buffer[MAX_VALUE_NAME] = '\0';
         data_buffer[MAX_VALUE_NAME] = '\0';
         var_storage[MAX_VALUE_NAME] = '\0';
-        
+
 
         /* Getting each value */
         for(i=0;i<value_count;i++)
@@ -306,22 +306,22 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
              */
             if(!reg_value)
             {
-                return(1); 
+                return(1);
             }
-            
+
 
 
             /* Writing value into a string */
             switch(data_type)
             {
                 int size_available;
-                
+
                 case REG_SZ:
                 case REG_EXPAND_SZ:
                     snprintf(var_storage, MAX_VALUE_NAME, "%s", data_buffer);
                     break;
                 case REG_MULTI_SZ:
-                
+
                     /* Printing multiple strings */
                     size_available = MAX_VALUE_NAME -3;
                     mt_data = data_buffer;
@@ -332,15 +332,15 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
                         {
                             strncat(var_storage, mt_data, size_available);
                             strncat(var_storage, " ", 2);
-                            size_available = MAX_VALUE_NAME - 
+                            size_available = MAX_VALUE_NAME -
                                              (strlen(var_storage) +2);
                         }
                         mt_data += strlen(mt_data) +1;
                     }
-                     
+
                     break;
                 case REG_DWORD:
-                    snprintf(var_storage, MAX_VALUE_NAME, 
+                    snprintf(var_storage, MAX_VALUE_NAME,
                             "%x",(unsigned int)*data_buffer);
                     break;
                 default:
@@ -375,19 +375,19 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
 
     return(0);
 }
-  
+
 
 
 /* int __os_winreg_open_key(char *subkey)
  * Open the registry key
  */
-int __os_winreg_open_key(char *subkey, char *full_key_name, 
+int __os_winreg_open_key(char *subkey, char *full_key_name,
                          char *reg_option, char *reg_value)
 {
     int ret = 1;
     HKEY oshkey;
 
-    
+
     if(RegOpenKeyEx(rk_sub_tree, subkey, 0, KEY_READ,&oshkey) != ERROR_SUCCESS)
     {
         return(0);
@@ -400,8 +400,8 @@ int __os_winreg_open_key(char *subkey, char *full_key_name,
         ret = __os_winreg_querykey(oshkey, subkey, full_key_name,
                                    reg_option, reg_value);
     }
-    
-    
+
+
     RegCloseKey(oshkey);
     return(ret);
 }
@@ -414,7 +414,7 @@ int is_registry(char *entry_name, char *reg_option, char *reg_value)
 {
 
     char *rk;
-    
+
     rk = __os_winreg_getkey(entry_name);
     if(rk_sub_tree == NULL || rk == NULL)
     {

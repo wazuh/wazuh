@@ -79,7 +79,7 @@ int __DBSelectLocation(char *location, DBConfig *db_config)
 int __DBInsertLocation(char *location, DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
-    
+
     memset(sql_query, '\0', OS_SIZE_1024);
 
     /* Generating SQL */
@@ -118,7 +118,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     /* Clearing the memory before insert */
     sql_query[0] = '\0';
     sql_query[OS_SIZE_8192] = '\0';
-    
+
 
     /* Converting srcip to int */
     if(al_data->srcip)
@@ -157,8 +157,8 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
 
     /* We first need to insert the location */
     loc_id = OSHash_Get(db_config->location_hash, al_data->location);
-    
-    
+
+
     /* If we dont have location id, we must select and/or insert in the db */
     if(!loc_id)
     {
@@ -172,7 +172,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
 
         if(!location_id)
         {
-            merror("%s: Unable to insert location: '%s'.", 
+            merror("%s: Unable to insert location: '%s'.",
                    ARGV0, al_data->location);
             return(0);
         }
@@ -183,7 +183,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
         *loc_id = location_id;
         OSHash_Add(db_config->location_hash, al_data->location, loc_id);
     }
-    
+
 
     i = 0;
     while(al_data->log[i])
@@ -217,7 +217,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
                 "INSERT INTO "
                 "data(id, server_id, \"user\", full_log) "
                 "VALUES ('%u', '%u', '%s', '%s') ",
-                db_config->alert_id, db_config->server_id, 
+                db_config->alert_id, db_config->server_id,
                 al_data->user, fulllog);
     }
     else
@@ -226,20 +226,20 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
                 "INSERT INTO "
                 "data(id, server_id, user, full_log) "
                 "VALUES ('%u', '%u', '%s', '%s') ",
-                db_config->alert_id, db_config->server_id, 
+                db_config->alert_id, db_config->server_id,
                 al_data->user, fulllog);
     }
 
     free(fulllog);
     fulllog = NULL;
-    
-    
+
+
     /* Inserting into the db */
     if(!osdb_query_insert(db_config->conn, sql_query))
     {
         merror(DB_GENERROR, ARGV0);
     }
-                                
+
 
 
     /* Generating final SQL */
@@ -260,7 +260,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
         merror(DB_GENERROR, ARGV0);
     }
 
-    
+
     db_config->alert_id++;
     return(1);
 }

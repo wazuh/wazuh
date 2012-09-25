@@ -23,16 +23,16 @@ int main(int argc, char ** argv)
 
     if(argc < 4)
         usage(argv);
-   
-    
+
+
     if(strcmp(argv[2],"file") == 0)
     {
         OS_MD5_SHA1_File(argv[3], argv[1], filesum1, filesum2);
     }
-    
+
     else
         usage(argv);
-    
+
     printf("MD5Sha1Sum for \"%s\" is: %s - %s\n",argv[2], filesum1, filesum2);
     return(0);
 }

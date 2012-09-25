@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 #include "shared.h"
 #include "active-response.h"
 

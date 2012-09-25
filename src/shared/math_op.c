@@ -25,14 +25,14 @@ int os_getprime(int val)
 {
     int i;
     int max_i;
-    
+
     /* Value can't be even */
     if((val % 2) == 0)
     {
         val++;
     }
-   
-   
+
+
     do
     {
         /* We just need to check odd numbers up until half

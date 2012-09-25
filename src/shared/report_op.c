@@ -36,12 +36,12 @@ void l_print_out(const char *msg, ...)
 
 
 /* Sort function used by OSStore sort.
- * Returns if d1 > d2. 
+ * Returns if d1 > d2.
  */
 void *_os_report_sort_compare(void *d1, void *d2)
 {
    OSList *d1l = (OSList *)d1;
-   OSList *d2l = (OSList *)d2; 
+   OSList *d2l = (OSList *)d2;
 
    if(d1l->currently_size > d2l->currently_size)
    {
@@ -72,7 +72,7 @@ void _os_header_print(int t, char *hname)
 int _os_report_str_int_compare(char *str, int id)
 {
     int pt_check = 0;
-    
+
     do
     {
         if((*str == ',')||(*str == ' '))
@@ -227,7 +227,7 @@ int _report_filter_value(char *filter_by, int prev_filter)
     {
         merror("%s: ERROR: Invalid relation '%s'.", __local_name, filter_by);
         return(-1);
-    }   
+    }
 }
 
 
@@ -238,13 +238,13 @@ int _os_report_print_related(int print_related, OSList *st_data)
     OSListNode *list_entry;
     alert_data *list_aldata;
     alert_data *saved_aldata;
-    
-                
+
+
     list_entry = OSList_GetFirstNode(st_data);
     while(list_entry)
     {
         saved_aldata = (alert_data *)list_entry->data;
-        
+
         /* Removing duplicates. */
         list_entry = list_entry->prev;
         while(list_entry)
@@ -382,7 +382,7 @@ void os_report_printtop(void *topstore_pt, char *hname, int print_related)
     int dopdout = 0;
     OSStore *topstore = (OSStore *)topstore_pt;
     OSStoreNode *next_node;
-    
+
     next_node = OSStore_GetFirstNode(topstore);
     while(next_node)
     {
@@ -445,7 +445,7 @@ void os_report_printtop(void *topstore_pt, char *hname, int print_related)
         l_print_out(" ");
         l_print_out(" ");
     }
-    return; 
+    return;
 }
 
 
@@ -457,11 +457,11 @@ void os_ReportdStart(report_filter *r_filter)
     char *first_alert = NULL;
     char *last_alert = NULL;
     void **data_to_clean = NULL;
-    
-    
-    time_t tm;     
-    struct tm *p;       
-    
+
+
+    time_t tm;
+    struct tm *p;
+
 
     file_queue *fileq;
     alert_data *al_data;
@@ -504,7 +504,7 @@ void os_ReportdStart(report_filter *r_filter)
     r_filter->top_group = OSStore_Create();
     r_filter->top_location = OSStore_Create();
     r_filter->top_files = OSStore_Create();
-    
+
     Init_FileQueue(fileq, p, CRALERT_READ_ALL|CRALERT_FP_SET);
 
 
@@ -520,7 +520,7 @@ void os_ReportdStart(report_filter *r_filter)
         }
 
         alerts_processed++;
-        
+
 
         /* Checking the filters. */
         if(!_os_report_check_filters(al_data, r_filter))
@@ -528,8 +528,8 @@ void os_ReportdStart(report_filter *r_filter)
             FreeAlertData(al_data);
             continue;
         }
-        
-        
+
+
         alerts_filtered++;
         data_to_clean = os_AddPtArray(al_data, data_to_clean);
 
@@ -538,13 +538,13 @@ void os_ReportdStart(report_filter *r_filter)
         if(!first_alert)
             first_alert = al_data->date;
         last_alert = al_data->date;
-        
-        
+
+
         /* Adding source ip if it is set properly. */
         if(al_data->srcip != NULL && strcmp(al_data->srcip, "(none)") != 0)
             _os_report_add_tostore(al_data->srcip, r_filter->top_srcip, al_data);
 
-        
+
         /* Adding user if it is set properly. */
         if(al_data->user != NULL && strcmp(al_data->user, "(none)") != 0)
             _os_report_add_tostore(al_data->user, r_filter->top_user, al_data);
@@ -557,10 +557,10 @@ void os_ReportdStart(report_filter *r_filter)
             mrule[76] = '\0';
             snprintf(mlevel, 16, "Severity %d" , al_data->level);
             snprintf(mrule, 76, "%d - %s" , al_data->rule, al_data->comment);
-            
-            _os_report_add_tostore(strdup(mlevel), r_filter->top_level, 
+
+            _os_report_add_tostore(strdup(mlevel), r_filter->top_level,
                                    al_data);
-            _os_report_add_tostore(strdup(mrule), r_filter->top_rule, 
+            _os_report_add_tostore(strdup(mrule), r_filter->top_rule,
                                    al_data);
         }
 
@@ -582,8 +582,8 @@ void os_ReportdStart(report_filter *r_filter)
                         mgroup++;
                         continue;
                     }
-                    
-                    _os_report_add_tostore(tmp_str, r_filter->top_group, 
+
+                    _os_report_add_tostore(tmp_str, r_filter->top_group,
                                            al_data);
                     mgroup++;
                 }
@@ -595,21 +595,21 @@ void os_ReportdStart(report_filter *r_filter)
                     tmp_str++;
                 if(*tmp_str != '\0')
                 {
-                    _os_report_add_tostore(tmp_str, r_filter->top_group, 
+                    _os_report_add_tostore(tmp_str, r_filter->top_group,
                                            al_data);
                 }
             }
         }
 
 
-        /* Adding to the location top filter. */        
-        _os_report_add_tostore(al_data->location, r_filter->top_location, 
+        /* Adding to the location top filter. */
+        _os_report_add_tostore(al_data->location, r_filter->top_location,
                                al_data);
 
-        
+
         if(al_data->filename != NULL)
         {
-            _os_report_add_tostore(al_data->filename, r_filter->top_files, 
+            _os_report_add_tostore(al_data->filename, r_filter->top_files,
                                    al_data);
         }
     }
@@ -620,15 +620,15 @@ void os_ReportdStart(report_filter *r_filter)
         if(!r_filter->report_name)
             merror("%s: INFO: Report completed and zero alerts post-filter.", __local_name);
         else
-            merror("%s: INFO: Report '%s' completed and zero alerts post-filter.", __local_name, r_filter->report_name);    
+            merror("%s: INFO: Report '%s' completed and zero alerts post-filter.", __local_name, r_filter->report_name);
         return;
     }
 
-    
+
     if(r_filter->report_name)
         verbose("%s: INFO: Report '%s' completed. Creating output...", __local_name, r_filter->report_name);
     else
-        verbose("%s: INFO: Report completed. Creating output...", __local_name);    
+        verbose("%s: INFO: Report completed. Creating output...", __local_name);
 
 
     l_print_out(" ");
@@ -637,14 +637,14 @@ void os_ReportdStart(report_filter *r_filter)
     else
         l_print_out("Report completed. ==");
     l_print_out("------------------------------------------------");
-            
+
     l_print_out("->Processed alerts: %d", alerts_processed);
     l_print_out("->Post-filtering alerts: %d", alerts_filtered);
     l_print_out("->First alert: %s", first_alert);
     l_print_out("->Last alert: %s", last_alert);
     l_print_out(" ");
     l_print_out(" ");
-    
+
     OSStore_Sort(r_filter->top_srcip, _os_report_sort_compare);
     OSStore_Sort(r_filter->top_user,  _os_report_sort_compare);
     OSStore_Sort(r_filter->top_level, _os_report_sort_compare);
@@ -652,22 +652,22 @@ void os_ReportdStart(report_filter *r_filter)
     OSStore_Sort(r_filter->top_location, _os_report_sort_compare);
     OSStore_Sort(r_filter->top_rule, _os_report_sort_compare);
     OSStore_Sort(r_filter->top_files, _os_report_sort_compare);
-    
+
     if(r_filter->top_srcip)
         os_report_printtop(r_filter->top_srcip, "Source ip", 0);
-    
+
     if(r_filter->top_user)
         os_report_printtop(r_filter->top_user, "Username", 0);
-    
+
     if(r_filter->top_level)
         os_report_printtop(r_filter->top_level, "Level", 0);
-    
+
     if(r_filter->top_group)
         os_report_printtop(r_filter->top_group, "Group", 0);
-    
+
     if(r_filter->top_location)
         os_report_printtop(r_filter->top_location, "Location", 0);
-    
+
     if(r_filter->top_rule)
         os_report_printtop(r_filter->top_rule, "Rule", 0);
 
@@ -677,34 +677,34 @@ void os_ReportdStart(report_filter *r_filter)
 
     /* Print related events. */
     if(r_filter->related_srcip)
-        os_report_printtop(r_filter->top_srcip, "Source ip", 
+        os_report_printtop(r_filter->top_srcip, "Source ip",
                            r_filter->related_srcip);
 
     if(r_filter->related_user)
-        os_report_printtop(r_filter->top_user, "Username", 
+        os_report_printtop(r_filter->top_user, "Username",
                            r_filter->related_user);
 
     if(r_filter->related_level)
-        os_report_printtop(r_filter->top_level, "Level", 
+        os_report_printtop(r_filter->top_level, "Level",
                            r_filter->related_level);
 
     if(r_filter->related_group)
-        os_report_printtop(r_filter->top_group, "Group", 
+        os_report_printtop(r_filter->top_group, "Group",
                            r_filter->related_group);
-    
+
     if(r_filter->related_location)
-        os_report_printtop(r_filter->top_location, "Location", 
+        os_report_printtop(r_filter->top_location, "Location",
                            r_filter->related_location);
-    
+
     if(r_filter->related_rule)
-        os_report_printtop(r_filter->top_rule, "Rule", 
+        os_report_printtop(r_filter->top_rule, "Rule",
                            r_filter->related_rule);
 
     if(r_filter->related_file)
-        os_report_printtop(r_filter->top_files, "Filename", 
+        os_report_printtop(r_filter->top_files, "Filename",
                            r_filter->related_file);
-    
-    
+
+
     /* If we have to dump the alerts. */
     if(data_to_clean)
     {
@@ -736,43 +736,43 @@ void os_ReportdStart(report_filter *r_filter)
  *                              report_filter *r_filter)
  * Checks the configuration filters.
  */
-int os_report_configfilter(char *filter_by, char *filter_value, 
+int os_report_configfilter(char *filter_by, char *filter_value,
                            report_filter *r_filter, int arg_type)
 {
     if(!filter_by || !filter_value)
     {
         return(-1);
     }
-    
+
     if(arg_type == REPORT_FILTER)
     {
         if(strcmp(filter_by, "group") == 0)
         {
-            r_filter->group = filter_value;    
+            r_filter->group = filter_value;
         }
         else if(strcmp(filter_by, "rule") == 0)
         {
-            r_filter->rule = filter_value;    
+            r_filter->rule = filter_value;
         }
         else if(strcmp(filter_by, "level") == 0)
         {
-            r_filter->level = filter_value;    
+            r_filter->level = filter_value;
         }
         else if(strcmp(filter_by, "location") == 0)
         {
-            r_filter->location = filter_value;    
+            r_filter->location = filter_value;
         }
         else if(strcmp(filter_by, "user") == 0)
         {
-            r_filter->user = filter_value;    
+            r_filter->user = filter_value;
         }
         else if(strcmp(filter_by, "srcip") == 0)
         {
-            r_filter->srcip = filter_value;    
+            r_filter->srcip = filter_value;
         }
         else if(strcmp(filter_by, "filename") == 0)
         {
-            r_filter->files = filter_value;    
+            r_filter->files = filter_value;
         }
         else
         {
@@ -784,7 +784,7 @@ int os_report_configfilter(char *filter_by, char *filter_value,
     {
         if(strcmp(filter_by, "group") == 0)
         {
-            r_filter->related_group = 
+            r_filter->related_group =
             _report_filter_value(filter_value, r_filter->related_group);
 
             if(r_filter->related_group == -1)
@@ -792,7 +792,7 @@ int os_report_configfilter(char *filter_by, char *filter_value,
         }
         else if(strcmp(filter_by, "rule") == 0)
         {
-            r_filter->related_rule = 
+            r_filter->related_rule =
             _report_filter_value(filter_value, r_filter->related_rule);
 
             if(r_filter->related_rule == -1)
@@ -800,7 +800,7 @@ int os_report_configfilter(char *filter_by, char *filter_value,
         }
         else if(strcmp(filter_by, "level") == 0)
         {
-            r_filter->related_level = 
+            r_filter->related_level =
             _report_filter_value(filter_value, r_filter->related_level);
 
             if(r_filter->related_level == -1)
@@ -808,7 +808,7 @@ int os_report_configfilter(char *filter_by, char *filter_value,
         }
         else if(strcmp(filter_by, "location") == 0)
         {
-            r_filter->related_location = 
+            r_filter->related_location =
             _report_filter_value(filter_value, r_filter->related_location);
 
             if(r_filter->related_location == -1)
@@ -816,7 +816,7 @@ int os_report_configfilter(char *filter_by, char *filter_value,
         }
         else if(strcmp(filter_by, "srcip") == 0)
         {
-            r_filter->related_srcip = 
+            r_filter->related_srcip =
             _report_filter_value(filter_value, r_filter->related_srcip);
 
             if(r_filter->related_srcip == -1)
@@ -824,17 +824,17 @@ int os_report_configfilter(char *filter_by, char *filter_value,
         }
         else if(strcmp(filter_by, "user") == 0)
         {
-            r_filter->related_user = 
+            r_filter->related_user =
             _report_filter_value(filter_value, r_filter->related_user);
-        
+
             if(r_filter->related_user == -1)
                 return(-1);
         }
         else if(strcmp(filter_by, "filename") == 0)
         {
-            r_filter->related_file = 
+            r_filter->related_file =
             _report_filter_value(filter_value, r_filter->related_file);
-        
+
             if(r_filter->related_file == -1)
                 return(-1);
         }

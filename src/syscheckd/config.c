@@ -55,7 +55,7 @@ int Read_Syscheck_Config(char * cfgfile)
     modules|= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
     #endif
-              
+
 
     #ifndef WIN32
     /* We must have at least one directory to check */
@@ -78,7 +78,7 @@ int Read_Syscheck_Config(char * cfgfile)
         return(1);
     }
     #endif
-                                        
+
 
     return(0);
 }

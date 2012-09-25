@@ -12,9 +12,9 @@
  * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
- 
+
 /* Common API for dealing with directory trees */
-          
+
 
 #ifndef _OS_HASHOP
 #define _OS_HASHOP
@@ -24,9 +24,9 @@
 typedef struct _OSHashNode
 {
     struct _OSHashNode *next;
-   
+
     void *key;
-    void *data; 
+    void *data;
 }OSHashNode;
 
 
@@ -35,7 +35,7 @@ typedef struct _OSHash
     unsigned int rows;
     unsigned int initial_seed;
     unsigned int constant;
-    
+
     OSHashNode **table;
 }OSHash;
 
@@ -55,7 +55,7 @@ OSHash *OSHash_Create();
  * Frees the memory used by the hash.
  */
 void *OSHash_Free(OSHash *self);
-  
+
 
 
 /** void OSHash_Add(OSHash *hash, char *key, void *data)

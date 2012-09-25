@@ -8,7 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-       
+
 
 #ifndef __CROOTCHECK_H
 
@@ -48,22 +48,22 @@ typedef struct _rkconfig
         short rc_ports;
         short rc_sys;
         short rc_trojans;
-        
+
         #ifdef WIN32
-        
+
         short rc_winaudit;
         short rc_winmalware;
         short rc_winapps;
-        
+
         #else
-        
+
         short rc_unixaudit;
-        
+
         #endif
-        
-        
+
+
     } checks;
-    
+
 }rkconfig;
 
 #endif

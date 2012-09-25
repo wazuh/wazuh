@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -27,25 +27,25 @@ void *SymantecWS_Decoder_Init()
 }
 
 
-/* Symantec Web Security decoder 
+/* Symantec Web Security decoder
  * Will extract the action, srcip, id, url and username.
  *
- * Examples (also online at 
+ * Examples (also online at
  * http://www.ossec.net/wiki/index.php/Symantec_WebSecurity ).
  * 20070717,73613,1=5,11=10.1.1.3,10=userc,3=1,2=1
  * 20070717,73614,1=5,11=1.2.3.4,1106=News,60=http://news.bbc.co.uk/,10=userX,1000=212.58.240.42,2=27
- */                             
+ */
 void *SymantecWS_Decoder_Exec(Eventinfo *lf)
 {
     int count = 0;
     char buf_str[OS_SIZE_1024 +1];
     char *tmp_str = NULL;
-    
+
     /* Initializing buffer */
     buf_str[0] = '\0';
     buf_str[OS_SIZE_1024] = '\0';
-    
-    
+
+
     /* Removing date and time */
     if(!(tmp_str = strchr(lf->log, ',')))
     {
@@ -56,8 +56,8 @@ void *SymantecWS_Decoder_Exec(Eventinfo *lf)
         return(NULL);
     }
     tmp_str++;
-    
-    
+
+
     /* Getting all the values */
     while(tmp_str != NULL)
     {
@@ -66,9 +66,9 @@ void *SymantecWS_Decoder_Exec(Eventinfo *lf)
         {
             count = 0;
             tmp_str+=3;
-            while(*tmp_str != '\0' && count < 128 && *tmp_str != ',') 
+            while(*tmp_str != '\0' && count < 128 && *tmp_str != ',')
             {
-                buf_str[count] = *tmp_str; 
+                buf_str[count] = *tmp_str;
                 count++; tmp_str++;
             }
             buf_str[count] = '\0';
@@ -78,15 +78,15 @@ void *SymantecWS_Decoder_Exec(Eventinfo *lf)
                 os_strdup(buf_str, lf->dstuser);
             }
         }
-        
+
         /* Checking the ip address */
         else if(strncmp(tmp_str, "11=", 3) == 0)
         {
             count = 0;
             tmp_str+=3;
-            while(*tmp_str != '\0' && count < 128 && *tmp_str != ',') 
+            while(*tmp_str != '\0' && count < 128 && *tmp_str != ',')
             {
-                buf_str[count] = *tmp_str; 
+                buf_str[count] = *tmp_str;
                 count++; tmp_str++;
             }
             buf_str[count] = '\0';
@@ -103,9 +103,9 @@ void *SymantecWS_Decoder_Exec(Eventinfo *lf)
         {
             count = 0;
             tmp_str+=3;
-            while(*tmp_str != '\0' && count < OS_SIZE_1024 && *tmp_str != ',') 
+            while(*tmp_str != '\0' && count < OS_SIZE_1024 && *tmp_str != ',')
             {
-                buf_str[count] = *tmp_str; 
+                buf_str[count] = *tmp_str;
                 count++; tmp_str++;
             }
             buf_str[count] = '\0';
@@ -143,7 +143,7 @@ void *SymantecWS_Decoder_Exec(Eventinfo *lf)
             tmp_str++;
         }
     }
-    
+
     return(NULL);
 }
 

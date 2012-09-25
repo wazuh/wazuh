@@ -9,14 +9,14 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
 
 
 /* remote daemon.
- * Listen to remote packets and forward them to the analysis 
+ * Listen to remote packets and forward them to the analysis
  * system
  */
 
@@ -55,12 +55,12 @@ void HandleRemote(int position, int uid)
             }
         }
     }
-    
 
-    /* Bind TCP */ 
+
+    /* Bind TCP */
     if(logr.proto[position] == TCP_PROTO)
     {
-        if((logr.sock = 
+        if((logr.sock =
             OS_Bindporttcp(logr.port[position],logr.lip[position], logr.ipv6[position])) < 0)
         {
             ErrorExit(BIND_ERROR, ARGV0, logr.port[position]);
@@ -69,22 +69,22 @@ void HandleRemote(int position, int uid)
     else
     {
         /* Using UDP. Fast, unreliable.. perfect */
-        if((logr.sock = 
+        if((logr.sock =
             OS_Bindportudp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0)
         {
             ErrorExit(BIND_ERROR, ARGV0, logr.port[position]);
         }
     }
 
-   
-   
+
+
     /* Revoking the privileges */
     if(Privsep_SetUser(uid) < 0)
     {
         ErrorExit(SETUID_ERROR,ARGV0, REMUSER);
     }
-                    
-    
+
+
     /* Creating PID */
     if(CreatePID(ARGV0, getpid()) < 0)
     {
@@ -94,25 +94,25 @@ void HandleRemote(int position, int uid)
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
-        
+
 
     /* If Secure connection, deal with it */
     if(logr.conn[position] == SECURE_CONN)
     {
         HandleSecure();
     }
-    
+
     else if(logr.proto[position] == TCP_PROTO)
     {
         HandleSyslogTCP();
     }
-    
+
     /* If not, deal with syslog */
     else
     {
         HandleSyslog();
     }
-    
+
     return;
 }
 

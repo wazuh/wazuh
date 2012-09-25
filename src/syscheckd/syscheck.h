@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-       
+
 
 #ifndef __SYSCHECK_H
 
@@ -50,11 +50,11 @@ int create_db();
 /* int run_dbcheck()
  * Checks database for changes.
  */
-int run_dbcheck(); 
-  
+int run_dbcheck();
+
 /** void os_winreg_check()
  * Checks the registry for changes.
- */  
+ */
 void os_winreg_check();
 
 /* starts real time */

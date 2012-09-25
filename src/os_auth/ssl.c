@@ -38,13 +38,13 @@ void *os_ssl_keys(int isclient, char *dir)
     SSL_CTX *ctx;
     char certf[1024 +1];
     char keyf[1024 +1];
-    
+
     SSL_library_init();
     SSL_load_error_strings();
     OpenSSL_add_all_algorithms();
     bio_err = BIO_new_fp(stderr,BIO_NOCLOSE);
 
-    
+
     /* Create our context */
     sslmeth = (SSL_METHOD *)SSLv23_method();
     ctx = SSL_CTX_new(sslmeth);
@@ -59,7 +59,7 @@ void *os_ssl_keys(int isclient, char *dir)
     {
         return(NULL);
     }
-    
+
 
     /* Setting final cert/key files */
     certf[1024] = '\0';
@@ -98,7 +98,7 @@ void *os_ssl_keys(int isclient, char *dir)
     #if(OPENSSL_VERSION_NUMBER < 0x00905100L)
     SSL_CTX_set_verify_depth(ctx,1);
     #endif
-    
+
     return ctx;
 }
 

@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
+
 
     while((c = getopt(argc, argv, "vVdhtfu:g:D:c:")) != -1){
         switch(c){
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
                 break;
             case 'v':
                 print_version();
-                break;    
+                break;
             case 'h':
                 help(ARGV0);
                 break;
@@ -75,7 +75,7 @@ int main(int argc, char **argv)
                 cfg = optarg;
                 break;
             case 't':
-                test_config = 1;    
+                test_config = 1;
                 break;
             default:
                 help(ARGV0);
@@ -117,14 +117,14 @@ int main(int argc, char **argv)
         if(ltmp)
             *ltmp = '\0';
     }
-                                        
+
 
     /* Exit here if test config is set */
     if(test_config)
         exit(0);
-        
-        
-    if (!run_foreground) 
+
+
+    if (!run_foreground)
     {
         /* Going on daemon mode */
         nowDaemon();
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
     }
 
 
-    
+
     /* Not configured */
     if(!syslog_config || !syslog_config[0])
     {
@@ -141,13 +141,13 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    
+
 
     /* Privilege separation */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
-    
+
     /* chrooting */
     if(Privsep_Chroot(dir) < 0)
         ErrorExit(CHROOT_ERROR,ARGV0,dir);
@@ -157,8 +157,8 @@ int main(int argc, char **argv)
     nowChroot();
 
 
-    
-    /* Changing user */        
+
+    /* Changing user */
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0,user);
 
@@ -170,15 +170,15 @@ int main(int argc, char **argv)
     /* Signal manipulation */
     StartSIG(ARGV0);
 
-    
+
     /* Creating PID files */
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR, ARGV0);
 
-    
+
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
-    
+
 
     /* the real daemon now */	
     OS_CSyslogD(syslog_config);

@@ -9,7 +9,7 @@
  * Foundation
  */
 
- 
+
 
 #ifndef _MCCONFIG__H
 #define _MCCONFIG__H
@@ -35,7 +35,7 @@ typedef struct _MailConfig
     int *gran_set;
     int *gran_format;
     char **gran_to;
- 
+
 #ifdef GEOIP
     /* Use GeoIP */
     int geoip;

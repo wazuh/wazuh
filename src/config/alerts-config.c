@@ -24,16 +24,16 @@ int Read_Alerts(XML_NODE node, void *configp, void *mailp)
     /* XML definitions */
     char *xml_email_level = "email_alert_level";
     char *xml_log_level = "log_alert_level";
-   
+
 #ifdef GEOIP
     /* GeoIP */
     char *xml_log_geoip = "use_geoip";
 #endif
 
     _Config *Config;
-     
+
     Config = (_Config *)configp;
-     
+
 
     while(node[i])
     {

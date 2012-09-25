@@ -24,7 +24,7 @@ void os_setwait()
     /* For same threads. */
     __wait_lock = 1;
 
-    
+
     if(isChroot())
     {
         fp = fopen(WAIT_FILE, "w");
@@ -48,7 +48,7 @@ void os_setwait()
 void os_delwait()
 {
     __wait_lock = 0;
-    
+
     if(isChroot())
     {
         unlink(WAIT_FILE);
@@ -66,7 +66,7 @@ void os_delwait()
  * Works as a simple inter process lock (only the main
  * process is allowed to lock).
  */
-#ifdef WIN32 
+#ifdef WIN32
 void os_wait()
 {
     if(!__wait_lock)
@@ -95,7 +95,7 @@ void os_wait()
 void os_wait()
 {
     struct stat file_status;
-    
+
 
     /* If the wait file is not present, keep going.
      */
@@ -109,7 +109,7 @@ void os_wait()
         if(stat(WAIT_FILE_PATH, &file_status) == -1)
             return;
     }
-    
+
 
     /* Wait until the lock is gone. */
     verbose(WAITING_MSG, __local_name);

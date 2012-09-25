@@ -84,7 +84,7 @@ int main(int argc, char **argv)
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
+
     while((c = getopt(argc, argv, "Vdhu:g:D:c:m:p:A:")) != -1)
     {
         switch(c){
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
                 cfg = optarg;
                 break;
             case 't':
-                test_config = 1;    
+                test_config = 1;
                 break;
             case 'm':
                if(!optarg)
@@ -154,25 +154,25 @@ int main(int argc, char **argv)
     if(gid < 0)
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
-    
+
 
     /* Privilege separation */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
-    
+
 
     /* Signal manipulation */
     StartSIG(ARGV0);
 
-    
+
 
     /* Creating PID files */
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
     #endif
 
-    
+
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
@@ -188,7 +188,7 @@ int main(int argc, char **argv)
         agentname = lhostname;
     }
 
-    
+
 
     /* Starting SSL */	
     ctx = os_ssl_keys(1, NULL);
@@ -203,7 +203,7 @@ int main(int argc, char **argv)
         merror("%s: ERROR: Manager IP not set.", ARGV0);
         exit(1);
     }
-  
+
 
     /* Connecting via TCP */
     sock = OS_ConnectTCP(port, manager, 0);
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    
+
     printf("INFO: Connected to %s:%d\n", manager, port);
     printf("INFO: Using agent name as: %s\n", agentname);
 
@@ -274,7 +274,7 @@ int main(int argc, char **argv)
                         exit(1);
                     }
                     *tmpstr = '\0';
-                    entry = OS_StrBreak(' ', key, 4); 
+                    entry = OS_StrBreak(' ', key, 4);
                     if(!OS_IsValidID(entry[0]) || !OS_IsValidName(entry[1]) ||
                        !OS_IsValidName(entry[2]) || !OS_IsValidName(entry[3]))
                     {

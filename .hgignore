@@ -5,6 +5,7 @@ syntax: glob
 *.o
 *.a
 *.dSYM
+*.orig
 .hgignore
 
 # Auto generated build files

@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-       
+
 
 #ifndef __SYSCHECKC_H
 #define __SYSCHECKC_H
@@ -49,10 +49,10 @@ typedef struct _config
     int disabled;          /* is syscheck disabled? */
     int scan_on_start;
     int realtime_count;
-    
+
     int time;              /* frequency (secs) for syscheck to run */
     int queue;             /* file descriptor of socket to write to queue */
-    
+
     int *opts;             /* attributes set in the <directories> tag element */
 
     char *workdir;         /* set to the DEFAULTDIR (/var/ossec) */
@@ -61,10 +61,10 @@ typedef struct _config
 
     char *scan_day;        /* run syscheck on this day */
     char *scan_time;       /* run syscheck at this time */
-    
+
     char **ignore;         /* list of files/dirs to ignore */
     void **ignore_regex;   /* regex of files/dirs to ignore */
-    
+
     char **dir;            /* array of directories to be scanned */
     void **filerestrict;
 
@@ -75,7 +75,7 @@ typedef struct _config
     char **registry;                /* array of registry entries to be scanned */
     FILE *reg_fp;
     #endif
-    
+
     void *fp;
 
     rtfim *realtime;

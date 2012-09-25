@@ -67,7 +67,7 @@ int Read_CReports(XML_NODE node, void *config, void *config2)
 
     monitor_config *mon_config = (monitor_config *)config;
 
-     
+
     /* Getting any configured entry. */
     if(mon_config->reports)
     {
@@ -75,9 +75,9 @@ int Read_CReports(XML_NODE node, void *config, void *config2)
             s++;
     }
 
-    
+
     /* Allocating the memory for the config. */
-    os_realloc(mon_config->reports, (s + 2) * sizeof(report_config *), 
+    os_realloc(mon_config->reports, (s + 2) * sizeof(report_config *),
                mon_config->reports);
     os_calloc(1, sizeof(report_config), mon_config->reports[s]);
     mon_config->reports[s + 1] = NULL;
@@ -106,7 +106,7 @@ int Read_CReports(XML_NODE node, void *config, void *config2)
     mon_config->reports[s]->r_filter.show_alerts = 0;
 
 
-    
+
     /* Reading the XML. */
     while(node[i])
     {
@@ -204,7 +204,7 @@ int Read_CReports(XML_NODE node, void *config, void *config2)
 
             os_strdup(node[i]->content, ncat);
 
-            if(os_report_configfilter(node[i]->element, ncat, 
+            if(os_report_configfilter(node[i]->element, ncat,
                                       &mon_config->reports[s]->r_filter, reportf) < 0)
             {
                 merror("%s: Invalid filter: %s:%s (ignored).", __local_name, node[i]->element, node[i]->content);
@@ -231,7 +231,7 @@ int Read_CReports(XML_NODE node, void *config, void *config2)
         if(mon_config->reports[s]->title)
             merror("%s: No \"email to\" configured for the report '%s'. Ignoring it.", __local_name, mon_config->reports[s]->title);
         else
-            merror("%s: No \"email to\" and title configured for report. Ignoring it.", __local_name);    
+            merror("%s: No \"email to\" and title configured for report. Ignoring it.", __local_name);
     }
 
     if(!mon_config->reports[s]->title)

@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 #include "shared.h"
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
@@ -80,7 +80,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
 
 
-    /* Searching for the commands */ 
+    /* Searching for the commands */
     while(node[i])
     {
         if(!node[i]->element)
@@ -95,12 +95,12 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         }
 
         /* Command */
-        if(strcmp(node[i]->element, xml_ar_command) == 0)    
+        if(strcmp(node[i]->element, xml_ar_command) == 0)
         {
             tmp_ar->command = strdup(node[i]->content);
         }
         /* Target */
-        else if(strcmp(node[i]->element, xml_ar_location) == 0)    
+        else if(strcmp(node[i]->element, xml_ar_location) == 0)
         {
             tmp_location = strdup(node[i]->content);
         }
@@ -124,7 +124,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
-                                                                            
+
             tmp_ar->level = atoi(node[i]->content);
 
             /* Making sure the level is valid */
@@ -165,7 +165,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
             return(OS_INVALID);
         }
         i++;
-    } 
+    }
 
     /* Checking if ar is disabled */
     if(ar_flag == -1)
@@ -214,14 +214,14 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     }
 
     /* If we didn't set any value for the location */
-    if(tmp_ar->location == 0) 
+    if(tmp_ar->location == 0)
     {
         merror(AR_INV_LOC, ARGV0, tmp_location);
         return(-1);
     }
 
 
-    /* cleaning tmp_location */ 
+    /* cleaning tmp_location */
     free(tmp_location);
     tmp_location = NULL;
 
@@ -274,13 +274,13 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
-    snprintf(tmp_ar->name, OS_FLSIZE, "%s%d", 
+    snprintf(tmp_ar->name, OS_FLSIZE, "%s%d",
             tmp_ar->ar_cmd->name,
-            tmp_ar->timeout);  
+            tmp_ar->timeout);
 
 
     /* Adding to shared file */
-    fprintf(fp, "%s - %s - %d\n", 
+    fprintf(fp, "%s - %s - %d\n",
             tmp_ar->name,
             tmp_ar->ar_cmd->executable,
             tmp_ar->timeout);
@@ -314,7 +314,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     {
         ar_flag|= LOCAL_AR;
     }
-    
+
     /* Closing shared file for active response */
     fclose(fp);
 
@@ -355,7 +355,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
     tmp_command->timeout_allowed = 0;
 
 
-    /* Searching for the commands */ 
+    /* Searching for the commands */
     while(node[i])
     {
         if(!node[i]->element)
@@ -368,11 +368,11 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
             merror(XML_VALUENULL, ARGV0, node[i]->element);
             return(OS_INVALID);
         }
-        if(strcmp(node[i]->element, command_name) == 0)    
+        if(strcmp(node[i]->element, command_name) == 0)
         {
             tmp_command->name = strdup(node[i]->content);
         }
-        else if(strcmp(node[i]->element, command_expect) == 0)    
+        else if(strcmp(node[i]->element, command_expect) == 0)
         {
             tmp_str = strdup(node[i]->content);
         }

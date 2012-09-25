@@ -14,7 +14,7 @@ int main(int argc, char **argv)
     {
         printf("Invalid ip\n");
     }
-    
+
     if(OS_IPFound(argv[2], &myip))
     {
         printf("IP MATCHED!\n");

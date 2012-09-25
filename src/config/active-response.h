@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 #ifndef _CAR__H
 #define _CAR__H
 
@@ -20,7 +20,7 @@ typedef struct _ar_command
 {
     int expect;
     int timeout_allowed;
-    
+
     char *name;
     char *executable;
 }ar_command;
@@ -37,7 +37,7 @@ typedef struct _ar
     char *agent_id;
     char *rules_id;
     char *rules_group;
-    
+
     ar_command *ar_cmd;
 }active_response;
 

@@ -39,18 +39,18 @@ int main(int argc, char **argv)
     char *user = USER;
     int gid;
     int uid;
-    
+
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
-    
+
+
     /* user arguments */
     if(argc < 2)
     {
         helpmsg();
     }
-    
+
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
@@ -59,14 +59,14 @@ int main(int argc, char **argv)
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
 	
-    
+
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
 	    ErrorExit(SETGID_ERROR,ARGV0, group);
     }
-    
-    
+
+
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
     {
@@ -76,14 +76,14 @@ int main(int argc, char **argv)
 
     /* Inside chroot now */
     nowChroot();
- 
+
 
     /* Setting the user */
     if(Privsep_SetUser(uid) < 0)
     {
         ErrorExit(SETUID_ERROR, ARGV0, user);
     }
-  
+
     /* User options */
     if(strcmp(argv[1], "-h") == 0)
     {
@@ -91,7 +91,7 @@ int main(int argc, char **argv)
     }
     else if(strcmp(argv[1], "-l") == 0)
     {
-        printf("\nOSSEC HIDS %s: Updates the integrity check database.", 
+        printf("\nOSSEC HIDS %s: Updates the integrity check database.",
                                  ARGV0);
         print_agents(0, 0, 0);
         printf("\n");
@@ -129,7 +129,7 @@ int main(int argc, char **argv)
             }
 
             snprintf(full_path, OS_MAXSTR,"%s/%s", SYSCHECK_DIR, entry->d_name);
-            
+
             fp = fopen(full_path, "w");
             if(fp)
             {
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
         }
 
         closedir(sys_dir);
-        printf("\n** Integrity check database updated.\n\n"); 
+        printf("\n** Integrity check database updated.\n\n");
         exit(0);
     }
     else
@@ -151,14 +151,14 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
-    
+
     /* local */
     if(strcmp(argv[2],"local") == 0)
     {
         char final_dir[1024];
         FILE *fp;
         snprintf(final_dir, 1020, "/%s/syscheck", SYSCHECK_DIR);
-        
+
         fp = fopen(final_dir, "w");
         if(fp)
         {
@@ -169,7 +169,7 @@ int main(int argc, char **argv)
 
         /* Deleting cpt file */
         snprintf(final_dir, 1020, "/%s/.syscheck.cpt", SYSCHECK_DIR);
-        
+
         fp = fopen(final_dir, "w");
         if(fp)
         {
@@ -192,12 +192,12 @@ int main(int argc, char **argv)
             printf("\n** Invalid agent id '%s'.\n", argv[2]);
             helpmsg();
         }
-        
+
         /* Deleting syscheck */
         delete_syscheck(keys.keyentries[i]->name,keys.keyentries[i]->ip->ip,0);
     }
-   
-    printf("\n** Integrity check database updated.\n\n"); 
+
+    printf("\n** Integrity check database updated.\n\n");
     return(0);
 }
 

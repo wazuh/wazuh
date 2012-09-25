@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -22,7 +22,7 @@
 
 /* Each timeout is x * 5 */
 #define NEXTMAIL_TIMEOUT    2    /* Time to check for next msg - 5 */
-#define DEFAULT_TIMEOUT     18   /* socket read timeout - 18 (*5)*/ 
+#define DEFAULT_TIMEOUT     18   /* socket read timeout - 18 (*5)*/
 #define SUBJECT_SIZE        128  /* Maximum subject size */
 
  /* Maximum body size */
@@ -66,7 +66,7 @@ typedef struct _MailMsg
 #include "config/mail-config.h"
 
 
-/* Config function */    
+/* Config function */
 int MailConf(int test_config, char *cfgfile, MailConfig *Mail);
 
 

@@ -22,9 +22,9 @@
 
 /* Read the main elements of the configuration.
  */
-int read_main_elements(OS_XML xml, int modules, 
-                                   XML_NODE node, 
-                                   void *d1, 
+int read_main_elements(OS_XML xml, int modules,
+                                   XML_NODE node,
+                                   void *d1,
                                    void *d2)
 {
     int i = 0;
@@ -44,11 +44,11 @@ int read_main_elements(OS_XML xml, int modules,
     char *osreports = "reports";                  /*Server Config*/
     char *osactive_response = "active-response";  /*Agent Config*/
 
-    
+
     while(node[i])
     {
         XML_NODE chld_node = NULL;
-        
+
         chld_node = OS_GetElementsbyNode(&xml,node[i]);
 
         if(!node[i]->element)
@@ -63,7 +63,7 @@ int read_main_elements(OS_XML xml, int modules,
         }
         else if(strcmp(node[i]->element, osglobal) == 0)
         {
-            if(((modules & CGLOBAL) || (modules & CMAIL)) 
+            if(((modules & CGLOBAL) || (modules & CMAIL))
                 && (Read_Global(chld_node, d1, d2) < 0))
                 return(OS_INVALID);
         }
@@ -97,7 +97,7 @@ int read_main_elements(OS_XML xml, int modules,
             if((modules & CSYSCHECK) && (Read_Syscheck(chld_node, d1,d2) < 0))
                 return(OS_INVALID);
             if((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0))
-                return(OS_INVALID);    
+                return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, osrootcheck) == 0)
         {
@@ -144,7 +144,7 @@ int read_main_elements(OS_XML xml, int modules,
             merror(XML_INVELEM, ARGV0, node[i]->element);
             return(OS_INVALID);
         }
-        
+
         //printf("before\n");
         OS_ClearNode(chld_node);
         //printf("after\n");
@@ -158,7 +158,7 @@ int read_main_elements(OS_XML xml, int modules,
 /* ReadConfig(int modules, char *cfgfile)
  * Read the config files
  */
-int ReadConfig(int modules, char *cfgfile, void *d1, void *d2) 
+int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
 {
     int i;
     OS_XML xml;
@@ -176,7 +176,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
     char *xml_agent_overwrite = "overwrite";
     /* cmoraes */
     char *xml_agent_profile = "profile";
-    
+
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
@@ -192,7 +192,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
         }
         return(OS_INVALID);
     }
-    
+
 
     node = OS_GetElementsbyNode(&xml, NULL);
     if(!node)
@@ -225,7 +225,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                     return(OS_INVALID);
                 }
 
-                OS_ClearNode(chld_node);    
+                OS_ClearNode(chld_node);
             }
         }
         else if((modules & CAGENT_CONFIG) &&
@@ -239,7 +239,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
 
             /* Checking if this is specific to any agent. */
             if(node[i]->attributes && node[i]->values)
-            {    
+            {
                 while(node[i]->attributes[attrs] && node[i]->values[attrs])
                 {
                     /* Checking if there is an "name=" attribute */
@@ -296,12 +296,12 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                         {
                             /* match the profile name of this <agent_config> section
                              * with a comma separated list of values in agent's
-                             * <config-profile> tag. 
+                             * <config-profile> tag.
                              */
                             if(!OS_Match2(node[i]->values[attrs], agentprofile))
                             {
                                 passed_agent_test = 0;
-                                debug2("[%s] did not match agent config profile name [%s]", 
+                                debug2("[%s] did not match agent config profile name [%s]",
                                        node[i]->values[attrs], agentprofile);
                             }
                             else
@@ -331,7 +331,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
 
                 /* if node does not have any attributes, it is a generic config block.
                  * check if agent has a profile name
-                 * if agent does not have profile name, then only read this generic 
+                 * if agent does not have profile name, then only read this generic
                  * agent_config block
                  */
 
@@ -351,8 +351,8 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                     merror(CONFIG_ERROR, ARGV0, cfgfile);
                     return(OS_INVALID);
                 }
-      
-                OS_ClearNode(chld_node);    
+
+                OS_ClearNode(chld_node);
             }
         }
         else
@@ -362,7 +362,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
         }
         i++;
     }
-    
+
     /* Clearing node and xml */
     OS_ClearNode(node);
     OS_ClearXML(&xml);	

@@ -6,18 +6,18 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 2) as published by the FSF - Free Software
  * Foundation
  *
  * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
-/* OS_net Library. 
+/* OS_net Library.
  * APIs for many network operations.
  */
- 
- 
+
+
 
 
 #include "shared.h"
@@ -57,7 +57,7 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
     ipv6 = 0;
     #endif
 
-    
+
     if(_proto == IPPROTO_UDP)
     {
         if((ossock = socket(ipv6 == 1?PF_INET6:PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
@@ -72,8 +72,8 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
         {
             return(int)(OS_SOCKTERR);
         }
-            
-        if(setsockopt(ossock, SOL_SOCKET, SO_REUSEADDR, 
+
+        if(setsockopt(ossock, SOL_SOCKET, SO_REUSEADDR,
                               (char *)&flag,  sizeof(flag)) < 0)
         {
             return(OS_SOCKTERR);
@@ -127,8 +127,8 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
             return(OS_SOCKTERR);
         }
     }
-    
-    
+
+
     return(ossock);
 }
 
@@ -162,7 +162,7 @@ int OS_BindUnixDomain(char * path, int mode, int max_msg_size)
 
     /* Making sure the path isn't there */
     unlink(path);
-    
+
     memset(&n_us, 0, sizeof(n_us));
     n_us.sun_family = AF_UNIX;
     strncpy(n_us.sun_path, path, sizeof(n_us.sun_path)-1);
@@ -175,23 +175,23 @@ int OS_BindUnixDomain(char * path, int mode, int max_msg_size)
         close(ossock);
         return(OS_SOCKTERR);
     }
-    
+
     /* Changing permissions */
     chmod(path,mode);
-    
-    
+
+
     /* Getting current maximum size */
     if(getsockopt(ossock, SOL_SOCKET, SO_RCVBUF, &len, &optlen) == -1)
         return(OS_SOCKTERR);
-    
-                    
+
+
     /* Setting socket opt */
     if(len < max_msg_size)
     {
         len = max_msg_size;
         setsockopt(ossock, SOL_SOCKET, SO_RCVBUF, &len, optlen);
     }
-                                            
+
     return(ossock);
 }
 
@@ -235,8 +235,8 @@ int OS_ConnectUnixDomain(char * path, int max_msg_size)
         len = max_msg_size;
         setsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, optlen);
     }
-    
-    
+
+
     /* Returning the socket */	
     return(ossock);
 }
@@ -250,14 +250,14 @@ int OS_getsocketsize(int ossock)
     /* Getting current maximum size */
     if(getsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, &optlen) == -1)
         return(OS_SOCKTERR);
-    
-    return(len);    
+
+    return(len);
 }
 
 #endif
 
 /* OS_Connect v 0.1, 2004/07/21
- * Open a TCP/UDP client socket 
+ * Open a TCP/UDP client socket
  */
 int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6)
 {
@@ -296,7 +296,7 @@ int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6)
 
 
     if((_ip == NULL)||(_ip[0] == '\0'))
-        return(OS_INVALID);        
+        return(OS_INVALID);
 
 
     if(ipv6 == 1)
@@ -338,7 +338,7 @@ int OS_ConnectTCP(unsigned int _port, char *_ip, int ipv6)
 
 
 /* OS_ConnectUDP, v0.1
- * Open a UDP socket 
+ * Open a UDP socket
  */
 int OS_ConnectUDP(unsigned int _port, char *_ip, int ipv6)
 {
@@ -363,7 +363,7 @@ int OS_SendTCPbySize(int socket, int size, char *msg)
 {
     if((send(socket, msg, size, 0)) < size)
         return (OS_SOCKTERR);
-        
+
     return(0);
 }
 
@@ -383,11 +383,11 @@ int OS_SendUDPbySize(int socket, int size, char *msg)
             return(OS_SOCKTERR);
         }
 
-        i++;    
+        i++;
         merror("%s: INFO: Remote socket busy, waiting %d s.", __local_name, i);
-        sleep(i);    
+        sleep(i);
     }
-        
+
     return(0);
 }
 
@@ -401,7 +401,7 @@ int OS_AcceptTCP(int socket, char *srcip, int addrsize)
     int clientsocket;
     struct sockaddr_in _nc;
     socklen_t _ncl;
-    
+
     memset(&_nc, 0, sizeof(_nc));
     _ncl = sizeof(_nc);
 
@@ -428,7 +428,7 @@ char *OS_RecvTCP(int socket, int sizet)
     ret = (char *) calloc((sizet), sizeof(char));
     if(ret == NULL)
         return(NULL);
-        
+
     if((retsize = recv(socket, ret, sizet-1,0)) <= 0)
         return(NULL);
 
@@ -465,7 +465,7 @@ int OS_RecvTCPBuffer(int socket, char *buffer, int sizet)
 char *OS_RecvUDP(int socket, int sizet)
 {
     char *ret;
-    
+
     ret = (char *) calloc((sizet), sizeof(char));
     if(ret == NULL)
         return(NULL);
@@ -487,8 +487,8 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
     recv_b = recv(socket, buffer, buffer_size, 0);
     if(recv_b < 0)
         return(0);
-    
-    return(recv_b);    
+
+    return(recv_b);
 }
 
 
@@ -499,7 +499,7 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
 int OS_RecvUnix(int socket, int sizet, char *ret)
 {
     ssize_t recvd;
-    if((recvd = recvfrom(socket, ret, sizet -1, 0, 
+    if((recvd = recvfrom(socket, ret, sizet -1, 0,
                          (struct sockaddr*)&n_us,&us_l)) < 0)
         return(0);
 
@@ -510,13 +510,13 @@ int OS_RecvUnix(int socket, int sizet, char *ret)
 
 /* OS_SendUnix, v0.1, 2004/07/29
  * Send a message using a Unix socket.
- * Returns the OS_SOCKETERR if it 
- */ 
+ * Returns the OS_SOCKETERR if it
+ */
 int OS_SendUnix(int socket, char * msg, int size)
 {
     if(size == 0)
         size = strlen(msg)+1;
-        
+
     if(send(socket, msg, size,0) < size)
     {
         if(errno == ENOBUFS)
@@ -524,7 +524,7 @@ int OS_SendUnix(int socket, char * msg, int size)
 
         return(OS_SOCKTERR);
     }
-    
+
     return(OS_SUCCESS);
 }
 #endif
@@ -537,13 +537,13 @@ char *OS_GetHost(char *host, int attempts)
 {
     int i = 0;
     int sz;
-    
+
     char *ip;
     struct hostent *h;
 
     if(host == NULL)
         return(NULL);
-    
+
     while(i <= attempts)
     {
         if((h = gethostbyname(host)) == NULL)

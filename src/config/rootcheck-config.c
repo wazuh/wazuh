@@ -28,12 +28,12 @@ short eval_bool(char *str)
 
 /* Read_Rootcheck: Reads the rootcheck config
  */
-int Read_Rootcheck(XML_NODE node, void *configp, void *mailp) 
+int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
 {
     int i = 0;
-    
+
     rkconfig *rootcheck;
-    
+
     /* XML Definitions */
     char *xml_rootkit_files = "rootkit_files";
     char *xml_rootkit_trojans = "rootkit_trojans";
@@ -47,7 +47,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
     char *xml_disabled = "disabled";
     char *xml_base_dir = "base_directory";
     char *xml_ignore = "ignore";
-    
+
     char *xml_check_dev = "check_dev";
     char *xml_check_files = "check_files";
     char *xml_check_if = "check_if";
@@ -131,12 +131,12 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
             int j = 0;
             while(rootcheck->unixaudit && rootcheck->unixaudit[j])
                 j++;
-            
-            os_realloc(rootcheck->unixaudit, sizeof(char *)*(j+2), 
+
+            os_realloc(rootcheck->unixaudit, sizeof(char *)*(j+2),
                        rootcheck->unixaudit);
             rootcheck->unixaudit[j] = NULL;
             rootcheck->unixaudit[j + 1] = NULL;
-                
+
             os_strdup(node[i]->content, rootcheck->unixaudit[j]);
         }
         else if(strcmp(node[i]->element, xml_ignore) == 0)
@@ -144,12 +144,12 @@ int Read_Rootcheck(XML_NODE node, void *configp, void *mailp)
             int j = 0;
             while(rootcheck->ignore && rootcheck->ignore[j])
                 j++;
-            
-            os_realloc(rootcheck->ignore, sizeof(char *)*(j+2), 
+
+            os_realloc(rootcheck->ignore, sizeof(char *)*(j+2),
                        rootcheck->ignore);
             rootcheck->ignore[j] = NULL;
             rootcheck->ignore[j + 1] = NULL;
-                
+
             os_strdup(node[i]->content, rootcheck->ignore[j]);
         }
         else if(strcmp(node[i]->element, xml_winmalware) == 0)

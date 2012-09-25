@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
+
     r_filter.group = NULL;
     r_filter.rule = NULL;
     r_filter.level = NULL;
@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     r_filter.related_srcip = 0;
     r_filter.related_user = 0;
     r_filter.related_file = 0;
-    
+
     r_filter.report_name = NULL;
 
     while((c = getopt(argc, argv, "Vdhstu:g:D:c:f:v:n:r:")) != -1)
@@ -96,8 +96,8 @@ int main(int argc, char **argv)
                 break;
             case 'r':
                 if(!optarg || !argv[optind])
-                    ErrorExit("%s: -r needs two argument",ARGV0);        
-                related_of = optarg;    
+                    ErrorExit("%s: -r needs two argument",ARGV0);
+                related_of = optarg;
                 related_values = argv[optind];
 
                 if(os_report_configfilter(related_of, related_values,
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
                 filter_by = optarg;
                 filter_value = argv[optind];
 
-                if(os_report_configfilter(filter_by, filter_value, 
+                if(os_report_configfilter(filter_by, filter_value,
                                           &r_filter, REPORT_FILTER) < 0)
                 {
                     ErrorExit(CONFIG_ERROR, ARGV0, "user argument");
@@ -140,7 +140,7 @@ int main(int argc, char **argv)
                 cfg = optarg;
                 break;
             case 't':
-                test_config = 1;    
+                test_config = 1;
                 break;
             case 's':
                 r_filter.show_alerts = 1;
@@ -161,18 +161,18 @@ int main(int argc, char **argv)
     if((uid < 0)||(gid < 0))
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
-    
+
 
     /* Exit here if test config is set */
     if(test_config)
         exit(0);
 
-        
+
     /* Privilege separation */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
-    
+
     /* chrooting */
     if(Privsep_Chroot(dir) < 0)
         ErrorExit(CHROOT_ERROR,ARGV0,dir);
@@ -180,8 +180,8 @@ int main(int argc, char **argv)
     nowChroot();
 
 
-    
-    /* Changing user */        
+
+    /* Changing user */
     if(Privsep_SetUser(uid) < 0)
         ErrorExit(SETUID_ERROR,ARGV0,user);
 
@@ -193,16 +193,16 @@ int main(int argc, char **argv)
     /* Signal manipulation */
     StartSIG(ARGV0);
 
-    
+
 
     /* Creating PID files */
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
 
-    
+
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
-    
+
     /* the real stuff now */	
     os_ReportdStart(&r_filter);
     exit(0);

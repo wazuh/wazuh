@@ -22,12 +22,12 @@
 
 
 /* Pattern maximum size */
-#define OS_PATTERN_MAXSIZE      2048   
+#define OS_PATTERN_MAXSIZE      2048
 
 
 /* Error codes */
 #define OS_REGEX_REG_NULL       1
-#define OS_REGEX_PATTERN_NULL   2 
+#define OS_REGEX_PATTERN_NULL   2
 #define OS_REGEX_MAXSIZE        3
 #define OS_REGEX_OUTOFMEMORY    4
 #define OS_REGEX_STR_NULL       5
@@ -70,7 +70,7 @@ typedef struct _OSMatch
  * The error code is set on reg->error.
  */
 int OSRegex_Compile(char *pattern, OSRegex *reg, int flags);
-       
+
 
 /** char *OSRegex_Execute(char *str, OSRegex *reg) v0.1
  * Compare an already compiled regular expression with
@@ -93,7 +93,7 @@ void OSRegex_FreePattern(OSRegex *reg);
  * Release all the memory created to store the sub strings.
  * Returns void.
  */
-void OSRegex_FreeSubStrings(OSRegex *reg);   
+void OSRegex_FreeSubStrings(OSRegex *reg);
 
 
 /** int OS_Regex(char *pattern, char *str) v0.4
@@ -105,7 +105,7 @@ void OSRegex_FreeSubStrings(OSRegex *reg);
 int OS_Regex(char *pattern, char *str);
 
 
-      
+
 /** int OSMatch_Compile(char *pattern, OSMatch *reg, int flags) v0.1
  * Compile a pattern to be used later.
  * Allowed flags are:
@@ -137,7 +137,7 @@ int OS_Match2(char *pattern, char *str);
 
 int OS_Match3(char *pattern, char *str, char* delimiter);
 
-    
+
 /* OS_WordMatch v0.3:
  * Searches for  pattern in the string
  */
@@ -150,7 +150,7 @@ int OS_WordMatch(char *pattern, char *str);
  * Returns a NULL terminated array on success or NULL on error.
  */
 char **OS_StrBreak(char match, char *str, int size);
-  
+
 
 /** int OS_StrHowClosedMatch(char *str1, char *str2) v0.1
  * Returns the number of characters that both strings
@@ -158,7 +158,7 @@ char **OS_StrBreak(char match, char *str, int size);
  */
 int OS_StrHowClosedMatch(char *str1, char *str2);
 
-  
+
 /** Inline prototypes **/
 
 
@@ -181,7 +181,7 @@ int OS_StrIsNum(char *str);
  * Checks if a specified char is in the following range:
  * a-z, A-Z, 0-9, _-.
  */
-#include "os_regex_maps.h" 
+#include "os_regex_maps.h"
 #define isValidChar(x) (hostname_map[(unsigned char)x])
 
 

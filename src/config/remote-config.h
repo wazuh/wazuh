@@ -14,7 +14,7 @@
 
 #define __CLOGREMOTE_H
 
-#define SYSLOG_CONN 1   
+#define SYSLOG_CONN 1
 #define SECURE_CONN 2
 #define UDP_PROTO   6
 #define TCP_PROTO   17
@@ -35,7 +35,7 @@ typedef struct _remoted
 
     int m_queue;
     int sock;
-    socklen_t peer_size; 
+    socklen_t peer_size;
 }remoted;
 
 #endif

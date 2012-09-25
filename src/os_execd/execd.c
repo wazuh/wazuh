@@ -35,17 +35,17 @@ OSList *timeout_list;
 OSListNode *timeout_node;
 OSHash *repeated_hash;
 int repeated_offenders_timeout[] = {0,0,0,0,0,0,0};
-            
 
 
-/** 
+
+/**
  * Shudowns execd properly.
  */
 void execd_shutdown()
 {
     /* Removing pending active responses. */
     merror(EXEC_SHUTDOWN, ARGV0);
-    
+
     timeout_node = OSList_GetFirstNode(timeout_list);
     while(timeout_node)
     {
@@ -85,7 +85,7 @@ int main(int argc, char **argv)
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
+
 
     while((c = getopt(argc, argv, "Vtdhfu:g:D:c:")) != -1){
         switch(c){
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
                 break;
             case 't':
                 test_config = 1;
-                break;    
+                break;
             default:
                 help(ARGV0);
                 break;
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
         ErrorExit(USER_ERROR,ARGV0,"",group);
 
 
-    /* Privilege separation */  
+    /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
@@ -148,18 +148,18 @@ int main(int argc, char **argv)
     /* Exit if test_config */
     if(test_config)
         exit(0);
-        
-        
+
+
     /* Signal manipulation */
     StartSIG2(ARGV0, execd_shutdown);
 
-    
-    if (!run_foreground) 
+
+    if (!run_foreground)
     {
         /* Going daemon */
         nowDaemon();
         goDaemon();
-    } 
+    }
 
 
     /* Active response disabled */
@@ -168,12 +168,12 @@ int main(int argc, char **argv)
         verbose(EXEC_DISABLED, ARGV0);
         exit(0);
     }
-    
+
     /* Creating the PID file */
     if(CreatePID(ARGV0, getpid()) < 0)
         merror(PID_ERROR, ARGV0);
 
-    
+
     /* Starting queue (exec queue) */
     if((m_queue = StartMQ(EXECQUEUEPATH,READ)) < 0)
         ErrorExit(QUEUE_ERROR, ARGV0, EXECQUEUEPATH, strerror(errno));
@@ -181,11 +181,11 @@ int main(int argc, char **argv)
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
-        
 
-    /* The real daemon Now */  
+
+    /* The real daemon Now */
     ExecdStart(m_queue);
-    
+
     exit(0);
 }
 
@@ -209,7 +209,7 @@ void FreeTimeoutEntry(void *timeout_entry_pt)
     {
         return;
     }
-    
+
     tmp_str = timeout_entry->command;
 
     /* Clearing the command arguments */
@@ -242,7 +242,7 @@ void ExecdStart(int q)
 {
     int i, childcount = 0;
     time_t curr_time;
-    
+
     char buffer[OS_MAXSTR + 1];
     char *tmp_msg = NULL;
     char *name;
@@ -254,20 +254,20 @@ void ExecdStart(int q)
     fd_set fdset;
     struct timeval socket_timeout;
 
-    
+
     /* Clearing the buffer */
     memset(buffer, '\0', OS_MAXSTR +1);
-    
-    
+
+
     /* Initializing the cmd arguments */
     for(i = 0; i<= MAX_ARGS +1; i++)
     {
         cmd_args[i] = NULL;
     }
-   
-    
+
+
     /* Creating list for timeout */
-    timeout_list = OSList_Create(); 
+    timeout_list = OSList_Create();
     if(!timeout_list)
     {
         ErrorExit(LIST_ERROR, ARGV0);
@@ -283,14 +283,14 @@ void ExecdStart(int q)
         repeated_hash = NULL;
     }
 
-    
-   
+
+
     /* Main loop. */
     while(1)
     {
         int timeout_value;
         int added_before = 0;
-    
+
         char **timeout_args;
         timeout_data *timeout_entry;
 
@@ -330,13 +330,13 @@ void ExecdStart(int q)
             timeout_data *list_entry;
 
             list_entry = (timeout_data *)timeout_node->data;
-            
+
             /* Timeouted */
-            if((curr_time - list_entry->time_of_addition) > 
+            if((curr_time - list_entry->time_of_addition) >
                     list_entry->time_to_block)
             {
                 ExecCmd(list_entry->command);
-                
+
                 /* Deletecurrently node already sets the pointer to next */
                 OSList_DeleteCurrentlyNode(timeout_list);
                 timeout_node = OSList_GetCurrentlyNode(timeout_list);
@@ -353,7 +353,7 @@ void ExecdStart(int q)
             }
         }
 
-        
+
         /* Setting timeout to EXECD_TIMEOUT */
         socket_timeout.tv_sec = EXECD_TIMEOUT;
         socket_timeout.tv_usec= 0;
@@ -394,8 +394,8 @@ void ExecdStart(int q)
 
         /* Getting application name */
         name = buffer;
-        
-        
+
+
         /* Zeroing the name */
         tmp_msg = strchr(buffer, ' ');
         if(!tmp_msg)
@@ -428,10 +428,10 @@ void ExecdStart(int q)
 
         /* Allocating memory for the timeout argument */
         os_calloc(MAX_ARGS+2, sizeof(char *), timeout_args);
-        
+
 
         /* Adding initial variables to the cmd_arg and to the timeout cmd */
-        cmd_args[0] = command; 
+        cmd_args[0] = command;
         cmd_args[1] = ADD_ENTRY;
         os_strdup(command, timeout_args[0]);
         os_strdup(DELETE_ENTRY, timeout_args[1]);
@@ -462,7 +462,7 @@ void ExecdStart(int q)
 
             i++;
         }
-        
+
 
         /* Check this command was already executed. */
         timeout_node = OSList_GetFirstNode(timeout_list);
@@ -476,15 +476,15 @@ void ExecdStart(int q)
             merror("%s: Invalid number of arguments.", ARGV0);
         }
 
-        
-        
+
+
         while(timeout_node)
         {
             timeout_data *list_entry;
 
             list_entry = (timeout_data *)timeout_node->data;
             if((strcmp(list_entry->command[3], timeout_args[3]) == 0) &&
-               (strcmp(list_entry->command[0], timeout_args[0]) == 0)) 
+               (strcmp(list_entry->command[0], timeout_args[0]) == 0))
             {
                 /* Means we executed this command before
                  * and we don't need to add it again.
@@ -495,7 +495,7 @@ void ExecdStart(int q)
                 /* updating the timeout */
                 list_entry->time_of_addition = curr_time;
 
-                if(repeated_offenders_timeout[0] != 0 && 
+                if(repeated_offenders_timeout[0] != 0 &&
                    repeated_hash != NULL &&
                    strncmp(timeout_args[3],"-", 1) != 0)
                 {
@@ -583,7 +583,7 @@ void ExecdStart(int q)
                   else
                   {
                       /* Adding to the repeated offenders list. */
-                      OSHash_Add(repeated_hash, 
+                      OSHash_Add(repeated_hash,
                            strdup(rkey),strdup("0"));
                   }
                 }
@@ -601,9 +601,9 @@ void ExecdStart(int q)
                 {
                     merror(LIST_ADD_ERROR, ARGV0);
                     FreeTimeoutEntry(timeout_entry);
-                } 
+                }
             }
-            
+
             /* If no timeout, we still need to free it in here */
             else
             {
@@ -619,7 +619,7 @@ void ExecdStart(int q)
 
             childcount++;
         }
-        
+
         /* We didn't add it to the timeout list */
         else
         {

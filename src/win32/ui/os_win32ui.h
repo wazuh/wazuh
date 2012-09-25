@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -50,7 +50,7 @@
 #define ST_MISSING_ALL      "Require import of authentication key.\r\n" \
                             "            Missing OSSEC Server IP address.\r\n" \
                             "            - Not Running..."
-                        
+
 
 
 /* Pre-def fields */

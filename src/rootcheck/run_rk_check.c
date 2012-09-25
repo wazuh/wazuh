@@ -10,7 +10,7 @@
  * Foundation
  */
 
-  
+
 #include "shared.h"
 #include "rootcheck.h"
 
@@ -28,7 +28,7 @@ int notify_rk(int rk_type, char *msg)
         else if(rk_type == ALERT_SYSTEM_ERROR)
             printf("[ERR]: %s\n", msg);
         else if(rk_type == ALERT_POLICY_VIOLATION)
-            printf("[INFO]: %s\n", msg);    
+            printf("[INFO]: %s\n", msg);
         else
         {
             printf("[FAILED]: %s\n", msg);
@@ -37,12 +37,12 @@ int notify_rk(int rk_type, char *msg)
         printf("\n");
         return(0);
     }
-   
+
     /* No need to alert on that to the server */
     if(rk_type <= ALERT_SYSTEM_ERROR)
         return(0);
 
-    #ifdef OSSECHIDS    
+    #ifdef OSSECHIDS
     if(SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0)
     {
         merror(QUEUE_SEND, ARGV0);
@@ -59,17 +59,17 @@ int notify_rk(int rk_type, char *msg)
     }
     #endif
 
-    return(0);        
+    return(0);
 }
 
- 
+
 /* start_rk_daemon
  * Start the rootkit daemon variables
  */
 void start_rk_daemon()
 {
     return;
-        
+
     if(rootcheck.notify == QUEUE)
     {
     }
@@ -86,9 +86,9 @@ void run_rk_check()
 
     FILE *fp;
     OSList *plist;
-   
+
     #ifndef WIN32
-    /* Hard coding basedir */ 
+    /* Hard coding basedir */
     int i;
     char basedir[] = "/";
 
@@ -102,22 +102,22 @@ void run_rk_check()
         }
     }
     #else
-    
+
     /* Basedir for Windows */
     char basedir[] = "C:\\";
-    
+
     #endif
-    
-  
+
+
     /* Setting basedir */
     if(rootcheck.basedir == NULL)
     {
         rootcheck.basedir = basedir;
     }
 
-    
+
     time1 = time(0);
-    
+
     /*** Initial message ***/
     if(rootcheck.notify != QUEUE)
     {
@@ -128,15 +128,15 @@ void run_rk_check()
         printf("Be patient, it may take a few minutes to complete...\n");
         printf("\n");
     }
-    
- 
+
+
     /* Cleaning the global variables */
     rk_sys_count = 0;
     rk_sys_file[rk_sys_count] = NULL;
     rk_sys_name[rk_sys_count] = NULL;
 
-    
-    
+
+
     /* Sending scan start message */
     notify_rk(ALERT_POLICY_VIOLATION, "Starting rootcheck scan.");
     if(rootcheck.notify == QUEUE)
@@ -162,7 +162,7 @@ void run_rk_check()
             fp = fopen(rootcheck.rootkit_files, "r");
             if(!fp)
             {
-                merror("%s: No rootcheck_files file: '%s'",ARGV0, 
+                merror("%s: No rootcheck_files file: '%s'",ARGV0,
                         rootcheck.rootkit_files);
             }
 
@@ -175,8 +175,8 @@ void run_rk_check()
         }
     }
 
-  
-  
+
+
     /*** Second check. look for trojan entries in common binaries ***/
     if (rootcheck.checks.rc_trojans)
     {
@@ -186,7 +186,7 @@ void run_rk_check()
             merror("%s: No rootcheck_trojans file configured.", ARGV0);
             #endif
         }
-        
+
         else
         {
             fp = fopen(rootcheck.rootkit_trojans, "r");
@@ -210,7 +210,7 @@ void run_rk_check()
 
 
     #ifdef WIN32
-    
+
     /*** Getting process list ***/
     plist = os_get_process_list();
 
@@ -260,7 +260,7 @@ void run_rk_check()
             }
         }
     }
-    
+
     /* Windows Apps */
     if (rootcheck.checks.rc_winapps)
     {
@@ -283,7 +283,7 @@ void run_rk_check()
             }
         }
     }
-    
+
 
     /* Freeing process list */
     del_plist((void *)plist);
@@ -292,13 +292,13 @@ void run_rk_check()
 
     /** Checks for other non Windows. **/
     #else
-    
+
 
 
     /*** Unix audit check ***/
     if (rootcheck.checks.rc_unixaudit)
     {
-        if(rootcheck.unixaudit) 
+        if(rootcheck.unixaudit)
         {
             /* Getting process list. */
             plist = os_get_process_list();
@@ -330,53 +330,53 @@ void run_rk_check()
         }
     }
 
-    
+
     #endif
-    
-   
+
+
     /*** Third check, looking for files on the /dev ***/
     if (rootcheck.checks.rc_dev)
     {
         debug1("%s: DEBUG: Going into check_rc_dev", ARGV0);
         check_rc_dev(rootcheck.basedir);
     }
-    
+
     /*** Fourth check,  scan the whole system looking for additional issues */
     if (rootcheck.checks.rc_sys)
     {
         debug1("%s: DEBUG: Going into check_rc_sys", ARGV0);
         check_rc_sys(rootcheck.basedir);
     }
-    
+
     /*** Process checking ***/
     if (rootcheck.checks.rc_pids)
     {
-        debug1("%s: DEBUG: Going into check_rc_pids", ARGV0); 
+        debug1("%s: DEBUG: Going into check_rc_pids", ARGV0);
         check_rc_pids();
     }
 
     /*** Check all the ports ***/
     if (rootcheck.checks.rc_ports)
     {
-        debug1("%s: DEBUG: Going into check_rc_ports", ARGV0); 
-        check_rc_ports(); 
+        debug1("%s: DEBUG: Going into check_rc_ports", ARGV0);
+        check_rc_ports();
 
         /*** Check open ports ***/
-        debug1("%s: DEBUG: Going into check_open_ports", ARGV0); 
+        debug1("%s: DEBUG: Going into check_open_ports", ARGV0);
         check_open_ports();
     }
-        
+
     /*** Check interfaces ***/
     if (rootcheck.checks.rc_if)
     {
-        debug1("%s: DEBUG: Going into check_rc_if", ARGV0); 
+        debug1("%s: DEBUG: Going into check_rc_if", ARGV0);
         check_rc_if();
     }
-    
-    
-    debug1("%s: DEBUG: Completed with all checks.", ARGV0);    
-   
-   
+
+
+    debug1("%s: DEBUG: Completed with all checks.", ARGV0);
+
+
     /* Cleaning the global memory */
     {
         int li;
@@ -384,7 +384,7 @@ void run_rk_check()
         {
             if(!rk_sys_file[li] ||
                !rk_sys_name[li])
-                break; 
+                break;
 
             free(rk_sys_file[li]);
             free(rk_sys_name[li]);
@@ -393,7 +393,7 @@ void run_rk_check()
 
     /*** Final message ***/
     time2 = time(0);
-    
+
     if(rootcheck.notify != QUEUE)
     {
         printf("\n");
@@ -411,9 +411,9 @@ void run_rk_check()
     {
         merror("%s: INFO: Ending rootcheck scan.", ARGV0);
     }
-    
-            
-    debug1("%s: DEBUG: Leaving run_rk_check",ARGV0); 
+
+
+    debug1("%s: DEBUG: Leaving run_rk_check",ARGV0);
     return;
 }
 

@@ -17,8 +17,8 @@
 
 
 #include "shared.h"
-char *ip_address_regex = 
-     "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?" 
+char *ip_address_regex =
+     "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
      "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
 
 /* Global vars */
@@ -38,7 +38,7 @@ static char *_read_file(char *high_name, char *low_name, char *defines_file)
     char *buf_pt;
     char *tmp_buffer;
     char *ret;
-    
+
     #ifndef WIN32
     if(isChroot())
     {
@@ -52,7 +52,7 @@ static char *_read_file(char *high_name, char *low_name, char *defines_file)
     snprintf(def_file,OS_FLSIZE,"%s", defines_file);
     #endif
 
-                                                        
+
     fp = fopen(def_file, "r");
     if(!fp)
     {
@@ -97,7 +97,7 @@ static char *_read_file(char *high_name, char *low_name, char *defines_file)
         }
 
         tmp_buffer = buf_pt;
-        
+
         /* Getting the equal */
         buf_pt = strchr(buf_pt, '=');
         if(!buf_pt)
@@ -125,12 +125,12 @@ static char *_read_file(char *high_name, char *low_name, char *defines_file)
         {
             *tmp_buffer = '\0';
         }
-        
+
         os_strdup(buf_pt, ret);
         fclose(fp);
         return(ret);
     }
-    
+
     fclose(fp);
     return(NULL);
 }
@@ -214,7 +214,7 @@ int getDefine_Int(char *high_name, char *low_name, int min, int max)
     char *value;
     char *pt;
 
-    
+
     /* We first try to read from the local define file. */
     value = _read_file(high_name, low_name, OSSEC_LDEFINES);
     if(!value)
@@ -261,13 +261,13 @@ int OS_IPFound(char *ip_address, os_ip *that_ip)
     {
         return(!_true);
     }
-                                
+
     /* If negate is set */
     if(that_ip->ip[0] == '!')
     {
         _true = 0;
     }
-    
+
     /* Checking if ip is in thatip & netmask */
     if((net.s_addr & that_ip->netmask) == that_ip->ip_address)
     {
@@ -278,7 +278,7 @@ int OS_IPFound(char *ip_address, os_ip *that_ip)
     return(!_true);
 }
 
-     
+
 /** int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
  * Checks if ip_address is present on the "list_of_ips".
  * Returns 1 on success or 0 on failure.
@@ -294,16 +294,16 @@ int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
     {
         return(!_true);
     }
-                                        
+
     while(*list_of_ips)
     {
         os_ip *l_ip = *list_of_ips;
-        
+
         if(l_ip->ip[0] == '!')
         {
             _true = 0;
         }
-    
+
         if((net.s_addr & l_ip->netmask) == l_ip->ip_address)
         {
             return(_true);
@@ -312,9 +312,9 @@ int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
     }
 
     return(!_true);
-}    
+}
 
-     
+
 /** int OS_IsValidIP(char *ip)
  * Validates if an ip address is in the right
  * format.
@@ -337,13 +337,13 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
     {
         os_strdup(ip_address, final_ip->ip);
     }
-    
+
     if(*ip_address == '!')
     {
         ip_address++;
     }
-   
-    #ifndef WIN32 
+
+    #ifndef WIN32
     /* checking against the basic regex */
     if(!OS_PRegex(ip_address, ip_address_regex))
     {
@@ -361,8 +361,8 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
         tmp_ip = ip_address;
         while(*tmp_ip != '\0')
         {
-            if((*tmp_ip < '0' || 
-               *tmp_ip > '9') &&   
+            if((*tmp_ip < '0' ||
+               *tmp_ip > '9') &&
                *tmp_ip != '.' &&
                *tmp_ip != '/')
             {
@@ -380,13 +380,13 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
 
 
 
-    /* Getting the cidr/netmask if available */ 
+    /* Getting the cidr/netmask if available */
     tmp_str = strchr(ip_address,'/');
     if(tmp_str)
     {
         int cidr;
         struct in_addr net;
-        
+
         *tmp_str = '\0';
         tmp_str++;
 
@@ -425,7 +425,7 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
                 }
             }
         }
-        
+
         if((net.s_addr = inet_addr(ip_address)) <= 0)
         {
             if(strcmp("0.0.0.0", ip_address) == 0)
@@ -455,7 +455,7 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
     {
         struct in_addr net;
         nmask = 32;
-        
+
         if(strcmp("any", ip_address) == 0)
         {
             net.s_addr = 0;
@@ -465,14 +465,14 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
         {
             return(0);
         }
-        
+
         if(final_ip)
         {
             final_ip->ip_address = net.s_addr;
 
             if(!_mask_inited)
                 _init_masks();
-        
+
             final_ip->netmask = htonl(_netmasks[nmask]);
         }
 
@@ -506,11 +506,11 @@ int OS_IsonTime(char *time_str, char *ossec_time)
 
     /* Comparing against min/max value */
     if((strncmp(time_str, ossec_time, 5) >= 0)&&
-      (strncmp(time_str, ossec_time+5,5) <= 0))  
+      (strncmp(time_str, ossec_time+5,5) <= 0))
     {
         return(_true);
     }
-    
+
     return(!_true);
 }
 
@@ -534,13 +534,13 @@ char *__gethour(char *str, char *ossec_hour)
     int _size = 0;
     int chour = 0;
     int cmin = 0;
-    
+
     /* Invalid time format */
     if(!isdigit((int)*str))
     {
         merror(INVALID_TIME, __local_name, str);
     }
-    
+
 
     /* Hour */
     chour = atoi(str);
@@ -553,7 +553,7 @@ char *__gethour(char *str, char *ossec_hour)
         return(NULL);
 
     }
-    
+
     /* Going after the hour */
     while(isdigit((int)*str))
     {
@@ -567,8 +567,8 @@ char *__gethour(char *str, char *ossec_hour)
         merror(INVALID_TIME, __local_name, str);
         return(NULL);
     }
-    
-    
+
+
     /* Getting minute */
     if(*str == ':')
     {
@@ -586,7 +586,7 @@ char *__gethour(char *str, char *ossec_hour)
 
     /* Removing spaces */
     RM_WHITE(str);
-    
+
     if((*str == 'a') || (*str == 'A'))
     {
         str++;
@@ -603,19 +603,19 @@ char *__gethour(char *str, char *ossec_hour)
         if((*str == 'm') || (*str == 'M'))
         {
             chour += 12;
-            
+
             /* New hour must be valid */
             if(chour < 0 || chour >= 24)
             {
                 merror(INVALID_TIME, __local_name, str);
                 return(NULL);
             }
-                                                
+
             snprintf(ossec_hour, 6, "%02d:%02d", chour, cmin);
             str++;
             return(str);
         }
-        
+
     }
     else
     {
@@ -635,17 +635,17 @@ char *OS_IsValidTime(char *time_str)
     char first_hour[7];
     char second_hour[7];
     int ng = 0;
-    
+
     /* Must be not null */
     if(!time_str)
         return(NULL);
-    
-        
+
+
     /* Clearing memory */
     memset(first_hour, '\0', 7);
     memset(second_hour, '\0', 7);
-    
-    
+
+
     /* Removing white spaces */
     RM_WHITE(time_str);
 
@@ -660,7 +660,7 @@ char *OS_IsValidTime(char *time_str)
         RM_WHITE(time_str);
     }
 
-    
+
     /* Getting first hour */
     time_str = __gethour(time_str, first_hour);
     if(!time_str)
@@ -668,7 +668,7 @@ char *OS_IsValidTime(char *time_str)
 
     /* Removing white spaces */
     RM_WHITE(time_str);
-    
+
     if(*time_str != '-')
     {
         return(NULL);
@@ -683,7 +683,7 @@ char *OS_IsValidTime(char *time_str)
     time_str = __gethour(time_str, second_hour);
     if(!time_str)
         return(NULL);
-    
+
     RM_WHITE(time_str);
     if(*time_str != '\0')
     {
@@ -691,14 +691,14 @@ char *OS_IsValidTime(char *time_str)
     }
 
     os_calloc(13, sizeof(char), ret);
-    
+
     /* Fixing dump hours */
     if(strcmp(first_hour,second_hour) > 0)
     {
         snprintf(ret, 12, "!%s%s", second_hour, first_hour);
         return(ret);
     }
-    
+
     /* For the normal times */
     snprintf(ret, 12, "%c%s%s", ng == 0?'.':'!', first_hour, second_hour);
     return(ret);
@@ -715,8 +715,8 @@ int OS_IsAfterTime(char *time_str, char *ossec_time)
     /* Unique times can't have a !. */
     if(*ossec_time == '!')
         return(0);
-    
-        
+
+
     ossec_time++;
 
     /* Comparing against min/max value */
@@ -760,7 +760,7 @@ int OS_IsonDay(int week_day, char *ossec_day)
     /* Negative */
     if(ossec_day[7] == '!')
         _true = 0;
-    
+
     if(week_day < 0 || week_day > 7)
     {
         return(0);
@@ -769,8 +769,8 @@ int OS_IsonDay(int week_day, char *ossec_day)
     /* It is on the right day */
     if(ossec_day[week_day] == 1)
         return(_true);
-    
-    return(!_true);    
+
+    return(!_true);
 }
 
 
@@ -793,7 +793,7 @@ char *OS_IsValidDay(char *day_str)
     int i = 0, ng = 0;
     char *ret;
     char day_ret[9] = {0,0,0,0,0,0,0,0,0};
-    char *(days[]) = 
+    char *(days[]) =
     {
         "sunday", "sun", "monday", "mon", "tuesday", "tue",
         "wednesday", "wed", "thursday", "thu", "friday",
@@ -804,10 +804,10 @@ char *OS_IsValidDay(char *day_str)
     /* Must be a valid string */
     if(!day_str)
         return(NULL);
-    
-    
+
+
     RM_WHITE(day_str);
-    
+
     /* checking for negatives */
     if(*day_str == '!')
     {
@@ -851,7 +851,7 @@ char *OS_IsValidDay(char *day_str)
             merror(INVALID_DAY, __local_name, day_str);
             return(NULL);
         }
-        
+
         day_str += strlen(days[i]);
 
         if(IS_SEP(day_str))
@@ -892,7 +892,7 @@ char *OS_IsValidDay(char *day_str)
         merror(INVALID_DAY, __local_name, day_str);
         return(NULL);
     }
-    
+
     return(ret);
 }
 

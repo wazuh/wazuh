@@ -6,7 +6,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -20,18 +20,18 @@ void OS_CompressLog(char *logfile)
 {
     FILE *log;
     gzFile *zlog;
-    
+
     char logfileGZ[OS_FLSIZE + 1];
     int len, err;
-    
+
     char buf[OS_MAXSTR + 1];
-    
+
 
     /* Do not compress */
     if(mond.compress == 0)
         return;
-        
-        
+
+
     /* Clearing the memory */
     memset(logfileGZ,'\0',OS_FLSIZE +1);
     memset(buf, '\0', OS_MAXSTR + 1);
@@ -52,7 +52,7 @@ void OS_CompressLog(char *logfile)
         /* Do not warn in here, since the alert file may not exist. */
         return;
     }
-    
+
     /* Opening compressed file */
     zlog = gzopen(logfileGZ, "w");
     if(!zlog)
@@ -61,7 +61,7 @@ void OS_CompressLog(char *logfile)
         merror(FOPEN_ERROR, ARGV0, logfileGZ);
         return;
     }
-    
+
     for(;;)
     {
         len = fread(buf, 1, OS_MAXSTR, log);
@@ -80,6 +80,6 @@ void OS_CompressLog(char *logfile)
 
     return;
 }
-	  
+	
 
 /* EOF */

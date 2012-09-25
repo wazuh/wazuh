@@ -16,10 +16,10 @@
 #include "os_net/os_net.h"
 
 
-int Read_Client(XML_NODE node, void *d1, void *d2) 
+int Read_Client(XML_NODE node, void *d1, void *d2)
 {
     int i = 0;
-    
+
     /* XML definitions */
     char *xml_client_ip = "server-ip";
     char *xml_client_hostname = "server-hostname";
@@ -72,7 +72,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
             os_realloc(logr->rip, (ip_id + 2) * sizeof(char*), logr->rip);
             logr->rip[ip_id] = NULL;
             logr->rip[ip_id +1] = NULL;
-            
+
             os_strdup(node[i]->content, logr->rip[ip_id]);
             if(OS_IsValidIP(logr->rip[ip_id], NULL) != 1)
             {
@@ -100,7 +100,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
             os_realloc(logr->rip, (ip_id + 2) * sizeof(char*),
                        logr->rip);
 
-            
+
             s_ip = OS_GetHost(node[i]->content, 5);
             if(!s_ip)
             {
@@ -110,7 +110,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
 
                 os_strdup("invalid_ip", s_ip);
             }
-            
+
 
             f_ip[127] = '\0';
             snprintf(f_ip, 127, "%s/%s", node[i]->content, s_ip);

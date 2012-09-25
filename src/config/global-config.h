@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 
 #ifndef _CCONFIG__H
 #define _CCONFIG__H
@@ -30,7 +30,7 @@ typedef struct __Config
     u_int8_t mailbylevel;
     u_int8_t logbylevel;
     u_int8_t logfw;
-    
+
     /* Prelude support */
     u_int8_t prelude;
     /* which min. level the alert must be sent to prelude */
@@ -47,14 +47,14 @@ typedef struct __Config
 
     /* Mail alerting */
     short int mailnotify;
-    
-    /* For the active response */  
+
+    /* For the active response */
     int ar;
-    
+
     /* For the correlation */
     int memorysize;
-   
-    /* List of files to ignore (syscheck) */ 
+
+    /* List of files to ignore (syscheck) */
     char **syscheck_ignore;
 
     /* List of ips to never block */

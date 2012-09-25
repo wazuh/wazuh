@@ -31,14 +31,14 @@
 short eval_bool2(char *str, short default_val)
 {
     short ret = default_val;
-    
+
     if (str == NULL)
         return(ret);
     else if (strcmp(str, "yes") == 0)
         ret = 1;
     else if (strcmp(str, "no") == 0)
         ret = 0;
-    
+
     free(str);
     return(ret);
 }
@@ -67,7 +67,7 @@ int Read_Rootcheck_Config(char * cfgfile)
     char *(xml_scanall[])={xml_rootcheck, "scanall", NULL};
     char *(xml_readall[])={xml_rootcheck, "readall", NULL};
     char *(xml_time[])={xml_rootcheck, "frequency", NULL};
-    
+
     char *(xml_check_dev[])={xml_rootcheck, "check_dev", NULL};
     char *(xml_check_files[])={xml_rootcheck, "check_files", NULL};
     char *(xml_check_if[])={xml_rootcheck, "check_if", NULL};
@@ -75,22 +75,22 @@ int Read_Rootcheck_Config(char * cfgfile)
     char *(xml_check_ports[])={xml_rootcheck, "check_ports", NULL};
     char *(xml_check_sys[])={xml_rootcheck, "check_sys", NULL};
     char *(xml_check_trojans[])={xml_rootcheck, "check_trojans", NULL};
-    
+
     #ifdef WIN32
-    
+
     char *(xml_check_winapps[])={xml_rootcheck, "check_winapps", NULL};
     char *(xml_check_winaudit[])={xml_rootcheck, "check_winaudit", NULL};
     char *(xml_check_winmalware[])={xml_rootcheck, "check_winmalware", NULL};
-    
+
     #else
-    
+
     char *(xml_check_unixaudit[])={xml_rootcheck, "check_unixaudit", NULL};
-    
+
     #endif
 
     /* :) */
     xml_time[2] = NULL;
-    
+
     if(OS_ReadXML(cfgfile,&xml) < 0)
     {
         merror("config_op: XML error: %s",xml.err);
@@ -126,8 +126,8 @@ int Read_Rootcheck_Config(char * cfgfile)
         str = NULL;
     }
     #endif
-    
-    
+
+
     /* Scan all flag */
     if(!rootcheck.scanall)
     {
@@ -140,8 +140,8 @@ int Read_Rootcheck_Config(char * cfgfile)
     {
         rootcheck.readall = eval_bool2(OS_GetOneContentforElement(&xml,xml_readall), 0);
     }
-    
-    
+
+
     /* Notifications type */
     str  = OS_GetOneContentforElement(&xml,xml_notify);
     if(str)
@@ -156,9 +156,9 @@ int Read_Rootcheck_Config(char * cfgfile)
                       "'syslog' or 'queue' are allowed.",ARGV0);
             return(-1);
         }
-        
+
         free(str);
-        str = NULL;           
+        str = NULL;
     }
     else
     {
@@ -168,15 +168,15 @@ int Read_Rootcheck_Config(char * cfgfile)
 
     /* Getting work directory */
     if(!rootcheck.workdir)
-        rootcheck.workdir  = OS_GetOneContentforElement(&xml,xml_workdir);    
-    
-    
+        rootcheck.workdir  = OS_GetOneContentforElement(&xml,xml_workdir);
+
+
     rootcheck.rootkit_files  = OS_GetOneContentforElement
                                (&xml,xml_rootkit_files);
     rootcheck.rootkit_trojans  = OS_GetOneContentforElement
                                (&xml,xml_rootkit_trojans);
-    
-    rootcheck.unixaudit = OS_GetContents 
+
+    rootcheck.unixaudit = OS_GetContents
                                 (&xml,xml_rootkit_unixaudit);
 
     rootcheck.winaudit  = OS_GetOneContentforElement
@@ -187,7 +187,7 @@ int Read_Rootcheck_Config(char * cfgfile)
 
     rootcheck.winmalware  = OS_GetOneContentforElement
                                 (&xml,xml_rootkit_winmalware);
-                                
+
     rootcheck.basedir  = OS_GetOneContentforElement(&xml, xml_base_dir);
 
     rootcheck.checks.rc_dev = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_dev), 1);
@@ -199,22 +199,22 @@ int Read_Rootcheck_Config(char * cfgfile)
     rootcheck.checks.rc_trojans = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_trojans), 1);
 
     #ifdef WIN32
-    
+
     rootcheck.checks.rc_winapps = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_winapps), 1);
     rootcheck.checks.rc_winaudit = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_winaudit), 1);
     rootcheck.checks.rc_winmalware = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_winmalware), 1);
-    
+
     #else
-    
+
     rootcheck.checks.rc_unixaudit = eval_bool2(OS_GetOneContentforElement(&xml,xml_check_unixaudit), 1);
-    
+
     #endif
 
     OS_ClearXML(&xml);
- 
+
     debug1("%s: DEBUG: Daemon set to '%d'",ARGV0, rootcheck.daemon);
     debug1("%s: DEBUG: alert set to '%d'",ARGV0, rootcheck.notify);
-       
+
     return(0);
 }
 

@@ -49,18 +49,18 @@ void LogCollectorStart()
     char keepalive[1024];
 
 
-    
+
     /* To check for inode changes */
     struct stat tmp_stat;
-    
-                
+
+
     #ifndef WIN32
-    
+
     int int_error = 0;
     struct timeval fp_timeout;
-    
+
     #else
-    
+
     /* Checking if we are on vista. */
     checkVista();
 
@@ -70,12 +70,12 @@ void LogCollectorStart()
     {
         win_read_vista_sec();
     }
-    
+
     #endif
 
     debug1("%s: DEBUG: Entering LogCollectorStart().", ARGV0);
-    
-    
+
+
     /* Initializing each file and structure */
     for(i = 0;;i++)
     {
@@ -88,7 +88,7 @@ void LogCollectorStart()
         {
             if(logff[r].file && strcmp(logff[i].file, logff[r].file) == 0)
             {
-                merror("%s: WARN: Duplicated log file given: '%s'.", 
+                merror("%s: WARN: Duplicated log file given: '%s'.",
                        ARGV0, logff[i].file);
                 logff[i].file = NULL;
                 logff[i].command = NULL;
@@ -102,14 +102,14 @@ void LogCollectorStart()
         {
             /* do nothing, duplicated entry. */
         }
-       
+
         else if(strcmp(logff[i].logformat,"eventlog") == 0)
         {
             #ifdef WIN32
-            
+
             verbose(READING_EVTLOG, ARGV0, logff[i].file);
             win_startel(logff[i].file);
-            
+
             #endif
             logff[i].file = NULL;
             logff[i].command = NULL;
@@ -135,7 +135,7 @@ void LogCollectorStart()
             }
             else
             {
-                merror("%s: ERROR: Missing command argument. Ignoring it.", 
+                merror("%s: ERROR: Missing command argument. Ignoring it.",
                        ARGV0);
             }
         }
@@ -156,16 +156,16 @@ void LogCollectorStart()
             else
             {
                 merror("%s: ERROR: Missing command argument. Ignoring it.",
-                       ARGV0); 
+                       ARGV0);
             }
         }
-        
+
         else
         {
             logff[i].command = NULL;
 
 
-            /* Initializing the files */    
+            /* Initializing the files */
             if(logff[i].ffile)
             {
                 /* Day must be zero for all files to be initialized */
@@ -178,26 +178,26 @@ void LogCollectorStart()
                 {
                     ErrorExit(PARSE_ERROR, ARGV0, logff[i].ffile);
                 }
-                    
+
             }
             else
             {
                 handle_file(i, 1, 1);
             }
-            
+
             verbose(READING_FILE, ARGV0, logff[i].file);
-            
+
             /* Getting the log type */
             if(strcmp("snort-full", logff[i].logformat) == 0)
             {
                 logff[i].read = (void *)read_snortfull;
             }
-            #ifndef WIN32 
+            #ifndef WIN32
             if(strcmp("ossecalert", logff[i].logformat) == 0)
             {
                 logff[i].read = (void *)read_ossecalert;
             }
-            #endif 
+            #endif
             else if(strcmp("nmapg", logff[i].logformat) == 0)
             {
                 logff[i].read = (void *)read_nmapg;
@@ -266,7 +266,7 @@ void LogCollectorStart()
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
-        
+
     max_file = i -1;
 
 
@@ -275,8 +275,8 @@ void LogCollectorStart()
     {
         max_file = 0;
     }
-    
-    
+
+
     /* Daemon loop */
     while(1)
     {
@@ -284,7 +284,7 @@ void LogCollectorStart()
         fp_timeout.tv_sec = loop_timeout;
         fp_timeout.tv_usec = 0;
 
-        /* Waiting for the select timeout */ 
+        /* Waiting for the select timeout */
         if ((r = select(0, NULL, NULL, NULL, &fp_timeout)) < 0)
         {
             merror(SELECT_ERROR, ARGV0);
@@ -297,18 +297,18 @@ void LogCollectorStart()
             continue;
         }
         #else
-        
+
         /* Windows don't like select that way */
         sleep(loop_timeout + 2);
 
-        
+
         /* Check for messages in the event viewer */
         win_readel();
         #endif
-        
+
         f_check++;
 
-        
+
         /* Checking which file is available */
         for(i = 0; i <= max_file; i++)
         {
@@ -396,7 +396,7 @@ void LogCollectorStart()
                         logff[i].ign++;
                         continue;
                     }
-                    
+
                     #ifdef WIN32
                     logff[i].read(i, &r, 1);
                     #endif
@@ -408,19 +408,19 @@ void LogCollectorStart()
             }
         }
 
-        
+
         /* Only check bellow if check > VCHECK_FILES */
         if(f_check <= VCHECK_FILES)
             continue;
 
-            
+
         /* Send keep alive message */
 
         rand_keepalive_str(keepalive, 700);
         SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);
 
 
-        /* Zeroing f_check */    
+        /* Zeroing f_check */
         f_check = 0;
 
 
@@ -430,8 +430,8 @@ void LogCollectorStart()
             /* These are the windows logs or ignored files */
             if(!logff[i].file)
                 continue;
-            
-            
+
+
             /* Files with date -- check for day change */
             if(logff[i].ffile)
             {
@@ -456,8 +456,8 @@ void LogCollectorStart()
                     continue;
                 }
             }
-            
-            
+
+
             /* Check for file change -- if the file is open already */
             if(logff[i].fp)
             {
@@ -466,7 +466,7 @@ void LogCollectorStart()
                 {
                     fclose(logff[i].fp);
                     logff[i].fp = NULL;
-                    
+
                     merror(FILE_ERROR, ARGV0, logff[i].file);
                 }
 
@@ -506,21 +506,21 @@ void LogCollectorStart()
                     snprintf(msg_alert, 512, "ossec: File rotated (inode "
                                              "changed): '%s'.",
                                              logff[i].file);
-                     
+
                     /* Send message about log rotated  */
-                    SendMSG(logr_queue, msg_alert, 
+                    SendMSG(logr_queue, msg_alert,
                             "ossec-logcollector", LOCALFILE_MQ);
-                            
+
                     debug1("%s: DEBUG: File inode changed. %s",
                             ARGV0, logff[i].file);
-                    
+
                     fclose(logff[i].fp);
 
                     #ifdef WIN32
                     CloseHandle(logff[i].h);
                     CloseHandle(h1);
                     #endif
-                    
+
                     logff[i].fp = NULL;
                     handle_file(i, 0, 1);
                     continue;
@@ -536,11 +536,11 @@ void LogCollectorStart()
                     snprintf(msg_alert, 512, "ossec: File size reduced "
                                              "(inode remained): '%s'.",
                                              logff[i].file);
-                     
+
                     /* Send message about log rotated  */
-                    SendMSG(logr_queue, msg_alert, 
+                    SendMSG(logr_queue, msg_alert,
                             "ossec-logcollector", LOCALFILE_MQ);
-                            
+
                     debug1("%s: DEBUG: File size reduced. %s",
                             ARGV0, logff[i].file);
 
@@ -556,7 +556,7 @@ void LogCollectorStart()
                     CloseHandle(logff[i].h);
                     CloseHandle(h1);
                     #endif
-                    
+
                     logff[i].fp = NULL;
                     handle_file(i, 1, 1);
                 }
@@ -567,9 +567,9 @@ void LogCollectorStart()
                 }
                 #endif
             }
-            
-            
-            /* Too many errors for the file */ 
+
+
+            /* Too many errors for the file */
             if(logff[i].ign > open_file_attempts)
             {
                 /* 999 Maximum ignore */
@@ -577,7 +577,7 @@ void LogCollectorStart()
                 {
                     continue;
                 }
-                
+
                 merror(LOGC_FILE_ERROR, ARGV0, logff[i].file);
                 if(logff[i].fp)
                 {
@@ -586,7 +586,7 @@ void LogCollectorStart()
                     CloseHandle(logff[i].h);
                     #endif
                 }
-                    
+
                 logff[i].fp = NULL;
 
 
@@ -603,9 +603,9 @@ void LogCollectorStart()
                 logff[i].ign = 999;
                 continue;
             }
-           
-           
-            /* File not opened */ 
+
+
+            /* File not opened */
             if(!logff[i].fp)
             {
                 if(logff[i].ign >= 999)
@@ -631,13 +631,13 @@ int update_fname(int i)
 {
     struct tm *p;
     time_t __ctime = time(0);
-    
+
     char lfile[OS_FLSIZE + 1];
     size_t ret;
 
 
     p = localtime(&__ctime);
-    
+
 
     /* Handle file */
     if(p->tm_mday == _cday)
@@ -652,17 +652,17 @@ int update_fname(int i)
     {
         ErrorExit(PARSE_ERROR, ARGV0, logff[i].ffile);
     }
-    
-    
+
+
     /* Update the file name */
     if(strcmp(lfile, logff[i].file) != 0)
     {
         os_free(logff[i].file);
 
-        os_strdup(lfile, logff[i].file);    
+        os_strdup(lfile, logff[i].file);
 
         verbose(VAR_LOG_MON, ARGV0, logff[i].file);
-        
+
         /* Setting cday to zero because other files may need
          * to be changed.
          */
@@ -680,7 +680,7 @@ int handle_file(int i, int do_fseek, int do_log)
 {
     int fd;
     struct stat stat_fd;
-    
+
     /* We must be able to open the file, fseek and get the
      * time of change from it.
      */
@@ -703,10 +703,10 @@ int handle_file(int i, int do_fseek, int do_log)
         logff[i].fp = NULL;
         return(-1);
     }
-    
+
     logff[i].fd = stat_fd.st_ino;
     logff[i].size =  stat_fd.st_size;
-    
+
 
     #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
@@ -771,7 +771,7 @@ int handle_file(int i, int do_fseek, int do_log)
         }
         #endif
     }
-    
+
 
     /* Setting ignore to zero */
     logff[i].ign = 0;

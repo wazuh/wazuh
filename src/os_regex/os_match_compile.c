@@ -40,18 +40,18 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
     int i = 0;
     int count = 0;
     int end_of_string = 0;
-    
+
     char *pt;
     char *new_str;
     char *new_str_free = NULL;
 
-    
+
     /* Checking for references not initialized */
     if(reg == NULL)
     {
         return(0);
     }
-    
+
 
     /* Initializing OSRegex structure */
     reg->error = 0;
@@ -73,8 +73,8 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
         reg->error = OS_REGEX_MAXSIZE;
         goto compile_error;
     }
-    
-    
+
+
     /* Duping the pattern for our internal work */
     new_str = strdup(pattern);
     if(!new_str)
@@ -84,21 +84,21 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
     }
     new_str_free = new_str;
     pt = new_str;
-    
 
-    
+
+
     /* Getting the number of sub patterns */
     while(*pt != '\0')
     {
-        /* The pattern must be always lower case if 
+        /* The pattern must be always lower case if
          * case sensitive is set
          */
         if(!(flags & OS_CASE_SENSITIVE))
         {
             *pt = charmap[(uchar)*pt];
         }
-       
-        /* Number of sub patterns */ 
+
+        /* Number of sub patterns */
         if(*pt == OR)
         {
             count++;
@@ -107,17 +107,17 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
         {
             usstrstr = 1;
         }
-        pt++;    
+        pt++;
     }
-    
-    
+
+
     /* For the last pattern */
     count++;
     reg->patterns = calloc(count +1, sizeof(char *));
     reg->size = calloc(count +1, sizeof(int));
     reg->match_fp = calloc(count +1, sizeof(void *));
-    
-    
+
+
     /* Memory allocation error check */
     if(!reg->patterns || !reg->size || !reg->match_fp)
     {
@@ -134,12 +134,12 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
         reg->size[i] = 0;
     }
     i = 0;
-    
-    
+
+
     /* Reassigning pt to the beginning of the string */
     pt = new_str;
 
-    
+
     /* Getting the sub patterns */
     do
     {
@@ -155,7 +155,7 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
             /* Dupping the string */
             if(*new_str == BEGINREGEX)
                 reg->patterns[i] = strdup(new_str +1);
-            else     
+            else
                 reg->patterns[i] = strdup(new_str);
 
             /* Memory error */
@@ -199,7 +199,7 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
                 reg->match_fp[i] = _os_strstr;
                 reg->size[i] = strlen(reg->patterns[i]);
             }
-            
+
             else
             {
                 reg->match_fp[i] = _OS_Match;
@@ -223,16 +223,16 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
     /* Success return */
     free(new_str_free);
     return(1);
-    
-    
+
+
     /* Error handling */
     compile_error:
-    
+
     if(new_str_free)
     {
         free(new_str_free);
     }
-    
+
     OSMatch_FreePattern(reg);
 
     return(0);

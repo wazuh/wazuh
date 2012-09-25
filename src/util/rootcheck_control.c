@@ -22,7 +22,7 @@
 /** help **/
 void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: Manages the policy and auditing database.\n", 
+    printf("\nOSSEC HIDS %s: Manages the policy and auditing database.\n",
            ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
@@ -55,13 +55,13 @@ int main(int argc, char **argv)
     int active_only = 0, csv_output = 0;
 
     char shost[512];
-    
-    
-    
+
+
+
     /* Setting the name */
     OS_SetName(ARGV0);
-        
-    
+
+
     /* user arguments */
     if(argc < 2)
     {
@@ -85,17 +85,17 @@ int main(int argc, char **argv)
                 list_agents++;
                 break;
             case 's':
-                csv_output = 1;    
+                csv_output = 1;
                 break;
             case 'c':
                 active_only++;
-                break;    
+                break;
             case 'r':
                 resolved_only = 1;
-                break;    
+                break;
             case 'q':
                 resolved_only = 2;
-                break;    
+                break;
             case 'L':
                 show_last = 1;
                 break;
@@ -123,8 +123,8 @@ int main(int argc, char **argv)
         }
 
     }
-    
-    
+
+
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
@@ -133,14 +133,14 @@ int main(int argc, char **argv)
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
 	
-    
+
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
 	    ErrorExit(SETGID_ERROR,ARGV0, group);
     }
-    
-    
+
+
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
     {
@@ -150,7 +150,7 @@ int main(int argc, char **argv)
 
     /* Inside chroot now */
     nowChroot();
- 
+
 
     /* Setting the user */
     if(Privsep_SetUser(uid) < 0)
@@ -169,13 +169,13 @@ int main(int argc, char **argv)
     }
 
 
-    
+
     /* Listing available agents. */
     if(list_agents)
     {
         if(!csv_output)
         {
-            printf("\nOSSEC HIDS %s. List of available agents:", 
+            printf("\nOSSEC HIDS %s. List of available agents:",
                     ARGV0);
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, "
                    "Active/Local\n", shost);
@@ -188,7 +188,7 @@ int main(int argc, char **argv)
         printf("\n");
         exit(0);
     }
-    
+
 
 
     /* Update rootcheck database. */
@@ -218,7 +218,7 @@ int main(int argc, char **argv)
                     continue;
                 }
 
-                snprintf(full_path, OS_MAXSTR,"%s/%s", ROOTCHECK_DIR, 
+                snprintf(full_path, OS_MAXSTR,"%s/%s", ROOTCHECK_DIR,
                          entry->d_name);
 
                 fp = fopen(full_path, "w");
@@ -237,7 +237,7 @@ int main(int argc, char **argv)
             exit(0);
         }
 
-        else if((strcmp(agent_id, "000") == 0) || 
+        else if((strcmp(agent_id, "000") == 0) ||
                 (strcmp(agent_id, "local") == 0))
         {
             char final_dir[1024];
@@ -278,7 +278,7 @@ int main(int argc, char **argv)
         }
     }
 
-    
+
     /* Printing information from an agent. */
     if(info_agent)
     {
@@ -294,9 +294,9 @@ int main(int argc, char **argv)
             if(!csv_output)
             printf("\nPolicy and auditing events for local system '%s - %s':\n",
                     shost, "127.0.0.1");
-            
+
             print_rootcheck(NULL,
-                            NULL, NULL, resolved_only, csv_output, show_last); 
+                            NULL, NULL, resolved_only, csv_output, show_last);
         }
         else
         {
@@ -313,7 +313,7 @@ int main(int argc, char **argv)
             /* Getting netmask from ip. */
             final_ip[128] = '\0';
             final_mask[128] = '\0';
-            getNetmask(keys.keyentries[i]->ip->netmask, 
+            getNetmask(keys.keyentries[i]->ip->netmask,
                        final_mask, 128);
             snprintf(final_ip, 128, "%s%s",keys.keyentries[i]->ip->ip,
                      final_mask);
@@ -321,20 +321,20 @@ int main(int argc, char **argv)
             if(!csv_output)
             printf("\nPolicy and auditing events for agent "
                        "'%s (%s) - %s':\n",
-                       keys.keyentries[i]->name, keys.keyentries[i]->id, 
+                       keys.keyentries[i]->name, keys.keyentries[i]->id,
                        final_ip);
 
             print_rootcheck(keys.keyentries[i]->name,
-                            keys.keyentries[i]->ip->ip, NULL, 
+                            keys.keyentries[i]->ip->ip, NULL,
                             resolved_only, csv_output, show_last);
 
         }
-        
+
         exit(0);
     }
 
 
-    
+
     printf("\n** Invalid argument combination.\n");
     helpmsg();
 

@@ -10,7 +10,7 @@ int main(int argc, char ** argv)
     OS_XML xml;
     XML_NODE node = NULL;
 
-    
+
     /* File name must be given */
     if(argc < 2)
     {
@@ -18,8 +18,8 @@ int main(int argc, char ** argv)
         return(-1);
     }
 
-    
-    /* Reading the XML. Printing error and line number */ 
+
+    /* Reading the XML. Printing error and line number */
     if(OS_ReadXML(argv[1],&xml) < 0)
     {
         printf("OS_ReadXML error: %s, line :%d\n",xml.err, xml.err_line);
@@ -46,17 +46,17 @@ int main(int argc, char ** argv)
     {
         int j = 0;
         XML_NODE cnode;
-        
+
         cnode = OS_GetElementsbyNode(&xml, node[i]);
         if(cnode == NULL)
         {
             i++;
             continue;
         }
-        
+
         while(cnode[j])
         {
-            printf("Element: %s -> %s\n", 
+            printf("Element: %s -> %s\n",
                     cnode[j]->element,
                     cnode[j]->content);
             if(cnode[j]->attributes && cnode[j]->values)

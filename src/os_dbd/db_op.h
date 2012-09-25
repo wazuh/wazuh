@@ -12,7 +12,7 @@
  * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
- 
+
 /* Common API for dealing with databases */
 
 

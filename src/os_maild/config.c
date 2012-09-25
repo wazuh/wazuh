@@ -53,7 +53,7 @@ int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
         {
             verbose(MAIL_DIS, ARGV0);
         }
-        exit(0);        
+        exit(0);
     }
 
     return(0);

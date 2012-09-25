@@ -24,7 +24,7 @@ char **OS_StrBreak(char match, char *str, int size)
 {
     int count = 0;
     int i = 0;
-    
+
     char *tmp_str = str;
 
     char **ret;
@@ -40,7 +40,7 @@ char **OS_StrBreak(char match, char *str, int size)
         /* Memory error. Should provice a better way to detect it */
         return(NULL);
     }
-    
+
     /* Allocating memory to null */
     while(i <= size)
     {
@@ -62,13 +62,13 @@ char **OS_StrBreak(char match, char *str, int size)
                 goto error;
             }
 
-            /* Copying the string */   
+            /* Copying the string */
             ret[count][i-1] = '\0';
             strncpy(ret[count],tmp_str,i-1);
 
             tmp_str = ++str;
             count++;
-            i=0; 
+            i=0;
 
             continue;
         }

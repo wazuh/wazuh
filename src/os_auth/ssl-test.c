@@ -1,5 +1,5 @@
-/* 
- * 
+/*
+ *
  * Copyright (C) 2011 Trend Micro Inc. All rights reserved.
  *
  * OSSEC HIDS is a free software; you can redistribute it and/or modify
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
         printf("ERROR - host not set.\n");
         exit(1);
     }
-  
+
     /* Connecting via TCP */
     sock = socket(AF_INET,SOCK_STREAM, IPPROTO_TCP);
     if(sock < 0)
@@ -154,7 +154,7 @@ int main(int argc, char **argv)
     }
 
     printf("Connected!\n");
-    
+
 
     ret=SSL_write(ssl,TEST, sizeof(TEST));
     if(ret < 0)

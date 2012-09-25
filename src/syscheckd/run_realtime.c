@@ -140,7 +140,7 @@ int realtime_start()
         merror("%s: ERROR: Unable to initialize inotify.", ARGV0);
         return(-1);
     }
-    #endif    
+    #endif
 
     return(1);
 }
@@ -167,10 +167,10 @@ int realtime_adddir(char *dir)
 
         wd = inotify_add_watch(syscheck.realtime->fd,
                                dir,
-                               REALTIME_MONITOR_FLAGS); 
+                               REALTIME_MONITOR_FLAGS);
         if(wd < 0)
         {
-            merror("%s: ERROR: Unable to add directory to real time " 
+            merror("%s: ERROR: Unable to add directory to real time "
                    "monitoring: '%s'. %d %d", ARGV0, dir, wd, errno);
         }
         else
@@ -212,13 +212,13 @@ int realtime_process()
 
 
     len = read(syscheck.realtime->fd, buf, REALTIME_EVENT_BUFFER);
-    if (len < 0) 
+    if (len < 0)
     {
         merror("%s: ERROR: Unable to read from real time buffer.", ARGV0);
-    } 
+    }
     else if (len > 0)
     {
-        while (i < len) 
+        while (i < len)
         {
             event = (struct inotify_event *) &buf[i];
 
@@ -232,7 +232,7 @@ int realtime_process()
 
                 snprintf(wdchar, 32, "%d", event->wd);
 
-                snprintf(final_name, MAX_LINE, "%s/%s", 
+                snprintf(final_name, MAX_LINE, "%s/%s",
                          (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar),
                          event->name);
                 realtime_checksumfile(final_name);
@@ -281,7 +281,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
 
     if(dwerror != ERROR_SUCCESS)
     {
-        merror("%s: ERROR: real time call back called, but error is set.", 
+        merror("%s: ERROR: real time call back called, but error is set.",
                ARGV0);
         return;
     }
@@ -293,12 +293,12 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     rtlocald = OSHash_Get(syscheck.realtime->dirtb, wdchar);
     if(rtlocald == NULL)
     {
-        merror("%s: ERROR: real time call back called, but hash is empty.", 
+        merror("%s: ERROR: real time call back called, but hash is empty.",
                ARGV0);
         return;
     }
 
-        
+
 
     do
     {
@@ -370,11 +370,11 @@ int realtime_win32read(win32rtfim *rtlocald)
                                TRUE,
                                FILE_NOTIFY_CHANGE_FILE_NAME|FILE_NOTIFY_CHANGE_DIR_NAME|FILE_NOTIFY_CHANGE_SIZE|FILE_NOTIFY_CHANGE_LAST_WRITE,
                                0,
-                               &rtlocald->overlap, 
+                               &rtlocald->overlap,
                                RTCallBack);
     if(rc == 0)
     {
-        merror("%s: ERROR: Unable to set directory for monitoring: %s", 
+        merror("%s: ERROR: Unable to set directory for monitoring: %s",
                ARGV0, rtlocald->dir);
         sleep(2);
     }
@@ -404,7 +404,7 @@ int realtime_adddir(char *dir)
 
 
     os_calloc(1, sizeof(win32rtfim), rtlocald);
-    
+
 
     rtlocald->h = CreateFile(dir,
                              FILE_LIST_DIRECTORY,
@@ -415,8 +415,8 @@ int realtime_adddir(char *dir)
                              NULL);
 
 
-    if(rtlocald->h == INVALID_HANDLE_VALUE || 
-       rtlocald->h == NULL) 
+    if(rtlocald->h == INVALID_HANDLE_VALUE ||
+       rtlocald->h == NULL)
     {
         free(rtlocald);
         rtlocald = NULL;
@@ -436,7 +436,7 @@ int realtime_adddir(char *dir)
 
     if(OSHash_Get(syscheck.realtime->dirtb, wdchar))
     {
-        merror("%s: ERROR: Entry already in the real time hash: %s", 
+        merror("%s: ERROR: Entry already in the real time hash: %s",
                ARGV0, wdchar);
         CloseHandle(rtlocald->overlap.hEvent);
         free(rtlocald);

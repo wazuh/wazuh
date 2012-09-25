@@ -20,7 +20,7 @@
 #include "headers/defs.h"
 
 
- 
+
 int OS_MD5_SHA1_File(char *fname, char *prefilter_cmd, char *md5output, char *sha1output)
 {
     int n;
@@ -34,7 +34,7 @@ int OS_MD5_SHA1_File(char *fname, char *prefilter_cmd, char *md5output, char *sh
     SHA_CTX sha1_ctx;
     MD5_CTX md5_ctx;
 
-    
+
     /* Clearing the memory. */
     md5output[0] = '\0';
     sha1output[0] = '\0';

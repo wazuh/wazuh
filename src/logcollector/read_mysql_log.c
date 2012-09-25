@@ -41,13 +41,13 @@ void *read_mysql_log(int pos, int *rc, int drop_it)
     /* Getting new entry */
     while(fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL)
     {
-        
+
         /* Getting buffer size */
         str_len = strlen(str);
 
-        
+
         /* Getting the last occurence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) 
+        if ((p = strrchr(str, '\n')) != NULL)
         {
             *p = '\0';
 
@@ -62,8 +62,8 @@ void *read_mysql_log(int pos, int *rc, int drop_it)
         {
             need_clear = 1;
         }
-        
-        
+
+
         #ifdef WIN32
         if ((p = strrchr(str, '\r')) != NULL)
         {
@@ -85,14 +85,14 @@ void *read_mysql_log(int pos, int *rc, int drop_it)
         }
         #endif
 
-       
+
         /* Mysql messages have the following format:
          * 070823 21:01:30 xx
          */
         if((str_len > 18) &&
-           (str[6] == ' ') && 
-           (str[9] == ':') && 
-           (str[12] == ':') && 
+           (str[6] == ' ') &&
+           (str[9] == ':') &&
+           (str[12] == ':') &&
            isdigit((int)str[0]) &&
            isdigit((int)str[1]) &&
            isdigit((int)str[2]) &&
@@ -106,21 +106,21 @@ void *read_mysql_log(int pos, int *rc, int drop_it)
             strncpy(__mysql_last_time, str, 16);
             __mysql_last_time[15] = '\0';
 
-            
+
             /* Removing spaces and tabs */
             p = str + 15;
             while(*p == ' ' || *p == '\t')
             {
                 p++;
             }
-                
-                
+
+
             /* Valid MySQL message */
-            snprintf(buffer, OS_MAXSTR, "MySQL log: %s %s", 
+            snprintf(buffer, OS_MAXSTR, "MySQL log: %s %s",
                                         __mysql_last_time, p);
         }
-        
-        
+
+
         /* Multiple events at the same second share the same
          * time stamp.
          * 0909 2020 2020 2020 20
@@ -143,20 +143,20 @@ void *read_mysql_log(int pos, int *rc, int drop_it)
             {
                 p++;
             }
-           
-            /* Valid MySQL message */ 
-            snprintf(buffer, OS_MAXSTR, "MySQL log: %s %s", 
-                                        __mysql_last_time, p);     
+
+            /* Valid MySQL message */
+            snprintf(buffer, OS_MAXSTR, "MySQL log: %s %s",
+                                        __mysql_last_time, p);
         }
         else
         {
             continue;
         }
-        
-        
+
+
         debug2("%s: DEBUG: Reading mysql messages: '%s'", ARGV0, buffer);
 
-        
+
         /* Sending message to queue */
         if(drop_it == 0)
         {
@@ -169,11 +169,11 @@ void *read_mysql_log(int pos, int *rc, int drop_it)
                 }
             }
         }
-        
+
         continue;
     }
 
-    return(NULL); 
+    return(NULL);
 }
 
 /* EOF */

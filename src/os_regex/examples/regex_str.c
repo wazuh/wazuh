@@ -2,12 +2,12 @@
  * Under the public domain. It is just an example.
  * Some examples of usage for the os_regex library.
  */
- 
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
- 
-/* Must be included */ 
+
+/* Must be included */
 #include "os_regex.h"
 
 int main(int argc,char **argv)
@@ -17,7 +17,7 @@ int main(int argc,char **argv)
 
     /* OSRegex structure */
     OSRegex reg;
-    
+
     /* checking for arguments */
     if(argc != 3)
     {
@@ -33,7 +33,7 @@ int main(int argc,char **argv)
     if(OSRegex_Compile(argv[1], &reg, OS_RETURN_SUBSTRING))
     {
         char *retv;
-        /* If the execution succeeds, the substrings will be 
+        /* If the execution succeeds, the substrings will be
          * at reg.sub_strings
          */
         if((retv = OSRegex_Execute(argv[2], &reg)))
@@ -45,7 +45,7 @@ int main(int argc,char **argv)
             printf("next pt: '%s'\n", retv);
             /* Assigning reg.sub_strings to ret */
             ret = reg.sub_strings;
-            
+
             printf("substrings:\n");
             while(*ret)
             {
@@ -63,13 +63,13 @@ int main(int argc,char **argv)
 
         OSRegex_FreePattern(&reg);
     }
-   
+
     /* Compilation error */
     else
     {
         printf("Error: Regex Compile Error: %d\n", reg.error);
     }
-    
+
     return(r_code);
 }
 /* EOF */

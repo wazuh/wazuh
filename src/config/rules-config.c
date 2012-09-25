@@ -19,14 +19,14 @@
 
 
 
-static int cmpr(const void *a, const void *b) { 
+static int cmpr(const void *a, const void *b) {
     /*printf("%s - %s\n", *(char **)a, *(char **)b);*/
     return strcmp(*(char **)a, *(char **)b);
 }
 
 static int file_in_list(int list_size, char *f_name, char *d_name, char **alist)
 {
-    int i = 0; 
+    int i = 0;
     for(i=0; i<(list_size-1); i++)
     {
         if((strcmp(alist[i], f_name) == 0 || strcmp(alist[i], d_name) == 0))
@@ -34,7 +34,7 @@ static int file_in_list(int list_size, char *f_name, char *d_name, char **alist)
             return(1);
         }
     }
-    return(0); 
+    return(0);
 }
 
 int Read_Rules(XML_NODE node, void *configp, void *mailp)
@@ -46,14 +46,14 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
     int lists_size = 1;
     int decoders_size = 1;
 
-    
+
     char path[PATH_MAX +2];
     char f_name[PATH_MAX +2];
-    int start_point = 0; 
+    int start_point = 0;
     int att_count = 0;
     struct dirent *entry;
-    DIR *dfd; 
-    OSRegex regex; 
+    DIR *dfd;
+    OSRegex regex;
 
 
     /* XML definitions */
@@ -65,9 +65,9 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
     char *xml_rules_decoders_dir = "decoder_dir";
 
     _Config *Config;
-     
+
     Config = (_Config *)configp;
-     
+
     /* initialise OSRegex */
     regex.patterns = NULL;
     regex.prts_closure = NULL;
@@ -87,11 +87,11 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
             return(OS_INVALID);
         }
         /* Mail notification */
-        else if((strcmp(node[i]->element, xml_rules_include) == 0) || 
+        else if((strcmp(node[i]->element, xml_rules_include) == 0) ||
                 (strcmp(node[i]->element, xml_rules_rule) == 0))
         {
             rules_size++;
-            Config->includes = realloc(Config->includes, 
+            Config->includes = realloc(Config->includes,
                                        sizeof(char *)*rules_size);
             if(!Config->includes)
             {
@@ -189,7 +189,7 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
                     snprintf(f_name, PATH_MAX +1, "%s/%s", node[i]->content, entry->d_name);
 
                     /* Just ignore . and ..  */
-                    if((strcmp(entry->d_name,".") == 0) || (strcmp(entry->d_name,"..") == 0)) 
+                    if((strcmp(entry->d_name,".") == 0) || (strcmp(entry->d_name,"..") == 0))
                         continue;
 
                     /* no dups allowed */
@@ -216,7 +216,7 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
                         debug1("Regex does not match \"%s\"",  f_name);
                     }
                 }
-                
+
                 closedir(dfd);
                 /* Sort just then newly added items */
                 qsort(Config->decoders + start_point , decoders_size- start_point -1, sizeof(char *), cmpr);
@@ -267,7 +267,7 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
                     snprintf(f_name, PATH_MAX +1, "%s/%s", node[i]->content, entry->d_name);
 
                     /* Just ignore . and ..  */
-                    if((strcmp(entry->d_name,".") == 0) || (strcmp(entry->d_name,"..") == 0)) 
+                    if((strcmp(entry->d_name,".") == 0) || (strcmp(entry->d_name,"..") == 0))
                         continue;
 
                     /* no dups allowed */
@@ -294,7 +294,7 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
                         debug1("Regex does not match \"%s\"",  f_name);
                     }
                 }
-                
+
                 closedir(dfd);
                 /* Sort just then newly added items */
                 qsort(Config->includes + start_point , rules_size - start_point -1, sizeof(char *), cmpr);

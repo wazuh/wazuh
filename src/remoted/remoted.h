@@ -29,7 +29,7 @@
 int RemotedConfig(char *cfgfile, remoted *logr);
 
 /* Handle Remote connections */
-void HandleRemote(int position, int uid); 
+void HandleRemote(int position, int uid);
 
 /* Handle Syslog */
 void HandleSyslog();

@@ -29,7 +29,7 @@ typedef struct _OSList
     OSListNode *first_node;
     OSListNode *last_node;
     OSListNode *cur_node;
-    
+
     int currently_size;
     int max_size;
 

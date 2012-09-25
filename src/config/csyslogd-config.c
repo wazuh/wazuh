@@ -35,7 +35,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
     GeneralConfig *gen_config = (GeneralConfig *)config;
     SyslogConfig **syslog_config = (SyslogConfig **)gen_config->data;
 
-     
+
     /* Getting Granular mail_to size */
     if(syslog_config)
     {
@@ -43,7 +43,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
             s++;
     }
 
-    
+
     /* Allocating the memory for the config. */
     os_realloc(syslog_config, (s + 2) * sizeof(SyslogConfig *), syslog_config);
     os_calloc(1, sizeof(SyslogConfig), syslog_config[s]);
@@ -118,24 +118,24 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
                 else if(isdigit((int)*str_pt))
                 {
                     int id_i = 0;
-                    
+
                     r_id = atoi(str_pt);
                     debug1("%s: DEBUG: Adding '%d' to syslog alerting",
                            ARGV0, r_id);
-                    
+
                     if(syslog_config[s]->rule_id)
                     {
                         while(syslog_config[s]->rule_id[id_i])
                             id_i++;
                     }
-                    
+
                     os_realloc(syslog_config[s]->rule_id,
                                (id_i +2) * sizeof(int),
                                syslog_config[s]->rule_id);
-                    
+
                     syslog_config[s]->rule_id[id_i + i] = 0;
                     syslog_config[s]->rule_id[id_i] = r_id;
-                         
+
                     str_pt = strchr(str_pt, ',');
                     if(str_pt)
                     {
@@ -191,7 +191,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
         else if(strcmp(node[i]->element, xml_syslog_location) == 0)
         {
             os_calloc(1, sizeof(OSMatch),syslog_config[s]->location);
-            if(!OSMatch_Compile(node[i]->content, 
+            if(!OSMatch_Compile(node[i]->content,
                                 syslog_config[s]->location, 0))
             {
                 merror(REGEX_COMPILE, ARGV0, node[i]->content,
@@ -202,7 +202,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
         else if(strcmp(node[i]->element, xml_syslog_group) == 0)
         {
             os_calloc(1, sizeof(OSMatch),syslog_config[s]->group);
-            if(!OSMatch_Compile(node[i]->content, 
+            if(!OSMatch_Compile(node[i]->content,
                                 syslog_config[s]->group, 0))
             {
                 merror(REGEX_COMPILE, ARGV0, node[i]->content,
@@ -225,7 +225,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
         merror(XML_INV_CSYSLOG, ARGV0);
         return(OS_INVALID);
     }
-       
+
 
     gen_config->data = syslog_config;
     return(0);
