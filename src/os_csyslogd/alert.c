@@ -117,8 +117,12 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
 
 
     /* Remove the double quotes from "dangerous" fields */
-    json_safe_comment = os_strip_char(al_data->comment, '"');
-    json_safe_message = os_strip_char(al_data->log[0], '"');
+    if( (json_safe_comment = os_strip_char(al_data->comment, '"')) == NULL ) {
+        return(0);
+    }
+    if( (json_safe_message = os_strip_char(al_data->log[0], '"')) == NULL ) {
+        return(0);
+    }
 
     /* Inserting data */
     if(syslog_config->format == DEFAULT_CSYSLOG)

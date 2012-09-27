@@ -27,9 +27,7 @@ void os_trimcrlf(char *str);
 int os_substr(char *dest, const char *src, int position, int length);
 
 /* Remove a character from a string */
-char *os_strip_char(const char *source, char remove);
-
-
+char *os_strip_char(char *source, char remove);
 
 #endif
 

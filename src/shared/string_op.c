@@ -35,17 +35,34 @@ void os_trimcrlf(char *str)
 }
 
 /* Remove offending char (e.g., double quotes) from source */
-char *os_strip_char(const char *source, char remove) {
-    char *clean = malloc( strlen(source) + 1 );
+char *os_strip_char(char *source, char remove) {
+    char *clean;
+    char *iterator = source;
+    int length = 0;
     int i;
 
-    for( i=0; *source; source++ ) {
-        if ( *source != remove ) {
-            clean[i] = *source;
+    // Figure out how much memory to allocate
+    for( ; *iterator; iterator++ ) {
+        if ( *iterator != remove ) {
+            length++;
+        }
+    }
+
+    // Allocate the memory
+    if( (clean = malloc( length )) == NULL ) {
+        // Return NULL
+        return clean;
+    }
+
+    // Remove the characters
+    iterator=source;
+    for( i=0; *iterator; iterator++ ) {
+        if ( *iterator != remove ) {
+            clean[i] = *iterator;
             i++;
         }
     }
-    clean[i] = 0;
+    clean[i] = '\0';
 
     return clean;
 }
@@ -54,10 +71,14 @@ char *os_strip_char(const char *source, char remove) {
 int os_substr(char *dest, const char *src, int position, int length) {
     dest[0]='\0';
 
+    if( length <= 0  ) {
+        // Unsupported negative length string
+        return -3;
+    }
     if( src == NULL ) {
         return -2;
     }
-    if( position > strlen(src) ) {
+    if( position >= strlen(src) ) {
         return -1;
     }
 
