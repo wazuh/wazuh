@@ -1,4 +1,4 @@
-OSSEC v2.7-beta1
+OSSEC v2.7-beta2
 Copyright (C) 2012 Trend Micro Inc.
 
 Many thanks to everyone who contributed and helped with
@@ -16,7 +16,8 @@ who helped us since our first release (0.1).
   - Ahmet Ozturk <oahmet ( at )  metu.edu.tr>
   - Scott R. Shinn 
   - Jason Stelzer
-  - Stjepan
+  - Stjepan Gros
+  - Brad Lhotsky
   - cmlara
   - Dominic
   - JB Cheng
@@ -51,6 +52,9 @@ who helped us since our first release (0.1).
   - Danny Fullerton
   - Jeremy Hanmer
   - Pepe Sanz
+  - Kat
+  - cgzones
+  - Regis Houssin
   
   
 -Translations
