@@ -561,11 +561,6 @@ alert_data *GetAlertData(int flag, FILE *fp)
             free(new_sha1);
             new_sha1 = NULL;
         }
-        if(alertid)
-	{
-	    free(alertid);
-	    alertid = NULL;
-	}
         while(log_size > 0)
         {
             log_size--;
@@ -576,6 +571,12 @@ alert_data *GetAlertData(int flag, FILE *fp)
             }
         }
     }
+
+    if(alertid)
+	{
+		free(alertid);
+		alertid = NULL;
+	}
 
     /* We need to clean end of file before returning */
     clearerr(fp);
