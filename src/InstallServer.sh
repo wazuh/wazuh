@@ -121,8 +121,10 @@ for i in ${subdirs}; do
 done
 
 # Default for all directories
-chmod -R 550 ${DIR}
-chown -R root:${GROUP} ${DIR}
+chmod 550 ${DIR}
+chmod 550 ${DIR}/*
+chown root:${GROUP} ${DIR}
+chown root:${GROUP} ${DIR}/*
 
 # AnalysisD needs to write to alerts: log, mail and cmds
 chown -R ${USER}:${GROUP} ${DIR}/queue/alerts
@@ -146,8 +148,9 @@ chown -R ${USER}:${GROUP} ${DIR}/queue/rootcheck
 chmod -R 750 ${DIR}/queue/rootcheck
 chmod 740 ${DIR}/queue/rootcheck/* > /dev/null 2>&1
 
-chown -R ${USER}:${GROUP} ${DIR}/queue/diff
-chmod -R 750 ${DIR}/queue/diff
+chown ${USER}:${GROUP} ${DIR}/queue/diff
+chown ${USER}:${GROUP} ${DIR}/queue/diff/*
+chmod 750 ${DIR}/queue/diff
 chmod 740 ${DIR}/queue/diff/* > /dev/null 2>&1
 
 chown -R ${USER_REM}:${GROUP} ${DIR}/queue/agent-info
