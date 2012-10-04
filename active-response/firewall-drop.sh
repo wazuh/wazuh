@@ -95,22 +95,28 @@ lock()
         # So i increments 2 by 2 if the pid does not change.
         # If the pid keeps changing, we will increments one
         # by one and fail after MAX_ITERACTION
+
         if [ "$i" = "${MAX_ITERATION}" ]; then
-            for pid in `pgrep -x "${filename}"`; do
+            kill="false"
+            for pid in `pgrep -f "${filename}"`; do
                 if [ "x${pid}" = "x${C_PID}" ]; then
                     # Unlocking and exiting
                     kill -9 ${C_PID}
                     echo "`date` Killed process ${C_PID} holding lock." >> ${LOG_FILE}
+                    kill="true"
                     unlock;
-                    continue;
+                    i=0;
+                    S_PID="";
+                    break;
                 fi
             done
 
-            echo "`date` Unable kill process ${C_PID} holding lock." >> ${LOG_FILE}
-
-            # Unlocking and exiting
-            unlock;
-            exit 1;
+            if [ "x${kill}" = "false" ]; then
+                echo "`date` Unable kill process ${C_PID} holding lock." >> ${LOG_FILE}
+                # Unlocking and exiting
+                unlock;
+                exit 1;
+            fi
         fi
     done
 }
