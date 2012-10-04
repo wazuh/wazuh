@@ -20,6 +20,7 @@
 
 #include "config/csyslogd-config.h"
 
+#define OS_CSYSLOGD_MAX_TRIES 10
 
 /** Prototypes **/
 

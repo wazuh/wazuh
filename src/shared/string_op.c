@@ -49,10 +49,11 @@ char *os_strip_char(char *source, char remove) {
     }
 
     // Allocate the memory
-    if( (clean = malloc( length )) == NULL ) {
+    if( (clean = malloc( length + 1 )) == NULL ) {
         // Return NULL
-        return clean;
+        return NULL;
     }
+    memset(clean, '\0', length + 1);
 
     // Remove the characters
     iterator=source;
@@ -62,7 +63,6 @@ char *os_strip_char(char *source, char remove) {
             i++;
         }
     }
-    clean[i] = '\0';
 
     return clean;
 }

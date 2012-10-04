@@ -33,6 +33,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     int s = 0;
     time_t tm;
     struct tm *p;
+    int tries = 0;
 
     file_queue *fileq;
     alert_data *al_data;
@@ -45,7 +46,17 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 
     /* Initating file queue - to read the alerts */
     os_calloc(1, sizeof(file_queue), fileq);
-    Init_FileQueue(fileq, p, 0);
+    while( (Init_FileQueue(fileq, p, 0) ) < 0 ) {
+        tries++;
+        if( tries > OS_CSYSLOGD_MAX_TRIES ) {
+            merror("%s: ERROR: Could not open queue after %d tries, exiting!",
+                   ARGV0, tries
+            );
+            exit(1);
+        }
+        sleep(1);
+    }
+    merror("%s: INFO: File queue connected.", ARGV0 );
 
 
     /* Connecting to syslog. */
@@ -148,24 +159,27 @@ int field_add_truncated(char *dest, int size, const char *format, const char *va
                 ((value[0] != 'u') && (value[1] != 'n') && (value[4] != 'k'))
             )
     ) {
-        if( (truncated=malloc(field_sz)) == NULL ) {
-            // Memory error
-            return -3;
-        }
 
-        if( total_sz > available_sz ) {
-            // Truncate and add a trailer
-            os_substr(truncated, value, 0, field_sz - strlen(trailer) - 1);
-            strcat(truncated, trailer);
+        if( (truncated=malloc(field_sz + 1)) != NULL ) {
+            if( total_sz > available_sz ) {
+                // Truncate and add a trailer
+                os_substr(truncated, value, 0, field_sz - strlen(trailer));
+                strcat(truncated, trailer);
+            }
+            else {
+                strncpy(truncated,value,field_sz);
+            }
+
+            len = snprintf(buffer, available_sz, format, truncated);
+            strncat(dest, buffer, available_sz);
         }
         else {
-            strncpy(truncated,value,field_sz);
+            // Memory Error
+            len = -3;
         }
-
-        len = snprintf(buffer, available_sz, format, truncated);
-        strncat(dest, buffer, available_sz);
-        free(truncated);
     }
+    // Free the temporary pointer
+    free(truncated);
 
     return len;
 }
