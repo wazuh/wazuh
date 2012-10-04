@@ -6,7 +6,8 @@
 # Expect: srcip
 # Author: Ahmet Ozturk (ipfilter and IPSec)
 # Author: Daniel B. Cid (iptables)
-# Last modified: Feb 14, 2006
+# Author: cgzones 
+# Last modified: Oct 04, 2012
 
 UNAME=`uname`
 ECHO="/bin/echo"
@@ -111,7 +112,7 @@ lock()
                 fi
             done
 
-            if [ "x${kill}" = "false" ]; then
+            if [ "x${kill}" = "xfalse" ]; then
                 echo "`date` Unable kill process ${C_PID} holding lock." >> ${LOG_FILE}
                 # Unlocking and exiting
                 unlock;
