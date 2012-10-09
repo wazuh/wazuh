@@ -508,15 +508,24 @@ int pt_matches(char *str, char *pattern)
  */
 char *normalize_string(char *str)
 {
-    int str_sz = strlen(str) -1;
-    while(str[str_sz] == ' ' || str[str_sz] == '\t') {
+    unsigned int str_sz = strlen(str) - 1;
+
+    while(str[str_sz] == ' ' || str[str_sz] == '\t')
+    {
+        if(str_sz == 0)
+            break;
+
         str[str_sz--] = '\0';
     }
 
-    while(*str != '\0') {
-        if(*str == ' ' || *str == '\t') {
+    while(*str != '\0')
+    {
+        if(*str == ' ' || *str == '\t')
+        {
             str++;
-        } else {
+        }
+        else
+        {
             break;
         }
     }
