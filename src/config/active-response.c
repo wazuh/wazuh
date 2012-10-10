@@ -55,7 +55,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
         return(-1);
     }
-    chmod(DEFAULTARPATH, 0444);
+    chmod(DEFAULTARPATH, 0440);
 
 
     /* Allocating for the active-response */

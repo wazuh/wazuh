@@ -128,7 +128,7 @@ Install()
     echo "TYPE=\"${INSTYPE}\"" >> ${OSSEC_INIT}
     chmod 600 ${OSSEC_INIT}
     cp -pr ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
-    chmod 644 ${INSTALLDIR}${OSSEC_INIT}
+    chmod 640 ${INSTALLDIR}${OSSEC_INIT}
 
 
     # If update_rules is set, we need to tweak

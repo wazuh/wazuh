@@ -268,6 +268,8 @@ int CreatePID(char *name, int pid)
 
     fprintf(fp,"%d\n",pid);
 
+    chmod(file, 0640);
+
     fclose(fp);
 
     return(0);

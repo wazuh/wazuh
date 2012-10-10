@@ -154,15 +154,15 @@ chmod 750 ${DIR}/queue/diff
 chmod 740 ${DIR}/queue/diff/* > /dev/null 2>&1
 
 chown -R ${USER_REM}:${GROUP} ${DIR}/queue/agent-info
-chmod -R 755 ${DIR}/queue/agent-info
-chmod 744 ${DIR}/queue/agent-info/* > /dev/null 2>&1
+chmod -R 750 ${DIR}/queue/agent-info
+chmod 740 ${DIR}/queue/agent-info/* > /dev/null 2>&1
 chown -R ${USER_REM}:${GROUP} ${DIR}/queue/rids
-chmod -R 755 ${DIR}/queue/rids
-chmod 744 ${DIR}/queue/rids/* > /dev/null 2>&1
+chmod -R 750 ${DIR}/queue/rids
+chmod 740 ${DIR}/queue/rids/* > /dev/null 2>&1
 
 chown -R ${USER}:${GROUP} ${DIR}/queue/agentless
-chmod -R 755 ${DIR}/queue/agentless
-chmod 744 ${DIR}/queue/agentless/* > /dev/null 2>&1
+chmod -R 750 ${DIR}/queue/agentless
+chmod 740 ${DIR}/queue/agentless/* > /dev/null 2>&1
 
 
 # For the stats directory
@@ -172,12 +172,13 @@ chmod -R 750 ${DIR}/stats
 # For the logging user
 chown -R ${USER}:${GROUP} ${DIR}/logs
 chmod -R 750 ${DIR}/logs
+touch ${DIR}/logs/ossec.log
+chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
+chmod 660 ${DIR}/logs/ossec.log
+
 touch ${DIR}/logs/active-responses.log
 chown ${USER}:${GROUP} ${DIR}/logs/active-responses.log
 chmod 660 ${DIR}/logs/active-responses.log
-touch ${DIR}/logs/ossec.log
-chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
-chmod 664 ${DIR}/logs/ossec.log
 
 # For the rules directory
 ls ${DIR}/rules/*.xml > /dev/null 2>&1
@@ -195,6 +196,7 @@ if [ $? = 0 ]; then
 fi
     
 cp -pr ../etc/rules/* ${DIR}/rules/
+find ${DIR}/rules/ -type f -exec chmod 440 {} \;
 
 # If the local_rules is saved, moved it back
 ls ${DIR}/rules/saved_local_rules.xml.$$ > /dev/null 2>&1
@@ -212,21 +214,21 @@ chown -R root:${GROUP} ${DIR}/etc
 ls /etc/localtime > /dev/null 2>&1
 if [ $? = 0 ]; then
     cp -pL /etc/localtime ${DIR}/etc/;
-    chmod 555 ${DIR}/etc/localtime
+    chmod 440 ${DIR}/etc/localtime
     chown root:${GROUP} ${DIR}/etc/localtime 
 fi
 
 # Solaris Needs some extra files
 if [ "$UNAME" = "SunOS" ]; then
     mkdir -p ${DIR}/usr/share/lib/zoneinfo/
-    chmod -R 555 ${DIR}/usr/
+    chmod -R 550 ${DIR}/usr/
     cp -pr /usr/share/lib/zoneinfo/* ${DIR}/usr/share/lib/zoneinfo/
 fi
 
 ls /etc/TIMEZONE > /dev/null 2>&1
 if [ $? = 0 ]; then
     cp -p /etc/TIMEZONE ${DIR}/etc/;
-    chmod 555 ${DIR}/etc/TIMEZONE
+    chmod 550 ${DIR}/etc/TIMEZONE
 fi
                         
 
@@ -301,7 +303,7 @@ sh ./init/fw-check.sh execute > /dev/null
 cp -p ../active-response/*.sh ${DIR}/active-response/bin/
 cp -p ../active-response/firewalls/*.sh ${DIR}/active-response/bin/
 
-chmod 755 ${DIR}/active-response/bin/*
+chmod 550 ${DIR}/active-response/bin/*
 chown root:${GROUP} ${DIR}/active-response/bin/*
 
 chown root:${GROUP} ${DIR}/bin/*

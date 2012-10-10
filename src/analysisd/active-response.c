@@ -56,7 +56,7 @@ int AR_ReadConfig(int test_config, char *cfgfile)
 
 
     /* Setting right permission */
-    chmod(DEFAULTARPATH, 0444);
+    chmod(DEFAULTARPATH, 0440);
 
 
     /* Reading configuration */

@@ -88,7 +88,7 @@ int FTS_Init()
         if(fp_list)
             fclose(fp_list);
 
-        chmod(FTS_QUEUE, 0777);
+        chmod(FTS_QUEUE, 0770);
         fp_list = fopen(FTS_QUEUE, "r+");
         if(!fp_list)
         {
@@ -130,7 +130,7 @@ int FTS_Init()
         if(fp_ignore)
             fclose(fp_ignore);
 
-        chmod(IG_QUEUE, 0777);
+        chmod(IG_QUEUE, 0770);
         fp_ignore = fopen(IG_QUEUE, "r+");
         if(!fp_ignore)
         {
