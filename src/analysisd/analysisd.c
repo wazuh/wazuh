@@ -180,6 +180,7 @@ int main_analysisd(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
                 dir = optarg;
+                break;
             case 'c':
                 if(!optarg)
                     ErrorExit("%s: -c needs an argument",ARGV0);
