@@ -508,8 +508,14 @@ int pt_matches(char *str, char *pattern)
  */
 char *normalize_string(char *str)
 {
-    unsigned int str_sz = strlen(str) - 1;
-
+    unsigned int str_sz = strlen(str);
+    // return zero-length str as is
+    if (str_sz == 0) {
+       return str;
+    } else {
+        str_sz--;
+    }
+    // remove trailing spaces
     while(str[str_sz] == ' ' || str[str_sz] == '\t')
     {
         if(str_sz == 0)
@@ -517,7 +523,7 @@ char *normalize_string(char *str)
 
         str[str_sz--] = '\0';
     }
-
+    // ignore leading spaces
     while(*str != '\0')
     {
         if(*str == ' ' || *str == '\t')
