@@ -149,7 +149,7 @@ chmod -R 750 ${DIR}/queue/rootcheck
 chmod 740 ${DIR}/queue/rootcheck/* > /dev/null 2>&1
 
 chown ${USER}:${GROUP} ${DIR}/queue/diff
-chown ${USER}:${GROUP} ${DIR}/queue/diff/*
+chown ${USER}:${GROUP} ${DIR}/queue/diff/* > /dev/null 2>&1
 chmod 750 ${DIR}/queue/diff
 chmod 740 ${DIR}/queue/diff/* > /dev/null 2>&1
 
