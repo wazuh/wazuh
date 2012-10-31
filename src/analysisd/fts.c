@@ -88,7 +88,13 @@ int FTS_Init()
         if(fp_list)
             fclose(fp_list);
 
-        chmod(FTS_QUEUE, 0777);
+        chmod(FTS_QUEUE, 0640);
+
+        int uid = Privsep_GetUser(USER);
+        int gid = Privsep_GetGroup(GROUPGLOBAL);
+        if(uid>=0 && gid>=0)
+            chown(FTS_QUEUE, uid, gid);
+
         fp_list = fopen(FTS_QUEUE, "r+");
         if(!fp_list)
         {
@@ -130,7 +136,13 @@ int FTS_Init()
         if(fp_ignore)
             fclose(fp_ignore);
 
-        chmod(IG_QUEUE, 0777);
+        chmod(IG_QUEUE, 0640);
+
+        int uid = Privsep_GetUser(USER);
+        int gid = Privsep_GetGroup(GROUPGLOBAL);
+        if(uid>=0 && gid>=0)
+            chown(IG_QUEUE, uid, gid);
+
         fp_ignore = fopen(IG_QUEUE, "r+");
         if(!fp_ignore)
         {
