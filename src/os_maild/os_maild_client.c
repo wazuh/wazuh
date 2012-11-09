@@ -73,6 +73,51 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
         i++;
     }
 
+    if (al_data->old_md5) 
+    {
+        log_size = strlen(al_data->old_md5) + 16 + 4;
+        if(body_size > log_size)
+        {
+            strncat(logs, "Old md5sum was: ", 16);
+            strncat(logs, al_data->old_md5, body_size);
+            strncat(logs, "\r\n", 4);
+            body_size -= log_size;
+        }
+    }
+    if (al_data->new_md5) 
+    {
+        log_size = strlen(al_data->new_md5) + 16 + 4;
+        if(body_size > log_size)
+        {
+            strncat(logs, "New md5sum is : ", 16);
+            strncat(logs, al_data->new_md5, body_size);
+            strncat(logs, "\r\n", 4);
+            body_size -= log_size;
+        }
+    }
+    if (al_data->old_sha1) 
+    {
+        log_size = strlen(al_data->old_sha1) + 17 + 4;
+        if(body_size > log_size)
+        {
+            strncat(logs, "Old sha1sum was: ", 17);
+            strncat(logs, al_data->old_sha1, body_size);
+            strncat(logs, "\r\n", 4);
+            body_size -= log_size;
+        }
+    }
+    if (al_data->new_sha1) 
+    {
+        log_size = strlen(al_data->new_sha1) + 17 + 4;
+        if(body_size > log_size)
+        {
+            strncat(logs, "New sha1sum is : ", 17);
+            strncat(logs, al_data->new_sha1, body_size);
+            strncat(logs, "\r\n", 4);
+            body_size -= log_size;
+        }
+    }
+
 
     /* Subject */
     subject_host = strchr(al_data->location, '>');
@@ -152,6 +197,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
             al_data->comment,
             logs);
 #endif
+    debug2("OS_RecvMailQ: mail->body[%s]", mail->body);
 
     /* Checking for granular email configs */
     if(Mail->gran_to)

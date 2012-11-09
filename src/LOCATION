@@ -1,4 +1,4 @@
-DIR="/var/ossec27rc1f"
+DIR="/var/ossec"
 CC=gcc
 GCC=gcc
 CLANG=clang
