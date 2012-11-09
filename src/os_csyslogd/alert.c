@@ -171,6 +171,12 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
         field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
         field_add_truncated(syslog_msg, OS_SIZE_2048, " msg=%s", al_data->log[0], 2 );
+        if (al_data->new_md5 && al_data->new_sha1) {
+            field_add_string(syslog_msg, OS_SIZE_2048, " Previous MD5: %s", al_data->old_md5 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " Current MD5: %s", al_data->new_md5 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA1: %s", al_data->old_sha1 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA1: %s", al_data->new_sha1 );
+        }
     }
     else if(syslog_config->format == JSON_CSYSLOG)
     {
