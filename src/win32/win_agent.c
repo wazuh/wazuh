@@ -71,6 +71,7 @@ int main(int argc, char **argv)
 {
     char *tmpstr;
     char mypath[OS_MAXSTR +1];
+    char myfinalpath[OS_MAXSTR +1];
     char myfile[OS_MAXSTR +1];
 
     /* Setting the name */
@@ -79,6 +80,7 @@ int main(int argc, char **argv)
 
     /* Find where I'm */
     mypath[OS_MAXSTR] = '\0';
+    myfinalpath[OS_MAXSTR] = '\0';
     myfile[OS_MAXSTR] = '\0';
 
 
@@ -100,15 +102,14 @@ int main(int argc, char **argv)
     }
     chdir(mypath);
     getcwd(mypath, OS_MAXSTR -1);
-    strncat(mypath, "\\", OS_MAXSTR - (strlen(mypath) + 2));
-    strncat(mypath, myfile, OS_MAXSTR - (strlen(mypath) + 2));
+    snprintf(myfinalpath, OS_MAXSTR, "\"%s\\%s\"", mypath, myfile);
 
 
     if(argc > 1)
     {
         if(strcmp(argv[1], "install-service") == 0)
         {
-            return(InstallService(mypath));
+            return(InstallService(myfinalpath));
         }
         else if(strcmp(argv[1], "uninstall-service") == 0)
         {
