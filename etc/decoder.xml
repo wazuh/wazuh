@@ -1849,7 +1849,7 @@ Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh del
 -->
 
 <decoder name="ar_log"> 
-        <prematch>^Mon|^Tue|^Wed|^Thu|^Fri|^Sat|^Sun \S+\s+\d+ \d\d:\d\d:\d\d \S+ \d+ /\.+/active-response</prematch>
+        <prematch>^\w\w\w \S+\s+\d+ \d\d:\d\d:\d\d \S+ \d+ /\.+/active-response</prematch>
         <regex offset="after_prematch">/bin/(\S+) (\S+) - (\S+) (\d+.\d+) (\d+)</regex> 
         <order>action, status, srcip, id, extra_data</order> 
 </decoder>
