@@ -369,7 +369,7 @@ ConfigureClient()
         echo "3- ${configuring} $NAME."
         echo ""
 
-    if [[ "X${USER_AGENT_SERVER_IP}" = "X" && "X${USER_AGENT_SERVER_NAME}" = "X" ]]; then
+    if [ "X${USER_AGENT_SERVER_IP}" = "X" -a "X${USER_AGENT_SERVER_NAME}" = "X" ]; then
         # Looping and asking for server ip or hostname
         while [ 1 ]; do
             $ECHO "  3.1- ${serveraddr}: "
