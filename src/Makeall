@@ -103,6 +103,9 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ];
 
     elif [ "X$OS" = "XDarwin" ]; then
         echo "EEXTRA=-DDarwin -DHIGHFIRST" >> Config.OS
+
+    elif [ "X$OS" = "XFreeBSD" ]; then
+        echo "EEXTRA=-DFreeBSD" >> Config.OS
     
     else
         
