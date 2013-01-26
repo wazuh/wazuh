@@ -199,4 +199,19 @@
     <description>Multiple web server 503 error code (Service unavailable).</description>
     <group>web_scan,recon,</group>
   </rule>
+
+  <rule id="31164" level="6">
+    <if_sid>31100</if_sid>
+    <url>=%27|select%2B|insert%2B|%2Bfrom%2B|%2Bwhere%2B|%2Bunion%2B</url>
+    <description>SQL injection attempt.</description>
+    <group>attack,sqlinjection,</group>
+  </rule>
+
+  <rule id="31165" level="6">
+    <if_sid>31100</if_sid>
+    <url>%EF%BC%87|%EF%BC%87|%EF%BC%87|%2531|%u0053%u0045</url>
+    <description>SQL injection attempt.</description>
+    <group>attack,sqlinjection,</group>
+  </rule>
+
 </group> <!-- Web access log -->
