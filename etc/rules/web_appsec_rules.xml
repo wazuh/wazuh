@@ -88,7 +88,7 @@
   <!-- BAD/Annoying user agents -->
   <rule id="31508" level="6">
     <if_sid>31100</if_sid>
-    <match> "ZmEu"| "libwww-perl/</match>
+    <match> "ZmEu"| "libwww-perl/|"the beast"|"Morfeus|"ZmEu|"Nikto</match>
     <description>Blacklisted user agent (known malicious user agent).</description>
   </rule>
 
