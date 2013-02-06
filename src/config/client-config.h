@@ -24,6 +24,8 @@ typedef struct _agent
     int rip_id;
     char *lip;
     char **rip; /* remote (server) ip */
+    int notify_time;
+    int max_time_reconnect_try;
     char *profile;
 }agent;
 

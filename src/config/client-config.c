@@ -26,6 +26,9 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
     char *xml_local_ip = "local_ip";
     char *xml_client_port = "port";
     char *xml_ar_disabled = "disable-active-response";
+    char *xml_notify_time = "notify_time";
+    char *xml_max_time_reconnect_try = "time-reconnect";
+
     /* cmoraes */
     char *xml_profile_name = "config-profile";
 
@@ -33,6 +36,8 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
 
     logr = (agent *)d1;
 
+    logr->notify_time = 0;
+    logr->max_time_reconnect_try = 0;
 
     while(node[i])
     {
@@ -136,6 +141,24 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
                 merror(PORT_ERROR, ARGV0, logr->port);
                 return(OS_INVALID);
             }
+        }
+        else if(strcmp(node[i]->element,xml_notify_time) == 0)
+        {
+            if(!OS_StrIsNum(node[i]->content))
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+            logr->notify_time = atoi(node[i]->content);
+        }
+        else if(strcmp(node[i]->element,xml_max_time_reconnect_try) == 0)
+        {
+            if(!OS_StrIsNum(node[i]->content))
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+            logr->max_time_reconnect_try = atoi(node[i]->content);
         }
         else if(strcmp(node[i]->element,xml_ar_disabled) == 0)
         {
