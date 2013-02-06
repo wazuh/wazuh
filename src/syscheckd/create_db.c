@@ -190,9 +190,9 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
         buf = OSHash_Get(syscheck.fp, file_name);
         if(!buf)
         {
-            char alert_msg[912 +1];
+            char alert_msg[916 +1];	/* 912 -> 916 to accommodate a long.
 
-            alert_msg[912] = '\0';
+            alert_msg[916] = '\0';
 
             if(opts & CHECK_SEECHANGES)
             {
@@ -205,14 +205,14 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
             }
 
 
-            snprintf(alert_msg, 912, "%c%c%c%c%c%c%d:%d:%d:%d:%s:%s",
+            snprintf(alert_msg, 916, "%c%c%c%c%c%c%d:%d:%d:%d:%s:%s",
                 opts & CHECK_SIZE?'+':'-',
                 opts & CHECK_PERM?'+':'-',
                 opts & CHECK_OWNER?'+':'-',
                 opts & CHECK_GROUP?'+':'-',
                 opts & CHECK_MD5SUM?'+':'-',
                 sha1s,
-                opts & CHECK_SIZE?(int)statbuf.st_size:0,
+                opts & CHECK_SIZE?(long)statbuf.st_size:0,
                 opts & CHECK_PERM?(int)statbuf.st_mode:0,
                 opts & CHECK_OWNER?(int)statbuf.st_uid:0,
                 opts & CHECK_GROUP?(int)statbuf.st_gid:0,
@@ -226,9 +226,11 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
 
 
             /* Sending the new checksum to the analysis server */
-            alert_msg[912] = '\0';
-            snprintf(alert_msg, 912, "%d:%d:%d:%d:%s:%s %s",
-                     opts & CHECK_SIZE?(int)statbuf.st_size:0,
+            alert_msg[916] = '\0';
+
+            /* changed by chris st_size int to long, 912 to 916*/
+            snprintf(alert_msg, 916, "%d:%d:%d:%d:%s:%s %s",
+                     opts & CHECK_SIZE?(long)statbuf.st_size:0,
                      opts & CHECK_PERM?(int)statbuf.st_mode:0,
                      opts & CHECK_OWNER?(int)statbuf.st_uid:0,
                      opts & CHECK_GROUP?(int)statbuf.st_gid:0,
@@ -267,12 +269,12 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
                     }
                     else
                     {
-                        snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
+                        snprintf(alert_msg, 916, "%s %s", c_sum, file_name);
                     }
                 }
                 else
                 {
-                    snprintf(alert_msg, 912, "%s %s", c_sum, file_name);
+                    snprintf(alert_msg, 916, "%s %s", c_sum, file_name);
                 }
                 send_syscheck_msg(alert_msg);
             }
