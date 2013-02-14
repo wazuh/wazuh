@@ -88,7 +88,7 @@
   <!-- BAD/Annoying user agents -->
   <rule id="31508" level="6">
     <if_sid>31100</if_sid>
-    <match> "ZmEu"| "libwww-perl/</match>
+    <match> "ZmEu"| "libwww-perl/|"the beast"|"Morfeus|"ZmEu|"Nikto</match>
     <description>Blacklisted user agent (known malicious user agent).</description>
   </rule>
 
@@ -134,6 +134,16 @@
     <description>BBS delete.php exploit attempt.</description>
    </rule>
 
+  <!-- Simple shell.php command execution
+    -->
+  <rule id="31514" level="6">
+    <if_sid>31100</if_sid>
+    <url>shell.php</url>
+    <regex> "GET \S+/shell.php?cmd=</regex>
+    <description>Simple shell.php command execution.</description>
+   </rule>
+
+
   <!-- Anomaly rules - Used on common web attacks -->
   <rule id="31550" level="6">
     <if_sid>31100</if_sid>
@@ -141,12 +151,6 @@
     <regex> "GET /\S+.php?\S+%00</regex>
     <description>Anomaly URL query (attempting to pass null termination).</description>
    </rule>
-
-
-
-
-
-
 
 
 </group>
