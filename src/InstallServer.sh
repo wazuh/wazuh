@@ -237,15 +237,18 @@ chmod 770 ${DIR}/var/run
 chown root:${GROUP} ${DIR}/var/run
 
 # Moving the binary files
-cp -pr ../bin/ossec* ${DIR}/bin/
-cp -pr ../bin/manage_agents ${DIR}/bin/
-cp -pr ../bin/syscheck_update ${DIR}/bin/
-cp -pr ../bin/verify-agent-conf ${DIR}/bin/
-cp -pr ../bin/clear_stats ${DIR}/bin/
-cp -pr ../bin/list_agents ${DIR}/bin/
-cp -pr ../bin/agent_control ${DIR}/bin/
-cp -pr ../bin/syscheck_control ${DIR}/bin/
-cp -pr ../bin/rootcheck_control ${DIR}/bin/
+cp -pr addagent/manage_agents agentlessd/ossec-agentlessd \
+        analysisd/ossec-analysisd logcollector/ossec-logcollector \
+        monitord/ossec-monitord monitord/ossec-reportd \
+        os_execd/ossec-execd os_maild/ossec-maild \
+        remoted/ossec-remoted syscheckd/ossec-syscheckd ${DIR}/bin/
+cp -pr util/syscheck_update ${DIR}/bin/
+cp -pr util/verify-agent-conf ${DIR}/bin/
+cp -pr util/clear_stats ${DIR}/bin/
+cp -pr util/list_agents ${DIR}/bin/
+cp -pr util/agent_control ${DIR}/bin/
+cp -pr util/syscheck_control ${DIR}/bin/
+cp -pr util/rootcheck_control ${DIR}/bin/
 cp -pr ../contrib/util.sh ${DIR}/bin/
 chown root:${GROUP} ${DIR}/bin/util.sh
 chmod +x ${DIR}/bin/util.sh
