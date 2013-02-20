@@ -189,13 +189,13 @@ chown root:${GROUP} ${DIR}/var/run
 
 
 # Moving the binary files
-cp -pr ../bin/ossec-agentd ${DIR}/bin/
-cp -pr ../bin/agent-auth ${DIR}/bin/
-cp -pr ../bin/ossec-logcollector ${DIR}/bin/
-cp -pr ../bin/ossec-syscheckd ${DIR}/bin/
-cp -pr ../bin/ossec-execd ${DIR}/bin/
+cp -pr client-agent/ossec-agentd ${DIR}/bin/
+cp -pr os_auth/agent-auth ${DIR}/bin/
+cp -pr logcollector/ossec-logcollector ${DIR}/bin/
+cp -pr syscheckd/ossec-syscheckd ${DIR}/bin/
+cp -pr os_execd/ossec-execd ${DIR}/bin/
 cp -pr ./init/ossec-client.sh ${DIR}/bin/ossec-control
-cp -pr ../bin/manage_agents ${DIR}/bin/
+cp -pr addagent/manage_agents ${DIR}/bin/
 cp -pr ../contrib/util.sh ${DIR}/bin/
 chown root:${GROUP} ${DIR}/bin/util.sh
 chmod +x ${DIR}/bin/util.sh
