@@ -644,7 +644,7 @@
   </rule>
 
   <rule id="2936" level="12">
-    <if_sid>100107</if_sid>
+    <if_sid>2936</if_sid>
     <action>degraded</action>
     <description>SCSI RAID is now in a degraded status.</description>
   </rule>
