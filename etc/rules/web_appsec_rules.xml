@@ -88,7 +88,7 @@
   <!-- BAD/Annoying user agents -->
   <rule id="31508" level="6">
     <if_sid>31100</if_sid>
-    <match> "ZmEu"| "libwww-perl/|"the beast"|"Morfeus|"ZmEu|"Nikto</match>
+    <match> "ZmEu"| "libwww-perl/|"the beast"|"Morfeus|"ZmEu|"Nikto|"w3af.sourceforge.net</match>
     <description>Blacklisted user agent (known malicious user agent).</description>
   </rule>
 
@@ -122,7 +122,7 @@
     <if_sid>31100</if_sid>
     <url>uploadify.php</url>
     <regex> "GET /\S+/uploadify.php?src=http://\S+.php</regex>
-    <description>TimThumb vulnerability exploit attempt.</description>
+    <description>Uploadify vulnerability exploit attempt.</description>
    </rule>
 
   <!-- BBS delete.php skin_path.

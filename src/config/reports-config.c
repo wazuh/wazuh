@@ -31,7 +31,7 @@ static int _filter_arg(char *mystr)
         if((*mystr >= 'a' && *mystr <= 'z') ||
            (*mystr >= 'A' && *mystr <= 'Z') ||
            (*mystr >= '0' && *mystr <= '9') ||
-           *mystr == '-' || *mystr == '_')
+           *mystr == '-' || *mystr == '_' || *mystr == '.')
         {
             mystr++;
         }
