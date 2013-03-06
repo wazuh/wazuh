@@ -147,6 +147,13 @@
     <description>Ignoring google/msn/yahoo bots.</description>
   </rule>
 
+  <!-- Ignoring nginx 499's -->
+  <rule id="31141" level="0">
+    <if_sid>31101</if_sid>
+    <id>^499</id>
+    <description>Ignored 499's on nginx.</description>
+  </rule>
+
   
   <rule id="31151" level="10" frequency="10" timeframe="120">
     <if_matched_sid>31101</if_matched_sid>

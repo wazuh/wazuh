@@ -56,7 +56,7 @@
   <rule id="31504" level="6">
     <if_sid>31100</if_sid>
     <url>login.php</url>
-    <regex> "GET /\S+/admin/file_manager.php/login.php</regex>
+    <regex>/admin/\w+.php/login.php</regex>
     <description>osCommerce file manager login.php bypass attempt.</description>
    </rule>
 
@@ -141,6 +141,14 @@
     <url>shell.php</url>
     <regex> "GET \S+/shell.php?cmd=</regex>
     <description>Simple shell.php command execution.</description>
+   </rule>
+
+  <!-- PHPMyAdmin scans
+    -->
+  <rule id="31515" level="6">
+    <if_sid>31100</if_sid>
+    <url>phpMyAdmin/scripts/setup.php</url>
+    <description>PHPMyAdmin scans (looking for setup.php).</description>
    </rule>
 
 
