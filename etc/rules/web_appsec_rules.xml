@@ -101,7 +101,7 @@
   </rule>
 
   <!-- If we see frequent wp-login POST's, it is likely a bot. -->
-  <rule id="31510" level="6" frequency="4" timeframe="120" ignore="30">
+  <rule id="31510" level="6" frequency="5" timeframe="60" ignore="30">
     <if_matched_sid>31509</if_matched_sid>
     <same_source_ip />
     <description>WordPress wp-login.php brute force attempt.</description>
@@ -149,6 +149,14 @@
     <if_sid>31100</if_sid>
     <url>phpMyAdmin/scripts/setup.php</url>
     <description>PHPMyAdmin scans (looking for setup.php).</description>
+   </rule>
+
+  <!-- Suspicious URL's access 
+    -->
+  <rule id="31516" level="6">
+    <if_sid>31100</if_sid>
+    <url>.swp$|.bak$|/.htaccess|/server-status|/.ssh|/.history</url>
+    <description>Suspicious URL access.</description>
    </rule>
 
 
