@@ -101,7 +101,7 @@
   </rule>
 
   <!-- If we see frequent wp-login POST's, it is likely a bot. -->
-  <rule id="31510" level="6" frequency="5" timeframe="60" ignore="30">
+  <rule id="31510" level="8" frequency="6" timeframe="30">
     <if_matched_sid>31509</if_matched_sid>
     <same_source_ip />
     <description>WordPress wp-login.php brute force attempt.</description>
@@ -157,6 +157,27 @@
     <if_sid>31100</if_sid>
     <url>.swp$|.bak$|/.htaccess|/server-status|/.ssh|/.history</url>
     <description>Suspicious URL access.</description>
+   </rule>
+
+
+  <!-- Checking POST requests - Too many in a small type = likely a bot -->
+  <rule id="31530" level="3">
+    <if_sid>31100</if_sid>
+    <match>] "POST </match>
+    <options>no_log</options>
+    <description>POST request received.</description>
+   </rule>
+
+   <rule id="31531" level="0">
+    <if_sid>31530</if_sid>
+    <url>/wp-admin/|/administrator/</url>
+    <description>Ignoring often post requests inside /wp-admin and /admin.</description>
+   </rule>
+
+   <rule id="31533" level="10" timeframe="20" frequency="4">
+    <if_matched_sid>31530</if_matched_sid>
+    <same_source_ip />
+    <description>High amount of POST requests in a small period of time (likely bot).</description>
    </rule>
 
 
