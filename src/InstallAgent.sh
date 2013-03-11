@@ -67,7 +67,7 @@ elif [ "$UNAME" = "Darwin" ]; then
     id -u ${USER} > /dev/null 2>&1
     if [ ! $? = 0 ]; then
 
-        # Creating for 10.5
+        # Creating for <= 10.4
         /usr/bin/sw_vers 2>/dev/null| grep "ProductVersion" | grep -E "10.2.|10.3|10.4" > /dev/null 2>&1
         if [ $? = 0 ]; then
 
