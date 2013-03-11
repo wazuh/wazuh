@@ -15,7 +15,7 @@
 #ifndef __CRALERT_H
 #define __CRALERT_H
 
-#define CRALERT_MAIL_SET    0x001 
+#define CRALERT_MAIL_SET    0x001
 #define CRALERT_EXEC_SET    0x002
 #define CRALERT_READ_ALL    0x004
 #define CRALERT_FP_SET      0x010
@@ -37,7 +37,15 @@ typedef struct _alert_data
     int dstport;
     char *user;
     char *filename;
+    char *old_md5;
+    char *new_md5;
+    char *old_sha1;
+    char *new_sha1;
     char **log;
+#ifdef GEOIP
+    char *geoipdatasrc;
+    char *geoipdatadst;
+#endif
 }alert_data;
 
 

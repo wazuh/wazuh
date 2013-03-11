@@ -40,11 +40,11 @@ void *read_syslog(int pos, int *rc, int drop_it)
     while(fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL)
     {
         /* Getting the last occurence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) 
+        if ((p = strrchr(str, '\n')) != NULL)
         {
             *p = '\0';
         }
-        
+
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
          */
@@ -59,8 +59,8 @@ void *read_syslog(int pos, int *rc, int drop_it)
             debug1("%s: Message not complete. Trying again: '%s'", ARGV0,str);
             fsetpos(logff[pos].fp, &fp_pos);
             break;
-        }    
-        
+        }
+
         #ifdef WIN32
         if ((p = strrchr(str, '\r')) != NULL)
         {
@@ -81,10 +81,10 @@ void *read_syslog(int pos, int *rc, int drop_it)
             continue;
         }
         #endif
-                      
+
         debug2("%s: DEBUG: Reading syslog message: '%s'", ARGV0, str);
 
-        
+
         /* Sending message to queue */
         if(drop_it == 0)
         {
@@ -102,7 +102,13 @@ void *read_syslog(int pos, int *rc, int drop_it)
         /* Incorrectly message size */
         if(__ms)
         {
-            merror("%s: Large message size: '%s'", ARGV0, str);
+            // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)
+            // truncate str before logging to ossec.log
+#define OUTSIZE 4096
+            char buf[OUTSIZE + 1];
+            buf[OUTSIZE] = '\0';
+            snprintf(buf, OUTSIZE, "%s", str);
+            merror("%s: Large message size(length=%d): '%s...'", ARGV0, (int)strlen(str), buf);
             while(fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL)
             {
                 /* Getting the last occurence of \n */
@@ -113,12 +119,12 @@ void *read_syslog(int pos, int *rc, int drop_it)
             }
             __ms = 0;
         }
-        
+
         fgetpos(logff[pos].fp, &fp_pos);
         continue;
     }
 
-    return(NULL); 
+    return(NULL);
 }
 
 /* EOF */

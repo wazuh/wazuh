@@ -44,7 +44,9 @@ whatsmtp="SMTP sunucunuzun IP adresi veya ismi nedir?"
 
 # Part 3.1/agent
 serverip="OSSEC HIDS sunucusunun IP adresi nedir?"
+serveraddr="OSSEC HIDS sunucusunun IP adresi veya ismi nedir?"
 addingip="Sunucu IP adresi ekleniyor"
+addingname="Sunucu ismi ekleniyor"
 
 
 # Part 3.2

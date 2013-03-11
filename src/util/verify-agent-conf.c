@@ -48,7 +48,7 @@ int main(int argc, char **argv)
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
+
 
     /* printf ("Agrc [%d], Argv [%s]\n", argc, *argv); */
 
@@ -79,12 +79,12 @@ int main(int argc, char **argv)
                     helpmsg();
                     break;
             }
-    
+
         }
     }
 
-    
-    
+
+
     printf("\n%s: Verifying [%s].\n\n", ARGV0, ar);
 
     modules|= CLOCALFILE;
@@ -95,7 +95,7 @@ int main(int argc, char **argv)
         return(OS_INVALID);
     }
 
-    logff = log_config.config;       
+    logff = log_config.config;
 
     return(0);
 

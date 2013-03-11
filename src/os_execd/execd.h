@@ -32,7 +32,7 @@
 
 
 /* Maximum number of command arguments */
-#define MAX_ARGS    32 
+#define MAX_ARGS    32
 
 
 /* Execd select timeout -- in seconds */

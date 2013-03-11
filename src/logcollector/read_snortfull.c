@@ -23,15 +23,15 @@
 void *read_snortfull(int pos, int *rc, int drop_it)
 {
     int f_msg_size = OS_MAXSTR;
-    
+
     char *one = "one";
     char *two = "two";
-    
+
     char *p = NULL;
     char *q;
     char str[OS_MAXSTR + 1];
     char f_msg[OS_MAXSTR +1];
-    
+
     *rc = 0;
     str[OS_MAXSTR]='\0';
     f_msg[OS_MAXSTR] = '\0';
@@ -76,7 +76,7 @@ void *read_snortfull(int pos, int *rc, int drop_it)
                     f_msg_size -= strlen(str)+1;
                     p = two;
                 }
-                
+
                 /* If it is a preprocessor message, it will not have
                  * the classification.
                  */
@@ -85,10 +85,10 @@ void *read_snortfull(int pos, int *rc, int drop_it)
                     strncat(f_msg, "[Classification: Preprocessor] "
                                    "[Priority: 3] ", f_msg_size);
                     strncat(f_msg, ++q, f_msg_size -40);
-                    
+
                     /* Cleaning for next event */
                     p = NULL;
-                    
+
                     /* Sending the message */
                     if(drop_it == 0)
                     {
@@ -134,7 +134,7 @@ void *read_snortfull(int pos, int *rc, int drop_it)
                             }
                         }
                     }
-                    
+
                     f_msg[0] = '\0';
                     f_msg_size = OS_MAXSTR;
                     str[0] = '\0';

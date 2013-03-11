@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -32,8 +32,8 @@
  */
 void OS_DBD(DBConfig *db_config)
 {
-    time_t tm;     
-    struct tm *p;       
+    time_t tm;
+    struct tm *p;
 
     file_queue *fileq;
     alert_data *al_data;

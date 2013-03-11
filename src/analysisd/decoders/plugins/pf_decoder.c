@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -28,7 +28,7 @@ void *PF_Decoder_Init()
 }
 
 
-/* OpenBSD PF decoder 
+/* OpenBSD PF decoder
  * Will extract the action,srcip,dstip,protocol,srcport,dstport
  *
  * Examples:
@@ -38,7 +38,7 @@ void *PF_Decoder_Init()
  * Mar 30 15:54:22.174412 rule 3/(match) pass out on xl0: 192.168.2.10.1514 > 192.168.2.190.1030:  udp 89
  * Mar 30 17:47:40.390143 rule 2/(match) pass in on lo0: 127.0.0.1 > 127.0.0.1: icmp: echo reply
  * Mar 30 17:47:41.400075 rule 3/(match) pass out on lo0: 127.0.0.1 > 127.0.0.1: icmp: echo request
- */                             
+ */
 void *PF_Decoder_Exec(Eventinfo *lf)
 {
     int port_count = 0;
@@ -49,13 +49,13 @@ void *PF_Decoder_Exec(Eventinfo *lf)
     /* tmp_str should be: Mar 30 15:54:22.171929 rule 3/(match) pass out .. */
     tmp_str = strchr(lf->log, ')');
 
-    
+
     /* Didn't match */
     if(!tmp_str)
     {
         return(NULL);
     }
-    
+
     /* Going to the action entry */
     tmp_str++;
     if(*tmp_str != ' ')
@@ -83,7 +83,7 @@ void *PF_Decoder_Exec(Eventinfo *lf)
         return(NULL);
     }
 
-    
+
     /* Jumping to the src ip */
     tmp_str = strchr(tmp_str, ':');
     if(!tmp_str)
@@ -98,32 +98,32 @@ void *PF_Decoder_Exec(Eventinfo *lf)
     tmp_str++;
 
 
-    
+
     /* tmp_str should be: 192.168.2.10.1514 > .. */
     aux_str = strchr(tmp_str, ' ');
     if(!aux_str)
         return(NULL);
-    
-    
+
+
     /* Setting aux_str to 0 for strdup */
     *aux_str = '\0';
-    
+
     os_strdup(tmp_str, lf->srcip);
-    
+
     /* Aux str has a valid pointer to lf->log now */
     *aux_str = ' ';
     aux_str++;
-    
-    
-    
+
+
+
     /* Setting the source port if present */
     tmp_str = lf->srcip;
     while(*tmp_str != '\0')
     {
         if(*tmp_str == '.')
             port_count++;
-        
-        
+
+
         /* Found port */
         if(port_count == 4)
         {
@@ -132,7 +132,7 @@ void *PF_Decoder_Exec(Eventinfo *lf)
             os_strdup(tmp_str, lf->srcport);
             break;
         }
-        
+
         tmp_str++;
     }
 
@@ -152,14 +152,14 @@ void *PF_Decoder_Exec(Eventinfo *lf)
     tmp_str = strchr(aux_str, ':');
     if(!tmp_str)
         return(NULL);
-    
-    
+
+
     /* Setting aux_str to 0 for strdup */
     *tmp_str = '\0';
-        
+
     os_strdup(aux_str, lf->dstip);
-    
-            
+
+
     /* tmp str has a valid pointer to lf->log now */
     *tmp_str = ':';
     tmp_str++;
@@ -172,8 +172,8 @@ void *PF_Decoder_Exec(Eventinfo *lf)
     {
         if(*aux_str == '.')
             port_count++;
-        
-        
+
+
         /* Found port */
         if(port_count == 4)
         {
@@ -182,7 +182,7 @@ void *PF_Decoder_Exec(Eventinfo *lf)
             os_strdup(aux_str, lf->dstport);
             break;
         }
-        
+
         aux_str++;
     }
 
@@ -207,10 +207,10 @@ void *PF_Decoder_Exec(Eventinfo *lf)
         {
             os_strdup("TCP", lf->protocol);
         }
-        
+
         break;
     }
-    
+
     return(NULL);
 }
 

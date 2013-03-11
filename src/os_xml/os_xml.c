@@ -51,8 +51,8 @@ int _xml_fgetc(FILE *fp)
 
     if(c == '\n') /* add new line */
         _line++;
-    
-    return(c);    
+
+    return(c);
 }
 
 #define FGETC(fp) _xml_fgetc(fp)
@@ -75,7 +75,7 @@ void xml_error(OS_XML *_lxml, const char *msg,...)
     vfprintf(stderr, msg, args);
     fprintf(stderr, "\n\n");
 #endif
-    
+
     memset(_lxml->err,'\0', 128);
     vsnprintf(_lxml->err,127,msg,args);
     va_end(args);
@@ -106,9 +106,9 @@ void OS_ClearXML(OS_XML *_lxml)
     free(_lxml->ck);
     free(_lxml->ln);
     memset(_lxml->err,'\0', 128);
-    
+
     return;	
-    
+
 }
 
 
@@ -160,7 +160,7 @@ int OS_ReadXML(char *file, OS_XML *_lxml)
             return(-1);
         }
     }
-    
+
     fclose(fp);
     return(0);
 }
@@ -213,7 +213,7 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
     char closedelem[XML_MAXSIZE +1];
 
 
-    
+
     memset(elem,'\0',XML_MAXSIZE +1);
     memset(cont,'\0',XML_MAXSIZE +1);
     memset(closedelem,'\0',XML_MAXSIZE +1);
@@ -249,7 +249,7 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
             else if(r == 1)
                 continue;
         }
-        
+
         /* real checking */
         if((location == -1) && (prevv == 0))
         {
@@ -268,7 +268,7 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
             else
                 continue;
         }
-        
+
         else if((location == 0) && ((c == _R_CONFE) || (c == ' ')))
         {
             int _ge = 0;
@@ -281,7 +281,7 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
                 _ge = '/';
                 elem[count -1] = '\0';
             }
-            
+
             _writememory(elem, XML_ELEM, count+1, parent, _lxml);
             _currentlycont=_lxml->cur-1;
             if(c == ' ')
@@ -298,11 +298,11 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
                 _currentlycont = 0;
                 count = 0;
                 location = -1;
-             
+
                 memset(elem,'\0',XML_MAXSIZE);
                 memset(closedelem,'\0',XML_MAXSIZE);
                 memset(cont,'\0',XML_MAXSIZE);
-                
+
                 if(parent > 0)
                     return(0);
             }
@@ -310,9 +310,9 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
             {
                 count = 0;
                 location = 1;
-            }    
+            }
         }
-        
+
         else if((location == 2) &&(c == _R_CONFE))
         {
             closedelem[count]='\0';
@@ -400,7 +400,7 @@ int _writememory(char *str, short int type, unsigned int size,
     /* Allocating for the line */
     _lxml->ln = realloc(_lxml->ln,(_lxml->cur+1)*sizeof(int));
     _lxml->ln[_lxml->cur] = _line;
-    
+
     /* Attributes does not need to be closed */
     if(type == XML_ATTR)
         _lxml->ck[_lxml->cur] = 1;
@@ -452,7 +452,7 @@ int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
     int count = 0;
     int c;
     int c_to_match = 0;
-    
+
     char attr[XML_MAXSIZE+1];
     char value[XML_MAXSIZE+1];
 
@@ -464,7 +464,7 @@ int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
         if(count >= XML_MAXSIZE)
         {
             attr[count-1] = '\0';
-            xml_error(_lxml, 
+            xml_error(_lxml,
                     "XMLERR: Overflow attempt at attribute '%s'.",attr);
             return(-1);
         }
@@ -521,11 +521,11 @@ int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
         else if((location == 1)&&(c == c_to_match))
         {
             value[count]='\0';
-            
+
             location = 0;
             c_to_match = 0;
-            
-            _writememory(attr, XML_ATTR, strlen(attr)+1, 
+
+            _writememory(attr, XML_ATTR, strlen(attr)+1,
                     parent, _lxml);	
             _writecontent(value,count+1,_lxml->cur-1,_lxml);
             c = FGETC(fp);
@@ -548,7 +548,7 @@ int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
             value[count++]=c;
 
     }
-    
+
     xml_error(_lxml, "XMLERR: End of file while reading an attribute.");
     return(-1);
 }

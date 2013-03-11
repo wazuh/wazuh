@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -30,11 +30,11 @@
 
 
 /* Internal functions */
-int getattributes(char **attributes, 
+int getattributes(char **attributes,
                   char **values,
-                  int *id, int *level, 
+                  int *id, int *level,
                   int *maxsize, int *timeframe,
-                  int *frequency, int *accuracy, 
+                  int *frequency, int *accuracy,
                   int *noalert, int *ignore_time, int *overwrite);
 
 
@@ -61,15 +61,15 @@ void Rules_OP_CreateRules()
 /* Rules_OP_ReadRules, v0.3, 2005/03/21
  * Read the log rules.
  * v0.3: Fixed many memory problems.
- */ 
+ */
 int Rules_OP_ReadRules(char * rulefile)
 {
     OS_XML xml;
     XML_NODE node = NULL;
 
-    /* XML variables */ 
+    /* XML variables */
     /* These are the available options for the rule configuration */
-    
+
     char *xml_group = "group";
     char *xml_rule = "rule";
 
@@ -84,7 +84,7 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_comment = "description";
     char *xml_ignore = "ignore";
     char *xml_check_if_ignored = "check_if_ignored";
-    
+
     char *xml_srcip = "srcip";
     char *xml_srcport = "srcport";
     char *xml_dstip = "dstip";
@@ -108,17 +108,17 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_match_key_value = "match_key_value";
     char *xml_address_key = "address_match_key";
     char *xml_not_address_key = "not_address_match_key";
-    char *xml_address_key_value = "address_match_key_value";         
+    char *xml_address_key_value = "address_match_key_value";
 
     char *xml_if_sid = "if_sid";
     char *xml_if_group = "if_group";
     char *xml_if_level = "if_level";
     char *xml_fts = "if_fts";
-    
+
     char *xml_if_matched_regex = "if_matched_regex";
     char *xml_if_matched_group = "if_matched_group";
     char *xml_if_matched_sid = "if_matched_sid";
-    
+
     char *xml_same_source_ip = "same_source_ip";
     char *xml_same_src_port = "same_src_port";
     char *xml_same_dst_port = "same_dst_port";
@@ -128,16 +128,16 @@ int Rules_OP_ReadRules(char * rulefile)
     char *xml_dodiff = "check_diff";
 
     char *xml_different_url = "different_url";
-    
+
     char *xml_notsame_source_ip = "not_same_source_ip";
     char *xml_notsame_user = "not_same_user";
     char *xml_notsame_agent = "not_same_agent";
     char *xml_notsame_id = "not_same_id";
 
     char *xml_options = "options";
-    
+
     char *rulepath;
-    
+
     int i;
     int default_timeframe = 360;
 
@@ -160,11 +160,11 @@ int Rules_OP_ReadRules(char * rulefile)
         debug1("%s is the rulefile", rulefile);
         debug1("Not modifing the rule path");
     }
-    
-    
-    i = 0;    
-    
-    /* Reading the XML */       
+
+
+    i = 0;
+
+    /* Reading the XML */
     if(OS_ReadXML(rulepath,&xml) < 0)
     {
         merror(XML_ERROR, ARGV0, rulepath, xml.err, xml.err_line);
@@ -175,9 +175,9 @@ int Rules_OP_ReadRules(char * rulefile)
 
     /* Debug wrapper */
     debug2("%s: DEBUG: read xml for rule.", ARGV0);
-    
 
-    
+
+
     /* Applying any variable found */
     if(OS_ApplyVariables(&xml) != 0)
     {
@@ -188,7 +188,7 @@ int Rules_OP_ReadRules(char * rulefile)
 
     /* Debug wrapper */
     debug2("%s: DEBUG: XML Variables applied.", ARGV0);
-    
+
 
     /* Getting the root elements */
     node = OS_GetElementsbyNode(&xml,NULL);
@@ -196,7 +196,7 @@ int Rules_OP_ReadRules(char * rulefile)
     {
         merror(CONFIG_ERROR, ARGV0, rulepath);
         OS_ClearXML(&xml);
-        return(-1);    
+        return(-1);
     }
 
 
@@ -243,7 +243,7 @@ int Rules_OP_ReadRules(char * rulefile)
     }
 
 
-    /* Getting the rules now */   
+    /* Getting the rules now */
     i=0;
     while(node[i])
     {
@@ -251,7 +251,7 @@ int Rules_OP_ReadRules(char * rulefile)
 
         int j = 0;
 
-        /* Getting all rules for a global group */        
+        /* Getting all rules for a global group */
         rule = OS_GetElementsbyNode(&xml,node[i]);
         if(rule == NULL)
         {
@@ -264,7 +264,7 @@ int Rules_OP_ReadRules(char * rulefile)
         while(rule[j])
         {
             RuleInfo *config_ruleinfo = NULL;
-           
+
 
             /* Checking if the rule element is correct */
             if((!rule[j]->element)||
@@ -286,17 +286,17 @@ int Rules_OP_ReadRules(char * rulefile)
                 return(-1);
             }
 
-            
+
             /* Attribute block */
             {
                 int id = -1,level = -1,maxsize = 0,timeframe = 0;
                 int frequency = 0, accuracy = 1, noalert = 0, ignore_time = 0;
                 int overwrite = 0;
-                
+
                 /* Getting default time frame */
                 timeframe = default_timeframe;
 
-                
+
                 if(getattributes(rule[j]->attributes,rule[j]->values,
                             &id,&level,&maxsize,&timeframe,
                             &frequency,&accuracy,&noalert,
@@ -306,7 +306,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     OS_ClearXML(&xml);
                     return(-1);
                 }
-                
+
                 if((id == -1) || (level == -1))
                 {
                     merror("%s: No rule id or level specified for "
@@ -317,17 +317,17 @@ int Rules_OP_ReadRules(char * rulefile)
 
                 /* Allocating memory and initializing structure */
                 config_ruleinfo = zerorulemember(id, level, maxsize,
-                            frequency,timeframe, 
+                            frequency,timeframe,
                             noalert, ignore_time, overwrite);
-                
+
 
                 /* If rule is 0, set it to level 99 to have high priority.
-                 * set it to 0 again later 
+                 * set it to 0 again later
                  */
                  if(config_ruleinfo->level == 0)
                      config_ruleinfo->level = 99;
 
-                 
+
                  /* Each level now is going to be multiplied by 100.
                   * If the accuracy is set to 0 we don't multiply,
                   * so it will be at the end of the list. We will
@@ -345,7 +345,7 @@ int Rules_OP_ReadRules(char * rulefile)
                          config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                      }
                  }
-                                                 
+
             } /* end attributes/memory allocation block */
 
 
@@ -354,7 +354,7 @@ int Rules_OP_ReadRules(char * rulefile)
              * be fine
              */
             os_strdup(node[i]->values[0], config_ruleinfo->group);
-            
+
 
             /* Rule elements block */
             {
@@ -375,7 +375,7 @@ int Rules_OP_ReadRules(char * rulefile)
                 char *hostname = NULL;
                 char *extra_data = NULL;
                 char *program_name = NULL;
-                
+
                 XML_NODE rule_opt = NULL;
                 rule_opt =  OS_GetElementsbyNode(&xml,rule[j]);
                 if(rule_opt == NULL)
@@ -385,9 +385,9 @@ int Rules_OP_ReadRules(char * rulefile)
                             "other problems for the system. Exiting.",
                             ARGV0, config_ruleinfo->sigid);
                     OS_ClearXML(&xml);
-                    return(-1);       
+                    return(-1);
                 }
-                
+
                 while(rule_opt[k])
                 {
                     if((!rule_opt[k]->element)||(!rule_opt[k]->content))
@@ -406,15 +406,15 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element, xml_decoded)==0)
                     {
-                        config_ruleinfo->decoded_as = 
+                        config_ruleinfo->decoded_as =
                             getDecoderfromlist(rule_opt[k]->content);
-                        
+
                         if(config_ruleinfo->decoded_as == 0)
                         {
                             merror("%s: Invalid decoder name: '%s'.",
                                    ARGV0, rule_opt[k]->content);
                             OS_ClearXML(&xml);
-                            return(-1); 
+                            return(-1);
                         }
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_cve)==0)
@@ -427,7 +427,7 @@ int Rules_OP_ReadRules(char * rulefile)
                         else
                         {
                             for (last_info_detail = config_ruleinfo->info_details;
-                                    last_info_detail->next != NULL; 
+                                    last_info_detail->next != NULL;
                                     last_info_detail = last_info_detail->next)
                             {
                                 count_info_detail++;
@@ -454,13 +454,13 @@ int Rules_OP_ReadRules(char * rulefile)
 
                         if(config_ruleinfo->info_details == NULL)
                         {
-                            config_ruleinfo->info_details = zeroinfodetails(info_type, 
+                            config_ruleinfo->info_details = zeroinfodetails(info_type,
                                     rule_opt[k]->content);
                         }
                         else
                         {
                             for (last_info_detail = config_ruleinfo->info_details;
-                                    last_info_detail->next != NULL; 
+                                    last_info_detail->next != NULL;
                                     last_info_detail = last_info_detail->next) {
                                 count_info_detail++;
                             }
@@ -478,7 +478,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_day_time)==0)
                     {
-                        config_ruleinfo->day_time = 
+                        config_ruleinfo->day_time =
                             OS_IsValidTime(rule_opt[k]->content);
                         if(!config_ruleinfo->day_time)
                         {
@@ -493,9 +493,9 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_week_day)==0)
                     {
-                        config_ruleinfo->week_day = 
+                        config_ruleinfo->week_day =
                             OS_IsValidDay(rule_opt[k]->content);
-                            
+
                         if(!config_ruleinfo->week_day)
                         {
                             merror(INVALID_CONFIG, ARGV0,
@@ -521,7 +521,7 @@ int Rules_OP_ReadRules(char * rulefile)
                         {
                             *newline = ' ';
                         }
-                        
+
                         config_ruleinfo->comment=
                             loadmemory(config_ruleinfo->comment,
                                     rule_opt[k]->content);
@@ -529,27 +529,27 @@ int Rules_OP_ReadRules(char * rulefile)
                     else if(strcasecmp(rule_opt[k]->element,xml_srcip)==0)
                     {
                         int ip_s = 0;
-                        
+
                         /* Getting size of source ip list */
-                        while(config_ruleinfo->srcip && 
+                        while(config_ruleinfo->srcip &&
                               config_ruleinfo->srcip[ip_s])
                         {
                             ip_s++;
                         }
-                        
-                        config_ruleinfo->srcip = 
+
+                        config_ruleinfo->srcip =
                                     realloc(config_ruleinfo->srcip,
                                     (ip_s + 2) * sizeof(os_ip *));
-                        
-                        
+
+
                         /* Allocating memory for the individual entries */
-                        os_calloc(1, sizeof(os_ip), 
+                        os_calloc(1, sizeof(os_ip),
                                      config_ruleinfo->srcip[ip_s]);
                         config_ruleinfo->srcip[ip_s +1] = NULL;
-                        
-                        
+
+
                         /* Checking if the ip is valid */
-                        if(!OS_IsValidIP(rule_opt[k]->content, 
+                        if(!OS_IsValidIP(rule_opt[k]->content,
                                          config_ruleinfo->srcip[ip_s]))
                         {
                             merror(INVALID_IP, ARGV0, rule_opt[k]->content);
@@ -629,7 +629,7 @@ int Rules_OP_ReadRules(char * rulefile)
                         status =
                             loadmemory(status,
                                     rule_opt[k]->content);
-                        
+
                         if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     }
@@ -638,7 +638,7 @@ int Rules_OP_ReadRules(char * rulefile)
                         hostname =
                             loadmemory(hostname,
                                     rule_opt[k]->content);
-                        
+
                         if(!(config_ruleinfo->alert_opts & DO_EXTRAINFO))
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                     }
@@ -660,7 +660,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_action)==0)
                     {
-                        config_ruleinfo->action = 
+                        config_ruleinfo->action =
                             loadmemory(config_ruleinfo->action,
                                     rule_opt[k]->content);
                     }
@@ -689,12 +689,12 @@ int Rules_OP_ReadRules(char * rulefile)
                                         lookup_type = LR_ADDRESS_NOT_MATCH;
                                     else if(strcasecmp(rule_opt[k]->values[list_att_num],xml_address_key_value)==0)
                                         lookup_type = LR_ADDRESS_MATCH_VALUE;
-                                    else 
+                                    else
                                     {
-                                        merror(INVALID_CONFIG, ARGV0, 
-                                               rule_opt[k]->element, 
+                                        merror(INVALID_CONFIG, ARGV0,
+                                               rule_opt[k]->element,
                                                rule_opt[k]->content);
-                                        merror("%s: List match lookup=\"%s\" is not valid.", 
+                                        merror("%s: List match lookup=\"%s\" is not valid.",
                                                 ARGV0,rule_opt[k]->values[list_att_num]);
                                         return(-1);
                                      }
@@ -723,12 +723,12 @@ int Rules_OP_ReadRules(char * rulefile)
                                         rule_type = RULE_STATUS;
                                     else if (strcasecmp(rule_opt[k]->values[list_att_num],xml_action)==0)
                                         rule_type = RULE_ACTION;
-                                    else 
+                                    else
                                     {
-                                        merror(INVALID_CONFIG, ARGV0, 
-                                               rule_opt[k]->element, 
+                                        merror(INVALID_CONFIG, ARGV0,
+                                               rule_opt[k]->element,
                                                rule_opt[k]->content);
-                                        merror("%s: List match field=\"%s\" is not valid.", 
+                                        merror("%s: List match field=\"%s\" is not valid.",
                                                 ARGV0,rule_opt[k]->values[list_att_num]);
                                         return(-1);
                                      }
@@ -738,12 +738,12 @@ int Rules_OP_ReadRules(char * rulefile)
                                     os_calloc(1, sizeof(OSMatch), matcher);
                                     if(!OSMatch_Compile(rule_opt[k]->values[list_att_num], matcher, 0))
                                     {
-                                        merror(INVALID_CONFIG, ARGV0, 
-                                               rule_opt[k]->element, 
+                                        merror(INVALID_CONFIG, ARGV0,
+                                               rule_opt[k]->element,
                                                rule_opt[k]->content);
-                                        merror(REGEX_COMPILE, 
-                                               ARGV0, 
-                                               rule_opt[k]->values[list_att_num], 
+                                        merror(REGEX_COMPILE,
+                                               ARGV0,
+                                               rule_opt[k]->values[list_att_num],
                                                matcher->error);
                                         return(-1);
                                     }
@@ -752,7 +752,7 @@ int Rules_OP_ReadRules(char * rulefile)
                                 {
                                 	merror("%s:List feild=\"%s\" is not valid",ARGV0,
                                            rule_opt[k]->values[list_att_num]);
-                                    merror(INVALID_CONFIG, ARGV0, 
+                                    merror(INVALID_CONFIG, ARGV0,
                                            rule_opt[k]->element, rule_opt[k]->content);
                                     return(-1);
                                 }
@@ -761,15 +761,15 @@ int Rules_OP_ReadRules(char * rulefile)
                             if(rule_type == 0)
                             {
                                 merror("%s:List requires the field=\"\" Attrubute",ARGV0);
-                                merror(INVALID_CONFIG, ARGV0, 
+                                merror(INVALID_CONFIG, ARGV0,
                                        rule_opt[k]->element, rule_opt[k]->content);
                                 return(-1);
                             }
 
                             /* Wow it's all ready - this seams too complex to get to this point */
                             config_ruleinfo->lists = OS_AddListRule(config_ruleinfo->lists,
-                                           lookup_type, 
-                                           rule_type, 
+                                           lookup_type,
+                                           rule_type,
                                            rule_opt[k]->content,
                                            matcher);
                             if (config_ruleinfo->lists == NULL)
@@ -782,12 +782,12 @@ int Rules_OP_ReadRules(char * rulefile)
                         {
                             merror("%s:List must have a correctly formatted feild attribute",
                                    ARGV0);
-                            merror(INVALID_CONFIG, 
-                                   ARGV0, 
-                                   rule_opt[k]->element, 
+                            merror(INVALID_CONFIG,
+                                   ARGV0,
+                                   rule_opt[k]->element,
                                    rule_opt[k]->content);
                             return(-1);
-                        }                        
+                        }
                         /* xml_list eval is done */
                     }
                     else if(strcasecmp(rule_opt[k]->element,xml_url)==0)
@@ -802,7 +802,7 @@ int Rules_OP_ReadRules(char * rulefile)
 
                         while(compiled_rules_name[it_id])
                         {
-                            if(strcmp(compiled_rules_name[it_id], 
+                            if(strcmp(compiled_rules_name[it_id],
                                       rule_opt[k]->content) == 0)
                                 break;
                             it_id++;
@@ -811,9 +811,9 @@ int Rules_OP_ReadRules(char * rulefile)
                         /* checking if the name is valid. */
                         if(!compiled_rules_name[it_id])
                         {
-                            merror("%s: ERROR: Compiled rule not found: '%s'", 
-                                   ARGV0, rule_opt[k]->content); 
-                            merror(INVALID_CONFIG, ARGV0, 
+                            merror("%s: ERROR: Compiled rule not found: '%s'",
+                                   ARGV0, rule_opt[k]->content);
+                            merror(INVALID_CONFIG, ARGV0,
                                    rule_opt[k]->element, rule_opt[k]->content);
                             return(-1);
 
@@ -871,9 +871,9 @@ int Rules_OP_ReadRules(char * rulefile)
                     {
                         if(!OS_StrIsNum(rule_opt[k]->content))
                         {
-                            merror(INVALID_CONFIG, ARGV0, 
+                            merror(INVALID_CONFIG, ARGV0,
                                     "if_level",
-                                    rule_opt[k]->content); 
+                                    rule_opt[k]->content);
                             return(-1);
                         }
 
@@ -914,7 +914,7 @@ int Rules_OP_ReadRules(char * rulefile)
                                     rule_opt[k]->content);
                             return(-1);
                         }
-                        config_ruleinfo->if_matched_sid = 
+                        config_ruleinfo->if_matched_sid =
                             atoi(rule_opt[k]->content);
 
                     }
@@ -927,7 +927,7 @@ int Rules_OP_ReadRules(char * rulefile)
                                 xml_same_src_port)==0)
                     {
                         config_ruleinfo->context_opts|= SAME_SRCPORT;
-                        
+
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
@@ -943,7 +943,7 @@ int Rules_OP_ReadRules(char * rulefile)
                                 xml_same_dst_port) == 0)
                     {
                         config_ruleinfo->context_opts|= SAME_DSTPORT;
-                        
+
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
@@ -960,7 +960,7 @@ int Rules_OP_ReadRules(char * rulefile)
                                    xml_different_url) == 0)
                     {
                         config_ruleinfo->context_opts|= DIFFERENT_URL;
-                        
+
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
@@ -977,7 +977,7 @@ int Rules_OP_ReadRules(char * rulefile)
                                 xml_same_user)==0)
                     {
                         config_ruleinfo->context_opts|= SAME_USER;
-                        
+
                         if(!(config_ruleinfo->alert_opts & SAME_EXTRAINFO))
                             config_ruleinfo->alert_opts |= SAME_EXTRAINFO;
                     }
@@ -1001,7 +1001,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_options) == 0)
                     {
-                        if(strcmp("alert_by_email", 
+                        if(strcmp("alert_by_email",
                                   rule_opt[k]->content) == 0)
                         {
                             if(!(config_ruleinfo->alert_opts & DO_MAILALERT))
@@ -1017,7 +1017,7 @@ int Rules_OP_ReadRules(char * rulefile)
                               config_ruleinfo->alert_opts&=0xfff-DO_MAILALERT;
                             }
                         }
-                        else if(strcmp("log_alert", 
+                        else if(strcmp("log_alert",
                                        rule_opt[k]->content) == 0)
                         {
                             if(!(config_ruleinfo->alert_opts & DO_LOGALERT))
@@ -1040,7 +1040,7 @@ int Rules_OP_ReadRules(char * rulefile)
                             }
                         }
                         else
-                        {               
+                        {
                             merror(XML_VALUEERR, ARGV0, xml_options,
                                                         rule_opt[k]->content);
 
@@ -1049,7 +1049,7 @@ int Rules_OP_ReadRules(char * rulefile)
                                    config_ruleinfo->sigid);
                             OS_ClearXML(&xml);
                             return(-1);
-                        }   
+                        }
                     }
                     else if(strcasecmp(rule_opt[k]->element,
                                 xml_ignore) == 0)
@@ -1085,7 +1085,7 @@ int Rules_OP_ReadRules(char * rulefile)
                         }
                         if(!config_ruleinfo->ignore)
                         {
-                            merror("%s: Wrong ignore option: '%s'", 
+                            merror("%s: Wrong ignore option: '%s'",
                                                     ARGV0,
                                                     rule_opt[k]->content);
                             return(-1);
@@ -1125,7 +1125,7 @@ int Rules_OP_ReadRules(char * rulefile)
                         }
                         if(!config_ruleinfo->ckignore)
                         {
-                            merror("%s: Wrong check_if_ignored option: '%s'", 
+                            merror("%s: Wrong check_if_ignored option: '%s'",
                                                     ARGV0,
                                                     rule_opt[k]->content);
                             return(-1);
@@ -1144,7 +1144,7 @@ int Rules_OP_ReadRules(char * rulefile)
 
 
                 /* Checking for a valid use of frequency */
-                if((config_ruleinfo->context_opts || 
+                if((config_ruleinfo->context_opts ||
                    config_ruleinfo->frequency) &&
                    !config_ruleinfo->context)
                 {
@@ -1154,42 +1154,42 @@ int Rules_OP_ReadRules(char * rulefile)
                     OS_ClearXML(&xml);
                     return(-1);
                 }
-                
+
 
                 /* If if_matched_group we must have a if_sid or if_group */
                 if(if_matched_group)
                 {
                     if(!config_ruleinfo->if_sid && !config_ruleinfo->if_group)
                     {
-                        os_strdup(if_matched_group, 
-                                  config_ruleinfo->if_group);        
+                        os_strdup(if_matched_group,
+                                  config_ruleinfo->if_group);
                     }
                 }
 
                 /* If_matched_sid, we need to get the if_sid */
-                if(config_ruleinfo->if_matched_sid && 
+                if(config_ruleinfo->if_matched_sid &&
                    !config_ruleinfo->if_sid &&
                    !config_ruleinfo->if_group)
                 {
                     os_calloc(16, sizeof(char), config_ruleinfo->if_sid);
-                    snprintf(config_ruleinfo->if_sid, 15, "%d", 
+                    snprintf(config_ruleinfo->if_sid, 15, "%d",
                              config_ruleinfo->if_matched_sid);
                 }
-                
+
                 /* Checking the regexes */
                 if(regex)
                 {
                     os_calloc(1, sizeof(OSRegex), config_ruleinfo->regex);
                     if(!OSRegex_Compile(regex, config_ruleinfo->regex, 0))
                     {
-                        merror(REGEX_COMPILE, ARGV0, regex, 
+                        merror(REGEX_COMPILE, ARGV0, regex,
                                 config_ruleinfo->regex->error);
                         return(-1);
                     }
                     free(regex);
                     regex = NULL;
                 }
-                
+
                 /* Adding in match */
                 if(match)
                 {
@@ -1203,14 +1203,14 @@ int Rules_OP_ReadRules(char * rulefile)
                     free(match);
                     match = NULL;
                 }
-                
+
                 /* Adding in id */
                 if(id)
                 {
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->id);
                     if(!OSMatch_Compile(id, config_ruleinfo->id, 0))
                     {
-                        merror(REGEX_COMPILE, ARGV0, id, 
+                        merror(REGEX_COMPILE, ARGV0, id,
                                               config_ruleinfo->id->error);
                         return(-1);
                     }
@@ -1224,7 +1224,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->srcport);
                     if(!OSMatch_Compile(srcport, config_ruleinfo->srcport, 0))
                     {
-                        merror(REGEX_COMPILE, ARGV0, srcport, 
+                        merror(REGEX_COMPILE, ARGV0, srcport,
                                               config_ruleinfo->id->error);
                         return(-1);
                     }
@@ -1238,7 +1238,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->dstport);
                     if(!OSMatch_Compile(dstport, config_ruleinfo->dstport, 0))
                     {
-                        merror(REGEX_COMPILE, ARGV0, dstport, 
+                        merror(REGEX_COMPILE, ARGV0, dstport,
                                               config_ruleinfo->id->error);
                         return(-1);
                     }
@@ -1278,7 +1278,7 @@ int Rules_OP_ReadRules(char * rulefile)
                 if(extra_data)
                 {
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->extra_data);
-                    if(!OSMatch_Compile(extra_data, 
+                    if(!OSMatch_Compile(extra_data,
                                         config_ruleinfo->extra_data, 0))
                     {
                         merror(REGEX_COMPILE, ARGV0, extra_data,
@@ -1303,7 +1303,7 @@ int Rules_OP_ReadRules(char * rulefile)
                     free(program_name);
                     program_name = NULL;
                 }
-                
+
                 /* Adding in user */
                 if(user)
                 {
@@ -1317,28 +1317,28 @@ int Rules_OP_ReadRules(char * rulefile)
                     free(user);
                     user = NULL;
                 }
-                
+
                 /* Adding in url */
                 if(url)
                 {
                     os_calloc(1, sizeof(OSMatch), config_ruleinfo->url);
                     if(!OSMatch_Compile(url, config_ruleinfo->url, 0))
                     {
-                        merror(REGEX_COMPILE, ARGV0, url, 
+                        merror(REGEX_COMPILE, ARGV0, url,
                                 config_ruleinfo->url->error);
                         return(-1);
                     }
                     free(url);
                     url = NULL;
                 }
-                
+
                 /* Adding matched_group */
                 if(if_matched_group)
                 {
-                    os_calloc(1, sizeof(OSMatch), 
+                    os_calloc(1, sizeof(OSMatch),
                                  config_ruleinfo->if_matched_group);
-                    
-                    if(!OSMatch_Compile(if_matched_group, 
+
+                    if(!OSMatch_Compile(if_matched_group,
                                         config_ruleinfo->if_matched_group,
                                         0))
                     {
@@ -1349,16 +1349,16 @@ int Rules_OP_ReadRules(char * rulefile)
                     free(if_matched_group);
                     if_matched_group = NULL;
                 }
-                
+
                 /* Adding matched_regex */
                 if(if_matched_regex)
                 {
-                    os_calloc(1, sizeof(OSRegex), 
+                    os_calloc(1, sizeof(OSRegex),
                             config_ruleinfo->if_matched_regex);
-                    if(!OSRegex_Compile(if_matched_regex, 
+                    if(!OSRegex_Compile(if_matched_regex,
                                 config_ruleinfo->if_matched_regex, 0))
                     {
-                        merror(REGEX_COMPILE, ARGV0, if_matched_regex, 
+                        merror(REGEX_COMPILE, ARGV0, if_matched_regex,
                                 config_ruleinfo->if_matched_regex->error);
                         return(-1);
                     }
@@ -1378,9 +1378,9 @@ int Rules_OP_ReadRules(char * rulefile)
             if(config_ruleinfo->context)
             {
                 int ii = 0;
-                os_calloc(MAX_LAST_EVENTS + 1, sizeof(char *), 
+                os_calloc(MAX_LAST_EVENTS + 1, sizeof(char *),
                           config_ruleinfo->last_events);
-                
+
                 /* Zeroing each entry */
                 for(;ii<=MAX_LAST_EVENTS;ii++)
                 {
@@ -1388,19 +1388,19 @@ int Rules_OP_ReadRules(char * rulefile)
                 }
             }
 
-            
+
             /* Adding the rule to the rules list.
              * Only the template rules are supposed
              * to be at the top level. All others
              * will be a "child" of someone.
              */
             if(config_ruleinfo->sigid < 10)
-            {    
+            {
                 OS_AddRule(config_ruleinfo);
             }
             else if(config_ruleinfo->alert_opts & DO_OVERWRITE)
             {
-                if(!OS_AddRuleInfo(NULL, config_ruleinfo, 
+                if(!OS_AddRuleInfo(NULL, config_ruleinfo,
                                    config_ruleinfo->sigid))
                 {
                     merror("%s: Overwrite rule '%d' not found.",
@@ -1424,13 +1424,13 @@ int Rules_OP_ReadRules(char * rulefile)
             /* Setting the event_search pointer */
             if(config_ruleinfo->if_matched_sid)
             {
-                config_ruleinfo->event_search = 
+                config_ruleinfo->event_search =
                                  (void *)Search_LastSids;
-            
+
                 /* Marking rules that match this id */
-                OS_MarkID(NULL, config_ruleinfo);                     
+                OS_MarkID(NULL, config_ruleinfo);
             }
-            
+
             /* Marking the rules that match if_matched_group */
             else if(config_ruleinfo->if_matched_group)
             {
@@ -1445,19 +1445,19 @@ int Rules_OP_ReadRules(char * rulefile)
                 OS_MarkGroup(NULL, config_ruleinfo);
 
                 /* Setting function pointer */
-                config_ruleinfo->event_search = 
+                config_ruleinfo->event_search =
                                  (void *)Search_LastGroups;
             }
             else if(config_ruleinfo->context)
             {
-                if((config_ruleinfo->context == 1) && 
+                if((config_ruleinfo->context == 1) &&
                    (config_ruleinfo->context_opts & SAME_DODIFF))
                 {
                     config_ruleinfo->context = 0;
                 }
                 else
                 {
-                    config_ruleinfo->event_search = 
+                    config_ruleinfo->event_search =
                                  (void *)Search_LastEvents;
                 }
             }
@@ -1465,7 +1465,7 @@ int Rules_OP_ReadRules(char * rulefile)
         } /* while(rule[j]) */
         OS_ClearNode(rule);
         i++;
-        
+
     } /* while (node[i]) */
 
     /* Cleaning global node */
@@ -1530,25 +1530,25 @@ char *loadmemory(char *at, char *str)
         int strsize = strlen(str);
         int atsize = strlen(at);
         int finalsize = atsize+strsize+1;
-        
+
         if((atsize > OS_SIZE_2048) || (strsize > OS_SIZE_2048))
         {
             merror(SIZE_ERROR,ARGV0,str);
             return(NULL);
         }
-        
+
         at = realloc(at, (finalsize)*sizeof(char));
-        
+
         if(at == NULL)
         {
             merror(MEM_ERROR,ARGV0);
             return(NULL);
         }
-        
+
         strncat(at,str,strsize);
-        
+
         at[finalsize-1]='\0';
-        
+
         return(at);
     }
     return(NULL);
@@ -1572,19 +1572,19 @@ RuleInfoDetail *zeroinfodetails(int type, char *data)
     os_strdup(data, info_details_pt->data);
 
     info_details_pt->next = NULL;
-    
+
 
     return(info_details_pt);
 }
 
 
-RuleInfo *zerorulemember(int id, int level, 
+RuleInfo *zerorulemember(int id, int level,
                          int maxsize, int frequency,
-                         int timeframe, int noalert, 
+                         int timeframe, int noalert,
                          int ignore_time, int overwrite)
 {
     RuleInfo *ruleinfo_pt = NULL;
-    
+
     /* Allocation memory for structure */
     ruleinfo_pt = (RuleInfo *)calloc(1,sizeof(RuleInfo));
 
@@ -1592,17 +1592,17 @@ RuleInfo *zerorulemember(int id, int level,
     {
         ErrorExit(MEM_ERROR,ARGV0);
     }
-    
+
     /* Default values */
     ruleinfo_pt->level = level;
 
     /* Default category is syslog */
     ruleinfo_pt->category = SYSLOG;
 
-    ruleinfo_pt->ar = NULL; 
-    
+    ruleinfo_pt->ar = NULL;
+
     ruleinfo_pt->context = 0;
-    
+
     ruleinfo_pt->sigid = id;
     ruleinfo_pt->firedtimes = 0;
     ruleinfo_pt->maxsize = maxsize;
@@ -1614,11 +1614,11 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->ignore_time = ignore_time;
     ruleinfo_pt->timeframe = timeframe;
     ruleinfo_pt->time_ignored = 0;
-   
-    ruleinfo_pt->context_opts = 0; 
-    ruleinfo_pt->alert_opts = 0; 
-    ruleinfo_pt->ignore = 0; 
-    ruleinfo_pt->ckignore = 0; 
+
+    ruleinfo_pt->context_opts = 0;
+    ruleinfo_pt->alert_opts = 0;
+    ruleinfo_pt->ignore = 0;
+    ruleinfo_pt->ckignore = 0;
 
     if(noalert)
     {
@@ -1626,7 +1626,7 @@ RuleInfo *zerorulemember(int id, int level,
     }
     if(Config.mailbylevel <= level)
         ruleinfo_pt->alert_opts |= DO_MAILALERT;
-    if(Config.logbylevel <= level)    
+    if(Config.logbylevel <= level)
         ruleinfo_pt->alert_opts |= DO_LOGALERT;
 
     /* Overwriting a rule */
@@ -1647,16 +1647,16 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->info = NULL;
     ruleinfo_pt->cve = NULL;
     ruleinfo_pt->info_details = NULL;
-    
+
     ruleinfo_pt->if_sid = NULL;
     ruleinfo_pt->if_group = NULL;
     ruleinfo_pt->if_level = NULL;
-    
+
     ruleinfo_pt->if_matched_regex = NULL;
     ruleinfo_pt->if_matched_group = NULL;
     ruleinfo_pt->if_matched_sid = 0;
-   
-    ruleinfo_pt->user = NULL; 
+
+    ruleinfo_pt->user = NULL;
     ruleinfo_pt->srcip = NULL;
     ruleinfo_pt->srcport = NULL;
     ruleinfo_pt->dstip = NULL;
@@ -1667,7 +1667,7 @@ RuleInfo *zerorulemember(int id, int level,
     ruleinfo_pt->hostname = NULL;
     ruleinfo_pt->program_name = NULL;
     ruleinfo_pt->action = NULL;
-    
+
     /* Zeroing last matched events */
     ruleinfo_pt->__frequency = 0;
     ruleinfo_pt->last_events = NULL;
@@ -1675,10 +1675,10 @@ RuleInfo *zerorulemember(int id, int level,
     /* zeroing the list of previous matches */
     ruleinfo_pt->sid_prev_matched = NULL;
     ruleinfo_pt->group_prev_matched = NULL;
-    
+
     ruleinfo_pt->sid_search = NULL;
     ruleinfo_pt->group_search = NULL;
-    
+
     ruleinfo_pt->event_search = NULL;
     ruleinfo_pt->compiled_rule = NULL;
     ruleinfo_pt->lists = NULL;
@@ -1697,7 +1697,7 @@ int get_info_attributes(char **attributes, char **values)
     {
         if (!values[k])
         {
-            merror("rules_op: Entry info type \"%s\" does not have a value", 
+            merror("rules_op: Entry info type \"%s\" does not have a value",
                     attributes[k]);
             return (-1);
         }
@@ -1706,7 +1706,7 @@ int get_info_attributes(char **attributes, char **values)
             if(strcmp(values[k], "text") == 0)
             {
                 return(RULEINFODETAIL_TEXT);
-            } 
+            }
             else if(strcmp(values[k], "link") == 0)
             {
                 return(RULEINFODETAIL_LINK);
@@ -1726,13 +1726,13 @@ int get_info_attributes(char **attributes, char **values)
 
 /* Get the attributes */
 int getattributes(char **attributes, char **values,
-                  int *id, int *level, 
+                  int *id, int *level,
                   int *maxsize, int *timeframe,
-                  int *frequency, int *accuracy, 
+                  int *frequency, int *accuracy,
                   int *noalert, int *ignore_time, int *overwrite)
 {
     int k=0;
-    
+
     char *xml_id = "id";
     char *xml_level = "level";
     char *xml_maxsize = "maxsize";
@@ -1742,8 +1742,8 @@ int getattributes(char **attributes, char **values,
     char *xml_noalert = "noalert";
     char *xml_ignore_time = "ignore";
     char *xml_overwrite = "overwrite";
-    
-   
+
+
     /* Getting attributes */
     while(attributes[k])
     {
@@ -1840,7 +1840,7 @@ int getattributes(char **attributes, char **values,
                 merror("rules_op: Invalid accuracy: %s. "
                        "Must be integer" ,
                        values[k]);
-                return(-1); 
+                return(-1);
             }
         }
          /* Rule ignore_time */
@@ -1855,7 +1855,7 @@ int getattributes(char **attributes, char **values,
                 merror("rules_op: Invalid ignore_time: %s. "
                        "Must be integer" ,
                        values[k]);
-                return(-1); 
+                return(-1);
             }
         }
         /* Rule noalert */
@@ -1901,22 +1901,22 @@ void Rule_AddAR(RuleInfo *rule_config)
     int rule_ar_size = 0;
     int mark_to_ar = 0;
     int rule_real_level = 0;
-    
+
     OSListNode *my_ars_node;
-    
-    
-    /* Setting the correctly levels 
+
+
+    /* Setting the correctly levels
      * We play internally with the rules, to set
      * the priorities... Rules with 0 of accuracy,
      * receive a low level and go down in the list
      */
     if(rule_config->level == 9900)
         rule_real_level = 0;
-    
+
     else if(rule_config->level >= 100)
         rule_real_level = rule_config->level/100;
-    
-    
+
+
     /* No AR for ignored rules */
     if(rule_real_level == 0)
     {
@@ -1933,7 +1933,7 @@ void Rule_AddAR(RuleInfo *rule_config)
     {
         return;
     }
-    
+
     /* Looping on all AR */
     my_ars_node = OSList_GetFirstNode(active_responses);
     while(my_ars_node)
@@ -1952,7 +1952,7 @@ void Rule_AddAR(RuleInfo *rule_config)
                 mark_to_ar = 1;
             }
         }
-       
+
         /* Checking if group matches */
         if(my_ar->rules_group)
         {
@@ -1961,7 +1961,7 @@ void Rule_AddAR(RuleInfo *rule_config)
                mark_to_ar = 1;
            }
         }
-        
+
         /* Checking if rule id matches */
         if(my_ar->rules_id)
         {
@@ -1984,13 +1984,13 @@ void Rule_AddAR(RuleInfo *rule_config)
                 else if(isdigit((int)*str_pt))
                 {
                     r_id = atoi(str_pt);
-                    
+
                     /* mark to ar if id matches */
                     if(r_id == rule_config->sigid)
                     {
                         mark_to_ar = 1;
                     }
-                    
+
                     str_pt = strchr(str_pt, ',');
                     if(str_pt)
                     {
@@ -2015,9 +2015,9 @@ void Rule_AddAR(RuleInfo *rule_config)
                 }
             }
         } /* eof of rules_id */
- 
-        
-        /* Bind AR to the rule */ 
+
+
+        /* Bind AR to the rule */
         if(mark_to_ar == 1)
         {
             rule_ar_size++;
@@ -2025,12 +2025,12 @@ void Rule_AddAR(RuleInfo *rule_config)
             rule_config->ar = realloc(rule_config->ar,
                                       (rule_ar_size + 1)
                                       *sizeof(active_response *));
-            
+
             /* Always set the last node to NULL */
             rule_config->ar[rule_ar_size - 1] = my_ar;
-            rule_config->ar[rule_ar_size] = NULL;  
+            rule_config->ar[rule_ar_size] = NULL;
         }
-        
+
         my_ars_node = OSList_GetNextNode(active_responses);
     }
 
@@ -2041,9 +2041,9 @@ void Rule_AddAR(RuleInfo *rule_config)
 /* print rule */
 void printRuleinfo(RuleInfo *rule, int node)
 {
-    debug1("%d : rule:%d, level %d, timeout: %d", 
+    debug1("%d : rule:%d, level %d, timeout: %d",
             node,
-            rule->sigid, 
+            rule->sigid,
             rule->level,
             rule->ignore_time);
 }
@@ -2060,8 +2060,8 @@ int AddHash_Rule(RuleNode *node)
 
         snprintf(_id_key, 14, "%d", node->ruleinfo->sigid);
         os_strdup(_id_key, id_key);
-        
-        
+
+
         /* Adding key to hash. */
         OSHash_Add(Config.g_rules_hash, id_key, node->ruleinfo);
         if(node->child)
@@ -2090,10 +2090,10 @@ int _setlevels(RuleNode *node, int nnode)
             node->ruleinfo->level/=100;
 
         l_size++;
-        
+
         /* Rule information */
         printRuleinfo(node->ruleinfo, nnode);
-        
+
         if(node->child)
         {
             int chl_size = 0;

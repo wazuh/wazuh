@@ -5,6 +5,7 @@ syntax: glob
 *.o
 *.a
 *.dSYM
+*.orig
 .hgignore
 
 # Auto generated build files
@@ -44,6 +45,8 @@ src/client-agent/ossec-agentd
 src/logcollector/ossec-logcollector
 src/monitord/ossec-monitord
 src/monitord/ossec-reportd
+src/os_auth/agent-auth
+src/os_auth/ossec-authd
 src/os_csyslogd/ossec-csyslogd
 src/os_dbd/ossec-dbd
 src/os_execd/ossec-execd

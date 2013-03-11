@@ -35,18 +35,18 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
     int parenthesis = 0;
     int prts_size = 0;
     int max_prts_size = 0;
-    
+
     char *pt;
     char *new_str;
     char *new_str_free = NULL;
 
-    
+
     /* Checking for references not initialized */
     if(reg == NULL)
     {
         return(0);
     }
-    
+
 
     /* Initializing OSRegex structure */
     reg->error = 0;
@@ -71,8 +71,8 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
         reg->error = OS_REGEX_MAXSIZE;
         goto compile_error;
     }
-    
-    
+
+
     /* Duping the pattern for our internal work */
     new_str = strdup(pattern);
     if(!new_str)
@@ -82,8 +82,8 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
     }
     new_str_free = new_str;
     pt = new_str;
-    
-    
+
+
     /* Getting the number of sub patterns */
     do
     {
@@ -91,12 +91,12 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
         {
             pt++;
             if(!((*pt == 'w') ||
-                 (*pt == 'W') || 
-                 (*pt == 's') || 
-                 (*pt == 'S') || 
-                 (*pt == 'd') || 
-                 (*pt == 'D') || 
-                 (*pt == '.') || 
+                 (*pt == 'W') ||
+                 (*pt == 's') ||
+                 (*pt == 'S') ||
+                 (*pt == 'd') ||
+                 (*pt == 'D') ||
+                 (*pt == '.') ||
                  (*pt == '(') ||
                  (*pt == ')') ||
                  (*pt == 'p') ||
@@ -144,22 +144,22 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
             parenthesis--;
             prts_size++;
         }
-        
+
         /* We only allow one level of parenthesis */
         if(parenthesis != 0 && parenthesis != 1)
         {
             reg->error = OS_REGEX_BADPARENTHESIS;
             goto compile_error;
         }
-        
-        /* The pattern must be always lower case if 
+
+        /* The pattern must be always lower case if
          * case sensitive is set
          */
         if(!(flags & OS_CASE_SENSITIVE))
         {
             *pt = charmap[(uchar)*pt];
         }
-        
+
         if(*pt == OR)
         {
             /* Each sub pattern must be closed on parenthesis */
@@ -170,9 +170,9 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
             }
             count++;
         }
-        pt++;    
+        pt++;
     }while(*pt != '\0');
-    
+
 
     /* After the whole pattern is read, the parenthesis must all be closed */
     if(parenthesis != 0)
@@ -180,14 +180,14 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
         reg->error = OS_REGEX_BADPARENTHESIS;
         goto compile_error;
     }
-    
-                                                                     
+
+
     /* Allocating the memory for the sub patterns */
     count++;
     reg->patterns = calloc(count +1, sizeof(char *));
     reg->flags = calloc(count +1, sizeof(int));
-    
-    
+
+
     /* For the substrings */
     if((prts_size > 0) && (flags & OS_RETURN_SUBSTRING))
     {
@@ -199,8 +199,8 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
             goto compile_error;
         }
     }
-    
-    
+
+
     /* Memory allocation error check */
     if(!reg->patterns || !reg->flags)
     {
@@ -222,12 +222,12 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
         }
     }
     i = 0;
-    
-    
+
+
     /* Reassigning pt to the beginning of the string */
     pt = new_str;
 
-    
+
     /* Getting the sub patterns */
     do
     {
@@ -297,7 +297,7 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
                 {
                     max_prts_size = prts_size;
                 }
-                
+
                 /* Allocating the memory */
                 reg->prts_closure[i] = calloc(prts_size + 1, sizeof(char *));
                 reg->prts_str[i] = calloc(prts_size + 1, sizeof(char *));
@@ -351,20 +351,20 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
         reg->error = OS_REGEX_OUTOFMEMORY;
         goto compile_error;
     }
-    
+
     /* Success return */
     free(new_str_free);
     return(1);
-    
-    
+
+
     /* Error handling */
     compile_error:
-    
+
     if(new_str_free)
     {
         free(new_str_free);
     }
-    
+
     OSRegex_FreePattern(reg);
 
     return(0);

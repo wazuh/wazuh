@@ -27,8 +27,8 @@ while(<>){
 		$stats{$alerthost}{rule}{$rule}++;
 		$stats{$alerthost}{level}{$level}++;
 		$stats{$alerthost}{description}{$description}++;
-		$stats{$alerthost}{srcip}{$srcip}++;
-		$stats{$alerthost}{user}{$user}++;
+		if (defined $srcip) { $stats{$alerthost}{srcip}{$srcip}++; }
+		if (defined $user)  { $stats{$alerthost}{user}{$user}++; }
 		next ;
 	}
 	if (m/^\*\* Alert ([0-9]+).([0-9]+):(.*)$/){

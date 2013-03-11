@@ -6,7 +6,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -40,7 +40,7 @@ void monitor_agents()
     {
         int available = 0;
         char **tmp_av;
-        
+
         tmp_av = av_agents;
         while(tmp_av && *tmp_av)
         {
@@ -56,7 +56,7 @@ void monitor_agents()
         if(available == 0)
         {
             char str[OS_SIZE_1024 +1];
-            
+
             /* Sending disconnected message */
             snprintf(str, OS_SIZE_1024 -1, OS_AG_DISCON, *cr_agents);
             if(SendMSG(mond.a_queue, str, ARGV0,
@@ -65,7 +65,7 @@ void monitor_agents()
                 merror(QUEUE_SEND, ARGV0);
             }
         }
-        
+
         cr_agents++;
     }
 

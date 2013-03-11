@@ -12,15 +12,15 @@
  * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
-          
 
-/* Common API for dealing with directory trees */ 
+
+/* Common API for dealing with directory trees */
 
 
 #include "shared.h"
 
 
-/* Create the tree 
+/* Create the tree
  * Return NULL on error
  */
 OSDirTree *OSDirTree_Create()
@@ -32,16 +32,16 @@ OSDirTree *OSDirTree_Create()
     {
         return(NULL);
     }
-    
+
     my_tree->first_node = NULL;
     my_tree->last_node = NULL;
-    
+
     return(my_tree);
 }
 
 
 
-/* Get first node from tree (starting from parent) 
+/* Get first node from tree (starting from parent)
  * Returns null on invalid tree (not initialized)
  */
 OSTreeNode *OSDirTree_GetFirstNode(OSDirTree *tree)
@@ -55,7 +55,7 @@ OSTreeNode *OSDirTree_GetFirstNode(OSDirTree *tree)
  * Internal call, looks up for an entry in the middle of the tree.
  * Should not be called directly.
  */
-OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str, 
+OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
                            void *data, char sep)
 {
     char *tmp_str;
@@ -83,7 +83,7 @@ OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
         tree->first_node = NULL;
         tree->last_node = NULL;
     }
-    
+
 
     curnode = tree->first_node;
 
@@ -109,7 +109,7 @@ OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
     {
         os_calloc(1, sizeof(OSTreeNode), newnode);
         //printf("XXXX Adding node: %s\n", str);
-        
+
 
         if(!tree->first_node && !tree->last_node)
         {
@@ -147,11 +147,11 @@ OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
     {
         *tmp_str = sep;
     }
-                                
+
 
     return(tree);
 }
-        
+
 
 
 /** void OSDirTree_AddToTree
@@ -169,16 +169,16 @@ void OSDirTree_AddToTree(OSDirTree *tree, char *str, void *data, char sep)
     char *tmp_str;
     OSTreeNode *newnode;
     OSTreeNode *curnode;
-    
-    
+
+
     /* First character doesn't count as a separator */
     tmp_str = strchr(str +1, sep);
     if(tmp_str)
     {
         *tmp_str = '\0';
     }
-    
-    
+
+
     curnode = tree->first_node;
     while(curnode)
     {
@@ -187,7 +187,7 @@ void OSDirTree_AddToTree(OSDirTree *tree, char *str, void *data, char sep)
             /* If we have other elements, keep going */
             if(tmp_str)
             {
-                curnode->child = _OSTreeNode_Add(curnode->child, 
+                curnode->child = _OSTreeNode_Add(curnode->child,
                                                  tmp_str +1, data, sep);
             }
             break;
@@ -214,7 +214,7 @@ void OSDirTree_AddToTree(OSDirTree *tree, char *str, void *data, char sep)
             tree->last_node->next = newnode;
             tree->last_node = newnode;
         }
-        
+
         newnode->next = NULL;
         os_strdup(str, newnode->value);
 
@@ -222,7 +222,7 @@ void OSDirTree_AddToTree(OSDirTree *tree, char *str, void *data, char sep)
         /* If we have other elements, keep going */
         if(tmp_str)
         {
-            newnode->child = _OSTreeNode_Add(newnode->child, 
+            newnode->child = _OSTreeNode_Add(newnode->child,
                                              tmp_str +1, data, sep);
             newnode->data = NULL;
         }
@@ -291,7 +291,7 @@ void *OSDirTree_SearchTree(OSDirTree *tree, char *str, char sep)
     {
         *tmp_str = sep;
     }
-                                
+
 
     return(ret);
 }

@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-       
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,7 +49,7 @@ int dogrep(char *file, char *str)
     /* Clearing memory */
     memset(line, '\0', OS_MAXSTR +1);
 
-    /* Reading file and looking for str */ 
+    /* Reading file and looking for str */
     while(fgets(line, OS_MAXSTR, fp) != NULL)
     {
         if(OS_Match(str, line))
@@ -72,7 +72,7 @@ int config_file(char *name, char *file, int quiet)
     FILE *fp;
 
     ffile[255] = '\0';
-    
+
 
     /* Checking if the file has a variable format */
     if(strchr(file, '%') != NULL)
@@ -92,8 +92,8 @@ int config_file(char *name, char *file, int quiet)
     {
         strncpy(ffile, file, 255);
     }
-    
-    
+
+
     /* Looking for ffile */
     if(!fileexist(ffile))
     {
@@ -103,26 +103,26 @@ int config_file(char *name, char *file, int quiet)
         }
         return(-1);
     }
-    
+
     if(dogrep(OSSECCONF, file))
     {
-        printf("%s: Log file already configured: '%s'.\n", 
+        printf("%s: Log file already configured: '%s'.\n",
                     name, file);
         return(0);
     }
-    
-    
+
+
     /* Add iis config config */
     fp = fopen(OSSECCONF, "a");
     if(!fp)
     {
         printf("%s: Unable to edit configuration file.\n", name);
-        return(0); 
+        return(0);
     }
-   
+
     printf("%s: Adding log file to be monitored: '%s'.\n", name,file);
-    fprintf(fp, "\r\n" 
-    "\r\n"    
+    fprintf(fp, "\r\n"
+    "\r\n"
     "<!-- Extra log file -->\r\n"
     "<ossec_config>\r\n"
     "  <localfile>\r\n"
@@ -136,14 +136,14 @@ int config_file(char *name, char *file, int quiet)
     fclose(fp);
 
     return(0);
-                    
+
 }
 
 /* Setup windows after install */
 int main(int argc, char **argv)
 {
     int quiet = 0;
-    
+
     if(argc < 2)
     {
         printf("%s: Invalid syntax.\n", argv[0]);
@@ -156,7 +156,7 @@ int main(int argc, char **argv)
         quiet = 1;
     }
 
-    
+
     /* Checking if ossec was installed already */
     if(!fileexist(OSSECCONF))
     {
@@ -167,6 +167,6 @@ int main(int argc, char **argv)
     {
         config_file(argv[0], argv[1], quiet);
     }
-    
+
     return(0);
 }

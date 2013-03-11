@@ -58,7 +58,7 @@ void nowDaemon();
 int isChroot();
 
 /* Debug analysisd */
-#ifdef DEBUGAD 
+#ifdef DEBUGAD
     #define DEBUG_MSG(x,y,z) verbose(x,y,z)
 #else
     #define DEBUG_MSG(x,y,z)

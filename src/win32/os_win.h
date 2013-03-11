@@ -23,11 +23,11 @@ int InstallService(char *path);
 /** int UninstallService()
  * Uninstall the OSSEC HIDS agent service.
  */
-int UninstallService(); 
+int UninstallService();
 
 
-/** int QueryService(): 
- * Checks if service is running. 
+/** int QueryService():
+ * Checks if service is running.
  * Return 1 on success (running) or 0 if not.
  */
 int CheckServiceRunning();

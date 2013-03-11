@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 #include "shared.h"
 #include "headers/defs.h"
 #include "headers/debug_op.h"
@@ -26,7 +26,7 @@ char open_ports_str[OS_SIZE_1024 + 1];
 int connect_to_port(int proto, int port)
 {
     int rc = 0;
-    
+
     int ossock;
     struct sockaddr_in server;
 
@@ -50,10 +50,10 @@ int connect_to_port(int proto, int port)
     {
         rc = 1;
     }
-    
-    close(ossock);  
 
-    return(rc);  
+    close(ossock);
+
+    return(rc);
 }
 
 /* try_to_access_ports */
@@ -76,7 +76,7 @@ void try_to_access_ports()
                 snprintf(port_proto, 64, "%d (tcp),", i);
             }
             strncat(open_ports_str, port_proto, open_ports_size);
-            open_ports_size -= strlen(port_proto) +1;            
+            open_ports_size -= strlen(port_proto) +1;
 
             _ports_open++;
         }
@@ -116,18 +116,18 @@ void check_open_ports()
     memset(open_ports_str, '\0', OS_SIZE_1024 +1);
     open_ports_size = OS_SIZE_1024 - 1;
     _ports_open = 0;
-    
+
     #ifndef OSSECHIDS
     snprintf(open_ports_str, OS_SIZE_1024, "The following ports are open:");
     open_ports_size-=strlen(open_ports_str) +1;
-    
-    /* Testing All ports */ 
+
+    /* Testing All ports */
     try_to_access_ports();
 
     open_ports_str[strlen(open_ports_str) -1] = '\0';
 
     notify_rk(ALERT_OK, open_ports_str);
-    
+
     #endif
     return;
 }

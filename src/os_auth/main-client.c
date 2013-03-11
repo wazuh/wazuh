@@ -8,6 +8,21 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
+ *
+ * In addition, as a special exception, the copyright holders give
+ * permission to link the code of portions of this program with the
+ * OpenSSL library under certain conditions as described in each
+ * individual source file, and distribute linked combinations
+ * including the two.
+ *
+ * You must obey the GNU General Public License in all respects
+ * for all of the code used other than OpenSSL.  If you modify
+ * file(s) with this exception, you may extend this exception to your
+ * version of the file(s), but you are not obligated to do so.  If you
+ * do not wish to do so, delete this exception statement from your
+ * version.  If you delete this exception statement from all source
+ * files in the program, then also delete it here.
+ *
  */
 
 #include "shared.h"
@@ -69,7 +84,7 @@ int main(int argc, char **argv)
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
+
     while((c = getopt(argc, argv, "Vdhu:g:D:c:m:p:A:")) != -1)
     {
         switch(c){
@@ -96,13 +111,14 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
                 dir=optarg;
+                break;
             case 'c':
                 if(!optarg)
                     ErrorExit("%s: -c needs an argument",ARGV0);
                 cfg = optarg;
                 break;
             case 't':
-                test_config = 1;    
+                test_config = 1;
                 break;
             case 'm':
                if(!optarg)
@@ -139,25 +155,25 @@ int main(int argc, char **argv)
     if(gid < 0)
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
-    
+
 
     /* Privilege separation */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
-    
+
 
     /* Signal manipulation */
     StartSIG(ARGV0);
 
-    
+
 
     /* Creating PID files */
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
     #endif
 
-    
+
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
@@ -173,7 +189,7 @@ int main(int argc, char **argv)
         agentname = lhostname;
     }
 
-    
+
 
     /* Starting SSL */	
     ctx = os_ssl_keys(1, NULL);
@@ -188,7 +204,42 @@ int main(int argc, char **argv)
         merror("%s: ERROR: Manager IP not set.", ARGV0);
         exit(1);
     }
-  
+
+
+    /* Check to see if manager is an IP */
+    int is_ip = 1;
+    struct sockaddr_in iptest;
+    memset(&iptest, 0, sizeof(iptest));
+
+    if(inet_pton(AF_INET, manager, &iptest.sin_addr) != 1)
+      is_ip = 0;	/* This is not an IPv4 address */
+
+    /* Not IPv4, IPv6 maybe? */
+    if(is_ip == 0)
+    {
+        struct sockaddr_in6 iptest6;
+        memset(&iptest6, 0, sizeof(iptest6));
+        if(inet_pton(AF_INET6, manager, &iptest6.sin6_addr) != 1)
+            is_ip = 0;
+        else
+            is_ip = 1;	/* This is an IPv6 address */
+    }
+    
+
+    /* If it isn't an ip, try to resolve the IP */
+    if(is_ip == 0)
+    {
+        char *ipaddress;
+        ipaddress = OS_GetHost(manager, 3);
+        if(ipaddress != NULL)
+          strncpy(manager, ipaddress, 16);
+        else
+        {
+          printf("Could not resolve hostname: %s\n", manager);
+          return(1);
+        }
+    }
+
 
     /* Connecting via TCP */
     sock = OS_ConnectTCP(port, manager, 0);
@@ -213,7 +264,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    
+
     printf("INFO: Connected to %s:%d\n", manager, port);
     printf("INFO: Using agent name as: %s\n", agentname);
 
@@ -256,15 +307,15 @@ int main(int argc, char **argv)
                     if(!tmpstr)
                     {
                         printf("ERROR: Invalid key received. Closing connection.\n");
-                        exit(0);
+                        exit(1);
                     }
                     *tmpstr = '\0';
-                    entry = OS_StrBreak(' ', key, 4); 
+                    entry = OS_StrBreak(' ', key, 4);
                     if(!OS_IsValidID(entry[0]) || !OS_IsValidName(entry[1]) ||
                        !OS_IsValidName(entry[2]) || !OS_IsValidName(entry[3]))
                     {
                         printf("ERROR: Invalid key received (2). Closing connection.\n");
-                        exit(0);
+                        exit(1);
                     }
 
                     {
@@ -273,7 +324,7 @@ int main(int argc, char **argv)
                         if(!fp)
                         {
                             printf("ERROR: Unable to open key file: %s", KEYSFILE_PATH);
-                            exit(0);
+                            exit(1);
                         }
                         fprintf(fp, "%s\n", key);
                         fclose(fp);

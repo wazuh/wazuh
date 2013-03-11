@@ -92,7 +92,7 @@ void send_sk_db()
     }
 
     create_db(1);
-        
+
 
     /* Sending scan ending message */
     sleep(syscheck.tsleep +10);
@@ -103,26 +103,26 @@ void send_sk_db()
         send_rootcheck_msg("Ending syscheck scan.");
     }
 }
-     
 
- 
+
+
 /* start_daemon
- * Run periodicaly the integrity checking 
+ * Run periodicaly the integrity checking
  */
 void start_daemon()
 {
     int day_scanned = 0;
     int curr_day = 0;
-    
+
     time_t curr_time = 0;
-    
+
     time_t prev_time_rk = 0;
     time_t prev_time_sk = 0;
 
     char curr_hour[12];
 
     struct tm *p;
-   
+
 
     /* To be used by select. */
     #ifdef USEINOTIFY
@@ -130,11 +130,11 @@ void start_daemon()
     fd_set rfds;
     #endif
 
-    
+
     /*
-     * SCHED_BATCH forces the kernel to assume this is a cpu intensive 
+     * SCHED_BATCH forces the kernel to assume this is a cpu intensive
      * process
-     * and gives it a lower priority. This keeps ossec-syscheckd 
+     * and gives it a lower priority. This keeps ossec-syscheckd
      * from reducing
      * the interactity of an ssh session when checksumming large files.
      * This is available in kernel flavors >= 2.6.16
@@ -142,28 +142,28 @@ void start_daemon()
     #ifdef SCHED_BATCH
     struct sched_param pri;
     int status;
-    
+
     pri.sched_priority = 0;
     status = sched_setscheduler(0, SCHED_BATCH, &pri);
-    
+
     debug1("%s: Setting SCHED_BATCH returned: %d", ARGV0, status);
     #endif
-    
-            
+
+
     #ifdef DEBUG
     verbose("%s: Starting daemon ..",ARGV0);
     #endif
-  
-  
-    
+
+
+
     /* Some time to settle */
     memset(curr_hour, '\0', 12);
     sleep(syscheck.tsleep * 10);
 
 
 
-    /* If the scan time/day is set, reset the 
-     * syscheck.time/rootcheck.time 
+    /* If the scan time/day is set, reset the
+     * syscheck.time/rootcheck.time
      */
     if(syscheck.scan_time || syscheck.scan_day)
     {
@@ -183,20 +183,20 @@ void start_daemon()
     {
         prev_time_rk = time(0);
     }
-               
 
-    
+
+
     /* Before entering in daemon mode itself */
     prev_time_sk = time(0);
     sleep(syscheck.tsleep * 10);
-    
+
 
     /* If the scan_time or scan_day is set, we need to handle the
      * current day/time on the loop.
      */
     if(syscheck.scan_time || syscheck.scan_day)
     {
-        curr_time = time(0); 
+        curr_time = time(0);
         p = localtime(&curr_time);
 
 
@@ -210,7 +210,7 @@ void start_daemon()
         curr_day = p->tm_mday;
 
 
-        
+
         if(syscheck.scan_time && syscheck.scan_day)
         {
             if((OS_IsAfterTime(curr_hour, syscheck.scan_time)) &&
@@ -236,24 +236,18 @@ void start_daemon()
         }
     }
 
-    
-    #if defined (USEINOTIFY) || defined (WIN32)
-    if(syscheck.realtime && (syscheck.realtime->fd >= 0))
-        verbose("%s: INFO: Starting real time file monitoring.", ARGV0);
-    #endif
-    
 
-    /* Checking every SYSCHECK_WAIT */    
+    /* Checking every SYSCHECK_WAIT */
     while(1)
     {
         int run_now = 0;
         curr_time = time(0);
-        
+
 
         /* Checking if syscheck should be restarted, */
         run_now = os_check_restart_syscheck();
 
-        
+
         /* Checking if a day_time or scan_time is set. */
         if(syscheck.scan_time || syscheck.scan_day)
         {
@@ -266,8 +260,8 @@ void start_daemon()
                 day_scanned = 0;
                 curr_day = p->tm_mday;
             }
-            
-            
+
+
             /* Checking for the time of the scan. */
             if(!day_scanned && syscheck.scan_time && syscheck.scan_day)
             {
@@ -278,11 +272,11 @@ void start_daemon()
                     run_now = 1;
                 }
             }
-            
+
             else if(!day_scanned && syscheck.scan_time)
             {
                 /* Assign hour/min/sec values */
-                snprintf(curr_hour, 9, "%02d:%02d:%02d", 
+                snprintf(curr_hour, 9, "%02d:%02d:%02d",
                                     p->tm_hour, p->tm_min, p->tm_sec);
 
                 if(OS_IsAfterTime(curr_hour, syscheck.scan_time))
@@ -302,8 +296,8 @@ void start_daemon()
                 }
             }
         }
-        
-        
+
+
 
         /* If time elapsed is higher than the rootcheck_time,
          * run it.
@@ -317,7 +311,7 @@ void start_daemon()
             }
         }
 
-        
+
         /* If time elapsed is higher than the syscheck time,
          * run syscheck time.
          */
@@ -332,8 +326,8 @@ void start_daemon()
 
                 syscheck.scan_on_start = 1;
             }
-            
-            
+
+
             else
             {
                 /* Sending scan start message */
@@ -354,7 +348,7 @@ void start_daemon()
                 run_dbcheck();
             }
 
-            
+
             /* Sending scan ending message */
             sleep(syscheck.tsleep + 20);
             if(syscheck.dir[0])
@@ -362,16 +356,16 @@ void start_daemon()
                 merror("%s: INFO: Ending syscheck scan.", ARGV0);
                 send_rootcheck_msg("Ending syscheck scan.");
             }
-                
+
 
 
             /* Sending database completed message */
             send_syscheck_msg(HC_SK_DB_COMPLETED);
             debug2("%s: DEBUG: Sending database completed message.", ARGV0);
 
-            
+
             prev_time_sk = time(0);
-        } 
+        }
 
 
         #ifdef USEINOTIFY
@@ -385,7 +379,7 @@ void start_daemon()
 
             FD_SET(syscheck.realtime->fd, &rfds);
 
-            run_now = select(syscheck.realtime->fd + 1, &rfds, 
+            run_now = select(syscheck.realtime->fd + 1, &rfds,
                              NULL, NULL, &selecttime);
             if(run_now < 0)
             {
@@ -442,7 +436,7 @@ void start_daemon()
 int c_read_file(char *file_name, char *oldsum, char *newsum)
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, seechanges = 0;
-    
+
     struct stat statbuf;
 
     os_md5 mf_sum;
@@ -452,8 +446,8 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
     /* Cleaning sums */
     strncpy(mf_sum, "xxx", 4);
     strncpy(sf_sum, "xxx", 4);
-                    
-    
+
+
 
     /* Stating the file */
     #ifdef WIN32
@@ -483,12 +477,12 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
 
     /* owner */
     if(oldsum[2] == '+')
-        owner = 1;     
-    
+        owner = 1;
+
     /* group */
     if(oldsum[3] == '+')
         group = 1;
-        
+
     /* md5 sum */
     if(oldsum[4] == '+')
         md5sum = 1;
@@ -507,8 +501,8 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
         sha1sum = 0;
         seechanges = 1;
     }
-    
-    
+
+
     /* Generating new checksum */
     #ifdef WIN32
     if(S_ISREG(statbuf.st_mode))
@@ -519,7 +513,7 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
         if(sha1sum || md5sum)
         {
             /* Generating checksums of the file. */
-            if(OS_MD5_SHA1_File(file_name, mf_sum, sf_sum) < 0)
+            if(OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum) < 0)
             {
                 strncpy(sf_sum, "xxx", 4);
                 strncpy(mf_sum, "xxx", 4);
@@ -538,7 +532,7 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
                 if(sha1sum || md5sum)
                 {
                     /* Generating checksums of the file. */
-                    if(OS_MD5_SHA1_File(file_name, mf_sum, sf_sum) < 0)
+                    if(OS_MD5_SHA1_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum) < 0)
                     {
                         strncpy(sf_sum, "xxx", 4);
                         strncpy(mf_sum, "xxx", 4);
@@ -548,11 +542,12 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
         }
     }
     #endif
-    
+
     newsum[0] = '\0';
     newsum[255] = '\0';
-    snprintf(newsum,255,"%d:%d:%d:%d:%s:%s",
-            size == 0?0:(int)statbuf.st_size,
+    /* chris: changed st_size int to long */
+    snprintf(newsum,255,"%ld:%d:%d:%d:%s:%s",
+            size == 0?0:(long)statbuf.st_size,
             perm == 0?0:(int)statbuf.st_mode,
             owner== 0?0:(int)statbuf.st_uid,
             group== 0?0:(int)statbuf.st_gid,

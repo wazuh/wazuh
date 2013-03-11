@@ -1230,7 +1230,7 @@
   <parent>pix</parent>
   <type>firewall</type>
   <prematch offset="after_parent">^6-106015</prematch>
-  <regex offset="after_parent">^(\S+): (\w+) (\w+) \S+ \S+ from </regex>
+  <regex offset="after_parent">^(\S+): (\w+) (\w+) \S+ \S+ (\S+) from </regex>
   <regex>(\S+)/(\S+) to (\S+)/(\S+)</regex>
   <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>
@@ -1251,6 +1251,23 @@
   <regex offset="after_parent">^(\S+): (\w+) \.+ (\w+) src </regex>
   <regex>\w+:(\S+)/(\d+) dst \w+:(\S+)/(\d+)</regex>
   <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
+</decoder>
+
+<decoder name="pix-url-success">
+  <parent>pix</parent>
+  <prematch offset="after_parent">^5-304001: </prematch>
+  <regex offset="after_parent">^(\S+): (\d+.\d+.\d+.\d+) Accessed URL </regex>
+  <regex>(\d+.\d+.\d+.\d+):(http\w*://\.+)|</regex>
+  <regex>^(\S+): (\d+.\d+.\d+.\d+) Accessed URL (\d+.\d+.\d+.\d+):</regex>
+  <order>id, srcip, dstip, url</order>
+</decoder>
+
+<decoder name="pix-url-deny">
+  <parent>pix</parent>
+  <prematch offset="after_parent">^5-304002: </prematch>
+  <regex offset="after_parent">^(\S+): Access (denied) URL (http\w*://\.+) </regex>
+  <regex>SRC (\d+.\d+.\d+.\d+) DEST (\d+.\d+.\d+.\d+) on interface</regex>  
+  <order>id, action, url, srcip, dstip</order>
 </decoder>
 
 <decoder name="pix-attacks">
@@ -1521,12 +1538,11 @@
   -  1.1.1.1 - username [18/Jan/2006:13:10:06 -0500] "GET /xxx.html HTTP/1.1"   
   -  123.4.5.6 aa.xx.com - [05/Nov/2006:00:46:56 -0500] "GET / HTTP/1.1" 302 -
   - ::ffff:202.194.15.192 190.7.138.180 - [18/Oct/2010:10:48:55 -0500] "GET //php-my-admin/config/config.inc.php?p=phpinfo(); HTTP/1.1" 404 345 "-"  "Mozilla/4.0 (compatible; MSIE 6.0; Windows 98)"
-  -  2002:6c0:1900:11:200:zzz:xxx:aaa - - [17/Oct/2011:09:00:52 -0200] "GET /xxx HTTP/1.1" 404 162 "http://www.ossec.net/xxx" "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:7.0.1) Gecko/20100101 Firefox/7.0.1"
   -->
 <decoder name="web-accesslog">
   <type>web-log</type>
-  <prematch>^\d+.\d+.\d+.\d+ |^::ffff:\d+.\d+.\d+.\d+ |^\w\w+:\w\w+:\w+:\w+:\S+ \S+ \S+ [\d\d+</prematch>
-  <regex>^(\S+) \S+ \S+ [\S+ \S\d+] </regex>
+  <prematch>^\d+.\d+.\d+.\d+ |^::ffff:\d+.\d+.\d+.\d+ </prematch>
+  <regex>^(\d+.\d+.\d+.\d+) \S+ \S+ [\S+ \S\d+] </regex>
   <regex>"\w+ (\S+) HTTP\S+ (\d+) </regex>
   <order>srcip, url, id</order>
 </decoder>
@@ -1824,7 +1840,6 @@
   <plugin_decoder>OSSECAlert_Decoder</plugin_decoder>
 </decoder>  
 
-
 <!-- decoder for active responses as logged by an OSSEC agent or server 
 - Examples
 Sat May  7 03:17:27 CDT 2011 /var/ossec/active-response/bin/host-deny.sh add - 172.16.0.1 1304756247.60385 31151
@@ -1834,10 +1849,10 @@ Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh del
 -->
 
 <decoder name="ar_log"> 
-    <prematch>^\w\w\w \w+\s+\d+ \d\d:\d\d:\d\d \w+ \d+ /\S+/active-response</prematch>
-    <prematch>^Mon|^Tue|^Wed|^Thu|^Fri|^Sat|^Sun \S+\s+\d+ \d\d:\d\d:\d\d \S+ \d+ /\.+/active-response</prematch>
-    <regex offset="after_prematch">/bin/(\S+) (\S+) - (\S+) (\d+.\d+) (\d+)</regex> 
-    <order>action, status, srcip, id, extra_data</order> 
+  <prematch>^\w\w\w \w+\s+\d+ \d\d:\d\d:\d\d \w+ \d+ /\S+/active-response</prematch>
+  <prematch>^Mon|^Tue|^Wed|^Thu|^Fri|^Sat|^Sun \S+\s+\d+ \d\d:\d\d:\d\d \S+ \d+ /\.+/active-response</prematch>
+  <regex offset="after_prematch">/bin/(\S+) (\S+) - (\S+) (\d+.\d+) (\d+)</regex> 
+  <order>action, status, srcip, id, extra_data</order> 
 </decoder>
 
 <!-- Zeus decoder.
@@ -2130,9 +2145,10 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
 -->
 
 <decoder name="ms-dhcp-ipv4">
-  <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,</prematch>
-  <regex>^(\d\d),</regex>
-  <order>id</order>
+  <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,|</prematch>
+  <prematch>^\d\d,\d+/\d+/\d\d,\d+:\d+:\d+,</prematch>
+  <regex>^(\d\d),\d+/\d+/\d\d\d*,\d+:\d+:\d+,(\w+),(\d+.\d+.\d+.\d+)</regex>
+  <order>id,extra_data,srcip</order>
 </decoder>
 
 <!--
@@ -2321,6 +2337,7 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
 166   - Future enhancements should ensure that all log samples regress properly due to the complexity of these decoders
 167   - Examples: 
 
+<!-- CentOS 5.5 -->
 type=USER_ACCT msg=audit(1310592861.936:1222): user pid=24675 uid=0 auid=501 ses=188 subj=system_u:system_r:unconfined_t:s0 msg='op=PAM:accounting acct="username" exe="/usr/bin/sudo" (hostname=?, addr=?, terminal=pts/5 res=success)'
 type=CRED_ACQ msg=audit(1305666154.831:51859): user pid=21250 uid=0 auid=4294967295 subj=system_u:system_r:unconfined_t:s0-s0:c0.c1023 msg='PAM: setcred acct="username" : exe="/usr/sbin/sshd" (hostname=lala.example.com, addr=172.16.0.1, terminal=ssh res=success)'
 type=CRED_ACQ msg=audit(1273182001.226:148635): user pid=29770 uid=0 auid=4294967295 subj=system_u:system_r:crond_t:s0-s0:c0.c1023 msg='PAM: setcred acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=?, terminal=cron
@@ -2330,14 +2347,17 @@ type=CRED_ACQ msg=audit(1306939201.751:67935): user pid=4401 uid=0 auid=42949672
 type=USER_START msg=audit(1306939201.756:67937): user pid=4401 uid=0 auid=0 subj=system_u:system_r:crond_t:s0-s0:c0.c1023 msg='PAM: session open acct="root" : exe="/usr/sbin/crond" (hostname=?, addr=?, terminal=cron res=success)'
 type=USER_CHAUTHTOK msg=audit(1304523288.952:37394): user pid=7258 uid=0 auid=500 subj=user_u:system_r:unconfined_t:s0 msg='op=change password id=505 exe="/usr/bin/passwd" (hostname=?, addr=?, terminal=pts/1 res=success)'
 
+<!-- Unknown source -->
 type=USER_ACCT msg=audit(1310592861.936:1222): user pid=24675 uid=0 auid=501 ses=188 subj=system_u:system_r:unconfined_t:s0 msg='op=PAM:accounting acct="username" exe="/usr/bin/sudo" (hostname=?, addr=?, terminal=pts/5 res=success)'
 
+<!-- Ubuntu 10.04 LTS -->
 type=SYSCALL msg=audit(1307045440.943:148): arch=c000003e syscall=59 success=yes exit=0 a0=de1fa8 a1=de23a8 a2=dc3008 a3=7fff1db3cc60 items=2 ppid=11719 pid=12140 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts8 ses=4294967295 comm="wget" exe="/tmp/wget" key="webserver-watch-tmp"
 type=SYSCALL msg=audit(1307045820.403:151): arch=c000003e syscall=59 success=no exit=-13 a0=de24c8 a1=de2408 a2=dc3008 a3=7fff1db3cc60 items=1 ppid=11719 pid=12347 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts8 ses=4294967295 comm="bash" exe="/bin/bash" key=(null)
 type=SYSCALL msg=audit(1306939143.715:67933): arch=40000003 syscall=94 success=yes exit=0 a0=5 a1=180 a2=8ebd360 a3=8ec4978 items=1 ppid=4383 pid=4388 auid=500 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts0 ses=8038 comm="less" exe="/usr/bin/less" subj=user_u:system_r:unconfined_t:s0 key="perm_mod"
 type=USER_ROLE_CHANGE msg=audit(1280266360.845:51): user pid=1978 uid=0 auid=500 subj=system_u:system_r:local_login_t:s0-s0:c0.c1023 msg='pam: default-context=user_u:system_r:unconfined_t:s0 selected-context=user_u:system_r:unconfined_t:s0: exe="/bin/login" (hostname=?, addr=?, terminal=tty1 res=success)'
 type=PATH msg=audit(1306967989.163:119): item=0 name="./ls" inode=261813 dev=fb:00 mode=0100755 ouid=0 ogid=0 rdev=00:00
 
+<!-- Will not decode due to null name, that's OK -->
 type=PATH msg=audit(1273924468.947:179534): item=0 name=(null) inode=424783 dev=fd:07 mode=0100640 ouid=0 ogid=502 rdev=00:00 obj=user_u:object_r:file_t:s0
 
 -->
@@ -2347,67 +2367,95 @@ type=PATH msg=audit(1273924468.947:179534): item=0 name=(null) inode=424783 dev=
 </decoder>
 
 <!-- SELinux -->
-  <decoder name="auditd-selinux">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^AVC </prematch>
-    <regex offset="after_parent">^(AVC) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): avc:  (\S+)  { \.+ } for  pid=\d+ comm="(\S+)" path="\S+" dev=\S+ ino=\d+ scontext=\S+ tcontext=\S+ tclass=\S+$</regex>
-    <order>action,id,status,extra_data</order>
-  </decoder>
+<decoder name="auditd-selinux">
+  <parent>auditd</parent>
+  <prematch offset="after_parent">^AVC </prematch>
+  <regex offset="after_parent">^(AVC) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): avc:  (\S+)  { \.+ } for  pid=\d+ comm="(\S+)" path="\S+" dev=\S+ ino=\d+ scontext=\S+ tcontext=\S+ tclass=\S+$</regex>
+  <order>action,id,status,extra_data</order>
+</decoder>
 
 <!-- syscall -->
-  <decoder name="auditd-syscall">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^SYSCALL </prematch>
-    <regex offset="after_parent">^(SYSCALL) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): arch=\w+ syscall=\d+ success=(\S+) exit=\S+ a0=\w+ a1=\w+ a2=\w+ a3=\w+ items=\d+ ppid=\d+ pid=\d+ auid=\d+ uid=\d+ gid=\d+ euid=\d+ suid=\d+ fsuid=\d+ egid=\d+ sgid=\d+ fsgid=\d+ tty=\S+ ses=\d+ comm="\S+" exe="(\.+)"</regex>
-    <order>action,id,status,extra_data</order>
-  </decoder>
+<decoder name="auditd-syscall">
+  <parent>auditd</parent>
+  <prematch offset="after_parent">^SYSCALL </prematch>
+  <regex offset="after_parent">^(SYSCALL) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): arch=\w+ syscall=\d+ success=(\S+) exit=\S+ a0=\w+ a1=\w+ a2=\w+ a3=\w+ items=\d+ ppid=\d+ pid=\d+ auid=\d+ uid=\d+ gid=\d+ euid=\d+ suid=\d+ fsuid=\d+ egid=\d+ sgid=\d+ fsgid=\d+ tty=\S+ ses=\d+ comm="\S+" exe="(\.+)"</regex>
+  <order>action,id,status,extra_data</order>
+</decoder>
 
 <!-- config -->
-  <decoder name="auditd-config">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^CONFIG_CHANGE </prematch>
-    <regex offset="after_parent">^(CONFIG_CHANGE) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): auid=\d+ ses=\d+ op="\.+" path="(\.+)" key="\S+" list=\d+ res=\d+$</regex>
-    <order>action,id,extra_data</order>
-  </decoder>
+<decoder name="auditd-config">
+  <parent>auditd</parent>
+  <prematch offset="after_parent">^CONFIG_CHANGE </prematch>
+  <regex offset="after_parent">^(CONFIG_CHANGE) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): auid=\d+ ses=\d+ op="\.+" path="(\.+)" key="\S+" list=\d+ res=\d+$</regex>
+  <order>action,id,extra_data</order>
+</decoder>
 
 <!-- path (will only decode if name is not null)-->
-  <decoder name="auditd-path">
-    <parent>auditd</parent>
-    <prematch offset="after_parent">^PATH </prematch>
-    <regex offset="after_parent">^(PATH) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): item=\d+ name="(\.+)" inode=\d+ dev=\S+ mode=\d+ ouid=\d+ ogid=\d+ rdev=\S+</regex>
-    <order>action,id,extra_data</order>
-  </decoder>
+<decoder name="auditd-path">
+  <parent>auditd</parent>
+  <prematch offset="after_parent">^PATH </prematch>
+  <regex offset="after_parent">^(PATH) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): item=\d+ name="(\.+)" inode=\d+ dev=\S+ mode=\d+ ouid=\d+ ogid=\d+ rdev=\S+</regex>
+  <order>action,id,extra_data</order>
+</decoder>
 
 <!-- user-related -->
-  <decoder name="auditd-user">
-    <parent>auditd</parent>
-    <regex offset="after_parent">^(USER_\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): user pid=\d+ uid=\d+ auid=\d+|</regex>
-    <regex>^(CRED_\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): user pid=\d+ uid=\d+ auid=\d+</regex>
-    <order>action,id</order>
-  </decoder>
+<decoder name="auditd-user">
+  <parent>auditd</parent>
+  <regex offset="after_parent">^(USER_\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): user pid=\d+ uid=\d+ auid=\d+|</regex>
+  <regex>^(CRED_\S+) msg=audit\(\d\d\d\d\d\d\d\d\d\d.\d\d\d:(\d+)\): user pid=\d+ uid=\d+ auid=\d+</regex>
+  <order>action,id</order>
+</decoder>
 
-  <decoder name="auditd-user">
-    <parent>auditd</parent>
-    <regex offset="after_regex"> acct="(\.+)" : exe="(\.+)" \(hostname=\S+, addr=(\S+), terminal=\S+$</regex>
-    <order>user,extra_data,srcip</order>
-  </decoder>
+<decoder name="auditd-user">
+  <parent>auditd</parent>
+  <regex offset="after_regex"> acct="(\.+)" : exe="(\.+)" \(hostname=\S+, addr=(\S+), terminal=\S+$</regex>
+  <order>user,extra_data,srcip</order>
+</decoder>
 
-  <decoder name="auditd-user">
-    <parent>auditd</parent>
-    <regex offset="after_regex"> ses=\d+ subj=\S+ msg='\.+ acct="(\.+)" exe="(\.+)" hostname=\S+ addr=(\S+) terminal=\S+ res=(\S+)$</regex>
-    <order>user,extra_data,srcip,status</order>
-  </decoder>
+<decoder name="auditd-user">
+  <parent>auditd</parent>
+  <regex offset="after_regex"> ses=\d+ subj=\S+ msg='\.+ acct="(\.+)" exe="(\.+)" hostname=\S+ addr=(\S+) terminal=\S+ res=(\S+)$</regex>
+  <order>user,extra_data,srcip,status</order>
+</decoder>
 
-   <decoder name="auditd-user">
-    <parent>auditd</parent>
-    <regex offset="after_regex"> subj=\S+ msg='\.+ acct="(\.+)" \p*\s*exe="(\.+)" \(hostname=\S+, addr=(\S+), terminal=\S+ res=(\S+)\)'$</regex>
-    <order>user,extra_data,srcip,status</order>
-  </decoder>
+<decoder name="auditd-user">
+  <parent>auditd</parent>
+  <regex offset="after_regex"> subj=\S+ msg='\.+ acct="(\.+)" \p*\s*exe="(\.+)" \(hostname=\S+, addr=(\S+), terminal=\S+ res=(\S+)\)'$</regex>
+  <order>user,extra_data,srcip,status</order>
+</decoder>
 
-  <decoder name="auditd-user">
-    <parent>auditd</parent>
-    <regex offset="after_regex"> subj=\S+ msg='\.+ exe="(\.+)" \(hostname=\S+, addr=(\S+), terminal=\S+ res=(\S+)\)'$</regex>
-    <order>extra_data,srcip,status</order>
-  </decoder>
+<decoder name="auditd-user">
+  <parent>auditd</parent>
+  <regex offset="after_regex"> subj=\S+ msg='\.+ exe="(\.+)" \(hostname=\S+, addr=(\S+), terminal=\S+ res=(\S+)\)'$</regex>
+  <order>extra_data,srcip,status</order>
+</decoder>
+
+<!--
+mptscsih \ mptbase decoder
+
+Description: module for SCSI controllers.
+
+Examples:
+[ 5008.286061] mptscsih: ioc0: task abort: FAILED (rv=2003) (sc=ffff88007a8a9f00)
+
+[ 6498.769248] mptbase: ioc0: RAID STATUS CHANGE for PhysDisk 1 id=8
+[ 6498.769252] mptbase: ioc0:   PhysDisk is now failed, out of sync
+
+[ 6498.775783] mptbase: ioc0: RAID STATUS CHANGE for VolumeID 0
+[ 6498.775788] mptbase: ioc0:   volume is now degraded, enabled
+-->
+<decoder name="mptscsih-1">
+  <parent>iptables</parent>
+  <prematch>^[\s\d+.\d+] mptscsih: </prematch>
+  <regex>^[\s\d+.\d+] (\w+): (\w+): task abort: (\w+)</regex>
+  <order>id,data,status</order>
+</decoder>
+
+<decoder name="mptbase-1">
+  <parent>iptables</parent>
+  <prematch>^[\s\d+.\d+] mptbase: </prematch>
+  <regex>^[\s\d+.\d+] (\w+): (\w+):\s+\w+ is now (\w+)\p\s(\D+)$</regex>
+  <order>id,data,action,status</order>
+</decoder>
 
 <!-- EOF -->

@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -17,13 +17,13 @@
 /* Part of the OSSEC
  * Available at http://www.ossec.net
  */
-  
+
 
 /* ossec-analysisd.
  * Responsible for correlation and log decoding.
  */
-#ifdef ARGV0   
-    #undef ARGV0   
+#ifdef ARGV0
+    #undef ARGV0
     #define ARGV0 "ossec-testrule"
 #endif
 
@@ -144,7 +144,7 @@ int main(int argc, char **argv)
     /* Found user */
     debug1(FOUND_USER, ARGV0);
 
-    
+
     /* Reading configuration file */
     if(GlobalConf(cfg) < 0)
     {
@@ -152,7 +152,7 @@ int main(int argc, char **argv)
     }
 
     debug1(READ_CONFIG, ARGV0);
-    
+
     /* Setting the group */	
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
@@ -162,8 +162,8 @@ int main(int argc, char **argv)
         ErrorExit(CHROOT_ERROR,ARGV0,dir);
 
     nowChroot();
-    
-    
+
+
 
     /* Createing the lists for use in rules */
     Lists_OP_CreateLists();

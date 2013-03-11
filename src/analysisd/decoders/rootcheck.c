@@ -42,7 +42,7 @@ void RootcheckInit()
     int i = 0;
 
     rk_err = 0;
-    
+
     for(;i<MAX_AGENTS;i++)
     {
         rk_agent_ips[i] = NULL;
@@ -58,7 +58,7 @@ void RootcheckInit()
     rootcheck_dec->fts = 0;
 
     debug1("%s: RootcheckInit completed.", ARGV0);
-    
+
     return;
 }
 
@@ -80,8 +80,8 @@ FILE *RK_File(char *agent, int *agent_id)
             *agent_id = i;
             return(rk_agent_fps[i]);
         }
-        
-        i++;    
+
+        i++;
     }
 
     /* If here, our agent wasn't found */
@@ -90,7 +90,7 @@ FILE *RK_File(char *agent, int *agent_id)
     if(rk_agent_ips[i] != NULL)
     {
         snprintf(rk_buf,OS_SIZE_1024, "%s/%s", ROOTCHECK_DIR,agent);
-        
+
         /* r+ to read and write. Do not truncate */
         rk_agent_fps[i] = fopen(rk_buf,"r+");
         if(!rk_agent_fps[i])
@@ -106,7 +106,7 @@ FILE *RK_File(char *agent, int *agent_id)
         if(!rk_agent_fps[i])
         {
             merror(FOPEN_ERROR, ARGV0, rk_buf);
-            
+
             free(rk_agent_ips[i]);
             rk_agent_ips[i] = NULL;
 
@@ -164,7 +164,7 @@ int DecodeRootcheck(Eventinfo *lf)
         merror("%s: Error handling rootcheck database (fgetpos).",ARGV0);
         return(0);
     }
-                                    
+
 
     /* Reads the file and search for a possible
      * entry
@@ -187,14 +187,14 @@ int DecodeRootcheck(Eventinfo *lf)
         tmpstr = strchr(rk_buf, '\n');
         if(tmpstr)
         {
-            *tmpstr = '\0';    
+            *tmpstr = '\0';
         }
 
-        
+
         /* Old format without the time stampts */
         if(rk_buf[0] != '!')
         {
-            /* Cannot use strncmp to avoid errors with crafted files */    
+            /* Cannot use strncmp to avoid errors with crafted files */
             if(strcmp(lf->log, rk_buf) == 0)
             {
                 rootcheck_dec->fts = 0;
@@ -207,14 +207,14 @@ int DecodeRootcheck(Eventinfo *lf)
         {
             /* Going past time: !1183431603!1183431603  (last, first saw) */
             tmpstr = rk_buf + 23;
-            
+
             /* Matches, we need to upgrade last time saw */
             if(strcmp(lf->log, tmpstr) == 0)
             {
                 fsetpos(fp, &fp_pos);
                 fprintf(fp, "!%d", lf->time);
                 rootcheck_dec->fts = 0;
-                lf->decoder_info = rootcheck_dec;        
+                lf->decoder_info = rootcheck_dec;
                 return(1);
             }
         }
@@ -225,9 +225,9 @@ int DecodeRootcheck(Eventinfo *lf)
             merror("%s: Error handling rootcheck database (fgetpos3).",ARGV0);
             return(0);
         }
-    }                
+    }
 
-    
+
     /* Adding the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
     fprintf(fp,"!%d!%d %s\n",lf->time, lf->time, lf->log);
@@ -236,7 +236,7 @@ int DecodeRootcheck(Eventinfo *lf)
     rootcheck_dec->fts = 0;
     rootcheck_dec->fts |= FTS_DONE;
     lf->decoder_info = rootcheck_dec;
-    return(1); 
+    return(1);
 }
 
 

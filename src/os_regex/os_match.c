@@ -39,7 +39,7 @@ int OS_Match2(char *pattern, char *str)
 
         OSMatch_FreePattern(&reg);
     }
-    
+
     return(r_code);
 }
 
@@ -57,7 +57,7 @@ int OS_Match3(char *pattern, char *str, char *delimiter)
     char *token = NULL;
     char *dupstr = NULL;
     char *saveptr = NULL;
-   
+
     /* debug2("1. str [%s], dupstr [%s], token[%s], delim [%s]", str, dupstr, token, delimiter); */
 
     os_strdup(str, dupstr);
@@ -77,7 +77,7 @@ int OS_Match3(char *pattern, char *str, char *delimiter)
 
         token = strtok_r(NULL, delimiter, &saveptr);
     }
-    
+
     /* debug2("4. str [%s], dupstr [%s], token[%s], delim [%s]", str, dupstr, token, delimiter); */
     free(dupstr);
     return(r_code);

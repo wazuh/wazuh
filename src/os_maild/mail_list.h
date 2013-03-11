@@ -9,8 +9,8 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-       
-       
+
+
 #ifndef _MAILIST__H
 #define _MAILIST__H
 
@@ -27,7 +27,7 @@ typedef struct _MailNode
 /* Add an email to the list  */
 void OS_AddMailtoList(MailMsg *ml);
 
-/* Return the last event from the Event list 
+/* Return the last event from the Event list
  * removing it from there
  */
 MailNode *OS_PopLastMail();

@@ -46,11 +46,11 @@ void *read_multiline(int pos, int *rc, int drop_it)
         linesgot++;
 
         /* Getting the last occurence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) 
+        if ((p = strrchr(str, '\n')) != NULL)
         {
             *p = '\0';
         }
-        
+
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
          */
@@ -65,17 +65,17 @@ void *read_multiline(int pos, int *rc, int drop_it)
             debug1("%s: Message not complete. Trying again: '%s'", ARGV0,str);
             fsetpos(logff[pos].fp, &fp_pos);
             break;
-        }    
-        
+        }
+
         #ifdef WIN32
         if ((p = strrchr(str, '\r')) != NULL)
         {
             *p = '\0';
         }
         #endif
-                      
+
         debug2("%s: DEBUG: Reading message: '%s'", ARGV0, str);
-        
+
 
         /* Adding to buffer. */
         buffer_size = strlen(buffer);
@@ -87,12 +87,12 @@ void *read_multiline(int pos, int *rc, int drop_it)
 
         strncpy(buffer + buffer_size, str, OS_MAXSTR - buffer_size -2);
 
-        
+
         if(linesgot < linecount)
         {
             continue;
         }
-                      
+
 
         /* Sending message to queue */
         if(drop_it == 0)
@@ -125,12 +125,12 @@ void *read_multiline(int pos, int *rc, int drop_it)
             }
             __ms = 0;
         }
-        
+
         fgetpos(logff[pos].fp, &fp_pos);
         continue;
     }
 
-    return(NULL); 
+    return(NULL);
 }
 
 /* EOF */

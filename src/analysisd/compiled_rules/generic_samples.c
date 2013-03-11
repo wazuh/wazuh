@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -20,10 +20,10 @@
 
 
 
-/** Note: If the rule fails to match it should return NULL. 
+/** Note: If the rule fails to match it should return NULL.
  * If you want processing to continue, return lf (the eventinfo structure).
  */
- 
+
 
 
 /* Example 1:
@@ -115,17 +115,17 @@ void *comp_mswin_targetuser_calleruser_diff(Eventinfo *lf)
         if(*target_user != *caller_user)
             return(lf);
 
-        if(*target_user == '\t' || 
+        if(*target_user == '\t' ||
            (*target_user == ' '  && target_user[1] == ' '))
-            break;    
+            break;
 
-        target_user++;caller_user++;           
+        target_user++;caller_user++;
     }
 
 
     /* If we got in here, the accounts are the same.
      * So, we return NULL since we only want to alert if they are different.
-     */ 
+     */
     return(NULL);
 }
 
@@ -143,7 +143,7 @@ void *is_simple_http_request(Eventinfo *lf)
         return(lf);
     }
 
-    
+
     /* Simple request, no query. */
     if(!strchr(lf->url,'?'))
     {

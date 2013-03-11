@@ -15,13 +15,13 @@ int main(int argc, char ** argv)
         printf("usage: %s file\n",argv[0]);
         return(-1);
     }
-    
+
     while(1)
     {
         usleep(10);
         printf(".");
         fflush(stdout);
-        
+
         if(OS_ReadXML(argv[1],&xml) < 0)
         {
             printf("Error reading XML!%s\n",xml.err);
@@ -36,7 +36,7 @@ int main(int argc, char ** argv)
         }
 
         i = 0;
-        
+
         while(node[i])
         {
             xml_node **cnode = NULL;
@@ -52,15 +52,15 @@ int main(int argc, char ** argv)
                 /* */
                 j++;
             }
-            
+
             OS_ClearNode(cnode);
             i++;
         }
-        
+
         OS_ClearNode(node);
-        
+
         node = NULL;
-        
+
         OS_ClearXML(&xml);
     }
     return(0);

@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 
 #ifndef _DBDCONFIG__H
 #define _DBDONFIG__H
@@ -31,7 +31,7 @@ typedef struct _DBConfig
     char *pass;
     char *db;
     char *sock;
-    
+
     void *conn;
     void *location_hash;
 

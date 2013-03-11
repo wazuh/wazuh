@@ -11,7 +11,7 @@
  */
 
 #ifndef __WAIT_OP_H
-#define __WAIT_OP_H 
+#define __WAIT_OP_H
 
 
 void os_setwait();

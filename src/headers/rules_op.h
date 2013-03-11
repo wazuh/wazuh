@@ -12,9 +12,9 @@
  * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
- 
+
 /* Common API for dealing with directory trees */
-          
+
 
 #ifndef _OS_RULESOP_H
 #define _OS_RULESOP_H
@@ -94,7 +94,7 @@ typedef struct _RuleInfo
 
     int __frequency;
     char **last_events;
-    
+
 
     /* Not an option in the rule */
     u_int16_t alert_opts;
@@ -104,7 +104,7 @@ typedef struct _RuleInfo
 
     /* category */
     u_int8_t category;
-   
+
     /* Decoded as */
     u_int16_t decoded_as;
 
@@ -126,7 +126,7 @@ typedef struct _RuleInfo
 
     /* Function pointer to the event_search. */
     void *(*event_search)(void *lf, void *rule);
-    
+
 
     char *group;
     OSMatch *match;
@@ -148,11 +148,11 @@ typedef struct _RuleInfo
     OSMatch *program_name;
     OSMatch *extra_data;
     char *action;
-    
+
     char *comment; /* description in the xml */
     char *info;
     char *cve;
-    
+
     char *if_sid;
     char *if_level;
     char *if_group;
@@ -160,14 +160,14 @@ typedef struct _RuleInfo
     OSRegex *if_matched_regex;
     OSMatch *if_matched_group;
     int if_matched_sid;
-    
+
     void **ar;
 
 }RuleInfo;
 
 
 /** Prototypes **/
-int OS_ReadXMLRules(char *rulefile, 
+int OS_ReadXMLRules(char *rulefile,
                     void *(*ruleact_function)(RuleInfo *rule, void *data),
                     void *data);
 

@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-       
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,7 +23,7 @@ int main(int argc, char **argv)
     printf("%s: Attempting to start ossec.", argv[0]);
 
     system("net start OssecSvc");
-    
+
     system("pause");
     return(0);
 }

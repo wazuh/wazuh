@@ -129,7 +129,7 @@ expect {
         send_user "ERROR: Unable to connect to remote host: $hostname .\n"
         exit 1;
     }
-    "* password:*" {
+    "*Password:*" {
         send "$pass\r"
         
         expect {

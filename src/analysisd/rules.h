@@ -95,7 +95,7 @@ typedef struct _RuleInfo
 
     int __frequency;
     char **last_events;
-    
+
 
     /* Not an option in the rule */
     u_int16_t alert_opts;
@@ -105,7 +105,7 @@ typedef struct _RuleInfo
 
     /* category */
     u_int8_t category;
-   
+
     /* Decoded as */
     u_int16_t decoded_as;
 
@@ -127,7 +127,7 @@ typedef struct _RuleInfo
 
     /* Function pointer to the event_search. */
     void *(*event_search)(void *lf, void *rule);
-    
+
 
     char *group;
     OSMatch *match;
@@ -149,13 +149,13 @@ typedef struct _RuleInfo
     OSMatch *program_name;
     OSMatch *extra_data;
     char *action;
-    
+
     char *comment; /* description in the xml */
     char *info;
     char *cve;
     RuleInfoDetail *info_details;
     ListRule *lists;
-    
+
     char *if_sid;
     char *if_level;
     char *if_group;
@@ -163,7 +163,7 @@ typedef struct _RuleInfo
     OSRegex *if_matched_regex;
     OSMatch *if_matched_group;
     int if_matched_sid;
-    
+
     void *(*compiled_rule)(void *lf);
     active_response **ar;
 
@@ -184,11 +184,11 @@ RuleInfoDetail *zeroinfodetails(int type, char *data);
 int get_info_attributes(char **attributes, char **values);
 
 /* RuleInfo functions */
-RuleInfo *zerorulemember(int id, 
+RuleInfo *zerorulemember(int id,
                          int level,
-                         int maxsize, 
+                         int maxsize,
                          int frequency,
-                         int timeframe, 
+                         int timeframe,
                          int noalert,
                          int ignore_time,
                          int overwrite);
@@ -222,10 +222,10 @@ RuleNode *OS_GetFirstRule();
 /** Defition of the internal rule IDS **
  ** These SIGIDs cannot be used       **
  **                                   **/
-   
+
 #define STATS_MODULE        11
 #define FTS_MODULE          12
-#define SYSCHECK_MODULE     13   
+#define SYSCHECK_MODULE     13
 #define HOSTINFO_MODULE     15
 
 

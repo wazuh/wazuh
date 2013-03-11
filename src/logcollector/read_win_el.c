@@ -10,9 +10,9 @@
  * Foundation
  */
 
-       
+
 #include "shared.h"
-#include "logcollector.h"       
+#include "logcollector.h"
 
 
 /* This is only for windows */
@@ -47,18 +47,18 @@ void *dll_hash = NULL;
 
 
 /** int startEL(char *app, os_el *el)
- * Starts the event logging for each el 
+ * Starts the event logging for each el
  */
 int startEL(char *app, os_el *el)
 {
     DWORD NumberOfRecords = 0;
-    
+
     /* Opening the event log */
     el->h = OpenEventLog(NULL, app);
     if(!el->h)
     {
         merror(EVTLOG_OPEN, ARGV0, app);
-        return(-1);	    
+        return(-1);	
     }
 
     el->name = app;
@@ -78,18 +78,18 @@ int startEL(char *app, os_el *el)
         el->h = NULL;
         return(-1);
     }
-    
+
     if(NumberOfRecords <= 0)
     {
         return(0);
     }
-    
+
     return((int)NumberOfRecords);
 }
 
 
 
-/** char *el_getCategory(int category_id) 
+/** char *el_getCategory(int category_id)
  * Returns a string related to the category id of the log.
  */
 char *el_getCategory(int category_id)
@@ -124,7 +124,7 @@ char *el_getCategory(int category_id)
 /** char *el_getEventDLL(char *evt_name, char *source, char *event)
  * Returns the event.
  */
-char *el_getEventDLL(char *evt_name, char *source, char *event) 
+char *el_getEventDLL(char *evt_name, char *source, char *event)
 {
     char *ret_str;
     HKEY key;
@@ -134,9 +134,9 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
 
     keyname[511] = '\0';
 
-    snprintf(keyname, 510, 
-            "System\\CurrentControlSet\\Services\\EventLog\\%s\\%s", 
-            evt_name, 
+    snprintf(keyname, 510,
+            "System\\CurrentControlSet\\Services\\EventLog\\%s\\%s",
+            evt_name,
             source);
 
 
@@ -148,16 +148,16 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
     }
 
 
-    /* Opening registry */	    
-    if(RegOpenKeyEx(HKEY_LOCAL_MACHINE, keyname, 0, 
+    /* Opening registry */	
+    if(RegOpenKeyEx(HKEY_LOCAL_MACHINE, keyname, 0,
                     KEY_ALL_ACCESS, &key) != ERROR_SUCCESS)
     {
-        return(NULL);    
+        return(NULL);
     }
 
 
     ret = MAX_PATH -1;	
-    if (RegQueryValueEx(key, "EventMessageFile", NULL, 
+    if (RegQueryValueEx(key, "EventMessageFile", NULL,
                 NULL, (LPBYTE)event, &ret) != ERROR_SUCCESS)
     {
         event[0] = '\0';	
@@ -172,24 +172,24 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
 
         skey = strdup(keyname + 42);
         sval = strdup(event);
-        
+
         if(skey && sval)
         {
-            OSHash_Add(dll_hash, skey, sval); 
+            OSHash_Add(dll_hash, skey, sval);
         }
         else
         {
             merror(MEM_ERROR, ARGV0);
         }
     }
-    
+
     RegCloseKey(key);
     return(event);
 }
 
 
 
-/** char *el_vista_getmessage() 
+/** char *el_vista_getmessage()
  * Returns a descriptive message of the event - Vista only.
  */
 char *el_vista_getMessage(int evt_id_int, LPTSTR *el_sstring)
@@ -209,15 +209,15 @@ char *el_vista_getMessage(int evt_id_int, LPTSTR *el_sstring)
     /* Getting descriptive message. */
     evt_id[15] = '\0';
     snprintf(evt_id, 15, "%d", evt_id_int);
-    
+
     desc_string = OSHash_Get(vista_sec_id_hash, evt_id);
     if(!desc_string)
     {
         return(NULL);
     }
-    
 
-    if(!FormatMessage(fm_flags, desc_string, 0, 0, 
+
+    if(!FormatMessage(fm_flags, desc_string, 0, 0,
                       (LPTSTR) &message, 0, el_sstring))
     {
         return(NULL);
@@ -228,11 +228,11 @@ char *el_vista_getMessage(int evt_id_int, LPTSTR *el_sstring)
 
 
 
-/** char *el_getmessage() 
+/** char *el_getmessage()
  * Returns a descriptive message of the event.
  */
-char *el_getMessage(EVENTLOGRECORD *er,  char *name, 
-		    char * source, LPTSTR *el_sstring) 
+char *el_getMessage(EVENTLOGRECORD *er,  char *name,
+		    char * source, LPTSTR *el_sstring)
 {
     DWORD fm_flags = 0;
     char tmp_str[257];
@@ -258,12 +258,12 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
     /* Get the file name from the registry (stored on event) */
     if(!(curr_str = el_getEventDLL(name, source, event)))
     {
-        return(NULL);	    
-    }	    
+        return(NULL);	
+    }	
 
 
 
-    /* If our event has multiple libraries, try each one of them */ 
+    /* If our event has multiple libraries, try each one of them */
     while((next_str = strchr(curr_str, ';')))
     {
         *next_str = '\0';
@@ -272,10 +272,10 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
 
         /* Reverting back old value. */
         *next_str = ';';
-        
+
 
         /* Loading library. */
-        hevt = LoadLibraryEx(tmp_str, NULL, 
+        hevt = LoadLibraryEx(tmp_str, NULL,
                              DONT_RESOLVE_DLL_REFERENCES |
                              LOAD_LIBRARY_AS_DATAFILE);
         if(hevt)
@@ -283,7 +283,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
             if(!FormatMessage(fm_flags, hevt, er->EventID, 0,
                               (LPTSTR) &message, 0, el_sstring))
             {
-                message = NULL;		  
+                message = NULL;		
             }
             FreeLibrary(hevt);
 
@@ -296,20 +296,20 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
         curr_str = next_str +1;
     }
 
-    
+
     /* Getting last value. */
     ExpandEnvironmentStrings(curr_str, tmp_str, 255);
-    hevt = LoadLibraryEx(tmp_str, NULL, 
+    hevt = LoadLibraryEx(tmp_str, NULL,
                          DONT_RESOLVE_DLL_REFERENCES |
                          LOAD_LIBRARY_AS_DATAFILE);
     if(hevt)
     {
-        int hr;    
-        if(!(hr = FormatMessage(fm_flags, hevt, er->EventID, 
+        int hr;
+        if(!(hr = FormatMessage(fm_flags, hevt, er->EventID,
                         0,
                         (LPTSTR) &message, 0, el_sstring)))
         {
-            message = NULL;		  
+            message = NULL;		
         }
         FreeLibrary(hevt);
 
@@ -325,7 +325,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
 
 /** void readel(os_el *el)
  * Reads the event log.
- */ 
+ */
 void readel(os_el *el, int printit)
 {
     DWORD _evtid = 65535;
@@ -353,7 +353,7 @@ void readel(os_el *el, int printit)
     LPSTR el_sstring[OS_FLSIZE +1];
 
     /* Er must point to the mbuffer */
-    el->er = (EVENTLOGRECORD *) &mbuffer; 
+    el->er = (EVENTLOGRECORD *) &mbuffer;
 
     /* Zeroing the values */
     el_string[OS_MAXSTR] = '\0';
@@ -370,8 +370,8 @@ void readel(os_el *el, int printit)
         return;
     }
 
-    /* Reading the event log */	    
-    while(ReadEventLog(el->h, 
+    /* Reading the event log */	
+    while(ReadEventLog(el->h,
                 EVENTLOG_FORWARDS_READ | EVENTLOG_SEQUENTIAL_READ,
                 0,
                 el->er, BUFFER_SIZE -1, &read, &needed))
@@ -383,7 +383,7 @@ void readel(os_el *el, int printit)
             continue;
         }
 
-        
+
         while(read > 0)
         {
 
@@ -396,7 +396,7 @@ void readel(os_el *el, int printit)
 
             /* Getting event id. */
             id = (int)el->er->EventID & _evtid;
-                            
+
 
 
             /* Initialing domain/user size */
@@ -431,7 +431,7 @@ void readel(os_el *el, int printit)
                     else
                     {
                         merror("%s: Invalid application string (size+)",
-                               ARGV0); 
+                               ARGV0);
                     }
                     size_left-=str_size + 2;
 
@@ -445,7 +445,7 @@ void readel(os_el *el, int printit)
                     if(sstr)
                         sstr++;
                     else
-                        break;     
+                        break;
                 }
 
                 /* Get a more descriptive message (if available) */
@@ -456,12 +456,12 @@ void readel(os_el *el, int printit)
 
                 else
                 {
-                    descriptive_msg = el_getMessage(el->er, 
-                                                    el->name, 
-                                                    source, 
+                    descriptive_msg = el_getMessage(el->er,
+                                                    el->name,
+                                                    source,
                                                     el_sstring);
                 }
-                
+
                 if(descriptive_msg != NULL)
                 {
                     /* Remove any \n or \r */
@@ -469,7 +469,7 @@ void readel(os_el *el, int printit)
                      * So whenever we have option:\tvalue\t, it will
                      * become option: value\t
                      */
-                    tmp_str = descriptive_msg;    
+                    tmp_str = descriptive_msg;
                     while(*tmp_str != '\0')
                     {
                         if(*tmp_str == '\n')
@@ -481,7 +481,7 @@ void readel(os_el *el, int printit)
                             tmp_str[1] = ' ';
                             tmp_str++;
                         }
-                                    
+
                         tmp_str++;
                     }
                 }
@@ -496,13 +496,13 @@ void readel(os_el *el, int printit)
             if(el->er->UserSidLength)
             {
                 SID_NAME_USE account_type;
-                if(!LookupAccountSid(NULL, 
-                                    (SID *)((LPSTR)el->er + 
+                if(!LookupAccountSid(NULL,
+                                    (SID *)((LPSTR)el->er +
                                     el->er->UserSidOffset),
-                                    el_user, 
-                                    &user_size, 
-                                    el_domain, 
-                                    &domain_size, 
+                                    el_user,
+                                    &user_size,
+                                    el_domain,
+                                    &domain_size,
                                     &account_type))		
                 {
                     strncpy(el_user, "(no user)", 255);
@@ -522,16 +522,16 @@ void readel(os_el *el, int printit)
                         break;
                     case 4634:
                         uid_array_id = 1;
-                        break;    
+                        break;
                     case 4647:
                         uid_array_id = 1;
-                        break;    
+                        break;
                     case 4769:
                         uid_array_id = 0;
                         break;
                 }
 
-                if((uid_array_id >= 0) && 
+                if((uid_array_id >= 0) &&
                    el_sstring[uid_array_id] &&
                    el_sstring[uid_array_id +1])
                 {
@@ -544,7 +544,7 @@ void readel(os_el *el, int printit)
                     strncpy(el_domain, "no domain", 255);
                 }
             }
-            
+
             else
             {
                 strncpy(el_user, "(no user)", 255);	
@@ -555,22 +555,22 @@ void readel(os_el *el, int printit)
             if(printit)
             {
                 DWORD _evtid = 65535;
-                int id = (int)el->er->EventID & _evtid; 
-               
-                final_msg[OS_MAXSTR - OS_LOG_HEADER] = '\0'; 
-                final_msg[OS_MAXSTR - OS_LOG_HEADER -1] = '\0'; 
-                
-                snprintf(final_msg, OS_MAXSTR - OS_LOG_HEADER -1, 
-                        "WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s", 
+                int id = (int)el->er->EventID & _evtid;
+
+                final_msg[OS_MAXSTR - OS_LOG_HEADER] = '\0';
+                final_msg[OS_MAXSTR - OS_LOG_HEADER -1] = '\0';
+
+                snprintf(final_msg, OS_MAXSTR - OS_LOG_HEADER -1,
+                        "WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
                         el->name,
-                        category, 
+                        category,
                         id,
                         source,
                         el_user,
                         el_domain,
                         computer_name,
                         descriptive_msg != NULL?descriptive_msg:el_string);	
-                
+
                 if(SendMSG(logr_queue, final_msg, "WinEvtLog",
                             LOCALFILE_MQ) < 0)
                 {
@@ -606,7 +606,7 @@ void readel(os_el *el, int printit)
         char msg_alert[512 +1];
         msg_alert[512] = '\0';
         merror("%s: WARN: Event log cleared: '%s'", ARGV0, el->name);
-        
+
 
         /* Send message about cleared */
         snprintf(msg_alert, 512, "ossec: Event log cleared: '%s'", el->name);
@@ -620,7 +620,7 @@ void readel(os_el *el, int printit)
         /* Reopening. */
         if(startEL(el->name, el) < 0)
         {
-            merror("%s: ERROR: Unable to reopen event log '%s'", 
+            merror("%s: ERROR: Unable to reopen event log '%s'",
                    ARGV0, el->name);
         }
     }
@@ -661,13 +661,13 @@ void win_read_vista_sec()
         exit(1);
     }
 
-    
+
     /* Reading the whole file and adding to memory. */
     while(fgets(buf, OS_MAXSTR, fp) != NULL)
     {
         char *key;
         char *desc;
-        
+
         /* Getting the last occurence of \n */
         if ((p = strrchr(buf, '\n')) != NULL)
         {
@@ -689,7 +689,7 @@ void win_read_vista_sec()
         while(*p == ' ')
             p++;
 
-        
+
         /* Allocating memory. */
         desc = strdup(p);
         key = strdup(buf);
@@ -699,9 +699,9 @@ void win_read_vista_sec()
                    "description.", ARGV0);
             continue;
         }
-        
-        
-        /* Inserting on hash. */    
+
+
+        /* Inserting on hash. */
         OSHash_Add(vista_sec_id_hash, key, desc);
     }
 
@@ -715,7 +715,7 @@ void win_read_vista_sec()
 void win_startel(char *evt_log)
 {
     int entries_count = 0;
-    
+
     /* Maximum size */
     if(el_last == 9)
     {
@@ -735,7 +735,7 @@ void win_startel(char *evt_log)
         }
     }
 
-    
+
     /* Starting event log -- going to last available record */
     if((entries_count = startEL(evt_log, &el[el_last])) < 0)
     {
@@ -750,16 +750,16 @@ void win_startel(char *evt_log)
 }
 
 
-/** void win_readel() 
+/** void win_readel()
  * Reads the event logging for windows
  */
 void win_readel()
 {
     int i = 0;
-    
+
     /* Sleep plus 2 seconds before reading again */
     Sleep(2000);
-    
+
     for(;i<el_last;i++)
         readel(&el[i],1);
 }

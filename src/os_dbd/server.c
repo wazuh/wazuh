@@ -51,14 +51,14 @@ int __DBSelectServer(char *server, DBConfig *db_config)
 int __DBInsertServer(char *server, char *info, DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
-    
+
     memset(sql_query, '\0', OS_SIZE_1024);
 
     /* Checking if the server is present */
     snprintf(sql_query, OS_SIZE_1024 -1,
             "SELECT id from server where hostname = '%s'",
             server);
-    
+
     /* If not present, we insert */
     if(osdb_query_select(db_config->conn, sql_query) == 0)
     {
@@ -106,10 +106,10 @@ int OS_Server_ReadInsertDB(void *db_config)
     int server_id = 0;
     char *info;
 
-   
+
     debug1("%s: DEBUG: entering OS_Server_ReadInsertDB()", ARGV0);
 
-    
+
     /* Getting servers hostname */
     memset(__shost, '\0', 512);
     if(gethostname(__shost, 512 -1) != 0)
@@ -139,8 +139,8 @@ int OS_Server_ReadInsertDB(void *db_config)
 
     /* Getting server id */
     server_id = __DBSelectServer(__shost, (DBConfig *)db_config);
-    
-    
+
+
     return(server_id);
 }
 

@@ -29,7 +29,7 @@ int os_win32_setdebugpriv(HANDLE h, int en)
     LUID luid;
     DWORD cbPrevious = sizeof(TOKEN_PRIVILEGES);
 
-    if(!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid)) 
+    if(!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid))
     {
         return(0);
     }
@@ -51,11 +51,11 @@ int os_win32_setdebugpriv(HANDLE h, int en)
 
 
     /* If en is set to true, we enable the privilege */
-    if(en) 
+    if(en)
     {
         tpPrevious.Privileges[0].Attributes |= (SE_PRIVILEGE_ENABLED);
     }
-    else 
+    else
     {
         tpPrevious.Privileges[0].Attributes ^= (SE_PRIVILEGE_ENABLED &
                 tpPrevious.Privileges[0].Attributes);
@@ -76,7 +76,7 @@ int os_win32_setdebugpriv(HANDLE h, int en)
 void *os_get_process_list()
 {
     OSList *p_list = NULL;
-    
+
     HANDLE hsnap;
     HANDLE hpriv;
     PROCESSENTRY32 p_entry;
@@ -84,7 +84,7 @@ void *os_get_process_list()
 
 
     /* Getting token for enable debug priv */
-    if(!OpenThreadToken(GetCurrentThread(), 
+    if(!OpenThreadToken(GetCurrentThread(),
                         TOKEN_ADJUST_PRIVILEGES|TOKEN_QUERY, FALSE, &hpriv))
     {
         if(GetLastError() == ERROR_NO_TOKEN)
@@ -97,7 +97,7 @@ void *os_get_process_list()
             }
 
             if(!OpenThreadToken(GetCurrentThread(),
-                                TOKEN_ADJUST_PRIVILEGES|TOKEN_QUERY, 
+                                TOKEN_ADJUST_PRIVILEGES|TOKEN_QUERY,
                                 FALSE, &hpriv))
             {
                 merror("%s: ERROR: os_get_win32_process_list -> "
@@ -111,7 +111,7 @@ void *os_get_process_list()
             return(NULL);
         }
     }
-    
+
 
     /* Enabling debug privilege */
     if(!os_win32_setdebugpriv(hpriv, 1))
@@ -149,7 +149,7 @@ void *os_get_process_list()
         merror(LIST_ERROR, ARGV0);
         return(0);
     }
-                                            
+
 
     /* Getting each process name and path */
     while(Process32Next( hsnap, &p_entry))
@@ -160,15 +160,15 @@ void *os_get_process_list()
 
         /* Setting process name */
         os_strdup(p_entry.szExeFile, p_name);
-        
-        
+
+
         /* Getting additional information from modules */
         HANDLE hmod = INVALID_HANDLE_VALUE;
         MODULEENTRY32 m_entry;
         m_entry.dwSize = sizeof(MODULEENTRY32);
-        
+
         /* Snapshot of the process */
-        hmod = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, 
+        hmod = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE,
                                         p_entry.th32ProcessID);
         if(hmod == INVALID_HANDLE_VALUE)
         {

@@ -16,7 +16,7 @@
 #define __CLOGREADER_H
 
 #define EVENTLOG    "eventlog"
-#define VCHECK_FILES    64 
+#define VCHECK_FILES    64
 #define DATE_MODIFIED   1
 
 
@@ -29,20 +29,20 @@ typedef struct _logreader
 {
     unsigned int size;
     int ign;
-    
+
     #ifdef WIN32
     HANDLE h;
     int fd;
     #else
     ino_t fd;
     #endif
-    
-        
-    /* ffile - format file is only used when 
+
+
+    /* ffile - format file is only used when
      * the file has format string to retrieve
      * the date,
-     */    
-    char *ffile;        
+     */
+    char *ffile;
     char *file;
     char *logformat;
     char *djb_program_name;

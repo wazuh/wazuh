@@ -31,9 +31,9 @@ char *pidfile = NULL;
 void HandleSIG()
 {
     merror(SIGNAL_RECV, pidfile);
-    
+
     DeletePID(pidfile);
-    
+
     exit(1);
 }
 
@@ -50,7 +50,7 @@ void StartSIG(char *process_name)
        go to HandleSIG() */
     pidfile = process_name;
 
-    signal(SIGHUP, SIG_IGN);    
+    signal(SIGHUP, SIG_IGN);
     signal(SIGINT, HandleSIG);
     signal(SIGQUIT, HandleSIG);
     signal(SIGTERM, HandleSIG);

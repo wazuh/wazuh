@@ -46,7 +46,7 @@ doUpdatecleanup()
     fi
 
     # Checking if the directory is valid.
-    local _dir_pattern="^/[a-zA-Z0-9/\.-]{3,128}$"
+    local _dir_pattern="^/[-a-zA-Z0-9/\.-]{3,128}$"
     echo $DIRECTORY | grep -E "$_dir_pattern" > /dev/null 2>&1
     if [ ! $? = 0 ]; then
         echo "# ($FUNCNAME) ERROR: directory name ($DIRECTORY) doesn't match the pattern $_dir_pattern" 1>&2
@@ -120,7 +120,6 @@ UpdateStopOSSEC()
    rm -f $DIRECTORY/queue/syscheck/.* > /dev/null 2>&1
 }
 
-
 ##########
 # UpdateOSSECRules
 ##########
@@ -133,12 +132,26 @@ UpdateOSSECRules()
     # Backing up the old config
     cp -pr ${OSSEC_CONF_FILE} "${OSSEC_CONF_FILE}.$$.bak"
 
-    cat ${OSSEC_CONF_FILE}|grep -v "<rules>" |grep -v "</rules>" |grep -v "<include>" > "${OSSEC_CONF_FILE}.$$.tmp"
+    # Getting rid of old rules entries
+    grep -Ev "</*rules>|<include>|<list>|<decoder>|<decoder_dir|<rule_dir>|rules global entry" ${OSSEC_CONF_FILE} > "${OSSEC_CONF_FILE}.$$.tmp"
 
+    # Customer decoder, decoder_dir, rule_dir are carried over during upgrade
+    grep -E '<decoder>|<decoder_dir|<rule_dir>' ${OSSEC_CONF_FILE} | grep -v '<!--' >> "${OSSEC_CONF_FILE}.$$.tmp2"
+
+    # Check for custom files that may have been added in <rules> element
+    for i in $(grep -E '<include>|<list>' ${OSSEC_CONF_FILE} | grep -v '<!--')
+    do
+      grep "$i" ${RULES_TEMPLATE}>/dev/null || echo "    $i" >> "${OSSEC_CONF_FILE}.$$.tmp2"
+    done
+
+    # Putting everything back together
     cat "${OSSEC_CONF_FILE}.$$.tmp" > ${OSSEC_CONF_FILE}
     rm "${OSSEC_CONF_FILE}.$$.tmp"
     echo "" >> ${OSSEC_CONF_FILE}
     echo "<ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
-    cat ${RULES_TEMPLATE} >> ${OSSEC_CONF_FILE}
+    grep -v '</rules>' ${RULES_TEMPLATE} >> ${OSSEC_CONF_FILE}
+    cat "${OSSEC_CONF_FILE}.$$.tmp2" >> ${OSSEC_CONF_FILE}
+    echo "</rules>" >> ${OSSEC_CONF_FILE}
     echo "</ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
+    rm "${OSSEC_CONF_FILE}.$$.tmp2"
 }

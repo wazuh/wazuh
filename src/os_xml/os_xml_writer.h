@@ -38,7 +38,7 @@
  */
 int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
                 char *oldval, char *newval,  int type);
-  
+
 
 #endif
 

@@ -33,13 +33,13 @@ void file_sleep()
 {
     #ifndef WIN32
     struct timeval fp_timeout;
-        
+
     fp_timeout.tv_sec = FQ_TIMEOUT;
     fp_timeout.tv_usec = 0;
 
     /* Waiting for the select timeout */
     select(0, NULL, NULL, NULL, &fp_timeout);
-    
+
     #else
     /* Windows don't like select that way */
     Sleep((FQ_TIMEOUT + 2) * 1000);
@@ -71,7 +71,7 @@ void GetFile_Queue(file_queue *fileq)
                                    ALERTS,
                                    fileq->year,
                                    fileq->mon,
-                                   fileq->day);  
+                                   fileq->day);
     }
 }
 
@@ -80,7 +80,7 @@ void GetFile_Queue(file_queue *fileq)
 /** int Handle_Queue(file_queue *fileq)
  * Re Handle the file queue.
  */
-int Handle_Queue(file_queue *fileq, int flags) 
+int Handle_Queue(file_queue *fileq, int flags)
 {
     /* Closing if it is open */
     if(!(flags & CRALERT_FP_SET))
@@ -116,7 +116,7 @@ int Handle_Queue(file_queue *fileq, int flags)
         }
     }
 
-   
+
     /* File change time */
     if(fstat(fileno(fileq->fp), &fileq->f_status) < 0)
     {
@@ -125,9 +125,9 @@ int Handle_Queue(file_queue *fileq, int flags)
         fileq->fp = NULL;
         return(-1);
     }
-    
+
     fileq->last_change = fileq->f_status.st_mtime;
-    
+
     return(1);
 }
 
@@ -145,29 +145,29 @@ int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
     }
     fileq->last_change = 0;
     fileq->flags = 0;
-    
+
     fileq->day = p->tm_mday;
     fileq->year = p->tm_year+1900;
-    
+
     strncpy(fileq->mon, s_month[p->tm_mon], 4);
     memset(fileq->file_name, '\0',MAX_FQUEUE + 1);
 
 
     /* Setting the supplied flags */
     fileq->flags = flags;
-    
+
 
     /* Getting latest file */
     GetFile_Queue(fileq);
 
-    
+
     /* Always seek end when starting the queue */
     if(Handle_Queue(fileq, fileq->flags) < 0)
     {
         return(-1);
     }
 
-    return(0);    
+    return(0);
 }
 
 
@@ -180,7 +180,7 @@ alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
     int i = 0;
     alert_data *al_data;
 
-    
+
     /* If the file queue is not available, try to access it */
     if(!fileq->fp)
     {
@@ -191,7 +191,7 @@ alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
         }
     }
 
-    
+
     /* Getting currently file */
     if(p->tm_mday != fileq->day)
     {
@@ -218,7 +218,7 @@ alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
         }
     }
 
-    
+
     /* Try up to timeout times to get an event */
     while(i < timeout)
     {
@@ -227,12 +227,12 @@ alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
         {
             return(al_data);
         }
-            
-        i++;    
+
+        i++;
         file_sleep();
     }
 
-    
+
     /* Returning NULL if timeout expires. */
     return(NULL);
 }
