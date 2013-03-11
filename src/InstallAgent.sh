@@ -68,13 +68,14 @@ elif [ "$UNAME" = "Darwin" ]; then
     if [ ! $? = 0 ]; then
 
         # Creating for 10.5
-        /usr/bin/sw_vers 2>/dev/null| grep "ProductVersion" | grep -E "10.5.|10.6|10.7|10.8" > /dev/null 2>&1
+        /usr/bin/sw_vers 2>/dev/null| grep "ProductVersion" | grep -E "10.2.|10.3|10.4" > /dev/null 2>&1
         if [ $? = 0 ]; then
+
+	    chmod +x ./init/darwin-addusers.pl
+            ./init/darwin-addusers.pl
+	else
             chmod +x ./init/osx105-addusers.sh
             ./init/osx105-addusers.sh
-        else
-            chmod +x ./init/darwin-addusers.pl
-            ./init/darwin-addusers.pl    
         fi        
     fi
 else
