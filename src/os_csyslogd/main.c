@@ -87,7 +87,7 @@ int main(int argc, char **argv)
 
 
     /* Starting daemon */
-    debug1(STARTED_MSG, ARGV0);
+    merror(STARTED_MSG, ARGV0);
 
 
     /* Check if the user/group given are valid */

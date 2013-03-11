@@ -56,7 +56,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
         }
         sleep(1);
     }
-    merror("%s: INFO: File queue connected.", ARGV0 );
+    debug1("%s: INFO: File queue connected.", ARGV0 );
 
 
     /* Connecting to syslog. */
