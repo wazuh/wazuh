@@ -95,16 +95,16 @@
   <!-- WordPress wp-login.php brute force -->
   <rule id="31509" level="3">
     <if_sid>31108</if_sid>
-    <url>wp-login.php</url>
-    <regex>] "POST \S+wp-login.php</regex>
-    <description>WordPress login attempt.</description>
+    <url>wp-login.php|/administrator</url>
+    <regex>] "POST \S+wp-login.php| "POST /administrator</regex>
+    <description>CMS (WordPress or Joomla) login attempt.</description>
   </rule>
 
   <!-- If we see frequent wp-login POST's, it is likely a bot. -->
   <rule id="31510" level="8" frequency="6" timeframe="30">
     <if_matched_sid>31509</if_matched_sid>
     <same_source_ip />
-    <description>WordPress wp-login.php brute force attempt.</description>
+    <description>CMS (WordPress or Joomla) brute force attempt.</description>
   </rule>
 
   <!-- Nothing wrong with wget per se, but it misses a lot of links
