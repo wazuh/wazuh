@@ -134,6 +134,15 @@
     <description>BBS delete.php exploit attempt.</description>
    </rule>
 
+  <!-- Simple shell.php command execution
+    -->
+  <rule id="31514" level="6">
+    <if_sid>31100</if_sid>
+    <url>shell.php</url>
+    <regex> "GET \S+/shell.php?cmd=</regex>
+    <description>Simple shell.php command execution.</description>
+   </rule>
+
   <!-- Anomaly rules - Used on common web attacks -->
   <rule id="31550" level="6">
     <if_sid>31100</if_sid>
