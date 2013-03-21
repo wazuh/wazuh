@@ -58,6 +58,9 @@ int GlobalConf(char * cfgfile)
     Config.mailbylevel = 7;
     Config.logbylevel  = 1;
 
+    Config.custom_alert_output =0;
+    Config.custom_alert_output_format = NULL;
+
     Config.includes = NULL;
     Config.lists = NULL;
     Config.decoders = NULL;

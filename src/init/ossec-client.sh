@@ -140,6 +140,7 @@ start()
         if [ $? = 0 ]; then
             ${DIR}/bin/${i};
             if [ $? != 0 ]; then
+		echo "${i} did not start";
                 unlock;
                 exit 1;
             fi 

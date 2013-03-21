@@ -11,6 +11,8 @@
  */
 
 
+#include <sys/types.h>
+#include <grp.h>
 #include "shared.h"
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
@@ -55,7 +57,25 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
         return(-1);
     }
-    chmod(DEFAULTARPATH, 0440);
+
+    struct group *os_group;
+    if((os_group = getgrnam(USER)) == NULL)
+    {
+      merror("Could not get ossec gid.");
+      return(-1);
+    }
+
+    if((chown(DEFAULTARPATH, -1, os_group->gr_gid)) == -1)
+    {
+      merror("Could not change the group to ossec: %d", errno);
+      return(-1);
+    }
+
+    if((chmod(DEFAULTARPATH, 0440)) == -1)
+    {
+      merror("Could not chmod to 0440: %d", errno);
+      return(-1);
+    }
 
 
     /* Allocating for the active-response */

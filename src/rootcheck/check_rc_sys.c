@@ -357,7 +357,7 @@ int read_sys_dir(char *dir_name, int do_read)
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
                 _sys_errors++;
             }
-            #elif Darwin
+            #elif Darwin || FreeBSD
             if(strncmp(dir_name, "/dev", strlen("/dev")) != 0)
             {
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);

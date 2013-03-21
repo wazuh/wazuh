@@ -393,11 +393,11 @@ void os_report_printtop(void *topstore_pt, char *hname, int print_related)
         /* With location we leave more space to be clearer. */
         if(!print_related)
         {
-            if(strlen(lkey) > 46)
+            if(strlen(lkey) > 76)
             {
-                lkey[44] = '.';
-                lkey[45] = '.';
-                lkey[46] = '\0';
+                lkey[74] = '.';
+                lkey[75] = '.';
+                lkey[76] = '\0';
             }
 
             if(!dopdout)
@@ -405,7 +405,7 @@ void os_report_printtop(void *topstore_pt, char *hname, int print_related)
                 _os_header_print(print_related, hname);
                 dopdout = 1;
             }
-            l_print_out("%-48s|%-8d|", (char *)next_node->key, st_data->currently_size);
+            l_print_out("%-78s|%-8d|", (char *)next_node->key, st_data->currently_size);
         }
 
 
@@ -417,7 +417,7 @@ void os_report_printtop(void *topstore_pt, char *hname, int print_related)
                 _os_header_print(print_related, hname);
                 dopdout = 1;
             }
-            l_print_out("%-48s|%-8d|", (char *)next_node->key, st_data->currently_size);
+            l_print_out("%-78s|%-8d|", (char *)next_node->key, st_data->currently_size);
 
             if(print_related & REPORT_REL_LOCATION)
                 _os_report_print_related(REPORT_REL_LOCATION, st_data);

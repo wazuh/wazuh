@@ -29,9 +29,6 @@ RULEID=""
 ACTION=$1
 USER=$2
 IP=$3
-PWD=`pwd`
-LOCK="${PWD}/fw-drop"
-LOCK_PID="${PWD}/fw-drop/pid"
 
 
 LOCAL=`dirname $0`;
@@ -164,6 +161,7 @@ if [ "X${UNAME}" = "XLinux" ]; then
    COUNT=0;
    lock;
    while [ 1 ]; do
+       echo ".."
         ${IPTABLES} ${ARG1}
         RES=$?
         if [ $RES = 0 ]; then
@@ -179,7 +177,6 @@ if [ "X${UNAME}" = "XLinux" ]; then
         fi
    done
    
-   COUNT=0;
    while [ 1 ]; do
         ${IPTABLES} ${ARG2}
         RES=$?

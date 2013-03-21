@@ -159,6 +159,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     char *xml_memorysize = "memory_size";
     char *xml_white_list = "white_list";
     char *xml_compress_alerts = "compress_alerts";
+    char *xml_custom_alert_output = "custom_alert_output";
 
     char *xml_emailto = "email_to";
     char *xml_emailfrom = "email_from";
@@ -226,6 +227,14 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         {
             merror(XML_VALUENULL, ARGV0, node[i]->element);
             return(OS_INVALID);
+        }
+        else if(strcmp(node[i]->element, xml_custom_alert_output) == 0)
+        {
+          if(Config)
+          {
+            Config->custom_alert_output= 1;
+            os_strdup(node[i]->content, Config->custom_alert_output_format);
+          }
         }
         /* Mail notification */
         else if(strcmp(node[i]->element, xml_mailnotify) == 0)
