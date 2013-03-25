@@ -68,17 +68,11 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ];
 
     # Checking for inotify
     if [ "X$OS" = "XLinux" ]; then
-        #ls /usr/include/sys/inotify.h > /dev/null 2>&1
-        #if [ $? = 0 ]; then
-        #    echo "EEXTRA=-DUSEINOTIFY" >> Config.OS
-        #fi    
-
         if [ -e /usr/include/sys/inotify.h ]; then
             echo "EEXTRA=-DUSEINOTIFY" >> Config.OS
-        elif [ -e /usr/include/x86_64-linux-gnu/sys/inotify.h ]; then
+        elif [ -e /usr/include/linux/inotify.h ]; then
             echo "EEXTRA=-DUSEINOTIFY" >> Config.OS
         fi
-
     fi    
 
     if [ "X$OS" = "XAIX" ]; then
