@@ -139,7 +139,7 @@ UpdateOSSECRules()
     grep -E '<decoder>|<decoder_dir|<rule_dir>' ${OSSEC_CONF_FILE} | grep -v '<!--' >> "${OSSEC_CONF_FILE}.$$.tmp2"
 
     # Check for custom files that may have been added in <rules> element
-    for i in $(grep -E '<include>|<list>' ${OSSEC_CONF_FILE} | grep -v '<!--')
+    for i in `grep -E '<include>|<list>' ${OSSEC_CONF_FILE} | grep -v '<!--'`
     do
       grep "$i" ${RULES_TEMPLATE}>/dev/null || echo "    $i" >> "${OSSEC_CONF_FILE}.$$.tmp2"
     done
