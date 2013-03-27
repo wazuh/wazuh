@@ -39,7 +39,7 @@ int repeated_offenders_timeout[] = {0,0,0,0,0,0,0};
 
 
 /**
- * Shudowns execd properly.
+ * Shutdowns execd properly.
  */
 void execd_shutdown()
 {
