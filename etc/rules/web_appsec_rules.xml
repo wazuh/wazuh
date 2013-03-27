@@ -170,7 +170,7 @@
 
    <rule id="31531" level="0">
     <if_sid>31530</if_sid>
-    <url>/wp-admin/|/administrator/</url>
+    <url>/wp-admin/|/administrator/|/admin/</url>
     <description>Ignoring often post requests inside /wp-admin and /admin.</description>
    </rule>
 
