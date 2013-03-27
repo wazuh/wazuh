@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -53,10 +53,13 @@ int GlobalConf(char * cfgfile)
     Config.syscheck_ignore = NULL;
     Config.white_list = NULL;
     Config.hostname_white_list = NULL;
-    
+
     /* Default actions -- only log above level 1 */
     Config.mailbylevel = 7;
     Config.logbylevel  = 1;
+
+    Config.custom_alert_output =0;
+    Config.custom_alert_output_format = NULL;
 
     Config.includes = NULL;
     Config.lists = NULL;
@@ -76,7 +79,7 @@ int GlobalConf(char * cfgfile)
     /* Minimum memory size */
     if(Config.memorysize < 64)
         Config.memorysize = 64;
-        
+
 
     return(0);
 }

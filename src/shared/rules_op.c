@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -25,7 +25,7 @@
 
 
 /** Prototypes **/
-int _OS_GetRulesAttributes(char **attributes, 
+int _OS_GetRulesAttributes(char **attributes,
                            char **values,
                            RuleInfo *ruleinfo_pt);
 RuleInfo *_OS_AllocateRule();
@@ -36,8 +36,8 @@ RuleInfo *_OS_AllocateRule();
 /* Rules_OP_ReadRules, v0.3, 2005/03/21
  * Read the log rules.
  * v0.3: Fixed many memory problems.
- */ 
-int OS_ReadXMLRules(char *rulefile, 
+ */
+int OS_ReadXMLRules(char *rulefile,
                     void *(*ruleact_function)(RuleInfo *rule, void *data),
                     void *data)
 {
@@ -45,9 +45,9 @@ int OS_ReadXMLRules(char *rulefile,
     XML_NODE node = NULL;
 
 
-    /** XML variables **/ 
+    /** XML variables **/
     /* These are the available options for the rule configuration */
-    
+
     char *xml_group = "group";
     char *xml_rule = "rule";
 
@@ -62,7 +62,7 @@ int OS_ReadXMLRules(char *rulefile,
     char *xml_comment = "description";
     char *xml_ignore = "ignore";
     char *xml_check_if_ignored = "check_if_ignored";
-    
+
     char *xml_srcip = "srcip";
     char *xml_srcport = "srcport";
     char *xml_dstip = "dstip";
@@ -76,16 +76,16 @@ int OS_ReadXMLRules(char *rulefile,
     char *xml_status = "status";
     char *xml_action = "action";
     char *xml_compiled = "compiled_rule";
-    
+
     char *xml_if_sid = "if_sid";
     char *xml_if_group = "if_group";
     char *xml_if_level = "if_level";
     char *xml_fts = "if_fts";
-    
+
     char *xml_if_matched_regex = "if_matched_regex";
     char *xml_if_matched_group = "if_matched_group";
     char *xml_if_matched_sid = "if_matched_sid";
-    
+
     char *xml_same_source_ip = "same_source_ip";
     char *xml_same_src_port = "same_src_port";
     char *xml_same_dst_port = "same_dst_port";
@@ -95,16 +95,16 @@ int OS_ReadXMLRules(char *rulefile,
     char *xml_dodiff = "check_diff";
 
     char *xml_different_url = "different_url";
-    
+
     char *xml_notsame_source_ip = "not_same_source_ip";
     char *xml_notsame_user = "not_same_user";
     char *xml_notsame_agent = "not_same_agent";
     char *xml_notsame_id = "not_same_id";
 
     char *xml_options = "options";
-    
+
     char *rulepath;
-    
+
     int i;
 
 
@@ -126,9 +126,9 @@ int OS_ReadXMLRules(char *rulefile,
         debug1("%s is the rulefile", rulefile);
         debug1("Not modifing the rule path");
     }
-    
-    
-    /* Reading the XML */       
+
+
+    /* Reading the XML */
     if(OS_ReadXML(rulepath,&xml) < 0)
     {
         merror(XML_ERROR, __local_name, rulepath, xml.err, xml.err_line);
@@ -139,7 +139,7 @@ int OS_ReadXMLRules(char *rulefile,
 
     /* Debug wrapper */
     debug1("%s: DEBUG: read xml for rule '%s'.", __local_name, rulepath);
-    
+
 
     /* Applying any variable found */
     if(OS_ApplyVariables(&xml) != 0)
@@ -151,7 +151,7 @@ int OS_ReadXMLRules(char *rulefile,
 
     /* Debug wrapper */
     debug1("%s: DEBUG: XML Variables applied.", __local_name);
-    
+
 
     /* Getting the root elements */
     node = OS_GetElementsbyNode(&xml, NULL);
@@ -159,13 +159,13 @@ int OS_ReadXMLRules(char *rulefile,
     {
         merror(CONFIG_ERROR, __local_name, rulepath);
         OS_ClearXML(&xml);
-        return(-1);    
+        return(-1);
     }
 
 
     /* Zeroing the rule memory -- not used anymore */
     free(rulepath);
-    
+
 
     /* Checking if there is any invalid global option */
     i = 0;
@@ -201,7 +201,7 @@ int OS_ReadXMLRules(char *rulefile,
     }
 
 
-    /* Getting the rules now */   
+    /* Getting the rules now */
     i = 0;
     while(node[i])
     {
@@ -209,7 +209,7 @@ int OS_ReadXMLRules(char *rulefile,
         XML_NODE rule = NULL;
 
 
-        /* Getting all rules for a global group */        
+        /* Getting all rules for a global group */
         rule = OS_GetElementsbyNode(&xml,node[i]);
         if(rule == NULL)
         {
@@ -222,15 +222,15 @@ int OS_ReadXMLRules(char *rulefile,
         {
             /* Rules options */
             int k = 0;
-            char *regex = NULL, *match = NULL, *url = NULL, 
+            char *regex = NULL, *match = NULL, *url = NULL,
                  *if_matched_regex = NULL, *if_matched_group = NULL,
                  *user = NULL, *id = NULL, *srcport = NULL,
                  *dstport = NULL, *status = NULL, *hostname = NULL,
                  *extra_data = NULL, *program_name = NULL;
-            
+
             RuleInfo *config_ruleinfo = NULL;
             XML_NODE rule_opt = NULL;
-           
+
 
             /* Checking if the rule element is correct */
             if((!rule[j]->element)||
@@ -245,12 +245,12 @@ int OS_ReadXMLRules(char *rulefile,
             /* Checking for the attributes of the rule */
             if((!rule[j]->attributes) || (!rule[j]->values))
             {
-                merror(RL_INV_RULE, __local_name, rulefile); 
+                merror(RL_INV_RULE, __local_name, rulefile);
                 OS_ClearXML(&xml);
                 return(-1);
             }
 
-            
+
             /* Attribute block */
             config_ruleinfo = _OS_AllocateRule();
 
@@ -276,19 +276,19 @@ int OS_ReadXMLRules(char *rulefile,
              * be fine
              */
             os_strdup(node[i]->values[0], config_ruleinfo->group);
-            
 
-            /* Getting rules options */    
+
+            /* Getting rules options */
             rule_opt =  OS_GetElementsbyNode(&xml, rule[j]);
             if(rule_opt == NULL)
             {
                 merror(RL_NO_OPT, __local_name, config_ruleinfo->sigid);
                 OS_ClearXML(&xml);
-                return(-1);       
+                return(-1);
             }
-                
 
-            /* Reading the whole rule block */    
+
+            /* Reading the whole rule block */
             while(rule_opt[k])
             {
                 if((!rule_opt[k]->element)||(!rule_opt[k]->content))
@@ -318,7 +318,7 @@ int OS_ReadXMLRules(char *rulefile,
                 }
                 else if(strcasecmp(rule_opt[k]->element,xml_day_time) == 0)
                 {
-                    config_ruleinfo->day_time = 
+                    config_ruleinfo->day_time =
                                      OS_IsValidTime(rule_opt[k]->content);
                     if(!config_ruleinfo->day_time)
                     {
@@ -333,7 +333,7 @@ int OS_ReadXMLRules(char *rulefile,
                 }
                 else if(strcasecmp(rule_opt[k]->element,xml_week_day) == 0)
                 {
-                    config_ruleinfo->week_day = 
+                    config_ruleinfo->week_day =
                         OS_IsValidDay(rule_opt[k]->content);
 
                     if(!config_ruleinfo->week_day)
@@ -376,25 +376,25 @@ int OS_ReadXMLRules(char *rulefile,
                     int ip_s = 0;
 
                     /* Getting size of source ip list */
-                    while(config_ruleinfo->srcip && 
+                    while(config_ruleinfo->srcip &&
                             config_ruleinfo->srcip[ip_s])
                     {
                         ip_s++;
                     }
 
-                    config_ruleinfo->srcip = 
+                    config_ruleinfo->srcip =
                                 realloc(config_ruleinfo->srcip,
                                 (ip_s + 2) * sizeof(os_ip *));
 
 
                     /* Allocating memory for the individual entries */
-                    os_calloc(1, sizeof(os_ip), 
+                    os_calloc(1, sizeof(os_ip),
                                  config_ruleinfo->srcip[ip_s]);
                     config_ruleinfo->srcip[ip_s +1] = NULL;
 
 
                     /* Checking if the ip is valid */
-                    if(!OS_IsValidIP(rule_opt[k]->content, 
+                    if(!OS_IsValidIP(rule_opt[k]->content,
                                      config_ruleinfo->srcip[ip_s]))
                     {
                         merror(INVALID_IP, __local_name, rule_opt[k]->content);
@@ -451,7 +451,7 @@ int OS_ReadXMLRules(char *rulefile,
                 else if(strcasecmp(rule_opt[k]->element,xml_srcport) == 0)
                 {
                     srcport = os_LoadString(srcport, rule_opt[k]->content);
-                    
+
                     if(!(config_ruleinfo->alert_opts & DO_PACKETINFO))
                         config_ruleinfo->alert_opts |= DO_PACKETINFO;
                 }
@@ -491,7 +491,7 @@ int OS_ReadXMLRules(char *rulefile,
                 }
                 else if(strcasecmp(rule_opt[k]->element,xml_action) == 0)
                 {
-                    config_ruleinfo->action = 
+                    config_ruleinfo->action =
                                 os_LoadString(config_ruleinfo->action,
                                 rule_opt[k]->content);
                 }
@@ -552,9 +552,9 @@ int OS_ReadXMLRules(char *rulefile,
                 {
                     if(!OS_StrIsNum(rule_opt[k]->content))
                     {
-                        merror(INVALID_CONFIG, __local_name, 
+                        merror(INVALID_CONFIG, __local_name,
                                 xml_if_level,
-                                rule_opt[k]->content); 
+                                rule_opt[k]->content);
                         return(-1);
                     }
 
@@ -595,7 +595,7 @@ int OS_ReadXMLRules(char *rulefile,
                                 rule_opt[k]->content);
                         return(-1);
                     }
-                    config_ruleinfo->if_matched_sid = 
+                    config_ruleinfo->if_matched_sid =
                         atoi(rule_opt[k]->content);
 
                 }
@@ -684,7 +684,7 @@ int OS_ReadXMLRules(char *rulefile,
                 else if(strcasecmp(rule_opt[k]->element,
                             xml_options) == 0)
                 {
-                    if(strcmp("alert_by_email", 
+                    if(strcmp("alert_by_email",
                                 rule_opt[k]->content) == 0)
                     {
                         if(!(config_ruleinfo->alert_opts & DO_MAILALERT))
@@ -700,7 +700,7 @@ int OS_ReadXMLRules(char *rulefile,
                             config_ruleinfo->alert_opts&=0xfff-DO_MAILALERT;
                         }
                     }
-                    else if(strcmp("log_alert", 
+                    else if(strcmp("log_alert",
                                 rule_opt[k]->content) == 0)
                     {
                         if(!(config_ruleinfo->alert_opts & DO_LOGALERT))
@@ -723,7 +723,7 @@ int OS_ReadXMLRules(char *rulefile,
                         }
                     }
                     else
-                    {               
+                    {
                         merror(XML_VALUEERR, __local_name, xml_options,
                                 rule_opt[k]->content);
 
@@ -732,7 +732,7 @@ int OS_ReadXMLRules(char *rulefile,
                                                 rule_opt[k]->content);
                         OS_ClearXML(&xml);
                         return(-1);
-                    }   
+                    }
                 }
                 else if(strcasecmp(rule_opt[k]->element,
                             xml_ignore) == 0)
@@ -816,13 +816,13 @@ int OS_ReadXMLRules(char *rulefile,
                         return(-1);
                     }
                 }
-                /* XXX As new features are added into ../analysisd/rules.c 
-                 * This code needs to be updated to match, but is out of date 
-                 * it's become a nightmare to correct with out just make the 
-                 * problem for someone later.   
+                /* XXX As new features are added into ../analysisd/rules.c
+                 * This code needs to be updated to match, but is out of date
+                 * it's become a nightmare to correct with out just make the
+                 * problem for someone later.
                  *
-                 * This hack will allow any crap xml to pass without an 
-                 * error.  The correct fix is to refactor the code so that 
+                 * This hack will allow any crap xml to pass without an
+                 * error.  The correct fix is to refactor the code so that
                  * ../analysisd/rules* and this code are not duplicates
                  *
                 else
@@ -858,7 +858,7 @@ int OS_ReadXMLRules(char *rulefile,
                     os_strdup(if_matched_group, config_ruleinfo->if_group);
                 }
             }
-                
+
 
             /* If_matched_sid, we need to get the if_sid */
             if(config_ruleinfo->if_matched_sid &&
@@ -1075,14 +1075,14 @@ int OS_ReadXMLRules(char *rulefile,
             /* Calling the function provided. */
             ruleact_function(config_ruleinfo, data);
 
-            
+
             j++; /* next rule */
 
 
         } /* while(rule[j]) */
         OS_ClearNode(rule);
         i++;
-        
+
     } /* while (node[i]) */
 
     /* Cleaning global node */
@@ -1102,15 +1102,15 @@ int OS_ReadXMLRules(char *rulefile,
 RuleInfo *_OS_AllocateRule()
 {
     RuleInfo *ruleinfo_pt = NULL;
-    
-    
+
+
     /* Allocation memory for structure */
     ruleinfo_pt = (RuleInfo *)calloc(1,sizeof(RuleInfo));
     if(ruleinfo_pt == NULL)
     {
         ErrorExit(MEM_ERROR,__local_name);
     }
-    
+
 
     /* Default values */
     ruleinfo_pt->level = -1;
@@ -1118,10 +1118,10 @@ RuleInfo *_OS_AllocateRule()
     /* Default category is syslog */
     ruleinfo_pt->category = SYSLOG;
 
-    ruleinfo_pt->ar = NULL; 
-    
+    ruleinfo_pt->ar = NULL;
+
     ruleinfo_pt->context = 0;
-    
+
     /* Default sigid of -1 */
     ruleinfo_pt->sigid = -1;
     ruleinfo_pt->firedtimes = 0;
@@ -1130,11 +1130,11 @@ RuleInfo *_OS_AllocateRule()
     ruleinfo_pt->ignore_time = 0;
     ruleinfo_pt->timeframe = 0;
     ruleinfo_pt->time_ignored = 0;
-   
-    ruleinfo_pt->context_opts = 0; 
-    ruleinfo_pt->alert_opts = 0; 
-    ruleinfo_pt->ignore = 0; 
-    ruleinfo_pt->ckignore = 0; 
+
+    ruleinfo_pt->context_opts = 0;
+    ruleinfo_pt->alert_opts = 0;
+    ruleinfo_pt->ignore = 0;
+    ruleinfo_pt->ckignore = 0;
 
     ruleinfo_pt->day_time = NULL;
     ruleinfo_pt->week_day = NULL;
@@ -1147,16 +1147,16 @@ RuleInfo *_OS_AllocateRule()
     ruleinfo_pt->comment = NULL;
     ruleinfo_pt->info = NULL;
     ruleinfo_pt->cve = NULL;
-    
+
     ruleinfo_pt->if_sid = NULL;
     ruleinfo_pt->if_group = NULL;
     ruleinfo_pt->if_level = NULL;
-    
+
     ruleinfo_pt->if_matched_regex = NULL;
     ruleinfo_pt->if_matched_group = NULL;
     ruleinfo_pt->if_matched_sid = 0;
-   
-    ruleinfo_pt->user = NULL; 
+
+    ruleinfo_pt->user = NULL;
     ruleinfo_pt->srcip = NULL;
     ruleinfo_pt->srcport = NULL;
     ruleinfo_pt->dstip = NULL;
@@ -1167,7 +1167,7 @@ RuleInfo *_OS_AllocateRule()
     ruleinfo_pt->hostname = NULL;
     ruleinfo_pt->program_name = NULL;
     ruleinfo_pt->action = NULL;
-    
+
     /* Zeroing last matched events */
     ruleinfo_pt->__frequency = 0;
     ruleinfo_pt->last_events = NULL;
@@ -1175,10 +1175,10 @@ RuleInfo *_OS_AllocateRule()
     /* zeroing the list of previous matches */
     ruleinfo_pt->sid_prev_matched = NULL;
     ruleinfo_pt->group_prev_matched = NULL;
-    
+
     ruleinfo_pt->sid_search = NULL;
     ruleinfo_pt->group_search = NULL;
-    
+
     ruleinfo_pt->event_search = NULL;
 
     return(ruleinfo_pt);
@@ -1193,7 +1193,7 @@ int _OS_GetRulesAttributes(char **attributes, char **values,
                            RuleInfo *ruleinfo_pt)
 {
     int k = 0;
-    
+
     char *xml_id = "id";
     char *xml_level = "level";
     char *xml_maxsize = "maxsize";
@@ -1203,8 +1203,8 @@ int _OS_GetRulesAttributes(char **attributes, char **values,
     char *xml_noalert = "noalert";
     char *xml_ignore_time = "ignore";
     char *xml_overwrite = "overwrite";
-    
-   
+
+
     /* Getting attributes */
     while(attributes[k])
     {
@@ -1218,7 +1218,7 @@ int _OS_GetRulesAttributes(char **attributes, char **values,
         {
             if(OS_StrIsNum(values[k]) && (strlen(values[k]) <= 6 ))
             {
-                ruleinfo_pt->sigid = atoi(values[k]);    
+                ruleinfo_pt->sigid = atoi(values[k]);
             }
             else
             {
@@ -1247,7 +1247,7 @@ int _OS_GetRulesAttributes(char **attributes, char **values,
                 ruleinfo_pt->maxsize = atoi(values[k]);
 
                 /* adding EXTRAINFO options */
-                if(ruleinfo_pt->maxsize > 0 && 
+                if(ruleinfo_pt->maxsize > 0 &&
                    !(ruleinfo_pt->alert_opts & DO_EXTRAINFO))
                 {
                     ruleinfo_pt->alert_opts |= DO_EXTRAINFO;
@@ -1288,7 +1288,7 @@ int _OS_GetRulesAttributes(char **attributes, char **values,
         /* Rule accuracy */
         else if(strcasecmp(attributes[k],xml_accuracy) == 0)
         {
-            merror("%s: XXX: Use of 'accuracy' isn't supported. Ignoring.", 
+            merror("%s: XXX: Use of 'accuracy' isn't supported. Ignoring.",
                    __local_name);
         }
          /* Rule ignore_time */
@@ -1301,7 +1301,7 @@ int _OS_GetRulesAttributes(char **attributes, char **values,
             else
             {
                 merror(XML_VALUEERR,__local_name, attributes[k], values[k]);
-                return(-1); 
+                return(-1);
             }
         }
         /* Rule noalert */
@@ -1339,9 +1339,9 @@ int _OS_GetRulesAttributes(char **attributes, char **values,
 /* print rule */
 void OS_PrintRuleinfo(RuleInfo *rule)
 {
-    debug1("%s: __local_name: Print Rule:%d, level %d, ignore: %d, frequency:%d", 
+    debug1("%s: __local_name: Print Rule:%d, level %d, ignore: %d, frequency:%d",
             __local_name,
-            rule->sigid, 
+            rule->sigid,
             rule->level,
             rule->ignore_time,
             rule->frequency);

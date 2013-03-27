@@ -95,7 +95,7 @@ void HostinfoInit()
 
     /* Opening HOSTINFO_FILE */
     snprintf(_hi_buf,OS_SIZE_1024, "%s", HOSTINFO_FILE);
-    
+
 
     /* r+ to read and write. Do not truncate */
     _hi_fp = fopen(_hi_buf,"r+");
@@ -115,7 +115,7 @@ void HostinfoInit()
         return;
     }
 
-    
+
     /* clearing the buffer */
     memset(_hi_buf, '\0', OS_MAXSTR +1);
 
@@ -148,7 +148,7 @@ int DecodeHostinfo(Eventinfo *lf)
 {
     int changed = 0;
     int bf_size;
-    
+
     char *ip;
     char *portss;
     char *tmpstr;
@@ -157,7 +157,7 @@ int DecodeHostinfo(Eventinfo *lf)
     char opened[OS_MAXSTR + 1];
     FILE *fp;
 
-    
+
     /* Checking maximum number of errors */
     if(hi_err > 30)
     {
@@ -165,7 +165,7 @@ int DecodeHostinfo(Eventinfo *lf)
                "Ignoring it.", ARGV0);
         return(0);
     }
-                
+
 
     /* Zeroing buffers */
     buffer[OS_MAXSTR] = '\0';
@@ -182,8 +182,8 @@ int DecodeHostinfo(Eventinfo *lf)
 
     /* Copying log to buffer */
     strncpy(buffer,lf->log, OS_MAXSTR);
-    
-    
+
+
     /* Getting ip */
     tmpstr = __go_after(buffer, HOST_HOST);
     if(!tmpstr)
@@ -194,7 +194,7 @@ int DecodeHostinfo(Eventinfo *lf)
         return(0);
     }
 
-    
+
     /* Setting ip */
     ip = tmpstr;
     tmpstr = strchr(tmpstr, ',');
@@ -217,8 +217,8 @@ int DecodeHostinfo(Eventinfo *lf)
         *tmpstr = '\0';
     }
     bf_size = strlen(ip);
-    
-    
+
+
     /* Reads the file and search for a possible
      * entry
      */
@@ -233,13 +233,13 @@ int DecodeHostinfo(Eventinfo *lf)
         /* Removing new line */
         tmpstr = strchr(_hi_buf, '\n');
         if(tmpstr)
-            *tmpstr = '\0';    
+            *tmpstr = '\0';
 
 
         /* Checking for ip */
         if(strncmp(ip, _hi_buf, bf_size) == 0)
         {
-            /* Cannot use strncmp to avoid errors with crafted files */    
+            /* Cannot use strncmp to avoid errors with crafted files */
             if(strcmp(portss, _hi_buf + bf_size) == 0)
             {
                 return(0);
@@ -253,9 +253,9 @@ int DecodeHostinfo(Eventinfo *lf)
                 changed = 1;
             }
         }
-    }                
+    }
 
-    
+
     /* Adding the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
     fprintf(fp,"%s%s\n", ip, portss);
@@ -264,7 +264,7 @@ int DecodeHostinfo(Eventinfo *lf)
     /* Setting decoder */
     lf->decoder_info = hostinfo_dec;
 
-    
+
     /* Setting comment */
     if(changed == 1)
     {
@@ -275,7 +275,7 @@ int DecodeHostinfo(Eventinfo *lf)
     {
         hostinfo_dec->id = id_new;
     }
-    
+
 
     return(1);
 }

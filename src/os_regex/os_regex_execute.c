@@ -34,7 +34,7 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
 {
     char *ret;
     int i = 0;
-    
+
     /* The string can't be NULL */
     if(str == NULL)
     {
@@ -77,7 +77,7 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
                         OSRegex_FreeSubStrings(reg);
                         return(NULL);
                     }
-                    
+
                     /* Set the next one to null */
                     reg->prts_str[i][j+1][0] = str_char;
                     k++;
@@ -95,13 +95,13 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
         return(0);
 
     }
-   
+
     /* If we don't need the sub strings */
-     
+
     /* Looping on all sub patterns */
     while(reg->patterns[i])
     {
-        if((ret = _OS_Regex(reg->patterns[i], str, NULL, NULL, reg->flags[i]))) 
+        if((ret = _OS_Regex(reg->patterns[i], str, NULL, NULL, reg->flags[i])))
         {
             return(ret);
         }
@@ -109,7 +109,7 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
     }
 
     return(NULL);
-}    
+}
 
 #define PRTS(x) ((prts(*x) && x++) || 1)
 #define ENDOFFILE(x) ( PRTS(x) && (*x == '\0'))
@@ -120,26 +120,26 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
  * Returns 1 on success and 0 on failure.
  * If prts_closure is set, the parenthesis locations will be
  * written on prts_str (which must not be NULL)
- */              
-char *_OS_Regex(char *pattern, char *str, char **prts_closure, 
+ */
+char *_OS_Regex(char *pattern, char *str, char **prts_closure,
               char **prts_str, int flags)
 {
     char *r_code = NULL;
-    
+
     int ok_here;
     int _regex_matched = 0;
-    
+
     int prts_int;
 
     char *st = str;
     char *st_error = NULL;
-    
+
     char *pt = pattern;
     char *next_pt;
 
     char *pt_error[4] = {NULL, NULL, NULL, NULL};
     char *pt_error_str[4];
-    
+
 
     /* Will loop the whole string, trying to find a match */
     do
@@ -183,7 +183,7 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
             if(Regex((uchar)*(pt+1), (uchar)*st))
             {
                 next_pt = pt+2;
-                
+
                 /* If we don't have a '+' or '*', we should skip
                  * searching using this pattern.
                  */
@@ -202,7 +202,7 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
                     r_code = st;
                     continue;
                 }
-                
+
                 /* If it is a '*', we need to set the _regex_matched
                  * for the first pattern even.
                  */
@@ -213,7 +213,7 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
 
 
                 /* If our regex matches and we have a "+" set, we will
-                 * try the next one to see if it matches. If yes, we 
+                 * try the next one to see if it matches. If yes, we
                  * can jump to it, but saving our currently location
                  * in case of error.
                  * _regex_matched will set set to true after the first
@@ -231,7 +231,7 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
                     {
                         next_pt++;
                     }
-                    
+
                     if(*next_pt == '\0')
                     {
                         ok_here = 1;
@@ -272,7 +272,7 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
                                 {
                                     if(*(st+1) == '\0')
                                         prts_str[prts_int] = st+1;
-                                    else    
+                                    else
                                         prts_str[prts_int] = st;
                                     break;
                                 }
@@ -287,14 +287,14 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
                             continue;
                         }
 
-                            
+
                         /* Each "if" will increment the amount
                          * necessary for the next pattern in ok_here
                          */
-                        if(ok_here) 
+                        if(ok_here)
                             next_pt+=ok_here;
-                        
-                        
+
+
                         if(!pt_error[0])
                         {
                             pt_error[0] = pt;
@@ -345,18 +345,18 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
 
                     _regex_matched = 1;
                 }
-                
+
                 r_code = st;
                 continue;
             }
-            
+
             else if((*(pt+3) == '\0') && (_regex_matched == 1)&&(r_code))
             {
                 r_code = st;
                 if(!(flags & END_SET) || (flags & END_SET && (*st == '\0')))
                     return(r_code);
             }
-            
+
             /* If we didn't match regex, but _regex_matched == 1, jump
              * to the next available pattern
              */
@@ -438,7 +438,7 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
             }
             pt = pattern;
             r_code = NULL;
-        
+
     }while(*(++st) != '\0');
 
 
@@ -450,9 +450,9 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
             if(*pt == BACKSLASH && *(pt+2) == '*')
                 pt+=3;
             else
-                break;    
+                break;
         }
-        
+
         if(prts(*pt))
         {
             prts_int = 0;
@@ -469,28 +469,28 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
     }
 
     /* Cleaning up */
-    if(ENDOFFILE(pt) || 
-        (*pt == BACKSLASH && 
-        _regex_matched && 
-        (pt+=2) && 
-        isPlus(*pt) && 
+    if(ENDOFFILE(pt) ||
+        (*pt == BACKSLASH &&
+        _regex_matched &&
+        (pt+=2) &&
+        isPlus(*pt) &&
         (pt++) &&
-        ((ENDOFFILE(pt)) || 
-        ((*pt == BACKSLASH) && 
-        (pt+=2) && 
-        (*pt == '*') && 
-        (pt++) && 
+        ((ENDOFFILE(pt)) ||
+        ((*pt == BACKSLASH) &&
+        (pt+=2) &&
+        (*pt == '*') &&
+        (pt++) &&
         (ENDOFFILE(pt)) ))) ||
         (*pt == BACKSLASH &&
         (pt+=2) &&
         (*pt == '*') &&
         (pt++) &&
         ENDOFFILE(pt))
-        ) 
+        )
     {
         return(r_code);
     }
-   
+
     return(NULL);
 }
 

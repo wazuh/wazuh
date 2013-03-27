@@ -20,8 +20,8 @@ int main(int argc, char ** argv)
 
     if(argc < 2)
         usage(argv);
-   
-    
+
+
     if(OS_SHA1_File(argv[1], filesum) == 0)
     {
         printf("SHA1Sum for \"%s\" is: %s\n",argv[1],filesum);

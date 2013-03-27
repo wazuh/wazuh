@@ -15,12 +15,32 @@
 
 
 #include "manage_agents.h"
+#include "os_crypto/md5/md5_op.h"
 #include <stdlib.h>
 
 /* b64 function prototypes */
 char *decode_base64(const char *src);
 char *encode_base64(int size, char *src);
 
+char *trimwhitespace(char *str)
+{
+  char *end;
+
+  // Trim leading space
+  while(isspace(*str)) str++;
+
+  if(*str == 0)  // All spaces?
+    return str;
+
+  // Trim trailing space
+  end = str + strlen(str) - 1;
+  while(end > str && isspace(*end)) end--;
+
+  // Write new null terminator
+  *(end+1) = 0;
+
+  return str;
+}
 
 /* Import a key */
 int k_import(char *cmdimport)
@@ -228,6 +248,181 @@ int k_extract(char *cmdextract)
     fclose(fp);
 
     return(0);
+}
+
+/* Bulk generate client keys from file */
+int k_bulkload(char *cmdbulk)
+{
+    int i = 1;
+    FILE *fp, *infp;
+    char str1[STR_SIZE +1];
+    char str2[STR_SIZE +1];
+
+    os_md5 md1;
+    os_md5 md2;
+    char line[FILE_SIZE+1];
+    char name[FILE_SIZE +1];
+    char id[FILE_SIZE +1];
+    char ip[FILE_SIZE+1];
+    os_ip *c_ip;
+    char delims[] = ",";
+    char * token = NULL;
+
+    /* Checking if we can open the input file */
+    printf("Opening: [%s]\n", cmdbulk);
+    infp = fopen(cmdbulk,"r");
+    if(!infp)
+    {
+	perror("Failed.");
+        ErrorExit(FOPEN_ERROR, ARGV0, cmdbulk);
+    }
+
+
+    /* Checking if we can open the auth_file */
+    fp = fopen(AUTH_FILE,"a");
+    if(!fp)
+    {
+        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
+    }
+    fclose(fp);
+
+    /* Allocating for c_ip */
+    os_calloc(1, sizeof(os_ip), c_ip);
+
+	while(fgets(line, FILE_SIZE - 1, infp) != NULL)
+	{
+		if (1 >= strlen(trimwhitespace(line)))
+			continue;
+
+		memset(ip, '\0', FILE_SIZE +1);
+		token = strtok(line, delims);
+		strncpy(ip, trimwhitespace(token),FILE_SIZE -1);
+
+		memset(name, '\0', FILE_SIZE +1);
+		token = strtok(NULL, delims);
+		strncpy(name, trimwhitespace(token),FILE_SIZE -1);
+			
+    		#ifndef WIN32
+    		chmod(AUTH_FILE, 0440);
+    		#endif
+
+    		/* Setting time 2 */
+    		time2 = time(0);
+
+
+    		/* Source is time1+ time2 +pid + ppid */
+    		#ifndef WIN32
+        		#ifdef __OpenBSD__
+        		srandomdev();
+        		#else
+        		srandom(time2 + time1 + getpid() + getppid());
+        		#endif
+    		#else
+    		srandom(time2 + time1 + getpid());
+    		#endif
+
+    		rand1 = random();
+
+
+    		/* Zeroing strings */
+    		memset(str1,'\0', STR_SIZE +1);
+    		memset(str2,'\0', STR_SIZE +1);
+
+
+        	/* check the name */
+        	if(!OS_IsValidName(name))
+        	{
+            	printf(INVALID_NAME,name);
+            	continue;
+        	}
+
+        	/* Search for name  -- no duplicates */
+        	if(NameExist(name))
+        	{
+            	printf(ADD_ERROR_NAME, name);
+            	continue;
+        	}
+
+
+      		if(!OS_IsValidIP(ip, c_ip))
+      		{
+          		printf(IP_ERROR, ip);
+          		continue;
+      		}
+
+    		do
+    		{
+        		/* Default ID */
+        		i = 1024;
+        		snprintf(id, 8, "%03d", i);
+        		while(!IDExist(id))
+        		{
+            		i--;
+            		snprintf(id, 8, "%03d", i);
+
+            		/* No key present, use id 0 */
+            		if(i <= 0)
+            		{
+                		i = 0;
+                		break;
+            		}
+        		}
+        		snprintf(id, 8, "%03d", i+1);
+
+        		if(!OS_IsValidID(id))
+            		printf(INVALID_ID, id);
+
+        		/* Search for ID KEY  -- no duplicates */
+        		if(IDExist(id))
+            		printf(ADD_ERROR_ID, id);
+
+    		} while(IDExist(id) || !OS_IsValidID(id));
+
+    		printf(AGENT_INFO, id, name, ip);
+    		fflush(stdout);
+
+
+        	time3 = time(0);
+        	rand2 = random();
+
+        	fp = fopen(AUTH_FILE,"a");
+        	if(!fp)
+        	{
+            	ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
+        	}
+        	#ifndef WIN32
+        	chmod(AUTH_FILE, 0440);
+        	#endif
+
+
+        	/* Random 1: Time took to write the agent information.
+         	* Random 2: Time took to choose the action.
+         	* Random 3: All of this + time + pid
+         	* Random 4: Md5 all of this + the name, key and ip
+         	* Random 5: Final key
+         	*/
+
+        	snprintf(str1, STR_SIZE, "%d%s%d",time3-time2, name, rand1);
+        	snprintf(str2, STR_SIZE, "%d%s%s%d", time2-time1, ip, id, rand2);
+
+        	OS_MD5_Str(str1, md1);
+        	OS_MD5_Str(str2, md2);
+
+        	snprintf(str1, STR_SIZE, "%s%d%d%d",md1,(int)getpid(), (int)random(),
+                                            time3);
+        	OS_MD5_Str(str1, md1);
+
+        	//fprintf(fp,"%s %s %s %s%s\n",id, name, ip, md1,md2);
+        	fprintf(fp,"%s %s %s %s%s\n",id, name, c_ip->ip, md1,md2);
+
+        	fclose(fp);
+
+        	printf(AGENT_ADD);
+        	restart_necessary = 1;
+	};
+
+	fclose(infp);
+	return(0);
 }
 
 

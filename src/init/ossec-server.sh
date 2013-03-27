@@ -22,7 +22,7 @@ fi
 
 
 NAME="OSSEC HIDS"
-VERSION="snap2012-08"
+VERSION="v2.7+"
 AUTHOR="Trend Micro Inc."
 DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON}"
 
@@ -177,14 +177,17 @@ disable()
 # Status function
 status()
 {
+    RETVAL=0
     for i in ${DAEMONS}; do
         pstatus ${i};
         if [ $? = 0 ]; then
             echo "${i} not running..."
+            RETVAL=1
         else
             echo "${i} is running..."
         fi
-    done             
+    done
+    exit $RETVAL
 }
 
 testconfig()
@@ -221,6 +224,7 @@ start()
         if [ $? = 0 ]; then
             ${DIR}/bin/${i} ${DEBUG_CLI};
             if [ $? != 0 ]; then
+		echo "${i} did not start correctly.";
                 unlock;
                 exit 1;
             fi 
@@ -310,6 +314,11 @@ case "$1" in
         sleep 1;
 	start
 	;;
+  reload)
+        DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON}"
+	stopa
+	start
+        ;;
   status)
     status
 	;;

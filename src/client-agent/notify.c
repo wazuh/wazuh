@@ -42,9 +42,9 @@ char *getsharedfiles()
     int m_size = 512;
 
     char *ret;
-    
+
     os_md5 md5sum;
-    
+
 
     if(OS_MD5_File(SHAREDCFG_FILE, md5sum) != 0)
     {
@@ -64,7 +64,7 @@ char *getsharedfiles()
 
 
     snprintf(ret, m_size, "%s merged.mg\n", md5sum);
-    
+
 
     return(ret);
 }
@@ -113,14 +113,14 @@ void run_notify()
         return;
     }
     g_saved_time = curr_time;
-    
+
     debug1("%s: DEBUG: Sending agent notification.", ARGV0);
 
 
     /* Send the message.
-     * Message is going to be the 
-     * uname\n checksum file\n checksum file\n 
-     */   
+     * Message is going to be the
+     * uname\n checksum file\n checksum file\n
+     */
 
     /* Getting uname */
     uname = getuname();

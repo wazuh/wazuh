@@ -2,8 +2,8 @@
 ; my template correctly. 
 
 !include "MUI.nsh"
-!define VERSION "2.6"
-!define NAME "Ossec HIDS"
+!define VERSION "2.7"
+!define NAME "OSSEC HIDS"
 !define /date CDATE "%b %d %Y at %H:%M:%S"
 
 

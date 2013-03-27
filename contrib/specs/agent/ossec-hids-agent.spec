@@ -17,7 +17,7 @@ Summary: Open Source Host-based Intrusion Detection System (Server)
 Name: ossec-hids-agent-FC7
 Version: 1.3
 Release: 1
-License: GPLv3
+License: GPLv2
 Group: Applications/Security
 URL: http://www.ossec.net
 Packager: Michael Williams (maverick@maverick.org)

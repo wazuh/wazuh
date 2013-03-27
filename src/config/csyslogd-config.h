@@ -12,7 +12,7 @@
 
 
 #include "shared.h"
- 
+
 
 #ifndef _CSYSLOGCONFIG__H
 #define _CSYSLOGCONFIG__H
@@ -37,6 +37,8 @@ typedef struct _SyslogConfig
 /* Syslog formats. */
 #define DEFAULT_CSYSLOG  0
 #define CEF_CSYSLOG      1
+#define JSON_CSYSLOG     2
+#define SPLUNK_CSYSLOG   3
 
 
 /* Syslog severities */

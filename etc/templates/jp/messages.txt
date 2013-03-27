@@ -47,7 +47,9 @@ whatsmtp="使用する SMTP サーバの ip/host は何ですか?"
 
 # Part 3.1/agent
 serverip="OSSEC HIDS サーバの IP アドレスは何ですか?"
+serveraddr="OSSEC HIDS サーバの IP/hostname アドレスは何ですか?"
 addingip="サーバの IP を加えています"
+addingname="サーバの hostname を加えています"
 
 
 # Part 3.2

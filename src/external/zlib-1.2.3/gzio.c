@@ -127,7 +127,7 @@ local gzFile gz_open (path, mode, fd)
     s->transparent = 0;
 
     path_size = strlen(path) +1;
-    
+
     s->path = (char*)ALLOC(path_size +1);
     if (s->path == NULL) {
         return destroy(s), (gzFile)Z_NULL;
@@ -1011,7 +1011,7 @@ const char * ZEXPORT gzerror (file, errnum)
 
     TRYFREE(s->msg);
     msg_size = strlen(s->path) + strlen(m) + 4;
-    
+
     s->msg = (char*)ALLOC(msg_size +1);
     if (s->msg == Z_NULL) return (const char*)ERR_MSG(Z_MEM_ERROR);
 

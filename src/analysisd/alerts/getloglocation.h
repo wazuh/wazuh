@@ -31,7 +31,7 @@ void OS_InitFwLog();
  * @param lf        Event structure
  *
  * @retval 0        success
- *         -1       error 
+ *         -1       error
  */
 int OS_GetLogLocation(Eventinfo *lf);
 

@@ -6,7 +6,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -22,9 +22,9 @@ int  exec_size = 0;
 int  f_time_reading = 1;
 
 
-/** int ReadExecConfig() v0.1: 
+/** int ReadExecConfig() v0.1:
  * Reads the shared exec config.
- * Returns 1 on success or 0 on failure. 
+ * Returns 1 on success or 0 on failure.
  * Format of the file is 'name - command - timeout'
  */
 int ReadExecConfig()
@@ -42,8 +42,8 @@ int ReadExecConfig()
         exec_timeout[i] = 0;
     }
     exec_size = 0;
-    
-    
+
+
     /* Opening file */
     fp = fopen(DEFAULTARPATH, "r");
     if(!fp)
@@ -71,7 +71,7 @@ int ReadExecConfig()
         *tmp_str = '\0';
         tmp_str++;
 
-        
+
         /* Searching for ' ' and - */
         if(*tmp_str == '-')
         {
@@ -84,12 +84,12 @@ int ReadExecConfig()
         }
 
 
-        
+
         /* Setting the name */
         strncpy(exec_names[exec_size], str_pt, OS_FLSIZE);
         exec_names[exec_size][OS_FLSIZE] = '\0';
 
-        
+
         str_pt = tmp_str;
 
         tmp_str = strchr(tmp_str, ' ');
@@ -100,11 +100,11 @@ int ReadExecConfig()
         }
         *tmp_str = '\0';
 
-        
+
         /* Writting the full command path */
-        snprintf(exec_cmd[exec_size], OS_FLSIZE, 
-                                      "%s/%s", 
-                                      AR_BINDIRPATH, 
+        snprintf(exec_cmd[exec_size], OS_FLSIZE,
+                                      "%s/%s",
+                                      AR_BINDIRPATH,
                                       str_pt);
         process_file = fopen(exec_cmd[exec_size], "r");
         if(!process_file)
@@ -116,14 +116,14 @@ int ReadExecConfig()
                         ARGV0, exec_cmd[exec_size]);
             }
 
-            exec_cmd[exec_size][0] = '\0'; 
+            exec_cmd[exec_size][0] = '\0';
         }
         else
         {
             fclose(process_file);
         }
 
-        
+
         /* Searching for ' ' and - */
         tmp_str++;
         if(*tmp_str == '-')
@@ -135,14 +135,14 @@ int ReadExecConfig()
             merror(EXEC_INV_CONF, ARGV0, DEFAULTARPATH);
             continue;
         }
-        
-       
-        str_pt = tmp_str; 
+
+
+        str_pt = tmp_str;
         tmp_str = strchr(tmp_str, '\n');
         if(tmp_str)
             *tmp_str = '\0';
 
-        
+
         /* Getting the exec timeout */
         exec_timeout[exec_size] = atoi(str_pt);
 
@@ -166,7 +166,7 @@ int ReadExecConfig()
                 }
             }
         }
-        
+
         if(dup_entry)
         {
             exec_cmd[exec_size][0] = '\0';

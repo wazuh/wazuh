@@ -6,7 +6,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -113,7 +113,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, F
                     if(msg)
                         free(msg);
                     close(socket);
-                    return(OS_INVALID);    
+                    return(OS_INVALID);
                 }
             }
             else
@@ -210,7 +210,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, F
             {
                 break;
             }
-            
+
             memset(snd_msg,'\0',128);
             snprintf(snd_msg,127, TO, to[i]);
             OS_SendTCP(socket,snd_msg);
@@ -230,7 +230,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, F
     #else
     strftime(snd_msg, 127, "Date: %a, %d %b %Y %T %z\r\n",p);
     #endif
-                            
+
     OS_SendTCP(socket,snd_msg);
 
 
@@ -247,7 +247,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, F
      while(fgets(buffer, 2048, fp) != NULL)
      {
          OS_SendTCP(socket,buffer);
-     }    
+     }
 
 
     /* Sending end of data \r\n.\r\n */

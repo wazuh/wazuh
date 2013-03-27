@@ -26,7 +26,7 @@
  * v0.2: New OS_XML
  * v0.3: Some improvements and cleanup
  * v0.4: Move everything to the global config validator.
- */ 
+ */
 int RemotedConfig(char *cfgfile, remoted *logr)
 {
     int modules = 0;

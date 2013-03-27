@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -27,11 +27,11 @@
 int gen_server_info(HWND hwnd)
 {
     memset(ui_server_info, '\0', 2048 +1);
-    snprintf(ui_server_info, 2048, 
+    snprintf(ui_server_info, 2048,
             "Agent: %s (%s)  -  %s\r\n\r\n"
             "Status: %s",
-            config_inst.agentname, 
-            config_inst.agentid, 
+            config_inst.agentname,
+            config_inst.agentid,
             config_inst.agentip,
             config_inst.status);
 
@@ -42,14 +42,14 @@ int gen_server_info(HWND hwnd)
         SetDlgItemText(hwnd, UI_SERVER_TOP, config_inst.version);
         SetDlgItemText(hwnd, UI_SERVER_INFO, ui_server_info);
     }
-    
+
     /* Initializing auth key */
     SetDlgItemText(hwnd, UI_SERVER_AUTH, config_inst.key);
 
     /* Initializing server ip */
     SetDlgItemText(hwnd, UI_SERVER_TEXT, config_inst.server);
 
-    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://www.ossec.net");                                                                                    
+    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://www.ossec.net");
     return(0);
 }
 
@@ -194,7 +194,7 @@ void init_config()
     }
 
 
-    /* Testing for permission - this is a vista thing. 
+    /* Testing for permission - this is a vista thing.
      * For some reason vista is not reporting the return codes
      * properly.
      */
@@ -218,7 +218,7 @@ void init_config()
             {
                 config_inst.admin_access = 0;
             }
-            
+
             fclose(fp);
 
             /* trying to open it to read. */
@@ -231,7 +231,7 @@ void init_config()
             {
                 config_inst.admin_access = 0;
             }
-            
+
             if(unlink(".test-file.tst"))
             {
                 config_inst.admin_access = 0;
@@ -250,7 +250,7 @@ int config_read(HWND hwnd)
 {
     char *tmp_str;
 
-    
+
     /* Clearing config */
     config_clear();
 
@@ -267,7 +267,7 @@ int config_read(HWND hwnd)
 
 
     /* Getting version/install date */
-    config_inst.version = cat_file(VERSION_FILE, NULL); 
+    config_inst.version = cat_file(VERSION_FILE, NULL);
     if(config_inst.version)
     {
         config_inst.install_date = strchr(config_inst.version, '-');
@@ -280,7 +280,7 @@ int config_read(HWND hwnd)
 
 
     /* Getting number of messages sent */
-    tmp_str = cat_file(SENDER_FILE, NULL); 
+    tmp_str = cat_file(SENDER_FILE, NULL);
     if(tmp_str)
     {
         unsigned long int tmp_val = 0;
@@ -419,7 +419,7 @@ int get_ossec_server()
             free(str);
             str = NULL;
         }
-        
+
         str = OS_GetOneContentforElement(&xml, xml_serverhost);
         if(str)
         {
@@ -443,7 +443,7 @@ int get_ossec_server()
 
     /* Setting up final server name when not available */
     config_inst.server = strdup(FL_NOSERVER);
-    
+
 
     OS_ClearXML(&xml);
     return(0);
@@ -456,7 +456,7 @@ int set_ossec_server(char *ip, HWND hwnd)
     char **xml_pt = NULL;
     char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
     char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
-    
+
 
     /* Verifying IP Address */
     if(OS_IsValidIP(ip, NULL) != 1)
@@ -484,7 +484,7 @@ int set_ossec_server(char *ip, HWND hwnd)
 
 
     /* Reading the XML. Printing error and line number */
-    if(OS_WriteXML(CONFIG, NEWCONFIG, xml_pt, 
+    if(OS_WriteXML(CONFIG, NEWCONFIG, xml_pt,
                    NULL, NULL, ip, 0) != 0)
     {
         MessageBox(hwnd, "Unable to set OSSEC Server IP Address.\r\n"

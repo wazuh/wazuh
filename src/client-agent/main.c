@@ -36,15 +36,15 @@ int main(int argc, char **argv)
 {
     int c = 0;
     int test_config = 0;
-    
+
     char *dir = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
-    
+
     int uid = 0;
     int gid = 0;
 
-    
+
     /* Setting the name */
     OS_SetName(ARGV0);
 
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
                 group = optarg;
                 break;		
             case 't':
-                test_config = 1;    
+                test_config = 1;
                 break;
             case 'D':
                 if(!optarg)
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
         ErrorExit(MEM_ERROR, ARGV0);
     }
 
-    
+
     /* Reading config */
     if(ClientConf(DEFAULTCPATH) < 0)
     {
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
     if(!logr->rip)
     {
         merror(AG_INV_IP, ARGV0);
-        ErrorExit(CLIENT_ERROR,ARGV0);        
+        ErrorExit(CLIENT_ERROR,ARGV0);
     }
 
 
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
         ErrorExit(AG_NOKEYS_EXIT, ARGV0);
     }
 
-        
+
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
     /* Agentd Start */
     AgentdStart(dir, uid, gid, user, group);
 
-    
+
     return(0);
 }
 

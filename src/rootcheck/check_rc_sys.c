@@ -11,7 +11,7 @@
  */
 
 
-#include "shared.h" 
+#include "shared.h"
 #include "rootcheck.h"
 
 int _sys_errors;
@@ -28,7 +28,7 @@ int read_sys_dir(char *dir_name, int do_read);
 int read_sys_file(char *file_name, int do_read)
 {
     struct stat statbuf;
-   
+
     _sys_total++;
 
 
@@ -52,7 +52,7 @@ int read_sys_file(char *file_name, int do_read)
         #endif
         return(-1);
     }
-   
+
     /* If directory, read the directory */
     else if(S_ISDIR(statbuf.st_mode))
     {
@@ -115,19 +115,19 @@ int read_sys_file(char *file_name, int do_read)
             }
         }
     }
-     
-    
+
+
     /* If has OTHER write and exec permission, alert */
     #ifndef WIN32
-    if(((statbuf.st_mode & S_IWOTH) == S_IWOTH) && 
+    if(((statbuf.st_mode & S_IWOTH) == S_IWOTH) &&
          (S_ISREG(statbuf.st_mode)))
     {
         if((statbuf.st_mode & S_IXUSR) == S_IXUSR)
         {
             if(_wx)
                 fprintf(_wx, "%s\n",file_name);
-                
-            _sys_errors++;    
+
+            _sys_errors++;
         }
         else
         {
@@ -173,16 +173,16 @@ int read_sys_dir(char *dir_name, int do_read)
     unsigned int entry_count = 0;
     int did_changed = 0;
     DIR *dp;
-    
+
 	struct dirent *entry;
     struct stat statbuf;	
-   
+
     #ifndef WIN32
     char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
-                                 "/usr/sbin", "/dev", "/etc", 
+                                 "/usr/sbin", "/dev", "/etc",
                                  "/boot", NULL };
     #endif
-    
+
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
     {
         merror("%s: Invalid directory given.",ARGV0);
@@ -204,8 +204,8 @@ int read_sys_dir(char *dir_name, int do_read)
         i = 0;
     }
 
-    
-    
+
+
     /* Getting the number of nodes. The total number on opendir
      * must be the same
      */
@@ -213,8 +213,8 @@ int read_sys_dir(char *dir_name, int do_read)
     {
         return(-1);
     }
-    
-    
+
+
     /* Currently device id */
     if(did != statbuf.st_dev)
     {
@@ -222,13 +222,13 @@ int read_sys_dir(char *dir_name, int do_read)
             did_changed = 1;
         did = statbuf.st_dev;
     }
-    
-    
+
+
     if(!S_ISDIR(statbuf.st_mode))
     {
         return(-1);
     }
-   
+
 
     #ifndef WIN32
     /* Check if the do_read is valid for this directory */
@@ -244,14 +244,14 @@ int read_sys_dir(char *dir_name, int do_read)
     #else
     do_read = 0;
     #endif
-     
-     
+
+
     /* Opening the directory given */
     dp = opendir(dir_name);
 	if(!dp)
     {
         if((strcmp(dir_name, "") == 0)&&
-           (dp = opendir("/"))) 
+           (dp = opendir("/")))
         {
             /* ok */
         }
@@ -270,7 +270,7 @@ int read_sys_dir(char *dir_name, int do_read)
 
         /* Just ignore . and ..  */
         if((strcmp(entry->d_name,".") == 0) ||
-           (strcmp(entry->d_name,"..") == 0))  
+           (strcmp(entry->d_name,"..") == 0))
         {
             entry_count++;
             continue;
@@ -295,7 +295,7 @@ int read_sys_dir(char *dir_name, int do_read)
 	        #ifndef Darwin
             if(S_ISDIR(statbuf_local.st_mode))
 	        #else
-	        if(S_ISDIR(statbuf_local.st_mode) || 
+	        if(S_ISDIR(statbuf_local.st_mode) ||
  	           S_ISREG(statbuf_local.st_mode) ||
 	           S_ISLNK(statbuf_local.st_mode))
 	        #endif
@@ -304,7 +304,7 @@ int read_sys_dir(char *dir_name, int do_read)
             }
         }
 
-        
+
         /* Checking every file against the rootkit database */
         for(i = 0; i<= rk_sys_count; i++)
         {
@@ -334,15 +334,15 @@ int read_sys_dir(char *dir_name, int do_read)
     /* Entry count for directory different than the actual
      * link count from stats.
      */
-    if((entry_count != statbuf.st_nlink) && 
+    if((entry_count != statbuf.st_nlink) &&
        ((did_changed == 0) || ((entry_count + 1) != statbuf.st_nlink)))
     {
         #ifndef WIN32
         struct stat statbuf2;
         char op_msg[OS_SIZE_1024 +1];
-        
 
-        if((lstat(dir_name, &statbuf2) == 0) && 
+
+        if((lstat(dir_name, &statbuf2) == 0) &&
             (statbuf2.st_nlink != entry_count))
         {
             snprintf(op_msg, OS_SIZE_1024, "Files hidden inside directory "
@@ -357,12 +357,12 @@ int read_sys_dir(char *dir_name, int do_read)
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
                 _sys_errors++;
             }
-            #elif Darwin
+            #elif Darwin || FreeBSD
             if(strncmp(dir_name, "/dev", strlen("/dev")) != 0)
             {
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
                 _sys_errors++;
-            } 
+            }
             #else
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
 
@@ -372,9 +372,9 @@ int read_sys_dir(char *dir_name, int do_read)
 
         #endif
     }
-    
+
     closedir(dp);
-    
+
     return(0);
 }
 
@@ -391,7 +391,7 @@ void check_rc_sys(char *basedir)
     _sys_errors = 0;
     _sys_total = 0;
     did = 0; /* device id */
-    
+
     snprintf(file_path, OS_SIZE_1024, "%s", basedir);
 
 
@@ -410,9 +410,9 @@ void check_rc_sys(char *basedir)
     }
 
 
-        
+
     /* Scan the whole file system -- may be slow */
-    if(rootcheck.scanall)    
+    if(rootcheck.scanall)
     {
         #ifndef WIN32
         snprintf(file_path, 3, "%s", "/");
@@ -421,43 +421,43 @@ void check_rc_sys(char *basedir)
         read_sys_dir(file_path, rootcheck.readall);
     }
 
-    
+
     /* Scan only specific directories */
     else
     {
         int _i = 0;
-        
+
         #ifndef WIN32
         char *(dirs_to_scan[]) = {"/bin", "/sbin", "/usr/bin",
                                   "/usr/sbin", "/dev", "/lib",
                                   "/etc", "/root", "/var/log",
                                   "/var/mail", "/var/lib", "/var/www",
                                   "/usr/lib", "/usr/include",
-                                  "/tmp", "/boot", "/usr/local", 
+                                  "/tmp", "/boot", "/usr/local",
                                   "/var/tmp", "/sys", NULL};
 
         #else
         char *(dirs_to_scan[]) = {"C:\\WINDOWS", "C:\\Program Files", NULL};
         #endif
-        
+
         for(_i = 0; _i <= 24; _i++)
         {
             if(dirs_to_scan[_i] == NULL)
                 break;
-                
-            #ifndef WIN32    
-            snprintf(file_path, OS_SIZE_1024, "%s%s", 
-                                            basedir, 
+
+            #ifndef WIN32
+            snprintf(file_path, OS_SIZE_1024, "%s%s",
+                                            basedir,
                                             dirs_to_scan[_i]);
             read_sys_dir(file_path, rootcheck.readall);
 
             #else
             read_sys_dir(dirs_to_scan[_i], rootcheck.readall);
             #endif
-            
+
         }
     }
-    
+
     if(_sys_errors == 0)
     {
         char op_msg[OS_SIZE_1024 +1];
@@ -471,13 +471,13 @@ void check_rc_sys(char *basedir)
         char op_msg[OS_SIZE_1024 +1];
         snprintf(op_msg, OS_SIZE_1024, "Check the following files for more "
             "information:\n%s%s%s",
-            (ftell(_wx) == 0)?"":       
+            (ftell(_wx) == 0)?"":
             "       rootcheck-rw-rw-rw-.txt (list of world writable files)\n",
             (ftell(_ww) == 0)?"":
             "       rootcheck-rwxrwxrwx.txt (list of world writtable/executable files)\n",
-            (ftell(_suid) == 0)?"":        
+            (ftell(_suid) == 0)?"":
             "       rootcheck-suid-files.txt (list of suid files)");
-        
+
         notify_rk(ALERT_SYSTEM_ERROR, op_msg);
     }
 
@@ -487,21 +487,21 @@ void check_rc_sys(char *basedir)
             unlink("rootcheck-rw-rw-rw-.txt");
         fclose(_wx);
     }
-    
+
     if(_ww)
     {
         if(ftell(_ww) == 0)
             unlink("rootcheck-rwxrwxrwx.txt");
         fclose(_ww);
     }
-    
+
     if(_suid)
     {
         if(ftell(_suid) == 0)
             unlink("rootcheck-suid-files.txt");
-        fclose(_suid); 
+        fclose(_suid);
     }
-               
+
     return;
 }
 

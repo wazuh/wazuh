@@ -29,30 +29,30 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
 {
     int rc = 0;
     int pid = 0;
-    int maxfd = 0;   
+    int maxfd = 0;
 
     fd_set fdset;
-    
+
     struct timeval fdtimeout;
 
-    
+
     /* Going daemon */
     pid = getpid();
     available_server = 0;
     nowDaemon();
     goDaemon();
 
-    
+
     /* Setting group ID */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR, ARGV0, group);
 
-    
+
     /* chrooting */
     if(Privsep_Chroot(dir) < 0)
         ErrorExit(CHROOT_ERROR, ARGV0, dir);
 
-    
+
     nowChroot();
 
 
@@ -69,7 +69,7 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
 
     maxfd = logr->m_queue;
     logr->sock = -1;
-    
+
 
 
     /* Creating PID file */	
@@ -79,11 +79,11 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
 
     /* Reading the private keys  */
     verbose(ENC_READ, ARGV0);
-        
+
     OS_ReadKeys(&keys);
     OS_StartCounter(&keys);
 
-    /* cmoraes : changed the following call to 
+    /* cmoraes : changed the following call to
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id);
     */
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
@@ -93,14 +93,14 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
-    
+
     /* Initial random numbers */
     #ifdef __OpenBSD__
     srandomdev();
     #else
     srandom( time(0) + getpid()+ pid + getppid());
     #endif
-                    
+
     random();
 
 
@@ -118,7 +118,7 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     {
         ErrorExit(UNABLE_CONN, ARGV0);
     }
-    
+
 
     /* Setting max fd for select */
     if(logr->sock > maxfd)
@@ -144,7 +144,7 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     os_setwait();
 
     start_agent(1);
-    
+
     os_delwait();
 
 
@@ -152,15 +152,15 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     intcheck_file(OSSECCONF, dir);
     intcheck_file(OSSEC_DEFINES, dir);
 
-   
+
     /* Sending first notification */
     run_notify();
-    
-     
+
+
     /* Maxfd must be higher socket +1 */
     maxfd++;
-    
-    
+
+
     /* monitor loop */
     while(1)
     {
@@ -172,28 +172,28 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
         fdtimeout.tv_sec = 120;
         fdtimeout.tv_usec = 0;
 
-        
+
         /* Wait for 120 seconds at a maximum for any descriptor */
         rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
         if(rc == -1)
         {
             ErrorExit(SELECT_ERROR, ARGV0);
         }
-       
-        
+
+
         else if(rc == 0)
         {
             continue;
-        }    
+        }
 
-        
+
         /* For the receiver */
         if(FD_ISSET(logr->sock, &fdset))
         {
             receive_msg();
         }
 
-        
+
         /* For the forwarder */
         if(FD_ISSET(logr->m_queue, &fdset))
         {

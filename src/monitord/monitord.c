@@ -19,10 +19,10 @@
 /* Real monitord global */
 void Monitord()
 {
-    time_t tm;     
-    struct tm *p;       
+    time_t tm;
+    struct tm *p;
 
-    int today = 0;		        
+    int today = 0;		
     int thismonth = 0;
     int thisyear = 0;
 
@@ -32,18 +32,18 @@ void Monitord()
     sleep(10);
 
     memset(str, '\0', OS_SIZE_1024 +1);
-    
-    
+
+
     /* Getting currently time before starting */
     tm = time(NULL);
     p = localtime(&tm);	
-    
+
     today = p->tm_mday;
     thismonth = p->tm_mon;
     thisyear = p->tm_year+1900;
-                
 
-    
+
+
     /* Connecting to the message queue
      * Exit if it fails.
      */
@@ -61,7 +61,7 @@ void Monitord()
         merror(QUEUE_SEND, ARGV0);
     }
 
-    
+
     /* Main monitor loop */
     while(1)
     {
@@ -74,7 +74,7 @@ void Monitord()
         {
             monitor_agents();
         }
-        
+
         /* Day changed, deal with log files */
         if(today != p->tm_mday)
         {

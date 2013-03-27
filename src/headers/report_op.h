@@ -15,10 +15,10 @@
 #define __REPORT_OP_H
 
 
-#define REPORT_RELATED      1 
+#define REPORT_RELATED      1
 #define REPORT_FILTER       2
 
-                    
+
 #define REPORT_REL_USER          0x001
 #define REPORT_REL_SRCIP         0x002
 #define REPORT_REL_LEVEL         0x004
@@ -27,7 +27,7 @@
 #define REPORT_REL_LOCATION      0x040
 #define REPORT_TYPE_DAILY        0x100
 #define REPORT_REL_FILE          0x200
-           
+
 
 
 typedef struct _report_filter
@@ -62,13 +62,13 @@ typedef struct _report_filter
     int report_type;
     int show_alerts;
     void *fp;
-     
+
 }report_filter;
 
 
 
 
-int os_report_configfilter(char *filter_by, char *filter_value, 
+int os_report_configfilter(char *filter_by, char *filter_value,
                            report_filter *r_filter, int arg_type);
 void os_report_printtop(void *topstore, char *hname, int print_related);
 void os_ReportdStart(report_filter *r_filter);

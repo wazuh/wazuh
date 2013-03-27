@@ -19,7 +19,7 @@
 
 
 
-/* OS_IPNotAllowed, v0.1, 2005/02/11 
+/* OS_IPNotAllowed, v0.1, 2005/02/11
  * Checks if an IP is not allowed.
  */
 static int OS_IPNotAllowed(char *srcip)
@@ -51,14 +51,14 @@ static void HandleClient(int client_socket, char *srcip)
 {
     int sb_size = OS_MAXSTR;
     int r_sz = 0;
-    
+
     char buffer[OS_MAXSTR +2];
     char storage_buffer[OS_MAXSTR +2];
     char tmp_buffer[OS_MAXSTR +2];
 
     char *buffer_pt = NULL;
 
-    
+
     /* Initializing some variables */
     memset(buffer, '\0', OS_MAXSTR +2);
     memset(storage_buffer, '\0', OS_MAXSTR +2);
@@ -86,12 +86,12 @@ static void HandleClient(int client_socket, char *srcip)
                 storage_buffer[0] = '\0';
                 continue;
             }
-            
+
             strncat(storage_buffer, buffer, sb_size);
             sb_size -= r_sz;
-            continue; 
+            continue;
         }
-        
+
         /* Seeing if we received more then just one message */
         if(*(buffer_pt +1) != '\0')
         {
@@ -112,14 +112,14 @@ static void HandleClient(int client_socket, char *srcip)
         }
 
         strncat(storage_buffer, buffer, sb_size);
-        
+
 
         /* Removing carriage returns too */
         buffer_pt = strchr(storage_buffer, '\r');
         if(buffer_pt)
             *buffer_pt = '\0';
 
-        
+
         /* Removing syslog header */
         if(storage_buffer[0] == '<')
         {
@@ -173,13 +173,13 @@ void HandleSyslogTCP()
     int client_socket = 0;
     int st_errors = 0;
     int childcount = 0;
-    
+
     char srcip[IPSIZE +1];
 
     /* Initializing some variables */
     memset(srcip, '\0', IPSIZE + 1);
 
-    
+
     /* Connecting to the message queue
      * Exit if it fails.
      */
@@ -187,7 +187,7 @@ void HandleSyslogTCP()
     {
         ErrorExit(QUEUE_FATAL,ARGV0, DEFAULTQUEUE);
     }
-        
+
 
     /* Infinit loop in here */
     while(1)
@@ -223,7 +223,7 @@ void HandleSyslogTCP()
         }
 
 
-        /* Forking to deal with new client */ 
+        /* Forking to deal with new client */
         if(fork() == 0)
         {
             HandleClient(client_socket, srcip);

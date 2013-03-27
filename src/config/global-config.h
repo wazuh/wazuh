@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 
 #ifndef _CCONFIG__H
 #define _CCONFIG__H
@@ -30,7 +30,7 @@ typedef struct __Config
     u_int8_t mailbylevel;
     u_int8_t logbylevel;
     u_int8_t logfw;
-    
+
     /* Prelude support */
     u_int8_t prelude;
     /* which min. level the alert must be sent to prelude */
@@ -47,14 +47,18 @@ typedef struct __Config
 
     /* Mail alerting */
     short int mailnotify;
-    
-    /* For the active response */  
+
+    /* Custom Alert output*/
+    short int custom_alert_output;
+    char * custom_alert_output_format;
+
+    /* For the active response */
     int ar;
-    
+
     /* For the correlation */
     int memorysize;
-   
-    /* List of files to ignore (syscheck) */ 
+
+    /* List of files to ignore (syscheck) */
     char **syscheck_ignore;
 
     /* List of ips to never block */
@@ -74,6 +78,13 @@ typedef struct __Config
 
     /* Global rule hash. */
     void *g_rules_hash;
+
+#ifdef GEOIP
+    /* GeoIP support */
+    u_int8_t loggeoip;
+    char *geoip_db_path;
+    char *geoip6_db_path;
+#endif
 
 }_Config;
 

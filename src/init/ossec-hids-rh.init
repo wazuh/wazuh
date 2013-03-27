@@ -46,6 +46,8 @@ stop() {
 
 status() {
 	${DIRECTORY}/bin/ossec-control status
+	RETVAL=$?
+	return $RETVAL
 }
 
 

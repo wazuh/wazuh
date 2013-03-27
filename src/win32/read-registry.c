@@ -6,13 +6,13 @@
 #define MAX_KEY_LENGTH 255
 #define MAX_KEY	2048
 #define MAX_VALUE_NAME 16383
- 
+
 char *(os_winreg_ignore_list[]) = {"SOFTWARE\\Classes","test123",NULL};
 
 HKEY sub_tree;
 int os_winreg_open_key(char *subkey);
 
-void os_winreg_querykey(HKEY hKey, char *p_key) 
+void os_winreg_querykey(HKEY hKey, char *p_key)
 {
     int i, rc;
     DWORD j;
@@ -30,8 +30,8 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
     DWORD value_count;
 
     /* Variables for RegEnumValue */
-    TCHAR value_buffer[MAX_VALUE_NAME +1]; 
-    TCHAR data_buffer[MAX_VALUE_NAME +1]; 
+    TCHAR value_buffer[MAX_VALUE_NAME +1];
+    TCHAR data_buffer[MAX_VALUE_NAME +1];
     DWORD value_size;
     DWORD data_size;
 
@@ -44,7 +44,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
     class_name_b[MAX_PATH] = '\0';
     sub_key_name_b[0] = '\0';
     sub_key_name_b[MAX_KEY_LENGTH] = '\0';
-    
+
 
     /* We use the class_name, subkey_count and the value count. */
     rc = RegQueryInfoKey(hKey, class_name_b, &class_name_s, NULL,
@@ -63,21 +63,21 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
     if(subkey_count)
     {
         /* We open each subkey and call open_key */
-        for(i=0;i<subkey_count;i++) 
-        { 
+        for(i=0;i<subkey_count;i++)
+        {
             sub_key_name_s = MAX_KEY_LENGTH;
             rc = RegEnumKeyEx(hKey, i, sub_key_name_b, &sub_key_name_s,
-                              NULL, NULL, NULL, NULL); 
-            
+                              NULL, NULL, NULL, NULL);
+
             /* Checking for the rc. */
-            if(rc == ERROR_SUCCESS) 
+            if(rc == ERROR_SUCCESS)
             {
                 char new_key[MAX_KEY_LENGTH + 2];
                 new_key[MAX_KEY_LENGTH +1] = '\0';
 
                 if(p_key)
                 {
-                    snprintf(new_key, MAX_KEY_LENGTH, 
+                    snprintf(new_key, MAX_KEY_LENGTH,
                                       "%s\\%s", p_key, sub_key_name_b);
                 }
                 else
@@ -90,22 +90,22 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
             }
         }
     }
-    
+
     /* Getting Values (if available) */
-    if (value_count) 
+    if (value_count)
     {
         /* md5 and sha1 sum */
         os_md5 mf_sum;
         os_sha1 sf_sum;
-        
+
 
         /* Clearing the values for value_size and data_size */
         value_buffer[MAX_VALUE_NAME] = '\0';
         data_buffer[MAX_VALUE_NAME] = '\0';
 
-        for(i=0;i<value_count;i++) 
-        { 
-            value_size = MAX_VALUE_NAME; 
+        for(i=0;i<value_count;i++)
+        {
+            value_size = MAX_VALUE_NAME;
             data_size = MAX_VALUE_NAME;
 
             value_buffer[0] = '\0';
@@ -182,7 +182,7 @@ int os_winreg_open_key(char *subkey)
             {
                 return(0);
             }
-            i++;      
+            i++;
         }
     }
 

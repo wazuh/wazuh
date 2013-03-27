@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-       
+
 
 #include "setup-shared.h"
 
@@ -23,19 +23,19 @@ int main(int argc, char **argv)
         printf("Try: '%s directory'\n\n", argv[0]);
         return(0);
     }
-    
+
     /* Trying to chdir to ossec directory. */
     if(chdir(argv[1]) != 0)
     {
         printf("%s: Invalid directory: '%s'.\n", argv[0], argv[1]);
         return(0);
     }
-    
+
     /* Checking if ossec was installed already (upgrade) */
     if(!fileexist(OSSECCONF))
     {
         char cmd[OS_MAXSTR +1];
-        
+
         /* Copy default config to ossec.conf */
         snprintf(cmd, OS_MAXSTR, "copy %s %s", OSSECDEF, OSSECCONF);
         system(cmd);
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     /* Setting up local files */
     system("add-localfile.exe \"C:\\Windows\\pfirewall.log\" --quiet");
     system("add-localfile.exe \"C:\\Documents and Settings\\All Users\\Application Data\\Symantec\\Symantec AntiVirus Corporate Edition\\7.5\\Logs\\\%m\%d20\%y.log\" --quiet");
-    
+
 
     /* Configure ossec for automatic startup */
     system("sc config OssecSvc start= auto");
@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     /* Changing permissions. */
     checkVista();
 
-    
+
     if(isVista)
     {
         char cmd[OS_MAXSTR +1];
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
         /* Changing permissions. */
         system("echo y|cacls * /T /G Administrators:f ");
 
-        
+
         /* Copying them back. */
         snprintf(cmd, OS_MAXSTR, "move ..\\os_win32ui.exe .");
         system(cmd);

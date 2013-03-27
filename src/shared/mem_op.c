@@ -86,22 +86,22 @@ void os_FreeArray(char *ch1, char **ch2)
         free(ch1);
         ch1 = NULL;
     }
-    
+
     /* Cleaning chat ** */
     if(ch2)
     {
         char **nch2 = ch2;
-            
+
         while(*ch2 != NULL)
         {
             free(*ch2);
             ch2++;
         }
-    
+
         free(nch2);
         nch2 = NULL;
     }
-    
+
     return;
 }
 

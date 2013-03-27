@@ -32,7 +32,7 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
     modules|= CDBD;
     modules|= CRULES;
 
-    
+
     /* Allocating config just to get the rules. */
     os_calloc(1, sizeof(_Config), tmp_config);
 
@@ -54,7 +54,7 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
     if(ReadConfig(modules, cfgfile, tmp_config, db_config) < 0)
         return(OS_INVALID);
 
-    
+
     /* Here, we assign the rules to db_config and free the rest
      * of the Config.
      */
@@ -73,7 +73,7 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
     {
         return(0);
     }
-    
+
 
     /* Checking for a valid config. */
     if(!db_config->host ||
@@ -98,7 +98,7 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
         osdb_close = mysql_osdb_close;
     }
     #endif
-    
+
     #ifdef UPOSTGRES
     if(db_config->db_type == POSTGDB)
     {
@@ -117,17 +117,17 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
     {
         #ifndef UMYSQL
         merror(DB_COMPILED, ARGV0, "mysql");
-        return(OS_INVALID); 
+        return(OS_INVALID);
         #endif
     }
     else if(db_config->db_type == POSTGDB)
     {
         #ifndef UPOSTGRES
         merror(DB_COMPILED, ARGV0, "postgresql");
-        return(OS_INVALID); 
+        return(OS_INVALID);
         #endif
     }
-    
+
 
     if(osdb_connect == NULL)
     {

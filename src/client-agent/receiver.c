@@ -30,7 +30,7 @@ char file_sum[34] = "";
 char file[OS_SIZE_1024 +1] = "";
 
 
-/* receive_msg: 
+/* receive_msg:
  * Receive events from the server.
  */
 void *receive_msg()
@@ -48,7 +48,7 @@ void *receive_msg()
 
 
 
-    /* Read until no more messages are available */ 
+    /* Read until no more messages are available */
     while((recv_b = recv(logr->sock, buffer, OS_SIZE_1024, MSG_DONTWAIT)) > 0)
     {
         buffer[recv_b] = '\0';
@@ -84,7 +84,7 @@ void *receive_msg()
                 {
                     if(OS_SendUnix(logr->execdq, tmp_msg, 0) < 0)
                     {
-                        merror("%s: Error communicating with execd", 
+                        merror("%s: Error communicating with execd",
                                 ARGV0);
                     }
                 }
@@ -102,7 +102,7 @@ void *receive_msg()
 
 
                 continue;
-            } 
+            }
 
 
             /* Restart syscheck. */
@@ -129,7 +129,7 @@ void *receive_msg()
 
 
             /* File update message */
-            if(strncmp(tmp_msg, FILE_UPDATE_HEADER, 
+            if(strncmp(tmp_msg, FILE_UPDATE_HEADER,
                        strlen(FILE_UPDATE_HEADER)) == 0)
             {
                 char *validate_file;
@@ -165,10 +165,10 @@ void *receive_msg()
                 }
 
                 if(tmp_msg[0] == '.')
-                    tmp_msg[0] = '-';            
+                    tmp_msg[0] = '-';
 
 
-                snprintf(file, OS_SIZE_1024, "%s/%s", 
+                snprintf(file, OS_SIZE_1024, "%s/%s",
                         SHAREDCFG_DIR,
                         tmp_msg);
 
@@ -180,7 +180,7 @@ void *receive_msg()
                 }
             }
 
-            else if(strncmp(tmp_msg, FILE_CLOSE_HEADER, 
+            else if(strncmp(tmp_msg, FILE_CLOSE_HEADER,
                         strlen(FILE_CLOSE_HEADER)) == 0)
             {
                 /* no error */
@@ -209,7 +209,7 @@ void *receive_msg()
                     if(strcmp(currently_md5, file_sum) != 0)
                     {
                         debug1("%s: ERROR: Failed md5 for: %s -- deleting.",
-                                ARGV0, file); 
+                                ARGV0, file);
                         unlink(file);
                     }
                     else
@@ -253,7 +253,7 @@ void *receive_msg()
             merror("%s: WARN: Unknown message received. No action defined.",
                     ARGV0);
         }
-    }    
+    }
 
 
     return(NULL);

@@ -25,7 +25,7 @@ int save_agentless_entry(char *host, char *script, char *agttype)
     char sys_location[1024 +1];
 
     sys_location[1024] = '\0';
-    snprintf(sys_location, 1024, "%s/(%s) %s", 
+    snprintf(sys_location, 1024, "%s/(%s) %s",
              AGENTLESS_ENTRYDIRPATH, script, host);
 
     fp = fopen(sys_location, "w");
@@ -51,7 +51,7 @@ int send_intcheck_msg(char *script, char *host, char *msg)
 
     sys_location[1024] = '\0';
     snprintf(sys_location, 1024, "(%s) %s->%s", script, host, SYSCHECK);
-    
+
     if(SendMSG(lessdc.queue, msg, sys_location, SYSCHECK_MQ) < 0)
     {
         merror(QUEUE_SEND, ARGV0);
@@ -77,7 +77,7 @@ int send_log_msg(char *script, char *host, char *msg)
 
     sys_location[1024] = '\0';
     snprintf(sys_location, 1024, "(%s) %s->%s", script, host, SYSCHECK);
-    
+
     if(SendMSG(lessdc.queue, msg, sys_location, LOCALFILE_MQ) < 0)
     {
         merror(QUEUE_SEND, ARGV0);
@@ -108,7 +108,7 @@ int gen_diff_alert(char *host, char *script, int alert_diff_time)
 
     snprintf(buf, 2048, "%s/%s->%s/diff.%d",
              DIFF_DIR_PATH, host, script,  alert_diff_time);
-    
+
     fp = fopen(buf, "r");
     if(!fp)
     {
@@ -133,7 +133,7 @@ int gen_diff_alert(char *host, char *script, int alert_diff_time)
         else
         {
             /* Weird diff with only one large line. */
-            buf[256] = '\0';    
+            buf[256] = '\0';
         }
     }
     else
@@ -146,19 +146,19 @@ int gen_diff_alert(char *host, char *script, int alert_diff_time)
 
     /* Getting up to 8 line changes. */
     tmp_str = buf;
-    
+
     while(tmp_str && (*tmp_str != '\0'))
     {
         tmp_str = strchr(tmp_str, '\n');
         if(!tmp_str)
-            break;    
+            break;
         else if(n >= 7)
         {
-            *tmp_str = '\0';    
+            *tmp_str = '\0';
             break;
         }
         n++;
-        tmp_str++;    
+        tmp_str++;
     }
 
 
@@ -167,10 +167,10 @@ int gen_diff_alert(char *host, char *script, int alert_diff_time)
              buf, n>=7?
              "\nMore changes..":
              "");
-    
-    
+
+
     snprintf(buf, 1024, "(%s) %s->agentless", script, host);
-    
+
     if(SendMSG(lessdc.queue, diff_alert, buf, LOCALFILE_MQ) < 0)
     {
         merror(QUEUE_SEND, ARGV0);
@@ -203,7 +203,7 @@ int check_diff_file(char *host, char *script)
 
     os_md5 md5sum_old;
     os_md5 md5sum_new;
-    
+
     old_location[1024] = '\0';
     new_location[1024] = '\0';
     tmp_location[1024] = '\0';
@@ -229,7 +229,7 @@ int check_diff_file(char *host, char *script)
     if(OS_MD5_File(new_location, md5sum_new) != 0)
     {
         merror("%s: ERROR: Invalid internal state (missing '%s').",
-               ARGV0, new_location); 
+               ARGV0, new_location);
         return(0);
     }
 
@@ -251,15 +251,15 @@ int check_diff_file(char *host, char *script)
 
     /* Run diff. */
     date_of_change = File_DateofChange(old_location);
-    snprintf(diff_cmd, 2048, "diff \"%s\" \"%s\" > \"%s/%s->%s/diff.%d\" " 
+    snprintf(diff_cmd, 2048, "diff \"%s\" \"%s\" > \"%s/%s->%s/diff.%d\" "
              "2>/dev/null",
-             tmp_location, old_location, 
+             tmp_location, old_location,
              DIFF_DIR_PATH, host, script, date_of_change);
     if(system(diff_cmd) != 256)
     {
         merror("%s: ERROR: Unable to run diff for %s->%s",
                ARGV0,  host, script);
-        return(0); 
+        return(0);
     }
 
 
@@ -277,7 +277,7 @@ FILE *open_diff_file(char *host, char *script)
 {
     FILE *fp = NULL;
     char sys_location[1024 +1];
-          
+
     sys_location[1024] = '\0';
     snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, script,
              DIFF_NEW_FILE);
@@ -298,7 +298,7 @@ FILE *open_diff_file(char *host, char *script)
             }
         }
 
-        snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host, 
+        snprintf(sys_location, 1024, "%s/%s->%s/%s", DIFF_DIR_PATH, host,
                  script, DIFF_NEW_FILE);
         fp = fopen(sys_location, "w");
         if(!fp)
@@ -322,13 +322,13 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
     char command[OS_SIZE_1024 +1];
     FILE *fp;
     FILE *fp_store = NULL;
-    
-    
+
+
     buf[0] = '\0';
     command[0] = '\0';
-    command[OS_SIZE_1024] = '\0'; 
-    
-    
+    command[OS_SIZE_1024] = '\0';
+
+
     while(entry->server[i])
     {
         /* Ignored entry. */
@@ -337,14 +337,14 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
             i++;
             continue;
         }
-        
-        
-        /* We only test for the first server entry. */ 
+
+
+        /* We only test for the first server entry. */
         else if(test_it)
         {
             int ret_code = 0;
-            snprintf(command, OS_SIZE_1024, 
-                    "%s/%s test test >/dev/null 2>&1", 
+            snprintf(command, OS_SIZE_1024,
+                    "%s/%s test test >/dev/null 2>&1",
                     AGENTLESSDIRPATH, entry->type);
             ret_code = system(command);
 
@@ -355,7 +355,7 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 {
                     merror("%s: ERROR: Expect command not found (or bad "
                            "arguments) for '%s'.",
-                           ARGV0, entry->type); 
+                           ARGV0, entry->type);
                 }
                 merror("%s: ERROR: Test failed for '%s' (%d). Ignoring.",
                        ARGV0, entry->type, ret_code/256);
@@ -366,23 +366,23 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
             verbose("%s: INFO: Test passed for '%s'.", ARGV0, entry->type);
             return(0);
         }
-        
+
         if(entry->server[i][0] == 's')
         {
-            snprintf(command, OS_SIZE_1024, "%s/%s \"use_su\" \"%s\" %s 2>&1", 
-                AGENTLESSDIRPATH, entry->type, entry->server[i] +1, 
+            snprintf(command, OS_SIZE_1024, "%s/%s \"use_su\" \"%s\" %s 2>&1",
+                AGENTLESSDIRPATH, entry->type, entry->server[i] +1,
                 entry->options);
         }
         else if(entry->server[i][0] == 'o')
         {
-            snprintf(command, OS_SIZE_1024, "%s/%s \"use_sudo\" \"%s\" %s 2>&1", 
-                AGENTLESSDIRPATH, entry->type, entry->server[i] +1, 
+            snprintf(command, OS_SIZE_1024, "%s/%s \"use_sudo\" \"%s\" %s 2>&1",
+                AGENTLESSDIRPATH, entry->type, entry->server[i] +1,
                 entry->options);
         }
         else
         {
-            snprintf(command, OS_SIZE_1024, "%s/%s \"%s\" %s 2>&1", 
-                AGENTLESSDIRPATH, entry->type, entry->server[i] +1, 
+            snprintf(command, OS_SIZE_1024, "%s/%s \"%s\" %s 2>&1",
+                AGENTLESSDIRPATH, entry->type, entry->server[i] +1,
                 entry->options);
         }
 
@@ -398,23 +398,23 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 tmp_str = strchr(buf, '\n');
                 if(tmp_str)
                     *tmp_str = '\0';
-                    
+
                 if(strncmp(buf, "ERROR: ", 7) == 0)
                 {
-                    merror("%s: ERROR: %s: %s: %s", ARGV0, 
+                    merror("%s: ERROR: %s: %s: %s", ARGV0,
                            entry->type, entry->server[i] +1, buf +7);
                     entry->error_flag++;
                     break;
                 }
                 else if(strncmp(buf, "INFO: ", 6) == 0)
                 {
-                    verbose("%s: INFO: %s: %s: %s", ARGV0, 
+                    verbose("%s: INFO: %s: %s: %s", ARGV0,
                             entry->type, entry->server[i] +1, buf +6);
                 }
                 else if(strncmp(buf, "FWD: ", 4) == 0)
                 {
                     tmp_str = buf + 5;
-                    send_intcheck_msg(entry->type, entry->server[i]+1, 
+                    send_intcheck_msg(entry->type, entry->server[i]+1,
                                       tmp_str);
                 }
                 else if(strncmp(buf, "LOG: ", 4) == 0)
@@ -426,7 +426,7 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 else if((entry->state & LESSD_STATE_DIFF) &&
                         (strncmp(buf, "STORE: ", 7) == 0))
                 {
-                    fp_store = open_diff_file(entry->server[i]+1, 
+                    fp_store = open_diff_file(entry->server[i]+1,
                                               entry->type);
                 }
                 else if(fp_store)
@@ -448,14 +448,14 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
             }
             else
             {
-                save_agentless_entry(entry->server[i] +1, 
+                save_agentless_entry(entry->server[i] +1,
                                      entry->type, "syscheck");
             }
             pclose(fp);
         }
         else
         {
-            merror("%s: ERROR: popen failed on '%s' for '%s'.", ARGV0, 
+            merror("%s: ERROR: popen failed on '%s' for '%s'.", ARGV0,
                    entry->type, entry->server[i] +1);
             entry->error_flag++;
         }
@@ -467,7 +467,7 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
     {
         fclose(fp_store);
     }
-    
+
     return(0);
 }
 
@@ -476,10 +476,10 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
 /* Main agentlessd */
 void Agentlessd()
 {
-    time_t tm;     
-    struct tm *p;       
+    time_t tm;
+    struct tm *p;
 
-    int today = 0;		        
+    int today = 0;		
     int thismonth = 0;
     int thisyear = 0;
     int test_it = 1;
@@ -490,16 +490,16 @@ void Agentlessd()
     /* Waiting a few seconds to settle */
     sleep(2);
     memset(str, '\0', OS_SIZE_1024 +1);
-    
-    
+
+
     /* Getting currently time before starting */
     tm = time(NULL);
     p = localtime(&tm);	
-    
+
     today = p->tm_mday;
     thismonth = p->tm_mon;
     thisyear = p->tm_year+1900;
-                
+
 
     /* Connecting to the message queue
      * Exit if it fails.
@@ -535,7 +535,7 @@ void Agentlessd()
                 if(lessdc.entries[i]->error_flag != 99)
                 {
                     merror("%s: ERROR: Too many failures for '%s'. Ignoring it.",
-                           ARGV0, lessdc.entries[i]->type); 
+                           ARGV0, lessdc.entries[i]->type);
                     lessdc.entries[i]->error_flag = 99;
                 }
 
@@ -544,22 +544,22 @@ void Agentlessd()
                 continue;
             }
 
-            
+
             /* Run the check again if the frequency has elapsed. */
             if((lessdc.entries[i]->state & LESSD_STATE_PERIODIC) &&
-               ((lessdc.entries[i]->current_state + 
+               ((lessdc.entries[i]->current_state +
                  lessdc.entries[i]->frequency) < tm))
             {
                 run_periodic_cmd(lessdc.entries[i], test_it);
                 if(!test_it)
                     lessdc.entries[i]->current_state = tm;
             }
-            
+
             i++;
 
             sleep(i);
         }
-        
+
         /* We only check every minute */
         test_it = 0;
         sleep(60);

@@ -20,36 +20,36 @@
 
 
 
-/* receiver_thread: 
+/* receiver_thread:
  * Receive events from the server.
  */
 void *receiver_thread(void *none)
 {
     int recv_b;
-    
+
     char file[OS_SIZE_1024 +1];
     char buffer[OS_MAXSTR +1];
-    
+
     char cleartext[OS_MAXSTR + 1];
     char *tmp_msg;
-   
+
     char file_sum[34];
 
     fd_set fdset;
     struct timeval selecttime;
-     
+
     FILE *fp;
 
 
     /* Setting FP to null, before starting */
     fp = NULL;
-   
+
     memset(cleartext, '\0', OS_MAXSTR +1);
     memset(buffer, '\0', OS_MAXSTR +1);
     memset(file, '\0', OS_SIZE_1024 +1);
     memset(file_sum, '\0', 34);
-    
-    
+
+
     while(1)
     {
         /* sock must be set. */
@@ -61,13 +61,13 @@ void *receiver_thread(void *none)
 
         FD_ZERO(&fdset);
         FD_SET(logr->sock, &fdset);
-        
+
 
         /* Wait for 30 seconds. */
         selecttime.tv_sec = 30;
         selecttime.tv_usec = 0;
 
-        
+
         /* Wait for 120 seconds at a maximum for any descriptor */
         recv_b = select(0, &fdset, NULL, NULL, &selecttime);
         if(recv_b == -1)
@@ -81,7 +81,7 @@ void *receiver_thread(void *none)
             continue;
         }
 
-        /* Read until no more messages are available */ 
+        /* Read until no more messages are available */
         while((recv_b = recv(logr->sock,buffer,OS_SIZE_1024, 0))>0)
         {
             /* Id of zero -- only one key allowed */
@@ -98,27 +98,27 @@ void *receiver_thread(void *none)
             {
                 /* This is the only thread that modifies it */
                 available_server = (int)time(NULL);
-                
+
 
                 /* Run timeout commands. */
                 if(logr->execdq >= 0)
                     WinTimeoutRun(available_server);
-                
+
                 /* If it is an active response message */
                 if(strncmp(tmp_msg, EXECD_HEADER, strlen(EXECD_HEADER)) == 0)
                 {
                     tmp_msg+=strlen(EXECD_HEADER);
-                    
+
 
                     /* Run on windows. */
                     if(logr->execdq >= 0)
                     {
                         WinExecdRun(tmp_msg);
                     }
-                    
-                        
+
+
                     continue;
-                } 
+                }
 
 
                 /* Restart syscheck. */
@@ -128,7 +128,7 @@ void *receiver_thread(void *none)
                     continue;
                 }
 
-                
+
                 /* Ack from server */
                 else if(strcmp(tmp_msg, HC_ACK) == 0)
                 {
@@ -143,7 +143,7 @@ void *receiver_thread(void *none)
                 }
 
                 /* File update message */
-                if(strncmp(tmp_msg, FILE_UPDATE_HEADER, 
+                if(strncmp(tmp_msg, FILE_UPDATE_HEADER,
                                     strlen(FILE_UPDATE_HEADER)) == 0)
                 {
                     char *validate_file;
@@ -161,7 +161,7 @@ void *receiver_thread(void *none)
                     /* copying the file sum */
                     strncpy(file_sum, tmp_msg, 33);
 
-                    
+
                     /* Setting tmp_msg to the beginning of the file name */
                     validate_file++;
                     tmp_msg = validate_file;
@@ -178,10 +178,10 @@ void *receiver_thread(void *none)
                     }
 
                     if(tmp_msg[0] == '.')
-                        tmp_msg[0] = '-';            
+                        tmp_msg[0] = '-';
 
-                    
-                    snprintf(file, OS_SIZE_1024, "%s/%s", 
+
+                    snprintf(file, OS_SIZE_1024, "%s/%s",
                             SHAREDCFG_DIR,
                             tmp_msg);
 
@@ -192,7 +192,7 @@ void *receiver_thread(void *none)
                     }
                 }
 
-                else if(strncmp(tmp_msg, FILE_CLOSE_HEADER, 
+                else if(strncmp(tmp_msg, FILE_CLOSE_HEADER,
                                          strlen(FILE_CLOSE_HEADER)) == 0)
                 {
                     /* no error */
@@ -204,7 +204,7 @@ void *receiver_thread(void *none)
                         fclose(fp);
                         fp = NULL;
                     }
-                    
+
                     if(file[0] == '\0')
                     {
                         /* nada */
@@ -221,7 +221,7 @@ void *receiver_thread(void *none)
                         if(strcmp(currently_md5, file_sum) != 0)
                         {
                             debug1("%s: Failed md5 for: %s -- deleting.",
-                                   ARGV0, file); 
+                                   ARGV0, file);
                             unlink(file);
                         }
                         else
@@ -264,10 +264,10 @@ void *receiver_thread(void *none)
                 merror("%s: WARN: Unknown message received. No action defined.",
                        ARGV0);
             }
-        }    
+        }
     }
 
-    
+
     /* Cleaning up */
     if(fp)
     {
@@ -275,7 +275,7 @@ void *receiver_thread(void *none)
         if(file[0] != '\0')
             unlink(file);
     }
-        
+
     return(NULL);
 
 }

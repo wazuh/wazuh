@@ -34,7 +34,7 @@
 
 /* Internal functions */
 int _oswcomment(FILE *fp_in, FILE *fp_out);
-int _WReadElem(FILE *fp_in, FILE *fp_out, int position, int parent, 
+int _WReadElem(FILE *fp_in, FILE *fp_out, int position, int parent,
                char **node, char *value, int node_pos);
 
 
@@ -56,8 +56,8 @@ int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
 
     if(c == '\n') /* add new line */
         _line++;
-    
-    return(c);    
+
+    return(c);
 }
 
 #define FWGETC(fp_in, fp_out) _xml_wfgetc(fp_in, fp_out)
@@ -112,10 +112,10 @@ int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
     {
         int r = 0;
         int rwidth = 0;
-        
+
         fseek(fp_out, 0, SEEK_END);
         fprintf(fp_out, "\n");
-        
+
         /* Printing each node. */
         while(nodes[r])
         {
@@ -126,13 +126,13 @@ int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
             if(nodes[r])
                 fprintf(fp_out, "\n");
         }
-    
+
         /* Printing val. */
         r--;
         rwidth -=6;
         fprintf(fp_out, "%s</%s>\n", newval, nodes[r]);
         r--;
-        
+
 
         /* Closing each node. */
         while(r >= 0)
@@ -142,7 +142,7 @@ int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
             rwidth -= 3;
         }
     }
-    
+
     fclose(fp_in);
     fclose(fp_out);
     return(0);
@@ -202,7 +202,7 @@ int _oswcomment(FILE *fp_in, FILE *fp_out)
 
 
 
-int _WReadElem(FILE *fp_in, FILE *fp_out, 
+int _WReadElem(FILE *fp_in, FILE *fp_out,
               int position, int parent, char **nodes, char *val, int node_pos)
 {
     int c;
@@ -240,8 +240,8 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
                 continue;
             }
         }
-        
-        
+
+
         /* Real checking */
         if(location == -1)
         {
@@ -263,7 +263,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
                 continue;
             }
         }
-        
+
 
         /* Looking for the closure */
         else if((location == 0) && ((c == _R_CONFE) || (c == ' ')))
@@ -278,7 +278,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
                 _ge = '/';
                 elem[count -1] = '\0';
             }
-            
+
 
             /* If we may have more attributes */
             if(c == ' ')
@@ -299,11 +299,11 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
             {
                 count = 0;
                 location = -1;
-             
+
                 memset(elem,'\0',XML_MAXSIZE);
                 memset(closedelem,'\0',XML_MAXSIZE);
                 memset(cont,'\0',XML_MAXSIZE);
-                
+
                 if(parent > 0)
                 {
                     return(ret_code);
@@ -314,7 +314,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
             {
                 count = 0;
                 location = 1;
-            }    
+            }
 
 
             /* Checking position of the node */
@@ -324,7 +324,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
             }
 
             /* Checking if the element name matches */
-            if(node_pos == position && 
+            if(node_pos == position &&
                nodes[node_pos] && strcmp(elem, nodes[node_pos]) == 0)
             {
                 node_pos++;
@@ -346,7 +346,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
                 }
             }
         }
-        
+
         else if((location == 2) &&(c == _R_CONFE))
         {
             closedelem[count]='\0';
@@ -358,7 +358,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
             memset(elem,'\0',XML_MAXSIZE);
             memset(closedelem,'\0',XML_MAXSIZE);
             memset(cont,'\0',XML_MAXSIZE);
-            
+
             count = 0;	
             location = -1;
             if(parent > 0)
@@ -396,7 +396,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
                 {
                     ret_code = 1;
                 }
-                
+
                 count = 0;
             }
         }
@@ -416,7 +416,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
             }
         }
     }
-    
+
     if(location == -1)
     {
         return(ret_code);

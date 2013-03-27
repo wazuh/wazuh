@@ -10,9 +10,9 @@
  * Foundation
  */
 
- 
 
-#include "shared.h" 
+
+#include "shared.h"
 #include "localfile-config.h"
 
 
@@ -20,9 +20,9 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 {
     int pl = 0;
     int i = 0;
-    
-    int glob_set = 0; 
-    
+
+    int glob_set = 0;
+
     #ifndef WIN32
     int glob_offset = 0;
     #endif
@@ -41,7 +41,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     log_config = (logreader_config *)d1;
 
 
-    /* If config is not set, we need to create it */ 
+    /* If config is not set, we need to create it */
     if(!log_config->config)
     {
         os_calloc(2, sizeof(logreader), log_config->config);
@@ -62,7 +62,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         {
             pl++;
         }
-        
+
         /* Allocating more memory */
         os_realloc(logf, (pl +2)*sizeof(logreader), log_config->config);
         logf = log_config->config;
@@ -71,7 +71,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         logf[pl +1].alias = NULL;
         logf[pl +1].logformat = NULL;
     }
-    
+
     logf[pl].file = NULL;
     logf[pl].command = NULL;
     logf[pl].alias = NULL;
@@ -81,7 +81,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     logf[pl].djb_program_name = NULL;
     logf[pl].ign = 360;
 
-    
+
     /* Searching for entries related to files */
     i = 0;
     while(node[i])
@@ -132,11 +132,11 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             /* Expand variables on Windows. */
             if(strchr(node[i]->content, '%'))
             {
-                int expandreturn = 0;   
+                int expandreturn = 0;
                 char newfile[OS_MAXSTR +1];
 
                 newfile[OS_MAXSTR] = '\0';
-                expandreturn = ExpandEnvironmentStrings(node[i]->content, 
+                expandreturn = ExpandEnvironmentStrings(node[i]->content,
                                                         newfile, OS_MAXSTR);
 
                 if((expandreturn > 0) && (expandreturn < OS_MAXSTR))
@@ -145,7 +145,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
                     os_strdup(newfile, node[i]->content);
                 }
-            }   
+            }
             #endif
 
 
@@ -153,17 +153,17 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
              * We will call this file multiple times until
              * there is no one else available.
              */
-            #ifndef WIN32 /* No windows support for glob */ 
+            #ifndef WIN32 /* No windows support for glob */
             if(strchr(node[i]->content, '*') ||
                strchr(node[i]->content, '?') ||
                strchr(node[i]->content, '['))
             {
                 glob_t g;
-                
+
                 /* Setting ot the first entry of the glob */
                 if(glob_set == 0)
                     glob_set = pl +1;
-                
+
                 if(glob(node[i]->content, 0, NULL, &g) != 0)
                 {
                     merror(GLOB_ERROR, ARGV0, node[i]->content);
@@ -171,7 +171,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                     i++;
                     continue;
                 }
-             
+
                 /* Checking for the last entry */
                 if((g.gl_pathv[glob_offset]) == NULL)
                 {
@@ -212,7 +212,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                     os_strdup(g.gl_pathv[glob_offset], logf[pl].file);
                 }
 
-                
+
                 glob_offset++;
                 globfree(&g);
 
@@ -220,13 +220,13 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 pl++;
                 os_realloc(logf, (pl +2)*sizeof(logreader), log_config->config);
                 logf = log_config->config;
-                
+
                 logf[pl].file = NULL;
                 logf[pl].alias = NULL;
                 logf[pl].logformat = NULL;
                 logf[pl].fp = NULL;
                 logf[pl].ffile = NULL;
-                            
+
                 logf[pl +1].file = NULL;
                 logf[pl +1].alias = NULL;
                 logf[pl +1].logformat = NULL;
@@ -236,7 +236,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             }
             else if(strchr(node[i]->content, '%'))
             #else
-            if(strchr(node[i]->content, '%'))    
+            if(strchr(node[i]->content, '%'))
             #endif /* WIN32 */
 
             /* We need the format file (based on date) */
@@ -259,8 +259,8 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 os_strdup(node[i]->content, logf[pl].ffile);
                 os_strdup(node[i]->content, logf[pl].file);
             }
-            
-            
+
+
             /* Normal file */
             else
             {
@@ -328,7 +328,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
                 while(logf[pl].logformat[0] == ' ')
                     logf[pl].logformat++;
-                
+
                 if(logf[pl].logformat[0] != ':')
                 {
                     merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
@@ -338,8 +338,8 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
                 while(*logf[pl].logformat == ' ')
                     logf[pl].logformat++;
-                
-                while(logf[pl].logformat[x] >= '0' && logf[pl].logformat[x] <= '9')    
+
+                while(logf[pl].logformat[x] >= '0' && logf[pl].logformat[x] <= '9')
                     x++;
 
                 while(logf[pl].logformat[x] == ' ')
@@ -378,7 +378,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     if(glob_set)
     {
         char *format;
-        
+
         /* Getting log format */
         if(logf[pl].logformat)
         {
@@ -407,7 +407,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                 merror(MISS_FILE, ARGV0);
                 return(OS_INVALID);
             }
-            
+
             if(logf[i].logformat == NULL)
             {
                 logf[i].logformat = format;
@@ -429,7 +429,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         merror(MISS_FILE, ARGV0);
         return(OS_INVALID);
     }
-    
+
     /* Verifying a valid event log config */
     if(strcmp(logf[pl].logformat, EVENTLOG) == 0)
     {
@@ -444,7 +444,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     }
 
     if((strcmp(logf[pl].logformat, "command") == 0)||
-       (strcmp(logf[pl].logformat, "full_command") == 0)) 
+       (strcmp(logf[pl].logformat, "full_command") == 0))
     {
         if(!logf[pl].command)
         {

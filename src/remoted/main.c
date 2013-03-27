@@ -21,17 +21,17 @@ int main(int argc, char **argv)
     int i = 0,c = 0;
     int uid = 0, gid = 0;
     int test_config = 0,run_foreground = 0;
-    
+
     char *cfg = DEFAULTCPATH;
     char *dir = DEFAULTDIR;
     char *user = REMUSER;
     char *group = GROUPGLOBAL;
 
-    
+
     /* Setting the name -- must be done ASAP */
     OS_SetName(ARGV0);
 
-    
+
     while((c = getopt(argc, argv, "Vdthfu:g:c:D:")) != -1){
         switch(c){
             case 'V':
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
                 group = optarg;
                 break;		
             case 't':
-                test_config = 1;    
+                test_config = 1;
                 break;
             case 'c':
                 if (!optarg)
@@ -72,8 +72,8 @@ int main(int argc, char **argv)
     }
 
     debug1(STARTED_MSG,ARGV0);
-    
-    
+
+
     /* Return 0 if not configured */
     if(RemotedConfig(cfg, &logr) < 0)
     {
@@ -90,7 +90,7 @@ int main(int argc, char **argv)
         /* Not configured. */
         exit(0);
     }
-        
+
     /* Check if the user and group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
@@ -102,13 +102,13 @@ int main(int argc, char **argv)
     i = getpid();
 
 
-    if(!run_foreground) 
+    if(!run_foreground)
     {
         nowDaemon();
         goDaemon();
     }
 
-    
+
     /* Setting new group */
     if(Privsep_SetGroup(gid) < 0)
             ErrorExit(SETGID_ERROR, ARGV0, group);
@@ -131,21 +131,21 @@ int main(int argc, char **argv)
     #else
     srandom( time(0) + getpid()+ i);
     #endif
-    
+
     random();
-    
+
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
     /* Really starting the program. */
-    i = 0; 
+    i = 0;
     while(logr.conn[i] != 0)
     {
         /* Forking for each connection handler */
         if(fork() == 0)
-        {   
+        {
             /* On the child */
             debug1("%s: DEBUG: Forking remoted: '%d'.",ARGV0, i);
             HandleRemote(i, uid);

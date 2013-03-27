@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installation script for the OSSEC
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
-# Last modification: Mar 02, 2006
+# Last modification: Aug 30, 2012
 
 # Changelog 19/03/2006 - Rafael M. Capovilla <under@underlinux.com.br>
 # New function AddWhite to allow users to add more Ips in the white_list
@@ -10,6 +10,8 @@
 # Bug fix - delete INSTALLDIR - Default is yes but if the user just press enter the script wasn't deleting it as it should
 # Changelog 15/07/2006 - Rafael M. Capovilla <under@underlinux.com.br>
 # New function AddTable to add support for OpenBSD pf rules in firewall-drop active response
+
+# Changelog 29 March 2012 - Adding hybrid mode (standalone + agent) 
 
 
 
@@ -109,9 +111,6 @@ Install()
     elif [ "X$INSTYPE" = "Xagent" ]; then
         ./InstallAgent.sh
 
-    elif [ "X$INSTYPE" = "Xhybrid" ]; then
-        ./InstallHybrid.sh
-
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         ./InstallServer.sh local
 	fi
@@ -129,7 +128,7 @@ Install()
     echo "TYPE=\"${INSTYPE}\"" >> ${OSSEC_INIT}
     chmod 600 ${OSSEC_INIT}
     cp -pr ${OSSEC_INIT} ${INSTALLDIR}${OSSEC_INIT}
-    chmod 644 ${INSTALLDIR}${OSSEC_INIT}
+    chmod 640 ${INSTALLDIR}${OSSEC_INIT}
 
 
     # If update_rules is set, we need to tweak
@@ -359,55 +358,48 @@ SetupLogs()
 
 
 
+# install.sh
 
 ##########
 # ConfigureClient()
 ##########
 ConfigureClient()
 {
-	echo ""
-	echo "3- ${configuring} $NAME."
-	echo ""
+        echo ""
+        echo "3- ${configuring} $NAME."
+        echo ""
 
-    USINGHNAME=""
-    if [ "X${USER_AGENT_SERVER_IP}" = "X" ]; then
-        # Looping and asking for server ip
+    if [ "X${USER_AGENT_SERVER_IP}" = "X" -a "X${USER_AGENT_SERVER_NAME}" = "X" ]; then
+        # Looping and asking for server ip or hostname
         while [ 1 ]; do
-	    $ECHO "  3.1- ${serverip}: "
-	        read IPANSWER
-            echo $IPANSWER | grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" > /dev/null 2>&1
+            $ECHO "  3.1- ${serveraddr}: "
+                read ADDRANSWER
+            # Is it an IP?
+            echo $ADDRANSWER | grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" > /dev/null 2>&1
             if [ $? = 0 ]; then
-	            echo ""
-                IP=$IPANSWER
-	            echo "   - ${addingip} $IP"
+                    echo ""
+                IP=$ADDRANSWER
+                    echo "   - ${addingip} $IP"
                 break;
-            fi
-
-            # Checking if it is a hostname
-            if [ "X$NUNAME" = "XLinux" ]; then
-                echo $IPANSWER | grep -E "^[0-9a-zA-Z-][0-9a-zA-Z-]*\.[0-9a-zA-Z-][0-9a-zA-Z\.-]*$" > /dev/null 2>&1
-                if [ $? = 0 ]; then
-                    host $IPANSWER | grep "has address" >/dev/null 2>&1
-                    if [ $? = 0 ]; then
-                        echo ""
-                        IP=$IPANSWER
-                        echo "   - ${addingip} $IP"
-                        USINGHNAME=$IP
-                        break;
-                    fi
-                fi
+            # Must be a name
+            elif [ $? != 0 ]; then
+                    echo ""
+                HNAME=$ADDRANSWER
+                    echo "   - ${addingname} $HNAME"
+                break;
             fi
         done
     else
         IP=${USER_AGENT_SERVER_IP}
+        HNAME=${USER_AGENT_SERVER_NAME}
     fi
 
     echo "<ossec_config>" > $NEWCONFIG
     echo "  <client>" >> $NEWCONFIG
-    if [ "x$USINGHNAME" = "x" ]; then
-	echo "    <server-ip>$IP</server-ip>" >> $NEWCONFIG
-    else
-	echo "    <server-hostname>$IP</server-hostname>" >> $NEWCONFIG
+    if [ "X${IP}" != "X" ]; then
+        echo "    <server-ip>$IP</server-ip>" >> $NEWCONFIG
+    elif [ "X${HNAME}" != "X" ]; then
+        echo "    <server-hostname>$HNAME</server-hostname>" >> $NEWCONFIG
     fi
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG

@@ -45,7 +45,9 @@ whatsmtp="Wie lautet die Adresse des SMTP Servers? (IP/Host) "
 
 # Part 3.1/agent
 serverip="Wiw lautet die IP Addresse des OSSEC HIDS Servers?"
+serveraddr="Wiw lautet die IP Addresse/Host des OSSEC HIDS Servers?"
 addingip="Server IP hinzugefügt"
+addingname="Server Host hinzugefügt"
 
 
 # Part 3.2

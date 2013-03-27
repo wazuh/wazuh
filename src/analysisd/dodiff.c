@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -35,7 +35,7 @@ static int _add2last(char *str, int strsize, char *file)
         dirrule = strrchr(file, '/');
         if(!dirrule)
         {
-            merror("%s: ERROR: Invalid file name to diff: %s", 
+            merror("%s: ERROR: Invalid file name to diff: %s",
                    ARGV0, file);
             return(0);
         }
@@ -108,8 +108,8 @@ int doDiff(RuleInfo *currently_rule, Eventinfo *lf)
         {
             *htpt = '\0';
         }
-        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname+1, 
-                 currently_rule->sigid, DIFF_LAST_FILE); 
+        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname+1,
+                 currently_rule->sigid, DIFF_LAST_FILE);
 
         if(htpt)
         {
@@ -119,7 +119,7 @@ int doDiff(RuleInfo *currently_rule, Eventinfo *lf)
     }
     else
     {
-        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname, 
+        snprintf(flastfile, OS_SIZE_2048, "%s/%s/%d/%s", DIFF_DIR, lf->hostname,
                  currently_rule->sigid, DIFF_LAST_FILE);
     }
 
@@ -182,8 +182,8 @@ int doDiff(RuleInfo *currently_rule, Eventinfo *lf)
         {
             *htpt = '\0';
         }
-        snprintf(fdifffile, OS_SIZE_2048, "%s/%s/%d/state.%d", DIFF_DIR, lf->hostname+1, 
-                 currently_rule->sigid, date_of_change); 
+        snprintf(fdifffile, OS_SIZE_2048, "%s/%s/%d/state.%d", DIFF_DIR, lf->hostname+1,
+                 currently_rule->sigid, date_of_change);
 
         if(htpt)
         {
@@ -193,7 +193,7 @@ int doDiff(RuleInfo *currently_rule, Eventinfo *lf)
     }
     else
     {
-        snprintf(fdifffile, OS_SIZE_2048, "%s/%s/%d/state.%d", DIFF_DIR, lf->hostname, 
+        snprintf(fdifffile, OS_SIZE_2048, "%s/%s/%d/state.%d", DIFF_DIR, lf->hostname,
                  currently_rule->sigid, date_of_change);
     }
 

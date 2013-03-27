@@ -33,7 +33,7 @@ int Read_DB(XML_NODE node, void *config1, void *config2)
     char *xml_dbsock = "socket";
     char *xml_dbtype = "type";
 
-    
+
     db_config = (DBConfig *)config2;
     if(!db_config)
     {
@@ -41,7 +41,7 @@ int Read_DB(XML_NODE node, void *config1, void *config2)
     }
 
 
-    /* Reading the xml */ 
+    /* Reading the xml */
     while(node[i])
     {
         if(!node[i]->element)

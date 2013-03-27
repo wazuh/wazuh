@@ -9,12 +9,12 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
 
-#include "shared.h" 
+#include "shared.h"
 #include "eventinfo.h"
 
 
@@ -44,46 +44,46 @@ EventNode *OS_GetLastEvent()
 {
     EventNode *eventnode_pt = eventnode;
 
-    return(eventnode_pt);    
+    return(eventnode_pt);
 }
 
 /* Add an event to the list -- always to the begining */
 void OS_AddEvent(Eventinfo *lf)
 {
     EventNode *tmp_node = eventnode;
-        
+
     if(tmp_node)
     {
         EventNode *new_node;
         new_node = (EventNode *)calloc(1,sizeof(EventNode));
-        
+
         if(new_node == NULL)
         {
             ErrorExit(MEM_ERROR,ARGV0);
         }
 
-        /* Always adding to the beginning of the list 
+        /* Always adding to the beginning of the list
          * The new node will become the first node and
          * new_node->next will be the previous first node
          */
         new_node->next = tmp_node;
         new_node->prev = NULL;
         tmp_node->prev = new_node;
-        
+
         eventnode = new_node;
 
         /* Adding the event to the node */
         new_node->event = lf;
 
         _memoryused++;
-        
+
         /* Need to remove the last nodes */
         if(_memoryused > _memorymaxsize)
         {
             int i = 0;
             EventNode *oldlast;
-            
-            /* Remove at least the last 10 events 
+
+            /* Remove at least the last 10 events
              * or the events that will not match anymore
              * (higher than max frequency)
              */
@@ -102,7 +102,7 @@ void OS_AddEvent(Eventinfo *lf)
             }
         }
     }
-    
+
     else
     {
         /* Adding first node */
@@ -115,8 +115,8 @@ void OS_AddEvent(Eventinfo *lf)
         eventnode->prev = NULL;
         eventnode->next = NULL;
         eventnode->event = lf;
-        
-        lastnode = eventnode; 
+
+        lastnode = eventnode;
     }
 
     return;

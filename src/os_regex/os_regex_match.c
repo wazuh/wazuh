@@ -18,7 +18,7 @@
 
 /* Algorithm:
  *       Go as faster as you can :)
- * 
+ *
  * Supports:
  *      '|' to separate multiple OR patterns
  *      '^' to match the begining of a string
@@ -29,8 +29,8 @@
 int _InternalMatch(char *pattern, char *str,int count);
 
 
-/* OS_WordMatch v0.3: 
- * Searches for  pattern in the string 
+/* OS_WordMatch v0.3:
+ * Searches for  pattern in the string
  */
 int OS_WordMatch(char *pattern, char *str)
 {
@@ -57,9 +57,9 @@ int OS_WordMatch(char *pattern, char *str)
                 continue;
             }
         }
-       
+
         count++;
-       
+
     }while(pattern[count] != '\0');
 
     /* Last check until end of string */
@@ -73,19 +73,19 @@ int _InternalMatch(char *pattern, char *str, int pattern_size)
     uchar *st = (uchar *)str;
 
     uchar last_char = pattern[pattern_size];
-   
 
-    /* Return true for some odd expressions */ 
+
+    /* Return true for some odd expressions */
     if(*pattern == '\0')
         return(TRUE);
 
-    
+
     /* If '^' specified, just do a strncasecmp */
     else if(*pattern == '^')
     {
         pattern++;
         pattern_size --;
-         
+
         /* Compare two string */
         if(strncasecmp(pattern,str,pattern_size) == 0)
             return(TRUE);
@@ -96,8 +96,8 @@ int _InternalMatch(char *pattern, char *str, int pattern_size)
     /* Null line */
     else if(*st == '\0')
         return(FALSE);
-        
-        
+
+
     /* Look to match the first pattern */
     do
     {
@@ -106,27 +106,27 @@ int _InternalMatch(char *pattern, char *str, int pattern_size)
         {
             str = (char *)st++;
             pt++;
-            
+
             while(*pt != last_char)
             {
                 if(*st == '\0')
                     return(FALSE);
-                    
+
                 else if(charmap[*pt] != charmap[*st])
                     goto error;
-                
-                st++;pt++;    
+
+                st++;pt++;
             }
 
             /* Return here if pt == last_char */
             return(TRUE);
-            
+
             error:
                 st = (uchar *)str;
                 pt = (uchar *)pattern;
-            
+
         }
-        
+
         st++;
     }while(*st != '\0');
 

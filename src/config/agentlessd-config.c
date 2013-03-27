@@ -34,7 +34,7 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
 
     agentlessd_config *lessd_config = (agentlessd_config *)config;
 
-     
+
     /* Getting any configured entry. */
     if(lessd_config->entries)
     {
@@ -42,9 +42,9 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
             s++;
     }
 
-    
+
     /* Allocating the memory for the config. */
-    os_realloc(lessd_config->entries, (s + 2) * sizeof(agentlessd_entries *), 
+    os_realloc(lessd_config->entries, (s + 2) * sizeof(agentlessd_entries *),
                lessd_config->entries);
     os_calloc(1, sizeof(agentlessd_entries), lessd_config->entries[s]);
     lessd_config->entries[s + 1] = NULL;
@@ -61,7 +61,7 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
     lessd_config->entries[s]->port = 0;
     lessd_config->entries[s]->error_flag = 0;
 
-    
+
     /* Reading the XML. */
     while(node[i])
     {
@@ -99,7 +99,7 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
         {
             char s_content[1024 +1];
             s_content[1024] = '\0';
-            
+
             /* Getting any configured entry. */
             j = 0;
             if(lessd_config->entries[s]->server)
@@ -108,8 +108,8 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
                     j++;
             }
 
-            os_realloc(lessd_config->entries[s]->server, (j + 2) * 
-                       sizeof(char *), 
+            os_realloc(lessd_config->entries[s]->server, (j + 2) *
+                       sizeof(char *),
                        lessd_config->entries[s]->server);
             if(strncmp(node[i]->content, "use_su ", 7) == 0)
             {
@@ -123,8 +123,8 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
             {
                 snprintf(s_content, 1024, " %s", node[i]->content);
             }
-            
-            os_strdup(s_content, 
+
+            os_strdup(s_content,
                       lessd_config->entries[s]->server[j]);
             lessd_config->entries[s]->server[j + 1] = NULL;
         }
@@ -135,11 +135,11 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
             script_path[1024] = '\0';
             snprintf(script_path, 1024, "%s/%s", AGENTLESSDIRPATH,
                                          node[i]->content);
-            
+
             if(File_DateofChange(script_path) <= 0)
             {
                 merror("%s: ERROR: Unable to find '%s' at '%s'.",
-                       ARGV0, node[i]->content, AGENTLESSDIRPATH); 
+                       ARGV0, node[i]->content, AGENTLESSDIRPATH);
                 merror(XML_VALUEERR,ARGV0, node[i]->element, node[i]->content);
                 return(OS_INVALID);
             }
@@ -191,8 +191,8 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
         merror(XML_INV_MISSOPTS, ARGV0);
         return(OS_INVALID);
     }
-       
-    
+
+
     if((lessd_config->entries[s]->state == LESSD_STATE_PERIODIC) &&
        !lessd_config->entries[s]->frequency)
     {

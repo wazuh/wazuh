@@ -48,8 +48,8 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
 
 
     snprintf(str, 256, "ossec: output: '%s':\n",
-                (NULL != logff[pos].alias) 
-                ? logff[pos].alias 
+                (NULL != logff[pos].alias)
+                ? logff[pos].alias
                 : logff[pos].command);
     cmd_size = strlen(str);
 
@@ -59,12 +59,12 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
         str[cmd_size +n] = '\0';
 
         /* Getting the last occurence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) 
+        if ((p = strrchr(str, '\n')) != NULL)
         {
             *p = '\0';
         }
 
-        
+
         debug2("%s: DEBUG: Reading command message: '%s'", ARGV0, str);
 
         /* Removing empty lines. */
@@ -88,7 +88,7 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
         }
         strfinal[n] = '\0';
 
-        
+
         /* Sending message to queue */
         if(drop_it == 0)
         {
@@ -107,7 +107,7 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
 
     pclose(cmd_output);
 
-    return(NULL); 
+    return(NULL);
 }
 
 /* EOF */

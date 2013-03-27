@@ -29,7 +29,7 @@
 #define FOPEN_ERROR   "%s(1103): ERROR: Unable to open file '%s'."
 #define SIZE_ERROR    "%s(1104): ERROR: Maximum string size reached for: %s."
 #define NULL_ERROR    "%s(1105): ERROR: Attempted to use null string. "
-#define FORMAT_ERROR  "%s(1106): ERROR: String not correctly formated."  
+#define FORMAT_ERROR  "%s(1106): ERROR: String not correctly formated."
 #define MKDIR_ERROR   "%s(1107): ERROR: Unable to create directory: '%s'"
 #define PERM_ERROR    "%s(1108): ERROR: Permission error. Operation not completed."
 #define THREAD_ERROR  "%s(1109): ERROR: Unable to create new pthread."
@@ -107,7 +107,7 @@
 #define INVALID_RKCL_NAME  "%s(1251): ERROR: Invalid rk configuration name: '%s'."
 #define INVALID_RKCL_VALUE "%s(1252): ERROR: Invalid rk configuration value: '%s'."
 #define INVALID_ROOTDIR    "%s(1253): ERROR: Invalid rootdir (unable to retrieve)."
-#define INVALID_RKCL_VAR   "%s(1254): ERROR: Invalid rk variable: '%s'." 
+#define INVALID_RKCL_VAR   "%s(1254): ERROR: Invalid rk variable: '%s'."
 
 
 /* syscheck */
@@ -129,6 +129,9 @@
 #define INVALID_CAT      "%s(1273): ERROR: Invalid category '%s' chosen."
 #define INVALID_CONFIG   "%s(1274): ERROR: Invalid configuration. Element '%s': %s."
 #define INVALID_HOSTNAME "%s(1275): ERROR: Invalid hostname in syslog message: '%s'."
+#ifdef GEOIP
+#define INVALID_GEOIP_DB "%s(1276): ERROR: Cannot open GeoIP database: '%s'."
+#endif
 
 
 /* Log collector */
@@ -145,7 +148,7 @@
 #define AR_CMD_MISS     "%s(1280): ERROR: Missing command options. " \
                         "You must specify a 'name', 'executable' and 'expect'."
 #define AR_MISS         "%s(1281): ERROR: Missing options in the active response " \
-                        "configuration. "                        
+                        "configuration. "
 #define ARQ_ERROR       "%s(1301): ERROR: Unable to connect to active response queue."
 #define AR_INV_LOC      "%s(1302): ERROR: Invalid active response location: '%s'."
 #define AR_INV_CMD      "%s(1303): ERROR: Invalid command '%s' in the active response."
@@ -196,7 +199,7 @@
 #define ENCFILE_CHANGED "%s(1409): INFO: Authentication file changed. Updating."
 #define ENC_READ        "%s(1410): INFO: Reading authentication keys file."
 
-                                   
+
 /* Regex errors */
 #define REGEX_COMPILE   "%s(1450): ERROR: Syntax error on regex: '%s': %d."
 #define REGEX_SUBS      "%s(1451): ERROR: Missing sub_strings on regex: '%s'."
@@ -219,7 +222,7 @@
 #define DUP_REGEX       "%s(2109): ERROR: Duplicated offsets for same regex: '%s'."
 #define INV_DECOPTION   "%s(2110): ERROR: Invalid decoder argument for %s: '%s'."
 #define DECODE_ADD      "%s(2111): ERROR: Additional data to plugin decoder: '%s'."
-                                          
+
 #define INV_OFFSET      "%s(2120): ERROR: Invalid offset value: '%s'"
 #define INV_ATTR        "%s(2121): ERROR: Invalid decoder attribute: '%s'"
 
@@ -249,7 +252,7 @@
 
 
 /* Rules reading errors */
-#define RL_INV_ROOT     "%s(5101): ERROR: Invalid root element: '%s'." 
+#define RL_INV_ROOT     "%s(5101): ERROR: Invalid root element: '%s'."
 #define RL_INV_RULE     "%s(5102): ERROR: Invalid rule element: '%s'."
 #define RL_INV_ENTRY    "%s(5103): ERROR: Invalid rule on '%s'. Missing id/level."
 #define RL_EMPTY_ATTR   "%s(5104): ERROR: Rule attribute '%s' empty."
@@ -276,7 +279,7 @@
 #define DB_MISS_CONFIG  "%s(5205): ERROR: Missing database configuration. "\
                         "It requires host, user, pass and database."
 #define DB_CONFIGERR    "%s(5206): ERROR: Database configuration error."
-#define DB_COMPILED     "%s(5207): ERROR: OSSEC not compiled with support for '%s'." 
+#define DB_COMPILED     "%s(5207): ERROR: OSSEC not compiled with support for '%s'."
 #define DB_MAINERROR    "%s(5208): ERROR: Multiple database errors. Exiting."
 #define DB_CLOSING      "%s(5209): INFO: Closing connection to database."
 #define DB_ATTEMPT      "%s(5210): INFO: Attempting to reconnect to database."
@@ -293,7 +296,7 @@
 #define CONN_TO     "%s: INFO: Connected to '%s' (%s queue)"
 #define MAIL_DIS    "%s: INFO: E-Mail notification disabled. Clean Exit."
 
-                        
+
 /* Debug Messages */
 #define STARTED_MSG "%s: DEBUG: Starting ..."
 #define FOUND_USER  "%s: DEBUG: Found user/group ..."

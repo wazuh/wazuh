@@ -24,8 +24,8 @@
 char *(djb_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
                      "Sep","Oct","Nov","Dec"};
 
-char djb_host[512 +1];                     
-                
+char djb_host[512 +1];
+
 
 
 /* Initializes multilog. */
@@ -58,7 +58,7 @@ int init_djbmultilog(int pos)
     #else
     strncpy(djb_host, "win32", 512 -1);
     #endif
-                                                                                                        
+
 
 
     /* Multilog must be in the following format: /path/program_name/current */
@@ -66,7 +66,7 @@ int init_djbmultilog(int pos)
     if(!tmp_str)
         return(0);
 
-    
+
     /* Must end with /current and must not be in the beginning of the string. */
     if((strcmp(tmp_str, "/current") != 0) || (tmp_str == logff[pos].file))
     {
@@ -85,7 +85,7 @@ int init_djbmultilog(int pos)
         return(0);
     }
 
-    
+
     os_strdup(djbp_name+1, logff[pos].djb_program_name);
     tmp_str[0] = '/';
 
@@ -117,19 +117,19 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
     {
         return(NULL);
     }
-    
+
 
 
     /* Getting new entry */
     while(fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL)
     {
-        
+
         /* Getting buffer size */
         str_len = strlen(str);
 
-        
+
         /* Getting the last occurence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) 
+        if ((p = strrchr(str, '\n')) != NULL)
         {
             *p = '\0';
 
@@ -144,13 +144,13 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
         {
             need_clear = 1;
         }
-        
-        
+
+
         /* Multilog messages have the following format:
          * @40000000463246020c2ca16c xx...
          */
         if((str_len > 26) &&
-           (str[0] == '@') && 
+           (str[0] == '@') &&
            isalnum((int)str[1]) &&
            isalnum((int)str[2]) &&
            isalnum((int)str[3]) &&
@@ -163,11 +163,11 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
             {
                 p++;
             }
-                
-            
+
+
             /* If message has a valid syslog header, send as is. */
             if((str_len > 44) &&
-               (p[3] == ' ') &&  
+               (p[3] == ' ') &&
                (p[6] == ' ') &&
                (p[9] == ':') &&
                (p[12] == ':') &&
@@ -199,18 +199,18 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
                                              p);
             }
         }
-        
-        
+
+
         else
         {
             debug2("%s: DEBUG: Invalid DJB log: '%s'", ARGV0, str);
             continue;
         }
-        
-        
+
+
         debug2("%s: DEBUG: Reading DJB multilog message: '%s'", ARGV0, buffer);
 
-        
+
         /* Sending message to queue */
         if(drop_it == 0)
         {
@@ -223,11 +223,11 @@ void *read_djbmultilog(int pos, int *rc, int drop_it)
                 }
             }
         }
-        
+
         continue;
     }
 
-    return(NULL); 
+    return(NULL);
 }
 
 /* EOF */

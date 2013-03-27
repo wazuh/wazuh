@@ -43,7 +43,7 @@ int intcheck_file(char *file_name, char *dir)
     if(lstat(file_name, &statbuf) < 0)
     #endif
     {
-        snprintf(newsum, 911,"%c:%s:-1 %s%s", SYSCHECK_MQ, SYSCHECK, 
+        snprintf(newsum, 911,"%c:%s:-1 %s%s", SYSCHECK_MQ, SYSCHECK,
                                               dir, file_name);
         send_msg(0, newsum);
 
@@ -71,7 +71,7 @@ int intcheck_file(char *file_name, char *dir)
         }
     }
 
-    
+
     snprintf(newsum,911,"%c:%s:%d:%d:%d:%d:%s:%s %s%s",
             SYSCHECK_MQ, SYSCHECK,
             (int)statbuf.st_size,

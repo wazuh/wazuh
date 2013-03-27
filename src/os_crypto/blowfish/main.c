@@ -19,13 +19,13 @@ int main(int argc, char ** argv)
         printf("%s: string key\n", argv[0]);
         exit(1);
     }
-    
+
     if((strlen(argv[1]) > 1020) || (strlen(argv[2]) > 512))
     {
         printf("%s: size err\n", argv[0]);
         exit(1);
     }
-    
+
     /* Encrypt */
     OS_BF_Str(argv[1], output, argv[2], strlen(argv[1]), OS_ENCRYPT);
 

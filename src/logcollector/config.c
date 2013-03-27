@@ -10,12 +10,12 @@
  * Foundation
  */
 
-/* v0.3 (2005/08/23): Using the new OS_XML syntax and changing some usage 
+/* v0.3 (2005/08/23): Using the new OS_XML syntax and changing some usage
  * v0.2 (2005/01/17)
  */
- 
 
-#include "shared.h" 
+
+#include "shared.h"
 
 #include "logcollector.h"
 
@@ -38,7 +38,7 @@ int LogCollectorConfig(char * cfgfile, int accept_remote)
 
     if(ReadConfig(modules, cfgfile, &log_config, NULL) < 0)
         return(OS_INVALID);
-    
+
     #ifdef CLIENT
     modules|= CAGENT_CONFIG;
     log_config.agent_cfg = 1;
@@ -46,7 +46,7 @@ int LogCollectorConfig(char * cfgfile, int accept_remote)
     log_config.agent_cfg = 0;
     #endif
 
-    logff = log_config.config;       
+    logff = log_config.config;
 
     return(1);
 

@@ -25,7 +25,7 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
     alert_data *al_data;
     char user_msg[256];
     char srcip_msg[256];
-    
+
     char syslog_msg[OS_SIZE_2048 +1];
 
     al_data = GetAlertData(0, logff[pos].fp);
@@ -40,7 +40,7 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
 
 
     /* Adding source ip. */
-    if(!al_data->srcip || 
+    if(!al_data->srcip ||
        ((al_data->srcip[0] == '(') &&
         (al_data->srcip[1] == 'n') &&
         (al_data->srcip[2] == 'o')))
@@ -54,7 +54,7 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
 
 
     /* Adding username. */
-    if(!al_data->user || 
+    if(!al_data->user ||
        ((al_data->user[0] == '(') &&
         (al_data->user[1] == 'n') &&
         (al_data->user[2] == 'o')))
@@ -74,7 +74,7 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
           	"ossec: Alert Level: %d; Rule: %d - %s; "
                	"Location: %s;%s%s  %s",
                	al_data->level, al_data->rule, al_data->comment,
-               	al_data->location, 
+               	al_data->location,
                	srcip_msg,
                	user_msg,
                	al_data->log[0]);
@@ -83,7 +83,7 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
     {
         char *tmp_msg = NULL;
         short int j = 0;
-        
+
         while(al_data->log[j] != NULL)
         {
             tmp_msg = os_LoadString(tmp_msg, al_data->log[j]);
@@ -101,12 +101,12 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
             tmp_msg[1595] = '.';
             tmp_msg[1596] = '.';
             tmp_msg[1597] = '\0';
-        } 
+        }
         snprintf(syslog_msg, OS_SIZE_2048,
           	"ossec: Alert Level: %d; Rule: %d - %s; "
                	"Location: %s;%s%s  %s",
                	al_data->level, al_data->rule, al_data->comment,
-               	al_data->location, 
+               	al_data->location,
                	srcip_msg,
                	user_msg,
                	tmp_msg);
@@ -117,7 +117,7 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
     FreeAlertData(al_data);
 
 
-        
+
     /* Sending message to queue */
     if(drop_it == 0)
     {
@@ -131,7 +131,7 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
         }
     }
 
-    return(NULL); 
+    return(NULL);
 }
 
 

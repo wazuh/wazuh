@@ -22,7 +22,7 @@
  * Get the first available prime after the provided value.
  * Returns 0 on error.
  */
-int os_getprime(int val); 
+int os_getprime(int val);
 
 
 #endif

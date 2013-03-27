@@ -32,16 +32,16 @@ typedef struct _agentlessd_entries
     int current_state;
     int port;
     int error_flag;
-    
+
     char *type;
     char **server;
     char *options;
     char *command;
-    
+
 }agentlessd_entries;
 
 
-/* Configuration structure. */   
+/* Configuration structure. */
 typedef struct _agentlessd_config
 {
     int queue;

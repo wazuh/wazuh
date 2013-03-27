@@ -10,9 +10,9 @@
  * Foundation
  */
 
- 
+
 #ifndef WIN32
- 
+
 #include "shared.h"
 #include "rootcheck.h"
 
@@ -31,7 +31,7 @@
 #define NETSTAT_LIST "netstat -an | grep \"^%s\" | "\
                      "cut -d ':' -f 2 | cut -d ' ' -f 1"
 #define NETSTAT "netstat -an | grep \"^%s\" | " \
-                "grep \"[^0-9]%d \" > /dev/null 2>&1"                          
+                "grep \"[^0-9]%d \" > /dev/null 2>&1"
 #endif
 
 #ifndef NETSTAT
@@ -57,14 +57,14 @@ int run_netstat(int proto, int port)
 
     ret = system(nt);
 
-    if(ret == 0)    
+    if(ret == 0)
         return(1);
 
     else if(ret == 1)
     {
         return(0);
     }
-    
+
     return(1);
 }
 
@@ -92,7 +92,7 @@ int conn_port(int proto, int port)
     server.sin_port = htons( port );
     server.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    
+
     /* If we can't bind, it means the port is open */
     if(bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0)
     {
@@ -108,10 +108,10 @@ int conn_port(int proto, int port)
     {
         total_ports_udp[port] = rc;
     }
-    
-    close(ossock);  
 
-    return(rc);  
+    close(ossock);
+
+    return(rc);
 }
 
 
@@ -130,7 +130,7 @@ void test_ports(int proto, int *_errors, int *_total)
             if(run_netstat(proto, i))
             {
                 continue;
-                
+
                 #ifdef OSSECHIDS
                 sleep(2);
                 #endif
@@ -149,7 +149,7 @@ void test_ports(int proto, int *_errors, int *_total)
 
                 snprintf(op_msg, OS_SIZE_1024, "Port '%d'(%s) hidden. "
                         "Kernel-level rootkit or trojaned "
-                        "version of netstat.", i, 
+                        "version of netstat.", i,
                         (proto == IPPROTO_UDP)? "udp" : "tcp");
 
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
@@ -187,8 +187,8 @@ void check_rc_ports()
         total_ports_udp[i] = 0;
         i++;
     }
-    
-    /* Trsting TCP ports */ 
+
+    /* Trsting TCP ports */
     test_ports(IPPROTO_TCP, &_errors, &_total);
 
     /* Testing UDP ports */
@@ -202,7 +202,7 @@ void check_rc_ports()
                                     " Analyzed %d ports.", _total);
         notify_rk(ALERT_OK, op_msg);
     }
-    
+
     return;
 }
 

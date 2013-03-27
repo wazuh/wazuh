@@ -39,7 +39,7 @@ int OS_Regex(char *pattern, char *str)
 
         OSRegex_FreePattern(&reg);
     }
-    
+
     return(r_code);
 }
 
