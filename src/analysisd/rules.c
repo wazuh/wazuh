@@ -36,6 +36,7 @@ int getattributes(char **attributes,
                   int *maxsize, int *timeframe,
                   int *frequency, int *accuracy,
                   int *noalert, int *ignore_time, int *overwrite);
+int doesRuleExist(int sid, RuleNode *r_node);
 
 
 void Rule_AddAR(RuleInfo *config_rule);
@@ -311,6 +312,13 @@ int Rules_OP_ReadRules(char * rulefile)
                 {
                     merror("%s: No rule id or level specified for "
                             "rule '%d'.",ARGV0, j);
+                    OS_ClearXML(&xml);
+                    return(-1);
+                }
+
+                if(overwrite != 1 && doesRuleExist(id, NULL))
+                {
+                    merror("%s: Rule with id %d exists allready.",ARGV0, id);
                     OS_ClearXML(&xml);
                     return(-1);
                 }
@@ -2106,6 +2114,37 @@ int _setlevels(RuleNode *node, int nnode)
     }
 
     return(l_size);
+}
+
+/* test if a rule id exists
+ * return 1 when exists
+ * return 0 when not
+ */
+int doesRuleExist(int sid, RuleNode *r_node)
+{
+    /* start from the beginning of the list by default */
+    if(!r_node)
+        r_node = OS_GetFirstRule();
+
+    while(r_node)
+    {
+        /* Checking if the sigid matches */
+        if(r_node->ruleinfo->sigid == sid)
+            return (1);
+
+        /* Checking if the rule has a child */
+        if(r_node->child)
+        {
+            /* check recursive */
+            if(doesRuleExist(sid, r_node->child))
+                return (1);
+        }
+
+        /* go to the next rule */
+        r_node = r_node->next;
+    }
+
+    return (0);
 }
 
 
