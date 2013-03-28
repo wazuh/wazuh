@@ -226,6 +226,7 @@ start()
         if [ $? = 0 ]; then
             ${DIR}/bin/${i} ${DEBUG_CLI};
             if [ $? != 0 ]; then
+		echo "${i} did not start correctly.";
                 unlock;
                 exit 1;
             fi 

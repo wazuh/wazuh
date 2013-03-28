@@ -206,6 +206,41 @@ int main(int argc, char **argv)
     }
 
 
+    /* Check to see if manager is an IP */
+    int is_ip = 1;
+    struct sockaddr_in iptest;
+    memset(&iptest, 0, sizeof(iptest));
+
+    if(inet_pton(AF_INET, manager, &iptest.sin_addr) != 1)
+      is_ip = 0;	/* This is not an IPv4 address */
+
+    /* Not IPv4, IPv6 maybe? */
+    if(is_ip == 0)
+    {
+        struct sockaddr_in6 iptest6;
+        memset(&iptest6, 0, sizeof(iptest6));
+        if(inet_pton(AF_INET6, manager, &iptest6.sin6_addr) != 1)
+            is_ip = 0;
+        else
+            is_ip = 1;	/* This is an IPv6 address */
+    }
+    
+
+    /* If it isn't an ip, try to resolve the IP */
+    if(is_ip == 0)
+    {
+        char *ipaddress;
+        ipaddress = OS_GetHost(manager, 3);
+        if(ipaddress != NULL)
+          strncpy(manager, ipaddress, 16);
+        else
+        {
+          printf("Could not resolve hostname: %s\n", manager);
+          return(1);
+        }
+    }
+
+
     /* Connecting via TCP */
     sock = OS_ConnectTCP(port, manager, 0);
     if(sock <= 0)

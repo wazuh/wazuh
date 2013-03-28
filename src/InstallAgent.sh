@@ -67,14 +67,15 @@ elif [ "$UNAME" = "Darwin" ]; then
     id -u ${USER} > /dev/null 2>&1
     if [ ! $? = 0 ]; then
 
-        # Creating for 10.5
-        /usr/bin/sw_vers 2>/dev/null| grep "ProductVersion" | grep -E "10.5.|10.6" > /dev/null 2>&1
+        # Creating for <= 10.4
+        /usr/bin/sw_vers 2>/dev/null| grep "ProductVersion" | grep -E "10.2.|10.3|10.4" > /dev/null 2>&1
         if [ $? = 0 ]; then
+
+	    chmod +x ./init/darwin-addusers.pl
+            ./init/darwin-addusers.pl
+	else
             chmod +x ./init/osx105-addusers.sh
             ./init/osx105-addusers.sh
-        else
-            chmod +x ./init/darwin-addusers.pl
-            ./init/darwin-addusers.pl    
         fi        
     fi
 else
@@ -189,13 +190,13 @@ chown root:${GROUP} ${DIR}/var/run
 
 
 # Moving the binary files
-cp -pr ../bin/ossec-agentd ${DIR}/bin/
-cp -pr ../bin/agent-auth ${DIR}/bin/
-cp -pr ../bin/ossec-logcollector ${DIR}/bin/
-cp -pr ../bin/ossec-syscheckd ${DIR}/bin/
-cp -pr ../bin/ossec-execd ${DIR}/bin/
+cp -pr client-agent/ossec-agentd ${DIR}/bin/
+cp -pr os_auth/agent-auth ${DIR}/bin/
+cp -pr logcollector/ossec-logcollector ${DIR}/bin/
+cp -pr syscheckd/ossec-syscheckd ${DIR}/bin/
+cp -pr os_execd/ossec-execd ${DIR}/bin/
 cp -pr ./init/ossec-client.sh ${DIR}/bin/ossec-control
-cp -pr ../bin/manage_agents ${DIR}/bin/
+cp -pr addagent/manage_agents ${DIR}/bin/
 cp -pr ../contrib/util.sh ${DIR}/bin/
 chown root:${GROUP} ${DIR}/bin/util.sh
 chmod +x ${DIR}/bin/util.sh

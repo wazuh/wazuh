@@ -104,7 +104,42 @@ char *GeoIPLookup(char *ip)
 OSMatch FWDROPpm;
 OSMatch FWALLOWpm;
 
+/*
+ * Allow custom alert output tokens.
+ */
 
+typedef enum e_custom_alert_tokens_id
+{
+  CUSTOM_ALERT_TOKEN_TIMESTAMP = 0,
+  CUSTOM_ALERT_TOKEN_FTELL,
+  CUSTOM_ALERT_TOKEN_RULE_ALERT_OPTIONS,
+  CUSTOM_ALERT_TOKEN_HOSTNAME,
+  CUSTOM_ALERT_TOKEN_LOCATION,
+  CUSTOM_ALERT_TOKEN_RULE_ID,
+  CUSTOM_ALERT_TOKEN_RULE_LEVEL,
+  CUSTOM_ALERT_TOKEN_RULE_COMMENT,
+  CUSTOM_ALERT_TOKEN_SRC_IP,
+  CUSTOM_ALERT_TOKEN_DST_USER,
+  CUSTOM_ALERT_TOKEN_FULL_LOG,
+  CUSTOM_ALERT_TOKEN_RULE_GROUP,
+  CUSTOM_ALERT_TOKEN_LAST
+} CustomAlertTokenID;
+
+char CustomAlertTokenName[CUSTOM_ALERT_TOKEN_LAST][15] =
+{
+{ "$TIMESTAMP" },
+{ "$FTELL" },
+{ "$RULEALERT" },
+{ "$HOSTNAME" },
+{ "$LOCATION" },
+{ "$RULEID" },
+{ "$RULELEVEL" },
+{ "$RULECOMMENT" },
+{ "$SRCIP" },
+{ "$DSTUSER" },
+{ "$FULLLOG" },
+{ "$RULEGROUP" },
+};
 /* OS_Store: v0.2, 2005/02/10 */
 /* Will store the events in a file
  * The string must be null terminated and contain
@@ -310,7 +345,126 @@ void OS_Log(Eventinfo *lf)
     return;	
 }
 
+/* OS_CustomLog: v0.1, 2012/10/10*/
+void OS_CustomLog(Eventinfo *lf,char* format)
+{
+  char *log;
+  char *tmp_log;
+  char tmp_buffer[1024];
+  //Replace all the tokens:
+  os_strdup(format,log);
 
+  snprintf(tmp_buffer, 1024, "%d", lf->time);
+  tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_TIMESTAMP], tmp_buffer);
+  if(log)
+  {
+    os_free(log);
+    log=NULL;
+  }
+  snprintf(tmp_buffer, 1024, "%ld", __crt_ftell);
+  log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_FTELL], tmp_buffer);
+  if (tmp_log)
+  {
+    os_free(tmp_log);
+    tmp_log=NULL;
+  }
+
+
+  snprintf(tmp_buffer, 1024, "%s", (lf->generated_rule->alert_opts & DO_MAILALERT)?"mail " : "");
+  tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_ALERT_OPTIONS], tmp_buffer);
+  if(log)
+  {
+    os_free(log);
+    log=NULL;
+  }
+
+
+  snprintf(tmp_buffer, 1024, "%s",lf->hostname?lf->hostname:"None");
+  log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_HOSTNAME], tmp_buffer);
+  if (tmp_log)
+  {
+    os_free(tmp_log);
+    tmp_log=NULL;
+  }
+
+  snprintf(tmp_buffer, 1024, "%s",lf->location?lf->location:"None");
+  tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_LOCATION], tmp_buffer);
+  if(log)
+  {
+    os_free(log);
+    log=NULL;
+  }
+
+
+  snprintf(tmp_buffer, 1024, "%d", lf->generated_rule->sigid);
+  log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_ID], tmp_buffer);
+  if (tmp_log)
+  {
+    os_free(tmp_log);
+    tmp_log=NULL;
+  }
+
+  snprintf(tmp_buffer, 1024, "%d", lf->generated_rule->level);
+  tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_LEVEL], tmp_buffer);
+  if(log)
+  {
+    os_free(log);
+    log=NULL;
+  }
+
+  snprintf(tmp_buffer, 1024, "%s",lf->srcip?lf->srcip:"None");
+  log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_SRC_IP], tmp_buffer);
+  if (tmp_log)
+  {
+    os_free(tmp_log);
+    tmp_log=NULL;
+  }
+
+  snprintf(tmp_buffer, 1024, "%s",lf->srcuser?lf->srcuser:"None");
+
+  tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_DST_USER], tmp_buffer);
+  if(log)
+  {
+    os_free(log);
+    log=NULL;
+  }
+
+  log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_FULL_LOG], lf->full_log);
+  if (tmp_log)
+  {
+    os_free(tmp_log);
+    tmp_log=NULL;
+  }
+
+  snprintf(tmp_buffer, 1024, "%s",lf->generated_rule->comment?lf->generated_rule->comment:"");
+  tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_COMMENT], tmp_buffer);
+  if(log)
+  {
+    os_free(log);
+    log=NULL;
+  }
+
+  snprintf(tmp_buffer, 1024, "%s",lf->generated_rule->group?lf->generated_rule->group:"");
+  log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_RULE_GROUP], tmp_buffer);
+  if (tmp_log)
+  {
+    os_free(tmp_log);
+    tmp_log=NULL;
+  }
+
+
+  fprintf(_aflog,log);
+  fprintf(_aflog,"\n");
+  fflush(_aflog);
+
+  if(log)
+  {
+    os_free(log);
+    log=NULL;
+  }
+
+  return;
+}
 
 void OS_InitFwLog()
 {

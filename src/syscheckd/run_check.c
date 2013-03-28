@@ -545,8 +545,9 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
 
     newsum[0] = '\0';
     newsum[255] = '\0';
-    snprintf(newsum,255,"%d:%d:%d:%d:%s:%s",
-            size == 0?0:(int)statbuf.st_size,
+    /* chris: changed st_size int to long */
+    snprintf(newsum,255,"%ld:%d:%d:%d:%s:%s",
+            size == 0?0:(long)statbuf.st_size,
             perm == 0?0:(int)statbuf.st_mode,
             owner== 0?0:(int)statbuf.st_uid,
             group== 0?0:(int)statbuf.st_gid,

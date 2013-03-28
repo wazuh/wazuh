@@ -48,6 +48,10 @@ typedef struct __Config
     /* Mail alerting */
     short int mailnotify;
 
+    /* Custom Alert output*/
+    short int custom_alert_output;
+    char * custom_alert_output_format;
+
     /* For the active response */
     int ar;
 

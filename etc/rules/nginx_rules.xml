@@ -70,6 +70,12 @@
     <group>authentication_failures,</group>
   </rule>
 
+  <rule id="31317" level="0">
+    <if_sid>31303</if_sid>
+    <match>failed (2: No such file or directory</match>
+    <description>Common cache error when files were removed.</description>
+  </rule>
+
   <rule id="31320" level="10">
     <if_sid>31303</if_sid>
     <match>failed (63: File name too long)</match>

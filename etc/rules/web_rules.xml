@@ -1,4 +1,4 @@
-<!-- @(#) $Id: ./etc/rules/web_rules.xml, 2012/05/08 dcid Exp $
+<!-- @(#) $Id: ./etc/rules/web_rules.xml, 2013/02/28 dcid Exp $
 
   -
   -  Official Web access rules for OSSEC.
@@ -36,7 +36,7 @@
 
   <rule id="31102" level="0">
     <if_sid>31101</if_sid>
-    <url>.jpg$|.gif$|favicon.ico$|.png$|robots.txt$|.css$|.js$</url>
+    <url>.jpg$|.gif$|favicon.ico$|.png$|robots.txt$|.css$|.js$|.jpeg$</url>
     <compiled_rule>is_simple_http_request</compiled_rule>
     <description>Ignored extensions on 400 error codes.</description>
   </rule>
@@ -54,10 +54,10 @@
     
     <!-- Attempt to do directory transversal, simple sql injections,
       -  or access to the etc or bin directory (unix). -->
-    <url>%027|%00|%01|%7f|%2E%2E|%0A|%0D|../..|..\..|echo;|..|</url>
-    <url>cmd.exe|root.exe|_mem_bin|msadc|/winnt/|</url>
+    <url>%027|%00|%01|%7f|%2E%2E|%0A|%0D|../..|..\..|echo;|</url>
+    <url>cmd.exe|root.exe|_mem_bin|msadc|/winnt/|/boot.ini|</url>
     <url>/x90/|default.ida|/sumthin|nsiislog.dll|chmod%|wget%|cd%20|</url>
-    <url>cat%20|exec%20|rm%20</url>
+    <url>cat%20|exec%20|rm%20|../..//|%5C../%5C|././././|2e%2e%5c%2e|\x5C\x5C</url>
     <description>Common web attack.</description>
     <group>attack,</group>
   </rule>
@@ -86,7 +86,7 @@
 
   <rule id="31109" level="6">
     <if_sid>31100</if_sid>
-    <url>+as+varchar(8000)</url>
+    <url>+as+varchar</url>
     <regex>%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)%2Bchar\(\d+\)</regex>
     <description>MSSQL Injection attempt (/ur.php, urchin.js)</description>
     <group>attack,</group>
@@ -102,12 +102,13 @@
     <description>Ignored URLs for the web attacks</description>
   </rule>
 
-  <rule id="31115" level="13" maxsize="5900">
+  <rule id="31115" level="13" maxsize="7900">
     <if_sid>31100</if_sid>
     <description>URL too long. Higher than allowed on most </description>
     <description>browsers. Possible attack.</description>
     <group>invalid_access,</group>
   </rule>
+
 
   <!-- 500 error codes, server error
     - http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
@@ -147,8 +148,15 @@
     <description>Ignoring google/msn/yahoo bots.</description>
   </rule>
 
+  <!-- Ignoring nginx 499's -->
+  <rule id="31141" level="0">
+    <if_sid>31101</if_sid>
+    <id>^499</id>
+    <description>Ignored 499's on nginx.</description>
+  </rule>
+
   
-  <rule id="31151" level="10" frequency="10" timeframe="120">
+  <rule id="31151" level="10" frequency="12" timeframe="90">
     <if_matched_sid>31101</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 400 error codes </description>
@@ -179,21 +187,21 @@
     <group>attack,</group>
   </rule>
   
-  <rule id="31161" level="10" frequency="8" timeframe="120">
+  <rule id="31161" level="10" frequency="12" timeframe="120">
     <if_matched_sid>31121</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 501 error code (Not Implemented).</description>
     <group>web_scan,recon,</group>
   </rule>
   
-  <rule id="31162" level="10" frequency="5" timeframe="120">
+  <rule id="31162" level="10" frequency="12" timeframe="120">
     <if_matched_sid>31122</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 500 error code (Internal Error).</description>
     <group>system_error,</group>
   </rule>
   
-  <rule id="31163" level="10" frequency="8" timeframe="120">
+  <rule id="31163" level="10" frequency="12" timeframe="120">
     <if_matched_sid>31123</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 503 error code (Service unavailable).</description>

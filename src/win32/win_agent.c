@@ -164,7 +164,6 @@ int local_start()
     }
     logr->port = DEFAULT_SECURE;
 
-
     /* Getting debug level */
     debug_level = getDefine_Int("windows","debug", 0, 2);
     while(debug_level != 0)
@@ -196,7 +195,20 @@ int local_start()
     {
         ErrorExit(CLIENT_ERROR,ARGV0);
     }
-
+    if(logr->notify_time == 0)
+    {
+        logr->notify_time = NOTIFY_TIME;
+    }
+    if(logr->max_time_reconnect_try == 0 )
+    {
+      logr->max_time_reconnect_try = NOTIFY_TIME * 3;
+    }
+    if(logr->max_time_reconnect_try <= logr->notify_time)
+    {
+      logr->max_time_reconnect_try = (logr->notify_time * 3);
+      verbose("%s Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)",ARGV0,logr->notify_time,logr->max_time_reconnect_try);
+    }
+    verbose("%s Using notify time: %d and max time to reconnect: %d",ARGV0,logr->notify_time,logr->max_time_reconnect_try);
 
     /* Reading logcollector config file */
     debug1("%s: DEBUG: Reading logcollector configuration.", ARGV0);
@@ -332,7 +344,6 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     tmpstr[OS_MAXSTR +1] = '\0';
     crypt_msg[OS_MAXSTR +1] = '\0';
 
-
     debug2("%s: DEBUG: Attempting to send message to server.", ARGV0);
 
     /* Using a mutex to synchronize the writes */
@@ -361,28 +372,29 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
             /* Lock acquired */
             break;
         }
-    }
-
+    }	/*end - while for mutex...*/
 
     cu_time = time(0);
 
 
     #ifndef ONEWAY
     /* Check if the server has responded */
-    if((cu_time - available_server) > (NOTIFY_TIME - 180))
+    if((cu_time - available_server) > logr->notify_time)
     {
         debug1("%s: DEBUG: Sending info to server (c1)...", ARGV0);
+        verbose("%s More than %d seconds without server response...sending win32info", ARGV0,logr->notify_time);
         send_win32_info(cu_time);
 
 
         /* Attempting to send message again. */
-        if((cu_time - available_server) > NOTIFY_TIME)
+        if((cu_time - available_server) > logr->notify_time)
         {
+            /* Try again... */
             sleep(1);
             send_win32_info(cu_time);
             sleep(1);
 
-            if((cu_time - available_server) > NOTIFY_TIME)
+            if((cu_time - available_server) > logr->notify_time)
             {
                 send_win32_info(cu_time);
             }
@@ -390,16 +402,16 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
 
         /* If we reached here, the server is unavailable for a while. */
-        if((cu_time - available_server) > ((3 * NOTIFY_TIME) - 180))
+        if((cu_time - available_server) > logr->max_time_reconnect_try)
         {
             int wi = 1;
-
+            verbose("%s More than %d seconds without server response...is server alive? and Is there connection?", ARGV0,logr->max_time_reconnect_try);
 
             /* Last attempt before going into reconnect mode. */
             debug1("%s: DEBUG: Sending info to server (c3)...", ARGV0);
             sleep(1);
             send_win32_info(cu_time);
-            if((cu_time - available_server) > ((3 * NOTIFY_TIME) - 180))
+            if((cu_time - available_server) > logr->max_time_reconnect_try)
             {
                 sleep(1);
                 send_win32_info(cu_time);
@@ -409,7 +421,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
             /* Checking and generating log if unavailable. */
             cu_time = time(0);
-            if((cu_time - available_server) > ((3 * NOTIFY_TIME) - 180))
+            if((cu_time - available_server) > logr->max_time_reconnect_try)
             {
                 int global_sleep = 1;
                 int mod_sleep = 12;
@@ -421,7 +433,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
 
                 /* Going into reconnect mode. */
-                while((cu_time - available_server) > ((3*NOTIFY_TIME) - 180))
+                while((cu_time - available_server) > logr->max_time_reconnect_try)
                 {
                     /* Sending information to see if server replies */
                     if(logr->sock != -1)
@@ -576,7 +588,7 @@ void send_win32_info(time_t curr_time)
 
 
     debug1("%s: DEBUG: Sending keep alive message.", ARGV0);
-
+    verbose("%s Sending keep alive message....", ARGV0);
 
     /* fixing time */
     __win32_curr_time = curr_time;
