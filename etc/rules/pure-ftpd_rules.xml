@@ -76,7 +76,7 @@
     <description>File added to ftpd.</description>
   </rule>
 
-  <rule id="11311" level="0">
+  <rule id="11312" level="0">
     <if_sid>11310</if_sid>
     <action>GET</action>
     <description>File retrieved from ftpd.</description>
