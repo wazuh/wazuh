@@ -191,10 +191,10 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
         long len = strlen(al_data->log[i]);
         char templog[len+2];
         if (al_data->log[i+1]) {
-            snprintf(templog, len, "%s\n", al_data->log[i]);
+            snprintf(templog, len+2, "%s\n", al_data->log[i]);
         }
         else {
-            snprintf(templog, len, "%s", al_data->log[i]);
+            snprintf(templog, len+1, "%s", al_data->log[i]);
         }
         fulllog = os_LoadString(fulllog, templog);
 //      fulllog = os_LoadString(fulllog, al_data->log[i]);
