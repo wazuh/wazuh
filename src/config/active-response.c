@@ -10,9 +10,10 @@
  * Foundation
  */
 
-
+#ifndef WIN32
 #include <sys/types.h>
 #include <grp.h>
+#endif
 #include "shared.h"
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
@@ -58,6 +59,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         return(-1);
     }
 
+#ifndef WIN32
     struct group *os_group;
     if((os_group = getgrnam(USER)) == NULL)
     {
@@ -70,6 +72,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
       merror("Could not change the group to ossec: %d", errno);
       return(-1);
     }
+#endif
 
     if((chmod(DEFAULTARPATH, 0440)) == -1)
     {

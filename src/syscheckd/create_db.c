@@ -190,7 +190,7 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
         buf = OSHash_Get(syscheck.fp, file_name);
         if(!buf)
         {
-            char alert_msg[916 +1];	/* 912 -> 916 to accommodate a long.
+            char alert_msg[916 +1];	/* 912 -> 916 to accommodate a long */
 
             alert_msg[916] = '\0';
 
@@ -205,7 +205,7 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
             }
 
 
-            snprintf(alert_msg, 916, "%c%c%c%c%c%c%d:%d:%d:%d:%s:%s",
+            snprintf(alert_msg, 916, "%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s",
                 opts & CHECK_SIZE?'+':'-',
                 opts & CHECK_PERM?'+':'-',
                 opts & CHECK_OWNER?'+':'-',
@@ -229,7 +229,7 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
             alert_msg[916] = '\0';
 
             /* changed by chris st_size int to long, 912 to 916*/
-            snprintf(alert_msg, 916, "%d:%d:%d:%d:%s:%s %s",
+            snprintf(alert_msg, 916, "%ld:%d:%d:%d:%s:%s %s",
                      opts & CHECK_SIZE?(long)statbuf.st_size:0,
                      opts & CHECK_PERM?(int)statbuf.st_mode:0,
                      opts & CHECK_OWNER?(int)statbuf.st_uid:0,
