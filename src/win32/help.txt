@@ -1,5 +1,5 @@
-** OSSEC Windows Agent v2.7+ **
-** Copyright (C) 2012 Trend Micro Inc. **
+** OSSEC Windows Agent v2.7.1 **
+** Copyright (C) 2013 Trend Micro Inc. **
 
 
 Thanks for installing 'OSSEC Windows Agent version 2.7'. Before you continue,

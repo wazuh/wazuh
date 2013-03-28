@@ -8,12 +8,12 @@
 
 !define MUI_ICON favicon.ico
 !define MUI_UNICON ossec-uninstall.ico
-!define VERSION "2.7"
+!define VERSION "v2.7.1-alpha"
 !define NAME "OSSEC HIDS"
 !define /date CDATE "%b %d %Y at %H:%M:%S"
 
 Name "${NAME} Windows Agent v${VERSION}"
-BrandingText "Copyright (C) 2012 Trend Micro Inc."
+BrandingText "Copyright (C) 2003 - 2013 Trend Micro Inc."
 OutFile "ossec-win32-agent.exe"
 
 InstallDir "$PROGRAMFILES\ossec-agent"
