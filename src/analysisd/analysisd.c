@@ -710,9 +710,6 @@ void OS_ReadMSG_analysisd(int m_queue)
     if(Config.custom_alert_output)
       debug1("%s: INFO: Custom output found.!",ARGV0);
 
-    if(Config.custom_alert_output)
-      debug1("%s: INFO: Custom output found.!",ARGV0);
-
     /* Daemon loop */
     while(1)
     {
