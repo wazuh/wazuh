@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 #include "shared.h"
 #include "rules.h"
 
@@ -34,17 +34,17 @@ void OS_CreateRuleList()
 RuleNode *OS_GetFirstRule()
 {
     RuleNode *rulenode_pt = rulenode;
-    
-    return(rulenode_pt);    
+
+    return(rulenode_pt);
 }
 
 
 /* Search all rules, including childs */
-int _AddtoRule(int sid, int level, int none, char *group, 
+int _AddtoRule(int sid, int level, int none, char *group,
                RuleNode *r_node, RuleInfo *read_rule)
 {
     int r_code = 0;
-    
+
     /* If we don't have the first node, start from
      * the beginning of the list
      */
@@ -57,14 +57,14 @@ int _AddtoRule(int sid, int level, int none, char *group,
     {
         /* Checking if the sigid matches */
         if(sid)
-        {    
+        {
             if(r_node->ruleinfo->sigid == sid)
             {
-                /* Assign the category of this rule to the child 
+                /* Assign the category of this rule to the child
                  * as they must match
                  */
                 read_rule->category = r_node->ruleinfo->category;
-                
+
 
                 /* If no context for rule, check if the parent has
                  * and use it.
@@ -73,17 +73,17 @@ int _AddtoRule(int sid, int level, int none, char *group,
                 {
                     read_rule->last_events = r_node->ruleinfo->last_events;
                 }
-                
+
                 r_node->child=
                     _OS_AddRule(r_node->child, read_rule);
                 return(1);
             }
         }
-        
+
         /* Checking if the group matches */
         else if(group)
         {
-            if(OS_WordMatch(group, r_node->ruleinfo->group) && 
+            if(OS_WordMatch(group, r_node->ruleinfo->group) &&
                (r_node->ruleinfo->sigid != read_rule->sigid))
             {
                 /* If no context for rule, check if the parent has
@@ -104,7 +104,7 @@ int _AddtoRule(int sid, int level, int none, char *group,
         /* Checking if the level matches */
         else if(level)
         {
-            if((r_node->ruleinfo->level >= level) && 
+            if((r_node->ruleinfo->level >= level) &&
                (r_node->ruleinfo->sigid != read_rule->sigid))
             {
                 r_node->child=
@@ -112,10 +112,10 @@ int _AddtoRule(int sid, int level, int none, char *group,
                 r_code = 1;
             }
         }
-        
-        
+
+
         /* If we are not searching for the sid/group, the category must
-         * be the same. 
+         * be the same.
          */
         else if(read_rule->category != r_node->ruleinfo->category)
         {
@@ -123,7 +123,7 @@ int _AddtoRule(int sid, int level, int none, char *group,
             continue;
         }
 
-        
+
         /* If none of them is set, add for the category */
         else
         {
@@ -145,8 +145,8 @@ int _AddtoRule(int sid, int level, int none, char *group,
 
         r_node = r_node->next;
     }
-    
-    return(r_code);    
+
+    return(r_code);
 }
 
 
@@ -159,14 +159,14 @@ int OS_AddChild(RuleInfo *read_rule)
         return(1);
     }
 
-    /* Adding for if_sid */    
+    /* Adding for if_sid */
     if(read_rule->if_sid)
     {
         int val = 0;
         char *sid;
-        
+
         sid  = read_rule->if_sid;
-        
+
         /* Loop to read all the rules (comma or space separated */
         do
         {
@@ -218,7 +218,7 @@ int OS_AddChild(RuleInfo *read_rule)
         }
     }
 
-    /* Adding for if_group */    
+    /* Adding for if_group */
     else if(read_rule->if_group)
     {
         if(!_AddtoRule(0, 0, 0, read_rule->if_group, NULL, read_rule))
@@ -227,7 +227,7 @@ int OS_AddChild(RuleInfo *read_rule)
                       "found. Invalid 'if_group'.", read_rule->if_group);
         }
     }
-    
+
     /* Just add based on the category */
     else
     {
@@ -248,14 +248,14 @@ int OS_AddChild(RuleInfo *read_rule)
 RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
 {
     RuleNode *tmp_rulenode = _rulenode;
-    
+
 
     if(tmp_rulenode != NULL)
     {
         int middle_insertion = 0;
         RuleNode *prev_rulenode = NULL;
         RuleNode *new_rulenode = NULL;
-        
+
         while(tmp_rulenode != NULL)
         {
             if(read_rule->level > tmp_rulenode->ruleinfo->level)
@@ -266,7 +266,7 @@ RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
             prev_rulenode = tmp_rulenode;
             tmp_rulenode = tmp_rulenode->next;
         }
-        
+
         new_rulenode = (RuleNode *)calloc(1,sizeof(RuleNode));
 
         if(!new_rulenode)
@@ -284,21 +284,21 @@ RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
             {
                 prev_rulenode->next = new_rulenode;
             }
-            
+
             new_rulenode->next = tmp_rulenode;
             new_rulenode->ruleinfo = read_rule;
             new_rulenode->child = NULL;
         }
-       
+
         else
         {
             prev_rulenode->next = new_rulenode;
             prev_rulenode->next->ruleinfo = read_rule;
-            prev_rulenode->next->next = NULL;            
-            prev_rulenode->next->child = NULL;            
+            prev_rulenode->next->next = NULL;
+            prev_rulenode->next->child = NULL;
         }
     }
-    
+
     else
     {
         _rulenode = (RuleNode *)calloc(1,sizeof(RuleNode));
@@ -454,7 +454,7 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
 
     while(r_node)
     {
-        if(OSMatch_Execute(r_node->ruleinfo->group, 
+        if(OSMatch_Execute(r_node->ruleinfo->group,
                            strlen(r_node->ruleinfo->group),
                            orig_rule->if_matched_group))
         {
@@ -466,18 +466,18 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
                     rule_g++;
                 }
             }
-            
-            os_realloc(r_node->ruleinfo->group_prev_matched, 
+
+            os_realloc(r_node->ruleinfo->group_prev_matched,
                        (rule_g + 2)*sizeof(OSList *),
-                       r_node->ruleinfo->group_prev_matched); 
-            
+                       r_node->ruleinfo->group_prev_matched);
+
             r_node->ruleinfo->group_prev_matched[rule_g] = NULL;
             r_node->ruleinfo->group_prev_matched[rule_g +1] = NULL;
-            
+
             /* Setting the size */
             r_node->ruleinfo->group_prev_matched_sz = rule_g +1;
-            
-            r_node->ruleinfo->group_prev_matched[rule_g] = 
+
+            r_node->ruleinfo->group_prev_matched[rule_g] =
                               orig_rule->group_search;
         }
 

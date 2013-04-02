@@ -24,7 +24,9 @@ void helpmsg()
     printf("\t-V          Display OSSEC version.\n");
     printf("\t-l          List available agents.\n");
     printf("\t-e <id>     Extracts key for an agent (Manager only).\n");
-    printf("\t-i <id>     Import authentication key (Agent only).\n\n");
+    printf("\t-i <id>     Import authentication key (Agent only).\n");
+    printf("\t-f <file>   Bulk generate client keys from file. (Manager only).\n");
+    printf("\t            <file> contains lines in IP,NAME format.\n\n");
     exit(1);
 }
 
@@ -71,6 +73,7 @@ int main(int argc, char **argv)
     int c = 0, cmdlist = 0;
     char *cmdexport = NULL;
     char *cmdimport = NULL;
+    char *cmdbulk = NULL;
 
     #ifndef WIN32
     char *dir = DEFAULTDIR;
@@ -83,7 +86,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "Vhle:i:")) != -1){
+    while((c = getopt(argc, argv, "Vhle:i:f:")) != -1){
         switch(c){
 	        case 'V':
 		        print_version();
@@ -109,6 +112,15 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -i needs an argument",ARGV0);
                 cmdimport = optarg;
+                break;
+            case 'f':
+                #ifdef CLIENT
+                ErrorExit("%s: You can't bulk generate keys on an agent.", ARGV0);
+                #endif
+                if(!optarg)
+                    ErrorExit("%s: -f needs an argument",ARGV0);
+                cmdbulk = optarg;
+                printf("Bulk load file: %s\n", cmdbulk);
                 break;
             case 'l':
                 cmdlist = 1;
@@ -172,6 +184,11 @@ int main(int argc, char **argv)
     else if(cmdexport)
     {
         k_extract(cmdexport);
+        exit(0);
+    }
+    else if(cmdbulk)
+    {
+        k_bulkload(cmdbulk);
         exit(0);
     }
 

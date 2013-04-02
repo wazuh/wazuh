@@ -19,11 +19,11 @@
 #include "config/config.h"
 
 
-/** void *OS_SyslogConf(int test_config, char *cfgfile, 
+/** void *OS_SyslogConf(int test_config, char *cfgfile,
                         SyslogConfig **syslog_config)
  * Reads configuration.
  */
-void *OS_ReadSyslogConf(int test_config, char *cfgfile, 
+void *OS_ReadSyslogConf(int test_config, char *cfgfile,
                         SyslogConfig **syslog_config)
 {
     int modules = 0;
@@ -34,15 +34,15 @@ void *OS_ReadSyslogConf(int test_config, char *cfgfile,
     modules|= CSYSLOGD;
     gen_config.data = syslog_config;
 
-    
+
     /* Reading configuration */
     if(ReadConfig(modules, cfgfile, &gen_config, NULL) < 0)
     {
         ErrorExit(CONFIG_ERROR, ARGV0, cfgfile);
         return(NULL);
-    }    
+    }
 
-    
+
     syslog_config = gen_config.data;
 
     return(syslog_config);

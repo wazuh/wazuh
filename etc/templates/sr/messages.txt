@@ -44,7 +44,9 @@ whatsmtp="Koji je tvoj SMTP server IP/host?"
 
 # Part 3.1/agent
 serverip="Koja je IP adresa OSSEC HIDS servera?"
+serveraddr="Koja je IP adresa/host OSSEC HIDS servera?"
 addingip="Dodaje serverov IP"
+addingname="Dodaje serverov hostname"
 
 
 # Part 3.2

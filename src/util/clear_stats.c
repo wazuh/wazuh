@@ -37,24 +37,24 @@ int main(int argc, char **argv)
 {
     int clear_daily = 0;
     int clear_weekly = 0;
-    
+
     char *dir = DEFAULTDIR;
     char *group = GROUPGLOBAL;
     char *user = USER;
     int gid;
     int uid;
-    
+
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
-    
+
+
     /* user arguments */
     if(argc != 2)
     {
         helpmsg();
     }
-    
+
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
@@ -63,14 +63,14 @@ int main(int argc, char **argv)
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
 	
-    
+
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
 	    ErrorExit(SETGID_ERROR,ARGV0, group);
     }
-    
-    
+
+
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
     {
@@ -80,14 +80,14 @@ int main(int argc, char **argv)
 
     /* Inside chroot now */
     nowChroot();
- 
+
 
     /* Setting the user */
     if(Privsep_SetUser(uid) < 0)
     {
         ErrorExit(SETUID_ERROR, ARGV0, user);
     }
-  
+
     /* User options */
     if(strcmp(argv[1], "-h") == 0)
     {
@@ -125,28 +125,28 @@ int main(int argc, char **argv)
         {
             ErrorExit("%s: Unable to open: '%s'", ARGV0, daily_dir);
         }
-        
+
         while((entry = readdir(daily)) != NULL)
         {
             char full_path[OS_MAXSTR +1];
-           
-            /* Do not even attempt to delete . and .. :) */ 
+
+            /* Do not even attempt to delete . and .. :) */
             if((strcmp(entry->d_name,".") == 0)||
                (strcmp(entry->d_name,"..") == 0))
             {
                 continue;
             }
-                                                            
+
             /* Remove file */
             full_path[OS_MAXSTR] = '\0';
             snprintf(full_path, OS_MAXSTR, "%s/%s", daily_dir, entry->d_name);
             unlink(full_path);
         }
-        
+
         closedir(daily);
     }
-    
-   
+
+
     /* Clear weekly averages */
     if(clear_weekly)
     {
@@ -162,7 +162,7 @@ int main(int argc, char **argv)
             daily = opendir(dir_path);
             if(!daily)
             {
-                ErrorExit("%s: Unable to open: '%s' (no stats)", 
+                ErrorExit("%s: Unable to open: '%s' (no stats)",
                            ARGV0, dir_path);
             }
 
@@ -179,17 +179,17 @@ int main(int argc, char **argv)
 
                 /* Remove file */
                 full_path[OS_MAXSTR] = '\0';
-                snprintf(full_path, OS_MAXSTR, "%s/%s", dir_path, 
+                snprintf(full_path, OS_MAXSTR, "%s/%s", dir_path,
                                                         entry->d_name);
                 unlink(full_path);
             }
-            
+
             i++;
             closedir(daily);
         }
     }
-    
-    printf("\n** Internal stats clear.\n\n"); 
+
+    printf("\n** Internal stats clear.\n\n");
     return(0);
 }
 

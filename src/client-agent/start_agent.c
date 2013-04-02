@@ -45,15 +45,15 @@ int connect_server(int initial_id)
 
         if(logr->rip[1])
         {
-            verbose("%s: INFO: Closing connection to server (%s:%d).", 
+            verbose("%s: INFO: Closing connection to server (%s:%d).",
                     ARGV0,
                     logr->rip[rc],
                     logr->port);
         }
-        
+
     }
-    
-    
+
+
     while(logr->rip[rc])
     {
         char *tmp_str;
@@ -64,7 +64,7 @@ int connect_server(int initial_id)
         {
             char *f_ip;
             *tmp_str = '\0';
-            
+
             f_ip = OS_GetHost(logr->rip[rc], 5);
             if(f_ip)
             {
@@ -72,7 +72,7 @@ int connect_server(int initial_id)
                 ip_str[127] = '\0';
 
                 snprintf(ip_str, 127, "%s/%s", logr->rip[rc], f_ip);
-                
+
                 free(f_ip);
                 free(logr->rip[rc]);
 
@@ -82,7 +82,7 @@ int connect_server(int initial_id)
             }
             else
             {
-                merror("%s: WARN: Unable to get hostname for '%s'.", 
+                merror("%s: WARN: Unable to get hostname for '%s'.",
                        ARGV0, logr->rip[rc]);
                 *tmp_str = '/';
                 tmp_str++;
@@ -92,8 +92,8 @@ int connect_server(int initial_id)
         {
             tmp_str = logr->rip[rc];
         }
-        
-        
+
+
         verbose("%s: INFO: Trying to connect to server (%s:%d).", ARGV0,
                 logr->rip[rc],
                 logr->port);
@@ -119,11 +119,11 @@ int connect_server(int initial_id)
             if(logr->rip[rc] == NULL)
             {
                 attempts += 10;
-                
+
                 /* Only log that if we have more than 1 server configured. */
                 if(logr->rip[1])
                     merror("%s: ERROR: Unable to connect to any server.",ARGV0);
-                    
+
                 sleep(attempts);
                 rc = 0;
             }
@@ -137,7 +137,7 @@ int connect_server(int initial_id)
 
             #ifdef WIN32
             int bmode = 1;
-            
+
             /* Setting socket to non-blocking */
             ioctlsocket(logr->sock, FIONBIO, (u_long FAR*) &bmode);
             #endif
@@ -164,7 +164,7 @@ void start_agent(int is_startup)
     char buffer[OS_MAXSTR +1];
     char cleartext[OS_MAXSTR +1];
     char fmsg[OS_MAXSTR +1];
-    
+
 
     memset(msg, '\0', OS_MAXSTR +2);
     memset(buffer, '\0', OS_MAXSTR +1);
@@ -176,15 +176,15 @@ void start_agent(int is_startup)
     #ifdef ONEWAY
     return;
     #endif
-    
-    
+
+
     /* Sending start message and waiting for the ack */	
     while(1)
     {
         /* Sending start up message */
         send_msg(0, msg);
         attempts = 0;
-        
+
 
         /* Read until our reply comes back */
         while(((recv_b = recv(logr->sock, buffer, OS_MAXSTR,
@@ -203,10 +203,10 @@ void start_agent(int is_startup)
                 {
                     send_msg(0, msg);
                 }
-                
+
                 continue;
             }
-            
+
             /* Id of zero -- only one key allowed */
             tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b -1);
             if(tmp_msg == NULL)
@@ -224,16 +224,16 @@ void start_agent(int is_startup)
                 {
                     available_server = time(0);
 
-                    verbose(AG_CONNECTED, ARGV0, logr->rip[logr->rip_id], 
+                    verbose(AG_CONNECTED, ARGV0, logr->rip[logr->rip_id],
                                                  logr->port);
-                    
+
                     if(is_startup)
                     {
                         /* Send log message about start up */
-                        snprintf(msg, OS_MAXSTR, OS_AG_STARTED, 
+                        snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
                                 keys.keyentries[0]->name,
                                 keys.keyentries[0]->ip->ip);
-                        snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, 
+                        snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
                                                   "ossec", msg);
                         send_msg(0, fmsg);
                     }
@@ -269,11 +269,11 @@ void start_agent(int is_startup)
         {
             sleep(g_attempts);
             g_attempts+=(attempts * 3);
-            
+
             connect_server(0);
         }
     }
-    
+
 
     return;
 }

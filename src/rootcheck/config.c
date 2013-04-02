@@ -34,7 +34,7 @@ int Read_Rootcheck_Config(char * cfgfile)
     modules|= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &rootcheck, NULL);
     #endif
-                  
+
     return(0);
 }
 

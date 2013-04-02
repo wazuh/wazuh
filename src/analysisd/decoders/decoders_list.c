@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -51,7 +51,7 @@ OSDecoderNode *OS_GetFirstOSDecoder(char *p_name)
     {
         return(osdecodernode_forpname);
     }
-    
+
     return(osdecodernode_nopname);
 }
 
@@ -61,11 +61,11 @@ OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
 {
     OSDecoderNode *tmp_node = s_node;
     int rm_f = 0;
-    
+
     if(tmp_node)
     {
         OSDecoderNode *new_node;
-        
+
         new_node = (OSDecoderNode *)calloc(1,sizeof(OSDecoderNode));
         if(new_node == NULL)
         {
@@ -83,9 +83,9 @@ OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
                 if((tmp_node->osdecoder->prematch ||
                     tmp_node->osdecoder->regex) && pi->regex_offset)
                 {
-                    rm_f = 1;                    
+                    rm_f = 1;
                 }
-                
+
                 /* Multi-regexes patterns cannot have prematch */
                 if(pi->prematch)
                 {
@@ -110,24 +110,24 @@ OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
                     return(NULL);
                 }
             }
-            
+
         }while(tmp_node->next && (tmp_node = tmp_node->next));
-        
-        
+
+
         /* Must have a prematch set */
         if(!rm_f && (pi->regex_offset & AFTER_PREVREGEX))
         {
             merror(INV_OFFSET, ARGV0, pi->name);
             return(NULL);
         }
-        
+
         tmp_node->next = new_node;
-        
+
         new_node->next = NULL;
-        new_node->osdecoder = pi; 
+        new_node->osdecoder = pi;
         new_node->child = NULL;
     }
-    
+
     else
     {
         /* Must not have a previous regex set */
@@ -164,7 +164,7 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
     /* We can actually have two lists. One with program
      * name and the other without.
      */
-    if(pi->program_name)     
+    if(pi->program_name)
     {
         osdecodernode = osdecodernode_forpname;
     }
@@ -173,7 +173,7 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
         osdecodernode = osdecodernode_nopname;
     }
 
-    
+
     /* Search for parent on both lists */
     if(pi->parent)
     {
@@ -194,7 +194,7 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
             }
             tmp_node = tmp_node->next;
         }
-        
+
 
         /* List without p name */
         tmp_node = osdecodernode_nopname;
@@ -219,9 +219,9 @@ int OS_AddOSDecoder(OSDecoderInfo *pi)
         {
             return(1);
         }
-        
+
         merror(PPLUGIN_INV, ARGV0, pi->parent);
-        return(0); 
+        return(0);
     }
     else
     {

@@ -6,7 +6,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -28,13 +28,13 @@ void manage_files(int cday, int cmon, int cyear)
     #ifndef SOLARIS
     struct tm p_old;
     #endif
-            
+
     char elogfile[OS_FLSIZE +1];
     char elogfile_old[OS_FLSIZE +1];
-    
+
     char alogfile[OS_FLSIZE +1];
     char alogfile_old[OS_FLSIZE +1];
-    
+
     char flogfile[OS_FLSIZE +1];
     char flogfile_old[OS_FLSIZE +1];
 
@@ -47,7 +47,7 @@ void manage_files(int cday, int cmon, int cyear)
     #else
     pp_old = localtime(&tm_old);
     #endif
-    
+
 
     memset(elogfile, '\0', OS_FLSIZE +1);
     memset(elogfile_old, '\0', OS_FLSIZE +1);
@@ -61,7 +61,7 @@ void manage_files(int cday, int cmon, int cyear)
      * before compressing the file.
      */
     sleep(mond.day_wait);
-    
+
 
     /* Event logfile */
     snprintf(elogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
@@ -89,7 +89,7 @@ void manage_files(int cday, int cmon, int cyear)
             months[cmon],
             "alerts",
             cday);
-    /* alert logfile old  */ 
+    /* alert logfile old  */
     snprintf(alogfile_old, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
             ALERTS,
             pp_old->tm_year+1900,

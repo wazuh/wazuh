@@ -6,7 +6,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -82,7 +82,7 @@ void generate_reports(int cday, int cmon, int cyear,struct tm *p)
                 {
                     merror("%s: INFO: Report '%s' empty.", ARGV0, mond.reports[s]->title);
                 }
-                else if(OS_SendCustomEmail(mond.reports[s]->emailto, mond.reports[s]->title, 
+                else if(OS_SendCustomEmail(mond.reports[s]->emailto, mond.reports[s]->title,
                         mond.smtpserver, mond.emailfrom, mond.reports[s]->r_filter.fp, p) != 0)
                 {
                     merror("%s: WARN: Unable to send report email.", ARGV0);

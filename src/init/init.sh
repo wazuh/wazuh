@@ -128,7 +128,7 @@ runInit()
         elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
             echo " - ${systemis} Debian (Ubuntu or derivative)."
             echo " - ${modifiedinit}"
-            cp -pr ./src/init/ossec-hids.init  /etc/init.d/ossec
+            cp -pr ./src/init/ossec-hids-debian.init  /etc/init.d/ossec
             chmod +x /etc/init.d/ossec
             chmod go-w /etc/init.d/ossec
             chown root:ossec /etc/init.d/ossec

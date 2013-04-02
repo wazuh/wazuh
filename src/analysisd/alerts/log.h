@@ -6,7 +6,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -22,6 +22,7 @@
 
 void OS_LogOutput(Eventinfo *lf);
 void OS_Log(Eventinfo *lf);
+void OS_CustomLog(Eventinfo *lf,char * format);
 void OS_Store(Eventinfo *lf);
 int FW_Log(Eventinfo *lf);
 

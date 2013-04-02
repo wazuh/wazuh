@@ -39,10 +39,10 @@ int _OS_Match(char *pattern, char *str, int str_len, int size)
             {
                 if(str[j] == '\0')
                     return(FALSE);
-                    
+
                 else if(*pt != charmap[(uchar)str[j]])
                 {
-                    pt = pattern;           
+                    pt = pattern;
                     goto nnext;
                 }
                 j++;pt++;
@@ -62,8 +62,8 @@ int _os_strncmp(char *pattern, char *str, int str_len, int size)
 {
     if(strncasecmp(pattern, str, size) == 0)
         return(TRUE);
-        
-    return(FALSE);    
+
+    return(FALSE);
 }
 
 /** Internal matching **/
@@ -71,8 +71,8 @@ int _os_strcmp(char *pattern, char *str, int str_len, int size)
 {
     if(strcasecmp(pattern, str) == 0)
         return(TRUE);
-    
-    return(FALSE);    
+
+    return(FALSE);
 }
 
 int _os_strmatch(char *pattern, char *str, int str_len, int size)
@@ -96,11 +96,11 @@ int _os_strcmp_last(char *pattern, char *str, int str_len, int size)
     /* Size of the string must be bigger */
     if((str_len - size) < 0)
         return(FALSE);
-    
+
     if(strcasecmp(pattern, str + (str_len - size)) == 0)
         return(TRUE);
-    
-    return(FALSE);            
+
+    return(FALSE);
 }
 
 
@@ -113,7 +113,7 @@ int _os_strcmp_last(char *pattern, char *str, int str_len, int size)
 int OSMatch_Execute(char *str, int str_len, OSMatch *reg)
 {
     short int i = 0;
-    
+
     /* The string can't be NULL */
     if(str == NULL)
     {
@@ -125,9 +125,9 @@ int OSMatch_Execute(char *str, int str_len, OSMatch *reg)
     /* Looping on all sub patterns */
     while(reg->patterns[i])
     {
-        if(reg->match_fp[i](reg->patterns[i], 
-                            str, 
-                            str_len, 
+        if(reg->match_fp[i](reg->patterns[i],
+                            str,
+                            str_len,
                             reg->size[i]) == TRUE)
         {
             return(1);
@@ -136,7 +136,7 @@ int OSMatch_Execute(char *str, int str_len, OSMatch *reg)
     }
 
     return(0);
-}    
+}
 
 
 /* EOF */

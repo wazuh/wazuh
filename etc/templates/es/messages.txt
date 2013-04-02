@@ -44,8 +44,9 @@ whatsmtp="Cuál es la direccion ó nombre de vuestro servidor de correo SMTP?"
 
 # Part 3.1/agent
 serverip="Cuál es la direccion del servidor OSSEC HIDS?"
+serveraddr="Cuál es la direccion ó nombre de vuestro del servidor OSSEC HIDS?"
 addingip="Agregando el IP del servidor"
-
+addingname="Agregando el  nombre del servidor"
 
 # Part 3.2
 runsyscheck="Desea Usted agregar el servidor de integridad del sistema?"

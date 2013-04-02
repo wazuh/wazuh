@@ -9,11 +9,11 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/main/license/ .
  */
 
- 
+
 #include "shared.h"
 #include "rootcheck.h"
 
@@ -25,13 +25,13 @@ char *_os_get_runps(char *ps, int mpid)
     char buf[OS_SIZE_2048 +1];
     char command[OS_SIZE_1024 +1];
     FILE *fp;
-    
-    
+
+
     buf[0] = '\0';
     command[0] = '\0';
-    command[OS_SIZE_1024] = '\0'; 
-    
-    
+    command[OS_SIZE_1024] = '\0';
+
+
     snprintf(command, OS_SIZE_1024, "%s -p %d 2> /dev/null", ps, mpid);
 
     fp = popen(command, "r");
@@ -59,9 +59,9 @@ char *_os_get_runps(char *ps, int mpid)
             while(*tmp_str == ' ')
                  tmp_str++;
 
-                 
+
             nbuf = tmp_str;
-            
+
 
             tmp_str = strchr(nbuf, '\n');
             if(tmp_str)
@@ -87,7 +87,7 @@ void *os_get_process_list()
     int i = 1;
     pid_t max_pid = MAX_PID;
     OSList *p_list = NULL;
-    
+
     char ps[OS_SIZE_1024 +1];
 
 
@@ -110,7 +110,7 @@ void *os_get_process_list()
     if(!p_list)
     {
         merror(LIST_ERROR, ARGV0);
-        return(NULL); 
+        return(NULL);
     }
 
 
@@ -136,11 +136,11 @@ void *os_get_process_list()
              OSList_AddData(p_list, p_info);
          }
     }
-    
+
     return((void *)p_list);
 }
-         
- 
+
+
 #endif
 
 /* EOF */

@@ -9,11 +9,11 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
- 
+
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <dirent.h> 
+#include <dirent.h>
 #include <windows.h>
 
 
@@ -29,18 +29,18 @@ int ads_found = 0;
 /* Print out streams of a file */
 int os_get_streams(char *full_path)
 {
-    HANDLE file_h; 
+    HANDLE file_h;
     WIN32_STREAM_ID sid;
     void *context = NULL;
 
-    char stream_name[MAX_PATH +1]; 
-    char final_name[MAX_PATH +1]; 
+    char stream_name[MAX_PATH +1];
+    char final_name[MAX_PATH +1];
 
     DWORD dwRead, shs, dw1, dw2;
 
 
     /* Opening file */
-    file_h = CreateFile(full_path, 
+    file_h = CreateFile(full_path,
             GENERIC_READ,
             FILE_SHARE_READ,
             NULL,
@@ -48,8 +48,8 @@ int os_get_streams(char *full_path)
             FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_POSIX_SEMANTICS,
             NULL);
 
-    if (file_h == INVALID_HANDLE_VALUE) 
-    { 
+    if (file_h == INVALID_HANDLE_VALUE)
+    {
         return 0;
     }
 
@@ -63,7 +63,7 @@ int os_get_streams(char *full_path)
 
     while(1)
     {
-        if(BackupRead(file_h, (LPBYTE) &sid, shs, &dwRead, 
+        if(BackupRead(file_h, (LPBYTE) &sid, shs, &dwRead,
                     FALSE, FALSE, &context) == 0)
         {
             break;
@@ -75,14 +75,14 @@ int os_get_streams(char *full_path)
 
         stream_name[0] = '\0';
         stream_name[MAX_PATH] = '\0';
-        if(BackupRead(file_h, (LPBYTE)stream_name, 
-                    sid.dwStreamNameSize, 
+        if(BackupRead(file_h, (LPBYTE)stream_name,
+                    sid.dwStreamNameSize,
                     &dwRead, FALSE, FALSE, &context))
         {
             if(dwRead != 0)
             {
                 char *tmp_pt;
-                snprintf(final_name, MAX_PATH, "%s%S", full_path, 
+                snprintf(final_name, MAX_PATH, "%s%S", full_path,
                         (WCHAR *)stream_name);
                 tmp_pt = strrchr(final_name, ':');
                 if(tmp_pt)
@@ -95,7 +95,7 @@ int os_get_streams(char *full_path)
         }
 
         /* Getting next */			
-        if(!BackupSeek(file_h, sid.Size.LowPart, sid.Size.HighPart, 
+        if(!BackupSeek(file_h, sid.Size.LowPart, sid.Size.HighPart,
                     &dw1, &dw2, &context))
         {
             break;
@@ -115,7 +115,7 @@ int read_sys_file(char *file_name)
     /* Getting streams */
     os_get_streams(file_name);
 
-    
+
     if(stat(file_name, &statbuf) < 0)
     {
         return(0);
@@ -171,7 +171,7 @@ int read_sys_dir(char *dir_name)
 
         /* Just ignore . and ..  */
         if((strcmp(entry->d_name,".") == 0) ||
-                (strcmp(entry->d_name,"..") == 0))  
+                (strcmp(entry->d_name,"..") == 0))
         {
             continue;
         }

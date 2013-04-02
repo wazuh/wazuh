@@ -59,10 +59,31 @@
   </rule>
 
   <rule id="11309" level="3">
-    <match>[INFO] \S+ is now logged in</match>
+    <if_sid>11300</if_sid>
+    <match>[INFO] \S+ is now logged in| is now logged in</match>
     <description>FTP Authentication success.</description>
     <group>authentication_success,</group>
   </rule>  
+
+  <rule id="11310" level="0">
+    <decoded_as>pure-transfer</decoded_as>
+    <description>Rule grouping for pure ftpd transfers.</description>
+  </rule>
+
+  <rule id="11311" level="0">
+    <if_sid>11310</if_sid>
+    <action>PUT</action>
+    <description>File added to ftpd.</description>
+  </rule>
+
+  <rule id="11312" level="0">
+    <if_sid>11310</if_sid>
+    <action>GET</action>
+    <description>File retrieved from ftpd.</description>
+  </rule>
+
+
+
 </group> <!-- SYSLOG,PURE-FTPD -->
 
 

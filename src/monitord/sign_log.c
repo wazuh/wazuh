@@ -6,7 +6,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -55,7 +55,7 @@ void OS_SignLog(char *logfile, char *logfile_old, int log_missing)
     /* generating sha1 of the old file.  */
     if(OS_SHA1_File(logfilesum_old, sf_sum_old) < 0)
     {
-        merror("%s: No previous sha1 checksum found: '%s'. " 
+        merror("%s: No previous sha1 checksum found: '%s'. "
                "Starting over.", ARGV0, logfilesum_old);
         strncpy(sf_sum_old, "none", 6);
     }
@@ -65,7 +65,7 @@ void OS_SignLog(char *logfile, char *logfile_old, int log_missing)
     if(OS_MD5_File(logfile, mf_sum) < 0)
     {
         if(log_missing)
-            merror("%s: File '%s' not found. MD5 checksum skipped.", 
+            merror("%s: File '%s' not found. MD5 checksum skipped.",
                                          ARGV0, logfile);
         strncpy(mf_sum, "none", 6);
     }
@@ -79,7 +79,7 @@ void OS_SignLog(char *logfile, char *logfile_old, int log_missing)
         strncpy(sf_sum, "none", 6);
     }
 
-    
+
     fp = fopen(logfilesum, "w");
     if(!fp)
     {
@@ -91,7 +91,7 @@ void OS_SignLog(char *logfile, char *logfile_old, int log_missing)
     fprintf(fp, "Current checksum:\n");
     fprintf(fp, "MD5  (%s) = %s\n", logfile, mf_sum);
     fprintf(fp, "SHA1 (%s) = %s\n\n", logfile, sf_sum);
-    
+
     fprintf(fp, "Chained checksum:\n");
     fprintf(fp, "MD5  (%s) = %s\n", logfilesum_old, mf_sum_old);
     fprintf(fp, "SHA1 (%s) = %s\n\n", logfilesum_old, sf_sum_old);
@@ -99,6 +99,6 @@ void OS_SignLog(char *logfile, char *logfile_old, int log_missing)
 
     return;
 }
-	  
+	
 
 /* EOF */

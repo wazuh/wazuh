@@ -26,7 +26,7 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr);
 
 
 /* OS_ElementExist: v1.0: 2005/02/26
- * Check if a element exists 
+ * Check if a element exists
  * The element_name must be NULL terminated (last char)
  */
 int OS_ElementExist(OS_XML *_lxml, char **element_name)
@@ -66,7 +66,7 @@ int OS_ElementExist(OS_XML *_lxml, char **element_name)
 
 
 /* RootElementExist: v1.0: 2005/02/26
- * Check if a root element exists 
+ * Check if a root element exists
  */
 int OS_RootElementExist(OS_XML *_lxml, char *element_name)
 {
@@ -201,7 +201,7 @@ char *OS_GetOneContentforElement(OS_XML *_lxml, char **element_name)
     {
         uniqret = ret[0];
     }
-    
+
     /* Freeing memory */
     while(ret[i])
     {
@@ -210,7 +210,7 @@ char *OS_GetOneContentforElement(OS_XML *_lxml, char **element_name)
         i++;
     }
     free(ret);
-    
+
     return(uniqret);
 }
 
@@ -242,7 +242,7 @@ char **OS_GetContents(OS_XML *_lxml, char **element_name)
 
 
 /* OS_GetAttributeContent: v0.1: 2005/03/01
- * Get one value for a specific attribute 
+ * Get one value for a specific attribute
  */
 char *OS_GetAttributeContent(OS_XML *_lxml, char **element_name,
 	                         char *attribute_name)
@@ -279,7 +279,7 @@ char *OS_GetAttributeContent(OS_XML *_lxml, char **element_name,
     }
     if(success)
         return(uniqret);
-        
+
     return(NULL);
 }
 
@@ -312,7 +312,7 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
         }
         i = _lxml->fol;
     }
-    else 
+    else
     {
         i = 0;
     }
@@ -326,7 +326,7 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
             if(matched !=1)
                 break;
         }
-        
+
         /* Setting maximum depth of 16. */
         if(j > 16)
             return(NULL);
@@ -352,7 +352,7 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
             }
         }
 
-        
+
         /* If the element name matches what we are looking for. */
         else if(strcmp(_lxml->el[i], element_name[j]) == 0)
         {
@@ -372,7 +372,7 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
                         {
                             break;
                         }
-                        
+
                         if(strcmp(attr, _lxml->el[k]) == 0)
                         {
                             i = k;
@@ -389,7 +389,7 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
                     {
                         return(NULL);
                     }
-                    
+
                     /* Adding new entry. */
                     ret[k] = strdup(_lxml->ct[i]);
                     ret[k + 1] = NULL;
@@ -398,15 +398,15 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
                         free(ret);
                         return(NULL);
                     }
-                    
+
                     matched = 1;
                     k++;
-                    
+
                     if(attr != NULL)
                     {
-                        break; 
+                        break;
                     }
-                    
+
                     else if(_lxml->fol != 0)
                     {
                         _lxml->fol = i+1;
@@ -429,7 +429,7 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
             matched = 0;
         }
     }
-    
+
     if(ret == NULL)
         return(NULL);
 

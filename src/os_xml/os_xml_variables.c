@@ -51,19 +51,19 @@ int OS_ApplyVariables(OS_XML *_lxml)
                     {
                         if(!_lxml->ct[j])
                             break;
-                
-                        /* If not used, it will be cleaned latter */        
+
+                        /* If not used, it will be cleaned latter */
                         snprintf(_lxml->err, 128, "XML_ERR: Memory error");
-                            
+
                         var = (char**)realloc(var,(s+1)*sizeof(char *));
                         if(var == NULL)
                             return (-1);
-                        
+
                         var[s] = strdup(_lxml->ct[j]);
                         if(var[s] == NULL)
                             return(-1);
-                       
-                        /* Cleaning the lxml->err */ 
+
+                        /* Cleaning the lxml->err */
                         strncpy(_lxml->err," ", 3);
 
                         _found_var = 1;
@@ -71,46 +71,46 @@ int OS_ApplyVariables(OS_XML *_lxml)
                     }
                     else
                     {
-                        snprintf(_lxml->err, 128, 
+                        snprintf(_lxml->err, 128,
                                  "XML_ERR: Only \"name\" is allowed"
                                  " as an attribute for a variable");
                         return(-1);
                     }
                 }
             } /* Attribute FOR */
-            
-            
+
+
             if((_found_var == 0)||(!_lxml->ct[i]))
             {
-                snprintf(_lxml->err,128, 
+                snprintf(_lxml->err,128,
                          "XML_ERR: Bad formed variable. No value set");
                 return(-1);
             }
-            
-            
+
+
             snprintf(_lxml->err,128, "XML_ERR: Memory error");
-        
+
             value = (char**)realloc(value,(s+1)*sizeof(char *));
             if (value == NULL)
                 return(-1);
-        
+
             value[s] = strdup(_lxml->ct[i]);
             if(value[s] == NULL)
-                return(-1);    
-        
+                return(-1);
+
             strncpy(_lxml->err," ", 3);
             s++;
         }
     } /* initial FOR to get the variables  */
-  
-  
+
+
     /* No variable */
     if(s == 0)
         return(0);
 
 
     /* Looping again and modifying where found the variables */
-    i = 0; 
+    i = 0;
     for(;i<_lxml->cur;i++)
     {
         if(((_lxml->tp[i] == XML_ELEM) || (_lxml->tp[i] == XML_ATTR))&&
@@ -120,23 +120,23 @@ int OS_ApplyVariables(OS_XML *_lxml)
             char *p = NULL;
             char *p2= NULL;
             char lvar[256]; /* MAX Var size */
-          
-            
+
+
             if(strlen(_lxml->ct[i]) <= 2)
                 continue;
-            
-            
-            /* Duplicating string */     
+
+
+            /* Duplicating string */
             p = strdup(_lxml->ct[i]);
             p2= p;
-            
+
             if(p == NULL)
             {
                 snprintf(_lxml->err, 128, "XML_ERR: Memory error");
                 return(-1);
             }
-            
-            
+
+
             /* Reading the whole string */
             while(*p != '\0')
             {
@@ -145,7 +145,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                     tp = 0;
                     p++;
                     memset(lvar, '\0', 256);
-                    
+
                     while(1)
                     {
                         if((*p == XML_VARIABLE_BEGIN)
@@ -158,7 +158,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                             lvar[tp]='\0';
 
                             final = init+tp;
-                            
+
                             /* Looking for var */
                             for(j=0; j<s; j++)
                             {
@@ -177,16 +177,16 @@ int OS_ApplyVariables(OS_XML *_lxml)
                                 }
 
 
-                                tsize = strlen(_lxml->ct[i]) + 
+                                tsize = strlen(_lxml->ct[i]) +
                                         strlen(value[j]) - tp + 1;
 
                                 var_placeh = strdup(_lxml->ct[i]);
 
                                 free(_lxml->ct[i]);
 
-                                _lxml->ct[i] = (char*)calloc(tsize +2, 
+                                _lxml->ct[i] = (char*)calloc(tsize +2,
                                                              sizeof(char));
-                                
+
                                 if(_lxml->ct[i] == NULL || var_placeh == NULL)
                                 {
                                     snprintf(_lxml->err,128, "XML_ERR: Memory "
@@ -196,26 +196,26 @@ int OS_ApplyVariables(OS_XML *_lxml)
 
 
                                 strncpy(_lxml->ct[i], var_placeh, tsize);
-                                
+
 
                                 _lxml->ct[i][init] = '\0';
                                 strncat(_lxml->ct[i], value[j],tsize - init);
 
 
                                 init = strlen(_lxml->ct[i]);
-                                strncat(_lxml->ct[i], p, 
+                                strncat(_lxml->ct[i], p,
                                          tsize - strlen(_lxml->ct[i]));
-                                
+
 
                                 free(var_placeh);
 
                                 break;
                             }
-                            
+
                             /* Variale not found */
                             if((j == s) && (strlen(lvar) >= 1))
                             {
-                                snprintf(_lxml->err,128, 
+                                snprintf(_lxml->err,128,
                                                 "XML_ERR: Unknown variable"
                                                 ": %s", lvar);
                                 return(-1);
@@ -224,10 +224,10 @@ int OS_ApplyVariables(OS_XML *_lxml)
                             {
                                 init++;
                             }
-                            
+
                             goto go_next;
                         }
-                        
+
                         /* Maximum size for a variable */
                         if(tp >= 255)
                         {
@@ -236,21 +236,21 @@ int OS_ApplyVariables(OS_XML *_lxml)
                             return(-1);
 
                         }
-                        
+
                         lvar[tp] = *p;
                         tp++;
                         p++;
                     }
                 } /* IF XML_VAR_BEGIN */
-                
+
                 p++;
                 init++;
 
                 go_next:
                 continue;
-                
+
             } /* WHILE END */
-            
+
             if(p2 != NULL)
             {
                 free(p2);
@@ -271,11 +271,11 @@ int OS_ApplyVariables(OS_XML *_lxml)
         }
         if((value)&&(value[i]))
         {
-            free(value[i]);    
+            free(value[i]);
             value[i] = NULL;
         }
     }
-    
+
     if(var != NULL)
     {
         free(var);
@@ -283,7 +283,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
     }
     if(value != NULL)
     {
-        free(value);    
+        free(value);
         value = NULL;
     }
 

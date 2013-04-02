@@ -47,7 +47,7 @@ void Lists_OP_MakeCDB(char *txt_filename, char *cdb_filename, int force)
 
     str[OS_MAXSTR]= '\0';
     char tmp_filename[OS_MAXSTR];
-    tmp_filename[OS_MAXSTR - 2] = '\0'; 
+    tmp_filename[OS_MAXSTR - 2] = '\0';
     snprintf(tmp_filename, OS_MAXSTR - 2, "%s.tmp", txt_filename);
 
     /*
@@ -69,20 +69,20 @@ void Lists_OP_MakeCDB(char *txt_filename, char *cdb_filename, int force)
         }
         while((fgets(str, OS_MAXSTR-1,txt_fd)) != NULL)
         {
-            /* Removing new lines or carriage returns. */                                                                                                               
-            tmp_str = strchr(str, '\r');                                                                                                                                
-            if(tmp_str)                                                                                                                                                 
-                *tmp_str = '\0';                                                                                                                                        
-            tmp_str = strchr(str, '\n');                                                                                                                                
-            if(tmp_str)                                                                                                                                                 
-                *tmp_str = '\0';                    
+            /* Removing new lines or carriage returns. */
+            tmp_str = strchr(str, '\r');
+            if(tmp_str)
+                *tmp_str = '\0';
+            tmp_str = strchr(str, '\n');
+            if(tmp_str)
+                *tmp_str = '\0';
             if((val = strchr(str, ':')))
             {
                 *val = '\0';
                 val++;
             }
             else
-            { 
+            {
                 continue;
             }
             key = str;

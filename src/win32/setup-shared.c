@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-       
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,7 +54,7 @@ int dogrep(char *file, char *str)
     /* Clearing memory */
     memset(line, '\0', OS_MAXSTR +1);
 
-    /* Reading file and looking for str */ 
+    /* Reading file and looking for str */
     while(fgets(line, OS_MAXSTR, fp) != NULL)
     {
         if(OS_Match(str, line))

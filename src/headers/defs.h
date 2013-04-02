@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -22,7 +22,7 @@
 #define __OS_HEADERS
 
 
-/* TRUE / FALSE definitions 
+/* TRUE / FALSE definitions
  */
 #define TRUE            1
 #define FALSE           0
@@ -52,7 +52,7 @@
 
 /* Some Global names */
 #define __name      "OSSEC HIDS"
-#define __version   "v2012-08"
+#define __version   "v2.7.1-alpha"
 #define __author    "Trend Micro Inc."
 #define __contact   "contact@ossec.net"
 #define __site      "http://www.ossec.net"
@@ -69,17 +69,17 @@ http://www.ossec.net/main/license/\n"
     #define MAX_PID 32768
 #endif
 
-    
+
 /* Max limit of 256 agents */
 #ifndef MAX_AGENTS
     #define MAX_AGENTS  256
-#endif    
+#endif
 
 
 /* manager notification */
 #define NOTIFY_TIME     600     /* every 10 minutes */
 
-        
+
 /* User Configuration */
 #ifndef MAILUSER
     #define MAILUSER        "ossecm"
@@ -88,15 +88,15 @@ http://www.ossec.net/main/license/\n"
 #ifndef USER
     #define USER            "ossec"
 #endif
-    
+
 #ifndef REMUSER
     #define REMUSER         "ossecr"
 #endif
-    
+
 #ifndef GROUPGLOBAL
     #define GROUPGLOBAL     "ossec"
-#endif    
-                    
+#endif
+
 #ifndef DEFAULTDIR		
 	#define DEFAULTDIR	"/var/ossec"
 #endif
@@ -117,7 +117,7 @@ http://www.ossec.net/main/license/\n"
     #define AR_BINDIR           "active-response/bin"
     #define AGENTCONFIG         "shared/agent.conf"
     #define AGENTCONFIGINT      "shared/agent.conf"
-#endif        
+#endif
 
 
 /* Exec queue */
@@ -132,7 +132,7 @@ http://www.ossec.net/main/license/\n"
 #define XML_DECODER     "/etc/decoder.xml"
 #define XML_LDECODER    "/etc/local_decoder.xml"
 
-        
+
 /* Agent information location */
 #define AGENTINFO_DIR    "/queue/agent-info"
 
@@ -184,14 +184,14 @@ http://www.ossec.net/main/license/\n"
 #else
     #define SYSCHECK_RESTART        "syscheck/.syscheck_run"
     #define SYSCHECK_RESTART_PATH   "syscheck/.syscheck_run"
-#endif        
+#endif
 
-    
-/* Agentless directories. */    
+
+/* Agentless directories. */
 #define AGENTLESSDIR    "/agentless"
 #define AGENTLESSPASS   "/agentless/.passlist"
 #define AGENTLESS_ENTRYDIR  "/queue/agentless"
-        
+
 
 /* Internal definitions files */
 #ifndef WIN32
@@ -236,8 +236,8 @@ http://www.ossec.net/main/license/\n"
 #ifndef WIN32
     #define SHAREDCFG_DIR   "/etc/shared"
 #else
-    #define SHAREDCFG_DIR   "shared"       
-#endif    
+    #define SHAREDCFG_DIR   "shared"
+#endif
 
 /* Built in defines */
 #define DEFAULTQPATH	DEFAULTDIR DEFAULTQUEUE

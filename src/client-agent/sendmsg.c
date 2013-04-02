@@ -15,7 +15,7 @@
 #include "agentd.h"
 
 #include "os_net/os_net.h"
-       
+
 
 /* Sends a message to the server */
 int send_msg(int agentid, char *msg)

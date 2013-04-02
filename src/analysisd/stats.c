@@ -1,6 +1,6 @@
 /* @(#) $Id: ./src/analysisd/stats.c, 2011/09/08 dcid Exp $
  */
-                    
+
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -29,7 +29,7 @@ char *(weekdays[])={"Sunday","Monday","Tuesday","Wednesday","Thursday",
 		            "Friday","Saturday"};
 char *(l_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
                  "Sep","Oct","Nov","Dec"};
-                        
+
 
 
 /* Global vars */
@@ -63,7 +63,7 @@ void print_totals()
     char logfile[OS_FLSIZE +1];
     FILE *flog;
 
-        
+
     /* Creating the path for the logs */
     snprintf(logfile, OS_FLSIZE,"%s/%d/", STATSAVED, prev_year);
     if(IsDir(logfile) == -1)
@@ -97,7 +97,7 @@ void print_totals()
         merror(FOPEN_ERROR, ARGV0, logfile);
         return;
     }
-    
+
     /* Printing the hourly stats */
     for(i=0;i<=23;i++)
     {
@@ -105,7 +105,7 @@ void print_totals()
         totals+=_CHour[i];
     }
     fprintf(flog,"Total events for day:%d\n", totals);
-    
+
     fclose(flog);
 }
 
@@ -113,7 +113,7 @@ void print_totals()
 /* gethour: v0.2
  * Return the parameter (event_number + 20 % of it)
  * If event_number < mindiff, return mindiff
- * If event_number > maxdiff, return maxdiff 
+ * If event_number > maxdiff, return maxdiff
  */
 int gethour(int event_number)
 {
@@ -122,12 +122,12 @@ int gethour(int event_number)
     event_diff = (event_number * percent_diff)/100;
 
     event_diff++;
-    
+
     if(event_diff < mindiff)
         return(event_number + mindiff);
     else if(event_diff > maxdiff)
         return(event_number + maxdiff);
-        
+
     return(event_number + event_diff);
 }
 
@@ -137,24 +137,24 @@ void Update_Hour()
 {
     int i,j;
     int inter;
-    
-    
+
+
     /* Print total number of logs received per hour */
     print_totals();
-    
-    
+
+
     /* Hourly update */
     _RHour[24]++;
     inter = _RHour[24];
     if(inter > 7)
         inter = 7;
-        
+
     for(i=0;i<=24;i++)
     {
         char _hourly[128]; /* _hourly file */
-        
+
         FILE *fp;
-        
+
         if(i != 24)
         {
             /* If saved hourly = 0, just copy the current hourly rate */
@@ -171,7 +171,7 @@ void Update_Hour()
                 {
                     _RHour[i]=(((3*_CHour[i])+(inter*_RHour[i]))/(inter+3))+25;
                 }
-                
+
                 else
                 {
                     /* The average is going to be the number of interactions +
@@ -180,7 +180,7 @@ void Update_Hour()
                 }
             }
         }
-        
+
         snprintf(_hourly,128,"%s/%d",STATQUEUE,i);
         fp = fopen(_hourly, "w");
         if(fp)
@@ -193,7 +193,7 @@ void Update_Hour()
         {
             merror(FOPEN_ERROR, "logstats", _hourly);
         }
-           
+
         _CHour[i] = 0; /* Zeroing the currently  hour */
     }
 
@@ -207,7 +207,7 @@ void Update_Hour()
         inter = _CWHour[i][24];
         if(inter > 7)
             inter = 7;
-        
+
         for(j=0;j<=24;j++)
         {
             if(j != 24)
@@ -230,7 +230,7 @@ void Update_Hour()
                     }
                 }
             }
-            
+
             snprintf(_weekly,128,"%s/%d/%d",STATWQUEUE,i,j);
             fp = fopen(_weekly, "w");
             if(fp)
@@ -242,9 +242,9 @@ void Update_Hour()
             {
                 merror(FOPEN_ERROR, "logstats", _weekly);
             }
-            
+
             _CWHour[i][j] = 0;	
-        }   
+        }
     }
 
     _daily_errors = 0;
@@ -287,8 +287,8 @@ int Check_Hour(Eventinfo *lf)
                                      " between %d:00 and %d:00 is %d. We "
                                      "reached %d.",__crt_hour,__crt_hour+1,
                                      _RHour[__crt_hour],_CHour[__crt_hour]);
-                
-                
+
+
                 _fired = 1;
                 _daily_errors++;
                 return(1);
@@ -300,13 +300,13 @@ int Check_Hour(Eventinfo *lf)
     /* We need to have at least 3 days of stats */
     if(_RWHour[__crt_wday][24] <= 2)
         return(0);
-        
+
     /* checking for the hour during a specific day of the week */
     if(_RWHour[__crt_wday][__crt_hour] != 0)
     {
         if(_CWHour[__crt_wday][__crt_hour] > _RWHour[__crt_wday][__crt_hour])
         {
-            if(_CWHour[__crt_wday][__crt_hour] > 
+            if(_CWHour[__crt_wday][__crt_hour] >
                     gethour(_RWHour[__crt_wday][__crt_hour]))
             {
                 snprintf(__stats_comment, 191,
@@ -316,8 +316,8 @@ int Check_Hour(Eventinfo *lf)
                                      weekdays[__crt_wday],
                                      _RWHour[__crt_wday][__crt_hour],
                                      _CWHour[__crt_wday][__crt_hour]);
-                
-                
+
+
                 _fired = 1;
                 _daily_errors++;
                 return(1);
@@ -355,7 +355,7 @@ int Start_Hour()
     maxdiff = getDefine_Int("analysisd",
                             "stats_maxdiff",
                             10, 99999);
-    
+
     mindiff = getDefine_Int("analysisd",
                             "stats_mindiff",
                             10, 99999);
@@ -372,22 +372,22 @@ int Start_Hour()
     _lastmsg = NULL;
     _prevlast = NULL;
     _pprevlast = NULL;
-    
-    
+
+
     /* They should not be null */
     os_strdup(" ", _lastmsg);
     os_strdup(" ", _prevlast);
     os_strdup(" ", _pprevlast);
-                
-    
-    /* Creating the stat queue directories */        
+
+
+    /* Creating the stat queue directories */
     if(IsDir(STATWQUEUE) == -1)
         if(mkdir(STATWQUEUE,0770) == -1)
         {
             merror("%s: logstat: Unable to create stat queue: %s",
                             ARGV0, STATWQUEUE);
             return(-1);
-        }       
+        }
 
     if(IsDir(STATQUEUE) == -1)
         if(mkdir(STATQUEUE,0770) == -1)
@@ -395,7 +395,7 @@ int Start_Hour()
             merror("%s: logstat: Unable to create stat queue: %s",
                             ARGV0, STATQUEUE);
             return(-1);
-        }       
+        }
 
     /* Creating store dir */
     if(IsDir(STATSAVED) == -1)
@@ -415,7 +415,7 @@ int Start_Hour()
         _CHour[i]=0;	
         if(File_DateofChange(_hourly) < 0)
             _RHour[i] = 0;
-            
+
         else
         {
             FILE *fp;
@@ -428,7 +428,7 @@ int Start_Hour()
                     _RHour[i] = 0;
 
                 if(_RHour[i] < 0)
-                    _RHour[i] = 0;    
+                    _RHour[i] = 0;
                 fclose(fp);
             }	
         }
@@ -465,7 +465,7 @@ int Start_Hour()
                         _RWHour[i][j] = 0;
 
                     if(_RWHour[i][j] < 0)
-                        _RWHour[i][j] = 0;    
+                        _RWHour[i][j] = 0;
                     fclose(fp);
                 }	
             }	
@@ -497,7 +497,7 @@ int LastMsg_Stats(char *log)
 
 /* LastMsg_Change: v0.3: 2006/03/21
  * v0.3: 2006/03/21: Some performance fixes.
- * v0.2: 2005/03/17 
+ * v0.2: 2005/03/17
  * If the message is not repeated, rearrange the last
  * received messages
  */
@@ -505,12 +505,12 @@ void LastMsg_Change(char *log)
 {
     /* Removing the last one */
     free(_pprevlast);
-    
+
     /* Moving the second to third and the last to second */
     _pprevlast = _prevlast;
-    
+
     _prevlast = _lastmsg;
-    
+
 
     os_strdup(log, _lastmsg);
     return;

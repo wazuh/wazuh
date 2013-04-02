@@ -52,7 +52,7 @@ int __Groups_SelectGroup(char *group, DBConfig *db_config)
 int __Groups_InsertGroup(char *group, DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
-    
+
     memset(sql_query, '\0', OS_SIZE_1024);
 
     /* Generating SQL */
@@ -137,7 +137,7 @@ void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
     char *tmp_group;
     char *tmp_str;
 
-    
+
     debug1("%s: DEBUG: entering _Groups_ReadInsertDB", ARGV0);
 
 
@@ -146,7 +146,7 @@ void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
     {
         return;
     }
-    
+
     tmp_str = strchr(rule->group, ',');
     tmp_group = rule->group;
 
@@ -164,7 +164,7 @@ void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
         while(*tmp_group == ' ')
             tmp_group++;
 
-        
+
         /* Checking for empty group */
         if(*tmp_group == '\0')
         {
@@ -201,7 +201,7 @@ void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
             }
         }
 
-        
+
         /* Getting next category */
         tmp_group = tmp_str;
         if(tmp_group)
@@ -209,7 +209,7 @@ void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
             tmp_str = strchr(tmp_group, ',');
         }
     }
-    
+
     return;
 }
 
@@ -224,7 +224,7 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
     char sql_query[OS_SIZE_1024];
     memset(sql_query, '\0', OS_SIZE_1024);
 
-    
+
     /* Escaping strings */
     osdb_escapestr(rule->group);
     osdb_escapestr(rule->comment);
@@ -235,11 +235,11 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
         rule->level = 20;
     if(rule->level < 0)
         rule->level = 0;
-    
-    
+
+
     debug1("%s: DEBUG: entering _Rules_ReadInsertDB()", ARGV0);
-    
-    
+
+
     /* Checking rule limit */
     if(rule->sigid < 0 || rule->sigid > 9999999)
     {
@@ -250,18 +250,18 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
 
     /* Inserting group into the signature mapping */
     _Groups_ReadInsertDB(rule, db_config);
-    
-    
-    
+
+
+
     debug2("%s: DEBUG: Inserting: %d", ARGV0, rule->sigid);
 
-    
+
     /* Generating SQL */
     snprintf(sql_query, OS_SIZE_1024 -1,
              "SELECT id FROM signature "
              "where rule_id = %u",
              rule->sigid);
-    
+
     if(osdb_query_select(dbc->conn, sql_query) == 0)
     {
         snprintf(sql_query, OS_SIZE_1024 -1,
@@ -278,7 +278,7 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
                 rule->level, rule->comment,rule->sigid);
     }
 
-    
+
     /* Checking return code. */
     if(!osdb_query_insert(dbc->conn, sql_query))
     {
@@ -292,12 +292,12 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
 int OS_InsertRulesDB(DBConfig *db_config)
 {
     char **rulesfiles;
-    
+
     rulesfiles = db_config->includes;
     while(rulesfiles && *rulesfiles)
     {
         debug1("%s: Reading rules file: '%s'", ARGV0, *rulesfiles);
-        
+
         if(OS_ReadXMLRules(*rulesfiles, _Rules_ReadInsertDB, db_config) < 0)
         {
             merror(RULES_ERROR, ARGV0, *rulesfiles);

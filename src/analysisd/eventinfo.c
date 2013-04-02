@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -17,7 +17,7 @@
 /* Part of the OSSEC.
  * Available at http://www.ossec.net
  */
-  
+
 
 
 #include "config.h"
@@ -34,8 +34,8 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
     Eventinfo *lf;
     Eventinfo *first_lf;
     OSListNode *lf_node;
-    
-    
+
+
     /* Setting frequency to 0 */
     currently_rule->__frequency = 0;
 
@@ -53,12 +53,12 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
         return(NULL);
     }
     first_lf = (Eventinfo *)lf_node->data;
-    
+
 
     do
     {
         lf = (Eventinfo *)lf_node->data;
-        
+
         /* If time is outside the timeframe, return */
         if((c_time - lf->time) > currently_rule->timeframe)
         {
@@ -344,16 +344,16 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *currently_rule)
 }
 
 
-/* Search LastEvents.  
+/* Search LastEvents.
  * Will look if any of the last events (inside the timeframe)
- * match the specified rule. 
+ * match the specified rule.
  */
 Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
 {
     EventNode *eventnode_pt;
     Eventinfo *lf;
     Eventinfo *first_lf;
-    
+
 
     merror("XXXX : remove me!");
 
@@ -365,17 +365,17 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         /* Nothing found */
         return(NULL);
     }
-    
+
     /* Setting frequency to 0 */
     currently_rule->__frequency = 0;
     first_lf = (Eventinfo *)eventnode_pt->event;
-    
-    
+
+
     /* Searching all previous events */
     do
     {
         lf = eventnode_pt->event;
-        
+
         /* If time is outside the timeframe, return */
         if((c_time - lf->time) > currently_rule->timeframe)
         {
@@ -383,22 +383,22 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         }
 
 
-        /* We avoid multiple triggers for the same rule 
+        /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
         else if(lf->matched >= currently_rule->level)
         {
             return(NULL);
         }
-        
-        
+
+
         /* The category must be the same */
         else if(lf->decoder_info->type != my_lf->decoder_info->type)
         {
-            continue;    
+            continue;
         }
-        
-        
+
+
         /* If regex does not match, go to next */
         if(currently_rule->if_matched_regex)
         {
@@ -414,27 +414,27 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
         {
             if((!lf->dstuser)||(!my_lf->dstuser))
                 continue;
-                
+
             if(strcmp(lf->dstuser,my_lf->dstuser) != 0)
                 continue;
         }
-       
+
         /* Checking for same id */
         if(currently_rule->context_opts & SAME_ID)
         {
             if((!lf->id) || (!my_lf->id))
                 continue;
-            
+
             if(strcmp(lf->id,my_lf->id) != 0)
-                continue;    
+                continue;
         }
-         
+
         /* Checking for repetitions from same src_ip */
         if(currently_rule->context_opts & SAME_SRCIP)
         {
             if((!lf->srcip)||(!my_lf->srcip))
                 continue;
-                
+
             if(strcmp(lf->srcip,my_lf->srcip) != 0)
                 continue;
         }
@@ -453,33 +453,33 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
             }
         }
 
-        
-        /* Checking if the number of matches worked */ 
+
+        /* Checking if the number of matches worked */
         if(currently_rule->__frequency < currently_rule->frequency)
         {
             if(currently_rule->__frequency <= 10)
             {
-                currently_rule->last_events[currently_rule->__frequency] 
+                currently_rule->last_events[currently_rule->__frequency]
                             = lf->full_log;
-                currently_rule->last_events[currently_rule->__frequency+1] 
+                currently_rule->last_events[currently_rule->__frequency+1]
                             = NULL;
             }
-            
+
             currently_rule->__frequency++;
             continue;
         }
-        
-        
+
+
         /* If reached here, we matched */
         my_lf->matched = currently_rule->level;
         lf->matched = currently_rule->level;
         first_lf->matched = currently_rule->level;
-       
-        return(lf);    
-        
+
+        return(lf);
+
     }while((eventnode_pt = eventnode_pt->next) != NULL);
 
-    
+
     return(NULL);
 }
 
@@ -510,7 +510,7 @@ void Zero_Eventinfo(Eventinfo *lf)
 
     lf->time = 0;
     lf->matched = 0;
-    
+
     lf->year = 0;
     lf->mon[3] = '\0';
     lf->hour[9] = '\0';
@@ -522,18 +522,18 @@ void Zero_Eventinfo(Eventinfo *lf)
 
     #ifdef PRELUDE
     lf->filename = NULL;
-    lf->perm_before = 0;      
-    lf->perm_after = 0;          
-    lf->md5_before = NULL;                 
-    lf->md5_after = NULL;               
-    lf->sha1_before = NULL;       
-    lf->sha1_after = NULL;                 
-    lf->size_before = NULL;       
-    lf->size_after = NULL;        
-    lf->owner_before = NULL;      
-    lf->owner_after = NULL;       
-    lf->gowner_before = NULL; 
-    lf->gowner_after = NULL;  
+    lf->perm_before = 0;
+    lf->perm_after = 0;
+    lf->md5_before = NULL;
+    lf->md5_after = NULL;
+    lf->sha1_before = NULL;
+    lf->sha1_after = NULL;
+    lf->size_before = NULL;
+    lf->size_after = NULL;
+    lf->owner_before = NULL;
+    lf->owner_after = NULL;
+    lf->gowner_before = NULL;
+    lf->gowner_after = NULL;
     #endif
 
     return;
@@ -547,11 +547,11 @@ void Free_Eventinfo(Eventinfo *lf)
         merror("%s: Trying to free NULL event. Inconsistent..",ARGV0);
         return;
     }
-    
+
     if(lf->full_log)
-        free(lf->full_log);    
+        free(lf->full_log);
     if(lf->location)
-        free(lf->location);    
+        free(lf->location);
 
     if(lf->srcip)
         free(lf->srcip);
@@ -564,13 +564,13 @@ void Free_Eventinfo(Eventinfo *lf)
     if(lf->protocol)
         free(lf->protocol);
     if(lf->action)
-        free(lf->action);            
+        free(lf->action);
     if(lf->status)
         free(lf->status);
     if(lf->srcuser)
         free(lf->srcuser);
     if(lf->dstuser)
-        free(lf->dstuser);    
+        free(lf->dstuser);
     if(lf->id)
         free(lf->id);
     if(lf->command)
@@ -579,39 +579,39 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->url);
 
     if(lf->data)
-        free(lf->data);    
+        free(lf->data);
     if(lf->systemname)
-        free(lf->systemname);    
+        free(lf->systemname);
 
     #ifdef PRELUDE
     if(lf->filename)
         free(lf->filename);
     if (lf->md5_before)
-        free(lf->md5_before);                 
+        free(lf->md5_before);
     if (lf->md5_after)
-        free(lf->md5_after);               
+        free(lf->md5_after);
     if (lf->sha1_before)
-        free(lf->sha1_before);       
+        free(lf->sha1_before);
     if (lf->sha1_after)
-        free(lf->sha1_after);                 
+        free(lf->sha1_after);
     if (lf->size_before)
-        free(lf->size_before);       
+        free(lf->size_before);
     if (lf->size_after)
-        free(lf->size_after);        
+        free(lf->size_after);
     if (lf->owner_before)
-        free(lf->owner_before);      
+        free(lf->owner_before);
     if (lf->owner_after)
-        free(lf->owner_after);       
+        free(lf->owner_after);
     if (lf->gowner_before)
-        free(lf->gowner_before); 
+        free(lf->gowner_before);
     if (lf->gowner_after)
-        free(lf->gowner_after);  
+        free(lf->gowner_after);
     #endif
 
     /* Freeing node to delete */
     if(lf->sid_node_to_delete)
     {
-        OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched, 
+        OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched,
                               lf->sid_node_to_delete);
     }
     else if(lf->generated_rule && lf->generated_rule->group_prev_matched)
@@ -622,16 +622,16 @@ void Free_Eventinfo(Eventinfo *lf)
         {
             OSList_DeleteOldestNode(lf->generated_rule->group_prev_matched[i]);
             i++;
-        } 
+        }
     }
-    
+
     /* We dont need to free:
      * fts
      * comment
      */
     free(lf);
-    lf = NULL; 
-    
+    lf = NULL;
+
     return;
 }	
 

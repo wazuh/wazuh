@@ -9,7 +9,7 @@
  * License (version 3) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -26,7 +26,7 @@
 void Lists_OP_CreateLists()
 {
     OS_CreateListsList();
-    return; 
+    return;
 }
 
 int Lists_OP_LoadList(char * listfile)

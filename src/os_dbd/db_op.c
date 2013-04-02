@@ -12,7 +12,7 @@
  * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
-          
+
 
 /* Common lib for dealing with databases */
 
@@ -47,7 +47,7 @@ void osdb_escapestr(char *str)
     {
         return;
     }
-    
+
     while(*str)
     {
         if(*str == '\'')
@@ -85,27 +85,27 @@ void osdb_checkerror()
         ErrorExit(DB_MAINERROR, ARGV0);
     }
 
-    
+
     /* If error count is too large, we try to reconnect. */
     if(db_config_pt->error_count > 0)
     {
         int i = 0;
         if(db_config_pt->conn)
         {
-            osdb_close(db_config_pt->conn);       
+            osdb_close(db_config_pt->conn);
             db_config_pt->conn = NULL;
         }
 
         while(i <= db_config_pt->maxreconnect)
         {
             merror(DB_ATTEMPT, ARGV0);
-            db_config_pt->conn = osdb_connect(db_config_pt->host, 
+            db_config_pt->conn = osdb_connect(db_config_pt->host,
                                               db_config_pt->user,
-                                              db_config_pt->pass, 
+                                              db_config_pt->pass,
                                               db_config_pt->db,
                                               db_config_pt->port,
                                               db_config_pt->sock);
-            
+
             /* If we were able to reconnect, keep going. */
             if(db_config_pt->conn)
             {
@@ -122,11 +122,11 @@ void osdb_checkerror()
         {
             ErrorExit(DB_MAINERROR, ARGV0);
         }
-        
-        
+
+
         verbose("%s: Connected to database '%s' at '%s'.",
                 ARGV0, db_config_pt->db, db_config_pt->host);
-        
+
     }
 }
 
@@ -183,8 +183,8 @@ void *mysql_osdb_connect(char *host, char *user, char *pass, char *db,
             unsigned int p_type = MYSQL_PROTOCOL_TCP;
             mysql_options(conn, MYSQL_OPT_PROTOCOL, (char *)&p_type);
         }
-    }    
-    if(mysql_real_connect(conn, host, user, pass, db, 
+    }
+    if(mysql_real_connect(conn, host, user, pass, db,
                           port, sock, 0) == NULL)
     {
         merror(DBCONN_ERROR, ARGV0, host, db, mysql_error(conn));
@@ -209,7 +209,7 @@ void *mysql_osdb_close(void *db_conn)
 
 
 /** int mysql_osdb_query_insert(void *db_conn, char *query)
- * Sends insert query to database. 
+ * Sends insert query to database.
  */
 int mysql_osdb_query_insert(void *db_conn, char *query)
 {
@@ -235,7 +235,7 @@ int mysql_osdb_query_select(void *db_conn, char *query)
     int result_int = 0;
     MYSQL_RES *result_data;
     MYSQL_ROW result_row;
-    
+
 
     /* Sending the query. It can not fail. */
     if(mysql_query(db_conn, query) != 0)
@@ -246,7 +246,7 @@ int mysql_osdb_query_select(void *db_conn, char *query)
         return(0);
     }
 
-    
+
     /* Getting result */
     result_data = mysql_use_result(db_conn);
     if(result_data == NULL)
@@ -256,7 +256,7 @@ int mysql_osdb_query_select(void *db_conn, char *query)
         osdb_seterror();
         return(0);
     }
-    
+
 
     /* Getting row. We only care about the first result. */
     result_row = mysql_fetch_row(result_data);
@@ -264,7 +264,7 @@ int mysql_osdb_query_select(void *db_conn, char *query)
     {
         result_int = atoi(result_row[0]);
     }
-    
+
 
     mysql_free_result(result_data);
 
@@ -281,11 +281,11 @@ int mysql_osdb_query_select(void *db_conn, char *query)
 #if defined UPOSTGRES
 
 
-/** void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db) 
- * Create the PostgreSQL database connection. 
+/** void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db)
+ * Create the PostgreSQL database connection.
  * Return NULL on error
  */
-void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db, 
+void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db,
                               int port, char *sock)
 {
     PGconn *conn;
@@ -317,13 +317,13 @@ void *postgresql_osdb_close(void *db_conn)
 
 
 /** int postgresql_osdb_query_insert(void *db_conn, char *query)
- * Sends insert query to database. 
+ * Sends insert query to database.
  */
 int postgresql_osdb_query_insert(void *db_conn, char *query)
 {
     PGresult *result;
-    
-    
+
+
     result = PQexec(db_conn,query);
     if(!result)
     {
@@ -331,8 +331,8 @@ int postgresql_osdb_query_insert(void *db_conn, char *query)
         osdb_seterror();
         return(0);
     }
-    
-    
+
+
     if(PQresultStatus(result) != PGRES_COMMAND_OK)
     {
         merror(DBQUERY_ERROR, ARGV0, query, PQerrorMessage(db_conn));
@@ -341,7 +341,7 @@ int postgresql_osdb_query_insert(void *db_conn, char *query)
         return(0);
     }
 
-    
+
     PQclear(result);
     return(1);
 }
@@ -364,7 +364,7 @@ int postgresql_osdb_query_select(void *db_conn, char *query)
         osdb_seterror();
         return(0);
     }
-    
+
     if((PQresultStatus(result) == PGRES_TUPLES_OK))
     {
         if(PQntuples(result) == 1)
@@ -396,7 +396,7 @@ int postgresql_osdb_query_select(void *db_conn, char *query)
 
 
 
-void *none_osdb_connect(char *host, char *user, char *pass, char *db, 
+void *none_osdb_connect(char *host, char *user, char *pass, char *db,
                         int port, char *sock)
 {
     char *tmp;
@@ -404,8 +404,8 @@ void *none_osdb_connect(char *host, char *user, char *pass, char *db,
 
     /* Just to avoid warnings. */
     tmp = host; tmp = user; tmp = pass; tmp = db;
-    
-    
+
+
     merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
     return(NULL);
 }
@@ -431,7 +431,7 @@ void *none_osdb_query_select(void *db_conn, char *query)
     void *tmp;
 
     tmp = db_conn; tmp = query;
-    
+
     merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
     return(0);
 }

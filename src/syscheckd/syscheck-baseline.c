@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -59,20 +59,20 @@ int main(int argc, char **argv)
 {
     int c,r,no_stop = 1;
     int test_config = 0;
-    
+
     char *cfg = DEFAULTCPATH;
     char *input_f = NULL;
     char *output_f = NULL;
-    
-    
+
+
     /* Zeroing the structure */
     syscheck.workdir = NULL;
 
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
-    
+
+
     while((c = getopt(argc, argv, "VtdshD:c:i:o:")) != -1)
     {
         switch(c)
@@ -85,7 +85,7 @@ int main(int argc, char **argv)
                 break;
             case 's':
                 no_stop = 0;
-                break;    
+                break;
             case 'd':
                 nowDebug();
                 break;
@@ -111,10 +111,10 @@ int main(int argc, char **argv)
                 break;
             case 't':
                 test_config = 1;
-                break;        
+                break;
             default:
                 help(ARGV0);
-                break;   
+                break;
         }
     }
 
@@ -141,13 +141,13 @@ int main(int argc, char **argv)
 
     /* Reading internal options */
     read_internal(no_stop);
-        
-    
+
+
     /* Exit if testing config */
     if(test_config)
         exit(0);
 
-        
+
     /* Setting default values */
     if(syscheck.workdir == NULL)
         syscheck.workdir = DEFAULTDIR;
@@ -157,7 +157,7 @@ int main(int argc, char **argv)
     syscheck.db = (char *)calloc(1024,sizeof(char));
     if(syscheck.db == NULL)
         ErrorExit(MEM_ERROR,ARGV0);
-        
+
     snprintf(syscheck.db,1023, output_f);
 
 
@@ -182,20 +182,20 @@ int main(int argc, char **argv)
 
     /* Start the signal handling */
     StartSIG(ARGV0);
-    
+
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
 
-    
+
     /* Create local database */
     create_db(0);
-    
+
 
     fflush(syscheck.fp);
 
 
-    return(0);        
+    return(0);
 }
 
 

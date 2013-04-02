@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 #ifndef _AR__H
 #define _AR__H
 
@@ -29,7 +29,7 @@ void AR_Init();
  * to the appropriate lists.
  */
 int AR_ReadConfig(int test_config, char *cfgfile);
-     
+
 
 /* Active response commands */
 OSList *ar_commands;

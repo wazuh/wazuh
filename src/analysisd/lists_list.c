@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 #include "shared.h"
 #include "rules.h"
 #include "cdb/cdb.h"
@@ -23,7 +23,7 @@
 ListNode *global_listnode;
 ListRule *global_listrule;
 
-/* 
+/*
  */
 ListNode *_OS_AddList(ListNode *new_listnode);
 
@@ -41,14 +41,14 @@ void OS_CreateListsList()
 ListNode *OS_GetFirstList()
 {
     ListNode *listnode_pt = global_listnode;
-    
-    return(listnode_pt);    
+
+    return(listnode_pt);
 }
 
 ListRule *OS_GetFirstListRule()
 {
-    ListRule *listrule_pt = global_listrule; 
-    return listrule_pt; 
+    ListRule *listrule_pt = global_listrule;
+    return listrule_pt;
 }
 
 void OS_ListLoadRules()
@@ -67,19 +67,19 @@ void OS_ListLoadRules()
 
 ListRule *_OS_AddListRule(ListRule *new_listrule)
 {
-    
+
     if(global_listrule == NULL)
     {
         global_listrule = new_listrule;
-    } 
-    else 
+    }
+    else
     {
         ListRule *last_list_rule = global_listrule;
         while(last_list_rule->next != NULL)
         {
-            last_list_rule = last_list_rule->next; 
+            last_list_rule = last_list_rule->next;
         }
-        last_list_rule->next = new_listrule; 
+        last_list_rule->next = new_listrule;
     }
     return(global_listrule);
 }
@@ -104,7 +104,7 @@ ListNode *_OS_AddList(ListNode *new_listnode)
             last_list_node = last_list_node->next;
         }
         last_list_node->next = new_listnode;
-        
+
     }
     return(global_listnode);
 }
@@ -123,7 +123,7 @@ ListNode *_OS_FindList(ListNode *_listnode, char *listname)
         do
         {
             if (strcmp(last_list_node->txt_filename, listname) == 0 ||
-                strcmp(last_list_node->cdb_filename, listname) == 0) 
+                strcmp(last_list_node->cdb_filename, listname) == 0)
             {
                 /* Found first match returning */
                 return(last_list_node);
@@ -133,7 +133,7 @@ ListNode *_OS_FindList(ListNode *_listnode, char *listname)
     }
     return(NULL);
 }
-    
+
 ListNode *OS_FindList(char *listname)
 {
     ListNode *matched = NULL;
@@ -141,9 +141,9 @@ ListNode *OS_FindList(char *listname)
     return matched;
 }
 
-ListRule *OS_AddListRule(ListRule *first_rule_list, 
-                         int lookup_type, 
-                         int field, 
+ListRule *OS_AddListRule(ListRule *first_rule_list,
+                         int lookup_type,
+                         int field,
                          char *listname,
                          OSMatch *matcher)
 {
@@ -152,7 +152,7 @@ ListRule *OS_AddListRule(ListRule *first_rule_list,
     new_rulelist_pt->field = field;
     new_rulelist_pt->next = NULL;
     new_rulelist_pt->matcher = matcher;
-    new_rulelist_pt->lookup_type = lookup_type; 
+    new_rulelist_pt->lookup_type = lookup_type;
     new_rulelist_pt->filename = listname;
     if((new_rulelist_pt->db = OS_FindList(listname)) == NULL)
         new_rulelist_pt->loaded = 0;
@@ -212,11 +212,11 @@ int OS_DBSearchKeyValue(ListRule *lrule, char *key)
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
             result = OSMatch_Execute(val, vlen, lrule->matcher);
             free(val);
-            return result; 
+            return result;
         } else {
             return 0;
         }
-    } 
+    }
     return 0;
 }
 
@@ -228,7 +228,7 @@ int OS_DBSeachKey(ListRule *lrule, char *key)
     {
         if(_OS_CDBOpen(lrule->db) == -1) return -1;
         if( cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) return 1;
-    } 
+    }
     return 0;
 }
 
@@ -240,12 +240,12 @@ int OS_DBSeachKeyAddress(ListRule *lrule, char *key)
     {
         if(_OS_CDBOpen(lrule->db) == -1) return -1;
         //snprintf(_ip,128,"%s",key);
-        //XXX Breka apart string on the . boundtrys a loop over to longest match. 
+        //XXX Breka apart string on the . boundtrys a loop over to longest match.
 
         if( cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
             return 1;
         }
-        else 
+        else
         {
             char *tmpkey;
             os_strdup(key, tmpkey);
@@ -256,19 +256,19 @@ int OS_DBSeachKeyAddress(ListRule *lrule, char *key)
                     if( cdb_find(&lrule->db->cdb, tmpkey, strlen(tmpkey)) > 0 ) {
                         free(tmpkey);
                         return 1;
-                    } 
+                    }
                 }
                 tmpkey[strlen(tmpkey) - 1] = '\0';
             }
             free(tmpkey);
         }
-    } 
+    }
     return 0;
 }
 
 int OS_DBSearch(ListRule *lrule, char *key)
 {
-    //XXX - god damn hack!!! Jeremy Rossi 
+    //XXX - god damn hack!!! Jeremy Rossi
     if (lrule->loaded == 0)
     {
         lrule->db = OS_FindList(lrule->filename);
@@ -280,7 +280,7 @@ int OS_DBSearch(ListRule *lrule, char *key)
             //debug1("LR_STRING_MATCH");
             if(OS_DBSeachKey(lrule, key) == 1)
                 return 1;
-            else 
+            else
                 return 0;
             break;
         case LR_STRING_NOT_MATCH:
@@ -306,10 +306,10 @@ int OS_DBSearch(ListRule *lrule, char *key)
             else
                 return 0;
             break;
-        case LR_ADDRESS_MATCH_VALUE: 
+        case LR_ADDRESS_MATCH_VALUE:
             //debug1("LR_ADDRESS_MATCH_VALUE");
-            // XXX TODO 
-            return 0; 
+            // XXX TODO
+            return 0;
             break;
         default:
             debug1("lists_list.c::OS_DBSearch should never hit default");

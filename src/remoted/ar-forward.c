@@ -29,9 +29,9 @@ void *AR_Forward(void *arg)
     int arq = 0;
     int agent_id = 0;
     int ar_location = 0;
-    
+
     char msg_to_send[OS_SIZE_1024 +1];
-    
+
     char msg[OS_SIZE_1024 +1];
     char *location = NULL;
     char *ar_location_str = NULL;
@@ -54,8 +54,8 @@ void *AR_Forward(void *arg)
         {
             /* Always zeroing the location */
             ar_location = 0;
-            
-            
+
+
             /* Getting the location */
             location = msg;
 
@@ -105,8 +105,8 @@ void *AR_Forward(void *arg)
             {
                 ar_location|=SPECIFIC_AGENT;
             }
-            
-            
+
+
             /*** Extracting the active response location ***/
             tmp_str = strchr(ar_location_str, ' ');
             if(!tmp_str)
@@ -128,28 +128,28 @@ void *AR_Forward(void *arg)
             }
             *tmp_str = '\0';
             tmp_str++;
-            
-            
+
+
             /*** Creating the new message ***/
             if(ar_location & NO_AR_MSG)
             {
-                snprintf(msg_to_send, OS_SIZE_1024, "%s%s", 
+                snprintf(msg_to_send, OS_SIZE_1024, "%s%s",
                                       CONTROL_HEADER,
                                       tmp_str);
             }
             else
             {
-                snprintf(msg_to_send, OS_SIZE_1024, "%s%s%s", 
+                snprintf(msg_to_send, OS_SIZE_1024, "%s%s%s",
                                       CONTROL_HEADER,
                                       EXECD_HEADER,
                                       tmp_str);
             }
 
-            
+
             /* Lock use of keys */
             key_lock();
-            
-            
+
+
             /* Sending to ALL agents */
             if(ar_location & ALL_AGENTS)
             {
@@ -169,7 +169,7 @@ void *AR_Forward(void *arg)
                     merror(AR_NOAGENT_ERROR, ARGV0, location);
                     continue;
                 }
-                
+
                 send_msg(agent_id, msg_to_send);
             }
 
@@ -179,7 +179,7 @@ void *AR_Forward(void *arg)
                 ar_location++;
 
                 agent_id = OS_IsAllowedID(&keys, ar_agent_id);
-                
+
                 if(agent_id < 0)
                 {
                     key_unlock();
@@ -196,6 +196,6 @@ void *AR_Forward(void *arg)
     }
 }
 
- 
+
 
 /* EOF */

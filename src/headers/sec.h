@@ -22,7 +22,7 @@ typedef struct _keyentry
     unsigned int local;
     unsigned int keyid;
     unsigned int global;
-    
+
     char *id;
     char *key;
     char *name;
@@ -38,8 +38,8 @@ typedef struct _keystore
 {
     /* Array with all the keys */
     keyentry **keyentries;
-    
-    
+
+
     /* Hashes, based on the id/ip to lookup the keys. */
     void *keyhash_id;
     void *keyhash_ip;
@@ -67,7 +67,7 @@ void OS_FreeKeys(keystore *keys);
 
 /* Checks if key changed. */
 int OS_CheckUpdateKeys(keystore *keys);
-  
+
 /* Update the keys if they changed on the system. */
 int OS_UpdateKeys(keystore *keys);
 
@@ -98,7 +98,7 @@ int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip);
 /** Function prototypes -- send/recv messages **/
 
 /* Decrypt and decompress a remote message. */
-char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, 
+char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
                  int id, int buffer_size);
 
 /* Creates an ossec message (encrypts and compress) */
@@ -115,7 +115,7 @@ int CreateSecMSG(keystore *keys, char *msg, char *msg_encrypted, int id);
 #endif
 
 #define SENDER_COUNTER  "sender_counter"
-#define KEYSIZE         128 
+#define KEYSIZE         128
 
 
 #endif

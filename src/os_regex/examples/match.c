@@ -2,7 +2,7 @@
  * Under the public domain. It is just an example.
  * Some examples of the usage for the os_regex library.
  */
- 
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

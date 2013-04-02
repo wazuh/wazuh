@@ -24,11 +24,11 @@
 int OS_PRegex(char *str, char *regex)
 {
     regex_t preg;
-    
+
     if(!str || !regex)
         return(0);
-    
-    
+
+
     if(regcomp(&preg, regex, REG_EXTENDED|REG_NOSUB) != 0)
     {
         merror("%s: Posix Regex compile error (%s).", __local_name, regex);
@@ -44,7 +44,7 @@ int OS_PRegex(char *str, char *regex)
 
     regfree(&preg);
     return(1);
-    
+
 }
 
 #endif

@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -31,7 +31,7 @@ int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config);
 
 /* Inserts server info to the db. */
 int OS_Server_ReadInsertDB(void *db_config);
-   
+
 
 /* Insert rules in to the database */
 int OS_InsertRulesDB(DBConfig *db_config);

@@ -1,5 +1,5 @@
 
-  - You have three installation options: server, agent or local.
+  - You have these installation options: server, agent, local, or hybrid.
   
     - If you choose 'server', you will be able to analyze all  
       the logs, create e-mail notifications and responses,   
@@ -15,6 +15,9 @@
       the server does, except receiving remote messages from  
       the agents or external syslog devices.
 
+    - If you choose 'hybrid', you get the 'local' installation 
+      plus the 'agent' installation. 
+
   - Choose 'server' if you are setting up a log/analysis server.
   
   - Choose 'agent' if you have another machine to run as a log
@@ -23,6 +26,9 @@
     
   - Choose 'local' if you only have one system to monitor.
   
+  - Choose 'hybrid' if you want this standalone system to analyze
+    local logs before forwarding alerts to another server.
+
   - More information at: 
     http://www.ossec.net/en/manual.html#starting
 

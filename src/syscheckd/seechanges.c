@@ -31,7 +31,7 @@ char *gen_diff_alert(char *filename, int alert_diff_time)
 
     snprintf(buf, OS_MAXSTR, "%s/local/%s/diff.%d",
              DIFF_DIR_PATH, filename,  alert_diff_time);
-    
+
     fp = fopen(buf, "r");
     if(!fp)
     {
@@ -56,7 +56,7 @@ char *gen_diff_alert(char *filename, int alert_diff_time)
         else
         {
             /* Weird diff with only one large line. */
-            buf[256] = '\0';    
+            buf[256] = '\0';
         }
     }
     else
@@ -70,19 +70,19 @@ char *gen_diff_alert(char *filename, int alert_diff_time)
     /* Getting up to 20 line changes. */
     tmp_str = buf;
 
-    
+
     while(tmp_str && (*tmp_str != '\0'))
     {
         tmp_str = strchr(tmp_str, '\n');
         if(!tmp_str)
-            break;    
+            break;
         else if(n >= 19)
         {
-            *tmp_str = '\0';    
+            *tmp_str = '\0';
             break;
         }
         n++;
-        tmp_str++;    
+        tmp_str++;
     }
 
 
@@ -91,8 +91,8 @@ char *gen_diff_alert(char *filename, int alert_diff_time)
              buf, n>=19?
              "\nMore changes..":
              "");
-    
-    
+
+
     fclose(fp);
     return(strdup(diff_alert));
 }
@@ -134,7 +134,7 @@ int seechanges_createpath(char *filename)
     char *tmpstr = NULL;
     char *newdir = NULL;
 
-    
+
     os_strdup(filename, buffer);
     newdir = buffer;
     tmpstr = strchr(buffer +1, '/');
@@ -154,9 +154,9 @@ int seechanges_createpath(char *filename)
         {
             #ifndef WIN32
             if(mkdir(newdir, 0770) == -1)
-            #else    
+            #else
             if(mkdir(newdir) == -1)
-            #endif    
+            #endif
             {
                 merror(MKDIR_ERROR, ARGV0, newdir);
                 free(buffer);
@@ -194,7 +194,7 @@ char *seechanges_addfile(char *filename)
 
     os_md5 md5sum_old;
     os_md5 md5sum_new;
-    
+
     old_location[OS_MAXSTR] = '\0';
     tmp_location[OS_MAXSTR] = '\0';
     diff_cmd[OS_MAXSTR] = '\0';
@@ -222,7 +222,7 @@ char *seechanges_addfile(char *filename)
     if(OS_MD5_File(filename, md5sum_new) != 0)
     {
         //merror("%s: ERROR: Invalid internal state (missing '%s').",
-        //       ARGV0, filename); 
+        //       ARGV0, filename);
         return(NULL);
     }
 
@@ -248,15 +248,15 @@ char *seechanges_addfile(char *filename)
 
     /* Run diff. */
     date_of_change = File_DateofChange(old_location);
-    snprintf(diff_cmd, 2048, "diff \"%s\" \"%s\" > \"%s/local/%s/diff.%d\" " 
+    snprintf(diff_cmd, 2048, "diff \"%s\" \"%s\" > \"%s/local/%s/diff.%d\" "
              "2>/dev/null",
-             tmp_location, old_location, 
+             tmp_location, old_location,
              DIFF_DIR_PATH, filename +1, date_of_change);
     if(system(diff_cmd) != 256)
     {
         merror("%s: ERROR: Unable to run diff for %s",
                ARGV0,  filename);
-        return(NULL); 
+        return(NULL);
     }
 
 

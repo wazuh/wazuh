@@ -13,7 +13,7 @@
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
@@ -36,7 +36,7 @@ static unsigned char decode(char c);
 
 
 /**
- *  Implementation of base64 encoding/decoding. 
+ *  Implementation of base64 encoding/decoding.
  *
  *  @author Jan-Henrik Haukeland, <hauk@tildeslash.com>
  *
@@ -68,7 +68,7 @@ char *encode_base64(int size, char *src) {
     out = (char *)calloc(sizeof(char), size*4/3+4);
     if(!out)
         return NULL;
-    
+
     p = out;
 
     for(i = 0; i < size; i+=3) {
@@ -114,45 +114,45 @@ char *encode_base64(int size, char *src) {
  * 'dest'. The dest buffer is NUL terminated.
  * Return NULL in case of error
  */
-char *decode_base64(const char *src) 
+char *decode_base64(const char *src)
 {
-    if(src && *src) 
+    if(src && *src)
     {
         char *dest;
         unsigned char *p;
         int k, l = strlen(src)+1;
         unsigned char *buf;
-        
+
         /* The size of the dest will always be less than
          * the source
          */
         dest = (char *)calloc(sizeof(char), l + 13);
         if(!dest)
             return(NULL);
-        
+
         p = (unsigned char *)dest;
-         
+
         buf = malloc(l);
         if(!buf)
             return(NULL);
 
         /* Ignore non base64 chars as per the POSIX standard */
-        for(k=0, l=0; src[k]; k++) 
+        for(k=0, l=0; src[k]; k++)
         {
-            if(is_base64(src[k])) 
+            if(is_base64(src[k]))
             {
                 buf[l++]= src[k];
             }
-        } 
+        }
 
-        for(k=0; k<l; k+=4) 
+        for(k=0; k<l; k+=4)
         {
             char c1='A', c2='A', c3='A', c4='A';
             unsigned char b1=0, b2=0, b3=0, b4=0;
 
             c1= buf[k];
 
-            if(k+1<l) 
+            if(k+1<l)
             {
                 c2= buf[k+1];
             }
@@ -246,7 +246,7 @@ int main(int argc, char **argv)
 {
     char *s;
     char *d;
-    
+
     if(argc < 2)
     {
         printf("%s string\n",argv[0]);
@@ -259,7 +259,7 @@ int main(int argc, char **argv)
 
     d = decode_base64(s);
     printf("decode:%s\n",d);
-    
+
     exit(0);
 }
 

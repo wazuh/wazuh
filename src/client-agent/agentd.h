@@ -40,7 +40,7 @@ void *receive_msg();
 /* Receiver messages for Windows */
 void *receiver_thread(void *none);
 
-/* intcheck_file: 
+/* intcheck_file:
  * Sends integrity checking information about a file to the server.
  */
 int intcheck_file(char *file_name, char *dir);
@@ -64,7 +64,7 @@ void run_notify();
 /*** Global variables ***/
 
 /* Global variables. Only modified
- * during startup. 
+ * during startup.
  */
 
 #include "shared.h"

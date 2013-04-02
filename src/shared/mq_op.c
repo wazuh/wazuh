@@ -22,12 +22,12 @@
  */
 int StartMQ(char * path, short int type)
 {
-    
+
     if(type == READ)
     {
         return(OS_BindUnixDomain(path, 0660, OS_MAXSTR + 512));
     }
-    
+
     /* We give up to 21 seconds for the other end to
      * start
      */
@@ -63,7 +63,7 @@ int StartMQ(char * path, short int type)
                 sleep(2);
                 if((rc = OS_ConnectUnixDomain(path, OS_MAXSTR + 256)) < 0)
                 {
-                    merror(QUEUE_ERROR, __local_name, path, 
+                    merror(QUEUE_ERROR, __local_name, path,
                            strerror(errno));
                     return(-1);
                 }
@@ -89,8 +89,8 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
     /* Checking for global locks */
     os_wait();
-    
-    
+
+
     if(loc == SECURE_MQ)
     {
         loc = message[0];
@@ -101,14 +101,14 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
             merror(FORMAT_ERROR, __local_name);
             return(0);
         }
-        
+
         message++; /* Pointing now to the location */
 
         if(strncmp(message, "keepalive",9) == 0)
         {
             return(0);
         }
-        
+
         snprintf(tmpstr,OS_MAXSTR,"%c:%s->%s",loc, locmsg, message);
     }
     else
@@ -119,7 +119,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     if(queue < 0)
         return(-1);
 
-        
+
     /* We attempt 5 times to send the message if
      * the receiver socket is busy.
      * After the first error, we wait 1 second.
@@ -140,7 +140,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
             return(-1);
         }
 
-        
+
         /* Unable to send. Socket busy */
         sleep(1);
         if(OS_SendUnix(queue, tmpstr, 0) < 0)
@@ -163,10 +163,10 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
                     {
                         /* Message is going to be lost
                          * if the application does not care
-                         * about checking the error 
-                         */ 
+                         * about checking the error
+                         */
                         close(queue);
-                        queue = -1; 
+                        queue = -1;
                         return(-1);
                     }
                 }

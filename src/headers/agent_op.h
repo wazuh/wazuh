@@ -12,7 +12,7 @@
 
 
 #ifndef __AGENT_OP_H
-#define __AGENT_OP_H 
+#define __AGENT_OP_H
 
 
 

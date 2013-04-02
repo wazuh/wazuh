@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -35,12 +35,12 @@ void *OSSECAlert_Decoder_Init()
 
 #define oa_strchr(x,y,z) z = strchr(x,y); if(!z){ return(NULL); }
 
-/* OSSECAlert decoder 
+/* OSSECAlert decoder
  * Will extract the rule_id and point back to the original rule.
  * Will also extract srcip and username if available.
  * Examples:
- * 
- */                             
+ *
+ */
 void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
 {
     char *oa_id = 0;
@@ -61,7 +61,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
         return(NULL);
     }
 
-    
+
     /* Going past the level. */
     oa_strchr(lf->log, ';', tmp_str);
     tmp_str++;
@@ -73,10 +73,10 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
     if(*tmp_str != ' ')
     {
         return(NULL);
-    }    
+    }
     tmp_str++;
 
-    
+
     /* Getting id. */
     oa_id = tmp_str;
     oa_strchr(tmp_str, ' ', tmp_str);
@@ -106,7 +106,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
 
     /* Setting location; */
     oa_location = tmp_str;
-    
+
 
     oa_strchr(tmp_str, ';', tmp_str);
     *tmp_str = '\0';
@@ -124,7 +124,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
     }
     else
     {
-        snprintf(oa_newlocation, 255, "%s->%s|%s", lf->hostname, 
+        snprintf(oa_newlocation, 255, "%s->%s|%s", lf->hostname,
                  lf->location, oa_location);
         free(lf->location);
         os_strdup(oa_newlocation, lf->location);
@@ -134,7 +134,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
     *tmp_str = ';';
     tmp_str++;
 
-    
+
     /* Getting additional fields. */
     while((*tmp_str == ' ') && (tmp_str[1] != ' '))
     {
@@ -160,18 +160,18 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
         *tmp_str = ';';
         tmp_str++;
     }
-    
+
 
     /* Removing space. */
     while(*tmp_str == ' ')
         tmp_str++;
-    
-    
+
+
     /* Creating new full log. */
     free(lf->full_log);
     os_strdup(tmp_str, lf->full_log);
     lf->log = lf->full_log;
-    
+
 
     /* Rule that generated. */
     lf->generated_rule = rule_pointer;

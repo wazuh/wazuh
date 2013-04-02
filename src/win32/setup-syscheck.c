@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-       
+
 
 #include "setup-shared.h"
 #include "os_xml/os_xml.h"
@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 {
     char *status;
     char *(xml_syscheck_status[])={"ossec_config","syscheck","disabled", NULL};
-    
+
     if(argc < 3)
     {
         printf("%s: Invalid syntax.\n", argv[0]);

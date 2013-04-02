@@ -14,7 +14,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include <sys/ioctl.h>       
+#include <sys/ioctl.h>
 #include <net/if.h>
 
 #include <stdio.h>
@@ -50,9 +50,9 @@ int run_ifconfig(char *ifconfig)
     if(system(nt) == 0)
         return(1);
 
-    return(0);    
+    return(0);
 }
-                                                                                                                    
+
 
 /*  check_rc_if: v0.1
  *  Check all interfaces for promiscuous mode
@@ -61,7 +61,7 @@ void check_rc_if()
 {
     int _fd, _errors = 0, _total = 0;
     struct ifreq tmp_str[16];
-    
+
     struct ifconf _if;
     struct ifreq *_ir;
     struct ifreq *_ifend;
@@ -74,34 +74,34 @@ void check_rc_if()
         return;
     }
 
- 
+
     memset(tmp_str, 0, sizeof(struct ifreq)*16);
     _if.ifc_len = sizeof(tmp_str);
     _if.ifc_buf = (caddr_t)(tmp_str);
-    
+
     if (ioctl(_fd, SIOCGIFCONF, &_if) < 0)
     {
         close(_fd);
         merror("%s: Error checking interfaces (ioctl)", ARGV0);
         return;
     }
-                                     
+
     _ifend = (struct ifreq*) ((char*)tmp_str + _if.ifc_len);
     _ir = tmp_str;
 
     /* Looping on all interfaces */
-    for (; _ir < _ifend; _ir++) 
+    for (; _ir < _ifend; _ir++)
     {
         strncpy(_ifr.ifr_name, _ir->ifr_name, sizeof(_ifr.ifr_name));
 
         /* Getting information from each interface */
-        if (ioctl(_fd, SIOCGIFFLAGS, (char*)&_ifr) == -1) 
+        if (ioctl(_fd, SIOCGIFFLAGS, (char*)&_ifr) == -1)
         {
             continue;
         }
 
         _total++;
-        
+
 
         if ((_ifr.ifr_flags & IFF_PROMISC) )
         {
@@ -121,7 +121,7 @@ void check_rc_if()
             }
             _errors++;
         }
-    }                                                                              
+    }
     close(_fd);
 
     if(_errors == 0)
@@ -131,7 +131,7 @@ void check_rc_if()
                                     " Analyzed %d interfaces.", _total);
         notify_rk(ALERT_OK, op_msg);
     }
-    
+
     return;
 }
 

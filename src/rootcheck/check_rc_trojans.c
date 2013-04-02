@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 #include "shared.h"
 #include "rootcheck.h"
 
@@ -54,7 +54,7 @@ void check_rc_trojans(char *basedir, FILE *fp)
 
         /* Normalizing line */
         nbuf = normalize_string(buf);
-        
+
 
         if(*nbuf == '\0' || *nbuf == '#')
         {
@@ -70,7 +70,7 @@ void check_rc_trojans(char *basedir, FILE *fp)
         {
             continue;
         }
-        
+
         *string_to_look = '\0';
         string_to_look++;
 
@@ -81,26 +81,26 @@ void check_rc_trojans(char *basedir, FILE *fp)
         }
         *message = '\0';
         message++;
-        
+
         string_to_look = normalize_string(string_to_look);
         file = normalize_string(file);
         message = normalize_string(message);
-        
-        
+
+
         if(*file == '\0' || *string_to_look == '\0')
         {
             continue;
         }
-        
+
         _total++;
-        
-        
+
+
         /* Trying with all possible paths */
         while(all_paths[i] != NULL)
         {
             if(*file != '/')
             {
-                snprintf(file_path, OS_SIZE_1024, "%s/%s/%s",basedir, 
+                snprintf(file_path, OS_SIZE_1024, "%s/%s/%s",basedir,
                         all_paths[i],
                         file);
             }
@@ -109,15 +109,15 @@ void check_rc_trojans(char *basedir, FILE *fp)
                 strncpy(file_path, file, OS_SIZE_1024);
                 file_path[OS_SIZE_1024 -1] = '\0';
             }
-            
+
             /* Checking if entry is found */
             if(is_file(file_path) && os_string(file_path, string_to_look))
             {
                 char op_msg[OS_SIZE_1024 +1];
                 _errors = 1;
-            
+
                 snprintf(op_msg, OS_SIZE_1024, "Trojaned version of file "
-                        "'%s' detected. Signature used: '%s' (%s).", 
+                        "'%s' detected. Signature used: '%s' (%s).",
                                         file_path,
                                         string_to_look,
                                         *message == '\0'?
@@ -132,7 +132,7 @@ void check_rc_trojans(char *basedir, FILE *fp)
             }
             i++;
         }
-        continue;        
+        continue;
     }
 
 

@@ -63,7 +63,7 @@ void save_controlmsg(int agentid, char *r_msg)
 {
     char msg_ack[OS_FLSIZE +1];
 
-    
+
     /* Replying to the agent. */
     snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
     send_msg(agentid, msg_ack);
@@ -75,12 +75,12 @@ void save_controlmsg(int agentid, char *r_msg)
     {
         utimes(_keep_alive[agentid], NULL);
     }
-        
+
     else if(strcmp(r_msg, HC_STARTUP) == 0)
     {
         return;
     }
-    
+
     else
     {
         FILE *fp;
@@ -144,7 +144,7 @@ void save_controlmsg(int agentid, char *r_msg)
 
             os_strdup(agent_file, _keep_alive[agentid]);
         }
-        
+
 
         /* Writing to the file. */
         fp = fopen(_keep_alive[agentid], "w");
@@ -155,7 +155,7 @@ void save_controlmsg(int agentid, char *r_msg)
         }
     }
 
-    
+
     /* Locking now to notify of change.  */
     if(pthread_mutex_lock(&lastmsg_mutex) != 0)
     {
@@ -163,7 +163,7 @@ void save_controlmsg(int agentid, char *r_msg)
         return;
     }
 
-     
+
     /* Assign new values */
     _changed[agentid] = 1;
     modified_agentid = agentid;
@@ -172,7 +172,7 @@ void save_controlmsg(int agentid, char *r_msg)
     /* Signal that new data is available */
     pthread_cond_signal(&awake_mutex);
 
-    
+
     /* Unlocking mutex */
     if(pthread_mutex_unlock(&lastmsg_mutex) != 0)
     {
@@ -180,9 +180,9 @@ void save_controlmsg(int agentid, char *r_msg)
         return;
     }
 
-    
+
     return;
-}    
+}
 
 
 
@@ -193,14 +193,14 @@ void f_files()
     int i;
     if(!f_sum)
         return;
-    for(i = 0;;i++)    
+    for(i = 0;;i++)
     {
         if(f_sum[i] == NULL)
             break;
-        
+
         if(f_sum[i]->name)
             free(f_sum[i]->name);
-            
+
         free(f_sum[i]);
         f_sum[i] = NULL;
     }
@@ -219,9 +219,9 @@ void c_files()
     DIR *dp;
 
     struct dirent *entry;
-    
+
     os_md5 md5sum;
-    
+
     int f_size = 0;
 
 
@@ -241,21 +241,21 @@ void c_files()
 
     /* Opening the directory given */
     dp = opendir(SHAREDCFG_DIR);
-    if(!dp) 
+    if(!dp)
     {
         merror("%s: Error opening directory: '%s': %s ",
                 ARGV0,
                 SHAREDCFG_DIR,
                 strerror(errno));
         return;
-    }   
+    }
 
 
     /* Reading directory */
     while((entry = readdir(dp)) != NULL)
     {
         char tmp_dir[512];
-        
+
         /* Just ignore . and ..  */
         if((strcmp(entry->d_name,".") == 0) ||
            (strcmp(entry->d_name,"..") == 0))
@@ -272,14 +272,14 @@ void c_files()
             continue;
         }
 
-        
+
         if(OS_MD5_File(tmp_dir, md5sum) != 0)
         {
             merror("%s: Error accessing file '%s'",ARGV0, tmp_dir);
             continue;
         }
-        
-        
+
+
         f_sum = (file_sum **)realloc(f_sum, (f_size +2) * sizeof(file_sum *));
         if(!f_sum)
         {
@@ -292,7 +292,7 @@ void c_files()
             ErrorExit(MEM_ERROR,ARGV0);
         }
 
-        
+
         strncpy(f_sum[f_size]->sum, md5sum, 32);
         os_strdup(entry->d_name, f_sum[f_size]->name);
         f_sum[f_size]->mark = 0;
@@ -301,7 +301,7 @@ void c_files()
         MergeAppendFile(SHAREDCFG_FILE, tmp_dir);
         f_size++;
     }
-    
+
     if(f_sum != NULL)
         f_sum[f_size] = NULL;
 
@@ -313,15 +313,15 @@ void c_files()
         merror("%s: Error accessing file '%s'",ARGV0, SHAREDCFG_FILE);
         f_sum[0]->sum[0] = '\0';
     }
-    strncpy(f_sum[0]->sum, md5sum, 32);    
+    strncpy(f_sum[0]->sum, md5sum, 32);
 
 
     os_strdup(SHAREDCFG_FILENAME, f_sum[0]->name);
 
-    return;    
+    return;
 }
 
- 
+
 
 /* send_file_toagent: Sends a file to the agent.
  * Returns -1 on error
@@ -331,10 +331,10 @@ int send_file_toagent(int agentid, char *name, char *sum)
     int i = 0, n = 0;
     char file[OS_SIZE_1024 +1];
     char buf[OS_SIZE_1024 +1];
-    
+
     FILE *fp;
 
-    
+
     snprintf(file, OS_SIZE_1024, "%s/%s",SHAREDCFG_DIR, name);
     fp = fopen(file, "r");
     if(!fp)
@@ -345,7 +345,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
 
 
     /* Sending the file name first */
-    snprintf(buf, OS_SIZE_1024, "%s%s%s %s\n", 
+    snprintf(buf, OS_SIZE_1024, "%s%s%s %s\n",
                              CONTROL_HEADER, FILE_UPDATE_HEADER, sum, name);
 
     if(send_msg(agentid, buf) == -1)
@@ -377,7 +377,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
         i++;
     }
 
-    
+
     /* Sending the message to close the file */
     snprintf(buf, OS_SIZE_1024, "%s%s", CONTROL_HEADER, FILE_CLOSE_HEADER);
     if(send_msg(agentid, buf) == -1)
@@ -386,10 +386,10 @@ int send_file_toagent(int agentid, char *name, char *sum)
         fclose(fp);
         return(-1);
     }
-    
+
 
     fclose(fp);
-    
+
     return(0);
 }
 
@@ -400,7 +400,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
  * the agent.
  */
 void read_controlmsg(int agentid, char *msg)
-{   
+{
     int i;
 
 
@@ -424,7 +424,7 @@ void read_controlmsg(int agentid, char *msg)
     }
 
 
-    /* Parse message */ 
+    /* Parse message */
     while(*msg != '\0')
     {
         char *md5;
@@ -437,7 +437,7 @@ void read_controlmsg(int agentid, char *msg)
         if(!msg)
         {
             merror("%s: Invalid message from '%s' (strchr \\n)",
-                        ARGV0, 
+                        ARGV0,
                         keys.keyentries[agentid]->ip->ip);
             break;
         }
@@ -449,7 +449,7 @@ void read_controlmsg(int agentid, char *msg)
         if(!file)
         {
             merror("%s: Invalid message from '%s' (strchr ' ')",
-                        ARGV0, 
+                        ARGV0,
                         keys.keyentries[agentid]->ip->ip);
             break;
         }
@@ -463,7 +463,7 @@ void read_controlmsg(int agentid, char *msg)
         {
             if(strcmp(f_sum[0]->sum, md5) != 0)
             {
-                debug1("%s: DEBUG Sending file '%s' to agent.", ARGV0, 
+                debug1("%s: DEBUG Sending file '%s' to agent.", ARGV0,
                        f_sum[0]->name);
                 if(send_file_toagent(agentid,f_sum[0]->name,f_sum[0]->sum)<0)
                 {
@@ -476,7 +476,7 @@ void read_controlmsg(int agentid, char *msg)
             i = 0;
             while(f_sum[i])
             {
-                f_sum[i]->mark = 0;        
+                f_sum[i]->mark = 0;
                 i++;
             }
 
@@ -499,7 +499,7 @@ void read_controlmsg(int agentid, char *msg)
             {
                 f_sum[i]->mark = 2;
             }
-            break;        
+            break;
         }
     }
 
@@ -513,7 +513,7 @@ void read_controlmsg(int agentid, char *msg)
         if((f_sum[i]->mark == 1) ||
            (f_sum[i]->mark == 0))
         {
-            
+
             debug1("%s: Sending file '%s' to agent.", ARGV0, f_sum[i]->name);
             if(send_file_toagent(agentid,f_sum[i]->name,f_sum[i]->sum) < 0)
             {
@@ -523,11 +523,11 @@ void read_controlmsg(int agentid, char *msg)
             }
         }
 
-        f_sum[i]->mark = 0;        
+        f_sum[i]->mark = 0;
     }
 
-    
-    return; 
+
+    return;
 }
 
 
@@ -540,17 +540,17 @@ void *wait_for_msgs(void *none)
 {
     int id, i;
     char msg[OS_SIZE_1024 +2];
-    
+
 
     /* Initializing the memory */
     memset(msg, '\0', OS_SIZE_1024 +2);
 
-    
+
     /* should never leave this loop */
     while(1)
     {
         /* Every NOTIFY * 30 minutes, re read the files.
-         * If something changed, notify all agents 
+         * If something changed, notify all agents
          */
         _ctime = time(0);
         if((_ctime - _stime) > (NOTIFY_TIME*30))
@@ -560,8 +560,8 @@ void *wait_for_msgs(void *none)
 
             _stime = _ctime;
         }
-        
-        
+
+
         /* locking mutex */
         if(pthread_mutex_lock(&lastmsg_mutex) != 0)
         {
@@ -591,9 +591,9 @@ void *wait_for_msgs(void *none)
             {
                 continue;
             }
-            
+
             id = 0;
-            
+
             /* locking mutex */
             if(pthread_mutex_lock(&lastmsg_mutex) != 0)
             {
@@ -614,7 +614,7 @@ void *wait_for_msgs(void *none)
 
                 id = 1;
             }
-            
+
             /* Unlocking mutex */
             if(pthread_mutex_unlock(&lastmsg_mutex) != 0)
             {
@@ -658,7 +658,7 @@ void manager_init(int isUpdate)
         pthread_mutex_init(&lastmsg_mutex, NULL);
         pthread_cond_init(&awake_mutex, NULL);
     }
-    
+
     modified_agentid = -1;
 
     return;

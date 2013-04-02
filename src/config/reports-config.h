@@ -27,7 +27,7 @@ typedef struct _report_config
     char **emailto;
     report_filter r_filter;
 }report_config;
-   
+
 typedef struct _monitor_config
 {
     short int day_wait;

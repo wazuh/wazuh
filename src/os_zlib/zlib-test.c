@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 #include "shared.h"
 #include "os_zlib.h"
 
@@ -21,7 +21,7 @@
 /* Zlib test */
 int main(int argc, char **argv)
 {
-    int ret, srcsize, dstsize = 2010; 
+    int ret, srcsize, dstsize = 2010;
     char dst[2048];
     char dst2[2048];
 
@@ -33,7 +33,7 @@ int main(int argc, char **argv)
         printf("%s: string\n", argv[0]);
         exit(1);
     }
-    
+
     srcsize = strlen(argv[1]);
     if(srcsize > 2000)
     {
@@ -41,7 +41,7 @@ int main(int argc, char **argv)
         exit(1);
 
     }
-    
+
     if((ret = os_compress(argv[1], dst, srcsize, dstsize)))
     {
         printf("Compressed, from %d->%d\n",srcsize, ret);
@@ -54,11 +54,11 @@ int main(int argc, char **argv)
 
     /* Setting new srcsize for decompression */
     srcsize = ret;
-    
+
     if((ret = os_uncompress(dst, dst2, srcsize, dstsize)))
     {
-        printf("Uncompressed ok. String: '%s', size %d->%d\n", 
-                                        dst2, srcsize, ret); 
+        printf("Uncompressed ok. String: '%s', size %d->%d\n",
+                                        dst2, srcsize, ret);
     }
     else
     {

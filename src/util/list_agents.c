@@ -36,24 +36,24 @@ int main(int argc, char **argv)
     char *dir = DEFAULTDIR;
     char *group = GROUPGLOBAL;
     char *user = USER;
-    
+
     char *msg;
     char **agent_list;
     int gid;
     int uid;
     int flag;
-    
+
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
-    
+
+
     /* user arguments */
     if(argc < 2)
     {
         helpmsg();
     }
-    
+
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
@@ -62,14 +62,14 @@ int main(int argc, char **argv)
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
 	
-    
+
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
 	    ErrorExit(SETGID_ERROR,ARGV0, group);
     }
-    
-    
+
+
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
     {
@@ -79,14 +79,14 @@ int main(int argc, char **argv)
 
     /* Inside chroot now */
     nowChroot();
- 
+
 
     /* Setting the user */
     if(Privsep_SetUser(uid) < 0)
     {
         ErrorExit(SETUID_ERROR, ARGV0, user);
     }
-  
+
     /* User options */
     if(strcmp(argv[1], "-h") == 0)
     {
@@ -118,7 +118,7 @@ int main(int argc, char **argv)
     if(agent_list)
     {
         char **agent_list_pt = agent_list;
-        
+
         while(*agent_list)
         {
             printf("%s %s\n", *agent_list, msg);

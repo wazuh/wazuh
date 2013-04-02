@@ -44,9 +44,9 @@ void *read_command(int pos, int *rc, int drop_it)
     }
 
 
-    snprintf(str, 256, "ossec: output: '%s': ", 
-             (NULL != logff[pos].alias) 
-             ? logff[pos].alias 
+    snprintf(str, 256, "ossec: output: '%s': ",
+             (NULL != logff[pos].alias)
+             ? logff[pos].alias
              : logff[pos].command);
     cmd_size = strlen(str);
 
@@ -54,7 +54,7 @@ void *read_command(int pos, int *rc, int drop_it)
     while(fgets(str + cmd_size, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output) != NULL)
     {
         /* Getting the last occurence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) 
+        if ((p = strrchr(str, '\n')) != NULL)
         {
             *p = '\0';
         }
@@ -70,11 +70,11 @@ void *read_command(int pos, int *rc, int drop_it)
         {
             continue;
         }
-        
-        
+
+
         debug2("%s: DEBUG: Reading command message: '%s'", ARGV0, str);
 
-        
+
         /* Sending message to queue */
         if(drop_it == 0)
         {
@@ -95,7 +95,7 @@ void *read_command(int pos, int *rc, int drop_it)
 
     pclose(cmd_output);
 
-    return(NULL); 
+    return(NULL);
 }
 
 /* EOF */

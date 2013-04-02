@@ -12,9 +12,9 @@
 
 
 /* v0.4 (2005/11/11): Some cleanup and bug fixes
- * v0.3 (2005/08/26): Reading all files in just one process 
+ * v0.3 (2005/08/26): Reading all files in just one process
  * v0.2 (2005/04/04):
- */  
+ */
 
 
 /* Logcollector daemon.
@@ -44,6 +44,7 @@ int main(int argc, char **argv)
     int test_config = 0,run_foreground = 0;
     int accept_manager_commands = 0;
     char *cfg = DEFAULTCPATH;
+    char *dir = DEFAULTDIR;
 
 
     /* Setuping up random */
@@ -59,7 +60,7 @@ int main(int argc, char **argv)
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
+
 
     while((c = getopt(argc, argv, "VtdhfD:c:")) != -1)
     {
@@ -80,6 +81,7 @@ int main(int argc, char **argv)
             case 'D':
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
+                dir = optarg;
                 break;
             case 'c':
                 if(!optarg)
@@ -88,10 +90,10 @@ int main(int argc, char **argv)
                 break;
             case 't':
                 test_config = 1;
-                break;    
+                break;
             default:
                 help(ARGV0);
-                break;   
+                break;
         }
 
     }
@@ -106,22 +108,22 @@ int main(int argc, char **argv)
     /* Reading config file */
     if(LogCollectorConfig(cfg, accept_manager_commands) < 0)
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
-    
-    
+
+
     /* Getting loop timeout */
     loop_timeout = getDefine_Int("logcollector",
                                  "loop_timeout",
                                  1, 120);
-    
+
     open_file_attempts = getDefine_Int("logcollector", "open_attempts",
                                        2, 998);
-            
+
     debug_flag = getDefine_Int("logcollector",
                                "debug",
                                0,2);
     accept_manager_commands = getDefine_Int("logcollector", "remote_commands",
                                        0, 1);
-    
+
     /* Getting debug values */
     while(debug_flag != 0)
     {
@@ -133,7 +135,7 @@ int main(int argc, char **argv)
     /* Exit if test config */
     if(test_config)
         exit(0);
-        
+
 
     /* No file available to monitor -- continue */
     if(logff == NULL)
@@ -148,13 +150,13 @@ int main(int argc, char **argv)
 
         merror(NO_FILE, ARGV0);
     }
-            
+
 
     /* Starting signal handler */
     StartSIG(ARGV0);	
 
 
-    if (!run_foreground) 
+    if (!run_foreground)
     {
         /* Going on daemon mode */
         nowDaemon();
@@ -166,21 +168,21 @@ int main(int argc, char **argv)
     if(CreatePID(ARGV0, getpid()) < 0)
         merror(PID_ERROR, ARGV0);
 
-   
-   
+
+
     /* Waiting 6 seconds for the analysisd/agentd to settle */
     debug1("%s: DEBUG: Waiting main daemons to settle.", ARGV0);
     sleep(6);
-    
-     
+
+
     /* Starting the queue. */
     if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
         ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
 
 
-    /* Main loop */        
+    /* Main loop */
     LogCollectorStart();
-    
+
 
     return(0);
 }
