@@ -366,6 +366,22 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         lf->log+=23;
     }
 
+    /* Checking for suricata (new) date format
+     * ex: 01/28/1979-09:13:16.240702  [**]
+     */
+    else if( (loglen > 26) &&
+             (pieces[2] == '/') &&
+             (pieces[5] == '/') &&
+             (pieces[10] == '-') &&
+             (pieces[13] == ':') &&
+             (pieces[16]== ':') &&
+             (pieces[19]== '.') &&
+             (pieces[26] == ' ') )
+    {
+        lf->log+=28;
+    }
+
+
     /* Checking for apache log format */
     /* [Fri Feb 11 18:06:35 2004] [warn] */
     else if( (loglen > 27) &&
