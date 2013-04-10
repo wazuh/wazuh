@@ -132,42 +132,8 @@ if [ "X${UNAME}" = "XLinux" ]; then
    fi
 
    # Executing and exiting
-   COUNT=0;
-   lock;
-   while [ 1 ]; do
-        ${IPTABLES} ${ARG1}
-        RES=$?
-        if [ $RES = 0 ]; then
-            break;
-        else
-            COUNT=`expr $COUNT + 1`;
-            echo "`date` Unable to run (iptables returning != $RES): $COUNT - $0 $1 $2 $3 $4 $5" >> ${PWD}/../logs/active-responses.log     
-            sleep $COUNT;
-
-            if [ $COUNT -gt 4 ]; then
-                break;
-            fi    
-        fi
-   done
-   
-   COUNT=0;
-   while [ 1 ]; do
-        ${IPTABLES} ${ARG2}
-        RES=$?
-        if [ $RES = 0 ]; then
-            break;
-        else
-            COUNT=`expr $COUNT + 1`;
-            echo "`date` Unable to run (iptables returning != $RES): $COUNT - $0 $1 $2 $3 $4 $5" >> ${PWD}/../logs/active-responses.log     
-            sleep $COUNT;
-
-            if [ $COUNT -gt 4 ]; then
-                break;
-            fi       
-        fi
-   done
-   unlock;
-            
+   ${IPTABLES} ${ARG1}
+   ${IPTABLES} ${ARG2}
    exit 0;
    
 # FreeBSD, SunOS or NetBSD with ipfilter
