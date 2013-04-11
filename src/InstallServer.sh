@@ -244,8 +244,8 @@ cp -pr addagent/manage_agents agentlessd/ossec-agentlessd \
         remoted/ossec-remoted syscheckd/ossec-syscheckd \
 	analysisd/ossec-logtest os_csyslogd/ossec-csyslogd \
 	os_auth/ossec-authd os_dbd/ossec-dbd analysisd/ossec-makelists \
-	
 	${DIR}/bin/
+
 cp -pr util/verify-agent-conf ${DIR}/bin/
 cp -pr util/clear_stats ${DIR}/bin/
 cp -pr util/list_agents ${DIR}/bin/
