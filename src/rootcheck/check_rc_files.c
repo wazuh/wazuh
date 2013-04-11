@@ -10,7 +10,7 @@
  * Foundation
  */
 
- 
+
 #include "shared.h"
 #include "rootcheck.h"
 
@@ -28,17 +28,17 @@ void check_rc_files(char *basedir, FILE *fp)
     char *file;
     char *name;
     char *link;
-   
+
     int _errors = 0;
     int _total = 0;
-     
-     
+
+
     debug1("%s: DEBUG: Starting on check_rc_files", ARGV0);
-     
+
     while(fgets(buf, OS_SIZE_1024, fp) != NULL)
     {
         char *nbuf;
-    
+
         /* Removing end of line */
         nbuf = strchr(buf, '\n');
         if(nbuf)
@@ -48,8 +48,8 @@ void check_rc_files(char *basedir, FILE *fp)
 
         /* Assigning buf to be used */
         nbuf = buf;
-       
-        /* Excluding commented lines or blanked ones */ 
+
+        /* Excluding commented lines or blanked ones */
         while(*nbuf != '\0')
         {
             if(*nbuf == ' ' || *nbuf == '\t')
@@ -62,15 +62,15 @@ void check_rc_files(char *basedir, FILE *fp)
             else
                 break;
         }
-       
+
         if(*nbuf == '\0')
             goto newline;
-             
+
         /* File now may be valid */
         file = nbuf;
-        name = nbuf; 
-         
-         
+        name = nbuf;
+
+
         /* Getting the file and the rootkit name */
         while(*nbuf != '\0')
         {
@@ -86,12 +86,12 @@ void check_rc_files(char *basedir, FILE *fp)
                 nbuf++;
             }
         }
-   
+
         if(*nbuf == '\0')
             goto newline;
-             
-        
-        /* Some ugly code to remove spaces and \t */ 
+
+
+        /* Some ugly code to remove spaces and \t */
         while(*nbuf != '\0')
         {
            if(*nbuf == '!')
@@ -116,21 +116,21 @@ void check_rc_files(char *basedir, FILE *fp)
            }
         }
 
-        
+
         /* Getting the link (if present) */
         link = strchr(nbuf, ':');
         if(link)
         {
             *link = '\0';
-           
-            link++; 
+
+            link++;
             if(*link == ':')
             {
                 link++;
             }
         }
-       
-         
+
+
         /* Cleaning any space of \t at the end */
         nbuf = strchr(nbuf, ' ');
         if(nbuf)
@@ -143,7 +143,7 @@ void check_rc_files(char *basedir, FILE *fp)
         {
             *nbuf = '\0';
         }
-        
+
         _total++;
 
 
@@ -154,15 +154,15 @@ void check_rc_files(char *basedir, FILE *fp)
             {
                 merror(MAX_RK_MSG, ARGV0, MAX_RK_SYS);
             }
-            
+
             else
             {
                 /* Removing * / from the file */
                 file++;
                 if(*file == '/')
                     file++;
-                
-                /* Memory assignment */    
+
+                /* Memory assignment */
                 rk_sys_file[rk_sys_count] = strdup(file);
                 rk_sys_name[rk_sys_count] = strdup(name);
 
@@ -170,16 +170,16 @@ void check_rc_files(char *basedir, FILE *fp)
                    !rk_sys_file[rk_sys_count] )
                 {
                     merror(MEM_ERROR, ARGV0);
-                    
+
                     if(rk_sys_file[rk_sys_count])
                         free(rk_sys_file[rk_sys_count]);
                     if(rk_sys_name[rk_sys_count])
                         free(rk_sys_name[rk_sys_count]);
-                    
+
                     rk_sys_file[rk_sys_count] = NULL;
-                    rk_sys_name[rk_sys_count] = NULL;        
+                    rk_sys_name[rk_sys_count] = NULL;
                 }
-                
+
                 rk_sys_count++;
 
                 /* Always assigning the last as NULL */
@@ -188,23 +188,23 @@ void check_rc_files(char *basedir, FILE *fp)
             }
             continue;
         }
-        
+
         snprintf(file_path, OS_SIZE_1024, "%s/%s",basedir, file);
-        
-        /* Checking if file exists */        
+
+        /* Checking if file exists */
         if(is_file(file_path))
         {
             char op_msg[OS_SIZE_1024 +1];
-            
+
             _errors = 1;
             snprintf(op_msg, OS_SIZE_1024, "Rootkit '%s' detected "
                      "by the presence of file '%s'.",name, file_path);
-            
+
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
         }
-        
+
         newline:
-            continue;        
+            continue;
     }
 
     if(_errors == 0)

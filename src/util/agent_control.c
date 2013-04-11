@@ -53,19 +53,19 @@ int main(int argc, char **argv)
     int gid = 0;
     int uid = 0;
     int c = 0, restart_syscheck = 0, restart_all_agents = 0, list_agents = 0;
-    int info_agent = 0, agt_id = 0, active_only = 0, csv_output = 0; 
+    int info_agent = 0, agt_id = 0, active_only = 0, csv_output = 0;
     int list_responses = 0, end_time = 0, restart_agent = 0;
 
     char shost[512];
-    
+
     keystore keys;
-    
-    
+
+
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
-    
+
+
     /* user arguments */
     if(argc < 2)
     {
@@ -87,10 +87,10 @@ int main(int argc, char **argv)
                 break;
             case 'L':
                 list_responses = 1;
-                break;    
+                break;
             case 'e':
                 end_time = 1;
-                break;     
+                break;
             case 'r':
                 restart_syscheck = 1;
                 break;
@@ -98,11 +98,11 @@ int main(int argc, char **argv)
                 list_agents++;
                 break;
             case 's':
-                csv_output = 1;    
-                break;    
+                csv_output = 1;
+                break;
             case 'c':
                 active_only++;
-                break;    
+                break;
             case 'i':
                 info_agent++;
             case 'u':
@@ -136,7 +136,7 @@ int main(int argc, char **argv)
                     helpmsg();
                 }
                 agent_id = optarg;
-                restart_agent = 1;    
+                restart_agent = 1;
             case 'a':
                 restart_all_agents = 1;
                 break;
@@ -146,8 +146,8 @@ int main(int argc, char **argv)
         }
 
     }
-    
-    
+
+
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
@@ -156,14 +156,14 @@ int main(int argc, char **argv)
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
 	
-    
+
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
 	    ErrorExit(SETGID_ERROR,ARGV0, group);
     }
-    
-    
+
+
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
     {
@@ -173,7 +173,7 @@ int main(int argc, char **argv)
 
     /* Inside chroot now */
     nowChroot();
- 
+
 
     /* Setting the user */
     if(Privsep_SetUser(uid) < 0)
@@ -200,7 +200,7 @@ int main(int argc, char **argv)
         {
             printf("\nOSSEC HIDS %s. Available active responses:\n", ARGV0);
         }
-        
+
         fp = fopen(DEFAULTAR, "r");
         if(fp)
         {
@@ -216,7 +216,7 @@ int main(int argc, char **argv)
                 r_cmd = strchr(buffer, ' ');
                 if(!r_cmd)
                     continue;
-                
+
                 *r_cmd = '\0';
                 r_cmd++;
                 if(*r_cmd == '-')
@@ -227,8 +227,8 @@ int main(int argc, char **argv)
                 r_timeout = strchr(r_cmd, ' ');
                 if(!r_timeout)
                     continue;
-                *r_timeout = '\0';        
-                            
+                *r_timeout = '\0';
+
                 if(strcmp(r_name, "restart-ossec0") == 0)
                 {
                     continue;
@@ -247,13 +247,13 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    
+
     /* Listing available agents. */
     if(list_agents)
     {
         if(!csv_output)
         {
-            printf("\nOSSEC HIDS %s. List of available agents:", 
+            printf("\nOSSEC HIDS %s. List of available agents:",
                     ARGV0);
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n",
                     shost);
@@ -266,11 +266,11 @@ int main(int argc, char **argv)
         printf("\n");
         exit(0);
     }
-    
+
 
 
     /* Checking if the provided ID is valid. */
-    if(agent_id != NULL) 
+    if(agent_id != NULL)
     {
         if(strcmp(agent_id, "000") != 0)
         {
@@ -289,7 +289,7 @@ int main(int argc, char **argv)
             agt_id = -1;
         }
     }
-   
+
 
 
     /* Printing information from an agent. */
@@ -299,10 +299,10 @@ int main(int argc, char **argv)
         char final_ip[128 +1];
         char final_mask[128 +1];
         agent_info *agt_info;
-        
+
         final_ip[128] = '\0';
         final_mask[128] = '\0';
-        
+
 
         if(!csv_output)
             printf("\nOSSEC HIDS %s. Agent information:", ARGV0);
@@ -317,7 +317,7 @@ int main(int argc, char **argv)
 
             /* Getting netmask from ip. */
             getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 128);
-            snprintf(final_ip, 128, "%s%s",keys.keyentries[agt_id]->ip->ip, 
+            snprintf(final_ip, 128, "%s%s",keys.keyentries[agt_id]->ip->ip,
                                            final_mask);
 
 
@@ -330,16 +330,16 @@ int main(int argc, char **argv)
             }
             else
             {
-                printf("%s,%s,%s,%s,", 
+                printf("%s,%s,%s,%s,",
                        keys.keyentries[agt_id]->id,
                        keys.keyentries[agt_id]->name,
                        final_ip,
-                       print_agent_status(agt_status)); 
+                       print_agent_status(agt_status));
             }
         }
         else
         {
-            agt_status = get_agent_status(NULL, NULL); 
+            agt_status = get_agent_status(NULL, NULL);
             agt_info = get_agent_info(NULL, "127.0.0.1");
 
             if(!csv_output)
@@ -355,17 +355,17 @@ int main(int argc, char **argv)
                 printf("000,%s,127.0.0.1,%s/Local,",
                         shost,
                         print_agent_status(agt_status));
-                        
+
             }
         }
 
-        
+
         if(!csv_output)
         {
         printf("   Operating system:    %s\n", agt_info->os);
         printf("   Client version:      %s\n", agt_info->version);
         printf("   Last keep alive:     %s\n\n", agt_info->last_keepalive);
-        
+
 
         if(end_time)
         {
@@ -382,14 +382,14 @@ int main(int argc, char **argv)
         }
         else
         {
-            printf("%s,%s,%s,%s,%s,\n", 
+            printf("%s,%s,%s,%s,%s,\n",
                    agt_info->os,
                    agt_info->version,
                    agt_info->last_keepalive,
                    agt_info->syscheck_time,
                    agt_info->rootcheck_time);
         }
-        
+
         exit(0);
     }
 
@@ -424,7 +424,7 @@ int main(int argc, char **argv)
 
         exit(0);
     }
-    
+
 
 
     if(restart_syscheck && agent_id)
@@ -467,8 +467,8 @@ int main(int argc, char **argv)
 
         exit(0);
     }
-    
-    
+
+
     if(restart_agent && agent_id)
     {
         /* Connecting to remoted. */
@@ -524,7 +524,7 @@ int main(int argc, char **argv)
 
         exit(0);
     }
-    
+
 
     printf("\n** Invalid argument combination.\n");
     helpmsg();

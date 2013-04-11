@@ -35,7 +35,7 @@ void OSRegex_FreePattern(OSRegex *reg)
         {
             if(*pattern)
                 free(*pattern);
-            pattern++;    
+            pattern++;
         }
 
         free(reg->patterns);
@@ -74,7 +74,7 @@ void OSRegex_FreePattern(OSRegex *reg)
     /* Freeing the sub strings */
     if(reg->sub_strings)
     {
-        OSRegex_FreeSubStrings(reg);    
+        OSRegex_FreeSubStrings(reg);
         free(reg->sub_strings);
         reg->sub_strings = NULL;
     }

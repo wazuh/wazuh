@@ -34,7 +34,7 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
     char *xml_email_donotgroup = "do_not_group";
 
     MailConfig *Mail;
-     
+
     Mail = (MailConfig *)mailp;
     if(!Mail)
     {
@@ -57,44 +57,44 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
 
     if(Mail)
     {
-        os_realloc(Mail->gran_to, 
+        os_realloc(Mail->gran_to,
                    sizeof(char *)*(granto_size +1), Mail->gran_to);
-        os_realloc(Mail->gran_id, 
+        os_realloc(Mail->gran_id,
                    sizeof(int *)*(granto_size +1), Mail->gran_id);
-        os_realloc(Mail->gran_level, 
+        os_realloc(Mail->gran_level,
                    sizeof(int)*(granto_size +1), Mail->gran_level);
-        os_realloc(Mail->gran_set, 
+        os_realloc(Mail->gran_set,
                    sizeof(int)*(granto_size +1), Mail->gran_set);
-        os_realloc(Mail->gran_format, 
+        os_realloc(Mail->gran_format,
                    sizeof(int)*(granto_size +1), Mail->gran_format);
-        os_realloc(Mail->gran_location, 
+        os_realloc(Mail->gran_location,
                    sizeof(OSMatch)*(granto_size +1), Mail->gran_location);
-        os_realloc(Mail->gran_group, 
+        os_realloc(Mail->gran_group,
                    sizeof(OSMatch)*(granto_size +1), Mail->gran_group);
-        
+
         Mail->gran_to[granto_size -1] = NULL;
         Mail->gran_to[granto_size] = NULL;
-        
+
         Mail->gran_id[granto_size -1] = NULL;
         Mail->gran_id[granto_size] = NULL;
-        
+
         Mail->gran_location[granto_size -1] = NULL;
         Mail->gran_location[granto_size] = NULL;
 
         Mail->gran_group[granto_size -1] = NULL;
         Mail->gran_group[granto_size] = NULL;
-        
+
         Mail->gran_level[granto_size -1] = 0;
         Mail->gran_level[granto_size] = 0;
-        
-        Mail->gran_format[granto_size -1] = FULL_FORMAT; 
-        Mail->gran_format[granto_size] = FULL_FORMAT; 
-        
+
+        Mail->gran_format[granto_size -1] = FULL_FORMAT;
+        Mail->gran_format[granto_size] = FULL_FORMAT;
+
         Mail->gran_set[granto_size -1] = 0;
         Mail->gran_set[granto_size] = 0;
     }
-    
-    
+
+
     while(node[i])
     {
         if(!node[i]->element)
@@ -143,11 +143,11 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
                 else if(isdigit((int)*str_pt))
                 {
                     int id_i = 0;
-                    
+
                     r_id = atoi(str_pt);
                     debug1("%s: DEBUG: Adding '%d' to granular e-mail",
                            ARGV0, r_id);
-                    
+
                     if(!Mail->gran_id[granto_size -1])
                     {
                         os_calloc(2,sizeof(int),Mail->gran_id[granto_size -1]);
@@ -160,14 +160,14 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
                         {
                             id_i++;
                         }
-                        
+
                         os_realloc(Mail->gran_id[granto_size -1],
                                    (id_i +2) * sizeof(int),
-                                   Mail->gran_id[granto_size -1]);     
+                                   Mail->gran_id[granto_size -1]);
                         Mail->gran_id[granto_size -1][id_i +1] = 0;
                     }
                     Mail->gran_id[granto_size -1][id_i] = r_id;
-                    
+
 
                     str_pt = strchr(str_pt, ',');
                     if(str_pt)
@@ -228,7 +228,7 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element, xml_email_location) == 0)
         {
             os_calloc(1, sizeof(OSMatch),Mail->gran_location[granto_size -1]);
-            if(!OSMatch_Compile(node[i]->content, 
+            if(!OSMatch_Compile(node[i]->content,
                                 Mail->gran_location[granto_size -1], 0))
             {
                 merror(REGEX_COMPILE, ARGV0, node[i]->content,
@@ -239,7 +239,7 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element, xml_email_group) == 0)
         {
             os_calloc(1, sizeof(OSMatch),Mail->gran_group[granto_size -1]);
-            if(!OSMatch_Compile(node[i]->content, 
+            if(!OSMatch_Compile(node[i]->content,
                                 Mail->gran_group[granto_size -1], 0))
             {
                 merror(REGEX_COMPILE, ARGV0, node[i]->content,
@@ -266,7 +266,7 @@ int Read_EmailAlerts(XML_NODE node, void *configp, void *mailp)
            merror(XML_INV_GRAN_MAIL, ARGV0);
            return(OS_INVALID);
        }
-       
+
     return(0);
 }
 

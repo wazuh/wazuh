@@ -42,7 +42,7 @@ typedef struct _OSStore
 
 OSStore *OSStore_Create();
 OSStore *OSStore_Free(OSStore *list);
-  
+
 int OSStore_Put(OSStore *list, char *key, void *data);
 int OSStore_Check(OSStore *list, char *key);
 int OSStore_NCheck(OSStore *list, char *key);
@@ -51,7 +51,7 @@ int OSStore_GetPosition(OSStore *list, char *key);
 void *OSStore_Get(OSStore *list, char *key);
 OSStoreNode *OSStore_GetFirstNode(OSStore *list);
 int OSStore_Sort(OSStore *list, void*(sort_data_function)(void *d1, void *d2));
-   
+
 
 
 #endif

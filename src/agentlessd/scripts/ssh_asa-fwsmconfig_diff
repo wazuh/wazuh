@@ -14,7 +14,8 @@
 
 
 if {$argc < 1} {
-    send_user "ERROR: ssh_pixconfig_diff <hostname> <commands>\n";
+    send_user "ERROR: ssh_asa-fwsmconfig_diff <hostname> <commands>\n";
+    send_user "ERROR: Must be run from /var/ossec\n";
     exit 1;
 }
 

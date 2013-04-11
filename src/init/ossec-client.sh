@@ -11,7 +11,7 @@ DIR=`dirname $PWD`;
 
 ###  Do not modify bellow here ###
 NAME="OSSEC HIDS"
-VERSION="snap2012-08"
+VERSION="v2.7.1-alpha"
 AUTHOR="Trend Micro Inc."
 DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd"
 
@@ -140,6 +140,7 @@ start()
         if [ $? = 0 ]; then
             ${DIR}/bin/${i};
             if [ $? != 0 ]; then
+		echo "${i} did not start";
                 unlock;
                 exit 1;
             fi 
@@ -229,6 +230,11 @@ case "$1" in
         sleep 1;
 	start
 	;;
+  reload)
+	DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd"
+	stopa
+	start
+	;;
   status)
     status
 	;;
@@ -238,3 +244,4 @@ case "$1" in
   *)
     help
 esac
+

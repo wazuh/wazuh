@@ -12,13 +12,13 @@
 
 /* Common API for dealing with ordered lists.
  * Provides a fast search on average (n/2).
- */ 
+ */
 
 
 #include "shared.h"
 
 
-/* Create the list storage 
+/* Create the list storage
  * Return NULL on error
  */
 OSStore *OSStore_Create()
@@ -28,20 +28,20 @@ OSStore *OSStore_Create()
     my_list = calloc(1, sizeof(OSStore));
     if(!my_list)
         return(NULL);
-    
+
     my_list->first_node = NULL;
     my_list->last_node = NULL;
     my_list->cur_node = NULL;
     my_list->currently_size = 0;
     my_list->max_size = 0;
     my_list->free_data_function = NULL;
-    
+
     return(my_list);
 }
 
 
 
-/* Deletes the list storage 
+/* Deletes the list storage
  * Return NULL on error
  */
 OSStore *OSStore_Free(OSStore *list)
@@ -73,7 +73,7 @@ OSStore *OSStore_Free(OSStore *list)
 
     free(list);
     list = NULL;
-    
+
     return(list);
 }
 
@@ -89,7 +89,7 @@ int OSStore_SetMaxSize(OSStore *list, int max_size)
     {
         return(0);
     }
-    
+
     /* Minimum size is 1 */
     if(max_size <= 1)
     {
@@ -112,7 +112,7 @@ int OSStore_SetFreeDataPointer(OSStore *list, void *free_data_function)
     {
         return(0);
     }
-    
+
     list->free_data_function = free_data_function;
     return(1);
 }
@@ -144,34 +144,34 @@ int OSStore_Sort(OSStore *list, void*(sort_data_function)(void *d1, void *d2))
             /* In here, this node should stay where it is. */
             else if(movenode == list->cur_node->prev)
             {
-                break;   
+                break;
             }
 
             /* In here we need to replace the nodes. */
             else
             {
                 newnode = list->cur_node;
-                
+
                 if(list->cur_node->prev)
                     list->cur_node->prev->next = list->cur_node->next;
-                        
+
                 if(list->cur_node->next)
                     list->cur_node->next->prev = list->cur_node->prev;
                 else
-                    list->last_node = list->cur_node->prev;    
-                
-                list->cur_node = list->cur_node->prev;       
+                    list->last_node = list->cur_node->prev;
 
-                
+                list->cur_node = list->cur_node->prev;
+
+
                 newnode->next = movenode->next;
                 newnode->prev = movenode;
 
                 if(movenode->next)
                     movenode->next->prev = newnode;
-                    
+
                 movenode->next = newnode;
 
-                
+
                 break;
             }
         }
@@ -184,21 +184,21 @@ int OSStore_Sort(OSStore *list, void*(sort_data_function)(void *d1, void *d2))
 
             if(list->cur_node->prev)
                 list->cur_node->prev->next = list->cur_node->next;
-            
+
             if(list->cur_node->next)
                 list->cur_node->next->prev = list->cur_node->prev;
-            else    
-                list->last_node = list->cur_node->prev;    
-            
+            else
+                list->last_node = list->cur_node->prev;
+
             list->cur_node = list->cur_node->prev;
-            
+
             newnode->prev = NULL;
             newnode->next = list->first_node;
             list->first_node->prev = newnode;
-            
-            list->first_node = newnode;    
+
+            list->first_node = newnode;
         }
-        
+
         list->cur_node = list->cur_node->next;
     }
 
@@ -254,7 +254,7 @@ void *OSStore_Get(OSStore *list, char *key)
 {
     int chk_rc;
     list->cur_node = list->first_node;
-    
+
     while(list->cur_node)
     {
         if((chk_rc = strcmp(list->cur_node->key, key)) >= 0)
@@ -263,7 +263,7 @@ void *OSStore_Get(OSStore *list, char *key)
             if(chk_rc == 0)
                 return(list->cur_node->data);
 
-            /* Not found */    
+            /* Not found */
             return(NULL);
         }
 
@@ -281,7 +281,7 @@ int OSStore_Check(OSStore *list, char *key)
 {
     int chk_rc;
     list->cur_node = list->first_node;
-    
+
     while(list->cur_node)
     {
         if((chk_rc = strcmp(list->cur_node->key, key)) >= 0)
@@ -290,7 +290,7 @@ int OSStore_Check(OSStore *list, char *key)
             if(chk_rc == 0)
                 return(1);
 
-            /* Not found */    
+            /* Not found */
             return(0);
         }
 
@@ -311,7 +311,7 @@ int OSStore_NCheck(OSStore *list, char *key)
 
     while(list->cur_node)
     {
-        if((chk_rc = strncmp(list->cur_node->key, key, 
+        if((chk_rc = strncmp(list->cur_node->key, key,
                              list->cur_node->key_size)) >= 0)
         {
             /* Found */
@@ -368,7 +368,7 @@ void OSStore_Delete(OSStore *list, char *key)
 int OSStore_Put(OSStore *list, char *key, void *data)
 {
     int chk_rc;
-    OSStoreNode *newnode;    
+    OSStoreNode *newnode;
 
 
     /* Allocating memory for new node */
@@ -392,9 +392,9 @@ int OSStore_Put(OSStore *list, char *key, void *data)
         list->first_node = newnode;
         list->last_node = newnode;
     }
-    
- 
-    /* Store the data in order */ 
+
+
+    /* Store the data in order */
     else
     {
         list->cur_node = list->first_node;
@@ -407,18 +407,18 @@ int OSStore_Put(OSStore *list, char *key, void *data)
                 {
                     return(1);
                 }
-                
+
                 /* If there is no prev node, it is because
-                 * this is the first node. 
+                 * this is the first node.
                  */
                 if(list->cur_node->prev)
                     list->cur_node->prev->next = newnode;
                 else
                     list->first_node = newnode;
-                                            
-                
+
+
                 newnode->prev = list->cur_node->prev;
-                
+
                 list->cur_node->prev = newnode;
                 newnode->next = list->cur_node;
                 break;
@@ -435,11 +435,11 @@ int OSStore_Put(OSStore *list, char *key, void *data)
             list->last_node = newnode;
         }
     }
-    
+
 
     /* Increment list size */
     list->currently_size++;
-    
+
     return(1);
 }
 

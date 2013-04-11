@@ -44,7 +44,9 @@ whatsmtp="Podaj SMTP serwer (ip/host)?"
 
 # Część 3.1/agent
 serverip="Podaj adres IP serwera OSSEC HIDS."
+serveraddr="Podaj adres IP (hostname) serwera OSSEC HIDS."
 addingip="Dodaje IP serwera"
+addingname="Dodaje hostname serwera"
 
 
 # Część 3.2

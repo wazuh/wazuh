@@ -33,7 +33,7 @@ void OSMatch_FreePattern(OSMatch *reg)
         {
             if(*pattern)
                 free(*pattern);
-            pattern++;    
+            pattern++;
         }
 
         free(reg->patterns);

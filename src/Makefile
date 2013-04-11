@@ -18,6 +18,7 @@ none:
 		@echo "\"make setdb\" to enable database support."
 		@echo "\"make unsetdb\" to disable database support."
 		@echo "\"make setoneway\" to enable one-way connection to the manager."
+		@echo "\"make setgeoip\" to enable source IP geolocalization."
 
 clean:
 		@/bin/sh ./Makeall clean
@@ -46,14 +47,21 @@ setagent:
 		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
 
 setclang:
-		@sed -i '' -e "s/^CC=.*/CC=clang/g" LOCATION
+		@mv LOCATION LOCATION.backup
+		@sed -e "s/^CC=.*/CC=clang/g" LOCATION.backup > LOCATION
+		@rm LOCATION.backup
 
 unsetclang:
-		@sed -i '' -e "s/^CC=.*/CC=gcc/g" LOCATION
+		@mv LOCATION LOCATION.backup
+		@sed -e "s/^CC=.*/CC=gcc/g" LOCATION.backup > LOCATION
+		@rm LOCATION.backup
 
 setprelude:
 		@echo "CPRELUDE=-DPRELUDE -lprelude `libprelude-config --pthread-cflags` `libprelude-config --libs`" >> ./Config.OS
         
+setgeoip:
+		@echo "CGEOIP=-DGEOIP -I/usr/local/include -L/usr/local/lib -lGeoIP" >> ./Config.OS
+
 setdb:
 		@cd ./os_dbd; echo "CDB=`./dbmake.sh`" >> ../Config.OS;
 setmaxagents:

@@ -11,7 +11,7 @@
  */
 
 
-#include "shared.h" 
+#include "shared.h"
 #include "execd.h"
 
 
@@ -56,8 +56,8 @@ int ExecdConfig(char * cfgfile)
         else
         {
             merror(XML_VALUEERR, ARGV0,
-                    "disabled", 
-                    disable_entry); 
+                    "disabled",
+                    disable_entry);
             return(-1);
         }
     }
@@ -71,11 +71,11 @@ int ExecdConfig(char * cfgfile)
         if(!repeated_a)
         {
             merror(XML_VALUEERR, ARGV0,
-                    "repeated_offenders", 
-                    disable_entry); 
+                    "repeated_offenders",
+                    disable_entry);
             return(-1);
         }
-        
+
         while(repeated_a[i] != NULL)
         {
             char *tmpt = repeated_a[i];
@@ -102,8 +102,8 @@ int ExecdConfig(char * cfgfile)
             i++;
         }
     }
-    
-    
+
+
     OS_ClearXML(&xml);
     return(is_disabled);
 }

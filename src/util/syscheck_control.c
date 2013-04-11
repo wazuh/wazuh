@@ -22,7 +22,7 @@
 /** help **/
 void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: Manages the integrity checking database.\n", 
+    printf("\nOSSEC HIDS %s: Manages the integrity checking database.\n",
            ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
@@ -58,13 +58,13 @@ int main(int argc, char **argv)
     int active_only = 0, csv_output = 0;
 
     char shost[512];
-    
-    
-    
+
+
+
     /* Setting the name */
     OS_SetName(ARGV0);
-        
-    
+
+
     /* user arguments */
     if(argc < 2)
     {
@@ -92,15 +92,15 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 zero_counter = 2;
-                break;        
+                break;
             case 's':
-                csv_output = 1;    
+                csv_output = 1;
             case 'c':
                 active_only++;
-                break;    
+                break;
             case 'r':
                 registry_only = 1;
-                break;    
+                break;
             case 'i':
                 info_agent++;
                 if(!optarg)
@@ -133,8 +133,8 @@ int main(int argc, char **argv)
         }
 
     }
-    
-    
+
+
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
@@ -143,14 +143,14 @@ int main(int argc, char **argv)
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
 	
-    
+
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
 	    ErrorExit(SETGID_ERROR,ARGV0, group);
     }
-    
-    
+
+
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
     {
@@ -160,7 +160,7 @@ int main(int argc, char **argv)
 
     /* Inside chroot now */
     nowChroot();
- 
+
 
     /* Setting the user */
     if(Privsep_SetUser(uid) < 0)
@@ -179,13 +179,13 @@ int main(int argc, char **argv)
     }
 
 
-    
+
     /* Listing available agents. */
     if(list_agents)
     {
         if(!csv_output)
         {
-            printf("\nOSSEC HIDS %s. List of available agents:", 
+            printf("\nOSSEC HIDS %s. List of available agents:",
                     ARGV0);
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, "
                    "Active/Local\n", shost);
@@ -198,7 +198,7 @@ int main(int argc, char **argv)
         printf("\n");
         exit(0);
     }
-    
+
 
 
     /* Update syscheck database. */
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
                     continue;
                 }
 
-                snprintf(full_path, OS_MAXSTR,"%s/%s", SYSCHECK_DIR, 
+                snprintf(full_path, OS_MAXSTR,"%s/%s", SYSCHECK_DIR,
                          entry->d_name);
 
                 fp = fopen(full_path, "w");
@@ -247,7 +247,7 @@ int main(int argc, char **argv)
             exit(0);
         }
 
-        else if((strcmp(agent_id, "000") == 0) || 
+        else if((strcmp(agent_id, "000") == 0) ||
                 (strcmp(agent_id, "local") == 0))
         {
             char final_dir[1024];
@@ -300,7 +300,7 @@ int main(int argc, char **argv)
         }
     }
 
-    
+
     /* Printing information from an agent. */
     if(info_agent)
     {
@@ -317,19 +317,19 @@ int main(int argc, char **argv)
                     shost, "127.0.0.1");
             if(fname)
             {
-                printf("Detailed information for entries matching: '%s'\n", 
+                printf("Detailed information for entries matching: '%s'\n",
                        fname);
             }
-            
+
             print_syscheck(NULL,
-                           NULL, fname, 0, 0, 
+                           NULL, fname, 0, 0,
                            csv_output, zero_counter);
         }
         else if(strchr(agent_id, '@'))
         {
             if(fname)
             {
-                printf("Detailed information for entries matching: '%s'\n", 
+                printf("Detailed information for entries matching: '%s'\n",
                        fname);
             }
             print_syscheck(agent_id, NULL, fname, registry_only, 0,
@@ -358,33 +358,33 @@ int main(int argc, char **argv)
             {
                 printf("\nIntegrity changes for 'Windows Registry' of"
                        " agent '%s (%s) - %s':\n",
-                       keys.keyentries[i]->name, keys.keyentries[i]->id, 
-                       final_ip);   
+                       keys.keyentries[i]->name, keys.keyentries[i]->id,
+                       final_ip);
             }
             else
             {
                 printf("\nIntegrity changes for agent "
                        "'%s (%s) - %s':\n",
-                       keys.keyentries[i]->name, keys.keyentries[i]->id, 
+                       keys.keyentries[i]->name, keys.keyentries[i]->id,
                        final_ip);
             }
 
             if(fname)
             {
-                printf("Detailed information for entries matching: '%s'\n", 
+                printf("Detailed information for entries matching: '%s'\n",
                        fname);
             }
             print_syscheck(keys.keyentries[i]->name,
-                    keys.keyentries[i]->ip->ip, fname, 
+                    keys.keyentries[i]->ip->ip, fname,
                     registry_only, 0, csv_output, zero_counter);
 
         }
-        
+
         exit(0);
     }
 
 
-    
+
     printf("\n** Invalid argument combination.\n");
     helpmsg();
 

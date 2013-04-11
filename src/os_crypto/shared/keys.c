@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -24,7 +24,7 @@
 
 
 
-/* __memclear: Clears keys entries. 
+/* __memclear: Clears keys entries.
  */
 void __memclear(char *id, char *name, char *ip, char *key, int size)
 {
@@ -41,10 +41,10 @@ void __chash(keystore *keys, char *id, char *name, char *ip, char *key)
 {
 	os_md5 filesum1;
 	os_md5 filesum2;
-   
-    char *tmp_str; 
+
+    char *tmp_str;
 	char _finalstr[KEYSIZE];
-    
+
 
     /* Allocating for the whole structure */
     keys->keyentries =(keyentry **)realloc(keys->keyentries,
@@ -54,32 +54,32 @@ void __chash(keystore *keys, char *id, char *name, char *ip, char *key)
         ErrorExit(MEM_ERROR, __local_name);
     }
     os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
-   
-    
+
+
     /* Setting configured values for id */
     os_strdup(id, keys->keyentries[keys->keysize]->id);
-    OSHash_Add(keys->keyhash_id, 
-               keys->keyentries[keys->keysize]->id, 
+    OSHash_Add(keys->keyhash_id,
+               keys->keyentries[keys->keysize]->id,
                keys->keyentries[keys->keysize]);
-    
-    
+
+
     /* agent ip */
     os_calloc(1, sizeof(os_ip), keys->keyentries[keys->keysize]->ip);
     if(OS_IsValidIP(ip, keys->keyentries[keys->keysize]->ip) == 0)
     {
         ErrorExit(INVALID_IP, __local_name, ip);
     }
-    
+
     /* We need to remove the "/" from the cidr */
 	if((tmp_str = strchr(keys->keyentries[keys->keysize]->ip->ip, '/')) != NULL)
     {
         *tmp_str = '\0';
     }
-    OSHash_Add(keys->keyhash_ip, 
-               keys->keyentries[keys->keysize]->ip->ip, 
+    OSHash_Add(keys->keyhash_ip,
+               keys->keyentries[keys->keysize]->ip->ip,
                keys->keyentries[keys->keysize]);
 
-    
+
     /* agent name */
     os_strdup(name, keys->keyentries[keys->keysize]->name);
 
@@ -91,15 +91,15 @@ void __chash(keystore *keys, char *id, char *name, char *ip, char *key)
     keys->keyentries[keys->keysize]->fp = NULL;
 
 	
-    
+
 	/** Generating final symmetric key **/
-    
+
 	/* MD5 from name, id and key */
 	OS_MD5_Str(name, filesum1);	
 	OS_MD5_Str(id,  filesum2);
 
 
-	/* Generating new filesum1 */ 
+	/* Generating new filesum1 */
 	snprintf(_finalstr, sizeof(_finalstr)-1, "%s%s", filesum1, filesum2);
 
 	
@@ -112,7 +112,7 @@ void __chash(keystore *keys, char *id, char *name, char *ip, char *key)
     /* Second md is just the key */
     OS_MD5_Str(key, filesum2);	
 	
-    
+
 	/* Generating final key */
 	memset(_finalstr,'\0', sizeof(_finalstr));
 	snprintf(_finalstr, 49, "%s%s", filesum2, filesum1);
@@ -128,14 +128,14 @@ void __chash(keystore *keys, char *id, char *name, char *ip, char *key)
 
 	/* ready for next */
 	keys->keysize++;	
-    
-    
+
+
 	return;
 }
 
 
-/* int OS_CheckKeys(): 
- * Checks if the authentication key file is present 
+/* int OS_CheckKeys():
+ * Checks if the authentication key file is present
  */
 int OS_CheckKeys()
 {
@@ -172,15 +172,15 @@ int OS_CheckKeys()
 void OS_ReadKeys(keystore *keys)
 {
     FILE *fp;
-    
+
     char buffer[OS_BUFFER_SIZE +1];
-    
+
     char name[KEYSIZE +1];
     char ip[KEYSIZE +1];
     char id[KEYSIZE +1];
     char key[KEYSIZE +1];
-    
-    
+
+
     /* Checking if the keys file is present and we can read it. */
     if((keys->file_change = File_DateofChange(KEYS_FILE)) < 0)
     {
@@ -222,7 +222,7 @@ void OS_ReadKeys(keystore *keys)
     {
         char *tmp_str;
         char *valid_str;
-        
+
         if((buffer[0] == '#') || (buffer[0] == ' '))
             continue;
 
@@ -245,7 +245,7 @@ void OS_ReadKeys(keystore *keys)
         {
             continue;
         }
-        
+
         /* Getting name */
         valid_str = tmp_str;
         tmp_str = strchr(tmp_str, ' ');
@@ -258,7 +258,7 @@ void OS_ReadKeys(keystore *keys)
         tmp_str++;
         strncpy(name, valid_str, KEYSIZE -1);
 
-         
+
         /* Getting ip address */
         valid_str = tmp_str;
         tmp_str = strchr(tmp_str, ' ');
@@ -271,7 +271,7 @@ void OS_ReadKeys(keystore *keys)
         tmp_str++;
         strncpy(ip, valid_str, KEYSIZE -1);
 
-        
+
         /* Getting key */
         valid_str = tmp_str;
         tmp_str = strchr(tmp_str, '\n');
@@ -288,8 +288,8 @@ void OS_ReadKeys(keystore *keys)
 
 
         /* Clearing the memory */
-        __memclear(id, name, ip, key, KEYSIZE +1); 
-        
+        __memclear(id, name, ip, key, KEYSIZE +1);
+
 
         /* Checking for maximum agent size */
         if(keys->keysize >= (MAX_AGENTS -2))
@@ -297,11 +297,11 @@ void OS_ReadKeys(keystore *keys)
             merror(AG_MAX_ERROR, __local_name, MAX_AGENTS -2);
             ErrorExit(CONFIG_ERROR, __local_name, KEYS_FILE);
         }
-        
+
         continue;
     }
-    
-    
+
+
     /* Closing key file. */
     fclose(fp);
 
@@ -344,12 +344,12 @@ void OS_FreeKeys(keystore *keys)
     keys->keysize = 0;
     keys->keyhash_id =NULL;
     keys->keyhash_ip = NULL;
-    
-    
+
+
     /* Sleeping to give time to other threads to stop using them. */
     sleep(1);
-    
-    
+
+
     /* Freeing the hashes */
     OSHash_Free(hashid);
     OSHash_Free(haship);
@@ -364,16 +364,16 @@ void OS_FreeKeys(keystore *keys)
                 free(keys->keyentries[i]->ip->ip);
                 free(keys->keyentries[i]->ip);
             }
-            
-            if(keys->keyentries[i]->id)    
+
+            if(keys->keyentries[i]->id)
                 free(keys->keyentries[i]->id);
-            
+
             if(keys->keyentries[i]->key)
                 free(keys->keyentries[i]->key);
 
             if(keys->keyentries[i]->name)
                 free(keys->keyentries[i]->name);
-                
+
             /* Closing counter */
             if(keys->keyentries[i]->fp)
                 fclose(keys->keyentries[i]->fp);
@@ -382,7 +382,7 @@ void OS_FreeKeys(keystore *keys)
             keys->keyentries[i] = NULL;
         }
     }
-    
+
     /* Freeing structure */
     free(keys->keyentries);
     keys->keyentries = NULL;
@@ -412,20 +412,20 @@ int OS_UpdateKeys(keystore *keys)
     {
         merror(ENCFILE_CHANGED, __local_name);
         debug1("%s: DEBUG: Freekeys", __local_name);
-        
+
         OS_FreeKeys(keys);
         debug1("%s: DEBUG: OS_ReadKeys", __local_name);
-        
+
         /* Reading keys */
         verbose(ENC_READ, __local_name);
 
-            
+
         OS_ReadKeys(keys);
         debug1("%s: DEBUG: OS_StartCounter", __local_name);
-        
+
         OS_StartCounter(keys);
         debug1("%s: DEBUG: OS_UpdateKeys completed", __local_name);
-        
+
         return(1);
     }
     return(0);
@@ -433,7 +433,7 @@ int OS_UpdateKeys(keystore *keys)
 
 
 /* OS_IsAllowedIP()
- * Checks if an IP address is allowed to connect. 
+ * Checks if an IP address is allowed to connect.
  */
 int OS_IsAllowedIP(keystore *keys, char *srcip)
 {
@@ -441,7 +441,7 @@ int OS_IsAllowedIP(keystore *keys, char *srcip)
 
     if(srcip == NULL)
         return(-1);
-   
+
     entry = OSHash_Get(keys->keyhash_ip, srcip);
     if(entry)
     {
@@ -477,7 +477,7 @@ int OS_IsAllowedID(keystore *keys, char *id)
 
     if(id == NULL)
         return(-1);
-   
+
     entry = OSHash_Get(keys->keyhash_id, id);
     if(entry)
     {
@@ -492,10 +492,10 @@ int OS_IsAllowedID(keystore *keys, char *id)
 int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip)
 {
     keyentry *entry;
-    
+
     if(id == NULL)
         return(-1);
-    
+
     entry = OSHash_Get(keys->keyhash_id, id);
     if(entry)
     {

@@ -41,7 +41,7 @@ int el_last = 0;
 
 
 /** int startEL(char *app, os_el *el)
- * Starts the event logging for each el 
+ * Starts the event logging for each el
  */
 int startEL(char *app, os_el *el)
 {
@@ -49,7 +49,7 @@ int startEL(char *app, os_el *el)
     el->h = OpenEventLog(NULL, app);
     if(!el->h)
     {
-        return(0);	    
+        return(0);	
     }
 
     el->name = app;
@@ -60,7 +60,7 @@ int startEL(char *app, os_el *el)
 
 
 
-/** char *el_getCategory(int category_id) 
+/** char *el_getCategory(int category_id)
  * Returns a string related to the category id of the log.
  */
 char *el_getCategory(int category_id)
@@ -94,7 +94,7 @@ char *el_getCategory(int category_id)
 /** int el_getEventDLL(char *evt_name, char *source, char *event)
  * Returns the event.
  */
-int el_getEventDLL(char *evt_name, char *source, char *event) 
+int el_getEventDLL(char *evt_name, char *source, char *event)
 {
     HKEY key;
     DWORD ret;
@@ -103,21 +103,21 @@ int el_getEventDLL(char *evt_name, char *source, char *event)
 
     keyname[255] = '\0';
 
-    snprintf(keyname, 254, 
-            "System\\CurrentControlSet\\Services\\EventLog\\%s\\%s", 
-            evt_name, 
+    snprintf(keyname, 254,
+            "System\\CurrentControlSet\\Services\\EventLog\\%s\\%s",
+            evt_name,
             source);
 
-    /* Opening registry */	    
+    /* Opening registry */	
     if(RegOpenKeyEx(HKEY_LOCAL_MACHINE, keyname, 0, KEY_ALL_ACCESS, &key)
             != ERROR_SUCCESS)
     {
-        return(0);    
+        return(0);
     }
 
 
     ret = MAX_PATH -1;	
-    if (RegQueryValueEx(key, "EventMessageFile", NULL, 
+    if (RegQueryValueEx(key, "EventMessageFile", NULL,
                 NULL, (LPBYTE)event, &ret) != ERROR_SUCCESS)
     {
         event[0] = '\0';	
@@ -130,11 +130,11 @@ int el_getEventDLL(char *evt_name, char *source, char *event)
 
 
 
-/** char *el_getmessage() 
+/** char *el_getmessage()
  * Returns a descriptive message of the event.
  */
-char *el_getMessage(EVENTLOGRECORD *er,  char *name, 
-		    char * source, LPTSTR *el_sstring) 
+char *el_getMessage(EVENTLOGRECORD *er,  char *name,
+		    char * source, LPTSTR *el_sstring)
 {
     DWORD fm_flags = 0;
     char tmp_str[257];
@@ -157,12 +157,12 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
     /* Get the file name from the registry (stored on event) */
     if(!el_getEventDLL(name, source, event))
     {
-        return(NULL);	    
-    }	    
+        return(NULL);	
+    }	
 
     curr_str = event;
 
-    /* If our event has multiple libraries, try each one of them */ 
+    /* If our event has multiple libraries, try each one of them */
     while((next_str = strchr(curr_str, ';')))
     {
         *next_str = '\0';
@@ -172,11 +172,11 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
         hevt = LoadLibraryEx(tmp_str, NULL, DONT_RESOLVE_DLL_REFERENCES);
         if(hevt)
         {
-            if(!FormatMessage(fm_flags, hevt, er->EventID, 
+            if(!FormatMessage(fm_flags, hevt, er->EventID,
                         0,
                         (LPTSTR) &message, 0, el_sstring))
             {
-                message = NULL;		  
+                message = NULL;		
             }
             FreeLibrary(hevt);
 
@@ -192,12 +192,12 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
     hevt = LoadLibraryEx(tmp_str, NULL, DONT_RESOLVE_DLL_REFERENCES);
     if(hevt)
     {
-        int hr;    
-        if(!(hr = FormatMessage(fm_flags, hevt, er->EventID, 
+        int hr;
+        if(!(hr = FormatMessage(fm_flags, hevt, er->EventID,
                         0,
                         (LPTSTR) &message, 0, el_sstring)))
         {
-            message = NULL;		  
+            message = NULL;		
         }
         FreeLibrary(hevt);
 
@@ -213,7 +213,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
 
 /** void readel(os_el *el)
  * Reads the event log.
- */ 
+ */
 void readel(os_el *el, int printit)
 {
     DWORD nstr;
@@ -239,7 +239,7 @@ void readel(os_el *el, int printit)
     LPSTR el_sstring[57];
 
     /* Er must point to the mbuffer */
-    el->er = (EVENTLOGRECORD *) &mbuffer; 
+    el->er = (EVENTLOGRECORD *) &mbuffer;
 
     /* Zeroing the last values */
     el_string[1024] = '\0';
@@ -248,8 +248,8 @@ void readel(os_el *el, int printit)
     final_msg[1023] = '\0';
     el_sstring[56] = NULL;
 
-    /* Reading the event log */	    
-    while(ReadEventLog(el->h, 
+    /* Reading the event log */	
+    while(ReadEventLog(el->h,
                 EVENTLOG_FORWARDS_READ | EVENTLOG_SEQUENTIAL_READ,
                 0,
                 el->er, BUFFER_SIZE -1, &read, &needed))
@@ -295,27 +295,27 @@ void readel(os_el *el, int printit)
                         el_sstring[nstr] = (LPSTR)sstr;
 
                     sstr = strchr( (LPSTR)sstr, '\0');
-                    sstr++; 
+                    sstr++;
                 }
 
                 /* Get a more descriptive message (if available) */
-                descriptive_msg = el_getMessage(el->er, el->name, source, 
+                descriptive_msg = el_getMessage(el->er, el->name, source,
                                                         el_sstring);
                 if(descriptive_msg != NULL)
                 {
                     /* Remove any \n or \r */
-                    tmp_str = descriptive_msg;    
+                    tmp_str = descriptive_msg;
                     while((tmp_str = strchr(tmp_str, '\n')))
                     {
                         *tmp_str = ' ';
-                        tmp_str++;		    
+                        tmp_str++;		
                     }			
 
-                    tmp_str = descriptive_msg;    
+                    tmp_str = descriptive_msg;
                     while((tmp_str = strchr(tmp_str, '\r')))
                     {
                         *tmp_str = ' ';
-                        tmp_str++;		    
+                        tmp_str++;		
                     }			
                 }
             }
@@ -347,20 +347,20 @@ void readel(os_el *el, int printit)
 
             if(printit)
             {
-                DWORD _evtid = 65535;   
-                int id = (int)el->er->EventID & _evtid;                  
-                
-                snprintf(final_msg, 1022, 
+                DWORD _evtid = 65535;
+                int id = (int)el->er->EventID & _evtid;
+
+                snprintf(final_msg, 1022,
                         "%d WinEvtLog: %s: %s(%d): %s: %s(%s): %s",
         		        (int)el->er->TimeGenerated,	
                         el->name,
-                        category, 
+                        category,
                         id,
                         source,
                         el_user,
                         el_domain,
                         descriptive_msg != NULL?descriptive_msg:el_string);	
-               
+
 	       	fprintf(fp, "%s\n", final_msg);	
             }
 
@@ -405,18 +405,18 @@ int main(int argc, char **argv)
    }
    else if((argc == 3)&&(strcmp(argv[1], "-f") == 0))
    {
-      file = argv[2];	   
-   }  
+      file = argv[2];	
+   }
    else
       help();
-   
+
    fp = fopen(file, "w");
    if(!fp)
    {
       printf("Unable to open file '%s'\n", file);
       exit(1);
    }
-   
+
    win_startel("Application");	
    win_startel("System");	
    win_startel("Security");	

@@ -6,7 +6,7 @@
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software 
+ * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
 
@@ -22,32 +22,32 @@ char __elogfile[OS_FLSIZE+1];
 char __alogfile[OS_FLSIZE+1];
 char __flogfile[OS_FLSIZE+1];
 	
-/* OS_InitLog */    
+/* OS_InitLog */
 void OS_InitLog()
 {
     OS_InitFwLog();
 
     __crt_day = 0;
-    
-    /* alerts and events log file */    
-    memset(__alogfile,'\0',OS_FLSIZE +1); 
-    memset(__elogfile,'\0',OS_FLSIZE +1); 
-    memset(__flogfile,'\0',OS_FLSIZE +1); 
+
+    /* alerts and events log file */
+    memset(__alogfile,'\0',OS_FLSIZE +1);
+    memset(__elogfile,'\0',OS_FLSIZE +1);
+    memset(__flogfile,'\0',OS_FLSIZE +1);
 
     _eflog = NULL;
     _aflog = NULL;
     _fflog = NULL;
-    
+
     /* Setting the umask */
     umask(0027);
 }
 
 
-/* gzips a log file 
+/* gzips a log file
 int OS_CompressLog(int yesterday, char *prev_month, int prev_year)
 
-  -- moved to monitord.	  
-*/      
+  -- moved to monitord.	
+*/
 
 
 
@@ -55,11 +55,11 @@ int OS_CompressLog(int yesterday, char *prev_month, int prev_year)
 /* OS_GetLogLocation: v0.1, 2005/04/25 */
 int OS_GetLogLocation(Eventinfo *lf)
 {
-    /* Checking what directories to create 
+    /* Checking what directories to create
      * Checking if the year directory is there.
      * If not, create it. Same for the month directory.
      */
-     
+
     /* For the events */
     if(_eflog)
     {
@@ -68,7 +68,7 @@ int OS_GetLogLocation(Eventinfo *lf)
         fclose(_eflog);
         _eflog = NULL;
     }
-    
+
     snprintf(__elogfile,OS_FLSIZE,"%s/%d/", EVENTS, lf->year);
     if(IsDir(__elogfile) == -1)
         if(mkdir(__elogfile,0770) == -1)
@@ -97,11 +97,11 @@ int OS_GetLogLocation(Eventinfo *lf)
     _eflog = fopen(__elogfile,"a");
     if(!_eflog)
         ErrorExit("%s: Error opening logfile: '%s'",ARGV0,__elogfile);
-    
+
     /* Creating a symlink */
     unlink(EVENTS_DAILY);
     link(__elogfile, EVENTS_DAILY);
-    
+
 
     /* for the alerts logs */
     if(_aflog)
@@ -111,7 +111,7 @@ int OS_GetLogLocation(Eventinfo *lf)
         fclose(_aflog);
         _aflog = NULL;
     }
-                            
+
     snprintf(__alogfile,OS_FLSIZE,"%s/%d/", ALERTS, lf->year);
     if(IsDir(__alogfile) == -1)
         if(mkdir(__alogfile,0770) == -1)
@@ -137,14 +137,14 @@ int OS_GetLogLocation(Eventinfo *lf)
             lf->day);
 
     _aflog = fopen(__alogfile,"a");
-    
+
     if(!_aflog)
         ErrorExit("%s: Error opening logfile: '%s'",ARGV0,__alogfile);
-    
+
     /* Creating a symlink */
     unlink(ALERTS_DAILY);
     link(__alogfile, ALERTS_DAILY);
-            
+
 
     /* For the firewall events */
     if(_fflog)
@@ -154,7 +154,7 @@ int OS_GetLogLocation(Eventinfo *lf)
         fclose(_fflog);
         _fflog = NULL;
     }
-                            
+
     snprintf(__flogfile,OS_FLSIZE,"%s/%d/", FWLOGS, lf->year);
     if(IsDir(__flogfile) == -1)
         if(mkdir(__flogfile,0770) == -1)
@@ -188,9 +188,9 @@ int OS_GetLogLocation(Eventinfo *lf)
     /* Creating a symlink */
     unlink(FWLOGS_DAILY);
     link(__flogfile, FWLOGS_DAILY);
-            
 
-    /* Setting the new day */        
+
+    /* Setting the new day */
     __crt_day = lf->day;
 
     return(0);

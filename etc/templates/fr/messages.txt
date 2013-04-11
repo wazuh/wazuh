@@ -44,7 +44,9 @@ whatsmtp="Quel est l'adresse IP ou le nom d'hôte de votre serveur SMTP ?"
 
 # Part 3.1/agent
 serverip="Quelle est l'adresse IP de votre serveur OSSEC HIDS ?"
+serveraddr="Quelle est l'adresse IP ou le nom d'hôte de votre serveur OSSEC HIDS ?"
 addingip="Ajout de l'IP du Serveur"
+addingname="Ajout de le nom d'hôte du Serveur"
 
 
 # Part 3.2

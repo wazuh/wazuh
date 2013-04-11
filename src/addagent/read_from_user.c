@@ -23,7 +23,7 @@ char *read_from_user()
 {
     memset(__user_buffer, '\0', USER_SIZE +1);
 
-    if((fgets(__user_buffer, USER_SIZE -1, stdin) == NULL) || 
+    if((fgets(__user_buffer, USER_SIZE -1, stdin) == NULL) ||
        (strlen(__user_buffer) >= (USER_SIZE -2)))
     {
         printf(INPUT_LARGE);

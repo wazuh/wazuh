@@ -42,13 +42,13 @@ void _log(const char * msg,va_list args)
     va_list args2;
 
     FILE *fp;
-    
+
     tm = time(NULL);
     p = localtime(&tm);
 
     /* Duplicating args */
     va_copy(args2, args);
-    
+
 
     /* If under chroot, log directly to /logs/ossec.log */
     if(chroot_flag == 1)
@@ -70,7 +70,7 @@ void _log(const char * msg,va_list args)
     if(fp)
     {
         (void)fprintf(fp,"%d/%02d/%02d %02d:%02d:%02d ",
-                      p->tm_year+1900,p->tm_mon+1, 
+                      p->tm_year+1900,p->tm_mon+1,
                       p->tm_mday,p->tm_hour,p->tm_min,p->tm_sec);
         (void)vfprintf(fp, msg, args);
         #ifdef WIN32
@@ -157,15 +157,15 @@ void log2file(const char * msg,... )
     _log(msg, args);
 
     daemon_flag = dbg_tmp;
-    
+
     va_end(args);
 }
 
 void ErrorExit(const char *msg, ...)
 {
     va_list args;
-   
-    #ifdef WIN32 
+
+    #ifdef WIN32
         /* If not MA */
         #ifndef MA
         WinSetError();
@@ -198,13 +198,13 @@ void print_out(const char *msg, ...)
 
     /* Print to stderr */
     (void)vfprintf(stderr, msg, args);
-    
+
     #ifdef WIN32
     (void)fprintf(stderr, "\r\n");
     #else
     (void)fprintf(stderr, "\n");
     #endif
-    
+
     va_end(args);
 }
 

@@ -18,7 +18,7 @@
 /** Checks if syscheck is to be executed/restarted.
  *  Returns 1 on success or 0 on failure (shouldn't be executed now).
  */
-int os_check_restart_syscheck() 
+int os_check_restart_syscheck()
 {
     struct stat restart_status;
 
@@ -29,19 +29,19 @@ int os_check_restart_syscheck()
     {
         if(stat(SYSCHECK_RESTART, &restart_status) == -1)
             return(0);
-        
-        unlink(SYSCHECK_RESTART);    
+
+        unlink(SYSCHECK_RESTART);
     }
     else
     {
         if(stat(SYSCHECK_RESTART_PATH, &restart_status) == -1)
             return(0);
-        
-        unlink(SYSCHECK_RESTART_PATH);    
-    }
-    
 
-    return(1);    
+        unlink(SYSCHECK_RESTART_PATH);
+    }
+
+
+    return(1);
 }
 
 
@@ -84,8 +84,8 @@ char* os_read_agent_name()
         fp = fopen(AGENT_INFO_FILE, "r");
     else
         fp = fopen(AGENT_INFO_FILEP, "r");
-        
-    /* We give 1 second for the file to be created... */ 
+
+    /* We give 1 second for the file to be created... */
     if(!fp)
     {
         sleep(1);
@@ -93,9 +93,9 @@ char* os_read_agent_name()
         if(isChroot())
             fp = fopen(AGENT_INFO_FILE, "r");
         else
-            fp = fopen(AGENT_INFO_FILEP, "r");        
+            fp = fopen(AGENT_INFO_FILEP, "r");
     }
-    
+
     if(!fp)
     {
         debug1(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
@@ -111,7 +111,7 @@ char* os_read_agent_name()
         char *ret = NULL;
         os_strdup(buf, ret);
         fclose(fp);
-        
+
         debug2("%s: os_read_agent_name returned (%s).", __local_name, ret);
 
         return(ret);
@@ -203,12 +203,12 @@ char *os_read_agent_id()
  *  Returns NULL on error.
  *
  *  Description:
- *  Comma separated list of strings that used to identify what type 
+ *  Comma separated list of strings that used to identify what type
  *  of configuration is used for this agent.
  *  The profile name is set in the agent's etc/ossec.conf file
  *  It is matched with the ossec manager's agent.conf file to read
  *  configuration only applicable to this profile name.
- *  
+ *
  */
 char* os_read_agent_profile()
 {
@@ -233,7 +233,7 @@ char* os_read_agent_profile()
 
 
     /* Getting profile */
-    if(fgets(buf, 1024, fp) && fgets(buf, 1024, fp) && 
+    if(fgets(buf, 1024, fp) && fgets(buf, 1024, fp) &&
        fgets(buf, 1024, fp) && fgets(buf, 1024, fp))
     {
         char *ret = NULL;
@@ -260,7 +260,7 @@ char* os_read_agent_profile()
  *  Returns 1 on success or <= 0 on failure.
  */
 /* cmoraes: changed function. added cfg_profile_name parameter */
-int os_write_agent_info(char *agent_name, char *agent_ip, 
+int os_write_agent_info(char *agent_name, char *agent_ip,
                         char *agent_id,   char *cfg_profile_name)
 {
     FILE *fp;

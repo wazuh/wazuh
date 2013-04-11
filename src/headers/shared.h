@@ -19,7 +19,7 @@
  *  The stack smashing protector defeats some BoF via: gcc -fstack-protector
  *  Reference: http://gcc.gnu.org/onlinedocs/gcc-4.1.2/cpp.pdf
  */
- 
+
 #if defined(__GNUC__) && (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 1) && (__GNUC_PATCHLEVEL__ >= 2)) || \
                           ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 2)) || \
                            (__GNUC__ >= 5))
@@ -178,7 +178,7 @@ char *__local_name;
 /*** These functions will exit on error. No need to check return code ***/
 
 /* for calloc: x = calloc(4,sizeof(char)) -> os_calloc(4,sizeof(char),x) */
-#define os_calloc(x,y,z) (z = calloc(x,y))?(void)1:ErrorExit(MEM_ERROR, ARGV0) 
+#define os_calloc(x,y,z) (z = calloc(x,y))?(void)1:ErrorExit(MEM_ERROR, ARGV0)
 
 #define os_strdup(x,y) (y = strdup(x))?(void)1:ErrorExit(MEM_ERROR, ARGV0)
 
@@ -193,9 +193,9 @@ char *__local_name;
 #ifdef CLIENT
     #define isAgent 1
 #else
-    #define isAgent 0    
+    #define isAgent 0
 #endif
-        
+
 
 
 #include "debug_op.h"
@@ -225,8 +225,9 @@ char *__local_name;
 #include "os_regex/os_regex.h"
 
 #include "error_messages/error_messages.h"
+#include "custom_output_search.h"
 
 
 #endif /* __SHARED_H */
-			       
+			
 /* EOF */

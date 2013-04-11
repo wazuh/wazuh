@@ -64,7 +64,7 @@ typedef struct _Eventinfo
 
     /* Other internal variables */
     short int matched;
-    
+
     int time;
     int day;
     int year;

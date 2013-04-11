@@ -19,7 +19,7 @@
 
 
 
-/* OS_IPNotAllowed, v0.1, 2005/02/11 
+/* OS_IPNotAllowed, v0.1, 2005/02/11
  * Checks if an IP is not allowed.
  */
 static int OS_IPNotAllowed(char *srcip)
@@ -67,7 +67,7 @@ void HandleSyslog()
     /* Initializing some variables */
     memset(buffer, '\0', OS_SIZE_1024 +2);
 
-    
+
     /* Connecting to the message queue
      * Exit if it fails.
      */
@@ -75,13 +75,13 @@ void HandleSyslog()
     {
         ErrorExit(QUEUE_FATAL,ARGV0, DEFAULTQUEUE);
     }
-        
+
 
     /* Infinite loop in here */
     while(1)
     {
         /* Receiving message  */
-        recv_b = recvfrom(logr.sock, buffer, OS_SIZE_1024, 0, 
+        recv_b = recvfrom(logr.sock, buffer, OS_SIZE_1024, 0,
                 (struct sockaddr *)&peer_info, &peer_size);
 
         /* Nothing received */
@@ -120,7 +120,7 @@ void HandleSyslog()
         else
         {
             buffer_pt = buffer;
-        }    
+        }
 
         /* Checking if IP is allowed here */
         if(OS_IPNotAllowed(srcip))

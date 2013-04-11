@@ -40,6 +40,9 @@ int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
     Mail->gran_format = NULL;
     Mail->groupping = 1;
     Mail->strict_checking = 0;
+#ifdef GEOIP
+    Mail->geoip = 0;
+#endif
 
     if(ReadConfig(modules, cfgfile, NULL, Mail) < 0)
         return(OS_INVALID);
@@ -50,7 +53,7 @@ int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
         {
             verbose(MAIL_DIS, ARGV0);
         }
-        exit(0);        
+        exit(0);
     }
 
     return(0);

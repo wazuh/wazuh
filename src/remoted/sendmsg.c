@@ -65,9 +65,9 @@ int check_keyupdate()
     {
         return(0);
     }
-    
+
     key_lock();
-    
+
     /* Locking before using */
     if(pthread_mutex_lock(&sendmsg_mutex) != 0)
     {
@@ -75,7 +75,7 @@ int check_keyupdate()
         merror(MUTEX_ERROR, ARGV0);
         return(0);
     }
-                                            
+
     if(OS_UpdateKeys(&keys))
     {
         if(pthread_mutex_unlock(&sendmsg_mutex) != 0)
@@ -91,7 +91,7 @@ int check_keyupdate()
         merror(MUTEX_ERROR, ARGV0);
     }
     key_unlock();
-    
+
     return(0);
 }
 
@@ -106,7 +106,7 @@ void send_msg_init()
 }
 
 
-/* send_msg() 
+/* send_msg()
  * Send message to an agent.
  * Returns -1 on error
  */
@@ -122,7 +122,7 @@ int send_msg(int agentid, char *msg)
         return(-1);
     }
 
-    
+
     msg_size = CreateSecMSG(&keys, msg, crypt_msg, agentid);
     if(msg_size == 0)
     {
@@ -130,7 +130,7 @@ int send_msg(int agentid, char *msg)
         return(-1);
     }
 
-    
+
     /* Locking before using */
     if(pthread_mutex_lock(&sendmsg_mutex) != 0)
     {
@@ -142,19 +142,19 @@ int send_msg(int agentid, char *msg)
     /* Sending initial message */
     if(sendto(logr.sock, crypt_msg, msg_size, 0,
                        (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
-                       logr.peer_size) < 0) 
+                       logr.peer_size) < 0)
     {
         merror(SEND_ERROR,ARGV0, keys.keyentries[agentid]->id);
     }
-    
-    
+
+
     /* Unlocking mutex */
     if(pthread_mutex_unlock(&sendmsg_mutex) != 0)
     {
         merror(MUTEX_ERROR, ARGV0);
         return(-1);
     }
-                                        
+
 
     return(0);
 }

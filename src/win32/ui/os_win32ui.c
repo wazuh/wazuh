@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -21,7 +21,7 @@
 
 
 /* Dialog -- About OSSEC */
-BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message, 
+BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message,
                            WPARAM wParam, LPARAM lParam)
 {
     switch(Message)
@@ -54,7 +54,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 {
     int ret_code = 0;
 
-    
+
     switch(Message)
     {
         case WM_INITDIALOG:
@@ -99,17 +99,17 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 
 
             hStatus = CreateWindowEx(0, STATUSCLASSNAME, NULL,
-                    WS_CHILD|WS_VISIBLE|SBARS_SIZEGRIP, 
+                    WS_CHILD|WS_VISIBLE|SBARS_SIZEGRIP,
                     0, 0, 0, 0,
-                    hwnd, (HMENU)IDC_MAIN_STATUS, 
+                    hwnd, (HMENU)IDC_MAIN_STATUS,
                     GetModuleHandle(NULL), NULL);
 
-            SendMessage(hStatus, SB_SETPARTS, 
-                    sizeof(statwidths)/sizeof(int), 
+            SendMessage(hStatus, SB_SETPARTS,
+                    sizeof(statwidths)/sizeof(int),
                     (LPARAM)statwidths);
             SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://www.ossec.net");
 
-	    
+	
 
             /* Initializing config */
             config_read(hwnd);
@@ -117,11 +117,11 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 
 
             /* Setting the icons */
-            SendMessage(hwnd, WM_SETICON, ICON_SMALL, 
-                    (LPARAM)LoadIcon(GetModuleHandle(NULL), 
+            SendMessage(hwnd, WM_SETICON, ICON_SMALL,
+                    (LPARAM)LoadIcon(GetModuleHandle(NULL),
                                      MAKEINTRESOURCE(IDI_OSSECICON)));
-            SendMessage(hwnd, WM_SETICON, ICON_BIG, 
-                    (LPARAM)LoadIcon(GetModuleHandle(NULL), 
+            SendMessage(hwnd, WM_SETICON, ICON_BIG,
+                    (LPARAM)LoadIcon(GetModuleHandle(NULL),
                                      MAKEINTRESOURCE(IDI_OSSECICON)));
 
             if(config_inst.admin_access == 0)
@@ -131,7 +131,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                         "Admin access required.", MB_OK);
                 break;
             }
-                                                                                            
+
         }
         break;
 
@@ -153,10 +153,10 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                     break;
                 }
 
-                /** Getting values from the user (if chosen save) 
+                /** Getting values from the user (if chosen save)
                  * We should probably create another function for it...
                  **/
-                
+
                 /* Getting server ip */
                 len = GetWindowTextLength(GetDlgItem(hwnd, UI_SERVER_TEXT));
                 if(len > 0)
@@ -170,7 +170,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                     {
                         exit(-1);
                     }
-                    
+
                     GetDlgItemText(hwnd, UI_SERVER_TEXT, buf, len + 1);
 
                     /* If auth key changed, set it */
@@ -186,8 +186,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                         GlobalFree(buf);
                     }
                 }
-                
-                
+
+
                 /* Getting auth key */
                 len = GetWindowTextLength(GetDlgItem(hwnd, UI_SERVER_AUTH));
                 if(len > 0)
@@ -225,8 +225,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                             id = decd_buf;
                             name = strchr(id, ' ');
                             if(name)
-                            { 
-                                *name = '\0'; 
+                            {
+                                *name = '\0';
                                 name++;
 
                                 ip = strchr(name, ' ');
@@ -250,21 +250,21 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                         if(!ip)
                         {
                             MessageBox(hwnd, "Unable to import "
-                                             "authentication key. Invalid.", 
+                                             "authentication key. Invalid.",
                                              "Error Saving.", MB_OK);
                         }
                         else
                         {
                             char mbox_msg[1024 +1];
                             mbox_msg[1024] = '\0';
-                            
+
                             snprintf(mbox_msg, 1024, "Adding key for:\r\n\r\n"
-                                               "Agent ID: %s\r\n" 
-                                               "Agent Name: %s\r\n" 
+                                               "Agent ID: %s\r\n"
+                                               "Agent Name: %s\r\n"
                                                "IP Address: %s\r\n",
                                                id, name, ip);
-                             
-                            ret = MessageBox(hwnd, mbox_msg, 
+
+                            ret = MessageBox(hwnd, mbox_msg,
                                          "Confirm Importing Key", MB_OKCANCEL);
                             if(ret == IDOK)
                             {
@@ -278,7 +278,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                                 }
                             }
 
-                            
+
                         }
 
                         /* Free used memory */
@@ -325,10 +325,10 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                                 (LPARAM)"Auth key and server ip saved ..");
 
                     }
-                }         
+                }
             }
             break;
-            
+
             case UI_MENU_MANAGE_EXIT:
                 PostMessage(hwnd, WM_CLOSE, 0, 0);
                 break;
@@ -336,7 +336,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
             case UI_MENU_VIEW_LOGS:
                 _spawnlp( _P_NOWAIT, "notepad", "notepad " OSSECLOGS, NULL );
                 break;
-            case UI_MENU_VIEW_CONFIG:    
+            case UI_MENU_VIEW_CONFIG:
                 _spawnlp( _P_NOWAIT, "notepad", "notepad " CONFIG, NULL );
                 break;
             case UI_MENU_HELP_HELP:
@@ -344,17 +344,17 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                 break;
             case UI_MENU_HELP_ABOUT:
                 {
-                    DialogBox(GetModuleHandle(NULL), 
+                    DialogBox(GetModuleHandle(NULL),
                             MAKEINTRESOURCE(IDD_ABOUT), hwnd, AboutDlgProc);
                 }
                 break;
             case IDC_CANCEL:
-                config_read(hwnd);    
+                config_read(hwnd);
                 gen_server_info(hwnd);
                 break;
-                
+
             case UI_MENU_MANAGE_START:
-            
+
                 /* Starting OSSEC  -- must have a valid config before. */
                 if((strcmp(config_inst.key, FL_NOKEY) != 0) &&
                    (strcmp(config_inst.server, FL_NOSERVER) != 0))
@@ -365,7 +365,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                 {
                     ret_code = 0;
                 }
-                
+
                 if(ret_code == 0)
                 {
                     MessageBox(hwnd, "Unable to start OSSEC (check config).",
@@ -386,9 +386,9 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                     MessageBox(hwnd, "Agent already running (try restart).",
                                      "Already running..", MB_OK);
                 }
-                break;    
+                break;
             case UI_MENU_MANAGE_STOP:
-                
+
                 /* Stopping OSSEC */
                 ret_code = os_stop_service();
                 if(ret_code == 1)
@@ -420,18 +420,18 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                 }
                 break;
             case UI_MENU_MANAGE_RESTART:
-                
+
                 if((strcmp(config_inst.key, FL_NOKEY) == 0) ||
                    (strcmp(config_inst.server, FL_NOSERVER) == 0))
                 {
                     MessageBox(hwnd, "Unable to restart OSSEC (check config).",
                                      "Error -- Unable to restart", MB_OK);
                     break;
-                    
+
                 }
-                                                                            
+
                 ret_code = os_stop_service();
-                
+
                 /* Starting OSSEC */
                 ret_code = os_start_service();
                 if(ret_code == 0)
@@ -448,14 +448,14 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                     MessageBox(hwnd, "OSSEC Agent Restarted.",
                                      "Restarted..", MB_OK);
                 }
-                break;        
+                break;
         }
         break;
-        
+
         case WM_CLOSE:
             EndDialog(hwnd, 0);
             break;
-        
+
         default:
             return FALSE;
     }

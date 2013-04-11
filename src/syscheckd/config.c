@@ -38,6 +38,7 @@ int Read_Syscheck_Config(char * cfgfile)
     syscheck.registry = NULL;
     syscheck.reg_fp = NULL;
     #endif
+    syscheck.prefilter_cmd = NULL;
 
 
     debug2("%s: Reading Configuration [%s]", "syscheckd", cfgfile);
@@ -54,7 +55,7 @@ int Read_Syscheck_Config(char * cfgfile)
     modules|= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
     #endif
-              
+
 
     #ifndef WIN32
     /* We must have at least one directory to check */
@@ -77,7 +78,7 @@ int Read_Syscheck_Config(char * cfgfile)
         return(1);
     }
     #endif
-                                        
+
 
     return(0);
 }

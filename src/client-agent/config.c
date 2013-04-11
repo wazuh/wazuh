@@ -26,7 +26,7 @@
 /* ClientConf v0.2, 2005/03/03
  * Read the config file (for the remote client)
  * v0.2: New OS_XML
- */ 
+ */
 int ClientConf(char *cfgfile)
 {
     int modules = 0;

@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-       
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,14 +32,14 @@ int total;
 int direxist(char *dir)
 {
     DIR *dp;
-    
+
     /* Opening dir */
     dp = opendir(dir);
     if(dp == NULL)
         return(0);
-    
+
     closedir(dp);
-    return(1);    
+    return(1);
 }
 
 
@@ -69,7 +69,7 @@ int dogrep(char *file, char *str)
     /* Clearing memory */
     memset(line, '\0', OS_MAXSTR +1);
 
-    /* Reading file and looking for str */ 
+    /* Reading file and looking for str */
     while(fgets(line, OS_MAXSTR, fp) != NULL)
     {
         if(OS_Match(str, line))
@@ -163,7 +163,7 @@ int config_iis(char *name, char *file, char *vfile)
 
     if(dogrep(OSSECCONF, vfile))
     {
-        printf("%s: Log file already configured: '%s'.\n", 
+        printf("%s: Log file already configured: '%s'.\n",
                 name, vfile);
         return(1);
     }
@@ -176,11 +176,11 @@ int config_iis(char *name, char *file, char *vfile)
     if(!fp)
     {
         printf("%s: Unable to edit configuration file.\n", name);
-        return(1); 
+        return(1);
     }
 
-    fprintf(fp, "\r\n" 
-            "\r\n"    
+    fprintf(fp, "\r\n"
+            "\r\n"
             "<!-- IIS log file -->\r\n"
             "<ossec_config>\r\n"
             "  <localfile>\r\n"
@@ -203,10 +203,10 @@ int main(int argc, char **argv)
 
     time_t tm;
     struct tm *p;
-    
-    char win_dir[2048];    
-    
-    
+
+    char win_dir[2048];
+
+
     if(argc >= 2)
     {
         if(chdir(argv[1]) != 0)
@@ -215,7 +215,7 @@ int main(int argc, char **argv)
             return(0);
         }
     }
-    
+
     /* Checking if ossec was installed already */
     if(!fileexist(OSSECCONF))
     {
@@ -226,20 +226,20 @@ int main(int argc, char **argv)
     /* Getting todays day */
     tm = time(NULL);
     p = localtime(&tm);
-        
-    total = 0;    
 
-    printf("%s: Looking for IIS log files to monitor.\r\n", 
+    total = 0;
+
+    printf("%s: Looking for IIS log files to monitor.\r\n",
                 argv[0]);
-    printf("%s: For more information: http://www.ossec.net/en/win.html\r\n", 
+    printf("%s: For more information: http://www.ossec.net/en/win.html\r\n",
                 argv[0]);
     printf("\r\n");
-    
-    
+
+
     /* Getting windows directory */
     get_win_dir(win_dir, sizeof(win_dir) -1);
-    
-    
+
+
     /* Looking for IIS log files */
     while(i <= 254)
     {
@@ -249,30 +249,30 @@ int main(int argc, char **argv)
         i++;
 
         /* Searching for NCSA */
-        snprintf(lfile, 
-                OS_MAXSTR, 
+        snprintf(lfile,
+                OS_MAXSTR,
                 "%s\\System32\\LogFiles\\W3SVC%d\\nc%02d%02d%02d.log",
                 win_dir,i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
-        snprintf(vfile, 
-                OS_MAXSTR, 
+        snprintf(vfile,
+                OS_MAXSTR,
                 "%s\\System32\\LogFiles\\W3SVC%d\\nc%%y%%m%%d.log",
                 win_dir, i);
-        
+
         /* Try dir-based */
         config_iis(argv[0], lfile, vfile);
 
 
         /* Searching for W3C extended */
-        snprintf(lfile, 
-                OS_MAXSTR, 
+        snprintf(lfile,
+                OS_MAXSTR,
                 "%s\\System32\\LogFiles\\W3SVC%d\\ex%02d%02d%02d.log",
                 win_dir, i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
-    
-        snprintf(vfile, 
-                OS_MAXSTR, 
+
+        snprintf(vfile,
+                OS_MAXSTR,
                 "%s\\System32\\LogFiles\\W3SVC%d\\ex%%y%%m%%d.log",
                 win_dir, i);
-        
+
         /* Try dir-based */
         if(config_iis(argv[0], lfile, vfile) == 0)
         {
@@ -284,13 +284,13 @@ int main(int argc, char **argv)
 
 
         /* Searching for FTP Extended format */
-        snprintf(lfile, 
-             OS_MAXSTR, 
+        snprintf(lfile,
+             OS_MAXSTR,
              "%s\\System32\\LogFiles\\MSFTPSVC%d\\ex%02d%02d%02d.log",
              win_dir, i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
-        
-        snprintf(vfile, 
-             OS_MAXSTR, 
+
+        snprintf(vfile,
+             OS_MAXSTR,
              "%s\\System32\\LogFiles\\MSFTPSVC%d\\ex%%y%%m%%d.log",
              win_dir, i);
         if(config_iis(argv[0], lfile, vfile) == 0)
@@ -303,13 +303,13 @@ int main(int argc, char **argv)
 
 
         /* Searching for IIS SMTP logs */
-        snprintf(lfile, 
-             OS_MAXSTR, 
+        snprintf(lfile,
+             OS_MAXSTR,
              "%s\\System32\\LogFiles\\SMTPSVC%d\\ex%02d%02d%02d.log",
              win_dir, i, (p->tm_year+1900)-2000, p->tm_mon+1, p->tm_mday);
-        
-        snprintf(vfile, 
-             OS_MAXSTR, 
+
+        snprintf(vfile,
+             OS_MAXSTR,
              "%s\\System32\\LogFiles\\SMTPSVC%d\\ex%%y%%m%%d.log",
              win_dir, i);
         if(config_iis(argv[0], lfile, vfile) == 0)
@@ -326,6 +326,6 @@ int main(int argc, char **argv)
         printf("%s: No IIS log added. Look at the link above for more "
                "information.\r\n", argv[0]);
     }
-    
+
     return(0);
 }

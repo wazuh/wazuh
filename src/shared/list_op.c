@@ -10,13 +10,13 @@
  * Foundation
  */
 
-/* Common API for dealing with lists */ 
+/* Common API for dealing with lists */
 
 
 #include "shared.h"
 
 
-/* Create the list 
+/* Create the list
  * Return NULL on error
  */
 OSList *OSList_Create()
@@ -26,14 +26,14 @@ OSList *OSList_Create()
     my_list = calloc(1, sizeof(OSList));
     if(!my_list)
         return(NULL);
-    
+
     my_list->first_node = NULL;
     my_list->last_node = NULL;
     my_list->cur_node = NULL;
     my_list->currently_size = 0;
     my_list->max_size = 0;
     my_list->free_data_function = NULL;
-    
+
     return(my_list);
 }
 
@@ -48,7 +48,7 @@ int OSList_SetMaxSize(OSList *list, int max_size)
     {
         return(0);
     }
-    
+
     /* Minimum size is 1 */
     if(max_size <= 1)
     {
@@ -70,7 +70,7 @@ int OSList_SetFreeDataPointer(OSList *list, void *free_data_function)
     {
         return(0);
     }
-    
+
     list->free_data_function = free_data_function;
     return(1);
 }
@@ -104,12 +104,12 @@ OSListNode *OSList_GetNextNode(OSList *list)
 {
     if(list->cur_node == NULL)
         return(NULL);
-        
+
     list->cur_node = list->cur_node->next;
-    
+
     return(list->cur_node);
 }
-  
+
 
 /* Get the prev node from the list
  * Returns NULL at the beginning
@@ -123,11 +123,11 @@ OSListNode *OSList_GetPrevNode(OSList *list)
 
     return(list->cur_node);
 }
-    
+
 
 /* Get the currently node.
  * Returns null when no currently node is available
- */  
+ */
 OSListNode *OSList_GetCurrentlyNode(OSList *list)
 {
     return(list->cur_node);
@@ -138,15 +138,15 @@ OSListNode *OSList_GetCurrentlyNode(OSList *list)
 void OSList_DeleteOldestNode(OSList *list)
 {
     OSListNode *next;
-    
+
     if(list->first_node)
     {
         next = list->first_node->next;
         if(next)
             next->prev = NULL;
         else
-            list->last_node = next;    
-        
+            list->last_node = next;
+
         free(list->first_node);
         list->first_node = next;
     }
@@ -216,14 +216,14 @@ void OSList_DeleteCurrentlyNode(OSList *list)
 {
     OSListNode *prev;
     OSListNode *next;
-   
+
     if(list->cur_node == NULL)
         return;
-    
+
     prev = list->cur_node->prev;
     next = list->cur_node->next;
 
-     
+
     /* Setting the previous node of the next one
      * and the next node of the previous one.. :)
      */
@@ -247,7 +247,7 @@ void OSList_DeleteCurrentlyNode(OSList *list)
         list->last_node = NULL;
         list->first_node = NULL;
     }
-            
+
     /* Freeing the node memory */
     free(list->cur_node);
 
@@ -263,7 +263,7 @@ void OSList_DeleteCurrentlyNode(OSList *list)
  */
 int OSList_AddData(OSList *list, void *data)
 {
-    OSListNode *newnode;    
+    OSListNode *newnode;
 
 
     /* Allocating memory for new node */
@@ -284,20 +284,20 @@ int OSList_AddData(OSList *list, void *data)
     {
         list->first_node = newnode;
     }
-    
+
     /* If we have a last node, set the next to new node */
     if(list->last_node)
     {
         list->last_node->next = newnode;
     }
-    
-    
+
+
     /* newnode become last node */
     list->last_node = newnode;
 
     /* Increment list size */
     list->currently_size++;
-    
+
     /* if currently_size higher than the maximum size, remove the
      * oldest node (first one)
      */
@@ -315,10 +315,10 @@ int OSList_AddData(OSList *list, void *data)
             {
                 list->free_data_function(list->first_node->data);
             }
-            
+
             /* Clearing the memory */
             free(list->first_node);
-            
+
             /* First node become the ex first->next */
             list->first_node = newnode;
 
@@ -326,7 +326,7 @@ int OSList_AddData(OSList *list, void *data)
             list->currently_size--;
         }
     }
-    
+
     return(1);
 }
 

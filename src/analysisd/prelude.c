@@ -41,7 +41,7 @@ char *(ossec2prelude_sev[])={"info","info","info","info",
                              "low","low","low","low",
                              "medium", "medium", "medium", "medium",
                              "high", "high", "high", "high", "high"};
-                
+
 
 /* Prelude client */
 static prelude_client_t *prelude_client;
@@ -59,7 +59,7 @@ void prelude_idmef_debug(idmef_message_t *idmef)
 
 
 
-static int 
+static int
 add_idmef_object(idmef_message_t *msg, const char *object, const char *value)
 {
     int ret = 0;
@@ -79,16 +79,16 @@ add_idmef_object(idmef_message_t *msg, const char *object, const char *value)
     }
 
     ret = idmef_value_new_from_path(&val, path, value);
-    if(ret < 0) 
+    if(ret < 0)
     {
         idmef_path_destroy(path);
         return(-1);
     }
 
     ret = idmef_path_set(path, msg, val);
-    if(ret < 0) 
+    if(ret < 0)
     {
-        merror("%s: OSSEC2Prelude: IDMEF: Cannot add object '%s': %s.", 
+        merror("%s: OSSEC2Prelude: IDMEF: Cannot add object '%s': %s.",
                ARGV0, object, prelude_strerror(ret));
     }
 
@@ -144,16 +144,16 @@ void prelude_start(char *profile, int argc, char **argv)
 
 
     ret = prelude_init(&argc, argv);
-    if (ret < 0) 
+    if (ret < 0)
     {
         merror("%s: %s: Unable to initialize the Prelude library: %s.",
                ARGV0, prelude_strsource(ret), prelude_strerror(ret));
         return;
     }
 
-    ret = prelude_client_new(&prelude_client, 
+    ret = prelude_client_new(&prelude_client,
                              profile!=NULL?profile:DEFAULT_ANALYZER_NAME);
-    if (!prelude_client) 
+    if (!prelude_client)
     {
         merror("%s: %s: Unable to create a prelude client object: %s.",
                ARGV0, prelude_strsource(ret), prelude_strerror(ret));
@@ -163,25 +163,25 @@ void prelude_start(char *profile, int argc, char **argv)
 
 
     ret = setup_analyzer(prelude_client_get_analyzer(prelude_client));
-    if(ret < 0) 
+    if(ret < 0)
     {
         merror("%s: %s: Unable to setup analyzer: %s",
                ARGV0, prelude_strsource(ret), prelude_strerror(ret));
 
-        prelude_client_destroy(prelude_client, 
+        prelude_client_destroy(prelude_client,
                                PRELUDE_CLIENT_EXIT_STATUS_FAILURE);
 
         return;
     }
 
 
-    ret = prelude_client_set_flags(prelude_client, 
-          prelude_client_get_flags(prelude_client) 
+    ret = prelude_client_set_flags(prelude_client,
+          prelude_client_get_flags(prelude_client)
           | PRELUDE_CLIENT_FLAGS_ASYNC_TIMER);
     if(ret < 0)
     {
         merror("%s: %s: Unable to set prelude client flags: %s.",
-               ARGV0, prelude_strsource(ret), prelude_strerror(ret)); 
+               ARGV0, prelude_strsource(ret), prelude_strerror(ret));
     }
 
 
@@ -193,12 +193,12 @@ void prelude_start(char *profile, int argc, char **argv)
 
 
     ret = prelude_client_start(prelude_client);
-    if (ret < 0) 
+    if (ret < 0)
     {
         merror("%s: %s: Unable to initialize prelude client: %s.",
                ARGV0, prelude_strsource(ret), prelude_strerror(ret));
 
-        prelude_client_destroy(prelude_client, 
+        prelude_client_destroy(prelude_client,
                                PRELUDE_CLIENT_EXIT_STATUS_FAILURE);
 
         return;
@@ -209,13 +209,13 @@ void prelude_start(char *profile, int argc, char **argv)
 
 }
 
-void FileAccess_PreludeLog(idmef_message_t *idmef, 
-                           int filenum, 
-                           char *filename, 
-                           char *md5, 
-                           char *sha1, 
-                           char *owner, 
-                           char *gowner, 
+void FileAccess_PreludeLog(idmef_message_t *idmef,
+                           int filenum,
+                           char *filename,
+                           char *md5,
+                           char *sha1,
+                           char *owner,
+                           char *gowner,
                            int perm) {
 
     int _checksum_counter = 0;
@@ -238,7 +238,7 @@ void FileAccess_PreludeLog(idmef_message_t *idmef,
         return;
     }
 
-    
+
     /* Add the hashs */
     if (md5) {
         snprintf(_prelude_section,128,"alert.target(0).file(%d).checksum(%d).algorithm",filenum, _checksum_counter);
@@ -262,7 +262,7 @@ void FileAccess_PreludeLog(idmef_message_t *idmef,
         add_idmef_object(idmef, _prelude_section,owner);
         snprintf(_prelude_section,128,"alert.target(0).file(%d).File_Access(%d).user_id.type",filenum,FILE_USER);
         add_idmef_object(idmef, _prelude_section, "user-privs");
-    } 
+    }
     /*add the group owner */
     if (gowner) {
         debug1("%s: DEBUG: gowner = %s.", ARGV0, gowner);
@@ -339,7 +339,7 @@ void OS_PreludeLog(Eventinfo *lf)
     idmef_message_t *idmef;
     RuleInfoDetail *last_info_detail;
 
-    
+
     /* Generate prelude alert */
     ret = idmef_message_new(&idmef);
     if ( ret < 0 ) {
@@ -347,14 +347,14 @@ void OS_PreludeLog(Eventinfo *lf)
         return;
     }
 
-    
-    add_idmef_object(idmef, "alert.assessment.impact.description", 
+
+    add_idmef_object(idmef, "alert.assessment.impact.description",
                             lf->generated_rule->comment);
 
-    add_idmef_object(idmef, "alert.assessment.impact.severity", 
-                            (lf->generated_rule->level > 15) ? "high": 
+    add_idmef_object(idmef, "alert.assessment.impact.severity",
+                            (lf->generated_rule->level > 15) ? "high":
                             ossec2prelude_sev[lf->generated_rule->level]);
-                
+
     add_idmef_object(idmef, "alert.assessment.impact.completion", "succeeded");
 
     if (lf->action)
@@ -380,7 +380,7 @@ void OS_PreludeLog(Eventinfo *lf)
             case 'T':
                 snprintf(_prelude_data,256,"CLOSED: %s", lf->action);
                 break;
-            /* allow, accept, */    
+            /* allow, accept, */
             case 'a':
             case 'A':
             /* pass/permitted */
@@ -388,7 +388,7 @@ void OS_PreludeLog(Eventinfo *lf)
             case 'P':
             /* open */
             case 'o':
-            case 'O':    
+            case 'O':
                 snprintf(_prelude_data,256,"ALLOW: %s", lf->action);
                 break;
             default:
@@ -406,7 +406,7 @@ void OS_PreludeLog(Eventinfo *lf)
 
     /* Begin Classification Infomations */
     {
-        add_idmef_object(idmef, "alert.classification.text", 
+        add_idmef_object(idmef, "alert.classification.text",
                                 lf->generated_rule->comment);
 
 
@@ -429,7 +429,7 @@ void OS_PreludeLog(Eventinfo *lf)
         }
 
         /* Rule sid is used to create a link to the rule on the OSSEC wiki */
-        if(lf->generated_rule->sigid) 
+        if(lf->generated_rule->sigid)
         {
             snprintf(_prelude_section,128,"alert.classification.reference(%d).origin",
                                            classification_counter);
@@ -448,17 +448,17 @@ void OS_PreludeLog(Eventinfo *lf)
                                            classification_counter);
             snprintf(_prelude_data, 256,"http://www.ossec.net/wiki/Rule:%d",
                                         lf->generated_rule->sigid);
-            add_idmef_object(idmef, _prelude_section, _prelude_data); 
+            add_idmef_object(idmef, _prelude_section, _prelude_data);
 
             classification_counter++;
         }
 
         /* Extended Info Details */
-        for (last_info_detail = lf->generated_rule->info_details; 
-             last_info_detail != NULL; 
+        for (last_info_detail = lf->generated_rule->info_details;
+             last_info_detail != NULL;
              last_info_detail = last_info_detail->next)
         {
-            if (last_info_detail->type == RULEINFODETAIL_LINK) 
+            if (last_info_detail->type == RULEINFODETAIL_LINK)
             {
                 snprintf(_prelude_section,128,"alert.classification.reference(%d).origin",
                                                classification_counter);
@@ -470,16 +470,16 @@ void OS_PreludeLog(Eventinfo *lf)
                 add_idmef_object(idmef, _prelude_section, _prelude_data);
                 snprintf(_prelude_section,128,"alert.classification.reference(%d).url",
                                                classification_counter);
-                add_idmef_object(idmef, _prelude_section, last_info_detail->data); 
+                add_idmef_object(idmef, _prelude_section, last_info_detail->data);
 
                 classification_counter++;
-            } 
+            }
             else if(last_info_detail->type == RULEINFODETAIL_TEXT)
             {
                 snprintf(_prelude_section,128,"alert.classification.reference(%d).origin",
                                                classification_counter);
                 add_idmef_object(idmef, _prelude_section, "vendor-specific");
-                
+
                 snprintf(_prelude_section,128,"alert.classification.reference(%d).name",
                                                classification_counter);
                 snprintf(_prelude_data,256,"Rule:%d info",lf->generated_rule->sigid);
@@ -494,7 +494,7 @@ void OS_PreludeLog(Eventinfo *lf)
             {
                 snprintf(_prelude_section,128,"alert.classification.reference(%d).origin",
                                                classification_counter);
-                switch(last_info_detail->type) 
+                switch(last_info_detail->type)
                 {
                     case RULEINFODETAIL_CVE:
                         add_idmef_object(idmef, _prelude_section, "cve");
@@ -516,11 +516,11 @@ void OS_PreludeLog(Eventinfo *lf)
         }
 
 
-        /* Break ok the list of groups on the "," boundry 
+        /* Break ok the list of groups on the "," boundry
          * For each section create a prelude reference classification
-         * that points back to the the OSSEC wiki for more infomation. 
+         * that points back to the the OSSEC wiki for more infomation.
          */
-        if(lf->generated_rule->group) 
+        if(lf->generated_rule->group)
         {
             char *copy_group;
             char new_generated_rule_group[256];
@@ -545,7 +545,7 @@ void OS_PreludeLog(Eventinfo *lf)
                                                classification_counter);
                 snprintf(_prelude_data,256,"http://www.ossec.net/wiki/Group:%s",
                                            copy_group);
-                add_idmef_object(idmef, _prelude_section, _prelude_data); 
+                add_idmef_object(idmef, _prelude_section, _prelude_data);
 
                 classification_counter++;
                 copy_group = strtok(NULL, ",");
@@ -556,10 +556,10 @@ void OS_PreludeLog(Eventinfo *lf)
 
 
     /* Begin Node infomation block */
-    { 
+    {
         /* Setting source info. */
         add_idmef_object(idmef, "alert.source(0).Spoofed", "no");
-        add_idmef_object(idmef, "alert.source(0).Node.Address(0).address", 
+        add_idmef_object(idmef, "alert.source(0).Node.Address(0).address",
                                 lf->srcip);
         add_idmef_object(idmef, "alert.source(0).Service.port", lf->srcport);
 
@@ -567,15 +567,15 @@ void OS_PreludeLog(Eventinfo *lf)
         {
             add_idmef_object(idmef, "alert.source(0).User.UserId(0).name", lf->srcuser);
         }
-        
+
 
         /* Setting target */
         add_idmef_object(idmef, "alert.target(0).Service.name", lf->program_name);
         add_idmef_object(idmef, "alert.target(0).Spoofed", "no");
 
-        if(lf->dstip)  
+        if(lf->dstip)
         {
-            add_idmef_object(idmef, "alert.target(0).Node.Address(0).address", 
+            add_idmef_object(idmef, "alert.target(0).Node.Address(0).address",
                                     lf->dstip);
         }
         else
@@ -596,7 +596,7 @@ void OS_PreludeLog(Eventinfo *lf)
             {
                 *tmp_str = '\0';
             }
-            add_idmef_object(idmef, "alert.target(0).Node.Address(0).address", 
+            add_idmef_object(idmef, "alert.target(0).Node.Address(0).address",
                                     new_prelude_target);
         }
         add_idmef_object(idmef, "alert.target(0).Service.name", lf->hostname);
@@ -608,14 +608,14 @@ void OS_PreludeLog(Eventinfo *lf)
             add_idmef_object(idmef, "alert.target(0).User.UserId(0).name", lf->dstuser);
         }
     } /* end Node infomation block */
-    
+
 
     /* Setting source file. */
     add_idmef_object(idmef, "alert.additional_data(0).type", "string");
     add_idmef_object(idmef, "alert.additional_data(0).meaning", "Source file");
     add_idmef_object(idmef, "alert.additional_data(0).data", lf->location);
     additional_data_counter++;
-    
+
 
     /* Setting full log. */
     add_idmef_object(idmef, "alert.additional_data(1).type", "string");

@@ -617,6 +617,38 @@
     <group>config_changed,</group>
     <description>Yum package deleted.</description>
   </rule>
+
+  <!-- SCSI CONTROLLER -->
+  <rule id="2935" level="0" noalert="1">
+    <if_sid>5100</if_sid>
+    <id>mptscsih</id>
+    <description>Grouping for the mptscrih rules.</description>
+  </rule>
+
+  <rule id="2936" level="0" noalert="1">
+    <if_sid>5100</if_sid>
+    <id>mptbase</id>
+    <description>Grouping for the mptbase rules.</description>
+  </rule>
+
+  <rule id="2937" level="12">
+    <if_sid>2935</if_sid>
+    <status>FAILED</status>
+    <description>Posible Disk failure. SCSI controller error.</description>
+  </rule>
+
+  <rule id="2938" level="12">
+    <if_sid>2936</if_sid>
+    <action>failed</action>
+    <description>SCSI RAID ARRAY ERROR, drive failed.</description>
+  </rule>
+
+  <rule id="2939" level="12">
+    <if_sid>2936</if_sid>
+    <action>degraded</action>
+    <description>SCSI RAID is now in a degraded status.</description>
+  </rule>
+
 </group>
 
 

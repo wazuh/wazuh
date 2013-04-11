@@ -20,21 +20,21 @@ int main(int argc, char ** argv)
 
     if(argc < 3)
         usage(argv);
-   
-    
+
+
     if(strcmp(argv[1],"file") == 0)
     {
         OS_MD5_File(argv[2], filesum);
     }
-    
+
     else if(strcmp(argv[1],"str") == 0)
     {
         OS_MD5_Str(argv[2], filesum);
     }
-    
+
     else
         usage(argv);
-    
+
     printf("MD5Sum for \"%s\" is: %s\n",argv[2],filesum);
     return(0);
 }

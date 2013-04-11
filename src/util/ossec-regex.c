@@ -31,22 +31,22 @@ void helpmsg()
 int main(int argc, char **argv)
 {
     char *pattern;
-    
+
     char msg[OS_MAXSTR +1];
     memset(msg, '\0', OS_MAXSTR +1);
-    OSRegex regex; 
-    OSMatch matcher; 
+    OSRegex regex;
+    OSMatch matcher;
 
     OS_SetName(ARGV0);
-        
-    
+
+
     /* user arguments */
     if(argc != 2)
     {
         helpmsg();
         return(-1);
     }
-    
+
     /* User options */
     if(strcmp(argv[1], "-h") == 0)
     {
@@ -55,10 +55,10 @@ int main(int argc, char **argv)
     }
 
     os_strdup(argv[1], pattern);
-    if(!OSRegex_Compile(pattern, &regex, 0)) 
-    { 
+    if(!OSRegex_Compile(pattern, &regex, 0))
+    {
         printf("pattern does not compile with OSRegex_Compile\n");
-        return(-1); 
+        return(-1);
     }
     if(!OSMatch_Compile(pattern, &matcher, 0))
     {
@@ -68,33 +68,33 @@ int main(int argc, char **argv)
 
 
     while((fgets(msg, OS_MAXSTR, stdin)) != NULL)
-    {        
-        /* Removing new line. */                                                                                                                                       
+    {
+        /* Removing new line. */
         if(msg[strlen(msg) -1] == '\n')
             msg[strlen(msg) -1] = '\0';
 
-        /* Make sure we ignore blank lines. */                                                                                                                         
-        if(strlen(msg) < 2) { continue; }                                                            
+        /* Make sure we ignore blank lines. */
+        if(strlen(msg) < 2) { continue; }
 
         if(OSRegex_Execute(msg, &regex))
-            printf("+OSRegex_Execute: %s\n",msg); 
+            printf("+OSRegex_Execute: %s\n",msg);
         /*
         else
-            printf("-OSRegex_Execute: \n"); 
+            printf("-OSRegex_Execute: \n");
             */
 
-        if(OS_Regex(pattern, msg)) 
+        if(OS_Regex(pattern, msg))
             printf("+OS_Regex       : %s\n", msg);
         /*
         else
-            printf("-OS_Regex: \n"); 
+            printf("-OS_Regex: \n");
             */
 
-        if(OSMatch_Execute(msg, strlen(msg), &matcher)) 
-            printf("+OSMatch_Compile: %s\n", msg); 
-        
-        if(OS_Match2(pattern, msg)) 
-            printf("+OS_Match2      : %s\n", msg); 
+        if(OSMatch_Execute(msg, strlen(msg), &matcher))
+            printf("+OSMatch_Compile: %s\n", msg);
+
+        if(OS_Match2(pattern, msg))
+            printf("+OS_Match2      : %s\n", msg);
     }
     return(0);
 }

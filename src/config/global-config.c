@@ -46,8 +46,8 @@ int Read_GlobalSK(XML_NODE node, void *configp, void *mailp)
     _Config *Config;
 
     Config = (_Config *)configp;
-    
-    
+
+
     /* Shouldn't be here if !Config */
     if(!Config)
         return(0);
@@ -159,18 +159,25 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     char *xml_memorysize = "memory_size";
     char *xml_white_list = "white_list";
     char *xml_compress_alerts = "compress_alerts";
+    char *xml_custom_alert_output = "custom_alert_output";
 
     char *xml_emailto = "email_to";
     char *xml_emailfrom = "email_from";
     char *xml_smtpserver = "smtp_server";
     char *xml_mailmaxperhour = "email_maxperhour";
 
+#ifdef GEOIP
+    /* GeoIP */
+    char *xml_geoip_db_path = "geoip_db_path";
+    char *xml_geoip6_db_path = "geoip6_db_path";
+#endif
+
     _Config *Config;
     MailConfig *Mail;
-     
+
     Config = (_Config *)configp;
     Mail = (MailConfig *)mailp;
-    
+
     /* Getting right white_size */
     if(Config && Config->white_list)
     {
@@ -183,7 +190,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             ww++;
         }
     }
-    
+
      /* Getting right white_size */
     if(Config && Config->hostname_white_list)
     {
@@ -196,7 +203,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             ww++;
         }
     }
-    
+
     /* Getting mail_to size */
     if(Mail && Mail->to)
     {
@@ -221,17 +228,25 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             merror(XML_VALUENULL, ARGV0, node[i]->element);
             return(OS_INVALID);
         }
+        else if(strcmp(node[i]->element, xml_custom_alert_output) == 0)
+        {
+          if(Config)
+          {
+            Config->custom_alert_output= 1;
+            os_strdup(node[i]->content, Config->custom_alert_output_format);
+          }
+        }
         /* Mail notification */
         else if(strcmp(node[i]->element, xml_mailnotify) == 0)
         {
             if(strcmp(node[i]->content, "yes") == 0)
-            { 
-                if(Config) Config->mailnotify = 1; 
+            {
+                if(Config) Config->mailnotify = 1;
                 if(Mail) Mail->mn = 1;
             }
             else if(strcmp(node[i]->content, "no") == 0)
-            { 
-                if(Config) Config->mailnotify = 0; 
+            {
+                if(Config) Config->mailnotify = 0;
                 if(Mail) Mail->mn = 0;
             }
             else
@@ -268,12 +283,12 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element, xml_prelude) == 0)
         {
             if(strcmp(node[i]->content, "yes") == 0)
-            { 
-                if(Config) Config->prelude = 1; 
+            {
+                if(Config) Config->prelude = 1;
             }
             else if(strcmp(node[i]->content, "no") == 0)
-            { 
-                if(Config) Config->prelude = 0; 
+            {
+                if(Config) Config->prelude = 0;
             }
             else
             {
@@ -392,11 +407,11 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             char *ip_address_regex =
              "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
              "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
-                      
+
             if(Config && OS_PRegex(node[i]->content, ip_address_regex))
             {
                 white_size++;
-                Config->white_list = 
+                Config->white_list =
                     realloc(Config->white_list, sizeof(os_ip *)*white_size);
                 if(!Config->white_list)
                 {
@@ -406,11 +421,11 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
                 os_calloc(1, sizeof(os_ip), Config->white_list[white_size -2]);
                 Config->white_list[white_size -1] = NULL;
-                
+
                 if(!OS_IsValidIP(node[i]->content,
                                  Config->white_list[white_size -2]))
                 {
-                    merror(INVALID_IP, ARGV0, 
+                    merror(INVALID_IP, ARGV0,
                                        node[i]->content);
                     return(OS_INVALID);
                 }
@@ -422,20 +437,20 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 Config->hostname_white_list =
                     realloc(Config->hostname_white_list,
                     sizeof(OSMatch *)*hostname_white_size);
-                    
+
                 if(!Config->hostname_white_list)
                 {
                     merror(MEM_ERROR, ARGV0);
                     return(OS_INVALID);
                 }
-                os_calloc(1, 
-                          sizeof(OSMatch), 
+                os_calloc(1,
+                          sizeof(OSMatch),
                           Config->hostname_white_list[hostname_white_size -2]);
                 Config->hostname_white_list[hostname_white_size -1] = NULL;
 
                 if(!OSMatch_Compile(
-                        node[i]->content, 
-                        Config->hostname_white_list[hostname_white_size -2], 
+                        node[i]->content,
+                        Config->hostname_white_list[hostname_white_size -2],
                         0))
                 {
                     merror(REGEX_COMPILE, ARGV0, node[i]->content,
@@ -444,12 +459,12 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     return(-1);
                 }
             }
-            
+
             #endif
-                
+
         }
 
-        /* For the email now 
+        /* For the email now
          * email_to, email_from, smtp_Server and maxperhour.
          * We will use a separate structure for that.
          */
@@ -462,7 +477,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 return(OS_INVALID);
             }
             #endif
-                
+
             if(Mail)
             {
                 mailto_size++;
@@ -500,7 +515,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     return(OS_INVALID);
                 }
             }
-            #endif    
+            #endif
         }
         else if(strcmp(node[i]->element, xml_mailmaxperhour) == 0)
         {
@@ -520,6 +535,24 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
             }
         }
+#ifdef GEOIP
+        /* GeoIP v4 DB location */
+        else if(strcmp(node[i]->element, xml_geoip_db_path) == 0)
+        {
+            if(Config)
+            {
+                os_strdup(node[i]->content, Config->geoip_db_path);
+            }
+        }
+        /* GeoIP v6 DB location */
+        else if(strcmp(node[i]->element, xml_geoip6_db_path) == 0)
+        {
+            if(Config)
+            {
+                os_strdup(node[i]->content, Config->geoip6_db_path);
+            }
+        }
+#endif
         else
         {
             merror(XML_INVELEM, ARGV0, node[i]->element);

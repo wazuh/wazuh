@@ -13,7 +13,7 @@
  * online at: http://www.ossec.net/en/licensing.html
  */
 
- 
+
 
 #ifndef _HCONFIG__H
 #define _HCONFIG__H
@@ -31,7 +31,7 @@
 #define CDBD          0002000
 #define CSYSLOGD      0004000
 #define CAGENTLESS    0020000
-#define CREPORTS      0040000 
+#define CREPORTS      0040000
 
 #define CAGENT_CONFIG 0010000
 

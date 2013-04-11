@@ -27,7 +27,7 @@ void HandleSecure()
     int agentid;
 
     char buffer[OS_MAXSTR +1];
-    char cleartext_msg[OS_MAXSTR +1]; 
+    char cleartext_msg[OS_MAXSTR +1];
     char srcip[IPSIZE +1];
     char *tmp_msg;
     char srcmsg[OS_FLSIZE +1];
@@ -56,7 +56,7 @@ void HandleSecure()
     {
         ErrorExit(THREAD_ERROR, ARGV0);
     }
-    
+
     /* Creating wait_for_msgs thread */
     if(CreateThread(wait_for_msgs, (void *)NULL) != 0)
     {
@@ -71,16 +71,16 @@ void HandleSecure()
     {
         ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
     }
-        
-    
-    verbose(AG_AX_AGENTS, ARGV0, MAX_AGENTS);    
 
-    
+
+    verbose(AG_AX_AGENTS, ARGV0, MAX_AGENTS);
+
+
     /* Reading authentication keys */
     verbose(ENC_READ, ARGV0);
-        
+
     OS_ReadKeys(&keys);
-    
+
     debug1("%s: DEBUG: OS_StartCounter.", ARGV0);
     OS_StartCounter(&keys);
     debug1("%s: DEBUG: OS_StartCounter completed.", ARGV0);
@@ -96,14 +96,14 @@ void HandleSecure()
     memset(cleartext_msg, '\0', OS_MAXSTR +1);
     memset(srcmsg, '\0', OS_FLSIZE +1);
     tmp_msg = NULL;
-    
-    
-    
+
+
+
     /* loop in here */
     while(1)
     {
         /* Receiving message  */
-        recv_b = recvfrom(logr.sock, buffer, OS_MAXSTR, 0, 
+        recv_b = recvfrom(logr.sock, buffer, OS_MAXSTR, 0,
                 (struct sockaddr *)&peer_info, &peer_size);
 
 
@@ -120,13 +120,13 @@ void HandleSecure()
 
 
 
-        /* Getting a valid agentid */ 
+        /* Getting a valid agentid */
         if(buffer[0] == '!')
         {
             tmp_msg = buffer;
             tmp_msg++;
-            
-            
+
+
             /* We need to make sure that we have a valid id
              * and that we reduce the recv buffer size.
              */
@@ -167,7 +167,7 @@ void HandleSecure()
         }
         else
         {
-            agentid = OS_IsAllowedIP(&keys, srcip); 
+            agentid = OS_IsAllowedIP(&keys, srcip);
             if(agentid < 0)
             {
                 if(check_keyupdate())
@@ -187,9 +187,9 @@ void HandleSecure()
             }
             tmp_msg = buffer;
         }
-        
 
-        /* Decrypting the message */    
+
+        /* Decrypting the message */
         tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg,
                              agentid, recv_b -1);
         if(tmp_msg == NULL)
@@ -199,7 +199,7 @@ void HandleSecure()
         }
 
 
-        /* Check if it is a control message */ 
+        /* Check if it is a control message */
         if(IsValidHeader(tmp_msg))
         {
             /* We need to save the peerinfo if it is a control msg */
@@ -213,14 +213,14 @@ void HandleSecure()
 
 
         /* Generating srcmsg */
-        snprintf(srcmsg, OS_FLSIZE,"(%s) %s",keys.keyentries[agentid]->name, 
+        snprintf(srcmsg, OS_FLSIZE,"(%s) %s",keys.keyentries[agentid]->name,
                                              keys.keyentries[agentid]->ip->ip);
-        
+
 
         /* If we can't send the message, try to connect to the
          * socket again. If it not exit.
          */
-        if(SendMSG(logr.m_queue, tmp_msg, srcmsg, 
+        if(SendMSG(logr.m_queue, tmp_msg, srcmsg,
                    SECURE_MQ) < 0)
         {
             merror(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));

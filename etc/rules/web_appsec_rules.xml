@@ -159,7 +159,6 @@
     <description>Suspicious URL access.</description>
    </rule>
 
-
   <!-- Checking POST requests - Too many in a small type = likely a bot -->
   <rule id="31530" level="3">
     <if_sid>31100</if_sid>
@@ -179,7 +178,6 @@
     <same_source_ip />
     <description>High amount of POST requests in a small period of time (likely bot).</description>
    </rule>
-
 
   <!-- Anomaly rules - Used on common web attacks -->
   <rule id="31550" level="6">

@@ -47,14 +47,14 @@ int getstatfs(char *path)
     struct statfs fs;
     int percentbfree=0;
     int percentnfree=0;
- 
+
     if(statfs(path, &fs) != 0)
 	return(-1);
 
     if((fs.f_bfree == 0)||(fs.f_ffree == 0))
 	    return(-1);
-    percentbfree = (int)(100*fs.f_bfree)/fs.f_blocks;     
-    percentnfree = (int)(100*fs.f_ffree)/fs.f_files;     
+    percentbfree = (int)(100*fs.f_bfree)/fs.f_blocks;
+    percentnfree = (int)(100*fs.f_ffree)/fs.f_files;
     printf("file system for %s has %d free blocks out of a total of %d - %d. Total of %d%% FREE \n",path,fs.f_ffree,fs.f_blocks,percentbfree,percentnfree);
    return(0);
 }

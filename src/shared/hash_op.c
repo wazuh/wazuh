@@ -12,9 +12,9 @@
  * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
-          
 
-/* Common API for dealing with hashes/maps */ 
+
+/* Common API for dealing with hashes/maps */
 
 
 #include "shared.h"
@@ -68,7 +68,7 @@ OSHash *OSHash_Create()
     self->initial_seed = os_getprime(random() % self->rows);
     self->constant = os_getprime(random() % self->rows);
 
-    
+
     return(self);
 }
 
@@ -82,8 +82,8 @@ void *OSHash_Free(OSHash *self)
     int i = 0;
     OSHashNode *curr_node;
     OSHashNode *next_node;
-    
-    
+
+
     /* Freeing each entry */
     while(i <= self->rows)
     {
@@ -103,7 +103,7 @@ void *OSHash_Free(OSHash *self)
     free(self->table);
 
     free(self);
-    return(NULL); 
+    return(NULL);
 }
 
 
@@ -144,7 +144,7 @@ int OSHash_setSize(OSHash *self, int new_size)
         return(1);
     }
 
-    
+
     /* Getting next prime */
     self->rows = os_getprime(new_size);
     if(self->rows == 0)
@@ -152,7 +152,7 @@ int OSHash_setSize(OSHash *self, int new_size)
         return(0);
     }
 
-    
+
     /* If we fail, the hash should not be used anymore */
     self->table = realloc(self->table, (self->rows +1) * sizeof(OSHashNode *));
     if(!self->table)
@@ -187,7 +187,7 @@ int OSHash_Update(OSHash *self, char *key, void *data)
     unsigned int index;
 
     OSHashNode *curr_node;
-    
+
 
     /* Generating hash of the message */
     hash_key = _os_genhash(self, key);
@@ -195,7 +195,7 @@ int OSHash_Update(OSHash *self, char *key, void *data)
 
     /* Getting array index */
     index = hash_key % self->rows;
-         
+
 
     /* Checking for duplicated entries in the index */
     curr_node = self->table[index];
@@ -228,7 +228,7 @@ int OSHash_Add(OSHash *self, char *key, void *data)
 
     OSHashNode *curr_node;
     OSHashNode *new_node;
-    
+
 
     /* Generating hash of the message */
     hash_key = _os_genhash(self, key);
@@ -236,7 +236,7 @@ int OSHash_Add(OSHash *self, char *key, void *data)
 
     /* Getting array index */
     index = hash_key % self->rows;
-         
+
 
     /* Checking for duplicated entries in the index */
     curr_node = self->table[index];
@@ -251,7 +251,7 @@ int OSHash_Add(OSHash *self, char *key, void *data)
         curr_node = curr_node->next;
     }
 
-    
+
     /* Creating new node */
     new_node = calloc(1, sizeof(OSHashNode));
     if(!new_node)
@@ -274,7 +274,7 @@ int OSHash_Add(OSHash *self, char *key, void *data)
         new_node->next = self->table[index];
         self->table[index] = new_node;
     }
-    
+
     return(2);
 }
 
@@ -291,7 +291,7 @@ void *OSHash_Get(OSHash *self, char *key)
     unsigned int index;
 
     OSHashNode *curr_node;
-    
+
 
     /* Generating hash of the message */
     hash_key = _os_genhash(self, key);
@@ -299,7 +299,7 @@ void *OSHash_Get(OSHash *self, char *key)
 
     /* Getting array index */
     index = hash_key % self->rows;
-         
+
 
     /* Getting entry */
     curr_node = self->table[index];
@@ -310,7 +310,7 @@ void *OSHash_Get(OSHash *self, char *key)
         {
             return(curr_node->data);
         }
-        
+
         curr_node = curr_node->next;
     }
 

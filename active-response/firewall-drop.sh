@@ -6,7 +6,8 @@
 # Expect: srcip
 # Author: Ahmet Ozturk (ipfilter and IPSec)
 # Author: Daniel B. Cid (iptables)
-# Last modified: Feb 14, 2006
+# Author: cgzones 
+# Last modified: Oct 04, 2012
 
 UNAME=`uname`
 ECHO="/bin/echo"
@@ -36,7 +37,11 @@ LOCK_PID="${PWD}/fw-drop/pid"
 LOCAL=`dirname $0`;
 cd $LOCAL
 cd ../
-echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/../logs/active-responses.log
+filename=$(basename "$0")
+
+LOG_FILE="${PWD}/../logs/active-responses.log"
+
+echo "`date` $0 $1 $2 $3 $4 $5" >> ${LOG_FILE}
 
 
 # Checking for an IP
@@ -48,8 +53,13 @@ fi
 case "${IP}" in
     *:* ) IPTABLES=$IP6TABLES;;
     *.* ) IPTABLES=$IP4TABLES;;
-    * ) echo "`date` Unable to run active response (invalid IP)." >> ${PWD}/../logs/active-responses.log && exit 1;;
+    * ) echo "`date` Unable to run active response (invalid IP: '${IP}')." >> ${LOG_FILE} && exit 1;;
 esac
+
+# This number should be more than enough (even if a hundred
+# instances of this script is ran together). If you have
+# a really loaded env, you can increase it to 75 or 100.
+MAX_ITERATION="50"
 
 # Lock function
 lock()
@@ -69,30 +79,45 @@ lock()
         C_PID=`cat ${LOCK_PID} 2>/dev/null`
         if [ "x" = "x${S_PID}" ]; then
             S_PID=${C_PID}
-        fi    
+        fi
 
         # Breaking out of the loop after X attempts
         if [ "x${C_PID}" = "x${S_PID}" ]; then
             i=`expr $i + 1`;
         fi
-   
+
         # Sleep 1 after 10/25 interactions
         if [ "$i" = "10" -o "$i" = "25" ]; then
             sleep 1;
         fi
-             
+
         i=`expr $i + 1`;
-        
+
         # So i increments 2 by 2 if the pid does not change.
         # If the pid keeps changing, we will increments one
         # by one and fail after MAX_ITERACTION
+
         if [ "$i" = "${MAX_ITERATION}" ]; then
-            echo "`date` Unable to execute. Locked: $0" \
-                        >> ${PWD}/ossec-hids-responses.log
-            
-            # Unlocking and exiting
-            unlock;
-            exit 1;                
+            kill="false"
+            for pid in `pgrep -f "${filename}"`; do
+                if [ "x${pid}" = "x${C_PID}" ]; then
+                    # Unlocking and exiting
+                    kill -9 ${C_PID}
+                    echo "`date` Killed process ${C_PID} holding lock." >> ${LOG_FILE}
+                    kill="true"
+                    unlock;
+                    i=0;
+                    S_PID="";
+                    break;
+                fi
+            done
+
+            if [ "x${kill}" = "xfalse" ]; then
+                echo "`date` Unable kill process ${C_PID} holding lock." >> ${LOG_FILE}
+                # Unlocking and exiting
+                unlock;
+                exit 1;
+            fi
         fi
     done
 }
@@ -127,13 +152,48 @@ if [ "X${UNAME}" = "XLinux" ]; then
    if [ ! -x ${IPTABLES} ]; then
       IPTABLES="/usr"${IPTABLES}
       if [ ! -x ${IPTABLES} ]; then
-         exit 0;
+        echo "$0: can not find iptables"
+        exit 0;
       fi
    fi
 
    # Executing and exiting
-   ${IPTABLES} ${ARG1}
-   ${IPTABLES} ${ARG2}
+   COUNT=0;
+   lock;
+   while [ 1 ]; do
+        ${IPTABLES} ${ARG1}
+        RES=$?
+        if [ $RES = 0 ]; then
+            break;
+        else
+            COUNT=`expr $COUNT + 1`;
+            echo "`date` Unable to run (iptables returning != $RES): $COUNT - $0 $1 $2 $3 $4 $5" >> ${LOG_FILE}
+            sleep $COUNT;
+
+            if [ $COUNT -gt 4 ]; then
+                break;
+            fi    
+        fi
+   done
+   
+   COUNT=0;
+   while [ 1 ]; do
+        ${IPTABLES} ${ARG2}
+        RES=$?
+        if [ $RES = 0 ]; then
+            break;
+        else
+            COUNT=`expr $COUNT + 1`;
+            echo "`date` Unable to run (iptables returning != $RES): $COUNT - $0 $1 $2 $3 $4 $5" >> ${LOG_FILE}
+            sleep $COUNT;
+
+            if [ $COUNT -gt 4 ]; then
+                break;
+            fi       
+        fi
+   done
+   unlock;
+            
    exit 0;
    
 # FreeBSD, SunOS or NetBSD with ipfilter

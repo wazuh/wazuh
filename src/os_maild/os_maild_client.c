@@ -14,19 +14,27 @@
 #include "shared.h"
 #include "maild.h"
 
+/* GeoIP Stuff */
+#ifdef GEOIP
+#include "config/config.h"
+#endif
 
-/* OS_RecvMailQ, 
+/* OS_RecvMailQ,
  * v0.1, 2005/03/15
  * Receive a Message on the Mail queue
  * v0,2: Using the new file-queue.
  */
-MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, 
+MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
                       MailConfig *Mail, MailMsg **msg_sms)
 {
     int i = 0, body_size = OS_MAXSTR -3, log_size, sms_set = 0,donotgroup = 0;
     char logs[OS_MAXSTR + 1];
     char *subject_host;
-    
+#ifdef GEOIP
+    char geoip_msg_src[OS_SIZE_1024 +1];
+    char geoip_msg_dst[OS_SIZE_1024 +1];
+#endif
+
     MailMsg *mail;
     alert_data *al_data;
 
@@ -48,21 +56,66 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
     /* Generating the logs */
     logs[0] = '\0';
     logs[OS_MAXSTR] = '\0';
-    
+
     while(al_data->log[i])
     {
         log_size = strlen(al_data->log[i]) + 4;
-        
+
         /* If size left is small than the size of the log, stop it */
         if(body_size <= log_size)
         {
             break;
         }
-        
+
         strncat(logs, al_data->log[i], body_size);
         strncat(logs, "\r\n", body_size);
         body_size -= log_size;
         i++;
+    }
+
+    if (al_data->old_md5) 
+    {
+        log_size = strlen(al_data->old_md5) + 16 + 4;
+        if(body_size > log_size)
+        {
+            strncat(logs, "Old md5sum was: ", 16);
+            strncat(logs, al_data->old_md5, body_size);
+            strncat(logs, "\r\n", 4);
+            body_size -= log_size;
+        }
+    }
+    if (al_data->new_md5) 
+    {
+        log_size = strlen(al_data->new_md5) + 16 + 4;
+        if(body_size > log_size)
+        {
+            strncat(logs, "New md5sum is : ", 16);
+            strncat(logs, al_data->new_md5, body_size);
+            strncat(logs, "\r\n", 4);
+            body_size -= log_size;
+        }
+    }
+    if (al_data->old_sha1) 
+    {
+        log_size = strlen(al_data->old_sha1) + 17 + 4;
+        if(body_size > log_size)
+        {
+            strncat(logs, "Old sha1sum was: ", 17);
+            strncat(logs, al_data->old_sha1, body_size);
+            strncat(logs, "\r\n", 4);
+            body_size -= log_size;
+        }
+    }
+    if (al_data->new_sha1) 
+    {
+        log_size = strlen(al_data->new_sha1) + 17 + 4;
+        if(body_size > log_size)
+        {
+            strncat(logs, "New sha1sum is : ", 17);
+            strncat(logs, al_data->new_sha1, body_size);
+            strncat(logs, "\r\n", 4);
+            body_size -= log_size;
+        }
     }
 
 
@@ -79,12 +132,12 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
     {
         /* Option for a clean full subject (without ossec in the name) */
         #ifdef CLEANFULL
-        snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT_FULL2, 
+        snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT_FULL2,
                                 al_data->level,
                                 al_data->comment,
                                 al_data->location);
         #else
-        snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT_FULL, 
+        snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT_FULL,
                                 al_data->location,
                                 al_data->level,
                                 al_data->comment);
@@ -92,20 +145,50 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
     }
     else
     {
-        snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT, 
+        snprintf(mail->subject, SUBJECT_SIZE -1, MAIL_SUBJECT,
                                              al_data->location,
                                              al_data->level);
     }
 
-    
+
     /* fixing subject back */
     if(subject_host)
     {
         *subject_host = '-';
     }
 
-    
+#ifdef GEOIP
+    /* Get GeoIP information */
+    if (Mail->geoip) {
+       if (al_data->geoipdatasrc) {
+           snprintf(geoip_msg_src, OS_SIZE_1024, "Src Location: %s\r\n", al_data->geoipdatasrc);
+       } else {
+           geoip_msg_src[0] = '\0';
+       }
+       if (al_data->geoipdatadst) {
+           snprintf(geoip_msg_dst, OS_SIZE_1024, "Dst Location: %s\r\n", al_data->geoipdatadst);
+       } else {
+           geoip_msg_dst[0] = '\0';
+       }
+    }
+    else {
+       geoip_msg_src[0] = '\0';
+       geoip_msg_dst[0] = '\0';
+    }
+#endif
+
     /* Body */
+#ifdef GEOIP
+    snprintf(mail->body, BODY_SIZE -1, MAIL_BODY,
+            al_data->date,
+            al_data->location,
+            al_data->rule,
+            al_data->level,
+            al_data->comment,
+            geoip_msg_src,
+            geoip_msg_dst,
+            logs);
+#else
     snprintf(mail->body, BODY_SIZE -1, MAIL_BODY,
             al_data->date,
             al_data->location,
@@ -113,7 +196,8 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
             al_data->level,
             al_data->comment,
             logs);
-
+#endif
+    debug2("OS_RecvMailQ: mail->body[%s]", mail->body);
 
     /* Checking for granular email configs */
     if(Mail->gran_to)
@@ -122,7 +206,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
         while(Mail->gran_to[i] != NULL)
         {
             int gr_set = 0;
-            
+
             /* Looking if location is set */
             if(Mail->gran_location[i])
             {
@@ -138,7 +222,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
                     continue;
                 }
             }
-            
+
             /* Looking for the level */
             if(Mail->gran_level[i])
             {
@@ -178,7 +262,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
                     continue;
                 }
             }
-            
+
 
             /* Looking for the group */
             if(Mail->gran_group[i])
@@ -252,13 +336,13 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
             _g_subject_level = al_data->level;
         }
     }
-    
-    
+
+
     /* If sms is set, create the sms output */
     if(sms_set)
     {
         MailMsg *msg_sms_tmp;
-        
+
         /* Allocate memory for sms */
         os_calloc(1,sizeof(MailMsg), msg_sms_tmp);
         os_calloc(BODY_SIZE, sizeof(char), msg_sms_tmp->body);
@@ -272,17 +356,17 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
 
         strncpy(msg_sms_tmp->body, logs, 128);
         msg_sms_tmp->body[127] = '\0';
-        
+
         /* Assigning msg_sms */
         *msg_sms = msg_sms_tmp;
     }
-    
-    
-    
+
+
+
     /* Clearing the memory */
     FreeAlertData(al_data);
 
-    
+
     return(mail);
 
 }

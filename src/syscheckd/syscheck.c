@@ -9,7 +9,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  *
- * License details at the LICENSE file included with OSSEC or 
+ * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
 
@@ -30,7 +30,7 @@
 
 #include "rootcheck/rootcheck.h"
 
-int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg);
+int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg, char *restrictfile);
 
 
 
@@ -76,7 +76,7 @@ int Start_win32_Syscheck()
         if(!syscheck.dir)
         {
             merror(SK_NO_DIR, ARGV0);
-            dump_syscheck_entry(&syscheck, "", 0, 0);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL);
         }
         else if(!syscheck.dir[0])
         {
@@ -86,7 +86,7 @@ int Start_win32_Syscheck()
 
         if(!syscheck.registry)
         {
-            dump_syscheck_entry(&syscheck, "", 0, 1);
+            dump_syscheck_entry(&syscheck, "", 0, 1, NULL);
         }
         syscheck.registry[0] = NULL;
 
@@ -108,18 +108,18 @@ int Start_win32_Syscheck()
         syscheck.rootcheck = 0;
         merror("%s: WARN: Rootcheck module disabled.", ARGV0);
     }
-                                                            
+
 
 
     /* Printing options */
     r = 0;
     while(syscheck.registry[r] != NULL)
     {
-        verbose("%s: INFO: Monitoring registry entry: '%s'.", 
+        verbose("%s: INFO: Monitoring registry entry: '%s'.",
                 ARGV0, syscheck.registry[r]);
         r++;
     }
-    
+
     r = 0;
     while(syscheck.dir[r] != NULL)
     {
@@ -131,9 +131,9 @@ int Start_win32_Syscheck()
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
-            
-        
-        
+
+
+
     /* Some sync time */
     sleep(syscheck.tsleep + 10);
 
@@ -141,35 +141,35 @@ int Start_win32_Syscheck()
     /* Waiting if agent started properly. */
     os_wait();
 
-    
+
     start_daemon();
 
 
     exit(0);
-}                
+}
 #endif
 
 
 
 /* Syscheck unix main.
  */
-#ifndef WIN32 
+#ifndef WIN32
 int main(int argc, char **argv)
 {
     int c,r;
     int test_config = 0,run_foreground = 0;
-    
+
     char *cfg = DEFAULTCPATH;
-    
-    
+
+
     /* Zeroing the structure */
     syscheck.workdir = NULL;
 
 
     /* Setting the name */
     OS_SetName(ARGV0);
-        
-    
+
+
     while((c = getopt(argc, argv, "VtdhfD:c:")) != -1)
     {
         switch(c)
@@ -198,10 +198,10 @@ int main(int argc, char **argv)
                 break;
             case 't':
                 test_config = 1;
-                break;        
+                break;
             default:
                 help(ARGV0);
-                break;   
+                break;
         }
     }
 
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
         {
             if(!test_config)
                 merror(SK_NO_DIR, ARGV0);
-            dump_syscheck_entry(&syscheck, "", 0, 0);
+            dump_syscheck_entry(&syscheck, "", 0, 0, NULL);
         }
         else if(!syscheck.dir[0])
         {
@@ -239,8 +239,8 @@ int main(int argc, char **argv)
 
     /* Reading internal options */
     read_internal();
-        
-    
+
+
 
     /* Rootcheck config */
     if(rootcheck_init(test_config) == 0)
@@ -253,30 +253,30 @@ int main(int argc, char **argv)
         merror("%s: WARN: Rootcheck module disabled.", ARGV0);
     }
 
-        
+
     /* Exit if testing config */
     if(test_config)
         exit(0);
 
-        
+
     /* Setting default values */
     if(syscheck.workdir == NULL)
         syscheck.workdir = DEFAULTDIR;
 
 
-    if(!run_foreground) 
+    if(!run_foreground)
     {
         nowDaemon();
         goDaemon();
     }
-   
+
     /* Initial time to settle */
-    sleep(syscheck.tsleep + 2); 
-    
-    
+    sleep(syscheck.tsleep + 2);
+
+
     /* Connect to the queue  */
     if((syscheck.queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-    {   
+    {
         merror(QUEUE_ERROR, ARGV0, DEFAULTQPATH, strerror(errno));
 
         sleep(5);
@@ -293,7 +293,7 @@ int main(int argc, char **argv)
 
     /* Start the signal handling */
     StartSIG(ARGV0);
-    
+
 
     /* Creating pid */
     if(CreatePID(ARGV0, getpid()) < 0)
@@ -337,8 +337,8 @@ int main(int argc, char **argv)
         }
         r++;
     }
-        
-    
+
+
     /* Some sync time */
     sleep(syscheck.tsleep + 10);
 
@@ -346,7 +346,7 @@ int main(int argc, char **argv)
     /* Start the daemon */
     start_daemon();
 
-    return(0);        
+    return(0);
 }
 #endif /* ifndef WIN32 */
 

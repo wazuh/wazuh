@@ -12,7 +12,7 @@
  * License details at the LICENSE file included with OSSEC or
  * online at: http://www.ossec.net/en/licensing.html
  */
- 
+
 /* Common API for dealing with databases */
 
 
@@ -50,11 +50,12 @@ void osdb_escapestr(char *str);
  * Available chars: a-z, A-Z, 0-9, -, _, ., %, $, @, (, ), +, *, <space> /
  * Basically: 040-046 (oct)
  *            050-176 (oct)
+ * 8/27/2012: Modified to allow new lines - \012
  */
 static const unsigned char insert_map[] =
 {
     '\000', '\000', '\002', '\003', '\004', '\005', '\006', '\007',
-    '\010', '\011', '\012', '\013', '\014', '\015', '\016', '\017',
+    '\010', '\011', '\001', '\013', '\014', '\015', '\016', '\017',
     '\020', '\021', '\022', '\023', '\024', '\025', '\026', '\027',
     '\030', '\031', '\032', '\033', '\034', '\035', '\036', '\037',
     '\001', '\001', '\001', '\001', '\001', '\001', '\001', '\047',
