@@ -43,7 +43,7 @@
   
   <rule id="31103" level="6">
     <if_sid>31100</if_sid>
-    <url>='|select%20|select+|insert%20|%20from%20|%20where%20|union%20|</url>
+    <url>=select%20|select+|insert%20|%20from%20|%20where%20|union%20|</url>
     <url>union+|where+|null,null|xp_cmdshell</url>
     <description>SQL injection attempt.</description>
     <group>attack,sql_injection,</group>
@@ -57,7 +57,7 @@
     <url>%027|%00|%01|%7f|%2E%2E|%0A|%0D|../..|..\..|echo;|</url>
     <url>cmd.exe|root.exe|_mem_bin|msadc|/winnt/|/boot.ini|</url>
     <url>/x90/|default.ida|/sumthin|nsiislog.dll|chmod%|wget%|cd%20|</url>
-    <url>cat%20|exec%20|rm%20|../..//|%5C../%5C|././././|2e%2e%5c%2e|\x5C\x5C</url>
+    <url>exec%20|../..//|%5C../%5C|././././|2e%2e%5c%2e|\x5C\x5C</url>
     <description>Common web attack.</description>
     <group>attack,</group>
   </rule>

@@ -173,7 +173,7 @@
     <description>Ignoring often post requests inside /wp-admin and /admin.</description>
    </rule>
 
-   <rule id="31533" level="10" timeframe="20" frequency="5">
+   <rule id="31533" level="10" timeframe="20" frequency="6">
     <if_matched_sid>31530</if_matched_sid>
     <same_source_ip />
     <description>High amount of POST requests in a small period of time (likely bot).</description>

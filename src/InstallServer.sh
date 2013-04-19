@@ -242,11 +242,15 @@ cp -pr addagent/manage_agents agentlessd/ossec-agentlessd \
         monitord/ossec-monitord monitord/ossec-reportd \
         os_execd/ossec-execd os_maild/ossec-maild \
         remoted/ossec-remoted syscheckd/ossec-syscheckd \
-	analysisd/ossec-logtest ${DIR}/bin/
-cp -pr util/syscheck_update ${DIR}/bin/
+	analysisd/ossec-logtest os_csyslogd/ossec-csyslogd \
+	os_auth/ossec-authd os_dbd/ossec-dbd analysisd/ossec-makelists \
+	${DIR}/bin/
+
 cp -pr util/verify-agent-conf ${DIR}/bin/
 cp -pr util/clear_stats ${DIR}/bin/
 cp -pr util/list_agents ${DIR}/bin/
+cp -pr util/ossec-regex ${DIR}/bin/
+cp -pr util/syscheck_update ${DIR}/bin/
 cp -pr util/agent_control ${DIR}/bin/
 cp -pr util/syscheck_control ${DIR}/bin/
 cp -pr util/rootcheck_control ${DIR}/bin/
