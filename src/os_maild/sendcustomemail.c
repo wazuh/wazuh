@@ -35,6 +35,7 @@
 #define TO			    "To: <%s>\r\n"
 #define CC			    "Cc: <%s>\r\n"
 #define SUBJECT			"Subject: %s\r\n"
+#define ENDHEADER               "\r\n"
 #define ENDDATA			"\r\n.\r\n"
 #define QUITMSG 		"QUIT\r\n"
 
@@ -240,6 +241,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, F
 
     OS_SendTCP(socket, snd_msg);
 
+    OS_SendTCP(socket,ENDHEADER);
 
 
      /* Sending body */

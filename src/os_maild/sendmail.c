@@ -36,6 +36,7 @@
 #define TO			    "To: <%s>\r\n"
 #define CC			    "Cc: <%s>\r\n"
 #define SUBJECT			"Subject: %s\r\n"
+#define ENDHEADER               "\r\n"
 #define ENDDATA			"\r\n.\r\n"
 #define QUITMSG 		"QUIT\r\n"
 
@@ -236,6 +237,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     snprintf(snd_msg, 127, SUBJECT, sms_msg->subject);
     OS_SendTCP(socket,snd_msg);
 
+    OS_SendTCP(socket,ENDHEADER);
 
 
     /* Sending body */
@@ -549,6 +551,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     }
     OS_SendTCP(socket,snd_msg);
 
+    OS_SendTCP(socket,ENDHEADER);
 
 
     /* Sending body */
