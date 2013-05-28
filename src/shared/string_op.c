@@ -87,5 +87,45 @@ int os_substr(char *dest, const char *src, int position, int length) {
     return 0;
 }
 
+/* Escape a set of characters */
+char *os_shell_escape(const char *src) {
+    // Maximum Length of the String is 2xthe current length
+    char shell_escapes[] = { '\\', '"', '\'', ' ', '\t', ';', '`', '>', '<', '|', '#',
+                            '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')' };
+
+    char *escaped_string;
+    int length = 0;
+    int i = 0;
+
+    if (src == NULL)
+        return NULL;
+
+    // Determine how long the string will be
+    char *iterator = src;
+    for (; *iterator; iterator++) {
+        if( strchr(shell_escapes, *iterator) ) {
+            length++;
+        }
+        length++;
+    }
+    // Allocate the memory
+    if( (escaped_string = calloc(1, length + 1 )) == NULL ) {
+        // Return NULL
+        return NULL;
+    }
+
+    // Escape the escapable characters
+    iterator=src;
+    for( i=0; *iterator; iterator++ ) {
+        if ( strchr(shell_escapes, *iterator) ) {
+            escaped_string[i] = '\\';
+            i++;
+        }
+        escaped_string[i] = *iterator;
+        i++;
+    }
+    // Return Success
+    return escaped_string;
+}
 
 /* EOF */
