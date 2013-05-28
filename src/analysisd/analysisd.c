@@ -1112,6 +1112,13 @@ void OS_ReadMSG_analysisd(int m_queue)
                                 do_ar = 0;
                             }
                         }
+                        if((*rule_ar)->ar_cmd->expect & FILENAME)
+                        {
+                            if(!lf->filename)
+                            {
+                                do_ar = 0;
+                            }
+                        }
 
                         if(do_ar)
                         {

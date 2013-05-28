@@ -437,6 +437,8 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
             tmp_command->expect |= USERNAME;
         if(OS_Regex("srcip", tmp_str))
             tmp_command->expect |= SRCIP;
+        if(OS_Regex("filename", tmp_str))
+            tmp_command->expect |= FILENAME;
     }
 
     free(tmp_str);

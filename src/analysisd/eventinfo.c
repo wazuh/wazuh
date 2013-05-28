@@ -629,6 +629,6 @@ void Free_Eventinfo(Eventinfo *lf)
     lf = NULL;
 
     return;
-}	
+}
 
 /* EOF */
