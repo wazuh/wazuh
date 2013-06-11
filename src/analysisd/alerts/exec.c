@@ -34,6 +34,9 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     char *ip;
     char *user;
     char *filename;
+    int do_free_filename = 0;
+
+    ip = user = filename = "-";
 
     /* Cleaning the IP */
     if(lf->srcip && (ar->ar_cmd->expect & SRCIP))
@@ -73,30 +76,18 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
             }
         }
     }
-    else
-    {
-        ip = "-";
-    }
-
 
     /* Getting username */
     if(lf->dstuser && (ar->ar_cmd->expect & USERNAME))
     {
         user = lf->dstuser;
     }
-    else
-    {
-        user = "-";
-    }
 
     /* Get the filename */
     if(lf->filename && (ar->ar_cmd->expect & FILENAME))
     {
             filename = os_shell_escape(lf->filename);
-    }
-    else
-    {
-            filename = "-";
+            do_free_filename = 1;
     }
 
 
@@ -184,7 +175,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     }
 
     // Clean up Memory
-    if ( filename != NULL )
+    if ( filename != NULL && do_free_filename == 1 )
         free(filename);
 
     return;
