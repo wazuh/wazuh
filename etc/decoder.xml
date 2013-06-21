@@ -464,7 +464,7 @@
 
 <decoder name="proftpd-ip">
   <parent>proftpd</parent>
-  <regex>^\S+ \(\S+[(\S+)]\)</regex>
+  <regex>^\S+ \(\S+[(\S+)]\)|^\S+ \(\S+[::ffff:(\S+)]\)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -728,7 +728,7 @@
 
 <decoder name="courier-generic">
   <parent>courier</parent>
-  <regex>, ip=[(\S+\d)]$</regex>
+  <regex>, ip=[(\S+\d)]$|, ip=[::ffff:(\S+\d)]$</regex>
   <order>srcip</order>
 </decoder>
 
