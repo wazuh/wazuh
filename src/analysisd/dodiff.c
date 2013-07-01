@@ -90,7 +90,6 @@ int doDiff(RuleInfo *currently_rule, Eventinfo *lf)
     int date_of_change;
     char *htpt = NULL;
     char flastfile[OS_SIZE_2048 +1];
-    char fdifffile[OS_SIZE_2048 +1];
     char flastcontent[OS_SIZE_8192 +1];
 
 
@@ -174,30 +173,6 @@ int doDiff(RuleInfo *currently_rule, Eventinfo *lf)
     }
 
 
-    /* File was modified. */
-    if(lf->hostname[0] == '(')
-    {
-        htpt = strchr(lf->hostname, ')');
-        if(htpt)
-        {
-            *htpt = '\0';
-        }
-        snprintf(fdifffile, OS_SIZE_2048, "%s/%s/%d/state.%d", DIFF_DIR, lf->hostname+1,
-                 currently_rule->sigid, date_of_change);
-
-        if(htpt)
-        {
-            *htpt = ')';
-        }
-        htpt = NULL;
-    }
-    else
-    {
-        snprintf(fdifffile, OS_SIZE_2048, "%s/%s/%d/state.%d", DIFF_DIR, lf->hostname,
-                 currently_rule->sigid, date_of_change);
-    }
-
-    rename(flastfile, fdifffile);
     if(!_add2last(lf->log, lf->size, flastfile))
     {
         merror("%s: ERROR: unable to create last file: %s", ARGV0, flastfile);
