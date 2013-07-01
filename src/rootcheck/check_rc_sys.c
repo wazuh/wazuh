@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "rootcheck.h"
+#include <sys/statfs.h>
 
 /* Prototypes */
 static int read_sys_file(const char *file_name, int do_read);
