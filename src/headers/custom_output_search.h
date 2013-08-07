@@ -13,6 +13,11 @@
  */
 char * searchAndReplace(char* orig, char* search, char*value);
 
+/** char* escape_newlines(char *orig);
+ * Escape the newlines characters
+ * Returns NULL on error, otherwise returns a new allocated string.
+ */
+char* escape_newlines(char *orig);
 
 
 #endif /* CUSTOM_OUTPUT_SEARCH_H_ */

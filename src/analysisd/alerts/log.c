@@ -428,12 +428,20 @@ void OS_CustomLog(Eventinfo *lf,char* format)
     os_free(log);
     log=NULL;
   }
+  char * escaped_log;
+  escaped_log = escape_newlines(lf->full_log);
 
-  log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_FULL_LOG], lf->full_log);
+  log = searchAndReplace(tmp_log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_FULL_LOG],escaped_log );
   if (tmp_log)
   {
     os_free(tmp_log);
     tmp_log=NULL;
+  }
+
+  if(escaped_log)
+  {
+    os_free(escaped_log);
+    escaped_log=NULL;
   }
 
   snprintf(tmp_buffer, 1024, "%s",lf->generated_rule->comment?lf->generated_rule->comment:"");

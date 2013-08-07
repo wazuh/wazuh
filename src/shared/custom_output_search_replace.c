@@ -156,3 +156,46 @@ char * searchAndReplace(char* orig, char* search, char*value)
 
   return tmp;
 }
+
+//escape newlines characters. Returns a new allocated string.
+char* escape_newlines(char *orig)
+{
+  const char *ptr;
+  char *ret, *retptr;
+  int size;
+
+  ptr = orig;
+  size = 1;
+  while (*ptr)
+  {
+    if ((*ptr == '\n') ||(*ptr == '\r'))
+      size += 2;
+    else
+      size += 1;
+    ptr++;
+  }
+
+  ret = malloc (size);
+  ptr = orig;
+  retptr = ret;
+  while (*ptr) {
+    if (*ptr == '\n') {
+      *retptr = '\\';
+      *(retptr+1) = 'n';
+      retptr += 2;
+    }
+    else if (*ptr == '\r') {
+      *retptr = '\\';
+      *(retptr+1) = 'n';
+      retptr += 2;
+    }
+    else {
+      *retptr = *ptr;
+      retptr ++;
+    }
+    ptr++;
+  }
+  *retptr = '\0';
+
+  return ret;
+}
