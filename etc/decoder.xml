@@ -716,7 +716,7 @@
   - Nov 24 18:18:28 gandalf pop3d: LOGIN FAILED, ip=[::ffff:1.2.3.4]
   -->
 <decoder name="courier">
-  <program_name>^pop3d|^courierpop3login|^imaplogin</program_name>
+  <program_name>^pop3d|^courierpop3login|^imaplogin|^courier-pop3|^courier-imap</program_name>
 </decoder>
 
 <decoder name="courier-login">
