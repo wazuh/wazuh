@@ -8,7 +8,7 @@
 
 !define MUI_ICON favicon.ico
 !define MUI_UNICON ossec-uninstall.ico
-!define VERSION "v2.7.1-beta-1"
+!define VERSION "v2.7.1"
 !define NAME "OSSEC HIDS"
 !define /date CDATE "%b %d %Y at %H:%M:%S"
 
