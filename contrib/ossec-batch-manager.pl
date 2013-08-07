@@ -12,6 +12,23 @@
 #                                                       # #
 ##########################################################
 # Modified by Tim Meader (Timothy.A.Meader@nasa.gov)
+# on 2013/07/01
+#
+# - corrected a MAJOR logic error in the remove
+#   function. The comparison was being done across the
+#   entire line of the agent keys file, so both IPs
+#   and the SSH keys at the end could be matched against
+#   the 'agent ID' wanting to be removed. Changed the
+#   match to only compare the first column of the file
+# - added an error output message to the remove
+#   function if it's fed an 'agent ID' that doesn't
+#   exist
+# - the script now also removes the corresponding
+#   associated agent rid files after a successful remove
+#   operation, or gives an error on failure
+#            
+##########################################################
+# Modified by Tim Meader (Timothy.A.Meader@nasa.gov)
 # on 2010/12/08
 #            
 # - fixed two errors that were popping up during add or
@@ -28,7 +45,7 @@
 # - modified "extract_keys" func to accept either ID,
 #   name, or IP address as the argument after the
 #   "-e" operator. Output of key extraction now
-#   includes the name and IP address by default in the
+#   include the name and IP address by default in the
 #   format: "name,IP  extracted_key"
 #
 #########################################################
@@ -49,6 +66,7 @@ use Digest::MD5 qw(md5_hex);
 use Getopt::Long;
 
 use constant AUTH_KEY_FILE => "/var/ossec/etc/client.keys";
+use constant RIDS_PATH => "/var/ossec/queue/rids/";
 
 my ($key, $add, $remove, @extracts, $import, $listagents);
 my ($agentid, $agentname, $ipaddress);
@@ -100,7 +118,7 @@ elsif ($add) {
           close(FH);
 
           if (@used_agent_ids) {
-            @used_agent_ids = sort { $a <=> $b } @used_agent_ids;
+            @used_agent_ids = sort(@used_agent_ids);
             $agentid = sprintf("%03d", $used_agent_ids[-1] + 1);
           }
         }
@@ -300,13 +318,27 @@ sub remove_agent {
   else {
     die "Error writing ".AUTH_KEY_FILE.": $!\n";
   }
+
+  my $key_found = 0;
+
   foreach my $line (@agent_array) {
-    if ($line !~ $removeid) {
+    my @split_line = split(/\s/,$line);
+
+    if ($split_line[0] ne $removeid) {
       print FHRW "$line";
+    }
+    else {
+      my $rids_file = RIDS_PATH.$removeid;
+      $key_found = 1;
+      unlink $rids_file or warn "Could not remove rids file for Agent ID \'".$removeid."\'!\n";
     }
   }
   close(FHRW);
-  exit 0;
+
+  if (!$key_found) {
+    die "Agent ID \'".$removeid."\' not found! Nothing removed.\n";
+  }
+  exit(0);
 }
 
 sub check_if_exists {
