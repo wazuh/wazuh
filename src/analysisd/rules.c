@@ -318,7 +318,7 @@ int Rules_OP_ReadRules(char * rulefile)
 
                 if(overwrite != 1 && doesRuleExist(id, NULL))
                 {
-                    merror("%s: Rule with id %d exists allready.",ARGV0, id);
+                    merror("%s: Duplicate rule ID:%d",ARGV0, id);
                     OS_ClearXML(&xml);
                     return(-1);
                 }

@@ -59,7 +59,7 @@ void Lists_OP_MakeCDB(char *txt_filename, char *cdb_filename, int force)
     if(File_DateofChange(txt_filename) > File_DateofChange(cdb_filename) ||
        force)
     {
-        printf(" * File %s need to be updated\n", cdb_filename);
+        printf(" * File %s needs to be updated\n", cdb_filename);
         tmp_fd = fopen(tmp_filename, "w+");
         cdb_make_start(&cdbm, tmp_fd);
         if(!(txt_fd = fopen(txt_filename, "r")))
