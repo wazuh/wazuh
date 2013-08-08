@@ -198,19 +198,23 @@ int main(int argc, char **argv)
     while(1)
     {
 
-        // no need to completely pin the cpu
-        usleep(0);
-        for (i = 0; i < POOL_SIZE; i++)
-        {
-            int rv = 0;
-            status = 0;
-            if (process_pool[i])
+        // no need to completely pin the cpu, 100ms should be fast enough
+        usleep(100*1000);
+
+        // Only check process-pool if we have active processes
+        if(active_processes > 0){
+            for (i = 0; i < POOL_SIZE; i++)
             {
-                rv = waitpid(process_pool[i], &status, WNOHANG);
-                if (rv != 0){
-                    debug1("%s: DEBUG: Process %d exited", ARGV0, process_pool[i]);
-                    process_pool[i] = 0;
-                    active_processes = active_processes - 1;
+                int rv = 0;
+                status = 0;
+                if (process_pool[i])
+                {
+                    rv = waitpid(process_pool[i], &status, WNOHANG);
+                    if (rv != 0){
+                        debug1("%s: DEBUG: Process %d exited", ARGV0, process_pool[i]);
+                        process_pool[i] = 0;
+                        active_processes = active_processes - 1;
+                    }
                 }
             }
         }
