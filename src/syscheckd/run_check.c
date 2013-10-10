@@ -265,6 +265,10 @@ void start_daemon()
             /* Checking for the time of the scan. */
             if(!day_scanned && syscheck.scan_time && syscheck.scan_day)
             {
+                /* Assign hour/min/sec values */
+                snprintf(curr_hour, 9, "%02d:%02d:%02d",
+                                    p->tm_hour, p->tm_min, p->tm_sec);
+
                 if((OS_IsAfterTime(curr_hour, syscheck.scan_time)) &&
                    (OS_IsonDay(p->tm_wday, syscheck.scan_day)))
                 {
