@@ -741,7 +741,7 @@ int checkVista()
        strstr(m_uname, "Windows 7"))
     {
         isVista = 1;
-        verbose("%s: INFO: System is Vista or Windows Server 2008.",
+        verbose("%s: INFO: System is Vista, Windows 7 or Windows Server 2008.",
                 __local_name);
     }
 

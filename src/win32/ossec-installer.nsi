@@ -8,7 +8,7 @@
 
 !define MUI_ICON favicon.ico
 !define MUI_UNICON ossec-uninstall.ico
-!define VERSION "v2.7.1"
+!define VERSION "2.7.1"
 !define NAME "OSSEC HIDS"
 !define /date CDATE "%b %d %Y at %H:%M:%S"
 
@@ -31,10 +31,10 @@ InstallDirRegKey HKLM Software\OSSEC ""
   !define MUI_FINISHPAGE_TITLE_3LINES
   !define MUI_FINISHPAGE_RUN "$INSTDIR\win32ui.exe"
   !define  MUI_FINISHPAGE_RUN_TEXT "Run OSSEC Agent Manager"
-  
+
   ; Page for choosing components.
   !define MUI_COMPONENTSPAGE_TEXT_TOP "Select the options you want to be executed. Click next to continue."
-  !define MUI_COMPONENTSPAGE_NODESC 
+  !define MUI_COMPONENTSPAGE_NODESC
 
   !insertmacro MUI_PAGE_WELCOME
   !insertmacro MUI_PAGE_LICENSE "LICENSE.txt"
@@ -64,11 +64,11 @@ Function .onInit
     MessageBox MB_OKCANCEL "${NAME} is already installed. It will be stopped before continuing." /SD IDOK IDOK NoAbort
     Abort
     NoAbort:
-    
+
    ;; Stopping ossec service.
    nsExec::ExecToStack '"net" "stop" "OssecSvc"'
 FunctionEnd
-            
+
 ;--------------------------------
 ;Main install section
 
@@ -145,7 +145,7 @@ Delete "$SMPROGRAMS\OSSEC\Documentation.lnk"
 Delete "$SMPROGRAMS\OSSEC\Edit Config.lnk"
 Delete "$SMPROGRAMS\OSSEC\*.*"
 
-; Remove start menu entry. 
+; Remove start menu entry.
 RMDir "$SMPROGRAMS\OSSEC"
 
 ; Creating start menu directory
@@ -178,12 +178,12 @@ SectionEnd
 ;--------------------------------
 ;Uninstall section
 Section "Uninstall"
-  
+
   ;Need a step to check for a running agent manager, otherwise it and the INSTDIR directory will not be removed.
-  
+
   ; Stop ossec. Perhaps we should look for an exit status here. Also, may be a good place to use a plug-in.
   nsExec::ExecToStack '"net" "stop" "OssecSvc"'
-  
+
   ; Uninstall from the services. Again, maybe use a plugin here.
   nsExec::ExecToStack '"$INSTDIR\ossec-agent.exe" uninstall-service'
 
