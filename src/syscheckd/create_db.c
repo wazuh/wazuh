@@ -106,6 +106,13 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
         verbose("%s: Reading dir: %s\n",ARGV0, file_name);
         #endif
 
+        #ifdef WIN32
+        /* Directory links are not supported */
+        if (GetFileAttributes(file_name) & FILE_ATTRIBUTE_REPARSE_POINT) {
+            merror("%s: WARN: Links are not supported: '%s'", ARGV0, file_name);
+            return(-1);
+        }
+        #endif
         return(read_dir(file_name, opts, restriction));
     }
 
@@ -318,7 +325,7 @@ int read_dir(char *dir_name, int opts, OSMatch *restriction)
     struct dirent *entry;
 
     f_name[PATH_MAX +1] = '\0';
-	
+
 
     /* Directory should be valid */
     if((dir_name == NULL)||((dir_size = strlen(dir_name)) > PATH_MAX))
