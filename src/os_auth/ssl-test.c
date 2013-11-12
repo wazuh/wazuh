@@ -69,15 +69,17 @@
 
 int main(int argc, char **argv)
 {
-    int c;
-    int sock = 0, port = 443, ret = 0;
-    char *host = NULL;
+    int c, s;
+    int sock = 0, portnum, ret = 0;
+    char *host = NULL, *port = "443";
     SSL_CTX *ctx;
     SSL *ssl;
     SSL_METHOD *sslmeth;
     BIO *sbio;
     BIO *bio_err = 0;
-    struct sockaddr_in addr;
+    struct sockaddr_storage addr;
+    struct addrinfo hints;
+    struct addrinfo *result, *rp;
 
 
     while((c = getopt(argc, argv, "h:p:")) != -1)
@@ -87,11 +89,12 @@ int main(int argc, char **argv)
                 host = optarg;
                 break;
             case 'p':
-                port = atoi(optarg);
-                if(port <= 0 || port >= 65536)
+                portnum = atoi(optarg);
+                if(portnum <= 0 || portnum >= 65536)
                 {
                     exit(1);
                 }
+                port = optarg;
                 break;
             default:
                 exit(1);
@@ -122,23 +125,38 @@ int main(int argc, char **argv)
     }
 
     /* Connecting via TCP */
-    sock = socket(AF_INET,SOCK_STREAM, IPPROTO_TCP);
-    if(sock < 0)
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    s = getaddrinfo(host, port, &hints, &result);
+    if (s != 0)
     {
-        printf("sock error\n");
+        printf("getaddrinfo: %s\n", gai_strerror(s));
         exit(1);
     }
 
-    memset(&addr,0,sizeof(addr));
-    addr.sin_addr.s_addr = inet_addr(host);
-    addr.sin_family=AF_INET;
-    addr.sin_port=htons(port);
-    if(connect(sock,(struct sockaddr *)&addr, sizeof(addr)) < 0)
+    for (rp = result; rp != NULL; rp = rp->ai_next)
     {
+        sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (sock == -1)
+        {
+            continue;
+        }
+  
+        if (connect(sock, rp->ai_addr, rp->ai_addrlen) != -1)
+        {
+            break;                  /* Success */
+        } 
+    }
+    if (rp == NULL)
+    {               /* No address succeeded */
         printf("connect error\n");
         exit(1);
     }
 
+    freeaddrinfo(result);           /* No longer needed */
 
 
     /* Connecting the SSL socket */

@@ -21,11 +21,6 @@ char *ip_address_regex =
      "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
      "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
 
-/* Global vars */
-int _mask_inited = 0;
-int _netmasks[33];
-
-
 /* Read the file and return a string the matches the following
  * format: high_name.low_name.
  * If return is not null, value must be free.
@@ -137,73 +132,6 @@ static char *_read_file(char *high_name, char *low_name, char *defines_file)
 
 
 
-/* Getting the netmask based on the integer value. */
-int getNetmask(int mask, char *strmask, int size)
-{
-    int i = 0;
-
-    strmask[0] = '\0';
-
-    if(mask == 0)
-    {
-        snprintf(strmask, size, "/any");
-        return(1);
-    }
-
-    for(i = 0;i<=31;i++)
-    {
-        if(htonl(_netmasks[i]) == mask)
-        {
-            snprintf(strmask, size, "/%d", i);
-            break;
-        }
-    }
-
-    return(1);
-}
-
-
-
-/* Initialize netmasks -- took from snort util.c */
-void _init_masks()
-{
-    _mask_inited = 1;
-    _netmasks[0] = 0x0;
-    _netmasks[1] = 0x80000000;
-    _netmasks[2] = 0xC0000000;
-    _netmasks[3] = 0xE0000000;
-    _netmasks[4] = 0xF0000000;
-    _netmasks[5] = 0xF8000000;
-    _netmasks[6] = 0xFC000000;
-    _netmasks[7] = 0xFE000000;
-    _netmasks[8] = 0xFF000000;
-    _netmasks[9] = 0xFF800000;
-    _netmasks[10] = 0xFFC00000;
-    _netmasks[11] = 0xFFE00000;
-    _netmasks[12] = 0xFFF00000;
-    _netmasks[13] = 0xFFF80000;
-    _netmasks[14] = 0xFFFC0000;
-    _netmasks[15] = 0xFFFE0000;
-    _netmasks[16] = 0xFFFF0000;
-    _netmasks[17] = 0xFFFF8000;
-    _netmasks[18] = 0xFFFFC000;
-    _netmasks[19] = 0xFFFFE000;
-    _netmasks[20] = 0xFFFFF000;
-    _netmasks[21] = 0xFFFFF800;
-    _netmasks[22] = 0xFFFFFC00;
-    _netmasks[23] = 0xFFFFFE00;
-    _netmasks[24] = 0xFFFFFF00;
-    _netmasks[25] = 0xFFFFFF80;
-    _netmasks[26] = 0xFFFFFFC0;
-    _netmasks[27] = 0xFFFFFFE0;
-    _netmasks[28] = 0xFFFFFFF0;
-    _netmasks[29] = 0xFFFFFFF8;
-    _netmasks[30] = 0xFFFFFFFC;
-    _netmasks[31] = 0xFFFFFFFE;
-    _netmasks[32] = 0xFFFFFFFF;
-}
-
-
 /** getDefine_Int.
  * Gets an integer definition. This function always return on
  * success or exit on error.
@@ -254,10 +182,12 @@ int getDefine_Int(char *high_name, char *low_name, int min, int max)
 int OS_IPFound(char *ip_address, os_ip *that_ip)
 {
     int _true = 1;
-    struct in_addr net;
+    os_ip temp_ip;
+
+    memset(&temp_ip, 0, sizeof(struct _os_ip));
 
     /* Extracting ip address */
-    if((net.s_addr = inet_addr(ip_address)) <= 0)
+    if (OS_IsValidIP(ip_address, &temp_ip) == 0)
     {
         return(!_true);
     }
@@ -269,7 +199,9 @@ int OS_IPFound(char *ip_address, os_ip *that_ip)
     }
 
     /* Checking if ip is in thatip & netmask */
-    if((net.s_addr & that_ip->netmask) == that_ip->ip_address)
+    if (sacmp((struct sockaddr *) &temp_ip.ss, 
+              (struct sockaddr *) &that_ip->ss,
+              that_ip->prefixlength))
     {
         return(_true);
     }
@@ -286,11 +218,13 @@ int OS_IPFound(char *ip_address, os_ip *that_ip)
  */
 int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
 {
-    struct in_addr net;
     int _true = 1;
+    os_ip temp_ip;
+
+    memset(&temp_ip, 0, sizeof(struct _os_ip));
 
     /* Extracting ip address */
-    if((net.s_addr = inet_addr(ip_address)) <= 0)
+    if (OS_IsValidIP(ip_address, &temp_ip) == 0)
     {
         return(!_true);
     }
@@ -304,9 +238,12 @@ int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
             _true = 0;
         }
 
-        if((net.s_addr & l_ip->netmask) == l_ip->ip_address)
+        /* Checking if ip is in thatip & netmask */
+        if (sacmp((struct sockaddr *) &temp_ip.ss, 
+                  (struct sockaddr *) &l_ip->ss,
+                  l_ip->prefixlength))
         {
-            return(_true);
+            return(_true); 
         }
         list_of_ips++;
     }
@@ -315,7 +252,7 @@ int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
 }
 
 
-/** int OS_IsValidIP(char *ip)
+/** int OS_IsValidIP(char *ip_address, os_ip *final_ip)
  * Validates if an ip address is in the right
  * format.
  * Returns 0 if doesn't match or 1 if it is an ip or 2 an ip with cidr.
@@ -323,8 +260,9 @@ int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
  */
 int OS_IsValidIP(char *ip_address, os_ip *final_ip)
 {
-    unsigned int nmask = 0;
     char *tmp_str;
+    int cidr = -1;
+    struct addrinfo hints, *result;
 
     /* Can't be null */
     if(!ip_address)
@@ -343,150 +281,130 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
         ip_address++;
     }
 
-    #ifndef WIN32
-    /* checking against the basic regex */
-    if(!OS_PRegex(ip_address, ip_address_regex))
+    if(strcmp(ip_address, "any") == 0)
     {
-        if(strcmp(ip_address, "any") != 0)
-        {
-            return(0);
-        }
+        strcpy(ip_address, "::/0");   
     }
-    #else
-
-    if(strcmp(ip_address, "any") != 0)
-    {
-        char *tmp_ip;
-        int dots = 0;
-        tmp_ip = ip_address;
-        while(*tmp_ip != '\0')
-        {
-            if((*tmp_ip < '0' ||
-               *tmp_ip > '9') &&
-               *tmp_ip != '.' &&
-               *tmp_ip != '/')
-            {
-                /* Invalid ip */
-                return(0);
-            }
-            if(*tmp_ip == '.')
-                dots++;
-            tmp_ip++;
-        }
-        if(dots < 3 || dots > 6)
-            return(0);
-    }
-    #endif
-
-
 
     /* Getting the cidr/netmask if available */
     tmp_str = strchr(ip_address,'/');
     if(tmp_str)
     {
-        int cidr;
-        struct in_addr net;
-
         *tmp_str = '\0';
         tmp_str++;
 
         /* Cidr */
-        if(strlen(tmp_str) <= 2)
+        if(strlen(tmp_str) <= 3)
         {
             cidr = atoi(tmp_str);
-            if((cidr >= 0) && (cidr <= 32))
-            {
-                if(!_mask_inited)
-                    _init_masks();
-                nmask = _netmasks[cidr];
-                nmask = htonl(nmask);
-            }
-            else
-            {
-                return(0);
-            }
         }
-        /* Full netmask */
         else
-        {
-            /* Init the masks */
-            if(!_mask_inited)
-                _init_masks();
-
-            if(strcmp(tmp_str, "255.255.255.255") == 0)
-            {
-                nmask = htonl(_netmasks[32]);
-            }
-            else
-            {
-                if((nmask = inet_addr(ip_address)) <= 0)
-                {
-                    return(0);
-                }
-            }
-        }
-
-        if((net.s_addr = inet_addr(ip_address)) <= 0)
-        {
-            if(strcmp("0.0.0.0", ip_address) == 0)
-            {
-                net.s_addr = 0;
-            }
-            else
-            {
-                return(0);
-            }
-        }
-
-        if(final_ip)
-        {
-            final_ip->ip_address = net.s_addr & nmask;
-            final_ip->netmask = nmask;
-        }
-
-        tmp_str--;
-        *tmp_str = '/';
-
-        return(2);
-    }
-
-    /* No cidr available */
-    else
-    {
-        struct in_addr net;
-        nmask = 32;
-
-        if(strcmp("any", ip_address) == 0)
-        {
-            net.s_addr = 0;
-            nmask = 0;
-        }
-        else if((net.s_addr = inet_addr(ip_address)) <= 0)
         {
             return(0);
         }
+    }
 
-        if(final_ip)
+    /* No cidr available */
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_flags = AI_NUMERICHOST;
+    if (getaddrinfo(ip_address, NULL, &hints, &result) != 0)
+    {
+        return(0);
+    }
+    memcpy((void *) &final_ip->ss, result->ai_addr, result->ai_addrlen);
+    freeaddrinfo(result);
+
+    /* Ip with cidr */
+    if(cidr)
+    {
+        switch (final_ip->ss.ss_family)
         {
-            final_ip->ip_address = net.s_addr;
-
-            if(!_mask_inited)
-                _init_masks();
-
-            final_ip->netmask = htonl(_netmasks[nmask]);
+        case AF_INET:
+            if (cidr <= 32)
+            {
+                final_ip->prefixlength = cidr;
+                return(2);
+            }
+            return(0);
+        case AF_INET6:
+            if (cidr <= 128)
+            {
+                final_ip->prefixlength = cidr;
+                return(2);
+            }
+            return(0);
+        default:  
+            return(0);
         }
-
-        /* Ip without cidr */
-        if(nmask)
+    }
+    else
+    {
+        switch (final_ip->ss.ss_family)
         {
+        case AF_INET:
+            final_ip->prefixlength = 32;
             return(1);
+        case AF_INET6:
+            final_ip->prefixlength = 128;
+            return(1);
+        default:  
+            return(0);
         }
-
-        return(2);
     }
 
     /* Should never reach here */
     return(0);
+}
+
+
+/** int sacmp(struct sockaddr *sa1, struct sockaddr *sa2, int prefixlength)
+ * Compares two sockaddrs up to prefixlength.
+ * Returns 0 if doesn't match or 1 if they do.
+ */
+int sacmp(struct sockaddr *sa1, struct sockaddr *sa2, int prefixlength)
+{
+    int _true = 1;
+    int i;
+    div_t ip_div;
+    char *addr1, *addr2, modbits;
+
+    if (sa1->sa_family != sa2->sa_family)
+    {
+        return(!_true);
+    }
+
+    switch (sa1->sa_family)
+    {
+    case AF_INET:
+        addr1 = (char *) &(((struct sockaddr_in *) sa1)->sin_addr);
+        addr2 = (char *) &(((struct sockaddr_in *) sa2)->sin_addr);
+        break;
+    case AF_INET6:
+        addr1 = (char *) &(((struct sockaddr_in6 *) sa1)->sin6_addr);
+        addr2 = (char *) &(((struct sockaddr_in6 *) sa2)->sin6_addr);
+        break;
+    default:
+        return(!_true);
+    }
+
+    ip_div = div(prefixlength, 8);
+
+    for (i=0; i < ip_div.quot; i++)
+    {
+        if (addr1[i] != addr2[i])
+        {
+            return(!_true);
+        }
+    }
+    if (ip_div.rem)
+    {
+        modbits = ((char) ~0) << (8 - ip_div.rem);
+        if ( (addr1[i] & modbits) != (addr2[i] & modbits) )
+        {
+            return(!_true);
+        }
+    }
+    return(_true);
 }
 
 

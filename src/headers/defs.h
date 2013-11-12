@@ -47,7 +47,7 @@
 #define OS_FLSIZE	    OS_SIZE_256     /* Maximum file size */
 #define OS_HEADER_SIZE  OS_SIZE_128     /* Maximum header size */
 #define OS_LOG_HEADER   OS_SIZE_256     /* Maximum log header size */
-#define IPSIZE          16              /* IP Address size */
+#define IPSIZE          INET6_ADDRSTRLEN    /* IP Address size */
 
 
 /* Some Global names */
@@ -281,11 +281,11 @@ http://www.ossec.net/main/license/\n"
 
 /* Default ports */
 #ifndef DEFAULT_SECURE
-	#define DEFAULT_SECURE 1514 /* Default encrypted */
+	#define DEFAULT_SECURE "1514" /* Default encrypted */
 #endif
 
 #ifndef DEFAULT_SYSLOG
-	#define DEFAULT_SYSLOG 514 /* Default syslog port - udp */
+	#define DEFAULT_SYSLOG "514" /* Default syslog port - udp */
 #endif
 
 

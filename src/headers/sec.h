@@ -28,7 +28,7 @@ typedef struct _keyentry
     char *name;
 
     os_ip *ip;
-    struct sockaddr_in peer_info;
+    struct sockaddr_storage peer_info;
     FILE *fp;
 }keyentry;
 

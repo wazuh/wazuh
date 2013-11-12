@@ -59,12 +59,13 @@ void report_help()
 
 int main(int argc, char **argv)
 {
-    int c, test_config = 0;
+    int c, test_config = 0, s;
     #ifndef WIN32
     int gid = 0;
     #endif
 
-    int sock = 0, port = 1515, ret = 0;
+    int sock = 0, portnum, ret = 0;
+    char *port = "1515";
     char *dir  = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
@@ -76,6 +77,9 @@ int main(int argc, char **argv)
     SSL_CTX *ctx;
     SSL *ssl;
     BIO *sbio;
+    struct sockaddr_storage addr;
+    struct addrinfo hints;
+    struct addrinfo *result, *rp;
 
 
     bio_err = 0;
@@ -133,11 +137,12 @@ int main(int argc, char **argv)
             case 'p':
                if(!optarg)
                     ErrorExit("%s: -%c needs an argument",ARGV0, c);
-                port = atoi(optarg);
-                if(port <= 0 || port >= 65536)
+                portnum = atoi(optarg);
+                if(portnum <= 0 || portnum >= 65536)
                 {
                     ErrorExit("%s: Invalid port: %s", ARGV0, optarg);
                 }
+                port = optarg;
                 break;
             default:
                 report_help();
@@ -206,48 +211,40 @@ int main(int argc, char **argv)
     }
 
 
-    /* Check to see if manager is an IP */
-    int is_ip = 1;
-    struct sockaddr_in iptest;
-    memset(&iptest, 0, sizeof(iptest));
-
-    if(inet_pton(AF_INET, manager, &iptest.sin_addr) != 1)
-      is_ip = 0;	/* This is not an IPv4 address */
-
-    /* Not IPv4, IPv6 maybe? */
-    if(is_ip == 0)
-    {
-        struct sockaddr_in6 iptest6;
-        memset(&iptest6, 0, sizeof(iptest6));
-        if(inet_pton(AF_INET6, manager, &iptest6.sin6_addr) != 1)
-            is_ip = 0;
-        else
-            is_ip = 1;	/* This is an IPv6 address */
-    }
-    
-
-    /* If it isn't an ip, try to resolve the IP */
-    if(is_ip == 0)
-    {
-        char *ipaddress;
-        ipaddress = OS_GetHost(manager, 3);
-        if(ipaddress != NULL)
-          strncpy(manager, ipaddress, 16);
-        else
-        {
-          printf("Could not resolve hostname: %s\n", manager);
-          return(1);
-        }
-    }
-
-
     /* Connecting via TCP */
-    sock = OS_ConnectTCP(port, manager, 0);
-    if(sock <= 0)
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    s = getaddrinfo(manager, port, &hints, &result);
+    if (s != 0)
     {
-        merror("%s: Unable to connect to %s:%d", ARGV0, manager, port);
+        printf("Could not resolve hostname: %s\n", manager);
+        return(1);
+    }
+
+    for (rp = result; rp != NULL; rp = rp->ai_next)
+    {
+        sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (sock == -1)
+        {
+            continue;
+        }
+  
+        if (connect(sock, rp->ai_addr, rp->ai_addrlen) != -1)
+        {
+            break;                  /* Success */
+        } 
+        close(sock);
+    }
+    if (rp == NULL)
+    {               /* No address succeeded */
+        merror("%s: Unable to connect to %s:%s", ARGV0, manager, port);
         exit(1);
     }
+
+    freeaddrinfo(result);           /* No longer needed */
 
 
     /* Connecting the SSL socket */
@@ -265,7 +262,7 @@ int main(int argc, char **argv)
     }
 
 
-    printf("INFO: Connected to %s:%d\n", manager, port);
+    printf("INFO: Connected to %s:%s\n", manager, port);
     printf("INFO: Using agent name as: %s\n", agentname);
 
 

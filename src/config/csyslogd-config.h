@@ -21,7 +21,7 @@
 /* Database config structure */
 typedef struct _SyslogConfig
 {
-    unsigned int port;
+    char *port;
     unsigned int format;
     unsigned int level;
     unsigned int *rule_id;
