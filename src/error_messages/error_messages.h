@@ -58,7 +58,7 @@
 #define USER_ERROR	    "%s(1203): ERROR: Invalid user '%s' or group '%s' given."
 #define CONNTYPE_ERROR 	"%s(1204): ERROR: Invalid connection type: '%s'."
 #define PORT_ERROR	    "%s(1205): INFO: No port specified. Using default: '%d'."
-#define BIND_ERROR	    "%s(1206): ERROR: Unable to Bind port '%d'"
+#define BIND_ERROR	    "%s(1206): ERROR: Unable to Bind port '%s'"
 #define SETGID_ERROR	"%s(1207): ERROR: Unable to switch to group: '%s'."
 #define SETUID_ERROR	"%s(1208): ERROR: Unable to switch to user: '%s'."
 #define CHROOT_ERROR	"%s(1209): ERROR: Unable to chroot to directory: '%s'."
@@ -239,7 +239,7 @@
 
 /* Agent errors */
 #define AG_WAIT_SERVER  "%s(4101): WARN: Waiting for server reply (not started). Tried: '%s'."
-#define AG_CONNECTED    "%s(4102): INFO: Connected to the server (%s:%d)."
+#define AG_CONNECTED    "%s(4102): INFO: Connected to the server (%s:%s)."
 #define AG_USINGIP      "%s(4103): INFO: Server IP address already set. Trying that before the hostname."
 #define AG_INV_HOST     "%s(4104): ERROR: Invalid hostname: '%s'."
 #define AG_INV_IP       "%s(4105): ERROR: No valid server IP found."

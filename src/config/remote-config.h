@@ -25,13 +25,13 @@
 typedef struct _remoted
 {
     int *proto;
-    int *port;
+    char *port;
     int *conn;
     int *ipv6;
 
     char **lip;
-	os_ip **allowips;
-	os_ip **denyips;
+    os_ip **allowips;
+    os_ip **denyips;
 
     int m_queue;
     int sock;

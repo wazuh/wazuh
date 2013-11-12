@@ -61,7 +61,7 @@ void HandleRemote(int position, int uid)
     if(logr.proto[position] == TCP_PROTO)
     {
         if((logr.sock =
-            OS_Bindporttcp(logr.port[position],logr.lip[position], logr.ipv6[position])) < 0)
+            OS_Bindporttcp(logr.port[position], logr.lip[position])) < 0)
         {
             ErrorExit(BIND_ERROR, ARGV0, logr.port[position]);
         }
@@ -70,7 +70,7 @@ void HandleRemote(int position, int uid)
     {
         /* Using UDP. Fast, unreliable.. perfect */
         if((logr.sock =
-            OS_Bindportudp(logr.port[position], logr.lip[position], logr.ipv6[position])) < 0)
+            OS_Bindportudp(logr.port[position], logr.lip[position])) < 0)
         {
             ErrorExit(BIND_ERROR, ARGV0, logr.port[position]);
         }

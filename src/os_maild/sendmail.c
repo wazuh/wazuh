@@ -27,7 +27,7 @@
 
 
 /* Default values use to connect */
-#define SMTP_DEFAULT_PORT	25
+#define SMTP_DEFAULT_PORT	"25"
 #define HELOMSG 		"Helo notify.ossec.net\r\n"
 #define MAILFROM		"Mail From: <%s>\r\n"
 #define RCPTTO			"Rcpt To: <%s>\r\n"
@@ -66,8 +66,8 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     char final_to[512];
 
 
-    /* Connecting to the smtp server */
-    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver, 0);
+    /* Connecting to the smtp server */	
+    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver);
     if(socket < 0)
     {
         return(socket);
@@ -300,8 +300,8 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     }
 
 
-    /* Connecting to the smtp server */
-    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver, 0);
+    /* Connecting to the smtp server */	
+    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver);
     if(socket < 0)
     {
         return(socket);

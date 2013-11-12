@@ -17,7 +17,7 @@
 /* Configuration structure */
 typedef struct _agent
 {
-    int port;
+    char *port;
     int m_queue;
     int sock;
     int execdq;
