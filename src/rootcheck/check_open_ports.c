@@ -29,6 +29,8 @@ int connect_to_port(int proto, int port)
 
     int ossock;
     struct sockaddr_in server;
+    struct sockaddr_in6 server6;
+
 
     if(proto == IPPROTO_UDP)
     {
@@ -47,6 +49,30 @@ int connect_to_port(int proto, int port)
     server.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     if(connect(ossock, (struct sockaddr *)&server, sizeof(server)) == 0)
+    {
+        rc = 1;
+    }
+
+    close(ossock);
+
+    /* repeat for IPv6 */
+    if(proto == IPPROTO_UDP)
+    {
+        if((ossock = socket(PF_INET6,SOCK_DGRAM,IPPROTO_UDP)) < 0)
+            return(0);
+    }
+    else if(proto == IPPROTO_TCP)
+    {
+        if((ossock = socket(PF_INET6,SOCK_STREAM,IPPROTO_TCP)) < 0)
+            return(0);
+    }
+
+    memset(&server6, 0, sizeof(server6));
+    server6.sin6_family = AF_INET6;
+    server6.sin6_port = htons( port );
+    inet_pton(AF_INET6, "::1", &server6.sin6_addr.s6_addr);
+
+    if(connect(ossock, (struct sockaddr *)&server6, sizeof(server6)) == 0)
     {
         rc = 1;
     }
