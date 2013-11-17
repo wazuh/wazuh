@@ -109,9 +109,12 @@ int OS_Bindport(char *_port, unsigned int _proto, char *_ip)
 
     freeaddrinfo(result);           /* No longer needed */
 
-    if(listen(ossock, 32) < 0)
+    if(_proto == IPPROTO_TCP)
     {
-        return(OS_SOCKTERR);
+        if(listen(ossock, 32) < 0)
+        {
+            return(OS_SOCKTERR);
+        }
     }
 
     return(ossock);
