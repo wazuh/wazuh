@@ -72,13 +72,13 @@ int OS_Bindport(char *_port, unsigned int _proto, char *_ip)
     s = getaddrinfo(_ip, _port, &hints, &result);
     if (s != 0)
     {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        verbose("getaddrinfo: %s", gai_strerror(s));
         return(OS_INVALID);
     }
 
            /* getaddrinfo() returns a list of address structures.
               Try each address until we successfully connect(2).
-              If socket(2) (or connect(2)) fails, we (close the socket
+              If socket(2) (or bind(2)) fails, we (close the socket
               and) try the next address. */
 
     for (rp = result; rp != NULL; rp = rp->ai_next)
@@ -273,7 +273,7 @@ int OS_Connect(char *_port, unsigned int protocol, char *_ip)
     s = getaddrinfo(_ip, _port, &hints, &result);
     if (s != 0)
     {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        verbose("getaddrinfo: %s", gai_strerror(s));
         return(OS_INVALID);
     }
 
