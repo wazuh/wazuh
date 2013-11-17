@@ -25,7 +25,7 @@
 typedef struct _remoted
 {
     int *proto;
-    char *port;
+    char **port;
     int *conn;
     int *ipv6;
 
