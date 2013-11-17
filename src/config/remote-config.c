@@ -159,11 +159,11 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
         {
             if(strcasecmp(node[i]->content, "tcp") == 0)
             {
-                logr->proto[pl] = TCP_PROTO;
+                logr->proto[pl] = IPPROTO_TCP;
             }
             else if(strcasecmp(node[i]->content, "udp") == 0)
             {
-                logr->proto[pl] = UDP_PROTO;
+                logr->proto[pl] = IPPROTO_UDP;
             }
             else
             {
@@ -252,13 +252,13 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
     /* set default protocol */
     if(logr->proto[pl] == 0)
     {
-        logr->proto[pl] = UDP_PROTO;
+        logr->proto[pl] = IPPROTO_UDP;
     }
 
     /* Secure connections only run on UDP */
-    if((logr->conn[pl] == SECURE_CONN) && (logr->proto[pl] == TCP_PROTO))
+    if((logr->conn[pl] == SECURE_CONN) && (logr->proto[pl] == IPPROTO_TCP))
     {
-        logr->proto[pl] = UDP_PROTO;
+        logr->proto[pl] = IPPROTO_UDP;
     }
 
     return(0);
