@@ -58,7 +58,7 @@ void HandleRemote(int position, int uid)
 
 
     /* Bind TCP */
-    if(logr.proto[position] == TCP_PROTO)
+    if(logr.proto[position] == IPPROTO_TCP)
     {
         if((logr.sock =
             OS_Bindporttcp(logr.port[position], logr.lip[position])) < 0)
@@ -102,7 +102,7 @@ void HandleRemote(int position, int uid)
         HandleSecure();
     }
 
-    else if(logr.proto[position] == TCP_PROTO)
+    else if(logr.proto[position] == IPPROTO_TCP)
     {
         HandleSyslogTCP();
     }
