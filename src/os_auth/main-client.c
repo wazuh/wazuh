@@ -77,7 +77,6 @@ int main(int argc, char **argv)
     SSL_CTX *ctx;
     SSL *ssl;
     BIO *sbio;
-    struct sockaddr_storage addr;
     struct addrinfo hints;
     struct addrinfo *result, *rp;
 
