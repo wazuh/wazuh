@@ -98,17 +98,7 @@ int connect_server(int initial_id)
                 agt->rip[rc],
                 agt->port);
 
-        /* IPv6 address: */
-        if(strchr(tmp_str,':') != NULL)
-        {
-            verbose("%s: INFO: Using IPv6 for: %s .", ARGV0, tmp_str);
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str);
-        }
-        else
-        {
-            verbose("%s: INFO: Using IPv4 for: %s .", ARGV0, tmp_str);
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str);
-        }
+        agt->sock = OS_ConnectUDP(agt->port, tmp_str);
 
         if(agt->sock < 0)
         {

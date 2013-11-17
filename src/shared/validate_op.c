@@ -261,7 +261,7 @@ int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
 int OS_IsValidIP(char *ip_address, os_ip *final_ip)
 {
     char *tmp_str;
-    int cidr = -1;
+    int cidr = -1, prefixlength;
     struct addrinfo hints, *result;
 
     /* Can't be null */
@@ -311,49 +311,45 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
     {
         return(0);
     }
-    memcpy((void *) &final_ip->ss, result->ai_addr, result->ai_addrlen);
+
+    switch (result->ai_family)
+    {
+    case AF_INET:
+        if (cidr >=0 && cidr <= 32)
+        {
+            prefixlength = cidr;
+            break;
+        }
+        else if (cidr < 0)
+        {
+            prefixlength = 32;
+            break;
+        }
+        return(0);
+    case AF_INET6:
+        if (cidr >=0 && cidr <= 128)
+        {
+            prefixlength = cidr;
+            break;
+        }
+        else if (cidr < 0)
+        {
+            prefixlength = 128;
+            break;
+        }
+        return(0);
+    default:  
+        return(0);
+    }
+
+    if (final_ip)
+    {
+        memcpy(&(final_ip->ss), result->ai_addr, result->ai_addrlen);
+        final_ip->prefixlength = prefixlength;
+    }
+
     freeaddrinfo(result);
-
-    /* Ip with cidr */
-    if(cidr)
-    {
-        switch (final_ip->ss.ss_family)
-        {
-        case AF_INET:
-            if (cidr <= 32)
-            {
-                final_ip->prefixlength = cidr;
-                return(2);
-            }
-            return(0);
-        case AF_INET6:
-            if (cidr <= 128)
-            {
-                final_ip->prefixlength = cidr;
-                return(2);
-            }
-            return(0);
-        default:  
-            return(0);
-        }
-    }
-    else
-    {
-        switch (final_ip->ss.ss_family)
-        {
-        case AF_INET:
-            final_ip->prefixlength = 32;
-            return(1);
-        case AF_INET6:
-            final_ip->prefixlength = 128;
-            return(1);
-        default:  
-            return(0);
-        }
-    }
-
-    /* Should never reach here */
-    return(0);
+    return((cidr >= 0) ? 2 : 1);
 }
 
 
