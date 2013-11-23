@@ -360,26 +360,50 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
 int sacmp(struct sockaddr *sa1, struct sockaddr *sa2, int prefixlength)
 {
     int _true = 1;
-    int i;
+    int i, realaf1, realaf2;
     div_t ip_div;
     char *addr1, *addr2, modbits;
-
-    if (sa1->sa_family != sa2->sa_family)
-    {
-        return(!_true);
-    }
 
     switch (sa1->sa_family)
     {
     case AF_INET:
         addr1 = (char *) &(((struct sockaddr_in *) sa1)->sin_addr);
-        addr2 = (char *) &(((struct sockaddr_in *) sa2)->sin_addr);
+        realaf1 = AF_INET;
         break;
     case AF_INET6:
         addr1 = (char *) &(((struct sockaddr_in6 *) sa1)->sin6_addr);
-        addr2 = (char *) &(((struct sockaddr_in6 *) sa2)->sin6_addr);
+        realaf1 = AF_INET6;
+        if (IN6_IS_ADDR_V4MAPPED(addr1))
+        {   /* shift the pointer for a mapped address */
+            addr1 += (sizeof (struct in6_addr)) - (sizeof (struct in_addr));
+            realaf1 = AF_INET;
+        }
         break;
     default:
+        return(!_true);
+    }
+
+    switch (sa2->sa_family)
+    {
+    case AF_INET:
+        addr2 = (char *) &(((struct sockaddr_in *) sa2)->sin_addr);
+        realaf2 = AF_INET;
+        break;
+    case AF_INET6:
+        addr2 = (char *) &(((struct sockaddr_in6 *) sa2)->sin6_addr);
+        realaf2 = AF_INET6;
+        if (IN6_IS_ADDR_V4MAPPED(addr2))
+        {   /* shift the pointer for a mapped address */
+            addr1 += (sizeof (struct in6_addr)) - (sizeof (struct in_addr));
+            realaf2 = AF_INET;
+        }
+        break;
+    default:
+        return(!_true);
+    }
+
+    if (realaf1 != realaf2)
+    {
         return(!_true);
     }
 

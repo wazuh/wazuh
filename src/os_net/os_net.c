@@ -53,7 +53,7 @@ int OS_Bindport(char *_port, unsigned int _proto, char *_ip)
 
 
     memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_family = AF_INET6;    /* Allow IPv4 or IPv6 */
     hints.ai_protocol = _proto;
     if(_proto == IPPROTO_UDP)
     {
@@ -67,7 +67,7 @@ int OS_Bindport(char *_port, unsigned int _proto, char *_ip)
     {
         return(OS_INVALID);
     }
-    hints.ai_flags = AI_PASSIVE;
+    hints.ai_flags = AI_PASSIVE | AI_ADDRCONFIG | AI_V4MAPPED;
 
     s = getaddrinfo(_ip, _port, &hints, &result);
     if (s != 0)
