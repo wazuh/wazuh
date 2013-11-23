@@ -570,6 +570,10 @@ int satop(struct sockaddr *sa, char *dst, socklen_t size)
     case AF_INET6:
         sa6 = (struct sockaddr_in6 *) sa;
         inet_ntop(af, (const void *) &(sa6->sin6_addr), dst, size);
+        if (IN6_IS_ADDR_V4MAPPED(&(sa6->sin6_addr)))
+        {  /* extract the embedded IPv4 address */
+            memmove(dst, dst+7, size-7);
+        }
         return(0);
     default:  
         *dst = '\0';
