@@ -42,7 +42,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     char *pieces;
     struct tm *p;
 
-    /* The message is formated in the following way:
+    /* The message is formatted in the following way:
      * id:location:message.
      */
 
