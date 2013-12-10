@@ -1119,7 +1119,7 @@ main()
                 ${hybrid}|${hybridm})
                 echo ""
 	            echo "  - ${localchose} (hybrid)."
-	            INSTYPE="local"
+	            INSTYPE="server"
                     HYBID="go"
 	            break;
 	            ;;
