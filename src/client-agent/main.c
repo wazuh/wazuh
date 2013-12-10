@@ -113,9 +113,9 @@ int main(int argc, char **argv)
     if(logr->max_time_reconnect_try <= logr->notify_time)
     {
       	logr->max_time_reconnect_try = (logr->notify_time * 3);
-      	verbose("%s Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)",ARGV0,logr->notify_time,logr->max_time_reconnect_try);
+      	verbose("%s: INFO: Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)",ARGV0,logr->notify_time,logr->max_time_reconnect_try);
     }
-    verbose("%s Using notify time: %d and max time to reconnect: %d",ARGV0,logr->notify_time,logr->max_time_reconnect_try);
+    verbose("%s: INFO: Using notify time: %d and max time to reconnect: %d",ARGV0,logr->notify_time,logr->max_time_reconnect_try);
 
 
     /* Checking auth keys */
