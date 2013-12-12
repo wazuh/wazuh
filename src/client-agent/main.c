@@ -102,6 +102,21 @@ int main(int argc, char **argv)
         ErrorExit(CLIENT_ERROR,ARGV0);
     }
 
+    if(logr->notify_time == 0)
+    {
+        logr->notify_time = NOTIFY_TIME;
+    }
+    if(logr->max_time_reconnect_try == 0 )
+    {
+      	logr->max_time_reconnect_try = NOTIFY_TIME * 3;
+    }
+    if(logr->max_time_reconnect_try <= logr->notify_time)
+    {
+      	logr->max_time_reconnect_try = (logr->notify_time * 3);
+      	verbose("%s: INFO: Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)",ARGV0,logr->notify_time,logr->max_time_reconnect_try);
+    }
+    verbose("%s: INFO: Using notify time: %d and max time to reconnect: %d",ARGV0,logr->notify_time,logr->max_time_reconnect_try);
+
 
     /* Checking auth keys */
     if(!OS_CheckKeys())
