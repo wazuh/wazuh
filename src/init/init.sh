@@ -89,10 +89,10 @@ runInit()
     if [ "X${UN}" = "XAIX" ]; then
         echo " - ${systemis} AIX."
         echo " - ${modifiedinit}"
-        cp -pr ./src/init/ossec-hids-aix.init /etc/init.d/ossec
-        chmod 755 /etc/init.d/ossec
-        ln -s /etc/init.d/ossec /etc/rc2.d/S97ossec
-        ln -s /etc/init.d/ossec /etc/rc3.d/S97ossec
+        cp -pr ./src/init/ossec-hids-aix.init /etc/rc.d/init.d/ossec
+        chmod 755 /etc/rc.d/init.d/ossec
+        ln -s /etc/rc.d/init.d/ossec /etc/rc.d/rc2.d/S97ossec
+        ln -s /etc/rc.d/init.d/ossec /etc/rc.d/rc3.d/S97ossec
         return 0;    
     fi    
 
