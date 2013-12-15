@@ -69,7 +69,7 @@
 
 int main(int argc, char **argv)
 {
-    int c, s;
+    int c;
     int sock = 0, portnum, ret = 0;
     char *host = NULL, *port = "443";
     SSL_CTX *ctx;
@@ -77,9 +77,6 @@ int main(int argc, char **argv)
     SSL_METHOD *sslmeth;
     BIO *sbio;
     BIO *bio_err = 0;
-    struct sockaddr_storage addr;
-    struct addrinfo hints;
-    struct addrinfo *result, *rp;
 
 
     while((c = getopt(argc, argv, "h:p:")) != -1)
@@ -125,38 +122,12 @@ int main(int argc, char **argv)
     }
 
     /* Connecting via TCP */
-    memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-
-    s = getaddrinfo(host, port, &hints, &result);
-    if (s != 0)
+    sock = OS_ConnectTCP(port, host);
+    if (sock <= 0)
     {
-        printf("getaddrinfo: %s\n", gai_strerror(s));
-        exit(1);
-    }
-
-    for (rp = result; rp != NULL; rp = rp->ai_next)
-    {
-        sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-        if (sock == -1)
-        {
-            continue;
-        }
-  
-        if (connect(sock, rp->ai_addr, rp->ai_addrlen) != -1)
-        {
-            break;                  /* Success */
-        } 
-    }
-    if (rp == NULL)
-    {               /* No address succeeded */
         printf("connect error\n");
         exit(1);
     }
-
-    freeaddrinfo(result);           /* No longer needed */
 
 
     /* Connecting the SSL socket */
