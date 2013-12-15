@@ -59,7 +59,7 @@ void report_help()
 
 int main(int argc, char **argv)
 {
-    int c, test_config = 0, s;
+    int c, test_config = 0;
     #ifndef WIN32
     int gid = 0;
     #endif
@@ -77,8 +77,6 @@ int main(int argc, char **argv)
     SSL_CTX *ctx;
     SSL *ssl;
     BIO *sbio;
-    struct addrinfo hints;
-    struct addrinfo *result, *rp;
 
 
     bio_err = 0;
@@ -211,40 +209,12 @@ int main(int argc, char **argv)
 
 
     /* Connecting via TCP */
-    memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-
-    s = getaddrinfo(manager, port, &hints, &result);
-    if (s != 0)
+    sock = OS_ConnectTCP(port, manager);
+    if(sock <= 0)
     {
-        printf("Could not resolve hostname: %s\n", manager);
-        return(1);
-    }
-
-    for (rp = result; rp != NULL; rp = rp->ai_next)
-    {
-        sock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-        if (sock == -1)
-        {
-            continue;
-        }
-  
-        if (connect(sock, rp->ai_addr, rp->ai_addrlen) != -1)
-        {
-            break;                  /* Success */
-        } 
-        close(sock);
-    }
-    if (rp == NULL)
-    {               /* No address succeeded */
         merror("%s: Unable to connect to %s:%s", ARGV0, manager, port);
         exit(1);
     }
-
-    freeaddrinfo(result);           /* No longer needed */
-
 
     /* Connecting the SSL socket */
     ssl = SSL_new(ctx);
