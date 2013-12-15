@@ -169,13 +169,13 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
         FD_SET(logr->sock, &fdset);
         FD_SET(logr->m_queue, &fdset);
 
-        fdtimeout.tv_sec = 120;
+        fdtimeout.tv_sec = 1;
         fdtimeout.tv_usec = 0;
 
-        /* Continuesly send notifications */
+        /* Continuously send notifications */
         run_notify();
 
-        /* Wait for 120 seconds at a maximum for any descriptor */
+        /* Wait with a timeout for any descriptor */
         rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
         if(rc == -1)
         {
