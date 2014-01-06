@@ -112,10 +112,13 @@ int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
     /* Checking for the filters. */
     if(r_filter->group)
     {
-        if(!strstr(al_data->group, r_filter->group))
-        {
-            return(0);
-        }
+	if(al_data->group)	/* Probably unnecessary, all (?) alerts should have groups)
+	{
+        	if(!strstr(al_data->group, r_filter->group))
+        	{
+            		return(0);
+        	}
+	}
     }
     if(r_filter->rule)
     {
@@ -140,24 +143,34 @@ int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
     }
     if(r_filter->srcip)
     {
-        if(!strstr(al_data->srcip, r_filter->srcip))
-        {
-            return(0);
-        }
+
+	if(al_data->srcip)
+	{
+        	if(!strstr(al_data->srcip, r_filter->srcip))
+        	{
+           		return(0);
+        	}
+	}
     }
     if(r_filter->user)
     {
-        if(!strstr(al_data->user, r_filter->user))
-        {
-            return(0);
-        }
+	if(al_data->user)
+	{
+        	if(!strstr(al_data->user, r_filter->user))
+        	{
+            		return(0);
+        	}
+	}
     }
     if(r_filter->files)
     {
-        if(!strstr(al_data->filename, r_filter->files))
-        {
-            return(0);
-        }
+	if(al_data->filename)
+	{
+        	if(!strstr(al_data->filename, r_filter->files))
+        	{
+            		return(0);
+        	}
+	}
     }
     return(1);
 }
