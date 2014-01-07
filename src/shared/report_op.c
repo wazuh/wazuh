@@ -112,7 +112,7 @@ int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
     /* Checking for the filters. */
     if(r_filter->group)
     {
-	if(al_data->group)	/* Probably unnecessary, all (?) alerts should have groups)
+	if(al_data->group)	/* Probably unnecessary, all (?) alerts should have groups) */
 	{
         	if(!strstr(al_data->group, r_filter->group))
         	{
