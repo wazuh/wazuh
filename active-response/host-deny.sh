@@ -89,11 +89,12 @@ fi
 
 
 # Checking for invalid entries (lacking ".", etc)
-echo "${IP}" | grep "\." > /dev/null 2>&1
-if [ ! $? = 0 ]; then
-    echo "`date` Invalid ip/hostname entry: ${IP}" >> ${PWD}/../logs/active-responses.log
-    exit 1;
-fi
+case "${IP}" in
+    *:* ) IP="[${IP}]" ;;
+    *.* ) ;;
+    * ) echo "`date` Invalid ip/hostname entry: ${IP}" >> ${PWD}/../logs/active-responses.log
+        exit 1;;
+esac
 
 
 # Adding the ip to hosts.deny
