@@ -86,7 +86,7 @@ void OS_StartCounter(keystore *keys)
                 int my_error = errno;
 
                 /* Just in case we run out of file descriptiors */
-                if((keys->keyentries[i -1]->fp) && (i > 10))
+                if((i > 10) && (keys->keyentries[i -1]->fp))
                 {
                     fclose(keys->keyentries[i -1]->fp);
 
