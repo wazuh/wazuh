@@ -168,7 +168,8 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
 
 
     /* Creating new full log. */
-    free(lf->full_log);
+    /*free(lf->full_log);*/	/* Use after free? */
+    lf->full_log = '\0';
     os_strdup(tmp_str, lf->full_log);
     lf->log = lf->full_log;
 
