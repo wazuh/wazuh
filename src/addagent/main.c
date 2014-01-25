@@ -35,7 +35,7 @@ void helpmsg()
 void print_banner()
 {
     printf("\n");
-    printf(BANNER, __name, __version);
+    printf(BANNER, __ossec_name, __version);
 
     #ifdef CLIENT
     printf(BANNER_CLIENT);

@@ -7,14 +7,14 @@ NAME=ossec-analysisd
 
 include ../Config.Make
 
-OTHER   = stats.c lists.c lists_list.c rules.c rules_list.c config.c fts.c dodiff.c eventinfo.c eventinfo_list.c cleanevent.c active-response.c picviz.c prelude.c compiled_rules/*.o ${OS_CONFIG}
+OTHER   = stats.c lists.c lists_list.c rules.c rules_list.c config.c fts.c dodiff.c eventinfo.c eventinfo_list.c cleanevent.c active-response.c picviz.c prelude.c zeromq_output.c compiled_rules/*.o ${OS_CONFIG}
 LOCAL   = analysisd.c ${OTHER}
 PLUGINS = decoders/decoders.a
 ALERTS  = alerts/alerts.a
 DBS     = cdb/cdb.a cdb/cdb_make.a
 
-loga_OBJS = ${LOCAL} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE}
-lists_OBJS = lists_make.c ${OTHER} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE}
+loga_OBJS = ${LOCAL} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE} ${CZEROMQ_OUTPUT} 
+lists_OBJS = lists_make.c ${OTHER} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE} ${CZEROMQ_OUTPUT} 
 
 all: logaudit logtest makelists
 

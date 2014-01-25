@@ -30,7 +30,7 @@
 void db_info()
 {
     print_out(" ");
-    print_out("%s %s - %s", __name, __version, __author);
+    print_out("%s %s - %s", __ossec_name, __version, __author);
 
     #ifdef UMYSQL
     print_out("Compiled with MySQL support.");

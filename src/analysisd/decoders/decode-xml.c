@@ -506,7 +506,7 @@ int ReadDecodeXML(char *file)
                 else if(strcmp(elements[j]->content, "squid") == 0)
                     pi->type = SQUID;
                 else if(strcmp(elements[j]->content, "windows") == 0)
-                    pi->type = WINDOWS;
+                    pi->type = DECODER_WINDOWS;
                 else if(strcmp(elements[j]->content, "host-information") == 0)
                     pi->type = HOST_INFO;
                 else if(strcmp(elements[j]->content, "ossec") == 0)

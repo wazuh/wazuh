@@ -27,6 +27,7 @@ fi
 
 
 ZLIBV="external/zlib-1.2.3/"
+CJSONV="external/cJSON/"
 
 # CPU information
 #CPU=`uname -p`
@@ -133,9 +134,11 @@ fi
 if [ "X${ARGV}" = "Xall" ]; then
     DIRECTORIES="${LIBS} ${SOURCES} ${BINARIES}" 
     DOZLIB="x"
+    DOCJSON="x"
 elif [ "X${ARGV}" = "Xlibs" ]; then
     DIRECTORIES="${LIBS} ${SOURCES}"
     DOZLIB="x"
+    DOCJSON="x"
 elif [ "X${ARGV}" = "Xrootcheck" ]; then
     DIRECTORIES="os_xml os_regex os_net ${SOURCES} ${ROOTCHECKBIN}"    
 elif [ "X${ARGV}" = "Xbuild" ]; then
@@ -154,10 +157,20 @@ if [ "X${DOZLIB}" = "Xx" ]; then
     echo ""
 fi    
 
+if [ "X${DOCJSON}" = "Xx" ]; then
+    # Build cJSON here
+    echo ""
+    echo " *** Making cJSON (by Dave Gamble)  *** "
+    cd ${CJSONV}; make; make ossec;
+    cd ../../
+    echo ""
+fi    
 
 if [ "X${ARGV}" = "Xclean" ]; then
     # Cleaning zlib
     cd ${ZLIBV}; make clean;
+    cd ../../
+    cd ${CJSONV}; make clean;
     cd ../../
 fi    
 

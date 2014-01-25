@@ -520,7 +520,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->sid_node_to_delete = NULL;
     lf->decoder_info = NULL_Decoder;
 
-    #ifdef PRELUDE
     lf->filename = NULL;
     lf->perm_before = 0;
     lf->perm_after = 0;
@@ -534,7 +533,6 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->owner_after = NULL;
     lf->gowner_before = NULL;
     lf->gowner_after = NULL;
-    #endif
 
     return;
 }
@@ -583,7 +581,6 @@ void Free_Eventinfo(Eventinfo *lf)
     if(lf->systemname)
         free(lf->systemname);
 
-    #ifdef PRELUDE
     if(lf->filename)
         free(lf->filename);
     if (lf->md5_before)
@@ -606,7 +603,6 @@ void Free_Eventinfo(Eventinfo *lf)
         free(lf->gowner_before);
     if (lf->gowner_after)
         free(lf->gowner_after);
-    #endif
 
     /* Freeing node to delete */
     if(lf->sid_node_to_delete)

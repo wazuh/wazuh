@@ -857,7 +857,7 @@ int Rules_OP_ReadRules(char * rulefile)
                         }
                         else if(strcmp(rule_opt[k]->content,"windows") == 0)
                         {
-                            config_ruleinfo->category = WINDOWS;
+                            config_ruleinfo->category = DECODER_WINDOWS;
                         }
                         else if(strcmp(rule_opt[k]->content,"ossec") == 0)
                         {

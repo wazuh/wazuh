@@ -96,7 +96,7 @@ int SetDecodeXML();
 void logtest_help(const char *prog)
 {
     print_out(" ");
-    print_out("%s %s - %s (%s)", __name, __version, __author, __contact);
+    print_out("%s %s - %s (%s)", __ossec_name, __version, __author, __contact);
     print_out("%s", __site);
     print_out(" ");
     print_out("  %s: -[Vatfdh] [-U ut_str] [-u user] [-g group] [-c config] [-D dir]", prog);

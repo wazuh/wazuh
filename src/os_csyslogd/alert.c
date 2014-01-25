@@ -156,7 +156,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
                	syslog_config->priority,
 		tstamp,
 		__author,
-		__name,
+		__ossec_name,
 		__version,
 		al_data->rule,
 		al_data->comment,

@@ -52,6 +52,9 @@
 #include "prelude.h"
 #endif
 
+#ifdef ZEROMQ_OUTPUT
+#include "zeromq_output.h"
+#endif
 
 /** Global data **/
 
@@ -269,6 +272,13 @@ int main_analysisd(int argc, char **argv)
     }
     #endif
 
+    /* Starting zeromq */
+    #ifdef ZEROMQ_OUTPUT 
+    if(Config.zeromq_output)
+    {
+      zeromq_output_start(Config.zeromq_output_uri, argc, argv);
+    }
+    #endif
 
     /* Opening the Picviz socket */
     if(Config.picviz)
@@ -1036,6 +1046,14 @@ void OS_ReadMSG_analysisd(int m_queue)
                     {
                         OS_PreludeLog(lf);
                     }
+                }
+                #endif
+
+                /* Log to zeromq */
+                #ifdef ZEROMQ_OUTPUT 
+                if(Config.zeromq_output) 
+                {
+                    zeromq_output_event(lf);
                 }
                 #endif
 
