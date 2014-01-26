@@ -88,18 +88,21 @@ if [ "x${IP}" = "x" ]; then
 fi
 
 
-# Checking for invalid entries (lacking ".", etc)
-case "${IP}" in
-    *:* ) IP="[${IP}]" ;;
-    *.* ) ;;
-    * ) echo "`date` Invalid ip/hostname entry: ${IP}" >> ${PWD}/../logs/active-responses.log
-        exit 1;;
-esac
+# Checking for invalid entries (lacking "." or ":", etc)
+echo "${IP}" | egrep "\.|\:" > /dev/null 2>&1
+if [ ! $? = 0 ]; then
+    echo "`date` Invalid ip/hostname entry: ${IP}" >> ${PWD}/../logs/active-responses.log
+    exit 1;
+fi
 
 
 # Adding the ip to hosts.deny
 if [ "x${ACTION}" = "xadd" ]; then
    lock;     
+   echo "${IP}" | grep "\:" > /dev/null 2>&1
+   if [ $? = 0 ]; then
+    IP="[${IP}]"
+   fi
    if [ "X$UNAME" = "XFreeBSD" ]; then
     echo "ALL : ${IP} : deny" >> /etc/hosts.allow
    else    
@@ -112,6 +115,10 @@ if [ "x${ACTION}" = "xadd" ]; then
 # Deleting from hosts.deny   
 elif [ "x${ACTION}" = "xdelete" ]; then   
    lock;
+   echo "${IP}" | grep "\:" > /dev/null 2>&1
+   if [ $? = 0 ]; then
+    IP="\[${IP}\]"
+   fi
    if [ "X$UNAME" = "XFreeBSD" ]; then
     cat /etc/hosts.allow | grep -v "ALL : ${IP} : deny$"> /tmp/hosts.deny.$$
     mv /tmp/hosts.deny.$$ /etc/hosts.allow
