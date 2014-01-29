@@ -83,22 +83,13 @@ int main(int argc, char **argv)
         }
     }
 
-    debug1(STARTED_MSG, ARGV0);
-
-    logr = (agent *)calloc(1, sizeof(agent));
-    if(!logr)
-    {
-        ErrorExit(MEM_ERROR, ARGV0);
-    }
-
-
     /* Check current debug_level
      * Command line setting takes precedence 
      */
     if (debug_level == 0)
     {
         /* Getting debug level */
-        debug_level = getDefine_Int("agent","debug", 0, 2);
+        debug_level = getDefine_Int("agent", "debug", 0, 2);
         while(debug_level != 0)
         {
             nowDebug();
@@ -106,6 +97,13 @@ int main(int argc, char **argv)
         }
     }
 
+    debug1(STARTED_MSG, ARGV0);
+
+    logr = (agent *)calloc(1, sizeof(agent));
+    if(!logr)
+    {
+        ErrorExit(MEM_ERROR, ARGV0);
+    }
 
     /* Reading config */
     if(ClientConf(DEFAULTCPATH) < 0)
