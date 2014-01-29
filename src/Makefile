@@ -24,6 +24,7 @@ clean:
 		@/bin/sh ./Makeall clean
 		rm -f ../bin/ossec*
 		rm -f ../bin/manage_agents
+		rm -f isbigendian
 		rm -rf win-pkg/
 		rm Config.OS
 		rm win32/LICENSE.txt

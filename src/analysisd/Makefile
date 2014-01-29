@@ -40,7 +40,7 @@ clean:
 		cd ./alerts; make clean
 		cd ./decoders; make clean
 		cd ./compiled_rules; make clean
-		${CLEAN}
+		${CLEAN} ossec-logtest ossec-makelists
 
 build:
 		${BUILD}
