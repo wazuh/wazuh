@@ -68,7 +68,7 @@ void *receiver_thread(void *none)
         selecttime.tv_usec = 0;
 
 
-        /* Wait for 120 seconds at a maximum for any descriptor */
+        /* Wait with a timeout for any descriptor */
         recv_b = select(0, &fdset, NULL, NULL, &selecttime);
         if(recv_b == -1)
         {
