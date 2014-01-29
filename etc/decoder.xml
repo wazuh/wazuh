@@ -1720,10 +1720,11 @@
     Logon Type: 2       Logon Process:  User32          Authentication 
     Package: Negotiate       Workstation Name:   ad
   - WinEvtLog: Security: AUDIT_SUCCESS(538): Security: lac: OSSEC-HM: OSSEC-HM: User Logoff:        User Name:      lac     Domain:         OSSEC-HM        Logon ID:               (0x0,0x7C966E)          Logon Type:     2  
+  - 2013 Oct 09 17:09:04 WinEvtLog: Application: INFORMATION(1): My Script: (no user): no domain: demo1.foo.example.com: test
   -->
 <decoder name="windows">
   <type>windows</type>
-  <prematch>^WinEvtLog: </prematch>
+  <prematch>^\d\d\d\d \w\w\w \d\d \d\d:\d\d:\d\d WinEvtLog: |^WinEvtLog: </prematch>
   <regex offset="after_prematch">^\.+: (\w+)\((\d+)\): (\.+): </regex>
   <regex>(\.+): \.+: (\S+): </regex>
   <order>status, id, extra_data, user, system_name</order>
