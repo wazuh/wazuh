@@ -145,6 +145,10 @@ Delete "$SMPROGRAMS\OSSEC\Documentation.lnk"
 Delete "$SMPROGRAMS\OSSEC\Edit Config.lnk"
 Delete "$SMPROGRAMS\OSSEC\*.*"
 
+; Handle shortcuts
+; http://nsis.sourceforge.net/Shortcuts_removal_fails_on_Windows_Vista
+SetShellVarContext all
+
 ; Remove start menu entry.
 RMDir "$SMPROGRAMS\OSSEC"
 
@@ -205,6 +209,7 @@ Section "Uninstall"
   Delete "$INSTDIR"
 
   ; Remove shortcuts, if any
+  SetShellVarContext all
   Delete "$SMPROGRAMS\OSSEC\*.*"
   Delete "$SMPROGRAMS\OSSEC\*"
 
