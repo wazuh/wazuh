@@ -37,10 +37,24 @@ int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg, char *
 /* void read_internal()
  * Reads syscheck internal options.
  */
-void read_internal()
+void read_internal(int debug_level)
 {
     syscheck.tsleep = getDefine_Int("syscheck","sleep",0,64);
     syscheck.sleep_after = getDefine_Int("syscheck","sleep_after",1,9999);
+
+    /* Check current debug_level
+     * Command line setting takes precedence 
+     */
+    if (debug_level == 0)
+    {
+        /* Getting debug level */
+        debug_level = getDefine_Int("syscheck", "debug", 0, 2);
+        while(debug_level != 0)
+        {
+            nowDebug();
+            debug_level--;
+        }
+    }
 
     return;
 }
@@ -52,8 +66,16 @@ void read_internal()
  */
 int Start_win32_Syscheck()
 {
+    int debug_level = 0;
     int r = 0;
     char *cfg = DEFAULTCPATH;
+
+
+    /* Reading internal options */
+    read_internal(debug_level);
+
+
+    debug1(STARTED_MSG, ARGV0);
 
 
     /* Zeroing the structure */
@@ -92,10 +114,6 @@ int Start_win32_Syscheck()
 
         merror("%s: WARN: Syscheck disabled.", ARGV0);
     }
-
-
-    /* Reading internal options */
-    read_internal();
 
 
     /* Rootcheck config */
@@ -157,6 +175,7 @@ int Start_win32_Syscheck()
 int main(int argc, char **argv)
 {
     int c,r;
+    int debug_level = 0;
     int test_config = 0,run_foreground = 0;
 
     char *cfg = DEFAULTCPATH;
@@ -182,6 +201,7 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                debug_level = 1;
                 break;
             case 'f':
                 run_foreground = 1;
@@ -204,6 +224,13 @@ int main(int argc, char **argv)
                 break;
         }
     }
+
+
+    /* Reading internal options */
+    read_internal(debug_level);
+
+
+    debug1(STARTED_MSG, ARGV0);
 
 
     /* Checking if the configuration is present */
@@ -235,11 +262,6 @@ int main(int argc, char **argv)
             merror("%s: WARN: Syscheck disabled.", ARGV0);
         }
     }
-
-
-    /* Reading internal options */
-    read_internal();
-
 
 
     /* Rootcheck config */
