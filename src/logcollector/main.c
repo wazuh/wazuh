@@ -40,7 +40,7 @@
 int main(int argc, char **argv)
 {
     int c;
-    int debug_flag = 0;
+    int debug_level = 0;
     int test_config = 0,run_foreground = 0;
     int accept_manager_commands = 0;
     char *cfg = DEFAULTCPATH;
@@ -74,6 +74,7 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                debug_level = 1;
                 break;
             case 'f':
                 run_foreground = 1;
@@ -98,6 +99,21 @@ int main(int argc, char **argv)
 
     }
 
+    /* Check current debug_level
+     * Command line setting takes precedence 
+     */
+    if (debug_level == 0)
+    {
+        /* Getting debug level */
+        debug_level = getDefine_Int("logcollector", "debug", 0, 2);
+        while(debug_level != 0)
+        {
+            nowDebug();
+            debug_level--;
+        }
+    }
+
+
     debug1(STARTED_MSG,ARGV0);
 
 
@@ -118,18 +134,8 @@ int main(int argc, char **argv)
     open_file_attempts = getDefine_Int("logcollector", "open_attempts",
                                        2, 998);
 
-    debug_flag = getDefine_Int("logcollector",
-                               "debug",
-                               0,2);
     accept_manager_commands = getDefine_Int("logcollector", "remote_commands",
                                        0, 1);
-
-    /* Getting debug values */
-    while(debug_flag != 0)
-    {
-        nowDebug();
-        debug_flag--;
-    }
 
 
     /* Exit if test config */
