@@ -71,6 +71,7 @@ void run_notify();
 #include "sec.h"
 
 int available_server;
+int run_foreground;
 keystore keys;
 agent *logr;
 

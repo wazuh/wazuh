@@ -36,11 +36,16 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     struct timeval fdtimeout;
 
 
-    /* Going daemon */
     pid = getpid();
     available_server = 0;
-    nowDaemon();
-    goDaemon();
+
+
+    /* Going Daemon */
+    if (!run_foreground)
+    {
+       nowDaemon();
+       goDaemon();
+    }
 
 
     /* Setting group ID */
