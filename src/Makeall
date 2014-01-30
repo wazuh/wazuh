@@ -75,6 +75,17 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ];
         fi
     fi    
 
+    # Checking for libmagic
+    if [ "X$SYSCHECK" = "Xyes" ]; then
+        if [ -e /usr/include/linux/magic.h ]; then
+            echo "MEXTRA=-DUSE_MAGIC" >> Config.OS
+            echo "MAGICCMD=-lmagic" >> Config.OS
+        elif [ -e /usr/include/magic.h ]; then
+            echo "MEXTRA=-DUSE_MAGIC" >> Config.OS
+            echo "MAGICCMD=-lmagic" >> Config.OS
+        fi
+    fi
+
     if [ "X$OS" = "XAIX" ]; then
         echo "EEXTRA=-DAIX -DHIGHFIRST" >> Config.OS
         PATH=$PATH:/usr/vac/bin
