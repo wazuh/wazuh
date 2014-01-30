@@ -12,7 +12,7 @@ OBJS = syscheck.c config.c seechanges.c run_realtime.c create_db.c run_check.c $
 OBJS2 = syscheck-baseline.c config.c create_db.c run_check.c ${OS_CONFIG} ${OS_ROOTCHECK} ${OS_SHARED} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_CRYPTO}
 
 syscheck:
-		$(CC) $(CFLAGS) ${OS_LINK} $(OBJS) -o ${NAME}
+		$(CC) $(CFLAGS) ${MAGICCMD} ${OS_LINK} $(OBJS) -o ${NAME}
 clean:
 		${CLEAN}
 build:

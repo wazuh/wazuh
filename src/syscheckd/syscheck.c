@@ -32,6 +32,30 @@
 
 int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg, char *restrictfile);
 
+#ifdef USE_MAGIC
+#include <magic.h>
+magic_t magic_cookie = 0;
+
+void init_magic(magic_t* cookie_ptr)
+{
+    if(!cookie_ptr || *cookie_ptr) return;
+
+    *cookie_ptr = magic_open(MAGIC_MIME_TYPE);
+
+    if(!*cookie_ptr)
+    {
+        const char* err = magic_error(*cookie_ptr);
+        merror("%s: ERROR: Can't init libmagic: %s", ARGV0, err ? err : "unknown");
+    }
+    else if(magic_load(*cookie_ptr, NULL) < 0)
+    {
+        const char* err = magic_error(*cookie_ptr);
+        merror("%s: ERROR: Can't load magic file: %s", ARGV0, err ? err : "unknown");
+        magic_close(*cookie_ptr);
+        *cookie_ptr = 0;
+    }
+}
+#endif
 
 
 /* void read_internal()
@@ -262,6 +286,12 @@ int main(int argc, char **argv)
     /* Setting default values */
     if(syscheck.workdir == NULL)
         syscheck.workdir = DEFAULTDIR;
+
+
+    /* Setup libmagic */
+    #ifdef USE_MAGIC
+    init_magic(&magic_cookie);
+    #endif
 
 
     if(!run_foreground)
