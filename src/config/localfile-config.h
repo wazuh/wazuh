@@ -15,7 +15,8 @@
 
 #define __CLOGREADER_H
 
-#define EVENTLOG    "eventlog"
+#define EVENTLOG     "eventlog"
+#define EVENTCHANNEL "eventchannel"
 #define VCHECK_FILES    64
 #define DATE_MODIFIED   1
 
@@ -48,6 +49,8 @@ typedef struct _logreader
     char *djb_program_name;
     char *command;
     char *alias;
+    char future;
+    char *query;
 	
     void (*read)(int i, int *rc, int drop_it);
 

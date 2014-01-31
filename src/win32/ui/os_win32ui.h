@@ -22,7 +22,7 @@
 #include <unistd.h>
 #include <windows.h>
 #include <winresrc.h>
-
+#include <commctrl.h>
 
 
 /* Default values */

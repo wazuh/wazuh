@@ -34,6 +34,8 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     char *xml_localfile_logformat = "log_format";
     char *xml_localfile_frequency = "frequency";
     char *xml_localfile_alias = "alias";
+    char *xml_localfile_future = "only-future-events";
+    char *xml_localfile_query = "query";
 
     logreader *logf;
     logreader_config *log_config;
@@ -50,10 +52,14 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         logf[0].command = NULL;
         logf[0].alias = NULL;
         logf[0].logformat = NULL;
+        logf[0].future = 0;
+        logf[0].query = NULL;
         logf[1].file = NULL;
         logf[1].command = NULL;
         logf[1].alias = NULL;
         logf[1].logformat = NULL;
+        logf[1].future = 0;
+        logf[1].query = NULL;
     }
     else
     {
@@ -70,12 +76,16 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         logf[pl +1].command = NULL;
         logf[pl +1].alias = NULL;
         logf[pl +1].logformat = NULL;
+        logf[pl +1].future = 0;
+        logf[pl +1].query = NULL;
     }
 
     logf[pl].file = NULL;
     logf[pl].command = NULL;
     logf[pl].alias = NULL;
     logf[pl].logformat = NULL;
+    logf[pl].future = 0;
+    logf[pl].query = NULL;
     logf[pl].fp = NULL;
     logf[pl].ffile = NULL;
     logf[pl].djb_program_name = NULL;
@@ -96,6 +106,15 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             merror(XML_VALUENULL, ARGV0, node[i]->element);
             return(OS_INVALID);
         }
+        else if(strcmp(node[i]->element,xml_localfile_future) == 0)
+        {
+			if (strcmp(node[i]->content, "yes") == 0)
+				logf[pl].future = 1;
+		}
+		else if(strcmp(node[i]->element,xml_localfile_query) == 0)
+		{
+			os_strdup(node[i]->content, logf[pl].query);
+		}
         else if(strcmp(node[i]->element,xml_localfile_command) == 0)
         {
             /* We don't accept remote commands from the manager - just in case. */
@@ -250,13 +269,11 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
                 lfile[OS_FLSIZE] = '\0';
                 ret = strftime(lfile, OS_FLSIZE, node[i]->content, p);
-                if(ret == 0)
+                if(ret != 0)
                 {
-                    merror(PARSE_ERROR, ARGV0, node[i]->content);
-                    return(OS_INVALID);
+					os_strdup(node[i]->content, logf[pl].ffile);
                 }
 
-                os_strdup(node[i]->content, logf[pl].ffile);
                 os_strdup(node[i]->content, logf[pl].file);
             }
 
@@ -354,6 +371,9 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             else if(strcmp(logf[pl].logformat, EVENTLOG) == 0)
             {
             }
+            else if(strcmp(logf[pl].logformat, EVENTCHANNEL) == 0)
+            {
+			}
             else
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);

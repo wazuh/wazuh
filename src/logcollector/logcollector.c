@@ -115,6 +115,24 @@ void LogCollectorStart()
             logff[i].command = NULL;
             logff[i].fp = NULL;
         }
+        
+        else if(strcmp(logff[i].logformat, "eventchannel") == 0)
+        {
+			#ifdef WIN32
+			
+			#ifdef EVENTCHANNEL_SUPPORT
+			verbose(READING_EVTLOG, ARGV0, logff[i].file);
+			win_start_event_channel(logff[i].file, logff[i].future, logff[i].query);
+			#else
+			merror("%s: WARN: eventchannel not available on this version of OSSEC", ARGV0);
+			#endif
+			
+			#endif
+			
+			logff[i].file = NULL;
+			logff[i].command = NULL;
+            logff[i].fp = NULL;
+        }
 
         else if(strcmp(logff[i].logformat, "command") == 0)
         {

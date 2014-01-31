@@ -6,6 +6,10 @@
 ;--------------------------------
 ;General
 
+!ifndef OutFile
+ !define OutFile "ossec-win32-agent.exe"
+!endif
+
 !define MUI_ICON favicon.ico
 !define MUI_UNICON ossec-uninstall.ico
 !define VERSION "2.7.1"
@@ -14,7 +18,7 @@
 
 Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2003 - 2013 Trend Micro Inc."
-OutFile "ossec-win32-agent.exe"
+OutFile "${OutFile}"
 
 InstallDir "$PROGRAMFILES\ossec-agent"
 InstallDirRegKey HKLM Software\OSSEC ""
@@ -124,6 +128,7 @@ FileWrite $0 "Installed on ${CDATE}"
 FileClose $0
 done:
 
+CreateDirectory "$INSTDIR\bookmarks"
 CreateDirectory "$INSTDIR\rids"
 CreateDirectory "$INSTDIR\syscheck"
 CreateDirectory "$INSTDIR\shared"
@@ -197,6 +202,7 @@ Section "Uninstall"
   Delete "$INSTDIR\ossec.conf"
   Delete "$INSTDIR\uninstall.exe"
   Delete "$INSTDIR\*"
+  Delete "$INSTDIR\bookmarks\*"
   Delete "$INSTDIR\rids\*"
   Delete "$INSTDIR\syscheck\*"
   Delete "$INSTDIR\shared\*"
@@ -212,6 +218,7 @@ Section "Uninstall"
   RMDir "$SMPROGRAMS\OSSEC"
   RMDir "$INSTDIR\shared"
   RMDir "$INSTDIR\syscheck"
+  RMDir "$INSTDIR\bookmarks"
   RMDir "$INSTDIR\rids"
   RMDir "$INSTDIR\active-response\bin"
   RMDir "$INSTDIR\active-response"

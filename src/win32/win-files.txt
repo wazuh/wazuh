@@ -27,6 +27,7 @@ logcollector/logcollector.h logcollector.h
 logcollector/read_snortfull.c read_snortfull.c
 logcollector/read_syslog.c read_syslog.c
 logcollector/read_win_el.c read_win_el.c
+logcollector/read_win_event_channel.c read_win_event_channel.c
 logcollector/read_nmapg.c read_nmapg.c
 logcollector/read_mysql_log.c read_mysql_log.c
 logcollector/read_mssql_log.c read_mssql_log.c
