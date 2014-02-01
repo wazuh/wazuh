@@ -56,7 +56,7 @@ void Lists_OP_CreateLists();
 void makelist_help(const char *prog)
 {
     print_out(" ");
-    print_out("%s %s - %s (%s)", __name, __version, __author, __contact);
+    print_out("%s %s - %s (%s)", __ossec_name, __version, __author, __contact);
     print_out("%s", __site);
     print_out(" ");
     print_out("  %s: -[Vhdt] [-u user] [-g group] [-c config] [-D dir]", prog);

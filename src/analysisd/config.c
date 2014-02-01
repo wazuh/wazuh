@@ -43,6 +43,8 @@ int GlobalConf(char * cfgfile)
     Config.hostinfo = 8;
     Config.picviz = 0;
     Config.prelude = 0;
+    Config.zeromq_output = 0;
+    Config.zeromq_output_uri = NULL; 
     Config.memorysize = 1024;
     Config.mailnotify = -1;
     Config.keeplogdate = 0;

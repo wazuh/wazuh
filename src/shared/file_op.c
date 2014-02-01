@@ -653,7 +653,7 @@ char *getuname()
                                  uts_buf.release,
                                  uts_buf.version,
                                  uts_buf.machine,
-                                 __name, __version);
+                                 __ossec_name, __version);
 
         return(ret);
     }
@@ -665,7 +665,7 @@ char *getuname()
             return(NULL);
 
         snprintf(ret, 255, "No system info available -  %s %s",
-                           __name, __version);
+                           __ossec_name, __version);
 
         return(ret);
     }
@@ -1289,7 +1289,7 @@ char *getuname()
 
 
     /* Adding ossec version */
-    snprintf(os_v, 128, " - %s %s", __name, __version);
+    snprintf(os_v, 128, " - %s %s", __ossec_name, __version);
     strncat(ret, os_v, ret_size -1);
 
 

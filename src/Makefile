@@ -73,5 +73,9 @@ setlocal:
 
 setfullsubject:
 		@echo "FEXTRA=-DCLEANFULL" >> ./Config.OS
+
 setoneway:
 		@echo "FEXTRA=-DONEWAY" >> ./Config.OS
+
+setzeromq:
+		@echo "CZEROMQ_OUTPUT=-DZEROMQ_OUTPUT ../external/libcJSON.a -lm -lzmq -lczmq" >> ./Config.OS 

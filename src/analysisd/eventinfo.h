@@ -72,7 +72,6 @@ typedef struct _Eventinfo
     char mon[4];
 
     /* SYSCHECK Results variables -- only used by prelude for now */
-    #ifdef PRELUDE
     char *filename;
     int perm_before;
     int perm_after;
@@ -86,7 +85,6 @@ typedef struct _Eventinfo
     char *owner_after;
     char *gowner_before;
     char *gowner_after;
-    #endif
 }Eventinfo;
 
 
@@ -114,7 +112,7 @@ int alert_only;
 #define FIREWALL    3   /* Firewall events */
 #define WEBLOG      7   /* Apache logs */
 #define SQUID       8   /* Squid logs */
-#define WINDOWS     9   /* Windows logs */
+#define DECODER_WINDOWS     9   /* Windows logs */
 #define HOST_INFO   10  /* Host information logs (from nmap or similar) */
 #define OSSEC_RL    11  /* Ossec rules */
 #define OSSEC_ALERT 12  /* Ossec Alerts */

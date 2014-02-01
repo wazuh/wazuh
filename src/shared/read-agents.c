@@ -1190,7 +1190,7 @@ int _get_agent_os(char *agent_name, char *agent_ip, agent_info *agt_info)
     {
         char *ossec_version = NULL;
         agt_info->os = getuname();
-        os_strdup(__name " " __version, agt_info->version);
+        os_strdup(__ossec_name " " __version, agt_info->version);
 
 
         /* Removing new line. */

@@ -532,10 +532,8 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         "Size changed from '%s' to '%s'\n",
                         oldsize, newsize);
 
-                #ifdef PRELUDE
                 os_strdup(oldsize, lf->size_before);
                 os_strdup(newsize, lf->size_after);
-                #endif
             }
 
             /* Permission message */
@@ -588,10 +586,8 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         (newperm & S_ISVTX)? 't' :
                         (newperm & S_IXOTH)? 'x' : '-');
 
-                #ifdef PRELUDE
                 lf->perm_before = oldperm;
                 lf->perm_after = newperm;
-                #endif
             }
 
             /* Ownership message */
@@ -606,10 +602,8 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                         olduid, newuid);
 
 
-                #ifdef PRELUDE
                 os_strdup(olduid, lf->owner_before);
                 os_strdup(newuid, lf->owner_after);
-                #endif
             }
 
             /* group ownership message */
@@ -622,10 +616,8 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 snprintf(sdb.gowner, OS_FLSIZE,"Group ownership was '%s', "
                         "now it is '%s'\n",
                         oldgid, newgid);
-                #ifdef PRELUDE
                 os_strdup(oldgid, lf->gowner_before);
                 os_strdup(newgid, lf->gowner_after);
-                #endif
             }
 
             /* md5 message */
@@ -638,10 +630,8 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 snprintf(sdb.md5, OS_FLSIZE, "Old md5sum was: '%s'\n"
                         "New md5sum is : '%s'\n",
                         oldmd5, newmd5);
-                #ifdef PRELUDE
                 os_strdup(oldmd5, lf->md5_before);
                 os_strdup(newmd5, lf->md5_after);
-                #endif
             }
 
             /* sha1 */
@@ -654,14 +644,10 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
                 snprintf(sdb.sha1, OS_FLSIZE, "Old sha1sum was: '%s'\n"
                         "New sha1sum is : '%s'\n",
                         oldsha1, newsha1);
-                #ifdef PRELUDE
                 os_strdup(oldsha1, lf->sha1_before);
                 os_strdup(newsha1, lf->sha1_after);
-                #endif
             }
-            #ifdef PRELUDE
             os_strdup(f_name, lf->filename);
-            #endif
 
 
             /* Provide information about the file */
