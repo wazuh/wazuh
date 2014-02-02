@@ -16,8 +16,6 @@
 
 #define SYSLOG_CONN 1
 #define SECURE_CONN 2
-#define UDP_PROTO   6
-#define TCP_PROTO   17
 
 #include "shared.h"
 
@@ -25,13 +23,13 @@
 typedef struct _remoted
 {
     int *proto;
-    int *port;
+    char **port;
     int *conn;
     int *ipv6;
 
     char **lip;
-	os_ip **allowips;
-	os_ip **denyips;
+    os_ip **allowips;
+    os_ip **denyips;
 
     int m_queue;
     int sock;

@@ -305,8 +305,7 @@ int main(int argc, char **argv)
     if(info_agent)
     {
         int i;
-        char final_ip[128 +1];
-        char final_mask[128 +1];
+        char final_ip[IPSIZE + 4];
         keystore keys;
 
 
@@ -347,12 +346,11 @@ int main(int argc, char **argv)
                 helpmsg();
             }
 
-            /* Getting netmask from ip. */
-            final_ip[128] = '\0';
-            final_mask[128] = '\0';
-            getNetmask(keys.keyentries[i]->ip->netmask, final_mask, 128);
-            snprintf(final_ip, 128, "%s%s",keys.keyentries[i]->ip->ip,
-                    final_mask);
+            /* Getting full address/prefix length from ip. */
+            final_ip[(sizeof final_ip) - 1] = '\0';
+            snprintf(final_ip, sizeof final_ip, "%s/%u",
+                     keys.keyentries[i]->ip->ip,
+                     keys.keyentries[i]->ip->prefixlength);
 
             if(registry_only)
             {

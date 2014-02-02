@@ -284,7 +284,7 @@
 
 <decoder name="telnetd-ip">
   <parent>telnetd</parent>
-  <regex>from (\d+.\d+.\d+.\d+)$</regex>
+  <regex>from (\S+)$</regex>
   <order>srcip</order>
 </decoder>
 
@@ -349,7 +349,7 @@
 
 <decoder name="smbd-ip">
   <parent>smbd</parent>
-  <regex> from \((\d+.\d+.\d+.\d+)\)</regex>
+  <regex> from \((\S+)\)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -464,7 +464,7 @@
 
 <decoder name="proftpd-ip">
   <parent>proftpd</parent>
-  <regex>^\S+ \(\S+[(\S+)]\)|^\S+ \(\S+[::ffff:(\S+)]\)</regex>
+  <regex>^\S+ \(\S+[(\S+)]\)|^\S+ \(\S+[(\S+)]\)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -527,14 +527,14 @@
   -->
 <decoder name="vsftpd">
   <prematch>^\w\w\w \w\w\w\s+\d+ \S+ \d+ [pid \d+] </prematch>
-  <regex offset="after_prematch">Client "(\d+.\d+.\d+.\d+)"$</regex>
+  <regex offset="after_prematch">Client "(\S+)"$</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="vsftpd">
   <program_name>^vsftpd</program_name>
   <prematch>^\w\w\w \w\w\w\s+\d+ \S+ \d+ [pid \d+] </prematch>
-  <regex offset="after_prematch">Client "(\d+.\d+.\d+.\d+)"$</regex>
+  <regex offset="after_prematch">Client "(\S+)"$</regex>
   <order>srcip</order>
 </decoder>
 
@@ -556,20 +556,20 @@
   <prematch>^Failed authentication from: \S+ |</prematch>
   <prematch>^repeated login failures from </prematch>
   <!--<regex offset="after_prematch">(\S+)</regex>-->
-  <regex offset="after_prematch">^\S+ [(\d+.\d+.\d+.\d+)]$|^(\S+)</regex>
+  <regex offset="after_prematch">^\S+ [(\S+)]$|^(\S+)</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="ftpd-refused">
   <parent>ftpd</parent>
   <prematch>^FTP LOGIN REFUSED </prematch>
-  <regex offset="after_prematch">[(\d+.\d+.\d+.\d+)]$</regex>
+  <regex offset="after_prematch">[(\S+)]$</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="ftpd-ip">
   <parent>ftpd</parent>
-  <regex>from (\d+.\d+.\d+.\d+)$</regex>
+  <regex>from (\S+)$</regex>
   <order>srcip</order>
 </decoder>
 
@@ -598,7 +598,7 @@
 <decoder name="arpwatch-new">
   <parent>arpwatch</parent>
   <prematch>^new station |^bogon </prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) (\S+)</regex>
+  <regex offset="after_prematch">^(\S+) (\S+)</regex>
   <order>srcip, extra_data</order>
   <fts>name, srcip, extra_data</fts>
 </decoder>
@@ -642,7 +642,7 @@
   -->
 <decoder name="imapd">
   <program_name>^imapd</program_name>
-  <regex offset="after_prematch">user=(\S+) \.+ [(\d+.\d+.\d+.\d+)]$</regex>    
+  <regex offset="after_prematch">user=(\S+) \.+ [(\S+)]$</regex>    
   <order>user,srcip</order>
 </decoder>
 
@@ -663,28 +663,28 @@
 <decoder name="vpopmail-fail">
   <parent>vpopmail</parent>
   <prematch>^vchkpw-\S+: password fail</prematch>
-  <regex offset="after_prematch"> (\S+)@\S+:(\d+.\d+.\d+.\d+)$</regex>
+  <regex offset="after_prematch"> (\S+)@\S+:(\S+)$</regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="vpopmail-notfound">
   <parent>vpopmail</parent>
   <prematch>^vchkpw-\S+: vpopmail user not </prematch>
-  <regex offset="after_prematch">^found (\S+):(\d+.\d+.\d+.\d+)$</regex>
+  <regex offset="after_prematch">^found (\S+):(\S+)$</regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="vpopmail-empty">
   <parent>vpopmail</parent>
   <prematch>^vchkpw-\S+: null password </prematch>
-  <regex offset="after_prematch">^given (\S+):(\d+.\d+.\d+.\d+)$</regex>
+  <regex offset="after_prematch">^given (\S+):(\S+)$</regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="vpopmail-success">
   <parent>vpopmail</parent>
   <prematch>^vchkpw-\S+: \(\S+\) login </prematch>
-  <regex offset="after_prematch">^success (\S+):(\d+.\d+.\d+.\d+)$</regex>
+  <regex offset="after_prematch">^success (\S+):(\S+)$</regex>
   <order>user, srcip</order>
 </decoder>
 
@@ -701,7 +701,7 @@
   <parent>vm-pop3d</parent>
   <prematch>^User '</prematch>
   <regex offset="after_prematch">^(\S+)' - \w+ auth, </regex>
-  <regex>from=(\d+.\d+.\d+.\d+)$</regex>
+  <regex>from=(\S+)$</regex>
   <order>user, srcip</order>
 </decoder>
 
@@ -722,13 +722,13 @@
 <decoder name="courier-login">
   <parent>courier</parent>
   <prematch>^LOGIN, </prematch>
-  <regex offset="after_prematch">^user=(\S+), ip=[(\S+\d)]$</regex>
+  <regex offset="after_prematch">^user=(\S+), ip=[(\S+)]$</regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="courier-generic">
   <parent>courier</parent>
-  <regex>, ip=[(\S+\d)]$|, ip=[::ffff:(\S+\d)]$</regex>
+  <regex>, ip=[(\S+)]$|, ip=[(\S+)]$</regex>
   <order>srcip</order>
 </decoder>
 
@@ -759,28 +759,28 @@
 <decoder name="dovecot-success">
   <parent>dovecot</parent>
   <prematch offset="after_parent">^\w\w\w\w-login: Login: </prematch>
-  <regex offset="after_prematch">^user=\p(\S+)\p, method=\S+, rip=\S*(\d+.\d+.\d+.\d+), lip=\S*(\d+.\d+.\d+.\d+), (\S*)$</regex>
+  <regex offset="after_prematch">^user=\p(\S+)\p, method=\S+, rip=(\S+), lip=(\S+), mpid=\S+, (\S*)$</regex>
   <order>user, srcip, dstip, protocol</order>
 </decoder>
 
 <decoder name="dovecot-aborted">
   <parent>dovecot</parent>
   <prematch offset="after_parent">^\w\w\w\w-login: Aborted login</prematch>
-  <regex offset="after_prematch">: user=\p(\S+)\p, method=\S+, rip=::ffff:(\d+.\d+.\d+.\d+), lip=::ffff:(\d+.\d+.\d+.\d+)$</regex>
-  <order>user, srcip, dstip</order>
+  <regex offset="after_prematch">: user=\p(\S+)\p, method=\S+, rip=(\S+), lip=(\S+), (\S*)$</regex>
+  <order>user, srcip, dstip, protocol</order>
 </decoder> 
 
 <decoder name="dovecot-fail">
   <parent>dovecot</parent>
   <prematch offset="after_parent">^auth\(default\)|auth-worker\(default\)</prematch>
-  <regex offset="after_prematch">^: \S+\((\S+),(\d+.\d+.\d+.\d+)\)</regex>
+  <regex offset="after_prematch">^: \S+\((\S+),(\S+)\)</regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="dovecot-disconnect">
   <parent>dovecot</parent>
   <prematch offset="after_parent">^\w\w\w\w-login: Disconnected: </prematch>
-  <regex offset="after_prematch">^rip=(\S+), lip=(\d+.\d+.\d+.\d+)</regex>
+  <regex offset="after_prematch">^rip=(\S+), lip=(\S+)</regex>
   <order>srcip, dstip</order>
 </decoder>
 
@@ -809,20 +809,20 @@
 <decoder name="named_client">
   <parent>named</parent>  
   <prematch>^client </prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+)#</regex>
+  <regex offset="after_prematch">^(\S+)#</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="named_from">
   <parent>named</parent>  
-  <regex offset="after_parent"> from [(\d+.\d+.\d+.\d+)]</regex>
+  <regex offset="after_parent"> from [(\S+)]</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="named-master">
   <parent>named</parent>
   <prematch> for master</prematch>
-  <regex>for master (\d+.\d+.\d+.\d+):(\d+) \S+ \(source (\d+.\d+.\d+.\d+)#d+\)$</regex>
+  <regex>for master (\S+):(\d+) \S+ \(source (\S+)#d+\)$</regex>
   <order>dstip,dstport,srcip</order>
 </decoder>
 
@@ -844,14 +844,14 @@
   <use_own_name>true</use_own_name>
   <parent>postfix</parent>  
   <prematch>^NOQUEUE: reject: \w\w\w\w from </prematch>
-  <regex offset="after_prematch">[(\d+.\d+.\d+.\d+)]: (\d+) </regex>
+  <regex offset="after_prematch">[(\S+)]: (\d+) </regex>
   <order>srcip,id</order>
 </decoder>
 
 <decoder name="postfix-sasl">
   <parent>postfix</parent>  
   <prematch>^warning: \S+: SASL </prematch>
-  <regex>^warning: \S+[(\d+.\d+.\d+.\d+)]:</regex>
+  <regex>^warning: \S+[(\S+)]:</regex>
   <order>srcip</order>
 </decoder>
 
@@ -875,21 +875,21 @@
 <decoder name="sendmail-pre-greeting">
   <parent>sendmail-reject</parent>
   <prematch>^\S+: rejecting commands from</prematch>
-  <regex offset="after_prematch">^ \S+ [(\d+.\d+.\d+.\d+)]</regex>
+  <regex offset="after_prematch">^ \S+ [(\S+)]</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="sendmail-reject-nodns">
   <parent>sendmail-reject</parent>
   <prematch>relay=[</prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+)]</regex>
+  <regex offset="after_prematch">^(\S+)]</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="sendmail-reject-dns">
   <parent>sendmail-reject</parent>
   <prematch>relay=\S+ [</prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+)]</regex>
+  <regex offset="after_prematch">^(\S+)]</regex>
   <order>srcip</order>
 </decoder>
 
@@ -910,8 +910,8 @@
   <program_name>^smf-sav</program_name>
   <prematch>^sender check failed|</prematch>
   <prematch>^sender check tempfailed</prematch>
-  <regex offset="after_prematch">^ \(cached\): \S+, (\d+.\d+.\d+.\d+),|</regex>
-  <regex>^: \S+, (\d+.\d+.\d+.\d+),</regex>
+  <regex offset="after_prematch">^ \(cached\): \S+, (\S+),|</regex>
+  <regex>^: \S+, (\S+),</regex>
   <order>srcip</order>
 </decoder>
 
@@ -937,7 +937,7 @@
 <decoder name="mailscanner-ip">
   <parent>mailscanner</parent>
   <prematch>^Message \S+ from </prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) \S+ to \S+ is (\w+)</regex>
+  <regex offset="after_prematch">^(\S+) \S+ to \S+ is (\w+)</regex>
   <order>srcip, action</order>
 </decoder>
 
@@ -1057,8 +1057,8 @@
 <decoder name="ipfilter">
    <type>firewall</type>
    <program_name>^ipmon</program_name>
-   <regex> (\w) (\d+.\d+.\d+.\d+),(\d+) -> </regex>
-   <regex>(\d+.\d+.\d+.\d+),(\d+) PR (\w+) </regex>
+   <regex> (\w) (\S+),(\d+) -> </regex>
+   <regex>(\S+),(\d+) PR (\w+) </regex>
    <order>action,srcip,srcport,dstip,dstport,protocol</order>
 </decoder>
   
@@ -1074,8 +1074,8 @@
 <decoder name="aix-ipsec">
    <type>firewall</type>
    <program_name>^ipsec_logd</program_name>
-   <regex> R:(\w)  \w:\S+ S:(\d+.\d+.\d+.\d+) </regex>
-   <regex>D:(\d+.\d+.\d+.\d+) P:(\S+) SP:(\d+) DP:(\d+) </regex>
+   <regex> R:(\w)  \w:\S+ S:(\S+) </regex>
+   <regex>D:(\S+) P:(\S+) SP:(\d+) DP:(\d+) </regex>
    <order>action,srcip,dstip,protocol,srcport,dstport</order>
 </decoder>
 
@@ -1147,7 +1147,7 @@
   <prematch>system-alert-\.+ from </prematch>
   
   <regex offset="after_parent">system-(\w+)-(\d+): \.+ </regex>
-  <regex>from\.+(\d+.\d+.\d+.\d+)</regex>
+  <regex>from\.+(\S+)</regex>
   <order>action, id, srcip</order>
 </decoder>
 
@@ -1235,7 +1235,7 @@
   <type>firewall</type>
   <prematch offset="after_parent">^2-106006|^2-106007</prematch>
   <regex offset="after_parent">^(\S+): (\w+) \S+ (\w+) from </regex>
-  <regex>(\d+.\d+.\d+.\d+)/(\d+) to (\d+.\d+.\d+.\d+)/(\d+) </regex>
+  <regex>(\S+)/(\d+) to (\S+)/(\d+) </regex>
   <order>id, action, protocol, srcip, srcport, dstip, dstport</order>
 </decoder>
 
@@ -1269,9 +1269,9 @@
 <decoder name="pix-url-success">
   <parent>pix</parent>
   <prematch offset="after_parent">^5-304001: </prematch>
-  <regex offset="after_parent">^(\S+): (\d+.\d+.\d+.\d+) Accessed URL </regex>
-  <regex>(\d+.\d+.\d+.\d+):(http\w*://\.+)|</regex>
-  <regex>^(\S+): (\d+.\d+.\d+.\d+) Accessed URL (\d+.\d+.\d+.\d+):</regex>
+  <regex offset="after_parent">^(\S+): (\S+) Accessed URL </regex>
+  <regex>(\S+):(http\w*://\.+)|</regex>
+  <regex>^(\S+): (\S+) Accessed URL (\S+):</regex>
   <order>id, srcip, dstip, url</order>
 </decoder>
 
@@ -1279,7 +1279,7 @@
   <parent>pix</parent>
   <prematch offset="after_parent">^5-304002: </prematch>
   <regex offset="after_parent">^(\S+): Access (denied) URL (http\w*://\.+) </regex>
-  <regex>SRC (\d+.\d+.\d+.\d+) DEST (\d+.\d+.\d+.\d+) on interface</regex>  
+  <regex>SRC (\S+) DEST (\S+) on interface</regex>  
   <order>id, action, url, srcip, dstip</order>
 </decoder>
 
@@ -1288,14 +1288,14 @@
   <prematch offset="after_parent">^2-106012: |^2-106017: |</prematch>
   <prematch>^2-106020|^1-106021|^1-106022|</prematch>
   <prematch>^4-4000</prematch>
-  <regex offset="after_parent">^(\S+): \.+ from (\d+.\d+.\d+.\d+) </regex>
+  <regex offset="after_parent">^(\S+): \.+ from (\S+) </regex>
   <order>id, srcip</order>
 </decoder>
 
 <decoder name="pix-srcip">
   <parent>pix</parent>
   <prematch offset="after_parent">^6-605004|^6-308001|^6-605005</prematch>
-  <regex offset="after_parent">^(\S+): \.+ (\d+.\d+.\d+.\d+)</regex>
+  <regex offset="after_parent">^(\S+): \.+ (\S+)</regex>
   <order>id, srcip</order>
 </decoder>
 
@@ -1316,7 +1316,7 @@
   -->
 <decoder name="cisco-vpn-concentrator">
   <prematch>^\d+ \d\d/\d\d/\d\d\d\d \S+ SEV=\d </prematch>
-  <regex offset="after_prematch">^(\S+) RPT=\d+ (\d+.\d+.\d+.\d+) </regex>
+  <regex offset="after_prematch">^(\S+) RPT=\d+ (\S+) </regex>
   <order>id, srcip</order>
 </decoder> 
 
@@ -1353,9 +1353,9 @@
    <parent>snort</parent>
    <type>ids</type>
    <prematch>^[**] |^[\d+:\d+:\d+] </prematch>
-   <regex>^[**] [(\d+:\d+:\d+)] \.+ (\d+.\d+.\d+.\d+)\p*\d* -> </regex>
-   <regex>(\d+.\d+.\d+.\d+)|^[(\d+:\d+:\d+)] \.+ </regex>
-   <regex>(\d+.\d+.\d+.\d+)\p*\d* -> (\d+.\d+.\d+.\d+)</regex>
+   <regex>^[**] [(\d+:\d+:\d+)] \.+ (\S+)\p*\d* -> </regex>
+   <regex>(\S+)|^[(\d+:\d+:\d+)] \.+ </regex>
+   <regex>(\S+)\p*\d* -> (\S+)</regex>
    <order>id,srcip,dstip</order>
    <fts>name,id,srcip,dstip</fts>
 </decoder>
@@ -1394,7 +1394,7 @@
 <decoder name="suhosin">
   <program_name>^suhosin</program_name>
   <type>ids</type>
-  <regex>^ALERT - (\.+) \(attacker '(\d+.\d+.\d+.\d+)', </regex>
+  <regex>^ALERT - (\.+) \(attacker '(\S+)', </regex>
   <order>id, srcip</order>
   <fts>name, location, id</fts>
 </decoder>
@@ -1411,7 +1411,7 @@
    <type>ids</type>
    <prematch>^\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d\|</prematch>
    <regex offset="after_prematch">^\S+\|(\S+)\|</regex>
-   <regex>(\d+.\d+.\d+.\d+)\|(\d+.\d+.\d+.\d+)\|</regex>
+   <regex>(\S+)\|(\S+)\|</regex>
    <order>id, srcip, dstip</order>
    <fts>name, id, srcip, dstip</fts>
 </decoder>
@@ -1431,14 +1431,14 @@
 <decoder name="horde_imp_success">
   <parent>horde_imp</parent>
   <prematch offset="after_parent">^Login success </prematch>
-  <regex offset="after_prematch">^for (\S+) [(\d+.\d+.\d+.\d+)] </regex>
+  <regex offset="after_prematch">^for (\S+) [(\S+)] </regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="horde_imp_failed">
   <parent>horde_imp</parent>
   <prematch offset="after_parent">^FAILED LOGIN</prematch>
-  <regex offset="after_prematch">^ (\d+.\d+.\d+.\d+) to \S+ as (\S+) </regex>
+  <regex offset="after_prematch">^ (\S+) to \S+ as (\S+) </regex>
   <order>srcip, user</order> 
 </decoder>
 
@@ -1453,7 +1453,7 @@
 <decoder name="wordpress">
   <program_name>^WPsyslog</program_name>
   <prematch>^[</prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) </regex>
+  <regex offset="after_prematch">^(\S+) </regex>
   <order>srcip</order>
 </decoder>
 
@@ -1476,7 +1476,7 @@
 <decoder name="roundcube-success">
   <parent>roundcube</parent>
   <prematch>^: Successful login for </prematch>
-  <regex offset="after_prematch">^(\S+) \(id \d+\) from (\d+.\d+.\d+.\d+)$</regex>
+  <regex offset="after_prematch">^(\S+) \(id \d+\) from (\S+)$</regex>
   <order>user, srcip</order>
 </decoder>
 
@@ -1511,7 +1511,7 @@
   <parent>apache-errorlog</parent>
   
   <prematch offset="after_parent">^[client</prematch>
-  <regex offset="after_prematch">^ (\d+.\d+.\d+.\d+)] </regex>
+  <regex offset="after_prematch">^ (\S+)] </regex>
   <order>srcip</order>
 </decoder> 
 
@@ -1531,7 +1531,7 @@
 <decoder name="nginx-errorlog-ip">
   <parent>nginx-errorlog</parent>
   <prematch offset="after_parent">, client: \S+, server: \S+, request: "\S+ </prematch>
-  <regex offset="after_parent">, client: (\d+.\d+.\d+.\d+), </regex> 
+  <regex offset="after_parent">, client: (\S+), </regex> 
   <order>srcip</order>
 </decoder>
 
@@ -1554,8 +1554,8 @@
   -->
 <decoder name="web-accesslog">
   <type>web-log</type>
-  <prematch>^\d+.\d+.\d+.\d+ |^::ffff:\d+.\d+.\d+.\d+ </prematch>
-  <regex>^(\d+.\d+.\d+.\d+) \S+ \S+ [\S+ \S\d+] </regex>
+  <prematch>^\S+ |^\S+ </prematch>
+  <regex>^(\S+) \S+ \S+ [\S+ \S\d+] </regex>
   <regex>"\w+ (\S+) HTTP\S+ (\d+) </regex>
   <order>srcip, url, id</order>
 </decoder>
@@ -1601,8 +1601,8 @@
   <parent>windows-date-format</parent>
   <type>web-log</type>
   <use_own_name>true</use_own_name>
-  <prematch offset="after_parent">^\d+.\d+.\d+.\d+ \S+ W3SVC</prematch>
-  <regex offset="after_parent">^(\d+.\d+.\d+.\d+) \S+ \S+ \S+ \S+ </regex>
+  <prematch offset="after_parent">^\S+ \S+ W3SVC</prematch>
+  <regex offset="after_parent">^(\S+) \S+ \S+ \S+ \S+ </regex>
   <regex>\d+ \S+ (\S+ \S+) (\d+) </regex>
   <order>srcip,url,id</order>
 </decoder>
@@ -1621,7 +1621,7 @@
   <type>web-log</type>
   <use_own_name>true</use_own_name>
   <prematch offset="after_parent">^W3SVC\d+ \S+ \S+ \S+ </prematch>
-  <regex offset="after_prematch">^(\S+ \S+) \d+ \S+ (\d+.\d+.\d+.\d+) </regex>
+  <regex offset="after_prematch">^(\S+ \S+) \d+ \S+ (\S+) </regex>
   <regex>\S+ \S+ \S+ \S+ \S+ (\d+) </regex>
   <order>url, srcip, id</order>
 </decoder>
@@ -1636,8 +1636,8 @@
 <decoder name="msftp">
   <parent>windows-date-format</parent>
   <use_own_name>true</use_own_name>
-  <prematch offset="after_parent">^\d+.\d+.\d+.\d+ \S+ MSFTPSVC</prematch>
-  <regex offset="after_parent">^(\d+.\d+.\d+.\d+) (\S+) \S+ \S+ \S+ </regex>
+  <prematch offset="after_parent">^\S+ \S+ MSFTPSVC</prematch>
+  <regex offset="after_parent">^(\S+) (\S+) \S+ \S+ \S+ </regex>
   <regex>\d+ [\d+](\S+) \S+ \S+ (\d+) </regex>
   <order>srcip,user,action,id</order>
 </decoder>  
@@ -1653,8 +1653,8 @@
 <decoder name="msexchange">
   <parent>windows-date-format</parent>
   <use_own_name>true</use_own_name>
-  <prematch offset="after_parent">^\d+.\d+.\d+.\d+ \S+ SMTPSVC</prematch>
-  <regex offset="after_parent">^(\d+.\d+.\d+.\d+) \S+ \S+ \S+ \S+ </regex>
+  <prematch offset="after_parent">^\S+ \S+ SMTPSVC</prematch>
+  <regex offset="after_parent">^(\S+) \S+ \S+ \S+ \S+ </regex>
   <regex>\d+ (\S+) \S+ \S+ (\d+) </regex>
   <order>srcip, action, id</order>
 </decoder>
@@ -1675,7 +1675,7 @@
   <use_own_name>true</use_own_name>
     
   <prematch offset="after_parent">^ERROR: couldn't find the pskey </prematch>
-  <regex offset="after_prematch">^for (\d+.\d+.\d+.\d+)</regex>
+  <regex offset="after_prematch">^for (\S+)</regex>
   <order>srcip</order>
 </decoder>
 
@@ -1698,8 +1698,8 @@
   -->
 <decoder name="squid-accesslog">
   <type>squid</type>
-  <prematch>^\d+ \d+.\d+.\d+.\d+ </prematch>
-  <regex>^\d+ (\d+.\d+.\d+.\d+) (\w+)/(\d+) \d+ \w+ (\S+) </regex>
+  <prematch>^\d+ \S+ </prematch>
+  <regex>^\d+ (\S+) (\w+)/(\d+) \d+ \w+ (\S+) </regex>
   <order>srcip,action,id,url</order>
 </decoder>  
 
@@ -1903,8 +1903,8 @@ Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh del
 
 <decoder name="vmware-extra">
   <parent>vmware</parent>
-  <regex offset="after_regex">^: User (\w+)@(\d+.\d+.\d+.\d+)</regex>
-  <regex> logged |^: Failed login \w+ for (\w+)@(\d+.\d+.\d+.\d+)</regex>
+  <regex offset="after_regex">^: User (\w+)@(\S+)</regex>
+  <regex> logged |^: Failed login \w+ for (\w+)@(\S+)</regex>
   <order>user, srcip</order>
 </decoder>  
 
@@ -1977,21 +1977,21 @@ Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh del
 <decoder name="asterisk-denied">
   <parent>asterisk</parent>
   <prematch>^NOTICE[\d+]: \S+ in \S+: Registration from </prematch>
-  <regex offset="after_prematch">^\S+ failed for '(\d+.\d+.\d+.\d+)'</regex>
+  <regex offset="after_prematch">^\S+ failed for '(\S+)'</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="asterisk-denied2">
   <parent>asterisk</parent>
   <prematch>Registration from </prematch>
-  <regex offset="after_prematch">failed for '(\d+.\d+.\d+.\d+)'</regex>
+  <regex offset="after_prematch">failed for '(\S+)'</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="asterisk-iax-authentication-denied">
   <parent>asterisk</parent>
   <prematch>^NOTICE[\d+]: \S+ in \S+: Host </prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+) failed MD5 authentication for (\S+)</regex>
+  <regex offset="after_prematch">^(\S+) failed MD5 authentication for (\S+)</regex>
   <order>srcip, user</order>
 </decoder>
 
@@ -2109,7 +2109,7 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
 10.10.10.5; proto: tcp; product: SmartDefense; service: 111; s_port: 222;
   -->
 
-<!-- \s+\S+ \d\d:\d\d:\d\d (\w+) \d+.\d+.\d+.\d+ \p\S+ rule: -->
+<!-- \s+\S+ \d\d:\d\d:\d\d (\w+) \S+ \p\S+ rule: -->
 <decoder name="checkpoint-syslog">
   <program_name>^Checkpoint</program_name>
   <prematch>^\s+\S+ \d\d:\d\d:\d\d </prematch>
@@ -2120,7 +2120,7 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
   <type>firewall</type>
   <prematch offset="after_parent">^drop|^accept|^reject</prematch>
   <regex offset="after_parent">^(\w+)\s+\S+ \p\S+ rule:\.+</regex>
-  <regex>src: (\d+.\d+.\d+.\d+); dst: (\d+.\d+.\d+.\d+); proto: (\S+);</regex>
+  <regex>src: (\S+); dst: (\S+); proto: (\S+);</regex>
   <order>action,srcip,dstip,protocol</order>
 </decoder>  
 
@@ -2136,7 +2136,7 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
   <type>ids</type>
   <prematch offset="after_parent">^monitor|^drop</prematch>
   <regex offset="after_prematch">attack: (\.+); </regex>
-  <regex>src: (\d+.\d+.\d+.\d+); dst: (\d+.\d+.\d+.\d+); </regex>
+  <regex>src: (\S+); dst: (\S+); </regex>
   <regex>proto: (\S+);</regex>
   <order>extra_data, srcip, dstip, protocol</order>
   <fts>name, extra_data, srcip, dstip</fts>
@@ -2159,7 +2159,7 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
 <decoder name="ms-dhcp-ipv4">
   <prematch>^\d\d,\d+/\d+/\d\d\d\d,\d+:\d+:\d+,|</prematch>
   <prematch>^\d\d,\d+/\d+/\d\d,\d+:\d+:\d+,</prematch>
-  <regex>^(\d\d),\d+/\d+/\d\d\d*,\d+:\d+:\d+,(\w+),(\d+.\d+.\d+.\d+)</regex>
+  <regex>^(\d\d),\d+/\d+/\d\d\d*,\d+:\d+:\d+,(\w+),(\S+)</regex>
   <order>id,extra_data,srcip</order>
 </decoder>
 

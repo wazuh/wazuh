@@ -56,7 +56,7 @@ void HandleSyslog()
 
     int recv_b;
 
-    struct sockaddr_in peer_info;
+    struct sockaddr_storage peer_info;
     socklen_t peer_size;
 
 
@@ -100,7 +100,7 @@ void HandleSyslog()
         }
 
         /* Setting the source ip */
-        strncpy(srcip, inet_ntoa(peer_info.sin_addr), IPSIZE);
+        satop((struct sockaddr *) &peer_info, srcip, IPSIZE);
         srcip[IPSIZE] = '\0';
 
 

@@ -80,7 +80,8 @@ int main(int argc, char **argv)
     int process_pool[POOL_SIZE];
     // Count of pids we are wait()ing on.
     int c = 0, test_config = 0, use_ip_address = 0, pid = 0, status, i = 0, active_processes = 0;
-    int gid = 0, client_sock = 0, sock = 0, port = 1515, ret = 0;
+    int gid = 0, client_sock = 0, sock = 0, portnum, ret = 0;
+    char *port = "1515";
     char *dir  = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
@@ -89,7 +90,7 @@ int main(int argc, char **argv)
     SSL_CTX *ctx;
     SSL *ssl;
     char srcip[IPSIZE +1];
-    struct sockaddr_in _nc;
+    struct sockaddr_storage _nc;
     socklen_t _ncl;
 
 
@@ -145,11 +146,12 @@ int main(int argc, char **argv)
             case 'p':
                if(!optarg)
                     ErrorExit("%s: -%c needs an argument",ARGV0, c);
-                port = atoi(optarg);
-                if(port <= 0 || port >= 65536)
+                portnum = atoi(optarg);
+                if(portnum <= 0 || portnum >= 65536)
                 {
                     ErrorExit("%s: Invalid port: %s", ARGV0, optarg);
                 }
+                port = optarg;
                 break;
             default:
                 report_help();
@@ -214,10 +216,10 @@ int main(int argc, char **argv)
 
 
     /* Connecting via TCP */
-    sock = OS_Bindporttcp(port, NULL, 0);
+    sock = OS_Bindporttcp(port, NULL);
     if(sock <= 0)
     {
-        merror("%s: Unable to bind to port %d", ARGV0, port);
+        merror("%s: Unable to bind to port %s", ARGV0, port);
         exit(1);
     }
     fcntl(sock, F_SETFL, O_NONBLOCK);
@@ -271,7 +273,7 @@ int main(int argc, char **argv)
             }
             else
             {
-                strncpy(srcip, inet_ntoa(_nc.sin_addr),IPSIZE -1);
+                satop((struct sockaddr *) &_nc, srcip, IPSIZE);
                 char *agentname = NULL;
                 ssl = SSL_new(ctx);
                 SSL_set_fd(ssl, client_sock);

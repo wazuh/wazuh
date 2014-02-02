@@ -296,12 +296,10 @@ int main(int argc, char **argv)
     if(info_agent)
     {
         int agt_status = 0;
-        char final_ip[128 +1];
-        char final_mask[128 +1];
+        char final_ip[IPSIZE + 4];
         agent_info *agt_info;
 
-        final_ip[128] = '\0';
-        final_mask[128] = '\0';
+        final_ip[(sizeof final_ip) - 1] = '\0';
 
 
         if(!csv_output)
@@ -315,10 +313,10 @@ int main(int argc, char **argv)
             agt_info = get_agent_info(keys.keyentries[agt_id]->name,
                                       keys.keyentries[agt_id]->ip->ip);
 
-            /* Getting netmask from ip. */
-            getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 128);
-            snprintf(final_ip, 128, "%s%s",keys.keyentries[agt_id]->ip->ip,
-                                           final_mask);
+            /* Getting full address/prefix length from ip. */
+            snprintf(final_ip, sizeof final_ip, "%s/%u",
+                     keys.keyentries[agt_id]->ip->ip,
+                     keys.keyentries[agt_id]->ip->prefixlength);
 
 
             if(!csv_output)
