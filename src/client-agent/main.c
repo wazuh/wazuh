@@ -83,19 +83,6 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Check current debug_level
-     * Command line setting takes precedence 
-     */
-    if (debug_level == 0)
-    {
-        /* Getting debug level */
-        debug_level = getDefine_Int("agent", "debug", 0, 2);
-        while(debug_level != 0)
-        {
-            nowDebug();
-            debug_level--;
-        }
-    }
 
     debug1(STARTED_MSG, ARGV0);
 
@@ -104,6 +91,22 @@ int main(int argc, char **argv)
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
+
+
+    /* Check current debug_level
+     * Command line setting takes precedence 
+     */
+    if (debug_level == 0)
+    {
+        /* Getting debug level */
+        debug_level = getDefine_Int("agent","debug", 0, 2);
+        while(debug_level != 0)
+        {
+            nowDebug();
+            debug_level--;
+        }
+    }
+
 
     /* Reading config */
     if(ClientConf(DEFAULTCPATH) < 0)
