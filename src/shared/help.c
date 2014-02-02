@@ -30,6 +30,8 @@ void help(const char *prog)
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode");
+    print_out("                Can be specified up to two times");
+    print_out("                to increase debug level");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   Run as 'user'");
