@@ -88,6 +88,8 @@ char *Eventinfo_to_jsonstr(Eventinfo *lf) {
     if (lf->filename) {
         cJSON_AddItemToObject(root, "file", file_diff=cJSON_CreateObject());
 
+        cJSON_AddStringToObject(file_diff, "path", lf->filename);
+
         if (lf->md5_before && lf->md5_after && strcmp(lf->md5_before, lf->md5_after) != 0  ) {
             cJSON_AddStringToObject(file_diff,"md5_before", lf->md5_before);
             cJSON_AddStringToObject(file_diff,"md5_after", lf->md5_after);
