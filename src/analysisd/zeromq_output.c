@@ -109,7 +109,7 @@ char *Eventinfo_to_jsonstr(Eventinfo *lf) {
             cJSON_AddNumberToObject(file_diff, "perm_after", lf->perm_after);
         }
     }
-    out=cJSON_Print(root);
+    out=cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return out; 
 }
