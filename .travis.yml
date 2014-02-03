@@ -24,7 +24,7 @@ before_script:
 
 
 script:
-- ( cd src && make $OSSEC_TYPE )
+- ( cd src && sudo make $OSSEC_TYPE )
 
 before_deploy:
 - mkdir travis-builds
