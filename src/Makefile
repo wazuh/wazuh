@@ -24,6 +24,7 @@ clean:
 		@/bin/sh ./Makeall clean
 		rm -f ../bin/ossec*
 		rm -f ../bin/manage_agents
+		rm -rf win-pkg/
 
 all:
 		@/bin/sh ./Makeall all
@@ -42,6 +43,10 @@ local:
         
 agent:
 		@/bin/sh ./InstallAgent.sh
+
+windows_agent:
+		( cd win32 && /bin/sh ./gen_win.sh )
+		( cd win-pkg && /bin/sh ./make.sh )
         
 setagent:
 		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
