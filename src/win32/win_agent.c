@@ -588,7 +588,6 @@ void send_win32_info(time_t curr_time)
 
 
     debug1("%s: DEBUG: Sending keep alive message.", ARGV0);
-    verbose("%s: Sending keep alive message....", ARGV0);
 
     /* fixing time */
     __win32_curr_time = curr_time;
