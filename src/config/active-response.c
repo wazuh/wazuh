@@ -360,6 +360,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
     /* Closing shared file for active response */
     fclose(fp);
+    free(tmp_ar);
 
     /* Done over here */
     return(0);
@@ -440,6 +441,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
             else
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                free(tmp_command);
                 return(OS_INVALID);
             }
         }
@@ -477,9 +479,11 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
     if(!OSList_AddData(d1, (void *)tmp_command))
     {
         merror(LIST_ADD_ERROR, ARGV0);
+        free(tmp_command);
         return(-1);
     }
 
+    free(tmp_command);
 
     /* Done over here */
     return(0);
