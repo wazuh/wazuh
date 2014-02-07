@@ -100,6 +100,7 @@ fpos_t fp_pos;
 #define NO_KEY          "\n** Invalid authentication key. Starting over again.\n"
 #define INVALID_ID      "\n** Invalid ID '%s' given. ID must be numeric (max 8 digits).\n\n"
 #define INVALID_NAME    "\n** Invalid name '%s' given. Name must contain only alphanumeric characters (min=2, max=32).\n\n"
+#define NO_DEFAULT      "\n** Could not get default ID. Ran out of IDs to try with a max of '%d'. Either need to raise max agents or clean out client.keys.\n\n"
 
 /* Remove agent */
 #define REMOVE_ID       "Provide the ID of the agent to be removed (or '\\q' to quit): "
