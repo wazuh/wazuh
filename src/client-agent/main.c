@@ -45,12 +45,13 @@ int main(int argc, char **argv)
     int uid = 0;
     int gid = 0;
 
+    run_foreground = 0;
 
     /* Setting the name */
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "Vtdhu:g:D:")) != -1){
+    while((c = getopt(argc, argv, "Vtdfhu:g:D:")) != -1){
         switch(c){
             case 'V':
                 print_version();
@@ -61,6 +62,9 @@ int main(int argc, char **argv)
             case 'd':
                 nowDebug();
                 debug_level = 1;
+                break;
+            case 'f':
+                run_foreground = 1;
                 break;
             case 'u':
                 if(!optarg)
