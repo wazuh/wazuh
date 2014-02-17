@@ -47,14 +47,13 @@ server:
 
 local:
 		@/bin/sh ./InstallServer.sh local
-        
+
 agent:
 		@/bin/sh ./InstallAgent.sh
 
 windows_agent:
 		( cd win32 && /bin/sh ./gen_win.sh )
 		( cd win-pkg && /bin/sh ./make.sh )
-        
 setagent:
 		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
 
@@ -70,7 +69,7 @@ unsetclang:
 
 setprelude:
 		@echo "CPRELUDE=-DPRELUDE -lprelude `libprelude-config --pthread-cflags` `libprelude-config --libs`" >> ./Config.OS
-        
+
 setgeoip:
 		@echo "CGEOIP=-DGEOIP -I/usr/local/include -L/usr/local/lib -lGeoIP" >> ./Config.OS
 
@@ -90,4 +89,4 @@ setoneway:
 		@echo "FEXTRA=-DONEWAY" >> ./Config.OS
 
 setzeromq:
-		@echo "CZEROMQ_OUTPUT=-DZEROMQ_OUTPUT ../external/libcJSON.a -lm -lzmq -lczmq" >> ./Config.OS 
+		@echo "CZEROMQ_OUTPUT=-DZEROMQ_OUTPUT -lzmq -lczmq" >> ./Config.OS
