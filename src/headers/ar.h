@@ -39,6 +39,7 @@
 
 
 /* Expected values */
+#define FILENAME    0000010
 #define SRCIP       0000004
 #define DSTIP       0000002
 #define USERNAME    0000001
