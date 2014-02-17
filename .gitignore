@@ -9,6 +9,7 @@ src/LOCATION
 src/Config.OS
 src/headers/zconf.h
 src/headers/zlib.h
+src/headers/cJSON.h
 src/isbigendian.c
 src/analysisd/compiled_rules/compiled_rules.h
 src/os_auth/agent-auth
