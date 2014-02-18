@@ -13,8 +13,8 @@ PLUGINS = decoders/decoders.a
 ALERTS  = alerts/alerts.a
 DBS     = cdb/cdb.a cdb/cdb_make.a
 
-loga_OBJS = ${LOCAL} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE} ${CZEROMQ_OUTPUT} 
-lists_OBJS = lists_make.c ${OTHER} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE} ${CZEROMQ_OUTPUT} 
+loga_OBJS = ${LOCAL} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE} ${OS_CJSON} ${CZEROMQ_OUTPUT}
+lists_OBJS = lists_make.c ${OTHER} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE} ${OS_CJSON} ${CZEROMQ_OUTPUT}
 
 all: logaudit logtest makelists
 
@@ -29,7 +29,7 @@ logtest:
 	    cd ./cdb; make
 		cd ./decoders; make logtest
 		cd ./compiled_rules; make;
-		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ testrule.c ${loga_OBJS} -o ossec-logtest 
+		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ testrule.c ${loga_OBJS} -o ossec-logtest
 
 makelists:
 		cd ./cdb; make
