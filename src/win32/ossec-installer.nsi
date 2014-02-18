@@ -112,9 +112,6 @@ route-null.cmd \
 restart-ossec.cmd
 
 ; Use appropriate version of "ossec-agent.exe"
-${If} ${AtLeastWinVista}
-  Delete "$INSTDIR\ossec-agent.exe"
-${Endif}
 
 
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
