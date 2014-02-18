@@ -270,6 +270,67 @@
     <group>authentication_failed,</group>
   </rule>
 
+  <rule id="5739" level="4">
+    <if_sid>5700</if_sid>
+    <match>^error: Could not stat AuthorizedKeysCommand</match>
+    <description>SSHD configuration error (AuthorizedKeysCommand)</description>
+  </rule>
+
+  <rule id="5740" level="4">
+    <if_sid>5700</if_sid>
+    <match>Connection reset by peer$</match>
+    <description>ssh connection reset by peer</description>
+  </rule>
+
+  <rule id="5741" level="4">
+    <if_sid>5700</if_sid>
+    <match>Connection refused$</match>
+    <description>ssh connection refused</description>
+  </rule>
+
+  <rule id="5742" level="4">
+    <if_sid>5700</if_sid>
+    <match>Connection timed out$</match>
+    <description>ssh connection timed out</description>
+  </rule>
+
+  <rule id="5743" level="4">
+    <if_sid>5700</if_sid>
+    <match>No route to host$</match>
+    <description>ssh no route to host</description>
+  </rule>
+
+  <rule id="5744" level="4">
+    <if_sid>5700</if_sid>
+    <match>failure direct-tcpip$</match>
+    <description>ssh port forwarding issue</description>
+  </rule>
+
+  <rule id="5745" level="4">
+    <if_sid>5700</if_sid>
+    <match>Transport endpoint is not connected$</match>
+    <description>ssh transport endpoint is not connected</description>
+  </rule>
+
+  <rule id="5746" level="4">
+    <if_sid>5700</if_sid>
+    <match>get_remote_port failed$</match>
+    <description>ssh get_remote_port failed</description>
+  </rule>
+  
+  <!-- http://www.gossamer-threads.com/lists/openssh/users/47438 -->
+  <rule id="5747" level="6">
+    <if_sid>5700</if_sid>
+    <match>bad client public DH value [preauth]$</match>
+    <description>ssh bad client public DH value [preauth]</description>
+  </rule>
+
+  <rule id="5748" level="6">
+    <if_sid>5700</if_sid>
+    <match>Corrupted MAC on input. [preauth]$</match>
+    <description>ssh corrupted MAC on input</description>
+  </rule>
+
 </group> <!-- SYSLOG, SSHD -->
 
 <!-- EOF -->
