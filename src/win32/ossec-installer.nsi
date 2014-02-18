@@ -2,6 +2,8 @@
 ;Include Modern UI
 
 !include "MUI.nsh"
+!include "LogicLib.nsh"
+!include "WinVer.nsh"
 
 ;--------------------------------
 ;General
@@ -85,6 +87,7 @@ ClearErrors
 
 File \
 ossec-agent.exe \
+ossec-agent-eventchannel.exe \
 default-ossec.conf \
 manage_agents.exe \
 os_win32ui.exe \
@@ -108,6 +111,15 @@ help.txt \
 vista_sec.csv \
 route-null.cmd \
 restart-ossec.cmd
+
+; Use appropriate version of "ossec-agent.exe"
+${If} ${AtLeastWinVista}
+  Delete "$INSTDIR\ossec-agent.exe"
+  Rename "$INSTDIR\ossec-agent-eventchannel.exe" "$INSTDIR\ossec-agent.exe"
+${Else}
+  Delete "$INSTDIR\ossec-agent-eventchannel.exe"
+${Endif}
+
 
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayName" "${NAME} ${VERSION}"
@@ -149,6 +161,10 @@ Delete "$SMPROGRAMS\OSSEC\Uninstall.lnk"
 Delete "$SMPROGRAMS\OSSEC\Documentation.lnk"
 Delete "$SMPROGRAMS\OSSEC\Edit Config.lnk"
 Delete "$SMPROGRAMS\OSSEC\*.*"
+
+; Handle shortcuts
+; http://nsis.sourceforge.net/Shortcuts_removal_fails_on_Windows_Vista
+SetShellVarContext all
 
 ; Remove start menu entry.
 RMDir "$SMPROGRAMS\OSSEC"
@@ -211,6 +227,7 @@ Section "Uninstall"
   Delete "$INSTDIR"
 
   ; Remove shortcuts, if any
+  SetShellVarContext all
   Delete "$SMPROGRAMS\OSSEC\*.*"
   Delete "$SMPROGRAMS\OSSEC\*"
 

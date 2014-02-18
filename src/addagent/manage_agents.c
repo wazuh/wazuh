@@ -198,7 +198,7 @@ int add_agent()
     do
     {
         /* Default ID */
-        i = MAX_AGENTS + 768;
+        i = MAX_AGENTS + 32512;
         snprintf(id, 8, "%03d", i);
         while(!IDExist(id))
         {
@@ -327,8 +327,10 @@ int remove_agent()
     FILE *fp;
     char *user_input;
     char u_id[FILE_SIZE +1];
+    int id_exist;
 
     u_id[FILE_SIZE] = '\0';
+    id_exist = FALSE;
 
     if(!print_agents(0, 0, 0))
     {
@@ -342,8 +344,10 @@ int remove_agent()
       fflush(stdout);
 
       user_input = getenv("OSSEC_AGENT_ID");
-      if (user_input == NULL || !IDExist(user_input)) {
+      if (user_input == NULL) {
         user_input = read_from_user();
+      } else {
+        printf("%s\n", user_input);
       }
 
       if(strcmp(user_input, QUIT) == 0)
@@ -351,11 +355,19 @@ int remove_agent()
 
       strncpy(u_id, user_input, FILE_SIZE);
 
-      if(!IDExist(user_input))
+      id_exist = IDExist(user_input);
+
+      if(!id_exist)
       {
         printf(NO_ID, user_input);
+
+        /* Exit here if we are using environment variables 
+         * and our ID does not exist 
+         */
+        if(getenv("OSSEC_AGENT_ID"))
+          return(1);
       }
-    } while(!IDExist(user_input));
+    } while(!id_exist);
 
     do
     {
@@ -365,7 +377,10 @@ int remove_agent()
         user_input = getenv("OSSEC_ACTION_CONFIRMED");
         if (user_input == NULL) {
           user_input = read_from_user();
+        } else {
+          printf("%s\n", user_input);
         }
+ 
         /* If user confirm */
         if(user_input[0] == 'y' || user_input[0] == 'Y')
         {
@@ -373,7 +388,8 @@ int remove_agent()
             char *full_name = getFullnameById(u_id);
             if(!full_name)
             {
-                ErrorExit(MEM_ERROR, ARGV0);
+                printf(NO_ID, u_id);
+                return(1);
             }
 
             fp = fopen(AUTH_FILE, "r+");
