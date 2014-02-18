@@ -87,7 +87,7 @@ ClearErrors
 
 File \
 ossec-agent.exe \
-ossec-agent-eventchannel.exe \
+;ossec-agent-eventchannel.exe \
 default-ossec.conf \
 manage_agents.exe \
 os_win32ui.exe \
