@@ -1,3 +1,41 @@
 language: c
 
-script: ( cd src && make all )
+env:
+#- DB=mysql OSSEC_TYPE=all GEOIP=yes
+- DB=mysql OSSEC_TYPE=all GEOIP=no
+#- DB=none OSSEC_TYPE=all GEOIP=yes
+- DB=none OSSEC_TYPE=all GEOIP=no
+- DB=none OSSEC_TYPE=agent GEOIP=no
+- DB=none OSSEC_TYPE=windows_agent GEOIP=no
+
+
+
+compiler:
+- gcc
+
+
+
+before_script:
+- if [[ "$DB" == "mysql"  ]]; then ( cd src && make setdb  ); fi
+- if [[ "$GEOIP" == "yes"  ]]; then ( sudo apt-get install geoip-bin geoip-database libgeoip-dev libgeoip1 ); fi
+- if [[ "$GEOIP" == "yes"  ]]; then ( cd src && make setgeoip ); fi
+- if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( sudo apt-get install mingw32 mingw32-binutils mingw32-runtime nsis ); fi
+
+
+
+script:
+- ( cd src && sudo make $OSSEC_TYPE )
+
+before_deploy:
+- mkdir travis-builds
+- if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( cp src/win-pkg/ossec-win32-agent.exe travis-builds/ossec-win32-agent-bid:$TRAVIS_JOB_NUMBER-br:$TRAVIS_BRANCH.exe ); fi
+
+
+deploy:
+  provider: s3
+  access_key_id: AKIAIJNKNIB2ARNBYMOA
+  secret_access_key:
+    secure: QXvGH4lhTWEiPuTjpC+bN5Uo25O3U09w75iIXXPx0xYtQcLC4zni884Z7LI5tJy8mZwHvg5ywzJWMWjeudvXS5p1I6Ixl/elk6gglkdUBeKgLQqGEmlk+7N4WM89mpvXGsp+Oa/bMaBCuae+lawat3uuBQvj51dmSHHHXaE8UJM=
+  bucket: ossec-travis-ci
+  upload-dir: ossec-hids
+  local-dir: travis-builds
