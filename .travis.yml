@@ -39,5 +39,3 @@ deploy:
   bucket: ossec-travis-ci
   upload-dir: ossec-hids
   local-dir: travis-builds
-  on: 
-    condition: "$OSSEC_TYPE = windows_agent"
