@@ -1,6 +1,6 @@
 OSSEC v2.7.1 Copyright (C) 2013 Trend Micro Inc.
 
-# Information about OSSEC #
+# Information about OSSEC 
 
 OSSEC is a full platform to monitor and control your systems. It mixes together 
 all the aspects of HIDS (host-based intrusion detection), log monitoring and 
@@ -8,14 +8,6 @@ SIM/SIEM together in a simple, powerful and open source solution.
 
 Visit our website for the latest information.  [www.ossec.net](http://www.ossec.net)
 
-## Quick install ## 
-
-```
-# (cd /tmp/ && wget http://www.ossec.net/files/ossec-hids-2.7.1.tar.gz  && tar xfz ossec-hids-2.7.1.tar.gz && cd ossec-hids-2.7.1 && sudo ./install.sh )
-
-```
-
-Then follow the prompts.  You should still Read the Documenation [here](http://ossec.net/doc/).
 
 
 ## Current Releases 
@@ -29,6 +21,16 @@ The current stable releases are available on the ossec website.
 
 The development version are hosted on Github and just a simple git clone away. 
 
+[![Build Status](https://travis-ci.org/ossec/ossec-hids.png?branch=master)](https://travis-ci.org/ossec/ossec-hids)
+
+## Quick install 
+
+```
+# (cd /tmp/ && wget http://www.ossec.net/files/ossec-hids-2.7.1.tar.gz  && tar xfz ossec-hids-2.7.1.tar.gz && cd ossec-hids-2.7.1 && sudo ./install.sh )
+
+```
+
+Then follow the prompts.  You should still Read the Documenation [here](http://ossec.net/doc/).
 
 ## Credits and Thanks ##
 
