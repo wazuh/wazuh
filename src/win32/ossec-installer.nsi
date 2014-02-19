@@ -87,7 +87,6 @@ ClearErrors
 
 File \
 ossec-agent.exe \
-ossec-agent-eventchannel.exe \
 default-ossec.conf \
 manage_agents.exe \
 os_win32ui.exe \
@@ -113,12 +112,6 @@ route-null.cmd \
 restart-ossec.cmd
 
 ; Use appropriate version of "ossec-agent.exe"
-${If} ${AtLeastWinVista}
-  Delete "$INSTDIR\ossec-agent.exe"
-  Rename "$INSTDIR\ossec-agent-eventchannel.exe" "$INSTDIR\ossec-agent.exe"
-${Else}
-  Delete "$INSTDIR\ossec-agent-eventchannel.exe"
-${Endif}
 
 
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"

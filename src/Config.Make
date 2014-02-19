@@ -11,7 +11,7 @@ include ${PT}Config.OS
 CFLAGS = -g -Wall -I${PT} -I${PT}headers ${CPATH} ${CEXTRA} ${DEXTRA} ${EEXTRA} ${FEXTRA} ${GEXTRA} ${HEXTRA} ${MEXTRA} ${CGEOIP} -DARGV0=\"${NAME}\" -DXML_VAR=\"var\" -DOSSECHIDS
 
 SOURCES = *.c
-OBJECTS = *.o 
+OBJECTS = *.o
 CLEAN = rm -f -r ${OBJECTS} ${NAME} *.a core core.* *.core
 BUILD = cp -pr ${NAME} ${PT}../bin
 
@@ -24,4 +24,5 @@ OS_ROOTCHECK = ${PT}rootcheck/rootcheck_lib.a
 OS_CONFIG = ${PT}config/lib_config.a
 OS_ZLIB = ${PT}os_zlib/os_zlib.c ${PT}external/libz.a
 OS_LINK = ${IEXTRA}
+OS_CJSON = ${PT}external/libcJSON.a -lm
 DBS = cdb/cdb.a

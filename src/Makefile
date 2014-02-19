@@ -24,6 +24,14 @@ clean:
 		@/bin/sh ./Makeall clean
 		rm -f ../bin/ossec*
 		rm -f ../bin/manage_agents
+		rm -rf win-pkg/
+		rm Config.OS
+		rm win32/LICENSE.txt
+		rm win32/help_win.txt
+		rm win32/internal_options-win.conf
+		rm win32/ossec-win.conf
+		rm win32/restart-ossec.cmd
+		rm win32/route-null.cmd
 
 all:
 		@/bin/sh ./Makeall all
@@ -39,9 +47,13 @@ server:
 
 local:
 		@/bin/sh ./InstallServer.sh local
-        
+
 agent:
 		@/bin/sh ./InstallAgent.sh
+
+windows_agent:
+		( cd win32 && /bin/sh ./gen_win.sh )
+		( cd win-pkg && /bin/sh ./make.sh )
         
 setagent:
 		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
@@ -58,7 +70,7 @@ unsetclang:
 
 setprelude:
 		@echo "CPRELUDE=-DPRELUDE -lprelude `libprelude-config --pthread-cflags` `libprelude-config --libs`" >> ./Config.OS
-        
+
 setgeoip:
 		@echo "CGEOIP=-DGEOIP -I/usr/local/include -L/usr/local/lib -lGeoIP" >> ./Config.OS
 
@@ -78,4 +90,4 @@ setoneway:
 		@echo "FEXTRA=-DONEWAY" >> ./Config.OS
 
 setzeromq:
-		@echo "CZEROMQ_OUTPUT=-DZEROMQ_OUTPUT ../external/libcJSON.a -lm -lzmq -lczmq" >> ./Config.OS 
+		@echo "CZEROMQ_OUTPUT=-DZEROMQ_OUTPUT -lzmq -lczmq" >> ./Config.OS
