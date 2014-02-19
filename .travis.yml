@@ -1,5 +1,9 @@
 language: c
 
+notifications:
+  irc:
+    - "chat.freenode.net#ossec-dev"
+
 env:
 #- DB=mysql OSSEC_TYPE=all GEOIP=yes
 - DB=mysql OSSEC_TYPE=all GEOIP=no
