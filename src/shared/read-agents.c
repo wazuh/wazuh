@@ -114,6 +114,7 @@ int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, int csv_output,
                 break;
             default:
                 printf("- Being ignored (3 or more changes).\n");
+                break;
         }
     }
     else

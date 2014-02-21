@@ -57,7 +57,7 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -g needs an argument",ARGV0);
                 group = optarg;
-                break;		
+                break;
             case 't':
                 test_config = 1;
                 break;
@@ -70,11 +70,12 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
                 dir = optarg;
+                break;
         }
     }
 
     /* Check current debug_level
-     * Command line setting takes precedence 
+     * Command line setting takes precedence
      */
     if (debug_level == 0)
     {
@@ -139,7 +140,7 @@ int main(int argc, char **argv)
 
 
     /* Starting the signal manipulation */
-    StartSIG(ARGV0);	
+    StartSIG(ARGV0);
 
 
     /* Creating some randoness  */
