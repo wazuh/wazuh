@@ -23,7 +23,7 @@
 
 
 /* Global config */
-config syscheck;
+syscheck_config syscheck;
 
 
 /** Function Prototypes **/
