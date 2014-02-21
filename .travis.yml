@@ -1,5 +1,9 @@
 language: c
 
+notifications:
+  irc:
+    - "chat.freenode.net#ossec-dev"
+
 env:
 #- DB=mysql OSSEC_TYPE=all GEOIP=yes
 - DB=mysql OSSEC_TYPE=all GEOIP=no
@@ -28,14 +32,14 @@ script:
 
 before_deploy:
 - mkdir travis-builds
-- if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( cp src/win-pkg/ossec-win32-agent.exe travis-builds/ossec-win32-agent-bid:$TRAVIS_JOB_NUMBER-br:$TRAVIS_BRANCH.exe ); fi
+- if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( cp src/win-pkg/ossec-agent.exe travis-builds/ossec-agent-bid:$TRAVIS_JOB_NUMBER-br:$TRAVIS_BRANCH.exe ); fi
 
 
 deploy:
   provider: s3
   access_key_id: AKIAIJNKNIB2ARNBYMOA
   secret_access_key:
-    secure: QXvGH4lhTWEiPuTjpC+bN5Uo25O3U09w75iIXXPx0xYtQcLC4zni884Z7LI5tJy8mZwHvg5ywzJWMWjeudvXS5p1I6Ixl/elk6gglkdUBeKgLQqGEmlk+7N4WM89mpvXGsp+Oa/bMaBCuae+lawat3uuBQvj51dmSHHHXaE8UJM=
+    secure: "miwB5++34wYPUHC6TuuOSkvJhZrTZ3N70dnVjB4mwwlDn6ARTZXWfMk6KU35VTuIGftFybY/HEWq2WEQOQTHe7sAfknJ2oeKU+YtGP5ydFrummFPjDTJg5Q4Qz4ikwyl9t/j840YJmFCvlDu29NhMYQd9izJJqCssCpkA8ZF2f4="
   bucket: ossec-travis-ci
   upload-dir: ossec-hids
   local-dir: travis-builds

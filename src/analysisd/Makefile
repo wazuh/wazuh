@@ -23,24 +23,24 @@ logaudit:
 		cd ./alerts; make
 		cd ./decoders; make
 		cd ./compiled_rules; make;
-		$(CC) $(CFLAGS) ${OS_LINK} -I./ ${loga_OBJS} -o ${NAME}
+		$(CC) $(CFLAGS) ${OS_LINK} -I./ ${loga_OBJS} ${CGEOIPLIB} -o ${NAME}
 
 logtest:
 	    cd ./cdb; make
 		cd ./decoders; make logtest
 		cd ./compiled_rules; make;
-		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ testrule.c ${loga_OBJS} -o ossec-logtest
+		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ testrule.c ${loga_OBJS} ${CGEOIPLIB} -o ossec-logtest 
 
 makelists:
 		cd ./cdb; make
-		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ makelists.c ${lists_OBJS}  -o ossec-makelists
+		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ makelists.c ${lists_OBJS} ${CGEOIPLIB} -o ossec-makelists
 
 clean:
 	    cd ./cdb; make clean
 		cd ./alerts; make clean
 		cd ./decoders; make clean
 		cd ./compiled_rules; make clean
-		${CLEAN}
+		${CLEAN} ossec-logtest ossec-makelists
 
 build:
 		${BUILD}
