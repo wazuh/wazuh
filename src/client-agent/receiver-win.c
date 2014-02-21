@@ -53,14 +53,14 @@ void *receiver_thread(void *none)
     while(1)
     {
         /* sock must be set. */
-        if(logr->sock == -1)
+        if(agt->sock == -1)
         {
             sleep(5);
             continue;
         }
 
         FD_ZERO(&fdset);
-        FD_SET(logr->sock, &fdset);
+        FD_SET(agt->sock, &fdset);
 
 
         /* Wait for 30 seconds. */
@@ -82,13 +82,13 @@ void *receiver_thread(void *none)
         }
 
         /* Read until no more messages are available */
-        while((recv_b = recv(logr->sock,buffer,OS_SIZE_1024, 0))>0)
+        while((recv_b = recv(agt->sock,buffer,OS_SIZE_1024, 0))>0)
         {
             /* Id of zero -- only one key allowed */
             tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b -1);
             if(tmp_msg == NULL)
             {
-                merror(MSG_ERROR,ARGV0,logr->rip[logr->rip_id]);
+                merror(MSG_ERROR,ARGV0,agt->rip[agt->rip_id]);
                 continue;
             }
 
@@ -101,7 +101,7 @@ void *receiver_thread(void *none)
 
 
                 /* Run timeout commands. */
-                if(logr->execdq >= 0)
+                if(agt->execdq >= 0)
                     WinTimeoutRun(available_server);
 
                 /* If it is an active response message */
@@ -111,7 +111,7 @@ void *receiver_thread(void *none)
 
 
                     /* Run on windows. */
-                    if(logr->execdq >= 0)
+                    if(agt->execdq >= 0)
                     {
                         WinExecdRun(tmp_msg);
                     }

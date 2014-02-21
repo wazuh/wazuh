@@ -156,13 +156,13 @@ int local_start()
     DWORD  threadID2;
 
 
-    /* Starting logr */
-    logr = (agent *)calloc(1, sizeof(agent));
-    if(!logr)
+    /* Starting agt */
+    agt = (agent *)calloc(1, sizeof(agent));
+    if(!agt)
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
-    logr->port = DEFAULT_SECURE;
+    agt->port = DEFAULT_SECURE;
 
     /* Getting debug level */
     debug_level = getDefine_Int("windows","debug", 0, 2);
@@ -195,20 +195,20 @@ int local_start()
     {
         ErrorExit(CLIENT_ERROR,ARGV0);
     }
-    if(logr->notify_time == 0)
+    if(agt->notify_time == 0)
     {
-        logr->notify_time = NOTIFY_TIME;
+        agt->notify_time = NOTIFY_TIME;
     }
-    if(logr->max_time_reconnect_try == 0 )
+    if(agt->max_time_reconnect_try == 0 )
     {
-        logr->max_time_reconnect_try = NOTIFY_TIME * 3;
+        agt->max_time_reconnect_try = NOTIFY_TIME * 3;
     }
-    if(logr->max_time_reconnect_try <= logr->notify_time)
+    if(agt->max_time_reconnect_try <= agt->notify_time)
     {
-        logr->max_time_reconnect_try = (logr->notify_time * 3);
-        verbose("%s: Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)",ARGV0,logr->notify_time,logr->max_time_reconnect_try);
+        agt->max_time_reconnect_try = (agt->notify_time * 3);
+        verbose("%s: Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)",ARGV0,agt->notify_time,agt->max_time_reconnect_try);
     }
-    verbose("%s: Using notify time: %d and max time to reconnect: %d",ARGV0,logr->notify_time,logr->max_time_reconnect_try);
+    verbose("%s: Using notify time: %d and max time to reconnect: %d",ARGV0,agt->notify_time,agt->max_time_reconnect_try);
 
     /* Reading logcollector config file */
     debug1("%s: DEBUG: Reading logcollector configuration.", ARGV0);
@@ -246,7 +246,7 @@ int local_start()
     /* Reading execd config. */
     if(!WinExecd_Start())
     {
-        logr->execdq = -1;
+        agt->execdq = -1;
     }
 
 
@@ -255,7 +255,7 @@ int local_start()
 
     OS_ReadKeys(&keys);
     OS_StartCounter(&keys);
-    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id, logr->profile);
+    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id, agt->profile);
 
 
     /* Initial random numbers */
@@ -264,7 +264,7 @@ int local_start()
 
 
     /* Socket connection */
-    logr->sock = -1;
+    agt->sock = -1;
     StartMQ(NULL, 0);
 
 
@@ -379,22 +379,22 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
     #ifndef ONEWAY
     /* Check if the server has responded */
-    if((cu_time - available_server) > logr->notify_time)
+    if((cu_time - available_server) > agt->notify_time)
     {
         debug1("%s: DEBUG: Sending info to server (c1)...", ARGV0);
-        verbose("%s: More than %d seconds without server response...sending win32info", ARGV0,logr->notify_time);
+        verbose("%s: More than %d seconds without server response...sending win32info", ARGV0,agt->notify_time);
         send_win32_info(cu_time);
 
 
         /* Attempting to send message again. */
-        if((cu_time - available_server) > logr->notify_time)
+        if((cu_time - available_server) > agt->notify_time)
         {
             /* Try again... */
             sleep(1);
             send_win32_info(cu_time);
             sleep(1);
 
-            if((cu_time - available_server) > logr->notify_time)
+            if((cu_time - available_server) > agt->notify_time)
             {
                 send_win32_info(cu_time);
             }
@@ -402,16 +402,16 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
 
         /* If we reached here, the server is unavailable for a while. */
-        if((cu_time - available_server) > logr->max_time_reconnect_try)
+        if((cu_time - available_server) > agt->max_time_reconnect_try)
         {
             int wi = 1;
-            verbose("%s: More than %d seconds without server response...is server alive? and Is there connection?", ARGV0,logr->max_time_reconnect_try);
+            verbose("%s: More than %d seconds without server response...is server alive? and Is there connection?", ARGV0,agt->max_time_reconnect_try);
 
             /* Last attempt before going into reconnect mode. */
             debug1("%s: DEBUG: Sending info to server (c3)...", ARGV0);
             sleep(1);
             send_win32_info(cu_time);
-            if((cu_time - available_server) > logr->max_time_reconnect_try)
+            if((cu_time - available_server) > agt->max_time_reconnect_try)
             {
                 sleep(1);
                 send_win32_info(cu_time);
@@ -421,7 +421,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
             /* Checking and generating log if unavailable. */
             cu_time = time(0);
-            if((cu_time - available_server) > logr->max_time_reconnect_try)
+            if((cu_time - available_server) > agt->max_time_reconnect_try)
             {
                 int global_sleep = 1;
                 int mod_sleep = 12;
@@ -433,10 +433,10 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
 
                 /* Going into reconnect mode. */
-                while((cu_time - available_server) > logr->max_time_reconnect_try)
+                while((cu_time - available_server) > agt->max_time_reconnect_try)
                 {
                     /* Sending information to see if server replies */
-                    if(logr->sock != -1)
+                    if(agt->sock != -1)
                     {
                         send_win32_info(cu_time);
                     }
@@ -455,28 +455,28 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
 
                     /* If we have more than one server, try all. */
-                    if(wi > 12 && logr->rip[1])
+                    if(wi > 12 && agt->rip[1])
                     {
-                        int curr_rip = logr->rip_id;
+                        int curr_rip = agt->rip_id;
                         merror("%s: INFO: Trying next server ip in "
                                "line: '%s'.",
                                ARGV0,
-                               logr->rip[logr->rip_id + 1] != NULL?
-                               logr->rip[logr->rip_id + 1]:
-                               logr->rip[0]);
+                               agt->rip[agt->rip_id + 1] != NULL?
+                               agt->rip[agt->rip_id + 1]:
+                               agt->rip[0]);
 
-                        connect_server(logr->rip_id +1);
+                        connect_server(agt->rip_id +1);
 
-                        if(logr->rip_id != curr_rip)
+                        if(agt->rip_id != curr_rip)
                         {
                             wi = 1;
                         }
                     }
                     else if(global_sleep == 2 || ((global_sleep % mod_sleep) == 0) ||
-                            (logr->sock == -1))
+                            (agt->sock == -1))
                     {
-                        connect_server(logr->rip_id +1);
-                        if(logr->sock == -1)
+                        connect_server(agt->rip_id +1);
+                        if(agt->sock == -1)
                         {
                             sleep(wi + global_sleep);
                         }
@@ -492,8 +492,8 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
                     }
                 }
 
-                verbose(AG_CONNECTED, ARGV0, logr->rip[logr->rip_id],
-                                             logr->port);
+                verbose(AG_CONNECTED, ARGV0, agt->rip[agt->rip_id],
+                                             agt->port);
                 verbose(SERVER_UP, ARGV0);
             }
         }
@@ -547,7 +547,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
     }
 
     /* Send _ssize of crypt_msg */
-    if(OS_SendUDPbySize(logr->sock, _ssize, crypt_msg) < 0)
+    if(OS_SendUDPbySize(agt->sock, _ssize, crypt_msg) < 0)
     {
         merror(SEND_ERROR,ARGV0, "server");
         sleep(1);
@@ -666,7 +666,7 @@ void send_win32_info(time_t curr_time)
     }
 
     /* Sending UDP message */
-    if(OS_SendUDPbySize(logr->sock, msg_size, crypt_msg) < 0)
+    if(OS_SendUDPbySize(agt->sock, msg_size, crypt_msg) < 0)
     {
         merror(SEND_ERROR, ARGV0, "server");
         sleep(1);

@@ -90,7 +90,7 @@ void run_notify()
 
     #ifndef ONEWAY
     /* Check if the server has responded */
-    if((curr_time - available_server) > logr->max_time_reconnect_try)
+    if((curr_time - available_server) > agt->max_time_reconnect_try)
     {
         /* If response is not available, set lock and
          * wait for it.
@@ -108,7 +108,7 @@ void run_notify()
 
 
     /* Check if time has elapsed */
-    if((curr_time - g_saved_time) < logr->notify_time)
+    if((curr_time - g_saved_time) < agt->notify_time)
     {
         return;
     }
