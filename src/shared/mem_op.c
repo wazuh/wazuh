@@ -12,6 +12,7 @@
 
 
 #include "mem_op.h"
+#include "shared.h"
 
 
 /* Add pointer to array. */
