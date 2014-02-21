@@ -363,7 +363,7 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, getpid());
 
 
-    /* Going to main loop */	
+    /* Going to main loop */
     OS_ReadMSG(m_queue, ut_str);
 
 
@@ -466,7 +466,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
 
 
         /* Receive message from queue */
-        if(fgets(msg +8, OS_MAXSTR, stdin))
+        if(fgets(msg +8, OS_MAXSTR -8, stdin))
         {
             RuleNode *rulenode_pt;
 
