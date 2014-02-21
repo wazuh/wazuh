@@ -197,6 +197,13 @@
     <description>hotplugd could not open a file.</description>
   </rule>
 
+  <rule id="51531" level="3">
+    <decoded_as>open-deluser</decoded_as>
+    <match>user removed: name=</match>
+    <description>User account deleted.
+    <group>account_changed,</group>
+  </rule>
+
 </group> <!-- SYSLOG,LOCAL -->
 
 

@@ -2187,6 +2187,17 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
   <order>dstip, extra_data</order>
 </decoder>
 
+<!-- OpenBSD deluser
+  -  2014-02-21T10:22:55.134355-05:00 arrakis userdel[23023]: user removed: name=dac
+-->
+
+<decoder name="open-userdel">
+  <program_name>userdel</program_name>
+  <regex>user removed: name=(\S+)$</regex>
+  <order>srcuser</order>
+</decoder>
+
+
 
 <!-- OpenBSD mountd decoder
 - Apr 11 20:01:02 ix mountd[11618]: Refused mount RPC from host 192.168.17.10 port 45659
