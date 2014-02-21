@@ -82,7 +82,7 @@ typedef struct _config
 
     char *prefilter_cmd;
 
-}config;
+}syscheck_config;
 
 #endif
 
