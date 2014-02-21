@@ -198,8 +198,8 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         if (al_data->old_sha1)   cJSON_AddStringToObject(root,   "sha1_old",   al_data->old_sha1);
         if (al_data->new_sha1)   cJSON_AddStringToObject(root,   "sha1_new",   al_data->new_sha1);
 #ifdef GEOIP
-        if (al_data->fgeoipdatasrc) cJSON_AddStringToObject(root, "src_city", al_data->geoipdatasrc);
-        if (al_data->fgeoipdatadst) cJSON_AddStringToObject(root, "dst_city", al_data->geoipdatadst);
+        if (al_data->geoipdatasrc) cJSON_AddStringToObject(root, "src_city", al_data->geoipdatasrc);
+        if (al_data->geoipdatadst) cJSON_AddStringToObject(root, "dst_city", al_data->geoipdatadst);
 #endif
 
         // Create the JSON String
