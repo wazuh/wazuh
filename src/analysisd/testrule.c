@@ -122,8 +122,10 @@ int main(int argc, char **argv)
     char *ut_str = NULL;
 
     char *dir = DEFAULTDIR;
-    char *user = USER;
-    char *group = GROUPGLOBAL;
+    // TODO: delete or implement
+    char *user __attribute__((unused)) = USER;
+    // TODO: delete or implement
+    char *group __attribute__((unused)) = GROUPGLOBAL;
 
     char *cfg = DEFAULTCPATH;
 

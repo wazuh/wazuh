@@ -77,9 +77,11 @@ int main(int argc, char **argv)
     int test_config = 0,run_foreground = 0;
     int gid = 0,m_queue = 0;
 
-    char *dir  = DEFAULTDIR;
+    // TODO: delete or implement
+    char *dir __attribute__((unused)) = DEFAULTDIR;
     char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTARPATH;
+    // TODO: delete or implement
+    char *cfg __attribute__((unused)) = DEFAULTARPATH;
     char *xmlcfg = DEFAULTCPATH;
 
 
