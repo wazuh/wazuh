@@ -439,7 +439,7 @@ void start_daemon()
  */
 int c_read_file(char *file_name, char *oldsum, char *newsum)
 {
-    int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, seechanges = 0;
+    int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0;
 
     struct stat statbuf;
 
@@ -498,12 +498,10 @@ int c_read_file(char *file_name, char *oldsum, char *newsum)
     else if(oldsum[5] == 's')
     {
         sha1sum = 1;
-        seechanges = 1;
     }
     else if(oldsum[5] == 'n')
     {
         sha1sum = 0;
-        seechanges = 1;
     }
 
 

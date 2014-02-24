@@ -313,7 +313,6 @@ int pt_check_negate(char *pattern)
     os_strdup(pattern, mypattern);
     char *tmp_pt = mypattern;
     char *tmp_pattern = mypattern;
-    char *tmp_ret = NULL;
 
 
     while(tmp_pt != NULL)
@@ -322,9 +321,6 @@ int pt_check_negate(char *pattern)
         tmp_pt = strchr(tmp_pattern, ' ');
         if(tmp_pt && tmp_pt[1] == '&' && tmp_pt[2] == '&' && tmp_pt[3] == ' ')
         {
-            /* Marking pointer to clean it up */
-            tmp_ret = tmp_pt;
-
             *tmp_pt = '\0';
             tmp_pt += 4;
         }

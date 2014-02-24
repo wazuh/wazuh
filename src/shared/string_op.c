@@ -101,7 +101,7 @@ char *os_shell_escape(const char *src) {
         return NULL;
 
     // Determine how long the string will be
-    char *iterator = src;
+    const char *iterator = src;
     for (; *iterator; iterator++) {
         if( strchr(shell_escapes, *iterator) ) {
             length++;
