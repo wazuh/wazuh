@@ -76,16 +76,12 @@ int OS_CleanMSG(char *msg, Eventinfo *lf);
 
 /* for FTS */
 int FTS_Init();
-int FTS(Eventinfo *lf);
 int AddtoIGnore(Eventinfo *lf);
 int IGnore(Eventinfo *lf);
 
 
 /* For decoders */
 void DecodeEvent(Eventinfo *lf);
-int DecodeSyscheck(Eventinfo *lf);
-int DecodeRootcheck(Eventinfo *lf);
-int DecodeHostinfo(Eventinfo *lf);
 
 
 /* For Decoders */
