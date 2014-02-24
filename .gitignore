@@ -1,42 +1,23 @@
-
-syntax: glob
-
 *.so
 *.o
 *.a
 *.dSYM
-*.orig
-.hgignore
+.DS_Store
 
 # Auto generated build files
+src/LOCATION
 src/Config.OS
 src/headers/zconf.h
 src/headers/zlib.h
+src/headers/cJSON.h
 src/isbigendian.c
 src/analysisd/compiled_rules/compiled_rules.h
+src/os_auth/agent-auth
+src/os_auth/ossec-authd
+etc/ossec.mc
 
 # Compiled programs
-bin/agent_control
-bin/clear_stats
-bin/list_agents
-bin/manage_agents
-bin/ossec-agentd
-bin/ossec-agentlessd
-bin/ossec-analysisd
-bin/ossec-csyslogd
-bin/ossec-dbd
-bin/ossec-execd
-bin/ossec-logcollector
-bin/ossec-logtest
-bin/ossec-maild
-bin/ossec-monitord
-bin/ossec-remoted
-bin/ossec-reportd
-bin/ossec-syscheckd
-bin/rootcheck_control
-bin/syscheck_control
-bin/syscheck_update
-bin/
+bin/**
 src/addagent/manage_agents
 src/agentlessd/ossec-agentlessd
 src/analysisd/ossec-analysisd
@@ -63,3 +44,8 @@ src/analysisd/ossec-makelists
 src/isbigendian
 src/util/ossec-regex
 src/util/verify-agent-conf
+
+# Eclipse files
+.cproject
+.project
+.settings/

@@ -242,6 +242,7 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 	size_t		size = 0;
 	os_channel  *context = NULL;
 	DWORD		flags = EvtSubscribeToFutureEvents;
+	EVT_HANDLE	bookmark = NULL;
 	
 	size = strlen(evt_log) + 1;
 
@@ -295,7 +296,10 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 				context->bookmark = EvtCreateBookmark(NULL);
 			}
 			else
+			{
 				flags = EvtSubscribeStartAfterBookmark;
+				bookmark = context->bookmark;
+			}
 		}
 		else
 		{
@@ -308,7 +312,7 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 		}
 	}
 	
-	if (EvtSubscribe(NULL, NULL, channel, wquery, context->bookmark, context,
+	if (EvtSubscribe(NULL, NULL, channel, wquery, bookmark, context,
 					 (EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
 					 flags) == NULL)
 	{

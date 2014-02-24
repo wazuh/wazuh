@@ -350,33 +350,35 @@ int k_bulkload(char *cmdbulk)
           		continue;
       		}
 
-    		do
-    		{
-        		/* Default ID */
-        		i = 1024;
-        		snprintf(id, 8, "%03d", i);
-        		while(!IDExist(id))
-        		{
-            		i--;
-            		snprintf(id, 8, "%03d", i);
+		/* Default ID */
+		i = MAX_AGENTS + 32512;
+		snprintf(id, 8, "%03d", i);
+		while(!IDExist(id))
+		{
+		i--;
+		snprintf(id, 8, "%03d", i);
 
-            		/* No key present, use id 0 */
-            		if(i <= 0)
-            		{
-                		i = 0;
-                		break;
-            		}
-        		}
-        		snprintf(id, 8, "%03d", i+1);
+		/* No key present, use id 0 */
+		if(i <= 0)
+		{
+			i = 0;
+			break;
+		}
+		}
+		snprintf(id, 8, "%03d", i+1);
 
-        		if(!OS_IsValidID(id))
-            		printf(INVALID_ID, id);
+		if(!OS_IsValidID(id)) 
+		{
+		printf(INVALID_ID, id);
+		continue;
+		}
 
-        		/* Search for ID KEY  -- no duplicates */
-        		if(IDExist(id))
-            		printf(ADD_ERROR_ID, id);
-
-    		} while(IDExist(id) || !OS_IsValidID(id));
+		/* Search for ID KEY  -- no duplicates */
+		if(IDExist(id))
+		{
+		printf(NO_DEFAULT, i+1);
+		continue;
+		}
 
     		printf(AGENT_INFO, id, name, ip);
     		fflush(stdout);

@@ -76,16 +76,12 @@ int OS_CleanMSG(char *msg, Eventinfo *lf);
 
 /* for FTS */
 int FTS_Init();
-int FTS(Eventinfo *lf);
 int AddtoIGnore(Eventinfo *lf);
 int IGnore(Eventinfo *lf);
 
 
 /* For decoders */
 void DecodeEvent(Eventinfo *lf);
-int DecodeSyscheck(Eventinfo *lf);
-int DecodeRootcheck(Eventinfo *lf);
-int DecodeHostinfo(Eventinfo *lf);
 
 
 /* For Decoders */
@@ -126,8 +122,10 @@ int main(int argc, char **argv)
     char *ut_str = NULL;
 
     char *dir = DEFAULTDIR;
-    char *user = USER;
-    char *group = GROUPGLOBAL;
+    // TODO: delete or implement
+    char *user __attribute__((unused)) = USER;
+    // TODO: delete or implement
+    char *group __attribute__((unused)) = GROUPGLOBAL;
 
     char *cfg = DEFAULTCPATH;
 
@@ -363,7 +361,7 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, getpid());
 
 
-    /* Going to main loop */	
+    /* Going to main loop */
     OS_ReadMSG(m_queue, ut_str);
 
 
@@ -466,7 +464,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
 
 
         /* Receive message from queue */
-        if(fgets(msg +8, OS_MAXSTR, stdin))
+        if(fgets(msg +8, OS_MAXSTR -8, stdin))
         {
             RuleNode *rulenode_pt;
 

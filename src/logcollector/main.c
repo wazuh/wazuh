@@ -44,7 +44,8 @@ int main(int argc, char **argv)
     int test_config = 0,run_foreground = 0;
     int accept_manager_commands = 0;
     char *cfg = DEFAULTCPATH;
-    char *dir = DEFAULTDIR;
+    // TODO: delete or implement
+    char *dir __attribute__((unused)) = DEFAULTDIR;
 
 
     /* Setuping up random */
@@ -100,7 +101,7 @@ int main(int argc, char **argv)
     }
 
     /* Check current debug_level
-     * Command line setting takes precedence 
+     * Command line setting takes precedence
      */
     if (debug_level == 0)
     {
@@ -159,7 +160,7 @@ int main(int argc, char **argv)
 
 
     /* Starting signal handler */
-    StartSIG(ARGV0);	
+    StartSIG(ARGV0);
 
 
     if (!run_foreground)

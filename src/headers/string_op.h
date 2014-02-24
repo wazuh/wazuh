@@ -29,6 +29,9 @@ int os_substr(char *dest, const char *src, int position, int length);
 /* Remove a character from a string */
 char *os_strip_char(char *source, char remove);
 
+/* Escape a list of characters with a backslash */
+char *os_shell_escape(const char *src);
+
 #endif
 
 /* EOF */

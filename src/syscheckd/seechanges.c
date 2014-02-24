@@ -151,7 +151,9 @@ int seechanges_dupfile(char *old, char *new)
     }
     while((n = fread(buf, 1, 2048, fpr)) > 0);
 
+#ifdef USE_MAGIC
 cleanup:
+#endif
     fclose(fpr);
     fclose(fpw);
     return(1);

@@ -89,6 +89,21 @@ int startEL(char *app, os_el *el)
 
 
 
+/** char epoch_to_human(int time)
+ * Returns a string that is a human readable 
+ * datetime from an epoch int.
+ */
+char *epoch_to_human(time_t epoch)
+{
+    struct tm   *ts;
+    static char buf[80];
+
+    ts = localtime(&epoch);
+    strftime(buf, sizeof(buf), "%Y %b %d %H:%M:%S", ts);
+    return(buf);
+}
+
+
 /** char *el_getCategory(int category_id)
  * Returns a string related to the category id of the log.
  */
@@ -561,7 +576,8 @@ void readel(os_el *el, int printit)
                 final_msg[OS_MAXSTR - OS_LOG_HEADER -1] = '\0';
 
                 snprintf(final_msg, OS_MAXSTR - OS_LOG_HEADER -1,
-                        "WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
+                        "%s WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
+                        epoch_to_human((int)el->er->TimeGenerated),
                         el->name,
                         category,
                         id,

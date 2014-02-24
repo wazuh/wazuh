@@ -194,6 +194,8 @@ void *AR_Forward(void *arg)
             key_unlock();
         }
     }
+
+    return (NULL);
 }
 
 

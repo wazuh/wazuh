@@ -30,7 +30,7 @@
 
 #include "rootcheck/rootcheck.h"
 
-int dump_syscheck_entry(config *syscheck, char *entry, int vals, int reg, char *restrictfile);
+int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, char *restrictfile);
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -67,7 +67,7 @@ void read_internal(int debug_level)
     syscheck.sleep_after = getDefine_Int("syscheck","sleep_after",1,9999);
 
     /* Check current debug_level
-     * Command line setting takes precedence 
+     * Command line setting takes precedence
      */
     if (debug_level == 0)
     {

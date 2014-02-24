@@ -138,7 +138,7 @@ int main(int argc, char **argv)
     }
 
 
-    /* Privilege separation */	
+    /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
@@ -174,7 +174,7 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
-    /* the real daemon now */	
+    /* the real daemon now */
     OS_Run(&mail);
     exit(0);
 }
@@ -195,7 +195,6 @@ void OS_Run(MailConfig *mail)
     int i = 0;
     int mailtosend = 0;
     int childcount = 0;
-    int today = 0;		
     int thishour = 0;
 
     int n_errs = 0;
@@ -205,8 +204,7 @@ void OS_Run(MailConfig *mail)
 
     /* Getting currently time before starting */
     tm = time(NULL);
-    p = localtime(&tm);	
-    today = p->tm_mday;
+    p = localtime(&tm);
     thishour = p->tm_hour;
 
 

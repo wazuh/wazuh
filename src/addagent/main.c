@@ -15,6 +15,16 @@
 #include "manage_agents.h"
 #include <stdlib.h>
 
+#if defined(__MINGW32__)
+static int setenv(const char * name, const char * val, int overwrite) {
+    int len = strlen(name) + strlen(val) + 2; 
+    char * str = (char *)malloc(len); 
+    snprintf(str, len, "%s=%s", name, val); 
+    putenv(str);
+    return 0; 
+}
+#endif 
+
 /** help **/
 void helpmsg()
 {
@@ -24,6 +34,7 @@ void helpmsg()
     printf("\t-V          Display OSSEC version.\n");
     printf("\t-l          List available agents.\n");
     printf("\t-e <id>     Extracts key for an agent (Manager only).\n");
+    printf("\t-r <id>     Remove an agent. (Manager only).\n");
     printf("\t-i <id>     Import authentication key (Agent only).\n");
     printf("\t-f <file>   Bulk generate client keys from file. (Manager only).\n");
     printf("\t            <file> contains lines in IP,NAME format.\n\n");
@@ -86,7 +97,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "Vhle:i:f:")) != -1){
+    while((c = getopt(argc, argv, "Vhle:r:i:f:")) != -1){
         switch(c){
 	        case 'V':
 		        print_version();
@@ -104,6 +115,18 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -e needs an argument",ARGV0);
                 cmdexport = optarg;
+                break;
+            case 'r':
+                #ifdef CLIENT
+                ErrorExit("%s: You can't remove keys on an agent", ARGV0);
+                #endif
+                if(!optarg)
+                    ErrorExit("%s: -r needs an argument",ARGV0);
+	            
+                /* Use environment variables already available to remove_agent() */           	
+                setenv("OSSEC_ACTION", "r", 1);
+                setenv("OSSEC_AGENT_ID", optarg, 1);
+                setenv("OSSEC_ACTION_CONFIRMED", "y", 1);
                 break;
             case 'i':
                 #ifndef CLIENT

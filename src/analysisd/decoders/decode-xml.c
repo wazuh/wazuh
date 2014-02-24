@@ -730,7 +730,7 @@ int ReadDecodeXML(char *file)
 
 
         /* For the offsets */
-        if(pi->regex_offset & AFTER_PARENT && !pi->parent)
+        if((pi->regex_offset & AFTER_PARENT) && !pi->parent)
         {
             merror(INV_OFFSET, ARGV0, "after_parent");
             merror(DEC_REGEX_ERROR, ARGV0, pi->name);
