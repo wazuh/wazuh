@@ -30,16 +30,16 @@
 int ClientConf(char *cfgfile)
 {
     int modules = 0;
-    logr->port = DEFAULT_SECURE;
-    logr->rip = NULL;
-    logr->lip = NULL;
-    logr->rip_id = 0;
-    logr->execdq = 0;
-    logr->profile = NULL;   /*cmoraes*/
+    agt->port = DEFAULT_SECURE;
+    agt->rip = NULL;
+    agt->lip = NULL;
+    agt->rip_id = 0;
+    agt->execdq = 0;
+    agt->profile = NULL;   /*cmoraes*/
 
     modules|= CCLIENT;
 
-    if(ReadConfig(modules, cfgfile, logr, NULL) < 0)
+    if(ReadConfig(modules, cfgfile, agt, NULL) < 0)
     {
         return(OS_INVALID);
     }

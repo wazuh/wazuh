@@ -15,8 +15,6 @@
 
 #define __MEM_H
 
-#include "shared.h"
-
 void **os_AddPtArray(void *pt, void **array);
 char **os_AddStrArray(char *str, char **array);
 void os_FreeArray(char *ch1, char **ch2);

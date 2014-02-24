@@ -12,7 +12,7 @@ shared:
 		ar cru libcJSON.a ${OBJECTS}
 		ranlib libcJSON.a
 clean:
-		${CLEAN} ../../headers/cJSON.h
+		${CLEAN} ../../headers/cJSON.h ../libcJSON.a
 
 ossec:
 		cp -pr cJSON.h ../../headers/

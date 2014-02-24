@@ -118,6 +118,7 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
                 dir = optarg;
+                break;
             case 'c':
                 if(!optarg)
                     ErrorExit("%s: -c needs an argument",ARGV0);
@@ -153,7 +154,7 @@ int main(int argc, char **argv)
 
     debug1(READ_CONFIG, ARGV0);
 
-    /* Setting the group */	
+    /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
