@@ -1,5 +1,9 @@
 echo Making windows agent
+<<<<<<< HEAD
 BASES="${MING_BASE} amd64-mingw32msvc i586-mingw32msvc i686-pc-mingw32"
+=======
+BASES="${MING_BASE} amd64-mingw32msvc i586-mingw32msvc i686-pc-mingw32  i686-w64-mingw32"
+>>>>>>> f83b29ecffd8f79a78653593e300caacb50aa71d
 
 for i in ${BASES}; do
   which ${i}-gcc

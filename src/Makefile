@@ -55,6 +55,7 @@ agent:
 windows_agent:
 		( cd win32 && /bin/sh ./gen_win.sh )
 		( cd win-pkg && /bin/sh ./make.sh )
+
 setagent:
 		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
 
