@@ -163,7 +163,13 @@ if [ "X${DOZLIB}" = "Xx" ]; then
     # Build zlib here
     echo ""
     echo " *** Making zlib (by Jean-loup Gailly and Mark Adler)  *** "
-    cd ${ZLIBV}; make; make ossec;
+    cd ${ZLIBV}; make;
+    if [ $? != 0 ]; then
+        echo ""
+        echo "Error Making zlib"
+        exit 1;
+    fi
+    make ossec;
     cd ../../
     echo ""
 fi    
@@ -172,7 +178,13 @@ if [ "X${DOCJSON}" = "Xx" ]; then
     # Build cJSON here
     echo ""
     echo " *** Making cJSON (by Dave Gamble)  *** "
-    cd ${CJSONV}; make; make ossec;
+    cd ${CJSONV}; make;
+    if [ $? != 0 ]; then
+        echo ""
+        echo "Error Making cJSON"
+        exit 1;
+    fi
+    make ossec;
     cd ../../
     echo ""
 fi    
