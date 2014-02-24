@@ -147,7 +147,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
                     printf("\n");
                     break;
                 case REG_DWORD:
-                    printf("%08x\n", (unsigned int)*data_buffer);	
+                    printf("%08x\n", (unsigned int)*data_buffer);
                     break;
                 default:
                     printf("UNSUPPORTED(%d-%d):", (int)data_type, data_size);
@@ -156,7 +156,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
                         printf("%02x", (unsigned int)data_buffer[j]);
                     }
                     printf("\n");
-                    break;	
+                    break;
             }
 
             /* Generating checksum of the values */
@@ -167,9 +167,9 @@ void os_winreg_querykey(HKEY hKey, char *p_key)
 
 
 /* Open the registry key */
-int os_winreg_open_key(char *subkey)
+void os_winreg_open_key(char *subkey)
 {
-    int i = 0;	
+    int i = 0;
     HKEY oshkey;
 
 
@@ -180,7 +180,7 @@ int os_winreg_open_key(char *subkey)
         {
             if(strcasecmp(os_winreg_ignore_list[i], subkey) == 0)
             {
-                return(0);
+                return;
             }
             i++;
         }
@@ -188,7 +188,7 @@ int os_winreg_open_key(char *subkey)
 
     if(RegOpenKeyEx(sub_tree, subkey, 0, KEY_READ, &oshkey) != ERROR_SUCCESS)
     {
-        return(0);
+        return;
     }
 
     os_winreg_querykey(oshkey, subkey);
