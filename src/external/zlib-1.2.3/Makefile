@@ -7,13 +7,12 @@ PT=../../
 
 include ${PT}Config.Make
 
-shared:
-		${CC} -c ${CFLAGS} ${SOURCES}
-		ar cru libz.a ${OBJECTS}
-		ranlib libz.a
+libz.a:
+		${CC} ${CFLAGS} -c ${SOURCES}
+		${BUILDLIB} libz.a ${OBJECTS}
 clean:
 		${CLEAN} ../../headers/zlib.h ../../headers/zconf.h ../libz.a
 
-ossec:
+ossec: libz.a
 		cp -pr zlib.h zconf.h ../../headers/
 		cp -pr libz.a ../
