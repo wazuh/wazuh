@@ -36,6 +36,9 @@ clean:
 
 all:
 		@/bin/sh ./Makeall all
+		
+test:
+		@/bin/sh ./Makeall test
 
 build:
 		@/bin/sh ./Makeall build

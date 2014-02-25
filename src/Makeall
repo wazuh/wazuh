@@ -9,6 +9,7 @@ if [ "X${ARGV}" = "X" ]; then
     echo "No argument. Available options are:"
     echo "  $0 clean"
     echo "  $0 all"
+    echo "  $0 test"
     echo "  $0 build"
     echo "  $0 libs"
     echo "  $0 rootcheck"
@@ -54,7 +55,7 @@ fi
             
 
 # Cleaning Config.OS
-if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ]; then
+if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xtest" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ]; then
     ls ./Config.OS >/dev/null 2>&1
     if [ ! $? = 0 ]; then
         echo "" > Config.OS
@@ -139,11 +140,13 @@ fi
 if [ "X${ARGV}" = "Xclean" ]; then
     echo "" > ./Config.OS
 fi
-   
-    
+
 # Getting values for each action
 if [ "X${ARGV}" = "Xall" ]; then
     DIRECTORIES="${LIBS} ${SOURCES} ${BINARIES}" 
+    DOZLIB="x"
+    DOCJSON="x"
+elif [ "X${ARGV}" = "Xtest" ]; then
     DOZLIB="x"
     DOCJSON="x"
 elif [ "X${ARGV}" = "Xlibs" ]; then
@@ -193,7 +196,17 @@ if [ "X${ARGV}" = "Xclean" ]; then
     cd ../../
     cd ${CJSONV}; make clean;
     cd ../../
-fi    
+    cd tests/; make clean;
+    cd ../
+fi
+
+
+# Make and run tests if intended
+if [ "X${ARGV}" = "Xtest" ]; then
+    cd tests/
+    make
+    exit $?
+fi
 
 
 # Checking if the bin directory is present
