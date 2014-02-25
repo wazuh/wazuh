@@ -27,7 +27,6 @@ if [ "X$1" = "Xsetmaxagents" ]; then
 fi
 
 
-ZLIBV="external/zlib-1.2.3/"
 CJSONV="external/cJSON/"
 
 # CPU information
@@ -166,13 +165,13 @@ if [ "X${DOZLIB}" = "Xx" ]; then
     # Build zlib here
     echo ""
     echo " *** Making zlib (by Jean-loup Gailly and Mark Adler)  *** "
-    cd ${ZLIBV}; make ossec;
+    cd external/; make zlib;
     if [ $? != 0 ]; then
         echo ""
         echo "Error Making zlib"
         exit 1;
     fi
-    cd ../../
+    cd ../
     echo ""
 fi    
 
@@ -192,8 +191,8 @@ fi
 
 if [ "X${ARGV}" = "Xclean" ]; then
     # Cleaning zlib
-    cd ${ZLIBV}; make clean;
-    cd ../../
+    cd external/; make clean;
+    cd ../
     cd ${CJSONV}; make clean;
     cd ../../
     cd tests/; make clean;
