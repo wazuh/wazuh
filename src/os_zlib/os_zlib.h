@@ -16,11 +16,29 @@
 
 #include "zlib.h"
 
-/* os_compress: Compress a string with zlib. */
-int os_compress(char *src, char *dst, int src_size, int dst_size);
+/**
+ * Compress a string with zlib.
+ * null-terminates the destination buffer on success.
+ * @param src the source string to compress
+ * @param dst the destination buffer for the compressed string
+ * @param src_size the length of the source string
+ * @param dst_size the length of the destination buffer
+ * @return 0 on failure, else the length of the compressed string
+ */
+unsigned long int os_zlib_compress(const char *src, char *dst, unsigned long int src_size,
+		unsigned long int dst_size);
 
-/* os_uncompress: Uncompress a string with zlib. */
-int os_uncompress(char *src, char *dst, int src_size, int dst_size);
+/**
+ * Uncompress a string with zlib.
+ * null-terminates the destination buffer on success.
+ * @param src the source string to uncompress
+ * @param dst the destination buffer for the uncompressed string
+ * @param src_size the length of the source string
+ * @param dst_size the length of the destination buffer
+ * @return 0 on failure, else the length of the uncompressed string
+ */
+unsigned long int os_zlib_uncompress(const char *src, char *dst, unsigned long int src_size,
+		unsigned long int dst_size);
 
 #endif
 

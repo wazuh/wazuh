@@ -42,7 +42,7 @@ int main(int argc, char **argv)
 
     }
 
-    if((ret = os_compress(argv[1], dst, srcsize, dstsize)))
+    if((ret = os_zlib_compress(argv[1], dst, srcsize, dstsize)))
     {
         printf("Compressed, from %d->%d\n",srcsize, ret);
     }
@@ -55,7 +55,7 @@ int main(int argc, char **argv)
     /* Setting new srcsize for decompression */
     srcsize = ret;
 
-    if((ret = os_uncompress(dst, dst2, srcsize, dstsize)))
+    if((ret = os_zlib_uncompress(dst, dst2, srcsize, dstsize)))
     {
         printf("Uncompressed ok. String: '%s', size %d->%d\n",
                                         dst2, srcsize, ret);
