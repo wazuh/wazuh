@@ -355,7 +355,7 @@ char *_rkcl_get_value(char *buf, int *type)
  */
 int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
 {
-    int type = 0, condition = 0, root_dir_len = 0;
+    int type = 0, condition = 0;
     char *nbuf;
     char buf[OS_SIZE_1024 +2];
     char root_dir[OS_SIZE_1024 +2];
@@ -376,12 +376,12 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
     memset(ref, '\0', sizeof(ref));
 
 
-    root_dir_len = sizeof(root_dir) -1;
+
 
 
     #ifdef WIN32
     /* Getting Windows rootdir */
-    _rkcl_getrootdir(root_dir, root_dir_len);
+    _rkcl_getrootdir(root_dir, sizeof(root_dir) -1);
     if(root_dir[0] == '\0')
     {
         merror(INVALID_ROOTDIR, ARGV0);
@@ -533,7 +533,7 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
                 }
             }
 
-
+            #ifdef WIN32
             /* Checking for a registry entry */
             else if(type == RKCL_TYPE_REGISTRY)
             {
@@ -551,16 +551,16 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
                 }
 
 
-                #ifdef WIN32
+
                 debug2("%s: DEBUG: Checking registry: '%s'.", ARGV0, value);
                 if(is_registry(value, entry, pattern))
                 {
                     debug2("%s: DEBUG: found registry.", ARGV0);
                     found = 1;
                 }
-                #endif
-            }
 
+            }
+            #endif
 
             /* Checking for a directory. */
             else if(type == RKCL_TYPE_DIR)

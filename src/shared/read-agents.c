@@ -114,6 +114,7 @@ int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, int csv_output,
                 break;
             default:
                 printf("- Being ignored (3 or more changes).\n");
+                break;
         }
     }
     else
@@ -566,10 +567,7 @@ int _do_print_rootcheck(FILE *fp, int resolved, int time_last_scan,
     int i = 0;
     int f_found = 0;
 
-    /* Current time. */
-    time_t c_time;
-
-    /* Time from the message. */
+   /* Time from the message. */
     time_t s_time = 0;
     time_t i_time = 0;
     struct tm *tm_time;
@@ -597,7 +595,6 @@ int _do_print_rootcheck(FILE *fp, int resolved, int time_last_scan,
     read_day[24] = '\0';
 
 
-    c_time = time(0);
     fseek(fp, 0, SEEK_SET);
 
 
@@ -1277,14 +1274,10 @@ int _get_agent_os(char *agent_name, char *agent_ip, agent_info *agt_info)
  */
 agent_info *get_agent_info(char *agent_name, char *agent_ip)
 {
-    char tmp_file[513];
     char *agent_ip_pt = NULL;
     char *tmp_str = NULL;
 
     agent_info *agt_info = NULL;
-
-    tmp_file[512] = '\0';
-
 
     /* Removing the  "/", since it is not present on the file. */
     if((agent_ip_pt = strchr(agent_ip, '/')))

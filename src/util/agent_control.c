@@ -105,6 +105,7 @@ int main(int argc, char **argv)
                 break;
             case 'i':
                 info_agent++;
+                // no break;
             case 'u':
                 if(!optarg)
                 {
@@ -137,6 +138,7 @@ int main(int argc, char **argv)
                 }
                 agent_id = optarg;
                 restart_agent = 1;
+                break;
             case 'a':
                 restart_all_agents = 1;
                 break;
@@ -155,7 +157,7 @@ int main(int argc, char **argv)
     {
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
-	
+
 
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)

@@ -49,14 +49,14 @@ void *receive_msg()
 
 
     /* Read until no more messages are available */
-    while((recv_b = recv(logr->sock, buffer, OS_SIZE_1024, MSG_DONTWAIT)) > 0)
+    while((recv_b = recv(agt->sock, buffer, OS_SIZE_1024, MSG_DONTWAIT)) > 0)
     {
         buffer[recv_b] = '\0';
 
         tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b -1);
         if(tmp_msg == NULL)
         {
-            merror(MSG_ERROR,ARGV0,logr->rip[logr->rip_id]);
+            merror(MSG_ERROR,ARGV0,agt->rip[agt->rip_id]);
             continue;
         }
 
@@ -69,7 +69,7 @@ void *receive_msg()
 
             #ifdef WIN32
             /* Run timeout commands. */
-            if(logr->execdq >= 0)
+            if(agt->execdq >= 0)
                 WinTimeoutRun(available_server);
             #endif
 
@@ -80,9 +80,9 @@ void *receive_msg()
                 tmp_msg+=strlen(EXECD_HEADER);
 
                 #ifndef WIN32
-                if(logr->execdq >= 0)
+                if(agt->execdq >= 0)
                 {
-                    if(OS_SendUnix(logr->execdq, tmp_msg, 0) < 0)
+                    if(OS_SendUnix(agt->execdq, tmp_msg, 0) < 0)
                     {
                         merror("%s: Error communicating with execd",
                                 ARGV0);
@@ -93,7 +93,7 @@ void *receive_msg()
 
 
                 /* Run on windows. */
-                if(logr->execdq >= 0)
+                if(agt->execdq >= 0)
                 {
                     WinExecdRun(tmp_msg);
                 }

@@ -75,7 +75,7 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -g needs an argument",ARGV0);
                 group = optarg;
-                break;		
+                break;
             case 't':
                 test_config = 1;
                 break;
@@ -90,15 +90,15 @@ int main(int argc, char **argv)
 
     debug1(STARTED_MSG, ARGV0);
 
-    logr = (agent *)calloc(1, sizeof(agent));
-    if(!logr)
+    agt = (agent *)calloc(1, sizeof(agent));
+    if(!agt)
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
 
 
     /* Check current debug_level
-     * Command line setting takes precedence 
+     * Command line setting takes precedence
      */
     if (debug_level == 0)
     {
@@ -118,26 +118,26 @@ int main(int argc, char **argv)
         ErrorExit(CLIENT_ERROR,ARGV0);
     }
 
-    if(!logr->rip)
+    if(!agt->rip)
     {
         merror(AG_INV_IP, ARGV0);
         ErrorExit(CLIENT_ERROR,ARGV0);
     }
 
-    if(logr->notify_time == 0)
+    if(agt->notify_time == 0)
     {
-        logr->notify_time = NOTIFY_TIME;
+        agt->notify_time = NOTIFY_TIME;
     }
-    if(logr->max_time_reconnect_try == 0 )
+    if(agt->max_time_reconnect_try == 0 )
     {
-      	logr->max_time_reconnect_try = NOTIFY_TIME * 3;
+      	agt->max_time_reconnect_try = NOTIFY_TIME * 3;
     }
-    if(logr->max_time_reconnect_try <= logr->notify_time)
+    if(agt->max_time_reconnect_try <= agt->notify_time)
     {
-      	logr->max_time_reconnect_try = (logr->notify_time * 3);
-      	verbose("%s: INFO: Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)",ARGV0,logr->notify_time,logr->max_time_reconnect_try);
+      	agt->max_time_reconnect_try = (agt->notify_time * 3);
+      	verbose("%s: INFO: Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)",ARGV0,agt->notify_time,agt->max_time_reconnect_try);
     }
-    verbose("%s: INFO: Using notify time: %d and max time to reconnect: %d",ARGV0,logr->notify_time,logr->max_time_reconnect_try);
+    verbose("%s: INFO: Using notify time: %d and max time to reconnect: %d",ARGV0,agt->notify_time,agt->max_time_reconnect_try);
 
 
     /* Checking auth keys */
@@ -163,7 +163,7 @@ int main(int argc, char **argv)
 
 
     /* Starting the signal manipulation */
-    StartSIG(ARGV0);	
+    StartSIG(ARGV0);
 
 
     /* Agentd Start */

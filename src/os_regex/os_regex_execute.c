@@ -147,7 +147,7 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
         switch(*pt)
         {
             case '\0':
-                if(!(flags & END_SET) || (flags & END_SET && (*st == '\0')))
+                if(!(flags & END_SET) || ((flags & END_SET) && (*st == '\0')))
                     return(r_code);
                 break;
 
@@ -171,7 +171,7 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
                 pt++;
                 if(*pt == '\0')
                 {
-                    if(!(flags & END_SET) || (flags & END_SET && (*st == '\0')))
+                    if(!(flags & END_SET) || ((flags & END_SET) && (*st == '\0')))
                         return(r_code);
                 }
                 break;
@@ -353,7 +353,7 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
             else if((*(pt+3) == '\0') && (_regex_matched == 1)&&(r_code))
             {
                 r_code = st;
-                if(!(flags & END_SET) || (flags & END_SET && (*st == '\0')))
+                if(!(flags & END_SET) || ((flags & END_SET) && (*st == '\0')))
                     return(r_code);
             }
 
