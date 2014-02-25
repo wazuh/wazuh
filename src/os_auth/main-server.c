@@ -63,7 +63,7 @@ int ssl_error(const SSL* ssl, int ret)
         }
     }
 
-    return (0);    
+    return (0);
 }
 
 void clean_exit(SSL_CTX* ctx, int sock)
@@ -85,7 +85,8 @@ int main(int argc, char **argv)
     char *dir  = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    // TODO: implement or delete
+    char *cfg __attribute__((unused)) = DEFAULTCPATH;
     char buf[4096 +1];
     SSL_CTX *ctx;
     SSL *ssl;
@@ -395,7 +396,7 @@ int main(int argc, char **argv)
                         verbose("%s: INFO: Agent key created for %s (requested by %s)", ARGV0, agentname, srcip);
                     }
                 }
-                
+
                 clean_exit(ctx, client_sock);
             }
         }
@@ -404,7 +405,7 @@ int main(int argc, char **argv)
 
     /* Shutdown the socket */
     clean_exit(ctx, sock);
-    
+
     return (0);
 }
 

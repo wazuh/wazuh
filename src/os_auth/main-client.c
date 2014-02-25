@@ -59,17 +59,21 @@ void report_help()
 
 int main(int argc, char **argv)
 {
-    int c, test_config = 0;
+    int c;
+    // TODO: implement or delete
+    int test_config __attribute__((unused)) = 0;
     #ifndef WIN32
     int gid = 0;
     #endif
 
     int sock = 0, portnum, ret = 0;
     char *port = "1515";
-    char *dir  = DEFAULTDIR;
+    // TODO: implement or delete
+    char *dir __attribute__((unused)) = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    // TODO: implement or delete
+    char *cfg __attribute__((unused)) = DEFAULTCPATH;
     char *manager = NULL;
     char *agentname = NULL;
     char lhostname[512 + 1];
@@ -159,7 +163,7 @@ int main(int argc, char **argv)
 
 
 
-    /* Privilege separation */	
+    /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
@@ -193,7 +197,7 @@ int main(int argc, char **argv)
 
 
 
-    /* Starting SSL */	
+    /* Starting SSL */
     ctx = os_ssl_keys(1, NULL);
     if(!ctx)
     {
