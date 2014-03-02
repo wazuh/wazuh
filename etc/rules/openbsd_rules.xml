@@ -200,7 +200,7 @@
   <rule id="51531" level="3">
     <decoded_as>open-deluser</decoded_as>
     <match>user removed: name=</match>
-    <description>User account deleted.
+    <description>User account deleted.</description>
     <group>account_changed,</group>
   </rule>
 
