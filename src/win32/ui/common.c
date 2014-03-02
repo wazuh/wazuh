@@ -23,7 +23,7 @@
 #include "shared.h"
 
 
-/* Generate server info (for the main status */
+/* Generate server info (for the main status) */
 int gen_server_info(HWND hwnd)
 {
     memset(ui_server_info, '\0', 2048 +1);
