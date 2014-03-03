@@ -118,31 +118,25 @@ int is_file(char *file)
 /* Clear configuration */
 void config_clear()
 {
-	debug2("read config 1");
     if(config_inst.version)
     {
         free(config_inst.version);
     }
 
-	debug2("read config 2");
     if(config_inst.key)
     {
         free(config_inst.key);
     }
 
-	debug2("read config 3");
     if(config_inst.agentid)
     {
         free(config_inst.agentid);
     }
 
-	debug2("read config 4");
     if(config_inst.server)
     {
         free(config_inst.server);
     }
-	debug2("read config 5");
-
 
     /* Initializing config instance */
     config_inst.dir = NULL;
@@ -158,8 +152,6 @@ void config_clear()
     config_inst.install_date = NULL;
     config_inst.status = ST_UNKNOWN;
     config_inst.msg_sent = 0;
-
-	debug2("read config 6");
 }
 
 
