@@ -150,8 +150,14 @@ int config_read(HWND hwnd);
 /* Initializes the config */
 void init_config();
 
+/* Run command using cmd.exe */
+int run_cmd(char *cmd, HWND hwnd);
+
 /* Set OSSEC Server IP */
 int set_ossec_server(char *ip, HWND hwnd);
+
+/* Set OSSEC Auth Key */
+int set_ossec_key(char *key, HWND hwnd);
 
 /* Get OSSEC Server IP */
 int get_ossec_server();
