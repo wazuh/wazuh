@@ -555,7 +555,7 @@ int set_ossec_server(char *ip, HWND hwnd)
 }
 
 
-/* Set OSSEC Server IP */
+/* Set OSSEC Authentication Key */
 int set_ossec_key(char *key, HWND hwnd)
 {
     FILE *fp;
