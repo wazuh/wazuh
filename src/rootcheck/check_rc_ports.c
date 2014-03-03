@@ -90,7 +90,6 @@ int conn_port(int proto, int port)
     	return (0);
     }
 
-
     memset(&server, 0, sizeof(server));
     server.sin_family = AF_INET;
     server.sin_port = htons( port );
