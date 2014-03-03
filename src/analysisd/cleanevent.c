@@ -83,13 +83,28 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     lf->log = lf->full_log+loglen;
     strncpy(lf->log, pieces, loglen);
 
-
+    /* check if month contains an umlaut and repair
+     * umlaute are non-ASCII and use 2 slots in the char array
+     * repair to only one slot so we can detect the correct date format in the next step
+     * ex: Mär 02 17:30:52
+     */
+    if (pieces[1] == (char) 195) {
+        if (pieces[2] == (char) 164) {
+            pieces[1] = 'a';
+            int i=3;
+            while(pieces[i] != '\0') {
+                pieces[i-1] = pieces[i];
+                i++;
+            }
+            pieces[i] = '\0';
+        }
+    }
 
     /* Checking for the syslog date format.
      * ( ex: Dec 29 10:00:01
      *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate
      *   or  2009-05-22T09:36:46.214994-07:00 for rsyslog )
-     */	
+     */
     if(
         (
         (loglen > 17) &&
