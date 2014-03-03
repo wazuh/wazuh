@@ -249,6 +249,7 @@ void init_config()
 int config_read(HWND hwnd)
 {
     char *tmp_str;
+    char *delim = " - ";
 
 
     /* Clearing config */
@@ -270,11 +271,11 @@ int config_read(HWND hwnd)
     config_inst.version = cat_file(VERSION_FILE, NULL);
     if(config_inst.version)
     {
-        config_inst.install_date = strchr(config_inst.version, '-');
+        config_inst.install_date = strstr(config_inst.version, delim);
         if(config_inst.install_date)
         {
             *config_inst.install_date = '\0';
-            config_inst.install_date++;
+            config_inst.install_date += strlen(delim);
         }
     }
 
