@@ -60,15 +60,14 @@ setagent:
 		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
 
 setclang:
-		@mv LOCATION LOCATION.backup
-		@sed -e "/^CC=.*/d" LOCATION.backup > LOCATION
-		@echo "CC=clang" >> LOCATION
-		@rm LOCATION.backup
+		@mv Config.Make Config.Make.backup
+		@sed -e "s/^CC=.*/CC=clang/g" Config.Make.backup > Config.Make
+		@rm Config.Make.backup
 
 unsetclang:
-		@mv LOCATION LOCATION.backup
-		@sed -e "/^CC=.*/d" LOCATION.backup > LOCATION
-		@rm LOCATION.backup
+		@mv Config.Make Config.Make.backup
+		@sed -e "s/^CC=.*/CC=clang/g" Config.Make.backup > Config.Make
+		@rm Config.Make.backup
 
 setprelude:
 		@echo "CPRELUDE=-DPRELUDE -lprelude `libprelude-config --pthread-cflags` `libprelude-config --libs`" >> ./Config.OS
