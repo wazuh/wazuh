@@ -90,13 +90,10 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      */
     if (pieces[1] == (char) 195) {
         if (pieces[2] == (char) 164) {
-            pieces[1] = 'a';
-            int i=3;
-            while(pieces[i] != '\0') {
-                pieces[i-1] = pieces[i];
-                i++;
-            }
-            pieces[i] = '\0';
+            pieces[0] = '\0';
+            pieces[1] = 'M';
+            pieces[2] = 'a';
+            pieces++;
         }
     }
 
