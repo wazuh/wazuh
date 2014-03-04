@@ -61,12 +61,13 @@ setagent:
 
 setclang:
 		@mv LOCATION LOCATION.backup
-		@sed -e "s/^CC=.*/CC=clang/g" LOCATION.backup > LOCATION
+		@sed -e "/^CC=.*/d" LOCATION.backup > LOCATION
+		@echo "CC=clang" >> LOCATION
 		@rm LOCATION.backup
 
 unsetclang:
 		@mv LOCATION LOCATION.backup
-		@sed -e "s/^CC=.*/CC=gcc/g" LOCATION.backup > LOCATION
+		@sed -e "/^CC=.*/d" LOCATION.backup > LOCATION
 		@rm LOCATION.backup
 
 setprelude:
