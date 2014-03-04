@@ -28,7 +28,6 @@ HOST=`hostname`
 NAMESERVERS=`cat /etc/resolv.conf | grep "^nameserver" | cut -d " " -sf 2`
 NAMESERVERS2=`cat /etc/resolv.conf | grep "^nameserver" | cut -sf 2`
 HOST_CMD=`which host`
-CC=""
 NAME="OSSEC HIDS"
 INSTYPE="server"
 DEFAULT_DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
