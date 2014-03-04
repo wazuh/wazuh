@@ -13,8 +13,8 @@ PLUGINS = decoders/decoders.a
 ALERTS  = alerts/alerts.a
 DBS     = cdb/cdb.a cdb/cdb_make.a
 
-loga_OBJS = ${LOCAL} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE} ${CZEROMQ_OUTPUT} 
-lists_OBJS = lists_make.c ${OTHER} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE} ${CZEROMQ_OUTPUT} 
+loga_OBJS = ${LOCAL} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE} ${OS_CJSON} ${CZEROMQ_OUTPUT}
+lists_OBJS = lists_make.c ${OTHER} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE} ${OS_CJSON} ${CZEROMQ_OUTPUT}
 
 all: logaudit logtest makelists
 
@@ -23,24 +23,24 @@ logaudit:
 		cd ./alerts; make
 		cd ./decoders; make
 		cd ./compiled_rules; make;
-		$(CC) $(CFLAGS) ${OS_LINK} -I./ ${loga_OBJS} -o ${NAME}
+		$(CC) $(CFLAGS) ${OS_LINK} -I./ ${loga_OBJS} ${CGEOIPLIB} -o ${NAME}
 
 logtest:
 	    cd ./cdb; make
 		cd ./decoders; make logtest
 		cd ./compiled_rules; make;
-		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ testrule.c ${loga_OBJS} -o ossec-logtest 
+		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ testrule.c ${loga_OBJS} ${CGEOIPLIB} -o ossec-logtest 
 
 makelists:
 		cd ./cdb; make
-		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ makelists.c ${lists_OBJS}  -o ossec-makelists
+		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ makelists.c ${lists_OBJS} ${CGEOIPLIB} -o ossec-makelists
 
 clean:
 	    cd ./cdb; make clean
 		cd ./alerts; make clean
 		cd ./decoders; make clean
 		cd ./compiled_rules; make clean
-		${CLEAN}
+		${CLEAN} ossec-logtest ossec-makelists
 
 build:
 		${BUILD}

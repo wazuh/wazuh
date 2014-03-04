@@ -73,7 +73,7 @@ void run_notify();
 int available_server;
 int run_foreground;
 keystore keys;
-agent *logr;
+agent *agt;
 
 
 #endif

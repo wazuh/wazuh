@@ -2187,6 +2187,17 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
   <order>dstip, extra_data</order>
 </decoder>
 
+<!-- OpenBSD deluser
+  -  2014-02-21T10:22:55.134355-05:00 arrakis userdel[23023]: user removed: name=dac
+-->
+
+<decoder name="open-userdel">
+  <program_name>userdel</program_name>
+  <regex>user removed: name=(\S+)$</regex>
+  <order>srcuser</order>
+</decoder>
+
+
 
 <!-- OpenBSD mountd decoder
 - Apr 11 20:01:02 ix mountd[11618]: Refused mount RPC from host 192.168.17.10 port 45659
@@ -2202,47 +2213,6 @@ in HTTP request too long; attack: Malformed HTTP; src: 10.10.10.4; dst:
   <regex offset="after_prematch">(\S+) port \d+$</regex>
   <order>srcip</order>
 </decoder>
-
-
-<!-- bro-ids decoders
-  - Aug 25 08:52:10 junction bro: no=PortScanSummary na=NOTICE_ALARM_ALWAYS es=bro sa=192.168.17.8 num=988 msg=192.168.17.8\\\\ scanned\\\\ a\\\\ total\\\\ of\\\\ 988\\\\ ports tag=@ef-24ad-af
-  - Aug 26 12:34:27 junction bro: no=PortScan na=NOTICE_ALARM_ALWAYS es=bro sa=192.168.17.8 p=17/tcp num=250 msg=192.168.17.8\\ has\\ scanned\\ 250\\ ports\\ of\\ 192.168.17.17 tag=@11-68e9-5
-  - junction bro: Starting incremental serialization...
-  - junction bro: Finished incremental serialization.
-  - ix bro: no=NoticeTally na=NOTICE_ALARM_ALWAYS es=bro num=307 msg=AckAboveHole\\ (307\\ times) tag=@81-2fd-1f9
-  - ix bro: no=NoticeTally na=NOTICE_ALARM_ALWAYS es=bro num=7 msg=ContentGap\\ (7\\ times) tag=@81-2fd-1fa
-  - ix bro: no=ResourceSummary na=NOTICE_ALARM_ALWAYS es=bro msg=elapsed\\ time\\ \\=\\ 376.0\\ msecs\\ 174.0\\ usecs,\\ total\\ CPU\\ \\=\\ 390.0\\ msecs,\\ maximum\\ memory\\ \\=\\ 0\\ KB,\\ peak\\ connections\\ \\=\\ 0,\\ peak\\ timers\\ \\=\\ 84,\\ peak\\ fragments\\ \\=\\ 0 tag=@69-1f25-1
-  - junction bro: no=PortScanSummary na=NOTICE_ALARM_ALWAYS es=bro sa=192.168.17.8 num=988 msg=192.168.17.8\\\\ scanned\\\\ a\\\\ total\\\\ of\\\\ 988\\\\ ports tag=@ef-24ad-af
-  - junction bro: no=ZoneTransfer na=NOTICE_ALARM_ALWAYS es=bro sa=192.168.1.9 sp=4175/tcp da=192.168.1.17 dp=53/tcp p=53/tcp msg=transfer\\ of\\example.com\\ requested\\ by\\ 192.168.1.9 tag=@61-3a46-d
-  - ix bro: no=SensitivePortmapperAccess na=NOTICE_ALARM_ALWAYS es=bro sa=192.168.17.8 sp=2957/tcp da=192.168.17.9 dp=111/tcp p=111/tcp msg=rpc:\\ 192.168.17.8/2957\\ >\\ 192.168.17.9/portmap\\ pm_dump:\\ (done) tag=@46-764d-5d
-  - junction bro: no=PortScan na=NOTICE_ALARM_ALWAYS es=bro sa=192.168.17.8 p=17/tcp num=250 msg=192.168.17.8\\ has\\ scanned\\ 250\\ ports\\ of\\ 192.168.17.17 tag=@11-68e9-5
--->
-
-<decoder name="bro-ids">
-  <program_name>^bro</program_name>
-</decoder>
-
-<decoder name="bro-portscan">
-  <parent>bro-ids</parent>
-  <prematch>no=PortscanSummary</prematch>
-  <regex>sa=(\S+) num=(\d+) msg=</regex>
-  <order>srcip,extra_data</order>
-</decoder>
-
-<decoder name="bro-portscan2">
-  <parent>bro-ids</parent>
-  <prematch>no=PortScan </prematch>
-  <regex>sa=(\S+) p=(\d+)/(\S+) num=(\d+)</regex>
-  <order>srcip,srcport,protocol,extra_data</order>
-</decoder>
-
-<decoder name="bro-typical">
-  <parent>bro-ids</parent>
-  <prematch>na=NOTICE</prematch>
-  <regex>sa=(\S+) sp=(\d+)/(\S+) da=(\S+) dp=(\d+)/\S+</regex>
-  <order>srcip,srcport,protocol,dstip,dstport</order>
-</decoder>
-
 
 
 <!-- nss ldap decoders

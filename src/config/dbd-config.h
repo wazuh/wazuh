@@ -13,7 +13,7 @@
 
 
 #ifndef _DBDCONFIG__H
-#define _DBDONFIG__H
+#define _DBDCONFIG__H
 
 
 /* Database config structure */

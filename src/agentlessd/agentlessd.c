@@ -479,9 +479,7 @@ void Agentlessd()
     time_t tm;
     struct tm *p;
 
-    int today = 0;		
-    int thismonth = 0;
-    int thisyear = 0;
+    int today = 0;
     int test_it = 1;
 
     char str[OS_SIZE_1024 +1];
@@ -494,11 +492,9 @@ void Agentlessd()
 
     /* Getting currently time before starting */
     tm = time(NULL);
-    p = localtime(&tm);	
+    p = localtime(&tm);
 
     today = p->tm_mday;
-    thismonth = p->tm_mon;
-    thisyear = p->tm_year+1900;
 
 
     /* Connecting to the message queue
@@ -523,8 +519,6 @@ void Agentlessd()
         if(today != p->tm_mday)
         {
             today = p->tm_mday;
-            thismonth = p->tm_mon;
-            thisyear = p->tm_year+1900;
         }
 
 

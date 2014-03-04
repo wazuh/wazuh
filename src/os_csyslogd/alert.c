@@ -15,6 +15,7 @@
 
 
 #include "csyslogd.h"
+#include "cJSON.h"
 #include "config/config.h"
 #include "os_net/os_net.h"
 
@@ -26,10 +27,6 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
 {
     char *tstamp;
     char syslog_msg[OS_SIZE_2048];
-
-    /* These will be Malloc'd, so no need to predeclare size, just remember to free! */
-    char *json_safe_comment;
-    char *json_safe_message;
 
     /* padding value */
     int padding = 0;
@@ -115,15 +112,6 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
             tstamp[4] = ' ';
     }
 
-
-    /* Remove the double quotes from "dangerous" fields */
-    if( (json_safe_comment = os_strip_char(al_data->comment, '"')) == NULL ) {
-        return(0);
-    }
-    if( (json_safe_message = os_strip_char(al_data->log[0], '"')) == NULL ) {
-        return(0);
-    }
-
     /* Inserting data */
     if(syslog_config->format == DEFAULT_CSYSLOG)
     {
@@ -180,43 +168,56 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     }
     else if(syslog_config->format == JSON_CSYSLOG)
     {
-        // Padding is two to make sure we can fit closign bracket
-        padding = 2;
         /* Build a JSON Object for logging */
+        cJSON *root;
+        char *json_string;
+        root = cJSON_CreateObject();
+
+        // Data guaranteed to be there
+        cJSON_AddNumberToObject(root, "crit",      al_data->level);
+        cJSON_AddNumberToObject(root, "id",        al_data->rule);
+        cJSON_AddStringToObject(root, "component", al_data->location);
+
+        // Rule Meta Data
+        if (al_data->group)   cJSON_AddStringToObject(root, "classification", al_data->group);
+        if (al_data->comment) cJSON_AddStringToObject(root, "description",    al_data->comment);
+
+        // Raw log message generating event
+        if (al_data->log && al_data->log[0])
+                cJSON_AddStringToObject(root, "message",        al_data->log[0]);
+
+        // Add data if it exists
+        if (al_data->user)       cJSON_AddStringToObject(root,   "acct",       al_data->user);
+        if (al_data->srcip)      cJSON_AddStringToObject(root,   "src_ip",     al_data->srcip);
+        if (al_data->srcport)    cJSON_AddNumberToObject(root,   "src_port",   al_data->srcport);
+        if (al_data->dstip)      cJSON_AddStringToObject(root,   "dst_ip",     al_data->dstip);
+        if (al_data->dstport)    cJSON_AddNumberToObject(root,   "dst_port",   al_data->dstport);
+        if (al_data->filename)   cJSON_AddStringToObject(root,   "file",       al_data->filename);
+        if (al_data->old_md5)    cJSON_AddStringToObject(root,   "md5_old",    al_data->old_md5);
+        if (al_data->new_md5)    cJSON_AddStringToObject(root,   "md5_new",    al_data->new_md5);
+        if (al_data->old_sha1)   cJSON_AddStringToObject(root,   "sha1_old",   al_data->old_sha1);
+        if (al_data->new_sha1)   cJSON_AddStringToObject(root,   "sha1_new",   al_data->new_sha1);
+#ifdef GEOIP
+        if (al_data->geoipdatasrc) cJSON_AddStringToObject(root, "src_city", al_data->geoipdatasrc);
+        if (al_data->geoipdatadst) cJSON_AddStringToObject(root, "dst_city", al_data->geoipdatadst);
+#endif
+
+        // Create the JSON String
+        json_string = cJSON_PrintUnformatted(root);
+
+        // Create the syslog message
         snprintf(syslog_msg, OS_SIZE_2048 - padding,
-                "<%d>%s %s ossec: { \"crit\": %d, \"id\": %d, \"description\": \"%s\", \"component\": \"%s\",",
+                "<%d>%s %s ossec: %s",
 
                 /* syslog header */
                 syslog_config->priority, tstamp, __shost,
 
-                /* OSSEC metadata */
-                al_data->level, al_data->rule, json_safe_comment,
-                al_data->location
+                /* JSON Encoded Data */
+                json_string
         );
-        /* Event specifics */
-        field_add_string(syslog_msg, OS_SIZE_2048 - padding, " \"classification\": \"%s\",", al_data->group );
-
-        if( field_add_string(syslog_msg, OS_SIZE_2048 - padding, " \"src_ip\": \"%s\",", al_data->srcip ) > 0 )
-            field_add_int(syslog_msg, OS_SIZE_2048 - padding, " \"src_port\": %d,", al_data->srcport );
-
-#ifdef GEOIP
-        field_add_string(syslog_msg, OS_SIZE_2048 - padding, " \"src_city\": \"%s\",", al_data->geoipdatasrc );
-        field_add_string(syslog_msg, OS_SIZE_2048 - padding, " \"dst_city\": \"%s\",", al_data->geoipdatadst );
-#endif
-
-        if ( field_add_string(syslog_msg, OS_SIZE_2048 - padding, " \"dst_ip\": \"%s\",", al_data->dstip ) > 0 )
-            field_add_int(syslog_msg, OS_SIZE_2048 - padding, " \"dst_port\": %d,", al_data->dstport );
-
-        field_add_string(syslog_msg, OS_SIZE_2048 - padding, " \"file\": \"%s\",", al_data->filename );
-        field_add_string(syslog_msg, OS_SIZE_2048 - padding, " \"acct\": \"%s\",", al_data->user );
-        field_add_string(syslog_msg, OS_SIZE_2048 - padding, " \"md5_old\": \"%s\",", al_data->old_md5 );
-        field_add_string(syslog_msg, OS_SIZE_2048 - padding, " \"md5_new\": \"%s\",", al_data->new_md5 );
-        field_add_string(syslog_msg, OS_SIZE_2048 - padding, " \"sha1_old\": \"%s\",", al_data->old_sha1 );
-        field_add_string(syslog_msg, OS_SIZE_2048 - padding, " \"sha1_new\": \"%s\",", al_data->new_sha1 );
-		/* Message */
-        field_add_truncated(syslog_msg, OS_SIZE_2048 - padding, " \"message\": \"%s\"", json_safe_message, 2 );
-        /* Closing brace */
-        field_add_string(syslog_msg, OS_SIZE_2048, " }", "" );
+        // Cleanup the memory for the JSON Structure
+        free(json_string);
+        cJSON_Delete(root);
     }
     else if(syslog_config->format == SPLUNK_CSYSLOG)
     {
@@ -228,7 +229,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
                 syslog_config->priority, tstamp, __shost,
 
                 /* OSSEC metadata */
-                al_data->level, al_data->rule, json_safe_comment,
+                al_data->level, al_data->rule, al_data->comment,
                 al_data->location
         );
         /* Event specifics */
@@ -252,15 +253,11 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " sha1_old=\"%s\",", al_data->old_sha1 );
         field_add_string(syslog_msg, OS_SIZE_2048, " sha1_new=\"%s\",", al_data->new_sha1 );
         /* Message */
-        field_add_truncated(syslog_msg, OS_SIZE_2048, " message=\"%s\"", json_safe_message, 2 );
+        field_add_truncated(syslog_msg, OS_SIZE_2048, " message=\"%s\"", al_data->log[0], 2 );
     }
 
 
     OS_SendUDPbySize(syslog_config->socket, strlen(syslog_msg), syslog_msg);
-    /* Free the malloc'd variables */
-    free(json_safe_comment);
-    free(json_safe_message);
-
     return(1);
 }
 

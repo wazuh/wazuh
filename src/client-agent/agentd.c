@@ -69,15 +69,15 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
      * and read from it
      * Exit if fails.
      */
-    if((logr->m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0)
+    if((agt->m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0)
         ErrorExit(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
 
-    maxfd = logr->m_queue;
-    logr->sock = -1;
+    maxfd = agt->m_queue;
+    agt->sock = -1;
 
 
 
-    /* Creating PID file */	
+    /* Creating PID file */
     if(CreatePID(ARGV0, getpid()) < 0)
         merror(PID_ERROR,ARGV0);
 
@@ -92,7 +92,7 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id);
     */
     os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
-                        logr->profile);
+                        agt->profile);
 
 
     /* Start up message */
@@ -111,9 +111,9 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
 
     /* Connecting UDP */
     rc = 0;
-    while(rc < logr->rip_id)
+    while(rc < agt->rip_id)
     {
-        verbose("%s: INFO: Server IP Address: %s", ARGV0, logr->rip[rc]);
+        verbose("%s: INFO: Server IP Address: %s", ARGV0, agt->rip[rc]);
         rc++;
     }
 
@@ -126,20 +126,20 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
 
 
     /* Setting max fd for select */
-    if(logr->sock > maxfd)
+    if(agt->sock > maxfd)
     {
-        maxfd = logr->sock;
+        maxfd = agt->sock;
     }
 
 
     /* Connecting to the execd queue */
-    if(logr->execdq == 0)
+    if(agt->execdq == 0)
     {
-        if((logr->execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
+        if((agt->execdq = StartMQ(EXECQUEUE, WRITE)) < 0)
         {
             merror("%s: INFO: Unable to connect to the active response "
                    "queue (disabled).", ARGV0);
-            logr->execdq = -1;
+            agt->execdq = -1;
         }
     }
 
@@ -171,8 +171,8 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     {
         /* Monitoring all available sockets from here */
         FD_ZERO(&fdset);
-        FD_SET(logr->sock, &fdset);
-        FD_SET(logr->m_queue, &fdset);
+        FD_SET(agt->sock, &fdset);
+        FD_SET(agt->m_queue, &fdset);
 
         fdtimeout.tv_sec = 1;
         fdtimeout.tv_usec = 0;
@@ -195,14 +195,14 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
 
 
         /* For the receiver */
-        if(FD_ISSET(logr->sock, &fdset))
+        if(FD_ISSET(agt->sock, &fdset))
         {
             receive_msg();
         }
 
 
         /* For the forwarder */
-        if(FD_ISSET(logr->m_queue, &fdset))
+        if(FD_ISSET(agt->m_queue, &fdset))
         {
             EventForward();
         }

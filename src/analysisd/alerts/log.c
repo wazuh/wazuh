@@ -32,33 +32,31 @@
 #define NETMASK_16     4294901760      /* 255.255.0.0  */
 
 static const char * _mk_NA( const char * p ){
-	return p ? p : "N/A";
+	return (p ? p : "N/A");
 }
 
 /* StrIP2Long */
 /* Convert an dot-quad IP address into long format
  */
-unsigned long StrIP2Int(char *ip) {
-        unsigned int c1,c2,c3,c4;
-       /* IP address is not coming from user input -> We can trust it */
-       /* only minimal checking is performed */
-        int len = strlen(ip);
-        if ((len < 7) || (len > 15)) return 0;
+static unsigned long StrIP2Int(const char *ip) {
+	unsigned int c1,c2,c3,c4;
+	/* IP address is not coming from user input -> We can trust it */
+	/* only minimal checking is performed */
+	size_t len = strlen(ip);
+	if ((len < 7) || (len > 15)) return (0);
 
-        sscanf(ip, "%d.%d.%d.%d", &c1, &c2, &c3, &c4);
-        return((unsigned long)c4+c3*256+c2*256*256+c1*256*256*256);
+	sscanf(ip, "%u.%u.%u.%u", &c1, &c2, &c3, &c4);
+	return((unsigned long)c4+c3*256+c2*256*256+c1*256*256*256);
 }
 
 
-/* GeoIPLookup */
+/* GeoIP_Lookup */
 /* Use the GeoIP API to locate an IP address
  */
-char *GeoIPLookup(char *ip)
+static void GeoIP_Lookup(const char *ip, char *buffer, const size_t length)
 {
 	GeoIP	*gi;
 	GeoIPRecord	*gir;
-	char buffer[OS_SIZE_1024 +1];
-        unsigned long longip;
 
 	/* Dumb way to detect an IPv6 address */
 	if (strchr(ip, ':')) {
@@ -66,37 +64,46 @@ char *GeoIPLookup(char *ip)
 		gi = GeoIP_open(Config.geoip_db_path, GEOIP_INDEX_CACHE);
 		if (gi == NULL) {
 			merror(INVALID_GEOIP_DB, ARGV0, Config.geoip6_db_path);
-			return("Unknown");
+			snprintf(buffer, length, "Unknown (1)");
+			return;
 		}
-		gir = GeoIP_record_by_name_v6(gi, (const char *)ip);
+		gir = GeoIP_record_by_name_v6(gi, ip);
 	}
 	else {
 		/* Use the IPv4 DB */
-                /* If we have a RFC1918 IP, do not perform a DB lookup (performance) */
-                longip = StrIP2Int(ip);
-                if (longip == 0 ) return("Unknown");
-                if ((longip & NETMASK_8)  == RFC1918_10 ||
-                    (longip & NETMASK_12) == RFC1918_172 ||
-                    (longip & NETMASK_16) == RFC1918_192) return("");
+		/* If we have a RFC1918 IP, do not perform a DB lookup (performance) */
+		unsigned long longip = StrIP2Int(ip);
+		if (longip == 0 ) {
+			snprintf(buffer, length, "Unknown (2)");
+			return;
+		}
+		if ((longip & NETMASK_8)  == RFC1918_10 ||
+		(longip & NETMASK_12) == RFC1918_172 ||
+		(longip & NETMASK_16) == RFC1918_192) {
+			snprintf(buffer, length, "RFC1918 IP");
+			return;
+		}
 
 		gi = GeoIP_open(Config.geoip_db_path, GEOIP_INDEX_CACHE);
 		if (gi == NULL) {
 			merror(INVALID_GEOIP_DB, ARGV0, Config.geoip_db_path);
-			return("Unknown");
+			snprintf(buffer, length, "Unknown (3)");
+			return;
 		}
-		gir = GeoIP_record_by_name(gi, (const char *)ip);
+		gir = GeoIP_record_by_name(gi, ip);
 	}
 	if (gir != NULL) {
-		sprintf(buffer,"%s,%s,%s",
+		snprintf(buffer,length,"%s,%s,%s",
 				_mk_NA(gir->country_code),
 				_mk_NA(GeoIP_region_name_by_code(gir->country_code, gir->region)),
 				_mk_NA(gir->city)
 		);
 		GeoIP_delete(gi);
-		return(buffer);
+		return;
 	}
 	GeoIP_delete(gi);
-	return("Unknown");
+	snprintf(buffer, length, "Unknown (4)");
+	return;
 }
 #endif /* GEOIP */
 
@@ -169,7 +176,7 @@ void OS_Store(Eventinfo *lf)
             lf->full_log);
 
     fflush(_eflog);
-    return;	
+    return;
 }
 
 
@@ -182,8 +189,8 @@ void OS_LogOutput(Eventinfo *lf)
     geoip_msg_src[0] = '\0';
     geoip_msg_dst[0] = '\0';
     if (Config.loggeoip) {
- 	if (lf->srcip) { strncpy(geoip_msg_src, GeoIPLookup(lf->srcip), OS_SIZE_1024); }
-	if (lf->dstip) { strncpy(geoip_msg_dst, GeoIPLookup(lf->dstip), OS_SIZE_1024); }
+ 	if (lf->srcip) GeoIP_Lookup(lf->srcip, geoip_msg_src, OS_SIZE_1024);
+	if (lf->dstip) GeoIP_Lookup(lf->dstip, geoip_msg_dst, OS_SIZE_1024);
     }
 #endif
     printf(
@@ -254,7 +261,7 @@ void OS_LogOutput(Eventinfo *lf)
     printf("\n");
 
     fflush(stdout);
-    return;	
+    return;
 }
 
 
@@ -269,8 +276,8 @@ void OS_Log(Eventinfo *lf)
     geoip_msg_src[0] = '\0';
     geoip_msg_dst[0] = '\0';
     if (Config.loggeoip) {
-        if (lf->srcip) { strncpy(geoip_msg_src, GeoIPLookup(lf->srcip), OS_SIZE_1024 ); }
-        if (lf->dstip) { strncpy(geoip_msg_dst, GeoIPLookup(lf->dstip), OS_SIZE_1024 ); }
+        if (lf->srcip) GeoIP_Lookup(lf->srcip, geoip_msg_src, OS_SIZE_1024 );
+        if (lf->dstip) GeoIP_Lookup(lf->dstip, geoip_msg_dst, OS_SIZE_1024 );
     }
 #endif
     /* Writting to the alert log file */
@@ -342,7 +349,7 @@ void OS_Log(Eventinfo *lf)
     fprintf(_aflog,"\n");
 
     fflush(_aflog);
-    return;	
+    return;
 }
 
 /* OS_CustomLog: v0.1, 2012/10/10*/
@@ -461,7 +468,7 @@ void OS_CustomLog(Eventinfo *lf,char* format)
   }
 
 
-  fprintf(_aflog,log);
+  fprintf(_aflog,"%s",log);
   fprintf(_aflog,"\n");
   fflush(_aflog);
 

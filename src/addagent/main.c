@@ -15,6 +15,16 @@
 #include "manage_agents.h"
 #include <stdlib.h>
 
+#if defined(__MINGW32__)
+static int setenv(const char * name, const char * val, int overwrite) {
+    int len = strlen(name) + strlen(val) + 2; 
+    char * str = (char *)malloc(len); 
+    snprintf(str, len, "%s=%s", name, val); 
+    putenv(str);
+    return 0; 
+}
+#endif 
+
 /** help **/
 void helpmsg()
 {

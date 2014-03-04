@@ -20,6 +20,7 @@ int main(int argc, char **argv)
 {
     int i = 0,c = 0;
     int uid = 0, gid = 0;
+    int debug_level = 0;
     int test_config = 0,run_foreground = 0;
 
     char *cfg = DEFAULTCPATH;
@@ -42,6 +43,7 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                debug_level = 1;
                 break;
             case 'f':
                 run_foreground = 1;
@@ -55,7 +57,7 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -g needs an argument",ARGV0);
                 group = optarg;
-                break;		
+                break;
             case 't':
                 test_config = 1;
                 break;
@@ -68,8 +70,24 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
                 dir = optarg;
+                break;
         }
     }
+
+    /* Check current debug_level
+     * Command line setting takes precedence
+     */
+    if (debug_level == 0)
+    {
+        /* Getting debug level */
+        debug_level = getDefine_Int("remoted", "debug", 0, 2);
+        while(debug_level != 0)
+        {
+            nowDebug();
+            debug_level--;
+        }
+    }
+
 
     debug1(STARTED_MSG,ARGV0);
 
@@ -122,7 +140,7 @@ int main(int argc, char **argv)
 
 
     /* Starting the signal manipulation */
-    StartSIG(ARGV0);	
+    StartSIG(ARGV0);
 
 
     /* Creating some randoness  */
