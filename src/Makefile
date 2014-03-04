@@ -66,7 +66,7 @@ setclang:
 
 unsetclang:
 		@mv Config.Make Config.Make.backup
-		@sed -e "s/^CC=.*/CC=clang/g" Config.Make.backup > Config.Make
+		@sed -e "s/^CC=clang/CC=cc/g" Config.Make.backup > Config.Make
 		@rm Config.Make.backup
 
 setprelude:
