@@ -5,9 +5,9 @@ notifications:
     - "chat.freenode.net#ossec-dev"
 
 env:
-#- DB=mysql OSSEC_TYPE=all GEOIP=yes
+- DB=mysql OSSEC_TYPE=all GEOIP=yes
 - DB=mysql OSSEC_TYPE=all GEOIP=no
-#- DB=none OSSEC_TYPE=all GEOIP=yes
+- DB=none OSSEC_TYPE=all GEOIP=yes
 - DB=none OSSEC_TYPE=all GEOIP=no
 - DB=none OSSEC_TYPE=agent GEOIP=no
 - DB=none OSSEC_TYPE=windows_agent GEOIP=no
