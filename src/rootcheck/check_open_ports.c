@@ -30,6 +30,9 @@ int connect_to_port(int proto, int port)
     int ossock;
     struct sockaddr_in server;
     struct sockaddr_in6 server6;
+#ifdef WIN32
+    int salen = sizeof(struct sockaddr_in6);
+#endif
 
 
     if(proto == IPPROTO_UDP)
@@ -72,9 +75,14 @@ int connect_to_port(int proto, int port)
     }
 
     memset(&server6, 0, sizeof(server6));
+#ifdef WIN32
+    WSAStringToAddress("::1", AF_INET6, NULL, (LPSOCKADDR) &server6,
+                       (LPINT) &salen);
+#else
     server6.sin6_family = AF_INET6;
-    server6.sin6_port = htons( port );
     inet_pton(AF_INET6, "::1", &server6.sin6_addr.s6_addr);
+#endif
+    server6.sin6_port = htons( port );
 
     if(connect(ossock, (struct sockaddr *)&server6, sizeof(server6)) == 0)
     {
