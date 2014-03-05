@@ -109,7 +109,6 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                     (LPARAM)statwidths);
             SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://www.ossec.net");
 
-	
 
             /* Initializing config */
             config_read(hwnd);
@@ -128,7 +127,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
             {
                 MessageBox(hwnd, "Admin access required. Some features may not work properly. \n\n"
                         "**If on Vista (or Server 2008), choose the \"Run as administrator\" option.",
-                        "Admin access required.", MB_OK);
+                        "Admin Access Required", MB_OK);
                 break;
             }
 
@@ -214,7 +213,6 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                         char *name = NULL;
                         char *ip = NULL;
 
-
                         /* Getting new fields */
                         decd_buf = decode_base64(buf);
                         if(decd_buf)
@@ -250,8 +248,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                         if(!ip)
                         {
                             MessageBox(hwnd, "Unable to import "
-                                             "authentication key. Invalid.",
-                                             "Error Saving.", MB_OK);
+                                             "authentication key because it was invalid.",
+                                             "Error -- Failure Saving Auth Key", MB_OK);
                         }
                         else
                         {
@@ -311,18 +309,18 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                     if(chd == 1)
                     {
                         SendMessage(hStatus, SB_SETTEXT, 0,
-                                (LPARAM)"Server IP Saved ..");
+                                (LPARAM)"Server IP saved");
                     }
                     else if(chd == 2)
                     {
                         SendMessage(hStatus, SB_SETTEXT, 0,
-                                (LPARAM)"Auth key imported ..");
+                                (LPARAM)"Auth key imported");
 
                     }
                     else
                     {
                         SendMessage(hStatus, SB_SETTEXT, 0,
-                                (LPARAM)"Auth key and server ip saved ..");
+                                (LPARAM)"Auth key and IP saved");
 
                     }
                 }
@@ -368,23 +366,23 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 
                 if(ret_code == 0)
                 {
-                    MessageBox(hwnd, "Unable to start OSSEC (check config).",
-                                     "Error -- Unable to start", MB_OK);
+                    MessageBox(hwnd, "Unable to start agent (check config)",
+                                     "Error -- Unable to Start Agent", MB_OK);
                 }
                 else if(ret_code == 1)
                 {
                     config_read(hwnd);
                     gen_server_info(hwnd);
 
-                    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"Started..");
+                    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"Started");
 
-                    MessageBox(hwnd, "OSSEC Agent Started.",
-                                     "Started..", MB_OK);
+                    MessageBox(hwnd, "Agent started",
+                                     "Agent Started", MB_OK);
                 }
                 else
                 {
-                    MessageBox(hwnd, "Agent already running (try restart).",
-                                     "Already running..", MB_OK);
+                    MessageBox(hwnd, "Agent already running (try restart)",
+                                     "Agent Running", MB_OK);
                 }
                 break;
             case UI_MENU_MANAGE_STOP:
@@ -396,27 +394,27 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                     config_read(hwnd);
                     gen_server_info(hwnd);
 
-                    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"Stopped..");
-                    MessageBox(hwnd, "OSSEC Agent Stopped.",
-                                     "Stopped..", MB_OK);
+                    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"Stopped");
+                    MessageBox(hwnd, "Agent stopped",
+                                     "Agent Stopped", MB_OK);
                 }
                 else
                 {
-                    MessageBox(hwnd, "Agent already stopped.",
-                                     "Already stopped..", MB_OK);
+                    MessageBox(hwnd, "Agent already stopped",
+                                     "Agent Stopped", MB_OK);
                 }
                 break;
             case UI_MENU_MANAGE_STATUS:
                 if(CheckServiceRunning())
                 {
-                    MessageBox(hwnd, "OSSEC Agent running.",
-                                     "Agent running..", MB_OK);
+                    MessageBox(hwnd, "Agent running",
+                                     "Agent Running", MB_OK);
 
                 }
                 else
                 {
-                    MessageBox(hwnd, "OSSEC Agent stopped.",
-                                     "Agent stopped.", MB_OK);
+                    MessageBox(hwnd, "Agent stopped",
+                                     "Agent Stopped", MB_OK);
                 }
                 break;
             case UI_MENU_MANAGE_RESTART:
@@ -424,8 +422,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                 if((strcmp(config_inst.key, FL_NOKEY) == 0) ||
                    (strcmp(config_inst.server, FL_NOSERVER) == 0))
                 {
-                    MessageBox(hwnd, "Unable to restart OSSEC (check config).",
-                                     "Error -- Unable to restart", MB_OK);
+                    MessageBox(hwnd, "Unable to restart agent (check config)",
+                                     "Error -- Unable to Restart Agent", MB_OK);
                     break;
 
                 }
@@ -436,17 +434,17 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                 ret_code = os_start_service();
                 if(ret_code == 0)
                 {
-                    MessageBox(hwnd, "Unable to restart OSSEC (check config).",
-                                     "Error -- Unable to restart", MB_OK);
+                    MessageBox(hwnd, "Unable to restart agent (check config)",
+                                     "Error -- Unable to Restart Agent", MB_OK);
                 }
                 else
                 {
                     config_read(hwnd);
                     gen_server_info(hwnd);
 
-                    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"Restarted..");
-                    MessageBox(hwnd, "OSSEC Agent Restarted.",
-                                     "Restarted..", MB_OK);
+                    SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"Restarted");
+                    MessageBox(hwnd, "Agent restarted",
+                                     "Agent Restarted", MB_OK);
                 }
                 break;
         }

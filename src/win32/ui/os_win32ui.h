@@ -38,18 +38,18 @@
 
 
 /* Status messages */
-#define ST_RUNNING          "Running..."
+#define ST_RUNNING          "Running"
 #define ST_RUNNING_RESTART  "Running (pending restart)"
-#define ST_STOPPED          "Stopped."
-#define ST_UNKNOWN          "Unknown."
+#define ST_STOPPED          "Stopped"
+#define ST_UNKNOWN          "Unknown"
 #define ST_NOTSET           "0"
 #define ST_MISSING_IMPORT   "Require import of authentication key.\r\n" \
-                            "            - Not Running..."
+                            "            - Not Running"
 #define ST_MISSING_SERVER   "Require OSSEC Server IP address.\r\n" \
-                            "            - Not Running..."
+                            "            - Not Running"
 #define ST_MISSING_ALL      "Require import of authentication key.\r\n" \
                             "            Missing OSSEC Server IP address.\r\n" \
-                            "            - Not Running..."
+                            "            - Not Running"
 
 
 
