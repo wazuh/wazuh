@@ -57,3 +57,10 @@ src/util/verify-agent-conf
 # patch files
 *.rej
 *.orig
+
+# test coverage files
+*.gcda
+*.gcno
+src/tests/coverage-report/
+src/tests/ossec_test.info
+src/tests/test_os_xml
