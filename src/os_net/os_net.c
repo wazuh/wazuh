@@ -37,9 +37,7 @@ socklen_t us_l = sizeof(n_us);
 		                      + strlen ((ptr)->sun_path))
 #endif /* Sun_LEN */
 
-#else
-int ENOBUFS = 0;
-#endif /* WIN32*/
+#endif /* WIN32 */
 
 
 /* OS_Bindport v 0.2, 2005/02/11
@@ -558,6 +556,9 @@ int satop(struct sockaddr *sa, char *dst, socklen_t size)
     sa_family_t af;
     struct sockaddr_in *sa4;
     struct sockaddr_in6 *sa6;
+#ifdef WIN32
+    int newlength;
+#endif
 
     af = sa->sa_family;
 
@@ -565,11 +566,23 @@ int satop(struct sockaddr *sa, char *dst, socklen_t size)
     {
     case AF_INET:
         sa4 = (struct sockaddr_in *) sa;
+#ifdef WIN32
+        newlength = size;
+        WSAAddressToString((LPSOCKADDR) sa4, sizeof(struct sockaddr_in), 
+                           NULL, dst, (LPDWORD) &newlength);
+#else
         inet_ntop(af, (const void *) &(sa4->sin_addr), dst, size);
+#endif
         return(0);
     case AF_INET6:
         sa6 = (struct sockaddr_in6 *) sa;
+#ifdef WIN32
+        newlength = size;
+        WSAAddressToString((LPSOCKADDR) sa6, sizeof(struct sockaddr_in6), 
+                           NULL, dst, (LPDWORD) &newlength);
+#else
         inet_ntop(af, (const void *) &(sa6->sin6_addr), dst, size);
+#endif
         if (IN6_IS_ADDR_V4MAPPED(&(sa6->sin6_addr)))
         {  /* extract the embedded IPv4 address */
             memmove(dst, dst+7, size-7);
