@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     char **agent_list;
     int gid;
     int uid;
-    int flag;
+    int flag = 0;
 
 
     /* Setting the name */
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     {
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
-	
+
 
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)

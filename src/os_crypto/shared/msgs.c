@@ -488,7 +488,7 @@ int CreateSecMSG(keystore *keys, char *msg, char *msg_encrypted, int id)
     local_count++;
 
 
-    snprintf(_tmpmsg, OS_MAXSTR,"%05hu%010u:%04hu:%s",
+    snprintf(_tmpmsg, OS_MAXSTR,"%05hu%010u:%04u:%s",
                               rand1, global_count, local_count,
                               msg);
 
