@@ -331,6 +331,12 @@
     <description>ssh corrupted MAC on input</description>
   </rule>
 
+  <rule id="5749" level="4">
+    <if_sid>5700</if_sid>
+    <match>^Bad packet length</match>
+    <description>ssh bad packet length</description>
+  </rule>
+
 </group> <!-- SYSLOG, SSHD -->
 
 <!-- EOF -->

@@ -49,3 +49,11 @@ src/util/verify-agent-conf
 .cproject
 .project
 .settings/
+
+# temporary vim files
+*.swp
+*.swo
+
+# patch files
+*.rej
+*.orig
