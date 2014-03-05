@@ -17,6 +17,9 @@
 /* Setup windows after install */
 int main(int argc, char **argv)
 {
+    /* Setting the name */
+    OS_SetName(ARGV0);
+
     if(argc < 2)
     {
         printf("%s: Invalid syntax.\n", argv[0]);
