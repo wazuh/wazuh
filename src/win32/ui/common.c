@@ -432,7 +432,7 @@ int run_cmd(char *cmd, HWND hwnd)
     snprintf(finalcmd, cmdlen, "%s /c %s", comspec, cmd);
 
     /* Log command being run */
-    verbose("%s: INFO: Running the following command: %s", ARGV0, finalcmd);
+    log2file("%s: INFO: Running the following command (%s)", ARGV0, finalcmd);
 
     ZeroMemory(&si, sizeof(si));
     si.cb = sizeof(si);
@@ -479,7 +479,7 @@ int set_ossec_server(char *ip, HWND hwnd)
     int cmdlen;
 
     /* Build command line to change permissions */
-    cacls = "echo y|cacls %s /T /G Administrators:f";
+    cacls = "echo y|cacls \"%s\" /T /G Administrators:f";
     cmdlen = strlen(cacls) + strlen(NEWCONFIG);
     char cmd[cmdlen];
     snprintf(cmd, cmdlen, cacls, NEWCONFIG);
@@ -563,7 +563,7 @@ int set_ossec_key(char *key, HWND hwnd)
     int cmdlen;
 
     /* Build command line to change permissions */
-    cacls = "echo y|cacls %s /T /G Administrators:f";
+    cacls = "echo y|cacls \"%s\" /T /G Administrators:f";
     cmdlen = strlen(cacls) + strlen(AUTH_FILE);
     char cmd[cmdlen];
     snprintf(cmd, cmdlen, cacls, AUTH_FILE);
