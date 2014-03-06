@@ -156,7 +156,7 @@ int k_import(char *cmdimport)
                     }
 
                     /* Build cacls command */
-                    cacls = "echo y|cacls %s /T /G Administrators:f";
+                    cacls = "echo y|cacls \"%s\" /T /G Administrators:f";
                     caclslen = strlen(cacls) + strlen(KEYS_FILE);
                     char caclscmd[caclslen];
                     snprintf(caclscmd, caclslen, cacls, KEYS_FILE);
