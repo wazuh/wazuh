@@ -110,7 +110,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 int field_add_string(char *dest, int size, const char *format, const char *value ) {
     char buffer[OS_SIZE_2048];
     int len = 0;
-    int dest_sz = size - strlen(dest); 
+    int dest_sz = size - strlen(dest);
 
     if(dest_sz <= 0 ) {
         // Not enough room in the buffer
@@ -141,7 +141,7 @@ int field_add_truncated(char *dest, int size, const char *format, const char *va
 
     int len = 0;
     char trailer[] = "...";
-    char *truncated;
+    char *truncated = NULL;
 
     if(available_sz <= 0 ) {
         // Not enough room in the buffer

@@ -1,4 +1,4 @@
-# Makefile for zlib.
+# Makefile for cJSON.
 # Daniel B. Cid <dcid@ossec.net>
 # http://www.ossec.net
 
@@ -7,13 +7,13 @@ PT=../../
 
 include ${PT}Config.Make
 
-shared:
-		${CC} -c ${CFLAGS} ${SOURCES}
-		ar cru libcJSON.a ${OBJECTS}
-		ranlib libcJSON.a
+libcJSON.a: cJSON.h cJSON.c
+		${CC} ${CFLAGS} -c cJSON.c
+		${BUILDLIB} libcJSON.a ${OBJECTS}
+		
 clean:
 		${CLEAN} ../../headers/cJSON.h ../libcJSON.a
 
-ossec:
+ossec: libcJSON.a
 		cp -pr cJSON.h ../../headers/
 		cp -pr libcJSON.a ../
