@@ -147,6 +147,11 @@ void config_clear()
     {
         free(config_inst.server);
     }
+
+    if(config_inst.install_date)
+    {
+        free(config_inst.install_date);
+    }
 	debug2("read config 5");
 
 
