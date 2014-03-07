@@ -23,7 +23,7 @@ before_script:
 - if [[ "$DB" == "mysql"  ]]; then ( cd src && make setdb  ); fi
 - if [[ "$GEOIP" == "yes"  ]]; then ( sudo apt-get install geoip-bin geoip-database libgeoip-dev libgeoip1 ); fi
 - if [[ "$GEOIP" == "yes"  ]]; then ( cd src && make setgeoip ); fi
-- if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( sudo apt-get install mingw-w64 nsis ); fi
+- if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( sudo apt-get install gcc-mingw-w64 mingw-w64 nsis ); fi
 
 
 
