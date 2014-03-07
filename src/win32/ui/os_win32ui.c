@@ -99,7 +99,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 
 
             hStatus = CreateWindowEx(0, STATUSCLASSNAME, NULL,
-                    WS_CHILD|WS_VISIBLE|SBARS_SIZEGRIP,
+                    WS_CHILD|WS_VISIBLE,
                     0, 0, 0, 0,
                     hwnd, (HMENU)IDC_MAIN_STATUS,
                     GetModuleHandle(NULL), NULL);

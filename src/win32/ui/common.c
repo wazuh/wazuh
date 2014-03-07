@@ -49,7 +49,13 @@ int gen_server_info(HWND hwnd)
     /* Initializing server ip */
     SetDlgItemText(hwnd, UI_SERVER_TEXT, config_inst.server);
 
+    /* Set status data */
     SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://www.ossec.net");
+    if (config_inst.install_date)
+    {
+        SendMessage(hStatus, SB_SETTEXT, 1, (LPARAM)config_inst.install_date);
+    }
+
     return(0);
 }
 
