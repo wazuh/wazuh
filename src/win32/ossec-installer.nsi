@@ -162,6 +162,12 @@ Delete "$SMPROGRAMS\OSSEC\Documentation.lnk"
 Delete "$SMPROGRAMS\OSSEC\Edit Config.lnk"
 Delete "$SMPROGRAMS\OSSEC\*.*"
 
+; rename ossec.conf if it does not
+; already exist
+IfFileExists "$INSTDIR\ossec.conf" ConfPresent
+Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
+ConfPresent:
+
 ; Handle shortcuts
 ; http://nsis.sourceforge.net/Shortcuts_removal_fails_on_Windows_Vista
 SetShellVarContext all
