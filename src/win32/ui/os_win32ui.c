@@ -99,7 +99,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
 
 
             hStatus = CreateWindowEx(0, STATUSCLASSNAME, NULL,
-                    WS_CHILD|WS_VISIBLE|SBARS_SIZEGRIP,
+                    WS_CHILD|WS_VISIBLE,
                     0, 0, 0, 0,
                     hwnd, (HMENU)IDC_MAIN_STATUS,
                     GetModuleHandle(NULL), NULL);
@@ -151,10 +151,6 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                                      "Error Saving.", MB_OK);
                     break;
                 }
-
-                /** Getting values from the user (if chosen save)
-                 * We should probably create another function for it...
-                 **/
 
                 /* Getting server ip */
                 len = GetWindowTextLength(GetDlgItem(hwnd, UI_SERVER_TEXT));
@@ -263,20 +259,14 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
                                                id, name, ip);
 
                             ret = MessageBox(hwnd, mbox_msg,
-                                         "Confirm Importing Key", MB_OKCANCEL);
+                                             "Confirm Importing Key", MB_OKCANCEL);
                             if(ret == IDOK)
                             {
-                                FILE *fp;
-                                fp = fopen(AUTH_FILE, "w");
-                                if(fp)
+                                if(set_ossec_key(decd_to_write, hwnd))
                                 {
-                                    chd+=2;
-                                    fprintf(fp, "%s", decd_to_write);
-                                    fclose(fp);
+                                    chd += 2;
                                 }
                             }
-
-
                         }
 
                         /* Free used memory */

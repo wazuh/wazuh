@@ -5,9 +5,9 @@ notifications:
     - "chat.freenode.net#ossec-dev"
 
 env:
-#- DB=mysql OSSEC_TYPE=all GEOIP=yes
+- DB=mysql OSSEC_TYPE=all GEOIP=yes
 - DB=mysql OSSEC_TYPE=all GEOIP=no
-#- DB=none OSSEC_TYPE=all GEOIP=yes
+- DB=none OSSEC_TYPE=all GEOIP=yes
 - DB=none OSSEC_TYPE=all GEOIP=no
 - DB=none OSSEC_TYPE=agent GEOIP=no
 - DB=none OSSEC_TYPE=windows_agent GEOIP=no
@@ -23,7 +23,7 @@ before_script:
 - if [[ "$DB" == "mysql"  ]]; then ( cd src && make setdb  ); fi
 - if [[ "$GEOIP" == "yes"  ]]; then ( sudo apt-get install geoip-bin geoip-database libgeoip-dev libgeoip1 ); fi
 - if [[ "$GEOIP" == "yes"  ]]; then ( cd src && make setgeoip ); fi
-- if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( sudo apt-get install mingw32 mingw32-binutils mingw32-runtime nsis ); fi
+- if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( sudo apt-get install aptitude && sudo aptitude -y install mingw-w64 nsis ); fi
 
 
 
