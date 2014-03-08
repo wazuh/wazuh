@@ -84,6 +84,7 @@
 #include <windows.h>
 #include <io.h>
 #include <ws2tcpip.h>
+#include <shlwapi.h>
 #endif
 
 #include <time.h>
