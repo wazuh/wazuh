@@ -35,11 +35,3 @@ before_deploy:
 - if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( cp src/win-pkg/ossec-agent.exe travis-builds/ossec-agent-bid:$TRAVIS_JOB_NUMBER-br:$TRAVIS_BRANCH.exe ); fi
 
 
-deploy:
-  provider: s3
-  access_key_id: AKIAIJNKNIB2ARNBYMOA
-  secret_access_key:
-    secure: "miwB5++34wYPUHC6TuuOSkvJhZrTZ3N70dnVjB4mwwlDn6ARTZXWfMk6KU35VTuIGftFybY/HEWq2WEQOQTHe7sAfknJ2oeKU+YtGP5ydFrummFPjDTJg5Q4Qz4ikwyl9t/j840YJmFCvlDu29NhMYQd9izJJqCssCpkA8ZF2f4="
-  bucket: ossec-travis-ci
-  upload-dir: ossec-hids
-  local-dir: travis-builds
