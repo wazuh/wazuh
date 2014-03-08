@@ -254,6 +254,8 @@ cp -pr util/syscheck_update ${DIR}/bin/
 cp -pr util/agent_control ${DIR}/bin/
 cp -pr util/syscheck_control ${DIR}/bin/
 cp -pr util/rootcheck_control ${DIR}/bin/
+cp -pr external/lua/src/ossec-lua ${DIR}/bin/
+cp -pr external/lua/src/ossec-luac ${DIR}/bin/
 cp -pr ../contrib/util.sh ${DIR}/bin/
 chown root:${GROUP} ${DIR}/bin/util.sh
 chmod +x ${DIR}/bin/util.sh
