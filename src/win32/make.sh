@@ -27,5 +27,4 @@ cd ui
 sh ./make.sh
 cd ../
 
-makensis ui.nsi
 makensis ossec-installer.nsi
