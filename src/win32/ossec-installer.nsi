@@ -36,7 +36,7 @@ InstallDirRegKey HKLM Software\OSSEC ""
   !define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the install of ${Name}.\r\n\r\nClick next to continue."
   !define MUI_FINISHPAGE_TITLE_3LINES
   !define MUI_FINISHPAGE_RUN "$INSTDIR\win32ui.exe"
-  !define  MUI_FINISHPAGE_RUN_TEXT "Run OSSEC Agent Manager"
+  !define MUI_FINISHPAGE_RUN_TEXT "Run OSSEC Agent Manager"
 
   ; Page for choosing components.
   !define MUI_COMPONENTSPAGE_TEXT_TOP "Select the options you want to be executed. Click next to continue."
@@ -84,6 +84,9 @@ SectionIn RO
 SetOutPath $INSTDIR
 
 ClearErrors
+
+; use real data modified times
+SetDateSave off
 
 File \
 ossec-agent.exe \
