@@ -45,6 +45,7 @@ void agent_help()
 {
     printf("\nOSSEC HIDS %s %s .\n", ARGV0, __version);
     printf("Available options:\n");
+    printf("\t/?                This help message.\n");    
     printf("\t-h                This help message.\n");
     printf("\thelp              This help message.\n");
     printf("\tinstall-service   Installs as a service\n");
@@ -118,6 +119,10 @@ int main(int argc, char **argv)
         else if(strcmp(argv[1], "start") == 0)
         {
             return(local_start());
+        }
+        else if(strcmp(argv[1], "/?") == 0)
+        {
+            agent_help();
         }
         else if(strcmp(argv[1], "-h") == 0)
         {
