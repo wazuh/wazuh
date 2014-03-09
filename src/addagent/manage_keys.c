@@ -165,6 +165,9 @@ int k_import(char *cmdimport)
                     cmdlen = strlen(comspec) + 5 + caclslen;
                     char cmd[cmdlen];
                     snprintf(cmd, cmdlen, "%s /c %s", comspec, caclscmd);
+                    
+                     /* Log command being run */
+                     log2file("%s: INFO: Running the following command (%s)", ARGV0, cmd);
 
                     ZeroMemory(&si, sizeof(si));
                     si.cb = sizeof(si);
