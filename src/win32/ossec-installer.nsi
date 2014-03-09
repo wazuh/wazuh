@@ -85,6 +85,9 @@ SetOutPath $INSTDIR
 
 ClearErrors
 
+; overwrite existing files
+SetOverwrite on
+
 File \
 ossec-agent.exe \
 ossec-agent-eventchannel.exe \
