@@ -92,32 +92,39 @@ SetOutPath $INSTDIR
 
 ClearErrors
 
-File \
-ossec-agent.exe \
-ossec-agent-eventchannel.exe \
-default-ossec.conf \
-manage_agents.exe \
-os_win32ui.exe \
-ossec-rootcheck.exe \
-internal_options.conf \
-setup-windows.exe \
-setup-syscheck.exe \
-setup-iis.exe \
-service-start.exe \
-service-stop.exe \
-doc.html \
-rootkit_trojans.txt \
-rootkit_files.txt \
-add-localfile.exe \
-LICENSE.txt \
-rootcheck\rootcheck.conf \
-rootcheck\db\win_applications_rcl.txt \
-rootcheck\db\win_malware_rcl.txt \
-rootcheck\db\win_audit_rcl.txt \
-help.txt \
-vista_sec.csv \
-route-null.cmd \
-restart-ossec.cmd
+; create necessary directories
+CreateDirectory "$INSTDIR\bookmarks"
+CreateDirectory "$INSTDIR\rids"
+CreateDirectory "$INSTDIR\syscheck"
+CreateDirectory "$INSTDIR\shared"
+CreateDirectory "$INSTDIR\active-response"
+CreateDirectory "$INSTDIR\active-response\bin"
+
+; install files
+File ossec-agent.exe
+File ossec-agent-eventchannel.exe
+File default-ossec.conf
+File manage_agents.exe
+File /oname=win32ui.exe os_win32ui.exe
+File ossec-rootcheck.exe
+File internal_options.conf
+File setup-windows.exe
+File setup-syscheck.exe
+File setup-iis.exe
+File service-start.exe
+File service-stop.exe
+File doc.html
+File /oname=shared\rootkit_trojans.txt rootkit_trojans.txt
+File /oname=shared\rootkit_files.txt rootkit_files.txt
+File add-localfile.exe
+File LICENSE.txt
+File /oname=shared\win_applications_rcl.txt rootcheck\db\win_applications_rcl.txt
+File /oname=shared\win_malware_rcl.txt rootcheck\db\win_malware_rcl.txt
+File /oname=shared\win_audit_rcl.txt rootcheck\db\win_audit_rcl.txt
+File help.txt
+File vista_sec.csv
+File /oname=active-response\bin\route-null.cmd route-null.cmd
+File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
 
 ; Use appropriate version of "ossec-agent.exe"
 ${If} ${AtLeastWinVista}
@@ -126,7 +133,6 @@ ${If} ${AtLeastWinVista}
 ${Else}
   Delete "$INSTDIR\ossec-agent-eventchannel.exe"
 ${Endif}
-
 
 WriteRegStr HKLM SOFTWARE\ossec "Install_Dir" "$INSTDIR"
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC" "DisplayName" "${NAME} ${VERSION}"
@@ -147,22 +153,6 @@ FileWrite $0 "Installed on ${CDATE}"
 FileClose $0
 done:
 
-CreateDirectory "$INSTDIR\bookmarks"
-CreateDirectory "$INSTDIR\rids"
-CreateDirectory "$INSTDIR\syscheck"
-CreateDirectory "$INSTDIR\shared"
-CreateDirectory "$INSTDIR\active-response"
-CreateDirectory "$INSTDIR\active-response\bin"
-Delete "$INSTDIR\active-response\bin\route-null.cmd"
-Delete "$INSTDIR\active-response\bin\restart-ossec.cmd"
-Rename "$INSTDIR\rootkit_trojans.txt" "$INSTDIR\shared\rootkit_trojans.txt"
-Rename "$INSTDIR\rootkit_files.txt" "$INSTDIR\shared\rootkit_files.txt"
-Rename "$INSTDIR\win_malware_rcl.txt" "$INSTDIR\shared\win_malware_rcl.txt"
-Rename "$INSTDIR\win_audit_rcl.txt" "$INSTDIR\shared\win_audit_rcl.txt"
-Rename "$INSTDIR\win_applications_rcl.txt" "$INSTDIR\shared\win_applications_rcl.txt"
-Rename "$INSTDIR\route-null.cmd" "$INSTDIR\active-response\bin\route-null.cmd"
-Rename "$INSTDIR\restart-ossec.cmd" "$INSTDIR\active-response\bin\restart-ossec.cmd"
-Rename "$INSTDIR\os_win32ui.exe" "$INSTDIR\win32ui.exe"
 Delete "$SMPROGRAMS\OSSEC\Edit.lnk"
 Delete "$SMPROGRAMS\OSSEC\Uninstall.lnk"
 Delete "$SMPROGRAMS\OSSEC\Documentation.lnk"
