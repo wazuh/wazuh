@@ -607,7 +607,7 @@ int HASH_FINAL (unsigned char *md, HASH_CTX *c)
 	}
 
 #ifndef MD32_REG_T
-#define MD32_REG_T long
+#define MD32_REG_T int
 /*
  * This comment was originaly written for MD5, which is why it
  * discusses A-D. But it basically applies to all 32-bit digests,

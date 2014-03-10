@@ -7,7 +7,7 @@
 include ${PT}LOCATION
 include ${PT}Config.OS
 
-
+CC?=cc
 CFLAGS = -g -Wall -I${PT} -I${PT}headers ${CPATH} ${CEXTRA} ${DEXTRA} ${EEXTRA} ${FEXTRA} ${GEXTRA} ${HEXTRA} ${MEXTRA} ${CGEOIP} -DARGV0=\"${NAME}\" -DXML_VAR=\"var\" -DOSSECHIDS
 
 SOURCES = *.c

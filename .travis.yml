@@ -16,6 +16,7 @@ env:
 
 compiler:
 - gcc
+- clang
 
 
 

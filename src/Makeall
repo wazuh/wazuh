@@ -116,7 +116,7 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ];
     else
         
         echo 'int main() { short one = 1; char *cp = (char*)&one; if ( *cp == 0 ) return(1); else return(0); }' > isbigendian.c
-        gcc -o isbigendian isbigendian.c
+        cc -o isbigendian isbigendian.c
         ./isbigendian
         if [ $? = 1 ]; then
             echo "INFO: Big endian set."
