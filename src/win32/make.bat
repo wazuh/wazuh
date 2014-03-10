@@ -6,8 +6,6 @@ echo Making windows agent
 "C:\MinGW\bin\gcc.exe" -o "manage_agents" -Wall  -DARGV0=\"manage-agents\" -DCLIENT -DWIN32 -DMA os_regex/*.c zlib-1.2.3/*.c os_zlib.c shared/*.c os_crypto/blowfish/*.c os_crypto/md5/*.c os_crypto/shared/*.c addagent/*.c -Iheaders/ -I. -lwsock32 -lshlwapi
 "C:\MinGW\bin\gcc.exe" -o setup-windows -Wall os_regex/*.c -DARGV0=\"setup-windows\" -DCLIENT -DWIN32 win_service.c shared/file_op.c shared/debug_op.c setup/setup-win.c setup/setup-shared.c -Iheaders/ -I. -lwsock32
 "C:\MinGW\bin\gcc.exe" -o setup-syscheck -Wall os_regex/*.c os_xml/*.c setup/setup-syscheck.c setup/setup-shared.c -I. -Iheaders/
-"C:\MinGW\bin\gcc.exe" -o service-start -Wall icon.o os_regex/*.c setup/service-start.c -I.
-"C:\MinGW\bin\gcc.exe" -o service-stop -Wall os_regex/*.c setup/service-stop.c -I.
 "C:\MinGW\bin\gcc.exe" -o setup-iis -Wall os_regex/*.c setup/setup-iis.c -I.
 "C:\MinGW\bin\gcc.exe" -o add-localfile -Wall os_regex/*.c setup/add-localfile.c -I.
 cd ui\
