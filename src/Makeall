@@ -178,13 +178,12 @@ if [ "X${DOCJSON}" = "Xx" ]; then
     # Build cJSON here
     echo ""
     echo " *** Making cJSON (by Dave Gamble)  *** "
-    cd ${CJSONV}; make;
+    cd ${CJSONV}; make ossec;
     if [ $? != 0 ]; then
         echo ""
         echo "Error Making cJSON"
         exit 1;
     fi
-    make ossec;
     cd ../../
     echo ""
 fi    

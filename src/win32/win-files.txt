@@ -4,7 +4,6 @@ os_xml os_xml
 os_crypto os_crypto
 headers headers
 shared shared
-os_auth os_auth
 error_messages error_messages
 addagent addagent
 config config
@@ -20,7 +19,7 @@ client-agent/receiver-win.c receiver-win.c
 client-agent/start_agent.c start_agent.c
 client-agent/sendmsg.c sendmsg.c
 client-agent/notify.c notify.c
-client-agent/intcheck_op.c intcheck_op.c 
+client-agent/intcheck_op.c intcheck_op.c
 logcollector/config.c logcollector-config.c
 logcollector/logcollector.c logcollector.c
 logcollector/logcollector.h logcollector.h
@@ -65,7 +64,6 @@ win32/internal_options-win.conf internal_options.conf
 win32/doc.html doc.html
 win32/help_win.txt help.txt
 win32/ossec-installer.nsi ossec-installer.nsi
-win32/ui.nsi ui.nsi
 win32/make.sh make.sh
 win32/ossec-uninstall.ico ossec-uninstall.ico
 win32/service-start.c setup/service-start.c
