@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_zlib/os_zlib.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -15,7 +12,6 @@
 unsigned long int os_zlib_compress(const char *src, char *dst, unsigned long int src_size,
 		unsigned long int dst_size)
 {
-    /* We make sure to do not allow long sizes */
     if(compress2((Bytef *)dst,
                  &dst_size,
                  (const Bytef *)src,
