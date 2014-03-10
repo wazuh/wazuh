@@ -11,6 +11,7 @@ env:
 - DB=none OSSEC_TYPE=all GEOIP=no
 - DB=none OSSEC_TYPE=agent GEOIP=no
 - DB=none OSSEC_TYPE=windows_agent GEOIP=no
+- OSSEC_TYPE=test
 
 
 
