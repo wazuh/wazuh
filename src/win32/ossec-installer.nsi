@@ -25,6 +25,13 @@ OutFile "${OutFile}"
 InstallDir "$PROGRAMFILES\ossec-agent"
 InstallDirRegKey HKLM Software\OSSEC ""
 
+; show installation details
+ShowInstDetails show
+
+; do not close details pages immediately
+!define MUI_FINISHPAGE_NOAUTOCLOSE
+!define MUI_UNFINISHPAGE_NOAUTOCLOSE
+
 ;--------------------------------
 ;Interface Settings
 
@@ -72,7 +79,7 @@ Function .onInit
     NoAbort:
 
    ;; Stopping ossec service.
-   nsExec::ExecToStack '"net" "stop" "OssecSvc"'
+   nsExec::ExecToLog '"net" "stop" "OssecSvc"'
 FunctionEnd
 
 ;--------------------------------
@@ -177,22 +184,20 @@ CreateShortCut "$SMPROGRAMS\OSSEC\Edit Config.lnk" "$INSTDIR\ossec.conf" "" "$IN
 CreateShortCut "$SMPROGRAMS\OSSEC\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 
 ; Install in the services  (perhaps it would be better to use a plug-in here?)
-;nsExec::ExecToStack '"$INSTDIR\ossec-agent.exe" install-service'
-ExecWait '"$INSTDIR\ossec-agent.exe" install-service'
-;nsExec::ExecToStack '"$INSTDIR\setup-windows.exe" "$INSTDIR"'
-ExecWait '"$INSTDIR\setup-windows.exe" "$INSTDIR"'
+nsExec::ExecToLog '"$INSTDIR\ossec-agent.exe" install-service'
+nsExec::ExecToLog '"$INSTDIR\setup-windows.exe" "$INSTDIR"'
 
 SectionEnd
 
 Section "Scan and monitor IIS logs (recommended)" IISLogs
 
-nsExec::ExecToStack '"$INSTDIR\setup-iis.exe" "$INSTDIR"'
+nsExec::ExecToLog '"$INSTDIR\setup-iis.exe" "$INSTDIR"'
 
 SectionEnd
 
 Section "Enable integrity checking (recommended)" IntChecking
 
-nsExec::ExecToStack '"$INSTDIR\setup-syscheck.exe" "$INSTDIR" "enable"'
+nsExec::ExecToLog '"$INSTDIR\setup-syscheck.exe" "$INSTDIR" "enable"'
 
 SectionEnd
 
@@ -203,10 +208,10 @@ Section "Uninstall"
   ;Need a step to check for a running agent manager, otherwise it and the INSTDIR directory will not be removed.
 
   ; Stop ossec. Perhaps we should look for an exit status here. Also, may be a good place to use a plug-in.
-  nsExec::ExecToStack '"net" "stop" "OssecSvc"'
+  nsExec::ExecToLog '"net" "stop" "OssecSvc"'
 
   ; Uninstall from the services. Again, maybe use a plugin here.
-  nsExec::ExecToStack '"$INSTDIR\ossec-agent.exe" uninstall-service'
+  nsExec::ExecToLog '"$INSTDIR\ossec-agent.exe" uninstall-service'
 
   ; Remove registry keys
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OSSEC"
