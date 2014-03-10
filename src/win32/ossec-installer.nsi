@@ -92,6 +92,10 @@ SetOutPath $INSTDIR
 
 ClearErrors
 
+
+; overwrite existing files
+SetOverwrite on
+
 ; create necessary directories
 CreateDirectory "$INSTDIR\bookmarks"
 CreateDirectory "$INSTDIR\rids"
