@@ -89,5 +89,5 @@ int main(int argc, char **argv)
         system("echo y|cacls . /T /G Administrators:f ");
     }
 
-    return(0);
+    return(1);
 }
