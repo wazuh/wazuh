@@ -164,9 +164,20 @@ Delete "$SMPROGRAMS\OSSEC\*.*"
 
 ; rename ossec.conf if it does not
 ; already exist
-IfFileExists "$INSTDIR\ossec.conf" ConfPresent
-Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
+ConfInstall:
+    ClearErrors
+    IfFileExists "$INSTDIR\ossec.conf" ConfPresent
+    Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
+IfErrors ConfError ConfPresent
+ConfError:
+    MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\nFailed to rename file.$\r$\n$\r$\nFrom:$\r$\n$\r$\n$INSTDIR\default-ossec.conf\
+        $\r$\n$\r$\nTo:$\r$\n$\r$\n$INSTDIR\ossec.conf$\r$\n$\r$\nClick Abort sto stop the installation,$\r$\nRetry to try again, or$\r$\n\
+        Ignore to skip this file." /SD IDABORT IDIGNORE ConfPresent IDRETRY ConfInstall
+
+    SetErrorLevel 2
+    Abort
 ConfPresent:
+    ClearErrors
 
 ; Handle shortcuts
 ; http://nsis.sourceforge.net/Shortcuts_removal_fails_on_Windows_Vista
