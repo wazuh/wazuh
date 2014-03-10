@@ -18,8 +18,10 @@ CFLAGS_TEST = -Waggregate-return -Wall -Wbad-function-cast -Wc++-compat -Wcast-a
 	-Wstrict-prototypes -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunused \
 	-Wwrite-strings
 
-run_tests: test_os_zlib
+run_tests: build_tests
 	./test_os_zlib
+	
+build_tests: test_os_zlib
 
 test_os_zlib: test_os_zlib.c ${OS_ZLIB}
 	${CC} ${CFLAGS_TEST} $+ ${CHECK_LINK} -o $@

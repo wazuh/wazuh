@@ -22,12 +22,12 @@ START_TEST(test_success1)
 	char buffer[BUFFER_LENGTH];
 	unsigned long int i1 = os_zlib_compress(TEST_STRING_1, buffer, strlen(TEST_STRING_1), BUFFER_LENGTH);
 
-	ck_assert_int_ne(i1, 0);
+	ck_assert_uint_ne(i1, 0);
 
 	char buffer2[BUFFER_LENGTH];
 	unsigned long int i2 = os_zlib_uncompress(buffer, buffer2, i1, BUFFER_LENGTH);
 
-	ck_assert_int_ne(i2, 0);
+	ck_assert_uint_ne(i2, 0);
 	ck_assert_str_eq(buffer2, TEST_STRING_1);
 }
 END_TEST
@@ -37,12 +37,12 @@ START_TEST(test_success2)
 	char buffer[BUFFER_LENGTH];
 	unsigned long int i1 = os_zlib_compress(TEST_STRING_2, buffer, strlen(TEST_STRING_2), BUFFER_LENGTH);
 
-	ck_assert_int_ne(i1, 0);
+	ck_assert_uint_ne(i1, 0);
 
 	char buffer2[BUFFER_LENGTH];
 	unsigned long int i2 = os_zlib_uncompress(buffer, buffer2, i1, BUFFER_LENGTH);
 
-	ck_assert_int_ne(i2, 0);
+	ck_assert_uint_ne(i2, 0);
 	ck_assert_str_eq(buffer2, TEST_STRING_2);
 }
 END_TEST
@@ -51,31 +51,22 @@ START_TEST(test_failcompress1)
 {
 	char buffer[BUFFER_LENGTH];
 	unsigned long int i1 = os_zlib_compress(NULL, buffer, strlen(TEST_STRING_1), BUFFER_LENGTH);
-	ck_assert_int_eq(i1, 0);
+	ck_assert_uint_eq(i1, 0);
 }
 END_TEST
 
 START_TEST(test_failcompress2)
 {
 	unsigned long int i1 = os_zlib_compress(TEST_STRING_1, NULL, strlen(TEST_STRING_1), BUFFER_LENGTH);
-	ck_assert_int_eq(i1, 0);
+	ck_assert_uint_eq(i1, 0);
 }
 END_TEST
 
-//TODO
-/*START_TEST(test_failcompress3)
-{
-	char buffer[BUFFER_LENGTH];
-	unsigned long int i1 = os_zlib_compress(TEST_STRING_1, buffer, 0, BUFFER_LENGTH);
-	ck_assert_int_eq(i1, 0);
-}
-END_TEST*/
-
-START_TEST(test_failcompress4)
+START_TEST(test_failcompress3)
 {
 	char buffer[BUFFER_LENGTH];
 	unsigned long int i1 = os_zlib_compress(TEST_STRING_1, buffer, strlen(TEST_STRING_1), 0);
-	ck_assert_int_eq(i1, 0);
+	ck_assert_uint_eq(i1, 0);
 }
 END_TEST
 
@@ -83,11 +74,11 @@ START_TEST(test_failuncompress1)
 {
 	char buffer[BUFFER_LENGTH];
 	unsigned long int i1 = os_zlib_compress(TEST_STRING_1, buffer, strlen(TEST_STRING_1), BUFFER_LENGTH);
-	ck_assert_int_ne(i1, 0);
+	ck_assert_uint_ne(i1, 0);
 
 	char buffer2[BUFFER_LENGTH];
 	unsigned long int i2 = os_zlib_uncompress(NULL, buffer2, i1, BUFFER_LENGTH);
-	ck_assert_int_eq(i2, 0);
+	ck_assert_uint_eq(i2, 0);
 }
 END_TEST
 
@@ -95,10 +86,10 @@ START_TEST(test_failuncompress2)
 {
 	char buffer[BUFFER_LENGTH];
 	unsigned long int i1 = os_zlib_compress(TEST_STRING_1, buffer, strlen(TEST_STRING_1), BUFFER_LENGTH);
-	ck_assert_int_ne(i1, 0);
+	ck_assert_uint_ne(i1, 0);
 
 	unsigned long int i2 = os_zlib_uncompress(buffer, NULL, i1, BUFFER_LENGTH);
-	ck_assert_int_eq(i2, 0);
+	ck_assert_uint_eq(i2, 0);
 }
 END_TEST
 
@@ -106,11 +97,11 @@ START_TEST(test_failuncompress3)
 {
 	char buffer[BUFFER_LENGTH];
 	unsigned long int i1 = os_zlib_compress(TEST_STRING_1, buffer, strlen(TEST_STRING_1), BUFFER_LENGTH);
-	ck_assert_int_ne(i1, 0);
+	ck_assert_uint_ne(i1, 0);
 
 	char buffer2[BUFFER_LENGTH];
 	unsigned long int i2 = os_zlib_uncompress(buffer, buffer2, 0, BUFFER_LENGTH);
-	ck_assert_int_eq(i2, 0);
+	ck_assert_uint_eq(i2, 0);
 }
 END_TEST
 
@@ -118,11 +109,11 @@ START_TEST(test_failuncompress4)
 {
 	char buffer[BUFFER_LENGTH];
 	unsigned long int i1 = os_zlib_compress(TEST_STRING_1, buffer, strlen(TEST_STRING_1), BUFFER_LENGTH);
-	ck_assert_int_ne(i1, 0);
+	ck_assert_uint_ne(i1, 0);
 
 	char buffer2[BUFFER_LENGTH];
 	unsigned long int i2 = os_zlib_uncompress(buffer, buffer2, i1, 0);
-	ck_assert_int_eq(i2, 0);
+	ck_assert_uint_eq(i2, 0);
 }
 END_TEST
 
@@ -137,8 +128,7 @@ Suite *test_suite(void)
 	tcase_add_test(tc_core, test_success2);
 	tcase_add_test(tc_core, test_failcompress1);
 	tcase_add_test(tc_core, test_failcompress2);
-	//TODO: tcase_add_test(tc_core, test_failcompress3);
-	tcase_add_test(tc_core, test_failcompress4);
+	tcase_add_test(tc_core, test_failcompress3);
 	tcase_add_test(tc_core, test_failuncompress1);
 	tcase_add_test(tc_core, test_failuncompress2);
 	tcase_add_test(tc_core, test_failuncompress3);
