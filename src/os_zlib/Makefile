@@ -3,11 +3,11 @@
 # http://www.ossec.net
 
 PT=../
-include $(PT)Config.Make
+include ${PT}Config.Make
 
-OBJS = ${OS_SHARED} ${OS_ZLIB}
+OBJS = ${OS_ZLIB}
 
-me:
-		$(CC) $(CFLAGS) zlib-test.c $(OBJS) -o zlib-test
+zlib-test:
+		${CC} ${CFLAGS} zlib-test.c ${OBJS} -o zlib-test
 clean:
-		$(CLEAN) zlib-test
+		${CLEAN} zlib-test

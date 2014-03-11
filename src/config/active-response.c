@@ -360,7 +360,6 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
     /* Closing shared file for active response */
     fclose(fp);
-    free(tmp_ar);
 
     /* Done over here */
     return(0);
@@ -484,8 +483,6 @@ int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
         free(tmp_command);
         return(-1);
     }
-
-    free(tmp_command);
 
     /* Done over here */
     return(0);

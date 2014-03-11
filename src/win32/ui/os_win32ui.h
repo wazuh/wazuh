@@ -32,24 +32,23 @@
 #define VERSION_FILE    "VERSION.txt"
 #define OSSECLOGS       "ossec.log"
 #define HELPTXT         "help.txt"
-#define AUTH_FILE       "client.keys"
 #define SENDER_FILE     "rids\\sender_counter"
 #define DEFDIR          "C:\\Program Files\\ossec-agent"
 
 
 /* Status messages */
-#define ST_RUNNING          "Running..."
+#define ST_RUNNING          "Running"
 #define ST_RUNNING_RESTART  "Running (pending restart)"
-#define ST_STOPPED          "Stopped."
-#define ST_UNKNOWN          "Unknown."
+#define ST_STOPPED          "Stopped"
+#define ST_UNKNOWN          "Unknown"
 #define ST_NOTSET           "0"
 #define ST_MISSING_IMPORT   "Require import of authentication key.\r\n" \
-                            "            - Not Running..."
+                            "            - Not Running"
 #define ST_MISSING_SERVER   "Require OSSEC Server IP address.\r\n" \
-                            "            - Not Running..."
+                            "            - Not Running"
 #define ST_MISSING_ALL      "Require import of authentication key.\r\n" \
                             "            Missing OSSEC Server IP address.\r\n" \
-                            "            - Not Running..."
+                            "            - Not Running"
 
 
 
@@ -150,8 +149,14 @@ int config_read(HWND hwnd);
 /* Initializes the config */
 void init_config();
 
+/* Run command using cmd.exe */
+int run_cmd(char *cmd, HWND hwnd);
+
 /* Set OSSEC Server IP */
 int set_ossec_server(char *ip, HWND hwnd);
+
+/* Set OSSEC Auth Key */
+int set_ossec_key(char *key, HWND hwnd);
 
 /* Get OSSEC Server IP */
 int get_ossec_server();
