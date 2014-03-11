@@ -9,6 +9,7 @@ if [ "X${ARGV}" = "X" ]; then
     echo "No argument. Available options are:"
     echo "  $0 clean"
     echo "  $0 all"
+    echo "  $0 test"
     echo "  $0 build"
     echo "  $0 libs"
     echo "  $0 rootcheck"
@@ -26,7 +27,6 @@ if [ "X$1" = "Xsetmaxagents" ]; then
 fi
 
 
-ZLIBV="external/zlib-1.2.3/"
 CJSONV="external/cJSON/"
 
 # CPU information
@@ -54,7 +54,7 @@ fi
             
 
 # Cleaning Config.OS
-if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ]; then
+if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xtest" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ]; then
     ls ./Config.OS >/dev/null 2>&1
     if [ ! $? = 0 ]; then
         echo "" > Config.OS
@@ -116,7 +116,7 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ];
     else
         
         echo 'int main() { short one = 1; char *cp = (char*)&one; if ( *cp == 0 ) return(1); else return(0); }' > isbigendian.c
-        gcc -o isbigendian isbigendian.c
+        cc -o isbigendian isbigendian.c
         ./isbigendian
         if [ $? = 1 ]; then
             echo "INFO: Big endian set."
@@ -139,11 +139,13 @@ fi
 if [ "X${ARGV}" = "Xclean" ]; then
     echo "" > ./Config.OS
 fi
-   
-    
+
 # Getting values for each action
 if [ "X${ARGV}" = "Xall" ]; then
     DIRECTORIES="${LIBS} ${SOURCES} ${BINARIES}" 
+    DOZLIB="x"
+    DOCJSON="x"
+elif [ "X${ARGV}" = "Xtest" ]; then
     DOZLIB="x"
     DOCJSON="x"
 elif [ "X${ARGV}" = "Xlibs" ]; then
@@ -163,14 +165,13 @@ if [ "X${DOZLIB}" = "Xx" ]; then
     # Build zlib here
     echo ""
     echo " *** Making zlib (by Jean-loup Gailly and Mark Adler)  *** "
-    cd ${ZLIBV}; make;
+    cd external/; make zlib;
     if [ $? != 0 ]; then
         echo ""
         echo "Error Making zlib"
         exit 1;
     fi
-    make ossec;
-    cd ../../
+    cd ../
     echo ""
 fi    
 
@@ -190,11 +191,21 @@ fi
 
 if [ "X${ARGV}" = "Xclean" ]; then
     # Cleaning zlib
-    cd ${ZLIBV}; make clean;
-    cd ../../
+    cd external/; make clean;
+    cd ../
     cd ${CJSONV}; make clean;
     cd ../../
-fi    
+    cd tests/; make clean;
+    cd ../
+fi
+
+
+# Make and run tests if intended
+if [ "X${ARGV}" = "Xtest" ]; then
+    cd tests/
+    make
+    exit $?
+fi
 
 
 # Checking if the bin directory is present

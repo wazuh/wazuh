@@ -34,16 +34,6 @@ int main(int argc, char **argv)
         return(0);
     }
 
-    /* Checking if ossec was installed already (upgrade) */
-    if(!fileexist(OSSECCONF))
-    {
-        char cmd[OS_MAXSTR +1];
-
-        /* Copy default config to ossec.conf */
-        snprintf(cmd, OS_MAXSTR, "copy %s %s", OSSECDEF, OSSECCONF);
-        system(cmd);
-    }
-
 
     /* Configure ossec for automatic startup */
     system("sc config OssecSvc start= auto");
@@ -99,5 +89,5 @@ int main(int argc, char **argv)
         system("echo y|cacls . /T /G Administrators:f ");
     }
 
-    return(0);
+    return(1);
 }

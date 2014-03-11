@@ -11,7 +11,7 @@
 # Changelog 15/07/2006 - Rafael M. Capovilla <under@underlinux.com.br>
 # New function AddTable to add support for OpenBSD pf rules in firewall-drop active response
 
-# Changelog 29 March 2012 - Adding hybrid mode (standalone + agent) 
+# Changelog 29 March 2012 - Adding hybrid mode (standalone + agent)
 
 
 
@@ -67,9 +67,6 @@ Install()
 	echo "5- ${installing}"
 
 	echo "DIR=\"${INSTALLDIR}\"" > ${LOCATION}
-    echo "CC=${CC}" >> ${LOCATION}
-    echo "GCC=${CC}" >> ${LOCATION}
-    echo "CLANG=clang" >> ${LOCATION}
 
     # Changing Config.OS with the new C flags
     # Checking if debug is enabled
@@ -344,7 +341,7 @@ SetupLogs()
       echo "  </localfile>" >> $NEWCONFIG
    fi
 
-    
+
 
 
     echo ""
@@ -809,19 +806,6 @@ checkDependencies()
     elif [ "X$NUNAME" = "XAIX" ]; then
         PATH=$PATH:/usr/vac/bin
         export  PATH
-    fi
-
-    ls "`which gcc`" > /dev/null 2>&1
-    if [ ! $? = 0 ]; then
-        ls "`which cc`" > /dev/null 2>&1
-        if [ ! $? = 0 ]; then
-            if [ "X${USER_BINARYINSTALL}" = "X" ]; then
-                catError "0x3-dependencies"
-            fi
-        fi
-        CC="cc"
-    else
-        CC="gcc"
     fi
 
     PATH=$OLDOPATH
