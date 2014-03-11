@@ -32,7 +32,6 @@
 #define VERSION_FILE    "VERSION.txt"
 #define OSSECLOGS       "ossec.log"
 #define HELPTXT         "help.txt"
-#define AUTH_FILE       "client.keys"
 #define SENDER_FILE     "rids\\sender_counter"
 #define DEFDIR          "C:\\Program Files\\ossec-agent"
 

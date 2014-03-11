@@ -14,13 +14,13 @@
  */
 
 
+#include "shared.h"
 #include "os_win32ui.h"
 #include "os_win.h"
 #include "os_xml/os_xml.h"
 #include "os_xml/os_xml_writer.h"
 #include "os_net/os_net.h"
 #include "validate_op.h"
-#include "shared.h"
 
 
 /* Generate server info (for the main status) */
