@@ -404,6 +404,96 @@ START_TEST(test_oswritexml)
 }
 END_TEST
 
+START_TEST(test_osgetattributecontent)
+{
+	char xml_file_name[256];
+	create_xml_file("<root attr=\"value\"></root>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
+	char *xml_path[] = { "root", NULL };
+	ck_assert_str_eq(OS_GetAttributeContent(&xml, xml_path, "attr"), "value");
+	ck_assert_str_eq(OS_GetAttributeContent(&xml, xml_path, "attr2"), "");
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_osgetcontents)
+{
+	char xml_file_name[256];
+	create_xml_file("<root>value</root>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
+	char *xml_path[] = { "root", NULL };
+	char **content;
+	ck_assert_ptr_ne(content = OS_GetContents(&xml, xml_path), NULL);
+	ck_assert_str_eq(content[0], "value");
+	ck_assert_ptr_eq(content[1], NULL);
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_osgetelementcontent)
+{
+	char xml_file_name[256];
+	create_xml_file("<root>value</root>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
+	char *xml_path[] = { "root", NULL };
+	char **content;
+	ck_assert_ptr_ne(content = OS_GetElementContent(&xml, xml_path), NULL);
+	ck_assert_str_eq(content[0], "value");
+	ck_assert_ptr_eq(content[1], NULL);
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_osgetelements)
+{
+	char xml_file_name[256];
+	create_xml_file("<root><child1/><child2/></root>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
+	char *xml_path[] = { "root", NULL };
+	char **content;
+	ck_assert_ptr_ne(content = OS_GetElements(&xml, xml_path), NULL);
+	ck_assert_str_eq(content[0], "child1");
+	ck_assert_str_eq(content[1], "child2");
+	ck_assert_ptr_eq(content[2], NULL);
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_osgetattributes)
+{
+	char xml_file_name[256];
+	create_xml_file("<root attr1=\"1\" attr2=\"2\"></root>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
+	char *xml_path[] = { "root", NULL };
+	char **content;
+	ck_assert_ptr_ne(content = OS_GetAttributes(&xml, xml_path), NULL);
+	ck_assert_str_eq(content[0], "attr1");
+	ck_assert_str_eq(content[1], "attr2");
+	ck_assert_ptr_eq(content[2], NULL);
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST
+
 Suite *test_os_xml_suite(void)
 {
 	Suite *s = suite_create("os_xml");
@@ -430,6 +520,11 @@ Suite *test_os_xml_suite(void)
 	tcase_add_test(tc_core, test_oselementsexists);
 	tcase_add_test(tc_core, test_osgetonecontentforelement);
 	tcase_add_test(tc_core, test_oswritexml);
+	tcase_add_test(tc_core, test_osgetattributecontent);
+	tcase_add_test(tc_core, test_osgetcontents);
+	tcase_add_test(tc_core, test_osgetelementcontent);
+	tcase_add_test(tc_core, test_osgetelements);
+	tcase_add_test(tc_core, test_osgetattributes);
 	suite_add_tcase(s, tc_core);
 
 	return (s);
