@@ -115,8 +115,6 @@ File internal_options.conf
 File setup-windows.exe
 File setup-syscheck.exe
 File setup-iis.exe
-File service-start.exe
-File service-stop.exe
 File doc.html
 File /oname=shared\rootkit_trojans.txt rootkit_trojans.txt
 File /oname=shared\rootkit_files.txt rootkit_files.txt

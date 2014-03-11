@@ -66,8 +66,6 @@ win32/help_win.txt help.txt
 win32/ossec-installer.nsi ossec-installer.nsi
 win32/make.sh make.sh
 win32/ossec-uninstall.ico ossec-uninstall.ico
-win32/service-start.c setup/service-start.c
-win32/service-stop.c setup/service-stop.c
 win32/LICENSE.txt LICENSE.txt
 win32/route-null.cmd route-null.cmd
 win32/restart-ossec.cmd restart-ossec.cmd

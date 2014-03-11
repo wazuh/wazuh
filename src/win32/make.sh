@@ -18,8 +18,6 @@ ${MING_BASE}-gcc -o ossec-rootcheck.exe -Wall  -DARGV0=\"ossec-rootcheck\" -DCLI
 ${MING_BASE}-gcc -o manage_agents.exe -Wall  -DARGV0=\"manage-agents\" -DCLIENT -DWIN32 -DMA os_regex/*.c zlib-1.2.8/*.c os_zlib.c shared/*.c os_crypto/blowfish/*.c os_crypto/md5/*.c os_crypto/shared/*.c addagent/*.c -Iheaders/ -I./ -lwsock32 -lshlwapi
 ${MING_BASE}-gcc -o setup-windows.exe -Wall os_regex/*.c -DARGV0=\"setup-windows\" -DCLIENT -DWIN32 win_service.c shared/file_op.c shared/debug_op.c setup/setup-win.c setup/setup-shared.c -Iheaders/ -I./ -lwsock32
 ${MING_BASE}-gcc -o setup-syscheck.exe -Wall os_regex/*.c os_xml/*.c setup/setup-syscheck.c setup/setup-shared.c -I./ -Iheaders/
-${MING_BASE}-gcc -o service-start.exe -Wall icon.o os_regex/*.c setup/service-start.c -I./
-${MING_BASE}-gcc -o service-stop.exe -Wall os_regex/*.c setup/service-stop.c -I./
 ${MING_BASE}-gcc -o setup-iis.exe -Wall os_regex/*.c setup/setup-iis.c -I./
 ${MING_BASE}-gcc -o add-localfile.exe -Wall os_regex/*.c setup/add-localfile.c -I./
 
