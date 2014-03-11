@@ -14,6 +14,7 @@
 #include "test_os_xml.h"
 
 #include "../os_xml/os_xml.h"
+#include "../os_xml/os_xml_writer.h"
 
 static void create_xml_file(const char *str, char file_name[], size_t length)
 {
@@ -176,6 +177,232 @@ START_TEST(test_variables)
 }
 END_TEST
 
+START_TEST(test_comments)
+{
+	assert_os_xml_eq(
+			"<root1/><!comment!><root2/>",
+			"<root1></root1><root2></root2>");
+	assert_os_xml_eq(
+			"<root1/><!--comment--><root2/>",
+			"<root1></root1><root2></root2>");
+}
+END_TEST
+
+START_TEST(test_specialchars)
+{
+	assert_os_xml_eq(
+			"<var name=\"var1\">value1</var>"
+			"<root1>\\</root1\\></root1>",
+			"<root1>\\</root1\\></root1>");
+}
+END_TEST
+
+START_TEST(test_linecounter)
+{
+	char xml_file_name[256];
+	create_xml_file("<root1/>\n<root2/>\n<root3/>" , xml_file_name, 256);
+	OS_XML xml;
+	XML_NODE node;
+	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
+	ck_assert_ptr_ne(node = OS_GetElementsbyNode(&xml, NULL), NULL);
+	ck_assert_int_eq(xml.ln[0], 1);
+	ck_assert_int_eq(xml.ln[1], 2);
+	ck_assert_int_eq(xml.ln[2], 3);
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_invalidfile)
+{
+	OS_XML xml;
+	ck_assert_int_ne(OS_ReadXML("invalid_file.inv", &xml), 0);
+	ck_assert_str_eq(xml.err, "XMLERR: File 'invalid_file.inv' not found.");
+	ck_assert_int_eq(xml.err_line, 0);
+}
+END_TEST
+
+START_TEST(test_unclosednode)
+{
+	char xml_file_name[256];
+	create_xml_file("<root>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_str_eq(xml.err, "XML ERR: End of file and some elements were not closed");
+	ck_assert_int_eq(xml.err_line, 1);
+
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_unclosedcomment)
+{
+	char xml_file_name[256];
+	create_xml_file("<!-- comment", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_str_eq(xml.err, "XML ERR: Comment not closed. Bad XML.");
+	ck_assert_int_eq(xml.err_line, 1);
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_nodenotopened)
+{
+	char xml_file_name[256];
+	create_xml_file("</root>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_str_eq(xml.err, "XML ERR: Bad formed XML. Element not opened");
+	ck_assert_int_eq(xml.err_line, 1);
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_unclosedattribute)
+{
+	char xml_file_name[256];
+	create_xml_file("<root attr=\"attribute></root>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_str_eq(xml.err, "XMLERR: Attribute 'attr' not closed.");
+	ck_assert_int_eq(xml.err_line, 1);
+
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_unquotedattribute)
+{
+	char xml_file_name[256];
+	create_xml_file("<root attr=attribute></root>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_str_eq(xml.err, "XMLERR: Attribute 'attr' not followed by a \" or '.");
+	ck_assert_int_eq(xml.err_line, 1);
+
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_infiniteattribute)
+{
+	char xml_file_name[256];
+	create_xml_file("<root attr", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_str_eq(xml.err, "XMLERR: End of file while reading an attribute.");
+	ck_assert_int_eq(xml.err_line, 1);
+
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_invalidvariablename)
+{
+	char xml_file_name[256];
+	create_xml_file("<var test=\"test\"></var>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_int_ne(OS_ApplyVariables(&xml), 0);
+	ck_assert_str_eq(xml.err, "XML_ERR: Only \"name\" is allowed as an attribute for a variable");
+	ck_assert_int_eq(xml.err_line, 0);
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_unknownvariable)
+{
+	char xml_file_name[256];
+	create_xml_file("<var name=\"test\">content</var><root>$var</root>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_int_ne(OS_ApplyVariables(&xml), 0);
+	ck_assert_str_eq(xml.err, "XML_ERR: Unknown variable: var");
+	ck_assert_int_eq(xml.err_line, 0);
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST
+
+//TODO
+/*START_TEST(test_unknownvariable)
+{
+	char xml_file_name[256];
+	create_xml_file("<root>$var</root>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_int_ne(OS_ApplyVariables(&xml), 0);
+	ck_assert_str_eq(xml.err, "XML_ERR: Unknown variable: var");
+	ck_assert_int_eq(xml.err_line, 0);
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST*/
+
+START_TEST(test_oselementsexists)
+{
+	char xml_file_name[256];
+	create_xml_file("<root></root><root1/><root/>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
+	ck_assert_int_eq(OS_RootElementExist(&xml, "root"), 2);
+	ck_assert_int_eq(OS_RootElementExist(&xml, "root1"), 1);
+	ck_assert_int_eq(OS_RootElementExist(&xml, "root2"), 0);
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_osgetonecontentforelement)
+{
+	char xml_file_name[256];
+	create_xml_file("<root><child>test</child></root>", xml_file_name, 256);
+	OS_XML xml;
+	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
+	char *xml_path2[] = { "root", "child", NULL };
+	char *xml_path3[] = { "root", "child2", NULL };
+	ck_assert_str_eq(OS_GetOneContentforElement(&xml, xml_path2), "test");
+	ck_assert_ptr_eq(OS_GetOneContentforElement(&xml, xml_path3), NULL);
+
+	OS_ClearXML(&xml);
+	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_oswritexml)
+{
+	char xml_in_file_name[256];
+	create_xml_file("<root><child>test</child></root>", xml_in_file_name, 256);
+	char xml_out_file_name[256];
+	create_xml_file("", xml_out_file_name, 256);
+
+	char *xml_path[] = { "root", "child", NULL };
+	ck_assert_int_eq(OS_WriteXML(xml_in_file_name, xml_out_file_name, xml_path, NULL, "test", "test_new", 0), 0);
+
+	OS_XML xml;
+	ck_assert_int_eq(OS_ReadXML(xml_out_file_name, &xml), 0);
+	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
+	assert_os_xml_eq_str(&xml, "<root><child>test_new</child></root>");
+
+	OS_ClearXML(&xml);
+	unlink(xml_in_file_name);
+	unlink(xml_out_file_name);
+}
+END_TEST
 
 Suite *test_os_xml_suite(void)
 {
@@ -188,7 +415,21 @@ Suite *test_os_xml_suite(void)
 	tcase_add_test(tc_core, test_children);
 	tcase_add_test(tc_core, test_attributes);
 	tcase_add_test(tc_core, test_variables);
-	//TODO: test comments, \, <, >, $
+	tcase_add_test(tc_core, test_comments);
+	tcase_add_test(tc_core, test_specialchars);
+	tcase_add_test(tc_core, test_linecounter);
+	tcase_add_test(tc_core, test_invalidfile);
+	tcase_add_test(tc_core, test_unclosednode);
+	tcase_add_test(tc_core, test_unclosedcomment);
+	tcase_add_test(tc_core, test_nodenotopened);
+	tcase_add_test(tc_core, test_unclosedattribute);
+	tcase_add_test(tc_core, test_infiniteattribute);
+	tcase_add_test(tc_core, test_unquotedattribute);
+	tcase_add_test(tc_core, test_invalidvariablename);
+	tcase_add_test(tc_core, test_unknownvariable);
+	tcase_add_test(tc_core, test_oselementsexists);
+	tcase_add_test(tc_core, test_osgetonecontentforelement);
+	tcase_add_test(tc_core, test_oswritexml);
 	suite_add_tcase(s, tc_core);
 
 	return (s);
