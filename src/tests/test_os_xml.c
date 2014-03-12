@@ -14,7 +14,6 @@
 #include "test_os_xml.h"
 
 #include "../os_xml/os_xml.h"
-#include "../os_xml/os_xml_writer.h"
 
 static void create_xml_file(const char *str, char file_name[], size_t length)
 {

@@ -18,6 +18,7 @@
 #include <stdlib.h>
 
 #include "os_xml.h"
+#include "os_xml_internal.h"
 
 
 /* Internal functions */

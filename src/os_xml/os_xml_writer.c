@@ -17,12 +17,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "os_xml_writer.h"
-//#include "os_xml.h"
-
-#define _R_CONFS 	'<'
-#define _R_CONFE 	'>'
-#define _R_COM   	'!'
+#include "os_xml.h"
+#include "os_xml_internal.h"
 
 /* Internal functions */
 static int _oswcomment(FILE *fp_in, FILE *fp_out);
@@ -32,7 +28,7 @@ static int _xml_wfgetc(FILE *fp_in, FILE *fp_out);
 
 
 /* Currently line */
-int _line;
+static int _line;
 
 
 /* Local fgetc */
@@ -52,10 +48,6 @@ static int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
 
     return(c);
 }
-
-#define FWGETC(fp_in, fp_out) _xml_wfgetc(fp_in, fp_out)
-
-
 
 /* OS_WriteXML
  * Write an XML file, based on the input and values to change.
@@ -150,7 +142,7 @@ static int _oswcomment(FILE *fp_in, FILE *fp_out)
     if((c = fgetc(fp_in)) == _R_COM)
     {
         fputc(c, fp_out);
-        while((c = FWGETC(fp_in, fp_out)) != EOF)
+        while((c = _xml_wfgetc(fp_in, fp_out)) != EOF)
         {
             if(c == _R_COM)
             {
@@ -212,7 +204,7 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out,
     memset(closedelem,'\0',XML_MAXSIZE +1);
 
 
-    while((c = FWGETC(fp_in, fp_out)) != EOF)
+    while((c = _xml_wfgetc(fp_in, fp_out)) != EOF)
     {
         /* Max size */
         if(count >= XML_MAXSIZE)
@@ -277,7 +269,7 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out,
             if(c == ' ')
             {
                 /* Writing the attributes */
-                while((c = FWGETC(fp_in, fp_out)) != EOF)
+                while((c = _xml_wfgetc(fp_in, fp_out)) != EOF)
                 {
                     if(c == _R_CONFE)
                     {

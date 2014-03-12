@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 #include "os_xml.h"
+#include "os_xml_internal.h"
 
 int OS_ApplyVariables(OS_XML *_lxml)
 {

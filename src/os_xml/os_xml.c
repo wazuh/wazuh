@@ -18,12 +18,8 @@
 #include <stdlib.h>
 
 #include "os_xml.h"
+#include "os_xml_internal.h"
 
-#define _R_CONFS 	'<'
-#define _R_CONFE 	'>'
-#define _R_COM   	'!'
-
-#define LEOF		-2
 
 /* Internal functions */
 static int _oscomment(FILE *fp);
@@ -49,8 +45,6 @@ static int _xml_fgetc(FILE *fp)
 
     return(c);
 }
-
-#define FGETC(fp) _xml_fgetc(fp)
 
 static void xml_error(OS_XML *_lxml, const char *msg,...)
 {
@@ -166,7 +160,7 @@ static int _oscomment(FILE *fp)
     int c;
     if((c = fgetc(fp)) == _R_COM)
     {
-        while((c=FGETC(fp)) != EOF)
+        while((c=_xml_fgetc(fp)) != EOF)
         {
             if(c == _R_COM)
             {
@@ -176,7 +170,7 @@ static int _oscomment(FILE *fp)
             }
             else if(c == '-')       /* W3C way of finish comments */
             {
-                if((c = FGETC(fp)) == '-')
+                if((c = _xml_fgetc(fp)) == '-')
                 {
                     if((c = fgetc(fp)) == _R_CONFE)
                         return(1);
@@ -213,7 +207,7 @@ static int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
     memset(cont,'\0',XML_MAXSIZE +1);
     memset(closedelem,'\0',XML_MAXSIZE +1);
 
-    while((c=FGETC(fp)) != EOF)
+    while((c=_xml_fgetc(fp)) != EOF)
     {
         if(c == '\\')
             prevv = c;
@@ -435,7 +429,7 @@ static int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
     memset(attr,'\0',XML_MAXSIZE+1);
     memset(value,'\0',XML_MAXSIZE+1);
 
-    while((c=FGETC(fp)) != EOF)
+    while((c=_xml_fgetc(fp)) != EOF)
     {
         if(count >= XML_MAXSIZE)
         {
@@ -461,13 +455,13 @@ static int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
         else if((location == 0)&&(c == '='))
         {
             attr[count]='\0';
-            c = FGETC(fp);
+            c = _xml_fgetc(fp);
             if((c != '"')&&(c != '\''))
             {
                 unsigned short int _err=1;
                 if(c == ' ')
                 {
-                    while((c=FGETC(fp))!= EOF)
+                    while((c=_xml_fgetc(fp))!= EOF)
                     {
                         if(c == ' ')
                             continue;
@@ -504,7 +498,7 @@ static int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
             _writememory(attr, XML_ATTR, strlen(attr)+1,
                     parent, _lxml);
             _writecontent(value,count+1,_lxml->cur-1,_lxml);
-            c = FGETC(fp);
+            c = _xml_fgetc(fp);
             if(c == ' ')
                 return(_getattributes(fp,parent,_lxml));
             else if(c == _R_CONFE)

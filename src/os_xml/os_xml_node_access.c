@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 #include "os_xml.h"
+#include "os_xml_internal.h"
 
 
 /* OS_ClearNode v0,1

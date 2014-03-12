@@ -17,18 +17,6 @@
 #ifndef __OS_XML_H
 #define __OS_XML_H
 
-#ifndef XML_MAXSIZE
-   #define XML_MAXSIZE          2048
-#endif /* XML_MAXSIZE */
-
-#ifndef XML_VAR
-   #define XML_VAR              "var"
-#endif /* XML_VAR */
-
-#define XML_ELEM                101
-#define XML_ATTR                102
-#define XML_VARIABLE_BEGIN      '$'
-
 /* XML Node structure */
 typedef struct _xml_node
 {
@@ -100,6 +88,17 @@ char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
 /* Apply the variables to the xml */
 int OS_ApplyVariables(OS_XML *_lxml);
 
-#endif
+/* Error from writer */
+#define XMLW_ERROR              006
+#define XMLW_NOIN               007
+#define XMLW_NOOUT              010
+
+/* OS_WriteXML
+ * Write an XML file, based on the input and values to change.
+ */
+int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
+		const char *oldval, const char *newval);
+
+#endif /* __OS_XML_H */
 
 /* EOF */
