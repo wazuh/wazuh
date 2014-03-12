@@ -23,7 +23,7 @@
 #endif /* XML_MAXSIZE */
 
 #ifndef XML_VAR
-   #define XML_VAR              "xml_var"
+   #define XML_VAR              "var"
 #endif /* XML_VAR */
 
 
