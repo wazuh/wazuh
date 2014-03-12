@@ -71,7 +71,6 @@ void OS_ClearNode(xml_node **node)
             i++;
         }
         free(node);
-        node=NULL;
     }
 }
 

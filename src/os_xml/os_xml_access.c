@@ -103,7 +103,7 @@ char **OS_GetElements(const OS_XML *_lxml, const char **element_name)
  */
 static char **_GetElements(const OS_XML *_lxml, const char **element_name,int type)
 {
-    int i=0,j=0,k=0,matched=0,ready=0,size=0;
+    int i=0,j=0,k=0,matched=0,ready=0;
     char **ret=NULL;
 
     if((type == XML_ELEM) && (element_name == NULL))
@@ -130,7 +130,6 @@ static char **_GetElements(const OS_XML *_lxml, const char **element_name,int ty
                      (_lxml->el[i] != NULL)))
             {
                 int el_size = strlen(_lxml->el[i])+1;
-                size+=el_size;
                 ret = (char**)realloc(ret,(k+1)*sizeof(char *));
                 if(ret == NULL)
                     return(NULL);
@@ -248,7 +247,6 @@ char **OS_GetContents(OS_XML *_lxml, const char **element_name)
 char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
 		const char *attribute_name)
 {
-    int success = 0;
     char *uniqret = NULL;
     char **ret = NULL;
 
@@ -268,17 +266,14 @@ char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
             if(uniqret != NULL)
             {
                 strncpy(uniqret, ret[0], retsize-1);
-                success = 1;
             }
         }
     }
-    while(1)
+    while(*ret != NULL)
     {
-        if(*ret == NULL)
-            break;
         free(*ret++);
     }
-    if(success)
+    if(uniqret)
         return(uniqret);
 
     return(NULL);
