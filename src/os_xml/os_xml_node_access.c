@@ -80,8 +80,8 @@ void OS_ClearNode(xml_node **node)
  */
 xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
 {
-    int i,j;
-    unsigned int k =0;
+    int j;
+    unsigned int i, k =0;
     xml_node **ret=NULL;
 
     if(node == NULL)
@@ -102,7 +102,7 @@ xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
         {
             if((_lxml->rl[i] == j+1) && (_lxml->el[i] != NULL))
             {
-                int l=i+1;
+                unsigned int l=i+1;
                 /* Allocating for xml_node ** */
                 ret = (xml_node**)realloc(ret,(k+1)*sizeof(xml_node*));
                 if(ret == NULL)

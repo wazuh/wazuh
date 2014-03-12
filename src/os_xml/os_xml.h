@@ -20,7 +20,7 @@
 /* XML Node structure */
 typedef struct _xml_node
 {
-    int key;
+    unsigned int key;
     char *element;
     char *content;
     char **attributes;
@@ -30,13 +30,13 @@ typedef struct _xml_node
 /* XML structure */
 typedef struct _OS_XML
 {
-    int cur;		/* Currently position (and last after reading) */
+    unsigned int cur;		/* Currently position (and last after reading) */
     int fol;		/* Currently position for the xml_access */
     int *tp;		/* Item type	*/
-    int *rl;		/* Relation in the XML */
+    unsigned int *rl;		/* Relation in the XML */
     int *ck;		/* If the item was closed or not */
-    int *ln;        /* Currently xml file line */
-    int err_line;   /* Line number of the possible error */
+    unsigned int *ln;        /* Currently xml file line */
+    unsigned int err_line;   /* Line number of the possible error */
     char **ct;		/* Content is stored */
     char **el;		/* The element/attribute name is stored */
     char err[128];	/* Error messages are stored in here */
@@ -57,10 +57,10 @@ void OS_ClearNode(xml_node **node);
 /* Functions to read the XML */
 
 /* Return 1 if element_name is a root element */
-int OS_RootElementExist(const OS_XML *_lxml, const char *element_name);
+unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name);
 
 /* Return 1 if the element_name exists */
-int OS_ElementExist(const OS_XML *_lxml, const char **element_name);
+unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name);
 
 /* Return the elements "children" of the element_name */
 char **OS_GetElements(const OS_XML *_lxml, const char **element_name);

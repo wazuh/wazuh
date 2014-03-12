@@ -22,8 +22,8 @@
 
 /* Internal functions */
 static int _oswcomment(FILE *fp_in, FILE *fp_out);
-static int _WReadElem(FILE *fp_in, FILE *fp_out, int position, int parent,
-		const char **node, const char *value, int node_pos);
+static int _WReadElem(FILE *fp_in, FILE *fp_out, unsigned int position, unsigned int parent,
+		const char **node, const char *value, unsigned int node_pos);
 static int _xml_wfgetc(FILE *fp_in, FILE *fp_out);
 
 /* Local fgetc */
@@ -48,7 +48,6 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
 		const char *oldval, const char *newval)
 {
     int r = 0;
-    int node_pos = 0;
     FILE *fp_in;
     FILE *fp_out;
 
@@ -77,7 +76,7 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
 
 
     if((r = _WReadElem(fp_in, fp_out, 0, 0,
-                       nodes, newval, node_pos)) < 0) /* First position */
+                       nodes, newval, 0)) < 0) /* First position */
     {
         fclose(fp_in);
         fclose(fp_out);
@@ -180,7 +179,7 @@ static int _oswcomment(FILE *fp_in, FILE *fp_out)
 
 
 static int _WReadElem(FILE *fp_in, FILE *fp_out,
-              int position, int parent, const char **nodes, const char *val, int node_pos)
+              unsigned int position, unsigned int parent, const char **nodes, const char *val, unsigned int node_pos)
 {
     int c;
     int ret_code = 0;

@@ -30,9 +30,9 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
  * Check if a element exists
  * The element_name must be NULL terminated (last char)
  */
-int OS_ElementExist(const OS_XML *_lxml, const char **element_name)
+unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name)
 {
-    int i=0,j=0,matched=0,totalmatch=0;
+    unsigned int i=0,j=0,matched=0,totalmatch=0;
 
     if(element_name == NULL)
         return(0);
@@ -69,7 +69,7 @@ int OS_ElementExist(const OS_XML *_lxml, const char **element_name)
 /* RootElementExist: v1.0: 2005/02/26
  * Check if a root element exists
  */
-int OS_RootElementExist(const OS_XML *_lxml, const char *element_name)
+unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name)
 {
     const char *(elements[])={element_name,NULL};
     return(OS_ElementExist(_lxml,elements));
@@ -103,8 +103,7 @@ char **OS_GetElements(const OS_XML *_lxml, const char **element_name)
  */
 static char **_GetElements(const OS_XML *_lxml, const char **element_name,int type)
 {
-    int i=0,j=0,matched=0,ready=0;
-    unsigned int k = 0;
+    unsigned i=0,j=0,k=0,matched=0,ready=0;
     char **ret=NULL;
 
     if((type == XML_ELEM) && (element_name == NULL))

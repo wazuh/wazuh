@@ -23,8 +23,7 @@
 
 int OS_ApplyVariables(OS_XML *_lxml)
 {
-    int i = 0,j = 0;
-    unsigned int s = 0;
+    unsigned int i = 0, j = 0, s = 0;
     char **var = NULL;
     char **value = NULL;
 
@@ -118,7 +117,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
         if(((_lxml->tp[i] == XML_ELEM) || (_lxml->tp[i] == XML_ATTR))&&
             (_lxml->ct[i]))
         {
-            int tp = 0;
+            unsigned int tp = 0;
             size_t init = 0;
             char *p = NULL;
             char *p2= NULL;

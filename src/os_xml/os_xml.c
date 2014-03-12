@@ -23,16 +23,16 @@
 
 /* Internal functions */
 static int _oscomment(FILE *fp);
-static int _writecontent(const char *str, unsigned int size, int parent, OS_XML *_lxml);
-static int _writememory(const char *str, short int type, unsigned int size,
-                                        int parent, OS_XML *_lxml);
+static int _writecontent(const char *str, size_t size, unsigned int parent, OS_XML *_lxml);
+static int _writememory(const char *str, short int type, size_t size,
+                                        unsigned int parent, OS_XML *_lxml);
 static int _xml_fgetc(FILE *fp);
-static int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml);
-static int _getattributes(FILE *fp,int parent,OS_XML *_lxml);
+static int _ReadElem(FILE *fp, unsigned int position, unsigned int parent, OS_XML *_lxml);
+static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml);
 static void xml_error(OS_XML *_lxml, const char *msg,...) __attribute__((format(printf, 2, 3)));
 
 /* Currently line */
-static int _line;
+static unsigned int _line;
 
 /* Local fgetc */
 static int _xml_fgetc(FILE *fp)
@@ -59,7 +59,7 @@ static void xml_error(OS_XML *_lxml, const char *msg,...)
 #ifdef DEBUG
     tm = time(NULL);
     p = localtime(&tm);
-    fprintf(stderr,"%d/%d/%d %d:%d:%d (LINE: %d)",p->tm_year+1900,p->tm_mon,
+    fprintf(stderr,"%d/%d/%d %d:%d:%d (LINE: %u)",p->tm_year+1900,p->tm_mon,
             p->tm_mday,p->tm_hour,p->tm_min,p->tm_sec,_line);
     vfprintf(stderr, msg, args);
     fprintf(stderr, "\n\n");
@@ -78,7 +78,7 @@ static void xml_error(OS_XML *_lxml, const char *msg,...)
  */
 void OS_ClearXML(OS_XML *_lxml)
 {
-    int i;
+    unsigned int i;
     for(i=0;i<_lxml->cur;i++)
     {
         if(_lxml->el[i])
@@ -106,7 +106,8 @@ void OS_ClearXML(OS_XML *_lxml)
  */
 int OS_ReadXML(const char *file, OS_XML *_lxml)
 {
-    int r,i;
+    int r;
+    unsigned int i;
     FILE *fp;
 
     fp = fopen(file,"r");
@@ -189,7 +190,7 @@ static int _oscomment(FILE *fp)
 }
 
 
-static int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
+static int _ReadElem(FILE *fp, unsigned int position, unsigned int parent, OS_XML *_lxml)
 {
     int c;
     unsigned int count = 0;
@@ -363,8 +364,8 @@ static int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
     return(-1);
 }
 
-static int _writememory(const char *str, short int type, unsigned int size,
-                                        int parent, OS_XML *_lxml)
+static int _writememory(const char *str, short int type, size_t size,
+                                        unsigned int parent, OS_XML *_lxml)
 {
     /* Allocating for the element */
     _lxml->el = (char **)realloc(_lxml->el,(_lxml->cur+1)*sizeof(char *));
@@ -379,7 +380,7 @@ static int _writememory(const char *str, short int type, unsigned int size,
     _lxml->tp[_lxml->cur] = type;
 
     /* Allocating for the relation */
-    _lxml->rl = (int *) realloc(_lxml->rl,(_lxml->cur+1)*sizeof(int));
+    _lxml->rl = (unsigned int *) realloc(_lxml->rl,(_lxml->cur+1)*sizeof(unsigned int));
     _lxml->rl[_lxml->cur] = parent;
 
     /* Allocating for the "check" */
@@ -387,7 +388,7 @@ static int _writememory(const char *str, short int type, unsigned int size,
     _lxml->ck[_lxml->cur] = 0;
 
     /* Allocating for the line */
-    _lxml->ln = (int *) realloc(_lxml->ln,(_lxml->cur+1)*sizeof(int));
+    _lxml->ln = (unsigned int *) realloc(_lxml->ln,(_lxml->cur+1)*sizeof(unsigned int));
     _lxml->ln[_lxml->cur] = _line;
 
     /* Attributes does not need to be closed */
@@ -404,7 +405,7 @@ static int _writememory(const char *str, short int type, unsigned int size,
     return(0);
 }
 
-static int _writecontent(const char *str, unsigned int size, int parent, OS_XML *_lxml)
+static int _writecontent(const char *str, size_t size, unsigned int parent, OS_XML *_lxml)
 {
     _lxml->ct[parent]=(char *)calloc(size,sizeof(char));
     strncpy(_lxml->ct[parent],str,size-1);
@@ -416,10 +417,10 @@ static int _writecontent(const char *str, unsigned int size, int parent, OS_XML 
 /* getattributes (Internal function): v0.1: 2005/03/03
  * Read the attributes of an element
  */
-static int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
+static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
 {
     int location = 0;
-    int count = 0;
+    unsigned int count = 0;
     int c;
     int c_to_match = 0;
 
