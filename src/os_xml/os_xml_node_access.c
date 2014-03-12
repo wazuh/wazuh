@@ -80,7 +80,8 @@ void OS_ClearNode(xml_node **node)
  */
 xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
 {
-    int i,j,k=0;
+    int i,j;
+    unsigned int k =0;
     xml_node **ret=NULL;
 
     if(node == NULL)

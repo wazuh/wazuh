@@ -23,7 +23,8 @@
 
 int OS_ApplyVariables(OS_XML *_lxml)
 {
-    int i = 0,j = 0,s = 0;
+    int i = 0,j = 0;
+    unsigned int s = 0;
     char **var = NULL;
     char **value = NULL;
 
@@ -117,7 +118,8 @@ int OS_ApplyVariables(OS_XML *_lxml)
         if(((_lxml->tp[i] == XML_ELEM) || (_lxml->tp[i] == XML_ATTR))&&
             (_lxml->ct[i]))
         {
-            int tp = 0,init = 0;
+            int tp = 0;
+            size_t init = 0;
             char *p = NULL;
             char *p2= NULL;
             char lvar[256]; /* MAX Var size */
@@ -161,8 +163,6 @@ int OS_ApplyVariables(OS_XML *_lxml)
                             /* Looking for var */
                             for(j=0; j<s; j++)
                             {
-                                int tsize = 0;
-
                                 /* Store everything up the variable name */
                                 char *var_placeh;
 
@@ -176,7 +176,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                                 }
 
 
-                                tsize = strlen(_lxml->ct[i]) +
+                                size_t tsize = strlen(_lxml->ct[i]) +
                                         strlen(value[j]) - tp + 1;
 
                                 var_placeh = strdup(_lxml->ct[i]);

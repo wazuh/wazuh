@@ -381,15 +381,15 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out,
         {
             if(location == 0)
             {
-                elem[count++] = c;
+                elem[count++] = (char) c;
             }
             else if(location == 1)
             {
-                cont[count++] = c;
+                cont[count++] = (char) c;
             }
             else if(location == 2)
             {
-                closedelem[count++] = c;
+                closedelem[count++] = (char) c;
             }
         }
     }

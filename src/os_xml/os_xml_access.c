@@ -103,7 +103,8 @@ char **OS_GetElements(const OS_XML *_lxml, const char **element_name)
  */
 static char **_GetElements(const OS_XML *_lxml, const char **element_name,int type)
 {
-    int i=0,j=0,k=0,matched=0,ready=0;
+    int i=0,j=0,matched=0,ready=0;
+    unsigned int k = 0;
     char **ret=NULL;
 
     if((type == XML_ELEM) && (element_name == NULL))
@@ -129,7 +130,7 @@ static char **_GetElements(const OS_XML *_lxml, const char **element_name,int ty
                     ((type == XML_ELEM)&&(_lxml->rl[i] == j)&&
                      (_lxml->el[i] != NULL)))
             {
-                int el_size = strlen(_lxml->el[i])+1;
+                size_t el_size = strlen(_lxml->el[i])+1;
                 ret = (char**)realloc(ret,(k+1)*sizeof(char *));
                 if(ret == NULL)
                     return(NULL);
@@ -259,7 +260,7 @@ char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
 
     if(ret[0] != NULL)
     {
-        int retsize= strlen(ret[0])+1;
+        size_t retsize= strlen(ret[0])+1;
         if((retsize < XML_MAXSIZE) && (retsize > 0))
         {
             uniqret = (char *)calloc(retsize,sizeof(char));
@@ -285,7 +286,8 @@ char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
  */
 static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const char *attr)
 {
-    int i = 0,j = 0,k = 0,matched = 0;
+    int i = 0,j = 0,matched = 0;
+    unsigned int k = 0;
     char **ret = NULL;
 
     /* Element name can not be null. */

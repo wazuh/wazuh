@@ -196,7 +196,7 @@ static int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
     unsigned int _currentlycont = 0;
     short int location = -1;
 
-    char prevv = 0;
+    int prevv = 0;
     char elem[XML_MAXSIZE +1];
     char cont[XML_MAXSIZE +1];
     char closedelem[XML_MAXSIZE +1];
@@ -344,11 +344,11 @@ static int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
         else
         {
             if(location == 0)
-                elem[count++] = c;
+                elem[count++] = (char) c;
             else if(location == 1)
-                cont[count++] = c;
+                cont[count++] = (char) c;
             else if(location == 2)
-                closedelem[count++] = c;
+                closedelem[count++] = (char) c;
 
             if((_R_CONFS == c) && (prevv != 0))
             {
@@ -510,9 +510,9 @@ static int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
             return(-1);
         }
         else if(location == 0)
-            attr[count++]=c;
+            attr[count++] = (char) c;
         else if(location == 1)
-            value[count++]=c;
+            value[count++] = (char) c;
 
     }
 
