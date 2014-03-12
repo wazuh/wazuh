@@ -21,7 +21,6 @@
 typedef struct _xml_node
 {
     int key;
-    int line;
     char *element;
     char *content;
     char **attributes;
