@@ -45,10 +45,10 @@ typedef struct _OS_XML
 typedef xml_node ** XML_NODE;
 
 /* Start the XML structure reading a file */
-int OS_ReadXML(const char *file, OS_XML *lxml);
+int OS_ReadXML(const char *file, OS_XML *lxml) __attribute__((nonnull));
 
 /* Clear the XML strucute memory */
-void OS_ClearXML(OS_XML *_lxml);
+void OS_ClearXML(OS_XML *_lxml) __attribute__((nonnull));
 
 /* clear a node */
 void OS_ClearNode(xml_node **node);
@@ -57,35 +57,35 @@ void OS_ClearNode(xml_node **node);
 /* Functions to read the XML */
 
 /* Return 1 if element_name is a root element */
-unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name);
+unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name) __attribute__((nonnull(1)));
 
 /* Return 1 if the element_name exists */
-unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name);
+unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
 
 /* Return the elements "children" of the element_name */
-char **OS_GetElements(const OS_XML *_lxml, const char **element_name);
+char **OS_GetElements(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
 
 /* Return the elements "children" of the element_name */
-xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node);
+xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node) __attribute__((nonnull(1)));
 
 /* Return the attributes of the element name */
-char **OS_GetAttributes(const OS_XML *_lxml, const char **element_name);
+char **OS_GetAttributes(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
 
 /* Return one value from element_name */
-char *OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name);
+char *OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
 
 /* Return an array with the content of all entries of element_name */
-char **OS_GetElementContent(OS_XML *_lxml, const char **element_name);
+char **OS_GetElementContent(OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
 
 /* Return an array with the contents of an element_nane */
-char **OS_GetContents(OS_XML *_lxml, const char **element_name);
+char **OS_GetContents(OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
 
 /* Return the value of a specific attribute of the element_name */
 char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
-		const char *attribute_name);
+		const char *attribute_name) __attribute__((nonnull(1)));
 
 /* Apply the variables to the xml */
-int OS_ApplyVariables(OS_XML *_lxml);
+int OS_ApplyVariables(OS_XML *_lxml) __attribute__((nonnull));
 
 /* Error from writer */
 #define XMLW_ERROR              006
@@ -96,7 +96,7 @@ int OS_ApplyVariables(OS_XML *_lxml);
  * Write an XML file, based on the input and values to change.
  */
 int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
-		const char *oldval, const char *newval);
+		const char *oldval, const char *newval) __attribute__((nonnull(1,2)));
 
 #endif /* __OS_XML_H */
 

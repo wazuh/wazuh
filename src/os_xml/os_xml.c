@@ -22,14 +22,14 @@
 
 
 /* Internal functions */
-static int _oscomment(FILE *fp);
-static int _writecontent(const char *str, size_t size, unsigned int parent, OS_XML *_lxml);
+static int _oscomment(FILE *fp) __attribute__((nonnull));
+static int _writecontent(const char *str, size_t size, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _writememory(const char *str, short int type, size_t size,
-                                        unsigned int parent, OS_XML *_lxml);
-static int _xml_fgetc(FILE *fp);
-static int _ReadElem(FILE *fp, unsigned int position, unsigned int parent, OS_XML *_lxml);
-static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml);
-static void xml_error(OS_XML *_lxml, const char *msg,...) __attribute__((format(printf, 2, 3)));
+                                        unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
+static int _xml_fgetc(FILE *fp) __attribute__((nonnull));
+static int _ReadElem(FILE *fp, unsigned int position, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
+static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml) __attribute__((nonnull));
+static void xml_error(OS_XML *_lxml, const char *msg,...) __attribute__((format(printf, 2, 3), nonnull));
 
 /* Currently line */
 static unsigned int _line;

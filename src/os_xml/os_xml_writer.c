@@ -21,10 +21,10 @@
 #include "os_xml_internal.h"
 
 /* Internal functions */
-static int _oswcomment(FILE *fp_in, FILE *fp_out);
+static int _oswcomment(FILE *fp_in, FILE *fp_out) __attribute__((nonnull));
 static int _WReadElem(FILE *fp_in, FILE *fp_out, unsigned int position, unsigned int parent,
-		const char **node, const char *value, unsigned int node_pos);
-static int _xml_wfgetc(FILE *fp_in, FILE *fp_out);
+		const char **node, const char *value, unsigned int node_pos) __attribute__((nonnull));
+static int _xml_wfgetc(FILE *fp_in, FILE *fp_out) __attribute__((nonnull));
 
 /* Local fgetc */
 static int _xml_wfgetc(FILE *fp_in, FILE *fp_out)

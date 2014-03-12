@@ -22,8 +22,8 @@
 
 
 /* Internal functions */
-static char **_GetElements(const OS_XML *_lxml, const char **element_name,int type);
-static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const char *attr);
+static char **_GetElements(const OS_XML *_lxml, const char **element_name,int type) __attribute__((nonnull(1)));
+static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const char *attr) __attribute__((nonnull(1)));
 
 
 /* OS_ElementExist: v1.0: 2005/02/26
@@ -34,7 +34,7 @@ unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name)
 {
     unsigned int i=0,j=0,matched=0,totalmatch=0;
 
-    if(element_name == NULL)
+    if(element_name == NULL || element_name[0] == NULL)
         return(0);
 
     for(i=0,j=0;i<_lxml->cur;i++)
@@ -350,7 +350,7 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
 
 
         /* If the element name matches what we are looking for. */
-        else if(strcmp(_lxml->el[i], element_name[j]) == 0)
+        else if(element_name[j] != NULL && strcmp(_lxml->el[i], element_name[j]) == 0)
         {
             j++;
             matched = 1;
