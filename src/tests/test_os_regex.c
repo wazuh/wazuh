@@ -49,7 +49,7 @@ START_TEST(test_success_match1)
     {"^bin$|^shell$", "shell", ""},
     {"^bin$|^shell$|^ftp$", "shell", ""},
     {"^bin$|^shell$|^ftp$", "ftp", ""},
-    {NULL, NULL}
+    {NULL, NULL, NULL}
   };
 
   for(i=0; tests[i][0] != NULL ;i++){
@@ -85,7 +85,66 @@ START_TEST(test_fail_match1)
 }
 END_TEST
 
+START_TEST(test_success_regex1)
+{
 
+  int i;
+  char *tests[][3] = {
+    {"\\s+123", "  123", ""},
+    {"\\s*123", "123", ""},
+    {"\\s123", " 123", ""},
+    {"\\w+\\s+\\w+", "a 1", ""},
+    {"\\w+\\d+\\w+\\s+", "ab12fb12fd12 ", ""},
+    {"^\\s*\\w\\s*\\w+", "a   l a  a", ""},
+    {"\\w+\\s+\\w+\\d+\\s$", "a aa11 ", ""},
+    {"^su\\S*: BAD su", "su: BAD SU dcid to root on /dev/ttyp0", ""},
+    {"^su\\s*: BAD su", "su: BAD SU dcid to root on /dev/ttyp0", ""},
+    {"^abc\\sabc", "abc abcd", ""},
+    {"^abc\\s\\s*abc", "abc abcd", ""},
+    {"^\\s+\\sl", "     lala", ""},
+    {"^\\s*\\sl", "     lala", ""},
+    {"^\\s\\s+l", "     lala", ""},
+    {"^\\s+\\s l", "     lala", ""},
+    {"^\\s*\\s lal\\w$", "  lala", ""},
+    {"test123test\\d+$", "test123test123", ""},
+    {"^kernel: \\S+ \\.+ SRC=\\S+ DST=\\S+ \\.+ PROTO=\\w+ SPT=\\d+ DPT=\\d+ ", "kernel: IPTABLE IN=eth0 OUT= MAC=ff:ff:ff:ff:ff:ff:00:03:93:db:2e:b4:08:00 SRC=10.4.11.40 DST=255.255.255.255 LEN=180 TOS=0x00 PREC=0x00 TTL=64 ID=4753 PROTO=UDP SPT=49320 DPT=2222 LEN=160", ""},
+    {"test (\\w+)la", "test abclala", ""},
+    {"(\\w+) (\\w+)", "wofl wofl", ""},
+    {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:469:3] ICMP PING NMAP [Classification: Attempted Information Leak] [Priority: 2]: {ICMP} 10.4.12.26 -> 10.4.10.231", ""},
+    {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:408:5] ICMP Echo Reply [Classification: Misc Activity] [Priority: 3]: {ICMP} 10.4.10.231 -> 10.4.12.26", ""},
+    {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:1420:11] SNMP trap tcp [Classification: Attempted Information Leak] [Priority: 2]: {TCP} 10.4.12.26:37020 -> 10.4.10.231:162", ""},
+    {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:1420:11] SNMP trap tcp [Classification: Attempted Information Leak] [Priority: 2]: {TCP} 10.4.12.26:37021 -> 10.4.10.231:162", ""},
+    {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:590:12] RPC portmap ypserv request UDP [Classification: Decode of an RPC Query] [Priority: 2]: {UDP} 10.4.11.94:669 -> 10.4.3.20:111", ""},
+    {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:590:12] RPC portmap ypserv request UDP [Classification: Decode of an RPC Query] [Priority: 2]: {UDP} 10.4.11.94:670 -> 10.4.3.20:111", ""},
+    {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:1421:11] SNMP AgentX/tcp request [Classification: Attempted Information Leak] [Priority: 2]: {TCP} 10.4.12.26:37020 -> 10.4.10.231:705", ""}
+  };
+
+  for(i=0; tests[i][0] != NULL ;i++){
+    ck_assert_msg(OS_Regex(tests[i][0],tests[i][1]), "%s should have OS_Regex true with %s: Ref: %s", tests[i][0], tests[i][1], tests[i][2]); 
+  }
+}
+END_TEST
+
+START_TEST(test_fail_regex1)
+{
+
+  int i;
+  char *tests[][3] = {
+    {"\\w+\\s+\\w+\\d+\\s$", "a aa11  ", ""}, 
+    {"^\\s+\\s     l", "     lala", ""}, 
+    {"test123test\\d+", "test123test", ""}, 
+    {"test123test\\d+$", "test123test", ""}, 
+    {"(lalala", "lalala", ""}, 
+    {"test123(\\d)", "test123a", ""}, 
+    {"\\(test)", "test", ""}, 
+    {"(\\w+)(\\d+)", "1 1", ""}, 
+  };
+
+  for(i=0; tests[i][0] != NULL ;i++){
+    ck_assert_msg(!OS_Regex(tests[i][0],tests[i][1]), "%s should have OS_Regex false with %s: Ref: %s", tests[i][0], tests[i][1], tests[i][2]); 
+  }
+}
+END_TEST
 Suite *test_suite(void)
 {
 	Suite *s = suite_create("os_regex");
@@ -96,6 +155,9 @@ Suite *test_suite(void)
 
 	tcase_add_test(tc_match, test_success_match1);
 	tcase_add_test(tc_match, test_fail_match1);
+
+  tcase_add_test(tc_regex, test_success_regex1);
+  tcase_add_test(tc_regex, test_fail_regex1);
 
 	suite_add_tcase(s, tc_match);
 	suite_add_tcase(s, tc_regex);
