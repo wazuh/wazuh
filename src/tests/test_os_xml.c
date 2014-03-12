@@ -220,6 +220,8 @@ START_TEST(test_invalidfile)
 	ck_assert_int_ne(OS_ReadXML("invalid_file.inv", &xml), 0);
 	ck_assert_str_eq(xml.err, "XMLERR: File 'invalid_file.inv' not found.");
 	ck_assert_int_eq(xml.err_line, 0);
+
+	OS_ClearXML(&xml);
 }
 END_TEST
 
@@ -232,6 +234,7 @@ START_TEST(test_unclosednode)
 	ck_assert_str_eq(xml.err, "XML ERR: End of file and some elements were not closed");
 	ck_assert_int_eq(xml.err_line, 1);
 
+	OS_ClearXML(&xml);
 	unlink(xml_file_name);
 }
 END_TEST
@@ -273,6 +276,7 @@ START_TEST(test_unclosedattribute)
 	ck_assert_str_eq(xml.err, "XMLERR: Attribute 'attr' not closed.");
 	ck_assert_int_eq(xml.err_line, 1);
 
+	OS_ClearXML(&xml);
 	unlink(xml_file_name);
 }
 END_TEST
@@ -286,6 +290,7 @@ START_TEST(test_unquotedattribute)
 	ck_assert_str_eq(xml.err, "XMLERR: Attribute 'attr' not followed by a \" or '.");
 	ck_assert_int_eq(xml.err_line, 1);
 
+	OS_ClearXML(&xml);
 	unlink(xml_file_name);
 }
 END_TEST
@@ -299,6 +304,7 @@ START_TEST(test_infiniteattribute)
 	ck_assert_str_eq(xml.err, "XMLERR: End of file while reading an attribute.");
 	ck_assert_int_eq(xml.err_line, 1);
 
+	OS_ClearXML(&xml);
 	unlink(xml_file_name);
 }
 END_TEST

@@ -110,24 +110,25 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
     unsigned int i;
     FILE *fp;
 
+    /* init xml strcuture */
+    _lxml->cur = 0;
+	_lxml->fol = 0;
+	_lxml->el = NULL;
+	_lxml->ct = NULL;
+	_lxml->tp = NULL;
+	_lxml->rl = NULL;
+	_lxml->ck = NULL;
+	_lxml->ln = NULL;
+
+	_lxml->err_line = 0;
+	memset(_lxml->err,'\0',128);
+
     fp = fopen(file,"r");
     if(!fp)
     {
         xml_error(_lxml, "XMLERR: File '%s' not found.",file);
         return(-2);
     }
-
-    _lxml->cur = 0;
-    _lxml->fol = 0;
-    _lxml->el = NULL;
-    _lxml->ct = NULL;
-    _lxml->tp = NULL;
-    _lxml->rl = NULL;
-    _lxml->ck = NULL;
-    _lxml->ln = NULL;
-
-    _lxml->err_line = 0;
-    memset(_lxml->err,'\0',128);
 
     /* Zeroing the line */
     _line = 1;
@@ -374,6 +375,7 @@ static int _writememory(const char *str, short int type, size_t size,
 
     /* Allocating for the content */
     _lxml->ct = (char **)realloc(_lxml->ct,(_lxml->cur+1)*sizeof(char *));
+    _lxml->ct[_lxml->cur] = NULL;
 
     /* Allocating for the type */
     _lxml->tp = (int *) realloc(_lxml->tp,(_lxml->cur+1)*sizeof(int));
