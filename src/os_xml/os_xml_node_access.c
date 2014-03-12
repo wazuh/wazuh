@@ -78,7 +78,7 @@ void OS_ClearNode(xml_node **node)
 /** xml_node **OS_GetElementsbyNode(OS_XML *_lxml, xml_node *node)
  * Get the elements by node.
  */
-xml_node **OS_GetElementsbyNode(OS_XML *_lxml, xml_node *node)
+xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
 {
     int i,j,k=0;
     xml_node **ret=NULL;

@@ -35,7 +35,7 @@
 /* Internal functions */
 static int _oswcomment(FILE *fp_in, FILE *fp_out);
 static int _WReadElem(FILE *fp_in, FILE *fp_out, int position, int parent,
-               char **node, char *value, int node_pos);
+		const char **node, const char *value, int node_pos);
 static int _xml_wfgetc(FILE *fp_in, FILE *fp_out);
 
 
@@ -68,8 +68,8 @@ static int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
 /* OS_WriteXML
  * Write an XML file, based on the input and values to change.
  */
-int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
-                char *oldval, char *newval,  int type)
+int OS_WriteXML(const char *infile, const char *outfile, const char **nodes, const char *attr,
+		const char *oldval, const char *newval,  int type)
 {
     int r = 0;
     int node_pos = 0;
@@ -204,7 +204,7 @@ static int _oswcomment(FILE *fp_in, FILE *fp_out)
 
 
 static int _WReadElem(FILE *fp_in, FILE *fp_out,
-              int position, int parent, char **nodes, char *val, int node_pos)
+              int position, int parent, const char **nodes, const char *val, int node_pos)
 {
     int c;
     int ret_code = 0;

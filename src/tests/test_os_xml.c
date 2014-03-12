@@ -373,8 +373,8 @@ START_TEST(test_osgetonecontentforelement)
 	OS_XML xml;
 	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
 	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
-	char *xml_path2[] = { "root", "child", NULL };
-	char *xml_path3[] = { "root", "child2", NULL };
+	const char *xml_path2[] = { "root", "child", NULL };
+	const char *xml_path3[] = { "root", "child2", NULL };
 	ck_assert_str_eq(OS_GetOneContentforElement(&xml, xml_path2), "test");
 	ck_assert_ptr_eq(OS_GetOneContentforElement(&xml, xml_path3), NULL);
 
@@ -390,7 +390,7 @@ START_TEST(test_oswritexml)
 	char xml_out_file_name[256];
 	create_xml_file("", xml_out_file_name, 256);
 
-	char *xml_path[] = { "root", "child", NULL };
+	const char *xml_path[] = { "root", "child", NULL };
 	ck_assert_int_eq(OS_WriteXML(xml_in_file_name, xml_out_file_name, xml_path, NULL, "test", "test_new", 0), 0);
 
 	OS_XML xml;
@@ -411,7 +411,7 @@ START_TEST(test_osgetattributecontent)
 	OS_XML xml;
 	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
 	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
-	char *xml_path[] = { "root", NULL };
+	const char *xml_path[] = { "root", NULL };
 	ck_assert_str_eq(OS_GetAttributeContent(&xml, xml_path, "attr"), "value");
 	ck_assert_str_eq(OS_GetAttributeContent(&xml, xml_path, "attr2"), "");
 
@@ -427,7 +427,7 @@ START_TEST(test_osgetcontents)
 	OS_XML xml;
 	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
 	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
-	char *xml_path[] = { "root", NULL };
+	const char *xml_path[] = { "root", NULL };
 	char **content;
 	ck_assert_ptr_ne(content = OS_GetContents(&xml, xml_path), NULL);
 	ck_assert_str_eq(content[0], "value");
@@ -445,7 +445,7 @@ START_TEST(test_osgetelementcontent)
 	OS_XML xml;
 	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
 	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
-	char *xml_path[] = { "root", NULL };
+	const char *xml_path[] = { "root", NULL };
 	char **content;
 	ck_assert_ptr_ne(content = OS_GetElementContent(&xml, xml_path), NULL);
 	ck_assert_str_eq(content[0], "value");
@@ -463,7 +463,7 @@ START_TEST(test_osgetelements)
 	OS_XML xml;
 	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
 	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
-	char *xml_path[] = { "root", NULL };
+	const char *xml_path[] = { "root", NULL };
 	char **content;
 	ck_assert_ptr_ne(content = OS_GetElements(&xml, xml_path), NULL);
 	ck_assert_str_eq(content[0], "child1");
@@ -482,7 +482,7 @@ START_TEST(test_osgetattributes)
 	OS_XML xml;
 	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
 	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
-	char *xml_path[] = { "root", NULL };
+	const char *xml_path[] = { "root", NULL };
 	char **content;
 	ck_assert_ptr_ne(content = OS_GetAttributes(&xml, xml_path), NULL);
 	ck_assert_str_eq(content[0], "attr1");

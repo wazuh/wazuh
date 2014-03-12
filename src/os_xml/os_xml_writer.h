@@ -36,8 +36,8 @@
 /* OS_WriteXML
  * Write an XML file, based on the input and values to change.
  */
-int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
-                char *oldval, char *newval,  int type);
+int OS_WriteXML(const char *infile, const char *outfile, const char **nodes, const char *attr,
+		const char *oldval, const char *newval,  int type);
 
 
 #endif

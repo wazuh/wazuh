@@ -31,8 +31,8 @@
 
 /* Internal functions */
 static int _oscomment(FILE *fp);
-static int _writecontent(char *str, unsigned int size, int parent, OS_XML *_lxml);
-static int _writememory(char *str, short int type, unsigned int size,
+static int _writecontent(const char *str, unsigned int size, int parent, OS_XML *_lxml);
+static int _writememory(const char *str, short int type, unsigned int size,
                                         int parent, OS_XML *_lxml);
 static int _xml_fgetc(FILE *fp);
 static int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml);
@@ -114,7 +114,7 @@ void OS_ClearXML(OS_XML *_lxml)
 /* OS_ReadXML v0.1
  * Read a XML file and generate the necessary structs.
  */
-int OS_ReadXML(char *file, OS_XML *_lxml)
+int OS_ReadXML(const char *file, OS_XML *_lxml)
 {
     int r,i;
     FILE *fp;
@@ -373,7 +373,7 @@ static int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
     return(-1);
 }
 
-static int _writememory(char *str, short int type, unsigned int size,
+static int _writememory(const char *str, short int type, unsigned int size,
                                         int parent, OS_XML *_lxml)
 {
     /* Allocating for the element */
@@ -414,7 +414,7 @@ static int _writememory(char *str, short int type, unsigned int size,
     return(0);
 }
 
-static int _writecontent(char *str, unsigned int size, int parent, OS_XML *_lxml)
+static int _writecontent(const char *str, unsigned int size, int parent, OS_XML *_lxml)
 {
     _lxml->ct[parent]=(char *)calloc(size,sizeof(char));
     strncpy(_lxml->ct[parent],str,size-1);

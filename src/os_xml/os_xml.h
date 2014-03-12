@@ -58,7 +58,7 @@ typedef struct _OS_XML
 typedef xml_node ** XML_NODE;
 
 /* Start the XML structure reading a file */
-int OS_ReadXML(char *file, OS_XML *lxml);
+int OS_ReadXML(const char *file, OS_XML *lxml);
 
 /* Clear the XML strucute memory */
 void OS_ClearXML(OS_XML *_lxml);
@@ -70,32 +70,32 @@ void OS_ClearNode(xml_node **node);
 /* Functions to read the XML */
 
 /* Return 1 if element_name is a root element */
-int OS_RootElementExist(OS_XML *_lxml, char *element_name);
+int OS_RootElementExist(const OS_XML *_lxml, const char *element_name);
 
 /* Return 1 if the element_name exists */
-int OS_ElementExist(OS_XML *_lxml, char **element_name);
+int OS_ElementExist(const OS_XML *_lxml, const char **element_name);
 
 /* Return the elements "children" of the element_name */
-char **OS_GetElements(OS_XML *_lxml, char **element_name);
+char **OS_GetElements(const OS_XML *_lxml, const char **element_name);
 
 /* Return the elements "children" of the element_name */
-xml_node **OS_GetElementsbyNode(OS_XML *_lxml, xml_node *node);
+xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node);
 
 /* Return the attributes of the element name */
-char **OS_GetAttributes(OS_XML *_lxml, char **element_name);
+char **OS_GetAttributes(const OS_XML *_lxml, const char **element_name);
 
 /* Return one value from element_name */
-char *OS_GetOneContentforElement(OS_XML *_lxml, char **element_name);
+char *OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name);
 
 /* Return an array with the content of all entries of element_name */
-char **OS_GetElementContent(OS_XML *_lxml, char **element_name);
+char **OS_GetElementContent(OS_XML *_lxml, const char **element_name);
 
 /* Return an array with the contents of an element_nane */
-char **OS_GetContents(OS_XML *_lxml, char **element_name);
+char **OS_GetContents(OS_XML *_lxml, const char **element_name);
 
 /* Return the value of a specific attribute of the element_name */
-char *OS_GetAttributeContent(OS_XML *_lxml, char **element_name,
-        char *attribute_name);
+char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
+		const char *attribute_name);
 
 /* Apply the variables to the xml */
 int OS_ApplyVariables(OS_XML *_lxml);

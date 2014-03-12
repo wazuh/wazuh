@@ -21,15 +21,15 @@
 
 
 /* Internal functions */
-static char **_GetElements(OS_XML *_lxml, char **element_name,int type);
-static char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr);
+static char **_GetElements(const OS_XML *_lxml, const char **element_name,int type);
+static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const char *attr);
 
 
 /* OS_ElementExist: v1.0: 2005/02/26
  * Check if a element exists
  * The element_name must be NULL terminated (last char)
  */
-int OS_ElementExist(OS_XML *_lxml, char **element_name)
+int OS_ElementExist(const OS_XML *_lxml, const char **element_name)
 {
     int i=0,j=0,matched=0,totalmatch=0;
 
@@ -68,9 +68,9 @@ int OS_ElementExist(OS_XML *_lxml, char **element_name)
 /* RootElementExist: v1.0: 2005/02/26
  * Check if a root element exists
  */
-int OS_RootElementExist(OS_XML *_lxml, char *element_name)
+int OS_RootElementExist(const OS_XML *_lxml, const char *element_name)
 {
-    char *(elements[])={element_name,NULL};
+    const char *(elements[])={element_name,NULL};
     return(OS_ElementExist(_lxml,elements));
 }
 
@@ -78,7 +78,7 @@ int OS_RootElementExist(OS_XML *_lxml, char *element_name)
 /* GetAttributes: v.0.1: 2005/03/01
  * Get the attributes of the element_name
  */
-char **OS_GetAttributes(OS_XML *_lxml, char **element_name)
+char **OS_GetAttributes(const OS_XML *_lxml, const char **element_name)
 {
     return(_GetElements(_lxml,element_name,XML_ATTR));
 }
@@ -89,7 +89,7 @@ char **OS_GetAttributes(OS_XML *_lxml, char **element_name)
 /* GetElements: v0.1: 2005/03/01
  * Get the elements children of the element_name
  */
-char **OS_GetElements(OS_XML *_lxml, char **element_name)
+char **OS_GetElements(const OS_XML *_lxml, const char **element_name)
 {
     return(_GetElements(_lxml, element_name,XML_ELEM));
 }
@@ -100,7 +100,7 @@ char **OS_GetElements(OS_XML *_lxml, char **element_name)
 /* _GetElements: v0.1: 2005/03/01
  * Get the elements or attributes (internal use)
  */
-static char **_GetElements(OS_XML *_lxml, char **element_name,int type)
+static char **_GetElements(const OS_XML *_lxml, const char **element_name,int type)
 {
     int i=0,j=0,k=0,matched=0,ready=0,size=0;
     char **ret=NULL;
@@ -184,7 +184,7 @@ static char **_GetElements(OS_XML *_lxml, char **element_name,int type)
 /* OS_GetOneContentforElement: v0.1: 2005/03/01
  * Get one value for a specific element.
  */
-char *OS_GetOneContentforElement(OS_XML *_lxml, char **element_name)
+char *OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name)
 {
     int i = 1;
     char *uniqret = NULL;
@@ -218,7 +218,7 @@ char *OS_GetOneContentforElement(OS_XML *_lxml, char **element_name)
 /* OS_GetElementContent: v0.1: 2005/03/01
  * Get all values for a specific element
  */
-char **OS_GetElementContent(OS_XML *_lxml, char **element_name)
+char **OS_GetElementContent(OS_XML *_lxml, const char **element_name)
 {
     _lxml->fol=0;
     return(_GetElementContent(_lxml, element_name, NULL));
@@ -229,7 +229,7 @@ char **OS_GetElementContent(OS_XML *_lxml, char **element_name)
  * Get the contents for a specific element
  * Use element_name = NULL to start the state
  */
-char **OS_GetContents(OS_XML *_lxml, char **element_name)
+char **OS_GetContents(OS_XML *_lxml, const char **element_name)
 {
     if(element_name == NULL)
     {
@@ -244,8 +244,8 @@ char **OS_GetContents(OS_XML *_lxml, char **element_name)
 /* OS_GetAttributeContent: v0.1: 2005/03/01
  * Get one value for a specific attribute
  */
-char *OS_GetAttributeContent(OS_XML *_lxml, char **element_name,
-	                         char *attribute_name)
+char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
+		const char *attribute_name)
 {
     int success = 0;
     char *uniqret = NULL;
@@ -287,7 +287,7 @@ char *OS_GetAttributeContent(OS_XML *_lxml, char **element_name,
 /* _GetElementContent: v0.1: 2005/03/01
  *  Get the values for an element or attribute
  */
-static char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
+static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const char *attr)
 {
     int i = 0,j = 0,k = 0,matched = 0;
     char **ret = NULL;
