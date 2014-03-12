@@ -21,12 +21,7 @@
 
 #define _R_CONFS 	'<'
 #define _R_CONFE 	'>'
-#define _R_EQUAL 	'='
 #define _R_COM   	'!'
-#define _R_VAR      '$'
-
-#define OPEN            51
-#define CLOSE           52
 
 #define LEOF		-2
 
@@ -514,14 +509,11 @@ static int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
                 return(_getattributes(fp,parent,_lxml));
             else if(c == _R_CONFE)
                 return(0);
-            else
-            {
-                xml_error(_lxml,
-                        "XMLERR: Bad attribute closing for '%s'='%s'.",
-                        attr,value);
-                return(-1);
-            }
-            count = 0;
+
+            xml_error(_lxml,
+                "XMLERR: Bad attribute closing for '%s'='%s'.",
+                attr,value);
+            return(-1);
         }
         else if(location == 0)
             attr[count++]=c;

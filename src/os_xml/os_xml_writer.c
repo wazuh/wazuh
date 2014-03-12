@@ -22,14 +22,7 @@
 
 #define _R_CONFS 	'<'
 #define _R_CONFE 	'>'
-#define _R_EQUAL 	'='
 #define _R_COM   	'!'
-#define _R_VAR      '$'
-
-#define OPEN            51
-#define CLOSE           52
-
-#define LEOF		-2
 
 /* Internal functions */
 static int _oswcomment(FILE *fp_in, FILE *fp_out);
