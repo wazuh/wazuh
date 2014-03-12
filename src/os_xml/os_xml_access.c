@@ -105,6 +105,7 @@ static char **_GetElements(const OS_XML *_lxml, const char **element_name,int ty
 {
     unsigned i=0,j=0,k=0,matched=0,ready=0;
     char **ret=NULL;
+    char **ret_tmp=NULL;
 
     if((type == XML_ELEM) && (element_name == NULL))
         ready=1;
@@ -130,14 +131,15 @@ static char **_GetElements(const OS_XML *_lxml, const char **element_name,int ty
                      (_lxml->el[i] != NULL)))
             {
                 size_t el_size = strlen(_lxml->el[i])+1;
-                ret = (char**)realloc(ret,(k+1)*sizeof(char *));
-                if(ret == NULL)
-                    return(NULL);
+                ret_tmp = (char**)realloc(ret,(k+2)*sizeof(char *));
+                if(ret_tmp == NULL)
+                    goto fail;
+                ret = ret_tmp;
+                ret[k+1] = NULL;
                 ret[k]=(char*)calloc(el_size,sizeof(char));
                 if(ret[k] == NULL)
                 {
-                    free(ret);
-                    return(NULL);
+                    goto fail;
                 }
                 strncpy(ret[k],_lxml->el[i],el_size-1);
                 k++;
@@ -169,14 +171,18 @@ static char **_GetElements(const OS_XML *_lxml, const char **element_name,int ty
             }
         }
     }
-    if(ret ==NULL)
-        return(NULL);
 
-    ret = (char**)realloc(ret,(k+1)*sizeof(char *));
-    if(ret == NULL)
-        return(NULL);
-    ret[k]=NULL;
     return(ret);
+
+    fail:
+    i = 0;
+    if(ret)
+    {
+    	while(ret[i])
+    		free(ret[i++]);
+    	free(ret);
+    }
+    return (NULL);
 }
 
 
@@ -259,27 +265,16 @@ char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
 
     if(ret[0] != NULL)
     {
-        size_t retsize= strlen(ret[0])+1;
-        if((retsize < XML_MAXSIZE) && (retsize > 0))
-        {
-            uniqret = (char *)calloc(retsize,sizeof(char));
-            if(uniqret != NULL)
-            {
-                strncpy(uniqret, ret[0], retsize-1);
-            }
-        }
+    	uniqret = ret[0];
     }
-    int i = 0;
+    int i = 1;
     while(ret[i] != NULL)
     {
         free(ret[i++]);
     }
     free(ret);
 
-    if(uniqret)
-        return(uniqret);
-
-    return(NULL);
+    return(uniqret);
 }
 
 
@@ -291,6 +286,7 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
     int i = 0,j = 0,matched = 0;
     unsigned int k = 0;
     char **ret = NULL;
+    char **ret_tmp;
 
     /* Element name can not be null. */
     if(element_name == NULL)
@@ -329,7 +325,7 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
 
         /* Setting maximum depth of 16. */
         if(j > 16)
-            return(NULL);
+            goto fail;
 
 
         /* If the type is not an element and the relation doesn't match,
@@ -384,19 +380,19 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
                 if(_lxml->ct[i] != NULL)
                 {
                     /* Increasing the size of the array. */
-                    ret = (char**) realloc(ret,(k+2) * sizeof(char*));
-                    if(ret == NULL)
+                    ret_tmp = (char**) realloc(ret,(k+2) * sizeof(char*));
+                    if(ret_tmp == NULL)
                     {
-                        return(NULL);
+                       goto fail;
                     }
+                    ret = ret_tmp;
 
                     /* Adding new entry. */
                     ret[k] = strdup(_lxml->ct[i]);
                     ret[k + 1] = NULL;
                     if(ret[k] == NULL)
                     {
-                        free(ret);
-                        return(NULL);
+                        goto fail;
                     }
 
                     matched = 1;
@@ -430,10 +426,17 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
         }
     }
 
-    if(ret == NULL)
-        return(NULL);
-
     return(ret);
+
+    fail:
+    i = 0;
+    if(ret)
+    {
+		while(ret[i])
+			free(ret[i++]);
+		free(ret);
+    }
+	return (NULL);
 }
 
 /* EOF */
