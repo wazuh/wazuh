@@ -365,17 +365,17 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
                 /* If we have an attribute to match. */
                 if(attr != NULL)
                 {
-                    int k=0;
-                    for(k=i+1; k<_lxml->cur; k++)
+                    int l=0;
+                    for(l=i+1; l<_lxml->cur; l++)
                     {
-                        if(_lxml->tp[k] == XML_ELEM)
+                        if(_lxml->tp[l] == XML_ELEM)
                         {
                             break;
                         }
 
-                        if(strcmp(attr, _lxml->el[k]) == 0)
+                        if(strcmp(attr, _lxml->el[l]) == 0)
                         {
-                            i = k;
+                            i = l;
                             break;
                         }
                     }

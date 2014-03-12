@@ -68,8 +68,8 @@ static int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
 /* OS_WriteXML
  * Write an XML file, based on the input and values to change.
  */
-int OS_WriteXML(const char *infile, const char *outfile, const char **nodes, const char *attr,
-		const char *oldval, const char *newval,  int type)
+int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
+		const char *oldval, const char *newval)
 {
     int r = 0;
     int node_pos = 0;
@@ -111,35 +111,35 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes, con
     /* We didn't find an entry, add at the end. */
     if(!oldval && r == 0)
     {
-        int r = 0;
+        int s = 0;
         int rwidth = 0;
 
         fseek(fp_out, 0, SEEK_END);
         fprintf(fp_out, "\n");
 
         /* Printing each node. */
-        while(nodes[r])
+        while(nodes[s])
         {
-            fprintf(fp_out, "%*c<%s>", rwidth, ' ', nodes[r]);
-            r++;
+            fprintf(fp_out, "%*c<%s>", rwidth, ' ', nodes[s]);
+            s++;
             rwidth += 3;
 
-            if(nodes[r])
+            if(nodes[s])
                 fprintf(fp_out, "\n");
         }
 
         /* Printing val. */
-        r--;
+        s--;
         rwidth -=6;
-        fprintf(fp_out, "%s</%s>\n", newval, nodes[r]);
-        r--;
+        fprintf(fp_out, "%s</%s>\n", newval, nodes[s]);
+        s--;
 
 
         /* Closing each node. */
-        while(r >= 0)
+        while(s >= 0)
         {
-            fprintf(fp_out, "%*c</%s>\n", rwidth, ' ', nodes[r]);
-            r--;
+            fprintf(fp_out, "%*c</%s>\n", rwidth, ' ', nodes[s]);
+            s--;
             rwidth -= 3;
         }
     }

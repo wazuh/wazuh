@@ -385,19 +385,19 @@ static int _writememory(const char *str, short int type, unsigned int size,
     _lxml->ct = (char **)realloc(_lxml->ct,(_lxml->cur+1)*sizeof(char *));
 
     /* Allocating for the type */
-    _lxml->tp = realloc(_lxml->tp,(_lxml->cur+1)*sizeof(int));
+    _lxml->tp = (int *) realloc(_lxml->tp,(_lxml->cur+1)*sizeof(int));
     _lxml->tp[_lxml->cur] = type;
 
     /* Allocating for the relation */
-    _lxml->rl = realloc(_lxml->rl,(_lxml->cur+1)*sizeof(int));
+    _lxml->rl = (int *) realloc(_lxml->rl,(_lxml->cur+1)*sizeof(int));
     _lxml->rl[_lxml->cur] = parent;
 
     /* Allocating for the "check" */
-    _lxml->ck = realloc(_lxml->ck,(_lxml->cur+1)*sizeof(int));
+    _lxml->ck = (int *) realloc(_lxml->ck,(_lxml->cur+1)*sizeof(int));
     _lxml->ck[_lxml->cur] = 0;
 
     /* Allocating for the line */
-    _lxml->ln = realloc(_lxml->ln,(_lxml->cur+1)*sizeof(int));
+    _lxml->ln = (int *) realloc(_lxml->ln,(_lxml->cur+1)*sizeof(int));
     _lxml->ln[_lxml->cur] = _line;
 
     /* Attributes does not need to be closed */

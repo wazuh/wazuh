@@ -84,7 +84,7 @@ static void assert_os_xml_eq_str(OS_XML *xml, const char *xml_str)
 		return;
 	}
 
-	char *buffer = malloc(6144 * sizeof(char));
+	char *buffer = (char *) malloc(6144 * sizeof(char));
 	buffer[0] = '\0';
 	nodecat(node, xml, buffer);
 	OS_ClearNode(node);
@@ -391,7 +391,7 @@ START_TEST(test_oswritexml)
 	create_xml_file("", xml_out_file_name, 256);
 
 	const char *xml_path[] = { "root", "child", NULL };
-	ck_assert_int_eq(OS_WriteXML(xml_in_file_name, xml_out_file_name, xml_path, NULL, "test", "test_new", 0), 0);
+	ck_assert_int_eq(OS_WriteXML(xml_in_file_name, xml_out_file_name, xml_path, "test", "test_new"), 0);
 
 	OS_XML xml;
 	ck_assert_int_eq(OS_ReadXML(xml_out_file_name, &xml), 0);

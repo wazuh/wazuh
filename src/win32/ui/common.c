@@ -305,7 +305,7 @@ int config_read(HWND hwnd)
     }
 
 
-    if(config_inst.agentip == NULL)	
+    if(config_inst.agentip == NULL)
     {
         config_inst.agentid = strdup(ST_NOTSET);
         config_inst.agentname = strdup("Auth key not imported.");
@@ -542,7 +542,7 @@ int set_ossec_server(char *ip, HWND hwnd)
 
     /* Reading the XML. Printing error and line number. */
     if(OS_WriteXML(CONFIG, NEWCONFIG, xml_pt,
-                   NULL, NULL, ip, 0) != 0)
+                   NULL, ip) != 0)
     {
         MessageBox(hwnd, "Unable to set OSSEC Server IP Address.\r\n"
                          "(Internal error on the XML Write).",
