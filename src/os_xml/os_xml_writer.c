@@ -26,11 +26,6 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out, int position, int parent,
 		const char **node, const char *value, int node_pos);
 static int _xml_wfgetc(FILE *fp_in, FILE *fp_out);
 
-
-/* Currently line */
-static int _line;
-
-
 /* Local fgetc */
 static int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
 {
@@ -42,9 +37,6 @@ static int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
     {
         fputc(c, fp_out);
     }
-
-    if(c == '\n') /* add new line */
-        _line++;
 
     return(c);
 }

@@ -32,7 +32,7 @@ static int _getattributes(FILE *fp,int parent,OS_XML *_lxml);
 static void xml_error(OS_XML *_lxml, const char *msg,...) __attribute__((format(printf, 2, 3)));
 
 /* Currently line */
-int _line;
+static int _line;
 
 /* Local fgetc */
 static int _xml_fgetc(FILE *fp)
