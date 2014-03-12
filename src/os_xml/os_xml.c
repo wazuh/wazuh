@@ -35,7 +35,6 @@ static int _writecontent(char *str, unsigned int size, int parent, OS_XML *_lxml
 static int _writememory(char *str, short int type, unsigned int size,
                                         int parent, OS_XML *_lxml);
 static int _xml_fgetc(FILE *fp);
-int _checkmemory(char *str,OS_XML *_lxml);
 static int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml);
 static int _getattributes(FILE *fp,int parent,OS_XML *_lxml);
 static void xml_error(OS_XML *_lxml, const char *msg,...) __attribute__((format(printf, 2, 3)));
@@ -423,25 +422,6 @@ static int _writecontent(char *str, unsigned int size, int parent, OS_XML *_lxml
     return(0);
 }
 
-
-int _checkmemory(char *str,OS_XML *_lxml)
-{
-    int i;
-    for(i=0;i<_lxml->cur;i++)
-    {
-        if(_lxml->ck[i] == 0)
-        {
-            if(strcmp(str,_lxml->el[i]) == 0)
-            {
-                _lxml->ck[i] = 1;
-                return(0);
-            }
-            else
-                continue;
-        }
-    }
-    return(-1);
-}
 
 /* getattributes (Internal function): v0.1: 2005/03/03
  * Read the attributes of an element
