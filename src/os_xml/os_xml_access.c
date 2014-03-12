@@ -269,10 +269,13 @@ char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
             }
         }
     }
-    while(*ret != NULL)
+    int i = 0;
+    while(ret[i] != NULL)
     {
-        free(*ret++);
+        free(ret[i++]);
     }
+    free(ret);
+
     if(uniqret)
         return(uniqret);
 
