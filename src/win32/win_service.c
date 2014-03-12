@@ -146,7 +146,6 @@ int CheckServiceRunning()
 int InstallService(char *path)
 {
     int ret;
-    char buffer[MAX_PATH+1];
 
     SC_HANDLE schSCManager, schService;
     LPCTSTR lpszBinaryPathName = NULL;
@@ -159,10 +158,6 @@ int InstallService(char *path)
         verbose("%s: ERROR: Failure running UninstallService().", ARGV0);
         return(0);
     }
-
-
-    /* Cleaning up some variables */
-    buffer[MAX_PATH] = '\0';
 
 
     /* Executable path -- it must be called with the
