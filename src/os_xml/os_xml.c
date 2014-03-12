@@ -12,9 +12,10 @@
 /* os_xml Library.
  */
 
-
-
-#include "shared.h"
+#include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "os_xml.h"
 

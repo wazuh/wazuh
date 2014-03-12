@@ -14,9 +14,8 @@
  * Available at http://www.ossec.net/
  */
 
-
-
-#include "shared.h"
+#include <stdio.h>
+#include <string.h>
 
 #include "os_xml_writer.h"
 //#include "os_xml.h"
