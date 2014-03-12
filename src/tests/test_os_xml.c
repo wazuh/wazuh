@@ -89,6 +89,8 @@ static void assert_os_xml_eq_str(OS_XML *xml, const char *xml_str)
 	OS_ClearNode(node);
 
 	ck_assert_str_eq(buffer, xml_str);
+
+	free(buffer);
 }
 
 static void assert_os_xml_eq(const char *parse_str, const char *xml_str)
@@ -209,6 +211,7 @@ START_TEST(test_linecounter)
 	ck_assert_int_eq(xml.ln[1], 2);
 	ck_assert_int_eq(xml.ln[2], 3);
 
+	OS_ClearNode(node);
 	OS_ClearXML(&xml);
 	unlink(xml_file_name);
 }
@@ -380,9 +383,11 @@ START_TEST(test_osgetonecontentforelement)
 	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
 	const char *xml_path2[] = { "root", "child", NULL };
 	const char *xml_path3[] = { "root", "child2", NULL };
-	ck_assert_str_eq(OS_GetOneContentforElement(&xml, xml_path2), "test");
+	char *content1;
+	ck_assert_str_eq(content1 = OS_GetOneContentforElement(&xml, xml_path2), "test");
 	ck_assert_ptr_eq(OS_GetOneContentforElement(&xml, xml_path3), NULL);
 
+	free(content1);
 	OS_ClearXML(&xml);
 	unlink(xml_file_name);
 }
@@ -417,9 +422,12 @@ START_TEST(test_osgetattributecontent)
 	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
 	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
 	const char *xml_path[] = { "root", NULL };
-	ck_assert_str_eq(OS_GetAttributeContent(&xml, xml_path, "attr"), "value");
-	ck_assert_str_eq(OS_GetAttributeContent(&xml, xml_path, "attr2"), "");
+	char *content1, *content2;
+	ck_assert_str_eq(content1 = OS_GetAttributeContent(&xml, xml_path, "attr"), "value");
+	ck_assert_str_eq(content2 = OS_GetAttributeContent(&xml, xml_path, "attr2"), "");
 
+	free(content1);
+	free(content2);
 	OS_ClearXML(&xml);
 	unlink(xml_file_name);
 }
@@ -438,6 +446,10 @@ START_TEST(test_osgetcontents)
 	ck_assert_str_eq(content[0], "value");
 	ck_assert_ptr_eq(content[1], NULL);
 
+	int i = 0;
+	while(content[i])
+		free(content[i++]);
+	free(content);
 	OS_ClearXML(&xml);
 	unlink(xml_file_name);
 }
@@ -456,6 +468,10 @@ START_TEST(test_osgetelementcontent)
 	ck_assert_str_eq(content[0], "value");
 	ck_assert_ptr_eq(content[1], NULL);
 
+	int i = 0;
+	while(content[i])
+		free(content[i++]);
+	free(content);
 	OS_ClearXML(&xml);
 	unlink(xml_file_name);
 }
@@ -475,6 +491,10 @@ START_TEST(test_osgetelements)
 	ck_assert_str_eq(content[1], "child2");
 	ck_assert_ptr_eq(content[2], NULL);
 
+	int i = 0;
+	while(content[i])
+		free(content[i++]);
+	free(content);
 	OS_ClearXML(&xml);
 	unlink(xml_file_name);
 }
@@ -494,6 +514,10 @@ START_TEST(test_osgetattributes)
 	ck_assert_str_eq(content[1], "attr2");
 	ck_assert_ptr_eq(content[2], NULL);
 
+	int i = 0;
+	while(content[i])
+		free(content[i++]);
+	free(content);
 	OS_ClearXML(&xml);
 	unlink(xml_file_name);
 }
