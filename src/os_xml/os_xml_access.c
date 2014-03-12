@@ -283,8 +283,8 @@ char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
  */
 static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const char *attr)
 {
-    int i = 0,j = 0,matched = 0;
-    unsigned int k = 0;
+    int i = 0;
+    unsigned int j = 0,k = 0,l = 0,matched = 0;
     char **ret = NULL;
     char **ret_tmp;
 
@@ -292,7 +292,7 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
     if(element_name == NULL)
         return(NULL);
 
-    if(_lxml->fol == _lxml->cur)
+    if(_lxml->fol >= 0 && (unsigned int)_lxml->fol == _lxml->cur)
     {
         _lxml->fol = 0;
         return(NULL);
@@ -313,9 +313,8 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
         i = 0;
     }
 
-
     /* Looping through all nodes */
-    for(j=0; i<_lxml->cur; i++)
+    for(j=0,l=(unsigned int)i; l<_lxml->cur; l++)
     {
         if(element_name[j] == NULL)
         {
@@ -331,16 +330,16 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
         /* If the type is not an element and the relation doesn't match,
          * keep going.
          */
-        if((_lxml->tp[i] != XML_ELEM) || (_lxml->rl[i] != j))
+        if((_lxml->tp[l] != XML_ELEM) || (_lxml->rl[l] != j))
         {
             /* If the node relation is higher than we currently xml
              * node, zero the position and look at it again (i--).
              */
-            if(j > _lxml->rl[i])
+            if(j > _lxml->rl[l])
             {
                 j = 0;
                 matched = 0;
-                i--;
+                l--;
             }
             else
             {
@@ -350,7 +349,7 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
 
 
         /* If the element name matches what we are looking for. */
-        else if(element_name[j] != NULL && strcmp(_lxml->el[i], element_name[j]) == 0)
+        else if(element_name[j] != NULL && strcmp(_lxml->el[l], element_name[j]) == 0)
         {
             j++;
             matched = 1;
@@ -361,23 +360,23 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
                 /* If we have an attribute to match. */
                 if(attr != NULL)
                 {
-                    int l=0;
-                    for(l=i+1; l<_lxml->cur; l++)
+                    unsigned int m=0;
+                    for(m=l+1; m<_lxml->cur; m++)
                     {
-                        if(_lxml->tp[l] == XML_ELEM)
+                        if(_lxml->tp[m] == XML_ELEM)
                         {
                             break;
                         }
 
-                        if(strcmp(attr, _lxml->el[l]) == 0)
+                        if(strcmp(attr, _lxml->el[m]) == 0)
                         {
-                            i = l;
+                            l = m;
                             break;
                         }
                     }
                 }
 
-                if(_lxml->ct[i] != NULL)
+                if(_lxml->ct[l] != NULL)
                 {
                     /* Increasing the size of the array. */
                     ret_tmp = (char**) realloc(ret,(k+2) * sizeof(char*));
@@ -388,7 +387,7 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
                     ret = ret_tmp;
 
                     /* Adding new entry. */
-                    ret[k] = strdup(_lxml->ct[i]);
+                    ret[k] = strdup(_lxml->ct[l]);
                     ret[k + 1] = NULL;
                     if(ret[k] == NULL)
                     {
@@ -405,21 +404,21 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
 
                     else if(_lxml->fol != 0)
                     {
-                        _lxml->fol = i+1;
+                        _lxml->fol = (int) l+1;
                         break;
                     }
                 }
 
                 /* Setting new array pointer. */
-                if((i<_lxml->cur-1) && (_lxml->tp[i+1] == XML_ELEM))
+                if((l<_lxml->cur-1) && (_lxml->tp[l+1] == XML_ELEM))
                 {
-                    j = _lxml->rl[i+1];
+                    j = _lxml->rl[l+1];
                 }
             }
             continue;
         }
 
-        if(j > _lxml->rl[i])
+        if(j > _lxml->rl[l])
         {
             j = 0;
             matched = 0;

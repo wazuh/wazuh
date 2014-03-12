@@ -80,20 +80,19 @@ void OS_ClearNode(xml_node **node)
  */
 xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
 {
-    int j;
-    unsigned int i, k =0;
+    unsigned int i, k =0,m;
     xml_node **ret=NULL;
     xml_node **ret_tmp=NULL;
 
     if(node == NULL)
     {
-        j = -1;
+        m = 0;
         i = 0;
     }
     else
     {
         i = node->key;
-        j = _lxml->rl[i++];
+        m = _lxml->rl[i++] + 1;
     }
 
 
@@ -101,7 +100,7 @@ xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
     {
         if(_lxml->tp[i] == XML_ELEM)
         {
-            if((_lxml->rl[i] == j+1) && (_lxml->el[i] != NULL))
+            if((_lxml->rl[i] == m) && (_lxml->el[i] != NULL))
             {
                 unsigned int l=i+1;
                 /* Allocating for xml_node ** */
@@ -141,7 +140,7 @@ xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
                 /* Getting attributes */
                 while(l < _lxml->cur)
                 {
-                    if((_lxml->tp[l] == XML_ATTR)&&(_lxml->rl[l] == j+1)&&
+                    if((_lxml->tp[l] == XML_ATTR)&&(_lxml->rl[l] == m)&&
                         (_lxml->el[l]) && (_lxml->ct[l]))
                         {
                     		char **tmp;
@@ -172,9 +171,9 @@ xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node)
                 continue;
             }
         }
-        if((_lxml->tp[i] == XML_ELEM)&&(j+1 > _lxml->rl[i]))
+        if((_lxml->tp[i] == XML_ELEM)&&(m > _lxml->rl[i]))
         {
-            if(j == -1)
+            if(node == NULL)
                 continue;
             else
                 break;
