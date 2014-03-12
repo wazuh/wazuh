@@ -21,8 +21,8 @@
 
 
 /* Internal functions */
-char **_GetElements(OS_XML *_lxml, char **element_name,int type);
-char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr);
+static char **_GetElements(OS_XML *_lxml, char **element_name,int type);
+static char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr);
 
 
 /* OS_ElementExist: v1.0: 2005/02/26
@@ -100,7 +100,7 @@ char **OS_GetElements(OS_XML *_lxml, char **element_name)
 /* _GetElements: v0.1: 2005/03/01
  * Get the elements or attributes (internal use)
  */
-char **_GetElements(OS_XML *_lxml, char **element_name,int type)
+static char **_GetElements(OS_XML *_lxml, char **element_name,int type)
 {
     int i=0,j=0,k=0,matched=0,ready=0,size=0;
     char **ret=NULL;
@@ -275,7 +275,7 @@ char *OS_GetAttributeContent(OS_XML *_lxml, char **element_name,
     {
         if(*ret == NULL)
             break;
-        free(*ret++);	
+        free(*ret++);
     }
     if(success)
         return(uniqret);
@@ -287,7 +287,7 @@ char *OS_GetAttributeContent(OS_XML *_lxml, char **element_name,
 /* _GetElementContent: v0.1: 2005/03/01
  *  Get the values for an element or attribute
  */
-char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
+static char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
 {
     int i = 0,j = 0,k = 0,matched = 0;
     char **ret = NULL;
@@ -362,7 +362,7 @@ char **_GetElementContent(OS_XML *_lxml, char **element_name, char *attr)
             /* Get content if we are at the end of the array. */
             if(element_name[j] == NULL)
             {
-                /* If we have an attribute to match. */	
+                /* If we have an attribute to match. */
                 if(attr != NULL)
                 {
                     int k=0;

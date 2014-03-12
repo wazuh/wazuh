@@ -30,21 +30,21 @@
 #define LEOF		-2
 
 /* Internal functions */
-int _oscomment(FILE *fp);
-int _writecontent(char *str, unsigned int size, int parent, OS_XML *_lxml);
-int _writememory(char *str, short int type, unsigned int size,
+static int _oscomment(FILE *fp);
+static int _writecontent(char *str, unsigned int size, int parent, OS_XML *_lxml);
+static int _writememory(char *str, short int type, unsigned int size,
                                         int parent, OS_XML *_lxml);
+static int _xml_fgetc(FILE *fp);
 int _checkmemory(char *str,OS_XML *_lxml);
-int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml);
-int _getattributes(FILE *fp,int parent,OS_XML *_lxml);
-
-void xml_error(OS_XML *_lxml, const char *msg,...) __attribute__((format(printf, 2, 3)));
+static int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml);
+static int _getattributes(FILE *fp,int parent,OS_XML *_lxml);
+static void xml_error(OS_XML *_lxml, const char *msg,...) __attribute__((format(printf, 2, 3)));
 
 /* Currently line */
 int _line;
 
 /* Local fgetc */
-int _xml_fgetc(FILE *fp)
+static int _xml_fgetc(FILE *fp)
 {
     int c;
     c = fgetc(fp);
@@ -57,7 +57,7 @@ int _xml_fgetc(FILE *fp)
 
 #define FGETC(fp) _xml_fgetc(fp)
 
-void xml_error(OS_XML *_lxml, const char *msg,...)
+static void xml_error(OS_XML *_lxml, const char *msg,...)
 {
 #ifdef DEBUG
     time_t tm;
@@ -67,7 +67,7 @@ void xml_error(OS_XML *_lxml, const char *msg,...)
     va_list args;
     va_start(args,msg);
 
-#ifdef DEBUG	
+#ifdef DEBUG
     tm = time(NULL);
     p = localtime(&tm);
     fprintf(stderr,"%d/%d/%d %d:%d:%d (LINE: %d)",p->tm_year+1900,p->tm_mon,
@@ -107,7 +107,7 @@ void OS_ClearXML(OS_XML *_lxml)
     free(_lxml->ln);
     memset(_lxml->err,'\0', 128);
 
-    return;	
+    return;
 
 }
 
@@ -166,7 +166,7 @@ int OS_ReadXML(char *file, OS_XML *_lxml)
 }
 
 
-int _oscomment(FILE *fp)
+static int _oscomment(FILE *fp)
 {
     int c;
     if((c = fgetc(fp)) == _R_COM)
@@ -200,7 +200,7 @@ int _oscomment(FILE *fp)
 }
 
 
-int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
+static int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
 {
     int c;
     unsigned int count = 0;
@@ -322,12 +322,12 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
                 return(-1);
             }
             _writecontent(cont,strlen(cont)+1,_currentlycont,_lxml);
-            _lxml->ck[_currentlycont]=1;	
+            _lxml->ck[_currentlycont]=1;
             memset(elem,'\0',XML_MAXSIZE);
             memset(closedelem,'\0',XML_MAXSIZE);
             memset(cont,'\0',XML_MAXSIZE);
             _currentlycont = 0;
-            count = 0;	
+            count = 0;
             location = -1;
             if(parent > 0)
                 return(0);
@@ -339,7 +339,7 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
                 cont[count] = '\0';
                 count = 0;
                 location = 2;
-            }	
+            }
             else
             {
                 ungetc(c,fp);
@@ -372,9 +372,9 @@ int _ReadElem(FILE *fp, int position, int parent, OS_XML *_lxml)
 
     xml_error(_lxml,"XML ERR: End of file and some elements were not closed");
     return(-1);
-}				
+}
 
-int _writememory(char *str, short int type, unsigned int size,
+static int _writememory(char *str, short int type, unsigned int size,
                                         int parent, OS_XML *_lxml)
 {
     /* Allocating for the element */
@@ -382,12 +382,12 @@ int _writememory(char *str, short int type, unsigned int size,
     _lxml->el[_lxml->cur]=(char *)calloc(size,sizeof(char));
     strncpy(_lxml->el[_lxml->cur],str,size-1);
 
-    /* Allocating for the content */	
+    /* Allocating for the content */
     _lxml->ct = (char **)realloc(_lxml->ct,(_lxml->cur+1)*sizeof(char *));
 
     /* Allocating for the type */
     _lxml->tp = realloc(_lxml->tp,(_lxml->cur+1)*sizeof(int));
-    _lxml->tp[_lxml->cur] = type;	
+    _lxml->tp[_lxml->cur] = type;
 
     /* Allocating for the relation */
     _lxml->rl = realloc(_lxml->rl,(_lxml->cur+1)*sizeof(int));
@@ -415,7 +415,7 @@ int _writememory(char *str, short int type, unsigned int size,
     return(0);
 }
 
-int _writecontent(char *str, unsigned int size, int parent, OS_XML *_lxml)
+static int _writecontent(char *str, unsigned int size, int parent, OS_XML *_lxml)
 {
     _lxml->ct[parent]=(char *)calloc(size,sizeof(char));
     strncpy(_lxml->ct[parent],str,size-1);
@@ -446,7 +446,7 @@ int _checkmemory(char *str,OS_XML *_lxml)
 /* getattributes (Internal function): v0.1: 2005/03/03
  * Read the attributes of an element
  */
-int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
+static int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
 {
     int location = 0;
     int count = 0;
@@ -481,7 +481,7 @@ int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
                 return(c);
             else
                 return(0);
-        }	
+        }
         else if((location == 0)&&(c == '='))
         {
             attr[count]='\0';
@@ -526,7 +526,7 @@ int _getattributes(FILE *fp,int parent,OS_XML *_lxml)
             c_to_match = 0;
 
             _writememory(attr, XML_ATTR, strlen(attr)+1,
-                    parent, _lxml);	
+                    parent, _lxml);
             _writecontent(value,count+1,_lxml->cur-1,_lxml);
             c = FGETC(fp);
             if(c == ' ')

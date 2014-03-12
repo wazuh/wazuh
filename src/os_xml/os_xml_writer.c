@@ -33,9 +33,10 @@
 #define LEOF		-2
 
 /* Internal functions */
-int _oswcomment(FILE *fp_in, FILE *fp_out);
-int _WReadElem(FILE *fp_in, FILE *fp_out, int position, int parent,
+static int _oswcomment(FILE *fp_in, FILE *fp_out);
+static int _WReadElem(FILE *fp_in, FILE *fp_out, int position, int parent,
                char **node, char *value, int node_pos);
+static int _xml_wfgetc(FILE *fp_in, FILE *fp_out);
 
 
 /* Currently line */
@@ -43,7 +44,7 @@ int _line;
 
 
 /* Local fgetc */
-int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
+static int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
 {
     int c;
 
@@ -151,7 +152,7 @@ int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
 
 
 /* Getting comments */
-int _oswcomment(FILE *fp_in, FILE *fp_out)
+static int _oswcomment(FILE *fp_in, FILE *fp_out)
 {
     int c;
     if((c = fgetc(fp_in)) == _R_COM)
@@ -202,7 +203,7 @@ int _oswcomment(FILE *fp_in, FILE *fp_out)
 
 
 
-int _WReadElem(FILE *fp_in, FILE *fp_out,
+static int _WReadElem(FILE *fp_in, FILE *fp_out,
               int position, int parent, char **nodes, char *val, int node_pos)
 {
     int c;
@@ -359,7 +360,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
             memset(closedelem,'\0',XML_MAXSIZE);
             memset(cont,'\0',XML_MAXSIZE);
 
-            count = 0;	
+            count = 0;
             location = -1;
             if(parent > 0)
             {
@@ -377,7 +378,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
                 cont[count] = '\0';
                 count = 0;
                 location = 2;
-            }	
+            }
             else
             {
                 int wret_code;
@@ -424,7 +425,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
 
 
     return(-1);
-}				
+}
 
 
 
