@@ -493,8 +493,10 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
         {
             value[count]='\0';
 
-            location = 0;
-            c_to_match = 0;
+            /* dead code:
+             * location = 0;
+             * c_to_match = 0;
+             */
 
             _writememory(attr, XML_ATTR, strlen(attr)+1,
                     parent, _lxml);
