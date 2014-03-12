@@ -146,6 +146,7 @@ if [ "X${ARGV}" = "Xall" ]; then
     DOZLIB="x"
     DOCJSON="x"
 elif [ "X${ARGV}" = "Xtest" ]; then
+    DIRECTORIES="${LIBS} ${SOURCES}"
     DOZLIB="x"
     DOCJSON="x"
 elif [ "X${ARGV}" = "Xlibs" ]; then
@@ -199,13 +200,6 @@ if [ "X${ARGV}" = "Xclean" ]; then
     cd ../
 fi
 
-
-# Make and run tests if intended
-if [ "X${ARGV}" = "Xtest" ]; then
-    cd tests/
-    make
-    exit $?
-fi
 
 
 # Checking if the bin directory is present
@@ -265,6 +259,13 @@ for i in ${DIRECTORIES}; do
     fi    
     cd ../
 done
+
+# Make and run tests if intended
+if [ "X${ARGV}" = "Xtest" ]; then
+    cd tests/
+    make
+    exit $?
+fi
 
 
 if [ "X${ARGV}" = "Xrootcheck" ]; then
