@@ -20,11 +20,17 @@ CFLAGS_TEST = -Waggregate-return -Wall -Wbad-function-cast -Wc++-compat -Wcast-a
 
 run_tests: build_tests
 	./test_os_zlib
+	./test_os_regex
 	
-build_tests: test_os_zlib
+build_tests: test_os_zlib test_os_regex
 
 test_os_zlib: test_os_zlib.c ${OS_ZLIB}
 	${CC} ${CFLAGS_TEST} $+ ${CHECK_LINK} -o $@
+
+test_os_regex: test_os_regex.c ${OS_REGEX}
+	${CC} ${CFLAGS_TEST} $+ ${CHECK_LINK} -o $@
+
+
 		
 clean:
-	${CLEAN} test_os_zlib
+	${CLEAN} test_os_zlib test_os_regex 
