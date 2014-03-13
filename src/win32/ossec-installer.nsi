@@ -105,6 +105,8 @@ CreateDirectory "$INSTDIR\active-response"
 CreateDirectory "$INSTDIR\active-response\bin"
 
 ; install files
+File ossec-lua.exe 
+File ossec-luac.exe 
 File ossec-agent.exe
 File ossec-agent-eventchannel.exe
 File default-ossec.conf
@@ -228,6 +230,8 @@ Section "Uninstall"
 
   ; Remove files and uninstaller. There have been instances where the ossec-agent directory and executable is left. Why?
   Delete "$INSTDIR\ossec-agent.exe"
+  Delete "$INSTDIR\ossec-lua.exe"
+  Delete "$INSTDIR\ossec-luac.exe"
   Delete "$INSTDIR\manage_agents.exe"
   Delete "$INSTDIR\ossec.conf"
   Delete "$INSTDIR\uninstall.exe"

@@ -21,8 +21,15 @@ ${MING_BASE}-gcc -o setup-syscheck.exe -Wall os_regex/*.c os_xml/*.c setup/setup
 ${MING_BASE}-gcc -o setup-iis.exe -Wall os_regex/*.c setup/setup-iis.c -I./
 ${MING_BASE}-gcc -o add-localfile.exe -Wall os_regex/*.c setup/add-localfile.c -I./
 
+cd lua 
+make -f Makefile.mingw mingw 
+cd ../ 
+cp lua/ossec-lua.exe ossec-lua.exe
+cp lua/ossec-luac.exe ossec-luac.exe
+
 cd ui
 sh ./make.sh
 cd ../
+
 
 makensis ossec-installer.nsi
