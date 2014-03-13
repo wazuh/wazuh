@@ -7,13 +7,14 @@
  * Foundation
  */
 
+#include <check.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 
-#include "test_os_xml.h"
-
 #include "../os_xml/os_xml.h"
+
+Suite *test_suite(void);
 
 static void create_xml_file(const char *str, char file_name[], size_t length)
 {
@@ -523,7 +524,7 @@ START_TEST(test_osgetattributes)
 }
 END_TEST
 
-Suite *test_os_xml_suite(void)
+Suite *test_suite(void)
 {
 	Suite *s = suite_create("os_xml");
 
@@ -557,4 +558,15 @@ Suite *test_os_xml_suite(void)
 	suite_add_tcase(s, tc_core);
 
 	return (s);
+}
+
+int main(void)
+{
+	Suite *s = test_suite();
+	SRunner *sr = srunner_create(s);
+	srunner_run_all(sr, CK_NORMAL);
+	int number_failed = srunner_ntests_failed(sr);
+	srunner_free(sr);
+
+	return ((number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
