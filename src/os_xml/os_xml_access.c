@@ -22,7 +22,7 @@
 
 
 /* Internal functions */
-static char **_GetElements(const OS_XML *_lxml, const char **element_name,int type) __attribute__((nonnull(1)));
+static char **_GetElements(const OS_XML *_lxml, const char **element_name, int type) __attribute__((nonnull(1)));
 static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const char *attr) __attribute__((nonnull(1)));
 
 
@@ -32,34 +32,31 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
  */
 unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name)
 {
-    unsigned int i=0,j=0,matched=0,totalmatch=0;
+    unsigned int i = 0, j = 0, matched = 0, totalmatch = 0;
 
-    if(element_name == NULL || element_name[0] == NULL)
+    if(element_name == NULL || element_name[0] == NULL) {
         return(0);
+    }
 
-    for(i=0,j=0;i<_lxml->cur;i++)
-    {
-        if(element_name[j] == NULL)
-            j=0;
-        if((_lxml->tp[i] == XML_ELEM)&&(_lxml->rl[i] == j))
-        {
-            if(strcmp(_lxml->el[i],element_name[j]) == 0)
-            {
+    for(i = 0, j = 0; i < _lxml->cur; i++) {
+        if(element_name[j] == NULL) {
+            j = 0;
+        }
+        if((_lxml->tp[i] == XML_ELEM) && (_lxml->rl[i] == j)) {
+            if(strcmp(_lxml->el[i], element_name[j]) == 0) {
                 j++;
-                matched=1;
-                if(element_name[j] == NULL)
-                {
-                    j=0;
+                matched = 1;
+                if(element_name[j] == NULL) {
+                    j = 0;
                     totalmatch++;
                 }
                 continue;
             }
         }
-        if((matched == 1) &&(j > _lxml->rl[i])&&
-                (_lxml->tp[i] == XML_ELEM))
-        {
-            j=0;
-            matched=0;
+        if((matched == 1) && (j > _lxml->rl[i]) &&
+                (_lxml->tp[i] == XML_ELEM)) {
+            j = 0;
+            matched = 0;
         }
     }
     return(totalmatch);
@@ -71,8 +68,8 @@ unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name)
  */
 unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name)
 {
-    const char *(elements[])={element_name,NULL};
-    return(OS_ElementExist(_lxml,elements));
+    const char *(elements[]) = {element_name, NULL};
+    return(OS_ElementExist(_lxml, elements));
 }
 
 
@@ -81,7 +78,7 @@ unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name)
  */
 char **OS_GetAttributes(const OS_XML *_lxml, const char **element_name)
 {
-    return(_GetElements(_lxml,element_name,XML_ATTR));
+    return(_GetElements(_lxml, element_name, XML_ATTR));
 }
 
 
@@ -92,7 +89,7 @@ char **OS_GetAttributes(const OS_XML *_lxml, const char **element_name)
  */
 char **OS_GetElements(const OS_XML *_lxml, const char **element_name)
 {
-    return(_GetElements(_lxml, element_name,XML_ELEM));
+    return(_GetElements(_lxml, element_name, XML_ELEM));
 }
 
 
@@ -101,86 +98,82 @@ char **OS_GetElements(const OS_XML *_lxml, const char **element_name)
 /* _GetElements: v0.1: 2005/03/01
  * Get the elements or attributes (internal use)
  */
-static char **_GetElements(const OS_XML *_lxml, const char **element_name,int type)
+static char **_GetElements(const OS_XML *_lxml, const char **element_name, int type)
 {
-    unsigned i=0,j=0,k=0,matched=0,ready=0;
-    char **ret=NULL;
-    char **ret_tmp=NULL;
+    unsigned i = 0, j = 0, k = 0, matched = 0, ready = 0;
+    char **ret = NULL;
+    char **ret_tmp = NULL;
 
-    if((type == XML_ELEM) && (element_name == NULL))
-        ready=1;
+    if((type == XML_ELEM) && (element_name == NULL)) {
+        ready = 1;
+    }
 
-    for(i=0,j=0;i<_lxml->cur;i++)
-    {
-        if((ready != 1) &&(element_name[j] == NULL))
-        {
-            if(matched ==1)
-                ready=1;
-            else
+    for(i = 0, j = 0; i < _lxml->cur; i++) {
+        if((ready != 1) && (element_name[j] == NULL)) {
+            if(matched == 1) {
+                ready = 1;
+            } else {
                 break;
+            }
         }
 
-        if(j > 16)
+        if(j > 16) {
             return(ret);
+        }
 
-        if((ready == 1)&&(_lxml->tp[i] == type))
-        {
-            if(((type == XML_ATTR)&&(_lxml->rl[i] == j-1)
-                        &&(_lxml->el[i] != NULL))||
-                    ((type == XML_ELEM)&&(_lxml->rl[i] == j)&&
-                     (_lxml->el[i] != NULL)))
-            {
-                size_t el_size = strlen(_lxml->el[i])+1;
-                ret_tmp = (char**)realloc(ret,(k+2)*sizeof(char *));
-                if(ret_tmp == NULL)
-                    goto fail;
-                ret = ret_tmp;
-                ret[k+1] = NULL;
-                ret[k]=(char*)calloc(el_size,sizeof(char));
-                if(ret[k] == NULL)
-                {
+        if((ready == 1) && (_lxml->tp[i] == type)) {
+            if(((type == XML_ATTR) && (_lxml->rl[i] == j - 1)
+                    && (_lxml->el[i] != NULL)) ||
+                    ((type == XML_ELEM) && (_lxml->rl[i] == j) &&
+                     (_lxml->el[i] != NULL))) {
+                size_t el_size = strlen(_lxml->el[i]) + 1;
+                ret_tmp = (char **)realloc(ret, (k + 2) * sizeof(char *));
+                if(ret_tmp == NULL) {
                     goto fail;
                 }
-                strncpy(ret[k],_lxml->el[i],el_size-1);
+                ret = ret_tmp;
+                ret[k + 1] = NULL;
+                ret[k] = (char *)calloc(el_size, sizeof(char));
+                if(ret[k] == NULL) {
+                    goto fail;
+                }
+                strncpy(ret[k], _lxml->el[i], el_size - 1);
                 k++;
             }
         }
 
-        else if((_lxml->tp[i] == XML_ELEM)&&(_lxml->rl[i] == j)&&
-                (element_name[j] != NULL))
-        {
-            if(strcmp(_lxml->el[i],element_name[j]) == 0)
-            {
+        else if((_lxml->tp[i] == XML_ELEM) && (_lxml->rl[i] == j) &&
+                (element_name[j] != NULL)) {
+            if(strcmp(_lxml->el[i], element_name[j]) == 0) {
                 j++;
-                matched=1;
+                matched = 1;
                 continue;
             }
         }
 
-        if(matched == 1)
-        {
-            if(((_lxml->tp[i]==XML_ATTR)&&(j > _lxml->rl[i]+1))||
-                    ((_lxml->tp[i] == XML_ELEM)&&(j > _lxml->rl[i])))
-            {
-                j=0;
-                matched=0;
-                if(element_name == NULL)
-                    ready=1;
-                else
-                    ready=0;
+        if(matched == 1) {
+            if(((_lxml->tp[i] == XML_ATTR) && (j > _lxml->rl[i] + 1)) ||
+                    ((_lxml->tp[i] == XML_ELEM) && (j > _lxml->rl[i]))) {
+                j = 0;
+                matched = 0;
+                if(element_name == NULL) {
+                    ready = 1;
+                } else {
+                    ready = 0;
+                }
             }
         }
     }
 
     return(ret);
 
-    fail:
+fail:
     i = 0;
-    if(ret)
-    {
-    	while(ret[i])
-    		free(ret[i++]);
-    	free(ret);
+    if(ret) {
+        while(ret[i]) {
+            free(ret[i++]);
+        }
+        free(ret);
     }
     return (NULL);
 }
@@ -198,19 +191,16 @@ char *OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name)
 
     _lxml->fol = 0;
     ret = _GetElementContent(_lxml, element_name, NULL);
-    if(ret == NULL)
-    {
+    if(ret == NULL) {
         return(NULL);
     }
 
-    if(ret[0] != NULL)
-    {
+    if(ret[0] != NULL) {
         uniqret = ret[0];
     }
 
     /* Freeing memory */
-    while(ret[i])
-    {
+    while(ret[i]) {
         free(ret[i]);
         ret[i] = NULL;
         i++;
@@ -226,7 +216,7 @@ char *OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name)
  */
 char **OS_GetElementContent(OS_XML *_lxml, const char **element_name)
 {
-    _lxml->fol=0;
+    _lxml->fol = 0;
     return(_GetElementContent(_lxml, element_name, NULL));
 }
 
@@ -237,8 +227,7 @@ char **OS_GetElementContent(OS_XML *_lxml, const char **element_name)
  */
 char **OS_GetContents(OS_XML *_lxml, const char **element_name)
 {
-    if(element_name == NULL)
-    {
+    if(element_name == NULL) {
         _lxml->fol = -1;
         return(NULL);
     }
@@ -251,25 +240,24 @@ char **OS_GetContents(OS_XML *_lxml, const char **element_name)
  * Get one value for a specific attribute
  */
 char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
-		const char *attribute_name)
+                             const char *attribute_name)
 {
     char *uniqret = NULL;
     char **ret = NULL;
 
-    _lxml->fol=0;
+    _lxml->fol = 0;
 
-    ret = _GetElementContent(_lxml, element_name,attribute_name);
+    ret = _GetElementContent(_lxml, element_name, attribute_name);
 
-    if(ret == NULL)
+    if(ret == NULL) {
         return(NULL);
+    }
 
-    if(ret[0] != NULL)
-    {
-    	uniqret = ret[0];
+    if(ret[0] != NULL) {
+        uniqret = ret[0];
     }
     int i = 1;
-    while(ret[i] != NULL)
-    {
+    while(ret[i] != NULL) {
         free(ret[i++]);
     }
     free(ret);
@@ -284,142 +272,122 @@ char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
 static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const char *attr)
 {
     int i = 0;
-    unsigned int j = 0,k = 0,l = 0,matched = 0;
+    unsigned int j = 0, k = 0, l = 0, matched = 0;
     char **ret = NULL;
     char **ret_tmp;
 
     /* Element name can not be null. */
-    if(element_name == NULL)
+    if(element_name == NULL) {
         return(NULL);
+    }
 
-    if(_lxml->fol >= 0 && (unsigned int)_lxml->fol == _lxml->cur)
-    {
+    if(_lxml->fol >= 0 && (unsigned int)_lxml->fol == _lxml->cur) {
         _lxml->fol = 0;
         return(NULL);
     }
 
-    if(_lxml->fol > 0)
-    {
-        for(i=_lxml->fol;i>=0;i--)
-        {
+    if(_lxml->fol > 0) {
+        for(i = _lxml->fol; i >= 0; i--) {
             _lxml->fol = i;
-            if(_lxml->rl[i] == 0)
+            if(_lxml->rl[i] == 0) {
                 break;
+            }
         }
         i = _lxml->fol;
-    }
-    else
-    {
+    } else {
         i = 0;
     }
 
     /* Looping through all nodes */
-    for(j=0,l=(unsigned int)i; l<_lxml->cur; l++)
-    {
-        if(element_name[j] == NULL)
-        {
-            if(matched !=1)
+    for(j = 0, l = (unsigned int)i; l < _lxml->cur; l++) {
+        if(element_name[j] == NULL) {
+            if(matched != 1) {
                 break;
+            }
         }
 
         /* Setting maximum depth of 16. */
-        if(j > 16)
+        if(j > 16) {
             goto fail;
+        }
 
 
         /* If the type is not an element and the relation doesn't match,
          * keep going.
          */
-        if((_lxml->tp[l] != XML_ELEM) || (_lxml->rl[l] != j))
-        {
+        if((_lxml->tp[l] != XML_ELEM) || (_lxml->rl[l] != j)) {
             /* If the node relation is higher than we currently xml
              * node, zero the position and look at it again (i--).
              */
-            if(j > _lxml->rl[l])
-            {
+            if(j > _lxml->rl[l]) {
                 j = 0;
                 matched = 0;
                 l--;
-            }
-            else
-            {
+            } else {
                 continue;
             }
         }
 
 
         /* If the element name matches what we are looking for. */
-        else if(element_name[j] != NULL && strcmp(_lxml->el[l], element_name[j]) == 0)
-        {
+        else if(element_name[j] != NULL && strcmp(_lxml->el[l], element_name[j]) == 0) {
             j++;
             matched = 1;
 
             /* Get content if we are at the end of the array. */
-            if(element_name[j] == NULL)
-            {
+            if(element_name[j] == NULL) {
                 /* If we have an attribute to match. */
-                if(attr != NULL)
-                {
-                    unsigned int m=0;
-                    for(m=l+1; m<_lxml->cur; m++)
-                    {
-                        if(_lxml->tp[m] == XML_ELEM)
-                        {
+                if(attr != NULL) {
+                    unsigned int m = 0;
+                    for(m = l + 1; m < _lxml->cur; m++) {
+                        if(_lxml->tp[m] == XML_ELEM) {
                             break;
                         }
 
-                        if(strcmp(attr, _lxml->el[m]) == 0)
-                        {
+                        if(strcmp(attr, _lxml->el[m]) == 0) {
                             l = m;
                             break;
                         }
                     }
                 }
 
-                if(_lxml->ct[l] != NULL)
-                {
+                if(_lxml->ct[l] != NULL) {
                     /* Increasing the size of the array. */
-                    ret_tmp = (char**) realloc(ret,(k+2) * sizeof(char*));
-                    if(ret_tmp == NULL)
-                    {
-                       goto fail;
+                    ret_tmp = (char **) realloc(ret, (k + 2) * sizeof(char *));
+                    if(ret_tmp == NULL) {
+                        goto fail;
                     }
                     ret = ret_tmp;
 
                     /* Adding new entry. */
                     ret[k] = strdup(_lxml->ct[l]);
                     ret[k + 1] = NULL;
-                    if(ret[k] == NULL)
-                    {
+                    if(ret[k] == NULL) {
                         goto fail;
                     }
 
                     matched = 1;
                     k++;
 
-                    if(attr != NULL)
-                    {
+                    if(attr != NULL) {
                         break;
                     }
 
-                    else if(_lxml->fol != 0)
-                    {
-                        _lxml->fol = (int) l+1;
+                    else if(_lxml->fol != 0) {
+                        _lxml->fol = (int) l + 1;
                         break;
                     }
                 }
 
                 /* Setting new array pointer. */
-                if((l<_lxml->cur-1) && (_lxml->tp[l+1] == XML_ELEM))
-                {
-                    j = _lxml->rl[l+1];
+                if((l < _lxml->cur - 1) && (_lxml->tp[l + 1] == XML_ELEM)) {
+                    j = _lxml->rl[l + 1];
                 }
             }
             continue;
         }
 
-        if(j > _lxml->rl[l])
-        {
+        if(j > _lxml->rl[l]) {
             j = 0;
             matched = 0;
         }
@@ -427,15 +395,15 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
 
     return(ret);
 
-    fail:
+fail:
     i = 0;
-    if(ret)
-    {
-		while(ret[i])
-			free(ret[i++]);
-		free(ret);
+    if(ret) {
+        while(ret[i]) {
+            free(ret[i++]);
+        }
+        free(ret);
     }
-	return (NULL);
+    return (NULL);
 }
 
 /* EOF */

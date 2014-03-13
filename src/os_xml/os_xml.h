@@ -18,18 +18,16 @@
 #define __OS_XML_H
 
 /* XML Node structure */
-typedef struct _xml_node
-{
+typedef struct _xml_node {
     unsigned int key;
     char *element;
     char *content;
     char **attributes;
     char **values;
-}xml_node;
+} xml_node;
 
 /* XML structure */
-typedef struct _OS_XML
-{
+typedef struct _OS_XML {
     unsigned int cur;		/* Currently position (and last after reading) */
     int fol;		/* Currently position for the xml_access */
     int *tp;		/* Item type	*/
@@ -40,9 +38,9 @@ typedef struct _OS_XML
     char **ct;		/* Content is stored */
     char **el;		/* The element/attribute name is stored */
     char err[128];	/* Error messages are stored in here */
-}OS_XML;
+} OS_XML;
 
-typedef xml_node ** XML_NODE;
+typedef xml_node **XML_NODE;
 
 /* Start the XML structure reading a file */
 int OS_ReadXML(const char *file, OS_XML *lxml) __attribute__((nonnull));
@@ -82,7 +80,7 @@ char **OS_GetContents(OS_XML *_lxml, const char **element_name) __attribute__((n
 
 /* Return the value of a specific attribute of the element_name */
 char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
-		const char *attribute_name) __attribute__((nonnull(1)));
+                             const char *attribute_name) __attribute__((nonnull(1)));
 
 /* Apply the variables to the xml */
 int OS_ApplyVariables(OS_XML *_lxml) __attribute__((nonnull));
@@ -96,7 +94,7 @@ int OS_ApplyVariables(OS_XML *_lxml) __attribute__((nonnull));
  * Write an XML file, based on the input and values to change.
  */
 int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
-		const char *oldval, const char *newval) __attribute__((nonnull(1,2)));
+                const char *oldval, const char *newval) __attribute__((nonnull(1, 2)));
 
 #endif /* __OS_XML_H */
 

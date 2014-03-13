@@ -23,7 +23,7 @@
 /* Internal functions */
 static int _oswcomment(FILE *fp_in, FILE *fp_out) __attribute__((nonnull));
 static int _WReadElem(FILE *fp_in, FILE *fp_out, unsigned int position, unsigned int parent,
-		const char **node, const char *value, unsigned int node_pos) __attribute__((nonnull));
+                      const char **node, const char *value, unsigned int node_pos) __attribute__((nonnull));
 static int _xml_wfgetc(FILE *fp_in, FILE *fp_out) __attribute__((nonnull));
 
 /* Local fgetc */
@@ -33,8 +33,7 @@ static int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
 
     /* Putting on fp_out, whatever we read */
     c = fgetc(fp_in);
-    if(c != EOF)
-    {
+    if(c != EOF) {
         fputc(c, fp_out);
     }
 
@@ -45,7 +44,7 @@ static int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
  * Write an XML file, based on the input and values to change.
  */
 int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
-		const char *oldval, const char *newval)
+                const char *oldval, const char *newval)
 {
     int r = 0;
     FILE *fp_in;
@@ -53,39 +52,34 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
 
 
     /* Nodes and newval must be set. */
-    if(!nodes || !newval)
-    {
+    if(!nodes || !newval) {
         return(XMLW_ERROR);
     }
 
     /* Opening infile */
-    fp_in = fopen(infile,"r");
-    if(!fp_in)
-    {
+    fp_in = fopen(infile, "r");
+    if(!fp_in) {
         return(XMLW_NOIN);
     }
 
 
     /* Opening out file */
-    fp_out = fopen(outfile,"w");
-    if(!fp_out)
-    {
+    fp_out = fopen(outfile, "w");
+    if(!fp_out) {
         fclose(fp_in);
         return(XMLW_NOOUT);
     }
 
 
     if((r = _WReadElem(fp_in, fp_out, 0, 0,
-                       nodes, newval, 0)) < 0) /* First position */
-    {
+                       nodes, newval, 0)) < 0) { /* First position */
         fclose(fp_in);
         fclose(fp_out);
         return(XMLW_ERROR);
     }
 
     /* We didn't find an entry, add at the end. */
-    if(!oldval && r == 0)
-    {
+    if(!oldval && r == 0) {
         int s = 0;
         int rwidth = 0;
 
@@ -93,26 +87,25 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
         fprintf(fp_out, "\n");
 
         /* Printing each node. */
-        while(nodes[s])
-        {
+        while(nodes[s]) {
             fprintf(fp_out, "%*c<%s>", rwidth, ' ', nodes[s]);
             s++;
             rwidth += 3;
 
-            if(nodes[s])
+            if(nodes[s]) {
                 fprintf(fp_out, "\n");
+            }
         }
 
         /* Printing val. */
         s--;
-        rwidth -=6;
+        rwidth -= 6;
         fprintf(fp_out, "%s</%s>\n", newval, nodes[s]);
         s--;
 
 
         /* Closing each node. */
-        while(s >= 0)
-        {
+        while(s >= 0) {
             fprintf(fp_out, "%*c</%s>\n", rwidth, ' ', nodes[s]);
             s--;
             rwidth -= 3;
@@ -130,47 +123,33 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
 static int _oswcomment(FILE *fp_in, FILE *fp_out)
 {
     int c;
-    if((c = fgetc(fp_in)) == _R_COM)
-    {
+    if((c = fgetc(fp_in)) == _R_COM) {
         fputc(c, fp_out);
-        while((c = _xml_wfgetc(fp_in, fp_out)) != EOF)
-        {
-            if(c == _R_COM)
-            {
-                if((c=fgetc(fp_in)) == _R_CONFE)
-                {
+        while((c = _xml_wfgetc(fp_in, fp_out)) != EOF) {
+            if(c == _R_COM) {
+                if((c = fgetc(fp_in)) == _R_CONFE) {
                     fputc(c, fp_out);
                     return(1);
                 }
-                ungetc(c,fp_in);
-            }
-            else if(c == '-')       /* W3C way of finish comments */
-            {
-                if((c = fgetc(fp_in)) == '-')
-                {
+                ungetc(c, fp_in);
+            } else if(c == '-') {   /* W3C way of finish comments */
+                if((c = fgetc(fp_in)) == '-') {
                     fputc(c, fp_out);
-                    if((c = fgetc(fp_in)) == _R_CONFE)
-                    {
+                    if((c = fgetc(fp_in)) == _R_CONFE) {
                         fputc(c, fp_out);
                         return(1);
                     }
-                    ungetc(c,fp_in);
+                    ungetc(c, fp_in);
+                } else {
+                    ungetc(c, fp_in);
                 }
-                else
-                {
-                    ungetc(c,fp_in);
-                }
-            }
-            else
-            {
+            } else {
                 continue;
             }
         }
         return(-1);
-    }
-    else
-    {
-        ungetc(c,fp_in);
+    } else {
+        ungetc(c, fp_in);
     }
 
     return(0);
@@ -179,91 +158,73 @@ static int _oswcomment(FILE *fp_in, FILE *fp_out)
 
 
 static int _WReadElem(FILE *fp_in, FILE *fp_out,
-              unsigned int position, unsigned int parent, const char **nodes, const char *val, unsigned int node_pos)
+                      unsigned int position, unsigned int parent, const char **nodes, const char *val, unsigned int node_pos)
 {
     int c;
     int ret_code = 0;
     unsigned int count = 0;
     short int location = -1;
 
-    char elem[XML_MAXSIZE +1];
-    char cont[XML_MAXSIZE +1];
-    char closedelem[XML_MAXSIZE +1];
+    char elem[XML_MAXSIZE + 1];
+    char cont[XML_MAXSIZE + 1];
+    char closedelem[XML_MAXSIZE + 1];
 
-    memset(elem,'\0',XML_MAXSIZE +1);
-    memset(cont,'\0',XML_MAXSIZE +1);
-    memset(closedelem,'\0',XML_MAXSIZE +1);
+    memset(elem, '\0', XML_MAXSIZE + 1);
+    memset(cont, '\0', XML_MAXSIZE + 1);
+    memset(closedelem, '\0', XML_MAXSIZE + 1);
 
 
-    while((c = _xml_wfgetc(fp_in, fp_out)) != EOF)
-    {
+    while((c = _xml_wfgetc(fp_in, fp_out)) != EOF) {
         /* Max size */
-        if(count >= XML_MAXSIZE)
-        {
+        if(count >= XML_MAXSIZE) {
             return(-1);
         }
 
         /* Checking for comments */
-        if(c == _R_CONFS)
-        {
+        if(c == _R_CONFS) {
             int r = 0;
-            if((r = _oswcomment(fp_in, fp_out)) < 0)
-            {
+            if((r = _oswcomment(fp_in, fp_out)) < 0) {
                 return(-1);
-            }
-            else if(r == 1)
-            {
+            } else if(r == 1) {
                 continue;
             }
         }
 
 
         /* Real checking */
-        if(location == -1)
-        {
+        if(location == -1) {
             /* Must be the opening element */
-            if(c == _R_CONFS)
-            {
-                if((c = fgetc(fp_in)) == '/')
-                {
+            if(c == _R_CONFS) {
+                if((c = fgetc(fp_in)) == '/') {
                     return(-1);
-                }
-                else
-                {
-                    ungetc(c,fp_in);
+                } else {
+                    ungetc(c, fp_in);
                 }
                 location = 0;
-            }
-            else
-            {
+            } else {
                 continue;
             }
         }
 
 
         /* Looking for the closure */
-        else if((location == 0) && ((c == _R_CONFE) || (c == ' ')))
-        {
+        else if((location == 0) && ((c == _R_CONFE) || (c == ' '))) {
             int _ge = 0;
             elem[count] = '\0';
 
 
             /* Removing the / at the end of the element name */
-            if(elem[count -1] == '/')
-            {
+            if(elem[count - 1] == '/') {
                 _ge = '/';
-                elem[count -1] = '\0';
+                elem[count - 1] = '\0';
             }
 
 
             /* If we may have more attributes */
-            if(c == ' ')
-            {
+            if(c == ' ') {
                 /* Writing the attributes */
-                while((c = _xml_wfgetc(fp_in, fp_out)) != EOF)
-                {
-                    if(c == _R_CONFE)
-                    {
+                while((c = _xml_wfgetc(fp_in, fp_out)) != EOF) {
+                    if(c == _R_CONFE) {
                         break;
                     }
                 }
@@ -271,51 +232,43 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out,
 
 
             /* If the element is closed already (finished in />) */
-            if(_ge == '/')
-            {
+            if(_ge == '/') {
                 count = 0;
                 location = -1;
 
-                memset(elem,'\0',XML_MAXSIZE);
-                memset(closedelem,'\0',XML_MAXSIZE);
-                memset(cont,'\0',XML_MAXSIZE);
+                memset(elem, '\0', XML_MAXSIZE);
+                memset(closedelem, '\0', XML_MAXSIZE);
+                memset(cont, '\0', XML_MAXSIZE);
 
-                if(parent > 0)
-                {
+                if(parent > 0) {
                     return(ret_code);
                 }
             }
             /* Location == means we are getting the content */
-            else
-            {
+            else {
                 count = 0;
                 location = 1;
             }
 
 
             /* Checking position of the node */
-            if(node_pos > position)
-            {
+            if(node_pos > position) {
                 node_pos = 0;
             }
 
             /* Checking if the element name matches */
             if(node_pos == position &&
-               nodes[node_pos] && strcmp(elem, nodes[node_pos]) == 0)
-            {
+                    nodes[node_pos] && strcmp(elem, nodes[node_pos]) == 0) {
                 node_pos++;
 
                 /* Latest node, printint value */
-                if(!nodes[node_pos])
-                {
+                if(!nodes[node_pos]) {
                     ret_code = 1;
                     fprintf(fp_out, "%s", val);
 
-                    while((c = fgetc(fp_in)) != EOF)
-                    {
-                        if(c == _R_CONFS)
-                        {
-                            ungetc(c,fp_in);
+                    while((c = fgetc(fp_in)) != EOF) {
+                        if(c == _R_CONFS) {
+                            ungetc(c, fp_in);
                             break;
                         }
                     }
@@ -323,78 +276,61 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out,
             }
         }
 
-        else if((location == 2) &&(c == _R_CONFE))
-        {
-            closedelem[count]='\0';
-            if(strcmp(closedelem,elem) != 0)
-            {
+        else if((location == 2) && (c == _R_CONFE)) {
+            closedelem[count] = '\0';
+            if(strcmp(closedelem, elem) != 0) {
                 return(-1);
             }
 
-            memset(elem,'\0',XML_MAXSIZE);
-            memset(closedelem,'\0',XML_MAXSIZE);
-            memset(cont,'\0',XML_MAXSIZE);
+            memset(elem, '\0', XML_MAXSIZE);
+            memset(closedelem, '\0', XML_MAXSIZE);
+            memset(cont, '\0', XML_MAXSIZE);
 
             count = 0;
             location = -1;
-            if(parent > 0)
-            {
+            if(parent > 0) {
                 return(ret_code);
             }
         }
 
         /* If we are reading the element */
-        else if((location == 1) &&(c == _R_CONFS))
-        {
-            if((c=fgetc(fp_in)) == '/')
-            {
+        else if((location == 1) && (c == _R_CONFS)) {
+            if((c = fgetc(fp_in)) == '/') {
                 fputc(c, fp_out);
 
                 cont[count] = '\0';
                 count = 0;
                 location = 2;
-            }
-            else
-            {
+            } else {
                 int wret_code;
-                ungetc(c,fp_in);
-                ungetc(_R_CONFS,fp_in);
+                ungetc(c, fp_in);
+                ungetc(_R_CONFS, fp_in);
                 fseek(fp_out, -1, SEEK_CUR);
 
-                if((wret_code = _WReadElem(fp_in, fp_out, position+1, parent+1,
-                             nodes, val, node_pos))< 0)
-                {
+                if((wret_code = _WReadElem(fp_in, fp_out, position + 1, parent + 1,
+                                           nodes, val, node_pos)) < 0) {
                     return(-1);
                 }
 
                 /* Setting final return code. */
-                if(wret_code == 1)
-                {
+                if(wret_code == 1) {
                     ret_code = 1;
                 }
 
                 count = 0;
             }
-        }
-        else
-        {
-            if(location == 0)
-            {
+        } else {
+            if(location == 0) {
                 elem[count++] = (char) c;
-            }
-            else if(location == 1)
-            {
+            } else if(location == 1) {
                 cont[count++] = (char) c;
-            }
-            else if(location == 2)
-            {
+            } else if(location == 2) {
                 closedelem[count++] = (char) c;
             }
         }
     }
 
-    if(location == -1)
-    {
+    if(location == -1) {
         return(ret_code);
     }
 
