@@ -496,7 +496,7 @@ START_TEST(test_oswritexml_failures)
 	ck_assert_int_eq(OS_WriteXML(xml_in_file_name, xml_out_file_name, NULL, "test", "test_new"), XMLW_ERROR);
 	ck_assert_int_eq(OS_WriteXML(xml_in_file_name, xml_out_file_name, xml_path, "test", NULL), XMLW_ERROR);
 	ck_assert_int_eq(OS_WriteXML("invalid", xml_out_file_name, xml_path, "test", "test_new"), XMLW_NOIN);
-	ck_assert_int_eq(OS_WriteXML(xml_in_file_name, "/../invalid", xml_path, "test", "test_new"), XMLW_NOOUT);
+	ck_assert_int_eq(OS_WriteXML(xml_in_file_name, "??invalid<<!!\"\"//\\\\", xml_path, "test", "test_new"), XMLW_NOOUT);
 
 	unlink(xml_in_file_name);
 	unlink(xml_out_file_name);
