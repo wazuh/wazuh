@@ -52,12 +52,6 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
     FILE *fp_out;
 
 
-    /* Nodes and newval must be set. */
-    if(!nodes || !newval)
-    {
-        return(XMLW_ERROR);
-    }
-
     /* Opening infile */
     fp_in = fopen(infile,"r");
     if(!fp_in)

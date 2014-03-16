@@ -57,10 +57,10 @@ void OS_ClearNode(xml_node **node);
 /* Functions to read the XML */
 
 /* Return 1 if element_name is a root element */
-unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name) __attribute__((nonnull(1)));
+unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name) __attribute__((nonnull));
 
 /* Return 1 if the element_name exists */
-unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
+unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull));
 
 /* Return the elements "children" of the element_name */
 char **OS_GetElements(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
@@ -72,17 +72,17 @@ xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node) __att
 char **OS_GetAttributes(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
 
 /* Return one value from element_name */
-char *OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
+char *OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name) __attribute__((nonnull));
 
 /* Return an array with the content of all entries of element_name */
-char **OS_GetElementContent(OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
+char **OS_GetElementContent(OS_XML *_lxml, const char **element_name) __attribute__((nonnull));
 
 /* Return an array with the contents of an element_nane */
 char **OS_GetContents(OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
 
 /* Return the value of a specific attribute of the element_name */
 char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
-		const char *attribute_name) __attribute__((nonnull(1)));
+		const char *attribute_name) __attribute__((nonnull(1,2)));
 
 /* Apply the variables to the xml */
 int OS_ApplyVariables(OS_XML *_lxml) __attribute__((nonnull));
@@ -96,7 +96,7 @@ int OS_ApplyVariables(OS_XML *_lxml) __attribute__((nonnull));
  * Write an XML file, based on the input and values to change.
  */
 int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
-		const char *oldval, const char *newval) __attribute__((nonnull(1,2)));
+		const char *oldval, const char *newval) __attribute__((nonnull(1,2,3,5)));
 
 #endif /* __OS_XML_H */
 

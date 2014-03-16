@@ -23,7 +23,7 @@
 
 /* Internal functions */
 static char **_GetElements(const OS_XML *_lxml, const char **element_name,int type) __attribute__((nonnull(1)));
-static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const char *attr) __attribute__((nonnull(1)));
+static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const char *attr) __attribute__((nonnull(1,2)));
 
 
 /* OS_ElementExist: v1.0: 2005/02/26
@@ -34,7 +34,7 @@ unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name)
 {
     unsigned int i=0,j=0,matched=0,totalmatch=0;
 
-    if(element_name == NULL || element_name[0] == NULL)
+    if(element_name[0] == NULL)
         return(0);
 
     for(i=0,j=0;i<_lxml->cur;i++)
@@ -287,10 +287,6 @@ static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const
     unsigned int j = 0,k = 0,l = 0,matched = 0;
     char **ret = NULL;
     char **ret_tmp;
-
-    /* Element name can not be null. */
-    if(element_name == NULL)
-        return(NULL);
 
     if(_lxml->fol >= 0 && (unsigned int)_lxml->fol == _lxml->cur)
     {

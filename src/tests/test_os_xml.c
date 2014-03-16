@@ -411,8 +411,6 @@ START_TEST(test_oselementsexists)
 	ck_assert_int_eq(OS_RootElementExist(&xml, "root"), 2);
 	ck_assert_int_eq(OS_RootElementExist(&xml, "root1"), 1);
 	ck_assert_int_eq(OS_RootElementExist(&xml, "root2"), 0);
-	ck_assert_int_eq(OS_RootElementExist(&xml, NULL), 0);
-	ck_assert_int_eq(OS_ElementExist(&xml, NULL), 0);
 
 	OS_ClearXML(&xml);
 	unlink(xml_file_name);
@@ -493,8 +491,6 @@ START_TEST(test_oswritexml_failures)
 	create_xml_file("", xml_out_file_name, 256);
 	const char *xml_path[] = { "root", "child", NULL };
 
-	ck_assert_int_eq(OS_WriteXML(xml_in_file_name, xml_out_file_name, NULL, "test", "test_new"), XMLW_ERROR);
-	ck_assert_int_eq(OS_WriteXML(xml_in_file_name, xml_out_file_name, xml_path, "test", NULL), XMLW_ERROR);
 	ck_assert_int_eq(OS_WriteXML("invalid", xml_out_file_name, xml_path, "test", "test_new"), XMLW_NOIN);
 	ck_assert_int_eq(OS_WriteXML(xml_in_file_name, "??invalid<<!!\"\"//\\\\", xml_path, "test", "test_new"), XMLW_NOOUT);
 
@@ -517,7 +513,6 @@ START_TEST(test_osgetattributecontent)
 	ck_assert_str_eq(content2 = OS_GetAttributeContent(&xml, xml_path1, "attr2"), "value1");
 	ck_assert_str_eq(content3 = OS_GetAttributeContent(&xml, xml_path1, "attr3"), "");
 	ck_assert_str_eq(content4 = OS_GetAttributeContent(&xml, xml_path1, NULL), "");
-	ck_assert_ptr_eq(OS_GetAttributeContent(&xml, NULL, NULL), NULL);
 	ck_assert_ptr_eq(OS_GetAttributeContent(&xml, xml_path2, NULL), NULL);
 
 
