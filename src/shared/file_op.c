@@ -816,11 +816,18 @@ int checkVista()
     /* We check if the system is vista (must be called during the startup.) */
     if(strstr(m_uname, "Windows Server 2008") ||
        strstr(m_uname, "Vista") ||
-       strstr(m_uname, "Windows 7"))
+       strstr(m_uname, "Windows 7") ||
+       strstr(m_uname, "Windows 8") ||
+       strstr(m_uname, "Windows Server 2012"))
     {
         isVista = 1;
-        verbose("%s: INFO: System is Vista, Windows 7 or Windows Server 2008.",
-                __local_name);
+        verbose("%s: INFO: System is Vista or newer (%s).",
+                __local_name, m_uname);
+    }
+    else
+    {
+        verbose("%s: INFO: System is older than Vista (%s).",
+                __local_name, m_uname);
     }
 
     free(m_uname);
@@ -887,6 +894,24 @@ char *getuname()
                     else
                     {
                         strncat(ret, "Microsoft Windows Server 2008 R2 ", ret_size -1);
+                    }
+                }
+                else if(osvi.dwMinorVersion == 2)
+                {
+                    if(osvi.wProductType == VER_NT_WORKSTATION )
+                        strncat(ret, "Microsoft Windows 8 ", ret_size -1);
+                    else
+                    {
+                        strncat(ret, "Microsoft Windows Server 2012 ", ret_size -1);
+                    }
+                }
+                else if(osvi.dwMinorVersion == 3)
+                {
+                    if(osvi.wProductType == VER_NT_WORKSTATION )
+                        strncat(ret, "Microsoft Windows 8.1 ", ret_size -1);
+                    else
+                    {
+                        strncat(ret, "Microsoft Windows Server 2012 R2 ", ret_size -1);
                     }
                 }
 

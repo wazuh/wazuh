@@ -17,6 +17,9 @@
 /* Setup windows after install */
 int main(int argc, char **argv)
 {
+    /* Setting the name */
+    OS_SetName(ARGV0);
+
     if(argc < 2)
     {
         printf("%s: Invalid syntax.\n", argv[0]);
@@ -30,21 +33,6 @@ int main(int argc, char **argv)
         printf("%s: Invalid directory: '%s'.\n", argv[0], argv[1]);
         return(0);
     }
-
-    /* Checking if ossec was installed already (upgrade) */
-    if(!fileexist(OSSECCONF))
-    {
-        char cmd[OS_MAXSTR +1];
-
-        /* Copy default config to ossec.conf */
-        snprintf(cmd, OS_MAXSTR, "copy %s %s", OSSECDEF, OSSECCONF);
-        system(cmd);
-    }
-
-
-    /* Setting up local files */
-    system("add-localfile.exe \"C:\\Windows\\pfirewall.log\" --quiet");
-    system("add-localfile.exe \"C:\\Documents and Settings\\All Users\\Application Data\\Symantec\\Symantec AntiVirus Corporate Edition\\7.5\\Logs\\\%m\%d20\%y.log\" --quiet");
 
 
     /* Configure ossec for automatic startup */
@@ -101,5 +89,5 @@ int main(int argc, char **argv)
         system("echo y|cacls . /T /G Administrators:f ");
     }
 
-    return(0);
+    return(1);
 }

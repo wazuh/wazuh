@@ -7,13 +7,14 @@
 include ${PT}LOCATION
 include ${PT}Config.OS
 
-
+CC?=cc
 CFLAGS = -g -Wall -I${PT} -I${PT}headers ${CPATH} ${CEXTRA} ${DEXTRA} ${EEXTRA} ${FEXTRA} ${GEXTRA} ${HEXTRA} ${MEXTRA} ${CGEOIP} -DARGV0=\"${NAME}\" -DXML_VAR=\"var\" -DOSSECHIDS
 
 SOURCES = *.c
 OBJECTS = *.o
 CLEAN = rm -f -r ${OBJECTS} ${NAME} *.a core core.* *.core
 BUILD = cp -pr ${NAME} ${PT}../bin
+BUILDLIB = ar -crus
 
 OS_XML = ${PT}os_xml/os_xml.a
 OS_REGEX = ${PT}os_regex/os_regex.a

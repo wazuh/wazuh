@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_zlib/os_zlib.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,41 +7,37 @@
  * Foundation
  */
 
-#include "shared.h"
 #include "os_zlib.h"
 
-/* os_compress: Compress a string with zlib. */
-int os_compress(char *src, char *dst, int src_size, int dst_size)
+unsigned long int os_zlib_compress(const char *src, char *dst, unsigned long int src_size,
+		unsigned long int dst_size)
 {
-    unsigned long int zl_dst = dst_size;
-
-    /* We make sure to do not allow long sizes */
-    if(compress2((unsigned char *)dst,
-                 &zl_dst,
-                 (unsigned char *)src,
-                 (unsigned long int)src_size, 9) == Z_OK)
+    if(compress2((Bytef *)dst,
+                 &dst_size,
+                 (const Bytef *)src,
+                 src_size,
+                 Z_BEST_COMPRESSION) == Z_OK)
     {
-        dst[zl_dst] = '\0';
-        return(zl_dst);
+        dst[dst_size] = '\0';
+        return(dst_size);
     }
 
     return(0);
 }
 
 
-/* os_uncompress: Uncompress a string with zlib. */
-int os_uncompress(char *src, char *dst, int src_size, int dst_size)
+unsigned long int os_zlib_uncompress(const char *src, char *dst, unsigned long int src_size,
+		unsigned long int dst_size)
 {
-    unsigned long int zl_dst = dst_size;
-
-    if(uncompress((unsigned char *)dst,
-                  &zl_dst,
-                  (unsigned char *)src,
-                  (unsigned long int)src_size) == Z_OK)
+    if(uncompress((Bytef *)dst,
+                  &dst_size,
+                  (const Bytef *)src,
+                  src_size) == Z_OK)
     {
-        dst[zl_dst] = '\0';
-        return(zl_dst);
+        dst[dst_size] = '\0';
+        return(dst_size);
     }
+
     return(0);
 }
 
