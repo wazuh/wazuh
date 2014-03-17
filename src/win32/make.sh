@@ -1,3 +1,5 @@
+#!/bin/sh
+
 echo Making windows agent
 BASES="${MING_BASE} i686-w64-mingw32 x86_w64-w64-mingw32-gcc"
 
@@ -10,6 +12,8 @@ done
 
 #echo ${MING_BASE}
 
+# exit on error
+set -e
 
 ${MING_BASE}-windres -i icofile.rc -o icon.o
 ${MING_BASE}-gcc -o ossec-agent.exe -Wall  -DARGV0=\"ossec-agent\" -DCLIENT -DWIN32 -DOSSECHIDS icon.o os_regex/*.c os_net/*.c os_xml/*.c zlib-1.2.8/*.c config/*.c shared/*.c os_execd/*.c os_crypto/blowfish/*.c os_crypto/md5/*.c os_crypto/sha1/*.c os_crypto/md5_sha1/*.c os_crypto/shared/*.c rootcheck/*.c *.c -Iheaders/ -I./ -lwsock32
