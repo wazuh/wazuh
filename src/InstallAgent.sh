@@ -198,6 +198,8 @@ cp -pr os_execd/ossec-execd ${DIR}/bin/
 cp -pr ./init/ossec-client.sh ${DIR}/bin/ossec-control
 cp -pr addagent/manage_agents ${DIR}/bin/
 cp -pr ../contrib/util.sh ${DIR}/bin/
+cp -pr external/lua/src/ossec-lua ${DIR}/bin/
+cp -pr external/lua/src/ossec-luac ${DIR}/bin/
 chown root:${GROUP} ${DIR}/bin/util.sh
 chmod +x ${DIR}/bin/util.sh
 

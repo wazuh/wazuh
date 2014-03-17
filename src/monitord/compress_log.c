@@ -19,7 +19,7 @@
 void OS_CompressLog(char *logfile)
 {
     FILE *log;
-    gzFile *zlog;
+    gzFile zlog;
 
     char logfileGZ[OS_FLSIZE + 1];
     int len, err;
@@ -40,7 +40,7 @@ void OS_CompressLog(char *logfile)
     /* Setting the umask */
     umask(0027);
 
-		
+
     /* Creating the gzip file name */
     snprintf(logfileGZ, OS_FLSIZE, "%s.gz", logfile);
 
@@ -80,6 +80,6 @@ void OS_CompressLog(char *logfile)
 
     return;
 }
-	
+
 
 /* EOF */

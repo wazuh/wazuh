@@ -90,6 +90,11 @@ int main(int argc, char **argv)
     char *dir = DEFAULTDIR;
     char *group = GROUPGLOBAL;
     int gid;
+    #else
+    FILE *fp;
+    TCHAR path[2048];
+    DWORD last_error;
+    int ret;
     #endif
 
 
@@ -191,8 +196,57 @@ int main(int argc, char **argv)
 
     /* Starting signal handler */
     StartSIG2(ARGV0, manage_shutdown);
-    #endif
 
+    #else
+
+    /* Get full path to the directory this
+     * executable lives in
+     */
+    ret = GetModuleFileName(NULL, path, sizeof(path));
+
+    /* check for errors */
+    if(!ret)
+    {
+        ErrorExit(GMF_ERROR);
+    }
+
+    /* Get last error */
+    last_error = GetLastError();
+
+    /* Look for errors */
+    if(last_error != ERROR_SUCCESS)
+    {
+        if(last_error == ERROR_INSUFFICIENT_BUFFER)
+        {
+            ErrorExit(GMF_BUFF_ERROR, ret, sizeof(path));
+        }
+        else
+        {
+            ErrorExit(GMF_UNKN_ERROR, last_error);
+        }
+    }
+
+    /* Remove file name from path */
+    PathRemoveFileSpec(path);
+
+    /* Move to correct directory */
+    if(chdir(path))
+    {
+        ErrorExit(CHDIR_ERROR, path);
+    }
+
+    /* Check permissions */
+    fp = fopen(OSSECCONF, "r");
+    if(fp)
+    {
+        fclose(fp);
+    }
+    else
+    {
+        ErrorExit(CONF_ERROR, OSSECCONF);
+    }
+
+    #endif
 
     if(cmdlist == 1)
     {

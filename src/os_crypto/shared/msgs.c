@@ -268,7 +268,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
         }
 
         /* Uncompressing */
-        cmp_size = os_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR);
+        cmp_size = os_zlib_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR);
         if(!cmp_size)
         {
             merror(UNCOMPRESS_ERR, __local_name);
@@ -488,7 +488,7 @@ int CreateSecMSG(keystore *keys, char *msg, char *msg_encrypted, int id)
     local_count++;
 
 
-    snprintf(_tmpmsg, OS_MAXSTR,"%05hu%010u:%04hu:%s",
+    snprintf(_tmpmsg, OS_MAXSTR,"%05hu%010u:%04u:%s",
                               rand1, global_count, local_count,
                               msg);
 
@@ -506,7 +506,7 @@ int CreateSecMSG(keystore *keys, char *msg, char *msg_encrypted, int id)
     /* Compressing message.
      * We assing the first 8 bytes for padding.
      */
-    cmp_size = os_compress(_finmsg, _tmpmsg + 8, msg_size, OS_MAXSTR - 12);
+    cmp_size = os_zlib_compress(_finmsg, _tmpmsg + 8, msg_size, OS_MAXSTR - 12);
     if(!cmp_size)
     {
         merror(COMPRESS_ERR, __local_name, _finmsg);

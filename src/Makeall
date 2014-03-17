@@ -9,6 +9,7 @@ if [ "X${ARGV}" = "X" ]; then
     echo "No argument. Available options are:"
     echo "  $0 clean"
     echo "  $0 all"
+    echo "  $0 test"
     echo "  $0 build"
     echo "  $0 libs"
     echo "  $0 rootcheck"
@@ -26,8 +27,9 @@ if [ "X$1" = "Xsetmaxagents" ]; then
 fi
 
 
-ZLIBV="external/zlib-1.2.3/"
 CJSONV="external/cJSON/"
+LUAV="external/lua/"
+LUA_PLAT="posix"
 
 # CPU information
 #CPU=`uname -p`
@@ -54,7 +56,7 @@ fi
             
 
 # Cleaning Config.OS
-if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ]; then
+if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xtest" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ]; then
     ls ./Config.OS >/dev/null 2>&1
     if [ ! $? = 0 ]; then
         echo "" > Config.OS
@@ -74,6 +76,7 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ];
         elif [ -e /usr/include/linux/inotify.h ]; then
             echo "EEXTRA=-DUSEINOTIFY" >> Config.OS
         fi
+        LUA_PLAT="linux"
     fi    
 
     # Checking for libmagic
@@ -103,20 +106,23 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xrootcheck" -o "X${ARGV}" = "Xlibs" ];
         #fi
         echo "EEXTRA=-DSOLARIS -DHIGHFIRST">>Config.OS
         echo "IEXTRA=-lsocket -lnsl -lresolv" >> Config.OS
+        LUA_PLAT="solaris"
 
     elif [ "X$OS" = "XHP-UX" ]; then
         echo "EEXTRA=-DHPUX -D_XOPEN_SOURCE_EXTENDED -DHIGHFIRST -D_REENTRANT" >> Config.OS
 
     elif [ "X$OS" = "XDarwin" ]; then
         echo "EEXTRA=-DDarwin -DHIGHFIRST" >> Config.OS
+        LUA_PLAT="macosx"
 
     elif [ "X$OS" = "XFreeBSD" ]; then
         echo "EEXTRA=-DFreeBSD" >> Config.OS
+        LUA_PLAT="freebsd"
     
     else
         
         echo 'int main() { short one = 1; char *cp = (char*)&one; if ( *cp == 0 ) return(1); else return(0); }' > isbigendian.c
-        gcc -o isbigendian isbigendian.c
+        cc -o isbigendian isbigendian.c
         ./isbigendian
         if [ $? = 1 ]; then
             echo "INFO: Big endian set."
@@ -139,17 +145,23 @@ fi
 if [ "X${ARGV}" = "Xclean" ]; then
     echo "" > ./Config.OS
 fi
-   
-    
+
 # Getting values for each action
 if [ "X${ARGV}" = "Xall" ]; then
     DIRECTORIES="${LIBS} ${SOURCES} ${BINARIES}" 
     DOZLIB="x"
     DOCJSON="x"
+    DO_LUA="x"
+elif [ "X${ARGV}" = "Xtest" ]; then
+    DIRECTORIES="${LIBS} ${SOURCES}"
+    DOZLIB="x"
+    DOCJSON="x"
+    DO_LUA="x"
 elif [ "X${ARGV}" = "Xlibs" ]; then
     DIRECTORIES="${LIBS} ${SOURCES}"
     DOZLIB="x"
     DOCJSON="x"
+    DO_LUA="x"
 elif [ "X${ARGV}" = "Xrootcheck" ]; then
     DIRECTORIES="os_xml os_regex os_net ${SOURCES} ${ROOTCHECKBIN}"    
 elif [ "X${ARGV}" = "Xbuild" ]; then
@@ -163,14 +175,13 @@ if [ "X${DOZLIB}" = "Xx" ]; then
     # Build zlib here
     echo ""
     echo " *** Making zlib (by Jean-loup Gailly and Mark Adler)  *** "
-    cd ${ZLIBV}; make;
+    cd external/; make zlib;
     if [ $? != 0 ]; then
         echo ""
         echo "Error Making zlib"
         exit 1;
     fi
-    make ossec;
-    cd ../../
+    cd ../
     echo ""
 fi    
 
@@ -178,24 +189,43 @@ if [ "X${DOCJSON}" = "Xx" ]; then
     # Build cJSON here
     echo ""
     echo " *** Making cJSON (by Dave Gamble)  *** "
-    cd ${CJSONV}; make;
+    cd ${CJSONV}; make ossec;
     if [ $? != 0 ]; then
         echo ""
         echo "Error Making cJSON"
         exit 1;
     fi
-    make ossec;
+    cd ../../
+    echo ""
+fi    
+
+if [ "X${DO_LUA}" = "Xx" ]; then
+    # Build cJSON here
+    echo ""
+    echo " *** Making Lua 5.2 (by team at PUC-Rio in Brazi)  *** "
+    echo "     Copyright © 1994–2014 Lua.org, PUC-Rio. "
+    cd ${LUAV}; make ${LUA_PLAT};
+    if [ $? != 0 ]; then
+        echo ""
+        echo "Error Making cJSON"
+        exit 1;
+    fi
     cd ../../
     echo ""
 fi    
 
 if [ "X${ARGV}" = "Xclean" ]; then
     # Cleaning zlib
-    cd ${ZLIBV}; make clean;
-    cd ../../
+    cd external/; make clean;
+    cd ../
     cd ${CJSONV}; make clean;
     cd ../../
+    cd ${LUAV}; make clean;
+    cd ../../
+    cd tests/; make clean;
+    cd ../
 fi    
+
 
 
 # Checking if the bin directory is present
@@ -255,6 +285,13 @@ for i in ${DIRECTORIES}; do
     fi    
     cd ../
 done
+
+# Make and run tests if intended
+if [ "X${ARGV}" = "Xtest" ]; then
+    cd tests/
+    make
+    exit $?
+fi
 
 
 if [ "X${ARGV}" = "Xrootcheck" ]; then
