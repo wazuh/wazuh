@@ -273,7 +273,10 @@ static int _ReadElem(FILE *fp, unsigned int position, unsigned int parent, OS_XM
                 elem[count -1] = '\0';
             }
 
-            _writememory(elem, XML_ELEM, count+1, parent, _lxml);
+            if(_writememory(elem, XML_ELEM, count+1, parent, _lxml) < 0)
+            {
+                return(-1);
+            }
             _currentlycont=_lxml->cur-1;
             if(c == ' ')
             {
@@ -284,7 +287,10 @@ static int _ReadElem(FILE *fp, unsigned int position, unsigned int parent, OS_XM
             /* If the element is closed already (finished in />) */
             if((_ge == '/') || (_ga == '/'))
             {
-                _writecontent("\0", 2, _currentlycont,_lxml);
+                if(_writecontent("\0", 2, _currentlycont,_lxml) < 0)
+                {
+                    return(-1);
+                }
                 _lxml->ck[_currentlycont] = 1;
                 _currentlycont = 0;
                 count = 0;
@@ -312,7 +318,10 @@ static int _ReadElem(FILE *fp, unsigned int position, unsigned int parent, OS_XM
                 xml_error(_lxml,"XML ERR: Element not closed: %s",elem);
                 return(-1);
             }
-            _writecontent(cont,strlen(cont)+1,_currentlycont,_lxml);
+            if(_writecontent(cont,strlen(cont)+1,_currentlycont,_lxml) < 0)
+            {
+                return(-1);
+            }
             _lxml->ck[_currentlycont]=1;
             memset(elem,'\0',XML_MAXSIZE);
             memset(closedelem,'\0',XML_MAXSIZE);
@@ -368,29 +377,67 @@ static int _ReadElem(FILE *fp, unsigned int position, unsigned int parent, OS_XM
 static int _writememory(const char *str, short int type, size_t size,
                                         unsigned int parent, OS_XML *_lxml)
 {
+    char **tmp;
+    int *tmp2;
+    unsigned int *tmp3;
+
     /* Allocating for the element */
-    _lxml->el = (char **)realloc(_lxml->el,(_lxml->cur+1)*sizeof(char *));
+    tmp = (char **)realloc(_lxml->el,(_lxml->cur+1)*sizeof(char *));
+    if(tmp == NULL)
+    {
+        goto fail;
+    }
+    _lxml->el = tmp;
     _lxml->el[_lxml->cur]=(char *)calloc(size,sizeof(char));
+    if(_lxml->el[_lxml->cur] == NULL)
+    {
+        goto fail;
+    }
     strncpy(_lxml->el[_lxml->cur],str,size-1);
 
     /* Allocating for the content */
-    _lxml->ct = (char **)realloc(_lxml->ct,(_lxml->cur+1)*sizeof(char *));
+    tmp = (char **)realloc(_lxml->ct,(_lxml->cur+1)*sizeof(char *));
+    if(tmp == NULL)
+    {
+        goto fail;
+    }
+    _lxml->ct = tmp;
     _lxml->ct[_lxml->cur] = NULL;
 
     /* Allocating for the type */
-    _lxml->tp = (int *) realloc(_lxml->tp,(_lxml->cur+1)*sizeof(int));
+    tmp2 = (int *) realloc(_lxml->tp,(_lxml->cur+1)*sizeof(int));
+    if(tmp2 == NULL)
+    {
+        goto fail;
+    }
+    _lxml->tp = tmp2;
     _lxml->tp[_lxml->cur] = type;
 
     /* Allocating for the relation */
-    _lxml->rl = (unsigned int *) realloc(_lxml->rl,(_lxml->cur+1)*sizeof(unsigned int));
+    tmp3 = (unsigned int *) realloc(_lxml->rl,(_lxml->cur+1)*sizeof(unsigned int));
+    if(tmp3 == NULL)
+    {
+        goto fail;
+    }
+    _lxml->rl = tmp3;
     _lxml->rl[_lxml->cur] = parent;
 
     /* Allocating for the "check" */
-    _lxml->ck = (int *) realloc(_lxml->ck,(_lxml->cur+1)*sizeof(int));
+    tmp2 = (int *) realloc(_lxml->ck,(_lxml->cur+1)*sizeof(int));
+    if(tmp2 == NULL)
+    {
+        goto fail;
+    }
+    _lxml->ck = tmp2;
     _lxml->ck[_lxml->cur] = 0;
 
     /* Allocating for the line */
-    _lxml->ln = (unsigned int *) realloc(_lxml->ln,(_lxml->cur+1)*sizeof(unsigned int));
+    tmp3 = (unsigned int *) realloc(_lxml->ln,(_lxml->cur+1)*sizeof(unsigned int));
+    if(tmp3 == NULL)
+    {
+        goto fail;
+    }
+    _lxml->ln = tmp3;
     _lxml->ln[_lxml->cur] = _line;
 
     /* Attributes does not need to be closed */
@@ -405,11 +452,20 @@ static int _writememory(const char *str, short int type, size_t size,
 
     _lxml->cur++;
     return(0);
+
+    fail:
+    snprintf(_lxml->err, 128, "XML_ERR: Memory error");
+    return(-1);
 }
 
 static int _writecontent(const char *str, size_t size, unsigned int parent, OS_XML *_lxml)
 {
     _lxml->ct[parent]=(char *)calloc(size,sizeof(char));
+    if( _lxml->ct[parent] == NULL)
+    {
+        snprintf(_lxml->err, 128, "XML_ERR: Memory error");
+        return(-1);
+    }
     strncpy(_lxml->ct[parent],str,size-1);
 
     return(0);
@@ -500,9 +556,15 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
              * c_to_match = 0;
              */
 
-            _writememory(attr, XML_ATTR, strlen(attr)+1,
-                    parent, _lxml);
-            _writecontent(value,count+1,_lxml->cur-1,_lxml);
+            if(_writememory(attr, XML_ATTR, strlen(attr)+1,
+                    parent, _lxml) < 0)
+            {
+                return(-1);
+            }
+            if(_writecontent(value,count+1,_lxml->cur-1,_lxml) < 0)
+            {
+                return(-1);
+            }
             c = _xml_fgetc(fp);
             if(c == ' ')
                 return(_getattributes(fp,parent,_lxml));
