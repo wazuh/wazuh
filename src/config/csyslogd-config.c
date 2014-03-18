@@ -56,7 +56,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
     syslog_config[s]->group = NULL;
     syslog_config[s]->location = NULL;
     syslog_config[s]->level = 0;
-    syslog_config[s]->port = 514;
+    syslog_config[s]->port = "514";
     syslog_config[s]->format = DEFAULT_CSYSLOG;
     /* local 0 facility (16) + severity 4 - warning. --default */
     syslog_config[s]->priority = (16 * 8) + 4;
@@ -90,8 +90,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
-
-            syslog_config[s]->port = atoi(node[i]->content);
+            os_strdup(node[i]->content, syslog_config[s]->port);
         }
         else if(strcmp(node[i]->element, xml_syslog_server) == 0)
         {

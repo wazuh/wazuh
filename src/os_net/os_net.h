@@ -14,6 +14,17 @@
  * APIs for many network operations.
  */
 
+#include "headers/shared.h"
+#ifdef WIN32
+#ifndef AI_ADDRCONFIG
+#define AI_ADDRCONFIG   0x0400
+#endif
+#ifndef AI_V4MAPPED
+#define AI_V4MAPPED     0x0800
+#endif
+typedef unsigned short int sa_family_t;
+#endif /* WIN32 */
+
 #ifndef __OS_NET_H
 
 #define __OS_NET_H
@@ -24,8 +35,8 @@
  * If the IP is not set, it is going to use ADDR_ANY
  * Return the socket.
  */
-int OS_Bindporttcp(unsigned int _port, char *_ip, int ipv6);
-int OS_Bindportudp(unsigned int _port, char *_ip, int ipv6);
+int OS_Bindporttcp(char *_port, char *_ip);
+int OS_Bindportudp(char *_port, char *_ip);
 
 /* OS_BindUnixDomain
  * Bind to a specific file, using the "mode" permissions in
@@ -39,8 +50,8 @@ int OS_getsocketsize(int ossock);
 /* OS_Connect
  * Connect to a TCP/UDP socket
  */
-int OS_ConnectTCP(unsigned int _port, char *_ip, int ipv6);
-int OS_ConnectUDP(unsigned int _port, char *_ip, int ipv6);
+int OS_ConnectTCP(char *_port, char *_ip);
+int OS_ConnectUDP(char *_port, char *_ip);
 
 /* OS_RecvUDP
  * Receive a UDP packet. Return NULL if failed
@@ -76,9 +87,15 @@ int OS_SendUDPbySize(int socket, int size, char *msg);
 
 
 /* OS_GetHost
- * Calls gethostbyname
+ * Calls getaddrinfo
  */
 char *OS_GetHost(char *host, int attempts);
+
+
+/* satop 
+ * Convert a sockaddr to a printable address.
+ */
+int satop(struct sockaddr *sa, char *dst, socklen_t size);
 
 #endif
 

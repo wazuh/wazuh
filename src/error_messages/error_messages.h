@@ -29,7 +29,7 @@
 #define FOPEN_ERROR   "%s(1103): ERROR: Unable to open file '%s'."
 #define SIZE_ERROR    "%s(1104): ERROR: Maximum string size reached for: %s."
 #define NULL_ERROR    "%s(1105): ERROR: Attempted to use null string. "
-#define FORMAT_ERROR  "%s(1106): ERROR: String not correctly formated."
+#define FORMAT_ERROR  "%s(1106): ERROR: String not correctly formatted."
 #define MKDIR_ERROR   "%s(1107): ERROR: Unable to create directory: '%s'"
 #define PERM_ERROR    "%s(1108): ERROR: Permission error. Operation not completed."
 #define THREAD_ERROR  "%s(1109): ERROR: Unable to create new pthread."
@@ -58,7 +58,7 @@
 #define USER_ERROR	    "%s(1203): ERROR: Invalid user '%s' or group '%s' given."
 #define CONNTYPE_ERROR 	"%s(1204): ERROR: Invalid connection type: '%s'."
 #define PORT_ERROR	    "%s(1205): INFO: No port specified. Using default: '%d'."
-#define BIND_ERROR	    "%s(1206): ERROR: Unable to Bind port '%d'"
+#define BIND_ERROR	    "%s(1206): ERROR: Unable to Bind port '%s'"
 #define SETGID_ERROR	"%s(1207): ERROR: Unable to switch to group: '%s'."
 #define SETUID_ERROR	"%s(1208): ERROR: Unable to switch to user: '%s'."
 #define CHROOT_ERROR	"%s(1209): ERROR: Unable to chroot to directory: '%s'."
@@ -190,7 +190,7 @@
 /* Encryption/ auth errors */
 #define INVALID_KEY     "%s(1401): ERROR: Error reading authentication key: '%s'."
 #define NO_AUTHFILE     "%s(1402): ERROR: Authentication key file '%s' not found."
-#define ENCFORMAT_ERROR "%s(1403): ERROR: Incorrectly formated message from '%s'."
+#define ENCFORMAT_ERROR "%s(1403): ERROR: Incorrectly formatted message from '%s'."
 #define ENCKEY_ERROR    "%s(1404): ERROR: Authentication error. Wrong key from '%s'."
 #define ENCSIZE_ERROR   "%s(1405): ERROR: Message size not valid: '%s'."
 #define ENCSUM_ERROR    "%s(1406): ERROR: Checksum mismatch on message from '%s'."
@@ -239,7 +239,7 @@
 
 /* Agent errors */
 #define AG_WAIT_SERVER  "%s(4101): WARN: Waiting for server reply (not started). Tried: '%s'."
-#define AG_CONNECTED    "%s(4102): INFO: Connected to the server (%s:%d)."
+#define AG_CONNECTED    "%s(4102): INFO: Connected to the server (%s:%s)."
 #define AG_USINGIP      "%s(4103): INFO: Server IP address already set. Trying that before the hostname."
 #define AG_INV_HOST     "%s(4104): ERROR: Invalid hostname: '%s'."
 #define AG_INV_IP       "%s(4105): ERROR: No valid server IP found."

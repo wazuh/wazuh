@@ -23,13 +23,9 @@
 typedef struct _os_ip
 {
     char *ip;
-    unsigned int ip_address;
-    unsigned int netmask;
+    struct sockaddr_storage ss;
+    unsigned int prefixlength;
 }os_ip;
-
-
-/* Getting the netmask based on the integer value. */
-int getNetmask(int mask, char *strmask, int size);
 
 
 /* Run time definitions. */
@@ -61,6 +57,13 @@ int OS_IPFoundList(char *ip_address, os_ip **list_of_ips);
  * ** On success this function may modify the value of ip_address
  */
 int OS_IsValidIP(char *ip_address, os_ip *final_ip);
+
+
+/** int sacmp(struct sockaddr *sa1, struct sockaddr *sa2, int prefixlength)
+ * Compares two sockaddrs up to prefixlength.
+ * Returns 0 if doesn't match or 1 if they do.
+ */
+int sacmp(struct sockaddr *sa1, struct sockaddr *sa2, int prefixlength);
 
 
 /** Time range validations **/
@@ -123,7 +126,7 @@ char *OS_IsValidDay(char *day_str);
 /* Macros */
 
 /* Checks if the ip is a single host, not a network with a netmask */
-#define isSingleHost(x) (x->netmask == 0xFFFFFFFF)
+#define isSingleHost(x) ((x->ss.ss_family == AF_INET) ? (x->prefixlength == 32) : (x->prefixlength == 128))
 
 #endif
 

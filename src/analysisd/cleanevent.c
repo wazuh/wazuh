@@ -42,7 +42,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     char *pieces;
     struct tm *p;
 
-    /* The message is formated in the following way:
+    /* The message is formatted in the following way:
      * id:location:message.
      */
 
@@ -58,6 +58,17 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     {
         merror(FORMAT_ERROR, ARGV0);
         return(-1);
+    }
+
+    /* Is this from an agent? */
+    if ( *msg == '(' )
+    {   /* look past '->' for the first ':' */
+        pieces = strchr(strstr(msg, "->"), ':');
+        if(!pieces)
+        {
+            merror(FORMAT_ERROR, ARGV0);
+            return(-1);
+        }
     }
 
     *pieces = '\0';

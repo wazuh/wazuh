@@ -45,7 +45,7 @@ int connect_server(int initial_id)
 
         if(agt->rip[1])
         {
-            verbose("%s: INFO: Closing connection to server (%s:%d).",
+            verbose("%s: INFO: Closing connection to server (%s:%s).",
                     ARGV0,
                     agt->rip[rc],
                     agt->port);
@@ -94,21 +94,11 @@ int connect_server(int initial_id)
         }
 
 
-        verbose("%s: INFO: Trying to connect to server (%s:%d).", ARGV0,
+        verbose("%s: INFO: Trying to connect to server (%s:%s).", ARGV0,
                 agt->rip[rc],
                 agt->port);
 
-        /* IPv6 address: */
-        if(strchr(tmp_str,':') != NULL)
-        {
-            verbose("%s: INFO: Using IPv6 for: %s .", ARGV0, tmp_str);
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 1);
-        }
-        else
-        {
-            verbose("%s: INFO: Using IPv4 for: %s .", ARGV0, tmp_str);
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 0);
-        }
+        agt->sock = OS_ConnectUDP(agt->port, tmp_str);
 
         if(agt->sock < 0)
         {
