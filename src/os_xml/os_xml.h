@@ -27,6 +27,8 @@ typedef struct _xml_node
     char **values;
 }xml_node;
 
+#define XML_ERR_LENGTH  128
+
 /* XML structure */
 typedef struct _OS_XML
 {
@@ -39,7 +41,7 @@ typedef struct _OS_XML
     unsigned int err_line;   /* Line number of the possible error */
     char **ct;		/* Content is stored */
     char **el;		/* The element/attribute name is stored */
-    char err[128];	/* Error messages are stored in here */
+    char err[XML_ERR_LENGTH];	/* Error messages are stored in here */
 }OS_XML;
 
 typedef xml_node ** XML_NODE;

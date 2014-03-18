@@ -65,8 +65,8 @@ static void xml_error(OS_XML *_lxml, const char *msg,...)
     fprintf(stderr, "\n\n");
 #endif
 
-    memset(_lxml->err,'\0', 128);
-    vsnprintf(_lxml->err,127,msg,args);
+    memset(_lxml->err,'\0', XML_ERR_LENGTH);
+    vsnprintf(_lxml->err,XML_ERR_LENGTH-1,msg,args);
     va_end(args);
     _lxml->err_line = _line;
 }
@@ -106,7 +106,7 @@ void OS_ClearXML(OS_XML *_lxml)
     free(_lxml->ln);
     _lxml->ln = NULL;
 
-    memset(_lxml->err,'\0', 128);
+    memset(_lxml->err,'\0', XML_ERR_LENGTH);
 }
 
 
@@ -130,7 +130,7 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
 	_lxml->ln = NULL;
 
 	_lxml->err_line = 0;
-	memset(_lxml->err,'\0',128);
+	memset(_lxml->err,'\0',XML_ERR_LENGTH);
 
     fp = fopen(file,"r");
     if(!fp)
@@ -463,7 +463,7 @@ static int _writememory(const char *str, short int type, size_t size,
     return(0);
 
     fail:
-    snprintf(_lxml->err, 128, "XML_ERR: Memory error");
+    snprintf(_lxml->err, XML_ERR_LENGTH, "XML_ERR: Memory error");
     return(-1);
 }
 
@@ -472,7 +472,7 @@ static int _writecontent(const char *str, size_t size, unsigned int parent, OS_X
     _lxml->ct[parent]=(char *)calloc(size,sizeof(char));
     if( _lxml->ct[parent] == NULL)
     {
-        snprintf(_lxml->err, 128, "XML_ERR: Memory error");
+        snprintf(_lxml->err, XML_ERR_LENGTH, "XML_ERR: Memory error");
         return(-1);
     }
     strncpy(_lxml->ct[parent],str,size-1);
