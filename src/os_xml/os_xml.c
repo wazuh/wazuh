@@ -81,23 +81,32 @@ void OS_ClearXML(OS_XML *_lxml)
     unsigned int i;
     for(i=0;i<_lxml->cur;i++)
     {
-        if(_lxml->el[i])
-            free(_lxml->el[i]);
-        if(_lxml->ct[i])
-            free(_lxml->ct[i]);
+        free(_lxml->el[i]);
+        free(_lxml->ct[i]);
     }
     _lxml->cur = 0;
+    _lxml->fol = 0;
     _lxml->err_line = 0;
+
     free(_lxml->el);
+    _lxml->el = NULL;
+
     free(_lxml->ct);
+    _lxml->ct = NULL;
+
     free(_lxml->rl);
+    _lxml->rl = NULL;
+
     free(_lxml->tp);
+    _lxml->tp = NULL;
+
     free(_lxml->ck);
+    _lxml->ck = NULL;
+
     free(_lxml->ln);
+    _lxml->ln = NULL;
+
     memset(_lxml->err,'\0', 128);
-
-    return;
-
 }
 
 
