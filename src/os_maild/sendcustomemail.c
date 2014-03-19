@@ -235,10 +235,13 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
 
     OS_SendTCP(socket,snd_msg);
 
-    /* Sending server name header */
-    memset(snd_msg,'\0',128);
-    snprintf(snd_msg,127, XHEADER, idsname);
-    OS_SendTCP(socket, snd_msg);
+    if (idsname)
+    {	    
+        /* Sending server name header */
+        memset(snd_msg,'\0',128);
+        snprintf(snd_msg,127, XHEADER, idsname);
+        OS_SendTCP(socket, snd_msg);
+    }
 
     /* Sending subject */
     memset(snd_msg, '\0', 128);
