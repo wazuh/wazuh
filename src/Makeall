@@ -28,6 +28,8 @@ fi
 
 
 CJSONV="external/cJSON/"
+LUAV="external/lua/"
+LUA_PLAT="posix"
 
 # CPU information
 #CPU=`uname -p`
@@ -74,6 +76,7 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xtest" -o "X${ARGV}" = "Xrootcheck" -o
         elif [ -e /usr/include/linux/inotify.h ]; then
             echo "EEXTRA=-DUSEINOTIFY" >> Config.OS
         fi
+        LUA_PLAT="linux"
     fi    
 
     # Checking for libmagic
@@ -103,15 +106,18 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xtest" -o "X${ARGV}" = "Xrootcheck" -o
         #fi
         echo "EEXTRA=-DSOLARIS -DHIGHFIRST">>Config.OS
         echo "IEXTRA=-lsocket -lnsl -lresolv" >> Config.OS
+        LUA_PLAT="solaris"
 
     elif [ "X$OS" = "XHP-UX" ]; then
         echo "EEXTRA=-DHPUX -D_XOPEN_SOURCE_EXTENDED -DHIGHFIRST -D_REENTRANT" >> Config.OS
 
     elif [ "X$OS" = "XDarwin" ]; then
         echo "EEXTRA=-DDarwin -DHIGHFIRST" >> Config.OS
+        LUA_PLAT="macosx"
 
     elif [ "X$OS" = "XFreeBSD" ]; then
         echo "EEXTRA=-DFreeBSD" >> Config.OS
+        LUA_PLAT="freebsd"
     
     else
         
@@ -145,14 +151,17 @@ if [ "X${ARGV}" = "Xall" ]; then
     DIRECTORIES="${LIBS} ${SOURCES} ${BINARIES}" 
     DOZLIB="x"
     DOCJSON="x"
+    DO_LUA="x"
 elif [ "X${ARGV}" = "Xtest" ]; then
     DIRECTORIES="${LIBS} ${SOURCES}"
     DOZLIB="x"
     DOCJSON="x"
+    DO_LUA="x"
 elif [ "X${ARGV}" = "Xlibs" ]; then
     DIRECTORIES="${LIBS} ${SOURCES}"
     DOZLIB="x"
     DOCJSON="x"
+    DO_LUA="x"
 elif [ "X${ARGV}" = "Xrootcheck" ]; then
     DIRECTORIES="os_xml os_regex os_net ${SOURCES} ${ROOTCHECKBIN}"    
 elif [ "X${ARGV}" = "Xbuild" ]; then
@@ -190,15 +199,32 @@ if [ "X${DOCJSON}" = "Xx" ]; then
     echo ""
 fi    
 
+if [ "X${DO_LUA}" = "Xx" ]; then
+    # Build cJSON here
+    echo ""
+    echo " *** Making Lua 5.2 (by team at PUC-Rio in Brazi)  *** "
+    echo "     Copyright © 1994–2014 Lua.org, PUC-Rio. "
+    cd ${LUAV}; make ${LUA_PLAT};
+    if [ $? != 0 ]; then
+        echo ""
+        echo "Error Making cJSON"
+        exit 1;
+    fi
+    cd ../../
+    echo ""
+fi    
+
 if [ "X${ARGV}" = "Xclean" ]; then
     # Cleaning zlib
     cd external/; make clean;
     cd ../
     cd ${CJSONV}; make clean;
     cd ../../
+    cd ${LUAV}; make clean;
+    cd ../../
     cd tests/; make clean;
     cd ../
-fi
+fi    
 
 
 
