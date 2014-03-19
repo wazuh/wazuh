@@ -269,7 +269,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
                 continue;
         }
 
-        else if((location == 0) && ((c == _R_CONFE) || (c == ' ')))
+        else if((location == 0) && ((c == _R_CONFE) || (c == ' ' || c == '\n' || c == '\t')))
         {
             int _ge = 0;
             int _ga = 0;
@@ -287,7 +287,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
                 return(-1);
             }
             _currentlycont=_lxml->cur-1;
-            if(c == ' ')
+            if(c == ' ' || c == '\n' || c == '\t')
             {
                 if((_ga = _getattributes(fp,parent,_lxml)) < 0)
                     return(-1);
@@ -509,11 +509,17 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
 
         else if((c == _R_CONFE) || ((location == 0) && (c == '/')))
         {
-            if((location == 1)||((location == 0)&&(count > 0)))
+            if(location == 1)
             {
                 xml_error(_lxml, "XMLERR: Attribute '%s' not closed.",
                                  attr);
                 return(-1);
+            }
+            else if((location == 0)&&(count > 0))
+            {
+                xml_error(_lxml, "XMLERR: Attribute '%s' has no value.",
+                                                 attr);
+                                return(-1);
             }
             else if(c == '/')
                 return(c);
@@ -573,9 +579,18 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
             location = 1;
             count = 0;
         }
-        else if((location == 0)&&(c == ' '))
-            continue;
-
+        else if((location == 0)&&(c == ' ' || c == '\n' || c == '\t'))
+        {
+            if(count == 0)
+            {
+                continue;
+            }
+            else
+            {
+                xml_error(_lxml, "XMLERR: Attribute '%s' has no value.", attr);
+                return(-1);
+            }
+        }
         else if((location == 1)&&(c == c_to_match))
         {
             value[count]='\0';

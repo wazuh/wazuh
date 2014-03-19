@@ -172,6 +172,14 @@ START_TEST(test_attributes)
 	assert_os_xml_eq(
             "<root attr1=\"test1\"></root><root attr1=\"test2\"></root>",
             "<root attr1=\"test1\"></root><root attr1=\"test2\"></root>");
+
+	assert_os_xml_eq(
+	        "<root attr1=\"test\"\n\t  \t\n  \n\t  \nattr2=\"test\"></root>",
+            "<root attr1=\"test\" attr2=\"test\"></root>");
+
+	assert_os_xml_eq(
+            "<root\n\t  \t\n  \n\t  \nattr1=\"test\"></root>",
+            "<root attr1=\"test\"></root>");
 }
 END_TEST
 
@@ -402,6 +410,34 @@ START_TEST(test_duplicateattribute)
     OS_XML xml;
     ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
     ck_assert_str_eq(xml.err, "XMLERR: Attribute 'attr' already defined.");
+    ck_assert_int_eq(xml.err_line, 1);
+
+    OS_ClearXML(&xml);
+    unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_noattributevalue)
+{
+    char xml_file_name[256];
+    create_xml_file("<root attr></root>", xml_file_name, 256);
+    OS_XML xml;
+    ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+    ck_assert_str_eq(xml.err, "XMLERR: Attribute 'attr' has no value.");
+    ck_assert_int_eq(xml.err_line, 1);
+
+    OS_ClearXML(&xml);
+    unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_noattributevalue2)
+{
+    char xml_file_name[256];
+    create_xml_file("<root attr attr2='test'></root>", xml_file_name, 256);
+    OS_XML xml;
+    ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+    ck_assert_str_eq(xml.err, "XMLERR: Attribute 'attr' has no value.");
     ck_assert_int_eq(xml.err_line, 1);
 
     OS_ClearXML(&xml);
@@ -694,6 +730,8 @@ Suite *test_suite(void)
 	tcase_add_test(tc_core, test_invalidattributeclosing);
 	tcase_add_test(tc_core, test_infiniteattribute3);
 	tcase_add_test(tc_core, test_duplicateattribute);
+	tcase_add_test(tc_core, test_noattributevalue);
+	tcase_add_test(tc_core, test_noattributevalue2);
 	tcase_add_test(tc_core, test_oselementsexists);
 	tcase_add_test(tc_core, test_osgetonecontentforelement);
 	tcase_add_test(tc_core, test_oswritexml_success);
