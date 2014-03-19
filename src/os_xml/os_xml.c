@@ -507,7 +507,7 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
             return(-1);
         }
 
-        else if((c == _R_CONFE) || (c == '/'))
+        else if((c == _R_CONFE) || ((location == 0) && (c == '/')))
         {
             if((location == 1)||((location == 0)&&(count > 0)))
             {

@@ -166,6 +166,10 @@ START_TEST(test_attributes)
 	assert_os_xml_eq(
 	        "<root attr1=\"test\"\nattr2=\"test\"\tattr3=\"test\"></root>",
             "<root attr1=\"test\" attr2=\"test\" attr3=\"test\"></root>");
+
+	assert_os_xml_eq(
+            "<root attr1=\"test/test\"></root>",
+            "<root attr1=\"test/test\"></root>");
 }
 END_TEST
 
