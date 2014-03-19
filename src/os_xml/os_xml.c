@@ -16,6 +16,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 #include "os_xml.h"
 #include "os_xml_internal.h"
@@ -269,7 +270,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
                 continue;
         }
 
-        else if((location == 0) && ((c == _R_CONFE) || (c == ' ' || c == '\n' || c == '\t')))
+        else if((location == 0) && ((c == _R_CONFE) || isspace(c)))
         {
             int _ge = 0;
             int _ga = 0;
@@ -287,7 +288,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
                 return(-1);
             }
             _currentlycont=_lxml->cur-1;
-            if(c == ' ' || c == '\n' || c == '\t')
+            if(isspace(c))
             {
                 if((_ga = _getattributes(fp,parent,_lxml)) < 0)
                     return(-1);
@@ -553,11 +554,11 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
             if((c != '"')&&(c != '\''))
             {
                 unsigned short int _err=1;
-                if(c == ' ')
+                if(isspace(c))
                 {
                     while((c=_xml_fgetc(fp))!= EOF)
                     {
-                        if(c == ' ')
+                        if(isspace(c))
                             continue;
                         else if((c == '"')||(c == '\''))
                         {
@@ -579,7 +580,7 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
             location = 1;
             count = 0;
         }
-        else if((location == 0)&&(c == ' ' || c == '\n' || c == '\t'))
+        else if((location == 0)&&(isspace(c)))
         {
             if(count == 0)
             {
@@ -610,7 +611,7 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
                 return(-1);
             }
             c = _xml_fgetc(fp);
-            if(c == ' ' || c == '\t' || c == '\n')
+            if(isspace(c))
                 return(_getattributes(fp,parent,_lxml));
             else if(c == _R_CONFE)
                 return(0);
