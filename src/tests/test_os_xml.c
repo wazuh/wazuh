@@ -401,13 +401,14 @@ START_TEST(test_duplicateattribute)
     create_xml_file("<root attr='test' attr2='test' attr='test123'></root>", xml_file_name, 256);
     OS_XML xml;
     ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
-    ck_assert_str_eq(xml.err, "XMLERR: Attribute 'attr' of element 'root' already defined.");
+    ck_assert_str_eq(xml.err, "XMLERR: Attribute 'attr' already defined.");
     ck_assert_int_eq(xml.err_line, 1);
 
     OS_ClearXML(&xml);
     unlink(xml_file_name);
 }
 END_TEST
+
 //TODO
 /*START_TEST(test_unknownvariable)
 {

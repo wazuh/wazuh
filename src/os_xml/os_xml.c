@@ -531,7 +531,7 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
             {
                 if(strcmp(_lxml->el[i], attr) == 0)
                 {
-                    xml_error(_lxml, "XMLERR: Attribute '%s' of element '%s' already defined.", attr, _lxml->el[parent]);
+                    xml_error(_lxml, "XMLERR: Attribute '%s' already defined.", attr);
                     return(-1);
                 }
 
