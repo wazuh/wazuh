@@ -523,6 +523,28 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
         else if((location == 0)&&(c == '='))
         {
             attr[count]='\0';
+
+            /* check for already existent attribute with same name */
+            unsigned int i = _lxml->cur - 1;
+            /* search backwards until previous parent */
+            while(_lxml->rl[i] == parent)
+            {
+                if(_lxml->tp[i] == XML_ATTR
+                        && strcmp(_lxml->el[i], attr) == 0
+                        && strcmp(_lxml->el[parent], XML_VAR) != 0)
+                {
+                    xml_error(_lxml, "XMLERR: Attribute '%s' of element '%s' already defined.", attr, _lxml->el[parent]);
+                    return(-1);
+                }
+
+                /* continue with previous element */
+                if(i==0)
+                {
+                    break;
+                }
+                i--;
+            }
+
             c = _xml_fgetc(fp);
             if((c != '"')&&(c != '\''))
             {

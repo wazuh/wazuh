@@ -94,18 +94,16 @@ static void assert_os_xml_eq_str(OS_XML *xml, const char *xml_str)
 	free(buffer);
 }
 
-static void assert_os_xml_eq(const char *parse_str, const char *xml_str)
-{
-	char xml_file_name[256];
-	create_xml_file(parse_str, xml_file_name, 256);
-	OS_XML xml;
-	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
-	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
-	assert_os_xml_eq_str(&xml, xml_str);
-
-	OS_ClearXML(&xml);
-	unlink(xml_file_name);
-}
+#define assert_os_xml_eq(PARSE_STR, XML_STR) do { \
+	char _ck_xml_file_name[256]; \
+	create_xml_file(PARSE_STR, _ck_xml_file_name, 256); \
+	OS_XML _ck_xml; \
+	ck_assert_int_eq(OS_ReadXML(_ck_xml_file_name, &_ck_xml), 0); \
+	ck_assert_int_eq(OS_ApplyVariables(&_ck_xml), 0); \
+	assert_os_xml_eq_str(&_ck_xml, XML_STR); \
+	OS_ClearXML(&_ck_xml); \
+	unlink(_ck_xml_file_name); \
+} while (0)
 
 START_TEST(test_simplenodes)
 {
@@ -175,7 +173,7 @@ END_TEST
 
 START_TEST(test_variables)
 {
-	assert_os_xml_eq(
+    assert_os_xml_eq(
 			"<var name=\"var1\">value1</var>"
 			"<var name=\"var2\">value2</var>"
 			"<root attr1=\"$var1\" attr2=\"1\">$var2</root>"
@@ -393,6 +391,19 @@ START_TEST(test_infiniteattribute3)
 }
 END_TEST
 
+START_TEST(test_duplicateattribute)
+{
+    char xml_file_name[256];
+    create_xml_file("<root attr='test' attr2='test' attr='test123'></root>", xml_file_name, 256);
+    OS_XML xml;
+    ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+    ck_assert_str_eq(xml.err, "XMLERR: Attribute 'attr' of element 'root' already defined.");
+    ck_assert_int_eq(xml.err_line, 1);
+
+    OS_ClearXML(&xml);
+    unlink(xml_file_name);
+}
+END_TEST
 //TODO
 /*START_TEST(test_unknownvariable)
 {
@@ -510,7 +521,7 @@ END_TEST
 START_TEST(test_osgetattributecontent)
 {
 	char xml_file_name[256];
-	create_xml_file("<root attr=\"value\" attr2=\"value1\" attr2=\"value2\"></root>", xml_file_name, 256);
+	create_xml_file("<root attr=\"value\" attr2=\"value1\"></root>", xml_file_name, 256);
 	OS_XML xml;
 	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
 	ck_assert_int_eq(OS_ApplyVariables(&xml), 0);
@@ -677,6 +688,7 @@ Suite *test_suite(void)
 	tcase_add_test(tc_core, test_infiniteattribute2);
 	tcase_add_test(tc_core, test_invalidattributeclosing);
 	tcase_add_test(tc_core, test_infiniteattribute3);
+	tcase_add_test(tc_core, test_duplicateattribute);
 	tcase_add_test(tc_core, test_oselementsexists);
 	tcase_add_test(tc_core, test_osgetonecontentforelement);
 	tcase_add_test(tc_core, test_oswritexml_success);
