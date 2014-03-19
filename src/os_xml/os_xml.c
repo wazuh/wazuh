@@ -27,7 +27,7 @@ static int _writecontent(const char *str, size_t size, unsigned int parent, OS_X
 static int _writememory(const char *str, short int type, size_t size,
                                         unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _xml_fgetc(FILE *fp) __attribute__((nonnull));
-static int _ReadElem(FILE *fp, unsigned int position, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
+static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml) __attribute__((nonnull));
 static void xml_error(OS_XML *_lxml, const char *msg,...) __attribute__((format(printf, 2, 3), nonnull));
 
@@ -142,7 +142,7 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
     /* Zeroing the line */
     _line = 1;
 
-    if((r = _ReadElem(fp,0,0,_lxml)) < 0) /* First position */
+    if((r = _ReadElem(fp,0,_lxml)) < 0) /* First position */
     {
         if(r != LEOF)
         {
@@ -200,7 +200,7 @@ static int _oscomment(FILE *fp)
 }
 
 
-static int _ReadElem(FILE *fp, unsigned int position, unsigned int parent, OS_XML *_lxml)
+static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
 {
     int c;
     unsigned int count = 0;
@@ -354,7 +354,7 @@ static int _ReadElem(FILE *fp, unsigned int position, unsigned int parent, OS_XM
                 ungetc(c,fp);
                 ungetc(_R_CONFS,fp);
 
-                if(_ReadElem(fp,position+1,parent+1,_lxml)< 0)
+                if(_ReadElem(fp,parent+1,_lxml)< 0)
                 {
                     return(-1);
                 }
