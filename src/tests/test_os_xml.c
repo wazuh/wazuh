@@ -168,6 +168,10 @@ START_TEST(test_attributes)
 	assert_os_xml_eq(
             "<root attr1=\"test/test\"></root>",
             "<root attr1=\"test/test\"></root>");
+
+	assert_os_xml_eq(
+            "<root attr1=\"test1\"></root><root attr1=\"test2\"></root>",
+            "<root attr1=\"test1\"></root><root attr1=\"test2\"></root>");
 }
 END_TEST
 
