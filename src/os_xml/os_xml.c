@@ -575,7 +575,7 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
                 return(-1);
             }
             c = _xml_fgetc(fp);
-            if(c == ' ')
+            if(c == ' ' || c == '\t' || c == '\n')
                 return(_getattributes(fp,parent,_lxml));
             else if(c == _R_CONFE)
                 return(0);
