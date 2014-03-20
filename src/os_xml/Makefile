@@ -6,13 +6,9 @@ NAME = os_xml
 
 include ../Config.Make
 
-SRCS =  os_xml.c os_xml_access.c os_xml_node_access.c os_xml_variables.c os_xml_writer.c
-OBJS =  os_xml.o os_xml_access.o os_xml_node_access.o os_xml_variables.o os_xml_writer.o
-
-xml:
-		$(CC) -DXML_VAR=\"var\" $(CFLAGS) -c $(SRCS)
-		ar cru os_xml.a ${OBJS}
-		ranlib os_xml.a
+os_xml.a: *.c *.h
+		${CC} ${CFLAGS} -c ${SOURCES}
+		${BUILDLIB} os_xml.a ${OBJECTS}
 
 clean:
 		${CLEAN}
