@@ -13,7 +13,7 @@
 
 #include "shared.h"
 #include "monitord.h"
-int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, FILE *fp, struct tm *p);
+int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, FILE *fp, struct tm *p);
 char *(monthss[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
                   "Sep","Oct","Nov","Dec"};
 
@@ -83,7 +83,7 @@ void generate_reports(int cday, int cmon, int cyear,struct tm *p)
                     merror("%s: INFO: Report '%s' empty.", ARGV0, mond.reports[s]->title);
                 }
                 else if(OS_SendCustomEmail(mond.reports[s]->emailto, mond.reports[s]->title,
-                        mond.smtpserver, mond.emailfrom, mond.reports[s]->r_filter.fp, p) != 0)
+                        mond.smtpserver, mond.emailfrom, mond.emailidsname, mond.reports[s]->r_filter.fp, p) != 0)
                 {
                     merror("%s: WARN: Unable to send report email.", ARGV0);
                 }

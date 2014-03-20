@@ -39,6 +39,7 @@
 #define ENDHEADER               "\r\n"
 #define ENDDATA			"\r\n.\r\n"
 #define QUITMSG 		"QUIT\r\n"
+#define XHEADER 		"X-IDS-OSSEC: %s\r\n"
 
 
 /* Error messages - Can be translated */
@@ -528,6 +529,13 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
     OS_SendTCP(socket,snd_msg);
 
+    if(mail->idsname)
+    {
+        /* Sending server name header */
+        memset(snd_msg,'\0',128);
+        snprintf(snd_msg,127, XHEADER, mail->idsname);
+        OS_SendTCP(socket, snd_msg);
+    }
 
     /* Sending subject */
     memset(snd_msg,'\0',128);
