@@ -615,6 +615,8 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
                 return(_getattributes(fp,parent,_lxml));
             else if(c == _R_CONFE)
                 return(0);
+            else if(c == '/')
+            	return (c);
 
             xml_error(_lxml,
                 "XMLERR: Bad attribute closing for '%s'='%s'.",
