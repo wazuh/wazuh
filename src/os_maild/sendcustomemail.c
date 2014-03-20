@@ -38,6 +38,7 @@
 #define ENDHEADER               "\r\n"
 #define ENDDATA			"\r\n.\r\n"
 #define QUITMSG 		"QUIT\r\n"
+#define XHEADER 		"X-IDS-OSSEC: %s\r\n"
 
 
 /* Error messages - Can be translated */
@@ -57,7 +58,7 @@
 
 /* OS_SendCustomEmail
  */
-int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, FILE *fp, struct tm *p)
+int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, FILE *fp, struct tm *p)
 {
     int socket,i = 0;
     char *msg;
@@ -234,6 +235,13 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, F
 
     OS_SendTCP(socket,snd_msg);
 
+    if (idsname)
+    {	    
+        /* Sending server name header */
+        memset(snd_msg,'\0',128);
+        snprintf(snd_msg,127, XHEADER, idsname);
+        OS_SendTCP(socket, snd_msg);
+    }
 
     /* Sending subject */
     memset(snd_msg, '\0', 128);

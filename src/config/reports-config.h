@@ -38,6 +38,7 @@ typedef struct _monitor_config
 
     char *smtpserver;
     char *emailfrom;
+    char *emailidsname;
 
     char **agents;
     report_config **reports;
