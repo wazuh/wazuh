@@ -110,6 +110,7 @@ START_TEST(test_simplenodes)
 	assert_os_xml_eq("", "");
 	assert_os_xml_eq("<root></root>", "<root></root>");
 	assert_os_xml_eq("<root/>", "<root></root>");
+	assert_os_xml_eq("<root />", "<root></root>");
 }
 END_TEST
 
@@ -177,9 +178,17 @@ START_TEST(test_attributes)
 	        "<root attr1=\"test\"\n\t  \t\n  \n\t  \nattr2=\"test\"></root>",
             "<root attr1=\"test\" attr2=\"test\"></root>");
 
-	assert_os_xml_eq(
+    assert_os_xml_eq(
             "<root\n\t  \t\n  \n\t  \nattr1=\"test\"></root>",
             "<root attr1=\"test\"></root>");
+
+    assert_os_xml_eq(
+            "<root attr=\"test\" />",
+            "<root attr=\"test\"></root>");
+
+    assert_os_xml_eq(
+            "<root attr=\"test\"/>",
+            "<root attr=\"test\"></root>");
 }
 END_TEST
 
