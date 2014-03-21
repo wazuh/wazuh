@@ -75,9 +75,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                             goto fail;
                         var = tmp;
 
-                        var[s] = strdup(_lxml->ct[j]);
-                        if(var[s] == NULL)
-                            goto fail;
+                        var[s] = _lxml->ct[j];
 
                         /* Cleaning the lxml->err */
                         strncpy(_lxml->err," ", 3);
@@ -113,9 +111,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                 goto fail;
             value = tmp;
 
-            value[s] = strdup(_lxml->ct[i]);
-            if(value[s] == NULL)
-                goto fail;
+            value[s] = _lxml->ct[i];
 
             strncpy(_lxml->err," ", 3);
             s++;
@@ -281,18 +277,6 @@ int OS_ApplyVariables(OS_XML *_lxml)
 
     cleanup:
     /* Cleaning the variables */
-    for(i=0;i<s;i++)
-    {
-        if((var)&&(var[i]))
-        {
-            free(var[i]);
-        }
-        if((value)&&(value[i]))
-        {
-            free(value[i]);
-        }
-    }
-
     free(var);
     free(value);
     free(p2);
