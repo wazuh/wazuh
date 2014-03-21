@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "../os_xml/os_xml.h"
+#include "../os_xml/os_xml_internal.h"
 
 Suite *test_suite(void);
 
@@ -183,6 +184,10 @@ START_TEST(test_attributes)
             "<root attr1=\"test\"></root>");
 
     assert_os_xml_eq(
+            "<root attr1=\n\t  \t\n  \n\t  \n\"test\"></root>",
+            "<root attr1=\"test\"></root>");
+
+    assert_os_xml_eq(
             "<root attr=\"test\" />",
             "<root attr=\"test\"></root>");
 
@@ -214,6 +219,14 @@ START_TEST(test_comments)
 	assert_os_xml_eq(
 			"<root1/><!--comment--><root2/>",
 			"<root1></root1><root2></root2>");
+
+	assert_os_xml_eq(
+            "<root1/><! comment with ! !><root2/>",
+            "<root1></root1><root2></root2>");
+
+	assert_os_xml_eq(
+            "<root1/><! comment with - --><root2/>",
+            "<root1></root1><root2></root2>");
 }
 END_TEST
 
@@ -267,6 +280,20 @@ START_TEST(test_unclosednode)
 
 	OS_ClearXML(&xml);
 	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_unclosednode2)
+{
+    char xml_file_name[256];
+    create_xml_file("<root></root2>", xml_file_name, 256);
+    OS_XML xml;
+    ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+    ck_assert_str_eq(xml.err, "XMLERR: Element 'root' not closed.");
+    ck_assert_int_eq(xml.err_line, 1);
+
+    OS_ClearXML(&xml);
+    unlink(xml_file_name);
 }
 END_TEST
 
@@ -355,6 +382,27 @@ START_TEST(test_invalidvariablename)
 }
 END_TEST
 
+START_TEST(test_invalidvariable)
+{
+    char xml_file_name[256];
+    char overflow_string[256 + 10];
+    memset(overflow_string, 'c', 256 + 9);
+    overflow_string[256 + 9] = '\0';
+
+    char xml_string[3 * 256];
+    snprintf(xml_string, 3 * 256 - 1, "<var name=\"%s\">test</var><test>$%s</test>", overflow_string, overflow_string);
+    create_xml_file(xml_string, xml_file_name, 256);
+    OS_XML xml;
+    ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+    ck_assert_int_ne(OS_ApplyVariables(&xml), 0);
+    ck_assert_str_eq(xml.err, "XMLERR: Invalid variable size: '255'.");
+    ck_assert_int_eq(xml.err_line, 0);
+
+    OS_ClearXML(&xml);
+    unlink(xml_file_name);
+}
+END_TEST
+
 START_TEST(test_unknownvariable)
 {
 	char xml_file_name[256];
@@ -384,6 +432,20 @@ START_TEST(test_infiniteattribute2)
 }
 END_TEST
 
+START_TEST(test_invalidattributestart)
+{
+    char xml_file_name[256];
+    create_xml_file("<root attr=  test\"test\"/>", xml_file_name, 256);
+    OS_XML xml;
+    ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+    ck_assert_str_eq(xml.err, "XMLERR: Attribute 'attr' not followed by a \" or '.");
+    ck_assert_int_eq(xml.err_line, 1);
+
+    OS_ClearXML(&xml);
+    unlink(xml_file_name);
+}
+END_TEST
+
 START_TEST(test_invalidattributeclosing)
 {
 	char xml_file_name[256];
@@ -395,6 +457,20 @@ START_TEST(test_invalidattributeclosing)
 
 	OS_ClearXML(&xml);
 	unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_invalidattributeclosing2)
+{
+    char xml_file_name[256];
+    create_xml_file("<root attr='test'test/>", xml_file_name, 256);
+    OS_XML xml;
+    ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+    ck_assert_str_eq(xml.err, "XMLERR: Bad attribute closing for 'attr'='test'.");
+    ck_assert_int_eq(xml.err_line, 1);
+
+    OS_ClearXML(&xml);
+    unlink(xml_file_name);
 }
 END_TEST
 
@@ -712,6 +788,86 @@ START_TEST(test_osclearnode)
 }
 END_TEST
 
+START_TEST(test_stringoverflow)
+{
+    char xml_file_name[256];
+    char overflow_string[XML_MAXSIZE + 10];
+    memset(overflow_string, 'c', XML_MAXSIZE + 9);
+    overflow_string[XML_MAXSIZE + 9] = '\0';
+
+    char xml_string[2 * XML_MAXSIZE];
+    snprintf(xml_string, 2 * XML_MAXSIZE - 1, "<%s/>", overflow_string);
+    create_xml_file(xml_string, xml_file_name, 256);
+    OS_XML xml;
+    ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+    ck_assert_str_eq(xml.err, "XMLERR: String overflow.");
+    ck_assert_int_eq(xml.err_line, 1);
+
+    OS_ClearXML(&xml);
+    unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_stringoverflow2)
+{
+    char xml_file_name[256];
+    char overflow_string[XML_MAXSIZE + 10];
+    memset(overflow_string, 'c', XML_MAXSIZE + 9);
+    overflow_string[XML_MAXSIZE + 9] = '\0';
+
+    char xml_string[2 * XML_MAXSIZE];
+    snprintf(xml_string, 2 * XML_MAXSIZE - 1, "<test>%s</test>", overflow_string);
+    create_xml_file(xml_string, xml_file_name, 256);
+    OS_XML xml;
+    ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+    ck_assert_str_eq(xml.err, "XMLERR: String overflow.");
+    ck_assert_int_eq(xml.err_line, 1);
+
+    OS_ClearXML(&xml);
+    unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_stringoverflow3)
+{
+    char xml_file_name[256];
+    char overflow_string[XML_MAXSIZE + 10];
+    memset(overflow_string, 'c', XML_MAXSIZE + 9);
+    overflow_string[XML_MAXSIZE + 9] = '\0';
+
+    char xml_string[2 * XML_MAXSIZE];
+    snprintf(xml_string, 2 * XML_MAXSIZE - 1, "<test %s=\"test\">test</test>", overflow_string);
+    create_xml_file(xml_string, xml_file_name, 256);
+    OS_XML xml;
+    ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+    ck_assert_str_eq(xml.err, "XMLERR: Overflow attempt at attribute 'cccccccccccccccccccc'.");
+    ck_assert_int_eq(xml.err_line, 1);
+
+    OS_ClearXML(&xml);
+    unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_stringoverflow4)
+{
+    char xml_file_name[256];
+    char overflow_string[XML_MAXSIZE + 10];
+    memset(overflow_string, 'c', XML_MAXSIZE + 9);
+    overflow_string[XML_MAXSIZE + 9] = '\0';
+
+    char xml_string[2 * XML_MAXSIZE];
+    snprintf(xml_string, 2 * XML_MAXSIZE - 1, "<test test=\"%s\">test</test>", overflow_string);
+    create_xml_file(xml_string, xml_file_name, 256);
+    OS_XML xml;
+    ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
+    ck_assert_str_eq(xml.err, "XMLERR: Overflow attempt at attribute 'test'.");
+    ck_assert_int_eq(xml.err_line, 1);
+
+    OS_ClearXML(&xml);
+    unlink(xml_file_name);
+}
+END_TEST
+
 Suite *test_suite(void)
 {
 	Suite *s = suite_create("os_xml");
@@ -728,15 +884,19 @@ Suite *test_suite(void)
 	tcase_add_test(tc_core, test_linecounter);
 	tcase_add_test(tc_core, test_invalidfile);
 	tcase_add_test(tc_core, test_unclosednode);
+    tcase_add_test(tc_core, test_unclosednode2);
 	tcase_add_test(tc_core, test_unclosedcomment);
 	tcase_add_test(tc_core, test_nodenotopened);
 	tcase_add_test(tc_core, test_unclosedattribute);
 	tcase_add_test(tc_core, test_infiniteattribute);
 	tcase_add_test(tc_core, test_unquotedattribute);
 	tcase_add_test(tc_core, test_invalidvariablename);
+    tcase_add_test(tc_core, test_invalidvariable);
 	tcase_add_test(tc_core, test_unknownvariable);
 	tcase_add_test(tc_core, test_infiniteattribute2);
+    tcase_add_test(tc_core, test_invalidattributestart);
 	tcase_add_test(tc_core, test_invalidattributeclosing);
+    tcase_add_test(tc_core, test_invalidattributeclosing2);
 	tcase_add_test(tc_core, test_infiniteattribute3);
 	tcase_add_test(tc_core, test_duplicateattribute);
 	tcase_add_test(tc_core, test_noattributevalue);
@@ -751,6 +911,10 @@ Suite *test_suite(void)
 	tcase_add_test(tc_core, test_osgetelements);
 	tcase_add_test(tc_core, test_osgetattributes);
 	tcase_add_test(tc_core, test_osclearnode);
+	tcase_add_test(tc_core, test_stringoverflow);
+    tcase_add_test(tc_core, test_stringoverflow2);
+    tcase_add_test(tc_core, test_stringoverflow3);
+    tcase_add_test(tc_core, test_stringoverflow4);
 	suite_add_tcase(s, tc_core);
 
 	return (s);
