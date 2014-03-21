@@ -21,8 +21,8 @@
 #define XML_VAR              "var"
 #define XML_VAR_ATTRIBUTE    "name"
 
-#define XML_ELEM                101
-#define XML_ATTR                102
-#define XML_VARIABLE_BEGIN      '$'
+//#define XML_ELEM                101
+//#define XML_ATTR                102
+//#define XML_VARIABLE_BEGIN      '$'
 
 #endif /* OS_XML_INTERNAL_H_ */

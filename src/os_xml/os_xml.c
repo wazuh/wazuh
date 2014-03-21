@@ -25,7 +25,7 @@
 /* Internal functions */
 static int _oscomment(FILE *fp) __attribute__((nonnull));
 static int _writecontent(const char *str, size_t size, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
-static int _writememory(const char *str, short int type, size_t size,
+static int _writememory(const char *str, XML_TYPE type, size_t size,
                                         unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _xml_fgetc(FILE *fp) __attribute__((nonnull));
 static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
@@ -383,12 +383,13 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
     return(-1);
 }
 
-static int _writememory(const char *str, short int type, size_t size,
+static int _writememory(const char *str, XML_TYPE type, size_t size,
                                         unsigned int parent, OS_XML *_lxml)
 {
     char **tmp;
     int *tmp2;
     unsigned int *tmp3;
+    XML_TYPE *tmp4;
 
     /* Allocating for the element */
     tmp = (char **)realloc(_lxml->el,(_lxml->cur+1)*sizeof(char *));
@@ -414,12 +415,12 @@ static int _writememory(const char *str, short int type, size_t size,
     _lxml->ct[_lxml->cur] = NULL;
 
     /* Allocating for the type */
-    tmp2 = (int *) realloc(_lxml->tp,(_lxml->cur+1)*sizeof(int));
-    if(tmp2 == NULL)
+    tmp4 = (XML_TYPE *) realloc(_lxml->tp,(_lxml->cur+1)*sizeof(XML_TYPE));
+    if(tmp4 == NULL)
     {
         goto fail;
     }
-    _lxml->tp = tmp2;
+    _lxml->tp = tmp4;
     _lxml->tp[_lxml->cur] = type;
 
     /* Allocating for the relation */
