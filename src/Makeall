@@ -226,7 +226,12 @@ if [ "X${ARGV}" = "Xclean" ]; then
     cd ../
 fi    
 
-
+# Make and run tests if intended
+if [ "X${ARGV}" = "Xtest" ]; then
+    cd tests/
+    make
+    exit $?
+fi
 
 # Checking if the bin directory is present
 if [ ! "X${ARGV}" = "Xrootcheck" ]; then
@@ -285,14 +290,6 @@ for i in ${DIRECTORIES}; do
     fi    
     cd ../
 done
-
-# Make and run tests if intended
-if [ "X${ARGV}" = "Xtest" ]; then
-    cd tests/
-    make
-    exit $?
-fi
-
 
 if [ "X${ARGV}" = "Xrootcheck" ]; then
     cp -pr ./rootcheck/ossec-rootcheck ../
