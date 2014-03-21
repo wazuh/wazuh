@@ -57,11 +57,13 @@ int OS_ApplyVariables(OS_XML *_lxml)
                         if(!_lxml->ct[j])
                         {
                             snprintf(_lxml->err, XML_ERR_LENGTH, "XMLERR: Invalid variable content.");
+                            _lxml->err_line = _lxml->ln[j];
                             goto fail;
                         }
                         else if(strlen(_lxml->ct[j]) >= XML_VARIABLE_MAXSIZE)
                         {
                             snprintf(_lxml->err, XML_ERR_LENGTH, "XMLERR: Invalid variable name size.");
+                            _lxml->err_line = _lxml->ln[j];
                             goto fail;
                         }
 
@@ -88,6 +90,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                         snprintf(_lxml->err, XML_ERR_LENGTH,
                                  "XMLERR: Only \""XML_VAR_ATTRIBUTE"\" is allowed"
                                  " as an attribute for a variable.");
+                        _lxml->err_line = _lxml->ln[j];
                         goto fail;
                     }
                 }
@@ -98,6 +101,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
             {
                 snprintf(_lxml->err,XML_ERR_LENGTH,
                          "XMLERR: No value set for variable.");
+                _lxml->err_line = _lxml->ln[i];
                 goto fail;
             }
 
@@ -226,6 +230,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                                 snprintf(_lxml->err,XML_ERR_LENGTH,
                                                 "XMLERR: Unknown variable"
                                                 ": '%s'.", lvar);
+                                _lxml->err_line = _lxml->ln[i];
                                 goto fail;
                             }
                             else if(j == s)
@@ -241,6 +246,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                         {
                             snprintf(_lxml->err,XML_ERR_LENGTH, "XMLERR: Invalid "
                                                      "variable name size: '%u'.", tp);
+                            _lxml->err_line = _lxml->ln[i];
                             goto fail;
 
                         }

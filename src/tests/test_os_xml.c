@@ -375,7 +375,7 @@ START_TEST(test_invalidvariablename)
 	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
 	ck_assert_int_ne(OS_ApplyVariables(&xml), 0);
 	ck_assert_str_eq(xml.err, "XMLERR: Only \"name\" is allowed as an attribute for a variable.");
-	ck_assert_int_eq(xml.err_line, 0);
+	ck_assert_int_eq(xml.err_line, 1);
 
 	OS_ClearXML(&xml);
 	unlink(xml_file_name);
@@ -396,7 +396,7 @@ START_TEST(test_invalidvariable)
     ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
     ck_assert_int_ne(OS_ApplyVariables(&xml), 0);
     ck_assert_str_eq(xml.err, "XMLERR: Invalid variable name size.");
-    ck_assert_int_eq(xml.err_line, 0);
+    ck_assert_int_eq(xml.err_line, 1);
 
     OS_ClearXML(&xml);
     unlink(xml_file_name);
@@ -417,7 +417,7 @@ START_TEST(test_invalidvariable2)
     ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
     ck_assert_int_ne(OS_ApplyVariables(&xml), 0);
     ck_assert_str_eq(xml.err, "XMLERR: Invalid variable name size.");
-    ck_assert_int_eq(xml.err_line, 0);
+    ck_assert_int_eq(xml.err_line, 1);
 
     OS_ClearXML(&xml);
     unlink(xml_file_name);
@@ -432,7 +432,7 @@ START_TEST(test_unknownvariable)
 	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
 	ck_assert_int_ne(OS_ApplyVariables(&xml), 0);
 	ck_assert_str_eq(xml.err, "XMLERR: Unknown variable: 'var'.");
-	ck_assert_int_eq(xml.err_line, 0);
+	ck_assert_int_eq(xml.err_line, 1);
 
 	OS_ClearXML(&xml);
 	unlink(xml_file_name);
