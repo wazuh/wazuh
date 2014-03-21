@@ -52,7 +52,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
 
                 else if(_lxml->tp[j] == XML_ATTR)
                 {
-                    if((_lxml->el[j])&&(strcasecmp(_lxml->el[j],"name") == 0))
+                    if((_lxml->el[j])&&(strcasecmp(_lxml->el[j],XML_VAR_ATTRIBUTE) == 0))
                     {
                         if(!_lxml->ct[j])
                             break;
@@ -78,7 +78,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                     else
                     {
                         snprintf(_lxml->err, XML_ERR_LENGTH,
-                                 "XMLERR: Only \"name\" is allowed"
+                                 "XMLERR: Only \""XML_VAR_ATTRIBUTE"\" is allowed"
                                  " as an attribute for a variable.");
                         goto fail;
                     }

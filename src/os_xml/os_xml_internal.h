@@ -18,6 +18,7 @@
 #define XML_MAXSIZE          2048
 
 #define XML_VAR              "var"
+#define XML_VAR_ATTRIBUTE    "name"
 
 #define XML_ELEM                101
 #define XML_ATTR                102
