@@ -385,12 +385,12 @@ END_TEST
 START_TEST(test_invalidvariable)
 {
     char xml_file_name[256];
-    char overflow_string[256 + 10];
-    memset(overflow_string, 'c', 256 + 9);
-    overflow_string[256 + 9] = '\0';
+    char overflow_string[XML_VARIABLE_MAXSIZE + 10];
+    memset(overflow_string, 'c', XML_VARIABLE_MAXSIZE + 9);
+    overflow_string[XML_VARIABLE_MAXSIZE + 9] = '\0';
 
-    char xml_string[3 * 256];
-    snprintf(xml_string, 3 * 256 - 1, "<var name=\"%s\">test</var><test>$%s</test>", overflow_string, overflow_string);
+    char xml_string[3 * XML_VARIABLE_MAXSIZE];
+    snprintf(xml_string, 3 * XML_VARIABLE_MAXSIZE - 1, "<var name=\"%s\">test</var><test>$%s</test>", overflow_string, overflow_string);
     create_xml_file(xml_string, xml_file_name, 256);
     OS_XML xml;
     ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);

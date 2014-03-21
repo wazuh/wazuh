@@ -126,7 +126,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
             unsigned int tp = 0;
             size_t init = 0;
             char *p = NULL;
-            char lvar[256]; /* MAX Var size */
+            char lvar[XML_VARIABLE_MAXSIZE]; /* MAX Var size */
 
 
             if(strlen(_lxml->ct[i]) <= 2)
@@ -151,7 +151,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                 {
                     tp = 0;
                     p++;
-                    memset(lvar, '\0', 256);
+                    memset(lvar, '\0', XML_VARIABLE_MAXSIZE);
 
                     while(1)
                     {
@@ -229,7 +229,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                         }
 
                         /* Maximum size for a variable */
-                        if(tp >= 255)
+                        if(tp >= XML_VARIABLE_MAXSIZE - 1)
                         {
                             snprintf(_lxml->err,XML_ERR_LENGTH, "XMLERR: Invalid "
                                                      "variable size: '%u'.", tp);
