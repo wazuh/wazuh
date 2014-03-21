@@ -503,7 +503,7 @@ static int _getattributes(FILE *fp, unsigned int parent,OS_XML *_lxml)
         {
             attr[count-1] = '\0';
             xml_error(_lxml,
-                    "XMLERR: Overflow attempt at attribute '%s'.",attr);
+                    "XMLERR: Overflow attempt at attribute '%.20s'.",attr);
             return(-1);
         }
 
