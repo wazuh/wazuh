@@ -55,7 +55,15 @@ int OS_ApplyVariables(OS_XML *_lxml)
                     if((_lxml->el[j])&&(strcasecmp(_lxml->el[j],XML_VAR_ATTRIBUTE) == 0))
                     {
                         if(!_lxml->ct[j])
-                            break;
+                        {
+                            snprintf(_lxml->err, XML_ERR_LENGTH, "XMLERR: Invalid variable content.");
+                            goto fail;
+                        }
+                        else if(strlen(_lxml->ct[j]) >= XML_VARIABLE_MAXSIZE)
+                        {
+                            snprintf(_lxml->err, XML_ERR_LENGTH, "XMLERR: Invalid variable name size.");
+                            goto fail;
+                        }
 
                         /* If not used, it will be cleaned latter */
                         snprintf(_lxml->err, XML_ERR_LENGTH, "XMLERR: Memory error.");
@@ -232,7 +240,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                         if(tp >= XML_VARIABLE_MAXSIZE - 1)
                         {
                             snprintf(_lxml->err,XML_ERR_LENGTH, "XMLERR: Invalid "
-                                                     "variable size: '%u'.", tp);
+                                                     "variable name size: '%u'.", tp);
                             goto fail;
 
                         }

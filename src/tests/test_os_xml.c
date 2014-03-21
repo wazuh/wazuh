@@ -389,13 +389,34 @@ START_TEST(test_invalidvariable)
     memset(overflow_string, 'c', XML_VARIABLE_MAXSIZE + 9);
     overflow_string[XML_VARIABLE_MAXSIZE + 9] = '\0';
 
+    char xml_string[2 * XML_VARIABLE_MAXSIZE];
+    snprintf(xml_string, 2 * XML_VARIABLE_MAXSIZE - 1, "<var name=\"%s\">test</var><root/>", overflow_string);
+    create_xml_file(xml_string, xml_file_name, 256);
+    OS_XML xml;
+    ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
+    ck_assert_int_ne(OS_ApplyVariables(&xml), 0);
+    ck_assert_str_eq(xml.err, "XMLERR: Invalid variable name size.");
+    ck_assert_int_eq(xml.err_line, 0);
+
+    OS_ClearXML(&xml);
+    unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_invalidvariable2)
+{
+    char xml_file_name[256];
+    char overflow_string[XML_VARIABLE_MAXSIZE + 10];
+    memset(overflow_string, 'c', XML_VARIABLE_MAXSIZE + 9);
+    overflow_string[XML_VARIABLE_MAXSIZE + 9] = '\0';
+
     char xml_string[3 * XML_VARIABLE_MAXSIZE];
     snprintf(xml_string, 3 * XML_VARIABLE_MAXSIZE - 1, "<var name=\"%s\">test</var><test>$%s</test>", overflow_string, overflow_string);
     create_xml_file(xml_string, xml_file_name, 256);
     OS_XML xml;
     ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
     ck_assert_int_ne(OS_ApplyVariables(&xml), 0);
-    ck_assert_str_eq(xml.err, "XMLERR: Invalid variable size: '255'.");
+    ck_assert_str_eq(xml.err, "XMLERR: Invalid variable name size.");
     ck_assert_int_eq(xml.err_line, 0);
 
     OS_ClearXML(&xml);
@@ -892,6 +913,7 @@ Suite *test_suite(void)
 	tcase_add_test(tc_core, test_unquotedattribute);
 	tcase_add_test(tc_core, test_invalidvariablename);
     tcase_add_test(tc_core, test_invalidvariable);
+    tcase_add_test(tc_core, test_invalidvariable2);
 	tcase_add_test(tc_core, test_unknownvariable);
 	tcase_add_test(tc_core, test_infiniteattribute2);
     tcase_add_test(tc_core, test_invalidattributestart);
