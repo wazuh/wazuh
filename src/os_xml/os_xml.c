@@ -156,7 +156,7 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
     {
         if(_lxml->ck[i] == 0)
         {
-            xml_error(_lxml,"XMLERR: Element '%s' not closed\n", _lxml->el[i]);
+            xml_error(_lxml,"XMLERR: Element '%s' not closed.", _lxml->el[i]);
             fclose(fp);
             return(-1);
         }
@@ -233,7 +233,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
         /* Max size */
         if(count >= XML_MAXSIZE)
         {
-            xml_error(_lxml,"XML ERR: String overflow. Exiting.");
+            xml_error(_lxml,"XMLERR: String overflow.");
             return(-1);
         }
 
@@ -244,7 +244,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
             int r = 0;
             if((r = _oscomment(fp)) < 0)
             {
-                xml_error(_lxml,"XML ERR: Comment not closed. Bad XML.");
+                xml_error(_lxml,"XMLERR: Comment not closed.");
                 return(-1);
             }
             else if(r == 1)
@@ -258,8 +258,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
             {
                 if((c=fgetc(fp)) == '/')
                 {
-                    xml_error(_lxml,"XML ERR: Bad formed XML. Element "
-                                    "not opened");
+                    xml_error(_lxml,"XMLERR: Element not opened.");
                     return(-1);
                 }
                 else
@@ -325,7 +324,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
             closedelem[count]='\0';
             if(strcmp(closedelem,elem) != 0)
             {
-                xml_error(_lxml,"XML ERR: Element not closed: %s",elem);
+                xml_error(_lxml,"XMLERR: Element '%s' not closed.",elem);
                 return(-1);
             }
             if(_writecontent(cont,strlen(cont)+1,_currentlycont,_lxml) < 0)
@@ -380,7 +379,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
     if(location == -1)
         return(LEOF);
 
-    xml_error(_lxml,"XML ERR: End of file and some elements were not closed");
+    xml_error(_lxml,"XMLERR: End of file and some elements were not closed.");
     return(-1);
 }
 
@@ -464,7 +463,7 @@ static int _writememory(const char *str, short int type, size_t size,
     return(0);
 
     fail:
-    snprintf(_lxml->err, XML_ERR_LENGTH, "XML_ERR: Memory error");
+    snprintf(_lxml->err, XML_ERR_LENGTH, "XMLERR: Memory error.");
     return(-1);
 }
 
@@ -473,7 +472,7 @@ static int _writecontent(const char *str, size_t size, unsigned int parent, OS_X
     _lxml->ct[parent]=(char *)calloc(size,sizeof(char));
     if( _lxml->ct[parent] == NULL)
     {
-        snprintf(_lxml->err, XML_ERR_LENGTH, "XML_ERR: Memory error");
+        snprintf(_lxml->err, XML_ERR_LENGTH, "XMLERR: Memory error.");
         return(-1);
     }
     strncpy(_lxml->ct[parent],str,size-1);

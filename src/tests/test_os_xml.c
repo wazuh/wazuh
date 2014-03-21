@@ -262,7 +262,7 @@ START_TEST(test_unclosednode)
 	create_xml_file("<root>", xml_file_name, 256);
 	OS_XML xml;
 	ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
-	ck_assert_str_eq(xml.err, "XML ERR: End of file and some elements were not closed");
+	ck_assert_str_eq(xml.err, "XMLERR: End of file and some elements were not closed.");
 	ck_assert_int_eq(xml.err_line, 1);
 
 	OS_ClearXML(&xml);
@@ -276,7 +276,7 @@ START_TEST(test_unclosedcomment)
 	create_xml_file("<!-- comment", xml_file_name, 256);
 	OS_XML xml;
 	ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
-	ck_assert_str_eq(xml.err, "XML ERR: Comment not closed. Bad XML.");
+	ck_assert_str_eq(xml.err, "XMLERR: Comment not closed.");
 	ck_assert_int_eq(xml.err_line, 1);
 
 	OS_ClearXML(&xml);
@@ -290,7 +290,7 @@ START_TEST(test_nodenotopened)
 	create_xml_file("</root>", xml_file_name, 256);
 	OS_XML xml;
 	ck_assert_int_ne(OS_ReadXML(xml_file_name, &xml), 0);
-	ck_assert_str_eq(xml.err, "XML ERR: Bad formed XML. Element not opened");
+	ck_assert_str_eq(xml.err, "XMLERR: Element not opened.");
 	ck_assert_int_eq(xml.err_line, 1);
 
 	OS_ClearXML(&xml);
@@ -347,7 +347,7 @@ START_TEST(test_invalidvariablename)
 	OS_XML xml;
 	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
 	ck_assert_int_ne(OS_ApplyVariables(&xml), 0);
-	ck_assert_str_eq(xml.err, "XML_ERR: Only \"name\" is allowed as an attribute for a variable");
+	ck_assert_str_eq(xml.err, "XMLERR: Only \"name\" is allowed as an attribute for a variable.");
 	ck_assert_int_eq(xml.err_line, 0);
 
 	OS_ClearXML(&xml);
@@ -362,7 +362,7 @@ START_TEST(test_unknownvariable)
 	OS_XML xml;
 	ck_assert_int_eq(OS_ReadXML(xml_file_name, &xml), 0);
 	ck_assert_int_ne(OS_ApplyVariables(&xml), 0);
-	ck_assert_str_eq(xml.err, "XML_ERR: Unknown variable: var");
+	ck_assert_str_eq(xml.err, "XMLERR: Unknown variable: 'var'.");
 	ck_assert_int_eq(xml.err_line, 0);
 
 	OS_ClearXML(&xml);
