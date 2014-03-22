@@ -82,7 +82,7 @@
 
   <rule id="18110" level="8">
     <if_sid>18104</if_sid>
-    <id>^624$|^626$|^645$|^4720$|^4722$|^4741$</id>
+    <id>^624$|^626$|^4720$|^4722$</id>
     <description>User account enabled or created.</description>
     <group>adduser,account_changed,</group>
   </rule>
