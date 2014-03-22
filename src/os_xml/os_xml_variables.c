@@ -23,7 +23,7 @@
 
 int OS_ApplyVariables(OS_XML *_lxml)
 {
-    unsigned int i = 0, j = 0, s = 0;
+    unsigned int i, j = 0, s = 0;
     int retval = 0;
     char **var = NULL;
     char **value = NULL;
@@ -32,20 +32,14 @@ int OS_ApplyVariables(OS_XML *_lxml)
     char *var_placeh = NULL;
 
 
-    /* No variables. */
-    if(!_lxml->cur)
-        return(0);
-
-
     /* Getting all variables */
-    for(;i<_lxml->cur;i++)
+    for(i = 0;i<_lxml->cur;i++)
     {
         if(_lxml->tp[i] == XML_VARIABLE_BEGIN)
         {
             int _found_var = 0;
 
-            j = i+1;
-            for(;j<_lxml->cur;j++)
+            for(j = i + 1;j<_lxml->cur;j++)
             {
                 if(_lxml->rl[j] < _lxml->rl[i])
                     break;
@@ -116,19 +110,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
             strncpy(_lxml->err," ", 3);
             s++;
         }
-    } /* initial FOR to get the variables  */
-
-
-    /* No variable */
-    if(s == 0)
-        return(0);
-
-
-    /* Looping again and modifying where found the variables */
-    i = 0;
-    for(;i<_lxml->cur;i++)
-    {
-        if(((_lxml->tp[i] == XML_ELEM) || (_lxml->tp[i] == XML_ATTR))&&
+        else if(((_lxml->tp[i] == XML_ELEM) || (_lxml->tp[i] == XML_ATTR))&&
             (_lxml->ct[i]))
         {
             unsigned int tp = 0;
