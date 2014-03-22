@@ -76,7 +76,7 @@
 
   <rule id="18109" level="3">
     <if_sid>18104</if_sid>
-    <id>^682$|^683$</id>
+    <id>^682$|^683$|^4778$|^4779$</id>
     <description>Session reconnected/disconnected to winstation.</description>
   </rule>
 
