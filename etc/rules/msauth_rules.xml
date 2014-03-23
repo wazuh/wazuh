@@ -103,7 +103,7 @@
   
   <rule id="18113" level="8">
     <if_sid>18104</if_sid>
-    <id>^612$|^643$|^4719$|^4907$|^4912$</id>
+    <id>^612$|^643$|^4719$|^4907$|^4912$|^4719$</id>
     <description>Windows Audit Policy changed.</description>
     <group>policy_changed,</group>
   </rule>
