@@ -178,7 +178,7 @@
   
   <rule id="18127" level="8">
     <if_sid>18104</if_sid>
-    <id>^646$|^647$</id>
+    <id>^646$|^647$|^4742$|^4743$</id>
     <description>Computer account changed/deleted.</description>
     <group>account_changed,</group>
   </rule>
