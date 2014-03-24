@@ -267,7 +267,7 @@
 
   <rule id="18138" level="7">
     <if_sid>18106</if_sid>
-    <id>^539$</id>
+    <id>^539$|^4625$</id>
     <description>Logon Failure - Account locked out.</description>
     <group>win_authentication_failed,</group>
   </rule>
