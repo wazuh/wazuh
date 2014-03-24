@@ -347,7 +347,7 @@
 
   <rule id="18149" level="3">
     <if_sid>18104</if_sid>
-    <id>^538$|^4634$|^4647$</id>
+    <id>^538$|^551$|^4634$|^4647$</id>
     <description>Windows User Logoff.</description>
   </rule>
 
