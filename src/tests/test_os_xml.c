@@ -156,6 +156,24 @@ START_TEST(test_children)
 }
 END_TEST
 
+START_TEST(test_multiplecontent)
+{
+    assert_os_xml_eq(
+            "<root>"
+            "value1"
+            "<child/>"
+            "</root>",
+            "<root><child></child></root>");
+	assert_os_xml_eq(
+	        "<root>"
+	        "value1"
+	        "<child/>"
+	        "value2"
+	        "</root>",
+	        "<root>value2<child></child></root>");
+}
+END_TEST
+
 
 START_TEST(test_attributes)
 {
@@ -897,6 +915,7 @@ Suite *test_suite(void)
 	TCase *tc_core = tcase_create("Core");
 	tcase_add_test(tc_core, test_simplenodes);
 	tcase_add_test(tc_core, test_multiplenodes);
+	tcase_add_test(tc_core, test_multiplecontent);
 	tcase_add_test(tc_core, test_children);
 	tcase_add_test(tc_core, test_attributes);
 	tcase_add_test(tc_core, test_variables);
