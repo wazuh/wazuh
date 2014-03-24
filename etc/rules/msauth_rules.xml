@@ -210,7 +210,7 @@
 
   <rule id="18131" level="5">
     <if_sid>18106</if_sid>
-    <id>^530$</id>
+    <id>^530$|^4625$</id>
     <description>Logon Failure - Account logon time restriction </description>
     <description>violation.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com191.html</info>
