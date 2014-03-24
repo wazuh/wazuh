@@ -813,7 +813,7 @@
     -->
   <rule id="18121" level="0">
     <if_sid>18107,18149</if_sid>
-    <id>^528$|^538$|^540$</id>
+    <id>^528$|^538$|^540$|^4624$</id>
     <user>^LOCAL SERVICE|^NETWORK SERVICE|^ANONYMOUS LOGON</user>
     <description>Windows Logon Success (ignored).</description>
   </rule>
