@@ -143,7 +143,7 @@
   
   <rule id="18118" level="9">
     <if_sid>18104</if_sid>
-    <id>^517$</id>
+    <id>^517$|^1102$</id>
     <description>Windows audit log was cleared.</description>
     <group>logs_cleared,</group>
   </rule>
