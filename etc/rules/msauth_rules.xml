@@ -281,7 +281,7 @@
   
   <rule id="18140" level="5">
     <if_sid>18104</if_sid>
-    <id>^520$</id>
+    <id>^520$|^4616$</id>
     <description>System time changed.</description>
     <group>time_changed,</group>
   </rule>
