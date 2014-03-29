@@ -52,6 +52,9 @@ void report_help()
     printf("\t-p <port>           Manager port (default 1515).\n");
     printf("\t-A <agent name>     Agent name (default is the hostname).\n");
     printf("\t-D <OSSEC Dir>      Location where OSSEC is installed.\n");
+    printf("\t-v <Path to CA Cert>    Full path to CA certificate used to verify the server.\n");
+    printf("\t-x <Path to agent cert> Full path to agent certificate.\n");
+    printf("\t-k <Path to agent key>  Full path to agent key.\n");
     exit(1);
 }
 
@@ -75,6 +78,9 @@ int main(int argc, char **argv)
     char *cfg __attribute__((unused)) = DEFAULTCPATH;
     char *manager = NULL;
     char *agentname = NULL;
+    char *agent_cert = NULL;
+    char *agent_key = NULL;
+    char *ca_cert = NULL;
     char lhostname[512 + 1];
     char buf[2048 +1];
     SSL_CTX *ctx;
@@ -89,7 +95,7 @@ int main(int argc, char **argv)
     /* Setting the name */
     OS_SetName(ARGV0);
 
-    while((c = getopt(argc, argv, "Vdhu:g:D:c:m:p:A:")) != -1)
+    while((c = getopt(argc, argv, "Vdhu:g:D:c:m:p:A:v:x:k:")) != -1)
     {
         switch(c){
             case 'V':
@@ -142,6 +148,21 @@ int main(int argc, char **argv)
                 {
                     ErrorExit("%s: Invalid port: %s", ARGV0, optarg);
                 }
+                break;
+            case 'v':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                ca_cert = optarg;
+                break;
+            case 'x':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                agent_cert = optarg;
+                break;
+            case 'k':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                agent_key = optarg;
                 break;
             default:
                 report_help();
@@ -196,7 +217,7 @@ int main(int argc, char **argv)
 
 
     /* Starting SSL */
-    ctx = os_ssl_keys(1, NULL);
+    ctx = os_ssl_keys(0, dir, agent_cert, agent_key, ca_cert);
     if(!ctx)
     {
         merror("%s: ERROR: SSL error. Exiting.", ARGV0);
