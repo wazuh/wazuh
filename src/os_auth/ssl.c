@@ -109,10 +109,8 @@ SSL_CTX *get_ssl_context()
     OpenSSL_add_all_algorithms();
 
     /* Create our context */
-    sslmeth = (SSL_METHOD *) SSLv23_method();
-    ctx = SSL_CTX_new(sslmeth);
-
-    if(ctx == NULL)
+    sslmeth = (SSL_METHOD *)SSLv23_method();
+    if(!(ctx = SSL_CTX_new(sslmeth)))
         goto CONTEXT_ERR;
 
     /* Explicitly set options and cipher list. */
@@ -167,7 +165,7 @@ int load_cert_and_key(SSL_CTX *ctx, char *cert, char *key)
 
 int load_ca_cert(SSL_CTX *ctx, char *ca_cert)
 {
-    if(ca_cert == NULL)
+    if(!ca_cert)
     {
         merror("%s: ERROR: Verification requested but no CA certificate file specified", ARGV0);
         return 0;
