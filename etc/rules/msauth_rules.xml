@@ -69,7 +69,7 @@
 
   <rule id="18108" level="4">
     <if_sid>18105</if_sid>
-    <id>^577$</id>
+    <id>^577$|^4673$</id>
     <description>Failed attempt to perform a privileged </description>
     <description>operation.</description>
   </rule>
@@ -143,7 +143,7 @@
   
   <rule id="18118" level="9">
     <if_sid>18104</if_sid>
-    <id>^517$</id>
+    <id>^517$|^1102$</id>
     <description>Windows audit log was cleared.</description>
     <group>logs_cleared,</group>
   </rule>
@@ -281,7 +281,7 @@
   
   <rule id="18140" level="5">
     <if_sid>18104</if_sid>
-    <id>^520$</id>
+    <id>^520$|^4616$</id>
     <description>System time changed.</description>
     <group>time_changed,</group>
   </rule>
