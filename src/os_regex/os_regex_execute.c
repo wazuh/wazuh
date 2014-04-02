@@ -19,7 +19,7 @@
 
 
 /** Internal prototypes **/
-static const char *_OS_Regex(char *pattern, const char *str, char **prts_closure,
+static const char *_OS_Regex(const char *pattern, const char *str, char **prts_closure,
         const char **prts_str, int flags);
 
 
@@ -122,7 +122,7 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
  * If prts_closure is set, the parenthesis locations will be
  * written on prts_str (which must not be NULL)
  */
-static const char *_OS_Regex(char *pattern, const char *str, char **prts_closure,
+static const char *_OS_Regex(const char *pattern, const char *str, char **prts_closure,
         const char **prts_str, int flags)
 {
     const char *r_code = NULL;
@@ -135,10 +135,10 @@ static const char *_OS_Regex(char *pattern, const char *str, char **prts_closure
     const char *st = str;
     const char *st_error = NULL;
 
-    char *pt = pattern;
-    char *next_pt;
+    const char *pt = pattern;
+    const char *next_pt;
 
-    char *pt_error[4] = {NULL, NULL, NULL, NULL};
+    const char *pt_error[4] = {NULL, NULL, NULL, NULL};
     const char *pt_error_str[4];
 
 
