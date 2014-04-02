@@ -54,7 +54,7 @@ typedef struct _OSMatch
     int error;
     size_t *size;
     char **patterns;
-    int (**match_fp)(char *str, const char *str2, size_t str_len, size_t size);
+    int (**match_fp)(const char *str, const char *str2, size_t str_len, size_t size);
 }OSMatch;
 
 

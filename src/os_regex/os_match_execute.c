@@ -19,10 +19,10 @@
 
 
 /** Internal matching **/
-int _OS_Match(char *pattern, const char *str, size_t str_len, size_t size)
+int _OS_Match(const char *pattern, const char *str, size_t str_len, size_t size)
 {
     size_t i = 0,j;
-    char *pt = pattern;
+    const char *pt = pattern;
 
     size = str_len - size;
 
@@ -58,7 +58,7 @@ int _OS_Match(char *pattern, const char *str, size_t str_len, size_t size)
 
 
 /** Internal matching **/
-int _os_strncmp(char *pattern, const char *str, __attribute__((unused)) size_t str_len, size_t size)
+int _os_strncmp(const char *pattern, const char *str, __attribute__((unused)) size_t str_len, size_t size)
 {
     if(strncasecmp(pattern, str, size) == 0)
         return(TRUE);
@@ -67,7 +67,7 @@ int _os_strncmp(char *pattern, const char *str, __attribute__((unused)) size_t s
 }
 
 /** Internal matching **/
-int _os_strcmp(char *pattern, const char *str, __attribute__((unused)) size_t str_len, __attribute__((unused)) size_t size)
+int _os_strcmp(const char *pattern, const char *str, __attribute__((unused)) size_t str_len, __attribute__((unused)) size_t size)
 {
     if(strcasecmp(pattern, str) == 0)
         return(TRUE);
@@ -75,13 +75,13 @@ int _os_strcmp(char *pattern, const char *str, __attribute__((unused)) size_t st
     return(FALSE);
 }
 
-int _os_strmatch(__attribute__((unused)) char *pattern, __attribute__((unused)) const char *str,
+int _os_strmatch(__attribute__((unused)) const char *pattern, __attribute__((unused)) const char *str,
         __attribute__((unused)) size_t str_len, __attribute__((unused)) size_t size)
 {
     return(TRUE);
 }
 
-int _os_strstr(char *pattern, const char *str, __attribute__((unused)) size_t str_len, __attribute__((unused)) size_t size)
+int _os_strstr(const char *pattern, const char *str, __attribute__((unused)) size_t str_len, __attribute__((unused)) size_t size)
 {
     if(strstr(str, pattern) != NULL)
     {
@@ -92,7 +92,7 @@ int _os_strstr(char *pattern, const char *str, __attribute__((unused)) size_t st
 
 
 /** Internal matching **/
-int _os_strcmp_last(char *pattern, const char *str, size_t str_len, size_t size)
+int _os_strcmp_last(const char *pattern, const char *str, size_t str_len, size_t size)
 {
     /* Size of the string must be bigger */
     if(str_len < size)
