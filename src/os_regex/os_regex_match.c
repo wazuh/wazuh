@@ -28,7 +28,7 @@
 
 
 /** Prototypes **/
-int _InternalMatch(char *pattern, char *str,size_t count);
+static int _InternalMatch(char *pattern, char *str,size_t count);
 
 
 /* OS_WordMatch v0.3:
@@ -69,7 +69,7 @@ int OS_WordMatch(char *pattern, char *str)
 }
 
 /* Internal match function */
-int _InternalMatch(char *pattern, char *str, size_t pattern_size)
+static int _InternalMatch(char *pattern, char *str, size_t pattern_size)
 {
     uchar *pt = (uchar *)pattern;
     uchar *st = (uchar *)str;
