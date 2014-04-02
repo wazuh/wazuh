@@ -31,8 +31,8 @@ char **OS_StrBreak(char match, char *str, size_t size)
 
     char **ret;
 
-    /* We can't do anything if str is null or size <= 0 */
-    if((str == NULL)||(size <= 0))
+    /* We can't do anything if str is null */
+    if(str == NULL)
         return(NULL);
 
     ret = (char **)calloc(size+1, sizeof(char *));
