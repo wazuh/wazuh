@@ -170,6 +170,13 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     reg->patterns = (char **) calloc(count +1, sizeof(char *));
     reg->flags = (int *) calloc(count +1, sizeof(int));
 
+    /* Memory allocation error check */
+    if(!reg->patterns || !reg->flags)
+    {
+        reg->error = OS_REGEX_OUTOFMEMORY;
+        goto compile_error;
+    }
+
 
     /* For the substrings */
     if((prts_size > 0) && (flags & OS_RETURN_SUBSTRING))
@@ -183,13 +190,6 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
         }
     }
 
-
-    /* Memory allocation error check */
-    if(!reg->patterns || !reg->flags)
-    {
-        reg->error = OS_REGEX_OUTOFMEMORY;
-        goto compile_error;
-    }
 
     /* Initializing each sub pattern */
     for(i = 0; i<=count; i++)
