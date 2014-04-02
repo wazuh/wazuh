@@ -15,6 +15,9 @@
 #ifndef __OS_REGEX_H
 #define __OS_REGEX_H
 
+/* size_t */
+#include <stddef.h>
+
 
 /* OSRegex_Compile flags */
 #define OS_RETURN_SUBSTRING     0000200
@@ -166,9 +169,7 @@ size_t OS_StrHowClosedMatch(const char *str1, const char *str2);
  * Verifies if a string starts with the provided pattern.
  * Returns 1 on success or 0 on failure.
  */
-#include <string.h>
-#define startswith(x,y) (strncmp(x,y,strlen(y)) == 0?1:0)
-#define OS_StrStartsWith startswith
+int OS_StrStartsWith(const char *str, const char *pattern);
 
 
 /** int OS_StrIsNum(char *str) v0.1
