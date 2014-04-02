@@ -19,7 +19,7 @@
 
 
 
-
+#include <errno.h>
 #include "shared.h"
 #include "os_net.h"
 
@@ -37,8 +37,8 @@ socklen_t us_l = sizeof(n_us);
 		                      + strlen ((ptr)->sun_path))
 #endif /* Sun_LEN */
 
-#else
-int ENOBUFS = 0;
+/*#else*/
+/*int ENOBUFS = 0;*/
 #endif /* WIN32*/
 
 
