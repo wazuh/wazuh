@@ -37,13 +37,14 @@ void OSMatch_FreePattern(OSMatch *reg)
         }
 
         free(reg->patterns);
-        free(reg->size);
-        free(reg->match_fp);
-
         reg->patterns = NULL;
-        reg->size = NULL;
-        reg->match_fp = NULL;
     }
+
+    free(reg->size);
+    free(reg->match_fp);
+
+    reg->size = NULL;
+    reg->match_fp = NULL;
 
     return;
 }
