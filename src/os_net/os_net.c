@@ -19,7 +19,7 @@
 
 
 
-
+#include <errno.h>
 #include "shared.h"
 #include "os_net.h"
 
