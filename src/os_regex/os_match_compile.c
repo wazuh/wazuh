@@ -48,6 +48,7 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
     reg->error = 0;
     reg->patterns = NULL;
     reg->size = NULL;
+    reg->match_fp = NULL;
 
 
     /* The pattern can't be null */
