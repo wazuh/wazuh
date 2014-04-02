@@ -90,26 +90,6 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
         if(*pt == BACKSLASH)
         {
             pt++;
-            if(!((*pt == 'w') ||
-                 (*pt == 'W') ||
-                 (*pt == 's') ||
-                 (*pt == 'S') ||
-                 (*pt == 'd') ||
-                 (*pt == 'D') ||
-                 (*pt == '.') ||
-                 (*pt == '(') ||
-                 (*pt == ')') ||
-                 (*pt == 'p') ||
-                 (*pt == 't') ||
-                 (*pt == '$') ||
-                 (*pt == '|') ||
-                 (*pt == '<') ||
-                 (*pt == '\\')))
-            {
-                reg->error = OS_REGEX_BADREGEX;
-                goto compile_error;
-            }
-
             /* Giving the new values for each regex */
             switch(*pt)
             {
