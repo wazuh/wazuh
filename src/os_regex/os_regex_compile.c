@@ -27,7 +27,7 @@
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
+int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 {
     size_t i = 0;
     size_t count = 0;
@@ -195,7 +195,7 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
     if((prts_size > 0) && (flags & OS_RETURN_SUBSTRING))
     {
         reg->prts_closure = (char ***) calloc(count +1, sizeof(char **));
-        reg->prts_str = (char ***) calloc(count +1, sizeof(char **));
+        reg->prts_str = (const char ***) calloc(count +1, sizeof(const char **));
         if(!reg->prts_closure || !reg->prts_str)
         {
             reg->error = OS_REGEX_OUTOFMEMORY;
@@ -303,7 +303,7 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags)
 
                 /* Allocating the memory */
                 reg->prts_closure[i] = (char **) calloc(prts_size + 1, sizeof(char *));
-                reg->prts_str[i] = (char **) calloc(prts_size + 1, sizeof(char *));
+                reg->prts_str[i] = (const char **) calloc(prts_size + 1, sizeof(const char *));
                 if((reg->prts_closure[i] == NULL)||(reg->prts_str[i] == NULL))
                 {
                     reg->error = OS_REGEX_OUTOFMEMORY;

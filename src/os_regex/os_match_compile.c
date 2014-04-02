@@ -25,7 +25,7 @@
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
+int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
 {
     int usstrstr = 0;
     size_t i = 0;
@@ -106,7 +106,7 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
     count++;
     reg->patterns = (char **) calloc(count +1, sizeof(char *));
     reg->size = (size_t *) calloc(count +1, sizeof(size_t));
-    reg->match_fp = (int (**)(char *, char *, size_t, size_t)) calloc(count +1, sizeof(void *));
+    reg->match_fp = (int (**)(char *, const char *, size_t, size_t)) calloc(count +1, sizeof(void *));
 
 
     /* Memory allocation error check */

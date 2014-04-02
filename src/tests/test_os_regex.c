@@ -18,7 +18,7 @@ START_TEST(test_success_match1)
 {
 
     int i;
-    char *tests[][3] = {
+    const char *tests[][3] = {
         {"abc", "abcd", ""},
         {"abcd", "abcd", ""},
         {"a", "a", ""},
@@ -62,7 +62,7 @@ START_TEST(test_fail_match1)
 {
 
     int i;
-    char *tests[][3] = {
+    const char *tests[][3] = {
         {"abc", "abb", ""},
         {"^ab", " ab", ""},
         {"test", "tes", ""},

@@ -44,7 +44,7 @@ typedef struct _OSRegex
     char **patterns;
     char **sub_strings;
     char ***prts_closure;
-    char ***prts_str;
+    const char ***prts_str;
 }OSRegex;
 
 
@@ -54,7 +54,7 @@ typedef struct _OSMatch
     int error;
     size_t *size;
     char **patterns;
-    int (**match_fp)(char *str, char *str2, size_t str_len, size_t size);
+    int (**match_fp)(char *str, const char *str2, size_t str_len, size_t size);
 }OSMatch;
 
 
@@ -69,7 +69,7 @@ typedef struct _OSMatch
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSRegex_Compile(char *pattern, OSRegex *reg, int flags);
+int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags);
 
 
 /** char *OSRegex_Execute(char *str, OSRegex *reg) v0.1
@@ -78,7 +78,7 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags);
  * Returns end of str on success or NULL on error.
  * The error code is set on reg->error.
  */
-char *OSRegex_Execute(char *str, OSRegex *reg);
+const char *OSRegex_Execute(const char *str, OSRegex *reg); //TODO: const return????
 
 
 /** int OSRegex_FreePattern(SRegex *reg) v0.1
@@ -102,7 +102,7 @@ void OSRegex_FreeSubStrings(OSRegex *reg);
  * only going to be used once.
  * Returns 1 on success or 0 on failure.
  */
-int OS_Regex(char *pattern, char *str);
+int OS_Regex(const char *pattern, const char *str);
 
 
 
@@ -113,7 +113,7 @@ int OS_Regex(char *pattern, char *str);
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSMatch_Compile(char *pattern, OSMatch *reg, int flags);
+int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags);
 
 
 /** int OSMatch_Execute(char *str, int str_len, OSMatch *reg) v0.1
@@ -122,7 +122,7 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags);
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSMatch_Execute(char *str, size_t str_len, OSMatch *reg);
+int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg);
 
 
 /** int OSMatch_FreePattern(OSMatch *reg) v0.1
@@ -133,7 +133,7 @@ int OSMatch_Execute(char *str, size_t str_len, OSMatch *reg);
 void OSMatch_FreePattern(OSMatch *reg);
 
 
-int OS_Match2(char *pattern, char *str);
+int OS_Match2(const char *pattern, const char *str);
 
 int OS_Match3(char *pattern, char *str, char* delimiter);
 

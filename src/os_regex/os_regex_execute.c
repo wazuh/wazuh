@@ -19,8 +19,8 @@
 
 
 /** Internal prototypes **/
-char *_OS_Regex(char *pattern, char *str, char **prts_closure,
-              char **prts_str, int flags);
+const char *_OS_Regex(char *pattern, const char *str, char **prts_closure,
+        const char **prts_str, int flags);
 
 
 
@@ -30,9 +30,9 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
  * Returns the end of the string on success or NULL on error.
  * The error code is set on reg->error.
  */
-char *OSRegex_Execute(char *str, OSRegex *reg)
+const char *OSRegex_Execute(const char *str, OSRegex *reg)
 {
-    char *ret;
+    const char *ret;
     int i = 0;
 
     /* The string can't be NULL */
@@ -47,7 +47,7 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
     if(reg->prts_closure)
     {
         int j = 0, k = 0;
-        char str_char = 0;
+        //char str_char = 0;
 
         /* Looping on all sub patterns */
         while(reg->patterns[i])
@@ -68,9 +68,9 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
                 /* We must always have the open and the close */
                 while(reg->prts_str[i][j] && reg->prts_str[i][j+1])
                 {
-                    str_char = reg->prts_str[i][j+1][0];
+                    //str_char = reg->prts_str[i][j+1][0];
 
-                    reg->prts_str[i][j+1][0] = '\0';
+                    //reg->prts_str[i][j+1][0] = '\0';
 
                     reg->sub_strings[k] = strdup(reg->prts_str[i][j]);
                     if(!reg->sub_strings[k])
@@ -79,8 +79,8 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
                         return(NULL);
                     }
 
-                    /* Set the next one to null */
-                    reg->prts_str[i][j+1][0] = str_char;
+                    ///* Set the next one to null */
+                    //reg->prts_str[i][j+1][0] = str_char;
                     k++;
                     reg->sub_strings[k] = NULL;
 
@@ -122,24 +122,24 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
  * If prts_closure is set, the parenthesis locations will be
  * written on prts_str (which must not be NULL)
  */
-char *_OS_Regex(char *pattern, char *str, char **prts_closure,
-              char **prts_str, int flags)
+const char *_OS_Regex(char *pattern, const char *str, char **prts_closure,
+        const char **prts_str, int flags)
 {
-    char *r_code = NULL;
+    const char *r_code = NULL;
 
     int ok_here;
     int _regex_matched = 0;
 
     int prts_int;
 
-    char *st = str;
-    char *st_error = NULL;
+    const char *st = str;
+    const char *st_error = NULL;
 
     char *pt = pattern;
     char *next_pt;
 
     char *pt_error[4] = {NULL, NULL, NULL, NULL};
-    char *pt_error_str[4];
+    const char *pt_error_str[4];
 
 
     /* Will loop the whole string, trying to find a match */

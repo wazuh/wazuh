@@ -24,7 +24,7 @@
  *  only going to be used once.
  *  Returns 1 on success or 0 on failure.
  */
-int OS_Match2(char *pattern, char *str)
+int OS_Match2(const char *pattern, const char *str)
 {
     int r_code = 0;
     OSMatch reg;
