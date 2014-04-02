@@ -13,6 +13,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+#include "os_regex.h"
 #include "os_regex_internal.h"
 
 

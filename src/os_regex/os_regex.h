@@ -52,9 +52,9 @@ typedef struct _OSRegex
 typedef struct _OSMatch
 {
     int error;
-    int *size;
+    size_t *size;
     char **patterns;
-    int (**match_fp)(char *str, char *str2, int str_len, int size);
+    int (**match_fp)(char *str, char *str2, size_t str_len, size_t size);
 }OSMatch;
 
 
@@ -122,7 +122,7 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags);
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSMatch_Execute(char *str, int str_len, OSMatch *reg);
+int OSMatch_Execute(char *str, size_t str_len, OSMatch *reg);
 
 
 /** int OSMatch_FreePattern(OSMatch *reg) v0.1
@@ -149,7 +149,7 @@ int OS_WordMatch(char *pattern, char *str);
  * Split a string into multiples pieces, divided by a char "match".
  * Returns a NULL terminated array on success or NULL on error.
  */
-char **OS_StrBreak(char match, char *str, int size);
+char **OS_StrBreak(char match, char *str, size_t size);
 
 
 /** int OS_StrHowClosedMatch(char *str1, char *str2) v0.1

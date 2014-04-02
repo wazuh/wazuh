@@ -14,6 +14,15 @@
 #define __OS_INTERNAL_H
 
 
+/* Prototype fo the _OsMatch */
+int _OS_Match(char *pattern, char *str, size_t str_len, size_t size);
+int _os_strncmp(char *pattern, char *str, size_t str_len, size_t size);
+int _os_strcmp_last(char *pattern, char *str, size_t str_len, size_t size);
+int _os_strcmp(char *pattern, char *str, size_t str_len, size_t size);
+int _os_strmatch(char *pattern, char *str, size_t str_len, size_t size);
+int _os_strstr(char *pattern, char *str, size_t str_len, size_t size);
+
+
 /*
  * Defining some caracters to be used.
 */

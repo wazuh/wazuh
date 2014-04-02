@@ -46,7 +46,8 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
     /* If we need the sub strings */
     if(reg->prts_closure)
     {
-        int j = 0, k = 0, str_char = 0;
+        int j = 0, k = 0;
+        char str_char = 0;
 
         /* Looping on all sub patterns */
         while(reg->patterns[i])
@@ -175,6 +176,8 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
                         return(r_code);
                 }
                 break;
+            default:
+                break; /* do nothing */
         }
 
         /* If it starts on Backslash (future regex) */

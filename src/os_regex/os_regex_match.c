@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+
+#include "os_regex.h"
 #include "os_regex_internal.h"
 
 /* Algorithm:
@@ -26,7 +28,7 @@
 
 
 /** Prototypes **/
-int _InternalMatch(char *pattern, char *str,int count);
+int _InternalMatch(char *pattern, char *str,size_t count);
 
 
 /* OS_WordMatch v0.3:
@@ -34,7 +36,7 @@ int _InternalMatch(char *pattern, char *str,int count);
  */
 int OS_WordMatch(char *pattern, char *str)
 {
-    int count = 0;
+    size_t count = 0;
 
     if(*pattern == '\0')
         return(FALSE);
@@ -67,12 +69,12 @@ int OS_WordMatch(char *pattern, char *str)
 }
 
 /* Internal match function */
-int _InternalMatch(char *pattern, char *str, int pattern_size)
+int _InternalMatch(char *pattern, char *str, size_t pattern_size)
 {
     uchar *pt = (uchar *)pattern;
     uchar *st = (uchar *)str;
 
-    uchar last_char = pattern[pattern_size];
+    uchar last_char = (uchar) pattern[pattern_size];
 
 
     /* Return true for some odd expressions */

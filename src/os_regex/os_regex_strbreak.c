@@ -13,6 +13,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+#include "os_regex.h"
 #include "os_regex_internal.h"
 
 
@@ -20,10 +22,10 @@
  * Split a string into multiples pieces, divided by a char "match".
  * Returns a NULL terminated array on success or NULL on error.
  */
-char **OS_StrBreak(char match, char *str, int size)
+char **OS_StrBreak(char match, char *str, size_t size)
 {
-    int count = 0;
-    int i = 0;
+    size_t count = 0;
+    size_t i = 0;
 
     char *tmp_str = str;
 
