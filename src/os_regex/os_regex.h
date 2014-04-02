@@ -78,7 +78,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags);
  * Returns end of str on success or NULL on error.
  * The error code is set on reg->error.
  */
-const char *OSRegex_Execute(const char *str, OSRegex *reg); //TODO: const return????
+const char *OSRegex_Execute(const char *str, OSRegex *reg);
 
 
 /** int OSRegex_FreePattern(SRegex *reg) v0.1
