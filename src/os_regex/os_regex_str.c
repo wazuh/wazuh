@@ -21,7 +21,7 @@
 /** int OS_StrIsNum(char *str) v0.1
  * Checks if a specific string is numeric (like "129544")
  */
-int OS_StrIsNum(char *str)
+int OS_StrIsNum(const char *str)
 {
     if(str == NULL)
         return(FALSE);
@@ -41,9 +41,9 @@ int OS_StrIsNum(char *str)
  * Returns the number of characters that both strings
  * have in similar.
  */
-int OS_StrHowClosedMatch(char *str1, char *str2)
+size_t OS_StrHowClosedMatch(const char *str1, const char *str2)
 {
-    int count = 0;
+    size_t count = 0;
 
     /* They don't match if any of them is null */
     if(!str1 || !str2)

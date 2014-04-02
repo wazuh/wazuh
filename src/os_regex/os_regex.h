@@ -141,7 +141,7 @@ int OS_Match3(char *pattern, char *str, char* delimiter);
 /* OS_WordMatch v0.3:
  * Searches for  pattern in the string
  */
-int OS_WordMatch(char *pattern, char *str);
+int OS_WordMatch(const char *pattern, const char *str);
 #define OS_Match OS_WordMatch
 
 
@@ -149,14 +149,14 @@ int OS_WordMatch(char *pattern, char *str);
  * Split a string into multiples pieces, divided by a char "match".
  * Returns a NULL terminated array on success or NULL on error.
  */
-char **OS_StrBreak(char match, char *str, size_t size);
+char **OS_StrBreak(char match, const char *str, size_t size);
 
 
 /** int OS_StrHowClosedMatch(char *str1, char *str2) v0.1
  * Returns the number of characters that both strings
  * have in similar (start at the beginning of them).
  */
-int OS_StrHowClosedMatch(char *str1, char *str2);
+size_t OS_StrHowClosedMatch(const char *str1, const char *str2);
 
 
 /** Inline prototypes **/
@@ -174,7 +174,7 @@ int OS_StrHowClosedMatch(char *str1, char *str2);
 /** int OS_StrIsNum(char *str) v0.1
  * Checks if a specific string is numeric (like "129544")
  */
-int OS_StrIsNum(char *str);
+int OS_StrIsNum(const char *str);
 
 
 /** int isValidChar(char c)

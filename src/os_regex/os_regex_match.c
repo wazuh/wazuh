@@ -28,13 +28,13 @@
 
 
 /** Prototypes **/
-static int _InternalMatch(char *pattern, char *str,size_t count);
+static int _InternalMatch(const char *pattern, const char *str,size_t count);
 
 
 /* OS_WordMatch v0.3:
  * Searches for  pattern in the string
  */
-int OS_WordMatch(char *pattern, char *str)
+int OS_WordMatch(const char *pattern, const char *str)
 {
     size_t count = 0;
 
@@ -69,12 +69,12 @@ int OS_WordMatch(char *pattern, char *str)
 }
 
 /* Internal match function */
-static int _InternalMatch(char *pattern, char *str, size_t pattern_size)
+static int _InternalMatch(const char *pattern, const char *str, size_t pattern_size)
 {
-    uchar *pt = (uchar *)pattern;
-    uchar *st = (uchar *)str;
+    const uchar *pt = (const uchar *)pattern;
+    const uchar *st = (const uchar *)str;
 
-    uchar last_char = (uchar) pattern[pattern_size];
+    const uchar last_char = (const uchar) pattern[pattern_size];
 
 
     /* Return true for some odd expressions */
@@ -106,7 +106,7 @@ static int _InternalMatch(char *pattern, char *str, size_t pattern_size)
         /* Match */
         if(charmap[*st] == charmap[*pt])
         {
-            str = (char *)st++;
+            str = (const char *)st++;
             pt++;
 
             while(*pt != last_char)
@@ -124,8 +124,8 @@ static int _InternalMatch(char *pattern, char *str, size_t pattern_size)
             return(TRUE);
 
             error:
-                st = (uchar *)str;
-                pt = (uchar *)pattern;
+                st = (const uchar *)str;
+                pt = (const uchar *)pattern;
 
         }
 
