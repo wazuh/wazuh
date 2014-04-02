@@ -46,14 +46,14 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
     /* If we need the sub strings */
     if(reg->prts_closure)
     {
-        int j = 0, k = 0;
+        int k = 0;
         //char str_char = 0;
 
         /* Looping on all sub patterns */
         while(reg->patterns[i])
         {
             /* Cleaning the prts_str */
-            j = 0;
+            int j = 0;
             while(reg->prts_closure[i][j])
             {
                 reg->prts_str[i][j] = NULL;
