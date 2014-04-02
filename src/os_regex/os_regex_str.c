@@ -65,12 +65,4 @@ int OS_StrHowClosedMatch(char *str1, char *str2)
 }
 
 
-
-/** int OS_StrStartsWith(char *str, char *pattern) v0.1
- * Verifies if a string starts with the provided pattern.
- * Returns 1 on success or 0 on failure.
- */
-#define startswith(x,y) (strncmp(x,y,strlen(y)) == 0?1:0)
-#define OS_StrStartsWith startswith
-
 /* EOF */
