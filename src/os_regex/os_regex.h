@@ -46,7 +46,7 @@ typedef struct _OSRegex
     int *flags;
     char **patterns;
     char **sub_strings;
-    char ***prts_closure;
+    const char ***prts_closure;
     const char ***prts_str;
 }OSRegex;
 

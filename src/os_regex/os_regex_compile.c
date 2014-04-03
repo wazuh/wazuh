@@ -181,7 +181,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
     /* For the substrings */
     if((prts_size > 0) && (flags & OS_RETURN_SUBSTRING))
     {
-        reg->prts_closure = (char ***) calloc(count +1, sizeof(char **));
+        reg->prts_closure = (const char ***) calloc(count +1, sizeof(const char **));
         reg->prts_str = (const char ***) calloc(count +1, sizeof(const char **));
         if(!reg->prts_closure || !reg->prts_str)
         {
@@ -282,7 +282,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
                 }
 
                 /* Allocating the memory */
-                reg->prts_closure[i] = (char **) calloc(prts_size + 1, sizeof(char *));
+                reg->prts_closure[i] = (const char **) calloc(prts_size + 1, sizeof(const char *));
                 reg->prts_str[i] = (const char **) calloc(prts_size + 1, sizeof(const char *));
                 if((reg->prts_closure[i] == NULL)||(reg->prts_str[i] == NULL))
                 {
