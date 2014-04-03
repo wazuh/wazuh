@@ -47,7 +47,6 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
     if(reg->prts_closure)
     {
         int k = 0;
-        //char str_char = 0;
 
         /* Looping on all sub patterns */
         while(reg->patterns[i])
@@ -68,19 +67,16 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
                 /* We must always have the open and the close */
                 while(reg->prts_str[i][j] && reg->prts_str[i][j+1])
                 {
-                    //str_char = reg->prts_str[i][j+1][0];
-
-                    //reg->prts_str[i][j+1][0] = '\0';
-
-                    reg->sub_strings[k] = strdup(reg->prts_str[i][j]);
+                    size_t length = (size_t) (reg->prts_str[i][j+1] - reg->prts_str[i][j]);
+                    reg->sub_strings[k] = (char *) malloc(length * sizeof(char));
                     if(!reg->sub_strings[k])
                     {
                         OSRegex_FreeSubStrings(reg);
                         return(NULL);
                     }
+                    strncpy(reg->sub_strings[k], reg->prts_str[i][j], length);
 
-                    ///* Set the next one to null */
-                    //reg->prts_str[i][j+1][0] = str_char;
+                    /* Set the next one to null */
                     k++;
                     reg->sub_strings[k] = NULL;
 
