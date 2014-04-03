@@ -24,6 +24,9 @@ int _OS_Match(const char *pattern, const char *str, size_t str_len, size_t size)
     size_t i = 0,j;
     const char *pt = pattern;
 
+    if(str_len < size)
+        return(FALSE);
+
     size = str_len - size;
 
     /* Look to match the first pattern */
