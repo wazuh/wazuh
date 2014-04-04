@@ -37,8 +37,12 @@ socklen_t us_l = sizeof(n_us);
 		                      + strlen ((ptr)->sun_path))
 #endif /* Sun_LEN */
 
-/*#else*/
+#else /* WIN32 */
 /*int ENOBUFS = 0;*/
+# ifndef ENOBUFS
+# define ENOBUFS 0
+# endif
+
 #endif /* WIN32*/
 
 
