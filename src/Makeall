@@ -76,7 +76,7 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xtest" -o "X${ARGV}" = "Xrootcheck" -o
         elif [ -e /usr/include/linux/inotify.h ]; then
             echo "EEXTRA=-DUSEINOTIFY" >> Config.OS
         fi
-        LUA_PLAT="linux"
+        LUA_PLAT="posix"
     fi    
 
     # Checking for libmagic
