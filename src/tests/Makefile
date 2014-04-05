@@ -16,7 +16,9 @@ CFLAGS_TEST = -Waggregate-return -Wall -Wbad-function-cast -Wc++-compat -Wcast-a
 	-Wmissing-prototypes -Wnested-externs -Wold-style-definition -Wredundant-decls \
 	-Wshadow -Wstack-protector -Wstrict-aliasing -Wstrict-overflow=4 \
 	-Wstrict-prototypes -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunused \
-	-Wwrite-strings -g -O0 --coverage
+	-Wwrite-strings \
+	-g -O0 --coverage \
+	-I../headers/
 
 run_tests: build_tests
 	./test_os_zlib
