@@ -46,7 +46,7 @@ syscheckd/seechanges.c seechanges.c
 rootcheck rootcheck
 external/zlib-1.2.8/zlib.h zlib.h
 external/zlib-1.2.8/zconf.h zconf.h
-external/lua-5.2.3/src lua 
+external/lua-5.2.3/src lua
 os_zlib/os_zlib.c os_zlib.c
 os_zlib/os_zlib.h os_zlib.h
 win32/os_win.h os_win.h
@@ -62,6 +62,7 @@ win32/add-localfile.c setup/add-localfile.c
 win32/ossec-win.conf default-ossec.conf
 win32/vista_sec.csv vista_sec.csv
 win32/internal_options-win.conf internal_options.conf
+win32/local_internal_options-win.conf default-local_internal_options.conf
 win32/doc.html doc.html
 win32/help_win.txt help.txt
 win32/ossec-installer.nsi ossec-installer.nsi

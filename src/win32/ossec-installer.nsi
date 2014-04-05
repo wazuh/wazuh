@@ -94,18 +94,22 @@ Function .onInit
                     SimpleSC::StopService "${SERVICE}" 1 30
                     Pop $0
                     ${If} $0 <> 0
-                        MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\nFailure stopping the ${SERVICE} service ($0).\
-                            $\r$\n$\r$\nClick Abort to stop the installation,$\r$\nRetry to try again, or\
-                            $\r$\nIgnore to skip this file." /SD IDABORT IDIGNORE ServiceStopped IDRETRY ServiceStop
+                        MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
+                            Failure stopping the ${SERVICE} service ($0).$\r$\n$\r$\n\
+                            Click Abort to stop the installation,$\r$\n\
+                            Retry to try again, or$\r$\n\
+                            Ignore to skip this file." /SD IDABORT IDIGNORE ServiceStopped IDRETRY ServiceStop
 
                         SetErrorLevel 2
                         Abort
                     ${EndIf}
             ${EndIf}
         ${Else}
-            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\nFailure checking status of the ${SERVICE} service ($0).\
-                $\r$\n$\r$\nClick Abort to stop the installation,$\r$\nRetry to try again, or\
-                $\r$\nIgnore to skip this file." /SD IDABORT IDIGNORE ServiceStopped IDRETRY ServiceStop
+            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
+                Failure checking status of the ${SERVICE} service ($0).$\r$\n$\r$\n\
+                Click Abort to stop the installation,$\r$\n\
+                Retry to try again, or$\r$\n\
+                Ignore to skip this file." /SD IDABORT IDIGNORE ServiceStopped IDRETRY ServiceStop
 
             SetErrorLevel 2
             Abort
@@ -147,6 +151,7 @@ Section "OSSEC Agent (required)" MainSec
     File /oname=win32ui.exe os_win32ui.exe
     File ossec-rootcheck.exe
     File internal_options.conf
+    File default-local_internal_options.conf
     File setup-windows.exe
     File setup-syscheck.exe
     File setup-iis.exe
@@ -190,9 +195,12 @@ Section "OSSEC Agent (required)" MainSec
         FileClose $0
         IfErrors VersionError VersionComplete
     VersionError:
-        MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\nFailure saving version to file.$\r$\n$\r$\nFile:$\r$\n$\r$\n$INSTDIR\VERSION.txt\
-            $\r$\n$\r$\nClick Abort to stop the installation,$\r$\nRetry to try again, or\
-            $\r$\nIgnore to skip this file." /SD IDABORT IDIGNORE VersionComplete IDRETRY VersionInstall
+        MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
+            Failure saving version to file.$\r$\n$\r$\n\
+            File:$\r$\n$\r$\n$INSTDIR\VERSION.txt$\r$\n$\r$\n\
+            Click Abort to stop the installation,$\r$\n\
+            Retry to try again, or$\r$\n\
+            Ignore to skip this file." /SD IDABORT IDIGNORE VersionComplete IDRETRY VersionInstall
 
         SetErrorLevel 2
         Abort
@@ -201,34 +209,66 @@ Section "OSSEC Agent (required)" MainSec
 
     ; create log file
     LogInstall:
+        ClearErrors
         IfFileExists "$INSTDIR\ossec.log" LogComplete
         FileOpen $0 "$INSTDIR\ossec.log" w
         FileClose $0
         IfErrors LogError LogComplete
     LogError:
-        MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\nFailure creating ossec.log file.$\r$\n$\r$\nFile:$\r$\n$\r$\n$INSTDIR\ossec.log\
-            $\r$\n$\r$\nClick Abort to stop the installation,$\r$\nRetry to try again, or\
-            $\r$\nIgnore to skip this file." /SD IDABORT IDIGNORE LogComplete IDRETRY LogInstall
+        MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
+            Failure creating the ossec.log file.$\r$\n$\r$\n\
+            File:$\r$\n$\r$\n$INSTDIR\ossec.log$\r$\n$\r$\n\
+            Click Abort to stop the installation,$\r$\n\
+            Retry to try again, or$\r$\n\
+            Ignore to skip this file." /SD IDABORT IDIGNORE LogComplete IDRETRY LogInstall
 
         SetErrorLevel 2
         Abort
     LogComplete:
         ClearErrors
 
-    ; rename ossec.conf if it does not already exist
-    ConfInstall:
+    ; rename local_internal_options.conf if it does not already exist
+    ConfInstallInternal:
         ClearErrors
-        IfFileExists "$INSTDIR\ossec.conf" ConfPresent
-        Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
-        IfErrors ConfError ConfPresent
-    ConfError:
-        MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\nFailure renaming configuration file.$\r$\n$\r$\nFrom:$\r$\n$\r$\n$INSTDIR\default-ossec.conf\
-            $\r$\n$\r$\nTo:$\r$\n$\r$\n$INSTDIR\ossec.conf$\r$\n$\r$\nClick Abort to stop the installation,$\r$\nRetry to try again, or\
-            $\r$\nIgnore to skip this file." /SD IDABORT IDIGNORE ConfPresent IDRETRY ConfInstall
+        IfFileExists "$INSTDIR\local_internal_options.conf" ConfPresentInternal
+        Rename "$INSTDIR\default-local_internal_options.conf" "$INSTDIR\local_internal_options.conf"
+        IfErrors ConfErrorInternal ConfPresentInternal
+    ConfErrorInternal:
+        MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
+            Failure renaming configuration file.$\r$\n$\r$\n\
+            From:$\r$\n$\r$\n\
+            $INSTDIR\default-local_internal_options.conf$\r$\n$\r$\n\
+            To:$\r$\n$\r$\n\
+            $INSTDIR\local_internal_options.conf$\r$\n$\r$\n\
+            Click Abort to stop the installation,$\r$\n\
+            Retry to try again, or$\r$\n\
+            Ignore to skip this file." /SD IDABORT IDIGNORE ConfPresentInternal IDRETRY ConfInstallInternal
 
         SetErrorLevel 2
         Abort
-    ConfPresent:
+    ConfPresentInternal:
+        ClearErrors
+
+    ; rename ossec.conf if it does not already exist
+    ConfInstallOSSEC:
+        ClearErrors
+        IfFileExists "$INSTDIR\ossec.conf" ConfPresentOSSEC
+        Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
+        IfErrors ConfErrorOSSEC ConfPresentOSSEC
+    ConfErrorOSSEC:
+        MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
+            Failure renaming configuration file.$\r$\n$\r$\n\
+            From:$\r$\n$\r$\n\
+            $INSTDIR\default-ossec.conf$\r$\n$\r$\n\
+            To:$\r$\n$\r$\n\
+            $INSTDIR\ossec.conf$\r$\n$\r$\n\
+            Click Abort to stop the installation,$\r$\n\
+            Retry to try again, or$\r$\n\
+            Ignore to skip this file." /SD IDABORT IDIGNORE ConfPresentOSSEC IDRETRY ConfInstallOSSEC
+
+        SetErrorLevel 2
+        Abort
+    ConfPresentOSSEC:
         ClearErrors
 
     ; handle shortcuts
@@ -255,10 +295,12 @@ Section "OSSEC Agent (required)" MainSec
         nsExec::ExecToLog '"$INSTDIR\ossec-agent.exe" install-service'
         Pop $0
         ${If} $0 <> 1
-            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\nFailure setting up the ${SERVICE} service.\
-                $\r$\n$\r$\nCheck the details for information about the error.\
-                $\r$\n$\r$\nClick Abort to stop the installation,$\r$\nRetry to try again, or\
-                $\r$\nIgnore to skip this file." /SD IDABORT IDIGNORE ServiceInstallComplete IDRETRY ServiceInstall
+            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
+                Failure setting up the ${SERVICE} service.$\r$\n$\r$\n\
+                Check the details for information about the error.$\r$\n$\r$\n\
+                Click Abort to stop the installation,$\r$\n\
+                Retry to try again, or$\r$\n\
+                Ignore to skip this file." /SD IDABORT IDIGNORE ServiceInstallComplete IDRETRY ServiceInstall
 
             SetErrorLevel 2
             Abort
@@ -270,10 +312,12 @@ Section "OSSEC Agent (required)" MainSec
         nsExec::ExecToLog '"$INSTDIR\setup-windows.exe" "$INSTDIR"'
         Pop $0
         ${If} $0 <> 1
-            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\nFailure running setup-windows.exe.\
-                $\r$\n$\r$\nCheck the details for information about the error.\
-                $\r$\n$\r$\nClick Abort to stop the installation,$\r$\nRetry to try again, or\
-                $\r$\nIgnore to skip this file." /SD IDABORT IDIGNORE SetupComplete IDRETRY Setup
+            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
+                Failure running setup-windows.exe.$\r$\n$\r$\n\
+                Check the details for information about the error.$\r$\n$\r$\n\
+                Click Abort to stop the installation,$\r$\n\
+                Retry to try again, or$\r$\n\
+                Ignore to skip this file." /SD IDABORT IDIGNORE SetupComplete IDRETRY Setup
 
             SetErrorLevel 2
             Abort
@@ -299,10 +343,12 @@ Section "Uninstall"
         nsExec::ExecToLog '"$INSTDIR\ossec-agent.exe" uninstall-service'
         Pop $0
         ${If} $0 <> 1
-            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\nFailure uninstalling the ${SERVICE} service.\
-                $\r$\n$\r$\nCheck the details for information about the error.\
-                $\r$\n$\r$\nClick Abort to stop the installation,$\r$\nRetry to try again, or\
-                $\r$\nIgnore to skip this file." /SD IDABORT IDIGNORE ServiceUninstallComplete IDRETRY ServiceUninstall
+            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
+                Failure uninstalling the ${SERVICE} service.$\r$\n$\r$\n\
+                Check the details for information about the error.$\r$\n$\r$\n\
+                Click Abort to stop the installation,$\r$\n\
+                Retry to try again, or$\r$\n\
+                Ignore to skip this file." /SD IDABORT IDIGNORE ServiceUninstallComplete IDRETRY ServiceUninstall
 
             SetErrorLevel 2
             Abort
@@ -313,10 +359,12 @@ Section "Uninstall"
     ManageAgents:
         ${nsProcess::FindProcess} "manage_agents.exe" $0
         ${If} $0 = 0
-            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\nFound manage_agents.exe is still running.\
-                $\r$\n$\r$\nPlease close it before continuing.\
-                $\r$\n$\r$\nClick Abort to stop the installation,$\r$\nRetry to try again, or\
-                $\r$\nIgnore to skip this file." /SD IDABORT IDIGNORE ManageAgentsClosed IDRETRY ManageAgents
+            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
+                Found manage_agents.exe is still running.$\r$\n$\r$\n\
+                Please close it before continuing.$\r$\n$\r$\n\
+                Click Abort to stop the installation,$\r$\n\
+                Retry to try again, or$\r$\n\
+                Ignore to skip this file." /SD IDABORT IDIGNORE ManageAgentsClosed IDRETRY ManageAgents
 
             ${nsProcess::Unload}
             SetErrorLevel 2
@@ -328,10 +376,12 @@ Section "Uninstall"
     win32ui:
         ${nsProcess::FindProcess} "win32ui.exe" $0
         ${If} $0 = 0
-            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\nFound win32ui.exe is still running.\
-                $\r$\n$\r$\nPlease close it before continuing.\
-                $\r$\n$\r$\nClick Abort to stop the installation,$\r$\nRetry to try again, or\
-                $\r$\nIgnore to skip this file." /SD IDABORT IDIGNORE win32uiClosed IDRETRY win32ui
+            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
+                Found win32ui.exe is still running.$\r$\n$\r$\n\
+                Please close it before continuing.$\r$\n$\r$\n\
+                Click Abort to stop the installation,$\r$\n\
+                Retry to try again, or$\r$\n\
+                Ignore to skip this file." /SD IDABORT IDIGNORE win32uiClosed IDRETRY win32ui
 
             ${nsProcess::Unload}
             SetErrorLevel 2
