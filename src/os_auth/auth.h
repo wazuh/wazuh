@@ -43,6 +43,9 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
+#include <openssl/pem.h>
+#include <openssl/x509v3.h>
+
 #include "os_net/os_net.h"
 #include "addagent/manage_agents.h"
 
@@ -55,6 +58,12 @@ SSL_CTX *get_ssl_context();
 int load_cert_and_key(SSL_CTX *ctx, char *cert, char *key);
 int load_ca_cert(SSL_CTX *ctx, char *ca_cert);
 int verify_callback(int ok, X509_STORE_CTX *store);
+
+/* Verification routines */
+int check_x509_cert(SSL *ssl, char *manager);
+int check_subject_alt_names(X509 *cert, char *manager);
+int check_subject_cn(X509 *cert, char *manager);
+int check_string(ASN1_STRING *cstr, char *manager);
 
 #endif
 

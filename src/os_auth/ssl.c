@@ -180,6 +180,138 @@ int load_ca_cert(SSL_CTX *ctx, char *ca_cert)
     return 1;
 }
 
+/* Could be replaced with X509_check_host() in future but this is only available
+ * in openssl 1.0.2.
+ */
+int check_x509_cert(SSL *ssl, char *manager)
+{
+    X509 *cert = NULL;
+    int match_found = 0;
+
+    if(!(cert = SSL_get_peer_certificate(ssl)))
+        goto CERT_CHECK_FAILED;
+
+    /* Check for a matching subject alt name entry in the extensions first and
+     * if no match is found there then check the subject CN.
+     */
+    debug1("%s: DEBUG: Checking manager's subject alternative names.", ARGV0);
+    if((match_found = check_subject_alt_names(cert, manager)) < 0)
+        goto CERT_CHECK_FAILED;
+
+    debug1("%s: DEBUG: No matching DNS alternative name. Checking common name", ARGV0);
+    if(!match_found)
+    {
+        if((match_found = check_subject_cn(cert, manager)) < 0)
+            goto CERT_CHECK_FAILED;
+    }
+
+    if(!match_found)
+        debug1("%s: DEBUG: Unable to match manager's name.", ARGV0);
+
+    X509_free(cert);
+    return match_found;
+
+CERT_CHECK_FAILED:
+    if (cert)
+        X509_free(cert);
+
+    /* return X509_V_ERR_APPLICATION_VERIFICATION; */
+    return 0;
+}
+
+/* Loop through all the subject_alt_name entries until we find a match or
+ * an error occurs.
+ */
+int check_subject_alt_names(X509 *cert, char *manager)
+{
+    GENERAL_NAMES *names = NULL;
+    int i = 0;
+    int rv = 0;
+
+    if((names = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL)))
+    {
+        for(i = 0; i < sk_GENERAL_NAME_num(names); i++)
+        {
+            GENERAL_NAME *name = NULL;
+
+            name = sk_GENERAL_NAME_value(names, i);
+            if(name && (name->type == GEN_DNS))
+            {
+                if ((rv = check_string(name->d.ia5, manager)) != 0)
+                    break;
+            }
+        }
+
+        GENERAL_NAMES_free(names);
+    }
+
+    return rv;
+}
+
+/* Loop through all the common name entries until we find a match or
+ * an error occurs.
+ */
+int check_subject_cn(X509 *cert, char *manager)
+{
+    X509_NAME *name = NULL;
+    int i = 0;
+    int rv = 0;
+
+    name = X509_get_subject_name(cert);
+    while((i = X509_NAME_get_index_by_NID(name, NID_commonName, i)) >= 0)
+    {
+        X509_NAME_ENTRY *ne = NULL;
+        ASN1_STRING *str = NULL;
+
+        ne = X509_NAME_get_entry(name, i);
+        str = X509_NAME_ENTRY_get_data(ne);
+        if((rv = check_string(str, manager)) != 0)
+            break;
+    }
+
+    return rv;
+}
+
+/* Determine whether a string found in a subject_alt_name or common name
+ * matches the manager's name specified on the command line. The match is
+ * case insensitive.
+ */
+int check_string(ASN1_STRING *cstr, char *manager)
+{
+    unsigned char *dns = NULL;
+    int i = 0;
+    int len = 0;
+    
+    if (!cstr->data || !cstr->length)
+        goto STRING_CHECK_FAILED;
+
+    len = ASN1_STRING_to_UTF8(&dns, cstr);
+    if(!dns || len < 0)
+        goto STRING_CHECK_FAILED;
+
+    /* Check the names in the certificate for embedded NULL characters. */
+    if (memchr(dns, '\0', len) != NULL)
+        goto STRING_CHECK_FAILED;
+
+    if (len != strlen(manager))
+        goto STRING_CHECK_FAILED;
+
+    for(i = 0; i < len; i++)
+    {
+        if(tolower(dns[i]) != tolower(manager[i]))
+            goto STRING_CHECK_FAILED;
+    }
+
+    OPENSSL_free(dns);
+    return 1;
+
+STRING_CHECK_FAILED:
+    if(dns)
+        OPENSSL_free(dns);
+
+    return 0;
+}
+
 /* No extra verification is done here. This function provides more
  * information in the case that certificate verification fails
  * for any reason.

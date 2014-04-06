@@ -77,6 +77,7 @@ int main(int argc, char **argv)
     // TODO: implement or delete
     char *cfg __attribute__((unused)) = DEFAULTCPATH;
     char *manager = NULL;
+    char *ipaddress = NULL;
     char *agentname = NULL;
     char *agent_cert = NULL;
     char *agent_key = NULL;
@@ -231,46 +232,48 @@ int main(int argc, char **argv)
     }
 
 
-    /* Check to see if manager is an IP */
-    int is_ip = 1;
+    /* Check to see if the manager to connect to was specified as an IP address
+     * or hostname on the command line. If it was given as a hostname then ensure
+     * the hostname is preserved so that certificate verification can be done.
+     */
+    int is_ip = 0;
     struct sockaddr_in iptest;
     memset(&iptest, 0, sizeof(iptest));
 
-    if(inet_pton(AF_INET, manager, &iptest.sin_addr) != 1)
-      is_ip = 0;	/* This is not an IPv4 address */
+    if(inet_pton(AF_INET, manager, &iptest.sin_addr) == 1)
+    {
+        ipaddress = manager;
+        is_ip = 1;    /* This is an IPv4 address */
+    }
 
     /* Not IPv4, IPv6 maybe? */
     if(is_ip == 0)
     {
         struct sockaddr_in6 iptest6;
         memset(&iptest6, 0, sizeof(iptest6));
-        if(inet_pton(AF_INET6, manager, &iptest6.sin6_addr) != 1)
-            is_ip = 0;
-        else
-            is_ip = 1;	/* This is an IPv6 address */
+        if(inet_pton(AF_INET6, manager, &iptest6.sin6_addr) == 1) {
+            ipaddress = manager;
+            is_ip = 1;  /* This is an IPv6 address */
+        }
     }
 
 
     /* If it isn't an ip, try to resolve the IP */
     if(is_ip == 0)
     {
-        char *ipaddress;
         ipaddress = OS_GetHost(manager, 3);
-        if(ipaddress != NULL)
-          strncpy(manager, ipaddress, 16);
-        else
+        if(ipaddress == NULL)
         {
-          printf("Could not resolve hostname: %s\n", manager);
-          return(1);
+            merror("%s: Could not resolve hostname: %s\n", ARGV0, manager);
+            exit(1);
         }
     }
 
-
     /* Connecting via TCP */
-    sock = OS_ConnectTCP(port, manager, 0);
+    sock = OS_ConnectTCP(port, ipaddress, 0);
     if(sock <= 0)
     {
-        merror("%s: Unable to connect to %s:%d", ARGV0, manager, port);
+        merror("%s: Unable to connect to %s:%d", ARGV0, ipaddress, port);
         exit(1);
     }
 
@@ -290,7 +293,21 @@ int main(int argc, char **argv)
     }
 
 
-    printf("INFO: Connected to %s:%d\n", manager, port);
+    printf("INFO: Connected to %s:%d\n", ipaddress, port);
+
+    /* Additional verification of the manager's certificate if a hostname
+     * rather than an IP address is given on the command line. Could change
+     * this to do the additional validation on IP addresses as well if needed.
+     */
+    if(ca_cert && (is_ip == 0))
+    {
+        printf("INFO: Verifing manager's certificate\n");
+        if(check_x509_cert(ssl, manager) != 1) {
+            merror("%s: ERROR: Manager's x509 certificate failed validation", ARGV0);
+            exit(1);
+        }
+    }
+
     printf("INFO: Using agent name as: %s\n", agentname);
 
 
