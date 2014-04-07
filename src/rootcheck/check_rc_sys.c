@@ -478,7 +478,7 @@ void check_rc_sys(char *basedir)
             (ftell(_suid) == 0)?"":
             "       rootcheck-suid-files.txt (list of suid files)");
 
-        notify_rk(ALERT_SYSTEM_ERROR, op_msg);
+        notify_rk(ALERT_SYSTEM_ERR, op_msg);
     }
 
     if(_wx)

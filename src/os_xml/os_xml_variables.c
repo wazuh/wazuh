@@ -19,12 +19,17 @@
 #include <stdlib.h>
 
 #include "os_xml.h"
+#include "os_xml_internal.h"
 
 int OS_ApplyVariables(OS_XML *_lxml)
 {
-    int i = 0,j = 0,s = 0;
+    unsigned int i = 0, j = 0, s = 0;
+    int retval = 0;
     char **var = NULL;
     char **value = NULL;
+    char **tmp = NULL;
+    char *p2= NULL;
+    char *var_placeh = NULL;
 
 
     /* No variables. */
@@ -53,15 +58,16 @@ int OS_ApplyVariables(OS_XML *_lxml)
                             break;
 
                         /* If not used, it will be cleaned latter */
-                        snprintf(_lxml->err, 128, "XML_ERR: Memory error");
+                        snprintf(_lxml->err, XML_ERR_LENGTH, "XML_ERR: Memory error");
 
-                        var = (char**)realloc(var,(s+1)*sizeof(char *));
-                        if(var == NULL)
-                            return (-1);
+                        tmp = (char**)realloc(var,(s+1)*sizeof(char *));
+                        if(tmp == NULL)
+                            goto fail;
+                        var = tmp;
 
                         var[s] = strdup(_lxml->ct[j]);
                         if(var[s] == NULL)
-                            return(-1);
+                            goto fail;
 
                         /* Cleaning the lxml->err */
                         strncpy(_lxml->err," ", 3);
@@ -71,10 +77,10 @@ int OS_ApplyVariables(OS_XML *_lxml)
                     }
                     else
                     {
-                        snprintf(_lxml->err, 128,
+                        snprintf(_lxml->err, XML_ERR_LENGTH,
                                  "XML_ERR: Only \"name\" is allowed"
                                  " as an attribute for a variable");
-                        return(-1);
+                        goto fail;
                     }
                 }
             } /* Attribute FOR */
@@ -82,21 +88,22 @@ int OS_ApplyVariables(OS_XML *_lxml)
 
             if((_found_var == 0)||(!_lxml->ct[i]))
             {
-                snprintf(_lxml->err,128,
+                snprintf(_lxml->err,XML_ERR_LENGTH,
                          "XML_ERR: Bad formed variable. No value set");
-                return(-1);
+                goto fail;
             }
 
 
-            snprintf(_lxml->err,128, "XML_ERR: Memory error");
+            snprintf(_lxml->err,XML_ERR_LENGTH, "XML_ERR: Memory error");
 
-            value = (char**)realloc(value,(s+1)*sizeof(char *));
-            if (value == NULL)
-                return(-1);
+            tmp = (char**)realloc(value,(s+1)*sizeof(char *));
+            if (tmp == NULL)
+                goto fail;
+            value = tmp;
 
             value[s] = strdup(_lxml->ct[i]);
             if(value[s] == NULL)
-                return(-1);
+                goto fail;
 
             strncpy(_lxml->err," ", 3);
             s++;
@@ -116,9 +123,9 @@ int OS_ApplyVariables(OS_XML *_lxml)
         if(((_lxml->tp[i] == XML_ELEM) || (_lxml->tp[i] == XML_ATTR))&&
             (_lxml->ct[i]))
         {
-            int tp = 0,init = 0;
+            unsigned int tp = 0;
+            size_t init = 0;
             char *p = NULL;
-            char *p2= NULL;
             char lvar[256]; /* MAX Var size */
 
 
@@ -132,8 +139,8 @@ int OS_ApplyVariables(OS_XML *_lxml)
 
             if(p == NULL)
             {
-                snprintf(_lxml->err, 128, "XML_ERR: Memory error");
-                return(-1);
+                snprintf(_lxml->err, XML_ERR_LENGTH, "XML_ERR: Memory error");
+                goto fail;
             }
 
 
@@ -160,12 +167,6 @@ int OS_ApplyVariables(OS_XML *_lxml)
                             /* Looking for var */
                             for(j=0; j<s; j++)
                             {
-                                int tsize = 0;
-
-                                /* Store everything up the variable name */
-                                char *var_placeh;
-
-
                                 if(var[j] == NULL)
                                     break;
 
@@ -175,7 +176,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
                                 }
 
 
-                                tsize = strlen(_lxml->ct[i]) +
+                                size_t tsize = strlen(_lxml->ct[i]) +
                                         strlen(value[j]) - tp + 1;
 
                                 var_placeh = strdup(_lxml->ct[i]);
@@ -187,9 +188,9 @@ int OS_ApplyVariables(OS_XML *_lxml)
 
                                 if(_lxml->ct[i] == NULL || var_placeh == NULL)
                                 {
-                                    snprintf(_lxml->err,128, "XML_ERR: Memory "
+                                    snprintf(_lxml->err,XML_ERR_LENGTH, "XML_ERR: Memory "
                                                              "error");
-                                    return(-1);
+                                    goto fail;
                                 }
 
 
@@ -206,6 +207,7 @@ int OS_ApplyVariables(OS_XML *_lxml)
 
 
                                 free(var_placeh);
+                                var_placeh = NULL;
 
                                 break;
                             }
@@ -213,10 +215,10 @@ int OS_ApplyVariables(OS_XML *_lxml)
                             /* Variale not found */
                             if((j == s) && (strlen(lvar) >= 1))
                             {
-                                snprintf(_lxml->err,128,
+                                snprintf(_lxml->err,XML_ERR_LENGTH,
                                                 "XML_ERR: Unknown variable"
                                                 ": %s", lvar);
-                                return(-1);
+                                goto fail;
                             }
                             else if(j == s)
                             {
@@ -229,9 +231,9 @@ int OS_ApplyVariables(OS_XML *_lxml)
                         /* Maximum size for a variable */
                         if(tp >= 255)
                         {
-                            snprintf(_lxml->err,128, "XML_ERR: Invalid "
+                            snprintf(_lxml->err,XML_ERR_LENGTH, "XML_ERR: Invalid "
                                                      "variable size.");
-                            return(-1);
+                            goto fail;
 
                         }
 
@@ -258,34 +260,31 @@ int OS_ApplyVariables(OS_XML *_lxml)
         }
     }
 
+    goto cleanup;
 
+    fail:
+    retval = -1;
+
+    cleanup:
     /* Cleaning the variables */
     for(i=0;i<s;i++)
     {
         if((var)&&(var[i]))
         {
             free(var[i]);
-            var[i] = NULL;
         }
         if((value)&&(value[i]))
         {
             free(value[i]);
-            value[i] = NULL;
         }
     }
 
-    if(var != NULL)
-    {
-        free(var);
-        var = NULL;
-    }
-    if(value != NULL)
-    {
-        free(value);
-        value = NULL;
-    }
+    free(var);
+    free(value);
+    free(p2);
+	free(var_placeh);
 
-    return(0);
+    return(retval);
 }
 
 /* UFA :) or EOF */

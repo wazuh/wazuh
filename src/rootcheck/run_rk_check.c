@@ -25,7 +25,7 @@ int notify_rk(int rk_type, char *msg)
     {
         if(rk_type == ALERT_OK)
             printf("[OK]: %s\n", msg);
-        else if(rk_type == ALERT_SYSTEM_ERROR)
+        else if(rk_type == ALERT_SYSTEM_ERR)
             printf("[ERR]: %s\n", msg);
         else if(rk_type == ALERT_POLICY_VIOLATION)
             printf("[INFO]: %s\n", msg);
@@ -39,7 +39,7 @@ int notify_rk(int rk_type, char *msg)
     }
 
     /* No need to alert on that to the server */
-    if(rk_type <= ALERT_SYSTEM_ERROR)
+    if(rk_type <= ALERT_SYSTEM_ERR)
         return(0);
 
     #ifdef OSSECHIDS
