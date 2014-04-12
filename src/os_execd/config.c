@@ -26,8 +26,8 @@ int ExecdConfig(char * cfgfile)
     #else
     int is_disabled = 0;
     #endif
-    char *(xmlf[]) = {"ossec_config", "active-response", "disabled", NULL};
-    char *(blocks[]) = {"ossec_config", "active-response", "repeated_offenders", NULL};
+    const char *(xmlf[]) = {"ossec_config", "active-response", "disabled", NULL};
+    const char *(blocks[]) = {"ossec_config", "active-response", "repeated_offenders", NULL};
     char *disable_entry;
     char *repeated_t;
     char **repeated_a;
