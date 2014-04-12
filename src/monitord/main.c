@@ -117,9 +117,9 @@ int main(int argc, char **argv)
         OS_XML xml;
         char *tmpsmtp;
 
-        char *(xml_smtp[])={"ossec_config", "global", "smtp_server", NULL};
-        char *(xml_from[])={"ossec_config", "global", "email_from", NULL};
-        char *(xml_idsname[])={"ossec_config", "global", "email_idsname", NULL};
+        const char *(xml_smtp[])={"ossec_config", "global", "smtp_server", NULL};
+        const char *(xml_from[])={"ossec_config", "global", "email_from", NULL};
+        const char *(xml_idsname[])={"ossec_config", "global", "email_idsname", NULL};
 
         if(OS_ReadXML(cfg, &xml) < 0)
         {
@@ -168,7 +168,7 @@ int main(int argc, char **argv)
     }
 
 
-    /* Privilege separation */	
+    /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
@@ -204,7 +204,7 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
-    /* the real daemon now */	
+    /* the real daemon now */
     Monitord();
     exit(0);
 }

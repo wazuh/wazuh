@@ -21,7 +21,7 @@
 int main(int argc, char **argv)
 {
     char *status;
-    char *(xml_syscheck_status[])={"ossec_config","syscheck","disabled", NULL};
+    const char *(xml_syscheck_status[])={"ossec_config","syscheck","disabled", NULL};
 
     if(argc < 3)
     {
