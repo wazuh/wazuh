@@ -236,30 +236,29 @@ int main(int argc, char **argv)
      * or hostname on the command line. If it was given as a hostname then ensure
      * the hostname is preserved so that certificate verification can be done.
      */
-    int is_ip = 0;
     struct sockaddr_in iptest;
-    memset(&iptest, 0, sizeof(iptest));
 
+    /* IPv4 address? */
+    memset(&iptest, 0, sizeof(iptest));
     if(inet_pton(AF_INET, manager, &iptest.sin_addr) == 1)
     {
         ipaddress = manager;
-        is_ip = 1;    /* This is an IPv4 address */
     }
 
     /* Not IPv4, IPv6 maybe? */
-    if(is_ip == 0)
+    if(!ipaddress)
     {
         struct sockaddr_in6 iptest6;
+
         memset(&iptest6, 0, sizeof(iptest6));
         if(inet_pton(AF_INET6, manager, &iptest6.sin6_addr) == 1) {
             ipaddress = manager;
-            is_ip = 1;  /* This is an IPv6 address */
         }
     }
 
 
     /* If it isn't an ip, try to resolve the IP */
-    if(is_ip == 0)
+    if(!ipaddress)
     {
         ipaddress = OS_GetHost(manager, 3);
         if(ipaddress == NULL)
@@ -299,7 +298,7 @@ int main(int argc, char **argv)
      * rather than an IP address is given on the command line. Could change
      * this to do the additional validation on IP addresses as well if needed.
      */
-    if(ca_cert && (is_ip == 0))
+    if(ca_cert)
     {
         printf("INFO: Verifing manager's certificate\n");
         if(check_x509_cert(ssl, manager) != 1) {

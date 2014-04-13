@@ -198,9 +198,9 @@ int check_x509_cert(SSL *ssl, char *manager)
     if((match_found = check_subject_alt_names(cert, manager)) < 0)
         goto CERT_CHECK_FAILED;
 
-    debug1("%s: DEBUG: No matching DNS alternative name. Checking common name", ARGV0);
     if(!match_found)
     {
+        debug1("%s: DEBUG: No matching subject alternative names found. Checking common name.", ARGV0);
         if((match_found = check_subject_cn(cert, manager)) < 0)
             goto CERT_CHECK_FAILED;
     }
@@ -228,23 +228,25 @@ int check_subject_alt_names(X509 *cert, char *manager)
     int i = 0;
     int rv = 0;
 
-    if((names = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL)))
+    if(!(names = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL)))
+        return rv;
+
+    for(i = 0; i < sk_GENERAL_NAME_num(names); i++)
     {
-        for(i = 0; i < sk_GENERAL_NAME_num(names); i++)
-        {
-            GENERAL_NAME *name = NULL;
+        GENERAL_NAME *name = sk_GENERAL_NAME_value(names, i);
 
-            name = sk_GENERAL_NAME_value(names, i);
-            if(name && (name->type == GEN_DNS))
-            {
-                if ((rv = check_string(name->d.ia5, manager)) != 0)
-                    break;
-            }
-        }
+        if(name->type == GEN_DNS)
+            rv = check_hostname(name->d.dNSName, manager);
+        else if(name->type == GEN_IPADD)
+            rv = check_ipaddr(name->d.iPAddress, manager);
+        else
+            continue;
 
-        GENERAL_NAMES_free(names);
+        if(rv != 0)
+            break;
     }
 
+    GENERAL_NAMES_free(names);
     return rv;
 }
 
@@ -260,12 +262,9 @@ int check_subject_cn(X509 *cert, char *manager)
     name = X509_get_subject_name(cert);
     while((i = X509_NAME_get_index_by_NID(name, NID_commonName, i)) >= 0)
     {
-        X509_NAME_ENTRY *ne = NULL;
-        ASN1_STRING *str = NULL;
+        X509_NAME_ENTRY *ne = X509_NAME_get_entry(name, i);
 
-        ne = X509_NAME_get_entry(name, i);
-        str = X509_NAME_ENTRY_get_data(ne);
-        if((rv = check_string(str, manager)) != 0)
+        if((rv = check_hostname(X509_NAME_ENTRY_get_data(ne), manager)) != 0)
             break;
     }
 
@@ -276,40 +275,54 @@ int check_subject_cn(X509 *cert, char *manager)
  * matches the manager's name specified on the command line. The match is
  * case insensitive.
  */
-int check_string(ASN1_STRING *cstr, char *manager)
+int check_hostname(ASN1_STRING *cstr, char *manager)
 {
-    unsigned char *dns = NULL;
     int i = 0;
-    int len = 0;
-    
-    if (!cstr->data || !cstr->length)
-        goto STRING_CHECK_FAILED;
 
-    len = ASN1_STRING_to_UTF8(&dns, cstr);
-    if(!dns || len < 0)
-        goto STRING_CHECK_FAILED;
+    if (!cstr->data || !cstr->length)
+        return 0;
 
     /* Check the names in the certificate for embedded NULL characters. */
-    if (memchr(dns, '\0', len) != NULL)
-        goto STRING_CHECK_FAILED;
+    if (memchr(cstr->data, '\0', cstr->length) != NULL)
+        return 0;
 
-    if (len != strlen(manager))
-        goto STRING_CHECK_FAILED;
+    if (cstr->length != strlen(manager))
+        return 0;
 
-    for(i = 0; i < len; i++)
+    for(i = 0; i < cstr->length; i++)
     {
-        if(tolower(dns[i]) != tolower(manager[i]))
-            goto STRING_CHECK_FAILED;
+        if(tolower(cstr->data[i]) != tolower(manager[i]))
+            return 0;
     }
 
-    OPENSSL_free(dns);
     return 1;
+}
 
-STRING_CHECK_FAILED:
-    if(dns)
-        OPENSSL_free(dns);
+int check_ipaddr(ASN1_STRING *cstr, char *manager)
+{
+    struct sockaddr_in iptest;
+    struct sockaddr_in6 iptest6;
+    int rv = 0;
 
-    return 0;
+    memset(&iptest, 0, sizeof(iptest));
+    memset(&iptest6, 0, sizeof(iptest6));
+
+    if(inet_pton(AF_INET, manager, &iptest.sin_addr) == 1)
+    {
+        if(cstr->length == 4 && !memcmp(cstr->data, (const void *)&iptest.sin_addr, 4))
+            rv = 1;
+    }
+    else if(inet_pton(AF_INET6, manager, &iptest6.sin6_addr) == 1)
+    {
+        if(cstr->length == 128 && !memcmp(cstr->data, (const void *)&iptest6.sin6_addr, 128))
+            rv = 1;
+    }
+    else
+    {
+        debug1("%s: DEBUG: Invalid IP address encountered.", ARGV0);
+    }
+
+    return rv;
 }
 
 /* No extra verification is done here. This function provides more
