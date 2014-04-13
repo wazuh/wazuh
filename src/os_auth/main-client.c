@@ -237,12 +237,14 @@ int main(int argc, char **argv)
      * the hostname is preserved so that certificate verification can be done.
      */
     struct sockaddr_in iptest;
+    int is_ip = 0;
 
     /* IPv4 address? */
     memset(&iptest, 0, sizeof(iptest));
     if(inet_pton(AF_INET, manager, &iptest.sin_addr) == 1)
     {
         ipaddress = manager;
+        is_ip = 1;
     }
 
     /* Not IPv4, IPv6 maybe? */
@@ -253,6 +255,7 @@ int main(int argc, char **argv)
         memset(&iptest6, 0, sizeof(iptest6));
         if(inet_pton(AF_INET6, manager, &iptest6.sin6_addr) == 1) {
             ipaddress = manager;
+            is_ip = 1;
         }
     }
 
@@ -301,7 +304,7 @@ int main(int argc, char **argv)
     if(ca_cert)
     {
         printf("INFO: Verifing manager's certificate\n");
-        if(check_x509_cert(ssl, manager) != 1) {
+        if(check_x509_cert(ssl, manager, is_ip) != 1) {
             merror("%s: ERROR: Manager's x509 certificate failed validation", ARGV0);
             exit(1);
         }

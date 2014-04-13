@@ -183,7 +183,7 @@ int load_ca_cert(SSL_CTX *ctx, char *ca_cert)
 /* Could be replaced with X509_check_host() in future but this is only available
  * in openssl 1.0.2.
  */
-int check_x509_cert(SSL *ssl, char *manager)
+int check_x509_cert(SSL *ssl, char *manager, int is_ip)
 {
     X509 *cert = NULL;
     int match_found = 0;
@@ -195,7 +195,7 @@ int check_x509_cert(SSL *ssl, char *manager)
      * if no match is found there then check the subject CN.
      */
     debug1("%s: DEBUG: Checking manager's subject alternative names.", ARGV0);
-    if((match_found = check_subject_alt_names(cert, manager)) < 0)
+    if((match_found = check_subject_alt_names(cert, manager, is_ip)) < 0)
         goto CERT_CHECK_FAILED;
 
     if(!match_found)
@@ -222,7 +222,7 @@ CERT_CHECK_FAILED:
 /* Loop through all the subject_alt_name entries until we find a match or
  * an error occurs.
  */
-int check_subject_alt_names(X509 *cert, char *manager)
+int check_subject_alt_names(X509 *cert, char *manager, int is_ip)
 {
     GENERAL_NAMES *names = NULL;
     int i = 0;
@@ -235,12 +235,16 @@ int check_subject_alt_names(X509 *cert, char *manager)
     {
         GENERAL_NAME *name = sk_GENERAL_NAME_value(names, i);
 
-        if(name->type == GEN_DNS)
-            rv = check_hostname(name->d.dNSName, manager);
-        else if(name->type == GEN_IPADD)
-            rv = check_ipaddr(name->d.iPAddress, manager);
+        if(is_ip)
+        {
+            if(name->type == GEN_IPADD)
+                rv = check_ipaddr(name->d.iPAddress, manager);
+        }
         else
-            continue;
+        {
+            if(name->type == GEN_DNS)
+                rv = check_hostname(name->d.dNSName, manager);
+        }
 
         if(rv != 0)
             break;
@@ -314,7 +318,7 @@ int check_ipaddr(ASN1_STRING *cstr, char *manager)
     }
     else if(inet_pton(AF_INET6, manager, &iptest6.sin6_addr) == 1)
     {
-        if(cstr->length == 128 && !memcmp(cstr->data, (const void *)&iptest6.sin6_addr, 128))
+        if(cstr->length == 16 && !memcmp(cstr->data, (const void *)&iptest6.sin6_addr, 16))
             rv = 1;
     }
     else
