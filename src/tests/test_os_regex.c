@@ -253,6 +253,30 @@ START_TEST(test_fail_strisnum)
 }
 END_TEST
 
+START_TEST(test_strhowclosedmatch)
+{
+    int i;
+
+    /*
+     * Please note that all strings are \ escaped
+     */
+    char *tests[][3] = {
+            { "test", "test1234", "4" },
+            { "test1234", "test", "4" },
+            { "test", "test", "4" },
+            { "test", "", "0" },
+            { "", "test", "0" },
+            {NULL,NULL,NULL},
+       };
+
+    for(i=0; tests[i][0] != NULL ; i++) {
+        ck_assert_int_eq(OS_StrHowClosedMatch(tests[i][0],tests[i][1])
+                , atoi(tests[i][2]));
+    }
+
+}
+END_TEST
+
 Suite *test_suite(void)
 {
     Suite *s = suite_create("os_regex");
@@ -262,6 +286,7 @@ Suite *test_suite(void)
     TCase *tc_regex = tcase_create("Regex");
     TCase *tc_wordmatch = tcase_create("WordMatch");
     TCase *tc_strisnum = tcase_create("StrIsNum");
+    TCase *tc_strhowclosedmatch = tcase_create("StrHowClosedMatch");
 
     tcase_add_test(tc_match, test_success_match1);
     tcase_add_test(tc_match, test_fail_match1);
@@ -275,10 +300,13 @@ Suite *test_suite(void)
     tcase_add_test(tc_strisnum, test_success_strisnum);
     tcase_add_test(tc_strisnum, test_fail_strisnum);
 
+    tcase_add_test(tc_strhowclosedmatch, test_strhowclosedmatch);
+
     suite_add_tcase(s, tc_match);
     suite_add_tcase(s, tc_regex);
     suite_add_tcase(s, tc_wordmatch);
     suite_add_tcase(s, tc_strisnum);
+    suite_add_tcase(s, tc_strhowclosedmatch);
 
     return (s);
 }
