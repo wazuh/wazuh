@@ -50,8 +50,8 @@ START_TEST(test_success_match1)
     };
 
     for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(OS_Match2(tests[i][0],tests[i][1]), 
-                      "%s should have OS_Match2 true with %s: Ref: %s", 
+        ck_assert_msg(OS_Match2(tests[i][0],tests[i][1]),
+                      "%s should have OS_Match2 true with %s: Ref: %s",
                       tests[i][0], tests[i][1], tests[i][1]);
     }
 }
@@ -90,8 +90,8 @@ START_TEST(test_success_regex1)
 {
 
     int i;
-    /* 
-     * Please note that all strings are \ escaped 
+    /*
+     * Please note that all strings are \ escaped
      */
     char *tests[][3] = {
         {"\\s+123", "  123", ""},
@@ -125,8 +125,8 @@ START_TEST(test_success_regex1)
     };
 
     for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(OS_Regex(tests[i][0],tests[i][1]), 
-                      "%s should have OS_Regex true with %s: Ref: %s", 
+        ck_assert_msg(OS_Regex(tests[i][0],tests[i][1]),
+                      "%s should have OS_Regex true with %s: Ref: %s",
                       tests[i][0], tests[i][1], tests[i][2]);
     }
 }
@@ -136,8 +136,8 @@ START_TEST(test_fail_regex1)
 {
 
     int i;
-    /* 
-     * Please note that all strings are \ escaped 
+    /*
+     * Please note that all strings are \ escaped
      */
     char *tests[][3] = {
         {"\\w+\\s+\\w+\\d+\\s$", "a aa11  ", ""},
@@ -148,16 +148,67 @@ START_TEST(test_fail_regex1)
         {"test123(\\d)", "test123a", ""},
         {"\\(test)", "test", ""},
         {"(\\w+)(\\d+)", "1 1", ""},
-        {NULL,NULL,NULL}, 
+        {NULL,NULL,NULL},
     };
 
     for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(!OS_Regex(tests[i][0],tests[i][1]), 
-                      "%s should have OS_Regex false with %s: Ref: %s", 
+        ck_assert_msg(!OS_Regex(tests[i][0],tests[i][1]),
+                      "%s should have OS_Regex false with %s: Ref: %s",
                       tests[i][0], tests[i][1], tests[i][2]);
     }
 }
 END_TEST
+
+START_TEST(test_success_wordmatch)
+{
+    int i;
+
+    /*
+     * Please note that all strings are \ escaped
+     */
+    char *tests[][2] = {
+            { "test", "this is a test" },
+            { "test", "thistestiswithoutspaces" },
+            { "test|not", "test" },
+            { "test|not", "not" },
+            { "^test", "test on start" },
+            {NULL,NULL},
+       };
+
+    for(i=0; tests[i][0] != NULL ; i++) {
+        ck_assert_msg(OS_WordMatch(tests[i][0],tests[i][1]),
+        "%s should match positive with %s by OS_WordMatch",
+        tests[i][0], tests[i][1]);
+    }
+
+}
+END_TEST
+
+START_TEST(test_fail_wordmatch)
+{
+    int i;
+
+    /*
+     * Please note that all strings are \ escaped
+     */
+    char *tests[][2] = {
+            { "-test", "this is a test" },
+            { "", "test" },
+            { "test|not", "negative" },
+            { "test", "" },
+            { "^test", "starttest" },
+            {NULL,NULL},
+       };
+
+    for(i=0; tests[i][0] != NULL ; i++) {
+        ck_assert_msg(!OS_WordMatch(tests[i][0],tests[i][1]),
+        "%s should not match positive with %s by OS_WordMatch",
+        tests[i][0], tests[i][1]);
+    }
+
+}
+END_TEST
+
 Suite *test_suite(void)
 {
     Suite *s = suite_create("os_regex");
@@ -165,6 +216,7 @@ Suite *test_suite(void)
     /* Core test case */
     TCase *tc_match = tcase_create("Match");
     TCase *tc_regex = tcase_create("Regex");
+    TCase *tc_wordmatch = tcase_create("WordMatch");
 
     tcase_add_test(tc_match, test_success_match1);
     tcase_add_test(tc_match, test_fail_match1);
@@ -172,8 +224,12 @@ Suite *test_suite(void)
     tcase_add_test(tc_regex, test_success_regex1);
     tcase_add_test(tc_regex, test_fail_regex1);
 
+    tcase_add_test(tc_wordmatch, test_success_wordmatch);
+    tcase_add_test(tc_wordmatch, test_fail_wordmatch);
+
     suite_add_tcase(s, tc_match);
     suite_add_tcase(s, tc_regex);
+    suite_add_tcase(s, tc_wordmatch);
 
     return (s);
 }
