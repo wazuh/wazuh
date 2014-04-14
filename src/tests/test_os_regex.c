@@ -209,6 +209,50 @@ START_TEST(test_fail_wordmatch)
 }
 END_TEST
 
+START_TEST(test_success_strisnum)
+{
+    int i;
+
+    /*
+     * Please note that all strings are \ escaped
+     */
+    char *tests[] = {
+            "1",
+            "0123",
+            NULL,
+       };
+
+    for(i=0; tests[i] != NULL ; i++) {
+        ck_assert_msg(OS_StrIsNum(tests[i]),
+        "%s should match positive by OS_StrIsNum",
+        tests[i]);
+    }
+
+}
+END_TEST
+
+START_TEST(test_fail_strisnum)
+{
+    int i;
+
+    /*
+     * Please note that all strings are \ escaped
+     */
+    char *tests[] = {
+            "test",
+            "1234e",
+            NULL,
+       };
+
+    for(i=0; tests[i] != NULL ; i++) {
+        ck_assert_msg(!OS_StrIsNum(tests[i]),
+        "%s should not match positive by OS_StrIsNum",
+        tests[i]);
+    }
+
+}
+END_TEST
+
 Suite *test_suite(void)
 {
     Suite *s = suite_create("os_regex");
@@ -217,6 +261,7 @@ Suite *test_suite(void)
     TCase *tc_match = tcase_create("Match");
     TCase *tc_regex = tcase_create("Regex");
     TCase *tc_wordmatch = tcase_create("WordMatch");
+    TCase *tc_strisnum = tcase_create("StrIsNum");
 
     tcase_add_test(tc_match, test_success_match1);
     tcase_add_test(tc_match, test_fail_match1);
@@ -227,9 +272,13 @@ Suite *test_suite(void)
     tcase_add_test(tc_wordmatch, test_success_wordmatch);
     tcase_add_test(tc_wordmatch, test_fail_wordmatch);
 
+    tcase_add_test(tc_strisnum, test_success_strisnum);
+    tcase_add_test(tc_strisnum, test_fail_strisnum);
+
     suite_add_tcase(s, tc_match);
     suite_add_tcase(s, tc_regex);
     suite_add_tcase(s, tc_wordmatch);
+    suite_add_tcase(s, tc_strisnum);
 
     return (s);
 }
