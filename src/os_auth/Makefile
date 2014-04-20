@@ -6,7 +6,7 @@ NAME=ossec-authd
 
 include ../Config.Make
 
-LOCAL = ssl.c 
+LOCAL = ssl.c check_cert.c
 
 OBJS = ${OS_CONFIG} ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_CRYPTO} ${OS_ZLIB} ${OPENSSLCMD}
 
