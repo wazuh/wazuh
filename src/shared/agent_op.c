@@ -272,6 +272,11 @@ int os_write_agent_info(char *agent_name, char *agent_ip,
         return(0);
     }
 
+    if (cfg_profile_name == NULL) 
+    {
+        cfg_profile_name = "unknown";
+    }
+
     /*cmoraes: added cfg_profile_name parameter*/
     fprintf(fp, "%s\n-\n%s\n%s\n", agent_name, agent_id, cfg_profile_name);
     fclose(fp);
