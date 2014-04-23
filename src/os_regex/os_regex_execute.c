@@ -68,13 +68,14 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg)
                 while(reg->prts_str[i][j] && reg->prts_str[i][j+1])
                 {
                     size_t length = (size_t) (reg->prts_str[i][j+1] - reg->prts_str[i][j]);
-                    reg->sub_strings[k] = (char *) malloc(length * sizeof(char));
+                    reg->sub_strings[k] = (char *) malloc((length + 1) * sizeof(char));
                     if(!reg->sub_strings[k])
                     {
                         OSRegex_FreeSubStrings(reg);
                         return(NULL);
                     }
                     strncpy(reg->sub_strings[k], reg->prts_str[i][j], length);
+                    reg->sub_strings[k][length] = '\0';
 
                     /* Set the next one to null */
                     k++;
