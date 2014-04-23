@@ -41,9 +41,9 @@ for i in ${CAT}; do
     fi
 done
 
-# Final cleanup
-rm ${WINPKG}/os_crypto/md5/main.c
-rm ${WINPKG}/os_crypto/blowfish/main.c
-rm ${WINPKG}/os_crypto/sha1/main.c
-rm ${WINPKG}/os_crypto/md5_sha1/main.c
-rm ${WINPKG}/shared/rules_op.c
+# Final cleanup, -f will ignore if files do not exist
+rm -f ${WINPKG}/os_crypto/md5/main.c
+rm -f ${WINPKG}/os_crypto/blowfish/main.c
+rm -f ${WINPKG}/os_crypto/sha1/main.c
+rm -f ${WINPKG}/os_crypto/md5_sha1/main.c
+rm -f ${WINPKG}/shared/rules_op.c

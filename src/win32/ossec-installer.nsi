@@ -21,12 +21,12 @@
 ; general
 !define MUI_ICON favicon.ico
 !define MUI_UNICON ossec-uninstall.ico
-!define VERSION "v2.8"
+!define VERSION "2.8"
 !define NAME "OSSEC HIDS"
 !define /date CDATE "%b %d %Y at %H:%M:%S"
 !define SERVICE "OssecSvc"
 
-Name "${NAME} Windows Agent ${VERSION}"
+Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2003 - 2014 Trend Micro Inc."
 OutFile "${OutFile}"
 
