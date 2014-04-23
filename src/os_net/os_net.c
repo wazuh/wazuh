@@ -159,7 +159,7 @@ int OS_BindUnixDomain(char * path, int mode, int max_msg_size)
     n_us.sun_family = AF_UNIX;
     strncpy(n_us.sun_path, path, sizeof(n_us.sun_path)-1);
 
-    if((ossock = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0)
+    if((ossock = socket(PF_UNIX, SOCK_DGRAM, 0)) < 0)
         return(OS_SOCKTERR);
 
     if(bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0)
@@ -205,7 +205,7 @@ int OS_ConnectUnixDomain(char * path, int max_msg_size)
     /* Setting up path */
     strncpy(n_us.sun_path,path,sizeof(n_us.sun_path)-1);	
 
-    if((ossock = socket(AF_UNIX, SOCK_DGRAM,0)) < 0)
+    if((ossock = socket(PF_UNIX, SOCK_DGRAM,0)) < 0)
         return(OS_SOCKTERR);
 
 
