@@ -277,6 +277,51 @@ START_TEST(test_strhowclosedmatch)
 }
 END_TEST
 
+START_TEST(test_strbreak)
+{
+    int i;
+
+    /*
+     * Please note that all strings are \ escaped
+     */
+    char *tests[][15] = {
+            { "X", "testX1234", "4", "test", "1234", NULL},
+            { "X", "XtestX1234X", "4", "", "test", "1234", "", NULL},
+            { "Y", "testX1234", "4", "testX1234", NULL},
+            { "X", "testXX1234", "4", "test", "", "1234", NULL},
+            { "X", "testX1234", "1", "testX1234", NULL},
+            { "X", "testX1234X5678", "2", "test", "1234X5678", NULL},
+            { "X", "testX1234", "0", NULL},
+            {NULL, NULL, NULL},
+       };
+
+    for(i=0; tests[i][0] != NULL; i++) {
+        char **result = OS_StrBreak(tests[i][0][0], tests[i][1], atoi(tests[i][2]));
+
+        int j = 3;
+        if(tests[i][j] == NULL)
+        {
+            ck_assert_ptr_eq(result, NULL);
+            continue;
+        }
+
+        int k;
+        for(k = 0; tests[i][j] != NULL; j++, k++)
+        {
+            ck_assert_ptr_ne(result[k], NULL);
+            ck_assert_str_eq(result[k], tests[i][j]);
+        }
+        ck_assert_ptr_eq(result[k], NULL);
+
+        k=0;
+        while(result[k])
+            free(result[k++]);
+        free(result);
+    }
+
+}
+END_TEST
+
 Suite *test_suite(void)
 {
     Suite *s = suite_create("os_regex");
@@ -287,6 +332,7 @@ Suite *test_suite(void)
     TCase *tc_wordmatch = tcase_create("WordMatch");
     TCase *tc_strisnum = tcase_create("StrIsNum");
     TCase *tc_strhowclosedmatch = tcase_create("StrHowClosedMatch");
+    TCase *tc_strbreak = tcase_create("StrBreak");
 
     tcase_add_test(tc_match, test_success_match1);
     tcase_add_test(tc_match, test_fail_match1);
@@ -302,11 +348,14 @@ Suite *test_suite(void)
 
     tcase_add_test(tc_strhowclosedmatch, test_strhowclosedmatch);
 
+    tcase_add_test(tc_strbreak, test_strbreak);
+
     suite_add_tcase(s, tc_match);
     suite_add_tcase(s, tc_regex);
     suite_add_tcase(s, tc_wordmatch);
     suite_add_tcase(s, tc_strisnum);
     suite_add_tcase(s, tc_strhowclosedmatch);
+    suite_add_tcase(s, tc_strbreak);
 
     return (s);
 }
