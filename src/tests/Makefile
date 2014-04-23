@@ -26,7 +26,7 @@ run_tests: build_tests
 	./test_os_regex
 	
 generate_coverage: build_tests
-	lcov --base-directory . --directory . --zerocounters --quiet
+	lcov --base-directory . --directory . --zerocounters --rc lcov_branch_coverage=1 --quiet
 	@echo "Running tests\n"
 	
 	./test_os_zlib
@@ -34,9 +34,9 @@ generate_coverage: build_tests
 	./test_os_regex
 	
 	@echo "\nTests finished."
-	lcov --base-directory . --directory . --capture --quiet --output-file ossec.test
+	lcov --base-directory . --directory . --capture --quiet --rc lcov_branch_coverage=1 --output-file ossec.test
 	rm -rf coverage-report/
-	genhtml --output-directory coverage-report/ --title "ossec test coverage" --show-details --legend --num-spaces 4 --quiet ossec.test
+	genhtml --branch-coverage --output-directory coverage-report/ --title "ossec test coverage" --show-details --legend --num-spaces 4 --quiet ossec.test
 	
 	
 build_tests: test_os_zlib test_os_xml test_os_regex
