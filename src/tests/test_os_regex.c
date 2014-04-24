@@ -862,6 +862,52 @@ START_TEST(test_regexmap_lt)
 }
 END_TEST
 
+START_TEST(test_success_strstartswith)
+{
+    int i;
+
+    /*
+     * Please note that all strings are \ escaped
+     */
+    char *tests[][2] = {
+            { "test1234", "test" },
+            { "test", "test" },
+            { "test", "" },
+            { "", "" },
+            {NULL,NULL},
+       };
+
+    for(i=0; tests[i][0] != NULL ; i++) {
+        ck_assert_msg(OS_StrStartsWith(tests[i][0],tests[i][1]),
+        "%s should match positive with %s by OS_StrStartsWith",
+        tests[i][0], tests[i][1]);
+    }
+
+}
+END_TEST
+
+START_TEST(test_fail_strstartswith)
+{
+    int i;
+
+    /*
+     * Please note that all strings are \ escaped
+     */
+    char *tests[][2] = {
+            { "test", "test1234" },
+            { "", "test" },
+            {NULL,NULL},
+       };
+
+    for(i=0; tests[i][0] != NULL ; i++) {
+        ck_assert_msg(!OS_StrStartsWith(tests[i][0],tests[i][1]),
+        "%s should not match positive with %s by OS_StrStartsWith",
+        tests[i][0], tests[i][1]);
+    }
+
+}
+END_TEST
+
 Suite *test_suite(void)
 {
     Suite *s = suite_create("os_regex");
@@ -877,6 +923,7 @@ Suite *test_suite(void)
     TCase *tc_hostnamemap = tcase_create("HostnameMap");
     TCase *tc_caseinsensitivecharmap = tcase_create("CaseInsensitiveCharmap");
     TCase *tc_regexmap = tcase_create("RegexMap");
+    TCase *tc_strstartswith = tcase_create("StrStartsWith");
 
     tcase_add_test(tc_match, test_success_match1);
     tcase_add_test(tc_match, test_fail_match1);
@@ -916,6 +963,9 @@ Suite *test_suite(void)
     tcase_add_test(tc_regexmap, test_regexmap_or);
     tcase_add_test(tc_regexmap, test_regexmap_lt);
 
+    tcase_add_test(tc_strstartswith, test_success_strstartswith);
+    tcase_add_test(tc_strstartswith, test_fail_strstartswith);
+
     suite_add_tcase(s, tc_match);
     suite_add_tcase(s, tc_regex);
     suite_add_tcase(s, tc_wordmatch);
@@ -926,6 +976,7 @@ Suite *test_suite(void)
     suite_add_tcase(s, tc_hostnamemap);
     suite_add_tcase(s, tc_caseinsensitivecharmap);
     suite_add_tcase(s, tc_regexmap);
+    suite_add_tcase(s, tc_strstartswith);
 
     return (s);
 }
