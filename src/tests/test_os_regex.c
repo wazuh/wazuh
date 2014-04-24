@@ -10,6 +10,7 @@
 #include <check.h>
 #include <stdlib.h>
 #include "../os_regex/os_regex.h"
+#include "../os_regex/os_regex_internal.h"
 
 Suite *test_suite(void);
 
@@ -435,6 +436,33 @@ START_TEST(test_hostnamemap)
 }
 END_TEST
 
+START_TEST(test_caseinsensitivecharmap)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(test >= 65 && test <= 90) // A-Z
+        {
+            ck_assert_msg(charmap[test] == test+32, "char %d should resolve to lowercase version %d and not to %d", test, test+32, charmap[test]);
+        }
+        else
+        {
+            ck_assert_msg(charmap[test] == test, "char %d should resolve to itself and not to %d", test, charmap[test]);
+        }
+
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
 Suite *test_suite(void)
 {
     Suite *s = suite_create("os_regex");
@@ -448,6 +476,7 @@ Suite *test_suite(void)
     TCase *tc_strbreak = tcase_create("StrBreak");
     TCase *tc_regexextraction = tcase_create("RegexExtraction");
     TCase *tc_hostnamemap = tcase_create("HostnameMap");
+    TCase *tc_caseinsensitivecharmap = tcase_create("CaseInsensitiveCharmap");
 
     tcase_add_test(tc_match, test_success_match1);
     tcase_add_test(tc_match, test_fail_match1);
@@ -469,6 +498,8 @@ Suite *test_suite(void)
 
     tcase_add_test(tc_hostnamemap, test_hostnamemap);
 
+    tcase_add_test(tc_caseinsensitivecharmap, test_caseinsensitivecharmap);
+
     suite_add_tcase(s, tc_match);
     suite_add_tcase(s, tc_regex);
     suite_add_tcase(s, tc_wordmatch);
@@ -477,6 +508,7 @@ Suite *test_suite(void)
     suite_add_tcase(s, tc_strbreak);
     suite_add_tcase(s, tc_regexextraction);
     suite_add_tcase(s, tc_hostnamemap);
+    suite_add_tcase(s, tc_caseinsensitivecharmap);
 
     return (s);
 }
