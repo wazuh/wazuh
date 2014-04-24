@@ -283,6 +283,8 @@ START_TEST(test_fail_strisnum)
     char *tests[] = {
             "test",
             "1234e",
+            "-1",
+            "+1",
             NULL,
        };
 
