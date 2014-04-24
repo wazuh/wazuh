@@ -463,6 +463,405 @@ START_TEST(test_caseinsensitivecharmap)
 }
 END_TEST
 
+START_TEST(test_regexmap_digit)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(test >= '0' && test <= '9')
+        {
+            ck_assert_msg(regexmap[1][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[1][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_word)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if((test >= 'a' && test <= 'z')
+                || (test >= 'A' && test <= 'Z')
+                || (test >= '0' && test <= '9')
+                || test == '-' || test == '@'
+                || test == '_')
+        {
+            ck_assert_msg(regexmap[2][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[2][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_space)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(test == ' ')
+        {
+            ck_assert_msg(regexmap[3][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[3][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_punctuation)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(test == '<' || test == '>' || test == '!' || test == '?'
+                || test == '"' || test == '\'' || test == '#'
+                || test == '$' || test == '%' || test == '&'
+                || test == '(' || test == ')' || test == '+'
+                || test == '*' || test == ',' || test == '-'
+                || test == '-' || test == ':' || test == '|'
+                || test == '.' || test == ';' || test == '='
+                || test == '[' || test == ']' || test == '{'
+                || test == '}')
+        {
+            ck_assert_msg(regexmap[4][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[4][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_lparenthesis)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(test == '(')
+        {
+            ck_assert_msg(regexmap[5][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[5][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_rparenthesis)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(test == ')')
+        {
+            ck_assert_msg(regexmap[6][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[6][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_backslash)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(test == '\\')
+        {
+            ck_assert_msg(regexmap[7][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[7][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+
+START_TEST(test_regexmap_nondigit)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(!(test >= '0' && test <= '9'))
+        {
+            ck_assert_msg(regexmap[8][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[8][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_nonword)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(!((test >= 'a' && test <= 'z')
+                || (test >= 'A' && test <= 'Z')
+                || (test >= '0' && test <= '9')
+                || test == '_' || test == 127))
+        {
+            ck_assert_msg(regexmap[9][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[9][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_nonspace)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(test != ' ')
+        {
+            ck_assert_msg(regexmap[10][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[10][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_all)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        ck_assert_msg(regexmap[11][test] == 1, "char %d should match", test);
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_tab)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(test == '\t')
+        {
+            ck_assert_msg(regexmap[12][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[12][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_dollar)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(test == '$')
+        {
+            ck_assert_msg(regexmap[13][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[13][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_or)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(test == '|')
+        {
+            ck_assert_msg(regexmap[14][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[14][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
+START_TEST(test_regexmap_lt)
+{
+    unsigned char test = 0;
+
+    while(1)
+    {
+        if(test == '<')
+        {
+            ck_assert_msg(regexmap[15][test] == 1, "char %d should match", test);
+        }
+        else
+        {
+            ck_assert_msg(regexmap[15][test] != 1, "char %d should not match", test);
+        }
+
+
+        if(test == 255)
+        {
+            break;
+        }
+        test++;
+    }
+
+}
+END_TEST
+
 Suite *test_suite(void)
 {
     Suite *s = suite_create("os_regex");
@@ -477,6 +876,7 @@ Suite *test_suite(void)
     TCase *tc_regexextraction = tcase_create("RegexExtraction");
     TCase *tc_hostnamemap = tcase_create("HostnameMap");
     TCase *tc_caseinsensitivecharmap = tcase_create("CaseInsensitiveCharmap");
+    TCase *tc_regexmap = tcase_create("RegexMap");
 
     tcase_add_test(tc_match, test_success_match1);
     tcase_add_test(tc_match, test_fail_match1);
@@ -500,6 +900,22 @@ Suite *test_suite(void)
 
     tcase_add_test(tc_caseinsensitivecharmap, test_caseinsensitivecharmap);
 
+    tcase_add_test(tc_regexmap, test_regexmap_digit);
+    tcase_add_test(tc_regexmap, test_regexmap_word);
+    tcase_add_test(tc_regexmap, test_regexmap_space);
+    tcase_add_test(tc_regexmap, test_regexmap_punctuation);
+    tcase_add_test(tc_regexmap, test_regexmap_lparenthesis);
+    tcase_add_test(tc_regexmap, test_regexmap_rparenthesis);
+    tcase_add_test(tc_regexmap, test_regexmap_backslash);
+    tcase_add_test(tc_regexmap, test_regexmap_nondigit);
+    tcase_add_test(tc_regexmap, test_regexmap_nonword);
+    tcase_add_test(tc_regexmap, test_regexmap_nonspace);
+    tcase_add_test(tc_regexmap, test_regexmap_all);
+    tcase_add_test(tc_regexmap, test_regexmap_tab);
+    tcase_add_test(tc_regexmap, test_regexmap_dollar);
+    tcase_add_test(tc_regexmap, test_regexmap_or);
+    tcase_add_test(tc_regexmap, test_regexmap_lt);
+
     suite_add_tcase(s, tc_match);
     suite_add_tcase(s, tc_regex);
     suite_add_tcase(s, tc_wordmatch);
@@ -509,6 +925,7 @@ Suite *test_suite(void)
     suite_add_tcase(s, tc_regexextraction);
     suite_add_tcase(s, tc_hostnamemap);
     suite_add_tcase(s, tc_caseinsensitivecharmap);
+    suite_add_tcase(s, tc_regexmap);
 
     return (s);
 }
