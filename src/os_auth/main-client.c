@@ -26,6 +26,7 @@
  */
 
 #include "shared.h"
+#include "check_cert.h"
 
 #ifndef USE_OPENSSL
 

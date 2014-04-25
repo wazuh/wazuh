@@ -48,7 +48,7 @@ int check_subject_alt_names(X509 *cert, char *manager);
 int check_subject_cn(X509 *cert, char *manager);
 int check_hostname(ASN1_STRING *cstr, char *manager_name);
 int check_ipaddr(ASN1_STRING *cstr, char *manager);
-int get_domain_name_labels(const char *domain_name, label result[DNS_MAX_LABELS]);
+int label_array(const char *domain_name, label result[DNS_MAX_LABELS]);
 int label_valid(const label *label);
 int label_match(const label *label1, const label *label2);
 

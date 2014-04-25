@@ -74,13 +74,14 @@ CERT_CHECK_ERROR:
 }
 
 /* Loop through all the subject_alt_name entries until we find a match or
- * an error occurs.
+ * an error occurs. Only entries containing a normal domain name or IP
+ * address are considered.
  */
 int check_subject_alt_names(X509 *cert, char *manager)
 {
     GENERAL_NAMES *names = NULL;
-    int i = 0;
     int result = 0;
+    int i = 0;
 
     if(!(names = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL)))
         return -1;
@@ -89,10 +90,10 @@ int check_subject_alt_names(X509 *cert, char *manager)
     {
         GENERAL_NAME *name = sk_GENERAL_NAME_value(names, i);
 
-        if(name->type == GEN_IPADD)
-            result = check_ipaddr(name->d.iPAddress, manager);
-        else if(name->type == GEN_DNS)
+        if(name->type == GEN_DNS)
             result = check_hostname(name->d.dNSName, manager);
+        else if(name->type == GEN_IPADD)
+            result = check_ipaddr(name->d.iPAddress, manager);
     }
 
     GENERAL_NAMES_free(names);
@@ -105,8 +106,8 @@ int check_subject_alt_names(X509 *cert, char *manager)
 int check_subject_cn(X509 *cert, char *manager)
 {
     X509_NAME *name = NULL;
-    int i = 0;
     int result = 0;
+    int i = 0;
 
     name = X509_get_subject_name(cert);
     while((i = X509_NAME_get_index_by_NID(name, NID_commonName, i)) >= 0 && result == 0)
@@ -120,46 +121,46 @@ int check_subject_cn(X509 *cert, char *manager)
 
 /* Determine whether a string found in a subject alt name or common name
  * field matches the manager's name specified on the command line. The
- * match is case insensitive.
+ * domain name from the certificate and the domain name from the command
+ * line are broken down into a sequence of labels before being validated
+ * and compared. Matching is case insensitive and basic wildcard matching
+ * is supported.
  */
-int check_hostname(ASN1_STRING *cstr, char *manager)
+int check_hostname(ASN1_STRING *cert_astr, char *manager)
 {
-    label cert_labels[DNS_MAX_LABELS];
-    label manager_labels[DNS_MAX_LABELS];
-    int cert_label_count = 0;
-    int manager_label_count = 0;
-    char *cert = NULL;
+    label c_labels[DNS_MAX_LABELS];
+    label m_labels[DNS_MAX_LABELS];
+    int c_label_num = 0;
+    int m_label_num = 0;
     int i = 0;
+    char *cert_cstr = NULL;
 
-    ASN1_STRING_to_UTF8((unsigned char **)&cert, cstr);
-    if(cert && manager)
-    {
-        cert_label_count = get_domain_name_labels(cert, cert_labels);
-        manager_label_count = get_domain_name_labels(manager, manager_labels);
-        OPENSSL_free(cert);
-    }
-    else
-    {
-        return -1;
-    }
-
-    if(manager_label_count <= 0 || cert_label_count <= 0)
+    ASN1_STRING_to_UTF8((unsigned char **)&cert_cstr, cert_astr);
+    if(!cert_cstr)
         return -1;
 
-    if(manager_label_count != cert_label_count)
+    c_label_num = label_array(cert_cstr, c_labels);
+    m_label_num = label_array(manager, m_labels);
+    OPENSSL_free(cert_cstr);
+
+    if(m_label_num <= 0 || c_label_num <= 0)
         return 0;
 
-    /* Accept a wildcard label in the first position only.
+    if(m_label_num != c_label_num)
+        return 0;
+
+    /* Wildcards are accepted in the first label only. Partial wildcard
+     * matching is not supported.
      */
-    if(label_valid(&manager_labels[0]) && !strcmp(cert_labels[0].text, "*"))
+    if(label_valid(&m_labels[0]) && !strcmp(c_labels[0].text, "*"))
         i++;
 
-    for(; i < manager_label_count; i++)
+    for(; i < m_label_num; i++)
     {
-        if(!label_valid(&manager_labels[i]))
+        if(!label_valid(&m_labels[i]))
             return 0;
 
-        if(!label_match(&manager_labels[i], &cert_labels[i]))
+        if(!label_match(&m_labels[i], &c_labels[i]))
             return 0;
     }
 
@@ -193,9 +194,10 @@ int check_ipaddr(ASN1_STRING *cstr, char *manager)
     return result;
 }
 
-/* Separate a domain name into a series of labels and return the number of labels found.
+/* Separate a domain name into a sequence of labels and return the number
+ * of labels found.
  */
-int get_domain_name_labels(const char *domain_name, label result[DNS_MAX_LABELS])
+int label_array(const char *domain_name, label result[DNS_MAX_LABELS])
 {
     int label_count = 0;
     const char *label_start = domain_name;
@@ -208,13 +210,13 @@ int get_domain_name_labels(const char *domain_name, label result[DNS_MAX_LABELS]
 
         if(*label_end == '.' || *label_end == '\0')
         {
-            label *c_label = &result[label_count];
+            label *new_label = &result[label_count];
 
-            if ((c_label->len = label_end - label_start) > DNS_MAX_LABEL_LEN)
+            if((new_label->len = label_end - label_start) > DNS_MAX_LABEL_LEN)
                 return -1;
 
-            strncpy(c_label->text, label_start, c_label->len);
-            c_label->text[c_label->len] = '\0';
+            strncpy(new_label->text, label_start, new_label->len);
+            new_label->text[new_label->len] = '\0';
 
             label_start = label_end + 1;
             label_count++;
