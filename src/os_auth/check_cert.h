@@ -1,4 +1,4 @@
-/* @(#) $Id: ./src/os_auth/auth.h, 2011/09/08 dcid Exp $
+/* @(#) $Id: ./src/os_auth/check_cert.h, 2014/04/25 mweigel Exp $
  */
 
 /* Copyright (C) 2009 Trend Micro Inc.
@@ -25,36 +25,32 @@
  *
  */
 
-#ifndef _AUTHD_H
-#define _AUTHD_H
-
-#ifndef ARGV0
-   #define ARGV0 "ossec-authd"
-#endif
-
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/wait.h>
+#ifndef _CHECK_CERT_H
+#define _CHECK_CERT_H
 
 #ifdef USE_OPENSSL
 
 #include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/bio.h>
+#include <openssl/x509v3.h>
 
-#include "os_net/os_net.h"
-#include "addagent/manage_agents.h"
+#define DNS_MAX_LABELS    127
+#define DNS_MAX_LABEL_LEN 63
 
-BIO *bio_err;
-#define KEYFILE  "/etc/sslmanager.key"
-#define CERTFILE "/etc/sslmanager.cert"
+typedef struct label_t
+{
+    char text[DNS_MAX_LABEL_LEN + 1];
+    int len;
+}
+label;
 
-SSL_CTX *os_ssl_keys(int is_server, char *os_dir, char *cert, char *key, char *ca_cert);
-SSL_CTX *get_ssl_context();
-int load_cert_and_key(SSL_CTX *ctx, char *cert, char *key);
-int load_ca_cert(SSL_CTX *ctx, char *ca_cert);
-int verify_callback(int ok, X509_STORE_CTX *store);
+int check_x509_cert(SSL *ssl, char *manager);
+int check_subject_alt_names(X509 *cert, char *manager);
+int check_subject_cn(X509 *cert, char *manager);
+int check_hostname(ASN1_STRING *cstr, char *manager_name);
+int check_ipaddr(ASN1_STRING *cstr, char *manager);
+int get_domain_name_labels(const char *domain_name, label result[DNS_MAX_LABELS]);
+int label_valid(const label *label);
+int label_match(const label *label1, const label *label2);
 
 #endif
 #endif
