@@ -48,11 +48,11 @@ void report_help()
 {
     printf("\nOSSEC HIDS %s: Connects to the manager to extract the agent key.\n", ARGV0);
     printf("Available options:\n");
-    printf("\t-h                  This help message.\n");
-    printf("\t-m <manager ip>     Manager IP Address.\n");
-    printf("\t-p <port>           Manager port (default 1515).\n");
-    printf("\t-A <agent name>     Agent name (default is the hostname).\n");
-    printf("\t-D <OSSEC Dir>      Location where OSSEC is installed.\n");
+    printf("\t-h                      This help message.\n");
+    printf("\t-m <manager ip>         Manager IP Address.\n");
+    printf("\t-p <port>               Manager port (default 1515).\n");
+    printf("\t-A <agent name>         Agent name (default is the hostname).\n");
+    printf("\t-D <OSSEC Dir>          Location where OSSEC is installed.\n");
     printf("\t-v <Path to CA Cert>    Full path to CA certificate used to verify the server.\n");
     printf("\t-x <Path to agent cert> Full path to agent certificate.\n");
     printf("\t-k <Path to agent key>  Full path to agent key.\n");
