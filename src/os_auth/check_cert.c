@@ -167,7 +167,7 @@ int check_hostname(ASN1_STRING *cert_astr, char *manager)
     return 1;
 }
 
-int check_ipaddr(ASN1_STRING *cstr, char *manager)
+int check_ipaddr(ASN1_STRING *cert_astr, char *manager)
 {
     struct sockaddr_in iptest;
     struct sockaddr_in6 iptest6;
@@ -178,17 +178,13 @@ int check_ipaddr(ASN1_STRING *cstr, char *manager)
 
     if(inet_pton(AF_INET, manager, &iptest.sin_addr) == 1)
     {
-        if(cstr->length == 4 && !memcmp(cstr->data, (const void *)&iptest.sin_addr, 4))
+        if(cert_astr->length == 4 && !memcmp(cert_astr->data, (const void *)&iptest.sin_addr, 4))
             result = 1;
     }
     else if(inet_pton(AF_INET6, manager, &iptest6.sin6_addr) == 1)
     {
-        if(cstr->length == 16 && !memcmp(cstr->data, (const void *)&iptest6.sin6_addr, 16))
+        if(cert_astr->length == 16 && !memcmp(cert_astr->data, (const void *)&iptest6.sin6_addr, 16))
             result = 1;
-    }
-    else
-    {
-        debug1("%s: DEBUG: Invalid IP address encountered.", ARGV0);
     }
 
     return result;
