@@ -81,7 +81,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags);
  * Returns end of str on success or NULL on error.
  * The error code is set on reg->error.
  */
-const char *OSRegex_Execute(const char *str, OSRegex *reg);
+const char *OSRegex_Execute(const char *str, OSRegex *reg) __attribute__((nonnull(2)));
 
 
 /** int OSRegex_FreePattern(SRegex *reg) v0.1
@@ -89,14 +89,14 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg);
  * phases.
  * Returns void.
  */
-void OSRegex_FreePattern(OSRegex *reg);
+void OSRegex_FreePattern(OSRegex *reg) __attribute__((nonnull));
 
 
 /** int OSRegex_FreeSubStrings(OSRegex *reg) v0.1
  * Release all the memory created to store the sub strings.
  * Returns void.
  */
-void OSRegex_FreeSubStrings(OSRegex *reg);
+void OSRegex_FreeSubStrings(OSRegex *reg) __attribute__((nonnull));
 
 
 /** int OS_Regex(char *pattern, char *str) v0.4
@@ -125,7 +125,7 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags);
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg);
+int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg)  __attribute__((nonnull(3)));
 
 
 /** int OSMatch_FreePattern(OSMatch *reg) v0.1
@@ -133,10 +133,10 @@ int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg);
  * phases.
  * Returns void.
  */
-void OSMatch_FreePattern(OSMatch *reg);
+void OSMatch_FreePattern(OSMatch *reg) __attribute__((nonnull));
 
 
-int OS_Match2(const char *pattern, const char *str);
+int OS_Match2(const char *pattern, const char *str)  __attribute__((nonnull(2)));
 
 int OS_Match3(char *pattern, char *str, char* delimiter);
 
@@ -144,7 +144,7 @@ int OS_Match3(char *pattern, char *str, char* delimiter);
 /* OS_WordMatch v0.3:
  * Searches for  pattern in the string
  */
-int OS_WordMatch(const char *pattern, const char *str);
+int OS_WordMatch(const char *pattern, const char *str) __attribute__((nonnull));
 #define OS_Match OS_WordMatch
 
 
@@ -169,13 +169,13 @@ size_t OS_StrHowClosedMatch(const char *str1, const char *str2);
  * Verifies if a string starts with the provided pattern.
  * Returns 1 on success or 0 on failure.
  */
-int OS_StrStartsWith(const char *str, const char *pattern);
+int OS_StrStartsWith(const char *str, const char *pattern) __attribute__((nonnull));
 
 
 /** int OS_StrIsNum(char *str) v0.1
  * Checks if a specific string is numeric (like "129544")
  */
-int OS_StrIsNum(const char *str);
+int OS_StrIsNum(const char *str) __attribute__((nonnull));
 
 
 /** int isValidChar(char c)

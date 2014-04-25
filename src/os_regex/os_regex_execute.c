@@ -20,7 +20,7 @@
 
 /** Internal prototypes **/
 static const char *_OS_Regex(const char *pattern, const char *str, const char **prts_closure,
-        const char **prts_str, int flags);
+        const char **prts_str, int flags) __attribute__((nonnull(1,2)));
 
 
 

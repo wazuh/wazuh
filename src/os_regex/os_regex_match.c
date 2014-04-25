@@ -28,7 +28,7 @@
 
 
 /** Prototypes **/
-static int _InternalMatch(const char *pattern, const char *str,size_t count);
+static int _InternalMatch(const char *pattern, const char *str,size_t count) __attribute__((nonnull));
 
 
 /* OS_WordMatch v0.3:
