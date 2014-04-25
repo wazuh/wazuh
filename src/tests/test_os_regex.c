@@ -871,7 +871,7 @@ START_TEST(test_success_strstartswith)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[][2] = {
+    const char *tests[][2] = {
             { "test1234", "test" },
             { "test", "test" },
             { "test", "" },
@@ -895,7 +895,7 @@ START_TEST(test_fail_strstartswith)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[][2] = {
+    const char *tests[][2] = {
             { "test", "test1234" },
             { "", "test" },
             {NULL,NULL},
