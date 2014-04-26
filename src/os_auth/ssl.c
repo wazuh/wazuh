@@ -208,6 +208,5 @@ int verify_callback(int ok, X509_STORE_CTX *store)
     return ok;
 }
 
-#endif
+#endif /* USE_OPENSSL */
 
-/* EOF */

@@ -66,9 +66,9 @@ int main(int argc, char **argv)
     int c;
     // TODO: implement or delete
     int test_config __attribute__((unused)) = 0;
-    #ifndef WIN32
+#ifndef WIN32
     int gid = 0;
-    #endif
+#endif
 
     int sock = 0, port = 1515, ret = 0;
     // TODO: implement or delete
@@ -88,10 +88,12 @@ int main(int argc, char **argv)
     SSL_CTX *ctx;
     SSL *ssl;
     BIO *sbio;
-
-
     bio_err = 0;
     buf[2048] = '\0';
+
+#ifdef WIN32
+    WSADATA wsaData;
+#endif
 
 
     /* Setting the name */
@@ -176,7 +178,7 @@ int main(int argc, char **argv)
     debug1(STARTED_MSG,ARGV0);
 
 
-    #ifndef WIN32
+#ifndef WIN32
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if(gid < 0)
@@ -198,12 +200,20 @@ int main(int argc, char **argv)
     /* Creating PID files */
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
-    #endif
+#endif /* WIN32 */
 
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
+#ifdef WIN32
+    /* Initialize Windows socket stuff.
+     */
+    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
+    {
+        ErrorExit("%s: WSAStartup() failed", ARGV0);
+    }
+#endif /* WIN32 */
 
     if(agentname == NULL)
     {
@@ -370,5 +380,5 @@ int main(int argc, char **argv)
     exit(0);
 }
 
-#endif
-/* EOF */
+#endif /* USE_OPENSSL */
+

@@ -25,6 +25,8 @@
  */
 
 
+#include <sys/wait.h>
+
 #include "shared.h"
 #include "auth.h"
 
@@ -436,5 +438,5 @@ int main(int argc, char **argv)
 }
 
 
-#endif
-/* EOF */
+#endif /* USE_OPENSSL */
+

@@ -35,7 +35,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 
 #ifdef USE_OPENSSL
 
@@ -56,6 +55,6 @@ int load_cert_and_key(SSL_CTX *ctx, char *cert, char *key);
 int load_ca_cert(SSL_CTX *ctx, char *ca_cert);
 int verify_callback(int ok, X509_STORE_CTX *store);
 
-#endif
-#endif
+#endif /* USE_OPENSSL */
+#endif /* _AUTHD_H */
 
