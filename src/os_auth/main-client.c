@@ -237,33 +237,10 @@ int main(int argc, char **argv)
      * or hostname on the command line. If it was given as a hostname then ensure
      * the hostname is preserved so that certificate verification can be done.
      */
-    struct sockaddr_in iptest;
-
-    /* IPv4 address? */
-    memset(&iptest, 0, sizeof(iptest));
-    if(inet_pton(AF_INET, manager, &iptest.sin_addr) == 1)
-        ipaddress = manager;
-
-    /* Not IPv4, IPv6 maybe? */
-    if(!ipaddress)
+    if(!(ipaddress = OS_GetHost(manager, 3)))
     {
-        struct sockaddr_in6 iptest6;
-
-        memset(&iptest6, 0, sizeof(iptest6));
-        if(inet_pton(AF_INET6, manager, &iptest6.sin6_addr) == 1)
-            ipaddress = manager;
-    }
-
-
-    /* If it isn't an ip, try to resolve the IP */
-    if(!ipaddress)
-    {
-        ipaddress = OS_GetHost(manager, 3);
-        if(ipaddress == NULL)
-        {
-            merror("%s: Could not resolve hostname: %s\n", ARGV0, manager);
-            exit(1);
-        }
+        merror("%s: Could not resolve hostname: %s\n", ARGV0, manager);
+        exit(1);
     }
 
     /* Connecting via TCP */
