@@ -132,6 +132,7 @@ int check_hostname(ASN1_STRING *cert_astr, char *manager)
     label m_labels[DNS_MAX_LABELS];
     int c_label_num = 0;
     int m_label_num = 0;
+    int wildcard_cert = 0;
     int i = 0;
     char *cert_cstr = NULL;
 
@@ -143,6 +144,10 @@ int check_hostname(ASN1_STRING *cert_astr, char *manager)
     m_label_num = label_array(manager, m_labels);
     OPENSSL_free(cert_cstr);
 
+    /* Check that we have an appropriate number of labels and that the name
+     * from the certificate and the name given on the command line have
+     * the same number of labels.
+     */
     if(m_label_num <= 0 || c_label_num <= 0)
         return 0;
 
@@ -153,9 +158,11 @@ int check_hostname(ASN1_STRING *cert_astr, char *manager)
      * matching is not supported.
      */
     if(label_valid(&m_labels[0]) && !strcmp(c_labels[0].text, "*"))
-        i++;
+        wildcard_cert = 1;
 
-    for(; i < m_label_num; i++)
+    /* Validate and match all labels.
+     */
+    for(i = wildcard_cert; i < m_label_num; i++)
     {
         if(!label_valid(&m_labels[i]))
             return 0;
