@@ -36,9 +36,6 @@ socklen_t us_l = sizeof(n_us);
 #define SUN_LEN(ptr) ((size_t) (((struct sockaddr_un *) 0)->sun_path)        \
 		                      + strlen ((ptr)->sun_path))
 #endif /* Sun_LEN */
-
-#else
-int ENOBUFS = 0;
 #endif /* WIN32*/
 
 

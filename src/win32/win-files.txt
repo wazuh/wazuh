@@ -11,6 +11,7 @@ rootcheck/db/rootkit_files.txt rootkit_files.txt
 rootcheck/db/rootkit_trojans.txt rootkit_trojans.txt
 os_zlib os_zlib
 os_execd os_execd
+os_auth os_auth
 external/zlib-1.2.8 zlib-1.2.8
 client-agent/config.c client-agent-config.c
 client-agent/agentd.h agentd.h
