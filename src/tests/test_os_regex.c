@@ -18,7 +18,7 @@ START_TEST(test_success_match1)
 {
 
     int i;
-    char *tests[][3] = {
+    const char *tests[][3] = {
         {"abc", "abcd", ""},
         {"abcd", "abcd", ""},
         {"a", "a", ""},
@@ -62,7 +62,7 @@ START_TEST(test_fail_match1)
 {
 
     int i;
-    char *tests[][3] = {
+    const char *tests[][3] = {
         {"abc", "abb", ""},
         {"^ab", " ab", ""},
         {"test", "tes", ""},
@@ -94,7 +94,7 @@ START_TEST(test_success_regex1)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[][3] = {
+    const char *tests[][3] = {
         {"abc", "abcd", ""},
         {"abcd", "abcd", ""},
         {"a", "a", ""},
@@ -168,7 +168,7 @@ START_TEST(test_fail_regex1)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[][3] = {
+    const char *tests[][3] = {
         {"abc", "abb", ""},
         {"^ab", " ab", ""},
         {"test", "tes", ""},
@@ -208,7 +208,7 @@ START_TEST(test_success_wordmatch)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[][2] = {
+    const char *tests[][2] = {
             { "test", "this is a test" },
             { "test", "thistestiswithoutspaces" },
             { "test|not", "test" },
@@ -233,7 +233,7 @@ START_TEST(test_fail_wordmatch)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[][2] = {
+    const char *tests[][2] = {
             { "-test", "this is a test" },
             { "", "test" },
             { "test|not", "negative" },
@@ -258,7 +258,7 @@ START_TEST(test_success_strisnum)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[] = {
+    const char *tests[] = {
             "1",
             "0123",
             NULL,
@@ -280,7 +280,7 @@ START_TEST(test_fail_strisnum)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[] = {
+    const char *tests[] = {
             "test",
             "1234e",
             "-1",
@@ -304,7 +304,7 @@ START_TEST(test_strhowclosedmatch)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[][3] = {
+    const char *tests[][3] = {
             { "test", "test1234", "4" },
             { "test1234", "test", "4" },
             { "test", "test", "4" },
@@ -314,8 +314,8 @@ START_TEST(test_strhowclosedmatch)
        };
 
     for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_int_eq(OS_StrHowClosedMatch(tests[i][0],tests[i][1])
-                , atoi(tests[i][2]));
+        ck_assert_uint_eq(OS_StrHowClosedMatch(tests[i][0],tests[i][1])
+                , (unsigned) atoi(tests[i][2]));
     }
 
 }
@@ -328,7 +328,7 @@ START_TEST(test_strbreak)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[][15] = {
+    const char *tests[][15] = {
             { "X", "testX1234", "4", "test", "1234", NULL},
             { "X", "XtestX1234X", "4", "", "test", "1234", "", NULL},
             { "Y", "testX1234", "4", "testX1234", NULL},
@@ -340,7 +340,7 @@ START_TEST(test_strbreak)
        };
 
     for(i=0; tests[i][0] != NULL; i++) {
-        char **result = OS_StrBreak(tests[i][0][0], tests[i][1], atoi(tests[i][2]));
+        char **result = OS_StrBreak(tests[i][0][0], tests[i][1], (unsigned) atoi(tests[i][2]));
 
         int j = 3;
         if(tests[i][j] == NULL)
@@ -373,7 +373,7 @@ START_TEST(test_regexextraction)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[][15] = {
+    const char *tests[][15] = {
         { "123(\\w+\\s+)abc", "123sdf    abc", "sdf    ", NULL},
         { "123(\\w+\\s+)abc", "abc123sdf    abc", "sdf    ", NULL},
         { "123 (\\d+.\\d.\\d.\\d\\d*\\d*)", "123 45.6.5.567", "45.6.5.567", NULL},
@@ -871,7 +871,7 @@ START_TEST(test_success_strstartswith)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[][2] = {
+    const char *tests[][2] = {
             { "test1234", "test" },
             { "test", "test" },
             { "test", "" },
@@ -895,7 +895,7 @@ START_TEST(test_fail_strstartswith)
     /*
      * Please note that all strings are \ escaped
      */
-    char *tests[][2] = {
+    const char *tests[][2] = {
             { "test", "test1234" },
             { "", "test" },
             {NULL,NULL},
@@ -943,7 +943,7 @@ Suite *test_suite(void)
 
     tcase_add_test(tc_strbreak, test_strbreak);
 
-    //tcase_add_test(tc_regexextraction, test_regexextraction);
+    tcase_add_test(tc_regexextraction, test_regexextraction);
 
     tcase_add_test(tc_hostnamemap, test_hostnamemap);
 
