@@ -63,8 +63,10 @@ if [ "X${ARGV}" = "Xall" -o "X${ARGV}" = "Xtest" -o "X${ARGV}" = "Xrootcheck" -o
     fi
 
     # Checking for OpenSSLconf.h
-    ls /usr/include/openssl/opensslconf.h > /dev/null 2>&1
-    if [ $? = 0 ]; then
+    if [ -e /usr/include/openssl/opensslconf.h ]; then
+        echo "DEXTRA=-DUSE_OPENSSL" >> Config.OS
+        echo "OPENSSLCMD=-lssl -lcrypto" >> Config.OS
+    elif [ -e /usr/include/openssl/conf.h ]; then
         echo "DEXTRA=-DUSE_OPENSSL" >> Config.OS
         echo "OPENSSLCMD=-lssl -lcrypto" >> Config.OS
     fi    
