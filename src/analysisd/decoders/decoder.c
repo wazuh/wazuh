@@ -33,10 +33,10 @@ void DecodeEvent(Eventinfo *lf)
     OSDecoderNode *child_node;
     OSDecoderInfo *nnode;
 
-    char *llog;
-    char *pmatch;
-    char *cmatch;
-    char *regex_prev = NULL;
+    const char *llog;
+    const char *pmatch;
+    const char *cmatch;
+    const char *regex_prev = NULL;
 
 
     node = OS_GetFirstOSDecoder(lf->program_name);
@@ -120,7 +120,7 @@ void DecodeEvent(Eventinfo *lf)
                  */
                 if(nnode->prematch)
                 {
-                    char *llog;
+                    const char *llog;
 
                     /* If we have an offset set, use it */
                     if(nnode->prematch_offset & AFTER_PARENT)

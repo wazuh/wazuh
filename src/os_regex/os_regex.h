@@ -15,6 +15,9 @@
 #ifndef __OS_REGEX_H
 #define __OS_REGEX_H
 
+/* size_t */
+#include <stddef.h>
+
 
 /* OSRegex_Compile flags */
 #define OS_RETURN_SUBSTRING     0000200
@@ -43,8 +46,8 @@ typedef struct _OSRegex
     int *flags;
     char **patterns;
     char **sub_strings;
-    char ***prts_closure;
-    char ***prts_str;
+    const char ***prts_closure;
+    const char ***prts_str;
 }OSRegex;
 
 
@@ -52,9 +55,9 @@ typedef struct _OSRegex
 typedef struct _OSMatch
 {
     int error;
-    int *size;
+    size_t *size;
     char **patterns;
-    int (**match_fp)(char *str, char *str2, int str_len, int size);
+    int (**match_fp)(const char *str, const char *str2, size_t str_len, size_t size);
 }OSMatch;
 
 
@@ -69,7 +72,7 @@ typedef struct _OSMatch
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSRegex_Compile(char *pattern, OSRegex *reg, int flags);
+int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags);
 
 
 /** char *OSRegex_Execute(char *str, OSRegex *reg) v0.1
@@ -78,7 +81,7 @@ int OSRegex_Compile(char *pattern, OSRegex *reg, int flags);
  * Returns end of str on success or NULL on error.
  * The error code is set on reg->error.
  */
-char *OSRegex_Execute(char *str, OSRegex *reg);
+const char *OSRegex_Execute(const char *str, OSRegex *reg) __attribute__((nonnull(2)));
 
 
 /** int OSRegex_FreePattern(SRegex *reg) v0.1
@@ -86,14 +89,14 @@ char *OSRegex_Execute(char *str, OSRegex *reg);
  * phases.
  * Returns void.
  */
-void OSRegex_FreePattern(OSRegex *reg);
+void OSRegex_FreePattern(OSRegex *reg) __attribute__((nonnull));
 
 
 /** int OSRegex_FreeSubStrings(OSRegex *reg) v0.1
  * Release all the memory created to store the sub strings.
  * Returns void.
  */
-void OSRegex_FreeSubStrings(OSRegex *reg);
+void OSRegex_FreeSubStrings(OSRegex *reg) __attribute__((nonnull));
 
 
 /** int OS_Regex(char *pattern, char *str) v0.4
@@ -102,7 +105,7 @@ void OSRegex_FreeSubStrings(OSRegex *reg);
  * only going to be used once.
  * Returns 1 on success or 0 on failure.
  */
-int OS_Regex(char *pattern, char *str);
+int OS_Regex(const char *pattern, const char *str);
 
 
 
@@ -113,7 +116,7 @@ int OS_Regex(char *pattern, char *str);
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSMatch_Compile(char *pattern, OSMatch *reg, int flags);
+int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags);
 
 
 /** int OSMatch_Execute(char *str, int str_len, OSMatch *reg) v0.1
@@ -122,7 +125,7 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags);
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSMatch_Execute(char *str, int str_len, OSMatch *reg);
+int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg)  __attribute__((nonnull(3)));
 
 
 /** int OSMatch_FreePattern(OSMatch *reg) v0.1
@@ -130,10 +133,10 @@ int OSMatch_Execute(char *str, int str_len, OSMatch *reg);
  * phases.
  * Returns void.
  */
-void OSMatch_FreePattern(OSMatch *reg);
+void OSMatch_FreePattern(OSMatch *reg) __attribute__((nonnull));
 
 
-int OS_Match2(char *pattern, char *str);
+int OS_Match2(const char *pattern, const char *str)  __attribute__((nonnull(2)));
 
 int OS_Match3(char *pattern, char *str, char* delimiter);
 
@@ -141,7 +144,7 @@ int OS_Match3(char *pattern, char *str, char* delimiter);
 /* OS_WordMatch v0.3:
  * Searches for  pattern in the string
  */
-int OS_WordMatch(char *pattern, char *str);
+int OS_WordMatch(const char *pattern, const char *str) __attribute__((nonnull));
 #define OS_Match OS_WordMatch
 
 
@@ -149,14 +152,14 @@ int OS_WordMatch(char *pattern, char *str);
  * Split a string into multiples pieces, divided by a char "match".
  * Returns a NULL terminated array on success or NULL on error.
  */
-char **OS_StrBreak(char match, char *str, int size);
+char **OS_StrBreak(char match, const char *str, size_t size);
 
 
 /** int OS_StrHowClosedMatch(char *str1, char *str2) v0.1
  * Returns the number of characters that both strings
  * have in similar (start at the beginning of them).
  */
-int OS_StrHowClosedMatch(char *str1, char *str2);
+size_t OS_StrHowClosedMatch(const char *str1, const char *str2);
 
 
 /** Inline prototypes **/
@@ -166,15 +169,13 @@ int OS_StrHowClosedMatch(char *str1, char *str2);
  * Verifies if a string starts with the provided pattern.
  * Returns 1 on success or 0 on failure.
  */
-#include <string.h>
-#define startswith(x,y) (strncmp(x,y,strlen(y)) == 0?1:0)
-#define OS_StrStartsWith startswith
+int OS_StrStartsWith(const char *str, const char *pattern) __attribute__((nonnull));
 
 
 /** int OS_StrIsNum(char *str) v0.1
  * Checks if a specific string is numeric (like "129544")
  */
-int OS_StrIsNum(char *str);
+int OS_StrIsNum(const char *str) __attribute__((nonnull));
 
 
 /** int isValidChar(char c)
