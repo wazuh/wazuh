@@ -136,7 +136,7 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
     const char *next_pt;
 
     const char *pt_error[4] = {NULL, NULL, NULL, NULL};
-    const char *pt_error_str[4];
+    const char *pt_error_str[4] = {NULL, NULL, NULL, NULL};
 
 
     /* Will loop the whole string, trying to find a match */
