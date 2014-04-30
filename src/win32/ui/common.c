@@ -18,7 +18,6 @@
 #include "os_win32ui.h"
 #include "os_win.h"
 #include "os_xml/os_xml.h"
-#include "os_xml/os_xml_writer.h"
 #include "os_net/os_net.h"
 #include "validate_op.h"
 
@@ -305,7 +304,7 @@ int config_read(HWND hwnd)
     }
 
 
-    if(config_inst.agentip == NULL)	
+    if(config_inst.agentip == NULL)
     {
         config_inst.agentid = strdup(ST_NOTSET);
         config_inst.agentname = strdup("Auth key not imported.");
@@ -341,8 +340,8 @@ int get_ossec_server()
 
 
     /* Definitions */
-    char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
-    char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
+    const char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
+    const char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
 
 
     /* Reading XML */
@@ -476,9 +475,9 @@ int run_cmd(char *cmd, HWND hwnd)
 int set_ossec_server(char *ip, HWND hwnd)
 {
     FILE *fp;
-    char **xml_pt = NULL;
-    char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
-    char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
+    const char **xml_pt = NULL;
+    const char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
+    const char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
     char *cacls;
     int cmdlen;
 
@@ -542,7 +541,7 @@ int set_ossec_server(char *ip, HWND hwnd)
 
     /* Reading the XML. Printing error and line number. */
     if(OS_WriteXML(CONFIG, NEWCONFIG, xml_pt,
-                   NULL, NULL, ip, 0) != 0)
+                   NULL, ip) != 0)
     {
         MessageBox(hwnd, "Unable to set OSSEC Server IP Address.\r\n"
                          "(Internal error on the XML Write).",

@@ -27,6 +27,7 @@ int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
 
     Mail->to = NULL;
     Mail->from = NULL;
+    Mail->idsname = NULL;
     Mail->smtpserver = NULL;
     Mail->mn = 0;
     Mail->priority = 0;

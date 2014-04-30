@@ -17,51 +17,41 @@
 #ifndef __OS_XML_H
 #define __OS_XML_H
 
-#ifndef XML_MAXSIZE
-   #define XML_MAXSIZE          2048
-#endif /* XML_MAXSIZE */
-
-#ifndef XML_VAR
-   #define XML_VAR              "xml_var"
-#endif /* XML_VAR */
-
-#define XML_ELEM                101
-#define XML_ATTR                102
-#define XML_VARIABLE_BEGIN      '$'
-
 /* XML Node structure */
 typedef struct _xml_node
 {
-    int key;
-    int line;
+    unsigned int key;
     char *element;
     char *content;
     char **attributes;
     char **values;
 }xml_node;
 
+#define XML_ERR_LENGTH  128
+typedef enum _XML_TYPE { XML_ATTR, XML_ELEM, XML_VARIABLE_BEGIN = '$' } XML_TYPE;
+
 /* XML structure */
 typedef struct _OS_XML
 {
-    int cur;		/* Currently position (and last after reading) */
+    unsigned int cur;		/* Currently position (and last after reading) */
     int fol;		/* Currently position for the xml_access */
-    int *tp;		/* Item type	*/
-    int *rl;		/* Relation in the XML */
+    XML_TYPE *tp;		/* Item type	*/
+    unsigned int *rl;		/* Relation in the XML */
     int *ck;		/* If the item was closed or not */
-    int *ln;        /* Currently xml file line */
-    int err_line;   /* Line number of the possible error */
+    unsigned int *ln;        /* Currently xml file line */
+    unsigned int err_line;   /* Line number of the possible error */
     char **ct;		/* Content is stored */
     char **el;		/* The element/attribute name is stored */
-    char err[128];	/* Error messages are stored in here */
+    char err[XML_ERR_LENGTH];	/* Error messages are stored in here */
 }OS_XML;
 
 typedef xml_node ** XML_NODE;
 
 /* Start the XML structure reading a file */
-int OS_ReadXML(char *file, OS_XML *lxml);
+int OS_ReadXML(const char *file, OS_XML *lxml) __attribute__((nonnull));
 
 /* Clear the XML strucute memory */
-void OS_ClearXML(OS_XML *_lxml);
+void OS_ClearXML(OS_XML *_lxml) __attribute__((nonnull));
 
 /* clear a node */
 void OS_ClearNode(xml_node **node);
@@ -70,36 +60,47 @@ void OS_ClearNode(xml_node **node);
 /* Functions to read the XML */
 
 /* Return 1 if element_name is a root element */
-int OS_RootElementExist(OS_XML *_lxml, char *element_name);
+unsigned int OS_RootElementExist(const OS_XML *_lxml, const char *element_name) __attribute__((nonnull));
 
 /* Return 1 if the element_name exists */
-int OS_ElementExist(OS_XML *_lxml, char **element_name);
+unsigned int OS_ElementExist(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull));
 
 /* Return the elements "children" of the element_name */
-char **OS_GetElements(OS_XML *_lxml, char **element_name);
+char **OS_GetElements(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
 
 /* Return the elements "children" of the element_name */
-xml_node **OS_GetElementsbyNode(OS_XML *_lxml, xml_node *node);
+xml_node **OS_GetElementsbyNode(const OS_XML *_lxml, const xml_node *node) __attribute__((nonnull(1)));
 
 /* Return the attributes of the element name */
-char **OS_GetAttributes(OS_XML *_lxml, char **element_name);
+char **OS_GetAttributes(const OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
 
 /* Return one value from element_name */
-char *OS_GetOneContentforElement(OS_XML *_lxml, char **element_name);
+char *OS_GetOneContentforElement(OS_XML *_lxml, const char **element_name) __attribute__((nonnull));
 
 /* Return an array with the content of all entries of element_name */
-char **OS_GetElementContent(OS_XML *_lxml, char **element_name);
+char **OS_GetElementContent(OS_XML *_lxml, const char **element_name) __attribute__((nonnull));
 
 /* Return an array with the contents of an element_nane */
-char **OS_GetContents(OS_XML *_lxml, char **element_name);
+char **OS_GetContents(OS_XML *_lxml, const char **element_name) __attribute__((nonnull(1)));
 
 /* Return the value of a specific attribute of the element_name */
-char *OS_GetAttributeContent(OS_XML *_lxml, char **element_name,
-        char *attribute_name);
+char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
+		const char *attribute_name) __attribute__((nonnull(1,2)));
 
 /* Apply the variables to the xml */
-int OS_ApplyVariables(OS_XML *_lxml);
+int OS_ApplyVariables(OS_XML *_lxml) __attribute__((nonnull));
 
-#endif
+/* Error from writer */
+#define XMLW_ERROR              006
+#define XMLW_NOIN               007
+#define XMLW_NOOUT              010
+
+/* OS_WriteXML
+ * Write an XML file, based on the input and values to change.
+ */
+int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
+		const char *oldval, const char *newval) __attribute__((nonnull(1,2,3,5)));
+
+#endif /* __OS_XML_H */
 
 /* EOF */

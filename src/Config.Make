@@ -8,11 +8,11 @@ include ${PT}LOCATION
 include ${PT}Config.OS
 
 CC?=cc
-CFLAGS = -g -Wall -I${PT} -I${PT}headers ${CPATH} ${CEXTRA} ${DEXTRA} ${EEXTRA} ${FEXTRA} ${GEXTRA} ${HEXTRA} ${MEXTRA} ${CGEOIP} -DARGV0=\"${NAME}\" -DXML_VAR=\"var\" -DOSSECHIDS
+CFLAGS = -g -Wall -I${PT} -I${PT}headers ${CPATH} ${CEXTRA} ${DEXTRA} ${EEXTRA} ${FEXTRA} ${GEXTRA} ${HEXTRA} ${MEXTRA} ${CGEOIP} -DARGV0=\"${NAME}\" -DOSSECHIDS
 
 SOURCES = *.c
 OBJECTS = *.o
-CLEAN = rm -f -r ${OBJECTS} ${NAME} *.a core core.* *.core
+CLEAN = rm -f -r ${OBJECTS} ${NAME} *.a core core.* *.core *.gcda *.gcno
 BUILD = cp -pr ${NAME} ${PT}../bin
 BUILDLIB = ar -crus
 

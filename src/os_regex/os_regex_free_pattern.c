@@ -39,11 +39,12 @@ void OSRegex_FreePattern(OSRegex *reg)
         }
 
         free(reg->patterns);
-        free(reg->flags);
-
         reg->patterns = NULL;
-        reg->flags = NULL;
     }
+
+    /* Freeing the flags */
+    free(reg->flags);
+    reg->flags = NULL;
 
     /* Freeing the closure */
     if(reg->prts_closure)

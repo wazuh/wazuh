@@ -1,5 +1,5 @@
-OSSEC v2.7.1
-Copyright (C) 2013 Trend Micro Inc.
+OSSEC v2.8
+Copyright (C) 2014 Trend Micro Inc.
 
 Many thanks to everyone who contributed and helped with
 the ossec project. Below is the list of all the people
@@ -27,6 +27,8 @@ who helped us since our first release (0.1).
   - Cristobel Rosa ( at ) alienvault
   - jp.zurbrugg
   - bil_hays (at) unc edu
+  - github.com/awiddersheim
+  - github.com/danpop60
 
 
 -Testing/Patches Rules and other contributions.

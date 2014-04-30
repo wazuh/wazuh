@@ -24,11 +24,10 @@
  */
 void OSRegex_FreeSubStrings(OSRegex *reg)
 {
-    int i = 0;
-
     /* Freeing the sub strings */
     if(reg->sub_strings)
     {
+        int i = 0;
         while(reg->sub_strings[i])
         {
             free(reg->sub_strings[i]);

@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+
+#include "os_regex.h"
 #include "os_regex_internal.h"
 
 /* Algorithm:
@@ -26,15 +28,15 @@
 
 
 /** Prototypes **/
-int _InternalMatch(char *pattern, char *str,int count);
+static int _InternalMatch(const char *pattern, const char *str,size_t count) __attribute__((nonnull));
 
 
 /* OS_WordMatch v0.3:
  * Searches for  pattern in the string
  */
-int OS_WordMatch(char *pattern, char *str)
+int OS_WordMatch(const char *pattern, const char *str)
 {
-    int count = 0;
+    size_t count = 0;
 
     if(*pattern == '\0')
         return(FALSE);
@@ -67,12 +69,12 @@ int OS_WordMatch(char *pattern, char *str)
 }
 
 /* Internal match function */
-int _InternalMatch(char *pattern, char *str, int pattern_size)
+static int _InternalMatch(const char *pattern, const char *str, size_t pattern_size)
 {
-    uchar *pt = (uchar *)pattern;
-    uchar *st = (uchar *)str;
+    const uchar *pt = (const uchar *)pattern;
+    const uchar *st = (const uchar *)str;
 
-    uchar last_char = pattern[pattern_size];
+    const uchar last_char = (const uchar) pattern[pattern_size];
 
 
     /* Return true for some odd expressions */
@@ -104,7 +106,7 @@ int _InternalMatch(char *pattern, char *str, int pattern_size)
         /* Match */
         if(charmap[*st] == charmap[*pt])
         {
-            str = (char *)st++;
+            str = (const char *)st++;
             pt++;
 
             while(*pt != last_char)
@@ -122,8 +124,8 @@ int _InternalMatch(char *pattern, char *str, int pattern_size)
             return(TRUE);
 
             error:
-                st = (uchar *)str;
-                pt = (uchar *)pattern;
+                st = (const uchar *)str;
+                pt = (const uchar *)pattern;
 
         }
 

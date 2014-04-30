@@ -165,6 +165,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
     char *xml_emailto = "email_to";
     char *xml_emailfrom = "email_from";
+    char *xml_emailidsname = "email_idsname";
     char *xml_smtpserver = "smtp_server";
     char *xml_mailmaxperhour = "email_maxperhour";
 
@@ -491,7 +492,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
 
         /* For the email now
-         * email_to, email_from, smtp_Server and maxperhour.
+         * email_to, email_from, idsname, smtp_Server and maxperhour.
          * We will use a separate structure for that.
          */
         else if(strcmp(node[i]->element, xml_emailto) == 0)
@@ -527,6 +528,17 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     free(Mail->from);
                 }
                 os_strdup(node[i]->content, Mail->from);
+            }
+        }
+        else if(strcmp(node[i]->element, xml_emailidsname) == 0)
+        {
+            if(Mail)
+            {
+                if(Mail->idsname)
+                {
+                    free(Mail->idsname);
+                }
+                os_strdup(node[i]->content, Mail->idsname);
             }
         }
         else if(strcmp(node[i]->element, xml_smtpserver) == 0)

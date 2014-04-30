@@ -62,27 +62,27 @@
 
   <rule id="18107" level="3">
     <if_sid>18104</if_sid>
-    <id>^528$|^540$|^672$|^673$|^4624$|^4769$</id>
+    <id>^528$|^540$|^673$|^4624$|^4769$</id>
     <description>Windows Logon Success.</description>
     <group>authentication_success,</group>
   </rule>
 
   <rule id="18108" level="4">
     <if_sid>18105</if_sid>
-    <id>^577$</id>
+    <id>^577$|^4673$</id>
     <description>Failed attempt to perform a privileged </description>
     <description>operation.</description>
   </rule>
 
   <rule id="18109" level="3">
     <if_sid>18104</if_sid>
-    <id>^682$|^683$</id>
+    <id>^682$|^683$|^4778$|^4779$</id>
     <description>Session reconnected/disconnected to winstation.</description>
   </rule>
 
   <rule id="18110" level="8">
     <if_sid>18104</if_sid>
-    <id>^624$|^626$|^645$|^4720$|^4722$|^4741$</id>
+    <id>^624$|^626$|^4720$|^4722$</id>
     <description>User account enabled or created.</description>
     <group>adduser,account_changed,</group>
   </rule>
@@ -103,7 +103,7 @@
   
   <rule id="18113" level="8">
     <if_sid>18104</if_sid>
-    <id>^612$|^643$|^4719$|^4907$|^4912$</id>
+    <id>^612$|^643$|^4719$|^4907$|^4912$|^4719$</id>
     <description>Windows Audit Policy changed.</description>
     <group>policy_changed,</group>
   </rule>
@@ -143,7 +143,7 @@
   
   <rule id="18118" level="9">
     <if_sid>18104</if_sid>
-    <id>^517$</id>
+    <id>^517$|^1102$</id>
     <description>Windows audit log was cleared.</description>
     <group>logs_cleared,</group>
   </rule>
@@ -176,10 +176,10 @@
     <group>authentication_success,</group>
   </rule>
   
-  <rule id="18127" level="8">
+  <rule id="18127" level="5">
     <if_sid>18104</if_sid>
-    <id>^646$|^647$</id>
-    <description>Computer account changed/deleted.</description>
+    <id>^646$|^645$|^647$|^4741$|^4742$|^4743$</id>
+    <description>Computer account added/changed/deleted.</description>
     <group>account_changed,</group>
   </rule>
   
@@ -267,21 +267,21 @@
 
   <rule id="18138" level="7">
     <if_sid>18106</if_sid>
-    <id>^539$</id>
+    <id>^539$|^4625$</id>
     <description>Logon Failure - Account locked out.</description>
     <group>win_authentication_failed,</group>
   </rule>
   
   <rule id="18139" level="5">
     <if_sid>18105</if_sid>
-    <id>^672$|^673$|^675$|^676$|^681$|^4769$</id>
+    <id>^673$|^675$|^681$|^4769$</id>
     <description>Windows DC Logon Failure.</description>
     <group>win_authentication_failed,</group>
   </rule>
   
   <rule id="18140" level="5">
     <if_sid>18104</if_sid>
-    <id>^520$</id>
+    <id>^520$|^4616$</id>
     <description>System time changed.</description>
     <group>time_changed,</group>
   </rule>
@@ -347,7 +347,7 @@
 
   <rule id="18149" level="3">
     <if_sid>18104</if_sid>
-    <id>^538$|^4634$|^4647$</id>
+    <id>^538$|^551$|^4634$|^4647$</id>
     <description>Windows User Logoff.</description>
   </rule>
 
@@ -813,7 +813,7 @@
     -->
   <rule id="18121" level="0">
     <if_sid>18107,18149</if_sid>
-    <id>^528$|^538$|^540$</id>
+    <id>^528$|^538$|^540$|^4624$</id>
     <user>^LOCAL SERVICE|^NETWORK SERVICE|^ANONYMOUS LOGON</user>
     <description>Windows Logon Success (ignored).</description>
   </rule>

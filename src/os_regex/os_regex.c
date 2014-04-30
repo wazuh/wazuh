@@ -24,7 +24,7 @@
  *  only going to be used once.
  *  Returns 1 on success or 0 on failure.
  */
-int OS_Regex(char *pattern, char *str)
+int OS_Regex(const char *pattern, const char *str)
 {
     int r_code = 0;
     OSRegex reg;
