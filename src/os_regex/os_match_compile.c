@@ -18,15 +18,6 @@
 #include "os_regex.h"
 #include "os_regex_internal.h"
 
-/* Prototype fo the _OsMatch */
-int _OS_Match(char *pattern, char *str, int str_len, int size);
-int _os_strncmp(char *pattern, char *str, int str_len, int size);
-int _os_strcmp_last(char *pattern, char *str, int str_len, int size);
-int _os_strcmp(char *pattern, char *str, int str_len, int size);
-int _os_strmatch(char *pattern, char *str, int str_len, int size);
-int _os_strstr(char *pattern, char *str, int str_len, int size);
-
-
 /** int OSMatch_Compile(char *pattern, OSMatch *reg, int flags) v0.1
  * Compile a pattern to be used later.
  * Allowed flags are:
@@ -34,11 +25,11 @@ int _os_strstr(char *pattern, char *str, int str_len, int size);
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
+int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
 {
     int usstrstr = 0;
-    int i = 0;
-    int count = 0;
+    size_t i = 0;
+    size_t count = 0;
     int end_of_string = 0;
 
     char *pt;
@@ -57,6 +48,7 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
     reg->error = 0;
     reg->patterns = NULL;
     reg->size = NULL;
+    reg->match_fp = NULL;
 
 
     /* The pattern can't be null */
@@ -95,7 +87,7 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
          */
         if(!(flags & OS_CASE_SENSITIVE))
         {
-            *pt = charmap[(uchar)*pt];
+            *pt = (char) charmap[(uchar)*pt];
         }
 
         /* Number of sub patterns */
@@ -113,9 +105,9 @@ int OSMatch_Compile(char *pattern, OSMatch *reg, int flags)
 
     /* For the last pattern */
     count++;
-    reg->patterns = calloc(count +1, sizeof(char *));
-    reg->size = calloc(count +1, sizeof(int));
-    reg->match_fp = calloc(count +1, sizeof(void *));
+    reg->patterns = (char **) calloc(count +1, sizeof(char *));
+    reg->size = (size_t *) calloc(count +1, sizeof(size_t));
+    reg->match_fp = (int (**)(const char *, const char *, size_t, size_t)) calloc(count +1, sizeof(void *));
 
 
     /* Memory allocation error check */

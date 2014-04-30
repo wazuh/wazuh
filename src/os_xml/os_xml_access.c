@@ -22,7 +22,7 @@
 
 
 /* Internal functions */
-static char **_GetElements(const OS_XML *_lxml, const char **element_name,int type) __attribute__((nonnull(1)));
+static char **_GetElements(const OS_XML *_lxml, const char **element_name,XML_TYPE type) __attribute__((nonnull(1)));
 static char **_GetElementContent(OS_XML *_lxml, const char **element_name, const char *attr) __attribute__((nonnull(1,2)));
 
 
@@ -101,7 +101,7 @@ char **OS_GetElements(const OS_XML *_lxml, const char **element_name)
 /* _GetElements: v0.1: 2005/03/01
  * Get the elements or attributes (internal use)
  */
-static char **_GetElements(const OS_XML *_lxml, const char **element_name,int type)
+static char **_GetElements(const OS_XML *_lxml, const char **element_name,XML_TYPE type)
 {
     unsigned i=0,j=0,k=0,matched=0,ready=0;
     char **ret=NULL;

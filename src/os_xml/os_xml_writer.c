@@ -243,7 +243,7 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out,
 
 
             /* Removing the / at the end of the element name */
-            if(elem[count -1] == '/')
+            if(count > 0 && elem[count -1] == '/')
             {
                 _ge = '/';
                 elem[count -1] = '\0';

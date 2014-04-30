@@ -340,8 +340,8 @@ int get_ossec_server()
 
 
     /* Definitions */
-    char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
-    char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
+    const char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
+    const char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
 
 
     /* Reading XML */
@@ -475,9 +475,9 @@ int run_cmd(char *cmd, HWND hwnd)
 int set_ossec_server(char *ip, HWND hwnd)
 {
     FILE *fp;
-    char **xml_pt = NULL;
-    char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
-    char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
+    const char **xml_pt = NULL;
+    const char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
+    const char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
     char *cacls;
     int cmdlen;
 
