@@ -438,7 +438,10 @@ char *OS_RecvTCP(int socket, int sizet)
         return(NULL);
 
     if((retsize = recv(socket, ret, sizet-1,0)) <= 0)
+    {
+        free(ret);
         return(NULL);
+    }
 
     return(ret);
 }
