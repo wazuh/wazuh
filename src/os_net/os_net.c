@@ -304,7 +304,10 @@ int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6)
 
 
     if((_ip == NULL)||(_ip[0] == '\0'))
+    {
+        OS_CloseSocket(ossock);
         return(OS_INVALID);
+    }
 
 
     if(ipv6 == 1)
@@ -316,7 +319,10 @@ int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6)
         inet_pton(AF_INET6, _ip, &server6.sin6_addr.s6_addr);
 
         if(connect(ossock,(struct sockaddr *)&server6, sizeof(server6)) < 0)
+        {
+            OS_CloseSocket(ossock);
             return(OS_SOCKTERR);
+        }
         #endif
     }
     else
@@ -328,7 +334,10 @@ int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6)
 
 
         if(connect(ossock,(struct sockaddr *)&server, sizeof(server)) < 0)
+        {
+            OS_CloseSocket(ossock);
             return(OS_SOCKTERR);
+        }
     }
 
 
