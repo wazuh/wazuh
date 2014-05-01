@@ -11,6 +11,7 @@
 #include <stdlib.h>
 
 #include "../os_crypto/blowfish/bf_op.h"
+#include "../os_crypto/md5/md5_op.h"
 
 Suite *test_suite(void);
 
@@ -29,6 +30,37 @@ START_TEST(test_blowfish)
 }
 END_TEST
 
+START_TEST(test_md5string)
+{
+    const char *string = "teststring";
+    const char *string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
+    char buffer[32];
+
+    OS_MD5_Str(string, buffer);
+
+    ck_assert_str_eq(buffer, string_md5);
+}
+END_TEST
+
+START_TEST(test_md5file)
+{
+    const char *string = "teststring";
+    const char *string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
+
+    /* create tmp file */
+    char file_name[256];
+    strncpy(file_name, "/tmp/tmp_file-XXXXXX", 256);
+    int fd = mkstemp(file_name);
+
+    write(fd, string, strlen(string));
+    close(fd);
+
+    char buffer[34];
+    OS_MD5_File(file_name, buffer);
+
+    ck_assert_str_eq(buffer, string_md5);
+}
+END_TEST
 
 Suite *test_suite(void)
 {
@@ -37,7 +69,12 @@ Suite *test_suite(void)
     TCase *tc_blowfish = tcase_create("blowfish");
     tcase_add_test(tc_blowfish, test_blowfish);
 
+    TCase *tc_md5 = tcase_create("md5");
+    tcase_add_test(tc_md5, test_md5string);
+    tcase_add_test(tc_md5, test_md5file);
+
     suite_add_tcase(s, tc_blowfish);
+    suite_add_tcase(s, tc_md5);
 
     return (s);
 }
