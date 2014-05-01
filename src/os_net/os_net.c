@@ -80,6 +80,7 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
         if(setsockopt(ossock, SOL_SOCKET, SO_REUSEADDR,
                               (char *)&flag,  sizeof(flag)) < 0)
         {
+            OS_CloseSocket(ossock);
             return(OS_SOCKTERR);
         }
     }
@@ -99,6 +100,7 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
 
         if(bind(ossock, (struct sockaddr *) &server6, sizeof(server6)) < 0)
         {
+            OS_CloseSocket(ossock);
             return(OS_SOCKTERR);
         }
         #endif
@@ -118,6 +120,7 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
 
         if(bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0)
         {
+            OS_CloseSocket(ossock);
             return(OS_SOCKTERR);
         }
     }
@@ -128,6 +131,7 @@ int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
     {
         if(listen(ossock, 32) < 0)
         {
+            OS_CloseSocket(ossock);
             return(OS_SOCKTERR);
         }
     }
