@@ -10,7 +10,7 @@ HEAD =  os_net.h
 SRCS =  os_net.c
 OBJS =  os_net.o
 
-os_net.a:
+os_net.a: ${HEAD} ${SRCS}
 		${CC} ${CFLAGS} -c ${SRCS}
 		${BUILDLIB} os_net.a ${OBJS}
 
