@@ -250,7 +250,11 @@ int OS_ConnectUnixDomain(char * path, int max_msg_size)
     if(len < max_msg_size)
     {
         len = max_msg_size;
-        setsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, optlen);
+        if(setsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, optlen) < 0)
+        {
+            OS_CloseSocket(ossock);
+            return(OS_SOCKTERR);
+        }
     }
 
 
