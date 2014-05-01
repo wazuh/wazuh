@@ -58,9 +58,16 @@ START_TEST(test_md5file)
     close(fd);
 
     char buffer[34];
-    OS_MD5_File(file_name, buffer);
+    ck_assert_int_eq(OS_MD5_File(file_name, buffer), 0);
 
     ck_assert_str_eq(buffer, string_md5);
+}
+END_TEST
+
+START_TEST(test_md5file_fail)
+{
+    char buffer[34];
+    ck_assert_int_eq(OS_MD5_File("not_existing_file", buffer), -1);
 }
 END_TEST
 
@@ -78,9 +85,16 @@ START_TEST(test_sha1file)
     close(fd);
 
     char buffer[65];
-    OS_SHA1_File(file_name, buffer);
+    ck_assert_int_eq(OS_SHA1_File(file_name, buffer), 0);
 
     ck_assert_str_eq(buffer, string_sha1);
+}
+END_TEST
+
+START_TEST(test_sha1file_fail)
+{
+    char buffer[65];
+    ck_assert_int_eq(OS_SHA1_File("not_existing_file", buffer), -1);
 }
 END_TEST
 
@@ -132,6 +146,15 @@ START_TEST(test_md5sha1cmdfile)
 }
 END_TEST
 
+START_TEST(test_md5sha1cmdfile_fail)
+{
+    char md5buffer[256];
+    char sha1buffer[256];
+
+    ck_assert_int_eq(OS_MD5_SHA1_File("not_existing_file", NULL, md5buffer, sha1buffer), -1);
+}
+END_TEST
+
 Suite *test_suite(void)
 {
     Suite *s = suite_create("os_crypto");
@@ -142,13 +165,16 @@ Suite *test_suite(void)
     TCase *tc_md5 = tcase_create("md5");
     tcase_add_test(tc_md5, test_md5string);
     tcase_add_test(tc_md5, test_md5file);
+    tcase_add_test(tc_md5, test_md5file_fail);
 
     TCase *tc_sha1 = tcase_create("sha1");
     tcase_add_test(tc_sha1, test_sha1file);
+    tcase_add_test(tc_sha1, test_sha1file_fail);
 
     TCase *tc_md5sha1 = tcase_create("md5_sha1");
     tcase_add_test(tc_md5sha1, test_md5sha1file);
     tcase_add_test(tc_md5sha1, test_md5sha1cmdfile);
+    tcase_add_test(tc_md5sha1, test_md5sha1cmdfile_fail);
 
     suite_add_tcase(s, tc_blowfish);
     suite_add_tcase(s, tc_md5);
