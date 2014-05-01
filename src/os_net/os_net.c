@@ -185,7 +185,11 @@ int OS_BindUnixDomain(char * path, int mode, int max_msg_size)
     }
 
     /* Changing permissions */
-    chmod(path,mode);
+    if(chmod(path,mode) < 0)
+    {
+        OS_CloseSocket(ossock);
+        return(OS_SOCKTERR);
+    }
 
 
     /* Getting current maximum size */
