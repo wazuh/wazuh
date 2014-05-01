@@ -229,12 +229,18 @@ int OS_ConnectUnixDomain(char * path, int max_msg_size)
      * We can use "send" after that
      */
     if(connect(ossock,(struct sockaddr *)&n_us,SUN_LEN(&n_us)) < 0)
+    {
+        OS_CloseSocket(ossock);
         return(OS_SOCKTERR);
+    }
 
 
     /* Getting current maximum size */
     if(getsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, &optlen) == -1)
+    {
+        OS_CloseSocket(ossock);
         return(OS_SOCKTERR);
+    }
 
 
     /* Setting maximum message size */
