@@ -571,4 +571,13 @@ char *OS_GetHost(char *host, int attempts)
     return(NULL);
 }
 
+int OS_CloseSocket(int socket)
+{
+    #ifdef WIN32
+    return (closesocket(socket));
+    #else
+    return (close(socket));
+    #endif /* WIN32 */
+}
+
 /* EOF */
