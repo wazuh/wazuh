@@ -180,7 +180,7 @@ int OS_BindUnixDomain(char * path, int mode, int max_msg_size)
 
     if(bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0)
     {
-        close(ossock);
+        OS_CloseSocket(ossock);
         return(OS_SOCKTERR);
     }
 
@@ -190,7 +190,10 @@ int OS_BindUnixDomain(char * path, int mode, int max_msg_size)
 
     /* Getting current maximum size */
     if(getsockopt(ossock, SOL_SOCKET, SO_RCVBUF, &len, &optlen) == -1)
+    {
+        OS_CloseSocket(ossock);
         return(OS_SOCKTERR);
+    }
 
 
     /* Setting socket opt */
