@@ -461,13 +461,11 @@ char *OS_RecvTCP(int socket, int sizet)
 {
     char *ret;
 
-    int retsize=0;
-
     ret = (char *) calloc((sizet), sizeof(char));
     if(ret == NULL)
         return(NULL);
 
-    if((retsize = recv(socket, ret, sizet-1,0)) <= 0)
+    if(recv(socket, ret, sizet-1,0) <= 0)
     {
         free(ret);
         return(NULL);
