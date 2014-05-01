@@ -18,6 +18,7 @@ CFLAGS_TEST = -Waggregate-return -Wall -Wbad-function-cast -Wc++-compat -Wcast-a
 	-Wstrict-prototypes -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunused \
 	-Wwrite-strings \
 	-g -O0 --coverage \
+	-I../ \
 	-I../headers/
 
 run_tests: build_tests
@@ -55,8 +56,8 @@ test_os_regex: test_os_regex.c ../os_regex/*.c ../os_regex/*.h
 BLOWFISH_SRCS = ../os_crypto/blowfish/bf_op.c ../os_crypto/blowfish/bf_skey.c ../os_crypto/blowfish/bf_enc.c
 MD5_SRCS = ../os_crypto/md5/md5.c ../os_crypto/md5/md5_op.c
 SHA1_SRCS = ../os_crypto/sha1/sha1_op.c
-test_os_crypto: test_os_crypto.c ../os_crypto/blowfish/*.h ${BLOWFISH_SRCS} ../os_crypto/md5/*.h ${MD5_SRCS} ../os_crypto/sha1/*.h ${SHA1_SRCS}
-	${CC} ${CFLAGS_TEST} test_os_crypto.c ${BLOWFISH_SRCS} ${MD5_SRCS} ${SHA1_SRCS} ${CHECK_LINK} -o $@
+test_os_crypto: test_os_crypto.c ../os_crypto/blowfish/*.h ${BLOWFISH_SRCS} ../os_crypto/md5/*.h ${MD5_SRCS} ../os_crypto/sha1/*.h ${SHA1_SRCS}  ../os_crypto/md5_sha1/md5_sha1_op.h  ../os_crypto/md5_sha1/md5_sha1_op.c
+	${CC} ${CFLAGS_TEST} test_os_crypto.c ${BLOWFISH_SRCS} ${MD5_SRCS} ${SHA1_SRCS} ../os_crypto/md5_sha1/md5_sha1_op.c ${CHECK_LINK} -o $@
 	
 		
 clean:
