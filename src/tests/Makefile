@@ -54,8 +54,9 @@ test_os_regex: test_os_regex.c ../os_regex/*.c ../os_regex/*.h
 
 BLOWFISH_SRCS = ../os_crypto/blowfish/bf_op.c ../os_crypto/blowfish/bf_skey.c ../os_crypto/blowfish/bf_enc.c
 MD5_SRCS = ../os_crypto/md5/md5.c ../os_crypto/md5/md5_op.c
-test_os_crypto: test_os_crypto.c ../os_crypto/blowfish/*.h ${BLOWFISH_SRCS} ../os_crypto/md5/*.h ${MD5_SRCS}
-	${CC} ${CFLAGS_TEST} test_os_crypto.c ${BLOWFISH_SRCS} ${MD5_SRCS} ${CHECK_LINK} -o $@
+SHA1_SRCS = ../os_crypto/sha1/sha1_op.c
+test_os_crypto: test_os_crypto.c ../os_crypto/blowfish/*.h ${BLOWFISH_SRCS} ../os_crypto/md5/*.h ${MD5_SRCS} ../os_crypto/sha1/*.h ${SHA1_SRCS}
+	${CC} ${CFLAGS_TEST} test_os_crypto.c ${BLOWFISH_SRCS} ${MD5_SRCS} ${SHA1_SRCS} ${CHECK_LINK} -o $@
 	
 		
 clean:

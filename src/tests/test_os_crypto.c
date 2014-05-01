@@ -12,6 +12,7 @@
 
 #include "../os_crypto/blowfish/bf_op.h"
 #include "../os_crypto/md5/md5_op.h"
+#include "../os_crypto/sha1/sha1_op.h"
 
 Suite *test_suite(void);
 
@@ -62,6 +63,26 @@ START_TEST(test_md5file)
 }
 END_TEST
 
+START_TEST(test_sha1file)
+{
+    const char *string = "teststring";
+    const char *string_sha1 = "b8473b86d4c2072ca9b08bd28e373e8253e865c4";
+
+    /* create tmp file */
+    char file_name[256];
+    strncpy(file_name, "/tmp/tmp_file-XXXXXX", 256);
+    int fd = mkstemp(file_name);
+
+    write(fd, string, strlen(string));
+    close(fd);
+
+    char buffer[65];
+    OS_SHA1_File(file_name, buffer);
+
+    ck_assert_str_eq(buffer, string_sha1);
+}
+END_TEST
+
 Suite *test_suite(void)
 {
     Suite *s = suite_create("os_crypto");
@@ -72,6 +93,9 @@ Suite *test_suite(void)
     TCase *tc_md5 = tcase_create("md5");
     tcase_add_test(tc_md5, test_md5string);
     tcase_add_test(tc_md5, test_md5file);
+
+    TCase *tc_sha1 = tcase_create("sha1");
+    tcase_add_test(tc_md5, test_sha1file);
 
     suite_add_tcase(s, tc_blowfish);
     suite_add_tcase(s, tc_md5);
