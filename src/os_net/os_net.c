@@ -215,7 +215,7 @@ int OS_ConnectUnixDomain(char * path, int max_msg_size)
     n_us.sun_family = AF_UNIX;
 
     /* Setting up path */
-    strncpy(n_us.sun_path,path,sizeof(n_us.sun_path)-1);	
+    strncpy(n_us.sun_path,path,sizeof(n_us.sun_path)-1);
 
     if((ossock = socket(PF_UNIX, SOCK_DGRAM,0)) < 0)
         return(OS_SOCKTERR);
@@ -241,7 +241,7 @@ int OS_ConnectUnixDomain(char * path, int max_msg_size)
     }
 
 
-    /* Returning the socket */	
+    /* Returning the socket */
     return(ossock);
 }
 
@@ -411,7 +411,7 @@ int OS_AcceptTCP(int socket, char *srcip, int addrsize)
 
     if((clientsocket = accept(socket, (struct sockaddr *) &_nc,
                     &_ncl)) < 0)
-        return(-1);	
+        return(-1);
 
     strncpy(srcip, inet_ntoa(_nc.sin_addr),addrsize -1);
     srcip[addrsize -1]='\0';
@@ -475,7 +475,10 @@ char *OS_RecvUDP(int socket, int sizet)
         return(NULL);
 
     if((recv(socket,ret,sizet-1,0))<0)
+    {
+        free(ret);
         return(NULL);
+    }
 
     return(ret);
 }
