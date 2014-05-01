@@ -24,6 +24,7 @@ run_tests: build_tests
 	./test_os_zlib
 	./test_os_xml
 	./test_os_regex
+	./test_os_crypto
 	
 generate_coverage: build_tests
 	lcov --base-directory . --directory . --zerocounters --rc lcov_branch_coverage=1 --quiet
@@ -32,6 +33,7 @@ generate_coverage: build_tests
 	./test_os_zlib
 	./test_os_xml
 	./test_os_regex
+	./test_os_crypto
 	
 	@echo "\nTests finished."
 	lcov --base-directory . --directory . --capture --quiet --rc lcov_branch_coverage=1 --output-file ossec.test
@@ -39,7 +41,7 @@ generate_coverage: build_tests
 	genhtml --branch-coverage --output-directory coverage-report/ --title "ossec test coverage" --show-details --legend --num-spaces 4 --quiet ossec.test
 	
 	
-build_tests: test_os_zlib test_os_xml test_os_regex
+build_tests: test_os_zlib test_os_xml test_os_regex test_os_crypto
 
 test_os_zlib: test_os_zlib.c ${OS_ZLIB}
 	${CC} ${CFLAGS_TEST} $+ ${CHECK_LINK} -o $@
@@ -50,7 +52,10 @@ test_os_xml: test_os_xml.c ../os_xml/*.c ../os_xml/*.h
 test_os_regex: test_os_regex.c ../os_regex/*.c ../os_regex/*.h
 	${CC} ${CFLAGS_TEST} test_os_regex.c ../os_regex/*.c ${CHECK_LINK} -o $@
 
-
+BLOWFISH_SRCS = ../os_crypto/blowfish/bf_op.c ../os_crypto/blowfish/bf_skey.c ../os_crypto/blowfish/bf_enc.c
+test_os_crypto: test_os_crypto.c ../os_crypto/blowfish/*.h ${BLOWFISH_SRCS}
+	${CC} ${CFLAGS_TEST} test_os_crypto.c ${BLOWFISH_SRCS} ${CHECK_LINK} -o $@
+	
 		
 clean:
-	${CLEAN} test_os_zlib test_os_xml test_os_regex coverage-report/ ossec.test
+	${CLEAN} test_os_zlib test_os_xml test_os_regex test_os_crypto coverage-report/ ossec.test
