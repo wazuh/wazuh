@@ -470,17 +470,12 @@ char *OS_RecvTCP(int socket, int sizet)
  */
 int OS_RecvTCPBuffer(int socket, char *buffer, int sizet)
 {
-    int retsize = 0;
+    int retsize;
 
-    while(!retsize)
+    if((retsize = recv(socket, buffer, sizet -1, 0)) > 0)
     {
-        retsize = recv(socket, buffer, sizet -1, 0);
-        if(retsize > 0)
-        {
-            buffer[retsize] = '\0';
-            return(0);
-        }
-        return(-1);
+        buffer[retsize] = '\0';
+        return(0);
     }
     return(-1);
 }
