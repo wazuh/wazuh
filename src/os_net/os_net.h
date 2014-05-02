@@ -80,6 +80,13 @@ int OS_SendUDPbySize(int socket, int size, char *msg);
  */
 char *OS_GetHost(char *host, int attempts);
 
+/**
+ * Close a network socket.
+ * @param socket the socket to close
+ * @return 0 on success, else -1 or SOCKET_ERROR
+ */
+int OS_CloseSocket(int socket);
+
 #endif
 
 /* EOF */
