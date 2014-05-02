@@ -265,7 +265,10 @@ int OS_getsocketsize(int ossock)
 
     /* Getting current maximum size */
     if(getsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, &optlen) == -1)
+    {
+        OS_CloseSocket(ossock);
         return(OS_SOCKTERR);
+    }
 
     return(len);
 }
@@ -281,7 +284,10 @@ int OS_Connect(char *_port, unsigned int protocol, char *_ip)
     struct addrinfo hints, *result, *rp;
 
     if((_ip == NULL)||(_ip[0] == '\0'))
+    {
+        OS_CloseSocket(ossock);
         return(OS_INVALID);
+    }
 
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
