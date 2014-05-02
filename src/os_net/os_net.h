@@ -97,6 +97,14 @@ char *OS_GetHost(char *host, int attempts);
  */
 int satop(struct sockaddr *sa, char *dst, socklen_t size);
 
+
+/**
+ * Close a network socket.
+ * @param socket the socket to close
+ * @return 0 on success, else -1 or SOCKET_ERROR
+ */
+int OS_CloseSocket(int socket);
+
 #endif
 
 /* EOF */

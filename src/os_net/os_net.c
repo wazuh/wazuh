@@ -98,6 +98,7 @@ int OS_Bindport(char *_port, unsigned int _proto, char *_ip)
             if(setsockopt(ossock, SOL_SOCKET, SO_REUSEADDR,
                           (char *)&flag, sizeof(flag)) < 0)
             {
+                OS_CloseSocket(ossock);
                 return(OS_SOCKTERR);
             }
         } 
@@ -108,6 +109,7 @@ int OS_Bindport(char *_port, unsigned int _proto, char *_ip)
     }
     if (rp == NULL)
     {               /* No address succeeded */
+        OS_CloseSocket(ossock);
         return(OS_SOCKTERR);
     }
 
@@ -117,6 +119,7 @@ int OS_Bindport(char *_port, unsigned int _proto, char *_ip)
     {
         if(listen(ossock, 32) < 0)
         {
+            OS_CloseSocket(ossock);
             return(OS_SOCKTERR);
         }
     }
@@ -164,24 +167,35 @@ int OS_BindUnixDomain(char * path, int mode, int max_msg_size)
 
     if(bind(ossock, (struct sockaddr *)&n_us, SUN_LEN(&n_us)) < 0)
     {
-        close(ossock);
+        OS_CloseSocket(ossock);
         return(OS_SOCKTERR);
     }
 
     /* Changing permissions */
-    chmod(path,mode);
+    if(chmod(path,mode) < 0)
+    {
+        OS_CloseSocket(ossock);
+        return(OS_SOCKTERR);
+    }
 
 
     /* Getting current maximum size */
     if(getsockopt(ossock, SOL_SOCKET, SO_RCVBUF, &len, &optlen) == -1)
+    {
+        OS_CloseSocket(ossock);
         return(OS_SOCKTERR);
+    }
 
 
     /* Setting socket opt */
     if(len < max_msg_size)
     {
         len = max_msg_size;
-        setsockopt(ossock, SOL_SOCKET, SO_RCVBUF, &len, optlen);
+        if(setsockopt(ossock, SOL_SOCKET, SO_RCVBUF, &len, optlen) < 0)
+        {
+            OS_CloseSocket(ossock);
+            return(OS_SOCKTERR);
+        }
     }
 
     return(ossock);
@@ -203,7 +217,7 @@ int OS_ConnectUnixDomain(char * path, int max_msg_size)
     n_us.sun_family = AF_UNIX;
 
     /* Setting up path */
-    strncpy(n_us.sun_path,path,sizeof(n_us.sun_path)-1);	
+    strncpy(n_us.sun_path,path,sizeof(n_us.sun_path)-1);
 
     if((ossock = socket(PF_UNIX, SOCK_DGRAM,0)) < 0)
         return(OS_SOCKTERR);
@@ -213,23 +227,33 @@ int OS_ConnectUnixDomain(char * path, int max_msg_size)
      * We can use "send" after that
      */
     if(connect(ossock,(struct sockaddr *)&n_us,SUN_LEN(&n_us)) < 0)
+    {
+        OS_CloseSocket(ossock);
         return(OS_SOCKTERR);
+    }
 
 
     /* Getting current maximum size */
     if(getsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, &optlen) == -1)
+    {
+        OS_CloseSocket(ossock);
         return(OS_SOCKTERR);
+    }
 
 
     /* Setting maximum message size */
     if(len < max_msg_size)
     {
         len = max_msg_size;
-        setsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, optlen);
+        if(setsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, optlen) < 0)
+        {
+            OS_CloseSocket(ossock);
+            return(OS_SOCKTERR);
+        }
     }
 
 
-    /* Returning the socket */	
+    /* Returning the socket */
     return(ossock);
 }
 
@@ -300,6 +324,7 @@ int OS_Connect(char *_port, unsigned int protocol, char *_ip)
     }
     if (rp == NULL)
     {               /* No address succeeded */
+        OS_CloseSocket(ossock);
         return(OS_SOCKTERR);
     }
 
@@ -396,7 +421,7 @@ int OS_AcceptTCP(int socket, char *srcip, int addrsize)
 
     if((clientsocket = accept(socket, (struct sockaddr *) &_nc,
                     &_ncl)) < 0)
-        return(-1);	
+        return(-1);
 
     satop((struct sockaddr *) &_nc, srcip, addrsize -1);
     srcip[addrsize -1]='\0';
@@ -412,14 +437,15 @@ char *OS_RecvTCP(int socket, int sizet)
 {
     char *ret;
 
-    int retsize=0;
-
     ret = (char *) calloc((sizet), sizeof(char));
     if(ret == NULL)
         return(NULL);
 
-    if((retsize = recv(socket, ret, sizet-1,0)) <= 0)
+    if(recv(socket, ret, sizet-1,0) <= 0)
+    {
+        free(ret);
         return(NULL);
+    }
 
     return(ret);
 }
@@ -430,17 +456,12 @@ char *OS_RecvTCP(int socket, int sizet)
  */
 int OS_RecvTCPBuffer(int socket, char *buffer, int sizet)
 {
-    int retsize = 0;
+    int retsize;
 
-    while(!retsize)
+    if((retsize = recv(socket, buffer, sizet -1, 0)) > 0)
     {
-        retsize = recv(socket, buffer, sizet -1, 0);
-        if(retsize > 0)
-        {
-            buffer[retsize] = '\0';
-            return(0);
-        }
-        return(-1);
+        buffer[retsize] = '\0';
+        return(0);
     }
     return(-1);
 }
@@ -460,7 +481,10 @@ char *OS_RecvUDP(int socket, int sizet)
         return(NULL);
 
     if((recv(socket,ret,sizet-1,0))<0)
+    {
+        free(ret);
         return(NULL);
+    }
 
     return(ret);
 }
@@ -598,7 +622,15 @@ int satop(struct sockaddr *sa, char *dst, socklen_t size)
         *dst = '\0';
         return(-1);     
     }
+}
 
+int OS_CloseSocket(int socket)
+{
+    #ifdef WIN32
+    return (closesocket(socket));
+    #else
+    return (close(socket));
+    #endif /* WIN32 */
 }
 
 /* EOF */
