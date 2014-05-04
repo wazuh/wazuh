@@ -200,13 +200,7 @@ int main(int argc, char **argv)
     /* Creating PID files */
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
-#endif /* WIN32 */
-
-
-    /* Start up message */
-    verbose(STARTUP_MSG, ARGV0, (int)getpid());
-
-#ifdef WIN32
+#else
     /* Initialize Windows socket stuff.
      */
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
@@ -214,6 +208,9 @@ int main(int argc, char **argv)
         ErrorExit("%s: WSAStartup() failed", ARGV0);
     }
 #endif /* WIN32 */
+
+    /* Start up message */
+    verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
     if(agentname == NULL)
     {
@@ -286,8 +283,8 @@ int main(int argc, char **argv)
     if(ca_cert)
     {
         printf("INFO: Verifing manager's certificate\n");
-        if(check_x509_cert(ssl, manager) != 1) {
-            merror("%s: ERROR: Manager's x509 certificate failed validation", ARGV0);
+        if(check_x509_cert(ssl, manager) != VERIFY_TRUE) {
+            debug1("%s: DEBUG: Unable to verify server certificate.", ARGV0);
             exit(1);
         }
     }

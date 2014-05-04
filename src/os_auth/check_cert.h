@@ -33,6 +33,10 @@
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 
+#define VERIFY_TRUE   1
+#define VERIFY_FALSE  0
+#define VERIFY_ERROR -1
+
 #define DNS_MAX_LABELS    127
 #define DNS_MAX_LABEL_LEN 63
 
@@ -52,6 +56,6 @@ int label_array(const char *domain_name, label result[DNS_MAX_LABELS]);
 int label_valid(const label *label);
 int label_match(const label *label1, const label *label2);
 
-#endif
-#endif
+#endif /* USE_OPENSSL */
+#endif /* _CHECK_CERT_H */
 

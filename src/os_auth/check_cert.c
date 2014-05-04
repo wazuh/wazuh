@@ -41,7 +41,7 @@
 int check_x509_cert(SSL *ssl, char *manager)
 {
     X509 *cert = NULL;
-    int match_found = 0;
+    int verified = VERIFY_FALSE;
 
     if(!(cert = SSL_get_peer_certificate(ssl)))
         goto CERT_CHECK_ERROR;
@@ -50,27 +50,25 @@ int check_x509_cert(SSL *ssl, char *manager)
      * if no match is found there then check the subject CN.
      */
     debug1("%s: DEBUG: Checking certificate's subject alternative names.", ARGV0);
-    if((match_found = check_subject_alt_names(cert, manager)) < 0)
+    if((verified = check_subject_alt_names(cert, manager)) == VERIFY_ERROR)
         goto CERT_CHECK_ERROR;
 
-    if(!match_found)
+    if(verified == VERIFY_FALSE)
     {
         debug1("%s: DEBUG: No matching subject alternative names found. Checking common name.", ARGV0);
-        if((match_found = check_subject_cn(cert, manager)) < 0)
+        if((verified = check_subject_cn(cert, manager)) == VERIFY_ERROR)
             goto CERT_CHECK_ERROR;
     }
 
-    if(!match_found)
-        debug1("%s: DEBUG: Unable to match manager's name.", ARGV0);
-
     X509_free(cert);
-    return match_found;
+
+    return verified;
 
 CERT_CHECK_ERROR:
     if (cert)
         X509_free(cert);
 
-    return -1;
+    return VERIFY_ERROR;
 }
 
 /* Loop through all the subject_alt_name entries until we find a match or
@@ -80,23 +78,24 @@ CERT_CHECK_ERROR:
 int check_subject_alt_names(X509 *cert, char *manager)
 {
     GENERAL_NAMES *names = NULL;
-    int result = 0;
+    int result = VERIFY_FALSE;
     int i = 0;
 
-    if(!(names = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL)))
-        return -1;
-
-    for(i = 0; i < sk_GENERAL_NAME_num(names) && result == 0; i++)
+    if((names = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL)))
     {
-        GENERAL_NAME *name = sk_GENERAL_NAME_value(names, i);
+        for(i = 0; i < sk_GENERAL_NAME_num(names) && result == VERIFY_FALSE; i++)
+        {
+            GENERAL_NAME *name = sk_GENERAL_NAME_value(names, i);
 
-        if(name->type == GEN_DNS)
-            result = check_hostname(name->d.dNSName, manager);
-        else if(name->type == GEN_IPADD)
-            result = check_ipaddr(name->d.iPAddress, manager);
+            if(name->type == GEN_DNS)
+                result = check_hostname(name->d.dNSName, manager);
+            else if(name->type == GEN_IPADD)
+                result = check_ipaddr(name->d.iPAddress, manager);
+        }
+
+        GENERAL_NAMES_free(names);
     }
 
-    GENERAL_NAMES_free(names);
     return result;
 }
 
@@ -106,14 +105,16 @@ int check_subject_alt_names(X509 *cert, char *manager)
 int check_subject_cn(X509 *cert, char *manager)
 {
     X509_NAME *name = NULL;
-    int result = 0;
+    int result = VERIFY_FALSE;
     int i = 0;
 
-    name = X509_get_subject_name(cert);
-    while((i = X509_NAME_get_index_by_NID(name, NID_commonName, i)) >= 0 && result == 0)
+    if((name = X509_get_subject_name(cert)))
     {
-        X509_NAME_ENTRY *ne = X509_NAME_get_entry(name, i);
-        result = check_hostname(X509_NAME_ENTRY_get_data(ne), manager);
+        while((i = X509_NAME_get_index_by_NID(name, NID_commonName, i)) >= 0 && result == VERIFY_FALSE)
+        {
+            X509_NAME_ENTRY *ne = X509_NAME_get_entry(name, i);
+            result = check_hostname(X509_NAME_ENTRY_get_data(ne), manager);
+        }
     }
 
     return result;
@@ -138,7 +139,7 @@ int check_hostname(ASN1_STRING *cert_astr, char *manager)
 
     ASN1_STRING_to_UTF8((unsigned char **)&cert_cstr, cert_astr);
     if(!cert_cstr)
-        return -1;
+        return VERIFY_ERROR;
 
     c_label_num = label_array(cert_cstr, c_labels);
     m_label_num = label_array(manager, m_labels);
@@ -149,10 +150,10 @@ int check_hostname(ASN1_STRING *cert_astr, char *manager)
      * the same number of labels.
      */
     if(m_label_num <= 0 || c_label_num <= 0)
-        return 0;
+        return VERIFY_FALSE;
 
     if(m_label_num != c_label_num)
-        return 0;
+        return VERIFY_FALSE;
 
     /* Wildcards are accepted in the first label only. Partial wildcard
      * matching is not supported.
@@ -165,20 +166,19 @@ int check_hostname(ASN1_STRING *cert_astr, char *manager)
     for(i = wildcard_cert; i < m_label_num; i++)
     {
         if(!label_valid(&m_labels[i]))
-            return 0;
+            return VERIFY_FALSE;
 
         if(!label_match(&m_labels[i], &c_labels[i]))
-            return 0;
+            return VERIFY_FALSE;
     }
 
-    return 1;
+    return VERIFY_TRUE;
 }
 
 int check_ipaddr(ASN1_STRING *cert_astr, char *manager)
 {
     struct sockaddr_in iptest;
     struct sockaddr_in6 iptest6;
-    int result = 0;
 
     memset(&iptest, 0, sizeof(iptest));
     memset(&iptest6, 0, sizeof(iptest6));
@@ -186,15 +186,15 @@ int check_ipaddr(ASN1_STRING *cert_astr, char *manager)
     if(inet_pton(AF_INET, manager, &iptest.sin_addr) == 1)
     {
         if(cert_astr->length == 4 && !memcmp(cert_astr->data, (const void *)&iptest.sin_addr, 4))
-            result = 1;
+            return VERIFY_TRUE;
     }
     else if(inet_pton(AF_INET6, manager, &iptest6.sin6_addr) == 1)
     {
         if(cert_astr->length == 16 && !memcmp(cert_astr->data, (const void *)&iptest6.sin6_addr, 16))
-            result = 1;
+            return VERIFY_TRUE;
     }
 
-    return result;
+    return VERIFY_FALSE;
 }
 
 /* Separate a domain name into a sequence of labels and return the number
@@ -209,14 +209,14 @@ int label_array(const char *domain_name, label result[DNS_MAX_LABELS])
     do
     {
         if(label_count == DNS_MAX_LABELS)
-            return -1;
+            return VERIFY_FALSE;
 
         if(*label_end == '.' || *label_end == '\0')
         {
             label *new_label = &result[label_count];
 
             if((new_label->len = label_end - label_start) > DNS_MAX_LABEL_LEN)
-                return -1;
+                return VERIFY_FALSE;
 
             strncpy(new_label->text, label_start, new_label->len);
             new_label->text[new_label->len] = '\0';
@@ -241,18 +241,18 @@ int label_valid(const label *label)
     int i;
 
     if(label->len == 0 || label->len > DNS_MAX_LABEL_LEN)
-        return 0;
+        return VERIFY_FALSE;
 
     if(!isalpha(label->text[0]) || !isalnum(label->text[label->len - 1]))
-        return 0;
+        return VERIFY_FALSE;
 
     for(i = 0; i < label->len; i++)
     {
         if(!isalnum(label->text[i]) && label->text[i] != '-')
-            return 0;
+            return VERIFY_FALSE;
     }
 
-    return 1;
+    return VERIFY_TRUE;
 }
 
 /* Compare two labels and determine whether they match.
@@ -262,16 +262,16 @@ int label_match(const label *label1, const label *label2)
     int i;
 
     if(label1->len != label2->len)
-        return 0;
+        return VERIFY_FALSE;
 
     for(i = 0; i < label1->len; i++)
     {
         if(tolower(label1->text[i]) != tolower(label2->text[i]))
-            return 0;
+            return VERIFY_FALSE;
     }
 
-    return 1;
+    return VERIFY_TRUE;
 }
 
-#endif
+#endif /* USE_OPENSSL */
 

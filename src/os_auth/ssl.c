@@ -156,9 +156,9 @@ int load_cert_and_key(SSL_CTX *ctx, char *cert, char *key)
         return 0;
     }
 
-    #if(OPENSSL_VERSION_NUMBER < 0x00905100L)
+#if(OPENSSL_VERSION_NUMBER < 0x00905100L)
     SSL_CTX_set_verify_depth(ctx, 1);
-    #endif
+#endif
 
     return 1;
 }
