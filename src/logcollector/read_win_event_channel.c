@@ -43,6 +43,7 @@ typedef struct _os_event
 	char *domain;
 	char *computer;
 	char *message;
+	ULONGLONG time_created;
 } os_event;
 
 typedef struct _os_channel
@@ -164,6 +165,50 @@ void update_bookmark(EVT_HANDLE evt, os_channel *context)
 	}
 }
 
+/* Format Timestamp from EventLog */
+char *WinEvtTimeToString(ULONGLONG ulongTime)
+{
+	SYSTEMTIME sysTime;
+	FILETIME fTime, lfTime;
+	ULARGE_INTEGER ulargeTime;
+	struct tm tm_struct;
+	char result[80] = "";
+
+	memset(&tm_struct, 0, sizeof(tm_struct));
+
+	/* Convert from ULONGLONG to usable FILETIME value */
+	ulargeTime.QuadPart = ulongTime;
+	
+	fTime.dwLowDateTime = ulargeTime.LowPart;
+	fTime.dwHighDateTime = ulargeTime.HighPart;
+
+	/* Adjust time value to reflect current timezone */
+	/* then convert to a SYSTEMTIME */
+	if (FileTimeToLocalFileTime(&fTime, &lfTime) == 0) {
+		merror("%s: Error formatting event time", ARGV0);
+		return NULL;
+	}
+
+	if (FileTimeToSystemTime(&lfTime, &sysTime) == 0) {
+		merror("%s: Error formatting event time", ARGV0);
+		return NULL;
+	}
+
+	/* Convert SYSTEMTIME to tm */
+	tm_struct.tm_year = sysTime.wYear - 1900;
+	tm_struct.tm_mon  = sysTime.wMonth - 1;
+	tm_struct.tm_mday = sysTime.wDay;
+	tm_struct.tm_hour = sysTime.wHour;
+	tm_struct.tm_wday = sysTime.wDayOfWeek;
+	tm_struct.tm_min  = sysTime.wMinute;
+	tm_struct.tm_sec  = sysTime.wSecond;
+
+	/* Format timestamp string */
+	strftime(result, 80, "%Y %b %d %H:%M:%S", &tm_struct);
+
+	return (result);
+}
+
 void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 {
 	DWORD buffer_length = 0;
@@ -174,7 +219,8 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 		L"Event/System/Provider/@EventSourceName",
 		L"Event/System/Security/@UserID",
 		L"Event/System/Computer",
-		L"Event/System/Provider/@Name"
+		L"Event/System/Provider/@Name",
+		L"Event/System/TimeCreated/@SystemTime"
 	};
     DWORD count = sizeof(properties)/sizeof(LPWSTR);
 	EVT_HANDLE context = NULL;
@@ -197,11 +243,13 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 	event.source = get_property_value(&properties_values[2]);
 	event.uid = properties_values[3].Type == EvtVarTypeNull ? NULL : properties_values[3].SidVal;
 	event.computer = get_property_value(&properties_values[4]);
+	event.time_created = properties_values[6].FileTimeVal;
 	
 	get_username_and_domain(&event);
 	get_messages(&event, evt, properties_values[5].StringVal);
-	
-	snprintf(final_msg, OS_MAXSTR, "WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
+
+	snprintf(final_msg, OS_MAXSTR, "%s WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
+			 WinEvtTimeToString(event.time_created),
 			 event.name,
 			 event.level && strlen(event.level) ? event.level : "UNKNOWN",
 			 event.id,
@@ -210,7 +258,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 			 event.domain && strlen(event.domain) ? event.domain : "no domain",
 			 event.computer && strlen(event.computer) ? event.computer : "no computer",
 			 event.message && strlen(event.message) ? event.message : "no message");
-	
+
 	if(SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0)
     {
 		merror(QUEUE_SEND, ARGV0);
