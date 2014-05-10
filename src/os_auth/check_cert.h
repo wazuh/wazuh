@@ -1,7 +1,7 @@
 /* @(#) $Id: ./src/os_auth/check_cert.h, 2014/04/25 mweigel Exp $
  */
 
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2014 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -55,6 +55,7 @@ int check_ipaddr(ASN1_STRING *cert_astr, char *manager);
 int label_array(const char *domain_name, label result[DNS_MAX_LABELS]);
 int label_valid(const label *label);
 int label_match(const label *label1, const label *label2);
+char *asn1_to_cstr(ASN1_STRING *astr);
 
 #endif /* USE_OPENSSL */
 #endif /* _CHECK_CERT_H */

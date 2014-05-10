@@ -1,7 +1,7 @@
 /* @(#) $Id: ./src/os_auth/check_cert.c, 2014/04/25 mweigel Exp $
  */
 
-/* Copyright (C) 2010 Trend Micro Inc.
+/* Copyright (C) 2014 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -35,8 +35,10 @@
 #include <string.h>
 #include <ctype.h>
 
-/* Could be replaced with X509_check_host() in future but this is only available
- * in openssl 1.0.2.
+/* Compare the manager's name or IP address given on the command line with the
+ * subject alternative names and common names present in a received certificate.
+ * This could be replaced with X509_check_host() in future but this is only
+ * available in openssl 1.0.2.
  */
 int check_x509_cert(SSL *ssl, char *manager)
 {
@@ -123,7 +125,7 @@ int check_subject_cn(X509 *cert, char *manager)
 /* Determine whether a string found in a subject alt name or common name
  * field matches the manager's name specified on the command line. The
  * domain name from the certificate and the domain name from the command
- * line are broken down into a sequence of labels before being validated
+ * line are broken down into a sequence of labels and each label is validated
  * and compared. Matching is case insensitive and basic wildcard matching
  * is supported.
  */
@@ -137,13 +139,14 @@ int check_hostname(ASN1_STRING *cert_astr, char *manager)
     int i = 0;
     char *cert_cstr = NULL;
 
-    ASN1_STRING_to_UTF8((unsigned char **)&cert_cstr, cert_astr);
-    if(!cert_cstr)
-        return VERIFY_ERROR;
+    if(!(cert_cstr = asn1_to_cstr(cert_astr)))
+        return VERIFY_FALSE;
 
+    /* Convert domain names to arrays of labels separated by '.'
+     */
     c_label_num = label_array(cert_cstr, c_labels);
     m_label_num = label_array(manager, m_labels);
-    OPENSSL_free(cert_cstr);
+    free(cert_cstr);
 
     /* Check that we have an appropriate number of labels and that the name
      * from the certificate and the name given on the command line have
@@ -175,6 +178,9 @@ int check_hostname(ASN1_STRING *cert_astr, char *manager)
     return VERIFY_TRUE;
 }
 
+/* Determine whether a string found in a subject alt name or common name
+ * field matches the manager's IP address specified on the command line.
+ */
 int check_ipaddr(ASN1_STRING *cert_astr, char *manager)
 {
     struct sockaddr_in iptest;
@@ -198,7 +204,8 @@ int check_ipaddr(ASN1_STRING *cert_astr, char *manager)
 }
 
 /* Separate a domain name into a sequence of labels and return the number
- * of labels found.
+ * of labels found. strtok() is not used as we want to detect labels with
+ * length zero.
  */
 int label_array(const char *domain_name, label result[DNS_MAX_LABELS])
 {
@@ -234,13 +241,14 @@ int label_array(const char *domain_name, label result[DNS_MAX_LABELS])
     return (result[label_count - 1].len > 0) ? label_count : label_count - 1;
 }
 
-/* Validate a label according to the guidelines in RFC 1035.
+/* Validate a label according to the guidelines in RFC 1035. This could
+ * be relaxed if necessary.
  */
 int label_valid(const label *label)
 {
     int i;
 
-    if(label->len == 0 || label->len > DNS_MAX_LABEL_LEN)
+    if(label->len <= 0 || label->len > DNS_MAX_LABEL_LEN)
         return VERIFY_FALSE;
 
     if(!isalpha(label->text[0]) || !isalnum(label->text[label->len - 1]))
@@ -271,6 +279,36 @@ int label_match(const label *label1, const label *label2)
     }
 
     return VERIFY_TRUE;
+}
+
+/* Convert an ASN1 string which may not be null terminated into a
+ * standard null terminated string. Also check for embedded null
+ * characters.
+ */
+char *asn1_to_cstr(ASN1_STRING *astr)
+{
+    int astr_len = 0;
+    char *tmp = NULL;
+    char *cstr = NULL;
+
+    if(!(astr_len = ASN1_STRING_length(astr)))
+        return NULL;
+
+    if(!(tmp = (char *)ASN1_STRING_data(astr)))
+        return NULL;
+
+    /* Verify that the string does not contain embedded null characters.
+     */
+    if(memchr(tmp, '\0', astr_len))
+        return NULL;
+
+    if((cstr = malloc(astr_len + 1)) == NULL)
+        return NULL;
+
+    memcpy(cstr, tmp, astr_len);
+    cstr[astr_len] = '\0';
+
+    return cstr;
 }
 
 #endif /* USE_OPENSSL */
