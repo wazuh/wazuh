@@ -24,9 +24,16 @@ if [ "X${UNAME}" = "XFreeBSD" ]; then
     fi    
 
 # Darwin
-elif [ "X${UNAME}" = "Darwin" ]; then
-    echo "IPFW";
-    FILE="ipfw_mac.sh";
+elif [ "X${UNAME}" = "XDarwin" ]; then
+    # Is pfctl present?
+    which pfctl;
+    if [ $? = 0 ]; then
+        echo "PF";
+        FIlE="pf.sh";
+    else
+        echo "IPFW";
+        FILE="ipfw_mac.sh";
+    fi
         
 elif [ "X${UNAME}" = "XOpenBSD" ]; then
     if [ $? = 0 ]; then
