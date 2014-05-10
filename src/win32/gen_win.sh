@@ -10,6 +10,7 @@ WINPKG="win-pkg"
 ./unix2dos.pl ossec.conf > ossec-win.conf
 ./unix2dos.pl help.txt > help_win.txt
 ./unix2dos.pl ../../etc/internal_options.conf > internal_options-win.conf
+./unix2dos.pl ../../etc/local_internal_options-win.conf > local_internal_options-win.conf
 ./unix2dos.pl ../../LICENSE > LICENSE.txt
 ./unix2dos.pl ../../active-response/win/route-null.cmd > route-null.cmd
 ./unix2dos.pl ../../active-response/win/restart-ossec.cmd > restart-ossec.cmd
@@ -34,15 +35,15 @@ for i in ${CAT}; do
         if [ ! $? = 0 ]; then
             echo "Error copying ${source} to ${WINPKG}/${dest}"
             exit 1;
-        fi    
+        fi
         source=""
         dest=""
-    fi            
-done    
+    fi
+done
 
-# Final cleanup
-rm ${WINPKG}/os_crypto/md5/main.c
-rm ${WINPKG}/os_crypto/blowfish/main.c
-rm ${WINPKG}/os_crypto/sha1/main.c
-rm ${WINPKG}/os_crypto/md5_sha1/main.c
-rm ${WINPKG}/shared/rules_op.c
+# Final cleanup, -f will ignore if files do not exist
+rm -f ${WINPKG}/os_crypto/md5/main.c
+rm -f ${WINPKG}/os_crypto/blowfish/main.c
+rm -f ${WINPKG}/os_crypto/sha1/main.c
+rm -f ${WINPKG}/os_crypto/md5_sha1/main.c
+rm -f ${WINPKG}/shared/rules_op.c

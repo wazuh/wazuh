@@ -101,7 +101,7 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf)
 {
     int i = 0;
     char category[8];
-    char *tmp_str = NULL;
+    const char *tmp_str = NULL;
 
 
     /* Zeroing category */

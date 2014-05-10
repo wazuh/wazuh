@@ -28,13 +28,14 @@ typedef struct _xml_node
 }xml_node;
 
 #define XML_ERR_LENGTH  128
+typedef enum _XML_TYPE { XML_ATTR, XML_ELEM, XML_VARIABLE_BEGIN = '$' } XML_TYPE;
 
 /* XML structure */
 typedef struct _OS_XML
 {
     unsigned int cur;		/* Currently position (and last after reading) */
     int fol;		/* Currently position for the xml_access */
-    int *tp;		/* Item type	*/
+    XML_TYPE *tp;		/* Item type	*/
     unsigned int *rl;		/* Relation in the XML */
     int *ck;		/* If the item was closed or not */
     unsigned int *ln;        /* Currently xml file line */

@@ -26,9 +26,9 @@ ${MING_BASE}-gcc -o setup-iis.exe -Wall os_regex/*.c setup/setup-iis.c -I./
 ${MING_BASE}-gcc -o add-localfile.exe -Wall os_regex/*.c setup/add-localfile.c -I./
 ${MING_BASE}-gcc -o agent-auth.exe -Wall -UDARGV0 -DARGV0=\"agent-auth\" -D_WIN32_WINNT=0x0600 -DUSE_OPENSSL -DCLIENT -DWIN32 os_auth/main-client.c os_auth/ssl.c os_auth/check_cert.c addagent/validate.c shared/*.c os_net/*.c os_regex/*.c os_crypto/md5/*.c win_service.c -Iheaders/ -I./ -lwsock32 -lws2_32 -lssl -lcrypto
 
-cd lua 
-make -f Makefile.mingw mingw 
-cd ../ 
+cd lua
+make -f Makefile.mingw mingw
+cd ../
 cp lua/ossec-lua.exe ossec-lua.exe
 cp lua/ossec-luac.exe ossec-luac.exe
 
