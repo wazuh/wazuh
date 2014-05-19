@@ -46,7 +46,7 @@ fi
 
 
 # OpenBSD and FreeBSD pf
-if [ "X${UNAME}" = "XOpenBSD" -o "X${UNAME}" = "XFreeBSD" ]; then
+if [ "X${UNAME}" = "XOpenBSD" -o "X${UNAME}" = "XFreeBSD" -o "X${UNAME}" = "XDarwin" ]; then
   
   # Checking if pfctl is present
   ls ${PFCTL} > /dev/null 2>&1
