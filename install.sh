@@ -472,12 +472,12 @@ ConfigureServer()
             if [ "X${USER_EMAIL_ADDRESS}" = "X" ]; then
 
                 read EMAIL
-                echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
+                echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-\+]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
                 # Ugly e-mail validation
 			    while [ "$EMAIL" = "" -o ! ${RVAL} = 0 ] ; do
 				    $ECHO "   - ${whatsemail} "
 				    read EMAIL
-                    echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
+                    echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-\+]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
 			    done
             else
                 EMAIL=${USER_EMAIL_ADDRESS}
