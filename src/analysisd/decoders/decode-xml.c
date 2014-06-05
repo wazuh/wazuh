@@ -214,6 +214,7 @@ int ReadDecodeXML(char *file)
     char *xml_type = "type";
     char *xml_fts = "fts";
     char *xml_ftscomment = "ftscomment";
+    char *xml_accumulate = "accumulate";
 
     int i = 0;
     OSDecoderInfo *NULL_Decoder_tmp = NULL;
@@ -335,6 +336,7 @@ int ReadDecodeXML(char *file)
         pi->order = NULL;
         pi->plugindecoder = NULL;
         pi->fts = 0;
+        pi->accumulate = 0;
         pi->type = SYSLOG;
         pi->prematch = NULL;
         pi->program_name = NULL;
@@ -617,6 +619,12 @@ int ReadDecodeXML(char *file)
                 }
 
                 free(s_norder);
+            }
+
+            else if(strcasecmp(elements[j]->element,xml_accumulate)==0)
+            {
+                /* Enable Accumulator */
+                pi->accumulate = 1;
             }
 
             /* Getting the fts order */
