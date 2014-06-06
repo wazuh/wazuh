@@ -172,7 +172,12 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
 	FILETIME fTime, lfTime;
 	ULARGE_INTEGER ulargeTime;
 	struct tm tm_struct;
-	char result[80] = "";
+	char *result;
+
+	if (NULL == (result = malloc(80))) {
+		merror("%s: Not enough memory, could not process convert Timestanp", ARGV0);
+		return NULL;
+	}
 
 	memset(&tm_struct, 0, sizeof(tm_struct));
 
@@ -226,6 +231,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 	EVT_HANDLE context = NULL;
 	os_event event;
 	char final_msg[OS_MAXSTR];
+	char *timestamp;
 	
 	context = EvtCreateRenderContext(count, properties, EvtRenderContextValues);
 	
@@ -248,8 +254,9 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 	get_username_and_domain(&event);
 	get_messages(&event, evt, properties_values[5].StringVal);
 
+	timestamp = WinEvtTimeToString(event.time_created);
 	snprintf(final_msg, OS_MAXSTR, "%s WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
-			 WinEvtTimeToString(event.time_created),
+			 timestamp,
 			 event.name,
 			 event.level && strlen(event.level) ? event.level : "UNKNOWN",
 			 event.id,
@@ -258,6 +265,8 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 			 event.domain && strlen(event.domain) ? event.domain : "no domain",
 			 event.computer && strlen(event.computer) ? event.computer : "no computer",
 			 event.message && strlen(event.message) ? event.message : "no message");
+
+	free(timestamp);
 
 	if(SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0)
     {
