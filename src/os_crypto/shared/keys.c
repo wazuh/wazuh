@@ -26,7 +26,7 @@
 
 /* __memclear: Clears keys entries.
  */
-void __memclear(char *id, char *name, char *ip, char *key, int size)
+void __memclear(char *id, char *name, char *ip, char *key, size_t size)
 {
 	memset(id,'\0', size);
 	memset(name,'\0', size);
@@ -37,7 +37,7 @@ void __memclear(char *id, char *name, char *ip, char *key, int size)
 
 /* __chash: Creates the final key.
  */
-void __chash(keystore *keys, char *id, char *name, char *ip, char *key)
+void __chash(keystore *keys, const char *id, const char *name, char *ip, const char *key)
 {
 	os_md5 filesum1;
 	os_md5 filesum2;
@@ -90,28 +90,28 @@ void __chash(keystore *keys, char *id, char *name, char *ip, char *key)
     keys->keyentries[keys->keysize]->global = 0;
     keys->keyentries[keys->keysize]->fp = NULL;
 
-	
+
 
 	/** Generating final symmetric key **/
 
 	/* MD5 from name, id and key */
-	OS_MD5_Str(name, filesum1);	
+	OS_MD5_Str(name, filesum1);
 	OS_MD5_Str(id,  filesum2);
 
 
 	/* Generating new filesum1 */
 	snprintf(_finalstr, sizeof(_finalstr)-1, "%s%s", filesum1, filesum2);
 
-	
+
     /* Using just half of the first md5 (name/id) */
     OS_MD5_Str(_finalstr, filesum1);
-    filesum1[15] = '\0';	
+    filesum1[15] = '\0';
     filesum1[16] = '\0';
 
 
     /* Second md is just the key */
-    OS_MD5_Str(key, filesum2);	
-	
+    OS_MD5_Str(key, filesum2);
+
 
 	/* Generating final key */
 	memset(_finalstr,'\0', sizeof(_finalstr));
@@ -127,7 +127,7 @@ void __chash(keystore *keys, char *id, char *name, char *ip, char *key)
 
 
 	/* ready for next */
-	keys->keysize++;	
+	keys->keysize++;
 
 
 	return;
@@ -307,7 +307,7 @@ void OS_ReadKeys(keystore *keys)
 
 
     /* clear one last time before leaving */
-    __memclear(id, name, ip, key, KEYSIZE +1);		
+    __memclear(id, name, ip, key, KEYSIZE +1);
 
 
     /* Checking if there is any agent available */
@@ -393,7 +393,7 @@ void OS_FreeKeys(keystore *keys)
 /* int OS_CheckUpdateKeys(keystore *keys)
  * Checks if key changed.
  */
-int OS_CheckUpdateKeys(keystore *keys)
+int OS_CheckUpdateKeys(const keystore *keys)
 {
     if(keys->file_change !=  File_DateofChange(KEYS_FILE))
     {
@@ -455,7 +455,7 @@ int OS_IsAllowedIP(keystore *keys, char *srcip)
 /* int OS_IsAllowedName
  * Checks if the agent name is valid.
  */
-int OS_IsAllowedName(keystore *keys, char *name)
+int OS_IsAllowedName(const keystore *keys, const char *name)
 {
     int i = 0;
 

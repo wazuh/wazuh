@@ -19,9 +19,9 @@
 
 typedef char os_md5[33];
 
-int OS_MD5_File(char *fname, char * output);
+int OS_MD5_File(const char *fname, os_md5 output);
 
-int OS_MD5_Str(char * str, char * output);
+int OS_MD5_Str(const char * str, os_md5 output);
 
 #endif
 

@@ -66,7 +66,7 @@ void OS_ReadKeys(keystore *keys);
 void OS_FreeKeys(keystore *keys);
 
 /* Checks if key changed. */
-int OS_CheckUpdateKeys(keystore *keys);
+int OS_CheckUpdateKeys(const keystore *keys);
 
 /* Update the keys if they changed on the system. */
 int OS_UpdateKeys(keystore *keys);
@@ -76,7 +76,7 @@ int OS_UpdateKeys(keystore *keys);
 void OS_StartCounter(keystore *keys);
 
 /* Remove counter for id. */
-void OS_RemoveCounter(char *id);
+void OS_RemoveCounter(const char *id);
 
 
 /** Function prototypes -- agent authorization **/
@@ -88,7 +88,7 @@ int OS_IsAllowedIP(keystore *keys, char *srcip);
 int OS_IsAllowedID(keystore *keys, char *id);
 
 /* Checks if name is valid */
-int OS_IsAllowedName(keystore *keys, char *name);
+int OS_IsAllowedName(const keystore *keys, const char *name);
 
 /* Check if the id is valid and dynamic */
 int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip);
@@ -102,7 +102,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
                  int id, int buffer_size);
 
 /* Creates an ossec message (encrypts and compress) */
-int CreateSecMSG(keystore *keys, char *msg, char *msg_encrypted, int id);
+int CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, int id);
 
 
 

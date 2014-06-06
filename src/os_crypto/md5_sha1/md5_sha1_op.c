@@ -21,7 +21,7 @@
 
 
 
-int OS_MD5_SHA1_File(char *fname, char *prefilter_cmd, char *md5output, char *sha1output)
+int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output)
 {
     int n;
     FILE *fp;
