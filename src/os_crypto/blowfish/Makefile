@@ -12,13 +12,12 @@ SRCS = bf_op.c bf_skey.c bf_enc.c
 bf_OBJS = bf_op.o bf_skey.o bf_enc.o
 
 
-bf:
-		$(CC) $(CFLAGS) -c $(SRCS)
-		ar cru bf_op.a $(bf_OBJS)
-		ranlib bf_op.a
+bf_op.a: ${SRCS} *.h
+		${CC} ${CFLAGS} -c ${SRCS}
+		${BUILDLIB} bf_op.a ${bf_OBJS}
 
-main:
-		$(CC) $(CFLAGS) -o main main.c bf_op.a
+main: main.c bf_op.a
+		${CC} ${CFLAGS} -o main main.c bf_op.a
 
 clean:
-		rm -f *.o *.a 
+		${CLEAN} main
