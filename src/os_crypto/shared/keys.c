@@ -252,6 +252,7 @@ void OS_ReadKeys(keystore *keys)
         if(!tmp_str)
         {
             merror(INVALID_KEY, __local_name, buffer);
+            continue;
         }
 
         *tmp_str = '\0';
@@ -265,6 +266,7 @@ void OS_ReadKeys(keystore *keys)
         if(!tmp_str)
         {
             merror(INVALID_KEY, __local_name, buffer);
+            continue;
         }
 
         *tmp_str = '\0';
