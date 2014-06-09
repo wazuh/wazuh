@@ -1,16 +1,25 @@
 #!/bin/sh
 
-echo Making windows agent
-BASES="${MING_BASE} amd64-mingw32msvc i586-mingw32msvc i686-pc-mingw32  i686-w64-mingw32"
+echo "Making windows agent"
+BASES="amd64-mingw32msvc i586-mingw32msvc i686-pc-mingw32  i686-w64-mingw32"
+
+if [ ${MING_BASE} ]; then
+  BASES="${BASES} ${MING_BASE}"
+fi
 
 for i in ${BASES}; do
-  which ${i}-gcc
+  which ${i}-gcc > /dev/null 2>&1
   if [ "$?" = "0" ]; then
     export MING_BASE=${i}
   fi
 done
 
-#echo ${MING_BASE}
+if [ ! ${MING_BASE} ]; then
+  echo "Could not find suitable base from (${BASES})"
+  exit 1
+fi
+
+echo "Using ${MING_BASE} as base"
 
 # exit on error
 set -e
