@@ -193,12 +193,13 @@ Section "OSSEC Agent (required)" MainSec
 
     ; get current local time
     ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
-    !define CURRENTTIME "$2-$1-$0 $4:$5:$6"
+    Var /global CURRENTTIME
+    StrCpy $CURRENTTIME "$2-$1-$0 $4:$5:$6"
 
     ; write version and install information
     VersionInstall:
         FileOpen $0 "$INSTDIR\VERSION.txt" w
-        FileWrite $0 "${NAME} v${VERSION} - Installed on ${CURRENTTIME}"
+        FileWrite $0 "${NAME} v${VERSION} - Installed on $CURRENTTIME"
         FileClose $0
         IfErrors VersionError VersionComplete
     VersionError:
