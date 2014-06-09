@@ -193,7 +193,7 @@ Section "OSSEC Agent (required)" MainSec
 
     ; get current local time
     ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
-    Var /global CURRENTTIME
+    var /global CURRENTTIME
     StrCpy $CURRENTTIME "$2-$1-$0 $4:$5:$6"
 
     ; write version and install information
