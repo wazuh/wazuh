@@ -48,6 +48,7 @@ char *OS_AddNewAgent(char *name, char *ip, char *id, char *key)
     OS_MD5_Str(str1, md1);
     OS_MD5_Str(str2, md2);
 
+    free(muname);
 
     nid[8] = '\0';
     if(id == NULL)

@@ -122,6 +122,12 @@ int OS_ApplyVariables(OS_XML *_lxml)
             if(strlen(_lxml->ct[i]) <= 2)
                 continue;
 
+            /* check if any variable is defined */
+            if(s == 0)
+            {
+                continue;
+            }
+
 
             /* Duplicating string */
             p = strdup(_lxml->ct[i]);

@@ -442,7 +442,7 @@ START_TEST(test_invalidvariable2)
 }
 END_TEST
 
-START_TEST(test_unknownvariable)
+START_TEST(test_unknownvariable1)
 {
     char xml_file_name[256];
     create_xml_file("<var name=\"test\">content</var><root>$var</root>", xml_file_name, 256);
@@ -454,6 +454,13 @@ START_TEST(test_unknownvariable)
 
     OS_ClearXML(&xml);
     unlink(xml_file_name);
+}
+END_TEST
+
+START_TEST(test_unknownvariable2)
+{
+    assert_os_xml_eq("<root>$var</root>",
+            "<root>$var</root>");
 }
 END_TEST
 
@@ -933,7 +940,8 @@ Suite *test_suite(void)
     tcase_add_test(tc_core, test_invalidvariablename);
     tcase_add_test(tc_core, test_invalidvariable);
     tcase_add_test(tc_core, test_invalidvariable2);
-    tcase_add_test(tc_core, test_unknownvariable);
+    tcase_add_test(tc_core, test_unknownvariable1);
+    tcase_add_test(tc_core, test_unknownvariable2);
     tcase_add_test(tc_core, test_infiniteattribute2);
     tcase_add_test(tc_core, test_invalidattributestart);
     tcase_add_test(tc_core, test_invalidattributeclosing);

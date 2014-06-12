@@ -13,6 +13,10 @@
 ; include SimpleSC
 !addplugindir "SimpleSC"
 
+; include GetTime
+!include "FileFunc.nsh"
+!insertmacro GetTime
+
 ; output file
 !ifndef OutFile
     !define OutFile "ossec-win32-agent.exe"
@@ -23,7 +27,6 @@
 !define MUI_UNICON ossec-uninstall.ico
 !define VERSION "2.8"
 !define NAME "OSSEC HIDS"
-!define /date CDATE "%b %d %Y at %H:%M:%S"
 !define SERVICE "OssecSvc"
 
 Name "${NAME} Windows Agent v${VERSION}"
@@ -188,10 +191,15 @@ Section "OSSEC Agent (required)" MainSec
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "NoRepair" 1
     WriteUninstaller "uninstall.exe"
 
+    ; get current local time
+    ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
+    var /global CURRENTTIME
+    StrCpy $CURRENTTIME "$2-$1-$0 $4:$5:$6"
+
     ; write version and install information
     VersionInstall:
         FileOpen $0 "$INSTDIR\VERSION.txt" w
-        FileWrite $0 "${NAME} v${VERSION} - Installed on ${CDATE}"
+        FileWrite $0 "${NAME} v${VERSION} - Installed on $CURRENTTIME"
         FileClose $0
         IfErrors VersionError VersionComplete
     VersionError:

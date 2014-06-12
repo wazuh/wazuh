@@ -26,6 +26,7 @@
  */
 
 #include "shared.h"
+#include "check_cert.h"
 
 #ifndef USE_OPENSSL
 
@@ -47,11 +48,14 @@ void report_help()
 {
     printf("\nOSSEC HIDS %s: Connects to the manager to extract the agent key.\n", ARGV0);
     printf("Available options:\n");
-    printf("\t-h                  This help message.\n");
-    printf("\t-m <manager ip>     Manager IP Address.\n");
-    printf("\t-p <port>           Manager port (default 1515).\n");
-    printf("\t-A <agent name>     Agent name (default is the hostname).\n");
-    printf("\t-D <OSSEC Dir>      Location where OSSEC is installed.\n");
+    printf("\t-h                      This help message.\n");
+    printf("\t-m <manager ip>         Manager IP Address.\n");
+    printf("\t-p <port>               Manager port (default 1515).\n");
+    printf("\t-A <agent name>         Agent name (default is the hostname).\n");
+    printf("\t-D <OSSEC Dir>          Location where OSSEC is installed.\n");
+    printf("\t-v <Path to CA Cert>    Full path to CA certificate used to verify the server.\n");
+    printf("\t-x <Path to agent cert> Full path to agent certificate.\n");
+    printf("\t-k <Path to agent key>  Full path to agent key.\n");
     exit(1);
 }
 
@@ -62,9 +66,9 @@ int main(int argc, char **argv)
     int c;
     // TODO: implement or delete
     int test_config __attribute__((unused)) = 0;
-    #ifndef WIN32
+#ifndef WIN32
     int gid = 0;
-    #endif
+#endif
 
     int sock = 0, portnum, ret = 0;
     char *port = "1515";
@@ -75,22 +79,28 @@ int main(int argc, char **argv)
     // TODO: implement or delete
     char *cfg __attribute__((unused)) = DEFAULTCPATH;
     char *manager = NULL;
+    char *ipaddress = NULL;
     char *agentname = NULL;
+    char *agent_cert = NULL;
+    char *agent_key = NULL;
+    char *ca_cert = NULL;
     char lhostname[512 + 1];
     char buf[2048 +1];
     SSL_CTX *ctx;
     SSL *ssl;
     BIO *sbio;
-
-
     bio_err = 0;
     buf[2048] = '\0';
+
+#ifdef WIN32
+    WSADATA wsaData;
+#endif
 
 
     /* Setting the name */
     OS_SetName(ARGV0);
 
-    while((c = getopt(argc, argv, "Vdhu:g:D:c:m:p:A:")) != -1)
+    while((c = getopt(argc, argv, "Vdhu:g:D:c:m:p:A:v:x:k:")) != -1)
     {
         switch(c){
             case 'V':
@@ -145,6 +155,21 @@ int main(int argc, char **argv)
                 }
                 port = optarg;
                 break;
+            case 'v':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                ca_cert = optarg;
+                break;
+            case 'x':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                agent_cert = optarg;
+                break;
+            case 'k':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                agent_key = optarg;
+                break;
             default:
                 report_help();
                 break;
@@ -155,7 +180,7 @@ int main(int argc, char **argv)
     debug1(STARTED_MSG,ARGV0);
 
 
-    #ifndef WIN32
+#ifndef WIN32
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if(gid < 0)
@@ -177,12 +202,17 @@ int main(int argc, char **argv)
     /* Creating PID files */
     if(CreatePID(ARGV0, getpid()) < 0)
         ErrorExit(PID_ERROR,ARGV0);
-    #endif
-
+#else
+    /* Initialize Windows socket stuff.
+     */
+    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
+    {
+        ErrorExit("%s: WSAStartup() failed", ARGV0);
+    }
+#endif /* WIN32 */
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
-
 
     if(agentname == NULL)
     {
@@ -198,7 +228,7 @@ int main(int argc, char **argv)
 
 
     /* Starting SSL */
-    ctx = os_ssl_keys(1, NULL);
+    ctx = os_ssl_keys(0, dir, agent_cert, agent_key, ca_cert);
     if(!ctx)
     {
         merror("%s: ERROR: SSL error. Exiting.", ARGV0);
@@ -236,6 +266,20 @@ int main(int argc, char **argv)
 
 
     printf("INFO: Connected to %s:%s\n", manager, port);
+
+    /* Additional verification of the manager's certificate if a hostname
+     * rather than an IP address is given on the command line. Could change
+     * this to do the additional validation on IP addresses as well if needed.
+     */
+    if(ca_cert)
+    {
+        printf("INFO: Verifying manager's certificate\n");
+        if(check_x509_cert(ssl, manager) != VERIFY_TRUE) {
+            debug1("%s: DEBUG: Unable to verify server certificate.", ARGV0);
+            exit(1);
+        }
+    }
+
     printf("INFO: Using agent name as: %s\n", agentname);
 
 
@@ -324,5 +368,5 @@ int main(int argc, char **argv)
     exit(0);
 }
 
-#endif
-/* EOF */
+#endif /* USE_OPENSSL */
+

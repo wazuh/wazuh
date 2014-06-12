@@ -25,6 +25,8 @@
  */
 
 
+#include <sys/wait.h>
+
 #include "shared.h"
 #include "auth.h"
 
@@ -34,6 +36,16 @@ int POOL_SIZE = 512;
 /* ossec-reportd - Runs manual reports. */
 void report_help()
 {
+    printf("\nOSSEC HIDS %s: Automatically provide a key to clients.\n", ARGV0);
+    printf("Available options:\n");
+    printf("\t-h                       This help message.\n");
+    printf("\t-i                       Use client's source IP address.\n");
+    printf("\t-p <port>                Manager port (default 1515).\n");
+    printf("\t-D <OSSEC Dir>           Location where OSSEC is installed.\n");
+    printf("\t-v <Path to CA Cert>     Full path to CA certificate used to verify clients.\n");
+    printf("\t-x <Path to server cert> Full path to server certificate.\n");
+    printf("\t-k <Path to server key>  Full path to server key.\n");
+    exit(1);
 }
 
 #ifndef USE_OPENSSL
@@ -87,6 +99,9 @@ int main(int argc, char **argv)
     char *group = GROUPGLOBAL;
     // TODO: implement or delete
     char *cfg __attribute__((unused)) = DEFAULTCPATH;
+    char *server_cert = NULL;
+    char *server_key = NULL;
+    char *ca_cert = NULL;
     char buf[4096 +1];
     SSL_CTX *ctx;
     SSL *ssl;
@@ -106,7 +121,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
     /* add an option to use the ip on the socket to tie the name to a
        specific address */
-    while((c = getopt(argc, argv, "Vdhiu:g:D:c:m:p:")) != -1)
+    while((c = getopt(argc, argv, "Vdhiu:g:D:c:m:p:v:x:k:")) != -1)
     {
         switch(c){
             case 'V':
@@ -153,6 +168,21 @@ int main(int argc, char **argv)
                     ErrorExit("%s: Invalid port: %s", ARGV0, optarg);
                 }
                 port = optarg;
+                break;
+            case 'v':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                ca_cert = optarg;
+                break;
+            case 'x':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                server_cert = optarg;
+                break;
+            case 'k':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                server_key = optarg;
                 break;
             default:
                 report_help();
@@ -208,7 +238,7 @@ int main(int argc, char **argv)
 
 
     /* Starting SSL */
-    ctx = os_ssl_keys(0, dir);
+    ctx = os_ssl_keys(1, dir, server_cert, server_key, ca_cert);
     if(!ctx)
     {
         merror("%s: ERROR: SSL error. Exiting.", ARGV0);
@@ -410,5 +440,5 @@ int main(int argc, char **argv)
 }
 
 
-#endif
-/* EOF */
+#endif /* USE_OPENSSL */
+
