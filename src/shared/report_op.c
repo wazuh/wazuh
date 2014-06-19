@@ -24,12 +24,12 @@ void l_print_out(const char *msg, ...)
     if(__g_rtype)
     {
         (void)vfprintf(__g_rtype, msg, args);
-        (void)fprintf(__g_rtype, "\n");
+        (void)fprintf(__g_rtype, "\r\n");
     }
     else
     {
         (void)vfprintf(stderr, msg, args);
-        (void)fprintf(stderr, "\n");
+        (void)fprintf(stderr, "\r\n");
     }
     va_end(args);
 }
