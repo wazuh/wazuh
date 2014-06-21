@@ -137,6 +137,12 @@ void *comp_mswin_targetuser_calleruser_diff(Eventinfo *lf)
 void *is_simple_http_request(Eventinfo *lf)
 {
 
+    if(!lf->url)
+    {
+        return(NULL);
+    }
+
+
     /* Simple GET / request. */
     if(strcmp(lf->url,"/") == 0)
     {
