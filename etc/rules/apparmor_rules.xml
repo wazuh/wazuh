@@ -1,0 +1,31 @@
+  <!-- Copyright 2014 Dan Parriott (ddpbsd@gmail.com)
+  -  This program is a free software; you can redistribute it
+  -  and/or modify it under the terms of the GNU General Public
+  -  License (version 2) as published by the FSF - Free Software
+  -  Foundation.
+  -
+  -  License details: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+  -->
+
+
+
+  <!-- Modify it at your will. -->
+
+<group name="local,syslog,apparmor">
+
+  <rule id="40000" level="3">
+    <decoded_as>iptables</decoded_as>
+    <match> apparmor=</match>
+    <status>ALLOWED</status>
+    <description>Apparmor grouping</description>
+  </rule>
+
+  <rule id="400002" level="0">
+    <if_sid>400001</if_sid>
+    <description>Ignore</description>
+  </rule>
+
+</group> <!-- SYSLOG,LOCAL -->
+
+
+  <!-- EOF -->
