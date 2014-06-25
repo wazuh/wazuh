@@ -2521,8 +2521,8 @@ Jun 24 10:35:29 hostname kernel: [49787.970285] audit: type=1400 audit(140359892
 <decoder name="apparmor">
   <parent>iptables</parent>
   <prematch> apparmor=</prematch>
-  <regex> apparmor=(\S+) </regex>
-  <order>status</order>
+  <regex> apparmor="(\S+)" operation="(\S+)"</regex>
+  <order>status, extra_data</order>
 </decoder>
 
 

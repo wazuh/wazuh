@@ -13,16 +13,23 @@
 
 <group name="local,syslog,apparmor">
 
-  <rule id="40000" level="3">
+  <rule id="400001" level="3">
     <decoded_as>iptables</decoded_as>
     <match> apparmor=</match>
-    <status>ALLOWED</status>
     <description>Apparmor grouping</description>
   </rule>
 
   <rule id="400002" level="0">
     <if_sid>400001</if_sid>
+    <status>ALLOWED|STATUS</status>
     <description>Ignore</description>
+  </rule>
+
+  <rule id="400003" level="3">
+    <if_sid>400001</if_sid>
+    <status>DENIED</status>
+    <match> apparmor=</match>
+    <description>Apparmor DENIED</description>
   </rule>
 
 </group> <!-- SYSLOG,LOCAL -->
