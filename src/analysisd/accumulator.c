@@ -308,7 +308,9 @@ int acm_str_replace(char **dst, const char *src) {
     }
 
     // Free dst, and malloc the memory we need!
-    free(*dst);
+    if( dst != NULL ) {
+        free(*dst); // If *dst is NULL, free() does nothing
+    }
     os_malloc(slen+1, *dst);
 
     result = strcpy(*dst, src) == NULL ? -1 : 0;
