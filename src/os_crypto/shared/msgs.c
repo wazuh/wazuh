@@ -22,8 +22,8 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/blowfish/bf_op.h"
 
-static void StoreSenderCounter(const keystore *keys, int global, int local) __attribute((nonnull));
-static void StoreCounter(const keystore *keys, int id, int global, int local) __attribute((nonnull));
+static void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local) __attribute((nonnull));
+static void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local) __attribute((nonnull));
 static char *CheckSum(char *msg) __attribute((nonnull));
 
 
@@ -181,7 +181,7 @@ void OS_RemoveCounter(const char *id)
 /** StoreSenderCounter((keystore *keys, int global, int local)
  * Store sender counter.
  */
-static void StoreSenderCounter(const keystore *keys, int global, int local)
+static void StoreSenderCounter(const keystore *keys, unsigned int global, unsigned int local)
 {
     /* Writting at the beginning of the file */
     fseek(keys->keyentries[keys->keysize]->fp, 0, SEEK_SET);
@@ -192,7 +192,7 @@ static void StoreSenderCounter(const keystore *keys, int global, int local)
 /* StoreCount(keystore *keys, int id, int global, int local)
  * Store the global and local count of events.
  */
-static void StoreCounter(const keystore *keys, int id, int global, int local)
+static void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local)
 {
     /* Writting at the beginning of the file */
     fseek(keys->keyentries[id]->fp, 0, SEEK_SET);
