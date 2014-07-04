@@ -115,7 +115,7 @@ static void __chash(keystore *keys, const char *id, const char *name, char *ip, 
 
 
 	/* Generating final key */
-	memset(_finalstr,'\0', sizeof(_finalstr));
+	//memset(_finalstr,'\0', sizeof(_finalstr));
 	snprintf(_finalstr, 49, "%s%s", filesum2, filesum1);
 
 
