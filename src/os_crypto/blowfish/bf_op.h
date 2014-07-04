@@ -22,7 +22,7 @@
 
 
 int OS_BF_Str(const char * input, char *output, const char *charkey,
-                            long size, short int action);
+                            long size, short int action) __attribute((nonnull));
 
 #endif
 

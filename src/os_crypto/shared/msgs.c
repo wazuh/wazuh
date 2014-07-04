@@ -22,6 +22,10 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/blowfish/bf_op.h"
 
+static void StoreSenderCounter(const keystore *keys, int global, int local) __attribute((nonnull));
+static void StoreCounter(const keystore *keys, int id, int global, int local) __attribute((nonnull));
+static char *CheckSum(char *msg) __attribute((nonnull));
+
 
 /** Sending counts **/
 unsigned int global_count = 0;
@@ -177,7 +181,7 @@ void OS_RemoveCounter(const char *id)
 /** StoreSenderCounter((keystore *keys, int global, int local)
  * Store sender counter.
  */
-void StoreSenderCounter(const keystore *keys, int global, int local)
+static void StoreSenderCounter(const keystore *keys, int global, int local)
 {
     /* Writting at the beginning of the file */
     fseek(keys->keyentries[keys->keysize]->fp, 0, SEEK_SET);
@@ -188,7 +192,7 @@ void StoreSenderCounter(const keystore *keys, int global, int local)
 /* StoreCount(keystore *keys, int id, int global, int local)
  * Store the global and local count of events.
  */
-void StoreCounter(const keystore *keys, int id, int global, int local)
+static void StoreCounter(const keystore *keys, int id, int global, int local)
 {
     /* Writting at the beginning of the file */
     fseek(keys->keyentries[id]->fp, 0, SEEK_SET);
@@ -200,7 +204,7 @@ void StoreCounter(const keystore *keys, int id, int global, int local)
  * Verify the checksum of the message.
  * Returns NULL on error or the message on success.
  */
-char *CheckSum(char *msg)
+static char *CheckSum(char *msg)
 {
     os_md5 recvd_sum;
     os_md5 checksum;

@@ -60,38 +60,38 @@ typedef struct _keystore
 int OS_CheckKeys();
 
 /* Read the keys */
-void OS_ReadKeys(keystore *keys);
+void OS_ReadKeys(keystore *keys) __attribute((nonnull));
 
 /* Frees the auth keys. */
-void OS_FreeKeys(keystore *keys);
+void OS_FreeKeys(keystore *keys) __attribute((nonnull));
 
 /* Checks if key changed. */
-int OS_CheckUpdateKeys(const keystore *keys);
+int OS_CheckUpdateKeys(const keystore *keys) __attribute((nonnull));
 
 /* Update the keys if they changed on the system. */
-int OS_UpdateKeys(keystore *keys);
+int OS_UpdateKeys(keystore *keys) __attribute((nonnull));
 
 
 /* Starts counter for all agents */
-void OS_StartCounter(keystore *keys);
+void OS_StartCounter(keystore *keys) __attribute((nonnull));
 
 /* Remove counter for id. */
-void OS_RemoveCounter(const char *id);
+void OS_RemoveCounter(const char *id) __attribute((nonnull));
 
 
 /** Function prototypes -- agent authorization **/
 
 /* Checks if the ip is allowed */
-int OS_IsAllowedIP(keystore *keys, char *srcip);
+int OS_IsAllowedIP(keystore *keys, char *srcip) __attribute((nonnull(1)));
 
 /* Checks if the id is allowed */
-int OS_IsAllowedID(keystore *keys, char *id);
+int OS_IsAllowedID(keystore *keys, char *id) __attribute((nonnull(1)));
 
 /* Checks if name is valid */
-int OS_IsAllowedName(const keystore *keys, const char *name);
+int OS_IsAllowedName(const keystore *keys, const char *name) __attribute((nonnull));
 
 /* Check if the id is valid and dynamic */
-int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip);
+int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip) __attribute((nonnull(1)));
 
 
 
@@ -99,10 +99,10 @@ int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip);
 
 /* Decrypt and decompress a remote message. */
 char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
-                 int id, int buffer_size);
+                 int id, int buffer_size) __attribute((nonnull));
 
 /* Creates an ossec message (encrypts and compress) */
-int CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, int id);
+int CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, int id) __attribute((nonnull));
 
 
 

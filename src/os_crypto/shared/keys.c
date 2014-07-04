@@ -22,11 +22,12 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/blowfish/bf_op.h"
 
-
+static void __memclear(char *id, char *name, char *ip, char *key, size_t size) __attribute((nonnull));
+static void __chash(keystore *keys, const char *id, const char *name, char *ip, const char *key) __attribute((nonnull));
 
 /* __memclear: Clears keys entries.
  */
-void __memclear(char *id, char *name, char *ip, char *key, size_t size)
+static void __memclear(char *id, char *name, char *ip, char *key, size_t size)
 {
 	memset(id,'\0', size);
 	memset(name,'\0', size);
@@ -37,7 +38,7 @@ void __memclear(char *id, char *name, char *ip, char *key, size_t size)
 
 /* __chash: Creates the final key.
  */
-void __chash(keystore *keys, const char *id, const char *name, char *ip, const char *key)
+static void __chash(keystore *keys, const char *id, const char *name, char *ip, const char *key)
 {
 	os_md5 filesum1;
 	os_md5 filesum2;
