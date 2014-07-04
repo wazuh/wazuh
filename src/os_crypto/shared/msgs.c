@@ -398,6 +398,11 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
                 f_msg++;
                 return(f_msg);
             }
+            else
+            {
+                merror(ENCFORMAT_ERROR, __local_name,keys->keyentries[id]->ip->ip);
+                return (NULL);
+            }
         }
 
 
@@ -414,6 +419,11 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
             {
                 f_msg++;
                 return(f_msg);
+            }
+            else
+            {
+                merror(ENCFORMAT_ERROR, __local_name,keys->keyentries[id]->ip->ip);
+                return (NULL);
             }
         }
 
