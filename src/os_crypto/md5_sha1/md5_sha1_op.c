@@ -29,8 +29,6 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
     unsigned char sha1_digest[SHA_DIGEST_LENGTH];
     unsigned char md5_digest[16];
 
-    char cmd[OS_MAXSTR];
-
     SHA_CTX sha1_ctx;
     MD5_CTX md5_ctx;
 
@@ -46,12 +44,13 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
 	if(!fp)
 	    return(-1);
     } else {
-	strncpy(cmd, prefilter_cmd, sizeof(cmd) - 1);
-	strcat(cmd, " ");
-	strncat(cmd, fname, sizeof(cmd) - strlen(cmd) - 1);
-	fp = popen(cmd, "r");
-	if(!fp)
-	    return(-1);
+        char cmd[OS_MAXSTR];
+        strncpy(cmd, prefilter_cmd, sizeof(cmd) - 1);
+        strcat(cmd, " ");
+        strncat(cmd, fname, sizeof(cmd) - strlen(cmd) - 1);
+        fp = popen(cmd, "r");
+        if(!fp)
+            return(-1);
     }
 
     /* Initializing both hashes */
