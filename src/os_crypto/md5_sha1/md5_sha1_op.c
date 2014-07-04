@@ -45,9 +45,7 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
 	    return(-1);
     } else {
         char cmd[OS_MAXSTR];
-        strncpy(cmd, prefilter_cmd, sizeof(cmd) - 1);
-        strcat(cmd, " ");
-        strncat(cmd, fname, sizeof(cmd) - strlen(cmd) - 1);
+        snprintf(cmd, sizeof(cmd), "%s %s", prefilter_cmd, fname);
         fp = popen(cmd, "r");
         if(!fp)
             return(-1);
