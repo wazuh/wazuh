@@ -43,7 +43,7 @@ void print_out(const char *msg,...) __attribute__((format(printf, 1, 2)));
 
 void log2file(const char * msg,... ) __attribute__((format(printf, 1, 2)));
 
-void ErrorExit(const char *msg,...) __attribute__((format(printf, 1, 2)));
+void ErrorExit(const char *msg,...) __attribute__((format(printf, 1, 2))) __attribute__ ((noreturn));
 
 
 /* Use these three functions to set when you
