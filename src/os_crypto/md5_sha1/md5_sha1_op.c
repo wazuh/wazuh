@@ -40,15 +40,24 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
 
     /* Use prefilter_cmd if set */
     if (prefilter_cmd == NULL) {
-	fp = fopen(fname,"r");
-	if(!fp)
-	    return(-1);
+        fp = fopen(fname,"r");
+        if(!fp)
+        {
+            return(-1);
+        }
     } else {
         char cmd[OS_MAXSTR];
-        snprintf(cmd, sizeof(cmd), "%s %s", prefilter_cmd, fname);
+        size_t target_length = strlen(prefilter_cmd) + 1 + strlen(fname);
+        int res = snprintf(cmd, sizeof(cmd), "%s %s", prefilter_cmd, fname);
+        if(res < 0 || (unsigned int)res != target_length)
+        {
+            return (-1);
+        }
         fp = popen(cmd, "r");
         if(!fp)
+        {
             return(-1);
+        }
     }
 
     /* Initializing both hashes */
