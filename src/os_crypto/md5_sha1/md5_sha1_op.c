@@ -23,7 +23,7 @@
 
 int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output)
 {
-    int n;
+    size_t n;
     FILE *fp;
     unsigned char buf[2048 +2];
     unsigned char sha1_digest[SHA_DIGEST_LENGTH];
@@ -60,8 +60,8 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
     while((n = fread(buf, 1, 2048, fp)) > 0)
     {
         buf[n] = '\0';
-        SHA1_Update(&sha1_ctx, buf, (unsigned long)n);
-        MD5Update(&md5_ctx, buf, n);
+        SHA1_Update(&sha1_ctx, buf, n);
+        MD5Update(&md5_ctx, buf, (unsigned)n);
     }
 
     SHA1_Final(&(sha1_digest[0]), &sha1_ctx);
