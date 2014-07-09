@@ -28,22 +28,22 @@ static char *CheckSum(char *msg) __attribute((nonnull));
 
 
 /** Sending counts **/
-unsigned int global_count = 0;
-unsigned int local_count  = 0;
+static unsigned int global_count = 0;
+static unsigned int local_count  = 0;
 
 
 /** Average compression rates **/
-int evt_count = 0;
-int rcv_count = 0;
-unsigned int c_orig_size = 0;
-unsigned int c_comp_size = 0;
+static unsigned int evt_count = 0;
+static unsigned int rcv_count = 0;
+static unsigned int c_orig_size = 0;
+static unsigned int c_comp_size = 0;
 
 
 /** Static variables (read from define file) **/
-int _s_comp_print = 0;
-int _s_recv_flush = 0;
+static unsigned int _s_comp_print = 0;
+static unsigned int _s_recv_flush = 0;
 
-int _s_verify_counter = 1;
+static int _s_verify_counter = 1;
 
 
 /** OS_StartCounter.
@@ -51,13 +51,13 @@ int _s_verify_counter = 1;
  */
 void OS_StartCounter(keystore *keys)
 {
-    int i;
+    unsigned int i;
     char rids_file[OS_FLSIZE +1];
 
     rids_file[OS_FLSIZE] = '\0';
 
 
-    debug1("%s: OS_StartCounter: keysize: %d", __local_name, keys->keysize);
+    debug1("%s: OS_StartCounter: keysize: %u", __local_name, keys->keysize);
 
 
     /* Starting receiving counter */
@@ -127,14 +127,14 @@ void OS_StartCounter(keystore *keys)
 
             if(i == keys->keysize)
             {
-                verbose("%s: INFO: Assigning sender counter: %d:%d",
+                verbose("%s: INFO: Assigning sender counter: %u:%u",
                             __local_name, g_c, l_c);
                 global_count = g_c;
                 local_count = l_c;
             }
             else
             {
-                verbose("%s: INFO: Assigning counter for agent %s: '%d:%d'.",
+                verbose("%s: INFO: Assigning counter for agent %s: '%u:%u'.",
                             __local_name, keys->keyentries[i]->name, g_c, l_c);
 
                 keys->keyentries[i]->global = g_c;
@@ -148,7 +148,7 @@ void OS_StartCounter(keystore *keys)
     /* Getting counter values */
     if(_s_recv_flush == 0)
     {
-        _s_recv_flush = getDefine_Int("remoted",
+        _s_recv_flush = (unsigned int) getDefine_Int("remoted",
                                       "recv_counter_flush",
                                       10, 999999);
     }
@@ -156,7 +156,7 @@ void OS_StartCounter(keystore *keys)
     /* Average printout values */
     if(_s_comp_print == 0)
     {
-        _s_comp_print = getDefine_Int("remoted",
+        _s_comp_print = (unsigned int) getDefine_Int("remoted",
                                       "comp_average_printout",
                                       10, 999999);
     }
@@ -229,9 +229,8 @@ static char *CheckSum(char *msg)
 
 /* ReadSecMSG v0.2: 2005/02/10 */
 char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
-                                 int id, int buffer_size)
+                                 int id, unsigned int buffer_size)
 {
-    int cmp_size;
     unsigned int msg_global = 0;
     unsigned int msg_local = 0;
 
@@ -272,8 +271,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
         }
 
         /* Uncompressing */
-        cmp_size = os_zlib_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR);
-        if(!cmp_size)
+        if(!os_zlib_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR))
         {
             merror(UNCOMPRESS_ERR, __local_name);
             return(NULL);
@@ -292,7 +290,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 
 
         /* Checking count -- protecting against replay attacks */
-        msg_global = atoi(f_msg);
+        msg_global = (unsigned int) atoi(f_msg);
         f_msg+=10;
 
         /* Checking for the right message format */
@@ -303,7 +301,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
         }
         f_msg++;
 
-        msg_local = atoi(f_msg);
+        msg_local = (unsigned int) atoi(f_msg);
         f_msg+=5;
 
 
@@ -349,8 +347,8 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 
 
         /* Warn about duplicated messages */
-        merror("%s: WARN: Duplicate error:  global: %d, local: %d, "
-                "saved global: %d, saved local:%d",
+        merror("%s: WARN: Duplicate error:  global: %u, local: %u, "
+                "saved global: %u, saved local:%u",
                 __local_name,
                 msg_global,
                 msg_local,
@@ -365,7 +363,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
     else if(cleartext[0] == ':')
     {
         unsigned int msg_count;
-        time_t msg_time;
+        unsigned int msg_time;
 
         /* Closing string */
         cleartext[buffer_size] = '\0';
@@ -382,10 +380,10 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 
 
         /* Checking time -- protecting against replay attacks */
-        msg_time = atoi(f_msg);
+        msg_time = (unsigned int) atoi(f_msg);
         f_msg+=11;
 
-        msg_count = atoi(f_msg);
+        msg_count = (unsigned int) atoi(f_msg);
         f_msg+=5;
 
 
@@ -440,11 +438,11 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 
 
         /* Warn about duplicated message */
-        merror("%s: WARN: Duplicate error:  msg_count: %d, time: %d, "
-                "saved count: %d, saved_time:%d",
+        merror("%s: WARN: Duplicate error:  msg_count: %u, time: %u, "
+                "saved count: %u, saved_time:%u",
                 __local_name,
                 msg_count,
-                (int)msg_time,
+                msg_time,
                 keys->keyentries[id]->local,
                 keys->keyentries[id]->global);
 
@@ -461,11 +459,11 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 /* Creat a encrypted message.
  * Returns the size of it
  */
-int CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, int id)
+size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, int id)
 {
-    int bfsize;
-    int msg_size;
-    int cmp_size;
+    unsigned int bfsize;
+    size_t msg_size;
+    unsigned long int cmp_size;
 
     u_int16_t rand1;
 
@@ -585,7 +583,7 @@ int CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, int
     /* Encrypting everything */
     OS_BF_Str(_tmpmsg + (7 - bfsize), msg_encrypted + msg_size,
                                       keys->keyentries[id]->key,
-                                      cmp_size,
+                                      (long) cmp_size,
                                       OS_ENCRYPT);
 
 

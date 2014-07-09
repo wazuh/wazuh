@@ -41,12 +41,12 @@ typedef struct _keystore
 
 
     /* Hashes, based on the id/ip to lookup the keys. */
-    void *keyhash_id;
-    void *keyhash_ip;
+    OSHash *keyhash_id;
+    OSHash *keyhash_ip;
 
 
     /* Total key size */
-    int keysize;
+    unsigned int keysize;
 
     /* Key file stat */
     int file_change;
@@ -57,7 +57,7 @@ typedef struct _keystore
 /** Function prototypes -- key management **/
 
 /* Checks if the authentication keys are present */
-int OS_CheckKeys();
+int OS_CheckKeys(void);
 
 /* Read the keys */
 void OS_ReadKeys(keystore *keys) __attribute((nonnull));
@@ -99,10 +99,10 @@ int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip) __attribute((no
 
 /* Decrypt and decompress a remote message. */
 char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
-                 int id, int buffer_size) __attribute((nonnull));
+                 int id, unsigned int buffer_size) __attribute((nonnull));
 
 /* Creates an ossec message (encrypts and compress) */
-int CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, int id) __attribute((nonnull));
+size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, int id) __attribute((nonnull));
 
 
 
