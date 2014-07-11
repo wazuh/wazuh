@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_zlib/os_zlib.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -16,12 +13,28 @@
 
 #include "zlib.h"
 
-/* os_compress: Compress a string with zlib. */
-int os_compress(char *src, char *dst, int src_size, int dst_size);
+/**
+ * @brief Compress a string with zlib.
+ * @param[in] src the source string to compress
+ * @param[out] dst the destination buffer for the compressed string, will be null-terminated on success
+ * @param[in] src_size the length of the source string
+ * @param[in] dst_size the size of the destination buffer
+ * @return 0 on failure, else the length of the compressed string
+ */
+unsigned long int os_zlib_compress(const char *src, char *dst, unsigned long int src_size,
+		unsigned long int dst_size);
 
-/* os_uncompress: Uncompress a string with zlib. */
-int os_uncompress(char *src, char *dst, int src_size, int dst_size);
+/**
+ * @brief Uncompress a string with zlib.
+ * @param[in] src the source string to uncompress
+ * @param[out] dst the destination buffer for the uncompressed string, will be null-terminated on success
+ * @param[in] src_size the length of the source string
+ * @param[in] dst_size the size of the destination buffer
+ * @return 0 on failure, else the length of the uncompressed string
+ */
+unsigned long int os_zlib_uncompress(const char *src, char *dst, unsigned long int src_size,
+		unsigned long int dst_size);
 
-#endif
+#endif /* __OS_ZLIB_H */
 
 /* EOF */

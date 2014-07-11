@@ -27,6 +27,7 @@ typedef struct _MailConfig
     int priority;
     char **to;
     char *from;
+    char *idsname;
     char *smtpserver;
 
     /* Granular e-mail options */

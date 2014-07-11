@@ -66,6 +66,7 @@ void *OSHash_Free(OSHash *self);
  */
 int OSHash_Add(OSHash *hash, char *key, void *data);
 int OSHash_Update(OSHash *hash, char *key, void *data);
+void* OSHash_Delete(OSHash *self, char *key);
 
 
 /** void *OSHash_Get(OSHash *self, char *key)

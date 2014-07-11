@@ -85,7 +85,10 @@ int conn_port(int proto, int port)
         if((ossock = socket(PF_INET,SOCK_STREAM,IPPROTO_TCP)) < 0)
             return(0);
     }
-
+    else
+    {
+    	return (0);
+    }
 
     memset(&server, 0, sizeof(server));
     server.sin_family = AF_INET;

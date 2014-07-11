@@ -22,11 +22,23 @@ none:
 
 clean:
 		@/bin/sh ./Makeall clean
-		rm -f ../bin/ossec*
-		rm -f ../bin/manage_agents
+		rm -f ../bin/*
+		rmdir ../bin/
+		rm -f isbigendian
+		rm -rf win-pkg/
+		rm -f Config.OS
+		rm -f win32/LICENSE.txt
+		rm -f win32/help_win.txt
+		rm -f win32/internal_options-win.conf
+		rm -f win32/ossec-win.conf
+		rm -f win32/restart-ossec.cmd
+		rm -f win32/route-null.cmd
 
 all:
 		@/bin/sh ./Makeall all
+		
+test:
+		@/bin/sh ./Makeall test
 
 build:
 		@/bin/sh ./Makeall build
@@ -39,28 +51,33 @@ server:
 
 local:
 		@/bin/sh ./InstallServer.sh local
-        
+
 agent:
 		@/bin/sh ./InstallAgent.sh
-        
+
+windows_agent:
+		( cd win32 && /bin/sh ./gen_win.sh )
+		( cd win-pkg && /bin/sh ./make.sh )
+
 setagent:
 		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
 
 setclang:
-		@mv LOCATION LOCATION.backup
-		@sed -e "s/^CC=.*/CC=clang/g" LOCATION.backup > LOCATION
-		@rm LOCATION.backup
+		@mv Config.Make Config.Make.backup
+		@sed -e "s/^CC?=.*/CC=clang/g" Config.Make.backup > Config.Make
+		@rm Config.Make.backup
 
 unsetclang:
-		@mv LOCATION LOCATION.backup
-		@sed -e "s/^CC=.*/CC=gcc/g" LOCATION.backup > LOCATION
-		@rm LOCATION.backup
+		@mv Config.Make Config.Make.backup
+		@sed -e "s/^CC=clang/CC?=cc/g" Config.Make.backup > Config.Make
+		@rm Config.Make.backup
 
 setprelude:
 		@echo "CPRELUDE=-DPRELUDE -lprelude `libprelude-config --pthread-cflags` `libprelude-config --libs`" >> ./Config.OS
-        
+
 setgeoip:
-		@echo "CGEOIP=-DGEOIP -I/usr/local/include -L/usr/local/lib -lGeoIP" >> ./Config.OS
+		@echo "CGEOIP=-DGEOIP" >> ./Config.OS
+		@echo "CGEOIPLIB=-I/usr/local/include -L/usr/local/lib -lGeoIP" >> ./Config.OS
 
 setdb:
 		@cd ./os_dbd; echo "CDB=`./dbmake.sh`" >> ../Config.OS;
@@ -73,5 +90,9 @@ setlocal:
 
 setfullsubject:
 		@echo "FEXTRA=-DCLEANFULL" >> ./Config.OS
+
 setoneway:
 		@echo "FEXTRA=-DONEWAY" >> ./Config.OS
+
+setzeromq:
+		@echo "CZEROMQ_OUTPUT=-DZEROMQ_OUTPUT -lzmq -lczmq" >> ./Config.OS

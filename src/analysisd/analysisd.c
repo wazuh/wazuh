@@ -44,6 +44,7 @@
 #include "stats.h"
 
 #include "eventinfo.h"
+#include "accumulator.h"
 #include "analysisd.h"
 
 #include "picviz.h"
@@ -52,6 +53,9 @@
 #include "prelude.h"
 #endif
 
+#ifdef ZEROMQ_OUTPUT
+#include "zeromq_output.h"
+#endif
 
 /** Global data **/
 
@@ -133,6 +137,7 @@ int main_analysisd(int argc, char **argv)
 #endif
 {
     int c = 0, m_queue = 0, test_config = 0,run_foreground = 0;
+    int debug_level = 0;
     char *dir = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
@@ -162,6 +167,7 @@ int main_analysisd(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
+                debug_level = 1;
                 break;
             case 'f':
                 run_foreground = 1;
@@ -194,6 +200,20 @@ int main_analysisd(int argc, char **argv)
                 break;
         }
 
+    }
+
+    /* Check current debug_level
+     * Command line setting takes precedence
+     */
+    if (debug_level == 0)
+    {
+        /* Getting debug level */
+        debug_level = getDefine_Int("analysisd", "debug", 0, 2);
+        while(debug_level != 0)
+        {
+            nowDebug();
+            debug_level--;
+        }
     }
 
 
@@ -269,6 +289,13 @@ int main_analysisd(int argc, char **argv)
     }
     #endif
 
+    /* Starting zeromq */
+    #ifdef ZEROMQ_OUTPUT
+    if(Config.zeromq_output)
+    {
+      zeromq_output_start(Config.zeromq_output_uri, argc, argv);
+    }
+    #endif
 
     /* Opening the Picviz socket */
     if(Config.picviz)
@@ -277,7 +304,7 @@ int main_analysisd(int argc, char **argv)
         chown(Config.picviz_socket, uid, gid);
     }
 
-    /* Setting the group */	
+    /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
@@ -525,7 +552,7 @@ int main_analysisd(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
-    /* Going to main loop */	
+    /* Going to main loop */
     OS_ReadMSG(m_queue);
 
     if (Config.picviz)
@@ -585,6 +612,11 @@ void OS_ReadMSG_analysisd(int m_queue)
         ErrorExit(FTS_LIST_ERROR, ARGV0);
     }
 
+    /* Initialize the Accumulator */
+    if(!Accumulate_Init()) {
+        merror("accumulator: ERROR: Initialization failed");
+        exit(1);
+    }
 
     /* Starting the active response queues */
     if(Config.ar)
@@ -851,6 +883,10 @@ void OS_ReadMSG_analysisd(int m_queue)
                 DecodeEvent(lf);
             }
 
+            /* Run accumulator */
+            if( lf->decoder_info->accumulate == 1 ) {
+                lf = Accumulate(lf);
+            }
 
             /* Firewall event */
             if(lf->decoder_info->type == FIREWALL)
@@ -1039,6 +1075,14 @@ void OS_ReadMSG_analysisd(int m_queue)
                 }
                 #endif
 
+                /* Log to zeromq */
+                #ifdef ZEROMQ_OUTPUT
+                if(Config.zeromq_output)
+                {
+                    zeromq_output_event(lf);
+                }
+                #endif
+
 
                 /* Log to Picviz */
                 if (Config.picviz)
@@ -1075,6 +1119,13 @@ void OS_ReadMSG_analysisd(int m_queue)
                             {
                                 if(lf->srcip)
                                     merror(CRAFTED_IP, ARGV0, lf->srcip);
+                                do_ar = 0;
+                            }
+                        }
+                        if((*rule_ar)->ar_cmd->expect & FILENAME)
+                        {
+                            if(!lf->filename)
+                            {
                                 do_ar = 0;
                             }
                         }
@@ -1130,7 +1181,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 OS_Store(lf);
 
 
-            /* Cleaning the memory */	
+            /* Cleaning the memory */
             CLMEM:
 
 
@@ -1236,8 +1287,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     {
         if(!OSMatch_Execute(lf->log, lf->size, currently_rule->match))
             return(NULL);
-    }	   	
-
+    }
 
 
     /* Checking if exist any regex for this rule */

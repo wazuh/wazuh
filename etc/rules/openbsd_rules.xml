@@ -197,6 +197,20 @@
     <description>hotplugd could not open a file.</description>
   </rule>
 
+  <rule id="51531" level="3">
+    <decoded_as>open-userdel</decoded_as>
+    <match>user removed: name=</match>
+    <description>User account deleted.</description>
+    <group>account_changed,</group>
+  </rule>
+
+  <rule id="51532" level="0">
+    <decoded_as>ntpd</decoded_as>
+    <match>bad peer from </match>
+    <description>Bad ntp peer.</description>
+  </rule>
+
+
 </group> <!-- SYSLOG,LOCAL -->
 
 

@@ -54,37 +54,37 @@ int Read_Rootcheck_Config(char * cfgfile)
 
 
     /* XML Definitions */
-    char *(xml_daemon[])={xml_rootcheck,"daemon", NULL};
-    char *(xml_notify[])={xml_rootcheck, "notify", NULL};
-    char *(xml_base_dir[])={xml_rootcheck, "base_directory", NULL};
-    char *(xml_workdir[])={xml_rootcheck, "work_directory", NULL};
-    char *(xml_rootkit_files[])={xml_rootcheck, "rootkit_files", NULL};
-    char *(xml_rootkit_trojans[])={xml_rootcheck, "rootkit_trojans", NULL};
-    char *(xml_rootkit_unixaudit[])={xml_rootcheck, "system_audit", NULL};
-    char *(xml_rootkit_winaudit[])={xml_rootcheck, "windows_audit", NULL};
-    char *(xml_rootkit_winapps[])={xml_rootcheck, "windows_apps", NULL};
-    char *(xml_rootkit_winmalware[])={xml_rootcheck, "windows_malware", NULL};
-    char *(xml_scanall[])={xml_rootcheck, "scanall", NULL};
-    char *(xml_readall[])={xml_rootcheck, "readall", NULL};
-    char *(xml_time[])={xml_rootcheck, "frequency", NULL};
+    const char *(xml_daemon[])={xml_rootcheck,"daemon", NULL};
+    const char *(xml_notify[])={xml_rootcheck, "notify", NULL};
+    const char *(xml_base_dir[])={xml_rootcheck, "base_directory", NULL};
+    const char *(xml_workdir[])={xml_rootcheck, "work_directory", NULL};
+    const char *(xml_rootkit_files[])={xml_rootcheck, "rootkit_files", NULL};
+    const char *(xml_rootkit_trojans[])={xml_rootcheck, "rootkit_trojans", NULL};
+    const char *(xml_rootkit_unixaudit[])={xml_rootcheck, "system_audit", NULL};
+    const char *(xml_rootkit_winaudit[])={xml_rootcheck, "windows_audit", NULL};
+    const char *(xml_rootkit_winapps[])={xml_rootcheck, "windows_apps", NULL};
+    const char *(xml_rootkit_winmalware[])={xml_rootcheck, "windows_malware", NULL};
+    const char *(xml_scanall[])={xml_rootcheck, "scanall", NULL};
+    const char *(xml_readall[])={xml_rootcheck, "readall", NULL};
+    const char *(xml_time[])={xml_rootcheck, "frequency", NULL};
 
-    char *(xml_check_dev[])={xml_rootcheck, "check_dev", NULL};
-    char *(xml_check_files[])={xml_rootcheck, "check_files", NULL};
-    char *(xml_check_if[])={xml_rootcheck, "check_if", NULL};
-    char *(xml_check_pids[])={xml_rootcheck, "check_pids", NULL};
-    char *(xml_check_ports[])={xml_rootcheck, "check_ports", NULL};
-    char *(xml_check_sys[])={xml_rootcheck, "check_sys", NULL};
-    char *(xml_check_trojans[])={xml_rootcheck, "check_trojans", NULL};
+    const char *(xml_check_dev[])={xml_rootcheck, "check_dev", NULL};
+    const char *(xml_check_files[])={xml_rootcheck, "check_files", NULL};
+    const char *(xml_check_if[])={xml_rootcheck, "check_if", NULL};
+    const char *(xml_check_pids[])={xml_rootcheck, "check_pids", NULL};
+    const char *(xml_check_ports[])={xml_rootcheck, "check_ports", NULL};
+    const char *(xml_check_sys[])={xml_rootcheck, "check_sys", NULL};
+    const char *(xml_check_trojans[])={xml_rootcheck, "check_trojans", NULL};
 
     #ifdef WIN32
 
-    char *(xml_check_winapps[])={xml_rootcheck, "check_winapps", NULL};
-    char *(xml_check_winaudit[])={xml_rootcheck, "check_winaudit", NULL};
-    char *(xml_check_winmalware[])={xml_rootcheck, "check_winmalware", NULL};
+    const char *(xml_check_winapps[])={xml_rootcheck, "check_winapps", NULL};
+    const char *(xml_check_winaudit[])={xml_rootcheck, "check_winaudit", NULL};
+    const char *(xml_check_winmalware[])={xml_rootcheck, "check_winmalware", NULL};
 
     #else
 
-    char *(xml_check_unixaudit[])={xml_rootcheck, "check_unixaudit", NULL};
+    const char *(xml_check_unixaudit[])={xml_rootcheck, "check_unixaudit", NULL};
 
     #endif
 

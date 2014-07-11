@@ -112,10 +112,13 @@ int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
     /* Checking for the filters. */
     if(r_filter->group)
     {
-        if(!strstr(al_data->group, r_filter->group))
-        {
-            return(0);
-        }
+	if(al_data->group)	/* Probably unnecessary, all (?) alerts should have groups) */
+	{
+        	if(!strstr(al_data->group, r_filter->group))
+        	{
+            		return(0);
+        	}
+	}
     }
     if(r_filter->rule)
     {
@@ -140,24 +143,34 @@ int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
     }
     if(r_filter->srcip)
     {
-        if(!strstr(al_data->srcip, r_filter->srcip))
-        {
-            return(0);
-        }
+
+	if(al_data->srcip)
+	{
+        	if(!strstr(al_data->srcip, r_filter->srcip))
+        	{
+           		return(0);
+        	}
+	}
     }
     if(r_filter->user)
     {
-        if(!strstr(al_data->user, r_filter->user))
-        {
-            return(0);
-        }
+	if(al_data->user)
+	{
+        	if(!strstr(al_data->user, r_filter->user))
+        	{
+            		return(0);
+        	}
+	}
     }
     if(r_filter->files)
     {
-        if(!strstr(al_data->filename, r_filter->files))
-        {
-            return(0);
-        }
+	if(al_data->filename)
+	{
+        	if(!strstr(al_data->filename, r_filter->files))
+        	{
+            		return(0);
+        	}
+	}
     }
     return(1);
 }
@@ -330,13 +343,13 @@ int _os_report_print_related(int print_related, OSList *st_data)
                 l_print_out("   group: '%s'", saved_aldata->group);
             else if(print_related & REPORT_REL_RULE)
                 l_print_out("   rule: '%d'", saved_aldata->rule);
-            else if(print_related & REPORT_REL_SRCIP && saved_aldata->srcip)
+            else if((print_related & REPORT_REL_SRCIP) && saved_aldata->srcip)
                 l_print_out("   srcip: '%s'", saved_aldata->srcip);
-            else if(print_related & REPORT_REL_USER && saved_aldata->user)
+            else if((print_related & REPORT_REL_USER) && saved_aldata->user)
                 l_print_out("   user: '%s'", saved_aldata->user);
             else if(print_related & REPORT_REL_LEVEL)
                 l_print_out("   level: '%d'", saved_aldata->level);
-            else if(print_related & REPORT_REL_FILE && saved_aldata->filename)
+            else if((print_related & REPORT_REL_FILE) && saved_aldata->filename)
                 l_print_out("   filename: '%s'", saved_aldata->filename);
         }
 
@@ -469,7 +482,7 @@ void os_ReportdStart(report_filter *r_filter)
 
     /* Getting current time before starting */
     tm = time(NULL);
-    p = localtime(&tm);	
+    p = localtime(&tm);
 
 
 

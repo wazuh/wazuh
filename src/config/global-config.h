@@ -38,6 +38,10 @@ typedef struct __Config
     /* prelude profile name */
     char *prelude_profile;
 
+    /* ZEROMQ Export */
+    u_int8_t zeromq_output; 
+    char *zeromq_output_uri;
+
     /* Picviz support */
     u_int8_t picviz;
     char *picviz_socket;

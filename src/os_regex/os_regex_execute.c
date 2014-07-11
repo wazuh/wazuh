@@ -19,8 +19,8 @@
 
 
 /** Internal prototypes **/
-char *_OS_Regex(char *pattern, char *str, char **prts_closure,
-              char **prts_str, int flags);
+static const char *_OS_Regex(const char *pattern, const char *str, const char **prts_closure,
+        const char **prts_str, int flags) __attribute__((nonnull(1,2)));
 
 
 
@@ -30,9 +30,9 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
  * Returns the end of the string on success or NULL on error.
  * The error code is set on reg->error.
  */
-char *OSRegex_Execute(char *str, OSRegex *reg)
+const char *OSRegex_Execute(const char *str, OSRegex *reg)
 {
-    char *ret;
+    const char *ret;
     int i = 0;
 
     /* The string can't be NULL */
@@ -46,13 +46,13 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
     /* If we need the sub strings */
     if(reg->prts_closure)
     {
-        int j = 0, k = 0, str_char = 0;
+        int k = 0;
 
         /* Looping on all sub patterns */
         while(reg->patterns[i])
         {
             /* Cleaning the prts_str */
-            j = 0;
+            int j = 0;
             while(reg->prts_closure[i][j])
             {
                 reg->prts_str[i][j] = NULL;
@@ -67,19 +67,17 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
                 /* We must always have the open and the close */
                 while(reg->prts_str[i][j] && reg->prts_str[i][j+1])
                 {
-                    str_char = reg->prts_str[i][j+1][0];
-
-                    reg->prts_str[i][j+1][0] = '\0';
-
-                    reg->sub_strings[k] = strdup(reg->prts_str[i][j]);
+                    size_t length = (size_t) (reg->prts_str[i][j+1] - reg->prts_str[i][j]);
+                    reg->sub_strings[k] = (char *) malloc((length + 1) * sizeof(char));
                     if(!reg->sub_strings[k])
                     {
                         OSRegex_FreeSubStrings(reg);
                         return(NULL);
                     }
+                    strncpy(reg->sub_strings[k], reg->prts_str[i][j], length);
+                    reg->sub_strings[k][length] = '\0';
 
                     /* Set the next one to null */
-                    reg->prts_str[i][j+1][0] = str_char;
                     k++;
                     reg->sub_strings[k] = NULL;
 
@@ -121,24 +119,24 @@ char *OSRegex_Execute(char *str, OSRegex *reg)
  * If prts_closure is set, the parenthesis locations will be
  * written on prts_str (which must not be NULL)
  */
-char *_OS_Regex(char *pattern, char *str, char **prts_closure,
-              char **prts_str, int flags)
+static const char *_OS_Regex(const char *pattern, const char *str, const char **prts_closure,
+        const char **prts_str, int flags)
 {
-    char *r_code = NULL;
+    const char *r_code = NULL;
 
     int ok_here;
     int _regex_matched = 0;
 
     int prts_int;
 
-    char *st = str;
-    char *st_error = NULL;
+    const char *st = str;
+    const char *st_error = NULL;
 
-    char *pt = pattern;
-    char *next_pt;
+    const char *pt = pattern;
+    const char *next_pt;
 
-    char *pt_error[4] = {NULL, NULL, NULL, NULL};
-    char *pt_error_str[4];
+    const char *pt_error[4] = {NULL, NULL, NULL, NULL};
+    const char *pt_error_str[4] = {NULL, NULL, NULL, NULL};
 
 
     /* Will loop the whole string, trying to find a match */
@@ -147,7 +145,7 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
         switch(*pt)
         {
             case '\0':
-                if(!(flags & END_SET) || (flags & END_SET && (*st == '\0')))
+                if(!(flags & END_SET) || ((flags & END_SET) && (*st == '\0')))
                     return(r_code);
                 break;
 
@@ -171,10 +169,12 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
                 pt++;
                 if(*pt == '\0')
                 {
-                    if(!(flags & END_SET) || (flags & END_SET && (*st == '\0')))
+                    if(!(flags & END_SET) || ((flags & END_SET) && (*st == '\0')))
                         return(r_code);
                 }
                 break;
+            default:
+                break; /* do nothing */
         }
 
         /* If it starts on Backslash (future regex) */
@@ -353,7 +353,7 @@ char *_OS_Regex(char *pattern, char *str, char **prts_closure,
             else if((*(pt+3) == '\0') && (_regex_matched == 1)&&(r_code))
             {
                 r_code = st;
-                if(!(flags & END_SET) || (flags & END_SET && (*st == '\0')))
+                if(!(flags & END_SET) || ((flags & END_SET) && (*st == '\0')))
                     return(r_code);
             }
 

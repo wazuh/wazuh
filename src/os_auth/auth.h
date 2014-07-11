@@ -25,7 +25,6 @@
  *
  */
 
-
 #ifndef _AUTHD_H
 #define _AUTHD_H
 
@@ -36,22 +35,26 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 
 #ifdef USE_OPENSSL
-
-void *os_ssl_keys(int isclient, char *dir);
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
+
 #include "os_net/os_net.h"
 #include "addagent/manage_agents.h"
 
 BIO *bio_err;
 #define KEYFILE  "/etc/sslmanager.key"
-#define CERTFILE  "/etc/sslmanager.cert"
+#define CERTFILE "/etc/sslmanager.cert"
 
-#endif
+SSL_CTX *os_ssl_keys(int is_server, char *os_dir, char *cert, char *key, char *ca_cert);
+SSL_CTX *get_ssl_context();
+int load_cert_and_key(SSL_CTX *ctx, char *cert, char *key);
+int load_ca_cert(SSL_CTX *ctx, char *ca_cert);
+int verify_callback(int ok, X509_STORE_CTX *store);
 
-#endif
+#endif /* USE_OPENSSL */
+#endif /* _AUTHD_H */
+

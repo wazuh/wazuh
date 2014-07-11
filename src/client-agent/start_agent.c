@@ -29,7 +29,7 @@ int connect_server(int initial_id)
     /* Checking if the initial is zero, meaning we have to rotate to the
      * beginning.
      */
-    if(logr->rip[initial_id] == NULL)
+    if(agt->rip[initial_id] == NULL)
     {
         rc = 0;
         initial_id = 0;
@@ -37,91 +37,91 @@ int connect_server(int initial_id)
 
 
     /* Closing socket if available. */
-    if(logr->sock >= 0)
+    if(agt->sock >= 0)
     {
         sleep(1);
-        CloseSocket(logr->sock);
-        logr->sock = -1;
+        CloseSocket(agt->sock);
+        agt->sock = -1;
 
-        if(logr->rip[1])
+        if(agt->rip[1])
         {
             verbose("%s: INFO: Closing connection to server (%s:%d).",
                     ARGV0,
-                    logr->rip[rc],
-                    logr->port);
+                    agt->rip[rc],
+                    agt->port);
         }
 
     }
 
 
-    while(logr->rip[rc])
+    while(agt->rip[rc])
     {
         char *tmp_str;
 
         /* Checking if we have a hostname. */
-        tmp_str = strchr(logr->rip[rc], '/');
+        tmp_str = strchr(agt->rip[rc], '/');
         if(tmp_str)
         {
             char *f_ip;
             *tmp_str = '\0';
 
-            f_ip = OS_GetHost(logr->rip[rc], 5);
+            f_ip = OS_GetHost(agt->rip[rc], 5);
             if(f_ip)
             {
                 char ip_str[128];
                 ip_str[127] = '\0';
 
-                snprintf(ip_str, 127, "%s/%s", logr->rip[rc], f_ip);
+                snprintf(ip_str, 127, "%s/%s", agt->rip[rc], f_ip);
 
                 free(f_ip);
-                free(logr->rip[rc]);
+                free(agt->rip[rc]);
 
-                os_strdup(ip_str, logr->rip[rc]);
-                tmp_str = strchr(logr->rip[rc], '/');
+                os_strdup(ip_str, agt->rip[rc]);
+                tmp_str = strchr(agt->rip[rc], '/');
                 tmp_str++;
             }
             else
             {
                 merror("%s: WARN: Unable to get hostname for '%s'.",
-                       ARGV0, logr->rip[rc]);
+                       ARGV0, agt->rip[rc]);
                 *tmp_str = '/';
                 tmp_str++;
             }
         }
         else
         {
-            tmp_str = logr->rip[rc];
+            tmp_str = agt->rip[rc];
         }
 
 
         verbose("%s: INFO: Trying to connect to server (%s:%d).", ARGV0,
-                logr->rip[rc],
-                logr->port);
+                agt->rip[rc],
+                agt->port);
 
         /* IPv6 address: */
         if(strchr(tmp_str,':') != NULL)
         {
             verbose("%s: INFO: Using IPv6 for: %s .", ARGV0, tmp_str);
-            logr->sock = OS_ConnectUDP(logr->port, tmp_str, 1);
+            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 1);
         }
         else
         {
             verbose("%s: INFO: Using IPv4 for: %s .", ARGV0, tmp_str);
-            logr->sock = OS_ConnectUDP(logr->port, tmp_str, 0);
+            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 0);
         }
 
-        if(logr->sock < 0)
+        if(agt->sock < 0)
         {
-            logr->sock = -1;
+            agt->sock = -1;
             merror(CONNS_ERROR, ARGV0, tmp_str);
             rc++;
 
-            if(logr->rip[rc] == NULL)
+            if(agt->rip[rc] == NULL)
             {
                 attempts += 10;
 
                 /* Only log that if we have more than 1 server configured. */
-                if(logr->rip[1])
+                if(agt->rip[1])
                     merror("%s: ERROR: Unable to connect to any server.",ARGV0);
 
                 sleep(attempts);
@@ -132,17 +132,17 @@ int connect_server(int initial_id)
         {
             /* Setting socket non-blocking on HPUX */
             #ifdef HPUX
-            //fcntl(logr->sock, O_NONBLOCK);
+            //fcntl(agt->sock, O_NONBLOCK);
             #endif
 
             #ifdef WIN32
             int bmode = 1;
 
             /* Setting socket to non-blocking */
-            ioctlsocket(logr->sock, FIONBIO, (u_long FAR*) &bmode);
+            ioctlsocket(agt->sock, FIONBIO, (u_long FAR*) &bmode);
             #endif
 
-            logr->rip_id = rc;
+            agt->rip_id = rc;
             return(1);
         }
     }
@@ -178,7 +178,7 @@ void start_agent(int is_startup)
     #endif
 
 
-    /* Sending start message and waiting for the ack */	
+    /* Sending start message and waiting for the ack */
     while(1)
     {
         /* Sending start up message */
@@ -187,7 +187,7 @@ void start_agent(int is_startup)
 
 
         /* Read until our reply comes back */
-        while(((recv_b = recv(logr->sock, buffer, OS_MAXSTR,
+        while(((recv_b = recv(agt->sock, buffer, OS_MAXSTR,
                               MSG_DONTWAIT)) >= 0) || (attempts <= 5))
         {
             if(recv_b <= 0)
@@ -211,7 +211,7 @@ void start_agent(int is_startup)
             tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b -1);
             if(tmp_msg == NULL)
             {
-                merror(MSG_ERROR, ARGV0, logr->rip[logr->rip_id]);
+                merror(MSG_ERROR, ARGV0, agt->rip[agt->rip_id]);
                 continue;
             }
 
@@ -224,8 +224,8 @@ void start_agent(int is_startup)
                 {
                     available_server = time(0);
 
-                    verbose(AG_CONNECTED, ARGV0, logr->rip[logr->rip_id],
-                                                 logr->port);
+                    verbose(AG_CONNECTED, ARGV0, agt->rip[agt->rip_id],
+                                                 agt->port);
 
                     if(is_startup)
                     {
@@ -243,18 +243,18 @@ void start_agent(int is_startup)
         }
 
         /* Waiting for servers reply */
-        merror(AG_WAIT_SERVER, ARGV0, logr->rip[logr->rip_id]);
+        merror(AG_WAIT_SERVER, ARGV0, agt->rip[agt->rip_id]);
 
 
         /* If we have more than one server, try all. */
-        if(logr->rip[1])
+        if(agt->rip[1])
         {
-            int curr_rip = logr->rip_id;
+            int curr_rip = agt->rip_id;
             merror("%s: INFO: Trying next server ip in the line: '%s'.", ARGV0,
-                   logr->rip[logr->rip_id + 1] != NULL?logr->rip[logr->rip_id + 1]:logr->rip[0]);
-            connect_server(logr->rip_id +1);
+                   agt->rip[agt->rip_id + 1] != NULL?agt->rip[agt->rip_id + 1]:agt->rip[0]);
+            connect_server(agt->rip_id +1);
 
-            if(logr->rip_id == curr_rip)
+            if(agt->rip_id == curr_rip)
             {
                 sleep(g_attempts);
                 g_attempts+=(attempts * 3);

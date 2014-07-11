@@ -11,7 +11,7 @@ DIR=`dirname $PWD`;
 
 ###  Do not modify bellow here ###
 NAME="OSSEC HIDS"
-VERSION="v2.7.1"
+VERSION="v2.8"
 AUTHOR="Trend Micro Inc."
 DAEMONS="ossec-logcollector ossec-syscheckd ossec-agentd ossec-execd"
 
@@ -101,14 +101,17 @@ help()
 # Status function
 status()
 {
+    RETVAL=0
     for i in ${DAEMONS}; do
         pstatus ${i};
         if [ $? = 0 ]; then
+            RETVAL=1
             echo "${i} not running..."
         else
             echo "${i} is running..."
         fi
     done             
+    exit $RETVAL
 }
 
 testconfig()

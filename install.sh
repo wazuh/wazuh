@@ -11,7 +11,7 @@
 # Changelog 15/07/2006 - Rafael M. Capovilla <under@underlinux.com.br>
 # New function AddTable to add support for OpenBSD pf rules in firewall-drop active response
 
-# Changelog 29 March 2012 - Adding hybrid mode (standalone + agent) 
+# Changelog 29 March 2012 - Adding hybrid mode (standalone + agent)
 
 
 
@@ -67,9 +67,6 @@ Install()
 	echo "5- ${installing}"
 
 	echo "DIR=\"${INSTALLDIR}\"" > ${LOCATION}
-    echo "CC=${CC}" >> ${LOCATION}
-    echo "GCC=${CC}" >> ${LOCATION}
-    echo "CLANG=clang" >> ${LOCATION}
 
     # Changing Config.OS with the new C flags
     # Checking if debug is enabled
@@ -344,7 +341,7 @@ SetupLogs()
       echo "  </localfile>" >> $NEWCONFIG
    fi
 
-    
+
 
 
     echo ""
@@ -475,12 +472,12 @@ ConfigureServer()
             if [ "X${USER_EMAIL_ADDRESS}" = "X" ]; then
 
                 read EMAIL
-                echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
+                echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.+-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
                 # Ugly e-mail validation
 			    while [ "$EMAIL" = "" -o ! ${RVAL} = 0 ] ; do
 				    $ECHO "   - ${whatsemail} "
 				    read EMAIL
-                    echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
+                    echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.+-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
 			    done
             else
                 EMAIL=${USER_EMAIL_ADDRESS}
@@ -811,19 +808,6 @@ checkDependencies()
         export  PATH
     fi
 
-    ls "`which gcc`" > /dev/null 2>&1
-    if [ ! $? = 0 ]; then
-        ls "`which cc`" > /dev/null 2>&1
-        if [ ! $? = 0 ]; then
-            if [ "X${USER_BINARYINSTALL}" = "X" ]; then
-                catError "0x3-dependencies"
-            fi
-        fi
-        CC="cc"
-    else
-        CC="gcc"
-    fi
-
     PATH=$OLDOPATH
     export PATH
 }
@@ -1118,8 +1102,8 @@ main()
 
                 ${hybrid}|${hybridm})
                 echo ""
-	            echo "  - ${localchose} (hybrid)."
-	            INSTYPE="local"
+	            echo "  - ${serverchose} (hybrid)."
+	            INSTYPE="server"
                     HYBID="go"
 	            break;
 	            ;;

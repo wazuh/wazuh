@@ -14,16 +14,15 @@
  */
 
 
+#include "shared.h"
 #include "os_win32ui.h"
 #include "os_win.h"
 #include "os_xml/os_xml.h"
-#include "os_xml/os_xml_writer.h"
 #include "os_net/os_net.h"
 #include "validate_op.h"
-#include "shared.h"
 
 
-/* Generate server info (for the main status */
+/* Generate server info (for the main status) */
 int gen_server_info(HWND hwnd)
 {
     memset(ui_server_info, '\0', 2048 +1);
@@ -49,7 +48,13 @@ int gen_server_info(HWND hwnd)
     /* Initializing server ip */
     SetDlgItemText(hwnd, UI_SERVER_TEXT, config_inst.server);
 
+    /* Set status data */
     SendMessage(hStatus, SB_SETTEXT, 0, (LPARAM)"http://www.ossec.net");
+    if (config_inst.install_date)
+    {
+        SendMessage(hStatus, SB_SETTEXT, 1, (LPARAM)config_inst.install_date);
+    }
+
     return(0);
 }
 
@@ -118,31 +123,30 @@ int is_file(char *file)
 /* Clear configuration */
 void config_clear()
 {
-	debug2("read config 1");
     if(config_inst.version)
     {
         free(config_inst.version);
     }
 
-	debug2("read config 2");
     if(config_inst.key)
     {
         free(config_inst.key);
     }
 
-	debug2("read config 3");
     if(config_inst.agentid)
     {
         free(config_inst.agentid);
     }
 
-	debug2("read config 4");
     if(config_inst.server)
     {
         free(config_inst.server);
     }
-	debug2("read config 5");
 
+    if(config_inst.install_date)
+    {
+        free(config_inst.install_date);
+    }
 
     /* Initializing config instance */
     config_inst.dir = NULL;
@@ -158,8 +162,6 @@ void config_clear()
     config_inst.install_date = NULL;
     config_inst.status = ST_UNKNOWN;
     config_inst.msg_sent = 0;
-
-	debug2("read config 6");
 }
 
 
@@ -183,61 +185,17 @@ void init_config()
     config_inst.admin_access = 1;
 
 
-    /* Checking if ui is on the right path */
+    /* Checking if ui is on the right path
+     * and has the proper permissions
+     */
     if(!is_file(CONFIG))
     {
-        chdir(DEFDIR);
-        if(!is_file(CONFIG))
-        {
-            config_inst.admin_access = -1;
-        }
-    }
-
-
-    /* Testing for permission - this is a vista thing.
-     * For some reason vista is not reporting the return codes
-     * properly.
-     */
-    {
-        FILE *fp;
-        fp = fopen(CONFIG, "a");
-        if(fp)
-        {
-            fclose(fp);
-        }
-        else
+        if(chdir(DEFDIR))
         {
             config_inst.admin_access = 0;
         }
 
-
-        fp = fopen(".test-file.tst", "w");
-        if(fp)
-        {
-            if(fprintf(fp, ".test\n") == -1)
-            {
-                config_inst.admin_access = 0;
-            }
-
-            fclose(fp);
-
-            /* trying to open it to read. */
-            fp = fopen(".test-file.tst", "r");
-            if(fp)
-            {
-                fclose(fp);
-            }
-            else
-            {
-                config_inst.admin_access = 0;
-            }
-
-            if(unlink(".test-file.tst"))
-            {
-                config_inst.admin_access = 0;
-            }
-        }
-        else
+        if(!is_file(CONFIG))
         {
             config_inst.admin_access = 0;
         }
@@ -249,6 +207,7 @@ void init_config()
 int config_read(HWND hwnd)
 {
     char *tmp_str;
+    char *delim = " - ";
 
 
     /* Clearing config */
@@ -270,11 +229,11 @@ int config_read(HWND hwnd)
     config_inst.version = cat_file(VERSION_FILE, NULL);
     if(config_inst.version)
     {
-        config_inst.install_date = strchr(config_inst.version, '-');
+        config_inst.install_date = strstr(config_inst.version, delim);
         if(config_inst.install_date)
         {
             *config_inst.install_date = '\0';
-            config_inst.install_date++;
+            config_inst.install_date += strlen(delim);
         }
     }
 
@@ -345,7 +304,7 @@ int config_read(HWND hwnd)
     }
 
 
-    if(config_inst.agentip == NULL)	
+    if(config_inst.agentip == NULL)
     {
         config_inst.agentid = strdup(ST_NOTSET);
         config_inst.agentname = strdup("Auth key not imported.");
@@ -381,8 +340,8 @@ int get_ossec_server()
 
 
     /* Definitions */
-    char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
-    char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
+    const char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
+    const char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
 
 
     /* Reading XML */
@@ -450,13 +409,83 @@ int get_ossec_server()
 }
 
 
+/* Run a cmd.exe command */
+int run_cmd(char *cmd, HWND hwnd)
+{
+    int result;
+    int cmdlen;
+    char *comspec;
+    STARTUPINFO si;
+    PROCESS_INFORMATION pi;
+    DWORD exit_code;
+
+    /* Get cmd location from environment */
+    comspec = getenv("COMSPEC");
+    if (comspec == NULL || strncmp(comspec, "", strlen(comspec) == 0))
+    {
+        MessageBox(hwnd, "Could not determine the location of "
+                         "cmd.exe using the COMSPEC environment variable.",
+                         "Error -- Failure Locating cmd.exe",MB_OK);
+        return(0);
+    }
+
+    /* Build command */
+    cmdlen = strlen(comspec) + 5 + strlen(cmd);
+    char finalcmd[cmdlen];
+    snprintf(finalcmd, cmdlen, "%s /c %s", comspec, cmd);
+
+    /* Log command being run */
+    log2file("%s: INFO: Running the following command (%s)", ARGV0, finalcmd);
+
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
+    ZeroMemory(&pi, sizeof(pi));
+
+    if(!CreateProcess(NULL, finalcmd, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL,
+                      &si, &pi))
+    {
+        MessageBox(hwnd, "Unable to run command.",
+                         "Error -- Failure Running Command",MB_OK);
+        return(0);
+    }
+
+    /* Wait until process exits */
+    WaitForSingleObject(pi.hProcess, INFINITE);
+
+    /* Get exit code from command */
+    result = GetExitCodeProcess(pi.hProcess, &exit_code);
+
+    /* Close process and thread */
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    if (!result)
+    {
+        MessageBox(hwnd, "Could not determine exit code from command.",
+                         "Error -- Failure Running Command",MB_OK);
+
+        return(0);
+    }
+
+    return(exit_code);
+}
+
+
 /* Set OSSEC Server IP */
 int set_ossec_server(char *ip, HWND hwnd)
 {
-    char **xml_pt = NULL;
-    char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
-    char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
+    FILE *fp;
+    const char **xml_pt = NULL;
+    const char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
+    const char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
+    char *cacls;
+    int cmdlen;
 
+    /* Build command line to change permissions */
+    cacls = "echo y|cacls \"%s\" /T /G Administrators:f";
+    cmdlen = strlen(cacls) + strlen(NEWCONFIG);
+    char cmd[cmdlen];
+    snprintf(cmd, cmdlen, cacls, NEWCONFIG);
 
     /* Verifying IP Address */
     if(OS_IsValidIP(ip, NULL) != 1)
@@ -469,7 +498,7 @@ int set_ossec_server(char *ip, HWND hwnd)
             MessageBox(hwnd, "Invalid Server IP Address.\r\n"
                              "It must be the valid Ipv4 address of the "
                              "OSSEC server or its resolvable hostname.",
-                             "Invalid Server IP Address.",MB_OK);
+                             "Error -- Failure Setting IP",MB_OK);
             return(0);
         }
         config_inst.server_type = SERVER_HOST_USED;
@@ -481,15 +510,42 @@ int set_ossec_server(char *ip, HWND hwnd)
         xml_pt = xml_serverip;
     }
 
+    /* Create file */
+    fp = fopen(NEWCONFIG, "w");
+    if(fp)
+    {
+        fclose(fp);
+    }
+    else
+    {
+        MessageBox(hwnd, "Could not create configuration file.",
+                         "Error -- Failure Setting IP",MB_OK);
+        return(0);
+    }
 
+    /* Change permissions */
+    if (run_cmd(cmd, hwnd))
+    {
+        MessageBox(hwnd, "Unable to set permissions on new configuration file.",
+                         "Error -- Failure Setting IP",MB_OK);
 
-    /* Reading the XML. Printing error and line number */
+        /* Remove config */
+        if(unlink(NEWCONFIG))
+        {
+            MessageBox(hwnd, "Unable to remove new configuration file.",
+                             "Error -- Failure Setting IP",MB_OK);
+        }
+
+        return(0);
+    }
+
+    /* Reading the XML. Printing error and line number. */
     if(OS_WriteXML(CONFIG, NEWCONFIG, xml_pt,
-                   NULL, NULL, ip, 0) != 0)
+                   NULL, ip) != 0)
     {
         MessageBox(hwnd, "Unable to set OSSEC Server IP Address.\r\n"
-                   "(Internal error on the XML Write).",
-                   "Unable to set Server IP Address.",MB_OK);
+                         "(Internal error on the XML Write).",
+                         "Error -- Failure Setting IP",MB_OK);
         return(0);
     }
 
@@ -498,6 +554,64 @@ int set_ossec_server(char *ip, HWND hwnd)
     rename(CONFIG, LASTCONFIG);
     rename(NEWCONFIG, CONFIG);
 
+    return(1);
+}
+
+
+/* Set OSSEC Authentication Key */
+int set_ossec_key(char *key, HWND hwnd)
+{
+    FILE *fp;
+    char *cacls;
+    int cmdlen;
+
+    /* Build command line to change permissions */
+    cacls = "echo y|cacls \"%s\" /T /G Administrators:f";
+    cmdlen = strlen(cacls) + strlen(AUTH_FILE);
+    char cmd[cmdlen];
+    snprintf(cmd, cmdlen, cacls, AUTH_FILE);
+
+    /* Create file */
+    fp = fopen(AUTH_FILE, "w");
+    if(fp)
+    {
+        fclose(fp);
+    }
+    else
+    {
+        MessageBox(hwnd, "Could not open auth key file.",
+                         "Error -- Failure Importing Key", MB_OK);
+        return(0);
+    }
+
+    /* Change permissions */
+    if (run_cmd(cmd, hwnd))
+    {
+        MessageBox(hwnd, "Unable to set permissions on auth key file.",
+                         "Error -- Failure Importing Key", MB_OK);
+
+        /* Remove config */
+        if(unlink(AUTH_FILE))
+        {
+            MessageBox(hwnd, "Unable to remove auth key file.",
+                             "Error -- Failure Importing Key", MB_OK);
+        }
+
+        return(0);
+    }
+
+    fp = fopen(AUTH_FILE, "w");
+    if(fp)
+    {
+        fprintf(fp, "%s", key);
+        fclose(fp);
+    }
+    else
+    {
+        MessageBox(hwnd, "Could not open auth key file for write.",
+                         "Error -- Failure Importing Key", MB_OK);
+        return(0);
+    }
 
     return(1);
 }

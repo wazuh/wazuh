@@ -1,14 +1,13 @@
-** OSSEC Windows Agent v2.7.1 **
-** Copyright (C) 2013 Trend Micro Inc. **
+** OSSEC Windows Agent v2.8 **
+** Copyright (C) 2014 Trend Micro Inc. **
 
 
-Thanks for installing 'OSSEC Windows Agent version 2.7'. Before you continue,
+Thanks for installing the 'OSSEC Windows Agent'. Before you continue,
 make sure that you have an instance of the OSSEC server running and configured
 to accept this system as an agent.
 
 For more information on how to install the server version of OSSEC, look at:
 http://www.ossec.net/doc/manual/installation/index.html
-http://www.ossec.net/wiki/index.php/InstallGuides
 
 
 
@@ -28,7 +27,6 @@ You can obtain more information about OSSEC on the following links:
 http://www.ossec.net/doc/manual/index.html
 http://www.ossec.net/doc/faq/index.html (FAQ)
 http://www.ossec.net (OSSEC site)
-http://www.ossec.net/dcid/ (OSSEC blog)
 
 
 2- What this agent does
@@ -50,8 +48,3 @@ Visit the following link for information on how to get help or
 support for OSSEC:
 
 http://www.ossec.net/main/support/
-
-For commercial support, please send an e-mail to contact@ossec.net
-
-
-** EOF ** 

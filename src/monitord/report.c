@@ -45,7 +45,8 @@ int main(int argc, char **argv)
     char *dir  = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    // TODO: delete or implement
+    char *cfg __attribute__((unused)) = DEFAULTCPATH;
 
     char *filter_by = NULL;
     char *filter_value = NULL;
@@ -169,7 +170,7 @@ int main(int argc, char **argv)
         exit(0);
 
 
-    /* Privilege separation */	
+    /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
@@ -204,7 +205,7 @@ int main(int argc, char **argv)
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
-    /* the real stuff now */	
+    /* the real stuff now */
     os_ReportdStart(&r_filter);
     exit(0);
 }

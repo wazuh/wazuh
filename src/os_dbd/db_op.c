@@ -399,39 +399,21 @@ int postgresql_osdb_query_select(void *db_conn, char *query)
 void *none_osdb_connect(char *host, char *user, char *pass, char *db,
                         int port, char *sock)
 {
-    char *tmp;
-
-
-    /* Just to avoid warnings. */
-    tmp = host; tmp = user; tmp = pass; tmp = db;
-
-
     merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
     return(NULL);
 }
 void *none_osdb_close(void *db_conn)
 {
-    void *tmp;
-
-    tmp = db_conn;
     merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
     return(NULL);
 }
 void *none_osdb_query_insert(void *db_conn, char *query)
 {
-    void *tmp;
-
-    tmp = db_conn; tmp = query;
-
-    merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
+   merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
     return(0);
 }
 void *none_osdb_query_select(void *db_conn, char *query)
 {
-    void *tmp;
-
-    tmp = db_conn; tmp = query;
-
     merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
     return(0);
 }

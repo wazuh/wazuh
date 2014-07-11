@@ -56,7 +56,7 @@ void Lists_OP_CreateLists();
 void makelist_help(const char *prog)
 {
     print_out(" ");
-    print_out("%s %s - %s (%s)", __name, __version, __author, __contact);
+    print_out("%s %s - %s (%s)", __ossec_name, __version, __author, __contact);
     print_out("%s", __site);
     print_out(" ");
     print_out("  %s: -[Vhdt] [-u user] [-g group] [-c config] [-D dir]", prog);
@@ -118,6 +118,7 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
                 dir = optarg;
+                break;
             case 'c':
                 if(!optarg)
                     ErrorExit("%s: -c needs an argument",ARGV0);
@@ -153,7 +154,7 @@ int main(int argc, char **argv)
 
     debug1(READ_CONFIG, ARGV0);
 
-    /* Setting the group */	
+    /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 

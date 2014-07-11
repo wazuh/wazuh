@@ -14,36 +14,20 @@
  * Available at http://www.ossec.net/
  */
 
+#include <stdio.h>
+#include <string.h>
 
-
-#include "shared.h"
-
-#include "os_xml_writer.h"
-//#include "os_xml.h"
-
-#define _R_CONFS 	'<'
-#define _R_CONFE 	'>'
-#define _R_EQUAL 	'='
-#define _R_COM   	'!'
-#define _R_VAR      '$'
-
-#define OPEN            51
-#define CLOSE           52
-
-#define LEOF		-2
+#include "os_xml.h"
+#include "os_xml_internal.h"
 
 /* Internal functions */
-int _oswcomment(FILE *fp_in, FILE *fp_out);
-int _WReadElem(FILE *fp_in, FILE *fp_out, int position, int parent,
-               char **node, char *value, int node_pos);
-
-
-/* Currently line */
-int _line;
-
+static int _oswcomment(FILE *fp_in, FILE *fp_out) __attribute__((nonnull));
+static int _WReadElem(FILE *fp_in, FILE *fp_out, unsigned int position, unsigned int parent,
+		const char **node, const char *value, unsigned int node_pos) __attribute__((nonnull));
+static int _xml_wfgetc(FILE *fp_in, FILE *fp_out) __attribute__((nonnull));
 
 /* Local fgetc */
-int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
+static int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
 {
     int c;
 
@@ -54,33 +38,19 @@ int _xml_wfgetc(FILE *fp_in, FILE *fp_out)
         fputc(c, fp_out);
     }
 
-    if(c == '\n') /* add new line */
-        _line++;
-
     return(c);
 }
-
-#define FWGETC(fp_in, fp_out) _xml_wfgetc(fp_in, fp_out)
-
-
 
 /* OS_WriteXML
  * Write an XML file, based on the input and values to change.
  */
-int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
-                char *oldval, char *newval,  int type)
+int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
+		const char *oldval, const char *newval)
 {
     int r = 0;
-    int node_pos = 0;
     FILE *fp_in;
     FILE *fp_out;
 
-
-    /* Nodes and newval must be set. */
-    if(!nodes || !newval)
-    {
-        return(XMLW_ERROR);
-    }
 
     /* Opening infile */
     fp_in = fopen(infile,"r");
@@ -100,7 +70,7 @@ int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
 
 
     if((r = _WReadElem(fp_in, fp_out, 0, 0,
-                       nodes, newval, node_pos)) < 0) /* First position */
+                       nodes, newval, 0)) < 0) /* First position */
     {
         fclose(fp_in);
         fclose(fp_out);
@@ -110,35 +80,35 @@ int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
     /* We didn't find an entry, add at the end. */
     if(!oldval && r == 0)
     {
-        int r = 0;
+        int s = 0;
         int rwidth = 0;
 
         fseek(fp_out, 0, SEEK_END);
         fprintf(fp_out, "\n");
 
         /* Printing each node. */
-        while(nodes[r])
+        while(nodes[s])
         {
-            fprintf(fp_out, "%*c<%s>", rwidth, ' ', nodes[r]);
-            r++;
+            fprintf(fp_out, "%*c<%s>", rwidth, ' ', nodes[s]);
+            s++;
             rwidth += 3;
 
-            if(nodes[r])
+            if(nodes[s])
                 fprintf(fp_out, "\n");
         }
 
         /* Printing val. */
-        r--;
+        s--;
         rwidth -=6;
-        fprintf(fp_out, "%s</%s>\n", newval, nodes[r]);
-        r--;
+        fprintf(fp_out, "%s</%s>\n", newval, nodes[s]);
+        s--;
 
 
         /* Closing each node. */
-        while(r >= 0)
+        while(s >= 0)
         {
-            fprintf(fp_out, "%*c</%s>\n", rwidth, ' ', nodes[r]);
-            r--;
+            fprintf(fp_out, "%*c</%s>\n", rwidth, ' ', nodes[s]);
+            s--;
             rwidth -= 3;
         }
     }
@@ -151,13 +121,13 @@ int OS_WriteXML(char *infile, char *outfile, char **nodes, char *attr,
 
 
 /* Getting comments */
-int _oswcomment(FILE *fp_in, FILE *fp_out)
+static int _oswcomment(FILE *fp_in, FILE *fp_out)
 {
     int c;
     if((c = fgetc(fp_in)) == _R_COM)
     {
         fputc(c, fp_out);
-        while((c = FWGETC(fp_in, fp_out)) != EOF)
+        while((c = _xml_wfgetc(fp_in, fp_out)) != EOF)
         {
             if(c == _R_COM)
             {
@@ -202,8 +172,8 @@ int _oswcomment(FILE *fp_in, FILE *fp_out)
 
 
 
-int _WReadElem(FILE *fp_in, FILE *fp_out,
-              int position, int parent, char **nodes, char *val, int node_pos)
+static int _WReadElem(FILE *fp_in, FILE *fp_out,
+              unsigned int position, unsigned int parent, const char **nodes, const char *val, unsigned int node_pos)
 {
     int c;
     int ret_code = 0;
@@ -219,7 +189,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
     memset(closedelem,'\0',XML_MAXSIZE +1);
 
 
-    while((c = FWGETC(fp_in, fp_out)) != EOF)
+    while((c = _xml_wfgetc(fp_in, fp_out)) != EOF)
     {
         /* Max size */
         if(count >= XML_MAXSIZE)
@@ -273,7 +243,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
 
 
             /* Removing the / at the end of the element name */
-            if(elem[count -1] == '/')
+            if(count > 0 && elem[count -1] == '/')
             {
                 _ge = '/';
                 elem[count -1] = '\0';
@@ -284,7 +254,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
             if(c == ' ')
             {
                 /* Writing the attributes */
-                while((c = FWGETC(fp_in, fp_out)) != EOF)
+                while((c = _xml_wfgetc(fp_in, fp_out)) != EOF)
                 {
                     if(c == _R_CONFE)
                     {
@@ -359,7 +329,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
             memset(closedelem,'\0',XML_MAXSIZE);
             memset(cont,'\0',XML_MAXSIZE);
 
-            count = 0;	
+            count = 0;
             location = -1;
             if(parent > 0)
             {
@@ -377,7 +347,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
                 cont[count] = '\0';
                 count = 0;
                 location = 2;
-            }	
+            }
             else
             {
                 int wret_code;
@@ -404,15 +374,15 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
         {
             if(location == 0)
             {
-                elem[count++] = c;
+                elem[count++] = (char) c;
             }
             else if(location == 1)
             {
-                cont[count++] = c;
+                cont[count++] = (char) c;
             }
             else if(location == 2)
             {
-                closedelem[count++] = c;
+                closedelem[count++] = (char) c;
             }
         }
     }
@@ -424,7 +394,7 @@ int _WReadElem(FILE *fp_in, FILE *fp_out,
 
 
     return(-1);
-}				
+}
 
 
 

@@ -23,13 +23,15 @@
 void help(const char *prog)
 {
     print_out(" ");
-    print_out("%s %s - %s (%s)", __name, __version, __author, __contact);
+    print_out("%s %s - %s (%s)", __ossec_name, __version, __author, __contact);
     print_out("%s", __site);
     print_out(" ");
     print_out("  %s: -[Vhdt] [-u user] [-g group] [-c config] [-D dir]", prog);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode");
+    print_out("                Can be specified up to two times");
+    print_out("                to increase debug level");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
     print_out("    -u <user>   Run as 'user'");
@@ -43,7 +45,7 @@ void help(const char *prog)
 void print_version()
 {
     print_out(" ");
-    print_out("%s %s - %s", __name, __version, __author);
+    print_out("%s %s - %s", __ossec_name, __version, __author);
     print_out(" ");
     print_out("%s",__license);
     exit(1);

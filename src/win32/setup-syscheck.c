@@ -13,7 +13,6 @@
 
 #include "setup-shared.h"
 #include "os_xml/os_xml.h"
-#include "os_xml/os_xml_writer.h"
 
 #define OSSEC_CONFIG_TMP  ".tmp.ossec.conf"
 
@@ -22,7 +21,7 @@
 int main(int argc, char **argv)
 {
     char *status;
-    char *(xml_syscheck_status[])={"ossec_config","syscheck","disabled", NULL};
+    const char *(xml_syscheck_status[])={"ossec_config","syscheck","disabled", NULL};
 
     if(argc < 3)
     {
@@ -60,7 +59,7 @@ int main(int argc, char **argv)
 
     /* Writing to the XML. */
     if(OS_WriteXML(OSSECCONF, OSSEC_CONFIG_TMP, xml_syscheck_status,
-                   NULL, "no", status, 0) != 0)
+                   "no", status) != 0)
     {
         printf("%s: Error writing to the Config file. Exiting.\n", argv[0]);
         return(0);

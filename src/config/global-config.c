@@ -155,6 +155,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     char *xml_prelude = "prelude_output";
     char *xml_prelude_profile = "prelude_profile";
     char *xml_prelude_log_level = "prelude_log_level";
+    char *xml_zeromq_output = "zeromq_output";
+    char *xml_zeromq_output_uri = "zeromq_uri";
     char *xml_stats = "stats";
     char *xml_memorysize = "memory_size";
     char *xml_white_list = "white_list";
@@ -163,6 +165,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
     char *xml_emailto = "email_to";
     char *xml_emailfrom = "email_from";
+    char *xml_emailidsname = "email_idsname";
     char *xml_smtpserver = "smtp_server";
     char *xml_mailmaxperhour = "email_maxperhour";
 
@@ -316,6 +319,30 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 Config->prelude_log_level = atoi(node[i]->content);
             }
         }
+        /* ZeroMQ output */
+        else if(strcmp(node[i]->element, xml_zeromq_output) == 0)
+        {
+            if(strcmp(node[i]->content, "yes") == 0)
+            { 
+                if(Config) Config->zeromq_output = 1; 
+            }
+            else if(strcmp(node[i]->content, "no") == 0)
+            { 
+                if(Config) Config->zeromq_output = 0; 
+            }
+            else
+            {
+                merror(XML_VALUEERR,ARGV0,node[i]->element, node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+        else if(strcmp(node[i]->element, xml_zeromq_output_uri) == 0)
+        {
+            if(Config)
+            {
+                Config->zeromq_output_uri = strdup(node[i]->content);
+            }
+        }
         /* Log all */
         else if(strcmp(node[i]->element, xml_logall) == 0)
         {
@@ -465,7 +492,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         }
 
         /* For the email now
-         * email_to, email_from, smtp_Server and maxperhour.
+         * email_to, email_from, idsname, smtp_Server and maxperhour.
          * We will use a separate structure for that.
          */
         else if(strcmp(node[i]->element, xml_emailto) == 0)
@@ -501,6 +528,17 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     free(Mail->from);
                 }
                 os_strdup(node[i]->content, Mail->from);
+            }
+        }
+        else if(strcmp(node[i]->element, xml_emailidsname) == 0)
+        {
+            if(Mail)
+            {
+                if(Mail->idsname)
+                {
+                    free(Mail->idsname);
+                }
+                os_strdup(node[i]->content, Mail->idsname);
             }
         }
         else if(strcmp(node[i]->element, xml_smtpserver) == 0)

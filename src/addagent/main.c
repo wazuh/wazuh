@@ -15,6 +15,16 @@
 #include "manage_agents.h"
 #include <stdlib.h>
 
+#if defined(__MINGW32__)
+static int setenv(const char * name, const char * val, int overwrite) {
+    int len = strlen(name) + strlen(val) + 2; 
+    char * str = (char *)malloc(len); 
+    snprintf(str, len, "%s=%s", name, val); 
+    putenv(str);
+    return 0; 
+}
+#endif 
+
 /** help **/
 void helpmsg()
 {
@@ -24,6 +34,7 @@ void helpmsg()
     printf("\t-V          Display OSSEC version.\n");
     printf("\t-l          List available agents.\n");
     printf("\t-e <id>     Extracts key for an agent (Manager only).\n");
+    printf("\t-r <id>     Remove an agent. (Manager only).\n");
     printf("\t-i <id>     Import authentication key (Agent only).\n");
     printf("\t-f <file>   Bulk generate client keys from file. (Manager only).\n");
     printf("\t            <file> contains lines in IP,NAME format.\n\n");
@@ -35,7 +46,7 @@ void helpmsg()
 void print_banner()
 {
     printf("\n");
-    printf(BANNER, __name, __version);
+    printf(BANNER, __ossec_name, __version);
 
     #ifdef CLIENT
     printf(BANNER_CLIENT);
@@ -79,6 +90,11 @@ int main(int argc, char **argv)
     char *dir = DEFAULTDIR;
     char *group = GROUPGLOBAL;
     int gid;
+    #else
+    FILE *fp;
+    TCHAR path[2048];
+    DWORD last_error;
+    int ret;
     #endif
 
 
@@ -86,7 +102,7 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "Vhle:i:f:")) != -1){
+    while((c = getopt(argc, argv, "Vhle:r:i:f:")) != -1){
         switch(c){
 	        case 'V':
 		        print_version();
@@ -104,6 +120,18 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -e needs an argument",ARGV0);
                 cmdexport = optarg;
+                break;
+            case 'r':
+                #ifdef CLIENT
+                ErrorExit("%s: You can't remove keys on an agent", ARGV0);
+                #endif
+                if(!optarg)
+                    ErrorExit("%s: -r needs an argument",ARGV0);
+	            
+                /* Use environment variables already available to remove_agent() */           	
+                setenv("OSSEC_ACTION", "r", 1);
+                setenv("OSSEC_AGENT_ID", optarg, 1);
+                setenv("OSSEC_ACTION_CONFIRMED", "y", 1);
                 break;
             case 'i':
                 #ifndef CLIENT
@@ -168,8 +196,57 @@ int main(int argc, char **argv)
 
     /* Starting signal handler */
     StartSIG2(ARGV0, manage_shutdown);
-    #endif
 
+    #else
+
+    /* Get full path to the directory this
+     * executable lives in
+     */
+    ret = GetModuleFileName(NULL, path, sizeof(path));
+
+    /* check for errors */
+    if(!ret)
+    {
+        ErrorExit(GMF_ERROR);
+    }
+
+    /* Get last error */
+    last_error = GetLastError();
+
+    /* Look for errors */
+    if(last_error != ERROR_SUCCESS)
+    {
+        if(last_error == ERROR_INSUFFICIENT_BUFFER)
+        {
+            ErrorExit(GMF_BUFF_ERROR, ret, sizeof(path));
+        }
+        else
+        {
+            ErrorExit(GMF_UNKN_ERROR, last_error);
+        }
+    }
+
+    /* Remove file name from path */
+    PathRemoveFileSpec(path);
+
+    /* Move to correct directory */
+    if(chdir(path))
+    {
+        ErrorExit(CHDIR_ERROR, path);
+    }
+
+    /* Check permissions */
+    fp = fopen(OSSECCONF, "r");
+    if(fp)
+    {
+        fclose(fp);
+    }
+    else
+    {
+        ErrorExit(CONF_ERROR, OSSECCONF);
+    }
+
+    #endif
 
     if(cmdlist == 1)
     {

@@ -1,0 +1,40 @@
+language: c
+
+notifications:
+  irc:
+    - "chat.freenode.net#ossec-dev"
+
+env:
+- DB=mysql OSSEC_TYPE=all GEOIP=yes
+- DB=mysql OSSEC_TYPE=all GEOIP=no
+- DB=none OSSEC_TYPE=all GEOIP=yes
+- DB=none OSSEC_TYPE=all GEOIP=no
+- DB=none OSSEC_TYPE=agent GEOIP=no
+- DB=none OSSEC_TYPE=windows_agent GEOIP=no
+- OSSEC_TYPE=test
+
+
+
+compiler:
+- gcc
+- clang
+
+
+
+before_script:
+- if [[ "$DB" == "mysql"  ]]; then ( cd src && make setdb  ); fi
+- if [[ "$GEOIP" == "yes"  ]]; then ( sudo apt-get install geoip-bin geoip-database libgeoip-dev libgeoip1 ); fi
+- if [[ "$GEOIP" == "yes"  ]]; then ( cd src && make setgeoip ); fi
+- if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( sudo apt-get install aptitude && sudo aptitude -y install mingw-w64 nsis ); fi
+- if [[ "$OSSEC_TYPE" == "test" ]]; then ( sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ saucy main " && sudo apt-get update && sudo apt-get install check ); fi
+
+
+
+script:
+- ( cd src && sudo make $OSSEC_TYPE )
+
+before_deploy:
+- mkdir travis-builds
+- if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( cp src/win-pkg/ossec-agent.exe travis-builds/ossec-agent-bid:$TRAVIS_JOB_NUMBER-br:$TRAVIS_BRANCH.exe ); fi
+
+

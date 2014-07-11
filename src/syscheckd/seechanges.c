@@ -15,7 +15,28 @@
 #include "shared.h"
 #include "os_crypto/md5/md5_op.h"
 
+#ifdef USE_MAGIC
+#include <magic.h>
+extern magic_t magic_cookie;
 
+int is_text(magic_t cookie, const void* buf, size_t len)
+{
+    const char* magic = magic_buffer(cookie, buf, len);
+
+    if(!magic)
+    {
+        const char* err = magic_error(cookie);
+        merror("%s: ERROR: magic_buffer: %s", ARGV0, err ? err : "unknown");
+        return(1); // TODO default to true?
+    }
+    else
+    {
+        if(strncmp(magic, "text/", 5) == 0) return(1);
+    }
+
+    return(0);
+}
+#endif
 
 /* Generate diffs alerts. */
 char *gen_diff_alert(char *filename, int alert_diff_time)
@@ -115,13 +136,24 @@ int seechanges_dupfile(char *old, char *new)
         return(0);
     }
 
-    while((n = fread(buf, 1, 2048, fpr)) > 0)
+    n = fread(buf, 1, 2048, fpr);
+    #ifdef USE_MAGIC
+    if(is_text(magic_cookie, buf, n) == 0)
+    {
+        goto cleanup;
+    }
+    #endif
+
+    do
     {
         buf[n] = '\0';
         fwrite(buf, n, 1, fpw);
-
     }
+    while((n = fread(buf, 1, 2048, fpr)) > 0);
 
+#ifdef USE_MAGIC
+cleanup:
+#endif
     fclose(fpr);
     fclose(fpw);
     return(1);

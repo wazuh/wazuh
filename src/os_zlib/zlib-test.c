@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_zlib/zlib-test.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,9 +7,10 @@
  * Foundation
  */
 
-
-#include "shared.h"
 #include "os_zlib.h"
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
 #ifndef ARGV0
   #define ARGV0   "zlib-test"
@@ -21,7 +19,7 @@
 /* Zlib test */
 int main(int argc, char **argv)
 {
-    int ret, srcsize, dstsize = 2010;
+    unsigned long int ret, srcsize, dstsize = 2010;
     char dst[2048];
     char dst2[2048];
 
@@ -42,9 +40,9 @@ int main(int argc, char **argv)
 
     }
 
-    if((ret = os_compress(argv[1], dst, srcsize, dstsize)))
+    if((ret = os_zlib_compress(argv[1], dst, srcsize, dstsize)))
     {
-        printf("Compressed, from %d->%d\n",srcsize, ret);
+        printf("Compressed, from %lu->%lu\n",srcsize, ret);
     }
     else
     {
@@ -55,9 +53,9 @@ int main(int argc, char **argv)
     /* Setting new srcsize for decompression */
     srcsize = ret;
 
-    if((ret = os_uncompress(dst, dst2, srcsize, dstsize)))
+    if((ret = os_zlib_uncompress(dst, dst2, srcsize, dstsize)))
     {
-        printf("Uncompressed ok. String: '%s', size %d->%d\n",
+        printf("Uncompressed ok. String: '%s', size %lu->%lu\n",
                                         dst2, srcsize, ret);
     }
     else
