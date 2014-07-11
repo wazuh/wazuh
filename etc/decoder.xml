@@ -2513,4 +2513,17 @@ Author and (c): Michael Starks, 2014 -->
  <order>action, id</order>
 </decoder>
 
+
+<!-- apparmor
+Jun 24 10:35:29 hostname kernel: [49787.970285] audit: type=1400 audit(1403598929.839:88986): apparmor="ALLOWED" operation="getattr" profile="/usr/sbin/dovecot//null-1//null-2//null-4a6" name="/home/admin/mails/new/" pid=19973 comm="imap" requested_mask="r" denied_mask="r" fsuid=1003 ouid=1003
+-->
+
+<decoder name="apparmor">
+  <parent>iptables</parent>
+  <prematch> apparmor=</prematch>
+  <regex> apparmor="(\S+)" operation="(\S+)"</regex>
+  <order>status, extra_data</order>
+</decoder>
+
+
 <!-- EOF -->
