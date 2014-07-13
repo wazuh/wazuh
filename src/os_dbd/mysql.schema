@@ -83,11 +83,14 @@ CREATE TABLE IF NOT EXISTS  alert
     alertid         VARCHAR(30) DEFAULT NULL,
     user            TEXT        NOT NULL,
     full_log        TEXT        NOT NULL,
-    is_hidden tinyint NOT NULL DEFAULT '0',
+    is_hidden       TINYINT NOT NULL DEFAULT '0',
+    tld             VARCHAR(5)  NOT NULL DEFAULT '',
     PRIMARY KEY (id, server_id),
     INDEX       (alertid),
     INDEX	(level),
     INDEX       time (timestamp),
     INDEX       (rule_id),
-    INDEX       (src_ip)
+    INDEX       (src_ip),
+    INDEX 	(tld)
     );
+
