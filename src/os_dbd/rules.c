@@ -220,7 +220,8 @@ void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
  */
 void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
 {
-    DBConfig *dbc = (DBConfig *)db_config;
+	/* tmp disable */
+    /* DBConfig *dbc = (DBConfig *)db_config; */
     char sql_query[OS_SIZE_1024];
     memset(sql_query, '\0', OS_SIZE_1024);
 
@@ -265,10 +266,13 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
 
 
     /* Checking return code. */
+
+    /*
     if(!osdb_query_insert(dbc->conn, sql_query))
     {
         merror(DB_GENERROR, ARGV0);
     }
+    */
 
     return(NULL);
 }
