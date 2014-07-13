@@ -258,25 +258,10 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
 
     /* Generating SQL */
     snprintf(sql_query, OS_SIZE_1024 -1,
-             "SELECT id FROM signature "
-             "where rule_id = %u",
-             rule->sigid);
-
-    if(osdb_query_select(dbc->conn, sql_query) == 0)
-    {
-        snprintf(sql_query, OS_SIZE_1024 -1,
-                "INSERT INTO "
-                "signature(rule_id, level, description) "
-                "VALUES ('%u','%u','%s')",
-                rule->sigid, rule->level, rule->comment);
-    }
-    else
-    {
-        snprintf(sql_query, OS_SIZE_1024 -1,
-                "UPDATE signature SET level='%u',description='%s' "
-                "WHERE rule_id='%u'",
-                rule->level, rule->comment,rule->sigid);
-    }
+	"REPLACE INTO "
+	"signature(rule_id, level, description) "
+	"VALUES ('%u','%u','%s')",
+	rule->sigid, rule->level, rule->comment);
 
 
     /* Checking return code. */
