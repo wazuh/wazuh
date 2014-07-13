@@ -212,9 +212,9 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     /* Generating final SQL */
     snprintf(sql_query, OS_SIZE_8192,
             "INSERT INTO "
-            "alert(id,server_id,rule_id,level,timestamp,location_id,src_ip,src_port,dst_ip,dst_port,alertid,user,full_log) "
-            "VALUES ('%u', '%u', '%u','%u','%u', '%u', '%lu', '%u', '%lu', '%u', '%s', '%s', '%s')",
-            db_config->alert_id, db_config->server_id, al_data->rule,
+            "alert(server_id,rule_id,level,timestamp,location_id,src_ip,src_port,dst_ip,dst_port,alertid,user,full_log) "
+            "VALUES ('%u', '%u','%u','%u', '%u', '%lu', '%u', '%lu', '%u', '%s', '%s', '%s')",
+            db_config->server_id, al_data->rule,
 	    al_data->level,
             (unsigned int)time(0), *loc_id,
             (unsigned long)ntohl(s_ip), (unsigned short)s_port,
