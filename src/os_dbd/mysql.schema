@@ -16,8 +16,7 @@ CREATE TABLE category
     (
     cat_id      SMALLINT    UNSIGNED NOT NULL   AUTO_INCREMENT,
     cat_name    VARCHAR(32) NOT NULL            UNIQUE,
-    PRIMARY KEY (cat_id),
-    INDEX       (cat_name)
+    PRIMARY KEY (cat_id)
     );
 
 CREATE TABLE signature 
