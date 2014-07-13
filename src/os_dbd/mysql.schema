@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS  alert
     alertid         VARCHAR(30) DEFAULT NULL,
     user            TEXT        NOT NULL,
     full_log        TEXT        NOT NULL,
+    is_hidden tinyint NOT NULL DEFAULT '0',
     PRIMARY KEY (id, server_id),
     INDEX       (alertid),
     INDEX	(level),
