@@ -10,9 +10,9 @@ SRCS = *.c
 OBJS = *.o
 
 
-shared:
-		$(CC) $(CFLAGS) -c $(SRCS)
-		ar cru shared.a $(OBJS)
-		ranlib shared.a
+shared.a: ${SRCS}
+		${CC} ${CFLAGS} -c ${SRCS}
+		${BUILDLIB} shared.a ${OBJS}
+
 clean:
 		${CLEAN}
