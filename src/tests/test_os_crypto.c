@@ -36,7 +36,7 @@ START_TEST(test_md5string)
 {
     const char *string = "teststring";
     const char *string_md5 = "d67c5cbf5b01c9f91932e3b8def5e5f8";
-    char buffer[32];
+    os_md5 buffer;
 
     OS_MD5_Str(string, buffer);
 
@@ -57,7 +57,7 @@ START_TEST(test_md5file)
     write(fd, string, strlen(string));
     close(fd);
 
-    char buffer[34];
+    os_md5 buffer;
     ck_assert_int_eq(OS_MD5_File(file_name, buffer), 0);
 
     ck_assert_str_eq(buffer, string_md5);
@@ -66,7 +66,7 @@ END_TEST
 
 START_TEST(test_md5file_fail)
 {
-    char buffer[34];
+    os_md5 buffer;
     ck_assert_int_eq(OS_MD5_File("not_existing_file", buffer), -1);
 }
 END_TEST
@@ -84,7 +84,7 @@ START_TEST(test_sha1file)
     write(fd, string, strlen(string));
     close(fd);
 
-    char buffer[65];
+    os_sha1 buffer;
     ck_assert_int_eq(OS_SHA1_File(file_name, buffer), 0);
 
     ck_assert_str_eq(buffer, string_sha1);
@@ -93,7 +93,7 @@ END_TEST
 
 START_TEST(test_sha1file_fail)
 {
-    char buffer[65];
+    os_sha1 buffer;
     ck_assert_int_eq(OS_SHA1_File("not_existing_file", buffer), -1);
 }
 END_TEST
@@ -112,8 +112,8 @@ START_TEST(test_md5sha1file)
     write(fd, string, strlen(string));
     close(fd);
 
-    char md5buffer[256];
-    char sha1buffer[256];
+    os_md5 md5buffer;
+    os_sha1 sha1buffer;
 
     ck_assert_int_eq(OS_MD5_SHA1_File(file_name, NULL, md5buffer, sha1buffer), 0);
 
@@ -136,8 +136,8 @@ START_TEST(test_md5sha1cmdfile)
     write(fd, string, strlen(string));
     close(fd);
 
-    char md5buffer[256];
-    char sha1buffer[256];
+    os_md5 md5buffer;
+    os_sha1 sha1buffer;
 
     ck_assert_int_eq(OS_MD5_SHA1_File(file_name, "cat ", md5buffer, sha1buffer), 0);
 
@@ -148,8 +148,8 @@ END_TEST
 
 START_TEST(test_md5sha1cmdfile_fail)
 {
-    char md5buffer[256];
-    char sha1buffer[256];
+    os_md5 md5buffer;
+    os_sha1 sha1buffer;
 
     ck_assert_int_eq(OS_MD5_SHA1_File("not_existing_file", NULL, md5buffer, sha1buffer), -1);
 }
