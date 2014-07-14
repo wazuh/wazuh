@@ -2557,6 +2557,7 @@ Author and (c): Michael Starks, 2014 -->
   - 2014-07-14T14:00:05.508248-04:00 arrakis unbound: [2541:0] info: [25%]=0 median[50%]=0 [75%]=0
   - 2014-07-14T14:00:05.508333-04:00 arrakis unbound: [2541:0] info: lower(secs) upper(secs) recursions
   - 2014-07-14T14:00:05.508414-04:00 arrakis unbound: [2541:0] info:    0.032768    0.065536 1
+  - 2014-07-14T15:05:07.520229-04:00 arrakis unbound: [2541:0] info: 127.0.0.1 github.com. AAAA IN
 -->
 
 <decoder name="unbound">
@@ -2565,7 +2566,7 @@ Author and (c): Michael Starks, 2014 -->
 
 <decoder name="unbound-a">
   <parent>unbound</parent>
-  <regex> info: (\d+.\d+.\d+.\d+) (\S+) A IN$</regex>
+  <regex> info: (\S+) (\S+) A IN$| info: (\S+) (\S+) AAAA IN$</regex>
   <order>srcip,extra_data</order>
 </decoder>
 
