@@ -2477,7 +2477,7 @@ Examples:
 <!-- Grandstream HT502 VoIP gateway decoder
 Author and (c): Michael Starks, 2014 -->
 
-<!-- HT502: [00:0B:82:14:5B:94] Transport error (-1) for transaction 2677 -- >
+<!-- HT502: [00:0B:82:14:5B:94] Transport error (-1) for transaction 2677 -->
 
 <decoder name="grandstream-ata">
  <prematch>^HT286: [\w\w:\w\w:\w\w:\w\w:\w\w:\w\w]\p*\.+\p* |</prematch>

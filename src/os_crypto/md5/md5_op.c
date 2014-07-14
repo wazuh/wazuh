@@ -17,18 +17,19 @@
  * APIs for many crypto operations.
  */
 
+#include "md5_op.h"
 
 #include <stdio.h>
 #include <string.h>
 #include "md5.h"
 
-int OS_MD5_File(char * fname, char * output)
+int OS_MD5_File(const char * fname, os_md5 output)
 {
     FILE *fp;
     MD5_CTX ctx;
     unsigned char buf[1024 +1];
     unsigned char digest[16];
-    int n;
+    size_t n;
 
     memset(output,0, 33);
     buf[1024] = '\0';
@@ -43,7 +44,7 @@ int OS_MD5_File(char * fname, char * output)
     while((n = fread(buf, 1, sizeof(buf) -1, fp)) > 0)
     {
         buf[n] = '\0';
-        MD5Update(&ctx,buf,n);
+        MD5Update(&ctx,buf,(unsigned)n);
     }
 
     MD5Final(digest, &ctx);
@@ -60,8 +61,7 @@ int OS_MD5_File(char * fname, char * output)
     return(0);
 }
 
-/* EOF */
-int OS_MD5_Str(char * str, char * output)
+int OS_MD5_Str(const char * str, os_md5 output)
 {
     unsigned char digest[16];
 
@@ -71,7 +71,7 @@ int OS_MD5_Str(char * str, char * output)
 
     MD5Init(&ctx);
 
-    MD5Update(&ctx,(unsigned char *)str,strlen(str));
+    MD5Update(&ctx,(unsigned char *)str,(unsigned)strlen(str));
 
     MD5Final(digest, &ctx);
 

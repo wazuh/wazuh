@@ -22,6 +22,7 @@ compiler:
 
 
 before_script:
+- sudo apt-get update -qq
 - if [[ "$DB" == "mysql"  ]]; then ( cd src && make setdb  ); fi
 - if [[ "$GEOIP" == "yes"  ]]; then ( sudo apt-get install geoip-bin geoip-database libgeoip-dev libgeoip1 ); fi
 - if [[ "$GEOIP" == "yes"  ]]; then ( cd src && make setgeoip ); fi

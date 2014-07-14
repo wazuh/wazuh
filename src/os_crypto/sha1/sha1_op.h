@@ -18,7 +18,7 @@
 
 typedef char os_sha1[65];
 
-int OS_SHA1_File(char *fname, char * output);
+int OS_SHA1_File(const char *fname, os_sha1 output) __attribute((nonnull));
 
 #endif
 

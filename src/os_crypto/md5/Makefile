@@ -10,12 +10,12 @@ SRCS = md5.c md5_op.c
 md5_OBJS = md5_op.o md5.o
 
 
-md5:
-		$(CC) $(CFLAGS) -c $(SRCS)
-		ar cru md5_op.a $(md5_OBJS)
-		ranlib md5_op.a
-main:
-		$(CC) $(CFLAGS) -o main main.c md5_op.a
+md5_op.a: ${SRCS} *.h
+		${CC} ${CFLAGS} -c ${SRCS}
+		${BUILDLIB} md5_op.a ${md5_OBJS}
+
+main: main.c md5_op.a
+		${CC} ${CFLAGS} -o main main.c md5_op.a
 
 clean:
-		rm -f *.o *.a main
+		${CLEAN} main

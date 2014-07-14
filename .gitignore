@@ -63,6 +63,7 @@ src/util/verify-agent-conf
 *.gcda
 src/tests/coverage-report/
 src/tests/ossec.test
+src/tests/test_os_crypto
 src/tests/test_os_regex
 src/tests/test_os_xml
 src/tests/test_os_zlib
