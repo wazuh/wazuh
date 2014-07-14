@@ -68,7 +68,7 @@
 30100 - 30999 Apache error log.
 31100 - 31199 Web access log
 
-31501 - 32000 Wepp Appsec rules.
+31501 - 32000 Web Appsec rules.
 
 35000 - 35999 Squid
 
