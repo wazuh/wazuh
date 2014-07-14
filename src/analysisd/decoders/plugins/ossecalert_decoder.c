@@ -168,7 +168,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
 
 
     /* Creating new full log. */
-    free(lf->full_log);		/* XXX I think I was seeing a crash here at some point - keep an on on it */
+    free(lf->full_log);
     os_strdup(tmp_str, lf->full_log);
     lf->log = lf->full_log;
 
