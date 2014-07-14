@@ -76,6 +76,19 @@
   <order>srcip, user</order>
 </decoder>
 
+<decoder name="pam-ruser">
+  <parent>pam</parent>
+  <prematch> ruser</prematch>
+  <regex offset="after_prematch">^=(\S+) </regex>
+  <order>user</order>
+</decoder>
+
+<decoder name="pam-ruser">
+  <parent>pam</parent>
+  <regex> rhost=(\S+)$</regex>
+  <order>srcip</order>
+</decoder>
+
 <decoder name="pam-host">
   <parent>pam</parent>
   <prematch> rhost</prematch>
