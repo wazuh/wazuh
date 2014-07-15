@@ -210,6 +210,33 @@
     <description>Bad ntp peer.</description>
   </rule>
 
+  <rule id="51533" level="1">
+    <program_name>^dhclient$</program_name>
+    <if_sid>1002</if_sid>
+    <match>receive_packet failed on </match>
+    <description>dhclient receive_packet failed.</description>
+  </rule>
+
+  <rule id="51534" level="1">
+    <if_sid>51533</if_sid>
+    <match>Input/output error$</match>
+    <description>dhclient receive_packet failed due to I/O error.</description>
+  </rule>
+
+  <rule id="51535" level="1">
+    <program_name>^dhclient$</program_name>
+    <if_sid>1002</if_sid>
+    <match>SIOCDIFADDR failed </match>
+    <description>SIOCDIFADDR failed</description>
+  </rule>
+
+  <rule id="51536" level="1">
+    <if_sid>51535</if_sid>
+    <match> Device not configured$</match>
+    <description>dhclient: device not configured.</description>
+  </rule>
+
+
 
 </group> <!-- SYSLOG,LOCAL -->
 
