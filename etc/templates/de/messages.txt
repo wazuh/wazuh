@@ -44,8 +44,8 @@ usingsmtp="Benutze SMTP Server: "
 whatsmtp="Wie lautet die Adresse des SMTP Servers? (IP/Host) "
 
 # Part 3.1/agent
-serverip="Wiw lautet die IP Addresse des OSSEC HIDS Servers?"
-serveraddr="Wiw lautet die IP Addresse/Host des OSSEC HIDS Servers?"
+serverip="Wie lautet die IP Adresse des OSSEC HIDS Servers?"
+serveraddr="Wie lautet die IP Adresse/Host des OSSEC HIDS Servers?"
 addingip="Server IP hinzugefügt"
 addingname="Server Host hinzugefügt"
 
