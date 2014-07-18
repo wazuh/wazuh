@@ -136,7 +136,6 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
         {
             merror("%s: socketerr (not available).", __local_name);
             close(queue);
-            queue = -1;
             return(-1);
         }
 
@@ -166,7 +165,6 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
                          * about checking the error
                          */
                         close(queue);
-                        queue = -1;
                         return(-1);
                     }
                 }

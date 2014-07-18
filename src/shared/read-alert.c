@@ -313,7 +313,6 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 {
                     /* If p is null it is because strchr failed */
                     merror("ZZZ: 1() Merror date or location not NULL");
-                    _r = 0;
                     goto l_error;
                 }
             }
