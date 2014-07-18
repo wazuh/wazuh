@@ -151,7 +151,7 @@ int Init_FileQueue(file_queue *fileq, const struct tm *p, int flags)
     fileq->day = p->tm_mday;
     fileq->year = p->tm_year+1900;
 
-    strncpy(fileq->mon, s_month[p->tm_mon], 4);
+    strncpy(fileq->mon, s_month[p->tm_mon], 3);
     memset(fileq->file_name, '\0',MAX_FQUEUE + 1);
 
 
@@ -203,7 +203,7 @@ alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, int timeout)
         {
             fileq->day = p->tm_mday;
             fileq->year = p->tm_year+1900;
-            strncpy(fileq->mon, s_month[p->tm_mon], 4);
+            strncpy(fileq->mon, s_month[p->tm_mon], 3);
 
             /* Getting latest file */
             GetFile_Queue(fileq);
