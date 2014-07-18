@@ -21,26 +21,19 @@
  */
 int os_check_restart_syscheck()
 {
-    struct stat restart_status;
-
     /* If the restart is not present, return 0.
      */
 
     if(isChroot())
     {
-        if(stat(SYSCHECK_RESTART, &restart_status) == -1)
+        if(unlink(SYSCHECK_RESTART) == -1)
             return(0);
-
-        unlink(SYSCHECK_RESTART);
     }
     else
     {
-        if(stat(SYSCHECK_RESTART_PATH, &restart_status) == -1)
+        if(unlink(SYSCHECK_RESTART_PATH) == -1)
             return(0);
-
-        unlink(SYSCHECK_RESTART_PATH);
     }
-
 
     return(1);
 }
