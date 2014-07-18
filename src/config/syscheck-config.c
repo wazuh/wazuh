@@ -471,17 +471,6 @@ static int read_attr(syscheck_config *syscheck, char *dirs, char **g_attrs, char
         j = 0;
         while(syscheck->dir && syscheck->dir[j])
         {
-            size_t str_len_i;
-            size_t str_len_dir;
-
-            str_len_dir = strlen(tmp_dir);
-            str_len_i = strlen(syscheck->dir[j]);
-
-            if(str_len_dir > str_len_i)
-            {
-                str_len_dir = str_len_i;
-            }
-
             /* Duplicate entry */
             if(strcmp(syscheck->dir[j], tmp_dir) == 0)
             {
