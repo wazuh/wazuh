@@ -19,30 +19,34 @@
 #include "os_xml/os_xml.h"
 #include "config.h"
 
+static int read_main_elements(OS_XML xml, int modules,
+                                   XML_NODE node,
+                                   void *d1,
+                                   void *d2);
 
 /* Read the main elements of the configuration.
  */
-int read_main_elements(OS_XML xml, int modules,
+static int read_main_elements(OS_XML xml, int modules,
                                    XML_NODE node,
                                    void *d1,
                                    void *d2)
 {
     int i = 0;
-    char *osglobal = "global";                    /*Server Config*/
-    char *osrules = "rules";                      /*Server Config*/
-    char *ossyscheck = "syscheck";                /*Agent Config*/
-    char *osrootcheck = "rootcheck";              /*Agent Config*/
-    char *osalerts = "alerts";                    /*Server Config*/
-    char *osemailalerts = "email_alerts";         /*Server Config*/
-    char *osdbd = "database_output";              /*Server Config*/
-    char *oscsyslogd = "syslog_output";           /*Server Config*/
-    char *oscagentless = "agentless";             /*Server Config*/
-    char *oslocalfile = "localfile";              /*Agent Config*/
-    char *osremote = "remote";                    /*Agent Config*/
-    char *osclient = "client";                    /*Agent Config*/
-    char *oscommand = "command";                  /*? Config*/
-    char *osreports = "reports";                  /*Server Config*/
-    char *osactive_response = "active-response";  /*Agent Config*/
+    const char *osglobal = "global";                    /*Server Config*/
+    const char *osrules = "rules";                      /*Server Config*/
+    const char *ossyscheck = "syscheck";                /*Agent Config*/
+    const char *osrootcheck = "rootcheck";              /*Agent Config*/
+    const char *osalerts = "alerts";                    /*Server Config*/
+    const char *osemailalerts = "email_alerts";         /*Server Config*/
+    const char *osdbd = "database_output";              /*Server Config*/
+    const char *oscsyslogd = "syslog_output";           /*Server Config*/
+    const char *oscagentless = "agentless";             /*Server Config*/
+    const char *oslocalfile = "localfile";              /*Agent Config*/
+    const char *osremote = "remote";                    /*Agent Config*/
+    const char *osclient = "client";                    /*Agent Config*/
+    const char *oscommand = "command";                  /*? Config*/
+    const char *osreports = "reports";                  /*Server Config*/
+    const char *osactive_response = "active-response";  /*Agent Config*/
 
 
     while(node[i])
@@ -167,15 +171,15 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
 
     /** XML definitions **/
     /* Global */
-    char *xml_start_ossec = "ossec_config";
-    char *xml_start_agent = "agent_config";
+    const char *xml_start_ossec = "ossec_config";
+    const char *xml_start_agent = "agent_config";
 
     /* Attributes of the <agent_config> tag */
-    char *xml_agent_name = "name";
-    char *xml_agent_os = "os";
-    char *xml_agent_overwrite = "overwrite";
+    const char *xml_agent_name = "name";
+    const char *xml_agent_os = "os";
+    const char *xml_agent_overwrite = "overwrite";
     /* cmoraes */
-    char *xml_agent_profile = "profile";
+    const char *xml_agent_profile = "profile";
 
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
@@ -365,7 +369,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
 
     /* Clearing node and xml */
     OS_ClearNode(node);
-    OS_ClearXML(&xml);	
+    OS_ClearXML(&xml);
     return(0);
 }
 

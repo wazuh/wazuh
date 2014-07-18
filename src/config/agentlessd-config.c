@@ -17,19 +17,21 @@
 #include "shared.h"
 #include "agentlessd-config.h"
 
+#include "config.h"
 
-int Read_CAgentless(XML_NODE node, void *config, void *config2)
+
+int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *config2)
 {
-    int i = 0,j = 0,s = 0;
+    unsigned int i = 0, j = 0, s = 0;
 
     /* XML definitions */
-    char *xml_lessd_server = "host";
-    char *xml_lessd_port = "port";
-    char *xml_lessd_type = "type";
-    char *xml_lessd_frequency = "frequency";
-    char *xml_lessd_state = "state";
-    char *xml_lessd_command = "run_command";
-    char *xml_lessd_options = "arguments";
+    const char *xml_lessd_server = "host";
+    const char *xml_lessd_port = "port";
+    const char *xml_lessd_type = "type";
+    const char *xml_lessd_frequency = "frequency";
+    const char *xml_lessd_state = "state";
+    const char *xml_lessd_command = "run_command";
+    const char *xml_lessd_options = "arguments";
 
 
     agentlessd_config *lessd_config = (agentlessd_config *)config;

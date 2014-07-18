@@ -15,11 +15,11 @@
 
 #include "syscheck-config.h"
 
-
+#include "config.h"
 
 int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, char *restrictfile)
 {
-    int pl = 0;
+    unsigned int pl = 0;
 
     if(reg == 1)
     {
@@ -193,19 +193,19 @@ int read_reg(syscheck_config *syscheck, char *entries)
 
 
 /* Read directories attributes */
-int read_attr(syscheck_config *syscheck, char *dirs, char **g_attrs, char **g_values)
+static int read_attr(syscheck_config *syscheck, char *dirs, char **g_attrs, char **g_values)
 {
-    char *xml_check_all = "check_all";
-    char *xml_check_sum = "check_sum";
-    char *xml_check_sha1sum = "check_sha1sum";
-    char *xml_check_md5sum = "check_md5sum";
-    char *xml_check_size = "check_size";
-    char *xml_check_owner = "check_owner";
-    char *xml_check_group = "check_group";
-    char *xml_check_perm = "check_perm";
-    char *xml_real_time = "realtime";
-    char *xml_report_changes = "report_changes";
-    char *xml_restrict = "restrict";
+    const char *xml_check_all = "check_all";
+    const char *xml_check_sum = "check_sum";
+    const char *xml_check_sha1sum = "check_sha1sum";
+    const char *xml_check_md5sum = "check_md5sum";
+    const char *xml_check_size = "check_size";
+    const char *xml_check_owner = "check_owner";
+    const char *xml_check_group = "check_group";
+    const char *xml_check_perm = "check_perm";
+    const char *xml_real_time = "realtime";
+    const char *xml_report_changes = "report_changes";
+    const char *xml_restrict = "restrict";
 
     char *restrictfile = NULL;
     char **dir;
@@ -225,7 +225,7 @@ int read_attr(syscheck_config *syscheck, char *dirs, char **g_attrs, char **g_va
     /* Doing it for each directory */
     while(*dir)
     {
-        int i = 0;
+        int j = 0;
         int opts = 0;
         char *tmp_dir;
 
@@ -468,14 +468,14 @@ int read_attr(syscheck_config *syscheck, char *dirs, char **g_attrs, char **g_va
 
 
         /* Adding directory - looking for the last available */
-        i = 0;
-        while(syscheck->dir && syscheck->dir[i])
+        j = 0;
+        while(syscheck->dir && syscheck->dir[j])
         {
-            int str_len_i;
-            int str_len_dir;
+            size_t str_len_i;
+            size_t str_len_dir;
 
             str_len_dir = strlen(tmp_dir);
-            str_len_i = strlen(syscheck->dir[i]);
+            str_len_i = strlen(syscheck->dir[j]);
 
             if(str_len_dir > str_len_i)
             {
@@ -483,14 +483,14 @@ int read_attr(syscheck_config *syscheck, char *dirs, char **g_attrs, char **g_va
             }
 
             /* Duplicate entry */
-            if(strcmp(syscheck->dir[i], tmp_dir) == 0)
+            if(strcmp(syscheck->dir[j], tmp_dir) == 0)
             {
                 merror(SK_DUP, ARGV0, tmp_dir);
                 ret = 1;
                 goto out_free;
             }
 
-            i++;
+            j++;
         }
 
 
@@ -560,23 +560,23 @@ out_free:
 
 
 
-int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
+int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
 
     /* XML Definitions */
-    char *xml_directories = "directories";
-    char *xml_registry = "windows_registry";
-    char *xml_time = "frequency";
-    char *xml_scanday = "scan_day";
-    char *xml_scantime = "scan_time";
-    char *xml_ignore = "ignore";
-    char *xml_registry_ignore = "registry_ignore";
-    char *xml_auto_ignore = "auto_ignore";
-    char *xml_alert_new_files = "alert_new_files";
-    char *xml_disabled = "disabled";
-    char *xml_scan_on_start = "scan_on_start";
-    char *xml_prefilter_cmd = "prefilter_cmd";
+    const char *xml_directories = "directories";
+    const char *xml_registry = "windows_registry";
+    const char *xml_time = "frequency";
+    const char *xml_scanday = "scan_day";
+    const char *xml_scantime = "scan_time";
+    const char *xml_ignore = "ignore";
+    const char *xml_registry_ignore = "registry_ignore";
+    const char *xml_auto_ignore = "auto_ignore";
+    const char *xml_alert_new_files = "alert_new_files";
+    const char *xml_disabled = "disabled";
+    const char *xml_scan_on_start = "scan_on_start";
+    const char *xml_prefilter_cmd = "prefilter_cmd";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -695,7 +695,7 @@ int Read_Syscheck(XML_NODE node, void *configp, void *mailp)
         /* Getting file/dir ignore */
         else if(strcmp(node[i]->element,xml_ignore) == 0)
         {
-            int ign_size = 0;
+            unsigned int ign_size = 0;
 
             /* For Windows, we attempt to expand environment variables. */
             #ifdef WIN32

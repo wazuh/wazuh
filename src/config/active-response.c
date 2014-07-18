@@ -20,6 +20,8 @@
 
 #include "active-response.h"
 
+#include "config.h"
+
 
 /** int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
  * Generates a list with all active responses.
@@ -34,15 +36,15 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
 
     /* Xml options */
-    char *xml_ar_command = "command";
-    char *xml_ar_location = "location";
-    char *xml_ar_agent_id = "agent_id";
-    char *xml_ar_rules_id = "rules_id";
-    char *xml_ar_rules_group = "rules_group";
-    char *xml_ar_level = "level";
-    char *xml_ar_timeout = "timeout";
-    char *xml_ar_disabled = "disabled";
-    char *xml_ar_repeated = "repeated_offenders";
+    const char *xml_ar_command = "command";
+    const char *xml_ar_location = "location";
+    const char *xml_ar_agent_id = "agent_id";
+    const char *xml_ar_rules_id = "rules_id";
+    const char *xml_ar_rules_group = "rules_group";
+    const char *xml_ar_level = "level";
+    const char *xml_ar_timeout = "timeout";
+    const char *xml_ar_disabled = "disabled";
+    const char *xml_ar_repeated = "repeated_offenders";
 
     char *tmp_location;
 
@@ -68,7 +70,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
       return(-1);
     }
 
-    if((chown(DEFAULTARPATH, -1, os_group->gr_gid)) == -1)
+    if((chown(DEFAULTARPATH, (uid_t)-1, os_group->gr_gid)) == -1)
     {
       merror("Could not change the group to ossec: %d", errno);
       fclose(fp);
@@ -375,17 +377,17 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
 /** int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
  */
-int ReadActiveCommands(XML_NODE node, void *d1, void *d2)
+int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
 
     char *tmp_str = NULL;
 
     /* Xml values */
-    char *command_name = "name";
-    char *command_expect = "expect";
-    char *command_executable = "executable";
-    char *timeout_allowed = "timeout_allowed";
+    const char *command_name = "name";
+    const char *command_expect = "expect";
+    const char *command_executable = "executable";
+    const char *timeout_allowed = "timeout_allowed";
 
     ar_command *tmp_command;
 

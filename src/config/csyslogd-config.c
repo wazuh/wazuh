@@ -18,18 +18,18 @@
 #include "config.h"
 
 
-int Read_CSyslog(XML_NODE node, void *config, void *config2)
+int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *config2)
 {
-    int i = 0,s = 0;
+    unsigned int i = 0,s = 0;
 
     /* XML definitions */
-    char *xml_syslog_server = "server";
-    char *xml_syslog_port = "port";
-    char *xml_syslog_format = "format";
-    char *xml_syslog_level = "level";
-    char *xml_syslog_id = "rule_id";
-    char *xml_syslog_group = "group";
-    char *xml_syslog_location = "event_location";
+    const char *xml_syslog_server = "server";
+    const char *xml_syslog_port = "port";
+    const char *xml_syslog_format = "format";
+    const char *xml_syslog_level = "level";
+    const char *xml_syslog_id = "rule_id";
+    const char *xml_syslog_group = "group";
+    const char *xml_syslog_location = "event_location";
 
 
     GeneralConfig *gen_config = (GeneralConfig *)config;
@@ -81,7 +81,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
                 return(OS_INVALID);
             }
 
-            syslog_config[s]->level = atoi(node[i]->content);
+            syslog_config[s]->level = (unsigned int) atoi(node[i]->content);
         }
         else if(strcmp(node[i]->element, xml_syslog_port) == 0)
         {
@@ -91,7 +91,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
                 return(OS_INVALID);
             }
 
-            syslog_config[s]->port = atoi(node[i]->content);
+            syslog_config[s]->port = (unsigned int) atoi(node[i]->content);
         }
         else if(strcmp(node[i]->element, xml_syslog_server) == 0)
         {
@@ -99,7 +99,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
         }
         else if(strcmp(node[i]->element, xml_syslog_id) == 0)
         {
-            int r_id = 0;
+            unsigned int r_id = 0;
             char *str_pt = node[i]->content;
 
             while(*str_pt != '\0')
@@ -117,9 +117,9 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
                  */
                 else if(isdigit((int)*str_pt))
                 {
-                    int id_i = 0;
+                    unsigned int id_i = 0;
 
-                    r_id = atoi(str_pt);
+                    r_id = (unsigned int) atoi(str_pt);
                     debug1("%s: DEBUG: Adding '%d' to syslog alerting",
                            ARGV0, r_id);
 

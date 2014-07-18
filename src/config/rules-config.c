@@ -17,7 +17,7 @@
 #include "shared.h"
 #include "global-config.h"
 
-
+#include "config.h"
 
 static int cmpr(const void *a, const void *b) {
     /*printf("%s - %s\n", *(char **)a, *(char **)b);*/
@@ -37,19 +37,19 @@ static int file_in_list(int list_size, char *f_name, char *d_name, char **alist)
     return(0);
 }
 
-int Read_Rules(XML_NODE node, void *configp, void *mailp)
+int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
-    int ii = 0;
+    unsigned int ii = 0;
 
-    int rules_size = 1;
-    int lists_size = 1;
-    int decoders_size = 1;
+    unsigned int rules_size = 1;
+    unsigned int lists_size = 1;
+    unsigned int decoders_size = 1;
 
 
     char path[PATH_MAX +2];
     char f_name[PATH_MAX +2];
-    int start_point = 0;
+    unsigned int start_point = 0;
     int att_count = 0;
     struct dirent *entry;
     DIR *dfd;
@@ -57,12 +57,12 @@ int Read_Rules(XML_NODE node, void *configp, void *mailp)
 
 
     /* XML definitions */
-    char *xml_rules_include = "include";
-    char *xml_rules_rule = "rule";
-    char *xml_rules_rules_dir = "rule_dir";
-    char *xml_rules_lists = "list";
-    char *xml_rules_decoders = "decoder";
-    char *xml_rules_decoders_dir = "decoder_dir";
+    const char *xml_rules_include = "include";
+    const char *xml_rules_rule = "rule";
+    const char *xml_rules_rules_dir = "rule_dir";
+    const char *xml_rules_lists = "list";
+    const char *xml_rules_decoders = "decoder";
+    const char *xml_rules_decoders_dir = "decoder_dir";
 
     _Config *Config;
 
