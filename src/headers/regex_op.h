@@ -15,7 +15,7 @@
 #define OS_REGEX_OP_H
 
 /* Posix regex pattern matching */
-int OS_PRegex(char *str, char *regex);
+int OS_PRegex(char *str, const char *regex);
 
 
 #endif

@@ -64,7 +64,7 @@ int OSList_SetMaxSize(OSList *list, int max_size)
 /* Set the pointer to the function to free the memory
  * data.
  */
-int OSList_SetFreeDataPointer(OSList *list, void *free_data_function)
+int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *))
 {
     if(!list)
     {

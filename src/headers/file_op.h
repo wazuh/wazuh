@@ -26,7 +26,7 @@
 /* Set the program name. Must be done before **anything** else */
 void OS_SetName(char *name);
 
-int File_DateofChange(char *file);
+time_t File_DateofChange(const char *file);
 
 int IsDir(char *file);
 
@@ -41,13 +41,13 @@ int MergeAppendFile(char *finalpath, char *files);
 int UnmergeFiles(char *finalpath, char *optdir);
 
 /* daemonize a process */
-void goDaemon();
+void goDaemon(void);
 
 /* daemonize a process without closing stdin/stdou/stderr */
-void goDaemonLight();
+void goDaemonLight(void);
 
 /* not really a file operation, but returns the uname */
-char *getuname();
+char *getuname(void);
 
 /* Checks for vista. */
 #ifdef WIN32

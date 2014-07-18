@@ -36,11 +36,11 @@ typedef struct _OSDirTree
 }OSDirTree;
 
 
-OSDirTree *OSDirTree_Create();
+OSDirTree *OSDirTree_Create(void);
 void OSDirTree_AddToTree(OSDirTree *tree, char *str, void *data, char sep);
 void *OSDirTree_SearchTree(OSDirTree *tree, char *str, char sep);
 
-
+OSTreeNode *OSDirTree_GetFirstNode(OSDirTree *tree);
 
 #endif
 

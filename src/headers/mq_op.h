@@ -27,7 +27,7 @@
 #define POSTGRESQL_MQ   'b'
 
 
-int StartMQ(char * key, short int type);
+int StartMQ(const char * key, short int type);
 
 int SendMSG(int queue, char * message, char *locmsg, char loc);
 

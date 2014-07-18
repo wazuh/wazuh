@@ -10,6 +10,7 @@
  * Foundation
  */
 
+#include "agent_op.h"
 
 #include "shared.h"
 
@@ -260,7 +261,7 @@ char* os_read_agent_profile()
  *  Returns 1 on success or <= 0 on failure.
  */
 /* cmoraes: changed function. added cfg_profile_name parameter */
-int os_write_agent_info(char *agent_name, char *agent_ip,
+int os_write_agent_info(char *agent_name, __attribute__((unused)) char *agent_ip,
                         char *agent_id,   char *cfg_profile_name)
 {
     FILE *fp;
@@ -274,10 +275,10 @@ int os_write_agent_info(char *agent_name, char *agent_ip,
 
     /*cmoraes: added cfg_profile_name parameter*/
     fprintf(
-        fp, 
-        "%s\n-\n%s\n%s\n", 
-        agent_name, 
-        agent_id, 
+        fp,
+        "%s\n-\n%s\n%s\n",
+        agent_name,
+        agent_id,
         (cfg_profile_name) ? cfg_profile_name : "-"
     );
     fclose(fp);

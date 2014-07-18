@@ -49,13 +49,13 @@ void ErrorExit(const char *msg,...) __attribute__((format(printf, 1, 2))) __attr
 /* Use these three functions to set when you
  * enter in debug, chroot or daemon mode
  */
-void nowDebug();
+void nowDebug(void);
 
-void nowChroot();
+void nowChroot(void);
 
-void nowDaemon();
+void nowDaemon(void);
 
-int isChroot();
+int isChroot(void);
 
 /* Debug analysisd */
 #ifdef DEBUGAD

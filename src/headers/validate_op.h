@@ -29,7 +29,7 @@ typedef struct _os_ip
 
 
 /* Getting the netmask based on the integer value. */
-int getNetmask(int mask, char *strmask, int size);
+int getNetmask(unsigned int mask, char *strmask, size_t size);
 
 
 /* Run time definitions. */

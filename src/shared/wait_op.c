@@ -13,7 +13,7 @@
 
 #include "shared.h"
 #define LOCK_LOOP   5
-int __wait_lock = 0;
+static int __wait_lock = 0;
 
 
 /* Creates global lock */

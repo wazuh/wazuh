@@ -28,10 +28,14 @@
 #define RULE_BEGIN_SZ   6
 #define SRCIP_BEGIN     "Src IP: "
 #define SRCIP_BEGIN_SZ  8
+
+#ifdef GEOIP
 #define GEOIP_BEGIN_SRC	"Src Location: "
 #define GEOIP_BEGIN_SRC_SZ  14
 #define GEOIP_BEGIN_DST	"Dst Location: "
 #define GEOIP_BEGIN_DST_SZ  14
+#endif /* GEOIP */
+
 #define SRCPORT_BEGIN     "Src Port: "
 #define SRCPORT_BEGIN_SZ  10
 #define DSTIP_BEGIN     "Dst IP: "
@@ -42,7 +46,6 @@
 #define USER_BEGIN_SZ   6
 #define ALERT_MAIL      "mail"
 #define ALERT_MAIL_SZ   4
-#define ALERT_AR        "active-response"
 #define OLDMD5_BEGIN      "Old md5sum was: "
 #define OLDMD5_BEGIN_SZ   16
 #define NEWMD5_BEGIN      "New md5sum is : "
@@ -160,7 +163,8 @@ void FreeAlertData(alert_data *al_data)
  */
 alert_data *GetAlertData(int flag, FILE *fp)
 {
-    int _r = 0, log_size = 0, issyscheck = 0;
+    int _r = 0, issyscheck = 0;
+    size_t log_size = 0;
     char *p;
 
     char *alertid = NULL;
@@ -181,7 +185,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *geoipdatasrc = NULL;
     char *geoipdatadst = NULL;
 #endif
-    int level, rule, srcport = 0, dstport = 0;
+    int level = 0, rule = 0, srcport = 0, dstport = 0;
 
 
     char str[OS_BUFFER_SIZE+1];
@@ -233,7 +237,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
         if(strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0)
         {
             char *m;
-            int z = 0;
+            size_t z = 0;
             p = str + ALERT_BEGIN_SZ + 1;
 
             m = strstr(p, ":");

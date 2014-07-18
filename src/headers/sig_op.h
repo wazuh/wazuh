@@ -18,8 +18,8 @@
 
 #define __SIG_H
 
-void HandleSIG();
-void HandleSIGPIPE();
+void HandleSIG(int sig) __attribute__((noreturn));
+void HandleSIGPIPE(int sig);
 
 /* Start signal manipulation */
 void StartSIG(char *process_name);

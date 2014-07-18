@@ -14,6 +14,17 @@
 #include "read-agents.h"
 #include "os_net/os_net.h"
 
+static int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, int csv_output,
+        int is_win, int number_of_changes);
+static int _do_print_file_syscheck(FILE *fp, char *fname,
+                            int update_counter, int csv_output);
+static int _do_print_syscheck(FILE *fp, int all_files, int csv_output);
+static int _do_get_rootcheckscan(FILE *fp);
+static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
+                        int csv_output, int show_last);
+static int _get_time_rkscan(char *agent_name, char *agent_ip, agent_info *agt_info);
+static char *_get_agent_keepalive(char *agent_name, char *agent_ip);
+static int _get_agent_os(char *agent_name, char *agent_ip, agent_info *agt_info);
 
 /* Free the agent list in memory
  */
@@ -41,7 +52,8 @@ void free_agents(char **agent_list)
 
 /* Print syscheck attributes. */
 #define sk_strchr(x,y,z) z = strchr(x, y); if(z == NULL) return(0); else { *z = '\0'; z++; }
-int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, int csv_output,
+
+static int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, __attribute__((unused)) int csv_output,
                              int is_win, int number_of_changes)
 {
     char *p_size, *p_perm, *p_uid, *p_gid, *p_md5, *p_sha1;
@@ -172,7 +184,7 @@ int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, int csv_output,
 
 
 /* Print information about a specific file. */
-int _do_print_file_syscheck(FILE *fp, char *fname,
+static int _do_print_file_syscheck(FILE *fp, char *fname,
                             int update_counter, int csv_output)
 {
     int f_found = 0;
@@ -380,7 +392,7 @@ int _do_print_file_syscheck(FILE *fp, char *fname,
 
 
 /* Print syscheck db (of modified files. */
-int _do_print_syscheck(FILE *fp, int all_files, int csv_output)
+static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, int csv_output)
 {
     int f_found = 0;
     struct tm *tm_time;
@@ -536,7 +548,7 @@ int print_syscheck(char *sk_name, char *sk_ip, char *fname, int print_registry,
 
 
 
-int _do_get_rootcheckscan(FILE *fp)
+static int _do_get_rootcheckscan(FILE *fp)
 {
     char *tmp_str;
     char buf[OS_MAXSTR + 1];
@@ -561,7 +573,7 @@ int _do_get_rootcheckscan(FILE *fp)
 
 
 /* Print syscheck db (of modified files. */
-int _do_print_rootcheck(FILE *fp, int resolved, int time_last_scan,
+static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
                         int csv_output, int show_last)
 {
     int i = 0;
@@ -578,13 +590,13 @@ int _do_print_rootcheck(FILE *fp, int resolved, int time_last_scan,
     char *tmp_str;
 
 
-    char *(ig_events[]) = {"Starting rootcheck scan",
+    const char *(ig_events[]) = {"Starting rootcheck scan",
                            "Ending rootcheck scan",
                            "Starting syscheck scan",
                            "Ending syscheck scan",
                            NULL};
 
-    char *(ns_events[]) = {"Application Found:",
+    const char *(ns_events[]) = {"Application Found:",
                            "Windows Audit:",
                            "Windows Malware:",
                            NULL};
@@ -602,7 +614,7 @@ int _do_print_rootcheck(FILE *fp, int resolved, int time_last_scan,
     {
         if(show_last)
         {
-            tm_time = localtime((time_t *)&time_last_scan);
+            tm_time = localtime(&time_last_scan);
             strftime(read_day, 23, "%Y %h %d %T", tm_time);
 
             printf("\nLast scan: %s\n\n", read_day);
@@ -917,9 +929,9 @@ int delete_agentinfo(char *name)
 /** char *print_agent_status(int status)
  * Prints the text representation of the agent status.
  */
-char *print_agent_status(int status)
+const char *print_agent_status(int status)
 {
-    char *status_str = "Never connected";
+    const char *status_str = "Never connected";
 
     if(status == GA_STATUS_ACTIVE)
     {
@@ -1018,7 +1030,7 @@ int connect_to_remoted()
 
 
 /* Internal funtion. Extract last time of scan from rootcheck/syscheck. */
-int _get_time_rkscan(char *agent_name, char *agent_ip, agent_info *agt_info)
+static int _get_time_rkscan(char *agent_name, char *agent_ip, agent_info *agt_info)
 {
     FILE *fp;
     char buf[1024 +1];
@@ -1151,7 +1163,7 @@ int _get_time_rkscan(char *agent_name, char *agent_ip, agent_info *agt_info)
 
 
 /* Internal funtion. Extract last time of scan from rootcheck/syscheck. */
-char *_get_agent_keepalive(char *agent_name, char *agent_ip)
+static char *_get_agent_keepalive(char *agent_name, char *agent_ip)
 {
     char buf[1024 +1];
     struct stat file_status;
@@ -1176,7 +1188,7 @@ char *_get_agent_keepalive(char *agent_name, char *agent_ip)
 
 
 /* Internal funtion. Extracts operating system. */
-int _get_agent_os(char *agent_name, char *agent_ip, agent_info *agt_info)
+static int _get_agent_os(char *agent_name, char *agent_ip, agent_info *agt_info)
 {
     FILE *fp;
     char buf[1024 +1];
@@ -1381,7 +1393,7 @@ int get_agent_status(char *agent_name, char *agent_ip)
  */
 char **get_agents(int flag)
 {
-    int f_size = 0;
+    size_t f_size = 0;
 
     char **f_files = NULL;
     DIR *dp;

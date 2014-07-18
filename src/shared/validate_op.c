@@ -17,20 +17,26 @@
 
 
 #include "shared.h"
-char *ip_address_regex =
+
+static char *_read_file(char *high_name, char *low_name, const char *defines_file);
+static void _init_masks();
+static char *__gethour(char *str, char *ossec_hour);
+
+
+static const char *ip_address_regex =
      "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
      "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
 
 /* Global vars */
-int _mask_inited = 0;
-int _netmasks[33];
+static int _mask_inited = 0;
+static unsigned int _netmasks[33];
 
 
 /* Read the file and return a string the matches the following
  * format: high_name.low_name.
  * If return is not null, value must be free.
  */
-static char *_read_file(char *high_name, char *low_name, char *defines_file)
+static char *_read_file(char *high_name, char *low_name, const char *defines_file)
 {
     FILE *fp;
     char def_file[OS_FLSIZE +1];
@@ -138,7 +144,7 @@ static char *_read_file(char *high_name, char *low_name, char *defines_file)
 
 
 /* Getting the netmask based on the integer value. */
-int getNetmask(int mask, char *strmask, int size)
+int getNetmask(unsigned int mask, char *strmask, size_t size)
 {
     int i = 0;
 
@@ -165,7 +171,7 @@ int getNetmask(int mask, char *strmask, int size)
 
 
 /* Initialize netmasks -- took from snort util.c */
-void _init_masks()
+static void _init_masks()
 {
     _mask_inited = 1;
     _netmasks[0] = 0x0;
@@ -486,7 +492,7 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
     }
 
     /* Should never reach here */
-    return(0);
+    //return(0);
 }
 
 
@@ -529,7 +535,8 @@ int OS_IsonTime(char *time_str, char *ossec_time)
  * hh am - hh pm (12 hour format)
  */
 #define RM_WHITE(x)while(*x == ' ')x++;
-char *__gethour(char *str, char *ossec_hour)
+
+static char *__gethour(char *str, char *ossec_hour)
 {
     int _size = 0;
     int chour = 0;
@@ -793,7 +800,7 @@ char *OS_IsValidDay(char *day_str)
     int i = 0, ng = 0;
     char *ret;
     char day_ret[9] = {0,0,0,0,0,0,0,0,0};
-    char *(days[]) =
+    const char *(days[]) =
     {
         "sunday", "sun", "monday", "mon", "tuesday", "tue",
         "wednesday", "wed", "thursday", "thu", "friday",

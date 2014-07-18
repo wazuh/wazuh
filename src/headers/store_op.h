@@ -23,7 +23,7 @@ typedef struct _OSStoreNode
     struct _OSStoreNode *prev;
     void *data;
     char *key;
-    int key_size;
+    size_t key_size;
 }OSStoreNode;
 
 /* Store list */
@@ -40,7 +40,7 @@ typedef struct _OSStore
 }OSStore;
 
 
-OSStore *OSStore_Create();
+OSStore *OSStore_Create(void);
 OSStore *OSStore_Free(OSStore *list);
 
 int OSStore_Put(OSStore *list, char *key, void *data);
@@ -52,7 +52,8 @@ void *OSStore_Get(OSStore *list, char *key);
 OSStoreNode *OSStore_GetFirstNode(OSStore *list);
 int OSStore_Sort(OSStore *list, void*(sort_data_function)(void *d1, void *d2));
 
-
+int OSStore_SetMaxSize(OSStore *list, int max_size);
+int OSStore_SetFreeDataPointer(OSStore *list, void (free_data_function)(void *));
 
 #endif
 

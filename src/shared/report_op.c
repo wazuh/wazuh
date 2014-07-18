@@ -14,9 +14,19 @@
 #include "shared.h"
 
 
+
 /** Helper functions. */
-FILE *__g_rtype = NULL;
-void l_print_out(const char *msg, ...)
+static void l_print_out(const char *msg, ...) __attribute__((format(printf,1,2)));
+static void *_os_report_sort_compare(void *d1, void *d2);
+static void _os_header_print(int t, const char *hname);
+static int _os_report_str_int_compare(char *str, int id);
+static int _os_report_check_filters(alert_data *al_data, report_filter *r_filter);
+static int _report_filter_value(char *filter_by, int prev_filter);
+static int _os_report_print_related(int print_related, OSList *st_data);
+static int _os_report_add_tostore(char *key, OSStore *top, void *data);
+static FILE *__g_rtype = NULL;
+
+static void l_print_out(const char *msg, ...)
 {
     va_list args;
     va_start(args, msg);
@@ -38,7 +48,7 @@ void l_print_out(const char *msg, ...)
 /* Sort function used by OSStore sort.
  * Returns if d1 > d2.
  */
-void *_os_report_sort_compare(void *d1, void *d2)
+static void *_os_report_sort_compare(void *d1, void *d2)
 {
    OSList *d1l = (OSList *)d1;
    OSList *d2l = (OSList *)d2;
@@ -53,7 +63,7 @@ void *_os_report_sort_compare(void *d1, void *d2)
 
 
 /* Print output header. */
-void _os_header_print(int t, char *hname)
+static void _os_header_print(int t, const char *hname)
 {
     if(!t)
     {
@@ -69,7 +79,7 @@ void _os_header_print(int t, char *hname)
 
 
 /* Compares if the id is present in the string. */
-int _os_report_str_int_compare(char *str, int id)
+static int _os_report_str_int_compare(char *str, int id)
 {
     int pt_check = 0;
 
@@ -107,7 +117,7 @@ int _os_report_str_int_compare(char *str, int id)
 
 
 /* Check if the al_data should be filtered. */
-int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
+static int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
 {
     /* Checking for the filters. */
     if(r_filter->group)
@@ -178,7 +188,7 @@ int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
 
 
 /* Sets the proper value for the related entries. */
-int _report_filter_value(char *filter_by, int prev_filter)
+static int _report_filter_value(char *filter_by, int prev_filter)
 {
     if(strcmp(filter_by, "group") == 0)
     {
@@ -246,7 +256,7 @@ int _report_filter_value(char *filter_by, int prev_filter)
 
 
 /* Prints related entries. */
-int _os_report_print_related(int print_related, OSList *st_data)
+static int _os_report_print_related(int print_related, OSList *st_data)
 {
     OSListNode *list_entry;
     alert_data *list_aldata;
@@ -362,7 +372,7 @@ int _os_report_print_related(int print_related, OSList *st_data)
 
 
 /* Add the entry to the hash. */
-int _os_report_add_tostore(char *key, OSStore *top, void *data)
+static int _os_report_add_tostore(char *key, OSStore *top, void *data)
 {
     OSList *top_list;
 
@@ -390,7 +400,7 @@ int _os_report_add_tostore(char *key, OSStore *top, void *data)
 
 
 
-void os_report_printtop(void *topstore_pt, char *hname, int print_related)
+void os_report_printtop(void *topstore_pt, const char *hname, int print_related)
 {
     int dopdout = 0;
     OSStore *topstore = (OSStore *)topstore_pt;

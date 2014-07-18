@@ -20,7 +20,7 @@
 /* StartMQ v0.2, 2004/07/30
  * Start the Message Queue. type: WRITE||READ
  */
-int StartMQ(char * path, short int type)
+int StartMQ(const char * path, short int type)
 {
 
     if(type == READ)

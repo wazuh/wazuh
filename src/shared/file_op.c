@@ -304,7 +304,7 @@ void OS_SetName(char *name)
 }
 
 
-int File_DateofChange(char *file)
+time_t File_DateofChange(const char *file)
 {
     struct stat file_status;
 
@@ -378,8 +378,8 @@ int DeletePID(char *name)
 
 int UnmergeFiles(char *finalpath, char *optdir)
 {
-    int i = 0, n = 0, ret = 1;
-    long files_size = 0;
+    int ret = 1;
+    size_t i = 0, n = 0, files_size = 0;
 
     char *files;
     char final_name[2048 +1];
@@ -410,7 +410,7 @@ int UnmergeFiles(char *finalpath, char *optdir)
 
 
         /* Getting file size and name. */
-        files_size = atol(buf +1);
+        files_size = (size_t) atol(buf +1);
 
         files = strchr(buf, '\n');
         if(files)
@@ -496,7 +496,7 @@ int UnmergeFiles(char *finalpath, char *optdir)
 
 int MergeAppendFile(char *finalpath, char *files)
 {
-    int n = 0;
+    size_t n = 0;
     long files_size = 0;
 
     char buf[2048 + 1];
@@ -571,7 +571,8 @@ int MergeAppendFile(char *finalpath, char *files)
 
 int MergeFiles(char *finalpath, char **files)
 {
-    int i = 0, n = 0, ret = 1;
+    int i = 0, ret = 1;
+    size_t n = 0;
     long files_size = 0;
 
     char *tmpfile;

@@ -19,9 +19,11 @@
 #include "shared.h"
 #include "file-queue.h"
 
-
+static void file_sleep();
+static void GetFile_Queue(file_queue *fileq);
+static int Handle_Queue(file_queue *fileq, int flags);
 /* To translante between month (int) to month (char) */
-char *(s_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
+static const char *(s_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
                    "Sep","Oct","Nov","Dec"};
 
 
@@ -29,7 +31,7 @@ char *(s_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
 /** void file_sleep();
  * file_sleep
  */
-void file_sleep()
+static void file_sleep()
 {
     #ifndef WIN32
     struct timeval fp_timeout;
@@ -53,7 +55,7 @@ void file_sleep()
 /** void GetFile_Queue(file_queue *fileq)
  * Get the file queue for that specific hour
  */
-void GetFile_Queue(file_queue *fileq)
+static void GetFile_Queue(file_queue *fileq)
 {
     /* Creating the logfile name */
     fileq->file_name[0] = '\0';
@@ -80,7 +82,7 @@ void GetFile_Queue(file_queue *fileq)
 /** int Handle_Queue(file_queue *fileq)
  * Re Handle the file queue.
  */
-int Handle_Queue(file_queue *fileq, int flags)
+static int Handle_Queue(file_queue *fileq, int flags)
 {
     /* Closing if it is open */
     if(!(flags & CRALERT_FP_SET))

@@ -37,10 +37,10 @@ typedef struct _OSList
 }OSList;
 
 
-OSList *OSList_Create();
+OSList *OSList_Create(void);
 
 int OSList_SetMaxSize(OSList *list, int max_size);
-int OSList_SetFreeDataPointer(OSList *list, void *free_data_function);
+int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *));
 
 OSListNode *OSList_GetFirstNode(OSList *);
 OSListNode *OSList_GetLastNode(OSList *);

@@ -26,9 +26,9 @@
 
 #include "error_messages/error_messages.h"
 
-char *pidfile = NULL;
+static char *pidfile = NULL;
 
-void HandleSIG()
+void HandleSIG(__attribute__((unused)) int sig)
 {
     merror(SIGNAL_RECV, pidfile);
 
@@ -39,7 +39,7 @@ void HandleSIG()
 
 
 /* To avoid client-server communication problems */
-void HandleSIGPIPE()
+void HandleSIGPIPE(__attribute__((unused)) int sig)
 {
     return;
 }

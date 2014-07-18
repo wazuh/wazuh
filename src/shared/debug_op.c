@@ -14,9 +14,11 @@
 #include "headers/shared.h"
 
 
-int dbg_flag = 0;
-int chroot_flag = 0;
-int daemon_flag = 0;
+static int dbg_flag = 0;
+static int chroot_flag = 0;
+static int daemon_flag = 0;
+
+static void _log(const char * msg,va_list args) __attribute__((format(printf,1,0)));
 
 #ifdef WIN32
 void WinSetError();
@@ -33,7 +35,7 @@ void WinSetError();
 
 
 /* _log function */
-void _log(const char * msg,va_list args)
+static void _log(const char * msg,va_list args)
 {
     time_t tm;
     struct tm *p;
@@ -86,7 +88,7 @@ void _log(const char * msg,va_list args)
     /* Only if not in daemon mode */
     if(daemon_flag == 0)
     {
-        /* Print to stderr */		
+        /* Print to stderr */
         (void)fprintf(stderr,"%d/%02d/%02d %02d:%02d:%02d ",
                       p->tm_year+1900,p->tm_mon+1 ,p->tm_mday,
                       p->tm_hour,p->tm_min,p->tm_sec);
@@ -219,4 +221,4 @@ int isChroot()
     return(chroot_flag);
 }
 
-/* EOF */			
+/* EOF */

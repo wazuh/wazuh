@@ -55,7 +55,7 @@ void free_agents(char **agent_list);
 /** char *print_agent_status(int status)
  * Prints the text representation of the agent status.
  */
-char *print_agent_status(int status);
+const char *print_agent_status(int status);
 
 /** int get_agent_status(char *agent_name, char *agent_ip)
  * Gets the status of an agent, based on the name/ip.
@@ -72,7 +72,7 @@ agent_info *get_agent_info(char *agent_name, char *agent_ip);
  * Connects to remoted to be able to send messages to the agents.
  * Returns the socket on success or -1 on failure.
  */
-int connect_to_remoted();
+int connect_to_remoted(void);
 
 /** int send_msg_to_agent(int socket, char *msg)
  * Sends a message to an agent.

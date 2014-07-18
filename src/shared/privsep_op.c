@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "privsep_op.h"
 #include "headers/os_err.h"
 
 int Privsep_GetUser(char * name)

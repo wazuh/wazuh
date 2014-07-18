@@ -21,7 +21,7 @@
 /* File queue */
 typedef struct _file_queue
 {
-    int last_change;
+    time_t last_change;
     int year;
     int day;
     int flags;

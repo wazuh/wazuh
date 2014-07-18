@@ -22,7 +22,7 @@
  */
 void os_trimcrlf(char *str)
 {
-    int len;
+    size_t len;
 
     len=strlen(str);
     len--;
@@ -38,7 +38,7 @@ void os_trimcrlf(char *str)
 char *os_strip_char(char *source, char remove) {
     char *clean;
     char *iterator = source;
-    int length = 0;
+    size_t length = 0;
     int i;
 
     // Figure out how much memory to allocate
@@ -68,7 +68,7 @@ char *os_strip_char(char *source, char remove) {
 }
 
 /* Do a substring */
-int os_substr(char *dest, const char *src, int position, int length) {
+int os_substr(char *dest, const char *src, size_t position, size_t length) {
     dest[0]='\0';
 
     if( length <= 0  ) {
@@ -94,7 +94,7 @@ char *os_shell_escape(const char *src) {
                             '*', '[', ']', '{', '}', '&', '$', '!', ':', '(', ')' };
 
     char *escaped_string;
-    int length = 0;
+    size_t length = 0;
     int i = 0;
 
     if (src == NULL)

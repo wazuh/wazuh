@@ -18,7 +18,7 @@
 /* Add pointer to array. */
 void **os_AddPtArray(void *pt, void **array)
 {
-    int i = 0;
+    size_t i = 0;
     void **ret = NULL;
 
     if(array)
@@ -40,7 +40,7 @@ void **os_AddPtArray(void *pt, void **array)
 /* Add a string to an array. */
 char **os_AddStrArray(char *str, char **array)
 {
-    int i = 0;
+    size_t i = 0;
     char **ret = NULL;
     if(array)
     {
@@ -127,8 +127,8 @@ char *os_LoadString(char *at, char *str)
     else /*at is not null. Need to reallocat its memory and copy str to it*/
     {
         char *newat;
-        int strsize = strlen(str);
-        int finalsize = strsize + strlen(at) + 1;
+        size_t strsize = strlen(str);
+        size_t finalsize = strsize + strlen(at) + 1;
 
         newat = realloc(at, finalsize*sizeof(char));
         if(newat == NULL)

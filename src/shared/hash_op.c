@@ -19,7 +19,7 @@
 
 #include "shared.h"
 
-
+static unsigned int _os_genhash(OSHash *self, char *key);
 
 /** OSHash *OSHash_Create()
  * Creates the Hash.
@@ -27,7 +27,7 @@
  */
 OSHash *OSHash_Create()
 {
-    int i = 0;
+    unsigned int i = 0;
     OSHash *self;
 
     /* Allocating memory for the hash */
@@ -64,7 +64,7 @@ OSHash *OSHash_Create()
 
 
     /* Getting seed */
-    srandom(time(0));
+    srandom((unsigned int)time(0));
     self->initial_seed = os_getprime(random() % self->rows);
     self->constant = os_getprime(random() % self->rows);
 
@@ -79,7 +79,7 @@ OSHash *OSHash_Create()
  */
 void *OSHash_Free(OSHash *self)
 {
-    int i = 0;
+    unsigned int i = 0;
     OSHashNode *curr_node;
     OSHashNode *next_node;
 
@@ -112,7 +112,7 @@ void *OSHash_Free(OSHash *self)
 /** int _os_genhash(OSHash *self, char *key)
  * Generates hash for key
  */
-int _os_genhash(OSHash *self, char *key)
+static unsigned int _os_genhash(OSHash *self, char *key)
 {
     unsigned int hash_key = self->initial_seed;
 
@@ -122,7 +122,7 @@ int _os_genhash(OSHash *self, char *key)
     while(*key)
     {
         hash_key *= self->constant;
-        hash_key += *key;
+        hash_key += (unsigned int) *key;
         key++;
     }
 
@@ -135,9 +135,9 @@ int _os_genhash(OSHash *self, char *key)
  * Sets new size for hash.
  * Returns 0 on error (out of memory).
  */
-int OSHash_setSize(OSHash *self, int new_size)
+int OSHash_setSize(OSHash *self, unsigned int new_size)
 {
-    int i = 0;
+    unsigned int i = 0;
 
     /* We can't decrease the size */
     if(new_size <= self->rows)

@@ -106,7 +106,7 @@ int OSStore_SetMaxSize(OSStore *list, int max_size)
 /* Set the pointer to the function to free the memory
  * data.
  */
-int OSStore_SetFreeDataPointer(OSStore *list, void *free_data_function)
+int OSStore_SetFreeDataPointer(OSStore *list, void (free_data_function)(void *))
 {
     if(!list)
     {
@@ -355,10 +355,10 @@ int OSStore_NCaseCheck(OSStore *list, char *key)
 /* Delete this node from list
  * Pointer goes to the next node available.
  */
-void OSStore_Delete(OSStore *list, char *key)
+/*void OSStore_Delete(OSStore *list, char *key)
 {
     return;
-}
+}*/
 
 
 

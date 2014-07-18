@@ -70,7 +70,7 @@ typedef struct _report_filter
 
 int os_report_configfilter(char *filter_by, char *filter_value,
                            report_filter *r_filter, int arg_type);
-void os_report_printtop(void *topstore, char *hname, int print_related);
+void os_report_printtop(void *topstore, const char *hname, int print_related);
 void os_ReportdStart(report_filter *r_filter);
 
 

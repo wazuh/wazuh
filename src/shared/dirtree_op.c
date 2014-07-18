@@ -19,6 +19,8 @@
 
 #include "shared.h"
 
+static OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
+        void *data, char sep);
 
 /* Create the tree
  * Return NULL on error
@@ -55,7 +57,7 @@ OSTreeNode *OSDirTree_GetFirstNode(OSDirTree *tree)
  * Internal call, looks up for an entry in the middle of the tree.
  * Should not be called directly.
  */
-OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
+static OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
                            void *data, char sep)
 {
     char *tmp_str;

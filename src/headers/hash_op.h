@@ -47,7 +47,7 @@ typedef struct _OSHash
 /** OSHash *OSHash_Create();
  * Creates and initializes hash.
  */
-OSHash *OSHash_Create();
+OSHash *OSHash_Create(void);
 
 
 
@@ -76,7 +76,7 @@ void* OSHash_Delete(OSHash *self, char *key);
  */
 void *OSHash_Get(OSHash *self, char *key);
 
-int OSHash_setSize(OSHash *self, int new_size);
+int OSHash_setSize(OSHash *self, unsigned int new_size);
 
 #endif
 
