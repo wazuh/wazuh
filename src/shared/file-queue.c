@@ -138,7 +138,7 @@ static int Handle_Queue(file_queue *fileq, int flags)
 /** int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
  * Initiates the file monitoring.
  */
-int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
+int Init_FileQueue(file_queue *fileq, const struct tm *p, int flags)
 {
     /* Initializing file_queue fields. */
     if(!(flags & CRALERT_FP_SET))
@@ -177,7 +177,7 @@ int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
 /** int Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
  * Reads from the monitored file.
  */
-alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
+alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, int timeout)
 {
     int i = 0;
     alert_data *al_data;

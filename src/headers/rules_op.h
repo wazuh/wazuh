@@ -167,8 +167,8 @@ typedef struct _RuleInfo
 
 
 /** Prototypes **/
-int OS_ReadXMLRules(char *rulefile,
-                    void *(*ruleact_function)(RuleInfo *rule, void *data),
+int OS_ReadXMLRules(const char *rulefile,
+                    void *(*ruleact_function)(RuleInfo *rule_1, void *data_1),
                     void *data);
 
 

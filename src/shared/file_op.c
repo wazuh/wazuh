@@ -314,7 +314,7 @@ time_t File_DateofChange(const char *file)
     return (file_status.st_mtime);
 }
 
-int IsDir(char *file)
+int IsDir(const char *file)
 {
     struct stat file_status;
     if(stat(file,&file_status) < 0)
@@ -325,7 +325,7 @@ int IsDir(char *file)
 }
 
 
-int CreatePID(char *name, int pid)
+int CreatePID(const char *name, int pid)
 {
     char file[256];
     FILE *fp;
@@ -353,7 +353,7 @@ int CreatePID(char *name, int pid)
     return(0);
 }
 
-int DeletePID(char *name)
+int DeletePID(const char *name)
 {
     char file[256];
 
@@ -376,7 +376,7 @@ int DeletePID(char *name)
 }
 
 
-int UnmergeFiles(char *finalpath, char *optdir)
+int UnmergeFiles(const char *finalpath, const char *optdir)
 {
     int ret = 1;
     size_t i = 0, n = 0, files_size = 0;
@@ -494,13 +494,13 @@ int UnmergeFiles(char *finalpath, char *optdir)
 }
 
 
-int MergeAppendFile(char *finalpath, char *files)
+int MergeAppendFile(const char *finalpath, const char *files)
 {
     size_t n = 0;
     long files_size = 0;
 
     char buf[2048 + 1];
-    char *tmpfile;
+    const char *tmpfile;
     FILE *fp;
     FILE *finalfp;
 
@@ -569,7 +569,7 @@ int MergeAppendFile(char *finalpath, char *files)
 
 
 
-int MergeFiles(char *finalpath, char **files)
+int MergeFiles(const char *finalpath, char **files)
 {
     int i = 0, ret = 1;
     size_t n = 0;

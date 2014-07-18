@@ -79,7 +79,7 @@ int StartMQ(const char * path, short int type)
 /* SendMSG v0.1, 2005/02/15
  * Send a message to the queue.
  */
-int SendMSG(int queue, char *message, char *locmsg, char loc)
+int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR+1];

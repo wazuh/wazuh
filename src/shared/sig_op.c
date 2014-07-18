@@ -26,7 +26,7 @@
 
 #include "error_messages/error_messages.h"
 
-static char *pidfile = NULL;
+static const char *pidfile = NULL;
 
 void HandleSIG(__attribute__((unused)) int sig)
 {
@@ -44,7 +44,7 @@ void HandleSIGPIPE(__attribute__((unused)) int sig)
     return;
 }
 
-void StartSIG(char *process_name)
+void StartSIG(const char *process_name)
 {
     /* Signal Manipulation
        go to HandleSIG() */
@@ -58,7 +58,7 @@ void StartSIG(char *process_name)
     signal(SIGPIPE, HandleSIGPIPE);
 }
 
-void StartSIG2(char *process_name, void (*func)(int))
+void StartSIG2(const char *process_name, void (*func)(int))
 {
     pidfile = process_name;
 

@@ -38,7 +38,7 @@ void **os_AddPtArray(void *pt, void **array)
 
 
 /* Add a string to an array. */
-char **os_AddStrArray(char *str, char **array)
+char **os_AddStrArray(const char *str, char **array)
 {
     size_t i = 0;
     char **ret = NULL;
@@ -59,7 +59,7 @@ char **os_AddStrArray(char *str, char **array)
 
 
 /* Check if String is on array (Must be NULL terminated) */
-int os_IsStrOnArray(char *str, char **array)
+int os_IsStrOnArray(const char *str, char **array)
 {
     if(!str || !array)
     {
@@ -113,7 +113,7 @@ void os_FreeArray(char *ch1, char **ch2)
  * on it.
  * It will return the new string on success or NULL on memory error.
  */
-char *os_LoadString(char *at, char *str)
+char *os_LoadString(char *at, const char *str)
 {
     if(at == NULL)
     {

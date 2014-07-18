@@ -212,7 +212,7 @@ int OSStore_Sort(OSStore *list, void*(sort_data_function)(void *d1, void *d2))
  * if available.
  * (position may change after each PUT)
  */
-int OSStore_GetPosition(OSStore *list, char *key)
+int OSStore_GetPosition(OSStore *list, const char *key)
 {
     int chk_rc, pos = 1;
     list->cur_node = list->first_node;
@@ -250,7 +250,7 @@ OSStoreNode *OSStore_GetFirstNode(OSStore *list)
 /* Get data from storage.
  * Returns NULL if not present.
  */
-void *OSStore_Get(OSStore *list, char *key)
+void *OSStore_Get(OSStore *list, const char *key)
 {
     int chk_rc;
     list->cur_node = list->first_node;
@@ -277,7 +277,7 @@ void *OSStore_Get(OSStore *list, char *key)
 /* Check if key is present on storage.
  * Returns 0 if not present.
  */
-int OSStore_Check(OSStore *list, char *key)
+int OSStore_Check(OSStore *list, const char *key)
 {
     int chk_rc;
     list->cur_node = list->first_node;
@@ -304,7 +304,7 @@ int OSStore_Check(OSStore *list, char *key)
 /* Check if key is present on storage (using strncmp).
  * Returns 0 if not present.
  */
-int OSStore_NCheck(OSStore *list, char *key)
+int OSStore_NCheck(OSStore *list, const char *key)
 {
     int chk_rc;
     list->cur_node = list->first_node;
@@ -332,7 +332,7 @@ int OSStore_NCheck(OSStore *list, char *key)
 /* Check if key is present on storage (case insensitive).
  * Returns 0 if not present.
  */
-int OSStore_NCaseCheck(OSStore *list, char *key)
+int OSStore_NCaseCheck(OSStore *list, const char *key)
 {
     int chk_rc;
     list->cur_node = list->first_node;

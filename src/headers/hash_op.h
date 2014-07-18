@@ -64,9 +64,9 @@ void *OSHash_Free(OSHash *self);
  * Returns 2 on success
  * Key must not be NULL.
  */
-int OSHash_Add(OSHash *hash, char *key, void *data);
-int OSHash_Update(OSHash *hash, char *key, void *data);
-void* OSHash_Delete(OSHash *self, char *key);
+int OSHash_Add(OSHash *hash, const char *key, void *data);
+int OSHash_Update(OSHash *hash, const char *key, void *data);
+void* OSHash_Delete(OSHash *self, const char *key);
 
 
 /** void *OSHash_Get(OSHash *self, char *key)
@@ -74,7 +74,7 @@ void* OSHash_Delete(OSHash *self, char *key);
  * Returns the key otherwise.
  * Key must not be NULL.
  */
-void *OSHash_Get(OSHash *self, char *key);
+void *OSHash_Get(const OSHash *self, const char *key);
 
 int OSHash_setSize(OSHash *self, unsigned int new_size);
 

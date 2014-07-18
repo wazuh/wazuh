@@ -19,7 +19,7 @@
 
 #include "shared.h"
 
-static unsigned int _os_genhash(OSHash *self, char *key);
+static unsigned int _os_genhash(const OSHash *self, const char *key);
 
 /** OSHash *OSHash_Create()
  * Creates the Hash.
@@ -112,7 +112,7 @@ void *OSHash_Free(OSHash *self)
 /** int _os_genhash(OSHash *self, char *key)
  * Generates hash for key
  */
-static unsigned int _os_genhash(OSHash *self, char *key)
+static unsigned int _os_genhash(const OSHash *self, const char *key)
 {
     unsigned int hash_key = self->initial_seed;
 
@@ -182,7 +182,7 @@ int OSHash_setSize(OSHash *self, unsigned int new_size)
  * Returns 1 on successduplicated key (not added)
  * Key must not be NULL.
  */
-int OSHash_Update(OSHash *self, char *key, void *data)
+int OSHash_Update(OSHash *self, const char *key, void *data)
 {
     unsigned int hash_key;
     unsigned int index;
@@ -221,7 +221,7 @@ int OSHash_Update(OSHash *self, char *key, void *data)
  * Returns 2 on success
  * Key must not be NULL.
  */
-int OSHash_Add(OSHash *self, char *key, void *data)
+int OSHash_Add(OSHash *self, const char *key, void *data)
 {
     unsigned int hash_key;
     unsigned int index;
@@ -290,12 +290,12 @@ int OSHash_Add(OSHash *self, char *key, void *data)
  * Returns the key otherwise.
  * Key must not be NULL.
  */
-void *OSHash_Get(OSHash *self, char *key)
+void *OSHash_Get(const OSHash *self, const char *key)
 {
     unsigned int hash_key;
     unsigned int index;
 
-    OSHashNode *curr_node;
+    const OSHashNode *curr_node;
 
 
     /* Generating hash of the message */
@@ -327,7 +327,7 @@ void *OSHash_Get(OSHash *self, char *key)
 }
 
 /* Returns a pointer to a hash node if found, that hash node is removed from the table */
-void* OSHash_Delete(OSHash *self, char *key)
+void* OSHash_Delete(OSHash *self, const char *key)
 {
     OSHashNode *curr_node;
     OSHashNode *prev_node = 0;

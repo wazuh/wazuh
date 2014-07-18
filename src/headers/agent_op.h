@@ -61,8 +61,8 @@ char *os_read_agent_profile(void);
  *  Writes the agent info inside the queue, for the other processes to read.
  *  Returns 1 on success or <= 0 on failure.
  */
-int os_write_agent_info(char *agent_name, char *agent_ip, char *agent_id,
-                        char *cfg_profile_name);               /*cmoraes*/
+int os_write_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id,
+        const char *cfg_profile_name);               /*cmoraes*/
 
 
 int os_agent_config_changed(void);

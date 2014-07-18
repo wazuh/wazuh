@@ -22,9 +22,9 @@ void HandleSIG(int sig) __attribute__((noreturn));
 void HandleSIGPIPE(int sig);
 
 /* Start signal manipulation */
-void StartSIG(char *process_name);
+void StartSIG(const char *process_name);
 
 /* Start signal manipulation -- function as an argument */
-void StartSIG2(char *process_name, void (*func)(int));
+void StartSIG2(const char *process_name, void (*func)(int));
 
 #endif

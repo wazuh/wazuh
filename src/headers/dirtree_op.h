@@ -37,8 +37,8 @@ typedef struct _OSDirTree
 
 
 OSDirTree *OSDirTree_Create(void);
-void OSDirTree_AddToTree(OSDirTree *tree, char *str, void *data, char sep);
-void *OSDirTree_SearchTree(OSDirTree *tree, char *str, char sep);
+void OSDirTree_AddToTree(OSDirTree *tree, const char *str, void *data, char sep);
+void *OSDirTree_SearchTree(const OSDirTree *tree, const char *str, char sep);
 
 OSTreeNode *OSDirTree_GetFirstNode(OSDirTree *tree);
 

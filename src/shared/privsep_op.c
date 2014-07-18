@@ -27,7 +27,7 @@
 #include "privsep_op.h"
 #include "headers/os_err.h"
 
-int Privsep_GetUser(char * name)
+int Privsep_GetUser(const char * name)
 {
     int os_uid = -1;
 
@@ -42,7 +42,7 @@ int Privsep_GetUser(char * name)
     return(os_uid);
 }
 
-int Privsep_GetGroup(char * name)
+int Privsep_GetGroup(const char * name)
 {
     int os_gid = -1;
 
@@ -86,7 +86,7 @@ int Privsep_SetGroup(gid_t gid)
     return(OS_SUCCESS);
 }
 
-int Privsep_Chroot(char * path)
+int Privsep_Chroot(const char * path)
 {
     if(chdir(path) < 0)
         return(OS_INVALID);

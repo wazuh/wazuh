@@ -19,9 +19,9 @@
 static void l_print_out(const char *msg, ...) __attribute__((format(printf,1,2)));
 static void *_os_report_sort_compare(void *d1, void *d2);
 static void _os_header_print(int t, const char *hname);
-static int _os_report_str_int_compare(char *str, int id);
-static int _os_report_check_filters(alert_data *al_data, report_filter *r_filter);
-static int _report_filter_value(char *filter_by, int prev_filter);
+static int _os_report_str_int_compare(const char *str, int id);
+static int _os_report_check_filters(const alert_data *al_data, const report_filter *r_filter);
+static int _report_filter_value(const char *filter_by, int prev_filter);
 static int _os_report_print_related(int print_related, OSList *st_data);
 static int _os_report_add_tostore(char *key, OSStore *top, void *data);
 static FILE *__g_rtype = NULL;
@@ -79,7 +79,7 @@ static void _os_header_print(int t, const char *hname)
 
 
 /* Compares if the id is present in the string. */
-static int _os_report_str_int_compare(char *str, int id)
+static int _os_report_str_int_compare(const char *str, int id)
 {
     int pt_check = 0;
 
@@ -117,7 +117,7 @@ static int _os_report_str_int_compare(char *str, int id)
 
 
 /* Check if the al_data should be filtered. */
-static int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
+static int _os_report_check_filters(const alert_data *al_data, const report_filter *r_filter)
 {
     /* Checking for the filters. */
     if(r_filter->group)
@@ -188,7 +188,7 @@ static int _os_report_check_filters(alert_data *al_data, report_filter *r_filter
 
 
 /* Sets the proper value for the related entries. */
-static int _report_filter_value(char *filter_by, int prev_filter)
+static int _report_filter_value(const char *filter_by, int prev_filter)
 {
     if(strcmp(filter_by, "group") == 0)
     {
@@ -759,7 +759,7 @@ void os_ReportdStart(report_filter *r_filter)
  *                              report_filter *r_filter)
  * Checks the configuration filters.
  */
-int os_report_configfilter(char *filter_by, char *filter_value,
+int os_report_configfilter(const char *filter_by, char *filter_value,
                            report_filter *r_filter, int arg_type)
 {
     if(!filter_by || !filter_value)

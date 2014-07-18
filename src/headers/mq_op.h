@@ -29,6 +29,6 @@
 
 int StartMQ(const char * key, short int type);
 
-int SendMSG(int queue, char * message, char *locmsg, char loc);
+int SendMSG(int queue, const char * message, const char *locmsg, char loc);
 
 #endif

@@ -14,17 +14,17 @@
 #include "read-agents.h"
 #include "os_net/os_net.h"
 
-static int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, int csv_output,
+static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, int csv_output,
         int is_win, int number_of_changes);
-static int _do_print_file_syscheck(FILE *fp, char *fname,
+static int _do_print_file_syscheck(FILE *fp, const char *fname,
                             int update_counter, int csv_output);
 static int _do_print_syscheck(FILE *fp, int all_files, int csv_output);
 static int _do_get_rootcheckscan(FILE *fp);
 static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
                         int csv_output, int show_last);
-static int _get_time_rkscan(char *agent_name, char *agent_ip, agent_info *agt_info);
-static char *_get_agent_keepalive(char *agent_name, char *agent_ip);
-static int _get_agent_os(char *agent_name, char *agent_ip, agent_info *agt_info);
+static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info);
+static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip);
+static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_info *agt_info);
 
 /* Free the agent list in memory
  */
@@ -53,11 +53,12 @@ void free_agents(char **agent_list)
 /* Print syscheck attributes. */
 #define sk_strchr(x,y,z) z = strchr(x, y); if(z == NULL) return(0); else { *z = '\0'; z++; }
 
-static int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, __attribute__((unused)) int csv_output,
+static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, __attribute__((unused)) int csv_output,
                              int is_win, int number_of_changes)
 {
-    char *p_size, *p_perm, *p_uid, *p_gid, *p_md5, *p_sha1;
-    char *size, *perm, *uid, *gid, *md5, *sha1;
+    const char *p_size, *size;
+    char *p_perm, *p_uid, *p_gid, *p_md5, *p_sha1;
+    char *perm, *uid, *gid, *md5, *sha1;
     int perm_int;
     char perm_str[36];
 
@@ -184,7 +185,7 @@ static int _do_print_attrs_syscheck(char *prev_attrs, char *attrs, __attribute__
 
 
 /* Print information about a specific file. */
-static int _do_print_file_syscheck(FILE *fp, char *fname,
+static int _do_print_file_syscheck(FILE *fp, const char *fname,
                             int update_counter, int csv_output)
 {
     int f_found = 0;
@@ -481,7 +482,7 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
 
 
 /* Print syscheck db (of modified files. */
-int print_syscheck(char *sk_name, char *sk_ip, char *fname, int print_registry,
+int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname, int print_registry,
                    int all_files, int csv_output, int update_counter)
 {
     FILE *fp;
@@ -739,7 +740,7 @@ static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
 
 
 /* Print rootcheck db */
-int print_rootcheck(char *sk_name, char *sk_ip, char *fname, int resolved,
+int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname, int resolved,
                     int csv_output, int show_last)
 {
     int ltime = 0;
@@ -803,7 +804,7 @@ int print_rootcheck(char *sk_name, char *sk_ip, char *fname, int resolved,
 
 
 /* Delete syscheck db */
-int delete_syscheck(char *sk_name, char *sk_ip, int full_delete)
+int delete_syscheck(const char *sk_name, const char *sk_ip, int full_delete)
 {
     FILE *fp;
     char tmp_file[513];
@@ -866,7 +867,7 @@ int delete_syscheck(char *sk_name, char *sk_ip, int full_delete)
 
 
 /* Delete rootcheck db */
-int delete_rootcheck(char *sk_name, char *sk_ip, int full_delete)
+int delete_rootcheck(const char *sk_name, const char *sk_ip, int full_delete)
 {
     FILE *fp;
     char tmp_file[513];
@@ -894,9 +895,9 @@ int delete_rootcheck(char *sk_name, char *sk_ip, int full_delete)
 
 /* Delete agent.
  */
-int delete_agentinfo(char *name)
+int delete_agentinfo(const char *name)
 {
-    char *sk_name;
+    const char *sk_name;
     char *sk_ip;
     char tmp_file[513];
 
@@ -954,7 +955,7 @@ const char *print_agent_status(int status)
  * Sends a message to an agent.
  * returns -1 on error.
  */
-int send_msg_to_agent(int msocket, char *msg, char *agt_id, char *exec)
+int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec)
 {
     int rc;
     char agt_msg[OS_SIZE_1024 +1];
@@ -1030,7 +1031,7 @@ int connect_to_remoted()
 
 
 /* Internal funtion. Extract last time of scan from rootcheck/syscheck. */
-static int _get_time_rkscan(char *agent_name, char *agent_ip, agent_info *agt_info)
+static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info)
 {
     FILE *fp;
     char buf[1024 +1];
@@ -1163,7 +1164,7 @@ static int _get_time_rkscan(char *agent_name, char *agent_ip, agent_info *agt_in
 
 
 /* Internal funtion. Extract last time of scan from rootcheck/syscheck. */
-static char *_get_agent_keepalive(char *agent_name, char *agent_ip)
+static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip)
 {
     char buf[1024 +1];
     struct stat file_status;
@@ -1188,7 +1189,7 @@ static char *_get_agent_keepalive(char *agent_name, char *agent_ip)
 
 
 /* Internal funtion. Extracts operating system. */
-static int _get_agent_os(char *agent_name, char *agent_ip, agent_info *agt_info)
+static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_info *agt_info)
 {
     FILE *fp;
     char buf[1024 +1];
@@ -1284,7 +1285,7 @@ static int _get_agent_os(char *agent_name, char *agent_ip, agent_info *agt_info)
 /** agent_info *get_agent_info(char *agent_name, char *agent_ip)
  * Get information from an agent.
  */
-agent_info *get_agent_info(char *agent_name, char *agent_ip)
+agent_info *get_agent_info(const char *agent_name, const char *agent_ip)
 {
     char *agent_ip_pt = NULL;
     char *tmp_str = NULL;
@@ -1340,7 +1341,7 @@ agent_info *get_agent_info(char *agent_name, char *agent_ip)
 /** int get_agent_status(char *agent_name, char *agent_ip)
  * Gets the status of an agent, based on the name/ip.
  */
-int get_agent_status(char *agent_name, char *agent_ip)
+int get_agent_status(const char *agent_name, const char *agent_ip)
 {
     char tmp_file[513];
     char *agent_ip_pt = NULL;

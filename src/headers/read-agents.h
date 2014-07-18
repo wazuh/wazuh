@@ -30,21 +30,21 @@ typedef struct _agent_info
 
 
 /* Print syscheck db (of modified files). */
-int print_syscheck(char *sk_name, char *sk_ip, char *fname, int print_registry,
+int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname, int print_registry,
                    int all_files, int csv_output, int update_counter);
 
 /* Print rootcheck db. */
-int print_rootcheck(char *sk_name, char *sk_ip, char *fname, int resolved,
+int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname, int resolved,
                     int csv_output, int show_last);
 
 /* Delete syscheck db */
-int delete_syscheck(char *sk_name, char *sk_ip, int full_delete);
+int delete_syscheck(const char *sk_name, const char *sk_ip, int full_delete);
 
 /* Delete rootcheck db. */
-int delete_rootcheck(char *sk_name, char *sk_ip, int full_delete);
+int delete_rootcheck(const char *sk_name, const char *sk_ip, int full_delete);
 
 /* Delete agent information */
-int delete_agentinfo(char *name);
+int delete_agentinfo(const char *name);
 
 /* Get all available agents */
 char **get_agents(int flag);
@@ -60,12 +60,12 @@ const char *print_agent_status(int status);
 /** int get_agent_status(char *agent_name, char *agent_ip)
  * Gets the status of an agent, based on the name/ip.
  */
-int get_agent_status(char *agent_name, char *agent_ip);
+int get_agent_status(const char *agent_name, const char *agent_ip);
 
 /** agent_info *get_agent_info(char *agent_name, char *agent_ip)
  * Get information from an agent.
  */
-agent_info *get_agent_info(char *agent_name, char *agent_ip);
+agent_info *get_agent_info(const char *agent_name, const char *agent_ip);
 
 
 /** int connect_to_remoted()
@@ -78,7 +78,7 @@ int connect_to_remoted(void);
  * Sends a message to an agent.
  * returns -1 on error.
  */
-int send_msg_to_agent(int msocket, char *msg, char *agt_id, char *exec);
+int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec);
 
 
 

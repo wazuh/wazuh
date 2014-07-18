@@ -1,7 +1,7 @@
 #include "shared.h"
 
 
-char * searchAndReplace(char* orig, char* search, char*value)
+char * searchAndReplace(const char* orig, const char* search, const char*value)
 {
   char *p;
   size_t total_len = strlen(orig);
@@ -81,7 +81,7 @@ char * searchAndReplace(char* orig, char* search, char*value)
 }
 
 //escape newlines characters. Returns a new allocated string.
-char* escape_newlines(char *orig)
+char* escape_newlines(const char *orig)
 {
   const char *ptr;
   char *ret, *retptr;

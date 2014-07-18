@@ -35,9 +35,9 @@ void os_trimcrlf(char *str)
 }
 
 /* Remove offending char (e.g., double quotes) from source */
-char *os_strip_char(char *source, char remove) {
+char *os_strip_char(const char *source, char remove) {
     char *clean;
-    char *iterator = source;
+    const char *iterator = source;
     size_t length = 0;
     int i;
 

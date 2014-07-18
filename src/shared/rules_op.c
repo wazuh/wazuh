@@ -37,8 +37,8 @@ static RuleInfo *_OS_AllocateRule(void);
  * Read the log rules.
  * v0.3: Fixed many memory problems.
  */
-int OS_ReadXMLRules(char *rulefile,
-                    void *(*ruleact_function)(RuleInfo *rule, void *data),
+int OS_ReadXMLRules(const char *rulefile,
+                    void *(*ruleact_function)(RuleInfo *rule_1, void *data_1),
                     void *data)
 {
     OS_XML xml;
