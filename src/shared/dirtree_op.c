@@ -20,7 +20,7 @@
 #include "shared.h"
 
 static OSDirTree *_OSTreeNode_Add(OSDirTree *tree, const char *str,
-        void *data, char sep);
+        void *data, char sep) __attribute__((nonnull(2)));
 
 /* Create the tree
  * Return NULL on error

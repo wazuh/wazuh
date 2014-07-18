@@ -16,14 +16,14 @@
 
 
 /** Helper functions. */
-static void l_print_out(const char *msg, ...) __attribute__((format(printf,1,2)));
-static void *_os_report_sort_compare(void *d1, void *d2);
-static void _os_header_print(int t, const char *hname);
-static int _os_report_str_int_compare(const char *str, int id);
-static int _os_report_check_filters(const alert_data *al_data, const report_filter *r_filter);
-static int _report_filter_value(const char *filter_by, int prev_filter);
-static int _os_report_print_related(int print_related, OSList *st_data);
-static int _os_report_add_tostore(char *key, OSStore *top, void *data);
+static void l_print_out(const char *msg, ...) __attribute__((format(printf,1,2))) __attribute__((nonnull));
+static void *_os_report_sort_compare(void *d1, void *d2) __attribute__((nonnull));
+static void _os_header_print(int t, const char *hname) __attribute__((nonnull));
+static int _os_report_str_int_compare(const char *str, int id) __attribute__((nonnull));
+static int _os_report_check_filters(const alert_data *al_data, const report_filter *r_filter) __attribute__((nonnull));
+static int _report_filter_value(const char *filter_by, int prev_filter) __attribute__((nonnull));
+static int _os_report_print_related(int print_related, OSList *st_data) __attribute__((nonnull));
+static int _os_report_add_tostore(char *key, OSStore *top, void *data) __attribute__((nonnull(1,2)));
 static FILE *__g_rtype = NULL;
 
 static void l_print_out(const char *msg, ...)

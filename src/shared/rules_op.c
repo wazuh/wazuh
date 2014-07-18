@@ -27,7 +27,7 @@
 /** Prototypes **/
 static int _OS_GetRulesAttributes(char **attributes,
                            char **values,
-                           RuleInfo *ruleinfo_pt);
+                           RuleInfo *ruleinfo_pt) __attribute__((nonnull));
 static RuleInfo *_OS_AllocateRule(void);
 
 

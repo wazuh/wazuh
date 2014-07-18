@@ -42,17 +42,17 @@ OSList *OSList_Create(void);
 int OSList_SetMaxSize(OSList *list, int max_size);
 int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *));
 
-OSListNode *OSList_GetFirstNode(OSList *);
-OSListNode *OSList_GetLastNode(OSList *);
-OSListNode *OSList_GetPrevNode(OSList *);
-OSListNode *OSList_GetNextNode(OSList *);
-OSListNode *OSList_GetCurrentlyNode(OSList *list);
+OSListNode *OSList_GetFirstNode(OSList *) __attribute__((nonnull));
+OSListNode *OSList_GetLastNode(OSList *) __attribute__((nonnull));
+OSListNode *OSList_GetPrevNode(OSList *) __attribute__((nonnull));
+OSListNode *OSList_GetNextNode(OSList *) __attribute__((nonnull));
+OSListNode *OSList_GetCurrentlyNode(OSList *list) __attribute__((nonnull));
 
-void OSList_DeleteCurrentlyNode(OSList *list);
-void OSList_DeleteThisNode(OSList *list, OSListNode *thisnode);
-void OSList_DeleteOldestNode(OSList *list);
+void OSList_DeleteCurrentlyNode(OSList *list) __attribute__((nonnull));
+void OSList_DeleteThisNode(OSList *list, OSListNode *thisnode) __attribute__((nonnull(1)));
+void OSList_DeleteOldestNode(OSList *list) __attribute__((nonnull));
 
-int OSList_AddData(OSList *list, void *data);
+int OSList_AddData(OSList *list, void *data) __attribute__((nonnull(1)));
 
 #endif
 

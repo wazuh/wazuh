@@ -18,9 +18,9 @@
 
 #include "shared.h"
 
-static char *_read_file(const char *high_name, const char *low_name, const char *defines_file);
+static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 static void _init_masks();
-static const char *__gethour(const char *str, char *ossec_hour);
+static const char *__gethour(const char *str, char *ossec_hour) __attribute__((nonnull));
 
 
 static const char *ip_address_regex =

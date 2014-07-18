@@ -69,9 +69,9 @@ typedef struct _report_filter
 
 
 int os_report_configfilter(const char *filter_by, char *filter_value,
-                           report_filter *r_filter, int arg_type);
-void os_report_printtop(void *topstore, const char *hname, int print_related);
-void os_ReportdStart(report_filter *r_filter);
+                           report_filter *r_filter, int arg_type) __attribute__((nonnull(3)));
+void os_report_printtop(void *topstore, const char *hname, int print_related) __attribute__((nonnull));
+void os_ReportdStart(report_filter *r_filter) __attribute__((nonnull));
 
 
 #endif

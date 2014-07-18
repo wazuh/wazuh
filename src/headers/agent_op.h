@@ -62,7 +62,7 @@ char *os_read_agent_profile(void);
  *  Returns 1 on success or <= 0 on failure.
  */
 int os_write_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id,
-        const char *cfg_profile_name);               /*cmoraes*/
+        const char *cfg_profile_name) __attribute__((nonnull(1,3)));               /*cmoraes*/
 
 
 int os_agent_config_changed(void);

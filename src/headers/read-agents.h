@@ -38,13 +38,13 @@ int print_rootcheck(const char *sk_name, const char *sk_ip, const char *fname, i
                     int csv_output, int show_last);
 
 /* Delete syscheck db */
-int delete_syscheck(const char *sk_name, const char *sk_ip, int full_delete);
+int delete_syscheck(const char *sk_name, const char *sk_ip, int full_delete) __attribute__((nonnull));
 
 /* Delete rootcheck db. */
-int delete_rootcheck(const char *sk_name, const char *sk_ip, int full_delete);
+int delete_rootcheck(const char *sk_name, const char *sk_ip, int full_delete) __attribute__((nonnull));
 
 /* Delete agent information */
-int delete_agentinfo(const char *name);
+int delete_agentinfo(const char *name) __attribute__((nonnull));
 
 /* Get all available agents */
 char **get_agents(int flag);
@@ -65,7 +65,7 @@ int get_agent_status(const char *agent_name, const char *agent_ip);
 /** agent_info *get_agent_info(char *agent_name, char *agent_ip)
  * Get information from an agent.
  */
-agent_info *get_agent_info(const char *agent_name, const char *agent_ip);
+agent_info *get_agent_info(const char *agent_name, const char *agent_ip) __attribute__((nonnull(2)));
 
 
 /** int connect_to_remoted()
@@ -78,7 +78,7 @@ int connect_to_remoted(void);
  * Sends a message to an agent.
  * returns -1 on error.
  */
-int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec);
+int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const char *exec) __attribute__((nonnull(2)));
 
 
 

@@ -15,16 +15,16 @@
 #include "os_net/os_net.h"
 
 static int _do_print_attrs_syscheck(const char *prev_attrs, const char *attrs, int csv_output,
-        int is_win, int number_of_changes);
+        int is_win, int number_of_changes) __attribute__((nonnull(2)));
 static int _do_print_file_syscheck(FILE *fp, const char *fname,
-                            int update_counter, int csv_output);
-static int _do_print_syscheck(FILE *fp, int all_files, int csv_output);
-static int _do_get_rootcheckscan(FILE *fp);
+                            int update_counter, int csv_output) __attribute__((nonnull));
+static int _do_print_syscheck(FILE *fp, int all_files, int csv_output) __attribute__((nonnull));
+static int _do_get_rootcheckscan(FILE *fp) __attribute__((nonnull));
 static int _do_print_rootcheck(FILE *fp, int resolved, time_t time_last_scan,
-                        int csv_output, int show_last);
-static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info);
-static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip);
-static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_info *agt_info);
+                        int csv_output, int show_last) __attribute__((nonnull));
+static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info) __attribute__((nonnull(2,3)));
+static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip) __attribute__((nonnull(2)));
+static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_info *agt_info) __attribute__((nonnull(2,3)));
 
 /* Free the agent list in memory
  */

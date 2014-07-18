@@ -19,7 +19,7 @@
 
 #include "shared.h"
 
-static unsigned int _os_genhash(const OSHash *self, const char *key);
+static unsigned int _os_genhash(const OSHash *self, const char *key) __attribute__((nonnull));
 
 /** OSHash *OSHash_Create()
  * Creates the Hash.

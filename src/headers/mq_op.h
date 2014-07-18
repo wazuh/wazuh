@@ -27,8 +27,8 @@
 #define POSTGRESQL_MQ   'b'
 
 
-int StartMQ(const char * key, short int type);
+int StartMQ(const char * key, short int type) __attribute__((nonnull));
 
-int SendMSG(int queue, const char * message, const char *locmsg, char loc);
+int SendMSG(int queue, const char * message, const char *locmsg, char loc) __attribute__((nonnull));
 
 #endif

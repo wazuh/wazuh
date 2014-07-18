@@ -21,13 +21,13 @@
 /** os_trimcrlf
  * Trims the cr and/or LF from the last positions of a string
  */
-void os_trimcrlf(char *str);
+void os_trimcrlf(char *str) __attribute__((nonnull));
 
 /* Similiar to Perl's substr() function */
-int os_substr(char *dest, const char *src, size_t position, size_t length);
+int os_substr(char *dest, const char *src, size_t position, size_t length) __attribute__((nonnull(1)));
 
 /* Remove a character from a string */
-char *os_strip_char(const char *source, char remove);
+char *os_strip_char(const char *source, char remove) __attribute__((nonnull));
 
 /* Escape a list of characters with a backslash */
 char *os_shell_escape(const char *src);

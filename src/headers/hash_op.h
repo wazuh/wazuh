@@ -54,7 +54,7 @@ OSHash *OSHash_Create(void);
 /** void *OSHash_Free(OSHash *self)
  * Frees the memory used by the hash.
  */
-void *OSHash_Free(OSHash *self);
+void *OSHash_Free(OSHash *self) __attribute__((nonnull));
 
 
 
@@ -64,9 +64,9 @@ void *OSHash_Free(OSHash *self);
  * Returns 2 on success
  * Key must not be NULL.
  */
-int OSHash_Add(OSHash *hash, const char *key, void *data);
-int OSHash_Update(OSHash *hash, const char *key, void *data);
-void* OSHash_Delete(OSHash *self, const char *key);
+int OSHash_Add(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1,2)));
+int OSHash_Update(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1,2)));
+void* OSHash_Delete(OSHash *self, const char *key) __attribute__((nonnull));
 
 
 /** void *OSHash_Get(OSHash *self, char *key)
@@ -74,9 +74,9 @@ void* OSHash_Delete(OSHash *self, const char *key);
  * Returns the key otherwise.
  * Key must not be NULL.
  */
-void *OSHash_Get(const OSHash *self, const char *key);
+void *OSHash_Get(const OSHash *self, const char *key) __attribute__((nonnull));
 
-int OSHash_setSize(OSHash *self, unsigned int new_size);
+int OSHash_setSize(OSHash *self, unsigned int new_size) __attribute__((nonnull));
 
 #endif
 

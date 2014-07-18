@@ -11,13 +11,13 @@
  *  Searchs for 'search' on orig's string and replaces it by value.
  *  Returns NULL on error, otherwise returns the orig string with the replacements.
  */
-char * searchAndReplace(const char* orig, const char* search, const char*value);
+char * searchAndReplace(const char* orig, const char* search, const char*value) __attribute__((nonnull));
 
 /** char* escape_newlines(char *orig);
  * Escape the newlines characters
  * Returns NULL on error, otherwise returns a new allocated string.
  */
-char* escape_newlines(const char *orig);
+char* escape_newlines(const char *orig) __attribute__((nonnull));
 
 
 #endif /* CUSTOM_OUTPUT_SEARCH_H_ */

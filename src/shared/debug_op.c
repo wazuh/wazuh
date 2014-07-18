@@ -18,7 +18,7 @@ static int dbg_flag = 0;
 static int chroot_flag = 0;
 static int daemon_flag = 0;
 
-static void _log(const char * msg,va_list args) __attribute__((format(printf,1,0)));
+static void _log(const char * msg,va_list args) __attribute__((format(printf,1,0))) __attribute__((nonnull));
 
 #ifdef WIN32
 void WinSetError();

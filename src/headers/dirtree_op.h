@@ -37,10 +37,10 @@ typedef struct _OSDirTree
 
 
 OSDirTree *OSDirTree_Create(void);
-void OSDirTree_AddToTree(OSDirTree *tree, const char *str, void *data, char sep);
-void *OSDirTree_SearchTree(const OSDirTree *tree, const char *str, char sep);
+void OSDirTree_AddToTree(OSDirTree *tree, const char *str, void *data, char sep) __attribute__((nonnull(1,2)));
+void *OSDirTree_SearchTree(const OSDirTree *tree, const char *str, char sep) __attribute__((nonnull));
 
-OSTreeNode *OSDirTree_GetFirstNode(OSDirTree *tree);
+OSTreeNode *OSDirTree_GetFirstNode(OSDirTree *tree) __attribute__((nonnull));
 
 #endif
 

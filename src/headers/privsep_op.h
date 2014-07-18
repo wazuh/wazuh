@@ -18,14 +18,14 @@
 #define __PRIV_H
 #include "shared.h"
 
-int Privsep_GetUser(const char * name);
+int Privsep_GetUser(const char * name) __attribute__((nonnull));
 
-int Privsep_GetGroup(const char * name);
+int Privsep_GetGroup(const char * name) __attribute__((nonnull));
 
 int Privsep_SetUser(uid_t uid);
 
 int Privsep_SetGroup(gid_t gid);
 
-int Privsep_Chroot(const char * path);
+int Privsep_Chroot(const char * path) __attribute__((nonnull));
 
 #endif

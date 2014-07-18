@@ -31,19 +31,19 @@
 #define __attribute__(x)
 #endif
 
-void debug1(const char *msg,...) __attribute__((format(printf, 1, 2)));
+void debug1(const char *msg,...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
 
-void debug2(const char *msg,...) __attribute__((format(printf, 1, 2)));
+void debug2(const char *msg,...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
 
-void merror(const char *msg,...) __attribute__((format(printf, 1, 2)));
+void merror(const char *msg,...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
 
-void verbose(const char *msg,...) __attribute__((format(printf, 1, 2)));
+void verbose(const char *msg,...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
 
-void print_out(const char *msg,...) __attribute__((format(printf, 1, 2)));
+void print_out(const char *msg,...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
 
-void log2file(const char * msg,... ) __attribute__((format(printf, 1, 2)));
+void log2file(const char * msg,... ) __attribute__((format(printf, 1, 2))) __attribute__((nonnull));
 
-void ErrorExit(const char *msg,...) __attribute__((format(printf, 1, 2))) __attribute__ ((noreturn));
+void ErrorExit(const char *msg,...) __attribute__((format(printf, 1, 2))) __attribute__((nonnull)) __attribute__ ((noreturn));
 
 
 /* Use these three functions to set when you
