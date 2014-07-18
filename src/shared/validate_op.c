@@ -22,10 +22,11 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
 static void _init_masks();
 static const char *__gethour(const char *str, char *ossec_hour) __attribute__((nonnull));
 
-
+#ifndef WIN32
 static const char *ip_address_regex =
      "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
      "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
+#endif /* WIN32 */
 
 /* Global vars */
 static int _mask_inited = 0;
@@ -362,7 +363,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 
     if(strcmp(ip_address, "any") != 0)
     {
-        char *tmp_ip;
+        const char *tmp_ip;
         int dots = 0;
         tmp_ip = ip_address;
         while(*tmp_ip != '\0')

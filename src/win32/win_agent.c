@@ -45,7 +45,7 @@ void agent_help()
 {
     printf("\nOSSEC HIDS %s %s .\n", ARGV0, __version);
     printf("Available options:\n");
-    printf("\t/?                This help message.\n");    
+    printf("\t/?                This help message.\n");
     printf("\t-h                This help message.\n");
     printf("\thelp              This help message.\n");
     printf("\tinstall-service   Installs as a service\n");
@@ -270,7 +270,7 @@ int local_start()
 
     /* Socket connection */
     agt->sock = -1;
-    StartMQ(NULL, 0);
+    StartMQ("", 0);
 
 
     /* Starting mutex */
@@ -334,13 +334,13 @@ int local_start()
 
 
 /* SendMSG for windows */
-int SendMSG(int queue, char *message, char *locmsg, char loc)
+int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 {
     int _ssize;
 
     time_t cu_time;
 
-    char *pl;
+    const char *pl;
     char tmpstr[OS_MAXSTR+2];
     char crypt_msg[OS_MAXSTR +2];
 
@@ -567,7 +567,7 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
 
 
 /* StartMQ for windows */
-int StartMQ(char * path, short int type)
+int StartMQ(const char * path, short int type)
 {
     /* Connecting to the server. */
     connect_server(0);
