@@ -303,7 +303,7 @@ int OSList_AddData(OSList *list, void *data)
      */
     if(list->max_size)
     {
-        if(list->currently_size > list->max_size)
+        if(list->currently_size > list->max_size && list->first_node->next)
         {
             /* Remove first node */
             newnode = list->first_node->next;
