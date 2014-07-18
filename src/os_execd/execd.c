@@ -61,7 +61,7 @@ int repeated_offenders_timeout[] = {0,0,0,0,0,0,0};
 /**
  * Shutdowns execd properly.
  */
-void execd_shutdown()
+void execd_shutdown(int sig)
 {
     /* Removing pending active responses. */
     merror(EXEC_SHUTDOWN, ARGV0);
@@ -81,7 +81,7 @@ void execd_shutdown()
     }
 
     #ifndef WIN32
-    HandleSIG();
+    HandleSIG(sig);
     #endif
 
 }
