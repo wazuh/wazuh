@@ -7,15 +7,9 @@ NAME=ossec-config
 
 include ../Config.Make
 
-
-SOURCES = *.c
-
-logcollector:
+lib_config.a: ${SOURCES} *.h
 		${CC} -c ${CFLAGS} ${SOURCES}
-		ar cru lib_config.a ${OBJECTS}
-		ranlib lib_config.a
+		${BUILDLIB} lib_config.a ${OBJECTS}
 
 clean:
 		${CLEAN}
-build:
-		${BUILD}
