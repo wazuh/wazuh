@@ -23,8 +23,8 @@
 #include "shared.h"
 #include "os_net.h"
 
-static int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6);
-static int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6);
+static int OS_Bindport(unsigned int _port, unsigned int _proto, const char *_ip, int ipv6);
+static int OS_Connect(unsigned int _port, unsigned int protocol, const char *_ip, int ipv6);
 
 
 /* Unix socket -- not for windows */
@@ -51,7 +51,7 @@ static socklen_t us_l = sizeof(n_us);
  * Bind a specific port
  * v0.2: Added REUSEADDR.
  */
-static int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
+static int OS_Bindport(unsigned int _port, unsigned int _proto, const char *_ip, int ipv6)
 {
     int ossock;
     struct sockaddr_in server;
@@ -145,7 +145,7 @@ static int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int i
 /* OS_Bindporttcp v 0.1
  * Bind a TCP port, using the OS_Bindport
  */
-int OS_Bindporttcp(unsigned int _port, char *_ip, int ipv6)
+int OS_Bindporttcp(unsigned int _port, const char *_ip, int ipv6)
 {
     return(OS_Bindport(_port, IPPROTO_TCP, _ip, ipv6));
 }
@@ -154,7 +154,7 @@ int OS_Bindporttcp(unsigned int _port, char *_ip, int ipv6)
 /* OS_Bindportudp v 0.1
  * Bind a UDP port, using the OS_Bindport
  */
-int OS_Bindportudp(unsigned int _port, char *_ip, int ipv6)
+int OS_Bindportudp(unsigned int _port, const char *_ip, int ipv6)
 {
     return(OS_Bindport(_port, IPPROTO_UDP, _ip, ipv6));
 }
@@ -163,7 +163,7 @@ int OS_Bindportudp(unsigned int _port, char *_ip, int ipv6)
 /* OS_BindUnixDomain v0.1, 2004/07/29
  * Bind to a Unix domain, using DGRAM sockets
  */
-int OS_BindUnixDomain(char * path, int mode, int max_msg_size)
+int OS_BindUnixDomain(const char * path, int mode, int max_msg_size)
 {
     int len;
     int ossock = 0;
@@ -220,7 +220,7 @@ int OS_BindUnixDomain(char * path, int mode, int max_msg_size)
  * ("/tmp/lala-socket",0666));
  *
  */
-int OS_ConnectUnixDomain(char * path, int max_msg_size)
+int OS_ConnectUnixDomain(const char * path, int max_msg_size)
 {
     int len;
     int ossock = 0;
@@ -289,7 +289,7 @@ int OS_getsocketsize(int ossock)
 /* OS_Connect v 0.1, 2004/07/21
  * Open a TCP/UDP client socket
  */
-static int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6)
+static int OS_Connect(unsigned int _port, unsigned int protocol, const char *_ip, int ipv6)
 {
     int ossock;
     struct sockaddr_in server;
@@ -370,7 +370,7 @@ static int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int 
 /* OS_ConnectTCP, v0.1
  * Open a TCP socket
  */
-int OS_ConnectTCP(unsigned int _port, char *_ip, int ipv6)
+int OS_ConnectTCP(unsigned int _port, const char *_ip, int ipv6)
 {
     return(OS_Connect(_port, IPPROTO_TCP, _ip, ipv6));
 }
@@ -379,7 +379,7 @@ int OS_ConnectTCP(unsigned int _port, char *_ip, int ipv6)
 /* OS_ConnectUDP, v0.1
  * Open a UDP socket
  */
-int OS_ConnectUDP(unsigned int _port, char *_ip, int ipv6)
+int OS_ConnectUDP(unsigned int _port, const char *_ip, int ipv6)
 {
     return(OS_Connect(_port, IPPROTO_UDP, _ip, ipv6));
 }
@@ -387,7 +387,7 @@ int OS_ConnectUDP(unsigned int _port, char *_ip, int ipv6)
 /* OS_SendTCP v0.1, 2004/07/21
  * Send a TCP packet (in a open socket)
  */
-int OS_SendTCP(int socket, char *msg)
+int OS_SendTCP(int socket, const char *msg)
 {
     if((send(socket, msg, strlen(msg),0)) <= 0)
         return (OS_SOCKTERR);
@@ -398,7 +398,7 @@ int OS_SendTCP(int socket, char *msg)
 /* OS_SendTCPbySize v0.1, 2004/07/21
  * Send a TCP packet (in a open socket) of a specific size
  */
-int OS_SendTCPbySize(int socket, int size, char *msg)
+int OS_SendTCPbySize(int socket, int size, const char *msg)
 {
     if((send(socket, msg, size, 0)) < size)
         return (OS_SOCKTERR);
@@ -410,7 +410,7 @@ int OS_SendTCPbySize(int socket, int size, char *msg)
 /* OS_SendUDPbySize v0.1, 2004/07/21
  * Send a UDP packet (in a open socket) of a specific size
  */
-int OS_SendUDPbySize(int socket, int size, char *msg)
+int OS_SendUDPbySize(int socket, int size, const char *msg)
 {
     int i = 0;
 
@@ -552,7 +552,7 @@ int OS_RecvUnix(int socket, int sizet, char *ret)
  * Send a message using a Unix socket.
  * Returns the OS_SOCKETERR if it
  */
-int OS_SendUnix(int socket, char * msg, int size)
+int OS_SendUnix(int socket, const char * msg, int size)
 {
     if(size == 0)
         size = strlen(msg)+1;
@@ -573,7 +573,7 @@ int OS_SendUnix(int socket, char * msg, int size)
 /* OS_GetHost, v0.1, 2005/01/181
  * Calls gethostbyname (tries x attempts)
  */
-char *OS_GetHost(char *host, int attempts)
+char *OS_GetHost(const char *host, int attempts)
 {
     int i = 0;
     int sz;
