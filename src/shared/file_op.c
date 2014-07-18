@@ -346,7 +346,11 @@ int CreatePID(const char *name, int pid)
 
     fprintf(fp,"%d\n",pid);
 
-    chmod(file, 0640);
+    if(chmod(file, 0640) != 0)
+    {
+        fclose(fp);
+        return(-1);
+    }
 
     fclose(fp);
 
