@@ -68,7 +68,7 @@ char *os_strip_char(const char *source, char remove) {
 }
 
 /* Do a substring */
-int os_substr(char *dest, const char *src, size_t position, size_t length) {
+int os_substr(char *dest, const char *src, size_t position, ssize_t length) {
     dest[0]='\0';
 
     if( length <= 0  ) {
@@ -82,7 +82,7 @@ int os_substr(char *dest, const char *src, size_t position, size_t length) {
         return -1;
     }
 
-    strncat(dest, (src + position), length);
+    strncat(dest, (src + position), (size_t) length);
     // Return Success
     return 0;
 }
