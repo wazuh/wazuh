@@ -27,7 +27,7 @@
 
 typedef unsigned char uchar;
 
-int OS_BF_Str(char *input, char *output, char *charkey,
+int OS_BF_Str(const char *input, char *output, const char *charkey,
                 long size, short int action)
 {
     BF_KEY key;
@@ -36,9 +36,9 @@ int OS_BF_Str(char *input, char *output, char *charkey,
 
     memcpy(iv,cbc_iv,sizeof(iv));
 
-    BF_set_key(&key, strlen(charkey), (uchar *)charkey);
+    BF_set_key(&key, (int)strlen(charkey), (uchar *)charkey);
 
-    BF_cbc_encrypt((uchar *)input, (uchar *)output, size,
+    BF_cbc_encrypt((uchar *)input, (uchar *)output, (long)size,
             &key, iv, action);
 
     return(1);
