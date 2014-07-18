@@ -580,6 +580,21 @@ alert_data *GetAlertData(int flag, FILE *fp)
 		free(alertid);
 		alertid = NULL;
 	}
+    if(group)
+    {
+        free(group);
+        group = NULL;
+    }
+    if(location)
+    {
+        free(location);
+        location = NULL;
+    }
+    if(date)
+    {
+        free(date);
+        date = NULL;
+    }
 
     /* We need to clean end of file before returning */
     clearerr(fp);

@@ -405,6 +405,7 @@ int OSStore_Put(OSStore *list, char *key, void *data)
                 /* Duplicated entry */
                 if(chk_rc == 0)
                 {
+                    free(newnode);
                     return(1);
                 }
 
