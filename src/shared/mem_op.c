@@ -29,7 +29,7 @@ void **os_AddPtArray(void *pt, void **array)
         }
     }
 
-    os_realloc(array, (i + 2)*sizeof(char *), ret);
+    os_realloc(array, (i + 2)*sizeof(void *), ret);
     ret[i] = pt;
     ret[i + 1] = NULL;
 

@@ -247,7 +247,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             }
 
             z = strlen(p) - strlen(m);
-            os_realloc(alertid, (z + 1)*sizeof(char *), alertid);
+            os_realloc(alertid, (z + 1)*sizeof(char), alertid);
             strncpy(alertid, p, z);
             alertid[z] = '\0';
 
