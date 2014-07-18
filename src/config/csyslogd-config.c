@@ -130,7 +130,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
                     }
 
                     os_realloc(syslog_config[s]->rule_id,
-                               (id_i +2) * sizeof(int),
+                               (id_i +2) * sizeof(unsigned int),
                                syslog_config[s]->rule_id);
 
                     syslog_config[s]->rule_id[id_i + i] = 0;

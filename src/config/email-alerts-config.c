@@ -69,9 +69,9 @@ int Read_EmailAlerts(XML_NODE node, __attribute__((unused)) void *configp, void 
         os_realloc(Mail->gran_format,
                    sizeof(int)*(granto_size +2), Mail->gran_format);
         os_realloc(Mail->gran_location,
-                   sizeof(OSMatch)*(granto_size +2), Mail->gran_location);
+                   sizeof(OSMatch *)*(granto_size +2), Mail->gran_location);
         os_realloc(Mail->gran_group,
-                   sizeof(OSMatch)*(granto_size +2), Mail->gran_group);
+                   sizeof(OSMatch *)*(granto_size +2), Mail->gran_group);
 
         Mail->gran_to[granto_size] = NULL;
         Mail->gran_to[granto_size+1] = NULL;
