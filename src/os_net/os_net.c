@@ -23,13 +23,14 @@
 #include "shared.h"
 #include "os_net.h"
 
-
+static int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6);
+static int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6);
 
 
 /* Unix socket -- not for windows */
 #ifndef WIN32
-struct sockaddr_un n_us;
-socklen_t us_l = sizeof(n_us);
+static struct sockaddr_un n_us;
+static socklen_t us_l = sizeof(n_us);
 
 /* UNIX SOCKET */
 #ifndef SUN_LEN
@@ -50,7 +51,7 @@ socklen_t us_l = sizeof(n_us);
  * Bind a specific port
  * v0.2: Added REUSEADDR.
  */
-int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
+static int OS_Bindport(unsigned int _port, unsigned int _proto, char *_ip, int ipv6)
 {
     int ossock;
     struct sockaddr_in server;
@@ -288,7 +289,7 @@ int OS_getsocketsize(int ossock)
 /* OS_Connect v 0.1, 2004/07/21
  * Open a TCP/UDP client socket
  */
-int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6)
+static int OS_Connect(unsigned int _port, unsigned int protocol, char *_ip, int ipv6)
 {
     int ossock;
     struct sockaddr_in server;
