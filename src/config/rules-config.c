@@ -132,20 +132,6 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             Config->lists[lists_size -1] = NULL;
 
         }
-        else if(strcmp(node[i]->element, xml_rules_lists) == 0)
-        {
-            lists_size++;
-            Config->lists = realloc(Config->lists,
-                                    sizeof(char *)*lists_size);
-            if(!Config->lists)
-            {
-                merror(MEM_ERROR, ARGV0);
-                return(OS_INVALID);
-            }
-            os_strdup(node[i]->content,Config->lists[lists_size -2]);
-            Config->lists[lists_size -1] = NULL;
-
-        }
         else if(strcmp(node[i]->element, xml_rules_decoders_dir) == 0)
         {
 
