@@ -22,6 +22,8 @@
 
 #include "config.h"
 
+int ar_flag = 0;
+
 
 /** int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
  * Generates a list with all active responses.
