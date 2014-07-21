@@ -5,7 +5,7 @@
     <description>Uh-oh, someone slipped you systemd!</description>
   </rule>
 
-  <rule id="40700" level="0">
+  <rule id="40701" level="0">
     <if_sid>40700</if_sid>
     <match> Stale file handle$</match>
     <description>Stale file handle.</description>
