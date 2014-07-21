@@ -2546,5 +2546,19 @@ Author and (c): Michael Starks, 2014 -->
   <order>status, extra_data</order>
 </decoder>
 
+<!-- unix_chkpwd
+  - Jul 21 07:40:29 localhost unix_chkpwd[15804]: password check failed for user (username)
+-->
+<decoder name="unix_chkpwd">
+  <program_name>^unix_chkpwd</program_name>
+</decoder>
+
+<!--Jul 21 07:40:29 localhost unix_chkpwd[15804]: password check failed for user (username)-->
+<decoder name="chkpwd-user">
+  <parent>unix_chkpwd</parent>
+  <regex offset="after_parent">user \((\w+)\)$</regex>
+  <order>srcuser</order>
+</decoder>
+
 
 <!-- EOF -->

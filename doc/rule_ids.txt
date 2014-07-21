@@ -72,6 +72,8 @@
 
 40100 - 40499 Attack patterns.
 40500 - 40599 Privilege scalation.
-40600 - 40999 Scan patterns.
+40600 - 40699 Scan patterns.
+40700 - 40899 Systemd
+40900 - 40999 Firewalld
 
 100000 - 109999 User defined rules
