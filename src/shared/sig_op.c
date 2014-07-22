@@ -28,9 +28,9 @@
 
 static const char *pidfile = NULL;
 
-void HandleSIG(__attribute__((unused)) int sig)
+void HandleSIG(int sig)
 {
-    merror(SIGNAL_RECV, pidfile);
+    merror(SIGNAL_RECV, pidfile, sig);
 
     DeletePID(pidfile);
 
