@@ -27,6 +27,9 @@ run_tests: build_tests
 	./test_os_regex
 	./test_os_crypto
 	
+run_valgrind: build_tests
+	valgrind --leak-check=full --track-origins=yes --trace-children=yes --vgdb=no --error-exitcode=1 --gen-suppressions=all --suppressions=valgrind.supp make run_tests
+	
 generate_coverage: build_tests
 	lcov --base-directory . --directory . --zerocounters --rc lcov_branch_coverage=1 --quiet
 	@echo "Running tests\n"
