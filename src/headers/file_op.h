@@ -23,9 +23,6 @@
 
 #define OS_PIDFILE	"/var/run"
 
-/* Local name */
-extern const char *__local_name;
-
 /* Set the program name. Must be done before **anything** else */
 void OS_SetName(const char *name) __attribute__((nonnull));
 
