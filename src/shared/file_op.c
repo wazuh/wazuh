@@ -295,9 +295,10 @@
 #endif /* WIN32 */
 
 
+const char *__local_name = "unset";
 
 /* Sets the name of the starting program */
-void OS_SetName(char *name)
+void OS_SetName(const char *name)
 {
     __local_name = name;
     return;

@@ -170,10 +170,6 @@ typedef unsigned char u_int8_t;
 
 
 
-/* Local name */
-char *__local_name;
-
-
 /*** Global prototypes ***/
 /*** These functions will exit on error. No need to check return code ***/
 

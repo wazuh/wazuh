@@ -23,8 +23,11 @@
 
 #define OS_PIDFILE	"/var/run"
 
+/* Local name */
+extern const char *__local_name;
+
 /* Set the program name. Must be done before **anything** else */
-void OS_SetName(char *name) __attribute__((nonnull));
+void OS_SetName(const char *name) __attribute__((nonnull));
 
 time_t File_DateofChange(const char *file) __attribute__((nonnull));
 
