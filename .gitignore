@@ -68,6 +68,7 @@ src/external/zlib-1.2.8/zlib.pc
 src/tests/coverage-report/
 src/tests/ossec.test
 src/tests/test_os_crypto
+src/tests/test_os_net
 src/tests/test_os_regex
 src/tests/test_os_xml
 src/tests/test_os_zlib

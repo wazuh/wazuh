@@ -34,3 +34,13 @@
    obj:/usr/bin/make
    fun:main
 }
+{
+   os_net_unit_test_forced_error
+   Memcheck:Param
+   socketcall.recvfrom(buf)
+   fun:__recvfrom_nocancel
+   fun:OS_RecvUnix
+   fun:test_unixinvalidsockets
+   fun:srunner_run
+   fun:main
+}
