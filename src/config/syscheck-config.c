@@ -445,6 +445,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
             else if(strcmp(*attrs, xml_restrict) == 0)
             {
+                if(restrictfile){
+                    free(restrictfile);
+                    restrictfile = NULL;
+                }
                 os_strdup(*values, restrictfile);
             }
             else
@@ -461,7 +465,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         if(opts == 0)
         {
             merror(SYSCHECK_NO_OPT, ARGV0, dirs);
-            if(restrictfile) free(restrictfile);
             ret = 0;
             goto out_free;
         }
@@ -543,6 +546,7 @@ out_free:
         free(dir_org[i++]);
 
     free(dir_org);
+    free(restrictfile);
 
     return ret;
 }

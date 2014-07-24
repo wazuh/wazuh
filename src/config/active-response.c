@@ -205,21 +205,22 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     {
         fclose(fp);
         free(tmp_ar);
+        free(tmp_location);
         return(0);
     }
 
     /* Command and location must be there */
     if(!tmp_ar->command || !tmp_location)
     {
+        fclose(fp);
+        free(tmp_ar);
+        free(tmp_location);
+
         if(rpt == 1)
         {
-            fclose(fp);
-            free(tmp_ar);
             return(0);
         }
         merror(AR_MISS, ARGV0);
-        fclose(fp);
-        free(tmp_ar);
         return(-1);
     }
 
@@ -374,6 +375,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     error_invalid:
     fclose(fp);
     free(tmp_ar);
+    free(tmp_location);
     return(OS_INVALID);
 }
 
@@ -417,12 +419,14 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
         if(!node[i]->element)
         {
             merror(XML_ELEMNULL, ARGV0);
+            free(tmp_str);
             free(tmp_command);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
             merror(XML_VALUENULL, ARGV0, node[i]->element);
+            free(tmp_str);
             free(tmp_command);
             return(OS_INVALID);
         }
@@ -447,6 +451,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
             else
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                free(tmp_str);
                 free(tmp_command);
                 return(OS_INVALID);
             }
@@ -454,6 +459,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
         else
         {
             merror(XML_INVELEM, ARGV0, node[i]->element);
+            free(tmp_str);
             free(tmp_command);
             return(OS_INVALID);
         }
@@ -463,6 +469,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     if(!tmp_command->name || !tmp_str || !tmp_command->executable)
     {
         merror(AR_CMD_MISS, ARGV0);
+        free(tmp_str);
         free(tmp_command);
         return(-1);
     }
