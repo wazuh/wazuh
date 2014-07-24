@@ -15,7 +15,7 @@
 
 #include "config.h"
 
-static short eval_bool(char *str)
+static short eval_bool(const char *str)
 {
     if (str == NULL)
         return(OS_INVALID);

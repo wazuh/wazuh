@@ -30,7 +30,7 @@
 
 #include "rootcheck/rootcheck.h"
 
-int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, char *restrictfile);
+int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile);
 
 #ifdef USE_MAGIC
 #include <magic.h>

@@ -17,7 +17,7 @@
 
 #include "config.h"
 
-int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, char *restrictfile)
+int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile)
 {
     unsigned int pl = 0;
 
@@ -193,7 +193,7 @@ int read_reg(syscheck_config *syscheck, char *entries)
 
 
 /* Read directories attributes */
-static int read_attr(syscheck_config *syscheck, char *dirs, char **g_attrs, char **g_values)
+static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs, char **g_values)
 {
     const char *xml_check_all = "check_all";
     const char *xml_check_sum = "check_sum";
