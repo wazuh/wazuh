@@ -19,14 +19,14 @@
 #include "os_xml/os_xml.h"
 #include "config.h"
 
-static int read_main_elements(OS_XML *xml, int modules,
+static int read_main_elements(const OS_XML *xml, int modules,
                                    XML_NODE node,
                                    void *d1,
                                    void *d2);
 
 /* Read the main elements of the configuration.
  */
-static int read_main_elements(OS_XML *xml, int modules,
+static int read_main_elements(const OS_XML *xml, int modules,
                                    XML_NODE node,
                                    void *d1,
                                    void *d2)
@@ -162,7 +162,7 @@ static int read_main_elements(OS_XML *xml, int modules,
 /* ReadConfig(int modules, char *cfgfile)
  * Read the config files
  */
-int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
+int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 {
     int i;
     OS_XML xml;
