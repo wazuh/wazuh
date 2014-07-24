@@ -38,7 +38,7 @@ before_script:
 
 
 script:
-- echo "CC = '${CC}'"
+- echo "CC = '${CC}'" # this seems suspicious, but without this travis do not uses the clang compiler correctly
 - ( cd src/ && make $OSSEC_TYPE )
 - if [[ "$OSSEC_TYPE" == "test" ]]; then ( cd src/tests/ && make run_valgrind ); fi
 
