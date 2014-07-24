@@ -525,6 +525,8 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
     if(recv_b < 0)
         return(0);
 
+    buffer[recv_b] = '\0';
+
     return(recv_b);
 }
 
