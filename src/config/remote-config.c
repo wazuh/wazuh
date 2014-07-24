@@ -97,7 +97,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logr->lip = (char **) realloc(logr->lip, sizeof(char *)*(pl +2));
     if(!logr->port || !logr->conn || !logr->proto || !logr->lip)
     {
-        merror(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, ARGV0);
     }
 
     logr->port[pl] = 0;
