@@ -32,6 +32,9 @@
 
 
 #include <stdio.h>
+
+#include "os_regex/os_regex.h"
+
 typedef struct _rtfim
 {
     int fd;
