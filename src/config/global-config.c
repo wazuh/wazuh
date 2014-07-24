@@ -21,18 +21,6 @@
 
 #include "config.h"
 
-void AssignIgnore_Global(char **ignores, void *configp)
-{
-    _Config *Config;
-
-    Config = (_Config *)configp;
-    if(Config)
-    {
-        Config->syscheck_ignore = ignores;
-    }
-}
-
-
 /* GlobalConfSK v0.1: 2006/04/26
  * v0.1 Getting the ignore fields.
  */
