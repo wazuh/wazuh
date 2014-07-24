@@ -30,6 +30,8 @@ int ar_flag = 0;
  */
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 {
+    OSList *l1 = (OSList *) d1;
+    OSList *l2 = (OSList *) d2;
     FILE *fp;
     int i = 0;
     int r_ar = 0;
@@ -89,7 +91,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
 
     /* Allocating for the active-response */
-    tmp_ar = calloc(1, sizeof(active_response));
+    tmp_ar = (active_response *) calloc(1, sizeof(active_response));
     if(!tmp_ar)
     {
         merror(MEM_ERROR, ARGV0);
@@ -271,7 +273,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     {
         OSListNode *my_commands_node;
 
-        my_commands_node = OSList_GetFirstNode(d1);
+        my_commands_node = OSList_GetFirstNode(l1);
         while(my_commands_node)
         {
             ar_command *my_command;
@@ -283,7 +285,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
                 break;
             }
 
-            my_commands_node = OSList_GetNextNode(d1);
+            my_commands_node = OSList_GetNextNode(l1);
         }
 
         /* Didn't find a valid command */
@@ -306,7 +308,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     }
 
     /* d1 is the active response list */
-    if(!OSList_AddData(d2, (void *)tmp_ar))
+    if(!OSList_AddData(l2, (void *)tmp_ar))
     {
         merror(LIST_ADD_ERROR, ARGV0);
         fclose(fp);
@@ -316,7 +318,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
 
 
     /* Setting a unique active response name */
-    tmp_ar->name = calloc(OS_FLSIZE +1, sizeof(char));
+    tmp_ar->name = (char *) calloc(OS_FLSIZE +1, sizeof(char));
     if(!tmp_ar->name)
     {
         ErrorExit(MEM_ERROR, ARGV0);
@@ -381,6 +383,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
  */
 int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
+    OSList *l1 = (OSList *) d1;
     int i = 0;
 
     char *tmp_str = NULL;
@@ -395,7 +398,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
 
 
     /* Allocating the active-response command */
-    tmp_command = calloc(1, sizeof(ar_command));
+    tmp_command = (ar_command *) calloc(1, sizeof(ar_command));
     if(!tmp_command)
     {
         merror(MEM_ERROR, ARGV0);
@@ -481,7 +484,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
 
 
     /* Adding command to the list */
-    if(!OSList_AddData(d1, (void *)tmp_command))
+    if(!OSList_AddData(l1, (void *)tmp_command))
     {
         merror(LIST_ADD_ERROR, ARGV0);
         free(tmp_command);

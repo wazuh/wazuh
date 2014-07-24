@@ -114,7 +114,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
         else if(strcmp(node[i]->element,xml_ignore) == 0)
         {
             ign_size++;
-            Config->syscheck_ignore =
+            Config->syscheck_ignore = (char **)
                 realloc(Config->syscheck_ignore, sizeof(char *)*ign_size);
             if(!Config->syscheck_ignore)
             {
@@ -439,7 +439,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             if(Config && OS_PRegex(node[i]->content, ip_address_regex))
             {
                 white_size++;
-                Config->white_list =
+                Config->white_list = (os_ip **)
                     realloc(Config->white_list, sizeof(os_ip *)*white_size);
                 if(!Config->white_list)
                 {
@@ -462,7 +462,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             else if(Config)
             {
                 hostname_white_size++;
-                Config->hostname_white_list =
+                Config->hostname_white_list = (OSMatch **)
                     realloc(Config->hostname_white_list,
                     sizeof(OSMatch *)*hostname_white_size);
 
@@ -509,7 +509,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             if(Mail)
             {
                 mailto_size++;
-                Mail->to = realloc(Mail->to, sizeof(char *)*mailto_size);
+                Mail->to = (char **) realloc(Mail->to, sizeof(char *)*mailto_size);
                 if(!Mail->to)
                 {
                     merror(MEM_ERROR, ARGV0);

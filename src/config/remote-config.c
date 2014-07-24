@@ -90,11 +90,11 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
 
     /* Adding space for the last null connection/port */
-    logr->port = realloc(logr->port, sizeof(int)*(pl +2));
-    logr->conn = realloc(logr->conn, sizeof(int)*(pl +2));
-    logr->proto = realloc(logr->proto, sizeof(int)*(pl +2));
-    logr->ipv6 = realloc(logr->ipv6, sizeof(int)*(pl +2));
-    logr->lip = realloc(logr->lip, sizeof(char *)*(pl +2));
+    logr->port = (int *) realloc(logr->port, sizeof(int)*(pl +2));
+    logr->conn = (int *) realloc(logr->conn, sizeof(int)*(pl +2));
+    logr->proto = (int *) realloc(logr->proto, sizeof(int)*(pl +2));
+    logr->ipv6 = (int *) realloc(logr->ipv6, sizeof(int)*(pl +2));
+    logr->lip = (char **) realloc(logr->lip, sizeof(char *)*(pl +2));
     if(!logr->port || !logr->conn || !logr->proto || !logr->lip)
     {
         merror(MEM_ERROR, ARGV0);
@@ -191,7 +191,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         else if(strcmp(node[i]->element, xml_allowips) == 0)
         {
             allow_size++;
-            logr->allowips =realloc(logr->allowips,sizeof(os_ip *)*allow_size);
+            logr->allowips = (os_ip **) realloc(logr->allowips,sizeof(os_ip *)*allow_size);
             if(!logr->allowips)
             {
                 merror(MEM_ERROR, ARGV0);
@@ -210,7 +210,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         else if(strcmp(node[i]->element, xml_denyips) == 0)
         {
             deny_size++;
-            logr->denyips = realloc(logr->denyips,sizeof(os_ip *)*deny_size);
+            logr->denyips = (os_ip **) realloc(logr->denyips,sizeof(os_ip *)*deny_size);
             if(!logr->denyips)
             {
                 merror(MEM_ERROR, ARGV0);

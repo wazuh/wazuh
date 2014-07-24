@@ -91,7 +91,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                 (strcmp(node[i]->element, xml_rules_rule) == 0))
         {
             rules_size++;
-            Config->includes = realloc(Config->includes,
+            Config->includes = (char **) realloc(Config->includes,
                                        sizeof(char *)*rules_size);
             if(!Config->includes)
             {
@@ -106,7 +106,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         else if(strcmp(node[i]->element, xml_rules_decoders) == 0)
         {
             decoders_size++;
-            Config->decoders = realloc(Config->decoders,
+            Config->decoders = (char **) realloc(Config->decoders,
                                        sizeof(char *)*decoders_size);
             if(!Config->decoders)
             {
@@ -121,7 +121,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         else if(strcmp(node[i]->element, xml_rules_lists) == 0)
         {
             lists_size++;
-            Config->lists = realloc(Config->lists,
+            Config->lists = (char **) realloc(Config->lists,
                                     sizeof(char *)*lists_size);
             if(!Config->lists)
             {
@@ -185,7 +185,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                     if(OSRegex_Execute(f_name, &regex))
                     {
                         decoders_size++;
-                        Config->decoders= realloc(Config->decoders, sizeof(char *)*decoders_size);
+                        Config->decoders= (char **) realloc(Config->decoders, sizeof(char *)*decoders_size);
                         if(!Config->decoders)
                         {
                             merror(MEM_ERROR, ARGV0);
@@ -263,7 +263,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                     if(OSRegex_Execute(f_name, &regex))
                     {
                         rules_size++;
-                        Config->includes = realloc(Config->includes, sizeof(char *)*rules_size);
+                        Config->includes = (char **) realloc(Config->includes, sizeof(char *)*rules_size);
                         if(!Config->includes)
                         {
                             merror(MEM_ERROR, ARGV0);
