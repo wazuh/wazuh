@@ -35,7 +35,7 @@
 typedef struct _rtfim
 {
     int fd;
-    void *dirtb;
+    OSHash *dirtb;
     #ifdef WIN32
     HANDLE evt;
     #endif
@@ -63,10 +63,10 @@ typedef struct _config
     char *scan_time;       /* run syscheck at this time */
 
     char **ignore;         /* list of files/dirs to ignore */
-    void **ignore_regex;   /* regex of files/dirs to ignore */
+    OSMatch **ignore_regex;   /* regex of files/dirs to ignore */
 
     char **dir;            /* array of directories to be scanned */
-    void **filerestrict;
+    OSMatch **filerestrict;
 
     /* Windows only registry checking */
     #ifdef WIN32
@@ -76,7 +76,7 @@ typedef struct _config
     FILE *reg_fp;
     #endif
 
-    void *fp;
+    OSHash *fp;
 
     rtfim *realtime;
 

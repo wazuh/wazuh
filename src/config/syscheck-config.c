@@ -58,7 +58,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             syscheck->opts[pl + 1] = 0;
             syscheck->opts[pl] = vals;
 
-            os_calloc(2, sizeof(void *), syscheck->filerestrict);
+            os_calloc(2, sizeof(OSMatch *), syscheck->filerestrict);
             syscheck->filerestrict[pl] = NULL;
             syscheck->filerestrict[pl + 1] = NULL;
         }
@@ -78,7 +78,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             syscheck->opts[pl + 1] = 0;
             syscheck->opts[pl] = vals;
 
-            os_realloc(syscheck->filerestrict, (pl +2) * sizeof(void *),
+            os_realloc(syscheck->filerestrict, (pl +2) * sizeof(OSMatch *),
                        syscheck->filerestrict);
             syscheck->filerestrict[pl] = NULL;
             syscheck->filerestrict[pl + 1] = NULL;
@@ -712,7 +712,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
 
                     if(!syscheck->ignore_regex)
                     {
-                        os_calloc(2, sizeof(void *),syscheck->ignore_regex);
+                        os_calloc(2, sizeof(OSMatch *),syscheck->ignore_regex);
                         syscheck->ignore_regex[0] = NULL;
                         syscheck->ignore_regex[1] = NULL;
                     }
@@ -722,7 +722,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                             ign_size++;
 
                         os_realloc(syscheck->ignore_regex,
-                                sizeof(void *)*(ign_size +2),
+                                sizeof(OSMatch *)*(ign_size +2),
                                 syscheck->ignore_regex);
                         syscheck->ignore_regex[ign_size +1] = NULL;
                     }
