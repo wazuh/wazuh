@@ -19,14 +19,14 @@
 #include "os_xml/os_xml.h"
 #include "config.h"
 
-static int read_main_elements(OS_XML xml, int modules,
+static int read_main_elements(OS_XML *xml, int modules,
                                    XML_NODE node,
                                    void *d1,
                                    void *d2);
 
 /* Read the main elements of the configuration.
  */
-static int read_main_elements(OS_XML xml, int modules,
+static int read_main_elements(OS_XML *xml, int modules,
                                    XML_NODE node,
                                    void *d1,
                                    void *d2)
@@ -53,7 +53,7 @@ static int read_main_elements(OS_XML xml, int modules,
     {
         XML_NODE chld_node = NULL;
 
-        chld_node = OS_GetElementsbyNode(&xml,node[i]);
+        chld_node = OS_GetElementsbyNode(xml,node[i]);
 
         if(!node[i]->element)
         {
@@ -223,7 +223,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
             /* Main element does not need to have any child */
             if(chld_node)
             {
-                if(read_main_elements(xml, modules, chld_node, d1, d2) < 0)
+                if(read_main_elements(&xml, modules, chld_node, d1, d2) < 0)
                 {
                     merror(CONFIG_ERROR, ARGV0, cfgfile);
                     return(OS_INVALID);
@@ -350,7 +350,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
             /* Main element does not need to have any child */
             if(chld_node)
             {
-                if(passed_agent_test && read_main_elements(xml, modules, chld_node, d1, d2) < 0)
+                if(passed_agent_test && read_main_elements(&xml, modules, chld_node, d1, d2) < 0)
                 {
                     merror(CONFIG_ERROR, ARGV0, cfgfile);
                     return(OS_INVALID);
