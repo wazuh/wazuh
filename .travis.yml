@@ -14,10 +14,16 @@ env:
 - OSSEC_TYPE=test
 
 
-
 compiler:
 - gcc
 - clang
+
+
+matrix:
+  fast_finish: true
+  exclude:
+    - compiler: clang
+      env: DB=none OSSEC_TYPE=windows_agent GEOIP=no
 
 
 
