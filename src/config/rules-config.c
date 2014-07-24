@@ -271,6 +271,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                         {
                             merror(MEM_ERROR, ARGV0);
                             OSRegex_FreePattern(&regex);
+                            closedir(dfd);
                             return(-1);
                         }
 
