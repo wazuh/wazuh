@@ -84,6 +84,8 @@ typedef struct _config
 
 }syscheck_config;
 
+int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, char *restrictfile);
+
 #endif
 
 /* EOF */
