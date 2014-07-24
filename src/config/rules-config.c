@@ -24,10 +24,10 @@ static int cmpr(const void *a, const void *b) {
     return strcmp(*(char **)a, *(char **)b);
 }
 
-static int file_in_list(int list_size, char *f_name, char *d_name, char **alist)
+static int file_in_list(unsigned int list_size, char *f_name, char *d_name, char **alist)
 {
-    int i = 0;
-    for(i=0; i<(list_size-1); i++)
+    unsigned int i = 0;
+    for(i=0; (i+1)<list_size; i++)
     {
         if((strcmp(alist[i], f_name) == 0 || strcmp(alist[i], d_name) == 0))
         {
