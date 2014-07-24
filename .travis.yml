@@ -32,7 +32,8 @@ before_script:
 
 
 script:
-- ( cd src && sudo make $OSSEC_TYPE )
+- echo "CC = '${CC}'"
+- ( cd src/ && make $OSSEC_TYPE )
 - if [[ "$OSSEC_TYPE" == "test" ]]; then ( cd src/tests/ && make run_valgrind ); fi
 
 before_deploy:
