@@ -14,10 +14,16 @@ env:
 - OSSEC_TYPE=test
 
 
-
 compiler:
 - gcc
 - clang
+
+
+matrix:
+  fast_finish: true
+  exclude:
+    - compiler: clang
+      env: DB=none OSSEC_TYPE=windows_agent GEOIP=no
 
 
 
@@ -32,7 +38,11 @@ before_script:
 
 
 script:
-- ( cd src && sudo make $OSSEC_TYPE )
+- echo "CC = '${CC}'" # this seems suspicious, but without this travis do not uses the clang compiler correctly
+- if [[ "$OSSEC_TYPE" == "agent" ]]; then ( cd src/ && make setagent && make all ); fi
+
+- ( cd src/ && sudo make $OSSEC_TYPE )
+
 - if [[ "$OSSEC_TYPE" == "test" ]]; then ( cd src/tests/ && make run_valgrind ); fi
 
 before_deploy:
