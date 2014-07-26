@@ -68,10 +68,18 @@
 30100 - 30999 Apache error log.
 31100 - 31199 Web access log
 
+31501 - 32000 Web Appsec rules.
+
 35000 - 35999 Squid
 
 40100 - 40499 Attack patterns.
-40500 - 40599 Privilege scalation.
-40600 - 40999 Scan patterns.
+40500 - 40599 Privilege escalation.
+
+40600 - 40699 Scan patterns.
+40700 - 40899 Systemd
+40900 - 40999 Firewalld
+
+51500 - 51999 OpenBSD rules.
+52000 - XXXXX Apparmor rules.
 
 100000 - 109999 User defined rules
