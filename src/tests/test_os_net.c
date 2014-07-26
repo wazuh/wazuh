@@ -14,7 +14,7 @@
 
 #define IPV4 "127.0.0.1"
 #define IPV6 "::1"
-#define PORT 4321
+#define PORT "4321"
 #define SENDSTRING "Hello World!\n"
 #define BUFFERSIZE 1024
 
@@ -27,9 +27,9 @@ START_TEST(test_tcpv4_local)
     char *msg;
     char ipbuffer[BUFFERSIZE];
 
-    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, IPV4, 0)), 0);
+    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, IPV4)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV4, 0)) ,0);
+    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV4)) ,0);
 
     ck_assert_int_ge((server_client_socket = OS_AcceptTCP(server_root_socket, ipbuffer, BUFFERSIZE)), 0);
 
@@ -62,9 +62,9 @@ START_TEST(test_tcpv4_inet)
     char *msg;
     char ipbuffer[BUFFERSIZE];
 
-    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, NULL, 0)), 0);
+    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, NULL)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV4, 0)) ,0);
+    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV4)) ,0);
 
     ck_assert_int_ge((server_client_socket = OS_AcceptTCP(server_root_socket, ipbuffer, BUFFERSIZE)), 0);
 
@@ -97,9 +97,9 @@ START_TEST(test_tcpv6)
     char *msg;
     char ipbuffer[BUFFERSIZE];
 
-    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, IPV6, 1)), 0);
+    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, IPV6)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV6, 1)) ,0);
+    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV6)) ,0);
 
     ck_assert_int_ge((server_client_socket = OS_AcceptTCP(server_root_socket, ipbuffer, BUFFERSIZE)), 0);
 
@@ -149,9 +149,9 @@ START_TEST(test_udpv4)
     char *msg;
     char ipbuffer[BUFFERSIZE];
 
-    ck_assert_int_ge((server_socket = OS_Bindportudp(PORT, IPV4, 0)), 0);
+    ck_assert_int_ge((server_socket = OS_Bindportudp(PORT, IPV4)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectUDP(PORT, IPV4, 0)) ,0);
+    ck_assert_int_ge((client_socket = OS_ConnectUDP(PORT, IPV4)) ,0);
 
     //TODO: ck_assert_int_eq(OS_SendUDP(client_socket, SENDSTRING), 0);
     ck_assert_int_eq(OS_SendUDPbySize(client_socket, strlen(SENDSTRING), SENDSTRING), 0);
@@ -181,9 +181,9 @@ START_TEST(test_udpv6)
     char *msg;
     char ipbuffer[BUFFERSIZE];
 
-    ck_assert_int_ge((server_socket = OS_Bindportudp(PORT, IPV6, 1)), 0);
+    ck_assert_int_ge((server_socket = OS_Bindportudp(PORT, IPV6)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectUDP(PORT, IPV6, 1)) ,0);
+    ck_assert_int_ge((client_socket = OS_ConnectUDP(PORT, IPV6)) ,0);
 
     //TODO: ck_assert_int_eq(OS_SendUDP(client_socket, SENDSTRING), 0);
     ck_assert_int_eq(OS_SendUDPbySize(client_socket, strlen(SENDSTRING), SENDSTRING), 0);
