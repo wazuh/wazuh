@@ -13,7 +13,6 @@
 int main(int argc,char **argv)
 {
     int r_code = 0;
-    char **ret;
 
     /* OSRegex structure */
     OSRegex reg;
@@ -32,13 +31,14 @@ int main(int argc,char **argv)
      */
     if(OSRegex_Compile(argv[1], &reg, OS_RETURN_SUBSTRING))
     {
-        char *retv;
+        const char *retv;
         /* If the execution succeeds, the substrings will be
          * at reg.sub_strings
          */
         if((retv = OSRegex_Execute(argv[2], &reg)))
         {
             int sub_size = 0;
+            char **ret;
             r_code = 1;
 
             /* next pt */

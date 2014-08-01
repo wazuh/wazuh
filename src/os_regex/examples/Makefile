@@ -6,4 +6,4 @@ maketest:
 		$(CC) -o regex_str regex_str.c ../os_regex.a -I../ -Wall
 
 clean:
-		-rm regex regex_str *.core
+		rm -f regex match regex_str *.core
