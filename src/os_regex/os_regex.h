@@ -138,8 +138,6 @@ void OSMatch_FreePattern(OSMatch *reg) __attribute__((nonnull));
 
 int OS_Match2(const char *pattern, const char *str)  __attribute__((nonnull(2)));
 
-int OS_Match3(char *pattern, char *str, char* delimiter);
-
 
 /* OS_WordMatch v0.3:
  * Searches for  pattern in the string
