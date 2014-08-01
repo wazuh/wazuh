@@ -30,8 +30,8 @@
 </ossec_config>
 
 <myxml1 name="name1" value="abc">
-  <element1 name="mytestname" value ='element1value'>content1</element1>
-   <element2 name = "mysecondname">content2</element2>
+  <element1 name="mytestname" value='element1value'>content1</element1>
+   <element2 name= "mysecondname">content2</element2>
 </myxml1>
 
 <myxml2 name="name2" value="def" value2="test">
