@@ -43,7 +43,7 @@ typedef struct _OSStore
 OSStore *OSStore_Create(void);
 OSStore *OSStore_Free(OSStore *list) __attribute__((nonnull));
 
-int OSStore_Put(OSStore *list, char *key, void *data) __attribute__((nonnull(1,2)));
+int OSStore_Put(OSStore *list, const char *key, void *data) __attribute__((nonnull(1,2)));
 int OSStore_Check(OSStore *list, const char *key) __attribute__((nonnull));
 int OSStore_NCheck(OSStore *list, const char *key) __attribute__((nonnull));
 int OSStore_NCaseCheck(OSStore *list, const char *key) __attribute__((nonnull));

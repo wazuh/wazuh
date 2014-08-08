@@ -23,7 +23,7 @@ static int _os_report_str_int_compare(const char *str, int id) __attribute__((no
 static int _os_report_check_filters(const alert_data *al_data, const report_filter *r_filter) __attribute__((nonnull));
 static int _report_filter_value(const char *filter_by, int prev_filter) __attribute__((nonnull));
 static int _os_report_print_related(int print_related, OSList *st_data) __attribute__((nonnull));
-static int _os_report_add_tostore(char *key, OSStore *top, void *data) __attribute__((nonnull(1,2)));
+static int _os_report_add_tostore(const char *key, OSStore *top, void *data) __attribute__((nonnull(1,2)));
 static FILE *__g_rtype = NULL;
 
 static void l_print_out(const char *msg, ...)
@@ -372,7 +372,7 @@ static int _os_report_print_related(int print_related, OSList *st_data)
 
 
 /* Add the entry to the hash. */
-static int _os_report_add_tostore(char *key, OSStore *top, void *data)
+static int _os_report_add_tostore(const char *key, OSStore *top, void *data)
 {
     OSList *top_list;
 
@@ -581,9 +581,9 @@ void os_ReportdStart(report_filter *r_filter)
             snprintf(mlevel, 16, "Severity %d" , al_data->level);
             snprintf(mrule, 76, "%d - %s" , al_data->rule, al_data->comment);
 
-            _os_report_add_tostore(strdup(mlevel), r_filter->top_level,
+            _os_report_add_tostore(mlevel, r_filter->top_level,
                                    al_data);
-            _os_report_add_tostore(strdup(mrule), r_filter->top_rule,
+            _os_report_add_tostore(mrule, r_filter->top_rule,
                                    al_data);
         }
 

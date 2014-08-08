@@ -365,7 +365,7 @@ int OSStore_NCaseCheck(OSStore *list, const char *key)
 /* Add data to the list
  * Returns 1 on success and 0 on failure
  */
-int OSStore_Put(OSStore *list, char *key, void *data)
+int OSStore_Put(OSStore *list, const char *key, void *data)
 {
     int chk_rc;
     OSStoreNode *newnode;
@@ -382,7 +382,12 @@ int OSStore_Put(OSStore *list, char *key, void *data)
     newnode->prev = NULL;
     newnode->next = NULL;
     newnode->data = data;
-    newnode->key = key;
+    newnode->key = strdup(key);
+    if(!newnode->key)
+    {
+        merror(MEM_ERROR, __local_name);
+        return(0);
+    }
     newnode->key_size = strlen(key);
 
 

@@ -368,12 +368,10 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
             }
             else
             {
-                char *new_name;
                 char *new_attrs;
 
                 os_strdup(changed_attrs, new_attrs);
-                os_strdup(changed_file_name, new_name);
-                OSStore_Put(files_list, new_name, new_attrs);
+                OSStore_Put(files_list, changed_file_name, new_attrs);
                 _do_print_attrs_syscheck(NULL,
                                          changed_attrs, csv_output,
                                          changed_file_name[0] == '/'?0:1,
