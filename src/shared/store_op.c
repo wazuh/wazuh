@@ -190,7 +190,8 @@ int OSStore_Sort(OSStore *list, void*(sort_data_function)(void *d1, void *d2))
             else
                 list->last_node = list->cur_node->prev;
 
-            list->cur_node = list->cur_node->prev;
+            if((list->cur_node = list->cur_node->prev) == NULL)
+                return(1);
 
             newnode->prev = NULL;
             newnode->next = list->first_node;
@@ -385,6 +386,7 @@ int OSStore_Put(OSStore *list, const char *key, void *data)
     newnode->key = strdup(key);
     if(!newnode->key)
     {
+        free(newnode);
         merror(MEM_ERROR, __local_name);
         return(0);
     }

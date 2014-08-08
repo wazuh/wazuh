@@ -272,6 +272,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             if(p)
             {
                 p++;
+                free(group);
                 os_strdup(p, group);
 
                 /* Cleaning new line from group */
@@ -319,8 +320,11 @@ alert_data *GetAlertData(int flag, FILE *fp)
 
 
             /* If not, str is date and p is the location */
-            if(date || location)
-                merror("ZZZ Merror date or location not NULL");
+            if(date || location || !p)
+            {
+                merror("ZZZ Merror date or location not NULL or p is NULL");
+                goto l_error;
+            }
 
             os_strdup(str, date);
             os_strdup(p, location);
