@@ -24,7 +24,7 @@ static int file_in_list(unsigned int list_size, char *f_name, char *d_name, char
 
 static int cmpr(const void *a, const void *b) {
     /*printf("%s - %s\n", *(char **)a, *(char **)b);*/
-    return strcmp(*(const char **)a, *(const char **)b);
+    return strcmp(*(const char * const*)a, *(const char * const*)b);
 }
 
 static int file_in_list(unsigned int list_size, char *f_name, char *d_name, char **alist)
