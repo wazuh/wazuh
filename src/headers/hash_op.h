@@ -25,7 +25,7 @@ typedef struct _OSHashNode
 {
     struct _OSHashNode *next;
 
-    void *key;
+    char *key;
     void *data;
 }OSHashNode;
 

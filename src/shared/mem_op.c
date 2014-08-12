@@ -130,7 +130,7 @@ char *os_LoadString(char *at, const char *str)
         size_t strsize = strlen(str);
         size_t finalsize = strsize + strlen(at) + 1;
 
-        newat = realloc(at, finalsize*sizeof(char));
+        newat = (char *) realloc(at, finalsize*sizeof(char));
         if(newat == NULL)
         {
             free(at);

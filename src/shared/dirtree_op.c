@@ -29,7 +29,7 @@ OSDirTree *OSDirTree_Create()
 {
     OSDirTree *my_tree;
 
-    my_tree = calloc(1, sizeof(OSDirTree));
+    my_tree = (OSDirTree *) calloc(1, sizeof(OSDirTree));
     if(!my_tree)
     {
         return(NULL);
@@ -76,7 +76,7 @@ static OSDirTree *_OSTreeNode_Add(OSDirTree *tree, const char *str,
     /* Creating new tree */
     if(!tree)
     {
-        tree = calloc(1, sizeof(OSDirTree));
+        tree = (OSDirTree *) calloc(1, sizeof(OSDirTree));
         if(!tree)
         {
             return(NULL);

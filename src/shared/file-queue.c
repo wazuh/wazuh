@@ -19,7 +19,7 @@
 #include "shared.h"
 #include "file-queue.h"
 
-static void file_sleep();
+static void file_sleep(void);
 static void GetFile_Queue(file_queue *fileq) __attribute__((nonnull));
 static int Handle_Queue(file_queue *fileq, int flags) __attribute__((nonnull));
 /* To translante between month (int) to month (char) */

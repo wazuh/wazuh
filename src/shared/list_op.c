@@ -23,7 +23,7 @@ OSList *OSList_Create()
 {
     OSList *my_list;
 
-    my_list = calloc(1, sizeof(OSList));
+    my_list = (OSList *) calloc(1, sizeof(OSList));
     if(!my_list)
         return(NULL);
 
@@ -267,7 +267,7 @@ int OSList_AddData(OSList *list, void *data)
 
 
     /* Allocating memory for new node */
-    newnode = calloc(1, sizeof(OSListNode));
+    newnode = (OSListNode *) calloc(1, sizeof(OSListNode));
     if(!newnode)
     {
         merror(MEM_ERROR, __local_name);

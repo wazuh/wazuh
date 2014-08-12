@@ -43,13 +43,13 @@ typedef struct _report_filter
     char *files;
     char *filename;
 
-    void *top_user;
-    void *top_srcip;
-    void *top_level;
-    void *top_rule;
-    void *top_group;
-    void *top_location;
-    void *top_files;
+    OSStore *top_user;
+    OSStore *top_srcip;
+    OSStore *top_level;
+    OSStore *top_rule;
+    OSStore *top_group;
+    OSStore *top_location;
+    OSStore *top_files;
 
     int related_user;
     int related_file;
@@ -61,7 +61,7 @@ typedef struct _report_filter
 
     int report_type;
     int show_alerts;
-    void *fp;
+    FILE *fp;
 
 }report_filter;
 

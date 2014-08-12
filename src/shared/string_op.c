@@ -49,7 +49,7 @@ char *os_strip_char(const char *source, char remove) {
     }
 
     // Allocate the memory
-    if( (clean = malloc( length + 1 )) == NULL ) {
+    if( (clean = (char *) malloc( length + 1 )) == NULL ) {
         // Return NULL
         return NULL;
     }
@@ -109,7 +109,7 @@ char *os_shell_escape(const char *src) {
         length++;
     }
     // Allocate the memory
-    if( (escaped_string = calloc(1, length + 1 )) == NULL ) {
+    if( (escaped_string = (char *) calloc(1, length + 1 )) == NULL ) {
         // Return NULL
         return NULL;
     }

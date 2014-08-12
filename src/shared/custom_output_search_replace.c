@@ -98,7 +98,7 @@ char* escape_newlines(const char *orig)
     ptr++;
   }
 
-  ret = malloc (size);
+  ret = (char *) malloc (size);
   ptr = orig;
   retptr = ret;
   while (*ptr) {

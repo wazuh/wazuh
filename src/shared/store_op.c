@@ -25,7 +25,7 @@ OSStore *OSStore_Create()
 {
     OSStore *my_list;
 
-    my_list = calloc(1, sizeof(OSStore));
+    my_list = (OSStore *) calloc(1, sizeof(OSStore));
     if(!my_list)
         return(NULL);
 
@@ -373,7 +373,7 @@ int OSStore_Put(OSStore *list, const char *key, void *data)
 
 
     /* Allocating memory for new node */
-    newnode = calloc(1, sizeof(OSStoreNode));
+    newnode = (OSStoreNode *) calloc(1, sizeof(OSStoreNode));
     if(!newnode)
     {
         merror(MEM_ERROR, __local_name);

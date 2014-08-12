@@ -649,7 +649,7 @@ char *getuname()
     {
         char *ret;
 
-        ret = calloc(256, sizeof(char));
+        ret = (char *) calloc(256, sizeof(char));
         if(ret == NULL)
             return(NULL);
 
@@ -666,7 +666,7 @@ char *getuname()
     else
     {
         char *ret;
-        ret = calloc(256, sizeof(char));
+        ret = (char *) calloc(256, sizeof(char));
         if(ret == NULL)
             return(NULL);
 

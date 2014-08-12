@@ -19,21 +19,23 @@
 #ifndef _OS_DIRTREE
 #define _OS_DIRTREE
 
+typedef struct _OSDirTree OSDirTree;
+
 typedef struct _OSTreeNode
 {
     struct _OSTreeNode *next;
-    void *child;
+    OSDirTree *child;
 
     char *value;
     void *data;
 }OSTreeNode;
 
 
-typedef struct _OSDirTree
+struct _OSDirTree
 {
     OSTreeNode *first_node;
     OSTreeNode *last_node;
-}OSDirTree;
+};
 
 
 OSDirTree *OSDirTree_Create(void);

@@ -377,7 +377,7 @@ static int _os_report_add_tostore(const char *key, OSStore *top, void *data)
     OSList *top_list;
 
     /* Adding data to the hash. */
-    top_list = OSStore_Get(top, key);
+    top_list = (OSList *) OSStore_Get(top, key);
     if(top_list)
     {
         OSList_AddData(top_list, data);
@@ -479,7 +479,7 @@ void os_ReportdStart(report_filter *r_filter)
     int alerts_filtered = 0;
     char *first_alert = NULL;
     char *last_alert = NULL;
-    void **data_to_clean = NULL;
+    alert_data **data_to_clean = NULL;
 
 
     time_t tm;
@@ -554,7 +554,7 @@ void os_ReportdStart(report_filter *r_filter)
 
 
         alerts_filtered++;
-        data_to_clean = os_AddPtArray(al_data, data_to_clean);
+        data_to_clean = (alert_data ** ) os_AddPtArray(al_data, (void **)data_to_clean);
 
 
         /* Setting first and last alert for summary. */

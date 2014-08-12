@@ -382,7 +382,7 @@ int OS_ReadXMLRules(const char *rulefile,
                         ip_s++;
                     }
 
-                    config_ruleinfo->srcip =
+                    config_ruleinfo->srcip = (os_ip **)
                                 realloc(config_ruleinfo->srcip,
                                 (ip_s + 2) * sizeof(os_ip *));
 
@@ -415,7 +415,7 @@ int OS_ReadXMLRules(const char *rulefile,
                         ip_s++;
                     }
 
-                    config_ruleinfo->dstip =
+                    config_ruleinfo->dstip = (os_ip **)
                                 realloc(config_ruleinfo->dstip,
                                 (ip_s + 2) * sizeof(os_ip *));
 

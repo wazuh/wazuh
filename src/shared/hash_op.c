@@ -31,7 +31,7 @@ OSHash *OSHash_Create()
     OSHash *self;
 
     /* Allocating memory for the hash */
-    self = calloc(1, sizeof(OSHash));
+    self = (OSHash *) calloc(1, sizeof(OSHash));
     if(!self)
     {
         return(NULL);
@@ -65,8 +65,8 @@ OSHash *OSHash_Create()
 
     /* Getting seed */
     srandom((unsigned int)time(0));
-    self->initial_seed = os_getprime(random() % self->rows);
-    self->constant = os_getprime(random() % self->rows);
+    self->initial_seed = os_getprime((unsigned)random() % self->rows);
+    self->constant = os_getprime((unsigned)random() % self->rows);
 
 
     return(self);
@@ -155,7 +155,7 @@ int OSHash_setSize(OSHash *self, unsigned int new_size)
 
 
     /* If we fail, the hash should not be used anymore */
-    self->table = realloc(self->table, (self->rows +1) * sizeof(OSHashNode *));
+    self->table = (OSHashNode **) realloc(self->table, (self->rows +1) * sizeof(OSHashNode *));
     if(!self->table)
     {
         return(0);
@@ -170,8 +170,8 @@ int OSHash_setSize(OSHash *self, unsigned int new_size)
 
 
     /* New seed */
-    self->initial_seed = os_getprime(random() % self->rows);
-    self->constant = os_getprime(random() % self->rows);
+    self->initial_seed = os_getprime((unsigned)random() % self->rows);
+    self->constant = os_getprime((unsigned)random() % self->rows);
 
     return(1);
 }
@@ -253,7 +253,7 @@ int OSHash_Add(OSHash *self, const char *key, void *data)
 
 
     /* Creating new node */
-    new_node = calloc(1, sizeof(OSHashNode));
+    new_node = (OSHashNode *) calloc(1, sizeof(OSHashNode));
     if(!new_node)
     {
         return(0);

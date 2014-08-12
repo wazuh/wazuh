@@ -353,7 +353,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
                                      number_changes);
 
 
-            prev_attrs = OSStore_Get(files_list, changed_file_name);
+            prev_attrs = (char *) OSStore_Get(files_list, changed_file_name);
             if(prev_attrs)
             {
                 char *new_attrs;
@@ -1301,7 +1301,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip)
 
 
     /* Allocating memory for the info structure. */
-    agt_info = calloc(1, sizeof(agent_info));
+    agt_info = (agent_info *) calloc(1, sizeof(agent_info));
 
 
     /* Zeroing the values. */
