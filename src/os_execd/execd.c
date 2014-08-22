@@ -77,11 +77,7 @@ int main(int argc, char **argv)
     int test_config = 0,run_foreground = 0;
     int gid = 0,m_queue = 0;
 
-    // TODO: delete or implement
-    char *dir __attribute__((unused)) = DEFAULTDIR;
     char *group = GROUPGLOBAL;
-    // TODO: delete or implement
-    char *cfg __attribute__((unused)) = DEFAULTARPATH;
     char *xmlcfg = DEFAULTCPATH;
 
 
@@ -89,13 +85,13 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "Vtdhfu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vtdhfg:c:")) != -1){
         switch(c){
             case 'V':
                 print_version();
                 break;
             case 'h':
-                help(ARGV0);
+                help_local();
                 break;
             case 'd':
                 nowDebug();
@@ -108,21 +104,16 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -g needs an argument.",ARGV0);
                 group = optarg;
                 break;
-            case 'D':
-                if(!optarg)
-                    ErrorExit("%s: -D needs an argument.",ARGV0);
-                dir = optarg;
-                break;
             case 'c':
                 if(!optarg)
                     ErrorExit("%s: -c needs an argument.",ARGV0);
-                cfg = optarg;
+                xmlcfg = optarg;
                 break;
             case 't':
                 test_config = 1;
                 break;
             default:
-                help(ARGV0);
+                help_local();
                 break;
         }
 
@@ -647,6 +638,24 @@ void ExecdStart(int q)
             i--;
         }
     }
+}
+
+/* print help statement */
+void help_local()
+{
+    print_header();
+    print_out("  %s: -[Vhdt] [-g group] [-c config]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified up to two times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -g <group>  Run as 'group'");
+    print_out("    -c <config> Read the 'config' file");
+    print_out(" ");
+    exit(1);
 }
 
 
