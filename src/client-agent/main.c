@@ -41,6 +41,7 @@ int main(int argc, char **argv)
     char *dir = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
+    char *xmlcfg = DEFAULTCPATH;
 
     int uid = 0;
     int gid = 0;
@@ -51,13 +52,13 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "Vtdfhu:g:D:")) != -1){
+    while((c = getopt(argc, argv, "Vtdfhu:g:D:c:")) != -1){
         switch(c){
             case 'V':
                 print_version();
                 break;
             case 'h':
-                help(ARGV0);
+                help_local();
                 break;
             case 'd':
                 nowDebug();
@@ -83,6 +84,14 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
                 dir = optarg;
+                break;
+            case 'c':
+                if(!optarg)
+                    ErrorExit("%s: -c needs an argument.",ARGV0);
+                xmlcfg = optarg;
+                break;
+            default:
+                help_local();
                 break;
         }
     }
@@ -113,7 +122,7 @@ int main(int argc, char **argv)
 
 
     /* Reading config */
-    if(ClientConf(DEFAULTCPATH) < 0)
+    if(ClientConf(xmlcfg) < 0)
     {
         ErrorExit(CLIENT_ERROR,ARGV0);
     }
@@ -171,6 +180,26 @@ int main(int argc, char **argv)
 
 
     return(0);
+}
+
+/* print help statement */
+void help_local()
+{
+    print_header();
+    print_out("  %s: -[Vhdt] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified up to two times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -u <user>   Run as 'user'");
+    print_out("    -g <group>  Run as 'group'");
+    print_out("    -c <config> Read the 'config' file");
+    print_out("    -D <dir>    Chroot to 'dir'");
+    print_out(" ");
+    exit(1);
 }
 
 /* EOF */
