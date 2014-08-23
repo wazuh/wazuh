@@ -186,11 +186,11 @@ int main(int argc, char **argv)
 void help_local()
 {
     print_header();
-    print_out("  %s: -[Vhdt] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
-    print_out("                can be specified up to two times");
+    print_out("                can be specified multiple times");
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");

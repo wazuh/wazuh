@@ -644,11 +644,11 @@ void ExecdStart(int q)
 void help_local()
 {
     print_header();
-    print_out("  %s: -[Vhdt] [-g group] [-c config]", ARGV0);
+    print_out("  %s: -[Vhdtf] [-g group] [-c config]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
-    print_out("                can be specified up to two times");
+    print_out("                can be specified multiple times");
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
