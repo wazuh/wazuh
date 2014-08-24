@@ -60,9 +60,6 @@ int connect_server(int initial_id);
 /* notify server */
 void run_notify();
 
-/* print help message */
-void help_local();
-
 
 /*** Global variables ***/
 
