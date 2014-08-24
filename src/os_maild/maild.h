@@ -80,10 +80,6 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg);
 int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, FILE *fp, struct tm *p);
 
 
-/* print help message */
-void help_local();
-
-
 /* Mail timeout used by the file-queue */
 int mail_timeout;
 
