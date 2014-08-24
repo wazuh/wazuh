@@ -91,7 +91,7 @@ int SetDecodeXML();
 
 
 /* print help statement */
-void help_local()
+void help_logtest()
 {
     print_header();
     print_out("  %s: -[Vhdtva] [-c config] [-D dir] [-U rule:alert:decoder]", ARGV0);
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             case 'h':
-                help_local();
+                help_logtest();
                 break;
             case 'd':
                 nowDebug();
@@ -169,7 +169,7 @@ int main(int argc, char **argv)
                 full_output = 1;
                 break;
             default:
-                help_local();
+                help_logtest();
                 break;
         }
 
