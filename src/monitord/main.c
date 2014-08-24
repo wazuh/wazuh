@@ -60,7 +60,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_local(ARGV0);
+                help_local();
                 break;
             case 'd':
                 nowDebug();
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_local(ARGV0);
+                help_local();
                 break;
         }
 
