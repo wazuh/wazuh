@@ -94,14 +94,13 @@ int SetDecodeXML();
 void help_local()
 {
     print_header();
-    print_out("  %s: -[Vhdtfva] [-c config] [-D dir] [-U rule:alert:decoder]", ARGV0);
+    print_out("  %s: -[Vhdtva] [-c config] [-D dir] [-U rule:alert:decoder]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
     print_out("                can be specified multiple times");
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
-    print_out("    -f          Run in foreground");
     print_out("    -a          Alerts output");
     print_out("    -v          Verbose (full) output/rule debugging");
     print_out("    -c <config> Read the 'config' file");
