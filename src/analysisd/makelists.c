@@ -53,17 +53,18 @@ int GlobalConf(char * cfgfile);
 /* For Lists */
 void Lists_OP_CreateLists();
 
-void makelist_help(const char *prog)
+/* print help statement */
+void help_local()
 {
-    print_out(" ");
-    print_out("%s %s - %s (%s)", __ossec_name, __version, __author, __contact);
-    print_out("%s", __site);
-    print_out(" ");
-    print_out("  %s: -[Vhdt] [-u user] [-g group] [-c config] [-D dir]", prog);
+    print_header();
+    print_out("  %s: -[VhdtF] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
-    print_out("    -d          Execute in debug mode");
-    print_out("    -f          Force rebuild of all databases");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -F          Force rebuild of all databases");
     print_out("    -u <user>   Run as 'user'");
     print_out("    -g <group>  Run as 'group'");
     print_out("    -c <config> Read the 'config' file");
@@ -76,6 +77,7 @@ void makelist_help(const char *prog)
  */
 int main(int argc, char **argv)
 {
+    int test_config = 0;
     int c = 0;
     char *dir = DEFAULTDIR;
     char *user = USER;
@@ -93,13 +95,13 @@ int main(int argc, char **argv)
     prev_year = 0;
     memset(prev_month, '\0', 4);
 
-    while((c = getopt(argc, argv, "Vdhfu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "VdhFtu:g:D:c:")) != -1){
         switch(c){
 	    case 'V':
 		print_version();
 		break;
             case 'h':
-                makelist_help(ARGV0);
+                help_local();
                 break;
             case 'd':
                 nowDebug();
@@ -124,18 +126,21 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -c needs an argument",ARGV0);
                 cfg = optarg;
                 break;
-            case 'f':
+            case 'F':
                 force = 1;
                 break;
+            case 't':
+                test_config = 1;
+                break;
             default:
-                help(ARGV0);
+                help_local();
                 break;
         }
 
     }
 
 
-    /*Check if the user/group given are valid */
+    /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
     if((uid < 0)||(gid < 0))
@@ -164,9 +169,12 @@ int main(int argc, char **argv)
 
     nowChroot();
 
+    if(test_config == 1)
+    {
+        exit(0);
+    }
 
-
-    /* Createing the lists for use in rules */
+    /* Creating the lists for use in rules */
     Lists_OP_CreateLists();
 
     /* Reading the lists */
