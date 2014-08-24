@@ -62,8 +62,6 @@ void WinTimeoutRun(int timeout);
 
 void FreeTimeoutEntry(void *timeout_entry);
 
-void help_local();
-
 
 
 
