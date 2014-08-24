@@ -15,24 +15,32 @@
 
 
 
-/* ossec-reportd - Runs manual reports. */
-void report_help()
+/* print help statement */
+void help_local()
 {
-    printf("\nOSSEC HIDS %s: Generate reports (via stdin).\n", ARGV0);
-    printf("Available options:\n");
-    printf("\t-h                  This help message.\n");
-    printf("\t-f <filter> <value> Filter the results.\n");
-    printf("\t-r <filter> <value> Show related entries.\n");
-    printf("\t-n                  Creates a description for the report.\n");
-    printf("\t-s                  Show the alert dump.\n");
-    printf("\n");
-    printf("\tFilters allowed: group, rule, level, location,\n");
-    printf("\t                 user, srcip, filename\n");
-    printf("\n");
-    printf("Examples:\n");
-    printf("\t-f group authentication_success (to filter on login success).\n");
-    printf("\t-f level 10  (to filter on level >= 10).\n");
-    printf("\t-f group authentication -r user srcip (to show the srcip for all users).\n");
+    print_header();
+    print_out("  Generate reports (via stdin)");
+    print_out("  %s: -[Vhdtns] [-u user] [-g group] [-D dir] [-f filter value] [-r filter value]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -n          Create description for the report");
+    print_out("    -s          Show the alert dump");
+    print_out("    -u <user>   Run as 'user'");
+    print_out("    -g <group>  Run as 'group'");
+    print_out("    -D <dir>    Chroot to 'dir'");
+    print_out("    -f <filter> <value> Filter the results");
+    print_out("    -r <filter> <value> Show related entries");
+    print_out("    Filters allowed: group, rule, level, location,");
+    print_out("                     user, srcip, filename");
+    print_out("  Examples:");
+    print_out("     -f group authentication_success (to filter on login success)");
+    print_out("     -f level 10 (to filter on level >= 10)");
+    print_out("     -f group authentication -r user srcip (to show srcip for all users)");
+    print_out(" ");
     exit(1);
 }
 
@@ -45,8 +53,6 @@ int main(int argc, char **argv)
     char *dir  = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
-    // TODO: delete or implement
-    char *cfg __attribute__((unused)) = DEFAULTCPATH;
 
     char *filter_by = NULL;
     char *filter_value = NULL;
@@ -78,14 +84,14 @@ int main(int argc, char **argv)
 
     r_filter.report_name = NULL;
 
-    while((c = getopt(argc, argv, "Vdhstu:g:D:c:f:v:n:r:")) != -1)
+    while((c = getopt(argc, argv, "Vdhstu:g:D:f:v:n:r:")) != -1)
     {
         switch(c){
             case 'V':
                 print_version();
                 break;
             case 'h':
-                report_help();
+                help_local();
                 break;
             case 'd':
                 nowDebug();
@@ -136,11 +142,6 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -D needs an argument",ARGV0);
                 dir=optarg;
                 break;
-            case 'c':
-                if(!optarg)
-                    ErrorExit("%s: -c needs an argument",ARGV0);
-                cfg = optarg;
-                break;
             case 't':
                 test_config = 1;
                 break;
@@ -148,7 +149,7 @@ int main(int argc, char **argv)
                 r_filter.show_alerts = 1;
                 break;
             default:
-                report_help();
+                help_local();
                 break;
         }
 
