@@ -45,7 +45,7 @@ int main()
 
 
 /* print help statement */
-void help_local()
+void help()
 {
     print_header();
     print_out("  %s: -[Vhdt] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-v path] [-x path] [-k path]", ARGV0);
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_local();
+                help();
                 break;
             case 'd':
                 nowDebug();
@@ -162,7 +162,7 @@ int main(int argc, char **argv)
                 agent_key = optarg;
                 break;
             default:
-                help_local();
+                help();
                 break;
         }
     }

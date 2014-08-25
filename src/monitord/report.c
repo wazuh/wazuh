@@ -16,7 +16,7 @@
 
 
 /* print help statement */
-void help_local()
+void help()
 {
     print_header();
     print_out("  Generate reports (via stdin)");
@@ -91,7 +91,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_local();
+                help();
                 break;
             case 'd':
                 nowDebug();
@@ -149,7 +149,7 @@ int main(int argc, char **argv)
                 r_filter.show_alerts = 1;
                 break;
             default:
-                help_local();
+                help();
                 break;
         }
 

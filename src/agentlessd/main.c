@@ -16,7 +16,7 @@
 #include "config/config.h"
 
 /* print help statement */
-void help_local()
+void help()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -55,7 +55,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help_local();
+                help();
                 break;
             case 'd':
                 nowDebug();
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help_local();
+                help();
                 break;
         }
 
