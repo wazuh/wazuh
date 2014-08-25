@@ -188,7 +188,7 @@ int Start_win32_Syscheck()
 #endif
 
 /* print help statement */
-void help()
+void help_syscheckd()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help();
+                help_syscheckd();
                 break;
             case 'd':
                 nowDebug();
@@ -246,7 +246,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help();
+                help_syscheckd();
                 break;
         }
     }

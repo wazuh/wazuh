@@ -54,7 +54,7 @@ int GlobalConf(char * cfgfile);
 void Lists_OP_CreateLists();
 
 /* print help statement */
-void help()
+void help_makelists()
 {
     print_header();
     print_out("  %s: -[VhdtF] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -101,7 +101,7 @@ int main(int argc, char **argv)
 		print_version();
 		break;
             case 'h':
-                help();
+                help_makelists();
                 break;
             case 'd':
                 nowDebug();
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help();
+                help_makelists();
                 break;
         }
 

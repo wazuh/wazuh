@@ -16,7 +16,7 @@
 
 
 /* print help statement */
-void help()
+void help_reportd()
 {
     print_header();
     print_out("  Generate reports (via stdin)");
@@ -91,7 +91,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help();
+                help_reportd();
                 break;
             case 'd':
                 nowDebug();
@@ -149,7 +149,7 @@ int main(int argc, char **argv)
                 r_filter.show_alerts = 1;
                 break;
             default:
-                help();
+                help_reportd();
                 break;
         }
 

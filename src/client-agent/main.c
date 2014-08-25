@@ -27,7 +27,7 @@
 #endif
 
 /* print help statement */
-void help()
+void help_agentd()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -74,7 +74,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help();
+                help_agentd();
                 break;
             case 'd':
                 nowDebug();
@@ -107,7 +107,7 @@ int main(int argc, char **argv)
                 cfg = optarg;
                 break;
             default:
-                help();
+                help_agentd();
                 break;
         }
     }

@@ -34,7 +34,7 @@
 int POOL_SIZE = 512;
 
 /* print help statement */
-void help()
+void help_authd()
 {
     print_header();
     print_out("  %s: -[Vhdti] [-g group] [-D dir] [-p port] [-v path] [-x path] [-k path]", ARGV0);
@@ -131,7 +131,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help();
+                help_authd();
                 break;
             case 'd':
                 nowDebug();
@@ -177,7 +177,7 @@ int main(int argc, char **argv)
                 server_key = optarg;
                 break;
             default:
-                help();
+                help_authd();
                 break;
         }
 
