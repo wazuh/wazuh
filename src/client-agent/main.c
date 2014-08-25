@@ -57,7 +57,7 @@ int main(int argc, char **argv)
     char *dir = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
-    char *xmlcfg = DEFAULTCPATH;
+    char *cfg = DEFAULTCPATH;
 
     int uid = 0;
     int gid = 0;
@@ -104,7 +104,7 @@ int main(int argc, char **argv)
             case 'c':
                 if(!optarg)
                     ErrorExit("%s: -c needs an argument.",ARGV0);
-                xmlcfg = optarg;
+                cfg = optarg;
                 break;
             default:
                 help();
@@ -138,7 +138,7 @@ int main(int argc, char **argv)
 
 
     /* Reading config */
-    if(ClientConf(xmlcfg) < 0)
+    if(ClientConf(cfg) < 0)
     {
         ErrorExit(CLIENT_ERROR,ARGV0);
     }

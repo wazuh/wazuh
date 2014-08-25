@@ -98,7 +98,7 @@ int main(int argc, char **argv)
     int gid = 0,m_queue = 0;
 
     char *group = GROUPGLOBAL;
-    char *xmlcfg = DEFAULTCPATH;
+    char *cfg = DEFAULTCPATH;
 
 
     /* Setting the name */
@@ -127,7 +127,7 @@ int main(int argc, char **argv)
             case 'c':
                 if(!optarg)
                     ErrorExit("%s: -c needs an argument.",ARGV0);
-                xmlcfg = optarg;
+                cfg = optarg;
                 break;
             case 't':
                 test_config = 1;
@@ -153,9 +153,9 @@ int main(int argc, char **argv)
 
 
     /* Reading config */
-    if((c = ExecdConfig(xmlcfg)) < 0)
+    if((c = ExecdConfig(cfg)) < 0)
     {
-        ErrorExit(CONFIG_ERROR, ARGV0, xmlcfg);
+        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
 
 
