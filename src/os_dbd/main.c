@@ -27,30 +27,43 @@
 
 
 /* Prints information regarding enabled databases */
-void db_info()
+void print_db_info()
 {
-    print_out(" ");
-    print_out("%s %s - %s", __ossec_name, __version, __author);
-
     #ifdef UMYSQL
-    print_out("Compiled with MySQL support.");
+    print_out("    Compiled with MySQL support");
     #endif
 
     #ifdef UPOSTGRES
-    print_out("Compiled with PostgreSQL support.");
+    print_out("    Compiled with PostgreSQL support");
     #endif
 
     #if !defined(UMYSQL) && !defined(UPOSTGRES)
-    print_out("Compiled without any Database support.");
+    print_out("    Compiled without any database support");
     #endif
-
-    print_out(" ");
-    print_out("%s",__license);
-
-    exit(1);
 }
 
-
+/* print help statement */
+void help_local()
+{
+    print_header();
+    print_out("  %s: -[Vhdtfv] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -u <user>   Run as 'user'");
+    print_out("    -g <group>  Run as 'group'");
+    print_out("    -c <config> Read the 'config' file");
+    print_out("    -D <dir>    Chroot to 'dir'");
+    print_out(" ");
+    print_out("  Database Support:");
+    print_db_info();
+    print_out(" ");
+    exit(1);
+}
 
 int main(int argc, char **argv)
 {
@@ -73,16 +86,13 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "vVdhtfu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1){
         switch(c){
             case 'V':
-                db_info();
-                break;
-            case 'v':
-                db_info();
+                print_version();
                 break;
             case 'h':
-                help(ARGV0);
+                help_local();
                 break;
             case 'd':
                 nowDebug();
@@ -114,7 +124,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help(ARGV0);
+                help_local();
                 break;
         }
 
@@ -211,7 +221,7 @@ int main(int argc, char **argv)
             ARGV0, db_config.db, db_config.host);
 
 
-    /* Privilege separation */	
+    /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
