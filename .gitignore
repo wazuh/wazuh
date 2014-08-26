@@ -44,6 +44,10 @@ src/analysisd/ossec-makelists
 src/isbigendian
 src/util/ossec-regex
 src/util/verify-agent-conf
+src/external/lua-5.2.3/src/ossec-lua
+src/external/lua-5.2.3/src/ossec-luac
+src/external/zlib-1.2.8/configure.log
+src/external/zlib-1.2.8/zlib.pc
 
 # Eclipse files
 .cproject
@@ -64,6 +68,7 @@ src/util/verify-agent-conf
 src/tests/coverage-report/
 src/tests/ossec.test
 src/tests/test_os_crypto
+src/tests/test_os_net
 src/tests/test_os_regex
 src/tests/test_os_xml
 src/tests/test_os_zlib

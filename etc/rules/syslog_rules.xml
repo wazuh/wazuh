@@ -649,6 +649,35 @@
     <description>SCSI RAID is now in a degraded status.</description>
   </rule>
 
+  <rule id="2940" level="0">
+    <program_name>^NetworkManager</program_name>
+    <description>NetworkManager grouping.</description>
+  </rule>
+
+  <rule id="2941" level="3">
+    <if_sid>2940</if_sid>
+    <match> No chain/target/match by that name.$</match>
+    <description>Incorrect chain/target/match.</description>
+  </rule>
+
+  <rule id="2942" level="0">
+    <if_sid>1002</if_sid>
+    <match>g_slice_set_config: assertion `sys_page_size == 0' failed</match>
+    <description>Uninteresting gnome error.</description>
+  </rule>
+
+  <rule id="2943" level="0">
+    <match>^nouveau </match>
+    <description>nouveau driver grouping</description>
+  </rule>
+
+  <rule id="2944" level="1">
+    <if_sid>2943</if_sid>
+    <match> DATA_ERROR BEGIN_END_ACTIVE$| DATA_ERROR$</match>
+    <description>Uninteresting nouveau error.</description>
+  </rule>
+
+
 </group>
 
 

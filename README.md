@@ -26,7 +26,7 @@ The development version are hosted on Github and just a simple git clone away.
 ## Quick install 
 
 ```
-# (cd /tmp/ && wget http://www.ossec.net/files/ossec-hids-2.7.1.tar.gz  && tar xfz ossec-hids-2.7.1.tar.gz && cd ossec-hids-2.7.1 && sudo ./install.sh )
+# (cd /tmp/ && wget http://www.ossec.net/files/ossec-hids-2.8.tar.gz  && tar xfz ossec-hids-2.8.tar.gz && cd ossec-hids-2.8 && sudo ./install.sh )
 
 ```
 
