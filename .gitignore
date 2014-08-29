@@ -7,6 +7,10 @@
 # Auto generated build files
 src/LOCATION
 src/Config.OS
+src/external/zlib-1.2.8/configure.log
+src/external/zlib-1.2.8/zlib.pc
+src/external/lua-5.2.3/src/ossec-lua
+src/external/lua-5.2.3/src/ossec-luac
 src/headers/zconf.h
 src/headers/zlib.h
 src/headers/cJSON.h
