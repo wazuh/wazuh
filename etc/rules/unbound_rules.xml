@@ -1,3 +1,12 @@
+  <!-- Copyright 2010 Dan Parriott (ddpbsd@gmail.com)
+  -  This program is a free software; you can redistribute it
+  -  and/or modify it under the terms of the GNU General Public
+  -  License (version 2) as published by the FSF - Free Software
+  -  Foundation.
+  -
+  -  License details: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+  -->
+
 <group name="syslog,unbound,">
 
   <rule id="500000" level="0">
@@ -16,8 +25,6 @@
     <match> info: </match>
     <description>Info grouping.</description>
   </rule>
-
-
 
   <rule id="500100" level="2">
     <if_sid>500001</if_sid>
