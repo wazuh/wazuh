@@ -177,9 +177,9 @@ int Init_FileQueue(file_queue *fileq, const struct tm *p, int flags)
 /** int Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
  * Reads from the monitored file.
  */
-alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, int timeout)
+alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int timeout)
 {
-    int i = 0;
+    unsigned int i = 0;
     alert_data *al_data;
 
 

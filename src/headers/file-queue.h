@@ -38,6 +38,6 @@ typedef struct _file_queue
 #include "read-alert.h"
 int Init_FileQueue(file_queue *fileq, const struct tm *p, int flags) __attribute__((nonnull));
 
-alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, int timeout) __attribute__((nonnull));
+alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int timeout) __attribute__((nonnull));
 
 #endif
