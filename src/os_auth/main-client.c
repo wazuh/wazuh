@@ -44,18 +44,26 @@ int main()
 
 
 
-void report_help()
+/* print help statement */
+void help_agent_auth()
 {
-    printf("\nOSSEC HIDS %s: Connects to the manager to extract the agent key.\n", ARGV0);
-    printf("Available options:\n");
-    printf("\t-h                      This help message.\n");
-    printf("\t-m <manager ip>         Manager IP Address.\n");
-    printf("\t-p <port>               Manager port (default 1515).\n");
-    printf("\t-A <agent name>         Agent name (default is the hostname).\n");
-    printf("\t-D <OSSEC Dir>          Location where OSSEC is installed.\n");
-    printf("\t-v <Path to CA Cert>    Full path to CA certificate used to verify the server.\n");
-    printf("\t-x <Path to agent cert> Full path to agent certificate.\n");
-    printf("\t-k <Path to agent key>  Full path to agent key.\n");
+    print_header();
+    print_out("  %s: -[Vhdt] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-v path] [-x path] [-k path]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -g <group>  Run as 'group'");
+    print_out("    -D <dir>    Chroot to 'dir'");
+    print_out("    -m <addr>   Manager IP address");
+    print_out("    -p <port>   Manager port (Default: %d)", DEFAULT_PORT);
+    print_out("    -A <name>   Agent name (Default: hostname)");
+    print_out("    -v <path>   Full path to CA certificate used to verify the server");
+    print_out("    -x <path>   Full path to agent certificate");
+    print_out("    -k <path>   Full path to agent key");
+    print_out(" ");
     exit(1);
 }
 
@@ -64,19 +72,14 @@ void report_help()
 int main(int argc, char **argv)
 {
     int c;
-    // TODO: implement or delete
-    int test_config __attribute__((unused)) = 0;
+    int test_config = 0;
 #ifndef WIN32
     int gid = 0;
 #endif
 
-    int sock = 0, port = 1515, ret = 0;
-    // TODO: implement or delete
-    char *dir __attribute__((unused)) = DEFAULTDIR;
-    char *user = USER;
+    int sock = 0, port = DEFAULT_PORT, ret = 0;
+    char *dir = DEFAULTDIR;
     char *group = GROUPGLOBAL;
-    // TODO: implement or delete
-    char *cfg __attribute__((unused)) = DEFAULTCPATH;
     char *manager = NULL;
     char *ipaddress = NULL;
     char *agentname = NULL;
@@ -99,22 +102,17 @@ int main(int argc, char **argv)
     /* Setting the name */
     OS_SetName(ARGV0);
 
-    while((c = getopt(argc, argv, "Vdhu:g:D:c:m:p:A:v:x:k:")) != -1)
+    while((c = getopt(argc, argv, "Vdhtg:m:p:A:v:x:k:")) != -1)
     {
         switch(c){
             case 'V':
                 print_version();
                 break;
             case 'h':
-                report_help();
+                help_agent_auth();
                 break;
             case 'd':
                 nowDebug();
-                break;
-            case 'u':
-                if(!optarg)
-                    ErrorExit("%s: -u needs an argument",ARGV0);
-                user=optarg;
                 break;
             case 'g':
                 if(!optarg)
@@ -124,12 +122,7 @@ int main(int argc, char **argv)
             case 'D':
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
-                dir=optarg;
-                break;
-            case 'c':
-                if(!optarg)
-                    ErrorExit("%s: -c needs an argument",ARGV0);
-                cfg = optarg;
+                dir = optarg;
                 break;
             case 't':
                 test_config = 1;
@@ -169,7 +162,7 @@ int main(int argc, char **argv)
                 agent_key = optarg;
                 break;
             default:
-                report_help();
+                help_agent_auth();
                 break;
         }
     }
@@ -182,9 +175,11 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if(gid < 0)
-        ErrorExit(USER_ERROR,ARGV0,user,group);
+        ErrorExit(USER_ERROR,ARGV0,"",group);
 
-
+    /* Exit here if test config is set */
+    if(test_config)
+        exit(0);
 
     /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)

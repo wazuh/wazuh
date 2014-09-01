@@ -16,7 +16,25 @@
 
 #include "csyslogd.h"
 
-
+/* print help statement */
+void help_csyslogd()
+{
+    print_header();
+    print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -u <user>   Run as 'user'");
+    print_out("    -g <group>  Run as 'group'");
+    print_out("    -c <config> Read the 'config' file");
+    print_out("    -D <dir>    Chroot to 'dir'");
+    print_out(" ");
+    exit(1);
+}
 
 int main(int argc, char **argv)
 {
@@ -38,16 +56,13 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "vVdhtfu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1){
         switch(c){
             case 'V':
                 print_version();
                 break;
-            case 'v':
-                print_version();
-                break;
             case 'h':
-                help(ARGV0);
+                help_csyslogd();
                 break;
             case 'd':
                 nowDebug();
@@ -79,7 +94,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help(ARGV0);
+                help_csyslogd();
                 break;
         }
 
@@ -144,7 +159,7 @@ int main(int argc, char **argv)
 
 
 
-    /* Privilege separation */	
+    /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
@@ -181,7 +196,7 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
-    /* the real daemon now */	
+    /* the real daemon now */
     OS_CSyslogD(syslog_config);
     exit(0);
 }

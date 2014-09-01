@@ -53,14 +53,14 @@ int WinExecd_Start()
     int c;
     int test_config = 0;
 
-    char *xmlcfg = DEFAULTCPATH;
+    char *cfg = DEFAULTCPATH;
 
 
 
     /* Reading config */
-    if((c = ExecdConfig(xmlcfg)) < 0)
+    if((c = ExecdConfig(cfg)) < 0)
     {
-        ErrorExit(CONFIG_ERROR, ARGV0, xmlcfg);
+        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
 
 
