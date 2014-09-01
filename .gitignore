@@ -39,6 +39,7 @@ src/os_dbd/ossec-dbd
 src/os_execd/ossec-execd
 src/os_maild/ossec-maild
 src/remoted/ossec-remoted
+src/rootcheck/ossec-rootcheck
 src/syscheckd/ossec-syscheckd
 src/util/agent_control
 src/util/clear_stats
