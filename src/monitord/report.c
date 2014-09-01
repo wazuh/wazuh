@@ -29,9 +29,9 @@ void help_reportd()
     print_out("    -t          Test configuration");
     print_out("    -n          Create description for the report");
     print_out("    -s          Show the alert dump");
-    print_out("    -u <user>   Run as 'user'");
-    print_out("    -g <group>  Run as 'group'");
-    print_out("    -D <dir>    Chroot to 'dir'");
+    print_out("    -u <user>   User to run as (default: %s)", USER);
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out("    -f <filter> <value> Filter the results");
     print_out("    -r <filter> <value> Show related entries");
     print_out("    Filters allowed: group, rule, level, location,");

@@ -45,9 +45,9 @@ void help_authd()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -i          Use client's source IP address");
-    print_out("    -g <group>  Run as 'group'");
-    print_out("    -D <dir>    Chroot to 'dir'");
-    print_out("    -p <port>   Manager port (Default: %d)", DEFAULT_PORT);
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
     print_out("    -v <path>   Full path to CA certificate used to verify clients");
     print_out("    -x <path>   Full path to server certificate");
     print_out("    -k <path>   Full path to server key");

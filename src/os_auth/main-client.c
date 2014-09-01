@@ -55,11 +55,11 @@ void help_agent_auth()
     print_out("                can be specified multiple times");
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
-    print_out("    -g <group>  Run as 'group'");
-    print_out("    -D <dir>    Chroot to 'dir'");
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out("    -m <addr>   Manager IP address");
-    print_out("    -p <port>   Manager port (Default: %d)", DEFAULT_PORT);
-    print_out("    -A <name>   Agent name (Default: hostname)");
+    print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
+    print_out("    -A <name>   Agent name (default: hostname)");
     print_out("    -v <path>   Full path to CA certificate used to verify the server");
     print_out("    -x <path>   Full path to agent certificate");
     print_out("    -k <path>   Full path to agent key");
