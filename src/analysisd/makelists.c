@@ -65,10 +65,10 @@ void help_makelists()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -F          Force rebuild of all databases");
-    print_out("    -u <user>   Run as 'user'");
-    print_out("    -g <group>  Run as 'group'");
-    print_out("    -c <config> Read the 'config' file");
-    print_out("    -D <dir>    Chroot to 'dir'");
+    print_out("    -u <user>   User to run as (default: %s)", USER);
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out(" ");
     exit(1);
 }

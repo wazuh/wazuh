@@ -33,8 +33,8 @@ void help_execd()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -g <group>  Run as 'group'");
-    print_out("    -c <config> Read the 'config' file");
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
     print_out(" ");
     exit(1);
 }

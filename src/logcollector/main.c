@@ -46,7 +46,7 @@ void help_logcollector()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -c <config> Read the 'config' file");
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
     print_out(" ");
     exit(1);
 }
