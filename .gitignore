@@ -7,6 +7,12 @@
 # Auto generated build files
 src/LOCATION
 src/Config.OS
+src/external/zlib-1.2.8/configure.log
+src/external/zlib-1.2.8/Makefile
+src/external/zlib-1.2.8/zconf.h
+src/external/zlib-1.2.8/zlib.pc
+src/external/lua-5.2.3/src/ossec-lua
+src/external/lua-5.2.3/src/ossec-luac
 src/headers/zconf.h
 src/headers/zlib.h
 src/headers/cJSON.h
@@ -33,6 +39,7 @@ src/os_dbd/ossec-dbd
 src/os_execd/ossec-execd
 src/os_maild/ossec-maild
 src/remoted/ossec-remoted
+src/rootcheck/ossec-rootcheck
 src/syscheckd/ossec-syscheckd
 src/util/agent_control
 src/util/clear_stats
