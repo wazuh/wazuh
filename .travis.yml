@@ -14,24 +14,36 @@ env:
 - OSSEC_TYPE=test
 
 
-
 compiler:
 - gcc
 - clang
 
 
+matrix:
+  fast_finish: true
+  exclude:
+    - compiler: clang
+      env: DB=none OSSEC_TYPE=windows_agent GEOIP=no
+
+
 
 before_script:
+- sudo apt-get update -qq
 - if [[ "$DB" == "mysql"  ]]; then ( cd src && make setdb  ); fi
 - if [[ "$GEOIP" == "yes"  ]]; then ( sudo apt-get install geoip-bin geoip-database libgeoip-dev libgeoip1 ); fi
 - if [[ "$GEOIP" == "yes"  ]]; then ( cd src && make setgeoip ); fi
 - if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( sudo apt-get install aptitude && sudo aptitude -y install mingw-w64 nsis ); fi
-- if [[ "$OSSEC_TYPE" == "test" ]]; then ( sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ saucy main " && sudo apt-get update && sudo apt-get install check ); fi
+- if [[ "$OSSEC_TYPE" == "test" ]]; then ( sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ saucy main " && sudo apt-get update && sudo apt-get install check valgrind ); fi
 
 
 
 script:
-- ( cd src && sudo make $OSSEC_TYPE )
+- echo "CC = '${CC}'" # this seems suspicious, but without this travis do not uses the clang compiler correctly
+- if [[ "$OSSEC_TYPE" == "agent" ]]; then ( cd src/ && make setagent && make all ); fi
+
+- ( cd src/ && sudo make $OSSEC_TYPE )
+
+- if [[ "$OSSEC_TYPE" == "test" ]]; then ( cd src/tests/ && make run_valgrind ); fi
 
 before_deploy:
 - mkdir travis-builds

@@ -21,15 +21,13 @@
 
 
 
-int OS_MD5_SHA1_File(char *fname, char *prefilter_cmd, char *md5output, char *sha1output)
+int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output)
 {
-    int n;
+    size_t n;
     FILE *fp;
     unsigned char buf[2048 +2];
     unsigned char sha1_digest[SHA_DIGEST_LENGTH];
     unsigned char md5_digest[16];
-
-    char cmd[OS_MAXSTR];
 
     SHA_CTX sha1_ctx;
     MD5_CTX md5_ctx;
@@ -42,16 +40,24 @@ int OS_MD5_SHA1_File(char *fname, char *prefilter_cmd, char *md5output, char *sh
 
     /* Use prefilter_cmd if set */
     if (prefilter_cmd == NULL) {
-	fp = fopen(fname,"r");
-	if(!fp)
-	    return(-1);
+        fp = fopen(fname,"r");
+        if(!fp)
+        {
+            return(-1);
+        }
     } else {
-	strncpy(cmd, prefilter_cmd, sizeof(cmd) - 1);
-	strcat(cmd, " ");
-	strncat(cmd, fname, sizeof(cmd) - strlen(cmd) - 1);
-	fp = popen(cmd, "r");
-	if(!fp)
-	    return(-1);
+        char cmd[OS_MAXSTR];
+        size_t target_length = strlen(prefilter_cmd) + 1 + strlen(fname);
+        int res = snprintf(cmd, sizeof(cmd), "%s %s", prefilter_cmd, fname);
+        if(res < 0 || (unsigned int)res != target_length)
+        {
+            return (-1);
+        }
+        fp = popen(cmd, "r");
+        if(!fp)
+        {
+            return(-1);
+        }
     }
 
     /* Initializing both hashes */
@@ -63,8 +69,8 @@ int OS_MD5_SHA1_File(char *fname, char *prefilter_cmd, char *md5output, char *sh
     while((n = fread(buf, 1, 2048, fp)) > 0)
     {
         buf[n] = '\0';
-        SHA1_Update(&sha1_ctx, buf, (unsigned long)n);
-        MD5Update(&md5_ctx, buf, n);
+        SHA1_Update(&sha1_ctx, buf, n);
+        MD5Update(&md5_ctx, buf, (unsigned)n);
     }
 
     SHA1_Final(&(sha1_digest[0]), &sha1_ctx);
