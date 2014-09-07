@@ -1,15 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "os_xml.h"
 
 int main(int argc, char ** argv)
 {
-    OS_XML xml;
-    xml_node **node=NULL;
-    int i = 0;
-
     if(argc < 2)
     {
         printf("usage: %s file\n",argv[0]);
@@ -18,13 +15,18 @@ int main(int argc, char ** argv)
 
     while(1)
     {
+        OS_XML xml;
+        xml_node **node;
+        int i = 0;
+
+
         usleep(10);
         printf(".");
         fflush(stdout);
 
         if(OS_ReadXML(argv[1],&xml) < 0)
         {
-            printf("Error reading XML!%s\n",xml.err);
+            printf("Error reading XML(%u): %s\n", xml.err_line, xml.err);
             return(1);
         }
 
@@ -34,8 +36,6 @@ int main(int argc, char ** argv)
             printf("error reading xml\n");
             return(1);
         }
-
-        i = 0;
 
         while(node[i])
         {

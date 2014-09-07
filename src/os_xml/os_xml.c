@@ -49,22 +49,8 @@ static int _xml_fgetc(FILE *fp)
 
 static void xml_error(OS_XML *_lxml, const char *msg,...)
 {
-#ifdef DEBUG
-    time_t tm;
-    struct tm *p;
-#endif
-
     va_list args;
     va_start(args,msg);
-
-#ifdef DEBUG
-    tm = time(NULL);
-    p = localtime(&tm);
-    fprintf(stderr,"%d/%d/%d %d:%d:%d (LINE: %u)",p->tm_year+1900,p->tm_mon,
-            p->tm_mday,p->tm_hour,p->tm_min,p->tm_sec,_line);
-    vfprintf(stderr, msg, args);
-    fprintf(stderr, "\n\n");
-#endif
 
     memset(_lxml->err,'\0', XML_ERR_LENGTH);
     vsnprintf(_lxml->err,XML_ERR_LENGTH-1,msg,args);

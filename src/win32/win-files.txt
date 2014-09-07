@@ -45,7 +45,7 @@ syscheckd/win-registry.c win-registry.c
 syscheckd/seechanges.c seechanges.c
 rootcheck rootcheck
 external/zlib-1.2.8/zlib.h zlib.h
-external/zlib-1.2.8/zconf.h zconf.h
+external/zlib-1.2.8/zconf.h.in zconf.h
 external/lua-5.2.3/src lua
 os_zlib/os_zlib.c os_zlib.c
 os_zlib/os_zlib.h os_zlib.h
