@@ -28,7 +28,6 @@
 
 /* Default values use to connect */
 #define SMTP_DEFAULT_PORT	25
-#define HELOMSG 		"Helo %s\r\n"
 #define MAILFROM		"Mail From: <%s>\r\n"
 #define RCPTTO			"Rcpt To: <%s>\r\n"
 #define DATAMSG 		"DATA\r\n"
@@ -92,9 +91,9 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     /* Sending HELO message */
     memset(snd_msg,'\0',128);
     if(mail->heloserver) {
-      snprintf(snd_msg,127, HELOMSG, mail->heloserver);
+      snprintf(snd_msg,127, "Helo %s\r\n", mail->heloserver);
     } else {
-      snprintf(snd_msg,127, HELOMSG, "notify.ossec.net");
+      snprintf(snd_msg,127, "Helo %s\r\n", "notify.ossec.net");
     }
     OS_SendTCP(socket,snd_msg);
     msg = OS_RecvTCP(socket, OS_SIZE_1024);
@@ -137,7 +136,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
         }
     }
 
-    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", HELOMSG, msg);
+    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
     free(msg);
 
 
@@ -330,7 +329,13 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
 
     /* Sending HELO message */
-    OS_SendTCP(socket,HELOMSG);
+    memset(snd_msg,'\0',128);
+    if(mail->heloserver) {
+      snprintf(snd_msg,127, "Helo %s\r\n", mail->heloserver);
+    } else {
+      snprintf(snd_msg,127, "Helo %s\r\n", "notify.ossec.net");
+    }
+    OS_SendTCP(socket,snd_msg);
     msg = OS_RecvTCP(socket, OS_SIZE_1024);
     if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
     {
@@ -371,7 +376,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         }
     }
 
-    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", HELOMSG, msg);
+    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
     free(msg);
 
 
