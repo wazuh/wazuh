@@ -107,7 +107,7 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
     count++;
     reg->patterns = (char **) calloc(count +1, sizeof(char *));
     reg->size = (size_t *) calloc(count +1, sizeof(size_t));
-    reg->match_fp = (int (**)(const char *, const char *, size_t, size_t)) calloc(count +1, sizeof(void *));
+    reg->match_fp = (int (**)(const char *, const char *, size_t, size_t)) calloc(count +1, sizeof(int (*)(const char *, const char *, size_t, size_t)));
 
 
     /* Memory allocation error check */
