@@ -1203,14 +1203,6 @@ int _get_agent_os(char *agent_name, char *agent_ip, agent_info *agt_info)
         }
 
 
-        if(strlen(agt_info->os) > 55)
-        {
-            agt_info->os[52] = '.';
-            agt_info->os[53] = '.';
-            agt_info->os[54] = '\0';
-        }
-
-
         return(0);
     }
 
@@ -1245,13 +1237,6 @@ int _get_agent_os(char *agent_name, char *agent_ip, agent_info *agt_info)
             strncpy(agt_info->version, ossec_version, 1024);
         }
 
-
-        if(strlen(buf) > 55)
-        {
-            buf[52] = '.';
-            buf[53] = '.';
-            buf[54] = '\0';
-        }
 
         os_strdup(buf, agt_info->os);
         fclose(fp);
