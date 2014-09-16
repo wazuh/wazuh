@@ -35,8 +35,8 @@ static unsigned int local_count  = 0;
 /** Average compression rates **/
 static unsigned int evt_count = 0;
 static unsigned int rcv_count = 0;
-static size_t c_orig_size = 0;
-static size_t c_comp_size = 0;
+static unsigned int c_orig_size = 0;
+static unsigned int c_comp_size = 0;
 
 
 /** Static variables (read from define file) **/
@@ -461,11 +461,11 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
  */
 size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, int id)
 {
-    size_t bfsize;
+    unsigned int bfsize;
     size_t msg_size;
     unsigned long int cmp_size;
 
-    long int rand1;
+    u_int16_t rand1;
 
     char _tmpmsg[OS_MAXSTR + 2];
     char _finmsg[OS_MAXSTR + 2];
@@ -483,7 +483,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
     }
 
     /* Random number */
-    rand1 = random();
+    rand1 = (u_int16_t)random();
 
 
     _tmpmsg[OS_MAXSTR +1] = '\0';
@@ -500,7 +500,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
     local_count++;
 
 
-    snprintf(_tmpmsg, OS_MAXSTR,"%05lu%010u:%04u:%s",
+    snprintf(_tmpmsg, OS_MAXSTR,"%05hu%010u:%04u:%s",
                               rand1, global_count, local_count,
                               msg);
 
@@ -548,7 +548,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
     c_comp_size+= cmp_size;
     if(evt_count > _s_comp_print)
     {
-        verbose("%s: INFO: Event count after '%u': %lu->%lu (%lu%%)", __local_name,
+        verbose("%s: INFO: Event count after '%u': %u->%u (%d%%)", __local_name,
                     evt_count,
                     c_orig_size,
                     c_comp_size,
