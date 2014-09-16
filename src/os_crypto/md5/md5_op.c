@@ -71,7 +71,7 @@ int OS_MD5_Str(const char * str, os_md5 output)
 
     MD5Init(&ctx);
 
-    MD5Update(&ctx,(unsigned char *)str,(unsigned)strlen(str));
+    MD5Update(&ctx,(const unsigned char *)str,(unsigned)strlen(str));
 
     MD5Final(digest, &ctx);
 

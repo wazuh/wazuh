@@ -49,7 +49,7 @@ typedef struct _keystore
     unsigned int keysize;
 
     /* Key file stat */
-    int file_change;
+    time_t file_change;
 }keystore;
 
 
