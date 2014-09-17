@@ -445,7 +445,7 @@ int OS_IsAllowedIP(keystore *keys, char *srcip)
     if(srcip == NULL)
         return(-1);
 
-    entry = OSHash_Get(keys->keyhash_ip, srcip);
+    entry = (keyentry *) OSHash_Get(keys->keyhash_ip, srcip);
     if(entry)
     {
         return((int)entry->keyid);
@@ -481,7 +481,7 @@ int OS_IsAllowedID(keystore *keys, char *id)
     if(id == NULL)
         return(-1);
 
-    entry = OSHash_Get(keys->keyhash_id, id);
+    entry = (keyentry *) OSHash_Get(keys->keyhash_id, id);
     if(entry)
     {
         return((int)entry->keyid);
@@ -499,7 +499,7 @@ int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip)
     if(id == NULL)
         return(-1);
 
-    entry = OSHash_Get(keys->keyhash_id, id);
+    entry = (keyentry *) OSHash_Get(keys->keyhash_id, id);
     if(entry)
     {
         if(OS_IPFound(srcip, entry->ip))
