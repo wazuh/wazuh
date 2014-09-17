@@ -500,7 +500,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
     local_count++;
 
 
-    snprintf(_tmpmsg, OS_MAXSTR,"%05lu%010u:%04u:%s",
+    snprintf(_tmpmsg, OS_MAXSTR,"%05hu%010u:%04u:%s",
                               rand1, global_count, local_count,
                               msg);
 
