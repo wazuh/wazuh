@@ -465,7 +465,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
     size_t msg_size;
     unsigned long int cmp_size;
 
-    long int rand1;
+    u_int16_t rand1;
 
     char _tmpmsg[OS_MAXSTR + 2];
     char _finmsg[OS_MAXSTR + 2];
@@ -482,8 +482,8 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
         return(0);
     }
 
-    /* Random number */
-    rand1 = random();
+    /* Random number, take only 5 chars ~= 2^16=65536*/
+    rand1 = (u_int16_t) random();
 
 
     _tmpmsg[OS_MAXSTR +1] = '\0';
@@ -500,7 +500,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
     local_count++;
 
 
-    snprintf(_tmpmsg, OS_MAXSTR,"%05lu%010u:%04u:%s",
+    snprintf(_tmpmsg, OS_MAXSTR,"%05hu%010u:%04u:%s",
                               rand1, global_count, local_count,
                               msg);
 
