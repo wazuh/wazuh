@@ -15,13 +15,14 @@
 #include "shared.h"
 #include "localfile-config.h"
 
+#include "config.h"
 
-int Read_Localfile(XML_NODE node, void *d1, void *d2)
+int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
-    int pl = 0;
-    int i = 0;
+    unsigned int pl = 0;
+    unsigned int i = 0;
 
-    int glob_set = 0;
+    unsigned int glob_set = 0;
 
     #ifndef WIN32
     int glob_offset = 0;
@@ -29,13 +30,13 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
 
     /* XML Definitions */
-    char *xml_localfile_location = "location";
-    char *xml_localfile_command = "command";
-    char *xml_localfile_logformat = "log_format";
-    char *xml_localfile_frequency = "frequency";
-    char *xml_localfile_alias = "alias";
-    char *xml_localfile_future = "only-future-events";
-    char *xml_localfile_query = "query";
+    const char *xml_localfile_location = "location";
+    const char *xml_localfile_command = "command";
+    const char *xml_localfile_logformat = "log_format";
+    const char *xml_localfile_frequency = "frequency";
+    const char *xml_localfile_alias = "alias";
+    const char *xml_localfile_future = "only-future-events";
+    const char *xml_localfile_query = "query";
 
     logreader *logf;
     logreader_config *log_config;
