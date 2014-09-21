@@ -20,7 +20,7 @@
 /* StartMQ v0.2, 2004/07/30
  * Start the Message Queue. type: WRITE||READ
  */
-int StartMQ(char * path, short int type)
+int StartMQ(const char * path, short int type)
 {
 
     if(type == READ)
@@ -79,7 +79,7 @@ int StartMQ(char * path, short int type)
 /* SendMSG v0.1, 2005/02/15
  * Send a message to the queue.
  */
-int SendMSG(int queue, char *message, char *locmsg, char loc)
+int SendMSG(int queue, const char *message, const char *locmsg, char loc)
 {
     int __mq_rcode;
     char tmpstr[OS_MAXSTR+1];
@@ -136,7 +136,6 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
         {
             merror("%s: socketerr (not available).", __local_name);
             close(queue);
-            queue = -1;
             return(-1);
         }
 
@@ -166,7 +165,6 @@ int SendMSG(int queue, char *message, char *locmsg, char loc)
                          * about checking the error
                          */
                         close(queue);
-                        queue = -1;
                         return(-1);
                     }
                 }

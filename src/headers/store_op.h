@@ -23,7 +23,7 @@ typedef struct _OSStoreNode
     struct _OSStoreNode *prev;
     void *data;
     char *key;
-    int key_size;
+    size_t key_size;
 }OSStoreNode;
 
 /* Store list */
@@ -40,19 +40,20 @@ typedef struct _OSStore
 }OSStore;
 
 
-OSStore *OSStore_Create();
-OSStore *OSStore_Free(OSStore *list);
+OSStore *OSStore_Create(void);
+OSStore *OSStore_Free(OSStore *list) __attribute__((nonnull));
 
-int OSStore_Put(OSStore *list, char *key, void *data);
-int OSStore_Check(OSStore *list, char *key);
-int OSStore_NCheck(OSStore *list, char *key);
-int OSStore_NCaseCheck(OSStore *list, char *key);
-int OSStore_GetPosition(OSStore *list, char *key);
-void *OSStore_Get(OSStore *list, char *key);
-OSStoreNode *OSStore_GetFirstNode(OSStore *list);
-int OSStore_Sort(OSStore *list, void*(sort_data_function)(void *d1, void *d2));
+int OSStore_Put(OSStore *list, const char *key, void *data) __attribute__((nonnull(1,2)));
+int OSStore_Check(OSStore *list, const char *key) __attribute__((nonnull));
+int OSStore_NCheck(OSStore *list, const char *key) __attribute__((nonnull));
+int OSStore_NCaseCheck(OSStore *list, const char *key) __attribute__((nonnull));
+int OSStore_GetPosition(OSStore *list, const char *key) __attribute__((nonnull));
+void *OSStore_Get(OSStore *list, const char *key) __attribute__((nonnull));
+OSStoreNode *OSStore_GetFirstNode(OSStore *list) __attribute__((nonnull));
+int OSStore_Sort(OSStore *list, void*(sort_data_function)(void *d1, void *d2)) __attribute__((nonnull));
 
-
+int OSStore_SetMaxSize(OSStore *list, int max_size);
+int OSStore_SetFreeDataPointer(OSStore *list, void (free_data_function)(void *));
 
 #endif
 

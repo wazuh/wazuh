@@ -29,11 +29,11 @@ typedef struct _os_ip
 
 
 /* Getting the netmask based on the integer value. */
-int getNetmask(int mask, char *strmask, int size);
+int getNetmask(unsigned int mask, char *strmask, size_t size) __attribute__((nonnull));
 
 
 /* Run time definitions. */
-int getDefine_Int(char *high_name, char *low_name, int min, int max);
+int getDefine_Int(const char *high_name, const char *low_name, int min, int max) __attribute__((nonnull));
 
 
 
@@ -41,7 +41,7 @@ int getDefine_Int(char *high_name, char *low_name, int min, int max);
  * Checks if ip_address is present at that_ip.
  * Returns 1 on success or 0 on failure.
  */
-int OS_IPFound(char *ip_address, os_ip *that_ip);
+int OS_IPFound(const char *ip_address, const os_ip *that_ip) __attribute__((nonnull));
 
 
 
@@ -50,7 +50,7 @@ int OS_IPFound(char *ip_address, os_ip *that_ip);
  * Returns 1 on success or 0 on failure.
  * The list MUST be NULL terminated
  */
-int OS_IPFoundList(char *ip_address, os_ip **list_of_ips);
+int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips) __attribute__((nonnull));
 
 
 
@@ -60,7 +60,7 @@ int OS_IPFoundList(char *ip_address, os_ip **list_of_ips);
  * Returns 0 if doesn't match or 1 if it does (or 2 if it has a cidr).
  * ** On success this function may modify the value of ip_address
  */
-int OS_IsValidIP(char *ip_address, os_ip *final_ip);
+int OS_IsValidIP(const char *ip_address, os_ip *final_ip);
 
 
 /** Time range validations **/
@@ -78,10 +78,10 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip);
  * hh:mm am - hh:mm pm (12 hour format)
  * hh am - hh pm (12 hour format)
  */
-char *OS_IsValidTime(char *time_str);
+char *OS_IsValidTime(const char *time_str);
 
 /* Same as above, but only accepts a unique time, not a range. */
-char *OS_IsValidUniqueTime(char *time_str);
+char *OS_IsValidUniqueTime(const char *time_str) __attribute__((nonnull));
 
 
 
@@ -89,10 +89,10 @@ char *OS_IsValidUniqueTime(char *time_str);
  * Must be a valid string, called after OS_IsValidTime.
  * Returns 1 on success or 0 on failure.
  */
-int OS_IsonTime(char *time_str, char *ossec_time);
+int OS_IsonTime(const char *time_str, const char *ossec_time) __attribute__((nonnull));
 
 /* Same as above, but checks if time is the same or has passed a specified one. */
-int OS_IsAfterTime(char *time_str, char *ossec_time);
+int OS_IsAfterTime(const char *time_str, const char *ossec_time) __attribute__((nonnull));
 
 
 
@@ -103,7 +103,7 @@ int OS_IsAfterTime(char *time_str, char *ossec_time);
  * Checks if the specified week day is in the
  * range.
  */
-int OS_IsonDay(int week_day, char *ossec_day);
+int OS_IsonDay(int week_day, const char *ossec_day) __attribute__((nonnull));
 
 
 /** char *OS_IsValidDay(char *day_str)
@@ -117,7 +117,7 @@ int OS_IsonDay(int week_day, char *ossec_day);
  * monday,tuesday
  * mon,tue wed
  */
-char *OS_IsValidDay(char *day_str);
+char *OS_IsValidDay(const char *day_str);
 
 
 /* Macros */

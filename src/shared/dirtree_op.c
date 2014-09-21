@@ -19,6 +19,8 @@
 
 #include "shared.h"
 
+static OSDirTree *_OSTreeNode_Add(OSDirTree *tree, const char *str,
+        void *data, char sep) __attribute__((nonnull(2)));
 
 /* Create the tree
  * Return NULL on error
@@ -27,7 +29,7 @@ OSDirTree *OSDirTree_Create()
 {
     OSDirTree *my_tree;
 
-    my_tree = calloc(1, sizeof(OSDirTree));
+    my_tree = (OSDirTree *) calloc(1, sizeof(OSDirTree));
     if(!my_tree)
     {
         return(NULL);
@@ -55,7 +57,7 @@ OSTreeNode *OSDirTree_GetFirstNode(OSDirTree *tree)
  * Internal call, looks up for an entry in the middle of the tree.
  * Should not be called directly.
  */
-OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
+static OSDirTree *_OSTreeNode_Add(OSDirTree *tree, const char *str,
                            void *data, char sep)
 {
     char *tmp_str;
@@ -74,7 +76,7 @@ OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
     /* Creating new tree */
     if(!tree)
     {
-        tree = calloc(1, sizeof(OSDirTree));
+        tree = (OSDirTree *) calloc(1, sizeof(OSDirTree));
         if(!tree)
         {
             return(NULL);
@@ -164,7 +166,7 @@ OSDirTree *_OSTreeNode_Add(OSDirTree *tree, char *str,
  *                        -> /name.conf
  * Str must not be NULL.
  */
-void OSDirTree_AddToTree(OSDirTree *tree, char *str, void *data, char sep)
+void OSDirTree_AddToTree(OSDirTree *tree, const char *str, void *data, char sep)
 {
     char *tmp_str;
     OSTreeNode *newnode;
@@ -245,11 +247,11 @@ void OSDirTree_AddToTree(OSDirTree *tree, char *str, void *data, char sep)
 
 
 
-void *OSDirTree_SearchTree(OSDirTree *tree, char *str, char sep)
+void *OSDirTree_SearchTree(const OSDirTree *tree, const char *str, char sep)
 {
     void *ret = NULL;
     char *tmp_str;
-    OSTreeNode *curnode;
+    const OSTreeNode *curnode;
 
 
     /* First character doesn't count as a separator */

@@ -66,8 +66,8 @@ SHA1_SRCS = ../os_crypto/sha1/sha1_op.c
 test_os_crypto: test_os_crypto.c ../os_crypto/blowfish/*.h ${BLOWFISH_SRCS} ../os_crypto/md5/*.h ${MD5_SRCS} ../os_crypto/sha1/*.h ${SHA1_SRCS}  ../os_crypto/md5_sha1/md5_sha1_op.h  ../os_crypto/md5_sha1/md5_sha1_op.c
 	${CC} ${CFLAGS_TEST} test_os_crypto.c ${BLOWFISH_SRCS} ${MD5_SRCS} ${SHA1_SRCS} ../os_crypto/md5_sha1/md5_sha1_op.c ${CHECK_LINK} -o $@
 
-test_os_net: test_os_net.c ../os_net/os_net.c ../os_net/os_net.h ../shared/debug_op.c
-	${CC} ${CFLAGS_TEST} test_os_net.c ../os_net/os_net.c ../shared/debug_op.c ${CHECK_LINK} -o $@
+test_os_net: test_os_net.c ../os_net/os_net.c ../os_net/os_net.h ../shared/debug_op.c ../shared/file_op.c
+	${CC} ${CFLAGS_TEST} test_os_net.c ../os_net/os_net.c ../shared/debug_op.c ../shared/file_op.c ${CHECK_LINK} -o $@
 
 
 clean:

@@ -17,20 +17,27 @@
 
 
 #include "shared.h"
-char *ip_address_regex =
+
+static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
+static void _init_masks(void);
+static const char *__gethour(const char *str, char *ossec_hour) __attribute__((nonnull));
+
+#ifndef WIN32
+static const char *ip_address_regex =
      "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
      "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
+#endif /* WIN32 */
 
 /* Global vars */
-int _mask_inited = 0;
-int _netmasks[33];
+static int _mask_inited = 0;
+static unsigned int _netmasks[33];
 
 
 /* Read the file and return a string the matches the following
  * format: high_name.low_name.
  * If return is not null, value must be free.
  */
-static char *_read_file(char *high_name, char *low_name, char *defines_file)
+static char *_read_file(const char *high_name, const char *low_name, const char *defines_file)
 {
     FILE *fp;
     char def_file[OS_FLSIZE +1];
@@ -138,7 +145,7 @@ static char *_read_file(char *high_name, char *low_name, char *defines_file)
 
 
 /* Getting the netmask based on the integer value. */
-int getNetmask(int mask, char *strmask, int size)
+int getNetmask(unsigned int mask, char *strmask, size_t size)
 {
     int i = 0;
 
@@ -165,7 +172,7 @@ int getNetmask(int mask, char *strmask, int size)
 
 
 /* Initialize netmasks -- took from snort util.c */
-void _init_masks()
+static void _init_masks()
 {
     _mask_inited = 1;
     _netmasks[0] = 0x0;
@@ -208,7 +215,7 @@ void _init_masks()
  * Gets an integer definition. This function always return on
  * success or exit on error.
  */
-int getDefine_Int(char *high_name, char *low_name, int min, int max)
+int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
 {
     int ret;
     char *value;
@@ -251,7 +258,7 @@ int getDefine_Int(char *high_name, char *low_name, int min, int max)
  * Checks if ip_address is present at that_ip.
  * Returns 1 on success or 0 on failure.
  */
-int OS_IPFound(char *ip_address, os_ip *that_ip)
+int OS_IPFound(const char *ip_address, const os_ip *that_ip)
 {
     int _true = 1;
     struct in_addr net;
@@ -284,7 +291,7 @@ int OS_IPFound(char *ip_address, os_ip *that_ip)
  * Returns 1 on success or 0 on failure.
  * The list MUST be NULL terminated
  */
-int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
+int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
 {
     struct in_addr net;
     int _true = 1;
@@ -321,7 +328,7 @@ int OS_IPFoundList(char *ip_address, os_ip **list_of_ips)
  * Returns 0 if doesn't match or 1 if it is an ip or 2 an ip with cidr.
  * ** On success this function may modify the value of ip_address
  */
-int OS_IsValidIP(char *ip_address, os_ip *final_ip)
+int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 {
     unsigned int nmask = 0;
     char *tmp_str;
@@ -356,7 +363,7 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
 
     if(strcmp(ip_address, "any") != 0)
     {
-        char *tmp_ip;
+        const char *tmp_ip;
         int dots = 0;
         tmp_ip = ip_address;
         while(*tmp_ip != '\0')
@@ -486,7 +493,7 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
     }
 
     /* Should never reach here */
-    return(0);
+    //return(0);
 }
 
 
@@ -494,7 +501,7 @@ int OS_IsValidIP(char *ip_address, os_ip *final_ip)
  * Must be a valid string, called after OS_IsValidTime.
  * Returns 1 on success or 0 on failure.
  */
-int OS_IsonTime(char *time_str, char *ossec_time)
+int OS_IsonTime(const char *time_str, const char *ossec_time)
 {
     int _true = 1;
 
@@ -529,7 +536,8 @@ int OS_IsonTime(char *time_str, char *ossec_time)
  * hh am - hh pm (12 hour format)
  */
 #define RM_WHITE(x)while(*x == ' ')x++;
-char *__gethour(char *str, char *ossec_hour)
+
+static const char *__gethour(const char *str, char *ossec_hour)
 {
     int _size = 0;
     int chour = 0;
@@ -629,7 +637,7 @@ char *__gethour(char *str, char *ossec_hour)
 }
 
 
-char *OS_IsValidTime(char *time_str)
+char *OS_IsValidTime(const char *time_str)
 {
     char *ret;
     char first_hour[7];
@@ -710,7 +718,7 @@ char *OS_IsValidTime(char *time_str)
  *  Checks if the current time is the same or has passed the
  *  specified one.
  */
-int OS_IsAfterTime(char *time_str, char *ossec_time)
+int OS_IsAfterTime(const char *time_str, const char *ossec_time)
 {
     /* Unique times can't have a !. */
     if(*ossec_time == '!')
@@ -733,7 +741,7 @@ int OS_IsAfterTime(char *time_str, char *ossec_time)
 /** char *OS_IsValidUniqueTime(char *time_str)
  *  Creates a unique time, not a range. Must be used with OS_IsAfterTime.
  */
-char *OS_IsValidUniqueTime(char *time_str)
+char *OS_IsValidUniqueTime(const char *time_str)
 {
     char mytime[128 +1];
 
@@ -753,7 +761,7 @@ char *OS_IsValidUniqueTime(char *time_str)
  * Checks if the specified week day is in the
  * range.
  */
-int OS_IsonDay(int week_day, char *ossec_day)
+int OS_IsonDay(int week_day, const char *ossec_day)
 {
     int _true = 1;
 
@@ -787,13 +795,15 @@ int OS_IsonDay(int week_day, char *ossec_day)
  * mon,tue wed
  */
 #define RM_SEP(x)while((*x == ' ') || (*x == ','))x++;
+
 #define IS_SEP(x) (*x == ' ' || *x == ',')
-char *OS_IsValidDay(char *day_str)
+
+char *OS_IsValidDay(const char *day_str)
 {
     int i = 0, ng = 0;
     char *ret;
     char day_ret[9] = {0,0,0,0,0,0,0,0,0};
-    char *(days[]) =
+    const char *(days[]) =
     {
         "sunday", "sun", "monday", "mon", "tuesday", "tue",
         "wednesday", "wed", "thursday", "thu", "friday",

@@ -26,11 +26,11 @@
 
 #include "error_messages/error_messages.h"
 
-char *pidfile = NULL;
+static const char *pidfile = NULL;
 
-void HandleSIG()
+void HandleSIG(int sig)
 {
-    merror(SIGNAL_RECV, pidfile);
+    merror(SIGNAL_RECV, pidfile, sig);
 
     DeletePID(pidfile);
 
@@ -39,12 +39,12 @@ void HandleSIG()
 
 
 /* To avoid client-server communication problems */
-void HandleSIGPIPE()
+void HandleSIGPIPE(__attribute__((unused)) int sig)
 {
     return;
 }
 
-void StartSIG(char *process_name)
+void StartSIG(const char *process_name)
 {
     /* Signal Manipulation
        go to HandleSIG() */
@@ -58,7 +58,7 @@ void StartSIG(char *process_name)
     signal(SIGPIPE, HandleSIGPIPE);
 }
 
-void StartSIG2(char *process_name, void (*func)(int))
+void StartSIG2(const char *process_name, void (*func)(int))
 {
     pidfile = process_name;
 
