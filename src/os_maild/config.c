@@ -19,7 +19,7 @@
 /* MailConf v0.1: 2005/04/01
  * Reads the Mail configuration
  */
-int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
+int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
 {
     int modules = 0;
 

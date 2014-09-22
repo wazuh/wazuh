@@ -21,11 +21,11 @@
 
 #include "error_messages/error_messages.h"
 
-MailNode *n_node;
-MailNode *lastnode;
+static MailNode *n_node;
+static MailNode *lastnode;
 
-int _memoryused = 0;
-int _memorymaxsize = 0;
+static int _memoryused = 0;
+static int _memorymaxsize = 0;
 
 
 /* Create the Mail List */

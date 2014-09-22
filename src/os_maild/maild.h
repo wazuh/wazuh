@@ -67,7 +67,7 @@ typedef struct _MailMsg
 
 
 /* Config function */
-int MailConf(int test_config, char *cfgfile, MailConfig *Mail);
+int MailConf(int test_config, const char *cfgfile, MailConfig *Mail);
 
 
 /* Receive the e-mail message */
@@ -81,12 +81,12 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
 
 
 /* Mail timeout used by the file-queue */
-int mail_timeout;
+extern unsigned int mail_timeout;
 
 
 /* Global var for highest level on mail subjects */
-int   _g_subject_level;
-char _g_subject[SUBJECT_SIZE +2];
+extern int   _g_subject_level;
+extern char _g_subject[SUBJECT_SIZE +2];
 
 
 #endif
