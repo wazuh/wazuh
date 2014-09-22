@@ -298,6 +298,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     if(mailmsg == NULL)
     {
         merror("%s: No email to be sent. Inconsistent state.",ARGV0);
+        return (OS_INVALID);
     }
 
 
