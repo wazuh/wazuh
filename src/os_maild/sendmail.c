@@ -60,7 +60,7 @@
  */
 int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 {
-    int socket, i = 0;
+    int socket;
     size_t final_to_sz;
     char *msg;
     char snd_msg[128];
@@ -159,7 +159,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
     if(mail->gran_to)
     {
-        i = 0;
+        int i = 0;
         while(mail->gran_to[i] != NULL)
         {
             if(mail->gran_set[i] != SMS_FORMAT)
