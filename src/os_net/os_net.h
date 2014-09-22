@@ -24,14 +24,14 @@
  * If the IP is not set, it is going to use ADDR_ANY
  * Return the socket.
  */
-int OS_Bindporttcp(unsigned int _port, const char *_ip, int ipv6);
-int OS_Bindportudp(unsigned int _port, const char *_ip, int ipv6);
+int OS_Bindporttcp(u_int16_t _port, const char *_ip, int ipv6);
+int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6);
 
 /* OS_BindUnixDomain
  * Bind to a specific file, using the "mode" permissions in
  * a Unix Domain socket.
  */
-int OS_BindUnixDomain(const char * path, int mode, int max_msg_size);
+int OS_BindUnixDomain(const char * path, mode_t mode, int max_msg_size);
 int OS_ConnectUnixDomain(const char * path, int max_msg_size);
 int OS_getsocketsize(int ossock);
 
@@ -39,8 +39,8 @@ int OS_getsocketsize(int ossock);
 /* OS_Connect
  * Connect to a TCP/UDP socket
  */
-int OS_ConnectTCP(unsigned int _port, const char *_ip, int ipv6);
-int OS_ConnectUDP(unsigned int _port, const char *_ip, int ipv6);
+int OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6);
+int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6);
 
 /* OS_RecvUDP
  * Receive a UDP packet. Return NULL if failed
@@ -58,7 +58,7 @@ int OS_RecvUnix(int socket, int sizet, char *ret);
 /* OS_RecvTCP
  * Receive a TCP packet
  */
-int OS_AcceptTCP(int socket, char *srcip, int addrsize);
+int OS_AcceptTCP(int socket, char *srcip, size_t addrsize);
 char *OS_RecvTCP(int socket, int sizet);
 int OS_RecvTCPBuffer(int socket, char *buffer, int sizet);
 
@@ -78,7 +78,7 @@ int OS_SendUDPbySize(int socket, int size, const char *msg);
 /* OS_GetHost
  * Calls gethostbyname
  */
-char *OS_GetHost(const char *host, int attempts);
+char *OS_GetHost(const char *host, unsigned int attempts);
 
 /**
  * Close a network socket.
