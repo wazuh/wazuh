@@ -50,7 +50,7 @@
 #include "picviz.h"
 
 #ifdef PRELUDE
-#include "prelude.h"
+#include "output/prelude.h"
 #endif
 
 #ifdef ZEROMQ_OUTPUT
