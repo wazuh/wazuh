@@ -7,9 +7,9 @@ PT=../
 
 include ../Config.Make
 
-shared:
+lib_shared.a: ${SOURCES}
 		${CC} -c ${CFLAGS} ${SOURCES}
-		ar cru lib_shared.a ${OBJECTS}
-		ranlib lib_shared.a
+		${BUILDLIB} lib_shared.a ${OBJECTS}
+
 clean:
 		${CLEAN}

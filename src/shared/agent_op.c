@@ -10,6 +10,7 @@
  * Foundation
  */
 
+#include "agent_op.h"
 
 #include "shared.h"
 
@@ -20,26 +21,19 @@
  */
 int os_check_restart_syscheck()
 {
-    struct stat restart_status;
-
     /* If the restart is not present, return 0.
      */
 
     if(isChroot())
     {
-        if(stat(SYSCHECK_RESTART, &restart_status) == -1)
+        if(unlink(SYSCHECK_RESTART) == -1)
             return(0);
-
-        unlink(SYSCHECK_RESTART);
     }
     else
     {
-        if(stat(SYSCHECK_RESTART_PATH, &restart_status) == -1)
+        if(unlink(SYSCHECK_RESTART_PATH) == -1)
             return(0);
-
-        unlink(SYSCHECK_RESTART_PATH);
     }
-
 
     return(1);
 }
@@ -260,8 +254,8 @@ char* os_read_agent_profile()
  *  Returns 1 on success or <= 0 on failure.
  */
 /* cmoraes: changed function. added cfg_profile_name parameter */
-int os_write_agent_info(char *agent_name, char *agent_ip,
-                        char *agent_id,   char *cfg_profile_name)
+int os_write_agent_info(const char *agent_name, __attribute__((unused)) const char *agent_ip,
+        const char *agent_id, const char *cfg_profile_name)
 {
     FILE *fp;
 
@@ -274,10 +268,10 @@ int os_write_agent_info(char *agent_name, char *agent_ip,
 
     /*cmoraes: added cfg_profile_name parameter*/
     fprintf(
-        fp, 
-        "%s\n-\n%s\n%s\n", 
-        agent_name, 
-        agent_id, 
+        fp,
+        "%s\n-\n%s\n%s\n",
+        agent_name,
+        agent_id,
         (cfg_profile_name) ? cfg_profile_name : "-"
     );
     fclose(fp);

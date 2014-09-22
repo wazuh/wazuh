@@ -35,7 +35,7 @@ typedef struct _agentlessd_entries
 
     char *type;
     char **server;
-    char *options;
+    const char *options;
     char *command;
 
 }agentlessd_entries;

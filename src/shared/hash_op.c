@@ -19,7 +19,7 @@
 
 #include "shared.h"
 
-
+static unsigned int _os_genhash(const OSHash *self, const char *key) __attribute__((nonnull));
 
 /** OSHash *OSHash_Create()
  * Creates the Hash.
@@ -27,11 +27,11 @@
  */
 OSHash *OSHash_Create()
 {
-    int i = 0;
+    unsigned int i = 0;
     OSHash *self;
 
     /* Allocating memory for the hash */
-    self = calloc(1, sizeof(OSHash));
+    self = (OSHash *) calloc(1, sizeof(OSHash));
     if(!self)
     {
         return(NULL);
@@ -64,9 +64,9 @@ OSHash *OSHash_Create()
 
 
     /* Getting seed */
-    srandom(time(0));
-    self->initial_seed = os_getprime(random() % self->rows);
-    self->constant = os_getprime(random() % self->rows);
+    srandom((unsigned int)time(0));
+    self->initial_seed = os_getprime((unsigned)random() % self->rows);
+    self->constant = os_getprime((unsigned)random() % self->rows);
 
 
     return(self);
@@ -79,7 +79,7 @@ OSHash *OSHash_Create()
  */
 void *OSHash_Free(OSHash *self)
 {
-    int i = 0;
+    unsigned int i = 0;
     OSHashNode *curr_node;
     OSHashNode *next_node;
 
@@ -92,6 +92,7 @@ void *OSHash_Free(OSHash *self)
         while(next_node)
         {
             next_node = next_node->next;
+            free(curr_node->key);
             free(curr_node);
             curr_node = next_node;
         }
@@ -111,7 +112,7 @@ void *OSHash_Free(OSHash *self)
 /** int _os_genhash(OSHash *self, char *key)
  * Generates hash for key
  */
-int _os_genhash(OSHash *self, char *key)
+static unsigned int _os_genhash(const OSHash *self, const char *key)
 {
     unsigned int hash_key = self->initial_seed;
 
@@ -121,7 +122,7 @@ int _os_genhash(OSHash *self, char *key)
     while(*key)
     {
         hash_key *= self->constant;
-        hash_key += *key;
+        hash_key += (unsigned int) *key;
         key++;
     }
 
@@ -134,9 +135,9 @@ int _os_genhash(OSHash *self, char *key)
  * Sets new size for hash.
  * Returns 0 on error (out of memory).
  */
-int OSHash_setSize(OSHash *self, int new_size)
+int OSHash_setSize(OSHash *self, unsigned int new_size)
 {
-    int i = 0;
+    unsigned int i = 0;
 
     /* We can't decrease the size */
     if(new_size <= self->rows)
@@ -154,7 +155,7 @@ int OSHash_setSize(OSHash *self, int new_size)
 
 
     /* If we fail, the hash should not be used anymore */
-    self->table = realloc(self->table, (self->rows +1) * sizeof(OSHashNode *));
+    self->table = (OSHashNode **) realloc(self->table, (self->rows +1) * sizeof(OSHashNode *));
     if(!self->table)
     {
         return(0);
@@ -169,8 +170,8 @@ int OSHash_setSize(OSHash *self, int new_size)
 
 
     /* New seed */
-    self->initial_seed = os_getprime(random() % self->rows);
-    self->constant = os_getprime(random() % self->rows);
+    self->initial_seed = os_getprime((unsigned)random() % self->rows);
+    self->constant = os_getprime((unsigned)random() % self->rows);
 
     return(1);
 }
@@ -181,7 +182,7 @@ int OSHash_setSize(OSHash *self, int new_size)
  * Returns 1 on successduplicated key (not added)
  * Key must not be NULL.
  */
-int OSHash_Update(OSHash *self, char *key, void *data)
+int OSHash_Update(OSHash *self, const char *key, void *data)
 {
     unsigned int hash_key;
     unsigned int index;
@@ -204,7 +205,6 @@ int OSHash_Update(OSHash *self, char *key, void *data)
         /* Checking for duplicated key -- not adding */
         if(strcmp(curr_node->key, key) == 0)
         {
-            free(curr_node->data);
             curr_node->data = data;
             return(1);
         }
@@ -221,7 +221,7 @@ int OSHash_Update(OSHash *self, char *key, void *data)
  * Returns 2 on success
  * Key must not be NULL.
  */
-int OSHash_Add(OSHash *self, char *key, void *data)
+int OSHash_Add(OSHash *self, const char *key, void *data)
 {
     unsigned int hash_key;
     unsigned int index;
@@ -253,14 +253,19 @@ int OSHash_Add(OSHash *self, char *key, void *data)
 
 
     /* Creating new node */
-    new_node = calloc(1, sizeof(OSHashNode));
+    new_node = (OSHashNode *) calloc(1, sizeof(OSHashNode));
     if(!new_node)
     {
         return(0);
     }
     new_node->next = NULL;
     new_node->data = data;
-    new_node->key = key;
+    new_node->key = strdup(key);
+    if( new_node->key == NULL ) {
+        free(new_node);
+        debug1("hash_op: DEBUG: strdup() failed!");
+        return(0);
+    }
 
 
     /* Adding to table */
@@ -285,12 +290,12 @@ int OSHash_Add(OSHash *self, char *key, void *data)
  * Returns the key otherwise.
  * Key must not be NULL.
  */
-void *OSHash_Get(OSHash *self, char *key)
+void *OSHash_Get(const OSHash *self, const char *key)
 {
     unsigned int hash_key;
     unsigned int index;
 
-    OSHashNode *curr_node;
+    const OSHashNode *curr_node;
 
 
     /* Generating hash of the message */
@@ -303,8 +308,12 @@ void *OSHash_Get(OSHash *self, char *key)
 
     /* Getting entry */
     curr_node = self->table[index];
-    while(curr_node)
+    while(curr_node != NULL)
     {
+        /* Skip null pointers */
+        if( curr_node->key == NULL )
+            continue;
+
         /* We may have colisions, so double check with strcmp */
         if(strcmp(curr_node->key, key) == 0)
         {
@@ -317,6 +326,40 @@ void *OSHash_Get(OSHash *self, char *key)
     return(NULL);
 }
 
+/* Returns a pointer to a hash node if found, that hash node is removed from the table */
+void* OSHash_Delete(OSHash *self, const char *key)
+{
+    OSHashNode *curr_node;
+    OSHashNode *prev_node = 0;
+    unsigned int hash_key;
+    unsigned int index;
+    void *data;
 
+    /* Generating hash of the message */
+    hash_key = _os_genhash(self, key);
+
+    /* Getting array index */
+    index = hash_key % self->rows;
+
+    curr_node = self->table[index];
+    while( curr_node != NULL ) {
+        if(strcmp(curr_node->key, key) == 0) {
+            if( prev_node == NULL ) {
+                self->table[index] = curr_node->next;
+            }
+            else {
+                prev_node->next = curr_node->next;
+            }
+            free(curr_node->key);
+            data = curr_node->data;
+            free(curr_node);
+            return data;
+        }
+        prev_node = curr_node;
+        curr_node = curr_node->next;
+    }
+
+    return NULL;
+}
 
 /* EOF */

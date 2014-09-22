@@ -21,10 +21,10 @@
  * Get the first available prime after the provided value.
  * Returns 0 on error.
  */
-int os_getprime(int val)
+unsigned int os_getprime(unsigned int val)
 {
-    int i;
-    int max_i;
+    unsigned int i;
+    unsigned int max_i;
 
     /* Value can't be even */
     if((val % 2) == 0)

@@ -30,6 +30,7 @@ clean:
 		rm -f win32/LICENSE.txt
 		rm -f win32/help_win.txt
 		rm -f win32/internal_options-win.conf
+		rm -f win32/local_internal_options-win.conf
 		rm -f win32/ossec-win.conf
 		rm -f win32/restart-ossec.cmd
 		rm -f win32/route-null.cmd
@@ -58,7 +59,7 @@ agent:
 windows_agent:
 		( cd win32 && /bin/sh ./gen_win.sh )
 		( cd win-pkg && /bin/sh ./make.sh )
-        
+
 setagent:
 		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
 

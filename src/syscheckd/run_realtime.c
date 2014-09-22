@@ -130,7 +130,7 @@ int realtime_start()
     {
         ErrorExit(MEM_ERROR, ARGV0);
     }
-    syscheck.realtime->dirtb = (void *)OSHash_Create();
+    syscheck.realtime->dirtb = OSHash_Create();
     syscheck.realtime->fd = -1;
 
     #ifdef USEINOTIFY

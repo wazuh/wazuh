@@ -19,4 +19,5 @@ libz.a:
 		
 clean:
 	${CLEAN} zlib.a ../headers/zlib.h ../headers/zconf.h
-	cd ${ZLIB_DIR}/; make distclean
+	cd ${ZLIB_DIR}/; make -f Makefile.in distclean
+	${CLEAN} ${ZLIB_DIR}/zconf.h ${ZLIB_DIR}/Makefile

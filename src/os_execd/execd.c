@@ -21,6 +21,26 @@
 
 
 
+/* print help statement */
+void help_execd()
+{
+    print_header();
+    print_out("  %s: -[Vhdtf] [-g group] [-c config]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out(" ");
+    exit(1);
+}
+
+
+
 /* Timeout data structure */
 typedef struct _timeout_data
 {
@@ -41,7 +61,7 @@ int repeated_offenders_timeout[] = {0,0,0,0,0,0,0};
 /**
  * Shutdowns execd properly.
  */
-void execd_shutdown()
+void execd_shutdown(int sig)
 {
     /* Removing pending active responses. */
     merror(EXEC_SHUTDOWN, ARGV0);
@@ -61,7 +81,7 @@ void execd_shutdown()
     }
 
     #ifndef WIN32
-    HandleSIG();
+    HandleSIG(sig);
     #endif
 
 }
@@ -77,25 +97,21 @@ int main(int argc, char **argv)
     int test_config = 0,run_foreground = 0;
     int gid = 0,m_queue = 0;
 
-    // TODO: delete or implement
-    char *dir __attribute__((unused)) = DEFAULTDIR;
     char *group = GROUPGLOBAL;
-    // TODO: delete or implement
-    char *cfg __attribute__((unused)) = DEFAULTARPATH;
-    char *xmlcfg = DEFAULTCPATH;
+    char *cfg = DEFAULTCPATH;
 
 
     /* Setting the name */
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "Vtdhfu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vtdhfg:c:")) != -1){
         switch(c){
             case 'V':
                 print_version();
                 break;
             case 'h':
-                help(ARGV0);
+                help_execd();
                 break;
             case 'd':
                 nowDebug();
@@ -108,11 +124,6 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -g needs an argument.",ARGV0);
                 group = optarg;
                 break;
-            case 'D':
-                if(!optarg)
-                    ErrorExit("%s: -D needs an argument.",ARGV0);
-                dir = optarg;
-                break;
             case 'c':
                 if(!optarg)
                     ErrorExit("%s: -c needs an argument.",ARGV0);
@@ -122,7 +133,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help(ARGV0);
+                help_execd();
                 break;
         }
 
@@ -142,9 +153,9 @@ int main(int argc, char **argv)
 
 
     /* Reading config */
-    if((c = ExecdConfig(xmlcfg)) < 0)
+    if((c = ExecdConfig(cfg)) < 0)
     {
-        ErrorExit(CONFIG_ERROR, ARGV0, xmlcfg);
+        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
 
 
@@ -524,6 +535,7 @@ void ExecdStart(int q)
                         }
                         else
                         {
+                            free(ntimes);       // In hash_op.c, data belongs to caller
                             os_calloc(10, sizeof(char), ntimes);
                             new_timeout = repeated_offenders_timeout[ntimes_int]*60;
                             ntimes_int++;
@@ -647,6 +659,7 @@ void ExecdStart(int q)
         }
     }
 }
+
 
 
 #endif

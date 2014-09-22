@@ -111,13 +111,18 @@ if [ "x${ACTION}" = "xadd" ]; then
 # Deleting from hosts.deny   
 elif [ "x${ACTION}" = "xdelete" ]; then   
    lock;
+   TMP_FILE = `mktemp /var/ossec/ossec-hosts.XXXXXXXXXX` 
+   if [ "X${TMP_FILE}" = "X" ]; then 
+     # Cheap fake tmpfile, but should be harder then no random data 
+     TMP_FILE = "/var/ossec/ossec-hosts.`cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -1 `"
+   fi
    if [ "X$UNAME" = "XFreeBSD" ]; then
-    cat /etc/hosts.allow | grep -v "ALL : ${IP} : deny$"> /tmp/hosts.deny.$$
-    mv /tmp/hosts.deny.$$ /etc/hosts.allow
+    cat /etc/hosts.allow | grep -v "ALL : ${IP} : deny$"> ${TMP_FILE}
+    mv ${TMP_FILE} /etc/hosts.allow
    else
-    cat /etc/hosts.deny | grep -v "ALL:${IP}$"> /tmp/hosts.deny.$$
-    cat /tmp/hosts.deny.$$ > /etc/hosts.deny
-    rm /tmp/hosts.deny.$$
+    cat /etc/hosts.deny | grep -v "ALL:${IP}$"> ${TMP_FILE}
+    cat ${TMP_FILE} > /etc/hosts.deny
+    rm ${TMP_FILE}
    fi 
    unlock;
    exit 0;

@@ -17,21 +17,22 @@
 #include "shared.h"
 #include "dbd-config.h"
 
+#include "config.h"
 
-int Read_DB(XML_NODE node, void *config1, void *config2)
+int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
 {
     int i = 0;
     DBConfig *db_config;
 
 
     /* XML definitions */
-    char *xml_dbhost = "hostname";
-    char *xml_dbuser = "username";
-    char *xml_dbpass = "password";
-    char *xml_dbdb = "database";
-    char *xml_dbport = "port";
-    char *xml_dbsock = "socket";
-    char *xml_dbtype = "type";
+    const char *xml_dbhost = "hostname";
+    const char *xml_dbuser = "username";
+    const char *xml_dbpass = "password";
+    const char *xml_dbdb = "database";
+    const char *xml_dbport = "port";
+    const char *xml_dbsock = "socket";
+    const char *xml_dbtype = "type";
 
 
     db_config = (DBConfig *)config2;
@@ -73,7 +74,7 @@ int Read_DB(XML_NODE node, void *config1, void *config2)
         }
         else if(strcmp(node[i]->element, xml_dbport) == 0)
         {
-            db_config->port = atoi(node[i]->content);
+            db_config->port = (unsigned int) atoi(node[i]->content);
         }
         else if(strcmp(node[i]->element, xml_dbsock) == 0)
         {

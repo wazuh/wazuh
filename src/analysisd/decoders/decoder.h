@@ -42,6 +42,7 @@ typedef struct
     u_int16_t prematch_offset;
 
     int fts;
+    int accumulate;
     char *parent;
     char *name;
     char *ftscomment;

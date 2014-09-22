@@ -25,15 +25,34 @@
  */
 
 
+#include <sys/wait.h>
+
 #include "shared.h"
 #include "auth.h"
 
 /* TODO: Pulled this value out of the sky, may or may not be sane */
 int POOL_SIZE = 512;
 
-/* ossec-reportd - Runs manual reports. */
-void report_help()
+/* print help statement */
+void help_authd()
 {
+    print_header();
+    print_out("  %s: -[Vhdti] [-g group] [-D dir] [-p port] [-v path] [-x path] [-k path]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -i          Use client's source IP address");
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
+    print_out("    -v <path>   Full path to CA certificate used to verify clients");
+    print_out("    -x <path>   Full path to server certificate");
+    print_out("    -k <path>   Full path to server key");
+    print_out(" ");
+    exit(1);
 }
 
 #ifndef USE_OPENSSL
@@ -80,12 +99,12 @@ int main(int argc, char **argv)
     int process_pool[POOL_SIZE];
     // Count of pids we are wait()ing on.
     int c = 0, test_config = 0, use_ip_address = 0, pid = 0, status, i = 0, active_processes = 0;
-    int gid = 0, client_sock = 0, sock = 0, port = 1515, ret = 0;
+    int gid = 0, client_sock = 0, sock = 0, port = DEFAULT_PORT, ret = 0;
     char *dir  = DEFAULTDIR;
-    char *user = USER;
     char *group = GROUPGLOBAL;
-    // TODO: implement or delete
-    char *cfg __attribute__((unused)) = DEFAULTCPATH;
+    char *server_cert = NULL;
+    char *server_key = NULL;
+    char *ca_cert = NULL;
     char buf[4096 +1];
     SSL_CTX *ctx;
     SSL *ssl;
@@ -105,25 +124,20 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
     /* add an option to use the ip on the socket to tie the name to a
        specific address */
-    while((c = getopt(argc, argv, "Vdhiu:g:D:c:m:p:")) != -1)
+    while((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:")) != -1)
     {
         switch(c){
             case 'V':
                 print_version();
                 break;
             case 'h':
-                report_help();
+                help_authd();
                 break;
             case 'd':
                 nowDebug();
                 break;
             case 'i':
                 use_ip_address = 1;
-                break;
-            case 'u':
-                if(!optarg)
-                    ErrorExit("%s: -u needs an argument",ARGV0);
-                user = optarg;
                 break;
             case 'g':
                 if(!optarg)
@@ -134,11 +148,6 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
                 dir = optarg;
-                break;
-            case 'c':
-                if(!optarg)
-                    ErrorExit("%s: -c needs an argument",ARGV0);
-                cfg = optarg;
                 break;
             case 't':
                 test_config = 1;
@@ -152,8 +161,23 @@ int main(int argc, char **argv)
                     ErrorExit("%s: Invalid port: %s", ARGV0, optarg);
                 }
                 break;
+            case 'v':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                ca_cert = optarg;
+                break;
+            case 'x':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                server_cert = optarg;
+                break;
+            case 'k':
+                if (!optarg)
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                server_key = optarg;
+                break;
             default:
-                report_help();
+                help_authd();
                 break;
         }
 
@@ -165,8 +189,7 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
     if(gid < 0)
-        ErrorExit(USER_ERROR,ARGV0,user,group);
-
+        ErrorExit(USER_ERROR,ARGV0,"",group);
 
 
     /* Exit here if test config is set */
@@ -206,7 +229,7 @@ int main(int argc, char **argv)
 
 
     /* Starting SSL */
-    ctx = os_ssl_keys(0, dir);
+    ctx = os_ssl_keys(1, dir, server_cert, server_key, ca_cert);
     if(!ctx)
     {
         merror("%s: ERROR: SSL error. Exiting.", ARGV0);
@@ -408,5 +431,5 @@ int main(int argc, char **argv)
 }
 
 
-#endif
-/* EOF */
+#endif /* USE_OPENSSL */
+

@@ -14,10 +14,10 @@
 #define __WAIT_OP_H
 
 
-void os_setwait();
+void os_setwait(void);
 
-void os_delwait();
+void os_delwait(void);
 
-void os_wait();
+void os_wait(void);
 
 #endif

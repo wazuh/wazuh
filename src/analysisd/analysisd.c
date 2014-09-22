@@ -44,6 +44,7 @@
 #include "stats.h"
 
 #include "eventinfo.h"
+#include "accumulator.h"
 #include "analysisd.h"
 
 #include "picviz.h"
@@ -126,6 +127,25 @@ int hourly_events;
 int hourly_syscheck;
 int hourly_firewall;
 
+/* print help statement */
+void help_analysisd()
+{
+    print_header();
+    print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -u <user>   User to run as (default: %s)", USER);
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out(" ");
+    exit(1);
+}
 
 /** int main(int argc, char **argv)
  */
@@ -162,7 +182,7 @@ int main_analysisd(int argc, char **argv)
 		print_version();
 		break;
             case 'h':
-                help(ARGV0);
+                help_analysisd();
                 break;
             case 'd':
                 nowDebug();
@@ -195,14 +215,14 @@ int main_analysisd(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help(ARGV0);
+                help_analysisd();
                 break;
         }
 
     }
 
     /* Check current debug_level
-     * Command line setting takes precedence 
+     * Command line setting takes precedence
      */
     if (debug_level == 0)
     {
@@ -289,7 +309,7 @@ int main_analysisd(int argc, char **argv)
     #endif
 
     /* Starting zeromq */
-    #ifdef ZEROMQ_OUTPUT 
+    #ifdef ZEROMQ_OUTPUT
     if(Config.zeromq_output)
     {
       zeromq_output_start(Config.zeromq_output_uri, argc, argv);
@@ -303,7 +323,7 @@ int main_analysisd(int argc, char **argv)
         chown(Config.picviz_socket, uid, gid);
     }
 
-    /* Setting the group */	
+    /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
         ErrorExit(SETGID_ERROR,ARGV0,group);
 
@@ -551,7 +571,7 @@ int main_analysisd(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
-    /* Going to main loop */	
+    /* Going to main loop */
     OS_ReadMSG(m_queue);
 
     if (Config.picviz)
@@ -611,6 +631,11 @@ void OS_ReadMSG_analysisd(int m_queue)
         ErrorExit(FTS_LIST_ERROR, ARGV0);
     }
 
+    /* Initialize the Accumulator */
+    if(!Accumulate_Init()) {
+        merror("accumulator: ERROR: Initialization failed");
+        exit(1);
+    }
 
     /* Starting the active response queues */
     if(Config.ar)
@@ -877,6 +902,10 @@ void OS_ReadMSG_analysisd(int m_queue)
                 DecodeEvent(lf);
             }
 
+            /* Run accumulator */
+            if( lf->decoder_info->accumulate == 1 ) {
+                lf = Accumulate(lf);
+            }
 
             /* Firewall event */
             if(lf->decoder_info->type == FIREWALL)
@@ -1066,8 +1095,8 @@ void OS_ReadMSG_analysisd(int m_queue)
                 #endif
 
                 /* Log to zeromq */
-                #ifdef ZEROMQ_OUTPUT 
-                if(Config.zeromq_output) 
+                #ifdef ZEROMQ_OUTPUT
+                if(Config.zeromq_output)
                 {
                     zeromq_output_event(lf);
                 }
@@ -1171,7 +1200,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 OS_Store(lf);
 
 
-            /* Cleaning the memory */	
+            /* Cleaning the memory */
             CLMEM:
 
 
@@ -1277,8 +1306,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     {
         if(!OSMatch_Execute(lf->log, lf->size, currently_rule->match))
             return(NULL);
-    }	   	
-
+    }
 
 
     /* Checking if exist any regex for this rule */

@@ -1,0 +1,50 @@
+  <!-- Copyright 2014 Dan Parriott (ddpbsd@gmail.com)
+  -  This program is a free software; you can redistribute it
+  -  and/or modify it under the terms of the GNU General Public
+  -  License (version 2) as published by the FSF - Free Software
+  -  Foundation.
+  -
+  -  License details: http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+  -->
+
+
+
+  <!-- Modify it at your will. -->
+
+<group name="local,syslog,apparmor">
+
+  <rule id="52000" level="3">
+    <decoded_as>iptables</decoded_as>
+    <match> apparmor=</match>
+    <description>Apparmor grouping</description>
+  </rule>
+
+  <rule id="52001" level="0">
+    <if_sid>52000</if_sid>
+    <status>ALLOWED|STATUS</status>
+    <description>Ignore ALLOWED or STATUS</description>
+  </rule>
+
+  <rule id="52002" level="3">
+    <if_sid>52000</if_sid>
+    <status>DENIED</status>
+    <match> apparmor=</match>
+    <description>Apparmor DENIED</description>
+  </rule>
+
+  <rule id="52003" level="5">
+    <if_sid>52002</if_sid>
+    <extra_data>exec</extra_data>
+    <description>Apparmor DENIED exec operation.</description>
+  </rule>
+
+  <rule id="52004" level="4">
+    <if_sid>52002</if_sid>
+    <extra_data>mknod</extra_data>
+    <description>Apparmor DENIED mknod operation.</description>
+  </rule>
+
+</group> <!-- SYSLOG,LOCAL -->
+
+
+  <!-- EOF -->

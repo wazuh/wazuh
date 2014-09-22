@@ -695,7 +695,8 @@ START_TEST(test_regexmap_nonword)
         if(!((test >= 'a' && test <= 'z')
                 || (test >= 'A' && test <= 'Z')
                 || (test >= '0' && test <= '9')
-                || test == '_' || test == 127))
+                || test == '-' || test == '@'
+                || test == '_'))
         {
             ck_assert_msg(regexmap[9][test] == 1, "char %d should match", test);
         }

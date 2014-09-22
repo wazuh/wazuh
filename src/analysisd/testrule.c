@@ -47,6 +47,7 @@
 #include "stats.h"
 
 #include "eventinfo.h"
+#include "accumulator.h"
 #include "analysisd.h"
 
 
@@ -89,44 +90,35 @@ int ReadDecodeXML(char *file);
 int SetDecodeXML();
 
 
-void logtest_help(const char *prog)
+/* print help statement */
+void help_logtest()
 {
-    print_out(" ");
-    print_out("%s %s - %s (%s)", __ossec_name, __version, __author, __contact);
-    print_out("%s", __site);
-    print_out(" ");
-    print_out("  %s: -[Vatfdh] [-U ut_str] [-u user] [-g group] [-c config] [-D dir]", prog);
+    print_header();
+    print_out("  %s: -[Vhdtva] [-c config] [-D dir] [-U rule:alert:decoder]", ARGV0);
     print_out("    -V          Version and license message");
-    print_out("    -a          Alerts output");
-    print_out("    -t          Test configuration");
-    print_out("    -v          Verbose (full) output/rule debugging");
-    print_out("    -d          Execute in debug mode");
     print_out("    -h          This help message");
-    print_out("    -U <rule:alert:decoder>   Unit test. Refer to contrib/ossec-testing/runtests.py");
-    print_out("    -u <user>   Run as 'user'");
-    print_out("    -g <group>  Run as 'group'");
-    print_out("    -c <config> Read the 'config' file");
-    print_out("    -D <dir>    Chroot to 'dir'");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -a          Alerts output");
+    print_out("    -v          Verbose (full) output/rule debugging");
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -U <rule:alert:decoder>  Unit test. Refer to contrib/ossec-testing/runtests.py");
     print_out(" ");
     exit(1);
 }
-
-
 
 /** int main(int argc, char **argv)
  */
 int main(int argc, char **argv)
 {
-    int t_config = 0;
+    int test_config = 0;
     int c = 0, m_queue = 0;
     char *ut_str = NULL;
 
     char *dir = DEFAULTDIR;
-    // TODO: delete or implement
-    char *user __attribute__((unused)) = USER;
-    // TODO: delete or implement
-    char *group __attribute__((unused)) = GROUPGLOBAL;
-
     char *cfg = DEFAULTCPATH;
 
     /* Setting the name */
@@ -141,16 +133,16 @@ int main(int argc, char **argv)
     active_responses = NULL;
     memset(prev_month, '\0', 4);
 
-    while((c = getopt(argc, argv, "VatvdhU:u:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "VatvdhU:D:c:")) != -1){
         switch(c){
 	    case 'V':
 		print_version();
 		break;
             case 't':
-                t_config = 1;
+                test_config = 1;
                 break;
             case 'h':
-                logtest_help(ARGV0);
+                help_logtest();
                 break;
             case 'd':
                 nowDebug();
@@ -159,16 +151,6 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -U needs an argument",ARGV0);
                 ut_str = optarg;
-                break;
-            case 'u':
-                if(!optarg)
-                    ErrorExit("%s: -u needs an argument",ARGV0);
-                user = optarg;
-                break;
-            case 'g':
-                if(!optarg)
-                    ErrorExit("%s: -g needs an argument",ARGV0);
-                group = optarg;
                 break;
             case 'D':
                 if(!optarg)
@@ -187,7 +169,7 @@ int main(int argc, char **argv)
                 full_output = 1;
                 break;
             default:
-                logtest_help(ARGV0);
+                help_logtest();
                 break;
         }
 
@@ -351,7 +333,7 @@ int main(int argc, char **argv)
     }
 
 
-    if(t_config == 1)
+    if(test_config == 1)
     {
         exit(0);
     }
@@ -430,6 +412,11 @@ void OS_ReadMSG(int m_queue, char *ut_str)
         ErrorExit(FTS_LIST_ERROR, ARGV0);
     }
 
+    /* Initialize the Accumulator */
+    if(!Accumulate_Init()) {
+        merror("accumulator: ERROR: Initialization failed");
+        exit(1);
+    }
 
     __crt_ftell = 1;
 
@@ -515,6 +502,11 @@ void OS_ReadMSG(int m_queue, char *ut_str)
             /* Decoding event. */
             DecodeEvent(lf);
 
+            /* Run accumulator */
+            if( lf->decoder_info->accumulate == 1 ) {
+                print_out("\n**ACCUMULATOR: LEVEL UP!!**\n");
+                lf = Accumulate(lf);
+            }
 
             /* Looping all the rules */
             rulenode_pt = OS_GetFirstRule();

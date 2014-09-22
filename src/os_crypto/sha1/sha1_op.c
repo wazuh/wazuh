@@ -29,13 +29,13 @@
 
 
 
-int OS_SHA1_File(char * fname, char * output)
+int OS_SHA1_File(const char * fname, os_sha1 output)
 {
     SHA_CTX c;
     FILE *fp;
     unsigned char buf[2048 +2];
     unsigned char md[SHA_DIGEST_LENGTH];
-    int n;
+    size_t n;
 
     memset(output,0, 65);
     buf[2049] = '\0';
@@ -48,7 +48,7 @@ int OS_SHA1_File(char * fname, char * output)
     while((n = fread(buf, 1, 2048, fp)) > 0)
     {
         buf[n] = '\0';
-        SHA1_Update(&c,buf,(unsigned long)n);
+        SHA1_Update(&c,buf,n);
     }
 
     SHA1_Final(&(md[0]),&c);

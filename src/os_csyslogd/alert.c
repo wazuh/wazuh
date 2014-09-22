@@ -150,8 +150,14 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
 		al_data->comment,
 		(al_data->level > 10) ? 10 : al_data->level,
                 __shost, al_data->location);
-
         field_add_string(syslog_msg, OS_SIZE_2048, " src=%s", al_data->srcip );
+        field_add_int(syslog_msg, OS_SIZE_2048, " dpt=%d", al_data->dstport );
+        field_add_int(syslog_msg, OS_SIZE_2048, " spt=%d", al_data->srcport );
+        field_add_string(syslog_msg, OS_SIZE_2048, " fname=%s", al_data->filename );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dhost=%s", al_data->dstip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " shost=%s", al_data->srcip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
 #ifdef GEOIP
         field_add_string(syslog_msg, OS_SIZE_2048, " cs3Label=SrcCity cs3=%s", al_data->geoipdatasrc );
         field_add_string(syslog_msg, OS_SIZE_2048, " cs4Label=DstCity cs4=%s", al_data->geoipdatadst );
@@ -160,10 +166,11 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
         field_add_truncated(syslog_msg, OS_SIZE_2048, " msg=%s", al_data->log[0], 2 );
         if (al_data->new_md5 && al_data->new_sha1) {
-            field_add_string(syslog_msg, OS_SIZE_2048, " Previous MD5: %s", al_data->old_md5 );
-            field_add_string(syslog_msg, OS_SIZE_2048, " Current MD5: %s", al_data->new_md5 );
-            field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA1: %s", al_data->old_sha1 );
-            field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA1: %s", al_data->new_sha1 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " cs1Label=OldMD5 cs1=%s", al_data->old_md5);
+            field_add_string(syslog_msg, OS_SIZE_2048, " cs2Label=NewMDG cs2=%s", al_data->new_md5);
+            field_add_string(syslog_msg, OS_SIZE_2048, " oldFileHash=%s", al_data->old_sha1 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " fhash=%s", al_data->new_sha1 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " fileHash=%s", al_data->new_sha1 );
         }
     }
     else if(syslog_config->format == JSON_CSYSLOG)

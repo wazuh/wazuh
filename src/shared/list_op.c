@@ -23,7 +23,7 @@ OSList *OSList_Create()
 {
     OSList *my_list;
 
-    my_list = calloc(1, sizeof(OSList));
+    my_list = (OSList *) calloc(1, sizeof(OSList));
     if(!my_list)
         return(NULL);
 
@@ -64,7 +64,7 @@ int OSList_SetMaxSize(OSList *list, int max_size)
 /* Set the pointer to the function to free the memory
  * data.
  */
-int OSList_SetFreeDataPointer(OSList *list, void *free_data_function)
+int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *))
 {
     if(!list)
     {
@@ -267,7 +267,7 @@ int OSList_AddData(OSList *list, void *data)
 
 
     /* Allocating memory for new node */
-    newnode = calloc(1, sizeof(OSListNode));
+    newnode = (OSListNode *) calloc(1, sizeof(OSListNode));
     if(!newnode)
     {
         merror(MEM_ERROR, __local_name);
@@ -303,7 +303,7 @@ int OSList_AddData(OSList *list, void *data)
      */
     if(list->max_size)
     {
-        if(list->currently_size > list->max_size)
+        if(list->currently_size > list->max_size && list->first_node->next)
         {
             /* Remove first node */
             newnode = list->first_node->next;
