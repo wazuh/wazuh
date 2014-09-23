@@ -40,8 +40,6 @@
 #include "eventinfo.h"
 #include "analysisd.h"
 
-#include "picviz.h"
-
 
 
 /** External functions prototypes (only called here) **/
