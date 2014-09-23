@@ -17,7 +17,7 @@ LOCAL = *.c
 
 OBJS = ${OS_CONFIG} ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_XML}
 
-default:
+${NAME}: ${LOCAL} ${OBJS}
 		@echo "Compiling DB support with: ${DBCHECK}"
 		${CC} ${CFLAGS} ${OS_LINK} ${DBFLAGS} ${LOCAL} ${OBJS} -o ${NAME} ${CDB}
 clean:
