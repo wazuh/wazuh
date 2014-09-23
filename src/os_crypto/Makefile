@@ -6,7 +6,7 @@ NAME=os_crypto
 
 include ../Config.Make
 
-os_crypto:
+os_crypto.a:
 		@cd blowfish; make
 		@cd md5; make
 		@cd sha1; make

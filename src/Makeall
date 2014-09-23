@@ -257,7 +257,6 @@ for i in ${DIRECTORIES}; do
         exit 1;
     fi    
     if [ "X${ARGV}" = "Xclean" ]; then
-        echo "Entering $i"
         make clean
     elif [ "X${ARGV}" = "Xbuild" ]; then
         make build
@@ -279,10 +278,6 @@ for i in ${DIRECTORIES}; do
             exit 1;
         fi    
     else
-        echo ""
-        echo ""
-        echo " *** Making $i *** "
-        echo ""
         make
         if [ $? != 0 ]; then
             echo ""

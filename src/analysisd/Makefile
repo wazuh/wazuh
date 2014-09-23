@@ -16,27 +16,27 @@ DBS     = cdb/cdb.a cdb/cdb_make.a
 loga_OBJS = ${LOCAL} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE} ${OS_CJSON} ${CZEROMQ_OUTPUT}
 lists_OBJS = lists_make.c ${OTHER} ${PLUGINS} ${DBS} ${ALERTS} ${OS_XML} ${OS_REGEX} ${OS_NET} ${OS_SHARED} ${OS_ZLIB} ${CPRELUDE} ${OS_CJSON} ${CZEROMQ_OUTPUT}
 
-all: logaudit logtest makelists
+all: ${NAME} ossec-logtest ossec-makelists 
 
-logaudit:
+${NAME}: *.c output/*.c 
 	    cd ./cdb; make
 		cd ./alerts; make
 		cd ./decoders; make
 		cd ./compiled_rules; make;
 		$(CC) $(CFLAGS) ${OS_LINK} -I./ ${loga_OBJS} ${CGEOIPLIB} -o ${NAME}
 
-logtest:
-	    cd ./cdb; make
+ossec-logtest: testrule.c 
+		cd ./cdb; make
 		cd ./decoders; make logtest
 		cd ./compiled_rules; make;
 		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ testrule.c ${loga_OBJS} ${CGEOIPLIB} -o ossec-logtest
 
-makelists:
+ossec-makelists: makelists.c lists_make.c 
 		cd ./cdb; make
 		$(CC) $(CFLAGS) ${OS_LINK} -DTESTRULE -I./ makelists.c ${lists_OBJS} ${CGEOIPLIB} -o ossec-makelists
 
 clean:
-	    cd ./cdb; make clean
+		cd ./cdb; make clean
 		cd ./alerts; make clean
 		cd ./decoders; make clean
 		cd ./compiled_rules; make clean
