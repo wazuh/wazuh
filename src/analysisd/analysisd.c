@@ -54,7 +54,7 @@
 #endif
 
 #ifdef ZEROMQ_OUTPUT
-#include "zeromq_output.h"
+#include "output/zeromq.h"
 #endif
 
 /** Global data **/

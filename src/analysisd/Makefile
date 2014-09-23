@@ -7,7 +7,7 @@ NAME=ossec-analysisd
 
 include ../Config.Make
 
-OTHER   = stats.c lists.c lists_list.c rules.c rules_list.c config.c fts.c accumulator.c dodiff.c eventinfo.c eventinfo_list.c cleanevent.c active-response.c picviz.c output/prelude.c zeromq_output.c compiled_rules/*.o ${OS_CONFIG}
+OTHER   = stats.c lists.c lists_list.c rules.c rules_list.c config.c fts.c accumulator.c dodiff.c eventinfo.c eventinfo_list.c cleanevent.c active-response.c picviz.c output/prelude.c output/zeromq.c compiled_rules/*.o ${OS_CONFIG}
 LOCAL   = analysisd.c ${OTHER}
 PLUGINS = decoders/decoders.a
 ALERTS  = alerts/alerts.a
