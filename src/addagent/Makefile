@@ -9,7 +9,7 @@ include $(PT)Config.Make
 
 OBJS = ${OS_SHARED} ${OS_REGEX} ${OS_ZLIB} ${OS_CRYPTO} ${OS_NET}
 
-handler:
+${NAME}: *.c ${OBJS}
 		$(CC) $(CFLAGS) ${OS_LINK} *.c $(OBJS) -o manage_agents
 clean:
 		$(CLEAN) manage_agents
