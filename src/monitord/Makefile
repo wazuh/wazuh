@@ -10,7 +10,7 @@ LOCAL = compress_log.c main.c manage_files.c monitor_agents.c monitord.c sign_lo
 
 OBJS = ${OS_CONFIG} ${OS_SHARED} ${OS_NET} ${OS_REGEX} ${OS_XML} ${OS_CRYPTO} ${OS_ZLIB}
 
-mmonitor:
+${NAME}: ${LOCAL} 
 		${CC} ${CFLAGS} ${OS_LINK} ${LOCAL} ${OBJS} -o ${NAME}
 clean:
 		${CLEAN}
