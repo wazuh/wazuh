@@ -12,7 +12,7 @@ CFLAGS = -g -Wall -I${PT} -I${PT}headers ${CEXTRA} ${DEXTRA} ${EEXTRA} ${FEXTRA}
 
 SOURCES = *.c
 OBJECTS = *.o
-CLEAN = rm -f -r ${OBJECTS} ${NAME} *.a core core.* *.core *.gcda *.gcno
+CLEAN = rm -f -r ${OBJECTS} ${NAME} *.a core core.* *.core *.gcda *.gcno *.dSYM
 BUILD = cp -pr ${NAME} ${PT}../bin
 BUILDLIB = ar -crus
 
