@@ -21,6 +21,10 @@
 
 #define __FILE_H
 
+#include <time.h>
+
+
+
 #define OS_PIDFILE	"/var/run"
 
 /* Set the program name. Must be done before **anything** else */
