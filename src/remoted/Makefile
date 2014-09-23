@@ -9,7 +9,7 @@ include ../Config.Make
 
 rlog_OBJS = *.c ${OS_CONFIG} ${OS_ZLIB} ${OS_CRYPTO} ${OS_SHARED} ${OS_NET} ${OS_XML} ${OS_REGEX} ${TEXTRA}
 
-remoted:
+${NAME}:
 		${CC} ${CFLAGS} ${OS_LINK} ${rlog_OBJS} -o ${NAME}
 
 clean:
