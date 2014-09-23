@@ -15,7 +15,7 @@
 #define PTHREADS_OP_H
 
 #ifndef WIN32
-int CreateThread(void *function_pointer(void *data), void *data);
+int CreateThread(void *function_pointer(void *data), void *data) __attribute__((nonnull(1)));
 #endif
 
 #endif

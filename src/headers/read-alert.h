@@ -49,8 +49,8 @@ typedef struct _alert_data
 }alert_data;
 
 
-alert_data *GetAlertData(int flag, FILE *fp);
-void FreeAlertData(alert_data *al_data);
+alert_data *GetAlertData(int flag, FILE *fp) __attribute__((nonnull));
+void FreeAlertData(alert_data *al_data) __attribute__((nonnull));
 
 
 #endif

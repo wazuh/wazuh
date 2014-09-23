@@ -21,7 +21,7 @@
 /* File queue */
 typedef struct _file_queue
 {
-    int last_change;
+    time_t last_change;
     int year;
     int day;
     int flags;
@@ -36,8 +36,8 @@ typedef struct _file_queue
 
 /*** Prototypes */
 #include "read-alert.h"
-int Init_FileQueue(file_queue *fileq, struct tm *p, int flags);
+int Init_FileQueue(file_queue *fileq, const struct tm *p, int flags) __attribute__((nonnull));
 
-alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout);
+alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int timeout) __attribute__((nonnull));
 
 #endif

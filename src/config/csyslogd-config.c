@@ -18,18 +18,18 @@
 #include "config.h"
 
 
-int Read_CSyslog(XML_NODE node, void *config, void *config2)
+int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *config2)
 {
-    int i = 0,s = 0;
+    unsigned int i = 0,s = 0;
 
     /* XML definitions */
-    char *xml_syslog_server = "server";
-    char *xml_syslog_port = "port";
-    char *xml_syslog_format = "format";
-    char *xml_syslog_level = "level";
-    char *xml_syslog_id = "rule_id";
-    char *xml_syslog_group = "group";
-    char *xml_syslog_location = "event_location";
+    const char *xml_syslog_server = "server";
+    const char *xml_syslog_port = "port";
+    const char *xml_syslog_format = "format";
+    const char *xml_syslog_level = "level";
+    const char *xml_syslog_id = "rule_id";
+    const char *xml_syslog_group = "group";
+    const char *xml_syslog_location = "event_location";
 
 
     GeneralConfig *gen_config = (GeneralConfig *)config;
@@ -66,32 +66,32 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
         if(!node[i]->element)
         {
             merror(XML_ELEMNULL, ARGV0);
-            return(OS_INVALID);
+            goto fail;
         }
         else if(!node[i]->content)
         {
             merror(XML_VALUENULL, ARGV0, node[i]->element);
-            return(OS_INVALID);
+            goto fail;
         }
         else if(strcmp(node[i]->element, xml_syslog_level) == 0)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
-                return(OS_INVALID);
+                goto fail;
             }
 
-            syslog_config[s]->level = atoi(node[i]->content);
+            syslog_config[s]->level = (unsigned int) atoi(node[i]->content);
         }
         else if(strcmp(node[i]->element, xml_syslog_port) == 0)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
-                return(OS_INVALID);
+                goto fail;
             }
 
-            syslog_config[s]->port = atoi(node[i]->content);
+            syslog_config[s]->port = (unsigned int) atoi(node[i]->content);
         }
         else if(strcmp(node[i]->element, xml_syslog_server) == 0)
         {
@@ -99,7 +99,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
         }
         else if(strcmp(node[i]->element, xml_syslog_id) == 0)
         {
-            int r_id = 0;
+            unsigned int r_id = 0;
             char *str_pt = node[i]->content;
 
             while(*str_pt != '\0')
@@ -117,9 +117,9 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
                  */
                 else if(isdigit((int)*str_pt))
                 {
-                    int id_i = 0;
+                    unsigned int id_i = 0;
 
-                    r_id = atoi(str_pt);
+                    r_id = (unsigned int) atoi(str_pt);
                     debug1("%s: DEBUG: Adding '%d' to syslog alerting",
                            ARGV0, r_id);
 
@@ -130,10 +130,10 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
                     }
 
                     os_realloc(syslog_config[s]->rule_id,
-                               (id_i +2) * sizeof(int),
+                               (id_i +2) * sizeof(unsigned int),
                                syslog_config[s]->rule_id);
 
-                    syslog_config[s]->rule_id[id_i + i] = 0;
+                    syslog_config[s]->rule_id[id_i + 1] = 0;
                     syslog_config[s]->rule_id[id_i] = r_id;
 
                     str_pt = strchr(str_pt, ',');
@@ -185,7 +185,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
             else
             {
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
-                return(OS_INVALID);
+                goto fail;
             }
         }
         else if(strcmp(node[i]->element, xml_syslog_location) == 0)
@@ -196,7 +196,7 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
             {
                 merror(REGEX_COMPILE, ARGV0, node[i]->content,
                        syslog_config[s]->location->error);
-                return(-1);
+                goto fail;
             }
         }
         else if(strcmp(node[i]->element, xml_syslog_group) == 0)
@@ -207,13 +207,13 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
             {
                 merror(REGEX_COMPILE, ARGV0, node[i]->content,
                        syslog_config[s]->group->error);
-                return(-1);
+                goto fail;
             }
         }
         else
         {
             merror(XML_INVELEM, ARGV0, node[i]->element);
-            return(OS_INVALID);
+            goto fail;
         }
         i++;
     }
@@ -223,12 +223,35 @@ int Read_CSyslog(XML_NODE node, void *config, void *config2)
     if(!syslog_config[s]->server)
     {
         merror(XML_INV_CSYSLOG, ARGV0);
-        return(OS_INVALID);
+        goto fail;
     }
 
 
     gen_config->data = syslog_config;
     return(0);
+
+    fail:
+    i = 0;
+    while(syslog_config[i])
+    {
+        free(syslog_config[i]->server);
+
+        if(syslog_config[i]->group)
+        {
+            OSMatch_FreePattern(syslog_config[i]->group);
+        }
+
+        if(syslog_config[i]->location)
+        {
+            OSMatch_FreePattern(syslog_config[i]->location);
+        }
+
+        free(syslog_config[i]->rule_id);
+
+        ++i;
+    }
+    free(syslog_config);
+    return (OS_INVALID);
 }
 
 

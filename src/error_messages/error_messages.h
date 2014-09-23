@@ -76,7 +76,7 @@
 #define RULES_ERROR	    "%s(1220): ERROR: Error loading the rules: '%s'."
 #define LISTS_ERROR     "%s(1221): ERROR: Error loading the list: '%s'."
 #define QUEUE_SEND      "%s(1224): ERROR: Error sending message to queue."
-#define SIGNAL_RECV     "%s(1225): INFO: SIGNAL Received. Exit Cleaning..."
+#define SIGNAL_RECV     "%s(1225): INFO: SIGNAL (%d) Received. Exit Cleaning..."
 #define XML_ERROR       "%s(1226): ERROR: Error reading XML file '%s': %s (line %d)."
 #define XML_ERROR_VAR   "%s(1227): ERROR: Error applying XML variables '%s': %s."
 #define XML_NO_ELEM     "%s(1228): ERROR: Element '%s' without any option."

@@ -18,7 +18,7 @@
 /* Add pointer to array. */
 void **os_AddPtArray(void *pt, void **array)
 {
-    int i = 0;
+    size_t i = 0;
     void **ret = NULL;
 
     if(array)
@@ -29,7 +29,7 @@ void **os_AddPtArray(void *pt, void **array)
         }
     }
 
-    os_realloc(array, (i + 2)*sizeof(char *), ret);
+    os_realloc(array, (i + 2)*sizeof(void *), ret);
     ret[i] = pt;
     ret[i + 1] = NULL;
 
@@ -38,9 +38,9 @@ void **os_AddPtArray(void *pt, void **array)
 
 
 /* Add a string to an array. */
-char **os_AddStrArray(char *str, char **array)
+char **os_AddStrArray(const char *str, char **array)
 {
-    int i = 0;
+    size_t i = 0;
     char **ret = NULL;
     if(array)
     {
@@ -59,7 +59,7 @@ char **os_AddStrArray(char *str, char **array)
 
 
 /* Check if String is on array (Must be NULL terminated) */
-int os_IsStrOnArray(char *str, char **array)
+int os_IsStrOnArray(const char *str, char **array)
 {
     if(!str || !array)
     {
@@ -113,7 +113,7 @@ void os_FreeArray(char *ch1, char **ch2)
  * on it.
  * It will return the new string on success or NULL on memory error.
  */
-char *os_LoadString(char *at, char *str)
+char *os_LoadString(char *at, const char *str)
 {
     if(at == NULL)
     {
@@ -127,10 +127,10 @@ char *os_LoadString(char *at, char *str)
     else /*at is not null. Need to reallocat its memory and copy str to it*/
     {
         char *newat;
-        int strsize = strlen(str);
-        int finalsize = strsize + strlen(at) + 1;
+        size_t strsize = strlen(str);
+        size_t finalsize = strsize + strlen(at) + 1;
 
-        newat = realloc(at, finalsize*sizeof(char));
+        newat = (char *) realloc(at, finalsize*sizeof(char));
         if(newat == NULL)
         {
             free(at);

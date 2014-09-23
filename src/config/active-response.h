@@ -43,6 +43,6 @@ typedef struct _ar
 
 
 /* Active response flag */
-int ar_flag;
+extern int ar_flag;
 
 #endif
