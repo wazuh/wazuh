@@ -47,7 +47,7 @@
 #include "accumulator.h"
 #include "analysisd.h"
 
-#include "picviz.h"
+#include "output/picviz.h"
 
 #ifdef PRELUDE
 #include "output/prelude.h"
