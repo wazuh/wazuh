@@ -1,99 +1,175 @@
-# Makefile
-# Daniel B. Cid <dcid@sourcefire.com>||<daniel@underlinux.com.br>
-# http://www.ossec.net/hids/
 
-none:
-		@echo "Nothing selected ..."
-		@echo "\"make all\" to compile everything."
-		@echo "\"make server\" to build the server."
-		@echo "\"make local\" to build the local."
-		@echo "\"make agent\" to build the agent."
-		@echo "\"make libs\" to build the libraries only."
-		@echo "\"make clean\" to clean anything built."
-		@echo "\"make setagent\" to set agent install."
-		@echo "\"make setlocal\" to set local install."
-		@echo "\"make setclang\" to use clang for building ossec."
-		@echo "\"make unsetclang\" to use gcc for building ossec."
-		@echo "\"make setprelude\" to enable prelude output."
-		@echo "\"make setdb\" to enable database support."
-		@echo "\"make unsetdb\" to disable database support."
-		@echo "\"make setoneway\" to enable one-way connection to the manager."
-		@echo "\"make setgeoip\" to enable source IP geolocalization."
 
-clean:
-		@/bin/sh ./Makeall clean
-		rm -f ../bin/*
-		rmdir ../bin/
-		rm -f isbigendian
-		rm -rf win-pkg/
-		rm -f Config.OS
-		rm -f win32/LICENSE.txt
-		rm -f win32/help_win.txt
-		rm -f win32/internal_options-win.conf
-		rm -f win32/local_internal_options-win.conf
-		rm -f win32/ossec-win.conf
-		rm -f win32/restart-ossec.cmd
-		rm -f win32/route-null.cmd
+uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
-all:
-		@/bin/sh ./Makeall all
-		
+
+BUILDLIB=ar -crus
+
+EXTERNAL_JSON="external/cJSON/"
+EXTERNAL_LUA="external/lua/"
+LUA_PLAT="posix"
+MAX=2048
+
+
+
+DEFINES=-DMAX_AGENTS=${MAX}
+
+
+ifeq ($(uname_S),Linux)
+		DEFINES+=-DUSEINOTIFY
+		DEFINES+=-DUSE_MAGIC
+		LIB_MAGIC="-lmagic"
+else 
+ifeq ($(uname_S),AIX)
+		DEFINES+=-DAIX
+		DEFINES+=-DHIGHFIRST
+		PATH=${PATH}:/usr/vac/bin
+
+else 
+ifeq ($(uname_S),SunOS)
+		DEFINES+=-DSOLARIS
+		DEFINES+=-DHIGHFIRST
+		IEXTRA="-lsocket -lnsl -lresolv"
+		LUA_PLAT="solaris"
+
+else 
+ifeq ($(uname_S),Darwin)
+		DEFINES+=-DDarwin
+		DEFINES+=-DHIGHFIRST
+		LUA_PLAT="macosx"
+
+else 
+ifeq ($(uname_S),FreeBSD)
+		DEFINES+=-DFreeBSD
+		TEXTRA="-pthread"
+		LUA_PLAT="freebsd"
+else 
+ifeq ($(uname_S),HP-UX)
+		DEFINES+=-DHPUX
+		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
+		DEFINES+=-DHIGHFIRST
+		DEFINES+=-D_REENTRANT
+
+else 
+	    # Unknow platform 
+
+
+endif # HPUX
+endif # FreeBSD 
+endif # Darwin
+endif # SunOS
+endif # AIX 
+endif # Linux 
+
+
+CFLAGS+=${DEFINES}
+CFLAGS+=-g -Wall -I./ -I./headers 
+
+all: deps ossec-maild
+
+#### External ###### 
+deps:
+		cd ${EXTERNAL_JSON} && make ossec 
+		cd external && make zlib
+		cd ${EXTERNAL_LUA} && make ${LUA_PLAT} 
+
+#### os_xml ######## 
+os_xml_c= $(wildcard os_xml/*.c)
+os_xml_o = $(os_xml_c:.c=.o)
+
+os_xml/%.o: os_xml/%.c 
+		${CC} ${CFLAGS} -c $^ -o $@
+
+os_xml.a: ${os_xml_o} 
+		${BUILDLIB} os_xml.a $^
+
+
+#### os_regex ######
+
+os_regex_c= $(wildcard os_regex/*.c)
+os_regex_o = $(os_regex_c:.c=.o)
+
+os_regex/%.o: os_regex/%.c 
+		${CC} ${CFLAGS} -c $^ -o $@
+
+os_regex.a: ${os_regex_o}
+		${BUILDLIB} os_regex.a $^
+
+#### os_net ##########
+
+os_net_c = $(wildcard os_net/*.c)
+os_net_o = $(os_net_c:.c=.o)
+
+os_net/%.o: os_net/%.c 
+		${CC} ${CFLAGS} -c $^ -o $@
+
+os_net.a: ${os_net_o}
+		${BUILDLIB} os_net.a $^ 
+
+#### Shared ##########
+
+shared_c = $(wildcard shared/*.c)
+shared_o = $(shared_c:.c=.o)
+
+shared/%.o: shared/%.c 
+		${CC} ${CFLAGS} -DARGV0=\"shared-libs\" -c $^ -o $@
+
+shared.a: ${shared_o}
+		${BUILDLIB} shared.a $^ 
+
+#### Config ########## 
+
+config_c = $(wildcard config/*.c)
+config_o = $(config_c:.c=.o)
+
+config/%.o: config/%.c 
+		${CC} ${CFLAGS} -DARGV0=\"config-libs\" -c $^ -o $@
+
+config.a: ${config_o}
+		${BUILDLIB} config.a $^ 
+
+
+objs = config.a shared.a os_net.a os_regex.a os_xml.a
+
+#### os_mail #########
+
+os_maild_c = $(wildcard os_maild/*.c)
+os_maild_o = $(os_maild_c:.c=.o)
+
+os_maild/%.o: os_maild/%.c 
+		${CC} ${CFLAGS} -DARGV0=\"ossec-maild\" -c $^ -o $@
+
+ossec-maild: ${objs} ${os_maild_o} 
+		${CC} ${CFLAGS} ${IEXTRA} ${os_maild_o} ${objs} -o $@
+
+#### os_dbd ########## 
+
+
+
 test:
-		@/bin/sh ./Makeall test
+		cd tests/ && make 
 
-build:
-		@/bin/sh ./Makeall build
+check: test 
 
-libs:
-		@/bin/sh ./Makeall libs
 
-server:
-		@/bin/sh ./InstallServer.sh
+clean:  clean-test clean-interals clean-external 
 
-local:
-		@/bin/sh ./InstallServer.sh local
+clean-test: 
+		cd tests/ && make clean 
 
-agent:
-		@/bin/sh ./InstallAgent.sh
+clean-external:
+		cd ${EXTERNAL_JSON} && make clean
+		cd external && make clean
+		cd ${EXTERNAL_LUA} && make clean
 
-windows_agent:
-		( cd win32 && /bin/sh ./gen_win.sh )
-		( cd win-pkg && /bin/sh ./make.sh )
 
-setagent:
-		@echo "CEXTRA=-DCLIENT" >> ./Config.OS
+clean-interals: 
+		rm -f ${os_xml_o} os_xml.a 
+		rm -f ${os_regex_o} os_regex.a 
+		rm -f ${os_net_o} os_net.a 
+		rm -f ${shared_o} shared.a 
+		rm -f ${config_o} config.a 
+		rm -rf ${os_maild_o} ossec-maild
 
-setclang:
-		@mv Config.Make Config.Make.backup
-		@sed -e "s/^CC?=.*/CC=clang/g" Config.Make.backup > Config.Make
-		@rm Config.Make.backup
 
-unsetclang:
-		@mv Config.Make Config.Make.backup
-		@sed -e "s/^CC=clang/CC?=cc/g" Config.Make.backup > Config.Make
-		@rm Config.Make.backup
 
-setprelude:
-		@echo "CPRELUDE=-DPRELUDE -lprelude `libprelude-config --pthread-cflags` `libprelude-config --libs`" >> ./Config.OS
-
-setgeoip:
-		@echo "CGEOIP=-DGEOIP" >> ./Config.OS
-		@echo "CGEOIPLIB=-I/usr/local/include -L/usr/local/lib -lGeoIP" >> ./Config.OS
-
-setdb:
-		@cd ./os_dbd; echo "CDB=`./dbmake.sh`" >> ../Config.OS;
-setmaxagents:
-		@/bin/sh ./Makeall setmaxagents
-unsetdb:
-		@echo "CDB=" >> ./Config.OS;
-setlocal:
-		@echo "CEXTRA=-DLOCAL" >> ./Config.OS
-
-setfullsubject:
-		@echo "FEXTRA=-DCLEANFULL" >> ./Config.OS
-
-setoneway:
-		@echo "FEXTRA=-DONEWAY" >> ./Config.OS
-
-setzeromq:
-		@echo "CZEROMQ_OUTPUT=-DZEROMQ_OUTPUT -lzmq -lczmq" >> ./Config.OS
