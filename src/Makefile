@@ -1,19 +1,20 @@
 
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+uname_S := $(shell sh -c ' 2>/dev/null || echo not')
+
+
+$(if $(wildcard /usr/include/openssl/*conf.h),,$(fatal You have not generated source code...))
 
 
 BUILDLIB=ar -crus
+
 
 EXTERNAL_JSON="external/cJSON/"
 EXTERNAL_LUA="external/lua/"
 LUA_PLAT="posix"
 MAX=2048
-
-
-
 DEFINES=-DMAX_AGENTS=${MAX}
-
 
 ifeq ($(uname_S),Linux)
 		DEFINES+=-DUSEINOTIFY
@@ -67,11 +68,21 @@ CFLAGS+=-g -Wall -I./ -I./headers
 
 all: deps ossec-maild
 
+####################
 #### External ###### 
+####################
+
 deps:
 		cd ${EXTERNAL_JSON} && make ossec 
 		cd external && make zlib
 		cd ${EXTERNAL_LUA} && make ${LUA_PLAT} 
+
+
+####################
+#### OSSEC Libs 
+####################
+
+ossec_libs = config.a shared.a os_net.a os_regex.a os_xml.a os_crypto.a
 
 #### os_xml ######## 
 os_xml_c= $(wildcard os_xml/*.c)
@@ -126,10 +137,51 @@ config/%.o: config/%.c
 		${CC} ${CFLAGS} -DARGV0=\"config-libs\" -c $^ -o $@
 
 config.a: ${config_o}
-		${BUILDLIB} config.a $^ 
+		${BUILDLIB} $@ $^ 
+
+#### crypto ##########
+
+crypto_c = $(wildcard os_crypto/blowfish/*.c)
+crypto_c += $(wildcard os_crypto/md5/*.c)
+crypto_c += $(wildcard os_crypto/sha1/*.c)
+crypto_c += $(wildcard os_crypto/shared/*.c)
+crypto_c = $(filter-out main.c)
+
+crypto_blowfish_c = os_crypto/blowfish/bf_op.c \
+										os_crypto/blowfish/bf_skey.c \
+										os_crypto/blowfish/bf_enc.c
+crypto_blowfish_o = $(crypto_blowfish_c:.c=.o)
+
+os_crypto/blowfish/%.o: os_crypto/blowfish/%.c
+		${CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+
+crypto_md5_c = os_crypto/md5/md5.c \
+							 os_crypto/md5/md5_op.c
+crypto_md5_o = $(crypto_md5_c:.c=.o)
+
+os_crypto/md5/%.o: os_crypto/md5/%.c
+		${CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+
+crypto_sha1_c = os_crypto/sha1/sha1_op.c
+crypto_sha1_o = $(crypto_sha1_c:.c=.o)
+
+os_crypto/sha1/%.o: os_crypto/sha1/%.c
+		${CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+
+crypto_o = ${crypto_blowfish_o} ${crypto_md5_o} \
+					 ${crypto_blowfish_o}
+
+os_crypto.a: ${crypto_o}
+		${BUILDLIB} $@ $^
 
 
-objs = config.a shared.a os_net.a os_regex.a os_xml.a
+
+
+
+
+
+
+
 
 #### os_mail #########
 
@@ -139,14 +191,14 @@ os_maild_o = $(os_maild_c:.c=.o)
 os_maild/%.o: os_maild/%.c 
 		${CC} ${CFLAGS} -DARGV0=\"ossec-maild\" -c $^ -o $@
 
-ossec-maild: ${objs} ${os_maild_o} 
-		${CC} ${CFLAGS} ${IEXTRA} ${os_maild_o} ${objs} -o $@
+ossec-maild: ${ossec_libs} ${os_maild_o} 
+		${CC} ${CFLAGS} ${IEXTRA} ${os_maild_o} ${ossec_libs} -o $@
 
 #### os_dbd ########## 
 
 
 
-test:
+test: all 
 		cd tests/ && make 
 
 check: test 
@@ -169,7 +221,9 @@ clean-interals:
 		rm -f ${os_net_o} os_net.a 
 		rm -f ${shared_o} shared.a 
 		rm -f ${config_o} config.a 
-		rm -rf ${os_maild_o} ossec-maild
+		rm -f ${os_maild_o} ossec-maild
+		rm -f ${crypto_o}  os_crypto.a
+
 
 
 
