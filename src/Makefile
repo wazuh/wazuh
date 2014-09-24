@@ -5,7 +5,6 @@ uname_S := $(shell sh -c ' 2>/dev/null || echo not')
 
 
 
-BUILDLIB=ar -crus
 
 
 EXTERNAL_JSON="external/cJSON/"
@@ -60,7 +59,8 @@ endif # Linux
 
 
 CFLAGS+=${DEFINES}
-CFLAGS+=-g -Wall -I./ -I./headers 
+CFLAGS+=-g -Wall -pedantic -I./ -I./headers 
+BUILDLIB=ar -crus
 
 
 CCCOLOR="\033[34m"
@@ -79,7 +79,12 @@ endif
 OSSEC_CC=${QUIET_CC}${CC}
 OSSEC_LINK=${QUIET_LINK}${BUILDLIB}
 
-all: deps ossec-maild
+all:  deps \
+			ossec-maild \
+			ossec-csyslogd \
+			ossec-agentlessd \
+			ossec-execd \
+			ossec-logcollector
 
 ####################
 #### External ###### 
@@ -92,7 +97,7 @@ deps:
 
 
 ####################
-#### OSSEC Libs 
+#### OSSEC Libs ####
 ####################
 
 ossec_libs = config.a shared.a os_net.a \
@@ -126,10 +131,10 @@ os_net_c = $(wildcard os_net/*.c)
 os_net_o = $(os_net_c:.c=.o)
 
 os_net/%.o: os_net/%.c 
-		${OSSEC_CC} ${CFLAGS} -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
 
 os_net.a: ${os_net_o}
-		${OSSEC_LINK} os_net.a $^ 
+	${OSSEC_LINK} os_net.a $^ 
 
 #### Shared ##########
 
@@ -137,10 +142,10 @@ shared_c = $(wildcard shared/*.c)
 shared_o = $(shared_c:.c=.o)
 
 shared/%.o: shared/%.c 
-		${OSSEC_CC} ${CFLAGS} -DARGV0=\"shared-libs\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"shared-libs\" -c $^ -o $@
 
 shared.a: ${shared_o}
-		${OSSEC_LINK} shared.a $^ 
+	${OSSEC_LINK} shared.a $^ 
 
 #### Config ########## 
 
@@ -148,18 +153,12 @@ config_c = $(wildcard config/*.c)
 config_o = $(config_c:.c=.o)
 
 config/%.o: config/%.c 
-		${OSSEC_CC} ${CFLAGS} -DARGV0=\"config-libs\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"config-libs\" -c $^ -o $@
 
 config.a: ${config_o}
-		${OSSEC_LINK} $@ $^ 
+	${OSSEC_LINK} $@ $^ 
 
 #### crypto ##########
-
-crypto_c = $(wildcard os_crypto/blowfish/*.c)
-crypto_c += $(wildcard os_crypto/md5/*.c)
-crypto_c += $(wildcard os_crypto/sha1/*.c)
-crypto_c += $(wildcard os_crypto/shared/*.c)
-crypto_c = $(filter-out main.c)
 
 crypto_blowfish_c = os_crypto/blowfish/bf_op.c \
 										os_crypto/blowfish/bf_skey.c \
@@ -167,26 +166,26 @@ crypto_blowfish_c = os_crypto/blowfish/bf_op.c \
 crypto_blowfish_o = $(crypto_blowfish_c:.c=.o)
 
 os_crypto/blowfish/%.o: os_crypto/blowfish/%.c
-		${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
 
 crypto_md5_c = os_crypto/md5/md5.c \
 							 os_crypto/md5/md5_op.c
 crypto_md5_o = $(crypto_md5_c:.c=.o)
 
 os_crypto/md5/%.o: os_crypto/md5/%.c
-		${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
 
 crypto_sha1_c = os_crypto/sha1/sha1_op.c
 crypto_sha1_o = $(crypto_sha1_c:.c=.o)
 
 os_crypto/sha1/%.o: os_crypto/sha1/%.c
-		${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
 
 crypto_o = ${crypto_blowfish_o} ${crypto_md5_o} \
 					 ${crypto_blowfish_o}
 
 os_crypto.a: ${crypto_o}
-		${OSSEC_LINK} $@ $^
+	${OSSEC_LINK} $@ $^
 
 
 #### os_mail #########
@@ -195,15 +194,62 @@ os_maild_c = $(wildcard os_maild/*.c)
 os_maild_o = $(os_maild_c:.c=.o)
 
 os_maild/%.o: os_maild/%.c 
-		${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-maild\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-maild\" -c $^ -o $@
 
 ossec-maild: ${ossec_libs} ${os_maild_o} 
-		${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_maild_o} ${ossec_libs} -o $@
+	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_maild_o} ${ossec_libs} -o $@
 
 #### os_dbd ########## 
 
+#### os_csyslogd #####
+
+os_csyslogd_c = $(wildcard os_csyslogd/*.c)
+os_csyslogd_o = $(os_csyslogd_c:.c=.o)
+
+os_csyslogd/%.o: os_csyslogd/%.c 
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-csyslogd\" -c $^ -o $@
+
+ossec-csyslogd: ${ossec_libs} ${os_csyslogd_o} 
+	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_csyslogd_o} \
+		${EXTERNAL_JSON}/libcJSON.a ${ossec_libs} -o $@
 
 
+#### agentlessd ####
+
+os_agentlessd_c = $(wildcard agentlessd/*.c)
+os_agentlessd_o = $(os_agentlessd_c:.c=.o)
+
+agentlessd/%.o: agentlessd/%.c 
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-agentlessd\" -c $^ -o $@
+
+ossec-agentlessd: ${ossec_libs} ${os_agentlessd_o} 
+	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_agentlessd_o} \
+		${ossec_libs} -o $@
+
+#### os_execd #####
+
+os_execd_c = $(wildcard os_execd/*.c)
+os_execd_o = $(os_execd_c:.c=.o)
+
+os_execd/%.o: os_execd/%.c 
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-execd\" -c $^ -o $@
+
+ossec-execd: ${ossec_libs} ${os_execd_o} 
+	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_execd_o} \
+		${EXTERNAL_JSON}/libcJSON.a ${ossec_libs} -o $@
+
+
+#### logcollectord ####
+
+os_logcollector_c = $(wildcard logcollector/*.c)
+os_logcollector_o = $(os_logcollector_c:.c=.o)
+
+logcollector/%.o: logcollector/%.c 
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-logcollector\" -c $^ -o $@
+
+ossec-logcollector: ${ossec_libs} ${os_logcollector_o} 
+	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_logcollector_o} \
+		${ossec_libs} -o $@
 
 
 
@@ -239,6 +285,10 @@ clean-interals:
 		rm -f ${config_o} config.a 
 		rm -f ${os_maild_o} ossec-maild
 		rm -f ${crypto_o}  os_crypto.a
+		rm -f ${os_csyslogd_o} ossec-csyslogd 
+		rm -f ${os_agentlessd_o} ossec-agentlessd
+		rm -f ${os_execd_o} ossec-execd
+		rm -f ${os_logcollector_o} ossec-logcollector
 
 
 
