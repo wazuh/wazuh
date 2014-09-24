@@ -19,29 +19,18 @@
 #include "global-config.h"
 #include "mail-config.h"
 
-
-void AssignIgnore_Global(char **ignores, void *configp)
-{
-    _Config *Config;
-
-    Config = (_Config *)configp;
-    if(Config)
-    {
-        Config->syscheck_ignore = ignores;
-    }
-}
-
+#include "config.h"
 
 /* GlobalConfSK v0.1: 2006/04/26
  * v0.1 Getting the ignore fields.
  */
-int Read_GlobalSK(XML_NODE node, void *configp, void *mailp)
+int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
-    int ign_size = 1;
-    char *xml_ignore = "ignore";
-    char *xml_auto_ignore = "auto_ignore";
-    char *xml_alert_new_files = "alert_new_files";
+    unsigned int ign_size = 1;
+    const char *xml_ignore = "ignore";
+    const char *xml_auto_ignore = "auto_ignore";
+    const char *xml_alert_new_files = "alert_new_files";
 
     _Config *Config;
 
@@ -113,7 +102,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, void *mailp)
         else if(strcmp(node[i]->element,xml_ignore) == 0)
         {
             ign_size++;
-            Config->syscheck_ignore =
+            Config->syscheck_ignore = (char **)
                 realloc(Config->syscheck_ignore, sizeof(char *)*ign_size);
             if(!Config->syscheck_ignore)
             {
@@ -139,40 +128,40 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     int i = 0;
 
     /* White list size */
-    int white_size = 1;
-    int hostname_white_size = 1;
-    int mailto_size = 1;
+    unsigned int white_size = 1;
+    unsigned int hostname_white_size = 1;
+    unsigned int mailto_size = 1;
 
 
     /* XML definitions */
-    char *xml_mailnotify = "email_notification";
-    char *xml_logall = "logall";
-    char *xml_integrity = "integrity_checking";
-    char *xml_rootcheckd = "rootkit_detection";
-    char *xml_hostinfo = "host_information";
-    char *xml_picviz = "picviz_output";
-    char *xml_picviz_socket = "picviz_socket";
-    char *xml_prelude = "prelude_output";
-    char *xml_prelude_profile = "prelude_profile";
-    char *xml_prelude_log_level = "prelude_log_level";
-    char *xml_zeromq_output = "zeromq_output";
-    char *xml_zeromq_output_uri = "zeromq_uri";
-    char *xml_stats = "stats";
-    char *xml_memorysize = "memory_size";
-    char *xml_white_list = "white_list";
-    char *xml_compress_alerts = "compress_alerts";
-    char *xml_custom_alert_output = "custom_alert_output";
+    const char *xml_mailnotify = "email_notification";
+    const char *xml_logall = "logall";
+    const char *xml_integrity = "integrity_checking";
+    const char *xml_rootcheckd = "rootkit_detection";
+    const char *xml_hostinfo = "host_information";
+    const char *xml_picviz = "picviz_output";
+    const char *xml_picviz_socket = "picviz_socket";
+    const char *xml_prelude = "prelude_output";
+    const char *xml_prelude_profile = "prelude_profile";
+    const char *xml_prelude_log_level = "prelude_log_level";
+    const char *xml_zeromq_output = "zeromq_output";
+    const char *xml_zeromq_output_uri = "zeromq_uri";
+    const char *xml_stats = "stats";
+    const char *xml_memorysize = "memory_size";
+    const char *xml_white_list = "white_list";
+    const char *xml_compress_alerts = "compress_alerts";
+    const char *xml_custom_alert_output = "custom_alert_output";
 
-    char *xml_emailto = "email_to";
-    char *xml_emailfrom = "email_from";
-    char *xml_emailidsname = "email_idsname";
-    char *xml_smtpserver = "smtp_server";
-    char *xml_mailmaxperhour = "email_maxperhour";
+    const char *xml_emailto = "email_to";
+    const char *xml_emailfrom = "email_from";
+    const char *xml_emailidsname = "email_idsname";
+    const char *xml_smtpserver = "smtp_server";
+    const char *xml_mailmaxperhour = "email_maxperhour";
 
 #ifdef GEOIP
     /* GeoIP */
-    char *xml_geoip_db_path = "geoip_db_path";
-    char *xml_geoip6_db_path = "geoip6_db_path";
+    const char *xml_geoip_db_path = "geoip_db_path";
+    const char *xml_geoip6_db_path = "geoip6_db_path";
 #endif
 
     _Config *Config;
@@ -316,19 +305,19 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
             if(Config)
             {
-                Config->prelude_log_level = atoi(node[i]->content);
+                Config->prelude_log_level = (u_int8_t) atoi(node[i]->content);
             }
         }
         /* ZeroMQ output */
         else if(strcmp(node[i]->element, xml_zeromq_output) == 0)
         {
             if(strcmp(node[i]->content, "yes") == 0)
-            { 
-                if(Config) Config->zeromq_output = 1; 
+            {
+                if(Config) Config->zeromq_output = 1;
             }
             else if(strcmp(node[i]->content, "no") == 0)
-            { 
-                if(Config) Config->zeromq_output = 0; 
+            {
+                if(Config) Config->zeromq_output = 0;
             }
             else
             {
@@ -371,7 +360,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
             if(Config)
             {
-                Config->integrity = atoi(node[i]->content);
+                Config->integrity = (u_int8_t) atoi(node[i]->content);
             }
         }
         /* rootcheck */
@@ -384,7 +373,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
             if(Config)
             {
-                Config->rootcheck = atoi(node[i]->content);
+                Config->rootcheck = (u_int8_t) atoi(node[i]->content);
             }
         }
         /* hostinfo */
@@ -397,7 +386,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
             if(Config)
             {
-                Config->hostinfo = atoi(node[i]->content);
+                Config->hostinfo = (u_int8_t) atoi(node[i]->content);
             }
         }
         /* stats */
@@ -410,7 +399,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
             if(Config)
             {
-                Config->stats = atoi(node[i]->content);
+                Config->stats = (u_int8_t) atoi(node[i]->content);
             }
         }
         else if(strcmp(node[i]->element, xml_memorysize) == 0)
@@ -431,14 +420,14 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             /* Windows do not need it */
             #ifndef WIN32
 
-            char *ip_address_regex =
+            const char *ip_address_regex =
              "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
              "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
 
             if(Config && OS_PRegex(node[i]->content, ip_address_regex))
             {
                 white_size++;
-                Config->white_list =
+                Config->white_list = (os_ip **)
                     realloc(Config->white_list, sizeof(os_ip *)*white_size);
                 if(!Config->white_list)
                 {
@@ -461,7 +450,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             else if(Config)
             {
                 hostname_white_size++;
-                Config->hostname_white_list =
+                Config->hostname_white_list = (OSMatch **)
                     realloc(Config->hostname_white_list,
                     sizeof(OSMatch *)*hostname_white_size);
 
@@ -508,7 +497,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             if(Mail)
             {
                 mailto_size++;
-                Mail->to = realloc(Mail->to, sizeof(char *)*mailto_size);
+                Mail->to = (char **) realloc(Mail->to, sizeof(char *)*mailto_size);
                 if(!Mail->to)
                 {
                     merror(MEM_ERROR, ARGV0);

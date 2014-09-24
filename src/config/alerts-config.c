@@ -16,18 +16,19 @@
 #include "shared.h"
 #include "global-config.h"
 
+#include "config.h"
 
-int Read_Alerts(XML_NODE node, void *configp, void *mailp)
+int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
 
     /* XML definitions */
-    char *xml_email_level = "email_alert_level";
-    char *xml_log_level = "log_alert_level";
+    const char *xml_email_level = "email_alert_level";
+    const char *xml_log_level = "log_alert_level";
 
 #ifdef GEOIP
     /* GeoIP */
-    char *xml_log_geoip = "use_geoip";
+    const char *xml_log_geoip = "use_geoip";
 #endif
 
     _Config *Config;
@@ -56,7 +57,7 @@ int Read_Alerts(XML_NODE node, void *configp, void *mailp)
                 return(OS_INVALID);
             }
 
-            Config->mailbylevel = atoi(node[i]->content);
+            Config->mailbylevel = (u_int8_t) atoi(node[i]->content);
         }
         /* Log alerts */
         else if(strcmp(node[i]->element, xml_log_level) == 0)
@@ -66,7 +67,7 @@ int Read_Alerts(XML_NODE node, void *configp, void *mailp)
                 merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
-            Config->logbylevel  = atoi(node[i]->content);
+            Config->logbylevel  = (u_int8_t) atoi(node[i]->content);
         }
 #ifdef GEOIP
 	/* Enable GeoIP */

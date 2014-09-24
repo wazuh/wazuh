@@ -295,16 +295,17 @@
 #endif /* WIN32 */
 
 
+const char *__local_name = "unset";
 
 /* Sets the name of the starting program */
-void OS_SetName(char *name)
+void OS_SetName(const char *name)
 {
     __local_name = name;
     return;
 }
 
 
-int File_DateofChange(char *file)
+time_t File_DateofChange(const char *file)
 {
     struct stat file_status;
 
@@ -314,7 +315,7 @@ int File_DateofChange(char *file)
     return (file_status.st_mtime);
 }
 
-int IsDir(char *file)
+int IsDir(const char *file)
 {
     struct stat file_status;
     if(stat(file,&file_status) < 0)
@@ -325,7 +326,7 @@ int IsDir(char *file)
 }
 
 
-int CreatePID(char *name, int pid)
+int CreatePID(const char *name, int pid)
 {
     char file[256];
     FILE *fp;
@@ -346,14 +347,18 @@ int CreatePID(char *name, int pid)
 
     fprintf(fp,"%d\n",pid);
 
-    chmod(file, 0640);
+    if(chmod(file, 0640) != 0)
+    {
+        fclose(fp);
+        return(-1);
+    }
 
     fclose(fp);
 
     return(0);
 }
 
-int DeletePID(char *name)
+int DeletePID(const char *name)
 {
     char file[256];
 
@@ -376,10 +381,10 @@ int DeletePID(char *name)
 }
 
 
-int UnmergeFiles(char *finalpath, char *optdir)
+int UnmergeFiles(const char *finalpath, const char *optdir)
 {
-    int i = 0, n = 0, ret = 1;
-    long files_size = 0;
+    int ret = 1;
+    size_t i = 0, n = 0, files_size = 0;
 
     char *files;
     char final_name[2048 +1];
@@ -410,7 +415,7 @@ int UnmergeFiles(char *finalpath, char *optdir)
 
 
         /* Getting file size and name. */
-        files_size = atol(buf +1);
+        files_size = (size_t) atol(buf +1);
 
         files = strchr(buf, '\n');
         if(files)
@@ -494,13 +499,13 @@ int UnmergeFiles(char *finalpath, char *optdir)
 }
 
 
-int MergeAppendFile(char *finalpath, char *files)
+int MergeAppendFile(const char *finalpath, const char *files)
 {
-    int n = 0;
+    size_t n = 0;
     long files_size = 0;
 
     char buf[2048 + 1];
-    char *tmpfile;
+    const char *tmpfile;
     FILE *fp;
     FILE *finalfp;
 
@@ -569,9 +574,10 @@ int MergeAppendFile(char *finalpath, char *files)
 
 
 
-int MergeFiles(char *finalpath, char **files)
+int MergeFiles(const char *finalpath, char **files)
 {
-    int i = 0, n = 0, ret = 1;
+    int i = 0, ret = 1;
+    size_t n = 0;
     long files_size = 0;
 
     char *tmpfile;
@@ -643,7 +649,7 @@ char *getuname()
     {
         char *ret;
 
-        ret = calloc(256, sizeof(char));
+        ret = (char *) calloc(256, sizeof(char));
         if(ret == NULL)
             return(NULL);
 
@@ -660,7 +666,7 @@ char *getuname()
     else
     {
         char *ret;
-        ret = calloc(256, sizeof(char));
+        ret = (char *) calloc(256, sizeof(char));
         if(ret == NULL)
             return(NULL);
 

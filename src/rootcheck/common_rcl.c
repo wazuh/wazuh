@@ -130,7 +130,6 @@ int _rkcl_is_name(char *buf)
  */
 int _rkcl_get_vars(OSStore *vars, char *nbuf)
 {
-    char *var_name;
     char *var_value;
     char *tmp;
 
@@ -167,12 +166,11 @@ int _rkcl_get_vars(OSStore *vars, char *nbuf)
 
 
     /* Dumping the variable options. */
-    os_strdup(nbuf, var_name);
     os_strdup(tmp, var_value);
 
 
     /* Adding entry to the storage */
-    OSStore_Put(vars, var_name, var_value);
+    OSStore_Put(vars, nbuf, var_value);
     return(1);
 }
 

@@ -47,14 +47,14 @@
 #include "accumulator.h"
 #include "analysisd.h"
 
-#include "picviz.h"
+#include "output/picviz.h"
 
 #ifdef PRELUDE
-#include "prelude.h"
+#include "output/prelude.h"
 #endif
 
 #ifdef ZEROMQ_OUTPUT
-#include "zeromq_output.h"
+#include "output/zeromq.h"
 #endif
 
 /** Global data **/

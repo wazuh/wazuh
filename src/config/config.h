@@ -39,7 +39,7 @@
 
 
 /* Main function to read the config */
-int ReadConfig(int modules, char *cfgfile, void *d1, void *d2);
+int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
 
 int Read_Global(XML_NODE node, void *d1, void *d2);
 int Read_GlobalSK(XML_NODE node, void *configp, void *mailp);
@@ -57,7 +57,6 @@ int Read_Client(XML_NODE node, void *d1, void *d2);
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_CReports(XML_NODE node, void *config1, void *config2);
-void AssignIgnore_Global(char **ignores, void *configp);
 
 
 /* General config, for passing blobs of data. */
