@@ -67,16 +67,16 @@ typedef struct _MailMsg
 
 
 /* Config function */
-int MailConf(int test_config, const char *cfgfile, MailConfig *Mail);
+int MailConf(int test_config, const char *cfgfile, MailConfig *Mail) __attribute__((nonnull));
 
 
 /* Receive the e-mail message */
 MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *mail,
-                      MailMsg **msg_sms);
+                      MailMsg **msg_sms) __attribute__((nonnull));
 
 /* Sends an email */
-int OS_Sendmail(MailConfig *mail, struct tm *p);
-int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg);
+int OS_Sendmail(MailConfig *mail, struct tm *p) __attribute__((nonnull));
+int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg) __attribute__((nonnull));
 int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, FILE *fp, struct tm *p);
 
 

@@ -25,7 +25,7 @@ typedef struct _MailNode
 
 
 /* Add an email to the list  */
-void OS_AddMailtoList(MailMsg *ml);
+void OS_AddMailtoList(MailMsg *ml) __attribute__((nonnull));
 
 /* Return the last event from the Event list
  * removing it from there
