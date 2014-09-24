@@ -11,7 +11,7 @@ EXTERNAL_JSON="external/cJSON/"
 EXTERNAL_LUA="external/lua/"
 LUA_PLAT="posix"
 MAX=2048
-DEFINES=-DMAX_AGENTS=${MAX}
+DEFINES=-DMAX_AGENTS=${MAX} -DOSSECHIDS
 
 ifeq ($(uname_S),Linux)
 		DEFINES+=-DUSEINOTIFY
@@ -59,7 +59,8 @@ endif # Linux
 
 
 CFLAGS+=${DEFINES}
-CFLAGS+=-g -Wall -pedantic -I./ -I./headers 
+CFLAGS+=-g -Wall -I./ -I./headers 
+#CFLAGS+=-pedantic
 BUILDLIB=ar -crus
 
 
@@ -84,7 +85,9 @@ all:  deps \
 			ossec-csyslogd \
 			ossec-agentlessd \
 			ossec-execd \
-			ossec-logcollector
+			ossec-logcollector \
+			ossec-remoted 
+
 
 ####################
 #### External ###### 
@@ -181,8 +184,17 @@ crypto_sha1_o = $(crypto_sha1_c:.c=.o)
 os_crypto/sha1/%.o: os_crypto/sha1/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
 
-crypto_o = ${crypto_blowfish_o} ${crypto_md5_o} \
-					 ${crypto_blowfish_o}
+crypto_shared_c = $(wildcard crypto/shared/*.c)
+crypto_shared_o = $(crypto_shared_c:.c=.o)
+
+os_crypto/shared/%.o: os_crypto/shared/%.c
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+
+
+crypto_o = ${crypto_blowfish_o} \
+					 ${crypto_md5_o} \
+					 ${crypto_sha1_o} \
+					 ${crypto_shared_o}
 
 os_crypto.a: ${crypto_o}
 	${OSSEC_LINK} $@ $^
@@ -251,6 +263,17 @@ ossec-logcollector: ${ossec_libs} ${os_logcollector_o}
 	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_logcollector_o} \
 		${ossec_libs} -o $@
 
+#### os_mail #########
+
+remoted_c = $(wildcard remoted/*.c)
+remoted_o = $(remoted_c:.c=.o)
+
+remoted/%.o: remoted/%.c 
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-remoted\" -c $^ -o $@
+
+ossec-remoted: ${ossec_libs} ${remoted_o} 
+	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${TEXTRA} -I./remoted ${ossec_libs} ${remoted_o} ${ossec_libs} -o $@
+
 
 
 ####################
@@ -289,6 +312,7 @@ clean-interals:
 		rm -f ${os_agentlessd_o} ossec-agentlessd
 		rm -f ${os_execd_o} ossec-execd
 		rm -f ${os_logcollector_o} ossec-logcollector
+		rm -f ${remoted_o} ossec-remoted
 
 
 
