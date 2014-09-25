@@ -10,22 +10,24 @@ PT=../
 include ${PT}Config.Make
 
 CHECK_LINK = -lcheck -lm -pthread -lrt
-CFLAGS_TEST = -std=gnu99 -fstrict-overflow -Wstrict-overflow=4 \
-	-fstrict-aliasing -Wstrict-aliasing=3 -Wabi -Wpedantic -Wall -Wextra \
-	-Wdouble-promotion -Wformat=2 -Winit-self -Wmissing-include-dirs \
-	-Wswitch-default -Wunused -Wsuggest-attribute=const \
-	-Wsuggest-attribute=noreturn -Wsuggest-attribute=format -Wfloat-equal \
-	-Wundef -Wshadow -Wbad-function-cast -Wcast-qual -Wcast-align \
-	-Wwrite-strings -Wconversion -Wlogical-op -Waggregate-return \
-	-Wstrict-prototypes -Wold-style-declaration -Wmissing-prototypes \
-	-Wmissing-declarations -Wredundant-decls -Wnested-externs -Winline \
-	-Wc++-compat -Winvalid-pch -Wswitch-enum \
+CFLAGS_TEST = -Waggregate-return -Wall -Wbad-function-cast -Wc++-compat -Wcast-align \
+	-Wcast-qual -Wconversion -Wextra -Wfloat-equal -Wformat=2 -Winit-self -Winline \
+	-Winvalid-pch -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs \
+	-Wmissing-prototypes -Wnested-externs -Wold-style-definition -Wredundant-decls \
+	-Wshadow -Wstack-protector -Wstrict-aliasing -Wstrict-overflow=4 \
+	-Wstrict-prototypes -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunused \
+	-Wwrite-strings \
 	-g -O0 --coverage \
 	-I../ \
 	-I../headers/ \
 	-DARGV0=\"ossec-test\"
 
 run_tests: build_tests
+	./test_os_zlib
+	./test_os_xml
+	./test_os_regex
+	./test_os_crypto
+	./test_os_net
 	./test_shared
 
 
