@@ -86,7 +86,8 @@ all:  deps \
 			ossec-agentlessd \
 			ossec-execd \
 			ossec-logcollector \
-			ossec-remoted 
+			ossec-remoted \
+			ossec-agentd
 
 
 ####################
@@ -294,7 +295,7 @@ logcollector/%.o: logcollector/%.c
 ossec-logcollector: ${ossec_libs} ${os_logcollector_o} 
 	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_logcollector_o} ${ossec_libs} -o $@
 
-#### os_mail #########
+#### remoted #########
 
 remoted_c = $(wildcard remoted/*.c)
 remoted_o = $(remoted_c:.c=.o)
@@ -304,6 +305,17 @@ remoted/%.o: remoted/%.c
 
 ossec-remoted: ${ossec_libs} ${remoted_o} os_zlib.a
 	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${remoted_o} ${ZLIB_LIB} ${ossec_libs} ${TEXTRA} -lpthread -o $@
+
+#### ossec-agentd ####
+
+client_agent_c = $(wildcard ./client-agent/*.c)
+client_agent_o = $(client_agent_c:.c=.o)
+
+client-agent/%.o: client-agent/%.c
+	${OSSEC_CC} ${CFLAGS} -I./client-agent ${ZLIB_INCLUDE} -DARGV0=\"ossec-agentd\" -c $^ -o $@
+
+ossec-agentd: ${ossec_libs} ${client_agent_o} os_zlib.a
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${client_agent_o} ${ZLIB_LIB} ${ossec_libs} ${TEXTRA} -lpthread -o $@
 
 
 
