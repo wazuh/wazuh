@@ -97,10 +97,30 @@ deps: libcJSON.a
 	cd external && make zlib
 	cd ${EXTERNAL_LUA} && make ${LUA_PLAT} 
 
+zlib:
+	cd external && make zlib
+
+
+#### zlib ##########
+
+ZLIB_LIB=external/libz.a 
+ZLIB_INCLUDE=-I ./external/zlib-1.2.8/
+
+os_zlib_c = os_zlib/os_zlib.c
+os_zlib_o = $(os_zlib_c:.c=.o)
+
+os_zlib/%.o: os_zlib/%.c
+	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
+
+os_zlib.a: ${os_zlib_o} 
+	${OSSEC_LINK} $@ $^
+
+ZLIB_LIB+=os_zlib.a 
+
 
 #### cJSON #########
 
-JSON_LIB=libcJSON.a -lm
+JSON_LIB=libcJSON.a
 JSON_INCLUDE=-I./${EXTERNAL_JSON} 
 
 cjson_c= ${EXTERNAL_JSON}cJSON.c
@@ -109,10 +129,9 @@ cjson_o = $(cjson_c:.c=.o)
 ${EXTERNAL_JSON}%.o: ${EXTERNAL_JSON}%.c
 	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
 
-
-
 libcJSON.a: ${cjson_o} 
 	${OSSEC_LINK} $@ $^
+
 
 
 ####################
@@ -238,7 +257,7 @@ os_csyslogd/%.o: os_csyslogd/%.c
 	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} -DARGV0=\"ossec-csyslogd\" -c $^ -o $@
 
 ossec-csyslogd: ${ossec_libs} ${os_csyslogd_o} ${JSON_LIB}
-	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} ${IEXTRA} ${os_csyslogd_o} ${JSON_LIB} ${ossec_libs} -o $@
+	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} ${IEXTRA} ${os_csyslogd_o} ${JSON_LIB} -lm ${ossec_libs} -o $@
 
 
 #### agentlessd ####
@@ -261,7 +280,7 @@ os_execd/%.o: os_execd/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-execd\" -c $^ -o $@
 
 ossec-execd: ${ossec_libs} ${os_execd_o} ${JSON_LIB}
-	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} ${IEXTRA} ${os_execd_o} ${JSON_LIB} ${ossec_libs} -o $@
+	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} ${IEXTRA} ${os_execd_o} ${JSON_LIB} -lm ${ossec_libs} -o $@
 
 
 #### logcollectord ####
@@ -281,10 +300,10 @@ remoted_c = $(wildcard remoted/*.c)
 remoted_o = $(remoted_c:.c=.o)
 
 remoted/%.o: remoted/%.c 
-	${OSSEC_CC} ${CFLAGS} -I./remoted -DARGV0=\"ossec-remoted\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -I./remoted ${ZLIB_INCLUDE} -DARGV0=\"ossec-remoted\" -c $^ -o $@
 
-ossec-remoted: ${ossec_libs} ${remoted_o} 
-	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${remoted_o} ${ossec_libs} ${TEXTRA} -lpthread -o $@
+ossec-remoted: ${ossec_libs} ${remoted_o} os_zlib.a
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${remoted_o} ${ZLIB_LIB} ${ossec_libs} ${TEXTRA} -lpthread -o $@
 
 
 
