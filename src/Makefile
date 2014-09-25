@@ -93,7 +93,8 @@ all:  deps \
 			util \
 			ossec-syscheckd \
 			ossec-monitord \
-			ossec-reportd
+			ossec-reportd \
+			os_auth
 
 
 ####################
@@ -435,7 +436,25 @@ ossec-reportd: ${report_o} ${ossec_libs}
 	${OSSEC_CCBIN} ${CFLAGS} ${ossec_libs} ${report_o} ${ossec_libs}  -o $@
 
 
+#### os_auth #######
 
+
+os_auth_programs = agent-auth ossec-authd 
+
+os_auth: ${os_auth_programs}
+
+os_auth_c = ${wildcard os_auth/*.c}
+os_auth_o = $(os_auth_c:.c=.o)
+
+os_auth/%.o: os_auth/%.c
+	${OSSEC_CC} ${CFLAGS} -DUSE_OPENSSL -I./os_auth -DARGV0=\"auth\" -c $^ -o $@
+
+agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o ${ossec_libs} ${os_zlib}
+	${OSSEC_CCBIN} ${CFLAGS} -DUSE_OPENSSL  -lssl -lcrypto -I./os_auth addagent/validate.o os_auth/main-client.o os_auth/check_cert.o os_auth/ssl.o ${OPENSSLCMD} ${ossec_libs} ${os_zlib} -o $@
+
+ossec-authd: addagent/validate.o os_auth/main-server.o os_auth/ssl.o os_auth/check_cert.o ${ossec_libs} ${os_zlib}
+	echo ${os_auth_o}
+	${OSSEC_CCBIN} ${CFLAGS} -DUSE_OPENSSL  -lssl -lcrypto -I./os_auth addagent/validate.o os_auth/main-server.o os_auth/check_cert.o os_auth/ssl.o ${OPENSSLCMD} ${ossec_libs} ${os_zlib} -o $@
 
 
 ####################
@@ -481,6 +500,7 @@ clean-interals:
 	rm -f ${rootcheck_o} rootcheck.a
 	rm -f ${syscheck_o} ossec-syscheckd
 	rm -f ${monitor_o} ossec-monitord
+	rm -f ${os_auth_o} ${os_auth_programs}
 
 
 
