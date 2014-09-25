@@ -88,7 +88,8 @@ all:  deps \
 			ossec-logcollector \
 			ossec-remoted \
 			ossec-agentd \
-			manage_agents
+			manage_agents \
+			util 
 
 
 ####################
@@ -323,17 +324,55 @@ addagent_c = $(wildcard addagent/*.c)
 addagent_o = $(addagent_c:.c=.o)
 
 addagent/%.o: addagent/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"manage_agents\" -I./addagent ${ZLIB_INCLUDE} -DARGV0=\"manage_agents\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -I./addagent ${ZLIB_INCLUDE} -DARGV0=\"manage_agents\" -c $^ -o $@
 
 
 manage_agents: ${ossec_libs} ${addagent_o} os_zlib.a
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
+#### Util ##########
+
+util: syscheck_update \
+			clear_stats \
+			list_agents \
+			agent_control \
+			syscheck_control \
+			rootcheck_control \
+			verify-agent-conf \
+			ossec-regex 
+
+util_c = $(wildcard util/*.c) 
+util_o = $(util_c:.c=.o)
+
+util/%.o: util/%.c
+	${OSSEC_CC} ${CFLAGS} -I./util ${ZLIB_INCLUDE} -DARGV0=\"utils\" -c $^ -o $@
+
+
+
+syscheck_update: util/syscheck_update.o ${addagent_o} ${ossec_libs} 
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+
+clear_stats: util/clear_stats.o ${addagent_o} ${ossec_libs} 
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+
+list_agents: util/list_agents.o ${addagent_o} ${ossec_libs} 
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+
+verify-agent-conf: util/verify-agent-conf.o ${addagent_o} ${ossec_libs} 
 	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 
+agent_control: util/agent_control.o ${addagent_o} ${ossec_libs} 
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
+syscheck_control: util/syscheck_control.o ${addagent_o} ${ossec_libs} 
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
+rootcheck_control: util/rootcheck_control.o ${addagent_o} ${ossec_libs} 
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
+ossec-regex: util/ossec-regex.o ${addagent_o} ${ossec_libs} 
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 ####################
 #### test ########## 
@@ -373,6 +412,7 @@ clean-interals:
 	rm -f ${os_logcollector_o} ossec-logcollector
 	rm -f ${remoted_o} ossec-remoted
 	rm -f ${client_agent_o} ossec-agentd 
+	rm -f ${util_o} ${util}
 
 
 
