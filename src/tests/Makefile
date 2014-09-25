@@ -19,7 +19,8 @@ CFLAGS_TEST = -Waggregate-return -Wall -Wbad-function-cast -Wc++-compat -Wcast-a
 	-Wwrite-strings \
 	-g -O0 --coverage \
 	-I../ \
-	-I../headers/
+	-I../headers/ \
+	-DARGV0=\"ossec-test\"
 
 run_tests: build_tests
 	./test_os_zlib
@@ -27,6 +28,7 @@ run_tests: build_tests
 	./test_os_regex
 	./test_os_crypto
 	./test_os_net
+	./test_shared
 
 
 run_valgrind: build_tests
@@ -37,11 +39,7 @@ generate_coverage: build_tests
 	lcov --base-directory . --directory . --zerocounters --rc lcov_branch_coverage=1 --quiet
 	@echo "Running tests\n"
 
-	./test_os_zlib
-	./test_os_xml
-	./test_os_regex
-	./test_os_crypto
-	./test_os_net
+	make run_tests
 
 	@echo "\nTests finished."
 	lcov --base-directory . --directory . --capture --quiet --rc lcov_branch_coverage=1 --output-file ossec.test
@@ -49,7 +47,7 @@ generate_coverage: build_tests
 	genhtml --branch-coverage --output-directory coverage-report/ --title "ossec test coverage" --show-details --legend --num-spaces 4 --quiet ossec.test
 
 
-build_tests: test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net
+build_tests: test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net test_shared
 
 test_os_zlib: test_os_zlib.c ${OS_ZLIB}
 	${CC} ${CFLAGS_TEST} $+ ${CHECK_LINK} -o $@
@@ -69,6 +67,9 @@ test_os_crypto: test_os_crypto.c ../os_crypto/blowfish/*.h ${BLOWFISH_SRCS} ../o
 test_os_net: test_os_net.c ../os_net/os_net.c ../os_net/os_net.h ../shared/debug_op.c ../shared/file_op.c
 	${CC} ${CFLAGS_TEST} test_os_net.c ../os_net/os_net.c ../shared/debug_op.c ../shared/file_op.c ${CHECK_LINK} -o $@
 
+SHARED_SRCS = ../shared/custom_output_search_replace.c ../shared/debug_op.c
+test_shared: test_shared.c ${SHARED_SRCS} ../headers/*.h
+	${CC} ${CFLAGS_TEST} test_shared.c ${SHARED_SRCS} ${CHECK_LINK} -o $@
 
 clean:
-	${CLEAN} test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net coverage-report/ ossec.test
+	${CLEAN} test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net test_shared coverage-report/ ossec.test
