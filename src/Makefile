@@ -73,10 +73,12 @@ ENDCOLOR="\033[0m"
 ifndef V
 	QUIET_CC = @printf '    %b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2;
 	QUIET_LINK = @printf '    %b %b\n' $(LINKCOLOR)LINK$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR) 1>&2;
+	QUIET_CCBIN = @printf '    %b %b\n' $(LINKCOLOR)CC$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR) 1>&2;
 	QUIET_INSTALL = @printf '    %b %b\n' $(LINKCOLOR)INSTALL$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR) 1>&2;
 endif
 
 OSSEC_CC=${QUIET_CC}${CC}
+OSSEC_CCBIN=${QUIET_CCBIN}${CC}
 OSSEC_LINK=${QUIET_LINK}${BUILDLIB}
 
 all:  deps \
@@ -254,7 +256,7 @@ os_maild/%.o: os_maild/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-maild\" -c $^ -o $@
 
 ossec-maild: ${ossec_libs} ${os_maild_o} 
-	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_maild_o} ${ossec_libs} -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${IEXTRA} ${os_maild_o} ${ossec_libs} -o $@
 
 #### os_dbd ########## 
 
@@ -267,7 +269,7 @@ os_csyslogd/%.o: os_csyslogd/%.c
 	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} -DARGV0=\"ossec-csyslogd\" -c $^ -o $@
 
 ossec-csyslogd: ${ossec_libs} ${os_csyslogd_o} ${JSON_LIB}
-	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} ${IEXTRA} ${os_csyslogd_o} ${JSON_LIB} -lm ${ossec_libs} -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${JSON_INCLUDE} ${IEXTRA} ${os_csyslogd_o} ${JSON_LIB} -lm ${ossec_libs} -o $@
 
 
 #### agentlessd ####
@@ -279,7 +281,7 @@ agentlessd/%.o: agentlessd/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-agentlessd\" -c $^ -o $@
 
 ossec-agentlessd: ${ossec_libs} ${os_agentlessd_o} 
-	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_agentlessd_o} ${ossec_libs} -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${IEXTRA} ${os_agentlessd_o} ${ossec_libs} -o $@
 
 #### os_execd #####
 
@@ -290,7 +292,7 @@ os_execd/%.o: os_execd/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-execd\" -c $^ -o $@
 
 ossec-execd: ${ossec_libs} ${os_execd_o} ${JSON_LIB}
-	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} ${IEXTRA} ${os_execd_o} ${JSON_LIB} -lm ${ossec_libs} -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${JSON_INCLUDE} ${IEXTRA} ${os_execd_o} ${JSON_LIB} -lm ${ossec_libs} -o $@
 
 
 #### logcollectord ####
@@ -302,7 +304,7 @@ logcollector/%.o: logcollector/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-logcollector\" -c $^ -o $@
 
 ossec-logcollector: ${ossec_libs} ${os_logcollector_o} 
-	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_logcollector_o} ${ossec_libs} -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${IEXTRA} ${os_logcollector_o} ${ossec_libs} -o $@
 
 #### remoted #########
 
@@ -313,7 +315,7 @@ remoted/%.o: remoted/%.c
 	${OSSEC_CC} ${CFLAGS} -I./remoted ${ZLIB_INCLUDE} -DARGV0=\"ossec-remoted\" -c $^ -o $@
 
 ossec-remoted: ${ossec_libs} ${remoted_o} os_zlib.a
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${remoted_o} ${ZLIB_LIB} ${ossec_libs} ${TEXTRA} -lpthread -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${remoted_o} ${ZLIB_LIB} ${ossec_libs} ${TEXTRA} -lpthread -o $@
 
 #### ossec-agentd ####
 
@@ -324,7 +326,7 @@ client-agent/%.o: client-agent/%.c
 	${OSSEC_CC} ${CFLAGS} -I./client-agent ${ZLIB_INCLUDE} -DARGV0=\"ossec-agentd\" -c $^ -o $@
 
 ossec-agentd: ${ossec_libs} ${client_agent_o} os_zlib.a
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${client_agent_o} ${ZLIB_LIB} ${ossec_libs} ${TEXTRA} -lpthread -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${client_agent_o} ${ZLIB_LIB} ${ossec_libs} ${TEXTRA} -lpthread -o $@
 
 #### addagent ######
 
@@ -336,7 +338,7 @@ addagent/%.o: addagent/%.c
 
 
 manage_agents: ${ossec_libs} ${addagent_o} os_zlib.a
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 #### Util ##########
 
@@ -351,29 +353,29 @@ util/%.o: util/%.c
 	${OSSEC_CC} ${CFLAGS} -I./util ${ZLIB_INCLUDE} -DARGV0=\"utils\" -c $^ -o $@
 
 syscheck_update: util/syscheck_update.o ${addagent_o} ${ossec_libs} 
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 clear_stats: util/clear_stats.o ${addagent_o} ${ossec_libs} 
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 list_agents: util/list_agents.o ${addagent_o} ${ossec_libs} 
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 verify-agent-conf: util/verify-agent-conf.o ${addagent_o} ${ossec_libs} 
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 
 agent_control: util/agent_control.o ${addagent_o} ${ossec_libs} 
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 syscheck_control: util/syscheck_control.o ${addagent_o} ${ossec_libs} 
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 rootcheck_control: util/rootcheck_control.o ${addagent_o} ${ossec_libs} 
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 ossec-regex: util/ossec-regex.o ${addagent_o} ${ossec_libs} 
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 #### rootcheck #####
 
@@ -406,7 +408,7 @@ syscheckd/%.o: syscheckd/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"syscheckd\" -c $^ -o $@
 
 ossec-syscheckd: ${syscheck_o} rootcheck.a ${ossec_libs}
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} rootcheck.a ${ossec_libs} ${syscheck_o} ${LIB_MAGIC} ${ZLIB_LIB} ${ossec_libs}  -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} rootcheck.a ${ossec_libs} ${syscheck_o} ${LIB_MAGIC} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 #### Monitor #######
 
@@ -417,7 +419,7 @@ monitord/%.o: monitord/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"monitord\" -c $^ -o $@
 
 ossec-monitord: ${monitor_o}  ${ossec_libs} os_maild/sendcustomemail.o
-	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${ossec_libs} os_maild/sendcustomemail.o ${monitor_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${ossec_libs} os_maild/sendcustomemail.o ${monitor_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
 
 
 
@@ -465,6 +467,7 @@ clean-interals:
 	rm -f ${util_o} ${util_programs}
 	rm -f ${rootcheck_o} rootcheck.a
 	rm -f ${syscheck_o} ossec-syscheckd
+	rm -f ${monitor_o} ossec-monitord
 
 
 
