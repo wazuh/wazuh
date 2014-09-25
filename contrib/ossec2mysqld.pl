@@ -330,18 +330,6 @@ sub taillog {
 }
 
 
-sub ossec_aton(){
-        my ($ip)=@_;
-        if ($ip=~ m/(\d+)\.(\d+)\.(\d+)\.(\d+)/){
-                my $num= ($1 * 256 ** 3) + ($2 * 256 ** 2)+ ($3 * 256 ** 1)+ ($4);
-
-                return "$num";
-        }else{
-                return "0";
-        }
-
-}
-
 sub prepair2basedata(){
 	my (
 		$hids_id,
@@ -400,8 +388,8 @@ $dbi->{sth}->finish;
 VALUES (
 ? , ? , ? , ? , ? , ? , ? , ? , ? , ? , ?, ?
 ) ";
-	$dbi->execute($query,$hids_id,$last_cid,$sig_id,$description,1,$level,&fixdate2base($date),&ossec_aton($srcip),&ossec_aton($dstip),undef,undef,undef);
-&printlog ("ACID_EVENT: ($query,$hids_id,$last_cid,$sig_id,$description,1,$level,&fixdate2base($date),&ossec_aton($srcip),&ossec_aton($dstip),undef,undef)\n");
+	$dbi->execute($query,$hids_id,$last_cid,$sig_id,$description,1,$level,&fixdate2base($date),$srcip,$dstip,undef,undef,undef);
+&printlog ("ACID_EVENT: ($query,$hids_id,$last_cid,$sig_id,$description,1,$level,&fixdate2base($date),$srcip,$dstip,undef,undef)\n");
 $dbi->{sth}->finish;
 
 #########
