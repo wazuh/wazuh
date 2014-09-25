@@ -87,15 +87,15 @@ all:  deps \
 			ossec-execd \
 			ossec-logcollector \
 			ossec-remoted \
-			ossec-agentd
+			ossec-agentd \
+			manage_agents
 
 
 ####################
 #### External ###### 
 ####################
 
-deps: libcJSON.a
-	cd external && make zlib
+deps: libcJSON.a zlib
 	cd ${EXTERNAL_LUA} && make ${LUA_PLAT} 
 
 zlib:
@@ -317,6 +317,22 @@ client-agent/%.o: client-agent/%.c
 ossec-agentd: ${ossec_libs} ${client_agent_o} os_zlib.a
 	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${client_agent_o} ${ZLIB_LIB} ${ossec_libs} ${TEXTRA} -lpthread -o $@
 
+#### addagent ######
+
+addagent_c = $(wildcard addagent/*.c) 
+addagent_o = $(addagent_c:.c=.o)
+
+addagent/%.o: addagent/%.c
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"manage_agents\" -I./addagent ${ZLIB_INCLUDE} -DARGV0=\"manage_agents\" -c $^ -o $@
+
+
+manage_agents: ${ossec_libs} ${addagent_o} os_zlib.a
+
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+
+
+
+
 
 
 ####################
@@ -356,6 +372,8 @@ clean-interals:
 	rm -f ${os_execd_o} ossec-execd
 	rm -f ${os_logcollector_o} ossec-logcollector
 	rm -f ${remoted_o} ossec-remoted
+	rm -f ${client_agent_o} ossec-agentd 
+
 
 
 
