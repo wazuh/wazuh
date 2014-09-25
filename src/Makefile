@@ -92,7 +92,8 @@ all:  deps \
 			manage_agents \
 			util \
 			ossec-syscheckd \
-			ossec-monitord
+			ossec-monitord \
+			ossec-reportd
 
 
 ####################
@@ -420,6 +421,18 @@ monitord/%.o: monitord/%.c
 
 ossec-monitord: ${monitor_o}  ${ossec_libs} os_maild/sendcustomemail.o
 	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${ossec_libs} os_maild/sendcustomemail.o ${monitor_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+
+
+#### reportd #######
+
+report_c = reportd/report.c 
+report_o = $(report_c:.c=.o)
+
+reportd/%.o: reportd/%.c
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"reportd\" -c $^ -o $@
+
+ossec-reportd: ${report_o} ${ossec_libs}
+	${OSSEC_CCBIN} ${CFLAGS} ${ossec_libs} ${report_o} ${ossec_libs}  -o $@
 
 
 
