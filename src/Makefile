@@ -7,16 +7,17 @@ uname_S := $(shell sh -c ' 2>/dev/null || echo not')
 
 
 
-EXTERNAL_JSON="external/cJSON/"
-EXTERNAL_LUA="external/lua/"
-LUA_PLAT="posix"
+EXTERNAL_JSON=external/cJSON/
+EXTERNAL_LUA=external/lua/
+LUA_PLAT=posix
 MAX=2048
 DEFINES=-DMAX_AGENTS=${MAX} -DOSSECHIDS
 
 ifeq ($(uname_S),Linux)
 		DEFINES+=-DUSEINOTIFY
 		DEFINES+=-DUSE_MAGIC
-		LIB_MAGIC="-lmagic"
+		TEXTRA=-lpthread
+		LIB_MAGIC=-lmagic
 else 
 ifeq ($(uname_S),AIX)
 		DEFINES+=-DAIX
@@ -27,27 +28,26 @@ else
 ifeq ($(uname_S),SunOS)
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
-		IEXTRA="-lsocket -lnsl -lresolv"
-		LUA_PLAT="solaris"
+		IEXTRA=-lsocket -lnsl -lresolv
+		LUA_PLAT=solaris
 
 else 
 ifeq ($(uname_S),Darwin)
 		DEFINES+=-DDarwin
 		DEFINES+=-DHIGHFIRST
-		LUA_PLAT="macosx"
+		LUA_PLAT=macosx
 
 else 
 ifeq ($(uname_S),FreeBSD)
 		DEFINES+=-DFreeBSD
-		TEXTRA="-pthread"
-		LUA_PLAT="freebsd"
+		TEXTRA=-pthread
+		LUA_PLAT=freebsd
 else 
 ifeq ($(uname_S),HP-UX)
 		DEFINES+=-DHPUX
 		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
 		DEFINES+=-DHIGHFIRST
 		DEFINES+=-D_REENTRANT
-
 else 
 	    # Unknow platform 
 endif # HPUX
@@ -59,7 +59,7 @@ endif # Linux
 
 
 CFLAGS+=${DEFINES}
-CFLAGS+=-g -Wall -I./ -I./headers 
+CFLAGS+=-g -Wall -I./ -I./headers  
 #CFLAGS+=-pedantic
 BUILDLIB=ar -crus
 
@@ -93,10 +93,26 @@ all:  deps \
 #### External ###### 
 ####################
 
-deps:
-	cd ${EXTERNAL_JSON} && make ossec 
+deps: libcJSON.a
 	cd external && make zlib
 	cd ${EXTERNAL_LUA} && make ${LUA_PLAT} 
+
+
+#### cJSON #########
+
+JSON_LIB=libcJSON.a -lm
+JSON_INCLUDE=-I./${EXTERNAL_JSON} 
+
+cjson_c= ${EXTERNAL_JSON}cJSON.c
+cjson_o = $(cjson_c:.c=.o)
+
+${EXTERNAL_JSON}%.o: ${EXTERNAL_JSON}%.c
+	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
+
+
+
+libcJSON.a: ${cjson_o} 
+	${OSSEC_LINK} $@ $^
 
 
 ####################
@@ -184,7 +200,7 @@ crypto_sha1_o = $(crypto_sha1_c:.c=.o)
 os_crypto/sha1/%.o: os_crypto/sha1/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
 
-crypto_shared_c = $(wildcard crypto/shared/*.c)
+crypto_shared_c = $(wildcard os_crypto/shared/*.c)
 crypto_shared_o = $(crypto_shared_c:.c=.o)
 
 os_crypto/shared/%.o: os_crypto/shared/%.c
@@ -219,11 +235,10 @@ os_csyslogd_c = $(wildcard os_csyslogd/*.c)
 os_csyslogd_o = $(os_csyslogd_c:.c=.o)
 
 os_csyslogd/%.o: os_csyslogd/%.c 
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-csyslogd\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} -DARGV0=\"ossec-csyslogd\" -c $^ -o $@
 
-ossec-csyslogd: ${ossec_libs} ${os_csyslogd_o} 
-	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_csyslogd_o} \
-		${EXTERNAL_JSON}/libcJSON.a ${ossec_libs} -o $@
+ossec-csyslogd: ${ossec_libs} ${os_csyslogd_o} ${JSON_LIB}
+	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} ${IEXTRA} ${os_csyslogd_o} ${JSON_LIB} ${ossec_libs} -o $@
 
 
 #### agentlessd ####
@@ -235,8 +250,7 @@ agentlessd/%.o: agentlessd/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-agentlessd\" -c $^ -o $@
 
 ossec-agentlessd: ${ossec_libs} ${os_agentlessd_o} 
-	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_agentlessd_o} \
-		${ossec_libs} -o $@
+	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_agentlessd_o} ${ossec_libs} -o $@
 
 #### os_execd #####
 
@@ -246,9 +260,8 @@ os_execd_o = $(os_execd_c:.c=.o)
 os_execd/%.o: os_execd/%.c 
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-execd\" -c $^ -o $@
 
-ossec-execd: ${ossec_libs} ${os_execd_o} 
-	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_execd_o} \
-		${EXTERNAL_JSON}/libcJSON.a ${ossec_libs} -o $@
+ossec-execd: ${ossec_libs} ${os_execd_o} ${JSON_LIB}
+	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} ${IEXTRA} ${os_execd_o} ${JSON_LIB} ${ossec_libs} -o $@
 
 
 #### logcollectord ####
@@ -260,8 +273,7 @@ logcollector/%.o: logcollector/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-logcollector\" -c $^ -o $@
 
 ossec-logcollector: ${ossec_libs} ${os_logcollector_o} 
-	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_logcollector_o} \
-		${ossec_libs} -o $@
+	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${os_logcollector_o} ${ossec_libs} -o $@
 
 #### os_mail #########
 
@@ -269,10 +281,10 @@ remoted_c = $(wildcard remoted/*.c)
 remoted_o = $(remoted_c:.c=.o)
 
 remoted/%.o: remoted/%.c 
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-remoted\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -I./remoted -DARGV0=\"ossec-remoted\" -c $^ -o $@
 
 ossec-remoted: ${ossec_libs} ${remoted_o} 
-	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${TEXTRA} -I./remoted ${ossec_libs} ${remoted_o} ${ossec_libs} -o $@
+	${OSSEC_CC} ${CFLAGS} ${IEXTRA} ${remoted_o} ${ossec_libs} ${TEXTRA} -lpthread -o $@
 
 
 
@@ -295,24 +307,24 @@ clean-test:
 		cd tests/ && make clean 
 
 clean-external:
-		cd ${EXTERNAL_JSON} && make clean
-		cd external && make clean
-		cd ${EXTERNAL_LUA} && make clean
+	rm -f ${cjson_o} libcJSON.a
+	cd external && make clean
+	cd ${EXTERNAL_LUA} && make clean
 
 
 clean-interals: 
-		rm -f ${os_xml_o} os_xml.a 
-		rm -f ${os_regex_o} os_regex.a 
-		rm -f ${os_net_o} os_net.a 
-		rm -f ${shared_o} shared.a 
-		rm -f ${config_o} config.a 
-		rm -f ${os_maild_o} ossec-maild
-		rm -f ${crypto_o}  os_crypto.a
-		rm -f ${os_csyslogd_o} ossec-csyslogd 
-		rm -f ${os_agentlessd_o} ossec-agentlessd
-		rm -f ${os_execd_o} ossec-execd
-		rm -f ${os_logcollector_o} ossec-logcollector
-		rm -f ${remoted_o} ossec-remoted
+	rm -f ${os_xml_o} os_xml.a 
+	rm -f ${os_regex_o} os_regex.a 
+	rm -f ${os_net_o} os_net.a 
+	rm -f ${shared_o} shared.a 
+	rm -f ${config_o} config.a 
+	rm -f ${os_maild_o} ossec-maild
+	rm -f ${crypto_o}  os_crypto.a
+	rm -f ${os_csyslogd_o} ossec-csyslogd 
+	rm -f ${os_agentlessd_o} ossec-agentlessd
+	rm -f ${os_execd_o} ossec-execd
+	rm -f ${os_logcollector_o} ossec-logcollector
+	rm -f ${remoted_o} ossec-remoted
 
 
 
