@@ -94,7 +94,8 @@ all:  deps \
 			ossec-syscheckd \
 			ossec-monitord \
 			ossec-reportd \
-			os_auth
+			os_auth \
+			ossec-analysisd
 
 
 ####################
@@ -456,6 +457,54 @@ ossec-authd: addagent/validate.o os_auth/main-server.o os_auth/ssl.o os_auth/che
 	echo ${os_auth_o}
 	${OSSEC_CCBIN} ${CFLAGS} -DUSE_OPENSSL  -lssl -lcrypto -I./os_auth addagent/validate.o os_auth/main-server.o os_auth/check_cert.o os_auth/ssl.o ${OPENSSLCMD} ${ossec_libs} ${os_zlib} -o $@
 
+#### analysisd #####
+
+cdb_c = ${wildcard analysisd/cdb/*.c}
+cdb_o = $(cdb_c:.c=.o)
+analysisd_o += ${cdb_o}
+analysisd_libs += cdb.a
+
+analysisd/cdb/%.o: analysisd/cdb/%.c
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/cdb  -c $^ -o $@
+
+cdb.a: ${cdb_o}
+	${OSSEC_LINK} $@ $^
+
+
+alerts_c = ${wildcard analysisd/alerts/*.c}
+alerts_o = $(alerts_c:.c=.o)
+analysisd_o += ${alerts_o}
+analysisd_libs += alerts.a
+
+analysisd/alerts/%.o: analysisd/alerts/%.c
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/alerts  -c $^ -o $@
+
+alerts.a: ${alerts_o}
+	${OSSEC_LINK} $@ $^
+
+decoders_c = ${wildcard analysisd/decoders/*.c}
+decoders_o = $(decoders_c:.c=.o)
+## XXX Nasty hack
+decoders_test_o = $(decoders_c:.c=-test.o)
+
+analysisd_o += ${decoders_o} ${decoders_test_o}
+analysisd_libs += decoders.a decoders-test.a
+
+
+analysisd/decoders/%-test.o: analysisd/decoders/%.c
+	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/decoders  -c $^ -o $@
+
+
+analysisd/decoders/%.o: analysisd/decoders/%.c
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/decoders  -c $^ -o $@
+
+decoders.a: ${decoders_o}
+	${OSSEC_LINK} $@ $^
+
+decoders-test.a: ${decoders_test_o}
+	${OSSEC_LINK} $@ $^
+
+ossec-analysisd: alerts.a cdb.a decoders.a decoders-test.a
 
 ####################
 #### test ########## 
@@ -501,6 +550,8 @@ clean-interals:
 	rm -f ${syscheck_o} ossec-syscheckd
 	rm -f ${monitor_o} ossec-monitord
 	rm -f ${os_auth_o} ${os_auth_programs}
+	rm -f ${analysisd_o} ${analysisd_libs}
+	
 
 
 
