@@ -1,7 +1,6 @@
 
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-uname_S := $(shell sh -c ' 2>/dev/null || echo not')
 
 
 
@@ -89,7 +88,9 @@ all:  deps \
 			ossec-remoted \
 			ossec-agentd \
 			manage_agents \
-			util 
+			util \
+			ossec-syscheckd \
+			ossec-monitord
 
 
 ####################
@@ -221,6 +222,12 @@ crypto_sha1_o = $(crypto_sha1_c:.c=.o)
 os_crypto/sha1/%.o: os_crypto/sha1/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
 
+crypto_md5_sha1_c = os_crypto/md5_sha1/md5_sha1_op.c
+crypto_md5_sha1_o = $(crypto_md5_sha1_c:.c=.o)
+
+os_crypto/md5_sha1/%.o: os_crypto/md5_sha1/%.c
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+
 crypto_shared_c = $(wildcard os_crypto/shared/*.c)
 crypto_shared_o = $(crypto_shared_c:.c=.o)
 
@@ -231,9 +238,10 @@ os_crypto/shared/%.o: os_crypto/shared/%.c
 crypto_o = ${crypto_blowfish_o} \
 					 ${crypto_md5_o} \
 					 ${crypto_sha1_o} \
-					 ${crypto_shared_o}
+					 ${crypto_shared_o} \
+					 ${crypto_md5_sha1_o}
 
-os_crypto.a: ${crypto_o}
+os_crypto.a: ${crypto_o} 
 	${OSSEC_LINK} $@ $^
 
 
@@ -332,22 +340,15 @@ manage_agents: ${ossec_libs} ${addagent_o} os_zlib.a
 
 #### Util ##########
 
-util: syscheck_update \
-			clear_stats \
-			list_agents \
-			agent_control \
-			syscheck_control \
-			rootcheck_control \
-			verify-agent-conf \
-			ossec-regex 
+util_programs = syscheck_update clear_stats list_agents agent_control syscheck_control rootcheck_control verify-agent-conf ossec-regex 
+
+util: ${util_programs}
 
 util_c = $(wildcard util/*.c) 
 util_o = $(util_c:.c=.o)
 
 util/%.o: util/%.c
 	${OSSEC_CC} ${CFLAGS} -I./util ${ZLIB_INCLUDE} -DARGV0=\"utils\" -c $^ -o $@
-
-
 
 syscheck_update: util/syscheck_update.o ${addagent_o} ${ossec_libs} 
 	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
@@ -373,6 +374,54 @@ rootcheck_control: util/rootcheck_control.o ${addagent_o} ${ossec_libs}
 
 ossec-regex: util/ossec-regex.o ${addagent_o} ${ossec_libs} 
 	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${addagent_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+
+#### rootcheck #####
+
+rootcheck_c = $(wildcard rootcheck/*.c)
+rootcheck_o = $(rootcheck_c:.c=.o)
+rootcheck_o_lib = $(filter-out rootcheck/rootcheck-config.o, $(rootcheck_o))
+rootcheck_o_cmd = $(filter-out rootcheck/config.o, $(rootcheck_o))
+
+
+rootcheck/%.o: rootcheck/%.c 
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"rootcheck\" -c $^ -o $@
+
+
+rootcheck.a: ${rootcheck_o_lib} 
+	${OSSEC_LINK} $@ $^
+
+#ossec-rootcheck: rootcheck/rootcheck-config.o rootcheck.a ${ossec_libs} 
+#	@echo ${rootcheck_o_cmd}
+#	@echo ${rootcheck_o_lib}
+#	@echo ${rootcheck_o}
+#	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} rootcheck/rootcheck-config.o rootcheck.a rootcheck/rootcheck.c ${ZLIB_LIB} ${ossec_libs}  -o $@
+
+#### syscheck ######
+
+
+syscheck_c = $(wildcard syscheckd/*.c)
+syscheck_o = $(syscheck_c:.c=.o)
+
+syscheckd/%.o: syscheckd/%.c
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"syscheckd\" -c $^ -o $@
+
+ossec-syscheckd: ${syscheck_o} rootcheck.a ${ossec_libs}
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} rootcheck.a ${ossec_libs} ${syscheck_o} ${LIB_MAGIC} ${ZLIB_LIB} ${ossec_libs}  -o $@
+
+#### Monitor #######
+
+monitor_c = $(wildcard monitord/*.c)
+monitor_o = $(monitor_c:.c=.o)
+
+monitord/%.o: monitord/%.c
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"monitord\" -c $^ -o $@
+
+ossec-monitord: ${monitor_o}  ${ossec_libs} os_maild/sendcustomemail.o
+	${OSSEC_CC} ${CFLAGS} ${ZLIB_INCLUDE} ${IEXTRA} ${ossec_libs} os_maild/sendcustomemail.o ${monitor_o} ${ZLIB_LIB} ${ossec_libs}  -o $@
+
+
+
+
 
 ####################
 #### test ########## 
@@ -412,7 +461,10 @@ clean-interals:
 	rm -f ${os_logcollector_o} ossec-logcollector
 	rm -f ${remoted_o} ossec-remoted
 	rm -f ${client_agent_o} ossec-agentd 
-	rm -f ${util_o} ${util}
+	rm -f ${addagent_o} manage_agents
+	rm -f ${util_o} ${util_programs}
+	rm -f ${rootcheck_o} rootcheck.a
+	rm -f ${syscheck_o} ossec-syscheckd
 
 
 
