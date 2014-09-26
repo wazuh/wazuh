@@ -34,7 +34,7 @@
 #define DATAMSG 		"DATA\r\n"
 #define FROM			"From: OSSEC HIDS <%s>\r\n"
 #define TO			    "To: <%s>\r\n"
-#define CC			    "Cc: <%s>\r\n"
+/*#define CC			    "Cc: <%s>\r\n"*/
 #define SUBJECT			"Subject: %s\r\n"
 #define ENDHEADER               "\r\n"
 #define ENDDATA			"\r\n.\r\n"
@@ -60,7 +60,8 @@
  */
 int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 {
-    int socket, i = 0, final_to_sz;
+    int socket;
+    size_t final_to_sz;
     char *msg;
     char snd_msg[128];
     char final_to[512];
@@ -158,7 +159,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
     if(mail->gran_to)
     {
-        i = 0;
+        int i = 0;
         while(mail->gran_to[i] != NULL)
         {
             if(mail->gran_set[i] != SMS_FORMAT)
@@ -297,6 +298,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     if(mailmsg == NULL)
     {
         merror("%s: No email to be sent. Inconsistent state.",ARGV0);
+        return (OS_INVALID);
     }
 
 
