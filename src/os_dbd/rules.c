@@ -19,12 +19,19 @@
 #include "rules_op.h"
 
 
+static int __Groups_SelectGroup(const char *group, const DBConfig *db_config) __attribute((nonnull));
+static int __Groups_InsertGroup(const char *group, const DBConfig *db_config) __attribute((nonnull));
+static int __Groups_SelectGroupMapping(int cat_id, int rule_id, const DBConfig *db_config) __attribute((nonnull));
+static int __Groups_InsertGroupMapping(int cat_id, int rule_id, const DBConfig *db_config) __attribute((nonnull));
+static void _Groups_ReadInsertDB(RuleInfo *rule, const DBConfig *db_config) __attribute((nonnull));
+static void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config) __attribute((nonnull));
+
 
 /** int __Groups_SelectGroup(char *group, DBConfig *db_config)
  * Select group (categories) from to the db.
  * Returns 0 if not found.
  */
-static int __Groups_SelectGroup(char *group, DBConfig *db_config)
+static int __Groups_SelectGroup(const char *group, const DBConfig *db_config)
 {
     int result = 0;
     char sql_query[OS_SIZE_1024];
@@ -49,7 +56,7 @@ static int __Groups_SelectGroup(char *group, DBConfig *db_config)
 /** int __Groups_InsertGroup(char *group, DBConfig *db_config)
  * Insert group (categories) in to the db.
  */
-static int __Groups_InsertGroup(char *group, DBConfig *db_config)
+static int __Groups_InsertGroup(const char *group, const DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
 
@@ -77,7 +84,7 @@ static int __Groups_InsertGroup(char *group, DBConfig *db_config)
  * Select group (categories) from to the db.
  * Returns 0 if not found.
  */
-static int __Groups_SelectGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
+static int __Groups_SelectGroupMapping(int cat_id, int rule_id, const DBConfig *db_config)
 {
     int result = 0;
     char sql_query[OS_SIZE_1024];
@@ -102,7 +109,7 @@ static int __Groups_SelectGroupMapping(int cat_id, int rule_id, DBConfig *db_con
 /** int __Groups_InsertGroup(int cat_id, int rule_id, DBConfig *db_config)
  * Insert group (categories) in to the db.
  */
-static int __Groups_InsertGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
+static int __Groups_InsertGroupMapping(int cat_id, int rule_id, const DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
 
@@ -130,7 +137,7 @@ static int __Groups_InsertGroupMapping(int cat_id, int rule_id, DBConfig *db_con
 /** void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
  * Insert groups (categories) in to the db.
  */
-static void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
+static void _Groups_ReadInsertDB(RuleInfo *rule, const DBConfig *db_config)
 {
     /* We must insert each group separately. */
     int cat_id;
@@ -250,7 +257,7 @@ static void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
 
 
     /* Inserting group into the signature mapping */
-    _Groups_ReadInsertDB(rule, db_config);
+    _Groups_ReadInsertDB(rule, (DBConfig *) db_config);
 
 
 

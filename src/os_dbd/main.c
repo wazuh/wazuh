@@ -21,6 +21,7 @@
 #include "shared.h"
 #include "dbd.h"
 
+static void print_db_info(void);
 static void help_dbd(void) __attribute__((noreturn));
 
 

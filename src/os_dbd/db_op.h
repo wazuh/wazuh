@@ -21,22 +21,22 @@
 
 
 /* Connects to the database */
-extern void *(*osdb_connect)(char *host, char *user, char *pass, char *db, int port, char *sock);
-void *mysql_osdb_connect(char *host, char *user, char *pass, char *db, int port, char *sock);
-void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db, int port, char *sock);
-void *none_osdb_connect(char *host, char *user, char *pass, char *db, int port, char *sock);
+extern void *(*osdb_connect)(const char *host, const char *user, const char *pass, const char *db, unsigned int port, const char *sock);
+void *mysql_osdb_connect(const char *host, const char *user, const char *pass, const char *db, unsigned int port, const char *sock);
+void *postgresql_osdb_connect(const char *host, const char *user, const char *pass, const char *db, unsigned int port, const char *sock);
+void *none_osdb_connect(const char *host, const char *user, const char *pass, const char *db, unsigned int port, const char *sock);
 
 /* Sends insert query to the database */
-extern int (* osdb_query_insert)(void *db_conn, char *query);
-int mysql_osdb_query_insert(void *db_conn, char *query);
-int postgresql_osdb_query_insert(void *db_conn, char *query);
-int none_osdb_query_insert(void *db_conn, char *query);
+extern int (* osdb_query_insert)(void *db_conn, const char *query);
+int mysql_osdb_query_insert(void *db_conn, const char *query);
+int postgresql_osdb_query_insert(void *db_conn, const char *query);
+int none_osdb_query_insert(void *db_conn, const char *query);
 
 /* Sends select query to the database */
-extern int (* osdb_query_select)(void *db_conn, char *query);
-int mysql_osdb_query_select(void *db_conn, char *query);
-int postgresql_osdb_query_select(void *db_conn, char *query);
-int none_osdb_query_select(void *db_conn, char *query);
+extern int (* osdb_query_select)(void *db_conn, const char *query);
+int mysql_osdb_query_select(void *db_conn, const char *query);
+int postgresql_osdb_query_select(void *db_conn, const char *query);
+int none_osdb_query_select(void *db_conn, const char *query);
 
 /* Closes connection to the database */
 extern void *(*osdb_close)(void *db_conn);

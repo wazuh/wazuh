@@ -18,7 +18,8 @@
 #include "config/config.h"
 #include "rules_op.h"
 
-
+static int __DBSelectLocation(const char *location, const DBConfig *db_config) __attribute__((nonnull));
+static int __DBInsertLocation(const char *location, const DBConfig *db_config) __attribute__((nonnull));
 
 /** int OS_SelectMaxID(DBConfig *db_config)
  * Selects the maximum ID from the alert table.

@@ -26,27 +26,27 @@
 /** Prototypes **/
 
 /* Read database config */
-int OS_ReadDBConf(int test_config, const char *cfgfile, DBConfig *db_config);
+int OS_ReadDBConf(int test_config, const char *cfgfile, DBConfig *db_config) __attribute__((nonnull));
 
 
 /* Inserts server info to the db. */
-int OS_Server_ReadInsertDB(void *db_config);
+int OS_Server_ReadInsertDB(const DBConfig *db_config) __attribute__((nonnull));
 
 
 /* Insert rules in to the database */
-int OS_InsertRulesDB(DBConfig *db_config);
+int OS_InsertRulesDB(DBConfig *db_config) __attribute__((nonnull));
 
 
 /* Get maximum ID */
-int OS_SelectMaxID(const DBConfig *db_config);
+int OS_SelectMaxID(const DBConfig *db_config) __attribute__((nonnull));
 
 
 /* Insert alerts in to the database */
-int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config);
+int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config) __attribute__((nonnull));
 
 
 /* Database inserting main function */
-void OS_DBD(DBConfig *db_config) __attribute__((noreturn));
+void OS_DBD(DBConfig *db_config) __attribute__((nonnull)) __attribute__((noreturn));
 
 
 /* Setting config pointer for osbd_op */
