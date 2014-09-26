@@ -24,7 +24,7 @@
  * Select group (categories) from to the db.
  * Returns 0 if not found.
  */
-int __Groups_SelectGroup(char *group, DBConfig *db_config)
+static int __Groups_SelectGroup(char *group, DBConfig *db_config)
 {
     int result = 0;
     char sql_query[OS_SIZE_1024];
@@ -49,7 +49,7 @@ int __Groups_SelectGroup(char *group, DBConfig *db_config)
 /** int __Groups_InsertGroup(char *group, DBConfig *db_config)
  * Insert group (categories) in to the db.
  */
-int __Groups_InsertGroup(char *group, DBConfig *db_config)
+static int __Groups_InsertGroup(char *group, DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
 
@@ -77,7 +77,7 @@ int __Groups_InsertGroup(char *group, DBConfig *db_config)
  * Select group (categories) from to the db.
  * Returns 0 if not found.
  */
-int __Groups_SelectGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
+static int __Groups_SelectGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
 {
     int result = 0;
     char sql_query[OS_SIZE_1024];
@@ -102,7 +102,7 @@ int __Groups_SelectGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
 /** int __Groups_InsertGroup(int cat_id, int rule_id, DBConfig *db_config)
  * Insert group (categories) in to the db.
  */
-int __Groups_InsertGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
+static int __Groups_InsertGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
 
@@ -130,7 +130,7 @@ int __Groups_InsertGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
 /** void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
  * Insert groups (categories) in to the db.
  */
-void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
+static void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
 {
     /* We must insert each group separately. */
     int cat_id;
@@ -218,7 +218,7 @@ void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
 /** void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
  * Insert rules in to the db.
  */
-void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
+static void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
 {
 	/* tmp disable */
     /* DBConfig *dbc = (DBConfig *)db_config; */

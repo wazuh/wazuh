@@ -18,12 +18,15 @@
 #include "config/config.h"
 #include "rules_op.h"
 
+/* System hostname */
+static char __shost[512];
+
 
 /** int __DBSelectServer(char *server, DBConfig *db_config)
  * Selects the server ID from the db.
  * Returns 0 if not found.
  */
-int __DBSelectServer(char *server, DBConfig *db_config)
+static int __DBSelectServer(char *server, DBConfig *db_config)
 {
     int result = 0;
     char sql_query[OS_SIZE_1024];
@@ -48,7 +51,7 @@ int __DBSelectServer(char *server, DBConfig *db_config)
 /** int __DBInsertServer(char *server, char *info, DBConfig *db_config)
  * Inserts server in to the db.
  */
-int __DBInsertServer(char *server, char *info, DBConfig *db_config)
+static int __DBInsertServer(char *server, char *info, DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
 

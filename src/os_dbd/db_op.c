@@ -18,6 +18,10 @@
 
 
 #include "dbd.h"
+void *(*osdb_connect)(char *host, char *user, char *pass, char *db, int port, char *sock);
+int (* osdb_query_insert)(void *db_conn, char *query);
+int (* osdb_query_select)(void *db_conn, char *query);
+void *(*osdb_close)(void *db_conn);
 
 /* Using Mysql */
 #ifdef UMYSQL
@@ -32,7 +36,7 @@
 
 
 /* Config pointer */
-DBConfig *db_config_pt = NULL;
+static DBConfig *db_config_pt = NULL;
 
 
 
@@ -77,9 +81,8 @@ void osdb_escapestr(char *str)
 /** void osdb_checkerror()
  * Checks for errors and handle it appropriately.
  */
-void osdb_checkerror()
+static void osdb_checkerror()
 {
-    int sleep_time = 2;
     if(!db_config_pt || db_config_pt->error_count > 20)
     {
         ErrorExit(DB_MAINERROR, ARGV0);
@@ -89,7 +92,8 @@ void osdb_checkerror()
     /* If error count is too large, we try to reconnect. */
     if(db_config_pt->error_count > 0)
     {
-        int i = 0;
+        unsigned int i = 0, sleep_time = 2;
+
         if(db_config_pt->conn)
         {
             osdb_close(db_config_pt->conn);
@@ -134,7 +138,7 @@ void osdb_checkerror()
 /** void osdb_seterror()
  * Sets the error counter.
  */
-void osdb_seterror()
+static void osdb_seterror()
 {
     db_config_pt->error_count++;
     osdb_checkerror();
@@ -396,23 +400,24 @@ int postgresql_osdb_query_select(void *db_conn, char *query)
 
 
 
-void *none_osdb_connect(char *host, char *user, char *pass, char *db,
-                        int port, char *sock)
+void *none_osdb_connect(__attribute__((unused)) char *host, __attribute__((unused)) char *user,
+        __attribute__((unused)) char *pass, __attribute__((unused)) char *db,
+        __attribute__((unused)) int port, __attribute__((unused)) char *sock)
 {
     merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
     return(NULL);
 }
-void *none_osdb_close(void *db_conn)
+void *none_osdb_close(__attribute__((unused)) void *db_conn)
 {
     merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
     return(NULL);
 }
-void *none_osdb_query_insert(void *db_conn, char *query)
+int none_osdb_query_insert(__attribute__((unused)) void *db_conn, __attribute__((unused)) char *query)
 {
    merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
     return(0);
 }
-void *none_osdb_query_select(void *db_conn, char *query)
+int none_osdb_query_select(__attribute__((unused)) void *db_conn, __attribute__((unused)) char *query)
 {
     merror("%s: ERROR: Database support not enabled. Exiting.", ARGV0);
     return(0);

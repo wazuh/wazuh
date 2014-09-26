@@ -26,7 +26,7 @@
 /** Prototypes **/
 
 /* Read database config */
-int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config);
+int OS_ReadDBConf(int test_config, const char *cfgfile, DBConfig *db_config);
 
 
 /* Inserts server info to the db. */
@@ -38,26 +38,18 @@ int OS_InsertRulesDB(DBConfig *db_config);
 
 
 /* Get maximum ID */
-int OS_SelectMaxID(DBConfig *db_config);
+int OS_SelectMaxID(const DBConfig *db_config);
 
 
 /* Insert alerts in to the database */
-int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config);
+int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config);
 
 
 /* Database inserting main function */
-void OS_DBD(DBConfig *db_config);
+void OS_DBD(DBConfig *db_config) __attribute__((noreturn));
 
 
 /* Setting config pointer for osbd_op */
 void osdb_setconfig(DBConfig *db_config);
-
-
-
-/** Global vars **/
-
-/* System hostname */
-char __shost[512];
-
 
 #endif

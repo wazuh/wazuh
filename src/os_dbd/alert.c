@@ -24,7 +24,7 @@
  * Selects the maximum ID from the alert table.
  * Returns 0 if not found.
  */
-int OS_SelectMaxID(DBConfig *db_config)
+int OS_SelectMaxID(const DBConfig *db_config)
 {
     int result = 0;
     char sql_query[OS_SIZE_1024];
@@ -50,7 +50,7 @@ int OS_SelectMaxID(DBConfig *db_config)
  * Selects the location ID from the db.
  * Returns 0 if not found.
  */
-int __DBSelectLocation(char *location, DBConfig *db_config)
+static int __DBSelectLocation(const char *location, const DBConfig *db_config)
 {
     int result = 0;
     char sql_query[OS_SIZE_1024];
@@ -76,7 +76,7 @@ int __DBSelectLocation(char *location, DBConfig *db_config)
 /** int __DBInsertLocation(char *location, DBConfig *db_config)
  * Inserts location in to the db.
  */
-int __DBInsertLocation(char *location, DBConfig *db_config)
+static int __DBInsertLocation(const char *location, const DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
 
@@ -105,7 +105,7 @@ int __DBInsertLocation(char *location, DBConfig *db_config)
  * Insert alert into to the db.
  * Returns 1 on success or 0 on error.
  */
-int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
+int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
 {
     int i;
     unsigned int s_ip = 0, d_ip = 0, location_id = 0;
@@ -188,7 +188,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     i = 0;
     while(al_data->log[i])
     {
-        long len = strlen(al_data->log[i]);
+        size_t len = strlen(al_data->log[i]);
         char templog[len+2];
         if (al_data->log[i+1]) {
             snprintf(templog, len+2, "%s\n", al_data->log[i]);
