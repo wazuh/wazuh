@@ -25,15 +25,15 @@ typedef struct _MailNode
 
 
 /* Add an email to the list  */
-void OS_AddMailtoList(MailMsg *ml);
+void OS_AddMailtoList(MailMsg *ml) __attribute__((nonnull));
 
 /* Return the last event from the Event list
  * removing it from there
  */
-MailNode *OS_PopLastMail();
+MailNode *OS_PopLastMail(void);
 
 /* Returns a pointer to the last email, not removing it */
-MailNode *OS_CheckLastMail();
+MailNode *OS_CheckLastMail(void);
 
 /* Create the mail list. Maxsize must be specified */
 void OS_CreateMailList(int maxsize);

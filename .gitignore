@@ -77,5 +77,6 @@ src/tests/ossec.test
 src/tests/test_os_crypto
 src/tests/test_os_net
 src/tests/test_os_regex
+src/tests/test_shared
 src/tests/test_os_xml
 src/tests/test_os_zlib

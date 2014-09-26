@@ -14,22 +14,24 @@
  */
 
 
-#ifndef MAILD
-   #define MAILD
-#endif
-
 #ifndef ARGV0
    #define ARGV0 "ossec-maild"
 #endif
 
 #include "shared.h"
 #include "maild.h"
+/* Define global variables from maild.h */
+unsigned int mail_timeout;
+int   _g_subject_level;
+char _g_subject[SUBJECT_SIZE +2];
+
 #include "mail_list.h"
 
-void OS_Run(MailConfig *mail);
+static void OS_Run(MailConfig *mail) __attribute__((nonnull)) __attribute__((noreturn));
+static void help_maild() __attribute__((noreturn));
 
 /* print help statement */
-void help_maild()
+static void help_maild()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -52,10 +54,10 @@ int main(int argc, char **argv)
 {
     int c, test_config = 0,run_foreground = 0;
     int uid = 0,gid = 0;
-    char *dir  = DEFAULTDIR;
-    char *user = MAILUSER;
-    char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    const char *dir  = DEFAULTDIR;
+    const char *user = MAILUSER;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
     /* Mail Structure */
     MailConfig mail;
@@ -196,14 +198,13 @@ int main(int argc, char **argv)
 
     /* the real daemon now */
     OS_Run(&mail);
-    exit(0);
 }
 
 
 /* OS_Run: Read the queue and send the appropriate alerts.
  * not supposed to return..
  */
-void OS_Run(MailConfig *mail)
+static void OS_Run(MailConfig *mail)
 {
     MailMsg *msg;
     MailMsg *s_msg = NULL;
