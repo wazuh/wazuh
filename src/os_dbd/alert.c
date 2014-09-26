@@ -157,7 +157,7 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
 
 
     /* We first need to insert the location */
-    loc_id = OSHash_Get(db_config->location_hash, al_data->location);
+    loc_id = (int *) OSHash_Get(db_config->location_hash, al_data->location);
 
 
     /* If we dont have location id, we must select and/or insert in the db */

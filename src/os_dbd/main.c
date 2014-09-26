@@ -70,10 +70,10 @@ int main(int argc, char **argv)
     int uid = 0,gid = 0;
 
     /* Using MAILUSER (read only) */
-    char *dir  = DEFAULTDIR;
-    char *user = MAILUSER;
-    char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    const char *dir  = DEFAULTDIR;
+    const char *user = MAILUSER;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
 
     /* Database Structure */

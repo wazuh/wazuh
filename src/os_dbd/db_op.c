@@ -34,6 +34,8 @@ void *(*osdb_close)(void *db_conn);
 #endif
 
 
+static void osdb_checkerror(void);
+static void osdb_seterror(void);
 
 /* Config pointer */
 static DBConfig *db_config_pt = NULL;
