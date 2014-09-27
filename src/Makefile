@@ -58,9 +58,14 @@ endif # AIX
 endif # Linux
 
 
-CFLAGS+=${DEFINES}
-CFLAGS+=-g -Wall -I./ -I./headers/
-#CFLAGS+=-pedantic
+CFLAGS+=${DEFINES} -I./ -I./headers/
+
+ifdef V
+	CFLAGS+=-g -Wall -Wextra
+else
+	CFLAGS+=-Wall -O2
+endif #V
+
 BUILDLIB=ar -crus
 
 
