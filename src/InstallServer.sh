@@ -239,7 +239,7 @@ chown root:${GROUP} ${DIR}/var/run
 # Moving the binary files
 cp -pr addagent/manage_agents agentlessd/ossec-agentlessd \
         analysisd/ossec-analysisd logcollector/ossec-logcollector \
-        monitord/ossec-monitord monitord/ossec-reportd \
+        monitord/ossec-monitord reportd/ossec-reportd \
         os_execd/ossec-execd os_maild/ossec-maild \
         remoted/ossec-remoted syscheckd/ossec-syscheckd \
 	analysisd/ossec-logtest os_csyslogd/ossec-csyslogd \

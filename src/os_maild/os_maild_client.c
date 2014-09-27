@@ -27,7 +27,8 @@
 MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
                       MailConfig *Mail, MailMsg **msg_sms)
 {
-    int i = 0, body_size = OS_MAXSTR -3, log_size, sms_set = 0,donotgroup = 0;
+    int i = 0, sms_set = 0,donotgroup = 0;
+    size_t body_size = OS_MAXSTR -3, log_size;
     char logs[OS_MAXSTR + 1];
     char *subject_host;
 #ifdef GEOIP
@@ -73,7 +74,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
         i++;
     }
 
-    if (al_data->old_md5) 
+    if (al_data->old_md5)
     {
         log_size = strlen(al_data->old_md5) + 16 + 4;
         if(body_size > log_size)
@@ -84,7 +85,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
             body_size -= log_size;
         }
     }
-    if (al_data->new_md5) 
+    if (al_data->new_md5)
     {
         log_size = strlen(al_data->new_md5) + 16 + 4;
         if(body_size > log_size)
@@ -95,7 +96,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
             body_size -= log_size;
         }
     }
-    if (al_data->old_sha1) 
+    if (al_data->old_sha1)
     {
         log_size = strlen(al_data->old_sha1) + 17 + 4;
         if(body_size > log_size)
@@ -106,7 +107,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
             body_size -= log_size;
         }
     }
-    if (al_data->new_sha1) 
+    if (al_data->new_sha1)
     {
         log_size = strlen(al_data->new_sha1) + 17 + 4;
         if(body_size > log_size)
