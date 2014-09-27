@@ -8,6 +8,7 @@ uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_LUA=external/lua/
+EXTERNAL_ZLIB=external/zlib-1.2.8/
 LUA_PLAT=posix
 MAX=2048
 DEFINES=-DMAX_AGENTS=${MAX} -DOSSECHIDS
@@ -106,17 +107,17 @@ all:  deps \
 #### External ######
 ####################
 
-deps: libcJSON.a external/libz.a
+deps: libcJSON.a ${EXTERNAL_ZLIB}libz.a
 	cd ${EXTERNAL_LUA} && ${MAKE} ${LUA_PLAT}
 
-external/libz.a:
-	cd external && ${MAKE} zlib
+${EXTERNAL_ZLIB}libz.a:
+	cd ${EXTERNAL_ZLIB} && ./configure && ${MAKE} libz.a
 
 
 #### zlib ##########
 
-ZLIB_LIB=os_zlib.a external/libz.a
-ZLIB_INCLUDE=-I./external/zlib-1.2.8/
+ZLIB_LIB=os_zlib.a ${EXTERNAL_ZLIB}libz.a
+ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}
 
 os_zlib_c = os_zlib/os_zlib.c
 os_zlib_o = $(os_zlib_c:.c=.o)
@@ -585,7 +586,7 @@ clean-test:
 
 clean-external:
 	rm -f ${cjson_o} libcJSON.a
-	cd external && make clean
+	cd ${EXTERNAL_ZLIB} && ${MAKE} -f Makefile.in distclean
 	cd ${EXTERNAL_LUA} && make clean
 
 
