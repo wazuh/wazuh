@@ -13,37 +13,37 @@ LUA_PLAT=posix
 MAX=2048
 DEFINES=-DMAX_AGENTS=${MAX} -DOSSECHIDS
 
-ifeq ($(uname_S),Linux)
+ifeq (${uname_S},Linux)
 		DEFINES+=-DUSEINOTIFY
 #		DEFINES+=-DUSE_MAGIC
 		TEXTRA=-lpthread
 #		LIB_MAGIC=-lmagic
 else
-ifeq ($(uname_S),AIX)
+ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
 		DEFINES+=-DHIGHFIRST
 		PATH=${PATH}:/usr/vac/bin
 
 else
-ifeq ($(uname_S),SunOS)
+ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		IEXTRA=-lsocket -lnsl -lresolv
 		LUA_PLAT=solaris
 
 else
-ifeq ($(uname_S),Darwin)
+ifeq (${uname_S},Darwin)
 		DEFINES+=-DDarwin
 		DEFINES+=-DHIGHFIRST
 		LUA_PLAT=macosx
 
 else
-ifeq ($(uname_S),FreeBSD)
+ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
 		TEXTRA=-pthread
 		LUA_PLAT=freebsd
 else
-ifeq ($(uname_S),HP-UX)
+ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
 		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
 		DEFINES+=-DHIGHFIRST
@@ -77,11 +77,11 @@ MAKECOLOR="\033[32;1m"
 ENDCOLOR="\033[0m"
 
 ifndef V
-	QUIET_CC = @printf '    %b %b\n' $(CCCOLOR)CC$(ENDCOLOR) $(SRCCOLOR)$@$(ENDCOLOR) 1>&2;
-	QUIET_LINK = @printf '    %b %b\n' $(LINKCOLOR)LINK$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR) 1>&2;
-	QUIET_CCBIN = @printf '    %b %b\n' $(LINKCOLOR)CC$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR) 1>&2;
-	QUIET_INSTALL = @printf '    %b %b\n' $(LINKCOLOR)INSTALL$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR) 1>&2;
-	QUIET_RANLIB = @printf '    %b %b\n' $(LINKCOLOR)RANLIB$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR) 1>&2;
+	QUIET_CC = @printf '    %b %b\n' ${CCCOLOR}CC${ENDCOLOR} ${SRCCOLOR}$@${ENDCOLOR} 1>&2;
+	QUIET_LINK = @printf '    %b %b\n' ${LINKCOLOR}LINK${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
+	QUIET_CCBIN = @printf '    %b %b\n' ${LINKCOLOR}CC${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
+	QUIET_INSTALL = @printf '    %b %b\n' ${LINKCOLOR}INSTALL${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
+	QUIET_RANLIB = @printf '    %b %b\n' ${LINKCOLOR}RANLIB${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
 endif
 
 OSSEC_CC=${QUIET_CC}${CC}
@@ -400,8 +400,8 @@ ossec-regex: util/ossec-regex.o ${addagent_o} ${ossec_libs} ${ZLIB_LIB}
 
 rootcheck_c = $(wildcard rootcheck/*.c)
 rootcheck_o = $(rootcheck_c:.c=.o)
-rootcheck_o_lib = $(filter-out rootcheck/rootcheck-config.o, $(rootcheck_o))
-rootcheck_o_cmd = $(filter-out rootcheck/config.o, $(rootcheck_o))
+rootcheck_o_lib = $(filter-out rootcheck/rootcheck-config.o, ${rootcheck_o})
+rootcheck_o_cmd = $(filter-out rootcheck/config.o, ${rootcheck_o})
 
 
 rootcheck/%.o: rootcheck/%.c
