@@ -98,7 +98,8 @@ all:  deps \
 			ossec-reportd \
 			os_auth \
 			ossec-analysisd \
-			ossec-logtest
+			ossec-logtest \
+			ossec-makelists
 
 
 ####################
@@ -538,13 +539,13 @@ analysisd/output/%.o: analysisd/output/%.c
 
 
 
-analysisd_c = ${filter-out analysisd/testrule.c, ${filter-out analysisd/makelists.c, ${wildcard analysisd/*.c}}}
+analysisd_c = ${filter-out analysisd/analysisd.c, ${filter-out analysisd/testrule.c, ${filter-out analysisd/makelists.c, ${wildcard analysisd/*.c}}}}
 analysisd_o = ${analysisd_c:.c=.o}
 all_analysisd_o += ${analysisd_o}
 
 analysisd_test_o = $(analysisd_o:.o=-test.o)
 analysisd_live_o = $(analysisd_o:.o=-live.o)
-all_analysisd_o += ${analysisd_test_o} analysisd/testrule-test.o
+all_analysisd_o += ${analysisd_test_o} analysisd/testrule-test.o analysisd/analysisd-live.o analysisd/analysisd-test.o
 
 analysisd/%-live.o: analysisd/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL  -c $^ -o $@
@@ -553,12 +554,14 @@ analysisd/%-test.o: analysisd/%.c
 	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL  -c $^ -o $@
 
 
-ossec-logtest: alerts.a cdb.a decoders-test.a ${analysisd_test_o} analysisd/testrule-test.o
-	${OSSEC_CCBIN} ${CFLAGS} -DTESTRULE -DUSE_OPENSSL  ${analysisd_test_o} ${output_a} alerts.a cdb.a decoders-test.a analysisd/testrule-test.o ${ossec_libs} ${os_zlib} -o $@
+ossec-logtest: alerts.a cdb.a decoders-test.a ${analysisd_test_o} analysisd/testrule-test.o analysisd/analysisd-test.o
+	${OSSEC_CCBIN} ${CFLAGS} -DTESTRULE -DUSE_OPENSSL  analysisd/analysisd-test.o ${analysisd_test_o} ${output_a} alerts.a cdb.a decoders-test.a analysisd/testrule-test.o ${ossec_libs} ${os_zlib} -o $@
 
-ossec-analysisd: alerts.a cdb.a decoders-live.a ${analysisd_live_o} ${output_a}
-	${OSSEC_CCBIN} ${CFLAGS} -I./analysisd/decoders/ -DUSE_OPENSSL ${analysisd_live_o} ${output_a} alerts.a cdb.a decoders-live.a  ${ossec_libs} ${os_zlib} -o $@
+ossec-analysisd: alerts.a cdb.a decoders-live.a ${analysisd_live_o} ${output_a} analysisd/analysisd-live.o
+	${OSSEC_CCBIN} ${CFLAGS} -I./analysisd/decoders/ -DUSE_OPENSSL analysisd/analysisd-live.o ${analysisd_live_o} ${output_a} alerts.a cdb.a decoders-live.a  ${ossec_libs} ${os_zlib} -o $@
 
+ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${output_a} alerts.a cdb.a decoders-test.a
+	${OSSEC_CCBIN} ${CFLAGS}  -I./analysisd/ analysisd/makelists-live.o ${analysisd_live_o} ${output_a} cdb.a alerts.a decoders-test.a ${ossec_libs} ${os_zlib} -o $@
 
 
 
@@ -608,7 +611,7 @@ clean-interals:
 	rm -f ${monitor_o} ossec-monitord
 	rm -f ${os_auth_o} ${os_auth_programs}
 	rm -f ${all_analysisd_o} ${all_analysisd_libs}
-	rm -f ossec-logtest ossec-analysisd
+	rm -f ossec-logtest ossec-analysisd ossec-makelists
 	
 
 
