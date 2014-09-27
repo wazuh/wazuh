@@ -58,13 +58,13 @@ endif # AIX
 endif # Linux
 
 
-CFLAGS+=${DEFINES} -I./ -I./headers/
+ifdef DEBUG
+	CFLAGS+=-g 
+endif #DEBUG
 
-ifdef V
-	CFLAGS+=-g -Wall -Wextra
-else
-	CFLAGS+=-Wall -O2
-endif #V
+CFLAGS+=${DEFINES} -I./ -I./headers/
+CFLAGS+=-Wall -Wextra -O2
+
 
 BUILDLIB=ar -crus
 
@@ -167,7 +167,7 @@ os_xml/%.o: os_xml/%.c
 	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
 
 os_xml.a: ${os_xml_o}
-	${OSSEC_LINK} os_xml.a $^
+	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
 
