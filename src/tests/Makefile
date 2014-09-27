@@ -7,7 +7,7 @@
 # Foundation
 
 PT=../
-include ${PT}Config.Make
+#include ${PT}Config.Make
 
 CHECK_LINK = -lcheck -lm -pthread -lrt
 CFLAGS_TEST = -Waggregate-return -Wall -Wbad-function-cast -Wc++-compat -Wcast-align \
@@ -72,4 +72,4 @@ test_shared: test_shared.c ${SHARED_SRCS} ../headers/*.h
 	${CC} ${CFLAGS_TEST} test_shared.c ${SHARED_SRCS} ${CHECK_LINK} -o $@
 
 clean:
-	${CLEAN} test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net test_shared coverage-report/ ossec.test
+	rm -f test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net test_shared coverage-report/ ossec.test

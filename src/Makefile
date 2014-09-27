@@ -521,6 +521,9 @@ analysisd/decoders/plugins/%-test.o: analysisd/decoders/plugins/%.c
 
 analysisd/decoders/plugins/%-live.o: analysisd/decoders/plugins/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/decoders -c $^ -o $@
+	
+analysisd/compiled_rules/compiled_rules.h: analysisd/compiled_rules/.function_list analysisd/compiled_rules/register_rule.sh
+	./analysisd/compiled_rules/register_rule.sh build
 
 analysisd/compiled_rules/%-test.o: analysisd/compiled_rules/%.c
 	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/decoders -c $^ -o $@
@@ -552,11 +555,11 @@ analysisd_test_o = $(analysisd_o:.o=-test.o)
 analysisd_live_o = $(analysisd_o:.o=-live.o)
 all_analysisd_o += ${analysisd_test_o} ${analysisd_live_o} analysisd/testrule-test.o analysisd/analysisd-live.o analysisd/analysisd-test.o analysisd/makelists-live.o
 
-analysisd/%-live.o: analysisd/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -c $^ -o $@
+analysisd/%-live.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -c $< -o $@
 
-analysisd/%-test.o: analysisd/%.c
-	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -c $^ -o $@
+analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
+	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -c $< -o $@
 
 
 ossec-logtest: ${analysisd_test_o} ${output_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB}
@@ -616,7 +619,7 @@ clean-interals:
 	rm -f ${syscheck_o} ossec-syscheckd
 	rm -f ${monitor_o} ossec-monitord
 	rm -f ${os_auth_o} ${os_auth_programs}
-	rm -f ${all_analysisd_o} ${all_analysisd_libs}
+	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ossec-logtest ossec-analysisd ossec-makelists
 
 
