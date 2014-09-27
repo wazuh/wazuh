@@ -14,10 +14,10 @@ zlib: libz.a
 	cp -pr ${ZLIB_DIR}/zlib.h ${ZLIB_DIR}/zconf.h ../headers/
 
 libz.a:
-	cd ${ZLIB_DIR}/; ./configure; make libz.a;
+	cd ${ZLIB_DIR}/; ./configure; ${MAKE} libz.a;
 	cp -pr ${ZLIB_DIR}/libz.a .
 		
 clean:
 	${CLEAN} zlib.a ../headers/zlib.h ../headers/zconf.h
-	cd ${ZLIB_DIR}/; make -f Makefile.in distclean
+	cd ${ZLIB_DIR}/; ${MAKE} -f Makefile.in distclean
 	${CLEAN} ${ZLIB_DIR}/zconf.h ${ZLIB_DIR}/Makefile
