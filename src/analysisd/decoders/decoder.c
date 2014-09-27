@@ -33,9 +33,9 @@ void DecodeEvent(Eventinfo *lf)
     OSDecoderNode *child_node;
     OSDecoderInfo *nnode;
 
-    const char *llog;
+    const char *llog = NULL;
     const char *pmatch;
-    const char *cmatch;
+    const char *cmatch = NULL;
     const char *regex_prev = NULL;
 
 

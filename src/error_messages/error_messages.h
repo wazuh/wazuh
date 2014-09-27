@@ -93,6 +93,9 @@
 #define NO_CONFIG       "%s(1239): ERROR: Configuration file not found: '%s'."
 #define INVALID_TIME    "%s(1240): ERROR: Invalid time format: '%s'."
 #define INVALID_DAY     "%s(1241): ERROR: Invalid day format: '%s'."
+#define CHDIR_ERROR     "%s(1244): ERROR: Unable to chdir to directory: '%s'."
+#define LINK_ERROR      "%s(1245): ERROR: Unable to link from '%s' to '%s'."
+#define CHOWN_ERROR     "%s(1246): ERROR: Unable to run chown on: '%s'."
 
 #define MAILQ_ERROR	    "%s(1221): ERROR: No Mail queue at %s"
 #define IMSG_ERROR	    "%s(1222): ERROR: Invalid msg: %s"
