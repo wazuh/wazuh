@@ -237,25 +237,25 @@ chmod 770 ${DIR}/var/run
 chown root:${GROUP} ${DIR}/var/run
 
 # Moving the binary files
-cp -pr addagent/manage_agents agentlessd/ossec-agentlessd \
-        analysisd/ossec-analysisd logcollector/ossec-logcollector \
-        monitord/ossec-monitord reportd/ossec-reportd \
-        os_execd/ossec-execd os_maild/ossec-maild \
-        remoted/ossec-remoted syscheckd/ossec-syscheckd \
-	analysisd/ossec-logtest os_csyslogd/ossec-csyslogd \
-	os_auth/ossec-authd os_dbd/ossec-dbd analysisd/ossec-makelists \
-	${DIR}/bin/
+cp -pr manage_agents ossec-agentlessd \
+        ossec-analysisd ossec-logcollector \
+        ossec-monitord ossec-reportd \
+        ossec-execd ossec-maild \
+        ossec-remoted ossec-syscheckd \
+        ossec-logtest ossec-csyslogd \
+        ossec-authd ossec-dbd ossec-makelists \
+        ${DIR}/bin/
 
-cp -pr util/verify-agent-conf ${DIR}/bin/
-cp -pr util/clear_stats ${DIR}/bin/
-cp -pr util/list_agents ${DIR}/bin/
-cp -pr util/ossec-regex ${DIR}/bin/
-cp -pr util/syscheck_update ${DIR}/bin/
-cp -pr util/agent_control ${DIR}/bin/
-cp -pr util/syscheck_control ${DIR}/bin/
-cp -pr util/rootcheck_control ${DIR}/bin/
-cp -pr external/lua/src/ossec-lua ${DIR}/bin/
-cp -pr external/lua/src/ossec-luac ${DIR}/bin/
+cp -pr verify-agent-conf ${DIR}/bin/
+cp -pr clear_stats ${DIR}/bin/
+cp -pr list_agents ${DIR}/bin/
+cp -pr ossec-regex ${DIR}/bin/
+cp -pr syscheck_update ${DIR}/bin/
+cp -pr agent_control ${DIR}/bin/
+cp -pr syscheck_control ${DIR}/bin/
+cp -pr rootcheck_control ${DIR}/bin/
+cp -pr lua/src/ossec-lua ${DIR}/bin/
+cp -pr lua/src/ossec-luac ${DIR}/bin/
 cp -pr ../contrib/util.sh ${DIR}/bin/
 chown root:${GROUP} ${DIR}/bin/util.sh
 chmod +x ${DIR}/bin/util.sh
