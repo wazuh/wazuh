@@ -49,7 +49,7 @@ generate_coverage: build_tests
 
 build_tests: test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net test_shared
 
-test_os_zlib: test_os_zlib.c ${OS_ZLIB}
+test_os_zlib: test_os_zlib.c ../os_zlib/os_zlib.c ../external/zlib-1.2.8/libz.a
 	${CC} ${CFLAGS_TEST} $+ ${CHECK_LINK} -o $@
 
 test_os_xml: test_os_xml.c ../os_xml/*.c ../os_xml/*.h
