@@ -91,16 +91,94 @@ OSSEC_LINK=${QUIET_LINK}${BUILDLIB}
 OSSEC_RANLIB=${QUIET_RANLIB}ranlib
 
 ####################
-#### External ######
+#### Target ########
 ####################
 
 ifndef TARGET
-	TARGET=server
+	TARGET=failtarget
 endif # TARGET
+
+ifeq (${TARGET},agent)
+	DEFINES+=-DCLIENT 
+endif 
+
+ifdef DATABASE 
+ifeq (${DATABASE},mysql)
+
+	MI := $(shell sh -c 'mysql_config --cflags 2>/dev/null || echo ')
+	ML := $(shell sh -c 'mysql_config --libs 2>/dev/null || echo ')
+
+ifeq (${MI},) # BEGIN MI manula detection
+ifeq (,$(wildcard /usr/include/mysql/mysql.h))
+	MI="-I/usr/include/mysql/"
+else 
+ifeq (,$(wildcard /usr/local/include/mysql/mysql.h)) 
+	MI="-I/usr/local/include/mysql/"
+endif  #
+endif  #MI
+
+ifeq (${ML},) 
+ifeq (,$(wildcard /usr/lib/mysql/*))
+	ML="-L/usr/lib/mysql -lmysqlclient"
+else 
+ifeq (,$(wildcard /usr/lib64/mysql/*))
+	ML="-L/usr/lib64/mysql -lmysqlclient"
+else 
+ifeq (,$(wildcard /usr/local/lib/mysql/*))
+	ML="-L/usr/local/lib/mysql -lmysqlclient"
+else 
+ifeq (,$(wildcard /usr/local/lib64/mysql/*))
+	ML="-L/usr/local/lib64/mysql -lmysqlclient"
+endif # local/lib64
+endif # local/lib 
+endif # lib54
+endif # lib
+endif
+endif # ML
+
+else
+ifeq (${DATABASE}, pgsql)
+endif # pgsql 
+endif # mysql 
+endif # DATABASE
 
 .PHONY: default 
 default: ${TARGET}
 
+.PHONY: failtarget
+failtarget: 
+	@echo "TARGET is required: "
+	@echo "   make TARGET=server   to build the server"
+	@echo "   make TARGET=agent    to build the unix agent"
+	@echo "   make TARGET=winagent to build the windows agent"
+
+.PHONY: help 
+help: failtarget 
+	@echo 
+	@echo "General options: "
+	@echo "   make V=1             Display full compiler messages" 
+	@echo "   make DEBUG=1         Build with symbols and without optimization"
+	@echo 
+	@echo "Database options: "
+	@echo "   make DATABASE=mysql  Build with MYSQL Support"
+	@echo "   make DATABASE=pgsql  Build with PostgreSQL Support "
+	@echo 
+	@echo "Examples: Client with debugging enabled"
+	@echo "   make TARGET=agent DEBUG=1"
+
+.PHONY: settings
+settings: 
+	@echo "Mysql settings:"
+	@echo "    includes: ${MI}"
+	@echo "    libs:     ${ML}"
+	@echo "Pgsql settings:"
+	@echo "    includes: ${PI}"
+	@echo "    libs:     ${PL}"
+	@echo "Defines:"
+	@echo "    ${DEFINES}"
+
+
+	
 server: deps \
 	ossec-maild \
 	ossec-csyslogd \
@@ -128,8 +206,8 @@ agent: deps \
 	manage_agents \
 	
 
-.PHONY: win
-win:
+.PHONY: winagent
+winagent:
 	${MAKE} -f Makefile.mingw
 
 
