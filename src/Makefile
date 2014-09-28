@@ -10,8 +10,15 @@ EXTERNAL_JSON=external/cJSON/
 EXTERNAL_LUA=external/lua/
 EXTERNAL_ZLIB=external/zlib-1.2.8/
 LUA_PLAT=posix
-MAX=2048
-DEFINES=-DMAX_AGENTS=${MAX} -DOSSECHIDS
+MAXAGENTS?=2048
+PREFIX?=/var/ossec 
+PG_CONFIG?=pg_config 
+MY_CONFIG?=mysql_config 
+
+USE_ZEROMQ?=0
+USE_GEOIP?=0
+
+DEFINES=-DMAX_AGENTS=${MAXAGENTS} -DOSSECHIDS
 
 ifeq (${uname_S},Linux)
 		DEFINES+=-DUSEINOTIFY
@@ -103,10 +110,13 @@ ifeq (${TARGET},agent)
 endif 
 
 ifdef DATABASE 
-ifeq (${DATABASE},mysql)
 
-	MI := $(shell sh -c 'mysql_config --cflags 2>/dev/null || echo ')
-	ML := $(shell sh -c 'mysql_config --libs 2>/dev/null || echo ')
+ifeq (${DATABASE},mysql) 
+
+ifdef MYSQL_CFLAGS 
+	MI = ${MYSQL_CFLAGS} 
+else 
+	MI := $(shell sh -c '${MY_CONFIG} --cflags 2>/dev/null || echo ')
 
 ifeq (${MI},) # BEGIN MI manula detection
 ifeq (,$(wildcard /usr/include/mysql/mysql.h))
@@ -116,6 +126,16 @@ ifeq (,$(wildcard /usr/local/include/mysql/mysql.h))
 	MI="-I/usr/local/include/mysql/"
 endif  #
 endif  #MI
+
+endif
+endif # MYSQL_CFLAGS
+
+
+
+ifdef MYSQL_LIBS
+	ML = ${MYSQL_LIBS} 
+else 
+	ML := $(shell sh -c '${MY_CONFIG} --libs 2>/dev/null || echo ')
 
 ifeq (${ML},) 
 ifeq (,$(wildcard /usr/lib/mysql/*))
@@ -133,11 +153,28 @@ endif # local/lib64
 endif # local/lib 
 endif # lib54
 endif # lib
-endif
-endif # ML
 
-else
+endif 
+endif # MYSQL_LIBS 
+
+else # DATABASE
+
 ifeq (${DATABASE}, pgsql)
+
+ifneq (${PGSQL_LIBS},)
+	PL:=${PGSQL_LIBS} 
+else 
+	PL:=$(shell sh -c '(${PG_CONFIG} --libdir --pkglibdir 2>/dev/null | sed "s/^/-L/g" | xargs ) || echo ')
+endif 
+
+ifneq (${PGSQL_CFLAGS},)
+	PI:=${PGSQL_CFLAGS}
+else
+	PI:=$(shell sh -c '(${PG_CONFIG}--includedir --pkgincludedir 2>/dev/null | sed "s/^/-I/g" | xargs ) || echo ')
+endif 
+
+# XXX need some basic autodetech stuff here.  
+
 endif # pgsql 
 endif # mysql 
 endif # DATABASE
@@ -161,21 +198,43 @@ help: failtarget
 	@echo 
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql  Build with MYSQL Support"
+	@echo "                        Use MYSQL_CFLAGS adn MYSQL_LIBS to override defaults"
 	@echo "   make DATABASE=pgsql  Build with PostgreSQL Support "
+	@echo "                        Use PGSQL_CFLAGS adn PGSQL_LIBS to override defaults"
+	@echo 
 	@echo 
 	@echo "Examples: Client with debugging enabled"
 	@echo "   make TARGET=agent DEBUG=1"
 
 .PHONY: settings
 settings: 
+	@echo 
+	@echo "General settings:"
+	@echo "    V:          ${V}"
+	@echo "    DEBUG:      ${DEBUG}"
+	@echo "    PREFIX:     ${PREFIX}"
+	@echo "    MAXAGENTS:  ${MAXAGENTS}"
+	@echo "    DATABASE:   ${DATABASE}"
+	@echo "    TEXTRA:     ${TEXTRA}"
+	@echo "    IEXTRA:     ${IEXTRA}"
+	@echo "Lua settings:"
+	@echo "    LUA_PLAT:   ${LUA_PLAT}"
+	@echo "USE settings:"
+	@echo "    USE_ZEROMQ: ${USE_ZEROMQ}"
+	@echo "    USE_GEOIP:  ${USE_GEOIP}"
 	@echo "Mysql settings:"
-	@echo "    includes: ${MI}"
-	@echo "    libs:     ${ML}"
+	@echo "    includes:   ${MI}"
+	@echo "    libs:       ${ML}"
 	@echo "Pgsql settings:"
-	@echo "    includes: ${PI}"
-	@echo "    libs:     ${PL}"
+	@echo "    includes:   ${PI}"
+	@echo "    libs:       ${PL}"
 	@echo "Defines:"
 	@echo "    ${DEFINES}"
+	@echo "Compiler:"
+	@echo "    CFLAGS      ${CFLAGS}" 
+	@echo "    LDFLAGS     ${LDFLAGS}"
+	@echo "    CC          ${CC}"
+	@echo "    MAKE        ${MAKE}"
 
 
 	
