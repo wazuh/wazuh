@@ -62,8 +62,9 @@ ifdef DEBUG
 	CFLAGS+=-g 
 endif #DEBUG
 
-CFLAGS+=${DEFINES} -I./ -I./headers/
+CFLAGS+=${DEFINES} 
 CFLAGS+=-Wall -Wextra -O2
+CFLAGS+=-I./ -I./headers/
 
 
 BUILDLIB=ar -crus
@@ -89,23 +90,47 @@ OSSEC_CCBIN=${QUIET_CCBIN}${CC}
 OSSEC_LINK=${QUIET_LINK}${BUILDLIB}
 OSSEC_RANLIB=${QUIET_RANLIB}ranlib
 
-all: deps \
-			ossec-maild \
-			ossec-csyslogd \
-			ossec-agentlessd \
-			ossec-execd \
-			ossec-logcollector \
-			ossec-remoted \
-			ossec-agentd \
-			manage_agents \
-			util \
-			ossec-syscheckd \
-			ossec-monitord \
-			ossec-reportd \
-			os_auth \
-			ossec-analysisd \
-			ossec-logtest \
-			ossec-makelists
+####################
+#### External ######
+####################
+
+ifndef TARGET
+	TARGET=server
+endif # TARGET
+
+.PHONY: default 
+default: ${TARGET}
+
+server: deps \
+	ossec-maild \
+	ossec-csyslogd \
+	ossec-agentlessd \
+	ossec-execd \
+	ossec-logcollector \
+	ossec-remoted \
+	ossec-agentd \
+	manage_agents \
+	util \
+	ossec-syscheckd \
+	ossec-monitord \
+	ossec-reportd \
+	os_auth \
+	ossec-analysisd \
+	ossec-logtest \
+	ossec-makelists
+
+agent: deps \
+	ossec-agentd \
+	agent-auth \
+	ossec-logcollector \
+	ossec-syscheckd \
+	ossec-execd \
+	manage_agents \
+	
+
+.PHONY: win
+win:
+	${MAKE} -f Makefile.mingw
 
 
 ####################
@@ -160,6 +185,7 @@ libcJSON.a: ${cjson_o}
 ossec_libs = os_crypto.a config.a shared.a os_net.a os_regex.a os_xml.a
 
 #### os_xml ########
+
 os_xml_c= $(wildcard os_xml/*.c)
 os_xml_o = $(os_xml_c:.c=.o)
 
