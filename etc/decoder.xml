@@ -518,7 +518,7 @@
   -->
 
 <decoder name="pure-transfer">
-  <prematch>^\S+ - \S+ [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d -\d\d\d\d] </prematch>
+  <prematch>^\S+ - \S+ [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d \S\d\d\d\d] "\w+ \S+" </prematch>
   <regex>^(\S+) - (\S+) [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d -\d\d\d\d] "(\S+) (\.+) (\d+) \d+$</regex>
   <order>extra_data,dstuser,action,url,status</order>
 </decoder>
@@ -1567,9 +1567,9 @@
   -->
 <decoder name="web-accesslog">
   <type>web-log</type>
-  <prematch>^\d+.\d+.\d+.\d+ |^::ffff:\d+.\d+.\d+.\d+ </prematch>
-  <regex>^(\d+.\d+.\d+.\d+) \S+ \S+ [\S+ \S\d+] </regex>
-  <regex>"\w+ (\S+) HTTP\S+ (\d+) </regex>
+  <prematch>^\S+ \S+ \S+ [\S+ \S\d+] "\w+ \S+ HTTP\S+" </prematch>
+  <regex>^(\S+) \S+ \S+ [\S+ \S\d+] </regex>
+  <regex>"\w+ (\S+) HTTP\S+" (\d+) </regex>
   <order>srcip, url, id</order>
 </decoder>
 
