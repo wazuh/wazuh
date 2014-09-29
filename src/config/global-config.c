@@ -156,6 +156,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_emailfrom = "email_from";
     const char *xml_emailidsname = "email_idsname";
     const char *xml_smtpserver = "smtp_server";
+    const char *xml_heloserver = "helo_server";
     const char *xml_mailmaxperhour = "email_maxperhour";
 
 #ifdef GEOIP
@@ -543,6 +544,13 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
             }
             #endif
+        }
+        else if(strcmp(node[i]->element, xml_heloserver) == 0)
+        {
+            if(Mail && (Mail->mn))
+            {
+                os_strdup(node[i]->content, Mail->heloserver);
+            }
         }
         else if(strcmp(node[i]->element, xml_mailmaxperhour) == 0)
         {
