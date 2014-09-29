@@ -85,11 +85,13 @@ MAKECOLOR="\033[32;1m"
 ENDCOLOR="\033[0m"
 
 ifndef V
-	QUIET_CC = @printf '    %b %b\n' ${CCCOLOR}CC${ENDCOLOR} ${SRCCOLOR}$@${ENDCOLOR} 1>&2;
-	QUIET_LINK = @printf '    %b %b\n' ${LINKCOLOR}LINK${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
-	QUIET_CCBIN = @printf '    %b %b\n' ${LINKCOLOR}CC${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
+	QUIET_CC      = @printf '    %b %b\n' ${CCCOLOR}CC${ENDCOLOR} ${SRCCOLOR}$@${ENDCOLOR} 1>&2;
+	QUIET_LINK    = @printf '    %b %b\n' ${LINKCOLOR}LINK${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
+	QUIET_CCBIN   = @printf '    %b %b\n' ${LINKCOLOR}CC${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
 	QUIET_INSTALL = @printf '    %b %b\n' ${LINKCOLOR}INSTALL${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
-	QUIET_RANLIB = @printf '    %b %b\n' ${LINKCOLOR}RANLIB${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
+	QUIET_RANLIB  = @printf '    %b %b\n' ${LINKCOLOR}RANLIB${ENDCOLOR} ${BINCOLOR}$@${ENDCOLOR} 1>&2;
+	QUIET_NOTICE  = @printf '%b' ${MAKECOLOR} 1>&2;
+	QUIET_ENDCOLOR= @printf '%b' ${ENDCOLOR} 1>&2;
 endif
 
 OSSEC_CC=${QUIET_CC}${CC}
@@ -180,7 +182,12 @@ endif # mysql
 endif # DATABASE
 
 .PHONY: default 
-default: ${TARGET}
+build:: ${TARGET}
+	@echo 
+	${QUIET_NOTICE}
+	@echo "Done building ${TARGET}"
+	${QUIET_ENDCOLOR}
+	@echo 
 
 .PHONY: failtarget
 failtarget: 
@@ -237,33 +244,39 @@ settings:
 	@echo "    MAKE        ${MAKE}"
 
 
+BUILD_SERVER+=deps 
+BUILD_SERVER+=ossec-maild
+BUILD_SERVER+=ossec-csyslogd
+BUILD_SERVER+=ossec-agentlessd
+BUILD_SERVER+=ossec-execd
+BUILD_SERVER+=ossec-logcollector
+BUILD_SERVER+=ossec-remoted
+BUILD_SERVER+=ossec-agentd
+BUILD_SERVER+=manage_agents
+BUILD_SERVER+=util
+BUILD_SERVER+=ossec-syscheckd
+BUILD_SERVER+=ossec-monitord
+BUILD_SERVER+=ossec-reportd
+BUILD_SERVER+=os_auth
+BUILD_SERVER+=ossec-analysisd
+BUILD_SERVER+=ossec-logtest
+BUILD_SERVER+=ossec-makelists
+ifneq (,${DATABASE})
+BUILD_SERVER+=os_dbd 
+endif 
 	
-server: deps \
-	ossec-maild \
-	ossec-csyslogd \
-	ossec-agentlessd \
-	ossec-execd \
-	ossec-logcollector \
-	ossec-remoted \
-	ossec-agentd \
-	manage_agents \
-	util \
-	ossec-syscheckd \
-	ossec-monitord \
-	ossec-reportd \
-	os_auth \
-	ossec-analysisd \
-	ossec-logtest \
-	ossec-makelists
+BUILD_AGENT+=deps
+BUILD_AGENT+=ossec-agentd
+BUILD_AGENT+=agent-auth
+BUILD_AGENT+=ossec-logcollector
+BUILD_AGENT+=ossec-syscheckd
+BUILD_AGENT+=ossec-execd
+BUILD_AGENT+=manage_agents
 
-agent: deps \
-	ossec-agentd \
-	agent-auth \
-	ossec-logcollector \
-	ossec-syscheckd \
-	ossec-execd \
-	manage_agents \
-	
+server: ${BUILD_SERVER}
+	@echo ${BUILD_SERVER}
+
+agent: ${BUILD_AGENT}
 
 .PHONY: winagent
 winagent:
@@ -441,6 +454,16 @@ ossec-maild: ${os_maild_o} ${ossec_libs}
 	${OSSEC_CCBIN} ${CFLAGS} ${IEXTRA} $^ -o $@
 
 #### os_dbd ##########
+
+os_dbd_c = $(wildcard os_dbd/*.c)
+os_dbd_o = $(os_dbd_c:.c=.o)
+
+os_dbd/%.o: os_dbd/%.c
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-dbd\" -c $^ -o $@
+
+ossec-dbd: ${os_dbd_o} ${ossec_libs} 
+	${OSSEC_CCBIN} ${CFLAGS} ${JSON_INCLUDE}  $^ -lm -o $@
+
 
 #### os_csyslogd #####
 
@@ -770,6 +793,7 @@ clean-interals:
 	rm -f ${os_maild_o} ossec-maild
 	rm -f ${crypto_o} os_crypto.a
 	rm -f ${os_csyslogd_o} ossec-csyslogd
+	rm -f ${os_dbd_o} ossec-dbd
 	rm -f ${os_agentlessd_o} ossec-agentlessd
 	rm -f ${os_execd_o} ossec-execd
 	rm -f ${os_logcollector_o} ossec-logcollector
