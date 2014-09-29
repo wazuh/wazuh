@@ -30,13 +30,13 @@ ifeq (${uname_S},AIX)
 		DEFINES+=-DAIX
 		DEFINES+=-DHIGHFIRST
 		PATH=${PATH}:/usr/vac/bin
-
 else
 ifeq (${uname_S},SunOS)
 		DEFINES+=-DSOLARIS
 		DEFINES+=-DHIGHFIRST
 		IEXTRA=-lsocket -lnsl -lresolv
 		LUA_PLAT=solaris
+		PATH=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
 
 else
 ifeq (${uname_S},Darwin)
