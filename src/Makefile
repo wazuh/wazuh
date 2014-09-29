@@ -189,6 +189,18 @@ build:: ${TARGET}
 	${QUIET_ENDCOLOR}
 	@echo 
 
+
+.PHONY: install 
+install: install-${TARGET}
+
+install-agent: build 
+	@./InstallAgent.sh
+
+install-server: build 
+	@./InstallServer.sh 
+
+
+
 .PHONY: failtarget
 failtarget: 
 	@echo "TARGET is required: "
