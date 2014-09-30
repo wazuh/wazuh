@@ -180,7 +180,7 @@ int OS_StrIsNum(const char *str) __attribute__((nonnull));
  * Checks if a specified char is in the following range:
  * a-z, A-Z, 0-9, _-.
  */
-#include "os_regex_maps.h"
+extern const unsigned char hostname_map[];
 #define isValidChar(x) (hostname_map[(unsigned char)x])
 
 
