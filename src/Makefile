@@ -64,9 +64,12 @@ endif # SunOS
 endif # AIX
 endif # Linux
 
+ifdef DEBUGAD 
+	DEFINES+=+DDEBUGAD 
+endif 
 
 ifdef DEBUG
-	CFLAGS+=-g 
+	CFLAGS+=-g
 endif #DEBUG
 
 CFLAGS+=${DEFINES} 
@@ -231,6 +234,7 @@ settings:
 	@echo "General settings:"
 	@echo "    V:          ${V}"
 	@echo "    DEBUG:      ${DEBUG}"
+	@echo "    DEBUGAD     ${DEBUGAD}"
 	@echo "    PREFIX:     ${PREFIX}"
 	@echo "    MAXAGENTS:  ${MAXAGENTS}"
 	@echo "    DATABASE:   ${DATABASE}"
