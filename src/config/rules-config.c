@@ -81,12 +81,12 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         /* Mail notification */
@@ -98,7 +98,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                                        sizeof(char *)*rules_size);
             if(!Config->includes)
             {
-                merror(MEM_ERROR, ARGV0);
+                merror(MEM_ERROR, __local_name);
                 return(OS_INVALID);
             }
 
@@ -113,7 +113,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                                        sizeof(char *)*decoders_size);
             if(!Config->decoders)
             {
-                merror(MEM_ERROR, ARGV0);
+                merror(MEM_ERROR, __local_name);
                 return(OS_INVALID);
             }
 
@@ -128,7 +128,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                                     sizeof(char *)*lists_size);
             if(!Config->lists)
             {
-                merror(MEM_ERROR, ARGV0);
+                merror(MEM_ERROR, __local_name);
                 return(OS_INVALID);
             }
             os_strdup(node[i]->content,Config->lists[lists_size -2]);
@@ -148,8 +148,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                         {
                             if(!OSRegex_Compile(node[i]->values[att_count], &regex, 0))
                             {
-                                merror(CONFIG_ERROR, ARGV0, "pattern in decoders_dir does not compile");
-                                merror("%s: ERROR: Regex would not compile", ARGV0);
+                                merror(CONFIG_ERROR, __local_name, "pattern in decoders_dir does not compile");
+                                merror("%s: ERROR: Regex would not compile", __local_name);
                                 return(-1);
                             }
                         }
@@ -191,7 +191,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                         Config->decoders= (char **) realloc(Config->decoders, sizeof(char *)*decoders_size);
                         if(!Config->decoders)
                         {
-                            merror(MEM_ERROR, ARGV0);
+                            merror(MEM_ERROR, __local_name);
                             OSRegex_FreePattern(&regex);
                             return(-1);
                         }
@@ -226,8 +226,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                         {
                             if(!OSRegex_Compile(node[i]->values[att_count], &regex, 0))
                             {
-                                merror(CONFIG_ERROR, ARGV0, "pattern in rules_dir does not compile");
-                                merror("%s: ERROR: Regex would not compile", ARGV0);
+                                merror(CONFIG_ERROR, __local_name, "pattern in rules_dir does not compile");
+                                merror("%s: ERROR: Regex would not compile", __local_name);
                                 return(-1);
                             }
                         }
@@ -269,7 +269,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                         Config->includes = (char **) realloc(Config->includes, sizeof(char *)*rules_size);
                         if(!Config->includes)
                         {
-                            merror(MEM_ERROR, ARGV0);
+                            merror(MEM_ERROR, __local_name);
                             OSRegex_FreePattern(&regex);
                             closedir(dfd);
                             return(-1);
@@ -292,7 +292,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             OSRegex_FreePattern(&regex);
             return(OS_INVALID);
         }

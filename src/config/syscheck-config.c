@@ -92,7 +92,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
 
                 ptm = syscheck->filerestrict[pl];
 
-                merror(REGEX_COMPILE, ARGV0, restrictfile,
+                merror(REGEX_COMPILE, __local_name, restrictfile,
                        ptm->error);
                 free(syscheck->filerestrict[pl]);
                 syscheck->filerestrict[pl] = NULL;
@@ -171,7 +171,7 @@ int read_reg(syscheck_config *syscheck, char *entries)
             /* Duplicated entry */
             if(strcmp(syscheck->registry[i], tmp_entry) == 0)
             {
-                merror(SK_DUP, ARGV0, tmp_entry);
+                merror(SK_DUP, __local_name, tmp_entry);
                 return(1);
             }
             i++;
@@ -259,7 +259,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         /* Getting the options */
         if(!g_attrs || !g_values)
         {
-            merror(SYSCHECK_NO_OPT, ARGV0, dirs);
+            merror(SYSCHECK_NO_OPT, __local_name, dirs);
             ret = 0;
             goto out_free;
         }
@@ -286,7 +286,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 }
                 else
                 {
-                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -304,7 +304,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 }
                 else
                 {
-                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -321,7 +321,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 }
                 else
                 {
-                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -338,7 +338,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 }
                 else
                 {
-                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -355,7 +355,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 }
                 else
                 {
-                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -372,7 +372,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 }
                 else
                 {
-                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -389,7 +389,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 }
                 else
                 {
-                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -406,7 +406,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 }
                 else
                 {
-                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -422,7 +422,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 }
                 else
                 {
-                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -438,7 +438,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 }
                 else
                 {
-                    merror(SK_INV_OPT, ARGV0, *values, *attrs);
+                    merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
                     goto out_free;
                 }
@@ -453,7 +453,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
             else
             {
-                merror(SK_INV_ATTR, ARGV0, *attrs);
+                merror(SK_INV_ATTR, __local_name, *attrs);
                 ret = 0;
                 goto out_free;
             }
@@ -464,7 +464,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         /* You must have something set */
         if(opts == 0)
         {
-            merror(SYSCHECK_NO_OPT, ARGV0, dirs);
+            merror(SYSCHECK_NO_OPT, __local_name, dirs);
             ret = 0;
             goto out_free;
         }
@@ -477,7 +477,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             /* Duplicate entry */
             if(strcmp(syscheck->dir[j], tmp_dir) == 0)
             {
-                merror(SK_DUP, ARGV0, tmp_dir);
+                merror(SK_DUP, __local_name, tmp_dir);
                 ret = 1;
                 goto out_free;
             }
@@ -497,14 +497,14 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
 
             if(glob(tmp_dir, 0, NULL, &g) != 0)
             {
-                merror(GLOB_ERROR, ARGV0, tmp_dir);
+                merror(GLOB_ERROR, __local_name, tmp_dir);
                 ret = 1;
                 goto out_free;
             }
 
             if(g.gl_pathv[0] == NULL)
             {
-                merror(GLOB_NFOUND, ARGV0, tmp_dir);
+                merror(GLOB_NFOUND, __local_name, tmp_dir);
                 ret = 1;
                 goto out_free;
             }
@@ -586,12 +586,12 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             return(OS_INVALID);
         }
 
@@ -629,7 +629,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
 
@@ -641,7 +641,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             syscheck->scan_time = OS_IsValidUniqueTime(node[i]->content);
             if(!syscheck->scan_time)
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -652,7 +652,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             syscheck->scan_day = OS_IsValidDay(node[i]->content);
             if(!syscheck->scan_day)
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -666,7 +666,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 syscheck->scan_on_start = 0;
             else
             {
-                merror(XML_VALUEERR,ARGV0, node[i]->element, node[i]->content);
+                merror(XML_VALUEERR,__local_name, node[i]->element, node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -680,7 +680,7 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 syscheck->disabled = 0;
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -733,14 +733,14 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                                         syscheck->ignore_regex[ign_size], 0))
                     {
                         mt_pt = (OSMatch *)syscheck->ignore_regex[ign_size];
-                        merror(REGEX_COMPILE, ARGV0, node[i]->content,
+                        merror(REGEX_COMPILE, __local_name, node[i]->content,
                               mt_pt->error);
                         return(0);
                     }
                 }
                 else
                 {
-                    merror(SK_INV_ATTR, ARGV0, node[i]->attributes[0]);
+                    merror(SK_INV_ATTR, __local_name, node[i]->attributes[0]);
                     return(OS_INVALID);
                 }
             }
@@ -809,14 +809,14 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                     {
                         mt_pt = (OSMatch *)
                                 syscheck->registry_ignore_regex[ign_size];
-                        merror(REGEX_COMPILE, ARGV0, node[i]->content,
+                        merror(REGEX_COMPILE, __local_name, node[i]->content,
                              mt_pt->error);
                         return(0);
                     }
                 }
                 else
                 {
-                    merror(SK_INV_ATTR, ARGV0, node[i]->attributes[0]);
+                    merror(SK_INV_ATTR, __local_name, node[i]->attributes[0]);
                     return(OS_INVALID);
                 }
             }
@@ -875,14 +875,14 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 }
                 else
                 {
-                    merror(XML_VALUEERR,ARGV0, node[i]->element, node[i]->content);
+                    merror(XML_VALUEERR,__local_name, node[i]->element, node[i]->content);
                     return(OS_INVALID);
                 }
             }
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         i++;
