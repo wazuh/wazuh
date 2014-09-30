@@ -21,7 +21,7 @@ int __crt_day;
 char __elogfile[OS_FLSIZE+1];
 char __alogfile[OS_FLSIZE+1];
 char __flogfile[OS_FLSIZE+1];
-	
+
 /* OS_InitLog */
 void OS_InitLog()
 {
@@ -46,7 +46,7 @@ void OS_InitLog()
 /* gzips a log file
 int OS_CompressLog(int yesterday, char *prev_month, int prev_year)
 
-  -- moved to monitord.	
+  -- moved to monitord.
 */
 
 
@@ -100,7 +100,11 @@ int OS_GetLogLocation(Eventinfo *lf)
 
     /* Creating a symlink */
     unlink(EVENTS_DAILY);
-    link(__elogfile, EVENTS_DAILY);
+
+    if(link(__elogfile, EVENTS_DAILY) == -1)
+    {
+        ErrorExit(LINK_ERROR, ARGV0, __elogfile, EVENTS_DAILY);
+    }
 
 
     /* for the alerts logs */
@@ -143,7 +147,11 @@ int OS_GetLogLocation(Eventinfo *lf)
 
     /* Creating a symlink */
     unlink(ALERTS_DAILY);
-    link(__alogfile, ALERTS_DAILY);
+
+    if(link(__alogfile, ALERTS_DAILY) == -1)
+    {
+        ErrorExit(LINK_ERROR, ARGV0, __alogfile, ALERTS_DAILY);
+    }
 
 
     /* For the firewall events */
@@ -187,7 +195,11 @@ int OS_GetLogLocation(Eventinfo *lf)
 
     /* Creating a symlink */
     unlink(FWLOGS_DAILY);
-    link(__flogfile, FWLOGS_DAILY);
+
+    if(link(__flogfile, FWLOGS_DAILY) == -1)
+    {
+        ErrorExit(LINK_ERROR, ARGV0, __flogfile, FWLOGS_DAILY);
+    }
 
 
     /* Setting the new day */

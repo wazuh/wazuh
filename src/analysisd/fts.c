@@ -93,7 +93,13 @@ int FTS_Init()
         int uid = Privsep_GetUser(USER);
         int gid = Privsep_GetGroup(GROUPGLOBAL);
         if(uid>=0 && gid>=0)
-            chown(FTS_QUEUE, uid, gid);
+        {
+            if(chown(FTS_QUEUE, uid, gid) == -1)
+            {
+                merror(CHOWN_ERROR, ARGV0, FTS_QUEUE);
+                return(0);
+            }
+        }
 
         fp_list = fopen(FTS_QUEUE, "r+");
         if(!fp_list)
@@ -141,7 +147,13 @@ int FTS_Init()
         int uid = Privsep_GetUser(USER);
         int gid = Privsep_GetGroup(GROUPGLOBAL);
         if(uid>=0 && gid>=0)
-            chown(IG_QUEUE, uid, gid);
+        {
+            if(chown(IG_QUEUE, uid, gid) == -1)
+            {
+                merror(CHOWN_ERROR, ARGV0, IG_QUEUE);
+                return (0);
+            }
+        }
 
         fp_ignore = fopen(IG_QUEUE, "r+");
         if(!fp_ignore)
@@ -321,7 +333,7 @@ int FTS(Eventinfo *lf)
     #endif
 
 
-    /* Saving to fts fp */	
+    /* Saving to fts fp */
     fseek(fp_list, 0, SEEK_END);
     fprintf(fp_list,"%s\n", _line);
     fflush(fp_list);
