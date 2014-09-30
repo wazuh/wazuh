@@ -2648,8 +2648,8 @@ Jul 26 13:57:56 mx1.example.org outbound/smtp: 127.0.0.1 1406297159-06f4a35b4df2
 
 <decoder name="unbound-a">
   <parent>unbound</parent>
-  <regex> info: (\S+) (\S+) A IN$| info: (\S+) (\S+) AAAA IN$</regex>
-  <order>srcip,extra_data</order>
+  <regex> info: (\S+) (\S+). A IN$| info: (\S+) (\S+) AAAA IN$</regex>
+  <order>srcip,url</order>
 </decoder>
 
 

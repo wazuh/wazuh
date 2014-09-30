@@ -128,7 +128,11 @@ int main(int argc, char **argv)
         nowDaemon();
         goDaemonLight();
     }
-    chdir(dir);
+
+    if(chdir(dir) == -1)
+    {
+        ErrorExit(CHDIR_ERROR, ARGV0, dir);
+    }
 
 
     /* Exiting if not configured. */
@@ -167,7 +171,7 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
-    /* the real daemon now */	
+    /* the real daemon now */
     Agentlessd();
     exit(0);
 }

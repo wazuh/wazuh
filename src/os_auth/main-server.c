@@ -206,7 +206,10 @@ int main(int argc, char **argv)
 
     /* chrooting -- TODO: this isn't a chroot. Should also close
        unneeded open file descriptors (like stdin/stdout)*/
-    chdir(dir);
+    if(chdir(dir) == -1)
+    {
+        ErrorExit(CHDIR_ERROR, ARGV0, dir);
+    }
 
 
 

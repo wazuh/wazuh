@@ -64,7 +64,10 @@ int proc_chdir(int pid)
     }
 
     /* Returning to the previous directory */
-    chdir(curr_dir);
+    if(chdir(curr_dir) == -1)
+    {
+        return (0);
+    }
 
     return(ret);
 }
