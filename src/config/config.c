@@ -57,12 +57,12 @@ static int read_main_elements(const OS_XML *xml, int modules,
 
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!chld_node)
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, osglobal) == 0)
@@ -145,7 +145,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
 
@@ -187,12 +187,12 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
         if(modules & CAGENT_CONFIG)
         {
             #ifndef CLIENT
-            merror(XML_ERROR, ARGV0, cfgfile, xml.err, xml.err_line);
+            merror(XML_ERROR, __local_name, cfgfile, xml.err, xml.err_line);
             #endif
         }
         else
         {
-            merror(XML_ERROR, ARGV0, cfgfile, xml.err, xml.err_line);
+            merror(XML_ERROR, __local_name, cfgfile, xml.err, xml.err_line);
         }
         return(OS_INVALID);
     }
@@ -211,7 +211,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!(modules & CAGENT_CONFIG) &&
@@ -225,7 +225,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
             {
                 if(read_main_elements(&xml, modules, chld_node, d1, d2) < 0)
                 {
-                    merror(CONFIG_ERROR, ARGV0, cfgfile);
+                    merror(CONFIG_ERROR, __local_name, cfgfile);
                     return(OS_INVALID);
                 }
 
@@ -282,7 +282,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                         else
                         {
                             passed_agent_test = 0;
-                            merror("%s: ERROR: Unable to retrieve uname.", ARGV0);
+                            merror("%s: ERROR: Unable to retrieve uname.", __local_name);
                         }
                         #endif
                     }
@@ -322,7 +322,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                     }
                     else
                     {
-                        merror(XML_INVATTR, ARGV0, node[i]->attributes[attrs],
+                        merror(XML_INVATTR, __local_name, node[i]->attributes[attrs],
                                 cfgfile);
                     }
                     attrs++;
@@ -352,7 +352,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
             {
                 if(passed_agent_test && read_main_elements(&xml, modules, chld_node, d1, d2) < 0)
                 {
-                    merror(CONFIG_ERROR, ARGV0, cfgfile);
+                    merror(CONFIG_ERROR, __local_name, cfgfile);
                     return(OS_INVALID);
                 }
 
@@ -361,7 +361,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         i++;

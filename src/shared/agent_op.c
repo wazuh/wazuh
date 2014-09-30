@@ -72,7 +72,7 @@ char* os_read_agent_name()
     char buf[1024 + 1];
     FILE *fp = NULL;
 
-    debug2("%s: calling os_read_agent_name().", ARGV0);
+    debug2("%s: calling os_read_agent_name().", __local_name);
 
     if(isChroot())
         fp = fopen(AGENT_INFO_FILE, "r");
@@ -126,7 +126,7 @@ char *os_read_agent_ip()
     char buf[1024 + 1];
     FILE *fp;
 
-    debug2("%s: calling os_read_agent_ip().", ARGV0);
+    debug2("%s: calling os_read_agent_ip().", __local_name);
 
     fp = fopen(AGENT_INFO_FILE, "r");
     if(!fp)
@@ -163,7 +163,7 @@ char *os_read_agent_id()
     char buf[1024 + 1];
     FILE *fp;
 
-    debug2("%s: calling os_read_agent_id().", ARGV0);
+    debug2("%s: calling os_read_agent_id().", __local_name);
 
     fp = fopen(AGENT_INFO_FILE, "r");
     if(!fp)
@@ -218,7 +218,7 @@ char* os_read_agent_profile()
 
     if(!fp)
     {
-        debug2("%s: Failed to open file. Errno=%d.", ARGV0, errno);
+        debug2("%s: Failed to open file. Errno=%d.", __local_name, errno);
         merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
         return(NULL);
     }
