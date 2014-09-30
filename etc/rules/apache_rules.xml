@@ -13,6 +13,7 @@
   -  License details: http://www.ossec.net/en/licensing.html
   -
   -  Contributed by: Ahmet Ozturk
+  -                  Ben Chavet <ben.chavet@lullabot.com>
   -->
                         
 
@@ -165,8 +166,109 @@
     <description>Multiple attempts blocked by Mod Security.</description>
     <group>access_denied,</group>
   </rule>
-</group> <!-- ERROR_LOG,APACHE -->
 
+  <!-- Apache 2.4 Rules -->
+  <rule id="30301" level="0">
+    <if_sid>30100</if_sid>
+    <regex> [\S+:error] </regex>
+    <description>Apache error messages grouped.</description>
+  </rule>
+
+  <rule id="30302" level="0">
+    <if_sid>30100</if_sid>
+    <regex> [\S+:warn] </regex>
+    <description>Apache warn messages grouped.</description>
+  </rule>
+
+  <rule id="30303" level="0">
+    <if_sid>30100</if_sid>
+    <regex> [\S+:notice] </regex>
+    <description>Apache notice messages grouped.</description>
+  </rule>
+
+  <rule id="30304" level="12">
+    <if_sid>30303</if_sid>
+    <match>exit signal Segmentation Fault</match>
+    <description>Apache segmentation fault.</description>
+    <info type="link">http://www.securityfocus.com/infocus/1633</info>
+    <group>service_availability,</group>
+  </rule>
+
+  <rule id="30305" level="5">
+    <if_sid>30301</if_sid>
+    <id>AH01630</id>
+    <description>Attempt to access forbidden file or directory.</description>
+    <group>access_denied,</group>
+  </rule>
+
+  <rule id="30306" level="5">
+    <if_sid>30301</if_sid>
+    <id>AH01276</id>
+    <description>Attempt to access forbidden directory index.</description>
+    <group>access_denied,</group>
+  </rule>
+
+  <rule id="30307" level="6">
+    <if_sid>30301</if_sid>
+    <id>AH00550</id>
+    <description>Client sent malformed Host header. Possible Code Red attack.</description>
+    <info type="link">http://www.cert.org/advisories/CA-2001-19.html</info>
+    <info type="text">CERT: Advisory CA-2001-19 "Code Red" Worm Exploiting Buffer Overflow In IIS Indexing Service DLL</info>
+    <group>automatic_attack,</group>
+  </rule>
+
+  <rule id="30308" level="5">
+    <if_sid>30302</if_sid>
+    <id>AH01617|AH01807|AH01694|AH01695|AH02009|AH02010</id>
+    <description>User authentication failed.</description>
+    <group>authentication_failed,</group>
+  </rule>
+
+  <rule id="30309" level="5">
+    <if_sid>30301</if_sid>
+    <id>AH01618|AH01808|AH01790</id>
+    <description>Attempt to login using a non-existent user.</description>
+    <group>invalid_login,</group>
+  </rule>
+
+  <rule id="30310" level="10" frequency="10" timeframe="160">
+    <if_matched_sid>30309</if_matched_sid>
+    <same_source_ip/>
+    <description>Multiple authentication failures with invalid user.</description>
+    <group>authentication_failures,</group>
+  </rule>
+
+  <rule id="30312" level="0">
+    <if_sid>30301</if_sid>
+    <match>File does not exist: |</match>
+    <match>failed to open stream: No such file or directory|</match>
+    <match>Failed opening </match>
+    <description>Attempt to access an non-existent file (those are reported on the access.log).</description>
+    <group>unknown_resource,</group>
+  </rule>
+
+  <rule id="30315" level="5">
+    <if_sid>30301</if_sid>
+    <id>AH00126</id>
+    <description>Invalid URI (bad client request).</description>
+    <group>invalid_request,</group>
+  </rule>
+
+  <rule id="30316" level="10" frequency="8" timeframe="120">
+    <if_matched_sid>30315</if_matched_sid>
+    <same_source_ip />
+    <description>Multiple Invalid URI requests from </description>
+    <description>same source.</description>
+    <group>invalid_request,</group>
+  </rule>
+
+  <rule id="30317" level="10">
+    <if_sid>30301</if_sid>
+    <id>AH00565</id>
+    <description>Invalid URI, file name too long.</description>
+    <group>invalid_request,</group>
+  </rule>
+</group> <!-- ERROR_LOG,APACHE -->
 
 <!-- EOF -->
 
