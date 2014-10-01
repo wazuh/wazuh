@@ -63,10 +63,10 @@ done
 ##########
 Install()
 {
-	echo ""
-	echo "5- ${installing}"
+    echo ""
+    echo "5- ${installing}"
 
-	echo "DIR=\"${INSTALLDIR}\"" > ${LOCATION}
+    echo "DIR=\"${INSTALLDIR}\"" > ${LOCATION}
 
     # Changing Config.OS with the new C flags
     # Checking if debug is enabled
@@ -77,7 +77,7 @@ Install()
     echo "CEXTRA=${CEXTRA}" >> ./src/Config.OS
 
     # Makefile
-	echo " - ${runningmake}"
+    echo " - ${runningmake}"
     cd ./src
 
     # Binary install will use the previous generated code.
@@ -102,7 +102,7 @@ Install()
     fi
 
     # Making the right installation type
-	if [ "X$INSTYPE" = "Xserver" ]; then
+    if [ "X$INSTYPE" = "Xserver" ]; then
         ./InstallServer.sh
 
     elif [ "X$INSTYPE" = "Xagent" ]; then
@@ -110,7 +110,7 @@ Install()
 
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         ./InstallServer.sh local
-	fi
+    fi
 
     cd ../
 
@@ -263,11 +263,11 @@ SetupLogs()
         ls $i > /dev/null 2>&1
         if [ $? = 0 ]; then
             echo "    -- $i"
-	        echo "" >> $NEWCONFIG
-	        echo "  <localfile>" >> $NEWCONFIG
-    	    echo "    <log_format>syslog</log_format>" >> $NEWCONFIG
-	        echo "    <location>$i</location>" >>$NEWCONFIG
-	        echo "  </localfile>" >> $NEWCONFIG
+            echo "" >> $NEWCONFIG
+            echo "  <localfile>" >> $NEWCONFIG
+            echo "    <log_format>syslog</log_format>" >> $NEWCONFIG
+            echo "    <location>$i</location>" >>$NEWCONFIG
+            echo "  </localfile>" >> $NEWCONFIG
         fi
     done
 
@@ -446,39 +446,39 @@ ConfigureClient()
 ##########
 ConfigureServer()
 {
-	echo ""
-	echo "3- ${configuring} $NAME."
+    echo ""
+    echo "3- ${configuring} $NAME."
 
 
     # Configuring e-mail notification
-	echo ""
-	$ECHO "  3.1- ${mailnotify} ($yes/$no) [$yes]: "
+    echo ""
+    $ECHO "  3.1- ${mailnotify} ($yes/$no) [$yes]: "
 
     if [ "X${USER_ENABLE_EMAIL}" = "X" ]; then
-	read ANSWER
+    read ANSWER
     else
         ANSWER=${USER_ENABLE_EMAIL}
     fi
 
-	case $ANSWER in
-		$nomatch)
+    case $ANSWER in
+        $nomatch)
             echo ""
-			echo "   --- ${nomail}."
-			EMAILNOTIFY="no"
-			;;
-		*)
-			EMAILNOTIFY="yes"
-			$ECHO "   - ${whatsemail} "
+            echo "   --- ${nomail}."
+            EMAILNOTIFY="no"
+            ;;
+        *)
+            EMAILNOTIFY="yes"
+            $ECHO "   - ${whatsemail} "
             if [ "X${USER_EMAIL_ADDRESS}" = "X" ]; then
 
                 read EMAIL
                 echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.+-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
                 # Ugly e-mail validation
-			    while [ "$EMAIL" = "" -o ! ${RVAL} = 0 ] ; do
-				    $ECHO "   - ${whatsemail} "
-				    read EMAIL
+                while [ "$EMAIL" = "" -o ! ${RVAL} = 0 ] ; do
+                    $ECHO "   - ${whatsemail} "
+                    read EMAIL
                     echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.+-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
-			    done
+                done
             else
                 EMAIL=${USER_EMAIL_ADDRESS}
             fi
@@ -523,34 +523,34 @@ ConfigureServer()
                 fi
 
                 if [ "X${SMTP}" = "X" ]; then
-			        $ECHO "   - ${whatsmtp} "
+                    $ECHO "   - ${whatsmtp} "
                     read SMTP
                 fi
             else
                 SMTP=${USER_EMAIL_SMTP}
             fi
         ;;
-	esac
+    esac
 
 
-	# Writting global parameters
+    # Writting global parameters
     echo "<ossec_config>" > $NEWCONFIG
-	echo "  <global>" >> $NEWCONFIG
-	if [ "$EMAILNOTIFY" = "yes" ]; then
-		echo "    <email_notification>yes</email_notification>" >> $NEWCONFIG
-		echo "    <email_to>$EMAIL</email_to>" >> $NEWCONFIG
-		echo "    <smtp_server>$SMTP</smtp_server>" >> $NEWCONFIG
-		echo "    <email_from>ossecm@${HOST}</email_from>" >> $NEWCONFIG
-	else
-		echo "    <email_notification>no</email_notification>" >> $NEWCONFIG
-	fi
+    echo "  <global>" >> $NEWCONFIG
+    if [ "$EMAILNOTIFY" = "yes" ]; then
+        echo "    <email_notification>yes</email_notification>" >> $NEWCONFIG
+        echo "    <email_to>$EMAIL</email_to>" >> $NEWCONFIG
+        echo "    <smtp_server>$SMTP</smtp_server>" >> $NEWCONFIG
+        echo "    <email_from>ossecm@${HOST}</email_from>" >> $NEWCONFIG
+    else
+        echo "    <email_notification>no</email_notification>" >> $NEWCONFIG
+    fi
 
     echo "  </global>" >> $NEWCONFIG
-	echo "" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
-	# Writting rules configuration
+    # Writting rules configuration
     cat ${RULES_TEMPLATE} >> $NEWCONFIG
-	echo "" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
 
     # Checking if syscheck should run
@@ -650,55 +650,55 @@ ConfigureServer()
 
     if [ "X$INSTYPE" = "Xserver" ]; then
       # Configuring remote syslog
-	  echo ""
-	  $ECHO "  3.5- ${syslog} ($yes/$no) [$yes]: "
+      echo ""
+      $ECHO "  3.5- ${syslog} ($yes/$no) [$yes]: "
 
       if [ "X${USER_ENABLE_SYSLOG}" = "X" ]; then
-	    read ANSWER
+        read ANSWER
       else
         ANSWER=${USER_ENABLE_SYSLOG}
       fi
 
       echo ""
       case $ANSWER in
-		$nomatch)
-			echo "   --- ${nosyslog}."
-			;;
-		*)
-			echo "   - ${yessyslog}."
-			RLOG="yes"
-			;;
-	  esac
+        $nomatch)
+            echo "   --- ${nosyslog}."
+            ;;
+        *)
+            echo "   - ${yessyslog}."
+            RLOG="yes"
+            ;;
+      esac
 
-	  # Configuring remote connections
+      # Configuring remote connections
       SLOG="yes"
-	fi
+    fi
 
 
 
-	if [ "X$RLOG" = "Xyes" ]; then
-	echo "" >> $NEWCONFIG
-	echo "  <remote>" >> $NEWCONFIG
-	echo "    <connection>syslog</connection>" >> $NEWCONFIG
-	echo "  </remote>" >> $NEWCONFIG
-	fi
+    if [ "X$RLOG" = "Xyes" ]; then
+    echo "" >> $NEWCONFIG
+    echo "  <remote>" >> $NEWCONFIG
+    echo "    <connection>syslog</connection>" >> $NEWCONFIG
+    echo "  </remote>" >> $NEWCONFIG
+    fi
 
-	if [ "X$SLOG" = "Xyes" ]; then
-	echo "" >> $NEWCONFIG
-	echo "  <remote>" >> $NEWCONFIG
-	echo "    <connection>secure</connection>" >> $NEWCONFIG
-	echo "  </remote>" >> $NEWCONFIG
-	fi
+    if [ "X$SLOG" = "Xyes" ]; then
+    echo "" >> $NEWCONFIG
+    echo "  <remote>" >> $NEWCONFIG
+    echo "    <connection>secure</connection>" >> $NEWCONFIG
+    echo "  </remote>" >> $NEWCONFIG
+    fi
 
 
-	# Email/log alerts
-	echo "" >> $NEWCONFIG
-	echo "  <alerts>" >> $NEWCONFIG
+    # Email/log alerts
+    echo "" >> $NEWCONFIG
+    echo "  <alerts>" >> $NEWCONFIG
     echo "    <log_alert_level>1</log_alert_level>" >> $NEWCONFIG
     if [ "$EMAILNOTIFY" = "yes" ]; then
         echo "    <email_alert_level>7</email_alert_level>">> $NEWCONFIG
-	fi
-	echo "  </alerts>" >> $NEWCONFIG
+    fi
+    echo "  </alerts>" >> $NEWCONFIG
 
 
     if [ "X$ACTIVERESPONSE" = "Xyes" ]; then
@@ -817,48 +817,48 @@ checkDependencies()
 ##########
 AddWhite()
 {
-	while [ 1 ]
-	do
+    while [ 1 ]
+    do
         echo ""
-		$ECHO "   - ${addwhite} ($yes/$no)? [$no]: "
+        $ECHO "   - ${addwhite} ($yes/$no)? [$no]: "
 
         # If white list is set, we don't need to ask it here.
         if [ "X${USER_WHITE_LIST}" = "X" ]; then
-		    read ANSWER
+            read ANSWER
         else
             ANSWER=$yes
         fi
 
-		if [ "X${ANSWER}" = "X" ] ; then
-			ANSWER=$no
-		fi
+        if [ "X${ANSWER}" = "X" ] ; then
+            ANSWER=$no
+        fi
 
-		case $ANSWER in
-			$no)
-				break;
-				;;
-			*)
-				$ECHO "   - ${ipswhite}"
+        case $ANSWER in
+            $no)
+                break;
+                ;;
+            *)
+                $ECHO "   - ${ipswhite}"
                 if [ "X${USER_WHITE_LIST}" = "X" ]; then
-				    read IPS
-				else
+                    read IPS
+                else
                     IPS=${USER_WHITE_LIST}
                 fi
 
-				for ip in ${IPS};
-				do
-					if [ ! "X${ip}" = "X" ]; then
+                for ip in ${IPS};
+                do
+                    if [ ! "X${ip}" = "X" ]; then
                         echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
                         if [ $? = 0 ]; then
-						echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
+                        echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
                         fi
-					fi
-				done
+                    fi
+                done
 
-				break;
-				;;
-		esac
-	done
+                break;
+                ;;
+        esac
+    done
 }
 
 
@@ -1084,29 +1084,29 @@ main()
 
                 ${helpm}|${help})
                 catMsg "0x102-installhelp"
-	            ;;
+                ;;
 
                 ${server}|${serverm})
                 echo ""
-	            echo "  - ${serverchose}."
-	            INSTYPE="server"
-	            break;
-	            ;;
+                echo "  - ${serverchose}."
+                INSTYPE="server"
+                break;
+                ;;
 
                 ${agent}|${agentm})
                 echo ""
-	            echo "  - ${clientchose}."
-	            INSTYPE="agent"
-	            break;
-	            ;;
+                echo "  - ${clientchose}."
+                INSTYPE="agent"
+                break;
+                ;;
 
                 ${hybrid}|${hybridm})
                 echo ""
-	            echo "  - ${serverchose} (hybrid)."
-	            INSTYPE="server"
+                echo "  - ${serverchose} (hybrid)."
+                INSTYPE="server"
                     HYBID="go"
-	            break;
-	            ;;
+                break;
+                ;;
                 ${local}|${localm})
                 echo ""
                 echo "  - ${localchose}."
@@ -1147,10 +1147,10 @@ main()
     echo " - ${configurationdone}."
     echo ""
     echo " - ${tostart}:"
-    echo "		$INSTALLDIR/bin/ossec-control start"
+    echo "      $INSTALLDIR/bin/ossec-control start"
     echo ""
     echo " - ${tostop}:"
-    echo "		$INSTALLDIR/bin/ossec-control stop"
+    echo "      $INSTALLDIR/bin/ossec-control stop"
     echo ""
     echo " - ${configat} $INSTALLDIR/etc/ossec.conf"
     echo ""
@@ -1207,7 +1207,7 @@ main()
 
     if [ "X$notmodified" = "Xyes" ]; then
         catMsg "0x105-noboot"
-        echo "		$INSTALLDIR/bin/ossec-control start"
+        echo "      $INSTALLDIR/bin/ossec-control start"
         echo ""
     fi
 }
