@@ -47,12 +47,12 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         /* Mail notification */
@@ -92,13 +92,13 @@ int Read_DB(XML_NODE node, __attribute__((unused)) void *config1, void *config2)
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         i++;

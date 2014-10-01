@@ -65,19 +65,19 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             goto fail;
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             goto fail;
         }
         else if(strcmp(node[i]->element, xml_syslog_level) == 0)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 goto fail;
             }
 
@@ -87,7 +87,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 goto fail;
             }
 
@@ -121,7 +121,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
 
                     r_id = (unsigned int) atoi(str_pt);
                     debug1("%s: DEBUG: Adding '%d' to syslog alerting",
-                           ARGV0, r_id);
+                           __local_name, r_id);
 
                     if(syslog_config[s]->rule_id)
                     {
@@ -184,7 +184,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 goto fail;
             }
         }
@@ -194,7 +194,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
             if(!OSMatch_Compile(node[i]->content,
                                 syslog_config[s]->location, 0))
             {
-                merror(REGEX_COMPILE, ARGV0, node[i]->content,
+                merror(REGEX_COMPILE, __local_name, node[i]->content,
                        syslog_config[s]->location->error);
                 goto fail;
             }
@@ -205,14 +205,14 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
             if(!OSMatch_Compile(node[i]->content,
                                 syslog_config[s]->group, 0))
             {
-                merror(REGEX_COMPILE, ARGV0, node[i]->content,
+                merror(REGEX_COMPILE, __local_name, node[i]->content,
                        syslog_config[s]->group->error);
                 goto fail;
             }
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             goto fail;
         }
         i++;
@@ -222,7 +222,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
     /* We must have at least one entry set */
     if(!syslog_config[s]->server)
     {
-        merror(XML_INV_CSYSLOG, ARGV0);
+        merror(XML_INV_CSYSLOG, __local_name);
         goto fail;
     }
 

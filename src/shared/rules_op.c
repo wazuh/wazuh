@@ -116,7 +116,7 @@ int OS_ReadXMLRules(const char *rulefile,
         rulepath = (char *)calloc(i,sizeof(char));
         if(!rulepath)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,__local_name);
         }
         snprintf(rulepath,i,"%s/%s",RULEPATH,rulefile);
     }

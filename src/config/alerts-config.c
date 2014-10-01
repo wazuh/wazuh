@@ -40,12 +40,12 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         /* Mail notification */
@@ -53,7 +53,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
 
@@ -64,7 +64,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
             Config->logbylevel  = (u_int8_t) atoi(node[i]->content);
@@ -79,7 +79,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
                 {if(Config) Config->loggeoip = 0;}
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
 
@@ -87,7 +87,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
 #endif
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         i++;

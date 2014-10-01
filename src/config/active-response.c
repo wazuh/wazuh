@@ -61,7 +61,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     fp = fopen(DEFAULTARPATH, "a");
     if(!fp)
     {
-        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
+        merror(FOPEN_ERROR, __local_name, DEFAULTARPATH);
         return(-1);
     }
 
@@ -94,7 +94,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     tmp_ar = (active_response *) calloc(1, sizeof(active_response));
     if(!tmp_ar)
     {
-        merror(MEM_ERROR, ARGV0);
+        merror(MEM_ERROR, __local_name);
         fclose(fp);
         return(-1);
     }
@@ -118,12 +118,12 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             goto error_invalid;
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             goto error_invalid;
         }
 
@@ -154,7 +154,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
             /* Level must be numeric */
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 goto error_invalid;
             }
 
@@ -163,7 +163,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
             /* Making sure the level is valid */
             if((tmp_ar->level < 0) || (tmp_ar->level > 20))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 goto error_invalid;
             }
         }
@@ -183,7 +183,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 goto error_invalid;
             }
         }
@@ -194,7 +194,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             goto error_invalid;
         }
         i++;
@@ -220,7 +220,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         {
             return(0);
         }
-        merror(AR_MISS, ARGV0);
+        merror(AR_MISS, __local_name);
         return(-1);
     }
 
@@ -239,7 +239,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     {
         if(!tmp_ar->agent_id)
         {
-            merror(AR_DEF_AGENT, ARGV0);
+            merror(AR_DEF_AGENT, __local_name);
             fclose(fp);
             free(tmp_ar);
             free(tmp_location);
@@ -257,7 +257,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     /* If we didn't set any value for the location */
     if(tmp_ar->location == 0)
     {
-        merror(AR_INV_LOC, ARGV0, tmp_location);
+        merror(AR_INV_LOC, __local_name, tmp_location);
         fclose(fp);
         free(tmp_ar);
         free(tmp_location);
@@ -292,7 +292,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         /* Didn't find a valid command */
         if(tmp_ar->ar_cmd == NULL)
         {
-            merror(AR_INV_CMD, ARGV0, tmp_ar->command);
+            merror(AR_INV_CMD, __local_name, tmp_ar->command);
             fclose(fp);
             free(tmp_ar);
             return(-1);
@@ -302,7 +302,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     /* Checking if timeout is allowed */
     if(tmp_ar->timeout && !tmp_ar->ar_cmd->timeout_allowed)
     {
-        merror(AR_NO_TIMEOUT, ARGV0, tmp_ar->ar_cmd->name);
+        merror(AR_NO_TIMEOUT, __local_name, tmp_ar->ar_cmd->name);
         fclose(fp);
         free(tmp_ar);
         return(-1);
@@ -311,7 +311,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     /* d1 is the active response list */
     if(!OSList_AddData(l2, (void *)tmp_ar))
     {
-        merror(LIST_ADD_ERROR, ARGV0);
+        merror(LIST_ADD_ERROR, __local_name);
         fclose(fp);
         free(tmp_ar);
         return(-1);
@@ -322,7 +322,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     tmp_ar->name = (char *) calloc(OS_FLSIZE +1, sizeof(char));
     if(!tmp_ar->name)
     {
-        ErrorExit(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, __local_name);
     }
     snprintf(tmp_ar->name, OS_FLSIZE, "%s%d",
             tmp_ar->ar_cmd->name,
@@ -403,7 +403,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     tmp_command = (ar_command *) calloc(1, sizeof(ar_command));
     if(!tmp_command)
     {
-        merror(MEM_ERROR, ARGV0);
+        merror(MEM_ERROR, __local_name);
         return(-1);
     }
 
@@ -418,14 +418,14 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             free(tmp_str);
             free(tmp_command);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             free(tmp_str);
             free(tmp_command);
             return(OS_INVALID);
@@ -450,7 +450,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
                 tmp_command->timeout_allowed = 0;
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 free(tmp_str);
                 free(tmp_command);
                 return(OS_INVALID);
@@ -458,7 +458,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             free(tmp_str);
             free(tmp_command);
             return(OS_INVALID);
@@ -468,7 +468,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
 
     if(!tmp_command->name || !tmp_str || !tmp_command->executable)
     {
-        merror(AR_CMD_MISS, ARGV0);
+        merror(AR_CMD_MISS, __local_name);
         free(tmp_str);
         free(tmp_command);
         return(-1);
@@ -493,7 +493,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     /* Adding command to the list */
     if(!OSList_AddData(l1, (void *)tmp_command))
     {
-        merror(LIST_ADD_ERROR, ARGV0);
+        merror(LIST_ADD_ERROR, __local_name);
         free(tmp_command);
         return(-1);
     }
