@@ -726,7 +726,10 @@ void goDaemonLight()
 
 
     /* Going to / */
-    chdir("/");
+    if(chdir("/") == -1)
+    {
+        merror(CHDIR_ERROR, __local_name, "/");
+    }
 
 
     return;
@@ -784,7 +787,10 @@ void goDaemon()
 
 
     /* Going to / */
-    chdir("/");
+    if(chdir("/") == -1)
+    {
+        merror(CHDIR_ERROR, __local_name, "/");
+    }
 
 
     /* Closing stdin, stdout and stderr */

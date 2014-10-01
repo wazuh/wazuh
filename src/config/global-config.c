@@ -59,12 +59,12 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         else if(strcmp(node[i]->element,xml_auto_ignore) == 0)
@@ -79,7 +79,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -95,7 +95,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -106,7 +106,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 realloc(Config->syscheck_ignore, sizeof(char *)*ign_size);
             if(!Config->syscheck_ignore)
             {
-                merror(MEM_ERROR, ARGV0);
+                merror(MEM_ERROR, __local_name);
                 return(OS_INVALID);
             }
 
@@ -156,6 +156,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_emailfrom = "email_from";
     const char *xml_emailidsname = "email_idsname";
     const char *xml_smtpserver = "smtp_server";
+    const char *xml_heloserver = "helo_server";
     const char *xml_mailmaxperhour = "email_maxperhour";
 
 #ifdef GEOIP
@@ -212,12 +213,12 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, xml_custom_alert_output) == 0)
@@ -243,7 +244,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -260,7 +261,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element, node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element, node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -284,7 +285,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element, node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element, node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -299,7 +300,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
 
@@ -321,7 +322,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element, node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element, node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -341,7 +342,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 {if(Config) Config->logall = 0;}
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -355,7 +356,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
             if(Config)
@@ -368,7 +369,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
             if(Config)
@@ -381,7 +382,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
             if(Config)
@@ -394,7 +395,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
             if(Config)
@@ -406,7 +407,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
             if(Config)
@@ -431,7 +432,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     realloc(Config->white_list, sizeof(os_ip *)*white_size);
                 if(!Config->white_list)
                 {
-                    merror(MEM_ERROR, ARGV0);
+                    merror(MEM_ERROR, __local_name);
                     return(OS_INVALID);
                 }
 
@@ -441,7 +442,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 if(!OS_IsValidIP(node[i]->content,
                                  Config->white_list[white_size -2]))
                 {
-                    merror(INVALID_IP, ARGV0,
+                    merror(INVALID_IP, __local_name,
                                        node[i]->content);
                     return(OS_INVALID);
                 }
@@ -456,7 +457,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 
                 if(!Config->hostname_white_list)
                 {
-                    merror(MEM_ERROR, ARGV0);
+                    merror(MEM_ERROR, __local_name);
                     return(OS_INVALID);
                 }
                 os_calloc(1,
@@ -469,7 +470,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                         Config->hostname_white_list[hostname_white_size -2],
                         0))
                 {
-                    merror(REGEX_COMPILE, ARGV0, node[i]->content,
+                    merror(REGEX_COMPILE, __local_name, node[i]->content,
                            Config->hostname_white_list
                            [hostname_white_size -2]->error);
                     return(-1);
@@ -489,7 +490,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             #ifndef WIN32
             if(!OS_PRegex(node[i]->content, "[a-zA-Z0-9\\._-]+@[a-zA-Z0-9\\._-]"))
             {
-                merror("%s: ERROR: Invalid Email address: %s.", ARGV0, node[i]->content);
+                merror("%s: ERROR: Invalid Email address: %s.", __local_name, node[i]->content);
                 return(OS_INVALID);
             }
             #endif
@@ -500,7 +501,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 Mail->to = (char **) realloc(Mail->to, sizeof(char *)*mailto_size);
                 if(!Mail->to)
                 {
-                    merror(MEM_ERROR, ARGV0);
+                    merror(MEM_ERROR, __local_name);
                     return(OS_INVALID);
                 }
 
@@ -538,11 +539,18 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 Mail->smtpserver = OS_GetHost(node[i]->content, 5);
                 if(!Mail->smtpserver)
                 {
-                    merror(INVALID_SMTP, ARGV0, node[i]->content);
+                    merror(INVALID_SMTP, __local_name, node[i]->content);
                     return(OS_INVALID);
                 }
             }
             #endif
+        }
+        else if(strcmp(node[i]->element, xml_heloserver) == 0)
+        {
+            if(Mail && (Mail->mn))
+            {
+                os_strdup(node[i]->content, Mail->heloserver);
+            }
         }
         else if(strcmp(node[i]->element, xml_mailmaxperhour) == 0)
         {
@@ -550,14 +558,14 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             {
                 if(!OS_StrIsNum(node[i]->content))
                 {
-                   merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                   merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                    return(OS_INVALID);
                 }
                 Mail->maxperhour = atoi(node[i]->content);
 
                 if((Mail->maxperhour <= 0) || (Mail->maxperhour > 9999))
                 {
-                   merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                   merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                    return(OS_INVALID);
                 }
             }
@@ -582,7 +590,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 #endif
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         i++;

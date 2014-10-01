@@ -2580,8 +2580,8 @@ Author and (c): Michael Starks, 2014 -->
 
 <decoder name="unbound-a">
   <parent>unbound</parent>
-  <regex> info: (\S+) (\S+) A IN$| info: (\S+) (\S+) AAAA IN$</regex>
-  <order>srcip,extra_data</order>
+  <regex> info: (\S+) (\S+). A IN$| info: (\S+) (\S+) AAAA IN$</regex>
+  <order>srcip,url</order>
 </decoder>
 
 

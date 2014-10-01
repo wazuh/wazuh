@@ -120,7 +120,7 @@ char *os_LoadString(char *at, const char *str)
         at = strdup(str);
         if(!at)
         {
-            merror(MEM_ERROR,ARGV0);
+            merror(MEM_ERROR,__local_name);
         }
         return(at);
     }
@@ -134,7 +134,7 @@ char *os_LoadString(char *at, const char *str)
         if(newat == NULL)
         {
             free(at);
-            merror(MEM_ERROR,ARGV0);
+            merror(MEM_ERROR,__local_name);
             return(NULL);
         }
         at = newat;

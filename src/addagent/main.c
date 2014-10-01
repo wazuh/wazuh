@@ -229,7 +229,7 @@ int main(int argc, char **argv)
     /* Move to correct directory */
     if(chdir(path))
     {
-        ErrorExit(CHDIR_ERROR, path);
+        ErrorExit(CHDIR_ERROR_2, path);
     }
 
     /* Check permissions */

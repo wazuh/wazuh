@@ -67,7 +67,7 @@ test_os_crypto: test_os_crypto.c ../os_crypto/blowfish/*.h ${BLOWFISH_SRCS} ../o
 test_os_net: test_os_net.c ../os_net/os_net.c ../os_net/os_net.h ../shared/debug_op.c ../shared/file_op.c
 	${CC} ${CFLAGS_TEST} test_os_net.c ../os_net/os_net.c ../shared/debug_op.c ../shared/file_op.c ${CHECK_LINK} -o $@
 
-SHARED_SRCS = ../shared/custom_output_search_replace.c ../shared/debug_op.c
+SHARED_SRCS = ../shared/custom_output_search_replace.c ../shared/debug_op.c ../shared/file_op.c
 test_shared: test_shared.c ${SHARED_SRCS} ../headers/*.h
 	${CC} ${CFLAGS_TEST} test_shared.c ${SHARED_SRCS} ${CHECK_LINK} -o $@
 

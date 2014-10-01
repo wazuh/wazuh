@@ -320,7 +320,11 @@ int main_analysisd(int argc, char **argv)
     if(Config.picviz)
     {
         OS_PicvizOpen(Config.picviz_socket);
-        chown(Config.picviz_socket, uid, gid);
+
+        if(chown(Config.picviz_socket, uid, gid) == -1)
+        {
+            ErrorExit(CHOWN_ERROR, ARGV0, Config.picviz_socket);
+        }
     }
 
     /* Setting the group */
@@ -599,7 +603,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     char msg[OS_MAXSTR +1];
     Eventinfo *lf;
 
-    RuleInfo *stats_rule;
+    RuleInfo *stats_rule = NULL;
 
 
     /* Null to global currently pointers */

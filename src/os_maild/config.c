@@ -29,6 +29,7 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
     Mail->from = NULL;
     Mail->idsname = NULL;
     Mail->smtpserver = NULL;
+    Mail->heloserver = NULL;
     Mail->mn = 0;
     Mail->priority = 0;
     Mail->maxperhour = 12;

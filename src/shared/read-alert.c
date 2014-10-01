@@ -473,7 +473,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             {
                 os_clearnl(str,p);
 
-                if(str != NULL && issyscheck == 1)
+                if(issyscheck == 1)
                 {
                     if(strncmp(str, "Integrity checksum changed for: '",33) == 0)
                     {

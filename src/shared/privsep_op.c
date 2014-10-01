@@ -94,7 +94,8 @@ int Privsep_Chroot(const char * path)
     if(chroot(path) < 0)
         return(OS_INVALID);
 
-    chdir("/");
+    if(chdir("/") < 0)
+        return(OS_INVALID);
 
     return(OS_SUCCESS);
 }
