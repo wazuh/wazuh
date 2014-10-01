@@ -1,7 +1,5 @@
-# @(#) $Id: ./src/rootcheck/db/cis_rhel_linux_rcl.txt, 2011/09/08 dcid Exp $
-
 #
-# OSSEC Linux Audit - (C) 2008 Daniel B. Cid - dcid@ossec.net
+# OSSEC Linux Audit - (C) 2014 
 #
 # Released under the same license as OSSEC.
 # More details at the LICENSE file included with OSSEC or online
