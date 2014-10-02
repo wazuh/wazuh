@@ -107,3 +107,4 @@ src/list_agents
 src/ossec-analysisd
 src/ossec-logtest
 src/ossec-makelists
+src/ossec-dbd

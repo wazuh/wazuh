@@ -129,7 +129,7 @@ DEFINES+=-DUMYSQL
 ifdef MYSQL_CFLAGS 
 	MI = ${MYSQL_CFLAGS} 
 else 
-	MI := $(shell sh -c '${MY_CONFIG} --cflags 2>/dev/null || echo ')
+	MI := $(shell sh -c '${MY_CONFIG} --include 2>/dev/null || echo ')
 
 ifeq (${MI},) # BEGIN MI manula detection
 ifeq (,$(wildcard /usr/include/mysql/mysql.h))
@@ -194,6 +194,7 @@ endif
 # XXX need some basic autodetech stuff here.  
 
 LDFLAGS+=${PL}
+LDFLAGS+=-lpq
 
 endif # pgsql 
 endif # mysql 
@@ -295,7 +296,7 @@ BUILD_SERVER+=ossec-analysisd
 BUILD_SERVER+=ossec-logtest
 BUILD_SERVER+=ossec-makelists
 ifneq (,${DATABASE})
-BUILD_SERVER+=os_dbd 
+BUILD_SERVER+=ossec-dbd
 endif 
 	
 BUILD_AGENT+=deps
@@ -495,10 +496,10 @@ os_dbd_c = $(wildcard os_dbd/*.c)
 os_dbd_o = $(os_dbd_c:.c=.o)
 
 os_dbd/%.o: os_dbd/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-dbd\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} ${MI} ${PI} -DARGV0=\"ossec-dbd\" -c $^ -o $@
 
-os_dbd: ${os_dbd_o} ${ossec_libs} 
-	${OSSEC_CCBIN} ${CFLAGS} ${JSON_INCLUDE} $^ -lm ${LDFLAGS} -o $@
+ossec-dbd: ${os_dbd_o} ${ossec_libs} 
+	${OSSEC_CCBIN} ${CFLAGS} ${MI} ${PI} ${JSON_INCLUDE} $^ -lm ${LDFLAGS} -o $@
 
 
 #### os_csyslogd #####
