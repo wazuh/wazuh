@@ -1083,35 +1083,35 @@ main()
             case $ANSWER in
 
                 ${helpm}|${help})
-                catMsg "0x102-installhelp"
+                    catMsg "0x102-installhelp"
                 ;;
 
                 ${server}|${serverm})
-                echo ""
-                echo "  - ${serverchose}."
-                INSTYPE="server"
-                break;
+                    echo ""
+                    echo "  - ${serverchose}."
+                    INSTYPE="server"
+                    break;
                 ;;
 
                 ${agent}|${agentm})
-                echo ""
-                echo "  - ${clientchose}."
-                INSTYPE="agent"
-                break;
+                    echo ""
+                    echo "  - ${clientchose}."
+                    INSTYPE="agent"
+                    break;
                 ;;
 
                 ${hybrid}|${hybridm})
-                echo ""
-                echo "  - ${serverchose} (hybrid)."
-                INSTYPE="server"
+                    echo ""
+                    echo "  - ${serverchose} (hybrid)."
+                    INSTYPE="server"
                     HYBID="go"
-                break;
+                    break;
                 ;;
                 ${local}|${localm})
-                echo ""
-                echo "  - ${localchose}."
-                INSTYPE="local"
-                break;
+                    echo ""
+                    echo "  - ${localchose}."
+                    INSTYPE="local"
+                    break;
                 ;;
             esac
         done

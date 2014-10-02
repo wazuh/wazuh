@@ -1,18 +1,20 @@
 #!/bin/sh
 
 
-# Checking if it is executed from the right place
-LOCATION=./LOCATION
 
-ls ${LOCATION} > /dev/null 2>&1
+ls ${VERSION} > /dev/null 2>&1
 if [ $? != 0 ]; then
     echo "Cannot execute. Wrong directory"
     exit 1;
 fi
-            
+DIR=${PREFIX}
+if [ "X$DIR" = "X" ]; then 
+    echo "PREFIX/DIR are not set"
+    exit 1;
+fi
+
 UNAME=`uname`;
 # Getting default variables
-DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 GROUP="ossec"
 USER="ossec"
 subdirs="logs bin queue queue/ossec queue/alerts queue/syscheck queue/rids queue/diff var var/run etc etc/shared active-response active-response/bin agentless .ssh"
