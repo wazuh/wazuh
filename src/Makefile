@@ -122,7 +122,9 @@ endif # USE_GEOIP
 
 ifdef DATABASE 
 
-ifeq (${DATABASE},mysql) 
+ifeq (${DATABASE},mysql)
+
+DEFINES+=-DUMYSQL
 
 ifdef MYSQL_CFLAGS 
 	MI = ${MYSQL_CFLAGS} 
@@ -165,12 +167,17 @@ endif # local/lib
 endif # lib54
 endif # lib
 
+
 endif 
 endif # MYSQL_LIBS 
+
+LDFLAGS+=${ML}
 
 else # DATABASE
 
 ifeq (${DATABASE}, pgsql)
+
+DEFINES+=-DUPOSTGRES
 
 ifneq (${PGSQL_LIBS},)
 	PL:=${PGSQL_LIBS} 
@@ -185,6 +192,8 @@ else
 endif 
 
 # XXX need some basic autodetech stuff here.  
+
+LDFLAGS+=${PL}
 
 endif # pgsql 
 endif # mysql 
@@ -304,7 +313,10 @@ agent: ${BUILD_AGENT}
 
 .PHONY: winagent
 winagent:
-	${MAKE} -f Makefile.mingw
+	# enable old working windows build for travis
+	#${MAKE} -f Makefile.mingw
+	( cd win32 && /bin/sh ./gen_win.sh )
+	( cd win-pkg && /bin/sh ./make.sh )
 
 
 ####################
@@ -401,7 +413,7 @@ shared_c = $(wildcard shared/*.c)
 shared_o = $(shared_c:.c=.o)
 
 shared/%.o: shared/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"shared-libs\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
 
 shared.a: ${shared_o}
 	${OSSEC_LINK} $@ $^
@@ -413,7 +425,7 @@ config_c = $(wildcard config/*.c)
 config_o = $(config_c:.c=.o)
 
 config/%.o: config/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"config-libs\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
 
 config.a: ${config_o}
 	${OSSEC_LINK} $@ $^
@@ -427,32 +439,32 @@ crypto_blowfish_c = os_crypto/blowfish/bf_op.c \
 crypto_blowfish_o = $(crypto_blowfish_c:.c=.o)
 
 os_crypto/blowfish/%.o: os_crypto/blowfish/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
 
 crypto_md5_c = os_crypto/md5/md5.c \
 							 os_crypto/md5/md5_op.c
 crypto_md5_o = $(crypto_md5_c:.c=.o)
 
 os_crypto/md5/%.o: os_crypto/md5/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
 
 crypto_sha1_c = os_crypto/sha1/sha1_op.c
 crypto_sha1_o = $(crypto_sha1_c:.c=.o)
 
 os_crypto/sha1/%.o: os_crypto/sha1/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
 
 crypto_md5_sha1_c = os_crypto/md5_sha1/md5_sha1_op.c
 crypto_md5_sha1_o = $(crypto_md5_sha1_c:.c=.o)
 
 os_crypto/md5_sha1/%.o: os_crypto/md5_sha1/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
 
 crypto_shared_c = $(wildcard os_crypto/shared/*.c)
 crypto_shared_o = $(crypto_shared_c:.c=.o)
 
 os_crypto/shared/%.o: os_crypto/shared/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"crypto\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
 
 
 crypto_o = ${crypto_blowfish_o} \
@@ -787,7 +799,7 @@ ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${output_a} aler
 #### test ##########
 ####################
 
-test: all
+test: deps
 		cd tests/ && ${MAKE}
 
 check: test
@@ -796,7 +808,7 @@ check: test
 #### Clean #########
 ####################
 
-clean: clean-test clean-interals clean-external
+clean: clean-test clean-interals clean-external clean-windows-old
 
 clean-test:
 		cd tests/ && ${MAKE} clean
@@ -833,8 +845,12 @@ clean-interals:
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ossec-logtest ossec-analysisd ossec-makelists
 
-
-
-
-
-
+clean-windows-old:
+	rm -rf win-pkg/
+	rm -f win32/LICENSE.txt
+	rm -f win32/help_win.txt
+	rm -f win32/internal_options-win.conf
+	rm -f win32/local_internal_options-win.conf
+	rm -f win32/ossec-win.conf
+	rm -f win32/restart-ossec.cmd
+	rm -f win32/route-null.cmd
