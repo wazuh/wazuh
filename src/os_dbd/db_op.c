@@ -33,9 +33,10 @@ void *(*osdb_close)(void *db_conn);
 #include <libpq-fe.h>
 #endif
 
-
+#if defined(UMYSQL) || defined(UMYSQL)
 static void osdb_checkerror(void);
 static void osdb_seterror(void);
+#endif
 
 /* Config pointer */
 static DBConfig *db_config_pt = NULL;
@@ -78,7 +79,7 @@ void osdb_escapestr(char *str)
     }
 }
 
-
+#if defined(UMYSQL) || defined(UMYSQL)
 
 /** void osdb_checkerror()
  * Checks for errors and handle it appropriately.
@@ -145,6 +146,8 @@ static void osdb_seterror()
     db_config_pt->error_count++;
     osdb_checkerror();
 }
+
+#endif
 
 
 /** void osdb_setconfig(DBConfig *db_config)

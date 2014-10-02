@@ -68,6 +68,7 @@ int main(int argc, char **argv)
 {
     int c, test_config = 0, run_foreground = 0;
     int uid = 0,gid = 0;
+    unsigned int d;
 
     /* Using MAILUSER (read only) */
     const char *dir  = DEFAULTDIR;
@@ -188,8 +189,8 @@ int main(int argc, char **argv)
 
 
     /* Connecting to the database */
-    c = 0;
-    while(c <= (db_config.maxreconnect * 10))
+    d = 0;
+    while(d <= (db_config.maxreconnect * 10))
     {
         db_config.conn = osdb_connect(db_config.host, db_config.user,
                                       db_config.pass, db_config.db,
@@ -201,8 +202,8 @@ int main(int argc, char **argv)
             break;
         }
 
-        c++;
-        sleep(c * 60);
+        d++;
+        sleep(d * 60);
 
     }
 
