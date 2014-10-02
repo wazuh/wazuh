@@ -14,10 +14,6 @@
  */
 
 
-#ifndef DBD
-   #define DBD
-#endif
-
 #ifndef ARGV0
    #define ARGV0 "ossec-dbd"
 #endif
@@ -25,9 +21,12 @@
 #include "shared.h"
 #include "dbd.h"
 
+static void print_db_info(void);
+static void help_dbd(void) __attribute__((noreturn));
+
 
 /* Prints information regarding enabled databases */
-void print_db_info()
+static void print_db_info()
 {
     #ifdef UMYSQL
     print_out("    Compiled with MySQL support");
@@ -43,7 +42,7 @@ void print_db_info()
 }
 
 /* print help statement */
-void help_dbd()
+static void help_dbd()
 {
     print_header();
     print_out("  %s: -[Vhdtfv] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -69,12 +68,13 @@ int main(int argc, char **argv)
 {
     int c, test_config = 0, run_foreground = 0;
     int uid = 0,gid = 0;
+    unsigned int d;
 
     /* Using MAILUSER (read only) */
-    char *dir  = DEFAULTDIR;
-    char *user = MAILUSER;
-    char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    const char *dir  = DEFAULTDIR;
+    const char *user = MAILUSER;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
 
     /* Database Structure */
@@ -184,13 +184,13 @@ int main(int argc, char **argv)
 
 
     /* Getting maximum reconned attempts */
-    db_config.maxreconnect = getDefine_Int("dbd",
+    db_config.maxreconnect = (unsigned int) getDefine_Int("dbd",
                                            "reconnect_attempts", 1, 9999);
 
 
     /* Connecting to the database */
-    c = 0;
-    while(c <= (db_config.maxreconnect * 10))
+    d = 0;
+    while(d <= (db_config.maxreconnect * 10))
     {
         db_config.conn = osdb_connect(db_config.host, db_config.user,
                                       db_config.pass, db_config.db,
@@ -202,8 +202,8 @@ int main(int argc, char **argv)
             break;
         }
 
-        c++;
-        sleep(c * 60);
+        d++;
+        sleep(d * 60);
 
     }
 
@@ -272,9 +272,8 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
-    /* the real daemon now */	
+    /* the real daemon now */
     OS_DBD(&db_config);
-    exit(0);
 }
 
 
