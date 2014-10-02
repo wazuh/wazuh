@@ -198,9 +198,15 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
             snprintf(templog, len+1, "%s", al_data->log[i]);
         }
         fulllog = os_LoadString(fulllog, templog);
-//      fulllog = os_LoadString(fulllog, al_data->log[i]);
         i++;
     }
+
+    if(fulllog == NULL)
+    {
+        merror("%s: Unable to process log.", ARGV0);
+        return(0);
+    }
+
     osdb_escapestr(fulllog);
     if(strlen(fulllog) >  7456)
     {
