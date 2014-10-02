@@ -33,7 +33,7 @@ void *(*osdb_close)(void *db_conn);
 #include <libpq-fe.h>
 #endif
 
-#if defined(UMYSQL) || defined(UMYSQL)
+#if defined(UMYSQL) || defined(UPOSTGRES)
 static void osdb_checkerror(void);
 static void osdb_seterror(void);
 #endif
@@ -79,7 +79,7 @@ void osdb_escapestr(char *str)
     }
 }
 
-#if defined(UMYSQL) || defined(UMYSQL)
+#if defined(UMYSQL) || defined(UPOSTGRES)
 
 /** void osdb_checkerror()
  * Checks for errors and handle it appropriately.
