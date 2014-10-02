@@ -287,11 +287,11 @@ BUILD_SERVER+=ossec-logcollector
 BUILD_SERVER+=ossec-remoted
 BUILD_SERVER+=ossec-agentd
 BUILD_SERVER+=manage_agents
-BUILD_SERVER+=util
+BUILD_SERVER+=utils
 BUILD_SERVER+=ossec-syscheckd
 BUILD_SERVER+=ossec-monitord
 BUILD_SERVER+=ossec-reportd
-BUILD_SERVER+=os_auth
+BUILD_SERVER+=ossec-authd
 BUILD_SERVER+=ossec-analysisd
 BUILD_SERVER+=ossec-logtest
 BUILD_SERVER+=ossec-makelists
@@ -586,7 +586,7 @@ manage_agents: ${addagent_o} ${ossec_libs} ${ZLIB_LIB}
 
 util_programs = syscheck_update clear_stats list_agents agent_control syscheck_control rootcheck_control verify-agent-conf ossec-regex
 
-util: ${util_programs}
+utils: ${util_programs}
 
 util_c = $(wildcard util/*.c)
 util_o = $(util_c:.c=.o)
@@ -677,11 +677,6 @@ ossec-reportd: ${report_o} ${ossec_libs}
 
 
 #### os_auth #######
-
-
-os_auth_programs = agent-auth ossec-authd
-
-os_auth: ${os_auth_programs}
 
 os_auth_c = ${wildcard os_auth/*.c}
 os_auth_o = $(os_auth_c:.c=.o)
