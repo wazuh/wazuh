@@ -145,6 +145,7 @@ int OS_Server_ReadInsertDB(const DBConfig *db_config)
     /* Getting server id */
     server_id = __DBSelectServer(__shost, db_config);
 
+    free(info);
 
     return(server_id);
 }
