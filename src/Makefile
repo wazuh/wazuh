@@ -298,9 +298,7 @@ BUILD_SERVER+=ossec-authd
 BUILD_SERVER+=ossec-analysisd
 BUILD_SERVER+=ossec-logtest
 BUILD_SERVER+=ossec-makelists
-ifneq (,${DATABASE})
 BUILD_SERVER+=ossec-dbd
-endif 
 	
 BUILD_AGENT+=deps
 BUILD_AGENT+=ossec-agentd
