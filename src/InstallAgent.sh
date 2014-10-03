@@ -7,7 +7,7 @@ if [ $? != 0 ]; then
     echo "Cannot execute. Wrong directory"
     exit 1;
 fi
-DIR=${PREFIX}
+DIR="${PREFIX}"
 if [ "X$DIR" = "X" ]; then 
     echo "PREFIX/DIR are not set"
     exit 1;

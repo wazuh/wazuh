@@ -6,12 +6,15 @@ uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
 
 
+
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_LUA=external/lua/
 EXTERNAL_ZLIB=external/zlib-1.2.8/
 LUA_PLAT=posix
 MAXAGENTS?=2048
-PREFIX?=/var/ossec 
+# XXX Becareful NO EXTRA Spaces here 
+PREFIX?=/var/ossec
+export PREFIX 
 PG_CONFIG?=pg_config 
 MY_CONFIG?=mysql_config 
 
