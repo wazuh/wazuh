@@ -15,11 +15,11 @@
 #include "os_regex/os_regex.h"
 #include "execd.h"
 
-char exec_names[MAX_AR +1][OS_FLSIZE +1];
-char exec_cmd[MAX_AR +1][OS_FLSIZE +1];
-int  exec_timeout[MAX_AR +1];
-int  exec_size = 0;
-int  f_time_reading = 1;
+static char exec_names[MAX_AR +1][OS_FLSIZE +1];
+static char exec_cmd[MAX_AR +1][OS_FLSIZE +1];
+static int  exec_timeout[MAX_AR +1];
+static int  exec_size = 0;
+static int  f_time_reading = 1;
 
 
 /** int ReadExecConfig() v0.1:
@@ -193,7 +193,7 @@ int ReadExecConfig()
  * If timeout is not NULL, write the timeout for that
  * command to it.
  */
-char *GetCommandbyName(char *name, int *timeout)
+char *GetCommandbyName(const char *name, int *timeout)
 {
     int i = 0;
 
@@ -209,14 +209,14 @@ char *GetCommandbyName(char *name, int *timeout)
     return(NULL);
 }
 
-
+#ifndef WIN32
 /** void ExecCmd(char **cmd, char *extra_data) v0.1
  * Execute command given. Must be a argv** NULL terminated.
  * Void. Prints error to log message in case of problems.
  */
-void ExecCmd(char **cmd)
+void ExecCmd(char *const *cmd)
 {
-    #ifndef WIN32
+
     pid_t pid;
 
 
@@ -233,15 +233,15 @@ void ExecCmd(char **cmd)
         exit(0);
     }
 
-    #endif
-
     return;
 }
 
-#ifdef WIN32
+#else
+
 void ExecCmd_Win32(char *cmd)
 {
     /* Windows code now. */
+
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
 
