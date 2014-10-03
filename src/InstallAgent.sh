@@ -8,7 +8,7 @@ if [ $? != 0 ]; then
     exit 1;
 fi
 DIR="${PREFIX}"
-if [ "X$DIR" = "X" ]; then 
+if [ "X$DIR" = "X" ]; then
     echo "PREFIX/DIR are not set"
     exit 1;
 fi
@@ -20,18 +20,18 @@ USER="ossec"
 subdirs="logs bin queue queue/ossec queue/alerts queue/syscheck queue/rids queue/diff var var/run etc etc/shared active-response active-response/bin agentless .ssh"
 
 
-# ${DIR} must be set 
+# ${DIR} must be set
 if [ "X${DIR}" = "X" ]; then
     echo "Error building OSSEC HIDS."
     exit 1;
-fi    
+fi
 
 
 # Creating root directory
-ls ${DIR} > /dev/null 2>&1    
+ls ${DIR} > /dev/null 2>&1
 if [ $? != 0 ]; then mkdir -m 700 -p ${DIR}; fi
-ls ${DIR} > /dev/null 2>&1    
-if [ $? != 0 ]; then 
+ls ${DIR} > /dev/null 2>&1
+if [ $? != 0 ]; then
     echo "You do not have permissions to create ${DIR}. Exiting..."
     exit 1;
 fi
@@ -41,15 +41,15 @@ fi
 if [ "$UNAME" = "FreeBSD" -o "$UNAME" = "DragonFly" ]; then
     grep "^${USER}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-    /usr/sbin/pw groupadd ${GROUP}
-	/usr/sbin/pw useradd ${USER} -d ${DIR} -s /sbin/nologin -g ${GROUP}
+        /usr/sbin/pw groupadd ${GROUP}
+        /usr/sbin/pw useradd ${USER} -d ${DIR} -s /sbin/nologin -g ${GROUP}
     fi
 
 elif [ "$UNAME" = "SunOS" ]; then
     grep "^${USER}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-    /usr/sbin/groupadd ${GROUP}
-    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
+        /usr/sbin/groupadd ${GROUP}
+        /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
     fi
 
 elif [ "$UNAME" = "AIX" ]; then
@@ -60,8 +60,8 @@ elif [ "$UNAME" = "AIX" ]; then
     fi
     grep "^${USER}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-    /usr/bin/mkgroup ${GROUP}
-    /usr/sbin/useradd -d ${DIR} ${AIXSH} -g ${GROUP} ${USER}
+        /usr/bin/mkgroup ${GROUP}
+        /usr/sbin/useradd -d ${DIR} ${AIXSH} -g ${GROUP} ${USER}
     fi
 
 # Thanks Chuck L. for the mac addusers
@@ -73,30 +73,30 @@ elif [ "$UNAME" = "Darwin" ]; then
         /usr/bin/sw_vers 2>/dev/null| grep "ProductVersion" | grep -E "10.2.|10.3|10.4" > /dev/null 2>&1
         if [ $? = 0 ]; then
 
-	    chmod +x ./init/darwin-addusers.pl
+            chmod +x ./init/darwin-addusers.pl
             ./init/darwin-addusers.pl
-	else
+        else
             chmod +x ./init/osx105-addusers.sh
             ./init/osx105-addusers.sh
-        fi        
+        fi
     fi
 else
     grep "^${USER}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-	/usr/sbin/groupadd ${GROUP}
+        /usr/sbin/groupadd ${GROUP}
 
-    # We first check if /sbin/nologin is present. If it is not,
-    # we look for bin/false. If none of them is present, we
-    # just stick with nologin (no need to fail the install for that).
-    OSMYSHELL="/sbin/nologin"
-    ls -la ${OSMYSHELL} > /dev/null 2>&1
-    if [ ! $? = 0 ]; then
-        ls -la /bin/false > /dev/null 2>&1
-        if [ $? = 0 ]; then
-            OSMYSHELL="/bin/false"
+        # We first check if /sbin/nologin is present. If it is not,
+        # we look for bin/false. If none of them is present, we
+        # just stick with nologin (no need to fail the install for that).
+        OSMYSHELL="/sbin/nologin"
+        ls -la ${OSMYSHELL} > /dev/null 2>&1
+        if [ ! $? = 0 ]; then
+            ls -la /bin/false > /dev/null 2>&1
+            if [ $? = 0 ]; then
+                OSMYSHELL="/bin/false"
+            fi
         fi
-    fi        
-	/usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER}
+        /usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER}
     fi
 fi
 
@@ -145,7 +145,7 @@ if [ "$UNAME" = "SunOS" ]; then
     chmod -R 555 ${DIR}/usr/
     cp -pr /usr/share/lib/zoneinfo/* ${DIR}/usr/share/lib/zoneinfo/
     chown -R root:${GROUP} ${DIR}/usr/
-fi    
+fi
 
 ls /etc/TIMEZONE > /dev/null 2>&1
 if [ $? = 0 ]; then
@@ -153,8 +153,8 @@ if [ $? = 0 ]; then
     chown root:${GROUP} ${DIR}/etc/TIMEZONE
     chmod 555 ${DIR}/etc/TIMEZONE
 fi
-            
-        
+
+
 
 # For the /etc/shared
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
@@ -164,7 +164,7 @@ ls ${DIR}/etc/internal_options.conf > /dev/null 2>&1
 if [ $? = 0 ]; then
   cp -pr ${DIR}/etc/internal_options.conf ${DIR}/etc/backup-internal_options.$$
 fi
-      
+
 cp -pr ../etc/internal_options.conf ${DIR}/etc/
 cp -pr ../etc/local_internal_options.conf ${DIR}/etc/ > /dev/null 2>&1
 cp -pr ../etc/client.keys ${DIR}/etc/ > /dev/null 2>&1
@@ -222,11 +222,11 @@ if [ $? = 0 ]; then
     exit 0;
 fi
 
-        
+
 ls ../etc/ossec.mc > /dev/null 2>&1
 if [ $? = 0 ]; then
     cp -pr ../etc/ossec.mc ${DIR}/etc/ossec.conf
-else    
+else
     cp -pr ../etc/ossec-agent.conf ${DIR}/etc/ossec.conf
 fi
 chown root:${GROUP} ${DIR}/etc/ossec.conf
