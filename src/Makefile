@@ -12,16 +12,16 @@ EXTERNAL_LUA=external/lua/
 EXTERNAL_ZLIB=external/zlib-1.2.8/
 LUA_PLAT=posix
 MAXAGENTS?=2048
-# XXX Becareful NO EXTRA Spaces here 
+# XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
-export PREFIX 
-PG_CONFIG?=pg_config 
-MY_CONFIG?=mysql_config 
+export PREFIX
+PG_CONFIG?=pg_config
+MY_CONFIG?=mysql_config
 PRELUDE_CONFIG?=libprelude-config
 OSSEC_GROUP?=ossec
 export OSSEC_GROUP
 OSSEC_USER?=ossec
-export OSSEC_USER 
+export OSSEC_USER
 OSSEC_USER_MAIL?=ossecm
 export OSSEC_USER_MAIL
 OSSEC_USER_REM?=ossecr
@@ -77,15 +77,15 @@ endif # SunOS
 endif # AIX
 endif # Linux
 
-ifdef DEBUGAD 
-	DEFINES+=+DDEBUGAD 
+ifdef DEBUGAD
+	DEFINES+=+DDEBUGAD
 endif 
 
 ifdef DEBUG
 	CFLAGS+=-g
 endif #DEBUG
 
-CFLAGS+=${DEFINES} 
+CFLAGS+=${DEFINES}
 CFLAGS+=-Wall -Wextra -O2
 CFLAGS+=-I./ -I./headers/
 
@@ -115,28 +115,16 @@ OSSEC_CCBIN=${QUIET_CCBIN}${CC}
 OSSEC_LINK=${QUIET_LINK}${BUILDLIB}
 OSSEC_RANLIB=${QUIET_RANLIB}ranlib
 
-####################
-#### Target ########
-####################
-
-ifndef TARGET
-	TARGET=failtarget
-endif # TARGET
-
-ifeq (${TARGET},agent)
-	DEFINES+=-DCLIENT 
-endif
-
 
 ifeq (${USE_PRELUDE},1)
-	DEFINES+=-DPRELUDE 	
-	LDFLAGS+=-lprelude 
+	DEFINES+=-DPRELUDE
+	LDFLAGS+=-lprelude
 	LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --pthread-cflags')
 	LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --libs')
 endif # USE_PRELUDE 
 
-ifeq (${USE_ZEROMQ},1) 
-	DEFINES+=-DZEROMQ_OUTPUT 
+ifeq (${USE_ZEROMQ},1)
+	DEFINES+=-DZEROMQ_OUTPUT
 	LDFLAGS+=-lzmq -lczmq
 endif # USE_ZEROMQ 
 
@@ -154,16 +142,16 @@ ifeq (${DATABASE},mysql)
 
 DEFINES+=-DUMYSQL
 
-ifdef MYSQL_CFLAGS 
-	MI = ${MYSQL_CFLAGS} 
-else 
+ifdef MYSQL_CFLAGS
+	MI = ${MYSQL_CFLAGS}
+else
 	MI := $(shell sh -c '${MY_CONFIG} --include 2>/dev/null || echo ')
 
 ifeq (${MI},) # BEGIN MI manula detection
 ifeq (,$(wildcard /usr/include/mysql/mysql.h))
 	MI="-I/usr/include/mysql/"
-else 
-ifeq (,$(wildcard /usr/local/include/mysql/mysql.h)) 
+else
+ifeq (,$(wildcard /usr/local/include/mysql/mysql.h))
 	MI="-I/usr/local/include/mysql/"
 endif  #
 endif  #MI
@@ -174,29 +162,29 @@ endif # MYSQL_CFLAGS
 
 
 ifdef MYSQL_LIBS
-	ML = ${MYSQL_LIBS} 
-else 
+	ML = ${MYSQL_LIBS}
+else
 	ML := $(shell sh -c '${MY_CONFIG} --libs 2>/dev/null || echo ')
 
-ifeq (${ML},) 
+ifeq (${ML},)
 ifeq (,$(wildcard /usr/lib/mysql/*))
 	ML="-L/usr/lib/mysql -lmysqlclient"
-else 
+else
 ifeq (,$(wildcard /usr/lib64/mysql/*))
 	ML="-L/usr/lib64/mysql -lmysqlclient"
-else 
+else
 ifeq (,$(wildcard /usr/local/lib/mysql/*))
 	ML="-L/usr/local/lib/mysql -lmysqlclient"
-else 
+else
 ifeq (,$(wildcard /usr/local/lib64/mysql/*))
 	ML="-L/usr/local/lib64/mysql -lmysqlclient"
 endif # local/lib64
-endif # local/lib 
+endif # local/lib
 endif # lib54
 endif # lib
 
 
-endif 
+endif
 endif # MYSQL_LIBS 
 
 LDFLAGS+=${ML}
@@ -208,8 +196,8 @@ ifeq (${DATABASE}, pgsql)
 DEFINES+=-DUPOSTGRES
 
 ifneq (${PGSQL_LIBS},)
-	PL:=${PGSQL_LIBS} 
-else 
+	PL:=${PGSQL_LIBS}
+else
 	PL:=$(shell sh -c '(${PG_CONFIG} --libdir --pkglibdir 2>/dev/null | sed "s/^/-L/g" | xargs ) || echo ')
 endif 
 
@@ -224,37 +212,55 @@ endif
 LDFLAGS+=${PL}
 LDFLAGS+=-lpq
 
-endif # pgsql 
-endif # mysql 
+endif # pgsql
+endif # mysql
 endif # DATABASE
 
-.PHONY: default 
+
+####################
+#### Target ########
+####################
+
+ifndef TARGET
+	TARGET=failtarget
+endif # TARGET
+
+ifeq (${TARGET},agent)
+	DEFINES+=-DCLIENT
+endif
+
+ifeq (${TARGET},local)
+	DEFINES+=-DLOCAL
+endif
+
+
+.PHONY: default
 build:: ${TARGET}
-	@echo 
+	@echo
 	${QUIET_NOTICE}
 	@echo "Done building ${TARGET}"
 	${QUIET_ENDCOLOR}
-	@echo 
+	@echo
 
 
 .PHONY: install install-agent install-server install-local install-hybrid
 install: install-${TARGET}
 
-install-agent: build 
+install-agent: build
 	@./InstallAgent.sh
 
-install-server: build 
+install-server: build
 	@./InstallServer.sh 
 
-install-local: build 
+install-local: build
 	@./InstallServer.sh local
 
-install-hybrid: build 
+install-hybrid: build
 	@./InstallServer.sh 
 
 
 .PHONY: failtarget
-failtarget: 
+failtarget:
 	@echo "TARGET is required: "
 	@echo "   make TARGET=server   to build the server"
 	@echo "   make TARGET=local      - local version of server"
@@ -262,13 +268,13 @@ failtarget:
 	@echo "   make TARGET=agent    to build the unix agent"
 	@echo "   make TARGET=winagent to build the windows agent"
 
-.PHONY: help 
-help: failtarget 
-	@echo 
+.PHONY: help
+help: failtarget
+	@echo
 	@echo "General options: "
-	@echo "   make V=1             Display full compiler messages" 
+	@echo "   make V=1             Display full compiler messages"
 	@echo "   make DEBUG=1         Build with symbols and without optimization"
-	@echo 
+	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql  Build with MYSQL Support"
 	@echo "                        Use MYSQL_CFLAGS adn MYSQL_LIBS to override defaults"
@@ -277,14 +283,14 @@ help: failtarget
 	@echo
 	@echo "Geoip support: "
 	@echo "   make USE_GEOIP=1     Build with GeoIP support"
-	@echo 
-	@echo 
+	@echo
+	@echo
 	@echo "Examples: Client with debugging enabled"
 	@echo "   make TARGET=agent DEBUG=1"
 
 .PHONY: settings
-settings: 
-	@echo 
+settings:
+	@echo
 	@echo "General settings:"
 	@echo "    TARGET:          ${TARGET}"
 	@echo "    V:               ${V}"
@@ -313,13 +319,13 @@ settings:
 	@echo "Defines:"
 	@echo "    ${DEFINES}"
 	@echo "Compiler:"
-	@echo "    CFLAGS          ${CFLAGS}" 
+	@echo "    CFLAGS          ${CFLAGS}"
 	@echo "    LDFLAGS         ${LDFLAGS}"
 	@echo "    CC              ${CC}"
 	@echo "    MAKE            ${MAKE}"
 
 
-BUILD_SERVER+=external 
+BUILD_SERVER+=external
 BUILD_SERVER+=ossec-maild
 BUILD_SERVER+=ossec-csyslogd
 BUILD_SERVER+=ossec-agentlessd
@@ -349,7 +355,7 @@ BUILD_AGENT+=manage_agents
 .PHONY: server local hybrid agent
 server: ${BUILD_SERVER}
 
-local: ${BUILD_SERVER} 
+local: ${BUILD_SERVER}
 
 hybrid: ${BUILD_SERVER}
 
@@ -545,7 +551,7 @@ os_dbd_o := $(os_dbd_c:.c=.o)
 os_dbd/%.o: os_dbd/%.c
 	${OSSEC_CC} ${CFLAGS} ${MI} ${PI} -DARGV0=\"ossec-dbd\" -c $^ -o $@
 
-ossec-dbd: ${os_dbd_o} ${ossec_libs} 
+ossec-dbd: ${os_dbd_o} ${ossec_libs}
 	${OSSEC_CCBIN} ${CFLAGS} ${MI} ${PI} ${JSON_INCLUDE} $^ -lm ${LDFLAGS} -o $@
 
 
