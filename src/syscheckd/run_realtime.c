@@ -21,6 +21,11 @@
 
 
 #ifdef WIN32
+/* WINVER needs to be 0x0501 or higher to pull in IPv6 functions */
+#ifndef WINVER
+#define WINVER  0x0501
+#endif
+#include <winsock2.h>
 #include <windows.h>
 #include <winsock.h>
 #include <io.h>
