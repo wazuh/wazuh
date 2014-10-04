@@ -11,6 +11,7 @@ env:
 - DB=pgsql OSSEC_TYPE=server GEOIP=no
 - DB=none OSSEC_TYPE=server GEOIP=yes
 - DB=none OSSEC_TYPE=server GEOIP=no
+- DB=none OSSEC_TYPE=server GEOIP=no ALL=yes
 - DB=none OSSEC_TYPE=agent GEOIP=no
 - DB=none OSSEC_TYPE=winagent GEOIP=no
 - OSSEC_TYPE=test
@@ -41,6 +42,7 @@ script:
 - COMMAND="V=1 TARGET=${OSSEC_TYPE}"
   && if ! [[ "${DB}" = "none" ]]; then COMMAND="${COMMAND} DATABASE=${DB}"; fi
   && if [[ "${GEOIP}" = "yes" ]]; then COMMAND="${COMMAND} USE_GEOIP=1"; fi
+  && if [[ "${ALL}" = "yes" ]]; then COMMAND="${COMMAND} USE_ZEROMQ=1 USE_PRELUDE=1 USE_GEOIP=1"; fi
   && ( cd src/ && make ${COMMAND} settings && make ${COMMAND} -j )
 
 - if [[ "$OSSEC_TYPE" == "test" ]]; then ( cd src/tests/ && make run_valgrind ); fi
