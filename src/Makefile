@@ -17,6 +17,14 @@ PREFIX?=/var/ossec
 export PREFIX 
 PG_CONFIG?=pg_config 
 MY_CONFIG?=mysql_config 
+OSSEC_GROUP?=ossec
+export OSSEC_GROUP
+OSSEC_USER?=ossec
+export OSSEC_USER 
+OSSEC_USER_MAIL?=ossecm
+export OSSEC_USER_MAIL
+OSSEC_USER_REM?=ossecr
+export OSSEC_USER_REM
 
 USE_ZEROMQ?=0
 USE_GEOIP?=0
@@ -254,31 +262,36 @@ help: failtarget
 settings: 
 	@echo 
 	@echo "General settings:"
-	@echo "    TARGET:     ${TARGET}"
-	@echo "    V:          ${V}"
-	@echo "    DEBUG:      ${DEBUG}"
-	@echo "    DEBUGAD     ${DEBUGAD}"
-	@echo "    PREFIX:     ${PREFIX}"
-	@echo "    MAXAGENTS:  ${MAXAGENTS}"
-	@echo "    DATABASE:   ${DATABASE}"
+	@echo "    TARGET:          ${TARGET}"
+	@echo "    V:               ${V}"
+	@echo "    DEBUG:           ${DEBUG}"
+	@echo "    DEBUGAD          ${DEBUGAD}"
+	@echo "    PREFIX:          ${PREFIX}"
+	@echo "    MAXAGENTS:       ${MAXAGENTS}"
+	@echo "    DATABASE:        ${DATABASE}"
+	@echo "User settings:"
+	@echo "    OSSEC_GROUP:     ${OSSEC_GROUP}"
+	@echo "    OSSEC_USER:      ${OSSEC_USER}"
+	@echo "    OSSEC_USER_MAIL: ${OSSEC_USER_MAIL}"
+	@echo "    OSSEC_USER_REM:  ${OSSEC_USER_REM}"
 	@echo "Lua settings:"
-	@echo "    LUA_PLAT:   ${LUA_PLAT}"
+	@echo "    LUA_PLAT:       ${LUA_PLAT}"
 	@echo "USE settings:"
-	@echo "    USE_ZEROMQ: ${USE_ZEROMQ}"
-	@echo "    USE_GEOIP:  ${USE_GEOIP}"
+	@echo "    USE_ZEROMQ:     ${USE_ZEROMQ}"
+	@echo "    USE_GEOIP:      ${USE_GEOIP}"
 	@echo "Mysql settings:"
-	@echo "    includes:   ${MI}"
-	@echo "    libs:       ${ML}"
+	@echo "    includes:       ${MI}"
+	@echo "    libs:           ${ML}"
 	@echo "Pgsql settings:"
-	@echo "    includes:   ${PI}"
-	@echo "    libs:       ${PL}"
+	@echo "    includes:       ${PI}"
+	@echo "    libs:           ${PL}"
 	@echo "Defines:"
 	@echo "    ${DEFINES}"
 	@echo "Compiler:"
-	@echo "    CFLAGS      ${CFLAGS}" 
-	@echo "    LDFLAGS     ${LDFLAGS}"
-	@echo "    CC          ${CC}"
-	@echo "    MAKE        ${MAKE}"
+	@echo "    CFLAGS          ${CFLAGS}" 
+	@echo "    LDFLAGS         ${LDFLAGS}"
+	@echo "    CC              ${CC}"
+	@echo "    MAKE            ${MAKE}"
 
 
 BUILD_SERVER+=deps 
