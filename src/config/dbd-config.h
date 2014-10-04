@@ -33,7 +33,7 @@ typedef struct _DBConfig
     char *sock;
 
     void *conn;
-    void *location_hash;
+    OSHash *location_hash;
 
     char **includes;
 }DBConfig;

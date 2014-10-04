@@ -22,7 +22,7 @@
 /** int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
  * Reads database configuration.
  */
-int OS_ReadDBConf(int test_config, char *cfgfile, DBConfig *db_config)
+int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, DBConfig *db_config)
 {
     int modules = 0;
     _Config *tmp_config;
