@@ -229,12 +229,19 @@ install-agent: build
 install-server: build 
 	@./InstallServer.sh 
 
+install-local: build 
+	@./InstallServer.sh local
+
+install-hybrid: build 
+	@./InstallServer.sh 
 
 
 .PHONY: failtarget
 failtarget: 
 	@echo "TARGET is required: "
 	@echo "   make TARGET=server   to build the server"
+	@echo "   make TARGET=local      - local version of server"
+	@echo "   make TARGET=hybrid     - hybrid version of server"
 	@echo "   make TARGET=agent    to build the unix agent"
 	@echo "   make TARGET=winagent to build the windows agent"
 
@@ -322,9 +329,13 @@ BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
 
 server: ${BUILD_SERVER}
-	@echo ${BUILD_SERVER}
+
+local: ${BUILD_SERVER} 
+
+hybrid: ${BUILD_SERVER }
 
 agent: ${BUILD_AGENT}
+
 
 .PHONY: winagent
 winagent:
