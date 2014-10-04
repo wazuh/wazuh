@@ -82,14 +82,7 @@ Install()
 
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
-        make all
-        if [ $? != 0 ]; then
-            cd ../
-            catError "0x5-build"
-        fi
-
-        # Building everything
-        make build
+        make PREFIX=${INSTALLDIR} TARGET=${INSTYPE} build 
         if [ $? != 0 ]; then
             cd ../
             catError "0x5-build"
@@ -101,16 +94,7 @@ Install()
         UpdateStopOSSEC
     fi
 
-    # Making the right installation type
-    if [ "X$INSTYPE" = "Xserver" ]; then
-        ./InstallServer.sh
-
-    elif [ "X$INSTYPE" = "Xagent" ]; then
-        ./InstallAgent.sh
-
-    elif [ "X$INSTYPE" = "Xlocal" ]; then
-        ./InstallServer.sh local
-    fi
+    make PREFIX=${INSTALLDIR} TARGET=${INSTYPE} install 
 
     cd ../
 
