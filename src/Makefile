@@ -17,6 +17,7 @@ PREFIX?=/var/ossec
 export PREFIX 
 PG_CONFIG?=pg_config 
 MY_CONFIG?=mysql_config 
+PRELUDE_CONFIG?=libprelude-config
 OSSEC_GROUP?=ossec
 export OSSEC_GROUP
 OSSEC_USER?=ossec
@@ -26,6 +27,7 @@ export OSSEC_USER_MAIL
 OSSEC_USER_REM?=ossecr
 export OSSEC_USER_REM
 
+USE_PRELUDE?=0
 USE_ZEROMQ?=0
 USE_GEOIP?=0
 
@@ -125,6 +127,18 @@ ifeq (${TARGET},agent)
 	DEFINES+=-DCLIENT 
 endif
 
+
+ifeq (${USE_PRELUDE},1)
+	DEFINES+=-DPRELUDE 	
+	LDFLAGS+=-lprelude 
+	LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --pthread-cflags')
+	LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --libs')
+endif # USE_PRELUDE 
+
+ifeq (${USE_ZEROMQ},1) 
+	DEFINES+=-DZEROMQ_OUTPUT 
+	LDFLAGS+=-lzmq -lczmq
+endif # USE_ZEROMQ 
 
 ifeq (${USE_GEOIP},1)
 	DEFINES+=-DGEOIP
@@ -286,6 +300,7 @@ settings:
 	@echo "USE settings:"
 	@echo "    USE_ZEROMQ:     ${USE_ZEROMQ}"
 	@echo "    USE_GEOIP:      ${USE_GEOIP}"
+	@echo "    USE_PRELUDE:    ${USE_PRELUDE}"
 	@echo "Mysql settings:"
 	@echo "    includes:       ${MI}"
 	@echo "    libs:           ${ML}"
