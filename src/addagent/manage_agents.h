@@ -144,6 +144,7 @@ fpos_t fp_pos;
 
 /* WIN32 errors */
 #define CHDIR_ERROR_2   ARGV0 ": Could not chdir (%s) (Make sure path exists and executable is running with Administrative priviliges).\n"
+#define CHMOD_ERROR     ARGV0 ": Could not chmod (%s) which returned [(%d)-(%s)].\n"
 #define CONF_ERROR      ARGV0 ": Could not read (%s) (Make sure config exists and executable is running with Administrative priviliges).\n"
 #define COMPSEC_ERROR   ARGV0 ": Could not find cmd.exe using COMPSEC environment variable.\n"
 #define PROC_ERROR      ARGV0 ": Could not start process running command (%s).\n"

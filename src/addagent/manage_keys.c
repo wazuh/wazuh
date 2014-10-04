@@ -48,13 +48,13 @@ int k_import(char *cmdimport)
     FILE *fp;
     char *user_input;
     char *b64_dec;
+    int result;
 
     char *name; char *ip; char *tmp_key;
 
     char line_read[FILE_SIZE +1];
 
     #ifdef WIN32
-    int result;
     int cmdlen;
     int caclslen;
     char *comspec;
@@ -142,7 +142,12 @@ int k_import(char *cmdimport)
                     fclose(fp);
 
                     #ifndef WIN32
-                    chmod(KEYS_FILE, 0440);
+                    result = chmod(KEYS_FILE, 0440);
+
+                    if (result)
+                    {
+                        ErrorExit(CHMOD_ERROR, KEYS_FILE, result, strerror(result));
+                    }
                     #else
                     /* Get cmd location from environment */
                     comspec = getenv("COMSPEC");
