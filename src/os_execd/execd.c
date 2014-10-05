@@ -20,9 +20,10 @@
 #include "execd.h"
 
 static void help_execd(void) __attribute__((noreturn));
-static void execd_shutdown(int sig) __attribute__((noreturn));
+
 
 #ifndef WIN32
+static void execd_shutdown(int sig) __attribute__((noreturn));
 static void ExecdStart(int q) __attribute__((noreturn));
 #endif
 
@@ -52,7 +53,7 @@ static OSListNode *timeout_node;
 static OSHash *repeated_hash;
 int repeated_offenders_timeout[] = {0,0,0,0,0,0,0};
 
-
+#ifndef WIN32
 
 /**
  * Shutdowns execd properly.
@@ -82,8 +83,6 @@ static void execd_shutdown(int sig)
 
 }
 
-
-#ifndef WIN32
 
 /** int main(int argc, char **argv) v0.1
  */
