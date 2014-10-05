@@ -1,4 +1,12 @@
 
+#TODO:
+# I: implement: setfullsubject:
+#	         	@echo "FEXTRA=-DCLEANFULL" >> ./Config.OS
+#
+#               setoneway:
+#		        @echo "FEXTRA=-DONEWAY" >> ./Config.OS
+# II: enable without-ssl compilation
+# III: mysql and postgresql
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
@@ -131,6 +139,14 @@ endif # USE_ZEROMQ
 ifeq (${USE_GEOIP},1)
 	DEFINES+=-DGEOIP
 	LDFLAGS+=-lGeoIP
+	
+	ifneq (,$(wildcard /usr/include/GeoIP.h))
+		CFLAGS+="-I/usr/include/"
+	else
+		ifneq (,$(wildcard /usr/local/include/GeoIP.h))
+			CFLAGS+="-I/usr/local/include/"
+		endif
+	endif
 endif # USE_GEOIP
 
 
@@ -148,10 +164,10 @@ else
 	MI := $(shell sh -c '${MY_CONFIG} --include 2>/dev/null || echo ')
 
 ifeq (${MI},) # BEGIN MI manula detection
-ifeq (,$(wildcard /usr/include/mysql/mysql.h))
+ifneq (,$(wildcard /usr/include/mysql/mysql.h))
 	MI="-I/usr/include/mysql/"
 else
-ifeq (,$(wildcard /usr/local/include/mysql/mysql.h))
+ifneq (,$(wildcard /usr/local/include/mysql/mysql.h))
 	MI="-I/usr/local/include/mysql/"
 endif  #
 endif  #MI
@@ -167,16 +183,16 @@ else
 	ML := $(shell sh -c '${MY_CONFIG} --libs 2>/dev/null || echo ')
 
 ifeq (${ML},)
-ifeq (,$(wildcard /usr/lib/mysql/*))
+ifneq (,$(wildcard /usr/lib/mysql/*))
 	ML="-L/usr/lib/mysql -lmysqlclient"
 else
-ifeq (,$(wildcard /usr/lib64/mysql/*))
+ifneq (,$(wildcard /usr/lib64/mysql/*))
 	ML="-L/usr/lib64/mysql -lmysqlclient"
 else
-ifeq (,$(wildcard /usr/local/lib/mysql/*))
+ifneq (,$(wildcard /usr/local/lib/mysql/*))
 	ML="-L/usr/local/lib/mysql -lmysqlclient"
 else
-ifeq (,$(wildcard /usr/local/lib64/mysql/*))
+ifneq (,$(wildcard /usr/local/lib64/mysql/*))
 	ML="-L/usr/local/lib64/mysql -lmysqlclient"
 endif # local/lib64
 endif # local/lib
@@ -204,7 +220,7 @@ endif
 ifneq (${PGSQL_CFLAGS},)
 	PI:=${PGSQL_CFLAGS}
 else
-	PI:=$(shell sh -c '(${PG_CONFIG}--includedir --pkgincludedir 2>/dev/null | sed "s/^/-I/g" | xargs ) || echo ')
+	PI:=$(shell sh -c '(${PG_CONFIG} --includedir --pkgincludedir 2>/dev/null | sed "s/^/-I/g" | xargs ) || echo ')
 endif 
 
 # XXX need some basic autodetech stuff here.  
@@ -234,7 +250,7 @@ ifeq (${TARGET},local)
 endif
 
 
-.PHONY: default
+.PHONY: build
 build:: ${TARGET}
 	@echo
 	${QUIET_NOTICE}
@@ -247,16 +263,16 @@ build:: ${TARGET}
 install: install-${TARGET}
 
 install-agent: build
-	@./InstallAgent.sh
+	./InstallAgent.sh
 
 install-server: build
-	@./InstallServer.sh 
+	./InstallServer.sh 
 
 install-local: build
-	@./InstallServer.sh local
+	./InstallServer.sh local
 
 install-hybrid: build
-	@./InstallServer.sh 
+	./InstallServer.sh 
 
 
 .PHONY: failtarget
