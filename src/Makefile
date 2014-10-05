@@ -5,8 +5,7 @@
 #
 #               setoneway:
 #		        @echo "FEXTRA=-DONEWAY" >> ./Config.OS
-# II: enable without-ssl compilation
-# III: mysql and postgresql
+# II: mysql and postgresql
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 
@@ -218,6 +217,17 @@ ifdef DATABASE
 	endif # mysql
 endif # DATABASE
 
+
+# openssl
+ifneq (,$(wildcard /usr/include/openssl/ssl.h))
+	DEFINES+=-DUSE_OPENSSL
+	LDFLAGS+=-lssl -lcrypto
+else
+	ifneq (,$(wildcard /usr/local/include/openssl/ssl.h))
+		DEFINES+=-DUSE_OPENSSL
+		LDFLAGS+=-lssl -lcrypto
+	endif
+endif
 
 ####################
 #### Target ########
@@ -738,13 +748,13 @@ os_auth_c := ${wildcard os_auth/*.c}
 os_auth_o := $(os_auth_c:.c=.o)
 
 os_auth/%.o: os_auth/%.c
-	${OSSEC_CC} ${CFLAGS} -DUSE_OPENSSL -I./os_auth -DARGV0=\"auth\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS}  -I./os_auth -DARGV0=\"auth\" -c $^ -o $@
 
 agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o ${ossec_libs} ${ZLIB_LIB}
-	${OSSEC_CCBIN} ${CFLAGS} -DUSE_OPENSSL -I./os_auth $^ ${OPENSSLCMD} -lssl -lcrypto ${LDFLAGS} -o $@
+	${OSSEC_CCBIN} ${CFLAGS} -I./os_auth $^ ${LDFLAGS} -o $@
 
 ossec-authd: addagent/validate.o os_auth/main-server.o os_auth/ssl.o os_auth/check_cert.o ${ossec_libs} ${ZLIB_LIB}
-	${OSSEC_CCBIN} ${CFLAGS} -DUSE_OPENSSL -I./os_auth $^ ${OPENSSLCMD} -lssl -lcrypto ${LDFLAGS} -o $@
+	${OSSEC_CCBIN} ${CFLAGS} -I./os_auth $^ ${LDFLAGS} -o $@
 
 #### analysisd #####
 
@@ -754,7 +764,7 @@ all_analysisd_o += ${cdb_o}
 all_analysisd_libs += cdb.a
 
 analysisd/cdb/%.o: analysisd/cdb/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/cdb -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/cdb -c $^ -o $@
 
 cdb.a: ${cdb_o}
 	${OSSEC_LINK} $@ $^
@@ -767,7 +777,7 @@ all_analysisd_o += ${alerts_o}
 all_analysisd_libs += alerts.a
 
 analysisd/alerts/%.o: analysisd/alerts/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/alerts -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/alerts -c $^ -o $@
 
 alerts.a: ${alerts_o}
 	${OSSEC_LINK} $@ $^
@@ -783,27 +793,27 @@ all_analysisd_libs += decoders.a decoders-test.a decoders-live.a
 
 
 analysisd/decoders/%-test.o: analysisd/decoders/%.c
-	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 
 analysisd/decoders/%-live.o: analysisd/decoders/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 analysisd/decoders/plugins/%-test.o: analysisd/decoders/plugins/%.c
-	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 
 analysisd/decoders/plugins/%-live.o: analysisd/decoders/plugins/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 	
 analysisd/compiled_rules/compiled_rules.h: analysisd/compiled_rules/.function_list analysisd/compiled_rules/register_rule.sh
 	./analysisd/compiled_rules/register_rule.sh build
 
 analysisd/compiled_rules/%-test.o: analysisd/compiled_rules/%.c
-	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 analysisd/compiled_rules/%-live.o: analysisd/compiled_rules/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 decoders-live.a: ${decoders_live_o}
 	${OSSEC_LINK} $@ $^
@@ -817,7 +827,7 @@ output_o := ${output_c:.c=.o}
 all_analysisd_o += ${output_o}
 
 analysisd/output/%.o: analysisd/output/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 
 
@@ -830,17 +840,17 @@ analysisd_live_o := $(analysisd_o:.o=-live.o)
 all_analysisd_o += ${analysisd_test_o} ${analysisd_live_o} analysisd/testrule-test.o analysisd/analysisd-live.o analysisd/analysisd-test.o analysisd/makelists-live.o
 
 analysisd/%-live.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -c $< -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -c $< -o $@
 
 analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
-	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -DUSE_OPENSSL -c $< -o $@
+	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -c $< -o $@
 
 
 ossec-logtest: ${analysisd_test_o} ${output_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB}
-	${OSSEC_CCBIN} ${CFLAGS} -DTESTRULE -DUSE_OPENSSL $^ ${LDFLAGS} -o $@
+	${OSSEC_CCBIN} ${CFLAGS} -DTESTRULE $^ ${LDFLAGS} -o $@
 
 ossec-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB}
-	${OSSEC_CCBIN} ${CFLAGS} -DUSE_OPENSSL $^ ${LDFLAGS} -o $@
+	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
 
 ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${output_o} alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
