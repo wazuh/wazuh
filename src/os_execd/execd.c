@@ -21,7 +21,10 @@
 
 static void help_execd(void) __attribute__((noreturn));
 static void execd_shutdown(int sig) __attribute__((noreturn));
+
+#ifndef WIN32
 static void ExecdStart(int q) __attribute__((noreturn));
+#endif
 
 /* print help statement */
 static void help_execd()
