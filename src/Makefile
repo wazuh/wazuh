@@ -139,14 +139,6 @@ endif # USE_ZEROMQ
 ifeq (${USE_GEOIP},1)
 	DEFINES+=-DGEOIP
 	LDFLAGS+=-lGeoIP
-	
-	ifneq (,$(wildcard /usr/include/GeoIP.h))
-		CFLAGS+="-I/usr/include/"
-	else
-		ifneq (,$(wildcard /usr/local/include/GeoIP.h))
-			CFLAGS+="-I/usr/local/include/"
-		endif
-	endif
 endif # USE_GEOIP
 
 
@@ -154,82 +146,76 @@ MI :=
 PI :=
 ifdef DATABASE 
 
-ifeq (${DATABASE},mysql)
+	ifeq (${DATABASE},mysql)
+		DEFINES+=-DUMYSQL
 
-DEFINES+=-DUMYSQL
+		ifdef MYSQL_CFLAGS
+			MI = ${MYSQL_CFLAGS}
+		else
+			MI := $(shell sh -c '${MY_CONFIG} --include 2>/dev/null || echo ')
 
-ifdef MYSQL_CFLAGS
-	MI = ${MYSQL_CFLAGS}
-else
-	MI := $(shell sh -c '${MY_CONFIG} --include 2>/dev/null || echo ')
+			ifeq (${MI},) # BEGIN MI manula detection
+				ifneq (,$(wildcard /usr/include/mysql/mysql.h))
+					MI="-I/usr/include/mysql/"
+				else
+					ifneq (,$(wildcard /usr/local/include/mysql/mysql.h))
+						MI="-I/usr/local/include/mysql/"
+					endif  #
+				endif  #MI
 
-ifeq (${MI},) # BEGIN MI manula detection
-ifneq (,$(wildcard /usr/include/mysql/mysql.h))
-	MI="-I/usr/include/mysql/"
-else
-ifneq (,$(wildcard /usr/local/include/mysql/mysql.h))
-	MI="-I/usr/local/include/mysql/"
-endif  #
-endif  #MI
+			endif
+		endif # MYSQL_CFLAGS
 
-endif
-endif # MYSQL_CFLAGS
+		ifdef MYSQL_LIBS
+			ML = ${MYSQL_LIBS}
+		else
+			ML := $(shell sh -c '${MY_CONFIG} --libs 2>/dev/null || echo ')
 
+			ifeq (${ML},)
+				ifneq (,$(wildcard /usr/lib/mysql/*))
+					ML="-L/usr/lib/mysql -lmysqlclient"
+				else
+					ifneq (,$(wildcard /usr/lib64/mysql/*))
+						ML="-L/usr/lib64/mysql -lmysqlclient"
+					else
+						ifneq (,$(wildcard /usr/local/lib/mysql/*))
+							ML="-L/usr/local/lib/mysql -lmysqlclient"
+						else
+							ifneq (,$(wildcard /usr/local/lib64/mysql/*))
+								ML="-L/usr/local/lib64/mysql -lmysqlclient"
+							endif # local/lib64
+						endif # local/lib
+					endif # lib54
+				endif # lib
+			endif
+		endif # MYSQL_LIBS
+		
+		LDFLAGS+=${ML}
 
+	else # DATABASE
 
-ifdef MYSQL_LIBS
-	ML = ${MYSQL_LIBS}
-else
-	ML := $(shell sh -c '${MY_CONFIG} --libs 2>/dev/null || echo ')
+		ifeq (${DATABASE}, pgsql)
+			DEFINES+=-DUPOSTGRES
 
-ifeq (${ML},)
-ifneq (,$(wildcard /usr/lib/mysql/*))
-	ML="-L/usr/lib/mysql -lmysqlclient"
-else
-ifneq (,$(wildcard /usr/lib64/mysql/*))
-	ML="-L/usr/lib64/mysql -lmysqlclient"
-else
-ifneq (,$(wildcard /usr/local/lib/mysql/*))
-	ML="-L/usr/local/lib/mysql -lmysqlclient"
-else
-ifneq (,$(wildcard /usr/local/lib64/mysql/*))
-	ML="-L/usr/local/lib64/mysql -lmysqlclient"
-endif # local/lib64
-endif # local/lib
-endif # lib54
-endif # lib
+			ifneq (${PGSQL_LIBS},)
+				PL:=${PGSQL_LIBS}
+			else
+				PL:=$(shell sh -c '(${PG_CONFIG} --libdir --pkglibdir 2>/dev/null | sed "s/^/-L/g" | xargs ) || echo ')
+			endif 
 
+			ifneq (${PGSQL_CFLAGS},)
+				PI:=${PGSQL_CFLAGS}
+			else
+				PI:=$(shell sh -c '(${PG_CONFIG} --includedir --pkgincludedir 2>/dev/null | sed "s/^/-I/g" | xargs ) || echo ')
+			endif 
 
-endif
-endif # MYSQL_LIBS 
+			# XXX need some basic autodetech stuff here.  
 
-LDFLAGS+=${ML}
+			LDFLAGS+=${PL}
+			LDFLAGS+=-lpq
 
-else # DATABASE
-
-ifeq (${DATABASE}, pgsql)
-
-DEFINES+=-DUPOSTGRES
-
-ifneq (${PGSQL_LIBS},)
-	PL:=${PGSQL_LIBS}
-else
-	PL:=$(shell sh -c '(${PG_CONFIG} --libdir --pkglibdir 2>/dev/null | sed "s/^/-L/g" | xargs ) || echo ')
-endif 
-
-ifneq (${PGSQL_CFLAGS},)
-	PI:=${PGSQL_CFLAGS}
-else
-	PI:=$(shell sh -c '(${PG_CONFIG} --includedir --pkgincludedir 2>/dev/null | sed "s/^/-I/g" | xargs ) || echo ')
-endif 
-
-# XXX need some basic autodetech stuff here.  
-
-LDFLAGS+=${PL}
-LDFLAGS+=-lpq
-
-endif # pgsql
-endif # mysql
+		endif # pgsql
+	endif # mysql
 endif # DATABASE
 
 
