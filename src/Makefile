@@ -1,10 +1,4 @@
 
-#TODO:
-# I: implement: setfullsubject:
-#	         	@echo "FEXTRA=-DCLEANFULL" >> ./Config.OS
-#
-#               setoneway:
-#		        @echo "FEXTRA=-DONEWAY" >> ./Config.OS
 # II: mysql and postgresql
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
@@ -96,6 +90,14 @@ endif
 ifdef DEBUG
 	CFLAGS+=-g
 endif #DEBUG
+
+ifdef CLEANFULL
+	DEFINES+=-DCLEANFULL
+endif
+
+ifdef ONEWAY
+	DEFINES+=-DONEWAY
+endif
 
 CFLAGS+=${DEFINES}
 CFLAGS+=-Wall -Wextra -O2
