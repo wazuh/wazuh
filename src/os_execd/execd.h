@@ -46,13 +46,13 @@ void WinExecdRun(char *exec_msg);
 
 int ReadExecConfig(void);
 
-char *GetCommandbyName(const char *name, int *timeout);
+char *GetCommandbyName(const char *name, int *timeout) __attribute__((nonnull));
 
-void ExecCmd(char *const *cmd);
+void ExecCmd(char *const *cmd) __attribute__((nonnull));
 
 void ExecCmd_Win32(char *cmd);
 
-int ExecdConfig(const char * cfgfile);
+int ExecdConfig(const char * cfgfile) __attribute__((nonnull));
 
 int WinExecd_Start(void);
 
