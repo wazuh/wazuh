@@ -11,6 +11,9 @@ env:
 - DB=pgsql OSSEC_TYPE=server GEOIP=no
 - DB=none OSSEC_TYPE=server GEOIP=yes
 - DB=none OSSEC_TYPE=server GEOIP=no
+- DB=none OSSEC_TYPE=server PRELUDE=yes
+- DB=none OSSEC_TYPE=local GEOIP=no
+- DB=none OSSEC_TYPE=hybrid GEOIP=no
 - DB=none OSSEC_TYPE=agent GEOIP=no
 - DB=none OSSEC_TYPE=winagent GEOIP=no
 - OSSEC_TYPE=test
@@ -32,6 +35,7 @@ matrix:
 before_script:
 - sudo apt-get update -qq
 - if [[ "$GEOIP" == "yes"  ]]; then ( sudo apt-get install geoip-bin geoip-database libgeoip-dev libgeoip1 ); fi
+- if [[ "${PRELUDE}" = "yes" ]]; then (sudo apt-get install libprelude-dev ); fi
 - if [[ "$OSSEC_TYPE" == "winagent" ]]; then ( sudo apt-get install aptitude && sudo aptitude -y install mingw-w64 nsis ); fi
 - if [[ "$OSSEC_TYPE" == "test" ]]; then ( sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ saucy main " && sudo apt-get update && sudo apt-get install check valgrind ); fi
 
@@ -41,7 +45,9 @@ script:
 - COMMAND="V=1 TARGET=${OSSEC_TYPE}"
   && if ! [[ "${DB}" = "none" ]]; then COMMAND="${COMMAND} DATABASE=${DB}"; fi
   && if [[ "${GEOIP}" = "yes" ]]; then COMMAND="${COMMAND} USE_GEOIP=1"; fi
+  && if [[ "${PRELUDE}" = "yes" ]]; then COMMAND="${COMMAND} USE_PRELUDE=1"; fi
   && ( cd src/ && make ${COMMAND} settings && make ${COMMAND} -j )
+  && if ! [[ "$OSSEC_TYPE" = "test" || "$OSSEC_TYPE" = "winagent" ]]; then ( cd src/ && sudo make ${COMMAND} install ) fi
 
 - if [[ "$OSSEC_TYPE" == "test" ]]; then ( cd src/tests/ && make run_valgrind ); fi
 

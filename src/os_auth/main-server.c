@@ -24,6 +24,13 @@
  *
  */
 
+#ifndef USE_OPENSSL
+int main()
+{
+    printf("ERROR: Not compiled. Missing OpenSSL support.\n");
+    exit(0);
+}
+#else
 
 #include <sys/wait.h>
 
@@ -55,13 +62,7 @@ void help_authd()
     exit(1);
 }
 
-#ifndef USE_OPENSSL
-int main()
-{
-    printf("ERROR: Not compiled. Missing OpenSSL support.\n");
-    exit(0);
-}
-#else
+
 
 /* Function to use with SSL on non blocking socket,
    to know if SSL operation failed for good */
