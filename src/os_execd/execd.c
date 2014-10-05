@@ -382,7 +382,7 @@ static void ExecdStart(int q)
 
 
         /* Receiving the message */
-        if(recv(q, buffer, OS_MAXSTR, 0) == -1)
+        if(OS_RecvUnix(q, OS_MAXSTR, buffer) == 0)
         {
             merror(QUEUE_ERROR, ARGV0, EXECQUEUEPATH, strerror(errno));
             continue;
