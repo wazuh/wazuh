@@ -255,7 +255,13 @@ endif
 ifeq (${TARGET},local)
 	OSSEC_CONTROL_SRC=./init/ossec-local.sh
 else
-	OSSEC_CONTROL_SRC=./init/ossec-server.sh 
+	OSSEC_CONTROL_SRC=./init/ossec-server.sh
+endif
+
+ifeq (${TARGET},local)
+	OSSEC_CONF_SRC=../etc/ossec-local.conf
+else
+	OSSEC_CONF_SRC=../etc/ossec-server.conf
 endif
 
 .PHONY: build
@@ -342,30 +348,22 @@ install-server-generic: build
 	install -m 640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_internal_options.conf
 	install -m 640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
 	#TODO: preserve
-	install -m 640 -o root -g ${OSSEC_GROUP} ../etc/internal_options.conf ${PREFIX}/etc/
+	install -m 640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
 	
-	#TODO:
-	#ifeq (,$(wildcard ${PREFIX}/etc/ossec.conf))
-	#	ifeq (,$(wildcard ../etc/ossec.mc))
-	#		install -m 640 -o root -g ${OSSEC_GROUP} ../etc/ossec.mc ${PREFIX}/etc
-	#	endif
-	#	install -m 640 -o root -g ${OSSEC_GROUP} ../etc/ossec-server.conf ${PREFIX}/etc
-	#endif
-	install -m 640 -o root -g ${OSSEC_GROUP} ../etc/ossec-server.conf ${PREFIX}/etc/ossec.conf
+ifeq (,$(wildcard ${PREFIX}/etc/ossec.conf))
+ifneq (,$(wildcard ../etc/ossec.mc))
+	install -m 640 -o root -g ${OSSEC_GROUP} ../etc/ossec.mc ${PREFIX}/etc/ossec.conf
+else
+	install -m 640 -o root -g ${OSSEC_GROUP} ${OSSEC_CONF_SRC} ${PREFIX}/etc/ossec.conf
+endif
+endif
 	
-	#TODO:
+	if ls /etc/TIMEZONE > /dev/null 2>&1; then install -m 440 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/; fi;
 	# Solaris Needs some extra files
-	#if [ "$UNAME" = "SunOS" ]; then
-	#    mkdir -p ${DIR}/usr/share/lib/zoneinfo/
-	#    chmod -R 550 ${DIR}/usr/
-	#    cp -pr /usr/share/lib/zoneinfo/* ${DIR}/usr/share/lib/zoneinfo/
-	#fi
-	#
-	#ls /etc/TIMEZONE > /dev/null 2>&1
-	#if [ $? = 0 ]; then
-	#    cp -p /etc/TIMEZONE ${DIR}/etc/;
-	#    chmod 550 ${DIR}/etc/TIMEZONE
-	#fi
+ifeq (${uname_S},SunOS)	
+	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
+	install -m 440 -o root -g ${OSSEC_GROUP} /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
+endif
 	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
 	install -m 440 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
 	rm -f ${PREFIX}/etc/shared/merged.mg
