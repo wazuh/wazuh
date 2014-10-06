@@ -85,7 +85,7 @@ endif # Linux
 
 ifdef DEBUGAD
 	DEFINES+=+DDEBUGAD
-endif 
+endif
 
 ifdef DEBUG
 	CFLAGS+=-g
@@ -135,12 +135,12 @@ ifeq (${USE_PRELUDE},1)
 	LDFLAGS+=-lprelude
 	LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --pthread-cflags')
 	LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --libs')
-endif # USE_PRELUDE 
+endif # USE_PRELUDE
 
 ifeq (${USE_ZEROMQ},1)
 	DEFINES+=-DZEROMQ_OUTPUT
 	LDFLAGS+=-lzmq -lczmq
-endif # USE_ZEROMQ 
+endif # USE_ZEROMQ
 
 ifeq (${USE_GEOIP},1)
 	DEFINES+=-DGEOIP
@@ -150,7 +150,7 @@ endif # USE_GEOIP
 
 MI :=
 PI :=
-ifdef DATABASE 
+ifdef DATABASE
 
 	ifeq (${DATABASE},mysql)
 		DEFINES+=-DUMYSQL
@@ -195,7 +195,7 @@ ifdef DATABASE
 				endif # lib
 			endif
 		endif # MYSQL_LIBS
-		
+
 		LDFLAGS+=${ML}
 
 	else # DATABASE
@@ -207,15 +207,15 @@ ifdef DATABASE
 				PL:=${PGSQL_LIBS}
 			else
 				PL:=$(shell sh -c '(${PG_CONFIG} --libdir --pkglibdir 2>/dev/null | sed "s/^/-L/g" | xargs ) || echo ')
-			endif 
+			endif
 
 			ifneq (${PGSQL_CFLAGS},)
 				PI:=${PGSQL_CFLAGS}
 			else
 				PI:=$(shell sh -c '(${PG_CONFIG} --includedir --pkgincludedir 2>/dev/null | sed "s/^/-I/g" | xargs ) || echo ')
-			endif 
+			endif
 
-			# XXX need some basic autodetech stuff here.  
+			# XXX need some basic autodetech stuff here.
 
 			LDFLAGS+=${PL}
 			LDFLAGS+=-lpq
@@ -287,7 +287,7 @@ install: install-${TARGET}
 install-agent: install-common
 	install -m 0550 -o root -g root ossec-agentd ${PREFIX}/bin
 	install -m 0550 -o root -g root agent-auth ${PREFIX}/bin
-	
+
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
 install-local: install-server-generic
@@ -301,7 +301,7 @@ install-common: build
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
-	
+
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
 	install -m 0550 -o root -g root ossec-logcollector ${PREFIX}/bin
 	install -m 0550 -o root -g root ossec-syscheckd ${PREFIX}/bin
@@ -311,7 +311,7 @@ install-common: build
 	install -m 0550 -o root -g root external/lua/src/ossec-luac ${PREFIX}/bin/
 	install -m 0550 -o root -g root ../contrib/util.sh ${PREFIX}/bin/
 	install -m 0550 -o root -g root ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
-	
+
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
@@ -324,7 +324,7 @@ ifneq (,$(wildcard /etc/TIMEZONE))
 	install -m 440 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
 endif
 	# Solaris Needs some extra files
-ifeq (${uname_S},SunOS)	
+ifeq (${uname_S},SunOS)
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
 	install -m 0440 -o root -g ${OSSEC_GROUP} /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
 endif
@@ -340,36 +340,36 @@ else
 	install -m 0640 -o root -g ${OSSEC_GROUP} ${OSSEC_CONF_SRC} ${PREFIX}/etc/ossec.conf
 endif
 endif
-	
+
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
 	install -m 0440 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
-	
+
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
 	install -m 0550 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${PREFIX}/agentless/
-	
+
 	install -d -m 0700 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
 
 	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
 	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
-	
+
 	./init/fw-check.sh execute
 
 
 
-install-server-generic: install-common	
+install-server-generic: install-common
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
-	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall	
-	
+	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
+
 	install -m 0550 -o root -g root ossec-agentlessd ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-analysisd ${PREFIX}/bin	
+	install -m 0550 -o root -g root ossec-analysisd ${PREFIX}/bin
 	install -m 0550 -o root -g root ossec-monitord ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-reportd ${PREFIX}/bin	
+	install -m 0550 -o root -g root ossec-reportd ${PREFIX}/bin
 	install -m 0550 -o root -g root ossec-maild ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-remoted ${PREFIX}/bin	
+	install -m 0550 -o root -g root ossec-remoted ${PREFIX}/bin
 	install -m 0550 -o root -g root ossec-logtest ${PREFIX}/bin
 	install -m 0550 -o root -g root ossec-csyslogd ${PREFIX}/bin
 	install -m 0550 -o root -g root ossec-authd ${PREFIX}/bin
@@ -382,8 +382,8 @@ install-server-generic: install-common
 	install -m 0550 -o root -g root syscheck_update ${PREFIX}/bin/
 	install -m 0550 -o root -g root agent_control ${PREFIX}/bin/
 	install -m 0550 -o root -g root syscheck_control ${PREFIX}/bin/
-	install -m 0550 -o root -g root rootcheck_control ${PREFIX}/bin/	
-	
+	install -m 0550 -o root -g root rootcheck_control ${PREFIX}/bin/
+
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules
 ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
@@ -394,23 +394,23 @@ ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
 else
 	install -m 0440 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
 endif
-	
+
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
-	
+
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
-	
+
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
-	
+
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
-	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run	
-	
+	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
+
 	install -m 0640 -o root -g ${OSSEC_GROUP} ../etc/decoder.xml ${PREFIX}/etc/
 	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_decoder.xml
-		
+
 	rm -f ${PREFIX}/etc/shared/merged.mg
-		
+
 
 .PHONY: failtarget
 failtarget:
@@ -496,7 +496,7 @@ BUILD_SERVER+=ossec-analysisd
 BUILD_SERVER+=ossec-logtest
 BUILD_SERVER+=ossec-makelists
 BUILD_SERVER+=ossec-dbd
-	
+
 BUILD_AGENT+=external
 BUILD_AGENT+=ossec-agentd
 BUILD_AGENT+=agent-auth
@@ -529,7 +529,7 @@ winagent:
 
 .PHONY: external lua
 external: libcJSON.a ${EXTERNAL_ZLIB}libz.a lua
-	
+
 lua:
 	cd ${EXTERNAL_LUA} && ${MAKE} ${LUA_PLAT}
 
@@ -946,7 +946,7 @@ analysisd/decoders/plugins/%-test.o: analysisd/decoders/plugins/%.c
 
 analysisd/decoders/plugins/%-live.o: analysisd/decoders/plugins/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-	
+
 analysisd/compiled_rules/compiled_rules.h: analysisd/compiled_rules/.function_list analysisd/compiled_rules/register_rule.sh
 	./analysisd/compiled_rules/register_rule.sh build
 
