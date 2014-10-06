@@ -117,7 +117,7 @@ void HostinfoInit();
 
 /* For stats */
 int Start_Hour();
-int Check_Hour(Eventinfo *lf);
+int Check_Hour();
 void Update_Hour();
 void DumpLogstats();
 
