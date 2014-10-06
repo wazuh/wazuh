@@ -48,22 +48,12 @@ int k_import(char *cmdimport)
     FILE *fp;
     char *user_input;
     char *b64_dec;
-    int result;
 
     char *name; char *ip; char *tmp_key;
 
+    char tmp_path[] = "tmp/client.keysXXXXXX";
+
     char line_read[FILE_SIZE +1];
-
-    #ifdef WIN32
-    int cmdlen;
-    int caclslen;
-    char *comspec;
-    char *cacls;
-    STARTUPINFO si;
-    PROCESS_INFORMATION pi;
-    DWORD exit_code;
-    #endif
-
 
     /* Parsing user argument. */
     if(cmdimport)
@@ -133,89 +123,45 @@ int k_import(char *cmdimport)
 
                 if(user_input[0] == 'y' || user_input[0] == 'Y')
                 {
-                    fp = fopen(KEYS_FILE,"w");
+                    if (mkstemp_ex(tmp_path))
+                    {
+                        ErrorExit(MKSTEMP_ERROR, ARGV0, tmp_path);
+                    }
+
+                    #ifndef WIN32
+                    if (chmod(tmp_path, 0440))
+                    {
+                        if (unlink(tmp_path))
+                        {
+                            verbose(DELETE_ERROR, ARGV0, tmp_path, errno, strerror(errno));
+                        }
+
+                        ErrorExit(CHMOD_ERROR, ARGV0, tmp_path, errno, strerror(errno));
+                    }
+                    #endif
+
+                    fp = fopen(tmp_path,"w");
                     if(!fp)
                     {
-                        ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
+                        if (unlink(tmp_path))
+                        {
+                            verbose(DELETE_ERROR, ARGV0, tmp_path, errno, strerror(errno));
+                        }
+
+                        ErrorExit(FOPEN_ERROR, ARGV0, tmp_path);
                     }
                     fprintf(fp,"%s\n",line_read);
                     fclose(fp);
 
-                    #ifndef WIN32
-                    result = chmod(KEYS_FILE, 0440);
-
-                    if (result)
+                    if (rename_ex(tmp_path, KEYS_FILE))
                     {
-                        ErrorExit(CHMOD_ERROR, KEYS_FILE, result, strerror(result));
-                    }
-                    #else
-                    /* Get cmd location from environment */
-                    comspec = getenv("COMSPEC");
-                    if (comspec == NULL || strncmp(comspec, "", strlen(comspec) == 0))
-                    {
-                        if(unlink(KEYS_FILE))
+                        if (unlink(tmp_path))
                         {
-                            verbose(DELETE_ERROR, KEYS_FILE);
+                            verbose(DELETE_ERROR, ARGV0, tmp_path, errno, strerror(errno));
                         }
-                        ErrorExit(COMPSEC_ERROR);
+
+                        ErrorExit(RENAME_ERROR, ARGV0, tmp_path);
                     }
-
-                    /* Build cacls command */
-                    cacls = "echo y|cacls \"%s\" /T /G Administrators:f";
-                    caclslen = strlen(cacls) + strlen(KEYS_FILE);
-                    char caclscmd[caclslen];
-                    snprintf(caclscmd, caclslen, cacls, KEYS_FILE);
-
-                    /* Build final command */
-                    cmdlen = strlen(comspec) + 5 + caclslen;
-                    char cmd[cmdlen];
-                    snprintf(cmd, cmdlen, "%s /c %s", comspec, caclscmd);
-                    
-                     /* Log command being run */
-                     log2file("%s: INFO: Running the following command (%s)", ARGV0, cmd);
-
-                    ZeroMemory(&si, sizeof(si));
-                    si.cb = sizeof(si);
-                    ZeroMemory(&pi, sizeof(pi));
-
-                    if(!CreateProcess(NULL, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL,
-                                      &si, &pi))
-                    {
-                        if(unlink(KEYS_FILE))
-                        {
-                            verbose(DELETE_ERROR, KEYS_FILE);
-                        }
-                        ErrorExit(PROC_ERROR, cmd);
-                    }
-
-                    /* Wait until process exits */
-                    WaitForSingleObject(pi.hProcess, INFINITE);
-
-                    /* Get exit code from command */
-                    result = GetExitCodeProcess(pi.hProcess, &exit_code);
-
-                    /* Close process and thread */
-                    CloseHandle(pi.hProcess);
-                    CloseHandle(pi.hThread);
-
-                    if (!result)
-                    {
-                        if(unlink(KEYS_FILE))
-                        {
-                            verbose(DELETE_ERROR, KEYS_FILE);
-                        }
-                        ErrorExit(RESULT_ERROR, cmd, GetLastError());
-                    }
-
-                    if (exit_code)
-                    {
-                        if(unlink(KEYS_FILE))
-                        {
-                            verbose(DELETE_ERROR, KEYS_FILE);
-                        }
-                        ErrorExit(CACLS_ERROR, cmd, exit_code);
-                    }
-                    #endif
 
                     /* Removing sender counter. */
                     OS_RemoveCounter("sender");
