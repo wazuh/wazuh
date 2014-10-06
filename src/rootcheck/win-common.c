@@ -209,7 +209,6 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
     DWORD j;
 
     /* QueryInfo and EnumKey variables */
-    TCHAR sub_key_name_b[MAX_KEY_LENGTH +1];
     TCHAR class_name_b[MAX_PATH +1];
     DWORD class_name_s = MAX_PATH;
 
@@ -236,8 +235,6 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
     /* Initializing the memory for some variables */
     class_name_b[0] = '\0';
     class_name_b[MAX_PATH] = '\0';
-    sub_key_name_b[0] = '\0';
-    sub_key_name_b[MAX_KEY_LENGTH] = '\0';
 
 
     /* We use the class_name, subkey_count and the value count. */
