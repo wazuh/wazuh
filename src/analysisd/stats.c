@@ -253,7 +253,7 @@ void Update_Hour()
 
 
 /* Check Hourly stats */
-int Check_Hour(Eventinfo *lf)
+int Check_Hour()
 {
     _CHour[__crt_hour]++;
     _CWHour[__crt_wday][__crt_hour]++;	
