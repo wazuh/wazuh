@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+set -u
 
 # Checking which firewall to use.
 UNAME=`uname`
@@ -8,16 +10,14 @@ EXECUTE="$1";
 
 if [ "X${UNAME}" = "XFreeBSD" ]; then
     # Is ipfw enabled?
-    grep 'firewall_enable="YES"' /etc/rc.conf >/dev/null 2>&1
-    if [ $? = 0 ]; then
+    if grep 'firewall_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
         # Firewall is IPFW
         FILE="ipfw.sh";
         echo "IPFW";
     fi    
 
     # if pf enabled?
-    grep 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1
-    if [ $? = 0 ]; then
+    if grep 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
         # Firewall is PF
         FILE="pf.sh";
         echo "PF";
@@ -26,8 +26,7 @@ if [ "X${UNAME}" = "XFreeBSD" ]; then
 # Darwin
 elif [ "X${UNAME}" = "XDarwin" ]; then
     # Is pfctl present?
-    which pfctl;
-    if [ $? = 0 ]; then
+    if which pfctl; then
         echo "PF";
         FIlE="pf.sh";
     else
@@ -36,7 +35,7 @@ elif [ "X${UNAME}" = "XDarwin" ]; then
     fi
         
 elif [ "X${UNAME}" = "XOpenBSD" ]; then
-    if [ $? = 0 ]; then
+    if grep 'pf_enable="YES"' /etc/rc.conf >/dev/null 2>&1; then
         # Firewall is PF
         FILE="pf.sh";
         echo "PF";

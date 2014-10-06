@@ -15,18 +15,13 @@ LUA_PLAT=posix
 MAXAGENTS?=2048
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
-export PREFIX
 PG_CONFIG?=pg_config
 MY_CONFIG?=mysql_config
 PRELUDE_CONFIG?=libprelude-config
 OSSEC_GROUP?=ossec
-export OSSEC_GROUP
 OSSEC_USER?=ossec
-export OSSEC_USER
 OSSEC_USER_MAIL?=ossecm
-export OSSEC_USER_MAIL
 OSSEC_USER_REM?=ossecr
-export OSSEC_USER_REM
 
 USE_PRELUDE?=0
 USE_ZEROMQ?=0
@@ -268,15 +263,122 @@ install: install-${TARGET}
 install-agent: build
 	./InstallAgent.sh
 
-install-server: build
-	./InstallServer.sh 
 
-install-local: build
-	./InstallServer.sh local
+ifeq (${TARGET},local)
+	OSSEC_CONTROL_SRC=./init/ossec-local.sh
+else
+	OSSEC_CONTROL_SRC=./init/ossec-server.sh 
+endif
 
-install-hybrid: build
-	./InstallServer.sh 
+install-local: install-server-generic
 
+install-hybrid: install-server-generic
+
+install-server: install-server-generic
+
+install-server-generic: build
+	./adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX}
+	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/
+	install -d -m 750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
+	install -m 660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
+	install -m 660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
+	install -d -m 750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
+	install -d -m 750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
+	install -d -m 750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
+	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
+	install -m 550 -o root -g root manage_agents ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-agentlessd ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-analysisd ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-logcollector ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-monitord ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-reportd ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-execd ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-maild ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-remoted ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-syscheckd ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-logtest ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-csyslogd ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-authd ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-dbd ${PREFIX}/bin
+	install -m 550 -o root -g root ossec-makelists ${PREFIX}/bin
+	install -m 550 -o root -g root verify-agent-conf ${PREFIX}/bin/
+	install -m 550 -o root -g root clear_stats ${PREFIX}/bin/
+	install -m 550 -o root -g root list_agents ${PREFIX}/bin/
+	install -m 550 -o root -g root ossec-regex ${PREFIX}/bin/
+	install -m 550 -o root -g root syscheck_update ${PREFIX}/bin/
+	install -m 550 -o root -g root agent_control ${PREFIX}/bin/
+	install -m 550 -o root -g root syscheck_control ${PREFIX}/bin/
+	install -m 550 -o root -g root rootcheck_control ${PREFIX}/bin/
+	install -m 550 -o root -g root external/lua/src/ossec-lua ${PREFIX}/bin/
+	install -m 550 -o root -g root external/lua/src/ossec-luac ${PREFIX}/bin/
+	install -m 550 -o root -g root ../contrib/util.sh ${PREFIX}/bin/
+	install -m 550 -o root -g root ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
+	
+	install -d -m 750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
+	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules
+	#TODO: take care of local_rules.xml
+	install -m 440 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
+	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
+	install -d -m 770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
+	install -d -m 770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
+	install -d -m 750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
+	install -d -m 750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
+	install -d -m 750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
+	install -d -m 750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
+	install -d -m 750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
+	install -d -m 750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
+	install -d -m 750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
+	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
+	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
+	install -d -m 770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
+	
+	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
+	install -m 440 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
+	install -m 640 -o root -g ${OSSEC_GROUP} ../etc/decoder.xml ${PREFIX}/etc/
+	install -m 640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_decoder.xml
+	install -m 640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_internal_options.conf
+	install -m 640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+	#TODO: preserve
+	install -m 640 -o root -g ${OSSEC_GROUP} ../etc/internal_options.conf ${PREFIX}/etc/
+	
+	#TODO:
+	#ifeq (,$(wildcard ${PREFIX}/etc/ossec.conf))
+	#	ifeq (,$(wildcard ../etc/ossec.mc))
+	#		install -m 640 -o root -g ${OSSEC_GROUP} ../etc/ossec.mc ${PREFIX}/etc
+	#	endif
+	#	install -m 640 -o root -g ${OSSEC_GROUP} ../etc/ossec-server.conf ${PREFIX}/etc
+	#endif
+	install -m 640 -o root -g ${OSSEC_GROUP} ../etc/ossec-server.conf ${PREFIX}/etc/ossec.conf
+	
+	#TODO:
+	# Solaris Needs some extra files
+	#if [ "$UNAME" = "SunOS" ]; then
+	#    mkdir -p ${DIR}/usr/share/lib/zoneinfo/
+	#    chmod -R 550 ${DIR}/usr/
+	#    cp -pr /usr/share/lib/zoneinfo/* ${DIR}/usr/share/lib/zoneinfo/
+	#fi
+	#
+	#ls /etc/TIMEZONE > /dev/null 2>&1
+	#if [ $? = 0 ]; then
+	#    cp -p /etc/TIMEZONE ${DIR}/etc/;
+	#    chmod 550 ${DIR}/etc/TIMEZONE
+	#fi
+	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
+	install -m 440 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
+	rm -f ${PREFIX}/etc/shared/merged.mg
+	
+	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
+	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
+	install -m 550 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
+	install -m 550 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
+	
+	install -d -m 550 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
+	install -m 550 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${PREFIX}/agentless/
+	
+	install -d -m 700 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
+	
+	./init/fw-check.sh execute
+	
 
 .PHONY: failtarget
 failtarget:
@@ -720,7 +822,7 @@ syscheck_c := $(wildcard syscheckd/*.c)
 syscheck_o := $(syscheck_c:.c=.o)
 
 syscheckd/%.o: syscheckd/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"syscheckd\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-syscheckd\" -c $^ -o $@
 
 ossec-syscheckd: ${syscheck_o} rootcheck.a ${ossec_libs} ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} $^ ${LDFLAGS} -o $@
@@ -731,7 +833,7 @@ monitor_c := $(wildcard monitord/*.c)
 monitor_o := $(monitor_c:.c=.o)
 
 monitord/%.o: monitord/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"monitord\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-monitord\" -c $^ -o $@
 
 ossec-monitord: ${monitor_o} ${ossec_libs} os_maild/sendcustomemail.o ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} $^ ${LDFLAGS} -o $@
@@ -743,7 +845,7 @@ report_c := reportd/report.c
 report_o := $(report_c:.c=.o)
 
 reportd/%.o: reportd/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"reportd\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-reportd\" -c $^ -o $@
 
 ossec-reportd: ${report_o} ${ossec_libs}
 	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
@@ -771,7 +873,7 @@ all_analysisd_o += ${cdb_o}
 all_analysisd_libs += cdb.a
 
 analysisd/cdb/%.o: analysisd/cdb/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/cdb -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/cdb -c $^ -o $@
 
 cdb.a: ${cdb_o}
 	${OSSEC_LINK} $@ $^
@@ -784,7 +886,7 @@ all_analysisd_o += ${alerts_o}
 all_analysisd_libs += alerts.a
 
 analysisd/alerts/%.o: analysisd/alerts/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/alerts -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/alerts -c $^ -o $@
 
 alerts.a: ${alerts_o}
 	${OSSEC_LINK} $@ $^
@@ -800,27 +902,27 @@ all_analysisd_libs += decoders.a decoders-test.a decoders-live.a
 
 
 analysisd/decoders/%-test.o: analysisd/decoders/%.c
-	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 
 analysisd/decoders/%-live.o: analysisd/decoders/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 analysisd/decoders/plugins/%-test.o: analysisd/decoders/plugins/%.c
-	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 
 analysisd/decoders/plugins/%-live.o: analysisd/decoders/plugins/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 	
 analysisd/compiled_rules/compiled_rules.h: analysisd/compiled_rules/.function_list analysisd/compiled_rules/register_rule.sh
 	./analysisd/compiled_rules/register_rule.sh build
 
 analysisd/compiled_rules/%-test.o: analysisd/compiled_rules/%.c
-	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 analysisd/compiled_rules/%-live.o: analysisd/compiled_rules/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 decoders-live.a: ${decoders_live_o}
 	${OSSEC_LINK} $@ $^
@@ -834,7 +936,7 @@ output_o := ${output_c:.c=.o}
 all_analysisd_o += ${output_o}
 
 analysisd/output/%.o: analysisd/output/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 
 
@@ -847,10 +949,10 @@ analysisd_live_o := $(analysisd_o:.o=-live.o)
 all_analysisd_o += ${analysisd_test_o} ${analysisd_live_o} analysisd/testrule-test.o analysisd/analysisd-live.o analysisd/analysisd-test.o analysisd/makelists-live.o
 
 analysisd/%-live.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"analysisd\" -I./analysisd -c $< -o $@
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-analysisd\" -I./analysisd -c $< -o $@
 
 analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
-	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"analysisd\" -I./analysisd -c $< -o $@
+	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"ossec-analysisd\" -I./analysisd -c $< -o $@
 
 
 ossec-logtest: ${analysisd_test_o} ${output_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB}
