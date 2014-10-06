@@ -347,8 +347,10 @@ install-server-generic: build
 	install -m 640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_decoder.xml
 	install -m 640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_internal_options.conf
 	install -m 640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
-	#TODO: preserve
+	
+ifeq (,$(wildcard ${PREFIX}/etc/internal_options.conf))
 	install -m 640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
+endif
 	
 ifeq (,$(wildcard ${PREFIX}/etc/ossec.conf))
 ifneq (,$(wildcard ../etc/ossec.mc))
