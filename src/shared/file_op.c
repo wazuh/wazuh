@@ -17,7 +17,9 @@
 
 #include "shared.h"
 
-#ifdef WIN32
+#ifndef WIN32
+#include <libgen.h>
+#else
 #include <aclapi.h>
 #endif
 
@@ -641,6 +643,14 @@ int MergeFiles(const char *finalpath, char **files)
 
 
 #ifndef WIN32
+/* get basename of path */
+char *basename_ex(char *path)
+{
+    return(basename(path));
+}
+
+
+
 /* rename file or directory */
 int rename_ex(const char *source, const char *destination)
 {
@@ -899,6 +909,15 @@ int checkVista()
     free(m_uname);
 
     return(isVista);
+}
+
+
+
+
+/* get basename of path */
+char *basename_ex(char *path)
+{
+    return(PathFindFileNameA(path));
 }
 
 

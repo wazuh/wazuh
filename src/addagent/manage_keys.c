@@ -51,9 +51,13 @@ int k_import(char *cmdimport)
 
     char *name; char *ip; char *tmp_key;
 
-    char tmp_path[] = "tmp/client.keysXXXXXX";
-
     char line_read[FILE_SIZE +1];
+
+    char *keys_file = basename_ex(AUTH_FILE);
+
+    char tmp_path[strlen(TMP_DIR) + 1 + strlen(keys_file) + 6 + 1];
+
+    snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, keys_file);
 
     /* Parsing user argument. */
     if(cmdimport)

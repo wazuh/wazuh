@@ -53,6 +53,9 @@ void goDaemonLight(void);
 /* not really a file operation, but returns the uname */
 char *getuname(void);
 
+/* return basename of path */
+char *basename_ex(char *path) __attribute__((nonnull));
+
 /* rename file or directory */
 int rename_ex(const char *source, const char *destination) __attribute__((nonnull));
 

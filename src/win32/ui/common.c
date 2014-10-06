@@ -466,7 +466,12 @@ int set_ossec_server(char *ip, HWND hwnd)
     const char **xml_pt = NULL;
     const char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
     const char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
-    char tmp_path[] = "tmp/ossec.confXXXXXX";
+
+    char *conf_file = basename_ex(CONFIG);
+
+    char tmp_path[strlen(TMP_DIR) + 1 + strlen(conf_file) + 6 + 1];
+
+    snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, conf_file);
 
     /* Verifying IP Address */
     if(OS_IsValidIP(ip, NULL) != 1)
@@ -491,7 +496,7 @@ int set_ossec_server(char *ip, HWND hwnd)
         xml_pt = xml_serverip;
     }
 
-    /* Create tempororary file */
+    /* Create temporary file */
     if(mkstemp_ex(tmp_path) == -1)
     {
         MessageBox(hwnd, "Could not create temporary file.",
@@ -552,9 +557,14 @@ int set_ossec_server(char *ip, HWND hwnd)
 int set_ossec_key(char *key, HWND hwnd)
 {
     FILE *fp;
-    char tmp_path[] = "tmp/client.keysXXXXXX";
 
-    /* Create tempororary file */
+    char *keys_file = basename_ex(AUTH_FILE);
+
+    char tmp_path[strlen(TMP_DIR) + 1 + strlen(keys_file) + 6 + 1];
+
+    snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, keys_file);
+
+    /* Create temporary file */
     if(mkstemp_ex(tmp_path) == -1)
     {
         MessageBox(hwnd, "Could not create temporary file.",
