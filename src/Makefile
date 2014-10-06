@@ -287,6 +287,8 @@ install: install-${TARGET}
 install-agent: install-common
 	install -m 0550 -o root -g root ossec-agentd ${PREFIX}/bin
 	install -m 0550 -o root -g root agent-auth ${PREFIX}/bin
+	
+	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
 install-local: install-server-generic
 
