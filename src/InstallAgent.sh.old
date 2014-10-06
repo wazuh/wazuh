@@ -17,7 +17,7 @@ UNAME=`uname`;
 # Getting default variables
 GROUP="ossec"
 USER="ossec"
-subdirs="logs bin queue queue/ossec queue/alerts queue/syscheck queue/rids queue/diff var var/run etc etc/shared active-response active-response/bin agentless .ssh"
+subdirs="logs bin queue queue/ossec queue/alerts queue/syscheck queue/rids queue/diff var var/run etc etc/shared active-response active-response/bin agentless .ssh tmp"
 
 
 # ${DIR} must be set
@@ -99,7 +99,6 @@ else
         /usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER}
     fi
 fi
-
 
 # Creating sub dirs
 for i in ${subdirs}; do
