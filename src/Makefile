@@ -255,13 +255,21 @@ endif
 ifeq (${TARGET},local)
 	OSSEC_CONTROL_SRC=./init/ossec-local.sh
 else
-	OSSEC_CONTROL_SRC=./init/ossec-server.sh
+	ifeq (${TARGET},agent)
+		OSSEC_CONTROL_SRC=./init/ossec-client.sh
+	else
+		OSSEC_CONTROL_SRC=./init/ossec-server.sh
+	endif
 endif
 
 ifeq (${TARGET},local)
 	OSSEC_CONF_SRC=../etc/ossec-local.conf
 else
-	OSSEC_CONF_SRC=../etc/ossec-server.conf
+	ifeq (${TARGET},agent)
+		OSSEC_CONF_SRC=../etc/ossec-agent.conf
+	else
+		OSSEC_CONF_SRC=../etc/ossec-server.conf
+	endif
 endif
 
 .PHONY: build
@@ -276,8 +284,9 @@ build:: ${TARGET}
 .PHONY: install install-agent install-server install-local install-hybrid
 install: install-${TARGET}
 
-install-agent: build
-	./InstallAgent.sh
+install-agent: install-common
+	install -m 0550 -o root -g root ossec-agentd ${PREFIX}/bin
+	install -m 0550 -o root -g root agent-auth ${PREFIX}/bin
 
 install-local: install-server-generic
 
@@ -285,26 +294,80 @@ install-hybrid: install-server-generic
 
 install-server: install-server-generic
 
-install-server-generic: build
+install-common: build
 	./adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX}
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
+	
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
+	install -m 0550 -o root -g root ossec-logcollector ${PREFIX}/bin
+	install -m 0550 -o root -g root ossec-syscheckd ${PREFIX}/bin
+	install -m 0550 -o root -g root ossec-execd ${PREFIX}/bin
+	install -m 0550 -o root -g root manage_agents ${PREFIX}/bin
+	install -m 0550 -o root -g root external/lua/src/ossec-lua ${PREFIX}/bin/
+	install -m 0550 -o root -g root external/lua/src/ossec-luac ${PREFIX}/bin/
+	install -m 0550 -o root -g root ../contrib/util.sh ${PREFIX}/bin/
+	install -m 0550 -o root -g root ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
+	
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
+	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
+	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
+	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
+	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
+	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
+	install -m 0440 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
+ifneq (,$(wildcard /etc/TIMEZONE))
+	install -m 440 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
+endif
+	# Solaris Needs some extra files
+ifeq (${uname_S},SunOS)	
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
+	install -m 0440 -o root -g ${OSSEC_GROUP} /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
+endif
+ifeq (,$(wildcard ${PREFIX}/etc/internal_options.conf))
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
+endif
+	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_internal_options.conf
+	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+ifeq (,$(wildcard ${PREFIX}/etc/ossec.conf))
+ifneq (,$(wildcard ../etc/ossec.mc))
+	install -m 0640 -o root -g ${OSSEC_GROUP} ../etc/ossec.mc ${PREFIX}/etc/ossec.conf
+else
+	install -m 0640 -o root -g ${OSSEC_GROUP} ${OSSEC_CONF_SRC} ${PREFIX}/etc/ossec.conf
+endif
+endif
+	
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
+	install -m 0440 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
+	
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
+	install -m 0550 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${PREFIX}/agentless/
+	
+	install -d -m 0700 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
+
+	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
+	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
+	
+	./init/fw-check.sh execute
+
+
+
+install-server-generic: install-common	
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
-	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
-	install -m 0550 -o root -g root manage_agents ${PREFIX}/bin
+	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall	
+	
 	install -m 0550 -o root -g root ossec-agentlessd ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-analysisd ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-logcollector ${PREFIX}/bin
+	install -m 0550 -o root -g root ossec-analysisd ${PREFIX}/bin	
 	install -m 0550 -o root -g root ossec-monitord ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-reportd ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-execd ${PREFIX}/bin
+	install -m 0550 -o root -g root ossec-reportd ${PREFIX}/bin	
 	install -m 0550 -o root -g root ossec-maild ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-remoted ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-syscheckd ${PREFIX}/bin
+	install -m 0550 -o root -g root ossec-remoted ${PREFIX}/bin	
 	install -m 0550 -o root -g root ossec-logtest ${PREFIX}/bin
 	install -m 0550 -o root -g root ossec-csyslogd ${PREFIX}/bin
 	install -m 0550 -o root -g root ossec-authd ${PREFIX}/bin
@@ -317,15 +380,10 @@ install-server-generic: build
 	install -m 0550 -o root -g root syscheck_update ${PREFIX}/bin/
 	install -m 0550 -o root -g root agent_control ${PREFIX}/bin/
 	install -m 0550 -o root -g root syscheck_control ${PREFIX}/bin/
-	install -m 0550 -o root -g root rootcheck_control ${PREFIX}/bin/
-	install -m 0550 -o root -g root external/lua/src/ossec-lua ${PREFIX}/bin/
-	install -m 0550 -o root -g root external/lua/src/ossec-luac ${PREFIX}/bin/
-	install -m 0550 -o root -g root ../contrib/util.sh ${PREFIX}/bin/
-	install -m 0550 -o root -g root ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
+	install -m 0550 -o root -g root rootcheck_control ${PREFIX}/bin/	
 	
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules
-	#TODO: take care of local_rules.xml
 ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
 	cp ${PREFIX}/rules/local_rules.xml ${PREFIX}/rules/local_rules.xml.installbackup
 	install -m 0440 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
@@ -334,62 +392,23 @@ ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
 else
 	install -m 0440 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
 endif
-
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
-	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
-	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
+	
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
-	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
+	
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
-	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
+	
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
-	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
+	
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
-	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
+	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run	
 	
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
-	install -m 0440 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
 	install -m 0640 -o root -g ${OSSEC_GROUP} ../etc/decoder.xml ${PREFIX}/etc/
 	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_decoder.xml
-	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_internal_options.conf
-	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
-	
-ifeq (,$(wildcard ${PREFIX}/etc/internal_options.conf))
-	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
-endif
-	
-ifeq (,$(wildcard ${PREFIX}/etc/ossec.conf))
-ifneq (,$(wildcard ../etc/ossec.mc))
-	install -m 0640 -o root -g ${OSSEC_GROUP} ../etc/ossec.mc ${PREFIX}/etc/ossec.conf
-else
-	install -m 0640 -o root -g ${OSSEC_GROUP} ${OSSEC_CONF_SRC} ${PREFIX}/etc/ossec.conf
-endif
-endif
-	
-	if ls /etc/TIMEZONE > /dev/null 2>&1; then install -m 440 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/; fi;
-	# Solaris Needs some extra files
-ifeq (${uname_S},SunOS)	
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
-	install -m 0440 -o root -g ${OSSEC_GROUP} /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
-endif
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
-	install -m 0440 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
+		
 	rm -f ${PREFIX}/etc/shared/merged.mg
-	
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response/bin
-	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
-	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
-	
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/agentless
-	install -m 0550 -o root -g ${OSSEC_GROUP} agentlessd/scripts/* ${PREFIX}/agentless/
-	
-	install -d -m 0700 -o root -g ${OSSEC_GROUP} ${PREFIX}/.ssh
-	
-	./init/fw-check.sh execute
-	
+		
 
 .PHONY: failtarget
 failtarget:
