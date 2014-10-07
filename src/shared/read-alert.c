@@ -611,6 +611,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
     }
     free(log);
 
+    free(comment);
+
     /* We need to clean end of file before returning */
     clearerr(fp);
     return(NULL);
