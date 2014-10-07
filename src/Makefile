@@ -394,7 +394,7 @@ endif
 
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
+	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
 
 	install -m 0640 -o root -g ${OSSEC_GROUP} ../etc/decoder.xml ${PREFIX}/etc/
 	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_decoder.xml
