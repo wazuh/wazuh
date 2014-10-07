@@ -21,25 +21,10 @@
 
 
 #ifdef WIN32
-/* WINVER needs to be 0x0501 or higher to pull in IPv6 functions */
-#ifndef WINVER
-#define WINVER  0x0501
-#endif
-#include <winsock2.h>
-#include <windows.h>
-#include <winsock.h>
-#include <io.h>
-
 #define sleep(x) Sleep(x * 1000)
 #define os_calloc(x,y,z) (z = calloc(x,y))?(void)1:ErrorExit(MEM_ERROR, ARGV0)
 #define os_strdup(x,y) (y = strdup(x))?(void)1:ErrorExit(MEM_ERROR, ARGV0)
 #endif
-
-
-#include "hash_op.h"
-#include "debug_op.h"
-#include "syscheck.h"
-#include "error_messages/error_messages.h"
 
 
 #ifdef USEINOTIFY
@@ -50,6 +35,11 @@
 #include "shared.h"
 #endif
 
+
+#include "hash_op.h"
+#include "debug_op.h"
+#include "syscheck.h"
+#include "error_messages/error_messages.h"
 
 
 /** Global functions for all realtime options. **/
