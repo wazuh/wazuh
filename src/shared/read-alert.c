@@ -621,6 +621,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
 
     free(old_md5);
 
+    free(new_md5);
+
     /* We need to clean end of file before returning */
     clearerr(fp);
     return(NULL);
