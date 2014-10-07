@@ -456,6 +456,10 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
             change_time = atoi(changed_file_name);
 
             changed_file_name = strchr(changed_file_name, ' ');
+            if(!changed_file_name) {
+                printf("\n** ERROR: Invalid line: '%s'.\n", buf);
+                return(-1);
+            }
             changed_file_name++;
 
             tm_time = localtime(&change_time);
