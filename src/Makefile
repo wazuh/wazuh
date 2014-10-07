@@ -125,10 +125,10 @@ ifndef V
 	QUIET_ENDCOLOR= @printf '%b' ${ENDCOLOR} 1>&2;
 endif
 
-OSSEC_CC=${QUIET_CC}${CC}
-OSSEC_CCBIN=${QUIET_CCBIN}${CC}
-OSSEC_LINK=${QUIET_LINK}${BUILDLIB}
-OSSEC_RANLIB=${QUIET_RANLIB}ranlib
+OSSEC_CC     :=${QUIET_CC}${CC}
+OSSEC_CCBIN  :=${QUIET_CCBIN}${CC}
+OSSEC_LINK   :=${QUIET_LINK}${BUILDLIB}
+OSSEC_RANLIB :=${QUIET_RANLIB}ranlib
 
 
 ifeq (${USE_PRELUDE},1)
@@ -241,37 +241,25 @@ endif
 #### Target ########
 ####################
 
+OSSEC_CONTROL_SRC=./init/ossec-server.sh
+OSSEC_CONF_SRC=../etc/ossec-server.conf
+
 ifndef TARGET
 	TARGET=failtarget
 endif # TARGET
 
 ifeq (${TARGET},agent)
 	DEFINES+=-DCLIENT
+	OSSEC_CONTROL_SRC=./init/ossec-client.sh
+	OSSEC_CONF_SRC=../etc/ossec-agent.conf
 endif
 
 ifeq (${TARGET},local)
 	DEFINES+=-DLOCAL
-endif
-
-ifeq (${TARGET},local)
 	OSSEC_CONTROL_SRC=./init/ossec-local.sh
-else
-	ifeq (${TARGET},agent)
-		OSSEC_CONTROL_SRC=./init/ossec-client.sh
-	else
-		OSSEC_CONTROL_SRC=./init/ossec-server.sh
-	endif
+	OSSEC_CONF_SRC=../etc/ossec-local.conf
 endif
 
-ifeq (${TARGET},local)
-	OSSEC_CONF_SRC=../etc/ossec-local.conf
-else
-	ifeq (${TARGET},agent)
-		OSSEC_CONF_SRC=../etc/ossec-agent.conf
-	else
-		OSSEC_CONF_SRC=../etc/ossec-server.conf
-	endif
-endif
 
 .PHONY: build
 build:: ${TARGET}
