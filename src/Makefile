@@ -274,8 +274,8 @@ build:: ${TARGET}
 install: install-${TARGET}
 
 install-agent: install-common
-	install -m 0550 -o root -g root ossec-agentd ${PREFIX}/bin
-	install -m 0550 -o root -g root agent-auth ${PREFIX}/bin
+	install -m 0550 -o root -g ossec ossec-agentd ${PREFIX}/bin
+	install -m 0550 -o root -g ossec agent-auth ${PREFIX}/bin
 
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
@@ -417,6 +417,8 @@ help: failtarget
 	@echo "General options: "
 	@echo "   make V=1             Display full compiler messages"
 	@echo "   make DEBUG=1         Build with symbols and without optimization"
+	@echo "   make PREFIX=/path	Install OSSEC to '/path'"
+	@echo "   make MAXAGENTS=NUMBER	Set the number of maximum agents to NUMBER"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql  Build with MYSQL Support"
