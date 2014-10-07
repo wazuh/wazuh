@@ -80,6 +80,15 @@ Install()
     if [ "X$NUNAME" = "XOpenBSD" ]; then
         MAKEBIN=gmake
     fi
+    if [ "X$NUNAME" = "XFreeBSD" ]; then
+        MAKEBIN=gmake
+    fi
+    if [ "X$NUNAME" = "XNetBSD" ]; then
+        MAKEBIN=gmake
+    fi
+    if [ "X$NUNAME" = "XDragonflyBSD" ]; then
+        MAKEBIN=gmake
+    fi
 
 
     # Makefile
