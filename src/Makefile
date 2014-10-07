@@ -415,10 +415,10 @@ failtarget:
 help: failtarget
 	@echo
 	@echo "General options: "
-	@echo "   make V=1             Display full compiler messages"
-	@echo "   make DEBUG=1         Build with symbols and without optimization"
-	@echo "   make PREFIX=/path	Install OSSEC to '/path'"
-	@echo "   make MAXAGENTS=NUMBER	Set the number of maximum agents to NUMBER"
+	@echo "   make V=1              Display full compiler messages"
+	@echo "   make DEBUG=1          Build with symbols and without optimization"
+	@echo "   make PREFIX=/path     Install OSSEC to '/path'. Defaults to /var/ossec"
+	@echo "   make MAXAGENTS=NUMBER Set the number of maximum agents to NUMBER. Defaults to 2048"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql  Build with MYSQL Support"
