@@ -625,6 +625,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
 
     free(old_sha1);
 
+    free(new_sha1);
+
     /* We need to clean end of file before returning */
     clearerr(fp);
     return(NULL);
