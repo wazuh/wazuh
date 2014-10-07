@@ -784,7 +784,7 @@ void goDaemon()
         dup2(fd, 1);
         dup2(fd, 2);
 
-        fclose(fd);
+        close(fd);
     }
 
 
