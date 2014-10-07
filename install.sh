@@ -76,6 +76,7 @@ Install()
 
     echo "CEXTRA=${CEXTRA}" >> ./src/Config.OS
 
+    MAKEBIN=make
     ## Find make/gmake
     if [ "X$NUNAME" = "XOpenBSD" ]; then
         MAKEBIN=gmake
