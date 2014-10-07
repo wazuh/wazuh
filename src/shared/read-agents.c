@@ -1294,7 +1294,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip)
 
 
     /* Allocating memory for the info structure. */
-    agt_info = (agent_info *) calloc(1, sizeof(agent_info));
+    os_calloc(1, sizeof(agent_info), agt_info);
 
 
     /* Zeroing the values. */
