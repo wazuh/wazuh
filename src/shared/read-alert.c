@@ -613,6 +613,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
 
     free(comment);
 
+    free(srcip);
+
     /* We need to clean end of file before returning */
     clearerr(fp);
     return(NULL);
