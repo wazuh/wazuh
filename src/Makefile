@@ -15,18 +15,13 @@ LUA_PLAT=posix
 MAXAGENTS?=2048
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
-export PREFIX
 PG_CONFIG?=pg_config
 MY_CONFIG?=mysql_config
 PRELUDE_CONFIG?=libprelude-config
 OSSEC_GROUP?=ossec
-export OSSEC_GROUP
 OSSEC_USER?=ossec
-export OSSEC_USER
 OSSEC_USER_MAIL?=ossecm
-export OSSEC_USER_MAIL
 OSSEC_USER_REM?=ossecr
-export OSSEC_USER_REM
 
 USE_PRELUDE?=0
 USE_ZEROMQ?=0
@@ -130,10 +125,10 @@ ifndef V
 	QUIET_ENDCOLOR= @printf '%b' ${ENDCOLOR} 1>&2;
 endif
 
-OSSEC_CC=${QUIET_CC}${CC}
-OSSEC_CCBIN=${QUIET_CCBIN}${CC}
-OSSEC_LINK=${QUIET_LINK}${BUILDLIB}
-OSSEC_RANLIB=${QUIET_RANLIB}ranlib
+OSSEC_CC     :=${QUIET_CC}${CC}
+OSSEC_CCBIN  :=${QUIET_CCBIN}${CC}
+OSSEC_LINK   :=${QUIET_LINK}${BUILDLIB}
+OSSEC_RANLIB :=${QUIET_RANLIB}ranlib
 
 
 ifeq (${USE_PRELUDE},1)
@@ -246,37 +241,25 @@ endif
 #### Target ########
 ####################
 
+OSSEC_CONTROL_SRC=./init/ossec-server.sh
+OSSEC_CONF_SRC=../etc/ossec-server.conf
+
 ifndef TARGET
 	TARGET=failtarget
 endif # TARGET
 
 ifeq (${TARGET},agent)
 	DEFINES+=-DCLIENT
+	OSSEC_CONTROL_SRC=./init/ossec-client.sh
+	OSSEC_CONF_SRC=../etc/ossec-agent.conf
 endif
 
 ifeq (${TARGET},local)
 	DEFINES+=-DLOCAL
-endif
-
-ifeq (${TARGET},local)
 	OSSEC_CONTROL_SRC=./init/ossec-local.sh
-else
-	ifeq (${TARGET},agent)
-		OSSEC_CONTROL_SRC=./init/ossec-client.sh
-	else
-		OSSEC_CONTROL_SRC=./init/ossec-server.sh
-	endif
+	OSSEC_CONF_SRC=../etc/ossec-local.conf
 endif
 
-ifeq (${TARGET},local)
-	OSSEC_CONF_SRC=../etc/ossec-local.conf
-else
-	ifeq (${TARGET},agent)
-		OSSEC_CONF_SRC=../etc/ossec-agent.conf
-	else
-		OSSEC_CONF_SRC=../etc/ossec-server.conf
-	endif
-endif
 
 .PHONY: build
 build:: ${TARGET}
@@ -308,7 +291,7 @@ install-common: build
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
 
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
+	install -d -m 0550 -o root -g root ${PREFIX}/bin
 	install -m 0550 -o root -g root ossec-logcollector ${PREFIX}/bin
 	install -m 0550 -o root -g root ossec-syscheckd ${PREFIX}/bin
 	install -m 0550 -o root -g root ossec-execd ${PREFIX}/bin
@@ -319,17 +302,18 @@ install-common: build
 	install -m 0550 -o root -g root ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
 
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
-	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
-	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
+	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
+	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
+	
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
 	install -m 0440 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
 ifneq (,$(wildcard /etc/TIMEZONE))
 	install -m 440 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
 endif
-	# Solaris Needs some extra files
+# Solaris Needs some extra files
 ifeq (${uname_S},SunOS)
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
 	install -m 0440 -o root -g ${OSSEC_GROUP} /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
@@ -394,11 +378,11 @@ install-server-generic: install-common
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules
 ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
 	cp ${PREFIX}/rules/local_rules.xml ${PREFIX}/rules/local_rules.xml.installbackup
-	install -m 0440 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
-	install -m 0440 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules/local_rules.xml.installbackup ${PREFIX}/rules/local_rules.xml
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
+	install -m 0640 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules/local_rules.xml.installbackup ${PREFIX}/rules/local_rules.xml
 	rm ${PREFIX}/rules/local_rules.xml.installbackup
 else
-	install -m 0440 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
 endif
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
@@ -408,7 +392,7 @@ endif
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
 
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
+	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
 	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
 
