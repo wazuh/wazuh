@@ -65,6 +65,7 @@ ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
 		LDFLAGS+=-pthread
 		LUA_PLAT=freebsd
+		OGROUP=wheel
 else
 ifeq (${uname_S},OpenBSD) 
 #		DEFINES+=-DOpenBSD
