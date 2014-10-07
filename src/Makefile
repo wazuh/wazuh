@@ -15,18 +15,13 @@ LUA_PLAT=posix
 MAXAGENTS?=2048
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
-export PREFIX
 PG_CONFIG?=pg_config
 MY_CONFIG?=mysql_config
 PRELUDE_CONFIG?=libprelude-config
 OSSEC_GROUP?=ossec
-export OSSEC_GROUP
 OSSEC_USER?=ossec
-export OSSEC_USER
 OSSEC_USER_MAIL?=ossecm
-export OSSEC_USER_MAIL
 OSSEC_USER_REM?=ossecr
-export OSSEC_USER_REM
 
 USE_PRELUDE?=0
 USE_ZEROMQ?=0
