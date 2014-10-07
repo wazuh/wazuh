@@ -69,6 +69,10 @@ ifeq (${uname_S},FreeBSD)
 		LDFLAGS+=-pthread
 		LUA_PLAT=freebsd
 else
+ifeq (${uname_S},OpenBSD) 
+#		DEFINES+=-DOpenBSD
+		DEFINES+=-pthread 
+		LUA_PLAT=posix 
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
 		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
