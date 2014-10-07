@@ -4,9 +4,9 @@ set -e
 set -u
 
 # Checking which firewall to use.
-UNAME=`uname`
+UNAME=$(uname);
 FILE="";
-EXECUTE="$1";
+EXECUTE=$1;
 
 if [ "X${UNAME}" = "XFreeBSD" ]; then
     # Is ipfw enabled?
@@ -28,7 +28,7 @@ elif [ "X${UNAME}" = "XDarwin" ]; then
     # Is pfctl present?
     if which pfctl; then
         echo "PF";
-        FIlE="pf.sh";
+        FILE="pf.sh";
     else
         echo "IPFW";
         FILE="ipfw_mac.sh";
