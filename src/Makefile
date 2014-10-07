@@ -73,6 +73,7 @@ ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
 		DEFINES+=-pthread 
 		LUA_PLAT=posix 
+else
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
 		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
@@ -81,6 +82,7 @@ ifeq (${uname_S},HP-UX)
 else
 	    # Unknow platform
 endif # HPUX
+endif # OpenBSD
 endif # FreeBSD
 endif # Darwin
 endif # SunOS
@@ -1010,6 +1012,7 @@ test: external
 		cd tests/ && ${MAKE}
 
 check: test
+	echo "test"
 
 ####################
 #### Clean #########
