@@ -35,7 +35,7 @@ void AR_Init()
  * Reads active response configuration and write them
  * to the appropriate lists.
  */
-int AR_ReadConfig(int test_config, char *cfgfile)
+int AR_ReadConfig(__attribute__((unused)) int test_config, char *cfgfile)
 {
     FILE *fp;
     int modules = 0;

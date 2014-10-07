@@ -30,12 +30,11 @@
 #define RKCL_COND_INV       0x010
 
 
-
+#ifdef WIN32
 /** char *_rkcl_getrootdir()
  */
 char *_rkcl_getrootdir(char *root_dir, int dir_size)
 {
-    #ifdef WIN32
     char final_file[2048 +1];
     char *tmp;
 
@@ -53,12 +52,8 @@ char *_rkcl_getrootdir(char *root_dir, int dir_size)
     }
 
     return(NULL);
-
-    #endif
-
-    return(NULL);
 }
-
+#endif
 
 
 /** char *_rkcl_getfp: Get next available buffer in file.

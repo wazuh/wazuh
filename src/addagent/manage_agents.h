@@ -38,7 +38,7 @@ int OS_IsValidID(char *id);
 int IDExist(char *id);
 int NameExist(char *u_name);
 char *getFullnameById(char *id);
-char *OS_AddNewAgent(char *name, char *ip, char *id, char *key);
+char *OS_AddNewAgent(char *name, char *ip, char *id);
 
 
 

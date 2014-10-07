@@ -536,9 +536,9 @@ void read_controlmsg(int agentid, char *msg)
  * Wait for new messages to read.
  * The messages are going to be sent from save_controlmsg.
  */
-void *wait_for_msgs(void *none)
+void *wait_for_msgs(__attribute__((unused)) void *none)
 {
-    int id, i;
+    int id;
     char msg[OS_SIZE_1024 +2];
 
 
@@ -549,6 +549,7 @@ void *wait_for_msgs(void *none)
     /* should never leave this loop */
     while(1)
     {
+        unsigned int i;
         /* Every NOTIFY * 30 minutes, re read the files.
          * If something changed, notify all agents
          */
@@ -607,7 +608,7 @@ void *wait_for_msgs(void *none)
                 strncpy(msg, _msg[i], OS_SIZE_1024);
                 _changed[i] = 0;
 
-                if(modified_agentid >= i)
+                if(modified_agentid >= (int) i)
                 {
                     modified_agentid = -1;
                 }

@@ -44,7 +44,7 @@ void __send_pgsql_msg(int pos, int drop_it, char *buffer)
 /* Read PostgreSQL log files */
 void *read_postgresql_log(int pos, int *rc, int drop_it)
 {
-    int str_len = 0;
+    size_t str_len = 0;
     int need_clear = 0;
     char *p;
     char str[OS_MAXSTR + 1];

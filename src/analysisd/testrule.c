@@ -53,7 +53,7 @@
 
 
 /** Internal Functions **/
-void OS_ReadMSG(int m_queue, char *ut_str);
+void OS_ReadMSG(char *ut_str);
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 
 
@@ -115,7 +115,7 @@ void help_logtest()
 int main(int argc, char **argv)
 {
     int test_config = 0;
-    int c = 0, m_queue = 0;
+    int c = 0;
     char *ut_str = NULL;
 
     char *dir = DEFAULTDIR;
@@ -344,7 +344,7 @@ int main(int argc, char **argv)
 
 
     /* Going to main loop */
-    OS_ReadMSG(m_queue, ut_str);
+    OS_ReadMSG(ut_str);
 
 
     exit(0);
@@ -357,7 +357,7 @@ int main(int argc, char **argv)
  * Main function. Receives the messages(events)
  * and analyze them all.
  */
-void OS_ReadMSG(int m_queue, char *ut_str)
+void OS_ReadMSG(char *ut_str)
 {
     int i;
     char msg[OS_MAXSTR +1];

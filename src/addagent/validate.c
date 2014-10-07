@@ -15,7 +15,7 @@
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 
-char *OS_AddNewAgent(char *name, char *ip, char *id, char *key)
+char *OS_AddNewAgent(char *name, char *ip, char *id)
 {
     int i = 0;
     FILE *fp;
@@ -247,7 +247,7 @@ int IDExist(char *id)
  */
 int OS_IsValidName(char *u_name)
 {
-    int i = 0;
+    size_t i = 0;
 
     /* We must have something in the name */
     if(strlen(u_name) < 2 || strlen(u_name) > 128)

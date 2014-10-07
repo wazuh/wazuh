@@ -122,7 +122,7 @@ int os_check_ads(char *full_path)
             }
         }
 
-        /* Getting next */			
+        /* Getting next */
         if(!BackupSeek(file_h, sid.Size.LowPart, sid.Size.HighPart,
                     &dw1, &dw2, &context))
         {
@@ -432,11 +432,13 @@ int is_registry(char *entry_name, char *reg_option, char *reg_value)
 
 
 /* Non windows defs for them. */
-int os_check_ads(char *full_path)
+int os_check_ads(__attribute__((unused)) char *full_path)
 {
     return(0);
 }
-int is_registry(char *entry_name, char *reg_option, char *reg_value)
+int is_registry(__attribute__((unused)) char *entry_name,
+        __attribute__((unused)) char *reg_option,
+        __attribute__((unused)) char *reg_value)
 {
     return(0);
 }
