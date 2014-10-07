@@ -427,7 +427,7 @@ void OS_CustomLog(Eventinfo *lf,char* format)
     tmp_log=NULL;
   }
 
-  snprintf(tmp_buffer, 1024, "%s",lf->srcuser?lf->srcuser:"None");
+  snprintf(tmp_buffer, 1024, "%s",lf->dstuser?lf->dstuser:"None");
 
   tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_DST_USER], tmp_buffer);
   if(log)
