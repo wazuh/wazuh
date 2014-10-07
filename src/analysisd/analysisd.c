@@ -117,7 +117,7 @@ void HostinfoInit();
 
 /* For stats */
 int Start_Hour();
-int Check_Hour(Eventinfo *lf);
+int Check_Hour();
 void Update_Hour();
 void DumpLogstats();
 
@@ -944,7 +944,7 @@ void OS_ReadMSG_analysisd(int m_queue)
             /* Stats checking */
             if(Config.stats)
             {
-                if(Check_Hour(lf) == 1)
+                if(Check_Hour() == 1)
                 {
                     void *saved_rule = lf->generated_rule;
                     char *saved_log;

@@ -404,7 +404,7 @@ void *SystemName_FP(Eventinfo *lf, char *field)
     lf->systemname = field;
     return(NULL);
 }
-void *None_FP(Eventinfo *lf, char *field)
+void *None_FP(__attribute__((unused)) Eventinfo *lf, char *field)
 {
     free(field);
     return(NULL);
