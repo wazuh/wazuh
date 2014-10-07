@@ -278,8 +278,8 @@ build:: ${TARGET}
 install: install-${TARGET}
 
 install-agent: install-common
-	install -m 0550 -o root -g ossec ossec-agentd ${PREFIX}/bin
-	install -m 0550 -o root -g ossec agent-auth ${PREFIX}/bin
+	install -m 0550 -o root -g ${OGROUP} ossec-agentd ${PREFIX}/bin
+	install -m 0550 -o root -g ${OGROUP} agent-auth ${PREFIX}/bin
 
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
