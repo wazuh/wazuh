@@ -291,6 +291,10 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
             change_time = (time_t)atoi(changed_file_name);
 
             changed_file_name = strchr(changed_file_name, ' ');
+            if(!changed_file_name) {
+                printf("\n** ERROR: Invalid line: '%s'.\n", buf);
+                return(0);
+            }
             changed_file_name++;
 
 
