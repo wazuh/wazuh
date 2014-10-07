@@ -64,10 +64,10 @@ ifeq (${uname_S},FreeBSD)
 		LDFLAGS+=-pthread
 		LUA_PLAT=freebsd
 else
-ifeq (${uname_S},OpenBSD) 
+ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
-		DEFINES+=-pthread 
-		LUA_PLAT=posix 
+		DEFINES+=-pthread
+		LUA_PLAT=posix
 else
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
@@ -262,7 +262,7 @@ endif
 
 
 .PHONY: build
-build:: ${TARGET}
+build:  ${TARGET} settings
 	@echo
 	${QUIET_NOTICE}
 	@echo "Done building ${TARGET}"
@@ -307,7 +307,7 @@ install-common: build
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
-	
+
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
 	install -m 0440 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
 ifneq (,$(wildcard /etc/TIMEZONE))
