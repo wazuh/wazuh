@@ -1035,7 +1035,7 @@ clean-internals:
 	rm -f ${rootcheck_o} rootcheck.a
 	rm -f ${syscheck_o} ossec-syscheckd
 	rm -f ${monitor_o} ossec-monitord
-	rm -f ${os_auth_o} ossec-authd agend-auth
+	rm -f ${os_auth_o} ossec-authd agent-auth
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ossec-logtest ossec-analysisd ossec-makelists
 
