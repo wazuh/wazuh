@@ -23,8 +23,6 @@ OSSEC_USER?=ossec
 OSSEC_USER_MAIL?=ossecm
 OSSEC_USER_REM?=ossecr
 
-OGROUP?=root
-
 USE_PRELUDE?=0
 USE_ZEROMQ?=0
 USE_GEOIP?=0
@@ -65,13 +63,11 @@ ifeq (${uname_S},FreeBSD)
 		DEFINES+=-DFreeBSD
 		LDFLAGS+=-pthread
 		LUA_PLAT=freebsd
-		OGROUP=wheel
 else
 ifeq (${uname_S},OpenBSD) 
 #		DEFINES+=-DOpenBSD
 		DEFINES+=-pthread 
 		LUA_PLAT=posix 
-		OGROUP=wheel
 else
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
@@ -278,8 +274,8 @@ build:: ${TARGET}
 install: install-${TARGET}
 
 install-agent: install-common
-	install -m 0550 -o root -g ${OGROUP} ossec-agentd ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} agent-auth ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-agentd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 agent-auth ${PREFIX}/bin
 
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
@@ -295,15 +291,15 @@ install-common: build
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
 
-	install -d -m 0550 -o root -g ${OGROUP} ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-logcollector ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-syscheckd ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-execd ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} manage_agents ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} external/lua/src/ossec-lua ${PREFIX}/bin/
-	install -m 0550 -o root -g ${OGROUP} external/lua/src/ossec-luac ${PREFIX}/bin/
-	install -m 0550 -o root -g ${OGROUP} ../contrib/util.sh ${PREFIX}/bin/
-	install -m 0550 -o root -g ${OGROUP} ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
+	install -d -m 0550 -o root -g 0 ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-logcollector ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-execd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 manage_agents ${PREFIX}/bin
+	install -m 0550 -o root -g 0 external/lua/src/ossec-lua ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 external/lua/src/ossec-luac ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
 
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
@@ -358,25 +354,25 @@ install-server-generic: install-common
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
 
-	install -m 0550 -o root -g ${OGROUP} ossec-agentlessd ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-analysisd ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-monitord ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-reportd ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-maild ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-remoted ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-logtest ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-csyslogd ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-authd ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-dbd ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} ossec-makelists ${PREFIX}/bin
-	install -m 0550 -o root -g ${OGROUP} verify-agent-conf ${PREFIX}/bin/
-	install -m 0550 -o root -g ${OGROUP} clear_stats ${PREFIX}/bin/
-	install -m 0550 -o root -g ${OGROUP} list_agents ${PREFIX}/bin/
-	install -m 0550 -o root -g ${OGROUP} ossec-regex ${PREFIX}/bin/
-	install -m 0550 -o root -g ${OGROUP} syscheck_update ${PREFIX}/bin/
-	install -m 0550 -o root -g ${OGROUP} agent_control ${PREFIX}/bin/
-	install -m 0550 -o root -g ${OGROUP} syscheck_control ${PREFIX}/bin/
-	install -m 0550 -o root -g ${OGROUP} rootcheck_control ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-analysisd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-monitord ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-reportd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-maild ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-remoted ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-logtest ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-authd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-dbd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-makelists ${PREFIX}/bin
+	install -m 0550 -o root -g 0 verify-agent-conf ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 clear_stats ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 list_agents ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 ossec-regex ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 syscheck_update ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 agent_control ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 syscheck_control ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 rootcheck_control ${PREFIX}/bin/
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules
