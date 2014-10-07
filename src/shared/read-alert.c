@@ -615,6 +615,8 @@ alert_data *GetAlertData(int flag, FILE *fp)
 
     free(srcip);
 
+    free(dstip);
+
     /* We need to clean end of file before returning */
     clearerr(fp);
     return(NULL);
