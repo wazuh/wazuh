@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "Making windows agent"
-BASES="amd64-mingw32msvc i586-mingw32msvc i686-pc-mingw32  i686-w64-mingw32"
+BASES="amd64-mingw32msvc i686-pc-mingw32  i686-w64-mingw32"
 
 if [ ${MING_BASE} ]; then
   BASES="${BASES} ${MING_BASE}"

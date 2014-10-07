@@ -602,14 +602,19 @@ void os_ReportdStart(report_filter *r_filter)
                         tmp_str++;
                     if(*tmp_str == '\0')
                     {
+                        free(*mgroup);
                         mgroup++;
                         continue;
                     }
 
                     _os_report_add_tostore(tmp_str, r_filter->top_group,
                                            al_data);
+
+                    free(*mgroup);
                     mgroup++;
                 }
+
+                free(mgroup);
             }
             else
             {

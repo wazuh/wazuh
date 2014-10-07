@@ -105,7 +105,7 @@ typedef unsigned char uchar;
 
 
 /* Charmap for case insensitive search */
-extern const uchar charmap[];
+extern const uchar charmap[256];
 
 
 

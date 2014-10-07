@@ -2,10 +2,14 @@
 
 
 # Checking if it is executed from the right place
-LOCATION=./LOCATION
-ls ${LOCATION} > /dev/null 2>&1
+ls ./VERSION > /dev/null 2>&1
 if [ $? != 0 ]; then
     echo "Cannot execute. Wrong directory"
+    exit 1;
+fi
+DIR="${PREFIX}"
+if [ "X$DIR" = "X" ]; then
+    echo "PREFIX/DIR are not set"
     exit 1;
 fi
 
@@ -14,29 +18,28 @@ if [ "X$1" = "Xlocal" ]; then
     # Setting local install
     LOCAL="local"
 fi
-    
+
 UNAME=`uname`;
 
 # Getting default variables
-DIR=`grep DIR ${LOCATION} | cut -f2 -d\"`
 GROUP="ossec"
 USER="ossec"
 USER_MAIL="ossecm"
 USER_REM="ossecr"
 subdirs="logs logs/archives logs/alerts logs/firewall bin stats rules queue queue/alerts queue/ossec queue/fts queue/syscheck queue/rootcheck queue/diff queue/agent-info queue/agentless queue/rids tmp var var/run etc etc/shared active-response active-response/bin agentless .ssh"
 
-# ${DIR} must be set 
+# ${DIR} must be set
 if [ "X${DIR}" = "X" ]; then
     echo "Error building OSSEC HIDS."
     exit 1;
-fi    
+fi
 
-    
+
 # Creating root directory
-ls ${DIR} > /dev/null 2>&1    
+ls ${DIR} > /dev/null 2>&1
 if [ $? != 0 ]; then mkdir -m 700 -p ${DIR}; fi
-ls ${DIR} > /dev/null 2>&1    
-if [ $? != 0 ]; then 
+ls ${DIR} > /dev/null 2>&1
+if [ $? != 0 ]; then
     echo "You do not have permissions to create ${DIR}. Exiting..."
     exit 1;
 fi
@@ -46,19 +49,19 @@ fi
 if [ "$UNAME" = "FreeBSD" -o "$UNAME" = "DragonFly" ]; then
     grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-    /usr/sbin/pw groupadd ${GROUP}
-	/usr/sbin/pw useradd ${USER} -d ${DIR} -s /sbin/nologin -g ${GROUP}
-	/usr/sbin/pw useradd ${USER_MAIL} -d ${DIR} -s /sbin/nologin -g ${GROUP}
-	/usr/sbin/pw useradd ${USER_REM} -d ${DIR} -s /sbin/nologin -g ${GROUP}
+        /usr/sbin/pw groupadd ${GROUP}
+        /usr/sbin/pw useradd ${USER} -d ${DIR} -s /sbin/nologin -g ${GROUP}
+        /usr/sbin/pw useradd ${USER_MAIL} -d ${DIR} -s /sbin/nologin -g ${GROUP}
+        /usr/sbin/pw useradd ${USER_REM} -d ${DIR} -s /sbin/nologin -g ${GROUP}
     fi
 
 elif [ "$UNAME" = "SunOS" ]; then
     grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-    /usr/sbin/groupadd ${GROUP}
-    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
-    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_MAIL}
-    /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_REM}
+        /usr/sbin/groupadd ${GROUP}
+        /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER}
+        /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_MAIL}
+        /usr/sbin/useradd -d ${DIR} -s /bin/false -g ${GROUP} ${USER_REM}
     fi
 
 elif [ "$UNAME" = "AIX" ]; then
@@ -70,13 +73,13 @@ elif [ "$UNAME" = "AIX" ]; then
 
     grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-    /usr/bin/mkgroup ${GROUP}
-    /usr/sbin/useradd -d ${DIR} ${AIXSH} -g ${GROUP} ${USER}
-    /usr/sbin/useradd -d ${DIR} ${AIXSH} -g ${GROUP} ${USER_MAIL}
-    /usr/sbin/useradd -d ${DIR} ${AIXSH} -g ${GROUP} ${USER_REM}
+        /usr/bin/mkgroup ${GROUP}
+        /usr/sbin/useradd -d ${DIR} ${AIXSH} -g ${GROUP} ${USER}
+        /usr/sbin/useradd -d ${DIR} ${AIXSH} -g ${GROUP} ${USER_MAIL}
+        /usr/sbin/useradd -d ${DIR} ${AIXSH} -g ${GROUP} ${USER_REM}
     fi
 
-# Thanks Chuck L. for the mac addusers    
+# Thanks Chuck L. for the mac addusers
 elif [ "$UNAME" = "Darwin" ]; then
     id -u ${USER} > /dev/null 2>&1
     if [ ! $? = 0 ]; then
@@ -85,31 +88,31 @@ elif [ "$UNAME" = "Darwin" ]; then
         /usr/bin/sw_vers 2>/dev/null| grep "ProductVersion" | grep -E "10.2.|10.3|10.4" > /dev/null 2>&1
         if [ $? = 0 ]; then
             chmod +x ./init/darwin-addusers.pl
-            ./init/darwin-addusers.pl    
+            ./init/darwin-addusers.pl
         else
             chmod +x ./init/osx105-addusers.sh
             ./init/osx105-addusers.sh
-        fi        
-    fi    
+        fi
+    fi
 else
     grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1
     if [ ! $? = 0 ]; then
-	/usr/sbin/groupadd ${GROUP}
+        /usr/sbin/groupadd ${GROUP}
 
-    # We first check if /sbin/nologin is present. If it is not,
-    # we look for bin/false. If none of them is present, we
-    # just stick with nologin (no need to fail the install for that).
-    OSMYSHELL="/sbin/nologin"
-    ls -la ${OSMYSHELL} > /dev/null 2>&1
-    if [ ! $? = 0 ]; then
-        ls -la /bin/false > /dev/null 2>&1
-        if [ $? = 0 ]; then
-            OSMYSHELL="/bin/false"
-        fi    
-    fi    
-	/usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER}
-	/usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER_MAIL}
-	/usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER_REM}
+        # We first check if /sbin/nologin is present. If it is not,
+        # we look for bin/false. If none of them is present, we
+        # just stick with nologin (no need to fail the install for that).
+        OSMYSHELL="/sbin/nologin"
+        ls -la ${OSMYSHELL} > /dev/null 2>&1
+        if [ ! $? = 0 ]; then
+            ls -la /bin/false > /dev/null 2>&1
+            if [ $? = 0 ]; then
+                OSMYSHELL="/bin/false"
+            fi
+        fi
+        /usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER}
+        /usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER_MAIL}
+        /usr/sbin/useradd -d ${DIR} -s ${OSMYSHELL} -g ${GROUP} ${USER_REM}
     fi
 fi
 
@@ -187,14 +190,14 @@ ls ${DIR}/rules/*.xml > /dev/null 2>&1
 if [ $? = 0 ]; then
     mkdir ${DIR}/rules/backup-rules.$$
     cp -pr ${DIR}/rules/*.xml ${DIR}/rules/backup-rules.$$/
-    
+
     # Checking for the local rules
     ls ${DIR}/rules/local_rules.xml > /dev/null 2>&1
     if [ $? = 0 ]; then
         cp -pr ${DIR}/rules/local_rules.xml ${DIR}/rules/saved_local_rules.xml.$$
-    fi    
+    fi
 fi
-    
+
 cp -pr ../etc/rules/* ${DIR}/rules/
 find ${DIR}/rules/ -type f -exec chmod 440 {} \;
 
@@ -202,7 +205,7 @@ find ${DIR}/rules/ -type f -exec chmod 440 {} \;
 ls ${DIR}/rules/saved_local_rules.xml.$$ > /dev/null 2>&1
 if [ $? = 0 ]; then
     mv ${DIR}/rules/saved_local_rules.xml.$$ ${DIR}/rules/local_rules.xml
-fi    
+fi
 
 chown -R root:${GROUP} ${DIR}/rules
 chmod -R 550 ${DIR}/rules
@@ -215,7 +218,7 @@ ls /etc/localtime > /dev/null 2>&1
 if [ $? = 0 ]; then
     cp -pL /etc/localtime ${DIR}/etc/;
     chmod 440 ${DIR}/etc/localtime
-    chown root:${GROUP} ${DIR}/etc/localtime 
+    chown root:${GROUP} ${DIR}/etc/localtime
 fi
 
 # Solaris Needs some extra files
@@ -230,30 +233,30 @@ if [ $? = 0 ]; then
     cp -p /etc/TIMEZONE ${DIR}/etc/;
     chmod 550 ${DIR}/etc/TIMEZONE
 fi
-                        
+
 
 # For the /var/run
 chmod 770 ${DIR}/var/run
 chown root:${GROUP} ${DIR}/var/run
 
 # Moving the binary files
-cp -pr addagent/manage_agents agentlessd/ossec-agentlessd \
-        analysisd/ossec-analysisd logcollector/ossec-logcollector \
-        monitord/ossec-monitord reportd/ossec-reportd \
-        os_execd/ossec-execd os_maild/ossec-maild \
-        remoted/ossec-remoted syscheckd/ossec-syscheckd \
-	analysisd/ossec-logtest os_csyslogd/ossec-csyslogd \
-	os_auth/ossec-authd os_dbd/ossec-dbd analysisd/ossec-makelists \
-	${DIR}/bin/
+cp -pr manage_agents ossec-agentlessd \
+        ossec-analysisd ossec-logcollector \
+        ossec-monitord ossec-reportd \
+        ossec-execd ossec-maild \
+        ossec-remoted ossec-syscheckd \
+        ossec-logtest ossec-csyslogd \
+        ossec-authd ossec-dbd ossec-makelists \
+        ${DIR}/bin/
 
-cp -pr util/verify-agent-conf ${DIR}/bin/
-cp -pr util/clear_stats ${DIR}/bin/
-cp -pr util/list_agents ${DIR}/bin/
-cp -pr util/ossec-regex ${DIR}/bin/
-cp -pr util/syscheck_update ${DIR}/bin/
-cp -pr util/agent_control ${DIR}/bin/
-cp -pr util/syscheck_control ${DIR}/bin/
-cp -pr util/rootcheck_control ${DIR}/bin/
+cp -pr verify-agent-conf ${DIR}/bin/
+cp -pr clear_stats ${DIR}/bin/
+cp -pr list_agents ${DIR}/bin/
+cp -pr ossec-regex ${DIR}/bin/
+cp -pr syscheck_update ${DIR}/bin/
+cp -pr agent_control ${DIR}/bin/
+cp -pr syscheck_control ${DIR}/bin/
+cp -pr rootcheck_control ${DIR}/bin/
 cp -pr external/lua/src/ossec-lua ${DIR}/bin/
 cp -pr external/lua/src/ossec-luac ${DIR}/bin/
 cp -pr ../contrib/util.sh ${DIR}/bin/
@@ -263,7 +266,7 @@ chmod +x ${DIR}/bin/util.sh
 # Local install chosen
 if [ "X$LOCAL" = "Xlocal" ]; then
     cp -pr ./init/ossec-local.sh ${DIR}/bin/ossec-control
-else    
+else
     cp -pr ./init/ossec-server.sh ${DIR}/bin/ossec-control
 fi
 
@@ -284,7 +287,7 @@ ls ${DIR}/etc/internal_options.conf > /dev/null 2>&1
 if [ $? = 0 ]; then
   cp -pr ${DIR}/etc/internal_options.conf ${DIR}/etc/backup-internal_options.$$
 fi
-  
+
 cp -pr ../etc/internal_options.conf ${DIR}/etc/
 cp -pr rootcheck/db/*.txt ${DIR}/etc/shared/
 chown root:${GROUP} ${DIR}/etc/decoder.xml
@@ -329,7 +332,7 @@ fi
 ls ../etc/ossec.mc > /dev/null 2>&1
 if [ $? = 0 ]; then
     cp -pr ../etc/ossec.mc ${DIR}/etc/ossec.conf
-else    
+else
     cp -pr ../etc/ossec-server.conf ${DIR}/etc/ossec.conf
 fi
 chown root:${GROUP} ${DIR}/etc/ossec.conf

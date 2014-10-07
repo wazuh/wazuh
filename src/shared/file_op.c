@@ -783,6 +783,8 @@ void goDaemon()
         dup2(fd, 0);
         dup2(fd, 1);
         dup2(fd, 2);
+
+        close(fd);
     }
 
 

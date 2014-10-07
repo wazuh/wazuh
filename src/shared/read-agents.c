@@ -198,7 +198,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
     char buf[OS_MAXSTR + 1];
 
     OSMatch reg;
-    OSStore *files_list;
+    OSStore *files_list = NULL;
 
     fpos_t init_pos;
 
@@ -219,7 +219,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
     if(!files_list)
     {
         OSMatch_FreePattern(&reg);
-        return(0);
+        goto cleanup;
     }
 
 
@@ -227,7 +227,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
     if(fgetpos(fp, &init_pos) != 0)
     {
         printf("\n** ERROR: fgetpos failed.\n");
-        return(0);
+        goto cleanup;
     }
 
 
@@ -291,6 +291,10 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
             change_time = (time_t)atoi(changed_file_name);
 
             changed_file_name = strchr(changed_file_name, ' ');
+            if(!changed_file_name) {
+                printf("\n** ERROR: Invalid line: '%s'.\n", buf);
+                goto cleanup;
+            }
             changed_file_name++;
 
 
@@ -313,7 +317,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
                 {
                     printf("\n** ERROR: fsetpos failed (unable to update "
                            "counter).\n");
-                    return(0);
+                    goto cleanup;
                 }
 
                 if(update_counter == 2)
@@ -322,7 +326,7 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
                     {
                         printf("\n** ERROR: fputs failed (unable to update "
                                 "counter).\n");
-                        return(0);
+                        goto cleanup;
                     }
                 }
 
@@ -332,13 +336,13 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
                     {
                         printf("\n** ERROR: fputs failed (unable to update "
                                 "counter).\n");
-                        return(0);
+                        goto cleanup;
                     }
                 }
 
                 printf("\n**Counter updated for file '%s'\n\n",
                        changed_file_name);
-                return(0);
+                goto cleanup;
             }
 
 
@@ -386,7 +390,12 @@ static int _do_print_file_syscheck(FILE *fp, const char *fname,
     {
         printf("\n** No entries found.\n");
     }
+
+    cleanup:
     OSMatch_FreePattern(&reg);
+    if(files_list) {
+        OSStore_Free(files_list);
+    }
 
     return(0);
 }
@@ -452,6 +461,10 @@ static int _do_print_syscheck(FILE *fp, __attribute__((unused)) int all_files, i
             change_time = atoi(changed_file_name);
 
             changed_file_name = strchr(changed_file_name, ' ');
+            if(!changed_file_name) {
+                printf("\n** ERROR: Invalid line: '%s'.\n", buf);
+                return(-1);
+            }
             changed_file_name++;
 
             tm_time = localtime(&change_time);
@@ -1286,7 +1299,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip)
 
 
     /* Allocating memory for the info structure. */
-    agt_info = (agent_info *) calloc(1, sizeof(agent_info));
+    os_calloc(1, sizeof(agent_info), agt_info);
 
 
     /* Zeroing the values. */
