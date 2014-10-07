@@ -1002,7 +1002,7 @@ check: test
 #### Clean #########
 ####################
 
-clean: clean-test clean-interals clean-external clean-windows-old
+clean: clean-test clean-internals clean-external clean-windows-old
 
 clean-test:
 		cd tests/ && ${MAKE} clean
@@ -1013,7 +1013,7 @@ clean-external:
 	cd ${EXTERNAL_LUA} && ${MAKE} clean
 
 
-clean-interals:
+clean-internals:
 	rm -f ${os_zlib_o} os_zlib.a
 	rm -f ${os_xml_o} os_xml.a
 	rm -f ${os_regex_o} os_regex.a
