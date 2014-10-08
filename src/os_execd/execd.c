@@ -18,14 +18,14 @@
 #include "os_net/os_net.h"
 
 #include "execd.h"
-
-static void help_execd(void) __attribute__((noreturn));
+int repeated_offenders_timeout[] = {0,0,0,0,0,0,0};
 
 
 #ifndef WIN32
+static void help_execd(void) __attribute__((noreturn));
 static void execd_shutdown(int sig) __attribute__((noreturn));
 static void ExecdStart(int q) __attribute__((noreturn));
-#endif
+
 
 /* print help statement */
 static void help_execd()
@@ -51,9 +51,8 @@ static void help_execd()
 static OSList *timeout_list;
 static OSListNode *timeout_node;
 static OSHash *repeated_hash;
-int repeated_offenders_timeout[] = {0,0,0,0,0,0,0};
 
-#ifndef WIN32
+
 
 /**
  * Shutdowns execd properly.
