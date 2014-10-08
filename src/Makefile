@@ -263,7 +263,9 @@ endif
 
 .PHONY: build
 build: ${TARGET}
+ifneq (${TARGET},failtarget)
 	${MAKE} settings
+endif
 	@echo
 	${QUIET_NOTICE}
 	@echo "Done building ${TARGET}"
@@ -277,7 +279,7 @@ install: install-${TARGET}
 install-agent: install-common
 	install -m 0550 -o root -g 0 ossec-agentd ${PREFIX}/bin
 	install -m 0550 -o root -g 0 agent-auth ${PREFIX}/bin
-	
+
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/tmp
@@ -345,7 +347,7 @@ endif
 
 	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
 	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
-	
+
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
 	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
 
@@ -396,7 +398,7 @@ endif
 
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
-	
+
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
