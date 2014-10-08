@@ -14,11 +14,12 @@
 #ifndef __SEC_H
 #define __SEC_H
 
+#include <time.h>
 
 /* Unique key for each agent. */
 typedef struct _keyentry
 {
-    unsigned int rcvd;
+    time_t rcvd;
     unsigned int local;
     unsigned int keyid;
     unsigned int global;
