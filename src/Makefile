@@ -64,10 +64,10 @@ ifeq (${uname_S},FreeBSD)
 		LDFLAGS+=-pthread
 		LUA_PLAT=freebsd
 else
-ifeq (${uname_S},OpenBSD) 
+ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
-		DEFINES+=-pthread 
-		LUA_PLAT=posix 
+		DEFINES+=-pthread
+		LUA_PLAT=posix
 else
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
@@ -125,10 +125,10 @@ ifndef V
 	QUIET_ENDCOLOR= @printf '%b' ${ENDCOLOR} 1>&2;
 endif
 
-OSSEC_CC     :=${QUIET_CC}${CC}
-OSSEC_CCBIN  :=${QUIET_CCBIN}${CC}
-OSSEC_LINK   :=${QUIET_LINK}${BUILDLIB}
-OSSEC_RANLIB :=${QUIET_RANLIB}ranlib
+OSSEC_CC     =${QUIET_CC}${CC}
+OSSEC_CCBIN  =${QUIET_CCBIN}${CC}
+OSSEC_LINK   =${QUIET_LINK}${BUILDLIB}
+OSSEC_RANLIB =${QUIET_RANLIB}ranlib
 
 
 ifeq (${USE_PRELUDE},1)
@@ -262,7 +262,7 @@ endif
 
 
 .PHONY: build
-build:: ${TARGET}
+build:  ${TARGET} settings
 	@echo
 	${QUIET_NOTICE}
 	@echo "Done building ${TARGET}"
@@ -274,8 +274,8 @@ build:: ${TARGET}
 install: install-${TARGET}
 
 install-agent: install-common
-	install -m 0550 -o root -g root ossec-agentd ${PREFIX}/bin
-	install -m 0550 -o root -g root agent-auth ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-agentd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 agent-auth ${PREFIX}/bin
 
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
@@ -291,15 +291,15 @@ install-common: build
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
 
-	install -d -m 0550 -o root -g root ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-logcollector ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-syscheckd ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-execd ${PREFIX}/bin
-	install -m 0550 -o root -g root manage_agents ${PREFIX}/bin
-	install -m 0550 -o root -g root external/lua/src/ossec-lua ${PREFIX}/bin/
-	install -m 0550 -o root -g root external/lua/src/ossec-luac ${PREFIX}/bin/
-	install -m 0550 -o root -g root ../contrib/util.sh ${PREFIX}/bin/
-	install -m 0550 -o root -g root ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
+	install -d -m 0550 -o root -g 0 ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-logcollector ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-execd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 manage_agents ${PREFIX}/bin
+	install -m 0550 -o root -g 0 external/lua/src/ossec-lua ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 external/lua/src/ossec-luac ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 ../contrib/util.sh ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
 
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
@@ -307,7 +307,7 @@ install-common: build
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
-	
+
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
 	install -m 0440 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
 ifneq (,$(wildcard /etc/TIMEZONE))
@@ -354,25 +354,25 @@ install-server-generic: install-common
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/firewall
 
-	install -m 0550 -o root -g root ossec-agentlessd ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-analysisd ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-monitord ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-reportd ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-maild ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-remoted ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-logtest ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-csyslogd ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-authd ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-dbd ${PREFIX}/bin
-	install -m 0550 -o root -g root ossec-makelists ${PREFIX}/bin
-	install -m 0550 -o root -g root verify-agent-conf ${PREFIX}/bin/
-	install -m 0550 -o root -g root clear_stats ${PREFIX}/bin/
-	install -m 0550 -o root -g root list_agents ${PREFIX}/bin/
-	install -m 0550 -o root -g root ossec-regex ${PREFIX}/bin/
-	install -m 0550 -o root -g root syscheck_update ${PREFIX}/bin/
-	install -m 0550 -o root -g root agent_control ${PREFIX}/bin/
-	install -m 0550 -o root -g root syscheck_control ${PREFIX}/bin/
-	install -m 0550 -o root -g root rootcheck_control ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 ossec-agentlessd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-analysisd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-monitord ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-reportd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-maild ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-remoted ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-logtest ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-authd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-dbd ${PREFIX}/bin
+	install -m 0550 -o root -g 0 ossec-makelists ${PREFIX}/bin
+	install -m 0550 -o root -g 0 verify-agent-conf ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 clear_stats ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 list_agents ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 ossec-regex ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 syscheck_update ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 agent_control ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 syscheck_control ${PREFIX}/bin/
+	install -m 0550 -o root -g 0 rootcheck_control ${PREFIX}/bin/
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules
@@ -415,8 +415,10 @@ failtarget:
 help: failtarget
 	@echo
 	@echo "General options: "
-	@echo "   make V=1             Display full compiler messages"
-	@echo "   make DEBUG=1         Build with symbols and without optimization"
+	@echo "   make V=1              Display full compiler messages"
+	@echo "   make DEBUG=1          Build with symbols and without optimization"
+	@echo "   make PREFIX=/path     Install OSSEC to '/path'. Defaults to /var/ossec"
+	@echo "   make MAXAGENTS=NUMBER Set the number of maximum agents to NUMBER. Defaults to 2048"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql  Build with MYSQL Support"
@@ -1002,7 +1004,7 @@ check: test
 #### Clean #########
 ####################
 
-clean: clean-test clean-interals clean-external clean-windows-old
+clean: clean-test clean-internals clean-external clean-windows-old
 
 clean-test:
 		cd tests/ && ${MAKE} clean
@@ -1013,7 +1015,7 @@ clean-external:
 	cd ${EXTERNAL_LUA} && ${MAKE} clean
 
 
-clean-interals:
+clean-internals:
 	rm -f ${os_zlib_o} os_zlib.a
 	rm -f ${os_xml_o} os_xml.a
 	rm -f ${os_regex_o} os_regex.a
@@ -1035,7 +1037,7 @@ clean-interals:
 	rm -f ${rootcheck_o} rootcheck.a
 	rm -f ${syscheck_o} ossec-syscheckd
 	rm -f ${monitor_o} ossec-monitord
-	rm -f ${os_auth_o} ossec-authd agend-auth
+	rm -f ${os_auth_o} ossec-authd agent-auth
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ossec-logtest ossec-analysisd ossec-makelists
 

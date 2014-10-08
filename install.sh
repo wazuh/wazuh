@@ -76,13 +76,29 @@ Install()
 
     echo "CEXTRA=${CEXTRA}" >> ./src/Config.OS
 
+    MAKEBIN=make
+    ## Find make/gmake
+    if [ "X$NUNAME" = "XOpenBSD" ]; then
+        MAKEBIN=gmake
+    fi
+    if [ "X$NUNAME" = "XFreeBSD" ]; then
+        MAKEBIN=gmake
+    fi
+    if [ "X$NUNAME" = "XNetBSD" ]; then
+        MAKEBIN=gmake
+    fi
+    if [ "X$NUNAME" = "XDragonflyBSD" ]; then
+        MAKEBIN=gmake
+    fi
+
+
     # Makefile
     echo " - ${runningmake}"
     cd ./src
 
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
-        make PREFIX=${INSTALLDIR} TARGET=${INSTYPE} build 
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} build 
         if [ $? != 0 ]; then
             cd ../
             catError "0x5-build"
@@ -94,7 +110,7 @@ Install()
         UpdateStopOSSEC
     fi
 
-    make PREFIX=${INSTALLDIR} TARGET=${INSTYPE} install 
+    ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} install 
 
     cd ../
 

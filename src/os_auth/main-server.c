@@ -391,11 +391,11 @@ int main(int argc, char **argv)
                     /* Adding the new agent. */
                     if (use_ip_address)
                     {
-                        finalkey = OS_AddNewAgent(agentname, srcip, NULL, NULL);
+                        finalkey = OS_AddNewAgent(agentname, srcip, NULL);
                     }
                     else
                     {
-                        finalkey = OS_AddNewAgent(agentname, NULL, NULL, NULL);
+                        finalkey = OS_AddNewAgent(agentname, NULL, NULL);
                     }
                     if(!finalkey)
                     {

@@ -106,7 +106,7 @@ Eventinfo* Accumulate(Eventinfo *lf)
             lf->decoder_info->name,
             lf->id
             );
-    if( result < 0 || result >= sizeof(_key) ) {
+    if( result < 0 || (unsigned) result >= sizeof(_key) ) {
         debug1("accumulator: DEBUG: error setting accumulator key, id:%s,name:%s", lf->id, lf->decoder_info->name);
         return lf;
     }
@@ -206,7 +206,7 @@ void Accumulate_CleanUp() {
     OSHashNode *curr;
     OS_ACM_Store *stored_data;
     char *key;
-    int ti;
+    unsigned int ti;
 
     // Keep track of how many times we're called
     acm_lookups++;

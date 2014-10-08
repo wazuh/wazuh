@@ -78,7 +78,7 @@ int read_sys_file(char *file_name, int do_read)
         char buf[OS_SIZE_1024];
         int fd;
         int nr;
-        unsigned long int total = 0;
+        long int total = 0;
 
         fd = open(file_name, O_RDONLY, 0);
 
@@ -175,7 +175,7 @@ int read_sys_dir(char *dir_name, int do_read)
     DIR *dp;
 
 	struct dirent *entry;
-    struct stat statbuf;	
+    struct stat statbuf;
 
     #ifndef WIN32
     char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
