@@ -277,6 +277,8 @@ install: install-${TARGET}
 install-agent: install-common
 	install -m 0550 -o root -g 0 ossec-agentd ${PREFIX}/bin
 	install -m 0550 -o root -g 0 agent-auth ${PREFIX}/bin
+	
+	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
@@ -303,10 +305,9 @@ install-common: build
 	install -m 0550 -o root -g 0 ${OSSEC_CONTROL_SRC} ${PREFIX}/bin/ossec-control
 
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/queue
-	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
+	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
-	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
 
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
@@ -332,7 +333,7 @@ else
 endif
 endif
 
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
+	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/shared
 	install -m 0440 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
 
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/active-response
@@ -344,6 +345,9 @@ endif
 
 	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/*.sh ${PREFIX}/active-response/bin/
 	install -m 0550 -o root -g ${OSSEC_GROUP} ../active-response/firewalls/*.sh ${PREFIX}/active-response/bin/
+	
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
+	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
 
 	./init/fw-check.sh execute
 
@@ -392,10 +396,10 @@ endif
 
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
+	
+	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
-	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/var
-	install -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/run
 
 	install -m 0640 -o root -g ${OSSEC_GROUP} ../etc/decoder.xml ${PREFIX}/etc/
 	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_decoder.xml
