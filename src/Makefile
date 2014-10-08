@@ -277,6 +277,8 @@ install: install-${TARGET}
 install-agent: install-common
 	install -m 0550 -o root -g 0 ossec-agentd ${PREFIX}/bin
 	install -m 0550 -o root -g 0 agent-auth ${PREFIX}/bin
+	
+	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
@@ -306,7 +308,6 @@ install-common: build
 	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/alerts
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/syscheck
-	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
 
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
@@ -395,6 +396,8 @@ endif
 
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/agent-info
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
+	
+	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 
 	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
