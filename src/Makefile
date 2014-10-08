@@ -262,7 +262,8 @@ endif
 
 
 .PHONY: build
-build:  ${TARGET} settings
+build: ${TARGET}
+	${MAKE} settings
 	@echo
 	${QUIET_NOTICE}
 	@echo "Done building ${TARGET}"
