@@ -265,11 +265,11 @@ endif
 build: ${TARGET}
 ifneq (${TARGET},failtarget)
 	${MAKE} settings
-endif
 	@echo
 	${QUIET_NOTICE}
 	@echo "Done building ${TARGET}"
 	${QUIET_ENDCOLOR}
+endif
 	@echo
 
 
