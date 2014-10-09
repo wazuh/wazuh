@@ -144,10 +144,6 @@ int main(int argc, char **argv)
     open_file_attempts = getDefine_Int("logcollector", "open_attempts",
                                        2, 998);
 
-    accept_manager_commands = getDefine_Int("logcollector", "remote_commands",
-                                       0, 1);
-
-
     /* Exit if test config */
     if(test_config)
         exit(0);
