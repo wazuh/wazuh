@@ -41,6 +41,7 @@ void *read_command(int pos, int *rc, int drop_it)
                ARGV0, logff[pos].command);
 
         logff[pos].command = NULL;
+        return (NULL);
     }
 
 
