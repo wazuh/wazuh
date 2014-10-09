@@ -23,7 +23,7 @@
 
 /* Send mssql message and check the return code.
  */
-void __send_mssql_msg(int pos, int drop_it, char *buffer)
+static void __send_mssql_msg(int pos, int drop_it, char *buffer)
 {
     debug2("%s: DEBUG: Reading MSSQL message: '%s'", ARGV0, buffer);
     if(drop_it == 0)
@@ -156,7 +156,7 @@ void *read_mssql_log(int pos, int *rc, int drop_it)
         else if((str_len > 2) && (buffer[0] != '\0'))
         {
             /* Size of the buffer */
-            int buffer_len = strlen(buffer);
+            size_t buffer_len = strlen(buffer);
 
             p = str;
 
