@@ -95,6 +95,13 @@ void *read_ossecalert(int pos, __attribute__((unused)) int *rc, int drop_it)
             }
             j++;
         }
+
+        if(tmp_msg == NULL)
+        {
+            FreeAlertData(al_data);
+            return(NULL);
+        }
+
         if(strlen(tmp_msg) > 1596)
         {
             tmp_msg[1594] = '.';
