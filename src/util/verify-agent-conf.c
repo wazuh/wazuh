@@ -95,8 +95,6 @@ int main(int argc, char **argv)
         return(OS_INVALID);
     }
 
-    logff = log_config.config;
-
     return(0);
 
 
