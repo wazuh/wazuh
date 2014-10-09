@@ -15,9 +15,11 @@
 #include "syscheck.h"
 #include "config/config.h"
 
-char *SYSCHECK_EMPTY[] = { NULL };
+#ifdef WIN32
+static char *SYSCHECK_EMPTY[] = { NULL };
+#endif
 
-int Read_Syscheck_Config(char * cfgfile)
+int Read_Syscheck_Config(const char * cfgfile)
 {
     int modules = 0;
 
