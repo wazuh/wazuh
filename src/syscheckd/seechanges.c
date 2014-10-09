@@ -280,7 +280,13 @@ char *seechanges_addfile(const char *filename)
     date_of_change = File_DateofChange(old_location);
     snprintf(tmp_location, OS_MAXSTR, "%s/local/%s/state.%d", DIFF_DIR_PATH, filename +1,
              (int)date_of_change);
-    rename(old_location, tmp_location);
+
+    if(rename(old_location, tmp_location) == -1)
+    {
+        merror(RENAME_ERROR, ARGV0, old_location);
+        return (NULL);
+    }
+
     if(seechanges_dupfile(filename, old_location) != 1)
     {
         merror("%s: ERROR: Unable to create snapshot for %s",ARGV0, filename);
