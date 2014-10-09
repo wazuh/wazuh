@@ -117,6 +117,8 @@ void *read_ossecalert(int pos, __attribute__((unused)) int *rc, int drop_it)
                	srcip_msg,
                	user_msg,
                	tmp_msg);
+
+        free(tmp_msg);
     }
 
 
