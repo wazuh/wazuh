@@ -375,7 +375,7 @@ int realtime_win32read(win32rtfim *rtlocald)
     return(0);
 }
 
-int realtime_adddir(char *dir)
+int realtime_adddir(const char *dir)
 {
     char wdchar[32 +1];
     win32rtfim *rtlocald;
@@ -462,7 +462,7 @@ int realtime_start()
     return(0);
 }
 
-int realtime_adddir(char *dir)
+int realtime_adddir(const char *dir)
 {
     return(0);
 }
