@@ -38,33 +38,34 @@
 /* Execd select timeout -- in seconds */
 #define EXECD_TIMEOUT   90
 
-
+extern int repeated_offenders_timeout[];
 
 /** Function prototypes **/
 
-void ExecdStart(int queue);
-
 void WinExecdRun(char *exec_msg);
 
-int ReadExecConfig();
+int ReadExecConfig(void);
 
-char *GetCommandbyName(char *name, int *timeout);
+char *GetCommandbyName(const char *name, int *timeout) __attribute__((nonnull));
 
-void ExecCmd(char **cmd);
+void ExecCmd(char *const *cmd) __attribute__((nonnull));
 
 void ExecCmd_Win32(char *cmd);
 
-int ExecdConfig(char * cfgfile);
+int ExecdConfig(const char * cfgfile) __attribute__((nonnull));
 
-int WinExecd_Start();
+int WinExecd_Start(void);
 
 void WinTimeoutRun(int timeout);
 
-void FreeTimeoutEntry(void *timeout_entry);
+/* Timeout data structure */
+typedef struct _timeout_data
+{
+    time_t time_of_addition;
+    int time_to_block;
+    char **command;
+}timeout_data;
 
-
-
-
-#define _EXECD_H
+void FreeTimeoutEntry(timeout_data *timeout_entry);
 
 #endif
