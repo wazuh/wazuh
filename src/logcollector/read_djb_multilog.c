@@ -21,10 +21,10 @@
 
 
 /* To translante between month (int) to month (char) */
-char *(djb_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
+static const char *(djb_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
                      "Sep","Oct","Nov","Dec"};
 
-char djb_host[512 +1];
+static char djb_host[512 +1];
 
 
 
@@ -102,7 +102,7 @@ int init_djbmultilog(int pos)
 /* Read DJB multilog. */
 void *read_djbmultilog(int pos, int *rc, int drop_it)
 {
-    int str_len = 0;
+    size_t str_len = 0;
     int need_clear = 0;
     char *p;
     char str[OS_MAXSTR + 1];

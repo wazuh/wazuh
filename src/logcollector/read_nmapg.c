@@ -23,14 +23,14 @@
 
 
 /** Function Prototypes **/
-static char *__go_after(char *x, char *y);
-static char *__get_port(char *str, char *proto, char *port, int msize);
+static char *__go_after(char *x, const char *y);
+static char *__get_port(char *str, char *proto, char *port, size_t msize);
 
 
 
 /* Get port and protocol.
  */
-static char *__get_port(char *str, char *proto, char *port, int msize)
+static char *__get_port(char *str, char *proto, char *port, size_t msize)
 {
     int filtered = 0;
     char *p, *q;
@@ -120,10 +120,10 @@ static char *__get_port(char *str, char *proto, char *port, int msize)
 
 /* Check if the string matches.
  */
-static char *__go_after(char *x, char *y)
+static char *__go_after(char *x, const char *y)
 {
-    int x_s;
-    int y_s;
+    size_t x_s;
+    size_t y_s;
 
     /* X and Y must be not null */
     if(!x || !y)
