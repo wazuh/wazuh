@@ -322,11 +322,13 @@ ifeq (${uname_S},SunOS)
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
 	install -m 0440 -o root -g ${OSSEC_GROUP} /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
 endif
-ifeq (,$(wildcard ${PREFIX}/etc/internal_options.conf))
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
+ifeq (,$(wildcard ${PREFIX}/etc/local_internal_options.conf))
+	install -m 0640 -o root -g ${OSSEC_GROUP} ../etc/local_internal_options.conf ${PREFIX}/etc/local_internal_options.conf
 endif
-	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_internal_options.conf
+ifeq (,$(wildcard ${PREFIX}/etc/client.keys))
 	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+endif
 ifeq (,$(wildcard ${PREFIX}/etc/ossec.conf))
 ifneq (,$(wildcard ../etc/ossec.mc))
 	install -m 0640 -o root -g ${OSSEC_GROUP} ../etc/ossec.mc ${PREFIX}/etc/ossec.conf
