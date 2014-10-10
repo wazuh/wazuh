@@ -313,6 +313,7 @@ Suite *test_suite(void)
     tcase_add_test(tc_gethost, test_gethost_success);
     tcase_add_test(tc_gethost, test_gethost_fail1);
     tcase_add_test(tc_gethost, test_gethost_fail2);
+    tcase_set_timeout(tc_gethost, 10);
 
     suite_add_tcase(s, tc_tcp);
     suite_add_tcase(s, tc_udp);
