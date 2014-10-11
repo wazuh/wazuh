@@ -467,7 +467,8 @@ int set_ossec_server(char *ip, HWND hwnd)
     const char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
     const char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
 
-    char *conf_file = basename_ex(CONFIG);
+    char config_tmp[] = CONFIG;
+    char *conf_file = basename_ex(config_tmp);
 
     char tmp_path[strlen(TMP_DIR) + 1 + strlen(conf_file) + 6 + 1];
 
@@ -558,7 +559,8 @@ int set_ossec_key(char *key, HWND hwnd)
 {
     FILE *fp;
 
-    char *keys_file = basename_ex(AUTH_FILE);
+    char auth_file_tmp[] = AUTH_FILE;
+    char *keys_file = basename_ex(auth_file_tmp);
 
     char tmp_path[strlen(TMP_DIR) + 1 + strlen(keys_file) + 6 + 1];
 

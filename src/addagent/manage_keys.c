@@ -53,7 +53,8 @@ int k_import(char *cmdimport)
 
     char line_read[FILE_SIZE +1];
 
-    char *keys_file = basename_ex(AUTH_FILE);
+    char auth_file_tmp[] = AUTH_FILE;
+    char *keys_file = basename_ex(auth_file_tmp);
 
     char tmp_path[strlen(TMP_DIR) + 1 + strlen(keys_file) + 6 + 1];
 
