@@ -21,14 +21,14 @@
 
 
 /* Starting last time */
-char __mysql_last_time[18] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+static char __mysql_last_time[18] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 
 
 /* Read syslog files/snort fast/apache files */
 void *read_mysql_log(int pos, int *rc, int drop_it)
 {
-    int str_len = 0;
+    size_t str_len = 0;
     int need_clear = 0;
     char *p;
     char str[OS_MAXSTR + 1];

@@ -24,7 +24,7 @@
  * Read the config file (the localfiles)
  * v0.3: Changed for the new OS_XML
  */
-int LogCollectorConfig(char * cfgfile, int accept_remote)
+int LogCollectorConfig(const char * cfgfile, int accept_remote)
 {
     int modules = 0;
 

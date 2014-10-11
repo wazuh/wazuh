@@ -24,10 +24,10 @@ void *read_snortfull(int pos, int *rc, int drop_it)
 {
     int f_msg_size = OS_MAXSTR;
 
-    char *one = "one";
-    char *two = "two";
+    const char *one = "one";
+    const char *two = "two";
 
-    char *p = NULL;
+    const char *p = NULL;
     char *q;
     char str[OS_MAXSTR + 1];
     char f_msg[OS_MAXSTR +1];

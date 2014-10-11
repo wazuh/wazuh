@@ -34,8 +34,10 @@
 
 #include "logcollector.h"
 
+static void help_logcollector(void) __attribute__((noreturn));
+
 /* print help statement */
-void help_logcollector()
+static void help_logcollector()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
@@ -58,14 +60,14 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0,run_foreground = 0;
     int accept_manager_commands = 0;
-    char *cfg = DEFAULTCPATH;
+    const char *cfg = DEFAULTCPATH;
 
     /* Setuping up random */
     #ifndef WIN32
         #ifdef __OpenBSD__
         srandomdev();
         #else
-        srandom(time(0));
+        srandom((unsigned int)time(0));
         #endif
     #else
     srandom(time(0))
@@ -142,10 +144,6 @@ int main(int argc, char **argv)
     open_file_attempts = getDefine_Int("logcollector", "open_attempts",
                                        2, 998);
 
-    accept_manager_commands = getDefine_Int("logcollector", "remote_commands",
-                                       0, 1);
-
-
     /* Exit if test config */
     if(test_config)
         exit(0);
@@ -196,9 +194,6 @@ int main(int argc, char **argv)
 
     /* Main loop */
     LogCollectorStart();
-
-
-    return(0);
 }
 
 
