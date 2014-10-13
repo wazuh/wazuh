@@ -19,7 +19,7 @@
 
 /* Read_Rootcheck_Config: Reads the rootcheck config
  */
-int Read_Rootcheck_Config(char * cfgfile)
+int Read_Rootcheck_Config(const char * cfgfile)
 {
     int modules = 0;
 

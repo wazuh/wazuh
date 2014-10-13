@@ -18,7 +18,7 @@
 /* notify_rk
  * Report a problem.
  */
-int notify_rk(int rk_type, char *msg)
+int notify_rk(int rk_type, const char *msg)
 {
     /* Non-queue notification */
     if(rootcheck.notify != QUEUE)
@@ -89,7 +89,7 @@ void run_rk_check()
 
     #ifndef WIN32
     /* Hard coding basedir */
-    int i;
+    size_t i;
     char basedir[] = "/";
 
     /* Removing the last / from basedir */
@@ -326,7 +326,7 @@ void run_rk_check()
 
 
             /* Freeing list */
-            del_plist((void *)plist);
+            del_plist(plist);
         }
     }
 

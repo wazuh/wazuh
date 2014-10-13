@@ -15,13 +15,14 @@
 #include "shared.h"
 #include "rootcheck.h"
 
-int _dev_errors;
-int _dev_total;
+static int _dev_errors;
+static int _dev_total;
 
 /** Prototypes **/
-int read_dev_dir(char *dir_name);
+static int read_dev_file(const char *file_name);
+static int read_dev_dir(const char *dir_name);
 
-int read_dev_file(char *file_name)
+static int read_dev_file(const char *file_name)
 {
     struct stat statbuf;
 
@@ -56,7 +57,7 @@ int read_dev_file(char *file_name)
 /* read_dir v0.1
  *
  */
-int read_dev_dir(char *dir_name)
+static int read_dev_dir(const char *dir_name)
 {
     int i;
 
@@ -67,7 +68,7 @@ int read_dev_dir(char *dir_name)
     /* when will these people learn that dev is not
      * meant to store log files or other kind of texts..
      */
-    char *(ignore_dev[]) = {"MAKEDEV","README.MAKEDEV",
+    const char *(ignore_dev[]) = {"MAKEDEV","README.MAKEDEV",
                             "MAKEDEV.README", ".udevdb",
                             ".udev.tdb", ".initramfs-tools",
                             "MAKEDEV.local", ".udev", ".initramfs",
@@ -85,7 +86,7 @@ int read_dev_dir(char *dir_name)
 
 
     /* Full path ignore */
-    char *(ignore_dev_full_path[]) = {"/dev/shm/sysconfig",
+    const char *(ignore_dev_full_path[]) = {"/dev/shm/sysconfig",
                                       "/dev/bus/usb/.usbfs",
                                       "/dev/shm",
                                       "/dev/gpmctl",
@@ -157,7 +158,7 @@ int read_dev_dir(char *dir_name)
 /*  check_rc_dev: v0.1
  *
  */
-void check_rc_dev(char *basedir)
+void check_rc_dev(const char *basedir)
 {
     char file_path[OS_SIZE_1024 +1];
 

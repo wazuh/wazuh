@@ -19,14 +19,15 @@
 #define PID     1
 #define TASK    2
 
-int proc_pid_found;
+static int proc_pid_found;
 
 
 /** Prototypes **/
-int read_proc_dir(char *dir_name, char *pid, int position);
+static int read_proc_file(const char *file_name, const char *pid, int position);
+static int read_proc_dir(const char *dir_name, const char *pid, int position);
 
 
-int read_proc_file(char *file_name, char *pid, int position)
+static int read_proc_file(const char *file_name, const char *pid, int position)
 {
     struct stat statbuf;
 
@@ -47,12 +48,12 @@ int read_proc_file(char *file_name, char *pid, int position)
 /* read_dir v0.1
  *
  */
-int read_proc_dir(char *dir_name, char *pid, int position)
+int read_proc_dir(const char *dir_name, const char *pid, int position)
 {
     DIR *dp;
 
 	struct dirent *entry;
-	
+
 
     if((dir_name == NULL)||(strlen(dir_name) > PATH_MAX))
     {

@@ -32,7 +32,7 @@ HKEY rk_sub_tree;
 /* os_check_ads.
  * Check if file has NTFS ADS.
  */
-int os_check_ads(char *full_path)
+int os_check_ads(const char *full_path)
 {
     HANDLE file_h;
     WIN32_STREAM_ID sid;
@@ -432,7 +432,7 @@ int is_registry(char *entry_name, char *reg_option, char *reg_value)
 
 
 /* Non windows defs for them. */
-int os_check_ads(__attribute__((unused)) char *full_path)
+int os_check_ads(__attribute__((unused)) const char *full_path)
 {
     return(0);
 }
