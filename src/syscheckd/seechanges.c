@@ -310,9 +310,6 @@ char *seechanges_addfile(const char *filename)
 
     /* Generate alert. */
     return(gen_diff_alert(filename, date_of_change));
-
-
-    return(NULL);
 }
 
 
