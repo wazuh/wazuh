@@ -18,9 +18,10 @@
 #undef ARGV0
 #define ARGV0 "ossec-regex"
 
+static void helpmsg(void) __attribute__((noreturn));
 
 /** help **/
-void helpmsg()
+static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: ossec-regex pattern\n", ARGV0);
     exit(1);

@@ -18,9 +18,10 @@
 #undef ARGV0
 #define ARGV0 "rootcheck_control"
 
+static void helpmsg(void) __attribute__((noreturn));
 
 /** help **/
-void helpmsg()
+static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: Manages the policy and auditing database.\n",
            ARGV0);
@@ -42,10 +43,10 @@ void helpmsg()
 /** main **/
 int main(int argc, char **argv)
 {
-    char *dir = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
-    char *user = USER;
-    char *agent_id = NULL;
+    const char *dir = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
+    const char *user = USER;
+    const char *agent_id = NULL;
 
     int gid = 0;
     int uid = 0;
@@ -132,7 +133,7 @@ int main(int argc, char **argv)
     {
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
-	
+
 
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
