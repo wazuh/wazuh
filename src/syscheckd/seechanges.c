@@ -16,9 +16,9 @@
 #include "os_crypto/md5/md5_op.h"
 #include "syscheck.h"
 
-static char *gen_diff_alert(const char *filename, time_t alert_diff_time);
-static int seechanges_dupfile(const char *old, const char *new);
-static int seechanges_createpath(const char *filename);
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time) __attribute__((nonnull));
+static int seechanges_dupfile(const char *old, const char *new) __attribute__((nonnull));
+static int seechanges_createpath(const char *filename) __attribute__((nonnull));
 
 #ifdef USE_MAGIC
 #include <magic.h>

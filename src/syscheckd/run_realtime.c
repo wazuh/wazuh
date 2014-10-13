@@ -41,7 +41,7 @@
 #include "syscheck.h"
 #include "error_messages/error_messages.h"
 
-static int realtime_checksumfile(const char *file_name);
+static int realtime_checksumfile(const char *file_name) __attribute__((nonnull));
 
 /* Checking sum of the realtime file being monitored. */
 static int realtime_checksumfile(const char *file_name)

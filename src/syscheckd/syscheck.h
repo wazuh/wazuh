@@ -40,7 +40,7 @@ void start_daemon(void) __attribute__((noreturn));
 
 
 /* Read the XML config */
-int Read_Syscheck_Config(const char * cfgfile);
+int Read_Syscheck_Config(const char * cfgfile) __attribute__((nonnull));
 
 
 /* create the database */
@@ -61,21 +61,21 @@ void os_winreg_check(void);
 int realtime_start(void);
 
 /* Adds a directory to real time monitoring. */
-int realtime_adddir(const char *dir);
+int realtime_adddir(const char *dir) __attribute__((nonnull));
 
 /* Process real time queue. */
 int realtime_process(void);
 
 /* Process the content of the file changes. */
-char *seechanges_addfile(const char *filename);
+char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 
 /* get checksum changes. */
-int c_read_file(const char *file_name, const char *oldsum, char *newsum);
+int c_read_file(const char *file_name, const char *oldsum, char *newsum) __attribute__((nonnull));
 
 /** Sends syscheck message.
  */
-int send_syscheck_msg(const char *msg);
-int send_rootcheck_msg(const char *msg);
+int send_syscheck_msg(const char *msg) __attribute__((nonnull));
+int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 
 
 #endif

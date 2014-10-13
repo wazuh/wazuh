@@ -26,8 +26,8 @@ static int __counter = 0;
 
 /** Prototypes **/
 /*static int check_file(const char *file_name);*/
-static int read_file(const char *dir_name, int opts, OSMatch *restriction);
-static int read_dir(const char *dir_name, int opts, OSMatch *restriction);
+static int read_file(const char *dir_name, int opts, OSMatch *restriction)  __attribute__((nonnull(1)));
+static int read_dir(const char *dir_name, int opts, OSMatch *restriction) __attribute__((nonnull(1)));
 
 
 /* int check_file(char *file_name)
@@ -52,7 +52,7 @@ static int read_dir(const char *dir_name, int opts, OSMatch *restriction);
 /* int read_file(char *file_name, int opts, int flag)
  * Reads and generates the integrity data of a file.
  */
-int read_file(const char *file_name, int opts, OSMatch *restriction)
+static int read_file(const char *file_name, int opts, OSMatch *restriction)
 {
     char *buf;
     char sha1s = '+';
