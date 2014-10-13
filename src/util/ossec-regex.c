@@ -31,7 +31,7 @@ static void helpmsg()
 /** main **/
 int main(int argc, char **argv)
 {
-    char *pattern;
+    const char *pattern;
 
     char msg[OS_MAXSTR +1];
     memset(msg, '\0', OS_MAXSTR +1);
@@ -55,7 +55,8 @@ int main(int argc, char **argv)
         return(-1);
     }
 
-    os_strdup(argv[1], pattern);
+    pattern = argv[1];
+
     if(!OSRegex_Compile(pattern, &regex, 0))
     {
         printf("pattern does not compile with OSRegex_Compile\n");
