@@ -777,7 +777,7 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
         free(name);
         name = NULL;
     }
-    vars = OSStore_Free(vars);
+    OSStore_Free(vars);
 
 
     return(1);

@@ -181,7 +181,7 @@ int os_string(char *file, char *regex)
 
 
     /* Allocating for the buffer */
-    bfr = calloc(STR_MINLEN + 2, sizeof(char *));
+    bfr = calloc(STR_MINLEN + 2, sizeof(unsigned char));
     if (!bfr)
     {
         merror(MEM_ERROR, ARGV0);

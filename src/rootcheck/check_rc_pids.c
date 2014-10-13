@@ -136,9 +136,6 @@ static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_tot
         _gpid0 = 0;
         _gpid1 = 0;
         _ps0 = -1;
-        _proc_stat  = 0;
-        _proc_read  = 0;
-        _proc_chdir = 0;
 
 
         /* kill test */
