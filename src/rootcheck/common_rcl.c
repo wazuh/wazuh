@@ -571,11 +571,13 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
 
 
                 file = _rkcl_get_pattern(value);
-                if(file)
+                if(!file)
                 {
-                    pattern = _rkcl_get_pattern(file);
+                    merror(INVALID_RKCL_VAR, ARGV0, value);
+                    continue;
                 }
 
+                pattern = _rkcl_get_pattern(file);
 
                 /* Getting any variable. */
                 if(value[0] == '$')
