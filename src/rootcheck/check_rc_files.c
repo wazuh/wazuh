@@ -136,12 +136,12 @@ void check_rc_files(const char *basedir, FILE *fp)
         if(nbuf)
         {
             *nbuf = '\0';
-        }
 
-        nbuf = strchr(nbuf, '\t');
-        if(nbuf)
-        {
-            *nbuf = '\0';
+            nbuf = strchr(nbuf, '\t');
+            if(nbuf)
+            {
+                *nbuf = '\0';
+            }
         }
 
         _total++;
