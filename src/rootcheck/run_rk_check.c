@@ -63,19 +63,6 @@ int notify_rk(int rk_type, const char *msg)
 }
 
 
-/* start_rk_daemon
- * Start the rootkit daemon variables
- */
-void start_rk_daemon()
-{
-    return;
-
-    if(rootcheck.notify == QUEUE)
-    {
-    }
-}
-
-
 /* run_rk_check: v0.1
  * Execute the rootkit checks
  */

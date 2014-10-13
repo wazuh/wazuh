@@ -115,11 +115,6 @@ int rootcheck_init(int test_config);
  */
 void run_rk_check(void);
 
-/* start_rk_daemon: Runs run_rk_check periodically.
- */
-void start_rk_daemon(void);
-
-
 /*** Plugins prototypes ***/
 void check_rc_files(const char *basedir, FILE *fp);
 
