@@ -18,11 +18,9 @@
 #include "os_crypto/md5/md5_op.h"
 #include <stdlib.h>
 
-/* b64 function prototypes */
-char *decode_base64(const char *src);
-char *encode_base64(int size, char *src);
+static char *trimwhitespace(char *str);
 
-char *trimwhitespace(char *str)
+static char *trimwhitespace(char *str)
 {
   char *end;
 
@@ -43,10 +41,10 @@ char *trimwhitespace(char *str)
 }
 
 /* Import a key */
-int k_import(char *cmdimport)
+int k_import(const char *cmdimport)
 {
     FILE *fp;
-    char *user_input;
+    const char *user_input;
     char *b64_dec;
 
     char *name; char *ip; char *tmp_key;
@@ -165,7 +163,7 @@ int k_import(char *cmdimport)
                     cmdlen = strlen(comspec) + 5 + caclslen;
                     char cmd[cmdlen];
                     snprintf(cmd, cmdlen, "%s /c %s", comspec, caclscmd);
-                    
+
                      /* Log command being run */
                      log2file("%s: INFO: Running the following command (%s)", ARGV0, cmd);
 
@@ -239,10 +237,10 @@ int k_import(char *cmdimport)
 
 
 /* extract base64 for a specific agent */
-int k_extract(char *cmdextract)
+int k_extract(const char *cmdextract)
 {
     FILE *fp;
-    char *user_input;
+    const char *user_input;
     char *b64_enc;
     char line_read[FILE_SIZE +1];
     char n_id[USER_SIZE +1];
@@ -330,7 +328,7 @@ int k_extract(char *cmdextract)
 }
 
 /* Bulk generate client keys from file */
-int k_bulkload(char *cmdbulk)
+int k_bulkload(const char *cmdbulk)
 {
     int i = 1;
     FILE *fp, *infp;
@@ -380,7 +378,7 @@ int k_bulkload(char *cmdbulk)
 		memset(name, '\0', FILE_SIZE +1);
 		token = strtok(NULL, delims);
 		strncpy(name, trimwhitespace(token),FILE_SIZE -1);
-			
+
     		#ifndef WIN32
     		chmod(AUTH_FILE, 0440);
     		#endif
@@ -394,7 +392,7 @@ int k_bulkload(char *cmdbulk)
         		#ifdef __OpenBSD__
         		srandomdev();
         		#else
-        		srandom(time2 + time1 + getpid() + getppid());
+        		srandom((unsigned)(time2 + time1 + getpid() + getppid()));
         		#endif
     		#else
     		srandom(time2 + time1 + getpid());
@@ -446,7 +444,7 @@ int k_bulkload(char *cmdbulk)
 		}
 		snprintf(id, 8, "%03d", i+1);
 
-		if(!OS_IsValidID(id)) 
+		if(!OS_IsValidID(id))
 		{
 		printf(INVALID_ID, id);
 		continue;
@@ -483,14 +481,14 @@ int k_bulkload(char *cmdbulk)
          	* Random 5: Final key
          	*/
 
-        	snprintf(str1, STR_SIZE, "%d%s%d",time3-time2, name, rand1);
-        	snprintf(str2, STR_SIZE, "%d%s%s%d", time2-time1, ip, id, rand2);
+        	snprintf(str1, STR_SIZE, "%d%s%d",(int)(time3-time2), name, (int)rand1);
+        	snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2-time1), ip, id, (int)rand2);
 
         	OS_MD5_Str(str1, md1);
         	OS_MD5_Str(str2, md2);
 
         	snprintf(str1, STR_SIZE, "%s%d%d%d",md1,(int)getpid(), (int)random(),
-                                            time3);
+        	        (int)time3);
         	OS_MD5_Str(str1, md1);
 
         	//fprintf(fp,"%s %s %s %s%s\n",id, name, ip, md1,md2);
