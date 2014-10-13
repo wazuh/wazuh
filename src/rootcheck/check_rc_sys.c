@@ -426,7 +426,7 @@ void check_rc_sys(const char *basedir)
     /* Scan only specific directories */
     else
     {
-        int _i = 0;
+        int _i;
 
         #ifndef WIN32
         const char *(dirs_to_scan[]) = {"/bin", "/sbin", "/usr/bin",
@@ -441,11 +441,9 @@ void check_rc_sys(const char *basedir)
         const char *(dirs_to_scan[]) = {"C:\\WINDOWS", "C:\\Program Files", NULL};
         #endif
 
-        for(_i = 0; _i <= 24; _i++)
+        _i = 0;
+        while(dirs_to_scan[_i] != NULL)
         {
-            if(dirs_to_scan[_i] == NULL)
-                break;
-
             #ifndef WIN32
             snprintf(file_path, OS_SIZE_1024, "%s%s",
                                             basedir,
@@ -456,6 +454,7 @@ void check_rc_sys(const char *basedir)
             read_sys_dir(dirs_to_scan[_i], rootcheck.readall);
             #endif
 
+            _i++;
         }
     }
 
