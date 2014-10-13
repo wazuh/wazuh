@@ -284,17 +284,12 @@ int rootcheck_init(int test_config)
     StartSIG(ARGV0);
     #endif
 
-    #else
-    return(0);
-
-    #endif
-
-
     debug1("%s: DEBUG: Running run_rk_check",ARGV0);
     run_rk_check();
 
-
     debug1("%s: DEBUG:  Leaving...",ARGV0);
+
+    #endif
 
     return(0);
 }
