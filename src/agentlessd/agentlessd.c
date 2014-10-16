@@ -252,8 +252,17 @@ static int check_diff_file(const char *host, const char *script)
     date_of_change = File_DateofChange(old_location);
     snprintf(tmp_location, 1024, "%s/%s->%s/state.%d", DIFF_DIR_PATH, host, script,
              (int)date_of_change);
-    rename(old_location, tmp_location);
-    rename(new_location, old_location);
+
+    if(rename(old_location, tmp_location) != 0)
+    {
+        merror(RENAME_ERROR, ARGV0, old_location);
+        return (0);
+    }
+    if(rename(new_location, old_location) != 0)
+    {
+        merror(RENAME_ERROR, ARGV0, new_location);
+        return (0);
+    }
 
 
     /* Run diff. */
