@@ -86,8 +86,8 @@ ListRule *_OS_AddListRule(ListRule *new_listrule)
 
 
 
-/* Add a list in the chain */
-ListNode *_OS_AddList(ListNode *new_listnode)
+/* External AddList */
+int OS_AddList(ListNode *new_listnode)
 {
     if(global_listnode == NULL)
     {
@@ -106,14 +106,7 @@ ListNode *_OS_AddList(ListNode *new_listnode)
         last_list_node->next = new_listnode;
 
     }
-    return(global_listnode);
-}
-
-/* External AddList */
-int OS_AddList(ListNode *new_listnode)
-{
-    _OS_AddList(new_listnode);
-    return(0);
+    return 0; 
 }
 
 ListNode *OS_FindList(char *listname)
