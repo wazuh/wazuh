@@ -469,7 +469,10 @@ int k_bulkload(const char *cmdbulk)
             ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
         }
         #ifndef WIN32
-        chmod(AUTH_FILE, 0440);
+        if(chmod(AUTH_FILE, 0440) == -1)
+        {
+            ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE);
+        }
         #endif
 
 
