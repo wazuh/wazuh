@@ -220,11 +220,15 @@ int k_import(const char *cmdimport)
                     printf(PRESS_ENTER);
                     read_from_user();
                     restart_necessary = 1;
+
+                    free(b64_dec);
                     return(1);
                 }
                 else /* if(user_input[0] == 'n' || user_input[0] == 'N') */
                 {
                     printf("%s", ADD_NOT);
+
+                    free(b64_dec);
                     return(0);
                 }
             }
@@ -234,6 +238,8 @@ int k_import(const char *cmdimport)
     printf(NO_KEY);
     printf(PRESS_ENTER);
     read_from_user();
+
+    free(b64_dec);
     return(0);
 
 }
