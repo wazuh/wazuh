@@ -96,6 +96,7 @@
 #define CHDIR_ERROR     "%s(1244): ERROR: Unable to chdir to directory: '%s'."
 #define LINK_ERROR      "%s(1245): ERROR: Unable to link from '%s' to '%s'."
 #define CHOWN_ERROR     "%s(1246): ERROR: Unable to run chown on: '%s'."
+#define CHMOD_ERROR     "%s(1247): ERROR: Unable to run chmod on: '%s'."
 
 #define MAILQ_ERROR	    "%s(1221): ERROR: No Mail queue at %s"
 #define IMSG_ERROR	    "%s(1222): ERROR: Invalid msg: %s"

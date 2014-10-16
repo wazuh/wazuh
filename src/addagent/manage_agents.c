@@ -116,7 +116,10 @@ int add_agent()
 
 
     #ifndef WIN32
-    chmod(AUTH_FILE, 0440);
+    if(chmod(AUTH_FILE, 0440) == -1)
+    {
+        ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE);
+    }
     #endif
 
     /* Setting time 2 */
