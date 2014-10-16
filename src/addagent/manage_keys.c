@@ -291,7 +291,11 @@ int k_extract(const char *cmdextract)
         ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
     }
 
-    fsetpos(fp, &fp_pos);
+    if(fsetpos(fp, &fp_pos))
+    {
+        merror("%s: Can not set fileposition.", ARGV0);
+        exit(1);
+    }
 
     memset(n_id, '\0', USER_SIZE +1);
     strncpy(n_id, user_input, USER_SIZE -1);
