@@ -20,25 +20,29 @@
 
 /** Prototypes **/
 
+/* b64 function prototypes */
+char *decode_base64(const char *src);
+char *encode_base64(int size, char *src);
+
 /* Read any input from the user (stdin) */
-char *read_from_user();
+char *read_from_user(void);
 
 /* Add or remove an agent */
-int add_agent();
-int remove_agent();
+int add_agent(void);
+int remove_agent(void);
 
 /* Extract or import a key */
-int k_extract(char *cmdextract);
-int k_import(char *cmdimport);
-int k_bulkload(char *cmdbulk);
+int k_extract(const char *cmdextract);
+int k_import(const char *cmdimport);
+int k_bulkload(const char *cmdbulk);
 
 /* Validation functions */
-int OS_IsValidName(char *u_name);
-int OS_IsValidID(char *id);
-int IDExist(char *id);
-int NameExist(char *u_name);
-char *getFullnameById(char *id);
-char *OS_AddNewAgent(char *name, char *ip, char *id);
+int OS_IsValidName(const char *u_name);
+int OS_IsValidID(const char *id);
+int IDExist(const char *id);
+int NameExist(const char *u_name);
+char *getFullnameById(const char *id);
+char *OS_AddNewAgent(const char *name, const char *ip, const char *id);
 
 
 
@@ -51,13 +55,13 @@ char *chomp(char *str);
 
 
 /* Shared variables */
-int restart_necessary;
-int time1;
-int time2;
-int time3;
-int rand1;
-int rand2;
-fpos_t fp_pos;
+extern int restart_necessary;
+extern time_t time1;
+extern time_t time2;
+extern time_t time3;
+extern long int rand1;
+extern long int rand2;
+extern fpos_t fp_pos;
 
 
 /* Internal defines */
