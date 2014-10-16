@@ -23,7 +23,7 @@
 
 
 /* Global config */
-syscheck_config syscheck;
+extern syscheck_config syscheck;
 
 
 /** Function Prototypes **/
@@ -31,51 +31,51 @@ syscheck_config syscheck;
 /* run_check: checks the integrity of the files against the
  * saved database
  */
-void run_check();
+void run_check(void);
 
 
 /* start_daemon: Runs run_check periodically.
  */
-void start_daemon();
+void start_daemon(void) __attribute__((noreturn));
 
 
 /* Read the XML config */
-int Read_Syscheck_Config(char * cfgfile);
+int Read_Syscheck_Config(const char * cfgfile) __attribute__((nonnull));
 
 
 /* create the database */
-int create_db();
+int create_db(void);
 
 
 /* int run_dbcheck()
  * Checks database for changes.
  */
-int run_dbcheck();
+int run_dbcheck(void);
 
 /** void os_winreg_check()
  * Checks the registry for changes.
  */
-void os_winreg_check();
+void os_winreg_check(void);
 
 /* starts real time */
-int realtime_start();
+int realtime_start(void);
 
 /* Adds a directory to real time monitoring. */
-int realtime_adddir(char *dir);
+int realtime_adddir(const char *dir) __attribute__((nonnull));
 
 /* Process real time queue. */
-int realtime_process();
+int realtime_process(void);
 
 /* Process the content of the file changes. */
-char *seechanges_addfile(char *filename);
+char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 
 /* get checksum changes. */
-int c_read_file(char *file_name, char *oldsum, char *newsum);
+int c_read_file(const char *file_name, const char *oldsum, char *newsum) __attribute__((nonnull));
 
 /** Sends syscheck message.
  */
-int send_syscheck_msg(char *msg);
-int send_rootcheck_msg(char *msg);
+int send_syscheck_msg(const char *msg) __attribute__((nonnull));
+int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 
 
 #endif

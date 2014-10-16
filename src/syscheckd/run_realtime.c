@@ -41,17 +41,14 @@
 #include "syscheck.h"
 #include "error_messages/error_messages.h"
 
-
-/** Global functions for all realtime options. **/
-int c_read_file(char *file_name, char *oldsum, char *newsum);
-
+static int realtime_checksumfile(const char *file_name) __attribute__((nonnull));
 
 /* Checking sum of the realtime file being monitored. */
-int realtime_checksumfile(char *file_name)
+static int realtime_checksumfile(const char *file_name)
 {
     char *buf;
 
-    buf = OSHash_Get(syscheck.fp, file_name);
+    buf = (char *) OSHash_Get(syscheck.fp, file_name);
     if(buf != NULL)
     {
         char c_sum[256 +2];
@@ -120,7 +117,7 @@ int realtime_start()
 {
     verbose("%s: INFO: Initializing real time file monitoring (not started).", ARGV0);
 
-    syscheck.realtime = calloc(1, sizeof(rtfim));
+    syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if(syscheck.realtime == NULL)
     {
         ErrorExit(MEM_ERROR, ARGV0);
@@ -143,7 +140,7 @@ int realtime_start()
 
 
 /* Adds a directory to real time checking. */
-int realtime_adddir(char *dir)
+int realtime_adddir(const char *dir)
 {
     if(!syscheck.realtime)
     {
@@ -185,7 +182,7 @@ int realtime_adddir(char *dir)
                     ErrorExit("%s: ERROR: Out of memory. Exiting.", ARGV0);
                 }
 
-                OSHash_Add(syscheck.realtime->dirtb, strdup(wdchar), ndir);
+                OSHash_Add(syscheck.realtime->dirtb, wdchar, ndir);
                 debug1("%s: DEBUG: Directory added for real time monitoring: "
                        "'%s'.", ARGV0, ndir);
             }
@@ -199,7 +196,8 @@ int realtime_adddir(char *dir)
 /* Process events in the real time queue. */
 int realtime_process()
 {
-    int len, i = 0;
+    ssize_t len;
+    size_t i = 0;
     char buf[REALTIME_EVENT_BUFFER +1];
     struct inotify_event *event;
 
@@ -213,9 +211,9 @@ int realtime_process()
     }
     else if (len > 0)
     {
-        while (i < len)
+        while (i < (size_t) len)
         {
-            event = (struct inotify_event *) &buf[i];
+            event = (struct inotify_event *) (void *) &buf[i];
 
             if(event->len)
             {
@@ -242,7 +240,7 @@ int realtime_process()
 
 
 
-#elif WIN32
+#elif defined(WIN32)
 typedef struct _win32rtfim
 {
     HANDLE h;
@@ -377,7 +375,7 @@ int realtime_win32read(win32rtfim *rtlocald)
     return(0);
 }
 
-int realtime_adddir(char *dir)
+int realtime_adddir(const char *dir)
 {
     char wdchar[32 +1];
     win32rtfim *rtlocald;
@@ -464,7 +462,7 @@ int realtime_start()
     return(0);
 }
 
-int realtime_adddir(char *dir)
+int realtime_adddir(const char *dir)
 {
     return(0);
 }

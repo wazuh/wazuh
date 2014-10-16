@@ -46,7 +46,7 @@ typedef struct _rtfim
 
 typedef struct _config
 {
-    int tsleep;            /* sleep for sometime for daemon to settle */
+    unsigned int tsleep;            /* sleep for sometime for daemon to settle */
     int sleep_after;
     int rootcheck;         /* set to 0 when rootcheck is disabled */
     int disabled;          /* is syscheck disabled? */
