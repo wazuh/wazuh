@@ -29,7 +29,7 @@ typedef struct _agentlessd_entries
     short int state;
 
     int frequency;
-    int current_state;
+    time_t current_state;
     int port;
     int error_flag;
 
