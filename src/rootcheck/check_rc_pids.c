@@ -15,13 +15,18 @@
 #include "rootcheck.h"
 
 
-int noproc;
+static int noproc;
+
+static int proc_read(int pid);
+static int proc_chdir(int pid);
+static int proc_stat(int pid);
+static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_total);
 
 
 /** int proc_read(int pid)
  * If /proc is mounted, check to see if the pid is present
  */
-int proc_read(int pid)
+static int proc_read(int pid)
 {
     char dir[OS_SIZE_1024 +1];
 
@@ -40,7 +45,7 @@ int proc_read(int pid)
 /** int proc_chdir(int pid)
  * If /proc is mounted, check to see if the pid is present
  */
-int proc_chdir(int pid)
+static int proc_chdir(int pid)
 {
     int ret = 0;
     char curr_dir[OS_SIZE_1024 + 1];
@@ -76,7 +81,7 @@ int proc_chdir(int pid)
 /** int proc_stat(int pid)
  * If /proc is mounted, check to see if the pid is present there.
  */
-int proc_stat(int pid)
+static int proc_stat(int pid)
 {
     char proc_dir[OS_SIZE_1024 + 1];
 
@@ -97,7 +102,7 @@ int proc_stat(int pid)
 /** void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
  * Check all the available PIDs for hidden stuff.
  */
-void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
+static void loop_all_pids(const char *ps, pid_t max_pid, int *_errors, int *_total)
 {
     int _kill0 = 0;
     int _kill1 = 0;
@@ -131,9 +136,6 @@ void loop_all_pids(char *ps, pid_t max_pid, int *_errors, int *_total)
         _gpid0 = 0;
         _gpid1 = 0;
         _ps0 = -1;
-        _proc_stat  = 0;
-        _proc_read  = 0;
-        _proc_chdir = 0;
 
 
         /* kill test */

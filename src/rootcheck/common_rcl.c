@@ -17,6 +17,13 @@
 #include "shared.h"
 #include "rootcheck.h"
 
+static char *_rkcl_getfp(FILE *fp, char *buf);
+static int _rkcl_is_name(const char *buf);
+static int _rkcl_get_vars(OSStore *vars, char *nbuf);
+static char *_rkcl_get_name(char *buf, char *ref, int *condition);
+static char *_rkcl_get_pattern(char *value);
+static char *_rkcl_get_value(char *buf, int *type);
+
 
 /* Types of values */
 #define RKCL_TYPE_FILE      1
@@ -58,7 +65,7 @@ char *_rkcl_getrootdir(char *root_dir, int dir_size)
 
 /** char *_rkcl_getfp: Get next available buffer in file.
  */
-char *_rkcl_getfp(FILE *fp, char *buf)
+static char *_rkcl_getfp(FILE *fp, char *buf)
 {
     while(fgets(buf, OS_SIZE_1024, fp) != NULL)
     {
@@ -110,7 +117,7 @@ char *_rkcl_getfp(FILE *fp, char *buf)
 
 /** int _rkcl_is_name
  */
-int _rkcl_is_name(char *buf)
+static int _rkcl_is_name(const char *buf)
 {
     if(*buf == '[' && buf[strlen(buf) -1] == ']')
     {
@@ -123,7 +130,7 @@ int _rkcl_is_name(char *buf)
 
 /**  int _rkcl_get_vars(vars, nbuf)
  */
-int _rkcl_get_vars(OSStore *vars, char *nbuf)
+static int _rkcl_get_vars(OSStore *vars, char *nbuf)
 {
     char *var_value;
     char *tmp;
@@ -173,7 +180,7 @@ int _rkcl_get_vars(OSStore *vars, char *nbuf)
 
 /** int _rkcl_get_name
  */
-char *_rkcl_get_name(char *buf, char *ref, int *condition)
+static char *_rkcl_get_name(char *buf, char *ref, int *condition)
 {
     char *tmp_location;
     char *tmp_location2;
@@ -263,7 +270,7 @@ char *_rkcl_get_name(char *buf, char *ref, int *condition)
 
 /** char *_rkcl_get_pattern(char *value)
  */
-char *_rkcl_get_pattern(char *value)
+static char *_rkcl_get_pattern(char *value)
 {
     while(*value != '\0')
     {
@@ -285,7 +292,7 @@ char *_rkcl_get_pattern(char *value)
 
 /** char *_rkcl_get_value
  */
-char *_rkcl_get_value(char *buf, int *type)
+static char *_rkcl_get_value(char *buf, int *type)
 {
     char *tmp_str;
     char *value;
@@ -346,7 +353,7 @@ char *_rkcl_get_value(char *buf, int *type)
 
 /** int rkcl_get_entry:
  */
-int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
+int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
 {
     int type = 0, condition = 0;
     char *nbuf;
@@ -359,7 +366,6 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
     char *name = NULL;
 
     OSStore *vars;
-    OSList *p_list = (OSList *)p_list_p;
 
 
     /* Cleaning up vars */
@@ -487,7 +493,7 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
                 /* Getting any variable. */
                 if(value[0] == '$')
                 {
-                    f_value = OSStore_Get(vars, value);
+                    f_value = (char *) OSStore_Get(vars, value);
                     if(!f_value)
                     {
                         merror(INVALID_RKCL_VAR, ARGV0, value);
@@ -565,16 +571,18 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
 
 
                 file = _rkcl_get_pattern(value);
-                if(file)
+                if(!file)
                 {
-                    pattern = _rkcl_get_pattern(file);
+                    merror(INVALID_RKCL_VAR, ARGV0, value);
+                    continue;
                 }
 
+                pattern = _rkcl_get_pattern(file);
 
                 /* Getting any variable. */
                 if(value[0] == '$')
                 {
-                    f_value = OSStore_Get(vars, value);
+                    f_value = (char *) OSStore_Get(vars, value);
                     if(!f_value)
                     {
                         merror(INVALID_RKCL_VAR, ARGV0, value);
@@ -771,7 +779,7 @@ int rkcl_get_entry(FILE *fp, char *msg, void *p_list_p)
         free(name);
         name = NULL;
     }
-    vars = OSStore_Free(vars);
+    OSStore_Free(vars);
 
 
     return(1);

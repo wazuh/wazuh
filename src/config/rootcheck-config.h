@@ -18,7 +18,7 @@
 
 typedef struct _rkconfig
 {
-    char *workdir;
+    const char *workdir;
     char *basedir;
     char *rootkit_files;
     char *rootkit_trojans;
@@ -38,7 +38,7 @@ typedef struct _rkconfig
 
     int time;
     int queue;
-	
+
 	struct _checks
 	{
         short rc_dev;

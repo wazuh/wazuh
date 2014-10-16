@@ -23,16 +23,17 @@
 #include "headers/shared.h"
 
 #include "rootcheck.h"
+rkconfig rootcheck;
+char **rk_sys_file;
+char **rk_sys_name;
+int rk_sys_count;
+char total_ports_udp[65535 +1];
+char total_ports_tcp[65535 +1];
 
 #ifndef ARGV0
 #define ARGV0 "rootcheck"
 #endif
 
-
-
-/** Prototypes **/
-/* Read the new XML config */
-int Read_Rootcheck_Config(char * cfgfile, rkconfig *cfg);
 
 
 #ifndef OSSECHIDS
@@ -70,9 +71,9 @@ int rootcheck_init(int test_config)
 #endif
 
     #ifdef OSSECHIDS
-    char *cfg = DEFAULTCPATH;
+    const char *cfg = DEFAULTCPATH;
     #else
-    char *cfg = "./rootcheck.conf";
+    const char *cfg = "./rootcheck.conf";
     #endif
 
     /* Zeroing the structure, initializing default values */
@@ -195,7 +196,7 @@ int rootcheck_init(int test_config)
 
 
     /* Reading configuration  --function specified twice (check makefile) */
-    if(Read_Rootcheck_Config(cfg, &rootcheck) < 0)
+    if(Read_Rootcheck_Config(cfg) < 0)
     {
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
@@ -266,8 +267,8 @@ int rootcheck_init(int test_config)
 
 
     /* Initializing rk list */
-    rk_sys_name = calloc(MAX_RK_SYS +2, sizeof(char *));
-    rk_sys_file = calloc(MAX_RK_SYS +2, sizeof(char *));
+    rk_sys_name = (char **) calloc(MAX_RK_SYS +2, sizeof(char *));
+    rk_sys_file = (char **) calloc(MAX_RK_SYS +2, sizeof(char *));
     if(!rk_sys_name || !rk_sys_file)
     {
         ErrorExit(MEM_ERROR, ARGV0);
@@ -283,17 +284,12 @@ int rootcheck_init(int test_config)
     StartSIG(ARGV0);
     #endif
 
-    #else
-    return(0);
-
-    #endif
-
-
     debug1("%s: DEBUG: Running run_rk_check",ARGV0);
     run_rk_check();
 
-
     debug1("%s: DEBUG:  Leaving...",ARGV0);
+
+    #endif
 
     return(0);
 }

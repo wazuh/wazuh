@@ -20,7 +20,7 @@
  * Read the file pointer specified
  * and check if the configured file is there
  */
-void check_rc_unixaudit(FILE *fp, void *p_list)
+void check_rc_unixaudit(FILE *fp, OSList *p_list)
 {
     debug1("%s: DEBUG: Starting on check_rc_unixaudit", ARGV0);
 
@@ -34,7 +34,7 @@ void check_rc_unixaudit(FILE *fp, void *p_list)
  * Read the file pointer specified (winpolicy)
  * and check if the configured file is there
  */
-void check_rc_winaudit(FILE *fp, void *p_list)
+void check_rc_winaudit(FILE *fp, OSList *p_list)
 {
     debug1("%s: DEBUG: Starting on check_rc_winaudit", ARGV0);
 
@@ -46,7 +46,7 @@ void check_rc_winaudit(FILE *fp, void *p_list)
  * Read the file pointer specified (winpolicy)
  * and check if the configured file is there
  */
-void check_rc_winmalware(FILE *fp, void *p_list)
+void check_rc_winmalware(FILE *fp, OSList *p_list)
 {
     debug1("%s: DEBUG: Starting on check_rc_winmalware", ARGV0);
 
@@ -58,7 +58,7 @@ void check_rc_winmalware(FILE *fp, void *p_list)
  * Read the file pointer specified (winpolicy)
  * and check if the configured file is there
  */
-void check_rc_winapps(FILE *fp, void *p_list)
+void check_rc_winapps(FILE *fp, OSList *p_list)
 {
     debug1("%s: DEBUG: Starting on check_rc_winapps", ARGV0);
 

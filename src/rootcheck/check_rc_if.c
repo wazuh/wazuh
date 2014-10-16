@@ -37,11 +37,12 @@
 #define IFCONFIG "ifconfig %s | grep PROMISC > /dev/null 2>&1"
 #endif
 
+static int run_ifconfig(const char *ifconfig);
 
 /* run_ifconfig: Execute the ifconfig command.
  * Returns 1 if interface in promisc mode.
  */
-int run_ifconfig(char *ifconfig)
+static int run_ifconfig(const char *ifconfig)
 {
     char nt[OS_SIZE_1024 +1];
 
@@ -86,7 +87,7 @@ void check_rc_if()
         return;
     }
 
-    _ifend = (struct ifreq*) ((char*)tmp_str + _if.ifc_len);
+    _ifend = (struct ifreq*) (void *) ((char*)tmp_str + _if.ifc_len);
     _ir = tmp_str;
 
     /* Looping on all interfaces */
