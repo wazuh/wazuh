@@ -442,6 +442,10 @@ static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 else if((entry->state & LESSD_STATE_DIFF) &&
                         (strncmp(buf, "STORE: ", 7) == 0))
                 {
+                    if(fp_store)
+                    {
+                        fclose(fp_store);
+                    }
                     fp_store = open_diff_file(entry->server[i]+1,
                                               entry->type);
                 }
