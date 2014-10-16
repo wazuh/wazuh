@@ -341,7 +341,6 @@ int k_bulkload(const char *cmdbulk)
     char name[FILE_SIZE +1];
     char id[FILE_SIZE +1];
     char ip[FILE_SIZE+1];
-    os_ip *c_ip;
     char delims[] = ",";
     char * token = NULL;
 
@@ -363,11 +362,11 @@ int k_bulkload(const char *cmdbulk)
     }
     fclose(fp);
 
-    /* Allocating for c_ip */
-    os_calloc(1, sizeof(os_ip), c_ip);
-
-	while(fgets(line, FILE_SIZE - 1, infp) != NULL)
+    while(fgets(line, FILE_SIZE - 1, infp) != NULL)
 	{
+        os_ip c_ip;
+        c_ip.ip = NULL;
+
 		if (1 >= strlen(trimwhitespace(line)))
 			continue;
 
@@ -421,7 +420,7 @@ int k_bulkload(const char *cmdbulk)
         }
 
 
-        if(!OS_IsValidIP(ip, c_ip))
+        if(!OS_IsValidIP(ip, &c_ip))
         {
             printf(IP_ERROR, ip);
             continue;
@@ -447,14 +446,14 @@ int k_bulkload(const char *cmdbulk)
 		if(!OS_IsValidID(id))
 		{
 		    printf(INVALID_ID, id);
-		    continue;
+		    goto cleanup;
 		}
 
 		/* Search for ID KEY  -- no duplicates */
 		if(IDExist(id))
 		{
 		    printf(NO_DEFAULT, i+1);
-		    continue;
+		    goto cleanup;
 		}
 
         printf(AGENT_INFO, id, name, ip);
@@ -492,12 +491,15 @@ int k_bulkload(const char *cmdbulk)
         OS_MD5_Str(str1, md1);
 
         //fprintf(fp,"%s %s %s %s%s\n",id, name, ip, md1,md2);
-        fprintf(fp,"%s %s %s %s%s\n",id, name, c_ip->ip, md1,md2);
+        fprintf(fp,"%s %s %s %s%s\n",id, name, c_ip.ip, md1,md2);
 
         fclose(fp);
 
         printf(AGENT_ADD);
         restart_necessary = 1;
+
+        cleanup:
+        free(c_ip.ip);
 	};
 
 	fclose(infp);
