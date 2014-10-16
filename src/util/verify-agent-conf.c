@@ -20,9 +20,10 @@
 #undef ARGV0
 #define ARGV0 "verify-agent-conf"
 
+static void helpmsg(void) __attribute__((noreturn));
 
 /** help **/
-void helpmsg()
+static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: Verify agent.conf syntax for errors.\n", ARGV0);
     printf("Usage:  %s [-f <agent.conf file>]\n\n", ARGV0);
@@ -40,7 +41,7 @@ void helpmsg()
 /* main: v0.3: 2005/04/04 */
 int main(int argc, char **argv)
 {
-    char* ar=AGENTCONFIG;
+    const char* ar=AGENTCONFIG;
     int c=0;
     int modules = 0;
     logreader_config log_config;

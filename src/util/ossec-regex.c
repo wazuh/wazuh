@@ -18,9 +18,10 @@
 #undef ARGV0
 #define ARGV0 "ossec-regex"
 
+static void helpmsg(void) __attribute__((noreturn));
 
 /** help **/
-void helpmsg()
+static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: ossec-regex pattern\n", ARGV0);
     exit(1);
@@ -30,7 +31,7 @@ void helpmsg()
 /** main **/
 int main(int argc, char **argv)
 {
-    char *pattern;
+    const char *pattern;
 
     char msg[OS_MAXSTR +1];
     memset(msg, '\0', OS_MAXSTR +1);
@@ -54,7 +55,8 @@ int main(int argc, char **argv)
         return(-1);
     }
 
-    os_strdup(argv[1], pattern);
+    pattern = argv[1];
+
     if(!OSRegex_Compile(pattern, &regex, 0))
     {
         printf("pattern does not compile with OSRegex_Compile\n");
