@@ -32,7 +32,7 @@ HKEY rk_sub_tree;
 /* os_check_ads.
  * Check if file has NTFS ADS.
  */
-int os_check_ads(char *full_path)
+int os_check_ads(const char *full_path)
 {
     HANDLE file_h;
     WIN32_STREAM_ID sid;
@@ -122,7 +122,7 @@ int os_check_ads(char *full_path)
             }
         }
 
-        /* Getting next */			
+        /* Getting next */
         if(!BackupSeek(file_h, sid.Size.LowPart, sid.Size.HighPart,
                     &dw1, &dw2, &context))
         {
@@ -209,7 +209,6 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
     DWORD j;
 
     /* QueryInfo and EnumKey variables */
-    TCHAR sub_key_name_b[MAX_KEY_LENGTH +1];
     TCHAR class_name_b[MAX_PATH +1];
     DWORD class_name_s = MAX_PATH;
 
@@ -236,8 +235,6 @@ int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
     /* Initializing the memory for some variables */
     class_name_b[0] = '\0';
     class_name_b[MAX_PATH] = '\0';
-    sub_key_name_b[0] = '\0';
-    sub_key_name_b[MAX_KEY_LENGTH] = '\0';
 
 
     /* We use the class_name, subkey_count and the value count. */
@@ -435,11 +432,13 @@ int is_registry(char *entry_name, char *reg_option, char *reg_value)
 
 
 /* Non windows defs for them. */
-int os_check_ads(char *full_path)
+int os_check_ads(__attribute__((unused)) const char *full_path)
 {
     return(0);
 }
-int is_registry(char *entry_name, char *reg_option, char *reg_value)
+int is_registry(__attribute__((unused)) char *entry_name,
+        __attribute__((unused)) char *reg_option,
+        __attribute__((unused)) char *reg_value)
 {
     return(0);
 }

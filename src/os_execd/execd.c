@@ -18,11 +18,17 @@
 #include "os_net/os_net.h"
 
 #include "execd.h"
+int repeated_offenders_timeout[] = {0,0,0,0,0,0,0};
 
+
+#ifndef WIN32
+static void help_execd(void) __attribute__((noreturn));
+static void execd_shutdown(int sig) __attribute__((noreturn));
+static void ExecdStart(int q) __attribute__((noreturn));
 
 
 /* print help statement */
-void help_execd()
+static void help_execd()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-g group] [-c config]", ARGV0);
@@ -41,27 +47,17 @@ void help_execd()
 
 
 
-/* Timeout data structure */
-typedef struct _timeout_data
-{
-    time_t time_of_addition;
-    int time_to_block;
-    char **command;
-}timeout_data;
-
-
 /* Timeout list */
-OSList *timeout_list;
-OSListNode *timeout_node;
-OSHash *repeated_hash;
-int repeated_offenders_timeout[] = {0,0,0,0,0,0,0};
+static OSList *timeout_list;
+static OSListNode *timeout_node;
+static OSHash *repeated_hash;
 
 
 
 /**
  * Shutdowns execd properly.
  */
-void execd_shutdown(int sig)
+static void execd_shutdown(int sig)
 {
     /* Removing pending active responses. */
     merror(EXEC_SHUTDOWN, ARGV0);
@@ -87,8 +83,6 @@ void execd_shutdown(int sig)
 }
 
 
-#ifndef WIN32
-
 /** int main(int argc, char **argv) v0.1
  */
 int main(int argc, char **argv)
@@ -97,8 +91,8 @@ int main(int argc, char **argv)
     int test_config = 0,run_foreground = 0;
     int gid = 0,m_queue = 0;
 
-    char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
 
     /* Setting the name */
@@ -212,12 +206,9 @@ int main(int argc, char **argv)
  * Free the timeout entry. Must be called after popping it
  * from the timeout list
  */
-void FreeTimeoutEntry(void *timeout_entry_pt)
+void FreeTimeoutEntry(timeout_data *timeout_entry)
 {
-    timeout_data *timeout_entry;
     char **tmp_str;
-
-    timeout_entry = (timeout_data *)timeout_entry_pt;
 
     if(!timeout_entry)
     {
@@ -239,10 +230,7 @@ void FreeTimeoutEntry(void *timeout_entry_pt)
         timeout_entry->command = NULL;
     }
 
-    os_free(timeout_entry);
-    timeout_entry = NULL;
-
-    return;
+    free(timeout_entry);
 }
 
 
@@ -252,7 +240,7 @@ void FreeTimeoutEntry(void *timeout_entry_pt)
 /** void ExecdStart(int q) v0.2
  * Main function on the execd. Does all the data receiving ,etc.
  */
-void ExecdStart(int q)
+static void ExecdStart(int q)
 {
     int i, childcount = 0;
     time_t curr_time;
@@ -395,7 +383,7 @@ void ExecdStart(int q)
 
 
         /* Receiving the message */
-        if(recv(q, buffer, OS_MAXSTR, 0) == -1)
+        if(OS_RecvUnix(q, OS_MAXSTR, buffer) == 0)
         {
             merror(QUEUE_ERROR, ARGV0, EXECQUEUEPATH, strerror(errno));
             continue;
@@ -519,7 +507,7 @@ void ExecdStart(int q)
                     snprintf(rkey, 255, "%s%s", list_entry->command[0],
                                                 timeout_args[3]);
 
-                    if((ntimes = OSHash_Get(repeated_hash, rkey)))
+                    if((ntimes = (char *) OSHash_Get(repeated_hash, rkey)))
                     {
                         int ntimes_int = 0;
                         int i2 = 0;
@@ -570,7 +558,7 @@ void ExecdStart(int q)
 
                 if(repeated_hash != NULL)
                 {
-                  if((ntimes = OSHash_Get(repeated_hash, rkey)))
+                  if((ntimes = (char *) OSHash_Get(repeated_hash, rkey)))
                   {
                     int ntimes_int = 0;
                     int i2 = 0;
@@ -599,7 +587,7 @@ void ExecdStart(int q)
                   {
                       /* Adding to the repeated offenders list. */
                       OSHash_Add(repeated_hash,
-                           strdup(rkey),strdup("0"));
+                           rkey, strdup("0"));
                   }
                 }
 

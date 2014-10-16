@@ -16,6 +16,10 @@
 #include "shared.h"
 #include "rootcheck.h"
 
+static int run_netstat(int proto, int port);
+static int conn_port(int proto, int port);
+static void test_ports(int proto, int *_errors, int *_total);
+
 /* SunOS netstat */
 #if defined(sun) || defined(__sun__)
 #define NETSTAT "netstat -an -P %s | "\
@@ -40,7 +44,7 @@
 #endif
 
 
-int run_netstat(int proto, int port)
+static int run_netstat(int proto, int port)
 {
     int ret;
     char nt[OS_SIZE_1024 +1];
@@ -69,7 +73,7 @@ int run_netstat(int proto, int port)
 }
 
 
-int conn_port(int proto, int port)
+static int conn_port(int proto, int port)
 {
     int rc = 0;
     int ossock;
@@ -105,11 +109,11 @@ int conn_port(int proto, int port)
     /* Setting if port is open or closed */
     if(proto == IPPROTO_TCP)
     {
-        total_ports_tcp[port] = rc;
+        total_ports_tcp[port] = (char) rc;
     }
     else
     {
-        total_ports_udp[port] = rc;
+        total_ports_udp[port] = (char) rc;
     }
 
     close(ossock);
@@ -118,7 +122,7 @@ int conn_port(int proto, int port)
 }
 
 
-void test_ports(int proto, int *_errors, int *_total)
+static void test_ports(int proto, int *_errors, int *_total)
 {
     int i;
 
@@ -133,10 +137,6 @@ void test_ports(int proto, int *_errors, int *_total)
             if(run_netstat(proto, i))
             {
                 continue;
-
-                #ifdef OSSECHIDS
-                sleep(2);
-                #endif
             }
 
             /* If we are being run by the ossec hids, sleep here (no rush) */

@@ -18,11 +18,9 @@
 #include "os_crypto/md5/md5_op.h"
 #include <stdlib.h>
 
-/* b64 function prototypes */
-char *decode_base64(const char *src);
-char *encode_base64(int size, char *src);
+static char *trimwhitespace(char *str);
 
-char *trimwhitespace(char *str)
+static char *trimwhitespace(char *str)
 {
   char *end;
 
@@ -43,10 +41,10 @@ char *trimwhitespace(char *str)
 }
 
 /* Import a key */
-int k_import(char *cmdimport)
+int k_import(const char *cmdimport)
 {
     FILE *fp;
-    char *user_input;
+    const char *user_input;
     char *b64_dec;
 
     char *name; char *ip; char *tmp_key;
@@ -142,7 +140,10 @@ int k_import(char *cmdimport)
                     fclose(fp);
 
                     #ifndef WIN32
-                    chmod(KEYS_FILE, 0440);
+                    if(chmod(KEYS_FILE, 0440) == -1)
+                    {
+                        ErrorExit(CHMOD_ERROR, ARGV0, KEYS_FILE);
+                    }
                     #else
                     /* Get cmd location from environment */
                     comspec = getenv("COMSPEC");
@@ -165,7 +166,7 @@ int k_import(char *cmdimport)
                     cmdlen = strlen(comspec) + 5 + caclslen;
                     char cmd[cmdlen];
                     snprintf(cmd, cmdlen, "%s /c %s", comspec, caclscmd);
-                    
+
                      /* Log command being run */
                      log2file("%s: INFO: Running the following command (%s)", ARGV0, cmd);
 
@@ -219,11 +220,15 @@ int k_import(char *cmdimport)
                     printf(PRESS_ENTER);
                     read_from_user();
                     restart_necessary = 1;
+
+                    free(b64_dec);
                     return(1);
                 }
                 else /* if(user_input[0] == 'n' || user_input[0] == 'N') */
                 {
                     printf("%s", ADD_NOT);
+
+                    free(b64_dec);
                     return(0);
                 }
             }
@@ -233,16 +238,18 @@ int k_import(char *cmdimport)
     printf(NO_KEY);
     printf(PRESS_ENTER);
     read_from_user();
+
+    free(b64_dec);
     return(0);
 
 }
 
 
 /* extract base64 for a specific agent */
-int k_extract(char *cmdextract)
+int k_extract(const char *cmdextract)
 {
     FILE *fp;
-    char *user_input;
+    const char *user_input;
     char *b64_enc;
     char line_read[FILE_SIZE +1];
     char n_id[USER_SIZE +1];
@@ -293,7 +300,11 @@ int k_extract(char *cmdextract)
         ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
     }
 
-    fsetpos(fp, &fp_pos);
+    if(fsetpos(fp, &fp_pos))
+    {
+        merror("%s: Can not set fileposition.", ARGV0);
+        exit(1);
+    }
 
     memset(n_id, '\0', USER_SIZE +1);
     strncpy(n_id, user_input, USER_SIZE -1);
@@ -330,7 +341,7 @@ int k_extract(char *cmdextract)
 }
 
 /* Bulk generate client keys from file */
-int k_bulkload(char *cmdbulk)
+int k_bulkload(const char *cmdbulk)
 {
     int i = 1;
     FILE *fp, *infp;
@@ -343,7 +354,6 @@ int k_bulkload(char *cmdbulk)
     char name[FILE_SIZE +1];
     char id[FILE_SIZE +1];
     char ip[FILE_SIZE+1];
-    os_ip *c_ip;
     char delims[] = ",";
     char * token = NULL;
 
@@ -352,7 +362,7 @@ int k_bulkload(char *cmdbulk)
     infp = fopen(cmdbulk,"r");
     if(!infp)
     {
-	perror("Failed.");
+        perror("Failed.");
         ErrorExit(FOPEN_ERROR, ARGV0, cmdbulk);
     }
 
@@ -365,11 +375,11 @@ int k_bulkload(char *cmdbulk)
     }
     fclose(fp);
 
-    /* Allocating for c_ip */
-    os_calloc(1, sizeof(os_ip), c_ip);
-
-	while(fgets(line, FILE_SIZE - 1, infp) != NULL)
+    while(fgets(line, FILE_SIZE - 1, infp) != NULL)
 	{
+        os_ip c_ip;
+        c_ip.ip = NULL;
+
 		if (1 >= strlen(trimwhitespace(line)))
 			continue;
 
@@ -380,126 +390,132 @@ int k_bulkload(char *cmdbulk)
 		memset(name, '\0', FILE_SIZE +1);
 		token = strtok(NULL, delims);
 		strncpy(name, trimwhitespace(token),FILE_SIZE -1);
-			
-    		#ifndef WIN32
-    		chmod(AUTH_FILE, 0440);
-    		#endif
 
-    		/* Setting time 2 */
-    		time2 = time(0);
+        #ifndef WIN32
+        chmod(AUTH_FILE, 0440);
+        #endif
 
-
-    		/* Source is time1+ time2 +pid + ppid */
-    		#ifndef WIN32
-        		#ifdef __OpenBSD__
-        		srandomdev();
-        		#else
-        		srandom(time2 + time1 + getpid() + getppid());
-        		#endif
-    		#else
-    		srandom(time2 + time1 + getpid());
-    		#endif
-
-    		rand1 = random();
+        /* Setting time 2 */
+        time2 = time(0);
 
 
-    		/* Zeroing strings */
-    		memset(str1,'\0', STR_SIZE +1);
-    		memset(str2,'\0', STR_SIZE +1);
+        /* Source is time1+ time2 +pid + ppid */
+        #ifndef WIN32
+        #ifdef __OpenBSD__
+        srandomdev();
+        #else
+        srandom((unsigned)(time2 + time1 + getpid() + getppid()));
+        #endif
+        #else
+        srandom(time2 + time1 + getpid());
+        #endif
+
+        rand1 = random();
 
 
-        	/* check the name */
-        	if(!OS_IsValidName(name))
-        	{
-            	printf(INVALID_NAME,name);
-            	continue;
-        	}
-
-        	/* Search for name  -- no duplicates */
-        	if(NameExist(name))
-        	{
-            	printf(ADD_ERROR_NAME, name);
-            	continue;
-        	}
+        /* Zeroing strings */
+        memset(str1,'\0', STR_SIZE +1);
+        memset(str2,'\0', STR_SIZE +1);
 
 
-      		if(!OS_IsValidIP(ip, c_ip))
-      		{
-          		printf(IP_ERROR, ip);
-          		continue;
-      		}
+        /* check the name */
+        if(!OS_IsValidName(name))
+        {
+            printf(INVALID_NAME,name);
+            continue;
+        }
+
+        /* Search for name  -- no duplicates */
+        if(NameExist(name))
+        {
+            printf(ADD_ERROR_NAME, name);
+            continue;
+        }
+
+
+        if(!OS_IsValidIP(ip, &c_ip))
+        {
+            printf(IP_ERROR, ip);
+            continue;
+        }
 
 		/* Default ID */
 		i = MAX_AGENTS + 32512;
 		snprintf(id, 8, "%03d", i);
 		while(!IDExist(id))
 		{
-		i--;
-		snprintf(id, 8, "%03d", i);
+		    i--;
+		    snprintf(id, 8, "%03d", i);
 
-		/* No key present, use id 0 */
-		if(i <= 0)
-		{
-			i = 0;
-			break;
-		}
+            /* No key present, use id 0 */
+            if(i <= 0)
+            {
+                i = 0;
+                break;
+            }
 		}
 		snprintf(id, 8, "%03d", i+1);
 
-		if(!OS_IsValidID(id)) 
+		if(!OS_IsValidID(id))
 		{
-		printf(INVALID_ID, id);
-		continue;
+		    printf(INVALID_ID, id);
+		    goto cleanup;
 		}
 
 		/* Search for ID KEY  -- no duplicates */
 		if(IDExist(id))
 		{
-		printf(NO_DEFAULT, i+1);
-		continue;
+		    printf(NO_DEFAULT, i+1);
+		    goto cleanup;
 		}
 
-    		printf(AGENT_INFO, id, name, ip);
-    		fflush(stdout);
+        printf(AGENT_INFO, id, name, ip);
+        fflush(stdout);
 
 
-        	time3 = time(0);
-        	rand2 = random();
+        time3 = time(0);
+        rand2 = random();
 
-        	fp = fopen(AUTH_FILE,"a");
-        	if(!fp)
-        	{
-            	ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
-        	}
-        	#ifndef WIN32
-        	chmod(AUTH_FILE, 0440);
-        	#endif
+        fp = fopen(AUTH_FILE,"a");
+        if(!fp)
+        {
+            ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
+        }
+        #ifndef WIN32
+        if(chmod(AUTH_FILE, 0440) == -1)
+        {
+            ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE);
+        }
+        #endif
 
 
-        	/* Random 1: Time took to write the agent information.
-         	* Random 2: Time took to choose the action.
-         	* Random 3: All of this + time + pid
-         	* Random 4: Md5 all of this + the name, key and ip
-         	* Random 5: Final key
-         	*/
+        /* Random 1: Time took to write the agent information.
+        * Random 2: Time took to choose the action.
+        * Random 3: All of this + time + pid
+        * Random 4: Md5 all of this + the name, key and ip
+        * Random 5: Final key
+        */
 
-        	snprintf(str1, STR_SIZE, "%d%s%d",time3-time2, name, rand1);
-        	snprintf(str2, STR_SIZE, "%d%s%s%d", time2-time1, ip, id, rand2);
+        snprintf(str1, STR_SIZE, "%d%s%d",(int)(time3-time2), name, (int)rand1);
+        snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2-time1), ip, id, (int)rand2);
 
-        	OS_MD5_Str(str1, md1);
-        	OS_MD5_Str(str2, md2);
+        OS_MD5_Str(str1, md1);
+        OS_MD5_Str(str2, md2);
 
-        	snprintf(str1, STR_SIZE, "%s%d%d%d",md1,(int)getpid(), (int)random(),
-                                            time3);
-        	OS_MD5_Str(str1, md1);
+        snprintf(str1, STR_SIZE, "%s%d%d%d",md1,(int)getpid(), (int)random(),
+                (int)time3);
+        OS_MD5_Str(str1, md1);
 
-        	//fprintf(fp,"%s %s %s %s%s\n",id, name, ip, md1,md2);
-        	fprintf(fp,"%s %s %s %s%s\n",id, name, c_ip->ip, md1,md2);
+        //fprintf(fp,"%s %s %s %s%s\n",id, name, ip, md1,md2);
+        fprintf(fp,"%s %s %s %s%s\n",id, name, c_ip.ip, md1,md2);
 
-        	fclose(fp);
+        fclose(fp);
 
-        	printf(AGENT_ADD);
-        	restart_necessary = 1;
+        printf(AGENT_ADD);
+        restart_necessary = 1;
+
+        cleanup:
+        free(c_ip.ip);
 	};
 
 	fclose(infp);

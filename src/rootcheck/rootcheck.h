@@ -14,8 +14,9 @@
 #ifndef __ROOTCHECK_H
 #define __ROOTCHECK_H
 
+#include "list_op.h"
 #include "config/rootcheck-config.h"
-rkconfig rootcheck;
+extern rkconfig rootcheck;
 
 
 /* output types */
@@ -45,20 +46,20 @@ rkconfig rootcheck;
 /** Prototypes **/
 
 /* common isfile_ondir: Check if file is present on dir */
-int isfile_ondir(char *file, char *dir);
+int isfile_ondir(const char *file, const char *dir);
 
 /* int rk_check_file(char *value, char *pattern) */
 int rk_check_file(char *file, char *pattern);
 
 /* int rk_check_dir(char *dir, char *file, char *pattern) */
-int rk_check_dir(char *dir, char *file, char *pattern);
+int rk_check_dir(const char *dir, const char *file, char *pattern);
 
 /* pt_matches: Checks if pattern is present on string */
-int pt_matches(char *str, char *pattern);
+int pt_matches(const char *str, char *pattern);
 
 /* pt_check_negate: checks if the patterns is made up
  * completely of negate matches */
-int pt_check_negate(char *pattern);
+int pt_check_negate(const char *pattern);
 
 /* common is_file: Check if a file exist (using stat, fopen and opendir) */
 int is_file(char *file_name);
@@ -67,7 +68,7 @@ int is_file(char *file_name);
 int is_registry(char *entry_name, char *reg_option, char *reg_value);
 
 /* int rkcl_get_entry: Reads cl configuration file. */
-int rkcl_get_entry(FILE *fp, char *msg, void *p_list);
+int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list);
 
 
 /** char *normalize_string
@@ -84,24 +85,24 @@ int os_string(char *file, char *regex);
 
 /* check for NTFS ADS (Windows only)
  */
-int os_check_ads(char *full_path);
+int os_check_ads(const char *full_path);
 
 /* os_get_process_list: Get list of processes
  */
-void *os_get_process_list();
+OSList *os_get_process_list(void);
 
 /* is_process: Check is a process is running.
  */
-int is_process(char *value, void *p_list);
+int is_process(char *value, OSList *p_list);
 
 
 /*  del_plist:. Deletes the process list
  */
-int del_plist(void *p_list);
+int del_plist(OSList *p_list);
 
 
 /* Used to report messages */
-int notify_rk(int rk_type, char *msg);
+int notify_rk(int rk_type, const char *msg);
 
 
 
@@ -112,51 +113,48 @@ int rootcheck_init(int test_config);
 /* run_rk_check: checks the integrity of the files against the
  * saved database
  */
-void run_rk_check();
-
-/* start_rk_daemon: Runs run_rk_check periodically.
- */
-void start_rk_daemon();
-
+void run_rk_check(void);
 
 /*** Plugins prototypes ***/
-void check_rc_files(char *basedir, FILE *fp);
+void check_rc_files(const char *basedir, FILE *fp);
 
-void check_rc_trojans(char *basedir, FILE *fp);
+void check_rc_trojans(const char *basedir, FILE *fp);
 
-void check_rc_unixaudit(FILE *fp, void *p_list);
+void check_rc_unixaudit(FILE *fp, OSList *p_list);
 
-void check_rc_winaudit(FILE *fp, void *p_list);
+void check_rc_winaudit(FILE *fp, OSList *p_list);
 
-void check_rc_winmalware(FILE *fp, void *p_list);
+void check_rc_winmalware(FILE *fp, OSList *p_list);
 
-void check_rc_winapps(FILE *fp, void *p_list);
+void check_rc_winapps(FILE *fp, OSList *p_list);
 
-void check_rc_dev(char *basedir);
+void check_rc_dev(const char *basedir);
 
-void check_rc_sys(char *basedir);
+void check_rc_sys(const char *basedir);
 
-void check_rc_pids();
+void check_rc_pids(void);
 
 /* Verifies if "pid" is in the proc directory */
 int check_rc_readproc(int pid);
 
-void check_rc_ports();
+void check_rc_ports(void);
 
-void check_open_ports();
+void check_open_ports(void);
 
-void check_rc_if();
+void check_rc_if(void);
+
+int Read_Rootcheck_Config(const char * cfgfile);
 
 
 /* Global vars */
-char **rk_sys_file;
-char **rk_sys_name;
-int rk_sys_count;
+extern char **rk_sys_file;
+extern char **rk_sys_name;
+extern int rk_sys_count;
 
 
 /* All the ports */
-char total_ports_udp[65535 +1];
-char total_ports_tcp[65535 +1];
+extern char total_ports_udp[65535 +1];
+extern char total_ports_tcp[65535 +1];
 
 
 /* Process struct */

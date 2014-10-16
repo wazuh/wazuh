@@ -27,13 +27,13 @@
 
 
 /** Prototypes **/
-int c_read_file(char *file_name, char *oldsum, char *newsum);
+static void send_sk_db(void);
 
 
 /* Send syscheck message.
  * Send a message related to syscheck change/addition.
  */
-int send_syscheck_msg(char *msg)
+int send_syscheck_msg(const char *msg)
 {
     if(SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ) < 0)
     {
@@ -56,7 +56,7 @@ int send_syscheck_msg(char *msg)
 /* Send rootcheck message.
  * Send a message related to rootcheck change/addition.
  */
-int send_rootcheck_msg(char *msg)
+int send_rootcheck_msg(const char *msg)
 {
     if(SendMSG(syscheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0)
     {
@@ -77,7 +77,7 @@ int send_rootcheck_msg(char *msg)
 
 /* Sends syscheck db to the server.
  */
-void send_sk_db()
+static void send_sk_db()
 {
     /* Sending scan start message */
     if(syscheck.dir[0])
@@ -91,7 +91,7 @@ void send_sk_db()
         return;
     }
 
-    create_db(1);
+    create_db();
 
 
     /* Sending scan ending message */
@@ -404,7 +404,7 @@ void start_daemon()
             sleep(SYSCHECK_WAIT);
         }
 
-        #elif WIN32
+        #elif defined(WIN32)
         if(syscheck.realtime && (syscheck.realtime->fd >= 0))
         {
             run_now = WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE);
@@ -437,7 +437,7 @@ void start_daemon()
  * Read file information and return a pointer
  * to the checksum
  */
-int c_read_file(char *file_name, char *oldsum, char *newsum)
+int c_read_file(const char *file_name, const char *oldsum, char *newsum)
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0;
 

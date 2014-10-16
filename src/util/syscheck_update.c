@@ -17,9 +17,10 @@
 #undef ARGV0
 #define ARGV0 "syscheck_update"
 
+static void helpmsg(void) __attribute__((noreturn));
 
 /** help **/
-void helpmsg()
+static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: Updates (clears) the integrity check database.\n", ARGV0);
     printf("Available options:\n");
@@ -34,9 +35,9 @@ void helpmsg()
 /** main **/
 int main(int argc, char **argv)
 {
-    char *dir = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
-    char *user = USER;
+    const char *dir = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
+    const char *user = USER;
     int gid;
     int uid;
 
@@ -58,7 +59,7 @@ int main(int argc, char **argv)
     {
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
-	
+
 
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)

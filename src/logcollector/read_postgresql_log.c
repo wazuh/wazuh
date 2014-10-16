@@ -23,7 +23,7 @@
 
 /* Send pgsql message and check the return code.
  */
-void __send_pgsql_msg(int pos, int drop_it, char *buffer)
+static void __send_pgsql_msg(int pos, int drop_it, char *buffer)
 {
     debug2("%s: DEBUG: Reading PostgreSQL message: '%s'", ARGV0, buffer);
     if(drop_it == 0)
@@ -44,7 +44,7 @@ void __send_pgsql_msg(int pos, int drop_it, char *buffer)
 /* Read PostgreSQL log files */
 void *read_postgresql_log(int pos, int *rc, int drop_it)
 {
-    int str_len = 0;
+    size_t str_len = 0;
     int need_clear = 0;
     char *p;
     char str[OS_MAXSTR + 1];
@@ -154,7 +154,7 @@ void *read_postgresql_log(int pos, int *rc, int drop_it)
                 (str[0] == '\t'))
         {
             /* Size of the buffer */
-            int buffer_len = strlen(buffer);
+            size_t buffer_len = strlen(buffer);
 
             p = str +1;
 

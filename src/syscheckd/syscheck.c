@@ -27,10 +27,13 @@
 
 #include "shared.h"
 #include "syscheck.h"
+syscheck_config syscheck;
 
 #include "rootcheck/rootcheck.h"
 
-int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile);
+static void read_internal(int debug_level);
+static void help_syscheckd(void) __attribute__((noreturn));
+
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -61,9 +64,9 @@ void init_magic(magic_t* cookie_ptr)
 /* void read_internal()
  * Reads syscheck internal options.
  */
-void read_internal(int debug_level)
+static void read_internal(int debug_level)
 {
-    syscheck.tsleep = getDefine_Int("syscheck","sleep",0,64);
+    syscheck.tsleep = (unsigned int) getDefine_Int("syscheck","sleep",0,64);
     syscheck.sleep_after = getDefine_Int("syscheck","sleep_after",1,9999);
 
     /* Check current debug_level
@@ -188,7 +191,7 @@ int Start_win32_Syscheck()
 #endif
 
 /* print help statement */
-void help_syscheckd()
+static void help_syscheckd()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
@@ -213,7 +216,7 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0,run_foreground = 0;
 
-    char *cfg = DEFAULTCPATH;
+    const char *cfg = DEFAULTCPATH;
 
 
     /* Setting the name */
@@ -376,7 +379,7 @@ int main(int argc, char **argv)
             #ifdef USEINOTIFY
             verbose("%s: INFO: Directory set for real time monitoring: "
                     "'%s'.", ARGV0, syscheck.dir[r]);
-            #elif WIN32
+            #elif defined(WIN32)
             verbose("%s: INFO: Directory set for real time monitoring: "
                     "'%s'.", ARGV0, syscheck.dir[r]);
             #else
@@ -394,8 +397,6 @@ int main(int argc, char **argv)
 
     /* Start the daemon */
     start_daemon();
-
-    return(0);
 }
 #endif /* ifndef WIN32 */
 

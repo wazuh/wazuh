@@ -21,7 +21,7 @@
 #include "fts.h"
 #include "eventinfo.h"
 
-int fts_minsize_for_str = 0;
+unsigned int fts_minsize_for_str = 0;
 
 OSList *fts_list = NULL;
 OSHash *fts_store = NULL;
@@ -68,7 +68,7 @@ int FTS_Init()
                                   12,512);
 
     /* Getting minimum string size */
-    fts_minsize_for_str = getDefine_Int("analysisd",
+    fts_minsize_for_str = (unsigned int) getDefine_Int("analysisd",
                                         "fts_min_size_for_str",
                                         6, 128);
 

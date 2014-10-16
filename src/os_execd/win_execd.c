@@ -29,16 +29,6 @@
 
 
 
-
-/* Timeout data structure */
-typedef struct _timeout_data
-{
-    time_t time_of_addition;
-    int time_to_block;
-    char **command;
-}timeout_data;
-
-
 /* Timeout list */
 OSList *timeout_list;
 OSListNode *timeout_node;

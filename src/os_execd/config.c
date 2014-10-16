@@ -18,9 +18,8 @@
 /* ExecdConfig v0.1, 2006/03/24
  * Read the config file
  */
-int ExecdConfig(char * cfgfile)
+int ExecdConfig(const char * cfgfile)
 {
-    extern int repeated_offenders_timeout[];
     #ifdef WIN32
     int is_disabled = 1;
     #else

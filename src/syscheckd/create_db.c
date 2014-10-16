@@ -21,36 +21,38 @@
 #include "os_crypto/md5_sha1/md5_sha1_op.h"
 
 
-int __counter = 0;
+static int __counter = 0;
 
 
 /** Prototypes **/
-int read_dir(char *dir_name, int opts, OSMatch *restriction);
+/*static int check_file(const char *file_name);*/
+static int read_file(const char *dir_name, int opts, OSMatch *restriction)  __attribute__((nonnull(1)));
+static int read_dir(const char *dir_name, int opts, OSMatch *restriction) __attribute__((nonnull(1)));
 
 
 /* int check_file(char *file_name)
  * Checks if the file is already in the database.
  */
-int check_file(char *file_name)
+/*static int check_file(const char *file_name)
 {
     if(OSHash_Get(syscheck.fp, file_name))
     {
         return(1);
     }
 
-    /* New file */
+    // New file
     sleep(1);
 
     debug2("%s: DEBUG: new file '%s'.", ARGV0, file_name);
     return(0);
-}
+}*/
 
 
 
 /* int read_file(char *file_name, int opts, int flag)
  * Reads and generates the integrity data of a file.
  */
-int read_file(char *file_name, int opts, OSMatch *restriction)
+static int read_file(const char *file_name, int opts, OSMatch *restriction)
 {
     char *buf;
     char sha1s = '+';
@@ -194,7 +196,7 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
         }
 
 
-        buf = OSHash_Get(syscheck.fp, file_name);
+        buf = (char *) OSHash_Get(syscheck.fp, file_name);
         if(!buf)
         {
             char alert_msg[916 +1];	/* 912 -> 916 to accommodate a long */
@@ -226,7 +228,7 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
                 opts & CHECK_MD5SUM?mf_sum:"xxx",
                 opts & CHECK_SHA1SUM?sf_sum:"xxx");
 
-            if(OSHash_Add(syscheck.fp, strdup(file_name), strdup(alert_msg)) <= 0)
+            if(OSHash_Add(syscheck.fp, file_name, strdup(alert_msg)) <= 0)
             {
                 merror("%s: ERROR: Unable to add file to db: %s", ARGV0, file_name);
             }
@@ -315,9 +317,9 @@ int read_file(char *file_name, int opts, OSMatch *restriction)
 /* read_dir v0.1
  *
  */
-int read_dir(char *dir_name, int opts, OSMatch *restriction)
+static int read_dir(const char *dir_name, int opts, OSMatch *restriction)
 {
-    int dir_size;
+    size_t dir_size;
 
     char f_name[PATH_MAX +2];
     DIR *dp;
@@ -455,7 +457,6 @@ int create_db()
     {
         ErrorExit("%s: Unable to create syscheck database."
                   ". Exiting.",ARGV0);
-        return(0);
     }
 
     if(!OSHash_setSize(syscheck.fp, 2048))

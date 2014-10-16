@@ -17,7 +17,7 @@
 /* Hostname charmap.
  * Available chars: a-z, A-Z, 0-9, -, _, ., @ /
  */
-const unsigned char hostname_map[] =
+const unsigned char hostname_map[256] =
    {
         0, 0, 2, 3, 4, 5, 6, 7,
         8, 9, 10, 11, 12, 13, 14, 15,
@@ -53,7 +53,7 @@ const unsigned char hostname_map[] =
         240, 241, 242, 243, 244, 245, 246, 247,
     };
 
-const unsigned char charmap[] = {
+const unsigned char charmap[256] = {
         0, 1, 2, 3, 4, 5, 6, 7,
         8, 9, 10, 11, 12, 13, 14, 15,
         16, 17, 18, 19, 20, 21, 22, 23,

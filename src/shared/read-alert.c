@@ -600,6 +600,35 @@ alert_data *GetAlertData(int flag, FILE *fp)
         date = NULL;
     }
 
+    while(log_size > 0)
+    {
+        log_size--;
+        if(log[log_size])
+        {
+            free(log[log_size]);
+            log[log_size] = NULL;
+        }
+    }
+    free(log);
+
+    free(comment);
+
+    free(srcip);
+
+    free(dstip);
+
+    free(user);
+
+    free(old_md5);
+
+    free(new_md5);
+
+    free(old_sha1);
+
+    free(new_sha1);
+
+    free(filename);
+
     /* We need to clean end of file before returning */
     clearerr(fp);
     return(NULL);
