@@ -140,7 +140,10 @@ int k_import(const char *cmdimport)
                     fclose(fp);
 
                     #ifndef WIN32
-                    chmod(KEYS_FILE, 0440);
+                    if(chmod(KEYS_FILE, 0440) == -1)
+                    {
+                        ErrorExit(CHMOD_ERROR, ARGV0, KEYS_FILE);
+                    }
                     #else
                     /* Get cmd location from environment */
                     comspec = getenv("COMSPEC");
