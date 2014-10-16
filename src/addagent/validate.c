@@ -13,6 +13,8 @@
 
 
 #include "manage_agents.h"
+fpos_t fp_pos;
+
 #include "os_crypto/md5/md5_op.h"
 
 char *OS_AddNewAgent(const char *name, const char *ip, const char *id)

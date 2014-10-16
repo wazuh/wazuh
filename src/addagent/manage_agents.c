@@ -26,7 +26,6 @@ time_t time2;
 time_t time3;
 long int rand1;
 long int rand2;
-fpos_t fp_pos;
 
 #include "os_crypto/md5/md5_op.h"
 #include <stdlib.h>
