@@ -15,11 +15,18 @@
 #include "shared.h"
 #include "os_crypto/md5/md5_op.h"
 #include "agentlessd.h"
+agentlessd_config lessdc;
 
-
+static int save_agentless_entry(const char *host, const char *script, const char *agttype);
+static int send_intcheck_msg(const char *script, const char *host, const char *msg);
+static int send_log_msg(const char *script, const char *host, const char *msg);
+static int gen_diff_alert(const char *host, const char *script, time_t alert_diff_time);
+static int check_diff_file(const char *host, const char *script);
+static FILE *open_diff_file(const char *host, const char *script);
+static int run_periodic_cmd(agentlessd_entries *entry, int test_it);
 
 /* Saves agentless entry for the control tools to gather. */
-int save_agentless_entry(char *host, char *script, char *agttype)
+static int save_agentless_entry(const char *host, const char *script, const char *agttype)
 {
     FILE *fp;
     char sys_location[1024 +1];
@@ -45,7 +52,7 @@ int save_agentless_entry(char *host, char *script, char *agttype)
 
 
 /* send integrity checking message. */
-int send_intcheck_msg(char *script, char *host, char *msg)
+static int send_intcheck_msg(const char *script, const char *host, const char *msg)
 {
     char sys_location[1024 +1];
 
@@ -71,7 +78,7 @@ int send_intcheck_msg(char *script, char *host, char *msg)
 
 
 /* Send generic log message. */
-int send_log_msg(char *script, char *host, char *msg)
+static int send_log_msg(const char *script, const char *host, const char *msg)
 {
     char sys_location[1024 +1];
 
@@ -95,9 +102,9 @@ int send_log_msg(char *script, char *host, char *msg)
 
 
 /* Generate diffs alerts. */
-int gen_diff_alert(char *host, char *script, int alert_diff_time)
+static int gen_diff_alert(const char *host, const char *script, time_t alert_diff_time)
 {
-    int n = 0;
+    size_t n;
     FILE *fp;
     char *tmp_str;
     char buf[2048 +1];
@@ -107,7 +114,7 @@ int gen_diff_alert(char *host, char *script, int alert_diff_time)
     diff_alert[4096] = '\0';
 
     snprintf(buf, 2048, "%s/%s->%s/diff.%d",
-             DIFF_DIR_PATH, host, script,  alert_diff_time);
+             DIFF_DIR_PATH, host, script, (int)alert_diff_time);
 
     fp = fopen(buf, "r");
     if(!fp)
@@ -193,9 +200,9 @@ int gen_diff_alert(char *host, char *script, int alert_diff_time)
 
 
 /* Checks if the file has changed */
-int check_diff_file(char *host, char *script)
+static int check_diff_file(const char *host, const char *script)
 {
-    int date_of_change;
+    time_t date_of_change;
     char old_location[1024 +1];
     char new_location[1024 +1];
     char tmp_location[1024 +1];
@@ -244,9 +251,18 @@ int check_diff_file(char *host, char *script)
     /* Saving the old file at timestamp and renaming new to last. */
     date_of_change = File_DateofChange(old_location);
     snprintf(tmp_location, 1024, "%s/%s->%s/state.%d", DIFF_DIR_PATH, host, script,
-             date_of_change);
-    rename(old_location, tmp_location);
-    rename(new_location, old_location);
+             (int)date_of_change);
+
+    if(rename(old_location, tmp_location) != 0)
+    {
+        merror(RENAME_ERROR, ARGV0, old_location);
+        return (0);
+    }
+    if(rename(new_location, old_location) != 0)
+    {
+        merror(RENAME_ERROR, ARGV0, new_location);
+        return (0);
+    }
 
 
     /* Run diff. */
@@ -254,7 +270,7 @@ int check_diff_file(char *host, char *script)
     snprintf(diff_cmd, 2048, "diff \"%s\" \"%s\" > \"%s/%s->%s/diff.%d\" "
              "2>/dev/null",
              tmp_location, old_location,
-             DIFF_DIR_PATH, host, script, date_of_change);
+             DIFF_DIR_PATH, host, script, (int)date_of_change);
     if(system(diff_cmd) != 256)
     {
         merror("%s: ERROR: Unable to run diff for %s->%s",
@@ -273,7 +289,7 @@ int check_diff_file(char *host, char *script)
 
 
 /* get the diff file. */
-FILE *open_diff_file(char *host, char *script)
+static FILE *open_diff_file(const char *host, const char *script)
 {
     FILE *fp = NULL;
     char sys_location[1024 +1];
@@ -314,7 +330,7 @@ FILE *open_diff_file(char *host, char *script)
 
 
 /* Run periodic commands. */
-int run_periodic_cmd(agentlessd_entries *entry, int test_it)
+static int run_periodic_cmd(agentlessd_entries *entry, int test_it)
 {
     int i = 0;
     char *tmp_str;
@@ -426,6 +442,10 @@ int run_periodic_cmd(agentlessd_entries *entry, int test_it)
                 else if((entry->state & LESSD_STATE_DIFF) &&
                         (strncmp(buf, "STORE: ", 7) == 0))
                 {
+                    if(fp_store)
+                    {
+                        fclose(fp_store);
+                    }
                     fp_store = open_diff_file(entry->server[i]+1,
                                               entry->type);
                 }
@@ -510,7 +530,7 @@ void Agentlessd()
     /* Main monitor loop */
     while(1)
     {
-        int i = 0;
+        unsigned int i = 0;
         tm = time(NULL);
         p = localtime(&tm);
 
