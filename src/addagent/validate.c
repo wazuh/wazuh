@@ -30,15 +30,7 @@ char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
     char nid[9];
 
 
-    #ifndef WIN32
-        #ifdef __OpenBSD__
-        srandomdev();
-        #else
-        srandom((unsigned)(time(0) + getpid() + getppid()));
-        #endif
-    #else
-        srandom(time(0) + getpid());
-    #endif
+    srandom_init();
 
     muname = getuname();
 

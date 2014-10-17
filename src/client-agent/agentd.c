@@ -100,11 +100,7 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
 
 
     /* Initial random numbers */
-    #ifdef __OpenBSD__
-    srandomdev();
-    #else
-    srandom( time(0) + getpid()+ pid + getppid());
-    #endif
+    srandom_init();
 
     random();
 

@@ -63,15 +63,7 @@ int main(int argc, char **argv)
     const char *cfg = DEFAULTCPATH;
 
     /* Setuping up random */
-    #ifndef WIN32
-        #ifdef __OpenBSD__
-        srandomdev();
-        #else
-        srandom((unsigned int)time(0));
-        #endif
-    #else
-    srandom(time(0))
-    #endif
+    srandom_init();
 
     /* Setting the name */
     OS_SetName(ARGV0);
