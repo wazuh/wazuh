@@ -1,11 +1,13 @@
 #ifdef WIN32
-#include "Windows.h"
-#endif
-
+#include "windows.h"
+#else
 #include <sys/stat.h> 
 #include <fcntl.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
+#include "debug_op.h"
 
 
 void randombytes(void *ptr, unsigned int length)
@@ -49,11 +51,14 @@ void randombytes(void *ptr, unsigned int length)
 void srandom_init(void)
 {
 
+    #ifndef WIN32
     unsigned int seed; 
     #ifdef __OpenBSD__
     srandomdev();
     #else
     randombytes(&seed, sizeof seed);
     srandom(seed);
-    #endif
+    #endif  // __OpenBSD__
+    #endif  // Win32
+
 }
