@@ -13,12 +13,13 @@
 
 #include "shared.h"
 #include "monitord.h"
-int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, FILE *fp, struct tm *p);
-char *(monthss[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
+#include "os_maild/maild.h"
+
+static const char *(monthss[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
                   "Sep","Oct","Nov","Dec"};
 
 
-void generate_reports(int cday, int cmon, int cyear,struct tm *p)
+void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
 {
     int s = 0;
 

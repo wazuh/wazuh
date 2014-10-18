@@ -16,7 +16,7 @@
 
 
 /* gzips a log file */
-void OS_CompressLog(char *logfile)
+void OS_CompressLog(const char *logfile)
 {
     FILE *log;
     gzFile zlog;
@@ -64,7 +64,7 @@ void OS_CompressLog(char *logfile)
 
     for(;;)
     {
-        len = fread(buf, 1, OS_MAXSTR, log);
+        len = (int) fread(buf, 1, OS_MAXSTR, log);
         if(len <= 0)
             break;
         if(gzwrite(zlog, buf, (unsigned)len) != len)

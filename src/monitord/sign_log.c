@@ -14,9 +14,10 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 
+#include "monitord.h"
 
 /* Signs a log file */
-void OS_SignLog(char *logfile, char *logfile_old, int log_missing)
+void OS_SignLog(const char *logfile, const char *logfile_old, int log_missing)
 {
     os_md5 mf_sum;
     os_md5 mf_sum_old;
@@ -99,6 +100,6 @@ void OS_SignLog(char *logfile, char *logfile_old, int log_missing)
 
     return;
 }
-	
+
 
 /* EOF */

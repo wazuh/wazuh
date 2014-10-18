@@ -14,6 +14,7 @@
 
 #include "shared.h"
 #include "monitord.h"
+monitor_config mond;
 
 
 /* Real monitord global */
@@ -22,7 +23,7 @@ void Monitord()
     time_t tm;
     struct tm *p;
 
-    int today = 0;		
+    int today = 0;
     int thismonth = 0;
     int thisyear = 0;
 
@@ -36,7 +37,7 @@ void Monitord()
 
     /* Getting currently time before starting */
     tm = time(NULL);
-    p = localtime(&tm);	
+    p = localtime(&tm);
 
     today = p->tm_mday;
     thismonth = p->tm_mon;
