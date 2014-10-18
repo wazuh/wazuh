@@ -38,10 +38,14 @@ int main()
 #include "auth.h"
 
 /* TODO: Pulled this value out of the sky, may or may not be sane */
-int POOL_SIZE = 512;
+#define POOL_SIZE 512
+
+static void help_authd(void) __attribute((noreturn));
+static int ssl_error(const SSL* ssl, int ret);
+static void clean_exit(SSL_CTX* ctx, int sock) __attribute__((noreturn));
 
 /* print help statement */
-void help_authd()
+static void help_authd()
 {
     print_header();
     print_out("  %s: -[Vhdti] [-g group] [-D dir] [-p port] [-v path] [-x path] [-k path]", ARGV0);
@@ -66,7 +70,7 @@ void help_authd()
 
 /* Function to use with SSL on non blocking socket,
    to know if SSL operation failed for good */
-int ssl_error(const SSL* ssl, int ret)
+static int ssl_error(const SSL* ssl, int ret)
 {
     if (ret <= 0)
     {
@@ -86,7 +90,7 @@ int ssl_error(const SSL* ssl, int ret)
     return (0);
 }
 
-void clean_exit(SSL_CTX* ctx, int sock)
+static void clean_exit(SSL_CTX* ctx, int sock)
 {
     SSL_CTX_free(ctx);
     close(sock);
@@ -101,11 +105,11 @@ int main(int argc, char **argv)
     // Count of pids we are wait()ing on.
     int c = 0, test_config = 0, use_ip_address = 0, pid = 0, status, i = 0, active_processes = 0;
     int gid = 0, client_sock = 0, sock = 0, port = DEFAULT_PORT, ret = 0;
-    char *dir  = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
-    char *server_cert = NULL;
-    char *server_key = NULL;
-    char *ca_cert = NULL;
+    const char *dir  = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
+    const char *server_cert = NULL;
+    const char *server_key = NULL;
+    const char *ca_cert = NULL;
     char buf[4096 +1];
     SSL_CTX *ctx;
     SSL *ssl;

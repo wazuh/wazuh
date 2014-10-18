@@ -43,15 +43,15 @@
 typedef struct label_t
 {
     char text[DNS_MAX_LABEL_LEN + 1];
-    int len;
+    size_t len;
 }
 label;
 
-int check_x509_cert(SSL *ssl, char *manager);
-int check_subject_alt_names(X509 *cert, char *manager);
-int check_subject_cn(X509 *cert, char *manager);
-int check_hostname(ASN1_STRING *cert_astr, char *manager);
-int check_ipaddr(ASN1_STRING *cert_astr, char *manager);
+int check_x509_cert(const SSL *ssl, const char *manager);
+int check_subject_alt_names(X509 *cert, const char *manager);
+int check_subject_cn(X509 *cert, const char *manager);
+int check_hostname(ASN1_STRING *cert_astr, const char *manager);
+int check_ipaddr(const ASN1_STRING *cert_astr, const char *manager);
 int label_array(const char *domain_name, label result[DNS_MAX_LABELS]);
 int label_valid(const label *label);
 int label_match(const label *label1, const label *label2);
