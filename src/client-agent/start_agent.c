@@ -22,7 +22,7 @@
  */
 int connect_server(int initial_id)
 {
-    int attempts = 2;
+    unsigned int attempts = 2;
     int rc = initial_id;
 
 
@@ -32,7 +32,6 @@ int connect_server(int initial_id)
     if(agt->rip[initial_id] == NULL)
     {
         rc = 0;
-        initial_id = 0;
     }
 
 
@@ -157,7 +156,8 @@ int connect_server(int initial_id)
  */
 void start_agent(int is_startup)
 {
-    int recv_b = 0, attempts = 0, g_attempts = 1;
+    ssize_t recv_b = 0;
+    unsigned int attempts = 0, g_attempts = 1;
 
     char *tmp_msg;
     char msg[OS_MAXSTR +2];

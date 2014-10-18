@@ -25,9 +25,9 @@
 
 #include "agentd.h"
 
-FILE *fp = NULL;
-char file_sum[34] = "";
-char file[OS_SIZE_1024 +1] = "";
+static FILE *fp = NULL;
+static char file_sum[34] = "";
+static char file[OS_SIZE_1024 +1] = "";
 
 
 /* receive_msg:
@@ -35,7 +35,7 @@ char file[OS_SIZE_1024 +1] = "";
  */
 void *receive_msg()
 {
-    int recv_b;
+    ssize_t recv_b;
 
     char buffer[OS_MAXSTR +1];
 
