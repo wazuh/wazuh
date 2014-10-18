@@ -9,6 +9,7 @@
 
 #include <check.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "../os_net/os_net.h"
 #include "../headers/os_err.h"
 
@@ -147,7 +148,6 @@ START_TEST(test_udpv4)
     int server_socket, client_socket;
     char buffer[BUFFERSIZE];
     char *msg;
-    char ipbuffer[BUFFERSIZE];
 
     ck_assert_int_ge((server_socket = OS_Bindportudp(PORT, IPV4, 0)), 0);
 
@@ -179,7 +179,6 @@ START_TEST(test_udpv6)
     int server_socket, client_socket;
     char buffer[BUFFERSIZE];
     char *msg;
-    char ipbuffer[BUFFERSIZE];
 
     ck_assert_int_ge((server_socket = OS_Bindportudp(PORT, IPV6, 1)), 0);
 
@@ -222,11 +221,13 @@ END_TEST
 
 START_TEST(test_unix)
 {
+    int fd;
+
     /* create socket path */
     char socket_path[256];
     strncpy(socket_path, "/tmp/tmp_file-XXXXXX", 256);
-    mkstemp(socket_path);
-    close(socket_path);
+    fd = mkstemp(socket_path);
+    close(fd);
 
     int server_socket, client_socket;
     const int msg_size = 2048;
@@ -263,7 +264,7 @@ START_TEST(test_unixinvalidsockets)
 
     ck_assert_int_eq(OS_SendUnix(-1, SENDSTRING, strlen(SENDSTRING)), OS_SOCKTERR);
 
-    ck_assert_int_eq(OS_RecvUnix(-1, buffer, BUFFERSIZE), 0);
+    ck_assert_int_eq(OS_RecvUnix(-1, BUFFERSIZE, buffer), 0);
 }
 END_TEST
 

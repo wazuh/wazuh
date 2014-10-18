@@ -49,7 +49,7 @@ script:
   && ( cd src/ && make --warn-undefined-variables ${COMMAND} settings && make --warn-undefined-variables ${COMMAND} -j )
   && if ! [[ "$OSSEC_TYPE" = "test" || "$OSSEC_TYPE" = "winagent" ]]; then ( cd src/ && sudo make --warn-undefined-variables ${COMMAND} install ) fi
 
-- if [[ "$OSSEC_TYPE" == "test" ]]; then ( cd src/tests/ && make --warn-undefined-variables run_valgrind ); fi
+- if [[ "$OSSEC_TYPE" == "test" ]]; then ( cd src/ && make --warn-undefined-variables test_valgrind ) fi
 
 before_deploy:
 - mkdir travis-builds
