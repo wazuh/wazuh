@@ -13,10 +13,10 @@
 
 #include "shared.h"
 
-
+static void help_reportd(void) __attribute__((noreturn));
 
 /* print help statement */
-void help_reportd()
+static void help_reportd()
 {
     print_header();
     print_out("  Generate reports (via stdin)");
@@ -50,15 +50,15 @@ int main(int argc, char **argv)
 {
     int c, test_config = 0;
     int uid=0,gid=0;
-    char *dir  = DEFAULTDIR;
-    char *user = USER;
-    char *group = GROUPGLOBAL;
+    const char *dir  = DEFAULTDIR;
+    const char *user = USER;
+    const char *group = GROUPGLOBAL;
 
-    char *filter_by = NULL;
-    char *filter_value = NULL;
+    const char *filter_by = NULL;
+    const char *filter_value = NULL;
 
-    char *related_of = NULL;
-    char *related_values = NULL;
+    const char *related_of = NULL;
+    const char *related_values = NULL;
     report_filter r_filter;
 
 
