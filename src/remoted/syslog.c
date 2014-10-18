@@ -17,12 +17,12 @@
 
 #include "remoted.h"
 
-
+static int OS_IPNotAllowed(const char *srcip);
 
 /* OS_IPNotAllowed, v0.1, 2005/02/11
  * Checks if an IP is not allowed.
  */
-static int OS_IPNotAllowed(char *srcip)
+static int OS_IPNotAllowed(const char *srcip)
 {
     if(logr.denyips != NULL)
     {
@@ -54,7 +54,7 @@ void HandleSyslog()
 
     char *buffer_pt = NULL;
 
-    int recv_b;
+    ssize_t recv_b;
 
     struct sockaddr_in peer_info;
     socklen_t peer_size;

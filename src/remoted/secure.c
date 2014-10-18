@@ -33,7 +33,7 @@ void HandleSecure()
     char srcmsg[OS_FLSIZE +1];
 
 
-    int recv_b;
+    ssize_t recv_b;
 
     struct sockaddr_in peer_info;
     socklen_t peer_size;
@@ -206,7 +206,7 @@ void HandleSecure()
             memcpy(&keys.keyentries[agentid]->peer_info, &peer_info, peer_size);
             keys.keyentries[agentid]->rcvd = time(0);
 
-            save_controlmsg(agentid, tmp_msg);
+            save_controlmsg((unsigned)agentid, tmp_msg);
 
             continue;
         }

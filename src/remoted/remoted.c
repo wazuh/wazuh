@@ -25,7 +25,8 @@
 #include "os_net/os_net.h"
 
 #include "remoted.h"
-
+keystore keys;
+remoted logr;
 
 
 /** void HandleRemote(int position, int uid) v0.2 2005/11/09
@@ -112,8 +113,6 @@ void HandleRemote(int position, int uid)
     {
         HandleSyslog();
     }
-
-    return;
 }
 
 

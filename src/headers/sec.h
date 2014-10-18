@@ -103,7 +103,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
                  int id, unsigned int buffer_size) __attribute((nonnull));
 
 /* Creates an ossec message (encrypts and compress) */
-size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, int id) __attribute((nonnull));
+size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, unsigned int id) __attribute((nonnull));
 
 
 
