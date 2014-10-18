@@ -15,7 +15,8 @@ void randombytes(void *ptr, unsigned int length)
 
     char failed = 0;
 
-#ifdef WIN32
+    #ifdef WIN32
+
     static HCRYPTPROV prov = 0;
     if (prov == 0) {
         if (!CryptAcquireContext(&prov, NULL, NULL, PROV_RSA_FULL, 0)) {
@@ -26,27 +27,25 @@ void randombytes(void *ptr, unsigned int length)
         failed = 1;
     }
 
-#else
-    FILE *fh;
+    #else
+
+    int fh;
     if ((fh = open("/dev/urandom", O_RDONLY)) >= 0 || (fh = open("/dev/random", O_RDONLY)) >= 0) {
-        if (fread(ptr, length, 1, fh) == 0) {
+        if (read(fh, ptr, length) == 0) {
             failed = 1;
         }
-        fclose(fh);
+        close(fh);
     } else {
         failed = 1;
     }
-#endif
-    /*
-     * yes, this is horrible error handling but we don't have better
-     * options from here and I don't want to start changing the design
-     * of the library
-     */
+
+    #endif
+
     if (failed) {
         ErrorExit("Error in randombytes failed on all possiable methods for accessing random data");
-        exit(1);
     }
 }
+
 
 void srandom_init(void)
 {
