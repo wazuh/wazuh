@@ -234,6 +234,11 @@ int label_array(const char *domain_name, label result[DNS_MAX_LABELS])
     }
     while(*label_end++ != '\0');
 
+    if(label_count == 0)
+    {
+        return VERIFY_FALSE;
+    }
+
     /* If the length of the last label is zero ignore it. This is the only
      * valid position for a label of length zero which occurs when a FQDN
      * is given.

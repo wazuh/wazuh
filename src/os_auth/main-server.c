@@ -120,7 +120,7 @@ int main(int argc, char **argv)
 
     /* Initializing some variables */
     memset(srcip, '\0', IPSIZE + 1);
-    memset(process_pool, 0x0, POOL_SIZE);
+    memset(process_pool, 0x0, POOL_SIZE * sizeof(*process_pool));
 
     bio_err = 0;
 
@@ -234,6 +234,7 @@ int main(int argc, char **argv)
         merror("%s: ERROR: Unable to open %s (key file)", ARGV0, KEYSFILE_PATH);
         exit(1);
     }
+    fclose(fp);
 
 
     /* Starting SSL */
@@ -362,9 +363,9 @@ int main(int argc, char **argv)
                     {
                         merror("%s: ERROR: Invalid agent name: %s from %s", ARGV0, agentname, srcip);
                         snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                        ret = SSL_write(ssl, response, strlen(response));
+                        SSL_write(ssl, response, strlen(response));
                         snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        ret = SSL_write(ssl, response, strlen(response));
+                        SSL_write(ssl, response, strlen(response));
                         sleep(1);
                         exit(0);
                     }
@@ -380,9 +381,9 @@ int main(int argc, char **argv)
                         {
                             merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
                             snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                            ret = SSL_write(ssl, response, strlen(response));
+                            SSL_write(ssl, response, strlen(response));
                             snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                            ret = SSL_write(ssl, response, strlen(response));
+                            SSL_write(ssl, response, strlen(response));
                             sleep(1);
                             exit(0);
                         }
@@ -403,9 +404,9 @@ int main(int argc, char **argv)
                     {
                         merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
                         snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
-                        ret = SSL_write(ssl, response, strlen(response));
+                        SSL_write(ssl, response, strlen(response));
                         snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        ret = SSL_write(ssl, response, strlen(response));
+                        SSL_write(ssl, response, strlen(response));
                         sleep(1);
                         exit(0);
                     }
