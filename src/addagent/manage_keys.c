@@ -132,14 +132,14 @@ int k_import(const char *cmdimport)
                     }
 
                     #ifndef WIN32
-                    if (chmod(tmp_path, 0440))
+                    if (chmod(tmp_path, 0440) == -1)
                     {
                         if (unlink(tmp_path))
                         {
                             verbose(DELETE_ERROR, ARGV0, tmp_path, errno, strerror(errno));
                         }
 
-                        ErrorExit(CHMOD_ERROR, ARGV0, tmp_path, errno ,strerror(errno));
+                        ErrorExit(CHMOD_ERROR, ARGV0, tmp_path, errno, strerror(errno));
                     }
                     #endif
 
@@ -429,7 +429,7 @@ int k_bulkload(const char *cmdbulk)
         #ifndef WIN32
         if(chmod(AUTH_FILE, 0440) == -1)
         {
-            ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno ,strerror(errno));
+            ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
         }
         #endif
 
