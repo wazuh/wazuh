@@ -16,9 +16,10 @@
 #include "monitord.h"
 #include "os_net/os_net.h"
 
+static void help_monitord(void) __attribute__((noreturn));
 
 /* print help statement */
-void help_monitord()
+static void help_monitord()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -42,10 +43,10 @@ int main(int argc, char **argv)
 {
     int c, test_config = 0, run_foreground = 0;
     int uid=0,gid=0;
-    char *dir  = DEFAULTDIR;
-    char *user = USER;
-    char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    const char *dir  = DEFAULTDIR;
+    const char *user = USER;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
     /* Initializing global variables */
     mond.a_queue = 0;
@@ -109,15 +110,15 @@ int main(int argc, char **argv)
 
 
     /* Getting config options */
-    mond.day_wait = getDefine_Int("monitord",
+    mond.day_wait = (unsigned short) getDefine_Int("monitord",
                                   "day_wait",
                                   5,240);
-    mond.compress = getDefine_Int("monitord",
+    mond.compress = (short) getDefine_Int("monitord",
                                   "compress",
                                   0,1);
-    mond.sign = getDefine_Int("monitord","sign",0,1);
+    mond.sign = (short) getDefine_Int("monitord","sign",0,1);
 
-    mond.monitor_agents = getDefine_Int("monitord","monitor_agents",0,1);
+    mond.monitor_agents = (short) getDefine_Int("monitord","monitor_agents",0,1);
 
     mond.agents = NULL;
     mond.smtpserver = NULL;
