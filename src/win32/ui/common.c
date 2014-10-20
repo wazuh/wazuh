@@ -414,25 +414,14 @@ int run_cmd(char *cmd, HWND hwnd)
 {
     int result;
     int cmdlen;
-    char *comspec;
     STARTUPINFO si;
     PROCESS_INFORMATION pi;
     DWORD exit_code;
 
-    /* Get cmd location from environment */
-    comspec = getenv("COMSPEC");
-    if (comspec == NULL || strncmp(comspec, "", strlen(comspec) == 0))
-    {
-        MessageBox(hwnd, "Could not determine the location of "
-                         "cmd.exe using the COMSPEC environment variable.",
-                         "Error -- Failure Locating cmd.exe",MB_OK);
-        return(0);
-    }
-
     /* Build command */
-    cmdlen = strlen(comspec) + 5 + strlen(cmd);
+    cmdlen = strlen(COMSPEC) + 5 + strlen(cmd);
     char finalcmd[cmdlen];
-    snprintf(finalcmd, cmdlen, "%s /c %s", comspec, cmd);
+    snprintf(finalcmd, cmdlen, "%s /c %s", COMSPEC, cmd);
 
     /* Log command being run */
     log2file("%s: INFO: Running the following command (%s)", ARGV0, finalcmd);
@@ -474,18 +463,16 @@ int run_cmd(char *cmd, HWND hwnd)
 /* Set OSSEC Server IP */
 int set_ossec_server(char *ip, HWND hwnd)
 {
-    FILE *fp;
     const char **xml_pt = NULL;
     const char *(xml_serverip[])={"ossec_config","client","server-ip", NULL};
     const char *(xml_serverhost[])={"ossec_config","client","server-hostname", NULL};
-    char *cacls;
-    int cmdlen;
 
-    /* Build command line to change permissions */
-    cacls = "echo y|cacls \"%s\" /T /G Administrators:f";
-    cmdlen = strlen(cacls) + strlen(NEWCONFIG);
-    char cmd[cmdlen];
-    snprintf(cmd, cmdlen, cacls, NEWCONFIG);
+    char config_tmp[] = CONFIG;
+    char *conf_file = basename_ex(config_tmp);
+
+    char tmp_path[strlen(TMP_DIR) + 1 + strlen(conf_file) + 6 + 1];
+
+    snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, conf_file);
 
     /* Verifying IP Address */
     if(OS_IsValidIP(ip, NULL) != 1)
@@ -496,8 +483,8 @@ int set_ossec_server(char *ip, HWND hwnd)
         if(!s_ip)
         {
             MessageBox(hwnd, "Invalid Server IP Address.\r\n"
-                             "It must be the valid Ipv4 address of the "
-                             "OSSEC server or its resolvable hostname.",
+                             "It must be the valid IPv4 address of the "
+                             "OSSEC server or the resolvable hostname.",
                              "Error -- Failure Setting IP",MB_OK);
             return(0);
         }
@@ -510,49 +497,58 @@ int set_ossec_server(char *ip, HWND hwnd)
         xml_pt = xml_serverip;
     }
 
-    /* Create file */
-    fp = fopen(NEWCONFIG, "w");
-    if(fp)
+    /* Create temporary file */
+    if(mkstemp_ex(tmp_path) == -1)
     {
-        fclose(fp);
-    }
-    else
-    {
-        MessageBox(hwnd, "Could not create configuration file.",
+        MessageBox(hwnd, "Could not create temporary file.",
                          "Error -- Failure Setting IP",MB_OK);
         return(0);
     }
 
-    /* Change permissions */
-    if (run_cmd(cmd, hwnd))
+    /* Reading the XML. Printing error and line number. */
+    if(OS_WriteXML(CONFIG, tmp_path, xml_pt, NULL, ip) != 0)
     {
-        MessageBox(hwnd, "Unable to set permissions on new configuration file.",
+        MessageBox(hwnd, "Unable to set OSSEC Server IP Address.\r\n"
+                         "(Internal error on the XML Write).",
                          "Error -- Failure Setting IP",MB_OK);
 
-        /* Remove config */
-        if(unlink(NEWCONFIG))
+        if (unlink(tmp_path))
         {
-            MessageBox(hwnd, "Unable to remove new configuration file.",
-                             "Error -- Failure Setting IP",MB_OK);
+            MessageBox(hwnd, "Could not delete temporary file.",
+                             "Error -- Failure Deleting Temporary File",MB_OK);
         }
 
         return(0);
     }
 
-    /* Reading the XML. Printing error and line number. */
-    if(OS_WriteXML(CONFIG, NEWCONFIG, xml_pt,
-                   NULL, ip) != 0)
+    /* Renaming config files */
+    if (rename_ex(CONFIG, LASTCONFIG))
     {
-        MessageBox(hwnd, "Unable to set OSSEC Server IP Address.\r\n"
-                         "(Internal error on the XML Write).",
-                         "Error -- Failure Setting IP",MB_OK);
+        MessageBox(hwnd, "Unable to backup configuration.",
+                         "Error -- Failure Backing Up Configuration",MB_OK);
+
+        if (unlink(tmp_path))
+        {
+            MessageBox(hwnd, "Could not delete temporary file.",
+                             "Error -- Failure Deleting Temporary File",MB_OK);
+        }
+
         return(0);
     }
 
-    /* Renaming config files */
-    unlink(LASTCONFIG);
-    rename(CONFIG, LASTCONFIG);
-    rename(NEWCONFIG, CONFIG);
+    if (rename_ex(tmp_path, CONFIG))
+    {
+        MessageBox(hwnd, "Unable rename temporary file.",
+                         "Error -- Failure Renaming Temporary File",MB_OK);
+
+        if (unlink(tmp_path))
+        {
+            MessageBox(hwnd, "Could not delete temporary file.",
+                             "Error -- Failure Deleting Temporary File",MB_OK);
+        }
+
+        return(0);
+    }
 
     return(1);
 }
@@ -562,45 +558,23 @@ int set_ossec_server(char *ip, HWND hwnd)
 int set_ossec_key(char *key, HWND hwnd)
 {
     FILE *fp;
-    char *cacls;
-    int cmdlen;
 
-    /* Build command line to change permissions */
-    cacls = "echo y|cacls \"%s\" /T /G Administrators:f";
-    cmdlen = strlen(cacls) + strlen(AUTH_FILE);
-    char cmd[cmdlen];
-    snprintf(cmd, cmdlen, cacls, AUTH_FILE);
+    char auth_file_tmp[] = AUTH_FILE;
+    char *keys_file = basename_ex(auth_file_tmp);
 
-    /* Create file */
-    fp = fopen(AUTH_FILE, "w");
-    if(fp)
+    char tmp_path[strlen(TMP_DIR) + 1 + strlen(keys_file) + 6 + 1];
+
+    snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, keys_file);
+
+    /* Create temporary file */
+    if(mkstemp_ex(tmp_path) == -1)
     {
-        fclose(fp);
-    }
-    else
-    {
-        MessageBox(hwnd, "Could not open auth key file.",
-                         "Error -- Failure Importing Key", MB_OK);
+        MessageBox(hwnd, "Could not create temporary file.",
+                         "Error -- Failure Setting IP",MB_OK);
         return(0);
     }
 
-    /* Change permissions */
-    if (run_cmd(cmd, hwnd))
-    {
-        MessageBox(hwnd, "Unable to set permissions on auth key file.",
-                         "Error -- Failure Importing Key", MB_OK);
-
-        /* Remove config */
-        if(unlink(AUTH_FILE))
-        {
-            MessageBox(hwnd, "Unable to remove auth key file.",
-                             "Error -- Failure Importing Key", MB_OK);
-        }
-
-        return(0);
-    }
-
-    fp = fopen(AUTH_FILE, "w");
+    fp = fopen(tmp_path, "w");
     if(fp)
     {
         fprintf(fp, "%s", key);
@@ -608,8 +582,29 @@ int set_ossec_key(char *key, HWND hwnd)
     }
     else
     {
-        MessageBox(hwnd, "Could not open auth key file for write.",
-                         "Error -- Failure Importing Key", MB_OK);
+        MessageBox(hwnd, "Could not open temporary file for write.",
+                         "Error -- Failure Importing Key",MB_OK);
+
+        if (unlink(tmp_path))
+        {
+            MessageBox(hwnd, "Could not delete temporary file.",
+                             "Error -- Failure Deleting Temporary File",MB_OK);
+        }
+
+        return(0);
+    }
+
+    if (rename_ex(tmp_path, AUTH_FILE))
+    {
+        MessageBox(hwnd, "Unable to rename temporary file.",
+                         "Error -- Failure Renaming Temporary File",MB_OK);
+
+        if (unlink(tmp_path))
+        {
+            MessageBox(hwnd, "Could not delete temporary file.",
+                             "Error -- Failure Deleting Temporary File",MB_OK);
+        }
+
         return(0);
     }
 

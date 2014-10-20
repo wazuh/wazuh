@@ -143,6 +143,7 @@ Section "OSSEC Agent (required)" MainSec
     CreateDirectory "$INSTDIR\shared"
     CreateDirectory "$INSTDIR\active-response"
     CreateDirectory "$INSTDIR\active-response\bin"
+    CreateDirectory "$INSTDIR\tmp"
 
     ; install files
     File ossec-lua.exe
@@ -418,6 +419,7 @@ Section "Uninstall"
     Delete "$INSTDIR\shared\*"
     Delete "$INSTDIR\active-response\bin\*"
     Delete "$INSTDIR\active-response\*"
+    Delete "$INSTDIR\tmp\*"
     Delete "$INSTDIR"
 
     ; remove shortcuts
@@ -433,5 +435,6 @@ Section "Uninstall"
     RMDir "$INSTDIR\rids"
     RMDir "$INSTDIR\active-response\bin"
     RMDir "$INSTDIR\active-response"
+    RMDir "$INSTDIR\tmp"
     RMDir "$INSTDIR"
 SectionEnd
