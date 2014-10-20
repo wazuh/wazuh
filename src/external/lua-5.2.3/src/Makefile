@@ -6,8 +6,10 @@
 # Your platform. See PLATS for possible values.
 PLAT= none
 
+PREFIX?=/var/ossec
+
 #CC= gcc
-CFLAGS= -O2 -Wall -DLUA_COMPAT_ALL $(SYSCFLAGS) $(MYCFLAGS)
+CFLAGS= -O2 -Wall -DLUA_COMPAT_ALL -DPREFIX=\"$(PREFIX)\" $(SYSCFLAGS) $(MYCFLAGS)
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
 LIBS= -lm $(SYSLIBS) $(MYLIBS)
 

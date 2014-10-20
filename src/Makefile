@@ -299,6 +299,9 @@ install-common: build
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
 
 	install -d -m 0550 -o root -g 0 ${PREFIX}/bin
+	install -d -m 0550 -o root -g 0 ${PREFIX}/lua
+	install -d -m 0550 -o root -g 0 ${PREFIX}/lua/native
+	install -d -m 0550 -o root -g 0 ${PREFIX}/lua/compiled
 	install -m 0550 -o root -g 0 ossec-logcollector ${PREFIX}/bin
 	install -m 0550 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
 	install -m 0550 -o root -g 0 ossec-execd ${PREFIX}/bin
