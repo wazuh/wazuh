@@ -26,8 +26,10 @@
    #define ARGV0 "ossec-agentd"
 #endif
 
+static void help_agentd(void) __attribute((noreturn));
+
 /* print help statement */
-void help_agentd()
+static void help_agentd()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -54,10 +56,10 @@ int main(int argc, char **argv)
     int test_config = 0;
     int debug_level = 0;
 
-    char *dir = DEFAULTDIR;
-    char *user = USER;
-    char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    const char *dir = DEFAULTDIR;
+    const char *user = USER;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
     int uid = 0;
     int gid = 0;

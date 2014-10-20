@@ -29,7 +29,7 @@
  */
 void *EventForward()
 {
-    int recv_b;
+    ssize_t recv_b;
     char msg[OS_MAXSTR +1];
 
 
