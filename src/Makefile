@@ -36,6 +36,7 @@ DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
 
 LDFLAGS+=-lm
 
+ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		DEFINES+=-DINOTIFY_ENABLED
 #		DEFINES+=-DUSE_MAGIC
@@ -87,6 +88,7 @@ endif # Darwin
 endif # SunOS
 endif # AIX
 endif # Linux
+endif # winagent
 
 ifdef DEBUGAD
 	DEFINES+=+DDEBUGAD
@@ -139,7 +141,7 @@ ifneq (,$(filter ${USE_INOTIFY},auto yes y Y 1))
 		LDFLAGS+=-linotify -L/usr/local/lib -I/usr/local/include
 		CFLAGS+=-I/usr/local/include
 	endif
-		
+
 endif
 
 ifneq (,$(filter ${USE_PRELUDE},auto yes y Y 1))
@@ -561,12 +563,39 @@ hybrid: ${BUILD_SERVER}
 agent: ${BUILD_AGENT}
 
 
+MING_BASE:=unknown
+ifneq (,$(shell which amd64-mingw32msvc-gcc))
+	MING_BASE:=amd64-mingw32msvc
+else
+ifneq (,$(shell which i686-pc-mingw32-gcc))
+	MING_BASE:=i686-pc-mingw32
+else
+ifneq (,$(shell which i686-w64-mingw32-gcc))
+	MING_BASE:=i686-w64-mingw32
+else
+	MING_BASE:=unknown2
+endif
+endif
+endif
+
+WINDRES:=${MING_BASE}-windres
+CROSS_CC:=${MING_BASE}-gcc
+WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe
+
 .PHONY: winagent
 winagent:
-	# enable old working windows build for travis
-	#${MAKE} -f Makefile.mingw
-	( cd win32 && /bin/sh ./gen_win.sh )
-	( cd win-pkg && /bin/sh ./make.sh )
+	${MAKE} ${WINDOWS_BINS} CC="${CROSS_CC} -DWIN32 -I./${EXTERNAL_ZLIB}" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -mwindows"
+	cd ${EXTERNAL_LUA}src/ && ${MAKE} -f Makefile.mingw mingw
+	cp ${EXTERNAL_LUA}src/ossec-lua.exe win32/
+	cp ${EXTERNAL_LUA}src/ossec-luac.exe win32/
+	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
+	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
+	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
+	cd win32/ && ./unix2dos.pl ../../etc/local_internal_options-win.conf > default-local_internal_options.conf
+	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
+	cd win32/ && ./unix2dos.pl ../../active-response/win/route-null.cmd > route-null.cmd
+	cd win32/ && ./unix2dos.pl ../../active-response/win/restart-ossec.cmd > restart-ossec.cmd
+	cd win32/ && makensis ossec-installer.nsi
 
 
 ####################
@@ -716,8 +745,8 @@ os_crypto/md5_sha1/%.o: os_crypto/md5_sha1/%.c
 crypto_shared_c := $(wildcard os_crypto/shared/*.c)
 crypto_shared_o := $(crypto_shared_c:.c=.o)
 
-os_crypto/shared/%.o: os_crypto/shared/%.c
-	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
+os_crypto/shared/%.o: os_crypto/shared/%.c ${ZLIB_LIB}
+	${OSSEC_CC} ${CFLAGS} -c $< -o $@
 
 
 crypto_o := ${crypto_blowfish_o} \
@@ -793,9 +822,13 @@ ossec-execd: ${os_execd_o} ${ossec_libs} ${JSON_LIB}
 
 os_logcollector_c := $(wildcard logcollector/*.c)
 os_logcollector_o := $(os_logcollector_c:.c=.o)
+os_logcollector_eventchannel_o := $(os_logcollector_c:.c=-event.o)
 
 logcollector/%.o: logcollector/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-logcollector\" -c $^ -o $@
+
+logcollector/%-event.o: logcollector/%.c
+	${OSSEC_CC} ${CFLAGS} -DEVENTCHANNEL_SUPPORT -DARGV0=\"ossec-logcollector\" -c $^ -o $@
 
 ossec-logcollector: ${os_logcollector_o} ${ossec_libs}
 	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
@@ -813,7 +846,7 @@ ossec-remoted: ${remoted_o} ${ossec_libs} ${ZLIB_LIB}
 
 #### ossec-agentd ####
 
-client_agent_c := $(wildcard ./client-agent/*.c)
+client_agent_c := $(wildcard client-agent/*.c)
 client_agent_o := $(client_agent_c:.c=.o)
 
 client-agent/%.o: client-agent/%.c
@@ -875,12 +908,16 @@ ossec-regex: util/ossec-regex.o ${ossec_libs} ${ZLIB_LIB}
 
 rootcheck_c := $(wildcard rootcheck/*.c)
 rootcheck_o := $(rootcheck_c:.c=.o)
+rootcheck_rk_o := $(rootcheck_c:.c=_rk.o)
 rootcheck_o_lib := $(filter-out rootcheck/rootcheck-config.o, ${rootcheck_o})
 rootcheck_o_cmd := $(filter-out rootcheck/config.o, ${rootcheck_o})
 
 
 rootcheck/%.o: rootcheck/%.c
 	${OSSEC_CC} ${CFLAGS} -DARGV0=\"rootcheck\" -c $^ -o $@
+
+rootcheck/%_rk.o: rootcheck/%.c
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"rootcheck\" -UOSSECHIDS -c $^ -o $@
 
 
 rootcheck.a: ${rootcheck_o_lib}
@@ -1125,6 +1162,60 @@ test_coverage: build_tests
 test-rules:
 	( cd ../contrib/ossec-testing && sudo python runtests.py)
 
+
+####################
+#### windows #######
+####################
+
+win32/icon.o: win32/icofile.rc
+	${WINDRES} -i win32/icofile.rc -o win32/icon.o
+
+win32_c := $(wildcard win32/*.c)
+win32_o := $(win32_c:.c=.o)
+
+win32/%.o: win32/%.c
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-agent\" -c $^ -o $@
+
+win32/%_rk.o: win32/%.c
+	${OSSEC_CC} ${CFLAGS} -UOSSECHIDS -DARGV0=\"ossec-agent\" -c $^ -o $@
+
+win32_ui_c := $(wildcard win32/ui/*.c)
+win32_ui_o := $(win32_ui_c:.c=.o)
+
+win32/ui/%.o: win32/ui/%.c
+	${OSSEC_CC} ${CFLAGS} -UOSSECHIDS -DARGV0=\"ossec-win32ui\" -c $^ -o $@
+
+win32/ossec-agent.exe: win32/icon.o win32/win_agent.o win32/win_service.o ${syscheck_o} ${rootcheck_o} $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main.o, ${os_logcollector_o}) ${os_execd_o} ${ossec_libs} ${ZLIB_LIB}
+	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+win32/ossec-agent-eventchannel.exe: win32/icon.o win32/win_agent.o win32/win_service.o ${syscheck_o} ${rootcheck_o} $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) ${os_execd_o} ${ossec_libs} ${ZLIB_LIB}
+	${OSSEC_CCBIN} -DARGV0=\"ossec-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+win32/ossec-rootcheck.exe: win32/icon.o win32/win_service_rk.o ${rootcheck_rk_o} ${ossec_libs}
+	${OSSEC_CCBIN} -DARGV0=\"ossec-rootcheck\" ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+win32/manage_agents.exe: win32/win_service_rk.o ${addagent_o} ${ossec_libs} ${ZLIB_LIB}
+	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+win32/setup-windows.exe: win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o ${ossec_libs}
+	${OSSEC_CCBIN} -DARGV0=\"setup-windows\" ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+win32/setup-syscheck.exe: win32/setup-syscheck.o win32/setup-shared.o ${ossec_libs}
+	${OSSEC_CCBIN} -DARGV0=\"setup-syscheck\" ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+win32/setup-iis.exe: win32/setup-iis.o ${ossec_libs}
+	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+win32/add-localfile.exe: win32/add-localfile.o ${ossec_libs}
+	${OSSEC_CCBIN} -DARGV0=\"add-localfile\" ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+win32/resource.o: win32/ui/win32ui.rc
+	${WINDRES} -o win32/resource.o win32/ui/win32ui.rc
+
+win32/os_win32ui.exe: win32/resource.o win32/win_service_rk.o ${win32_ui_o} addagent/b64.o ${ossec_libs}
+	${OSSEC_CCBIN} -DCLIENT -DARGV0=\"ossec-win32ui\" ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+
 ####################
 #### Clean #########
 ####################
@@ -1156,13 +1247,13 @@ clean-internals:
 	rm -f ${os_dbd_o} ossec-dbd
 	rm -f ${os_agentlessd_o} ossec-agentlessd
 	rm -f ${os_execd_o} ossec-execd
-	rm -f ${os_logcollector_o} ossec-logcollector
+	rm -f ${os_logcollector_o} ${os_logcollector_eventchannel_o} ossec-logcollector
 	rm -f ${remoted_o} ossec-remoted
 	rm -f ${report_o} ossec-reportd
 	rm -f ${client_agent_o} ossec-agentd
 	rm -f ${addagent_o} manage_agents
 	rm -f ${util_o} ${util_programs}
-	rm -f ${rootcheck_o} rootcheck.a
+	rm -f ${rootcheck_o} ${rootcheck_rk_o} rootcheck.a
 	rm -f ${syscheck_o} ossec-syscheckd
 	rm -f ${monitor_o} ossec-monitord
 	rm -f ${os_auth_o} ossec-authd agent-auth
@@ -1173,8 +1264,17 @@ clean-windows-old:
 	rm -rf win-pkg/
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt
-	rm -f win32/internal_options-win.conf
-	rm -f win32/local_internal_options-win.conf
-	rm -f win32/ossec-win.conf
+	rm -f win32/internal_options.conf
+	rm -f win32/default-local_internal_options.conf
+	rm -f win32/default-ossec.conf
 	rm -f win32/restart-ossec.cmd
 	rm -f win32/route-null.cmd
+	rm -f ${win32_o} ${win32_ui_o} win32/win_service_rk.o
+	rm -f win32/icon.o win32/resource.o
+	rm -f ${WINDOWS_BINS}
+	rm -f external/lua-5.2.3/src/lua52.dll
+	rm -f external/lua-5.2.3/src/ossec-lua.exe
+	rm -f external/lua-5.2.3/src/ossec-luac.exe
+	rm -f win32/ossec-lua.exe
+	rm -f win32/ossec-luac.exe
+	rm -f win32/ossec-win32-agent.exe
