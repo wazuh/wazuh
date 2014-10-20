@@ -42,7 +42,7 @@ void randombytes(void *ptr, unsigned int length)
     #endif
 
     if (failed) {
-        ErrorExit("Error in randombytes failed on all possiable methods for accessing random data");
+        ErrorExit("Error in randombytes failed on all possible methods for accessing random data");
     }
 }
 
