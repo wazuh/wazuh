@@ -243,9 +243,6 @@ void HandleSyslogTCP()
             close(client_socket);
             continue;
         }
-
-        /* The parent process should not reach here */
-        return;
     }
 }
 
