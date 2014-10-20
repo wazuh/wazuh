@@ -28,7 +28,7 @@
 /* Logreader config */
 typedef struct _logreader
 {
-    unsigned int size;
+    off_t size;
     int ign;
 
     #ifdef WIN32
@@ -51,8 +51,8 @@ typedef struct _logreader
     char *alias;
     char future;
     char *query;
-	
-    void (*read)(int i, int *rc, int drop_it);
+
+    void *(*read)(int i, int *rc, int drop_it);
 
     FILE *fp;
 }logreader;

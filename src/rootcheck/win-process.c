@@ -73,7 +73,7 @@ int os_win32_setdebugpriv(HANDLE h, int en)
 
 
 /* os_get_process_list: Get list of win32 processes */
-void *os_get_process_list()
+OSList *os_get_process_list()
 {
     OSList *p_list = NULL;
 
@@ -198,7 +198,7 @@ void *os_get_process_list()
     os_win32_setdebugpriv(hpriv, 0);
 
     CloseHandle(hsnap);
-    return((void *)p_list);
+    return(p_list);
 }
 
 #endif /* WIN32 */

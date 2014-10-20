@@ -24,7 +24,7 @@ void *read_multiline(int pos, int *rc, int drop_it)
     int __ms = 0;
     int linecount;
     int linesgot = 0;
-    int buffer_size = 0;
+    size_t buffer_size = 0;
     char *p;
     char str[OS_MAXSTR + 1];
     char buffer[OS_MAXSTR +1];

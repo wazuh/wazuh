@@ -14,18 +14,19 @@
 #include "shared.h"
 #include "rootcheck.h"
 
-int _sys_errors;
-int _sys_total;
-dev_t did;
+static int _sys_errors;
+static int _sys_total;
+static dev_t did;
 
-FILE *_wx;
-FILE *_ww;
-FILE *_suid;
+static FILE *_wx;
+static FILE *_ww;
+static FILE *_suid;
 
 /** Prototypes **/
-int read_sys_dir(char *dir_name, int do_read);
+static int read_sys_file(const char *file_name, int do_read);
+static int read_sys_dir(const char *dir_name, int do_read);
 
-int read_sys_file(char *file_name, int do_read)
+static int read_sys_file(const char *file_name, int do_read)
 {
     struct stat statbuf;
 
@@ -77,7 +78,7 @@ int read_sys_file(char *file_name, int do_read)
     {
         char buf[OS_SIZE_1024];
         int fd;
-        int nr;
+        ssize_t nr;
         long int total = 0;
 
         fd = open(file_name, O_RDONLY, 0);
@@ -167,7 +168,7 @@ int read_sys_file(char *file_name, int do_read)
 /* read_dir v0.1
  *
  */
-int read_sys_dir(char *dir_name, int do_read)
+static int read_sys_dir(const char *dir_name, int do_read)
 {
     int i = 0;
     unsigned int entry_count = 0;
@@ -178,7 +179,7 @@ int read_sys_dir(char *dir_name, int do_read)
     struct stat statbuf;
 
     #ifndef WIN32
-    char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
+    const char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
                                  "/usr/sbin", "/dev", "/etc",
                                  "/boot", NULL };
     #endif
@@ -357,7 +358,7 @@ int read_sys_dir(char *dir_name, int do_read)
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
                 _sys_errors++;
             }
-            #elif Darwin || FreeBSD
+            #elif defined(Darwin) || defined(FreeBSD)
             if(strncmp(dir_name, "/dev", strlen("/dev")) != 0)
             {
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
@@ -382,7 +383,7 @@ int read_sys_dir(char *dir_name, int do_read)
 /*  check_rc_sys: v0.1
  *  Scan the whole filesystem looking for possible issues
  */
-void check_rc_sys(char *basedir)
+void check_rc_sys(const char *basedir)
 {
     char file_path[OS_SIZE_1024 +1];
 
@@ -425,10 +426,10 @@ void check_rc_sys(char *basedir)
     /* Scan only specific directories */
     else
     {
-        int _i = 0;
+        int _i;
 
         #ifndef WIN32
-        char *(dirs_to_scan[]) = {"/bin", "/sbin", "/usr/bin",
+        const char *(dirs_to_scan[]) = {"/bin", "/sbin", "/usr/bin",
                                   "/usr/sbin", "/dev", "/lib",
                                   "/etc", "/root", "/var/log",
                                   "/var/mail", "/var/lib", "/var/www",
@@ -437,14 +438,12 @@ void check_rc_sys(char *basedir)
                                   "/var/tmp", "/sys", NULL};
 
         #else
-        char *(dirs_to_scan[]) = {"C:\\WINDOWS", "C:\\Program Files", NULL};
+        const char *(dirs_to_scan[]) = {"C:\\WINDOWS", "C:\\Program Files", NULL};
         #endif
 
-        for(_i = 0; _i <= 24; _i++)
+        _i = 0;
+        while(dirs_to_scan[_i] != NULL)
         {
-            if(dirs_to_scan[_i] == NULL)
-                break;
-
             #ifndef WIN32
             snprintf(file_path, OS_SIZE_1024, "%s%s",
                                             basedir,
@@ -455,6 +454,7 @@ void check_rc_sys(char *basedir)
             read_sys_dir(dirs_to_scan[_i], rootcheck.readall);
             #endif
 
+            _i++;
         }
     }
 

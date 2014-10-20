@@ -46,7 +46,7 @@ short eval_bool2(char *str, short default_val)
 
 /* Read_Rootcheck_Config: Reads the rootcheck config
  */
-int Read_Rootcheck_Config(char * cfgfile)
+int Read_Rootcheck_Config(const char * cfgfile)
 {
     OS_XML xml;
 

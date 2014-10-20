@@ -13,19 +13,19 @@
 
 
 #include "manage_agents.h"
+fpos_t fp_pos;
+
 #include "os_crypto/md5/md5_op.h"
 
-char *OS_AddNewAgent(char *name, char *ip, char *id)
+char *OS_AddNewAgent(const char *name, const char *ip, const char *id)
 {
-    int i = 0;
     FILE *fp;
-    int rand1;
     os_md5 md1;
     os_md5 md2;
     char str1[STR_SIZE +1];
     char str2[STR_SIZE +1];
-    char *muname = NULL;
-    char *finals = NULL;
+    char *muname;
+    char *finals;
 
     char nid[9];
 
@@ -34,16 +34,15 @@ char *OS_AddNewAgent(char *name, char *ip, char *id)
         #ifdef __OpenBSD__
         srandomdev();
         #else
-        srandom(time(0) + getpid() + getppid());
+        srandom((unsigned)(time(0) + getpid() + getppid()));
         #endif
     #else
         srandom(time(0) + getpid());
     #endif
 
-    rand1 = random();
     muname = getuname();
 
-    snprintf(str1, STR_SIZE, "%d%s%d%s",(int)time(0), name, rand1, muname);
+    snprintf(str1, STR_SIZE, "%d%s%d%s",(int)time(0), name, (int)random(), muname);
     snprintf(str2, STR_SIZE, "%s%s%ld", ip, id, (long int)random());
     OS_MD5_Str(str1, md1);
     OS_MD5_Str(str2, md2);
@@ -53,7 +52,7 @@ char *OS_AddNewAgent(char *name, char *ip, char *id)
     nid[8] = '\0';
     if(id == NULL)
     {
-        i = 1024;
+        int i = 1024;
         snprintf(nid, 6, "%d", i);
         while(IDExist(nid))
         {
@@ -86,10 +85,9 @@ char *OS_AddNewAgent(char *name, char *ip, char *id)
 }
 
 
-int OS_IsValidID(char *id)
+int OS_IsValidID(const char *id)
 {
-    int id_len = 0;
-    int i = 0;
+    size_t id_len, i;
 
     /* ID must not be null */
     if(!id)
@@ -114,7 +112,7 @@ int OS_IsValidID(char *id)
 
 /* Get full agent name (name + ip) of ID.
  */
-char *getFullnameById(char *id)
+char *getFullnameById(const char *id)
 {
     FILE *fp;
     char line_read[FILE_SIZE +1];
@@ -191,7 +189,7 @@ char *getFullnameById(char *id)
 
 
 /* ID Search (is valid ID) */
-int IDExist(char *id)
+int IDExist(const char *id)
 {
     FILE *fp;
     char line_read[FILE_SIZE +1];
@@ -245,16 +243,16 @@ int IDExist(char *id)
 
 /* Validate agent name.
  */
-int OS_IsValidName(char *u_name)
+int OS_IsValidName(const char *u_name)
 {
-    size_t i = 0;
+    size_t i, uname_length = strlen(u_name);
 
     /* We must have something in the name */
-    if(strlen(u_name) < 2 || strlen(u_name) > 128)
+    if(uname_length < 2 || uname_length > 128)
       return(0);
 
     /* check if it contains any non-alphanumeric characters */
-    for(i = 0; i < strlen(u_name); i++)
+    for(i = 0; i < uname_length; i++)
     {
       if(!isalnum((int)u_name[i]) && (u_name[i] != '-') &&
          (u_name[i] != '_') && (u_name[i] != '.'))
@@ -266,7 +264,7 @@ int OS_IsValidName(char *u_name)
 
 
 /* Is_Name (is valid name) */
-int NameExist(char *u_name)
+int NameExist(const char *u_name)
 {
     FILE *fp;
     char line_read[FILE_SIZE +1];
@@ -413,7 +411,7 @@ int print_agents(int print_status, int active_only, int csv_output)
     /* Only print agentless for non-active only searches */
     if(!active_only && print_status)
     {
-        char *aip = NULL;
+        const char *aip = NULL;
         DIR *dirp;
         struct dirent *dp;
 

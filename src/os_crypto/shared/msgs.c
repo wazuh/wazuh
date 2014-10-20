@@ -552,7 +552,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, 
                     evt_count,
                     (unsigned long)c_orig_size,
                     (unsigned long)c_comp_size,
-                    (unsigned long)(c_comp_size * 100)/c_orig_size);
+                    (unsigned long)((c_comp_size * 100)/c_orig_size));
         evt_count = 0;
         c_orig_size = 0;
         c_comp_size = 0;

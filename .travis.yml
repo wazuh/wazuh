@@ -3,6 +3,8 @@ language: c
 notifications:
   irc:
     - "chat.freenode.net#ossec-dev"
+  slack:
+    secure: xUYXyA0EhYWq8splt95qzYJu8C2vz5xl6McuF1OqXygTFs+bAH5QfBPRsPSZyErrKP0TRmadCXCJxgY8rnFkqKNBKns58B7iEbBbHq6aDsPy8Yd8tCrU6KpPWcdOilyoLrMwoXqEVQtXLP0ahNZXr5rcrlU7jMUh1EcbqxYAfJo=
 
 env:
 - DB=mysql OSSEC_TYPE=server GEOIP=yes
@@ -49,7 +51,7 @@ script:
   && ( cd src/ && make --warn-undefined-variables ${COMMAND} settings && make --warn-undefined-variables ${COMMAND} -j )
   && if ! [[ "$OSSEC_TYPE" = "test" || "$OSSEC_TYPE" = "winagent" ]]; then ( cd src/ && sudo make --warn-undefined-variables ${COMMAND} install ) fi
 
-- if [[ "$OSSEC_TYPE" == "test" ]]; then ( cd src/tests/ && make --warn-undefined-variables run_valgrind ); fi
+- if [[ "$OSSEC_TYPE" == "test" ]]; then ( cd src/ && make --warn-undefined-variables test_valgrind ) fi
 
 before_deploy:
 - mkdir travis-builds

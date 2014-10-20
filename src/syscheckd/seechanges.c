@@ -14,6 +14,11 @@
 
 #include "shared.h"
 #include "os_crypto/md5/md5_op.h"
+#include "syscheck.h"
+
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time) __attribute__((nonnull));
+static int seechanges_dupfile(const char *old, const char *new) __attribute__((nonnull));
+static int seechanges_createpath(const char *filename) __attribute__((nonnull));
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -39,9 +44,9 @@ int is_text(magic_t cookie, const void* buf, size_t len)
 #endif
 
 /* Generate diffs alerts. */
-char *gen_diff_alert(char *filename, int alert_diff_time)
+static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 {
-    int n = 0;
+    size_t n = 0;
     FILE *fp;
     char *tmp_str;
     char buf[OS_MAXSTR +1];
@@ -51,7 +56,7 @@ char *gen_diff_alert(char *filename, int alert_diff_time)
     diff_alert[OS_MAXSTR] = '\0';
 
     snprintf(buf, OS_MAXSTR, "%s/local/%s/diff.%d",
-             DIFF_DIR_PATH, filename,  alert_diff_time);
+             DIFF_DIR_PATH, filename,  (int)alert_diff_time);
 
     fp = fopen(buf, "r");
     if(!fp)
@@ -119,9 +124,9 @@ char *gen_diff_alert(char *filename, int alert_diff_time)
 }
 
 
-int seechanges_dupfile(char *old, char *new)
+static int seechanges_dupfile(const char *old, const char *new)
 {
-    int n;
+    size_t n;
     FILE *fpr;
     FILE *fpw;
     unsigned char buf[2048 +1];
@@ -129,10 +134,15 @@ int seechanges_dupfile(char *old, char *new)
     buf[2048] = '\0';
 
     fpr = fopen(old,"r");
-    fpw = fopen(new,"w");
-
-    if(!fpr || !fpw)
+    if(!fpr)
     {
+        return (0);
+    }
+
+    fpw = fopen(new,"w");
+    if(!fpw)
+    {
+        fclose(fpr);
         return(0);
     }
 
@@ -160,7 +170,7 @@ cleanup:
 }
 
 
-int seechanges_createpath(char *filename)
+static int seechanges_createpath(const char *filename)
 {
     char *buffer = NULL;
     char *tmpstr = NULL;
@@ -217,9 +227,9 @@ int seechanges_createpath(char *filename)
 
 
 /* Checks if the file has changed */
-char *seechanges_addfile(char *filename)
+char *seechanges_addfile(const char *filename)
 {
-    int date_of_change;
+    time_t date_of_change;
     char old_location[OS_MAXSTR +1];
     char tmp_location[OS_MAXSTR +1];
     char diff_cmd[OS_MAXSTR +1];
@@ -269,8 +279,14 @@ char *seechanges_addfile(char *filename)
     /* Saving the old file at timestamp and renaming new to last. */
     date_of_change = File_DateofChange(old_location);
     snprintf(tmp_location, OS_MAXSTR, "%s/local/%s/state.%d", DIFF_DIR_PATH, filename +1,
-             date_of_change);
-    rename(old_location, tmp_location);
+             (int)date_of_change);
+
+    if(rename(old_location, tmp_location) == -1)
+    {
+        merror(RENAME_ERROR, ARGV0, old_location);
+        return (NULL);
+    }
+
     if(seechanges_dupfile(filename, old_location) != 1)
     {
         merror("%s: ERROR: Unable to create snapshot for %s",ARGV0, filename);
@@ -283,7 +299,7 @@ char *seechanges_addfile(char *filename)
     snprintf(diff_cmd, 2048, "diff \"%s\" \"%s\" > \"%s/local/%s/diff.%d\" "
              "2>/dev/null",
              tmp_location, old_location,
-             DIFF_DIR_PATH, filename +1, date_of_change);
+             DIFF_DIR_PATH, filename +1, (int)date_of_change);
     if(system(diff_cmd) != 256)
     {
         merror("%s: ERROR: Unable to run diff for %s",
@@ -294,9 +310,6 @@ char *seechanges_addfile(char *filename)
 
     /* Generate alert. */
     return(gen_diff_alert(filename, date_of_change));
-
-
-    return(NULL);
 }
 
 

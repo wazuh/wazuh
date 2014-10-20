@@ -20,7 +20,7 @@
  * Read the file pointer specified (rootkit_files)
  * and check if the configured file is there
  */
-void check_rc_files(char *basedir, FILE *fp)
+void check_rc_files(const char *basedir, FILE *fp)
 {
     char buf[OS_SIZE_1024 +1];
     char file_path[OS_SIZE_1024 +1];
@@ -136,12 +136,12 @@ void check_rc_files(char *basedir, FILE *fp)
         if(nbuf)
         {
             *nbuf = '\0';
-        }
 
-        nbuf = strchr(nbuf, '\t');
-        if(nbuf)
-        {
-            *nbuf = '\0';
+            nbuf = strchr(nbuf, '\t');
+            if(nbuf)
+            {
+                *nbuf = '\0';
+            }
         }
 
         _total++;

@@ -18,11 +18,11 @@
 #include "rootcheck.h"
 #include "os_regex/os_regex.h"
 
-
+static int _is_str_in_array(char *const *ar, const char *str);
 
 /** Checks if the specified string is already in the array.
  */
-int _is_str_in_array(char **ar, char *str)
+static int _is_str_in_array(char *const *ar, const char *str)
 {
     while(*ar)
     {
@@ -39,7 +39,7 @@ int _is_str_in_array(char **ar, char *str)
 
 /** int rk_check_dir(char *dir, char *file, char *pattern)
  */
-int rk_check_dir(char *dir, char *file, char *pattern)
+int rk_check_dir(const char *dir, const char *file, char *pattern)
 {
     int ret_code = 0;
     char f_name[PATH_MAX +2];
@@ -307,7 +307,7 @@ int rk_check_file(char *file, char *pattern)
  * Checks if the patterns is all negate values and if so returns 1
  * else return 0
  */
-int pt_check_negate(char *pattern)
+int pt_check_negate(const char *pattern)
 {
     char *mypattern = NULL;
     os_strdup(pattern, mypattern);
@@ -354,7 +354,7 @@ int pt_check_negate(char *pattern)
  * Multiple patterns can be specified by using " && " between them.
  * All of them must match for it to return true.
  */
-int pt_matches(char *str, char *pattern)
+int pt_matches(const char *str, char *pattern)
 {
     int neg = 0;
     int ret_code = 0;
@@ -504,7 +504,7 @@ int pt_matches(char *str, char *pattern)
  */
 char *normalize_string(char *str)
 {
-    unsigned int str_sz = strlen(str);
+    size_t str_sz = strlen(str);
     // return zero-length str as is
     if (str_sz == 0) {
        return str;
@@ -542,7 +542,7 @@ char *normalize_string(char *str)
 /** int isfile_ondir(char *file, char *dir)
  * Checks is 'file' is present on 'dir' using readdir
  */
-int isfile_ondir(char *file, char *dir)
+int isfile_ondir(const char *file, const char *dir)
 {
     DIR *dp = NULL;
     struct dirent *entry;
@@ -703,9 +703,8 @@ int is_file(char *file_name)
 
 /*  del_plist:. Deletes the process list
  */
-int del_plist(void *p_list_p)
+int del_plist(OSList *p_list)
 {
-    OSList *p_list = (OSList *)p_list_p;
     OSListNode *l_node;
     OSListNode *p_node = NULL;
 
@@ -758,9 +757,8 @@ int del_plist(void *p_list_p)
 
 /* is_process: Check is a process is running.
  */
-int is_process(char *value, void *p_list_p)
+int is_process(char *value, OSList *p_list)
 {
-    OSList *p_list = (OSList *)p_list_p;
     OSListNode *l_node;
     if(p_list == NULL)
     {

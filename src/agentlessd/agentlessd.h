@@ -25,9 +25,9 @@
 /** Prototypes **/
 
 /* Main monitord */
-void Agentlessd();
+void Agentlessd(void) __attribute__((noreturn));
 
 
-agentlessd_config lessdc;
+extern agentlessd_config lessdc;
 
 #endif

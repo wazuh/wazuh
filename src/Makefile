@@ -90,6 +90,8 @@ endif
 
 ifdef DEBUG
 	CFLAGS+=-g
+else
+	CFLAGS+=-O2
 endif #DEBUG
 
 ifdef CLEANFULL
@@ -101,7 +103,7 @@ ifdef ONEWAY
 endif
 
 CFLAGS+=${DEFINES}
-CFLAGS+=-Wall -Wextra -O2
+CFLAGS+=-Wall -Wextra
 CFLAGS+=-I./ -I./headers/
 
 
@@ -291,7 +293,7 @@ install-hybrid: install-server-generic
 install-server: install-server-generic
 
 install-common: build
-	./adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX}
+	./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX}
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
@@ -322,11 +324,13 @@ ifeq (${uname_S},SunOS)
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/usr/share/lib/zoneinfo/
 	install -m 0440 -o root -g ${OSSEC_GROUP} /usr/share/lib/zoneinfo/* ${PREFIX}/usr/share/lib/zoneinfo/
 endif
-ifeq (,$(wildcard ${PREFIX}/etc/internal_options.conf))
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/internal_options.conf ${PREFIX}/etc/
+ifeq (,$(wildcard ${PREFIX}/etc/local_internal_options.conf))
+	install -m 0640 -o root -g ${OSSEC_GROUP} ../etc/local_internal_options.conf ${PREFIX}/etc/local_internal_options.conf
 endif
-	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_internal_options.conf
+ifeq (,$(wildcard ${PREFIX}/etc/client.keys))
 	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/client.keys
+endif
 ifeq (,$(wildcard ${PREFIX}/etc/ossec.conf))
 ifneq (,$(wildcard ../etc/ossec.mc))
 	install -m 0640 -o root -g ${OSSEC_GROUP} ../etc/ossec.mc ${PREFIX}/etc/ossec.conf
@@ -1001,11 +1005,76 @@ ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${output_o} aler
 #### test ##########
 ####################
 
-test: external
-		cd tests/ && ${MAKE}
+CFLAGS_TEST = -Waggregate-return -Wall -Wbad-function-cast -Wc++-compat -Wcast-align \
+	-Wcast-qual -Wconversion -Wextra -Wfloat-equal -Wformat=2 -Winit-self -Winline \
+	-Winvalid-pch -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs \
+	-Wmissing-prototypes -Wnested-externs -Wredundant-decls \
+	-Wshadow -Wstack-protector -Wstrict-aliasing -Wstrict-overflow=4 \
+	-Wstrict-prototypes -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunused \
+	-Wwrite-strings \
+	-g -O0 --coverage
 
-check: test
-	echo "test"
+LDFLAGS_TEST = -lcheck -lm -pthread -lrt
+
+ifdef TEST
+	CFLAGS+=${CFLAGS_TEST}
+	LDFLAGS+=${LDFLAGS_TEST}
+endif #TEST
+
+test_programs = test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net test_shared
+
+.PHONY: test run_tests build_tests test_valgrind test_coverage
+
+test: build_tests
+	${MAKE} run_tests
+
+run_tests:
+	@$(foreach bin,${test_programs},./${bin};)	
+	
+build_tests: external
+	${MAKE} DEBUG=1 TEST=1 ${test_programs}
+
+test_c := $(wildcard tests/*.c)
+test_o := $(test_c:.c=.o)
+
+tests/%.o: tests/%.c
+	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
+	
+test_os_zlib: tests/test_os_zlib.o ${ZLIB_LIB}
+	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+test_os_xml: tests/test_os_xml.o ${os_xml_o}
+	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+test_os_regex: tests/test_os_regex.c ${os_regex_o}
+	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+test_os_crypto: tests/test_os_crypto.c ${crypto_o} ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o} ${ZLIB_LIB}
+	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+test_os_net: tests/test_os_net.c ${os_net_o} ${shared_o} ${os_regex_o} ${os_xml_o}
+	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+test_shared: tests/test_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
+	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
+
+test_valgrind: build_tests
+	valgrind --leak-check=full --track-origins=yes --trace-children=yes --vgdb=no --error-exitcode=1 --gen-suppressions=all --suppressions=tests/valgrind.supp ${MAKE} run_tests
+
+
+test_coverage: build_tests
+	lcov --base-directory . --directory . --zerocounters --rc lcov_branch_coverage=1 --quiet
+	@echo "Running tests\n"
+
+	${MAKE} run_tests
+
+	@echo "\nTests finished."
+	
+	lcov --base-directory . --directory . --capture --quiet --rc lcov_branch_coverage=1 --output-file ossec.test
+	
+	rm -rf coverage-report/
+	genhtml --branch-coverage --output-directory coverage-report/ --title "ossec test coverage" --show-details --legend --num-spaces 4 --quiet ossec.test
+
 
 ####################
 #### Clean #########
@@ -1014,7 +1083,10 @@ check: test
 clean: clean-test clean-internals clean-external clean-windows-old
 
 clean-test:
-		cd tests/ && ${MAKE} clean
+	rm -f ${test_o} ${test_programs} ossec.test
+	rm -Rf coverage-report/
+	find . -name "*.gcno" -exec rm {} \;
+	find . -name "*.gcda" -exec rm {} \;
 
 clean-external:
 	rm -f ${cjson_o} libcJSON.a

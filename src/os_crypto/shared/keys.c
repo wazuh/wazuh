@@ -438,7 +438,7 @@ int OS_UpdateKeys(keystore *keys)
 /* OS_IsAllowedIP()
  * Checks if an IP address is allowed to connect.
  */
-int OS_IsAllowedIP(keystore *keys, char *srcip)
+int OS_IsAllowedIP(keystore *keys, const char *srcip)
 {
     keyentry *entry;
 
@@ -474,7 +474,7 @@ int OS_IsAllowedName(const keystore *keys, const char *name)
 
 /* OS_IsAllowedID
  */
-int OS_IsAllowedID(keystore *keys, char *id)
+int OS_IsAllowedID(keystore *keys, const char *id)
 {
     keyentry *entry;
 
@@ -492,7 +492,7 @@ int OS_IsAllowedID(keystore *keys, char *id)
 
 /* int OS_IsAllowedDynamicID -- Used for dynamic ip addresses.
  */
-int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip)
+int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip)
 {
     keyentry *entry;
 

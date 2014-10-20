@@ -18,9 +18,10 @@
 #undef ARGV0
 #define ARGV0 "clear_stats"
 
+static void helpmsg(void) __attribute__((noreturn));
 
 /** help **/
-void helpmsg()
+static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: Clear the events stats (averages).\n", ARGV0);
     printf("Available options:\n");
@@ -38,9 +39,9 @@ int main(int argc, char **argv)
     int clear_daily = 0;
     int clear_weekly = 0;
 
-    char *dir = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
-    char *user = USER;
+    const char *dir = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
+    const char *user = USER;
     int gid;
     int uid;
 
@@ -62,7 +63,7 @@ int main(int argc, char **argv)
     {
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
-	
+
 
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
@@ -116,7 +117,7 @@ int main(int argc, char **argv)
     /* Clear daily files */
     if(clear_daily)
     {
-        char *daily_dir = STATQUEUE;
+        const char *daily_dir = STATQUEUE;
         DIR *daily;
         struct dirent *entry;
 
@@ -153,7 +154,7 @@ int main(int argc, char **argv)
         int i = 0;
         while(i <= 6)
         {
-            char *daily_dir = STATWQUEUE;
+            const char *daily_dir = STATWQUEUE;
             char dir_path[OS_MAXSTR +1];
             DIR *daily;
             struct dirent *entry;
