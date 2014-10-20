@@ -764,7 +764,7 @@ void os_ReportdStart(report_filter *r_filter)
  *                              report_filter *r_filter)
  * Checks the configuration filters.
  */
-int os_report_configfilter(const char *filter_by, char *filter_value,
+int os_report_configfilter(const char *filter_by, const char *filter_value,
                            report_filter *r_filter, int arg_type)
 {
     if(!filter_by || !filter_value)

@@ -293,12 +293,15 @@ install-hybrid: install-server-generic
 install-server: install-server-generic
 
 install-common: build
-	./adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX}
+	./init/adduser.sh ${OSSEC_USER} ${OSSEC_USER_MAIL} ${OSSEC_USER_REM} ${OSSEC_GROUP} ${PREFIX}
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/ossec.log
 
 	install -d -m 0550 -o root -g 0 ${PREFIX}/bin
+	install -d -m 0550 -o root -g 0 ${PREFIX}/lua
+	install -d -m 0550 -o root -g 0 ${PREFIX}/lua/native
+	install -d -m 0550 -o root -g 0 ${PREFIX}/lua/compiled
 	install -m 0550 -o root -g 0 ossec-logcollector ${PREFIX}/bin
 	install -m 0550 -o root -g 0 ossec-syscheckd ${PREFIX}/bin
 	install -m 0550 -o root -g 0 ossec-execd ${PREFIX}/bin

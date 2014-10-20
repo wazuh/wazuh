@@ -18,9 +18,9 @@
 
 
 /* Sends a message to the server */
-int send_msg(int agentid, char *msg)
+int send_msg(int agentid, const char *msg)
 {
-    int msg_size;
+    size_t msg_size;
     char crypt_msg[OS_MAXSTR +1];
 
     msg_size = CreateSecMSG(&keys, msg, crypt_msg, agentid);

@@ -24,8 +24,8 @@
 
 
 /* SYSTEM ERRORS */
-#define FORK_ERROR	  "%s(1101): ERROR: Unable to fork. Exiting."
-#define MEM_ERROR	  "%s(1102): ERROR: Not enough Memory. Exiting."
+#define FORK_ERROR    "%s(1101): ERROR: Unable to fork. Exiting."
+#define MEM_ERROR     "%s(1102): ERROR: Not enough Memory. Exiting."
 #define FOPEN_ERROR   "%s(1103): ERROR: Unable to open file '%s'."
 #define SIZE_ERROR    "%s(1104): ERROR: Maximum string size reached for: %s."
 #define NULL_ERROR    "%s(1105): ERROR: Attempted to use null string. "
@@ -50,6 +50,9 @@
 #define RENAME_ERROR  "%s(1124): ERROR: Unable to rename file: '%s'."
 #define INT_ERROR     "%s(1125): ERROR: Internal error (undefined)."
 #define OPEN_ERROR    "%s(1126): ERROR: Unable to open file '%s' reason '%s'"
+#define CHMOD_ERROR   "%s(1127): ERROR: Could not chmod (%s) which returned [(%d)-(%s)]."
+#define MKSTEMP_ERROR "%s(1128): ERROR: Could not create temporary file (%s)."
+#define DELETE_ERROR  "%s(1129): ERROR: Could not unlink file (%s) which returned [(%d)-(%s)]."
 
 
 /* COMMON ERRORS */
@@ -96,7 +99,6 @@
 #define CHDIR_ERROR     "%s(1244): ERROR: Unable to chdir to directory: '%s'."
 #define LINK_ERROR      "%s(1245): ERROR: Unable to link from '%s' to '%s'."
 #define CHOWN_ERROR     "%s(1246): ERROR: Unable to run chown on: '%s'."
-#define CHMOD_ERROR     "%s(1247): ERROR: Unable to run chmod on: '%s'."
 
 #define MAILQ_ERROR	    "%s(1221): ERROR: No Mail queue at %s"
 #define IMSG_ERROR	    "%s(1222): ERROR: Invalid msg: %s"

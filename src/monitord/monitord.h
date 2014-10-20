@@ -25,26 +25,26 @@
 /** Prototypes **/
 
 /* Main monitord */
-void Monitord();
+void Monitord(void) __attribute__((noreturn));
 
 /*manage_files */
 void manage_files(int cday, int cmon, int cyear);
 
 /* generate reports. */
-void generate_reports(int cday, int cmon, int cyear, struct tm *p);
+void generate_reports(int cday, int cmon, int cyear, const struct tm *p);
 
 /* monitor_agents */
-void monitor_agents();
+void monitor_agents(void);
 
 /* Sign a log */
-void OS_SignLog(char *logfile, char *logfile_old, int log_missing);
+void OS_SignLog(const char *logfile, const char *logfile_old, int log_missing);
 
 /* Compress log */
-void OS_CompressLog(char *logfile);
+void OS_CompressLog(const char *logfile);
 
 
 /* Global variables */
-monitor_config mond;
+extern monitor_config mond;
 
 
 #endif

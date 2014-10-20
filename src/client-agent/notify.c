@@ -17,10 +17,11 @@
 #include "os_net/os_net.h"
 #include "agentd.h"
 
-time_t g_saved_time = 0;
+#ifndef WIN32
+static time_t g_saved_time = 0;
+static char *rand_keepalive_str2(char *dst, int size);
 
-
-char *rand_keepalive_str2(char *dst, int size)
+static char *rand_keepalive_str2(char *dst, int size)
 {
     static const char text[] = "abcdefghijklmnopqrstuvwxyz"
                                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -29,17 +30,19 @@ char *rand_keepalive_str2(char *dst, int size)
     int i, len = rand() % (size - 1);
     for ( i = 0; i < len; ++i )
     {
-        dst[i] = text[rand() % (sizeof text - 1)];
+        dst[i] = text[(unsigned)rand() % (sizeof text - 1)];
     }
     dst[i] = '\0';
     return dst;
 }
 
+#endif
+
 /* getfiles: Return the name of the files in a directory
  */
 char *getsharedfiles()
 {
-    int m_size = 512;
+    unsigned int m_size = 512;
 
     char *ret;
 

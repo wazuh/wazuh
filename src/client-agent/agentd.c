@@ -17,7 +17,6 @@
 
 #include "shared.h"
 #include "agentd.h"
-
 #include "os_net/os_net.h"
 
 
@@ -25,7 +24,7 @@
 /* AgentdStart v0.2, 2005/11/09
  * Starts the agent daemon.
  */
-void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
+void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group)
 {
     int rc = 0;
     int pid = 0;

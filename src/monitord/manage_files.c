@@ -14,7 +14,7 @@
 #include "shared.h"
 #include "monitord.h"
 
-char *(months[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
+static const char *(months[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
                   "Sep","Oct","Nov","Dec"};
 
 

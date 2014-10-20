@@ -27,7 +27,6 @@
 
 /* Default values */
 #define CONFIG          "ossec.conf"
-#define NEWCONFIG       "new-ossec.conf"
 #define LASTCONFIG      "last-ossec.conf"
 #define VERSION_FILE    "VERSION.txt"
 #define OSSECLOGS       "ossec.log"

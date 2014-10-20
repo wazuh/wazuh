@@ -26,19 +26,19 @@
 /*** Function prototypes ***/
 
 /* Read remoted config */
-int RemotedConfig(char *cfgfile, remoted *logr);
+int RemotedConfig(const char *cfgfile, remoted *cfg);
 
 /* Handle Remote connections */
-void HandleRemote(int position, int uid);
+void HandleRemote(int position, int uid) __attribute__((noreturn));
 
 /* Handle Syslog */
-void HandleSyslog();
+void HandleSyslog(void) __attribute__((noreturn));
 
 /* Handle Syslog TCP */
-void HandleSyslogTCP();
+void HandleSyslogTCP(void) __attribute__((noreturn));
 
 /* Handle Secure connections */
-void HandleSecure();
+void HandleSecure(void) __attribute__((noreturn));
 
 /* Forward active response events */
 void *AR_Forward(void *arg);
@@ -50,26 +50,26 @@ void manager_init(int isUpdate);
 void *wait_for_msgs(void *none);
 
 /* Save control messages */
-void save_controlmsg(int agentid, char *msg);
+void save_controlmsg(unsigned int agentid, char *msg);
 
 /* Send message to agent */
-int send_msg(int agentid, char *msg);
+int send_msg(unsigned int agentid, const char *msg);
 
 /* Initializing send_msg */
-void send_msg_init();
+void send_msg_init(void);
 
-int check_keyupdate();
+int check_keyupdate(void);
 
-void key_lock();
+void key_lock(void);
 
-void key_unlock();
+void key_unlock(void);
 
-void keyupdate_init();
+void keyupdate_init(void);
 
 
 /*** Global variables ***/
 
-keystore keys;
-remoted logr;
+extern keystore keys;
+extern remoted logr;
 
 #endif

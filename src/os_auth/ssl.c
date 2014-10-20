@@ -101,7 +101,7 @@ SSL_ERROR:
 
 SSL_CTX *get_ssl_context()
 {
-    SSL_METHOD *sslmeth = NULL;
+    const SSL_METHOD *sslmeth = NULL;
     SSL_CTX *ctx = NULL;
 
     SSL_library_init();
@@ -109,7 +109,7 @@ SSL_CTX *get_ssl_context()
     OpenSSL_add_all_algorithms();
 
     /* Create our context */
-    sslmeth = (SSL_METHOD *)SSLv23_method();
+    sslmeth = TLSv1_2_method();
     if(!(ctx = SSL_CTX_new(sslmeth)))
         goto CONTEXT_ERR;
 

@@ -17,6 +17,11 @@
 
 #include "shared.h"
 
+#ifndef WIN32
+#include <libgen.h>
+#else
+#include <aclapi.h>
+#endif
 
 /* Vista product information. */
 #ifdef WIN32
@@ -638,6 +643,63 @@ int MergeFiles(const char *finalpath, char **files)
 
 
 #ifndef WIN32
+/* get basename of path */
+char *basename_ex(char *path)
+{
+    return(basename(path));
+}
+
+
+
+/* rename file or directory */
+int rename_ex(const char *source, const char *destination)
+{
+    if (rename(source, destination))
+    {
+            log2file(
+                "%s: ERROR: Could not rename (%s) to (%s) which returned [(%d)-(%s)]",
+                __local_name,
+                source,
+                destination,
+                errno,
+                strerror(errno)
+            );
+
+            return(-1);
+    }
+
+    return(0);
+}
+
+
+
+
+/* create a temporary file */
+int mkstemp_ex(char *tmp_path)
+{
+    int fd;
+
+    fd = mkstemp(tmp_path);
+
+    if (fd == -1)
+    {
+        log2file(
+            "%s: ERROR: Could not create temporary file (%s) which returned [(%d)-(%s)]",
+            __local_name,
+            tmp_path,
+            errno,
+            strerror(errno)
+        );
+
+        return(-1);
+    }
+
+    close(fd);
+
+    return(0);
+}
+
+
 /* getuname; Get uname and returns a string with it.
  * Memory must be freed after use
  */
@@ -847,6 +909,277 @@ int checkVista()
     free(m_uname);
 
     return(isVista);
+}
+
+
+
+
+/* get basename of path */
+char *basename_ex(char *path)
+{
+    return(PathFindFileNameA(path));
+}
+
+
+
+/* rename file or directory */
+int rename_ex(const char *source, const char *destination)
+{
+    if (!MoveFileEx(source, destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+    {
+            log2file(
+                "%s: ERROR: Could not move (%s) to (%s) which returned (%lu)",
+                __local_name,
+                source,
+                destination,
+                GetLastError()
+            );
+
+            return(-1);
+    }
+
+    return(0);
+}
+
+
+
+/* create a temporary file */
+int mkstemp_ex(char *tmp_path)
+{
+    DWORD dwResult;
+    int result;
+    int error = -1;
+
+    HANDLE h;
+    PACL pACL;
+    PSECURITY_DESCRIPTOR pSD;
+    EXPLICIT_ACCESS ea[2];
+    SECURITY_ATTRIBUTES sa;
+
+    PSID pAdminGroupSID;
+    PSID pSystemGroupSID;
+    SID_IDENTIFIER_AUTHORITY SIDAuthNT = {SECURITY_NT_AUTHORITY};
+
+    #if defined(_MSC_VER) && _MSC_VER >= 1500
+        result = _mktemp_s(tmp_path, strlen(tmp_path) + 1);
+
+        if (result != 0)
+        {
+            log2file(
+                "%s: ERROR: Could not create temporary file (%s) which returned (%d)",
+                __local_name,
+                tmp_path,
+                result
+            );
+
+            return(-1);
+        }
+    #else
+        if (_mktemp(tmp_path) == NULL)
+        {
+            log2file(
+                "%s: ERROR: Could not create temporary file (%s) which returned [(%d)-(%s)]",
+                __local_name,
+                tmp_path,
+                errno,
+                strerror(errno)
+            );
+
+            return(-1);
+        }
+    #endif
+
+    /* create SID for the BUILTIN\Administrators group */
+    result = AllocateAndInitializeSid(
+        &SIDAuthNT,
+        2,
+        SECURITY_BUILTIN_DOMAIN_RID,
+        DOMAIN_ALIAS_RID_ADMINS,
+        0, 0, 0, 0, 0, 0,
+        &pAdminGroupSID
+    );
+
+    if (!result)
+    {
+        log2file(
+            "%s: ERROR: Could not create BUILTIN\\Administrators group SID which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* create SID for the SYSTEM group */
+    result = AllocateAndInitializeSid(
+        &SIDAuthNT,
+        1,
+        SECURITY_LOCAL_SYSTEM_RID,
+        0, 0, 0, 0, 0, 0, 0,
+        &pSystemGroupSID
+    );
+
+    if (!result)
+    {
+        log2file(
+            "%s: ERROR: Could not create SYSTEM group SID which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* initialize an EXPLICIT_ACCESS structure for an ACE */
+    ZeroMemory(&ea, 2 * sizeof(EXPLICIT_ACCESS));
+
+    /* add Administrators group */
+    ea[0].grfAccessPermissions = GENERIC_ALL;
+    ea[0].grfAccessMode = SET_ACCESS;
+    ea[0].grfInheritance = NO_INHERITANCE;
+    ea[0].Trustee.TrusteeForm = TRUSTEE_IS_SID;
+    ea[0].Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+    ea[0].Trustee.ptstrName = (LPTSTR)pAdminGroupSID;
+
+    /* add SYSTEM group */
+    ea[1].grfAccessPermissions = GENERIC_ALL;
+    ea[1].grfAccessMode = SET_ACCESS;
+    ea[1].grfInheritance = NO_INHERITANCE;
+    ea[1].Trustee.TrusteeForm = TRUSTEE_IS_SID;
+    ea[1].Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+    ea[1].Trustee.ptstrName = (LPTSTR)pSystemGroupSID;
+
+    /* set entries in ACL */
+    dwResult = SetEntriesInAcl(2, ea, NULL, &pACL);
+
+    if (dwResult != ERROR_SUCCESS)
+    {
+        log2file(
+            "%s: ERROR: Could not set ACL entries which returned (%lu)",
+            __local_name,
+            dwResult
+        );
+
+        goto Cleanup;
+    }
+
+    /* initialize security descriptor */
+    pSD = (PSECURITY_DESCRIPTOR)LocalAlloc(
+        LPTR,
+        SECURITY_DESCRIPTOR_MIN_LENGTH
+    );
+
+    if (pSD == NULL)
+    {
+        log2file(
+            "%s: ERROR: Could not initalize SECURITY_DESCRIPTOR because of a LocalAlloc() failure which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    if (!InitializeSecurityDescriptor(pSD, SECURITY_DESCRIPTOR_REVISION))
+    {
+        log2file(
+            "%s: ERROR: Could not initalize SECURITY_DESCRIPTOR because of an InitializeSecurityDescriptor() failure which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* set owner */
+    if (!SetSecurityDescriptorOwner(pSD, NULL, FALSE))
+    {
+        log2file(
+            "%s: ERROR: Could not set owner which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* set group owner */
+    if (!SetSecurityDescriptorGroup(pSD, NULL, FALSE))
+    {
+        log2file(
+            "%s: ERROR: Could not set group owner which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* add ACL to security descriptor */
+    if (!SetSecurityDescriptorDacl(pSD, TRUE, pACL, FALSE))
+    {
+        log2file(
+            "%s: ERROR: Could not set SECURITY_DESCRIPTOR DACL which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* initialize security attributes structure */
+    sa.nLength = sizeof (SECURITY_ATTRIBUTES);
+    sa.lpSecurityDescriptor = pSD;
+    sa.bInheritHandle = FALSE;
+
+    h = CreateFileA(
+        tmp_path,
+        GENERIC_WRITE,
+        0,
+        &sa,
+        CREATE_NEW,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
+
+    if (h == INVALID_HANDLE_VALUE)
+    {
+        log2file(
+            "%s: ERROR: Could not create temporary file (%s) which returned (%lu)",
+            __local_name,
+            tmp_path,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    if (!CloseHandle(h))
+    {
+        log2file(
+            "%s: ERROR: Could not close file handle to (%s) which returned (%lu)",
+            __local_name,
+            tmp_path,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* everything was successful */
+    error = 0;
+
+    Cleanup:
+        if (pAdminGroupSID)
+            FreeSid(pAdminGroupSID);
+        if (pSystemGroupSID)
+            FreeSid(pSystemGroupSID);
+        if (pACL)
+            LocalFree(pACL);
+        if (pSD)
+            LocalFree(pSD);
+
+    return(error);
 }
 
 

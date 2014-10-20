@@ -459,7 +459,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
 /* Creat a encrypted message.
  * Returns the size of it
  */
-size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, int id)
+size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, unsigned int id)
 {
     size_t bfsize;
     size_t msg_size;

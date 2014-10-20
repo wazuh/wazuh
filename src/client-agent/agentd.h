@@ -26,16 +26,16 @@
 /*** Function Prototypes ***/
 
 /* Client configuration */
-int ClientConf(char *cfgfile);
+int ClientConf(const char *cfgfile);
 
 /* Agentd init function */
-void AgentdStart(char *dir, int uid, int gid, char *user, char *group);
+void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
 
 /* Event Forwarder */
-void *EventForward();
+void *EventForward(void);
 
 /* Receiver messages */
-void *receive_msg();
+void *receive_msg(void);
 
 /* Receiver messages for Windows */
 void *receiver_thread(void *none);
@@ -43,13 +43,13 @@ void *receiver_thread(void *none);
 /* intcheck_file:
  * Sends integrity checking information about a file to the server.
  */
-int intcheck_file(char *file_name, char *dir);
+int intcheck_file(const char *file_name, const char *dir);
 
 /* Sends message to server */
-int send_msg(int agentid, char *msg);
+int send_msg(int agentid, const char *msg);
 
 /* Extract the shared files */
-char *getsharedfiles();
+char *getsharedfiles(void);
 
 /* Initializes handshake to server */
 void start_agent(int is_startup);
@@ -58,7 +58,7 @@ void start_agent(int is_startup);
 int connect_server(int initial_id);
 
 /* notify server */
-void run_notify();
+void run_notify(void);
 
 
 /*** Global variables ***/
@@ -70,10 +70,10 @@ void run_notify();
 #include "shared.h"
 #include "sec.h"
 
-int available_server;
-int run_foreground;
-keystore keys;
-agent *agt;
+extern time_t available_server;
+extern int run_foreground;
+extern keystore keys;
+extern agent *agt;
 
 
 #endif

@@ -3,6 +3,8 @@ language: c
 notifications:
   irc:
     - "chat.freenode.net#ossec-dev"
+  slack:
+    secure: xUYXyA0EhYWq8splt95qzYJu8C2vz5xl6McuF1OqXygTFs+bAH5QfBPRsPSZyErrKP0TRmadCXCJxgY8rnFkqKNBKns58B7iEbBbHq6aDsPy8Yd8tCrU6KpPWcdOilyoLrMwoXqEVQtXLP0ahNZXr5rcrlU7jMUh1EcbqxYAfJo=
 
 env:
 - DB=mysql OSSEC_TYPE=server GEOIP=yes
