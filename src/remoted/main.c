@@ -167,12 +167,8 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);
 
 
-    /* Creating some randoness  */
-    #ifdef __OpenBSD__
-    srandomdev();
-    #else
-    srandom((unsigned)(time(0) + getpid()+ i));
-    #endif
+    /* Setup random */
+    srandom_init();
 
     random();
 
