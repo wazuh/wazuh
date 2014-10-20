@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "debug_op.h"
+#include "shared.h"
 
 
 void randombytes(void *ptr, unsigned int length)
@@ -42,7 +42,7 @@ void randombytes(void *ptr, unsigned int length)
     #endif
 
     if (failed) {
-        ErrorExit("Error in randombytes failed on all possible methods for accessing random data");
+        ErrorExit("%s: Error in randombytes failed on all possible methods for accessing random data", __local_name);
     }
 }
 
