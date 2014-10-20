@@ -19,7 +19,7 @@
  * Read the file pointer specified (rootkit_trojans)
  * and check if the any trojan entry is on the configured files
  */
-void check_rc_trojans(char *basedir, FILE *fp)
+void check_rc_trojans(const char *basedir, FILE *fp)
 {
     int i = 0, _errors = 0, _total = 0;
     char buf[OS_SIZE_1024 +1];
@@ -29,9 +29,9 @@ void check_rc_trojans(char *basedir, FILE *fp)
     char *string_to_look;
 
     #ifndef WIN32
-    char *(all_paths[]) = {"bin","sbin","usr/bin","usr/sbin", NULL};
+    const char *(all_paths[]) = {"bin","sbin","usr/bin","usr/sbin", NULL};
     #else
-    char *(all_paths[]) = {"C:\\Windows\\", "D:\\Windows\\", NULL};
+    const char *(all_paths[]) = {"C:\\Windows\\", "D:\\Windows\\", NULL};
     #endif
 
     debug1("%s: DEBUG: Starting on check_rc_trojans", ARGV0);

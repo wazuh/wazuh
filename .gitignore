@@ -62,11 +62,11 @@ src/verify-agent-conf
 # test and coverage files
 *.gcno
 *.gcda
-src/tests/coverage-report/
-src/tests/ossec.test
-src/tests/test_os_crypto
-src/tests/test_os_net
-src/tests/test_os_regex
-src/tests/test_os_xml
-src/tests/test_os_zlib
-src/tests/test_shared
+src/coverage-report/
+src/ossec.test
+src/test_os_crypto
+src/test_os_net
+src/test_os_regex
+src/test_os_xml
+src/test_os_zlib
+src/test_shared

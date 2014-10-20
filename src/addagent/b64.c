@@ -133,8 +133,10 @@ char *decode_base64(const char *src)
         p = (unsigned char *)dest;
 
         buf = malloc(l);
-        if(!buf)
+        if(!buf) {
+            free(dest);
             return(NULL);
+        }
 
         /* Ignore non base64 chars as per the POSIX standard */
         for(k=0, l=0; src[k]; k++)

@@ -17,8 +17,10 @@
 #undef ARGV0
 #define ARGV0 "list_agents"
 
+static void helpmsg(void) __attribute__((noreturn));
+
 /** help **/
-void helpmsg()
+static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: List available agents.\n", ARGV0);
     printf("Available options:\n");
@@ -33,11 +35,11 @@ void helpmsg()
 /** main **/
 int main(int argc, char **argv)
 {
-    char *dir = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
-    char *user = USER;
+    const char *dir = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
+    const char *user = USER;
 
-    char *msg;
+    const char *msg;
     char **agent_list;
     int gid;
     int uid;

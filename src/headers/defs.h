@@ -97,7 +97,7 @@ http://www.ossec.net/main/license/\n"
     #define GROUPGLOBAL     "ossec"
 #endif
 
-#ifndef DEFAULTDIR		
+#ifndef DEFAULTDIR
 	#define DEFAULTDIR	"/var/ossec"
 #endif
 
@@ -277,6 +277,13 @@ http://www.ossec.net/main/license/\n"
 
 
 #define WAIT_FILE_PATH  DEFAULTDIR WAIT_FILE
+
+
+#define TMP_DIR "tmp"
+
+
+/* Windows COMSPEC */
+#define COMSPEC "C:\\Windows\\System32\\cmd.exe"
 
 
 /* Default ports */

@@ -9,6 +9,7 @@
 
 #include <check.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "../os_crypto/blowfish/bf_op.h"
 #include "../os_crypto/md5/md5_op.h"

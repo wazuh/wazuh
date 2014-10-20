@@ -15,6 +15,10 @@
 #include "manage_agents.h"
 #include <stdlib.h>
 
+static void helpmsg(void) __attribute__((noreturn));
+static void print_banner(void);
+static void manage_shutdown(int sig) __attribute__((noreturn));
+
 #if defined(__MINGW32__)
 static int setenv(const char * name, const char * val, int overwrite) {
     int len = strlen(name) + strlen(val) + 2;
@@ -26,7 +30,7 @@ static int setenv(const char * name, const char * val, int overwrite) {
 #endif
 
 /* print help statement */
-void helpmsg()
+static void helpmsg()
 {
     print_header();
     print_out("  %s: -[Vhl] [-e id] [-r id] [-i id] [-f file]", ARGV0);
@@ -43,7 +47,7 @@ void helpmsg()
 
 
 /* print banner */
-void print_banner()
+static void print_banner()
 {
     printf("\n");
     printf(BANNER, __ossec_name, __version);
@@ -59,7 +63,7 @@ void print_banner()
 
 
 /* Clean shutdown on kill */
-void manage_shutdown()
+static void manage_shutdown(__attribute__((unused)) int sig)
 {
     /* Checking if restart message is necessary */
     if(restart_necessary)
@@ -82,13 +86,13 @@ int main(int argc, char **argv)
     char *user_msg;
 
     int c = 0, cmdlist = 0;
-    char *cmdexport = NULL;
-    char *cmdimport = NULL;
-    char *cmdbulk = NULL;
+    const char *cmdexport = NULL;
+    const char *cmdimport = NULL;
+    const char *cmdbulk = NULL;
 
     #ifndef WIN32
-    char *dir = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
+    const char *dir = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
     int gid;
     #else
     FILE *fp;

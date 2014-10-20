@@ -18,9 +18,11 @@
 #undef ARGV0
 #define ARGV0 "agent_control"
 
+static void helpmsg(void) __attribute__((noreturn));
+
 
 /** help **/
-void helpmsg()
+static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: Control remote agents.\n", ARGV0);
     printf("Available options:\n");
@@ -42,12 +44,12 @@ void helpmsg()
 /** main **/
 int main(int argc, char **argv)
 {
-    char *dir = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
-    char *user = USER;
-    char *agent_id = NULL;
-    char *ip_address = NULL;
-    char *ar = NULL;
+    const char *dir = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
+    const char *user = USER;
+    const char *agent_id = NULL;
+    const char *ip_address = NULL;
+    const char *ar = NULL;
 
     int arq = 0;
     int gid = 0;

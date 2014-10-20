@@ -83,16 +83,16 @@ void OS_RemoveCounter(const char *id) __attribute((nonnull));
 /** Function prototypes -- agent authorization **/
 
 /* Checks if the ip is allowed */
-int OS_IsAllowedIP(keystore *keys, char *srcip) __attribute((nonnull(1)));
+int OS_IsAllowedIP(keystore *keys, const char *srcip) __attribute((nonnull(1)));
 
 /* Checks if the id is allowed */
-int OS_IsAllowedID(keystore *keys, char *id) __attribute((nonnull(1)));
+int OS_IsAllowedID(keystore *keys, const char *id) __attribute((nonnull(1)));
 
 /* Checks if name is valid */
 int OS_IsAllowedName(const keystore *keys, const char *name) __attribute((nonnull));
 
 /* Check if the id is valid and dynamic */
-int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip) __attribute((nonnull(1)));
+int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip) __attribute((nonnull(1)));
 
 
 

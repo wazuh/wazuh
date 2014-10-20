@@ -19,7 +19,7 @@
 
 #ifndef WIN32
 
-char *_os_get_runps(char *ps, int mpid)
+static char *_os_get_runps(const char *ps, int mpid)
 {
     char *tmp_str, *nbuf;
     char buf[OS_SIZE_2048 +1];
@@ -82,7 +82,7 @@ char *_os_get_runps(char *ps, int mpid)
 
 
 /* os_get_unix_process_list: Get list of Unix processes */
-void *os_get_process_list()
+OSList *os_get_process_list()
 {
     int i = 1;
     pid_t max_pid = MAX_PID;
@@ -137,7 +137,7 @@ void *os_get_process_list()
          }
     }
 
-    return((void *)p_list);
+    return(p_list);
 }
 
 

@@ -14,8 +14,8 @@
 
 #include "manage_agents.h"
 
-char __user_buffer[USER_SIZE +1];
-char *__user_buffer_pt;
+static char __user_buffer[USER_SIZE +1];
+static char *__user_buffer_pt;
 
 
 /** read_from_user **/
