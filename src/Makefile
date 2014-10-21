@@ -616,7 +616,7 @@ lua:
 
 ${EXTERNAL_ZLIB}libz.a:
 ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_ZLIB} && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
+	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
 else
 	cd ${EXTERNAL_ZLIB} && ./configure && ${MAKE} libz.a
 endif
@@ -1176,7 +1176,7 @@ test-rules:
 ####################
 
 win32/icon.o: win32/icofile.rc
-	${OSSEC_WINDRES} -i win32/icofile.rc -o win32/icon.o
+	${OSSEC_WINDRES} -i $< -o $@
 
 win32_c := $(wildcard win32/*.c)
 win32_o := $(win32_c:.c=.o)
@@ -1218,7 +1218,7 @@ win32/add-localfile.exe: win32/add-localfile.o ${ossec_libs}
 	${OSSEC_CCBIN} -DARGV0=\"add-localfile\" ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
 
 win32/resource.o: win32/ui/win32ui.rc
-	${OSSEC_WINDRES} -o win32/resource.o win32/ui/win32ui.rc
+	${OSSEC_WINDRES} -i $< -o $@
 
 win32/os_win32ui.exe: win32/resource.o win32/win_service_rk.o ${win32_ui_o} addagent/b64.o ${ossec_libs}
 	${OSSEC_CCBIN} -DCLIENT -DARGV0=\"ossec-win32ui\" ${OSSEC_CFLAGS} $^ ${OSSEC_LDFLAGS} -o $@
