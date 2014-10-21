@@ -694,6 +694,8 @@ int mkstemp_ex(char *tmp_path)
         return(-1);
     }
 
+    fchmod(fd, 0600); //mkstemp() only implicit does this in POSIX 2008
+
     close(fd);
 
     return(0);
