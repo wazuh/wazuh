@@ -615,8 +615,11 @@ lua:
 	cd ${EXTERNAL_LUA} && ${MAKE} ${LUA_PLAT}
 
 ${EXTERNAL_ZLIB}libz.a:
-	cd ${EXTERNAL_ZLIB} && ./configure && ${MAKE} CC=${MING_BASE}${CC} libz.a
-
+ifeq (${TARGET},winagent)
+	cd ${EXTERNAL_ZLIB} && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
+else
+	cd ${EXTERNAL_ZLIB} && ./configure && ${MAKE} libz.a
+endif
 
 #### zlib ##########
 
