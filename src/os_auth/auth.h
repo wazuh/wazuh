@@ -45,15 +45,15 @@
 #include "os_net/os_net.h"
 #include "addagent/manage_agents.h"
 
-BIO *bio_err;
+extern BIO *bio_err;
 #define KEYFILE  "/etc/sslmanager.key"
 #define CERTFILE "/etc/sslmanager.cert"
 #define DEFAULT_PORT 1515
 
-SSL_CTX *os_ssl_keys(int is_server, char *os_dir, char *cert, char *key, char *ca_cert);
-SSL_CTX *get_ssl_context();
-int load_cert_and_key(SSL_CTX *ctx, char *cert, char *key);
-int load_ca_cert(SSL_CTX *ctx, char *ca_cert);
+SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const char *key, const char *ca_cert);
+SSL_CTX *get_ssl_context(void);
+int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key);
+int load_ca_cert(SSL_CTX *ctx, const char *ca_cert);
 int verify_callback(int ok, X509_STORE_CTX *store);
 
 #endif /* USE_OPENSSL */
