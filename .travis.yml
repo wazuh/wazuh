@@ -4,7 +4,7 @@ notifications:
   irc:
     - "chat.freenode.net#ossec-dev"
   slack:
-    secure: xUYXyA0EhYWq8splt95qzYJu8C2vz5xl6McuF1OqXygTFs+bAH5QfBPRsPSZyErrKP0TRmadCXCJxgY8rnFkqKNBKns58B7iEbBbHq6aDsPy8Yd8tCrU6KpPWcdOilyoLrMwoXqEVQtXLP0ahNZXr5rcrlU7jMUh1EcbqxYAfJo=
+    secure: Cz1InEL5G+z2huuzilXe7BqfxlEjN4io5ylJa5jgPvGMlB5sIQZTQQ7PDrzcK0iwn+5xgDkXKwbNPV2k+NHNTtNFiuBrcnJbyeA8PjghtAw4hg/Vpl5+5ovySZT9pGSV7ySsA8nGD73hlcQFgWnYDhsugQ6UZyRXAN8vLLCLjPg=
 
 env:
 - DB=mysql OSSEC_TYPE=server GEOIP=yes
