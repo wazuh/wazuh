@@ -271,7 +271,7 @@ RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
 
         if(!new_rulenode)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
         }
 
         if(middle_insertion == 1)
@@ -304,7 +304,7 @@ RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
         _rulenode = (RuleNode *)calloc(1,sizeof(RuleNode));
         if(_rulenode == NULL)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
         }
 
         _rulenode->ruleinfo = read_rule;
@@ -420,7 +420,7 @@ int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule)
                 r_node->ruleinfo->sid_prev_matched = OSList_Create();
                 if(!r_node->ruleinfo->sid_prev_matched)
                 {
-                    ErrorExit(MEM_ERROR, ARGV0);
+                    ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
                 }
             }
 

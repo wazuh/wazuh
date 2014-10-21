@@ -112,7 +112,7 @@ void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
             wp = waitpid((pid_t) -1, NULL, WNOHANG);
             if (wp < 0)
             {
-                merror(WAITPID_ERROR, ARGV0);
+                merror(WAITPID_ERROR, ARGV0, errno, strerror(errno));
             }
             else if(wp == 0)
             {

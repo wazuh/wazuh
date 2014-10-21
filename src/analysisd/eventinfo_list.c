@@ -59,7 +59,7 @@ void OS_AddEvent(Eventinfo *lf)
 
         if(new_node == NULL)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
         }
 
         /* Always adding to the beginning of the list
@@ -109,7 +109,7 @@ void OS_AddEvent(Eventinfo *lf)
         eventnode = (EventNode *)calloc(1,sizeof(EventNode));
         if(eventnode == NULL)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
         }
 
         eventnode->prev = NULL;

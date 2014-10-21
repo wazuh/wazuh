@@ -1450,7 +1450,7 @@ char **get_agents(int flag)
         f_files = (char **)realloc(f_files, (f_size +2) * sizeof(char *));
         if(!f_files)
         {
-            ErrorExit(MEM_ERROR, __local_name);
+            ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
         }
 
 

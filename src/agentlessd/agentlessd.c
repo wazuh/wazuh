@@ -43,7 +43,7 @@ static int save_agentless_entry(const char *host, const char *script, const char
     }
     else
     {
-        merror(FOPEN_ERROR, ARGV0, sys_location);
+        merror(FOPEN_ERROR, ARGV0, sys_location, errno, strerror(errno));
     }
 
     return(0);
@@ -309,7 +309,7 @@ static FILE *open_diff_file(const char *host, const char *script)
         {
             if(mkdir(sys_location, 0770) == -1)
             {
-                merror(MKDIR_ERROR, ARGV0, sys_location);
+                merror(MKDIR_ERROR, ARGV0, sys_location, errno, strerror(errno));
                 return(NULL);
             }
         }
@@ -319,7 +319,7 @@ static FILE *open_diff_file(const char *host, const char *script)
         fp = fopen(sys_location, "w");
         if(!fp)
         {
-            merror(FOPEN_ERROR, ARGV0, sys_location);
+            merror(FOPEN_ERROR, ARGV0, sys_location, errno, strerror(errno));
             return(NULL);
         }
     }

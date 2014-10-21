@@ -761,7 +761,7 @@ void goDaemonLight()
 
     if(pid < 0)
     {
-        merror(FORK_ERROR, __local_name);
+        merror(FORK_ERROR, __local_name, errno, strerror(errno));
         return;
     }
     else if(pid)
@@ -773,7 +773,7 @@ void goDaemonLight()
     /* becoming session leader */
     if(setsid() < 0)
     {
-        merror(SETSID_ERROR, __local_name);
+        merror(SETSID_ERROR, __local_name, errno, strerror(errno));
         return;
     }
 
@@ -782,7 +782,7 @@ void goDaemonLight()
     pid = fork();
     if(pid < 0)
     {
-        merror(FORK_ERROR, __local_name);
+        merror(FORK_ERROR, __local_name, errno, strerror(errno));
         return;
     }
     else if(pid)
@@ -818,7 +818,7 @@ void goDaemon()
 
     if(pid < 0)
     {
-        merror(FORK_ERROR, __local_name);
+        merror(FORK_ERROR, __local_name, errno, strerror(errno));
         return;
     }
     else if(pid)
@@ -829,7 +829,7 @@ void goDaemon()
     /* becoming session leader */
     if(setsid() < 0)
     {
-        merror(SETSID_ERROR, __local_name);
+        merror(SETSID_ERROR, __local_name, errno, strerror(errno));
         return;
     }
 
@@ -837,7 +837,7 @@ void goDaemon()
     pid = fork();
     if(pid < 0)
     {
-        merror(FORK_ERROR, __local_name);
+        merror(FORK_ERROR, __local_name, errno, strerror(errno));
         return;
     }
     else if(pid)
@@ -891,7 +891,7 @@ int checkVista()
     m_uname = getuname();
     if(!m_uname)
     {
-        merror(MEM_ERROR, __local_name);
+        merror(MEM_ERROR, __local_name, errno, strerror(errno));
         return(0);
     }
 

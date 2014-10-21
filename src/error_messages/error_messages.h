@@ -24,25 +24,26 @@
 
 
 /* SYSTEM ERRORS */
-#define FORK_ERROR    "%s(1101): ERROR: Unable to fork. Exiting."
-#define MEM_ERROR     "%s(1102): ERROR: Not enough Memory. Exiting."
-#define FOPEN_ERROR   "%s(1103): ERROR: Unable to open file '%s'."
+#define FORK_ERROR    "%s(1101): ERROR: Could to fork due to [(%d)-(%s)]."
+#define MEM_ERROR     "%s(1102): ERROR: Could not aquire memory due to [(%d)-(%s)]."
+#define FOPEN_ERROR   "%s(1103): ERROR: Could not open file '%s' due to [(%d)-(%s)]."
 #define SIZE_ERROR    "%s(1104): ERROR: Maximum string size reached for: %s."
 #define NULL_ERROR    "%s(1105): ERROR: Attempted to use null string. "
 #define FORMAT_ERROR  "%s(1106): ERROR: String not correctly formated."
-#define MKDIR_ERROR   "%s(1107): ERROR: Unable to create directory: '%s'"
-#define PERM_ERROR    "%s(1108): ERROR: Permission error. Operation not completed."
+#define MKDIR_ERROR   "%s(1107): ERROR: Could not create directory '%s' due to [(%d)-(%s)]."
+//#define PERM_ERROR    "%s(1108): ERROR: Permission error. Operation not completed."
 #define THREAD_ERROR  "%s(1109): ERROR: Unable to create new pthread."
-#define READ_ERROR    "%s(1110): ERROR: Unable to read from socket."
-#define WAITPID_ERROR "%s(1111): ERROR: Unable to Waitpid()."
-#define SETSID_ERROR  "%s(1112): ERROR: Unable to Setsid()."
+//#define READ_ERROR    "%s(1110): ERROR: Unable to read from socket."
+#define WAITPID_ERROR "%s(1111): ERROR: Error during waitpid()-call due to [(%d)-(%s)]."
+#define SETSID_ERROR  "%s(1112): ERROR: Error during setsid()-call due to [(%d)-(%s)]."
 #define MUTEX_ERROR   "%s(1113): ERROR: Unable to set pthread mutex."
-#define SELECT_ERROR  "%s(1114): ERROR: Unable to select()."
-#define FREAD_ERROR   "%s(1115): ERROR: Error reading file '%s'."
-#define FSEEK_ERROR   "%s(1116): ERROR: Error handling file '%s' (fseek)."
+#define SELECT_ERROR  "%s(1114): ERROR: Error during select()-call due to [(%d)-(%s)]."
+#define FREAD_ERROR   "%s(1115): ERROR: Could not read from file '%s' due to [(%d)-(%s)]."
+#define FSEEK_ERROR   "%s(1116): ERROR: Could not set position in file '%s' due to [(%d)-(%s)]."
 #define FILE_ERROR    "%s(1117): ERROR: Error handling file '%s' (date)."
-#define SYSTEM_ERROR  "%s(1118): ERROR: Internal error. Exiting.."
+#define FSTAT_ERROR   "%s(1117): ERROR: Could not retrieve informations of file '%s' due to [(%d)-(%s)]."
 #define FGETS_ERROR   "%s(1119): ERROR: Invalid line on file '%s': %s."
+//TODO: start
 #define PIPE_ERROR    "%s(1120): ERROR: Pipe error."
 #define GLOB_ERROR    "%s(1121): ERROR: Glob error. Invalid pattern: '%s'."
 #define GLOB_NFOUND   "%s(1122): ERROR: No file found by pattern: '%s'."
@@ -141,7 +142,7 @@
 
 
 /* Log collector */
-
+#define SYSTEM_ERROR     "%s(1600): ERROR: Internal error. Exiting.."
 
 /* Remoted */
 #define NO_REM_CONN     "%s(1750): ERROR: No remote connection configured. Exiting."

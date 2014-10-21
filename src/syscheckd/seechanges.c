@@ -200,7 +200,7 @@ static int seechanges_createpath(const char *filename)
             if(mkdir(newdir) == -1)
             #endif
             {
-                merror(MKDIR_ERROR, ARGV0, newdir);
+                merror(MKDIR_ERROR, ARGV0, newdir, errno, strerror(errno));
                 free(buffer);
                 return(0);
             }

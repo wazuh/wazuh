@@ -104,7 +104,7 @@ int FTS_Init()
         fp_list = fopen(FTS_QUEUE, "r+");
         if(!fp_list)
         {
-            merror(FOPEN_ERROR, ARGV0, FTS_QUEUE);
+            merror(FOPEN_ERROR, ARGV0, FTS_QUEUE, errno, strerror(errno));
             return(0);
         }
     }
@@ -158,7 +158,7 @@ int FTS_Init()
         fp_ignore = fopen(IG_QUEUE, "r+");
         if(!fp_ignore)
         {
-            merror(FOPEN_ERROR, ARGV0, IG_QUEUE);
+            merror(FOPEN_ERROR, ARGV0, IG_QUEUE, errno, strerror(errno));
             return(0);
         }
     }

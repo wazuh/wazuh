@@ -265,8 +265,7 @@ static void OS_Run(MailConfig *mail)
 
             if(pid < 0)
             {
-                merror("%s: Fork failed. cause: %d - %s", ARGV0, errno, strerror(errno));
-                merror(FORK_ERROR, ARGV0);
+                merror(FORK_ERROR, ARGV0, errno, strerror(errno));
                 sleep(30);
                 continue;
             }
@@ -316,8 +315,7 @@ static void OS_Run(MailConfig *mail)
             pid = fork();
             if(pid < 0)
             {
-                merror("%s: Fork failed. cause: %d - %s", ARGV0, errno, strerror(errno));
-                merror(FORK_ERROR, ARGV0);
+                merror(FORK_ERROR, ARGV0, errno, strerror(errno));
                 sleep(30);
                 continue;
             }
@@ -470,7 +468,7 @@ static void OS_Run(MailConfig *mail)
             wp = waitpid((pid_t) -1, &p_status, WNOHANG);
             if (wp < 0)
             {
-                merror(WAITPID_ERROR, ARGV0);
+                merror(WAITPID_ERROR, ARGV0, errno, strerror(errno));
                 n_errs++;
             }
 

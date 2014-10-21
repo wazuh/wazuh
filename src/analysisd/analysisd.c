@@ -463,7 +463,7 @@ int main_analysisd(int argc, char **argv)
         Config.g_rules_hash = OSHash_Create();
         if(!Config.g_rules_hash)
         {
-            ErrorExit(MEM_ERROR, ARGV0);
+            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
         }
         AddHash_Rule(tmp_node);
     }
@@ -732,7 +732,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
         if(!stats_rule)
         {
-            ErrorExit(MEM_ERROR, ARGV0);
+            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
         }
         stats_rule->group = "stats,";
         stats_rule->comment = "Excessive number of events (above normal).";
@@ -747,7 +747,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     {
         lf = (Eventinfo *)calloc(1,sizeof(Eventinfo));
         if(!lf)
-            ErrorExit(MEM_ERROR, ARGV0);
+            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
         lf->year = prev_year;
         strncpy(lf->mon, prev_month, 3);
         lf->day = today;
@@ -774,7 +774,7 @@ void OS_ReadMSG_analysisd(int m_queue)
         /* This shouldn't happen .. */
         if(lf == NULL)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
         }
 
         DEBUG_MSG("%s: DEBUG: Waiting for msgs - %d ", ARGV0, (int)time(0));
@@ -1752,7 +1752,7 @@ void DumpLogstats()
     if(IsDir(logfile) == -1)
         if(mkdir(logfile,0770) == -1)
         {
-            merror(MKDIR_ERROR, ARGV0, logfile);
+            merror(MKDIR_ERROR, ARGV0, logfile, errno, strerror(errno));
             return;
         }
 
@@ -1761,7 +1761,7 @@ void DumpLogstats()
     if(IsDir(logfile) == -1)
         if(mkdir(logfile,0770) == -1)
         {
-            merror(MKDIR_ERROR,ARGV0,logfile);
+            merror(MKDIR_ERROR,ARGV0,logfile, errno, strerror(errno));
             return;
         }
 
@@ -1777,7 +1777,7 @@ void DumpLogstats()
     flog = fopen(logfile, "a");
     if(!flog)
     {
-        merror(FOPEN_ERROR, ARGV0, logfile);
+        merror(FOPEN_ERROR, ARGV0, logfile, errno, strerror(errno));
         return;
     }
 

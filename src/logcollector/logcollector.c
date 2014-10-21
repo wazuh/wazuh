@@ -309,7 +309,7 @@ void LogCollectorStart()
         /* Waiting for the select timeout */
         if ((r = select(0, NULL, NULL, NULL, &fp_timeout)) < 0)
         {
-            merror(SELECT_ERROR, ARGV0);
+            merror(SELECT_ERROR, ARGV0, errno, strerror(errno));
             int_error++;
 
             if(int_error >= 5)
@@ -389,7 +389,7 @@ void LogCollectorStart()
             /* If ferror is set */
             else
             {
-                merror(FREAD_ERROR, ARGV0, logff[i].file);
+                merror(FREAD_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
                 #ifndef WIN32
                 if(fseek(logff[i].fp, 0, SEEK_END) < 0)
                 #else
@@ -398,7 +398,7 @@ void LogCollectorStart()
                 {
 
                     #ifndef WIN32
-                    merror(FSEEK_ERROR, ARGV0, logff[i].file);
+                    merror(FSEEK_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
                     #endif
 
                     /* Closing the file */
@@ -484,12 +484,12 @@ void LogCollectorStart()
             if(logff[i].fp)
             {
                 #ifndef WIN32
-                if(stat(logff[i].file, &tmp_stat) == -1)
+                if(fstat(fileno(logff[i].fp), &tmp_stat) == -1)
                 {
                     fclose(logff[i].fp);
                     logff[i].fp = NULL;
 
-                    merror(FILE_ERROR, ARGV0, logff[i].file);
+                    merror(FSTAT_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
                 }
 
                 #else
@@ -712,7 +712,7 @@ int handle_file(int i, int do_fseek, int do_log)
     {
         if(do_log == 1)
         {
-            merror(FOPEN_ERROR, ARGV0, logff[i].file);
+            merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
         }
         return(-1);
     }
@@ -720,7 +720,7 @@ int handle_file(int i, int do_fseek, int do_log)
     fd = fileno(logff[i].fp);
     if(fstat(fd, &stat_fd) == -1)
     {
-        merror(FILE_ERROR,ARGV0,logff[i].file);
+        merror(FSTAT_ERROR,ARGV0,logff[i].file, errno, strerror(errno));
         fclose(logff[i].fp);
         logff[i].fp = NULL;
         return(-1);
@@ -741,21 +741,21 @@ int handle_file(int i, int do_fseek, int do_log)
     {
         if(do_log == 1)
         {
-            merror(FOPEN_ERROR, ARGV0, logff[i].file);
+            merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
         }
         return(-1);
     }
     fd = _open_osfhandle((long)logff[i].h, 0);
     if(fd == -1)
     {
-        merror(FOPEN_ERROR, ARGV0, logff[i].file);
+        merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
         CloseHandle(logff[i].h);
         return(-1);
     }
     logff[i].fp = _fdopen(fd, "r");
     if(logff[i].fp == NULL)
     {
-        merror(FOPEN_ERROR, ARGV0, logff[i].file);
+        merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
         CloseHandle(logff[i].h);
         return(-1);
     }
@@ -786,7 +786,7 @@ int handle_file(int i, int do_fseek, int do_log)
         #ifndef WIN32
         if(fseek(logff[i].fp, 0, SEEK_END) < 0)
         {
-            merror(FSEEK_ERROR, ARGV0,logff[i].file);
+            merror(FSEEK_ERROR, ARGV0,logff[i].file, errno, strerror(errno));
             fclose(logff[i].fp);
             logff[i].fp = NULL;
             return(-1);

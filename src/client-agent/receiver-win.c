@@ -72,7 +72,7 @@ void *receiver_thread(void *none)
         recv_b = select(0, &fdset, NULL, NULL, &selecttime);
         if(recv_b == -1)
         {
-            merror(SELECT_ERROR, ARGV0);
+            merror(SELECT_ERROR, ARGV0, errno, strerror(errno));
             sleep(30);
             continue;
         }
@@ -188,7 +188,7 @@ void *receiver_thread(void *none)
                     fp = fopen(file, "w");
                     if(!fp)
                     {
-                        merror(FOPEN_ERROR, ARGV0, file);
+                        merror(FOPEN_ERROR, ARGV0, file, errno, strerror(errno));
                     }
                 }
 

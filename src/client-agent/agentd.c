@@ -180,7 +180,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
         if(rc == -1)
         {
-            ErrorExit(SELECT_ERROR, ARGV0);
+            ErrorExit(SELECT_ERROR, ARGV0, errno, strerror(errno));
         }
 
 

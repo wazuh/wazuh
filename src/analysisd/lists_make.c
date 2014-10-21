@@ -64,7 +64,7 @@ void Lists_OP_MakeCDB(char *txt_filename, char *cdb_filename, int force)
         cdb_make_start(&cdbm, tmp_fd);
         if(!(txt_fd = fopen(txt_filename, "r")))
         {
-            merror(FOPEN_ERROR, ARGV0, txt_filename);
+            merror(FOPEN_ERROR, ARGV0, txt_filename, errno, strerror(errno));
             return;
         }
         while((fgets(str, OS_MAXSTR-1,txt_fd)) != NULL)

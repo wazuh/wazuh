@@ -68,7 +68,7 @@ OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
         new_node = (OSDecoderNode *)calloc(1,sizeof(OSDecoderNode));
         if(new_node == NULL)
         {
-            merror(MEM_ERROR,ARGV0);
+            merror(MEM_ERROR,ARGV0, errno, strerror(errno));
             return(NULL);
         }
 
@@ -140,7 +140,7 @@ OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
 
         if(tmp_node == NULL)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
         }
 
         tmp_node->child = NULL;

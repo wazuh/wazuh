@@ -270,7 +270,7 @@ int OSList_AddData(OSList *list, void *data)
     newnode = (OSListNode *) calloc(1, sizeof(OSListNode));
     if(!newnode)
     {
-        merror(MEM_ERROR, __local_name);
+        merror(MEM_ERROR, __local_name, errno, strerror(errno));
         return(0);
     }
 

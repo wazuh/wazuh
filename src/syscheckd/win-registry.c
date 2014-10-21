@@ -281,7 +281,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
         checksum_fp = fopen(SYS_REG_TMP, "w");
         if(!checksum_fp)
         {
-            printf(FOPEN_ERROR, ARGV0, SYS_REG_TMP);
+            printf(FOPEN_ERROR, ARGV0, SYS_REG_TMP, errno, strerror(errno));
             return;
         }
 
@@ -339,7 +339,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
                                 (unsigned int)data_buffer[j]);
                     }
                     fprintf(checksum_fp, "\n");
-                    break;	
+                    break;
             }
         }
 
@@ -348,7 +348,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
 
         if(OS_MD5_SHA1_File(SYS_REG_TMP, syscheck.prefilter_cmd, mf_sum, sf_sum) == -1)
         {
-            merror(FOPEN_ERROR, ARGV0, SYS_REG_TMP);
+            merror(FOPEN_ERROR, ARGV0, SYS_REG_TMP, errno, strerror(errno));
             return;
         }
 
@@ -374,7 +374,7 @@ void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
  */
 void os_winreg_open_key(char *subkey, char *full_key_name)
 {
-    int i = 0;	
+    int i = 0;
     HKEY oshkey;
 
     /* sleep X every Y files */
@@ -447,7 +447,7 @@ void os_winreg_check()
         syscheck.reg_fp = fopen(SYS_WIN_REG, "w+");
         if(!syscheck.reg_fp)
         {
-            merror(FOPEN_ERROR, ARGV0, SYS_WIN_REG);
+            merror(FOPEN_ERROR, ARGV0, SYS_WIN_REG, errno, strerror(errno));
             return;
         }
     }

@@ -98,7 +98,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                                        sizeof(char *)*rules_size);
             if(!Config->includes)
             {
-                merror(MEM_ERROR, __local_name);
+                merror(MEM_ERROR, __local_name, errno, strerror(errno));
                 return(OS_INVALID);
             }
 
@@ -113,7 +113,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                                        sizeof(char *)*decoders_size);
             if(!Config->decoders)
             {
-                merror(MEM_ERROR, __local_name);
+                merror(MEM_ERROR, __local_name, errno, strerror(errno));
                 return(OS_INVALID);
             }
 
@@ -128,7 +128,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                                     sizeof(char *)*lists_size);
             if(!Config->lists)
             {
-                merror(MEM_ERROR, __local_name);
+                merror(MEM_ERROR, __local_name, errno, strerror(errno));
                 return(OS_INVALID);
             }
             os_strdup(node[i]->content,Config->lists[lists_size -2]);
@@ -191,7 +191,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                         Config->decoders= (char **) realloc(Config->decoders, sizeof(char *)*decoders_size);
                         if(!Config->decoders)
                         {
-                            merror(MEM_ERROR, __local_name);
+                            merror(MEM_ERROR, __local_name, errno, strerror(errno));
                             OSRegex_FreePattern(&regex);
                             return(-1);
                         }
@@ -269,7 +269,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                         Config->includes = (char **) realloc(Config->includes, sizeof(char *)*rules_size);
                         if(!Config->includes)
                         {
-                            merror(MEM_ERROR, __local_name);
+                            merror(MEM_ERROR, __local_name, errno, strerror(errno));
                             OSRegex_FreePattern(&regex);
                             closedir(dfd);
                             return(-1);

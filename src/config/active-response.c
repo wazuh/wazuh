@@ -61,7 +61,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     fp = fopen(DEFAULTARPATH, "a");
     if(!fp)
     {
-        merror(FOPEN_ERROR, __local_name, DEFAULTARPATH);
+        merror(FOPEN_ERROR, __local_name, DEFAULTARPATH, errno, strerror(errno));
         return(-1);
     }
 
@@ -94,7 +94,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     tmp_ar = (active_response *) calloc(1, sizeof(active_response));
     if(!tmp_ar)
     {
-        merror(MEM_ERROR, __local_name);
+        merror(MEM_ERROR, __local_name, errno, strerror(errno));
         fclose(fp);
         return(-1);
     }
@@ -322,7 +322,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
     tmp_ar->name = (char *) calloc(OS_FLSIZE +1, sizeof(char));
     if(!tmp_ar->name)
     {
-        ErrorExit(MEM_ERROR, __local_name);
+        ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
     }
     snprintf(tmp_ar->name, OS_FLSIZE, "%s%d",
             tmp_ar->ar_cmd->name,
@@ -403,7 +403,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
     tmp_command = (ar_command *) calloc(1, sizeof(ar_command));
     if(!tmp_command)
     {
-        merror(MEM_ERROR, __local_name);
+        merror(MEM_ERROR, __local_name, errno, strerror(errno));
         return(-1);
     }
 

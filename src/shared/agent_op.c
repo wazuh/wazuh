@@ -50,7 +50,7 @@ int os_set_restart_syscheck()
     fp = fopen(SYSCHECK_RESTART, "w");
     if(!fp)
     {
-        merror(FOPEN_ERROR, __local_name, SYSCHECK_RESTART);
+        merror(FOPEN_ERROR, __local_name, SYSCHECK_RESTART, errno, strerror(errno));
         return(0);
     }
 
@@ -92,7 +92,7 @@ char* os_read_agent_name()
 
     if(!fp)
     {
-        debug1(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
+        debug1(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
         return(NULL);
     }
 
@@ -131,7 +131,7 @@ char *os_read_agent_ip()
     fp = fopen(AGENT_INFO_FILE, "r");
     if(!fp)
     {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
+        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
         return(NULL);
     }
 
@@ -168,7 +168,7 @@ char *os_read_agent_id()
     fp = fopen(AGENT_INFO_FILE, "r");
     if(!fp)
     {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
+        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
         return(NULL);
     }
 
@@ -219,7 +219,7 @@ char* os_read_agent_profile()
     if(!fp)
     {
         debug2("%s: Failed to open file. Errno=%d.", __local_name, errno);
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
+        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
         return(NULL);
     }
 
@@ -262,7 +262,7 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
     fp = fopen(AGENT_INFO_FILE, "w");
     if(!fp)
     {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
+        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
         return(0);
     }
 
