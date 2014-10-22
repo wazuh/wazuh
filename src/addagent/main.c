@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     #ifndef WIN32
     const char *dir = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
-    int gid;
+    gid_t gid;
     #else
     FILE *fp;
     TCHAR path[2048];
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
     #ifndef WIN32
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
-    if(gid < 0)
+    if(gid == (gid_t)-1)
     {
         ErrorExit(USER_ERROR, ARGV0, "", group);
     }

@@ -104,7 +104,8 @@ int main(int argc, char **argv)
     int process_pool[POOL_SIZE];
     // Count of pids we are wait()ing on.
     int c = 0, test_config = 0, use_ip_address = 0, pid = 0, status, i = 0, active_processes = 0;
-    int gid = 0, client_sock = 0, sock = 0, port = DEFAULT_PORT, ret = 0;
+    gid_t gid;
+    int client_sock = 0, sock = 0, port = DEFAULT_PORT, ret = 0;
     const char *dir  = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     const char *server_cert = NULL;
@@ -193,7 +194,7 @@ int main(int argc, char **argv)
 
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
-    if(gid < 0)
+    if(gid == (gid_t)-1)
         ErrorExit(USER_ERROR,ARGV0,"",group);
 
 

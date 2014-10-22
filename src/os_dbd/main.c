@@ -67,7 +67,8 @@ static void help_dbd()
 int main(int argc, char **argv)
 {
     int c, test_config = 0, run_foreground = 0;
-    int uid = 0,gid = 0;
+    uid_t uid;
+    gid_t gid;
     unsigned int d;
 
     /* Using MAILUSER (read only) */
@@ -138,7 +139,7 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
     {
         ErrorExit(USER_ERROR, ARGV0, user, group);
     }

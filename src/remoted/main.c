@@ -40,7 +40,8 @@ static void help_remoted()
 int main(int argc, char **argv)
 {
     int i = 0,c = 0;
-    int uid = 0, gid = 0;
+    uid_t uid;
+    gid_t gid;
     int debug_level = 0;
     int test_config = 0,run_foreground = 0;
 
@@ -136,7 +137,7 @@ int main(int argc, char **argv)
     /* Check if the user and group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
         ErrorExit(USER_ERROR, ARGV0, user, group);
 
 

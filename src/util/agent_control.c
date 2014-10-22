@@ -52,8 +52,8 @@ int main(int argc, char **argv)
     const char *ar = NULL;
 
     int arq = 0;
-    int gid = 0;
-    int uid = 0;
+    gid_t gid;
+    uid_t uid;
     int c = 0, restart_syscheck = 0, restart_all_agents = 0, list_agents = 0;
     int info_agent = 0, agt_id = 0, active_only = 0, csv_output = 0;
     int list_responses = 0, end_time = 0, restart_agent = 0;
@@ -155,7 +155,7 @@ int main(int argc, char **argv)
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
-    if(gid < 0)
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
     {
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
