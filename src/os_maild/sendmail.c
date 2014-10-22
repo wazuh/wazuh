@@ -274,7 +274,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     if(msg)
         free(msg);
 
-    memset(snd_msg,'\0',128);
+    memset_s(snd_msg,'\0',128);
 
 
     /* Returning 0 (success) */
@@ -605,7 +605,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     if(msg)
         free(msg);
 
-    memset(snd_msg,'\0',128);
+    memset_s(snd_msg,'\0',128);
 
 
     /* Returning 0 (success) */
