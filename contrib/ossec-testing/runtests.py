@@ -6,6 +6,7 @@ import os.path
 
 class OssecTester(object):
     def __init__(self):
+        self._error = False
         self._debug = False 
         self._quiet = False 
         self._ossec_conf = "/var/ossec/etc/ossec.conf"
@@ -29,6 +30,7 @@ class OssecTester(object):
                 shell=False)
         std_out = p.communicate(log)[0]
         if (p.returncode != 0 and not negate) or (p.returncode == 0 and negate):
+            self._error = True 
             print "" 
             print "-" * 60
             print "Failed: Exit code = %s"%(p.returncode) 
@@ -69,6 +71,8 @@ class OssecTester(object):
                                 neg = False 
                             self.runTest(value, rule, alert, decoder, t, name, negate=neg)
                 print ""
+        if self._error: 
+            sys.exit(1)
 
 if __name__ == "__main__":
     OT = OssecTester()
