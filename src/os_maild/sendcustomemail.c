@@ -276,7 +276,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
     if(msg)
         free(msg);
 
-    memset_s(snd_msg,'\0',128);
+    memset_secure(snd_msg,'\0',128);
 
 
     /* Returning 0 (success) */
