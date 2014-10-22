@@ -33,7 +33,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
 
 
     GeneralConfig *gen_config = (GeneralConfig *)config;
-    SyslogConfig **syslog_config = (SyslogConfig **)gen_config->data;
+    SyslogConfig **syslog_config = gen_config->data;
 
 
     /* Getting Granular mail_to size */

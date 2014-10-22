@@ -23,7 +23,7 @@
                         SyslogConfig **syslog_config)
  * Reads configuration.
  */
-void *OS_ReadSyslogConf(__attribute__((unused)) int test_config, char *cfgfile,
+SyslogConfig **OS_ReadSyslogConf(__attribute__((unused)) int test_config, const char *cfgfile,
                         SyslogConfig **syslog_config)
 {
     int modules = 0;
