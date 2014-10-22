@@ -1005,14 +1005,7 @@ ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${output_o} aler
 #### test ##########
 ####################
 
-CFLAGS_TEST = -Waggregate-return -Wall -Wbad-function-cast -Wc++-compat -Wcast-align \
-	-Wcast-qual -Wconversion -Wextra -Wfloat-equal -Wformat=2 -Winit-self -Winline \
-	-Winvalid-pch -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs \
-	-Wmissing-prototypes -Wnested-externs -Wredundant-decls \
-	-Wshadow -Wstack-protector -Wstrict-aliasing -Wstrict-overflow=4 \
-	-Wstrict-prototypes -Wswitch-default -Wswitch-enum -Wsync-nand -Wundef -Wunused \
-	-Wwrite-strings \
-	-g -O0 --coverage
+CFLAGS_TEST = -g -O0 --coverage
 
 LDFLAGS_TEST = -lcheck -lm -pthread -lrt
 
