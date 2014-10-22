@@ -97,7 +97,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logr->lip = (char **) realloc(logr->lip, sizeof(char *)*(pl +2));
     if(!logr->port || !logr->conn || !logr->proto || !logr->lip)
     {
-        ErrorExit(MEM_ERROR, __local_name);
+        ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
     }
 
     logr->port[pl] = 0;
@@ -194,7 +194,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             logr->allowips = (os_ip **) realloc(logr->allowips,sizeof(os_ip *)*allow_size);
             if(!logr->allowips)
             {
-                merror(MEM_ERROR, __local_name);
+                merror(MEM_ERROR, __local_name, errno, strerror(errno));
                 return(OS_INVALID);
             }
 
@@ -213,7 +213,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             logr->denyips = (os_ip **) realloc(logr->denyips,sizeof(os_ip *)*deny_size);
             if(!logr->denyips)
             {
-                merror(MEM_ERROR, __local_name);
+                merror(MEM_ERROR, __local_name, errno, strerror(errno));
                 return(OS_INVALID);
             }
 

@@ -134,7 +134,7 @@ int main(int argc, char **argv)
 
     if(chdir(dir) == -1)
     {
-        ErrorExit(CHDIR_ERROR, ARGV0, dir);
+        ErrorExit(CHDIR_ERROR, ARGV0, dir, errno, strerror(errno));
     }
 
 
@@ -148,12 +148,12 @@ int main(int argc, char **argv)
 
     /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
 
     /* Changing user */
     if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR,ARGV0,user);
+        ErrorExit(SETUID_ERROR,ARGV0,user, errno, strerror(errno));
 
 
     debug1(PRIVSEP_MSG,ARGV0,dir,user);

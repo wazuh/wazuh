@@ -116,7 +116,7 @@ int OS_ReadXMLRules(const char *rulefile,
         rulepath = (char *)calloc(i,sizeof(char));
         if(!rulepath)
         {
-            ErrorExit(MEM_ERROR,__local_name);
+            ErrorExit(MEM_ERROR,__local_name, errno, strerror(errno));
         }
         snprintf(rulepath,i,"%s/%s",RULEPATH,rulefile);
     }
@@ -1108,7 +1108,7 @@ static RuleInfo *_OS_AllocateRule()
     ruleinfo_pt = (RuleInfo *)calloc(1,sizeof(RuleInfo));
     if(ruleinfo_pt == NULL)
     {
-        ErrorExit(MEM_ERROR,__local_name);
+        ErrorExit(MEM_ERROR,__local_name, errno, strerror(errno));
     }
 
 

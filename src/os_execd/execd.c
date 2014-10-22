@@ -144,7 +144,7 @@ int main(int argc, char **argv)
 
     /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
 
     /* Reading config */
@@ -305,7 +305,7 @@ static void ExecdStart(int q)
             wp = waitpid((pid_t) -1, NULL, WNOHANG);
             if (wp < 0)
             {
-                merror(WAITPID_ERROR, ARGV0);
+                merror(WAITPID_ERROR, ARGV0, errno, strerror(errno));
                 break;
             }
 
@@ -378,7 +378,7 @@ static void ExecdStart(int q)
         /* Checking for error */
         if(!FD_ISSET(q, &fdset))
         {
-            merror(SELECT_ERROR, ARGV0);
+            merror(SELECT_ERROR, ARGV0, errno, strerror(errno));
             continue;
         }
 

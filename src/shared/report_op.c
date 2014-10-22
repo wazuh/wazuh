@@ -387,7 +387,7 @@ static int _os_report_add_tostore(const char *key, OSStore *top, void *data)
         top_list = OSList_Create();
         if(!top_list)
         {
-            merror(MEM_ERROR, __local_name);
+            merror(MEM_ERROR, __local_name, errno, strerror(errno));
             return(0);
         }
         OSList_AddData(top_list, data);

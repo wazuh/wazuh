@@ -111,7 +111,7 @@ void HostinfoInit()
     }
     if(!_hi_fp)
     {
-        merror(FOPEN_ERROR, ARGV0, _hi_buf);
+        merror(FOPEN_ERROR, ARGV0, _hi_buf, errno, strerror(errno));
         return;
     }
 

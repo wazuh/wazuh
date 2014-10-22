@@ -48,7 +48,7 @@ void OS_DBD(DBConfig *db_config)
     db_config->location_hash = OSHash_Create();
     if(!db_config->location_hash)
     {
-        ErrorExit(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
     }
 
 

@@ -69,7 +69,7 @@ void print_totals()
     if(IsDir(logfile) == -1)
         if(mkdir(logfile,0770) == -1)
         {
-            merror(MKDIR_ERROR,ARGV0,logfile);
+            merror(MKDIR_ERROR,ARGV0,logfile, errno, strerror(errno));
             return;
         }
 
@@ -78,7 +78,7 @@ void print_totals()
     if(IsDir(logfile) == -1)
         if(mkdir(logfile,0770) == -1)
         {
-            merror(MKDIR_ERROR, ARGV0, logfile);
+            merror(MKDIR_ERROR, ARGV0, logfile, errno, strerror(errno));
             return;
         }
 
@@ -94,7 +94,7 @@ void print_totals()
     flog = fopen(logfile, "a");
     if(!flog)
     {
-        merror(FOPEN_ERROR, ARGV0, logfile);
+        merror(FOPEN_ERROR, ARGV0, logfile, errno, strerror(errno));
         return;
     }
 
@@ -191,7 +191,7 @@ void Update_Hour()
 
         else
         {
-            merror(FOPEN_ERROR, "logstats", _hourly);
+            merror(FOPEN_ERROR, "logstats", _hourly, errno, strerror(errno));
         }
 
         _CHour[i] = 0; /* Zeroing the currently  hour */
@@ -240,7 +240,7 @@ void Update_Hour()
             }
             else
             {
-                merror(FOPEN_ERROR, "logstats", _weekly);
+                merror(FOPEN_ERROR, "logstats", _weekly, errno, strerror(errno));
             }
 
             _CWHour[i][j] = 0;

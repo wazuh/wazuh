@@ -48,7 +48,7 @@ int ReadExecConfig()
     fp = fopen(DEFAULTARPATH, "r");
     if(!fp)
     {
-        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
+        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH, errno, strerror(errno));
         return(0);
     }
 

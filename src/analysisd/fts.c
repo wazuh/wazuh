@@ -96,7 +96,7 @@ int FTS_Init()
         {
             if(chown(FTS_QUEUE, uid, gid) == -1)
             {
-                merror(CHOWN_ERROR, ARGV0, FTS_QUEUE);
+                merror(CHOWN_ERROR, ARGV0, FTS_QUEUE, errno, strerror(errno));
                 return(0);
             }
         }
@@ -104,7 +104,7 @@ int FTS_Init()
         fp_list = fopen(FTS_QUEUE, "r+");
         if(!fp_list)
         {
-            merror(FOPEN_ERROR, ARGV0, FTS_QUEUE);
+            merror(FOPEN_ERROR, ARGV0, FTS_QUEUE, errno, strerror(errno));
             return(0);
         }
     }
@@ -150,7 +150,7 @@ int FTS_Init()
         {
             if(chown(IG_QUEUE, uid, gid) == -1)
             {
-                merror(CHOWN_ERROR, ARGV0, IG_QUEUE);
+                merror(CHOWN_ERROR, ARGV0, IG_QUEUE, errno, strerror(errno));
                 return (0);
             }
         }
@@ -158,7 +158,7 @@ int FTS_Init()
         fp_ignore = fopen(IG_QUEUE, "r+");
         if(!fp_ignore)
         {
-            merror(FOPEN_ERROR, ARGV0, IG_QUEUE);
+            merror(FOPEN_ERROR, ARGV0, IG_QUEUE, errno, strerror(errno));
             return(0);
         }
     }

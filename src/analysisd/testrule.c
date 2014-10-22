@@ -207,7 +207,7 @@ int main(int argc, char **argv)
 
 
     if(chdir(dir) != 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
+        ErrorExit(CHROOT_ERROR,ARGV0,dir, errno, strerror(errno));
 
 
     /*
@@ -327,7 +327,7 @@ int main(int argc, char **argv)
         Config.g_rules_hash = OSHash_Create();
         if(!Config.g_rules_hash)
         {
-            ErrorExit(MEM_ERROR, ARGV0);
+            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
         }
         AddHash_Rule(tmp_node);
     }
@@ -441,7 +441,7 @@ void OS_ReadMSG(char *ut_str)
         /* This shouldn't happen .. */
         if(lf == NULL)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
         }
 
 

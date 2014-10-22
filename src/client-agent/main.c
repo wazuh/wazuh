@@ -120,7 +120,7 @@ int main(int argc, char **argv)
     agt = (agent *)calloc(1, sizeof(agent));
     if(!agt)
     {
-        ErrorExit(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
     }
 
 

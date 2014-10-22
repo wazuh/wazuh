@@ -102,7 +102,7 @@ void OS_StartCounter(keystore *keys)
 
                 merror("%s: Unable to open agent file. errno: %d",
                        __local_name, my_error);
-                ErrorExit(FOPEN_ERROR, __local_name, rids_file);
+                ErrorExit(FOPEN_ERROR, __local_name, rids_file, errno, strerror(errno));
             }
         }
         else

@@ -65,7 +65,7 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     {
         if(strcmp(defines_file, OSSEC_LDEFINES) != 0)
         {
-            merror(FOPEN_ERROR, __local_name, def_file);
+            merror(FOPEN_ERROR, __local_name, def_file, errno, strerror(errno));
         }
         return(NULL);
     }

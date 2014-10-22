@@ -657,7 +657,7 @@ int rename_ex(const char *source, const char *destination)
     if (rename(source, destination))
     {
             log2file(
-                "%s: ERROR: Could not rename (%s) to (%s) which returned [(%d)-(%s)]",
+                RENAME_ERROR,
                 __local_name,
                 source,
                 destination,
@@ -684,7 +684,7 @@ int mkstemp_ex(char *tmp_path)
     if (fd == -1)
     {
         log2file(
-            "%s: ERROR: Could not create temporary file (%s) which returned [(%d)-(%s)]",
+            MKSTEMP_ERROR,
             __local_name,
             tmp_path,
             errno,
@@ -761,7 +761,7 @@ void goDaemonLight()
 
     if(pid < 0)
     {
-        merror(FORK_ERROR, __local_name);
+        merror(FORK_ERROR, __local_name, errno, strerror(errno));
         return;
     }
     else if(pid)
@@ -773,7 +773,7 @@ void goDaemonLight()
     /* becoming session leader */
     if(setsid() < 0)
     {
-        merror(SETSID_ERROR, __local_name);
+        merror(SETSID_ERROR, __local_name, errno, strerror(errno));
         return;
     }
 
@@ -782,7 +782,7 @@ void goDaemonLight()
     pid = fork();
     if(pid < 0)
     {
-        merror(FORK_ERROR, __local_name);
+        merror(FORK_ERROR, __local_name, errno, strerror(errno));
         return;
     }
     else if(pid)
@@ -797,7 +797,7 @@ void goDaemonLight()
     /* Going to / */
     if(chdir("/") == -1)
     {
-        merror(CHDIR_ERROR, __local_name, "/");
+        merror(CHDIR_ERROR, __local_name, "/", errno, strerror(errno));
     }
 
 
@@ -818,7 +818,7 @@ void goDaemon()
 
     if(pid < 0)
     {
-        merror(FORK_ERROR, __local_name);
+        merror(FORK_ERROR, __local_name, errno, strerror(errno));
         return;
     }
     else if(pid)
@@ -829,7 +829,7 @@ void goDaemon()
     /* becoming session leader */
     if(setsid() < 0)
     {
-        merror(SETSID_ERROR, __local_name);
+        merror(SETSID_ERROR, __local_name, errno, strerror(errno));
         return;
     }
 
@@ -837,7 +837,7 @@ void goDaemon()
     pid = fork();
     if(pid < 0)
     {
-        merror(FORK_ERROR, __local_name);
+        merror(FORK_ERROR, __local_name, errno, strerror(errno));
         return;
     }
     else if(pid)
@@ -860,7 +860,7 @@ void goDaemon()
     /* Going to / */
     if(chdir("/") == -1)
     {
-        merror(CHDIR_ERROR, __local_name, "/");
+        merror(CHDIR_ERROR, __local_name, "/", errno, strerror(errno));
     }
 
 
@@ -891,7 +891,7 @@ int checkVista()
     m_uname = getuname();
     if(!m_uname)
     {
-        merror(MEM_ERROR, __local_name);
+        merror(MEM_ERROR, __local_name, errno, strerror(errno));
         return(0);
     }
 

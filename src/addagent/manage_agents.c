@@ -105,7 +105,7 @@ int add_agent()
     fp = fopen(AUTH_FILE,"a");
     if(!fp)
     {
-        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
+        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
     }
     fclose(fp);
 
@@ -279,7 +279,7 @@ int add_agent()
         fp = fopen(AUTH_FILE,"a");
         if(!fp)
         {
-            ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
+            ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
         }
         #ifndef WIN32
         chmod(AUTH_FILE, 0440);
@@ -397,7 +397,7 @@ int remove_agent()
             if(!fp)
             {
                 free(full_name);
-                ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
+                ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
             }
             #ifndef WIN32
             chmod(AUTH_FILE, 0440);

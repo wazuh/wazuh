@@ -25,7 +25,7 @@
 /* Event logging local structure */
 typedef struct _os_el
 {
-    int time_of_last;	
+    int time_of_last;
     char *name;
 
     EVENTLOGRECORD *er;
@@ -58,7 +58,7 @@ int startEL(char *app, os_el *el)
     if(!el->h)
     {
         merror(EVTLOG_OPEN, ARGV0, app);
-        return(-1);	
+        return(-1);
     }
 
     el->name = app;
@@ -90,7 +90,7 @@ int startEL(char *app, os_el *el)
 
 
 /** char epoch_to_human(int time)
- * Returns a string that is a human readable 
+ * Returns a string that is a human readable
  * datetime from an epoch int.
  */
 char *epoch_to_human(time_t epoch)
@@ -163,7 +163,7 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
     }
 
 
-    /* Opening registry */	
+    /* Opening registry */
     if(RegOpenKeyEx(HKEY_LOCAL_MACHINE, keyname, 0,
                     KEY_ALL_ACCESS, &key) != ERROR_SUCCESS)
     {
@@ -171,11 +171,11 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
     }
 
 
-    ret = MAX_PATH -1;	
+    ret = MAX_PATH -1;
     if (RegQueryValueEx(key, "EventMessageFile", NULL,
                 NULL, (LPBYTE)event, &ret) != ERROR_SUCCESS)
     {
-        event[0] = '\0';	
+        event[0] = '\0';
         RegCloseKey(key);
         return(NULL);
     }
@@ -194,7 +194,7 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
         }
         else
         {
-            merror(MEM_ERROR, ARGV0);
+            merror(MEM_ERROR, ARGV0, errno, strerror(errno));
         }
     }
 
@@ -273,8 +273,8 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
     /* Get the file name from the registry (stored on event) */
     if(!(curr_str = el_getEventDLL(name, source, event)))
     {
-        return(NULL);	
-    }	
+        return(NULL);
+    }
 
 
 
@@ -298,7 +298,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
             if(!FormatMessage(fm_flags, hevt, er->EventID, 0,
                               (LPTSTR) &message, 0, el_sstring))
             {
-                message = NULL;		
+                message = NULL;
             }
             FreeLibrary(hevt);
 
@@ -324,7 +324,7 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
                         0,
                         (LPTSTR) &message, 0, el_sstring)))
         {
-            message = NULL;		
+            message = NULL;
         }
         FreeLibrary(hevt);
 
@@ -385,7 +385,7 @@ void readel(os_el *el, int printit)
         return;
     }
 
-    /* Reading the event log */	
+    /* Reading the event log */
     while(ReadEventLog(el->h,
                 EVENTLOG_FORWARDS_READ | EVENTLOG_SEQUENTIAL_READ,
                 0,
@@ -423,8 +423,8 @@ void readel(os_el *el, int printit)
 
             /* We must have some description */
             if(el->er->NumStrings)
-            {	
-                size_left = OS_MAXSTR - OS_SIZE_1024;	
+            {
+                size_left = OS_MAXSTR - OS_SIZE_1024;
 
                 sstr = (LPSTR)((LPBYTE)el->er + el->er->StringOffset);
                 el_string[0] = '\0';
@@ -440,7 +440,7 @@ void readel(os_el *el, int printit)
                     tmp_str = strchr(el_string, '\0');
                     if(tmp_str)
                     {
-                        *tmp_str = ' ';		
+                        *tmp_str = ' ';
                         tmp_str++; *tmp_str = '\0';
                     }
                     else
@@ -503,7 +503,7 @@ void readel(os_el *el, int printit)
             }
             else
             {
-                strncpy(el_string, "(no message)", 128);	
+                strncpy(el_string, "(no message)", 128);
             }
 
 
@@ -518,7 +518,7 @@ void readel(os_el *el, int printit)
                                     &user_size,
                                     el_domain,
                                     &domain_size,
-                                    &account_type))		
+                                    &account_type))
                 {
                     strncpy(el_user, "(no user)", 255);
                     strncpy(el_domain, "no domain", 255);
@@ -562,8 +562,8 @@ void readel(os_el *el, int printit)
 
             else
             {
-                strncpy(el_user, "(no user)", 255);	
-                strncpy(el_domain, "no domain", 255);	
+                strncpy(el_user, "(no user)", 255);
+                strncpy(el_domain, "no domain", 255);
             }
 
 
@@ -585,7 +585,7 @@ void readel(os_el *el, int printit)
                         el_user,
                         el_domain,
                         computer_name,
-                        descriptive_msg != NULL?descriptive_msg:el_string);	
+                        descriptive_msg != NULL?descriptive_msg:el_string);
 
                 if(SendMSG(logr_queue, final_msg, "WinEvtLog",
                             LOCALFILE_MQ) < 0)
@@ -602,9 +602,9 @@ void readel(os_el *el, int printit)
             /* Changing the point to the er */
             read -= el->er->Length;
             el->er = (EVENTLOGRECORD *)((LPBYTE) el->er + el->er->Length);
-        }		
+        }
 
-        /* Setting er to the beginning of the buffer */	
+        /* Setting er to the beginning of the buffer */
         el->er = (EVENTLOGRECORD *)&mbuffer;
     }
 
