@@ -103,7 +103,7 @@ ifdef ONEWAY
 endif
 
 CFLAGS+=${DEFINES}
-CFLAGS+=-Wall -Wextra
+CFLAGS+=-Wall -Wextra -Werror
 CFLAGS+=-I./ -I./headers/
 
 
