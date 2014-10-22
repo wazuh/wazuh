@@ -24,7 +24,7 @@
 
 
 /* SYSTEM ERRORS */
-#define FORK_ERROR    "%s(1101): ERROR: Could to fork due to [(%d)-(%s)]."
+#define FORK_ERROR    "%s(1101): ERROR: Could not fork due to [(%d)-(%s)]."
 #define MEM_ERROR     "%s(1102): ERROR: Could not aquire memory due to [(%d)-(%s)]."
 #define FOPEN_ERROR   "%s(1103): ERROR: Could not open file '%s' due to [(%d)-(%s)]."
 #define SIZE_ERROR    "%s(1104): ERROR: Maximum string size reached for: %s."
