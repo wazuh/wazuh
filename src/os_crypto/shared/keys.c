@@ -124,7 +124,7 @@ static void __chash(keystore *keys, const char *id, const char *name, char *ip, 
 
 
 	/* Cleaning final string from memory */
-	memset(_finalstr,'\0', sizeof(_finalstr));
+	memset_s(_finalstr,'\0', sizeof(_finalstr));
 
 
 	/* ready for next */

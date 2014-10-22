@@ -15,10 +15,13 @@
 
 #define __MEM_H
 
+#include <stdlib.h>
+
 void **os_AddPtArray(void *pt, void **array);
 char **os_AddStrArray(const char *str, char **array);
 void os_FreeArray(char *ch1, char **ch2);
 int os_IsStrOnArray(const char *str, char **array);
 char *os_LoadString(char *at, const char *str) __attribute__((nonnull(2)));
+void *memset_s(void *v, int c, size_t n) __attribute__((nonnull));
 
 #endif

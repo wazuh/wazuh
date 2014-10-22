@@ -148,5 +148,18 @@ char *os_LoadString(char *at, const char *str)
     return(NULL);
 }
 
+/**
+ * Clear memory regardless of compiler optimizations.
+ * @param v memory to clear
+ * @param c character to set
+ * @param n memory size to clear
+ */
+void *memset_s(void *v, int c, size_t n)
+{
+    volatile unsigned char *p = v;
+    while (n--) *p++ = (unsigned char) c;
+
+    return v;
+}
 
 /* EOF */
