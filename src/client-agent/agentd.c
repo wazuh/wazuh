@@ -17,7 +17,6 @@
 
 #include "shared.h"
 #include "agentd.h"
-
 #include "os_net/os_net.h"
 
 
@@ -25,7 +24,7 @@
 /* AgentdStart v0.2, 2005/11/09
  * Starts the agent daemon.
  */
-void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
+void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group)
 {
     int rc = 0;
     int pid = 0;
@@ -38,6 +37,9 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
 
     pid = getpid();
     available_server = 0;
+
+    /* Initial random numbers must happen before chroot */
+    srandom_init();
 
 
     /* Going Daemon */
@@ -99,12 +101,6 @@ void AgentdStart(char *dir, int uid, int gid, char *user, char *group)
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
-    /* Initial random numbers */
-    #ifdef __OpenBSD__
-    srandomdev();
-    #else
-    srandom( time(0) + getpid()+ pid + getppid());
-    #endif
 
     random();
 

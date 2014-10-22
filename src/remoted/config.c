@@ -27,18 +27,18 @@
  * v0.3: Some improvements and cleanup
  * v0.4: Move everything to the global config validator.
  */
-int RemotedConfig(char *cfgfile, remoted *logr)
+int RemotedConfig(const char *cfgfile, remoted *cfg)
 {
     int modules = 0;
 
     modules|= CREMOTE;
 
-    logr->port = NULL;
-    logr->conn = NULL;
-    logr->allowips = NULL;
-    logr->denyips = NULL;
+    cfg->port = NULL;
+    cfg->conn = NULL;
+    cfg->allowips = NULL;
+    cfg->denyips = NULL;
 
-    if(ReadConfig(modules, cfgfile, logr, NULL) < 0)
+    if(ReadConfig(modules, cfgfile, cfg, NULL) < 0)
         return(OS_INVALID);
 
     return(1);

@@ -57,7 +57,7 @@
 
 /* OS_SendCustomEmail
  */
-int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, FILE *fp, struct tm *p)
+int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, FILE *fp, const struct tm *p)
 {
     int socket,i = 0;
     char *msg;

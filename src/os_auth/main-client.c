@@ -42,10 +42,10 @@ int main()
 #include <openssl/ssl.h>
 #include "auth.h"
 
-
+static void help_agent_auth(void) __attribute__((noreturn));
 
 /* print help statement */
-void help_agent_auth()
+static void help_agent_auth()
 {
     print_header();
     print_out("  %s: -[Vhdt] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-v path] [-x path] [-k path]", ARGV0);
@@ -79,14 +79,14 @@ int main(int argc, char **argv)
 
     int sock = 0, portnum, ret = 0;
     char *port = DEFAULT_PORT;
-    char *dir = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
-    char *manager = NULL;
-    char *ipaddress = NULL;
-    char *agentname = NULL;
-    char *agent_cert = NULL;
-    char *agent_key = NULL;
-    char *ca_cert = NULL;
+    const char *dir = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
+    const char *manager = NULL;
+    const char *ipaddress = NULL;
+    const char *agentname = NULL;
+    const char *agent_cert = NULL;
+    const char *agent_key = NULL;
+    const char *ca_cert = NULL;
     char lhostname[512 + 1];
     char buf[2048 +1];
     SSL_CTX *ctx;

@@ -170,7 +170,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                     continue;
                 }
 
-                send_msg(agent_id, msg_to_send);
+                send_msg((unsigned)agent_id, msg_to_send);
             }
 
             /* Send to a pre-defined agent */
@@ -187,7 +187,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                     continue;
                 }
 
-                send_msg(agent_id, msg_to_send);
+                send_msg((unsigned)agent_id, msg_to_send);
             }
 
             /* Lock use of keys */

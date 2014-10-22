@@ -132,7 +132,7 @@ int k_import(const char *cmdimport)
                     }
 
                     #ifndef WIN32
-                    if (chmod(tmp_path, 0440))
+                    if (chmod(tmp_path, 0440) == -1)
                     {
                         if (unlink(tmp_path))
                         {
@@ -352,16 +352,8 @@ int k_bulkload(const char *cmdbulk)
         time2 = time(0);
 
 
-        /* Source is time1+ time2 +pid + ppid */
-        #ifndef WIN32
-        #ifdef __OpenBSD__
-        srandomdev();
-        #else
-        srandom((unsigned)(time2 + time1 + getpid() + getppid()));
-        #endif
-        #else
-        srandom(time2 + time1 + getpid());
-        #endif
+
+        srandom_init();
 
         rand1 = random();
 
@@ -437,7 +429,7 @@ int k_bulkload(const char *cmdbulk)
         #ifndef WIN32
         if(chmod(AUTH_FILE, 0440) == -1)
         {
-            ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE);
+            ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
         }
         #endif
 

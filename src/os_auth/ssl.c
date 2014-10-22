@@ -30,13 +30,14 @@
 
 #include "shared.h"
 #include "auth.h"
+BIO *bio_err;
 
 
 /* Create an SSL context. If certificate verification is requested
  * then load the file containing the CA chain and verify the certifcate
  * sent by the peer.
  */
-SSL_CTX *os_ssl_keys(int is_server, char *os_dir, char *cert, char *key, char *ca_cert)
+SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const char *key, const char *ca_cert)
 {
     SSL_CTX *ctx = NULL;
 
@@ -101,7 +102,7 @@ SSL_ERROR:
 
 SSL_CTX *get_ssl_context()
 {
-    SSL_METHOD *sslmeth = NULL;
+    const SSL_METHOD *sslmeth = NULL;
     SSL_CTX *ctx = NULL;
 
     SSL_library_init();
@@ -109,7 +110,7 @@ SSL_CTX *get_ssl_context()
     OpenSSL_add_all_algorithms();
 
     /* Create our context */
-    sslmeth = (SSL_METHOD *)SSLv23_method();
+    sslmeth = TLSv1_2_method();
     if(!(ctx = SSL_CTX_new(sslmeth)))
         goto CONTEXT_ERR;
 
@@ -127,7 +128,7 @@ CONTEXT_ERR:
     return (SSL_CTX *)NULL;
 }
 
-int load_cert_and_key(SSL_CTX *ctx, char *cert, char *key)
+int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key)
 {
     if(File_DateofChange(cert) <= 0)
     {
@@ -163,7 +164,7 @@ int load_cert_and_key(SSL_CTX *ctx, char *cert, char *key)
     return 1;
 }
 
-int load_ca_cert(SSL_CTX *ctx, char *ca_cert)
+int load_ca_cert(SSL_CTX *ctx, const char *ca_cert)
 {
     if(!ca_cert)
     {

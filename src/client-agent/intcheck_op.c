@@ -23,7 +23,7 @@
  * Sends integrity checking information about a file to the
  * server.
  */
-int intcheck_file(char *file_name, char *dir)
+int intcheck_file(const char *file_name, const char *dir)
 {
     struct stat statbuf;
 

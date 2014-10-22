@@ -15,8 +15,10 @@
 #include "shared.h"
 #include "remoted.h"
 
+static void help_remoted(void) __attribute__((noreturn));
+
 /* print help statement */
-void help_remoted()
+static void help_remoted()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -42,10 +44,10 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0,run_foreground = 0;
 
-    char *cfg = DEFAULTCPATH;
-    char *dir = DEFAULTDIR;
-    char *user = REMUSER;
-    char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
+    const char *dir = DEFAULTDIR;
+    const char *user = REMUSER;
+    const char *group = GROUPGLOBAL;
 
 
     /* Setting the name -- must be done ASAP */
@@ -165,12 +167,8 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);
 
 
-    /* Creating some randoness  */
-    #ifdef __OpenBSD__
-    srandomdev();
-    #else
-    srandom( time(0) + getpid()+ i);
-    #endif
+    /* Setup random */
+    srandom_init();
 
     random();
 

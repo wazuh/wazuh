@@ -40,7 +40,7 @@
  * This could be replaced with X509_check_host() in future but this is only
  * available in openssl 1.0.2.
  */
-int check_x509_cert(SSL *ssl, char *manager)
+int check_x509_cert(const SSL *ssl, const char *manager)
 {
     X509 *cert = NULL;
     int verified = VERIFY_FALSE;
@@ -77,13 +77,13 @@ CERT_CHECK_ERROR:
  * an error occurs. Only entries containing a normal domain name or IP
  * address are considered.
  */
-int check_subject_alt_names(X509 *cert, char *manager)
+int check_subject_alt_names(X509 *cert, const char *manager)
 {
     GENERAL_NAMES *names = NULL;
     int result = VERIFY_FALSE;
     int i = 0;
 
-    if((names = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL)))
+    if((names = (GENERAL_NAMES *) X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL)))
     {
         for(i = 0; i < sk_GENERAL_NAME_num(names) && result == VERIFY_FALSE; i++)
         {
@@ -104,7 +104,7 @@ int check_subject_alt_names(X509 *cert, char *manager)
 /* Loop through all the common name entries until we find a match or
  * an error occurs.
  */
-int check_subject_cn(X509 *cert, char *manager)
+int check_subject_cn(X509 *cert, const char *manager)
 {
     X509_NAME *name = NULL;
     int result = VERIFY_FALSE;
@@ -129,7 +129,7 @@ int check_subject_cn(X509 *cert, char *manager)
  * and compared. Matching is case insensitive and basic wildcard matching
  * is supported.
  */
-int check_hostname(ASN1_STRING *cert_astr, char *manager)
+int check_hostname(ASN1_STRING *cert_astr, const char *manager)
 {
     label c_labels[DNS_MAX_LABELS];
     label m_labels[DNS_MAX_LABELS];
@@ -181,7 +181,7 @@ int check_hostname(ASN1_STRING *cert_astr, char *manager)
 /* Determine whether a string found in a subject alt name or common name
  * field matches the manager's IP address specified on the command line.
  */
-int check_ipaddr(ASN1_STRING *cert_astr, char *manager)
+int check_ipaddr(const ASN1_STRING *cert_astr, const char *manager)
 {
     struct sockaddr_in iptest;
     struct sockaddr_in6 iptest6;
@@ -222,7 +222,7 @@ int label_array(const char *domain_name, label result[DNS_MAX_LABELS])
         {
             label *new_label = &result[label_count];
 
-            if((new_label->len = label_end - label_start) > DNS_MAX_LABEL_LEN)
+            if((new_label->len = (size_t)(label_end - label_start)) > DNS_MAX_LABEL_LEN)
                 return VERIFY_FALSE;
 
             strncpy(new_label->text, label_start, new_label->len);
@@ -234,6 +234,11 @@ int label_array(const char *domain_name, label result[DNS_MAX_LABELS])
     }
     while(*label_end++ != '\0');
 
+    if(label_count == 0)
+    {
+        return VERIFY_FALSE;
+    }
+
     /* If the length of the last label is zero ignore it. This is the only
      * valid position for a label of length zero which occurs when a FQDN
      * is given.
@@ -244,19 +249,19 @@ int label_array(const char *domain_name, label result[DNS_MAX_LABELS])
 /* Validate a label according to the guidelines in RFC 1035. This could
  * be relaxed if necessary.
  */
-int label_valid(const label *label)
+int label_valid(const label *l)
 {
-    int i;
+    size_t i;
 
-    if(label->len <= 0 || label->len > DNS_MAX_LABEL_LEN)
+    if(l->len <= 0 || l->len > DNS_MAX_LABEL_LEN)
         return VERIFY_FALSE;
 
-    if(!isalpha(label->text[0]) || !isalnum(label->text[label->len - 1]))
+    if(!isalpha(l->text[0]) || !isalnum(l->text[l->len - 1]))
         return VERIFY_FALSE;
 
-    for(i = 0; i < label->len; i++)
+    for(i = 0; i < l->len; i++)
     {
-        if(!isalnum(label->text[i]) && label->text[i] != '-')
+        if(!isalnum(l->text[i]) && l->text[i] != '-')
             return VERIFY_FALSE;
     }
 
@@ -267,7 +272,7 @@ int label_valid(const label *label)
  */
 int label_match(const label *label1, const label *label2)
 {
-    int i;
+    size_t i;
 
     if(label1->len != label2->len)
         return VERIFY_FALSE;
@@ -287,11 +292,11 @@ int label_match(const label *label1, const label *label2)
  */
 char *asn1_to_cstr(ASN1_STRING *astr)
 {
-    int astr_len = 0;
+    unsigned int astr_len = 0;
     char *tmp = NULL;
     char *cstr = NULL;
 
-    if(!(astr_len = ASN1_STRING_length(astr)))
+    if(!(astr_len = (unsigned int) ASN1_STRING_length(astr)))
         return NULL;
 
     if(!(tmp = (char *)ASN1_STRING_data(astr)))
@@ -302,7 +307,7 @@ char *asn1_to_cstr(ASN1_STRING *astr)
     if(memchr(tmp, '\0', astr_len))
         return NULL;
 
-    if((cstr = malloc(astr_len + 1)) == NULL)
+    if((cstr = (char *) malloc(astr_len + 1)) == NULL)
         return NULL;
 
     memcpy(cstr, tmp, astr_len);

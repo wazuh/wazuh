@@ -19,6 +19,10 @@
 #include "os_net/os_net.h"
 
 #include "agentd.h"
+time_t available_server;
+int run_foreground;
+keystore keys;
+agent *agt;
 
 
 /* Relocated from config_op.c */
@@ -27,7 +31,7 @@
  * Read the config file (for the remote client)
  * v0.2: New OS_XML
  */
-int ClientConf(char *cfgfile)
+int ClientConf(const char *cfgfile)
 {
     int modules = 0;
     agt->port = DEFAULT_SECURE;

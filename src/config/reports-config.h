@@ -30,7 +30,7 @@ typedef struct _report_config
 
 typedef struct _monitor_config
 {
-    short int day_wait;
+    unsigned short int day_wait;
     short int compress;
     short int sign;
     short int monitor_agents;
