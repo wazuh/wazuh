@@ -27,15 +27,12 @@
 void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group)
 {
     int rc = 0;
-    int pid = 0;
     int maxfd = 0;
 
     fd_set fdset;
 
     struct timeval fdtimeout;
 
-
-    pid = getpid();
     available_server = 0;
 
     /* Initial random numbers must happen before chroot */
