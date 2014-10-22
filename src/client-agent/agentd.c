@@ -38,6 +38,9 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     pid = getpid();
     available_server = 0;
 
+    /* Initial random numbers must happen before chroot */
+    srandom_init();
+
 
     /* Going Daemon */
     if (!run_foreground)
@@ -98,8 +101,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
-    /* Initial random numbers */
-    srandom_init();
 
     random();
 
