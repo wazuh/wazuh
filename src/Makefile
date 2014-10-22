@@ -1078,6 +1078,12 @@ test_coverage: build_tests
 	rm -rf coverage-report/
 	genhtml --branch-coverage --output-directory coverage-report/ --title "ossec test coverage" --show-details --legend --num-spaces 4 --quiet ossec.test
 
+####################
+#### RUule Tests ###
+####################
+
+test-rules: 
+	( cd ../contrib/ossec-testing && sudo python runtests.py) 
 
 ####################
 #### Clean #########

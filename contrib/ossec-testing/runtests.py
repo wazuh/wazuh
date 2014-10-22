@@ -21,7 +21,7 @@ class OssecTester(object):
         return cmd
 
     def runTest(self, log, rule, alert, decoder, section, name, negate=False):
-        print self.buildCmd(rule, alert, decoder)
+        #print self.buildCmd(rule, alert, decoder)
         p = subprocess.Popen(self.buildCmd(rule, alert, decoder),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
