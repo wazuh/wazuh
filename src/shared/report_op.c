@@ -146,7 +146,7 @@ static int _os_report_check_filters(const alert_data *al_data, const report_filt
     }
     if(r_filter->level)
     {
-        if(al_data->level < atoi(r_filter->level))
+        if(al_data->level < (unsigned int) atoi(r_filter->level))
         {
             return(0);
         }
