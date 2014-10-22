@@ -24,8 +24,8 @@
 /* File queue */
 typedef struct _alert_data
 {
-    int rule;
-    int level;
+    unsigned int rule;
+    unsigned int level;
     char *alertid;
     char *date;
     char *location;

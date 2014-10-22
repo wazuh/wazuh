@@ -41,7 +41,7 @@ typedef struct _report_filter
     const char *user;
     const char *srcip;
     const char *files;
-    const char *filename;
+    char *filename;
 
     OSStore *top_user;
     OSStore *top_srcip;
