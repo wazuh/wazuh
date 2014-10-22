@@ -154,7 +154,7 @@ char *os_LoadString(char *at, const char *str)
  * @param c character to set
  * @param n memory size to clear
  */
-void *memset_s(void *v, int c, size_t n)
+void *memset_secure(void *v, int c, size_t n)
 {
     volatile unsigned char *p = v;
     while (n--) *p++ = (unsigned char) c;
