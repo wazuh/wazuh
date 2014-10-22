@@ -42,8 +42,8 @@ int main(int argc, char **argv)
     const char *dir = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     const char *user = USER;
-    int gid;
-    int uid;
+    gid_t gid;
+    uid_t uid;
 
 
     /* Setting the name */
@@ -59,7 +59,7 @@ int main(int argc, char **argv)
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
-    if(gid < 0)
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
     {
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }

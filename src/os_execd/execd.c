@@ -89,7 +89,8 @@ int main(int argc, char **argv)
 {
     int c;
     int test_config = 0,run_foreground = 0;
-    int gid = 0,m_queue = 0;
+    gid_t gid;
+    int m_queue = 0;
 
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
@@ -137,7 +138,7 @@ int main(int argc, char **argv)
 
     /* Check if the group given are valid */
     gid = Privsep_GetGroup(group);
-    if(gid < 0)
+    if(gid == (gid_t)-1)
         ErrorExit(USER_ERROR,ARGV0,"",group);
 
 

@@ -27,34 +27,24 @@
 #include "privsep_op.h"
 #include "headers/os_err.h"
 
-int Privsep_GetUser(const char * name)
+uid_t Privsep_GetUser(const char * name)
 {
-    int os_uid = -1;
-
     struct passwd *pw;
     pw = getpwnam(name);
     if(pw == NULL)
-        return(OS_INVALID);
+        return((uid_t)OS_INVALID);
 
-    os_uid = (int)pw->pw_uid;
-    endpwent();
-
-    return(os_uid);
+    return(pw->pw_uid);
 }
 
-int Privsep_GetGroup(const char * name)
+gid_t Privsep_GetGroup(const char * name)
 {
-    int os_gid = -1;
-
     struct group *grp;
     grp = getgrnam(name);
     if(grp == NULL)
-        return(OS_INVALID);
+        return((gid_t)OS_INVALID);
 
-    os_gid = (int)grp->gr_gid;
-    endgrent();
-
-    return(os_gid);
+    return(grp->gr_gid);
 }
 
 int Privsep_SetUser(uid_t uid)

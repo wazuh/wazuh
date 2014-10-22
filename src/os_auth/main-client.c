@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     int c;
     int test_config = 0;
 #ifndef WIN32
-    int gid = 0;
+    gid_t gid = 0;
 #endif
 
     int sock = 0, port = DEFAULT_PORT, ret = 0;
@@ -174,7 +174,7 @@ int main(int argc, char **argv)
 #ifndef WIN32
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
-    if(gid < 0)
+    if(gid == (gid_t)-1)
         ErrorExit(USER_ERROR,ARGV0,"",group);
 
     /* Exit here if test config is set */
