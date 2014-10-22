@@ -32,8 +32,8 @@ typedef struct _MailConfig
     char *heloserver;
 
     /* Granular e-mail options */
-    unsigned int *gran_level;
-    unsigned int **gran_id;
+    int *gran_level;
+    int **gran_id;
     int *gran_set;
     int *gran_format;
     char **gran_to;
