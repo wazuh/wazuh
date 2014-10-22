@@ -60,12 +60,11 @@ OSDecoderNode *OS_GetFirstOSDecoder(char *p_name)
 OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
 {
     OSDecoderNode *tmp_node = s_node;
+    OSDecoderNode *new_node;
     int rm_f = 0;
 
     if(tmp_node)
     {
-        OSDecoderNode *new_node;
-
         new_node = (OSDecoderNode *)calloc(1,sizeof(OSDecoderNode));
         if(new_node == NULL)
         {
