@@ -90,14 +90,14 @@ OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
                 if(pi->prematch)
                 {
                     merror(PDUP_INV, ARGV0,pi->name);
-                    return(NULL);
+                    goto error;
                 }
 
                 /* Multi-regex patterns cannot have fts set */
                 if(pi->fts)
                 {
                     merror(PDUPFTS_INV, ARGV0,pi->name);
-                    return(NULL);
+                    goto error;
                 }
 
                 if(tmp_node->osdecoder->regex && pi->regex)
@@ -107,7 +107,7 @@ OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
                 else
                 {
                     merror(DUP_INV, ARGV0,pi->name);
-                    return(NULL);
+                    goto error;
                 }
             }
 
@@ -118,7 +118,7 @@ OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
         if(!rm_f && (pi->regex_offset & AFTER_PREVREGEX))
         {
             merror(INV_OFFSET, ARGV0, pi->name);
-            return(NULL);
+            goto error; 
         }
 
         tmp_node->next = new_node;
@@ -152,6 +152,10 @@ OSDecoderNode *_OS_AddOSDecoder(OSDecoderNode *s_node, OSDecoderInfo *pi)
     }
 
     return (s_node);
+
+error:
+    if(new_node) free(new_node); 
+    return(NULL);
 }
 
 
