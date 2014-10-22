@@ -22,7 +22,7 @@
 #include "maild.h"
 /* Define global variables from maild.h */
 unsigned int mail_timeout;
-int   _g_subject_level;
+unsigned int   _g_subject_level;
 char _g_subject[SUBJECT_SIZE +2];
 
 #include "mail_list.h"
