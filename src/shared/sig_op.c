@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <string.h>
 
 #include "sig_op.h"
 #include "file_op.h"
@@ -30,7 +31,7 @@ static const char *pidfile = NULL;
 
 void HandleSIG(int sig)
 {
-    merror(SIGNAL_RECV, pidfile, sig);
+    merror(SIGNAL_RECV, pidfile, sig, strsignal(sig));
 
     DeletePID(pidfile);
 

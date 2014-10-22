@@ -227,7 +227,7 @@ static int check_diff_file(const char *host, const char *script)
     {
         if(rename(new_location, old_location) != 0)
         {
-            merror(RENAME_ERROR, ARGV0, new_location);
+            merror(RENAME_ERROR, ARGV0, new_location, old_location, errno, strerror(errno));
         }
         return(0);
     }
@@ -255,12 +255,12 @@ static int check_diff_file(const char *host, const char *script)
 
     if(rename(old_location, tmp_location) != 0)
     {
-        merror(RENAME_ERROR, ARGV0, old_location);
+        merror(RENAME_ERROR, ARGV0, old_location, tmp_location, errno, strerror(errno));
         return (0);
     }
     if(rename(new_location, old_location) != 0)
     {
-        merror(RENAME_ERROR, ARGV0, new_location);
+        merror(RENAME_ERROR, ARGV0, new_location, old_location, errno, strerror(errno));
         return (0);
     }
 

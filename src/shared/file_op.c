@@ -657,7 +657,7 @@ int rename_ex(const char *source, const char *destination)
     if (rename(source, destination))
     {
             log2file(
-                "%s: ERROR: Could not rename (%s) to (%s) which returned [(%d)-(%s)]",
+                RENAME_ERROR,
                 __local_name,
                 source,
                 destination,
@@ -684,7 +684,7 @@ int mkstemp_ex(char *tmp_path)
     if (fd == -1)
     {
         log2file(
-            "%s: ERROR: Could not create temporary file (%s) which returned [(%d)-(%s)]",
+            MKSTEMP_ERROR,
             __local_name,
             tmp_path,
             errno,
@@ -797,7 +797,7 @@ void goDaemonLight()
     /* Going to / */
     if(chdir("/") == -1)
     {
-        merror(CHDIR_ERROR, __local_name, "/");
+        merror(CHDIR_ERROR, __local_name, "/", errno, strerror(errno));
     }
 
 
@@ -860,7 +860,7 @@ void goDaemon()
     /* Going to / */
     if(chdir("/") == -1)
     {
-        merror(CHDIR_ERROR, __local_name, "/");
+        merror(CHDIR_ERROR, __local_name, "/", errno, strerror(errno));
     }
 
 

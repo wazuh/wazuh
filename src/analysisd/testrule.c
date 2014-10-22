@@ -207,7 +207,7 @@ int main(int argc, char **argv)
 
 
     if(chdir(dir) != 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
+        ErrorExit(CHROOT_ERROR,ARGV0,dir, errno, strerror(errno));
 
 
     /*

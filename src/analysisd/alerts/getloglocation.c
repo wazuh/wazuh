@@ -103,7 +103,7 @@ int OS_GetLogLocation(Eventinfo *lf)
 
     if(link(__elogfile, EVENTS_DAILY) == -1)
     {
-        ErrorExit(LINK_ERROR, ARGV0, __elogfile, EVENTS_DAILY);
+        ErrorExit(LINK_ERROR, ARGV0, __elogfile, EVENTS_DAILY, errno, strerror(errno));
     }
 
 
@@ -150,7 +150,7 @@ int OS_GetLogLocation(Eventinfo *lf)
 
     if(link(__alogfile, ALERTS_DAILY) == -1)
     {
-        ErrorExit(LINK_ERROR, ARGV0, __alogfile, ALERTS_DAILY);
+        ErrorExit(LINK_ERROR, ARGV0, __alogfile, ALERTS_DAILY, errno, strerror(errno));
     }
 
 
@@ -198,7 +198,7 @@ int OS_GetLogLocation(Eventinfo *lf)
 
     if(link(__flogfile, FWLOGS_DAILY) == -1)
     {
-        ErrorExit(LINK_ERROR, ARGV0, __flogfile, FWLOGS_DAILY);
+        ErrorExit(LINK_ERROR, ARGV0, __flogfile, FWLOGS_DAILY, errno, strerror(errno));
     }
 
 

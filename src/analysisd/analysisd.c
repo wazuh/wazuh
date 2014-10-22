@@ -324,17 +324,17 @@ int main_analysisd(int argc, char **argv)
 
         if(chown(Config.picviz_socket, uid, gid) == -1)
         {
-            ErrorExit(CHOWN_ERROR, ARGV0, Config.picviz_socket);
+            ErrorExit(CHOWN_ERROR, ARGV0, Config.picviz_socket, errno, strerror(errno));
         }
     }
 
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
     /* Chrooting */
     if(Privsep_Chroot(dir) < 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
+        ErrorExit(CHROOT_ERROR,ARGV0,dir, errno, strerror(errno));
 
 
     nowChroot();
@@ -504,7 +504,7 @@ int main_analysisd(int argc, char **argv)
 
     /* Setting the user */
     if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR,ARGV0,user);
+        ErrorExit(SETUID_ERROR,ARGV0,user, errno, strerror(errno));
 
 
     /* Creating the PID file */

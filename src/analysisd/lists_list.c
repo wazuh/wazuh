@@ -106,7 +106,7 @@ int OS_AddList(ListNode *new_listnode)
         last_list_node->next = new_listnode;
 
     }
-    return 0; 
+    return 0;
 }
 
 ListNode *OS_FindList(char *listname)
@@ -174,7 +174,7 @@ int _OS_CDBOpen(ListNode *lnode)
     {
         if((fd = open(lnode->cdb_filename, O_RDONLY)) == -1)
         {
-            merror(OPEN_ERROR, ARGV0, lnode->cdb_filename, strerror (errno));
+            merror(OPEN_ERROR, ARGV0, lnode->cdb_filename, errno, strerror (errno));
             return -1;
         }
         cdb_init(&lnode->cdb, fd);

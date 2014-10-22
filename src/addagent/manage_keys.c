@@ -128,7 +128,7 @@ int k_import(const char *cmdimport)
                 {
                     if (mkstemp_ex(tmp_path))
                     {
-                        ErrorExit(MKSTEMP_ERROR, ARGV0, tmp_path);
+                        exit(1);
                     }
 
                     #ifndef WIN32
@@ -163,7 +163,7 @@ int k_import(const char *cmdimport)
                             verbose(DELETE_ERROR, ARGV0, tmp_path, errno, strerror(errno));
                         }
 
-                        ErrorExit(RENAME_ERROR, ARGV0, tmp_path);
+                        exit(1);
                     }
 
                     /* Removing sender counter. */

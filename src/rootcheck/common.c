@@ -642,7 +642,7 @@ int is_file(char *file_name)
             /* Returning to the previous directory */
             if(chdir(curr_dir) == -1)
             {
-                merror(CHDIR_ERROR, ARGV0, curr_dir);
+                merror(CHDIR_ERROR, ARGV0, curr_dir, errno, strerror(errno));
                 return (0);
             }
         }
@@ -661,7 +661,7 @@ int is_file(char *file_name)
             /* Returning to the previous directory */
             if(chdir(curr_dir) == -1)
             {
-                merror(CHDIR_ERROR, ARGV0, curr_dir);
+                merror(CHDIR_ERROR, ARGV0, curr_dir, errno, strerror(errno));
                 return (0);
             }
         }
