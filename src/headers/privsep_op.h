@@ -18,9 +18,9 @@
 #define __PRIV_H
 #include "shared.h"
 
-int Privsep_GetUser(const char * name) __attribute__((nonnull));
+uid_t Privsep_GetUser(const char * name) __attribute__((nonnull));
 
-int Privsep_GetGroup(const char * name) __attribute__((nonnull));
+gid_t Privsep_GetGroup(const char * name) __attribute__((nonnull));
 
 int Privsep_SetUser(uid_t uid);
 
