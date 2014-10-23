@@ -21,11 +21,6 @@
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
 static const char *__gethour(const char *str, char *ossec_hour) __attribute__((nonnull));
 
-#ifndef WIN32
-static const char *ip_address_regex =
-     "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
-     "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
-#endif /* WIN32 */
 
 /* Read the file and return a string the matches the following
  * format: high_name.low_name.
@@ -289,7 +284,7 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 
     if(strcmp(ip_address, "any") == 0)
     {
-        strcpy(ip_address, "::/0");   
+        strcpy((char *) ip_address, "::/0");   
     }
 
     /* Getting the cidr/netmask if available */

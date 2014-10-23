@@ -53,7 +53,7 @@ static socklen_t us_l = sizeof(n_us);
  */
 int OS_Bindport(char *_port, unsigned int _proto, const char *_ip)
 {
-    int ossock, s;
+    int ossock = 0, s;
     struct addrinfo hints, *result, *rp;
 
 
@@ -281,7 +281,7 @@ int OS_getsocketsize(int ossock)
  */
 int OS_Connect(char *_port, unsigned int protocol, const char *_ip)
 {
-    int ossock, s;
+    int ossock = 0, s;
     struct addrinfo hints, *result, *rp;
 
     if((_ip == NULL)||(_ip[0] == '\0'))

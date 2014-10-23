@@ -82,7 +82,6 @@ int main(int argc, char **argv)
     const char *dir = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
     const char *manager = NULL;
-    const char *ipaddress = NULL;
     const char *agentname = NULL;
     const char *agent_cert = NULL;
     const char *agent_key = NULL;
