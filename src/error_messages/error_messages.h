@@ -67,14 +67,7 @@
 #define USER_ERROR	    "%s(1203): ERROR: Invalid user '%s' or group '%s' given."
 #define CONNTYPE_ERROR 	"%s(1204): ERROR: Invalid connection type: '%s'."
 #define PORT_ERROR	    "%s(1205): INFO: No port specified. Using default: '%d'."
-<<<<<<< HEAD
 #define BIND_ERROR	    "%s(1206): ERROR: Unable to Bind port '%s'"
-#define SETGID_ERROR	"%s(1207): ERROR: Unable to switch to group: '%s'."
-#define SETUID_ERROR	"%s(1208): ERROR: Unable to switch to user: '%s'."
-#define CHROOT_ERROR	"%s(1209): ERROR: Unable to chroot to directory: '%s'."
-=======
-#define BIND_ERROR	    "%s(1206): ERROR: Unable to Bind port '%d'"
->>>>>>> origin/master
 #define QUEUE_ERROR	    "%s(1210): ERROR: Queue '%s' not accessible: '%s'."
 #define QUEUE_FATAL	    "%s(1211): ERROR: Unable to access queue: '%s'. Giving up.."
 #define PID_ERROR	    "%s(1212): ERROR: Unable to create PID file."
