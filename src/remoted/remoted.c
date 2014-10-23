@@ -82,7 +82,7 @@ void HandleRemote(int position, int uid)
     /* Revoking the privileges */
     if(Privsep_SetUser(uid) < 0)
     {
-        ErrorExit(SETUID_ERROR,ARGV0, REMUSER);
+        ErrorExit(SETUID_ERROR,ARGV0, REMUSER, errno, strerror(errno));
     }
 
 

@@ -52,7 +52,7 @@ static void __chash(keystore *keys, const char *id, const char *name, char *ip, 
                                          (keys->keysize+2)*sizeof(keyentry *));
     if(!keys->keyentries)
     {
-        ErrorExit(MEM_ERROR, __local_name);
+        ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
     }
     os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
 
@@ -124,7 +124,7 @@ static void __chash(keystore *keys, const char *id, const char *name, char *ip, 
 
 
 	/* Cleaning final string from memory */
-	memset(_finalstr,'\0', sizeof(_finalstr));
+    memset_secure(_finalstr,'\0', sizeof(_finalstr));
 
 
 	/* ready for next */
@@ -153,7 +153,7 @@ int OS_CheckKeys()
     if(!fp)
     {
         /* We can leave from here */
-        merror(FOPEN_ERROR, __local_name, KEYSFILE_PATH);
+        merror(FOPEN_ERROR, __local_name, KEYSFILE_PATH, errno, strerror(errno));
         merror(NO_AUTHFILE, __local_name, KEYSFILE_PATH);
         merror(NO_REM_CONN, __local_name);
         return(0);
@@ -192,7 +192,7 @@ void OS_ReadKeys(keystore *keys)
     if(!fp)
     {
         /* We can leave from here */
-        merror(FOPEN_ERROR, __local_name, KEYS_FILE);
+        merror(FOPEN_ERROR, __local_name, KEYS_FILE, errno, strerror(errno));
         ErrorExit(NO_REM_CONN, __local_name);
     }
 
@@ -202,7 +202,7 @@ void OS_ReadKeys(keystore *keys)
     keys->keyhash_ip = OSHash_Create();
     if(!keys->keyhash_id || !keys->keyhash_ip)
     {
-        ErrorExit(MEM_ERROR, __local_name);
+        ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
     }
 
 

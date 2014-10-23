@@ -169,7 +169,7 @@ void check_rc_files(const char *basedir, FILE *fp)
                 if(!rk_sys_name[rk_sys_count] ||
                    !rk_sys_file[rk_sys_count] )
                 {
-                    merror(MEM_ERROR, ARGV0);
+                    merror(MEM_ERROR, ARGV0, errno, strerror(errno));
 
                     if(rk_sys_file[rk_sys_count])
                         free(rk_sys_file[rk_sys_count]);

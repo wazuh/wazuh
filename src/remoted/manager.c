@@ -283,13 +283,13 @@ static void c_files()
         f_sum = (file_sum **)realloc(f_sum, (f_size +2) * sizeof(file_sum *));
         if(!f_sum)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
         }
 
         f_sum[f_size] = (file_sum *) calloc(1, sizeof(file_sum));
         if(!f_sum[f_size])
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
         }
 
 
@@ -340,7 +340,7 @@ static int send_file_toagent(unsigned int agentid, const char *name, const char 
     fp = fopen(file, "r");
     if(!fp)
     {
-        merror(FOPEN_ERROR, ARGV0, file);
+        merror(FOPEN_ERROR, ARGV0, file, errno, strerror(errno));
         return(-1);
     }
 

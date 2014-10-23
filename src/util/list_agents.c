@@ -41,8 +41,8 @@ int main(int argc, char **argv)
 
     const char *msg;
     char **agent_list;
-    int gid;
-    int uid;
+    gid_t gid;
+    uid_t uid;
     int flag = 0;
 
 
@@ -59,7 +59,7 @@ int main(int argc, char **argv)
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
-    if(gid < 0)
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
     {
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
@@ -68,14 +68,14 @@ int main(int argc, char **argv)
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
-	    ErrorExit(SETGID_ERROR,ARGV0, group);
+	    ErrorExit(SETGID_ERROR,ARGV0, group, errno, strerror(errno));
     }
 
 
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
     {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir);
+        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
     }
 
 
@@ -86,7 +86,7 @@ int main(int argc, char **argv)
     /* Setting the user */
     if(Privsep_SetUser(uid) < 0)
     {
-        ErrorExit(SETUID_ERROR, ARGV0, user);
+        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
     }
 
     /* User options */

@@ -1,7 +1,7 @@
 #ifdef WIN32
 #include "windows.h"
 #else
-#include <sys/stat.h> 
+#include <sys/stat.h>
 #include <fcntl.h>
 #endif
 
@@ -10,7 +10,7 @@
 #include "shared.h"
 
 
-void randombytes(void *ptr, unsigned int length)
+void randombytes(void *ptr, size_t length)
 {
 
     char failed = 0;
@@ -31,7 +31,8 @@ void randombytes(void *ptr, unsigned int length)
 
     int fh;
     if ((fh = open("/dev/urandom", O_RDONLY)) >= 0 || (fh = open("/dev/random", O_RDONLY)) >= 0) {
-        if (read(fh, ptr, length) == 0) {
+        const ssize_t ret = read(fh, ptr, length);
+        if (ret < 0 || (size_t) ret != length) {
             failed = 1;
         }
         close(fh);
@@ -51,7 +52,7 @@ void srandom_init(void)
 {
 
     #ifndef WIN32
-    unsigned int seed; 
+    unsigned int seed;
     #ifdef __OpenBSD__
     srandomdev();
     #else

@@ -58,7 +58,7 @@ void OS_CompressLog(const char *logfile)
     if(!zlog)
     {
         fclose(log);
-        merror(FOPEN_ERROR, ARGV0, logfileGZ);
+        merror(FOPEN_ERROR, ARGV0, logfileGZ, errno, strerror(errno));
         return;
     }
 

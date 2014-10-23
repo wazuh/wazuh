@@ -128,7 +128,7 @@ int k_import(const char *cmdimport)
                 {
                     if (mkstemp_ex(tmp_path))
                     {
-                        ErrorExit(MKSTEMP_ERROR, ARGV0, tmp_path);
+                        ErrorExit(MKSTEMP_ERROR, ARGV0, tmp_path, errno, strerror(errno));
                     }
 
                     #ifndef WIN32
@@ -151,7 +151,7 @@ int k_import(const char *cmdimport)
                             verbose(DELETE_ERROR, ARGV0, tmp_path, errno, strerror(errno));
                         }
 
-                        ErrorExit(FOPEN_ERROR, ARGV0, tmp_path);
+                        ErrorExit(FOPEN_ERROR, ARGV0, tmp_path, errno, strerror(errno));
                     }
                     fprintf(fp,"%s\n",line_read);
                     fclose(fp);
@@ -163,7 +163,7 @@ int k_import(const char *cmdimport)
                             verbose(DELETE_ERROR, ARGV0, tmp_path, errno, strerror(errno));
                         }
 
-                        ErrorExit(RENAME_ERROR, ARGV0, tmp_path);
+                        ErrorExit(RENAME_ERROR, ARGV0, tmp_path, KEYS_FILE, errno, strerror(errno));
                     }
 
                     /* Removing sender counter. */
@@ -250,7 +250,7 @@ int k_extract(const char *cmdextract)
     fp = fopen(AUTH_FILE, "r");
     if(!fp)
     {
-        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
+        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
     }
 
     if(fsetpos(fp, &fp_pos))
@@ -316,7 +316,7 @@ int k_bulkload(const char *cmdbulk)
     if(!infp)
     {
         perror("Failed.");
-        ErrorExit(FOPEN_ERROR, ARGV0, cmdbulk);
+        ErrorExit(FOPEN_ERROR, ARGV0, cmdbulk, errno, strerror(errno));
     }
 
 
@@ -324,7 +324,7 @@ int k_bulkload(const char *cmdbulk)
     fp = fopen(AUTH_FILE,"a");
     if(!fp)
     {
-        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
+        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
     }
     fclose(fp);
 
@@ -424,7 +424,7 @@ int k_bulkload(const char *cmdbulk)
         fp = fopen(AUTH_FILE,"a");
         if(!fp)
         {
-            ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
+            ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
         }
         #ifndef WIN32
         if(chmod(AUTH_FILE, 0440) == -1)

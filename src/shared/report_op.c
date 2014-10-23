@@ -146,7 +146,7 @@ static int _os_report_check_filters(const alert_data *al_data, const report_filt
     }
     if(r_filter->level)
     {
-        if(al_data->level < atoi(r_filter->level))
+        if(al_data->level < (unsigned int) atoi(r_filter->level))
         {
             return(0);
         }
@@ -387,7 +387,7 @@ static int _os_report_add_tostore(const char *key, OSStore *top, void *data)
         top_list = OSList_Create();
         if(!top_list)
         {
-            merror(MEM_ERROR, __local_name);
+            merror(MEM_ERROR, __local_name, errno, strerror(errno));
             return(0);
         }
         OSList_AddData(top_list, data);

@@ -67,7 +67,8 @@ static void help_dbd()
 int main(int argc, char **argv)
 {
     int c, test_config = 0, run_foreground = 0;
-    int uid = 0,gid = 0;
+    uid_t uid;
+    gid_t gid;
     unsigned int d;
 
     /* Using MAILUSER (read only) */
@@ -138,7 +139,7 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
     {
         ErrorExit(USER_ERROR, ARGV0, user, group);
     }
@@ -223,12 +224,12 @@ int main(int argc, char **argv)
 
     /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
 
     /* chrooting */
     if(Privsep_Chroot(dir) < 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
+        ErrorExit(CHROOT_ERROR,ARGV0,dir, errno, strerror(errno));
 
 
     /* Now on chroot */
@@ -252,7 +253,7 @@ int main(int argc, char **argv)
 
     /* Changing user */
     if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR,ARGV0,user);
+        ErrorExit(SETUID_ERROR,ARGV0,user, errno, strerror(errno));
 
 
     /* Basic start up completed. */

@@ -386,7 +386,7 @@ START_TEST(test_regexextraction)
     for(i=0; tests[i][0] != NULL; i++) {
         OSRegex reg;
         ck_assert_int_eq(OSRegex_Compile(tests[i][0], &reg, OS_RETURN_SUBSTRING), 1);
-        ck_assert_ptr_ne(OSRegex_Execute(tests[i][1], &reg), NULL);
+        ck_assert_ptr_ne((void *)OSRegex_Execute(tests[i][1], &reg), NULL);
 
 
 

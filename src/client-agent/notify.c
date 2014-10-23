@@ -61,7 +61,7 @@ char *getsharedfiles()
     ret = (char *)calloc(m_size +1, sizeof(char));
     if(!ret)
     {
-        merror(MEM_ERROR, ARGV0);
+        merror(MEM_ERROR, ARGV0, errno, strerror(errno));
         return(NULL);
     }
 
@@ -129,7 +129,7 @@ void run_notify()
     uname = getuname();
     if(!uname)
     {
-        merror(MEM_ERROR,ARGV0);
+        merror(MEM_ERROR,ARGV0, errno, strerror(errno));
         return;
     }
 
@@ -142,7 +142,7 @@ void run_notify()
         if(!shared_files)
         {
             free(uname);
-            merror(MEM_ERROR,ARGV0);
+            merror(MEM_ERROR,ARGV0, errno, strerror(errno));
             return;
         }
     }

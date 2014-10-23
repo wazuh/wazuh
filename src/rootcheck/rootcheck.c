@@ -271,7 +271,7 @@ int rootcheck_init(int test_config)
     rk_sys_file = (char **) calloc(MAX_RK_SYS +2, sizeof(char *));
     if(!rk_sys_name || !rk_sys_file)
     {
-        ErrorExit(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
     }
     rk_sys_name[0] = NULL;
     rk_sys_file[0] = NULL;

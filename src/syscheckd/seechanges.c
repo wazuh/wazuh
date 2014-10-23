@@ -200,7 +200,7 @@ static int seechanges_createpath(const char *filename)
             if(mkdir(newdir) == -1)
             #endif
             {
-                merror(MKDIR_ERROR, ARGV0, newdir);
+                merror(MKDIR_ERROR, ARGV0, newdir, errno, strerror(errno));
                 free(buffer);
                 return(0);
             }
@@ -254,7 +254,7 @@ char *seechanges_addfile(const char *filename)
         seechanges_createpath(old_location);
         if(seechanges_dupfile(filename, old_location) != 1)
         {
-            merror(RENAME_ERROR, ARGV0, filename);
+            merror(RENAME_ERROR, ARGV0, filename, old_location, errno, strerror(errno));
         }
         return(NULL);
     }
@@ -283,7 +283,7 @@ char *seechanges_addfile(const char *filename)
 
     if(rename(old_location, tmp_location) == -1)
     {
-        merror(RENAME_ERROR, ARGV0, old_location);
+        merror(RENAME_ERROR, ARGV0, old_location, tmp_location, errno, strerror(errno));
         return (NULL);
     }
 

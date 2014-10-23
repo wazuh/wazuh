@@ -176,7 +176,7 @@ void *receive_msg()
                 fp = fopen(file, "w");
                 if(!fp)
                 {
-                    merror(FOPEN_ERROR, ARGV0, file);
+                    merror(FOPEN_ERROR, ARGV0, file, errno, strerror(errno));
                 }
             }
 

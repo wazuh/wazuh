@@ -22,8 +22,8 @@
 
 #ifdef WIN32
 #define sleep(x) Sleep(x * 1000)
-#define os_calloc(x,y,z) (z = calloc(x,y))?(void)1:ErrorExit(MEM_ERROR, ARGV0)
-#define os_strdup(x,y) (y = strdup(x))?(void)1:ErrorExit(MEM_ERROR, ARGV0)
+#define os_calloc(x,y,z) (z = calloc(x,y))?(void)1:ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno))
+#define os_strdup(x,y) (y = strdup(x))?(void)1:ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno))
 #endif
 
 
@@ -120,7 +120,7 @@ int realtime_start()
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if(syscheck.realtime == NULL)
     {
-        ErrorExit(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
     }
     syscheck.realtime->dirtb = OSHash_Create();
     syscheck.realtime->fd = -1;

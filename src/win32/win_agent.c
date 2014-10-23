@@ -165,7 +165,7 @@ int local_start()
     agt = (agent *)calloc(1, sizeof(agent));
     if(!agt)
     {
-        ErrorExit(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
     }
     agt->port = DEFAULT_SECURE;
 
@@ -632,7 +632,7 @@ void send_win32_info(time_t curr_time)
             __win32_shared = strdup("\0");
             if(!__win32_shared)
             {
-                merror(MEM_ERROR, ARGV0);
+                merror(MEM_ERROR, ARGV0, errno, strerror(errno));
                 return;
             }
         }

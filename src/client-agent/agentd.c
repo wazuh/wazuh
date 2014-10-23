@@ -27,15 +27,12 @@
 void AgentdStart(const char *dir, int uid, int gid, const char *user, const char *group)
 {
     int rc = 0;
-    int pid = 0;
     int maxfd = 0;
 
     fd_set fdset;
 
     struct timeval fdtimeout;
 
-
-    pid = getpid();
     available_server = 0;
 
     /* Initial random numbers must happen before chroot */
@@ -52,19 +49,19 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     /* Setting group ID */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR, ARGV0, group);
+        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
 
 
     /* chrooting */
     if(Privsep_Chroot(dir) < 0)
-        ErrorExit(CHROOT_ERROR, ARGV0, dir);
+        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
 
 
     nowChroot();
 
 
     if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR, ARGV0, user);
+        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
 
 
     /* Create the queue. In this case we are going to create
@@ -180,7 +177,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         rc = select(maxfd, &fdset, NULL, NULL, &fdtimeout);
         if(rc == -1)
         {
-            ErrorExit(SELECT_ERROR, ARGV0);
+            ErrorExit(SELECT_ERROR, ARGV0, errno, strerror(errno));
         }
 
 

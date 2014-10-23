@@ -55,7 +55,7 @@ static int _add2last(char *str, int strsize, char *file)
         {
             if(mkdir(file, 0770) == -1)
             {
-                merror(MKDIR_ERROR, ARGV0, file);
+                merror(MKDIR_ERROR, ARGV0, file, errno, strerror(errno));
                 return(0);
             }
         }
@@ -65,7 +65,7 @@ static int _add2last(char *str, int strsize, char *file)
         {
             if(mkdir(file, 0770) == -1)
             {
-                merror(MKDIR_ERROR, ARGV0, file);
+                merror(MKDIR_ERROR, ARGV0, file, errno, strerror(errno));
                 return(0);
             }
         }
@@ -74,7 +74,7 @@ static int _add2last(char *str, int strsize, char *file)
         fp = fopen(file, "w");
         if(!fp)
         {
-            merror(FOPEN_ERROR, ARGV0, file);
+            merror(FOPEN_ERROR, ARGV0, file, errno, strerror(errno));
             return(0);
         }
     }
@@ -148,7 +148,7 @@ int doDiff(RuleInfo *currently_rule, Eventinfo *lf)
         fp = fopen(flastfile,"r");
         if(!fp)
         {
-            merror(FOPEN_ERROR, ARGV0, flastfile);
+            merror(FOPEN_ERROR, ARGV0, flastfile, errno, strerror(errno));
             return(0);
         }
 

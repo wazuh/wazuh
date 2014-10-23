@@ -19,6 +19,7 @@ env:
 - DB=none OSSEC_TYPE=agent GEOIP=no
 - DB=none OSSEC_TYPE=winagent GEOIP=no
 - OSSEC_TYPE=test
+- OSSEC_TYPE=server RULES=test
 
 
 compiler:
@@ -31,15 +32,17 @@ matrix:
   exclude:
     - compiler: clang
       env: DB=none OSSEC_TYPE=winagent GEOIP=no
+    - compiler: clang 
+      env: OSSEC_TYPE=server RULES=test
 
 
 
 before_script:
 - sudo apt-get update -qq
-- if [[ "$GEOIP" == "yes"  ]]; then ( sudo apt-get install geoip-bin geoip-database libgeoip-dev libgeoip1 ); fi
+- if [[ "${GEOIP}" == "yes"  ]]; then ( sudo apt-get install geoip-bin geoip-database libgeoip-dev libgeoip1 ); fi
 - if [[ "${PRELUDE}" = "yes" ]]; then (sudo apt-get install libprelude-dev ); fi
-- if [[ "$OSSEC_TYPE" == "winagent" ]]; then ( sudo apt-get install aptitude && sudo aptitude -y install mingw-w64 nsis ); fi
-- if [[ "$OSSEC_TYPE" == "test" ]]; then ( sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ saucy main " && sudo apt-get update && sudo apt-get install check valgrind ); fi
+- if [[ "${OSSEC_TYPE}" == "winagent" ]]; then ( sudo apt-get install aptitude && sudo aptitude -y install mingw-w64 nsis ); fi
+- if [[ "${OSSEC_TYPE}" == "test" ]]; then ( sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ saucy main " && sudo apt-get update && sudo apt-get install check valgrind ); fi
 
 
 
@@ -49,12 +52,13 @@ script:
   && if [[ "${GEOIP}" = "yes" ]]; then COMMAND="${COMMAND} USE_GEOIP=1"; fi
   && if [[ "${PRELUDE}" = "yes" ]]; then COMMAND="${COMMAND} USE_PRELUDE=1"; fi
   && ( cd src/ && make --warn-undefined-variables ${COMMAND} settings && make --warn-undefined-variables ${COMMAND} -j )
-  && if ! [[ "$OSSEC_TYPE" = "test" || "$OSSEC_TYPE" = "winagent" ]]; then ( cd src/ && sudo make --warn-undefined-variables ${COMMAND} install ) fi
+  && if ! [[ "${OSSEC_TYPE}" = "test" || "${OSSEC_TYPE}" = "winagent" ]]; then ( cd src/ && sudo make --warn-undefined-variables ${COMMAND} install ) fi
 
-- if [[ "$OSSEC_TYPE" == "test" ]]; then ( cd src/ && make --warn-undefined-variables test_valgrind ) fi
+- if [[ "${OSSEC_TYPE}" == "test" ]]; then ( cd src/ && make --warn-undefined-variables test_valgrind ) fi
+- if [[ "${RULES}" == "test" ]]; then ( cd src/ && sudo make V=1 TARGET=server test-rules ) fi
 
 before_deploy:
 - mkdir travis-builds
-- if [[ "$OSSEC_TYPE" == "winagent" ]]; then ( cp src/win-pkg/ossec-agent.exe travis-builds/ossec-agent-bid:$TRAVIS_JOB_NUMBER-br:$TRAVIS_BRANCH.exe ); fi
+- if [[ "${OSSEC_TYPE}" == "winagent" ]]; then ( cp src/win-pkg/ossec-agent.exe travis-builds/ossec-agent-bid:$TRAVIS_JOB_NUMBER-br:$TRAVIS_BRANCH.exe ); fi
 
 

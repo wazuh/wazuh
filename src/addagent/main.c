@@ -93,7 +93,7 @@ int main(int argc, char **argv)
     #ifndef WIN32
     const char *dir = DEFAULTDIR;
     const char *group = GROUPGLOBAL;
-    int gid;
+    gid_t gid;
     #else
     FILE *fp;
     TCHAR path[2048];
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
     #ifndef WIN32
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
-    if(gid < 0)
+    if(gid == (gid_t)-1)
     {
         ErrorExit(USER_ERROR, ARGV0, "", group);
     }
@@ -180,14 +180,14 @@ int main(int argc, char **argv)
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
-        ErrorExit(SETGID_ERROR, ARGV0, group);
+        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
     }
 
 
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
     {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir);
+        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
     }
 
 
@@ -233,7 +233,7 @@ int main(int argc, char **argv)
     /* Move to correct directory */
     if(chdir(path))
     {
-        ErrorExit(CHDIR_ERROR_2, path);
+        ErrorExit(CHDIR_ERROR_2, path, errno, strerror(errno));
     }
 
     /* Check permissions */

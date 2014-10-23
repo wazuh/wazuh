@@ -89,7 +89,8 @@ int main(int argc, char **argv)
 {
     int c;
     int test_config = 0,run_foreground = 0;
-    int gid = 0,m_queue = 0;
+    gid_t gid;
+    int m_queue = 0;
 
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
@@ -137,13 +138,13 @@ int main(int argc, char **argv)
 
     /* Check if the group given are valid */
     gid = Privsep_GetGroup(group);
-    if(gid < 0)
+    if(gid == (gid_t)-1)
         ErrorExit(USER_ERROR,ARGV0,"",group);
 
 
     /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
 
     /* Reading config */
@@ -304,7 +305,7 @@ static void ExecdStart(int q)
             wp = waitpid((pid_t) -1, NULL, WNOHANG);
             if (wp < 0)
             {
-                merror(WAITPID_ERROR, ARGV0);
+                merror(WAITPID_ERROR, ARGV0, errno, strerror(errno));
                 break;
             }
 
@@ -377,7 +378,7 @@ static void ExecdStart(int q)
         /* Checking for error */
         if(!FD_ISSET(q, &fdset))
         {
-            merror(SELECT_ERROR, ARGV0);
+            merror(SELECT_ERROR, ARGV0, errno, strerror(errno));
             continue;
         }
 

@@ -128,7 +128,7 @@ int OS_Server_ReadInsertDB(const DBConfig *db_config)
     info = getuname();
     if(!info)
     {
-        merror(MEM_ERROR, ARGV0);
+        merror(MEM_ERROR, ARGV0, errno, strerror(errno));
         return(0);
     }
 

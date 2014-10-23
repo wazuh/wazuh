@@ -80,7 +80,8 @@ int main(int argc, char **argv)
     char *dir = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
-    int uid = 0,gid = 0;
+    uid_t uid;
+    gid_t gid;
     int force = 0;
 
     char *cfg = DEFAULTCPATH;
@@ -141,7 +142,7 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
 
@@ -159,11 +160,11 @@ int main(int argc, char **argv)
 
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
     /* Chrooting */
     if(Privsep_Chroot(dir) < 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
+        ErrorExit(CHROOT_ERROR,ARGV0,dir, errno, strerror(errno));
 
     nowChroot();
 

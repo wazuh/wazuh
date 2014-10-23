@@ -84,7 +84,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, int log_missing)
     fp = fopen(logfilesum, "w");
     if(!fp)
     {
-        merror(FOPEN_ERROR, ARGV0, logfilesum);
+        merror(FOPEN_ERROR, ARGV0, logfilesum, errno, strerror(errno));
         return;
     }
 

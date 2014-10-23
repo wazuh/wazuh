@@ -204,7 +204,7 @@ void HandleSyslogTCP()
             int wp;
             wp = waitpid((pid_t) -1, NULL, WNOHANG);
             if (wp < 0)
-                merror(WAITPID_ERROR, ARGV0);
+                merror(WAITPID_ERROR, ARGV0, errno, strerror(errno));
 
             /* if = 0, we still need to wait for the child process */
             else if (wp == 0)

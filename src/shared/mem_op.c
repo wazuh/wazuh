@@ -120,7 +120,7 @@ char *os_LoadString(char *at, const char *str)
         at = strdup(str);
         if(!at)
         {
-            merror(MEM_ERROR,__local_name);
+            merror(MEM_ERROR,__local_name, errno, strerror(errno));
         }
         return(at);
     }
@@ -134,7 +134,7 @@ char *os_LoadString(char *at, const char *str)
         if(newat == NULL)
         {
             free(at);
-            merror(MEM_ERROR,__local_name);
+            merror(MEM_ERROR,__local_name, errno, strerror(errno));
             return(NULL);
         }
         at = newat;
@@ -148,5 +148,18 @@ char *os_LoadString(char *at, const char *str)
     return(NULL);
 }
 
+/**
+ * Clear memory regardless of compiler optimizations.
+ * @param v memory to clear
+ * @param c character to set
+ * @param n memory size to clear
+ */
+void *memset_secure(void *v, int c, size_t n)
+{
+    volatile unsigned char *p = v;
+    while (n--) *p++ = (unsigned char) c;
+
+    return v;
+}
 
 /* EOF */

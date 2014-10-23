@@ -61,8 +61,8 @@ int main(int argc, char **argv)
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
 
-    int uid = 0;
-    int gid = 0;
+    uid_t uid;
+    gid_t gid;
 
     run_foreground = 0;
 
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
     agt = (agent *)calloc(1, sizeof(agent));
     if(!agt)
     {
-        ErrorExit(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
     }
 
 
@@ -177,7 +177,7 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
     {
         ErrorExit(USER_ERROR,ARGV0,user,group);
     }
