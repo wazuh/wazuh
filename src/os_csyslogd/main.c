@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 
 
     /* Database Structure */
-    SyslogConfig **syslog_config = NULL;
+    SyslogConfig **syslog_config;
 
 
     /* Setting the name */
@@ -118,7 +118,7 @@ int main(int argc, char **argv)
 
 
     /* Reading configuration */
-    syslog_config = OS_ReadSyslogConf(test_config, cfg, syslog_config);
+    syslog_config = OS_ReadSyslogConf(test_config, cfg);
 
 
     /* Getting servers hostname */
