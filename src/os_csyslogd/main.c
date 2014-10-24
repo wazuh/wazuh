@@ -16,8 +16,10 @@
 
 #include "csyslogd.h"
 
+static void help_csyslogd(void) __attribute__((noreturn));
+
 /* print help statement */
-void help_csyslogd()
+static void help_csyslogd()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -43,14 +45,14 @@ int main(int argc, char **argv)
     gid_t gid;
 
     /* Using MAILUSER (read only) */
-    char *dir  = DEFAULTDIR;
-    char *user = MAILUSER;
-    char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    const char *dir  = DEFAULTDIR;
+    const char *user = MAILUSER;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
 
     /* Database Structure */
-    SyslogConfig **syslog_config = NULL;
+    SyslogConfig **syslog_config;
 
 
     /* Setting the name */
@@ -116,7 +118,7 @@ int main(int argc, char **argv)
 
 
     /* Reading configuration */
-    syslog_config = OS_ReadSyslogConf(test_config, cfg, syslog_config);
+    syslog_config = OS_ReadSyslogConf(test_config, cfg);
 
 
     /* Getting servers hostname */
@@ -199,7 +201,6 @@ int main(int argc, char **argv)
 
     /* the real daemon now */
     OS_CSyslogD(syslog_config);
-    exit(0);
 }
 
 
