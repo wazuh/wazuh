@@ -33,6 +33,11 @@ typedef struct _SyslogConfig
     OSMatch *location;
 }SyslogConfig;
 
+struct SyslogConfig_holder
+{
+    SyslogConfig **data;
+};
+
 
 /* Syslog formats. */
 #define DEFAULT_CSYSLOG  0

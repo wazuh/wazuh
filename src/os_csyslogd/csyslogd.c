@@ -18,6 +18,8 @@
 #include "shared.h"
 
 #include "csyslogd.h"
+char __shost[512];
+
 #include "os_net/os_net.h"
 
 
@@ -107,7 +109,7 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
 }
 
 /* Format Field for output */
-int field_add_string(char *dest, int size, const char *format, const char *value ) {
+int field_add_string(char *dest, size_t size, const char *format, const char *value ) {
     char buffer[OS_SIZE_2048];
     int len = 0;
     int dest_sz = size - strlen(dest);
@@ -132,7 +134,7 @@ int field_add_string(char *dest, int size, const char *format, const char *value
 }
 
 /* Add a field, but truncate if too long */
-int field_add_truncated(char *dest, int size, const char *format, const char *value, int fmt_size ) {
+int field_add_truncated(char *dest, size_t size, const char *format, const char *value, int fmt_size ) {
     char buffer[OS_SIZE_2048];
 
     int available_sz = size - strlen(dest);
@@ -181,7 +183,7 @@ int field_add_truncated(char *dest, int size, const char *format, const char *va
 }
 
 /* Handle integers in the second position */
-int field_add_int(char *dest, int size, const char *format, const int value ) {
+int field_add_int(char *dest, size_t size, const char *format, const int value ) {
     char buffer[255];
     int len = 0;
     int dest_sz = size - strlen(dest);

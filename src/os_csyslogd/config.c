@@ -23,27 +23,27 @@
                         SyslogConfig **syslog_config)
  * Reads configuration.
  */
-void *OS_ReadSyslogConf(__attribute__((unused)) int test_config, char *cfgfile,
-                        SyslogConfig **syslog_config)
+SyslogConfig **OS_ReadSyslogConf(__attribute__((unused)) int test_config, const char *cfgfile)
 {
     int modules = 0;
-    GeneralConfig gen_config;
+    struct SyslogConfig_holder config;
+    SyslogConfig **syslog_config = NULL;
 
 
     /* Modules for the configuration */
     modules|= CSYSLOGD;
-    gen_config.data = syslog_config;
+    config.data = syslog_config;
 
 
     /* Reading configuration */
-    if(ReadConfig(modules, cfgfile, &gen_config, NULL) < 0)
+    if(ReadConfig(modules, cfgfile, &config, NULL) < 0)
     {
         ErrorExit(CONFIG_ERROR, ARGV0, cfgfile);
         return(NULL);
     }
 
 
-    syslog_config = gen_config.data;
+    syslog_config = config.data;
 
     return(syslog_config);
 }

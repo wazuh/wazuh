@@ -23,13 +23,10 @@
  * Sends an alert via syslog.
  * Returns 1 on success or 0 on error.
  */
-int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
+int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
 {
     char *tstamp;
     char syslog_msg[OS_SIZE_2048];
-
-    /* padding value */
-    int padding = 0;
 
     /* Invalid socket. */
     if(syslog_config->socket < 0)
@@ -117,7 +114,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     {
        	/* Building syslog message. */
        	snprintf(syslog_msg, OS_SIZE_2048,
-                "<%d>%s %s ossec: Alert Level: %d; Rule: %d - %s; Location: %s;",
+                "<%u>%s %s ossec: Alert Level: %u; Rule: %u - %s; Location: %s;",
                	syslog_config->priority, tstamp, __shost,
                 al_data->level,
                 al_data->rule, al_data->comment,
@@ -140,7 +137,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     {
        	snprintf(syslog_msg, OS_SIZE_2048,
 
-                "<%d>%s CEF:0|%s|%s|%s|%d|%s|%d|dvc=%s cs2=%s cs2Label=Location",
+                "<%u>%s CEF:0|%s|%s|%s|%u|%s|%u|dvc=%s cs2=%s cs2Label=Location",
                	syslog_config->priority,
 		tstamp,
 		__author,
@@ -213,8 +210,8 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         json_string = cJSON_PrintUnformatted(root);
 
         // Create the syslog message
-        snprintf(syslog_msg, OS_SIZE_2048 - padding,
-                "<%d>%s %s ossec: %s",
+        snprintf(syslog_msg, OS_SIZE_2048,
+                "<%u>%s %s ossec: %s",
 
                 /* syslog header */
                 syslog_config->priority, tstamp, __shost,
@@ -230,7 +227,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     {
         /* Build a Splunk Style Key/Value string for logging */
         snprintf(syslog_msg, OS_SIZE_2048,
-                "<%d>%s %s ossec: crit=%d id=%d description=\"%s\" component=\"%s\",",
+                "<%u>%s %s ossec: crit=%u id=%u description=\"%s\" component=\"%s\",",
 
                 /* syslog header */
                 syslog_config->priority, tstamp, __shost,

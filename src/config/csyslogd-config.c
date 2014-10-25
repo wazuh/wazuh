@@ -32,11 +32,10 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
     const char *xml_syslog_location = "event_location";
 
 
-    GeneralConfig *gen_config = (GeneralConfig *)config;
-    SyslogConfig **syslog_config = (SyslogConfig **)gen_config->data;
+    struct SyslogConfig_holder *config_holder = (struct SyslogConfig_holder *)config;
+    SyslogConfig **syslog_config = config_holder->data;
 
 
-    /* Getting Granular mail_to size */
     if(syslog_config)
     {
         while(syslog_config[s])
@@ -227,7 +226,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
     }
 
 
-    gen_config->data = syslog_config;
+    config_holder->data = syslog_config;
     return(0);
 
     fail:

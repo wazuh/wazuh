@@ -236,7 +236,7 @@ int os_string(char *file, char *regex)
     }
 
     /* Read the file and perform the regex comparison */
-    for (cnt = 0; (ch = os_getch(&oss)) != EOF;)
+    for (cnt = 0, C = bfr; (ch = os_getch(&oss)) != EOF;)
     {
         if (ISSTR(ch))
         {
