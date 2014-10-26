@@ -332,7 +332,7 @@ SetupLogs()
       echo "" >> $NEWCONFIG
       echo "  <localfile>" >> $NEWCONFIG
       echo "    <log_format>full_command</log_format>" >> $NEWCONFIG
-      echo "    <command>netstat -tan |grep LISTEN |grep -v 127.0.0.1 | sort</command>" >> $NEWCONFIG
+      echo "    <command>netstat -tan |grep LISTEN |egrep -v '(127.0.0.1| ::1)' | sort</command>" >> $NEWCONFIG
       echo "  </localfile>" >> $NEWCONFIG
       echo "" >> $NEWCONFIG
       echo "  <localfile>" >> $NEWCONFIG
