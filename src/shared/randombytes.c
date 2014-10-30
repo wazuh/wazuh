@@ -52,7 +52,7 @@ void srandom_init(void)
 {
 
     #ifndef WIN32
-    //unsigned int seed;
+    unsigned int seed;
     #ifdef __OpenBSD__
     srandomdev();
     #else
