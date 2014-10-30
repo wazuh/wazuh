@@ -68,6 +68,8 @@ ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
 		DEFINES+=-pthread
 		LUA_PLAT=posix
+		CFLAGS+=-I/usr/local/include
+		LDFLAGS+=-L/usr/local/lib
 else
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
@@ -139,6 +141,7 @@ endif # USE_PRELUDE
 
 ifeq (${USE_ZEROMQ},1)
 	DEFINES+=-DZEROMQ_OUTPUT
+	#LDFLAGS+=-L/usr/local/lib -I/usr/local/include -lzmq -lczmq
 	LDFLAGS+=-lzmq -lczmq
 endif # USE_ZEROMQ
 
@@ -990,13 +993,14 @@ analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
 	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"ossec-analysisd\" -I./analysisd -c $< -o $@
 
 
-ossec-logtest: ${analysisd_test_o} ${output_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB}
+ossec-logtest: ${analysisd_test_o} ${output_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${CFLAGS} -DTESTRULE $^ ${LDFLAGS} -o $@
 
-ossec-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB}
+ossec-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
+	#${OSSEC_CCBIN} ${CFLAGS} -L../external -I../external/cJSON -L./external -lcJSON -I./external/cJSON $^ ${LDFLAGS} -o $@
 
-ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${output_o} alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB}
+ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${output_o} alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
 
 
