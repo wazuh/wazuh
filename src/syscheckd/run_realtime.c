@@ -462,10 +462,15 @@ int realtime_start()
     return(0);
 }
 
+
 int realtime_adddir(const char *dir)
 {
+    if(!dir) {
+        return(0);
+    }
     return(0);
 }
+
 
 int realtime_process()
 {
