@@ -176,7 +176,7 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
 
 	if (NULL == (result = malloc(80))) {
 		merror("%s: Not enough memory, could not process convert Timestanp", ARGV0);
-		return NULL;
+		goto error;
 	}
 
 	memset(&tm_struct, 0, sizeof(tm_struct));
@@ -191,12 +191,12 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
 	/* then convert to a SYSTEMTIME */
 	if (FileTimeToLocalFileTime(&fTime, &lfTime) == 0) {
 		merror("%s: Error formatting event time", ARGV0);
-		return NULL;
+		goto error;
 	}
 
 	if (FileTimeToSystemTime(&lfTime, &sysTime) == 0) {
 		merror("%s: Error formatting event time", ARGV0);
-		return NULL;
+		goto error;
 	}
 
 	/* Convert SYSTEMTIME to tm */
@@ -212,6 +212,10 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
 	strftime(result, 80, "%Y %b %d %H:%M:%S", &tm_struct);
 
 	return (result);
+
+error:
+	if (result) free(result);
+	return NULL; 
 }
 
 void send_channel_event(EVT_HANDLE evt, os_channel *channel)
@@ -304,12 +308,17 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 	size = strlen(evt_log) + 1;
 
 	channel = calloc(size, sizeof (wchar_t));
-	context = calloc(1, sizeof (os_channel));
-	
-	if ((channel == NULL) || (context == NULL))
+	if(channel == NULL) 
 	{
 		merror("%s: Not enough memory, skipping %s", ARGV0, evt_log);
-		return;
+		goto error;
+        }
+	context = calloc(1, sizeof (os_channel));
+	
+	if (context == NULL)
+	{
+		merror("%s: Not enough memory, skipping %s", ARGV0, evt_log);
+		goto error;
 	}
 
 	// Convert 'evt_log' to windows string
@@ -381,11 +390,17 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 							 EvtSubscribeToFutureEvents) == NULL)
 				merror("%s: Subscription error: %ld", ARGV0, GetLastError());
 		}
-		else
+		else 
 			merror("%s: Subscription error: %ld", ARGV0, GetLastError());
 	}
 	
 	free(channel);
+	return;
+
+error: 
+	if(channel) free(channel); 
+	if(context) free(context); 
+	return; 
 }
 
 #endif

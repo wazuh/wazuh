@@ -21,7 +21,7 @@
  * Compile a posix regex, returning NULL on error
  * Returns 1 if matches, 0 if not.
  */
-int OS_PRegex(char *str, char *regex)
+int OS_PRegex(const char *str, const char *regex)
 {
     regex_t preg;
 

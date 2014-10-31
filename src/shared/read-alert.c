@@ -28,10 +28,14 @@
 #define RULE_BEGIN_SZ   6
 #define SRCIP_BEGIN     "Src IP: "
 #define SRCIP_BEGIN_SZ  8
+
+#ifdef GEOIP
 #define GEOIP_BEGIN_SRC	"Src Location: "
 #define GEOIP_BEGIN_SRC_SZ  14
 #define GEOIP_BEGIN_DST	"Dst Location: "
 #define GEOIP_BEGIN_DST_SZ  14
+#endif /* GEOIP */
+
 #define SRCPORT_BEGIN     "Src Port: "
 #define SRCPORT_BEGIN_SZ  10
 #define DSTIP_BEGIN     "Dst IP: "
@@ -42,7 +46,6 @@
 #define USER_BEGIN_SZ   6
 #define ALERT_MAIL      "mail"
 #define ALERT_MAIL_SZ   4
-#define ALERT_AR        "active-response"
 #define OLDMD5_BEGIN      "Old md5sum was: "
 #define OLDMD5_BEGIN_SZ   16
 #define NEWMD5_BEGIN      "New md5sum is : "
@@ -160,7 +163,8 @@ void FreeAlertData(alert_data *al_data)
  */
 alert_data *GetAlertData(int flag, FILE *fp)
 {
-    int _r = 0, log_size = 0, issyscheck = 0;
+    int _r = 0, issyscheck = 0;
+    size_t log_size = 0;
     char *p;
 
     char *alertid = NULL;
@@ -181,7 +185,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *geoipdatasrc = NULL;
     char *geoipdatadst = NULL;
 #endif
-    int level, rule, srcport = 0, dstport = 0;
+    int level = 0, rule = 0, srcport = 0, dstport = 0;
 
 
     char str[OS_BUFFER_SIZE+1];
@@ -233,7 +237,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
         if(strncmp(ALERT_BEGIN, str, ALERT_BEGIN_SZ) == 0)
         {
             char *m;
-            int z = 0;
+            size_t z = 0;
             p = str + ALERT_BEGIN_SZ + 1;
 
             m = strstr(p, ":");
@@ -243,7 +247,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             }
 
             z = strlen(p) - strlen(m);
-            os_realloc(alertid, (z + 1)*sizeof(char *), alertid);
+            os_realloc(alertid, (z + 1)*sizeof(char), alertid);
             strncpy(alertid, p, z);
             alertid[z] = '\0';
 
@@ -268,6 +272,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             if(p)
             {
                 p++;
+                free(group);
                 os_strdup(p, group);
 
                 /* Cleaning new line from group */
@@ -309,15 +314,17 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 {
                     /* If p is null it is because strchr failed */
                     merror("ZZZ: 1() Merror date or location not NULL");
-                    _r = 0;
                     goto l_error;
                 }
             }
 
 
             /* If not, str is date and p is the location */
-            if(date || location)
-                merror("ZZZ Merror date or location not NULL");
+            if(date || location || !p)
+            {
+                merror("ZZZ Merror date or location not NULL or p is NULL");
+                goto l_error;
+            }
 
             os_strdup(str, date);
             os_strdup(p, location);
@@ -466,7 +473,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             {
                 os_clearnl(str,p);
 
-                if(str != NULL && issyscheck == 1)
+                if(issyscheck == 1)
                 {
                     if(strncmp(str, "Integrity checksum changed for: '",33) == 0)
                     {
@@ -577,6 +584,50 @@ alert_data *GetAlertData(int flag, FILE *fp)
 		free(alertid);
 		alertid = NULL;
 	}
+    if(group)
+    {
+        free(group);
+        group = NULL;
+    }
+    if(location)
+    {
+        free(location);
+        location = NULL;
+    }
+    if(date)
+    {
+        free(date);
+        date = NULL;
+    }
+
+    while(log_size > 0)
+    {
+        log_size--;
+        if(log[log_size])
+        {
+            free(log[log_size]);
+            log[log_size] = NULL;
+        }
+    }
+    free(log);
+
+    free(comment);
+
+    free(srcip);
+
+    free(dstip);
+
+    free(user);
+
+    free(old_md5);
+
+    free(new_md5);
+
+    free(old_sha1);
+
+    free(new_sha1);
+
+    free(filename);
 
     /* We need to clean end of file before returning */
     clearerr(fp);

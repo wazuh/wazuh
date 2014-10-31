@@ -24,12 +24,12 @@
 #include "GeoIP.h"
 #include "GeoIPCity.h"
 
-#define RFC1918_10     (167772160 & 4278190080)        /* 10/8 */
-#define RFC1918_172    (2886729728 & 4293918720)       /* 172.17/12 */
-#define RFC1918_192    (3232235520 & 4294901760)       /* 192.168/16 */
-#define NETMASK_8      4278190080      /* 255.0.0.0    */
-#define NETMASK_12     4293918720      /* 255.240.0.0  */
-#define NETMASK_16     4294901760      /* 255.255.0.0  */
+#define RFC1918_10     (167772160u & 4278190080u)        /* 10/8 */
+#define RFC1918_172    (2886729728u & 4293918720u)       /* 172.17/12 */
+#define RFC1918_192    (3232235520u & 4294901760u)       /* 192.168/16 */
+#define NETMASK_8      4278190080u      /* 255.0.0.0    */
+#define NETMASK_12     4293918720u      /* 255.240.0.0  */
+#define NETMASK_16     4294901760u      /* 255.255.0.0  */
 
 static const char * _mk_NA( const char * p ){
 	return (p ? p : "N/A");
@@ -427,7 +427,7 @@ void OS_CustomLog(Eventinfo *lf,char* format)
     tmp_log=NULL;
   }
 
-  snprintf(tmp_buffer, 1024, "%s",lf->srcuser?lf->srcuser:"None");
+  snprintf(tmp_buffer, 1024, "%s",lf->dstuser?lf->dstuser:"None");
 
   tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_DST_USER], tmp_buffer);
   if(log)

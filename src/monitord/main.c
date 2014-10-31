@@ -16,15 +16,38 @@
 #include "monitord.h"
 #include "os_net/os_net.h"
 
+static void help_monitord(void) __attribute__((noreturn));
+
+/* print help statement */
+static void help_monitord()
+{
+    print_header();
+    print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -u <user>   User to run as (default: %s)", USER);
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out(" ");
+    exit(1);
+}
+
 
 int main(int argc, char **argv)
 {
     int c, test_config = 0, run_foreground = 0;
-    int uid=0,gid=0;
-    char *dir  = DEFAULTDIR;
-    char *user = USER;
-    char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    uid_t uid;
+    gid_t gid;
+    const char *dir  = DEFAULTDIR;
+    const char *user = USER;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
     /* Initializing global variables */
     mond.a_queue = 0;
@@ -39,7 +62,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help(ARGV0);
+                help_monitord();
                 break;
             case 'd':
                 nowDebug();
@@ -71,7 +94,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help(ARGV0);
+                help_monitord();
                 break;
         }
 
@@ -83,20 +106,20 @@ int main(int argc, char **argv)
     /*Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
 
     /* Getting config options */
-    mond.day_wait = getDefine_Int("monitord",
+    mond.day_wait = (unsigned short) getDefine_Int("monitord",
                                   "day_wait",
                                   5,240);
-    mond.compress = getDefine_Int("monitord",
+    mond.compress = (short) getDefine_Int("monitord",
                                   "compress",
                                   0,1);
-    mond.sign = getDefine_Int("monitord","sign",0,1);
+    mond.sign = (short) getDefine_Int("monitord","sign",0,1);
 
-    mond.monitor_agents = getDefine_Int("monitord","monitor_agents",0,1);
+    mond.monitor_agents = (short) getDefine_Int("monitord","monitor_agents",0,1);
 
     mond.agents = NULL;
     mond.smtpserver = NULL;
@@ -170,12 +193,12 @@ int main(int argc, char **argv)
 
     /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
 
     /* chrooting */
     if(Privsep_Chroot(dir) < 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
+        ErrorExit(CHROOT_ERROR,ARGV0,dir, errno, strerror(errno));
 
     nowChroot();
 
@@ -183,7 +206,7 @@ int main(int argc, char **argv)
 
     /* Changing user */
     if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR,ARGV0,user);
+        ErrorExit(SETUID_ERROR,ARGV0,user, errno, strerror(errno));
 
 
     debug1(PRIVSEP_MSG,ARGV0,dir,user);

@@ -76,6 +76,19 @@
   <order>srcip, user</order>
 </decoder>
 
+<decoder name="pam-ruser">
+  <parent>pam</parent>
+  <prematch> ruser</prematch>
+  <regex offset="after_prematch">^=(\S+) </regex>
+  <order>user</order>
+</decoder>
+
+<decoder name="pam-ruser">
+  <parent>pam</parent>
+  <regex> rhost=(\S+)$</regex>
+  <order>srcip</order>
+</decoder>
+
 <decoder name="pam-host">
   <parent>pam</parent>
   <prematch> rhost</prematch>
@@ -505,7 +518,7 @@
   -->
 
 <decoder name="pure-transfer">
-  <prematch>^\S+ - \S+ [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d -\d\d\d\d] </prematch>
+  <prematch>^\S+ - \S+ [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d \S\d\d\d\d] "\w+ \S+" </prematch>
   <regex>^(\S+) - (\S+) [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d -\d\d\d\d] "(\S+) (\.+) (\d+) \d+$</regex>
   <order>extra_data,dstuser,action,url,status</order>
 </decoder>
@@ -1498,6 +1511,12 @@
   - [notice] Apache configured
   - httpd[18660]: [error] [client 12.34.56.78] File does not exist: /usr/local/htdocs/cache
   - httpd[23745]: [error] [client 12.34.56.78] PHP Notice:
+  - [Tue Sep 30 11:30:13.262255 2014] [core:error] [pid 20101] [client 99.47.227.95:34567] AH00037: Symbolic link not allowed or link target not accessible: /usr/share/awstats/icon/mime/document.png
+  - [Tue Sep 30 12:11:21.258612 2014] [ssl:error] [pid 30473] AH02032: Hostname www.example.com provided via SNI and hostname ssl://www.example.com provided via HTTP are different
+  - [Tue Sep 30 12:24:22.891366 2014] [proxy:warn] [pid 2331] [client 77.127.180.111:54082] AH01136: Unescaped URL path matched ProxyPass; ignoring unsafe nocanon, referer: http://www.easylinker.co.il/he/links.aspx?user=bguyb
+  - [Tue Sep 30 14:25:44.895897 2014] [authz_core:error] [pid 31858] [client 99.47.227.95:38870] AH01630: client denied by server configuration: /var/www/example.com/docroot/
+  - [Thu Oct 23 15:17:55.926067 2014] [ssl:info] [pid 18838] [client 36.226.119.49:2359] AH02008: SSL library error 1 in handshake (server www.example.com:443)
+  - [Thu Oct 23 15:17:55.926123 2014] [ssl:info] [pid 18838] SSL Library Error: error:1407609B:SSL routines:SSL23_GET_CLIENT_HELLO:https proxy request -- speaking HTTP to HTTPS port!?
   -->
 <decoder name="apache-errorlog">
   <program_name>^httpd</program_name>
@@ -1507,14 +1526,25 @@
   <prematch>^[warn] |^[notice] |^[error] </prematch>
 </decoder>
 
+<decoder name="apache-errorlog">
+    <prematch>^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:warn] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:notice] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:error] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:info] </prematch>
+</decoder>
+
+<decoder name="apache24-errorlog-ip">
+    <parent>apache-errorlog</parent>
+
+    <prematch offset="after_parent">[client</prematch>
+    <regex offset="after_prematch">^ (\S+):\d+] (\S+): </regex>
+    <order>srcip,id</order>
+</decoder>
+
 <decoder name="apache-errorlog-ip">
   <parent>apache-errorlog</parent>
 
   <prematch offset="after_parent">^[client</prematch>
-  <regex offset="after_prematch">^ (\d+.\d+.\d+.\d+)] </regex>
+  <regex offset="after_prematch">^ (\S+)] </regex>
   <order>srcip</order>
 </decoder>
-
 
 
 
@@ -1554,9 +1584,9 @@
   -->
 <decoder name="web-accesslog">
   <type>web-log</type>
-  <prematch>^\d+.\d+.\d+.\d+ |^::ffff:\d+.\d+.\d+.\d+ </prematch>
-  <regex>^(\d+.\d+.\d+.\d+) \S+ \S+ [\S+ \S\d+] </regex>
-  <regex>"\w+ (\S+) HTTP\S+ (\d+) </regex>
+  <prematch>^\S+ \S+ \S+ [\S+ \S\d+] "\w+ \S+ HTTP\S+" </prematch>
+  <regex>^(\S+) \S+ \S+ [\S+ \S\d+] </regex>
+  <regex>"\w+ (\S+) HTTP\S+" (\d+) </regex>
   <order>srcip, url, id</order>
 </decoder>
 
@@ -2477,7 +2507,7 @@ Examples:
 <!-- Grandstream HT502 VoIP gateway decoder
 Author and (c): Michael Starks, 2014 -->
 
-<!-- HT502: [00:0B:82:14:5B:94] Transport error (-1) for transaction 2677 -- >
+<!-- HT502: [00:0B:82:14:5B:94] Transport error (-1) for transaction 2677 -->
 
 <decoder name="grandstream-ata">
  <prematch>^HT286: [\w\w:\w\w:\w\w:\w\w:\w\w:\w\w]\p*\.+\p* |</prematch>
@@ -2515,7 +2545,15 @@ Author and (c): Michael Starks, 2014 -->
 
 
 <!-- apparmor
-Jun 24 10:35:29 hostname kernel: [49787.970285] audit: type=1400 audit(1403598929.839:88986): apparmor="ALLOWED" operation="getattr" profile="/usr/sbin/dovecot//null-1//null-2//null-4a6" name="/home/admin/mails/new/" pid=19973 comm="imap" requested_mask="r" denied_mask="r" fsuid=1003 ouid=1003
+  - Jun 24 10:35:29 hostname kernel: [49787.970285] audit: type=1400 audit(1403598929.839:88986): apparmor="ALLOWED" operation="getattr" profile="/usr/sbin/dovecot//null-1//null-2//null-4a6" name="/home/admin/mails/new/" pid=19973 comm="imap" requested_mask="r" denied_mask="r" fsuid=1003 ouid=1003
+  - Jul 14 11:03:47 hostname kernel: [ 8665.951930] type=1400 audit(1405328627.702:54): apparmor="DENIED" operation="open" profile="/usr/bin/evince" name="/etc/xfce4/defaults.list" pid=16418 comm="evince" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+  - Jun 16 17:37:39 hostname kernel: [891880.587623] audit: type=1400 audit(1402933059.038:1681857): apparmor="ALLOWED" operation="exec" profile="/usr/sbin/dovecot//null-1fde//null-1fdf" name="/usr/lib/dovecot/pop3-login" pid=13903 comm="dovecot" requested_mask="x" denied_mask="x" fsuid=0 ouid=0 target="/usr/sbin/dovecot//null-1fde//null-1fdf//null-6b18"
+  - Jun 16 17:37:39 hostname kernel: [891880.587957] audit: type=1400 audit(1402933059.038:1681858): apparmor="ALLOWED" operation="open" profile="/usr/sbin/dovecot//null-1fde//null-1fdf//null-6b18" name="/usr/lib/dovecot/libdovecot-login.so.0.0.0" pid=13903 comm="pop3-login" requested_mask="r" denied_mask="r" fsuid=0 ouid=0
+  - Jun 16 17:37:39 hostname kernel: [891880.587976] audit: type=1400 audit(1402933059.038:1681859): apparmor="ALLOWED" operation="getattr" profile="/usr/sbin/dovecot//null-1fde//null-1fdf//null-6b18" name="/usr/lib/dovecot/libdovecot-login.so.0.0.0" pid=13903 comm="pop3-login" requested_mask="r" denied_mask="r" fsuid=0 ouid=0
+  - Jun 16 17:37:39 hostname kernel: [891880.587989] audit: type=1400 audit(1402933059.038:1681860): apparmor="ALLOWED" operation="file_mmap" profile="/usr/sbin/dovecot//null-1fde//null-1fdf//null-6b18" name="/usr/lib/dovecot/libdovecot-login.so.0.0.0" pid=13903 comm="pop3-login" requested_mask="mr" denied_mask="mr" fsuid=0 ouid=0
+  - Jun 23 20:46:15 hostname kernel: [   11.103248] audit: type=1400 audit(1403549175.177:2): apparmor="STATUS" operation="profile_load" name="/sbin/klogd" pid=2185 comm="apparmor_parser"
+  - Jun 16 17:37:39 hostname kernel: [891880.587989] audit: type=1400 audit(1314853822.672:33649): apparmor="DENIED" operation="mknod" parent=27250 profile="/usr/lib/apache2/mpm-prefork/apache2//example.com" name="/usr/share/wordpress/1114140474e5f13bea68a4.tmp" pid=27289 comm="apache2" requested_mask="c" denied_mask="c" fsuid=33 ouid=33
+  - Jun 16 17:37:39 hostname kernel: [891880.587989] audit: type=1400 audit(1315353795.331:33657): apparmor="DENIED" operation="exec" parent=14952 profile="/usr/lib/apache2/mpm-prefork/apache2//example.com" name="/usr/lib/sm.bin/sendmail" pid=14953 comm="sh" requested_mask="x" denied_mask="x" fsuid=33 ouid=0
 -->
 
 <decoder name="apparmor">
@@ -2523,6 +2561,44 @@ Jun 24 10:35:29 hostname kernel: [49787.970285] audit: type=1400 audit(140359892
   <prematch> apparmor=</prematch>
   <regex> apparmor="(\S+)" operation="(\S+)"</regex>
   <order>status, extra_data</order>
+</decoder>
+
+<!-- unix_chkpwd
+  - Jul 21 07:40:29 localhost unix_chkpwd[15804]: password check failed for user (username)
+-->
+<decoder name="unix_chkpwd">
+  <program_name>^unix_chkpwd</program_name>
+</decoder>
+
+<!--Jul 21 07:40:29 localhost unix_chkpwd[15804]: password check failed for user (username)-->
+<decoder name="chkpwd-user">
+  <parent>unix_chkpwd</parent>
+  <regex offset="after_parent">user \((\w+)\)$</regex>
+  <order>srcuser</order>
+</decoder>
+
+
+<!-- unbound
+  - 2014-05-20T09:01:07.283219-04:00 arrakis unbound: [9405:0] notice: sendto failed: Can't assign requested address
+  - 2014-07-14T14:00:02.814490-04:00 arrakis unbound: [2541:0] info: 127.0.0.1 talkgadget.google.com. A IN
+  - 2014-07-14T14:00:05.507848-04:00 arrakis unbound: [2541:0] info: server stats for thread 0: 3 queries, 2 answers from cache, 1 recursions, 0 prefetch
+  - 2014-07-14T14:00:05.507955-04:00 arrakis unbound: [2541:0] info: server stats for thread 0: requestlist max 0 avg 0 exceeded 0 jostled 0
+  - 2014-07-14T14:00:05.508075-04:00 arrakis unbound: [2541:0] info: average recursion processing time 0.038814 sec
+  - 2014-07-14T14:00:05.508166-04:00 arrakis unbound: [2541:0] info: histogram of recursion processing times
+  - 2014-07-14T14:00:05.508248-04:00 arrakis unbound: [2541:0] info: [25%]=0 median[50%]=0 [75%]=0
+  - 2014-07-14T14:00:05.508333-04:00 arrakis unbound: [2541:0] info: lower(secs) upper(secs) recursions
+  - 2014-07-14T14:00:05.508414-04:00 arrakis unbound: [2541:0] info:    0.032768    0.065536 1
+  - 2014-07-14T15:05:07.520229-04:00 arrakis unbound: [2541:0] info: 127.0.0.1 github.com. AAAA IN
+-->
+
+<decoder name="unbound">
+  <program_name>^unbound</program_name>
+</decoder>
+
+<decoder name="unbound-a">
+  <parent>unbound</parent>
+  <regex> info: (\S+) (\S+). A IN$| info: (\S+) (\S+) AAAA IN$</regex>
+  <order>srcip,url</order>
 </decoder>
 
 

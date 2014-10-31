@@ -15,18 +15,40 @@
 #include "shared.h"
 #include "remoted.h"
 
+static void help_remoted(void) __attribute__((noreturn));
+
+/* print help statement */
+static void help_remoted()
+{
+    print_header();
+    print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -u <user>   User to run as (default: %s)", REMUSER);
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out(" ");
+    exit(1);
+}
 
 int main(int argc, char **argv)
 {
     int i = 0,c = 0;
-    int uid = 0, gid = 0;
+    uid_t uid;
+    gid_t gid;
     int debug_level = 0;
     int test_config = 0,run_foreground = 0;
 
-    char *cfg = DEFAULTCPATH;
-    char *dir = DEFAULTDIR;
-    char *user = REMUSER;
-    char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
+    const char *dir = DEFAULTDIR;
+    const char *user = REMUSER;
+    const char *group = GROUPGLOBAL;
 
 
     /* Setting the name -- must be done ASAP */
@@ -39,7 +61,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help(ARGV0);
+                help_remoted();
                 break;
             case 'd':
                 nowDebug();
@@ -70,6 +92,9 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
                 dir = optarg;
+                break;
+            default:
+                help_remoted();
                 break;
         }
     }
@@ -112,7 +137,7 @@ int main(int argc, char **argv)
     /* Check if the user and group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
         ErrorExit(USER_ERROR, ARGV0, user, group);
 
 
@@ -129,11 +154,11 @@ int main(int argc, char **argv)
 
     /* Setting new group */
     if(Privsep_SetGroup(gid) < 0)
-            ErrorExit(SETGID_ERROR, ARGV0, group);
+            ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
 
     /* Going on chroot */
     if(Privsep_Chroot(dir) < 0)
-                ErrorExit(CHROOT_ERROR,ARGV0,dir);
+                ErrorExit(CHROOT_ERROR,ARGV0,dir, errno, strerror(errno));
 
 
     nowChroot();
@@ -143,12 +168,8 @@ int main(int argc, char **argv)
     StartSIG(ARGV0);
 
 
-    /* Creating some randoness  */
-    #ifdef __OpenBSD__
-    srandomdev();
-    #else
-    srandom( time(0) + getpid()+ i);
-    #endif
+    /* Setup random */
+    srandom_init();
 
     random();
 

@@ -15,35 +15,39 @@
 #include "manage_agents.h"
 #include <stdlib.h>
 
+static void helpmsg(void) __attribute__((noreturn));
+static void print_banner(void);
+static void manage_shutdown(int sig) __attribute__((noreturn));
+
 #if defined(__MINGW32__)
 static int setenv(const char * name, const char * val, int overwrite) {
-    int len = strlen(name) + strlen(val) + 2; 
-    char * str = (char *)malloc(len); 
-    snprintf(str, len, "%s=%s", name, val); 
+    int len = strlen(name) + strlen(val) + 2;
+    char * str = (char *)malloc(len);
+    snprintf(str, len, "%s=%s", name, val);
     putenv(str);
-    return 0; 
+    return 0;
 }
-#endif 
+#endif
 
-/** help **/
-void helpmsg()
+/* print help statement */
+static void helpmsg()
 {
-    printf("\nOSSEC HIDS %s: Manage agents.\n", ARGV0);
-    printf("Available options:\n");
-    printf("\t-h          This help message.\n");
-    printf("\t-V          Display OSSEC version.\n");
-    printf("\t-l          List available agents.\n");
-    printf("\t-e <id>     Extracts key for an agent (Manager only).\n");
-    printf("\t-r <id>     Remove an agent. (Manager only).\n");
-    printf("\t-i <id>     Import authentication key (Agent only).\n");
-    printf("\t-f <file>   Bulk generate client keys from file. (Manager only).\n");
-    printf("\t            <file> contains lines in IP,NAME format.\n\n");
+    print_header();
+    print_out("  %s: -[Vhl] [-e id] [-r id] [-i id] [-f file]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -l          List available agents.");
+    print_out("    -e <id>     Extracts key for an agent (Manager only)");
+    print_out("    -r <id>     Remove an agent (Manager only)");
+    print_out("    -i <id>     Import authentication key (Agent only)");
+    print_out("    -f <file>   Bulk generate client keys from file (Manager only)");
+    print_out("                <file> contains lines in IP,NAME format");
     exit(1);
 }
 
 
 /* print banner */
-void print_banner()
+static void print_banner()
 {
     printf("\n");
     printf(BANNER, __ossec_name, __version);
@@ -59,7 +63,7 @@ void print_banner()
 
 
 /* Clean shutdown on kill */
-void manage_shutdown()
+static void manage_shutdown(__attribute__((unused)) int sig)
 {
     /* Checking if restart message is necessary */
     if(restart_necessary)
@@ -82,14 +86,14 @@ int main(int argc, char **argv)
     char *user_msg;
 
     int c = 0, cmdlist = 0;
-    char *cmdexport = NULL;
-    char *cmdimport = NULL;
-    char *cmdbulk = NULL;
+    const char *cmdexport = NULL;
+    const char *cmdimport = NULL;
+    const char *cmdbulk = NULL;
 
     #ifndef WIN32
-    char *dir = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
-    int gid;
+    const char *dir = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
+    gid_t gid;
     #else
     FILE *fp;
     TCHAR path[2048];
@@ -104,49 +108,46 @@ int main(int argc, char **argv)
 
     while((c = getopt(argc, argv, "Vhle:r:i:f:")) != -1){
         switch(c){
-	        case 'V':
-		        print_version();
-		        break;
+            case 'V':
+                print_version();
+                break;
             case 'h':
                 helpmsg();
                 break;
-            case 'd':
-                nowDebug();
-                break;
             case 'e':
                 #ifdef CLIENT
-                ErrorExit("%s: You can't export keys on an agent", ARGV0);
+                ErrorExit("%s: Key export only available on a master.", ARGV0);
                 #endif
                 if(!optarg)
-                    ErrorExit("%s: -e needs an argument",ARGV0);
+                    ErrorExit("%s: -e needs an argument.", ARGV0);
                 cmdexport = optarg;
                 break;
             case 'r':
                 #ifdef CLIENT
-                ErrorExit("%s: You can't remove keys on an agent", ARGV0);
+                ErrorExit("%s: Key removal only available on a master.", ARGV0);
                 #endif
                 if(!optarg)
-                    ErrorExit("%s: -r needs an argument",ARGV0);
-	            
-                /* Use environment variables already available to remove_agent() */           	
+                    ErrorExit("%s: -r needs an argument.", ARGV0);
+
+                /* Use environment variables already available to remove_agent() */
                 setenv("OSSEC_ACTION", "r", 1);
                 setenv("OSSEC_AGENT_ID", optarg, 1);
                 setenv("OSSEC_ACTION_CONFIRMED", "y", 1);
                 break;
             case 'i':
                 #ifndef CLIENT
-                ErrorExit("%s: You can't import keys on the manager.", ARGV0);
+                ErrorExit("%s: Key import only available on an agent.", ARGV0);
                 #endif
                 if(!optarg)
-                    ErrorExit("%s: -i needs an argument",ARGV0);
+                    ErrorExit("%s: -i needs an argument.", ARGV0);
                 cmdimport = optarg;
                 break;
             case 'f':
                 #ifdef CLIENT
-                ErrorExit("%s: You can't bulk generate keys on an agent.", ARGV0);
+                ErrorExit("%s: Bulk generate keys only available on a master.", ARGV0);
                 #endif
                 if(!optarg)
-                    ErrorExit("%s: -f needs an argument",ARGV0);
+                    ErrorExit("%s: -f needs an argument.", ARGV0);
                 cmdbulk = optarg;
                 printf("Bulk load file: %s\n", cmdbulk);
                 break;
@@ -162,31 +163,34 @@ int main(int argc, char **argv)
 
 
 
-    /* Getting currently time */
+    /* Get current time */
     time1 = time(0);
     restart_necessary = 0;
+
+    /* before chroot */
+    srandom_init();
 
 
     #ifndef WIN32
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
-    if(gid < 0)
+    if(gid == (gid_t)-1)
     {
-	    ErrorExit(USER_ERROR, ARGV0, "", group);
+        ErrorExit(USER_ERROR, ARGV0, "", group);
     }
 
 
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
-	    ErrorExit(SETGID_ERROR, ARGV0, group);
+        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
     }
 
 
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
     {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir);
+        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
     }
 
 
@@ -232,7 +236,7 @@ int main(int argc, char **argv)
     /* Move to correct directory */
     if(chdir(path))
     {
-        ErrorExit(CHDIR_ERROR, path);
+        ErrorExit(CHDIR_ERROR_2, path, errno, strerror(errno));
     }
 
     /* Check permissions */

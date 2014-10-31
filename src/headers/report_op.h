@@ -32,24 +32,24 @@
 
 typedef struct _report_filter
 {
-    char *report_name;
+    const char *report_name;
 
-    char *group;
-    char *rule;
-    char *level;
-    char *location;
-    char *user;
-    char *srcip;
-    char *files;
+    const char *group;
+    const char *rule;
+    const char *level;
+    const char *location;
+    const char *user;
+    const char *srcip;
+    const char *files;
     char *filename;
 
-    void *top_user;
-    void *top_srcip;
-    void *top_level;
-    void *top_rule;
-    void *top_group;
-    void *top_location;
-    void *top_files;
+    OSStore *top_user;
+    OSStore *top_srcip;
+    OSStore *top_level;
+    OSStore *top_rule;
+    OSStore *top_group;
+    OSStore *top_location;
+    OSStore *top_files;
 
     int related_user;
     int related_file;
@@ -61,17 +61,17 @@ typedef struct _report_filter
 
     int report_type;
     int show_alerts;
-    void *fp;
+    FILE *fp;
 
 }report_filter;
 
 
 
 
-int os_report_configfilter(char *filter_by, char *filter_value,
-                           report_filter *r_filter, int arg_type);
-void os_report_printtop(void *topstore, char *hname, int print_related);
-void os_ReportdStart(report_filter *r_filter);
+int os_report_configfilter(const char *filter_by, const char *filter_value,
+                           report_filter *r_filter, int arg_type) __attribute__((nonnull(3)));
+void os_report_printtop(void *topstore, const char *hname, int print_related) __attribute__((nonnull));
+void os_ReportdStart(report_filter *r_filter) __attribute__((nonnull));
 
 
 #endif

@@ -18,12 +18,17 @@
 #include "config/config.h"
 #include "rules_op.h"
 
+/* System hostname */
+static char __shost[512];
+
+static int __DBSelectServer(const char *server, const DBConfig *db_config) __attribute__((nonnull));
+static int __DBInsertServer(const char *server, const char *info, const DBConfig *db_config) __attribute__((nonnull));
 
 /** int __DBSelectServer(char *server, DBConfig *db_config)
  * Selects the server ID from the db.
  * Returns 0 if not found.
  */
-int __DBSelectServer(char *server, DBConfig *db_config)
+static int __DBSelectServer(const char *server, const DBConfig *db_config)
 {
     int result = 0;
     char sql_query[OS_SIZE_1024];
@@ -48,7 +53,7 @@ int __DBSelectServer(char *server, DBConfig *db_config)
 /** int __DBInsertServer(char *server, char *info, DBConfig *db_config)
  * Inserts server in to the db.
  */
-int __DBInsertServer(char *server, char *info, DBConfig *db_config)
+static int __DBInsertServer(const char *server, const char *info, const DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
 
@@ -101,7 +106,7 @@ int __DBInsertServer(char *server, char *info, DBConfig *db_config)
  * Insert server info to the db.
  * Returns server ID or 0 on error.
  */
-int OS_Server_ReadInsertDB(void *db_config)
+int OS_Server_ReadInsertDB(const DBConfig *db_config)
 {
     int server_id = 0;
     char *info;
@@ -123,7 +128,7 @@ int OS_Server_ReadInsertDB(void *db_config)
     info = getuname();
     if(!info)
     {
-        merror(MEM_ERROR, ARGV0);
+        merror(MEM_ERROR, ARGV0, errno, strerror(errno));
         return(0);
     }
 
@@ -134,12 +139,13 @@ int OS_Server_ReadInsertDB(void *db_config)
 
 
     /* Inserting server */
-    __DBInsertServer(__shost, info, (DBConfig *)db_config);
+    __DBInsertServer(__shost, info, db_config);
 
 
     /* Getting server id */
-    server_id = __DBSelectServer(__shost, (DBConfig *)db_config);
+    server_id = __DBSelectServer(__shost, db_config);
 
+    free(info);
 
     return(server_id);
 }

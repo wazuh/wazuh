@@ -14,9 +14,19 @@
 #include "shared.h"
 
 
+
 /** Helper functions. */
-FILE *__g_rtype = NULL;
-void l_print_out(const char *msg, ...)
+static void l_print_out(const char *msg, ...) __attribute__((format(printf,1,2))) __attribute__((nonnull));
+static void *_os_report_sort_compare(void *d1, void *d2) __attribute__((nonnull));
+static void _os_header_print(int t, const char *hname) __attribute__((nonnull));
+static int _os_report_str_int_compare(const char *str, int id) __attribute__((nonnull));
+static int _os_report_check_filters(const alert_data *al_data, const report_filter *r_filter) __attribute__((nonnull));
+static int _report_filter_value(const char *filter_by, int prev_filter) __attribute__((nonnull));
+static int _os_report_print_related(int print_related, OSList *st_data) __attribute__((nonnull));
+static int _os_report_add_tostore(const char *key, OSStore *top, void *data) __attribute__((nonnull(1,2)));
+static FILE *__g_rtype = NULL;
+
+static void l_print_out(const char *msg, ...)
 {
     va_list args;
     va_start(args, msg);
@@ -24,12 +34,12 @@ void l_print_out(const char *msg, ...)
     if(__g_rtype)
     {
         (void)vfprintf(__g_rtype, msg, args);
-        (void)fprintf(__g_rtype, "\n");
+        (void)fprintf(__g_rtype, "\r\n");
     }
     else
     {
         (void)vfprintf(stderr, msg, args);
-        (void)fprintf(stderr, "\n");
+        (void)fprintf(stderr, "\r\n");
     }
     va_end(args);
 }
@@ -38,7 +48,7 @@ void l_print_out(const char *msg, ...)
 /* Sort function used by OSStore sort.
  * Returns if d1 > d2.
  */
-void *_os_report_sort_compare(void *d1, void *d2)
+static void *_os_report_sort_compare(void *d1, void *d2)
 {
    OSList *d1l = (OSList *)d1;
    OSList *d2l = (OSList *)d2;
@@ -53,7 +63,7 @@ void *_os_report_sort_compare(void *d1, void *d2)
 
 
 /* Print output header. */
-void _os_header_print(int t, char *hname)
+static void _os_header_print(int t, const char *hname)
 {
     if(!t)
     {
@@ -69,7 +79,7 @@ void _os_header_print(int t, char *hname)
 
 
 /* Compares if the id is present in the string. */
-int _os_report_str_int_compare(char *str, int id)
+static int _os_report_str_int_compare(const char *str, int id)
 {
     int pt_check = 0;
 
@@ -107,7 +117,7 @@ int _os_report_str_int_compare(char *str, int id)
 
 
 /* Check if the al_data should be filtered. */
-int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
+static int _os_report_check_filters(const alert_data *al_data, const report_filter *r_filter)
 {
     /* Checking for the filters. */
     if(r_filter->group)
@@ -136,7 +146,7 @@ int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
     }
     if(r_filter->level)
     {
-        if(al_data->level < atoi(r_filter->level))
+        if(al_data->level < (unsigned int) atoi(r_filter->level))
         {
             return(0);
         }
@@ -178,7 +188,7 @@ int _os_report_check_filters(alert_data *al_data, report_filter *r_filter)
 
 
 /* Sets the proper value for the related entries. */
-int _report_filter_value(char *filter_by, int prev_filter)
+static int _report_filter_value(const char *filter_by, int prev_filter)
 {
     if(strcmp(filter_by, "group") == 0)
     {
@@ -246,7 +256,7 @@ int _report_filter_value(char *filter_by, int prev_filter)
 
 
 /* Prints related entries. */
-int _os_report_print_related(int print_related, OSList *st_data)
+static int _os_report_print_related(int print_related, OSList *st_data)
 {
     OSListNode *list_entry;
     alert_data *list_aldata;
@@ -362,12 +372,12 @@ int _os_report_print_related(int print_related, OSList *st_data)
 
 
 /* Add the entry to the hash. */
-int _os_report_add_tostore(char *key, OSStore *top, void *data)
+static int _os_report_add_tostore(const char *key, OSStore *top, void *data)
 {
     OSList *top_list;
 
     /* Adding data to the hash. */
-    top_list = OSStore_Get(top, key);
+    top_list = (OSList *) OSStore_Get(top, key);
     if(top_list)
     {
         OSList_AddData(top_list, data);
@@ -377,7 +387,7 @@ int _os_report_add_tostore(char *key, OSStore *top, void *data)
         top_list = OSList_Create();
         if(!top_list)
         {
-            merror(MEM_ERROR, __local_name);
+            merror(MEM_ERROR, __local_name, errno, strerror(errno));
             return(0);
         }
         OSList_AddData(top_list, data);
@@ -390,7 +400,7 @@ int _os_report_add_tostore(char *key, OSStore *top, void *data)
 
 
 
-void os_report_printtop(void *topstore_pt, char *hname, int print_related)
+void os_report_printtop(void *topstore_pt, const char *hname, int print_related)
 {
     int dopdout = 0;
     OSStore *topstore = (OSStore *)topstore_pt;
@@ -469,7 +479,7 @@ void os_ReportdStart(report_filter *r_filter)
     int alerts_filtered = 0;
     char *first_alert = NULL;
     char *last_alert = NULL;
-    void **data_to_clean = NULL;
+    alert_data **data_to_clean = NULL;
 
 
     time_t tm;
@@ -544,7 +554,7 @@ void os_ReportdStart(report_filter *r_filter)
 
 
         alerts_filtered++;
-        data_to_clean = os_AddPtArray(al_data, data_to_clean);
+        data_to_clean = (alert_data ** ) os_AddPtArray(al_data, (void **)data_to_clean);
 
 
         /* Setting first and last alert for summary. */
@@ -571,9 +581,9 @@ void os_ReportdStart(report_filter *r_filter)
             snprintf(mlevel, 16, "Severity %d" , al_data->level);
             snprintf(mrule, 76, "%d - %s" , al_data->rule, al_data->comment);
 
-            _os_report_add_tostore(strdup(mlevel), r_filter->top_level,
+            _os_report_add_tostore(mlevel, r_filter->top_level,
                                    al_data);
-            _os_report_add_tostore(strdup(mrule), r_filter->top_rule,
+            _os_report_add_tostore(mrule, r_filter->top_rule,
                                    al_data);
         }
 
@@ -592,14 +602,19 @@ void os_ReportdStart(report_filter *r_filter)
                         tmp_str++;
                     if(*tmp_str == '\0')
                     {
+                        free(*mgroup);
                         mgroup++;
                         continue;
                     }
 
                     _os_report_add_tostore(tmp_str, r_filter->top_group,
                                            al_data);
+
+                    free(*mgroup);
                     mgroup++;
                 }
+
+                free(mgroup);
             }
             else
             {
@@ -749,7 +764,7 @@ void os_ReportdStart(report_filter *r_filter)
  *                              report_filter *r_filter)
  * Checks the configuration filters.
  */
-int os_report_configfilter(char *filter_by, char *filter_value,
+int os_report_configfilter(const char *filter_by, const char *filter_value,
                            report_filter *r_filter, int arg_type)
 {
     if(!filter_by || !filter_value)

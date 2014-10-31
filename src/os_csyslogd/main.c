@@ -16,38 +16,56 @@
 
 #include "csyslogd.h"
 
+static void help_csyslogd(void) __attribute__((noreturn));
 
+/* print help statement */
+static void help_csyslogd()
+{
+    print_header();
+    print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out(" ");
+    exit(1);
+}
 
 int main(int argc, char **argv)
 {
     int c, test_config = 0,run_foreground = 0;
-    int uid = 0,gid = 0;
+    uid_t uid;
+    gid_t gid;
 
     /* Using MAILUSER (read only) */
-    char *dir  = DEFAULTDIR;
-    char *user = MAILUSER;
-    char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    const char *dir  = DEFAULTDIR;
+    const char *user = MAILUSER;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
 
     /* Database Structure */
-    SyslogConfig **syslog_config = NULL;
+    SyslogConfig **syslog_config;
 
 
     /* Setting the name */
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "vVdhtfu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1){
         switch(c){
             case 'V':
                 print_version();
                 break;
-            case 'v':
-                print_version();
-                break;
             case 'h':
-                help(ARGV0);
+                help_csyslogd();
                 break;
             case 'd':
                 nowDebug();
@@ -79,7 +97,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help(ARGV0);
+                help_csyslogd();
                 break;
         }
 
@@ -93,14 +111,14 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
     {
         ErrorExit(USER_ERROR, ARGV0, user, group);
     }
 
 
     /* Reading configuration */
-    syslog_config = OS_ReadSyslogConf(test_config, cfg, syslog_config);
+    syslog_config = OS_ReadSyslogConf(test_config, cfg);
 
 
     /* Getting servers hostname */
@@ -144,14 +162,14 @@ int main(int argc, char **argv)
 
 
 
-    /* Privilege separation */	
+    /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
 
     /* chrooting */
     if(Privsep_Chroot(dir) < 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
+        ErrorExit(CHROOT_ERROR,ARGV0,dir, errno, strerror(errno));
 
 
     /* Now on chroot */
@@ -161,7 +179,7 @@ int main(int argc, char **argv)
 
     /* Changing user */
     if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR,ARGV0,user);
+        ErrorExit(SETUID_ERROR,ARGV0,user, errno, strerror(errno));
 
 
     /* Basic start up completed. */
@@ -181,9 +199,8 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
-    /* the real daemon now */	
+    /* the real daemon now */
     OS_CSyslogD(syslog_config);
-    exit(0);
 }
 
 

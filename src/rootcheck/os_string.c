@@ -181,10 +181,10 @@ int os_string(char *file, char *regex)
 
 
     /* Allocating for the buffer */
-    bfr = calloc(STR_MINLEN + 2, sizeof(char *));
+    bfr = calloc(STR_MINLEN + 2, sizeof(unsigned char));
     if (!bfr)
     {
-        merror(MEM_ERROR, ARGV0);
+        merror(MEM_ERROR, ARGV0, errno, strerror(errno));
         return(0);
     }
 
@@ -236,7 +236,7 @@ int os_string(char *file, char *regex)
     }
 
     /* Read the file and perform the regex comparison */
-    for (cnt = 0; (ch = os_getch(&oss)) != EOF;)
+    for (cnt = 0, C = bfr; (ch = os_getch(&oss)) != EOF;)
     {
         if (ISSTR(ch))
         {

@@ -15,22 +15,23 @@
 #include "client-config.h"
 #include "os_net/os_net.h"
 
+#include "config.h"
 
-int Read_Client(XML_NODE node, void *d1, void *d2)
+int Read_Client(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
 
     /* XML definitions */
-    char *xml_client_ip = "server-ip";
-    char *xml_client_hostname = "server-hostname";
-    char *xml_local_ip = "local_ip";
-    char *xml_client_port = "port";
-    char *xml_ar_disabled = "disable-active-response";
-    char *xml_notify_time = "notify_time";
-    char *xml_max_time_reconnect_try = "time-reconnect";
+    const char *xml_client_ip = "server-ip";
+    const char *xml_client_hostname = "server-hostname";
+    const char *xml_local_ip = "local_ip";
+    const char *xml_client_port = "port";
+    const char *xml_ar_disabled = "disable-active-response";
+    const char *xml_notify_time = "notify_time";
+    const char *xml_max_time_reconnect_try = "time-reconnect";
 
     /* cmoraes */
-    char *xml_profile_name = "config-profile";
+    const char *xml_profile_name = "config-profile";
 
     agent *logr;
 
@@ -43,12 +44,12 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         /* Getting local ip. */
@@ -57,14 +58,14 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
             os_strdup(node[i]->content, logr->lip);
             if(OS_IsValidIP(logr->lip, NULL) != 1)
             {
-                merror(INVALID_IP, ARGV0, logr->lip);
+                merror(INVALID_IP, __local_name, logr->lip);
                 return(OS_INVALID);
             }
         }
         /* Getting server ip */
         else if(strcmp(node[i]->element,xml_client_ip) == 0)
         {
-            int ip_id = 0;
+            unsigned int ip_id = 0;
 
             /* Getting last ip */
             if(logr->rip)
@@ -81,14 +82,14 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
             os_strdup(node[i]->content, logr->rip[ip_id]);
             if(OS_IsValidIP(logr->rip[ip_id], NULL) != 1)
             {
-                merror(INVALID_IP, ARGV0, logr->rip[ip_id]);
+                merror(INVALID_IP, __local_name, logr->rip[ip_id]);
                 return(OS_INVALID);
             }
             logr->rip_id++;
         }
         else if(strcmp(node[i]->element,xml_client_hostname) == 0)
         {
-            int ip_id = 0;
+            unsigned int ip_id = 0;
             char *s_ip;
             char f_ip[128];
 
@@ -110,8 +111,8 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
             if(!s_ip)
             {
                 merror("%s: WARN: Unable to get hostname for '%s'.",
-                       ARGV0, node[i]->content);
-                merror(AG_INV_HOST, ARGV0, node[i]->content);
+                       __local_name, node[i]->content);
+                merror(AG_INV_HOST, __local_name, node[i]->content);
 
                 os_strdup("invalid_ip", s_ip);
             }
@@ -131,14 +132,14 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
             logr->port = atoi(node[i]->content);
 
             if(logr->port <= 0 || logr->port > 65535)
             {
-                merror(PORT_ERROR, ARGV0, logr->port);
+                merror(PORT_ERROR, __local_name, logr->port);
                 return(OS_INVALID);
             }
         }
@@ -146,7 +147,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
             logr->notify_time = atoi(node[i]->content);
@@ -155,7 +156,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
             logr->max_time_reconnect_try = atoi(node[i]->content);
@@ -168,7 +169,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
                 logr->execdq = 0;
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -180,7 +181,7 @@ int Read_Client(XML_NODE node, void *d1, void *d2)
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         i++;

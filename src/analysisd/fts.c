@@ -21,7 +21,7 @@
 #include "fts.h"
 #include "eventinfo.h"
 
-int fts_minsize_for_str = 0;
+unsigned int fts_minsize_for_str = 0;
 
 OSList *fts_list = NULL;
 OSHash *fts_store = NULL;
@@ -68,7 +68,7 @@ int FTS_Init()
                                   12,512);
 
     /* Getting minimum string size */
-    fts_minsize_for_str = getDefine_Int("analysisd",
+    fts_minsize_for_str = (unsigned int) getDefine_Int("analysisd",
                                         "fts_min_size_for_str",
                                         6, 128);
 
@@ -90,15 +90,21 @@ int FTS_Init()
 
         chmod(FTS_QUEUE, 0640);
 
-        int uid = Privsep_GetUser(USER);
-        int gid = Privsep_GetGroup(GROUPGLOBAL);
-        if(uid>=0 && gid>=0)
-            chown(FTS_QUEUE, uid, gid);
+        uid_t uid = Privsep_GetUser(USER);
+        gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+        if(uid != (uid_t)-1 && gid != (gid_t)-1)
+        {
+            if(chown(FTS_QUEUE, uid, gid) == -1)
+            {
+                merror(CHOWN_ERROR, ARGV0, FTS_QUEUE, errno, strerror(errno));
+                return(0);
+            }
+        }
 
         fp_list = fopen(FTS_QUEUE, "r+");
         if(!fp_list)
         {
-            merror(FOPEN_ERROR, ARGV0, FTS_QUEUE);
+            merror(FOPEN_ERROR, ARGV0, FTS_QUEUE, errno, strerror(errno));
             return(0);
         }
     }
@@ -138,15 +144,21 @@ int FTS_Init()
 
         chmod(IG_QUEUE, 0640);
 
-        int uid = Privsep_GetUser(USER);
-        int gid = Privsep_GetGroup(GROUPGLOBAL);
-        if(uid>=0 && gid>=0)
-            chown(IG_QUEUE, uid, gid);
+        uid_t uid = Privsep_GetUser(USER);
+        gid_t gid = Privsep_GetGroup(GROUPGLOBAL);
+        if(uid != (uid_t)-1 && gid != (gid_t)-1)
+        {
+            if(chown(IG_QUEUE, uid, gid) == -1)
+            {
+                merror(CHOWN_ERROR, ARGV0, IG_QUEUE, errno, strerror(errno));
+                return (0);
+            }
+        }
 
         fp_ignore = fopen(IG_QUEUE, "r+");
         if(!fp_ignore)
         {
-            merror(FOPEN_ERROR, ARGV0, IG_QUEUE);
+            merror(FOPEN_ERROR, ARGV0, IG_QUEUE, errno, strerror(errno));
             return(0);
         }
     }
@@ -321,7 +333,7 @@ int FTS(Eventinfo *lf)
     #endif
 
 
-    /* Saving to fts fp */	
+    /* Saving to fts fp */
     fseek(fp_list, 0, SEEK_END);
     fprintf(fp_list,"%s\n", _line);
     fflush(fp_list);

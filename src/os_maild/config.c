@@ -19,7 +19,7 @@
 /* MailConf v0.1: 2005/04/01
  * Reads the Mail configuration
  */
-int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
+int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
 {
     int modules = 0;
 
@@ -29,6 +29,7 @@ int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
     Mail->from = NULL;
     Mail->idsname = NULL;
     Mail->smtpserver = NULL;
+    Mail->heloserver = NULL;
     Mail->mn = 0;
     Mail->priority = 0;
     Mail->maxperhour = 12;

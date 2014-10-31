@@ -14,28 +14,51 @@
  */
 
 
-#ifndef MAILD
-   #define MAILD
-#endif
-
 #ifndef ARGV0
    #define ARGV0 "ossec-maild"
 #endif
 
 #include "shared.h"
 #include "maild.h"
+/* Define global variables from maild.h */
+unsigned int mail_timeout;
+unsigned int   _g_subject_level;
+char _g_subject[SUBJECT_SIZE +2];
+
 #include "mail_list.h"
 
-void OS_Run(MailConfig *mail);
+static void OS_Run(MailConfig *mail) __attribute__((nonnull)) __attribute__((noreturn));
+static void help_maild() __attribute__((noreturn));
+
+/* print help statement */
+static void help_maild()
+{
+    print_header();
+    print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out(" ");
+    exit(1);
+}
 
 int main(int argc, char **argv)
 {
     int c, test_config = 0,run_foreground = 0;
-    int uid = 0,gid = 0;
-    char *dir  = DEFAULTDIR;
-    char *user = MAILUSER;
-    char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    uid_t uid;
+    gid_t gid;
+    const char *dir  = DEFAULTDIR;
+    const char *user = MAILUSER;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
     /* Mail Structure */
     MailConfig mail;
@@ -51,7 +74,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help(ARGV0);
+                help_maild();
                 break;
             case 'd':
                 nowDebug();
@@ -83,7 +106,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help(ARGV0);
+                help_maild();
                 break;
         }
 
@@ -95,7 +118,7 @@ int main(int argc, char **argv)
     /*Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
     /* Reading configuration */
@@ -140,12 +163,12 @@ int main(int argc, char **argv)
 
     /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
 
     /* chrooting */
     if(Privsep_Chroot(dir) < 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
+        ErrorExit(CHROOT_ERROR,ARGV0,dir, errno, strerror(errno));
 
     nowChroot();
 
@@ -153,7 +176,7 @@ int main(int argc, char **argv)
 
     /* Changing user */
     if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR,ARGV0,user);
+        ErrorExit(SETUID_ERROR,ARGV0,user, errno, strerror(errno));
 
 
     debug1(PRIVSEP_MSG,ARGV0,dir,user);
@@ -176,14 +199,13 @@ int main(int argc, char **argv)
 
     /* the real daemon now */
     OS_Run(&mail);
-    exit(0);
 }
 
 
 /* OS_Run: Read the queue and send the appropriate alerts.
  * not supposed to return..
  */
-void OS_Run(MailConfig *mail)
+static void OS_Run(MailConfig *mail)
 {
     MailMsg *msg;
     MailMsg *s_msg = NULL;
@@ -243,8 +265,7 @@ void OS_Run(MailConfig *mail)
 
             if(pid < 0)
             {
-                merror("%s: Fork failed. cause: %d - %s", ARGV0, errno, strerror(errno));
-                merror(FORK_ERROR, ARGV0);
+                merror(FORK_ERROR, ARGV0, errno, strerror(errno));
                 sleep(30);
                 continue;
             }
@@ -294,8 +315,7 @@ void OS_Run(MailConfig *mail)
             pid = fork();
             if(pid < 0)
             {
-                merror("%s: Fork failed. cause: %d - %s", ARGV0, errno, strerror(errno));
-                merror(FORK_ERROR, ARGV0);
+                merror(FORK_ERROR, ARGV0, errno, strerror(errno));
                 sleep(30);
                 continue;
             }
@@ -448,7 +468,7 @@ void OS_Run(MailConfig *mail)
             wp = waitpid((pid_t) -1, &p_status, WNOHANG);
             if (wp < 0)
             {
-                merror(WAITPID_ERROR, ARGV0);
+                merror(WAITPID_ERROR, ARGV0, errno, strerror(errno));
                 n_errs++;
             }
 

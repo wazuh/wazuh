@@ -21,7 +21,7 @@
 /* Read Output of commands */
 void *read_command(int pos, int *rc, int drop_it)
 {
-    int cmd_size = 0;
+    size_t cmd_size = 0;
     char *p;
     char str[OS_MAXSTR+1];
 
@@ -41,6 +41,7 @@ void *read_command(int pos, int *rc, int drop_it)
                ARGV0, logff[pos].command);
 
         logff[pos].command = NULL;
+        return (NULL);
     }
 
 

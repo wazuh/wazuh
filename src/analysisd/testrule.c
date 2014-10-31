@@ -53,7 +53,7 @@
 
 
 /** Internal Functions **/
-void OS_ReadMSG(int m_queue, char *ut_str);
+void OS_ReadMSG(char *ut_str);
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 
 
@@ -90,44 +90,35 @@ int ReadDecodeXML(char *file);
 int SetDecodeXML();
 
 
-void logtest_help(const char *prog)
+/* print help statement */
+void help_logtest()
 {
-    print_out(" ");
-    print_out("%s %s - %s (%s)", __ossec_name, __version, __author, __contact);
-    print_out("%s", __site);
-    print_out(" ");
-    print_out("  %s: -[Vatfdh] [-U ut_str] [-u user] [-g group] [-c config] [-D dir]", prog);
+    print_header();
+    print_out("  %s: -[Vhdtva] [-c config] [-D dir] [-U rule:alert:decoder]", ARGV0);
     print_out("    -V          Version and license message");
-    print_out("    -a          Alerts output");
-    print_out("    -t          Test configuration");
-    print_out("    -v          Verbose (full) output/rule debugging");
-    print_out("    -d          Execute in debug mode");
     print_out("    -h          This help message");
-    print_out("    -U <rule:alert:decoder>   Unit test. Refer to contrib/ossec-testing/runtests.py");
-    print_out("    -u <user>   Run as 'user'");
-    print_out("    -g <group>  Run as 'group'");
-    print_out("    -c <config> Read the 'config' file");
-    print_out("    -D <dir>    Chroot to 'dir'");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -a          Alerts output");
+    print_out("    -v          Verbose (full) output/rule debugging");
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -U <rule:alert:decoder>  Unit test. Refer to contrib/ossec-testing/runtests.py");
     print_out(" ");
     exit(1);
 }
-
-
 
 /** int main(int argc, char **argv)
  */
 int main(int argc, char **argv)
 {
-    int t_config = 0;
-    int c = 0, m_queue = 0;
+    int test_config = 0;
+    int c = 0;
     char *ut_str = NULL;
 
     char *dir = DEFAULTDIR;
-    // TODO: delete or implement
-    char *user __attribute__((unused)) = USER;
-    // TODO: delete or implement
-    char *group __attribute__((unused)) = GROUPGLOBAL;
-
     char *cfg = DEFAULTCPATH;
 
     /* Setting the name */
@@ -142,16 +133,16 @@ int main(int argc, char **argv)
     active_responses = NULL;
     memset(prev_month, '\0', 4);
 
-    while((c = getopt(argc, argv, "VatvdhU:u:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "VatvdhU:D:c:")) != -1){
         switch(c){
 	    case 'V':
 		print_version();
 		break;
             case 't':
-                t_config = 1;
+                test_config = 1;
                 break;
             case 'h':
-                logtest_help(ARGV0);
+                help_logtest();
                 break;
             case 'd':
                 nowDebug();
@@ -160,16 +151,6 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -U needs an argument",ARGV0);
                 ut_str = optarg;
-                break;
-            case 'u':
-                if(!optarg)
-                    ErrorExit("%s: -u needs an argument",ARGV0);
-                user = optarg;
-                break;
-            case 'g':
-                if(!optarg)
-                    ErrorExit("%s: -g needs an argument",ARGV0);
-                group = optarg;
                 break;
             case 'D':
                 if(!optarg)
@@ -188,7 +169,7 @@ int main(int argc, char **argv)
                 full_output = 1;
                 break;
             default:
-                logtest_help(ARGV0);
+                help_logtest();
                 break;
         }
 
@@ -226,7 +207,7 @@ int main(int argc, char **argv)
 
 
     if(chdir(dir) != 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
+        ErrorExit(CHROOT_ERROR,ARGV0,dir, errno, strerror(errno));
 
 
     /*
@@ -346,13 +327,13 @@ int main(int argc, char **argv)
         Config.g_rules_hash = OSHash_Create();
         if(!Config.g_rules_hash)
         {
-            ErrorExit(MEM_ERROR, ARGV0);
+            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
         }
         AddHash_Rule(tmp_node);
     }
 
 
-    if(t_config == 1)
+    if(test_config == 1)
     {
         exit(0);
     }
@@ -363,7 +344,7 @@ int main(int argc, char **argv)
 
 
     /* Going to main loop */
-    OS_ReadMSG(m_queue, ut_str);
+    OS_ReadMSG(ut_str);
 
 
     exit(0);
@@ -376,7 +357,7 @@ int main(int argc, char **argv)
  * Main function. Receives the messages(events)
  * and analyze them all.
  */
-void OS_ReadMSG(int m_queue, char *ut_str)
+void OS_ReadMSG(char *ut_str)
 {
     int i;
     char msg[OS_MAXSTR +1];
@@ -460,7 +441,7 @@ void OS_ReadMSG(int m_queue, char *ut_str)
         /* This shouldn't happen .. */
         if(lf == NULL)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
         }
 
 

@@ -10,6 +10,7 @@
  * Foundation
  */
 
+#include "agent_op.h"
 
 #include "shared.h"
 
@@ -20,26 +21,19 @@
  */
 int os_check_restart_syscheck()
 {
-    struct stat restart_status;
-
     /* If the restart is not present, return 0.
      */
 
     if(isChroot())
     {
-        if(stat(SYSCHECK_RESTART, &restart_status) == -1)
+        if(unlink(SYSCHECK_RESTART) == -1)
             return(0);
-
-        unlink(SYSCHECK_RESTART);
     }
     else
     {
-        if(stat(SYSCHECK_RESTART_PATH, &restart_status) == -1)
+        if(unlink(SYSCHECK_RESTART_PATH) == -1)
             return(0);
-
-        unlink(SYSCHECK_RESTART_PATH);
     }
-
 
     return(1);
 }
@@ -56,7 +50,7 @@ int os_set_restart_syscheck()
     fp = fopen(SYSCHECK_RESTART, "w");
     if(!fp)
     {
-        merror(FOPEN_ERROR, __local_name, SYSCHECK_RESTART);
+        merror(FOPEN_ERROR, __local_name, SYSCHECK_RESTART, errno, strerror(errno));
         return(0);
     }
 
@@ -78,7 +72,7 @@ char* os_read_agent_name()
     char buf[1024 + 1];
     FILE *fp = NULL;
 
-    debug2("%s: calling os_read_agent_name().", ARGV0);
+    debug2("%s: calling os_read_agent_name().", __local_name);
 
     if(isChroot())
         fp = fopen(AGENT_INFO_FILE, "r");
@@ -98,7 +92,7 @@ char* os_read_agent_name()
 
     if(!fp)
     {
-        debug1(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
+        debug1(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
         return(NULL);
     }
 
@@ -132,12 +126,12 @@ char *os_read_agent_ip()
     char buf[1024 + 1];
     FILE *fp;
 
-    debug2("%s: calling os_read_agent_ip().", ARGV0);
+    debug2("%s: calling os_read_agent_ip().", __local_name);
 
     fp = fopen(AGENT_INFO_FILE, "r");
     if(!fp)
     {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
+        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
         return(NULL);
     }
 
@@ -169,12 +163,12 @@ char *os_read_agent_id()
     char buf[1024 + 1];
     FILE *fp;
 
-    debug2("%s: calling os_read_agent_id().", ARGV0);
+    debug2("%s: calling os_read_agent_id().", __local_name);
 
     fp = fopen(AGENT_INFO_FILE, "r");
     if(!fp)
     {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
+        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
         return(NULL);
     }
 
@@ -224,8 +218,8 @@ char* os_read_agent_profile()
 
     if(!fp)
     {
-        debug2("%s: Failed to open file. Errno=%d.", ARGV0, errno);
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
+        debug2("%s: Failed to open file. Errno=%d.", __local_name, errno);
+        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
         return(NULL);
     }
 
@@ -260,24 +254,24 @@ char* os_read_agent_profile()
  *  Returns 1 on success or <= 0 on failure.
  */
 /* cmoraes: changed function. added cfg_profile_name parameter */
-int os_write_agent_info(char *agent_name, char *agent_ip,
-                        char *agent_id,   char *cfg_profile_name)
+int os_write_agent_info(const char *agent_name, __attribute__((unused)) const char *agent_ip,
+        const char *agent_id, const char *cfg_profile_name)
 {
     FILE *fp;
 
     fp = fopen(AGENT_INFO_FILE, "w");
     if(!fp)
     {
-        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE);
+        merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
         return(0);
     }
 
     /*cmoraes: added cfg_profile_name parameter*/
     fprintf(
-        fp, 
-        "%s\n-\n%s\n%s\n", 
-        agent_name, 
-        agent_id, 
+        fp,
+        "%s\n-\n%s\n%s\n",
+        agent_name,
+        agent_id,
         (cfg_profile_name) ? cfg_profile_name : "-"
     );
     fclose(fp);

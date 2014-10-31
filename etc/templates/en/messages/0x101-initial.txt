@@ -1,6 +1,4 @@
  
  You are about to start the installation process of the OSSEC HIDS.
  You must have a C compiler pre-installed in your system.
- If you have any questions or comments, please send an e-mail
- to dcid@ossec.net (or daniel.cid@gmail.com).
  

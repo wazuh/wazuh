@@ -13,30 +13,31 @@
 #include "shared.h"
 #include "remote-config.h"
 
+#include "config.h"
 
 /* Read_Remote: Reads remote config
  */
-int Read_Remote(XML_NODE node, void *d1, void *d2)
+int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
-    int pl = 0;
+    unsigned int pl = 0;
 
-    int allow_size = 1;
-    int deny_size = 1;
+    unsigned int allow_size = 1;
+    unsigned int deny_size = 1;
     remoted *logr;
 
     /*** XML Definitions ***/
 
     /* Allowed and denied IPS */
-    char *xml_allowips = "allowed-ips";
-    char *xml_denyips = "denied-ips";
+    const char *xml_allowips = "allowed-ips";
+    const char *xml_denyips = "denied-ips";
 
-    /* Remote options */	
-    char *xml_remote_port = "port";
-    char *xml_remote_proto = "protocol";
-    char *xml_remote_ipv6 = "ipv6";
-    char *xml_remote_connection = "connection";
-    char *xml_remote_lip = "local_ip";
+    /* Remote options */
+    const char *xml_remote_port = "port";
+    const char *xml_remote_proto = "protocol";
+    const char *xml_remote_ipv6 = "ipv6";
+    const char *xml_remote_connection = "connection";
+    const char *xml_remote_lip = "local_ip";
 
     logr = (remoted *)d1;
 
@@ -89,14 +90,14 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
 
 
     /* Adding space for the last null connection/port */
-    logr->port = realloc(logr->port, sizeof(int)*(pl +2));
-    logr->conn = realloc(logr->conn, sizeof(int)*(pl +2));
-    logr->proto = realloc(logr->proto, sizeof(int)*(pl +2));
-    logr->ipv6 = realloc(logr->ipv6, sizeof(int)*(pl +2));
-    logr->lip = realloc(logr->lip, sizeof(char *)*(pl +2));
+    logr->port = (int *) realloc(logr->port, sizeof(int)*(pl +2));
+    logr->conn = (int *) realloc(logr->conn, sizeof(int)*(pl +2));
+    logr->proto = (int *) realloc(logr->proto, sizeof(int)*(pl +2));
+    logr->ipv6 = (int *) realloc(logr->ipv6, sizeof(int)*(pl +2));
+    logr->lip = (char **) realloc(logr->lip, sizeof(char *)*(pl +2));
     if(!logr->port || !logr->conn || !logr->proto || !logr->lip)
     {
-        merror(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
     }
 
     logr->port[pl] = 0;
@@ -115,12 +116,12 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         else if(strcasecmp(node[i]->element,xml_remote_connection) == 0)
@@ -135,7 +136,7 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -143,14 +144,14 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
             logr->port[pl] = atoi(node[i]->content);
 
             if(logr->port[pl] <= 0 || logr->port[pl] > 65535)
             {
-                merror(PORT_ERROR, ARGV0, logr->port[pl]);
+                merror(PORT_ERROR, __local_name, logr->port[pl]);
                 return(OS_INVALID);
             }
         }
@@ -166,7 +167,7 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,
+                merror(XML_VALUEERR,__local_name,node[i]->element,
                        node[i]->content);
                 return(OS_INVALID);
             }
@@ -183,17 +184,17 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
             os_strdup(node[i]->content,logr->lip[pl]);
             if(OS_IsValidIP(logr->lip[pl], NULL) != 1)
             {
-                merror(INVALID_IP, ARGV0, node[i]->content);
+                merror(INVALID_IP, __local_name, node[i]->content);
                 return(OS_INVALID);
             }
         }
         else if(strcmp(node[i]->element, xml_allowips) == 0)
         {
             allow_size++;
-            logr->allowips =realloc(logr->allowips,sizeof(os_ip *)*allow_size);
+            logr->allowips = (os_ip **) realloc(logr->allowips,sizeof(os_ip *)*allow_size);
             if(!logr->allowips)
             {
-                merror(MEM_ERROR, ARGV0);
+                merror(MEM_ERROR, __local_name, errno, strerror(errno));
                 return(OS_INVALID);
             }
 
@@ -202,17 +203,17 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
 
             if(!OS_IsValidIP(node[i]->content,logr->allowips[allow_size -2]))
             {
-                merror(INVALID_IP, ARGV0, node[i]->content);
+                merror(INVALID_IP, __local_name, node[i]->content);
                 return(OS_INVALID);
             }
         }
         else if(strcmp(node[i]->element, xml_denyips) == 0)
         {
             deny_size++;
-            logr->denyips = realloc(logr->denyips,sizeof(os_ip *)*deny_size);
+            logr->denyips = (os_ip **) realloc(logr->denyips,sizeof(os_ip *)*deny_size);
             if(!logr->denyips)
             {
-                merror(MEM_ERROR, ARGV0);
+                merror(MEM_ERROR, __local_name, errno, strerror(errno));
                 return(OS_INVALID);
             }
 
@@ -220,13 +221,13 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
             logr->denyips[deny_size -1] = NULL;
             if(!OS_IsValidIP(node[i]->content, logr->denyips[deny_size -2]))
             {
-                merror(INVALID_IP, ARGV0, node[i]->content);
+                merror(INVALID_IP, __local_name, node[i]->content);
                 return(OS_INVALID);
             }
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         i++;
@@ -235,7 +236,7 @@ int Read_Remote(XML_NODE node, void *d1, void *d2)
     /* conn must be set */
     if(logr->conn[pl] == 0)
     {
-        merror(CONN_ERROR, ARGV0);
+        merror(CONN_ERROR, __local_name);
         return(OS_INVALID);
     }
 

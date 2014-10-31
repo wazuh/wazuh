@@ -29,29 +29,29 @@ typedef struct _file_sum
 
 
 /* Internal functions prototypes */
-void read_controlmsg(int agentid, char *msg);
-
-
-
+static void read_controlmsg(unsigned int agentid, char *msg);
+static int send_file_toagent(unsigned int agentid, const char *name, const char *sum);
+static void f_files(void);
+static void c_files(void);
 
 /* Global vars, acessible every where */
-file_sum **f_sum;
+static file_sum **f_sum;
 
-time_t _ctime;
-time_t _stime;
+static time_t _ctime;
+static time_t _stime;
 
 
 
 /* For the last message tracking */
-char *_msg[MAX_AGENTS +1];
-char *_keep_alive[MAX_AGENTS +1];
-int _changed[MAX_AGENTS +1];
-int modified_agentid;
+static char *_msg[MAX_AGENTS +1];
+static char *_keep_alive[MAX_AGENTS +1];
+static int _changed[MAX_AGENTS +1];
+static int modified_agentid;
 
 
 /* pthread mutex variables */
-pthread_mutex_t lastmsg_mutex;
-pthread_cond_t awake_mutex;
+static pthread_mutex_t lastmsg_mutex;
+static pthread_cond_t awake_mutex;
 
 
 
@@ -59,7 +59,7 @@ pthread_cond_t awake_mutex;
  * from an agent. read_contromsg (other thread) is going
  * to deal with it (only if message changed).
  */
-void save_controlmsg(int agentid, char *r_msg)
+void save_controlmsg(unsigned int agentid, char *r_msg)
 {
     char msg_ack[OS_FLSIZE +1];
 
@@ -166,7 +166,7 @@ void save_controlmsg(int agentid, char *r_msg)
 
     /* Assign new values */
     _changed[agentid] = 1;
-    modified_agentid = agentid;
+    modified_agentid = (int) agentid;
 
 
     /* Signal that new data is available */
@@ -188,7 +188,7 @@ void save_controlmsg(int agentid, char *r_msg)
 
 /* f_files: Free the files memory
  */
-void f_files()
+static void f_files()
 {
     int i;
     if(!f_sum)
@@ -214,7 +214,7 @@ void f_files()
 /* c_files: Create the structure with the files and checksums
  * Returns void
  */
-void c_files()
+static void c_files()
 {
     DIR *dp;
 
@@ -222,7 +222,7 @@ void c_files()
 
     os_md5 md5sum;
 
-    int f_size = 0;
+    unsigned int f_size = 0;
 
 
     f_sum = NULL;
@@ -283,13 +283,13 @@ void c_files()
         f_sum = (file_sum **)realloc(f_sum, (f_size +2) * sizeof(file_sum *));
         if(!f_sum)
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
         }
 
-        f_sum[f_size] = calloc(1, sizeof(file_sum));
+        f_sum[f_size] = (file_sum *) calloc(1, sizeof(file_sum));
         if(!f_sum[f_size])
         {
-            ErrorExit(MEM_ERROR,ARGV0);
+            ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
         }
 
 
@@ -326,9 +326,10 @@ void c_files()
 /* send_file_toagent: Sends a file to the agent.
  * Returns -1 on error
  */
-int send_file_toagent(int agentid, char *name, char *sum)
+static int send_file_toagent(unsigned int agentid, const char *name, const char *sum)
 {
-    int i = 0, n = 0;
+    int i = 0;
+    size_t n = 0;
     char file[OS_SIZE_1024 +1];
     char buf[OS_SIZE_1024 +1];
 
@@ -339,7 +340,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
     fp = fopen(file, "r");
     if(!fp)
     {
-        merror(FOPEN_ERROR, ARGV0, file);
+        merror(FOPEN_ERROR, ARGV0, file, errno, strerror(errno));
         return(-1);
     }
 
@@ -399,7 +400,7 @@ int send_file_toagent(int agentid, char *name, char *sum)
  * Reads the available control message from
  * the agent.
  */
-void read_controlmsg(int agentid, char *msg)
+static void read_controlmsg(unsigned int agentid, char *msg)
 {
     int i;
 
@@ -536,9 +537,9 @@ void read_controlmsg(int agentid, char *msg)
  * Wait for new messages to read.
  * The messages are going to be sent from save_controlmsg.
  */
-void *wait_for_msgs(void *none)
+void *wait_for_msgs(__attribute__((unused)) void *none)
 {
-    int id, i;
+    int id;
     char msg[OS_SIZE_1024 +2];
 
 
@@ -549,6 +550,7 @@ void *wait_for_msgs(void *none)
     /* should never leave this loop */
     while(1)
     {
+        unsigned int i;
         /* Every NOTIFY * 30 minutes, re read the files.
          * If something changed, notify all agents
          */
@@ -607,7 +609,7 @@ void *wait_for_msgs(void *none)
                 strncpy(msg, _msg[i], OS_SIZE_1024);
                 _changed[i] = 0;
 
-                if(modified_agentid >= i)
+                if(modified_agentid >= (int) i)
                 {
                     modified_agentid = -1;
                 }

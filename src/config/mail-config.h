@@ -29,10 +29,11 @@ typedef struct _MailConfig
     char *from;
     char *idsname;
     char *smtpserver;
+    char *heloserver;
 
     /* Granular e-mail options */
-    int *gran_level;
-    int **gran_id;
+    unsigned int *gran_level;
+    unsigned int **gran_id;
     int *gran_set;
     int *gran_format;
     char **gran_to;

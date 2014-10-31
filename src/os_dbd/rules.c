@@ -19,12 +19,19 @@
 #include "rules_op.h"
 
 
+static int __Groups_SelectGroup(const char *group, const DBConfig *db_config) __attribute((nonnull));
+static int __Groups_InsertGroup(const char *group, const DBConfig *db_config) __attribute((nonnull));
+static int __Groups_SelectGroupMapping(int cat_id, int rule_id, const DBConfig *db_config) __attribute((nonnull));
+static int __Groups_InsertGroupMapping(int cat_id, int rule_id, const DBConfig *db_config) __attribute((nonnull));
+static void _Groups_ReadInsertDB(RuleInfo *rule, const DBConfig *db_config) __attribute((nonnull));
+static void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config) __attribute((nonnull));
+
 
 /** int __Groups_SelectGroup(char *group, DBConfig *db_config)
  * Select group (categories) from to the db.
  * Returns 0 if not found.
  */
-int __Groups_SelectGroup(char *group, DBConfig *db_config)
+static int __Groups_SelectGroup(const char *group, const DBConfig *db_config)
 {
     int result = 0;
     char sql_query[OS_SIZE_1024];
@@ -49,7 +56,7 @@ int __Groups_SelectGroup(char *group, DBConfig *db_config)
 /** int __Groups_InsertGroup(char *group, DBConfig *db_config)
  * Insert group (categories) in to the db.
  */
-int __Groups_InsertGroup(char *group, DBConfig *db_config)
+static int __Groups_InsertGroup(const char *group, const DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
 
@@ -77,7 +84,7 @@ int __Groups_InsertGroup(char *group, DBConfig *db_config)
  * Select group (categories) from to the db.
  * Returns 0 if not found.
  */
-int __Groups_SelectGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
+static int __Groups_SelectGroupMapping(int cat_id, int rule_id, const DBConfig *db_config)
 {
     int result = 0;
     char sql_query[OS_SIZE_1024];
@@ -102,7 +109,7 @@ int __Groups_SelectGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
 /** int __Groups_InsertGroup(int cat_id, int rule_id, DBConfig *db_config)
  * Insert group (categories) in to the db.
  */
-int __Groups_InsertGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
+static int __Groups_InsertGroupMapping(int cat_id, int rule_id, const DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
 
@@ -130,7 +137,7 @@ int __Groups_InsertGroupMapping(int cat_id, int rule_id, DBConfig *db_config)
 /** void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
  * Insert groups (categories) in to the db.
  */
-void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
+static void _Groups_ReadInsertDB(RuleInfo *rule, const DBConfig *db_config)
 {
     /* We must insert each group separately. */
     int cat_id;
@@ -218,9 +225,10 @@ void _Groups_ReadInsertDB(RuleInfo *rule, DBConfig *db_config)
 /** void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
  * Insert rules in to the db.
  */
-void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
+static void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
 {
-    DBConfig *dbc = (DBConfig *)db_config;
+	/* tmp disable */
+    /* DBConfig *dbc = (DBConfig *)db_config; */
     char sql_query[OS_SIZE_1024];
     memset(sql_query, '\0', OS_SIZE_1024);
 
@@ -249,7 +257,7 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
 
 
     /* Inserting group into the signature mapping */
-    _Groups_ReadInsertDB(rule, db_config);
+    _Groups_ReadInsertDB(rule, (DBConfig *) db_config);
 
 
 
@@ -258,32 +266,20 @@ void *_Rules_ReadInsertDB(RuleInfo *rule, void *db_config)
 
     /* Generating SQL */
     snprintf(sql_query, OS_SIZE_1024 -1,
-             "SELECT id FROM signature "
-             "where rule_id = %u",
-             rule->sigid);
-
-    if(osdb_query_select(dbc->conn, sql_query) == 0)
-    {
-        snprintf(sql_query, OS_SIZE_1024 -1,
-                "INSERT INTO "
-                "signature(rule_id, level, description) "
-                "VALUES ('%u','%u','%s')",
-                rule->sigid, rule->level, rule->comment);
-    }
-    else
-    {
-        snprintf(sql_query, OS_SIZE_1024 -1,
-                "UPDATE signature SET level='%u',description='%s' "
-                "WHERE rule_id='%u'",
-                rule->level, rule->comment,rule->sigid);
-    }
+	"REPLACE INTO "
+	"signature(rule_id, level, description) "
+	"VALUES ('%u','%u','%s')",
+	rule->sigid, rule->level, rule->comment);
 
 
     /* Checking return code. */
+
+    /*
     if(!osdb_query_insert(dbc->conn, sql_query))
     {
         merror(DB_GENERROR, ARGV0);
     }
+    */
 
     return(NULL);
 }

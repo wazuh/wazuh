@@ -32,10 +32,10 @@
 
 
 /* Read logcollector config */
-int LogCollectorConfig(char * cfgfile, int accept_remote);
+int LogCollectorConfig(const char * cfgfile, int accept_remote);
 
 /* Stary log collector daemon */
-void LogCollectorStart();
+void LogCollectorStart(void) __attribute__((noreturn));
 
 /* Handle files */
 int handle_file(int i, int do_fseek, int do_log);
@@ -87,10 +87,10 @@ void win_start_event_channel(char *evt_log, char future, char *query);
 /*** Global variables ***/
 
 
-int loop_timeout;
-int logr_queue;
-int open_file_attempts;
-logreader *logff;
+extern int loop_timeout;
+extern int logr_queue;
+extern int open_file_attempts;
+extern logreader *logff;
 
 
 #endif

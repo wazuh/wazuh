@@ -25,7 +25,7 @@ OSStore *OSStore_Create()
 {
     OSStore *my_list;
 
-    my_list = calloc(1, sizeof(OSStore));
+    my_list = (OSStore *) calloc(1, sizeof(OSStore));
     if(!my_list)
         return(NULL);
 
@@ -106,7 +106,7 @@ int OSStore_SetMaxSize(OSStore *list, int max_size)
 /* Set the pointer to the function to free the memory
  * data.
  */
-int OSStore_SetFreeDataPointer(OSStore *list, void *free_data_function)
+int OSStore_SetFreeDataPointer(OSStore *list, void (free_data_function)(void *))
 {
     if(!list)
     {
@@ -190,7 +190,8 @@ int OSStore_Sort(OSStore *list, void*(sort_data_function)(void *d1, void *d2))
             else
                 list->last_node = list->cur_node->prev;
 
-            list->cur_node = list->cur_node->prev;
+            if((list->cur_node = list->cur_node->prev) == NULL)
+                return(1);
 
             newnode->prev = NULL;
             newnode->next = list->first_node;
@@ -212,7 +213,7 @@ int OSStore_Sort(OSStore *list, void*(sort_data_function)(void *d1, void *d2))
  * if available.
  * (position may change after each PUT)
  */
-int OSStore_GetPosition(OSStore *list, char *key)
+int OSStore_GetPosition(OSStore *list, const char *key)
 {
     int chk_rc, pos = 1;
     list->cur_node = list->first_node;
@@ -250,7 +251,7 @@ OSStoreNode *OSStore_GetFirstNode(OSStore *list)
 /* Get data from storage.
  * Returns NULL if not present.
  */
-void *OSStore_Get(OSStore *list, char *key)
+void *OSStore_Get(OSStore *list, const char *key)
 {
     int chk_rc;
     list->cur_node = list->first_node;
@@ -277,7 +278,7 @@ void *OSStore_Get(OSStore *list, char *key)
 /* Check if key is present on storage.
  * Returns 0 if not present.
  */
-int OSStore_Check(OSStore *list, char *key)
+int OSStore_Check(OSStore *list, const char *key)
 {
     int chk_rc;
     list->cur_node = list->first_node;
@@ -304,7 +305,7 @@ int OSStore_Check(OSStore *list, char *key)
 /* Check if key is present on storage (using strncmp).
  * Returns 0 if not present.
  */
-int OSStore_NCheck(OSStore *list, char *key)
+int OSStore_NCheck(OSStore *list, const char *key)
 {
     int chk_rc;
     list->cur_node = list->first_node;
@@ -332,7 +333,7 @@ int OSStore_NCheck(OSStore *list, char *key)
 /* Check if key is present on storage (case insensitive).
  * Returns 0 if not present.
  */
-int OSStore_NCaseCheck(OSStore *list, char *key)
+int OSStore_NCaseCheck(OSStore *list, const char *key)
 {
     int chk_rc;
     list->cur_node = list->first_node;
@@ -355,34 +356,40 @@ int OSStore_NCaseCheck(OSStore *list, char *key)
 /* Delete this node from list
  * Pointer goes to the next node available.
  */
-void OSStore_Delete(OSStore *list, char *key)
+/*void OSStore_Delete(OSStore *list, char *key)
 {
     return;
-}
+}*/
 
 
 
 /* Add data to the list
  * Returns 1 on success and 0 on failure
  */
-int OSStore_Put(OSStore *list, char *key, void *data)
+int OSStore_Put(OSStore *list, const char *key, void *data)
 {
     int chk_rc;
     OSStoreNode *newnode;
 
 
     /* Allocating memory for new node */
-    newnode = calloc(1, sizeof(OSStoreNode));
+    newnode = (OSStoreNode *) calloc(1, sizeof(OSStoreNode));
     if(!newnode)
     {
-        merror(MEM_ERROR, __local_name);
+        merror(MEM_ERROR, __local_name, errno, strerror(errno));
         return(0);
     }
 
     newnode->prev = NULL;
     newnode->next = NULL;
     newnode->data = data;
-    newnode->key = key;
+    newnode->key = strdup(key);
+    if(!newnode->key)
+    {
+        free(newnode);
+        merror(MEM_ERROR, __local_name, errno, strerror(errno));
+        return(0);
+    }
     newnode->key_size = strlen(key);
 
 
@@ -405,6 +412,7 @@ int OSStore_Put(OSStore *list, char *key, void *data)
                 /* Duplicated entry */
                 if(chk_rc == 0)
                 {
+                    free(newnode);
                     return(1);
                 }
 

@@ -20,7 +20,7 @@
 
 
 /* Read syslog files/snort fast/apache files */
-void *read_ossecalert(int pos, int *rc, int drop_it)
+void *read_ossecalert(int pos, __attribute__((unused)) int *rc, int drop_it)
 {
     alert_data *al_data;
     char user_msg[256];
@@ -95,6 +95,13 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
             }
             j++;
         }
+
+        if(tmp_msg == NULL)
+        {
+            FreeAlertData(al_data);
+            return(NULL);
+        }
+
         if(strlen(tmp_msg) > 1596)
         {
             tmp_msg[1594] = '.';
@@ -110,6 +117,8 @@ void *read_ossecalert(int pos, int *rc, int drop_it)
                	srcip_msg,
                	user_msg,
                	tmp_msg);
+
+        free(tmp_msg);
     }
 
 

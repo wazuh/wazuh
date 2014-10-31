@@ -15,13 +15,14 @@
 #include "shared.h"
 #include "localfile-config.h"
 
+#include "config.h"
 
-int Read_Localfile(XML_NODE node, void *d1, void *d2)
+int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
-    int pl = 0;
-    int i = 0;
+    unsigned int pl = 0;
+    unsigned int i = 0;
 
-    int glob_set = 0;
+    unsigned int glob_set = 0;
 
     #ifndef WIN32
     int glob_offset = 0;
@@ -29,13 +30,13 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
 
     /* XML Definitions */
-    char *xml_localfile_location = "location";
-    char *xml_localfile_command = "command";
-    char *xml_localfile_logformat = "log_format";
-    char *xml_localfile_frequency = "frequency";
-    char *xml_localfile_alias = "alias";
-    char *xml_localfile_future = "only-future-events";
-    char *xml_localfile_query = "query";
+    const char *xml_localfile_location = "location";
+    const char *xml_localfile_command = "command";
+    const char *xml_localfile_logformat = "log_format";
+    const char *xml_localfile_frequency = "frequency";
+    const char *xml_localfile_alias = "alias";
+    const char *xml_localfile_future = "only-future-events";
+    const char *xml_localfile_query = "query";
 
     logreader *logf;
     logreader_config *log_config;
@@ -98,12 +99,12 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         else if(strcmp(node[i]->element,xml_localfile_future) == 0)
@@ -121,7 +122,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             if(log_config->agent_cfg == 1 && log_config->accept_remote == 0)
             {
                 merror("%s: Remote commands are not accepted from the manager. "
-                       "Ignoring it on the agent.conf", ARGV0);
+                       "Ignoring it on the agent.conf", __local_name);
 
                 logf[pl].file = NULL;
                 logf[pl].ffile = NULL;
@@ -139,7 +140,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
 
@@ -185,7 +186,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
                 if(glob(node[i]->content, 0, NULL, &g) != 0)
                 {
-                    merror(GLOB_ERROR, ARGV0, node[i]->content);
+                    merror(GLOB_ERROR, __local_name, node[i]->content);
                     os_strdup(node[i]->content, logf[pl].file);
                     i++;
                     continue;
@@ -197,7 +198,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                     /* Checking when nothing is found. */
                     if(glob_offset == 0)
                     {
-                        merror(GLOB_NFOUND, ARGV0, node[i]->content);
+                        merror(GLOB_NFOUND, __local_name, node[i]->content);
                         return(OS_INVALID);
                     }
                     i++;
@@ -219,7 +220,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
                     ret = strftime(lfile, OS_FLSIZE, g.gl_pathv[glob_offset], p);
                     if(ret == 0)
                     {
-                        merror(PARSE_ERROR, ARGV0, g.gl_pathv[glob_offset]);
+                        merror(PARSE_ERROR, __local_name, g.gl_pathv[glob_offset]);
                         return(OS_INVALID);
                     }
 
@@ -348,7 +349,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
                 if(logf[pl].logformat[0] != ':')
                 {
-                    merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                    merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                     return(OS_INVALID);
                 }
                 logf[pl].logformat++;
@@ -364,7 +365,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 
                 if(logf[pl].logformat[x] != '\0')
                 {
-                    merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                    merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                     return(OS_INVALID);
                 }
             }
@@ -376,7 +377,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
 			}
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
@@ -386,7 +387,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
 
@@ -410,7 +411,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         }
         else
         {
-            merror(MISS_LOG_FORMAT, ARGV0);
+            merror(MISS_LOG_FORMAT, __local_name);
             return(OS_INVALID);
         }
 
@@ -424,7 +425,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
             /* Every entry must be valid */
             if(!logf[i].file)
             {
-                merror(MISS_FILE, ARGV0);
+                merror(MISS_FILE, __local_name);
                 return(OS_INVALID);
             }
 
@@ -439,14 +440,14 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
     /* Missing log format */
     if(!logf[pl].logformat)
     {
-        merror(MISS_LOG_FORMAT, ARGV0);
+        merror(MISS_LOG_FORMAT, __local_name);
         return(OS_INVALID);
     }
 
     /* Missing file */
     if(!logf[pl].file)
     {
-        merror(MISS_FILE, ARGV0);
+        merror(MISS_FILE, __local_name);
         return(OS_INVALID);
     }
 
@@ -458,7 +459,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
            (strcmp(logf[pl].file, "Security") != 0))
          {
              /* Invalid event log */
-             merror(NSTD_EVTLOG, ARGV0, logf[pl].file);
+             merror(NSTD_EVTLOG, __local_name, logf[pl].file);
              return(0);
          }
     }
@@ -469,7 +470,7 @@ int Read_Localfile(XML_NODE node, void *d1, void *d2)
         if(!logf[pl].command)
         {
             merror("%s: ERROR: Missing 'command' argument. "
-                   "This option will be ignored.", ARGV0);
+                   "This option will be ignored.", __local_name);
         }
     }
 

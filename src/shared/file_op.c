@@ -17,6 +17,11 @@
 
 #include "shared.h"
 
+#ifndef WIN32
+#include <libgen.h>
+#else
+#include <aclapi.h>
+#endif
 
 /* Vista product information. */
 #ifdef WIN32
@@ -295,16 +300,17 @@
 #endif /* WIN32 */
 
 
+const char *__local_name = "unset";
 
 /* Sets the name of the starting program */
-void OS_SetName(char *name)
+void OS_SetName(const char *name)
 {
     __local_name = name;
     return;
 }
 
 
-int File_DateofChange(char *file)
+time_t File_DateofChange(const char *file)
 {
     struct stat file_status;
 
@@ -314,7 +320,7 @@ int File_DateofChange(char *file)
     return (file_status.st_mtime);
 }
 
-int IsDir(char *file)
+int IsDir(const char *file)
 {
     struct stat file_status;
     if(stat(file,&file_status) < 0)
@@ -325,7 +331,7 @@ int IsDir(char *file)
 }
 
 
-int CreatePID(char *name, int pid)
+int CreatePID(const char *name, int pid)
 {
     char file[256];
     FILE *fp;
@@ -346,14 +352,18 @@ int CreatePID(char *name, int pid)
 
     fprintf(fp,"%d\n",pid);
 
-    chmod(file, 0640);
+    if(chmod(file, 0640) != 0)
+    {
+        fclose(fp);
+        return(-1);
+    }
 
     fclose(fp);
 
     return(0);
 }
 
-int DeletePID(char *name)
+int DeletePID(const char *name)
 {
     char file[256];
 
@@ -376,10 +386,10 @@ int DeletePID(char *name)
 }
 
 
-int UnmergeFiles(char *finalpath, char *optdir)
+int UnmergeFiles(const char *finalpath, const char *optdir)
 {
-    int i = 0, n = 0, ret = 1;
-    long files_size = 0;
+    int ret = 1;
+    size_t i = 0, n = 0, files_size = 0;
 
     char *files;
     char final_name[2048 +1];
@@ -410,7 +420,7 @@ int UnmergeFiles(char *finalpath, char *optdir)
 
 
         /* Getting file size and name. */
-        files_size = atol(buf +1);
+        files_size = (size_t) atol(buf +1);
 
         files = strchr(buf, '\n');
         if(files)
@@ -494,13 +504,13 @@ int UnmergeFiles(char *finalpath, char *optdir)
 }
 
 
-int MergeAppendFile(char *finalpath, char *files)
+int MergeAppendFile(const char *finalpath, const char *files)
 {
-    int n = 0;
+    size_t n = 0;
     long files_size = 0;
 
     char buf[2048 + 1];
-    char *tmpfile;
+    const char *tmpfile;
     FILE *fp;
     FILE *finalfp;
 
@@ -569,9 +579,10 @@ int MergeAppendFile(char *finalpath, char *files)
 
 
 
-int MergeFiles(char *finalpath, char **files)
+int MergeFiles(const char *finalpath, char **files)
 {
-    int i = 0, n = 0, ret = 1;
+    int i = 0, ret = 1;
+    size_t n = 0;
     long files_size = 0;
 
     char *tmpfile;
@@ -632,6 +643,70 @@ int MergeFiles(char *finalpath, char **files)
 
 
 #ifndef WIN32
+/* get basename of path */
+char *basename_ex(char *path)
+{
+    return(basename(path));
+}
+
+
+
+/* rename file or directory */
+int rename_ex(const char *source, const char *destination)
+{
+    if (rename(source, destination))
+    {
+            log2file(
+                RENAME_ERROR,
+                __local_name,
+                source,
+                destination,
+                errno,
+                strerror(errno)
+            );
+
+            return(-1);
+    }
+
+    return(0);
+}
+
+
+
+
+/* create a temporary file */
+int mkstemp_ex(char *tmp_path)
+{
+    int fd;
+
+    fd = mkstemp(tmp_path);
+
+    if (fd == -1)
+    {
+        log2file(
+            MKSTEMP_ERROR,
+            __local_name,
+            tmp_path,
+            errno,
+            strerror(errno)
+        );
+
+        return(-1);
+    }
+
+    /* mkstemp() only implicit does this in POSIX 2008 */
+    if(fchmod(fd, 0600) == -1) {
+        log2file(CHMOD_ERROR, __local_name, tmp_path, errno, strerror(errno));
+        close(fd);
+        return -1;
+    }
+
+    close(fd);
+
+    return(0);
+}
+
+
 /* getuname; Get uname and returns a string with it.
  * Memory must be freed after use
  */
@@ -643,7 +718,7 @@ char *getuname()
     {
         char *ret;
 
-        ret = calloc(256, sizeof(char));
+        ret = (char *) calloc(256, sizeof(char));
         if(ret == NULL)
             return(NULL);
 
@@ -660,7 +735,7 @@ char *getuname()
     else
     {
         char *ret;
-        ret = calloc(256, sizeof(char));
+        ret = (char *) calloc(256, sizeof(char));
         if(ret == NULL)
             return(NULL);
 
@@ -686,7 +761,7 @@ void goDaemonLight()
 
     if(pid < 0)
     {
-        merror(FORK_ERROR, __local_name);
+        merror(FORK_ERROR, __local_name, errno, strerror(errno));
         return;
     }
     else if(pid)
@@ -698,7 +773,7 @@ void goDaemonLight()
     /* becoming session leader */
     if(setsid() < 0)
     {
-        merror(SETSID_ERROR, __local_name);
+        merror(SETSID_ERROR, __local_name, errno, strerror(errno));
         return;
     }
 
@@ -707,7 +782,7 @@ void goDaemonLight()
     pid = fork();
     if(pid < 0)
     {
-        merror(FORK_ERROR, __local_name);
+        merror(FORK_ERROR, __local_name, errno, strerror(errno));
         return;
     }
     else if(pid)
@@ -720,7 +795,10 @@ void goDaemonLight()
 
 
     /* Going to / */
-    chdir("/");
+    if(chdir("/") == -1)
+    {
+        merror(CHDIR_ERROR, __local_name, "/", errno, strerror(errno));
+    }
 
 
     return;
@@ -740,7 +818,7 @@ void goDaemon()
 
     if(pid < 0)
     {
-        merror(FORK_ERROR, __local_name);
+        merror(FORK_ERROR, __local_name, errno, strerror(errno));
         return;
     }
     else if(pid)
@@ -751,7 +829,7 @@ void goDaemon()
     /* becoming session leader */
     if(setsid() < 0)
     {
-        merror(SETSID_ERROR, __local_name);
+        merror(SETSID_ERROR, __local_name, errno, strerror(errno));
         return;
     }
 
@@ -759,7 +837,7 @@ void goDaemon()
     pid = fork();
     if(pid < 0)
     {
-        merror(FORK_ERROR, __local_name);
+        merror(FORK_ERROR, __local_name, errno, strerror(errno));
         return;
     }
     else if(pid)
@@ -774,11 +852,16 @@ void goDaemon()
         dup2(fd, 0);
         dup2(fd, 1);
         dup2(fd, 2);
+
+        close(fd);
     }
 
 
     /* Going to / */
-    chdir("/");
+    if(chdir("/") == -1)
+    {
+        merror(CHDIR_ERROR, __local_name, "/", errno, strerror(errno));
+    }
 
 
     /* Closing stdin, stdout and stderr */
@@ -808,7 +891,7 @@ int checkVista()
     m_uname = getuname();
     if(!m_uname)
     {
-        merror(MEM_ERROR, __local_name);
+        merror(MEM_ERROR, __local_name, errno, strerror(errno));
         return(0);
     }
 
@@ -833,6 +916,277 @@ int checkVista()
     free(m_uname);
 
     return(isVista);
+}
+
+
+
+
+/* get basename of path */
+char *basename_ex(char *path)
+{
+    return(PathFindFileNameA(path));
+}
+
+
+
+/* rename file or directory */
+int rename_ex(const char *source, const char *destination)
+{
+    if (!MoveFileEx(source, destination, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+    {
+            log2file(
+                "%s: ERROR: Could not move (%s) to (%s) which returned (%lu)",
+                __local_name,
+                source,
+                destination,
+                GetLastError()
+            );
+
+            return(-1);
+    }
+
+    return(0);
+}
+
+
+
+/* create a temporary file */
+int mkstemp_ex(char *tmp_path)
+{
+    DWORD dwResult;
+    int result;
+    int error = -1;
+
+    HANDLE h;
+    PACL pACL;
+    PSECURITY_DESCRIPTOR pSD;
+    EXPLICIT_ACCESS ea[2];
+    SECURITY_ATTRIBUTES sa;
+
+    PSID pAdminGroupSID;
+    PSID pSystemGroupSID;
+    SID_IDENTIFIER_AUTHORITY SIDAuthNT = {SECURITY_NT_AUTHORITY};
+
+    #if defined(_MSC_VER) && _MSC_VER >= 1500
+        result = _mktemp_s(tmp_path, strlen(tmp_path) + 1);
+
+        if (result != 0)
+        {
+            log2file(
+                "%s: ERROR: Could not create temporary file (%s) which returned (%d)",
+                __local_name,
+                tmp_path,
+                result
+            );
+
+            return(-1);
+        }
+    #else
+        if (_mktemp(tmp_path) == NULL)
+        {
+            log2file(
+                "%s: ERROR: Could not create temporary file (%s) which returned [(%d)-(%s)]",
+                __local_name,
+                tmp_path,
+                errno,
+                strerror(errno)
+            );
+
+            return(-1);
+        }
+    #endif
+
+    /* create SID for the BUILTIN\Administrators group */
+    result = AllocateAndInitializeSid(
+        &SIDAuthNT,
+        2,
+        SECURITY_BUILTIN_DOMAIN_RID,
+        DOMAIN_ALIAS_RID_ADMINS,
+        0, 0, 0, 0, 0, 0,
+        &pAdminGroupSID
+    );
+
+    if (!result)
+    {
+        log2file(
+            "%s: ERROR: Could not create BUILTIN\\Administrators group SID which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* create SID for the SYSTEM group */
+    result = AllocateAndInitializeSid(
+        &SIDAuthNT,
+        1,
+        SECURITY_LOCAL_SYSTEM_RID,
+        0, 0, 0, 0, 0, 0, 0,
+        &pSystemGroupSID
+    );
+
+    if (!result)
+    {
+        log2file(
+            "%s: ERROR: Could not create SYSTEM group SID which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* initialize an EXPLICIT_ACCESS structure for an ACE */
+    ZeroMemory(&ea, 2 * sizeof(EXPLICIT_ACCESS));
+
+    /* add Administrators group */
+    ea[0].grfAccessPermissions = GENERIC_ALL;
+    ea[0].grfAccessMode = SET_ACCESS;
+    ea[0].grfInheritance = NO_INHERITANCE;
+    ea[0].Trustee.TrusteeForm = TRUSTEE_IS_SID;
+    ea[0].Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+    ea[0].Trustee.ptstrName = (LPTSTR)pAdminGroupSID;
+
+    /* add SYSTEM group */
+    ea[1].grfAccessPermissions = GENERIC_ALL;
+    ea[1].grfAccessMode = SET_ACCESS;
+    ea[1].grfInheritance = NO_INHERITANCE;
+    ea[1].Trustee.TrusteeForm = TRUSTEE_IS_SID;
+    ea[1].Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+    ea[1].Trustee.ptstrName = (LPTSTR)pSystemGroupSID;
+
+    /* set entries in ACL */
+    dwResult = SetEntriesInAcl(2, ea, NULL, &pACL);
+
+    if (dwResult != ERROR_SUCCESS)
+    {
+        log2file(
+            "%s: ERROR: Could not set ACL entries which returned (%lu)",
+            __local_name,
+            dwResult
+        );
+
+        goto Cleanup;
+    }
+
+    /* initialize security descriptor */
+    pSD = (PSECURITY_DESCRIPTOR)LocalAlloc(
+        LPTR,
+        SECURITY_DESCRIPTOR_MIN_LENGTH
+    );
+
+    if (pSD == NULL)
+    {
+        log2file(
+            "%s: ERROR: Could not initalize SECURITY_DESCRIPTOR because of a LocalAlloc() failure which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    if (!InitializeSecurityDescriptor(pSD, SECURITY_DESCRIPTOR_REVISION))
+    {
+        log2file(
+            "%s: ERROR: Could not initalize SECURITY_DESCRIPTOR because of an InitializeSecurityDescriptor() failure which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* set owner */
+    if (!SetSecurityDescriptorOwner(pSD, NULL, FALSE))
+    {
+        log2file(
+            "%s: ERROR: Could not set owner which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* set group owner */
+    if (!SetSecurityDescriptorGroup(pSD, NULL, FALSE))
+    {
+        log2file(
+            "%s: ERROR: Could not set group owner which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* add ACL to security descriptor */
+    if (!SetSecurityDescriptorDacl(pSD, TRUE, pACL, FALSE))
+    {
+        log2file(
+            "%s: ERROR: Could not set SECURITY_DESCRIPTOR DACL which returned (%lu)",
+            __local_name,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* initialize security attributes structure */
+    sa.nLength = sizeof (SECURITY_ATTRIBUTES);
+    sa.lpSecurityDescriptor = pSD;
+    sa.bInheritHandle = FALSE;
+
+    h = CreateFileA(
+        tmp_path,
+        GENERIC_WRITE,
+        0,
+        &sa,
+        CREATE_NEW,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
+
+    if (h == INVALID_HANDLE_VALUE)
+    {
+        log2file(
+            "%s: ERROR: Could not create temporary file (%s) which returned (%lu)",
+            __local_name,
+            tmp_path,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    if (!CloseHandle(h))
+    {
+        log2file(
+            "%s: ERROR: Could not close file handle to (%s) which returned (%lu)",
+            __local_name,
+            tmp_path,
+            GetLastError()
+        );
+
+        goto Cleanup;
+    }
+
+    /* everything was successful */
+    error = 0;
+
+    Cleanup:
+        if (pAdminGroupSID)
+            FreeSid(pAdminGroupSID);
+        if (pSystemGroupSID)
+            FreeSid(pSystemGroupSID);
+        if (pACL)
+            LocalFree(pACL);
+        if (pSD)
+            LocalFree(pSD);
+
+    return(error);
 }
 
 

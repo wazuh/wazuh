@@ -20,6 +20,13 @@
 
 
 #include "manage_agents.h"
+int restart_necessary;
+time_t time1;
+time_t time2;
+time_t time3;
+long int rand1;
+long int rand2;
+
 #include "os_crypto/md5/md5_op.h"
 #include <stdlib.h>
 
@@ -32,7 +39,7 @@
 char *chomp(char *str)
 {
     char *tmp_str;
-    int size = 0;
+    ssize_t size;
 
     /* Removing spaces from the beginning */
     while(*str == ' ' || *str == '\t')
@@ -59,7 +66,7 @@ char *chomp(char *str)
 
     /* Removing spaces at the end of the string */
     tmp_str = str;
-    size = strlen(str)-1;
+    size = (ssize_t) strlen(str)-1;
 
     while((size >= 0) && (tmp_str[size] == ' ' || tmp_str[size] == '\t'))
     {
@@ -98,7 +105,7 @@ int add_agent()
     fp = fopen(AUTH_FILE,"a");
     if(!fp)
     {
-        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
+        ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
     }
     fclose(fp);
 
@@ -108,23 +115,17 @@ int add_agent()
 
 
     #ifndef WIN32
-    chmod(AUTH_FILE, 0440);
+    if(chmod(AUTH_FILE, 0440) == -1)
+    {
+        ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+    }
     #endif
 
     /* Setting time 2 */
     time2 = time(0);
 
 
-    /* Source is time1+ time2 +pid + ppid */
-    #ifndef WIN32
-        #ifdef __OpenBSD__
-        srandomdev();
-        #else
-        srandom(time2 + time1 + getpid() + getppid());
-        #endif
-    #else
-    srandom(time2 + time1 + getpid());
-    #endif
+
 
     rand1 = random();
 
@@ -277,7 +278,7 @@ int add_agent()
         fp = fopen(AUTH_FILE,"a");
         if(!fp)
         {
-            ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE);
+            ErrorExit(FOPEN_ERROR, ARGV0, KEYS_FILE, errno, strerror(errno));
         }
         #ifndef WIN32
         chmod(AUTH_FILE, 0440);
@@ -291,14 +292,14 @@ int add_agent()
          * Random 5: Final key
          */
 
-        snprintf(str1, STR_SIZE, "%d%s%d",time3-time2, name, rand1);
-        snprintf(str2, STR_SIZE, "%d%s%s%d", time2-time1, ip, id, rand2);
+        snprintf(str1, STR_SIZE, "%d%s%d",(int)(time3-time2), name, (int)rand1);
+        snprintf(str2, STR_SIZE, "%d%s%s%d", (int)(time2-time1), ip, id, (int)rand2);
 
         OS_MD5_Str(str1, md1);
         OS_MD5_Str(str2, md2);
 
         snprintf(str1, STR_SIZE, "%s%d%d%d",md1,(int)getpid(), (int)random(),
-                                            time3);
+                                            (int)time3);
         OS_MD5_Str(str1, md1);
 
         fprintf(fp,"%s %s %s %s%s\n",id, name, c_ip->ip, md1,md2);
@@ -330,7 +331,6 @@ int remove_agent()
     int id_exist;
 
     u_id[FILE_SIZE] = '\0';
-    id_exist = FALSE;
 
     if(!print_agents(0, 0, 0))
     {
@@ -361,8 +361,8 @@ int remove_agent()
       {
         printf(NO_ID, user_input);
 
-        /* Exit here if we are using environment variables 
-         * and our ID does not exist 
+        /* Exit here if we are using environment variables
+         * and our ID does not exist
          */
         if(getenv("OSSEC_AGENT_ID"))
           return(1);
@@ -380,7 +380,7 @@ int remove_agent()
         } else {
           printf("%s\n", user_input);
         }
- 
+
         /* If user confirm */
         if(user_input[0] == 'y' || user_input[0] == 'Y')
         {
@@ -396,7 +396,7 @@ int remove_agent()
             if(!fp)
             {
                 free(full_name);
-                ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE);
+                ErrorExit(FOPEN_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
             }
             #ifndef WIN32
             chmod(AUTH_FILE, 0440);

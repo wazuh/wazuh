@@ -40,8 +40,6 @@
 #include "eventinfo.h"
 #include "analysisd.h"
 
-#include "picviz.h"
-
 
 
 /** External functions prototypes (only called here) **/
@@ -53,21 +51,22 @@ int GlobalConf(char * cfgfile);
 /* For Lists */
 void Lists_OP_CreateLists();
 
-void makelist_help(const char *prog)
+/* print help statement */
+void help_makelists()
 {
-    print_out(" ");
-    print_out("%s %s - %s (%s)", __ossec_name, __version, __author, __contact);
-    print_out("%s", __site);
-    print_out(" ");
-    print_out("  %s: -[Vhdt] [-u user] [-g group] [-c config] [-D dir]", prog);
+    print_header();
+    print_out("  %s: -[VhdtF] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
-    print_out("    -d          Execute in debug mode");
-    print_out("    -f          Force rebuild of all databases");
-    print_out("    -u <user>   Run as 'user'");
-    print_out("    -g <group>  Run as 'group'");
-    print_out("    -c <config> Read the 'config' file");
-    print_out("    -D <dir>    Chroot to 'dir'");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -F          Force rebuild of all databases");
+    print_out("    -u <user>   User to run as (default: %s)", USER);
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
     print_out(" ");
     exit(1);
 }
@@ -76,11 +75,13 @@ void makelist_help(const char *prog)
  */
 int main(int argc, char **argv)
 {
+    int test_config = 0;
     int c = 0;
     char *dir = DEFAULTDIR;
     char *user = USER;
     char *group = GROUPGLOBAL;
-    int uid = 0,gid = 0;
+    uid_t uid;
+    gid_t gid;
     int force = 0;
 
     char *cfg = DEFAULTCPATH;
@@ -93,13 +94,13 @@ int main(int argc, char **argv)
     prev_year = 0;
     memset(prev_month, '\0', 4);
 
-    while((c = getopt(argc, argv, "Vdhfu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "VdhFtu:g:D:c:")) != -1){
         switch(c){
 	    case 'V':
 		print_version();
 		break;
             case 'h':
-                makelist_help(ARGV0);
+                help_makelists();
                 break;
             case 'd':
                 nowDebug();
@@ -124,21 +125,24 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -c needs an argument",ARGV0);
                 cfg = optarg;
                 break;
-            case 'f':
+            case 'F':
                 force = 1;
                 break;
+            case 't':
+                test_config = 1;
+                break;
             default:
-                help(ARGV0);
+                help_makelists();
                 break;
         }
 
     }
 
 
-    /*Check if the user/group given are valid */
+    /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
         ErrorExit(USER_ERROR,ARGV0,user,group);
 
 
@@ -156,17 +160,20 @@ int main(int argc, char **argv)
 
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
     /* Chrooting */
     if(Privsep_Chroot(dir) < 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
+        ErrorExit(CHROOT_ERROR,ARGV0,dir, errno, strerror(errno));
 
     nowChroot();
 
+    if(test_config == 1)
+    {
+        exit(0);
+    }
 
-
-    /* Createing the lists for use in rules */
+    /* Creating the lists for use in rules */
     Lists_OP_CreateLists();
 
     /* Reading the lists */

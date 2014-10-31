@@ -24,30 +24,6 @@
  *
  */
 
-
-#include <sys/wait.h>
-
-#include "shared.h"
-#include "auth.h"
-
-/* TODO: Pulled this value out of the sky, may or may not be sane */
-int POOL_SIZE = 512;
-
-/* ossec-reportd - Runs manual reports. */
-void report_help()
-{
-    printf("\nOSSEC HIDS %s: Automatically provide a key to clients.\n", ARGV0);
-    printf("Available options:\n");
-    printf("\t-h                       This help message.\n");
-    printf("\t-i                       Use client's source IP address.\n");
-    printf("\t-p <port>                Manager port (default 1515).\n");
-    printf("\t-D <OSSEC Dir>           Location where OSSEC is installed.\n");
-    printf("\t-v <Path to CA Cert>     Full path to CA certificate used to verify clients.\n");
-    printf("\t-x <Path to server cert> Full path to server certificate.\n");
-    printf("\t-k <Path to server key>  Full path to server key.\n");
-    exit(1);
-}
-
 #ifndef USE_OPENSSL
 int main()
 {
@@ -56,9 +32,45 @@ int main()
 }
 #else
 
+#include <sys/wait.h>
+
+#include "shared.h"
+#include "auth.h"
+
+/* TODO: Pulled this value out of the sky, may or may not be sane */
+#define POOL_SIZE 512
+
+static void help_authd(void) __attribute((noreturn));
+static int ssl_error(const SSL* ssl, int ret);
+static void clean_exit(SSL_CTX* ctx, int sock) __attribute__((noreturn));
+
+/* print help statement */
+static void help_authd()
+{
+    print_header();
+    print_out("  %s: -[Vhdti] [-g group] [-D dir] [-p port] [-v path] [-x path] [-k path]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -i          Use client's source IP address");
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
+    print_out("    -v <path>   Full path to CA certificate used to verify clients");
+    print_out("    -x <path>   Full path to server certificate");
+    print_out("    -k <path>   Full path to server key");
+    print_out(" ");
+    exit(1);
+}
+
+
+
 /* Function to use with SSL on non blocking socket,
    to know if SSL operation failed for good */
-int ssl_error(const SSL* ssl, int ret)
+static int ssl_error(const SSL* ssl, int ret)
 {
     if (ret <= 0)
     {
@@ -78,7 +90,7 @@ int ssl_error(const SSL* ssl, int ret)
     return (0);
 }
 
-void clean_exit(SSL_CTX* ctx, int sock)
+static void clean_exit(SSL_CTX* ctx, int sock)
 {
     SSL_CTX_free(ctx);
     close(sock);
@@ -92,15 +104,13 @@ int main(int argc, char **argv)
     int process_pool[POOL_SIZE];
     // Count of pids we are wait()ing on.
     int c = 0, test_config = 0, use_ip_address = 0, pid = 0, status, i = 0, active_processes = 0;
-    int gid = 0, client_sock = 0, sock = 0, port = 1515, ret = 0;
-    char *dir  = DEFAULTDIR;
-    char *user = USER;
-    char *group = GROUPGLOBAL;
-    // TODO: implement or delete
-    char *cfg __attribute__((unused)) = DEFAULTCPATH;
-    char *server_cert = NULL;
-    char *server_key = NULL;
-    char *ca_cert = NULL;
+    gid_t gid;
+    int client_sock = 0, sock = 0, port = DEFAULT_PORT, ret = 0;
+    const char *dir  = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
+    const char *server_cert = NULL;
+    const char *server_key = NULL;
+    const char *ca_cert = NULL;
     char buf[4096 +1];
     SSL_CTX *ctx;
     SSL *ssl;
@@ -111,7 +121,7 @@ int main(int argc, char **argv)
 
     /* Initializing some variables */
     memset(srcip, '\0', IPSIZE + 1);
-    memset(process_pool, 0x0, POOL_SIZE);
+    memset(process_pool, 0x0, POOL_SIZE * sizeof(*process_pool));
 
     bio_err = 0;
 
@@ -120,25 +130,20 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
     /* add an option to use the ip on the socket to tie the name to a
        specific address */
-    while((c = getopt(argc, argv, "Vdhiu:g:D:c:m:p:v:x:k:")) != -1)
+    while((c = getopt(argc, argv, "Vdhtig:D:m:p:v:x:k:")) != -1)
     {
         switch(c){
             case 'V':
                 print_version();
                 break;
             case 'h':
-                report_help();
+                help_authd();
                 break;
             case 'd':
                 nowDebug();
                 break;
             case 'i':
                 use_ip_address = 1;
-                break;
-            case 'u':
-                if(!optarg)
-                    ErrorExit("%s: -u needs an argument",ARGV0);
-                user = optarg;
                 break;
             case 'g':
                 if(!optarg)
@@ -149,11 +154,6 @@ int main(int argc, char **argv)
                 if(!optarg)
                     ErrorExit("%s: -D needs an argument",ARGV0);
                 dir = optarg;
-                break;
-            case 'c':
-                if(!optarg)
-                    ErrorExit("%s: -c needs an argument",ARGV0);
-                cfg = optarg;
                 break;
             case 't':
                 test_config = 1;
@@ -183,7 +183,7 @@ int main(int argc, char **argv)
                 server_key = optarg;
                 break;
             default:
-                report_help();
+                help_authd();
                 break;
         }
 
@@ -194,9 +194,8 @@ int main(int argc, char **argv)
 
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
-    if(gid < 0)
-        ErrorExit(USER_ERROR,ARGV0,user,group);
-
+    if(gid == (gid_t)-1)
+        ErrorExit(USER_ERROR,ARGV0,"",group);
 
 
     /* Exit here if test config is set */
@@ -206,12 +205,15 @@ int main(int argc, char **argv)
 
     /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
 
     /* chrooting -- TODO: this isn't a chroot. Should also close
        unneeded open file descriptors (like stdin/stdout)*/
-    chdir(dir);
+    if(chdir(dir) == -1)
+    {
+        ErrorExit(CHDIR_ERROR, ARGV0, dir, errno, strerror(errno));
+    }
 
 
 
@@ -233,6 +235,7 @@ int main(int argc, char **argv)
         merror("%s: ERROR: Unable to open %s (key file)", ARGV0, KEYSFILE_PATH);
         exit(1);
     }
+    fclose(fp);
 
 
     /* Starting SSL */
@@ -361,9 +364,9 @@ int main(int argc, char **argv)
                     {
                         merror("%s: ERROR: Invalid agent name: %s from %s", ARGV0, agentname, srcip);
                         snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                        ret = SSL_write(ssl, response, strlen(response));
+                        SSL_write(ssl, response, strlen(response));
                         snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        ret = SSL_write(ssl, response, strlen(response));
+                        SSL_write(ssl, response, strlen(response));
                         sleep(1);
                         exit(0);
                     }
@@ -379,9 +382,9 @@ int main(int argc, char **argv)
                         {
                             merror("%s: ERROR: Invalid agent name %s (duplicated)", ARGV0, agentname);
                             snprintf(response, 2048, "ERROR: Invalid agent name: %s\n\n", agentname);
-                            ret = SSL_write(ssl, response, strlen(response));
+                            SSL_write(ssl, response, strlen(response));
                             snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                            ret = SSL_write(ssl, response, strlen(response));
+                            SSL_write(ssl, response, strlen(response));
                             sleep(1);
                             exit(0);
                         }
@@ -392,19 +395,19 @@ int main(int argc, char **argv)
                     /* Adding the new agent. */
                     if (use_ip_address)
                     {
-                        finalkey = OS_AddNewAgent(agentname, srcip, NULL, NULL);
+                        finalkey = OS_AddNewAgent(agentname, srcip, NULL);
                     }
                     else
                     {
-                        finalkey = OS_AddNewAgent(agentname, NULL, NULL, NULL);
+                        finalkey = OS_AddNewAgent(agentname, NULL, NULL);
                     }
                     if(!finalkey)
                     {
                         merror("%s: ERROR: Unable to add agent: %s (internal error)", ARGV0, agentname);
                         snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s\n\n", agentname);
-                        ret = SSL_write(ssl, response, strlen(response));
+                        SSL_write(ssl, response, strlen(response));
                         snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
-                        ret = SSL_write(ssl, response, strlen(response));
+                        SSL_write(ssl, response, strlen(response));
                         sleep(1);
                         exit(0);
                     }

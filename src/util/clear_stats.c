@@ -18,9 +18,10 @@
 #undef ARGV0
 #define ARGV0 "clear_stats"
 
+static void helpmsg(void) __attribute__((noreturn));
 
 /** help **/
-void helpmsg()
+static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: Clear the events stats (averages).\n", ARGV0);
     printf("Available options:\n");
@@ -38,11 +39,11 @@ int main(int argc, char **argv)
     int clear_daily = 0;
     int clear_weekly = 0;
 
-    char *dir = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
-    char *user = USER;
-    int gid;
-    int uid;
+    const char *dir = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
+    const char *user = USER;
+    gid_t gid;
+    uid_t uid;
 
 
     /* Setting the name */
@@ -58,23 +59,23 @@ int main(int argc, char **argv)
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
-    if(gid < 0)
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
     {
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
-	
+
 
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
-	    ErrorExit(SETGID_ERROR,ARGV0, group);
+	    ErrorExit(SETGID_ERROR,ARGV0, group, errno, strerror(errno));
     }
 
 
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
     {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir);
+        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
     }
 
 
@@ -85,7 +86,7 @@ int main(int argc, char **argv)
     /* Setting the user */
     if(Privsep_SetUser(uid) < 0)
     {
-        ErrorExit(SETUID_ERROR, ARGV0, user);
+        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
     }
 
     /* User options */
@@ -116,7 +117,7 @@ int main(int argc, char **argv)
     /* Clear daily files */
     if(clear_daily)
     {
-        char *daily_dir = STATQUEUE;
+        const char *daily_dir = STATQUEUE;
         DIR *daily;
         struct dirent *entry;
 
@@ -153,7 +154,7 @@ int main(int argc, char **argv)
         int i = 0;
         while(i <= 6)
         {
-            char *daily_dir = STATWQUEUE;
+            const char *daily_dir = STATWQUEUE;
             char dir_path[OS_MAXSTR +1];
             DIR *daily;
             struct dirent *entry;

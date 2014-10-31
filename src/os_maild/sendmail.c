@@ -28,13 +28,12 @@
 
 /* Default values use to connect */
 #define SMTP_DEFAULT_PORT	25
-#define HELOMSG 		"Helo notify.ossec.net\r\n"
 #define MAILFROM		"Mail From: <%s>\r\n"
 #define RCPTTO			"Rcpt To: <%s>\r\n"
 #define DATAMSG 		"DATA\r\n"
 #define FROM			"From: OSSEC HIDS <%s>\r\n"
 #define TO			    "To: <%s>\r\n"
-#define CC			    "Cc: <%s>\r\n"
+/*#define CC			    "Cc: <%s>\r\n"*/
 #define SUBJECT			"Subject: %s\r\n"
 #define ENDHEADER               "\r\n"
 #define ENDDATA			"\r\n.\r\n"
@@ -60,7 +59,8 @@
  */
 int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 {
-    int socket, i = 0, final_to_sz;
+    int socket;
+    size_t final_to_sz;
     char *msg;
     char snd_msg[128];
     char final_to[512];
@@ -90,7 +90,13 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
 
     /* Sending HELO message */
-    OS_SendTCP(socket,HELOMSG);
+    memset(snd_msg,'\0',128);
+    if(mail->heloserver) {
+      snprintf(snd_msg,127, "Helo %s\r\n", mail->heloserver);
+    } else {
+      snprintf(snd_msg,127, "Helo %s\r\n", "notify.ossec.net");
+    }
+    OS_SendTCP(socket,snd_msg);
     msg = OS_RecvTCP(socket, OS_SIZE_1024);
     if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
     {
@@ -131,7 +137,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
         }
     }
 
-    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", HELOMSG, msg);
+    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
     free(msg);
 
 
@@ -158,7 +164,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
     if(mail->gran_to)
     {
-        i = 0;
+        int i = 0;
         while(mail->gran_to[i] != NULL)
         {
             if(mail->gran_set[i] != SMS_FORMAT)
@@ -268,7 +274,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     if(msg)
         free(msg);
 
-    memset(snd_msg,'\0',128);
+    memset_secure(snd_msg,'\0',128);
 
 
     /* Returning 0 (success) */
@@ -297,6 +303,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     if(mailmsg == NULL)
     {
         merror("%s: No email to be sent. Inconsistent state.",ARGV0);
+        return (OS_INVALID);
     }
 
 
@@ -324,7 +331,13 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
 
     /* Sending HELO message */
-    OS_SendTCP(socket,HELOMSG);
+    memset(snd_msg,'\0',128);
+    if(mail->heloserver) {
+      snprintf(snd_msg,127, "Helo %s\r\n", mail->heloserver);
+    } else {
+      snprintf(snd_msg,127, "Helo %s\r\n", "notify.ossec.net");
+    }
+    OS_SendTCP(socket,snd_msg);
     msg = OS_RecvTCP(socket, OS_SIZE_1024);
     if((msg == NULL)||(!OS_Match(VALIDMAIL, msg)))
     {
@@ -365,7 +378,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         }
     }
 
-    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", HELOMSG, msg);
+    MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
     free(msg);
 
 
@@ -592,7 +605,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     if(msg)
         free(msg);
 
-    memset(snd_msg,'\0',128);
+    memset_secure(snd_msg,'\0',128);
 
 
     /* Returning 0 (success) */

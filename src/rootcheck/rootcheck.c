@@ -23,6 +23,12 @@
 #include "headers/shared.h"
 
 #include "rootcheck.h"
+rkconfig rootcheck;
+char **rk_sys_file;
+char **rk_sys_name;
+int rk_sys_count;
+char total_ports_udp[65535 +1];
+char total_ports_tcp[65535 +1];
 
 #ifndef ARGV0
 #define ARGV0 "rootcheck"
@@ -30,32 +36,27 @@
 
 
 
-/** Prototypes **/
-/* Read the new XML config */
-int Read_Rootcheck_Config(char * cfgfile, rkconfig *cfg);
-
-
 #ifndef OSSECHIDS
 
-void rootcheck_help()
+/* print help statement */
+void help_rootcheck()
 {
-    printf("\n");
-    printf("Rootcheck v0.8 (Mar/12/2008):\n");
-    printf("http://www.ossec.net/rootcheck/\n");
-    printf("Available options:\n");
-    printf("\t\t-h\t  This Help message\n");
-    printf("\t\t-c <file> Configuration file\n");
-    printf("\t\t-d\t  Enable debug\n");
-    printf("\t\t-D <dir>  Set the working directory\n");
-    printf("\t\t-s\t  Scans the whole system\n");
-    printf("\t\t-r\t  Read all the files for kernel-based detection\n");
-    printf("\n");
-    exit(0);
+    print_header();
+    print_out("  %s: -[Vhdtsr] [-c config] [-D dir]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -s          Scans the whole system");
+    print_out("    -r          Read all the files for kernel-based detection");
+    print_out("    -c <config> Configuration file to use");
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out(" ");
+    exit(1);
 }
 
-/* main v0.1
- *
- */
 int main(int argc, char **argv)
 {
     int c;
@@ -70,9 +71,9 @@ int rootcheck_init(int test_config)
 #endif
 
     #ifdef OSSECHIDS
-    char *cfg = DEFAULTCPATH;
+    const char *cfg = DEFAULTCPATH;
     #else
-    char *cfg = "./rootcheck.conf";
+    const char *cfg = "./rootcheck.conf";
     #endif
 
     /* Zeroing the structure, initializing default values */
@@ -135,7 +136,7 @@ int rootcheck_init(int test_config)
                 print_version();
                 break;
             case 'h':
-                rootcheck_help();
+                help_rootcheck();
                 break;
             case 'd':
                 nowDebug();
@@ -160,7 +161,7 @@ int rootcheck_init(int test_config)
                 rootcheck.readall = 1;
                 break;
             default:
-                rootcheck_help();
+                help_rootcheck();
                 break;
         }
 
@@ -195,7 +196,7 @@ int rootcheck_init(int test_config)
 
 
     /* Reading configuration  --function specified twice (check makefile) */
-    if(Read_Rootcheck_Config(cfg, &rootcheck) < 0)
+    if(Read_Rootcheck_Config(cfg) < 0)
     {
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
@@ -266,11 +267,11 @@ int rootcheck_init(int test_config)
 
 
     /* Initializing rk list */
-    rk_sys_name = calloc(MAX_RK_SYS +2, sizeof(char *));
-    rk_sys_file = calloc(MAX_RK_SYS +2, sizeof(char *));
+    rk_sys_name = (char **) calloc(MAX_RK_SYS +2, sizeof(char *));
+    rk_sys_file = (char **) calloc(MAX_RK_SYS +2, sizeof(char *));
     if(!rk_sys_name || !rk_sys_file)
     {
-        ErrorExit(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
     }
     rk_sys_name[0] = NULL;
     rk_sys_file[0] = NULL;
@@ -283,17 +284,12 @@ int rootcheck_init(int test_config)
     StartSIG(ARGV0);
     #endif
 
-    #else
-    return(0);
-
-    #endif
-
-
     debug1("%s: DEBUG: Running run_rk_check",ARGV0);
     run_rk_check();
 
-
     debug1("%s: DEBUG:  Leaving...",ARGV0);
+
+    #endif
 
     return(0);
 }

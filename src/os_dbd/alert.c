@@ -18,13 +18,14 @@
 #include "config/config.h"
 #include "rules_op.h"
 
-
+static int __DBSelectLocation(const char *location, const DBConfig *db_config) __attribute__((nonnull));
+static int __DBInsertLocation(const char *location, const DBConfig *db_config) __attribute__((nonnull));
 
 /** int OS_SelectMaxID(DBConfig *db_config)
  * Selects the maximum ID from the alert table.
  * Returns 0 if not found.
  */
-int OS_SelectMaxID(DBConfig *db_config)
+int OS_SelectMaxID(const DBConfig *db_config)
 {
     int result = 0;
     char sql_query[OS_SIZE_1024];
@@ -50,7 +51,7 @@ int OS_SelectMaxID(DBConfig *db_config)
  * Selects the location ID from the db.
  * Returns 0 if not found.
  */
-int __DBSelectLocation(char *location, DBConfig *db_config)
+static int __DBSelectLocation(const char *location, const DBConfig *db_config)
 {
     int result = 0;
     char sql_query[OS_SIZE_1024];
@@ -76,7 +77,7 @@ int __DBSelectLocation(char *location, DBConfig *db_config)
 /** int __DBInsertLocation(char *location, DBConfig *db_config)
  * Inserts location in to the db.
  */
-int __DBInsertLocation(char *location, DBConfig *db_config)
+static int __DBInsertLocation(const char *location, const DBConfig *db_config)
 {
     char sql_query[OS_SIZE_1024];
 
@@ -105,7 +106,7 @@ int __DBInsertLocation(char *location, DBConfig *db_config)
  * Insert alert into to the db.
  * Returns 1 on success or 0 on error.
  */
-int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
+int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
 {
     int i;
     unsigned int s_ip = 0, d_ip = 0, location_id = 0;
@@ -156,7 +157,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
 
 
     /* We first need to insert the location */
-    loc_id = OSHash_Get(db_config->location_hash, al_data->location);
+    loc_id = (int *) OSHash_Get(db_config->location_hash, al_data->location);
 
 
     /* If we dont have location id, we must select and/or insert in the db */
@@ -188,7 +189,7 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     i = 0;
     while(al_data->log[i])
     {
-        long len = strlen(al_data->log[i]);
+        size_t len = strlen(al_data->log[i]);
         char templog[len+2];
         if (al_data->log[i+1]) {
             snprintf(templog, len+2, "%s\n", al_data->log[i]);
@@ -197,9 +198,15 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
             snprintf(templog, len+1, "%s", al_data->log[i]);
         }
         fulllog = os_LoadString(fulllog, templog);
-//      fulllog = os_LoadString(fulllog, al_data->log[i]);
         i++;
     }
+
+    if(fulllog == NULL)
+    {
+        merror("%s: Unable to process log.", ARGV0);
+        return(0);
+    }
+
     osdb_escapestr(fulllog);
     if(strlen(fulllog) >  7456)
     {
@@ -209,49 +216,23 @@ int OS_Alert_InsertDB(alert_data *al_data, DBConfig *db_config)
     }
 
 
-    /* Inserting data */
-    if(db_config->db_type == POSTGDB)
-    {
-        /* On postgres we need to escape the user field. */
-        snprintf(sql_query, OS_SIZE_8192,
-                "INSERT INTO "
-                "data(id, server_id, \"user\", full_log) "
-                "VALUES ('%u', '%u', '%s', '%s') ",
-                db_config->alert_id, db_config->server_id,
-                al_data->user, fulllog);
-    }
-    else
-    {
-        snprintf(sql_query, OS_SIZE_8192,
-                "INSERT INTO "
-                "data(id, server_id, user, full_log) "
-                "VALUES ('%u', '%u', '%s', '%s') ",
-                db_config->alert_id, db_config->server_id,
-                al_data->user, fulllog);
-    }
-
-    free(fulllog);
-    fulllog = NULL;
-
-
-    /* Inserting into the db */
-    if(!osdb_query_insert(db_config->conn, sql_query))
-    {
-        merror(DB_GENERROR, ARGV0);
-    }
-
-
-
     /* Generating final SQL */
     snprintf(sql_query, OS_SIZE_8192,
             "INSERT INTO "
-            "alert(id,server_id,rule_id,timestamp,location_id,src_ip,src_port,dst_ip,dst_port,alertid) "
-            "VALUES ('%u', '%u', '%u','%u', '%u', '%lu', '%u', '%lu', '%u', '%s')",
-            db_config->alert_id, db_config->server_id, al_data->rule,
+            "alert(server_id,rule_id,level,timestamp,location_id,src_ip,src_port,dst_ip,dst_port,alertid,user,full_log) "
+            "VALUES ('%u', '%u','%u','%u', '%u', '%lu', '%u', '%lu', '%u', '%s', '%s', '%s')",
+            db_config->server_id, al_data->rule,
+	    al_data->level,
             (unsigned int)time(0), *loc_id,
             (unsigned long)ntohl(s_ip), (unsigned short)s_port,
             (unsigned long)ntohl(d_ip), (unsigned short)d_port,
-            al_data->alertid);
+            al_data->alertid,
+            al_data->user, fulllog);
+
+
+
+    free(fulllog);
+    fulllog = NULL;
 
 
     /* Inserting into the db */

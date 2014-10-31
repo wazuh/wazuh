@@ -23,9 +23,8 @@
  * Start of a new thread. Only returns
  * on unrecoverable errors.
  */
-void *AR_Forward(void *arg)
+void *AR_Forward(__attribute__((unused)) void *arg)
 {
-    int i = 0;
     int arq = 0;
     int agent_id = 0;
     int ar_location = 0;
@@ -153,6 +152,7 @@ void *AR_Forward(void *arg)
             /* Sending to ALL agents */
             if(ar_location & ALL_AGENTS)
             {
+                unsigned int i;
                 for(i = 0;i< keys.keysize; i++)
                 {
                     send_msg(i, msg_to_send);
@@ -170,7 +170,7 @@ void *AR_Forward(void *arg)
                     continue;
                 }
 
-                send_msg(agent_id, msg_to_send);
+                send_msg((unsigned)agent_id, msg_to_send);
             }
 
             /* Send to a pre-defined agent */
@@ -187,7 +187,7 @@ void *AR_Forward(void *arg)
                     continue;
                 }
 
-                send_msg(agent_id, msg_to_send);
+                send_msg((unsigned)agent_id, msg_to_send);
             }
 
             /* Lock use of keys */

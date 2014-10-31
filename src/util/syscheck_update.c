@@ -17,9 +17,10 @@
 #undef ARGV0
 #define ARGV0 "syscheck_update"
 
+static void helpmsg(void) __attribute__((noreturn));
 
 /** help **/
-void helpmsg()
+static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: Updates (clears) the integrity check database.\n", ARGV0);
     printf("Available options:\n");
@@ -34,11 +35,11 @@ void helpmsg()
 /** main **/
 int main(int argc, char **argv)
 {
-    char *dir = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
-    char *user = USER;
-    int gid;
-    int uid;
+    const char *dir = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
+    const char *user = USER;
+    gid_t gid;
+    uid_t uid;
 
 
     /* Setting the name */
@@ -54,23 +55,23 @@ int main(int argc, char **argv)
     /* Getting the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
-    if(gid < 0)
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
     {
 	    ErrorExit(USER_ERROR, ARGV0, user, group);
     }
-	
+
 
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
     {
-	    ErrorExit(SETGID_ERROR,ARGV0, group);
+	    ErrorExit(SETGID_ERROR,ARGV0, group, errno, strerror(errno));
     }
 
 
     /* Chrooting to the default directory */
     if(Privsep_Chroot(dir) < 0)
     {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir);
+        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
     }
 
 
@@ -81,7 +82,7 @@ int main(int argc, char **argv)
     /* Setting the user */
     if(Privsep_SetUser(uid) < 0)
     {
-        ErrorExit(SETUID_ERROR, ARGV0, user);
+        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
     }
 
     /* User options */

@@ -19,34 +19,34 @@
 /** Checks if syscheck is to be executed/restarted.
  *  Returns 1 on success or 0 on failure (shouldn't be executed now).
  */
-int os_check_restart_syscheck() ;
+int os_check_restart_syscheck(void) ;
 
 
 /** Sets syscheck to be restarted.
  *  Returns 1 on success or 0 on failure.
  */
-int os_set_restart_syscheck();
+int os_set_restart_syscheck(void);
 
 
 /** char *os_read_agent_name()
  *  Reads the agent name for the current agent.
  *  Returns NULL on error.
  */
-char *os_read_agent_name();
+char *os_read_agent_name(void);
 
 
 /** char *os_read_agent_ip()
  *  Reads the agent ip for the current agent.
  *  Returns NULL on error.
  */
-char *os_read_agent_ip();
+char *os_read_agent_ip(void);
 
 
 /** char *os_read_agent_id()
  *  Reads the agent id for the current agent.
  *  Returns NULL on error.
  */
-char *os_read_agent_id();
+char *os_read_agent_id(void);
 
 /* cmoraes: added */
 
@@ -54,18 +54,18 @@ char *os_read_agent_id();
  *  Reads the agent profile name for the current agent.
  *  Returns NULL on error.
  */
-char *os_read_agent_profile();
+char *os_read_agent_profile(void);
 
 
 /** int os_write_agent_info(char *agent_name, char *agent_ip, char *agent_id)
  *  Writes the agent info inside the queue, for the other processes to read.
  *  Returns 1 on success or <= 0 on failure.
  */
-int os_write_agent_info(char *agent_name, char *agent_ip, char *agent_id,
-                        char *cfg_profile_name);               /*cmoraes*/
+int os_write_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id,
+        const char *cfg_profile_name) __attribute__((nonnull(1,3)));               /*cmoraes*/
 
 
-int os_agent_config_changed();
+int os_agent_config_changed(void);
 
 
 #endif

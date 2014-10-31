@@ -17,19 +17,21 @@
 #include "shared.h"
 #include "agentlessd-config.h"
 
+#include "config.h"
 
-int Read_CAgentless(XML_NODE node, void *config, void *config2)
+
+int Read_CAgentless(XML_NODE node, void *config, __attribute__((unused)) void *config2)
 {
-    int i = 0,j = 0,s = 0;
+    unsigned int i = 0, j = 0, s = 0;
 
     /* XML definitions */
-    char *xml_lessd_server = "host";
-    char *xml_lessd_port = "port";
-    char *xml_lessd_type = "type";
-    char *xml_lessd_frequency = "frequency";
-    char *xml_lessd_state = "state";
-    char *xml_lessd_command = "run_command";
-    char *xml_lessd_options = "arguments";
+    const char *xml_lessd_server = "host";
+    const char *xml_lessd_port = "port";
+    const char *xml_lessd_type = "type";
+    const char *xml_lessd_frequency = "frequency";
+    const char *xml_lessd_state = "state";
+    const char *xml_lessd_command = "run_command";
+    const char *xml_lessd_options = "arguments";
 
 
     agentlessd_config *lessd_config = (agentlessd_config *)config;
@@ -67,19 +69,19 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!node[i]->content)
         {
-            merror(XML_VALUENULL, ARGV0, node[i]->element);
+            merror(XML_VALUENULL, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, xml_lessd_frequency) == 0)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
 
@@ -89,7 +91,7 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
         {
             if(!OS_StrIsNum(node[i]->content))
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
 
@@ -139,8 +141,8 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
             if(File_DateofChange(script_path) <= 0)
             {
                 merror("%s: ERROR: Unable to find '%s' at '%s'.",
-                       ARGV0, node[i]->content, AGENTLESSDIRPATH);
-                merror(XML_VALUEERR,ARGV0, node[i]->element, node[i]->content);
+                       __local_name, node[i]->content, AGENTLESSDIRPATH);
+                merror(XML_VALUEERR,__local_name, node[i]->element, node[i]->content);
                 return(OS_INVALID);
             }
             os_strdup(node[i]->content, lessd_config->entries[s]->type);
@@ -170,13 +172,13 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
             }
             else
             {
-                merror(XML_VALUEERR,ARGV0,node[i]->element,node[i]->content);
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
                 return(OS_INVALID);
             }
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         i++;
@@ -188,7 +190,7 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
        !lessd_config->entries[s]->state ||
        !lessd_config->entries[s]->type)
     {
-        merror(XML_INV_MISSOPTS, ARGV0);
+        merror(XML_INV_MISSOPTS, __local_name);
         return(OS_INVALID);
     }
 
@@ -196,7 +198,7 @@ int Read_CAgentless(XML_NODE node, void *config, void *config2)
     if((lessd_config->entries[s]->state == LESSD_STATE_PERIODIC) &&
        !lessd_config->entries[s]->frequency)
     {
-        merror(XML_INV_MISSFREQ, ARGV0);
+        merror(XML_INV_MISSFREQ, __local_name);
         return(OS_INVALID);
     }
 

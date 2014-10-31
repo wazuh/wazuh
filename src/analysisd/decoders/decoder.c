@@ -33,9 +33,9 @@ void DecodeEvent(Eventinfo *lf)
     OSDecoderNode *child_node;
     OSDecoderInfo *nnode;
 
-    const char *llog;
-    const char *pmatch;
-    const char *cmatch;
+    const char *llog = NULL;
+    const char *pmatch = NULL;
+    const char *cmatch = NULL;
     const char *regex_prev = NULL;
 
 
@@ -404,7 +404,7 @@ void *SystemName_FP(Eventinfo *lf, char *field)
     lf->systemname = field;
     return(NULL);
 }
-void *None_FP(Eventinfo *lf, char *field)
+void *None_FP(__attribute__((unused)) Eventinfo *lf, char *field)
 {
     free(field);
     return(NULL);

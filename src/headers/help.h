@@ -16,7 +16,7 @@
 #ifndef __HELP_H
 
 #define __HELP_H
-void help(const char *);
-void print_version();
+void print_header(void);
+void print_version(void) __attribute__((noreturn));
 
 #endif

@@ -21,7 +21,7 @@ int __crt_day;
 char __elogfile[OS_FLSIZE+1];
 char __alogfile[OS_FLSIZE+1];
 char __flogfile[OS_FLSIZE+1];
-	
+
 /* OS_InitLog */
 void OS_InitLog()
 {
@@ -46,7 +46,7 @@ void OS_InitLog()
 /* gzips a log file
 int OS_CompressLog(int yesterday, char *prev_month, int prev_year)
 
-  -- moved to monitord.	
+  -- moved to monitord.
 */
 
 
@@ -73,7 +73,7 @@ int OS_GetLogLocation(Eventinfo *lf)
     if(IsDir(__elogfile) == -1)
         if(mkdir(__elogfile,0770) == -1)
         {
-            ErrorExit(MKDIR_ERROR,ARGV0,__elogfile);
+            ErrorExit(MKDIR_ERROR,ARGV0,__elogfile, errno, strerror(errno));
         }
 
     snprintf(__elogfile,OS_FLSIZE,"%s/%d/%s", EVENTS, lf->year,lf->mon);
@@ -81,7 +81,7 @@ int OS_GetLogLocation(Eventinfo *lf)
     if(IsDir(__elogfile) == -1)
         if(mkdir(__elogfile,0770) == -1)
         {
-            ErrorExit(MKDIR_ERROR,ARGV0,__elogfile);
+            ErrorExit(MKDIR_ERROR,ARGV0,__elogfile, errno, strerror(errno));
         }
 
 
@@ -100,7 +100,11 @@ int OS_GetLogLocation(Eventinfo *lf)
 
     /* Creating a symlink */
     unlink(EVENTS_DAILY);
-    link(__elogfile, EVENTS_DAILY);
+
+    if(link(__elogfile, EVENTS_DAILY) == -1)
+    {
+        ErrorExit(LINK_ERROR, ARGV0, __elogfile, EVENTS_DAILY, errno, strerror(errno));
+    }
 
 
     /* for the alerts logs */
@@ -116,7 +120,7 @@ int OS_GetLogLocation(Eventinfo *lf)
     if(IsDir(__alogfile) == -1)
         if(mkdir(__alogfile,0770) == -1)
         {
-            ErrorExit(MKDIR_ERROR,ARGV0,__alogfile);
+            ErrorExit(MKDIR_ERROR,ARGV0,__alogfile, errno, strerror(errno));
         }
 
     snprintf(__alogfile,OS_FLSIZE,"%s/%d/%s", ALERTS, lf->year,lf->mon);
@@ -124,7 +128,7 @@ int OS_GetLogLocation(Eventinfo *lf)
     if(IsDir(__alogfile) == -1)
         if(mkdir(__alogfile,0770) == -1)
         {
-            ErrorExit(MKDIR_ERROR,ARGV0,__alogfile);
+            ErrorExit(MKDIR_ERROR,ARGV0,__alogfile, errno, strerror(errno));
         }
 
 
@@ -143,7 +147,11 @@ int OS_GetLogLocation(Eventinfo *lf)
 
     /* Creating a symlink */
     unlink(ALERTS_DAILY);
-    link(__alogfile, ALERTS_DAILY);
+
+    if(link(__alogfile, ALERTS_DAILY) == -1)
+    {
+        ErrorExit(LINK_ERROR, ARGV0, __alogfile, ALERTS_DAILY, errno, strerror(errno));
+    }
 
 
     /* For the firewall events */
@@ -159,7 +167,7 @@ int OS_GetLogLocation(Eventinfo *lf)
     if(IsDir(__flogfile) == -1)
         if(mkdir(__flogfile,0770) == -1)
         {
-            ErrorExit(MKDIR_ERROR,ARGV0,__flogfile);
+            ErrorExit(MKDIR_ERROR,ARGV0,__flogfile, errno, strerror(errno));
         }
 
     snprintf(__flogfile,OS_FLSIZE,"%s/%d/%s", FWLOGS, lf->year,lf->mon);
@@ -167,7 +175,7 @@ int OS_GetLogLocation(Eventinfo *lf)
     if(IsDir(__flogfile) == -1)
         if(mkdir(__flogfile,0770) == -1)
         {
-            ErrorExit(MKDIR_ERROR,ARGV0,__flogfile);
+            ErrorExit(MKDIR_ERROR,ARGV0,__flogfile, errno, strerror(errno));
         }
 
 
@@ -187,7 +195,11 @@ int OS_GetLogLocation(Eventinfo *lf)
 
     /* Creating a symlink */
     unlink(FWLOGS_DAILY);
-    link(__flogfile, FWLOGS_DAILY);
+
+    if(link(__flogfile, FWLOGS_DAILY) == -1)
+    {
+        ErrorExit(LINK_ERROR, ARGV0, __flogfile, FWLOGS_DAILY, errno, strerror(errno));
+    }
 
 
     /* Setting the new day */

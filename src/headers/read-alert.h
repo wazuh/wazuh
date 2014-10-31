@@ -24,8 +24,8 @@
 /* File queue */
 typedef struct _alert_data
 {
-    int rule;
-    int level;
+    unsigned int rule;
+    unsigned int level;
     char *alertid;
     char *date;
     char *location;
@@ -49,8 +49,8 @@ typedef struct _alert_data
 }alert_data;
 
 
-alert_data *GetAlertData(int flag, FILE *fp);
-void FreeAlertData(alert_data *al_data);
+alert_data *GetAlertData(int flag, FILE *fp) __attribute__((nonnull));
+void FreeAlertData(alert_data *al_data) __attribute__((nonnull));
 
 
 #endif

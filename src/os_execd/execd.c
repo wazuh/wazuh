@@ -18,30 +18,46 @@
 #include "os_net/os_net.h"
 
 #include "execd.h"
+int repeated_offenders_timeout[] = {0,0,0,0,0,0,0};
 
 
+#ifndef WIN32
+static void help_execd(void) __attribute__((noreturn));
+static void execd_shutdown(int sig) __attribute__((noreturn));
+static void ExecdStart(int q) __attribute__((noreturn));
 
-/* Timeout data structure */
-typedef struct _timeout_data
+
+/* print help statement */
+static void help_execd()
 {
-    time_t time_of_addition;
-    int time_to_block;
-    char **command;
-}timeout_data;
+    print_header();
+    print_out("  %s: -[Vhdtf] [-g group] [-c config]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out(" ");
+    exit(1);
+}
+
 
 
 /* Timeout list */
-OSList *timeout_list;
-OSListNode *timeout_node;
-OSHash *repeated_hash;
-int repeated_offenders_timeout[] = {0,0,0,0,0,0,0};
+static OSList *timeout_list;
+static OSListNode *timeout_node;
+static OSHash *repeated_hash;
 
 
 
 /**
  * Shutdowns execd properly.
  */
-void execd_shutdown()
+static void execd_shutdown(int sig)
 {
     /* Removing pending active responses. */
     merror(EXEC_SHUTDOWN, ARGV0);
@@ -61,13 +77,11 @@ void execd_shutdown()
     }
 
     #ifndef WIN32
-    HandleSIG();
+    HandleSIG(sig);
     #endif
 
 }
 
-
-#ifndef WIN32
 
 /** int main(int argc, char **argv) v0.1
  */
@@ -75,27 +89,24 @@ int main(int argc, char **argv)
 {
     int c;
     int test_config = 0,run_foreground = 0;
-    int gid = 0,m_queue = 0;
+    gid_t gid;
+    int m_queue = 0;
 
-    // TODO: delete or implement
-    char *dir __attribute__((unused)) = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
-    // TODO: delete or implement
-    char *cfg __attribute__((unused)) = DEFAULTARPATH;
-    char *xmlcfg = DEFAULTCPATH;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
 
     /* Setting the name */
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "Vtdhfu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vtdhfg:c:")) != -1){
         switch(c){
             case 'V':
                 print_version();
                 break;
             case 'h':
-                help(ARGV0);
+                help_execd();
                 break;
             case 'd':
                 nowDebug();
@@ -108,11 +119,6 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -g needs an argument.",ARGV0);
                 group = optarg;
                 break;
-            case 'D':
-                if(!optarg)
-                    ErrorExit("%s: -D needs an argument.",ARGV0);
-                dir = optarg;
-                break;
             case 'c':
                 if(!optarg)
                     ErrorExit("%s: -c needs an argument.",ARGV0);
@@ -122,7 +128,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help(ARGV0);
+                help_execd();
                 break;
         }
 
@@ -132,19 +138,19 @@ int main(int argc, char **argv)
 
     /* Check if the group given are valid */
     gid = Privsep_GetGroup(group);
-    if(gid < 0)
+    if(gid == (gid_t)-1)
         ErrorExit(USER_ERROR,ARGV0,"",group);
 
 
     /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
 
     /* Reading config */
-    if((c = ExecdConfig(xmlcfg)) < 0)
+    if((c = ExecdConfig(cfg)) < 0)
     {
-        ErrorExit(CONFIG_ERROR, ARGV0, xmlcfg);
+        ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
 
 
@@ -201,12 +207,9 @@ int main(int argc, char **argv)
  * Free the timeout entry. Must be called after popping it
  * from the timeout list
  */
-void FreeTimeoutEntry(void *timeout_entry_pt)
+void FreeTimeoutEntry(timeout_data *timeout_entry)
 {
-    timeout_data *timeout_entry;
     char **tmp_str;
-
-    timeout_entry = (timeout_data *)timeout_entry_pt;
 
     if(!timeout_entry)
     {
@@ -228,10 +231,7 @@ void FreeTimeoutEntry(void *timeout_entry_pt)
         timeout_entry->command = NULL;
     }
 
-    os_free(timeout_entry);
-    timeout_entry = NULL;
-
-    return;
+    free(timeout_entry);
 }
 
 
@@ -241,7 +241,7 @@ void FreeTimeoutEntry(void *timeout_entry_pt)
 /** void ExecdStart(int q) v0.2
  * Main function on the execd. Does all the data receiving ,etc.
  */
-void ExecdStart(int q)
+static void ExecdStart(int q)
 {
     int i, childcount = 0;
     time_t curr_time;
@@ -305,7 +305,7 @@ void ExecdStart(int q)
             wp = waitpid((pid_t) -1, NULL, WNOHANG);
             if (wp < 0)
             {
-                merror(WAITPID_ERROR, ARGV0);
+                merror(WAITPID_ERROR, ARGV0, errno, strerror(errno));
                 break;
             }
 
@@ -378,13 +378,13 @@ void ExecdStart(int q)
         /* Checking for error */
         if(!FD_ISSET(q, &fdset))
         {
-            merror(SELECT_ERROR, ARGV0);
+            merror(SELECT_ERROR, ARGV0, errno, strerror(errno));
             continue;
         }
 
 
         /* Receiving the message */
-        if(recv(q, buffer, OS_MAXSTR, 0) == -1)
+        if(OS_RecvUnix(q, OS_MAXSTR, buffer) == 0)
         {
             merror(QUEUE_ERROR, ARGV0, EXECQUEUEPATH, strerror(errno));
             continue;
@@ -508,7 +508,7 @@ void ExecdStart(int q)
                     snprintf(rkey, 255, "%s%s", list_entry->command[0],
                                                 timeout_args[3]);
 
-                    if((ntimes = OSHash_Get(repeated_hash, rkey)))
+                    if((ntimes = (char *) OSHash_Get(repeated_hash, rkey)))
                     {
                         int ntimes_int = 0;
                         int i2 = 0;
@@ -559,7 +559,7 @@ void ExecdStart(int q)
 
                 if(repeated_hash != NULL)
                 {
-                  if((ntimes = OSHash_Get(repeated_hash, rkey)))
+                  if((ntimes = (char *) OSHash_Get(repeated_hash, rkey)))
                   {
                     int ntimes_int = 0;
                     int i2 = 0;
@@ -588,7 +588,7 @@ void ExecdStart(int q)
                   {
                       /* Adding to the repeated offenders list. */
                       OSHash_Add(repeated_hash,
-                           strdup(rkey),strdup("0"));
+                           rkey, strdup("0"));
                   }
                 }
 
@@ -648,6 +648,7 @@ void ExecdStart(int q)
         }
     }
 }
+
 
 
 #endif

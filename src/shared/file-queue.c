@@ -19,9 +19,11 @@
 #include "shared.h"
 #include "file-queue.h"
 
-
+static void file_sleep(void);
+static void GetFile_Queue(file_queue *fileq) __attribute__((nonnull));
+static int Handle_Queue(file_queue *fileq, int flags) __attribute__((nonnull));
 /* To translante between month (int) to month (char) */
-char *(s_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
+static const char *(s_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
                    "Sep","Oct","Nov","Dec"};
 
 
@@ -29,7 +31,7 @@ char *(s_month[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
 /** void file_sleep();
  * file_sleep
  */
-void file_sleep()
+static void file_sleep()
 {
     #ifndef WIN32
     struct timeval fp_timeout;
@@ -53,7 +55,7 @@ void file_sleep()
 /** void GetFile_Queue(file_queue *fileq)
  * Get the file queue for that specific hour
  */
-void GetFile_Queue(file_queue *fileq)
+static void GetFile_Queue(file_queue *fileq)
 {
     /* Creating the logfile name */
     fileq->file_name[0] = '\0';
@@ -80,7 +82,7 @@ void GetFile_Queue(file_queue *fileq)
 /** int Handle_Queue(file_queue *fileq)
  * Re Handle the file queue.
  */
-int Handle_Queue(file_queue *fileq, int flags)
+static int Handle_Queue(file_queue *fileq, int flags)
 {
     /* Closing if it is open */
     if(!(flags & CRALERT_FP_SET))
@@ -109,7 +111,7 @@ int Handle_Queue(file_queue *fileq, int flags)
     {
         if(fseek(fileq->fp, 0, SEEK_END) < 0)
         {
-            merror(FSEEK_ERROR, __local_name, fileq->file_name);
+            merror(FSEEK_ERROR, __local_name, fileq->file_name, errno, strerror(errno));
             fclose(fileq->fp);
             fileq->fp = NULL;
             return(-1);
@@ -120,7 +122,7 @@ int Handle_Queue(file_queue *fileq, int flags)
     /* File change time */
     if(fstat(fileno(fileq->fp), &fileq->f_status) < 0)
     {
-        merror(FILE_ERROR, __local_name, fileq->file_name);
+        merror(FSTAT_ERROR, __local_name, fileq->file_name, errno, strerror(errno));
         fclose(fileq->fp);
         fileq->fp = NULL;
         return(-1);
@@ -136,7 +138,7 @@ int Handle_Queue(file_queue *fileq, int flags)
 /** int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
  * Initiates the file monitoring.
  */
-int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
+int Init_FileQueue(file_queue *fileq, const struct tm *p, int flags)
 {
     /* Initializing file_queue fields. */
     if(!(flags & CRALERT_FP_SET))
@@ -149,7 +151,7 @@ int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
     fileq->day = p->tm_mday;
     fileq->year = p->tm_year+1900;
 
-    strncpy(fileq->mon, s_month[p->tm_mon], 4);
+    strncpy(fileq->mon, s_month[p->tm_mon], 3);
     memset(fileq->file_name, '\0',MAX_FQUEUE + 1);
 
 
@@ -175,9 +177,9 @@ int Init_FileQueue(file_queue *fileq, struct tm *p, int flags)
 /** int Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
  * Reads from the monitored file.
  */
-alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
+alert_data *Read_FileMon(file_queue *fileq, const struct tm *p, unsigned int timeout)
 {
-    int i = 0;
+    unsigned int i = 0;
     alert_data *al_data;
 
 
@@ -201,7 +203,7 @@ alert_data *Read_FileMon(file_queue *fileq, struct tm *p, int timeout)
         {
             fileq->day = p->tm_mday;
             fileq->year = p->tm_year+1900;
-            strncpy(fileq->mon, s_month[p->tm_mon], 4);
+            strncpy(fileq->mon, s_month[p->tm_mon], 3);
 
             /* Getting latest file */
             GetFile_Queue(fileq);

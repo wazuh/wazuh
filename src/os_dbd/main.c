@@ -14,10 +14,6 @@
  */
 
 
-#ifndef DBD
-   #define DBD
-#endif
-
 #ifndef ARGV0
    #define ARGV0 "ossec-dbd"
 #endif
@@ -25,43 +21,61 @@
 #include "shared.h"
 #include "dbd.h"
 
+static void print_db_info(void);
+static void help_dbd(void) __attribute__((noreturn));
+
 
 /* Prints information regarding enabled databases */
-void db_info()
+static void print_db_info()
 {
-    print_out(" ");
-    print_out("%s %s - %s", __ossec_name, __version, __author);
-
     #ifdef UMYSQL
-    print_out("Compiled with MySQL support.");
+    print_out("    Compiled with MySQL support");
     #endif
 
     #ifdef UPOSTGRES
-    print_out("Compiled with PostgreSQL support.");
+    print_out("    Compiled with PostgreSQL support");
     #endif
 
     #if !defined(UMYSQL) && !defined(UPOSTGRES)
-    print_out("Compiled without any Database support.");
+    print_out("    Compiled without any database support");
     #endif
-
-    print_out(" ");
-    print_out("%s",__license);
-
-    exit(1);
 }
 
-
+/* print help statement */
+static void help_dbd()
+{
+    print_header();
+    print_out("  %s: -[Vhdtfv] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -u <user>   User to run as (default: %s)", MAILUSER);
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out(" ");
+    print_out("  Database Support:");
+    print_db_info();
+    print_out(" ");
+    exit(1);
+}
 
 int main(int argc, char **argv)
 {
     int c, test_config = 0, run_foreground = 0;
-    int uid = 0,gid = 0;
+    uid_t uid;
+    gid_t gid;
+    unsigned int d;
 
     /* Using MAILUSER (read only) */
-    char *dir  = DEFAULTDIR;
-    char *user = MAILUSER;
-    char *group = GROUPGLOBAL;
-    char *cfg = DEFAULTCPATH;
+    const char *dir  = DEFAULTDIR;
+    const char *user = MAILUSER;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
 
     /* Database Structure */
@@ -73,16 +87,13 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "vVdhtfu:g:D:c:")) != -1){
+    while((c = getopt(argc, argv, "Vdhtfu:g:D:c:")) != -1){
         switch(c){
             case 'V':
-                db_info();
-                break;
-            case 'v':
-                db_info();
+                print_version();
                 break;
             case 'h':
-                help(ARGV0);
+                help_dbd();
                 break;
             case 'd':
                 nowDebug();
@@ -114,7 +125,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help(ARGV0);
+                help_dbd();
                 break;
         }
 
@@ -128,7 +139,7 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
     {
         ErrorExit(USER_ERROR, ARGV0, user, group);
     }
@@ -174,13 +185,13 @@ int main(int argc, char **argv)
 
 
     /* Getting maximum reconned attempts */
-    db_config.maxreconnect = getDefine_Int("dbd",
+    db_config.maxreconnect = (unsigned int) getDefine_Int("dbd",
                                            "reconnect_attempts", 1, 9999);
 
 
     /* Connecting to the database */
-    c = 0;
-    while(c <= (db_config.maxreconnect * 10))
+    d = 0;
+    while(d <= (db_config.maxreconnect * 10))
     {
         db_config.conn = osdb_connect(db_config.host, db_config.user,
                                       db_config.pass, db_config.db,
@@ -192,8 +203,8 @@ int main(int argc, char **argv)
             break;
         }
 
-        c++;
-        sleep(c * 60);
+        d++;
+        sleep(d * 60);
 
     }
 
@@ -211,14 +222,14 @@ int main(int argc, char **argv)
             ARGV0, db_config.db, db_config.host);
 
 
-    /* Privilege separation */	
+    /* Privilege separation */
     if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
 
 
     /* chrooting */
     if(Privsep_Chroot(dir) < 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
+        ErrorExit(CHROOT_ERROR,ARGV0,dir, errno, strerror(errno));
 
 
     /* Now on chroot */
@@ -242,7 +253,7 @@ int main(int argc, char **argv)
 
     /* Changing user */
     if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR,ARGV0,user);
+        ErrorExit(SETUID_ERROR,ARGV0,user, errno, strerror(errno));
 
 
     /* Basic start up completed. */
@@ -262,9 +273,8 @@ int main(int argc, char **argv)
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
 
-    /* the real daemon now */	
+    /* the real daemon now */
     OS_DBD(&db_config);
-    exit(0);
 }
 
 

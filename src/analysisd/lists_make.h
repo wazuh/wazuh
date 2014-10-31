@@ -11,6 +11,5 @@
  */
 
 
-void makelist_help(const char *prog);
 void Lists_OP_MakeCDB(char *txt_filename, char *cdb_filename, int force);
 void Lists_OP_MakeAll(int force);

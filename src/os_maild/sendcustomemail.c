@@ -16,7 +16,6 @@
 
 #include "shared.h"
 #include "os_net/os_net.h"
-#include "maild.h"
 
 
 /* Return codes (from SMTP server) */
@@ -58,7 +57,7 @@
 
 /* OS_SendCustomEmail
  */
-int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, FILE *fp, struct tm *p)
+int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, FILE *fp, const struct tm *p)
 {
     int socket,i = 0;
     char *msg;
@@ -69,7 +68,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
     buffer[2048] = '\0';
 
 
-    /* Connecting to the smtp server */	
+    /* Connecting to the smtp server */
     socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, smtpserver, 0);
     if(socket < 0)
     {
@@ -85,7 +84,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
         if(msg)
             free(msg);
         close(socket);
-        return(OS_INVALID);	
+        return(OS_INVALID);
     }
     MAIL_DEBUG("DEBUG: Received banner: '%s' %s", msg, "");
     free(msg);
@@ -135,7 +134,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
     }
 
     MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", HELOMSG, msg);
-    free(msg);	
+    free(msg);
 
 
     /* Building "Mail from" msg */
@@ -149,10 +148,10 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
         if(msg)
             free(msg);
         close(socket);
-        return(OS_INVALID);	
+        return(OS_INVALID);
     }
     MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
-    free(msg);	
+    free(msg);
 
 
     /* Building "RCPT TO" msg */
@@ -168,7 +167,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
             if(msg)
                 free(msg);
             close(socket);
-            return(OS_INVALID);	
+            return(OS_INVALID);
         }
         MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", snd_msg, msg);
         free(msg);
@@ -186,7 +185,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
         if(msg)
             free(msg);
         close(socket);
-        return(OS_INVALID);	
+        return(OS_INVALID);
     }
     MAIL_DEBUG("DEBUG: Sent '%s', received: '%s'", DATAMSG, msg);
     free(msg);
@@ -236,7 +235,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
     OS_SendTCP(socket,snd_msg);
 
     if (idsname)
-    {	    
+    {
         /* Sending server name header */
         memset(snd_msg,'\0',128);
         snprintf(snd_msg,127, XHEADER, idsname);
@@ -261,7 +260,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
 
 
     /* Sending end of data \r\n.\r\n */
-    OS_SendTCP(socket,ENDDATA);	
+    OS_SendTCP(socket,ENDDATA);
     msg = OS_RecvTCP(socket, OS_SIZE_1024);
 
 
@@ -277,7 +276,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
     if(msg)
         free(msg);
 
-    memset(snd_msg,'\0',128);	
+    memset_secure(snd_msg,'\0',128);
 
 
     /* Returning 0 (success) */

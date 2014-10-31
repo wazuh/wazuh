@@ -29,13 +29,13 @@ typedef struct _agentlessd_entries
     short int state;
 
     int frequency;
-    int current_state;
+    time_t current_state;
     int port;
     int error_flag;
 
     char *type;
     char **server;
-    char *options;
+    const char *options;
     char *command;
 
 }agentlessd_entries;

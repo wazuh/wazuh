@@ -31,11 +31,11 @@ void AR_Init()
 }
 
 
-/** int AR_ReadConfig(int test_config, char *cfgfile)
+/** int AR_ReadConfig(const char *cfgfile)
  * Reads active response configuration and write them
  * to the appropriate lists.
  */
-int AR_ReadConfig(int test_config, char *cfgfile)
+int AR_ReadConfig(const char *cfgfile)
 {
     FILE *fp;
     int modules = 0;
@@ -47,7 +47,7 @@ int AR_ReadConfig(int test_config, char *cfgfile)
     fp = fopen(DEFAULTARPATH, "w");
     if(!fp)
     {
-        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH);
+        merror(FOPEN_ERROR, ARGV0, DEFAULTARPATH, errno, strerror(errno));
         return(OS_INVALID);
     }
     fprintf(fp, "restart-ossec0 - restart-ossec.sh - 0\n");

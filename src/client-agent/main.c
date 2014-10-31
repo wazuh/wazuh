@@ -26,9 +26,27 @@
    #define ARGV0 "ossec-agentd"
 #endif
 
+static void help_agentd(void) __attribute((noreturn));
 
-
-
+/* print help statement */
+static void help_agentd()
+{
+    print_header();
+    print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -u <user>   User to run as (default: %s)", USER);
+    print_out("    -g <group>  Group to run as (default: %s)", GROUPGLOBAL);
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out("    -D <dir>    Directory to chroot into (default: %s)", DEFAULTDIR);
+    print_out(" ");
+    exit(1);
+}
 
 /* main, v0.2, 2005/11/09
  */
@@ -38,12 +56,13 @@ int main(int argc, char **argv)
     int test_config = 0;
     int debug_level = 0;
 
-    char *dir = DEFAULTDIR;
-    char *user = USER;
-    char *group = GROUPGLOBAL;
+    const char *dir = DEFAULTDIR;
+    const char *user = USER;
+    const char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
 
-    int uid = 0;
-    int gid = 0;
+    uid_t uid;
+    gid_t gid;
 
     run_foreground = 0;
 
@@ -51,13 +70,13 @@ int main(int argc, char **argv)
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "Vtdfhu:g:D:")) != -1){
+    while((c = getopt(argc, argv, "Vtdfhu:g:D:c:")) != -1){
         switch(c){
             case 'V':
                 print_version();
                 break;
             case 'h':
-                help(ARGV0);
+                help_agentd();
                 break;
             case 'd':
                 nowDebug();
@@ -84,6 +103,14 @@ int main(int argc, char **argv)
                     ErrorExit("%s: -D needs an argument",ARGV0);
                 dir = optarg;
                 break;
+            case 'c':
+                if(!optarg)
+                    ErrorExit("%s: -c needs an argument.",ARGV0);
+                cfg = optarg;
+                break;
+            default:
+                help_agentd();
+                break;
         }
     }
 
@@ -93,7 +120,7 @@ int main(int argc, char **argv)
     agt = (agent *)calloc(1, sizeof(agent));
     if(!agt)
     {
-        ErrorExit(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
     }
 
 
@@ -113,7 +140,7 @@ int main(int argc, char **argv)
 
 
     /* Reading config */
-    if(ClientConf(DEFAULTCPATH) < 0)
+    if(ClientConf(cfg) < 0)
     {
         ErrorExit(CLIENT_ERROR,ARGV0);
     }
@@ -150,7 +177,7 @@ int main(int argc, char **argv)
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if(uid == (uid_t)-1 || gid == (gid_t)-1)
     {
         ErrorExit(USER_ERROR,ARGV0,user,group);
     }
@@ -172,5 +199,6 @@ int main(int argc, char **argv)
 
     return(0);
 }
+
 
 /* EOF */

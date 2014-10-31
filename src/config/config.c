@@ -19,46 +19,50 @@
 #include "os_xml/os_xml.h"
 #include "config.h"
 
+static int read_main_elements(const OS_XML *xml, int modules,
+                                   XML_NODE node,
+                                   void *d1,
+                                   void *d2);
 
 /* Read the main elements of the configuration.
  */
-int read_main_elements(OS_XML xml, int modules,
+static int read_main_elements(const OS_XML *xml, int modules,
                                    XML_NODE node,
                                    void *d1,
                                    void *d2)
 {
     int i = 0;
-    char *osglobal = "global";                    /*Server Config*/
-    char *osrules = "rules";                      /*Server Config*/
-    char *ossyscheck = "syscheck";                /*Agent Config*/
-    char *osrootcheck = "rootcheck";              /*Agent Config*/
-    char *osalerts = "alerts";                    /*Server Config*/
-    char *osemailalerts = "email_alerts";         /*Server Config*/
-    char *osdbd = "database_output";              /*Server Config*/
-    char *oscsyslogd = "syslog_output";           /*Server Config*/
-    char *oscagentless = "agentless";             /*Server Config*/
-    char *oslocalfile = "localfile";              /*Agent Config*/
-    char *osremote = "remote";                    /*Agent Config*/
-    char *osclient = "client";                    /*Agent Config*/
-    char *oscommand = "command";                  /*? Config*/
-    char *osreports = "reports";                  /*Server Config*/
-    char *osactive_response = "active-response";  /*Agent Config*/
+    const char *osglobal = "global";                    /*Server Config*/
+    const char *osrules = "rules";                      /*Server Config*/
+    const char *ossyscheck = "syscheck";                /*Agent Config*/
+    const char *osrootcheck = "rootcheck";              /*Agent Config*/
+    const char *osalerts = "alerts";                    /*Server Config*/
+    const char *osemailalerts = "email_alerts";         /*Server Config*/
+    const char *osdbd = "database_output";              /*Server Config*/
+    const char *oscsyslogd = "syslog_output";           /*Server Config*/
+    const char *oscagentless = "agentless";             /*Server Config*/
+    const char *oslocalfile = "localfile";              /*Agent Config*/
+    const char *osremote = "remote";                    /*Agent Config*/
+    const char *osclient = "client";                    /*Agent Config*/
+    const char *oscommand = "command";                  /*? Config*/
+    const char *osreports = "reports";                  /*Server Config*/
+    const char *osactive_response = "active-response";  /*Agent Config*/
 
 
     while(node[i])
     {
         XML_NODE chld_node = NULL;
 
-        chld_node = OS_GetElementsbyNode(&xml,node[i]);
+        chld_node = OS_GetElementsbyNode(xml,node[i]);
 
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!chld_node)
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         else if(strcmp(node[i]->element, osglobal) == 0)
@@ -141,7 +145,7 @@ int read_main_elements(OS_XML xml, int modules,
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
 
@@ -158,7 +162,7 @@ int read_main_elements(OS_XML xml, int modules,
 /* ReadConfig(int modules, char *cfgfile)
  * Read the config files
  */
-int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
+int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 {
     int i;
     OS_XML xml;
@@ -167,15 +171,15 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
 
     /** XML definitions **/
     /* Global */
-    char *xml_start_ossec = "ossec_config";
-    char *xml_start_agent = "agent_config";
+    const char *xml_start_ossec = "ossec_config";
+    const char *xml_start_agent = "agent_config";
 
     /* Attributes of the <agent_config> tag */
-    char *xml_agent_name = "name";
-    char *xml_agent_os = "os";
-    char *xml_agent_overwrite = "overwrite";
+    const char *xml_agent_name = "name";
+    const char *xml_agent_os = "os";
+    const char *xml_agent_overwrite = "overwrite";
     /* cmoraes */
-    char *xml_agent_profile = "profile";
+    const char *xml_agent_profile = "profile";
 
 
     if(OS_ReadXML(cfgfile,&xml) < 0)
@@ -183,12 +187,12 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
         if(modules & CAGENT_CONFIG)
         {
             #ifndef CLIENT
-            merror(XML_ERROR, ARGV0, cfgfile, xml.err, xml.err_line);
+            merror(XML_ERROR, __local_name, cfgfile, xml.err, xml.err_line);
             #endif
         }
         else
         {
-            merror(XML_ERROR, ARGV0, cfgfile, xml.err, xml.err_line);
+            merror(XML_ERROR, __local_name, cfgfile, xml.err, xml.err_line);
         }
         return(OS_INVALID);
     }
@@ -207,7 +211,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
     {
         if(!node[i]->element)
         {
-            merror(XML_ELEMNULL, ARGV0);
+            merror(XML_ELEMNULL, __local_name);
             return(OS_INVALID);
         }
         else if(!(modules & CAGENT_CONFIG) &&
@@ -219,9 +223,9 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
             /* Main element does not need to have any child */
             if(chld_node)
             {
-                if(read_main_elements(xml, modules, chld_node, d1, d2) < 0)
+                if(read_main_elements(&xml, modules, chld_node, d1, d2) < 0)
                 {
-                    merror(CONFIG_ERROR, ARGV0, cfgfile);
+                    merror(CONFIG_ERROR, __local_name, cfgfile);
                     return(OS_INVALID);
                 }
 
@@ -278,7 +282,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                         else
                         {
                             passed_agent_test = 0;
-                            merror("%s: ERROR: Unable to retrieve uname.", ARGV0);
+                            merror("%s: ERROR: Unable to retrieve uname.", __local_name);
                         }
                         #endif
                     }
@@ -318,7 +322,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
                     }
                     else
                     {
-                        merror(XML_INVATTR, ARGV0, node[i]->attributes[attrs],
+                        merror(XML_INVATTR, __local_name, node[i]->attributes[attrs],
                                 cfgfile);
                     }
                     attrs++;
@@ -346,9 +350,9 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
             /* Main element does not need to have any child */
             if(chld_node)
             {
-                if(passed_agent_test && read_main_elements(xml, modules, chld_node, d1, d2) < 0)
+                if(passed_agent_test && read_main_elements(&xml, modules, chld_node, d1, d2) < 0)
                 {
-                    merror(CONFIG_ERROR, ARGV0, cfgfile);
+                    merror(CONFIG_ERROR, __local_name, cfgfile);
                     return(OS_INVALID);
                 }
 
@@ -357,7 +361,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
         }
         else
         {
-            merror(XML_INVELEM, ARGV0, node[i]->element);
+            merror(XML_INVELEM, __local_name, node[i]->element);
             return(OS_INVALID);
         }
         i++;
@@ -365,7 +369,7 @@ int ReadConfig(int modules, char *cfgfile, void *d1, void *d2)
 
     /* Clearing node and xml */
     OS_ClearNode(node);
-    OS_ClearXML(&xml);	
+    OS_ClearXML(&xml);
     return(0);
 }
 

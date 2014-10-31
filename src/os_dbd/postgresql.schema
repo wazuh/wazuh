@@ -79,12 +79,13 @@ CREATE TABLE data
     full_log        TEXT        NOT NULL,
     PRIMARY KEY  (id, server_id)
     );
-    
+	
 CREATE TABLE alert 
     (
-    id              INT8        NOT NULL, 
+     id             bigserial   NOT NULL,
     server_id       INT4        NOT NULL,
-    rule_id         INT8        NOT NULL,    
+    rule_id         INT8        NOT NULL,  
+    level           INT2,	
     timestamp       INT8        NOT NULL,
     location_id     INT4        NOT NULL,
     src_ip          INT8,
@@ -92,10 +93,16 @@ CREATE TABLE alert
     src_port        INT4,
     dst_port        INT4,
     alertid         TEXT        DEFAULT NULL,
+	"user"          TEXT        NOT NULL,
+    full_log        TEXT        NOT NULL,
+    is_hidden       INT2        NOT NULL DEFAULT '0',
+    tld             VARCHAR(32)  NOT NULL DEFAULT '',
     PRIMARY KEY (id, server_id)
     );
-CREATE INDEX time on alert(timestamp);    
-CREATE INDEX ruleid on alert(rule_id);    
+CREATE INDEX alertid on alert(alertid);  
+CREATE INDEX level on alert(level);  
+CREATE INDEX timestamp on alert(timestamp);    
+CREATE INDEX rule_id on alert(rule_id);    
 CREATE INDEX src_ip on alert(src_ip);    
-    
+CREATE INDEX tld on alert(tld);   
 COMMIT;

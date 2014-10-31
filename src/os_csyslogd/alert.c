@@ -23,13 +23,10 @@
  * Sends an alert via syslog.
  * Returns 1 on success or 0 on error.
  */
-int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
+int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
 {
     char *tstamp;
     char syslog_msg[OS_SIZE_2048];
-
-    /* padding value */
-    int padding = 0;
 
     /* Invalid socket. */
     if(syslog_config->socket < 0)
@@ -117,7 +114,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     {
        	/* Building syslog message. */
        	snprintf(syslog_msg, OS_SIZE_2048,
-                "<%d>%s %s ossec: Alert Level: %d; Rule: %d - %s; Location: %s;",
+                "<%u>%s %s ossec: Alert Level: %u; Rule: %u - %s; Location: %s;",
                	syslog_config->priority, tstamp, __shost,
                 al_data->level,
                 al_data->rule, al_data->comment,
@@ -140,7 +137,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     {
        	snprintf(syslog_msg, OS_SIZE_2048,
 
-                "<%d>%s CEF:0|%s|%s|%s|%d|%s|%d|dvc=%s cs2=%s cs2Label=Location",
+                "<%u>%s CEF:0|%s|%s|%s|%u|%s|%u|dvc=%s cs2=%s cs2Label=Location",
                	syslog_config->priority,
 		tstamp,
 		__author,
@@ -150,8 +147,14 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
 		al_data->comment,
 		(al_data->level > 10) ? 10 : al_data->level,
                 __shost, al_data->location);
-
         field_add_string(syslog_msg, OS_SIZE_2048, " src=%s", al_data->srcip );
+        field_add_int(syslog_msg, OS_SIZE_2048, " dpt=%d", al_data->dstport );
+        field_add_int(syslog_msg, OS_SIZE_2048, " spt=%d", al_data->srcport );
+        field_add_string(syslog_msg, OS_SIZE_2048, " fname=%s", al_data->filename );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dhost=%s", al_data->dstip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " shost=%s", al_data->srcip );
+        field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
+        field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
 #ifdef GEOIP
         field_add_string(syslog_msg, OS_SIZE_2048, " cs3Label=SrcCity cs3=%s", al_data->geoipdatasrc );
         field_add_string(syslog_msg, OS_SIZE_2048, " cs4Label=DstCity cs4=%s", al_data->geoipdatadst );
@@ -160,10 +163,11 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
         field_add_truncated(syslog_msg, OS_SIZE_2048, " msg=%s", al_data->log[0], 2 );
         if (al_data->new_md5 && al_data->new_sha1) {
-            field_add_string(syslog_msg, OS_SIZE_2048, " Previous MD5: %s", al_data->old_md5 );
-            field_add_string(syslog_msg, OS_SIZE_2048, " Current MD5: %s", al_data->new_md5 );
-            field_add_string(syslog_msg, OS_SIZE_2048, " Previous SHA1: %s", al_data->old_sha1 );
-            field_add_string(syslog_msg, OS_SIZE_2048, " Current SHA1: %s", al_data->new_sha1 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " cs1Label=OldMD5 cs1=%s", al_data->old_md5);
+            field_add_string(syslog_msg, OS_SIZE_2048, " cs2Label=NewMDG cs2=%s", al_data->new_md5);
+            field_add_string(syslog_msg, OS_SIZE_2048, " oldFileHash=%s", al_data->old_sha1 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " fhash=%s", al_data->new_sha1 );
+            field_add_string(syslog_msg, OS_SIZE_2048, " fileHash=%s", al_data->new_sha1 );
         }
     }
     else if(syslog_config->format == JSON_CSYSLOG)
@@ -206,8 +210,8 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
         json_string = cJSON_PrintUnformatted(root);
 
         // Create the syslog message
-        snprintf(syslog_msg, OS_SIZE_2048 - padding,
-                "<%d>%s %s ossec: %s",
+        snprintf(syslog_msg, OS_SIZE_2048,
+                "<%u>%s %s ossec: %s",
 
                 /* syslog header */
                 syslog_config->priority, tstamp, __shost,
@@ -223,7 +227,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, SyslogConfig *syslog_config)
     {
         /* Build a Splunk Style Key/Value string for logging */
         snprintf(syslog_msg, OS_SIZE_2048,
-                "<%d>%s %s ossec: crit=%d id=%d description=\"%s\" component=\"%s\",",
+                "<%u>%s %s ossec: crit=%u id=%u description=\"%s\" component=\"%s\",",
 
                 /* syslog header */
                 syslog_config->priority, tstamp, __shost,

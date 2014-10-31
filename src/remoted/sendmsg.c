@@ -19,10 +19,10 @@
 
 
 /* pthread send_msg mutex */
-pthread_mutex_t sendmsg_mutex;
+static pthread_mutex_t sendmsg_mutex;
 
 /* pthread key update mutex */
-pthread_mutex_t keyupdate_mutex;
+static pthread_mutex_t keyupdate_mutex;
 
 
 /* void keyupdate_init()
@@ -110,9 +110,9 @@ void send_msg_init()
  * Send message to an agent.
  * Returns -1 on error
  */
-int send_msg(int agentid, char *msg)
+int send_msg(unsigned int agentid, const char *msg)
 {
-    int msg_size;
+    size_t msg_size;
     char crypt_msg[OS_MAXSTR +1];
 
 

@@ -16,12 +16,16 @@
 #include "shared.h"
 
 #include "logcollector.h"
+int loop_timeout;
+int logr_queue;
+int open_file_attempts;
+logreader *logff;
 
-int _cday = 0;
+static int _cday = 0;
 int update_fname(int i);
 
 
-char *rand_keepalive_str(char *dst, int size)
+static char *rand_keepalive_str(char *dst, int size)
 {
     static const char text[] = "abcdefghijklmnopqrstuvwxyz"
                                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -31,7 +35,7 @@ char *rand_keepalive_str(char *dst, int size)
     strncpy(dst, "--MARK--: ", 12);
     for ( i = 10; i < len; ++i )
     {
-        dst[i] = text[rand() % (sizeof text - 1)];
+        dst[i] = text[(unsigned int)rand() % (sizeof text - 1)];
     }
     dst[i] = '\0';
     return dst;
@@ -45,7 +49,7 @@ void LogCollectorStart()
     int i = 0, r = 0;
     int max_file = 0;
     int f_check = 0;
-    int curr_time = 0;
+    time_t curr_time = 0;
     char keepalive[1024];
 
 
@@ -115,20 +119,20 @@ void LogCollectorStart()
             logff[i].command = NULL;
             logff[i].fp = NULL;
         }
-        
+
         else if(strcmp(logff[i].logformat, "eventchannel") == 0)
         {
 			#ifdef WIN32
-			
+
 			#ifdef EVENTCHANNEL_SUPPORT
 			verbose(READING_EVTLOG, ARGV0, logff[i].file);
 			win_start_event_channel(logff[i].file, logff[i].future, logff[i].query);
 			#else
 			merror("%s: WARN: eventchannel not available on this version of OSSEC", ARGV0);
 			#endif
-			
+
 			#endif
-			
+
 			logff[i].file = NULL;
 			logff[i].command = NULL;
             logff[i].fp = NULL;
@@ -142,7 +146,7 @@ void LogCollectorStart()
 
             if(logff[i].command)
             {
-                logff[i].read = (void *)read_command;
+                logff[i].read = read_command;
 
                 verbose("%s: INFO: Monitoring output of command(%d): %s", ARGV0, logff[i].ign, logff[i].command);
 
@@ -164,7 +168,7 @@ void LogCollectorStart()
             logff[i].size = 0;
             if(logff[i].command)
             {
-                logff[i].read = (void *)read_fullcommand;
+                logff[i].read = read_fullcommand;
 
                 verbose("%s: INFO: Monitoring full output of command(%d): %s", ARGV0, logff[i].ign, logff[i].command);
 
@@ -208,29 +212,29 @@ void LogCollectorStart()
             /* Getting the log type */
             if(strcmp("snort-full", logff[i].logformat) == 0)
             {
-                logff[i].read = (void *)read_snortfull;
+                logff[i].read = read_snortfull;
             }
             #ifndef WIN32
             if(strcmp("ossecalert", logff[i].logformat) == 0)
             {
-                logff[i].read = (void *)read_ossecalert;
+                logff[i].read = read_ossecalert;
             }
             #endif
             else if(strcmp("nmapg", logff[i].logformat) == 0)
             {
-                logff[i].read = (void *)read_nmapg;
+                logff[i].read = read_nmapg;
             }
             else if(strcmp("mysql_log", logff[i].logformat) == 0)
             {
-                logff[i].read = (void *)read_mysql_log;
+                logff[i].read = read_mysql_log;
             }
             else if(strcmp("mssql_log", logff[i].logformat) == 0)
             {
-                logff[i].read = (void *)read_mssql_log;
+                logff[i].read = read_mssql_log;
             }
             else if(strcmp("postgresql_log", logff[i].logformat) == 0)
             {
-                logff[i].read = (void *)read_postgresql_log;
+                logff[i].read = read_postgresql_log;
             }
             else if(strcmp("djb-multilog", logff[i].logformat) == 0)
             {
@@ -244,15 +248,15 @@ void LogCollectorStart()
                     }
                     logff[i].file = NULL;
                 }
-                logff[i].read = (void *)read_djbmultilog;
+                logff[i].read = read_djbmultilog;
             }
             else if(logff[i].logformat[0] >= '0' && logff[i].logformat[0] <= '9')
             {
-                logff[i].read = (void *)read_multiline;
+                logff[i].read = read_multiline;
             }
             else
             {
-                logff[i].read = (void *)read_syslog;
+                logff[i].read = read_syslog;
             }
 
             /* More tweaks for Windows. For some reason IIS places
@@ -305,7 +309,7 @@ void LogCollectorStart()
         /* Waiting for the select timeout */
         if ((r = select(0, NULL, NULL, NULL, &fp_timeout)) < 0)
         {
-            merror(SELECT_ERROR, ARGV0);
+            merror(SELECT_ERROR, ARGV0, errno, strerror(errno));
             int_error++;
 
             if(int_error >= 5)
@@ -385,7 +389,7 @@ void LogCollectorStart()
             /* If ferror is set */
             else
             {
-                merror(FREAD_ERROR, ARGV0, logff[i].file);
+                merror(FREAD_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
                 #ifndef WIN32
                 if(fseek(logff[i].fp, 0, SEEK_END) < 0)
                 #else
@@ -394,7 +398,7 @@ void LogCollectorStart()
                 {
 
                     #ifndef WIN32
-                    merror(FSEEK_ERROR, ARGV0, logff[i].file);
+                    merror(FSEEK_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
                     #endif
 
                     /* Closing the file */
@@ -480,12 +484,12 @@ void LogCollectorStart()
             if(logff[i].fp)
             {
                 #ifndef WIN32
-                if(stat(logff[i].file, &tmp_stat) == -1)
+                if(fstat(fileno(logff[i].fp), &tmp_stat) == -1)
                 {
                     fclose(logff[i].fp);
                     logff[i].fp = NULL;
 
-                    merror(FILE_ERROR, ARGV0, logff[i].file);
+                    merror(FSTAT_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
                 }
 
                 #else
@@ -708,7 +712,7 @@ int handle_file(int i, int do_fseek, int do_log)
     {
         if(do_log == 1)
         {
-            merror(FOPEN_ERROR, ARGV0, logff[i].file);
+            merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
         }
         return(-1);
     }
@@ -716,7 +720,7 @@ int handle_file(int i, int do_fseek, int do_log)
     fd = fileno(logff[i].fp);
     if(fstat(fd, &stat_fd) == -1)
     {
-        merror(FILE_ERROR,ARGV0,logff[i].file);
+        merror(FSTAT_ERROR,ARGV0,logff[i].file, errno, strerror(errno));
         fclose(logff[i].fp);
         logff[i].fp = NULL;
         return(-1);
@@ -737,21 +741,21 @@ int handle_file(int i, int do_fseek, int do_log)
     {
         if(do_log == 1)
         {
-            merror(FOPEN_ERROR, ARGV0, logff[i].file);
+            merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
         }
         return(-1);
     }
     fd = _open_osfhandle((long)logff[i].h, 0);
     if(fd == -1)
     {
-        merror(FOPEN_ERROR, ARGV0, logff[i].file);
+        merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
         CloseHandle(logff[i].h);
         return(-1);
     }
     logff[i].fp = _fdopen(fd, "r");
     if(logff[i].fp == NULL)
     {
-        merror(FOPEN_ERROR, ARGV0, logff[i].file);
+        merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
         CloseHandle(logff[i].h);
         return(-1);
     }
@@ -782,7 +786,7 @@ int handle_file(int i, int do_fseek, int do_log)
         #ifndef WIN32
         if(fseek(logff[i].fp, 0, SEEK_END) < 0)
         {
-            merror(FSEEK_ERROR, ARGV0,logff[i].file);
+            merror(FSEEK_ERROR, ARGV0,logff[i].file, errno, strerror(errno));
             fclose(logff[i].fp);
             logff[i].fp = NULL;
             return(-1);

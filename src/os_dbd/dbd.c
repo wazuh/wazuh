@@ -13,11 +13,6 @@
  * online at: http://www.ossec.net/en/licensing.html
  */
 
-
-#ifndef DBD
-   #define DBD
-#endif
-
 #ifndef ARGV0
    #define ARGV0 "ossec-dbd"
 #endif
@@ -41,7 +36,7 @@ void OS_DBD(DBConfig *db_config)
 
     /* Getting currently time before starting */
     tm = time(NULL);
-    p = localtime(&tm);	
+    p = localtime(&tm);
 
 
     /* Initating file queue - to read the alerts */
@@ -53,7 +48,7 @@ void OS_DBD(DBConfig *db_config)
     db_config->location_hash = OSHash_Create();
     if(!db_config->location_hash)
     {
-        ErrorExit(MEM_ERROR, ARGV0);
+        ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
     }
 
 

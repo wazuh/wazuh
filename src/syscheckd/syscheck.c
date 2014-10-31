@@ -27,10 +27,13 @@
 
 #include "shared.h"
 #include "syscheck.h"
+syscheck_config syscheck;
 
 #include "rootcheck/rootcheck.h"
 
-int dump_syscheck_entry(syscheck_config *syscheck, char *entry, int vals, int reg, char *restrictfile);
+static void read_internal(int debug_level);
+static void help_syscheckd(void) __attribute__((noreturn));
+
 
 #ifdef USE_MAGIC
 #include <magic.h>
@@ -61,9 +64,9 @@ void init_magic(magic_t* cookie_ptr)
 /* void read_internal()
  * Reads syscheck internal options.
  */
-void read_internal(int debug_level)
+static void read_internal(int debug_level)
 {
-    syscheck.tsleep = getDefine_Int("syscheck","sleep",0,64);
+    syscheck.tsleep = (unsigned int) getDefine_Int("syscheck","sleep",0,64);
     syscheck.sleep_after = getDefine_Int("syscheck","sleep_after",1,9999);
 
     /* Check current debug_level
@@ -100,10 +103,6 @@ int Start_win32_Syscheck()
 
 
     debug1(STARTED_MSG, ARGV0);
-
-
-    /* Zeroing the structure */
-    syscheck.workdir = DEFAULTDIR;
 
 
     /* Checking if the configuration is present */
@@ -191,7 +190,22 @@ int Start_win32_Syscheck()
 }
 #endif
 
-
+/* print help statement */
+static void help_syscheckd()
+{
+    print_header();
+    print_out("  %s: -[Vhdtf] [-c config]", ARGV0);
+    print_out("    -V          Version and license message");
+    print_out("    -h          This help message");
+    print_out("    -d          Execute in debug mode. This parameter");
+    print_out("                can be specified multiple times");
+    print_out("                to increase the debug level.");
+    print_out("    -t          Test configuration");
+    print_out("    -f          Run in foreground");
+    print_out("    -c <config> Configuration file to use (default: %s)", DEFAULTCPATH);
+    print_out(" ");
+    exit(1);
+}
 
 /* Syscheck unix main.
  */
@@ -202,18 +216,14 @@ int main(int argc, char **argv)
     int debug_level = 0;
     int test_config = 0,run_foreground = 0;
 
-    char *cfg = DEFAULTCPATH;
-
-
-    /* Zeroing the structure */
-    syscheck.workdir = NULL;
+    const char *cfg = DEFAULTCPATH;
 
 
     /* Setting the name */
     OS_SetName(ARGV0);
 
 
-    while((c = getopt(argc, argv, "VtdhfD:c:")) != -1)
+    while((c = getopt(argc, argv, "Vtdhfc:")) != -1)
     {
         switch(c)
         {
@@ -221,7 +231,7 @@ int main(int argc, char **argv)
                 print_version();
                 break;
             case 'h':
-                help(ARGV0);
+                help_syscheckd();
                 break;
             case 'd':
                 nowDebug();
@@ -229,11 +239,6 @@ int main(int argc, char **argv)
                 break;
             case 'f':
                 run_foreground = 1;
-                break;
-            case 'D':
-                if(!optarg)
-                    ErrorExit("%s: -D needs an argument",ARGV0);
-                syscheck.workdir = optarg;
                 break;
             case 'c':
                 if(!optarg)
@@ -244,7 +249,7 @@ int main(int argc, char **argv)
                 test_config = 1;
                 break;
             default:
-                help(ARGV0);
+                help_syscheckd();
                 break;
         }
     }
@@ -303,11 +308,6 @@ int main(int argc, char **argv)
     /* Exit if testing config */
     if(test_config)
         exit(0);
-
-
-    /* Setting default values */
-    if(syscheck.workdir == NULL)
-        syscheck.workdir = DEFAULTDIR;
 
 
     /* Setup libmagic */
@@ -379,7 +379,7 @@ int main(int argc, char **argv)
             #ifdef USEINOTIFY
             verbose("%s: INFO: Directory set for real time monitoring: "
                     "'%s'.", ARGV0, syscheck.dir[r]);
-            #elif WIN32
+            #elif defined(WIN32)
             verbose("%s: INFO: Directory set for real time monitoring: "
                     "'%s'.", ARGV0, syscheck.dir[r]);
             #else
@@ -397,8 +397,6 @@ int main(int argc, char **argv)
 
     /* Start the daemon */
     start_daemon();
-
-    return(0);
 }
 #endif /* ifndef WIN32 */
 

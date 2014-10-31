@@ -17,6 +17,7 @@
 #include "shared.h"
 #include "reports-config.h"
 
+#include "config.h"
 
 /* Filter argument. */
 static int _filter_arg(char *mystr)
@@ -46,23 +47,23 @@ static int _filter_arg(char *mystr)
 }
 
 
-int Read_CReports(XML_NODE node, void *config, void *config2)
+int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *config2)
 {
-    int i = 0,s = 0;
+    unsigned int i = 0,s = 0;
 
     /* XML definitions */
-    char *xml_title = "title";
-    char *xml_type = "type";
-    char *xml_categories = "category";
-    char *xml_group = "group";
-    char *xml_rule = "rule";
-    char *xml_level = "level";
-    char *xml_location = "location";
-    char *xml_showlogs = "showlogs";
-    char *xml_srcip = "srcip";
-    char *xml_user = "user";
-    char *xml_frequency = "frequency";
-    char *xml_email = "email_to";
+    const char *xml_title = "title";
+    const char *xml_type = "type";
+    const char *xml_categories = "category";
+    const char *xml_group = "group";
+    const char *xml_rule = "rule";
+    const char *xml_level = "level";
+    const char *xml_location = "location";
+    const char *xml_showlogs = "showlogs";
+    const char *xml_srcip = "srcip";
+    const char *xml_user = "user";
+    const char *xml_frequency = "frequency";
+    const char *xml_email = "email_to";
 
 
     monitor_config *mon_config = (monitor_config *)config;

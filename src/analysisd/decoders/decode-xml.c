@@ -324,7 +324,7 @@ int ReadDecodeXML(char *file)
         pi = (OSDecoderInfo *)calloc(1,sizeof(OSDecoderInfo));
         if(pi == NULL)
         {
-            merror(MEM_ERROR,ARGV0);
+            merror(MEM_ERROR,ARGV0, errno, strerror(errno));
             return(0);
         }
 
@@ -354,14 +354,14 @@ int ReadDecodeXML(char *file)
         /* Checking if strdup worked */
         if(!pi->name)
         {
-            merror(MEM_ERROR, ARGV0);
+            merror(MEM_ERROR, ARGV0, errno, strerror(errno));
             return(0);
         }
 
         /* Add decoder */
         if(!addDecoder2list(pi->name))
         {
-            merror(MEM_ERROR, ARGV0);
+            merror(MEM_ERROR, ARGV0, errno, strerror(errno));
             return(0);
         }
 
@@ -636,7 +636,7 @@ int ReadDecodeXML(char *file)
                 /* Maximum number is 8 for the fts */
                 norder = OS_StrBreak(',',elements[j]->content, 8);
                 if(norder == NULL)
-                    ErrorExit(MEM_ERROR,ARGV0);
+                    ErrorExit(MEM_ERROR,ARGV0, errno, strerror(errno));
 
 
                 /* Saving the initial point to free later */
@@ -922,7 +922,7 @@ char *_loadmemory(char *at, char *str)
             at = calloc(strsize+1,sizeof(char));
             if(at == NULL)
             {
-                merror(MEM_ERROR,ARGV0);
+                merror(MEM_ERROR,ARGV0, errno, strerror(errno));
                 return(NULL);
             }
             strncpy(at,str,strsize);
@@ -948,7 +948,7 @@ char *_loadmemory(char *at, char *str)
         at = realloc(at, (finalsize +1)*sizeof(char));
         if(at == NULL)
         {
-            merror(MEM_ERROR,ARGV0);
+            merror(MEM_ERROR,ARGV0, errno, strerror(errno));
             return(NULL);
         }
         strncat(at,str,strsize);

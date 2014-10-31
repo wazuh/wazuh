@@ -105,7 +105,7 @@ FILE *RK_File(char *agent, int *agent_id)
         }
         if(!rk_agent_fps[i])
         {
-            merror(FOPEN_ERROR, ARGV0, rk_buf);
+            merror(FOPEN_ERROR, ARGV0, rk_buf, errno, strerror(errno));
 
             free(rk_agent_ips[i]);
             rk_agent_ips[i] = NULL;
@@ -121,7 +121,7 @@ FILE *RK_File(char *agent, int *agent_id)
 
     else
     {
-        merror(MEM_ERROR,ARGV0);
+        merror(MEM_ERROR,ARGV0, errno, strerror(errno));
         return(NULL);
     }
 
