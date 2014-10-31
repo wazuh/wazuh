@@ -22,8 +22,8 @@ void zeromq_output_start(char *uri, int argc, char **argv) {
     int rc;
 
     /* -Werror causes gcc to bail because these are defined but not used.*/
-    if(!argc) { }
-    if(!argv) { }
+    if(!argc) { }	// XXX stupid hack
+    if(!argv) { }	// XXX stupid hack
 
     debug1("%s: DEBUG: New ZeroMQ Context", ARGV0);
     zeromq_context = zctx_new();
