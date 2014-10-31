@@ -7,7 +7,8 @@
 #include "rules.h"
 #include "czmq.h"
 #include "cJSON.h"
-#include "zeromq_output.h"
+//#include "zeromq_output.h"
+#include "zeromq.h"
 
 
 
