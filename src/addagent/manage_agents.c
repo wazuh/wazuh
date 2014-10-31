@@ -126,7 +126,6 @@ int add_agent()
 
 
 
-    srandom_init();
 
     rand1 = random();
 
