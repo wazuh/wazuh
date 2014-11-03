@@ -52,10 +52,10 @@ void srandom_init(void)
 {
 
     #ifndef WIN32
-    unsigned int seed;
     #ifdef __OpenBSD__
     srandomdev();
     #else
+    unsigned int seed;
     randombytes(&seed, sizeof seed);
     srandom(seed);
     #endif  // __OpenBSD__
