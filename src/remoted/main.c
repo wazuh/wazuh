@@ -140,6 +140,8 @@ int main(int argc, char **argv)
     if(uid == (uid_t)-1 || gid == (gid_t)-1)
         ErrorExit(USER_ERROR, ARGV0, user, group);
 
+    /* Setup random */
+    srandom_init();
 
     /* pid before going daemon */
     i = getpid();
@@ -169,7 +171,7 @@ int main(int argc, char **argv)
 
 
     /* Setup random */
-    srandom_init();
+    //srandom_init();
 
     random();
 
