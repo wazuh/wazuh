@@ -1246,7 +1246,10 @@ if [ "x$HYBID" = "xgo" ]; then
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_CLEANINSTALL="y"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
+
+   cd src && make clean && cd ..
    ./install.sh
+   rm etc/preloaded-vars.conf
 fi
 
 
