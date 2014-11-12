@@ -169,10 +169,6 @@ int main(int argc, char **argv)
     /* Starting the signal manipulation */
     StartSIG(ARGV0);
 
-
-    /* Setup random */
-    //srandom_init();
-
     random();
 
 
