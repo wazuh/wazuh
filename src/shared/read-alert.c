@@ -29,12 +29,12 @@
 #define SRCIP_BEGIN     "Src IP: "
 #define SRCIP_BEGIN_SZ  8
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
 #define GEOIP_BEGIN_SRC	"Src Location: "
 #define GEOIP_BEGIN_SRC_SZ  14
 #define GEOIP_BEGIN_DST	"Dst Location: "
 #define GEOIP_BEGIN_DST_SZ  14
-#endif /* GEOIP */
+#endif /* LIBGEOIP_ENABLED */
 
 #define SRCPORT_BEGIN     "Src Port: "
 #define SRCPORT_BEGIN_SZ  10
@@ -141,7 +141,7 @@ void FreeAlertData(alert_data *al_data)
         free(al_data->log);
         al_data->log = NULL;
     }
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     if (al_data->geoipdatasrc)
     {
 	free(al_data->geoipdatasrc);
@@ -181,7 +181,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
     char *old_sha1 = NULL;
     char *new_sha1 = NULL;
     char **log = NULL;
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     char *geoipdatasrc = NULL;
     char *geoipdatadst = NULL;
 #endif
@@ -217,7 +217,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 al_data->user = user;
                 al_data->date = date;
                 al_data->filename = filename;
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
                 al_data->geoipdatasrc = geoipdatasrc;
                 al_data->geoipdatadst = geoipdatadst;
 #endif
@@ -386,13 +386,13 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 p = str + SRCIP_BEGIN_SZ;
                 os_strdup(p, srcip);
             }
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
             /* GeoIP Source Location */
             else if (strncmp(GEOIP_BEGIN_SRC, str, GEOIP_BEGIN_SRC_SZ) == 0)
             {
-		os_clearnl(str,p);
-		p = str + GEOIP_BEGIN_SRC_SZ;
-		os_strdup(p, geoipdatasrc);
+                os_clearnl(str,p);
+                p = str + GEOIP_BEGIN_SRC_SZ;
+                os_strdup(p, geoipdatasrc);
             }
 #endif
             /* srcport */
@@ -411,7 +411,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 p = str + DSTIP_BEGIN_SZ;
                 os_strdup(p, dstip);
             }
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
             /* GeoIP Destination Location */
             else if (strncmp(GEOIP_BEGIN_DST, str, GEOIP_BEGIN_DST_SZ) == 0)
             {
@@ -518,17 +518,17 @@ alert_data *GetAlertData(int flag, FILE *fp)
             free(srcip);
             srcip = NULL;
         }
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
         if(geoipdatasrc)
-	{
-	    free(geoipdatasrc);
-	    geoipdatasrc = NULL;
-	}
+        {
+            free(geoipdatasrc);
+            geoipdatasrc = NULL;
+        }
         if(geoipdatadst)
-	{
-	    free(geoipdatadst);
-	    geoipdatadst = NULL;
-	}
+        {
+            free(geoipdatadst);
+            geoipdatadst = NULL;
+        }
 #endif
         if(user)
         {
