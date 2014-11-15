@@ -99,7 +99,7 @@ int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, 
     }
     #endif
 
-    #ifdef UPOSTGRES
+    #ifdef PGSQL_DATABASE_ENABLED
     if(db_config->db_type == POSTGDB)
     {
         osdb_connect = postgresql_osdb_connect;
@@ -122,7 +122,7 @@ int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, 
     }
     else if(db_config->db_type == POSTGDB)
     {
-        #ifndef UPOSTGRES
+        #ifndef PGSQL_DATABASE_ENABLED
         merror(DB_COMPILED, ARGV0, "postgresql");
         return(OS_INVALID);
         #endif

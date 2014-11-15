@@ -32,11 +32,11 @@ static void print_db_info()
     print_out("    Compiled with MySQL support");
     #endif
 
-    #ifdef UPOSTGRES
+    #ifdef PGSQL_DATABASE_ENABLED
     print_out("    Compiled with PostgreSQL support");
     #endif
 
-    #if !defined(MYSQL_DATABASE_ENABLED) && !defined(UPOSTGRES)
+    #if !defined(MYSQL_DATABASE_ENABLED) && !defined(PGSQL_DATABASE_ENABLED)
     print_out("    Compiled without any database support");
     #endif
 }

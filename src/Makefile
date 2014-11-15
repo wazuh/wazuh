@@ -210,7 +210,7 @@ ifdef DATABASE
 	else # DATABASE
 
 		ifeq (${DATABASE}, pgsql)
-			DEFINES+=-DUPOSTGRES
+			DEFINES+=-DPGSQL_DATABASE_ENABLED
 
 			ifneq (${PGSQL_LIBS},)
 				PL:=${PGSQL_LIBS}
