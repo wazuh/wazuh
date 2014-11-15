@@ -25,6 +25,7 @@ OSSEC_USER_REM?=ossecr
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
+USE_PICVIZ?=yes
 USE_GEOIP?=no
 USE_OPENSSL?=auto
 
@@ -145,6 +146,10 @@ ifneq (,$(filter ${USE_ZEROMQ},auto yes y Y 1))
 	#LDFLAGS+=-L/usr/local/lib -I/usr/local/include -lzmq -lczmq
 	LDFLAGS+=-lzmq -lczmq -lm
 endif # USE_ZEROMQ
+
+ifneq (,$(filter ${USE_PICVIZ},auto yes y Y 1))
+	DEFINES+=-DPICVIZ_OUTPUT_ENABLED
+endif # USE_PICVIZ
 
 ifneq (,$(filter ${USE_GEOIP},auto yes y Y 1))
 	DEFINES+=-DLIBGEOIP_ENABLED
