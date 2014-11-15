@@ -89,7 +89,7 @@ int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, 
     osdb_connect = NULL;
 
     /* Assigning the proper location for the function calls */
-    #ifdef UMYSQL
+    #ifdef MYSQL_DATABASE_ENABLED
     if(db_config->db_type == MYSQLDB)
     {
         osdb_connect = mysql_osdb_connect;
@@ -115,7 +115,7 @@ int OS_ReadDBConf(__attribute__((unused)) int test_config, const char *cfgfile, 
      */
     if(db_config->db_type == MYSQLDB)
     {
-        #ifndef UMYSQL
+        #ifndef MYSQL_DATABASE_ENABLED
         merror(DB_COMPILED, ARGV0, "mysql");
         return(OS_INVALID);
         #endif

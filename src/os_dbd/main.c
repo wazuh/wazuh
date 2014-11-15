@@ -28,7 +28,7 @@ static void help_dbd(void) __attribute__((noreturn));
 /* Prints information regarding enabled databases */
 static void print_db_info()
 {
-    #ifdef UMYSQL
+    #ifdef MYSQL_DATABASE_ENABLED
     print_out("    Compiled with MySQL support");
     #endif
 
@@ -36,7 +36,7 @@ static void print_db_info()
     print_out("    Compiled with PostgreSQL support");
     #endif
 
-    #if !defined(UMYSQL) && !defined(UPOSTGRES)
+    #if !defined(MYSQL_DATABASE_ENABLED) && !defined(UPOSTGRES)
     print_out("    Compiled without any database support");
     #endif
 }
