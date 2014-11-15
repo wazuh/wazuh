@@ -53,7 +53,7 @@
 #include "output/prelude.h"
 #endif
 
-#ifdef ZEROMQ_OUTPUT
+#ifdef ZEROMQ_OUTPUT_ENABLED
 #include "output/zeromq.h"
 #endif
 
@@ -310,7 +310,7 @@ int main_analysisd(int argc, char **argv)
     #endif
 
     /* Starting zeromq */
-    #ifdef ZEROMQ_OUTPUT
+    #ifdef ZEROMQ_OUTPUT_ENABLED
     if(Config.zeromq_output)
     {
       zeromq_output_start(Config.zeromq_output_uri, argc, argv);
@@ -1100,7 +1100,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 #endif
 
                 /* Log to zeromq */
-                #ifdef ZEROMQ_OUTPUT
+                #ifdef ZEROMQ_OUTPUT_ENABLED
                 if(Config.zeromq_output)
                 {
                     zeromq_output_event(lf);

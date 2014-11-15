@@ -141,7 +141,7 @@ ifneq (,$(filter ${USE_PRELUDE},auto yes y Y 1))
 endif # USE_PRELUDE
 
 ifneq (,$(filter ${USE_ZEROMQ},auto yes y Y 1))
-	DEFINES+=-DZEROMQ_OUTPUT
+	DEFINES+=-DZEROMQ_OUTPUT_ENABLED
 	#LDFLAGS+=-L/usr/local/lib -I/usr/local/include -lzmq -lczmq
 	LDFLAGS+=-lzmq -lczmq -lm
 endif # USE_ZEROMQ
