@@ -147,7 +147,7 @@ ifneq (,$(filter ${USE_ZEROMQ},auto yes y Y 1))
 endif # USE_ZEROMQ
 
 ifneq (,$(filter ${USE_GEOIP},auto yes y Y 1))
-	DEFINES+=-DGEOIP
+	DEFINES+=-DLIBGEOIP_ENABLED
 	LDFLAGS+=-lGeoIP
 endif # USE_GEOIP
 
