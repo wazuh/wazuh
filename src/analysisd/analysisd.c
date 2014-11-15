@@ -49,7 +49,7 @@
 
 #include "output/picviz.h"
 
-#ifdef PRELUDE
+#ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
 #endif
 
@@ -302,7 +302,7 @@ int main_analysisd(int argc, char **argv)
 
 
     /* Starting prelude */
-    #ifdef PRELUDE
+    #ifdef PRELUDE_OUTPUT_ENABLED
     if(Config.prelude)
     {
         prelude_start(Config.prelude_profile, argc, argv);
@@ -1089,7 +1089,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
 
                 /* Log to prelude */
-                #ifdef PRELUDE
+                #ifdef PRELUDE_OUTPUT_ENABLED
                 if(Config.prelude)
                 {
                     if(Config.prelude_log_level <= currently_rule->level)
