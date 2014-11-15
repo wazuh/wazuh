@@ -134,7 +134,7 @@ OSSEC_RANLIB =${QUIET_RANLIB}ranlib
 
 
 ifneq (,$(filter ${USE_PRELUDE},auto yes y Y 1))
-	DEFINES+=-DPRELUDE
+	DEFINES+=-DPRELUDE_OUTPUT_ENABLED
 	LDFLAGS+=-lprelude
 	LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --pthread-cflags')
 	LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --libs')
