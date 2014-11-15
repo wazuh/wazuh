@@ -13,7 +13,6 @@
 
 #ifdef PICVIZ_OUTPUT_ENABLED 
 
-#endif
 #include "shared.h"
 #include "eventinfo.h"
 
