@@ -24,7 +24,7 @@
  *
  */
 
-#ifndef USE_OPENSSL
+#ifndef LIBOPENSSL_ENABLED
 int main()
 {
     printf("ERROR: Not compiled. Missing OpenSSL support.\n");
@@ -441,5 +441,5 @@ int main(int argc, char **argv)
 }
 
 
-#endif /* USE_OPENSSL */
+#endif /* LIBOPENSSL_ENABLED */
 

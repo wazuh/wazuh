@@ -65,7 +65,7 @@
 #define HEADER_BF_LOCL_H
 
 /* Only include if OPENSSL is present */
-#ifdef USE_OPENSSL
+#ifdef LIBOPENSSL_ENABLED
 #include <openssl/opensslconf.h> /* BF_PTR, BF_PTR2 */
 #endif
 

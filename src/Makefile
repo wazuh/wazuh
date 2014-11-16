@@ -241,18 +241,18 @@ endif # DATABASE
 
 ifeq (${USE_OPENSSL},auto)
 	ifneq (,$(wildcard /usr/include/openssl/ssl.h))
-		DEFINES+=-DUSE_OPENSSL
+		DEFINES+=-DLIBOPENSSL_ENABLED
 		LDFLAGS+=-lssl -lcrypto
 	else
 		ifneq (,$(wildcard /usr/local/include/openssl/ssl.h))
-			DEFINES+=-DUSE_OPENSSL
+			DEFINES+=-DLIBOPENSSL_ENABLED
 			LDFLAGS+=-lssl -lcrypto
 		endif
 	endif
 endif
 
 ifneq (,$(filter ${USE_PRELUDE},yes y Y 1))
-	DEFINES+=-DUSE_OPENSSL
+	DEFINES+=-DLIBOPENSSL_ENABLED
 	ifneq (${OPENSSL_LIBS},)
 		LDFLAGS+=-lssl
 		LDFLAGS+=-lcrypto
