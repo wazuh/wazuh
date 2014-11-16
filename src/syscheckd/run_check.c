@@ -125,7 +125,7 @@ void start_daemon()
 
 
     /* To be used by select. */
-    #ifdef USEINOTIFY
+    #ifdef INOTIFY_ENABLED
     struct timeval selecttime;
     fd_set rfds;
     #endif
@@ -372,7 +372,7 @@ void start_daemon()
         }
 
 
-        #ifdef USEINOTIFY
+        #ifdef INOTIFY_ENABLED
         if(syscheck.realtime && (syscheck.realtime->fd >= 0))
         {
             selecttime.tv_sec = SYSCHECK_WAIT;

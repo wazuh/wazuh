@@ -376,7 +376,7 @@ int main(int argc, char **argv)
     {
         if(syscheck.opts[r] & CHECK_REALTIME)
         {
-            #ifdef USEINOTIFY
+            #ifdef INOTIFY_ENABLED
             verbose("%s: INFO: Directory set for real time monitoring: "
                     "'%s'.", ARGV0, syscheck.dir[r]);
             #elif defined(WIN32)

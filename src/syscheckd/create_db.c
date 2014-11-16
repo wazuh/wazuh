@@ -389,7 +389,7 @@ static int read_dir(const char *dir_name, int opts, OSMatch *restriction)
     /* Checking for real time flag. */
     if(opts & CHECK_REALTIME)
     {
-        #ifdef USEINOTIFY
+        #ifdef INOTIFY_ENABLED
         realtime_adddir(dir_name);
         #endif
     }
@@ -493,7 +493,7 @@ int create_db()
         i++;
     }while(syscheck.dir[i] != NULL);
 
-    #if defined (USEINOTIFY) || defined (WIN32)
+    #if defined (INOTIFY_ENABLED) || defined (WIN32)
     if(syscheck.realtime && (syscheck.realtime->fd >= 0))
         verbose("%s: INFO: Real time file monitoring started.", ARGV0);
     #endif
