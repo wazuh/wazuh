@@ -91,7 +91,7 @@ void run_notify()
     curr_time = time(0);
 
 
-    #ifndef ONEWAY
+    #ifndef ONEWAY_ENABLED
     /* Check if the server has responded */
     if((curr_time - available_server) > agt->max_time_reconnect_try)
     {

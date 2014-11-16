@@ -29,6 +29,9 @@ USE_PICVIZ?=yes
 USE_GEOIP?=no
 USE_OPENSSL?=auto
 
+OPTION_ONEWAY?=no
+OPTION_CLEANFULL?=no
+
 DEFINES=-DMAX_AGENTS=${MAXAGENTS} -DOSSECHIDS
 DEFINES+=-DDEFAULTDIR=\"${PREFIX}\"
 DEFINES+=-DUSER=\"${OSSEC_USER}\"
@@ -98,12 +101,12 @@ else
 	CFLAGS+=-O2
 endif #DEBUG
 
-ifdef CLEANFULL
+ifneq (,$(filter ${OPTION_CLEANFULL},yes y Y 1))
 	DEFINES+=-DCLEANFULL
 endif
 
-ifdef ONEWAY
-	DEFINES+=-DONEWAY
+ifneq (,$(filter ${OPTION_ONEWAY},yes y Y 1))
+	DEFINES+=-DONEWAY_ENABLED
 endif
 
 CFLAGS+=${DEFINES}
@@ -474,39 +477,41 @@ help: failtarget
 settings:
 	@echo
 	@echo "General settings:"
-	@echo "    TARGET:          ${TARGET}"
-	@echo "    V:               ${V}"
-	@echo "    DEBUG:           ${DEBUG}"
-	@echo "    DEBUGAD          ${DEBUGAD}"
-	@echo "    PREFIX:          ${PREFIX}"
-	@echo "    MAXAGENTS:       ${MAXAGENTS}"
-	@echo "    DATABASE:        ${DATABASE}"
+	@echo "    TARGET:           ${TARGET}"
+	@echo "    V:                ${V}"
+	@echo "    DEBUG:            ${DEBUG}"
+	@echo "    DEBUGAD           ${DEBUGAD}"
+	@echo "    PREFIX:           ${PREFIX}"
+	@echo "    MAXAGENTS:        ${MAXAGENTS}"
+	@echo "    DATABASE:         ${DATABASE}"
+	@echo "    OPTION_ONEWAY:    ${USE_ONEWAY}"
+	@echo "    OPTION_CLEANFULL: ${USE_ONEWAY}"
 	@echo "User settings:"
-	@echo "    OSSEC_GROUP:     ${OSSEC_GROUP}"
-	@echo "    OSSEC_USER:      ${OSSEC_USER}"
-	@echo "    OSSEC_USER_MAIL: ${OSSEC_USER_MAIL}"
-	@echo "    OSSEC_USER_REM:  ${OSSEC_USER_REM}"
+	@echo "    OSSEC_GROUP:      ${OSSEC_GROUP}"
+	@echo "    OSSEC_USER:       ${OSSEC_USER}"
+	@echo "    OSSEC_USER_MAIL:  ${OSSEC_USER_MAIL}"
+	@echo "    OSSEC_USER_REM:   ${OSSEC_USER_REM}"
 	@echo "Lua settings:"
-	@echo "    LUA_PLAT:       ${LUA_PLAT}"
+	@echo "    LUA_PLAT:         ${LUA_PLAT}"
 	@echo "USE settings:"
-	@echo "    USE_ZEROMQ:     ${USE_ZEROMQ}"
-	@echo "    USE_GEOIP:      ${USE_GEOIP}"
-	@echo "    USE_PRELUDE:    ${USE_PRELUDE}"
-	@echo "    USE_OPENSSL:    ${USE_OPENSSL}"
-	@echo "    USA_PICVIS:     ${USE_PICVIZ}"
+	@echo "    USE_ZEROMQ:       ${USE_ZEROMQ}"
+	@echo "    USE_GEOIP:        ${USE_GEOIP}"
+	@echo "    USE_PRELUDE:      ${USE_PRELUDE}"
+	@echo "    USE_OPENSSL:      ${USE_OPENSSL}"
+	@echo "    USE_PICVIS:       ${USE_PICVIZ}"
 	@echo "Mysql settings:"
-	@echo "    includes:       ${MI}"
-	@echo "    libs:           ${ML}"
+	@echo "    includes:         ${MI}"
+	@echo "    libs:             ${ML}"
 	@echo "Pgsql settings:"
-	@echo "    includes:       ${PI}"
-	@echo "    libs:           ${PL}"
+	@echo "    includes:         ${PI}"
+	@echo "    libs:             ${PL}"
 	@echo "Defines:"
 	@echo "    ${DEFINES}"
 	@echo "Compiler:"
-	@echo "    CFLAGS          ${CFLAGS}"
-	@echo "    LDFLAGS         ${LDFLAGS}"
-	@echo "    CC              ${CC}"
-	@echo "    MAKE            ${MAKE}"
+	@echo "    CFLAGS            ${CFLAGS}"
+	@echo "    LDFLAGS           ${LDFLAGS}"
+	@echo "    CC                ${CC}"
+	@echo "    MAKE              ${MAKE}"
 
 
 BUILD_SERVER+=external
