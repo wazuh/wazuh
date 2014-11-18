@@ -29,8 +29,8 @@ USE_PICVIZ?=yes
 USE_GEOIP?=no
 USE_OPENSSL?=auto
 
-OPTION_ONEWAY?=no
-OPTION_CLEANFULL?=no
+ONEWAY?=no
+CLEANFULL?=no
 
 DEFINES=-DMAX_AGENTS=${MAXAGENTS} -DOSSECHIDS
 DEFINES+=-DDEFAULTDIR=\"${PREFIX}\"
@@ -101,11 +101,11 @@ else
 	CFLAGS+=-O2
 endif #DEBUG
 
-ifneq (,$(filter ${OPTION_CLEANFULL},yes y Y 1))
+ifneq (,$(filter ${CLEANFULL},yes y Y 1))
 	DEFINES+=-DCLEANFULL
 endif
 
-ifneq (,$(filter ${OPTION_ONEWAY},yes y Y 1))
+ifneq (,$(filter ${ONEWAY},yes y Y 1))
 	DEFINES+=-DONEWAY_ENABLED
 endif
 
@@ -484,8 +484,8 @@ settings:
 	@echo "    PREFIX:           ${PREFIX}"
 	@echo "    MAXAGENTS:        ${MAXAGENTS}"
 	@echo "    DATABASE:         ${DATABASE}"
-	@echo "    OPTION_ONEWAY:    ${USE_ONEWAY}"
-	@echo "    OPTION_CLEANFULL: ${USE_ONEWAY}"
+	@echo "    ONEWAY:           ${ONEWAY}"
+	@echo "    CLEANFULL:        ${CLEANFULL}"
 	@echo "User settings:"
 	@echo "    OSSEC_GROUP:      ${OSSEC_GROUP}"
 	@echo "    OSSEC_USER:       ${OSSEC_USER}"
