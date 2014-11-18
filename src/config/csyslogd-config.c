@@ -29,7 +29,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
     const char *xml_syslog_level = "level";
     const char *xml_syslog_id = "rule_id";
     const char *xml_syslog_group = "group";
-    const char *xml_syslog_location = "event_location";
+    const char *xml_syslog_location = "location";
 
 
     struct SyslogConfig_holder *config_holder = (struct SyslogConfig_holder *)config;
