@@ -142,7 +142,7 @@ endif # USE_PRELUDE
 ifeq (${USE_ZEROMQ},1)
 	DEFINES+=-DZEROMQ_OUTPUT
 	#LDFLAGS+=-L/usr/local/lib -I/usr/local/include -lzmq -lczmq
-	LDFLAGS+=-lzmq -lczmq
+	LDFLAGS+=-lzmq -lczmq -lm
 endif # USE_ZEROMQ
 
 ifeq (${USE_GEOIP},1)
