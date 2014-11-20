@@ -34,6 +34,9 @@ DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
 DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
 DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
 
+
+LDFLAGS+=-lm
+
 ifeq (${uname_S},Linux)
 		DEFINES+=-DUSEINOTIFY
 #		DEFINES+=-DUSE_MAGIC
@@ -968,6 +971,12 @@ decoders-live.a: ${decoders_live_o}
 decoders-test.a: ${decoders_test_o}
 	${OSSEC_LINK} $@ $^
 
+format_c := ${wildcard analysisd/format/*.c}
+format_o := ${format_c:.c=.o} 
+all_analysisd_o += ${format_o}
+
+analysisd/format/%.o: analysisd/format/%.c
+	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 output_c := ${wildcard analysisd/output/*c}
 output_o := ${output_c:.c=.o}
@@ -993,14 +1002,14 @@ analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
 	${OSSEC_CC} ${CFLAGS} -DTESTRULE -DARGV0=\"ossec-analysisd\" -I./analysisd -c $< -o $@
 
 
-ossec-logtest: ${analysisd_test_o} ${output_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+ossec-logtest: ${analysisd_test_o} ${output_o} ${format_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${CFLAGS} -DTESTRULE $^ ${LDFLAGS} -o $@
 
-ossec-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+ossec-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} alerts.a cdb.a decoders-live.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
 	#${OSSEC_CCBIN} ${CFLAGS} -L../external -I../external/cJSON -L./external -lcJSON -I./external/cJSON $^ ${LDFLAGS} -o $@
 
-ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${output_o} alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
+ossec-makelists: analysisd/makelists-live.o ${analysisd_live_o} ${output_o} ${format_o} alerts.a cdb.a decoders-test.a ${ossec_libs} ${ZLIB_LIB} ${JSON_LIB}
 	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
 
 
