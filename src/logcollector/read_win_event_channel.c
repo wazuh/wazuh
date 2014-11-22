@@ -125,6 +125,7 @@ void get_messages(os_event *event, EVT_HANDLE evt, LPCWSTR publisher_name)
 	EvtFormatMessage(publisher, evt, 0, 0, NULL, EvtFormatMessageEvent, size, buffer, &size);
 	event->message = convert_windows_string(buffer);
 	free(buffer);
+	win_format_event_string(event->message);
 
 	EvtFormatMessage(publisher, evt, 0, 0, NULL, EvtFormatMessageLevel, 0, NULL, &size);
 	buffer = calloc(size, sizeof (wchar_t));

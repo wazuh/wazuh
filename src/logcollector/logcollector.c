@@ -801,4 +801,33 @@ int handle_file(int i, int do_fseek, int do_log)
 }
 
 
+#ifdef WIN32
+/* remove new lines and replace tabs
+ *  * in the argument fields with spaces
+ *   */
+void win_format_event_string(char *string)
+{
+    while(*string != '\0')
+    {
+        if (*string == '\n' || *string == '\r')
+            *string = ' ';
+        else if (*string == ':')
+        {
+            string++;
+
+            while(*string == '\t')
+            {
+                *string = ' ';
+                string++;
+            }
+
+            continue;
+        }
+
+        string++;
+    }
+}
+#endif
+
+
 /* EOF */
