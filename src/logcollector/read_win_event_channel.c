@@ -225,22 +225,13 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 {
 	DWORD buffer_length = 0;
 	PEVT_VARIANT properties_values = NULL;
-	LPCWSTR properties[] = {
-		L"Event/System/Channel",
-		L"Event/System/EventID",
-		L"Event/System/Provider/@EventSourceName",
-		L"Event/System/Security/@UserID",
-		L"Event/System/Computer",
-		L"Event/System/Provider/@Name",
-		L"Event/System/TimeCreated/@SystemTime"
-	};
-    	DWORD count = sizeof(properties)/sizeof(LPWSTR);
+	DWORD count = 0;
 	EVT_HANDLE context = NULL;
 	os_event event;
 	char final_msg[OS_MAXSTR];
 	char *timestamp;
 
-	context = EvtCreateRenderContext(count, properties, EvtRenderContextValues);
+	context = EvtCreateRenderContext(count, NULL, EvtRenderContextSystem);
 
 	EvtRender(context, evt, EvtRenderEventValues, 0, NULL, &buffer_length, &count);
 
@@ -251,15 +242,15 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 
 	EvtRender(context, evt, EvtRenderEventValues, buffer_length, properties_values, &buffer_length, &count);
 
-	event.name = get_property_value(&properties_values[0]);
-	event.id = properties_values[1].UInt16Val;
-	event.source = get_property_value(&properties_values[2]);
-	event.uid = properties_values[3].Type == EvtVarTypeNull ? NULL : properties_values[3].SidVal;
-	event.computer = get_property_value(&properties_values[4]);
-	event.time_created = properties_values[6].FileTimeVal;
+	event.name = get_property_value(&properties_values[EvtSystemChannel]);
+	event.id = properties_values[EvtSystemEventID].UInt16Val;
+	event.source = get_property_value(&properties_values[EvtSystemProviderName]);
+	event.uid = properties_values[EvtSystemUserID].Type == EvtVarTypeNull ? NULL : properties_values[EvtSystemUserID].SidVal;
+	event.computer = get_property_value(&properties_values[EvtSystemComputer]);
+	event.time_created = properties_values[EvtSystemTimeCreated].FileTimeVal;
 
 	get_username_and_domain(&event);
-	get_messages(&event, evt, properties_values[5].StringVal);
+	get_messages(&event, evt, properties_values[EvtSystemProviderName].StringVal);
 
 	timestamp = WinEvtTimeToString(event.time_created);
 	snprintf(final_msg, OS_MAXSTR, "%s WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
