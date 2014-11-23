@@ -810,7 +810,18 @@ void win_format_event_string(char *string)
     while(*string != '\0')
     {
         if (*string == '\n' || *string == '\r')
+        {
             *string = ' ';
+            string++;
+
+            while(*string == '\t')
+            {
+                *string = ' ';
+                string++;
+            }
+
+            continue;
+        }
         else if (*string == ':')
         {
             string++;
