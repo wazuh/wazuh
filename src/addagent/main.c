@@ -236,7 +236,7 @@ int main(int argc, char **argv)
     /* Move to correct directory */
     if(chdir(path))
     {
-        ErrorExit(CHDIR_ERROR_2, path, errno, strerror(errno));
+        ErrorExit(CHDIR_ERROR, ARGV0, path, errno, strerror(errno));
     }
 
     /* Check permissions */
