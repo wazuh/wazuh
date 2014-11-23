@@ -268,7 +268,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 			 event.level && strlen(event.level) ? event.level : "UNKNOWN",
 			 event.id,
 			 event.source && strlen(event.source) ? event.source : "no source",
-			 event.user && strlen(event.user) ? event.user : "no user",
+			 event.user && strlen(event.user) ? event.user : "(no user)",
 			 event.domain && strlen(event.domain) ? event.domain : "no domain",
 			 event.computer && strlen(event.computer) ? event.computer : "no computer",
 			 event.message && strlen(event.message) ? event.message : "no message");
