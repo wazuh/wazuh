@@ -1,6 +1,4 @@
-#ifdef WIN32
-#include "windows.h"
-#else
+#ifndef WIN32
 #include <sys/stat.h>
 #include <fcntl.h>
 #endif
