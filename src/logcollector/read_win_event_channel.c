@@ -31,6 +31,7 @@
 #include <winevt.h>
 #include <sec_api/stdlib_s.h>
 #include <winerror.h>
+#include <sddl.h>
 
 typedef struct _os_event
 {
@@ -89,21 +90,63 @@ char *get_property_value(PEVT_VARIANT value)
 
 void get_username_and_domain(os_event *event)
 {
+	int result;
 	DWORD user_length = 0;
 	DWORD domain_length = 0;
 	SID_NAME_USE account_type;
+	LPTSTR StringSid = NULL;
 
-	LookupAccountSid(NULL, event->uid, NULL, &user_length,
-					 NULL, &domain_length, &account_type);
+	/* Perform a lookup which should always fail. It could fail
+	 * because the SID doesn't exist or various other reasons in
+	 * which case the user and domain will be set to NULL. However,
+	 * it could fail becasue the SID was found but the buffers were
+	 * too small in which case the proper buffer size will be returned
+	 * and later created and another call to LookupAccountSid() will
+	 * hopefully succeed.
+	 */
+	result = LookupAccountSid(
+		NULL,
+		event->uid,
+		NULL,
+		&user_length,
+		NULL,
+		&domain_length,
+		&account_type
+	);
 
-	if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+	if (result == 0 && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 	{
 		event->user = calloc(user_length, sizeof (char));
 		event->domain = calloc(domain_length, sizeof (char));
 
-		if ((event->user != NULL) && (event->domain != NULL))
-			LookupAccountSid(NULL, event->uid, event->user, &user_length,
-							 event->domain, &domain_length, &account_type);
+		if (event->user != NULL && event->domain != NULL)
+		{
+			result = LookupAccountSid(
+				NULL,
+				event->uid,
+				event->user,
+				&user_length,
+				event->domain,
+				&domain_length,
+				&account_type
+			);
+
+			if (result == 0)
+			{
+				log2file(
+					"%s: ERROR: Could not lookup SID (%s) which returned (%lu)",
+					ARGV0,
+					ConvertSidToStringSid(event->uid, &StringSid) ? StringSid : "unknown",
+					GetLastError()
+				);
+
+				event->user = NULL;
+				event->domain = NULL;
+
+                                if (StringSid)
+                                        LocalFree(StringSid);
+			}
+		}
 	}
 	else
 	{
