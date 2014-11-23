@@ -321,7 +321,7 @@
   <!-- http://www.gossamer-threads.com/lists/openssh/users/47438 -->
   <rule id="5747" level="6">
     <if_sid>5700</if_sid>
-    <match>bad client public DH value$</match>
+    <match>bad client public DH value</match>
     <description>ssh bad client public DH value</description>
   </rule>
 
@@ -332,7 +332,7 @@
   -->
   <rule id="5748" level="6">
     <if_sid>5700</if_sid>
-    <match>Corrupted MAC on input.$</match>
+    <match>Corrupted MAC on input.</match>
     <description>ssh corrupted MAC on input</description>
   </rule>
 
