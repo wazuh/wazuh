@@ -13,17 +13,21 @@
 /* This is only for windows */
 #ifdef WIN32
 
-// With event channel support
+/* With event channel support */
 #ifdef EVENTCHANNEL_SUPPORT
 
-// Saying we are on Vista in order to have the API
+/* Saying we are on Vista in order to have the API */
 #define _WIN32_WINNT 0x0600
 
-// Using Secure APIs
+/* Using Secure APIs */
 #define MINGW_HAS_SECURE_API
 
-// Bookmarks directory
+/* Bookmarks directory */
 #define BOOKMARKS_DIR "bookmarks"
+
+#ifndef WC_ERR_INVALID_CHARS
+    #define WC_ERR_INVALID_CHARS 0x80
+#endif
 
 #include "shared.h"
 #include "logcollector.h"
@@ -45,6 +49,7 @@ typedef struct _os_event
 	char *computer;
 	char *message;
 	ULONGLONG time_created;
+	char *timestamp;
 } os_event;
 
 typedef struct _os_channel
@@ -52,9 +57,9 @@ typedef struct _os_channel
 	char bookmark_enabled;
 	EVT_HANDLE bookmark;
 	FILE *bookmark_file;
+	char *evt_log;
+	char bookmark_filename[OS_MAXSTR];
 } os_channel;
-
-EVT_HANDLE bookmark = NULL;
 
 void free_event(os_event *event)
 {
@@ -65,45 +70,80 @@ void free_event(os_event *event)
 	free(event->domain);
 	free(event->computer);
 	free(event->message);
+	free(event->timestamp);
 }
 
 char *convert_windows_string(LPCWSTR string)
 {
 	char new_value[OS_MAXSTR];
-	size_t len = 0;
+	int result = 0;
 
 	if (string == NULL)
-		return (NULL);
+		return(NULL);
 
-	wcstombs_s(&len, new_value, OS_MAXSTR, string, OS_MAXSTR - 1);
+	result = WideCharToMultiByte(
+		CP_UTF8,
+		WC_ERR_INVALID_CHARS,
+		string,
+		-1,
+		new_value,
+		sizeof(new_value),
+		NULL,
+		NULL
+	);
 
-	return (strdup(new_value));
+	if (result == 0)
+	{
+		log2file(
+			"%s: ERROR: Could not WideCharToMultiByte() which returned [(%d)-(%s)]",
+			ARGV0,
+			errno,
+			strerror(errno)
+		);
+
+		return(NULL);
+	}
+
+	return(strdup(new_value));
 }
 
 char *get_property_value(PEVT_VARIANT value)
 {
 	if (EvtVarTypeNull == value->Type)
-		return (NULL);
+		return(NULL);
 
-	return (convert_windows_string(value->StringVal));
+	return(convert_windows_string(value->StringVal));
 }
 
-void get_username_and_domain(os_event *event)
+int get_username_and_domain(os_event *event)
 {
-	int result;
+	int result = 0;
 	DWORD user_length = 0;
 	DWORD domain_length = 0;
 	SID_NAME_USE account_type;
 	LPTSTR StringSid = NULL;
 
-	/* Perform a lookup which should always fail. It could fail
-	 * because the SID doesn't exist or various other reasons in
-	 * which case the user and domain will be set to NULL. However,
-	 * it could fail becasue the SID was found but the buffers were
-	 * too small in which case the proper buffer size will be returned
-	 * and later created and another call to LookupAccountSid() will
-	 * hopefully succeed.
+	/* Try to convert SID to a string. This isn't necessary to make
+	 * things work but it is nice to have for error and debug logging.
 	 */
+	if (!ConvertSidToStringSid(event->uid, &StringSid))
+	{
+		debug1(
+			"%s: WARN: Could not convert SID to string which returned (%lu)",
+			ARGV0,
+			GetLastError()
+		);
+
+		StringSid = "unknown";
+	}
+
+	debug1(
+		"%s: DEBUG: Performing a LookupAccountSid() on (%s)",
+		ARGV0,
+		StringSid
+	);
+
+	/* Make initial call to get buffer size */
 	result = LookupAccountSid(
 		NULL,
 		event->uid,
@@ -116,97 +156,375 @@ void get_username_and_domain(os_event *event)
 
 	if (result == 0 && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 	{
-		event->user = calloc(user_length, sizeof (char));
-		event->domain = calloc(domain_length, sizeof (char));
-
-		if (event->user != NULL && event->domain != NULL)
+		if ((event->user = calloc(user_length, sizeof(char))) == NULL)
 		{
-			result = LookupAccountSid(
-				NULL,
-				event->uid,
-				event->user,
-				&user_length,
-				event->domain,
-				&domain_length,
-				&account_type
+			log2file(
+				"%s: ERROR: Could not lookup SID (%s) due to calloc() failure on user which returned [(%d)-(%s)]",
+				ARGV0,
+				StringSid,
+				errno,
+				strerror(errno)
 			);
 
-			if (result == 0)
-			{
-				log2file(
-					"%s: ERROR: Could not lookup SID (%s) which returned (%lu)",
-					ARGV0,
-					ConvertSidToStringSid(event->uid, &StringSid) ? StringSid : "unknown",
-					GetLastError()
-				);
+			goto error;
+		}
 
-				event->user = NULL;
-				event->domain = NULL;
+		if ((event->domain = calloc(domain_length, sizeof (char))) == NULL)
+		{
+			log2file(
+				"%s: ERROR: Could not lookup SID (%s) due to calloc() failure on domain which returned [(%d)-(%s)]",
+				ARGV0,
+				StringSid,
+				errno,
+				strerror(errno)
+			);
 
-                                if (StringSid)
-                                        LocalFree(StringSid);
-			}
+			goto error;
+		}
+
+		result = LookupAccountSid(
+			NULL,
+			event->uid,
+			event->user,
+			&user_length,
+			event->domain,
+			&domain_length,
+			&account_type
+		);
+
+		if (result == FALSE)
+		{
+			log2file(
+				"%s: ERROR: Could not LookupAccountSid() for (%s) which returned (%lu)",
+				ARGV0,
+				StringSid,
+				GetLastError()
+			);
+
+			goto error;
 		}
 	}
-	else
-	{
+
+	LocalFree(StringSid);
+
+	/* success */
+	return(1);
+
+	error:
 		event->user = NULL;
 		event->domain = NULL;
-	}
+		LocalFree(StringSid);
+
+	return(0);
 }
 
-void get_messages(os_event *event, EVT_HANDLE evt, LPCWSTR publisher_name)
+char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
 {
-	EVT_HANDLE publisher;
+	char *message = NULL;
+	EVT_HANDLE publisher = NULL;
 	DWORD size = 0;
 	wchar_t *buffer = NULL;
+	int result = 0;
 
-	publisher = EvtOpenPublisherMetadata(NULL, publisher_name, NULL, 0, 0);
+	publisher = EvtOpenPublisherMetadata(NULL, provider_name, NULL, 0, 0);
 
-	EvtFormatMessage(publisher, evt, 0, 0, NULL, EvtFormatMessageEvent, 0, NULL, &size);
-	buffer = calloc(size, sizeof (wchar_t));
-	EvtFormatMessage(publisher, evt, 0, 0, NULL, EvtFormatMessageEvent, size, buffer, &size);
-	event->message = convert_windows_string(buffer);
+	if (publisher == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not EvtOpenPublisherMetadata() with flags (%lu) which returned (%lu)",
+			ARGV0,
+			flags,
+			GetLastError()
+		);
+
+		return(NULL);
+	}
+
+	/* Make initial call to determine buffer size */
+	result = EvtFormatMessage(
+		publisher,
+		evt,
+		0,
+		0,
+		NULL,
+		flags,
+		0,
+		NULL,
+		&size
+	);
+
+	if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+	{
+		log2file(
+			"%s: ERROR: Could not EvtFormatMessage() to determine buffer size with flags (%lu) which returned (%lu)",
+			ARGV0,
+			flags,
+			GetLastError()
+		);
+
+		return(NULL);
+	}
+
+	if ((buffer = calloc(size, sizeof(wchar_t))) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not calloc() memory which returned [(%d)-(%s)]",
+			ARGV0,
+			errno,
+			strerror(errno)
+		);
+
+		return(NULL);
+	}
+
+	result = EvtFormatMessage(
+		publisher,
+		evt,
+		0,
+		0,
+		NULL,
+		flags,
+		size,
+		buffer,
+		&size
+	);
+
+	if (result == TRUE)
+	{
+		message = convert_windows_string(buffer);
+	}
+
 	free(buffer);
-	win_format_event_string(event->message);
 
-	EvtFormatMessage(publisher, evt, 0, 0, NULL, EvtFormatMessageLevel, 0, NULL, &size);
-	buffer = calloc(size, sizeof (wchar_t));
-	EvtFormatMessage(publisher, evt, 0, 0, NULL, EvtFormatMessageLevel, size, buffer, &size);
-	event->level = convert_windows_string(buffer);
-	free(buffer);
+	if (result == FALSE)
+	{
+		log2file(
+			"%s: ERROR: Could not EvtFormatMessage() with flags (%lu) which returned (%lu)",
+			ARGV0,
+			flags,
+			GetLastError()
+		);
+
+		return(NULL);
+	}
+
+	return(message);
 }
 
-void update_bookmark(EVT_HANDLE evt, os_channel *context)
+/* Create a new bookmark */
+int create_bookmark(os_channel *channel)
+{
+	/* Create new bookmark */
+	channel->bookmark = EvtCreateBookmark(NULL);
+
+	/* Create the file */
+	if ((channel->bookmark_file = fopen(channel->bookmark_filename, "w")) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not fopen() new bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+			ARGV0,
+			channel->bookmark_filename,
+			channel->evt_log,
+			errno,
+			strerror(errno)
+		);
+
+		return(0);
+	}
+
+	/* success */
+	return(1);
+}
+
+/* Open an existing bookmark (if any) and read it */
+int open_bookmark(os_channel *channel)
+{
+	size_t size = 0;
+	wchar_t bookmark_xml[OS_MAXSTR];
+
+	/* If we have a stored bookmark, start from it */
+	if ((channel->bookmark_file = fopen(channel->bookmark_filename, "r+")) == NULL)
+	{
+		/* Check if the error was not because the file did not
+		 * exist which should be logged
+		 */
+		if (errno != ENOENT)
+		{
+			log2file(
+				"%s: ERROR: Could not fopen() existing bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+				ARGV0,
+				channel->bookmark_filename,
+				channel->evt_log,
+				errno,
+				strerror(errno)
+			);
+		}
+
+		goto error;
+	}
+
+	if ((fseek(channel->bookmark_file, 0, SEEK_SET)) != 0)
+	{
+		log2file(
+			"%s: ERROR: Could not fseek() when opening bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+			ARGV0,
+			channel->bookmark_filename,
+			channel->evt_log,
+			errno,
+			strerror(errno)
+		);
+
+		goto error;
+	}
+
+	size = fread(bookmark_xml, sizeof(wchar_t), OS_MAXSTR, channel->bookmark_file);
+
+	if (ferror(channel->bookmark_file))
+	{
+		log2file(
+			"%s: ERROR: Could not fread() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+			ARGV0,
+			channel->bookmark_filename,
+			channel->evt_log,
+			errno,
+			strerror(errno)
+		);
+
+		goto error;
+	}
+
+	/* Make sure bookmark data was read */
+	if (size == 0)
+		goto error;
+
+	/* Make sure bookmark is terminated properly */
+	bookmark_xml[size] = L'\0';
+
+	/* Create bookmark from saved xml */
+	if ((channel->bookmark = EvtCreateBookmark(bookmark_xml)) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
+			ARGV0,
+			channel->bookmark_filename,
+			channel->evt_log,
+			GetLastError()
+		);
+
+		goto error;
+	}
+
+	/* success */
+	return(1);
+
+	error:
+		if (channel->bookmark_file)
+			fclose(channel->bookmark_file);
+
+	return(0);
+}
+
+/* Update the log position of a bookmark */
+int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 {
 	DWORD size = 0;
 	DWORD count = 0;
 	wchar_t *buffer = NULL;
 	int i = 0;
+	int result = 0;
 
-	EvtUpdateBookmark(context->bookmark, evt);
-	EvtRender(NULL, context->bookmark, EvtRenderBookmark, 0, NULL, &size, &count);
-
-	buffer = calloc(size, 1);
-	if (buffer == NULL)
+	if (!EvtUpdateBookmark(channel->bookmark, evt))
 	{
-		merror("%s: Not enough memory, could not save bookmark", ARGV0);
-		return;
+		log2file(
+			"%s: ERROR: Could not EvtUpdateBookmark() bookmark (%s) for (%s) which returned (%lu)",
+			ARGV0,
+			channel->bookmark_filename,
+			channel->evt_log,
+			GetLastError()
+		);
+
+		return(0);
 	}
-	if (!EvtRender(NULL, context->bookmark, EvtRenderBookmark, size, buffer, &size, &count))
-		merror("%s: could not render bookmark (%ld)", ARGV0, GetLastError());
-	else
+
+	/* Make initial call to determine buffer size */
+	result = EvtRender(NULL, channel->bookmark, EvtRenderBookmark, 0, NULL, &size, &count);
+
+	if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER)
 	{
-		fseek(context->bookmark_file, 0, SEEK_SET);
-		if (fwrite(buffer, 1, size, context->bookmark_file) < size)
-			merror("%s: could not save bookmark (%ld)", ARGV0, GetLastError());
+		log2file(
+			"%s: ERROR: Could not EvtRender() to get buffer size to update bookmark (%s) for (%s) which returned (%lu)",
+			ARGV0,
+			channel->bookmark_filename,
+			channel->evt_log,
+			GetLastError()
+		);
 
-		// Write spaces to be certain to overwrite previous content
-		for (i = 0; i < size; ++i)
-			fputc(' ', context->bookmark_file);
-
-		fflush(context->bookmark_file);
+		return(0);
 	}
+
+	if ((buffer = calloc(size, 1)) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+			ARGV0,
+			channel->bookmark_filename,
+			channel->evt_log,
+			errno,
+			strerror(errno)
+		);
+
+		return(0);
+	}
+
+	if (!EvtRender(NULL, channel->bookmark, EvtRenderBookmark, size, buffer, &size, &count))
+	{
+		log2file(
+			"%s: ERROR: Could not EvtRender() bookmark (%s) for (%s) which returned (%lu)",
+			ARGV0,
+			channel->bookmark_filename,
+			channel->evt_log,
+			GetLastError()
+		);
+
+		return(0);
+	}
+
+	if ((fseek(channel->bookmark_file, 0, SEEK_SET)) != 0)
+	{
+		log2file(
+			"%s: ERROR: Could not fseek() when updating bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+			ARGV0,
+			channel->bookmark_filename,
+			channel->evt_log,
+			errno,
+			strerror(errno)
+		);
+
+		return(0);
+	}
+
+	if (fwrite(buffer, 1, size, channel->bookmark_file) < size)
+	{
+		log2file(
+			"%s: ERROR: Could not fwrite() to bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+			ARGV0,
+			channel->bookmark_filename,
+			channel->evt_log,
+			errno,
+			strerror(errno)
+		);
+
+		return(0);
+	}
+
+	/* Write spaces to be certain to overwrite previous content */
+	for (i = 0; i < size; ++i)
+		fputc(' ', channel->bookmark_file);
+
+	fflush(channel->bookmark_file);
+
+	/* success */
+	return(1);
 }
 
 /* Format Timestamp from EventLog */
@@ -216,13 +534,22 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
 	FILETIME fTime, lfTime;
 	ULARGE_INTEGER ulargeTime;
 	struct tm tm_struct;
-	char *result;
+	char *timestamp = NULL;
+	int size = 80;
 
-	if (NULL == (result = malloc(80))) {
-		merror("%s: Not enough memory, could not process convert Timestanp", ARGV0);
+	if ((timestamp = malloc(size)) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not malloc() memory to convert timestamp which returned [(%d)-(%s)]",
+			ARGV0,
+			errno,
+			strerror(errno)
+		);
+
 		goto error;
 	}
 
+	/* Zero out structure */
 	memset(&tm_struct, 0, sizeof(tm_struct));
 
 	/* Convert from ULONGLONG to usable FILETIME value */
@@ -233,13 +560,25 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
 
 	/* Adjust time value to reflect current timezone */
 	/* then convert to a SYSTEMTIME */
-	if (FileTimeToLocalFileTime(&fTime, &lfTime) == 0) {
-		merror("%s: Error formatting event time", ARGV0);
+	if (FileTimeToLocalFileTime(&fTime, &lfTime) == 0)
+	{
+		log2file(
+			"%s: ERROR: Could not FileTimeToLocalFileTime() to convert timestamp which returned (%lu)",
+			ARGV0,
+			GetLastError()
+		);
+
 		goto error;
 	}
 
-	if (FileTimeToSystemTime(&lfTime, &sysTime) == 0) {
-		merror("%s: Error formatting event time", ARGV0);
+	if (FileTimeToSystemTime(&lfTime, &sysTime) == 0)
+	{
+		log2file(
+			"%s: ERROR: Could not FileTimeToSystemTime() to convert timestamp which returned (%lu)",
+			ARGV0,
+			GetLastError()
+		);
+
 		goto error;
 	}
 
@@ -253,15 +592,14 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
 	tm_struct.tm_sec  = sysTime.wSecond;
 
 	/* Format timestamp string */
-	strftime(result, 80, "%Y %b %d %H:%M:%S", &tm_struct);
+	strftime(timestamp, size, "%Y %b %d %H:%M:%S", &tm_struct);
 
-	return (result);
+	return(timestamp);
 
-error:
-	if (result)
-		free(result);
+	error:
+		free(timestamp);
 
-	return NULL;
+	return(NULL);
 }
 
 void send_channel_event(EVT_HANDLE evt, os_channel *channel)
@@ -270,20 +608,61 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 	PEVT_VARIANT properties_values = NULL;
 	DWORD count = 0;
 	EVT_HANDLE context = NULL;
-	os_event event;
+	os_event event = {0};
 	char final_msg[OS_MAXSTR];
-	char *timestamp;
+	int result = 0;
 
-	context = EvtCreateRenderContext(count, NULL, EvtRenderContextSystem);
+	if ((context = EvtCreateRenderContext(count, NULL, EvtRenderContextSystem)) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not EvtCreateRenderContext() for (%s) which returned (%lu)",
+			ARGV0,
+			channel->evt_log,
+			GetLastError()
+		);
 
-	EvtRender(context, evt, EvtRenderEventValues, 0, NULL, &buffer_length, &count);
-
-	if (NULL == (properties_values = malloc(buffer_length))) {
-		merror("%s: Not enough memory, could not process event", ARGV0);
-		return;
+		goto error;
 	}
 
-	EvtRender(context, evt, EvtRenderEventValues, buffer_length, properties_values, &buffer_length, &count);
+	/* Make initial call to determine buffer size necessary */
+	result = EvtRender(context, evt, EvtRenderEventValues, 0, NULL, &buffer_length, &count);
+
+	if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+	{
+		log2file(
+			"%s: ERROR: Could not EvtRender() to determine buffer size for (%s) which returned (%lu)",
+			ARGV0,
+			channel->evt_log,
+			GetLastError()
+		);
+
+		goto error;
+	}
+
+	if ((properties_values = malloc(buffer_length)) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not malloc() memory to process event (%s) which returned [(%d)-(%s)]",
+			ARGV0,
+			channel->evt_log,
+			errno,
+			strerror(errno)
+		);
+
+		goto error;
+	}
+
+	if (!EvtRender(context, evt, EvtRenderEventValues, buffer_length, properties_values, &buffer_length, &count))
+	{
+		log2file(
+			"%s: ERROR: Could not EvtRender() for (%s) which returned (%lu)",
+			ARGV0,
+			channel->evt_log,
+			GetLastError()
+		);
+
+		goto error;
+	}
 
 	event.name = get_property_value(&properties_values[EvtSystemChannel]);
 	event.id = properties_values[EvtSystemEventID].UInt16Val;
@@ -292,22 +671,59 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 	event.computer = get_property_value(&properties_values[EvtSystemComputer]);
 	event.time_created = properties_values[EvtSystemTimeCreated].FileTimeVal;
 
+	if ((event.timestamp = WinEvtTimeToString(event.time_created)) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not convert timestamp for (%s)",
+			ARGV0,
+			channel->evt_log
+		);
+
+		goto error;
+	}
+
+	/* Determine user and domain */
 	get_username_and_domain(&event);
-	get_messages(&event, evt, properties_values[EvtSystemProviderName].StringVal);
 
-	timestamp = WinEvtTimeToString(event.time_created);
-	snprintf(final_msg, OS_MAXSTR, "%s WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
-			 timestamp,
-			 event.name,
-			 event.level && strlen(event.level) ? event.level : "UNKNOWN",
-			 event.id,
-			 event.source && strlen(event.source) ? event.source : "no source",
-			 event.user && strlen(event.user) ? event.user : "(no user)",
-			 event.domain && strlen(event.domain) ? event.domain : "no domain",
-			 event.computer && strlen(event.computer) ? event.computer : "no computer",
-			 event.message && strlen(event.message) ? event.message : "no message");
+	/* Get event log level*/
+	if ((event.level = get_message(evt, properties_values[EvtSystemProviderName].StringVal, EvtFormatMessageLevel)) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not get level for (%s)",
+			ARGV0,
+			channel->evt_log
+		);
+	}
 
-	free(timestamp);
+	/* Get event log message */
+	if ((event.message = get_message(evt, properties_values[EvtSystemProviderName].StringVal, EvtFormatMessageEvent)) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not get message for (%s)",
+			ARGV0,
+			channel->evt_log
+		);
+	}
+	else
+	{
+		/* format message */
+		win_format_event_string(event.message);
+	}
+
+	snprintf(
+		final_msg,
+		sizeof(final_msg),
+		"%s WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
+		event.timestamp,
+		event.name,
+		event.level && strlen(event.level) ? event.level : "UNKNOWN",
+		event.id,
+		event.source && strlen(event.source) ? event.source : "no source",
+		event.user && strlen(event.user) ? event.user : "(no user)",
+		event.domain && strlen(event.domain) ? event.domain : "no domain",
+		event.computer && strlen(event.computer) ? event.computer : "no computer",
+		event.message && strlen(event.message) ? event.message : "(no message)"
+	);
 
 	if(SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0)
     	{
@@ -317,126 +733,191 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     	if (channel->bookmark_enabled)
 		update_bookmark(evt, channel);
 
-	free(properties_values);
-	free_event(&event);
+	error:
+		free(properties_values);
+		free_event(&event);
+
+	return;
 }
 
-DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_channel *context, EVT_HANDLE evt)
+DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_channel *channel, EVT_HANDLE evt)
 {
 	if (action == EvtSubscribeActionDeliver)
 	{
-		send_channel_event(evt, context);
+		send_channel_event(evt, channel);
 	}
 
-	return (0);
+	return(0);
 }
 
 void win_start_event_channel(char *evt_log, char future, char *query)
 {
-	wchar_t		*channel = NULL;
+	wchar_t		*wchannel = NULL;
 	wchar_t		*wquery = NULL;
 	size_t		size = 0;
-	os_channel  	*context = NULL;
+	os_channel  	*channel = NULL;
 	DWORD		flags = EvtSubscribeToFutureEvents;
 	EVT_HANDLE	bookmark = NULL;
+	EVT_HANDLE	result = NULL;
+
+	if ((channel = calloc(1, sizeof(os_channel))) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not calloc() memory for channel to start reading (%s) which returned [(%d)-(%s)]",
+			ARGV0,
+			evt_log,
+			errno,
+			strerror(errno)
+		);
+
+		goto error;
+	}
+
+	channel->evt_log = evt_log;
 
 	size = strlen(evt_log) + 1;
 
-	channel = calloc(size, sizeof (wchar_t));
-	if(channel == NULL)
+	if ((wchannel = calloc(size, sizeof(wchar_t))) == NULL)
 	{
-		merror("%s: Not enough memory, skipping %s", ARGV0, evt_log);
+		log2file(
+			"%s: ERROR: Could not calloc() memory for wchannel to start reading (%s) which returned [(%d)-(%s)]",
+			ARGV0,
+			channel->evt_log,
+			errno,
+			strerror(errno)
+		);
+
 		goto error;
         }
-	context = calloc(1, sizeof (os_channel));
 
-	if (context == NULL)
+	/* Convert evt_log to windows string */
+	if (mbstowcs_s(&size, wchannel, size, evt_log, size - 1))
 	{
-		merror("%s: Not enough memory, skipping %s", ARGV0, evt_log);
+		log2file(
+			"%s: ERROR: Could not mbstowcs_s() for wchannel to start reading (%s) which returned [(%d)-(%s)]",
+			ARGV0,
+			channel->evt_log,
+			errno,
+			strerror(errno)
+		);
+
 		goto error;
 	}
 
-	// Convert 'evt_log' to windows string
-	mbstowcs_s(&size, channel, size, evt_log, size - 1);
-
-	// Convert 'query' to windows string
+	/* Convert query to windows string */
 	if (query)
 	{
 		size = strlen(query) + 1;
-		wquery = calloc(size, sizeof (wchar_t));
-		if (wquery)
-			mbstowcs_s(&size, wquery, size, query, size - 1);
+
+		if ((wquery = calloc(size, sizeof(wchar_t))) == NULL)
+		{
+			log2file(
+				"%s: ERROR: Could not calloc() memory for wquery to start reading (%s) which returned [(%d)-(%s)]",
+				ARGV0,
+				channel->evt_log,
+				errno,
+				strerror(errno)
+			);
+
+			goto error;
+		}
+
+		if (mbstowcs_s(&size, wquery, size, query, size - 1))
+		{
+			log2file(
+				"%s: ERROR: Could not mbstowcs_s() for wquery to start reading (%s) which returned [(%d)-(%s)]",
+				ARGV0,
+				channel->evt_log,
+				errno,
+				strerror(errno)
+			);
+
+			goto error;
+		}
 	}
 
-	context->bookmark_enabled = !future;
+	channel->bookmark_enabled = !future;
 
-	if (context->bookmark_enabled)
+	if (channel->bookmark_enabled)
 	{
-		char        file_name[OS_MAXSTR];
-		wchar_t     bookmark_xml[OS_MAXSTR];
+		/* Create bookmark file name location */
+		snprintf(
+			channel->bookmark_filename,
+			sizeof(channel->bookmark_filename),
+			"%s/%s",
+			BOOKMARKS_DIR,
+			channel->evt_log
+		);
 
-		snprintf(file_name, OS_MAXSTR, "%s/%s", BOOKMARKS_DIR, evt_log);
-		// Replace '/' by ' ' in the channel name
-		if (strchr(evt_log, '/'))
-			*(strrchr(file_name, '/')) = ' ';
+		/* Replace '/' by ' ' in the channel name */
+		if (strchr(channel->evt_log, '/'))
+			*(strrchr(channel->bookmark_filename, '/')) = ' ';
 
-		// If we have a stored bookmark, start from it
-		if (access(file_name, F_OK) != -1)
+		/* Try to read existing bookmark */
+		if (!open_bookmark(channel))
 		{
-			// Open the file and read storet bookmark
-			context->bookmark_file = fopen(file_name, "r+");
-			fseek(context->bookmark_file, 0, SEEK_SET);
-			size = fread(bookmark_xml, sizeof (wchar_t), OS_MAXSTR, context->bookmark_file);
-			bookmark_xml[size] = L'\0';
-
-			// Create bookmark from saved xml
-			context->bookmark = EvtCreateBookmark(bookmark_xml);
-			if (context->bookmark == NULL)
+			/* Create new bookmark */
+			if (!create_bookmark(channel))
 			{
-				merror("%s: Could not create bookmark from save (%ld)", ARGV0, GetLastError());
-				context->bookmark = EvtCreateBookmark(NULL);
-			}
-			else
-			{
-				flags = EvtSubscribeStartAfterBookmark;
-				bookmark = context->bookmark;
+				goto error;
 			}
 		}
 		else
 		{
-			// Create new bookmark
-			context->bookmark = EvtCreateBookmark(NULL);
-			// Create the file
-			context->bookmark_file = fopen(file_name, "w");
-			if (context->bookmark_file == NULL)
-				merror("%s: could not create bookmark file %s (%ld)", ARGV0, file_name, GetLastError());
+			flags = EvtSubscribeStartAfterBookmark;
+			bookmark = channel->bookmark;
 		}
 	}
 
-	if (EvtSubscribe(NULL, NULL, channel, wquery, bookmark, context,
-					 (EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
-					 flags) == NULL)
+	result = EvtSubscribe(
+		NULL,
+		NULL,
+		wchannel,
+		wquery,
+		bookmark,
+		channel,
+		(EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
+		flags
+	);
+
+	if (result == NULL && flags == EvtSubscribeStartAfterBookmark)
 	{
-		// If it fails, fallback to future events only
-		if (flags == EvtSubscribeStartAfterBookmark)
-		{
-			if (EvtSubscribe(NULL, NULL, channel, wquery, NULL, context,
-							 (EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
-							 EvtSubscribeToFutureEvents) == NULL)
-				merror("%s: Subscription error: %ld", ARGV0, GetLastError());
-		}
-		else
-			merror("%s: Subscription error: %ld", ARGV0, GetLastError());
+		result = EvtSubscribe(
+			NULL,
+			NULL,
+			wchannel,
+			wquery,
+			NULL,
+			channel,
+			(EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
+			EvtSubscribeToFutureEvents
+		);
 	}
 
-	free(channel);
+	if (result == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not EvtSubscribe() for (%s) which returned (%lu)",
+			ARGV0,
+			channel->evt_log,
+			GetLastError()
+		);
+
+		goto error;
+	}
+
+	free(wchannel);
+	free(wquery);
+
 	return;
 
-error:
-	if(channel)
+	error:
+		if (channel->bookmark_file)
+			fclose(channel->bookmark_file);
+
+		free(wchannel);
+		free(wquery);
 		free(channel);
-	if(context)
-		free(context);
 
 	return;
 }
