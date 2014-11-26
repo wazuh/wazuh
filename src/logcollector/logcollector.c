@@ -807,6 +807,9 @@ int handle_file(int i, int do_fseek, int do_log)
  */
 void win_format_event_string(char *string)
 {
+    if (string == NULL)
+        return;
+
     while(*string != '\0')
     {
         if (*string == '\n' || *string == '\r')
