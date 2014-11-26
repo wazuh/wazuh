@@ -95,10 +95,9 @@ char *convert_windows_string(LPCWSTR string)
 	if (result == 0)
 	{
 		log2file(
-			"%s: ERROR: Could not WideCharToMultiByte() which returned [(%d)-(%s)]",
+			"%s: ERROR: Could not WideCharToMultiByte() which returned (%lu)",
 			ARGV0,
-			errno,
-			strerror(errno)
+			GetLastError()
 		);
 
 		return(NULL);
