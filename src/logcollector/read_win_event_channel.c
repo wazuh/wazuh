@@ -86,6 +86,13 @@ void free_event(os_event *event)
 	free(event->timestamp);
 }
 
+void replace_slash(char *string)
+{
+	/* Replace '/' with underscore */
+	if (strchr(string, '/'))
+		*(strrchr(string, '/')) = '_';
+}
+
 char *convert_windows_string(LPCWSTR string)
 {
 	char *dest = NULL;
@@ -513,10 +520,12 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 	snprintf(
 		tmp_file,
 		sizeof(tmp_file),
-		"%s/%sXXXXXX",
+		"%s/%s-XXXXXX",
 		TMP_DIR,
 		channel->evt_log
 	);
+
+	replace_slash(tmp_file);
 
 	if ((bookmark = EvtCreateBookmark(NULL)) == NULL)
 	{
@@ -974,9 +983,7 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 			channel->evt_log
 		);
 
-		/* Replace '/' by ' ' in the channel name */
-		if (strchr(channel->evt_log, '/'))
-			*(strrchr(channel->bookmark_filename, '/')) = ' ';
+		replace_slash(channel->bookmark_filename);
 
 		/* Try to read existing bookmark */
 		if ((bookmark = read_bookmark(channel)) != NULL)
