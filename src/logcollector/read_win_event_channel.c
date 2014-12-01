@@ -29,9 +29,22 @@
     #define WC_ERR_INVALID_CHARS 0x80
 #endif
 
+/* Logging levels */
+#define WINEVENT_AUDIT		0
+#define WINEVENT_CRITICAL	1
+#define WINEVENT_ERROR		2
+#define WINEVENT_WARNING	3
+#define WINEVENT_INFORMATION	4
+#define WINEVENT_VERBOSE	5
+
+/* Audit types */
+#define WINEVENT_AUDIT_FAILURE 0x10000000000000LL
+#define WINEVENT_AUDIT_SUCCESS 0x20000000000000L
+
 #include "shared.h"
 #include "logcollector.h"
 
+#include <stdint.h>
 #include <winevt.h>
 #include <sec_api/stdlib_s.h>
 #include <winerror.h>
@@ -40,7 +53,6 @@
 typedef struct _os_event
 {
 	char *name;
-	char *level;
 	unsigned int id;
 	char *source;
 	SID *uid;
@@ -50,6 +62,9 @@ typedef struct _os_event
 	char *message;
 	ULONGLONG time_created;
 	char *timestamp;
+	int64_t keywords;
+	int64_t level;
+	char *category;
 } os_event;
 
 typedef struct _os_channel
@@ -63,7 +78,6 @@ typedef struct _os_channel
 void free_event(os_event *event)
 {
 	free(event->name);
-	free(event->level);
 	free(event->source);
 	free(event->user);
 	free(event->domain);
@@ -210,7 +224,7 @@ wchar_t *convert_unix_string(char *string)
 
 char *get_property_value(PEVT_VARIANT value)
 {
-	if (EvtVarTypeNull == value->Type)
+	if (value->Type == EvtVarTypeNull)
 		return(NULL);
 
 	return(convert_windows_string(value->StringVal));
@@ -786,6 +800,42 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 	event.uid = properties_values[EvtSystemUserID].Type == EvtVarTypeNull ? NULL : properties_values[EvtSystemUserID].SidVal;
 	event.computer = get_property_value(&properties_values[EvtSystemComputer]);
 	event.time_created = properties_values[EvtSystemTimeCreated].FileTimeVal;
+	event.keywords = properties_values[EvtSystemKeywords].Type == EvtVarTypeNull ? 0 : properties_values[EvtSystemKeywords].UInt64Val;
+	event.level = properties_values[EvtSystemLevel].Type == EvtVarTypeNull ? -1 : properties_values[EvtSystemLevel].ByteVal;
+
+	switch(event.level)
+	{
+		case WINEVENT_CRITICAL:
+			event.category = "CRITICAL";
+			break;
+		case WINEVENT_ERROR:
+			event.category = "ERROR";
+			break;
+		case WINEVENT_WARNING:
+			event.category = "WARNING";
+			break;
+		case WINEVENT_INFORMATION:
+			event.category = "INFORMATION";
+			break;
+		case WINEVENT_VERBOSE:
+			event.category = "DEBUG";
+			break;
+		case WINEVENT_AUDIT:
+			if (event.keywords & WINEVENT_AUDIT_FAILURE)
+			{
+				event.category = "AUDIT_FAILURE";
+				break;
+			}
+			else if (event.keywords & WINEVENT_AUDIT_SUCCESS)
+			{
+				event.category = "AUDIT_SUCCESS";
+				break;
+			}
+			/* else fall through */
+		default:
+			event.category = "Unknown";
+			break;
+	}
 
 	if ((event.timestamp = WinEvtTimeToString(event.time_created)) == NULL)
 	{
@@ -800,16 +850,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 
 	/* Determine user and domain */
 	get_username_and_domain(&event);
-
-	/* Get event log level*/
-	if ((event.level = get_message(evt, properties_values[EvtSystemProviderName].StringVal, EvtFormatMessageLevel)) == NULL)
-	{
-		log2file(
-			"%s: ERROR: Could not get level for (%s)",
-			ARGV0,
-			channel->evt_log
-		);
-	}
 
 	/* Get event log message */
 	if ((event.message = get_message(evt, properties_values[EvtSystemProviderName].StringVal, EvtFormatMessageEvent)) == NULL)
@@ -832,7 +872,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 		"%s WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
 		event.timestamp,
 		event.name,
-		event.level && strlen(event.level) ? event.level : "UNKNOWN",
+		event.category,
 		event.id,
 		event.source && strlen(event.source) ? event.source : "no source",
 		event.user && strlen(event.user) ? event.user : "(no user)",
