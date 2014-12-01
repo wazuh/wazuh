@@ -74,19 +74,55 @@ void free_event(os_event *event)
 
 char *convert_windows_string(LPCWSTR string)
 {
-	char new_value[OS_MAXSTR];
+	char *dest = NULL;
+	size_t size = 0;
 	int result = 0;
 
 	if (string == NULL)
 		return(NULL);
+
+	/* determine size required */
+	size = WideCharToMultiByte(
+		CP_UTF8,
+		WC_ERR_INVALID_CHARS,
+		string,
+		-1,
+		NULL,
+		0,
+		NULL,
+		NULL
+	);
+
+	if (size == 0)
+	{
+		log2file(
+			"%s: ERROR: Could not WideCharToMultiByte() when determining size which returned (%lu)",
+			ARGV0,
+			GetLastError()
+		);
+
+		return(NULL);
+	}
+
+	if ((dest = calloc(size, sizeof(char))) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not calloc() memory for WideCharToMultiByte() which returned [(%d)-(%s)]",
+			ARGV0,
+			errno,
+			strerror(errno)
+		);
+
+		return(NULL);
+	}
 
 	result = WideCharToMultiByte(
 		CP_UTF8,
 		WC_ERR_INVALID_CHARS,
 		string,
 		-1,
-		new_value,
-		sizeof(new_value),
+		dest,
+		size,
 		NULL,
 		NULL
 	);
@@ -99,10 +135,77 @@ char *convert_windows_string(LPCWSTR string)
 			GetLastError()
 		);
 
+		free(dest);
 		return(NULL);
 	}
 
-	return(strdup(new_value));
+	return(dest);
+}
+
+wchar_t *convert_unix_string(char *string)
+{
+	wchar_t *dest = NULL;
+	size_t size = 0;
+	int result = 0;
+
+	if (string == NULL)
+		return(NULL);
+
+	/* determine size required */
+	size = MultiByteToWideChar(
+		CP_UTF8,
+		MB_ERR_INVALID_CHARS,
+		string,
+		-1,
+		NULL,
+		0
+	);
+
+	if (size == 0)
+	{
+		log2file(
+			"%s: ERROR: Could not MultiByteToWideChar() when determining size which returned (%lu)",
+			ARGV0,
+			GetLastError()
+		);
+
+		return(NULL);
+	}
+
+	if ((dest = calloc(size, sizeof(wchar_t))) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not calloc() memory for MultiByteToWideChar() which returned [(%d)-(%s)]",
+			ARGV0,
+			errno,
+			strerror(errno)
+		);
+
+		return(NULL);
+	}
+
+	result = MultiByteToWideChar(
+		CP_UTF8,
+		MB_ERR_INVALID_CHARS,
+		string,
+		-1,
+		dest,
+		size
+	);
+
+	if (result == 0)
+	{
+		log2file(
+			"%s: ERROR: Could not MultiByteToWideChar() which returned (%lu)",
+			ARGV0,
+			GetLastError()
+		);
+
+		free(dest);
+		return(NULL);
+	}
+
+	return(dest);
 }
 
 char *get_property_value(PEVT_VARIANT value)
@@ -767,7 +870,6 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 {
 	wchar_t		*wchannel = NULL;
 	wchar_t		*wquery = NULL;
-	size_t		size = 0;
 	os_channel  	*channel = NULL;
 	DWORD		flags = EvtSubscribeToFutureEvents;
 	EVT_HANDLE 	bookmark = NULL;
@@ -788,26 +890,11 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 
 	channel->evt_log = evt_log;
 
-	size = strlen(evt_log) + 1;
-
-	if ((wchannel = calloc(size, sizeof(wchar_t))) == NULL)
-	{
-		log2file(
-			"%s: ERROR: Could not calloc() memory for wchannel to start reading (%s) which returned [(%d)-(%s)]",
-			ARGV0,
-			channel->evt_log,
-			errno,
-			strerror(errno)
-		);
-
-		goto error;
-        }
-
 	/* Convert evt_log to windows string */
-	if (mbstowcs_s(&size, wchannel, size, evt_log, size - 1))
+	if ((wchannel = convert_unix_string(channel->evt_log)) == NULL)
 	{
 		log2file(
-			"%s: ERROR: Could not mbstowcs_s() for wchannel to start reading (%s) which returned [(%d)-(%s)]",
+			"%s: ERROR: Could not convert_unix_string() evt_log for (%s) which returned [(%d)-(%s)]",
 			ARGV0,
 			channel->evt_log,
 			errno,
@@ -820,25 +907,10 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 	/* Convert query to windows string */
 	if (query)
 	{
-		size = strlen(query) + 1;
-
-		if ((wquery = calloc(size, sizeof(wchar_t))) == NULL)
+		if ((wquery = convert_unix_string(query)) == NULL)
 		{
 			log2file(
-				"%s: ERROR: Could not calloc() memory for wquery to start reading (%s) which returned [(%d)-(%s)]",
-				ARGV0,
-				channel->evt_log,
-				errno,
-				strerror(errno)
-			);
-
-			goto error;
-		}
-
-		if (mbstowcs_s(&size, wquery, size, query, size - 1))
-		{
-			log2file(
-				"%s: ERROR: Could not mbstowcs_s() for wquery to start reading (%s) which returned [(%d)-(%s)]",
+				"%s: ERROR: Could not convert_unix_string() query for (%s) which returned [(%d)-(%s)]",
 				ARGV0,
 				channel->evt_log,
 				errno,
