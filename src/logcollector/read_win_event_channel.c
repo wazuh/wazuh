@@ -56,7 +56,6 @@ typedef struct _os_channel
 {
 	char bookmark_enabled;
 	EVT_HANDLE bookmark;
-	FILE *bookmark_file;
 	char *evt_log;
 	char bookmark_filename[OS_MAXSTR];
 } os_channel;
@@ -209,10 +208,10 @@ int get_username_and_domain(os_event *event)
 	/* success */
 	return(1);
 
-	error:
-		event->user = NULL;
-		event->domain = NULL;
-		LocalFree(StringSid);
+error:
+	event->user = NULL;
+	event->domain = NULL;
+	LocalFree(StringSid);
 
 	return(0);
 }
@@ -310,42 +309,19 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
 	return(message);
 }
 
-/* Create a new bookmark */
-int create_bookmark(os_channel *channel)
+/* Read an existing bookmark (if one exists) */
+EVT_HANDLE read_bookmark(os_channel *channel)
 {
-	/* Create new bookmark */
-	channel->bookmark = EvtCreateBookmark(NULL);
-
-	/* Create the file */
-	if ((channel->bookmark_file = fopen(channel->bookmark_filename, "w")) == NULL)
-	{
-		log2file(
-			"%s: ERROR: Could not fopen() new bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-			ARGV0,
-			channel->bookmark_filename,
-			channel->evt_log,
-			errno,
-			strerror(errno)
-		);
-
-		return(0);
-	}
-
-	/* success */
-	return(1);
-}
-
-/* Open an existing bookmark (if any) and read it */
-int open_bookmark(os_channel *channel)
-{
+	EVT_HANDLE bookmark = NULL;
 	size_t size = 0;
+	FILE *fp = NULL;
 	wchar_t bookmark_xml[OS_MAXSTR];
 
 	/* If we have a stored bookmark, start from it */
-	if ((channel->bookmark_file = fopen(channel->bookmark_filename, "r+")) == NULL)
+	if ((fp = fopen(channel->bookmark_filename, "r")) == NULL)
 	{
-		/* Check if the error was not because the file did not
-		 * exist which should be logged
+		/* Check if the error was not because the
+		 * file did not exist which should be logged
 		 */
 		if (errno != ENOENT)
 		{
@@ -359,26 +335,12 @@ int open_bookmark(os_channel *channel)
 			);
 		}
 
-		goto error;
+		return(NULL);
 	}
 
-	if ((fseek(channel->bookmark_file, 0, SEEK_SET)) != 0)
-	{
-		log2file(
-			"%s: ERROR: Could not fseek() when opening bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-			ARGV0,
-			channel->bookmark_filename,
-			channel->evt_log,
-			errno,
-			strerror(errno)
-		);
+	size = fread(bookmark_xml, sizeof(wchar_t), OS_MAXSTR, fp);
 
-		goto error;
-	}
-
-	size = fread(bookmark_xml, sizeof(wchar_t), OS_MAXSTR, channel->bookmark_file);
-
-	if (ferror(channel->bookmark_file))
+	if (ferror(fp))
 	{
 		log2file(
 			"%s: ERROR: Could not fread() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
@@ -389,18 +351,21 @@ int open_bookmark(os_channel *channel)
 			strerror(errno)
 		);
 
-		goto error;
+		fclose(fp);
+		return(NULL);
 	}
+
+	fclose(fp);
 
 	/* Make sure bookmark data was read */
 	if (size == 0)
-		goto error;
+		return(NULL);
 
 	/* Make sure bookmark is terminated properly */
 	bookmark_xml[size] = L'\0';
 
 	/* Create bookmark from saved xml */
-	if ((channel->bookmark = EvtCreateBookmark(bookmark_xml)) == NULL)
+	if ((bookmark = EvtCreateBookmark(bookmark_xml)) == NULL)
 	{
 		log2file(
 			"%s: ERROR: Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
@@ -410,17 +375,10 @@ int open_bookmark(os_channel *channel)
 			GetLastError()
 		);
 
-		goto error;
+		return(NULL);
 	}
 
-	/* success */
-	return(1);
-
-	error:
-		if (channel->bookmark_file)
-			fclose(channel->bookmark_file);
-
-	return(0);
+	return(bookmark);
 }
 
 /* Update the log position of a bookmark */
@@ -429,10 +387,34 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 	DWORD size = 0;
 	DWORD count = 0;
 	wchar_t *buffer = NULL;
-	int i = 0;
 	int result = 0;
+	EVT_HANDLE bookmark = NULL;
+	FILE *fp = NULL;
+	char tmp_file[OS_MAXSTR];
 
-	if (!EvtUpdateBookmark(channel->bookmark, evt))
+	/* Create bookmark temporary file name */
+	snprintf(
+		tmp_file,
+		sizeof(tmp_file),
+		"%s/%sXXXXXX",
+		TMP_DIR,
+		channel->evt_log
+	);
+
+	if ((bookmark = EvtCreateBookmark(NULL)) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
+			ARGV0,
+			channel->bookmark_filename,
+			channel->evt_log,
+			GetLastError()
+		);
+
+		return(0);
+	}
+
+	if (!EvtUpdateBookmark(bookmark, evt))
 	{
 		log2file(
 			"%s: ERROR: Could not EvtUpdateBookmark() bookmark (%s) for (%s) which returned (%lu)",
@@ -446,7 +428,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 	}
 
 	/* Make initial call to determine buffer size */
-	result = EvtRender(NULL, channel->bookmark, EvtRenderBookmark, 0, NULL, &size, &count);
+	result = EvtRender(NULL, bookmark, EvtRenderBookmark, 0, NULL, &size, &count);
 
 	if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER)
 	{
@@ -475,7 +457,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 		return(0);
 	}
 
-	if (!EvtRender(NULL, channel->bookmark, EvtRenderBookmark, size, buffer, &size, &count))
+	if (!EvtRender(NULL, bookmark, EvtRenderBookmark, size, buffer, &size, &count))
 	{
 		log2file(
 			"%s: ERROR: Could not EvtRender() bookmark (%s) for (%s) which returned (%lu)",
@@ -488,42 +470,74 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 		return(0);
 	}
 
-	if ((fseek(channel->bookmark_file, 0, SEEK_SET)) != 0)
+	if (mkstemp_ex(tmp_file))
 	{
 		log2file(
-			"%s: ERROR: Could not fseek() when updating bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+			"%s: ERROR: Could not mkstemp_ex() temporary bookmark (%s) for (%s)",
 			ARGV0,
-			channel->bookmark_filename,
-			channel->evt_log,
-			errno,
-			strerror(errno)
+			tmp_file,
+			channel->evt_log
 		);
 
 		return(0);
 	}
 
-	if (fwrite(buffer, 1, size, channel->bookmark_file) < size)
+	if ((fp = fopen(tmp_file, "w")) == NULL)
 	{
 		log2file(
-			"%s: ERROR: Could not fwrite() to bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+			"%s: ERROR: Could not fopen() temporary bookmark (%s) for (%s) which returned [(%d)-(%s)]",
 			ARGV0,
-			channel->bookmark_filename,
+			tmp_file,
 			channel->evt_log,
 			errno,
 			strerror(errno)
 		);
 
-		return(0);
+		goto error;
 	}
 
-	/* Write spaces to be certain to overwrite previous content */
-	for (i = 0; i < size; ++i)
-		fputc(' ', channel->bookmark_file);
+	if ((fwrite(buffer, 1, size, fp)) < size)
+	{
+		log2file(
+			"%s: ERROR: Could not fwrite() to temporary bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+			ARGV0,
+			tmp_file,
+			channel->evt_log,
+			errno,
+			strerror(errno)
+		);
 
-	fflush(channel->bookmark_file);
+		goto error;
+	}
+
+	fclose(fp);
+
+	if (rename_ex(tmp_file, channel->bookmark_filename))
+	{
+		log2file(
+			"%s: ERROR: Could not rename_ex() temporary bookmark (%s) to (%s) for (%s)",
+			ARGV0,
+			tmp_file,
+			channel->bookmark_filename,
+			channel->evt_log
+		);
+
+		goto error;
+	}
 
 	/* success */
 	return(1);
+
+error:
+	if (fp)
+		fclose(fp);
+
+	if (unlink(tmp_file))
+	{
+		log2file(DELETE_ERROR, ARGV0, tmp_file, errno, strerror(errno));
+	}
+
+	return(0);
 }
 
 /* Format Timestamp from EventLog */
@@ -595,8 +609,8 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
 
 	return(timestamp);
 
-	error:
-		free(timestamp);
+error:
+	free(timestamp);
 
 	return(NULL);
 }
@@ -732,9 +746,9 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     	if (channel->bookmark_enabled)
 		update_bookmark(evt, channel);
 
-	error:
-		free(properties_values);
-		free_event(&event);
+error:
+	free(properties_values);
+	free_event(&event);
 
 	return;
 }
@@ -756,7 +770,7 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 	size_t		size = 0;
 	os_channel  	*channel = NULL;
 	DWORD		flags = EvtSubscribeToFutureEvents;
-	EVT_HANDLE	bookmark = NULL;
+	EVT_HANDLE 	bookmark = NULL;
 	EVT_HANDLE	result = NULL;
 
 	if ((channel = calloc(1, sizeof(os_channel))) == NULL)
@@ -839,7 +853,7 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 
 	if (channel->bookmark_enabled)
 	{
-		/* Create bookmark file name location */
+		/* Create bookmark file name */
 		snprintf(
 			channel->bookmark_filename,
 			sizeof(channel->bookmark_filename),
@@ -853,18 +867,9 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 			*(strrchr(channel->bookmark_filename, '/')) = ' ';
 
 		/* Try to read existing bookmark */
-		if (!open_bookmark(channel))
-		{
-			/* Create new bookmark */
-			if (!create_bookmark(channel))
-			{
-				goto error;
-			}
-		}
-		else
+		if ((bookmark = read_bookmark(channel)) != NULL)
 		{
 			flags = EvtSubscribeStartAfterBookmark;
-			bookmark = channel->bookmark;
 		}
 	}
 
@@ -910,13 +915,10 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 
 	return;
 
-	error:
-		if (channel->bookmark_file)
-			fclose(channel->bookmark_file);
-
-		free(wchannel);
-		free(wquery);
-		free(channel);
+error:
+	free(wchannel);
+	free(wquery);
+	free(channel);
 
 	return;
 }
