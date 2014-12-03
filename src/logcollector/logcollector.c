@@ -812,21 +812,11 @@ void win_format_event_string(char *string)
 
     while(*string != '\0')
     {
-        if (*string == '\n' || *string == '\r')
+        if (*string == '\n' || *string == '\r' || *string == ':')
         {
-            *string = ' ';
-            string++;
-
-            while(*string == '\t')
-            {
+            if (*string == '\n' || *string == '\r')
                 *string = ' ';
-                string++;
-            }
 
-            continue;
-        }
-        else if (*string == ':')
-        {
             string++;
 
             while(*string == '\t')
