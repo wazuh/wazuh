@@ -30,6 +30,7 @@ typedef struct _rkconfig {
     int scanall;
     int readall;
     int disabled;
+    short skip_nfs;
 
     int time;
     int queue;

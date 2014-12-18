@@ -9,7 +9,6 @@
 
 #include "shared.h"
 #include "rootcheck.h"
-#include <sys/statfs.h>
 
 /* Prototypes */
 static int read_sys_file(const char *file_name, int do_read);
@@ -148,6 +147,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
     DIR *dp;
     struct dirent *entry;
     struct stat statbuf;
+    short is_nfs;
 
 #ifndef WIN32
     const char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
@@ -172,9 +172,23 @@ static int read_sys_dir(const char *dir_name, int do_read)
         i = 0;
     }
 
-    /* Get the number of nodes. The total number on opendir must be the same. */
-    if (lstat(dir_name, &statbuf) < 0) {
-        return (-1);
+    /* Should we check for NFS? */
+    if(rootcheck.skip_nfs)
+    {
+        is_nfs = IsNFS(dir_name);
+        if(is_nfs != 0)
+        {
+            // Error will be -1, and 1 means skipped
+            return(is_nfs);
+        }
+    }
+
+    /* Getting the number of nodes. The total number on opendir
+     * must be the same
+     */
+    if(lstat(dir_name, &statbuf) < 0)
+    {
+        return(-1);
     }
 
     /* Current device id */
