@@ -90,6 +90,9 @@ Install()
     if [ "X$NUNAME" = "XDragonflyBSD" ]; then
         MAKEBIN=gmake
     fi
+    if [ "X%NUNAME" = "XBitrig" ]; then
+	MAKEBIN=gmake
+    fi
 
 
     # Makefile
