@@ -372,5 +372,5 @@ int main(int argc, char **argv)
     exit(0);
 }
 
-#endif /* OPENSSL_ENABLED */
+#endif /* LIBOPENSSL_ENABLED */
 
