@@ -501,7 +501,7 @@ settings:
 	@echo "    USE_GEOIP:        ${USE_GEOIP}"
 	@echo "    USE_PRELUDE:      ${USE_PRELUDE}"
 	@echo "    USE_OPENSSL:      ${USE_OPENSSL}"
-	@echo "    USE_PICVIS:       ${USE_PICVIZ}"
+	@echo "    USE_PICVIZ:       ${USE_PICVIZ}"
 	@echo "Mysql settings:"
 	@echo "    includes:         ${MI}"
 	@echo "    libs:             ${ML}"
