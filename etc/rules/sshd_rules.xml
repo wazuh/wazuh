@@ -321,13 +321,18 @@
   <!-- http://www.gossamer-threads.com/lists/openssh/users/47438 -->
   <rule id="5747" level="6">
     <if_sid>5700</if_sid>
-    <match>bad client public DH value [preauth]$</match>
-    <description>ssh bad client public DH value [preauth]</description>
+    <match>bad client public DH value</match>
+    <description>ssh bad client public DH value</description>
   </rule>
 
+  <!-- log sample with context:
+       Nov 22 19:24:52 server sshd[4045]: Connection from 117.117.198.5 port 60304
+       Nov 22 19:24:55 server sshd[4046]: Corrupted MAC on input.
+       Nov 22 19:25:15 server sshd[4046]: Connection closed by 117.117.198.5
+  -->
   <rule id="5748" level="6">
     <if_sid>5700</if_sid>
-    <match>Corrupted MAC on input. [preauth]$</match>
+    <match>Corrupted MAC on input.</match>
     <description>ssh corrupted MAC on input</description>
   </rule>
 

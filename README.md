@@ -19,7 +19,7 @@ The current stable releases are available on the ossec website.
 
 ## Development ##
 
-The development version are hosted on Github and just a simple git clone away. 
+The development version is hosted on GitHub and just a simple git clone away. 
 
 [![Build Status](https://travis-ci.org/ossec/ossec-hids.png?branch=master)](https://travis-ci.org/ossec/ossec-hids)
 

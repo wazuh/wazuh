@@ -100,12 +100,12 @@ int connect_server(int initial_id)
         /* IPv6 address: */
         if(strchr(tmp_str,':') != NULL)
         {
-            verbose("%s: INFO: Using IPv6 for: %s .", ARGV0, tmp_str);
+            verbose("%s: INFO: Using IPv6 (%s).", ARGV0, tmp_str);
             agt->sock = OS_ConnectUDP(agt->port, tmp_str, 1);
         }
         else
         {
-            verbose("%s: INFO: Using IPv4 for: %s .", ARGV0, tmp_str);
+            verbose("%s: INFO: Using IPv4 (%s).", ARGV0, tmp_str);
             agt->sock = OS_ConnectUDP(agt->port, tmp_str, 0);
         }
 
