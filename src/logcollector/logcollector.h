@@ -81,6 +81,7 @@ void win_startel();
 void win_readel();
 void win_read_vista_sec();
 void win_start_event_channel(char *evt_log, char future, char *query);
+void win_format_event_string(char *string);
 #endif
 
 
