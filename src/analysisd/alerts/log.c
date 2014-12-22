@@ -19,7 +19,7 @@
 #include "eventinfo.h"
 #include "config.h"
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
 /* GeoIP Stuff */
 #include "GeoIP.h"
 #include "GeoIPCity.h"
@@ -105,7 +105,7 @@ static void GeoIP_Lookup(const char *ip, char *buffer, const size_t length)
 	snprintf(buffer, length, "Unknown (4)");
 	return;
 }
-#endif /* GEOIP */
+#endif /* LIBGEOIP_ENABLED */
 
 /* Drop/allow patterns */
 OSMatch FWDROPpm;
@@ -183,7 +183,7 @@ void OS_Store(Eventinfo *lf)
 
 void OS_LogOutput(Eventinfo *lf)
 {
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     char geoip_msg_src[OS_SIZE_1024 +1];
     char geoip_msg_dst[OS_SIZE_1024 +1];
     geoip_msg_src[0] = '\0';
@@ -215,7 +215,7 @@ void OS_LogOutput(Eventinfo *lf)
             lf->srcip == NULL?"":"\nSrc IP: ",
             lf->srcip == NULL?"":lf->srcip,
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
             (strlen(geoip_msg_src) == 0)?"":"\nSrc Location: ",
             (strlen(geoip_msg_src) == 0)?"":geoip_msg_src,
 #else
@@ -229,7 +229,7 @@ void OS_LogOutput(Eventinfo *lf)
             lf->dstip == NULL?"":"\nDst IP: ",
             lf->dstip == NULL?"":lf->dstip,
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
             (strlen(geoip_msg_dst) == 0)?"":"\nDst Location: ",
             (strlen(geoip_msg_dst) == 0)?"":geoip_msg_dst,
 #else
@@ -270,7 +270,7 @@ void OS_LogOutput(Eventinfo *lf)
 /* _writefile: v0.2, 2005/02/09 */
 void OS_Log(Eventinfo *lf)
 {
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     char geoip_msg_src[OS_SIZE_1024 +1];
     char geoip_msg_dst[OS_SIZE_1024 +1];
     geoip_msg_src[0] = '\0';
@@ -303,7 +303,7 @@ void OS_Log(Eventinfo *lf)
             lf->srcip == NULL?"":"\nSrc IP: ",
             lf->srcip == NULL?"":lf->srcip,
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
             (strlen(geoip_msg_src) == 0)?"":"\nSrc Location: ",
             (strlen(geoip_msg_src) == 0)?"":geoip_msg_src,
 #else
@@ -317,7 +317,7 @@ void OS_Log(Eventinfo *lf)
             lf->dstip == NULL?"":"\nDst IP: ",
             lf->dstip == NULL?"":lf->dstip,
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
             (strlen(geoip_msg_dst) == 0)?"":"\nDst Location: ",
             (strlen(geoip_msg_dst) == 0)?"":geoip_msg_dst,
 #else

@@ -13,7 +13,7 @@
  */
 
 
-#ifdef PRELUDE
+#ifdef PRELUDE_OUTPUT_ENABLED
 
 #ifndef _PRELUDE_H_
 #define _PRELUDE_H_

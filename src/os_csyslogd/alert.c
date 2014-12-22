@@ -121,7 +121,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
                 al_data->location
         );
         field_add_string(syslog_msg, OS_SIZE_2048, " srcip: %s;", al_data->srcip );
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
         field_add_string(syslog_msg, OS_SIZE_2048, " srccity: %s;", al_data->geoipdatasrc );
         field_add_string(syslog_msg, OS_SIZE_2048, " dstcity: %s;", al_data->geoipdatadst );
 #endif
@@ -155,7 +155,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         field_add_string(syslog_msg, OS_SIZE_2048, " shost=%s", al_data->srcip );
         field_add_string(syslog_msg, OS_SIZE_2048, " suser=%s", al_data->user );
         field_add_string(syslog_msg, OS_SIZE_2048, " dst=%s", al_data->dstip );
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
         field_add_string(syslog_msg, OS_SIZE_2048, " cs3Label=SrcCity cs3=%s", al_data->geoipdatasrc );
         field_add_string(syslog_msg, OS_SIZE_2048, " cs4Label=DstCity cs4=%s", al_data->geoipdatadst );
 #endif
@@ -201,7 +201,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         if (al_data->new_md5)    cJSON_AddStringToObject(root,   "md5_new",    al_data->new_md5);
         if (al_data->old_sha1)   cJSON_AddStringToObject(root,   "sha1_old",   al_data->old_sha1);
         if (al_data->new_sha1)   cJSON_AddStringToObject(root,   "sha1_new",   al_data->new_sha1);
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
         if (al_data->geoipdatasrc) cJSON_AddStringToObject(root, "src_city", al_data->geoipdatasrc);
         if (al_data->geoipdatadst) cJSON_AddStringToObject(root, "dst_city", al_data->geoipdatadst);
 #endif
@@ -242,7 +242,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         if( field_add_string(syslog_msg, OS_SIZE_2048, " src_ip=\"%s\",", al_data->srcip ) > 0 )
             field_add_int(syslog_msg, OS_SIZE_2048, " src_port=%d,", al_data->srcport );
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
         field_add_string(syslog_msg, OS_SIZE_2048, " src_city=\"%s\",", al_data->geoipdatasrc );
         field_add_string(syslog_msg, OS_SIZE_2048, " dst_city=\"%s\",", al_data->geoipdatadst );
 #endif

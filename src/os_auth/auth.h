@@ -36,7 +36,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 
-#ifdef USE_OPENSSL
+#ifdef LIBOPENSSL_ENABLED
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -56,6 +56,6 @@ int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key);
 int load_ca_cert(SSL_CTX *ctx, const char *ca_cert);
 int verify_callback(int ok, X509_STORE_CTX *store);
 
-#endif /* USE_OPENSSL */
+#endif /* LIBOPENSSL_ENABLED */
 #endif /* _AUTHD_H */
 

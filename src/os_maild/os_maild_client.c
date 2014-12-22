@@ -15,7 +15,7 @@
 #include "maild.h"
 
 /* GeoIP Stuff */
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
 #include "config/config.h"
 #endif
 
@@ -33,7 +33,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
     char extra_data[OS_MAXSTR + 1];
     char log_string[OS_MAXSTR / 4 + 1];
     char *subject_host;
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     char geoip_msg_src[OS_SIZE_1024 +1];
     char geoip_msg_dst[OS_SIZE_1024 +1];
 #endif
@@ -191,7 +191,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
         *subject_host = '-';
     }
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     /* Get GeoIP information */
     if (Mail->geoip) {
        if (al_data->geoipdatasrc) {
@@ -212,7 +212,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
 #endif
 
     /* Body */
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     snprintf(mail->body, BODY_SIZE -1, MAIL_BODY,
             al_data->date,
             al_data->location,

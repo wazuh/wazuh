@@ -26,7 +26,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
     const char *xml_email_level = "email_alert_level";
     const char *xml_log_level = "log_alert_level";
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     /* GeoIP */
     const char *xml_log_geoip = "use_geoip";
 #endif
@@ -69,7 +69,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
             }
             Config->logbylevel  = (u_int8_t) atoi(node[i]->content);
         }
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
 	/* Enable GeoIP */
 	else if(strcmp(node[i]->element, xml_log_geoip) == 0)
 	{

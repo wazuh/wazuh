@@ -11,6 +11,8 @@
  * Foundation
  */
 
+#ifdef PICVIZ_OUTPUT_ENABLED
+
 #include <stdio.h>
 #include "eventinfo.h"
 
@@ -23,3 +25,4 @@ void OS_PicvizClose(void);
 
 #endif /* _PICVIZ_H_ */
 
+#endif

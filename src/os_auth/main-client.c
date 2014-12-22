@@ -28,7 +28,7 @@
 #include "shared.h"
 #include "check_cert.h"
 
-#ifndef USE_OPENSSL
+#ifndef LIBOPENSSL_ENABLED
 
 int main()
 {
@@ -372,5 +372,5 @@ int main(int argc, char **argv)
     exit(0);
 }
 
-#endif /* USE_OPENSSL */
+#endif /* LIBOPENSSL_ENABLED */
 

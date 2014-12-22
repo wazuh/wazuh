@@ -25,7 +25,7 @@
  *
  */
 
-#ifdef USE_OPENSSL
+#ifdef LIBOPENSSL_ENABLED
 
 #include "shared.h"
 #include "check_cert.h"
@@ -316,5 +316,5 @@ char *asn1_to_cstr(ASN1_STRING *astr)
     return cstr;
 }
 
-#endif /* USE_OPENSSL */
+#endif /* LIBOPENSSL_ENABLED */
 

@@ -59,16 +59,16 @@ const unsigned char insert_map[256] =
 };
 
 /* Using Mysql */
-#ifdef UMYSQL
+#ifdef MYSQL_DATABASE_ENABLED
 #include <mysql.h>
 #endif
 
 /* Using PostgreSQL */
-#ifdef UPOSTGRES
+#ifdef PGSQL_DATABASE_ENABLED
 #include <libpq-fe.h>
 #endif
 
-#if defined(UMYSQL) || defined(UPOSTGRES)
+#if defined(MYSQL_DATABASE_ENABLED) || defined(PGSQL_DATABASE_ENABLED)
 static void osdb_checkerror(void);
 static void osdb_seterror(void);
 #endif
@@ -114,7 +114,7 @@ void osdb_escapestr(char *str)
     }
 }
 
-#if defined(UMYSQL) || defined(UPOSTGRES)
+#if defined(MYSQL_DATABASE_ENABLED) || defined(PGSQL_DATABASE_ENABLED)
 
 /** void osdb_checkerror()
  * Checks for errors and handle it appropriately.
@@ -196,7 +196,7 @@ void osdb_setconfig(DBConfig *db_config)
 
 
 /** MySQL calls **/
-#ifdef UMYSQL
+#ifdef MYSQL_DATABASE_ENABLED
 
 
 /* Create the database connection.
@@ -322,7 +322,7 @@ int mysql_osdb_query_select(void *db_conn, const char *query)
 
 
 /** PostGRES Calls **/
-#if defined UPOSTGRES
+#ifdef PGSQL_DATABASE_ENABLED
 
 
 /** void *postgresql_osdb_connect(char *host, char *user, char *pass, char *db)
@@ -436,7 +436,7 @@ int postgresql_osdb_query_select(void *db_conn, const char *query)
 
 
 /* Everything else when db is not defined. */
-#if !defined(UPOSTGRES) && !defined(UMYSQL)
+#if !defined(PGSQL_DATABASE_ENABLED) && !defined(MYSQL_DATABASE_ENABLED)
 
 
 

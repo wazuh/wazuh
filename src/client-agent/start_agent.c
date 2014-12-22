@@ -173,7 +173,7 @@ void start_agent(int is_startup)
     snprintf(msg, OS_MAXSTR, "%s%s", CONTROL_HEADER, HC_STARTUP);
 
 
-    #ifdef ONEWAY
+    #ifdef ONEWAY_ENABLED
     return;
     #endif
 
