@@ -16,7 +16,7 @@
 
 short IsNFS(const char *dir_name)
 {
-#ifdef _CAN_CHECK_FS_TYPE
+#if defined(__linux__) || defined(__FreeBSD__)
     struct statfs stfs;
 
     /* ignore NFS (0x6969) or CIFS (0xFF534D42) mounts */
@@ -30,7 +30,7 @@ short IsNFS(const char *dir_name)
     else
     {
         /* Throw an error and retreat! */
-        merror(STATFS_ERORR, ARGV0, strerror(errno));
+        merror("ERROR: statfs('%s') produced error: %s", dir_name, strerror(errno));
         return(-1);
     }
 #else

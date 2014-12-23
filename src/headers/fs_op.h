@@ -19,9 +19,13 @@
 #ifndef _OS_FS
 #define _OS_FS
 
-#ifdef Linux
-#define _CAN_CHECK_FS_TYPE
+#ifdef __linux__
 #include <sys/vfs.h>
+#endif
+
+#ifdef __FreeBSD__
+#include <sys/param.h>
+#include <sys/mount.h>
 #endif
 
 short IsNFS(const char *file)  __attribute__((nonnull));
