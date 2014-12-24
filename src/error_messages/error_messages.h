@@ -136,9 +136,7 @@
 #define INVALID_CAT      "%s(1273): ERROR: Invalid category '%s' chosen."
 #define INVALID_CONFIG   "%s(1274): ERROR: Invalid configuration. Element '%s': %s."
 #define INVALID_HOSTNAME "%s(1275): ERROR: Invalid hostname in syslog message: '%s'."
-#ifdef GEOIP
 #define INVALID_GEOIP_DB "%s(1276): ERROR: Cannot open GeoIP database: '%s'."
-#endif
 
 
 /* Log collector */

@@ -1,5 +1,5 @@
 
-#ifdef ZEROMQ_OUTPUT
+#ifdef ZEROMQ_OUTPUT_ENABLED
 
 #include "shared.h"
 #include "eventinfo.h"

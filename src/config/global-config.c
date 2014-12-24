@@ -159,7 +159,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_heloserver = "helo_server";
     const char *xml_mailmaxperhour = "email_maxperhour";
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     /* GeoIP */
     const char *xml_geoip_db_path = "geoip_db_path";
     const char *xml_geoip6_db_path = "geoip6_db_path";
@@ -570,7 +570,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
             }
         }
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
         /* GeoIP v4 DB location */
         else if(strcmp(node[i]->element, xml_geoip_db_path) == 0)
         {

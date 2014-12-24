@@ -23,9 +23,14 @@ OSSEC_USER?=ossec
 OSSEC_USER_MAIL?=ossecm
 OSSEC_USER_REM?=ossecr
 
-USE_PRELUDE?=0
-USE_ZEROMQ?=0
-USE_GEOIP?=0
+USE_PRELUDE?=no
+USE_ZEROMQ?=no
+USE_PICVIZ?=yes
+USE_GEOIP?=no
+USE_OPENSSL?=auto
+
+ONEWAY?=no
+CLEANFULL?=no
 
 DEFINES=-DMAX_AGENTS=${MAXAGENTS} -DOSSECHIDS
 DEFINES+=-DDEFAULTDIR=\"${PREFIX}\"
@@ -38,7 +43,7 @@ DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
 LDFLAGS+=-lm
 
 ifeq (${uname_S},Linux)
-		DEFINES+=-DUSEINOTIFY
+		DEFINES+=-DINOTIFY_ENABLED
 #		DEFINES+=-DUSE_MAGIC
 		LDFLAGS+=-lpthread
 #		LDFLAGS+=-lmagic
@@ -99,12 +104,12 @@ else
 	CFLAGS+=-O2
 endif #DEBUG
 
-ifdef CLEANFULL
+ifneq (,$(filter ${CLEANFULL},yes y Y 1))
 	DEFINES+=-DCLEANFULL
 endif
 
-ifdef ONEWAY
-	DEFINES+=-DONEWAY
+ifneq (,$(filter ${ONEWAY},yes y Y 1))
+	DEFINES+=-DONEWAY_ENABLED
 endif
 
 CFLAGS+=${DEFINES}
@@ -135,21 +140,25 @@ OSSEC_LINK   =${QUIET_LINK}ar -rc
 OSSEC_RANLIB =${QUIET_RANLIB}ranlib
 
 
-ifeq (${USE_PRELUDE},1)
-	DEFINES+=-DPRELUDE
+ifneq (,$(filter ${USE_PRELUDE},auto yes y Y 1))
+	DEFINES+=-DPRELUDE_OUTPUT_ENABLED
 	LDFLAGS+=-lprelude
 	LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --pthread-cflags')
 	LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --libs')
 endif # USE_PRELUDE
 
-ifeq (${USE_ZEROMQ},1)
-	DEFINES+=-DZEROMQ_OUTPUT
+ifneq (,$(filter ${USE_ZEROMQ},auto yes y Y 1))
+	DEFINES+=-DZEROMQ_OUTPUT_ENABLED
 	#LDFLAGS+=-L/usr/local/lib -I/usr/local/include -lzmq -lczmq
 	LDFLAGS+=-lzmq -lczmq -lm
 endif # USE_ZEROMQ
 
-ifeq (${USE_GEOIP},1)
-	DEFINES+=-DGEOIP
+ifneq (,$(filter ${USE_PICVIZ},auto yes y Y 1))
+	DEFINES+=-DPICVIZ_OUTPUT_ENABLED
+endif # USE_PICVIZ
+
+ifneq (,$(filter ${USE_GEOIP},auto yes y Y 1))
+	DEFINES+=-DLIBGEOIP_ENABLED
 	LDFLAGS+=-lGeoIP
 endif # USE_GEOIP
 
@@ -159,7 +168,7 @@ PI :=
 ifdef DATABASE
 
 	ifeq (${DATABASE},mysql)
-		DEFINES+=-DUMYSQL
+		DEFINES+=-DMYSQL_DATABASE_ENABLED
 
 		ifdef MYSQL_CFLAGS
 			MI = ${MYSQL_CFLAGS}
@@ -207,7 +216,7 @@ ifdef DATABASE
 	else # DATABASE
 
 		ifeq (${DATABASE}, pgsql)
-			DEFINES+=-DUPOSTGRES
+			DEFINES+=-DPGSQL_DATABASE_ENABLED
 
 			ifneq (${PGSQL_LIBS},)
 				PL:=${PGSQL_LIBS}
@@ -231,14 +240,31 @@ ifdef DATABASE
 endif # DATABASE
 
 
-# openssl
-ifneq (,$(wildcard /usr/include/openssl/ssl.h))
-	DEFINES+=-DUSE_OPENSSL
-	LDFLAGS+=-lssl -lcrypto
-else
-	ifneq (,$(wildcard /usr/local/include/openssl/ssl.h))
-		DEFINES+=-DUSE_OPENSSL
+# openssl ###########
+
+ifeq (${USE_OPENSSL},auto)
+	ifneq (,$(wildcard /usr/include/openssl/ssl.h))
+		DEFINES+=-DLIBOPENSSL_ENABLED
 		LDFLAGS+=-lssl -lcrypto
+	else
+		ifneq (,$(wildcard /usr/local/include/openssl/ssl.h))
+			DEFINES+=-DLIBOPENSSL_ENABLED
+			LDFLAGS+=-lssl -lcrypto
+		endif
+	endif
+endif
+
+ifneq (,$(filter ${USE_PRELUDE},yes y Y 1))
+	DEFINES+=-DLIBOPENSSL_ENABLED
+	ifneq (${OPENSSL_LIBS},)
+		LDFLAGS+=-lssl
+		LDFLAGS+=-lcrypto
+	else
+		LDFLAGS+=${OPENSSL_LIBS}
+	endif 
+
+	ifneq (${OPENSSL_CFLAGS},)
+		CFLAGS+=${OPENSSL_CFLAGS}
 	endif
 endif
 
@@ -454,37 +480,41 @@ help: failtarget
 settings:
 	@echo
 	@echo "General settings:"
-	@echo "    TARGET:          ${TARGET}"
-	@echo "    V:               ${V}"
-	@echo "    DEBUG:           ${DEBUG}"
-	@echo "    DEBUGAD          ${DEBUGAD}"
-	@echo "    PREFIX:          ${PREFIX}"
-	@echo "    MAXAGENTS:       ${MAXAGENTS}"
-	@echo "    DATABASE:        ${DATABASE}"
+	@echo "    TARGET:           ${TARGET}"
+	@echo "    V:                ${V}"
+	@echo "    DEBUG:            ${DEBUG}"
+	@echo "    DEBUGAD           ${DEBUGAD}"
+	@echo "    PREFIX:           ${PREFIX}"
+	@echo "    MAXAGENTS:        ${MAXAGENTS}"
+	@echo "    DATABASE:         ${DATABASE}"
+	@echo "    ONEWAY:           ${ONEWAY}"
+	@echo "    CLEANFULL:        ${CLEANFULL}"
 	@echo "User settings:"
-	@echo "    OSSEC_GROUP:     ${OSSEC_GROUP}"
-	@echo "    OSSEC_USER:      ${OSSEC_USER}"
-	@echo "    OSSEC_USER_MAIL: ${OSSEC_USER_MAIL}"
-	@echo "    OSSEC_USER_REM:  ${OSSEC_USER_REM}"
+	@echo "    OSSEC_GROUP:      ${OSSEC_GROUP}"
+	@echo "    OSSEC_USER:       ${OSSEC_USER}"
+	@echo "    OSSEC_USER_MAIL:  ${OSSEC_USER_MAIL}"
+	@echo "    OSSEC_USER_REM:   ${OSSEC_USER_REM}"
 	@echo "Lua settings:"
-	@echo "    LUA_PLAT:       ${LUA_PLAT}"
+	@echo "    LUA_PLAT:         ${LUA_PLAT}"
 	@echo "USE settings:"
-	@echo "    USE_ZEROMQ:     ${USE_ZEROMQ}"
-	@echo "    USE_GEOIP:      ${USE_GEOIP}"
-	@echo "    USE_PRELUDE:    ${USE_PRELUDE}"
+	@echo "    USE_ZEROMQ:       ${USE_ZEROMQ}"
+	@echo "    USE_GEOIP:        ${USE_GEOIP}"
+	@echo "    USE_PRELUDE:      ${USE_PRELUDE}"
+	@echo "    USE_OPENSSL:      ${USE_OPENSSL}"
+	@echo "    USE_PICVIZ:       ${USE_PICVIZ}"
 	@echo "Mysql settings:"
-	@echo "    includes:       ${MI}"
-	@echo "    libs:           ${ML}"
+	@echo "    includes:         ${MI}"
+	@echo "    libs:             ${ML}"
 	@echo "Pgsql settings:"
-	@echo "    includes:       ${PI}"
-	@echo "    libs:           ${PL}"
+	@echo "    includes:         ${PI}"
+	@echo "    libs:             ${PL}"
 	@echo "Defines:"
 	@echo "    ${DEFINES}"
 	@echo "Compiler:"
-	@echo "    CFLAGS          ${CFLAGS}"
-	@echo "    LDFLAGS         ${LDFLAGS}"
-	@echo "    CC              ${CC}"
-	@echo "    MAKE            ${MAKE}"
+	@echo "    CFLAGS            ${CFLAGS}"
+	@echo "    LDFLAGS           ${LDFLAGS}"
+	@echo "    CC                ${CC}"
+	@echo "    MAKE              ${MAKE}"
 
 
 BUILD_SERVER+=external
@@ -500,7 +530,9 @@ BUILD_SERVER+=utils
 BUILD_SERVER+=ossec-syscheckd
 BUILD_SERVER+=ossec-monitord
 BUILD_SERVER+=ossec-reportd
+ifneq (,$(filter ${USE_OPENSSL},auto yes))
 BUILD_SERVER+=ossec-authd
+endif
 BUILD_SERVER+=ossec-analysisd
 BUILD_SERVER+=ossec-logtest
 BUILD_SERVER+=ossec-makelists
@@ -508,7 +540,9 @@ BUILD_SERVER+=ossec-dbd
 
 BUILD_AGENT+=external
 BUILD_AGENT+=ossec-agentd
+ifneq (,$(filter ${USE_OPENSSL},auto yes))
 BUILD_AGENT+=agent-auth
+endif
 BUILD_AGENT+=ossec-logcollector
 BUILD_AGENT+=ossec-syscheckd
 BUILD_AGENT+=ossec-execd

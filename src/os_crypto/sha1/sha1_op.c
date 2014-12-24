@@ -17,7 +17,7 @@
 
 /* Openssl sha1
  * Only use if open ssl is not available.
-#ifndef USE_OPENSSL
+#ifndef LIBOPENSSL_ENABLED
 #include "sha.h"
 #include "sha_locl.h"
 #else

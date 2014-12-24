@@ -38,7 +38,7 @@ typedef struct _MailConfig
     int *gran_format;
     char **gran_to;
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     /* Use GeoIP */
     int geoip;
 #endif

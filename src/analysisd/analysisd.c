@@ -47,13 +47,15 @@
 #include "accumulator.h"
 #include "analysisd.h"
 
+#ifdef PICVIZ_OUTPUT_ENABLED
 #include "output/picviz.h"
+#endif
 
-#ifdef PRELUDE
+#ifdef PRELUDE_OUTPUT_ENABLED
 #include "output/prelude.h"
 #endif
 
-#ifdef ZEROMQ_OUTPUT
+#ifdef ZEROMQ_OUTPUT_ENABLED
 #include "output/zeromq.h"
 #endif
 
@@ -302,7 +304,7 @@ int main_analysisd(int argc, char **argv)
 
 
     /* Starting prelude */
-    #ifdef PRELUDE
+    #ifdef PRELUDE_OUTPUT_ENABLED
     if(Config.prelude)
     {
         prelude_start(Config.prelude_profile, argc, argv);
@@ -310,13 +312,14 @@ int main_analysisd(int argc, char **argv)
     #endif
 
     /* Starting zeromq */
-    #ifdef ZEROMQ_OUTPUT
+    #ifdef ZEROMQ_OUTPUT_ENABLED
     if(Config.zeromq_output)
     {
       zeromq_output_start(Config.zeromq_output_uri, argc, argv);
     }
     #endif
 
+    #ifdef PICVIZ_OUTPUT_ENABLED
     /* Opening the Picviz socket */
     if(Config.picviz)
     {
@@ -327,6 +330,7 @@ int main_analysisd(int argc, char **argv)
             ErrorExit(CHOWN_ERROR, ARGV0, Config.picviz_socket, errno, strerror(errno));
         }
     }
+    #endif
 
     /* Setting the group */
     if(Privsep_SetGroup(gid) < 0)
@@ -579,10 +583,12 @@ int main_analysisd(int argc, char **argv)
     /* Going to main loop */
     OS_ReadMSG(m_queue);
 
+    #ifdef PICVIZ_OUTPUT_ENABLED
     if (Config.picviz)
     {
         OS_PicvizClose();
     }
+    #endif
 
     exit(0);
 
@@ -1089,7 +1095,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
 
                 /* Log to prelude */
-                #ifdef PRELUDE
+                #ifdef PRELUDE_OUTPUT_ENABLED
                 if(Config.prelude)
                 {
                     if(Config.prelude_log_level <= currently_rule->level)
@@ -1100,7 +1106,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                 #endif
 
                 /* Log to zeromq */
-                #ifdef ZEROMQ_OUTPUT
+                #ifdef ZEROMQ_OUTPUT_ENABLED
                 if(Config.zeromq_output)
                 {
                     zeromq_output_event(lf);
@@ -1109,10 +1115,12 @@ void OS_ReadMSG_analysisd(int m_queue)
 
 
                 /* Log to Picviz */
+                #ifdef PICVIZ_OUTPUT_ENABLED
                 if (Config.picviz)
                 {
                     OS_PicvizLog(lf);
                 }
+                #endif
 
 
                 /* Execute an active response */
