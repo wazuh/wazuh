@@ -382,7 +382,7 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc)
     cu_time = time(0);
 
 
-    #ifndef ONEWAY
+    #ifndef ONEWAY_ENABLED
     /* Check if the server has responded */
     if((cu_time - available_server) > agt->notify_time)
     {

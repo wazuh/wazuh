@@ -37,11 +37,12 @@
 #define MAIL_SUBJECT_FULL2   "%d - %s - %s"
 #endif
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
 #define MAIL_BODY           "\r\nOSSEC HIDS Notification.\r\n" \
                             "%s\r\n\r\n" \
                             "Received From: %s\r\n" \
                             "Rule: %d fired (level %d) -> \"%s\"\r\n" \
+			    "%s" \
 			    "%s" \
                             "%s" \
                             "Portion of the log(s):\r\n\r\n%s\r\n" \
@@ -51,6 +52,7 @@
                             "%s\r\n\r\n" \
                             "Received From: %s\r\n" \
                             "Rule: %d fired (level %d) -> \"%s\"\r\n" \
+                            "%s" \
                             "Portion of the log(s):\r\n\r\n%s\r\n" \
                             "\r\n\r\n --END OF NOTIFICATION\r\n\r\n\r\n"
 #endif

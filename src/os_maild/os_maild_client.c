@@ -15,7 +15,7 @@
 #include "maild.h"
 
 /* GeoIP Stuff */
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
 #include "config/config.h"
 #endif
 
@@ -30,8 +30,10 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
     int i = 0, sms_set = 0,donotgroup = 0;
     size_t body_size = OS_MAXSTR -3, log_size;
     char logs[OS_MAXSTR + 1];
+    char extra_data[OS_MAXSTR + 1];
+    char log_string[OS_MAXSTR / 4 + 1];
     char *subject_host;
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     char geoip_msg_src[OS_SIZE_1024 +1];
     char geoip_msg_dst[OS_SIZE_1024 +1];
 #endif
@@ -56,6 +58,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
 
     /* Generating the logs */
     logs[0] = '\0';
+    extra_data[0] = '\0';
     logs[OS_MAXSTR] = '\0';
 
     while(al_data->log[i])
@@ -119,6 +122,36 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
         }
     }
 
+    /* EXTRA DATA */
+    if(al_data->srcip)
+    {
+        log_size = snprintf(log_string, sizeof(log_string)-1, "Src IP: %s\r\n", al_data->srcip );
+        if(body_size > log_size) {
+           if( strncat(extra_data, log_string, log_size) != NULL ) {
+                body_size -= log_size;
+           }
+        }
+    }
+    if(al_data->dstip)
+    {
+        log_size = snprintf(log_string, sizeof(log_string)-1, "Dst IP: %s\r\n", al_data->dstip );
+        if(body_size > log_size) {
+           if( strncat(extra_data, log_string, log_size) != NULL ) {
+                body_size -= log_size;
+           }
+        }
+    }
+    if(al_data->user)
+    {
+        log_size = snprintf(log_string, sizeof(log_string)-1, "User: %s\r\n", al_data->user );
+        if(body_size > log_size) {
+           if( strncat(extra_data, log_string, log_size) != NULL ) {
+                body_size -= log_size;
+           }
+        }
+    }
+
+
 
     /* Subject */
     subject_host = strchr(al_data->location, '>');
@@ -158,7 +191,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
         *subject_host = '-';
     }
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     /* Get GeoIP information */
     if (Mail->geoip) {
        if (al_data->geoipdatasrc) {
@@ -179,7 +212,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
 #endif
 
     /* Body */
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     snprintf(mail->body, BODY_SIZE -1, MAIL_BODY,
             al_data->date,
             al_data->location,
@@ -188,6 +221,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
             al_data->comment,
             geoip_msg_src,
             geoip_msg_dst,
+            extra_data,
             logs);
 #else
     snprintf(mail->body, BODY_SIZE -1, MAIL_BODY,
@@ -196,6 +230,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p,
             al_data->rule,
             al_data->level,
             al_data->comment,
+            extra_data,
             logs);
 #endif
     debug2("OS_RecvMailQ: mail->body[%s]", mail->body);

@@ -141,7 +141,7 @@ int main(int argc, char **argv)
                                       "full_subject",
                                       0, 1);
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     /* Get GeoIP */
     mail.geoip = getDefine_Int("maild",
                                "geoip",

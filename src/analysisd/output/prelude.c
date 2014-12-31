@@ -11,7 +11,7 @@
  */
 
 
-#ifdef PRELUDE
+#ifdef PRELUDE_OUTPUT_ENABLED
 
 #include <libprelude/prelude.h>
 #include <libprelude/prelude-log.h>

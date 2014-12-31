@@ -24,7 +24,9 @@
  *
  */
 
-#ifndef USE_OPENSSL
+#ifndef LIBOPENSSL_ENABLED
+#include "shared.h"
+
 int main()
 {
     printf("ERROR: Not compiled. Missing OpenSSL support.\n");
@@ -33,8 +35,6 @@ int main()
 #else
 
 #include <sys/wait.h>
-
-#include "shared.h"
 #include "auth.h"
 
 /* TODO: Pulled this value out of the sky, may or may not be sane */
@@ -443,5 +443,5 @@ int main(int argc, char **argv)
 }
 
 
-#endif /* USE_OPENSSL */
+#endif /* LIBOPENSSL_ENABLED */
 

@@ -27,7 +27,7 @@
 #endif
 
 
-#ifdef USEINOTIFY
+#ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 #define OS_SIZE_6144    6144
 #define OS_MAXSTR       OS_SIZE_6144    /* Size for logs, sockets, etc */
@@ -104,7 +104,7 @@ int realtime_checksumfile(const char *file_name)
 
 
 
-#ifdef USEINOTIFY
+#ifdef INOTIFY_ENABLED
 #include <sys/inotify.h>
 
 
@@ -127,7 +127,7 @@ int realtime_start()
     syscheck.realtime->dirtb = OSHash_Create();
     syscheck.realtime->fd = -1;
 
-    #ifdef USEINOTIFY
+    #ifdef INOTIFY_ENABLED
     syscheck.realtime->fd = inotify_init();
     if(syscheck.realtime->fd < 0)
     {
