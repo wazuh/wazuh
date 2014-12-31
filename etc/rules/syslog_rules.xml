@@ -492,7 +492,7 @@
 
   <rule id="5402" level="3">
     <if_sid>5400</if_sid>
-    <match> ; USER=root ; COMMAND=</match>
+    <regex> ; USER=root ; COMMAND=| ; USER=root ; TSID=\S+ ; COMMAND=</regex>
     <description>Successful sudo to ROOT executed</description>
   </rule>
 
