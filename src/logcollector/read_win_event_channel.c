@@ -39,7 +39,7 @@
 
 /* Audit types */
 #define WINEVENT_AUDIT_FAILURE 0x10000000000000LL
-#define WINEVENT_AUDIT_SUCCESS 0x20000000000000L
+#define WINEVENT_AUDIT_SUCCESS 0x20000000000000LL
 
 #include "shared.h"
 #include "logcollector.h"
