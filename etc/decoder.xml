@@ -462,6 +462,7 @@
   - proftpd[30362] xx.yy.zz (aa.bb.cc[aa.bb.vv.dd]): USER backup: Login successful.
   - proftpd[2344]: refused connect from 192.168.1.2 (192.168.1.2)
   - proftpd[15181]: valhalla (crawl-66-249-66-80.googlebot.com[66.249.66.80]) - Connection from crawl-66-249-66-80.googlebot.com [66.249.66.80] denied.
+  - proftpd[26169] server.example.net: Fatal: unable to open incoming connection: Der Socket ist nicht verbunden
   -->
 <decoder name="proftpd">
   <program_name>^proftpd</program_name>
