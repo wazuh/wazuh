@@ -107,15 +107,6 @@
     <description>CMS (WordPress or Joomla) brute force attempt.</description>
   </rule>
 
-  <!-- Nothing wrong with wget per se, but it misses a lot of links
-     - that generates many 404s. Blocking it to avoid the noise.
-    -->
-  <rule id="31511" level="6">
-    <if_sid>31100</if_sid>
-    <match>" "Wget/</match>
-    <description>Blacklisted user agent (wget).</description>
-  </rule>
-
   <!-- Uploadify scans.
     -->
   <rule id="31512" level="6">
