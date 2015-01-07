@@ -861,6 +861,20 @@
     <group>authentication_success,</group>
   </rule>
 
+<!-- Detail logon rules -->
+  <rule id="18260" level="3">
+    <if_sid>18107</if_sid>
+    <id>^4624$</id>
+    <match>Logon Type:   8</match>
+    <description>MS Exchange Logon Success.</description>
+  </rule> 
+  
+  <rule id="18261" level="0">
+    <if_sid>18149</if_sid>
+    <id>^4634$</id>
+    <match>Logon Type:   8</match>
+    <description>User Logoff Exchange.</description>
+  </rule>
   
   
   <!-- Composite rules -->
