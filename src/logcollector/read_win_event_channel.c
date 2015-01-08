@@ -70,6 +70,7 @@ typedef struct _os_event
 typedef struct _os_channel
 {
 	char *evt_log;
+	char *bookmark_name;
 	char bookmark_enabled;
 	char bookmark_filename[OS_MAXSTR];
 } os_channel;
@@ -83,13 +84,6 @@ void free_event(os_event *event)
 	free(event->computer);
 	free(event->message);
 	free(event->timestamp);
-}
-
-void replace_slash(char *string)
-{
-	/* Replace '/' with underscore */
-	if (strchr(string, '/'))
-		*(strrchr(string, '/')) = '_';
 }
 
 char *convert_windows_string(LPCWSTR string)
@@ -524,16 +518,14 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 	FILE *fp = NULL;
 	char tmp_file[OS_MAXSTR];
 
-	/* Create bookmark temporary file name */
+	/* Create temporary bookmark file name */
 	snprintf(
 		tmp_file,
 		sizeof(tmp_file),
 		"%s/%s-XXXXXX",
 		TMP_DIR,
-		channel->evt_log
+		channel->bookmark_name
 	);
-
-	replace_slash(tmp_file);
 
 	if ((bookmark = EvtCreateBookmark(NULL)) == NULL)
 	{
@@ -545,7 +537,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 			GetLastError()
 		);
 
-		return(0);
+		goto cleanup;
 	}
 
 	if (!EvtUpdateBookmark(bookmark, evt))
@@ -962,6 +954,24 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 
 	channel->evt_log = evt_log;
 
+	/* Create copy of event log string */
+	if ((channel->bookmark_name = strdup(channel->evt_log)) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not strdup() event log name to start reading (%s) which returned [(%d)-(%s)]",
+			ARGV0,
+			channel->evt_log,
+			errno,
+			strerror(errno)
+		);
+
+		goto cleanup;
+	}
+
+	/* Replace '/' with '_' */
+	if (strchr(channel->bookmark_name, '/'))
+		*(strrchr(channel->bookmark_name, '/')) = '_';
+
 	/* Convert evt_log to windows string */
 	if ((wchannel = convert_unix_string(channel->evt_log)) == NULL)
 	{
@@ -1003,10 +1013,8 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 			sizeof(channel->bookmark_filename),
 			"%s/%s",
 			BOOKMARKS_DIR,
-			channel->evt_log
+			channel->bookmark_name
 		);
-
-		replace_slash(channel->bookmark_filename);
 
 		/* Try to read existing bookmark */
 		if ((bookmark = read_bookmark(channel)) != NULL)
@@ -1060,7 +1068,10 @@ cleanup:
 	free(wquery);
 
 	if (status == 0)
+	{
+		free(channel->bookmark_name);
 		free(channel);
+	}
 
 	if (bookmark != NULL)
 		EvtClose(bookmark);
