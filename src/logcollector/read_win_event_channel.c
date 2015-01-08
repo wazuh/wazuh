@@ -249,14 +249,12 @@ int get_username_and_domain(os_event *event)
 			ARGV0,
 			GetLastError()
 		);
-
-		StringSid = "unknown";
 	}
 
 	debug1(
 		"%s: DEBUG: Performing a LookupAccountSid() on (%s)",
 		ARGV0,
-		StringSid
+		StringSid ? StringSid : "unknown"
 	);
 
 	/* Make initial call to get buffer size */
@@ -281,7 +279,7 @@ int get_username_and_domain(os_event *event)
 		log2file(
 			"%s: ERROR: Could not lookup SID (%s) due to calloc() failure on user which returned [(%d)-(%s)]",
 			ARGV0,
-			StringSid,
+			StringSid ? StringSid : "unknown",
 			errno,
 			strerror(errno)
 		);
@@ -294,7 +292,7 @@ int get_username_and_domain(os_event *event)
 		log2file(
 			"%s: ERROR: Could not lookup SID (%s) due to calloc() failure on domain which returned [(%d)-(%s)]",
 			ARGV0,
-			StringSid,
+			StringSid ? StringSid : "unknown",
 			errno,
 			strerror(errno)
 		);
@@ -317,7 +315,7 @@ int get_username_and_domain(os_event *event)
 		log2file(
 			"%s: ERROR: Could not LookupAccountSid() for (%s) which returned (%lu)",
 			ARGV0,
-			StringSid,
+			StringSid ? StringSid : "unknown",
 			GetLastError()
 		);
 
