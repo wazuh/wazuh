@@ -69,9 +69,8 @@ typedef struct _os_event
 
 typedef struct _os_channel
 {
-	char bookmark_enabled;
-	EVT_HANDLE bookmark;
 	char *evt_log;
+	char bookmark_enabled;
 	char bookmark_filename[OS_MAXSTR];
 } os_channel;
 
@@ -240,6 +239,7 @@ char *get_property_value(PEVT_VARIANT value)
 int get_username_and_domain(os_event *event)
 {
 	int result = 0;
+	int status = 0;
 	DWORD user_length = 0;
 	DWORD domain_length = 0;
 	SID_NAME_USE account_type;
@@ -276,68 +276,74 @@ int get_username_and_domain(os_event *event)
 		&account_type
 	);
 
-	if (result == 0 && GetLastError() == ERROR_INSUFFICIENT_BUFFER)
+	if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER)
 	{
-		if ((event->user = calloc(user_length, sizeof(char))) == NULL)
-		{
-			log2file(
-				"%s: ERROR: Could not lookup SID (%s) due to calloc() failure on user which returned [(%d)-(%s)]",
-				ARGV0,
-				StringSid,
-				errno,
-				strerror(errno)
-			);
-
-			goto error;
-		}
-
-		if ((event->domain = calloc(domain_length, sizeof (char))) == NULL)
-		{
-			log2file(
-				"%s: ERROR: Could not lookup SID (%s) due to calloc() failure on domain which returned [(%d)-(%s)]",
-				ARGV0,
-				StringSid,
-				errno,
-				strerror(errno)
-			);
-
-			goto error;
-		}
-
-		result = LookupAccountSid(
-			NULL,
-			event->uid,
-			event->user,
-			&user_length,
-			event->domain,
-			&domain_length,
-			&account_type
-		);
-
-		if (result == FALSE)
-		{
-			log2file(
-				"%s: ERROR: Could not LookupAccountSid() for (%s) which returned (%lu)",
-				ARGV0,
-				StringSid,
-				GetLastError()
-			);
-
-			goto error;
-		}
+		/* Not having a user can be normal */
+		goto cleanup;
 	}
 
-	LocalFree(StringSid);
+	if ((event->user = calloc(user_length, sizeof(char))) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not lookup SID (%s) due to calloc() failure on user which returned [(%d)-(%s)]",
+			ARGV0,
+			StringSid,
+			errno,
+			strerror(errno)
+		);
+
+		goto cleanup;
+	}
+
+	if ((event->domain = calloc(domain_length, sizeof(char))) == NULL)
+	{
+		log2file(
+			"%s: ERROR: Could not lookup SID (%s) due to calloc() failure on domain which returned [(%d)-(%s)]",
+			ARGV0,
+			StringSid,
+			errno,
+			strerror(errno)
+		);
+
+		goto cleanup;
+	}
+
+	result = LookupAccountSid(
+		NULL,
+		event->uid,
+		event->user,
+		&user_length,
+		event->domain,
+		&domain_length,
+		&account_type
+	);
+
+	if (result == FALSE)
+	{
+		log2file(
+			"%s: ERROR: Could not LookupAccountSid() for (%s) which returned (%lu)",
+			ARGV0,
+			StringSid,
+			GetLastError()
+		);
+
+		goto cleanup;
+	}
 
 	/* success */
-	return(1);
+	status = 1;
 
-error:
-	event->user = NULL;
-	event->domain = NULL;
-	LocalFree(StringSid);
+cleanup:
+	if (status == 0)
+	{
+		event->user = NULL;
+		event->domain = NULL;
+	}
 
-	return(0);
+	if (StringSid)
+		LocalFree(StringSid);
+
+	return(status);
 }
 
 char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
@@ -512,6 +518,8 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 	DWORD count = 0;
 	wchar_t *buffer = NULL;
 	int result = 0;
+	int status = 0;
+	int clean_tmp = 0;
 	EVT_HANDLE bookmark = NULL;
 	FILE *fp = NULL;
 	char tmp_file[OS_MAXSTR];
@@ -550,7 +558,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 			GetLastError()
 		);
 
-		return(0);
+		goto cleanup;
 	}
 
 	/* Make initial call to determine buffer size */
@@ -566,10 +574,10 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 			GetLastError()
 		);
 
-		return(0);
+		goto cleanup;
 	}
 
-	if ((buffer = calloc(size, 1)) == NULL)
+	if ((buffer = calloc(size, sizeof(char))) == NULL)
 	{
 		log2file(
 			"%s: ERROR: Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
@@ -580,7 +588,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 			strerror(errno)
 		);
 
-		return(0);
+		goto cleanup;
 	}
 
 	if (!EvtRender(NULL, bookmark, EvtRenderBookmark, size, buffer, &size, &count))
@@ -593,7 +601,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 			GetLastError()
 		);
 
-		return(0);
+		goto cleanup;
 	}
 
 	if (mkstemp_ex(tmp_file))
@@ -605,7 +613,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 			channel->evt_log
 		);
 
-		return(0);
+		goto cleanup;
 	}
 
 	if ((fp = fopen(tmp_file, "w")) == NULL)
@@ -619,8 +627,14 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 			strerror(errno)
 		);
 
-		goto error;
+		goto cleanup;
 	}
+
+	/* help to determine whether or not
+	 * temporary file needs to be removed
+	 * when function cleans up after itself
+	 */
+	clean_tmp = 1;
 
 	if ((fwrite(buffer, 1, size, fp)) < size)
 	{
@@ -633,7 +647,7 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 			strerror(errno)
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
 	fclose(fp);
@@ -648,22 +662,27 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
 			channel->evt_log
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
 	/* success */
-	return(1);
+	status = 1;
 
-error:
+cleanup:
+	free(buffer);
+
+	if (bookmark != NULL)
+		EvtClose(bookmark);
+
 	if (fp)
 		fclose(fp);
 
-	if (unlink(tmp_file))
+	if (status == 0 && clean_tmp == 1 && unlink(tmp_file))
 	{
 		log2file(DELETE_ERROR, ARGV0, tmp_file, errno, strerror(errno));
 	}
 
-	return(0);
+	return(status);
 }
 
 /* Format Timestamp from EventLog */
@@ -685,7 +704,7 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
 			strerror(errno)
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
 	/* Zero out structure */
@@ -707,7 +726,7 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
 			GetLastError()
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
 	if (FileTimeToSystemTime(&lfTime, &sysTime) == 0)
@@ -718,7 +737,7 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
 			GetLastError()
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
 	/* Convert SYSTEMTIME to tm */
@@ -735,7 +754,7 @@ char *WinEvtTimeToString(ULONGLONG ulongTime)
 
 	return(timestamp);
 
-error:
+cleanup:
 	free(timestamp);
 
 	return(NULL);
@@ -760,7 +779,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 			GetLastError()
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
 	/* Make initial call to determine buffer size necessary */
@@ -775,7 +794,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 			GetLastError()
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
 	if ((properties_values = malloc(buffer_length)) == NULL)
@@ -788,7 +807,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 			strerror(errno)
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
 	if (!EvtRender(context, evt, EvtRenderEventValues, buffer_length, properties_values, &buffer_length, &count))
@@ -800,7 +819,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 			GetLastError()
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
 	event.name = get_property_value(&properties_values[EvtSystemChannel]);
@@ -854,7 +873,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 			channel->evt_log
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
 	/* Determine user and domain */
@@ -898,9 +917,12 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
     	if (channel->bookmark_enabled)
 		update_bookmark(evt, channel);
 
-error:
+cleanup:
 	free(properties_values);
 	free_event(&event);
+
+	if (context != NULL)
+		EvtClose(context);
 
 	return;
 }
@@ -917,12 +939,13 @@ DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_chann
 
 void win_start_event_channel(char *evt_log, char future, char *query)
 {
-	wchar_t		*wchannel = NULL;
-	wchar_t		*wquery = NULL;
-	os_channel  	*channel = NULL;
-	DWORD		flags = EvtSubscribeToFutureEvents;
-	EVT_HANDLE 	bookmark = NULL;
-	EVT_HANDLE	result = NULL;
+	wchar_t	*wchannel = NULL;
+	wchar_t	*wquery = NULL;
+	os_channel *channel = NULL;
+	DWORD flags = EvtSubscribeToFutureEvents;
+	EVT_HANDLE bookmark = NULL;
+	EVT_HANDLE result = NULL;
+	int status = 0;
 
 	if ((channel = calloc(1, sizeof(os_channel))) == NULL)
 	{
@@ -934,7 +957,7 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 			strerror(errno)
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
 	channel->evt_log = evt_log;
@@ -950,7 +973,7 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 			strerror(errno)
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
 	/* Convert query to windows string */
@@ -966,7 +989,7 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 				strerror(errno)
 			);
 
-			goto error;
+			goto cleanup;
 		}
 	}
 
@@ -1026,18 +1049,21 @@ void win_start_event_channel(char *evt_log, char future, char *query)
 			GetLastError()
 		);
 
-		goto error;
+		goto cleanup;
 	}
 
+	/* success */
+	status = 1;
+
+cleanup:
 	free(wchannel);
 	free(wquery);
 
-	return;
+	if (status == 0)
+		free(channel);
 
-error:
-	free(wchannel);
-	free(wquery);
-	free(channel);
+	if (bookmark != NULL)
+		EvtClose(bookmark);
 
 	return;
 }
