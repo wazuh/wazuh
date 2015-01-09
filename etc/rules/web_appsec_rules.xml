@@ -110,7 +110,7 @@
   <!-- Nothing wrong with wget per se, but it misses a lot of links
      - that generates many 404s. Blocking it to avoid the noise.
     -->
-  <rule id="31511" level="6">
+  <rule id="31511" level="0">
     <if_sid>31100</if_sid>
     <match>" "Wget/</match>
     <description>Blacklisted user agent (wget).</description>

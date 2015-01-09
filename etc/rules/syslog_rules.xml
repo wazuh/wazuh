@@ -127,7 +127,8 @@
     <match>Authentication failed for|invalid password for|</match>
     <match>LOGIN FAILURE|auth failure: |authentication error|</match>
     <match>authinternal failed|Failed to authorize|</match>
-    <match>Wrong password given for|login failed|Auth: Login incorrect</match>
+    <match>Wrong password given for|login failed|Auth: Login incorrect|</match>
+    <match>Failed to authenticate user</match>
     <group>authentication_failed,</group>
     <description>User authentication failure.</description>
   </rule>
