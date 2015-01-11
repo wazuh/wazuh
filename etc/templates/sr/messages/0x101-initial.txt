@@ -1,5 +1,4 @@
+
  Nalaziš se pred početkom instalacionog proces OSSEC HIDS.
  Moraš imati c kompajler već instaliran u svoj sistem.
- Ako imaš bilo kakvih pitanja ili komentara molim te pošalji e-mail
- na  dcid@ossec.net (ili daniel.cid@gmail.com).
- 
+

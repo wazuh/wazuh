@@ -1,6 +1,4 @@
- 
+
  Vous êtes sur le point d'installer OSSEC HIDS.
  Vous devez avoir une compilateur C préinstallé sur votre système.
- Si vous avez des questions ou des commentaires, envoyez un email
- à dcid@ossec.net (ou daniel.cid@gmail.com).
- 
+

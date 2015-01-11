@@ -1,5 +1,4 @@
- 
+
  Um OSSEC HIDS zu installieren muß auf Ihrem System ein C-Compiler
- installiert sein. Bei Fragen, Anregungen oder sonstigen Kommentaren
- senden Sie eine E-Mail an dcid@ossec.net (or daniel.cid@gmail.com).
- 
+ installiert sein.
+
