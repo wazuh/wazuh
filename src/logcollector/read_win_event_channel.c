@@ -415,6 +415,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
 	}
 
 	free(buffer);
+	EvtClose(publisher);
 
 	if (result == FALSE)
 	{
@@ -1069,6 +1070,9 @@ cleanup:
 	{
 		free(channel->bookmark_name);
 		free(channel);
+
+		if (result != NULL)
+			EvtClose(result);
 	}
 
 	if (bookmark != NULL)
