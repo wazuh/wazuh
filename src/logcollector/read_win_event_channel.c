@@ -360,7 +360,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
 			GetLastError()
 		);
 
-		return(NULL);
+		goto cleanup;
 	}
 
 	/* Make initial call to determine buffer size */
@@ -385,7 +385,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
 			GetLastError()
 		);
 
-		return(NULL);
+		goto cleanup;
 	}
 
 	if ((buffer = calloc(size, sizeof(wchar_t))) == NULL)
@@ -397,7 +397,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
 			strerror(errno)
 		);
 
-		return(NULL);
+		goto cleanup;
 	}
 
 	result = EvtFormatMessage(
@@ -412,14 +412,6 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
 		&size
 	);
 
-	if (result == TRUE)
-	{
-		message = convert_windows_string(buffer);
-	}
-
-	free(buffer);
-	EvtClose(publisher);
-
 	if (result == FALSE)
 	{
 		log2file(
@@ -429,8 +421,16 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
 			GetLastError()
 		);
 
-		return(NULL);
+		goto cleanup;
 	}
+
+	message = convert_windows_string(buffer);
+
+cleanup:
+	free(buffer);
+
+	if (publisher != NULL)
+		EvtClose(publisher);
 
 	return(message);
 }
@@ -903,7 +903,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 		event.message && strlen(event.message) ? event.message : "(no message)"
 	);
 
-	if(SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0)
+	if (SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0)
     	{
 		merror(QUEUE_SEND, ARGV0);
     	}
