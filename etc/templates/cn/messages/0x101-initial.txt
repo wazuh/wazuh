@@ -1,5 +1,4 @@
- 
+
  您将开始 OSSEC HIDS 的安装.
  请确认在您的机器上已经正确安装了 C 编译器.
- 如果您有任何疑问或建议,请给 dcid@ossec.net (或 daniel.cid@gmail.com) 发邮件.
- 
+

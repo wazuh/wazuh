@@ -1,6 +1,4 @@
- 
+
  OSSEC HIDS kurulum sürecini başlatmak üzeresiniz.
  Sisteminizde önceden kurulmuş bir C derleyicisi bulunmalıdır.
- Her türlü soru, öneri ve yorumlarınız için lütfen dcid@ossec.net
- (veya daniel.cid@gmail.com) adresine e-posta gönderiniz.
- 
+

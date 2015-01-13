@@ -1,5 +1,4 @@
+
  Ön elindította az OSSEC HIDS telepítési folyamatát.
  Egy C fordító programnak, már előzőleg telepítve kell lennie a rendszerén.
- Egyéb kérdések vagy észrevételek esetén, kérem küldjön egy e-mailt
- a dcid@ossec.net vagy a (daniel.cid@gmail.com) címre.
- 
+
