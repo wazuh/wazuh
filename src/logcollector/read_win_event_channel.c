@@ -328,6 +328,9 @@ int get_username_and_domain(os_event *event)
 cleanup:
 	if (status == 0)
 	{
+		free(event->user);
+		free(event->domain);
+
 		event->user = NULL;
 		event->domain = NULL;
 	}
