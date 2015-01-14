@@ -14,18 +14,29 @@
 
 #include "shared.h"
 
+const struct file_system_type network_file_systems[] = {
+    {.name="NFS",  .f_type=0x6969,     .flag=1},
+    {.name="CIFS", .f_type=0xFF534D42, .flag=1},
+
+    /*  The last entry must be name=NULL */
+    {.name=NULL, .f_type=0, .flag=0}
+};
+
 short IsNFS(const char *dir_name)
 {
-#if defined(__linux__) || defined(__FreeBSD__)
+#if defined(Linux) || defined(FreeBSD)
     struct statfs stfs;
 
     /* ignore NFS (0x6969) or CIFS (0xFF534D42) mounts */
     if ( ! statfs(dir_name, &stfs) )
     {
-        if ( (stfs.f_type == 0x6969) || (stfs.f_type == 0xFF534D42) )
-        {
-            return(1); /* NFS/CIFS path */
+        int i;
+        for ( i=0; network_file_systems[i].name != NULL; i++ ) {
+            if(network_file_systems[i].f_type == stfs.f_type ) {
+                return network_file_systems[i].flag;
+            }
         }
+        return(0);
     }
     else
     {

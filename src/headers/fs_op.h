@@ -19,14 +19,22 @@
 #ifndef _OS_FS
 #define _OS_FS
 
-#ifdef __linux__
+#ifdef Linux
 #include <sys/vfs.h>
 #endif
 
-#ifdef __FreeBSD__
+#ifdef FreeBSD
 #include <sys/param.h>
 #include <sys/mount.h>
 #endif
+
+struct file_system_type {
+    const char *name;
+    const uint32_t f_type;
+    const int flag;
+};
+
+extern const struct file_system_type network_file_systems[];
 
 short IsNFS(const char *file)  __attribute__((nonnull));
 
