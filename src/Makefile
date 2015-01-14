@@ -932,7 +932,7 @@ os_auth_c := ${wildcard os_auth/*.c}
 os_auth_o := $(os_auth_c:.c=.o)
 
 os_auth/%.o: os_auth/%.c
-	${OSSEC_CC} ${CFLAGS}  -I./os_auth -DARGV0=\"auth\" -c $^ -o $@
+	${OSSEC_CC} ${CFLAGS}  -I./os_auth -DARGV0=\"ossec-authd\" -c $^ -o $@
 
 agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o ${ossec_libs} ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${CFLAGS} -I./os_auth $^ ${LDFLAGS} -o $@
