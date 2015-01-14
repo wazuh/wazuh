@@ -1671,8 +1671,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     {
 
 	if(!(currently_rule->context_opts & SAME_DODIFF)) {
-        	if(!currently_rule->event_search(lf, currently_rule))
-            	return(NULL);
+        	if(!currently_rule->event_search(lf, currently_rule)) {
+            		return(NULL);
+		}
 	}
     }
 
