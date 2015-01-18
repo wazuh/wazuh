@@ -161,6 +161,13 @@
     <match>PAM(close_session): System error|cap_set_proc failed|reverting to normal operation|error retrieving information about user</match>
     <description>IPv6 error and mod-delay info (ignored).</description>
   </rule>
+
+  <rule id="11222" level="4">
+    <if_sid>11200</if_sid>
+    <match>unable to open incoming connection</match>
+    <description>Couldn't open the incoming connection. </description>
+    <description>Check log message for reason.</description>
+  </rule>
   
   <rule id="11251" level="10" frequency="6" timeframe="120">
     <if_matched_sid>11204</if_matched_sid>
