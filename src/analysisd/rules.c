@@ -208,7 +208,7 @@ int Rules_OP_ReadRules(char * rulefile)
     /* Getting default time frame */
     default_timeframe = getDefine_Int("analysisd",
                                       "default_timeframe",
-                                      60, 3600);
+                                      60, MAX_TIMEFRAME);
 
 
     /* Checking if there is any invalid global option */
