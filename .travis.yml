@@ -62,3 +62,13 @@ before_deploy:
 - if [[ "${OSSEC_TYPE}" == "winagent" ]]; then ( cp src/win-pkg/ossec-agent.exe travis-builds/ossec-agent-bid:$TRAVIS_JOB_NUMBER-br:$TRAVIS_BRANCH.exe ); fi
 
 
+deploy:
+  provider: releases
+  api_key:
+    secure: NCeiKXUZgLvnsKxw+1XmvmRyjTiq5XSaXZedA7seU6SDkHCCzTQjmGJsCeTcZKO/QNX/wU1LQLsKKoKrm9VmcxbAe7IbVKAjz7bCsim6aihfOyGk2Gx76u70LmrGmED1P6720C/tFAuThr/UMGu/RNS3TvMZug3LJekDVvcolPg=
+  file: travis-builds/ossec-agent-bid:$TRAVIS_JOB_NUMBER-br:$TRAVIS_BRANCH.exe
+  skip_cleanup: true
+  on:
+    tags: true
+    all_branches: true
+    repo: ossec/ossec-hids
