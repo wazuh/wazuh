@@ -65,8 +65,8 @@ before_deploy:
 deploy:
   provider: releases
   api_key:
-    secure: NCeiKXUZgLvnsKxw+1XmvmRyjTiq5XSaXZedA7seU6SDkHCCzTQjmGJsCeTcZKO/QNX/wU1LQLsKKoKrm9VmcxbAe7IbVKAjz7bCsim6aihfOyGk2Gx76u70LmrGmED1P6720C/tFAuThr/UMGu/RNS3TvMZug3LJekDVvcolPg=
-  file: travis-builds/ossec-agent-bid:$TRAVIS_JOB_NUMBER-br:$TRAVIS_BRANCH.exe
+      secure: f08hPjOXnKFoJCYnal4IzwUTrVDnkTq/Mw+5HbDV11+l2LOOwaG+6zmjaTAeRssALVGRqD+UKF/bGkYM/KcqZ9XsS5dT8GWyLQ76ZJBAvnUzHSsNPEcMHbw6QGOz+uZ3RK3hm4Zt+ImDjKgIYrPfSySBMn4T9/aFiGQPgpH6nWI=
+  file: src/win-pkg/ossec-agent.exe
   skip_cleanup: true
   on:
     tags: true
