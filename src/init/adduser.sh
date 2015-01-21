@@ -1,12 +1,11 @@
 #!/bin/sh
 
-
 set -e
 set -u
 
 if ! [ $# -eq 5 ]; then
-	echo "Usage: ${0} USERNAME_DEFAULT USERNAME_MAIL USERNAME_REMOTE GROUPNAME DIRECTORY.";
-	exit 1;
+    echo "Usage: ${0} USERNAME_DEFAULT USERNAME_MAIL USERNAME_REMOTE GROUPNAME DIRECTORY.";
+    exit 1;
 fi
 
 echo "Wait for success..."
@@ -37,11 +36,11 @@ elif [ "$UNAME" = "SunOS" ]; then
 
 elif [ "$UNAME" = "AIX" ]; then
     AIXSH=""
-    
+
     if ls -la /bin/false > /dev/null 2>&1; then
         AIXSH="-s /bin/false"
     fi
-    
+
     if ! grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1; then
         /usr/bin/mkgroup "${GROUP}"
         /usr/sbin/useradd -d "${DIR}" "${AIXSH}" -g "${GROUP}" "${USER}"
@@ -69,8 +68,8 @@ else
         # We first check if /sbin/nologin is present. If it is not,
         # we look for /bin/false. If none of them is present, we
         # just stick with nologin (no need to fail the install for that).
-        OSMYSHELL="/sbin/nologin"        
-        if ! ls -la ${OSMYSHELL} > /dev/null 2>&1; then            
+        OSMYSHELL="/sbin/nologin"
+        if ! ls -la ${OSMYSHELL} > /dev/null 2>&1; then
             if ls -la /bin/false > /dev/null 2>&1; then
                 OSMYSHELL="/bin/false"
             fi
