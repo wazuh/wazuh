@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/remoted/remoted.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,9 +7,7 @@
  * Foundation
  */
 
-
 #ifndef __LOGREMOTE_H
-
 #define __LOGREMOTE_H
 
 #ifndef ARGV0
@@ -22,8 +17,7 @@
 #include "config/remote-config.h"
 #include "sec.h"
 
-
-/*** Function prototypes ***/
+/** Function prototypes **/
 
 /* Read remoted config */
 int RemotedConfig(const char *cfgfile, remoted *cfg);
@@ -66,10 +60,9 @@ void key_unlock(void);
 
 void keyupdate_init(void);
 
-
-/*** Global variables ***/
+/** Global variables **/
 
 extern keystore keys;
 extern remoted logr;
 
-#endif
+#endif /* __LOGREMOTE_H */
