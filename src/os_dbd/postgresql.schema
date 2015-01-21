@@ -1,5 +1,3 @@
--- @(#) $Id: ./src/os_dbd/postgresql.schema, 2011/09/08 dcid Exp $
---
 -- Copyright (C) 2009 Trend Micro Inc.
 -- All rights reserved.
 --
@@ -7,10 +5,6 @@
 -- and/or modify it under the terms of the GNU General Public
 -- License (version 2) as published by the FSF - Free Software
 -- Foundation.
---
--- License details at the LICENSE file included with OSSEC or
--- online at: http://www.ossec.net/en/licensing.html
-          
 
 BEGIN;
 
@@ -20,10 +14,10 @@ CREATE TABLE category
     cat_name    VARCHAR(32) NOT NULL    UNIQUE,
     PRIMARY KEY (cat_id)
     );
-CREATE INDEX cat_name ON category (cat_name);    
+CREATE INDEX cat_name ON category (cat_name);
 
-CREATE TABLE signature 
-    ( 
+CREATE TABLE signature
+    (
     id          SERIAL          NOT NULL,
     rule_id     INT8           NOT NULL UNIQUE,
     level       INT4,
@@ -38,38 +32,38 @@ CREATE TABLE signature_category_mapping
     id          SERIAL      NOT NULL,
     rule_id     INT8       NOT NULL,
     cat_id      INT4       NOT NULL,
-    PRIMARY KEY  (id, rule_id, cat_id)       
-    );    
+    PRIMARY KEY  (id, rule_id, cat_id)
+    );
 
-CREATE TABLE server 
+CREATE TABLE server
     (
     id              SERIAL               NOT NULL,
     last_contact    INT8                 NOT NULL,
     version         VARCHAR(32)          NOT NULL,
     hostname        VARCHAR(64)          NOT NULL   UNIQUE,
-    information     VARCHAR(128)         NOT NULL,    
-    PRIMARY KEY  (id) 
-    ); 
+    information     VARCHAR(128)         NOT NULL,
+    PRIMARY KEY  (id)
+    );
 
-CREATE TABLE agent 
+CREATE TABLE agent
     (
     id              SERIAL       NOT NULL,
-    server_id       INT8         NOT NULL,        
+    server_id       INT8         NOT NULL,
     last_contact    INT8         NOT NULL,
     ip_address      INT8         NOT NULL,
     version         VARCHAR(32)  NOT NULL,
     name            VARCHAR(64)  NOT NULL,
-    information     VARCHAR(128) NOT NULL,    
-    PRIMARY KEY  (id, server_id) 
+    information     VARCHAR(128) NOT NULL,
+    PRIMARY KEY  (id, server_id)
     );
 
 CREATE TABLE location
     (
     id              SERIAL          NOT NULL,
-    server_id       INT8            NOT NULL,        
+    server_id       INT8            NOT NULL,
     name            VARCHAR(128)    NOT NULL,
     PRIMARY KEY  (id, server_id)
-    );        
+    );
 
 CREATE TABLE data
     (
@@ -79,13 +73,13 @@ CREATE TABLE data
     full_log        TEXT        NOT NULL,
     PRIMARY KEY  (id, server_id)
     );
-	
-CREATE TABLE alert 
+
+CREATE TABLE alert
     (
      id             bigserial   NOT NULL,
     server_id       INT4        NOT NULL,
-    rule_id         INT8        NOT NULL,  
-    level           INT2,	
+    rule_id         INT8        NOT NULL,
+    level           INT2,
     timestamp       INT8        NOT NULL,
     location_id     INT4        NOT NULL,
     src_ip          INT8,
@@ -93,16 +87,17 @@ CREATE TABLE alert
     src_port        INT4,
     dst_port        INT4,
     alertid         TEXT        DEFAULT NULL,
-	"user"          TEXT        NOT NULL,
+    "user"          TEXT        NOT NULL,
     full_log        TEXT        NOT NULL,
     is_hidden       INT2        NOT NULL DEFAULT '0',
     tld             VARCHAR(32)  NOT NULL DEFAULT '',
     PRIMARY KEY (id, server_id)
     );
-CREATE INDEX alertid on alert(alertid);  
-CREATE INDEX level on alert(level);  
-CREATE INDEX timestamp on alert(timestamp);    
-CREATE INDEX rule_id on alert(rule_id);    
-CREATE INDEX src_ip on alert(src_ip);    
-CREATE INDEX tld on alert(tld);   
+CREATE INDEX alertid on alert(alertid);
+CREATE INDEX level on alert(level);
+CREATE INDEX timestamp on alert(timestamp);
+CREATE INDEX rule_id on alert(rule_id);
+CREATE INDEX src_ip on alert(src_ip);
+CREATE INDEX tld on alert(tld);
+
 COMMIT;
