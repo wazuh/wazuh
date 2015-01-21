@@ -1,5 +1,3 @@
-/*   $OSSEC, os_regex_internal.h, v0.3, 2005/04/05, Daniel B. Cid$   */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,12 +7,10 @@
  * Foundation.
  */
 
-
 #ifndef __OS_INTERNAL_H
 #define __OS_INTERNAL_H
 
-
-/* Prototype fo the _OsMatch */
+/* Prototype for the _OsMatch */
 int _OS_Match(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
 int _os_strncmp(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
 int _os_strcmp_last(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
@@ -22,10 +18,6 @@ int _os_strcmp(const char *pattern, const char *str, size_t str_len, size_t size
 int _os_strmatch(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
 int _os_strstr(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
 
-
-/*
- * Defining some caracters to be used.
-*/
 #define BACKSLASH   '\\'
 #define ENDSTR      '\0'
 #define ENDLINE     '\n'
@@ -37,21 +29,17 @@ int _os_strstr(const char *pattern, const char *str, size_t str_len, size_t size
 #define TRUE         1
 #define FALSE        0
 
-
 /* Pattern flags */
 #define BEGIN_SET   0000200
 #define END_SET     0000400
 
-
 /* uchar */
 typedef unsigned char uchar;
-
 
 /* _IsD Returns 1 if it is a number */
 #define _IsD(x) ((x >= 48) && (x <= 57))
 
-
-/* Is it a character ?
+/* Is it a character?
  * a-z or A-Z or 0-9
  * Returns 1 if true
  */
@@ -59,27 +47,22 @@ typedef unsigned char uchar;
                  (x >= 65 && x <= 90 )|| \
                  (x >= 97 && x <= 122))
 
-
 /* Is it a ' ' (blank)
  * Ascii 32
  * Returns 1 if true
  */
 #define _IsS(x) (x == 32)
 
-
 /* Check for parenthesis */
 #define prts(x) (x == '(')
-
 
 /* Is it '+' or '*'
  * Returns 1 on success
  */
 #define isPlus(x)    ((x == '+') || (x == '*'))
 
-
 /* True char */
 #define TRUECHAR    1
-
 
 /* Is "y" a valid "x"?.
  * Returns 1 on success
@@ -103,11 +86,8 @@ typedef unsigned char uchar;
                      (x == 'W' && (y < 48 || y > 122 || \
                      (y > 57 && y <65)||(y > 90 && y< 97)))
 
-
 /* Charmap for case insensitive search */
 extern const uchar charmap[256];
-
-
 
 /* Regex mapping
  * 0  = none
@@ -129,8 +109,5 @@ extern const uchar charmap[256];
  */
 extern const uchar regexmap[][256];
 
+#endif /* __OS_INTERNAL_H */
 
-#endif
-
-
-/* EOF */

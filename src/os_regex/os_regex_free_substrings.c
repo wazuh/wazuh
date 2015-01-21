@@ -1,5 +1,3 @@
-/* $OSSEC, os_regex_free_substrings.c, v0.1, 2006/01/02, Daniel B. Cid$ */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,7 +7,6 @@
  * Foundation
  */
 
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -18,18 +15,13 @@
 #include "os_regex_internal.h"
 
 
-/** int OSRegex_FreeSubStrings(OSRegex *reg) v0.1
- * Release all the memory created to store the sub strings.
- * Returns void.
- */
+/* Release all the memory created to store the sub strings */
 void OSRegex_FreeSubStrings(OSRegex *reg)
 {
-    /* Freeing the sub strings */
-    if(reg->sub_strings)
-    {
+    /* Free the sub strings */
+    if (reg->sub_strings) {
         int i = 0;
-        while(reg->sub_strings[i])
-        {
+        while (reg->sub_strings[i]) {
             free(reg->sub_strings[i]);
             reg->sub_strings[i] = NULL;
             i++;
@@ -38,5 +30,3 @@ void OSRegex_FreeSubStrings(OSRegex *reg)
     return;
 }
 
-
-/* EOF */
