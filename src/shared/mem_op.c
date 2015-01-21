@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/shared/mem_op.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,21 +7,18 @@
  * Foundation
  */
 
-
 #include "mem_op.h"
 #include "shared.h"
 
 
-/* Add pointer to array. */
+/* Add pointer to array */
 void **os_AddPtArray(void *pt, void **array)
 {
     size_t i = 0;
     void **ret = NULL;
 
-    if(array)
-    {
-        while(array[i])
-        {
+    if (array) {
+        while (array[i]) {
             i++;
         }
     }
@@ -33,19 +27,16 @@ void **os_AddPtArray(void *pt, void **array)
     ret[i] = pt;
     ret[i + 1] = NULL;
 
-    return(ret);
+    return (ret);
 }
 
-
-/* Add a string to an array. */
+/* Add a string to an array */
 char **os_AddStrArray(const char *str, char **array)
 {
     size_t i = 0;
     char **ret = NULL;
-    if(array)
-    {
-        while(array[i])
-        {
+    if (array) {
+        while (array[i]) {
             i++;
         }
     }
@@ -54,47 +45,39 @@ char **os_AddStrArray(const char *str, char **array)
     os_strdup(str, ret[i]);
     ret[i + 1] = NULL;
 
-    return(ret);
+    return (ret);
 }
-
 
 /* Check if String is on array (Must be NULL terminated) */
 int os_IsStrOnArray(const char *str, char **array)
 {
-    if(!str || !array)
-    {
-        return(0);
+    if (!str || !array) {
+        return (0);
     }
 
-    while(*array)
-    {
-        if(strcmp(*array, str) == 0)
-        {
-            return(1);
+    while (*array) {
+        if (strcmp(*array, str) == 0) {
+            return (1);
         }
         array++;
     }
-    return(0);
+    return (0);
 }
-
 
 /* Clear the memory of one char and one char** */
 void os_FreeArray(char *ch1, char **ch2)
 {
-    /* Cleaning char * */
-    if(ch1)
-    {
+    /* Clean char * */
+    if (ch1) {
         free(ch1);
         ch1 = NULL;
     }
 
-    /* Cleaning chat ** */
-    if(ch2)
-    {
+    /* Clean chat ** */
+    if (ch2) {
         char **nch2 = ch2;
 
-        while(*ch2 != NULL)
-        {
+        while (*ch2 != NULL) {
             free(*ch2);
             ch2++;
         }
@@ -106,60 +89,52 @@ void os_FreeArray(char *ch1, char **ch2)
     return;
 }
 
-
-/* os_LoadString: v0.1
- * Allocate memory at "*at" and copy *str to it.
- * If *at already exist, realloc the memory and strcat str
- * on it.
- * It will return the new string on success or NULL on memory error.
+/* Allocate memory at "*at" and copy *str to it
+ * If *at already exist, realloc the memory and strcat str on it
+ * It will return the new string on success or NULL on memory error
  */
 char *os_LoadString(char *at, const char *str)
 {
-    if(at == NULL)
-    {
+    if (at == NULL) {
         at = strdup(str);
-        if(!at)
-        {
-            merror(MEM_ERROR,__local_name, errno, strerror(errno));
+        if (!at) {
+            merror(MEM_ERROR, __local_name, errno, strerror(errno));
         }
-        return(at);
-    }
-    else /*at is not null. Need to reallocat its memory and copy str to it*/
-    {
+        return (at);
+    } else { /* at is not null. Need to reallocate its memory and copy str to it */
         char *newat;
         size_t strsize = strlen(str);
         size_t finalsize = strsize + strlen(at) + 1;
 
-        newat = (char *) realloc(at, finalsize*sizeof(char));
-        if(newat == NULL)
-        {
+        newat = (char *) realloc(at, finalsize * sizeof(char));
+        if (newat == NULL) {
             free(at);
-            merror(MEM_ERROR,__local_name, errno, strerror(errno));
-            return(NULL);
+            merror(MEM_ERROR, __local_name, errno, strerror(errno));
+            return (NULL);
         }
         at = newat;
 
         strncat(at, str, strsize);
-        at[finalsize -1] = '\0';
+        at[finalsize - 1] = '\0';
 
-        return(at);
+        return (at);
     }
 
-    return(NULL);
+    return (NULL);
 }
 
-/**
- * Clear memory regardless of compiler optimizations.
- * @param v memory to clear
- * @param c character to set
- * @param n memory size to clear
+/* Clear memory regardless of compiler optimizations
+ * v = memory to clear
+ * c = character to set
+ * n = memory size to clear
  */
 void *memset_secure(void *v, int c, size_t n)
 {
     volatile unsigned char *p = v;
-    while (n--) *p++ = (unsigned char) c;
+    while (n--) {
+        *p++ = (unsigned char) c;
+    }
 
     return v;
 }
 
-/* EOF */

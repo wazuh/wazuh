@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/shared/agent_op.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -11,115 +8,98 @@
  */
 
 #include "agent_op.h"
-
 #include "shared.h"
 
 
-
-/** Checks if syscheck is to be executed/restarted.
- *  Returns 1 on success or 0 on failure (shouldn't be executed now).
+/* Check if syscheck is to be executed/restarted
+ * Returns 1 on success or 0 on failure (shouldn't be executed now)
  */
 int os_check_restart_syscheck()
 {
-    /* If the restart is not present, return 0.
-     */
-
-    if(isChroot())
-    {
-        if(unlink(SYSCHECK_RESTART) == -1)
-            return(0);
-    }
-    else
-    {
-        if(unlink(SYSCHECK_RESTART_PATH) == -1)
-            return(0);
+    /* If the restart is not present, return 0 */
+    if (isChroot()) {
+        if (unlink(SYSCHECK_RESTART) == -1) {
+            return (0);
+        }
+    } else {
+        if (unlink(SYSCHECK_RESTART_PATH) == -1) {
+            return (0);
+        }
     }
 
-    return(1);
+    return (1);
 }
 
-
-
-/** Sets syscheck to be restarted.
- *  Returns 1 on success or 0 on failure.
+/* Set syscheck to be restarted
+ * Returns 1 on success or 0 on failure
  */
 int os_set_restart_syscheck()
 {
     FILE *fp;
 
     fp = fopen(SYSCHECK_RESTART, "w");
-    if(!fp)
-    {
+    if (!fp) {
         merror(FOPEN_ERROR, __local_name, SYSCHECK_RESTART, errno, strerror(errno));
-        return(0);
+        return (0);
     }
 
     fprintf(fp, "%s\n", SYSCHECK_RESTART);
     fclose(fp);
 
-
-    return(1);
+    return (1);
 }
 
-
-
-/** char *os_read_agent_name()
- *  Reads the agent name for the current agent.
- *  Returns NULL on error.
+/* Read the agent name for the current agent
+ * Returns NULL on error
  */
-char* os_read_agent_name()
+char *os_read_agent_name()
 {
     char buf[1024 + 1];
     FILE *fp = NULL;
 
     debug2("%s: calling os_read_agent_name().", __local_name);
 
-    if(isChroot())
+    if (isChroot()) {
         fp = fopen(AGENT_INFO_FILE, "r");
-    else
+    } else {
         fp = fopen(AGENT_INFO_FILEP, "r");
-
-    /* We give 1 second for the file to be created... */
-    if(!fp)
-    {
-        sleep(1);
-
-        if(isChroot())
-            fp = fopen(AGENT_INFO_FILE, "r");
-        else
-            fp = fopen(AGENT_INFO_FILEP, "r");
     }
 
-    if(!fp)
-    {
+    /* We give 1 second for the file to be created */
+    if (!fp) {
+        sleep(1);
+
+        if (isChroot()) {
+            fp = fopen(AGENT_INFO_FILE, "r");
+        } else {
+            fp = fopen(AGENT_INFO_FILEP, "r");
+        }
+    }
+
+    if (!fp) {
         debug1(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
-        return(NULL);
+        return (NULL);
     }
 
     buf[1024] = '\0';
 
-
-    /* Getting name */
-    if(fgets(buf, 1024, fp))
-    {
+    /* Get name */
+    if (fgets(buf, 1024, fp)) {
         char *ret = NULL;
         os_strdup(buf, ret);
         fclose(fp);
 
         debug2("%s: os_read_agent_name returned (%s).", __local_name, ret);
 
-        return(ret);
+        return (ret);
     }
 
     fclose(fp);
-    return(NULL);
+    return (NULL);
 }
 
-
-
-/** char *os_read_agent_ip()
- *  Reads the agent ip for the current agent.
- *  Returns NULL on error.
+/* Read the agent ip for the current agent
+ * Returns NULL on error
  */
 char *os_read_agent_ip()
 {
@@ -129,34 +109,28 @@ char *os_read_agent_ip()
     debug2("%s: calling os_read_agent_ip().", __local_name);
 
     fp = fopen(AGENT_INFO_FILE, "r");
-    if(!fp)
-    {
+    if (!fp) {
         merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
-        return(NULL);
+        return (NULL);
     }
 
     buf[1024] = '\0';
 
-
-    /* Getting IP */
-    if(fgets(buf, 1024, fp) && fgets(buf, 1024, fp))
-    {
+    /* Get IP */
+    if (fgets(buf, 1024, fp) && fgets(buf, 1024, fp)) {
         char *ret = NULL;
         os_strdup(buf, ret);
         fclose(fp);
 
-        return(ret);
+        return (ret);
     }
 
     fclose(fp);
-    return(NULL);
+    return (NULL);
 }
 
-
-
-/** char *os_read_agent_id()
- *  Reads the agent id for the current agent.
- *  Returns NULL on error.
+/* Read the agent id for the current agent
+ * Returns NULL on error
  */
 char *os_read_agent_id()
 {
@@ -166,35 +140,28 @@ char *os_read_agent_id()
     debug2("%s: calling os_read_agent_id().", __local_name);
 
     fp = fopen(AGENT_INFO_FILE, "r");
-    if(!fp)
-    {
+    if (!fp) {
         merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
-        return(NULL);
+        return (NULL);
     }
 
     buf[1024] = '\0';
 
-
-    /* Getting id */
-    if(fgets(buf, 1024, fp) && fgets(buf, 1024, fp) && fgets(buf, 1024, fp))
-    {
+    /* Get id */
+    if (fgets(buf, 1024, fp) && fgets(buf, 1024, fp) && fgets(buf, 1024, fp)) {
         char *ret = NULL;
         os_strdup(buf, ret);
         fclose(fp);
 
-        return(ret);
+        return (ret);
     }
 
     fclose(fp);
-    return(NULL);
+    return (NULL);
 }
 
-
-/*  cmoraes: begin add */
-
-/** char *os_read_agent_profile()
- *  Reads the agent profile name for the current agent.
- *  Returns NULL on error.
+/*  Read the agent profile name for the current agent
+ *  Returns NULL on error
  *
  *  Description:
  *  Comma separated list of strings that used to identify what type
@@ -202,34 +169,31 @@ char *os_read_agent_id()
  *  The profile name is set in the agent's etc/ossec.conf file
  *  It is matched with the ossec manager's agent.conf file to read
  *  configuration only applicable to this profile name.
- *
  */
-char* os_read_agent_profile()
+char *os_read_agent_profile()
 {
     char buf[1024 + 1];
     FILE *fp;
 
     debug2("%s: calling os_read_agent_profile().", __local_name);
 
-    if(isChroot())
+    if (isChroot()) {
         fp = fopen(AGENT_INFO_FILE, "r");
-    else
+    } else {
         fp = fopen(AGENT_INFO_FILEP, "r");
+    }
 
-    if(!fp)
-    {
+    if (!fp) {
         debug2("%s: Failed to open file. Errno=%d.", __local_name, errno);
         merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
-        return(NULL);
+        return (NULL);
     }
 
     buf[1024] = '\0';
 
-
-    /* Getting profile */
-    if(fgets(buf, 1024, fp) && fgets(buf, 1024, fp) &&
-       fgets(buf, 1024, fp) && fgets(buf, 1024, fp))
-    {
+    /* Get profile */
+    if (fgets(buf, 1024, fp) && fgets(buf, 1024, fp) &&
+            fgets(buf, 1024, fp) && fgets(buf, 1024, fp)) {
         char *ret = NULL;
 
         /* Trim the /n and/or /r at the end of the string */
@@ -240,33 +204,27 @@ char* os_read_agent_profile()
 
         fclose(fp);
 
-        return(ret);
+        return (ret);
     }
 
     fclose(fp);
-    return(NULL);
+    return (NULL);
 }
-/* cmoraes: end add */
 
-
-/** int os_write_agent_info(char *agent_name, char *agent_ip, char *agent_id)
- *  Writes the agent info inside the queue, for the other processes to read.
- *  Returns 1 on success or <= 0 on failure.
+/* Write the agent info to the queue, for the other processes to read
+ * Returns 1 on success or <= 0 on failure
  */
-/* cmoraes: changed function. added cfg_profile_name parameter */
 int os_write_agent_info(const char *agent_name, __attribute__((unused)) const char *agent_ip,
-        const char *agent_id, const char *cfg_profile_name)
+                        const char *agent_id, const char *cfg_profile_name)
 {
     FILE *fp;
 
     fp = fopen(AGENT_INFO_FILE, "w");
-    if(!fp)
-    {
+    if (!fp) {
         merror(FOPEN_ERROR, __local_name, AGENT_INFO_FILE, errno, strerror(errno));
-        return(0);
+        return (0);
     }
 
-    /*cmoraes: added cfg_profile_name parameter*/
     fprintf(
         fp,
         "%s\n-\n%s\n%s\n",
@@ -275,15 +233,11 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
         (cfg_profile_name) ? cfg_profile_name : "-"
     );
     fclose(fp);
-    return(1);
+    return (1);
 }
-
-
 
 int os_agent_config_changed()
 {
-    return(0);
+    return (0);
 }
 
-
-/* EOF */

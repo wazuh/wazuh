@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/shared/hash_op.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,89 +5,68 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- *
- * License details at the LICENSE file included with OSSEC or
- * online at: http://www.ossec.net/en/licensing.html
  */
 
-
 /* Common API for dealing with hashes/maps */
-
 
 #include "shared.h"
 
 static unsigned int _os_genhash(const OSHash *self, const char *key) __attribute__((nonnull));
 
-/** OSHash *OSHash_Create()
- * Creates the Hash.
- * Returns NULL on error.
+
+/* Create hash
+ * Returns NULL on error
  */
 OSHash *OSHash_Create()
 {
     unsigned int i = 0;
     OSHash *self;
 
-    /* Allocating memory for the hash */
+    /* Allocate memory for the hash */
     self = (OSHash *) calloc(1, sizeof(OSHash));
-    if(!self)
-    {
-        return(NULL);
+    if (!self) {
+        return (NULL);
     }
 
-
-    /* Setting default row size */
+    /* Set default row size */
     self->rows = os_getprime(1024);
-    if(self->rows == 0)
-    {
+    if (self->rows == 0) {
         free(self);
-        return(NULL);
+        return (NULL);
     }
 
-
-    /* Creating hashing table */
-    self->table = (OSHashNode **)calloc(self->rows +1, sizeof(OSHashNode *));
-    if(!self->table)
-    {
+    /* Create hashing table */
+    self->table = (OSHashNode **)calloc(self->rows + 1, sizeof(OSHashNode *));
+    if (!self->table) {
         free(self);
-        return(NULL);
+        return (NULL);
     }
 
-
-    /* Zeroing our tables */
-    for(i = 0; i <= self->rows; i++)
-    {
+    /* Zero our tables */
+    for (i = 0; i <= self->rows; i++) {
         self->table[i] = NULL;
     }
 
-
-    /* Getting seed */
+    /* Get seed */
     srandom((unsigned int)time(0));
     self->initial_seed = os_getprime((unsigned)random() % self->rows);
     self->constant = os_getprime((unsigned)random() % self->rows);
 
-
-    return(self);
+    return (self);
 }
 
-
-
-/** void *OSHash_Free(OSHash *self)
- * Frees the memory used by the hash.
- */
+/* Free the memory used by the hash */
 void *OSHash_Free(OSHash *self)
 {
     unsigned int i = 0;
     OSHashNode *curr_node;
     OSHashNode *next_node;
 
-
-    /* Freeing each entry */
-    while(i <= self->rows)
-    {
+    /* Free each entry */
+    while (i <= self->rows) {
         curr_node = self->table[i];
         next_node = curr_node;
-        while(next_node)
-        {
+        while (next_node) {
             next_node = next_node->next;
             free(curr_node->key);
             free(curr_node);
@@ -99,19 +75,14 @@ void *OSHash_Free(OSHash *self)
         i++;
     }
 
-
-    /* Freeing the hash table */
+    /* Free the hash table */
     free(self->table);
 
     free(self);
-    return(NULL);
+    return (NULL);
 }
 
-
-
-/** int _os_genhash(OSHash *self, char *key)
- * Generates hash for key
- */
+/* Generates hash for key */
 static unsigned int _os_genhash(const OSHash *self, const char *key)
 {
     unsigned int hash_key = self->initial_seed;
@@ -119,61 +90,49 @@ static unsigned int _os_genhash(const OSHash *self, const char *key)
     /* What we have here is a simple polynomial hash.
      * x0 * a^k-1 .. xk * a^k-k +1
      */
-    while(*key)
-    {
+    while (*key) {
         hash_key *= self->constant;
-        hash_key += (unsigned int) *key;
+        hash_key += (unsigned int) * key;
         key++;
     }
 
-    return(hash_key);
+    return (hash_key);
 }
 
-
-
-/** int OSHash_setSize(OSHash *self, int size)
- * Sets new size for hash.
- * Returns 0 on error (out of memory).
+/* Set new size for hash
+ * Returns 0 on error (out of memory)
  */
 int OSHash_setSize(OSHash *self, unsigned int new_size)
 {
     unsigned int i = 0;
 
     /* We can't decrease the size */
-    if(new_size <= self->rows)
-    {
-        return(1);
+    if (new_size <= self->rows) {
+        return (1);
     }
 
-
-    /* Getting next prime */
+    /* Get next prime */
     self->rows = os_getprime(new_size);
-    if(self->rows == 0)
-    {
-        return(0);
+    if (self->rows == 0) {
+        return (0);
     }
-
 
     /* If we fail, the hash should not be used anymore */
-    self->table = (OSHashNode **) realloc(self->table, (self->rows +1) * sizeof(OSHashNode *));
-    if(!self->table)
-    {
-        return(0);
+    self->table = (OSHashNode **) realloc(self->table, (self->rows + 1) * sizeof(OSHashNode *));
+    if (!self->table) {
+        return (0);
     }
 
-
-    /* Zeroing our tables */
-    for(i = 0; i <= self->rows; i++)
-    {
+    /* Zero our tables */
+    for (i = 0; i <= self->rows; i++) {
         self->table[i] = NULL;
     }
-
 
     /* New seed */
     self->initial_seed = os_getprime((unsigned)random() % self->rows);
     self->constant = os_getprime((unsigned)random() % self->rows);
 
-    return(1);
+    return (1);
 }
 
 
@@ -186,34 +145,26 @@ int OSHash_Update(OSHash *self, const char *key, void *data)
 {
     unsigned int hash_key;
     unsigned int index;
-
     OSHashNode *curr_node;
 
-
-    /* Generating hash of the message */
+    /* Generate hash of the message */
     hash_key = _os_genhash(self, key);
 
-
-    /* Getting array index */
+    /* Get array index */
     index = hash_key % self->rows;
 
-
-    /* Checking for duplicated entries in the index */
+    /* Check for duplicated entries in the index */
     curr_node = self->table[index];
-    while(curr_node)
-    {
+    while (curr_node) {
         /* Checking for duplicated key -- not adding */
-        if(strcmp(curr_node->key, key) == 0)
-        {
+        if (strcmp(curr_node->key, key) == 0) {
             curr_node->data = data;
-            return(1);
+            return (1);
         }
         curr_node = curr_node->next;
     }
-    return(0);
+    return (0);
 }
-
-
 
 /** int OSHash_Add(OSHash *self, char *key, void *data)
  * Returns 0 on error.
@@ -225,65 +176,52 @@ int OSHash_Add(OSHash *self, const char *key, void *data)
 {
     unsigned int hash_key;
     unsigned int index;
-
     OSHashNode *curr_node;
     OSHashNode *new_node;
 
-
-    /* Generating hash of the message */
+    /* Generate hash of the message */
     hash_key = _os_genhash(self, key);
 
-
-    /* Getting array index */
+    /* Get array index */
     index = hash_key % self->rows;
 
-
-    /* Checking for duplicated entries in the index */
+    /* Check for duplicated entries in the index */
     curr_node = self->table[index];
-    while(curr_node)
-    {
+    while (curr_node) {
         /* Checking for duplicated key -- not adding */
-        if(strcmp(curr_node->key, key) == 0)
-        {
+        if (strcmp(curr_node->key, key) == 0) {
             /* Not adding */
-            return(1);
+            return (1);
         }
         curr_node = curr_node->next;
     }
 
-
-    /* Creating new node */
+    /* Create new node */
     new_node = (OSHashNode *) calloc(1, sizeof(OSHashNode));
-    if(!new_node)
-    {
-        return(0);
+    if (!new_node) {
+        return (0);
     }
     new_node->next = NULL;
     new_node->data = data;
     new_node->key = strdup(key);
-    if( new_node->key == NULL ) {
+    if ( new_node->key == NULL ) {
         free(new_node);
         debug1("hash_op: DEBUG: strdup() failed!");
-        return(0);
+        return (0);
     }
 
-
-    /* Adding to table */
-    if(!self->table[index])
-    {
+    /* Add to table */
+    if (!self->table[index]) {
         self->table[index] = new_node;
     }
     /* If there is duplicated, add to the beginning */
-    else
-    {
+    else {
         new_node->next = self->table[index];
         self->table[index] = new_node;
     }
 
-    return(2);
+    return (2);
 }
-
-
 
 /** void *OSHash_Get(OSHash *self, char *key)
  * Returns NULL on error (key not found).
@@ -294,40 +232,35 @@ void *OSHash_Get(const OSHash *self, const char *key)
 {
     unsigned int hash_key;
     unsigned int index;
-
     const OSHashNode *curr_node;
 
-
-    /* Generating hash of the message */
+    /* Generate hash of the message */
     hash_key = _os_genhash(self, key);
 
-
-    /* Getting array index */
+    /* Get array index */
     index = hash_key % self->rows;
 
-
-    /* Getting entry */
+    /* Get entry */
     curr_node = self->table[index];
-    while(curr_node != NULL)
-    {
+    while (curr_node != NULL) {
         /* Skip null pointers */
-        if( curr_node->key == NULL )
+        if ( curr_node->key == NULL ) {
             continue;
+        }
 
         /* We may have colisions, so double check with strcmp */
-        if(strcmp(curr_node->key, key) == 0)
-        {
-            return(curr_node->data);
+        if (strcmp(curr_node->key, key) == 0) {
+            return (curr_node->data);
         }
 
         curr_node = curr_node->next;
     }
 
-    return(NULL);
+    return (NULL);
 }
 
-/* Returns a pointer to a hash node if found, that hash node is removed from the table */
-void* OSHash_Delete(OSHash *self, const char *key)
+/* Return a pointer to a hash node if found, that hash node is removed from the table */
+void *OSHash_Delete(OSHash *self, const char *key)
 {
     OSHashNode *curr_node;
     OSHashNode *prev_node = 0;
@@ -335,19 +268,18 @@ void* OSHash_Delete(OSHash *self, const char *key)
     unsigned int index;
     void *data;
 
-    /* Generating hash of the message */
+    /* Generate hash of the message */
     hash_key = _os_genhash(self, key);
 
-    /* Getting array index */
+    /* Get array index */
     index = hash_key % self->rows;
 
     curr_node = self->table[index];
-    while( curr_node != NULL ) {
-        if(strcmp(curr_node->key, key) == 0) {
-            if( prev_node == NULL ) {
+    while ( curr_node != NULL ) {
+        if (strcmp(curr_node->key, key) == 0) {
+            if ( prev_node == NULL ) {
                 self->table[index] = curr_node->next;
-            }
-            else {
+            } else {
                 prev_node->next = curr_node->next;
             }
             free(curr_node->key);
@@ -361,5 +293,3 @@ void* OSHash_Delete(OSHash *self, const char *key)
 
     return NULL;
 }
-
-/* EOF */

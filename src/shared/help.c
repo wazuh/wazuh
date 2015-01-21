@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/shared/help.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,15 +7,10 @@
  * Foundation
  */
 
-/* Part of the OSSEC HIDS
- * Available at http://www.ossec.net/hids/
- */
-
-/* Help Function
- */
-
+/* Help Function */
 
 #include "shared.h"
+
 
 void print_header()
 {
@@ -32,8 +24,6 @@ void print_version()
     print_out(" ");
     print_out("%s %s - %s", __ossec_name, __version, __author);
     print_out(" ");
-    print_out("%s",__license);
+    print_out("%s", __license);
     exit(1);
 }
-
-/* EOF */
