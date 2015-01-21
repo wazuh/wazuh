@@ -129,6 +129,8 @@ int main(int argc, char **argv)
     }
     else
     {
+        /* Save the full hostname */
+        memcpy(__shost_long, __shost, 512);
         char *ltmp;
 
         /* Remove domain part if available */
