@@ -310,5 +310,6 @@ void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv)
     /* Start process */
     local_start();
 #endif
+}
 
 #endif /* WIN32 */

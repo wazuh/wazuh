@@ -13,6 +13,8 @@
 #include "os_net/os_net.h"
 #include "execd.h"
 
+int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
+
 #ifndef WIN32
 
 /* Prototypes */
@@ -21,7 +23,6 @@ static void execd_shutdown(int sig) __attribute__((noreturn));
 static void ExecdStart(int q) __attribute__((noreturn));
 
 /* Global variables */
-int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
 static OSList *timeout_list;
 static OSListNode *timeout_node;
 static OSHash *repeated_hash;

@@ -10,15 +10,6 @@
 #ifdef WIN32
 #ifdef EVENTCHANNEL_SUPPORT
 
-#include <stdint.h>
-#include <winevt.h>
-#include <sec_api/stdlib_s.h>
-#include <winerror.h>
-#include <sddl.h>
-
-#include "shared.h"
-#include "logcollector.h"
-
 /* Saying we are on Vista in order to have the API */
 #define _WIN32_WINNT 0x0600
 
@@ -43,6 +34,15 @@
 /* Audit types */
 #define WINEVENT_AUDIT_FAILURE 0x10000000000000LL
 #define WINEVENT_AUDIT_SUCCESS 0x20000000000000LL
+
+#include <stdint.h>
+#include <winevt.h>
+#include <sec_api/stdlib_s.h>
+#include <winerror.h>
+#include <sddl.h>
+
+#include "shared.h"
+#include "logcollector.h"
 
 typedef struct _os_event {
     char *name;
