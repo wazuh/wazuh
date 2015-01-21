@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/config/active-response.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,25 +7,20 @@
  * Foundation
  */
 
-
 #ifndef _CAR__H
 #define _CAR__H
 
-
-/** Active response commands **/
-typedef struct _ar_command
-{
+/* Active response commands */
+typedef struct _ar_command {
     int expect;
     int timeout_allowed;
 
     char *name;
     char *executable;
-}ar_command;
+} ar_command;
 
-
-/** Active response data **/
-typedef struct _ar
-{
+/* Active response data */
+typedef struct _ar {
     int timeout;
     int location;
     int level;
@@ -39,10 +31,10 @@ typedef struct _ar
     char *rules_group;
 
     ar_command *ar_cmd;
-}active_response;
-
+} active_response;
 
 /* Active response flag */
 extern int ar_flag;
 
-#endif
+#endif /* _CAR__H */
+

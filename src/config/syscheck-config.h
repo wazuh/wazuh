@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/config/syscheck-config.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,15 +7,12 @@
  * Foundation
  */
 
-
 #ifndef __SYSCHECKC_H
 #define __SYSCHECKC_H
-
 
 #define MAX_DIR_SIZE    64
 #define MAX_DIR_ENTRY   128
 #define SYSCHECK_WAIT   300
-
 
 /* Checking options */
 #define CHECK_MD5SUM        0000001
@@ -30,53 +24,50 @@
 #define CHECK_REALTIME      0000100
 #define CHECK_SEECHANGES    0000200
 
-
 #include <stdio.h>
 
 #include "os_regex/os_regex.h"
 
-typedef struct _rtfim
-{
+typedef struct _rtfim {
     int fd;
     OSHash *dirtb;
-    #ifdef WIN32
+#ifdef WIN32
     HANDLE evt;
-    #endif
-}rtfim;
+#endif
+} rtfim;
 
-typedef struct _config
-{
+typedef struct _config {
     unsigned int tsleep;            /* sleep for sometime for daemon to settle */
     int sleep_after;
-    int rootcheck;         /* set to 0 when rootcheck is disabled */
-    int disabled;          /* is syscheck disabled? */
+    int rootcheck;                  /* set to 0 when rootcheck is disabled */
+    int disabled;                   /* is syscheck disabled? */
     int scan_on_start;
     int realtime_count;
 
-    int time;              /* frequency (secs) for syscheck to run */
-    int queue;             /* file descriptor of socket to write to queue */
+    int time;                       /* frequency (secs) for syscheck to run */
+    int queue;                      /* file descriptor of socket to write to queue */
 
-    int *opts;             /* attributes set in the <directories> tag element */
+    int *opts;                      /* attributes set in the <directories> tag element */
 
     char *remote_db;
     char *db;
 
-    char *scan_day;        /* run syscheck on this day */
-    char *scan_time;       /* run syscheck at this time */
+    char *scan_day;                 /* run syscheck on this day */
+    char *scan_time;                /* run syscheck at this time */
 
-    char **ignore;         /* list of files/dirs to ignore */
-    OSMatch **ignore_regex;   /* regex of files/dirs to ignore */
+    char **ignore;                  /* list of files/dirs to ignore */
+    OSMatch **ignore_regex;         /* regex of files/dirs to ignore */
 
-    char **dir;            /* array of directories to be scanned */
+    char **dir;                     /* array of directories to be scanned */
     OSMatch **filerestrict;
 
     /* Windows only registry checking */
-    #ifdef WIN32
+#ifdef WIN32
     char **registry_ignore;         /* list of registry entries to ignore */
     void **registry_ignore_regex;   /* regex of registry entries to ignore */
     char **registry;                /* array of registry entries to be scanned */
     FILE *reg_fp;
-    #endif
+#endif
 
     OSHash *fp;
 
@@ -84,10 +75,9 @@ typedef struct _config
 
     char *prefilter_cmd;
 
-}syscheck_config;
+} syscheck_config;
 
-int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile) __attribute__((nonnull(1,2)));
+int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile) __attribute__((nonnull(1, 2)));
 
-#endif
+#endif /* __SYSCHECKC_H */
 
-/* EOF */
