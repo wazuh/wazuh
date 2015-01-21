@@ -7,13 +7,13 @@
  * Foundation
  */
 
-#ifndef WIN32
-
 #include "shared.h"
 #include "list_op.h"
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
 #include "execd.h"
+
+#ifndef WIN32
 
 /* Prototypes */
 static void help_execd(void) __attribute__((noreturn));

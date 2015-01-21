@@ -8,11 +8,11 @@
  */
 
 #ifdef WIN32
-#include <psapi.h>
-#include <tlhelp32.h>
-
 #include "shared.h"
 #include "rootcheck.h"
+
+#include <tlhelp32.h>
+#include <psapi.h>
 
 
 /* Set Debug privilege
