@@ -17,6 +17,7 @@
 
 Suite *test_suite(void);
 
+
 static void create_xml_file(const char *str, char file_name[], size_t length)
 {
     strncpy(file_name, "/tmp/tmp_file-XXXXXX", length);
@@ -26,21 +27,19 @@ static void create_xml_file(const char *str, char file_name[], size_t length)
     close(fd);
 }
 
-static void nodecat(XML_NODE node, OS_XML *xml, char *buffer) {
+static void nodecat(XML_NODE node, OS_XML *xml, char *buffer)
+{
     int i = 0;
     /* write node */
-    while(node[i])
-    {
+    while (node[i]) {
         strncat(buffer, "<", 1);
         ck_assert_ptr_ne(node[i]->element, NULL);
         strncat(buffer, node[i]->element, strlen(node[i]->element));
         /* write attributes */
-        if(node[i]->attributes)
-        {
+        if (node[i]->attributes) {
             ck_assert_ptr_ne(node[i]->values, NULL);
             int j = 0;
-            while(node[i]->attributes[j])
-            {
+            while (node[i]->attributes[j]) {
                 strncat(buffer, " ", 1);
                 ck_assert_ptr_ne(node[i]->values[j], NULL);
                 strncat(buffer, node[i]->attributes[j], strlen(node[i]->attributes[j]));
@@ -51,9 +50,7 @@ static void nodecat(XML_NODE node, OS_XML *xml, char *buffer) {
                 j++;
             }
             ck_assert_ptr_eq(node[i]->values[j], NULL);
-        }
-        else
-        {
+        } else {
             ck_assert_ptr_eq(node[i]->values, NULL);
         }
         strncat(buffer, ">", 1);
@@ -62,8 +59,7 @@ static void nodecat(XML_NODE node, OS_XML *xml, char *buffer) {
 
         /* write children */
         XML_NODE child = OS_GetElementsbyNode(xml, node[i]);
-        if(child != NULL)
-        {
+        if (child != NULL) {
             nodecat(child, xml, buffer);
             OS_ClearNode(child);
         }
@@ -79,8 +75,7 @@ static void nodecat(XML_NODE node, OS_XML *xml, char *buffer) {
 static void assert_os_xml_eq_str(OS_XML *xml, const char *xml_str)
 {
     XML_NODE node = OS_GetElementsbyNode(xml, NULL);
-    if(node == NULL)
-    {
+    if (node == NULL) {
         ck_assert_str_eq(xml_str, "");
         return;
     }
@@ -119,58 +114,58 @@ END_TEST
 START_TEST(test_multiplenodes)
 {
     assert_os_xml_eq(
-            "<root1></root1>"
-            "<root2></root2>"
-            "<root3/>",
-            "<root1></root1>"
-            "<root2></root2>"
-            "<root3></root3>");
+        "<root1></root1>"
+        "<root2></root2>"
+        "<root3/>",
+        "<root1></root1>"
+        "<root2></root2>"
+        "<root3></root3>");
 }
 END_TEST
 
 START_TEST(test_children)
 {
     assert_os_xml_eq(
-            "<root1>"
-            "<child1></child1>"
-            "</root1>"
-            "<root2>"
-            "<child1></child1>"
-            "<child2/>"
-            "<child3>"
-            "<child3.1></child3.1>"
-            "</child3>"
-            "</root2>"
-            "<root3></root3>",
-            "<root1>"
-            "<child1></child1>"
-            "</root1>"
-            "<root2>"
-            "<child1></child1>"
-            "<child2></child2>"
-            "<child3>"
-            "<child3.1></child3.1>"
-            "</child3>"
-            "</root2>"
-            "<root3></root3>");
+        "<root1>"
+        "<child1></child1>"
+        "</root1>"
+        "<root2>"
+        "<child1></child1>"
+        "<child2/>"
+        "<child3>"
+        "<child3.1></child3.1>"
+        "</child3>"
+        "</root2>"
+        "<root3></root3>",
+        "<root1>"
+        "<child1></child1>"
+        "</root1>"
+        "<root2>"
+        "<child1></child1>"
+        "<child2></child2>"
+        "<child3>"
+        "<child3.1></child3.1>"
+        "</child3>"
+        "</root2>"
+        "<root3></root3>");
 }
 END_TEST
 
 START_TEST(test_multiplecontent)
 {
     assert_os_xml_eq(
-            "<root>"
-            "value1"
-            "<child/>"
-            "</root>",
-            "<root><child></child></root>");
+        "<root>"
+        "value1"
+        "<child/>"
+        "</root>",
+        "<root><child></child></root>");
     assert_os_xml_eq(
-            "<root>"
-            "value1"
-            "<child/>"
-            "value2"
-            "</root>",
-            "<root>value2<child></child></root>");
+        "<root>"
+        "value1"
+        "<child/>"
+        "value2"
+        "</root>",
+        "<root>value2<child></child></root>");
 }
 END_TEST
 
@@ -178,82 +173,82 @@ END_TEST
 START_TEST(test_attributes)
 {
     assert_os_xml_eq(
-            "<root attr1=\"test\" attr2=\"1\"></root>",
-            "<root attr1=\"test\" attr2=\"1\"></root>");
+        "<root attr1=\"test\" attr2=\"1\"></root>",
+        "<root attr1=\"test\" attr2=\"1\"></root>");
 
     assert_os_xml_eq(
-            "<root attr1=\"test\"\nattr2=\"test\"\tattr3=\"test\"></root>",
-            "<root attr1=\"test\" attr2=\"test\" attr3=\"test\"></root>");
+        "<root attr1=\"test\"\nattr2=\"test\"\tattr3=\"test\"></root>",
+        "<root attr1=\"test\" attr2=\"test\" attr3=\"test\"></root>");
 
     assert_os_xml_eq(
-            "<root attr1=\"test/test\"></root>",
-            "<root attr1=\"test/test\"></root>");
+        "<root attr1=\"test/test\"></root>",
+        "<root attr1=\"test/test\"></root>");
 
     assert_os_xml_eq(
-            "<root attr1=\"test1\"></root><root attr1=\"test2\"></root>",
-            "<root attr1=\"test1\"></root><root attr1=\"test2\"></root>");
+        "<root attr1=\"test1\"></root><root attr1=\"test2\"></root>",
+        "<root attr1=\"test1\"></root><root attr1=\"test2\"></root>");
 
     assert_os_xml_eq(
-            "<root attr1=\"test\"\n\t  \t\n  \n\t  \nattr2=\"test\"></root>",
-            "<root attr1=\"test\" attr2=\"test\"></root>");
+        "<root attr1=\"test\"\n\t  \t\n  \n\t  \nattr2=\"test\"></root>",
+        "<root attr1=\"test\" attr2=\"test\"></root>");
 
     assert_os_xml_eq(
-            "<root\n\t  \t\n  \n\t  \nattr1=\"test\"></root>",
-            "<root attr1=\"test\"></root>");
+        "<root\n\t  \t\n  \n\t  \nattr1=\"test\"></root>",
+        "<root attr1=\"test\"></root>");
 
     assert_os_xml_eq(
-            "<root attr1=\n\t  \t\n  \n\t  \n\"test\"></root>",
-            "<root attr1=\"test\"></root>");
+        "<root attr1=\n\t  \t\n  \n\t  \n\"test\"></root>",
+        "<root attr1=\"test\"></root>");
 
     assert_os_xml_eq(
-            "<root attr=\"test\" />",
-            "<root attr=\"test\"></root>");
+        "<root attr=\"test\" />",
+        "<root attr=\"test\"></root>");
 
     assert_os_xml_eq(
-            "<root attr=\"test\"/>",
-            "<root attr=\"test\"></root>");
+        "<root attr=\"test\"/>",
+        "<root attr=\"test\"></root>");
 }
 END_TEST
 
 START_TEST(test_variables)
 {
     assert_os_xml_eq(
-            "<var name=\"var1\">value1</var>"
-            "<var name=\"var2\">value2</var>"
-            "<root attr1=\"$var1\" attr2=\"1\">$var2</root>"
-            "<root attr1=\"blah$var1\" attr2=\"1\">blah$var2</root>"
-            "<root attr1=\"blah$var1$var2 blah\" attr2=\"1\">blah$var2$var1 blah</root>",
-            "<root attr1=\"value1\" attr2=\"1\">value2</root>"
-            "<root attr1=\"blahvalue1\" attr2=\"1\">blahvalue2</root>"
-            "<root attr1=\"blahvalue1value2 blah\" attr2=\"1\">blahvalue2value1 blah</root>");
+        "<var name=\"var1\">value1</var>"
+        "<var name=\"var2\">value2</var>"
+        "<root attr1=\"$var1\" attr2=\"1\">$var2</root>"
+        "<root attr1=\"blah$var1\" attr2=\"1\">blah$var2</root>"
+        "<root attr1=\"blah$var1$var2 blah\" attr2=\"1\">blah$var2$var1 blah</root>",
+        "<root attr1=\"value1\" attr2=\"1\">value2</root>"
+        "<root attr1=\"blahvalue1\" attr2=\"1\">blahvalue2</root>"
+        "<root attr1=\"blahvalue1value2 blah\" attr2=\"1\">blahvalue2value1 blah</root>");
 }
 END_TEST
 
 START_TEST(test_comments)
 {
     assert_os_xml_eq(
-            "<root1/><!comment!><root2/>",
-            "<root1></root1><root2></root2>");
+        "<root1/><!comment!><root2/>",
+        "<root1></root1><root2></root2>");
     assert_os_xml_eq(
-            "<root1/><!--comment--><root2/>",
-            "<root1></root1><root2></root2>");
+        "<root1/><!--comment--><root2/>",
+        "<root1></root1><root2></root2>");
 
     assert_os_xml_eq(
-            "<root1/><! comment with ! !><root2/>",
-            "<root1></root1><root2></root2>");
+        "<root1/><! comment with ! !><root2/>",
+        "<root1></root1><root2></root2>");
 
     assert_os_xml_eq(
-            "<root1/><! comment with - --><root2/>",
-            "<root1></root1><root2></root2>");
+        "<root1/><! comment with - --><root2/>",
+        "<root1></root1><root2></root2>");
 }
 END_TEST
 
 START_TEST(test_specialchars)
 {
     assert_os_xml_eq(
-            "<var name=\"var1\">value1</var>"
-            "<root1>\\</root1\\></root1>",
-            "<root1>\\</root1\\></root1>");
+        "<var name=\"var1\">value1</var>"
+        "<root1>\\</root1\\></root1>",
+        "<root1>\\</root1\\></root1>");
 }
 END_TEST
 
@@ -460,7 +455,7 @@ END_TEST
 START_TEST(test_unknownvariable2)
 {
     assert_os_xml_eq("<root>$var</root>",
-            "<root>$var</root>");
+                     "<root>$var</root>");
 }
 END_TEST
 
@@ -630,7 +625,7 @@ START_TEST(test_osgetonecontentforelement)
 }
 END_TEST
 
-static void assert_ox_xml_write_eq(const char *xml_str_old, const char *xml_str_new,const char **xml_path, const char *oldval, const char *newval)
+static void assert_ox_xml_write_eq(const char *xml_str_old, const char *xml_str_new, const char **xml_path, const char *oldval, const char *newval)
 {
     char xml_in_file_name[256];
     create_xml_file(xml_str_old, xml_in_file_name, 256);
@@ -653,24 +648,24 @@ START_TEST(test_oswritexml_success)
 {
     const char *xml_path[] = { "root", "child", NULL };
     assert_ox_xml_write_eq(
-            "<root><child>test</child></root>",
-            "<root><child>test_new</child></root>",
-            xml_path, "test", "test_new");
+        "<root><child>test</child></root>",
+        "<root><child>test_new</child></root>",
+        xml_path, "test", "test_new");
 
     assert_ox_xml_write_eq(
-            "<root><child>test</child></root>",
-            "<root><child>test</child></root>",
-            xml_path, "test", "test");
+        "<root><child>test</child></root>",
+        "<root><child>test</child></root>",
+        xml_path, "test", "test");
 
     assert_ox_xml_write_eq(
-            "<root><child></child></root>",
-            "<root><child>test</child></root>",
-            xml_path, "test", "test");
+        "<root><child></child></root>",
+        "<root><child>test</child></root>",
+        xml_path, "test", "test");
 
     assert_ox_xml_write_eq(
-                "<root2><child></child></root2>",
-                "<root2><child></child></root2><root>\n <child>test</child></root>",
-                xml_path, NULL, "test");
+        "<root2><child></child></root2>",
+        "<root2><child></child></root2><root>\n <child>test</child></root>",
+        xml_path, NULL, "test");
 }
 END_TEST
 
@@ -738,13 +733,15 @@ START_TEST(test_osgetcontents)
     ck_assert_ptr_eq(OS_GetContents(&xml, NULL), NULL);
 
     int i = 0;
-    while(content1[i])
+    while (content1[i]) {
         free(content1[i++]);
+    }
     free(content1);
 
     i = 0;
-    while(content2[i])
+    while (content2[i]) {
         free(content2[i++]);
+    }
     free(content2);
     OS_ClearXML(&xml);
     unlink(xml_file_name);
@@ -765,8 +762,9 @@ START_TEST(test_osgetelementcontent)
     ck_assert_ptr_eq(content[1], NULL);
 
     int i = 0;
-    while(content[i])
+    while (content[i]) {
         free(content[i++]);
+    }
     free(content);
     OS_ClearXML(&xml);
     unlink(xml_file_name);
@@ -793,12 +791,14 @@ START_TEST(test_osgetelements)
     ck_assert_ptr_eq(OS_GetElements(&xml,  xml_path2), NULL);
 
     int i = 0;
-    while(content1[i])
+    while (content1[i]) {
         free(content1[i++]);
+    }
     free(content1);
     i = 0;
-    while(content2[i])
+    while (content2[i]) {
         free(content2[i++]);
+    }
     free(content2);
     OS_ClearXML(&xml);
     unlink(xml_file_name);
@@ -820,8 +820,9 @@ START_TEST(test_osgetattributes)
     ck_assert_ptr_eq(content[2], NULL);
 
     int i = 0;
-    while(content[i])
+    while (content[i]) {
         free(content[i++]);
+    }
     free(content);
     OS_ClearXML(&xml);
     unlink(xml_file_name);

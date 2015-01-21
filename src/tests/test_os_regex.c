@@ -9,10 +9,12 @@
 
 #include <check.h>
 #include <stdlib.h>
+
 #include "../os_regex/os_regex.h"
 #include "../os_regex/os_regex_internal.h"
 
 Suite *test_suite(void);
+
 
 START_TEST(test_success_match1)
 {
@@ -50,8 +52,8 @@ START_TEST(test_success_match1)
         {NULL, NULL, NULL}
     };
 
-    for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(OS_Match2(tests[i][0],tests[i][1]),
+    for (i = 0; tests[i][0] != NULL ; i++) {
+        ck_assert_msg(OS_Match2(tests[i][0], tests[i][1]),
                       "%s should have OS_Match2 true with %s: Ref: %s",
                       tests[i][0], tests[i][1], tests[i][1]);
     }
@@ -79,8 +81,8 @@ START_TEST(test_fail_match1)
         {NULL, NULL, NULL}
     };
 
-    for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(!OS_Match2(tests[i][0],tests[i][1]),
+    for (i = 0; tests[i][0] != NULL ; i++) {
+        ck_assert_msg(!OS_Match2(tests[i][0], tests[i][1]),
                       "%s should have OS_Match2 false with %s: Ref: %s",
                       tests[i][0], tests[i][1], tests[i][2]);
     }
@@ -150,11 +152,11 @@ START_TEST(test_success_regex1)
         {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:590:12] RPC portmap ypserv request UDP [Classification: Decode of an RPC Query] [Priority: 2]: {UDP} 10.4.11.94:669 -> 10.4.3.20:111", ""},
         {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:590:12] RPC portmap ypserv request UDP [Classification: Decode of an RPC Query] [Priority: 2]: {UDP} 10.4.11.94:670 -> 10.4.3.20:111", ""},
         {"^\\S+ [(\\d+:\\d+:\\d+)] \\.+ (\\d+.\\d+.\\d+.\\d+)\\p*\\d* -> (\\d+.\\d+.\\d+.\\d+)\\p*", "snort: [1:1421:11] SNMP AgentX/tcp request [Classification: Attempted Information Leak] [Priority: 2]: {TCP} 10.4.12.26:37020 -> 10.4.10.231:705", ""},
-        {NULL,NULL,NULL}
+        {NULL, NULL, NULL}
     };
 
-    for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(OS_Regex(tests[i][0],tests[i][1]),
+    for (i = 0; tests[i][0] != NULL ; i++) {
+        ck_assert_msg(OS_Regex(tests[i][0], tests[i][1]),
                       "%s should have OS_Regex true with %s: Ref: %s",
                       tests[i][0], tests[i][1], tests[i][2]);
     }
@@ -190,11 +192,11 @@ START_TEST(test_fail_regex1)
         {"test123(\\d)", "test123a", ""},
         {"\\(test)", "test", ""},
         {"(\\w+)(\\d+)", "1 1", ""},
-        {NULL,NULL,NULL},
+        {NULL, NULL, NULL},
     };
 
-    for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(!OS_Regex(tests[i][0],tests[i][1]),
+    for (i = 0; tests[i][0] != NULL ; i++) {
+        ck_assert_msg(!OS_Regex(tests[i][0], tests[i][1]),
                       "%s should have OS_Regex false with %s: Ref: %s",
                       tests[i][0], tests[i][1], tests[i][2]);
     }
@@ -209,18 +211,18 @@ START_TEST(test_success_wordmatch)
      * Please note that all strings are \ escaped
      */
     const char *tests[][2] = {
-            { "test", "this is a test" },
-            { "test", "thistestiswithoutspaces" },
-            { "test|not", "test" },
-            { "test|not", "not" },
-            { "^test", "test on start" },
-            {NULL,NULL},
-       };
+        { "test", "this is a test" },
+        { "test", "thistestiswithoutspaces" },
+        { "test|not", "test" },
+        { "test|not", "not" },
+        { "^test", "test on start" },
+        {NULL, NULL},
+    };
 
-    for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(OS_WordMatch(tests[i][0],tests[i][1]),
-        "%s should match positive with %s by OS_WordMatch",
-        tests[i][0], tests[i][1]);
+    for (i = 0; tests[i][0] != NULL ; i++) {
+        ck_assert_msg(OS_WordMatch(tests[i][0], tests[i][1]),
+                      "%s should match positive with %s by OS_WordMatch",
+                      tests[i][0], tests[i][1]);
     }
 
 }
@@ -234,18 +236,18 @@ START_TEST(test_fail_wordmatch)
      * Please note that all strings are \ escaped
      */
     const char *tests[][2] = {
-            { "-test", "this is a test" },
-            { "", "test" },
-            { "test|not", "negative" },
-            { "test", "" },
-            { "^test", "starttest" },
-            {NULL,NULL},
-       };
+        { "-test", "this is a test" },
+        { "", "test" },
+        { "test|not", "negative" },
+        { "test", "" },
+        { "^test", "starttest" },
+        {NULL, NULL},
+    };
 
-    for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(!OS_WordMatch(tests[i][0],tests[i][1]),
-        "%s should not match positive with %s by OS_WordMatch",
-        tests[i][0], tests[i][1]);
+    for (i = 0; tests[i][0] != NULL ; i++) {
+        ck_assert_msg(!OS_WordMatch(tests[i][0], tests[i][1]),
+                      "%s should not match positive with %s by OS_WordMatch",
+                      tests[i][0], tests[i][1]);
     }
 
 }
@@ -259,15 +261,15 @@ START_TEST(test_success_strisnum)
      * Please note that all strings are \ escaped
      */
     const char *tests[] = {
-            "1",
-            "0123",
-            NULL,
-       };
+        "1",
+        "0123",
+        NULL,
+    };
 
-    for(i=0; tests[i] != NULL ; i++) {
+    for (i = 0; tests[i] != NULL ; i++) {
         ck_assert_msg(OS_StrIsNum(tests[i]),
-        "%s should match positive by OS_StrIsNum",
-        tests[i]);
+                      "%s should match positive by OS_StrIsNum",
+                      tests[i]);
     }
 
 }
@@ -281,17 +283,17 @@ START_TEST(test_fail_strisnum)
      * Please note that all strings are \ escaped
      */
     const char *tests[] = {
-            "test",
-            "1234e",
-            "-1",
-            "+1",
-            NULL,
-       };
+        "test",
+        "1234e",
+        "-1",
+        "+1",
+        NULL,
+    };
 
-    for(i=0; tests[i] != NULL ; i++) {
+    for (i = 0; tests[i] != NULL ; i++) {
         ck_assert_msg(!OS_StrIsNum(tests[i]),
-        "%s should not match positive by OS_StrIsNum",
-        tests[i]);
+                      "%s should not match positive by OS_StrIsNum",
+                      tests[i]);
     }
 
 }
@@ -305,17 +307,17 @@ START_TEST(test_strhowclosedmatch)
      * Please note that all strings are \ escaped
      */
     const char *tests[][3] = {
-            { "test", "test1234", "4" },
-            { "test1234", "test", "4" },
-            { "test", "test", "4" },
-            { "test", "", "0" },
-            { "", "test", "0" },
-            {NULL,NULL,NULL},
-       };
+        { "test", "test1234", "4" },
+        { "test1234", "test", "4" },
+        { "test", "test", "4" },
+        { "test", "", "0" },
+        { "", "test", "0" },
+        {NULL, NULL, NULL},
+    };
 
-    for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_uint_eq(OS_StrHowClosedMatch(tests[i][0],tests[i][1])
-                , (unsigned) atoi(tests[i][2]));
+    for (i = 0; tests[i][0] != NULL ; i++) {
+        ck_assert_uint_eq(OS_StrHowClosedMatch(tests[i][0], tests[i][1])
+                          , (unsigned) atoi(tests[i][2]));
     }
 
 }
@@ -329,37 +331,36 @@ START_TEST(test_strbreak)
      * Please note that all strings are \ escaped
      */
     const char *tests[][15] = {
-            { "X", "testX1234", "4", "test", "1234", NULL},
-            { "X", "XtestX1234X", "4", "", "test", "1234", "", NULL},
-            { "Y", "testX1234", "4", "testX1234", NULL},
-            { "X", "testXX1234", "4", "test", "", "1234", NULL},
-            { "X", "testX1234", "1", "testX1234", NULL},
-            { "X", "testX1234X5678", "2", "test", "1234X5678", NULL},
-            { "X", "testX1234", "0", NULL},
-            {NULL},
-       };
+        { "X", "testX1234", "4", "test", "1234", NULL},
+        { "X", "XtestX1234X", "4", "", "test", "1234", "", NULL},
+        { "Y", "testX1234", "4", "testX1234", NULL},
+        { "X", "testXX1234", "4", "test", "", "1234", NULL},
+        { "X", "testX1234", "1", "testX1234", NULL},
+        { "X", "testX1234X5678", "2", "test", "1234X5678", NULL},
+        { "X", "testX1234", "0", NULL},
+        {NULL},
+    };
 
-    for(i=0; tests[i][0] != NULL; i++) {
+    for (i = 0; tests[i][0] != NULL; i++) {
         char **result = OS_StrBreak(tests[i][0][0], tests[i][1], (unsigned) atoi(tests[i][2]));
 
         int j = 3;
-        if(tests[i][j] == NULL)
-        {
+        if (tests[i][j] == NULL) {
             ck_assert_ptr_eq(result, NULL);
             continue;
         }
 
         int k;
-        for(k = 0; tests[i][j] != NULL; j++, k++)
-        {
+        for (k = 0; tests[i][j] != NULL; j++, k++) {
             ck_assert_ptr_ne(result[k], NULL);
             ck_assert_str_eq(result[k], tests[i][j]);
         }
         ck_assert_ptr_eq(result[k], NULL);
 
-        k=0;
-        while(result[k])
+        k = 0;
+        while (result[k]) {
             free(result[k++]);
+        }
         free(result);
     }
 
@@ -380,10 +381,10 @@ START_TEST(test_regexextraction)
         { "from (\\S*\\d+.\\d+.\\d+.\\d\\d*\\d*)", "sshd[21576]: Illegal user web14 from ::ffff:212.227.60.55", "::ffff:212.227.60.55", NULL},
         { "^sshd[\\d+]: Accepted \\S+ for (\\S+) from (\\S+) port ", "sshd[21405]: Accepted password for root from 192.1.1.1 port 6023", "root", "192.1.1.1", NULL},
         { ": \\((\\S+)@(\\S+)\\) [", "pure-ftpd: (?@enigma.lab.ossec.net) [INFO] New connection from enigma.lab.ossec.net", "?", "enigma.lab.ossec.net", NULL},
-        {NULL,NULL,NULL}
+        {NULL, NULL, NULL}
     };
 
-    for(i=0; tests[i][0] != NULL; i++) {
+    for (i = 0; tests[i][0] != NULL; i++) {
         OSRegex reg;
         ck_assert_int_eq(OSRegex_Compile(tests[i][0], &reg, OS_RETURN_SUBSTRING), 1);
         ck_assert_ptr_ne((void *)OSRegex_Execute(tests[i][1], &reg), NULL);
@@ -394,8 +395,7 @@ START_TEST(test_regexextraction)
 
         int j;
         int k;
-        for(j = 2, k = 0; tests[i][j] != NULL; j++, k++)
-        {
+        for (j = 2, k = 0; tests[i][j] != NULL; j++, k++) {
             ck_assert_ptr_ne(result[k], NULL);
             ck_assert_str_eq(result[k], tests[i][j]);
         }
@@ -410,26 +410,21 @@ START_TEST(test_hostnamemap)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if((test >= 48 && test <= 57) // 0-9
+    while (1) {
+        if ((test >= 48 && test <= 57) // 0-9
                 || (test >= 65 && test <= 90) // A-Z
                 || (test >= 97 && test <= 122) // a-z
                 || test == '(' || test == ')' || test == '-'
                 || test == '.' || test == '@' || test == '/'
-                || test == '_')
-        {
+                || test == '_') {
             ck_assert_msg(isValidChar(test) == 1, "char %d should be a valid hostname char", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(isValidChar(test) != 1, "char %d should not be a valid hostname char", test);
         }
 
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -442,21 +437,16 @@ START_TEST(test_caseinsensitivecharmap)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(test >= 65 && test <= 90) // A-Z
-        {
-            ck_assert_msg(charmap[test] == test+32, "char %d should resolve to lowercase version %d and not to %d", test, test+32, charmap[test]);
-        }
-        else
-        {
+    while (1) {
+        if (test >= 65 && test <= 90) { // A-Z
+            ck_assert_msg(charmap[test] == test + 32, "char %d should resolve to lowercase version %d and not to %d", test, test + 32, charmap[test]);
+        } else {
             ck_assert_msg(charmap[test] == test, "char %d should resolve to itself and not to %d", test, charmap[test]);
         }
 
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -469,20 +459,15 @@ START_TEST(test_regexmap_digit)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(test >= '0' && test <= '9')
-        {
+    while (1) {
+        if (test >= '0' && test <= '9') {
             ck_assert_msg(regexmap[1][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[1][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -495,24 +480,19 @@ START_TEST(test_regexmap_word)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if((test >= 'a' && test <= 'z')
+    while (1) {
+        if ((test >= 'a' && test <= 'z')
                 || (test >= 'A' && test <= 'Z')
                 || (test >= '0' && test <= '9')
                 || test == '-' || test == '@'
-                || test == '_')
-        {
+                || test == '_') {
             ck_assert_msg(regexmap[2][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[2][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -525,20 +505,15 @@ START_TEST(test_regexmap_space)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(test == ' ')
-        {
+    while (1) {
+        if (test == ' ') {
             ck_assert_msg(regexmap[3][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[3][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -551,9 +526,8 @@ START_TEST(test_regexmap_punctuation)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(test == '<' || test == '>' || test == '!' || test == '?'
+    while (1) {
+        if (test == '<' || test == '>' || test == '!' || test == '?'
                 || test == '"' || test == '\'' || test == '#'
                 || test == '$' || test == '%' || test == '&'
                 || test == '(' || test == ')' || test == '+'
@@ -561,18 +535,14 @@ START_TEST(test_regexmap_punctuation)
                 || test == '-' || test == ':' || test == '|'
                 || test == '.' || test == ';' || test == '='
                 || test == '[' || test == ']' || test == '{'
-                || test == '}')
-        {
+                || test == '}') {
             ck_assert_msg(regexmap[4][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[4][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -585,20 +555,15 @@ START_TEST(test_regexmap_lparenthesis)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(test == '(')
-        {
+    while (1) {
+        if (test == '(') {
             ck_assert_msg(regexmap[5][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[5][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -611,20 +576,15 @@ START_TEST(test_regexmap_rparenthesis)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(test == ')')
-        {
+    while (1) {
+        if (test == ')') {
             ck_assert_msg(regexmap[6][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[6][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -637,20 +597,15 @@ START_TEST(test_regexmap_backslash)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(test == '\\')
-        {
+    while (1) {
+        if (test == '\\') {
             ck_assert_msg(regexmap[7][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[7][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -664,20 +619,15 @@ START_TEST(test_regexmap_nondigit)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(!(test >= '0' && test <= '9'))
-        {
+    while (1) {
+        if (!(test >= '0' && test <= '9')) {
             ck_assert_msg(regexmap[8][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[8][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -690,24 +640,19 @@ START_TEST(test_regexmap_nonword)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(!((test >= 'a' && test <= 'z')
+    while (1) {
+        if (!((test >= 'a' && test <= 'z')
                 || (test >= 'A' && test <= 'Z')
                 || (test >= '0' && test <= '9')
                 || test == '-' || test == '@'
-                || test == '_'))
-        {
+                || test == '_')) {
             ck_assert_msg(regexmap[9][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[9][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -720,20 +665,15 @@ START_TEST(test_regexmap_nonspace)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(test != ' ')
-        {
+    while (1) {
+        if (test != ' ') {
             ck_assert_msg(regexmap[10][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[10][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -746,13 +686,11 @@ START_TEST(test_regexmap_all)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
+    while (1) {
         ck_assert_msg(regexmap[11][test] == 1, "char %d should match", test);
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -765,20 +703,15 @@ START_TEST(test_regexmap_tab)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(test == '\t')
-        {
+    while (1) {
+        if (test == '\t') {
             ck_assert_msg(regexmap[12][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[12][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -791,20 +724,15 @@ START_TEST(test_regexmap_dollar)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(test == '$')
-        {
+    while (1) {
+        if (test == '$') {
             ck_assert_msg(regexmap[13][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[13][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -817,20 +745,15 @@ START_TEST(test_regexmap_or)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(test == '|')
-        {
+    while (1) {
+        if (test == '|') {
             ck_assert_msg(regexmap[14][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[14][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -843,20 +766,15 @@ START_TEST(test_regexmap_lt)
 {
     unsigned char test = 0;
 
-    while(1)
-    {
-        if(test == '<')
-        {
+    while (1) {
+        if (test == '<') {
             ck_assert_msg(regexmap[15][test] == 1, "char %d should match", test);
-        }
-        else
-        {
+        } else {
             ck_assert_msg(regexmap[15][test] != 1, "char %d should not match", test);
         }
 
 
-        if(test == 255)
-        {
+        if (test == 255) {
             break;
         }
         test++;
@@ -873,17 +791,17 @@ START_TEST(test_success_strstartswith)
      * Please note that all strings are \ escaped
      */
     const char *tests[][2] = {
-            { "test1234", "test" },
-            { "test", "test" },
-            { "test", "" },
-            { "", "" },
-            {NULL,NULL},
-       };
+        { "test1234", "test" },
+        { "test", "test" },
+        { "test", "" },
+        { "", "" },
+        {NULL, NULL},
+    };
 
-    for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(OS_StrStartsWith(tests[i][0],tests[i][1]),
-        "%s should match positive with %s by OS_StrStartsWith",
-        tests[i][0], tests[i][1]);
+    for (i = 0; tests[i][0] != NULL ; i++) {
+        ck_assert_msg(OS_StrStartsWith(tests[i][0], tests[i][1]),
+                      "%s should match positive with %s by OS_StrStartsWith",
+                      tests[i][0], tests[i][1]);
     }
 
 }
@@ -897,15 +815,15 @@ START_TEST(test_fail_strstartswith)
      * Please note that all strings are \ escaped
      */
     const char *tests[][2] = {
-            { "test", "test1234" },
-            { "", "test" },
-            {NULL,NULL},
-       };
+        { "test", "test1234" },
+        { "", "test" },
+        {NULL, NULL},
+    };
 
-    for(i=0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(!OS_StrStartsWith(tests[i][0],tests[i][1]),
-        "%s should not match positive with %s by OS_StrStartsWith",
-        tests[i][0], tests[i][1]);
+    for (i = 0; tests[i][0] != NULL ; i++) {
+        ck_assert_msg(!OS_StrStartsWith(tests[i][0], tests[i][1]),
+                      "%s should not match positive with %s by OS_StrStartsWith",
+                      tests[i][0], tests[i][1]);
     }
 
 }
