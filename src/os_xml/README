@@ -15,7 +15,7 @@ http://www.ossec.net/
 
 == Examples ==
 
-The file examples/main.c shows some examples (reading example.xml) on 
+The file examples/main.c shows some examples (reading example.xml) on
 how to use the "os_xml" to read an XML file. Basically, you only need to
 start your XML" by calling the ReadXML function (the file as argument)
-and use the other supplied functions to read the structure it creates. 
+and use the other supplied functions to read the structure it creates.

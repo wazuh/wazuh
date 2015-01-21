@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_xml/os_xml.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,50 +7,46 @@
  * Foundation
  */
 
-/* os_xml C Library.
- */
-
+/* os_xml C Library */
 
 #ifndef __OS_XML_H
 #define __OS_XML_H
 
 /* XML Node structure */
-typedef struct _xml_node
-{
+typedef struct _xml_node {
     unsigned int key;
     char *element;
     char *content;
     char **attributes;
     char **values;
-}xml_node;
+} xml_node;
 
 #define XML_ERR_LENGTH  128
 typedef enum _XML_TYPE { XML_ATTR, XML_ELEM, XML_VARIABLE_BEGIN = '$' } XML_TYPE;
 
 /* XML structure */
-typedef struct _OS_XML
-{
-    unsigned int cur;		/* Currently position (and last after reading) */
-    int fol;		/* Currently position for the xml_access */
-    XML_TYPE *tp;		/* Item type	*/
-    unsigned int *rl;		/* Relation in the XML */
-    int *ck;		/* If the item was closed or not */
-    unsigned int *ln;        /* Currently xml file line */
-    unsigned int err_line;   /* Line number of the possible error */
-    char **ct;		/* Content is stored */
-    char **el;		/* The element/attribute name is stored */
-    char err[XML_ERR_LENGTH];	/* Error messages are stored in here */
-}OS_XML;
+typedef struct _OS_XML {
+    unsigned int cur;           /* Current position (and last after reading) */
+    int fol;                    /* Current position for the xml_access */
+    XML_TYPE *tp;               /* Item type */
+    unsigned int *rl;           /* Relation in the XML */
+    int *ck;                    /* If the item was closed or not */
+    unsigned int *ln;           /* Current xml file line */
+    unsigned int err_line;      /* Line number of the possible error */
+    char **ct;                  /* Content is stored */
+    char **el;                  /* The element/attribute name is stored */
+    char err[XML_ERR_LENGTH];   /* Error messages are stored in here */
+} OS_XML;
 
-typedef xml_node ** XML_NODE;
+typedef xml_node **XML_NODE;
 
 /* Start the XML structure reading a file */
 int OS_ReadXML(const char *file, OS_XML *lxml) __attribute__((nonnull));
 
-/* Clear the XML strucute memory */
+/* Clear the XML structure memory */
 void OS_ClearXML(OS_XML *_lxml) __attribute__((nonnull));
 
-/* clear a node */
+/* Clear a node */
 void OS_ClearNode(xml_node **node);
 
 
@@ -85,7 +78,7 @@ char **OS_GetContents(OS_XML *_lxml, const char **element_name) __attribute__((n
 
 /* Return the value of a specific attribute of the element_name */
 char *OS_GetAttributeContent(OS_XML *_lxml, const char **element_name,
-		const char *attribute_name) __attribute__((nonnull(1,2)));
+                             const char *attribute_name) __attribute__((nonnull(1, 2)));
 
 /* Apply the variables to the xml */
 int OS_ApplyVariables(OS_XML *_lxml) __attribute__((nonnull));
@@ -95,12 +88,9 @@ int OS_ApplyVariables(OS_XML *_lxml) __attribute__((nonnull));
 #define XMLW_NOIN               007
 #define XMLW_NOOUT              010
 
-/* OS_WriteXML
- * Write an XML file, based on the input and values to change.
- */
+/* Write an XML file, based on the input and values to change */
 int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
-		const char *oldval, const char *newval) __attribute__((nonnull(1,2,3,5)));
+                const char *oldval, const char *newval) __attribute__((nonnull(1, 2, 3, 5)));
 
 #endif /* __OS_XML_H */
 
-/* EOF */
