@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/monitord/compress_log.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -15,7 +12,7 @@
 #include "os_zlib/os_zlib.h"
 
 
-/* gzips a log file */
+/* gzip a log file */
 void OS_CompressLog(const char *logfile)
 {
     FILE *log;
@@ -26,60 +23,52 @@ void OS_CompressLog(const char *logfile)
 
     char buf[OS_MAXSTR + 1];
 
-
     /* Do not compress */
-    if(mond.compress == 0)
-        return;
-
-
-    /* Clearing the memory */
-    memset(logfileGZ,'\0',OS_FLSIZE +1);
-    memset(buf, '\0', OS_MAXSTR + 1);
-
-
-    /* Setting the umask */
-    umask(0027);
-
-
-    /* Creating the gzip file name */
-    snprintf(logfileGZ, OS_FLSIZE, "%s.gz", logfile);
-
-
-    /* Reading log file */
-    log = fopen(logfile, "r");
-    if(!log)
-    {
-        /* Do not warn in here, since the alert file may not exist. */
+    if (mond.compress == 0) {
         return;
     }
 
-    /* Opening compressed file */
+    /* Clear memory */
+    memset(logfileGZ, '\0', OS_FLSIZE + 1);
+    memset(buf, '\0', OS_MAXSTR + 1);
+
+    /* Set umask */
+    umask(0027);
+
+    /* Create the gzip file name */
+    snprintf(logfileGZ, OS_FLSIZE, "%s.gz", logfile);
+
+    /* Read log file */
+    log = fopen(logfile, "r");
+    if (!log) {
+        /* Do not warn in here, since the alert file may not exist */
+        return;
+    }
+
+    /* Open compressed file */
     zlog = gzopen(logfileGZ, "w");
-    if(!zlog)
-    {
+    if (!zlog) {
         fclose(log);
         merror(FOPEN_ERROR, ARGV0, logfileGZ, errno, strerror(errno));
         return;
     }
 
-    for(;;)
-    {
+    for (;;) {
         len = (int) fread(buf, 1, OS_MAXSTR, log);
-        if(len <= 0)
+        if (len <= 0) {
             break;
-        if(gzwrite(zlog, buf, (unsigned)len) != len)
+        }
+        if (gzwrite(zlog, buf, (unsigned)len) != len) {
             merror("%s: Compression error: %s", ARGV0, gzerror(zlog, &err));
+        }
     }
 
-    /* Closing */
     fclose(log);
     gzclose(zlog);
 
-    /* Removing uncompressed file */
+    /* Remove uncompressed file */
     unlink(logfile);
 
     return;
 }
 
-
-/* EOF */
