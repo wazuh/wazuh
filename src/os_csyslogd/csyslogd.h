@@ -34,6 +34,8 @@ int field_add_truncated(char *dest, size_t size, const char *format, const char 
 
 /* System hostname */
 extern char __shost[512];
+/* System hostname (full length) */
+extern char __shost_long[512];
 
 #endif /* _CSYSLOGD_H */
 

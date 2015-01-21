@@ -13,6 +13,7 @@
 
 /* Global variables */
 char __shost[512];
+char __shost_long[512];
 
 
 /* Monitor the alerts and send them via syslog

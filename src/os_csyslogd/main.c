@@ -116,6 +116,9 @@ int main(int argc, char **argv)
     if (gethostname(__shost, 512 - 1) != 0) {
         ErrorExit("%s: ERROR: gethostname() failed", ARGV0);
     } else {
+        /* Save the full hostname */
+        memcpy(__shost_long, __shost, 512);
+
         char *ltmp;
 
         /* Remove domain part if available */

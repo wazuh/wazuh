@@ -19,6 +19,7 @@
 int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
 {
     char *tstamp;
+    char *hostname;
     char syslog_msg[OS_SIZE_2048];
 
     /* Invalid socket */
@@ -84,12 +85,18 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         }
     }
 
+    if (syslog_config->use_fqdn) {
+        hostname = __shost_long;
+    } else {
+        hostname = __shost;
+    }
+
     /* Insert data */
     if (syslog_config->format == DEFAULT_CSYSLOG) {
         /* Build syslog message */
         snprintf(syslog_msg, OS_SIZE_2048,
                  "<%u>%s %s ossec: Alert Level: %u; Rule: %u - %s; Location: %s;",
-                 syslog_config->priority, tstamp, __shost,
+                 syslog_config->priority, tstamp, hostname,
                  al_data->level,
                  al_data->rule, al_data->comment,
                  al_data->location
@@ -108,7 +115,6 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
         field_add_truncated(syslog_msg, OS_SIZE_2048, " %s", al_data->log[0], 2 );
     } else if (syslog_config->format == CEF_CSYSLOG) {
         snprintf(syslog_msg, OS_SIZE_2048,
-
                  "<%u>%s CEF:0|%s|%s|%s|%u|%s|%u|dvc=%s cs2=%s cs2Label=Location",
                  syslog_config->priority,
                  tstamp,
@@ -118,7 +124,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
                  al_data->rule,
                  al_data->comment,
                  (al_data->level > 10) ? 10 : al_data->level,
-                 __shost, al_data->location);
+                 hostname, al_data->location);
         field_add_string(syslog_msg, OS_SIZE_2048, " src=%s", al_data->srcip );
         field_add_int(syslog_msg, OS_SIZE_2048, " dpt=%d", al_data->dstport );
         field_add_int(syslog_msg, OS_SIZE_2048, " spt=%d", al_data->srcport );
@@ -213,7 +219,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
                  "<%u>%s %s ossec: %s",
 
                  /* syslog header */
-                 syslog_config->priority, tstamp, __shost,
+                 syslog_config->priority, tstamp, hostname,
 
                  /* JSON Encoded Data */
                  json_string
@@ -227,7 +233,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
                  "<%u>%s %s ossec: crit=%u id=%u description=\"%s\" component=\"%s\",",
 
                  /* syslog header */
-                 syslog_config->priority, tstamp, __shost,
+                 syslog_config->priority, tstamp, hostname,
 
                  /* OSSEC metadata */
                  al_data->level, al_data->rule, al_data->comment,

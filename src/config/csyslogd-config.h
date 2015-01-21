@@ -19,6 +19,7 @@ typedef struct _SyslogConfig {
     unsigned int level;
     unsigned int *rule_id;
     unsigned int priority;
+    unsigned int use_fqdn;
     int socket;
 
     char *server;
