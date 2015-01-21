@@ -35,14 +35,14 @@
 #define WINEVENT_AUDIT_FAILURE 0x10000000000000LL
 #define WINEVENT_AUDIT_SUCCESS 0x20000000000000LL
 
+#include "shared.h"
+#include "logcollector.h"
+
 #include <stdint.h>
 #include <winevt.h>
 #include <sec_api/stdlib_s.h>
 #include <winerror.h>
 #include <sddl.h>
-
-#include "shared.h"
-#include "logcollector.h"
 
 typedef struct _os_event {
     char *name;
