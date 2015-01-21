@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/decoders/plugins/pf_decoder.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,11 +5,7 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- *
- * License details at the LICENSE file included with OSSEC or
- * online at: http://www.ossec.net/en/licensing.html
  */
-
 
 #include "shared.h"
 #include "eventinfo.h"
@@ -24,9 +17,8 @@ void *PF_Decoder_Init()
     debug1("%s: Initializing PF decoder..", ARGV0);
 
     /* There is nothing to do over here */
-    return(NULL);
+    return (NULL);
 }
-
 
 /* OpenBSD PF decoder
  * Will extract the action,srcip,dstip,protocol,srcport,dstport
@@ -45,67 +37,51 @@ void *PF_Decoder_Exec(Eventinfo *lf)
     char *tmp_str;
     char *aux_str;
 
-
     /* tmp_str should be: Mar 30 15:54:22.171929 rule 3/(match) pass out .. */
     tmp_str = strchr(lf->log, ')');
 
-
     /* Didn't match */
-    if(!tmp_str)
-    {
-        return(NULL);
+    if (!tmp_str) {
+        return (NULL);
     }
 
-    /* Going to the action entry */
+    /* Go to the action entry */
     tmp_str++;
-    if(*tmp_str != ' ')
-    {
-        return(NULL);
+    if (*tmp_str != ' ') {
+        return (NULL);
     }
     tmp_str++;
-
 
     /* tmp_str should be: pass out on xl0: 192.168.2.10.1514 .. */
 
-
-    /* Getting action */
-    if(*tmp_str == 'p')
-    {
+    /* Get action */
+    if (*tmp_str == 'p') {
         os_strdup("pass", lf->action);
-    }
-    else if(*tmp_str == 'b')
-    {
+    } else if (*tmp_str == 'b') {
         os_strdup("block", lf->action);
-    }
-    else
-    {
+    } else {
         /* Unknown action */
-        return(NULL);
+        return (NULL);
     }
 
-
-    /* Jumping to the src ip */
+    /* Jump to the src ip */
     tmp_str = strchr(tmp_str, ':');
-    if(!tmp_str)
-    {
-        return(NULL);
+    if (!tmp_str) {
+        return (NULL);
     }
     tmp_str++;
-    if(*tmp_str != ' ')
-    {
-        return(NULL);
+    if (*tmp_str != ' ') {
+        return (NULL);
     }
     tmp_str++;
-
-
 
     /* tmp_str should be: 192.168.2.10.1514 > .. */
     aux_str = strchr(tmp_str, ' ');
-    if(!aux_str)
-        return(NULL);
+    if (!aux_str) {
+        return (NULL);
+    }
 
-
-    /* Setting aux_str to 0 for strdup */
+    /* Set aux_str to 0 for strdup */
     *aux_str = '\0';
 
     os_strdup(tmp_str, lf->srcip);
@@ -114,19 +90,15 @@ void *PF_Decoder_Exec(Eventinfo *lf)
     *aux_str = ' ';
     aux_str++;
 
-
-
-    /* Setting the source port if present */
+    /* Set the source port if present */
     tmp_str = lf->srcip;
-    while(*tmp_str != '\0')
-    {
-        if(*tmp_str == '.')
+    while (*tmp_str != '\0') {
+        if (*tmp_str == '.') {
             port_count++;
-
+        }
 
         /* Found port */
-        if(port_count == 4)
-        {
+        if (port_count == 4) {
             *tmp_str = '\0';
             tmp_str++;
             os_strdup(tmp_str, lf->srcport);
@@ -136,47 +108,42 @@ void *PF_Decoder_Exec(Eventinfo *lf)
         tmp_str++;
     }
 
-
     /* Invalid rest of log */
-    if(*aux_str != '>')
-        return(NULL);
-
+    if (*aux_str != '>') {
+        return (NULL);
+    }
 
     aux_str++;
-    if(*aux_str != ' ')
-        return(NULL);
+    if (*aux_str != ' ') {
+        return (NULL);
+    }
     aux_str++;
-
 
     /* tmp_str should be: 192.168.2.10.1514: .. .. */
     tmp_str = strchr(aux_str, ':');
-    if(!tmp_str)
-        return(NULL);
+    if (!tmp_str) {
+        return (NULL);
+    }
 
-
-    /* Setting aux_str to 0 for strdup */
+    /* Set aux_str to 0 for strdup */
     *tmp_str = '\0';
 
     os_strdup(aux_str, lf->dstip);
-
 
     /* tmp str has a valid pointer to lf->log now */
     *tmp_str = ':';
     tmp_str++;
 
-
-    /* Getting destination port */
+    /* Get destination port */
     aux_str = lf->dstip;
     port_count = 0;
-    while(*aux_str != '\0')
-    {
-        if(*aux_str == '.')
+    while (*aux_str != '\0') {
+        if (*aux_str == '.') {
             port_count++;
-
+        }
 
         /* Found port */
-        if(port_count == 4)
-        {
+        if (port_count == 4) {
             *aux_str = '\0';
             aux_str++;
             os_strdup(aux_str, lf->dstport);
@@ -186,32 +153,22 @@ void *PF_Decoder_Exec(Eventinfo *lf)
         aux_str++;
     }
 
-
-    /* Getting protocol */
-    while(*tmp_str != '\0')
-    {
-        if(*tmp_str == ' ')
-        {
+    /* Get protocol */
+    while (*tmp_str != '\0') {
+        if (*tmp_str == ' ') {
             tmp_str++;
             continue;
-        }
-        else if(*tmp_str == 'u')
-        {
+        } else if (*tmp_str == 'u') {
             os_strdup("UDP", lf->protocol);
-        }
-        else if(*tmp_str == 'i')
-        {
+        } else if (*tmp_str == 'i') {
             os_strdup("ICMP", lf->protocol);
-        }
-        else
-        {
+        } else {
             os_strdup("TCP", lf->protocol);
         }
 
         break;
     }
 
-    return(NULL);
+    return (NULL);
 }
 
-/* END Decoder */

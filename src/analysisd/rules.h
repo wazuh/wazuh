@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/rules.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,9 +7,7 @@
  * Foundation
  */
 
-
 #ifndef _OS_RULES
-
 #define _OS_RULES
 
 #define MAX_LAST_EVENTS 11
@@ -20,7 +15,6 @@
 #include "shared.h"
 #include "active-response.h"
 #include "lists.h"
-
 
 /* Event context  - stored on a uint8 */
 #define SAME_USER       0x001 /* 1   */
@@ -60,7 +54,6 @@
 #define RULE_STATUS     1024
 #define RULE_ACTION     2048
 
-
 #define RULEINFODETAIL_TEXT     0
 #define RULEINFODETAIL_LINK     1
 #define RULEINFODETAIL_CVE      2
@@ -69,15 +62,13 @@
 
 #define MAX_RULEINFODETAIL  32
 
-typedef struct _RuleInfoDetail
-{
+typedef struct _RuleInfoDetail {
     int type;
     char *data;
     struct _RuleInfoDetail *next;
-}RuleInfoDetail;
+} RuleInfoDetail;
 
-typedef struct _RuleInfo
-{
+typedef struct _RuleInfo {
     int sigid;  /* id attribute -- required*/
     int level;  /* level attribute --required */
     int maxsize;
@@ -96,14 +87,13 @@ typedef struct _RuleInfo
     int __frequency;
     char **last_events;
 
-
     /* Not an option in the rule */
     u_int16_t alert_opts;
 
     /* Context options */
     u_int16_t context_opts;
 
-    /* category */
+    /* Category */
     u_int8_t category;
 
     /* Decoded as */
@@ -125,9 +115,8 @@ typedef struct _RuleInfo
     /* Pointer to group_prev_matched */
     OSList *group_search;
 
-    /* Function pointer to the event_search. */
+    /* Function pointer to the event_search */
     void *(*event_search)(void *lf, void *rule);
-
 
     char *group;
     OSMatch *match;
@@ -167,18 +156,17 @@ typedef struct _RuleInfo
     void *(*compiled_rule)(void *lf);
     active_response **ar;
 
-}RuleInfo;
+} RuleInfo;
 
 
-typedef struct _RuleNode
-{
+typedef struct _RuleNode {
     RuleInfo *ruleinfo;
     struct _RuleNode *next;
     struct _RuleNode *child;
-}RuleNode;
+} RuleNode;
 
 
-RuleInfo *currently_rule; /* */
+RuleInfo *currently_rule;
 
 RuleInfoDetail *zeroinfodetails(int type, char *data);
 int get_info_attributes(char **attributes, char **values);
@@ -214,20 +202,17 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule);
 /* Mark IDs (if_matched_sid) */
 int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule);
 
-
 /* Get first rule */
 RuleNode *OS_GetFirstRule();
 
-
-/** Defition of the internal rule IDS **
- ** These SIGIDs cannot be used       **
- **                                   **/
+/** Definition of the internal rule IDS **
+ ** These SIGIDs cannot be used         **
+ **                                     **/
 
 #define STATS_MODULE        11
 #define FTS_MODULE          12
 #define SYSCHECK_MODULE     13
 #define HOSTINFO_MODULE     15
-
 
 #define ROOTCHECK_MOD   "rootcheck"
 #define HOSTINFO_NEW    "hostinfo_new"
@@ -238,5 +223,5 @@ RuleNode *OS_GetFirstRule();
 #define SYSCHECK_NEW    "syscheck_new_entry"
 #define SYSCHECK_DEL    "syscheck_deleted"
 
-
 #endif /* _OS_RULES */
+
