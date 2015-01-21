@@ -19,6 +19,7 @@
 
 #include "csyslogd.h"
 char __shost[512];
+char __shost_long[512];
 
 #include "os_net/os_net.h"
 

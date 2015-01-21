@@ -30,6 +30,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
     const char *xml_syslog_id = "rule_id";
     const char *xml_syslog_group = "group";
     const char *xml_syslog_location = "location";
+    const char *xml_syslog_use_fqdn = "use_fqdn";
 
 
     struct SyslogConfig_holder *config_holder = (struct SyslogConfig_holder *)config;
@@ -57,6 +58,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
     syslog_config[s]->level = 0;
     syslog_config[s]->port = 514;
     syslog_config[s]->format = DEFAULT_CSYSLOG;
+    syslog_config[s]->use_fqdn = 0;
     /* local 0 facility (16) + severity 4 - warning. --default */
     syslog_config[s]->priority = (16 * 8) + 4;
 
@@ -196,6 +198,18 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
                 merror(REGEX_COMPILE, __local_name, node[i]->content,
                        syslog_config[s]->location->error);
                 goto fail;
+            }
+        }
+        else if(strcmp(node[i]->element, xml_syslog_use_fqdn) == 0)
+        {  
+            if(strcmp(node[i]->content, "yes") == 0)
+                {syslog_config[s]->use_fqdn = 1;}
+            else if(strcmp(node[i]->content, "no") == 0)
+                {syslog_config[s]->use_fqdn = 0;}
+            else
+            {
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
+                return(OS_INVALID);
             }
         }
         else if(strcmp(node[i]->element, xml_syslog_group) == 0)
