@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/string_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,19 +5,12 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
- *
- * License details at the LICENSE file included with OSSEC or
- * online at: http://www.ossec.net/en/licensing.html
  */
-
 
 #ifndef H_STRINGOP_OS
 #define H_STRINGOP_OS
 
-
-/** os_trimcrlf
- * Trims the cr and/or LF from the last positions of a string
- */
+/* Trim the CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str) __attribute__((nonnull));
 
 /* Similiar to Perl's substr() function */
@@ -34,4 +24,3 @@ char *os_shell_escape(const char *src);
 
 #endif
 
-/* EOF */
