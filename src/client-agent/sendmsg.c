@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/client-agent/sendmsg.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,34 +7,30 @@
  * Foundation
  */
 
-
 #include "shared.h"
 #include "agentd.h"
-
 #include "os_net/os_net.h"
 
 
-/* Sends a message to the server */
+/* Send a message to the server */
 int send_msg(int agentid, const char *msg)
 {
     size_t msg_size;
-    char crypt_msg[OS_MAXSTR +1];
+    char crypt_msg[OS_MAXSTR + 1];
 
     msg_size = CreateSecMSG(&keys, msg, crypt_msg, agentid);
-    if(msg_size == 0)
-    {
-        merror(SEC_ERROR,ARGV0);
-        return(-1);
+    if (msg_size == 0) {
+        merror(SEC_ERROR, ARGV0);
+        return (-1);
     }
 
     /* Send msg_size of crypt_msg */
-    if(OS_SendUDPbySize(agt->sock, msg_size, crypt_msg) < 0)
-    {
-        merror(SEND_ERROR,ARGV0, "server");
+    if (OS_SendUDPbySize(agt->sock, msg_size, crypt_msg) < 0) {
+        merror(SEND_ERROR, ARGV0, "server");
         sleep(1);
-        return(-1);
+        return (-1);
     }
 
-    return(0);
+    return (0);
 }
 
