@@ -152,14 +152,14 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
                        syslog_config[s]->location->error);
                 goto fail;
             }
-        } else if(strcmp(node[i]->element, xml_syslog_use_fqdn) == 0) {
-            if(strcmp(node[i]->content, "yes") == 0) {
+        } else if (strcmp(node[i]->element, xml_syslog_use_fqdn) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
                 syslog_config[s]->use_fqdn = 1;
-            } else if(strcmp(node[i]->content, "no") == 0) {
+            } else if (strcmp(node[i]->content, "no") == 0) {
                 syslog_config[s]->use_fqdn = 0;
             } else {
-                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
-                return(OS_INVALID);
+                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_syslog_group) == 0) {
             os_calloc(1, sizeof(OSMatch), syslog_config[s]->group);
