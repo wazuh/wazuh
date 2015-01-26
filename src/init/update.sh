@@ -1,16 +1,10 @@
 #!/bin/sh
 # Shell script update functions for the OSSEC HIDS
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
-# Last modification: May 24, 2006
-
 
 FALSE="false"
 TRUE="true"
 
-
-##########
-# isUpdate
-##########
 isUpdate()
 {
     ls -la ${OSSEC_INIT} > /dev/null 2>&1
@@ -31,10 +25,6 @@ isUpdate()
     return 1;
 }
 
-
-##########
-# doUpdatecleanup
-##########
 doUpdatecleanup()
 {
     . ${OSSEC_INIT}
@@ -55,10 +45,6 @@ doUpdatecleanup()
     fi
 }
 
-
-##########
-# getPreinstalled
-##########
 getPreinstalled()
 {
     . ${OSSEC_INIT}
@@ -80,10 +66,6 @@ getPreinstalled()
     return 0;
 }
 
-
-##########
-# getPreinstalledDir
-##########
 getPreinstalledDir()
 {
     . ${OSSEC_INIT}
@@ -91,10 +73,6 @@ getPreinstalledDir()
     return 0;
 }
 
-
-##########
-# UpdateStartOSSEC
-##########
 UpdateStartOSSEC()
 {
    . ${OSSEC_INIT}
@@ -102,10 +80,6 @@ UpdateStartOSSEC()
    $DIRECTORY/bin/ossec-control start
 }
 
-
-##########
-# UpdateStopOSSEC
-##########
 UpdateStopOSSEC()
 {
    . ${OSSEC_INIT}
@@ -120,9 +94,6 @@ UpdateStopOSSEC()
    rm -f $DIRECTORY/queue/syscheck/.* > /dev/null 2>&1
 }
 
-##########
-# UpdateOSSECRules
-##########
 UpdateOSSECRules()
 {
     . ${OSSEC_INIT}
@@ -155,3 +126,4 @@ UpdateOSSECRules()
     echo "</ossec_config>  <!-- rules global entry -->" >> ${OSSEC_CONF_FILE}
     rm "${OSSEC_CONF_FILE}.$$.tmp2"
 }
+

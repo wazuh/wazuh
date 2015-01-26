@@ -1,25 +1,21 @@
 #!/usr/bin/env expect
 
-# @(#) $Id: ./src/agentlessd/scripts/main.exp, 2011/09/08 dcid Exp $
-
 # Agentless monitoring
 #
 # Copyright (C) 2009 Trend Micro Inc.
 # All rights reserved.
-# 
+#
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
-
 
 if {$argc <= 1} {
     send_user "\nERROR: ssh_integrity_check <hostname> <arguments>\n";
     exit 1;
 }
 
-
-# NOTE: this script must be called from within /var/ossec for it to work.
+# NOTE: this script must be called from within /var/ossec for it to work
 set passlist "agentless/.passlist"
 set sshsrc "agentless/ssh.exp"
 set susrc "agentless/su.exp"
@@ -31,31 +27,29 @@ set pass "x"
 set use_su " "
 set use_sudo " "
 set addpass "x"
-set timeout 20 
+set timeout 20
 
-
-# Doing script test
+# Do script test
 if {[string compare $hostname "test"] == 0} {
     if {[string compare $args "test"] == 0} {
         exit 0;
     }
 }
 
-# Checking if the hostname (first argument) is an option.
+# Check if the hostname (first argument) is an option
 if {[string compare $hostname "use_su"] == 0} {
     set use_su "su;"
     set hostname [lindex $argv 1]
     set args [lrange $argv 2 end]
 }
-# Checking if the hostname (first argument) is an option.
+# Check if the hostname (first argument) is an option
 if {[string compare $hostname "use_sudo"] == 0} {
     set use_sudo "sudo sh;"
     set hostname [lindex $argv 1]
     set args [lrange $argv 2 end]
 }
 
-
-# Reading the password list.
+# Read the password list
 if [catch {
     set in [open "$passlist" r]
 } loc_error] {
@@ -67,7 +61,7 @@ while {[gets $in line] != -1} {
         set me [string first "|" $line]
         set me2 [string last "|" $line]
         set length [string length $line]
-        
+
         if {$me == -1} {
             continue;
         }
@@ -77,10 +71,10 @@ while {[gets $in line] != -1} {
         if {$me == $me2} {
             continue;
         }
-        
+
         set me [expr $me-1]
         set me2 [expr $me2-1]
-        
+
         set host_list [string range $line 0 $me]
         set me [expr $me+2]
         set pass_list [string range $line $me $me2]

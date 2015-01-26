@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/alerts/log.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -22,10 +19,9 @@
 
 void OS_LogOutput(Eventinfo *lf);
 void OS_Log(Eventinfo *lf);
-void OS_CustomLog(Eventinfo *lf,char * format);
+void OS_CustomLog(Eventinfo *lf, char *format);
 void OS_Store(Eventinfo *lf);
 int FW_Log(Eventinfo *lf);
 
 #endif
-
 

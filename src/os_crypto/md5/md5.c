@@ -1,5 +1,4 @@
-/*
- * This code implements the MD5 message-digest algorithm.
+/* This code implements the MD5 message-digest algorithm.
  * The algorithm is due to Ron Rivest.  This code was
  * written by Colin Plumb in 1993, no copyright is claimed.
  * This code is in the public domain; do with it what you wish.
@@ -15,7 +14,7 @@
  * will fill a supplied 16-byte array with the digest.
  */
 
-#include <string.h>		/* for memcpy() */
+#include <string.h>
 #include <sys/param.h>
 
 #include "md5.h"
@@ -23,35 +22,32 @@
 /* Checking for endiannes */
 #ifdef __BYTE_ORDER
 #if __BYTE_ORDER == __BIG_ENDIAN
-    #define HIGHFIRST
+#define HIGHFIRST
 #endif /* BIG ENDIAN */
 #endif /* byte order */
 
-
 #ifndef HIGHFIRST
-#define byteReverse(buf, len)	/* Nothing */
+#define byteReverse(buf, len)   /* Nothing */
 #else
 void byteReverse(unsigned char *buf, unsigned longs);
 
+
 #ifndef ASM_MD5
-/*
- * Note: this code is harmless on little-endian machines.
- */
+/* Note: this code is harmless on little-endian machines */
 void byteReverse(unsigned char *buf, unsigned longs)
 {
     uint32 t;
     do {
-	t = (uint32) ((unsigned) buf[3] << 8 | buf[2]) << 16 |
-	    ((unsigned) buf[1] << 8 | buf[0]);
-	*(uint32 *) buf = t;
-	buf += 4;
+        t = (uint32) ((unsigned) buf[3] << 8 | buf[2]) << 16 |
+            ((unsigned) buf[1] << 8 | buf[0]);
+        *(uint32 *) buf = t;
+        buf += 4;
     } while (--longs);
 }
 #endif
 #endif
 
-/*
- * Start MD5 accumulation.  Set bit count to 0 and buffer to mysterious
+/* Start MD5 accumulation.  Set bit count to 0 and buffer to mysterious
  * initialization constants.
  */
 void MD5Init(struct MD5Context *ctx)
@@ -65,51 +61,46 @@ void MD5Init(struct MD5Context *ctx)
     ctx->bits[1] = 0;
 }
 
-/*
- * Update context to reflect the concatenation of another buffer full
- * of bytes.
- */
+/* Update context to reflect the concatenation of another buffer full of bytes */
 void MD5Update(struct MD5Context *ctx, unsigned char const *buf, unsigned len)
 {
     uint32 t;
 
     /* Update bitcount */
-
     t = ctx->bits[0];
-    if ((ctx->bits[0] = t + ((uint32) len << 3)) < t)
-	ctx->bits[1]++;		/* Carry from low to high */
+    if ((ctx->bits[0] = t + ((uint32) len << 3)) < t) {
+        ctx->bits[1]++;    /* Carry from low to high */
+    }
     ctx->bits[1] += len >> 29;
 
-    t = (t >> 3) & 0x3f;	/* Bytes already in shsInfo->data */
+    t = (t >> 3) & 0x3f;    /* Bytes already in shsInfo->data */
 
     /* Handle any leading odd-sized chunks */
-
     if (t) {
-	unsigned char *p = (unsigned char *) ctx->in + t;
+        unsigned char *p = (unsigned char *) ctx->in + t;
 
-	t = 64 - t;
-	if (len < t) {
-	    memcpy(p, buf, len);
-	    return;
-	}
-	memcpy(p, buf, t);
-	byteReverse(ctx->in, 16);
-	MD5Transform(ctx->buf, (uint32 *) ctx->in);
-	buf += t;
-	len -= t;
+        t = 64 - t;
+        if (len < t) {
+            memcpy(p, buf, len);
+            return;
+        }
+        memcpy(p, buf, t);
+        byteReverse(ctx->in, 16);
+        MD5Transform(ctx->buf, (uint32 *) ctx->in);
+        buf += t;
+        len -= t;
     }
+
     /* Process data in 64-byte chunks */
-
     while (len >= 64) {
-	memcpy(ctx->in, buf, 64);
-	byteReverse(ctx->in, 16);
-	MD5Transform(ctx->buf, (uint32 *) ctx->in);
-	buf += 64;
-	len -= 64;
+        memcpy(ctx->in, buf, 64);
+        byteReverse(ctx->in, 16);
+        MD5Transform(ctx->buf, (uint32 *) ctx->in);
+        buf += 64;
+        len -= 64;
     }
 
-    /* Handle any remaining bytes of data. */
-
+    /* Handle any remaining bytes of data */
     memcpy(ctx->in, buf, len);
 }
 
@@ -125,8 +116,9 @@ void MD5Final(unsigned char digest[16], struct MD5Context *ctx)
     /* Compute number of bytes mod 64 */
     count = (ctx->bits[0] >> 3) & 0x3F;
 
-    /* Set the first char of padding to 0x80.  This is safe since there is
-       always at least one byte free */
+    /* Set the first char of padding to 0x80. This is safe since there is
+     * always at least one byte free
+     */
     p = ctx->in + count;
     *p++ = 0x80;
 
@@ -135,16 +127,16 @@ void MD5Final(unsigned char digest[16], struct MD5Context *ctx)
 
     /* Pad out to 56 mod 64 */
     if (count < 8) {
-	/* Two lots of padding:  Pad the first block to 64 bytes */
-	memset(p, 0, count);
-	byteReverse(ctx->in, 16);
-	MD5Transform(ctx->buf, (uint32 *) ctx->in);
+        /* Two lots of padding:  Pad the first block to 64 bytes */
+        memset(p, 0, count);
+        byteReverse(ctx->in, 16);
+        MD5Transform(ctx->buf, (uint32 *) ctx->in);
 
-	/* Now fill the next block with 56 bytes */
-	memset(ctx->in, 0, 56);
+        /* Now fill the next block with 56 bytes */
+        memset(ctx->in, 0, 56);
     } else {
-	/* Pad block to 56 bytes */
-	memset(p, 0, count - 8);
+        /* Pad block to 56 bytes */
+        memset(p, 0, count - 8);
     }
     byteReverse(ctx->in, 14);
 
@@ -155,7 +147,7 @@ void MD5Final(unsigned char digest[16], struct MD5Context *ctx)
     MD5Transform(ctx->buf, (uint32 *) ctx->in);
     byteReverse((unsigned char *) ctx->buf, 4);
     memcpy(digest, ctx->buf, 16);
-    memset(ctx, 0, sizeof(*ctx));	/* In case it's sensitive */
+    memset(ctx, 0, sizeof(*ctx));   /* In case it's sensitive */
 }
 
 #ifndef ASM_MD5
@@ -168,9 +160,9 @@ void MD5Final(unsigned char digest[16], struct MD5Context *ctx)
 #define F3(x, y, z) (x ^ y ^ z)
 #define F4(x, y, z) (y ^ (x | ~z))
 
-/* This is the central step in the MD5 algorithm. */
+/* This is the central step in the MD5 algorithm */
 #define MD5STEP(f, w, x, y, z, data, s) \
-	( w += f(x, y, z) + data,  w = w<<s | w>>(32-s),  w += x )
+    ( w += f(x, y, z) + data,  w = w<<s | w>>(32-s),  w += x )
 
 /*
  * The core of the MD5 algorithm, this alters an existing MD5 hash to
@@ -261,3 +253,4 @@ void MD5Transform(uint32 buf[4], uint32 const in[16])
 }
 
 #endif
+

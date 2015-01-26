@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_auth/main-client.c, 2012/02/07 dcid Exp $
- */
-
 /* Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -36,7 +33,6 @@ int main()
     exit(0);
 }
 
-
 #else
 
 #include <openssl/ssl.h>
@@ -44,7 +40,7 @@ int main()
 
 static void help_agent_auth(void) __attribute__((noreturn));
 
-/* print help statement */
+/* Print help statement */
 static void help_agent_auth()
 {
     print_header();
@@ -67,8 +63,6 @@ static void help_agent_auth()
     exit(1);
 }
 
-
-
 int main(int argc, char **argv)
 {
     int c;
@@ -87,7 +81,7 @@ int main(int argc, char **argv)
     const char *agent_key = NULL;
     const char *ca_cert = NULL;
     char lhostname[512 + 1];
-    char buf[2048 +1];
+    char buf[2048 + 1];
     SSL_CTX *ctx;
     SSL *ssl;
     BIO *sbio;
@@ -98,13 +92,11 @@ int main(int argc, char **argv)
     WSADATA wsaData;
 #endif
 
-
-    /* Setting the name */
+    /* Set the name */
     OS_SetName(ARGV0);
 
-    while((c = getopt(argc, argv, "Vdhtg:m:p:A:v:x:k:")) != -1)
-    {
-        switch(c){
+    while ((c = getopt(argc, argv, "Vdhtg:m:p:A:v:x:k:")) != -1) {
+        switch (c) {
             case 'V':
                 print_version();
                 break;
@@ -115,50 +107,57 @@ int main(int argc, char **argv)
                 nowDebug();
                 break;
             case 'g':
-                if(!optarg)
-                    ErrorExit("%s: -g needs an argument",ARGV0);
-                group=optarg;
+                if (!optarg) {
+                    ErrorExit("%s: -g needs an argument", ARGV0);
+                }
+                group = optarg;
                 break;
             case 'D':
-                if(!optarg)
-                    ErrorExit("%s: -D needs an argument",ARGV0);
+                if (!optarg) {
+                    ErrorExit("%s: -D needs an argument", ARGV0);
+                }
                 dir = optarg;
                 break;
             case 't':
                 test_config = 1;
                 break;
             case 'm':
-               if(!optarg)
-                    ErrorExit("%s: -%c needs an argument",ARGV0, c);
+                if (!optarg) {
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                }
                 manager = optarg;
                 break;
             case 'A':
-               if(!optarg)
-                    ErrorExit("%s: -%c needs an argument",ARGV0, c);
+                if (!optarg) {
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                }
                 agentname = optarg;
                 break;
             case 'p':
-               if(!optarg)
-                    ErrorExit("%s: -%c needs an argument",ARGV0, c);
+                if (!optarg) {
+                    ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                }
                 port = atoi(optarg);
-                if(port <= 0 || port >= 65536)
-                {
+                if (port <= 0 || port >= 65536) {
                     ErrorExit("%s: Invalid port: %s", ARGV0, optarg);
                 }
                 break;
             case 'v':
-                if (!optarg)
+                if (!optarg) {
                     ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                }
                 ca_cert = optarg;
                 break;
             case 'x':
-                if (!optarg)
+                if (!optarg) {
                     ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                }
                 agent_cert = optarg;
                 break;
             case 'k':
-                if (!optarg)
+                if (!optarg) {
                     ErrorExit("%s: -%c needs an argument", ARGV0, c);
+                }
                 agent_key = optarg;
                 break;
             default:
@@ -167,39 +166,36 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Starting daemon */
-    debug1(STARTED_MSG,ARGV0);
-
+    /* Start daemon */
+    debug1(STARTED_MSG, ARGV0);
 
 #ifndef WIN32
     /* Check if the user/group given are valid */
     gid = Privsep_GetGroup(group);
-    if(gid == (gid_t)-1)
-        ErrorExit(USER_ERROR,ARGV0,"",group);
+    if (gid == (gid_t) - 1) {
+        ErrorExit(USER_ERROR, ARGV0, "", group);
+    }
 
     /* Exit here if test config is set */
-    if(test_config)
+    if (test_config) {
         exit(0);
+    }
 
     /* Privilege separation */
-    if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group, errno, strerror(errno));
-
-
+    if (Privsep_SetGroup(gid) < 0) {
+        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+    }
 
     /* Signal manipulation */
     StartSIG(ARGV0);
 
-
-
-    /* Creating PID files */
-    if(CreatePID(ARGV0, getpid()) < 0)
-        ErrorExit(PID_ERROR,ARGV0);
+    /* Create PID files */
+    if (CreatePID(ARGV0, getpid()) < 0) {
+        ErrorExit(PID_ERROR, ARGV0);
+    }
 #else
-    /* Initialize Windows socket stuff.
-     */
-    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0)
-    {
+    /* Initialize Windows socket stuff */
+    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
         ErrorExit("%s: WSAStartup() failed", ARGV0);
     }
 #endif /* WIN32 */
@@ -207,67 +203,54 @@ int main(int argc, char **argv)
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
-    if(agentname == NULL)
-    {
+    if (agentname == NULL) {
         lhostname[512] = '\0';
-        if(gethostname(lhostname, 512 -1) != 0)
-        {
+        if (gethostname(lhostname, 512 - 1) != 0) {
             merror("%s: ERROR: Unable to extract hostname. Custom agent name not set.", ARGV0);
             exit(1);
         }
         agentname = lhostname;
     }
 
-
-
-    /* Starting SSL */
+    /* Start SSL */
     ctx = os_ssl_keys(0, dir, agent_cert, agent_key, ca_cert);
-    if(!ctx)
-    {
+    if (!ctx) {
         merror("%s: ERROR: SSL error. Exiting.", ARGV0);
         exit(1);
     }
 
-    if(!manager)
-    {
+    if (!manager) {
         merror("%s: ERROR: Manager IP not set.", ARGV0);
         exit(1);
     }
-
 
     /* Check to see if the manager to connect to was specified as an IP address
      * or hostname on the command line. If it was given as a hostname then ensure
      * the hostname is preserved so that certificate verification can be done.
      */
-    if(!(ipaddress = OS_GetHost(manager, 3)))
-    {
+    if (!(ipaddress = OS_GetHost(manager, 3))) {
         merror("%s: Could not resolve hostname: %s\n", ARGV0, manager);
         exit(1);
     }
 
-    /* Connecting via TCP */
+    /* Connect via TCP */
     sock = OS_ConnectTCP(port, ipaddress, 0);
-    if(sock <= 0)
-    {
+    if (sock <= 0) {
         merror("%s: Unable to connect to %s:%d", ARGV0, ipaddress, port);
         exit(1);
     }
 
-
-    /* Connecting the SSL socket */
+    /* Connect the SSL socket */
     ssl = SSL_new(ctx);
     sbio = BIO_new_socket(sock, BIO_NOCLOSE);
     SSL_set_bio(ssl, sbio, sbio);
 
-
     ret = SSL_connect(ssl);
-    if(ret <= 0)
-    {
+    if (ret <= 0) {
         ERR_print_errors_fp(stderr);
         merror("%s: ERROR: SSL error (%d). Exiting.", ARGV0, ret);
         exit(1);
     }
-
 
     printf("INFO: Connected to %s:%d\n", ipaddress, port);
 
@@ -275,10 +258,9 @@ int main(int argc, char **argv)
      * rather than an IP address is given on the command line. Could change
      * this to do the additional validation on IP addresses as well if needed.
      */
-    if(ca_cert)
-    {
+    if (ca_cert) {
         printf("INFO: Verifing manager's certificate\n");
-        if(check_x509_cert(ssl, manager) != VERIFY_TRUE) {
+        if (check_x509_cert(ssl, manager) != VERIFY_TRUE) {
             debug1("%s: DEBUG: Unable to verify server certificate.", ARGV0);
             exit(1);
         }
@@ -286,11 +268,9 @@ int main(int argc, char **argv)
 
     printf("INFO: Using agent name as: %s\n", agentname);
 
-
     snprintf(buf, 2048, "OSSEC A:'%s'\n", agentname);
     ret = SSL_write(ssl, buf, strlen(buf));
-    if(ret < 0)
-    {
+    if (ret < 0) {
         printf("SSL write error (unable to send message.)\n");
         ERR_print_errors_fp(stderr);
         exit(1);
@@ -298,22 +278,19 @@ int main(int argc, char **argv)
 
     printf("INFO: Send request to manager. Waiting for reply.\n");
 
-    while(1)
-    {
-        ret = SSL_read(ssl,buf,sizeof(buf) -1);
-        switch(SSL_get_error(ssl,ret))
-        {
+    while (1) {
+        ret = SSL_read(ssl, buf, sizeof(buf) - 1);
+        switch (SSL_get_error(ssl, ret)) {
             case SSL_ERROR_NONE:
                 buf[ret] = '\0';
-                if(strncmp(buf, "ERROR", 5) == 0)
-                {
+                if (strncmp(buf, "ERROR", 5) == 0) {
                     char *tmpstr;
                     tmpstr = strchr(buf, '\n');
-                    if(tmpstr) *tmpstr = '\0';
+                    if (tmpstr) {
+                        *tmpstr = '\0';
+                    }
                     printf("%s (from manager)\n", buf);
-                }
-                else if(strncmp(buf, "OSSEC K:'",9) == 0)
-                {
+                } else if (strncmp(buf, "OSSEC K:'", 9) == 0) {
                     char *key;
                     char *tmpstr;
                     char **entry;
@@ -322,25 +299,22 @@ int main(int argc, char **argv)
                     key = buf;
                     key += 9;
                     tmpstr = strchr(key, '\'');
-                    if(!tmpstr)
-                    {
+                    if (!tmpstr) {
                         printf("ERROR: Invalid key received. Closing connection.\n");
                         exit(1);
                     }
                     *tmpstr = '\0';
                     entry = OS_StrBreak(' ', key, 4);
-                    if(!OS_IsValidID(entry[0]) || !OS_IsValidName(entry[1]) ||
-                       !OS_IsValidName(entry[2]) || !OS_IsValidName(entry[3]))
-                    {
+                    if (!OS_IsValidID(entry[0]) || !OS_IsValidName(entry[1]) ||
+                            !OS_IsValidName(entry[2]) || !OS_IsValidName(entry[3])) {
                         printf("ERROR: Invalid key received (2). Closing connection.\n");
                         exit(1);
                     }
 
                     {
                         FILE *fp;
-                        fp = fopen(KEYSFILE_PATH,"w");
-                        if(!fp)
-                        {
+                        fp = fopen(KEYSFILE_PATH, "w");
+                        if (!fp) {
                             printf("ERROR: Unable to open key file: %s", KEYSFILE_PATH);
                             exit(1);
                         }
@@ -363,9 +337,7 @@ int main(int argc, char **argv)
 
     }
 
-
-
-    /* Shutdown the socket */
+    /* Shut down the socket */
     SSL_CTX_free(ctx);
     close(sock);
 

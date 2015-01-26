@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/logcollector/read_fullcommand.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2010 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,12 +7,8 @@
  * Foundation
  */
 
-/* Read the syslog */
-
-
 #include "shared.h"
 #include "logcollector.h"
-
 
 
 /* Read Output of commands */
@@ -24,22 +17,18 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
     size_t n = 0;
     size_t cmd_size = 0;
     char *p;
-    char str[OS_MAXSTR+1];
-    char strfinal[OS_MAXSTR+1];
-
+    char str[OS_MAXSTR + 1];
+    char strfinal[OS_MAXSTR + 1];
     FILE *cmd_output;
 
-    str[OS_MAXSTR]= '\0';
-    strfinal[OS_MAXSTR]= '\0';
+    str[OS_MAXSTR] = '\0';
+    strfinal[OS_MAXSTR] = '\0';
     *rc = 0;
-
 
     debug2("%s: DEBUG: Running full command '%s'", ARGV0, logff[pos].command);
 
-
     cmd_output = popen(logff[pos].command, "r");
-    if(!cmd_output)
-    {
+    if (!cmd_output) {
         merror("%s: ERROR: Unable to execute command: '%s'.",
                ARGV0, logff[pos].command);
 
@@ -47,40 +36,33 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
         return (NULL);
     }
 
-
     snprintf(str, 256, "ossec: output: '%s':\n",
-                (NULL != logff[pos].alias)
-                ? logff[pos].alias
-                : logff[pos].command);
+             (NULL != logff[pos].alias)
+             ? logff[pos].alias
+             : logff[pos].command);
     cmd_size = strlen(str);
 
     n = fread(str + cmd_size, 1, OS_MAXSTR - OS_LOG_HEADER - 256, cmd_output);
-    if(n > 0)
-    {
-        str[cmd_size +n] = '\0';
+    if (n > 0) {
+        str[cmd_size + n] = '\0';
 
-        /* Getting the last occurence of \n */
-        if ((p = strrchr(str, '\n')) != NULL)
-        {
+        /* Get the last occurence of \n */
+        if ((p = strrchr(str, '\n')) != NULL) {
             *p = '\0';
         }
 
-
         debug2("%s: DEBUG: Reading command message: '%s'", ARGV0, str);
 
-        /* Removing empty lines. */
+        /* Remove empty lines */
         n = 0;
         p = str;
-        while(*p != '\0')
-        {
-            if(p[0] == '\r')
-            {
+        while (*p != '\0') {
+            if (p[0] == '\r') {
                 p++;
                 continue;
             }
 
-            if(p[0] == '\n' && p[1] == '\n')
-            {
+            if (p[0] == '\n' && p[1] == '\n') {
                 p++;
             }
             strfinal[n] = *p;
@@ -89,17 +71,13 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
         }
         strfinal[n] = '\0';
 
-
-        /* Sending message to queue */
-        if(drop_it == 0)
-        {
-            if(SendMSG(logr_queue,strfinal,
+        /* Send message to queue */
+        if (drop_it == 0) {
+            if (SendMSG(logr_queue, strfinal,
                         (NULL != logff[pos].alias) ? logff[pos].alias : logff[pos].command,
-                        LOCALFILE_MQ) < 0)
-            {
+                        LOCALFILE_MQ) < 0) {
                 merror(QUEUE_SEND, ARGV0);
-                if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-                {
+                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                     ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
                 }
             }
@@ -108,7 +86,6 @@ void *read_fullcommand(int pos, int *rc, int drop_it)
 
     pclose(cmd_output);
 
-    return(NULL);
+    return (NULL);
 }
 
-/* EOF */

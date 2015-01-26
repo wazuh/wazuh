@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/list_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -12,20 +9,16 @@
 
 /* Common list API */
 
-
 #ifndef _OS_LIST
 #define _OS_LIST
 
-typedef struct _OSListNode
-{
+typedef struct _OSListNode {
     struct _OSListNode *next;
     struct _OSListNode *prev;
     void *data;
-}OSListNode;
+} OSListNode;
 
-
-typedef struct _OSList
-{
+typedef struct _OSList {
     OSListNode *first_node;
     OSListNode *last_node;
     OSListNode *cur_node;
@@ -34,8 +27,7 @@ typedef struct _OSList
     int max_size;
 
     void (*free_data_function)(void *data);
-}OSList;
-
+} OSList;
 
 OSList *OSList_Create(void);
 
@@ -56,4 +48,3 @@ int OSList_AddData(OSList *list, void *data) __attribute__((nonnull(1)));
 
 #endif
 
-/* EOF */

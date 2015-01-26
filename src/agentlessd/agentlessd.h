@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/agentlessd/agentlessd.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,24 +7,22 @@
  * Foundation
  */
 
-
 #ifndef _AGENTLESSD_H
 #define _AGENTLESSD_H
 
 #include "config/agentlessd-config.h"
 
 #ifndef ARGV0
-   #define ARGV0 "ossec-agentlessd"
+#define ARGV0 "ossec-agentlessd"
 #endif
-
-
 
 /** Prototypes **/
 
 /* Main monitord */
 void Agentlessd(void) __attribute__((noreturn));
 
-
+/* Global variables */
 extern agentlessd_config lessdc;
 
 #endif
+

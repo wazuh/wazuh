@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/rules_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,36 +5,30 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- *
- * License details at the LICENSE file included with OSSEC or
- * online at: http://www.ossec.net/en/licensing.html
  */
 
-/* Common API for dealing with directory trees */
-
+/* Common API for dealing with rules */
 
 #ifndef _OS_RULESOP_H
 #define _OS_RULESOP_H
 
 #include "shared.h"
 
-
-/* Event context  - stored on a uint8 */
+/* Event context - stored in a uint8 */
 #define SAME_USER       0x001 /* 1   */
 #define SAME_SRCIP      0x002 /* 2   */
 #define SAME_ID         0x004 /* 4   */
 #define SAME_LOCATION   0x008 /* 8   */
-#define DIFFERENT_URL   0x010 /* */
+#define DIFFERENT_URL   0x010
 #define SAME_SRCPORT    0x020
 #define SAME_DSTPORT    0x040
 #define SAME_DODIFF     0x100
-#define NOT_SAME_USER   0xffe /* 0xfff - 0x001  */
-#define NOT_SAME_SRCIP  0xffd /* 0xfff - 0x002  */
-#define NOT_SAME_ID     0xffb /* 0xfff - 0x004  */
+#define NOT_SAME_USER   0xffe /* 0xfff - 0x001 */
+#define NOT_SAME_SRCIP  0xffd /* 0xfff - 0x002 */
+#define NOT_SAME_ID     0xffb /* 0xfff - 0x004 */
 #define NOT_SAME_AGENT  0xff7 /* 0xfff - 0x008 */
 
-
-/* Alert options  - store on a uint8 */
+/* Alert options - stored in a uint8 */
 #define DO_FTS          0x001
 #define DO_MAILALERT    0x002
 #define DO_LOGALERT     0x004
@@ -48,18 +39,16 @@
 #define DO_EXTRAINFO    0x100
 #define SAME_EXTRAINFO  0x200
 
-
-/** Types of events (from decoders) **/
-#define UNKNOWN     0   /* Unkown */
-#define SYSLOG      1   /* syslog messages */
-#define IDS         2   /* IDS alerts */
-#define FIREWALL    3   /* Firewall events */
-#define WEBLOG      7   /* Apache logs */
-#define SQUID       8   /* Squid logs */
-#define DECODER_WINDOWS     9   /* Windows logs */
-#define HOST_INFO   10  /* Host information logs (from nmap or similar) */
-#define OSSEC_RL    11  /* Ossec rules */
-
+/* Types of events (from decoders) */
+#define UNKNOWN             0   /* Unknown */
+#define SYSLOG              1   /* syslog message */
+#define IDS                 2   /* IDS alert */
+#define FIREWALL            3   /* Firewall event */
+#define WEBLOG              7   /* Apache log */
+#define SQUID               8   /* Squid log */
+#define DECODER_WINDOWS     9   /* Windows log */
+#define HOST_INFO           10  /* Host information log (from nmap or similar) */
+#define OSSEC_RL            11  /* OSSEC rule */
 
 /* FTS allowed values */
 #define FTS_NAME        001000
@@ -72,21 +61,17 @@
 #define FTS_DATA        000020
 #define FTS_SYSTEMNAME  000040
 
-
-
-
-typedef struct _RuleInfo
-{
-    int sigid;  /* id attribute -- required*/
+typedef struct _RuleInfo {
+    int sigid;  /* id attribute -- required */
     int level;  /* level attribute --required */
     int maxsize;
     int frequency;
     int timeframe;
 
-    u_int8_t context; /* Not an user option */
+    u_int8_t context; /* Not a user option */
 
-    int firedtimes;  /* Not an user option */
-    int time_ignored; /* Not an user option */
+    int firedtimes;   /* Not a user option */
+    int time_ignored; /* Not a user option */
     int ignore_time;
     int ignore;
     int ckignore;
@@ -95,14 +80,13 @@ typedef struct _RuleInfo
     int __frequency;
     char **last_events;
 
-
     /* Not an option in the rule */
     u_int16_t alert_opts;
 
     /* Context options */
     u_int16_t context_opts;
 
-    /* category */
+    /* Category */
     u_int8_t category;
 
     /* Decoded as */
@@ -114,19 +98,18 @@ typedef struct _RuleInfo
     /* Pointer to a list (points to sid_prev_matched of if_matched_sid */
     OSList *sid_search;
 
-    /* List of previously matched events in this group.
-     * Every rule that has if_matched_group will have this
-     * list. Every rule that matches this group, it going to
-     * have a pointer to it (group_search).
+    /* List of previously matched events in this group
+     *
+     * Every rule that has if_matched_group will have this list. Every rule that
+     * matches this group, is going to have a pointer to it (group_search).
      */
     OSList **group_prev_matched;
 
     /* Pointer to group_prev_matched */
     OSList *group_search;
 
-    /* Function pointer to the event_search. */
+    /* Function pointer to the event_search */
     void *(*event_search)(void *lf, void *rule);
-
 
     char *group;
     OSMatch *match;
@@ -149,7 +132,7 @@ typedef struct _RuleInfo
     OSMatch *extra_data;
     char *action;
 
-    char *comment; /* description in the xml */
+    char *comment; /* Description in the xml */
     char *info;
     char *cve;
 
@@ -163,16 +146,11 @@ typedef struct _RuleInfo
 
     void **ar;
 
-}RuleInfo;
+} RuleInfo;
 
-
-/** Prototypes **/
 int OS_ReadXMLRules(const char *rulefile,
                     void *(*ruleact_function)(RuleInfo *rule_1, void *data_1),
-                    void *data) __attribute__((nonnull(1,2)));
-
+                    void *data) __attribute__((nonnull(1, 2)));
 
 #endif
 
-
-/* EOF */

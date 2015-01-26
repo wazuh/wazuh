@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/rootcheck/config.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -16,27 +13,23 @@
 #include "config/config.h"
 
 
-
-/* Read_Rootcheck_Config: Reads the rootcheck config
- */
-int Read_Rootcheck_Config(const char * cfgfile)
+/* Read the rootcheck config */
+int Read_Rootcheck_Config(const char *cfgfile)
 {
     int modules = 0;
 
-    modules|= CROOTCHECK;
+    modules |= CROOTCHECK;
+    if (ReadConfig(modules, cfgfile, &rootcheck, NULL) < 0) {
+        return (OS_INVALID);
+    }
 
-    if(ReadConfig(modules, cfgfile, &rootcheck, NULL) < 0)
-        return(OS_INVALID);
-
-
-    #ifdef CLIENT
-    /* Reading shared config */
-    modules|= CAGENT_CONFIG;
+#ifdef CLIENT
+    /* Read shared config */
+    modules |= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &rootcheck, NULL);
-    #endif
-
-    return(0);
-}
-
-/* EOF */
 #endif
+
+    return (0);
+}
+#endif /* OSSECHIDS */
+

@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/error_messages/error_messages.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,18 +7,10 @@
  * Foundation
  */
 
-/* Part of OSSEC HIDS ( http://www.ossec.net )
- * Error/debug messages
- */
-
-
 #ifndef _ERROR_MESSAGES__H
-
 #define _ERROR_MESSAGES__H
 
-
-	/***  Error messages - English ***/
-
+/***  Error messages - English ***/
 
 /* SYSTEM ERRORS */
 #define FORK_ERROR    "%s(1101): ERROR: Could not fork due to [(%d)-(%s)]."
@@ -60,26 +49,25 @@
 #define LINK_ERROR    "%s(1134): ERROR: Unable to link from '%s' to '%s' due to [(%d)-(%s)]."
 #define CHOWN_ERROR   "%s(1135): ERROR: Could not chown object '%s' due to [(%d)-(%s)]."
 
-
 /* COMMON ERRORS */
-#define CONN_ERROR 	    "%s(1201): ERROR: No remote connection configured."
-#define CONFIG_ERROR	"%s(1202): ERROR: Configuration error at '%s'. Exiting."
-#define USER_ERROR	    "%s(1203): ERROR: Invalid user '%s' or group '%s' given."
-#define CONNTYPE_ERROR 	"%s(1204): ERROR: Invalid connection type: '%s'."
-#define PORT_ERROR	    "%s(1205): INFO: No port specified. Using default: '%d'."
-#define BIND_ERROR	    "%s(1206): ERROR: Unable to Bind port '%d'"
-#define QUEUE_ERROR	    "%s(1210): ERROR: Queue '%s' not accessible: '%s'."
-#define QUEUE_FATAL	    "%s(1211): ERROR: Unable to access queue: '%s'. Giving up.."
-#define PID_ERROR	    "%s(1212): ERROR: Unable to create PID file."
-#define DENYIP_WARN 	"%s(1213): WARN: Message from '%s' not allowed."
-#define MSG_ERROR	    "%s(1214): WARN: Problem receiving message from '%s'."
-#define CLIENT_ERROR	"%s(1215): ERROR: No client configured. Exiting."
-#define CONNS_ERROR	    "%s(1216): ERROR: Unable to connect to '%s'."
+#define CONN_ERROR      "%s(1201): ERROR: No remote connection configured."
+#define CONFIG_ERROR    "%s(1202): ERROR: Configuration error at '%s'. Exiting."
+#define USER_ERROR      "%s(1203): ERROR: Invalid user '%s' or group '%s' given."
+#define CONNTYPE_ERROR  "%s(1204): ERROR: Invalid connection type: '%s'."
+#define PORT_ERROR      "%s(1205): INFO: No port specified. Using default: '%d'."
+#define BIND_ERROR      "%s(1206): ERROR: Unable to Bind port '%d'"
+#define QUEUE_ERROR     "%s(1210): ERROR: Queue '%s' not accessible: '%s'."
+#define QUEUE_FATAL     "%s(1211): ERROR: Unable to access queue: '%s'. Giving up.."
+#define PID_ERROR       "%s(1212): ERROR: Unable to create PID file."
+#define DENYIP_WARN     "%s(1213): WARN: Message from '%s' not allowed."
+#define MSG_ERROR       "%s(1214): WARN: Problem receiving message from '%s'."
+#define CLIENT_ERROR    "%s(1215): ERROR: No client configured. Exiting."
+#define CONNS_ERROR     "%s(1216): ERROR: Unable to connect to '%s'."
 #define UNABLE_CONN     "%s(1242): ERROR: Unable to connect to server. Exausted all options."
-#define SEC_ERROR	    "%s(1217): ERROR: Error creating encrypted message."
-#define SEND_ERROR	    "%s(1218): ERROR: Unable to send message to '%s'."
-#define RULESLOAD_ERROR	"%s(1219): ERROR: Unable to access the rules directory."
-#define RULES_ERROR	    "%s(1220): ERROR: Error loading the rules: '%s'."
+#define SEC_ERROR       "%s(1217): ERROR: Error creating encrypted message."
+#define SEND_ERROR      "%s(1218): ERROR: Unable to send message to '%s'."
+#define RULESLOAD_ERROR "%s(1219): ERROR: Unable to access the rules directory."
+#define RULES_ERROR     "%s(1220): ERROR: Error loading the rules: '%s'."
 #define LISTS_ERROR     "%s(1221): ERROR: Error loading the list: '%s'."
 #define QUEUE_SEND      "%s(1224): ERROR: Error sending message to queue."
 #define SIGNAL_RECV     "%s(1225): INFO: SIGNAL [(%d)-(%s)] Received. Exit Cleaning..."
@@ -100,14 +88,12 @@
 #define INVALID_TIME    "%s(1240): ERROR: Invalid time format: '%s'."
 #define INVALID_DAY     "%s(1241): ERROR: Invalid day format: '%s'."
 
-
-#define MAILQ_ERROR	    "%s(1221): ERROR: No Mail queue at %s"
-#define IMSG_ERROR	    "%s(1222): ERROR: Invalid msg: %s"
-#define SNDMAIL_ERROR	"%s(1223): ERROR: Error Sending email to %s (smtp server)"
+#define MAILQ_ERROR     "%s(1221): ERROR: No Mail queue at %s"
+#define IMSG_ERROR      "%s(1222): ERROR: Invalid msg: %s"
+#define SNDMAIL_ERROR   "%s(1223): ERROR: Error Sending email to %s (smtp server)"
 #define XML_INV_GRAN_MAIL "%s(1224): ERROR: Invalid 'email_alerts' config (missing parameters)."
 #define CHLDWAIT_ERROR  "%s(1261): ERROR: Waiting for child process. (status: %d)."
 #define TOOMANY_WAIT_ERROR "%s(1262): ERROR: Too many errors waiting for child process(es)."
-
 
 /* rootcheck */
 #define MAX_RK_MSG        "%s(1250): ERROR: Maximum number of global files reached: %d"
@@ -115,7 +101,6 @@
 #define INVALID_RKCL_VALUE "%s(1252): ERROR: Invalid rk configuration value: '%s'."
 #define INVALID_ROOTDIR    "%s(1253): ERROR: Invalid rootdir (unable to retrieve)."
 #define INVALID_RKCL_VAR   "%s(1254): ERROR: Invalid rk variable: '%s'."
-
 
 /* syscheck */
 #define SYSCHECK_NO_OPT "%s(1701): WARN: No option provided for directories: '%s', ignoring it."
@@ -128,8 +113,7 @@
 #define SK_INV_REG      "%s(1757): ERROR: Invalid syscheck registry entry: '%s'."
 #define SK_REG_OPEN     "%s(1758): ERROR: Unable to open registry key: '%s'."
 
-
-/* Analysisd */
+/* analysisd */
 #define FTS_LIST_ERROR   "%s(1260): ERROR: Error initiating FTS list"
 #define CRAFTED_IP       "%s(1271): WARN: Invalid IP Address '%s'. Possible logging attack."
 #define CRAFTED_USER     "%s(1272): WARN: Invalid username '%s'. Possible logging attack."
@@ -138,18 +122,15 @@
 #define INVALID_HOSTNAME "%s(1275): ERROR: Invalid hostname in syslog message: '%s'."
 #define INVALID_GEOIP_DB "%s(1276): ERROR: Cannot open GeoIP database: '%s'."
 
-
-/* Log collector */
+/* logcollector */
 #define SYSTEM_ERROR     "%s(1600): ERROR: Internal error. Exiting.."
 
-/* Remoted */
+/* remoted */
 #define NO_REM_CONN     "%s(1750): ERROR: No remote connection configured. Exiting."
 
+/* 1760 - 1769 -- reserved for maild */
 
-/* 1760 - 1769 -- reserver for maild */
-
-
-/* Active response */
+/* Active Response */
 #define AR_CMD_MISS     "%s(1280): ERROR: Missing command options. " \
                         "You must specify a 'name', 'executable' and 'expect'."
 #define AR_MISS         "%s(1281): ERROR: Missing options in the active response " \
@@ -160,7 +141,6 @@
 #define AR_DEF_AGENT    "%s(1304): ERROR: No agent defined for response."
 #define AR_NO_TIMEOUT   "%s(1305): ERROR: Timeout not allowed for command: '%s'."
 
-
 #define EXECD_INV_MSG   "%s(1310): WARN: Invalid active response (execd) message '%s'."
 #define EXEC_INV_NAME   "%s(1311): ERROR: Invalid command name '%s' provided."
 #define EXEC_CMDERROR   "%s(1312): ERROR: Error executing '%s': %s"
@@ -170,13 +150,11 @@
 
 #define AR_NOAGENT_ERROR    "%s(1320): ERROR: Agent '%s' not found."
 
-
 /* List operations */
 #define LIST_ERROR      "%s(1290): ERROR: Unable to create a new list (calloc)."
 #define LIST_ADD_ERROR  "%s(1291): ERROR: Error adding nodes to list."
 #define LIST_SIZE_ERROR "%s(1292): ERROR: Error setting error size."
 #define LIST_FREE_ERROR "%s(1293): ERROR: Error setting data free pointer."
-
 
 /* Log collector messages */
 #define MISS_LOG_FORMAT "%s(1901): ERROR: Missing 'log_format' element."
@@ -191,8 +169,7 @@
 #define VAR_LOG_MON     "%s(1952): INFO: Monitoring variable log file: '%s'."
 #define INV_MULTILOG    "%s(1953): ERROR: Invalid DJB multilog file: '%s'."
 
-
-/* Encryption/ auth errors */
+/* Encryption/auth errors */
 #define INVALID_KEY     "%s(1401): ERROR: Error reading authentication key: '%s'."
 #define NO_AUTHFILE     "%s(1402): ERROR: Authentication key file '%s' not found."
 #define ENCFORMAT_ERROR "%s(1403): ERROR: Incorrectly formated message from '%s'."
@@ -204,16 +181,13 @@
 #define ENCFILE_CHANGED "%s(1409): INFO: Authentication file changed. Updating."
 #define ENC_READ        "%s(1410): INFO: Reading authentication keys file."
 
-
 /* Regex errors */
 #define REGEX_COMPILE   "%s(1450): ERROR: Syntax error on regex: '%s': %d."
 #define REGEX_SUBS      "%s(1451): ERROR: Missing sub_strings on regex: '%s'."
 
-
 /* Mail errors */
 #define INVALID_SMTP    "%s(1501): ERROR: Invalid SMTP Server: %s"
 #define INVALID_MAIL    "%s(1502): ERROR: Invalid Email Address: %s"
-
 
 /* Decoders */
 #define PPLUGIN_INV     "%s(2101): ERROR: Parent decoder name invalid: '%s'."
@@ -231,16 +205,13 @@
 #define INV_OFFSET      "%s(2120): ERROR: Invalid offset value: '%s'"
 #define INV_ATTR        "%s(2121): ERROR: Invalid decoder attribute: '%s'"
 
-
 /* os_zlib */
 #define COMPRESS_ERR    "%s(2201): ERROR: Error compressing string: '%s'."
 #define UNCOMPRESS_ERR  "%s(2202): ERROR: Error uncompressing string."
 
-
 /* read defines */
 #define DEF_NOT_FOUND   "%s(2301): ERROR: Definition not found for: '%s.%s'."
 #define INV_DEF         "%s(2302): ERROR: Invalid definition for %s.%s: '%s'."
-
 
 /* Agent errors */
 #define AG_WAIT_SERVER  "%s(4101): WARN: Waiting for server reply (not started). Tried: '%s'."
@@ -255,7 +226,6 @@
 #define AG_MAX_ERROR    "%s(4110): ERROR: Maximum number of agents '%d' reached."
 #define AG_AX_AGENTS     "%s(4111): INFO: Maximum number of agents allowed: '%d'."
 
-
 /* Rules reading errors */
 #define RL_INV_ROOT     "%s(5101): ERROR: Invalid root element: '%s'."
 #define RL_INV_RULE     "%s(5102): ERROR: Invalid rule element: '%s'."
@@ -265,16 +235,13 @@
 #define RL_NO_OPT       "%s(5106): ERROR: Rule '%d' without any options. "\
                         "It may lead to false positives. Exiting. "
 
-
 /* Syslog output */
 #define XML_INV_CSYSLOG "%s(5301): ERROR: Invalid client-syslog configuration."
-
 
 /* Agentless */
 #define XML_INV_AGENTLESS   "%s(7101): ERROR: Invalid agentless configuration."
 #define XML_INV_MISSFREQ    "%s(7102): ERROR: Frequency not set for the periodic option."
 #define XML_INV_MISSOPTS    "%s(7103): ERROR: Missing agentless options."
-
 
 /* Database messages */
 #define DBINIT_ERROR    "%s(5201): ERROR: Error initializing database handler."
@@ -289,11 +256,9 @@
 #define DB_CLOSING      "%s(5209): INFO: Closing connection to database."
 #define DB_ATTEMPT      "%s(5210): INFO: Attempting to reconnect to database."
 
-
-
 /* Verbose messages */
-#define STARTUP_MSG	"%s: INFO: Started (pid: %d)."
-#define PRIVSEP_MSG	"%s: INFO: Chrooted to directory: %s, using user: %s"
+#define STARTUP_MSG "%s: INFO: Started (pid: %d)."
+#define PRIVSEP_MSG "%s: INFO: Chrooted to directory: %s, using user: %s"
 #define MSG_SOCKET_SIZE "%s: INFO: (unix_domain) Maximum send buffer set to: '%d'."
 
 #define NO_SYSLOG       "%s(1501): ERROR: No IP or network allowed in the access list" \
@@ -301,13 +266,11 @@
 #define CONN_TO     "%s: INFO: Connected to '%s' (%s queue)"
 #define MAIL_DIS    "%s: INFO: E-Mail notification disabled. Clean Exit."
 
-
 /* Debug Messages */
 #define STARTED_MSG "%s: DEBUG: Starting ..."
 #define FOUND_USER  "%s: DEBUG: Found user/group ..."
 #define ASINIT      "%s: DEBUG: Active response initialized ..."
 #define READ_CONFIG "%s: DEBUG: Read configuration ..."
-
 
 /* Wait operations */
 #define WAITING_MSG     "%s: WARN: Process locked. Waiting for permission..."
@@ -315,11 +278,10 @@
 #define SERVER_UNAV     "%s: WARN: Server unavailable. Setting lock."
 #define SERVER_UP       "%s: INFO: Server responded. Releasing lock."
 
-/* Ossec alert messages */
+/* OSSEC alert messages */
 #define OS_AD_STARTED   "ossec: Ossec started."
 #define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
-
 
 #endif /* _ERROR_MESSAGES__H */
 

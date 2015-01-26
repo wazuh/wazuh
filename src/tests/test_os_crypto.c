@@ -18,6 +18,7 @@
 
 Suite *test_suite(void);
 
+
 START_TEST(test_blowfish)
 {
     const char *key = "test_key";

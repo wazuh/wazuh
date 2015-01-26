@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/help.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,13 +7,13 @@
  * Foundation
  */
 
-/* Help Function
- */
+/* Help Function */
 
 #ifndef __HELP_H
-
 #define __HELP_H
+
 void print_header(void);
 void print_version(void) __attribute__((noreturn));
 
 #endif
+

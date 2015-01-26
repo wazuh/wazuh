@@ -6,23 +6,24 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
 #include "os_regex.h"
 
-int main(int argc,char **argv)
-{
 
-    if(argc != 3)
-    {
-        printf("%s regex word\n",argv[0]);
+int main(int argc, char **argv)
+{
+    if (argc != 3) {
+        printf("%s regex word\n", argv[0]);
         exit(1);
     }
 
-    printf("for REGEX: ");	
-    if(OS_Regex(argv[1],argv[2]))
+    printf("for REGEX: ");
+    if (OS_Regex(argv[1], argv[2])) {
         printf("TRUE\n");
-    else
+    } else {
         printf("FALSE\n");
+    }
 
-    return(0);
+    return (0);
 }
-/* EOF */
+

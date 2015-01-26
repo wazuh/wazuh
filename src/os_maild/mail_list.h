@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_maild/mail_list.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,21 +7,17 @@
  * Foundation
  */
 
-
-#ifndef _MAILIST__H
-#define _MAILIST__H
-
+#ifndef _MAILLIST__H
+#define _MAILLIST__H
 
 /* Events List structure */
-typedef struct _MailNode
-{
+typedef struct _MailNode {
     MailMsg *mail;
     struct _MailNode *next;
     struct _MailNode *prev;
-}MailNode;
+} MailNode;
 
-
-/* Add an email to the list  */
+/* Add an email to the list */
 void OS_AddMailtoList(MailMsg *ml) __attribute__((nonnull));
 
 /* Return the last event from the Event list
@@ -32,7 +25,7 @@ void OS_AddMailtoList(MailMsg *ml) __attribute__((nonnull));
  */
 MailNode *OS_PopLastMail(void);
 
-/* Returns a pointer to the last email, not removing it */
+/* Return a pointer to the last email, not removing it */
 MailNode *OS_CheckLastMail(void);
 
 /* Create the mail list. Maxsize must be specified */
@@ -44,4 +37,5 @@ void FreeMail(MailNode *ml);
 /* Free email msg */
 void FreeMailMsg(MailMsg *ml);
 
-#endif
+#endif /* _MAILLIST__H */
+

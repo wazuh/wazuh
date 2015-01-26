@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/client-agent/agentd.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,18 +7,11 @@
  * Foundation
  */
 
-/* Part of the OSSEC HIDS
- * Available at http://www.ossec.net/hids/
- */
-
-
 #ifndef __AGENTD_H
-
 #define __AGENTD_H
 
 #include "config/config.h"
 #include "config/client-config.h"
-
 
 /*** Function Prototypes ***/
 
@@ -40,32 +30,27 @@ void *receive_msg(void);
 /* Receiver messages for Windows */
 void *receiver_thread(void *none);
 
-/* intcheck_file:
- * Sends integrity checking information about a file to the server.
- */
+/* Send integrity checking information about a file to the server */
 int intcheck_file(const char *file_name, const char *dir);
 
-/* Sends message to server */
+/* Send message to server */
 int send_msg(int agentid, const char *msg);
 
 /* Extract the shared files */
 char *getsharedfiles(void);
 
-/* Initializes handshake to server */
+/* Initialize handshake to server */
 void start_agent(int is_startup);
 
-/* Connects to the server. */
+/* Connect to the server */
 int connect_server(int initial_id);
 
-/* notify server */
+/* Notify server */
 void run_notify(void);
-
 
 /*** Global variables ***/
 
-/* Global variables. Only modified
- * during startup.
- */
+/* Global variables. Only modified during startup. */
 
 #include "shared.h"
 #include "sec.h"
@@ -75,6 +60,5 @@ extern int run_foreground;
 extern keystore keys;
 extern agent *agt;
 
+#endif /* __AGENTD_H */
 
-#endif
-/* EOF */

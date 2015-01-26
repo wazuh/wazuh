@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/lists_make.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -20,11 +17,11 @@
 #include <errno.h>
 #include "lists_make.h"
 
+
 void Lists_OP_MakeAll(int force)
 {
     ListNode *lnode = OS_GetFirstList();
-    while(lnode)
-    {
+    while (lnode) {
         Lists_OP_MakeCDB(lnode->txt_filename,
                          lnode->cdb_filename,
                          force);
@@ -34,66 +31,53 @@ void Lists_OP_MakeAll(int force)
 
 void Lists_OP_MakeCDB(char *txt_filename, char *cdb_filename, int force)
 {
-    /*
-    struct stat cdb_stat;
-    struct stat txt_stat;
-    */
     struct cdb_make cdbm;
     FILE *tmp_fd;
     FILE *txt_fd;
     char *tmp_str;
     char *key, *val;
-    char str[OS_MAXSTR+1];
+    char str[OS_MAXSTR + 1];
 
-    str[OS_MAXSTR]= '\0';
+    str[OS_MAXSTR] = '\0';
     char tmp_filename[OS_MAXSTR];
     tmp_filename[OS_MAXSTR - 2] = '\0';
     snprintf(tmp_filename, OS_MAXSTR - 2, "%s.tmp", txt_filename);
 
-    /*
-    if((stat(txt_filename, &txt_stat)) == -1)
-        debug1("%s: stat of file %s failed", ARGV0, txt_filename);
-    if((stat(cdb_filename, &cdb_stat)) == -1)
-        debug1("%s: stat of file %s failed", ARGV0, cdb_filename);
-        */
-    if(File_DateofChange(txt_filename) > File_DateofChange(cdb_filename) ||
-       force)
-    {
+    if (File_DateofChange(txt_filename) > File_DateofChange(cdb_filename) ||
+            force) {
         printf(" * File %s needs to be updated\n", cdb_filename);
         tmp_fd = fopen(tmp_filename, "w+");
         cdb_make_start(&cdbm, tmp_fd);
-        if(!(txt_fd = fopen(txt_filename, "r")))
-        {
+        if (!(txt_fd = fopen(txt_filename, "r"))) {
             merror(FOPEN_ERROR, ARGV0, txt_filename, errno, strerror(errno));
             return;
         }
-        while((fgets(str, OS_MAXSTR-1,txt_fd)) != NULL)
-        {
-            /* Removing new lines or carriage returns. */
+        while ((fgets(str, OS_MAXSTR - 1, txt_fd)) != NULL) {
+            /* Remove newlines and carriage returns */
             tmp_str = strchr(str, '\r');
-            if(tmp_str)
+            if (tmp_str) {
                 *tmp_str = '\0';
+            }
             tmp_str = strchr(str, '\n');
-            if(tmp_str)
+            if (tmp_str) {
                 *tmp_str = '\0';
-            if((val = strchr(str, ':')))
-            {
+            }
+            if ((val = strchr(str, ':'))) {
                 *val = '\0';
                 val++;
-            }
-            else
-            {
+            } else {
                 continue;
             }
             key = str;
             cdb_make_add(&cdbm, key, strlen(key), val, strlen(val));
-            if(force) print_out("  * adding - key: %s value: %s",key,val);
+            if (force) {
+                print_out("  * adding - key: %s value: %s", key, val);
+            }
         }
         cdb_make_finish(&cdbm);
-        rename(tmp_filename,cdb_filename);
-    }
-    else
-    {
+        rename(tmp_filename, cdb_filename);
+    } else {
         printf(" * File %s does not need to be compiled\n", cdb_filename);
     }
 }
+

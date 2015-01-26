@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/pthreads_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,7 +7,6 @@
  * Foundation
  */
 
-
 #ifndef PTHREADS_OP_H
 #define PTHREADS_OP_H
 
@@ -19,3 +15,4 @@ int CreateThread(void *function_pointer(void *data), void *data) __attribute__((
 #endif
 
 #endif
+

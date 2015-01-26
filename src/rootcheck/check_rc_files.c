@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/rootcheck/check_rc_files.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,20 +7,17 @@
  * Foundation
  */
 
-
 #include "shared.h"
 #include "rootcheck.h"
 
 
-
-/* check_rc_files:
- * Read the file pointer specified (rootkit_files)
+/* Read the file pointer specified (rootkit_files)
  * and check if the configured file is there
  */
 void check_rc_files(const char *basedir, FILE *fp)
 {
-    char buf[OS_SIZE_1024 +1];
-    char file_path[OS_SIZE_1024 +1];
+    char buf[OS_SIZE_1024 + 1];
+    char file_path[OS_SIZE_1024 + 1];
 
     char *file;
     char *name;
@@ -32,149 +26,125 @@ void check_rc_files(const char *basedir, FILE *fp)
     int _errors = 0;
     int _total = 0;
 
-
     debug1("%s: DEBUG: Starting on check_rc_files", ARGV0);
 
-    while(fgets(buf, OS_SIZE_1024, fp) != NULL)
-    {
+    while (fgets(buf, OS_SIZE_1024, fp) != NULL) {
         char *nbuf;
 
-        /* Removing end of line */
+        /* Remove newline at the end */
         nbuf = strchr(buf, '\n');
-        if(nbuf)
-        {
+        if (nbuf) {
             *nbuf = '\0';
         }
 
-        /* Assigning buf to be used */
+        /* Assign buf to be used */
         nbuf = buf;
 
-        /* Excluding commented lines or blanked ones */
-        while(*nbuf != '\0')
-        {
-            if(*nbuf == ' ' || *nbuf == '\t')
-            {
+        /* Skip comments and blank lines */
+        while (*nbuf != '\0') {
+            if (*nbuf == ' ' || *nbuf == '\t') {
                 nbuf++;
                 continue;
-            }
-            else if(*nbuf == '#')
+            } else if (*nbuf == '#') {
                 goto newline;
-            else
+            } else {
                 break;
+            }
         }
 
-        if(*nbuf == '\0')
+        if (*nbuf == '\0') {
             goto newline;
+        }
 
         /* File now may be valid */
         file = nbuf;
         name = nbuf;
 
-
-        /* Getting the file and the rootkit name */
-        while(*nbuf != '\0')
-        {
-            if(*nbuf == ' ' || *nbuf == '\t')
-            {
-                /* Setting the limit for the file */
+        /* Get the file and the rootkit name */
+        while (*nbuf != '\0') {
+            if (*nbuf == ' ' || *nbuf == '\t') {
+                /* Set the limit for the file */
                 *nbuf = '\0';
                 nbuf++;
                 break;
-            }
-            else
-            {
+            } else {
                 nbuf++;
             }
         }
 
-        if(*nbuf == '\0')
+        if (*nbuf == '\0') {
             goto newline;
-
-
-        /* Some ugly code to remove spaces and \t */
-        while(*nbuf != '\0')
-        {
-           if(*nbuf == '!')
-           {
-               nbuf++;
-               if(*nbuf == ' ' || *nbuf == '\t')
-               {
-                   nbuf++;
-                   name = nbuf;
-
-                   break;
-               }
-           }
-           else if(*nbuf == ' ' || *nbuf == '\t')
-           {
-               nbuf++;
-               continue;
-           }
-           else
-           {
-               goto newline;
-           }
         }
 
+        /* Some ugly code to remove spaces and \t */
+        while (*nbuf != '\0') {
+            if (*nbuf == '!') {
+                nbuf++;
+                if (*nbuf == ' ' || *nbuf == '\t') {
+                    nbuf++;
+                    name = nbuf;
 
-        /* Getting the link (if present) */
+                    break;
+                }
+            } else if (*nbuf == ' ' || *nbuf == '\t') {
+                nbuf++;
+                continue;
+            } else {
+                goto newline;
+            }
+        }
+
+        /* Get the link (if present) */
         link = strchr(nbuf, ':');
-        if(link)
-        {
+        if (link) {
             *link = '\0';
 
             link++;
-            if(*link == ':')
-            {
+            if (*link == ':') {
                 link++;
             }
         }
 
-
-        /* Cleaning any space of \t at the end */
+        /* Clean any space or tab at the end */
         nbuf = strchr(nbuf, ' ');
-        if(nbuf)
-        {
+        if (nbuf) {
             *nbuf = '\0';
 
             nbuf = strchr(nbuf, '\t');
-            if(nbuf)
-            {
+            if (nbuf) {
                 *nbuf = '\0';
             }
         }
 
         _total++;
 
-
-        /* Checking if it is a file to search everywhere */
-        if(*file == '*')
-        {
-            if(rk_sys_count >= MAX_RK_SYS)
-            {
+        /* Check if it is a file to search everywhere */
+        if (*file == '*') {
+            /* Maximum number of global files reached */
+            if (rk_sys_count >= MAX_RK_SYS) {
                 merror(MAX_RK_MSG, ARGV0, MAX_RK_SYS);
             }
 
-            else
-            {
-                /* Removing * / from the file */
+            else {
+                /* Remove all slashes from the file */
                 file++;
-                if(*file == '/')
+                if (*file == '/') {
                     file++;
+                }
 
-                /* Memory assignment */
                 rk_sys_file[rk_sys_count] = strdup(file);
                 rk_sys_name[rk_sys_count] = strdup(name);
 
-                if(!rk_sys_name[rk_sys_count] ||
-                   !rk_sys_file[rk_sys_count] )
-                {
+                if (!rk_sys_name[rk_sys_count] ||
+                        !rk_sys_file[rk_sys_count] ) {
                     merror(MEM_ERROR, ARGV0, errno, strerror(errno));
 
-                    if(rk_sys_file[rk_sys_count])
+                    if (rk_sys_file[rk_sys_count]) {
                         free(rk_sys_file[rk_sys_count]);
-                    if(rk_sys_name[rk_sys_count])
+                    }
+                    if (rk_sys_name[rk_sys_count]) {
                         free(rk_sys_name[rk_sys_count]);
+                    }
 
                     rk_sys_file[rk_sys_count] = NULL;
                     rk_sys_name[rk_sys_count] = NULL;
@@ -182,39 +152,34 @@ void check_rc_files(const char *basedir, FILE *fp)
 
                 rk_sys_count++;
 
-                /* Always assigning the last as NULL */
+                /* Always assign the last as NULL */
                 rk_sys_file[rk_sys_count] = NULL;
                 rk_sys_name[rk_sys_count] = NULL;
             }
             continue;
         }
 
-        snprintf(file_path, OS_SIZE_1024, "%s/%s",basedir, file);
+        snprintf(file_path, OS_SIZE_1024, "%s/%s", basedir, file);
 
-        /* Checking if file exists */
-        if(is_file(file_path))
-        {
-            char op_msg[OS_SIZE_1024 +1];
+        if (is_file(file_path)) {
+            char op_msg[OS_SIZE_1024 + 1];
 
             _errors = 1;
             snprintf(op_msg, OS_SIZE_1024, "Rootkit '%s' detected "
-                     "by the presence of file '%s'.",name, file_path);
+                     "by the presence of file '%s'.", name, file_path);
 
             notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
         }
 
-        newline:
-            continue;
+newline:
+        continue;
     }
 
-    if(_errors == 0)
-    {
-        char op_msg[OS_SIZE_1024 +1];
-        snprintf(op_msg,OS_SIZE_1024,"No presence of public rootkits detected."
-                                    " Analyzed %d files.", _total);
+    if (_errors == 0) {
+        char op_msg[OS_SIZE_1024 + 1];
+        snprintf(op_msg, OS_SIZE_1024, "No presence of public rootkits detected."
+                 " Analyzed %d files.", _total);
         notify_rk(ALERT_OK, op_msg);
     }
 }
 
-
-/* EOF */

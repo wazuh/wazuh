@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/util/syscheck_control.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,17 +7,16 @@
  * Foundation
  */
 
-
 #include "addagent/manage_agents.h"
 #include "sec.h"
-
 
 #undef ARGV0
 #define ARGV0 "syscheck_control"
 
+/* Prototypes */
 static void helpmsg(void) __attribute__((noreturn));
 
-/** help **/
+
 static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: Manages the integrity checking database.\n",
@@ -41,8 +37,6 @@ static void helpmsg()
     exit(1);
 }
 
-
-/** main **/
 int main(int argc, char **argv)
 {
     const char *dir = DEFAULTDIR;
@@ -54,28 +48,22 @@ int main(int argc, char **argv)
     gid_t gid;
     uid_t uid;
     int c = 0, info_agent = 0, update_syscheck = 0,
-               list_agents = 0, zero_counter = 0,
-               registry_only = 0;
+        list_agents = 0, zero_counter = 0,
+        registry_only = 0;
     int active_only = 0, csv_output = 0;
 
     char shost[512];
 
-
-
-    /* Setting the name */
+    /* Set the name */
     OS_SetName(ARGV0);
 
-
-    /* user arguments */
-    if(argc < 2)
-    {
+    /* User arguments */
+    if (argc < 2) {
         helpmsg();
     }
 
-
-    while((c = getopt(argc, argv, "VhzrDdlcsu:i:f:")) != -1)
-    {
-        switch(c){
+    while ((c = getopt(argc, argv, "VhzrDdlcsu:i:f:")) != -1) {
+        switch (c) {
             case 'V':
                 print_version();
                 break;
@@ -105,25 +93,22 @@ int main(int argc, char **argv)
                 break;
             case 'i':
                 info_agent++;
-                if(!optarg)
-                {
-                    merror("%s: -u needs an argument",ARGV0);
+                if (!optarg) {
+                    merror("%s: -u needs an argument", ARGV0);
                     helpmsg();
                 }
                 agent_id = optarg;
                 break;
             case 'f':
-                if(!optarg)
-                {
-                    merror("%s: -u needs an argument",ARGV0);
+                if (!optarg) {
+                    merror("%s: -u needs an argument", ARGV0);
                     helpmsg();
                 }
                 fname = optarg;
                 break;
             case 'u':
-                if(!optarg)
-                {
-                    merror("%s: -u needs an argument",ARGV0);
+                if (!optarg) {
+                    merror("%s: -u needs an argument", ARGV0);
                     helpmsg();
                 }
                 agent_id = optarg;
@@ -133,67 +118,48 @@ int main(int argc, char **argv)
                 helpmsg();
                 break;
         }
-
     }
 
-
-    /* Getting the group name */
+    /* Get the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
-    if(uid == (uid_t)-1 || gid == (gid_t)-1)
-    {
-	    ErrorExit(USER_ERROR, ARGV0, user, group);
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+        ErrorExit(USER_ERROR, ARGV0, user, group);
     }
 
-
-    /* Setting the group */
-    if(Privsep_SetGroup(gid) < 0)
-    {
-	    ErrorExit(SETGID_ERROR,ARGV0, group, errno, strerror(errno));
+    /* Set the group */
+    if (Privsep_SetGroup(gid) < 0) {
+        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
     }
 
-
-    /* Chrooting to the default directory */
-    if(Privsep_Chroot(dir) < 0)
-    {
+    /* Chroot to the default directory */
+    if (Privsep_Chroot(dir) < 0) {
         ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
     }
-
 
     /* Inside chroot now */
     nowChroot();
 
-
-    /* Setting the user */
-    if(Privsep_SetUser(uid) < 0)
-    {
+    /* Set the user */
+    if (Privsep_SetUser(uid) < 0) {
         ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
     }
 
-
-
-    /* Getting servers hostname */
+    /* Get server hostname */
     memset(shost, '\0', 512);
-    if(gethostname(shost, 512 -1) != 0)
-    {
+    if (gethostname(shost, 512 - 1) != 0) {
         strncpy(shost, "localhost", 32);
-        return(0);
+        return (0);
     }
 
-
-
-    /* Listing available agents. */
-    if(list_agents)
-    {
-        if(!csv_output)
-        {
+    /* List available agents */
+    if (list_agents) {
+        if (!csv_output) {
             printf("\nOSSEC HIDS %s. List of available agents:",
-                    ARGV0);
+                   ARGV0);
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, "
                    "Active/Local\n", shost);
-        }
-        else
-        {
+        } else {
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         }
         print_agents(1, active_only, csv_output);
@@ -201,45 +167,36 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-
-
-    /* Update syscheck database. */
-    if(update_syscheck)
-    {
-        /* Cleaning all agents (and server) db. */
-        if(strcmp(agent_id, "all") == 0)
-        {
+    /* Update syscheck database */
+    if (update_syscheck) {
+        /* Clean all agents (and server) db */
+        if (strcmp(agent_id, "all") == 0) {
             DIR *sys_dir;
             struct dirent *entry;
 
             sys_dir = opendir(SYSCHECK_DIR);
-            if(!sys_dir)
-            {
+            if (!sys_dir) {
                 ErrorExit("%s: Unable to open: '%s'", ARGV0, SYSCHECK_DIR);
             }
 
-            while((entry = readdir(sys_dir)) != NULL)
-            {
+            while ((entry = readdir(sys_dir)) != NULL) {
                 FILE *fp;
-                char full_path[OS_MAXSTR +1];
+                char full_path[OS_MAXSTR + 1];
 
                 /* Do not even attempt to delete . and .. :) */
-                if((strcmp(entry->d_name,".") == 0)||
-                   (strcmp(entry->d_name,"..") == 0))
-                {
+                if ((strcmp(entry->d_name, ".") == 0) ||
+                        (strcmp(entry->d_name, "..") == 0)) {
                     continue;
                 }
 
-                snprintf(full_path, OS_MAXSTR,"%s/%s", SYSCHECK_DIR,
+                snprintf(full_path, OS_MAXSTR, "%s/%s", SYSCHECK_DIR,
                          entry->d_name);
 
                 fp = fopen(full_path, "w");
-                if(fp)
-                {
+                if (fp) {
                     fclose(fp);
                 }
-                if(entry->d_name[0] == '.')
-                {
+                if (entry->d_name[0] == '.') {
                     unlink(full_path);
                 }
             }
@@ -249,16 +206,14 @@ int main(int argc, char **argv)
             exit(0);
         }
 
-        else if((strcmp(agent_id, "000") == 0) ||
-                (strcmp(agent_id, "local") == 0))
-        {
+        else if ((strcmp(agent_id, "000") == 0) ||
+                 (strcmp(agent_id, "local") == 0)) {
             char final_dir[1024];
             FILE *fp;
             snprintf(final_dir, 1020, "/%s/syscheck", SYSCHECK_DIR);
 
             fp = fopen(final_dir, "w");
-            if(fp)
-            {
+            if (fp) {
                 fclose(fp);
             }
             unlink(final_dir);
@@ -268,8 +223,7 @@ int main(int argc, char **argv)
             snprintf(final_dir, 1020, "/%s/.syscheck.cpt", SYSCHECK_DIR);
 
             fp = fopen(final_dir, "w");
-            if(fp)
-            {
+            if (fp) {
                 fclose(fp);
             }
             unlink(final_dir);
@@ -278,22 +232,20 @@ int main(int argc, char **argv)
             exit(0);
         }
 
-        /* Database from remote agents. */
-        else
-        {
+        /* Database from remote agents */
+        else {
             int i;
             keystore keys;
 
             OS_ReadKeys(&keys);
 
             i = OS_IsAllowedID(&keys, agent_id);
-            if(i < 0)
-            {
+            if (i < 0) {
                 printf("\n** Invalid agent id '%s'.\n", agent_id);
                 helpmsg();
             }
 
-            /* Deleting syscheck */
+            /* Delete syscheck */
             delete_syscheck(keys.keyentries[i]->name,
                             keys.keyentries[i]->ip->ip, 0);
 
@@ -302,23 +254,18 @@ int main(int argc, char **argv)
         }
     }
 
-
-    /* Printing information from an agent. */
-    if(info_agent)
-    {
+    /* Print information from an agent */
+    if (info_agent) {
         int i;
-        char final_ip[128 +1];
-        char final_mask[128 +1];
+        char final_ip[128 + 1];
+        char final_mask[128 + 1];
         keystore keys;
 
-
-        if((strcmp(agent_id, "000") == 0) ||
-           (strcmp(agent_id, "local") == 0))
-        {
+        if ((strcmp(agent_id, "000") == 0) ||
+                (strcmp(agent_id, "local") == 0)) {
             printf("\nIntegrity checking changes for local system '%s - %s':\n",
-                    shost, "127.0.0.1");
-            if(fname)
-            {
+                   shost, "127.0.0.1");
+            if (fname) {
                 printf("Detailed information for entries matching: '%s'\n",
                        fname);
             }
@@ -326,73 +273,56 @@ int main(int argc, char **argv)
             print_syscheck(NULL,
                            NULL, fname, 0, 0,
                            csv_output, zero_counter);
-        }
-        else if(strchr(agent_id, '@'))
-        {
-            if(fname)
-            {
+        } else if (strchr(agent_id, '@')) {
+            if (fname) {
                 printf("Detailed information for entries matching: '%s'\n",
                        fname);
             }
             print_syscheck(agent_id, NULL, fname, registry_only, 0,
                            csv_output, zero_counter);
-        }
-        else
-        {
-
+        } else {
             OS_ReadKeys(&keys);
 
             i = OS_IsAllowedID(&keys, agent_id);
-            if(i < 0)
-            {
+            if (i < 0) {
                 printf("\n** Invalid agent id '%s'.\n", agent_id);
                 helpmsg();
             }
 
-            /* Getting netmask from ip. */
             final_ip[128] = '\0';
             final_mask[128] = '\0';
             getNetmask(keys.keyentries[i]->ip->netmask, final_mask, 128);
-            snprintf(final_ip, 128, "%s%s",keys.keyentries[i]->ip->ip,
-                    final_mask);
+            snprintf(final_ip, 128, "%s%s", keys.keyentries[i]->ip->ip,
+                     final_mask);
 
-            if(registry_only)
-            {
+            if (registry_only) {
                 printf("\nIntegrity changes for 'Windows Registry' of"
                        " agent '%s (%s) - %s':\n",
                        keys.keyentries[i]->name, keys.keyentries[i]->id,
                        final_ip);
-            }
-            else
-            {
+            } else {
                 printf("\nIntegrity changes for agent "
                        "'%s (%s) - %s':\n",
                        keys.keyentries[i]->name, keys.keyentries[i]->id,
                        final_ip);
             }
 
-            if(fname)
-            {
+            if (fname) {
                 printf("Detailed information for entries matching: '%s'\n",
                        fname);
             }
             print_syscheck(keys.keyentries[i]->name,
-                    keys.keyentries[i]->ip->ip, fname,
-                    registry_only, 0, csv_output, zero_counter);
+                           keys.keyentries[i]->ip->ip, fname,
+                           registry_only, 0, csv_output, zero_counter);
 
         }
 
         exit(0);
     }
 
-
-
     printf("\n** Invalid argument combination.\n");
     helpmsg();
 
-
-    return(0);
+    return (0);
 }
 
-
-/* EOF */

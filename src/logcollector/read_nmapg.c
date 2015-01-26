@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/logcollector/read_nmapg.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,144 +7,118 @@
  * Foundation
  */
 
-
 #include "shared.h"
 #include "logcollector.h"
-
 
 #define NMAPG_HOST  "Host: "
 #define NMAPG_PORT  "Ports:"
 #define NMAPG_OPEN  "open/"
 #define NMAPG_STAT  "Status:"
 
-
-
-/** Function Prototypes **/
+/* Prototypes */
 static char *__go_after(char *x, const char *y);
 static char *__get_port(char *str, char *proto, char *port, size_t msize);
 
 
-
-/* Get port and protocol.
- */
+/* Get port and protocol */
 static char *__get_port(char *str, char *proto, char *port, size_t msize)
 {
     int filtered = 0;
     char *p, *q;
 
-
-    /* Removing white spaces */
-    while(*str == ' ')
-    {
+    /* Remov whitespace */
+    while (*str == ' ') {
         str++;
     }
 
-
-    /* Getting port */
+    /* Get port */
     p = strchr(str, '/');
-    if(!p)
-        return(NULL);
+    if (!p) {
+        return (NULL);
+    }
     *p = '\0';
     p++;
 
-
-    /* Getting port */
+    /* Get port */
     strncpy(port, str, msize);
-    port[msize -1] = '\0';
+    port[msize - 1] = '\0';
 
-
-
-    /* Checking if the port is open */
+    /* Check if the port is open */
     q = __go_after(p, NMAPG_OPEN);
-    if(!q)
-    {
+    if (!q) {
         /* Port is not open */
         filtered = 1;
         q = p;
 
-
         /* Going to the start of protocol field */
         p = strchr(q, '/');
-        if(!p)
-            return(NULL);
+        if (!p) {
+            return (NULL);
+        }
         p++;
-    }
-    else
-    {
+    } else {
         p = q;
     }
 
-
-
-    /* Getting protocol */
+    /* Get protocol */
     str = p;
     p = strchr(str, '/');
-    if(!p)
-    {
-        return(NULL);
+    if (!p) {
+        return (NULL);
     }
     *p = '\0';
     p++;
 
-
     strncpy(proto, str, msize);
-    proto[msize -1] = '\0';
+    proto[msize - 1] = '\0';
 
-
-    /* Setting proto to null if port is not open */
-    if(filtered)
+    /* Set proto to null if port is not open */
+    if (filtered) {
         proto[0] = '\0';
+    }
 
-
-    /* Removing slashes */
-    if(*p == '/')
-    {
+    /* Remove slashes */
+    if (*p == '/') {
         p++;
         q = p;
         p = strchr(p, ',');
-        if(p)
-        {
-            return(p);
+        if (p) {
+            return (p);
         }
 
-        return(q);
+        return (q);
     }
 
-
-    return(NULL);
+    return (NULL);
 }
 
-
-/* Check if the string matches.
- */
+/* Check if the string matches */
 static char *__go_after(char *x, const char *y)
 {
     size_t x_s;
     size_t y_s;
 
     /* X and Y must be not null */
-    if(!x || !y)
-        return(NULL);
+    if (!x || !y) {
+        return (NULL);
+    }
 
     x_s = strlen(x);
     y_s = strlen(y);
 
-    if(x_s <= y_s)
-    {
-        return(NULL);
+    if (x_s <= y_s) {
+        return (NULL);
     }
 
     /* String does not match */
-    if(strncmp(x,y,y_s) != 0)
-    {
-        return(NULL);
+    if (strncmp(x, y, y_s) != 0) {
+        return (NULL);
     }
 
-    x+=y_s;
+    x += y_s;
 
-    return(x);
+    return (x);
 }
-
 
 /* Read Nmap grepable files */
 void *read_nmapg(int pos, int *rc, int drop_it)
@@ -173,154 +144,118 @@ void *read_nmapg(int pos, int *rc, int drop_it)
     port[16] = '\0';
     proto[16] = '\0';
 
-    while(fgets(str, OS_MAXSTR -OS_LOG_HEADER, logff[pos].fp) != NULL)
-    {
+    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, logff[pos].fp) != NULL) {
         /* If need clear is set, we need to clear the line */
-        if(need_clear)
-        {
-            if((q = strchr(str, '\n')) != NULL)
-            {
+        if (need_clear) {
+            if ((q = strchr(str, '\n')) != NULL) {
                 need_clear = 0;
             }
             continue;
         }
 
-        /* Removing \n at the end of the string */
-        if ((q = strchr(str, '\n')) != NULL)
-        {
+        /* Remove \n at the end of the string */
+        if ((q = strchr(str, '\n')) != NULL) {
             *q = '\0';
-        }
-        else
-        {
+        } else {
             need_clear = 1;
         }
 
-
         /* Do not get commented lines */
-        if((str[0] == '#') || (str[0] == '\0'))
-        {
+        if ((str[0] == '#') || (str[0] == '\0')) {
             continue;
         }
 
-
-        /* Getting host */
+        /* Get host */
         q = __go_after(str, NMAPG_HOST);
-        if(!q)
-        {
+        if (!q) {
             goto file_error;
         }
 
-
-        /* Getting ip/hostname */
+        /* Get ip/hostname */
         p = strchr(q, ')');
-        if(!p)
-        {
+        if (!p) {
             goto file_error;
         }
-
 
         /* Setting the valid ip */
         ip = q;
 
-
-
-        /* Getting the ports */
+        /* Get the ports */
         q = strchr(p, '\t');
-        if(!q)
-        {
+        if (!q) {
             goto file_error;
         }
         q++;
-
 
         /* Now fixing p, to have the closing parenthesis */
         p++;
         *p = '\0';
 
-
         /* q now should point to the ports */
         p = __go_after(q, NMAPG_PORT);
-        if(!p)
-        {
-            /* Checking if no port is available */
+        if (!p) {
+            /* Check if no port is available */
             p = __go_after(q, NMAPG_STAT);
-            if(p)
-            {
+            if (p) {
                 continue;
             }
 
             goto file_error;
         }
 
-
-        /* Generating final msg */
+        /* Generate final msg */
         snprintf(final_msg, OS_MAXSTR, "Host: %s, open ports:",
-                            ip);
-        final_msg_s = OS_MAXSTR - ((strlen(final_msg) +3));
+                 ip);
+        final_msg_s = OS_MAXSTR - ((strlen(final_msg) + 3));
 
-
-        /* Getting port and protocol */
-        do
-        {
-            /* Avoid filling the buffer (3*port size). */
-            if(final_msg_s < 27)
-            {
+        /* Get port and protocol */
+        do {
+            /* Avoid filling the buffer (3*port size) */
+            if (final_msg_s < 27) {
                 break;
             }
 
             p = __get_port(p, proto, port, 9);
-            if(!p)
-            {
+            if (!p) {
                 debug1("%s: Bad formated nmap grepable file (port).", ARGV0);
                 break;
             }
 
-
             /* Port not open */
-            if(proto[0] == '\0')
-            {
+            if (proto[0] == '\0') {
                 continue;
             }
 
-
-            /* Adding ports */
+            /* Add ports */
             snprintf(buffer, OS_MAXSTR, " %s(%s)", port, proto);
             strncat(final_msg, buffer, final_msg_s);
-            final_msg_s-=(strlen(buffer) +2);
+            final_msg_s -= (strlen(buffer) + 2);
 
-        }while(*p == ',' && (p++));
+        } while (*p == ',' && (p++));
 
-
-        if(drop_it == 0)
-        {
-            /* Sending message to queue */
-            if(SendMSG(logr_queue, final_msg, logff[pos].file,
-                        HOSTINFO_MQ) < 0)
-            {
+        if (drop_it == 0) {
+            /* Send message to queue */
+            if (SendMSG(logr_queue, final_msg, logff[pos].file,
+                        HOSTINFO_MQ) < 0) {
                 merror(QUEUE_SEND, ARGV0);
-                if((logr_queue = StartMQ(DEFAULTQPATH,WRITE)) < 0)
-                {
+                if ((logr_queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                     ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQPATH);
                 }
             }
         }
 
-
-        /* Getting next */
+        /* Get next */
         continue;
 
-
-        /* Handling errors */
-        file_error:
+        /* Handle errors */
+file_error:
 
         merror("%s: Bad formated nmap grepable file.", ARGV0);
         *rc = -1;
-        return(NULL);
+        return (NULL);
 
     }
 
-
-    return(NULL);
+    return (NULL);
 }
 
-/* EOF */

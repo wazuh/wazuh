@@ -1,31 +1,27 @@
 #!/usr/bin/env expect
 
-# @(#) $Id: ./src/agentlessd/scripts/ssh_pixconfig_diff, 2011/09/08 dcid Exp $
-
 # Agentless monitoring
 #
 # Copyright (C) 2009 Trend Micro Inc.
 # All rights reserved.
-# 
+#
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
-
 
 if {$argc < 1} {
     send_user "ERROR: ssh_pixconfig_diff <hostname> <commands>\n";
     exit 1;
 }
 
-
-# NOTE: this script must be called from within /var/ossec for it to work.
+# NOTE: this script must be called from within /var/ossec for it to work
 set passlist "agentless/.passlist"
 set hostname [lindex $argv 0]
 set commands [lrange $argv 1 end]
 set pass "x"
 set addpass "x"
-set timeout 20 
+set timeout 20
 
 if {[string compare $hostname "test"] == 0} {
     if {[string compare $commands "test"] == 0} {
@@ -33,7 +29,7 @@ if {[string compare $hostname "test"] == 0} {
     }
 }
 
-# Reading the password list.
+# Read the password list
 if [catch {
     set in [open "$passlist" r]
 } loc_error] {
@@ -45,7 +41,7 @@ while {[gets $in line] != -1} {
         set me [string first "|" $line]
         set me2 [string last "|" $line]
         set length [string length $line]
-        
+
         if {$me == -1} {
             continue;
         }
@@ -55,10 +51,10 @@ while {[gets $in line] != -1} {
         if {$me == $me2} {
             continue;
         }
-        
+
         set me [expr $me-1]
         set me2 [expr $me2-1]
-        
+
         set host_list [string range $line 0 $me]
         set me [expr $me+2]
         set pass_list [string range $line $me $me2]
@@ -73,14 +69,12 @@ while {[gets $in line] != -1} {
 }
 close $in
 
-
 if {[string compare $pass "x"] == 0} {
     send_user "ERROR: Password for '$hostname' not found.\n"
     exit 1;
 }
 
-
-# SSHing to the box and passing the directories to check.
+# SSH to the box and pass the directories to check
 if [catch {
     spawn ssh -c des $hostname
 } loc_error] {
@@ -131,7 +125,7 @@ expect {
     }
     "*Password:*" {
         send "$pass\r"
-        
+
         expect {
             "Permission denied" {
                 send_user "ERROR: Incorrect password to remote host: $hostname .\n"
@@ -152,7 +146,7 @@ expect {
     }
 }
 
-# Going into enable mode.
+# Go into enable mode
 send "enable\r"
 expect {
     "Password:" {
@@ -182,16 +176,15 @@ expect {
     }
 }
 
-
-# Sending commands
-set timeout 60 
+# Send commands
+set timeout 60
 send_user "\nSTORE: now\n"
 
 send "no pager\r"
 send "term len 0\r"
 send "terminal pager 0\r"
 
-# Excluding uptime from the output
+# Exclude uptime from the output
 send "show version | grep -v Configuration last| up\r"
 send "show running-config\r"
 send "$commands\r"

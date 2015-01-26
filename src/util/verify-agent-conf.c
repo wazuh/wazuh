@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/util/verify-agent-conf.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2010 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,19 +7,18 @@
  * Foundation
  */
 
-
 #include "shared.h"
 #include "config/localfile-config.h"
 #include "config/config.h"
 #include "logcollector/logcollector.h"
 
-
 #undef ARGV0
 #define ARGV0 "verify-agent-conf"
 
+/* Prototypes */
 static void helpmsg(void) __attribute__((noreturn));
 
-/** help **/
+
 static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: Verify agent.conf syntax for errors.\n", ARGV0);
@@ -37,28 +33,20 @@ static void helpmsg()
     exit(1);
 }
 
-
-/* main: v0.3: 2005/04/04 */
 int main(int argc, char **argv)
 {
-    const char* ar=AGENTCONFIG;
-    int c=0;
+    const char *ar = AGENTCONFIG;
+    int c = 0;
     int modules = 0;
     logreader_config log_config;
 
-
-    /* Setting the name */
+    /* Set the name */
     OS_SetName(ARGV0);
 
-
-    /* printf ("Agrc [%d], Argv [%s]\n", argc, *argv); */
-
-    /* user arguments */
-    if(argc > 1)
-    {
-        while((c = getopt(argc, argv, "Vdhf:")) != -1)
-        {
-            switch(c){
+    /* User arguments */
+    if (argc > 1) {
+        while ((c = getopt(argc, argv, "Vdhf:")) != -1) {
+            switch (c) {
                 case 'V':
                     print_version();
                     break;
@@ -69,9 +57,8 @@ int main(int argc, char **argv)
                     nowDebug();
                     break;
                 case 'f':
-                    if(!optarg)
-                    {
-                        merror("%s: -f needs an argument",ARGV0);
+                    if (!optarg) {
+                        merror("%s: -f needs an argument", ARGV0);
                         helpmsg();
                     }
                     ar = optarg;
@@ -80,25 +67,18 @@ int main(int argc, char **argv)
                     helpmsg();
                     break;
             }
-
         }
     }
 
-
-
     printf("\n%s: Verifying [%s].\n\n", ARGV0, ar);
 
-    modules|= CLOCALFILE;
-    modules|= CAGENT_CONFIG;
+    modules |= CLOCALFILE;
+    modules |= CAGENT_CONFIG;
     log_config.config = NULL;
-    if(ReadConfig(modules, ar, &log_config, NULL) < 0)
-    {
-        return(OS_INVALID);
+    if (ReadConfig(modules, ar, &log_config, NULL) < 0) {
+        return (OS_INVALID);
     }
 
-    return(0);
-
-
+    return (0);
 }
 
-/* EOF */

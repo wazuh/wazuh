@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/config/global-config.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,16 +7,13 @@
  * Foundation
  */
 
-
-
 #ifndef _CCONFIG__H
 #define _CCONFIG__H
+
 #include "shared.h"
 
-
 /* Configuration structure */
-typedef struct __Config
-{
+typedef struct __Config {
     u_int8_t logall;
     u_int8_t stats;
     u_int8_t integrity;
@@ -54,7 +48,7 @@ typedef struct __Config
 
     /* Custom Alert output*/
     short int custom_alert_output;
-    char * custom_alert_output_format;
+    char *custom_alert_output_format;
 
     /* For the active response */
     int ar;
@@ -80,7 +74,7 @@ typedef struct __Config
     /* List of decoders */
     char **decoders;
 
-    /* Global rule hash. */
+    /* Global rule hash */
     OSHash *g_rules_hash;
 
 #ifdef LIBGEOIP_ENABLED
@@ -90,7 +84,7 @@ typedef struct __Config
     char *geoip6_db_path;
 #endif
 
-}_Config;
+} _Config;
 
+#endif /* _CCONFIG__H */
 
-#endif

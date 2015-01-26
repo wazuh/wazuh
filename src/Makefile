@@ -1,12 +1,6 @@
-
-# II: mysql and postgresql
+# TODO: mysql and postgresql?
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-
-
-
-
-
 
 EXTERNAL_JSON=external/cJSON/
 EXTERNAL_LUA=external/lua/
@@ -38,7 +32,6 @@ DEFINES+=-DUSER=\"${OSSEC_USER}\"
 DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
 DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
 DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
-
 
 LDFLAGS+=-lm
 
@@ -261,7 +254,7 @@ ifneq (,$(filter ${USE_PRELUDE},yes y Y 1))
 		LDFLAGS+=-lcrypto
 	else
 		LDFLAGS+=${OPENSSL_LIBS}
-	endif 
+	endif
 
 	ifneq (${OPENSSL_CFLAGS},)
 		CFLAGS+=${OPENSSL_CFLAGS}
@@ -1006,7 +999,7 @@ decoders-test.a: ${decoders_test_o}
 	${OSSEC_LINK} $@ $^
 
 format_c := ${wildcard analysisd/format/*.c}
-format_o := ${format_c:.c=.o} 
+format_o := ${format_c:.c=.o}
 all_analysisd_o += ${format_o}
 
 analysisd/format/%.o: analysisd/format/%.c
@@ -1069,8 +1062,8 @@ test: build_tests
 	${MAKE} run_tests
 
 run_tests:
-	@$(foreach bin,${test_programs},./${bin};)	
-	
+	@$(foreach bin,${test_programs},./${bin};)
+
 build_tests: external
 	${MAKE} DEBUG=1 TEST=1 ${test_programs}
 
@@ -1079,7 +1072,7 @@ test_o := $(test_c:.c=.o)
 
 tests/%.o: tests/%.c
 	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
-	
+
 test_os_zlib: tests/test_os_zlib.o ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${CFLAGS} $^ ${LDFLAGS} -o $@
 
@@ -1109,9 +1102,9 @@ test_coverage: build_tests
 	${MAKE} run_tests
 
 	@echo "\nTests finished."
-	
+
 	lcov --base-directory . --directory . --capture --quiet --rc lcov_branch_coverage=1 --output-file ossec.test
-	
+
 	rm -rf coverage-report/
 	genhtml --branch-coverage --output-directory coverage-report/ --title "ossec test coverage" --show-details --legend --num-spaces 4 --quiet ossec.test
 
@@ -1119,8 +1112,8 @@ test_coverage: build_tests
 #### RUule Tests ###
 ####################
 
-test-rules: 
-	( cd ../contrib/ossec-testing && sudo python runtests.py) 
+test-rules:
+	( cd ../contrib/ossec-testing && sudo python runtests.py)
 
 ####################
 #### Clean #########
