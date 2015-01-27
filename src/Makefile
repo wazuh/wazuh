@@ -22,6 +22,7 @@ USE_ZEROMQ?=no
 USE_PICVIZ?=yes
 USE_GEOIP?=no
 USE_OPENSSL?=auto
+USE_INOTIFY=no
 
 ONEWAY?=no
 CLEANFULL?=no
@@ -132,6 +133,14 @@ OSSEC_CCBIN  =${QUIET_CCBIN}${CC}
 OSSEC_LINK   =${QUIET_LINK}ar -rc
 OSSEC_RANLIB =${QUIET_RANLIB}ranlib
 
+ifneq (,$(filter ${USE_INOTIFY},auto yes y Y 1))
+	DEFINES+=-DINOTIFY_ENABLED
+	ifeq (${uname_S},FreeBSD)
+		LDFLAGS+=-linotify -L/usr/local/lib -I/usr/local/include
+		CFLAGS+=-I/usr/local/include
+	endif
+		
+endif
 
 ifneq (,$(filter ${USE_PRELUDE},auto yes y Y 1))
 	DEFINES+=-DPRELUDE_OUTPUT_ENABLED
