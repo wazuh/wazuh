@@ -41,7 +41,7 @@ void zeromq_output_start(const char *uri)
     }
 
     debug1("%s: DEBUG: Listening on ZeroMQ Socket: %s", ARGV0, uri);
-    rc = zsocket_bind(zeromq_pubsocket, uri);
+    rc = zsocket_bind(zeromq_pubsocket, "%s", uri);
     if (rc) {
         merror("%s: Unable to bind the ZeroMQ Socket: %s.", ARGV0, uri);
         return;
