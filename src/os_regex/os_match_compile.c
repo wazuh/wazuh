@@ -24,7 +24,6 @@
  */
 int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
 {
-    int usstrstr = 0;
     size_t i = 0;
     size_t count = 0;
     int end_of_string = 0;
@@ -77,8 +76,6 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
         /* Number of sub patterns */
         if (*pt == OR) {
             count++;
-        } else if (*pt == -29) {
-            usstrstr = 1;
         }
         pt++;
     }
@@ -148,11 +145,6 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
             /* If string starts with ^, use strncmp */
             else if (*new_str == BEGINREGEX) {
                 reg->match_fp[i] = _os_strncmp;
-                reg->size[i] = strlen(reg->patterns[i]);
-            }
-
-            else if (usstrstr == 1) {
-                reg->match_fp[i] = _os_strstr;
                 reg->size[i] = strlen(reg->patterns[i]);
             }
 

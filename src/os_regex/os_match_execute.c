@@ -78,14 +78,6 @@ int _os_strmatch(__attribute__((unused)) const char *pattern, __attribute__((unu
     return (TRUE);
 }
 
-int _os_strstr(const char *pattern, const char *str, __attribute__((unused)) size_t str_len, __attribute__((unused)) size_t size)
-{
-    if (strstr(str, pattern) != NULL) {
-        return (TRUE);
-    }
-    return (FALSE);
-}
-
 int _os_strcmp_last(const char *pattern, const char *str, size_t str_len, size_t size)
 {
     /* Size of the string must be bigger */
