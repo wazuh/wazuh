@@ -591,8 +591,8 @@ ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}
 os_zlib_c := os_zlib/os_zlib.c
 os_zlib_o := $(os_zlib_c:.c=.o)
 
-os_zlib/%.o: os_zlib/%.c
-	${OSSEC_CC} ${CFLAGS} -c $^ -o $@
+os_zlib/%.o: os_zlib/%.c ${EXTERNAL_ZLIB}libz.a
+	${OSSEC_CC} ${CFLAGS} -c $< -o $@
 
 os_zlib.a: ${os_zlib_o}
 	${OSSEC_LINK} $@ $^
@@ -910,8 +910,8 @@ ossec-syscheckd: ${syscheck_o} rootcheck.a ${ossec_libs} ${ZLIB_LIB}
 monitor_c := $(wildcard monitord/*.c)
 monitor_o := $(monitor_c:.c=.o)
 
-monitord/%.o: monitord/%.c
-	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-monitord\" -c $^ -o $@
+monitord/%.o: monitord/%.c ${ZLIB_LIB}
+	${OSSEC_CC} ${CFLAGS} -DARGV0=\"ossec-monitord\" -c $< -o $@
 
 ossec-monitord: ${monitor_o} ${ossec_libs} os_maild/sendcustomemail.o ${ZLIB_LIB}
 	${OSSEC_CCBIN} ${CFLAGS} ${ZLIB_INCLUDE} $^ ${LDFLAGS} -o $@
