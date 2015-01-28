@@ -19,10 +19,16 @@ OSSEC_USER_REM?=ossecr
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
-USE_PICVIZ?=yes
 USE_GEOIP?=no
-USE_OPENSSL?=auto
 USE_INOTIFY=no
+
+ifneq (${TARGET},winagent)
+	USE_PICVIZ?=yes
+	USE_OPENSSL?=auto
+else
+	USE_PICVIZ?=no
+	USE_OPENSSL?=no
+endif
 
 ONEWAY?=no
 CLEANFULL?=no
@@ -34,8 +40,7 @@ DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
 DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
 DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
 
-LDFLAGS+=-lm
-OSSEC_LDFLAGS=${LDFLAGS}
+OSSEC_LDFLAGS=${LDFLAGS} -lm
 
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
@@ -73,7 +78,7 @@ ifeq (${uname_S},OpenBSD)
 		DEFINES+=-pthread
 		LUA_PLAT=posix
 		CFLAGS+=-I/usr/local/include
-		LDFLAGS+=-L/usr/local/lib
+		OSSEC_LDFLAGS+=-L/usr/local/lib
 else
 ifeq (${uname_S},HP-UX)
 		DEFINES+=-DHPUX
@@ -145,11 +150,11 @@ else
 ifneq (,$(shell which i686-w64-mingw32-gcc))
 	MING_BASE:=i686-w64-mingw32-
 else
-	MING_BASE:=unknown-
+$(error No windows cross-compiler found!) #MING_BASE:=unknown-
 endif
 endif
 endif
-endif #winagent
+endif #winagent 
 
 
 OSSEC_CC      =${QUIET_CC}${MING_BASE}${CC}
@@ -162,22 +167,22 @@ OSSEC_WINDRES =${QUIET_CCBIN}${MING_BASE}windres
 ifneq (,$(filter ${USE_INOTIFY},auto yes y Y 1))
 	DEFINES+=-DINOTIFY_ENABLED
 	ifeq (${uname_S},FreeBSD)
-		LDFLAGS+=-linotify -L/usr/local/lib -I/usr/local/include
-		CFLAGS+=-I/usr/local/include
+		OSSEC_LDFLAGS+=-linotify -L/usr/local/lib -I/usr/local/include
+		OSSEC_CFLAGS+=-I/usr/local/include
 	endif
 endif
 
 ifneq (,$(filter ${USE_PRELUDE},auto yes y Y 1))
 	DEFINES+=-DPRELUDE_OUTPUT_ENABLED
-	LDFLAGS+=-lprelude
-	LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --pthread-cflags')
-	LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --libs')
+	OSSEC_LDFLAGS+=-lprelude
+	OSSEC_LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --pthread-cflags')
+	OSSEC_LDFLAGS+=$(shell sh -c '${PRELUDE_CONFIG} --libs')
 endif # USE_PRELUDE
 
 ifneq (,$(filter ${USE_ZEROMQ},auto yes y Y 1))
 	DEFINES+=-DZEROMQ_OUTPUT_ENABLED
 	#LDFLAGS+=-L/usr/local/lib -I/usr/local/include -lzmq -lczmq
-	LDFLAGS+=-lzmq -lczmq -lm
+	OSSEC_LDFLAGS+=-lzmq -lczmq -lm
 endif # USE_ZEROMQ
 
 ifneq (,$(filter ${USE_PICVIZ},auto yes y Y 1))
@@ -186,7 +191,7 @@ endif # USE_PICVIZ
 
 ifneq (,$(filter ${USE_GEOIP},auto yes y Y 1))
 	DEFINES+=-DLIBGEOIP_ENABLED
-	LDFLAGS+=-lGeoIP
+	OSSEC_LDFLAGS+=-lGeoIP
 endif # USE_GEOIP
 
 
@@ -268,30 +273,28 @@ endif # DATABASE
 
 
 # openssl ###########
-
 ifeq (${USE_OPENSSL},auto)
 	ifneq (,$(wildcard /usr/include/openssl/ssl.h))
 		DEFINES+=-DLIBOPENSSL_ENABLED
-		LDFLAGS+=-lssl -lcrypto
+		OSSEC_LDFLAGS+=-lssl -lcrypto
 	else
 		ifneq (,$(wildcard /usr/local/include/openssl/ssl.h))
 			DEFINES+=-DLIBOPENSSL_ENABLED
-			LDFLAGS+=-lssl -lcrypto
+			OSSEC_LDFLAGS+=-lssl -lcrypto
 		endif
 	endif
-endif
+endif # USE_OPENSSL
 
-ifneq (,$(filter ${USE_PRELUDE},yes y Y 1))
+ifneq (,$(filter ${USE_OPENSSL},yes y Y 1))
 	DEFINES+=-DLIBOPENSSL_ENABLED
 	ifneq (${OPENSSL_LIBS},)
-		LDFLAGS+=-lssl
-		LDFLAGS+=-lcrypto
+		OSSEC_LDFLAGS+=-lssl -lcrypto
 	else
-		LDFLAGS+=${OPENSSL_LIBS}
+		OSSEC_LDFLAGS+=${OPENSSL_LIBS}
 	endif
 
 	ifneq (${OPENSSL_CFLAGS},)
-		CFLAGS+=${OPENSSL_CFLAGS}
+		OSSEC_CFLAGS+=${OPENSSL_CFLAGS}
 	endif
 endif
 
@@ -1059,7 +1062,7 @@ format_o := ${format_c:.c=.o}
 all_analysisd_o += ${format_o}
 
 analysisd/format/%.o: analysisd/format/%.c
-	${OSSEC_CC} ${CFLAGS} ${JSON_INCLUDE} -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${JSON_INCLUDE} -DARGV0=\"ossec-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
 
 output_c := ${wildcard analysisd/output/*c}
 output_o := ${output_c:.c=.o}
@@ -1228,7 +1231,7 @@ win32/os_win32ui.exe: win32/resource.o win32/win_service_rk.o ${win32_ui_o} adda
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows-old
+clean: clean-test clean-internals clean-external clean-windows
 
 clean-test:
 	rm -f ${test_o} ${test_programs} ossec.test
@@ -1268,8 +1271,7 @@ clean-internals:
 	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h
 	rm -f ossec-logtest ossec-analysisd ossec-makelists
 
-clean-windows-old:
-	rm -rf win-pkg/
+clean-windows:
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt
 	rm -f win32/internal_options.conf
