@@ -580,17 +580,32 @@ BUILD_AGENT+=ossec-execd
 BUILD_AGENT+=manage_agents
 
 .PHONY: server local hybrid agent
+ifeq (${MAKECMDGOALS},server)
+$(error Do not use 'server' directly, use 'TARGET=server')
+endif
 server: ${BUILD_SERVER}
 
+ifeq (${MAKECMDGOALS},local)
+$(error Do not use 'local' directly, use 'TARGET=local')
+endif
 local: ${BUILD_SERVER}
 
+ifeq (${MAKECMDGOALS},hybrid)
+$(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
+endif
 hybrid: ${BUILD_SERVER}
 
+ifeq (${MAKECMDGOALS},agent)
+$(error Do not use 'agent' directly, use 'TARGET=agent')
+endif
 agent: ${BUILD_AGENT}
 
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe
 
+ifeq (${MAKECMDGOALS},winagent)
+$(error Do not use 'winagent' directly, use 'TARGET=winagent')
+endif
 .PHONY: winagent
 winagent:
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DWIN32 -I./${EXTERNAL_ZLIB}" LDFLAGS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -mwindows"
