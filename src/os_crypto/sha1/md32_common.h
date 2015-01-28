@@ -402,7 +402,7 @@
 
 int HASH_UPDATE (HASH_CTX *c, const void *data_, size_t len)
 {
-    const unsigned char *data = data_;
+    const unsigned char *data = (const unsigned char *)data_;
     register HASH_LONG *p;
     register HASH_LONG l;
     size_t sw, sc, ew, ec;

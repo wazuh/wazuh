@@ -99,7 +99,7 @@ void HostinfoInit()
 }
 
 /* Return the file pointer to be used */
-FILE *HI_File()
+static FILE *HI_File(void)
 {
     if (_hi_fp) {
         fseek(_hi_fp, 0, SEEK_SET);

@@ -130,7 +130,7 @@ char *os_LoadString(char *at, const char *str)
  */
 void *memset_secure(void *v, int c, size_t n)
 {
-    volatile unsigned char *p = v;
+    volatile unsigned char *p = (volatile unsigned char *)v;
     while (n--) {
         *p++ = (unsigned char) c;
     }

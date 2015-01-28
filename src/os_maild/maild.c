@@ -22,7 +22,7 @@ char _g_subject[SUBJECT_SIZE + 2];
 
 /* Prototypes */
 static void OS_Run(MailConfig *mail) __attribute__((nonnull)) __attribute__((noreturn));
-static void help_maild() __attribute__((noreturn));
+static void help_maild(void) __attribute__((noreturn));
 
 
 /* Print help statement */

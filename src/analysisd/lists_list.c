@@ -15,9 +15,6 @@
 #include <string.h>
 #include <errno.h>
 
-/* Prototypes */
-ListNode *_OS_AddList(ListNode *new_listnode);
-
 /* Global variables */
 ListNode *global_listnode;
 ListRule *global_listrule;
@@ -38,12 +35,6 @@ ListNode *OS_GetFirstList()
     ListNode *listnode_pt = global_listnode;
 
     return (listnode_pt);
-}
-
-ListRule *OS_GetFirstListRule()
-{
-    ListRule *listrule_pt = global_listrule;
-    return listrule_pt;
 }
 
 void OS_ListLoadRules()
@@ -171,7 +162,7 @@ int OS_DBSearchKeyValue(ListRule *lrule, char *key)
         if (cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
             vpos = cdb_datapos(&lrule->db->cdb);
             vlen = cdb_datalen(&lrule->db->cdb);
-            val = malloc(vlen);
+            val = (char *) malloc(vlen);
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
             result = OSMatch_Execute(val, vlen, lrule->matcher);
             free(val);
@@ -237,7 +228,7 @@ int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
         if (cdb_find(&lrule->db->cdb, key, strlen(key)) > 0 ) {
             vpos = cdb_datapos(&lrule->db->cdb);
             vlen = cdb_datalen(&lrule->db->cdb);
-            val = malloc(vlen);
+            val = (char *) malloc(vlen);
             cdb_read(&lrule->db->cdb, val, vlen, vpos);
             result = OSMatch_Execute(val, vlen, lrule->matcher);
             free(val);
@@ -251,7 +242,7 @@ int OS_DBSearchKeyAddressValue(ListRule *lrule, char *key)
                     if ( cdb_find(&lrule->db->cdb, tmpkey, strlen(tmpkey)) > 0 ) {
                         vpos = cdb_datapos(&lrule->db->cdb);
                         vlen = cdb_datalen(&lrule->db->cdb);
-                        val = malloc(vlen);
+                        val = (char *) malloc(vlen);
                         cdb_read(&lrule->db->cdb, val, vlen, vpos);
                         result = OSMatch_Execute(val, vlen, lrule->matcher);
                         free(val);

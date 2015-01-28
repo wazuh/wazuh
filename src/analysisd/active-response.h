@@ -15,7 +15,7 @@
 #include "list_op.h"
 
 /* Initialize active response */
-void AR_Init();
+void AR_Init(void);
 
 /* Read active response configuration and write it
  * to the appropriate lists.

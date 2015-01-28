@@ -236,8 +236,3 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
     return (1);
 }
 
-int os_agent_config_changed()
-{
-    return (0);
-}
-

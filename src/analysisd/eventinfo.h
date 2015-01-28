@@ -129,7 +129,7 @@ void Free_Eventinfo(Eventinfo *lf);
 void OS_AddEvent(Eventinfo *lf);
 
 /* Return the last event from the Event list */
-EventNode *OS_GetLastEvent();
+EventNode *OS_GetLastEvent(void);
 
 /* Create the event list. Maxsize must be specified */
 void OS_CreateEventList(int maxsize);

@@ -28,7 +28,6 @@ int getattributes(char **attributes,
 int doesRuleExist(int sid, RuleNode *r_node);
 void Rule_AddAR(RuleInfo *config_rule);
 char *loadmemory(char *at, char *str);
-int getDecoderfromlist(char *name);
 
 /* Global variables */
 extern int _max_freq;
@@ -449,7 +448,7 @@ int Rules_OP_ReadRules(char *rulefile)
                         }
 
                         config_ruleinfo->srcip =
-                            realloc(config_ruleinfo->srcip,
+                            (os_ip **) realloc(config_ruleinfo->srcip,
                                     (ip_s + 2) * sizeof(os_ip *));
 
 
@@ -479,7 +478,7 @@ int Rules_OP_ReadRules(char *rulefile)
                         }
 
                         config_ruleinfo->dstip =
-                            realloc(config_ruleinfo->dstip,
+                            (os_ip **) realloc(config_ruleinfo->dstip,
                                     (ip_s + 2) * sizeof(os_ip *));
 
 
@@ -692,7 +691,7 @@ int Rules_OP_ReadRules(char *rulefile)
 
                         }
 
-                        config_ruleinfo->compiled_rule = compiled_rules_list[it_id];
+                        config_ruleinfo->compiled_rule = (void *(*)(void *)) compiled_rules_list[it_id];
                         if (!(config_ruleinfo->alert_opts & DO_EXTRAINFO)) {
                             config_ruleinfo->alert_opts |= DO_EXTRAINFO;
                         }
@@ -1162,8 +1161,8 @@ int Rules_OP_ReadRules(char *rulefile)
 
             /* Set the event_search pointer */
             if (config_ruleinfo->if_matched_sid) {
-                config_ruleinfo->event_search =
-                    (void *)Search_LastSids;
+                config_ruleinfo->event_search = (void *(*)(void *, void *))
+                    Search_LastSids;
 
                 /* Mark rules that match this id */
                 OS_MarkID(NULL, config_ruleinfo);
@@ -1181,15 +1180,15 @@ int Rules_OP_ReadRules(char *rulefile)
                 OS_MarkGroup(NULL, config_ruleinfo);
 
                 /* Set function pointer */
-                config_ruleinfo->event_search =
-                    (void *)Search_LastGroups;
+                config_ruleinfo->event_search = (void *(*)(void *, void *))
+                    Search_LastGroups;
             } else if (config_ruleinfo->context) {
                 if ((config_ruleinfo->context == 1) &&
                         (config_ruleinfo->context_opts & SAME_DODIFF)) {
                     config_ruleinfo->context = 0;
                 } else {
-                    config_ruleinfo->event_search =
-                        (void *)Search_LastEvents;
+                    config_ruleinfo->event_search = (void *(*)(void *, void *))
+                        Search_LastEvents;
                 }
             }
 
@@ -1233,7 +1232,7 @@ char *loadmemory(char *at, char *str)
     if (at == NULL) {
         int strsize = 0;
         if ((strsize = strlen(str)) < OS_SIZE_2048) {
-            at = calloc(strsize + 1, sizeof(char));
+            at = (char *) calloc(strsize + 1, sizeof(char));
             if (at == NULL) {
                 merror(MEM_ERROR, ARGV0, errno, strerror(errno));
                 return (NULL);
@@ -1255,7 +1254,7 @@ char *loadmemory(char *at, char *str)
             return (NULL);
         }
 
-        at = realloc(at, (finalsize) * sizeof(char));
+        at = (char *) realloc(at, (finalsize) * sizeof(char));
 
         if (at == NULL) {
             merror(MEM_ERROR, ARGV0, errno, strerror(errno));
@@ -1656,7 +1655,7 @@ void Rule_AddAR(RuleInfo *rule_config)
         if (mark_to_ar == 1) {
             rule_ar_size++;
 
-            rule_config->ar = realloc(rule_config->ar,
+            rule_config->ar = (active_response **) realloc(rule_config->ar,
                                       (rule_ar_size + 1)
                                       * sizeof(active_response *));
 

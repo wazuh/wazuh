@@ -7,6 +7,8 @@
  * Foundation.
  */
 
+#include "../plugin_decoders.h"
+
 #include "shared.h"
 #include "eventinfo.h"
 

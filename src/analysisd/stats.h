@@ -15,5 +15,9 @@ int LastMsg_Stats(char *log);
 
 char __stats_comment[192];
 
+void Update_Hour(void);
+int Check_Hour(void);
+int Start_Hour(void);
+
 #endif /* _STAT__H */
 

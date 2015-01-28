@@ -154,7 +154,5 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             key_unlock();
         }
     }
-
-    return (NULL);
 }
 

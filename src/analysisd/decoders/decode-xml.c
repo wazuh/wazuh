@@ -67,7 +67,7 @@ int os_setdecoderids(char *p_name)
 
     do {
         int p_id = 0;
-        char *p_name;
+        char *tmp_name;
 
         nnode = node->osdecoder;
         nnode->id = getDecoderfromlist(nnode->name);
@@ -85,7 +85,7 @@ int os_setdecoderids(char *p_name)
 
         /* Set parent id */
         p_id = nnode->id;
-        p_name = nnode->name;
+        tmp_name = nnode->name;
 
         /* Also set on the child nodes */
         while (child_node) {
@@ -97,7 +97,7 @@ int os_setdecoderids(char *p_name)
                 nnode->id = p_id;
 
                 /* Set parent name */
-                nnode->name = p_name;
+                nnode->name = tmp_name;
             }
 
             /* Id cannot be 0 */
@@ -205,7 +205,7 @@ int ReadDecodeXML(char *file)
     NULL_Decoder_tmp->type = SYSLOG;
     NULL_Decoder_tmp->name = NULL;
     NULL_Decoder_tmp->fts = 0;
-    NULL_Decoder = (void *)NULL_Decoder_tmp;
+    NULL_Decoder = NULL_Decoder_tmp;
 
     i = 0;
     while (node[i]) {
@@ -383,10 +383,9 @@ int ReadDecodeXML(char *file)
                     if (strcmp(plugin_decoders[ed_c],
                                elements[j]->content) == 0) {
                         /* Initialize plugin */
-                        void (*dec_init)() = plugin_decoders_init[ed_c];
-
+                        void (*dec_init)(void) = (void (*)(void)) plugin_decoders_init[ed_c];
                         dec_init();
-                        pi->plugindecoder = plugin_decoders_exec[ed_c];
+                        pi->plugindecoder = (void (*)(void *)) plugin_decoders_exec[ed_c];
                         break;
                     }
                 }
@@ -444,37 +443,37 @@ int ReadDecodeXML(char *file)
                 /* Check the values from the order */
                 while (*norder) {
                     if (strstr(*norder, "dstuser") != NULL) {
-                        pi->order[order_int] = (void *)DstUser_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) DstUser_FP;
                     } else if (strstr(*norder, "srcuser") != NULL) {
-                        pi->order[order_int] = (void *)SrcUser_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) SrcUser_FP;
                     }
                     /* User is an alias to dstuser */
                     else if (strstr(*norder, "user") != NULL) {
-                        pi->order[order_int] = (void *)DstUser_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) DstUser_FP;
                     } else if (strstr(*norder, "srcip") != NULL) {
-                        pi->order[order_int] = (void *)SrcIP_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) SrcIP_FP;
                     } else if (strstr(*norder, "dstip") != NULL) {
-                        pi->order[order_int] = (void *)DstIP_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) DstIP_FP;
                     } else if (strstr(*norder, "srcport") != NULL) {
-                        pi->order[order_int] = (void *)SrcPort_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) SrcPort_FP;
                     } else if (strstr(*norder, "dstport") != NULL) {
-                        pi->order[order_int] = (void *)DstPort_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) DstPort_FP;
                     } else if (strstr(*norder, "protocol") != NULL) {
-                        pi->order[order_int] = (void *)Protocol_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) Protocol_FP;
                     } else if (strstr(*norder, "action") != NULL) {
-                        pi->order[order_int] = (void *)Action_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) Action_FP;
                     } else if (strstr(*norder, "id") != NULL) {
-                        pi->order[order_int] = (void *)ID_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) ID_FP;
                     } else if (strstr(*norder, "url") != NULL) {
-                        pi->order[order_int] = (void *)Url_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) Url_FP;
                     } else if (strstr(*norder, "data") != NULL) {
-                        pi->order[order_int] = (void *)Data_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) Data_FP;
                     } else if (strstr(*norder, "extra_data") != NULL) {
-                        pi->order[order_int] = (void *)Data_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) Data_FP;
                     } else if (strstr(*norder, "status") != NULL) {
-                        pi->order[order_int] = (void *)Status_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) Status_FP;
                     } else if (strstr(*norder, "system_name") != NULL) {
-                        pi->order[order_int] = (void *)SystemName_FP;
+                        pi->order[order_int] = (void (*)(void *, char *)) SystemName_FP;
                     } else {
                         ErrorExit("decode-xml: Wrong field '%s' in the order"
                                   " of decoder '%s'", *norder, pi->name);
@@ -716,7 +715,7 @@ char *_loadmemory(char *at, char *str)
     if (at == NULL) {
         int strsize = 0;
         if ((strsize = strlen(str)) < OS_SIZE_1024) {
-            at = calloc(strsize + 1, sizeof(char));
+            at = (char *) calloc(strsize + 1, sizeof(char));
             if (at == NULL) {
                 merror(MEM_ERROR, ARGV0, errno, strerror(errno));
                 return (NULL);
@@ -737,7 +736,7 @@ char *_loadmemory(char *at, char *str)
             merror(SIZE_ERROR, ARGV0, str);
             return (NULL);
         }
-        at = realloc(at, (finalsize + 1) * sizeof(char));
+        at = (char *) realloc(at, (finalsize + 1) * sizeof(char));
         if (at == NULL) {
             merror(MEM_ERROR, ARGV0, errno, strerror(errno));
             return (NULL);

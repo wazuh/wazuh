@@ -25,12 +25,10 @@
 /* For config  */
 int GlobalConf(char *cfgfile);
 
-/* For Lists */
-void Lists_OP_CreateLists();
-
 
 /* print help statement */
-void help_makelists()
+__attribute__((noreturn))
+static void help_makelists(void)
 {
     print_header();
     print_out("  %s: -[VhdtF] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
