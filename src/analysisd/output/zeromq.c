@@ -1,25 +1,30 @@
+/* Copyright (C) 2015 Trend Micro Inc.
+ * All rights reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #ifdef ZEROMQ_OUTPUT_ENABLED
 
-#include "shared.h"
-#include "eventinfo.h"
+#include "zeromq.h"
+
 #include "shared.h"
 #include "rules.h"
 #include "czmq.h"
 #include "format/to_json.h"
-#include "zeromq.h"
+
 
 /* Global variables */
 static zctx_t *zeromq_context;
 static void *zeromq_pubsocket;
 
 
-void zeromq_output_start(char *uri, int argc, char **argv)
+void zeromq_output_start(const char *uri)
 {
     int rc;
-
-    /* -Werror causes gcc to bail because these are defined but not used */
-    if (!argc) { }
-    if (!argv) { }
 
     debug1("%s: DEBUG: New ZeroMQ Context", ARGV0);
     zeromq_context = zctx_new();
@@ -49,7 +54,7 @@ void zeromq_output_end()
     zctx_destroy(&zeromq_context);
 }
 
-void zeromq_output_event(Eventinfo *lf)
+void zeromq_output_event(const Eventinfo *lf)
 {
     char *json_alert = Eventinfo_to_jsonstr(lf);
 

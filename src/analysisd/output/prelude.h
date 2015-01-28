@@ -15,10 +15,10 @@
 #include "eventinfo.h"
 
 /* Start Prelude client */
-void prelude_start(char *profile, int argc, char **argv);
+void prelude_start(const char *profile, int argc, char **argv);
 
 /* Log to Prelude */
-void OS_PreludeLog(Eventinfo *lf);
+void OS_PreludeLog(const Eventinfo *lf);
 
 #endif /* _PRELUDE_H_ */
 

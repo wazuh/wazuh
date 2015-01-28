@@ -273,7 +273,7 @@ int main_analysisd(int argc, char **argv)
 #ifdef ZEROMQ_OUTPUT_ENABLED
     /* Start zeromq */
     if (Config.zeromq_output) {
-        zeromq_output_start(Config.zeromq_output_uri, argc, argv);
+        zeromq_output_start(Config.zeromq_output_uri);
     }
 #endif
 
