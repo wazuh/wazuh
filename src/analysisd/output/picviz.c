@@ -10,19 +10,20 @@
 
 #ifdef PICVIZ_OUTPUT_ENABLED
 
+#include "picviz.h"
+
 #include "shared.h"
-#include "eventinfo.h"
 
 static FILE *picviz_fp;
 
-static char *(ossec2picviz[]) = {"blue", "blue", "blue", "blue",
+static const char *(ossec2picviz[]) = {"blue", "blue", "blue", "blue",
                                  "green", "green", "green", "green",
                                  "orange", "orange", "orange", "orange",
                                  "red", "red", "red", "red", "red"
                                 };
 
 
-void OS_PicvizOpen(char *socket)
+void OS_PicvizOpen(const char *socket)
 {
     picviz_fp = fopen(socket, "a");
     if (!picviz_fp) {
@@ -31,30 +32,21 @@ void OS_PicvizOpen(char *socket)
     }
 }
 
-void OS_PicvizLog(Eventinfo *lf)
+void OS_PicvizLog(const Eventinfo *lf)
 {
-    char *color = (lf->generated_rule->level > 15) ? "red" : ossec2picviz[lf->generated_rule->level];
-    char *hostname;
-    char *location;
-    char *srcip;
-    char *dstip;
-    char *srcuser;
-    char *dstuser;
-    char *prgname;
-    char *comment;
-
     if (!picviz_fp) {
         return;
     }
 
-    hostname = lf->hostname ? lf->hostname : "";
-    location = lf->location ? lf->location : "";
-    srcip = lf->srcip ? lf->srcip : "";
-    dstip = lf->dstip ? lf->dstip : "";
-    srcuser = lf->srcuser ? lf->srcuser : "";
-    dstuser = lf->dstuser ? lf->dstuser : "";
-    prgname = lf->program_name ? lf->program_name : "";
-    comment = lf->generated_rule->comment ? lf->generated_rule->comment : "";
+    const char *color = (lf->generated_rule->level > 15) ? "red" : ossec2picviz[lf->generated_rule->level];
+    const char *hostname = lf->hostname ? lf->hostname : "";
+    const char *location = lf->location ? lf->location : "";
+    const char *srcip = lf->srcip ? lf->srcip : "";
+    const char *dstip = lf->dstip ? lf->dstip : "";
+    const char *srcuser = lf->srcuser ? lf->srcuser : "";
+    const char *dstuser = lf->dstuser ? lf->dstuser : "";
+    const char *prgname = lf->program_name ? lf->program_name : "";
+    const char *comment = lf->generated_rule->comment ? lf->generated_rule->comment : "";
 
     fprintf(picviz_fp,
             "time=\"%s\", host=\"%s\", file=\"%s\", sip=\"%s\", dip=\"%s\""

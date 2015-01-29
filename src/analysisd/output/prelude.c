@@ -18,8 +18,8 @@
 #include <libprelude/idmef-message-print.h>
 
 #include "prelude.h"
+
 #include "shared.h"
-#include "eventinfo.h"
 #include "rules.h"
 
 #define DEFAULT_ANALYZER_NAME "OSSEC"
@@ -32,7 +32,7 @@
 #define FILE_OTHER 2
 
 /** OSSEC to prelude severity mapping. **/
-char *(ossec2prelude_sev[]) = {"info", "info", "info", "info",
+static const char *(ossec2prelude_sev[]) = {"info", "info", "info", "info",
                                "low", "low", "low", "low",
                                "medium", "medium", "medium", "medium",
                                "high", "high", "high", "high", "high"
@@ -42,7 +42,7 @@ char *(ossec2prelude_sev[]) = {"info", "info", "info", "info",
 static prelude_client_t *prelude_client;
 
 
-void prelude_idmef_debug(idmef_message_t *idmef)
+/*void prelude_idmef_debug(idmef_message_t *idmef)
 {
     prelude_io_t *pio;
 
@@ -50,7 +50,7 @@ void prelude_idmef_debug(idmef_message_t *idmef)
     prelude_io_set_file_io(pio, stderr);
     idmef_message_print(idmef, pio);
     prelude_io_destroy(pio);
-}
+}*/
 
 static int
 add_idmef_object(idmef_message_t *msg, const char *object, const char *value)
@@ -125,7 +125,7 @@ err:
     return -1;
 }
 
-void prelude_start(char *profile, int argc, char **argv)
+void prelude_start(const char *profile, int argc, char **argv)
 {
     int ret;
     prelude_client = NULL;
@@ -185,13 +185,13 @@ void prelude_start(char *profile, int argc, char **argv)
     return;
 }
 
-void FileAccess_PreludeLog(idmef_message_t *idmef,
+static void FileAccess_PreludeLog(idmef_message_t *idmef,
                            int filenum,
-                           char *filename,
-                           char *md5,
-                           char *sha1,
-                           char *owner,
-                           char *gowner,
+                           const char *filename,
+                           const char *md5,
+                           const char *sha1,
+                           const char *owner,
+                           const char *gowner,
                            int perm)
 {
 
@@ -306,7 +306,7 @@ void FileAccess_PreludeLog(idmef_message_t *idmef,
     return;
 }
 
-void OS_PreludeLog(Eventinfo *lf)
+void OS_PreludeLog(const Eventinfo *lf)
 {
     int ret;
     int classification_counter = 0;

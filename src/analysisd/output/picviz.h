@@ -13,12 +13,10 @@
 #ifndef _PICVIZ_H_
 #define _PICVIZ_H_
 
-#include <stdio.h>
-
 #include "eventinfo.h"
 
-void OS_PicvizOpen(char *socket);
-void OS_PicvizLog(Eventinfo *lf);
+void OS_PicvizOpen(const char *socket);
+void OS_PicvizLog(const Eventinfo *lf);
 void OS_PicvizClose(void);
 
 #endif /* _PICVIZ_H_ */
