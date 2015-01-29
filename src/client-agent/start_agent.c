@@ -61,6 +61,11 @@ int connect_server(int initial_id)
 
                 os_strdup(ip_str, agt->rip[rc]);
                 tmp_str = strchr(agt->rip[rc], '/');
+                if (!tmp_str) {
+                    merror("%s: WARN: Invalid hostname format: '%s'.", ARGV0, agt->rip[rc]);
+                    return 0;
+                }
+
                 tmp_str++;
             } else {
                 merror("%s: WARN: Unable to get hostname for '%s'.",
