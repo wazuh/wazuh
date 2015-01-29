@@ -1870,7 +1870,7 @@
 <decoder name="ossec-logcollector">
   <type>ossec</type>
   <prematch>^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d ossec-logcollector</prematch>
-  <regex offset="after_prematch">^ '(\S+)'</regex>
+  <regex offset="after_prematch">^\(\d+\): (\.)</regex>
   <order>extra_data</order>
 </decoder>
 
@@ -1878,7 +1878,7 @@
   <parent>ossec</parent>
   <type>ossec</type>
   <prematch offset="after_parent">^Agent started:</prematch>
-  <regex offset="after_prematch">^\(\d+\): (\.)</regex>
+  <regex offset="after_prematch">^ '(\S+)'</regex>
   <order>extra_data</order>
   <fts>name, location, extra_data</fts>
 </decoder>
