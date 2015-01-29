@@ -119,7 +119,7 @@ char *decode_base64(const char *src)
 
         p = (unsigned char *)dest;
 
-        buf = malloc(l);
+        buf = (unsigned char *) malloc(l);
         if (!buf) {
             free(dest);
             return (NULL);

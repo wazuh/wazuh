@@ -13,7 +13,7 @@
 
 /* Prototypes */
 static char *gen_diff_alert(const char *filename, time_t alert_diff_time) __attribute__((nonnull));
-static int seechanges_dupfile(const char *old, const char *new) __attribute__((nonnull));
+static int seechanges_dupfile(const char *old, const char *current) __attribute__((nonnull));
 static int seechanges_createpath(const char *filename) __attribute__((nonnull));
 
 #ifdef USE_MAGIC
@@ -108,7 +108,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     return (strdup(diff_alert));
 }
 
-static int seechanges_dupfile(const char *old, const char *new)
+static int seechanges_dupfile(const char *old, const char *current)
 {
     size_t n;
     FILE *fpr;
@@ -122,7 +122,7 @@ static int seechanges_dupfile(const char *old, const char *new)
         return (0);
     }
 
-    fpw = fopen(new, "w");
+    fpw = fopen(current, "w");
     if (!fpw) {
         fclose(fpr);
         return (0);

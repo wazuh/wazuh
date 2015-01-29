@@ -244,7 +244,8 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
 
 int OS_Sendmail(MailConfig *mail, struct tm *p)
 {
-    int socket, i = 0;
+    int socket;
+    unsigned int i = 0;
     char *msg;
     char snd_msg[128];
 

@@ -136,7 +136,7 @@ int field_add_truncated(char *dest, size_t size, const char *format, const char 
             )
        ) {
 
-        if ( (truncated = malloc(field_sz + 1)) != NULL ) {
+        if ( (truncated = (char *) malloc(field_sz + 1)) != NULL ) {
             if ( total_sz > available_sz ) {
                 /* Truncate and add a trailer */
                 os_substr(truncated, value, 0, field_sz - strlen(trailer));

@@ -35,7 +35,7 @@ void HandleSyslogTCP(void) __attribute__((noreturn));
 void HandleSecure(void) __attribute__((noreturn));
 
 /* Forward active response events */
-void *AR_Forward(void *arg);
+void *AR_Forward(void *arg) __attribute__((noreturn));
 
 /* Initialize the manager */
 void manager_init(int isUpdate);

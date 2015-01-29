@@ -12,6 +12,8 @@
 
 #include <sys/types.h>
 
+#include "decoders/decoder.h"
+
 /* Time structures */
 int today;
 int thishour;
@@ -27,7 +29,7 @@ time_t c_time; /* Current time of event. Used everywhere */
 /* Local host name */
 char __shost[512];
 
-void *NULL_Decoder;
+OSDecoderInfo *NULL_Decoder;
 
 #define OSSEC_SERVER    "ossec-server"
 

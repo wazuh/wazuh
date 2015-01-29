@@ -40,15 +40,13 @@ int maxdiff = 0;
 int mindiff = 0;
 int percent_diff = 20;
 
-char __stats_comment[192];
-
 /* Last msgs, to avoid floods */
 char *_lastmsg;
 char *_prevlast;
 char *_pprevlast;
 
 
-void print_totals()
+static void print_totals(void)
 {
     int i, totals = 0;
     char logfile[OS_FLSIZE + 1];

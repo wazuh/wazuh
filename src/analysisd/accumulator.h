@@ -41,13 +41,13 @@ typedef struct _OS_ACM_Store {
 #define OS_ACM_PURGE_COUNT     200
 
 /* Accumulator Functions */
-int Accumulate_Init();
+int Accumulate_Init(void);
 Eventinfo *Accumulate(Eventinfo *lf);
-void Accumulate_CleanUp();
+void Accumulate_CleanUp(void);
 
 /* Internal Functions */
 int acm_str_replace(char **dst, const char *src);
-OS_ACM_Store *InitACMStore();
+OS_ACM_Store *InitACMStore(void);
 void FreeACMStore(OS_ACM_Store *obj);
 
 #endif /* __ACCUMULATOR_H */

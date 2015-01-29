@@ -185,7 +185,7 @@ RuleInfo *zerorulemember(int id,
 /** Rule_list Functions **/
 
 /* create the rule list */
-void OS_CreateRuleList();
+void OS_CreateRuleList(void);
 
 /* Add rule information to the list */
 int OS_AddRule(RuleInfo *read_rule);
@@ -203,7 +203,9 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule);
 int OS_MarkID(RuleNode *r_node, RuleInfo *orig_rule);
 
 /* Get first rule */
-RuleNode *OS_GetFirstRule();
+RuleNode *OS_GetFirstRule(void);
+
+void Rules_OP_CreateRules(void);
 
 /** Definition of the internal rule IDS **
  ** These SIGIDs cannot be used         **

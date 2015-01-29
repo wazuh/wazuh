@@ -19,5 +19,7 @@
 #define IG_QUEUE  "/queue/fts/ig-queue"
 #endif
 
+int FTS_Init(void);
+
 #endif /* __FTS_H */
 

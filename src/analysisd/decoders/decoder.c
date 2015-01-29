@@ -88,16 +88,16 @@ void DecodeEvent(Eventinfo *lf)
                  * and go for the regexes.
                  */
                 if (nnode->prematch) {
-                    const char *llog;
+                    const char *llog2;
 
                     /* If we have an offset set, use it */
                     if (nnode->prematch_offset & AFTER_PARENT) {
-                        llog = pmatch;
+                        llog2 = pmatch;
                     } else {
-                        llog = lf->log;
+                        llog2 = lf->log;
                     }
 
-                    if ((cmatch = OSRegex_Execute(llog, nnode->prematch))) {
+                    if ((cmatch = OSRegex_Execute(llog2, nnode->prematch))) {
                         if (*cmatch != '\0') {
                             cmatch++;
                         }

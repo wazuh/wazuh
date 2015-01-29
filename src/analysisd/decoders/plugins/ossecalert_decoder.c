@@ -7,6 +7,8 @@
  * Foundation.
  */
 
+#include "../plugin_decoders.h"
+
 #include "shared.h"
 #include "eventinfo.h"
 #include "config.h"
@@ -32,7 +34,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
     char *oa_val;
     char oa_newlocation[256];
     char *tmp_str = NULL;
-    void *rule_pointer;
+    RuleInfo *rule_pointer;
 
     lf->decoder_info->type = OSSEC_ALERT;
 
@@ -60,7 +62,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
     *tmp_str = '\0';
 
     /* Get rule structure */
-    rule_pointer = OSHash_Get(Config.g_rules_hash, oa_id);
+    rule_pointer = (RuleInfo *) OSHash_Get(Config.g_rules_hash, oa_id);
     if (!rule_pointer) {
         merror("%s: WARN: Rule id '%s' not found internally.", ARGV0, oa_id);
         *tmp_str = ' ';

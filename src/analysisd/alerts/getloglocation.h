@@ -13,8 +13,8 @@
 #include "eventinfo.h"
 
 /* Start the log location (need to be called before getlog) */
-void OS_InitLog();
-void OS_InitFwLog();
+void OS_InitLog(void);
+void OS_InitFwLog(void);
 
 /* Get the log file based on the date/logtype
  * Returns 0 on success or -1 on error

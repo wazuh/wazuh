@@ -25,6 +25,7 @@
 #include "eventinfo.h"
 #include "accumulator.h"
 #include "analysisd.h"
+#include "fts.h"
 
 /** Internal Functions **/
 void OS_ReadMSG(char *ut_str);
@@ -36,8 +37,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 int GlobalConf(char *cfgfile);
 
 /* For rules */
-void Rules_OP_CreateRules();
-void Lists_OP_CreateLists();
 int Rules_OP_ReadRules(char *cfgfile);
 int _setlevels(RuleNode *node, int nnode);
 int AddHash_Rule(RuleNode *node);
@@ -46,7 +45,6 @@ int AddHash_Rule(RuleNode *node);
 int OS_CleanMSG(char *msg, Eventinfo *lf);
 
 /* for FTS */
-int FTS_Init();
 int AddtoIGnore(Eventinfo *lf);
 int IGnore(Eventinfo *lf);
 
@@ -55,11 +53,11 @@ void DecodeEvent(Eventinfo *lf);
 
 /* For Decoders */
 int ReadDecodeXML(char *file);
-int SetDecodeXML();
 
 
 /* Print help statement */
-void help_logtest()
+__attribute__((noreturn))
+static void help_logtest(void)
 {
     print_header();
     print_out("  %s: -[Vhdtva] [-c config] [-D dir] [-U rule:alert:decoder]", ARGV0);
@@ -300,6 +298,7 @@ int main(int argc, char **argv)
 }
 
 /* Receive the messages (events) and analyze them */
+__attribute__((noreturn))
 void OS_ReadMSG(char *ut_str)
 {
     int i;
@@ -579,6 +578,5 @@ void OS_ReadMSG(char *ut_str)
         }
     }
     exit(exit_code);
-    return;
 }
 

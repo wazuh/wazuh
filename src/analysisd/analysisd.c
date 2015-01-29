@@ -28,6 +28,7 @@
 #include "eventinfo.h"
 #include "accumulator.h"
 #include "analysisd.h"
+#include "fts.h"
 
 #ifdef PICVIZ_OUTPUT_ENABLED
 #include "output/picviz.h"
@@ -49,8 +50,6 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 int GlobalConf(char *cfgfile);
 
 /* For rules */
-void Rules_OP_CreateRules();
-void Lists_OP_CreateLists();
 int Rules_OP_ReadRules(char *cfgfile);
 int _setlevels(RuleNode *node, int nnode);
 int AddHash_Rule(RuleNode *node);
@@ -59,7 +58,6 @@ int AddHash_Rule(RuleNode *node);
 int OS_CleanMSG(char *msg, Eventinfo *lf);
 
 /* for FTS */
-int FTS_Init();
 int FTS(Eventinfo *lf);
 int AddtoIGnore(Eventinfo *lf);
 int IGnore(Eventinfo *lf);
@@ -73,18 +71,9 @@ int DecodeHostinfo(Eventinfo *lf);
 
 /* For Decoders */
 int ReadDecodeXML(char *file);
-int SetDecodeXML();
-
-/* For syscheckd (integrity checking) */
-void SyscheckInit();
-void RootcheckInit();
-void HostinfoInit();
 
 /* For stats */
-int Start_Hour();
-int Check_Hour();
-void Update_Hour();
-void DumpLogstats();
+void DumpLogstats(void);
 
 /** Global variables **/
 
@@ -101,7 +90,8 @@ int hourly_firewall;
 
 
 /* Print help statement */
-void help_analysisd()
+__attribute__((noreturn))
+static void help_analysisd(void)
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -123,6 +113,7 @@ void help_analysisd()
 #ifndef TESTRULE
 int main(int argc, char **argv)
 #else
+__attribute__((noreturn))
 int main_analysisd(int argc, char **argv)
 #endif
 {
@@ -532,8 +523,10 @@ int main_analysisd(int argc, char **argv)
 
 /* Main function. Receives the messages(events) and analyze them all */
 #ifndef TESTRULE
+__attribute__((noreturn))
 void OS_ReadMSG(int m_queue)
 #else
+__attribute__((noreturn))
 void OS_ReadMSG_analysisd(int m_queue)
 #endif
 {
@@ -818,7 +811,7 @@ void OS_ReadMSG_analysisd(int m_queue)
             /* Stats checking */
             if (Config.stats) {
                 if (Check_Hour() == 1) {
-                    void *saved_rule = lf->generated_rule;
+                    RuleInfo *saved_rule = lf->generated_rule;
                     char *saved_log;
 
                     /* Save previous log */
@@ -1037,7 +1030,6 @@ CLMEM:
             free(lf);
         }
     }
-    return;
 }
 
 /* Checks if the current_rule matches the event information */
@@ -1061,157 +1053,157 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
      * weekday,
      * status,
      */
-    RuleInfo *currently_rule = curr_node->ruleinfo;
+    RuleInfo *rule = curr_node->ruleinfo;
 
     /* Can't be null */
-    if (!currently_rule) {
+    if (!rule) {
         merror("%s: Inconsistent state. currently rule NULL", ARGV0);
         return (NULL);
     }
 
 #ifdef TESTRULE
     if (full_output && !alert_only)
-        print_out("    Trying rule: %d - %s", currently_rule->sigid,
-                  currently_rule->comment);
+        print_out("    Trying rule: %d - %s", rule->sigid,
+                  rule->comment);
 #endif
 
     /* Check if any decoder pre-matched here */
-    if (currently_rule->decoded_as &&
-            currently_rule->decoded_as != lf->decoder_info->id) {
+    if (rule->decoded_as &&
+            rule->decoded_as != lf->decoder_info->id) {
         return (NULL);
     }
 
     /* Check program name */
-    if (currently_rule->program_name) {
+    if (rule->program_name) {
         if (!lf->program_name) {
             return (NULL);
         }
 
         if (!OSMatch_Execute(lf->program_name,
                              lf->p_name_size,
-                             currently_rule->program_name)) {
+                             rule->program_name)) {
             return (NULL);
         }
     }
 
     /* Check for the ID */
-    if (currently_rule->id) {
+    if (rule->id) {
         if (!lf->id) {
             return (NULL);
         }
 
         if (!OSMatch_Execute(lf->id,
                              strlen(lf->id),
-                             currently_rule->id)) {
+                             rule->id)) {
             return (NULL);
         }
     }
 
     /* Check if any word to match exists */
-    if (currently_rule->match) {
-        if (!OSMatch_Execute(lf->log, lf->size, currently_rule->match)) {
+    if (rule->match) {
+        if (!OSMatch_Execute(lf->log, lf->size, rule->match)) {
             return (NULL);
         }
     }
 
     /* Check if exist any regex for this rule */
-    if (currently_rule->regex) {
-        if (!OSRegex_Execute(lf->log, currently_rule->regex)) {
+    if (rule->regex) {
+        if (!OSRegex_Execute(lf->log, rule->regex)) {
             return (NULL);
         }
     }
 
     /* Check for actions */
-    if (currently_rule->action) {
+    if (rule->action) {
         if (!lf->action) {
             return (NULL);
         }
 
-        if (strcmp(currently_rule->action, lf->action) != 0) {
+        if (strcmp(rule->action, lf->action) != 0) {
             return (NULL);
         }
     }
 
     /* Checking for the URL */
-    if (currently_rule->url) {
+    if (rule->url) {
         if (!lf->url) {
             return (NULL);
         }
 
-        if (!OSMatch_Execute(lf->url, strlen(lf->url), currently_rule->url)) {
+        if (!OSMatch_Execute(lf->url, strlen(lf->url), rule->url)) {
             return (NULL);
         }
     }
 
     /* Get TCP/IP packet information */
-    if (currently_rule->alert_opts & DO_PACKETINFO) {
+    if (rule->alert_opts & DO_PACKETINFO) {
         /* Check for the srcip */
-        if (currently_rule->srcip) {
+        if (rule->srcip) {
             if (!lf->srcip) {
                 return (NULL);
             }
 
-            if (!OS_IPFoundList(lf->srcip, currently_rule->srcip)) {
+            if (!OS_IPFoundList(lf->srcip, rule->srcip)) {
                 return (NULL);
             }
         }
 
         /* Check for the dstip */
-        if (currently_rule->dstip) {
+        if (rule->dstip) {
             if (!lf->dstip) {
                 return (NULL);
             }
 
-            if (!OS_IPFoundList(lf->dstip, currently_rule->dstip)) {
+            if (!OS_IPFoundList(lf->dstip, rule->dstip)) {
                 return (NULL);
             }
         }
 
-        if (currently_rule->srcport) {
+        if (rule->srcport) {
             if (!lf->srcport) {
                 return (NULL);
             }
 
             if (!OSMatch_Execute(lf->srcport,
                                  strlen(lf->srcport),
-                                 currently_rule->srcport)) {
+                                 rule->srcport)) {
                 return (NULL);
             }
         }
-        if (currently_rule->dstport) {
+        if (rule->dstport) {
             if (!lf->dstport) {
                 return (NULL);
             }
 
             if (!OSMatch_Execute(lf->dstport,
                                  strlen(lf->dstport),
-                                 currently_rule->dstport)) {
+                                 rule->dstport)) {
                 return (NULL);
             }
         }
     } /* END PACKET_INFO */
 
     /* Extra information from event */
-    if (currently_rule->alert_opts & DO_EXTRAINFO) {
+    if (rule->alert_opts & DO_EXTRAINFO) {
         /* Check compiled rule */
-        if (currently_rule->compiled_rule) {
-            if (!currently_rule->compiled_rule(lf)) {
+        if (rule->compiled_rule) {
+            if (!rule->compiled_rule(lf)) {
                 return (NULL);
             }
         }
 
         /* Checking if exist any user to match */
-        if (currently_rule->user) {
+        if (rule->user) {
             if (lf->dstuser) {
                 if (!OSMatch_Execute(lf->dstuser,
                                      strlen(lf->dstuser),
-                                     currently_rule->user)) {
+                                     rule->user)) {
                     return (NULL);
                 }
             } else if (lf->srcuser) {
                 if (!OSMatch_Execute(lf->srcuser,
                                      strlen(lf->srcuser),
-                                     currently_rule->user)) {
+                                     rule->user)) {
                     return (NULL);
                 }
             } else {
@@ -1221,76 +1213,76 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
         }
 
         /* Check if any rule related to the size exist */
-        if (currently_rule->maxsize) {
-            if (lf->size < currently_rule->maxsize) {
+        if (rule->maxsize) {
+            if (lf->size < rule->maxsize) {
                 return (NULL);
             }
         }
 
         /* Check if we are in the right time */
-        if (currently_rule->day_time) {
-            if (!OS_IsonTime(lf->hour, currently_rule->day_time)) {
+        if (rule->day_time) {
+            if (!OS_IsonTime(lf->hour, rule->day_time)) {
                 return (NULL);
             }
         }
 
         /* Check week day */
-        if (currently_rule->week_day) {
-            if (!OS_IsonDay(__crt_wday, currently_rule->week_day)) {
+        if (rule->week_day) {
+            if (!OS_IsonDay(__crt_wday, rule->week_day)) {
                 return (NULL);
             }
         }
 
         /* Get extra data */
-        if (currently_rule->extra_data) {
+        if (rule->extra_data) {
             if (!lf->data) {
                 return (NULL);
             }
 
             if (!OSMatch_Execute(lf->data,
                                  strlen(lf->data),
-                                 currently_rule->extra_data)) {
+                                 rule->extra_data)) {
                 return (NULL);
             }
         }
 
         /* Check hostname */
-        if (currently_rule->hostname) {
+        if (rule->hostname) {
             if (!lf->hostname) {
                 return (NULL);
             }
 
             if (!OSMatch_Execute(lf->hostname,
                                  strlen(lf->hostname),
-                                 currently_rule->hostname)) {
+                                 rule->hostname)) {
                 return (NULL);
             }
         }
 
         /* Check for status */
-        if (currently_rule->status) {
+        if (rule->status) {
             if (!lf->status) {
                 return (NULL);
             }
 
             if (!OSMatch_Execute(lf->status,
                                  strlen(lf->status),
-                                 currently_rule->status)) {
+                                 rule->status)) {
                 return (NULL);
             }
         }
 
 
         /* Do diff check */
-        if (currently_rule->context_opts & SAME_DODIFF) {
-            if (!doDiff(currently_rule, lf)) {
+        if (rule->context_opts & SAME_DODIFF) {
+            if (!doDiff(rule, lf)) {
                 return (NULL);
             }
         }
     }
 
     /* Check for the FTS flag */
-    if (currently_rule->alert_opts & DO_FTS) {
+    if (rule->alert_opts & DO_FTS) {
         /** FTS CHECKS **/
         if (lf->decoder_info->fts) {
             if (lf->decoder_info->fts & FTS_DONE) {
@@ -1304,8 +1296,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     }
 
     /* List lookups */
-    if (currently_rule->lists != NULL) {
-        ListRule *list_holder = currently_rule->lists;
+    if (rule->lists != NULL) {
+        ListRule *list_holder = rule->lists;
         while (list_holder) {
             switch (list_holder->field) {
                 case RULE_SRCIP:
@@ -1410,9 +1402,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     }
 
     /* If it is a context rule, search for it */
-    if (currently_rule->context == 1) {
-        if (!(currently_rule->context_opts & SAME_DODIFF)) {
-            if (!currently_rule->event_search(lf, currently_rule)) {
+    if (rule->context == 1) {
+        if (!(rule->context_opts & SAME_DODIFF)) {
+            if (!rule->event_search(lf, rule)) {
                 return (NULL);
             }
         }
@@ -1420,7 +1412,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
 
 #ifdef TESTRULE
     if (full_output && !alert_only) {
-        print_out("       *Rule %d matched.", currently_rule->sigid);
+        print_out("       *Rule %d matched.", rule->sigid);
     }
 #endif
 
@@ -1446,14 +1438,14 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
     }
 
     /* If we are set to no alert, keep going */
-    if (currently_rule->alert_opts & NO_ALERT) {
+    if (rule->alert_opts & NO_ALERT) {
         return (NULL);
     }
 
     hourly_alerts++;
-    currently_rule->firedtimes++;
+    rule->firedtimes++;
 
-    return (currently_rule); /* Matched */
+    return (rule); /* Matched */
 }
 
 /*  Update each rule and print it to the logs */

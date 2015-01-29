@@ -42,7 +42,7 @@ typedef struct ListRule {
 } ListRule;
 
 /* Create the rule list */
-void OS_CreateListsList();
+void OS_CreateListsList(void);
 
 /* Add rule information to the list */
 int OS_AddList( ListNode *new_listnode );
@@ -53,13 +53,15 @@ int OS_DBSearchKey(ListRule *lrule, char *key);
 
 int OS_DBSearch(ListRule *lrule, char *key);
 
-void OS_ListLoadRules();
+void OS_ListLoadRules(void);
 
 ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field, char *listname, OSMatch *matcher);
 
-ListNode *OS_GetFirstList();
+ListNode *OS_GetFirstList(void);
 
 ListNode *OS_FindList(char *listname);
+
+void Lists_OP_CreateLists(void);
 
 #endif /* __LISTS_H */
 
