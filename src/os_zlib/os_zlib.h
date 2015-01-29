@@ -10,8 +10,6 @@
 #ifndef __OS_ZLIB_H
 #define __OS_ZLIB_H
 
-#include "zlib.h"
-
 /* Compress a string with zlib
  * src: the source string to compress
  * dst: the destination buffer for the compressed string, will be

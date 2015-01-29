@@ -24,6 +24,8 @@
 
 #ifndef LIBOPENSSL_ENABLED
 
+#include <stdlib.h>
+#include <stdio.h>
 int main()
 {
     printf("ERROR: Not compiled. Missing OpenSSL support.\n");
