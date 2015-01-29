@@ -117,7 +117,7 @@ int FTS_Init()
         }
 
         if (chmod(IG_QUEUE, 0640) == -1) {
-            merror(CHMOD_ERROR, IG_QUEUE, errno, strerror(errno));
+            merror(CHMOD_ERROR, ARGV0, IG_QUEUE, errno, strerror(errno));
             return (0);
         }
 
