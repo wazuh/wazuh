@@ -1072,7 +1072,7 @@ test: build_tests
 	${MAKE} run_tests
 
 run_tests:
-	@$(foreach bin,${test_programs},./${bin};)
+	@$(foreach bin,${test_programs},./${bin} || exit 1;)
 
 build_tests: external
 	${MAKE} DEBUG=1 TEST=1 ${test_programs}
