@@ -159,7 +159,7 @@ int Read_CSyslog(XML_NODE node, void *config, __attribute__((unused)) void *conf
                 syslog_config[s]->use_fqdn = 0;
             } else {
                 merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, xml_syslog_group) == 0) {
             os_calloc(1, sizeof(OSMatch), syslog_config[s]->group);
