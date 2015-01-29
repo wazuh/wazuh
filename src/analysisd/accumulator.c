@@ -301,7 +301,7 @@ int acm_str_replace(char **dst, const char *src)
     }
 
     /* Free dst, and malloc the memory we need! */
-    if ( dst != NULL ) {
+    if ( *dst != NULL ) {
         free(*dst);
     }
     os_malloc(slen + 1, *dst);

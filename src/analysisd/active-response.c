@@ -44,7 +44,10 @@ int AR_ReadConfig(const char *cfgfile)
     fclose(fp);
 
     /* Set right permission */
-    chmod(DEFAULTARPATH, 0440);
+    if (chmod(DEFAULTARPATH, 0440) == -1) {
+        merror(CHMOD_ERROR, ARGV0, DEFAULTARPATH, errno, strerror(errno));
+        return (OS_INVALID);
+    }
 
     /* Read configuration */
     if (ReadConfig(modules, cfgfile, ar_commands, active_responses) < 0) {

@@ -1683,12 +1683,9 @@ void printRuleinfo(RuleInfo *rule, int node)
 int AddHash_Rule(RuleNode *node)
 {
     while (node) {
-        char _id_key[15];
-        char *id_key;
+        char id_key[15];
 
-        snprintf(_id_key, 14, "%d", node->ruleinfo->sigid);
-        os_strdup(_id_key, id_key);
-
+        snprintf(id_key, 14, "%d", node->ruleinfo->sigid);
 
         /* Add key to hash */
         OSHash_Add(Config.g_rules_hash, id_key, node->ruleinfo);

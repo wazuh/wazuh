@@ -36,7 +36,7 @@ char *Eventinfo_to_jsonstr(const Eventinfo *lf)
     if (lf->generated_rule->cve) {
         cJSON_AddStringToObject(rule, "cve", lf->generated_rule->cve);
     }
-    if (lf->generated_rule->cve) {
+    if (lf->generated_rule->info) {
         cJSON_AddStringToObject(rule, "info", lf->generated_rule->info);
     }
 

@@ -79,7 +79,7 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
     if ((ar->location & AS_ONLY) ||
             ((ar->location & REMOTE_AGENT) && (lf->location[0] != '(')) ) {
         if (!(Config.ar & LOCAL_AR)) {
-            return;
+            goto cleanup;
         }
 
         snprintf(exec_msg, OS_SIZE_1024,
@@ -147,6 +147,8 @@ void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar)
             merror("%s: Error communicating with ar queue (%d).", ARGV0, rc);
         }
     }
+
+    cleanup:
 
     /* Clean up Memory */
     if ( filename != NULL && do_free_filename == 1 ) {
