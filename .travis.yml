@@ -64,15 +64,11 @@ script:
 - if [[ "${OSSEC_TYPE}" == "test" ]]; then ( cd src/ && make --warn-undefined-variables test_valgrind ) fi
 - if [[ "${RULES}" == "test" ]]; then ( cd src/ && sudo make V=1 TARGET=server test-rules ) fi
 
-before_deploy:
-- mkdir travis-builds
-- if [[ "${OSSEC_TYPE}" == "winagent" ]]; then ( cp src/win-pkg/ossec-agent.exe travis-builds/ossec-agent-bid:$TRAVIS_JOB_NUMBER-br:$TRAVIS_BRANCH.exe ); fi
-
 
 deploy:
   provider: releases
   api_key:
-      secure: f08hPjOXnKFoJCYnal4IzwUTrVDnkTq/Mw+5HbDV11+l2LOOwaG+6zmjaTAeRssALVGRqD+UKF/bGkYM/KcqZ9XsS5dT8GWyLQ76ZJBAvnUzHSsNPEcMHbw6QGOz+uZ3RK3hm4Zt+ImDjKgIYrPfSySBMn4T9/aFiGQPgpH6nWI=
+    secure: "DiVPTCt1C8XCmFlzcpmFkqfRmxz85/RCE2euvU/c1EiABjfO20aZARCC9zsepAwAGWWsq3uGRLp0aVuJuh4LvTdGxIJDOqYR8z1pByfY4epgE7zmRCIWjx+nAwBpLlfYalMWFpt7vmPp9mKycFkUR2NFoiEfOgoO9wGN0ZgmwSM="
   file: src/win-pkg/ossec-agent.exe
   skip_cleanup: true
   on:
