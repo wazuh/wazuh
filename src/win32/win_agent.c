@@ -10,8 +10,8 @@
 #ifdef WIN32
 
 #include "shared.h"
-#include "agentd.h"
-#include "logcollector.h"
+#include "client-agent/agentd.h"
+#include "logcollector/logcollector.h"
 #include "os_win.h"
 #include "os_net/os_net.h"
 #include "os_execd/execd.h"

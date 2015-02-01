@@ -10,7 +10,7 @@
 char *(os_winreg_ignore_list[]) = {"SOFTWARE\\Classes", "test123", NULL};
 
 HKEY sub_tree;
-int os_winreg_open_key(char *subkey);
+void os_winreg_open_key(char *subkey);
 
 
 void os_winreg_querykey(HKEY hKey, char *p_key)
