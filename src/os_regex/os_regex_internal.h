@@ -16,7 +16,6 @@ int _os_strncmp(const char *pattern, const char *str, size_t str_len, size_t siz
 int _os_strcmp_last(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
 int _os_strcmp(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
 int _os_strmatch(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
-int _os_strstr(const char *pattern, const char *str, size_t str_len, size_t size) __attribute__((nonnull));
 
 #define BACKSLASH   '\\'
 #define ENDSTR      '\0'
