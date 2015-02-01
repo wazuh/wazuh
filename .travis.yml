@@ -75,3 +75,4 @@ deploy:
     tags: true
     all_branches: true
     repo: ossec/ossec-hids
+    condition: $OSSEC_TYPE = winagent
