@@ -293,7 +293,7 @@ Example:
 Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh delete - 172.16.0.1 1304756247.60385 31151
 -->
 
-<rule id="600" level="0">
+  <rule id="600" level="0">
     <decoded_as>ar_log</decoded_as>
     <description>Active Response Messages Grouped</description>
     <group>active_response,</group>
@@ -345,6 +345,18 @@ Sat May  7 03:27:57 CDT 2011 /var/ossec/active-response/bin/firewall-drop.sh del
     <status>delete</status>
     <description>Host Unblocked by route-null.sh Active Response</description>
     <group>active_response,</group>
+  </rule>
+
+  <rule id="700" level="0">
+    <category>ossec</category>
+    <decoded_as>ossec-logcollector</decoded_as>
+    <description>Logcollector Messages Grouped</description>
+  </rule>
+
+  <rule id="701" level="0">
+    <if_sid>700</if_sid>
+    <match>INFO: </match>
+    <description>Ignore informational messages (usually at startup)</description>
   </rule>
 
 </group> <!-- OSSEC -->
