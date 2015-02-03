@@ -829,14 +829,14 @@ int mkstemp_ex(char *tmp_path)
     int result;
     int status = -1;
 
-    HANDLE h;
-    PACL pACL;
-    PSECURITY_DESCRIPTOR pSD;
+    HANDLE h = NULL;
+    PACL pACL = NULL;
+    PSECURITY_DESCRIPTOR pSD = NULL;
     EXPLICIT_ACCESS ea[2];
     SECURITY_ATTRIBUTES sa;
 
-    PSID pAdminGroupSID;
-    PSID pSystemGroupSID;
+    PSID pAdminGroupSID = NULL;
+    PSID pSystemGroupSID = NULL;
     SID_IDENTIFIER_AUTHORITY SIDAuthNT = {SECURITY_NT_AUTHORITY};
 
 #if defined(_MSC_VER) && _MSC_VER >= 1500
@@ -1040,12 +1040,15 @@ cleanup:
     if (pAdminGroupSID) {
         FreeSid(pAdminGroupSID);
     }
+
     if (pSystemGroupSID) {
         FreeSid(pSystemGroupSID);
     }
+
     if (pACL) {
         LocalFree(pACL);
     }
+
     if (pSD) {
         LocalFree(pSD);
     }
