@@ -29,6 +29,8 @@
 #include "accumulator.h"
 #include "analysisd.h"
 #include "fts.h"
+#include "cleanevent.h"
+#include "dodiff.h"
 
 #ifdef PICVIZ_OUTPUT_ENABLED
 #include "output/picviz.h"
@@ -45,23 +47,7 @@
 /** Prototypes **/
 void OS_ReadMSG(int m_queue);
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
-
-/* For config */
-int GlobalConf(char *cfgfile);
-
-/* For rules */
-int Rules_OP_ReadRules(char *cfgfile);
-int _setlevels(RuleNode *node, int nnode);
-int AddHash_Rule(RuleNode *node);
-
-/* For cleanmsg */
-int OS_CleanMSG(char *msg, Eventinfo *lf);
-
-/* for FTS */
-int FTS(Eventinfo *lf);
-int AddtoIGnore(Eventinfo *lf);
-int IGnore(Eventinfo *lf);
-int doDiff(RuleInfo *currently_rule, Eventinfo *lf);
+static void LoopRule(RuleNode *curr_node, FILE *flog);
 
 /* For decoders */
 void DecodeEvent(Eventinfo *lf);
@@ -69,24 +55,30 @@ int DecodeSyscheck(Eventinfo *lf);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 
-/* For Decoders */
-int ReadDecodeXML(char *file);
-
 /* For stats */
-void DumpLogstats(void);
+static void DumpLogstats(void);
 
-/** Global variables **/
+/** Global definitions **/
+int today;
+int thishour;
+int prev_year;
+char prev_month[4];
+int __crt_hour;
+int __crt_wday;
+time_t c_time;
+char __shost[512];
+OSDecoderInfo *NULL_Decoder;
 
 /* execd queue */
-int execdq = 0;
+static int execdq = 0;
 
 /* Active response queue */
-int arq = 0;
+static int arq = 0;
 
-int hourly_alerts;
-int hourly_events;
-int hourly_syscheck;
-int hourly_firewall;
+static int hourly_alerts;
+static int hourly_events;
+static int hourly_syscheck;
+static int hourly_firewall;
 
 
 /* Print help statement */
@@ -119,13 +111,13 @@ int main_analysisd(int argc, char **argv)
 {
     int c = 0, m_queue = 0, test_config = 0, run_foreground = 0;
     int debug_level = 0;
-    char *dir = DEFAULTDIR;
-    char *user = USER;
-    char *group = GROUPGLOBAL;
+    const char *dir = DEFAULTDIR;
+    const char *user = USER;
+    const char *group = GROUPGLOBAL;
     uid_t uid;
     gid_t gid;
 
-    char *cfg = DEFAULTCPATH;
+    const char *cfg = DEFAULTCPATH;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -431,7 +423,7 @@ int main_analysisd(int argc, char **argv)
     }
 
     /* Check if log_fw is enabled */
-    Config.logfw = getDefine_Int("analysisd",
+    Config.logfw = (u_int8_t) getDefine_Int("analysisd",
                                  "log_fw",
                                  0, 1);
 
@@ -976,7 +968,7 @@ void OS_ReadMSG_analysisd(int m_queue)
                         }
 
                         if (do_ar) {
-                            OS_Exec(&execdq, &arq, lf, *rule_ar);
+                            OS_Exec(execdq, arq, lf, *rule_ar);
                         }
                         rule_ar++;
                     }
@@ -993,15 +985,15 @@ void OS_ReadMSG_analysisd(int m_queue)
                 }
                 /* Group list */
                 else if (currently_rule->group_prev_matched) {
-                    i = 0;
+                    unsigned int j = 0;
 
-                    while (i < currently_rule->group_prev_matched_sz) {
+                    while (j < currently_rule->group_prev_matched_sz) {
                         if (!OSList_AddData(
-                                    currently_rule->group_prev_matched[i],
+                                    currently_rule->group_prev_matched[j],
                                     lf)) {
                             merror("%s: Unable to add data to grp list.", ARGV0);
                         }
-                        i++;
+                        j++;
                     }
                 }
 
@@ -1449,7 +1441,7 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node)
 }
 
 /*  Update each rule and print it to the logs */
-void LoopRule(RuleNode *curr_node, FILE *flog)
+static void LoopRule(RuleNode *curr_node, FILE *flog)
 {
     if (curr_node->ruleinfo->firedtimes) {
         fprintf(flog, "%d-%d-%d-%d\n",
@@ -1472,7 +1464,7 @@ void LoopRule(RuleNode *curr_node, FILE *flog)
 }
 
 /* Dump the hourly stats about each rule */
-void DumpLogstats()
+static void DumpLogstats()
 {
     RuleNode *rulenode_pt;
     char logfile[OS_FLSIZE + 1];

@@ -29,7 +29,7 @@ void *OSSECAlert_Decoder_Init(void);
 void *OSSECAlert_Decoder_Exec(Eventinfo *lf);
 
 /* List of plugins. All three lists must be in the same order */
-extern char *(plugin_decoders[]);
+extern const char *(plugin_decoders[]);
 extern void *(plugin_decoders_init[]);
 extern void *(plugin_decoders_exec[]);
 

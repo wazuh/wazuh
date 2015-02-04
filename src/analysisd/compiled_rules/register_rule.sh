@@ -133,7 +133,7 @@ elif [ "x$1" = "xbuild" ]; then
     echo "" >> ${CHF};
 
     echo "/* Adding the rules list names. */" >> ${CHF};
-    echo "char *(compiled_rules_name[]) = " >> ${CHF};
+    echo "const char *(compiled_rules_name[]) = " >> ${CHF};
     echo "{" >> ${CHF};
     for i in `cat .function_list |sort | uniq`; do
         echo "    \"$i\"," >> ${CHF};

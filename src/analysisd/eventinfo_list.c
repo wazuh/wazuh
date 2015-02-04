@@ -9,13 +9,14 @@
 
 #include "shared.h"
 #include "eventinfo.h"
+#include "rules.h"
 
-/* Global variables */
-EventNode *eventnode;
-EventNode *lastnode;
+/* Local variables */
+static EventNode *eventnode;
+static EventNode *lastnode;
 
-int _memoryused = 0;
-int _memorymaxsize = 0;
+static int _memoryused = 0;
+static int _memorymaxsize = 0;
 int _max_freq = 0;
 
 

@@ -29,9 +29,9 @@ void *OSSECAlert_Decoder_Init()
  */
 void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
 {
-    char *oa_id = 0;
-    char *oa_location;
-    char *oa_val;
+    const char *oa_id = NULL;
+    const char *oa_location;
+    const char *oa_val;
     char oa_newlocation[256];
     char *tmp_str = NULL;
     RuleInfo *rule_pointer;

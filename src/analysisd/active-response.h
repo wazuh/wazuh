@@ -22,11 +22,8 @@ void AR_Init(void);
  */
 int AR_ReadConfig(const char *cfgfile);
 
-/* Active response commands */
-OSList *ar_commands;
-
 /* Active response information */
-OSList *active_responses;
+extern OSList *active_responses;
 
 #endif /* _AR__H */
 
