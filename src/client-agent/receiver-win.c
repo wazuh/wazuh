@@ -17,7 +17,7 @@
 
 
 /* Receive events from the server */
-void *receiver_thread(void *none)
+void *receiver_thread(__attribute__((unused)) void *none)
 {
     int recv_b;
 

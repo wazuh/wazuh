@@ -170,7 +170,7 @@ void init_config()
 }
 
 /* Read ossec config */
-int config_read(HWND hwnd)
+int config_read(__attribute__((unused)) HWND hwnd)
 {
     char *tmp_str;
     char *delim = " - ";
