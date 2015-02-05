@@ -7,55 +7,76 @@ who helped us since our first release (0.1).
 (if you feel you should be here, but it is not, let us know).
 
 -Development
-  - Daniel B. Cid <dcid ( at ) ossec.net>
-  - Jeremy Rossi <jrossi ( at ) ptnsecurity.com>
+  - Daniel B. Cid <dcid@ossec.net>
+  - Jeremy Rossi <jeremy@jeremyrossi.com>
   - Michael Starks
-  - Dan Parriott <ddpbsd at gmail.com>
-  - Meir Michanie <meirgotroot ( at ) gmail.com>
-  - Slava Semushin <php-coder at altlinux.org>
-  - Ahmet Ozturk <oahmet ( at )  metu.edu.tr>
-  - Scott R. Shinn 
+  - Dan Parriott <ddpbsd@gmail.com>
+  - Meir Michanie <meirgotroot@gmail.com>
+  - Slava Semushin <php-coder@altlinux.org>
+  - Ahmet Ozturk <oahmet@metu.edu.tr>
+  - Scott R. Shinn
   - George Kargiotakis
   - Jason Stelzer
   - Xavier Mertens
   - Stjepan Gros
   - Brad Lhotsky
   - cmlara
-  - Christian Gottsche (cgzones)
+  - Christian Gottsche <cgzones@googlemail.com>
   - Dominic
-  - JB Cheng
-  - Cristobel Rosa ( at ) alienvault
+  - JB Cheng <jjoobbcc@gmail.com>
+  - Cristobel <rosa@alienvault>
   - jp.zurbrugg
-  - bil_hays (at) unc edu
-  - github.com/awiddersheim
-  - github.com/danpop60
+  - Bil Hays <bil_hays@unc.edu>
+  - Andrew Widdersheim <awiddersheim@hotmail.com>
+  - Wouter Clarie <wclarie@gmail.com>
+  - Mario Weigel
+  - Christian Beer <christian.beer@posteo.de>
+  - Gael Muller <gael.muller@sekoia.fr>
+  - Ky-Anh Huynh <z1y@theslinux.org>
+  - Dan Garthwaite <dan@garthwaite.org>
+  - Lance A. Brown <lance@bearcircle.net>
+  - danpop60 <dan.pop@eservglobal.com>
+  - Martin DiViaio <martindiv@yahoo.com>
+  - Michael Boyd <denied39@gmail.com>
+  - ibatten <igb+github@batten.eu.org>
+  - rhelfter <rhelfter@yahoo.com>
+  - Peter Drake <peter.drake@acquia.com>
+  - Mikey Austin <mikey@ayuda.com.au>
+  - Harshil Mathur <harshilmathur@gmail.com>
+  - Ryan Schulze <ryan@dopefish.de>
+  - navtej <n.s.buttar+github@gmail.com>
+  - Hakisho Nukama <nukama@gmail.com>
+  - Danny Fullerton <northox@mantor.org>
+  - Justin Gerace <jgrace103@gmail.com>
+  - jknockaert <jasper@knockaert.nl>
+  - Jason Stelzer <jason.stelzer@gmail.com>
 
 
 -Testing/Patches Rules and other contributions.
-  - Cédric Bleimling <cedri at dryades.org
-  - Dean Takemori <dtakemori at thdfsg.com>
-  - Sebastien Tricaud <toady at gscore.org>
-  - Jeff Schroeder <jeffschroeder ( at ) computer.org>
-  - Giannis Vrentzos  <gvre ( at ) gvre.gr>
-  - Peter Ahlert <peter ( at ) ifup.de>
-  - Rafael Capovilla <under ( at ) underlinux.com.br>  
-  - Andre Alexandre Gaio <aagaio ( at ) linwork.com.br>
-  - Liliane A. Cid <liliane.cid ( at ) gmail.com> 
-  - Marcus Maciel - <marcus @ ( at ) underlinux.com.br>
-  - Stephen Kreusch <stephen.kreusch at gmail.com>
-  - Kayvan A. Sylvan <kayvan@ ( at ) sylvan.com>
-  - Dianzhi Wang <wangdz@ ( at ) leadsec.com.cn>
-  - Meir Michanie <meirgotroot@ ( at ) gmail.com>
-  - Stephen Bunn <sbunn ( at ) roguesoftware.net>
-  - Jonathan Scheidell <jscheidell ( at ) secnap.net>
-  - |SaMaN| <saman ( at ) ttnet.net.tr>
-  - ChuckD <mdmonk at gmail.com>
-  - Jorge Augusto Senger <jorge ( at ) br10.com.br> - ossec2mysql (contrib)
+  - Cédric Bleimling <cedri@dryades.org
+  - Dean Takemori <dtakemori@thdfsg.com>
+  - Sebastien Tricaud <toady@gscore.org>
+  - Jeff Schroeder <jeffschroeder@computer.org>
+  - Giannis Vrentzos <gvre@gvre.gr>
+  - Peter Ahlert <peter@ifup.de>
+  - Rafael Capovilla <under@underlinux.com.br>
+  - Andre Alexandre Gaio <aagaio@linwork.com.br>
+  - Liliane A. Cid <liliane.cid@gmail.com>
+  - Marcus Maciel <marcus@underlinux.com.br>
+  - Stephen Kreusch <stephen.kreusch@gmail.com>
+  - Kayvan A. Sylvan <kayvan@sylvan.com>
+  - Dianzhi Wang <wangdz@leadsec.com.cn>
+  - Meir Michanie <meirgotroot@gmail.com>
+  - Stephen Bunn <sbunn@roguesoftware.net>
+  - Jonathan Scheidell <jscheidell@secnap.net>
+  - |SaMaN| <saman@ttnet.net.tr>
+  - ChuckD <mdmonk@gmail.com>
+  - Jorge Augusto Senger <jorge@br10.com.br> - ossec2mysql (contrib)
   - David J. Bianco <david at vorant.com>
-  - Ivan Lotina <lotke at lotke.com>
-  - Robert Millan [ackstorm] <rmillan at ackstorm.es>
-  - Martin West <martin at objectgizmos.com>
-  - Rafael Capovilla <under ( at ) underlinux.com.br>
+  - Ivan Lotina <lotke@lotke.com>
+  - Robert Millan [ackstorm] <rmillan@ackstorm.es>
+  - Martin West <martin@objectgizmos.com>
+  - Rafael Capovilla <under@underlinux.com.br>
   - Florian Crouzqat
   - Danny Fullerton
   - Jeremy Hanmer
@@ -65,47 +86,49 @@ who helped us since our first release (0.1).
   - carlopmart
   - Ash Kumar
   - Alexandro Silva
-  
-  
+  - Mike Downey <michael.downey01@gmail.com>
+  - Hai Nguyen <hainguyen@uns.vn>
+  - Jeffrey Jackson <jeffreyclarkejackson@gmail.com>
+  - Ben Chavet <ben.chavet@lullabot.com>
+
+
 -Translations
- 
+
   -Dutch:
-  - Martijn de Boer - martijn ( at ) oceanius.com 
+  - Martijn de Boer <martijn@oceanius.com>
 
   -Serbian:
-  - Maja Michanie - majam ( at ) riunx.com
+  - Maja Michanie <majam@riunx.com>
 
   -Portuguese:
-  - Daniel Barcellos <danielpoa.rs ( at ) gmail.com>
-  - Allan Soares <allan.soares ( at ) gmail.com>
-  - Willian Itiho Amano <itihoitiho ( at ) gmail.com>
-  - Liliane Cid - <liliane.cid ( at ) gmail.com>
+  - Daniel Barcellos <danielpoa.rs@gmail.com>
+  - Allan Soares <allan.soares@gmail.com>
+  - Willian Itiho Amano <itihoitiho@gmail.com>
+  - Liliane Cid <liliane.cid@gmail.com>
 
   -German:
-  - Peter Ahlert <peter ( at ) ifup.de>
+  - Peter Ahlert <peter@ifup.de>
 
   -Turkish
-  - Ahmet Ozturk - <oahmet @ ( at ) metu.edu.tr>
+  - Ahmet Ozturk <oahmet@metu.edu.tr>
 
   -Polish
-  - Dziankowski Krzysztof - <odpadki @ ( at ) poczta.onet.pl>
+  - Dziankowski Krzysztof <odpadki@poczta.onet.pl>
 
   -Italian
-  - Alberto Furia - <straluna ( at ) email.it>
+  - Alberto Furia <straluna@email.it>
 
   -French
-  - Yves Bigliazzi - <yves.bigliazzi ( at ) gmail.com>
+  - Yves Bigliazzi <yves.bigliazzi@gmail.com>
 
   -Japanese
-  - Kuzuno Hiroki - <kuzuno ( at )gmail.com>
-  
+  - Kuzuno Hiroki <kuzuno@gmail.com>
+
   -Russian
-  - Yuri Slobodyanyuk - <yurisk ( at ) inbox.ru>    
+  - Yuri Slobodyanyuk <yurisk@inbox.ru>
 
   -Spanish
-  - Meir Michanie <meirgotroot@ ( at ) gmail.com> 
+  - Meir Michanie <meirgotroot@gmail.com>
 
   -Chinese
-  - Brian Wang - <junchangwang ( at ) gmail.com>
-
-#EOF  
+  - Brian Wang <junchangwang@gmail.com>
