@@ -165,7 +165,7 @@ int OS_Alert_InsertDB(const alert_data *al_data, DBConfig *db_config)
              al_data->level,
              (unsigned int)time(0), *loc_id,
              al_data->srcip, (unsigned short)s_port,
-             al_date->dstip, (unsigned short)d_port,
+             al_data->dstip, (unsigned short)d_port,
              al_data->alertid,
              al_data->user, fulllog);
 
