@@ -11,7 +11,6 @@ global:
 # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
 #   via the "travis encrypt" command using the project repo's public key
 - secure: "XkLxuM/HGwMzFeCYwITwYM7s053L6JqpLlqJh2oxh9R1sGYy3KieQsmczKccaK+6JomcByBkVJlQFgzK6i5vbEhzZi9Fwa1Y6Hc9c+0Rmx5WHGoTQyPv+WojitM8CBv4DM2vPORlZSMSiI422w6WrjYb6viDaH+8mwhXvPNklP8="
-
 matrix:
 - DB=mysql OSSEC_TYPE=server GEOIP=yes
 - DB=mysql OSSEC_TYPE=server GEOIP=no
