@@ -524,6 +524,10 @@ l_error:
     free(old_sha1);
     free(new_sha1);
     free(filename);
+#ifdef LIBGEOIP_ENABLED
+    free(geoipdatasrc);
+    free(geoipdatadst);
+#endif
 
     /* We need to clean end of file before returning */
     clearerr(fp);
