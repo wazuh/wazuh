@@ -27,7 +27,8 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
-        merror("%s: No sid search!! XXX", ARGV0);
+        merror("%s: ERROR: No sid search.", ARGV0);
+        return (NULL);
     }
 
     /* Get last node */
