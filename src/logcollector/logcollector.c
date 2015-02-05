@@ -298,18 +298,14 @@ void LogCollectorStart()
             /* Finally, send to the function pointer to read it */
             logff[i].read(i, &r, 0);
 
-            /* Check for error */
-            if (!ferror(logff[i].fp)) {
-                /* Clear EOF */
-                clearerr(logff[i].fp);
+	    if(feof(logff[i].fp)) {
+		clearerr(logff[i].fp);
+		continue;
+	    }
 
-                /* Parsing error */
-                if (r != 0) {
-                    logff[i].ign++;
-                }
-            }
-            /* If ferror is set */
-            else {
+            /* Check for error */
+	    if(ferror(logff[i].fp)) {
+
                 merror(FREAD_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
 #ifndef WIN32
                 if (fseek(logff[i].fp, 0, SEEK_END) < 0)
