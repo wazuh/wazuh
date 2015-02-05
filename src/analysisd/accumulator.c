@@ -290,7 +290,7 @@ int acm_str_replace(char **dst, const char *src)
     }
 
     /* Don't overwrite something we already know */
-    if (dst != NULL && *dst != NULL && **dst != '\0') {
+    if (*dst != NULL && **dst != '\0') {
         return -1;
     }
 
