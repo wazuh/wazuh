@@ -138,8 +138,6 @@ static void HandleClient(int client_socket, char *srcip)
 /* Handle syslog TCP connections */
 void HandleSyslogTCP()
 {
-    int client_socket = 0;
-    int st_errors = 0;
     int childcount = 0;
     char srcip[IPSIZE + 1];
 
@@ -171,9 +169,10 @@ void HandleSyslogTCP()
         }
 
         /* Accept new connections */
-        client_socket = OS_AcceptTCP(logr.sock, srcip, IPSIZE);
+        int client_socket = OS_AcceptTCP(logr.sock, srcip, IPSIZE);
         if (client_socket < 0) {
-            st_errors++;
+            merror("%s: WARN: Accepting tcp connection from client failed.", ARGV0);
+            continue;
         }
 
         /* Check if IP is allowed here */
