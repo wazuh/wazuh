@@ -551,6 +551,8 @@ void OS_ReadMSG(char *ut_str)
                 char holder[1024];
                 holder[1] = '\0';
                 exit_code = 3;
+                print_out("lf->decoder_info->name: '%s'", lf->decoder_info->name);
+                print_out("ut_decoder_name       : '%s'", ut_decoder_name);
                 if (lf->decoder_info->name != NULL && strcasecmp(ut_decoder_name, lf->decoder_info->name) == 0) {
                     exit_code--;
                     snprintf(holder, 1023, "%d", currently_rule->sigid);
@@ -562,6 +564,11 @@ void OS_ReadMSG(char *ut_str)
                             printf("%d\n", exit_code);
                         }
                     }
+                } else if (lf->decoder_info->name != NULL) {
+                    print_out("decoder matched : '%s'", lf->decoder_info->name);
+                    print_out("decoder expected: '%s'", ut_decoder_name);
+                } else {
+                    print_out("decoder matched : 'NULL'");
                 }
             }
 
