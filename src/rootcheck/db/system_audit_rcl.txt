@@ -1,6 +1,3 @@
-# @(#) $Id: ./src/rootcheck/db/system_audit_rcl.txt, 2012/02/13 dcid Exp $
-
-#
 # OSSEC Linux Audit - (C) 2007 Daniel B. Cid - dcid@ossec.net
 #
 # Released under the same license as OSSEC.
@@ -26,31 +23,25 @@
 #                             <: (for strcmp  lower)
 # Multiple patterns can be specified by using " && " between them.
 # (All of them must match for it to return true).
- 
+
 $php.ini=/etc/php.ini,/var/www/conf/php.ini,/etc/php5/apache2/php.ini;
 $web_dirs=/var/www,/var/htdocs,/home/httpd,/usr/local/apache,/usr/local/apache2,/usr/local/www;
-
 
 # PHP checks
 [PHP - Register globals are enabled] [any] [http://www.ossec.net/wiki]
 f:$php.ini -> r:^register_globals = On;
 
-
 # PHP checks
 [PHP - Expose PHP is enabled] [any] []
 f:$php.ini -> r:^expose_php = On;
-
 
 # PHP checks
 [PHP - Allow URL fopen is enabled] [any] []
 f:$php.ini -> r:^allow_url_fopen = On;
 
-
-
 # PHP checks
 [PHP - Displaying of errors is enabled] [any] []
 f:$php.ini -> r:^display_errors = On;
-
 
 # PHP checks - consider open_basedir && disable_functions
 
@@ -59,7 +50,6 @@ f:$php.ini -> r:^display_errors = On;
 ## Using http://www.ossec.net/wiki/index.php/WebAttacks_links as a reference.
 #[Web exploits - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
 #d:$web_dirs -> .txt$ -> r:^<?php|^#!;
-
 
 ## Looking for common web exploits files (might indicate that you are owned).
 ## There are not specific, like the above.
@@ -79,7 +69,6 @@ d:$web_dirs -> ^...$;
 [Web exploits (uncommon file name inside htdocs) - Possible compromise] [any] [http://www.ossec.net/wiki/index.php/WebAttacks_links]
 d:$web_dirs -> ^.shell$;
 
-
 ## Looking for outdated Web applications
 ## Taken from http://sucuri.net/latest-versions
 [Web vulnerability - Outdated WordPress installation] [any] [http://sucuri.net/latest-versions]
@@ -94,7 +83,6 @@ d:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:'1.0';
 [Web vulnerability - Outdated osCommerce (v2.2) installation] [any] [http://sucuri.net/latest-versions]
 d:$web_dirs -> ^application_top.php$ -> r:'osCommerce 2.2-;
 
-
 ## Looking for known backdoors
 [Web vulnerability - Backdoors / Web based malware found - eval(base64_decode] [any] []
 d:$web_dirs -> .php$ -> r:eval\(base64_decode\(\paWYo;
@@ -107,6 +95,3 @@ d:$web_dirs -> ^.htaccess$ -> r:RewriteCond \S+HTTP_REFERERS \S+google;
 
 [Web vulnerability - .htaccess file compromised - auto append] [any] [http://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html]
 d:$web_dirs -> ^.htaccess$ -> r:php_value auto_append_file;
-
-
-# EOF #

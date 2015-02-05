@@ -16,7 +16,7 @@ REM Check for public domain unix2dos.exe. It can be found here: http://www.efgh.
 IF NOT EXIST unix2dos.exe echo unix2dos.exe not found, exiting... && EXIT 1
 
 REM Generating configs
-unix2dos.exe ossec.conf 
+unix2dos.exe ossec.conf
 type ossec.conf > ossec-win.conf
 unix2dos.exe help.txt
 type help.txt > help_win.txt

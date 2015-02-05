@@ -2,7 +2,6 @@
 # Gentoo init script
 # by gentuxx <gentuxx@gmail.com>
 
-
 opts="${opts} status configtest"
 
 # Finding where ossec is installed
@@ -10,60 +9,59 @@ opts="${opts} status configtest"
 if [ "X${DIRECTORY}" = "X" ]; then
     DIRECTORY="/var/ossec"
 fi
-        
+
 OSSEC_CONTROL="${DIRECTORY}/bin/ossec-control"
 
 depend() {
-	need net
-	use logger
+    need net
+    use logger
 }
 
 configtest() {
-	ebegin "Checking OSSEC Configuration"
-	checkconfig
-	eend $?
+    ebegin "Checking OSSEC Configuration"
+    checkconfig
+    eend $?
 }
 
 checkconfig() {
-	
-	CONFIGFILE="${CONFIGFILE:-${DIRECTORY}/etc/ossec.conf}"
-	if [ ! -r "${CONFIGFILE}" ]; then
-		eerror "Unable to read configuration file: ${CONFIGFILE}"
-		return 1
-	fi
+    CONFIGFILE="${CONFIGFILE:-${DIRECTORY}/etc/ossec.conf}"
+    if [ ! -r "${CONFIGFILE}" ]; then
+        eerror "Unable to read configuration file: ${CONFIGFILE}"
+        return 1
+    fi
 
-	# Maybe put some kind of config file syntax checking in here?  XML is a little different
-	# so maybe not.	
-	return $ret
+    # Maybe put some kind of config file syntax checking in here?  XML is a little different
+    # so maybe not.
+    return $ret
 }
 
 start() {
-	checkconfig || return 1
-	ebegin "Starting ossec-hids"
-	${OSSEC_CONTROL} start > /dev/null 2>&1
-	eend $?
+    checkconfig || return 1
+    ebegin "Starting ossec-hids"
+    ${OSSEC_CONTROL} start > /dev/null 2>&1
+    eend $?
 }
 
 stop() {
-	checkconfig || return 1
-	ebegin "Stopping ossec-hids"
-	${OSSEC_CONTROL} stop > /dev/null 2>&1
-	eend $?
+    checkconfig || return 1
+    ebegin "Stopping ossec-hids"
+    ${OSSEC_CONTROL} stop > /dev/null 2>&1
+    eend $?
 }
 
 restart() {
-	if ! service_started "${myservice}" ; then
-		eerror "OSSEC is not running! Please start it before trying to reload it."
-	else
-		checkconfig || return 1
-		ebegin "Reloading ossec"
-		svc_stop ${OSSEC_CONTROL}
-		svc_start ${OSSEC_CONTROL}
-		eend $?
-	fi
+    if ! service_started "${myservice}" ; then
+        eerror "OSSEC is not running! Please start it before trying to reload it."
+    else
+        checkconfig || return 1
+        ebegin "Reloading ossec"
+        svc_stop ${OSSEC_CONTROL}
+        svc_start ${OSSEC_CONTROL}
+        eend $?
+    fi
 }
 
 status() {
-	checkconfig || return 1
-	${OSSEC_CONTROL} status
+    checkconfig || return 1
+    ${OSSEC_CONTROL} status
 }

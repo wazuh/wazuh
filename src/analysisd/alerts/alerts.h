@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/alerts/alerts.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,10 +7,9 @@
  * Foundation
  */
 
-/* Global  alert header */
+/* Global alert header */
 
 #ifndef _ALERT__H
-
 #define _ALERT__H
 
 #include "log.h"
@@ -21,3 +17,4 @@
 #include "getloglocation.h"
 
 #endif
+

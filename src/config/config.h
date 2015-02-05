@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/config/config.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,12 +5,7 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
- *
- * License details at the LICENSE file included with OSSEC or
- * online at: http://www.ossec.net/en/licensing.html
  */
-
-
 
 #ifndef _HCONFIG__H
 #define _HCONFIG__H
@@ -37,7 +29,6 @@
 
 #include "os_xml/os_xml.h"
 
-
 /* Main function to read the config */
 int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2);
 
@@ -58,4 +49,4 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_CReports(XML_NODE node, void *config1, void *config2);
 
-#endif
+#endif /* _HCONFIG__H */

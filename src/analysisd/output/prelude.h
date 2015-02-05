@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -7,11 +5,7 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- *
- * More details at the LICENSE file included with OSSEC or
- * online at http://www.ossec.net/en/licensing.html .
  */
-
 
 #ifdef PRELUDE_OUTPUT_ENABLED
 
@@ -20,13 +14,12 @@
 
 #include "eventinfo.h"
 
-/* Starts prelude client. */
-void prelude_start(char *profile, int argc, char **argv);
+/* Start Prelude client */
+void prelude_start(const char *profile, int argc, char **argv);
 
-/* Logs to prelude. */
-void OS_PreludeLog(Eventinfo *lf);
+/* Log to Prelude */
+void OS_PreludeLog(const Eventinfo *lf);
 
 #endif /* _PRELUDE_H_ */
 
-
-#endif /* PRELUDE */
+#endif /* PRELUDE_OUTPUT_ENABLED */

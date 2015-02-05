@@ -1,5 +1,3 @@
-/*   $OSSEC, remote-config.h, v0.3, 2005/02/09, Daniel B. Cid$   */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,9 +7,7 @@
  * Foundation
  */
 
-
 #ifndef __CLOGREMOTE_H
-
 #define __CLOGREMOTE_H
 
 #define SYSLOG_CONN 1
@@ -20,8 +16,7 @@
 #include "shared.h"
 
 /* socklen_t header */
-typedef struct _remoted
-{
+typedef struct _remoted {
     int *proto;
     char **port;
     int *conn;
@@ -34,6 +29,7 @@ typedef struct _remoted
     int m_queue;
     int sock;
     socklen_t peer_size;
-}remoted;
+} remoted;
 
-#endif
+#endif /* __CLOGREMOTE_H */
+

@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/wait_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -13,11 +10,9 @@
 #ifndef __WAIT_OP_H
 #define __WAIT_OP_H
 
-
 void os_setwait(void);
-
 void os_delwait(void);
-
 void os_wait(void);
 
 #endif
+

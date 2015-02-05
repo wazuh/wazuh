@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_auth/check_cert.h, 2014/04/25 mweigel Exp $
- */
-
 /* Copyright (C) 2014 Trend Micro Inc.
  * All rights reserved.
  *
@@ -40,8 +37,7 @@
 #define DNS_MAX_LABELS    127
 #define DNS_MAX_LABEL_LEN 63
 
-typedef struct label_t
-{
+typedef struct label_t {
     char text[DNS_MAX_LABEL_LEN + 1];
     size_t len;
 }

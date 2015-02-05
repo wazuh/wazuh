@@ -1867,6 +1867,13 @@
   <type>ossec</type>
 </decoder>
 
+<decoder name="ossec-logcollector">
+  <type>ossec</type>
+  <prematch>^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d ossec-logcollector</prematch>
+  <regex offset="after_prematch">^\(\d+\): (\.)</regex>
+  <order>extra_data</order>
+</decoder>
+
 <decoder name="ossec-agent">
   <parent>ossec</parent>
   <type>ossec</type>

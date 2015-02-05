@@ -1,7 +1,7 @@
 @echo off
 
 rem Searching for IIS logs.
-rem If we find any log in the NCSA or W3C extended format, 
+rem If we find any log in the NCSA or W3C extended format,
 rem change the config to support that. If not, let the user know.
 rem Example of log to look: nc060215.log or ex060723.log
 
@@ -18,7 +18,7 @@ IF EXIST %WinDir%\System32\LogFiles\W3SVC1\nc??????.log (
     echo ^<ossec_config^> >> ossec.conf
     echo   ^<localfile^> >> ossec.conf
     echo     ^<location^>%WinDir%\System32\LogFiles\W3SVC1\nc%%y%%m%%d.log^</location^> >> ossec.conf
-    echo     ^<log_format^>iis^</log_format^> >> ossec.conf 
+    echo     ^<log_format^>iis^</log_format^> >> ossec.conf
     echo   ^</localfile^> >> ossec.conf
     echo ^</ossec_config^> >> ossec.conf
     pause

@@ -7,14 +7,16 @@
  * Foundation
  */
 
-#include "os_zlib.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
+#include "os_zlib.h"
+
 #ifndef ARGV0
-  #define ARGV0   "zlib-test"
+#define ARGV0   "zlib-test"
 #endif
+
 
 /* Zlib test */
 int main(int argc, char **argv)
@@ -26,43 +28,35 @@ int main(int argc, char **argv)
     memset(dst, 0, 2048);
     memset(dst2, 0, 2048);
 
-    if(argc < 2)
-    {
+    if (argc < 2) {
         printf("%s: string\n", argv[0]);
         exit(1);
     }
 
     srcsize = strlen(argv[1]);
-    if(srcsize > 2000)
-    {
+    if (srcsize > 2000) {
         printf("%s: string too large\n", argv[0]);
         exit(1);
 
     }
 
-    if((ret = os_zlib_compress(argv[1], dst, srcsize, dstsize)))
-    {
-        printf("Compressed, from %lu->%lu\n",srcsize, ret);
-    }
-    else
-    {
+    if ((ret = os_zlib_compress(argv[1], dst, srcsize, dstsize))) {
+        printf("Compressed, from %lu->%lu\n", srcsize, ret);
+    } else {
         printf("FAILED compressing.\n");
         exit(1);
     }
 
-    /* Setting new srcsize for decompression */
+    /* Set new srcsize for decompression */
     srcsize = ret;
 
-    if((ret = os_zlib_uncompress(dst, dst2, srcsize, dstsize)))
-    {
+    if ((ret = os_zlib_uncompress(dst, dst2, srcsize, dstsize))) {
         printf("Uncompressed ok. String: '%s', size %lu->%lu\n",
-                                        dst2, srcsize, ret);
-    }
-    else
-    {
+               dst2, srcsize, ret);
+    } else {
         printf("FAILED uncompressing.\n");
         exit(1);
     }
 
-    return(0);
+    return (0);
 }

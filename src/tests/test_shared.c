@@ -14,6 +14,7 @@
 
 Suite *test_suite(void);
 
+
 START_TEST(test_searchAndReplace)
 {
     int i;
@@ -33,8 +34,8 @@ START_TEST(test_searchAndReplace)
         {NULL, NULL, NULL, NULL}
     };
 
-    for(i=0; tests[i][0] != NULL ; i++) {
-        char *result = searchAndReplace(tests[i][0],tests[i][1], tests[i][2]);
+    for (i = 0; tests[i][0] != NULL ; i++) {
+        char *result = searchAndReplace(tests[i][0], tests[i][1], tests[i][2]);
         ck_assert_str_eq(result, tests[i][3]);
         free(result);
     }
@@ -47,7 +48,6 @@ Suite *test_suite(void)
 
     TCase *tc_searchAndReplace = tcase_create("searchAndReplace");
     tcase_add_test(tc_searchAndReplace, test_searchAndReplace);
-
 
     suite_add_tcase(s, tc_searchAndReplace);
 

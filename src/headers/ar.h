@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/ar.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,12 +7,10 @@
  * Foundation
  */
 
-/* Active response shared headers */
+/* Active Response shared headers */
 
 #ifndef __AR_H
-
 #define __AR_H
-
 
 /* Recepient agents */
 #define ALL_AGENTS      0000001
@@ -23,7 +18,7 @@
 #define SPECIFIC_AGENT  0000004
 #define AS_ONLY         0000010
 
-/* We now also support non active response messages in here. */
+/* We now also support non Active Response messages in here */
 #define NO_AR_MSG       0000020
 
 #define ALL_AGENTS_C     'A'
@@ -32,11 +27,9 @@
 #define NONE_C           'N'
 #define NO_AR_C          '!'
 
-
-/* AR  Queues to use */
+/* AR Queues to use */
 #define REMOTE_AR       00001
 #define LOCAL_AR        00002
-
 
 /* Expected values */
 #define FILENAME    0000010
@@ -44,7 +37,5 @@
 #define DSTIP       0000002
 #define USERNAME    0000001
 
+#endif /* __AR_H */
 
-#endif
-
-/* EOF */

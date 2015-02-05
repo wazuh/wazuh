@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_auth/auth.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -29,7 +26,7 @@
 #define _AUTHD_H
 
 #ifndef ARGV0
-   #define ARGV0 "ossec-authd"
+#define ARGV0 "ossec-authd"
 #endif
 
 #include <unistd.h>

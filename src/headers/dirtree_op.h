@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/dirtree_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,42 +5,33 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- *
- * License details at the LICENSE file included with OSSEC or
- * online at: http://www.ossec.net/en/licensing.html
  */
 
 /* Common API for dealing with directory trees */
-
 
 #ifndef _OS_DIRTREE
 #define _OS_DIRTREE
 
 typedef struct _OSDirTree OSDirTree;
 
-typedef struct _OSTreeNode
-{
+typedef struct _OSTreeNode {
     struct _OSTreeNode *next;
     OSDirTree *child;
 
     char *value;
     void *data;
-}OSTreeNode;
+} OSTreeNode;
 
-
-struct _OSDirTree
-{
+struct _OSDirTree {
     OSTreeNode *first_node;
     OSTreeNode *last_node;
 };
 
-
 OSDirTree *OSDirTree_Create(void);
-void OSDirTree_AddToTree(OSDirTree *tree, const char *str, void *data, char sep) __attribute__((nonnull(1,2)));
+void OSDirTree_AddToTree(OSDirTree *tree, const char *str, void *data, char sep) __attribute__((nonnull(1, 2)));
 void *OSDirTree_SearchTree(const OSDirTree *tree, const char *str, char sep) __attribute__((nonnull));
 
 OSTreeNode *OSDirTree_GetFirstNode(OSDirTree *tree) __attribute__((nonnull));
 
-#endif
+#endif /* _OS_DIRTREE */
 
-/* EOF */

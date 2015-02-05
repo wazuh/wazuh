@@ -18,6 +18,7 @@
 
 Suite *test_suite(void);
 
+
 START_TEST(test_blowfish)
 {
     const char *key = "test_key";
@@ -176,6 +177,7 @@ Suite *test_suite(void)
     tcase_add_test(tc_md5sha1, test_md5sha1file);
     tcase_add_test(tc_md5sha1, test_md5sha1cmdfile);
     tcase_add_test(tc_md5sha1, test_md5sha1cmdfile_fail);
+    tcase_set_timeout(tc_md5sha1, 7);
 
     suite_add_tcase(s, tc_blowfish);
     suite_add_tcase(s, tc_md5);
