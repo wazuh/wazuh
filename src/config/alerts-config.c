@@ -29,7 +29,7 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
     Config = (_Config *)configp;
 
     if (!Config) {
-        merror("%s: ERROR: Configuration handle is NULL.", ARGV0);
+        merror("%s: ERROR: Configuration handle is NULL.", __local_name);
         return (OS_INVALID);
     }
 
