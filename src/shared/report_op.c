@@ -389,7 +389,7 @@ void os_ReportdStart(report_filter *r_filter)
         fileq->fp = fopen(r_filter->filename, "r");
         if (!fileq->fp) {
             merror("%s: ERROR: Unable to open alerts file to generate report.", __local_name);
-            return;
+            goto cleanup;
         }
         if (r_filter->fp) {
             __g_rtype = r_filter->fp;
@@ -419,7 +419,7 @@ void os_ReportdStart(report_filter *r_filter)
         OSStore_Free(r_filter->top_location);
         OSStore_Free(r_filter->top_files);
 
-        return;
+        goto cleanup;
     }
 
 
@@ -523,6 +523,8 @@ void os_ReportdStart(report_filter *r_filter)
         }
     }
 
+
+
     /* No report available */
     if (alerts_filtered == 0) {
         if (!r_filter->report_name) {
@@ -530,7 +532,8 @@ void os_ReportdStart(report_filter *r_filter)
         } else {
             merror("%s: INFO: Report '%s' completed and zero alerts post-filter.", __local_name, r_filter->report_name);
         }
-        return;
+
+        goto cleanup;
     }
 
     if (r_filter->report_name) {
@@ -617,6 +620,15 @@ void os_ReportdStart(report_filter *r_filter)
         }
         free(data_to_clean);
         data_to_clean = NULL;
+    }
+
+    cleanup:
+    if (fileq) {
+        if (fileq->fp && fileq->fp != stdin) {
+            fclose(fileq->fp);
+        }
+
+        free(fileq);
     }
 }
 
