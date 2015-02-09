@@ -1,23 +1,19 @@
 #!/usr/bin/env expect
 
-# @(#) $Id: ./src/agentlessd/scripts/ssh_generic_diff, 2011/09/08 dcid Exp $
-
 # Agentless monitoring
 #
 # Copyright (C) 2009 Trend Micro Inc.
 # All rights reserved.
-# 
+#
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-
-# Main script.
+# Main script
 source "agentless/main.exp"
 
-
-# SSHing to the box and passing the directories to check.
+# SSH to the box and pass the directories to check
 if [catch {
     spawn ssh $hostname
 } loc_error] {
@@ -25,10 +21,8 @@ if [catch {
     exit 1;
 }
 
-
 source $sshsrc
 source $susrc
-
 
 set timeout 600
 send_user "INFO: Starting.\n"

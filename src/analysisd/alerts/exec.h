@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/alerts/exec.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,9 +7,7 @@
  * Foundation
  */
 
-
 #ifndef _EXEC__H
-
 #define _EXEC__H
 
 #include "eventinfo.h"
@@ -21,3 +16,4 @@
 void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar);
 
 #endif
+

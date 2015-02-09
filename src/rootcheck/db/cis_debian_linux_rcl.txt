@@ -1,6 +1,3 @@
-# @(#) $Id: ./src/rootcheck/db/cis_debian_linux_rcl.txt, 2011/09/08 dcid Exp $
-
-#
 # OSSEC Linux Audit - (C) 2008 Daniel B. Cid - dcid@ossec.net
 #
 # Released under the same license as OSSEC.
@@ -27,16 +24,13 @@
 # Multiple patterns can be specified by using " && " between them.
 # (All of them must match for it to return true).
 
-
 # CIS Checks for Debian/Ubuntu
 # Based on Center for Internet Security Benchmark for Debian Linux v1.0
-
 
 # Main one. Only valid for Debian/Ubuntu.
 [CIS - Testing against the CIS Debian Linux Benchmark v1.0] [all required] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:/etc/debian_version;
 f:/proc/sys/kernel/ostype -> Linux;
-
 
 
 # Section 1.4 - Partition scheme.
@@ -49,7 +43,6 @@ f:/etc/fstab -> !r:/opt;
 
 [CIS - Debian Linux 1.4 - Robust partition scheme - /var is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:/etc/fstab -> !r:/var;
-
 
 
 # Section 2.3 - SSH configuration
@@ -69,7 +62,6 @@ f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;
 f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;
 
 
-
 # Section 2.4 Enable system accounting
 #[CIS - Debian Linux 2.4 - System Accounting - Sysstat not installed] [all] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 #f:!/etc/default/sysstat;
@@ -80,18 +72,15 @@ f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;
 #f:/etc/default/sysstat -> !r:^# && r:ENABLED="false";
 
 
-
 # Section 2.5 Install and run Bastille
 #[CIS - Debian Linux 2.5 - System harderning - Bastille is not installed] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 #f:!/etc/Bastille;
-
 
 
 # Section 2.6 Ensure sources.list Sanity
 [CIS - Debian Linux 2.6 - Sources list sanity - Security updates not enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:!/etc/apt/sources.list;
 f:!/etc/apt/sources.list -> !r:^# && r:http://security.debian|http://security.ubuntu;
-
 
 
 # Section 3 - Minimize inetd services
@@ -115,7 +104,6 @@ f:/etc/inetd.conf -> !r:^# && r:pop;
 
 [CIS - Debian Linux 3.9 - Ident enabled on inetd] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:/etc/inetd.conf -> !r:^# && r:ident;
-
 
 
 # Section 4 - Minimize boot services
@@ -157,7 +145,6 @@ f:/etc/init.d/webmin;
 f:/etc/init.d/squid;
 
 
-
 # Section 5 - Kernel tuning
 [CIS - Debian Linux 5.1 - Network parameters - Source routing accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:/proc/sys/net/ipv4/conf/all/accept_source_route -> 1;
@@ -168,7 +155,6 @@ f:/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts -> 0;
 [CIS - Debian Linux 5.2 - Network parameters - IP Forwarding enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:/proc/sys/net/ipv4/ip_forward -> 1;
 f:/proc/sys/net/ipv6/ip_forward -> 1;
-
 
 
 # Section 7 - Permissions
@@ -194,7 +180,6 @@ f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;
 f:/etc/fstab -> !r:^# && r:/media && r:user;
 
 
-
 # Section 8 - Access and authentication
 [CIS - Debian Linux 8.8 - LILO Password not set] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:/etc/lilo.conf -> !r:^# && !r:restricted;
@@ -208,6 +193,3 @@ f:/etc/shadow -> r:^\w+::;
 
 [CIS - Debian Linux 13.11 - Non-root account with uid 0] [any] [http://www.ossec.net/wiki/index.php/CIS_DebianLinux]
 f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
-
-
-# EOF

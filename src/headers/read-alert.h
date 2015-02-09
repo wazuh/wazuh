@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/read-alert.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,8 +7,6 @@
  * Foundation
  */
 
-
-
 #ifndef __CRALERT_H
 #define __CRALERT_H
 
@@ -20,10 +15,8 @@
 #define CRALERT_READ_ALL    0x004
 #define CRALERT_FP_SET      0x010
 
-
 /* File queue */
-typedef struct _alert_data
-{
+typedef struct _alert_data {
     unsigned int rule;
     unsigned int level;
     char *alertid;
@@ -46,11 +39,10 @@ typedef struct _alert_data
     char *geoipdatasrc;
     char *geoipdatadst;
 #endif
-}alert_data;
-
+} alert_data;
 
 alert_data *GetAlertData(int flag, FILE *fp) __attribute__((nonnull));
-void FreeAlertData(alert_data *al_data) __attribute__((nonnull));
-
+void        FreeAlertData(alert_data *al_data) __attribute__((nonnull));
 
 #endif
+

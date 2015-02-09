@@ -1,10 +1,4 @@
-OSSEC os_regex 0.3
-Copyright (c) 2004,2005,2006 Daniel B. Cid   <daniel.cid@gmail.com>
-                                        <dcid@ossec.net>
-
- 
 = OSSEC, os_regex Library. =
-
 
 Fast and simple library for regular expressions in C.
 
@@ -12,7 +6,6 @@ This library is designed to be simple, but support
 the most common regular expressions. It was design
 with intrusion detection systems in mind, where having
 all options is not crucial, but speed is.
-
 
 The following expressions are supported:
     \w  ->  A-Z, a-z, 0-9 characters
@@ -24,13 +17,11 @@ The following expressions are supported:
     \S  ->  For anything not \s
     \.  ->  For anything
 
-       
 Each regular expression can be followed by:
 
     +  ->  To match one or more times (eg \w+ or \d+)
     *  ->  To match zero or more times (eg \w* or \p*)
 
-    
 We also support the "^" to match at the beginning of the text,
 '$" to match at the end of the text and "|" to have multiple
 expressions.

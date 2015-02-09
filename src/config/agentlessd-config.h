@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/config/agentlessd-config.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,22 +7,18 @@
  * Foundation
  */
 
-
 #ifndef _AGENTLESSDCONFIG_H
 #define _AGENTLESSDCONFIG_H
 
-
-/* Entry states. */
+/* Entry states */
 #define LESSD_STATE_CONNECTED       0x001
 #define LESSD_STATE_PERIODIC        0x002
 #define LESSD_STATE_DIFF            0x004
 #define LESSD_USE_SU                0x010
 #define LESSD_USE_SUDO              0x020
 
-
-/* Structure for each entry. */
-typedef struct _agentlessd_entries
-{
+/* Structure for each entry */
+typedef struct _agentlessd_entries {
     short int state;
 
     int frequency;
@@ -38,16 +31,14 @@ typedef struct _agentlessd_entries
     const char *options;
     char *command;
 
-}agentlessd_entries;
+} agentlessd_entries;
 
-
-/* Configuration structure. */
-typedef struct _agentlessd_config
-{
+/* Configuration structure */
+typedef struct _agentlessd_config {
     int queue;
     agentlessd_entries **entries;
 
-}agentlessd_config;
+} agentlessd_config;
 
+#endif /* _AGENTLESSDCONFIG_H */
 
-#endif

@@ -1,9 +1,6 @@
 #!/bin/sh
 # Shared variables and functions
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
-# Last modification: Mar 03, 2006
-
-
 
 ### Setting up variables
 VERSION_FILE="./src/VERSION"
@@ -18,10 +15,10 @@ if [ ! $? = 0 ]; then
     ME=`id | cut -d " " -f 1`
     if [ "X${ME}" = "Xuid=0(root)" ]; then
         ME="root"
-    fi    
+    fi
 else
-    ME=`whoami 2>/dev/null`    
-fi    
+    ME=`whoami 2>/dev/null`
+fi
 
 OSSEC_INIT="/etc/ossec-init.conf"
 HOST=`hostname`
@@ -57,7 +54,6 @@ ACTIVE_RESPONSE_TEMPLATE="./etc/templates/config/active-response.template"
 ROUTENULL_TEMPLATE="./etc/templates/config/ar-routenull.template"
 RULES_TEMPLATE="./etc/templates/config/rules.template"
 
-
 ## Host output
 OSSECMX="devmail.ossec.net mail is handled by 10 ossec.mooo.com."
 OSSECMX2="devmail.ossec.net mail is handled (pri=10) by ossec.mooo.com"
@@ -66,6 +62,3 @@ OSSECMX3="devmail.ossec.net mail is handled by 10 ossec.mooo.COM."
 ## Predefined file
 PREDEF_FILE="./etc/preloaded-vars.conf"
 
-
-
-## EOF ##

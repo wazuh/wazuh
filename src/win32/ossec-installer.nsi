@@ -160,15 +160,15 @@ Section "OSSEC Agent (required)" MainSec
     File setup-syscheck.exe
     File setup-iis.exe
     File doc.html
-    File /oname=shared\rootkit_trojans.txt rootkit_trojans.txt
-    File /oname=shared\rootkit_files.txt rootkit_files.txt
+    File /oname=shared\rootkit_trojans.txt ../rootcheck/db/rootkit_trojans.txt
+    File /oname=shared\rootkit_files.txt ../rootcheck/db/rootkit_files.txt
     File add-localfile.exe
     File LICENSE.txt
-    File /oname=shared\win_applications_rcl.txt rootcheck\db\win_applications_rcl.txt
-    File /oname=shared\win_malware_rcl.txt rootcheck\db\win_malware_rcl.txt
-    File /oname=shared\win_audit_rcl.txt rootcheck\db\win_audit_rcl.txt
+    File /oname=shared\win_applications_rcl.txt ../rootcheck\db\win_applications_rcl.txt
+    File /oname=shared\win_malware_rcl.txt ../rootcheck\db\win_malware_rcl.txt
+    File /oname=shared\win_audit_rcl.txt ../rootcheck\db\win_audit_rcl.txt
     File help.txt
-    File vista_sec.csv
+    File vista_sec.txt
     File /oname=active-response\bin\route-null.cmd route-null.cmd
     File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
 

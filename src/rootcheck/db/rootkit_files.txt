@@ -1,312 +1,263 @@
-# @(#) $Id: ./src/rootcheck/db/rootkit_files.txt, 2011/09/08 dcid Exp $
-
-#
 # rootkit_files.txt, (C) Daniel B. Cid
 # Imported from the rootcheck project.
 #
-# Lines starting with '#' are not going to be read.
-# Blank lines are not going to be read too.
-# 
+# Blank lines and lines starting with '#' are ignored.
+#
 # Each line must be in the following format:
 # file_name ! Name ::Link to it
-
-# Files that start with an '*' are going to be searched
-# in the whole system.
-
+#
+# Files that start with an '*' will be searched in the whole system.
 
 # Bash door
-tmp/mcliZokhb			! Bash door ::/rootkits/bashdoor.php
-tmp/mclzaKmfa			! Bash door ::/rootkits/bashdoor.php
+tmp/mcliZokhb           ! Bash door ::/rootkits/bashdoor.php
+tmp/mclzaKmfa           ! Bash door ::/rootkits/bashdoor.php
 
-
-#adore Worm
-dev/.shit/red.tgz		! Adore Worm ::/rootkits/adorew.php
-usr/lib/libt			! Adore Worm ::/rootkits/adorew.php
-usr/bin/adore			! Adore Worm ::/rootkits/adorew.php
+# adore Worm
+dev/.shit/red.tgz       ! Adore Worm ::/rootkits/adorew.php
+usr/lib/libt            ! Adore Worm ::/rootkits/adorew.php
+usr/bin/adore           ! Adore Worm ::/rootkits/adorew.php
 */klogd.o               ! Adore Worm ::/rootkits/adorew.php
 */red.tar               ! Adore Worm ::/rootkits/adorew.php
 
-
-#T.R.K rootkit
-usr/bin/soucemask		! TRK rootkit ::/rootkits/trk.php
-usr/bin/sourcemask		! TRK rootkit ::/rootkits/trk.php
-
+# T.R.K rootkit
+usr/bin/soucemask       ! TRK rootkit ::/rootkits/trk.php
+usr/bin/sourcemask      ! TRK rootkit ::/rootkits/trk.php
 
 # 55.808.A Worm
-tmp/.../a			    ! 55808.A Worm ::
-tmp/.../r			    ! 55808.A Worm ::
-
+tmp/.../a               ! 55808.A Worm ::
+tmp/.../r               ! 55808.A Worm ::
 
 # Volc Rootkit
-usr/lib/volc			! Volc Rootkit ::
-usr/bin/volc 			! Volc Rootkit ::
-
+usr/lib/volc            ! Volc Rootkit ::
+usr/bin/volc            ! Volc Rootkit ::
 
 # Illogic
-lib/security/.config	! Illogic Rootkit ::rootkits/illogic.php
-usr/bin/sia			    ! Illogic Rootkit ::rootkits/illogic.php
-etc/ld.so.hash			! Illogic Rootkit ::rootkits/illogic.php
-*/uconf.inv 			! Illogic Rootkit ::rootkits/illogic.php
+lib/security/.config    ! Illogic Rootkit ::rootkits/illogic.php
+usr/bin/sia             ! Illogic Rootkit ::rootkits/illogic.php
+etc/ld.so.hash          ! Illogic Rootkit ::rootkits/illogic.php
+*/uconf.inv             ! Illogic Rootkit ::rootkits/illogic.php
 
-
-#T0rnkit installed
-usr/src/.puta			! t0rn Rootkit ::rootkits/torn.php 
-usr/info/.t0rn			! t0rn Rootkit ::rootkits/torn.php
-lib/ldlib.tk			! t0rn Rootkit ::rootkits/torn.php
-etc/ttyhash			    ! t0rn Rootkit ::rootkits/torn.php
-sbin/xlogin			    ! t0rn Rootkit ::rootkits/torn.php
+# T0rnkit
+usr/src/.puta           ! t0rn Rootkit ::rootkits/torn.php
+usr/info/.t0rn          ! t0rn Rootkit ::rootkits/torn.php
+lib/ldlib.tk            ! t0rn Rootkit ::rootkits/torn.php
+etc/ttyhash             ! t0rn Rootkit ::rootkits/torn.php
+sbin/xlogin             ! t0rn Rootkit ::rootkits/torn.php
 */ldlib.tk              ! t0rn Rootkit ::rootkits/torn.php
 */.t0rn                 ! t0rn Rootkit ::rootkits/torn.php
 */.puta                 ! t0rn Rootkit ::rootkits/torn.php
 
-
-#RK17
-bin/rtty			! RK17 ::
-bin/squit			! RK17 ::
-sbin/pback			! RK17 ::
-proc/kset			! RK17 ::
-usr/src/linux/modules/autod.o	! RK17 ::
-usr/src/linux/modules/soundx.o	! RK17 ::
-
+# RK17
+bin/rtty                        ! RK17 ::
+bin/squit                       ! RK17 ::
+sbin/pback                      ! RK17 ::
+proc/kset                       ! RK17 ::
+usr/src/linux/modules/autod.o   ! RK17 ::
+usr/src/linux/modules/soundx.o  ! RK17 ::
 
 # Ramen Worm
-usr/lib/ldlibps.so 		! Ramen Worm ::rootkits/ramen.php
-usr/lib/ldlibns.so 		! Ramen Worm ::rootkits/ramen.php
-usr/lib/ldliblogin.so 	! Ramen Worm ::rootkits/ramen.php
-usr/src/.poop			! Ramen Worm ::rootkits/ramen.php
-tmp/ramen.tgz			! Ramen Worm ::rootkits/ramen.php
-etc/xinetd.d/asp		! Ramen Worm ::rootkits/ramen.php
-
+usr/lib/ldlibps.so      ! Ramen Worm ::rootkits/ramen.php
+usr/lib/ldlibns.so      ! Ramen Worm ::rootkits/ramen.php
+usr/lib/ldliblogin.so   ! Ramen Worm ::rootkits/ramen.php
+usr/src/.poop           ! Ramen Worm ::rootkits/ramen.php
+tmp/ramen.tgz           ! Ramen Worm ::rootkits/ramen.php
+etc/xinetd.d/asp        ! Ramen Worm ::rootkits/ramen.php
 
 # Sadmind/IIS Worm
-dev/cuc				    ! Sadmind/IIS Worm ::
+dev/cuc                 ! Sadmind/IIS Worm ::
 
+# Monkit
+lib/defs                ! Monkit ::
+usr/lib/libpikapp.a     ! Monkit found ::
 
-#Monkit
-lib/defs		    	! Monkit ::
-usr/lib/libpikapp.a		! Monkit found ::
+# RSHA
+usr/bin/kr4p            ! RSHA ::
+usr/bin/n3tstat         ! RSHA ::
+usr/bin/chsh2           ! RSHA ::
+usr/bin/slice2          ! RSHA ::
+etc/rc.d/rsha           ! RSHA ::
 
+# ShitC worm
+bin/home                ! ShitC ::
+sbin/home               ! ShitC ::
+usr/sbin/in.slogind     ! ShitC ::
 
-#RSHA
-usr/bin/kr4p 			! RSHA ::
-usr/bin/n3tstat			! RSHA ::
-usr/bin/chsh2			! RSHA ::
-usr/bin/slice2			! RSHA ::
-etc/rc.d/rsha			! RSHA ::
+# Omega Worm
+dev/chr                 ! Omega Worm ::
 
+# rh-sharpe
+bin/.ps                 ! Rh-Sharpe ::
+usr/bin/cleaner         ! Rh-Sharpe ::
+usr/bin/slice           ! Rh-Sharpe ::
+usr/bin/vadim           ! Rh-Sharpe ::
+usr/bin/.ps             ! Rh-Sharpe ::
+bin/.lpstree            ! Rh-Sharpe ::
+usr/bin/.lpstree        ! Rh-Sharpe ::
+usr/bin/lnetstat        ! Rh-Sharpe ::
+bin/lnetstat            ! Rh-Sharpe ::
+usr/bin/ldu             ! Rh-Sharpe ::
+bin/ldu                 ! Rh-Sharpe ::
+usr/bin/lkillall        ! Rh-Sharpe ::
+bin/lkillall            ! Rh-Sharpe ::
+usr/include/rpcsvc/du   ! Rh-Sharpe ::
 
-#ShitC worm
-bin/home			    ! ShitC ::
-sbin/home			    ! ShitC ::
-usr/sbin/in.slogind		! ShitC ::
+# Maniac RK
+usr/bin/mailrc          ! Maniac RK ::
 
+# Showtee / Romanian
+usr/lib/.egcs           ! Showtee ::
+usr/lib/.wormie         ! Showtee ::
+usr/lib/.kinetic        ! Showtee ::
+usr/lib/liblog.o        ! Showtee ::
+usr/include/addr.h      ! Showtee / Romanian rootkit ::
+usr/include/cron.h      ! Showtee ::
+usr/include/file.h      ! Showtee / Romanian rootkit ::
+usr/include/syslogs.h   ! Showtee / Romanian rootkit ::
+usr/include/proc.h      ! Showtee / Romanian rootkit ::
+usr/include/chk.h       ! Showtee ::
+usr/sbin/initdl         ! Romanian rootkit ::
+usr/sbin/xntps          ! Romanian rootkit ::
 
-#Omega Worm
-dev/chr				    ! Omega Worm ::
+# Optickit
+usr/bin/xchk            ! Optickit ::
+usr/bin/xsf             ! Optickit ::
 
-
-#rh-sharpe
-bin/.ps				    ! Rh-Sharpe ::
-usr/bin/cleaner			! Rh-Sharpe ::
-usr/bin/slice			! Rh-Sharpe ::
-usr/bin/vadim			! Rh-Sharpe ::
-usr/bin/.ps			    ! Rh-Sharpe ::
-bin/.lpstree			! Rh-Sharpe ::
-usr/bin/.lpstree		! Rh-Sharpe ::
-usr/bin/lnetstat		! Rh-Sharpe ::
-bin/lnetstat			! Rh-Sharpe ::
-usr/bin/ldu			    ! Rh-Sharpe ::
-bin/ldu				    ! Rh-Sharpe ::
-usr/bin/lkillall		! Rh-Sharpe ::
-bin/lkillall			! Rh-Sharpe ::
-usr/include/rpcsvc/du	! Rh-Sharpe ::
-
-
-#Maniac RK 
-usr/bin/mailrc			! Maniac RK ::
-
-
-#Showtee / romaniam
-usr/lib/.egcs			! Showtee ::
-usr/lib/.wormie			! Showtee ::
-usr/lib/.kinetic		! Showtee ::
-usr/lib/liblog.o		! Showtee ::
-usr/include/addr.h		! Showtee / Romanian rootkit ::
-usr/include/cron.h		! Showtee ::
-usr/include/file.h		! Showtee / Romaniam rootkit ::
-usr/include/syslogs.h	! Showtee / Romaniam rootkit ::
-usr/include/proc.h		! Showtee / Romaniam rootkit ::
-usr/include/chk.h		! Showtee ::
-usr/sbin/initdl			! Romanian rootkit ::
-usr/sbin/xntps			! Romanian rootkit ::
-
-
-#Optickit
-usr/bin/xchk			! Optickit ::
-usr/bin/xsf			    ! Optickit ::
-
-
-# LDP worm 
-dev/.kork			! LDP Worm ::
-bin/.login			! LDP Worm ::
-bin/.ps				! LDP Worm ::
-
+# LDP worm
+dev/.kork           ! LDP Worm ::
+bin/.login          ! LDP Worm ::
+bin/.ps             ! LDP Worm ::
 
 # Telekit
-dev/hda06			! TeLeKit trojan ::
-usr/info/libc1.so 		! TeleKit trojan ::
-
+dev/hda06           ! TeLeKit trojan ::
+usr/info/libc1.so   ! TeleKit trojan ::
 
 # Tribe bot
-dev/wd4 			! Tribe bot ::
-
+dev/wd4     ! Tribe bot ::
 
 # LRK
-dev/ida/.inet 			! LRK rootkit ::rootkits/lrk.php
-*/bindshell 			! LRK rootkit ::rootkits/lrk.php
-
+dev/ida/.inet       ! LRK rootkit ::rootkits/lrk.php
+*/bindshell         ! LRK rootkit ::rootkits/lrk.php
 
 # Adore Rootkit
-etc/bin/ava 			! Adore Rootkit ::
-etc/sbin/ava 			! Adore Rootkit ::
-
+etc/bin/ava         ! Adore Rootkit ::
+etc/sbin/ava        ! Adore Rootkit ::
 
 # Slapper
-tmp/.bugtraq 			! Slapper installed ::
-tmp/.bugtraq.c 			! Slapper installed ::
-tmp/.cinik 			    ! Slapper installed ::
-tmp/.b 				    ! Slapper installed ::
-tmp/httpd 			    ! Slapper installed ::
-tmp./update 			! Slapper installed ::
-tmp/.unlock 			! Slapper installed ::
+tmp/.bugtraq            ! Slapper installed ::
+tmp/.bugtraq.c          ! Slapper installed ::
+tmp/.cinik              ! Slapper installed ::
+tmp/.b                  ! Slapper installed ::
+tmp/httpd               ! Slapper installed ::
+tmp./update             ! Slapper installed ::
+tmp/.unlock             ! Slapper installed ::
 tmp/.font-unix/.cinik   ! Slapper installed ::
 tmp/.cinik              ! Slapper installed ::
 
-
-
 # Scalper
-tmp/.uua 			! Scalper installed ::
-tmp/.a 				! Scalper installed ::
+tmp/.uua            ! Scalper installed ::
+tmp/.a              ! Scalper installed ::
 
-
-# Knark 
-proc/knark 			! Knark Installed ::rootkits/knark.php
-dev/.pizda 			! Knark Installed ::rootkits/knark.php
-dev/.pula 			! Knark Installed ::rootkits/knark.php
-dev/.pula 			! Knark Installed ::rootkits/knark.php
+# Knark
+proc/knark          ! Knark Installed ::rootkits/knark.php
+dev/.pizda          ! Knark Installed ::rootkits/knark.php
+dev/.pula           ! Knark Installed ::rootkits/knark.php
+dev/.pula           ! Knark Installed ::rootkits/knark.php
 */taskhack          ! Knark Installed ::rootkits/knark.php
 */rootme            ! Knark Installed ::rootkits/knark.php
 */nethide           ! Knark Installed ::rootkits/knark.php
 */hidef             ! Knark Installed ::rootkits/knark.php
 */ered              ! Knark Installed ::rootkits/knark.php
 
-
 # Lion worm
-dev/.lib 			! Lion Worm ::rootkits/lion.php
-dev/.lib/1iOn.sh 	! Lion Worm ::rootkits/lion.php
-bin/mjy				! Lion Worm ::rootkits/lion.php
-bin/in.telnetd		! Lion Worm ::rootkits/lion.php
-usr/info/torn		! Lion Worm ::rootkits/lion.php
-*/1iOn\.sh  		! Lion Worm ::rootkits/lion.php
-
+dev/.lib            ! Lion Worm ::rootkits/lion.php
+dev/.lib/1iOn.sh    ! Lion Worm ::rootkits/lion.php
+bin/mjy             ! Lion Worm ::rootkits/lion.php
+bin/in.telnetd      ! Lion Worm ::rootkits/lion.php
+usr/info/torn       ! Lion Worm ::rootkits/lion.php
+*/1iOn\.sh          ! Lion Worm ::rootkits/lion.php
 
 # Bobkit
-usr/include/.../		! Bobkit Rootkit ::rootkits/bobkit.php
-usr/lib/.../			! Bobkit Rootkit ::rootkits/bobkit.php
-usr/sbin/.../			! Bobkit Rootkit ::rootkits/bobkit.php
-usr/bin/ntpsx			! Bobkit Rootkit ::rootkits/bobkit.php
-tmp/.bkp			    ! Bobkit Rootkit ::rootkits/bobkit.php
-usr/lib/.bkit-		    ! Bobkit Rootkit ::rootkits/bobkit.php
-*/bkit-	    		    ! Bobkit Rootkit ::rootkits/bobkit.php
+usr/include/.../        ! Bobkit Rootkit ::rootkits/bobkit.php
+usr/lib/.../            ! Bobkit Rootkit ::rootkits/bobkit.php
+usr/sbin/.../           ! Bobkit Rootkit ::rootkits/bobkit.php
+usr/bin/ntpsx           ! Bobkit Rootkit ::rootkits/bobkit.php
+tmp/.bkp                ! Bobkit Rootkit ::rootkits/bobkit.php
+usr/lib/.bkit-          ! Bobkit Rootkit ::rootkits/bobkit.php
+*/bkit-                 ! Bobkit Rootkit ::rootkits/bobkit.php
 
 # Hidrootkit
-var/lib/games/.k		! Hidr00tkit ::
+var/lib/games/.k        ! Hidr00tkit ::
 
- 
 # Ark
-dev/ptyxx			! Ark rootkit ::
+dev/ptyxx       ! Ark rootkit ::
 
-
-#Mithra Rootkit
-usr/lib/locale/uboot 		! Mithra`s rootkit ::
-
+# Mithra Rootkit
+usr/lib/locale/uboot        ! Mithra`s rootkit ::
 
 # Optickit
-usr/bin/xsf 			! OpticKit ::
-usr/bin/xchk 			! OpticKit ::
-
+usr/bin/xsf         ! OpticKit ::
+usr/bin/xchk        ! OpticKit ::
 
 # LOC rookit
-tmp/xp 				! LOC rookit ::
-tmp/kidd0.c 			! LOC rookit ::
-tmp/kidd0 			! LOC rookit ::
-
+tmp/xp          ! LOC rookit ::
+tmp/kidd0.c     ! LOC rookit ::
+tmp/kidd0       ! LOC rookit ::
 
 # TC2 worm
-usr/info/.tc2k	 		! TC2 Worm ::
-usr/bin/util 			! TC2 Worm ::
-usr/sbin/initcheck 		! TC2 Worm ::
-usr/sbin/ldb 			! TC2 Worm ::
-
+usr/info/.tc2k      ! TC2 Worm ::
+usr/bin/util        ! TC2 Worm ::
+usr/sbin/initcheck  ! TC2 Worm ::
+usr/sbin/ldb        ! TC2 Worm ::
 
 # Anonoiyng rootkit
-usr/sbin/mech 			! Anonoiyng rootkit ::
-usr/sbin/kswapd 		! Anonoiyng rootkit ::
-
+usr/sbin/mech       ! Anonoiyng rootkit ::
+usr/sbin/kswapd     ! Anonoiyng rootkit ::
 
 # SuckIt
-lib/.x				! SuckIt rootkit ::
+lib/.x              ! SuckIt rootkit ::
 */hide.log          ! Suckit rootkit ::
 lib/sk              ! SuckIT rootkit ::
 
-
 # Beastkit
-usr/local/bin/bin		! Beastkit rootkit ::rootkits/beastkit.php
-usr/man/.man10			! Beastkit rootkit ::rootkits/beastkit.php
-usr/sbin/arobia			! Beastkit rootkit ::rootkits/beastkit.php
-usr/lib/elm/arobia		! Beastkit rootkit ::rootkits/beastkit.php
-usr/local/bin/.../bktd	! Beastkit rootkit ::rootkits/beastkit.php
-
+usr/local/bin/bin       ! Beastkit rootkit ::rootkits/beastkit.php
+usr/man/.man10          ! Beastkit rootkit ::rootkits/beastkit.php
+usr/sbin/arobia         ! Beastkit rootkit ::rootkits/beastkit.php
+usr/lib/elm/arobia      ! Beastkit rootkit ::rootkits/beastkit.php
+usr/local/bin/.../bktd  ! Beastkit rootkit ::rootkits/beastkit.php
 
 # Tuxkit
-dev/tux				! Tuxkit rootkit ::rootkits/Tuxkit.php
-usr/bin/xsf			! Tuxkit rootkit ::rootkits/Tuxkit.php
-usr/bin/xchk		! Tuxkit rootkit ::rootkits/Tuxkit.php
+dev/tux             ! Tuxkit rootkit ::rootkits/Tuxkit.php
+usr/bin/xsf         ! Tuxkit rootkit ::rootkits/Tuxkit.php
+usr/bin/xchk        ! Tuxkit rootkit ::rootkits/Tuxkit.php
 */.file             ! Tuxkit rootkit ::rootkits/Tuxkit.php
 */.addr             ! Tuxkit rootkit ::rootkits/Tuxkit.php
 
-
 # Old rootkits
-usr/include/rpc/ ../kit		! Old rootkits ::rootkits/Old.php
-usr/include/rpc/ ../kit2	! Old rootkits ::rootkits/Old.php
-usr/doc/.sl			    ! Old rootkits ::rootkits/Old.php
-usr/doc/.sp			    ! Old rootkits ::rootkits/Old.php
-usr/doc/.statnet		! Old rootkits ::rootkits/Old.php
-usr/doc/.logdsys		! Old rootkits ::rootkits/Old.php
-usr/doc/.dpct			! Old rootkits ::rootkits/Old.php
-usr/doc/.gifnocfi		! Old rootkits ::rootkits/Old.php
-usr/doc/.dnif			! Old rootkits ::rootkits/Old.php
-usr/doc/.nigol			! Old rootkits ::rootkits/Old.php
-
+usr/include/rpc/ ../kit     ! Old rootkits ::rootkits/Old.php
+usr/include/rpc/ ../kit2    ! Old rootkits ::rootkits/Old.php
+usr/doc/.sl                 ! Old rootkits ::rootkits/Old.php
+usr/doc/.sp                 ! Old rootkits ::rootkits/Old.php
+usr/doc/.statnet            ! Old rootkits ::rootkits/Old.php
+usr/doc/.logdsys            ! Old rootkits ::rootkits/Old.php
+usr/doc/.dpct               ! Old rootkits ::rootkits/Old.php
+usr/doc/.gifnocfi           ! Old rootkits ::rootkits/Old.php
+usr/doc/.dnif               ! Old rootkits ::rootkits/Old.php
+usr/doc/.nigol              ! Old rootkits ::rootkits/Old.php
 
 # Kenga3 rootkit
 usr/include/. .         ! Kenga3 rootkit
 
-
 # ESRK rootkit
 usr/lib/tcl5.3          ! ESRK rootkit
-
 
 # Fu rootkit
 sbin/xc                 ! Fu rootkit
 usr/include/ivtype.h    ! Fu rootkit
 bin/.lib                ! Fu rootkit
 
-
 # ShKit rootkit
 lib/security/.config    ! ShKit rootkit
 etc/ld.so.hash          ! ShKit rootkit
-
 
 # AjaKit rootkit
 lib/.ligh.gh            ! AjaKit rootkit
@@ -316,53 +267,42 @@ dev/tux                 ! AjaKit rootkit
 dev/tux/.proc           ! AjaKit rootkit
 dev/tux/.file           ! AjaKit rootkit
 
-
 # zaRwT rootkit
 bin/imin                ! zaRwT rootkit
 bin/imout               ! zaRwT rootkit
-
 
 # Madalin rootkit
 usr/include/icekey.h    ! Madalin rootkit
 usr/include/iceconf.h   ! Madalin rootkit
 usr/include/iceseed.h   ! Madalin rootkit
 
-
 # shv5 rootkit XXX http://www.askaboutskating.com/forum/.../shv5/setup
 lib/libsh.so            ! shv5 rootkit
 usr/lib/libsh           ! shv5 rootkit
-
 
 # BMBL rootkit (http://www.giac.com/practical/GSEC/Steve_Terrell_GSEC.pdf)
 etc/.bmbl               ! BMBL rootkit
 etc/.bmbl/sk            ! BMBL rootkit
 
-
 # rootedoor rootkit
 */rootedoor             ! Rootedoor rootkit
-
 
 # 0vason rootkit
 */ovas0n                ! ovas0n rootkit ::/rootkits/ovason.php
 */ovason                ! ovas0n rootkit ::/rootkits/ovason.php
 
-
 # Rpimp reverse telnet
 */rpimp                 ! rpv21 (Reverse Pimpage)::/rootkits/rpimp.php
-
 
 # Cback Linux worm
 tmp/cback              ! cback worm ::/rootkits/cback.php
 tmp/derfiq             ! cback worm ::/rootkits/cback.php
 
-
 # aPa Kit (from rkhunter)
 usr/share/.aPa          ! Apa Kit
 
-
 # enye-sec Rootkit
 etc/.enyelkmHIDE^IT.ko  ! enye-sec Rootkit ::/rootkits/enye-sec.php
-
 
 # Override Rootkit
 dev/grid-hide-pid-     ! Override rootkit ::/rootkits/override.php
@@ -371,13 +311,11 @@ dev/grid-show-pids     ! Override rootkit ::/rootkits/override.php
 dev/grid-hide-port-    ! Override rootkit ::/rootkits/override.php
 dev/grid-unhide-port-  ! Override rootkit ::/rootkits/override.php
 
-
 # PHALANX rootkit
 usr/share/.home*        ! PHALANX rootkit ::
 usr/share/.home*/tty    ! PHALANX rootkit ::
 etc/host.ph1            ! PHALANX rootkit ::
 bin/host.ph1            ! PHALANX rootkit ::
-
 
 # ZK rootkit (http://honeyblog.org/junkyard/reports/redhat-compromise2.pdf)
 # and from chkrootkit
@@ -389,7 +327,6 @@ usr/X11R6/.zk/xfs               ! ZK rootkit ::
 usr/X11R6/.zk/echo              ! ZK rootkit ::
 etc/sysconfig/console/load.zk   ! ZK rootkit ::
 
-
 # Public sniffers
 */.linux-sniff          ! Sniffer log ::
 */sniff-l0g             ! Sniffer log ::
@@ -399,7 +336,6 @@ etc/sysconfig/console/load.zk   ! ZK rootkit ::
 */beshina               ! Sniffer log ::
 */.owned$               | Sniffer log ::
 
-
 # Solaris worm -
 # http://blogs.sun.com/security/entry/solaris_in_telnetd_worm_seen
 var/adm/.profile        ! Solaris Worm ::
@@ -407,52 +343,51 @@ var/spool/lp/.profile   ! Solaris Worm ::
 var/adm/sa/.adm         ! Solaris Worm ::
 var/spool/lp/admins/.lp ! Solaris Worm ::
 
-
-#Suspicious files
-etc/rc.d/init.d/rc.modules	! Suspicious file ::rootkits/Suspicious.php
-lib/ldd.so			        ! Suspicious file ::rootkits/Suspicious.php
-usr/man/muie			    ! Suspicious file ::rootkits/Suspicious.php
-usr/X11R6/include/pain		! Suspicious file ::rootkits/Suspicious.php
-usr/bin/sourcemask 		    ! Suspicious file ::rootkits/Suspicious.php
-usr/bin/ras2xm			    ! Suspicious file ::rootkits/Suspicious.php
-usr/bin/ddc			        ! Suspicious file ::rootkits/Suspicious.php
-usr/bin/jdc			        ! Suspicious file ::rootkits/Suspicious.php
-usr/sbin/in.telnet		    ! Suspicious file ::rootkits/Suspicious.php
-sbin/vobiscum			    ! Suspicious file ::rootkits/Suspicious.php
-usr/sbin/jcd			    ! Suspicious file ::rootkits/Suspicious.php
-usr/sbin/atd2			    ! Suspicious file ::rootkits/Suspicious.php
+# Suspicious files
+etc/rc.d/init.d/rc.modules  ! Suspicious file ::rootkits/Suspicious.php
+lib/ldd.so                  ! Suspicious file ::rootkits/Suspicious.php
+usr/man/muie                ! Suspicious file ::rootkits/Suspicious.php
+usr/X11R6/include/pain      ! Suspicious file ::rootkits/Suspicious.php
+usr/bin/sourcemask          ! Suspicious file ::rootkits/Suspicious.php
+usr/bin/ras2xm              ! Suspicious file ::rootkits/Suspicious.php
+usr/bin/ddc                 ! Suspicious file ::rootkits/Suspicious.php
+usr/bin/jdc                 ! Suspicious file ::rootkits/Suspicious.php
+usr/sbin/in.telnet          ! Suspicious file ::rootkits/Suspicious.php
+sbin/vobiscum               ! Suspicious file ::rootkits/Suspicious.php
+usr/sbin/jcd                ! Suspicious file ::rootkits/Suspicious.php
+usr/sbin/atd2               ! Suspicious file ::rootkits/Suspicious.php
 usr/bin/ishit               ! Suspicious file ::rootkits/Suspicious.php
-usr/bin/.etc	            ! Suspicious file ::rootkits/Suspicious.php
-usr/bin/xstat			    ! Suspicious file ::rootkits/Suspicious.php
-var/run/.tmp			    ! Suspicious file ::rootkits/Suspicious.php
-usr/man/man1/lib/.lib		! Suspicious file ::rootkits/Suspicious.php
-usr/man/man2/.man8 		    ! Suspicious file ::rootkits/Suspicious.php
-var/run/.pid			    ! Suspicious file ::rootkits/Suspicious.php
-lib/.so				        ! Suspicious file ::rootkits/Suspicious.php
-lib/.fx				        ! Suspicious file ::rootkits/Suspicious.php
-lib/lblip.tk			    ! Suspicious file ::rootkits/Suspicious.php
-usr/lib/.fx			        ! Suspicious file ::rootkits/Suspicious.php
-var/local/.lpd			    ! Suspicious file ::rootkits/Suspicious.php
-dev/rd/cdb			        ! Suspicious file ::rootkits/Suspicious.php
-dev/.rd/			        ! Suspicious file ::rootkits/Suspicious.php
-usr/lib/pt07			    ! Suspicious file ::rootkits/Suspicious.php
-usr/bin/atm			        ! Suspicious file ::rootkits/Suspicious.php
-tmp/.cheese			        ! Suspicious file ::rootkits/Suspicious.php
-dev/.arctic			        ! Suspicious file ::rootkits/Suspicious.php
-dev/.xman			        ! Suspicious file ::rootkits/Suspicious.php
-dev/.golf			        ! Suspicious file ::rootkits/Suspicious.php
-dev/srd0			        ! Suspicious file ::rootkits/Suspicious.php
-dev/ptyzx			        ! Suspicious file ::rootkits/Suspicious.php
-dev/ptyzg			        ! Suspicious file ::rootkits/Suspicious.php
-dev/xdf1			        ! Suspicious file ::rootkits/Suspicious.php
-dev/ttyop			        ! Suspicious file ::rootkits/Suspicious.php
-dev/ttyof			        ! Suspicious file ::rootkits/Suspicious.php
-dev/hd7				        ! Suspicious file ::rootkits/Suspicious.php
-dev/hdx1			        ! Suspicious file ::rootkits/Suspicious.php
-dev/hdx2			        ! Suspicious file ::rootkits/Suspicious.php
-dev/xdf2			        ! Suspicious file ::rootkits/Suspicious.php
-dev/ptyp			        ! Suspicious file ::rootkits/Suspicious.php
-dev/ptyr			        ! Suspicious file ::rootkits/Suspicious.php
+usr/bin/.etc                ! Suspicious file ::rootkits/Suspicious.php
+usr/bin/xstat               ! Suspicious file ::rootkits/Suspicious.php
+var/run/.tmp                ! Suspicious file ::rootkits/Suspicious.php
+usr/man/man1/lib/.lib       ! Suspicious file ::rootkits/Suspicious.php
+usr/man/man2/.man8          ! Suspicious file ::rootkits/Suspicious.php
+var/run/.pid                ! Suspicious file ::rootkits/Suspicious.php
+lib/.so                     ! Suspicious file ::rootkits/Suspicious.php
+lib/.fx                     ! Suspicious file ::rootkits/Suspicious.php
+lib/lblip.tk                ! Suspicious file ::rootkits/Suspicious.php
+usr/lib/.fx                 ! Suspicious file ::rootkits/Suspicious.php
+var/local/.lpd              ! Suspicious file ::rootkits/Suspicious.php
+dev/rd/cdb                  ! Suspicious file ::rootkits/Suspicious.php
+dev/.rd/                    ! Suspicious file ::rootkits/Suspicious.php
+usr/lib/pt07                ! Suspicious file ::rootkits/Suspicious.php
+usr/bin/atm                 ! Suspicious file ::rootkits/Suspicious.php
+tmp/.cheese                 ! Suspicious file ::rootkits/Suspicious.php
+dev/.arctic                 ! Suspicious file ::rootkits/Suspicious.php
+dev/.xman                   ! Suspicious file ::rootkits/Suspicious.php
+dev/.golf                   ! Suspicious file ::rootkits/Suspicious.php
+dev/srd0                    ! Suspicious file ::rootkits/Suspicious.php
+dev/ptyzx                   ! Suspicious file ::rootkits/Suspicious.php
+dev/ptyzg                   ! Suspicious file ::rootkits/Suspicious.php
+dev/xdf1                    ! Suspicious file ::rootkits/Suspicious.php
+dev/ttyop                   ! Suspicious file ::rootkits/Suspicious.php
+dev/ttyof                   ! Suspicious file ::rootkits/Suspicious.php
+dev/hd7                     ! Suspicious file ::rootkits/Suspicious.php
+dev/hdx1                    ! Suspicious file ::rootkits/Suspicious.php
+dev/hdx2                    ! Suspicious file ::rootkits/Suspicious.php
+dev/xdf2                    ! Suspicious file ::rootkits/Suspicious.php
+dev/ptyp                    ! Suspicious file ::rootkits/Suspicious.php
+dev/ptyr                    ! Suspicious file ::rootkits/Suspicious.php
 sbin/pback                  ! Suspicious file ::rootkits/Suspicious.php
 usr/man/man3/psid           ! Suspicious file ::rootkits/Suspicious.php
 proc/kset                   ! Suspicious file ::rootkits/Suspicious.php

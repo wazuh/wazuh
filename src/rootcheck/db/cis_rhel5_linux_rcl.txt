@@ -1,4 +1,3 @@
-#
 # OSSEC Linux Audit - (C) 2014
 #
 # Released under the same license as OSSEC.
@@ -31,7 +30,6 @@
 
 # TODO: URL is invalid currently
 
-
 # RC scripts location
 $rc_dirs=/etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
 
@@ -42,7 +40,6 @@ f:/etc/redhat-release -> r:^CentOS && r:release 5;
 f:/etc/redhat-release -> r:^Cloud && r:release 5;
 f:/etc/redhat-release -> r:^Oracle && r:release 5;
 f:/etc/redhat-release -> r:^Better && r:release 5;
-
 
 
 # 1.1.1 /tmp: partition
@@ -151,13 +148,13 @@ p:yum-updatesd;
 # 1.2.7 Verify package integrity (not scored)
 
 
-
 ###############################################
 # 1.3 Advanced Intrusion Detection Environment
 ###############################################
 #
 # Skipped, this control is obsoleted by OSSEC
 #
+
 
 ###############################################
 # 1.4 Configure SELinux
@@ -236,7 +233,7 @@ f:/etc/sysconfig/prelink -> !r:PRELINKING=no;
 
 
 ###############################################
-# 1.7  Use the Latest OS Release 
+# 1.7  Use the Latest OS Release
 ###############################################
 
 
@@ -274,10 +271,8 @@ d:$rc_dirs -> ^S\d\dypbind$;
 [CIS - RHEL5 2.1.5 - Disable standard boot services - NIS (server) Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 d:$rc_dirs -> ^S\d\dypserv$;
 
-
 # 2.1.7 Remove tftp (Scored)
 # TODO
-
 
 # 2.1.8 Remove tftp-server (Scored)
 [CIS - RHEL5 2.1.8 - tftpd enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
@@ -344,11 +339,9 @@ p:avahi-daemon;
 [CIS - RHEL5 3.2 - Set daemon umask - Default umask is higher than 027] [all] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/etc/init.d/functions -> !r:^# && r:^umask && <:umask 027;
 
-
 # 3.3 Remove X Windows (Scored)
 [CIS - RHEL5 3.3 - X11 not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/etc/inittab -> !r:^# && r:id:5;
-
 
 # 3.4 Disable Print Server - CUPS (Not Scored)
 
@@ -359,15 +352,12 @@ f:/etc/inittab -> !r:^# && r:id:5;
 #[CIS - RHEL5 3.6 - NTPD not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 # TODO.
 
-
 # 3.7 Remove LDAP (Not Scored)
-
 
 # 3.8 Disable NFS and RPC (Not Scored)
 [CIS - RHEL5 3.8 - Disable standard boot services - NFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 d:$rc_dirs -> ^S\d\dnfs$;
 d:$rc_dirs -> ^S\d\dnfslock$;
-
 
 # 3.9 Remove DNS Server (Not Scored)
 # TODO
@@ -404,7 +394,6 @@ d:$rc_dirs -> ^S\d\dsnmpd$;
 # TODO
 
 
-
 ###############################################
 # 4 Network Confiuration and Firewalls
 ###############################################
@@ -417,7 +406,6 @@ d:$rc_dirs -> ^S\d\dsnmpd$;
 [CIS - RHEL5 4.1.1 - Network parameters - IP Forwarding enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/proc/sys/net/ipv4/ip_forward -> 1;
 f:/proc/sys/net/ipv6/ip_forward -> 1;
-
 
 # 4.1.2 Disable Send Packet Redirects (Scored)
 [CIS - RHEL5 4.1.2 - Network parameters - IP send redirects enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
@@ -433,43 +421,37 @@ f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;
 [CIS - RHEL5 4.2.1 - Network parameters - Source routing accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/proc/sys/net/ipv4/conf/all/accept_source_route -> 1;
 
-
 # 4.2.2 Disable ICMP Redirect Acceptance (Scored)
 CIS - RHEL5 4.2.2 - Network parameters - ICMP redirects accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/proc/sys/net/ipv4/conf/all/accept_redirects -> 1;
 f:/proc/sys/net/ipv4/conf/default/accept_redirects -> 1;
-
 
 # 4.2.3 Disable Secure ICMP Redirect Acceptance (Scored)
 [CIS - RHEL5 4.2.3 - Network parameters - ICMP secure redirects accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/proc/sys/net/ipv4/conf/all/secure_redirects -> 1;
 f:/proc/sys/net/ipv4/conf/default/secure_redirects -> 1;
 
-
 # 4.2.4 Log Suspicious Packets (Scored)
 [CIS - RHEL5 4.2.4 - Network parameters - martians not logged] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/proc/sys/net/ipv4/conf/all/log_martians -> 0;
-
 
 # 4.2.5 Enable Ignore Broadcast Requests (Scored)
 [CIS - RHEL5 4.2.5 - Network parameters - ICMP broadcasts accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts -> 0;
 
-
 # 4.2.6 Enable Bad Error Message Protection (Scored)
 [CIS - RHEL5 4.2.6 - Network parameters - Bad error message protection not enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/proc/sys/net/ipv4/icmp_ignore_bogus_error_responses -> 0;
-
 
 # 4.2.7 Enable RFC-recommended Source Route Validation (Scored)
 [CIS - RHEL5 4.2.7 - Network parameters - RFC Source route validation not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/proc/sys/net/ipv4/conf/all/rp_filter -> 0;
 f:/proc/sys/net/ipv4/conf/default/rp_filter -> 0;
 
-
 # 4.2.8 Enable TCP SYN Cookies (Scored)
 [CIS - RHEL5 4.2.8 - Network parameters - SYN Cookies not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/proc/sys/net/ipv4/tcp_syncookies -> 0;
+
 
 ###############################################
 # 4.3 Wireless Networking
@@ -509,7 +491,7 @@ f:/proc/sys/net/ipv4/tcp_syncookies -> 0;
 # 4.5.5 Verify Permissions on /etc/hosts.deny (Scored)
 # TODO
 
- 
+
 ###############################################
 # 4.6 Uncommon Network Protocols
 ###############################################
@@ -543,6 +525,7 @@ f:/proc/sys/net/ipv4/tcp_syncookies -> 0;
 # 5.1.3 Configure syslog to Send Logs to a Remote Log Host (Scored)
 
 # 5.1.4 Accept Remote syslog Messages Only on Designated Log Hosts (Not Scored)
+
 
 ###############################################
 # 5.2 Configure rsyslog
@@ -644,7 +627,7 @@ f:/proc/sys/net/ipv4/tcp_syncookies -> 0;
 
 # 6.1.9 Set User/Group Owner and Permission on /etc/cron.d (Scored)
 
-# 6.1.10 Restrict at Daemon (Scored) 
+# 6.1.10 Restrict at Daemon (Scored)
 
 # 6.1.11 Restrict at/cron to Authorized Users (Scored)
 
@@ -676,11 +659,9 @@ f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;
 [CIS - RHEL5 6.2.8 - SSH Configuration - Root login allowed] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;
 
-
 # 6.2.9 Set SSH PermitEmptyPasswords to No (Scored)
 [CIS - RHEL5 6.2.9 - SSH Configuration - Empty passwords permitted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;
-
 
 # 6.2.10 Do Not Allow Users to Set Environment Options (Scored)
 
@@ -807,7 +788,6 @@ f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;
 [CIS - RHEL5 9.2.5 - Non-root account with uid 0] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
 
-
 # 9.2.6 Ensure root PATH Integrity (Scored)
 
 # 9.2.7 Check Permissions on User Home Directories (Scored)
@@ -840,8 +820,6 @@ f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
 
 # 9.2.21 Check for Presence of User .forward Files (Scored)
 
-
-
 # Other/Legacy Tests
 [CIS - RHEL5 X.X.X - Account with empty password present] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 f:/etc/shadow -> r:^\w+::;
@@ -864,8 +842,3 @@ d:$rc_dirs -> ^S\d\dnamed$;
 
 [CIS - RHEL5 X.X.X - Disable standard boot services - NetFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
 d:$rc_dirs -> ^S\d\dnetfs$;
-
-
-
-
-# EOF

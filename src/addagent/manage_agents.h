@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/addagent/manage_agents.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,15 +5,10 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- *
- * License details at the LICENSE file included with OSSEC or
- * online at: http://www.ossec.net/en/licensing.html
  */
-
 
 #include "shared.h"
 #include "sec.h"
-
 
 /** Prototypes **/
 
@@ -44,15 +36,12 @@ int NameExist(const char *u_name);
 char *getFullnameById(const char *id);
 char *OS_AddNewAgent(const char *name, const char *ip, const char *id);
 
-
-
 /* Print available agents */
 int print_agents(int print_status, int active_only, int csv_output);
 int list_agents(int cmdlist);
 
-/* clear a line */
+/* Clear a line */
 char *chomp(char *str);
-
 
 /* Shared variables */
 extern int restart_necessary;
@@ -62,7 +51,6 @@ extern time_t time3;
 extern long int rand1;
 extern long int rand2;
 extern fpos_t fp_pos;
-
 
 /* Internal defines */
 #define USER_SIZE       514
@@ -76,7 +64,6 @@ extern fpos_t fp_pos;
 #define PRINT_AVAILABLE     "\nAvailable agents: \n"
 #define PRINT_AGENT         "   ID: %s, Name: %s, IP: %s\n"
 #define PRINT_AGENT_STATUS  "   ID: %s, Name: %s, IP: %s, %s\n"
-
 
 /* Add new agent */
 #define ADD_NEW         "\n- Adding a new agent"\
@@ -118,13 +105,13 @@ extern fpos_t fp_pos;
                         "*** OBS: Do not include spaces or new lines.\n\n" \
                         "Paste it here (or '\\q' to quit): "
 
-/* extract key */
+/* Extract key */
 #define EXTRACT_KEY     "Provide the ID of the agent to extract " \
                         "the key (or '\\q' to quit): "
 #define EXTRACT_MSG     "\nAgent key information for '%s' is: \n%s\n"
 
 
-/* Commom errors */
+/* Common errors */
 #define ERROR_KEYS      "Unable to handle keys file. Exiting.\n"
 #define EXTRACT_ERROR   "Unable to extract agent key.\n"
 #define INPUT_LARGE     ARGV0 ": Input too large. Not adding it.\n"
@@ -152,4 +139,3 @@ extern fpos_t fp_pos;
 #define GMF_BUFF_ERROR  ARGV0 ": Could not get path because it is too long and was shrunk by (%d) characters with a max of (%d).\n"
 #define GMF_UNKN_ERROR  ARGV0 ": Could not run GetModuleFileName which returned (%ld).\n"
 
-/* EOF */

@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/analysisd.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,17 +7,12 @@
  * Foundation
  */
 
-/* v0.4(2005/09/08): Multiple additions.
- * v0.1:
- */
-
-
-
 #ifndef _LOGAUDIT__H
-
 #define _LOGAUDIT__H
 
 #include <sys/types.h>
+
+#include "decoders/decoder.h"
 
 /* Time structures */
 int today;
@@ -32,16 +24,14 @@ char prev_month[4];
 int __crt_hour;
 int __crt_wday;
 
-
-
-
 time_t c_time; /* Current time of event. Used everywhere */
 
 /* Local host name */
 char __shost[512];
 
-void *NULL_Decoder;
-
+OSDecoderInfo *NULL_Decoder;
 
 #define OSSEC_SERVER    "ossec-server"
-#endif
+
+#endif /* _LOGAUDIT__H */
+

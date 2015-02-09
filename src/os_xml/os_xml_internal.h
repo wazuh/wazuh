@@ -6,14 +6,15 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
+
 #ifndef OS_XML_INTERNAL_H_
 #define OS_XML_INTERNAL_H_
 
-#define _R_CONFS 	'<'
-#define _R_CONFE 	'>'
-#define _R_COM   	'!'
+#define _R_CONFS    '<'
+#define _R_CONFE    '>'
+#define _R_COM      '!'
 
-#define LEOF		-2
+#define LEOF        -2
 
 #define XML_MAXSIZE          2048
 #define XML_VARIABLE_MAXSIZE  256

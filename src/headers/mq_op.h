@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/mq_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,15 +7,14 @@
  * Foundation
  */
 
-
 #ifndef _MQ__H
 #define _MQ__H
 
 /* Default queues */
-#define LOCALFILE_MQ 	'1'
-#define SYSLOG_MQ	    '2'
+#define LOCALFILE_MQ    '1'
+#define SYSLOG_MQ       '2'
 #define HOSTINFO_MQ     '3'
-#define SECURE_MQ	    '4'
+#define SECURE_MQ       '4'
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
 
@@ -26,9 +22,9 @@
 #define MYSQL_MQ        'a'
 #define POSTGRESQL_MQ   'b'
 
+int StartMQ(const char *key, short int type) __attribute__((nonnull));
 
-int StartMQ(const char * key, short int type) __attribute__((nonnull));
-
-int SendMSG(int queue, const char * message, const char *locmsg, char loc) __attribute__((nonnull));
+int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
 
 #endif
+

@@ -1,5 +1,3 @@
-/*      $OSSEC, os_crypto/bf_op.h, v0.1, 2004/08/09, Daniel B. Cid$      */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,21 +7,18 @@
  * Foundation
  */
 
-/* OS_crypto/blowfish Library.
- * APIs for many crypto operations.
+/* OS_crypto/blowfish Library
+ * APIs for many crypto operations
  */
 
 #ifndef __BF_OP_H
-
 #define __BF_OP_H
 
 #define OS_ENCRYPT      1
 #define OS_DECRYPT      0
 
-
-int OS_BF_Str(const char * input, char *output, const char *charkey,
-                            long size, short int action) __attribute((nonnull));
+int OS_BF_Str(const char *input, char *output, const char *charkey,
+              long size, short int action) __attribute((nonnull));
 
 #endif
 
-/* EOF */
