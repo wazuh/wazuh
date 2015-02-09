@@ -15,21 +15,20 @@
 #include "decoders/decoder.h"
 
 /* Time structures */
-int today;
-int thishour;
+extern int today;
+extern int thishour;
+extern int prev_year;
+extern char prev_month[4];
 
-int prev_year;
-char prev_month[4];
+extern int __crt_hour;
+extern int __crt_wday;
 
-int __crt_hour;
-int __crt_wday;
-
-time_t c_time; /* Current time of event. Used everywhere */
+extern time_t c_time; /* Current time of event. Used everywhere */
 
 /* Local host name */
-char __shost[512];
+extern char __shost[512];
 
-OSDecoderInfo *NULL_Decoder;
+extern OSDecoderInfo *NULL_Decoder;
 
 #define OSSEC_SERVER    "ossec-server"
 

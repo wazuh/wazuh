@@ -22,6 +22,8 @@ The current stable releases are available on the ossec website.
 The development version is hosted on GitHub and just a simple git clone away. 
 
 [![Build Status](https://travis-ci.org/ossec/ossec-hids.png?branch=master)](https://travis-ci.org/ossec/ossec-hids)
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/1847/badge.svg)](https://scan.coverity.com/projects/1847)
+
 
 ## Quick install 
 

@@ -13,7 +13,7 @@
 #include "eventinfo.h"
 #include "active-response.h"
 
-void OS_Exec(int *execq, int *arq, Eventinfo *lf, active_response *ar);
+void OS_Exec(int execq, int arq, const Eventinfo *lf, const active_response *ar);
 
 #endif
 

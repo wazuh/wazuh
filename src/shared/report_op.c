@@ -389,7 +389,7 @@ void os_ReportdStart(report_filter *r_filter)
         fileq->fp = fopen(r_filter->filename, "r");
         if (!fileq->fp) {
             merror("%s: ERROR: Unable to open alerts file to generate report.", __local_name);
-            return;
+            goto cleanup;
         }
         if (r_filter->fp) {
             __g_rtype = r_filter->fp;
@@ -406,6 +406,23 @@ void os_ReportdStart(report_filter *r_filter)
     r_filter->top_group = OSStore_Create();
     r_filter->top_location = OSStore_Create();
     r_filter->top_files = OSStore_Create();
+
+    if (!r_filter->top_user || !r_filter->top_srcip || !r_filter->top_level || !r_filter->top_rule
+            || !r_filter->top_group || !r_filter->top_location || !r_filter->top_files) {
+        merror(MEM_ERROR, __local_name, errno, strerror((errno)));
+
+        OSStore_Free(r_filter->top_user);
+        OSStore_Free(r_filter->top_srcip);
+        OSStore_Free(r_filter->top_level);
+        OSStore_Free(r_filter->top_rule);
+        OSStore_Free(r_filter->top_group);
+        OSStore_Free(r_filter->top_location);
+        OSStore_Free(r_filter->top_files);
+
+        goto cleanup;
+    }
+
+
 
     Init_FileQueue(fileq, p, CRALERT_READ_ALL | CRALERT_FP_SET);
 
@@ -506,6 +523,8 @@ void os_ReportdStart(report_filter *r_filter)
         }
     }
 
+
+
     /* No report available */
     if (alerts_filtered == 0) {
         if (!r_filter->report_name) {
@@ -513,7 +532,8 @@ void os_ReportdStart(report_filter *r_filter)
         } else {
             merror("%s: INFO: Report '%s' completed and zero alerts post-filter.", __local_name, r_filter->report_name);
         }
-        return;
+
+        goto cleanup;
     }
 
     if (r_filter->report_name) {
@@ -545,33 +565,13 @@ void os_ReportdStart(report_filter *r_filter)
     OSStore_Sort(r_filter->top_rule, _os_report_sort_compare);
     OSStore_Sort(r_filter->top_files, _os_report_sort_compare);
 
-    if (r_filter->top_srcip) {
-        os_report_printtop(r_filter->top_srcip, "Source ip", 0);
-    }
-
-    if (r_filter->top_user) {
-        os_report_printtop(r_filter->top_user, "Username", 0);
-    }
-
-    if (r_filter->top_level) {
-        os_report_printtop(r_filter->top_level, "Level", 0);
-    }
-
-    if (r_filter->top_group) {
-        os_report_printtop(r_filter->top_group, "Group", 0);
-    }
-
-    if (r_filter->top_location) {
-        os_report_printtop(r_filter->top_location, "Location", 0);
-    }
-
-    if (r_filter->top_rule) {
-        os_report_printtop(r_filter->top_rule, "Rule", 0);
-    }
-
-    if (r_filter->top_files) {
-        os_report_printtop(r_filter->top_files, "Filenames", 0);
-    }
+    os_report_printtop(r_filter->top_srcip, "Source ip", 0);
+    os_report_printtop(r_filter->top_user, "Username", 0);
+    os_report_printtop(r_filter->top_level, "Level", 0);
+    os_report_printtop(r_filter->top_group, "Group", 0);
+    os_report_printtop(r_filter->top_location, "Location", 0);
+    os_report_printtop(r_filter->top_rule, "Rule", 0);
+    os_report_printtop(r_filter->top_files, "Filenames", 0);
 
     /* Print related events */
     if (r_filter->related_srcip)
@@ -620,6 +620,15 @@ void os_ReportdStart(report_filter *r_filter)
         }
         free(data_to_clean);
         data_to_clean = NULL;
+    }
+
+    cleanup:
+    if (fileq) {
+        if (fileq->fp && fileq->fp != stdin) {
+            fclose(fileq->fp);
+        }
+
+        free(fileq);
     }
 }
 

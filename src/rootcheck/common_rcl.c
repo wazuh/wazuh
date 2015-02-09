@@ -317,12 +317,6 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
     do {
         int g_found = 0;
 
-        /* Get entry name */
-        if (name == NULL) {
-            merror(INVALID_RKCL_NAME, ARGV0, "NULL");
-            goto clean_return;
-        }
-
         debug2("%s: DEBUG: Checking entry: '%s'.", ARGV0, name);
 
         /* Get each value */

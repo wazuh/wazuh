@@ -7,10 +7,11 @@
  * Foundation.
  */
 
-#include "eventinfo.h"
+#include "dodiff.h"
+
 #include "shared.h"
 
-static int _add2last(char *str, int strsize, char *file)
+static int _add2last(const char *str, size_t strsize, const char *file)
 {
     FILE *fp;
 
@@ -65,9 +66,9 @@ static int _add2last(char *str, int strsize, char *file)
     return (1);
 }
 
-int doDiff(RuleInfo *rule, Eventinfo *lf)
+int doDiff(RuleInfo *rule, const Eventinfo *lf)
 {
-    int date_of_change;
+    time_t date_of_change;
     char *htpt = NULL;
     char flastfile[OS_SIZE_2048 + 1];
     char flastcontent[OS_SIZE_8192 + 1];
@@ -96,7 +97,7 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
 
     /* lf->size can't be too long */
     if (lf->size >= OS_SIZE_8192) {
-        merror("%s: ERROR: event size (%d) too long for diff.", ARGV0, lf->size);
+        merror("%s: ERROR: event size (%ld) too long for diff.", ARGV0, lf->size);
         return (0);
     }
 
@@ -110,7 +111,7 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
         return (0);
     } else {
         FILE *fp;
-        int n;
+        size_t n;
         fp = fopen(flastfile, "r");
         if (!fp) {
             merror(FOPEN_ERROR, ARGV0, flastfile, errno, strerror(errno));

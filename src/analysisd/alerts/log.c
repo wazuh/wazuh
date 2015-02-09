@@ -101,8 +101,8 @@ static void GeoIP_Lookup(const char *ip, char *buffer, const size_t length)
 #endif /* LIBGEOIP_ENABLED */
 
 /* Drop/allow patterns */
-OSMatch FWDROPpm;
-OSMatch FWALLOWpm;
+static OSMatch FWDROPpm;
+static OSMatch FWALLOWpm;
 
 /* Allow custom alert output tokens */
 typedef enum e_custom_alert_tokens_id {
@@ -121,7 +121,7 @@ typedef enum e_custom_alert_tokens_id {
     CUSTOM_ALERT_TOKEN_LAST
 } CustomAlertTokenID;
 
-char CustomAlertTokenName[CUSTOM_ALERT_TOKEN_LAST][15] = {
+static const char CustomAlertTokenName[CUSTOM_ALERT_TOKEN_LAST][15] = {
     { "$TIMESTAMP" },
     { "$FTELL" },
     { "$RULEALERT" },
@@ -140,7 +140,7 @@ char CustomAlertTokenName[CUSTOM_ALERT_TOKEN_LAST][15] = {
  * The string must be null terminated and contain
  * any necessary new lines, tabs, etc.
  */
-void OS_Store(Eventinfo *lf)
+void OS_Store(const Eventinfo *lf)
 {
     if (strcmp(lf->location, "ossec-keepalive") == 0) {
         return;
@@ -181,7 +181,7 @@ void OS_LogOutput(Eventinfo *lf)
     }
 #endif
     printf(
-        "** Alert %d.%ld:%s - %s\n"
+        "** Alert %ld.%ld:%s - %s\n"
         "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
         "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
         lf->time,
@@ -266,7 +266,7 @@ void OS_Log(Eventinfo *lf)
 #endif
     /* Writing to the alert log file */
     fprintf(_aflog,
-            "** Alert %d.%ld:%s - %s\n"
+            "** Alert %ld.%ld:%s - %s\n"
             "%d %s %02d %s %s%s%s\nRule: %d (level %d) -> '%s'"
             "%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n%.1256s\n",
             lf->time,
@@ -333,7 +333,7 @@ void OS_Log(Eventinfo *lf)
     return;
 }
 
-void OS_CustomLog(Eventinfo *lf, char *format)
+void OS_CustomLog(const Eventinfo *lf, const char *format)
 {
     char *log;
     char *tmp_log;
@@ -342,7 +342,7 @@ void OS_CustomLog(Eventinfo *lf, char *format)
     /* Replace all the tokens */
     os_strdup(format, log);
 
-    snprintf(tmp_buffer, 1024, "%d", lf->time);
+    snprintf(tmp_buffer, 1024, "%ld", lf->time);
     tmp_log = searchAndReplace(log, CustomAlertTokenName[CUSTOM_ALERT_TOKEN_TIMESTAMP], tmp_buffer);
     if (log) {
         os_free(log);

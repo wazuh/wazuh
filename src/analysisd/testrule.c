@@ -26,34 +26,15 @@
 #include "accumulator.h"
 #include "analysisd.h"
 #include "fts.h"
+#include "cleanevent.h"
 
 /** Internal Functions **/
 void OS_ReadMSG(char *ut_str);
+
+/* Analysisd function */
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
 
-/** External functions prototypes (only called here) **/
-
-/* For config  */
-int GlobalConf(char *cfgfile);
-
-/* For rules */
-int Rules_OP_ReadRules(char *cfgfile);
-int _setlevels(RuleNode *node, int nnode);
-int AddHash_Rule(RuleNode *node);
-
-/* For cleanmsg */
-int OS_CleanMSG(char *msg, Eventinfo *lf);
-
-/* for FTS */
-int AddtoIGnore(Eventinfo *lf);
-int IGnore(Eventinfo *lf);
-
-/* For decoders */
 void DecodeEvent(Eventinfo *lf);
-
-/* For Decoders */
-int ReadDecodeXML(char *file);
-
 
 /* Print help statement */
 __attribute__((noreturn))
@@ -81,8 +62,8 @@ int main(int argc, char **argv)
     int test_config = 0;
     int c = 0;
     char *ut_str = NULL;
-    char *dir = DEFAULTDIR;
-    char *cfg = DEFAULTCPATH;
+    const char *dir = DEFAULTDIR;
+    const char *cfg = DEFAULTCPATH;
 
     /* Set the name */
     OS_SetName(ARGV0);
@@ -301,7 +282,6 @@ int main(int argc, char **argv)
 __attribute__((noreturn))
 void OS_ReadMSG(char *ut_str)
 {
-    int i;
     char msg[OS_MAXSTR + 1];
     int exit_code = 0;
     char *ut_alertlevel = NULL;
@@ -459,7 +439,7 @@ void OS_ReadMSG(char *ut_str)
 
 #ifdef TESTRULE
                 if (!alert_only) {
-                    char *(ruleinfodetail_text[]) = {"Text", "Link", "CVE", "OSVDB", "BUGTRACKID"};
+                    const char *(ruleinfodetail_text[]) = {"Text", "Link", "CVE", "OSVDB", "BUGTRACKID"};
                     print_out("\n**Phase 3: Completed filtering (rules).");
                     print_out("       Rule id: '%d'", currently_rule->sigid);
                     print_out("       Level: '%d'", currently_rule->level);
@@ -529,7 +509,7 @@ void OS_ReadMSG(char *ut_str)
 
                 /* Group list */
                 else if (currently_rule->group_prev_matched) {
-                    i = 0;
+                    unsigned int i = 0;
 
                     while (i < currently_rule->group_prev_matched_sz) {
                         if (!OSList_AddData(
@@ -551,6 +531,8 @@ void OS_ReadMSG(char *ut_str)
                 char holder[1024];
                 holder[1] = '\0';
                 exit_code = 3;
+                print_out("lf->decoder_info->name: '%s'", lf->decoder_info->name);
+                print_out("ut_decoder_name       : '%s'", ut_decoder_name);
                 if (lf->decoder_info->name != NULL && strcasecmp(ut_decoder_name, lf->decoder_info->name) == 0) {
                     exit_code--;
                     snprintf(holder, 1023, "%d", currently_rule->sigid);
@@ -562,6 +544,11 @@ void OS_ReadMSG(char *ut_str)
                             printf("%d\n", exit_code);
                         }
                     }
+                } else if (lf->decoder_info->name != NULL) {
+                    print_out("decoder matched : '%s'", lf->decoder_info->name);
+                    print_out("decoder expected: '%s'", ut_decoder_name);
+                } else {
+                    print_out("decoder matched : 'NULL'");
                 }
             }
 

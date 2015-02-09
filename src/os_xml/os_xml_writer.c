@@ -278,7 +278,9 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out, unsigned int position,
                 int wret_code;
                 ungetc(c, fp_in);
                 ungetc(_R_CONFS, fp_in);
-                fseek(fp_out, -1, SEEK_CUR);
+                if (fseek(fp_out, -1, SEEK_CUR)) {
+                    return (-1);
+                }
 
                 if ((wret_code = _WReadElem(fp_in, fp_out, position + 1, parent + 1,
                                             nodes, val, node_pos)) < 0) {

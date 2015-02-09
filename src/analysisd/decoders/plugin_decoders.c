@@ -10,7 +10,7 @@
 #include "plugin_decoders.h"
 
 /* List of plugins. All three lists must be in the same order */
-char *(plugin_decoders[]) = {"PF_Decoder",
+const char *(plugin_decoders[]) = {"PF_Decoder",
                              "SymantecWS_Decoder",
                              "SonicWall_Decoder",
                              "OSSECAlert_Decoder",

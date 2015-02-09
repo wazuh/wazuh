@@ -12,6 +12,12 @@
 #include "eventinfo.h"
 #include "os_regex/os_regex.h"
 
+/* Global definitions */
+#ifdef TESTRULE
+int full_output;
+int alert_only;
+#endif
+
 
 /* Search last times a signature fired
  * Will look for only that specific signature.
@@ -27,7 +33,8 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
-        merror("%s: No sid search!! XXX", ARGV0);
+        merror("%s: ERROR: No sid search.", ARGV0);
+        return (NULL);
     }
 
     /* Get last node */
@@ -572,7 +579,7 @@ void Free_Eventinfo(Eventinfo *lf)
         OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched,
                               lf->sid_node_to_delete);
     } else if (lf->generated_rule && lf->generated_rule->group_prev_matched) {
-        int i = 0;
+        unsigned int i = 0;
 
         while (i < lf->generated_rule->group_prev_matched_sz) {
             OSList_DeleteOldestNode(lf->generated_rule->group_prev_matched[i]);

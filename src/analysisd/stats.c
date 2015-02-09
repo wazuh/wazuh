@@ -16,34 +16,37 @@
 #include "alerts/alerts.h"
 #include "headers/debug_op.h"
 
-char *(weekdays[]) = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
+/* Global definition */
+char __stats_comment[192];
+
+static const char *(weekdays[]) = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
                       "Friday", "Saturday"
                      };
 
-char *(l_month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug",
+static const char *(l_month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug",
                      "Sep", "Oct", "Nov", "Dec"
                     };
 
 /* Global variables */
 
 /* Hour 25 is internally used */
-int _RWHour[7][25];
-int _CWHour[7][25];
+static int _RWHour[7][25];
+static int _CWHour[7][25];
 
-int _RHour[25];
-int _CHour[25];
+static int _RHour[25];
+static int _CHour[25];
 
-int _cignorehour = 0;
-int _fired = 0;
-int _daily_errors = 0;
-int maxdiff = 0;
-int mindiff = 0;
-int percent_diff = 20;
+static int _cignorehour = 0;
+static int _fired = 0;
+static int _daily_errors = 0;
+static int maxdiff = 0;
+static int mindiff = 0;
+static int percent_diff = 20;
 
 /* Last msgs, to avoid floods */
-char *_lastmsg;
-char *_prevlast;
-char *_pprevlast;
+static char *_lastmsg;
+static char *_prevlast;
+static char *_pprevlast;
 
 
 static void print_totals(void)
@@ -96,7 +99,7 @@ static void print_totals(void)
  * If event_number < mindiff, return mindiff
  * If event_number > maxdiff, return maxdiff
  */
-int gethour(int event_number)
+static int gethour(int event_number)
 {
     int event_diff;
 
@@ -427,7 +430,7 @@ int Start_Hour()
 /* Check if the message received is repeated to avoid
  * floods of the same message
  */
-int LastMsg_Stats(char *log)
+int LastMsg_Stats(const char *log)
 {
     if (strcmp(log, _lastmsg) == 0) {
         return (1);
@@ -447,7 +450,7 @@ int LastMsg_Stats(char *log)
 /* If the message is not repeated, rearrange the last
  * received messages
  */
-void LastMsg_Change(char *log)
+void LastMsg_Change(const char *log)
 {
     /* Remove the last one */
     free(_pprevlast);

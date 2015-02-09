@@ -25,9 +25,9 @@
 /* Global variables -- not thread safe. If we ever multi thread
  * analysisd, these will need to be changed.
  */
-OSRegex *__sonic_regex_prid = NULL;
-OSRegex *__sonic_regex_sdip = NULL;
-OSRegex *__sonic_regex_prox = NULL;
+static OSRegex *__sonic_regex_prid = NULL;
+static OSRegex *__sonic_regex_sdip = NULL;
+static OSRegex *__sonic_regex_prox = NULL;
 
 
 void *SonicWall_Decoder_Init()
@@ -235,7 +235,7 @@ void *SonicWall_Decoder_Exec(Eventinfo *lf)
         if (__sonic_regex_prox->sub_strings[1] &&
                 __sonic_regex_prox->sub_strings[2]) {
             char *final_url;
-            int url_size = strlen(__sonic_regex_prox->sub_strings[1]) +
+            size_t url_size = strlen(__sonic_regex_prox->sub_strings[1]) +
                            strlen(__sonic_regex_prox->sub_strings[2]) + 2;
 
             os_calloc(url_size + 1, sizeof(char), final_url);

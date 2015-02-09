@@ -7,8 +7,8 @@
  * Foundation.
  */
 
-#include "shared.h"
 #include "eventinfo.h"
+#include "shared.h"
 #include "config.h"
 
 

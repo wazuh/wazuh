@@ -523,8 +523,8 @@ void win_read_vista_sec()
     char buf[OS_MAXSTR + 1];
     FILE *fp;
 
-    /* Vista security csv */
-    fp = fopen("vista_sec.csv", "r");
+    /* Vista security */
+    fp = fopen("vista_sec.txt", "r");
     if (!fp) {
         merror("%s: ERROR: Unable to read vista security descriptions.",
                ARGV0);

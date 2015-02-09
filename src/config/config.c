@@ -273,6 +273,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
             if (chld_node) {
                 if (passed_agent_test && read_main_elements(&xml, modules, chld_node, d1, d2) < 0) {
                     merror(CONFIG_ERROR, __local_name, cfgfile);
+                    OS_ClearNode(chld_node);
                     return (OS_INVALID);
                 }
 

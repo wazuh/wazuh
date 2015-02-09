@@ -41,7 +41,6 @@ char *getsharedfiles()
 
     if (OS_MD5_File(SHAREDCFG_FILE, md5sum) != 0) {
         md5sum[0] = 'x';
-        md5sum[1] = 'x';
         md5sum[1] = '\0';
     }
 
