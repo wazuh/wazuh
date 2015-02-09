@@ -7,25 +7,19 @@ notifications:
     secure: Cz1InEL5G+z2huuzilXe7BqfxlEjN4io5ylJa5jgPvGMlB5sIQZTQQ7PDrzcK0iwn+5xgDkXKwbNPV2k+NHNTtNFiuBrcnJbyeA8PjghtAw4hg/Vpl5+5ovySZT9pGSV7ySsA8nGD73hlcQFgWnYDhsugQ6UZyRXAN8vLLCLjPg=
 
 env:
-global:
-# The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
-#   via the "travis encrypt" command using the project repo's public key
-- secure: "XkLxuM/HGwMzFeCYwITwYM7s053L6JqpLlqJh2oxh9R1sGYy3KieQsmczKccaK+6JomcByBkVJlQFgzK6i5vbEhzZi9Fwa1Y6Hc9c+0Rmx5WHGoTQyPv+WojitM8CBv4DM2vPORlZSMSiI422w6WrjYb6viDaH+8mwhXvPNklP8="
-
-env:
-- DB=mysql OSSEC_TYPE=server GEOIP=yes
-- DB=mysql OSSEC_TYPE=server GEOIP=no
-- DB=pgsql OSSEC_TYPE=server GEOIP=yes
-- DB=pgsql OSSEC_TYPE=server GEOIP=no
-- DB=none OSSEC_TYPE=server GEOIP=yes
-- DB=none OSSEC_TYPE=server GEOIP=no
-- DB=none OSSEC_TYPE=server PRELUDE=yes ZEROMQ=yes PICVIZ=yes
-- DB=none OSSEC_TYPE=local GEOIP=no
-- DB=none OSSEC_TYPE=hybrid GEOIP=no
-- DB=none OSSEC_TYPE=agent GEOIP=no
-- DB=none OSSEC_TYPE=winagent GEOIP=no
+- OSSEC_TYPE=server   DB=mysql GEOIP=yes
+- OSSEC_TYPE=server   DB=mysql
+- OSSEC_TYPE=server   DB=pgsql GEOIP=yes
+- OSSEC_TYPE=server   DB=pgsql
+- OSSEC_TYPE=server   DB=none  GEOIP=yes
+- OSSEC_TYPE=server   DB=none
+- OSSEC_TYPE=server   DB=none  GEOIP=yes PRELUDE=yes ZEROMQ=yes PICVIZ=yes
+- OSSEC_TYPE=local    DB=none
+- OSSEC_TYPE=hybrid   DB=none
+- OSSEC_TYPE=agent    DB=none
+- OSSEC_TYPE=winagent DB=none
 - OSSEC_TYPE=test
-- OSSEC_TYPE=server RULES=test
+- OSSEC_TYPE=server   RULES=test
 
 
 compiler:
@@ -38,8 +32,18 @@ matrix:
   exclude:
     - compiler: clang
       env: DB=none OSSEC_TYPE=winagent GEOIP=no
-    - compiler: clang 
+    - compiler: clang
       env: OSSEC_TYPE=server RULES=test
+  include:
+    - os: osx
+      compiler: clang
+      env: DB=none OSSEC_TYPE=server PRELUDE=yes ZEROMQ=yes PICVIZ=yes
+    - os: osx
+      compiler: clang
+      env: OSSEC_TYPE=agent
+    - os: osx
+      compiler: clang
+      env: OSSEC_TYPE=test
 
 
 
@@ -64,9 +68,10 @@ script:
   && if [[ "${PRELUDE}" = "yes" ]]; then COMMAND="${COMMAND} USE_PRELUDE=1"; fi
   && if [[ "${PICVIZ}" = "yes" ]]; then COMMAND="${COMMAND} USE_PICVIZ=1"; fi
   && if [[ "${ZEROMQ}" = "yes" ]]; then COMMAND="${COMMAND} USE_ZEROMQ=1"; fi
-  && ( cd src/ && make --warn-undefined-variables ${COMMAND} settings && make --warn-undefined-variables ${COMMAND} -j )
+  && ( cd src/ && make --warn-undefined-variables ${COMMAND} settings && make --warn-undefined-variables ${COMMAND} build -j )
   && if ! [[ "${OSSEC_TYPE}" = "test" || "${OSSEC_TYPE}" = "winagent" ]]; then ( cd src/ && sudo make --warn-undefined-variables ${COMMAND} install ) fi
 
+after_success:
 - if [[ "${OSSEC_TYPE}" == "test" ]]; then ( cd src/ && make --warn-undefined-variables test_valgrind ) fi
 - if [[ "${RULES}" == "test" ]]; then ( cd src/ && sudo make V=1 TARGET=server test-rules ) fi
 
@@ -82,13 +87,3 @@ deploy:
     all_branches: true
     repo: ossec/ossec-hids
     condition: $OSSEC_TYPE = winagent
-
-addons:
-  coverity_scan:
-    project:
-      name: "ossec/ossec-hids"
-      description: "Build submitted via Travis CI"
-      #TODO notification_email: 
-      build_command_prepend: "cd src/ && make clean"
-      build_command:   "make TARGET=server USE_ZEROMQ=yes USE_GEOIP=yes USE_PRELUDE=yes USE_OPENSSL=auto USE_INOTIFY=yes V=1 build -j2 && make clean && make TARGET=agent USE_OPENSSL=auto V=1 build -j2 && make clean && make TARGET=winagent V=1 build -j2"
-      branch_pattern: coverity_scan
