@@ -8,6 +8,7 @@
  */
 
 /* Hostinfo decoder */
+#include "decoder.h"
 
 #include "config.h"
 #include "os_regex/os_regex.h"
@@ -16,27 +17,27 @@
 
 #define HOSTINFO_FILE   "/queue/fts/hostinfo"
 #define HOST_HOST       "Host: "
-#define HOST_PORT       " open ports: "
+/*#define HOST_PORT       " open ports: "
 #define HOST_CHANGED    "Host information changed."
-#define HOST_NEW        "New host information added."
+#define HOST_NEW        "New host information added."*/
 #define PREV_OPEN       "Previously"
 
-/* Global variables */
-int hi_err = 0;
-int id_new = 0;
-int id_mod = 0;
-char _hi_buf[OS_MAXSTR + 1];
-FILE *_hi_fp = NULL;
+/* Local variables */
+static int hi_err = 0;
+static int id_new = 0;
+static int id_mod = 0;
+static char _hi_buf[OS_MAXSTR + 1];
+static FILE *_hi_fp = NULL;
 
 /* Hostinfo decoder */
-OSDecoderInfo *hostinfo_dec = NULL;
+static OSDecoderInfo *hostinfo_dec = NULL;
 
 
 /* Check if the string matches */
-static char *__go_after(char *x, char *y)
+static char *__go_after(char *x, const char *y)
 {
-    int x_s;
-    int y_s;
+    size_t x_s;
+    size_t y_s;
 
     /* X and Y must be not null */
     if (!x || !y) {
@@ -116,7 +117,7 @@ static FILE *HI_File(void)
 int DecodeHostinfo(Eventinfo *lf)
 {
     int changed = 0;
-    int bf_size;
+    size_t bf_size;
 
     char *ip;
     char *portss;

@@ -17,13 +17,13 @@
 
 #define ROOTCHECK_DIR    "/queue/rootcheck"
 
-/* Global variables */
-char *rk_agent_ips[MAX_AGENTS];
-FILE *rk_agent_fps[MAX_AGENTS];
-int rk_err;
+/* Local variables */
+static char *rk_agent_ips[MAX_AGENTS];
+static FILE *rk_agent_fps[MAX_AGENTS];
+static int rk_err;
 
 /* Rootcheck decoder */
-OSDecoderInfo *rootcheck_dec = NULL;
+static OSDecoderInfo *rootcheck_dec = NULL;
 
 
 /* Initialize the necessary information to process the rootcheck information */
@@ -51,7 +51,7 @@ void RootcheckInit()
 }
 
 /* Return the file pointer to be used */
-FILE *RK_File(char *agent, int *agent_id)
+static FILE *RK_File(const char *agent, int *agent_id)
 {
     int i = 0;
     char rk_buf[OS_SIZE_1024 + 1];
@@ -176,7 +176,7 @@ int DecodeRootcheck(Eventinfo *lf)
             /* Matches, we need to upgrade last time saw */
             if (strcmp(lf->log, tmpstr) == 0) {
                 fsetpos(fp, &fp_pos);
-                fprintf(fp, "!%d", lf->time);
+                fprintf(fp, "!%ld", lf->time);
                 rootcheck_dec->fts = 0;
                 lf->decoder_info = rootcheck_dec;
                 return (1);
@@ -192,7 +192,7 @@ int DecodeRootcheck(Eventinfo *lf)
 
     /* Add the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
-    fprintf(fp, "!%d!%d %s\n", lf->time, lf->time, lf->log);
+    fprintf(fp, "!%ld!%ld %s\n", lf->time, lf->time, lf->log);
     fflush(fp);
 
     rootcheck_dec->fts = 0;

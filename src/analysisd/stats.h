@@ -10,10 +10,10 @@
 #ifndef _STAT__H
 #define _STAT__H
 
-void LastMsg_Change(char *log);
-int LastMsg_Stats(char *log);
+void LastMsg_Change(const char *log);
+int LastMsg_Stats(const char *log);
 
-char __stats_comment[192];
+extern char __stats_comment[192];
 
 void Update_Hour(void);
 int Check_Hour(void);

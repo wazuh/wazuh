@@ -13,8 +13,10 @@
 #include "config/config.h"
 #include "config/global-config.h"
 
-long int __crt_ftell; /* Global ftell pointer */
-_Config Config;       /* Global Config structure */
+extern long int __crt_ftell; /* Global ftell pointer */
+extern _Config Config;       /* Global Config structure */
+
+int GlobalConf(const char *cfgfile);
 
 #endif /* _CONFIG__H */
 

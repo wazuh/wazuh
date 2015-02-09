@@ -10,6 +10,9 @@
 #include "shared.h"
 #include "active-response.h"
 
+/* Active response commands */
+static OSList *ar_commands;
+OSList *active_responses;
 
 /* Initialize active response */
 void AR_Init()

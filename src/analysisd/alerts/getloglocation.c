@@ -10,12 +10,16 @@
 /* Get the log directory/file based on the day/month/year */
 
 #include "getloglocation.h"
+/* Global definitions */
+FILE *_eflog;
+FILE *_aflog;
+FILE *_fflog;
 
 /* Global variables */
-int  __crt_day;
-char __elogfile[OS_FLSIZE + 1];
-char __alogfile[OS_FLSIZE + 1];
-char __flogfile[OS_FLSIZE + 1];
+static int  __crt_day;
+static char __elogfile[OS_FLSIZE + 1];
+static char __alogfile[OS_FLSIZE + 1];
+static char __flogfile[OS_FLSIZE + 1];
 
 
 void OS_InitLog()
@@ -37,7 +41,7 @@ void OS_InitLog()
     umask(0027);
 }
 
-int OS_GetLogLocation(Eventinfo *lf)
+int OS_GetLogLocation(const Eventinfo *lf)
 {
     /* Check what directories to create
      * Check if the year directory is there

@@ -54,12 +54,14 @@ typedef struct _OSDecoderNode {
  */
 void OS_CreateOSDecoderList(void);
 int OS_AddOSDecoder(OSDecoderInfo *pi);
-OSDecoderNode *OS_GetFirstOSDecoder(char *pname);
-int getDecoderfromlist(char *name);
+OSDecoderNode *OS_GetFirstOSDecoder(const char *pname);
+int getDecoderfromlist(const char *name);
 int SetDecodeXML(void);
 void HostinfoInit(void);
 void SyscheckInit(void);
 void RootcheckInit(void);
+
+int ReadDecodeXML(const char *file);
 
 #endif
 

@@ -59,7 +59,7 @@ ListRule *OS_AddListRule(ListRule *first_rule_list, int lookup_type, int field, 
 
 ListNode *OS_GetFirstList(void);
 
-ListNode *OS_FindList(char *listname);
+ListNode *OS_FindList(const char *listname);
 
 void Lists_OP_CreateLists(void);
 

@@ -21,11 +21,14 @@
 #endif
 
 /* Internal functions */
-char *_loadmemory(char *at, char *str);
-OSStore *os_decoder_store = NULL;
+static char *_loadmemory(char *at, char *str);
+static int addDecoder2list(const char *name);
+static int os_setdecoderids(const char *p_name);
+static int ReadDecodeAttrs(char *const *names, char *const *values);
+static OSStore *os_decoder_store = NULL;
 
 
-int getDecoderfromlist(char *name)
+int getDecoderfromlist(const char *name)
 {
     if (os_decoder_store) {
         return (OSStore_GetPosition(os_decoder_store, name));
@@ -34,7 +37,7 @@ int getDecoderfromlist(char *name)
     return (0);
 }
 
-int addDecoder2list(char *name)
+static int addDecoder2list(const char *name)
 {
     if (os_decoder_store == NULL) {
         os_decoder_store = OSStore_Create();
@@ -53,7 +56,7 @@ int addDecoder2list(char *name)
     return (1);
 }
 
-int os_setdecoderids(char *p_name)
+static int os_setdecoderids(const char *p_name)
 {
     OSDecoderNode *node;
     OSDecoderNode *child_node;
@@ -111,7 +114,7 @@ int os_setdecoderids(char *p_name)
     return (1);
 }
 
-int ReadDecodeAttrs(char **names, char **values)
+static int ReadDecodeAttrs(char *const *names, char *const *values)
 {
     if (!names || !values) {
         return (0);
@@ -146,7 +149,7 @@ int ReadDecodeAttrs(char **names, char **values)
     return (AFTER_ERROR);
 }
 
-int ReadDecodeXML(char *file)
+int ReadDecodeXML(const char *file)
 {
     OS_XML xml;
     XML_NODE node = NULL;
@@ -154,20 +157,20 @@ int ReadDecodeXML(char *file)
     /* XML variables */
     /* These are the available options for the rule configuration */
 
-    char *xml_plugindecoder = "plugin_decoder";
-    char *xml_decoder = "decoder";
-    char *xml_decoder_name = "name";
-    char *xml_decoder_status = "status";
-    char *xml_usename = "use_own_name";
-    char *xml_parent = "parent";
-    char *xml_program_name = "program_name";
-    char *xml_prematch = "prematch";
-    char *xml_regex = "regex";
-    char *xml_order = "order";
-    char *xml_type = "type";
-    char *xml_fts = "fts";
-    char *xml_ftscomment = "ftscomment";
-    char *xml_accumulate = "accumulate";
+    const char *xml_plugindecoder = "plugin_decoder";
+    const char *xml_decoder = "decoder";
+    const char *xml_decoder_name = "name";
+    const char *xml_decoder_status = "status";
+    const char *xml_usename = "use_own_name";
+    const char *xml_parent = "parent";
+    const char *xml_program_name = "program_name";
+    const char *xml_prematch = "prematch";
+    const char *xml_regex = "regex";
+    const char *xml_order = "order";
+    const char *xml_type = "type";
+    const char *xml_fts = "fts";
+    const char *xml_ftscomment = "ftscomment";
+    const char *xml_accumulate = "accumulate";
 
     int i = 0;
     OSDecoderInfo *NULL_Decoder_tmp = NULL;
@@ -713,7 +716,7 @@ int SetDecodeXML()
 char *_loadmemory(char *at, char *str)
 {
     if (at == NULL) {
-        int strsize = 0;
+        size_t strsize = 0;
         if ((strsize = strlen(str)) < OS_SIZE_1024) {
             at = (char *) calloc(strsize + 1, sizeof(char));
             if (at == NULL) {
@@ -729,9 +732,9 @@ char *_loadmemory(char *at, char *str)
     }
     /* At is not null. Need to reallocate its memory and copy str to it */
     else {
-        int strsize = strlen(str);
-        int atsize = strlen(at);
-        int finalsize = atsize + strsize + 1;
+        size_t strsize = strlen(str);
+        size_t atsize = strlen(at);
+        size_t finalsize = atsize + strsize + 1;
         if (finalsize > OS_SIZE_1024) {
             merror(SIZE_ERROR, ARGV0, str);
             return (NULL);
