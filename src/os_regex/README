@@ -11,7 +11,7 @@ The following expressions are supported:
     \w  ->  A-Z, a-z, 0-9 characters
     \d  ->  0-9 characters
     \s  ->  For spaces " "
-    \p  ->  ()*+,-.:;<=>?[] (pontuation characters)
+    \p  ->  ()*+,-.:;<=>?[]!"'#$%&|{} (punctuation characters)
     \W  ->  For anything not \w
     \D  ->  For anything not \d
     \S  ->  For anything not \s
