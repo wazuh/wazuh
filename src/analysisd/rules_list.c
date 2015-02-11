@@ -10,11 +10,13 @@
 #include "shared.h"
 #include "rules.h"
 
-/* Rulenode global  */
-RuleNode *rulenode;
+/* Rulenode local  */
+static RuleNode *rulenode;
 
 /* _OS_Addrule: Internal AddRule */
-RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
+static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule);
+static int _AddtoRule(int sid, int level, int none, const char *group,
+               RuleNode *r_node, RuleInfo *read_rule);
 
 
 /* Create the RuleList */
@@ -32,7 +34,7 @@ RuleNode *OS_GetFirstRule()
 }
 
 /* Search all rules, including children */
-int _AddtoRule(int sid, int level, int none, char *group,
+static int _AddtoRule(int sid, int level, int none, const char *group,
                RuleNode *r_node, RuleInfo *read_rule)
 {
     int r_code = 0;
@@ -135,7 +137,7 @@ int OS_AddChild(RuleInfo *read_rule)
     /* Adding for if_sid */
     if (read_rule->if_sid) {
         int val = 0;
-        char *sid;
+        const char *sid;
 
         sid  = read_rule->if_sid;
 
@@ -200,7 +202,7 @@ int OS_AddChild(RuleInfo *read_rule)
 }
 
 /* Add a rule in the chain */
-RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
+static RuleNode *_OS_AddRule(RuleNode *_rulenode, RuleInfo *read_rule)
 {
     RuleNode *tmp_rulenode = _rulenode;
 
@@ -378,7 +380,7 @@ int OS_MarkGroup(RuleNode *r_node, RuleInfo *orig_rule)
         if (OSMatch_Execute(r_node->ruleinfo->group,
                             strlen(r_node->ruleinfo->group),
                             orig_rule->if_matched_group)) {
-            int rule_g = 0;
+            unsigned int rule_g = 0;
             if (r_node->ruleinfo->group_prev_matched) {
                 while (r_node->ruleinfo->group_prev_matched[rule_g]) {
                     rule_g++;

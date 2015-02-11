@@ -262,14 +262,14 @@ alert_data *GetAlertData(int flag, FILE *fp)
                     p++;
                 } else {
                     /* If p is null it is because strchr failed */
-                    merror("ZZZ: 1() Merror date or location not NULL");
+                    merror("%s: ERROR: date or location not NULL", __local_name);
                     goto l_error;
                 }
             }
 
             /* If not, str is date and p is the location */
             if (date || location || !p) {
-                merror("ZZZ Merror date or location not NULL or p is NULL");
+                merror("%s: ERROR: date or location not NULL or p is NULL", __local_name);
                 goto l_error;
             }
 
@@ -308,6 +308,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 }
 
                 p++;
+                free(comment);
                 os_strdup(p, comment);
 
                 /* Must have the closing \' */
@@ -324,6 +325,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_clearnl(str, p);
 
                 p = str + SRCIP_BEGIN_SZ;
+                free(srcip);
                 os_strdup(p, srcip);
             }
 #ifdef LIBGEOIP_ENABLED
@@ -331,6 +333,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             else if (strncmp(GEOIP_BEGIN_SRC, str, GEOIP_BEGIN_SRC_SZ) == 0) {
                 os_clearnl(str, p);
                 p = str + GEOIP_BEGIN_SRC_SZ;
+                free(geoipdatasrc);
                 os_strdup(p, geoipdatasrc);
             }
 #endif
@@ -346,6 +349,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_clearnl(str, p);
 
                 p = str + DSTIP_BEGIN_SZ;
+                free(dstip);
                 os_strdup(p, dstip);
             }
 #ifdef LIBGEOIP_ENABLED
@@ -353,6 +357,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
             else if (strncmp(GEOIP_BEGIN_DST, str, GEOIP_BEGIN_DST_SZ) == 0) {
                 os_clearnl(str, p);
                 p = str + GEOIP_BEGIN_DST_SZ;
+                free(geoipdatadst);
                 os_strdup(p, geoipdatadst);
             }
 #endif
@@ -368,6 +373,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_clearnl(str, p);
 
                 p = str + USER_BEGIN_SZ;
+                free(user);
                 os_strdup(p, user);
             }
             /* Old MD5 */
@@ -375,6 +381,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_clearnl(str, p);
 
                 p = str + OLDMD5_BEGIN_SZ;
+                free(old_md5);
                 os_strdup(p, old_md5);
             }
             /* New MD5 */
@@ -382,6 +389,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_clearnl(str, p);
 
                 p = str + NEWMD5_BEGIN_SZ;
+                free(new_md5);
                 os_strdup(p, new_md5);
             }
             /* Old SHA-1 */
@@ -389,6 +397,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_clearnl(str, p);
 
                 p = str + OLDSHA1_BEGIN_SZ;
+                free(old_sha1);
                 os_strdup(p, old_sha1);
             }
             /* New SHA-1 */
@@ -396,6 +405,7 @@ alert_data *GetAlertData(int flag, FILE *fp)
                 os_clearnl(str, p);
 
                 p = str + NEWSHA1_BEGIN_SZ;
+                free(new_sha1);
                 os_strdup(p, new_sha1);
             }
             /* It is a log message */
@@ -524,9 +534,12 @@ l_error:
     free(old_sha1);
     free(new_sha1);
     free(filename);
+#ifdef LIBGEOIP_ENABLED
+    free(geoipdatasrc);
+    free(geoipdatadst);
+#endif
 
     /* We need to clean end of file before returning */
     clearerr(fp);
     return (NULL);
 }
-

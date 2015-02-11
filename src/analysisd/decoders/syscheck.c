@@ -47,8 +47,8 @@ typedef struct __sdb {
 
 } _sdb; /* syscheck db information */
 
-/* Global variables */
-_sdb sdb;
+/* Local variables */
+static _sdb sdb;
 
 
 /* Initialize the necessary information to process the syscheck information */
@@ -95,7 +95,7 @@ void SyscheckInit()
 /* Check if the db is completed for that specific agent */
 #define DB_IsCompleted(x) (sdb.agent_cp[x][0] == '1')?1:0
 
-void __setcompleted(char *agent)
+static void __setcompleted(const char *agent)
 {
     FILE *fp;
 
@@ -109,7 +109,7 @@ void __setcompleted(char *agent)
     }
 }
 
-int __iscompleted(char *agent)
+static int __iscompleted(const char *agent)
 {
     FILE *fp;
 
@@ -125,7 +125,7 @@ int __iscompleted(char *agent)
 }
 
 /* Set the database of a specific agent as completed */
-void DB_SetCompleted(Eventinfo *lf)
+static void DB_SetCompleted(const Eventinfo *lf)
 {
     int i = 0;
 
@@ -150,7 +150,7 @@ void DB_SetCompleted(Eventinfo *lf)
 
 
 /* Return the file pointer to be used to verify the integrity */
-FILE *DB_File(char *agent, int *agent_id)
+static FILE *DB_File(const char *agent, int *agent_id)
 {
     int i = 0;
 
@@ -210,10 +210,10 @@ FILE *DB_File(char *agent, int *agent_id)
 }
 
 /* Search the DB for any entry related to the file being received */
-int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
+static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
 {
     int p = 0;
-    int sn_size;
+    size_t sn_size;
     int agent_id;
 
     char *saved_sum;
@@ -334,7 +334,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
         /* Add the new entry at the end of the file */
         fseek(fp, 0, SEEK_END);
-        fprintf(fp, "%c%c%c%s !%d %s\n",
+        fprintf(fp, "%c%c%c%s !%ld %s\n",
                 '!',
                 p >= 1 ? '!' : '+',
                 p == 2 ? '!' : (p > 2) ? '?' : '+',
@@ -362,7 +362,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
             int oldperm = 0, newperm = 0;
 
             /* Provide more info about the file change */
-            char *oldsize = NULL, *newsize = NULL;
+            const char *oldsize = NULL, *newsize = NULL;
             char *olduid = NULL, *newuid = NULL;
             char *c_oldperm = NULL, *c_newperm = NULL;
             char *oldgid = NULL, *newgid = NULL;
@@ -580,7 +580,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
 
     /* If we reach here, this file is not present in our database */
     fseek(fp, 0, SEEK_END);
-    fprintf(fp, "+++%s !%d %s\n", c_sum, lf->time, f_name);
+    fprintf(fp, "+++%s !%ld %s\n", c_sum, lf->time, f_name);
     fflush(fp);
 
     /* Alert if configured to notify on new files */
@@ -614,7 +614,7 @@ int DB_Search(char *f_name, char *c_sum, Eventinfo *lf)
  */
 int DecodeSyscheck(Eventinfo *lf)
 {
-    char *c_sum;
+    const char *c_sum;
     char *f_name;
 
     /* Every syscheck message must be in the following format:

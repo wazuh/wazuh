@@ -7,15 +7,16 @@
  * Foundation.
  */
 
+#include "cleanevent.h"
+
 #include "shared.h"
 #include "os_regex/os_regex.h"
-#include "eventinfo.h"
 #include "analysisd.h"
 #include "fts.h"
 #include "config.h"
 
 /* To translate between month (int) to month (char) */
-char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
                   };
 
@@ -23,7 +24,7 @@ char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 /* Format a received message in the Eventinfo structure */
 int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
-    int loglen;
+    size_t loglen;
     char *pieces;
     struct tm *p;
 

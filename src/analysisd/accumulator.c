@@ -15,13 +15,37 @@
 #include "accumulator.h"
 #include "eventinfo.h"
 
-/* Global variables */
-OSHash *acm_store = NULL;
+/* Local variables */
+static OSHash *acm_store = NULL;
 
 /* Counters for Purging */
-int  acm_lookups = 0;
-int  acm_purge_ts = 0;
+static int    acm_lookups = 0;
+static time_t acm_purge_ts = 0;
 
+/* Accumulator Constants */
+#define OS_ACM_EXPIRE_ELM      120
+#define OS_ACM_PURGE_INTERVAL  300
+#define OS_ACM_PURGE_COUNT     200
+
+/* Accumulator Max Values */
+#define OS_ACM_MAXKEY 256
+#define OS_ACM_MAXELM 81
+
+typedef struct _OS_ACM_Store {
+    time_t timestamp;
+    char *dstuser;
+    char *srcuser;
+    char *dstip;
+    char *srcip;
+    char *dstport;
+    char *srcport;
+    char *data;
+} OS_ACM_Store;
+
+/* Internal Functions */
+static int acm_str_replace(char **dst, const char *src);
+static OS_ACM_Store *InitACMStore(void);
+static void FreeACMStore(OS_ACM_Store *obj);
 
 /* Start the Accumulator module */
 int Accumulate_Init()
@@ -56,7 +80,7 @@ Eventinfo *Accumulate(Eventinfo *lf)
     char _key[OS_ACM_MAXKEY];
     OS_ACM_Store *stored_data = 0;
 
-    int  current_ts;
+    time_t  current_ts;
     struct timeval tp;
 
     if ( lf == NULL ) {
@@ -192,7 +216,7 @@ Eventinfo *Accumulate(Eventinfo *lf)
 void Accumulate_CleanUp()
 {
     struct timeval tp;
-    int current_ts = 0;
+    time_t current_ts = 0;
     int expired = 0;
 
     OSHashNode *curr;
@@ -230,7 +254,7 @@ void Accumulate_CleanUp()
             /* Check for a valid element */
             if ( stored_data != NULL ) {
                 /* Check for expiration */
-                debug2("accumulator: DEBUG: CleanUp() elm:%d, curr:%d", stored_data->timestamp, current_ts);
+                debug2("accumulator: DEBUG: CleanUp() elm:%ld, curr:%ld", stored_data->timestamp, current_ts);
                 if ( stored_data->timestamp < current_ts - OS_ACM_EXPIRE_ELM ) {
                     debug2("accumulator: DEBUG: CleanUp() Expiring '%s'", key);
                     if ( OSHash_Delete(acm_store, key) != NULL ) {
@@ -290,12 +314,12 @@ int acm_str_replace(char **dst, const char *src)
     }
 
     /* Don't overwrite something we already know */
-    if (dst != NULL && *dst != NULL && **dst != '\0') {
+    if (*dst != NULL && **dst != '\0') {
         return -1;
     }
 
     /* Make sure we have data to write */
-    int slen = strlen(src);
+    size_t slen = strlen(src);
     if ( slen <= 0  || slen > OS_ACM_MAXELM - 1 ) {
         return -1;
     }

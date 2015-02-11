@@ -12,14 +12,14 @@
 #include "fts.h"
 #include "eventinfo.h"
 
-/* Global variables */
-unsigned int fts_minsize_for_str = 0;
+/* Local variables */
+static unsigned int fts_minsize_for_str = 0;
 
-OSList *fts_list = NULL;
-OSHash *fts_store = NULL;
+static OSList *fts_list = NULL;
+static OSHash *fts_store = NULL;
 
-FILE *fp_list = NULL;
-FILE *fp_ignore = NULL;
+static FILE *fp_list = NULL;
+static FILE *fp_ignore = NULL;
 
 
 /* Start the FTS module */

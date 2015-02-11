@@ -28,6 +28,11 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
     _Config *Config;
     Config = (_Config *)configp;
 
+    if (!Config) {
+        merror("%s: ERROR: Configuration handle is NULL.", __local_name);
+        return (OS_INVALID);
+    }
+
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL, __local_name);
@@ -57,13 +62,9 @@ int Read_Alerts(XML_NODE node, void *configp, __attribute__((unused)) void *mail
         /* Enable GeoIP */
         else if (strcmp(node[i]->element, xml_log_geoip) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->loggeoip = 1;
-                }
+                Config->loggeoip = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->loggeoip = 0;
-                }
+                Config->loggeoip = 0;
             } else {
                 merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
                 return (OS_INVALID);

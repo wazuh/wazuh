@@ -41,7 +41,7 @@ int Lists_OP_LoadList(char *listfile)
         snprintf(a_filename, OS_MAXSTR - 1, "%s", b_filename);
     }
     if ((holder = strstr(a_filename, ".cdb"))) {
-        snprintf(b_filename, (int)(holder - a_filename) + 1, "%s", a_filename);
+        snprintf(b_filename, (size_t)(holder - a_filename) + 1, "%s", a_filename);
         snprintf(a_filename, OS_MAXSTR - 1, "%s", b_filename);
     }
 

@@ -48,13 +48,13 @@ typedef struct _Eventinfo {
     OSListNode *sid_node_to_delete;
 
     /* Extract when the event fires a rule */
-    int size;
-    int p_name_size;
+    size_t size;
+    size_t p_name_size;
 
     /* Other internal variables */
-    short int matched;
+    int matched;
 
-    int time;
+    time_t time;
     int day;
     int year;
     char hour[10];
@@ -84,8 +84,8 @@ typedef struct _EventNode {
 } EventNode;
 
 #ifdef TESTRULE
-int full_output;
-int alert_only;
+extern int full_output;
+extern int alert_only;
 #endif
 
 /* Types of events (from decoders) */
