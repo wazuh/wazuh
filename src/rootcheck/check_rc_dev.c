@@ -163,7 +163,7 @@ void check_rc_dev(const char *basedir)
 #else
 
 /* Not relevant on Windows */
-void check_rc_dev(char *basedir)
+void check_rc_dev(__attribute__((unused)) char *basedir)
 {
     return;
 }

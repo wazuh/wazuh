@@ -58,8 +58,9 @@ int Read_Rootcheck_Config(const char *cfgfile)
     const char *(xml_rootkit_winmalware[]) = {xml_rootcheck, "windows_malware", NULL};
     const char *(xml_scanall[]) = {xml_rootcheck, "scanall", NULL};
     const char *(xml_readall[]) = {xml_rootcheck, "readall", NULL};
+#ifdef OSSECHIDS
     const char *(xml_time[]) = {xml_rootcheck, "frequency", NULL};
-
+#endif
     const char *(xml_check_dev[]) = {xml_rootcheck, "check_dev", NULL};
     const char *(xml_check_files[]) = {xml_rootcheck, "check_files", NULL};
     const char *(xml_check_if[]) = {xml_rootcheck, "check_if", NULL};
@@ -75,8 +76,10 @@ int Read_Rootcheck_Config(const char *cfgfile)
     const char *(xml_check_unixaudit[]) = {xml_rootcheck, "check_unixaudit", NULL};
 #endif
 
+#ifdef OSSECHIDS
     /* :) */
     xml_time[2] = NULL;
+#endif
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
         merror("config_op: XML error: %s", xml.err);

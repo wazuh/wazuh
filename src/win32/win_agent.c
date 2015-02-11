@@ -261,7 +261,7 @@ int local_start()
 }
 
 /* SendMSG for Windows */
-int SendMSG(int queue, const char *message, const char *locmsg, char loc)
+int SendMSG(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc)
 {
     int _ssize;
     time_t cu_time;
