@@ -637,13 +637,11 @@ void os_ReportdStart(report_filter *r_filter)
     }
 
     cleanup:
-    if (fileq) {
-        if (fileq->fp && fileq->fp != stdin) {
-            fclose(fileq->fp);
-        }
-
-        free(fileq);
+    if (fileq->fp && fileq->fp != stdin) {
+        fclose(fileq->fp);
     }
+
+    free(fileq);
 }
 
 /* Check the configuration filters */
