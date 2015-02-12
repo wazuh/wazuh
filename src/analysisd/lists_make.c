@@ -79,7 +79,7 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
 
         cdb_make_finish(&cdbm);
         if (rename(tmp_filename, cdb_filename) == -1) {
-            merror(RENAME_ERROR, ARGV0, tmp_filename, cdb_filename);
+            merror(RENAME_ERROR, ARGV0, tmp_filename, cdb_filename, errno, strerror(errno));
             return;
         }
     } else {
