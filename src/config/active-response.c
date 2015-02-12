@@ -352,6 +352,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
         if (strcmp(node[i]->element, command_name) == 0) {
             tmp_command->name = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, command_expect) == 0) {
+            free(tmp_str);
             tmp_str = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, command_executable) == 0) {
             tmp_command->executable = strdup(node[i]->content);
