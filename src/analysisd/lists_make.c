@@ -74,6 +74,9 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
                 print_out("  * adding - key: %s value: %s", key, val);
             }
         }
+
+        fclose(txt_fd);
+
         cdb_make_finish(&cdbm);
         rename(tmp_filename, cdb_filename);
     } else {
