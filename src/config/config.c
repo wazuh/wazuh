@@ -169,6 +169,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL, __local_name);
+            OS_ClearNode(node);
             return (OS_INVALID);
         } else if (!(modules & CAGENT_CONFIG) &&
                    (strcmp(node[i]->element, xml_start_ossec) == 0)) {
@@ -180,6 +181,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                 if (read_main_elements(&xml, modules, chld_node, d1, d2) < 0) {
                     merror(CONFIG_ERROR, __local_name, cfgfile);
                     OS_ClearNode(chld_node);
+                    OS_ClearNode(node);
                     return (OS_INVALID);
                 }
 
@@ -275,6 +277,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                 if (passed_agent_test && read_main_elements(&xml, modules, chld_node, d1, d2) < 0) {
                     merror(CONFIG_ERROR, __local_name, cfgfile);
                     OS_ClearNode(chld_node);
+                    OS_ClearNode(node);
                     return (OS_INVALID);
                 }
 
@@ -282,6 +285,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
             }
         } else {
             merror(XML_INVELEM, __local_name, node[i]->element);
+            OS_ClearNode(node);
             return (OS_INVALID);
         }
         i++;
