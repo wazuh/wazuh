@@ -277,8 +277,8 @@ static int read_sys_dir(const char *dir_name, int do_read)
     /* Entry count for directory different than the actual
      * link count from stats
      */
-    if ((entry_count != statbuf.st_nlink) &&
-            ((did_changed == 0) || ((entry_count + 1) != statbuf.st_nlink))) {
+    if ((entry_count != (unsigned) statbuf.st_nlink) &&
+            ((did_changed == 0) || ((entry_count + 1) != (unsigned) statbuf.st_nlink))) {
 #ifndef WIN32
         struct stat statbuf2;
         char op_msg[OS_SIZE_1024 + 1];

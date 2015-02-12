@@ -17,7 +17,7 @@ static void manage_shutdown(int sig) __attribute__((noreturn));
 
 
 #if defined(__MINGW32__)
-static int setenv(const char *name, const char *val, int overwrite)
+static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
 {
     int len = strlen(name) + strlen(val) + 2;
     char *str = (char *)malloc(len);

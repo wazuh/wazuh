@@ -287,8 +287,7 @@ void start_daemon()
         }
 #elif defined(WIN32)
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
-            run_now = WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE);
-            if (run_now == WAIT_FAILED) {
+            if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
                 merror("%s: ERROR: WaitForSingleObjectEx failed (for realtime fim).", ARGV0);
                 sleep(SYSCHECK_WAIT);
             } else {

@@ -17,8 +17,6 @@
 
 #ifdef WIN32
 #define sleep(x) Sleep(x * 1000)
-#define os_calloc(x,y,z) (z = calloc(x,y))?(void)1:ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno))
-#define os_strdup(x,y) (y = strdup(x))?(void)1:ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno))
 #endif
 
 #ifdef INOTIFY_ENABLED
