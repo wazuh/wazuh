@@ -100,6 +100,7 @@ int k_import(const char *cmdimport)
             tmp_key = strchr(ip, ' ');
             if (!tmp_key) {
                 printf(NO_KEY);
+                free(b64_dec);
                 return (0);
             }
             *tmp_key = '\0';
