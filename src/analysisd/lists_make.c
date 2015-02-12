@@ -29,7 +29,7 @@ void Lists_OP_MakeAll(int force)
     }
 }
 
-void Lists_OP_MakeCDB(char *txt_filename, char *cdb_filename, int force)
+void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int force)
 {
     struct cdb_make cdbm;
     FILE *tmp_fd;

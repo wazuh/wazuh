@@ -12,6 +12,9 @@
 #include "eventinfo.h"
 #include "compiled_rules/compiled_rules.h"
 
+/* Global definition */
+RuleInfo *currently_rule;
+
 /* Change path for test rule */
 #ifdef TESTRULE
 #undef RULEPATH
@@ -19,19 +22,16 @@
 #endif
 
 /* Prototypes */
-int getattributes(char **attributes,
+static int getattributes(char **attributes,
                   char **values,
                   int *id, int *level,
                   int *maxsize, int *timeframe,
                   int *frequency, int *accuracy,
                   int *noalert, int *ignore_time, int *overwrite);
-int doesRuleExist(int sid, RuleNode *r_node);
-void Rule_AddAR(RuleInfo *config_rule);
-char *loadmemory(char *at, char *str);
-
-/* Global variables */
-extern int _max_freq;
-
+static int doesRuleExist(int sid, RuleNode *r_node);
+static void Rule_AddAR(RuleInfo *config_rule);
+static char *loadmemory(char *at, const char *str);
+static void printRuleinfo(const RuleInfo *rule, int node);
 
 /* Will initialize the rules list */
 void Rules_OP_CreateRules()
@@ -43,7 +43,7 @@ void Rules_OP_CreateRules()
 }
 
 /* Read the log rules */
-int Rules_OP_ReadRules(char *rulefile)
+int Rules_OP_ReadRules(const char *rulefile)
 {
     OS_XML xml;
     XML_NODE node = NULL;
@@ -51,75 +51,75 @@ int Rules_OP_ReadRules(char *rulefile)
     /* XML variables */
     /* These are the available options for the rule configuration */
 
-    char *xml_group = "group";
-    char *xml_rule = "rule";
+    const char *xml_group = "group";
+    const char *xml_rule = "rule";
 
-    char *xml_regex = "regex";
-    char *xml_match = "match";
-    char *xml_decoded = "decoded_as";
-    char *xml_category = "category";
-    char *xml_cve = "cve";
-    char *xml_info = "info";
-    char *xml_day_time = "time";
-    char *xml_week_day = "weekday";
-    char *xml_comment = "description";
-    char *xml_ignore = "ignore";
-    char *xml_check_if_ignored = "check_if_ignored";
+    const char *xml_regex = "regex";
+    const char *xml_match = "match";
+    const char *xml_decoded = "decoded_as";
+    const char *xml_category = "category";
+    const char *xml_cve = "cve";
+    const char *xml_info = "info";
+    const char *xml_day_time = "time";
+    const char *xml_week_day = "weekday";
+    const char *xml_comment = "description";
+    const char *xml_ignore = "ignore";
+    const char *xml_check_if_ignored = "check_if_ignored";
 
-    char *xml_srcip = "srcip";
-    char *xml_srcport = "srcport";
-    char *xml_dstip = "dstip";
-    char *xml_dstport = "dstport";
-    char *xml_user = "user";
-    char *xml_url = "url";
-    char *xml_id = "id";
-    char *xml_data = "extra_data";
-    char *xml_hostname = "hostname";
-    char *xml_program_name = "program_name";
-    char *xml_status = "status";
-    char *xml_action = "action";
-    char *xml_compiled = "compiled_rule";
+    const char *xml_srcip = "srcip";
+    const char *xml_srcport = "srcport";
+    const char *xml_dstip = "dstip";
+    const char *xml_dstport = "dstport";
+    const char *xml_user = "user";
+    const char *xml_url = "url";
+    const char *xml_id = "id";
+    const char *xml_data = "extra_data";
+    const char *xml_hostname = "hostname";
+    const char *xml_program_name = "program_name";
+    const char *xml_status = "status";
+    const char *xml_action = "action";
+    const char *xml_compiled = "compiled_rule";
 
-    char *xml_list = "list";
-    char *xml_list_lookup = "lookup";
-    char *xml_list_field = "field";
-    char *xml_list_cvalue = "check_value";
-    char *xml_match_key = "match_key";
-    char *xml_not_match_key = "not_match_key";
-    char *xml_match_key_value = "match_key_value";
-    char *xml_address_key = "address_match_key";
-    char *xml_not_address_key = "not_address_match_key";
-    char *xml_address_key_value = "address_match_key_value";
+    const char *xml_list = "list";
+    const char *xml_list_lookup = "lookup";
+    const char *xml_list_field = "field";
+    const char *xml_list_cvalue = "check_value";
+    const char *xml_match_key = "match_key";
+    const char *xml_not_match_key = "not_match_key";
+    const char *xml_match_key_value = "match_key_value";
+    const char *xml_address_key = "address_match_key";
+    const char *xml_not_address_key = "not_address_match_key";
+    const char *xml_address_key_value = "address_match_key_value";
 
-    char *xml_if_sid = "if_sid";
-    char *xml_if_group = "if_group";
-    char *xml_if_level = "if_level";
-    char *xml_fts = "if_fts";
+    const char *xml_if_sid = "if_sid";
+    const char *xml_if_group = "if_group";
+    const char *xml_if_level = "if_level";
+    const char *xml_fts = "if_fts";
 
-    char *xml_if_matched_regex = "if_matched_regex";
-    char *xml_if_matched_group = "if_matched_group";
-    char *xml_if_matched_sid = "if_matched_sid";
+    const char *xml_if_matched_regex = "if_matched_regex";
+    const char *xml_if_matched_group = "if_matched_group";
+    const char *xml_if_matched_sid = "if_matched_sid";
 
-    char *xml_same_source_ip = "same_source_ip";
-    char *xml_same_src_port = "same_src_port";
-    char *xml_same_dst_port = "same_dst_port";
-    char *xml_same_user = "same_user";
-    char *xml_same_location = "same_location";
-    char *xml_same_id = "same_id";
-    char *xml_dodiff = "check_diff";
+    const char *xml_same_source_ip = "same_source_ip";
+    const char *xml_same_src_port = "same_src_port";
+    const char *xml_same_dst_port = "same_dst_port";
+    const char *xml_same_user = "same_user";
+    const char *xml_same_location = "same_location";
+    const char *xml_same_id = "same_id";
+    const char *xml_dodiff = "check_diff";
 
-    char *xml_different_url = "different_url";
+    const char *xml_different_url = "different_url";
 
-    char *xml_notsame_source_ip = "not_same_source_ip";
-    char *xml_notsame_user = "not_same_user";
-    char *xml_notsame_agent = "not_same_agent";
-    char *xml_notsame_id = "not_same_id";
+    const char *xml_notsame_source_ip = "not_same_source_ip";
+    const char *xml_notsame_user = "not_same_user";
+    const char *xml_notsame_agent = "not_same_agent";
+    const char *xml_notsame_id = "not_same_id";
 
-    char *xml_options = "options";
+    const char *xml_options = "options";
 
     char *rulepath;
 
-    int i;
+    size_t i;
     int default_timeframe = 360;
 
     /* If no directory in the rulefile, add the default */
@@ -439,7 +439,7 @@ int Rules_OP_ReadRules(char *rulefile)
                             loadmemory(config_ruleinfo->comment,
                                        rule_opt[k]->content);
                     } else if (strcasecmp(rule_opt[k]->element, xml_srcip) == 0) {
-                        int ip_s = 0;
+                        unsigned int ip_s = 0;
 
                         /* Getting size of source ip list */
                         while (config_ruleinfo->srcip &&
@@ -469,7 +469,7 @@ int Rules_OP_ReadRules(char *rulefile)
                             config_ruleinfo->alert_opts |= DO_PACKETINFO;
                         }
                     } else if (strcasecmp(rule_opt[k]->element, xml_dstip) == 0) {
-                        int ip_s = 0;
+                        unsigned int ip_s = 0;
 
                         /* Getting size of source ip list */
                         while (config_ruleinfo->dstip &&
@@ -1227,10 +1227,10 @@ int Rules_OP_ReadRules(char *rulefile)
  * If *at already exist, realloc the memory and cat str on it.
  * Returns the new string
  */
-char *loadmemory(char *at, char *str)
+static char *loadmemory(char *at, const char *str)
 {
     if (at == NULL) {
-        int strsize = 0;
+        size_t strsize = 0;
         if ((strsize = strlen(str)) < OS_SIZE_2048) {
             at = (char *) calloc(strsize + 1, sizeof(char));
             if (at == NULL) {
@@ -1245,9 +1245,9 @@ char *loadmemory(char *at, char *str)
         }
     } else {
         /* at is not null. Need to reallocate its memory and copy str to it */
-        int strsize = strlen(str);
-        int atsize = strlen(at);
-        int finalsize = atsize + strsize + 1;
+        size_t strsize = strlen(str);
+        size_t atsize = strlen(at);
+        size_t finalsize = atsize + strsize + 1;
 
         if ((atsize > OS_SIZE_2048) || (strsize > OS_SIZE_2048)) {
             merror(SIZE_ERROR, ARGV0, str);
@@ -1269,7 +1269,7 @@ char *loadmemory(char *at, char *str)
     return (NULL);
 }
 
-RuleInfoDetail *zeroinfodetails(int type, char *data)
+RuleInfoDetail *zeroinfodetails(int type, const char *data)
 {
     RuleInfoDetail *info_details_pt = NULL;
 
@@ -1394,7 +1394,7 @@ RuleInfo *zerorulemember(int id, int level,
 
 int get_info_attributes(char **attributes, char **values)
 {
-    char *xml_type = "type";
+    const char *xml_type = "type";
     int k = 0;
 
     if (!attributes) {
@@ -1422,7 +1422,7 @@ int get_info_attributes(char **attributes, char **values)
 }
 
 /* Get the attributes */
-int getattributes(char **attributes, char **values,
+static int getattributes(char **attributes, char **values,
                   int *id, int *level,
                   int *maxsize, int *timeframe,
                   int *frequency, int *accuracy,
@@ -1430,15 +1430,15 @@ int getattributes(char **attributes, char **values,
 {
     int k = 0;
 
-    char *xml_id = "id";
-    char *xml_level = "level";
-    char *xml_maxsize = "maxsize";
-    char *xml_timeframe = "timeframe";
-    char *xml_frequency = "frequency";
-    char *xml_accuracy = "accuracy";
-    char *xml_noalert = "noalert";
-    char *xml_ignore_time = "ignore";
-    char *xml_overwrite = "overwrite";
+    const char *xml_id = "id";
+    const char *xml_level = "level";
+    const char *xml_maxsize = "maxsize";
+    const char *xml_timeframe = "timeframe";
+    const char *xml_frequency = "frequency";
+    const char *xml_accuracy = "accuracy";
+    const char *xml_noalert = "noalert";
+    const char *xml_ignore_time = "ignore";
+    const char *xml_overwrite = "overwrite";
 
     /* Get attributes */
     while (attributes[k]) {
@@ -1549,9 +1549,9 @@ int getattributes(char **attributes, char **values,
 }
 
 /* Bind active responses to a rule */
-void Rule_AddAR(RuleInfo *rule_config)
+static void Rule_AddAR(RuleInfo *rule_config)
 {
-    int rule_ar_size = 0;
+    unsigned int rule_ar_size = 0;
     int mark_to_ar = 0;
     int rule_real_level = 0;
 
@@ -1670,7 +1670,7 @@ void Rule_AddAR(RuleInfo *rule_config)
     return;
 }
 
-void printRuleinfo(RuleInfo *rule, int node)
+static void printRuleinfo(const RuleInfo *rule, int node)
 {
     debug1("%d : rule:%d, level %d, timeout: %d",
            node,
@@ -1732,7 +1732,7 @@ int _setlevels(RuleNode *node, int nnode)
 /* Test if a rule id exists
  * return 1 if exists, otherwise 0
  */
-int doesRuleExist(int sid, RuleNode *r_node)
+static int doesRuleExist(int sid, RuleNode *r_node)
 {
     /* Start from the beginning of the list by default */
     if (!r_node) {

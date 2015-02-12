@@ -10,6 +10,8 @@
 #ifndef __FTS_H
 #define __FTS_H
 
+#include "eventinfo.h"
+
 /* FTS queues */
 #ifdef TESTRULE
 #define FTS_QUEUE "queue/fts/fts-queue"
@@ -20,6 +22,9 @@
 #endif
 
 int FTS_Init(void);
+void AddtoIGnore(Eventinfo *lf);
+int IGnore(Eventinfo *lf);
+int FTS(Eventinfo *lf);
 
 #endif /* __FTS_H */
 

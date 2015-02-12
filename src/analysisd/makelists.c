@@ -21,10 +21,16 @@
 #include "eventinfo.h"
 #include "analysisd.h"
 
-/** External functions prototypes (only called here) **/
-/* For config  */
-int GlobalConf(char *cfgfile);
-
+/** Global definitions **/
+int today;
+int thishour;
+int prev_year;
+char prev_month[4];
+int __crt_hour;
+int __crt_wday;
+time_t c_time;
+char __shost[512];
+OSDecoderInfo *NULL_Decoder;
 
 /* print help statement */
 __attribute__((noreturn))
@@ -51,14 +57,14 @@ int main(int argc, char **argv)
 {
     int test_config = 0;
     int c = 0;
-    char *dir = DEFAULTDIR;
-    char *user = USER;
-    char *group = GROUPGLOBAL;
+    const char *dir = DEFAULTDIR;
+    const char *user = USER;
+    const char *group = GROUPGLOBAL;
     uid_t uid;
     gid_t gid;
     int force = 0;
 
-    char *cfg = DEFAULTCPATH;
+    const char *cfg = DEFAULTCPATH;
 
     /* Set the name */
     OS_SetName(ARGV0);

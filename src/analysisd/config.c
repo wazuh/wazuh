@@ -15,8 +15,10 @@
 #include "analysisd.h"
 #include "config.h"
 
+long int __crt_ftell; /* Global ftell pointer */
+_Config Config;       /* Global Config structure */
 
-int GlobalConf(char *cfgfile)
+int GlobalConf(const char *cfgfile)
 {
     int modules = 0;
 
