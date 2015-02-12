@@ -82,7 +82,7 @@ int os_winreg_changed(char *key, char *md5, char *sha1)
 }
 
 /* Notify of registry changes */
-int notify_registry(char *msg, int send_now)
+int notify_registry(char *msg, __attribute__((unused)) int send_now)
 {
     if (SendMSG(syscheck.queue, msg,
                 SYSCHECK_REG, SYSCHECK_MQ) < 0) {
@@ -145,8 +145,8 @@ char *os_winreg_sethkey(char *reg_entry)
 /* Query the key and get all its values */
 void os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name)
 {
-    int i, rc;
-    DWORD j;
+    int rc;
+    DWORD i, j;
 
     /* QueryInfo and EnumKey variables */
     TCHAR sub_key_name_b[MAX_KEY_LENGTH + 2];

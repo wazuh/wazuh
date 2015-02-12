@@ -65,7 +65,8 @@ int os_check_ads(const char *full_path)
                        sid.dwStreamNameSize,
                        &dwRead, FALSE, FALSE, &context)) {
             if (dwRead != 0) {
-                int i = 0, max_path_size = 0;
+                DWORD i = 0;
+                int max_path_size = 0;
                 char *tmp_pt;
                 char op_msg[OS_SIZE_1024 + 1];
 
@@ -157,11 +158,13 @@ char *__os_winreg_getkey(char *reg_entry)
 }
 
 /* Query the key and get the value of a specific entry */
-int __os_winreg_querykey(HKEY hKey, char *p_key, char *full_key_name,
+int __os_winreg_querykey(HKEY hKey,
+        __attribute__((unused))char *p_key,
+        __attribute__((unused)) char *full_key_name,
                          char *reg_option, char *reg_value)
 {
-    int i, rc;
-    DWORD j;
+    int rc;
+    DWORD i, j;
 
     /* QueryInfo and EnumKey variables */
     TCHAR class_name_b[MAX_PATH + 1];

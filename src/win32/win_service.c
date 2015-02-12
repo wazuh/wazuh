@@ -262,7 +262,7 @@ void WinSetError()
 }
 
 /* Initialize OSSEC-HIDS dispatcher */
-int os_WinMain(int argc, char **argv)
+int os_WinMain(__attribute__((unused)) int argc, __attribute__((unused)) char **argv)
 {
     SERVICE_TABLE_ENTRY   steDispatchTable[] = {
         { g_lpszServiceName, OssecServiceStart },
@@ -278,7 +278,7 @@ int os_WinMain(int argc, char **argv)
 }
 
 /* Start OSSEC service */
-void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv)
+void WINAPI OssecServiceStart (__attribute__((unused)) DWORD argc, __attribute__((unused)) LPTSTR *argv)
 {
     ossecServiceStatus.dwServiceType            = SERVICE_WIN32;
     ossecServiceStatus.dwCurrentState           = SERVICE_START_PENDING;

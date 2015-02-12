@@ -16,7 +16,8 @@
 
 /* Dialog -- About OSSEC */
 BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message,
-                           WPARAM wParam, LPARAM lParam)
+       WPARAM wParam,
+       __attribute__((unused))LPARAM lParam)
 {
     switch (Message) {
         case WM_CREATE:
@@ -41,7 +42,8 @@ BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message,
 }
 
 /* Main Dialog */
-BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
+BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
+        __attribute__((unused))LPARAM lParam)
 {
     int ret_code = 0;
 
@@ -384,8 +386,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam, LPARAM lParam)
     return TRUE;
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine, int nCmdShow)
+int WINAPI WinMain(HINSTANCE hInstance, __attribute__((unused))HINSTANCE hPrevInstance,
+        __attribute__((unused))LPSTR lpCmdLine, __attribute__((unused))int nCmdShow)
 {
     WSADATA wsaData;
 
