@@ -113,6 +113,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         }
         /* Target */
         else if (strcmp(node[i]->element, xml_ar_location) == 0) {
+            free(tmp_location);
             tmp_location = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, xml_ar_agent_id) == 0) {
             tmp_ar->agent_id = strdup(node[i]->content);
