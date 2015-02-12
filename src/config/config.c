@@ -46,85 +46,89 @@ static int read_main_elements(const OS_XML *xml, int modules,
     while (node[i]) {
         XML_NODE chld_node = NULL;
 
-        chld_node = OS_GetElementsbyNode(xml, node[i]);
-
         if (!node[i]->element) {
             merror(XML_ELEMNULL, __local_name);
-            return (OS_INVALID);
-        } else if (!chld_node) {
+            goto fail;
+        } else if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
             merror(XML_INVELEM, __local_name, node[i]->element);
-            return (OS_INVALID);
+            goto fail;
         } else if (strcmp(node[i]->element, osglobal) == 0) {
             if (((modules & CGLOBAL) || (modules & CMAIL))
                     && (Read_Global(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, osemailalerts) == 0) {
             if ((modules & CMAIL) && (Read_EmailAlerts(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, osdbd) == 0) {
             if ((modules & CDBD) && (Read_DB(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, oscsyslogd) == 0) {
             if ((modules & CSYSLOGD) && (Read_CSyslog(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, oscagentless) == 0) {
             if ((modules & CAGENTLESS) && (Read_CAgentless(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, osrules) == 0) {
             if ((modules & CRULES) && (Read_Rules(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, ossyscheck) == 0) {
             if ((modules & CSYSCHECK) && (Read_Syscheck(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
             if ((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, osrootcheck) == 0) {
             if ((modules & CROOTCHECK) && (Read_Rootcheck(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, osalerts) == 0) {
             if ((modules & CALERTS) && (Read_Alerts(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, oslocalfile) == 0) {
             if ((modules & CLOCALFILE) && (Read_Localfile(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, osremote) == 0) {
             if ((modules & CREMOTE) && (Read_Remote(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, osclient) == 0) {
             if ((modules & CCLIENT) && (Read_Client(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, oscommand) == 0) {
             if ((modules & CAR) && (ReadActiveCommands(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, osactive_response) == 0) {
             if ((modules & CAR) && (ReadActiveResponses(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else if (strcmp(node[i]->element, osreports) == 0) {
             if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
-                return (OS_INVALID);
+                goto fail;
             }
         } else {
             merror(XML_INVELEM, __local_name, node[i]->element);
-            return (OS_INVALID);
+            goto fail;
         }
 
         OS_ClearNode(chld_node);
         i++;
+
+        continue;
+
+        fail:
+        OS_ClearNode(chld_node);
+        return (OS_INVALID);
     }
 
     return (0);
