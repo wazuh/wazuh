@@ -904,7 +904,7 @@ int Rules_OP_ReadRules(const char *rulefile)
                             config_ruleinfo->ckignore |= FTS_LOCATION;
                         }
                         if (strstr(rule_opt[k]->content, "data") != NULL) {
-                            config_ruleinfo->ignore |= FTS_DATA;
+                            config_ruleinfo->ckignore |= FTS_DATA;
                         }
                         if (strstr(rule_opt[k]->content, "name") != NULL) {
                             config_ruleinfo->ckignore |= FTS_NAME;
