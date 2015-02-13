@@ -19,6 +19,8 @@
 #ifndef _OS_FS
 #define _OS_FS
 
+#ifndef WIN32
+
 #ifdef Linux
 #include <sys/vfs.h>
 #endif
@@ -26,6 +28,8 @@
 #ifdef FreeBSD
 #include <sys/param.h>
 #include <sys/mount.h>
+#endif
+
 #endif
 
 struct file_system_type {
