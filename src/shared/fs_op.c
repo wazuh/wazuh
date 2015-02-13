@@ -24,7 +24,7 @@ const struct file_system_type network_file_systems[] = {
 
 short IsNFS(const char *dir_name)
 {
-#if defined(Linux) || defined(FreeBSD)
+#if !defined(WIN32) && (defined(Linux) || defined(FreeBSD))
     struct statfs stfs;
 
     /* ignore NFS (0x6969) or CIFS (0xFF534D42) mounts */
