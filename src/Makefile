@@ -19,6 +19,7 @@ OSSEC_USER_REM?=ossecr
 
 USE_PRELUDE?=no
 USE_ZEROMQ?=no
+USE_JSONOUT?=no
 USE_GEOIP?=no
 USE_INOTIFY=no
 
@@ -184,6 +185,10 @@ ifneq (,$(filter ${USE_ZEROMQ},auto yes y Y 1))
 	#LDFLAGS+=-L/usr/local/lib -I/usr/local/include -lzmq -lczmq
 	OSSEC_LDFLAGS+=-lzmq -lczmq -lm
 endif # USE_ZEROMQ
+
+ifneq (,$(filter ${USE_JSONOUT},auto yes y Y 1))
+	DEFINES+=-DJSONOUT_OUTPUT_ENABLED
+endif # USE_JSONOUT
 
 ifneq (,$(filter ${USE_PICVIZ},auto yes y Y 1))
 	DEFINES+=-DPICVIZ_OUTPUT_ENABLED
@@ -528,6 +533,7 @@ settings:
 	@echo "    LUA_PLAT:         ${LUA_PLAT}"
 	@echo "USE settings:"
 	@echo "    USE_ZEROMQ:       ${USE_ZEROMQ}"
+	@echo "    USE_JSONOUT:      ${USE_JSONOUT}"
 	@echo "    USE_GEOIP:        ${USE_GEOIP}"
 	@echo "    USE_PRELUDE:      ${USE_PRELUDE}"
 	@echo "    USE_OPENSSL:      ${USE_OPENSSL}"

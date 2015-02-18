@@ -26,5 +26,9 @@ extern FILE *_eflog;
 extern FILE *_aflog;
 extern FILE *_fflog;
 
+#ifdef JSONOUT_OUTPUT_ENABLED
+FILE *_jflog;
+#endif
+
 #endif /* __GETLL_H */
 

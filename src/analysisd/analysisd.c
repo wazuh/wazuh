@@ -44,6 +44,10 @@
 #include "output/zeromq.h"
 #endif
 
+#ifdef JSONOUT_OUTPUT_ENABLED
+#include "output/jsonout.h"
+#endif
+
 /** Prototypes **/
 void OS_ReadMSG(int m_queue);
 RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node);
@@ -923,6 +927,13 @@ void OS_ReadMSG_analysisd(int m_queue)
                 /* Log to zeromq */
                 if (Config.zeromq_output) {
                     zeromq_output_event(lf);
+                }
+#endif
+
+#ifdef JSONOUT_OUTPUT_ENABLED
+                /* Log to json file */
+                if (Config.jsonout_output) {
+                    jsonout_output_event(lf);
                 }
 #endif
 
