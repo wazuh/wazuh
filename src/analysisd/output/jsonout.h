@@ -7,8 +7,6 @@
  * Foundation.
  */
 
-#ifdef JSONOUT_OUTPUT_ENABLED
-
 #ifndef _JSONOUT_H_
 #define _JSONOUT_H_
 
@@ -17,5 +15,3 @@
 void jsonout_output_event(const Eventinfo *lf);
 
 #endif /* _JSONOUT_H_ */
-
-#endif /* JSONOUT_OUTPUT_ENABLED */

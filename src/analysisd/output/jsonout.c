@@ -7,13 +7,9 @@
  * Foundation.
  */
 
-#ifdef JSONOUT_OUTPUT_ENABLED
-
 #include "jsonout.h"
-
 #include "alerts/getloglocation.h"
 #include "format/to_json.h"
-
 
 void jsonout_output_event(const Eventinfo *lf)
 {
@@ -27,6 +23,3 @@ void jsonout_output_event(const Eventinfo *lf)
     free(json_alert);
     return;
 }
-
-#endif
-

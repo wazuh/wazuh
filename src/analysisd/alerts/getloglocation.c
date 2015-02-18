@@ -16,16 +16,14 @@
 FILE *_eflog;
 FILE *_aflog;
 FILE *_fflog;
+FILE *_jflog;
 
 /* Global variables */
 static int  __crt_day;
 static char __elogfile[OS_FLSIZE + 1];
 static char __alogfile[OS_FLSIZE + 1];
 static char __flogfile[OS_FLSIZE + 1];
-
-#ifdef JSONOUT_OUTPUT_ENABLED
-char __jlogfile[OS_FLSIZE + 1];
-#endif
+static char __jlogfile[OS_FLSIZE + 1];
 
 
 void OS_InitLog()
@@ -38,18 +36,12 @@ void OS_InitLog()
     memset(__alogfile, '\0', OS_FLSIZE + 1);
     memset(__elogfile, '\0', OS_FLSIZE + 1);
     memset(__flogfile, '\0', OS_FLSIZE + 1);
-
-#ifdef JSONOUT_OUTPUT_ENABLED
     memset(__jlogfile, '\0', OS_FLSIZE + 1);
-#endif
 
     _eflog = NULL;
     _aflog = NULL;
     _fflog = NULL;
-
-#ifdef JSONOUT_OUTPUT_ENABLED
     _jflog = NULL;
-#endif
 
     /* Set the umask */
     umask(0027);
@@ -147,7 +139,6 @@ int OS_GetLogLocation(const Eventinfo *lf)
         ErrorExit(LINK_ERROR, ARGV0, __alogfile, ALERTS_DAILY, errno, strerror(errno));
     }
 
-#ifdef JSONOUT_OUTPUT_ENABLED
     if (Config.jsonout_output) {
         /* Create the json logfile name */
         snprintf(__jlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
@@ -170,7 +161,6 @@ int OS_GetLogLocation(const Eventinfo *lf)
             ErrorExit(LINK_ERROR, ARGV0, __jlogfile, ALERTSJSON_DAILY, errno, strerror(errno));
         }
     }
-#endif
 
     /* For the firewall events */
     if (_fflog) {

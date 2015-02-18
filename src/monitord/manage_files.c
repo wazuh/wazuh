@@ -91,7 +91,6 @@ void manage_files(int cday, int cmon, int cyear)
     OS_SignLog(alogfile, alogfile_old, 1);
     OS_CompressLog(alogfile);
 
-#ifdef JSONOUT_OUTPUT_ENABLED
     /* alert logfile  */
     snprintf(ajlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
              ALERTS,
@@ -125,7 +124,6 @@ void manage_files(int cday, int cmon, int cyear)
         OS_SignLog(ajlogfile, ajlogfile_old, 1);
         OS_CompressLog(ajlogfile);
     }
-#endif
 
     /* firewall events */
     snprintf(flogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
