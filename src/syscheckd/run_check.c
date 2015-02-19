@@ -64,7 +64,6 @@ static void send_sk_db()
         merror("%s: INFO: Starting syscheck scan (forwarding database).", ARGV0);
         send_rootcheck_msg("Starting syscheck scan.");
     } else {
-        sleep(syscheck.tsleep + 10);
         return;
     }
 

@@ -238,6 +238,8 @@ static int read_dir(const char *dir_name, int opts, OSMatch *restriction)
 {
     size_t dir_size;
     char f_name[PATH_MAX + 2];
+    short is_nfs;
+
     DIR *dp;
     struct dirent *entry;
 
@@ -248,6 +250,18 @@ static int read_dir(const char *dir_name, int opts, OSMatch *restriction)
         merror(NULL_ERROR, ARGV0);
         return (-1);
     }
+
+    /* Should we check for NFS? */
+    if(syscheck.skip_nfs)
+    {
+        is_nfs = IsNFS(dir_name);
+        if(is_nfs != 0)
+        {
+            // Error will be -1, and 1 means skipped
+            return(is_nfs);
+        }
+    }
+
 
     /* Open the directory given */
     dp = opendir(dir_name);

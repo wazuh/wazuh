@@ -79,6 +79,7 @@ int rootcheck_init(int test_config)
     rootcheck.scanall = 0;
     rootcheck.readall = 0;
     rootcheck.disabled = 0;
+    rootcheck.skip_nfs = 0;
     rootcheck.alert_msg = NULL;
     rootcheck.time = ROOTCHECK_WAIT;
 
