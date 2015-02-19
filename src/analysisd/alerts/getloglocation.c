@@ -10,16 +10,20 @@
 /* Get the log directory/file based on the day/month/year */
 
 #include "getloglocation.h"
+#include "config.h"
+
 /* Global definitions */
 FILE *_eflog;
 FILE *_aflog;
 FILE *_fflog;
+FILE *_jflog;
 
 /* Global variables */
 static int  __crt_day;
 static char __elogfile[OS_FLSIZE + 1];
 static char __alogfile[OS_FLSIZE + 1];
 static char __flogfile[OS_FLSIZE + 1];
+static char __jlogfile[OS_FLSIZE + 1];
 
 
 void OS_InitLog()
@@ -32,10 +36,12 @@ void OS_InitLog()
     memset(__alogfile, '\0', OS_FLSIZE + 1);
     memset(__elogfile, '\0', OS_FLSIZE + 1);
     memset(__flogfile, '\0', OS_FLSIZE + 1);
+    memset(__jlogfile, '\0', OS_FLSIZE + 1);
 
     _eflog = NULL;
     _aflog = NULL;
     _fflog = NULL;
+    _jflog = NULL;
 
     /* Set the umask */
     umask(0027);
@@ -133,6 +139,28 @@ int OS_GetLogLocation(const Eventinfo *lf)
         ErrorExit(LINK_ERROR, ARGV0, __alogfile, ALERTS_DAILY, errno, strerror(errno));
     }
 
+    if (Config.jsonout_output) {
+        /* Create the json logfile name */
+        snprintf(__jlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
+                 ALERTS,
+                 lf->year,
+                 lf->mon,
+                 "alerts",
+                 lf->day);
+
+        _jflog = fopen(__jlogfile, "a");
+
+        if (!_jflog) {
+            ErrorExit("%s: Error opening logfile: '%s'", ARGV0, __jlogfile);
+        }
+
+        /* Create a symlink */
+        unlink(ALERTSJSON_DAILY);
+
+        if (link(__jlogfile, ALERTSJSON_DAILY) == -1) {
+            ErrorExit(LINK_ERROR, ARGV0, __jlogfile, ALERTSJSON_DAILY, errno, strerror(errno));
+        }
+    }
 
     /* For the firewall events */
     if (_fflog) {

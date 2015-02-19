@@ -79,7 +79,8 @@ int add_agent()
     char name[FILE_SIZE + 1];
     char id[FILE_SIZE + 1];
     char ip[FILE_SIZE + 1];
-    os_ip *c_ip;
+    os_ip c_ip;
+    c_ip.ip = NULL;
 
     /* Check if we can open the auth_file */
     fp = fopen(AUTH_FILE, "a");
@@ -88,8 +89,6 @@ int add_agent()
     }
     fclose(fp);
 
-    /* Allocate for c_ip */
-    os_calloc(1, sizeof(os_ip), c_ip);
 
 #ifndef WIN32
     if (chmod(AUTH_FILE, 0440) == -1) {
@@ -123,7 +122,7 @@ int add_agent()
         }
 
         if (strcmp(_name, QUIT) == 0) {
-            return (0);
+            goto cleanup;
         }
 
         strncpy(name, _name, FILE_SIZE - 1);
@@ -149,18 +148,18 @@ int add_agent()
         /* Read IP address from user's environment. If that IP is invalid,
          * force user to provide IP from input device */
         _ip = getenv("OSSEC_AGENT_IP");
-        if (_ip == NULL || !OS_IsValidIP(_ip, c_ip)) {
+        if (_ip == NULL || !OS_IsValidIP(_ip, &c_ip)) {
             _ip = read_from_user();
         }
 
         /* Quit */
         if (strcmp(_ip, QUIT) == 0) {
-            return (0);
+            goto cleanup;
         }
 
         strncpy(ip, _ip, FILE_SIZE - 1);
 
-        if (!OS_IsValidIP(ip, c_ip)) {
+        if (!OS_IsValidIP(ip, &c_ip)) {
             printf(IP_ERROR, ip);
             _ip = NULL;
         }
@@ -206,7 +205,7 @@ int add_agent()
 
         /* Quit */
         if (strcmp(_id, QUIT) == 0) {
-            return (0);
+            goto cleanup;
         }
 
         if (_id[0] != '\0') {
@@ -270,7 +269,7 @@ int add_agent()
                      (int)time3);
             OS_MD5_Str(str1, md1);
 
-            fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip->ip, md1, md2);
+            fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
 
             fclose(fp);
 
@@ -282,6 +281,9 @@ int add_agent()
             break;
         }
     } while (1);
+
+    cleanup:
+    free(c_ip.ip);
 
     return (0);
 }

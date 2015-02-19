@@ -411,13 +411,27 @@ void os_ReportdStart(report_filter *r_filter)
             || !r_filter->top_group || !r_filter->top_location || !r_filter->top_files) {
         merror(MEM_ERROR, __local_name, errno, strerror((errno)));
 
-        OSStore_Free(r_filter->top_user);
-        OSStore_Free(r_filter->top_srcip);
-        OSStore_Free(r_filter->top_level);
-        OSStore_Free(r_filter->top_rule);
-        OSStore_Free(r_filter->top_group);
-        OSStore_Free(r_filter->top_location);
-        OSStore_Free(r_filter->top_files);
+        if (r_filter->top_user) {
+            OSStore_Free(r_filter->top_user);
+        }
+        if (r_filter->top_srcip) {
+            OSStore_Free(r_filter->top_srcip);
+        }
+        if (r_filter->top_level) {
+            OSStore_Free(r_filter->top_level);
+        }
+        if (r_filter->top_rule) {
+            OSStore_Free(r_filter->top_rule);
+        }
+        if (r_filter->top_group) {
+            OSStore_Free(r_filter->top_group);
+        }
+        if (r_filter->top_location) {
+            OSStore_Free(r_filter->top_location);
+        }
+        if (r_filter->top_files) {
+            OSStore_Free(r_filter->top_files);
+        }
 
         goto cleanup;
     }
@@ -623,13 +637,11 @@ void os_ReportdStart(report_filter *r_filter)
     }
 
     cleanup:
-    if (fileq) {
-        if (fileq->fp && fileq->fp != stdin) {
-            fclose(fileq->fp);
-        }
-
-        free(fileq);
+    if (fileq->fp && fileq->fp != stdin) {
+        fclose(fileq->fp);
     }
+
+    free(fileq);
 }
 
 /* Check the configuration filters */

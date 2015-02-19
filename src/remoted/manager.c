@@ -522,6 +522,8 @@ void manager_init(int isUpdate)
 
     debug1("%s: DEBUG: Running manager_init", ARGV0);
 
+    modified_agentid = -1;
+
     for (i = 0; i < MAX_AGENTS + 1; i++) {
         _keep_alive[i] = NULL;
         _msg[i] = NULL;
@@ -533,8 +535,6 @@ void manager_init(int isUpdate)
         pthread_mutex_init(&lastmsg_mutex, NULL);
         pthread_cond_init(&awake_mutex, NULL);
     }
-
-    modified_agentid = -1;
 
     return;
 }

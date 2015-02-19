@@ -25,6 +25,7 @@ int OS_GetLogLocation(const Eventinfo *lf);
 extern FILE *_eflog;
 extern FILE *_aflog;
 extern FILE *_fflog;
+extern FILE *_jflog;
 
 #endif /* __GETLL_H */
 

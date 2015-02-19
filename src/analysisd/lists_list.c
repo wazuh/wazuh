@@ -92,6 +92,10 @@ ListRule *OS_AddListRule(ListRule *first_rule_list,
 {
     ListRule *new_rulelist_pt = NULL;
     new_rulelist_pt = (ListRule *)calloc(1, sizeof(ListRule));
+    if (!new_rulelist_pt) {
+        return (NULL);
+    }
+
     new_rulelist_pt->field = field;
     new_rulelist_pt->next = NULL;
     new_rulelist_pt->matcher = matcher;

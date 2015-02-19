@@ -31,6 +31,7 @@
 #include "fts.h"
 #include "cleanevent.h"
 #include "dodiff.h"
+#include "output/jsonout.h"
 
 #ifdef PICVIZ_OUTPUT_ENABLED
 #include "output/picviz.h"
@@ -820,6 +821,10 @@ void OS_ReadMSG_analysisd(int m_queue)
                         } else {
                             OS_Log(lf);
                         }
+                        /* Log to json file */
+                        if (Config.jsonout_output) {
+                            jsonout_output_event(lf);
+                        }
 
                     }
 
@@ -907,6 +912,10 @@ void OS_ReadMSG_analysisd(int m_queue)
                         OS_CustomLog(lf, Config.custom_alert_output_format);
                     } else {
                         OS_Log(lf);
+                    }
+                    /* Log to json file */
+                    if (Config.jsonout_output) {
+                        jsonout_output_event(lf);
                     }
                 }
 
