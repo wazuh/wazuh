@@ -1540,15 +1540,15 @@
   <regex offset="after_prematch">^ (\S+):\d+] (\S+): </regex>
   <order>srcip,id</order>
 </decoder>
-<!--
-<decoder name="apache24-modsec-errorlog-ip">
-	<parent>apache-errorlog</parent>
 
-	<prematch offset="after_parent">[client</prematch>
-	<regex offset="after_prematch">^ (\S+)] ModSecurity: </regex>
-	<order>srcip</order>
+<decoder name="apache24-modsec-errorlog-ip">
+  <parent>apache-errorlog</parent>
+
+  <prematch offset="after_parent">[client</prematch>
+  <regex offset="after_prematch">^ (\S+)] ModSecurity: </regex>
+  <order>srcip</order>
 </decoder>
--->
+
 <decoder name="apache-errorlog-ip">
   <parent>apache-errorlog</parent>
 
