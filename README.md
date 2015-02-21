@@ -32,7 +32,7 @@ The development version is hosted on GitHub and just a simple git clone away.
 
 ```
 
-Then follow the prompts.  You should still Read the Documenation [here](http://ossec.net/doc/).
+Then follow the prompts.  You should still Read the Documentation [here](http://ossec.net/doc/).
 
 ## Credits and Thanks ##
 

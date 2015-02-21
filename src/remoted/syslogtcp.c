@@ -179,6 +179,7 @@ void HandleSyslogTCP()
         if (OS_IPNotAllowed(srcip)) {
             merror(DENYIP_WARN, ARGV0, srcip);
             close(client_socket);
+            continue;
         }
 
         /* Fork to deal with new client */

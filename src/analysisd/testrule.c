@@ -535,6 +535,11 @@ void OS_ReadMSG(char *ut_str)
                 print_out("ut_decoder_name       : '%s'", ut_decoder_name);
                 if (lf->decoder_info->name != NULL && strcasecmp(ut_decoder_name, lf->decoder_info->name) == 0) {
                     exit_code--;
+
+                    if (!currently_rule) {
+                        merror("%s: currently_rule not set!", ARGV0);
+                        exit(-1);
+                    }
                     snprintf(holder, 1023, "%d", currently_rule->sigid);
                     if (strcasecmp(ut_rulelevel, holder) == 0) {
                         exit_code--;

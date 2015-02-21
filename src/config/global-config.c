@@ -105,6 +105,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_prelude_log_level = "prelude_log_level";
     const char *xml_zeromq_output = "zeromq_output";
     const char *xml_zeromq_output_uri = "zeromq_uri";
+    const char *xml_jsonout_output = "jsonout_output";
     const char *xml_stats = "stats";
     const char *xml_memorysize = "memory_size";
     const char *xml_white_list = "white_list";
@@ -259,6 +260,21 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         } else if (strcmp(node[i]->element, xml_zeromq_output_uri) == 0) {
             if (Config) {
                 Config->zeromq_output_uri = strdup(node[i]->content);
+            }
+        }
+        /* jsonout output */
+        else if (strcmp(node[i]->element, xml_jsonout_output) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                if (Config) {
+                    Config->jsonout_output = 1;
+                }
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                if (Config) {
+                    Config->jsonout_output = 0;
+                }
+            } else {
+                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                return (OS_INVALID);
             }
         }
         /* Log all */

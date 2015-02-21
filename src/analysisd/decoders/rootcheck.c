@@ -175,7 +175,11 @@ int DecodeRootcheck(Eventinfo *lf)
 
             /* Matches, we need to upgrade last time saw */
             if (strcmp(lf->log, tmpstr) == 0) {
-                fsetpos(fp, &fp_pos);
+                if(fsetpos(fp, &fp_pos)) {
+                    merror("%s: Error handling rootcheck database "
+                           "(fsetpos).", ARGV0);
+                    return (0);
+                }
                 fprintf(fp, "!%ld", lf->time);
                 rootcheck_dec->fts = 0;
                 lf->decoder_info = rootcheck_dec;

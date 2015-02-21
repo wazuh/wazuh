@@ -30,6 +30,9 @@ void manage_files(int cday, int cmon, int cyear)
     char alogfile[OS_FLSIZE + 1];
     char alogfile_old[OS_FLSIZE + 1];
 
+    char ajlogfile[OS_FLSIZE + 1];
+    char ajlogfile_old[OS_FLSIZE + 1];
+
     char flogfile[OS_FLSIZE + 1];
     char flogfile_old[OS_FLSIZE + 1];
 
@@ -46,6 +49,8 @@ void manage_files(int cday, int cmon, int cyear)
     memset(elogfile_old, '\0', OS_FLSIZE + 1);
     memset(alogfile, '\0', OS_FLSIZE + 1);
     memset(alogfile_old, '\0', OS_FLSIZE + 1);
+    memset(ajlogfile, '\0', OS_FLSIZE + 1);
+    memset(ajlogfile_old, '\0', OS_FLSIZE + 1);
     memset(flogfile, '\0', OS_FLSIZE + 1);
     memset(flogfile_old, '\0', OS_FLSIZE + 1);
 
@@ -85,6 +90,40 @@ void manage_files(int cday, int cmon, int cyear)
              pp_old->tm_mday);
     OS_SignLog(alogfile, alogfile_old, 1);
     OS_CompressLog(alogfile);
+
+    /* alert logfile  */
+    snprintf(ajlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
+             ALERTS,
+             cyear,
+             months[cmon],
+             "alerts",
+             cday);
+    /* alert logfile old  */
+    snprintf(ajlogfile_old, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
+             ALERTS,
+             pp_old->tm_year + 1900,
+             months[pp_old->tm_mon],
+             "alerts",
+             pp_old->tm_mday);
+
+    int exists = 0;
+    FILE *fopnetest;
+
+    if ((fopnetest = fopen(ajlogfile, "r"))) {
+        exists = 1;
+        fclose(fopnetest);
+    }
+
+    if ((fopnetest = fopen(ajlogfile_old, "r"))) {
+        exists = 1;
+        fclose(fopnetest);
+    }
+
+    if (exists) {
+        /* Only if there is a file to operate on. */
+        OS_SignLog(ajlogfile, ajlogfile_old, 1);
+        OS_CompressLog(ajlogfile);
+    }
 
     /* firewall events */
     snprintf(flogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",

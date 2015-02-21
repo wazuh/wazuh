@@ -180,6 +180,7 @@ extern const char *__local_name;
 #include "wait_op.h"
 #include "agent_op.h"
 #include "file_op.h"
+#include "fs_op.h"
 #include "mem_op.h"
 #include "math_op.h"
 #include "mq_op.h"

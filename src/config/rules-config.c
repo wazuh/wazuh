@@ -162,6 +162,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                         if (!Config->decoders) {
                             merror(MEM_ERROR, __local_name, errno, strerror(errno));
                             OSRegex_FreePattern(&regex);
+                            closedir(dfd);
                             return (-1);
                         }
 

@@ -36,6 +36,9 @@ typedef struct __Config {
     u_int8_t zeromq_output;
     char *zeromq_output_uri;
 
+    /* JSONOUT Export */
+    u_int8_t jsonout_output;
+
     /* Picviz support */
     u_int8_t picviz;
     char *picviz_socket;

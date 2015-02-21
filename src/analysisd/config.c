@@ -32,6 +32,7 @@ int GlobalConf(const char *cfgfile)
     Config.prelude = 0;
     Config.zeromq_output = 0;
     Config.zeromq_output_uri = NULL;
+    Config.jsonout_output = 0;
     Config.memorysize = 1024;
     Config.mailnotify = -1;
     Config.keeplogdate = 0;
