@@ -39,6 +39,7 @@ DEFINES+=-DUSER=\"${OSSEC_USER}\"
 DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
 DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
 DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
+DEFINES+=-D${uname_S}
 
 OSSEC_LDFLAGS=${LDFLAGS} -lm
 
@@ -154,7 +155,7 @@ $(error No windows cross-compiler found!) #MING_BASE:=unknown-
 endif
 endif
 endif
-endif #winagent 
+endif #winagent
 
 
 OSSEC_CC      =${QUIET_CC}${MING_BASE}${CC}

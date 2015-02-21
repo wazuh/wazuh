@@ -100,6 +100,7 @@ int k_import(const char *cmdimport)
             tmp_key = strchr(ip, ' ');
             if (!tmp_key) {
                 printf(NO_KEY);
+                free(b64_dec);
                 return (0);
             }
             *tmp_key = '\0';
@@ -308,7 +309,9 @@ int k_bulkload(const char *cmdbulk)
         strncpy(name, trimwhitespace(token), FILE_SIZE - 1);
 
 #ifndef WIN32
-        chmod(AUTH_FILE, 0440);
+        if (chmod(AUTH_FILE, 0440) == -1) {
+            ErrorExit(CHMOD_ERROR, ARGV0, AUTH_FILE, errno, strerror(errno));
+        }
 #endif
 
         /* Set time 2 */

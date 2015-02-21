@@ -168,14 +168,14 @@
     <if_matched_sid>31103</if_matched_sid>
     <same_source_ip />
     <description>Multiple SQL injection attempts from same </description>
-    <description>souce ip.</description>
+    <description>source ip.</description>
     <group>attack,sql_injection,</group>
   </rule>
 
   <rule id="31153" level="10" frequency="8" timeframe="120">
     <if_matched_sid>31104</if_matched_sid>
     <same_source_ip />
-    <description>Multiple common web attacks from same souce ip.</description>
+    <description>Multiple common web attacks from same source ip.</description>
     <group>attack,</group>
   </rule>
 
@@ -183,7 +183,7 @@
     <if_matched_sid>31105</if_matched_sid>
     <same_source_ip />
     <description>Multiple XSS (Cross Site Scripting) attempts </description>
-    <description>from same souce ip.</description>
+    <description>from same source ip.</description>
     <group>attack,</group>
   </rule>
 

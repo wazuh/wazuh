@@ -446,10 +446,20 @@ int rkcl_get_entry(FILE *fp, const char *msg, OSList *p_list)
                 }
 
                 while (dir) {
+
                     debug2("%s: Checking dir: %s", ARGV0, dir);
-                    if (rk_check_dir(dir, file, pattern)) {
-                        debug2("%s: DEBUG: Found dir.", ARGV0);
-                        found = 1;
+
+                    short is_nfs = IsNFS(dir);
+                    if( is_nfs == 1 && rootcheck.skip_nfs ) {
+                        debug1("%s: DEBUG: rootcheck.skip_nfs enabled and %s is flagged as NFS.", ARGV0, dir);
+                    }
+                    else {
+                        debug2("%s: DEBUG: %s => is_nfs=%d, skip_nfs=%d", ARGV0, dir, is_nfs, rootcheck.skip_nfs);
+
+                        if (rk_check_dir(dir, file, pattern)) {
+                            debug2("%s: DEBUG: Found dir.", ARGV0);
+                            found = 1;
+                        }
                     }
 
                     if (f_value) {

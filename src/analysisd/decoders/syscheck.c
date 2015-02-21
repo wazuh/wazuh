@@ -329,7 +329,10 @@ static int DB_Search(const char *f_name, const char *c_sum, Eventinfo *lf)
 
         /* Add new checksum to the database */
         /* Commenting the file entry and adding a new one later */
-        fsetpos(fp, &sdb.init_pos);
+        if (fsetpos(fp, &sdb.init_pos)) {
+            merror("%s: Error handling integrity database (fsetpos).", ARGV0);
+            return (0);
+        }
         fputc('#', fp);
 
         /* Add the new entry at the end of the file */

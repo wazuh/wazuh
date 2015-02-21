@@ -113,6 +113,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2)
         }
         /* Target */
         else if (strcmp(node[i]->element, xml_ar_location) == 0) {
+            free(tmp_location);
             tmp_location = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, xml_ar_agent_id) == 0) {
             tmp_ar->agent_id = strdup(node[i]->content);
@@ -351,6 +352,7 @@ int ReadActiveCommands(XML_NODE node, void *d1, __attribute__((unused)) void *d2
         if (strcmp(node[i]->element, command_name) == 0) {
             tmp_command->name = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, command_expect) == 0) {
+            free(tmp_str);
             tmp_str = strdup(node[i]->content);
         } else if (strcmp(node[i]->element, command_executable) == 0) {
             tmp_command->executable = strdup(node[i]->content);

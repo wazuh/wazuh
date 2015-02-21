@@ -74,8 +74,14 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
                 print_out("  * adding - key: %s value: %s", key, val);
             }
         }
+
+        fclose(txt_fd);
+
         cdb_make_finish(&cdbm);
-        rename(tmp_filename, cdb_filename);
+        if (rename(tmp_filename, cdb_filename) == -1) {
+            merror(RENAME_ERROR, ARGV0, tmp_filename, cdb_filename, errno, strerror(errno));
+            return;
+        }
     } else {
         printf(" * File %s does not need to be compiled\n", cdb_filename);
     }

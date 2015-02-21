@@ -71,7 +71,10 @@ int FTS_Init()
             fclose(fp_list);
         }
 
-        chmod(FTS_QUEUE, 0640);
+        if (chmod(FTS_QUEUE, 0640) == -1) {
+            merror(CHMOD_ERROR, ARGV0, FTS_QUEUE, errno, strerror(errno));
+            return 0;
+        }
 
         uid_t uid = Privsep_GetUser(USER);
         gid_t gid = Privsep_GetGroup(GROUPGLOBAL);

@@ -42,6 +42,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
     const char *xml_readall = "readall";
     const char *xml_time = "frequency";
     const char *xml_disabled = "disabled";
+    const char *xml_skip_nfs = "skip_nfs";
     const char *xml_base_dir = "base_directory";
     const char *xml_ignore = "ignore";
 
@@ -90,7 +91,18 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        } else if (strcmp(node[i]->element, xml_readall) == 0) {
+        }
+        else if(strcmp(node[i]->element, xml_skip_nfs) == 0)
+        {
+            rootcheck->skip_nfs = eval_bool(node[i]->content);
+            if (rootcheck->skip_nfs == OS_INVALID)
+            {
+                merror(XML_VALUEERR,__local_name,node[i]->element,node[i]->content);
+                return(OS_INVALID);
+            }
+        }
+        else if(strcmp(node[i]->element,xml_readall) == 0)
+        {
             rootcheck->readall = eval_bool(node[i]->content);
             if (rootcheck->readall == OS_INVALID) {
                 merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
