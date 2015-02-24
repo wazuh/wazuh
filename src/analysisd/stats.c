@@ -357,7 +357,7 @@ int Start_Hour()
     if (IsDir(STATSAVED) == -1) {
         if (mkdir(STATSAVED, 0770) == -1) {
             merror("%s: logstat: Unable to create stat directory: %s",
-                   ARGV0, STATQUEUE);
+                   ARGV0, STATSAVED);
             return (-1);
         }
     }

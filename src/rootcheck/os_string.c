@@ -263,7 +263,7 @@ int os_getch(os_strings *oss)
 }
 
 #else
-int os_string(char *file, char *regex)
+int os_string(__attribute__((unused)) char *file, __attribute__((unused)) char *regex)
 {
     return (0);
 }

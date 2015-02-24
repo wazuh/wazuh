@@ -64,7 +64,6 @@ static void send_sk_db()
         merror("%s: INFO: Starting syscheck scan (forwarding database).", ARGV0);
         send_rootcheck_msg("Starting syscheck scan.");
     } else {
-        sleep(syscheck.tsleep + 10);
         return;
     }
 
@@ -287,8 +286,7 @@ void start_daemon()
         }
 #elif defined(WIN32)
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
-            run_now = WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE);
-            if (run_now == WAIT_FAILED) {
+            if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
                 merror("%s: ERROR: WaitForSingleObjectEx failed (for realtime fim).", ARGV0);
                 sleep(SYSCHECK_WAIT);
             } else {

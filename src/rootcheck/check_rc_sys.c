@@ -147,6 +147,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
     DIR *dp;
     struct dirent *entry;
     struct stat statbuf;
+    short is_nfs;
 
 #ifndef WIN32
     const char *(dirs_to_doread[]) = { "/bin", "/sbin", "/usr/bin",
@@ -171,9 +172,23 @@ static int read_sys_dir(const char *dir_name, int do_read)
         i = 0;
     }
 
-    /* Get the number of nodes. The total number on opendir must be the same. */
-    if (lstat(dir_name, &statbuf) < 0) {
-        return (-1);
+    /* Should we check for NFS? */
+    if(rootcheck.skip_nfs)
+    {
+        is_nfs = IsNFS(dir_name);
+        if(is_nfs != 0)
+        {
+            // Error will be -1, and 1 means skipped
+            return(is_nfs);
+        }
+    }
+
+    /* Getting the number of nodes. The total number on opendir
+     * must be the same
+     */
+    if(lstat(dir_name, &statbuf) < 0)
+    {
+        return(-1);
     }
 
     /* Current device id */
@@ -277,8 +292,8 @@ static int read_sys_dir(const char *dir_name, int do_read)
     /* Entry count for directory different than the actual
      * link count from stats
      */
-    if ((entry_count != statbuf.st_nlink) &&
-            ((did_changed == 0) || ((entry_count + 1) != statbuf.st_nlink))) {
+    if ((entry_count != (unsigned) statbuf.st_nlink) &&
+            ((did_changed == 0) || ((entry_count + 1) != (unsigned) statbuf.st_nlink))) {
 #ifndef WIN32
         struct stat statbuf2;
         char op_msg[OS_SIZE_1024 + 1];

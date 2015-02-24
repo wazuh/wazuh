@@ -17,8 +17,6 @@
 
 #ifdef WIN32
 #define sleep(x) Sleep(x * 1000)
-#define os_calloc(x,y,z) (z = calloc(x,y))?(void)1:ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno))
-#define os_strdup(x,y) (y = strdup(x))?(void)1:ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno))
 #endif
 
 #ifdef INOTIFY_ENABLED
@@ -29,6 +27,7 @@
 #include "shared.h"
 #endif
 
+#include "fs_op.h"
 #include "hash_op.h"
 #include "debug_op.h"
 #include "syscheck.h"
@@ -124,6 +123,15 @@ int realtime_adddir(const char *dir)
         return (-1);
     } else {
         int wd = 0;
+
+        short is_nfs = IsNFS(dir);
+        if( is_nfs == 1 ) {
+            merror("%s: ERROR: %s NFS Directories do not support iNotify.", ARGV0, dir);
+            return(-1);
+        }
+        else {
+            debug2("%s: DEBUG: syscheck.skip_nfs=%d, %s::is_nfs=%d", ARGV0, syscheck.skip_nfs, dir, is_nfs);
+        }
 
         wd = inotify_add_watch(syscheck.realtime->fd,
                                dir,

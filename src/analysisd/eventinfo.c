@@ -176,7 +176,8 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
 
     /* Check if sid search is valid */
     if (!rule->group_search) {
-        merror("%s: No group search!! XXX", ARGV0);
+        merror("%s: No group search!", ARGV0);
+        return (NULL);
     }
 
     /* Get last node */
