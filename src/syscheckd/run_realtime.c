@@ -124,14 +124,16 @@ int realtime_adddir(const char *dir)
     } else {
         int wd = 0;
 
-        short is_nfs = IsNFS(dir);
-        if( is_nfs == 1 ) {
-            merror("%s: ERROR: %s NFS Directories do not support iNotify.", ARGV0, dir);
-            return(-1);
-        }
-        else {
-            debug2("%s: DEBUG: syscheck.skip_nfs=%d, %s::is_nfs=%d", ARGV0, syscheck.skip_nfs, dir, is_nfs);
-        }
+    	if(syscheck.skip_nfs) {
+       		short is_nfs = IsNFS(dir);
+        	if( is_nfs == 1 ) {
+            		merror("%s: ERROR: %s NFS Directories do not support iNotify.", ARGV0, dir);
+            		return(-1);
+        	}
+        	else {
+            		debug2("%s: DEBUG: syscheck.skip_nfs=%d, %s::is_nfs=%d", ARGV0, syscheck.skip_nfs, dir, is_nfs);
+        	}
+	}
 
         wd = inotify_add_watch(syscheck.realtime->fd,
                                dir,
