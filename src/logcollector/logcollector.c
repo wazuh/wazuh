@@ -303,8 +303,9 @@ void LogCollectorStart()
                 /* Clear EOF */
                 clearerr(logff[i].fp);
 
+
                 /* Parsing error */
-                if (r != 42) {
+                if (r != 0) {
                     logff[i].ign++;
                 }
             }
