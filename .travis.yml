@@ -69,7 +69,7 @@ deploy:
   provider: releases
   api_key:
     secure: "DiVPTCt1C8XCmFlzcpmFkqfRmxz85/RCE2euvU/c1EiABjfO20aZARCC9zsepAwAGWWsq3uGRLp0aVuJuh4LvTdGxIJDOqYR8z1pByfY4epgE7zmRCIWjx+nAwBpLlfYalMWFpt7vmPp9mKycFkUR2NFoiEfOgoO9wGN0ZgmwSM="
-  file: src/win-pkg/ossec-agent.exe
+  file: src/win-pkg/ossec-win32-agent.exe
   skip_cleanup: true
   on:
     tags: true
