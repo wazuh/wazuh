@@ -1530,15 +1530,23 @@
 </decoder>
 
 <decoder name="apache-errorlog">
-    <prematch>^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:warn] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:notice] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S*:error] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:info] </prematch>
+  <prematch>^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:warn] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:notice] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S*:error] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:info] </prematch>
 </decoder>
 
 <decoder name="apache24-errorlog-ip">
-    <parent>apache-errorlog</parent>
+  <parent>apache-errorlog</parent>
 
-    <prematch offset="after_parent">[client</prematch>
-    <regex offset="after_prematch">^ (\S+):\d+] (\S+): </regex>
-    <order>srcip,id</order>
+  <prematch offset="after_parent">[client</prematch>
+  <regex offset="after_prematch">^ (\S+):\d+] (\S+): </regex>
+  <order>srcip,id</order>
+</decoder>
+
+<decoder name="apache24-modsec-errorlog-ip">
+  <parent>apache-errorlog</parent>
+
+  <prematch offset="after_parent">[client</prematch>
+  <regex offset="after_prematch">^ (\S+)] ModSecurity: </regex>
+  <order>srcip</order>
 </decoder>
 
 <decoder name="apache-errorlog-ip">
