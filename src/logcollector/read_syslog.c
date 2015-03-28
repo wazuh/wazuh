@@ -88,7 +88,7 @@ void *read_syslog(int pos, int *rc, int drop_it)
             merror("%s: Large message size(length=%d): '%s...'", ARGV0, (int)strlen(str), buf);
             while (fgets(str, OS_MAXSTR - 2, logff[pos].fp) != NULL) {
                 /* Get the last occurence of \n */
-                if ((p = strrchr(str, '\n')) != NULL) {
+                if (strrchr(str, '\n') != NULL) {
                     break;
                 }
             }
