@@ -47,7 +47,16 @@ int OS_Bindport(char *_port, unsigned int _proto, const char *_ip)
 
 
     memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_INET6;    /* Allow IPv4 or IPv6 */
+#ifdef AI_V4MAPPED
+    hints.ai_family = AF_INET6;    /* Allow IPv4 and IPv6 */
+    hints.ai_flags = AI_PASSIVE | AI_ADDRCONFIG | AI_V4MAPPED;
+#else
+    /* Certain *BSD OS (eg. OpenBSD) do not allow binding to a
+       single-socket for both IPv4 and IPv6 per RFC 3493.  This will 
+       allow one or the other based on _ip. */
+    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_flags = AI_PASSIVE;
+#endif
     hints.ai_protocol = _proto;
     if (_proto == IPPROTO_UDP) {
         hints.ai_socktype = SOCK_DGRAM;
@@ -56,7 +65,6 @@ int OS_Bindport(char *_port, unsigned int _proto, const char *_ip)
     } else {
         return(OS_INVALID);
     }
-    hints.ai_flags = AI_PASSIVE | AI_ADDRCONFIG | AI_V4MAPPED;
 
     s = getaddrinfo(_ip, _port, &hints, &result);
     if (s != 0) {
