@@ -13,6 +13,12 @@
 
 #include "headers/shared.h"
 #ifdef WIN32
+#ifndef AI_ADDRCONFIG
+#define AI_ADDRCONFIG   0x0400
+#endif
+#ifndef AI_V4MAPPED
+#define AI_V4MAPPED     0x0800
+#endif
 typedef unsigned short int sa_family_t;
 #endif /* WIN32 */
 

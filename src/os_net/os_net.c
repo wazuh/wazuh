@@ -56,7 +56,7 @@ int OS_Bindport(char *_port, unsigned int _proto, const char *_ip)
     } else {
         return(OS_INVALID);
     }
-    hints.ai_flags = AI_PASSIVE;
+    hints.ai_flags = AI_PASSIVE | AI_ADDRCONFIG | AI_V4MAPPED;
 
     s = getaddrinfo(_ip, _port, &hints, &result);
     if (s != 0) {
