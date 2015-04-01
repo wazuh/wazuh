@@ -852,7 +852,7 @@ AddWhite()
                 for ip in ${IPS};
                 do
                     if [ ! "X${ip}" = "X" ]; then
-                        echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
+                        echo $ip | grep -Ei "^[0-9a-f.:/]{5,20}$" > /dev/null 2>&1
                         if [ $? = 0 ]; then
                         echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
                         fi
