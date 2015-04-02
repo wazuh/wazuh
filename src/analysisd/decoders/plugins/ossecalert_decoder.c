@@ -33,6 +33,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
     const char *oa_location;
     const char *oa_val;
     char oa_newlocation[256];
+    char tmpstr_buffer[4096 + 1];
     char *tmp_str = NULL;
     RuleInfo *rule_pointer;
 
@@ -131,8 +132,15 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
     }
 
     /* Create new full log */
+    tmpstr_buffer[0] = '\0';
+    tmpstr_buffer[4095] = '\0';
+    strncpy(tmpstr_buffer, tmp_str, 4094);
+
+
     free(lf->full_log);
-    os_strdup(tmp_str, lf->full_log);
+    lf->full_log = NULL;
+    os_strdup(tmpstr_buffer, lf->full_log);
+
     lf->log = lf->full_log;
 
     /* Rule that generated */
