@@ -398,7 +398,7 @@ void LogCollectorStart()
 		FILE *tf;
 		tf = fopen(logff[i].file, "r");
 		if(tf == NULL) {
-			merror("Could not temporarily open %s", logff[i].file);
+			merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
 		}
 
 		merror("inode for %s (*tf) is: %lu", logff[i].file, tmp_stat.st_ino);
