@@ -85,6 +85,13 @@
     <description>User successfully logged in using a password.</description>
     <group>authentication_success,</group>
   </rule>
+
+  <rule id="51010" level="0">
+    <if_sid>51000</if_sid>
+    <match>Pubkey auth succeeded</match>
+    <description>User successfully logged in using a public key.</description>
+    <group>authentication_success,</group>
+  </rule>
  
    
 </group> <!-- SYSLOG,LOCAL -->
