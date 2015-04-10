@@ -3,9 +3,9 @@
 # Requirements: Linux with firewalld
 # Expect: srcip
 # Author: Daniel B. Cid (iptables)
-# Author: cgzones 
+# Author: cgzones
 # Author: ChristianBeer
-# Last modified: Oct 23, 2014
+# Last modified: Apr 10, 2015
 
 UNAME=`uname`
 ECHO="/bin/echo"
@@ -13,7 +13,9 @@ GREP="/bin/grep"
 FWDCMD="/bin/firewall-cmd"
 RULE=""
 ARG1=""
+# ARG2 can be used to specify the zone where the rich rule should be added otherwise it adds it to the default zone
 ARG2=""
+#ARG2="--zone=external"
 RULEID=""
 ACTION=$1
 USER=$2
@@ -35,7 +37,7 @@ echo "`date` $0 $1 $2 $3 $4 $5" >> ${LOG_FILE}
 
 # Checking for an IP
 if [ "x${IP}" = "x" ]; then
-   echo "$0: <action> <username> <ip>" 
+   echo "$0: <action> <username> <ip>"
    exit 1;
 fi
 
@@ -114,7 +116,7 @@ lock()
 # Unlock function
 unlock()
 {
-   rm -rf ${LOCK} 
+   rm -rf ${LOCK}
 }
 
 
@@ -148,7 +150,7 @@ if [ "X${UNAME}" = "XLinux" ]; then
    COUNT=0;
    lock;
    while [ 1 ]; do
-        ${FWDCMD} ${ARG1}"${RULE}" >/dev/null
+        ${FWDCMD} ${ARG1}"${RULE}" ${ARG2} >/dev/null
         RES=$?
         if [ $RES = 0 ]; then
             break;
@@ -159,7 +161,7 @@ if [ "X${UNAME}" = "XLinux" ]; then
 
             if [ $COUNT -gt 4 ]; then
                 break;
-            fi    
+            fi
         fi
    done
    unlock;
