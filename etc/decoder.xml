@@ -816,7 +816,7 @@
 <decoder name="named-query">
   <parent>named</parent>
   <prematch>: query: </prematch>
-  <regex>client (\S+)#\d+: query: (\S+) IN </regex>
+  <regex>client (\S+)#\d+\s*\S*: query: (\S+) IN </regex>
   <order>srcip,url</order>
 </decoder>
 
