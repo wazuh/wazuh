@@ -44,3 +44,13 @@
    fun:srunner_run
    fun:main
 }
+{
+   getaddrinfo
+   Memcheck:Param
+   sendmsg(mmsg[0].msg_hdr)
+   ...
+   fun:getaddrinfo
+   ...
+   fun:test_gethost_*
+   ...
+}
