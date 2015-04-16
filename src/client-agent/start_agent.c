@@ -41,51 +41,25 @@ int connect_server(int initial_id)
     }
 
     while (agt->rip[rc]) {
-        char *tmp_str;
+        char *host_str, *tmp_str;
 
-        /* Check if we have a hostname */
-        tmp_str = strchr(agt->rip[rc], '/');
+        /* Connect to any useable address of the server */
+        os_strdup(agt->rip[rc], host_str);
+        tmp_str = strchr(host_str, '/');
         if (tmp_str) {
-            char *f_ip;
             *tmp_str = '\0';
-
-            f_ip = OS_GetHost(agt->rip[rc], 5);
-            if (f_ip) {
-                char ip_str[128];
-                ip_str[127] = '\0';
-
-                snprintf(ip_str, 127, "%s/%s", agt->rip[rc], f_ip);
-
-                free(f_ip);
-                free(agt->rip[rc]);
-
-                os_strdup(ip_str, agt->rip[rc]);
-                tmp_str = strchr(agt->rip[rc], '/');
-                if (!tmp_str) {
-                    merror("%s: WARN: Invalid hostname format: '%s'.", ARGV0, agt->rip[rc]);
-                    return 0;
-                }
-
-                tmp_str++;
-            } else {
-                merror("%s: WARN: Unable to get hostname for '%s'.",
-                       ARGV0, agt->rip[rc]);
-                *tmp_str = '/';
-                tmp_str++;
-            }
-        } else {
-            tmp_str = agt->rip[rc];
         }
 
         verbose("%s: INFO: Trying to connect to server (%s:%s).", ARGV0,
-                agt->rip[rc],
+                host_str,
                 agt->port);
 
-        agt->sock = OS_ConnectUDP(agt->port, tmp_str);
+        agt->sock = OS_ConnectUDP(agt->port, host_str);
+        free(host_str);
 
         if (agt->sock < 0) {
             agt->sock = -1;
-            merror(CONNS_ERROR, ARGV0, tmp_str);
+            merror(CONNS_ERROR, ARGV0, agt->rip[rc]);
             rc++;
 
             if (agt->rip[rc] == NULL) {
