@@ -83,7 +83,7 @@ int Read_Remote(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logr->proto = (int *) realloc(logr->proto, sizeof(int) * (pl + 2));
     logr->ipv6 = (int *) realloc(logr->ipv6, sizeof(int) * (pl + 2));
     logr->lip = (char **) realloc(logr->lip, sizeof(char *) * (pl + 2));
-    if (!logr->port || !logr->conn || !logr->proto || !logr->lip) {
+    if (!logr->port || !logr->conn || !logr->proto || !logr->ipv6 || !logr->lip) {
         ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno));
     }
 
