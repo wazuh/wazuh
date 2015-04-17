@@ -59,8 +59,17 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
-        merror("%s: Error accessing '%s'.", ARGV0, file_name);
-        return (-1);
+        if(errno == ENOTDIR){
+		/*Deletion message sending*/
+		char alert_msg[PATH_MAX+4];
+		alert_msg[PATH_MAX + 3] = '\0';
+		snprintf(alert_msg, PATH_MAX + 4, "-1 %s", file_name);
+		send_syscheck_msg(alert_msg);
+		return (0);
+	}else{
+		merror("%s: Error accessing '%s'.", ARGV0, file_name);
+		return (-1);
+	}
     }
 
     if (S_ISDIR(statbuf.st_mode)) {

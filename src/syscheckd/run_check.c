@@ -320,10 +320,10 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
-        char alert_msg[912 + 2];
+        char alert_msg[PATH_MAX+4];
 
-        alert_msg[912 + 1] = '\0';
-        snprintf(alert_msg, 912, "-1 %s", file_name);
+        alert_msg[PATH_MAX + 3] = '\0';
+        snprintf(alert_msg, PATH_MAX + 4, "-1 %s", file_name);
         send_syscheck_msg(alert_msg);
 
         return (-1);
@@ -366,11 +366,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
     }
 
     /* Generate new checksum */
-#ifdef WIN32
     if (S_ISREG(statbuf.st_mode))
-#else
-    if (S_ISREG(statbuf.st_mode))
-#endif
     {
         if (sha1sum || md5sum) {
             /* Generate checksums of the file */
