@@ -401,7 +401,6 @@ void LogCollectorStart()
 			merror(FOPEN_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
 		}
 
-		merror("inode for %s (*tf) is: %lu", logff[i].file, tmp_stat.st_ino);
                 if ((fstat(fileno(tf), &tmp_stat)) == -1) {
                     fclose(logff[i].fp);
                     logff[i].fp = NULL;
