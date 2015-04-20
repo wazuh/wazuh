@@ -518,7 +518,7 @@ void OS_PreludeLog(const Eventinfo *lf)
         add_idmef_object(idmef, "alert.source(0).Service.port", lf->srcport);
 
         if (lf->srcuser) {
-            add_idmef_object(idmef, "alert.source(0).User.UserId(0).name", lf->srcuser);
+            add_idmef_object(idmef, "alert.source(0).User.user_id(0).name", lf->srcuser);
         }
 
         /* Set target */
@@ -552,7 +552,7 @@ void OS_PreludeLog(const Eventinfo *lf)
 
         if (lf->dstuser) {
             add_idmef_object(idmef, "alert.target(0).User.category", "2");
-            add_idmef_object(idmef, "alert.target(0).User.UserId(0).name", lf->dstuser);
+            add_idmef_object(idmef, "alert.target(0).User.user_id(0).name", lf->dstuser);
         }
     } /* end Node infomation block */
 
