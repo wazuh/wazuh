@@ -18,38 +18,8 @@ DIR=$5
 
 UNAME=$(uname);
 
-if [ "$UNAME" = "FreeBSD" -o "$UNAME" = "DragonFly" ]; then
-    if ! grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1; then
-        /usr/sbin/pw groupadd "${GROUP}"
-        /usr/sbin/pw useradd "${USER}" -d "${DIR}" -s /sbin/nologin -g "${GROUP}"
-        /usr/sbin/pw useradd "${USER_MAIL}" -d "${DIR}" -s /sbin/nologin -g "${GROUP}"
-        /usr/sbin/pw useradd "${USER_REM}" -d "${DIR}" -s /sbin/nologin -g "${GROUP}"
-    fi
-
-elif [ "$UNAME" = "SunOS" ]; then
-    if ! grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1; then
-        /usr/sbin/groupadd "${GROUP}"
-        /usr/sbin/useradd -d "${DIR}" -s /bin/false -g "${GROUP}" "${USER}"
-        /usr/sbin/useradd -d "${DIR}" -s /bin/false -g "${GROUP}" "${USER_MAIL}"
-        /usr/sbin/useradd -d "${DIR}" -s /bin/false -g "${GROUP}" "${USER_REM}"
-    fi
-
-elif [ "$UNAME" = "AIX" ]; then
-    AIXSH=""
-
-    if ls -la /bin/false > /dev/null 2>&1; then
-        AIXSH="-s /bin/false"
-    fi
-
-    if ! grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1; then
-        /usr/bin/mkgroup "${GROUP}"
-        /usr/sbin/useradd -d "${DIR}" "${AIXSH}" -g "${GROUP}" "${USER}"
-        /usr/sbin/useradd -d "${DIR}" "${AIXSH}" -g "${GROUP}" "${USER_MAIL}"
-        /usr/sbin/useradd -d "${DIR}" "${AIXSH}" -g "${GROUP}" "${USER_REM}"
-    fi
-
 # Thanks Chuck L. for the mac addusers
-elif [ "$UNAME" = "Darwin" ]; then
+if [ "$UNAME" = "Darwin" ]; then
     if ! id -u "${USER}" > /dev/null 2>&1; then
 
         # Creating for <= 10.4
@@ -61,23 +31,46 @@ elif [ "$UNAME" = "Darwin" ]; then
             ./init/osx105-addusers.sh
         fi
     fi
-else
-    if ! grep "^${USER_REM}" /etc/passwd > /dev/null 2>&1; then
-        /usr/sbin/groupadd "${GROUP}"
 
+else
+    if [ "$UNAME" = "FreeBSD" -o "$UNAME" = "DragonFly" ]; then
+        GROUPADD="/usr/sbin/pw groupadd"
+        USERADD="/usr/sbin/pw useradd"
+        OSMYSHELL="/sbin/nologin"
+    elif [ "$UNAME" = "SunOS" ]; then
+        GROUPADD="/usr/sbin/groupadd"
+        USERADD="/usr/sbin/useradd"
+        OSMYSHELL="/bin/false"
+    elif [ "$UNAME" = "AIX" ]; then
+        GROUPADD="/usr/sbin/mkgroup"
+        USERADD="/usr/sbin/useradd"
+        OSMYSHELL="/bin/false"
+    else
+        GROUPADD="/usr/sbin/groupadd"
+        USERADD="/usr/sbin/useradd"
+        OSMYSHELL="/sbin/nologin"
+    fi
+
+    if ! grep "^${GROUP}" /etc/group > /dev/null 2>&1; then
+        ${GROUPADD} "${GROUP}"
+    fi
+
+    if [ "${OSMYSHELL}" = "/sbin/nologin" ]; then
         # We first check if /sbin/nologin is present. If it is not,
         # we look for /bin/false. If none of them is present, we
         # just stick with nologin (no need to fail the install for that).
-        OSMYSHELL="/sbin/nologin"
-        if ! ls -la ${OSMYSHELL} > /dev/null 2>&1; then
-            if ls -la /bin/false > /dev/null 2>&1; then
+        if [ ! -f ${OSMYSHELL} ]; then
+            if [ -f /bin/false ]; then
                 OSMYSHELL="/bin/false"
             fi
         fi
-        /usr/sbin/useradd -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${USER}"
-        /usr/sbin/useradd -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${USER_MAIL}"
-        /usr/sbin/useradd -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${USER_REM}"
     fi
+
+    for U in ${USER} ${USER_MAIL} ${USER_REM}; do
+        if ! grep "^${U}" /etc/passwd > /dev/null 2>&1; then
+            ${USERADD} "${U}" -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}"
+        fi
+    done
 fi
 
 echo "success";
