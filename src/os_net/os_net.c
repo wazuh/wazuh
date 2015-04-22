@@ -237,6 +237,7 @@ int OS_Connect(char *_port, unsigned int protocol, const char *_ip)
 {
     int ossock = 0, s;
     struct addrinfo hints, *result, *rp;
+    char tempaddr[INET6_ADDRSTRLEN];
 
     if ((_ip == NULL)||(_ip[0] == '\0')) {
         OS_CloseSocket(ossock);
@@ -279,6 +280,9 @@ int OS_Connect(char *_port, unsigned int protocol, const char *_ip)
         OS_CloseSocket(ossock);
         return(OS_SOCKTERR);
     }
+    satop(rp->ai_addr, tempaddr, sizeof tempaddr);
+    verbose("INFO: Connected to %s at address %s, port %s", _ip,
+            tempaddr, _port);
 
     freeaddrinfo(result);           /* No longer needed */
 

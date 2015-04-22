@@ -32,7 +32,7 @@ int connect_server(int initial_id)
         agt->sock = -1;
 
         if (agt->rip[1]) {
-            verbose("%s: INFO: Closing connection to server (%s:%s).",
+            verbose("%s: INFO: Closing connection to server %s, port %s.",
                     ARGV0,
                     agt->rip[rc],
                     agt->port);
@@ -41,21 +41,13 @@ int connect_server(int initial_id)
     }
 
     while (agt->rip[rc]) {
-        char *host_str, *tmp_str;
 
         /* Connect to any useable address of the server */
-        os_strdup(agt->rip[rc], host_str);
-        tmp_str = strchr(host_str, '/');
-        if (tmp_str) {
-            *tmp_str = '\0';
-        }
-
-        verbose("%s: INFO: Trying to connect to server (%s:%s).", ARGV0,
-                host_str,
+        verbose("%s: INFO: Trying to connect to server %s, port %s.", ARGV0,
+                agt->rip[rc],
                 agt->port);
 
-        agt->sock = OS_ConnectUDP(agt->port, host_str);
-        free(host_str);
+        agt->sock = OS_ConnectUDP(agt->port, agt->rip[rc]);
 
         if (agt->sock < 0) {
             agt->sock = -1;
@@ -175,7 +167,7 @@ void start_agent(int is_startup)
         /* If we have more than one server, try all */
         if (agt->rip[1]) {
             int curr_rip = agt->rip_id;
-            merror("%s: INFO: Trying next server ip in the line: '%s'.", ARGV0,
+            merror("%s: INFO: Trying next server in the line: '%s'.", ARGV0,
                    agt->rip[agt->rip_id + 1] != NULL ? agt->rip[agt->rip_id + 1] : agt->rip[0]);
             connect_server(agt->rip_id + 1);
 

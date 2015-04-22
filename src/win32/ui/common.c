@@ -402,8 +402,8 @@ int set_ossec_server(char *ip, HWND hwnd)
         s_ip = OS_GetHost(ip, 0);
 
         if (!s_ip) {
-            MessageBox(hwnd, "Invalid Server IP Address.\r\n"
-                       "It must be the valid IPv4 address of the "
+            MessageBox(hwnd, "Invalid Server.\r\n"
+                       "It must be the valid address of the "
                        "OSSEC server or the resolvable hostname.",
                        "Error -- Failure Setting IP", MB_OK);
             return (0);

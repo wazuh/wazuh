@@ -446,6 +446,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     merror(INVALID_SMTP, __local_name, node[i]->content);
                     return (OS_INVALID);
                 }
+                free(Mail->smtpserver);
+                os_strdup(node[i]->content, Mail->smtpserver);
             }
 #endif
         } else if (strcmp(node[i]->element, xml_heloserver) == 0) {
