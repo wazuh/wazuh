@@ -19,6 +19,8 @@ void *read_ossecalert(int pos, __attribute__((unused)) int *rc, int drop_it)
     char srcip_msg[256];
     char syslog_msg[OS_SIZE_2048 + 1];
 
+    *rc = 0;
+
     al_data = GetAlertData(0, logff[pos].fp);
     if (!al_data) {
         return (NULL);
