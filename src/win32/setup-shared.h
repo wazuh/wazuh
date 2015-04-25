@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/win32/setup-shared.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -9,7 +6,6 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
  */
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,10 +25,10 @@
 #define OS_MAXSTR   1024
 
 
-/* Checks if a file exist. */
+/* Check if a file exists */
 int fileexist(char *file);
 
-/* Grep for a string in a file. */
+/* Grep for a string in a file */
 int dogrep(char *file, char *str);
 
 /* Check if dir exists */
@@ -40,6 +36,3 @@ int direxist(char *dir);
 
 /* Get Windows main directory */
 void get_win_dir(char *file, int f_size);
-
-
-/* EOF */

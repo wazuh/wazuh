@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/sig_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,21 +7,19 @@
  * Foundation
  */
 
-
-/* Functions to handle signal manipulation
- */
+/* Functions to handle signal manipulation */
 
 #ifndef __SIG_H
-
 #define __SIG_H
 
-void HandleSIG();
-void HandleSIGPIPE();
+void HandleSIG(int sig) __attribute__((noreturn));
+void HandleSIGPIPE(int sig);
 
 /* Start signal manipulation */
-void StartSIG(char *process_name);
+void StartSIG(const char *process_name) __attribute__((nonnull));
 
 /* Start signal manipulation -- function as an argument */
-void StartSIG2(char *process_name, void (*func)(int));
+void StartSIG2(const char *process_name, void (*func)(int)) __attribute__((nonnull));
 
 #endif
+

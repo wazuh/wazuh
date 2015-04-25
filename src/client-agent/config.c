@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/client-agent/config.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,24 +7,21 @@
  * Foundation
  */
 
-
-
 #include "shared.h"
-
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
-
 #include "agentd.h"
 
+/* Global variables */
+time_t available_server;
+int run_foreground;
+keystore keys;
+agent *agt;
 
-/* Relocated from config_op.c */
 
-/* ClientConf v0.2, 2005/03/03
- * Read the config file (for the remote client)
- * v0.2: New OS_XML
- */
-int ClientConf(char *cfgfile)
+/* Read the config file (for the remote client) */
+int ClientConf(const char *cfgfile)
 {
     int modules = 0;
     agt->port = DEFAULT_SECURE;
@@ -35,17 +29,14 @@ int ClientConf(char *cfgfile)
     agt->lip = NULL;
     agt->rip_id = 0;
     agt->execdq = 0;
-    agt->profile = NULL;   /*cmoraes*/
+    agt->profile = NULL;
 
-    modules|= CCLIENT;
+    modules |= CCLIENT;
 
-    if(ReadConfig(modules, cfgfile, agt, NULL) < 0)
-    {
-        return(OS_INVALID);
+    if (ReadConfig(modules, cfgfile, agt, NULL) < 0) {
+        return (OS_INVALID);
     }
 
-    return(1);
+    return (1);
 }
 
-
-/* EOF */

@@ -1,5 +1,3 @@
-/*   $OSSEC, localfile-config.h, v0.3, 2005/11/11, Daniel B. Cid$   */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,10 +7,7 @@
  * Foundation
  */
 
-
-
 #ifndef __CLOGREADER_H
-
 #define __CLOGREADER_H
 
 #define EVENTLOG     "eventlog"
@@ -20,24 +15,20 @@
 #define VCHECK_FILES    64
 #define DATE_MODIFIED   1
 
-
 /* For ino_t */
 #include <sys/types.h>
 
-
 /* Logreader config */
-typedef struct _logreader
-{
-    unsigned int size;
+typedef struct _logreader {
+    off_t size;
     int ign;
 
-    #ifdef WIN32
+#ifdef WIN32
     HANDLE h;
-    int fd;
-    #else
+    DWORD fd;
+#else
     ino_t fd;
-    #endif
-
+#endif
 
     /* ffile - format file is only used when
      * the file has format string to retrieve
@@ -51,17 +42,17 @@ typedef struct _logreader
     char *alias;
     char future;
     char *query;
-	
-    void (*read)(int i, int *rc, int drop_it);
+
+    void *(*read)(int i, int *rc, int drop_it);
 
     FILE *fp;
-}logreader;
+} logreader;
 
-typedef struct _logreader_config
-{
+typedef struct _logreader_config {
     int agent_cfg;
     int accept_remote;
     logreader *config;
-}logreader_config;
+} logreader_config;
 
-#endif
+#endif /* __CLOGREADER_H */
+

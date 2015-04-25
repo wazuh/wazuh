@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/config/dbd-config.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,15 +7,11 @@
  * Foundation
  */
 
-
-
 #ifndef _DBDCONFIG__H
 #define _DBDCONFIG__H
 
-
 /* Database config structure */
-typedef struct _DBConfig
-{
+typedef struct _DBConfig {
     unsigned int db_type;
     unsigned int alert_id;
     unsigned int server_id;
@@ -33,13 +26,13 @@ typedef struct _DBConfig
     char *sock;
 
     void *conn;
-    void *location_hash;
+    OSHash *location_hash;
 
     char **includes;
-}DBConfig;
-
+} DBConfig;
 
 #define MYSQLDB 0x002
 #define POSTGDB 0x004
 
-#endif
+#endif /* _DBDCONFIG__H */
+

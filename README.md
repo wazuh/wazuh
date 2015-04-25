@@ -19,18 +19,20 @@ The current stable releases are available on the ossec website.
 
 ## Development ##
 
-The development version are hosted on Github and just a simple git clone away. 
+The development version is hosted on GitHub and just a simple git clone away. 
 
 [![Build Status](https://travis-ci.org/ossec/ossec-hids.png?branch=master)](https://travis-ci.org/ossec/ossec-hids)
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/1847/badge.svg)](https://scan.coverity.com/projects/1847)
+
 
 ## Quick install 
 
 ```
-# (cd /tmp/ && wget http://www.ossec.net/files/ossec-hids-2.7.1.tar.gz  && tar xfz ossec-hids-2.7.1.tar.gz && cd ossec-hids-2.7.1 && sudo ./install.sh )
+# (cd /tmp/ && wget https://github.com/ossec/ossec-hids/releases/download/v2.8.0/ossec-hids-2.8.tar.gz  && tar xfz ossec-hids-2.8.tar.gz && cd ossec-hids-2.8 && sudo ./install.sh )
 
 ```
 
-Then follow the prompts.  You should still Read the Documenation [here](http://ossec.net/doc/).
+Then follow the prompts.  You should still Read the Documentation [here](http://ossec.net/doc/).
 
 ## Credits and Thanks ##
 

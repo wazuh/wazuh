@@ -13,6 +13,10 @@
 ; include SimpleSC
 !addplugindir "SimpleSC"
 
+; include GetTime
+!include "FileFunc.nsh"
+!insertmacro GetTime
+
 ; output file
 !ifndef OutFile
     !define OutFile "ossec-win32-agent.exe"
@@ -23,7 +27,6 @@
 !define MUI_UNICON ossec-uninstall.ico
 !define VERSION "2.8"
 !define NAME "OSSEC HIDS"
-!define /date CDATE "%b %d %Y at %H:%M:%S"
 !define SERVICE "OssecSvc"
 
 Name "${NAME} Windows Agent v${VERSION}"
@@ -140,6 +143,7 @@ Section "OSSEC Agent (required)" MainSec
     CreateDirectory "$INSTDIR\shared"
     CreateDirectory "$INSTDIR\active-response"
     CreateDirectory "$INSTDIR\active-response\bin"
+    CreateDirectory "$INSTDIR\tmp"
 
     ; install files
     File ossec-lua.exe
@@ -156,15 +160,15 @@ Section "OSSEC Agent (required)" MainSec
     File setup-syscheck.exe
     File setup-iis.exe
     File doc.html
-    File /oname=shared\rootkit_trojans.txt rootkit_trojans.txt
-    File /oname=shared\rootkit_files.txt rootkit_files.txt
+    File /oname=shared\rootkit_trojans.txt ../rootcheck/db/rootkit_trojans.txt
+    File /oname=shared\rootkit_files.txt ../rootcheck/db/rootkit_files.txt
     File add-localfile.exe
     File LICENSE.txt
-    File /oname=shared\win_applications_rcl.txt rootcheck\db\win_applications_rcl.txt
-    File /oname=shared\win_malware_rcl.txt rootcheck\db\win_malware_rcl.txt
-    File /oname=shared\win_audit_rcl.txt rootcheck\db\win_audit_rcl.txt
+    File /oname=shared\win_applications_rcl.txt ../rootcheck\db\win_applications_rcl.txt
+    File /oname=shared\win_malware_rcl.txt ../rootcheck\db\win_malware_rcl.txt
+    File /oname=shared\win_audit_rcl.txt ../rootcheck\db\win_audit_rcl.txt
     File help.txt
-    File vista_sec.csv
+    File vista_sec.txt
     File /oname=active-response\bin\route-null.cmd route-null.cmd
     File /oname=active-response\bin\restart-ossec.cmd restart-ossec.cmd
 
@@ -188,10 +192,15 @@ Section "OSSEC Agent (required)" MainSec
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ossec" "NoRepair" 1
     WriteUninstaller "uninstall.exe"
 
+    ; get current local time
+    ${GetTime} "" "L" $0 $1 $2 $3 $4 $5 $6
+    var /global CURRENTTIME
+    StrCpy $CURRENTTIME "$2-$1-$0 $4:$5:$6"
+
     ; write version and install information
     VersionInstall:
         FileOpen $0 "$INSTDIR\VERSION.txt" w
-        FileWrite $0 "${NAME} v${VERSION} - Installed on ${CDATE}"
+        FileWrite $0 "${NAME} v${VERSION} - Installed on $CURRENTTIME"
         FileClose $0
         IfErrors VersionError VersionComplete
     VersionError:
@@ -410,6 +419,7 @@ Section "Uninstall"
     Delete "$INSTDIR\shared\*"
     Delete "$INSTDIR\active-response\bin\*"
     Delete "$INSTDIR\active-response\*"
+    Delete "$INSTDIR\tmp\*"
     Delete "$INSTDIR"
 
     ; remove shortcuts
@@ -425,5 +435,6 @@ Section "Uninstall"
     RMDir "$INSTDIR\rids"
     RMDir "$INSTDIR\active-response\bin"
     RMDir "$INSTDIR\active-response"
+    RMDir "$INSTDIR\tmp"
     RMDir "$INSTDIR"
 SectionEnd

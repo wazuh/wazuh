@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_auth/auth.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -25,33 +22,37 @@
  *
  */
 
-
 #ifndef _AUTHD_H
 #define _AUTHD_H
 
 #ifndef ARGV0
-   #define ARGV0 "ossec-authd"
+#define ARGV0 "ossec-authd"
 #endif
 
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 
-#ifdef USE_OPENSSL
-
-void *os_ssl_keys(int isclient, char *dir);
+#ifdef LIBOPENSSL_ENABLED
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
+
 #include "os_net/os_net.h"
 #include "addagent/manage_agents.h"
 
-BIO *bio_err;
+extern BIO *bio_err;
 #define KEYFILE  "/etc/sslmanager.key"
-#define CERTFILE  "/etc/sslmanager.cert"
+#define CERTFILE "/etc/sslmanager.cert"
+#define DEFAULT_PORT 1515
 
-#endif
+SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const char *key, const char *ca_cert);
+SSL_CTX *get_ssl_context(void);
+int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key);
+int load_ca_cert(SSL_CTX *ctx, const char *ca_cert);
+int verify_callback(int ok, X509_STORE_CTX *store);
 
-#endif
+#endif /* LIBOPENSSL_ENABLED */
+#endif /* _AUTHD_H */
+

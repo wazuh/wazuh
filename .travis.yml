@@ -3,16 +3,23 @@ language: c
 notifications:
   irc:
     - "chat.freenode.net#ossec-dev"
+  slack:
+    secure: Cz1InEL5G+z2huuzilXe7BqfxlEjN4io5ylJa5jgPvGMlB5sIQZTQQ7PDrzcK0iwn+5xgDkXKwbNPV2k+NHNTtNFiuBrcnJbyeA8PjghtAw4hg/Vpl5+5ovySZT9pGSV7ySsA8nGD73hlcQFgWnYDhsugQ6UZyRXAN8vLLCLjPg=
 
 env:
-- DB=mysql OSSEC_TYPE=all GEOIP=yes
-- DB=mysql OSSEC_TYPE=all GEOIP=no
-- DB=none OSSEC_TYPE=all GEOIP=yes
-- DB=none OSSEC_TYPE=all GEOIP=no
+- DB=mysql OSSEC_TYPE=server GEOIP=yes
+- DB=mysql OSSEC_TYPE=server GEOIP=no
+- DB=pgsql OSSEC_TYPE=server GEOIP=yes
+- DB=pgsql OSSEC_TYPE=server GEOIP=no
+- DB=none OSSEC_TYPE=server GEOIP=yes
+- DB=none OSSEC_TYPE=server GEOIP=no
+- DB=none OSSEC_TYPE=server PRELUDE=yes ZEROMQ=yes PICVIZ=yes
+- DB=none OSSEC_TYPE=local GEOIP=no
+- DB=none OSSEC_TYPE=hybrid GEOIP=no
 - DB=none OSSEC_TYPE=agent GEOIP=no
-- DB=none OSSEC_TYPE=windows_agent GEOIP=no
+- DB=none OSSEC_TYPE=winagent GEOIP=no
 - OSSEC_TYPE=test
-
+- OSSEC_TYPE=server RULES=test
 
 
 compiler:
@@ -20,21 +27,52 @@ compiler:
 - clang
 
 
+matrix:
+  fast_finish: true
+  exclude:
+    - compiler: clang
+      env: DB=none OSSEC_TYPE=winagent GEOIP=no
+    - compiler: clang
+      env: OSSEC_TYPE=server RULES=test
+
+
 
 before_script:
-- if [[ "$DB" == "mysql"  ]]; then ( cd src && make setdb  ); fi
-- if [[ "$GEOIP" == "yes"  ]]; then ( sudo apt-get install geoip-bin geoip-database libgeoip-dev libgeoip1 ); fi
-- if [[ "$GEOIP" == "yes"  ]]; then ( cd src && make setgeoip ); fi
-- if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( sudo apt-get install aptitude && sudo aptitude -y install mingw-w64 nsis ); fi
-- if [[ "$OSSEC_TYPE" == "test" ]]; then ( sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ saucy main " && sudo apt-get update && sudo apt-get install check ); fi
+- sudo apt-get update -qq
+- if [[ "${GEOIP}" == "yes"  ]]; then ( sudo apt-get install geoip-bin geoip-database libgeoip-dev libgeoip1 ); fi
+- if [[ "${PRELUDE}" == "yes" ]]; then ( sudo apt-get install libprelude-dev ); fi
+- if [[ "${ZEROMQ}" == "yes" ]]; then ( sudo apt-get install libzmq3-dev
+  && wget http://download.zeromq.org/czmq-2.2.0.tar.gz
+  && tar xfz czmq-2.2.0.tar.gz && cd czmq-2.2.0/
+  && ./configure && make all -j && sudo make install
+  ); fi
+- if [[ "${OSSEC_TYPE}" == "winagent" ]]; then ( sudo apt-get install aptitude && sudo aptitude -y install mingw-w64 nsis ); fi
+- if [[ "${OSSEC_TYPE}" == "test" ]]; then ( sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ saucy main " && sudo apt-get update && sudo apt-get install check valgrind ); fi
 
 
 
 script:
-- ( cd src && sudo make $OSSEC_TYPE )
+- COMMAND="V=1 TARGET=${OSSEC_TYPE}"
+  && if ! [[ "${DB}" = "none" ]]; then COMMAND="${COMMAND} DATABASE=${DB}"; fi
+  && if [[ "${GEOIP}" = "yes" ]]; then COMMAND="${COMMAND} USE_GEOIP=1"; fi
+  && if [[ "${PRELUDE}" = "yes" ]]; then COMMAND="${COMMAND} USE_PRELUDE=1"; fi
+  && if [[ "${PICVIZ}" = "yes" ]]; then COMMAND="${COMMAND} USE_PICVIZ=1"; fi
+  && if [[ "${ZEROMQ}" = "yes" ]]; then COMMAND="${COMMAND} USE_ZEROMQ=1"; fi
+  && ( cd src/ && make --warn-undefined-variables ${COMMAND} settings && make --warn-undefined-variables ${COMMAND} -j )
+  && if ! [[ "${OSSEC_TYPE}" = "test" || "${OSSEC_TYPE}" = "winagent" ]]; then ( cd src/ && sudo make --warn-undefined-variables ${COMMAND} install ) fi
 
-before_deploy:
-- mkdir travis-builds
-- if [[ "$OSSEC_TYPE" == "windows_agent" ]]; then ( cp src/win-pkg/ossec-agent.exe travis-builds/ossec-agent-bid:$TRAVIS_JOB_NUMBER-br:$TRAVIS_BRANCH.exe ); fi
+- if [[ "${OSSEC_TYPE}" == "test" ]]; then ( cd src/ && make --warn-undefined-variables test_valgrind ) fi
+- if [[ "${RULES}" == "test" ]]; then ( cd src/ && sudo make V=1 TARGET=server test-rules ) fi
 
 
+deploy:
+  provider: releases
+  api_key:
+    secure: "DiVPTCt1C8XCmFlzcpmFkqfRmxz85/RCE2euvU/c1EiABjfO20aZARCC9zsepAwAGWWsq3uGRLp0aVuJuh4LvTdGxIJDOqYR8z1pByfY4epgE7zmRCIWjx+nAwBpLlfYalMWFpt7vmPp9mKycFkUR2NFoiEfOgoO9wGN0ZgmwSM="
+  file: src/win-pkg/ossec-win32-agent.exe
+  skip_cleanup: true
+  on:
+    tags: true
+    all_branches: true
+    repo: ossec/ossec-hids
+    condition: $OSSEC_TYPE = winagent

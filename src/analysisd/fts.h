@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/fts.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,19 +7,24 @@
  * Foundation
  */
 
-
 #ifndef __FTS_H
-
 #define __FTS_H
 
+#include "eventinfo.h"
 
 /* FTS queues */
 #ifdef TESTRULE
-  #define FTS_QUEUE "queue/fts/fts-queue"
-  #define IG_QUEUE  "queue/fts/ig-queue"
+#define FTS_QUEUE "queue/fts/fts-queue"
+#define IG_QUEUE  "queue/fts/ig-queue"
 #else
-  #define FTS_QUEUE "/queue/fts/fts-queue"
-  #define IG_QUEUE  "/queue/fts/ig-queue"
+#define FTS_QUEUE "/queue/fts/fts-queue"
+#define IG_QUEUE  "/queue/fts/ig-queue"
 #endif
 
-#endif
+int FTS_Init(void);
+void AddtoIGnore(Eventinfo *lf);
+int IGnore(Eventinfo *lf);
+int FTS(Eventinfo *lf);
+
+#endif /* __FTS_H */
+

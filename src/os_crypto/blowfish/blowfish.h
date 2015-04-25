@@ -1,4 +1,3 @@
-/* crypto/bf/blowfish.h */
 /* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
  * All rights reserved.
  *
@@ -69,8 +68,8 @@ extern "C" {
 #error BF is disabled.
 #endif
 
-#define BF_ENCRYPT	1
-#define BF_DECRYPT	0
+#define BF_ENCRYPT    1
+#define BF_DECRYPT    0
 
 /*
  * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -89,35 +88,34 @@ extern "C" {
  * does it have on performance on none-T3E machines. I could declare
  * int, but at least on C90 sizeof(int) can be chosen at compile time.
  * So I've chosen long...
- *					<appro@fy.chalmers.se>
+ *                    <appro@fy.chalmers.se>
  */
 #else
 #define BF_LONG unsigned int
 #endif
 
-#define BF_ROUNDS	16
-#define BF_BLOCK	8
+#define BF_ROUNDS    16
+#define BF_BLOCK    8
 
-typedef struct bf_key_st
-	{
-	BF_LONG P[BF_ROUNDS+2];
-	BF_LONG S[4*256];
-	} BF_KEY;
+typedef struct bf_key_st {
+    BF_LONG P[BF_ROUNDS + 2];
+    BF_LONG S[4 * 256];
+} BF_KEY;
 
 
 void BF_set_key(BF_KEY *key, int len, const unsigned char *data);
 
-void BF_encrypt(BF_LONG *data,const BF_KEY *key);
-void BF_decrypt(BF_LONG *data,const BF_KEY *key);
+void BF_encrypt(BF_LONG *data, const BF_KEY *key);
+void BF_decrypt(BF_LONG *data, const BF_KEY *key);
 
 void BF_ecb_encrypt(const unsigned char *in, unsigned char *out,
-	const BF_KEY *key, int enc);
+                    const BF_KEY *key, int enc);
 void BF_cbc_encrypt(const unsigned char *in, unsigned char *out, long length,
-	const BF_KEY *schedule, unsigned char *ivec, int enc);
+                    const BF_KEY *schedule, unsigned char *ivec, int enc);
 void BF_cfb64_encrypt(const unsigned char *in, unsigned char *out, long length,
-	const BF_KEY *schedule, unsigned char *ivec, int *num, int enc);
+                      const BF_KEY *schedule, unsigned char *ivec, int *num, int enc);
 void BF_ofb64_encrypt(const unsigned char *in, unsigned char *out, long length,
-	const BF_KEY *schedule, unsigned char *ivec, int *num);
+                      const BF_KEY *schedule, unsigned char *ivec, int *num);
 const char *BF_options(void);
 
 #ifdef  __cplusplus
@@ -125,3 +123,4 @@ const char *BF_options(void);
 #endif
 
 #endif
+

@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/file_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,49 +7,55 @@
  * Foundation
  */
 
-/* Part of the OSSEC HIDS
- * Available at http://www.ossec.net/hids/
- */
-
-/* Functions to handle operation with files
- */
+/* Functions to handle operation with files */
 
 #ifndef __FILE_H
-
 #define __FILE_H
 
-#define OS_PIDFILE	"/var/run"
+#include <time.h>
 
-/* Set the program name. Must be done before **anything** else */
-void OS_SetName(char *name);
+#define OS_PIDFILE  "/var/run"
 
-int File_DateofChange(char *file);
+/* Set the program name - must be done before *anything* else */
+void OS_SetName(const char *name) __attribute__((nonnull));
 
-int IsDir(char *file);
+time_t File_DateofChange(const char *file) __attribute__((nonnull));
 
-int CreatePID(char *name, int pid);
+int IsDir(const char *file) __attribute__((nonnull));
 
-int DeletePID(char *name);
+int CreatePID(const char *name, int pid) __attribute__((nonnull));
 
-int MergeFiles(char *finalpath, char **files);
+int DeletePID(const char *name) __attribute__((nonnull));
 
-int MergeAppendFile(char *finalpath, char *files);
+int MergeFiles(const char *finalpath, char **files) __attribute__((nonnull));
 
-int UnmergeFiles(char *finalpath, char *optdir);
+int MergeAppendFile(const char *finalpath, const char *files) __attribute__((nonnull(1)));
 
-/* daemonize a process */
-void goDaemon();
+int UnmergeFiles(const char *finalpath, const char *optdir) __attribute__((nonnull(1)));
 
-/* daemonize a process without closing stdin/stdou/stderr */
-void goDaemonLight();
+/* Daemonize a process */
+void goDaemon(void);
 
-/* not really a file operation, but returns the uname */
-char *getuname();
+/* Daemonize a process without closing stdin/stdout/stderr */
+void goDaemonLight(void);
 
-/* Checks for vista. */
+/* Not really a file operation, but returns the uname */
+char *getuname(void);
+
+/* Return basename of path */
+char *basename_ex(char *path) __attribute__((nonnull));
+
+/* Rename file or directory */
+int rename_ex(const char *source, const char *destination) __attribute__((nonnull));
+
+/* Create temporary file */
+int mkstemp_ex(char *tmp_path) __attribute__((nonnull));
+
+/* Checks for Windows Vista */
 #ifdef WIN32
 int checkVista();
 int isVista;
 #endif
 
-#endif
+#endif /* __FILE_H */
+

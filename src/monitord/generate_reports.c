@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/monitord/generate_reports.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2010 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,32 +7,30 @@
  * Foundation
  */
 
-
 #include "shared.h"
 #include "monitord.h"
-int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, char *idsname, FILE *fp, struct tm *p);
-char *(monthss[])={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug",
-                  "Sep","Oct","Nov","Dec"};
+#include "os_maild/maild.h"
+
+static const char *(monthss[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                                 };
 
 
-void generate_reports(int cday, int cmon, int cyear,struct tm *p)
+void generate_reports(int cday, int cmon, int cyear, const struct tm *p)
 {
     int s = 0;
 
-    if(!mond.smtpserver)
-    {
+    if (!mond.smtpserver) {
         return;
     }
 
-    if(mond.reports)
-    {
+    if (mond.reports) {
         int twait = 0;
         int childcount = 0;
-        while(mond.reports[s])
-        {
+
+        while (mond.reports[s]) {
             pid_t pid;
-            if(mond.reports[s]->emailto == NULL)
-            {
+            if (mond.reports[s]->emailto == NULL) {
                 s++;
                 continue;
             }
@@ -44,14 +39,11 @@ void generate_reports(int cday, int cmon, int cyear,struct tm *p)
              * To avoid crashing monitord if something goes wrong.
              */
             pid = fork();
-            if(pid < 0)
-            {
+            if (pid < 0) {
                 merror("%s: ERROR: Fork failed. cause: %d - %s", ARGV0, errno, strerror(errno));
                 s++;
                 continue;
-            }
-            else if(pid == 0)
-            {
+            } else if (pid == 0) {
                 char fname[256];
                 char aname[256];
                 fname[255] = '\0';
@@ -60,31 +52,31 @@ void generate_reports(int cday, int cmon, int cyear,struct tm *p)
 
                 merror("%s: INFO: Starting daily reporting for '%s'", ARGV0, mond.reports[s]->title);
                 mond.reports[s]->r_filter.fp = fopen(fname, "w+");
-                if(!mond.reports[s]->r_filter.fp)
-                {
+                if (!mond.reports[s]->r_filter.fp) {
                     merror("%s: ERROR: Unable to open temporary reports file.", ARGV0);
                     s++;
                     continue;
                 }
 
-
-                /* Opening the log file. */
+                /* Open the log file */
                 snprintf(aname, 255, "%s/%d/%s/ossec-%s-%02d.log",
                          ALERTS, cyear, monthss[cmon], "alerts", cday);
                 os_strdup(aname, mond.reports[s]->r_filter.filename);
 
-
-                /* Starting report */
+                /* Start report */
                 os_ReportdStart(&mond.reports[s]->r_filter);
                 fflush(mond.reports[s]->r_filter.fp);
 
-                if(ftell(mond.reports[s]->r_filter.fp) < 10)
-                {
+                if (ftell(mond.reports[s]->r_filter.fp) < 10) {
                     merror("%s: INFO: Report '%s' empty.", ARGV0, mond.reports[s]->title);
-                }
-                else if(OS_SendCustomEmail(mond.reports[s]->emailto, mond.reports[s]->title,
-                        mond.smtpserver, mond.emailfrom, mond.emailidsname, mond.reports[s]->r_filter.fp, p) != 0)
-                {
+                } else if (OS_SendCustomEmail(mond.reports[s]->emailto,
+                                              mond.reports[s]->title,
+                                              mond.smtpserver,
+                                              mond.emailfrom,
+                                              mond.emailidsname,
+                                              mond.reports[s]->r_filter.fp,
+                                              p)
+                           != 0) {
                     merror("%s: WARN: Unable to send report email.", ARGV0);
                 }
                 fclose(mond.reports[s]->r_filter.fp);
@@ -93,9 +85,7 @@ void generate_reports(int cday, int cmon, int cyear,struct tm *p)
                 mond.reports[s]->r_filter.filename = NULL;
 
                 exit(0);
-            }
-            else
-            {
+            } else {
                 /* Sleep between each report. Time is not important in here. */
                 sleep(20);
                 childcount++;
@@ -104,34 +94,25 @@ void generate_reports(int cday, int cmon, int cyear,struct tm *p)
             s++;
         }
 
-
-        while (childcount)
-        {
+        while (childcount) {
             int wp;
-            wp = waitpid((pid_t) -1, NULL, WNOHANG);
-            if (wp < 0)
-            {
-                merror(WAITPID_ERROR, ARGV0);
-            }
-            else if(wp == 0)
-            {
-                /* If there is still any report left, sleep 5 and try again.*/
+            wp = waitpid((pid_t) - 1, NULL, WNOHANG);
+            if (wp < 0) {
+                merror(WAITPID_ERROR, ARGV0, errno, strerror(errno));
+            } else if (wp == 0) {
+                /* If there is still any report left, sleep 5 and try again */
                 sleep(5);
                 twait++;
 
-                if(twait > 2)
-                {
+                if (twait > 2) {
                     merror("%s: WARN: Report taking too long to complete. Waiting for it to finish...", ARGV0);
                     sleep(10);
-                    if(twait > 10)
-                    {
+                    if (twait > 10) {
                         merror("%s: WARN: Report took too long. Moving on...", ARGV0);
                         break;
                     }
                 }
-            }
-            else
-            {
+            } else {
                 childcount--;
             }
         }
@@ -139,4 +120,3 @@ void generate_reports(int cday, int cmon, int cyear,struct tm *p)
     return;
 }
 
-/* EOF */

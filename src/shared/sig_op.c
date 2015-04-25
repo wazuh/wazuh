@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/shared/sig_op.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,27 +7,26 @@
  * Foundation
  */
 
-
-/* Functions to handle signal manipulation
- */
+/* Functions to handle signal manipulation */
 
 #ifndef WIN32
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <string.h>
 
 #include "sig_op.h"
 #include "file_op.h"
 #include "debug_op.h"
-
 #include "error_messages/error_messages.h"
 
-char *pidfile = NULL;
+static const char *pidfile = NULL;
 
-void HandleSIG()
+
+void HandleSIG(int sig)
 {
-    merror(SIGNAL_RECV, pidfile);
+    merror(SIGNAL_RECV, pidfile, sig, strsignal(sig));
 
     DeletePID(pidfile);
 
@@ -39,15 +35,13 @@ void HandleSIG()
 
 
 /* To avoid client-server communication problems */
-void HandleSIGPIPE()
+void HandleSIGPIPE(__attribute__((unused)) int sig)
 {
     return;
 }
 
-void StartSIG(char *process_name)
+void StartSIG(const char *process_name)
 {
-    /* Signal Manipulation
-       go to HandleSIG() */
     pidfile = process_name;
 
     signal(SIGHUP, SIG_IGN);
@@ -58,7 +52,7 @@ void StartSIG(char *process_name)
     signal(SIGPIPE, HandleSIGPIPE);
 }
 
-void StartSIG2(char *process_name, void (*func)(int))
+void StartSIG2(const char *process_name, void (*func)(int))
 {
     pidfile = process_name;
 
@@ -70,5 +64,5 @@ void StartSIG2(char *process_name, void (*func)(int))
     signal(SIGPIPE, HandleSIGPIPE);
 }
 
-#endif
-/* EOF */
+#endif /* !WIN32 */
+

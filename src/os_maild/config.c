@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_maild/config.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -11,24 +8,22 @@
  */
 
 #include "shared.h"
-
 #include "maild.h"
 #include "config/config.h"
 
 
-/* MailConf v0.1: 2005/04/01
- * Reads the Mail configuration
- */
-int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
+/* Read the Mail configuration */
+int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
 {
     int modules = 0;
 
-    modules|= CMAIL;
+    modules |= CMAIL;
 
     Mail->to = NULL;
     Mail->from = NULL;
     Mail->idsname = NULL;
     Mail->smtpserver = NULL;
+    Mail->heloserver = NULL;
     Mail->mn = 0;
     Mail->priority = 0;
     Mail->maxperhour = 12;
@@ -41,23 +36,21 @@ int MailConf(int test_config, char *cfgfile, MailConfig *Mail)
     Mail->gran_format = NULL;
     Mail->groupping = 1;
     Mail->strict_checking = 0;
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     Mail->geoip = 0;
 #endif
 
-    if(ReadConfig(modules, cfgfile, NULL, Mail) < 0)
-        return(OS_INVALID);
+    if (ReadConfig(modules, cfgfile, NULL, Mail) < 0) {
+        return (OS_INVALID);
+    }
 
-    if(!Mail->mn)
-    {
-        if(!test_config)
-        {
+    if (!Mail->mn) {
+        if (!test_config) {
             verbose(MAIL_DIS, ARGV0);
         }
         exit(0);
     }
 
-    return(0);
+    return (0);
 }
 
-/* EOF */

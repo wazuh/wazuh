@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/syscheckd/syscheck.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,9 +7,7 @@
  * Foundation
  */
 
-
 #ifndef __SYSCHECK_H
-
 #define __SYSCHECK_H
 
 #include "config/syscheck-config.h"
@@ -21,63 +16,46 @@
 /* Notify list size */
 #define NOTIFY_LIST_SIZE    32
 
-
 /* Global config */
-syscheck_config syscheck;
-
+extern syscheck_config syscheck;
 
 /** Function Prototypes **/
 
-/* run_check: checks the integrity of the files against the
- * saved database
- */
-void run_check();
+/* Check the integrity of the files against the saved database */
+void run_check(void);
 
-
-/* start_daemon: Runs run_check periodically.
- */
-void start_daemon();
-
+/* Run run_check periodically */
+void start_daemon(void) __attribute__((noreturn));
 
 /* Read the XML config */
-int Read_Syscheck_Config(char * cfgfile);
+int Read_Syscheck_Config(const char *cfgfile) __attribute__((nonnull));
 
+/* Create the database */
+int create_db(void);
 
-/* create the database */
-int create_db();
+/* Check database for changes */
+int run_dbcheck(void);
 
+/* Check the registry for changes */
+void os_winreg_check(void);
 
-/* int run_dbcheck()
- * Checks database for changes.
- */
-int run_dbcheck();
+/* Start real time */
+int realtime_start(void);
 
-/** void os_winreg_check()
- * Checks the registry for changes.
- */
-void os_winreg_check();
+/* Add a directory to real time monitoring */
+int realtime_adddir(const char *dir) __attribute__((nonnull));
 
-/* starts real time */
-int realtime_start();
+/* Process real time queue */
+int realtime_process(void);
 
-/* Adds a directory to real time monitoring. */
-int realtime_adddir(char *dir);
+/* Process the content of the file changes */
+char *seechanges_addfile(const char *filename) __attribute__((nonnull));
 
-/* Process real time queue. */
-int realtime_process();
+/* Get checksum changes */
+int c_read_file(const char *file_name, const char *oldsum, char *newsum) __attribute__((nonnull));
 
-/* Process the content of the file changes. */
-char *seechanges_addfile(char *filename);
-
-/* get checksum changes. */
-int c_read_file(char *file_name, char *oldsum, char *newsum);
-
-/** Sends syscheck message.
- */
-int send_syscheck_msg(char *msg);
-int send_rootcheck_msg(char *msg);
-
+int send_syscheck_msg(const char *msg) __attribute__((nonnull));
+int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 
 #endif
 
-/* EOF */

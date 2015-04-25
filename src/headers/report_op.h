@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/report_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,14 +7,11 @@
  * Foundation
  */
 
-
 #ifndef __REPORT_OP_H
 #define __REPORT_OP_H
 
-
 #define REPORT_RELATED      1
 #define REPORT_FILTER       2
-
 
 #define REPORT_REL_USER          0x001
 #define REPORT_REL_SRCIP         0x002
@@ -28,28 +22,25 @@
 #define REPORT_TYPE_DAILY        0x100
 #define REPORT_REL_FILE          0x200
 
+typedef struct _report_filter {
+    const char *report_name;
 
-
-typedef struct _report_filter
-{
-    char *report_name;
-
-    char *group;
-    char *rule;
-    char *level;
-    char *location;
-    char *user;
-    char *srcip;
-    char *files;
+    const char *group;
+    const char *rule;
+    const char *level;
+    const char *location;
+    const char *user;
+    const char *srcip;
+    const char *files;
     char *filename;
 
-    void *top_user;
-    void *top_srcip;
-    void *top_level;
-    void *top_rule;
-    void *top_group;
-    void *top_location;
-    void *top_files;
+    OSStore *top_user;
+    OSStore *top_srcip;
+    OSStore *top_level;
+    OSStore *top_rule;
+    OSStore *top_group;
+    OSStore *top_location;
+    OSStore *top_files;
 
     int related_user;
     int related_file;
@@ -61,17 +52,14 @@ typedef struct _report_filter
 
     int report_type;
     int show_alerts;
-    void *fp;
+    FILE *fp;
 
-}report_filter;
+} report_filter;
 
-
-
-
-int os_report_configfilter(char *filter_by, char *filter_value,
-                           report_filter *r_filter, int arg_type);
-void os_report_printtop(void *topstore, char *hname, int print_related);
-void os_ReportdStart(report_filter *r_filter);
-
+int  os_report_configfilter(const char *filter_by, const char *filter_value,
+                            report_filter *r_filter, int arg_type) __attribute__((nonnull(3)));
+void os_report_printtop(void *topstore, const char *hname, int print_related) __attribute__((nonnull));
+void os_ReportdStart(report_filter *r_filter) __attribute__((nonnull));
 
 #endif
+

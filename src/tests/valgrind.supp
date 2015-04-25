@@ -1,0 +1,46 @@
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Param
+   timer_create(evp)
+   fun:timer_create@@GLIBC_2.3.3
+   fun:srunner_run
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   fun:malloc
+   obj:/usr/bin/make
+   obj:/usr/bin/make
+   obj:/usr/bin/make
+   fun:(below main)
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   fun:malloc
+   obj:/usr/bin/make
+   obj:/usr/bin/make
+   obj:/usr/bin/make
+   obj:/usr/bin/make
+   fun:(below main)
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   fun:malloc
+   fun:strdup
+   fun:xstrdup
+   obj:/usr/bin/make
+   fun:main
+}
+{
+   os_net_unit_test_forced_error
+   Memcheck:Param
+   socketcall.recvfrom(buf)
+   fun:__recvfrom_nocancel
+   fun:OS_RecvUnix
+   fun:test_unixinvalidsockets
+   fun:srunner_run
+   fun:main
+}

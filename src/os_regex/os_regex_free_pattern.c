@@ -1,5 +1,3 @@
-/*   $OSSEC, os_regex_free_pattern.c, v0.1, 2006/01/02, Daniel B. Cid$   */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,7 +7,6 @@
  * Foundation
  */
 
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -18,23 +15,18 @@
 #include "os_regex_internal.h"
 
 
-/** int OSRegex_FreePattern(SRegex *reg) v0.1
- * Release all the memory created by the compilation/executation
- * phases.
- * Returns void.
- */
+/* Release all the memory created by the compilation/executation phases */
 void OSRegex_FreePattern(OSRegex *reg)
 {
     int i = 0;
 
-    /* Freeing the patterns */
-    if(reg->patterns)
-    {
+    /* Free the patterns */
+    if (reg->patterns) {
         char **pattern = reg->patterns;
-        while(*pattern)
-        {
-            if(*pattern)
+        while (*pattern) {
+            if (*pattern) {
                 free(*pattern);
+            }
             pattern++;
         }
 
@@ -42,16 +34,14 @@ void OSRegex_FreePattern(OSRegex *reg)
         reg->patterns = NULL;
     }
 
-    /* Freeing the flags */
+    /* Free the flags */
     free(reg->flags);
     reg->flags = NULL;
 
-    /* Freeing the closure */
-    if(reg->prts_closure)
-    {
+    /* Free the closure */
+    if (reg->prts_closure) {
         i = 0;
-        while(reg->prts_closure[i])
-        {
+        while (reg->prts_closure[i]) {
             free(reg->prts_closure[i]);
             i++;
         }
@@ -59,12 +49,10 @@ void OSRegex_FreePattern(OSRegex *reg)
         reg->prts_closure = NULL;
     }
 
-    /* Freeing the str */
-    if(reg->prts_str)
-    {
+    /* Free the str */
+    if (reg->prts_str) {
         i = 0;
-        while(reg->prts_str[i])
-        {
+        while (reg->prts_str[i]) {
             free(reg->prts_str[i]);
             i++;
         }
@@ -72,9 +60,8 @@ void OSRegex_FreePattern(OSRegex *reg)
         reg->prts_str = NULL;
     }
 
-    /* Freeing the sub strings */
-    if(reg->sub_strings)
-    {
+    /* Free the sub strings */
+    if (reg->sub_strings) {
         OSRegex_FreeSubStrings(reg);
         free(reg->sub_strings);
         reg->sub_strings = NULL;
@@ -83,5 +70,3 @@ void OSRegex_FreePattern(OSRegex *reg)
     return;
 }
 
-
-/* EOF */

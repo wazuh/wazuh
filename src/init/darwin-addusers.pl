@@ -1,18 +1,11 @@
 #!/usr/bin/env perl
 #######################################
 # Name:    ossec-add-ung.pl
-# Desc:    Add ossec users and groups on OSX using the NetInfo cmds.
+# Desc:    Add ossec users and groups on OSX using the NetInfo cmds
 # Author:  Chuck L.
 # License: GPL
 ###
 # for vi: set tabstop=4
-###
-# Rev history:
-# v0.1 - Initial coding. 
-# v0.2 - Modified script to use subroutines. It gets the job done, 
-#        but more work required to add further functionality. -CL
-# v0.2.1 - Modified the user add lines to have the users disabled
-#          from the start ('*' was missing in passwd field). -CL
 #######################################
 
 # Variables and whatnot
@@ -34,63 +27,55 @@ $SUDO    = "/usr/bin/sudo";
 findUsersGroups();
 createUsersGroups();
 
-#######################################
-#######################################
-# Subroutines
-#######################################
 sub findUsersGroups {
-	@inUseUids = `$NIRPT . /users uid | $GREP "^5[0-9][0-9]" | $SORT -ru`;
-	@inUseGids = `$NIRPT . /groups gid | $GREP "^5[0-9][0-9]" | $SORT -ru`;
+    @inUseUids = `$NIRPT . /users uid | $GREP "^5[0-9][0-9]" | $SORT -ru`;
+    @inUseGids = `$NIRPT . /groups gid | $GREP "^5[0-9][0-9]" | $SORT -ru`;
 
-	foreach (@inUseUids) {
-		chomp();
-		print "In use UID: $_\n" if $debug;
-    	if ($oUid < $_) {
-			$oUid = $_;
-    	}
-	}
-	$oUid++;
-	print "Next available UID: $oUid\n" if $debug;
+    foreach (@inUseUids) {
+        chomp();
+        print "In use UID: $_\n" if $debug;
+        if ($oUid < $_) {
+            $oUid = $_;
+        }
+    }
+    $oUid++;
+    print "Next available UID: $oUid\n" if $debug;
 
-	foreach (@inUseGids) {
-		chomp();
-		print "In use GID: $_\n" if $debug;
-    	if ($oGid < $_) {
-			$oGid = $_;
-    	}
-	}
-	$oGid++;
-	print "Next available GID: $oGid\n" if $debug;
+    foreach (@inUseGids) {
+        chomp();
+        print "In use GID: $_\n" if $debug;
+        if ($oGid < $_) {
+            $oGid = $_;
+        }
+    }
+    $oGid++;
+    print "Next available GID: $oGid\n" if $debug;
 } # end sub
 
 sub createUsersGroups {
-	print "Sub - UID is: $oUid\n" if $debug;
-	print "Sub - GID is: $oGid\n" if $debug;
+    print "Sub - UID is: $oUid\n" if $debug;
+    print "Sub - GID is: $oGid\n" if $debug;
 
     my $oUidM = $oUid + 1;
     my $oUidE = $oUid + 2;
     my $oUidR = $oUid + 3;
 
-	$niPid = open (NIFH, "| $SUDO $NILOAD -v group /");
-	print "Adding ossec group\n" if $debug;
+    $niPid = open (NIFH, "| $SUDO $NILOAD -v group /");
+    print "Adding ossec group\n" if $debug;
     print NIFH "ossec:*:" . $oGid . ":ossec,ossecm,ossecr\n";
-	close (NIFH);
+    close (NIFH);
 
     $fh = open (NITMP, ">$fName") or die "Unable to create temp file: $!\n";
 
-	print "Adding ossec users\n" if $debug;
+    print "Adding ossec users\n" if $debug;
     print NITMP "ossec:*:" . $oUid . ":" . $oGid . "::0:0:ossec acct:/var/ossec:/sbin/nologin\n";
     print NITMP "ossecm:*:" . $oUidM . ":" . $oGid . "::0:0:ossecm acct:/var/ossec:/sbin/nologin\n";
     print NITMP "ossecr:*:" . $oUidR . ":" . $oGid . "::0:0:ossecr acct:/var/ossec:/sbin/nologin\n";
 
-	close ($fh);
-	$rtnVal = system("$SUDO $NILOAD -v passwd / < $fName");
+    close ($fh);
+    $rtnVal = system("$SUDO $NILOAD -v passwd / < $fName");
     print "Return value from syscmd: $rtnVal\n" if $debug;
-	unlink ($fName);
+    unlink ($fName);
 
 } # end sub
-
-#################
-# End program
-#################
 

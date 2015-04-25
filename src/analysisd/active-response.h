@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/active-response.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,32 +7,23 @@
  * Foundation
  */
 
-
 #ifndef _AR__H
 #define _AR__H
 
-#include "config/config.h"
 #include "config/active-response.h"
+#include "config/config.h"
 #include "list_op.h"
 
+/* Initialize active response */
+void AR_Init(void);
 
-/** void AR_Init()
- * Initializing active response.
-  */
-void AR_Init();
-
-/** int AR_ReadConfig(int test_config, char *cfgfile)
- * Reads active response configuration and write them
+/* Read active response configuration and write it
  * to the appropriate lists.
  */
-int AR_ReadConfig(int test_config, char *cfgfile);
-
-
-/* Active response commands */
-OSList *ar_commands;
+int AR_ReadConfig(const char *cfgfile);
 
 /* Active response information */
-OSList *active_responses;
+extern OSList *active_responses;
 
+#endif /* _AR__H */
 
-#endif

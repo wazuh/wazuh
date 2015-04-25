@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/config/csyslogd-config.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,36 +7,35 @@
  * Foundation
  */
 
-
 #include "shared.h"
-
 
 #ifndef _CSYSLOGCONFIG__H
 #define _CSYSLOGCONFIG__H
 
-
 /* Database config structure */
-typedef struct _SyslogConfig
-{
+typedef struct _SyslogConfig {
     unsigned int port;
     unsigned int format;
     unsigned int level;
     unsigned int *rule_id;
     unsigned int priority;
+    unsigned int use_fqdn;
     int socket;
 
     char *server;
     OSMatch *group;
     OSMatch *location;
-}SyslogConfig;
+} SyslogConfig;
 
+struct SyslogConfig_holder {
+    SyslogConfig **data;
+};
 
-/* Syslog formats. */
+/* Syslog formats */
 #define DEFAULT_CSYSLOG  0
 #define CEF_CSYSLOG      1
 #define JSON_CSYSLOG     2
 #define SPLUNK_CSYSLOG   3
-
 
 /* Syslog severities */
 #define SLOG_EMERG   0   /* system is unusable */
@@ -51,4 +47,4 @@ typedef struct _SyslogConfig
 #define SLOG_INFO    6   /* informational */
 #define SLOG_DEBUG   7   /* debug-level messages */
 
-#endif
+#endif /* _CSYSLOGCONFIG__H */

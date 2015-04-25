@@ -1,5 +1,3 @@
-# @(#) $Id: ./src/os_dbd/mysql.schema, 2011/09/08 dcid Exp $
-#
 # Copyright (C) 2009 Trend Micro Inc.
 # All rights reserved.
 #
@@ -7,22 +5,18 @@
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
-#
-# License details at the LICENSE file included with OSSEC or
-# online at: http://www.ossec.net/en/licensing.html
 
 
-CREATE TABLE category
+CREATE TABLE IF NOT EXISTS  category
     (
-    cat_id      SMALLINT    UNSIGNED NOT NULL   AUTO_INCREMENT,
+    cat_id      INT    UNSIGNED NOT NULL   AUTO_INCREMENT,
     cat_name    VARCHAR(32) NOT NULL            UNIQUE,
-    PRIMARY KEY (cat_id),
-    INDEX       (cat_name)
+    PRIMARY KEY (cat_id)
     );
 
-CREATE TABLE signature 
-    ( 
-    id          SMALLINT    UNSIGNED NOT NULL   AUTO_INCREMENT,
+CREATE TABLE IF NOT EXISTS  signature
+    (
+    id          int    UNSIGNED NOT NULL   AUTO_INCREMENT,
     rule_id     MEDIUMINT   UNSIGNED NOT NULL   UNIQUE,
     level       TINYINT     UNSIGNED,
     description VARCHAR(255)         NOT NULL,
@@ -31,71 +25,67 @@ CREATE TABLE signature
     INDEX       (rule_id)
     );
 
-CREATE TABLE signature_category_mapping
+CREATE TABLE IF NOT EXISTS  signature_category_mapping
     (
-    id          SMALLINT    UNSIGNED NOT NULL   AUTO_INCREMENT,
+    id          INT    UNSIGNED NOT NULL   AUTO_INCREMENT,
     rule_id     MEDIUMINT   UNSIGNED NOT NULL,
     cat_id      SMALLINT    UNSIGNED NOT NULL,
-    PRIMARY KEY  (id, rule_id, cat_id)       
-    );    
+    PRIMARY KEY  (id, rule_id, cat_id)
+    );
 
-CREATE TABLE server 
+CREATE TABLE IF NOT EXISTS  server
     (
     id              SMALLINT    UNSIGNED NOT NULL   AUTO_INCREMENT,
     last_contact    INT         UNSIGNED NOT NULL,
     version         VARCHAR(32)          NOT NULL,
     hostname        VARCHAR(64)          NOT NULL   UNIQUE,
-    information     VARCHAR(128)         NOT NULL,    
-    PRIMARY KEY  (id) 
-    ); 
+    information     VARCHAR(128)         NOT NULL,
+    PRIMARY KEY  (id)
+    );
 
-CREATE TABLE agent 
+CREATE TABLE IF NOT EXISTS  agent
     (
     id              SMALLINT    UNSIGNED NOT NULL   AUTO_INCREMENT,
-    server_id       SMALLINT    UNSIGNED NOT NULL,        
+    server_id       SMALLINT    UNSIGNED NOT NULL,
     last_contact    INT         UNSIGNED NOT NULL,
     ip_address      INT         UNSIGNED NOT NULL,
     version         VARCHAR(32)          NOT NULL,
     name            VARCHAR(64)          NOT NULL,
-    information     VARCHAR(128)         NOT NULL,    
-    PRIMARY KEY  (id, server_id) 
+    information     VARCHAR(128)         NOT NULL,
+    PRIMARY KEY  (id, server_id)
     );
 
-CREATE TABLE location
+CREATE TABLE IF NOT EXISTS  location
     (
     id              SMALLINT        UNSIGNED NOT NULL   AUTO_INCREMENT,
-    server_id       SMALLINT        UNSIGNED NOT NULL,        
+    server_id       SMALLINT        UNSIGNED NOT NULL,
     name            VARCHAR(128)    NOT NULL,
     PRIMARY KEY  (id, server_id)
-    );        
-
-CREATE TABLE data
-    (
-    id              INT         UNSIGNED NOT NULL,
-    server_id       SMALLINT    UNSIGNED NOT NULL,
-    user            TEXT        NOT NULL,
-    full_log        TEXT        NOT NULL,
-    timestamp       TIMESTAMP   NOT NULL,
-    PRIMARY KEY  (id, server_id),
-    INDEX time (timestamp)
     );
 
-    
-CREATE TABLE alert 
+CREATE TABLE IF NOT EXISTS  alert
     (
-    id              INT         UNSIGNED NOT NULL, 
+    id              INT         UNSIGNED NOT NULL  AUTO_INCREMENT,
     server_id       SMALLINT    UNSIGNED NOT NULL,
-    rule_id         MEDIUMINT   UNSIGNED NOT NULL,    
+    rule_id         MEDIUMINT   UNSIGNED NOT NULL,
+    level           TINYINT     UNSIGNED,
     timestamp       INT         UNSIGNED NOT NULL,
     location_id     SMALLINT    UNSIGNED NOT NULL,
     src_ip          INT         UNSIGNED,
     dst_ip          INT         UNSIGNED,
     src_port        SMALLINT    UNSIGNED,
     dst_port        SMALLINT    UNSIGNED,
-    alertid         TINYTEXT    DEFAULT NULL,
+    alertid         VARCHAR(30) DEFAULT NULL,
+    user            TEXT        NOT NULL,
+    full_log        TEXT        NOT NULL,
+    is_hidden       TINYINT NOT NULL DEFAULT '0',
+    tld             VARCHAR(5)  NOT NULL DEFAULT '',
     PRIMARY KEY (id, server_id),
+    INDEX       (alertid),
+    INDEX       (level),
     INDEX       time (timestamp),
     INDEX       (rule_id),
-    INDEX       (src_ip)
+    INDEX       (src_ip),
+    INDEX       (tld)
     );
-    
+

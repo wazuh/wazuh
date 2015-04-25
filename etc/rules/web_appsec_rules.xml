@@ -13,17 +13,17 @@
   -
   -  License details: http://www.ossec.net/en/licensing.html
   -->
-  
+
 
 <!-- Collection of rules for common web attacks that we are seeing in the wild.
   -  The real goal is to stop bots and automated attacks from doing further damage
-  -  on sites that are not updated. 
-  -->  
+  -  on sites that are not updated.
+  -->
 <group name="web,appsec,attack">
 
 
 
-  <!-- Checking POST / requests - WP comment spam coming from fake search engines. 
+  <!-- Checking POST / requests - WP comment spam coming from fake search engines.
     -->
   <rule id="31501" level="6">
     <if_sid>31100</if_sid>
@@ -110,7 +110,7 @@
   <!-- Nothing wrong with wget per se, but it misses a lot of links
      - that generates many 404s. Blocking it to avoid the noise.
     -->
-  <rule id="31511" level="6">
+  <rule id="31511" level="0">
     <if_sid>31100</if_sid>
     <match>" "Wget/</match>
     <description>Blacklisted user agent (wget).</description>
@@ -151,7 +151,7 @@
     <description>PHPMyAdmin scans (looking for setup.php).</description>
    </rule>
 
-  <!-- Suspicious URL's access 
+  <!-- Suspicious URL's access
     -->
   <rule id="31516" level="6">
     <if_sid>31100</if_sid>

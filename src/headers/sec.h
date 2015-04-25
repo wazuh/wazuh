@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/sec.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,15 +7,14 @@
  * Foundation
  */
 
-
 #ifndef __SEC_H
 #define __SEC_H
 
+#include <time.h>
 
-/* Unique key for each agent. */
-typedef struct _keyentry
-{
-    unsigned int rcvd;
+/* Unique key for each agent */
+typedef struct _keyentry {
+    time_t rcvd;
     unsigned int local;
     unsigned int keyid;
     unsigned int global;
@@ -30,94 +26,82 @@ typedef struct _keyentry
     os_ip *ip;
     struct sockaddr_in peer_info;
     FILE *fp;
-}keyentry;
+} keyentry;
 
-
-/* Key storage. */
-typedef struct _keystore
-{
+/* Key storage */
+typedef struct _keystore {
     /* Array with all the keys */
     keyentry **keyentries;
 
-
-    /* Hashes, based on the id/ip to lookup the keys. */
-    void *keyhash_id;
-    void *keyhash_ip;
-
+    /* Hashes, based on the ID/IP to look up the keys */
+    OSHash *keyhash_id;
+    OSHash *keyhash_ip;
 
     /* Total key size */
-    int keysize;
+    unsigned int keysize;
 
     /* Key file stat */
-    int file_change;
-}keystore;
-
-
+    time_t file_change;
+} keystore;
 
 /** Function prototypes -- key management **/
 
-/* Checks if the authentication keys are present */
-int OS_CheckKeys();
+/* Check if the authentication keys are present */
+int OS_CheckKeys(void);
 
 /* Read the keys */
-void OS_ReadKeys(keystore *keys);
+void OS_ReadKeys(keystore *keys) __attribute((nonnull));
 
-/* Frees the auth keys. */
-void OS_FreeKeys(keystore *keys);
+/* Free the auth keys */
+void OS_FreeKeys(keystore *keys) __attribute((nonnull));
 
-/* Checks if key changed. */
-int OS_CheckUpdateKeys(keystore *keys);
+/* Check if key changed */
+int OS_CheckUpdateKeys(const keystore *keys) __attribute((nonnull));
 
-/* Update the keys if they changed on the system. */
-int OS_UpdateKeys(keystore *keys);
+/* Update the keys if they changed on the system */
+int OS_UpdateKeys(keystore *keys) __attribute((nonnull));
 
+/* Start counter for all agents */
+void OS_StartCounter(keystore *keys) __attribute((nonnull));
 
-/* Starts counter for all agents */
-void OS_StartCounter(keystore *keys);
-
-/* Remove counter for id. */
-void OS_RemoveCounter(char *id);
+/* Remove counter for id */
+void OS_RemoveCounter(const char *id) __attribute((nonnull));
 
 
 /** Function prototypes -- agent authorization **/
 
-/* Checks if the ip is allowed */
-int OS_IsAllowedIP(keystore *keys, char *srcip);
+/* Check if the IP is allowed */
+int OS_IsAllowedIP(keystore *keys, const char *srcip) __attribute((nonnull(1)));
 
-/* Checks if the id is allowed */
-int OS_IsAllowedID(keystore *keys, char *id);
+/* Check if the ID is allowed */
+int OS_IsAllowedID(keystore *keys, const char *id) __attribute((nonnull(1)));
 
-/* Checks if name is valid */
-int OS_IsAllowedName(keystore *keys, char *name);
+/* Check if the name is valid */
+int OS_IsAllowedName(const keystore *keys, const char *name) __attribute((nonnull));
 
 /* Check if the id is valid and dynamic */
-int OS_IsAllowedDynamicID(keystore *keys, char *id, char *srcip);
-
+int OS_IsAllowedDynamicID(keystore *keys, const char *id, const char *srcip) __attribute((nonnull(1)));
 
 
 /** Function prototypes -- send/recv messages **/
 
-/* Decrypt and decompress a remote message. */
+/* Decrypt and decompress a remote message */
 char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext,
-                 int id, int buffer_size);
+                 int id, unsigned int buffer_size) __attribute((nonnull));
 
-/* Creates an ossec message (encrypts and compress) */
-int CreateSecMSG(keystore *keys, char *msg, char *msg_encrypted, int id);
-
-
+/* Create an OSSEC message (encrypt and compress) */
+size_t CreateSecMSG(const keystore *keys, const char *msg, char *msg_encrypted, unsigned int id) __attribute((nonnull));
 
 
 /** Remote IDs directories and internal definitions */
 #ifndef WIN32
-    #define RIDS_DIR        "/queue/rids"
+#define RIDS_DIR        "/queue/rids"
 #else
-    #define RIDS_DIR        "rids"
+#define RIDS_DIR        "rids"
 #endif
 
 #define SENDER_COUNTER  "sender_counter"
 #define KEYSIZE         128
 
+#endif /* __SEC_H */
 
-#endif
-
-/* EOF */

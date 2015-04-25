@@ -1,10 +1,6 @@
 #!/bin/sh
 # Init functions for the OSSEC HIDS
-# v0.3
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
-# Last modification: May 04, 2006 (by Kayvan A. Sylvan <kayvan@sylvan.com>)
-# v0,2: Mar 03, 2006
-# v0.1: Jan 01, 2005
 
 UN=${NUNAME};
 
@@ -33,7 +29,7 @@ runInit()
         chown root:ossec /etc/init.d/ossec
         rc-update add ossec default
         return 0;
-    fi    
+    fi
 
     # Suse
     if [ -r "/etc/SuSE-release" ]; then
@@ -47,7 +43,7 @@ runInit()
         /sbin/chkconfig --add ossec > /dev/null 2>&1
         return 0;
     fi
-    
+
     # Checking for slackware (by Jack S. Lai)
     if [ -r "/etc/slackware-version" ]; then
         echo " - ${systemis} Slackware Linux."
@@ -61,11 +57,11 @@ runInit()
             echo "if [ -x /etc/rc.d/rc.ossec ]; then" >> /etc/rc.d/rc.local
             echo "      /etc/rc.d/rc.ossec start" >>/etc/rc.d/rc.local
             echo "fi" >>/etc/rc.d/rc.local
-        fi    
+        fi
 
         return 0;
-    fi    
-    
+    fi
+
     # Darwin init script (by Lorenzo Costanzia di Costigliole <mummie@tin.it>)
     if [ "X${NUNAME}" = "XDarwin" ]; then
         # Generating darwin init script.
@@ -83,8 +79,8 @@ runInit()
         chmod 755 /etc/init.d/ossec
         ln -s /etc/init.d/ossec /etc/rc2.d/S97ossec
         ln -s /etc/init.d/ossec /etc/rc3.d/S97ossec
-        return 0;    
-    fi    
+        return 0;
+    fi
 
     if [ "X${UN}" = "XAIX" ]; then
         echo " - ${systemis} AIX."
@@ -93,8 +89,8 @@ runInit()
         chmod 755 /etc/rc.d/init.d/ossec
         ln -s /etc/rc.d/init.d/ossec /etc/rc.d/rc2.d/S97ossec
         ln -s /etc/rc.d/init.d/ossec /etc/rc.d/rc3.d/S97ossec
-        return 0;    
-    fi    
+        return 0;
+    fi
 
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
         # Checking for the presence of ossec-control on rc.local
@@ -124,7 +120,7 @@ runInit()
             chmod 555 /etc/rc.d/init.d/ossec
             chown root:ossec /etc/rc.d/init.d/ossec
             return 0;
-        # Taken from Stephen Bunn ossec howto.    
+        # Taken from Stephen Bunn ossec howto.
         elif [ -d "/etc/init.d" -a -f "/usr/sbin/update-rc.d" ]; then
             echo " - ${systemis} Debian (Ubuntu or derivative)."
             echo " - ${modifiedinit}"
@@ -133,16 +129,14 @@ runInit()
             chmod go-w /etc/init.d/ossec
             chown root:ossec /etc/init.d/ossec
             update-rc.d ossec defaults > /dev/null 2>&1
-            return 0;    
+            return 0;
         else
             echo " - ${noboot}"
-        fi        
+        fi
     else
         echo " - ${noboot}"
     fi
-    
-    return 1;        
+
+    return 1;
 }
 
-
-# EOF 

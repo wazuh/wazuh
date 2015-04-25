@@ -1,0 +1,786 @@
+# OSSEC Linux Audit - (C) 2014
+#
+# Released under the same license as OSSEC.
+# More details at the LICENSE file included with OSSEC or online
+# at: http://www.ossec.net/en/licensing.html
+#
+# [Application name] [any or all] [reference]
+# type:<entry name>;
+#
+# Type can be:
+#             - f (for file or directory)
+#             - p (process running)
+#             - d (any file inside the directory)
+#
+# Additional values:
+# For the registry , use "->" to look for a specific entry and another
+# "->" to look for the value.
+# For files, use "->" to look for a specific value in the file.
+#
+# Values can be preceeded by: =: (for equal) - default
+#                             r: (for ossec regexes)
+#                             >: (for strcmp greater)
+#                             <: (for strcmp  lower)
+# Multiple patterns can be specified by using " && " between them.
+# (All of them must match for it to return true).
+
+
+# CIS Checks for Red Hat / CentOS 6
+# Based on CIS Benchmark for Red Hat Enterprise Linux 6 v1.3.0
+
+# RC scripts location
+$rc_dirs=/etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
+
+
+[CIS - Testing against the CIS Red Hat Enterprise Linux 5 Benchmark v2.1.0] [any required] [http://www.ossec.net/]
+f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 6;
+f:/etc/redhat-release -> r:^CentOS && r:release 6;
+f:/etc/redhat-release -> r:^Cloud && r:release 6;
+f:/etc/redhat-release -> r:^Oracle && r:release 6;
+f:/etc/redhat-release -> r:^Better && r:release 6;
+
+# 1.1.1 /tmp: partition
+[CIS - RHEL6 - Build considerations - Robust partition scheme - /tmp is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> !r:/tmp;
+
+# 1.1.2 /tmp: nodev
+[CIS - RHEL6 1.1.2 - Partition /tmp without 'nodev' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;
+
+# 1.1.3 /tmp: nosuid
+[CIS - RHEL6 1.1.3 - Partition /tmp without 'nosuid' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> !r:^# && r:/tmp && !r:nosuid;
+
+# 1.1.4 /tmp: noexec
+[CIS - RHEL6 1.1.4 - Partition /tmp without 'noexec' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;
+
+# 1.1.5 Build considerations - Partition scheme.
+[CIS - RHEL6 - Build considerations - Robust partition scheme - /var is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> !r^# && !r:/var;
+
+# 1.1.6 bind mount /var/tmp to /tmp
+[CIS - RHEL6 - Build considerations - Robust partition scheme - /var/tmp is bound to /tmp] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> r:^# && !r:/var/tmp && !r:bind;
+
+# 1.1.7 /var/log: partition
+[CIS - RHEL6 - Build considerations - Robust partition scheme - /var/log is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> ^# && !r:/var/log;
+
+# 1.1.8 /var/log/audit: partition
+[CIS - RHEL6 - Build considerations - Robust partition scheme - /var/log/audit is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> ^# && !r:/var/log/audit;
+
+# 1.1.9 /home: partition
+[CIS - RHEL6 - Build considerations - Robust partition scheme - /home is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> ^# && !r:/home;
+
+# 1.1.10 /home: nodev
+[CIS - RHEL6 1.1.10 -  Partition /home without 'nodev' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> !r:^# && r:/home && !r:nodev;
+
+# 1.1.11 nodev on removable media partitons (not scored)
+[CIS - RHEL6 1.1.11 - Removable partition /media without 'nodev' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> !r:^# && r:/media && !r:nodev;
+
+# 1.1.12 noexec on removable media partitions (not scored)
+[CIS - RHEL6 1.1.12 - Removable partition /media without 'noexec' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> !r:^# && r:/media && !r:noexec;
+
+# 1.1.13 nosuid on removale media partitions (not scored)
+[CIS - RHEL6 1.1.13 - Removable partition /media without 'nosuid' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;
+
+# 1.1.14 /dev/shm: nodev
+[CIS - RHEL6 1.1.11 - /dev/shm without 'nodev' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nodev;
+
+# 1.1.15 /dev/shm: nosuid
+[CIS - RHEL6 1.1.11 - /dev/shm without 'nosuid' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nosuid;
+
+# 1.1.16 /dev/shm: noexec
+[CIS - RHEL6 1.1.11 - /dev/shm without 'noexec' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;
+
+# 1.1.17 sticky bit on world writable directories (Scored)
+# TODO
+
+# 1.1.18 disable cramfs (not scored)
+
+# 1.1.19 disable freevxfs (not scored)
+
+# 1.1.20 disable jffs2 (not scored)
+
+# 1.1.21 disable hfs (not scored)
+
+# 1.1.22 disable hfsplus (not scored)
+
+# 1.1.23 disable squashfs (not scored)
+
+# 1.1.24 disable udf (not scored)
+
+
+##########################################
+# 1.2 Software Updates
+##########################################
+
+# 1.2.1 Configure rhn updates (not scored)
+
+# 1.2.2 verify  RPM gpg keys  (Scored)
+# TODO
+
+# 1.2.3 verify gpgcheck enabled (Scored)
+# TODO
+
+# 1.2.4 Disable rhnsd (not scored)
+
+# 1.2.5 Obtain Software Package Updates with yum (Not Scored)
+
+# 1.2.6 Obtain updates with yum (not scored)
+
+
+###############################################
+# 1.3 Advanced Intrusion Detection Environment
+###############################################
+#
+# Skipped, this control is obsoleted by OSSEC
+#
+
+###############################################
+# 1.4 Configure SELinux
+###############################################
+
+# 1.4.1 enable selinux in /etc/grub.conf
+[CIS - RHEL6 1.4.1 - SELinux Disabled in /etc/grub.conf] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/grub.conf -> !r:selinux=0;
+
+# 1.4.2 Set selinux state
+[CIS - RHEL6 1.4.2 - SELinux not set to enforcing] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/selinux/config -> r:SELINUX=enforcing;
+
+# 1.4.3 Set seliux policy
+[CIS - RHEL6 1.4.2 - SELinux policy not set to targeted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/selinux/config -> r:SELINUXTYPE=targeted;
+
+# 1.4.4 Remove SETroubleshoot
+[CIS - RHEL6 1.4.2 - SELinux setroubleshoot enabld] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dsetroubleshoot$;
+
+# 1.4.5 Disable MCS Translation service mcstrans
+[CIS - RHEL6 1.4.2 - SELinux mctrans enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dmctrans$;
+
+# 1.4.6 Check for unconfined daemons
+# TODO
+
+
+###############################################
+# 1.5  Secure Boot Settings
+###############################################
+
+# 1.5.1 Set User/Group Owner on /etc/grub.conf
+# TODO (no mode tests)
+
+# 1.5.2 Set Permissions on /etc/grub.conf (Scored)
+# TODO (no mode tests)
+
+# 1.5.3 Set Boot Loader Password (Scored)
+[CIS - RHEL6 1.5.3 - GRUB Password not set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/boot/grub/menu.lst -> !r:^# && !r:password;
+
+# 1.5.4 Require Authentication for Single-User Mode (Scored)
+[CIS - RHEL6 1.5.4 - Authenticaion for single user mode not enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/inittab -> !r:^# && r:S:wait;
+
+# 1.5.5 Disable Interactive Boot (Scored)
+[CIS - RHEL6 1.5.5 - Interactive Boot not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/sysconfig/init -> !r:^# && r:PROMPT=no;
+
+
+###############################################
+# 1.6  Additional Process Hardening
+###############################################
+
+# 1.6.1 Restrict Core Dumps (Scored)
+[CIS - RHEL6 1.6.1 - Interactive Boot not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/security/limits.conf -> !r:^# && !r:hard\.+core\.+0;
+
+# 1.6.2 Configure ExecShield (Scored)
+[CIS - RHEL6 1.6.2 - ExecShield not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/proc/sys/kernel/exec-shield -> 0;
+
+# 1.6.3 Enable Randomized Virtual Memory Region Placement (Scored)
+[CIS - RHEL6 1.6.3 - Randomized Virtua Memory Region Placement not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/proc/sys/kernel/randomize_va_space -> 0;
+
+
+###############################################
+# 1.7  Use the Latest OS Release  (Not Scored)
+###############################################
+
+
+###############################################
+# 2 OS Services
+###############################################
+
+###############################################
+# 2.1 Remove Legacy Services
+###############################################
+
+# 2.1.1 Remove telnet-server (Scored)
+# TODO: detect it is installed at all
+[CIS - RHEL6 2.1.1 - Telnet enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/xinetd.d/telnet -> !r:^# && r:disable && r:no;
+
+
+# 2.1.2 Remove telnet Clients (Scored)
+# TODO
+
+# 2.1.3 Remove rsh-server (Scored)
+[CIS - RHEL6 2.1.3 - rsh/rlogin/rcp enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/xinetd.d/rlogin -> !r:^# && r:disable && r:no;
+f:/etc/xinetd.d/rsh -> !r:^# && r:disable && r:no;
+f:/etc/xinetd.d/shell -> !r:^# && r:disable && r:no;
+
+# 2.1.4 Remove rsh (Scored)
+# TODO
+
+# 2.1.5 Remove NIS Client (Scored)
+[CIS - RHEL6 2.1.5 - Disable standard boot services - NIS (client) Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dypbind$;
+
+# 2.1.6 Remove NIS Server (Scored)
+[CIS - RHEL6 2.1.5 - Disable standard boot services - NIS (server) Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dypserv$;
+
+# 2.1.7 Remove tftp (Scored)
+# TODO
+
+# 2.1.8 Remove tftp-server (Scored)
+[CIS - RHEL6 2.1.8 - tftpd enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/xinetd.d/tftpd -> !r:^# && r:disable && r:no;
+
+# 2.1.9 Remove talk (Scored)
+# TODO
+
+# 2.1.10 Remove talk-server (Scored)
+[CIS - RHEL6 2.1.10 - talk enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/xinetd.d/talk -> !r:^# && r:disable && r:no;
+
+# 2.1.11 Remove xinetd (Scored)
+# TODO
+
+# 2.1.12 Disable chargen-dgram (Scored)
+# TODO
+
+# 2.1.13 Disable chargen-stream (Scored)
+# TODO
+
+# 2.1.14 Disable daytime-dgram (Scored)
+# TODO
+
+# 2.1.15 Disable daytime-stream (Scored)
+# TODO
+
+# 2.1.16 Disable echo-dgram (Scored)
+# TODO
+
+# 2.1.17 Disable echo-stream (Scored)
+# TODO
+
+# 2.1.18 Disable tcpmux-server (Scored)
+# TODO
+
+
+###############################################
+# 3 Special Purpose Services
+###############################################
+
+# 3.1 Set Daemon umask (Scored)
+[CIS - RHEL6 3.1 - Set daemon umask - Default umask is higher than 027] [all] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/init.d/functions -> !r:^# && r:^umask && <:umask 027;
+
+# 3.2 Remove X Windows (Scored)
+[CIS - RHEL6 3.2 - X11 not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/inittab -> !r:^# && r:id:5;
+
+# 3.3 Disable Avahi Server (Scored)
+[CIS - RHEL6 3.2 - Avahi daemon not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+p:avahi-daemon;
+
+# 3.4 Disable Print Server - CUPS (Not Scored)
+
+# 3.5 Remove DHCP Server (Not Scored)
+# TODO
+
+# 3.6 Configure Network Time Protocol (NTP) (Scored)
+#[CIS - RHEL6 3.6 - NTPD not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+# TODO.
+
+# 3.7 Remove LDAP (Not Scored)
+
+# 3.8 Disable NFS and RPC (Not Scored)
+[CIS - RHEL6 3.8 - Disable standard boot services - NFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dnfs$;
+d:$rc_dirs -> ^S\d\dnfslock$;
+
+# 3.9 Remove DNS Server (Not Scored)
+# TODO
+
+# 3.10 Remove FTP Server (Not Scored)
+[CIS - RHEL6 3.10 - VSFTP enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/xinetd.d/vsftpd -> !r:^# && r:disable && r:no;
+
+# 3.11 Remove HTTP Server (Not Scored)
+[CIS - RHEL6 3.11 - Disable standard boot services - Apache web server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dhttpd$;
+
+# 3.12 Remove Dovecot (IMAP and POP3 services) (Not Scored)
+[CIS - RHEL6 3.12 - imap enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/xinetd.d/cyrus-imapd -> !r:^# && r:disable && r:no;
+
+[CIS - RHEL6 3.12 - pop3 enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/xinetd.d/dovecot -> !r:^# && r:disable && r:no;
+
+# 3.13 Remove Samba (Not Scored)
+[CIS - RHEL6 3.13 - Disable standard boot services - Samba Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dsamba$;
+d:$rc_dirs -> ^S\d\dsmb$;
+
+# 3.14 Remove HTTP Proxy Server (Not Scored)
+[CIS - RHEL6 3.14 - Disable standard boot services - Squid Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dsquid$;
+
+# 3.15 Remove SNMP Server (Not Scored)
+[CIS - RHEL6 3.15 - Disable standard boot services - SNMPD process Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dsnmpd$;
+
+# 3.16 Configure Mail Transfer Agent for Local-Only Mode (Scored)
+# TODO
+
+
+###############################################
+# 4 Network Confiuration and Firewalls
+###############################################
+
+###############################################
+# 4.1 Modify Network Parameters (Host Only)
+###############################################
+
+# 4.1.1 Disable IP Forwarding (Scored)
+[CIS - RHEL6 4.1.1 - Network parameters - IP Forwarding enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/proc/sys/net/ipv4/ip_forward -> 1;
+f:/proc/sys/net/ipv6/ip_forward -> 1;
+
+# 4.1.2 Disable Send Packet Redirects (Scored)
+[CIS - RHEL6 4.1.2 - Network parameters - IP send redirects enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/proc/sys/net/ipv4/conf/all/send_redirects -> 0;
+f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;
+
+
+###############################################
+# 4.2 Modify Network Parameters (Host and Router)
+###############################################
+
+# 4.2.1 Disable Source Routed Packet Acceptance (Scored)
+[CIS - RHEL6 4.2.1 - Network parameters - Source routing accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/proc/sys/net/ipv4/conf/all/accept_source_route -> 1;
+
+# 4.2.2 Disable ICMP Redirect Acceptance (Scored)
+#CIS - RHEL6 4.2.2 - Network parameters - ICMP redirects accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+#f:/proc/sys/net/ipv4/conf/all/accept_redirects -> 1;
+#f:/proc/sys/net/ipv4/conf/default/accept_redirects -> 1;
+
+# 4.2.3 Disable Secure ICMP Redirect Acceptance (Scored)
+[CIS - RHEL6 4.2.3 - Network parameters - ICMP secure redirects accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/proc/sys/net/ipv4/conf/all/secure_redirects -> 1;
+f:/proc/sys/net/ipv4/conf/default/secure_redirects -> 1;
+
+# 4.2.4 Log Suspicious Packets (Scored)
+[CIS - RHEL6 4.2.4 - Network parameters - martians not logged] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/proc/sys/net/ipv4/conf/all/log_martians -> 0;
+
+# 4.2.5 Enable Ignore Broadcast Requests (Scored)
+[CIS - RHEL6 4.2.5 - Network parameters - ICMP broadcasts accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts -> 0;
+
+# 4.2.6 Enable Bad Error Message Protection (Scored)
+[CIS - RHEL6 4.2.6 - Network parameters - Bad error message protection not enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/proc/sys/net/ipv4/icmp_ignore_bogus_error_responses -> 0;
+
+# 4.2.7 Enable RFC-recommended Source Route Validation (Scored)
+[CIS - RHEL6 4.2.7 - Network parameters - RFC Source route validation not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/proc/sys/net/ipv4/conf/all/rp_filter -> 0;
+f:/proc/sys/net/ipv4/conf/default/rp_filter -> 0;
+
+# 4.2.8 Enable TCP SYN Cookies (Scored)
+[CIS - RHEL6 4.2.8 - Network parameters - SYN Cookies not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/proc/sys/net/ipv4/tcp_syncookies -> 0;
+
+
+###############################################
+# 4.3 Wireless Networking
+###############################################
+
+# 4.3.1 Deactivate Wireless Interfaces (Not Scored)
+
+
+###############################################
+# 4.4 Disable ipv6
+###############################################
+
+###############################################
+# 4.4.1 Configure IPv6
+###############################################
+
+# 4.4.1.1 Disable IPv6 Router Advertisements (Not Scored)
+
+# 4.4.1.2 Disable IPv6 Redirect Acceptance (Not Scored)
+
+# 4.4.2 Disable IPv6 (Not Scored)
+
+
+###############################################
+# 4.5 Install TCP Wrappers
+###############################################
+
+# 4.5.1 Install TCP Wrappers (Not Scored)
+
+# 4.5.2 Create /etc/hosts.allow (Not Scored)
+
+# 4.5.3 Verify Permissions on /etc/hosts.allow (Scored)
+# TODO
+
+# 4.5.4 Create /etc/hosts.deny (Not Scored)
+
+# 4.5.5 Verify Permissions on /etc/hosts.deny (Scored)
+# TODO
+
+
+###############################################
+# 4.6 Uncommon Network Protocols
+###############################################
+
+# 4.6.1 Disable DCCP (Not Scored)
+
+# 4.6.2 Disable SCTP (Not Scored)
+
+# 4.6.3 Disable RDS (Not Scored)
+
+# 4.6.4 Disable TIPC (Not Scored)
+
+# 4.7 Enable IPtables (Scored)
+# TODO
+
+# 4.8 Enable IP6tables (Not Scored)
+
+
+###############################################
+# 5 Logging and Auditing
+###############################################
+
+###############################################
+# 5.1 Configure Syslog
+###############################################
+
+# 5.1.1 Install the rsyslog package (Scored)
+# TODO
+
+# 5.1.2 Activate the rsyslog Service (Scored)
+# TODO
+
+# 5.1.3 Configure /etc/rsyslog.conf (Not Scored)
+
+# 5.1.4 Create and Set Permissions on rsyslog Log Files (Scored)
+
+# 5.1.5 Configure rsyslog to Send Logs to a Remote Log Host (Scored)
+
+# 5.1.6 Accept Remote rsyslog Messages Only on Designated Log Hosts (Not Scored)
+
+
+###############################################
+# 5.2 Configure System Accounting (auditd)
+###############################################
+
+###############################################
+# 5.2.1 Configure Data Retention
+###############################################
+
+# 5.2.1.1 Configure Audit Log Storage Size (Not Scored)
+
+# 5.2.1.2 Disable System on Audit Log Full (Not Scored)
+
+# 5.2.1.3 Keep All Auditing Information (Scored)
+
+# 5.2.2 Enable auditd Service (Scored)
+
+# 5.2.3 Enable Auditing for Processes That Start Prior to auditd (Scored)
+
+# 5.2.4 Record Events That Modify Date and Time Information (Scored)
+
+# 5.2.5 Record Events That Modify User/Group Information (Scored)
+
+# 5.2.6 Record Events That Modify the System’s Network Environment (Scored)
+
+# 5.2.7 Record Events That Modify the System’s Mandatory Access Controls (Scored)
+
+# 5.2.8 Collect Login and Logout Events (Scored)
+
+# 5.2.9 Collect Session Initiation Information (Scored)
+
+# 5.2.10 Collect Discretionary Access Control Permission Modification Events (Scored)
+
+# 5.2.11 Collect Unsuccessful Unauthorized Access Attempts to Files (Scored)
+
+# 5.2.12 Collect Use of Privileged Commands (Scored)
+
+# 5.2.13 Collect Successful File System Mounts (Scored)
+
+# 5.2.14 Collect File Deletion Events by User (Scored)
+
+# 5.2.15 Collect Changes to System Administration Scope (sudoers) (Scored)
+
+# 5.2.16 Collect System Administrator Actions (sudolog) (Scored)
+
+# 5.2.17 Collect Kernel Module Loading and Unloading (Scored)
+
+# 5.2.18 Make the Audit Configuration Immutable (Scored)
+
+# 5.3 Configure logrotate (Not Scored)
+
+
+###############################################
+# 6 System Access, Authentication and Authorization
+###############################################
+
+###############################################
+# 6.1 Configure cron and anacron
+###############################################
+
+# 6.1.1 Enable anacron Daemon (Scored)
+
+# 6.1.2 Enable cron Daemon (Scored)
+
+# 6.1.3 Set User/Group Owner and Permission on /etc/anacrontab (Scored)
+
+# 6.1.4 Set User/Group Owner and Permission on /etc/crontab (Scored)
+
+# 6.1.5 Set User/Group Owner and Permission on /etc/cron.hourly (Scored)
+
+# 6.1.6 Set User/Group Owner and Permission on /etc/cron.daily (Scored)
+
+# 6.1.7 Set User/Group Owner and Permission on /etc/cron.weekly (Scored)
+
+# 6.1.8 Set User/Group Owner and Permission on /etc/cron.monthly (Scored)
+
+# 6.1.9 Set User/Group Owner and Permission on /etc/cron.d (Scored)
+
+# 6.1.10 Restrict at Daemon (Scored)
+
+# 6.1.11 Restrict at/cron to Authorized Users (Scored)
+
+###############################################
+# 6.1 Configure SSH
+###############################################
+
+# 6.2.1 Set SSH Protocol to 2 (Scored)
+[CIS - RHEL6 6.2.1 - SSH Configuration - Protocol version 1 enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+1;
+
+# 6.2.2 Set LogLevel to INFO (Scored)
+
+# 6.2.3 Set Permissions on /etc/ssh/sshd_config (Scored)
+
+# 6.2.4 Disable SSH X11 Forwarding (Scored)
+
+# 6.2.5 Set SSH MaxAuthTries to 4 or Less (Scored)
+
+# 6.2.6 Set SSH IgnoreRhosts to Yes (Scored)
+[CIS - RHEL6 6.2.6 - SSH Configuration - IgnoreRHosts disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+no;
+
+# 6.2.7 Set SSH HostbasedAuthentication to No (Scored)
+[CIS - RHEL6 6.2.7 - SSH Configuration - Host based authentication enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;
+
+# 6.2.8 Disable SSH Root Login (Scored)
+[CIS - RHEL6 6.2.8 - SSH Configuration - Root login allowed] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;
+
+# 6.2.9 Set SSH PermitEmptyPasswords to No (Scored)
+[CIS - RHEL6 6.2.9 - SSH Configuration - Empty passwords permitted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;
+
+# 6.2.10 Do Not Allow Users to Set Environment Options (Scored)
+
+# 6.2.11 Use Only Approved Ciphers in Counter Mode (Scored)
+
+# 6.2.12 Set Idle Timeout Interval for User Login (Not Scored)
+
+# 6.2.13 Limit Access via SSH (Scored)
+
+# 6.2.14 Set SSH Banner (Scored)
+
+
+###############################################
+# 6.3 Configure PAM
+###############################################
+
+# 6.3.1 Set Password Creation Requirement Parameters Using pam_cracklib (Scored)
+
+# 6.3.2 Set Lockout for Failed Password Attempts (Not Scored)
+
+# 6.3.3 Use pam_deny.so to Deny Services (Not Scored)
+
+# 6.3.4 Upgrade Password Hashing Algorithm to SHA-512 (Scored)
+
+# 6.3.5 Limit Password Reuse (Scored)
+
+# 6.4 Restrict root Login to System Console (Not Scored)
+
+# 6.5 Restrict Access to the su Command (Scored)
+
+
+###############################################
+# 7 User Accounts and Environment
+###############################################
+
+###############################################
+# 7.1 Set Shadow Password Suite Parameters (/etc/login.defs)
+###############################################
+
+# 7.1.1 Set Password Expiration Days (Scored)
+
+# 7.1.2 Set Password Change Minimum Number of Days (Scored)
+
+# 7.1.3 Set Password Expiring Warning Days (Scored)
+
+# 7.2 Disable System Accounts (Scored)
+
+# 7.3 Set Default Group for root Account (Scored)
+
+# 7.4 Set Default umask for Users (Scored)
+
+# 7.5 Lock Inactive User Accounts (Scored)
+
+
+###############################################
+# 8 Warning Banners
+###############################################
+
+###############################################
+# 8.1 Warning Banners for Standard Login Services
+###############################################
+
+# 8.1 Set Warning Banner for Standard Login Services (Scored)
+
+# 8.2 Remove OS Information from Login Warning Banners (Scored)
+
+# 8.3 Set GNOME Warning Banner (Not Scored)
+
+
+###############################################
+# 9 System Maintenance
+###############################################
+
+###############################################
+# 9.1 Verify System File Permissions
+###############################################
+
+# 9.1.1 Verify System File Permissions (Not Scored)
+
+# 9.1.2 Verify Permissions on /etc/passwd (Scored)
+
+# 9.1.3 Verify Permissions on /etc/shadow (Scored)
+
+# 9.1.4 Verify Permissions on /etc/gshadow (Scored)
+
+# 9.1.5 Verify Permissions on /etc/group (Scored)
+
+# 9.1.6 Verify User/Group Ownership on /etc/passwd (Scored)
+
+# 9.1.7 Verify User/Group Ownership on /etc/shadow (Scored)
+
+# 9.1.8 Verify User/Group Ownership on /etc/gshadow (Scored)
+
+# 9.1.9 Verify User/Group Ownership on /etc/group (Scored)
+
+# 9.1.10 Find World Writable Files (Not Scored)
+
+# 9.1.11 Find Un-owned Files and Directories (Scored)
+
+# 9.1.12 Find Un-grouped Files and Directories (Scored)
+
+# 9.1.13 Find SUID System Executables (Not Scored)
+
+# 9.1.14 Find SGID System Executables (Not Scored)
+
+
+###############################################
+# 9.2 Review User and Group Settings
+###############################################
+
+# 9.2.1 Ensure Password Fields are Not Empty (Scored)
+
+# 9.2.2 Verify No Legacy "+" Entries Exist in /etc/passwd File (Scored)
+
+# 9.2.3 Verify No Legacy "+" Entries Exist in /etc/shadow File (Scored)
+
+# 9.2.4 Verify No Legacy "+" Entries Exist in /etc/group File (Scored)
+
+# 9.2.5 Verify No UID 0 Accounts Exist Other Than root (Scored)
+[CIS - RHEL6 9.2.5 - Non-root account with uid 0] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
+
+# 9.2.6 Ensure root PATH Integrity (Scored)
+
+# 9.2.7 Check Permissions on User Home Directories (Scored)
+
+# 9.2.8 Check User Dot File Permissions (Scored)
+
+# 9.2.9 Check Permissions on User .netrc Files (Scored)
+
+# 9.2.10 Check for Presence of User .rhosts Files (Scored)
+
+# 9.2.11 Check Groups in /etc/passwd (Scored)
+
+# 9.2.12 Check That Users Are Assigned Valid Home Directories (Scored)
+
+# 9.2.13 Check User Home Directory Ownership (Scored)
+
+# 9.2.14 Check for Duplicate UIDs (Scored)
+
+# 9.2.15 Check for Duplicate GIDs (Scored)
+
+# 9.2.16 Check for Duplicate User Names (Scored)
+
+# 9.2.17 Check for Duplicate Group Names (Scored)
+
+# 9.2.18 Check for Presence of User .netrc Files (Scored)
+
+# 9.2.19 Check for Presence of User .forward Files (Scored)
+
+
+# Other/Legacy Tests
+[CIS - RHEL6 X.X.X - Account with empty password present] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/shadow -> r:^\w+::;
+
+[CIS - RHEL6 X.X.X - User-mounted removable partition allowed on the console] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+f:/etc/security/console.perms -> r:^<console>  \d+ <cdrom>;
+f:/etc/security/console.perms -> r:^<console>  \d+ <floppy>;
+
+[CIS - RHEL6 X.X.X - Disable standard boot services - Kudzu hardware detection Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dkudzu$;
+
+[CIS - RHEL6 X.X.X - Disable standard boot services - PostgreSQL server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dpostgresql$;
+
+[CIS - RHEL6 X.X.X - Disable standard boot services - MySQL server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dmysqld$;
+
+[CIS - RHEL6 X.X.X - Disable standard boot services - DNS server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dnamed$;
+
+[CIS - RHEL6 X.X.X - Disable standard boot services - NetFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL6]
+d:$rc_dirs -> ^S\d\dnetfs$;

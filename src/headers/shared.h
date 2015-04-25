@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/shared.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,11 +5,6 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation
- */
-
-/* v0.3 (2007/12/23): Adding SSP & FORTIFY_SOURCE <jeffschroeder@computer.org>
- * v0.2 (2005/12/23): Adding 'u_int16_t' for Solaris.
- * v0.1 (2005/10/27): first version.
  */
 
 /*
@@ -24,16 +16,16 @@
                           ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 2)) || \
                            (__GNUC__ >= 5))
 
-/* Heuristicly enable the stack protector on sensitive functions */
+/* Heuristically enable the stack protector on sensitive functions */
 #define __SSP__ 1
 
-/* FORTIFY_SOURCE is Redhat / Fedora specific */
+/* FORTIFY_SOURCE is RedHat / Fedora specific */
 #define FORTIFY_SOURCE
 #endif
 
 #ifndef __SHARED_H
-
 #define __SHARED_H
+
 #ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE
 #endif
@@ -42,15 +34,12 @@
 #define _FILE_OFFSET_BITS 64
 #endif
 
-
 /* Global headers */
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/param.h>
 
-
-/* Making windows happy */
 #ifndef WIN32
 #include <sys/wait.h>
 
@@ -60,7 +49,8 @@
 #endif
 
 #include <sys/utsname.h>
-#endif
+#endif /* WIN32 */
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -71,7 +61,6 @@
 #include <ctype.h>
 #include <signal.h>
 
-/* Making Windows happy */
 #ifndef WIN32
 #include <glob.h>
 #include <netdb.h>
@@ -103,7 +92,6 @@
 #define _FILE_OFFSET_BITS 64
 #endif
 
-
 /* Global portability code */
 
 #ifdef SOLARIS
@@ -118,8 +106,6 @@ typedef uint8_t u_int8_t;
 
 #endif /* SOLARIS */
 
-
-/* For HP-UX */
 #if defined HPUX
 #include <limits.h>
 typedef uint32_t u_int32_t;
@@ -129,19 +115,14 @@ typedef uint8_t u_int8_t;
 #define MSG_DONTWAIT 0
 #endif
 
-
-/* For Darwin */
 #ifdef Darwin
 typedef int sock2len_t;
 #endif
-
 
 #ifndef WIN32
 #define CloseSocket(x) close(x)
 #endif
 
-
-/* For Windows */
 #ifdef WIN32
 typedef int uid_t;
 typedef int gid_t;
@@ -154,54 +135,48 @@ typedef int socklen_t;
 void WinSetError();
 typedef unsigned short int u_int16_t;
 typedef unsigned char u_int8_t;
-/* typedef closesocket close; */
 
 #define MSG_DONTWAIT    0
 
 #ifndef PROCESSOR_ARCHITECTURE_AMD64
- #define PROCESSOR_ARCHITECTURE_AMD64 9
+#define PROCESSOR_ARCHITECTURE_AMD64 9
 #endif
-#endif
+#endif /* WIN32 */
 
-/* For AIX */
 #ifdef AIX
 #define MSG_DONTWAIT MSG_NONBLOCK
 #endif
 
-
-
 /* Local name */
-char *__local_name;
-
+extern const char *__local_name;
 
 /*** Global prototypes ***/
 /*** These functions will exit on error. No need to check return code ***/
 
 /* for calloc: x = calloc(4,sizeof(char)) -> os_calloc(4,sizeof(char),x) */
-#define os_calloc(x,y,z) ((z = calloc(x,y)))?(void)1:ErrorExit(MEM_ERROR, ARGV0)
+#define os_calloc(x,y,z) ((z = (__typeof__(z)) calloc(x,y)))?(void)1:ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno))
 
-#define os_strdup(x,y) ((y = strdup(x)))?(void)1:ErrorExit(MEM_ERROR, ARGV0)
+#define os_strdup(x,y) ((y = strdup(x)))?(void)1:ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno))
 
-#define os_malloc(x,y) ((y = malloc(x)))?(void)1:ErrorExit(MEM_ERROR, ARGV0)
+#define os_malloc(x,y) ((y = (__typeof__(y)) malloc(x)))?(void)1:ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno))
 
 #define os_free(x) (x)?free(x):merror("free a null")
 
-#define os_realloc(x,y,z) ((z = realloc(x,y)))?(void)1:ErrorExit(MEM_ERROR, ARGV0)
+#define os_realloc(x,y,z) ((z = (__typeof__(z))realloc(x,y)))?(void)1:ErrorExit(MEM_ERROR, __local_name, errno, strerror(errno))
 
 #define os_clearnl(x,p) if((p = strrchr(x, '\n')))*p = '\0';
 
 #ifdef CLIENT
-    #define isAgent 1
+#define isAgent 1
 #else
-    #define isAgent 0
+#define isAgent 0
 #endif
-
-
 
 #include "debug_op.h"
 #include "wait_op.h"
 #include "agent_op.h"
 #include "file_op.h"
+#include "fs_op.h"
 #include "mem_op.h"
 #include "math_op.h"
 #include "mq_op.h"
@@ -220,6 +195,7 @@ char *__local_name;
 #include "read-agents.h"
 #include "report_op.h"
 #include "string_op.h"
+#include "randombytes.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
@@ -227,7 +203,5 @@ char *__local_name;
 #include "error_messages/error_messages.h"
 #include "custom_output_search.h"
 
-
 #endif /* __SHARED_H */
 
-/* EOF */

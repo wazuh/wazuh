@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/config.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,18 +7,16 @@
  * Foundation
  */
 
-
-
 #ifndef _CONFIG__H
-
 #define _CONFIG__H
 
 #include "config/config.h"
 #include "config/global-config.h"
 
-long int __crt_ftell; /* Global ftell pointer. */
-_Config Config;  /* Global Config structure */
+extern long int __crt_ftell; /* Global ftell pointer */
+extern _Config Config;       /* Global Config structure */
 
+int GlobalConf(const char *cfgfile);
 
+#endif /* _CONFIG__H */
 
-#endif

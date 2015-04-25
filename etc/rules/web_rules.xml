@@ -13,8 +13,8 @@
   -
   -  License details: http://www.ossec.net/en/licensing.html
   -->
-  
-  
+
+
 <group name="web,accesslog,">
   <rule id="31100" level="0">
     <category>web-log</category>
@@ -40,18 +40,18 @@
     <compiled_rule>is_simple_http_request</compiled_rule>
     <description>Ignored extensions on 400 error codes.</description>
   </rule>
-  
+
   <rule id="31103" level="6">
-    <if_sid>31100</if_sid>
+    <if_sid>31100,31108</if_sid>
     <url>=select%20|select+|insert%20|%20from%20|%20where%20|union%20|</url>
     <url>union+|where+|null,null|xp_cmdshell</url>
     <description>SQL injection attempt.</description>
     <group>attack,sql_injection,</group>
   </rule>
-  
+
   <rule id="31104" level="6">
     <if_sid>31100</if_sid>
-    
+
     <!-- Attempt to do directory transversal, simple sql injections,
       -  or access to the etc or bin directory (unix). -->
     <url>%027|%00|%01|%7f|%2E%2E|%0A|%0D|../..|..\..|echo;|</url>
@@ -69,7 +69,7 @@
     <description>XSS (Cross Site Scripting) attempt.</description>
     <group>attack,</group>
   </rule>
-  
+
   <rule id="31106" level="6">
     <if_sid>31103, 31104, 31105</if_sid>
     <id>^200</id>
@@ -132,7 +132,7 @@
     <description>Web server 500 error code (Internal Error).</description>
     <group>system_error,</group>
   </rule>
-  
+
   <rule id="31123" level="4">
     <if_sid>31120</if_sid>
     <id>^503</id>
@@ -155,7 +155,7 @@
     <description>Ignored 499's on nginx.</description>
   </rule>
 
-  
+
   <rule id="31151" level="10" frequency="12" timeframe="90">
     <if_matched_sid>31101</if_matched_sid>
     <same_source_ip />
@@ -168,14 +168,14 @@
     <if_matched_sid>31103</if_matched_sid>
     <same_source_ip />
     <description>Multiple SQL injection attempts from same </description>
-    <description>souce ip.</description>
+    <description>source ip.</description>
     <group>attack,sql_injection,</group>
   </rule>
-  
+
   <rule id="31153" level="10" frequency="8" timeframe="120">
     <if_matched_sid>31104</if_matched_sid>
     <same_source_ip />
-    <description>Multiple common web attacks from same souce ip.</description>
+    <description>Multiple common web attacks from same source ip.</description>
     <group>attack,</group>
   </rule>
 
@@ -183,24 +183,24 @@
     <if_matched_sid>31105</if_matched_sid>
     <same_source_ip />
     <description>Multiple XSS (Cross Site Scripting) attempts </description>
-    <description>from same souce ip.</description>
+    <description>from same source ip.</description>
     <group>attack,</group>
   </rule>
-  
+
   <rule id="31161" level="10" frequency="12" timeframe="120">
     <if_matched_sid>31121</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 501 error code (Not Implemented).</description>
     <group>web_scan,recon,</group>
   </rule>
-  
+
   <rule id="31162" level="10" frequency="12" timeframe="120">
     <if_matched_sid>31122</if_matched_sid>
     <same_source_ip />
     <description>Multiple web server 500 error code (Internal Error).</description>
     <group>system_error,</group>
   </rule>
-  
+
   <rule id="31163" level="10" frequency="12" timeframe="120">
     <if_matched_sid>31123</if_matched_sid>
     <same_source_ip />
