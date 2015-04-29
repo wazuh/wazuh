@@ -9,6 +9,8 @@
 
 #include <check.h>
 #include <stdlib.h>
+#include <unistd.h>
+
 #include "../os_net/os_net.h"
 #include "../headers/os_err.h"
 
@@ -20,6 +22,7 @@
 
 Suite *test_suite(void);
 
+
 START_TEST(test_tcpv4_local)
 {
     int server_root_socket, server_client_socket, client_socket;
@@ -29,7 +32,7 @@ START_TEST(test_tcpv4_local)
 
     ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, IPV4, 0)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV4, 0)) ,0);
+    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV4, 0)) , 0);
 
     ck_assert_int_ge((server_client_socket = OS_AcceptTCP(server_root_socket, ipbuffer, BUFFERSIZE)), 0);
 
@@ -64,7 +67,7 @@ START_TEST(test_tcpv4_inet)
 
     ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, NULL, 0)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV4, 0)) ,0);
+    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV4, 0)) , 0);
 
     ck_assert_int_ge((server_client_socket = OS_AcceptTCP(server_root_socket, ipbuffer, BUFFERSIZE)), 0);
 
@@ -99,7 +102,7 @@ START_TEST(test_tcpv6)
 
     ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, IPV6, 1)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV6, 1)) ,0);
+    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV6, 1)) , 0);
 
     ck_assert_int_ge((server_client_socket = OS_AcceptTCP(server_root_socket, ipbuffer, BUFFERSIZE)), 0);
 
@@ -147,11 +150,10 @@ START_TEST(test_udpv4)
     int server_socket, client_socket;
     char buffer[BUFFERSIZE];
     char *msg;
-    char ipbuffer[BUFFERSIZE];
 
     ck_assert_int_ge((server_socket = OS_Bindportudp(PORT, IPV4, 0)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectUDP(PORT, IPV4, 0)) ,0);
+    ck_assert_int_ge((client_socket = OS_ConnectUDP(PORT, IPV4, 0)) , 0);
 
     //TODO: ck_assert_int_eq(OS_SendUDP(client_socket, SENDSTRING), 0);
     ck_assert_int_eq(OS_SendUDPbySize(client_socket, strlen(SENDSTRING), SENDSTRING), 0);
@@ -179,11 +181,10 @@ START_TEST(test_udpv6)
     int server_socket, client_socket;
     char buffer[BUFFERSIZE];
     char *msg;
-    char ipbuffer[BUFFERSIZE];
 
     ck_assert_int_ge((server_socket = OS_Bindportudp(PORT, IPV6, 1)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectUDP(PORT, IPV6, 1)) ,0);
+    ck_assert_int_ge((client_socket = OS_ConnectUDP(PORT, IPV6, 1)) , 0);
 
     //TODO: ck_assert_int_eq(OS_SendUDP(client_socket, SENDSTRING), 0);
     ck_assert_int_eq(OS_SendUDPbySize(client_socket, strlen(SENDSTRING), SENDSTRING), 0);
@@ -222,11 +223,13 @@ END_TEST
 
 START_TEST(test_unix)
 {
+    int fd;
+
     /* create socket path */
     char socket_path[256];
     strncpy(socket_path, "/tmp/tmp_file-XXXXXX", 256);
-    mkstemp(socket_path);
-    close(socket_path);
+    fd = mkstemp(socket_path);
+    close(fd);
 
     int server_socket, client_socket;
     const int msg_size = 2048;
@@ -236,7 +239,7 @@ START_TEST(test_unix)
 
     ck_assert_int_ge(OS_getsocketsize(server_socket), msg_size);
 
-    ck_assert_int_ge((client_socket= OS_ConnectUnixDomain(socket_path, msg_size)), 0);
+    ck_assert_int_ge((client_socket = OS_ConnectUnixDomain(socket_path, msg_size)), 0);
 
     ck_assert_int_eq(OS_SendUnix(client_socket, SENDSTRING, 5), 0);
 
@@ -263,7 +266,7 @@ START_TEST(test_unixinvalidsockets)
 
     ck_assert_int_eq(OS_SendUnix(-1, SENDSTRING, strlen(SENDSTRING)), OS_SOCKTERR);
 
-    ck_assert_int_eq(OS_RecvUnix(-1, buffer, BUFFERSIZE), 0);
+    ck_assert_int_eq(OS_RecvUnix(-1, BUFFERSIZE, buffer), 0);
 }
 END_TEST
 
@@ -313,6 +316,7 @@ Suite *test_suite(void)
     tcase_add_test(tc_gethost, test_gethost_success);
     tcase_add_test(tc_gethost, test_gethost_fail1);
     tcase_add_test(tc_gethost, test_gethost_fail2);
+    tcase_set_timeout(tc_gethost, 10);
 
     suite_add_tcase(s, tc_tcp);
     suite_add_tcase(s, tc_udp);

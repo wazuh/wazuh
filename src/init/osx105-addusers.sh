@@ -1,13 +1,5 @@
 #! /bin/bash
 # By Spransy, Derek" <DSPRANS () emory ! edu> and Charlie Scott
-#
-# alterations by bil hays 2013
-# -Switched to bash
-# -Added some sanity checks
-# -Added routine to find the first 3 contiguous UIDs above 100,
-#  starting at 600 puts this in user space
-# -Added lines to append the ossec users to the group ossec
-#  so the the list GroupMembership works properly
 
 #####
 # This checks for an error and exits with a custom message
@@ -24,13 +16,13 @@ fi
 DSCL="/usr/bin/dscl";
 
 function check_errm
-   {
+{
    if  [[ ${?} != "0" ]]
       then
       echo "${1}";
       exit ${2};
       fi
-   }
+}
 
 # get unique id numbers (uid, gid) that are greater than 100
 unset -v i new_uid new_gid idvar;
@@ -124,5 +116,4 @@ else
    sudo ${DSCL} localhost -append /Local/Default/Groups/ossec GroupMembership ossec
    sudo ${DSCL} localhost -createprop /Local/Default/Users/ossec Password "*"
 fi
-
 

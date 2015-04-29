@@ -1,5 +1,3 @@
-/*   $OSSEC, client-config.h, v0.2, 2005/11/09, Daniel B. Cid$   */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -9,28 +7,22 @@
  * Foundation
  */
 
-
 #ifndef __CAGENTD_H
-
 #define __CAGENTD_H
 
 /* Configuration structure */
-typedef struct _agent
-{
+typedef struct _agent {
     int port;
     int m_queue;
     int sock;
     int execdq;
     int rip_id;
     char *lip;
-    char **rip; /* remote (server) ip */
+    char **rip; /* remote (server) IP */
     int notify_time;
     int max_time_reconnect_try;
     char *profile;
-}agent;
+} agent;
 
+#endif /* __CAGENTD_H */
 
-#endif
-
-
-/* EOF */

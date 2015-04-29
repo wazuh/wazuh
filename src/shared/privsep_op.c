@@ -1,5 +1,3 @@
-/*      $OSSEC, privsep_op.h, v0.2, 2004/08/05, Daniel B. Cid$      */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,12 +7,7 @@
  * Foundation
  */
 
-/* Part of the OSSEC HIDS
- * Available at http://www.ossec.net
- */
-
-/* Functions for privilege separation.
- */
+/* Functions for privilege separation */
 
 #ifndef WIN32
 
@@ -27,78 +20,79 @@
 #include "privsep_op.h"
 #include "headers/os_err.h"
 
-int Privsep_GetUser(const char * name)
-{
-    int os_uid = -1;
 
+uid_t Privsep_GetUser(const char *name)
+{
     struct passwd *pw;
     pw = getpwnam(name);
-    if(pw == NULL)
-        return(OS_INVALID);
+    if (pw == NULL) {
+        return ((uid_t)OS_INVALID);
+    }
 
-    os_uid = (int)pw->pw_uid;
-    endpwent();
-
-    return(os_uid);
+    return (pw->pw_uid);
 }
 
-int Privsep_GetGroup(const char * name)
+gid_t Privsep_GetGroup(const char *name)
 {
-    int os_gid = -1;
-
     struct group *grp;
     grp = getgrnam(name);
-    if(grp == NULL)
-        return(OS_INVALID);
+    if (grp == NULL) {
+        return ((gid_t)OS_INVALID);
+    }
 
-    os_gid = (int)grp->gr_gid;
-    endgrent();
-
-    return(os_gid);
+    return (grp->gr_gid);
 }
 
 int Privsep_SetUser(uid_t uid)
 {
-    if(setuid(uid) < 0)
-        return(OS_INVALID);
+    if (setuid(uid) < 0) {
+        return (OS_INVALID);
+    }
 
-    #ifndef HPUX
-    if(seteuid(uid) < 0)
-        return(OS_INVALID);
-    #endif
+#ifndef HPUX
+    if (seteuid(uid) < 0) {
+        return (OS_INVALID);
+    }
+#endif
 
-    return(OS_SUCCESS);
+    return (OS_SUCCESS);
 }
 
 int Privsep_SetGroup(gid_t gid)
 {
-    if (setgroups(1, &gid) == -1)
-        return(OS_INVALID);
+    if (setgroups(1, &gid) == -1) {
+        return (OS_INVALID);
+    }
 
-    #ifndef HPUX
-    if(setegid(gid) < 0)
-        return(OS_INVALID);
-    #endif
-
-    if(setgid(gid) < 0)
-        return(OS_INVALID);
-
-    return(OS_SUCCESS);
-}
-
-int Privsep_Chroot(const char * path)
-{
-    if(chdir(path) < 0)
-        return(OS_INVALID);
-
-    if(chroot(path) < 0)
-        return(OS_INVALID);
-
-    if(chdir("/") < 0)
-        return(OS_INVALID);
-
-    return(OS_SUCCESS);
-}
-
+#ifndef HPUX
+    if (setegid(gid) < 0) {
+        return (OS_INVALID);
+    }
 #endif
-/* EOF */
+
+    if (setgid(gid) < 0) {
+        return (OS_INVALID);
+    }
+
+    return (OS_SUCCESS);
+}
+
+int Privsep_Chroot(const char *path)
+{
+    if (chdir(path) < 0) {
+        return (OS_INVALID);
+    }
+
+    if (chroot(path) < 0) {
+        return (OS_INVALID);
+    }
+
+    if (chdir("/") < 0) {
+        return (OS_INVALID);
+    }
+
+    return (OS_SUCCESS);
+}
+
+#endif /* !WIN32 */
+

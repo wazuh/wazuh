@@ -1,5 +1,3 @@
-/*   $OSSEC, rootcheck.h, v0.1, 2005/10/03, Daniel B. Cid$   */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,16 +7,13 @@
  * Foundation
  */
 
-
 #ifndef __CROOTCHECK_H
-
 #define __CROOTCHECK_H
 
 #include <stdio.h>
 
-typedef struct _rkconfig
-{
-    char *workdir;
+typedef struct _rkconfig {
+    const char *workdir;
     char *basedir;
     char *rootkit_files;
     char *rootkit_trojans;
@@ -35,12 +30,12 @@ typedef struct _rkconfig
     int scanall;
     int readall;
     int disabled;
+    short skip_nfs;
 
     int time;
     int queue;
-	
-	struct _checks
-	{
+
+    struct _checks {
         short rc_dev;
         short rc_files;
         short rc_if;
@@ -49,23 +44,17 @@ typedef struct _rkconfig
         short rc_sys;
         short rc_trojans;
 
-        #ifdef WIN32
-
+#ifdef WIN32
         short rc_winaudit;
         short rc_winmalware;
         short rc_winapps;
-
-        #else
-
+#else
         short rc_unixaudit;
-
-        #endif
-
+#endif
 
     } checks;
 
-}rkconfig;
+} rkconfig;
 
-#endif
+#endif /* __CROOTCHECK_H */
 
-/* EOF */

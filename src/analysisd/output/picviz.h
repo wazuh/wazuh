@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/picviz.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Sebastien Tricaud
  * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
@@ -11,15 +8,17 @@
  * Foundation
  */
 
-#include <stdio.h>
-#include "eventinfo.h"
+#ifdef PICVIZ_OUTPUT_ENABLED
 
 #ifndef _PICVIZ_H_
 #define _PICVIZ_H_
 
-void OS_PicvizOpen(char *socket);
-void OS_PicvizLog(Eventinfo *lf);
+#include "eventinfo.h"
+
+void OS_PicvizOpen(const char *socket);
+void OS_PicvizLog(const Eventinfo *lf);
 void OS_PicvizClose(void);
 
 #endif /* _PICVIZ_H_ */
 
+#endif /* PICVIZ_OUTPUT_ENABLED */

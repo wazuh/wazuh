@@ -127,7 +127,8 @@
     <match>Authentication failed for|invalid password for|</match>
     <match>LOGIN FAILURE|auth failure: |authentication error|</match>
     <match>authinternal failed|Failed to authorize|</match>
-    <match>Wrong password given for|login failed|Auth: Login incorrect</match>
+    <match>Wrong password given for|login failed|Auth: Login incorrect|</match>
+    <match>Failed to authenticate user</match>
     <group>authentication_failed,</group>
     <description>User authentication failure.</description>
   </rule>
@@ -492,7 +493,7 @@
 
   <rule id="5402" level="3">
     <if_sid>5400</if_sid>
-    <match> ; USER=root ; COMMAND=</match>
+    <regex> ; USER=root ; COMMAND=| ; USER=root ; TSID=\S+ ; COMMAND=</regex>
     <description>Successful sudo to ROOT executed</description>
   </rule>
 
@@ -677,6 +678,12 @@
     <description>Uninteresting nouveau error.</description>
   </rule>
 
+  <rule id="2945" level="4">
+    <program_name>^rsyslogd</program_name>
+    <match>^imuxsock begins to drop messages </match>
+    <info>https://isc.sans.edu/diary/Are+you+losing+system+logging+information+%28and+don%27t+know+it%29%3F/15106</info>
+    <description>rsyslog may be dropping messages due to rate-limiting.</description>
+  </rule>
 
 </group>
 

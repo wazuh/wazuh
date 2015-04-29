@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/eventinfo.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,26 +7,20 @@
  * Foundation
  */
 
-
-
 #ifndef _EVTINFO__H
-
 #define _EVTINFO__H
 
 #include "rules.h"
 #include "decoders/decoder.h"
 
-
 /* Event Information structure */
-typedef struct _Eventinfo
-{
+typedef struct _Eventinfo {
     /* Extracted from the event */
     char *log;
     char *full_log;
     char *location;
     char *hostname;
     char *program_name;
-
 
     /* Extracted from the decoders */
     char *srcip;
@@ -47,7 +38,6 @@ typedef struct _Eventinfo
     char *data;
     char *systemname;
 
-
     /* Pointer to the rule that generated it */
     RuleInfo *generated_rule;
 
@@ -58,14 +48,13 @@ typedef struct _Eventinfo
     OSListNode *sid_node_to_delete;
 
     /* Extract when the event fires a rule */
-    int size;
-    int p_name_size;
-
+    size_t size;
+    size_t p_name_size;
 
     /* Other internal variables */
-    short int matched;
+    int matched;
 
-    int time;
+    time_t time;
     int day;
     int year;
     char hour[10];
@@ -85,38 +74,31 @@ typedef struct _Eventinfo
     char *owner_after;
     char *gowner_before;
     char *gowner_after;
-}Eventinfo;
-
+} Eventinfo;
 
 /* Events List structure */
-typedef struct _EventNode
-{
+typedef struct _EventNode {
     Eventinfo *event;
     struct _EventNode *next;
     struct _EventNode *prev;
-}EventNode;
+} EventNode;
 
-
-
-/* For test rule only. */
 #ifdef TESTRULE
-int full_output;
-int alert_only;
+extern int full_output;
+extern int alert_only;
 #endif
 
-
-/** Types of events (from decoders) **/
-#define UNKNOWN		0   /* Unkown */
-#define SYSLOG		1   /* syslog messages */
-#define IDS 		2   /* IDS alerts */
-#define FIREWALL    3   /* Firewall events */
-#define WEBLOG      7   /* Apache logs */
-#define SQUID       8   /* Squid logs */
-#define DECODER_WINDOWS     9   /* Windows logs */
-#define HOST_INFO   10  /* Host information logs (from nmap or similar) */
-#define OSSEC_RL    11  /* Ossec rules */
-#define OSSEC_ALERT 12  /* Ossec Alerts */
-
+/* Types of events (from decoders) */
+#define UNKNOWN         0   /* Unknown */
+#define SYSLOG          1   /* syslog messages */
+#define IDS             2   /* IDS alerts */
+#define FIREWALL        3   /* Firewall events */
+#define WEBLOG          7   /* Apache logs */
+#define SQUID           8   /* Squid logs */
+#define DECODER_WINDOWS 9   /* Windows logs */
+#define HOST_INFO       10  /* Host information logs (from nmap or similar) */
+#define OSSEC_RL        11  /* OSSEC rules */
+#define OSSEC_ALERT     12  /* OSSEC alerts */
 
 /* FTS allowed values */
 #define FTS_NAME        001000
@@ -129,7 +111,6 @@ int alert_only;
 #define FTS_DATA        000020
 #define FTS_SYSTEMNAME  000040
 #define FTS_DONE        010000
-
 
 /** Functions for events **/
 
@@ -148,11 +129,10 @@ void Free_Eventinfo(Eventinfo *lf);
 void OS_AddEvent(Eventinfo *lf);
 
 /* Return the last event from the Event list */
-EventNode *OS_GetLastEvent();
+EventNode *OS_GetLastEvent(void);
 
 /* Create the event list. Maxsize must be specified */
 void OS_CreateEventList(int maxsize);
-
 
 /* Pointers to the event decoders */
 void *SrcUser_FP(Eventinfo *lf, char *field);
@@ -170,6 +150,5 @@ void *Status_FP(Eventinfo *lf, char *field);
 void *SystemName_FP(Eventinfo *lf, char *field);
 void *None_FP(Eventinfo *lf, char *field);
 
-
-
 #endif /* _EVTINFO__H */
+

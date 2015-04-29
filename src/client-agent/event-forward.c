@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/client-agent/event-forward.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,36 +7,23 @@
  * Foundation
  */
 
-/* Part of the OSSEC HIDS
- * Available at http://www.ossec.net/hids/
- */
-
-
 #include "shared.h"
 #include "agentd.h"
-
 #include "os_net/os_net.h"
-
 #include "sec.h"
 
 
-
-/* Receives a message locally on the agent and forwards to the
- * manager.
- */
+/* Receive a message locally on the agent and forward it to the manager */
 void *EventForward()
 {
-    int recv_b;
-    char msg[OS_MAXSTR +1];
+    ssize_t recv_b;
+    char msg[OS_MAXSTR + 1];
 
-
-    /* Initializing variables */
+    /* Initialize variables */
     msg[0] = '\0';
     msg[OS_MAXSTR] = '\0';
 
-
-    while((recv_b = recv(agt->m_queue, msg, OS_MAXSTR, MSG_DONTWAIT)) > 0)
-    {
+    while ((recv_b = recv(agt->m_queue, msg, OS_MAXSTR, MSG_DONTWAIT)) > 0) {
         msg[recv_b] = '\0';
 
         send_msg(0, msg);
@@ -47,9 +31,6 @@ void *EventForward()
         run_notify();
     }
 
-    return(NULL);
+    return (NULL);
 }
 
-
-
-/* EOF */

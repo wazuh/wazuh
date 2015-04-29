@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/logcollector/logcollector.h, 2012/03/28 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,32 +7,24 @@
  * Foundation
  */
 
-
-
 #ifndef __LOGREADER_H
-
 #define __LOGREADER_H
 
 #ifndef ARGV0
 #define ARGV0 "ossec-logcollector"
 #endif
 
-
 #include "shared.h"
 #include "config/localfile-config.h"
 #include "config/config.h"
 
-
-
-
 /*** Function prototypes ***/
 
-
 /* Read logcollector config */
-int LogCollectorConfig(char * cfgfile, int accept_remote);
+int LogCollectorConfig(const char *cfgfile, int accept_remote);
 
-/* Stary log collector daemon */
-void LogCollectorStart();
+/* Start log collector daemon */
+void LogCollectorStart(void) __attribute__((noreturn));
 
 /* Handle files */
 int handle_file(int i, int do_fseek, int do_log);
@@ -61,36 +50,31 @@ void *read_mssql_log(int pos, int *rc, int drop_it);
 /* Read postgresql log format */
 void *read_postgresql_log(int pos, int *rc, int drop_it);
 
-/* read multi line logs. */
+/* read multi line logs */
 void *read_multiline(int pos, int *rc, int drop_it);
 
 /* Read DJB multilog format */
-/* Initializes multilog. */
+/* Initializes multilog */
 int init_djbmultilog(int pos);
 void *read_djbmultilog(int pos, int *rc, int drop_it);
-
 
 /* Read events from output of command */
 void *read_command(int pos, int *rc, int drop_it);
 void *read_fullcommand(int pos, int *rc, int drop_it);
 
-
 #ifdef WIN32
-/* Windows only */
 void win_startel();
 void win_readel();
 void win_read_vista_sec();
 void win_start_event_channel(char *evt_log, char future, char *query);
+void win_format_event_string(char *string);
 #endif
-
 
 /*** Global variables ***/
+extern int loop_timeout;
+extern int logr_queue;
+extern int open_file_attempts;
+extern logreader *logff;
 
+#endif /* __LOGREADER_H */
 
-int loop_timeout;
-int logr_queue;
-int open_file_attempts;
-logreader *logff;
-
-
-#endif

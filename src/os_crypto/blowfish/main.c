@@ -5,7 +5,7 @@
 #include "bf_op.h"
 
 
-int main(int argc, char ** argv)
+int main(int argc, char **argv)
 {
     int i;
     char output[1024];
@@ -14,14 +14,12 @@ int main(int argc, char ** argv)
     memset(output, '\0', 1024);
     memset(output2, '\0', 1024);
 
-    if(argc < 3)
-    {
+    if (argc < 3) {
         printf("%s: string key\n", argv[0]);
         exit(1);
     }
 
-    if((strlen(argv[1]) > 1020) || (strlen(argv[2]) > 512))
-    {
+    if ((strlen(argv[1]) > 1020) || (strlen(argv[2]) > 512)) {
         printf("%s: size err\n", argv[0]);
         exit(1);
     }
@@ -29,17 +27,17 @@ int main(int argc, char ** argv)
     /* Encrypt */
     OS_BF_Str(argv[1], output, argv[2], strlen(argv[1]), OS_ENCRYPT);
 
-    /* Decript */
+    /* Decrypt */
     OS_BF_Str(output, output2, argv[2], strlen(argv[1]), OS_DECRYPT);
 
     printf("finished.\n");
-    printf("input: '%s'\n",argv[1]);
+    printf("input: '%s'\n", argv[1]);
     printf("crpt: ");
-    for(i=0;i <= strlen(argv[1]);i++)
-    {
+    for (i = 0; i <= strlen(argv[1]); i++) {
         printf("%d", output[i]);
     }
     printf("\n");
-    printf("output2: '%s'\n",output2);	
-    return(0);
+    printf("output2: '%s'\n", output2);
+    return (0);
 }
+

@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/monitord/report.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,13 +7,14 @@
  * Foundation
  */
 
-
 #include "shared.h"
 
+/* Prototypes */
+static void help_reportd(void) __attribute__((noreturn));
 
 
-/* print help statement */
-void help_reportd()
+/* Print help statement */
+static void help_reportd()
 {
     print_header();
     print_out("  Generate reports (via stdin)");
@@ -44,25 +42,23 @@ void help_reportd()
     exit(1);
 }
 
-
-
 int main(int argc, char **argv)
 {
     int c, test_config = 0;
-    int uid=0,gid=0;
-    char *dir  = DEFAULTDIR;
-    char *user = USER;
-    char *group = GROUPGLOBAL;
+    uid_t uid;
+    gid_t gid;
+    const char *dir  = DEFAULTDIR;
+    const char *user = USER;
+    const char *group = GROUPGLOBAL;
 
-    char *filter_by = NULL;
-    char *filter_value = NULL;
+    const char *filter_by = NULL;
+    const char *filter_value = NULL;
 
-    char *related_of = NULL;
-    char *related_values = NULL;
+    const char *related_of = NULL;
+    const char *related_values = NULL;
     report_filter r_filter;
 
-
-    /* Setting the name */
+    /* Set the name */
     OS_SetName(ARGV0);
 
     r_filter.group = NULL;
@@ -84,9 +80,8 @@ int main(int argc, char **argv)
 
     r_filter.report_name = NULL;
 
-    while((c = getopt(argc, argv, "Vdhstu:g:D:f:v:n:r:")) != -1)
-    {
-        switch(c){
+    while ((c = getopt(argc, argv, "Vdhstu:g:D:f:v:n:r:")) != -1) {
+        switch (c) {
             case 'V':
                 print_version();
                 break;
@@ -97,50 +92,54 @@ int main(int argc, char **argv)
                 nowDebug();
                 break;
             case 'n':
-                if(!optarg)
-                    ErrorExit("%s: -n needs an argument",ARGV0);
+                if (!optarg) {
+                    ErrorExit("%s: -n needs an argument", ARGV0);
+                }
                 r_filter.report_name = optarg;
                 break;
             case 'r':
-                if(!optarg || !argv[optind])
-                    ErrorExit("%s: -r needs two argument",ARGV0);
+                if (!optarg || !argv[optind]) {
+                    ErrorExit("%s: -r needs two argument", ARGV0);
+                }
                 related_of = optarg;
                 related_values = argv[optind];
 
-                if(os_report_configfilter(related_of, related_values,
-                                          &r_filter, REPORT_RELATED) < 0)
-                {
+                if (os_report_configfilter(related_of, related_values,
+                                           &r_filter, REPORT_RELATED) < 0) {
                     ErrorExit(CONFIG_ERROR, ARGV0, "user argument");
                 }
                 optind++;
                 break;
             case 'f':
-                if(!optarg)
-                    ErrorExit("%s: -f needs two argument",ARGV0);
+                if (!optarg) {
+                    ErrorExit("%s: -f needs two argument", ARGV0);
+                }
                 filter_by = optarg;
                 filter_value = argv[optind];
 
-                if(os_report_configfilter(filter_by, filter_value,
-                                          &r_filter, REPORT_FILTER) < 0)
-                {
+                if (os_report_configfilter(filter_by, filter_value,
+                                           &r_filter, REPORT_FILTER) < 0) {
                     ErrorExit(CONFIG_ERROR, ARGV0, "user argument");
                 }
                 optind++;
                 break;
             case 'u':
-                if(!optarg)
-                    ErrorExit("%s: -u needs an argument",ARGV0);
-                user=optarg;
+                if (!optarg) {
+                    ErrorExit("%s: -u needs an argument", ARGV0);
+                }
+                user = optarg;
                 break;
             case 'g':
-                if(!optarg)
-                    ErrorExit("%s: -g needs an argument",ARGV0);
-                group=optarg;
+                if (!optarg) {
+                    ErrorExit("%s: -g needs an argument", ARGV0);
+                }
+                group = optarg;
                 break;
             case 'D':
-                if(!optarg)
-                    ErrorExit("%s: -D needs an argument",ARGV0);
-                dir=optarg;
+                if (!optarg) {
+                    ErrorExit("%s: -D needs an argument", ARGV0);
+                }
+                dir = optarg;
                 break;
             case 't':
                 test_config = 1;
@@ -155,61 +154,53 @@ int main(int argc, char **argv)
 
     }
 
-    /* Starting daemon */
-    debug1(STARTED_MSG,ARGV0);
+    /* Start daemon */
+    debug1(STARTED_MSG, ARGV0);
 
     /* Check if the user/group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
-        ErrorExit(USER_ERROR,ARGV0,user,group);
-
-
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+        ErrorExit(USER_ERROR, ARGV0, user, group);
+    }
 
     /* Exit here if test config is set */
-    if(test_config)
+    if (test_config) {
         exit(0);
-
+    }
 
     /* Privilege separation */
-    if(Privsep_SetGroup(gid) < 0)
-        ErrorExit(SETGID_ERROR,ARGV0,group);
+    if (Privsep_SetGroup(gid) < 0) {
+        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+    }
 
-
-    /* chrooting */
-    if(Privsep_Chroot(dir) < 0)
-        ErrorExit(CHROOT_ERROR,ARGV0,dir);
-
+    /* chroot */
+    if (Privsep_Chroot(dir) < 0) {
+        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+    }
     nowChroot();
 
+    /* Change user */
+    if (Privsep_SetUser(uid) < 0) {
+        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
+    }
 
-
-    /* Changing user */
-    if(Privsep_SetUser(uid) < 0)
-        ErrorExit(SETUID_ERROR,ARGV0,user);
-
-
-    debug1(PRIVSEP_MSG,ARGV0,dir,user);
-
-
+    debug1(PRIVSEP_MSG, ARGV0, dir, user);
 
     /* Signal manipulation */
     StartSIG(ARGV0);
 
-
-
-    /* Creating PID files */
-    if(CreatePID(ARGV0, getpid()) < 0)
-        ErrorExit(PID_ERROR,ARGV0);
-
+    /* Create PID files */
+    if (CreatePID(ARGV0, getpid()) < 0) {
+        ErrorExit(PID_ERROR, ARGV0);
+    }
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
-    /* the real stuff now */
+    /* The real stuff now */
     os_ReportdStart(&r_filter);
+
     exit(0);
 }
 
-
-/* EOF */

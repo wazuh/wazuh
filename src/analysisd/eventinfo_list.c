@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/eventinfo_list.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,21 +5,18 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- *
- * License details at the LICENSE file included with OSSEC or
- * online at: http://www.ossec.net/en/licensing.html
  */
-
 
 #include "shared.h"
 #include "eventinfo.h"
+#include "rules.h"
 
+/* Local variables */
+static EventNode *eventnode;
+static EventNode *lastnode;
 
-EventNode *eventnode;
-EventNode *lastnode;
-
-int _memoryused = 0;
-int _memorymaxsize = 0;
+static int _memoryused = 0;
+static int _memorymaxsize = 0;
 int _max_freq = 0;
 
 
@@ -30,9 +24,7 @@ int _max_freq = 0;
 void OS_CreateEventList(int maxsize)
 {
     eventnode = NULL;
-
     _memorymaxsize = maxsize;
-
     _memoryused = 0;
 
     debug1("%s: OS_CreateEventList completed.", ARGV0);
@@ -44,7 +36,7 @@ EventNode *OS_GetLastEvent()
 {
     EventNode *eventnode_pt = eventnode;
 
-    return(eventnode_pt);
+    return (eventnode_pt);
 }
 
 /* Add an event to the list -- always to the begining */
@@ -52,17 +44,15 @@ void OS_AddEvent(Eventinfo *lf)
 {
     EventNode *tmp_node = eventnode;
 
-    if(tmp_node)
-    {
+    if (tmp_node) {
         EventNode *new_node;
-        new_node = (EventNode *)calloc(1,sizeof(EventNode));
+        new_node = (EventNode *)calloc(1, sizeof(EventNode));
 
-        if(new_node == NULL)
-        {
-            ErrorExit(MEM_ERROR,ARGV0);
+        if (new_node == NULL) {
+            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
         }
 
-        /* Always adding to the beginning of the list
+        /* Always add to the beginning of the list
          * The new node will become the first node and
          * new_node->next will be the previous first node
          */
@@ -72,14 +62,13 @@ void OS_AddEvent(Eventinfo *lf)
 
         eventnode = new_node;
 
-        /* Adding the event to the node */
+        /* Add the event to the node */
         new_node->event = lf;
 
         _memoryused++;
 
         /* Need to remove the last nodes */
-        if(_memoryused > _memorymaxsize)
-        {
+        if (_memoryused > _memorymaxsize) {
             int i = 0;
             EventNode *oldlast;
 
@@ -87,8 +76,7 @@ void OS_AddEvent(Eventinfo *lf)
              * or the events that will not match anymore
              * (higher than max frequency)
              */
-            while((i < 10)||((lf->time - lastnode->event->time) > _max_freq))
-            {
+            while ((i < 10) || ((lf->time - lastnode->event->time) > _max_freq)) {
                 oldlast = lastnode;
                 lastnode = lastnode->prev;
                 lastnode->next = NULL;
@@ -103,13 +91,11 @@ void OS_AddEvent(Eventinfo *lf)
         }
     }
 
-    else
-    {
-        /* Adding first node */
-        eventnode = (EventNode *)calloc(1,sizeof(EventNode));
-        if(eventnode == NULL)
-        {
-            ErrorExit(MEM_ERROR,ARGV0);
+    else {
+        /* Add first node */
+        eventnode = (EventNode *)calloc(1, sizeof(EventNode));
+        if (eventnode == NULL) {
+            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
         }
 
         eventnode->prev = NULL;
@@ -122,4 +108,3 @@ void OS_AddEvent(Eventinfo *lf)
     return;
 }
 
-/* EOF */

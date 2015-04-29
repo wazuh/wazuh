@@ -392,6 +392,7 @@
   -  Apr 27 15:25:08 niban sudo:     dcid : TTY=pts/4 ; PWD=/home/dcid ; USER=root ; COMMAND=/usr/bin/tail /var/log/snort/alert.fast
   -  Apr 14 10:59:01 enigma sudo:     dcid : TTY=ttyp3 ; PWD=/home/dcid/ossec-hids.0.1a/src/analysisd ; USER=root ; COMMAND=/bin/cp -pr ../../bin/addagent ../../bin/osaudit-logaudit ../../bin/ossec-execd ../../bin/ossec-logcollector ../../bin/ossec-maild ../../bin/ossec-remoted /var/ossec/bin
   -  Apr 19 14:52:02 enigma sudo:     dcid : TTY=ttyp3 ; PWD=/var/www/alex ; USER=root ; COMMAND=/sbin/chown dcid.dcid .
+  -  Dec 30 19:36:11 rheltest sudo: cplummer : TTY=pts/2 ; PWD=/home/cplummer1 ; USER=root ; TSID=0000UM ; COMMAND=/bin/bash
   -->
 <decoder name="sudo">
   <program_name>^sudo</program_name>
@@ -461,6 +462,7 @@
   - proftpd[30362] xx.yy.zz (aa.bb.cc[aa.bb.vv.dd]): USER backup: Login successful.
   - proftpd[2344]: refused connect from 192.168.1.2 (192.168.1.2)
   - proftpd[15181]: valhalla (crawl-66-249-66-80.googlebot.com[66.249.66.80]) - Connection from crawl-66-249-66-80.googlebot.com [66.249.66.80] denied.
+  - proftpd[26169] server.example.net: Fatal: unable to open incoming connection: Der Socket ist nicht verbunden
   -->
 <decoder name="proftpd">
   <program_name>^proftpd</program_name>
@@ -518,7 +520,7 @@
   -->
 
 <decoder name="pure-transfer">
-  <prematch>^\S+ - \S+ [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d -\d\d\d\d] </prematch>
+  <prematch>^\S+ - \S+ [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d \S\d\d\d\d] "\w+ \S+" </prematch>
   <regex>^(\S+) - (\S+) [\d\d/\S\S\S/\d\d\d\d:\d\d:\d\d:\d\d -\d\d\d\d] "(\S+) (\.+) (\d+) \d+$</regex>
   <order>extra_data,dstuser,action,url,status</order>
 </decoder>
@@ -814,7 +816,7 @@
 <decoder name="named-query">
   <parent>named</parent>
   <prematch>: query: </prematch>
-  <regex>client (\S+)#\d+: query: (\S+) IN </regex>
+  <regex>client (\S+)#\d+\s*\S*: query: (\S+) IN </regex>
   <order>srcip,url</order>
 </decoder>
 
@@ -1515,6 +1517,9 @@
   - [Tue Sep 30 12:11:21.258612 2014] [ssl:error] [pid 30473] AH02032: Hostname www.example.com provided via SNI and hostname ssl://www.example.com provided via HTTP are different
   - [Tue Sep 30 12:24:22.891366 2014] [proxy:warn] [pid 2331] [client 77.127.180.111:54082] AH01136: Unescaped URL path matched ProxyPass; ignoring unsafe nocanon, referer: http://www.easylinker.co.il/he/links.aspx?user=bguyb
   - [Tue Sep 30 14:25:44.895897 2014] [authz_core:error] [pid 31858] [client 99.47.227.95:38870] AH01630: client denied by server configuration: /var/www/example.com/docroot/
+  - [Thu Oct 23 15:17:55.926067 2014] [ssl:info] [pid 18838] [client 36.226.119.49:2359] AH02008: SSL library error 1 in handshake (server www.example.com:443)
+  - [Thu Oct 23 15:17:55.926123 2014] [ssl:info] [pid 18838] SSL Library Error: error:1407609B:SSL routines:SSL23_GET_CLIENT_HELLO:https proxy request -- speaking HTTP to HTTPS port!?
+  - [Sun Nov 23 18:49:01.713508 2014] [:error] [pid 15816] [client 141.8.147.9:51507] PHP Notice:  A non well formed numeric value encountered in /path/to/file.php on line 123
   -->
 <decoder name="apache-errorlog">
   <program_name>^httpd</program_name>
@@ -1525,15 +1530,23 @@
 </decoder>
 
 <decoder name="apache-errorlog">
-    <prematch>^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:warn] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:notice] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:error] </prematch>
+  <prematch>^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:warn] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:notice] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S*:error] |^[\w+ \w+ \d+ \d+:\d+:\d+.\d+ \d+] [\S+:info] </prematch>
 </decoder>
 
 <decoder name="apache24-errorlog-ip">
-    <parent>apache-errorlog</parent>
+  <parent>apache-errorlog</parent>
 
-    <prematch offset="after_parent">[client</prematch>
-    <regex offset="after_prematch">^ (\S+):\d+] (\S+): </regex>
-    <order>srcip,id</order>
+  <prematch offset="after_parent">[client</prematch>
+  <regex offset="after_prematch">^ (\S+):\d+] (\S+): </regex>
+  <order>srcip,id</order>
+</decoder>
+
+<decoder name="apache24-modsec-errorlog-ip">
+  <parent>apache-errorlog</parent>
+
+  <prematch offset="after_parent">[client</prematch>
+  <regex offset="after_prematch">^ (\S+)] ModSecurity: </regex>
+  <order>srcip</order>
 </decoder>
 
 <decoder name="apache-errorlog-ip">
@@ -1582,9 +1595,9 @@
   -->
 <decoder name="web-accesslog">
   <type>web-log</type>
-  <prematch>^\d+.\d+.\d+.\d+ |^::ffff:\d+.\d+.\d+.\d+ </prematch>
-  <regex>^(\d+.\d+.\d+.\d+) \S+ \S+ [\S+ \S\d+] </regex>
-  <regex>"\w+ (\S+) HTTP\S+ (\d+) </regex>
+  <prematch>^\S+ \S+ \S+ [\S+ \S\d+] "\w+ \S+ HTTP\S+" </prematch>
+  <regex>^(\S+) \S+ \S+ [\S+ \S\d+] </regex>
+  <regex>"\w+ (\S+) HTTP\S+" (\d+) </regex>
   <order>srcip, url, id</order>
 </decoder>
 
@@ -1860,6 +1873,13 @@
 <decoder name="ossec">
   <prematch>^ossec: </prematch>
   <type>ossec</type>
+</decoder>
+
+<decoder name="ossec-logcollector">
+  <type>ossec</type>
+  <prematch>^\d\d\d\d/\d\d/\d\d \d\d:\d\d:\d\d ossec-logcollector</prematch>
+  <regex offset="after_prematch">^\(\d+\): (\.)</regex>
+  <order>extra_data</order>
 </decoder>
 
 <decoder name="ossec-agent">

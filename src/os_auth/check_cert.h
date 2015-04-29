@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_auth/check_cert.h, 2014/04/25 mweigel Exp $
- */
-
 /* Copyright (C) 2014 Trend Micro Inc.
  * All rights reserved.
  *
@@ -28,7 +25,7 @@
 #ifndef _CHECK_CERT_H
 #define _CHECK_CERT_H
 
-#ifdef USE_OPENSSL
+#ifdef LIBOPENSSL_ENABLED
 
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
@@ -40,23 +37,22 @@
 #define DNS_MAX_LABELS    127
 #define DNS_MAX_LABEL_LEN 63
 
-typedef struct label_t
-{
+typedef struct label_t {
     char text[DNS_MAX_LABEL_LEN + 1];
-    int len;
+    size_t len;
 }
 label;
 
-int check_x509_cert(SSL *ssl, char *manager);
-int check_subject_alt_names(X509 *cert, char *manager);
-int check_subject_cn(X509 *cert, char *manager);
-int check_hostname(ASN1_STRING *cert_astr, char *manager);
-int check_ipaddr(ASN1_STRING *cert_astr, char *manager);
+int check_x509_cert(const SSL *ssl, const char *manager);
+int check_subject_alt_names(X509 *cert, const char *manager);
+int check_subject_cn(X509 *cert, const char *manager);
+int check_hostname(ASN1_STRING *cert_astr, const char *manager);
+int check_ipaddr(const ASN1_STRING *cert_astr, const char *manager);
 int label_array(const char *domain_name, label result[DNS_MAX_LABELS]);
 int label_valid(const label *label);
 int label_match(const label *label1, const label *label2);
 char *asn1_to_cstr(ASN1_STRING *astr);
 
-#endif /* USE_OPENSSL */
+#endif /* LIBOPENSSL_ENABLED */
 #endif /* _CHECK_CERT_H */
 

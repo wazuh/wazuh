@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/logcollector/config.c, 2011/10/07 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,47 +7,35 @@
  * Foundation
  */
 
-/* v0.3 (2005/08/23): Using the new OS_XML syntax and changing some usage
- * v0.2 (2005/01/17)
- */
-
-
 #include "shared.h"
-
 #include "logcollector.h"
 
 
-/* LogCollectorConfig v0.3, 2005/03/03
- * Read the config file (the localfiles)
- * v0.3: Changed for the new OS_XML
- */
-int LogCollectorConfig(char * cfgfile, int accept_remote)
+/* Read the config file (the localfiles) */
+int LogCollectorConfig(const char *cfgfile, int accept_remote)
 {
     int modules = 0;
-
     logreader_config log_config;
 
-    modules|= CLOCALFILE;
+    modules |= CLOCALFILE;
 
     log_config.config = NULL;
     log_config.agent_cfg = 0;
     log_config.accept_remote = accept_remote;
 
-    if(ReadConfig(modules, cfgfile, &log_config, NULL) < 0)
-        return(OS_INVALID);
+    if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0) {
+        return (OS_INVALID);
+    }
 
-    #ifdef CLIENT
-    modules|= CAGENT_CONFIG;
+#ifdef CLIENT
+    modules |= CAGENT_CONFIG;
     log_config.agent_cfg = 1;
     ReadConfig(modules, AGENTCONFIG, &log_config, NULL);
     log_config.agent_cfg = 0;
-    #endif
+#endif
 
     logff = log_config.config;
 
-    return(1);
-
-
+    return (1);
 }
 
-/* EOF */

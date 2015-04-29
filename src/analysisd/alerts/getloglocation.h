@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/alerts/getloglocation.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,34 +7,25 @@
  * Foundation
  */
 
-
 #ifndef __GETLL_H
-
 #define __GETLL_H
 
 #include "eventinfo.h"
 
-/*
- * Start the log location (need to be called before getlog)
- *
+/* Start the log location (need to be called before getlog) */
+void OS_InitLog(void);
+void OS_InitFwLog(void);
+
+/* Get the log file based on the date/logtype
+ * Returns 0 on success or -1 on error
  */
-void OS_InitLog();
+int OS_GetLogLocation(const Eventinfo *lf);
 
-void OS_InitFwLog();
+/* Global declarations */
+extern FILE *_eflog;
+extern FILE *_aflog;
+extern FILE *_fflog;
+extern FILE *_jflog;
 
-/*
- * Get the log file based on the date/logtype/
- *
- * @param lf        Event structure
- *
- * @retval 0        success
- *         -1       error
- */
-int OS_GetLogLocation(Eventinfo *lf);
+#endif /* __GETLL_H */
 
-
-FILE *_eflog;
-FILE *_aflog;
-FILE *_fflog;
-
-#endif /* GETLL_H */

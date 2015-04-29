@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/privsep_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,22 +7,22 @@
  * Foundation
  */
 
-/* Functions for privilege separation.
- */
+/* Functions for privilege separation */
 
 #ifndef __PRIV_H
-
 #define __PRIV_H
+
 #include "shared.h"
 
-int Privsep_GetUser(const char * name) __attribute__((nonnull));
+uid_t Privsep_GetUser(const char *name) __attribute__((nonnull));
 
-int Privsep_GetGroup(const char * name) __attribute__((nonnull));
+gid_t Privsep_GetGroup(const char *name) __attribute__((nonnull));
 
 int Privsep_SetUser(uid_t uid);
 
 int Privsep_SetGroup(gid_t gid);
 
-int Privsep_Chroot(const char * path) __attribute__((nonnull));
+int Privsep_Chroot(const char *path) __attribute__((nonnull));
 
 #endif
+

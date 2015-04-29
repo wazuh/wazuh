@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/regex_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,12 +7,11 @@
  * Foundation
  */
 
-
 #ifndef OS_REGEX_OP_H
 #define OS_REGEX_OP_H
 
-/* Posix regex pattern matching */
+/* POSIX regex pattern matching */
 int OS_PRegex(const char *str, const char *regex);
 
-
 #endif
+

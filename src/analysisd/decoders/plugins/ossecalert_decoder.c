@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/decoders/plugins/ossecalert_decoder.c, 2012/03/28 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,122 +5,95 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- *
- * License details at the LICENSE file included with OSSEC or
- * online at: http://www.ossec.net/en/licensing.html
  */
 
+#include "../plugin_decoders.h"
 
 #include "shared.h"
 #include "eventinfo.h"
 #include "config.h"
 
 
-
-
-/* OSSECAlert decoder init */
 void *OSSECAlert_Decoder_Init()
 {
     debug1("%s: Initializing OSSECAlert decoder.", ARGV0);
 
-
     /* There is nothing else to do over here */
-    return(NULL);
+    return (NULL);
 }
-
-
 
 #define oa_strchr(x,y,z) z = strchr(x,y); if(!z){ return(NULL); }
 
-/* OSSECAlert decoder
- * Will extract the rule_id and point back to the original rule.
- * Will also extract srcip and username if available.
- * Examples:
- *
+/* Extract the rule_id and point back to the original rule
+ * Will also extract srcip and username if available
  */
 void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
 {
-    char *oa_id = 0;
-    char *oa_location;
-    char *oa_val;
+    const char *oa_id = NULL;
+    const char *oa_location;
+    const char *oa_val;
     char oa_newlocation[256];
+    char tmpstr_buffer[4096 + 1];
     char *tmp_str = NULL;
-    void *rule_pointer;
-
+    RuleInfo *rule_pointer;
 
     lf->decoder_info->type = OSSEC_ALERT;
 
-
-    /* Checking the alert level. */
-    if(strncmp("Alert Level: ", lf->log, 12) != 0 &&
-       strncmp("ossec: Alert Level:", lf->log, 18) != 0)
-    {
-        return(NULL);
+    /* Check the alert level */
+    if (strncmp("Alert Level: ", lf->log, 12) != 0 &&
+            strncmp("ossec: Alert Level:", lf->log, 18) != 0) {
+        return (NULL);
     }
 
-
-    /* Going past the level. */
+    /* Going past the level */
     oa_strchr(lf->log, ';', tmp_str);
     tmp_str++;
 
-
-    /* Getting rule id. */
+    /* Get rule id */
     oa_strchr(tmp_str, ':', tmp_str);
     tmp_str++;
-    if(*tmp_str != ' ')
-    {
-        return(NULL);
+    if (*tmp_str != ' ') {
+        return (NULL);
     }
     tmp_str++;
 
-
-    /* Getting id. */
+    /* Get id */
     oa_id = tmp_str;
     oa_strchr(tmp_str, ' ', tmp_str);
     *tmp_str = '\0';
 
-
-    /* Getting rule structure. */
-    rule_pointer = OSHash_Get(Config.g_rules_hash, oa_id);
-    if(!rule_pointer)
-    {
+    /* Get rule structure */
+    rule_pointer = (RuleInfo *) OSHash_Get(Config.g_rules_hash, oa_id);
+    if (!rule_pointer) {
         merror("%s: WARN: Rule id '%s' not found internally.", ARGV0, oa_id);
         *tmp_str = ' ';
-        return(NULL);
+        return (NULL);
     }
     *tmp_str = ' ';
     oa_strchr(tmp_str, ';', tmp_str);
     tmp_str++;
 
-
-    /* Checking location. */
-    if(strncmp(" Location: ", tmp_str, 11) != 0)
-    {
-        return(NULL);
+    /* Check location */
+    if (strncmp(" Location: ", tmp_str, 11) != 0) {
+        return (NULL);
     }
-    tmp_str+=11;
+    tmp_str += 11;
 
-
-    /* Setting location; */
+    /* Set location */
     oa_location = tmp_str;
-
 
     oa_strchr(tmp_str, ';', tmp_str);
     *tmp_str = '\0';
 
-
-    /* Setting new location. */
+    /* Set new location */
     oa_newlocation[255] = '\0';
 
-    if(lf->hostname == lf->location)
-    {
+    if (lf->hostname == lf->location) {
         snprintf(oa_newlocation, 255, "%s|%s", lf->location, oa_location);
         free(lf->location);
         os_strdup(oa_newlocation, lf->location);
         lf->hostname = lf->location;
-    }
-    else
-    {
+    } else {
         snprintf(oa_newlocation, 255, "%s->%s|%s", lf->hostname,
                  lf->location, oa_location);
         free(lf->location);
@@ -134,26 +104,21 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
     *tmp_str = ';';
     tmp_str++;
 
-
-    /* Getting additional fields. */
-    while((*tmp_str == ' ') && (tmp_str[1] != ' '))
-    {
+    /* Get additional fields */
+    while ((*tmp_str == ' ') && (tmp_str[1] != ' ')) {
         tmp_str++;
         oa_val = tmp_str;
 
         tmp_str = strchr(tmp_str, ';');
-        if(!tmp_str)
-        {
-            return(NULL);
+        if (!tmp_str) {
+            return (NULL);
         }
         *tmp_str = '\0';
 
-        if(strncmp(oa_val, "srcip: ", 7) == 0)
-        {
+        if (strncmp(oa_val, "srcip: ", 7) == 0) {
             os_strdup(oa_val + 7, lf->srcip);
         }
-        if(strncmp(oa_val, "user: ", 6) == 0)
-        {
+        if (strncmp(oa_val, "user: ", 6) == 0) {
             os_strdup(oa_val + 6, lf->dstuser);
         }
 
@@ -161,23 +126,26 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf)
         tmp_str++;
     }
 
-
-    /* Removing space. */
-    while(*tmp_str == ' ')
+    /* Remove space */
+    while (*tmp_str == ' ') {
         tmp_str++;
+    }
+
+    /* Create new full log */
+    tmpstr_buffer[0] = '\0';
+    tmpstr_buffer[4095] = '\0';
+    strncpy(tmpstr_buffer, tmp_str, 4094);
 
 
-    /* Creating new full log. */
     free(lf->full_log);
-    os_strdup(tmp_str, lf->full_log);
+    lf->full_log = NULL;
+    os_strdup(tmpstr_buffer, lf->full_log);
+
     lf->log = lf->full_log;
 
-
-    /* Rule that generated. */
+    /* Rule that generated */
     lf->generated_rule = rule_pointer;
 
-
-    return(NULL);
+    return (NULL);
 }
 
-/* END Decoder */

@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/eventinfo.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -8,481 +5,429 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- *
- * License details at the LICENSE file included with OSSEC or
- * online at: http://www.ossec.net/en/licensing.html
  */
-
-
-/* Part of the OSSEC.
- * Available at http://www.ossec.net
- */
-
-
 
 #include "config.h"
 #include "analysisd.h"
 #include "eventinfo.h"
 #include "os_regex/os_regex.h"
 
+/* Global definitions */
+#ifdef TESTRULE
+int full_output;
+int alert_only;
+#endif
+
 
 /* Search last times a signature fired
  * Will look for only that specific signature.
  */
-Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *currently_rule)
+Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule)
 {
     Eventinfo *lf;
     Eventinfo *first_lf;
     OSListNode *lf_node;
 
+    /* Set frequency to 0 */
+    rule->__frequency = 0;
 
-    /* Setting frequency to 0 */
-    currently_rule->__frequency = 0;
-
-
-    /* checking sid search is valid */
-    if(!currently_rule->sid_search)
-    {
-        merror("%s: No sid search!! XXX", ARGV0);
+    /* Checking if sid search is valid */
+    if (!rule->sid_search) {
+        merror("%s: ERROR: No sid search.", ARGV0);
+        return (NULL);
     }
 
-    /* Getting last node */
-    lf_node = OSList_GetLastNode(currently_rule->sid_search);
-    if(!lf_node)
-    {
-        return(NULL);
+    /* Get last node */
+    lf_node = OSList_GetLastNode(rule->sid_search);
+    if (!lf_node) {
+        return (NULL);
     }
     first_lf = (Eventinfo *)lf_node->data;
 
-
-    do
-    {
+    do {
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
-        if((c_time - lf->time) > currently_rule->timeframe)
-        {
-            return(NULL);
+        if ((c_time - lf->time) > rule->timeframe) {
+            return (NULL);
         }
 
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        else if(lf->matched >= currently_rule->level)
-        {
-            return(NULL);
+        else if (lf->matched >= rule->level) {
+            return (NULL);
         }
 
-
-
-        /* Checking for same id */
-        if(currently_rule->context_opts & SAME_ID)
-        {
-            if((!lf->id) || (!my_lf->id))
+        /* Check for same ID */
+        if (rule->context_opts & SAME_ID) {
+            if ((!lf->id) || (!my_lf->id)) {
                 continue;
+            }
 
-            if(strcmp(lf->id,my_lf->id) != 0)
+            if (strcmp(lf->id, my_lf->id) != 0) {
                 continue;
+            }
         }
 
-        /* Checking for repetitions from same src_ip */
-        if(currently_rule->context_opts & SAME_SRCIP)
-        {
-            if((!lf->srcip)||(!my_lf->srcip))
+        /* Check for repetitions from same src_ip */
+        if (rule->context_opts & SAME_SRCIP) {
+            if ((!lf->srcip) || (!my_lf->srcip)) {
                 continue;
+            }
 
-            if(strcmp(lf->srcip,my_lf->srcip) != 0)
+            if (strcmp(lf->srcip, my_lf->srcip) != 0) {
                 continue;
+            }
         }
-
 
         /* Grouping of additional data */
-        if(currently_rule->alert_opts & SAME_EXTRAINFO)
-        {
-            /* Checking for same source port */
-            if(currently_rule->context_opts & SAME_SRCPORT)
-            {
-                if((!lf->srcport)||(!my_lf->srcport))
-                    continue;
-
-                if(strcmp(lf->srcport, my_lf->srcport) != 0)
-                    continue;
-            }
-
-            /* Checking for same dst port */
-            if(currently_rule->context_opts & SAME_DSTPORT)
-            {
-                if((!lf->dstport)||(!my_lf->dstport))
-                    continue;
-
-                if(strcmp(lf->dstport, my_lf->dstport) != 0)
-                    continue;
-            }
-
-            /* Checking for repetitions on user error */
-            if(currently_rule->context_opts & SAME_USER)
-            {
-                if((!lf->dstuser)||(!my_lf->dstuser))
-                    continue;
-
-                if(strcmp(lf->dstuser,my_lf->dstuser) != 0)
-                    continue;
-            }
-
-            /* Checking for same location */
-            if(currently_rule->context_opts & SAME_LOCATION)
-            {
-                if(strcmp(lf->hostname, my_lf->hostname) != 0)
-                    continue;
-            }
-
-
-            /* Checking for different urls */
-            if(currently_rule->context_opts & DIFFERENT_URL)
-            {
-                if((!lf->url)||(!my_lf->url))
-                {
+        if (rule->alert_opts & SAME_EXTRAINFO) {
+            /* Check for same source port */
+            if (rule->context_opts & SAME_SRCPORT) {
+                if ((!lf->srcport) || (!my_lf->srcport)) {
                     continue;
                 }
 
-                if(strcmp(lf->url, my_lf->url) == 0)
-                {
+                if (strcmp(lf->srcport, my_lf->srcport) != 0) {
                     continue;
                 }
             }
 
+            /* Check for same dst port */
+            if (rule->context_opts & SAME_DSTPORT) {
+                if ((!lf->dstport) || (!my_lf->dstport)) {
+                    continue;
+                }
+
+                if (strcmp(lf->dstport, my_lf->dstport) != 0) {
+                    continue;
+                }
+            }
+
+            /* Check for repetitions on user error */
+            if (rule->context_opts & SAME_USER) {
+                if ((!lf->dstuser) || (!my_lf->dstuser)) {
+                    continue;
+                }
+
+                if (strcmp(lf->dstuser, my_lf->dstuser) != 0) {
+                    continue;
+                }
+            }
+
+            /* Check for same location */
+            if (rule->context_opts & SAME_LOCATION) {
+                if (strcmp(lf->hostname, my_lf->hostname) != 0) {
+                    continue;
+                }
+            }
+
+            /* Check for different URLs */
+            if (rule->context_opts & DIFFERENT_URL) {
+                if ((!lf->url) || (!my_lf->url)) {
+                    continue;
+                }
+
+                if (strcmp(lf->url, my_lf->url) == 0) {
+                    continue;
+                }
+            }
         }
 
-
-        /* Checking if the number of matches worked */
-        if(currently_rule->__frequency <= 10)
-        {
-            currently_rule->last_events[currently_rule->__frequency]
+        /* Check if the number of matches worked */
+        if (rule->__frequency <= 10) {
+            rule->last_events[rule->__frequency]
                 = lf->full_log;
-            currently_rule->last_events[currently_rule->__frequency+1]
+            rule->last_events[rule->__frequency + 1]
                 = NULL;
         }
 
-        if(currently_rule->__frequency < currently_rule->frequency)
-        {
-            currently_rule->__frequency++;
+        if (rule->__frequency < rule->frequency) {
+            rule->__frequency++;
             continue;
         }
-        currently_rule->__frequency++;
+        rule->__frequency++;
 
 
         /* If reached here, we matched */
-        my_lf->matched = currently_rule->level;
-        lf->matched = currently_rule->level;
-        first_lf->matched = currently_rule->level;
+        my_lf->matched = rule->level;
+        lf->matched = rule->level;
+        first_lf->matched = rule->level;
 
-        return(lf);
+        return (lf);
 
+    } while ((lf_node = lf_node->prev) != NULL);
 
-    }while((lf_node = lf_node->prev) != NULL);
-
-    return(NULL);
+    return (NULL);
 }
-
-
 
 /* Search last times a group fired
  * Will look for only that specific group on that rule.
  */
-Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *currently_rule)
+Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule)
 {
     Eventinfo *lf;
     Eventinfo *first_lf;
     OSListNode *lf_node;
 
+    /* Set frequency to 0 */
+    rule->__frequency = 0;
 
-    /* Setting frequency to 0 */
-    currently_rule->__frequency = 0;
-
-
-    /* checking sid search is valid */
-    if(!currently_rule->group_search)
-    {
-        merror("%s: No group search!! XXX", ARGV0);
+    /* Check if sid search is valid */
+    if (!rule->group_search) {
+        merror("%s: No group search!", ARGV0);
+        return (NULL);
     }
 
-    /* Getting last node */
-    lf_node = OSList_GetLastNode(currently_rule->group_search);
-    if(!lf_node)
-    {
-        return(NULL);
+    /* Get last node */
+    lf_node = OSList_GetLastNode(rule->group_search);
+    if (!lf_node) {
+        return (NULL);
     }
     first_lf = (Eventinfo *)lf_node->data;
 
-
-    do
-    {
+    do {
         lf = (Eventinfo *)lf_node->data;
 
         /* If time is outside the timeframe, return */
-        if((c_time - lf->time) > currently_rule->timeframe)
-        {
-            return(NULL);
+        if ((c_time - lf->time) > rule->timeframe) {
+            return (NULL);
         }
 
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        else if(lf->matched >= currently_rule->level)
-        {
-            return(NULL);
+        else if (lf->matched >= rule->level) {
+            return (NULL);
         }
 
-
-
-        /* Checking for same id */
-        if(currently_rule->context_opts & SAME_ID)
-        {
-            if((!lf->id) || (!my_lf->id))
+        /* Check for same ID */
+        if (rule->context_opts & SAME_ID) {
+            if ((!lf->id) || (!my_lf->id)) {
                 continue;
+            }
 
-            if(strcmp(lf->id,my_lf->id) != 0)
+            if (strcmp(lf->id, my_lf->id) != 0) {
                 continue;
+            }
         }
 
-        /* Checking for repetitions from same src_ip */
-        if(currently_rule->context_opts & SAME_SRCIP)
-        {
-            if((!lf->srcip)||(!my_lf->srcip))
+        /* Check for repetitions from same src_ip */
+        if (rule->context_opts & SAME_SRCIP) {
+            if ((!lf->srcip) || (!my_lf->srcip)) {
                 continue;
+            }
 
-            if(strcmp(lf->srcip,my_lf->srcip) != 0)
+            if (strcmp(lf->srcip, my_lf->srcip) != 0) {
                 continue;
+            }
         }
-
 
         /* Grouping of additional data */
-        if(currently_rule->alert_opts & SAME_EXTRAINFO)
-        {
-            /* Checking for same source port */
-            if(currently_rule->context_opts & SAME_SRCPORT)
-            {
-                if((!lf->srcport)||(!my_lf->srcport))
-                    continue;
-
-                if(strcmp(lf->srcport, my_lf->srcport) != 0)
-                    continue;
-            }
-
-            /* Checking for same dst port */
-            if(currently_rule->context_opts & SAME_DSTPORT)
-            {
-                if((!lf->dstport)||(!my_lf->dstport))
-                    continue;
-
-                if(strcmp(lf->dstport, my_lf->dstport) != 0)
-                    continue;
-            }
-
-            /* Checking for repetitions on user error */
-            if(currently_rule->context_opts & SAME_USER)
-            {
-                if((!lf->dstuser)||(!my_lf->dstuser))
-                    continue;
-
-                if(strcmp(lf->dstuser,my_lf->dstuser) != 0)
-                    continue;
-            }
-
-            /* Checking for same location */
-            if(currently_rule->context_opts & SAME_LOCATION)
-            {
-                if(strcmp(lf->hostname, my_lf->hostname) != 0)
-                    continue;
-            }
-
-
-            /* Checking for different urls */
-            if(currently_rule->context_opts & DIFFERENT_URL)
-            {
-                if((!lf->url)||(!my_lf->url))
-                {
+        if (rule->alert_opts & SAME_EXTRAINFO) {
+            /* Check for same source port */
+            if (rule->context_opts & SAME_SRCPORT) {
+                if ((!lf->srcport) || (!my_lf->srcport)) {
                     continue;
                 }
 
-                if(strcmp(lf->url, my_lf->url) == 0)
-                {
+                if (strcmp(lf->srcport, my_lf->srcport) != 0) {
+                    continue;
+                }
+            }
+
+            /* Check for same dst port */
+            if (rule->context_opts & SAME_DSTPORT) {
+                if ((!lf->dstport) || (!my_lf->dstport)) {
+                    continue;
+                }
+
+                if (strcmp(lf->dstport, my_lf->dstport) != 0) {
+                    continue;
+                }
+            }
+
+            /* Check for repetitions on user error */
+            if (rule->context_opts & SAME_USER) {
+                if ((!lf->dstuser) || (!my_lf->dstuser)) {
+                    continue;
+                }
+
+                if (strcmp(lf->dstuser, my_lf->dstuser) != 0) {
+                    continue;
+                }
+            }
+
+            /* Check for same location */
+            if (rule->context_opts & SAME_LOCATION) {
+                if (strcmp(lf->hostname, my_lf->hostname) != 0) {
+                    continue;
+                }
+            }
+
+
+            /* Check for different URLs */
+            if (rule->context_opts & DIFFERENT_URL) {
+                if ((!lf->url) || (!my_lf->url)) {
+                    continue;
+                }
+
+                if (strcmp(lf->url, my_lf->url) == 0) {
                     continue;
                 }
             }
 
         }
 
-
-        /* Checking if the number of matches worked */
-        if(currently_rule->__frequency < currently_rule->frequency)
-        {
-            if(currently_rule->__frequency <= 10)
-            {
-                currently_rule->last_events[currently_rule->__frequency]
+        /* Check if the number of matches worked */
+        if (rule->__frequency < rule->frequency) {
+            if (rule->__frequency <= 10) {
+                rule->last_events[rule->__frequency]
                     = lf->full_log;
-                currently_rule->last_events[currently_rule->__frequency+1]
+                rule->last_events[rule->__frequency + 1]
                     = NULL;
             }
 
-            currently_rule->__frequency++;
+            rule->__frequency++;
             continue;
         }
 
 
         /* If reached here, we matched */
-        my_lf->matched = currently_rule->level;
-        lf->matched = currently_rule->level;
-        first_lf->matched = currently_rule->level;
+        my_lf->matched = rule->level;
+        lf->matched = rule->level;
+        first_lf->matched = rule->level;
 
-        return(lf);
+        return (lf);
 
 
-    }while((lf_node = lf_node->prev) != NULL);
+    } while ((lf_node = lf_node->prev) != NULL);
 
-    return(NULL);
+    return (NULL);
 }
 
 
-/* Search LastEvents.
- * Will look if any of the last events (inside the timeframe)
- * match the specified rule.
+/* Look if any of the last events (inside the timeframe)
+ * match the specified rule
  */
-Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *currently_rule)
+Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule)
 {
     EventNode *eventnode_pt;
     Eventinfo *lf;
     Eventinfo *first_lf;
 
-
     merror("XXXX : remove me!");
-
 
     /* Last events */
     eventnode_pt = OS_GetLastEvent();
-    if(!eventnode_pt)
-    {
+    if (!eventnode_pt) {
         /* Nothing found */
-        return(NULL);
+        return (NULL);
     }
 
-    /* Setting frequency to 0 */
-    currently_rule->__frequency = 0;
+    /* Set frequency to 0 */
+    rule->__frequency = 0;
     first_lf = (Eventinfo *)eventnode_pt->event;
 
-
-    /* Searching all previous events */
-    do
-    {
+    /* Search all previous events */
+    do {
         lf = eventnode_pt->event;
 
         /* If time is outside the timeframe, return */
-        if((c_time - lf->time) > currently_rule->timeframe)
-        {
-            return(NULL);
+        if ((c_time - lf->time) > rule->timeframe) {
+            return (NULL);
         }
-
 
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        else if(lf->matched >= currently_rule->level)
-        {
-            return(NULL);
+        else if (lf->matched >= rule->level) {
+            return (NULL);
         }
 
-
         /* The category must be the same */
-        else if(lf->decoder_info->type != my_lf->decoder_info->type)
-        {
+        else if (lf->decoder_info->type != my_lf->decoder_info->type) {
             continue;
         }
 
-
         /* If regex does not match, go to next */
-        if(currently_rule->if_matched_regex)
-        {
-            if(!OSRegex_Execute(lf->log, currently_rule->if_matched_regex))
-            {
+        if (rule->if_matched_regex) {
+            if (!OSRegex_Execute(lf->log, rule->if_matched_regex)) {
                 /* Didn't match */
                 continue;
             }
         }
 
-        /* Checking for repetitions on user error */
-        if(currently_rule->context_opts & SAME_USER)
-        {
-            if((!lf->dstuser)||(!my_lf->dstuser))
-                continue;
-
-            if(strcmp(lf->dstuser,my_lf->dstuser) != 0)
-                continue;
-        }
-
-        /* Checking for same id */
-        if(currently_rule->context_opts & SAME_ID)
-        {
-            if((!lf->id) || (!my_lf->id))
-                continue;
-
-            if(strcmp(lf->id,my_lf->id) != 0)
-                continue;
-        }
-
-        /* Checking for repetitions from same src_ip */
-        if(currently_rule->context_opts & SAME_SRCIP)
-        {
-            if((!lf->srcip)||(!my_lf->srcip))
-                continue;
-
-            if(strcmp(lf->srcip,my_lf->srcip) != 0)
-                continue;
-        }
-
-        /* Checking for different urls */
-        if(currently_rule->context_opts & DIFFERENT_URL)
-        {
-            if((!lf->url)||(!my_lf->url))
-            {
+        /* Check for repetitions on user error */
+        if (rule->context_opts & SAME_USER) {
+            if ((!lf->dstuser) || (!my_lf->dstuser)) {
                 continue;
             }
 
-            if(strcmp(lf->url, my_lf->url) == 0)
-            {
+            if (strcmp(lf->dstuser, my_lf->dstuser) != 0) {
                 continue;
             }
         }
 
-
-        /* Checking if the number of matches worked */
-        if(currently_rule->__frequency < currently_rule->frequency)
-        {
-            if(currently_rule->__frequency <= 10)
-            {
-                currently_rule->last_events[currently_rule->__frequency]
-                            = lf->full_log;
-                currently_rule->last_events[currently_rule->__frequency+1]
-                            = NULL;
+        /* Check for same ID */
+        if (rule->context_opts & SAME_ID) {
+            if ((!lf->id) || (!my_lf->id)) {
+                continue;
             }
 
-            currently_rule->__frequency++;
+            if (strcmp(lf->id, my_lf->id) != 0) {
+                continue;
+            }
+        }
+
+        /* Check for repetitions from same src_ip */
+        if (rule->context_opts & SAME_SRCIP) {
+            if ((!lf->srcip) || (!my_lf->srcip)) {
+                continue;
+            }
+
+            if (strcmp(lf->srcip, my_lf->srcip) != 0) {
+                continue;
+            }
+        }
+
+        /* Check for different urls */
+        if (rule->context_opts & DIFFERENT_URL) {
+            if ((!lf->url) || (!my_lf->url)) {
+                continue;
+            }
+
+            if (strcmp(lf->url, my_lf->url) == 0) {
+                continue;
+            }
+        }
+
+
+        /* Check if the number of matches worked */
+        if (rule->__frequency < rule->frequency) {
+            if (rule->__frequency <= 10) {
+                rule->last_events[rule->__frequency]
+                    = lf->full_log;
+                rule->last_events[rule->__frequency + 1]
+                    = NULL;
+            }
+
+            rule->__frequency++;
             continue;
         }
 
-
         /* If reached here, we matched */
-        my_lf->matched = currently_rule->level;
-        lf->matched = currently_rule->level;
-        first_lf->matched = currently_rule->level;
+        my_lf->matched = rule->level;
+        lf->matched = rule->level;
+        first_lf->matched = rule->level;
 
-        return(lf);
+        return (lf);
 
-    }while((eventnode_pt = eventnode_pt->next) != NULL);
+    } while ((eventnode_pt = eventnode_pt->next) != NULL);
 
-
-    return(NULL);
+    return (NULL);
 }
-
 
 /* Zero the loginfo structure */
 void Zero_Eventinfo(Eventinfo *lf)
@@ -540,82 +485,104 @@ void Zero_Eventinfo(Eventinfo *lf)
 /* Free the loginfo structure */
 void Free_Eventinfo(Eventinfo *lf)
 {
-    if(!lf)
-    {
-        merror("%s: Trying to free NULL event. Inconsistent..",ARGV0);
+    if (!lf) {
+        merror("%s: Trying to free NULL event. Inconsistent..", ARGV0);
         return;
     }
 
-    if(lf->full_log)
+    if (lf->full_log) {
         free(lf->full_log);
-    if(lf->location)
+    }
+    if (lf->location) {
         free(lf->location);
+    }
 
-    if(lf->srcip)
+    if (lf->srcip) {
         free(lf->srcip);
-    if(lf->dstip)
+    }
+    if (lf->dstip) {
         free(lf->dstip);
-    if(lf->srcport)
+    }
+    if (lf->srcport) {
         free(lf->srcport);
-    if(lf->dstport)
+    }
+    if (lf->dstport) {
         free(lf->dstport);
-    if(lf->protocol)
+    }
+    if (lf->protocol) {
         free(lf->protocol);
-    if(lf->action)
+    }
+    if (lf->action) {
         free(lf->action);
-    if(lf->status)
+    }
+    if (lf->status) {
         free(lf->status);
-    if(lf->srcuser)
+    }
+    if (lf->srcuser) {
         free(lf->srcuser);
-    if(lf->dstuser)
+    }
+    if (lf->dstuser) {
         free(lf->dstuser);
-    if(lf->id)
+    }
+    if (lf->id) {
         free(lf->id);
-    if(lf->command)
+    }
+    if (lf->command) {
         free(lf->command);
-    if(lf->url)
+    }
+    if (lf->url) {
         free(lf->url);
+    }
 
-    if(lf->data)
+    if (lf->data) {
         free(lf->data);
-    if(lf->systemname)
+    }
+    if (lf->systemname) {
         free(lf->systemname);
+    }
 
-    if(lf->filename)
+    if (lf->filename) {
         free(lf->filename);
-    if (lf->md5_before)
+    }
+    if (lf->md5_before) {
         free(lf->md5_before);
-    if (lf->md5_after)
+    }
+    if (lf->md5_after) {
         free(lf->md5_after);
-    if (lf->sha1_before)
+    }
+    if (lf->sha1_before) {
         free(lf->sha1_before);
-    if (lf->sha1_after)
+    }
+    if (lf->sha1_after) {
         free(lf->sha1_after);
-    if (lf->size_before)
+    }
+    if (lf->size_before) {
         free(lf->size_before);
-    if (lf->size_after)
+    }
+    if (lf->size_after) {
         free(lf->size_after);
-    if (lf->owner_before)
+    }
+    if (lf->owner_before) {
         free(lf->owner_before);
-    if (lf->owner_after)
+    }
+    if (lf->owner_after) {
         free(lf->owner_after);
-    if (lf->gowner_before)
+    }
+    if (lf->gowner_before) {
         free(lf->gowner_before);
-    if (lf->gowner_after)
+    }
+    if (lf->gowner_after) {
         free(lf->gowner_after);
+    }
 
-    /* Freeing node to delete */
-    if(lf->sid_node_to_delete)
-    {
+    /* Free node to delete */
+    if (lf->sid_node_to_delete) {
         OSList_DeleteThisNode(lf->generated_rule->sid_prev_matched,
                               lf->sid_node_to_delete);
-    }
-    else if(lf->generated_rule && lf->generated_rule->group_prev_matched)
-    {
-        int i = 0;
+    } else if (lf->generated_rule && lf->generated_rule->group_prev_matched) {
+        unsigned int i = 0;
 
-        while(i < lf->generated_rule->group_prev_matched_sz)
-        {
+        while (i < lf->generated_rule->group_prev_matched_sz) {
             OSList_DeleteOldestNode(lf->generated_rule->group_prev_matched[i]);
             i++;
         }
@@ -631,4 +598,3 @@ void Free_Eventinfo(Eventinfo *lf)
     return;
 }
 
-/* EOF */

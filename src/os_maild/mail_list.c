@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/os_maild/mail_list.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,7 +7,6 @@
  * Foundation
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +14,6 @@
 #include "headers/debug_op.h"
 #include "maild.h"
 #include "mail_list.h"
-
 #include "error_messages/error_messages.h"
 
 static MailNode *n_node;
@@ -34,66 +29,65 @@ void OS_CreateMailList(int maxsize)
     n_node = NULL;
 
     _memorymaxsize = maxsize;
-
     _memoryused = 0;
 
     return;
 }
 
-/* check last mail */
+/* Check last mail */
 MailNode *OS_CheckLastMail()
 {
-    return(lastnode);
+    return (lastnode);
 }
 
 /* Get the last Mail -- or first node */
 MailNode *OS_PopLastMail()
 {
-
     MailNode *oldlast;
 
     oldlast = lastnode;
-
-    if(lastnode == NULL)
-    {
+    if (lastnode == NULL) {
         n_node = NULL;
-        return(NULL);
+        return (NULL);
     }
 
     _memoryused--;
-
     lastnode = lastnode->prev;
 
     /* Remove the last */
-    return(oldlast);
+    return (oldlast);
 }
-
 
 void FreeMailMsg(MailMsg *ml)
 {
-    if(ml == NULL)
+    if (ml == NULL) {
         return;
+    }
 
-    if(ml->subject)
+    if (ml->subject) {
         free(ml->subject);
+    }
 
-    if(ml->body)
+    if (ml->body) {
         free(ml->body);
+    }
 
     free(ml);
 }
 
-
 /* Free mail node */
 void FreeMail(MailNode *ml)
 {
-    if(ml == NULL)
+    if (ml == NULL) {
         return;
-    if(ml->mail->subject)
+    }
+    if (ml->mail->subject) {
         free(ml->mail->subject);
+    }
 
-    if(ml->mail->body)
+    if (ml->mail->body) {
         free(ml->mail->body);
+    }
 
     free(ml->mail);
     free(ml);
@@ -105,17 +99,15 @@ void OS_AddMailtoList(MailMsg *ml)
 {
     MailNode *tmp_node = n_node;
 
-    if(tmp_node)
-    {
+    if (tmp_node) {
         MailNode *new_node;
-        new_node = (MailNode *)calloc(1,sizeof(MailNode));
+        new_node = (MailNode *)calloc(1, sizeof(MailNode));
 
-        if(new_node == NULL)
-        {
-            ErrorExit(MEM_ERROR,ARGV0);
+        if (new_node == NULL) {
+            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
         }
 
-        /* Always adding to the beginning of the list
+        /* Always add to the beginning of the list
          * The new node will become the first node and
          * new_node->next will be the previous first node
          */
@@ -125,33 +117,30 @@ void OS_AddMailtoList(MailMsg *ml)
 
         n_node = new_node;
 
-        /* Adding the event to the node */
+        /* Add the event to the node */
         new_node->mail = ml;
 
         _memoryused++;
 
         /* Need to remove the last node */
-        if(_memoryused > _memorymaxsize)
-        {
+        if (_memoryused > _memorymaxsize) {
             MailNode *oldlast;
 
             oldlast = lastnode;
             lastnode = lastnode->prev;
 
-            /* free last node */
+            /* Free last node */
             FreeMail(oldlast);
 
             _memoryused--;
         }
     }
 
-    else
-    {
-        /* Adding first node */
-        n_node = (MailNode *)calloc(1,sizeof(MailNode));
-        if(n_node == NULL)
-        {
-            ErrorExit(MEM_ERROR,ARGV0);
+    else {
+        /* Add first node */
+        n_node = (MailNode *)calloc(1, sizeof(MailNode));
+        if (n_node == NULL) {
+            ErrorExit(MEM_ERROR, ARGV0, errno, strerror(errno));
         }
 
         n_node->prev = NULL;
@@ -164,4 +153,3 @@ void OS_AddMailtoList(MailMsg *ml)
     return;
 }
 
-/* EOF */

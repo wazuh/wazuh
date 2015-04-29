@@ -1,5 +1,3 @@
-/*   $OSSEC, mail-config.h, v0.1, 2006/04/06, Daniel B. Cid$   */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,16 +7,13 @@
  * Foundation
  */
 
-
-
 #ifndef _MCCONFIG__H
 #define _MCCONFIG__H
+
 #include "shared.h"
 
-
 /* Mail config structure */
-typedef struct _MailConfig
-{
+typedef struct _MailConfig {
     int mn;
     int maxperhour;
     int strict_checking;
@@ -32,26 +27,26 @@ typedef struct _MailConfig
     char *heloserver;
 
     /* Granular e-mail options */
-    int *gran_level;
-    int **gran_id;
+    unsigned int *gran_level;
+    unsigned int **gran_id;
     int *gran_set;
     int *gran_format;
     char **gran_to;
 
-#ifdef GEOIP
+#ifdef LIBGEOIP_ENABLED
     /* Use GeoIP */
     int geoip;
 #endif
 
     OSMatch **gran_location;
     OSMatch **gran_group;
-}MailConfig;
+} MailConfig;
 
-
-/** Email message formats **/
+/* Email message formats */
 #define FULL_FORMAT     2
 #define SMS_FORMAT      3
 #define FORWARD_NOW     4
 #define DONOTGROUP      5
 
-#endif
+#endif /* _MCCONFIG__H */
+

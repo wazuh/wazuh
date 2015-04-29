@@ -1,6 +1,4 @@
- 
+
  U staat op het punt om het installatie proces te starten van OSSEC HIDS.
  U heeft een C compiler nodig voorgeinstalleerd op uw systeem.
- Bij enige vragen of commentaar kunt u een email sturen naar
- dcid@ossec.net (of daniel.cid@gmail.com).
- 
+

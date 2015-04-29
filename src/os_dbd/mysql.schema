@@ -1,5 +1,3 @@
-# @(#) $Id: ./src/os_dbd/mysql.schema, 2011/09/08 dcid Exp $
-#
 # Copyright (C) 2009 Trend Micro Inc.
 # All rights reserved.
 #
@@ -7,9 +5,6 @@
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
-#
-# License details at the LICENSE file included with OSSEC or
-# online at: http://www.ossec.net/en/licensing.html
 
 
 CREATE TABLE IF NOT EXISTS  category
@@ -35,8 +30,8 @@ CREATE TABLE IF NOT EXISTS  signature_category_mapping
     id          INT    UNSIGNED NOT NULL   AUTO_INCREMENT,
     rule_id     MEDIUMINT   UNSIGNED NOT NULL,
     cat_id      SMALLINT    UNSIGNED NOT NULL,
-    PRIMARY KEY  (id, rule_id, cat_id)       
-    );    
+    PRIMARY KEY  (id, rule_id, cat_id)
+    );
 
 CREATE TABLE IF NOT EXISTS  server
     (
@@ -44,29 +39,29 @@ CREATE TABLE IF NOT EXISTS  server
     last_contact    INT         UNSIGNED NOT NULL,
     version         VARCHAR(32)          NOT NULL,
     hostname        VARCHAR(64)          NOT NULL   UNIQUE,
-    information     VARCHAR(128)         NOT NULL,    
-    PRIMARY KEY  (id) 
-    ); 
+    information     VARCHAR(128)         NOT NULL,
+    PRIMARY KEY  (id)
+    );
 
 CREATE TABLE IF NOT EXISTS  agent
     (
     id              SMALLINT    UNSIGNED NOT NULL   AUTO_INCREMENT,
-    server_id       SMALLINT    UNSIGNED NOT NULL,        
+    server_id       SMALLINT    UNSIGNED NOT NULL,
     last_contact    INT         UNSIGNED NOT NULL,
     ip_address      INT         UNSIGNED NOT NULL,
     version         VARCHAR(32)          NOT NULL,
     name            VARCHAR(64)          NOT NULL,
-    information     VARCHAR(128)         NOT NULL,    
-    PRIMARY KEY  (id, server_id) 
+    information     VARCHAR(128)         NOT NULL,
+    PRIMARY KEY  (id, server_id)
     );
 
 CREATE TABLE IF NOT EXISTS  location
     (
     id              SMALLINT        UNSIGNED NOT NULL   AUTO_INCREMENT,
-    server_id       SMALLINT        UNSIGNED NOT NULL,        
+    server_id       SMALLINT        UNSIGNED NOT NULL,
     name            VARCHAR(128)    NOT NULL,
     PRIMARY KEY  (id, server_id)
-    );        
+    );
 
 CREATE TABLE IF NOT EXISTS  alert
     (
@@ -87,10 +82,10 @@ CREATE TABLE IF NOT EXISTS  alert
     tld             VARCHAR(5)  NOT NULL DEFAULT '',
     PRIMARY KEY (id, server_id),
     INDEX       (alertid),
-    INDEX	(level),
+    INDEX       (level),
     INDEX       time (timestamp),
     INDEX       (rule_id),
     INDEX       (src_ip),
-    INDEX 	(tld)
+    INDEX       (tld)
     );
 

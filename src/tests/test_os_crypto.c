@@ -9,6 +9,7 @@
 
 #include <check.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "../os_crypto/blowfish/bf_op.h"
 #include "../os_crypto/md5/md5_op.h"
@@ -16,6 +17,7 @@
 #include "../os_crypto/md5_sha1/md5_sha1_op.h"
 
 Suite *test_suite(void);
+
 
 START_TEST(test_blowfish)
 {
@@ -175,6 +177,7 @@ Suite *test_suite(void)
     tcase_add_test(tc_md5sha1, test_md5sha1file);
     tcase_add_test(tc_md5sha1, test_md5sha1cmdfile);
     tcase_add_test(tc_md5sha1, test_md5sha1cmdfile_fail);
+    tcase_set_timeout(tc_md5sha1, 7);
 
     suite_add_tcase(s, tc_blowfish);
     suite_add_tcase(s, tc_md5);

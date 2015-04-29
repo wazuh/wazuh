@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/remoted/main.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,13 +7,15 @@
  * Foundation
  */
 
-
-
 #include "shared.h"
 #include "remoted.h"
 
-/* print help statement */
-void help_remoted()
+/* Prototypes */
+static void help_remoted(void) __attribute__((noreturn));
+
+
+/* Print help statement */
+static void help_remoted()
 {
     print_header();
     print_out("  %s: -[Vhdtf] [-u user] [-g group] [-c config] [-D dir]", ARGV0);
@@ -37,23 +36,22 @@ void help_remoted()
 
 int main(int argc, char **argv)
 {
-    int i = 0,c = 0;
-    int uid = 0, gid = 0;
+    int i = 0, c = 0;
+    uid_t uid;
+    gid_t gid;
     int debug_level = 0;
-    int test_config = 0,run_foreground = 0;
+    int test_config = 0, run_foreground = 0;
 
-    char *cfg = DEFAULTCPATH;
-    char *dir = DEFAULTDIR;
-    char *user = REMUSER;
-    char *group = GROUPGLOBAL;
+    const char *cfg = DEFAULTCPATH;
+    const char *dir = DEFAULTDIR;
+    const char *user = REMUSER;
+    const char *group = GROUPGLOBAL;
 
-
-    /* Setting the name -- must be done ASAP */
+    /* Set the name */
     OS_SetName(ARGV0);
 
-
-    while((c = getopt(argc, argv, "Vdthfu:g:c:D:")) != -1){
-        switch(c){
+    while ((c = getopt(argc, argv, "Vdthfu:g:c:D:")) != -1) {
+        switch (c) {
             case 'V':
                 print_version();
                 break;
@@ -68,26 +66,30 @@ int main(int argc, char **argv)
                 run_foreground = 1;
                 break;
             case 'u':
-                if(!optarg)
-                    ErrorExit("%s: -u needs an argument",ARGV0);
+                if (!optarg) {
+                    ErrorExit("%s: -u needs an argument", ARGV0);
+                }
                 user = optarg;
                 break;
             case 'g':
-                if(!optarg)
-                    ErrorExit("%s: -g needs an argument",ARGV0);
+                if (!optarg) {
+                    ErrorExit("%s: -g needs an argument", ARGV0);
+                }
                 group = optarg;
                 break;
             case 't':
                 test_config = 1;
                 break;
             case 'c':
-                if (!optarg)
+                if (!optarg) {
                     ErrorExit("%s: -c need an argument", ARGV0);
+                }
                 cfg = optarg;
                 break;
             case 'D':
-                if(!optarg)
-                    ErrorExit("%s: -D needs an argument",ARGV0);
+                if (!optarg) {
+                    ErrorExit("%s: -D needs an argument", ARGV0);
+                }
                 dir = optarg;
                 break;
             default:
@@ -99,108 +101,83 @@ int main(int argc, char **argv)
     /* Check current debug_level
      * Command line setting takes precedence
      */
-    if (debug_level == 0)
-    {
-        /* Getting debug level */
+    if (debug_level == 0) {
+        /* Get debug level */
         debug_level = getDefine_Int("remoted", "debug", 0, 2);
-        while(debug_level != 0)
-        {
+        while (debug_level != 0) {
             nowDebug();
             debug_level--;
         }
     }
 
-
-    debug1(STARTED_MSG,ARGV0);
-
+    debug1(STARTED_MSG, ARGV0);
 
     /* Return 0 if not configured */
-    if(RemotedConfig(cfg, &logr) < 0)
-    {
+    if (RemotedConfig(cfg, &logr) < 0) {
         ErrorExit(CONFIG_ERROR, ARGV0, cfg);
     }
 
-
     /* Exit if test_config is set */
-    if(test_config)
+    if (test_config) {
         exit(0);
+    }
 
-    if(logr.conn == NULL)
-    {
-        /* Not configured. */
+    if (logr.conn == NULL) {
+        /* Not configured */
         exit(0);
     }
 
     /* Check if the user and group given are valid */
     uid = Privsep_GetUser(user);
     gid = Privsep_GetGroup(group);
-    if((uid < 0)||(gid < 0))
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
         ErrorExit(USER_ERROR, ARGV0, user, group);
+    }
 
+    /* Setup random */
+    srandom_init();
 
     /* pid before going daemon */
     i = getpid();
 
-
-    if(!run_foreground)
-    {
+    if (!run_foreground) {
         nowDaemon();
         goDaemon();
     }
 
+    /* Set new group */
+    if (Privsep_SetGroup(gid) < 0) {
+        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
+    }
 
-    /* Setting new group */
-    if(Privsep_SetGroup(gid) < 0)
-            ErrorExit(SETGID_ERROR, ARGV0, group);
-
-    /* Going on chroot */
-    if(Privsep_Chroot(dir) < 0)
-                ErrorExit(CHROOT_ERROR,ARGV0,dir);
-
-
+    /* chroot */
+    if (Privsep_Chroot(dir) < 0) {
+        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+    }
     nowChroot();
 
-
-    /* Starting the signal manipulation */
+    /* Start the signal manipulation */
     StartSIG(ARGV0);
 
-
-    /* Creating some randoness  */
-    #ifdef __OpenBSD__
-    srandomdev();
-    #else
-    srandom( time(0) + getpid()+ i);
-    #endif
-
     random();
-
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, (int)getpid());
 
-
-    /* Really starting the program. */
+    /* Really start the program */
     i = 0;
-    while(logr.conn[i] != 0)
-    {
-        /* Forking for each connection handler */
-        if(fork() == 0)
-        {
+    while (logr.conn[i] != 0) {
+        /* Fork for each connection handler */
+        if (fork() == 0) {
             /* On the child */
-            debug1("%s: DEBUG: Forking remoted: '%d'.",ARGV0, i);
+            debug1("%s: DEBUG: Forking remoted: '%d'.", ARGV0, i);
             HandleRemote(i, uid);
-        }
-        else
-        {
+        } else {
             i++;
             continue;
         }
     }
 
-
-    /* Done over here */
-    return(0);
+    return (0);
 }
 
-
-/* EOF */

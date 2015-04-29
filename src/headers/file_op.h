@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/headers/file_op.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
@@ -10,24 +7,16 @@
  * Foundation
  */
 
-/* Part of the OSSEC HIDS
- * Available at http://www.ossec.net/hids/
- */
-
-/* Functions to handle operation with files
- */
+/* Functions to handle operation with files */
 
 #ifndef __FILE_H
-
 #define __FILE_H
 
 #include <time.h>
 
+#define OS_PIDFILE  "/var/run"
 
-
-#define OS_PIDFILE	"/var/run"
-
-/* Set the program name. Must be done before **anything** else */
+/* Set the program name - must be done before *anything* else */
 void OS_SetName(const char *name) __attribute__((nonnull));
 
 time_t File_DateofChange(const char *file) __attribute__((nonnull));
@@ -44,19 +33,29 @@ int MergeAppendFile(const char *finalpath, const char *files) __attribute__((non
 
 int UnmergeFiles(const char *finalpath, const char *optdir) __attribute__((nonnull(1)));
 
-/* daemonize a process */
+/* Daemonize a process */
 void goDaemon(void);
 
-/* daemonize a process without closing stdin/stdou/stderr */
+/* Daemonize a process without closing stdin/stdout/stderr */
 void goDaemonLight(void);
 
-/* not really a file operation, but returns the uname */
+/* Not really a file operation, but returns the uname */
 char *getuname(void);
 
-/* Checks for vista. */
+/* Return basename of path */
+char *basename_ex(char *path) __attribute__((nonnull));
+
+/* Rename file or directory */
+int rename_ex(const char *source, const char *destination) __attribute__((nonnull));
+
+/* Create temporary file */
+int mkstemp_ex(char *tmp_path) __attribute__((nonnull));
+
+/* Checks for Windows Vista */
 #ifdef WIN32
 int checkVista();
 int isVista;
 #endif
 
-#endif
+#endif /* __FILE_H */
+

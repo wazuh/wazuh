@@ -1,5 +1,3 @@
-/*      $OSSEC, os_crypto/md5_op.h, v0.1, 2004/08/09, Daniel B. Cid$      */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,20 +7,17 @@
  * Foundation
  */
 
-/* OS_crypto/md5 Library.
- * APIs for many crypto operations.
+/* OS_crypto/md5 Library
+ * APIs for many crypto operations
  */
 
 #ifndef __MD5_OP_H
-
 #define __MD5_OP_H
 
 typedef char os_md5[33];
 
 int OS_MD5_File(const char *fname, os_md5 output) __attribute((nonnull));
-
-int OS_MD5_Str(const char * str, os_md5 output) __attribute((nonnull));
+int OS_MD5_Str(const char *str, os_md5 output) __attribute((nonnull));
 
 #endif
 
-/* EOF */

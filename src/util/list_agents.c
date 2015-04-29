@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/util/list_agents.c, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,15 +7,17 @@
  * Foundation
  */
 
-
 #include "shared.h"
 #include "read-agents.h"
 
 #undef ARGV0
 #define ARGV0 "list_agents"
 
-/** help **/
-void helpmsg()
+/* Prototypes */
+static void helpmsg(void) __attribute__((noreturn));
+
+
+static void helpmsg()
 {
     printf("\nOSSEC HIDS %s: List available agents.\n", ARGV0);
     printf("Available options:\n");
@@ -29,110 +28,81 @@ void helpmsg()
     exit(1);
 }
 
-
-/** main **/
 int main(int argc, char **argv)
 {
-    char *dir = DEFAULTDIR;
-    char *group = GROUPGLOBAL;
-    char *user = USER;
+    const char *dir = DEFAULTDIR;
+    const char *group = GROUPGLOBAL;
+    const char *user = USER;
 
-    char *msg;
+    const char *msg;
     char **agent_list;
-    int gid;
-    int uid;
+    gid_t gid;
+    uid_t uid;
     int flag = 0;
 
-
-    /* Setting the name */
+    /* Set the name */
     OS_SetName(ARGV0);
 
-
-    /* user arguments */
-    if(argc < 2)
-    {
+    /* User arguments */
+    if (argc < 2) {
         helpmsg();
     }
 
-    /* Getting the group name */
+    /* Get the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
-    if(gid < 0)
-    {
-	    ErrorExit(USER_ERROR, ARGV0, user, group);
+    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
+        ErrorExit(USER_ERROR, ARGV0, user, group);
     }
 
-
-    /* Setting the group */
-    if(Privsep_SetGroup(gid) < 0)
-    {
-	    ErrorExit(SETGID_ERROR,ARGV0, group);
+    /* Set the group */
+    if (Privsep_SetGroup(gid) < 0) {
+        ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
     }
 
-
-    /* Chrooting to the default directory */
-    if(Privsep_Chroot(dir) < 0)
-    {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir);
+    /* Chroot to the default directory */
+    if (Privsep_Chroot(dir) < 0) {
+        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
     }
-
 
     /* Inside chroot now */
     nowChroot();
 
-
-    /* Setting the user */
-    if(Privsep_SetUser(uid) < 0)
-    {
-        ErrorExit(SETUID_ERROR, ARGV0, user);
+    /* Set the user */
+    if (Privsep_SetUser(uid) < 0) {
+        ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
     }
 
     /* User options */
-    if(strcmp(argv[1], "-h") == 0)
-    {
+    if (strcmp(argv[1], "-h") == 0) {
         helpmsg();
-    }
-    else if(strcmp(argv[1], "-a") == 0)
-    {
+    } else if (strcmp(argv[1], "-a") == 0) {
         flag = GA_ALL;
         msg = "is available.";
-    }
-    else if(strcmp(argv[1], "-c") == 0)
-    {
+    } else if (strcmp(argv[1], "-c") == 0) {
         flag = GA_ACTIVE;
         msg = "is active.";
-    }
-    else if(strcmp(argv[1], "-n") == 0)
-    {
+    } else if (strcmp(argv[1], "-n") == 0) {
         flag = GA_NOTACTIVE;
         msg = "is not active.";
-    }
-    else
-    {
+    } else {
         printf("\n** Invalid option '%s'.\n", argv[1]);
         helpmsg();
     }
 
-
     agent_list = get_agents(flag);
-    if(agent_list)
-    {
+    if (agent_list) {
         char **agent_list_pt = agent_list;
 
-        while(*agent_list)
-        {
+        while (*agent_list) {
             printf("%s %s\n", *agent_list, msg);
             agent_list++;
         }
 
         free_agents(agent_list_pt);
-    }
-    else
-    {
+    } else {
         printf("** No agent available.\n");
     }
-    return(0);
+    return (0);
 }
 
-
-/* EOF */

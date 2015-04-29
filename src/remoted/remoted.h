@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/remoted/remoted.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,9 +7,7 @@
  * Foundation
  */
 
-
 #ifndef __LOGREMOTE_H
-
 #define __LOGREMOTE_H
 
 #ifndef ARGV0
@@ -22,26 +17,25 @@
 #include "config/remote-config.h"
 #include "sec.h"
 
-
-/*** Function prototypes ***/
+/** Function prototypes **/
 
 /* Read remoted config */
-int RemotedConfig(char *cfgfile, remoted *logr);
+int RemotedConfig(const char *cfgfile, remoted *cfg);
 
 /* Handle Remote connections */
-void HandleRemote(int position, int uid);
+void HandleRemote(int position, int uid) __attribute__((noreturn));
 
 /* Handle Syslog */
-void HandleSyslog();
+void HandleSyslog(void) __attribute__((noreturn));
 
 /* Handle Syslog TCP */
-void HandleSyslogTCP();
+void HandleSyslogTCP(void) __attribute__((noreturn));
 
 /* Handle Secure connections */
-void HandleSecure();
+void HandleSecure(void) __attribute__((noreturn));
 
 /* Forward active response events */
-void *AR_Forward(void *arg);
+void *AR_Forward(void *arg) __attribute__((noreturn));
 
 /* Initialize the manager */
 void manager_init(int isUpdate);
@@ -50,26 +44,25 @@ void manager_init(int isUpdate);
 void *wait_for_msgs(void *none);
 
 /* Save control messages */
-void save_controlmsg(int agentid, char *msg);
+void save_controlmsg(unsigned int agentid, char *msg);
 
 /* Send message to agent */
-int send_msg(int agentid, char *msg);
+int send_msg(unsigned int agentid, const char *msg);
 
 /* Initializing send_msg */
-void send_msg_init();
+void send_msg_init(void);
 
-int check_keyupdate();
+int check_keyupdate(void);
 
-void key_lock();
+void key_lock(void);
 
-void key_unlock();
+void key_unlock(void);
 
-void keyupdate_init();
+void keyupdate_init(void);
 
+/** Global variables **/
 
-/*** Global variables ***/
+extern keystore keys;
+extern remoted logr;
 
-keystore keys;
-remoted logr;
-
-#endif
+#endif /* __LOGREMOTE_H */

@@ -1,6 +1,3 @@
-/* @(#) $Id: ./src/analysisd/lists_make.h, 2011/09/08 dcid Exp $
- */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -10,6 +7,11 @@
  * Foundation
  */
 
+#ifndef __LISTSMAKE_H
+#define __LISTSMAKE_H
 
-void Lists_OP_MakeCDB(char *txt_filename, char *cdb_filename, int force);
+void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int force);
 void Lists_OP_MakeAll(int force);
+
+#endif /* __LISTSMAKE_H */
+

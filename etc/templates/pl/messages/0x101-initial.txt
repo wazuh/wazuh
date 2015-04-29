@@ -1,6 +1,4 @@
- 
+
  Rozpoczynasz proces instalacji programu  OSSEC HIDS.
  Aby kontynuować musisz mieć zainstalowany kompilator C.
- Jeśli masz jakieś pytania albo komentarze, wyślij e-mail
- do dcid@ossec.net (lub daniel.cid@gmail.com).
- 
+

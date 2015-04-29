@@ -1,5 +1,3 @@
-/*   $OSSEC, os_regex_str.c, v0.1, 2005/12/29, Daniel B. Cid$   */
-
 /* Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
@@ -9,7 +7,6 @@
  * Foundation
  */
 
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -18,51 +15,41 @@
 #include "os_regex_internal.h"
 
 
-/** int OS_StrIsNum(char *str) v0.1
- * Checks if a specific string is numeric (like "129544")
- */
+/* Check if a specific string is numeric (like "129544") */
 int OS_StrIsNum(const char *str)
 {
-    if(str == NULL)
-        return(FALSE);
+    if (str == NULL) {
+        return (FALSE);
+    }
 
-    while(*str != '\0')
-    {
-        if(!_IsD(*str))
-            return(FALSE); /* 0 */
+    while (*str != '\0') {
+        if (!_IsD(*str)) {
+            return (FALSE);
+        }
         str++;
     }
 
-    return(TRUE);
+    return (TRUE);
 }
 
-
-/** int OS_StrHowClosedMatch(char *str1, char *str2) v0.1
- * Returns the number of characters that both strings
- * have in similar.
- */
+/* Return the number of characters that both strings have in common */
 size_t OS_StrHowClosedMatch(const char *str1, const char *str2)
 {
     size_t count = 0;
 
     /* They don't match if any of them is null */
-    if(!str1 || !str2)
-    {
-        return(0);
+    if (!str1 || !str2) {
+        return (0);
     }
 
-    do
-    {
-        if(str1[count] != str2[count])
-        {
+    do {
+        if (str1[count] != str2[count]) {
             break;
         }
 
         count++;
-    }while((str1[count] != '\0') && (str2[count] != '\0'));
+    } while ((str1[count] != '\0') && (str2[count] != '\0'));
 
-    return(count);
+    return (count);
 }
 
-
-/* EOF */
