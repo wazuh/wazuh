@@ -678,6 +678,12 @@
     <description>Uninteresting nouveau error.</description>
   </rule>
 
+  <rule id="2945" level="4">
+    <program_name>^rsyslogd</program_name>
+    <match>^imuxsock begins to drop messages </match>
+    <info>https://isc.sans.edu/diary/Are+you+losing+system+logging+information+%28and+don%27t+know+it%29%3F/15106</info>
+    <description>rsyslog may be dropping messages due to rate-limiting.</description>
+  </rule>
 
 </group>
 

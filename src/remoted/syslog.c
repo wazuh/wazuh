@@ -94,12 +94,13 @@ void HandleSyslog()
         /* Check if IP is allowed here */
         if (OS_IPNotAllowed(srcip)) {
             merror(DENYIP_WARN, ARGV0, srcip);
+            continue;
         }
 
-        else if (SendMSG(logr.m_queue, buffer_pt, srcip,
-                         SYSLOG_MQ) < 0) {
+        if (SendMSG(logr.m_queue, buffer_pt, srcip, SYSLOG_MQ) < 0) {
             merror(QUEUE_ERROR, ARGV0, DEFAULTQUEUE, strerror(errno));
-            if ((logr.m_queue = StartMQ(DEFAULTQUEUE, READ)) < 0) {
+
+            if ((logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE)) < 0) {
                 ErrorExit(QUEUE_FATAL, ARGV0, DEFAULTQUEUE);
             }
         }

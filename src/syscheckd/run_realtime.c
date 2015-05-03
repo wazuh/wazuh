@@ -194,6 +194,11 @@ int realtime_process()
                 snprintf(final_name, MAX_LINE, "%s/%s",
                          (char *)OSHash_Get(syscheck.realtime->dirtb, wdchar),
                          event->name);
+		/* Need a sleep here to avoid triggering on vim edits
+  		 * (and finding the file removed)
+  		 */
+		sleep(1);
+
                 realtime_checksumfile(final_name);
             }
 
