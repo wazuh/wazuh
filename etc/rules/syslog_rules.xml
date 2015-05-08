@@ -485,10 +485,10 @@
     <description>Initial group for sudo messages</description>
   </rule>
   
-  <rule id="5401" level="10">
+  <rule id="5401" level="5">
     <if_sid>5400</if_sid>
-    <match>3 incorrect password attempts</match>
-    <description>Three failed attempts to run sudo</description>
+    <match>incorrect password attempt</match>
+    <description>Failed attempt to run sudo</description>
   </rule>
 
   <rule id="5402" level="3">
@@ -502,7 +502,13 @@
     <options>alert_by_email</options>
     <if_fts></if_fts>
     <description>First time user executed sudo.</description>
-  </rule>                  
+  </rule>
+
+  <rule id="5404" level="10">
+    <if_sid>5401</if_sid>
+    <match>3 incorrect password attempts</match>
+    <description>Three failed attempts to run sudo</description>
+  </rule>
 </group> <!-- SYSLOG, SUDO -->
 
 
