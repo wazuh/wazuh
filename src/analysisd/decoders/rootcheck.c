@@ -180,7 +180,7 @@ int DecodeRootcheck(Eventinfo *lf)
                            "(fsetpos).", ARGV0);
                     return (0);
                 }
-                fprintf(fp, "!%ld", lf->time);
+                fprintf(fp, "!%ld", (long int)lf->time);
                 rootcheck_dec->fts = 0;
                 lf->decoder_info = rootcheck_dec;
                 return (1);
@@ -196,7 +196,7 @@ int DecodeRootcheck(Eventinfo *lf)
 
     /* Add the new entry at the end of the file */
     fseek(fp, 0, SEEK_END);
-    fprintf(fp, "!%ld!%ld %s\n", lf->time, lf->time, lf->log);
+    fprintf(fp, "!%ld!%ld %s\n", (long int)lf->time, (long int)lf->time, lf->log);
     fflush(fp);
 
     rootcheck_dec->fts = 0;
