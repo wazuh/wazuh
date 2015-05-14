@@ -2619,6 +2619,27 @@ Author and (c): Michael Starks, 2014 -->
   <order>srcuser</order>
 </decoder>
 
+<!-- 
+  - Decoder for Sysmon Event ID 1: Process Created
+  - Maintained by Josh Brower, Josh@DefensiveDepth.com 
+  -
+  -  OSSEC to Sysmon Fields Mapping:
+  -  user = User
+  -  status = Image
+  -  url = Hash
+  -  extra_data = ParentImage
+  
+  - Examples:
+  - 2014 Dec 20 14:29:48 (HME-TEST-01) 10.0.15.14->WinEvtLog 2014 Dec 20 09:29:47 WinEvtLog: Microsoft-Windows-Sysmon/Operational: INFORMATION(1): Microsoft-Windows-Sysmon: SYSTEM: NT AUTHORITY: WIN-U93G48C7BOP: Process Create:  UtcTime: 12/20/2014 2:29 PM  ProcessGuid: {00000000-87DB-5495-0000-001045F25A00}  ProcessId: 3048  Image: C:\Windows\system32\svchost.exe  CommandLine: "C:\Windows\system32\NOTEPAD.EXE" C:\Users\Administrator\Desktop\ossec.log  User: WIN-U93G48C7BOP\Administrator  LogonGuid: {00000000-84B8-5494-0000-0020CB330200}  LogonId: 0x233CB  TerminalSessionId: 1  IntegrityLevel: High  HashType: SHA1  Hash: 9FEF303BEDF8430403915951564E0D9888F6F365  ParentProcessGuid: {00000000-84B9-5494-0000-0010BE4A0200}  ParentProcessId: 848  ParentImage: C:\Windows\Explorer.EXE  ParentCommandLine: C:\Windows\Explorer.EXE 
+-->
+
+<decoder name="Sysmon-EventID#1">
+<type>windows</type>
+<prematch>INFORMATION\(1\)</prematch>
+<regex offset="after_prematch">Image: (\.*) \s*CommandLine: \.* \s*User: (\.*) \s*LogonGuid: \S* \s*LogonId: \S* \s*TerminalSessionId: \S* \s*IntegrityLevel: \S* \s*HashType: \S* \s*Hash: (\S*) \s*ParentProcessGuid: \S* \s*ParentProcessID: \S* \s*ParentImage: (\.*) \s*ParentCommandLine:</regex>
+<order>status,user,url,data</order>
+</decoder>
+
 
 <!-- unbound
   - 2014-05-20T09:01:07.283219-04:00 arrakis unbound: [9405:0] notice: sendto failed: Can't assign requested address
