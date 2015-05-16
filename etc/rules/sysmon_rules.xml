@@ -1,0 +1,173 @@
+<!--Maintained by Josh Brower, Josh@DefensiveDepth.com -->
+<!--Licensed under the MIT License: http://opensource.org/licenses/MIT-->
+
+<!-- Ruleset to detect Windows Process Anomalies - 
+  -  Uses Sysmon Event ID 1 logs & associated decoder.
+  -  Currently only looks at Parent Image Anomalies.
+  -  Windows Process Attributes documentation here: http://defensivedepth.com/windows-processes
+  -
+  -  OSSEC to Sysmon (Event ID 1) Fields Mapping:
+  -  user = User
+  -  status = Image
+  -  url = Hash
+  -  extra_data = ParentImage
+  -->
+  
+<group name="sysmon_process-anomalies">
+  
+ <rule id="184666" level="12">
+  <if_sid>18100</if_sid>
+  <status>svchost.exe</status>
+  <description>Sysmon - Suspicious Process - svchost.exe</description>
+ </rule>
+
+ <rule id="184667" level="0">
+  <if_sid>184666</if_sid>
+  <extra_data>\services.exe</extra_data>
+  <description>Sysmon - Legitimate Parent Image - svchost.exe</description>
+ </rule>
+
+
+<rule id="184676" level="12">
+  <if_sid>18100</if_sid>
+  <status>lsm.exe</status>
+  <description>Sysmon - Suspicious Process - lsm.exe</description>
+</rule>
+
+<rule id="184677" level="0">
+  <if_sid>184676</if_sid>
+  <extra_data>wininit.exe</extra_data>
+  <description>Sysmon - Legitimate Parent Image - lsm.exe</description>
+</rule>
+
+<rule id="184678" level="12">
+  <if_sid>18100</if_sid>
+  <extra_data>lsm.exe</extra_data>
+  <description>Sysmon - Suspicious Process - lsm.exe is a Parent Image</description>
+</rule>
+
+
+<rule id="184686" level="12">
+  <if_sid>18100</if_sid>
+  <status>csrss.exe</status>
+  <description>Sysmon - Suspicious Process - csrss.exe</description>
+</rule>
+
+<rule id="184687" level="0">
+  <if_sid>184686</if_sid>
+  <extra_data>smss.exe</extra_data>
+  <description>Sysmon - Legitimate Parent Image - csrss.exe</description>
+</rule>
+
+
+<rule id="184696" level="12">
+  <if_sid>18100</if_sid>
+  <status>lsass.exe</status>
+  <description>Sysmon - Suspicious Process - lsass</description>
+</rule>
+
+<rule id="184697" level="0">
+  <if_sid>184696</if_sid>
+  <extra_data>wininit.exe</extra_data>
+  <description>Sysmon - Legitimate Parent Image - lsass.exe</description>
+</rule>
+
+<rule id="184698" level="12">
+  <if_sid>18100</if_sid>
+  <extra_data>lsass.exe</extra_data>
+  <description>Sysmon - Suspicious Process - lsass.exe is a Parent Image</description>
+</rule>
+
+
+<rule id="184706" level="12">
+  <if_sid>18100</if_sid>
+  <status>winlogon.exe</status>
+  <description>Sysmon - Suspicious Process - winlogon.exe</description>
+</rule>
+
+<rule id="184707" level="0">
+  <if_sid>184706</if_sid>
+  <extra_data>smss.exe</extra_data>
+  <description>Sysmon - Legitimate Parent Image - winlogon.exe</description>
+</rule>
+
+
+<rule id="184716" level="12">
+  <if_sid>18100</if_sid>
+  <status>wininit.exe</status>
+  <description>Sysmon - Suspicious Process - wininit</description>
+</rule>
+
+<rule id="184717" level="0">
+  <if_sid>184716</if_sid>
+  <extra_data>smss.exe</extra_data>
+  <description>Sysmon - Legitimate Parent Image - wininit.exe</description>
+</rule>
+
+
+<rule id="184726" level="12">
+  <if_sid>18100</if_sid>
+  <status>smss.exe</status>
+  <description>Sysmon - Suspicious Process - smss.exe</description>
+</rule>
+
+<rule id="184727" level="0">
+  <if_sid>184726</if_sid>
+  <extra_data>system</extra_data>
+  <description>Sysmon - Legitimate Parent Image - smss.exe</description>
+</rule>
+
+
+<rule id="184736" level="12">
+  <if_sid>18100</if_sid>
+  <status>taskhost.exe</status>
+  <description>Sysmon - Suspicious Process - taskhost.exe</description>
+</rule>
+
+<rule id="184737" level="0">
+  <if_sid>184736</if_sid>
+  <extra_data>services.exe|svchost.exe</extra_data>
+  <description>Sysmon - Legitimate Parent Image - taskhost.exe</description>
+</rule>
+
+
+<rule id="184746" level="12">
+  <if_sid>18100</if_sid>
+  <status>/services.exe</status>
+  <description>Sysmon - Suspicious Process - services.exe</description>
+</rule>
+
+<rule id="184747" level="0">
+  <if_sid>184746</if_sid>
+  <extra_data>wininit.exe</extra_data>
+  <description>Sysmon - Legitimate Parent Image - services.exe</description>
+</rule>
+
+
+<rule id="184766" level="12">
+  <if_sid>18100</if_sid>
+  <status>dllhost.exe</status>
+  <description>Sysmon - Suspicious Process - dllhost.exe</description>
+</rule>
+
+<rule id="184767" level="0">
+  <if_sid>184766</if_sid>
+  <extra_data>svchost.exe|services.exe</extra_data>
+  <description>Sysmon - Legitimate Parent Image - dllhost.exe</description>
+</rule>
+
+
+<rule id="184776" level="12">
+  <if_sid>18100</if_sid>
+  <status>\explorer.exe</status>
+  <description>Sysmon - Suspicious Process - explorer.exe</description>
+</rule>
+
+<rule id="184777" level="0">
+  <if_sid>184776</if_sid>
+  <extra_data>userinit.exe</extra_data>
+  <description>Sysmon - Legitimate Parent Image - explorer.exe</description>
+</rule>
+</group> <!-- sysmon_process-anomalies -->
+
+<!-- EOF -->
