@@ -17,7 +17,7 @@
 
 /* Prototypes */
 static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, int ipv6);
-static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6);
+static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6, const char *_lip);
 
 /* Unix socket -- not for windows */
 #ifndef WIN32
@@ -229,7 +229,7 @@ int OS_getsocketsize(int ossock)
 #endif
 
 /* Open a TCP/UDP client socket */
-static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6)
+static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6, const char *_lip)
 {
     int ossock;
     struct sockaddr_in server;
@@ -263,6 +263,22 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
         return (OS_INVALID);
     }
 
+    /* KAA 16.05.2015
+       bind to source IP if _lip is not null */
+    if(!ipv6 && _lip != NULL && _lip[0] != '\0')
+    {
+        memset(&server, 0, sizeof(server));
+        server.sin_family = AF_INET;
+        server.sin_port = 0;
+        server.sin_addr.s_addr = inet_addr(_lip);
+
+        if(bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0)
+        {
+            OS_CloseSocket(ossock);
+            return(OS_SOCKTERR);
+        }
+    }
+
     if (ipv6 == 1) {
 #ifndef WIN32
         memset(&server6, 0, sizeof(server6));
@@ -291,15 +307,15 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 }
 
 /* Open a TCP socket */
-int OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6)
+int OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6, const char *_lip)
 {
-    return (OS_Connect(_port, IPPROTO_TCP, _ip, ipv6));
+    return (OS_Connect(_port, IPPROTO_TCP, _ip, ipv6, _lip));
 }
 
 /* Open a UDP socket */
-int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6)
+int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6, const char *_lip)
 {
-    return (OS_Connect(_port, IPPROTO_UDP, _ip, ipv6));
+    return (OS_Connect(_port, IPPROTO_UDP, _ip, ipv6, _lip));
 }
 
 /* Send a TCP packet (through an open socket) */
