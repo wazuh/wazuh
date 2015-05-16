@@ -1752,23 +1752,6 @@ Jan  8 19:32:41 tp.lan dropbear[15165]: Pubkey auth succeeded for 'root' with ke
 
 
 
-<!-- Squid access log decoder.
-  - Will extract the srcip.
-  - Author: Ahmet Ozturk
-  - Examples:
-  - 1140701044.525   1231 192.168.1.201 TCP_DENIED/400 1536
-    GET ahmet - NONE/- text/html
-  - 1140701230.827    781 192.168.1.210 TCP_DENIED/407 1785
-    GET http://www.ossec.net oahmet NONE/- text/html
-  -->
-<decoder name="squid-accesslog">
-  <type>squid</type>
-  <prematch>^\d+ \S+ </prematch>
-  <regex>^\d+ (\S+) (\w+)/(\d+) \d+ \w+ (\S+) </regex>
-  <order>srcip,action,id,url</order>
-</decoder>
-
-
 <!-- Windows decoder
   - Will extract extra_data (as win source),action (as win category), id,
   - username and computer name (as system_name).
@@ -2688,6 +2671,7 @@ Jul 26 13:57:56 mx1.example.org outbound/smtp: 127.0.0.1 1406297159-06f4a35b4df2
   <order>srcip,action,user</order>
 </decoder>
 
+
 <!-- 
   - Decoder for Sysmon Event ID 1: Process Created
   - Maintained by Josh Brower, Josh@DefensiveDepth.com 
@@ -2721,6 +2705,24 @@ Jul 26 13:57:56 mx1.example.org outbound/smtp: 127.0.0.1 1406297159-06f4a35b4df2
   - 2014-07-14T14:00:05.508414-04:00 arrakis unbound: [2541:0] info:    0.032768    0.065536 1
   - 2014-07-14T15:05:07.520229-04:00 arrakis unbound: [2541:0] info: 127.0.0.1 github.com. AAAA IN
 -->
+
+
+<!-- Squid access log decoder.
+  - Will extract the srcip.
+  - Author: Ahmet Ozturk
+  - Examples:
+  - 1140701044.525   1231 192.168.1.201 TCP_DENIED/400 1536
+    GET ahmet - NONE/- text/html
+  - 1140701230.827    781 192.168.1.210 TCP_DENIED/407 1785
+    GET http://www.ossec.net oahmet NONE/- text/html
+  -->
+<decoder name="squid-accesslog">
+  <type>squid</type>
+  <prematch>^\d+ \S+ </prematch>
+  <regex>^\d+ (\S+) (\w+)/(\d+) \d+ \w+ (\S+) </regex>
+  <order>srcip,action,id,url</order>
+</decoder>
+
 
 <decoder name="unbound">
   <program_name>^unbound</program_name>
