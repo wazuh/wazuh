@@ -49,6 +49,10 @@ static void help_execd()
 /* Shut down execd properly */
 static void execd_shutdown(int sig)
 {
+    struct timespec delay;
+    delay.tv_sec = 0;
+    delay.tv_nsec = AR_FLUSH_INTERVAL;
+
     /* Remove pending active responses */
     merror(EXEC_SHUTDOWN, ARGV0);
 
@@ -63,6 +67,10 @@ static void execd_shutdown(int sig)
         /* Delete current node - already sets the pointer to next */
         OSList_DeleteCurrentlyNode(timeout_list);
         timeout_node = OSList_GetCurrentlyNode(timeout_list);
+
+        /* Delay to prevent system from being overwhelmed by locked
+           processes if there are many nodes */
+        nanosleep(&delay, NULL);
     }
 
     HandleSIG(sig);

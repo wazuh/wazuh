@@ -27,6 +27,9 @@
 /* Execd select timeout -- in seconds */
 #define EXECD_TIMEOUT   90
 
+/* Delay between active response flushes during shutdown in nanoseconds */
+#define AR_FLUSH_INTERVAL 40000000
+
 extern int repeated_offenders_timeout[];
 
 /** Function prototypes **/
