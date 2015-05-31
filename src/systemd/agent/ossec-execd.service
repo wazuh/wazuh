@@ -1,0 +1,10 @@
+[Unit]
+Description=OSSEC Execd
+PartOf=ossec-agent.target
+
+[Service]
+EnvironmentFile=/etc/ossec-init.conf
+Environment=DIRECTORY=/var/ossec
+
+ExecStartPre=/usr/bin/env ${DIRECTORY}/bin/ossec-execd -t
+ExecStart=/usr/bin/env ${DIRECTORY}/bin/ossec-execd -f

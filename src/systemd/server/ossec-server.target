@@ -1,0 +1,16 @@
+[Unit]
+Description=OSSEC HIDS server
+After=network.target 
+Wants=ossec-dbd.service
+Wants=ossec-csyslog.service
+Wants=ossec-agentless.service
+Requires=ossec-maild.service
+Requires=ossec-execd.service
+Requires=ossec-analysisd.service
+Requires=ossec-logcollector.service
+Requires=ossec-remoted.service
+Requires=ossec-syscheckd.service
+Requires=ossec-monitord.service
+
+[Install]
+WantedBy=multi-user.target
