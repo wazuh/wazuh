@@ -635,7 +635,7 @@ int mkstemp_ex(char *tmp_path)
     if (fchmod(fd, 0600) == -1) {
         log2file(CHMOD_ERROR, __local_name, tmp_path, errno, strerror(errno));
         close(fd);
-        return -1;
+        return (-1);
     }
 
     close(fd);
