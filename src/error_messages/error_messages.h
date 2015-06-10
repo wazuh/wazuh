@@ -50,6 +50,8 @@
 #define RENAME_ERROR  "%s(1124): ERROR: Unable to rename file: '%s'."
 #define INT_ERROR     "%s(1125): ERROR: Internal error (undefined)."
 #define OPEN_ERROR    "%s(1126): ERROR: Unable to open file '%s' reason '%s'"
+#define LINK_ERROR    "%s(1134): ERROR: Unable to link from '%s' to '%s' due to [(%d)-(%s)]."
+
 
 
 /* COMMON ERRORS */

@@ -219,13 +219,22 @@ int seechanges_createpath(char *filename)
 /* Checks if the file has changed */
 char *seechanges_addfile(char *filename)
 {
-    int date_of_change;
+    time_t old_date_of_change;
+    time_t new_date_of_change;
+
     char old_location[OS_MAXSTR +1];
     char tmp_location[OS_MAXSTR +1];
+    char diff_location[OS_MAXSTR + 1];
+    char old_tmp[OS_MAXSTR + 1];
+    char new_tmp[OS_MAXSTR + 1];
+    char diff_tmp[OS_MAXSTR + 1];
+
     char diff_cmd[OS_MAXSTR +1];
 
     os_md5 md5sum_old;
     os_md5 md5sum_new;
+    int status = -1;
+
 
     old_location[OS_MAXSTR] = '\0';
     tmp_location[OS_MAXSTR] = '\0';
@@ -234,8 +243,14 @@ char *seechanges_addfile(char *filename)
     md5sum_old[0] = '\0';
 
 
-    snprintf(old_location, OS_MAXSTR, "%s/local/%s/%s", DIFF_DIR_PATH, filename +1,
-             DIFF_LAST_FILE);
+    snprintf(
+        old_location,
+        sizeof(old_location),
+        "%s/local/%s/%s",
+        DIFF_DIR_PATH,
+        filename + 1,
+        DIFF_LAST_FILE
+    );
 
 
     /* If the file is not there, rename new location to last location. */
@@ -267,9 +282,18 @@ char *seechanges_addfile(char *filename)
 
 
     /* Saving the old file at timestamp and renaming new to last. */
-    date_of_change = File_DateofChange(old_location);
-    snprintf(tmp_location, OS_MAXSTR, "%s/local/%s/state.%d", DIFF_DIR_PATH, filename +1,
-             date_of_change);
+    old_date_of_change = File_DateofChange(old_location);
+
+    snprintf(
+        tmp_location,
+        sizeof(tmp_location),
+        "%s/local/%s/state.%d",
+        DIFF_DIR_PATH,
+        filename + 1,
+       (int)old_date_of_change
+    );
+
+
     rename(old_location, tmp_location);
     if(seechanges_dupfile(filename, old_location) != 1)
     {
@@ -278,25 +302,99 @@ char *seechanges_addfile(char *filename)
     }
 
 
-    /* Run diff. */
-    date_of_change = File_DateofChange(old_location);
-    snprintf(diff_cmd, 2048, "diff \"%s\" \"%s\" > \"%s/local/%s/diff.%d\" "
-             "2>/dev/null",
-             tmp_location, old_location,
-             DIFF_DIR_PATH, filename +1, date_of_change);
-    if(system(diff_cmd) != 256)
-    {
-        merror("%s: ERROR: Unable to run diff for %s",
-               ARGV0,  filename);
-        return(NULL);
+    new_date_of_change = File_DateofChange(old_location);
+
+    /* Create file names */
+    snprintf(
+        old_tmp,
+        sizeof(old_tmp),
+        "%s/syscheck-changes-%s-%d",
+        TMP_DIR,
+        md5sum_old,
+        (int)old_date_of_change
+    );
+
+    snprintf(
+        new_tmp,
+        sizeof(new_tmp),
+        "%s/syscheck-changes-%s-%d",
+        TMP_DIR,
+        md5sum_new,
+        (int)new_date_of_change
+    );
+
+    snprintf(
+        diff_tmp,
+        sizeof(diff_tmp),
+        "%s/syscheck-changes-%s-%d-%s-%d",
+        TMP_DIR,
+        md5sum_old,
+        (int)old_date_of_change,
+        md5sum_new,
+        (int)new_date_of_change
+    );
+    /* Create diff location */
+    snprintf(
+        diff_location,
+        sizeof(diff_location),
+        "%s/local/%s/diff.%d",
+        DIFF_DIR_PATH,
+        filename + 1,
+        (int)new_date_of_change
+    );
+
+    /* Create symlinks */
+    if (symlink(old_location, old_tmp) == -1) {
+        merror(LINK_ERROR, ARGV0, old_location, old_tmp, errno, strerror(errno));
+        goto cleanup;
+    }
+
+    if (symlink(tmp_location, new_tmp) == -1) {
+        merror(LINK_ERROR, ARGV0, tmp_location, new_tmp, errno, strerror(errno));
+        goto cleanup;
+    }
+
+    if (symlink(diff_location, diff_tmp) == -1) {
+        merror(LINK_ERROR, ARGV0, diff_location, diff_tmp, errno, strerror(errno));
+        goto cleanup;
     }
 
 
+
+    /* Run diff. */
+    snprintf(
+        diff_cmd,
+        2048,
+        "diff \"%s\" \"%s\" > \"%s\" 2> /dev/null",
+        new_tmp,
+        old_tmp,
+        diff_tmp
+    );
+
+
+
+    if(system(diff_cmd) != 256) {
+        merror("%s: ERROR: Unable to run diff for %s", ARGV0, filename);
+        goto cleanup;
+
+    }
+
+    /* Success */
+    status = 0;
+
+cleanup:
+    unlink(old_tmp);
+    unlink(new_tmp);
+    unlink(diff_tmp);
+
+    if (status == -1)
+        return (NULL);
+
+
+
     /* Generate alert. */
-    return(gen_diff_alert(filename, date_of_change));
+    return (gen_diff_alert(filename, new_date_of_change));
 
-
-    return(NULL);
 }
 
 
