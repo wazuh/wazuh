@@ -118,7 +118,7 @@ elsif ($add) {
           close(FH);
 
           if (@used_agent_ids) {
-            @used_agent_ids = sort(@used_agent_ids);
+            @used_agent_ids = sort {$a <=> $b} @used_agent_ids;
             $agentid = sprintf("%03d", $used_agent_ids[-1] + 1);
           }
         }
