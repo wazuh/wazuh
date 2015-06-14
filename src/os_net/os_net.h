@@ -12,6 +12,8 @@
  */
 
 #include "headers/shared.h"
+#include "config/client-config.h"
+extern agent *agt;
 #ifdef WIN32
 #ifndef AI_ADDRCONFIG
 #define AI_ADDRCONFIG   0x0400

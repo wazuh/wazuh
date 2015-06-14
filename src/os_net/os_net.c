@@ -14,6 +14,7 @@
 #include <errno.h>
 #include "shared.h"
 #include "os_net.h"
+agent *agt;
 
 /* Prototypes */
 static int OS_Bindport(char *_port, unsigned int _proto, const char *_ip);
@@ -236,12 +237,26 @@ int OS_getsocketsize(int ossock)
 int OS_Connect(char *_port, unsigned int protocol, const char *_ip)
 {
     int ossock = 0, s;
-    struct addrinfo hints, *result, *rp;
+    struct addrinfo hints, *result, *rp, local_ai;
     char tempaddr[INET6_ADDRSTRLEN];
 
     if ((_ip == NULL)||(_ip[0] == '\0')) {
         OS_CloseSocket(ossock);
         return(OS_INVALID);
+    }
+
+    memset(&local_ai, 0, sizeof(struct addrinfo));
+    if (agt->lip) {
+        memset(&hints, 0, sizeof(struct addrinfo));
+        hints.ai_flags = AI_NUMERICHOST;
+        s = getaddrinfo(agt->lip, NULL, &hints, &result);
+        if (s != 0) {
+            verbose("getaddrinfo: %s", gai_strerror(s));
+        }
+        else {
+            memcpy(&local_ai, result, sizeof(struct addrinfo));
+            freeaddrinfo(result);
+        }
     }
 
     memset(&hints, 0, sizeof(struct addrinfo));
@@ -272,6 +287,13 @@ int OS_Connect(char *_port, unsigned int protocol, const char *_ip)
         if (ossock == -1) {
             continue;
         } 
+        if (agt->lip) {
+            if (bind(ossock, local_ai.ai_addr, local_ai.ai_addrlen)) {
+                verbose("Unable to bind to local address %s.  Ignoring...",
+                        agt->lip);
+            }
+            else verbose("Connecting from local address %s", agt->lip);
+        }
         if (connect(ossock, rp->ai_addr, rp->ai_addrlen) != -1) {
             break;                  /* Success */
         }
