@@ -246,16 +246,18 @@ int OS_Connect(char *_port, unsigned int protocol, const char *_ip)
     }
 
     memset(&local_ai, 0, sizeof(struct addrinfo));
-    if (agt->lip) {
-        memset(&hints, 0, sizeof(struct addrinfo));
-        hints.ai_flags = AI_NUMERICHOST;
-        s = getaddrinfo(agt->lip, NULL, &hints, &result);
-        if (s != 0) {
-            verbose("getaddrinfo: %s", gai_strerror(s));
-        }
-        else {
-            memcpy(&local_ai, result, sizeof(struct addrinfo));
-            freeaddrinfo(result);
+    if (agt) {
+        if (agt->lip) {
+            memset(&hints, 0, sizeof(struct addrinfo));
+            hints.ai_flags = AI_NUMERICHOST;
+            s = getaddrinfo(agt->lip, NULL, &hints, &result);
+            if (s != 0) {
+                verbose("getaddrinfo: %s", gai_strerror(s));
+            }
+            else {
+                memcpy(&local_ai, result, sizeof(struct addrinfo));
+                freeaddrinfo(result);
+            }
         }
     }
 
@@ -286,14 +288,18 @@ int OS_Connect(char *_port, unsigned int protocol, const char *_ip)
         ossock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
         if (ossock == -1) {
             continue;
-        } 
-        if (agt->lip) {
-            if (bind(ossock, local_ai.ai_addr, local_ai.ai_addrlen)) {
-                verbose("Unable to bind to local address %s.  Ignoring...",
-                        agt->lip);
-            }
-            else verbose("Connecting from local address %s", agt->lip);
         }
+
+        if (agt) {
+            if (agt->lip) {
+                if (bind(ossock, local_ai.ai_addr, local_ai.ai_addrlen)) {
+                    verbose("Unable to bind to local address %s.  Ignoring...",
+                            agt->lip);
+                }
+                else verbose("Connecting from local address %s", agt->lip);
+            }
+        }
+
         if (connect(ossock, rp->ai_addr, rp->ai_addrlen) != -1) {
             break;                  /* Success */
         }
