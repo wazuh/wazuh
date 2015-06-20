@@ -201,27 +201,22 @@ char *seechanges_addfile(const char *filename)
 {
     time_t old_date_of_change;
     time_t new_date_of_change;
-
-    char old_location[OS_MAXSTR +1];
-    char tmp_location[OS_MAXSTR +1];
+    char old_location[OS_MAXSTR + 1];
+    char tmp_location[OS_MAXSTR + 1];
     char diff_location[OS_MAXSTR + 1];
     char old_tmp[OS_MAXSTR + 1];
     char new_tmp[OS_MAXSTR + 1];
     char diff_tmp[OS_MAXSTR + 1];
-
-    char diff_cmd[OS_MAXSTR +1];
-
+    char diff_cmd[OS_MAXSTR + 1];
     os_md5 md5sum_old;
     os_md5 md5sum_new;
     int status = -1;
-
 
     old_location[OS_MAXSTR] = '\0';
     tmp_location[OS_MAXSTR] = '\0';
     diff_cmd[OS_MAXSTR] = '\0';
     md5sum_new[0] = '\0';
     md5sum_old[0] = '\0';
-
 
     snprintf(
         old_location,
@@ -251,6 +246,17 @@ char *seechanges_addfile(const char *filename)
         return (NULL);
     }
 
+    /* Save the old file at timestamp and rename new to last */
+    old_date_of_change = File_DateofChange(old_location);
+
+    snprintf(
+        tmp_location,
+        sizeof(tmp_location),
+        "%s/local/%s/state.%d",
+        DIFF_DIR_PATH,
+        filename + 1,
+        (int)old_date_of_change
+    );
 
     /* Saving the old file at timestamp and renaming new to last. */
     old_date_of_change = File_DateofChange(old_location);
@@ -334,9 +340,7 @@ char *seechanges_addfile(const char *filename)
         goto cleanup;
     }
 
-
-
-    /* Run diff. */
+    /* Run diff */
     snprintf(
         diff_cmd,
         2048,
@@ -346,12 +350,9 @@ char *seechanges_addfile(const char *filename)
         diff_tmp
     );
 
-
-
-    if(system(diff_cmd) != 256) {
+    if (system(diff_cmd) != 256) {
         merror("%s: ERROR: Unable to run diff for %s", ARGV0, filename);
         goto cleanup;
-
     }
 
     /* Success */
@@ -365,10 +366,6 @@ cleanup:
     if (status == -1)
         return (NULL);
 
-
-
-    /* Generate alert. */
+    /* Generate alert */
     return (gen_diff_alert(filename, new_date_of_change));
-
 }
-
