@@ -633,8 +633,26 @@ int mkstemp_ex(char *tmp_path)
 
     /* mkstemp() only implicitly does this in POSIX 2008 */
     if (fchmod(fd, 0600) == -1) {
-        log2file(CHMOD_ERROR, __local_name, tmp_path, errno, strerror(errno));
         close(fd);
+
+        log2file(
+            CHMOD_ERROR,
+            __local_name,
+            tmp_path,
+            errno,
+            strerror(errno)
+        );
+
+        if (unlink(tmp_path)) {
+            log2file(
+                DELETE_ERROR,
+                __local_name,
+                tmp_path,
+                errno,
+                strerror(errno)
+            );
+        }
+
         return (-1);
     }
 
