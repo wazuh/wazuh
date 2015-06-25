@@ -1,0 +1,10 @@
+[Unit]
+Description=OSSEC Maild
+PartOf=ossec-server.target
+
+[Service]
+EnvironmentFile=/etc/ossec-init.conf
+Environment=DIRECTORY=/var/ossec
+
+ExecStartPre=/usr/bin/env ${DIRECTORY}/bin/ossec-maild -t
+ExecStart=/usr/bin/env ${DIRECTORY}/bin/ossec-maild -f
