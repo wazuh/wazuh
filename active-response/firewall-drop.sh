@@ -86,10 +86,7 @@ lock()
             i=`expr $i + 1`;
         fi
 
-        # Sleep 1 after 10/25 interactions
-        if [ "$i" = "10" -o "$i" = "25" ]; then
-            sleep 1;
-        fi
+        sleep $i;
 
         i=`expr $i + 1`;
 

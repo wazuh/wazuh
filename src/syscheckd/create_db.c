@@ -152,6 +152,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
             char alert_msg[916 + 1];    /* to accommodate a long */
             alert_msg[916] = '\0';
 
+            #ifndef WIN32
             if (opts & CHECK_SEECHANGES) {
                 char *alertdump = seechanges_addfile(file_name);
                 if (alertdump) {
@@ -159,6 +160,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                     alertdump = NULL;
                 }
             }
+            #endif
 
             snprintf(alert_msg, 916, "%c%c%c%c%c%c%ld:%d:%d:%d:%s:%s",
                      opts & CHECK_SIZE ? '+' : '-',
@@ -206,8 +208,11 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
 
             if (strcmp(c_sum, buf + 6) != 0) {
                 /* Send the new checksum to the analysis server */
-                char *fullalert = NULL;
                 alert_msg[OS_MAXSTR] = '\0';
+                #ifdef WIN32
+                snprintf(alert_msg, 916, "%s %s", c_sum, file_name);
+                #else
+                char *fullalert = NULL;
                 if (buf[5] == 's' || buf[5] == 'n') {
                     fullalert = seechanges_addfile(file_name);
                     if (fullalert) {
@@ -220,6 +225,7 @@ static int read_file(const char *file_name, int opts, OSMatch *restriction)
                 } else {
                     snprintf(alert_msg, 916, "%s %s", c_sum, file_name);
                 }
+                #endif
                 send_syscheck_msg(alert_msg);
             }
         }
