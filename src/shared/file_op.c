@@ -371,7 +371,15 @@ int DeletePID(const char *name)
         return (-1);
     }
 
-    unlink(file);
+    if (unlink(file)) {
+        log2file(
+            DELETE_ERROR,
+            __local_name,
+            file,
+            errno,
+            strerror(errno)
+        );
+    }
 
     return (0);
 }
