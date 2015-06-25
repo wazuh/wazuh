@@ -78,6 +78,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      * ( ex: Dec 29 10:00:01
      *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate
      *   or  2009-05-22T09:36:46.214994-07:00 for rsyslog )
+     *   or  2015-04-16 21:51:02,805 (proftpd 1.3.5)
      */
     if (
         (
@@ -89,6 +90,17 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             (pieces[15] == ' ') && (lf->log += 16)
         )
         ||
+	(
+	    (loglen > 24) && 
+	    (pieces[4] == '-') &&
+	    (pieces[7] == '-') &&
+	    (pieces[10] == ' ') &&
+	    (pieces[13] == ':') &&
+	    (pieces[16] == ':') &&
+	    (pieces[19] == ',') &&
+	    (lf->log += 23)
+	)
+	||
         (
             (loglen > 33) &&
             (pieces[4] == '-') &&
