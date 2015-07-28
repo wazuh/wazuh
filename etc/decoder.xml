@@ -1691,6 +1691,27 @@ Jan  8 19:32:41 tp.lan dropbear[15165]: Pubkey auth succeeded for 'root' with ke
   <order>url, srcip, id</order>
 </decoder>
 
+<!-- Windows IIS decoder for default settings
+  -  Tested with IIS 7.5 and IIS 8.5 (Windows 2008R2 and Windows 2012R2)
+  -  Will extract URL, Source IP, and HTTP response code
+  -  Examples:
+  -  IIS 7.5
+  -  2015-07-28 15:07:26 1.2.3.4 GET /QOsa/Browser/Default.aspx UISessionId=SN1234123&DeviceId=SN12312232SHARP+MX-4111N 80 - 31.3.3.7 OpenSystems/1.0;+product-family="85";+product-version="123ER123" 302 0 0 624
+  -  IIS 8.5
+  -  2015-03-11 20:28:21 1.2.3.4 GET /certsrv/Default.asp - 80 - 31.3.3.7 Mozilla/5.0+(compatible;+MSIE+9.0;+Windows+NT+6.1;+WOW64;+Trident/7.0) - 401 2 5 0
+  -  2015-03-11 21:59:09 1.2.3.4 GET /console/faces/com_sun_web_ui/jsp/version/version_30.jsp - 80 - 31.3.3.7 Sun+Web+Console+Fingerprinter/7.15 - 404 0 2 0
+  -  2015-03-11 22:01:58 1.2.3.4 GET /IISADMPWD/aexp.htr - 80 - 31.3.3.7 - - 404 0 2 0
+-->
+
+<decoder name="web-accesslog-iis-default">
+  <parent>windows-date-format</parent>
+  <type>web-log</type>
+  <use_own_name>true</use_own_name>
+  <prematch offset="after_parent">^\d+.\d+.\d+.\d+ GET |^\d+.\d+.\d+.\d+ POST </prematch>
+  <regex offset="after_prematch">(\S+ \S*) \.* (\d+.\d+.\d+.\d+) \S*\.* (\d\d\d) \S+ \S+ \S+</regex>
+  <order>url,srcip,id</order>
+</decoder>
+
 
 <!-- IIS 5 W3C FTP log format.
   - Examples:
