@@ -153,13 +153,7 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
     const char *xml_agent_profile = "profile";
 
     if (OS_ReadXML(cfgfile, &xml) < 0) {
-        if (modules & CAGENT_CONFIG) {
-#ifndef CLIENT
-            merror(XML_ERROR, __local_name, cfgfile, xml.err, xml.err_line);
-#endif
-        } else {
-            merror(XML_ERROR, __local_name, cfgfile, xml.err, xml.err_line);
-        }
+	merror(XML_ERROR, __local_name, cfgfile, xml.err, xml.err_line);
         return (OS_INVALID);
     }
 
