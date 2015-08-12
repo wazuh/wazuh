@@ -1,0 +1,34 @@
+This work was packaged for Debian by:
+
+    Santiago Bassett <santiago.bassett@gmail.com> on Fri, 29 Nov 2013 03:11:44 +0000
+
+It was downloaded from:
+
+    http://www.ossec.net 
+
+Upstream Authors:
+
+    dcid@dcid.me
+    Jia-BingJB_Cheng@trendmicro.com
+    vichargrave@gmail.com
+    ossec@michaelstarks.com
+    ddpbsd@gmail.com
+    scott@atomicorp.com
+    brad.lhotsky@gmail.com
+    jeremy@jeremyrossy.com
+    santiago.bassett@gmail.com    
+
+Copyright:
+
+    GNU General Public License version 2.    
+
+License:
+
+    GNU General Public License version 2.
+
+The Debian packaging is:
+
+    Copyright (C) 2014 Santiago Bassett <santiago.bassett@gmail.com>
+
+and is licensed under the GPL version 2,
+see "/usr/share/common-licenses/GPL-2".
