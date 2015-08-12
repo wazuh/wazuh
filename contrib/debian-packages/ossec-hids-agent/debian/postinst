@@ -1,0 +1,153 @@
+#!/bin/sh
+# postinst script for ossec-hids
+# Santiago Bassett <santiago.bassett@gmail.com>
+# 03/25/2014
+
+set -e
+
+case "$1" in
+    configure)
+
+	DIR="/var/ossec/"
+	USER="ossec"
+	GROUP="ossec"
+	OSSEC_HIDS_TMP_DIR="/tmp/ossec-hids"
+
+	OSMYSHELL="/sbin/nologin"
+        if [ ! -f ${OSMYSHELL} ]; then 
+	    if [ -f "/bin/false" ]; then
+	        OSMYSHELL="/bin/false"
+	    fi
+	fi
+
+        if ! getent group | grep -q "^ossec"
+        then
+            addgroup --system ossec
+        fi
+        if ! getent passwd | grep -q "^ossec"
+        then
+            adduser --system --home ${DIR} --shell ${OSMYSHELL} --ingroup ${GROUP} ${USER} > /dev/null 2>&1
+        fi
+
+	# Default for all directories
+	chmod -R 550 ${DIR}
+	chown -R root:${GROUP} ${DIR}
+
+	# To the ossec queue (default for agentd to read)
+	chown -R ${USER}:${GROUP} ${DIR}/queue/ossec
+	chmod -R 770 ${DIR}/queue/ossec
+
+	# For the logging user
+	chown -R ${USER}:${GROUP} ${DIR}/logs
+	chmod -R 750 ${DIR}/logs
+	chmod -R 775 ${DIR}/queue/rids
+	touch ${DIR}/logs/ossec.log
+	chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
+	chmod 664 ${DIR}/logs/ossec.log
+
+        chown -R ${USER}:${GROUP} ${DIR}/queue/diff
+        chmod -R 750 ${DIR}/queue/diff
+        chmod 740 ${DIR}/queue/diff/* > /dev/null 2>&1 || true
+
+	# For the etc dir
+	chmod 550 ${DIR}/etc
+	chown -R root:${GROUP} ${DIR}/etc
+	if [ -f /etc/localtime ]; then
+	    cp -pL /etc/localtime ${DIR}/etc/;
+	    chmod 555 ${DIR}/etc/localtime
+	    chown root:${GROUP} ${DIR}/etc/localtime
+	fi
+
+	if [ -f /etc/TIMEZONE ]; then
+	    cp -p /etc/TIMEZONE ${DIR}/etc/;
+	    chmod 555 ${DIR}/etc/TIMEZONE
+	fi
+
+	# More files
+	chown root:${GROUP} ${DIR}/etc/internal_options.conf
+	chown root:${GROUP} ${DIR}/etc/local_internal_options.conf >/dev/null 2>&1 || true
+	chown root:${GROUP} ${DIR}/etc/client.keys >/dev/null 2>&1 || true
+	chown root:${GROUP} ${DIR}/agentless/*
+	chown ${USER}:${GROUP} ${DIR}/.ssh
+	chown root:${GROUP} ${DIR}/etc/shared/*
+
+	chmod 550 ${DIR}/etc
+	chmod 440 ${DIR}/etc/internal_options.conf
+	chmod 660 ${DIR}/etc/local_internal_options.conf >/dev/null 2>&1 || true
+	chmod 440 ${DIR}/etc/client.keys >/dev/null 2>&1 || true
+	chmod 550 ${DIR}/agentless/*
+	chmod 700 ${DIR}/.ssh
+	chmod 770 ${DIR}/etc/shared
+	chmod 660 ${DIR}/etc/shared/*
+
+	# For the /var/run
+	chmod 770 ${DIR}/var/run
+	chown root:${GROUP} ${DIR}/var/run
+
+	# For util.sh 
+	chown root:${GROUP} ${DIR}/bin/util.sh
+	chmod +x ${DIR}/bin/util.sh
+
+	# For binaries and active response
+        chmod 755 ${DIR}/active-response/bin/*
+        chown root:${GROUP} ${DIR}/active-response/bin/*
+        chown root:${GROUP} ${DIR}/bin/*
+        chmod 550 ${DIR}/bin/*
+
+	# For ossec.conf
+        chown root:${GROUP} ${DIR}/etc/ossec.conf
+        chmod 660 ${DIR}/etc/ossec.conf
+
+	# Debconf
+	. /usr/share/debconf/confmodule
+	db_input high ossec-hids-agent/server-ip || true
+	db_go
+
+	db_get ossec-hids-agent/server-ip
+	SERVER_IP=$RET
+
+	sed -i "s/<server-ip>[^<]\+<\/server-ip>/<server-ip>${SERVER_IP}<\/server-ip>/" ${DIR}/etc/ossec.conf
+	db_stop
+
+        # ossec-init.conf
+        if [ -e ${DIR}/etc/ossec-init.conf ] && [ -d /etc/ ]; then
+            if [ -e /etc/ossec-init.conf ]; then
+                rm -f /etc/ossec-init.conf
+            fi
+            ln -s ${DIR}/etc/ossec-init.conf /etc/ossec-init.conf
+        fi
+
+        # init.d/ossec file
+        if [ -x ${DIR}/etc/init.d/ossec ] && [ -d /etc/init.d/ ]; then
+            if [ -e /etc/init.d/ossec ]; then
+                rm -f /etc/init.d/ossec
+            fi
+            ln -s ${DIR}/etc/init.d/ossec /etc/init.d/ossec
+        fi
+
+	# Service
+	if [ -x /etc/init.d/ossec ]; then
+	    update-rc.d -f ossec defaults
+	fi
+
+	# Delete tmp directory
+	if [ -d ${OSSEC_HIDS_TMP_DIR} ]; then
+	    rm -r ${OSSEC_HIDS_TMP_DIR}
+	fi
+    
+    ;;
+
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+
+    ;;
+
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >22
+        exit 1
+    ;;
+
+esac
+
+exit 0
