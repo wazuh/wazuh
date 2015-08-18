@@ -1,0 +1,9 @@
+ossec-hids-agent: embedded-library
+ossec-hids-agent: embedded-zlib
+ossec-hids-agent: possible-gpl-code-linked-with-openssl
+ossec-hids-agent: new-package-should-close-itp-bug
+ossec-hids-agent: possibly-insecure-handling-of-tmp-files-in-maintainer-script
+ossec-hids-agent: non-standard-dir-in-var
+ossec-hids-agent: file-in-unusual-dir
+ossec-hids-agent: hardening-no-fortify-functions
+ossec-hids-agent: hardening-no-relro

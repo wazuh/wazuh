@@ -23,17 +23,23 @@ static void helpmsg()
            ARGV0);
     printf("Available options:\n");
     printf("\t-h          This help message.\n");
-    printf("\t-l          List available (active or not) agents.\n");
+    printf("\t-l          List available (active or inactive) agents.\n");
     printf("\t-lc         List only active agents.\n");
-    printf("\t-u <id>     Updates (clear) the database for the agent.\n");
-    printf("\t-u all      Updates (clear) the database for all agents.\n");
+    printf("\t-u <id>     Updates (clears) the database for the agent.\n");
+    printf("\t-u all      Updates (clears) the database for all agents.\n");
     printf("\t-i <id>     List modified files for the agent.\n");
     printf("\t-r -i <id>  List modified registry entries for the agent "
            "(Windows only).\n");
     printf("\t-f <file>   Prints information about a modified file.\n");
-    printf("\t-z          Used with the -f, zeroes the auto-ignore counter.\n");
-    printf("\t-d          Used with the -f, ignores that file.\n");
+    printf("\t            Must be used with -i <id>.\n");
+    printf("\t-z          Used with -f, zeroes the auto-ignore counter.\n");
+    printf("\t-d          Used with -f, ignores that file.\n");
     printf("\t-s          Changes the output to CSV (comma delimited).\n");
+    printf("\n");
+    printf("\tExamples:\n");
+    printf("\n");
+    printf("\t'Show information about /etc/passwd from agent with ID 019'\n");
+    printf("\t%s -i 019 -f /etc/passwd\n", ARGV0);
     exit(1);
 }
 

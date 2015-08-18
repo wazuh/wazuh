@@ -1,0 +1,100 @@
+Index: ossec-hids-2.8.2/etc/ossec-server.conf
+===================================================================
+--- ossec-hids-2.8.2.orig/etc/ossec-server.conf	2015-06-10 15:38:32.000000000 +0000
++++ ossec-hids-2.8.2/etc/ossec-server.conf	2015-07-12 18:46:24.995134760 +0000
+@@ -2,10 +2,10 @@
+ 
+ <ossec_config>
+   <global>
+-    <email_notification>yes</email_notification>
+-    <email_to>daniel.cid@xxx.com</email_to>
+-    <smtp_server>smtp.xxx.com.</smtp_server>
+-    <email_from>ossecm@ossec.xxx.com.</email_from>
++    <email_notification>no</email_notification>
++    <email_to>your_email_address@xxx.com</email_to>
++    <smtp_server>smtp.your_domain.com.</smtp_server>
++    <email_from>ossecm@ossec.your_domain.com.</email_from>
+   </global>
+ 
+   <rules>
+@@ -90,14 +90,11 @@
+   <rootcheck>
+     <rootkit_files>/var/ossec/etc/shared/rootkit_files.txt</rootkit_files>
+     <rootkit_trojans>/var/ossec/etc/shared/rootkit_trojans.txt</rootkit_trojans>
++    <system_audit>/var/ossec/etc/shared/system_audit_rcl.txt</system_audit>
+   </rootcheck>
+ 
+   <global>
+     <white_list>127.0.0.1</white_list>
+-    <white_list>192.168.2.1</white_list>
+-    <white_list>192.168.2.190</white_list>
+-    <white_list>192.168.2.32</white_list>
+-    <white_list>192.168.2.10</white_list>
+   </global>
+ 
+   <remote>
+@@ -138,6 +135,7 @@
+        - level (severity) >= 6.
+        - The IP is going to be blocked for  600 seconds.
+       -->
++    <disabled>yes</disabled>
+     <command>host-deny</command>
+     <location>local</location>
+     <level>6</level>
+@@ -149,6 +147,7 @@
+        - 600 seconds on the firewall (iptables,
+        - ipfilter, etc).
+       -->
++    <disabled>yes</disabled>
+     <command>firewall-drop</command>
+     <location>local</location>
+     <level>6</level>
+@@ -159,36 +158,41 @@
+ 
+   <localfile>
+     <log_format>syslog</log_format>
+-    <location>/var/log/messages</location>
++    <location>/var/log/syslog</location>
+   </localfile>
+ 
+   <localfile>
+     <log_format>syslog</log_format>
+-    <location>/var/log/authlog</location>
++    <location>/var/log/auth.log</location>
+   </localfile>
+ 
+   <localfile>
+     <log_format>syslog</log_format>
+-    <location>/var/log/secure</location>
++    <location>/var/log/dpkg.log</location>
+   </localfile>
+ 
+   <localfile>
+     <log_format>syslog</log_format>
+-    <location>/var/log/xferlog</location>
++    <location>/var/log/kern.log</location>
+   </localfile>
+ 
++<!--
++
+   <localfile>
+     <log_format>syslog</log_format>
+-    <location>/var/log/maillog</location>
++    <location>/var/log/mail.log</location>
+   </localfile>
+ 
+   <localfile>
+     <log_format>apache</log_format>
+-    <location>/var/www/logs/access_log</location>
++    <location>/var/log/apache2/access.log</location>
+   </localfile>
+ 
+   <localfile>
+     <log_format>apache</log_format>
+-    <location>/var/www/logs/error_log</location>
++    <location>/var/log/apache2/error.log</location>
+   </localfile>
++
++-->
++
+ </ossec_config>
