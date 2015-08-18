@@ -1,4 +1,5 @@
 OSSEC v2.8 Copyright (C) 2014 Trend Micro Inc.
+Wazuh OSSEC v0.1 
 
 # Information about OSSEC 
 
