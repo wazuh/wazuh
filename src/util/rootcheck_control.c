@@ -153,7 +153,7 @@ int main(int argc, char **argv)
         } else {
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         }
-        print_agents(1, active_only, csv_output);
+        print_agents(1, active_only, csv_output, 0);
         printf("\n");
         exit(0);
     }

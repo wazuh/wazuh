@@ -297,7 +297,7 @@ int remove_agent()
 
     u_id[FILE_SIZE] = '\0';
 
-    if (!print_agents(0, 0, 0)) {
+    if (!print_agents(0, 0, 0, 0)) {
         printf(NO_AGENT);
         return (0);
     }
@@ -388,7 +388,7 @@ int remove_agent()
 
 int list_agents(int cmdlist)
 {
-    if (!print_agents(0, 0, 0)) {
+    if (!print_agents(0, 0, 0, 0)) {
         printf(NO_AGENT);
     }
 

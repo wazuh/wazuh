@@ -76,7 +76,7 @@ int main(int argc, char **argv)
     } else if (strcmp(argv[1], "-l") == 0) {
         printf("\nOSSEC HIDS %s: Updates the integrity check database.",
                ARGV0);
-        print_agents(0, 0, 0);
+        print_agents(0, 0, 0, 0);
         printf("\n");
         exit(0);
     } else if (strcmp(argv[1], "-u") == 0) {

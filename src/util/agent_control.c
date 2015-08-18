@@ -32,6 +32,7 @@ static void helpmsg()
     printf("\t-f <ar>     Used with -b, specifies which response to run.\n");
     printf("\t-L          List available active responses.\n");
     printf("\t-s          Changes the output to CSV (comma delimited).\n");
+	printf("\t-j          Changes the output to JSON .\n");
     exit(1);
 }
 
@@ -48,7 +49,7 @@ int main(int argc, char **argv)
     gid_t gid;
     uid_t uid;
     int c = 0, restart_syscheck = 0, restart_all_agents = 0, list_agents = 0;
-    int info_agent = 0, agt_id = 0, active_only = 0, csv_output = 0;
+    int info_agent = 0, agt_id = 0, active_only = 0, csv_output = 0, json_output = 0;
     int list_responses = 0, end_time = 0, restart_agent = 0;
 
     char shost[512];
@@ -63,7 +64,7 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
-    while ((c = getopt(argc, argv, "VehdlLcsaru:i:b:f:R:")) != -1) {
+    while ((c = getopt(argc, argv, "VehdlLcsjaru:i:b:f:R:")) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -88,6 +89,11 @@ int main(int argc, char **argv)
                 break;
             case 's':
                 csv_output = 1;
+				json_output = 0;
+                break;
+			case 'j':
+                json_output = 1;
+				csv_output = 0;
                 break;
             case 'c':
                 active_only++;
@@ -169,7 +175,7 @@ int main(int argc, char **argv)
     /* List responses */
     if (list_responses) {
         FILE *fp;
-        if (!csv_output) {
+        if (!csv_output && !json_output) {
             printf("\nOSSEC HIDS %s. Available active responses:\n", ARGV0);
         }
 
@@ -220,15 +226,20 @@ int main(int argc, char **argv)
 
     /* List available agents */
     if (list_agents) {
-        if (!csv_output) {
+        if (!csv_output && !json_output) {
             printf("\nOSSEC HIDS %s. List of available agents:",
                    ARGV0);
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n",
                    shost);
+		} else if(json_output){
+				printf("[ { 'ID' : '000', 'Name' : '%s (server)', 'IP': '127.0.0.1', 'Status' : 'Active/Local' }",shost);
         } else {
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         }
-        print_agents(1, active_only, csv_output);
+        print_agents(1, active_only, csv_output, json_output);
+		// Closing JSON Object array
+		if(json_output)
+			 printf("]");
         printf("\n");
         exit(0);
     }
