@@ -1,0 +1,58 @@
+Index: ossec-hids-2.8.2/etc/ossec-agent.conf
+===================================================================
+--- ossec-hids-2.8.2.orig/etc/ossec-agent.conf	2015-06-10 15:38:32.000000000 +0000
++++ ossec-hids-2.8.2/etc/ossec-agent.conf	2015-07-12 18:54:10.859134760 +0000
+@@ -25,40 +25,46 @@
+   <rootcheck>
+     <rootkit_files>/var/ossec/etc/shared/rootkit_files.txt</rootkit_files>
+     <rootkit_trojans>/var/ossec/etc/shared/rootkit_trojans.txt</rootkit_trojans>
++    <system_audit>/var/ossec/etc/shared/system_audit_rcl.txt</system_audit>
+   </rootcheck>
+ 
+   <localfile>
+     <log_format>syslog</log_format>
+-    <location>/var/log/messages</location>
++    <location>/var/log/syslog</location>
+   </localfile>
+ 
+   <localfile>
+     <log_format>syslog</log_format>
+-    <location>/var/log/authlog</location>
++    <location>/var/log/auth.log</location>
+   </localfile>
+ 
+   <localfile>
+     <log_format>syslog</log_format>
+-    <location>/var/log/secure</location>
++    <location>/var/log/dpkg.log</location>
+   </localfile>
+ 
+   <localfile>
+     <log_format>syslog</log_format>
+-    <location>/var/log/xferlog</location>
++    <location>/var/log/kern.log</location>
+   </localfile>
+ 
++<!--
++
+   <localfile>
+     <log_format>syslog</log_format>
+-    <location>/var/log/maillog</location>
++    <location>/var/log/mail.log</location>
+   </localfile>
+ 
+   <localfile>
+     <log_format>apache</log_format>
+-    <location>/var/www/logs/access_log</location>
++    <location>/var/log/apache2/access.log</location>
+   </localfile>
+ 
+   <localfile>
+     <log_format>apache</log_format>
+-    <location>/var/www/logs/error_log</location>
++    <location>/var/log/apache2/error.log</location>
+   </localfile>
++
++-->
++
+ </ossec_config>
