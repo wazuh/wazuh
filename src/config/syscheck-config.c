@@ -367,7 +367,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 
         /* Check for glob */
-#ifndef WIN32
         if (strchr(tmp_dir, '*') ||
                 strchr(tmp_dir, '?') ||
                 strchr(tmp_dir, '[')) {
@@ -397,9 +396,6 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         else {
             dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile);
         }
-#else
-        dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile);
-#endif
 
         if (restrictfile) {
             free(restrictfile);
