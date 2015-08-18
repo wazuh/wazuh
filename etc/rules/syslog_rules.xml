@@ -129,14 +129,14 @@
     <match>authinternal failed|Failed to authorize|</match>
     <match>Wrong password given for|login failed|Auth: Login incorrect|</match>
     <match>Failed to authenticate user</match>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_10.6,</group>
     <description>User authentication failure.</description>
   </rule>
 
   <rule id="2502" level="10">
     <match>more authentication failures;|REPEATED login failures</match>
     <description>User missed the password more than one time</description>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_10.6,</group>
   </rule>
 
   <rule id="2503" level="5">
@@ -150,7 +150,7 @@
   <rule id="2504" level="9">
     <match>ILLEGAL ROOT LOGIN|ROOT LOGIN REFUSED</match>
     <description>Illegal root login. </description>
-    <group>invalid_login,</group>
+    <group>invalid_login,pci_dss_11.4,</group>
   </rule>
 
   <rule id="2505" level="3">
@@ -406,7 +406,7 @@
     <if_sid>5301</if_sid>
     <user>^root</user>
     <description>User missed the password to change UID to root.</description>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_11.4,</group>
   </rule>
 
   <rule id="5303" level="3">
@@ -414,7 +414,7 @@
     <regex>session opened for user root|^'su root'|</regex>
     <regex>^+ \S+ \S+\proot$|^\S+ to root on|^SU \S+ \S+ + \S+ \S+-root$</regex>
     <description>User successfully changed UID to root.</description>
-    <group>authentication_success,</group>
+    <group>authentication_success,pci_dss_11.4,</group>
   </rule>
 
   <rule id="5304" level="3">
@@ -479,7 +479,7 @@
 
 
 <!-- Sudo messages -->
-<group name="syslog,sudo">
+<group name="syslog,sudo,pci_dss_11.4,">
   <rule id="5400" level="0" noalert="1">
     <decoded_as>sudo</decoded_as>
     <description>Initial group for sudo messages</description>

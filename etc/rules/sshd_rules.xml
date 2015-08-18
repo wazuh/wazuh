@@ -78,7 +78,7 @@
     <if_sid>5700</if_sid>
     <match>illegal user|invalid user</match>
     <description>Attempt to login using a non-existent user</description>
-    <group>invalid_login,authentication_failed,</group>
+    <group>invalid_login,authentication_failed,pci_dss_11.4,pci_dss_10.6,</group>
   </rule>
 
   <rule id="5711" level="0">
@@ -95,7 +95,7 @@
     <description>SSHD brute force trying to get access to </description>
     <description>the system.</description>
     <same_source_ip />
-    <group>authentication_failures,</group>
+    <group>authentication_failures,pci_dss_11.4,</group>
   </rule>
 
   <rule id="5713" level="6">
@@ -124,7 +124,7 @@
     <if_sid>5700</if_sid>
     <match>^Failed|^error: PAM: Authentication</match>
     <description>SSHD authentication failed.</description>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_11.4,</group> 
   </rule>  
 
   <rule id="5717" level="4">
@@ -137,20 +137,20 @@
     <if_sid>5700</if_sid>
     <match>not allowed because</match>
     <description>Attempt to login using a denied user.</description>
-    <group>invalid_login,</group>
+    <group>invalid_login,pci_dss_11.4,</group>
   </rule>
                       
   <rule id="5719" level="10" frequency="6" timeframe="120" ignore="60">
     <if_matched_sid>5718</if_matched_sid>
     <description>Multiple access attempts using a denied user.</description>
-    <group>invalid_login,</group>
+    <group>invalid_login,pci_dss_11.4,</group>
   </rule>
   
   <rule id="5720" level="10" frequency="6">
     <if_matched_sid>5716</if_matched_sid>
     <same_source_ip />
     <description>Multiple SSHD authentication failures.</description>
-    <group>authentication_failures,</group>
+    <group>authentication_failures,pci_dss_11.4,pci_dss_10.6,</group>
   </rule>                                       
 
   <rule id="5721" level="0">

@@ -38,7 +38,7 @@
     <if_sid>18100</if_sid>
     <status>^ERROR</status>
     <description>Windows error event.</description>
-    <group>system_error,</group>
+    <group>system_error,pci_dss_10.6,</group>
   </rule>
 
   <rule id="18104" level="0">
@@ -57,7 +57,7 @@
     <if_sid>18105</if_sid>
     <id>^529$|^530$|^531$|^532$|^533$|^534$|^535$|^536$|^537$|^539$|^4625$</id>
     <description>Windows Logon Failure.</description>
-    <group>win_authentication_failed,</group>
+    <group>win_authentication_failed,pci_dss_11.4,</group>
   </rule>
 
   <rule id="18107" level="3">
@@ -98,14 +98,14 @@
     <if_sid>18104</if_sid>
     <id>^630$|^629$|^4725$|^4726$</id>
     <description>User account disabled or deleted.</description>
-    <group>adduser,account_changed,</group>
+    <group>adduser,account_changed,pci_dss_10.6,</group>
   </rule>
   
   <rule id="18113" level="8">
     <if_sid>18104</if_sid>
     <id>^612$|^643$|^4719$|^4907$|^4912$|^4719$</id>
     <description>Windows Audit Policy changed.</description>
-    <group>policy_changed,</group>
+    <group>policy_changed,pci_dss_10.6,</group>
   </rule>
 
   <rule id="18114" level="5">
@@ -131,7 +131,7 @@
     <if_sid>18104</if_sid>
     <id>^644$|^4740$</id>
     <description>User account locked out (multiple login errors).</description>
-    <group>authentication_failures,</group>  
+    <group>authentication_failures,pci_dss_11.4,</group>  
   </rule>
 
   <rule id="18117" level="7">
@@ -166,7 +166,7 @@
     <if_sid>18102, 18103</if_sid>
     <id>^20187$|^20014$|^20078$|^20050$|^20049$|^20189$</id>
     <description>Remote access login failure.</description>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_11.4,</group>
   </rule>
   
   <rule id="18126" level="3">
@@ -205,7 +205,7 @@
     <id>^529$|^4625$</id>
     <description>Logon Failure - Unknown user or bad password.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com190.html</info>
-    <group>win_authentication_failed,</group>
+    <group>win_authentication_failed,pci_dss_11.4,</group>
   </rule>
 
   <rule id="18131" level="5">
@@ -214,7 +214,7 @@
     <description>Logon Failure - Account logon time restriction </description>
     <description>violation.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com191.html</info>
-    <group>win_authentication_failed,login_denied,</group>
+    <group>win_authentication_failed,login_denied,pci_dss_11.4,</group>
   </rule>
 
   <rule id="18132" level="5">
@@ -222,7 +222,7 @@
     <id>^531$</id>
     <description>Logon Failure - Account currently disabled.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com192.html</info>
-    <group>win_authentication_failed,login_denied,</group>
+    <group>win_authentication_failed,login_denied,pci_dss_11.4,</group>
   </rule>
 
   <rule id="18133" level="5">
@@ -230,7 +230,7 @@
     <id>^532$</id>
     <description>Logon Failure - Specified account expired.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com193.html</info>
-    <group>win_authentication_failed,login_denied,</group>
+    <group>win_authentication_failed,login_denied,pci_dss_11.4,</group>
   </rule>
 
   <rule id="18134" level="7">
@@ -239,7 +239,7 @@
     <description>Logon Failure - User not allowed to login at </description>
     <description>this computer.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com194.html</info>
-    <group>win_authentication_failed,login_denied,</group>
+    <group>win_authentication_failed,login_denied,pci_dss_11.4,</group>
   </rule>
 
   <rule id="18135" level="5">
@@ -247,7 +247,7 @@
     <id>^534$</id>
     <description>Logon Failure - User not granted logon type.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com195.html</info>
-    <group>win_authentication_failed,</group>
+    <group>win_authentication_failed,pci_dss_11.4,</group>
   </rule>
   
   <rule id="18136" level="5">
@@ -255,35 +255,35 @@
     <id>^535$</id>
     <description>Logon Failure - Account's password expired.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/events/com196.html</info>
-    <group>win_authentication_failed,</group>
+    <group>win_authentication_failed,pci_dss_11.4,</group>
   </rule>
 
   <rule id="18137" level="5">
     <if_sid>18106</if_sid>
     <id>^536$|^537$</id>
     <description>Logon Failure - Internal error.</description>
-    <group>win_authentication_failed,</group>
+    <group>win_authentication_failed,pci_dss_11.4,</group>
   </rule>
 
   <rule id="18138" level="7">
     <if_sid>18106</if_sid>
     <id>^539$</id>
     <description>Logon Failure - Account locked out.</description>
-    <group>win_authentication_failed,</group>
+    <group>win_authentication_failed,pci_dss_11.4,</group>
   </rule>
   
   <rule id="18139" level="5">
     <if_sid>18105</if_sid>
     <id>^673$|^675$|^681$|^4769$</id>
     <description>Windows DC Logon Failure.</description>
-    <group>win_authentication_failed,</group>
+    <group>win_authentication_failed,pci_dss_11.4,</group>
   </rule>
   
   <rule id="18140" level="5">
     <if_sid>18104</if_sid>
     <id>^520$|^4616$</id>
     <description>System time changed.</description>
-    <group>time_changed,</group>
+    <group>time_changed,pci_dss_10.6,</group>
   </rule>
 
   <rule id="18141" level="7">
@@ -320,7 +320,7 @@
   <rule id="18145" level="3">
     <if_sid>18101</if_sid>
     <id>^7040$</id>
-    <group>policy_changed,</group>
+    <group>policy_changed,pci_dss_10.6,</group>
     <description>Service startup type was changed.</description>
     <info type="text">This does not appear to be logged on Windows 2000.</info>
   </rule>
@@ -397,7 +397,7 @@
     <if_sid>18201</if_sid>
     <id>^634$|^4730$</id>
     <description>Security Enabled Global Group Deleted</description>
-    <group>group_deleted,win_group_deleted,</group>
+    <group>group_deleted,win_group_deleted,pci_dss_10.6,</group>
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=634</info>
   </rule>
 
@@ -485,7 +485,7 @@
     <if_sid>18201</if_sid>
     <id>^662$|^4758$</id>
     <description>Security Enabled Universal Group Deleted</description>
-    <group>group_deleted,win_group_deleted,</group>
+    <group>group_deleted,win_group_deleted,pci_dss_10.6,</group>
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=662</info>
   </rule>
 
@@ -493,7 +493,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+\p*S-1-5-32-544</regex>
     <description>Administrators Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -501,7 +501,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-1-0}</regex>
     <description>Everyone Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -509,7 +509,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-9}</regex>
     <description>Enterprise Domain Controllers Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -517,7 +517,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-11}</regex>
     <description>Authenticated Users Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -525,7 +525,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-13}</regex>
     <description>Terminal Server Users Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -533,7 +533,7 @@
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-512}</regex>
     <description>Domain Admins Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -541,7 +541,7 @@
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-513}</regex>
     <description>Domain Users Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -556,7 +556,7 @@
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-514}</regex>
     <description>Domain Guests Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -564,7 +564,7 @@
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-515}</regex>
     <description>Domain Computers Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -572,7 +572,7 @@
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-516}</regex>
     <description>Domain Controllers Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -580,7 +580,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-517}</regex>
     <description>Cert Publishers Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -588,7 +588,7 @@
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\.+-518}</regex>
     <description>Schema Admins Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -596,7 +596,7 @@
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-519}</regex>
     <description>Enterprise Admins Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -604,7 +604,7 @@
     <if_sid>18203,18204</if_sid>
     <regex> ID:\s+%{S-1-5-21\S+-520}</regex>
     <description>Group Policy Creator Owners Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -612,7 +612,7 @@
     <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+%{S-1-5-21\S+-553}</regex>
     <description>RAS and IAS Servers Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -620,7 +620,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-545}</regex>
     <description>Users Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -628,7 +628,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-546}</regex>
     <description>Guests Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -636,7 +636,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-547}</regex>
     <description>Power Users Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -644,7 +644,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-548}</regex>
     <description>Account Operators Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -652,7 +652,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-549}</regex>
     <description>Server Operators Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -660,7 +660,7 @@
     <if_sid>18207,18208</if_sid>
     <regex>\w* ID:\s+%{S-1-5-32-550}</regex>
     <description>Print Operators Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -668,7 +668,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-551}</regex>
     <description>Backup Operators Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -676,7 +676,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-552}</regex>
     <description>Replicators Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -684,7 +684,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-554}</regex>
     <description>Pre-Windows 2000 Compatible Access Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -692,7 +692,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-555}</regex>
     <description>Remote Desktop Users Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -700,7 +700,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-556}</regex>
     <description>Network Configuration Operators Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -708,7 +708,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-557}</regex>
     <description>Incoming Forest Trust Builders Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -716,7 +716,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-558}</regex>
     <description>Performance Monitor Users Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -724,7 +724,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-559}</regex>
     <description>Performance Log Users Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -732,7 +732,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-560}</regex>
     <description>Windows Authorization Access Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -740,7 +740,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-561}</regex>
     <description>Terminal Server License Servers Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -748,7 +748,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-562}</regex>
     <description>Distributed COM Users Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -756,7 +756,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-\s*21\.+\s*-498}</regex>
     <description>Enterprise Read-only Domain Controllers Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -764,7 +764,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-\s*21\.+\s*-529}</regex>
     <description>Read-only Domain Controllers Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -772,7 +772,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-569}</regex>
     <description>Cryptographic Operators Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -780,7 +780,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-\s*21\.+\s*-571}</regex>
     <description>Allowed RODC Password Replication Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -788,7 +788,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-\s*21\.+\s*-572}</regex>
     <description>Denied RODC Password Replication Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -796,7 +796,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-32-573}</regex>
     <description>Event Log Readers Group Changed</description>
-    <group>group_changed,win_group_changed,</group>
+    <group>group_changed,win_group_changed,pci_dss_10.6,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
@@ -826,7 +826,7 @@
     <description>Windows DC integrity check on decrypted </description>
     <description>field failed.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/kerberrors.html</info>
-    <group>win_authentication_failed,attacks,</group>
+    <group>win_authentication_failed,attacks,pci_dss_11.4,</group>
   </rule>
   
   <rule id="18171" level="10">
@@ -834,7 +834,7 @@
     <match>Failure Code: 0x22</match>
     <description>Windows DC - Possible replay attack.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/kerberrors.html</info>
-    <group>win_authentication_failed,attacks,</group>
+    <group>win_authentication_failed,attacks,pci_dss_11.4,</group>
   </rule>
 
   <rule id="18172" level="7">
@@ -842,7 +842,7 @@
     <match>Failure Code: 0x25</match>
     <description>Windows DC - Clock skew too great.</description>
     <info type="link">http://www.ultimatewindowssecurity.com/kerberrors.html</info>
-    <group>win_authentication_failed,attacks,</group>
+    <group>win_authentication_failed,attacks,pci_dss_11.4,</group>
   </rule>
 
 
@@ -888,7 +888,7 @@
   <rule id="18152" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_group>win_authentication_failed</if_matched_group>
     <description>Multiple Windows Logon Failures.</description>
-    <group>authentication_failures,</group>
+    <group>authentication_failures,pci_dss_11.4,</group>
   </rule>
   
   <rule id="18153" level="10" frequency="$MS_FREQ" timeframe="240">

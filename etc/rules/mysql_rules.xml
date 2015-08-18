@@ -71,13 +71,13 @@
     <if_sid>50125</if_sid>
     <match>Fatal error:</match>
     <description>Database fatal error.</description>
-    <group>service_availability,</group>
+    <group>service_availability,pci_dss_10.6,</group>
   </rule>
   
   <rule id="50180" level="10" frequency="6" timeframe="120" ignore="60">
     <if_matched_sid>50125</if_matched_sid>
     <description>Multiple database errors.</description>
-    <group>service_availability,</group>
+    <group>service_availability,pci_dss_10.6,</group>
   </rule>
 
 </group> <!-- MYSQL -->

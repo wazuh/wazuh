@@ -24,14 +24,14 @@
     <if_sid>12100</if_sid>
     <match>dropping source port zero packet from</match>
     <description>Invalid DNS packet. Possibility of attack.</description>
-    <group>invalid_access,</group>
+    <group>invalid_access,pci_dss_11.4,</group>
   </rule>
 
   <rule id="12102" level="9">
     <if_sid>12100</if_sid>
     <match>denied AXFR from</match>
     <description>Failed attempt to perform a zone transfer.</description>
-    <group>access_denied,</group>
+    <group>access_denied,pci_dss_11.4,</group>
   </rule>
 
   <rule id="12103" level="4">
@@ -47,7 +47,7 @@
     <if_sid>12100</if_sid>
     <match>unable to rename log file</match>
     <description>Log permission misconfiguration in Named.</description>
-    <group>system_error,</group>
+    <group>system_error,pci_dss_10.5,</group>
   </rule>
 
   <rule id="12105" level="4">
@@ -60,6 +60,7 @@
     <if_sid>12100</if_sid>
     <match>refused notify from non-master</match>
     <description>DNS configuration error.</description>
+	<group>system_error,pci_dss_10.5,</group>
   </rule>
 
   <rule id="12107" level="0">
@@ -73,13 +74,14 @@
     <match>query (cache) denied|: query (cache)</match>
     <description>Query cache denied (probably config error).</description>
     <info type="link">http://www.reedmedia.net/misc/dns/errors.html</info>
+	<group>system_error,pci_dss_10.5,</group>
   </rule>
   
   <rule id="12109" level="12">
     <if_sid>12100</if_sid>
     <match>exiting (due to fatal error)</match>
     <description>Named fatal error. DNS service going down.</description>
-    <group>service_availability,</group>
+    <group>service_availability,pci_dss_10.5,</group>
   </rule>
 
   <rule id="12110" level="8">
@@ -87,13 +89,13 @@
     <regex>\S+ \S ours (\S+)</regex>
     <description>Serial number from master is lower </description>
     <description>than stored.</description>
-    <group>system_error,</group>
+    <group>system_error,pci_dss_10.5,</group>
   </rule>
   
   <rule id="12111" level="8">
     <regex>^transfer of \S+ from \S+ failed while receiving \S+ REFUSED</regex>
     <description>Unable to perform zone transfer.</description>
-    <group>system_error,</group>
+    <group>system_error,pci_dss_10.5,</group>
   </rule>
 
   <rule id="12112" level="4">
@@ -124,6 +126,7 @@
     <match>syntax error near|</match>
     <match>reloading configuration failed: unexpected token</match>
     <description>Syntax error in a named configuration file.</description>
+	<group>pci_dss_10.5,</group>
   </rule>
 
 
@@ -173,6 +176,7 @@
     <if_sid>12100</if_sid>
     <match>reloading configuration failed: unexpected end of input</match>
     <description>BIND Configuration error.</description>
+	<group>pci_dss_10.6,</group>
   </rule>
 
   <rule id="12126" level="0">
@@ -204,12 +208,14 @@
     <if_sid>12100</if_sid>
     <match>IPv6 interfaces failed</match>
     <description>Could not listen on IPv6 interface.</description>
+	<group>pci_dss_10.6,</group>
   </rule>
 
   <rule id="12131" level="2">
     <if_sid>12100</if_sid>
     <match>failed; interface ignored</match>
     <description>Could not bind to an interface.</description>
+	<group>pci_dss_10.6,</group>
   </rule>
 
   <rule id="12132" level="0">
@@ -222,12 +228,14 @@
     <if_sid>12100</if_sid>
     <regex>open: \S+: permission denied$</regex>
     <description>Could not open configuration file, permission denied.</description>
+	<group>pci_dss_10.5,</group>
   </rule>
 
   <rule id="12134" level="4">
     <if_sid>12100</if_sid>
     <match>loading configuration: permission denied</match>
     <description>Could not open configuration file, permission denied.</description>
+	<group>pci_dss_10.5,</group>
   </rule>
 
   <rule id="12135" level="0">

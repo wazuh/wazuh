@@ -26,7 +26,7 @@
     <if_sid>3600</if_sid>
     <match>Login failed user=|AUTHENTICATE LOGIN failure</match>
     <description>Imapd user login failed.</description>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_10.6,</group>
   </rule>
 
   <rule id="3602" level="3">
@@ -46,7 +46,7 @@
     <if_matched_sid>3601</if_matched_sid>
     <same_source_ip />
     <description>Multiple failed logins from same source ip.</description>
-    <group>authentication_failures,</group>
+    <group>authentication_failures,pci_dss_10.6,</group>
   </rule>
 
 </group> <!-- SYSLOG,IMAPD -->
