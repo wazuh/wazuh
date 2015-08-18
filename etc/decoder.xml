@@ -1707,8 +1707,8 @@ Jan  8 19:32:41 tp.lan dropbear[15165]: Pubkey auth succeeded for 'root' with ke
   <parent>windows-date-format</parent>
   <type>web-log</type>
   <use_own_name>true</use_own_name>
-  <prematch offset="after_parent">^\d+.\d+.\d+.\d+ GET |^\d+.\d+.\d+.\d+ POST </prematch>
-  <regex offset="after_prematch">(\S+ \S*) \.* (\d+.\d+.\d+.\d+) \S*\.* (\d\d\d) \S+ \S+ \S+</regex>
+  <prematch offset="after_parent">^\S+ GET |^\S+ POST </prematch>
+  <regex offset="after_prematch">(\S+ \S*) \.* (\S+) \S*\.* (\d\d\d) \S+ \S+ \S+</regex>
   <order>url,srcip,id</order>
 </decoder>
 
