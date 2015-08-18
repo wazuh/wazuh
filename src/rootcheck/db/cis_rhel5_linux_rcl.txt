@@ -43,67 +43,67 @@ f:/etc/redhat-release -> r:^Better && r:release 5;
 
 
 # 1.1.1 /tmp: partition
-[CIS - RHEL5 - Build considerations - Robust partition scheme - /tmp is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - - Build considerations - Robust partition scheme - /tmp is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r:/tmp;
 
 # 1.1.2 /tmp: nodev
-[CIS - RHEL5 1.1.2 - Partition /tmp without 'nodev' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.1.2 - Partition /tmp without 'nodev' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;
 
 # 1.1.3 /tmp: nosuid
-[CIS - RHEL5 1.1.3 - Partition /tmp without 'nosuid' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.1.3 - Partition /tmp without 'nosuid' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r:^# && r:/tmp && !r:nosuid;
 
 # 1.1.4 /tmp: noexec
-[CIS - RHEL5 1.1.4 - Partition /tmp without 'noexec' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.1.4 - Partition /tmp without 'noexec' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;
 
 # 1.1.5 Build considerations - Partition scheme.
-[CIS - RHEL5 - Build considerations - Robust partition scheme - /var is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - - Build considerations - Robust partition scheme - /var is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r^# && !r:/var;
 
 # 1.1.6 bind mount /var/tmp to /tmp
-[CIS - RHEL5 - Build considerations - Robust partition scheme - /var/tmp is bound to /tmp] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - - Build considerations - Robust partition scheme - /var/tmp is bound to /tmp] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> r:^# && !r:/var/tmp && !r:bind;
 
 # 1.1.7 /var/log: partition
-[CIS - RHEL5 - Build considerations - Robust partition scheme - /var/log is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - - Build considerations - Robust partition scheme - /var/log is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> ^# && !r:/var/log;
 
 # 1.1.8 /var/log/audit: partition
-[CIS - RHEL5 - Build considerations - Robust partition scheme - /var/log/audit is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - - Build considerations - Robust partition scheme - /var/log/audit is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> ^# && !r:/var/log/audit;
 
 # 1.1.9 /home: partition
-[CIS - RHEL5 - Build considerations - Robust partition scheme - /home is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - - Build considerations - Robust partition scheme - /home is not on its own partition] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> ^# && !r:/home;
 
 # 1.1.10 /home: nodev
-[CIS - RHEL5 1.1.10 -  Partition /home without 'nodev' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.1.10 -  Partition /home without 'nodev' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r:^# && r:/home && !r:nodev;
 
 # 1.1.11 nodev on removable media partitons (not scored)
-[CIS - RHEL5 1.1.11 - Removable partition /media without 'nodev' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.1.11 - Removable partition /media without 'nodev' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r:^# && r:/media && !r:nodev;
 
 # 1.1.12 noexec on removable media partitions (not scored)
-[CIS - RHEL5 1.1.12 - Removable partition /media without 'noexec' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.1.12 - Removable partition /media without 'noexec' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r:^# && r:/media && !r:noexec;
 
 # 1.1.13 nosuid on removale media partitions (not scored)
-[CIS - RHEL5 1.1.13 - Removable partition /media without 'nosuid' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.1.13 - Removable partition /media without 'nosuid' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;
 
 # 1.1.14 /dev/shm: nodev
-[CIS - RHEL5 1.1.11 - /dev/shm without 'nodev' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.1.11 - /dev/shm without 'nodev' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nodev;
 
 # 1.1.15 /dev/shm: nosuid
-[CIS - RHEL5 1.1.11 - /dev/shm without 'nosuid' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.1.11 - /dev/shm without 'nosuid' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nosuid;
 
 # 1.1.16 /dev/shm: noexec
-[CIS - RHEL5 1.1.11 - /dev/shm without 'noexec' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.1.11 - /dev/shm without 'noexec' set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;
 
 # 1.1.17 sticky bit on world writable directories (Scored)
@@ -139,7 +139,7 @@ f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;
 # 1.2.4 Disable rhnsd (not scored)
 
 # 1.2.5 Disable yum-updatesd (Scored)
-[CIS - RHEL5 1.2.5 - yum-updatesd not Disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.2.5 - yum-updatesd not Disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;
 p:yum-updatesd;
 
@@ -161,23 +161,23 @@ p:yum-updatesd;
 ###############################################
 
 # 1.4.1 enable selinux in /etc/grub.conf
-[CIS - RHEL5 1.4.1 - SELinux Disabled in /etc/grub.conf] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.4.1 - SELinux Disabled in /etc/grub.conf] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/grub.conf -> !r:selinux=0;
 
 # 1.4.2 Set selinux state
-[CIS - RHEL5 1.4.2 - SELinux not set to enforcing] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.4.2 - SELinux not set to enforcing] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/selinux/config -> r:SELINUX=enforcing;
 
 # 1.4.3 Set seliux policy
-[CIS - RHEL5 1.4.2 - SELinux policy not set to targeted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.4.2 - SELinux policy not set to targeted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/selinux/config -> r:SELINUXTYPE=targeted;
 
 # 1.4.4 Remove SETroubleshoot
-[CIS - RHEL5 1.4.2 - SELinux setroubleshoot enabld] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.4.2 - SELinux setroubleshoot enabld] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dsetroubleshoot$;
 
 # 1.4.5 Disable MCS Translation service mcstrans
-[CIS - RHEL5 1.4.2 - SELinux mctrans enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.4.2 - SELinux mctrans enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dmctrans$;
 
 # 1.4.6 Check for unconfined daemons
@@ -195,15 +195,15 @@ d:$rc_dirs -> ^S\d\dmctrans$;
 # TODO (no mode tests)
 
 # 1.5.3 Set Boot Loader Password (Scored)
-[CIS - RHEL5 1.5.3 - GRUB Password not set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.5.3 - GRUB Password not set] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/boot/grub/menu.lst -> !r:^# && !r:password;
 
 # 1.5.4 Require Authentication for Single-User Mode (Scored)
-[CIS - RHEL5 1.5.4 - Authenticaion for single user mode not enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.5.4 - Authenticaion for single user mode not enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/inittab -> !r:^# && r:S:wait;
 
 # 1.5.5 Disable Interactive Boot (Scored)
-[CIS - RHEL5 1.5.5 - Interactive Boot not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.5.5 - Interactive Boot not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/sysconfig/init -> !r:^# && r:PROMPT=no;
 
 
@@ -213,22 +213,22 @@ f:/etc/sysconfig/init -> !r:^# && r:PROMPT=no;
 ###############################################
 
 # 1.6.1 Restrict Core Dumps (Scored)
-[CIS - RHEL5 1.6.1 - Interactive Boot not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.6.1 - Interactive Boot not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/security/limits.conf -> !r:^# && !r:hard\.+core\.+0;
 
 # 1.6.2 Configure ExecShield (Scored)
-[CIS - RHEL5 1.6.2 - ExecShield not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.6.2 - ExecShield not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/proc/sys/kernel/exec-shield -> 0;
 
 # 1.6.3 Enable Randomized Virtual Memory Region Placement (Scored)
-[CIS - RHEL5 1.6.3 - Randomized Virtua Memory Region Placement not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.6.3 - Randomized Virtua Memory Region Placement not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/proc/sys/kernel/randomize_va_space -> 0;
 
 # 1.6.4 Enable XD/NX Support on 32-bit x86 Systems (Scored)
 # TODO
 
 # 1.6.5 Disable Prelink (Scored)
-[CIS - RHEL5 1.6.5 - Prelink not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 1.6.5 - Prelink not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/sysconfig/prelink -> !r:PRELINKING=no;
 
 
@@ -247,7 +247,7 @@ f:/etc/sysconfig/prelink -> !r:PRELINKING=no;
 
 # 2.1.1 Remove telnet-server (Scored)
 # TODO: detect it is installed at all
-[CIS - RHEL5 2.1.1 - Telnet enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 2.1.1 - Telnet enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/xinetd.d/telnet -> !r:^# && r:disable && r:no;
 
 
@@ -255,7 +255,7 @@ f:/etc/xinetd.d/telnet -> !r:^# && r:disable && r:no;
 # TODO
 
 # 2.1.3 Remove rsh-server (Scored)
-[CIS - RHEL5 2.1.3 - rsh/rlogin/rcp enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 2.1.3 - rsh/rlogin/rcp enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/xinetd.d/rlogin -> !r:^# && r:disable && r:no;
 f:/etc/xinetd.d/rsh -> !r:^# && r:disable && r:no;
 f:/etc/xinetd.d/shell -> !r:^# && r:disable && r:no;
@@ -264,25 +264,25 @@ f:/etc/xinetd.d/shell -> !r:^# && r:disable && r:no;
 # TODO
 
 # 2.1.5 Remove NIS Client (Scored)
-[CIS - RHEL5 2.1.5 - Disable standard boot services - NIS (client) Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 2.1.5 - Disable standard boot services - NIS (client) Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dypbind$;
 
 # 2.1.6 Remove NIS Server (Scored)
-[CIS - RHEL5 2.1.5 - Disable standard boot services - NIS (server) Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 2.1.5 - Disable standard boot services - NIS (server) Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dypserv$;
 
 # 2.1.7 Remove tftp (Scored)
 # TODO
 
 # 2.1.8 Remove tftp-server (Scored)
-[CIS - RHEL5 2.1.8 - tftpd enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 2.1.8 - tftpd enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/xinetd.d/tftpd -> !r:^# && r:disable && r:no;
 
 # 2.1.9 Remove talk (Scored)
 # TODO
 
 # 2.1.10 Remove talk-server (Scored)
-[CIS - RHEL5 2.1.10 - talk enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 2.1.10 - talk enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/xinetd.d/talk -> !r:^# && r:disable && r:no;
 
 # 2.1.11 Remove xinetd (Scored)
@@ -319,7 +319,7 @@ f:/etc/xinetd.d/talk -> !r:^# && r:disable && r:no;
 ###############################################
 
 # 3.1.1 Disable Avahi Server (Scored)
-[CIS - RHEL5 3.1.1 - Avahi daemon not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 3.1.1 - Avahi daemon not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 p:avahi-daemon;
 
 # 3.1.2 Service Only via Required Protocol (Not Scored)
@@ -336,11 +336,11 @@ p:avahi-daemon;
 # 3.1.6 Restrict Published Information (if publishing is required) (Not scored)
 
 # 3.2 Set Daemon umask (Scored)
-[CIS - RHEL5 3.2 - Set daemon umask - Default umask is higher than 027] [all] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 3.2 - Set daemon umask - Default umask is higher than 027] [all] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/init.d/functions -> !r:^# && r:^umask && <:umask 027;
 
 # 3.3 Remove X Windows (Scored)
-[CIS - RHEL5 3.3 - X11 not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 3.3 - X11 not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/inittab -> !r:^# && r:id:5;
 
 # 3.4 Disable Print Server - CUPS (Not Scored)
@@ -349,13 +349,13 @@ f:/etc/inittab -> !r:^# && r:id:5;
 # TODO
 
 # 3.6 Configure Network Time Protocol (NTP) (Scored)
-#[CIS - RHEL5 3.6 - NTPD not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+#[CIS - RHEL5 - 3.6 - NTPD not disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 # TODO.
 
 # 3.7 Remove LDAP (Not Scored)
 
 # 3.8 Disable NFS and RPC (Not Scored)
-[CIS - RHEL5 3.8 - Disable standard boot services - NFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 3.8 - Disable standard boot services - NFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dnfs$;
 d:$rc_dirs -> ^S\d\dnfslock$;
 
@@ -363,31 +363,31 @@ d:$rc_dirs -> ^S\d\dnfslock$;
 # TODO
 
 # 3.10 Remove FTP Server (Not Scored)
-[CIS - RHEL5 3.10 - VSFTP enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 3.10 - VSFTP enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/xinetd.d/vsftpd -> !r:^# && r:disable && r:no;
 
 # 3.11 Remove HTTP Server (Not Scored)
-[CIS - RHEL5 3.11 - Disable standard boot services - Apache web server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 3.11 - Disable standard boot services - Apache web server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dhttpd$;
 
 # 3.12 Remove Dovecot (IMAP and POP3 services) (Not Scored)
-[CIS - RHEL5 3.12 - imap enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 3.12 - imap enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/xinetd.d/cyrus-imapd -> !r:^# && r:disable && r:no;
 
-[CIS - RHEL5 3.12 - pop3 enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 3.12 - pop3 enabled on xinetd] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/xinetd.d/dovecot -> !r:^# && r:disable && r:no;
 
 # 3.13 Remove Samba (Not Scored)
-[CIS - RHEL5 3.13 - Disable standard boot services - Samba Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 3.13 - Disable standard boot services - Samba Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dsamba$;
 d:$rc_dirs -> ^S\d\dsmb$;
 
 # 3.14 Remove HTTP Proxy Server (Not Scored)
-[CIS - RHEL5 3.14 - Disable standard boot services - Squid Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 3.14 - Disable standard boot services - Squid Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dsquid$;
 
 # 3.15 Remove SNMP Server (Not Scored)
-[CIS - RHEL5 3.15 - Disable standard boot services - SNMPD process Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 3.15 - Disable standard boot services - SNMPD process Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dsnmpd$;
 
 # 3.16 Configure Mail Transfer Agent for Local-Only Mode (Scored)
@@ -403,12 +403,12 @@ d:$rc_dirs -> ^S\d\dsnmpd$;
 ###############################################
 
 # 4.1.1 Disable IP Forwarding (Scored)
-[CIS - RHEL5 4.1.1 - Network parameters - IP Forwarding enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 4.1.1 - Network parameters - IP Forwarding enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/proc/sys/net/ipv4/ip_forward -> 1;
 f:/proc/sys/net/ipv6/ip_forward -> 1;
 
 # 4.1.2 Disable Send Packet Redirects (Scored)
-[CIS - RHEL5 4.1.2 - Network parameters - IP send redirects enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 4.1.2 - Network parameters - IP send redirects enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/proc/sys/net/ipv4/conf/all/send_redirects -> 0;
 f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;
 
@@ -418,38 +418,38 @@ f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;
 ###############################################
 
 # 4.2.1 Disable Source Routed Packet Acceptance (Scored)
-[CIS - RHEL5 4.2.1 - Network parameters - Source routing accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 4.2.1 - Network parameters - Source routing accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/proc/sys/net/ipv4/conf/all/accept_source_route -> 1;
 
 # 4.2.2 Disable ICMP Redirect Acceptance (Scored)
-CIS - RHEL5 4.2.2 - Network parameters - ICMP redirects accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+CIS - RHEL5 - 4.2.2 - Network parameters - ICMP redirects accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/proc/sys/net/ipv4/conf/all/accept_redirects -> 1;
 f:/proc/sys/net/ipv4/conf/default/accept_redirects -> 1;
 
 # 4.2.3 Disable Secure ICMP Redirect Acceptance (Scored)
-[CIS - RHEL5 4.2.3 - Network parameters - ICMP secure redirects accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 4.2.3 - Network parameters - ICMP secure redirects accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/proc/sys/net/ipv4/conf/all/secure_redirects -> 1;
 f:/proc/sys/net/ipv4/conf/default/secure_redirects -> 1;
 
 # 4.2.4 Log Suspicious Packets (Scored)
-[CIS - RHEL5 4.2.4 - Network parameters - martians not logged] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 4.2.4 - Network parameters - martians not logged] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/proc/sys/net/ipv4/conf/all/log_martians -> 0;
 
 # 4.2.5 Enable Ignore Broadcast Requests (Scored)
-[CIS - RHEL5 4.2.5 - Network parameters - ICMP broadcasts accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 4.2.5 - Network parameters - ICMP broadcasts accepted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts -> 0;
 
 # 4.2.6 Enable Bad Error Message Protection (Scored)
-[CIS - RHEL5 4.2.6 - Network parameters - Bad error message protection not enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 4.2.6 - Network parameters - Bad error message protection not enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/proc/sys/net/ipv4/icmp_ignore_bogus_error_responses -> 0;
 
 # 4.2.7 Enable RFC-recommended Source Route Validation (Scored)
-[CIS - RHEL5 4.2.7 - Network parameters - RFC Source route validation not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 4.2.7 - Network parameters - RFC Source route validation not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/proc/sys/net/ipv4/conf/all/rp_filter -> 0;
 f:/proc/sys/net/ipv4/conf/default/rp_filter -> 0;
 
 # 4.2.8 Enable TCP SYN Cookies (Scored)
-[CIS - RHEL5 4.2.8 - Network parameters - SYN Cookies not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 4.2.8 - Network parameters - SYN Cookies not enabled ] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/proc/sys/net/ipv4/tcp_syncookies -> 0;
 
 
@@ -636,7 +636,7 @@ f:/proc/sys/net/ipv4/tcp_syncookies -> 0;
 ###############################################
 
 # 6.2.1 Set SSH Protocol to 2 (Scored)
-[CIS - RHEL5 6.2.1 - SSH Configuration - Protocol version 1 enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 6.2.1 - SSH Configuration - Protocol version 1 enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+1;
 
 # 6.2.2 Set LogLevel to INFO (Scored)
@@ -648,19 +648,19 @@ f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+1;
 # 6.2.5 Set SSH MaxAuthTries to 4 or Less (Scored)
 
 # 6.2.6 Set SSH IgnoreRhosts to Yes (Scored)
-[CIS - RHEL5 6.2.6 - SSH Configuration - IgnoreRHosts disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 6.2.6 - SSH Configuration - IgnoreRHosts disabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+no;
 
 # 6.2.7 Set SSH HostbasedAuthentication to No (Scored)
-[CIS - RHEL5 6.2.7 - SSH Configuration - Host based authentication enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 6.2.7 - SSH Configuration - Host based authentication enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;
 
 # 6.2.8 Disable SSH Root Login (Scored)
-[CIS - RHEL5 6.2.8 - SSH Configuration - Root login allowed] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 6.2.8 - SSH Configuration - Root login allowed] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;
 
 # 6.2.9 Set SSH PermitEmptyPasswords to No (Scored)
-[CIS - RHEL5 6.2.9 - SSH Configuration - Empty passwords permitted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 6.2.9 - SSH Configuration - Empty passwords permitted] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;
 
 # 6.2.10 Do Not Allow Users to Set Environment Options (Scored)
@@ -785,7 +785,7 @@ f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;
 # 9.2.4 Verify No Legacy "+" Entries Exist in /etc/group File (Scored)
 
 # 9.2.5 Verify No UID 0 Accounts Exist Other Than root (Scored)
-[CIS - RHEL5 9.2.5 - Non-root account with uid 0] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - 9.2.5 - Non-root account with uid 0] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
 
 # 9.2.6 Ensure root PATH Integrity (Scored)
@@ -821,24 +821,24 @@ f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;
 # 9.2.21 Check for Presence of User .forward Files (Scored)
 
 # Other/Legacy Tests
-[CIS - RHEL5 X.X.X - Account with empty password present] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - X.X.X - Account with empty password present] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/shadow -> r:^\w+::;
 
-[CIS - RHEL5 X.X.X - User-mounted removable partition allowed on the console] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - X.X.X - User-mounted removable partition allowed on the console] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 f:/etc/security/console.perms -> r:^<console>  \d+ <cdrom>;
 f:/etc/security/console.perms -> r:^<console>  \d+ <floppy>;
 
-[CIS - RHEL5 X.X.X - Disable standard boot services - Kudzu hardware detection Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - X.X.X - Disable standard boot services - Kudzu hardware detection Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dkudzu$;
 
-[CIS - RHEL5 X.X.X - Disable standard boot services - PostgreSQL server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - X.X.X - Disable standard boot services - PostgreSQL server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dpostgresql$;
 
-[CIS - RHEL5 X.X.X - Disable standard boot services - MySQL server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - X.X.X - Disable standard boot services - MySQL server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dmysqld$;
 
-[CIS - RHEL5 X.X.X - Disable standard boot services - DNS server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - X.X.X - Disable standard boot services - DNS server Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dnamed$;
 
-[CIS - RHEL5 X.X.X - Disable standard boot services - NetFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5]
+[CIS - RHEL5 - X.X.X - Disable standard boot services - NetFS Enabled] [any] [http://www.ossec.net/wiki/index.php/CIS_RHEL5 -]
 d:$rc_dirs -> ^S\d\dnetfs$;
