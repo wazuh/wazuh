@@ -8,7 +8,7 @@
  */
 
 #include "to_json.h"
-
+#include "wazuh_external_functions.h"
 #include "shared.h"
 #include "rules.h"
 #include "cJSON.h"
@@ -39,8 +39,9 @@ char *Eventinfo_to_jsonstr(const Eventinfo *lf)
     if (lf->generated_rule->info) {
         cJSON_AddStringToObject(rule, "info", lf->generated_rule->info);
     }
-
-
+    if(lf->protocol){
+        cJSON_AddStringToObject(root, "protocol", lf->protocol);
+    }
     if (lf->action) {
         cJSON_AddStringToObject(root, "action", lf->action);
     }
@@ -62,14 +63,11 @@ char *Eventinfo_to_jsonstr(const Eventinfo *lf)
     if (lf->dstuser) {
         cJSON_AddStringToObject(root, "dstuser", lf->dstuser);
     }
-    if (lf->location) {
-        cJSON_AddStringToObject(root, "location", lf->location);
-    }
     if (lf->full_log) {
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
     }
     if (lf->filename) {
-        cJSON_AddItemToObject(root, "file", file_diff = cJSON_CreateObject());
+        cJSON_AddItemToObject(root, "SyscheckFile", file_diff = cJSON_CreateObject());
 
         cJSON_AddStringToObject(file_diff, "path", lf->filename);
 
@@ -94,6 +92,10 @@ char *Eventinfo_to_jsonstr(const Eventinfo *lf)
             cJSON_AddNumberToObject(file_diff, "perm_after", lf->perm_after);
         }
     }
+	// WAZUH MODIFICATIONS
+	// WAZUH CALL TO EXTENDED PARSE JSON
+	W_ParseJSON(root, lf);
+	// END WAZUH MODIFICATIONS
     out = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return out;
