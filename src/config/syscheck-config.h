@@ -80,5 +80,7 @@ typedef struct _config {
 
 int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile) __attribute__((nonnull(1, 2)));
 
+char *syscheck_opts2str(char *buf, int buflen, int opts);
+
 #endif /* __SYSCHECKC_H */
 
