@@ -60,9 +60,9 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <signal.h>
+#include <glob.h>
 
 #ifndef WIN32
-#include <glob.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
