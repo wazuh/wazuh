@@ -121,10 +121,13 @@ int Start_win32_Syscheck()
         r++;
     }
 
+    /* Print directories to be monitored */
     r = 0;
     while (syscheck.dir[r] != NULL) {
-        verbose("%s: INFO: Monitoring directory: '%s'.",
-                ARGV0, syscheck.dir[r]);
+	char optstr[ 100 ];
+        verbose("%s: INFO: Monitoring directory: '%s', with options %s.",
+	    ARGV0, syscheck.dir[r],
+	    syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
         r++;
     }
 
@@ -133,7 +136,6 @@ int Start_win32_Syscheck()
 	for (r = 0; syscheck.ignore[r] != NULL; r++)
 	    verbose("%s: INFO: ignoring: '%s'",
 		ARGV0, syscheck.ignore[r]);
-
 
     /* Print files with no diff. */
     if (syscheck.nodiff){
@@ -308,8 +310,10 @@ int main(int argc, char **argv)
     /* Print directories to be monitored */
     r = 0;
     while (syscheck.dir[r] != NULL) {
-        verbose("%s: INFO: Monitoring directory: '%s'.",
-                ARGV0, syscheck.dir[r]);
+	char optstr[ 100 ];
+        verbose("%s: INFO: Monitoring directory: '%s', with options %s.",
+	    ARGV0, syscheck.dir[r],
+	    syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
         r++;
     }
 
