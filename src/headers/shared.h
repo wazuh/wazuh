@@ -61,7 +61,11 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <signal.h>
+
+/* the mingw32 builder used by travis.ci can't find glob.h */
+#ifndef __MINGW32__ 
 #include <glob.h>
+#endif
 
 #ifndef WIN32
 #include <netdb.h>
