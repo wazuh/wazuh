@@ -13,7 +13,7 @@ src/external/zlib-1.2.8/zlib.pc
 src/isbigendian.c
 src/analysisd/compiled_rules/compiled_rules.h
 etc/ossec.mc
-
+src/Config.OS
 
 # Compiled programs
 src/agent-auth

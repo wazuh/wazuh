@@ -232,7 +232,7 @@ int main(int argc, char **argv)
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n",
                    shost);
 		} else if(json_output){
-				printf("[ { 'ID' : '000', 'Name' : '%s (server)', 'IP': '127.0.0.1', 'Status' : 'Active/Local' }",shost);
+				printf("[ { \"ID\" : \"000\", \"Name\" : \"%s (server)\", \"IP\": \"127.0.0.1\", \"Status\" : \"Active/Local\" }",shost);
         } else {
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         }
@@ -240,7 +240,8 @@ int main(int argc, char **argv)
 		// Closing JSON Object array
 		if(json_output)
 			 printf("]");
-        printf("\n");
+		else
+			printf("\n");
         exit(0);
     }
 
