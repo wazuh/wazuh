@@ -1015,6 +1015,8 @@ void OS_ReadMSG_analysisd(int m_queue)
             /* If configured to log all, do it */
             if (Config.logall) {
                 OS_Store(lf);
+                // Wazuh
+                jsonout_output_archive(lf);
             }
 
 CLMEM:

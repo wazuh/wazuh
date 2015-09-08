@@ -23,6 +23,7 @@ char *Eventinfo_to_jsonstr(const Eventinfo *lf)
     char *out;
 
     root = cJSON_CreateObject();
+    
     cJSON_AddItemToObject(root, "rule", rule = cJSON_CreateObject());
 
     cJSON_AddNumberToObject(rule, "level", lf->generated_rule->level);
@@ -101,3 +102,28 @@ char *Eventinfo_to_jsonstr(const Eventinfo *lf)
     return out;
 }
 
+// Wazuh
+/* Convert Archiveinfo to json */
+char *Archiveinfo_to_jsonstr(const Eventinfo *lf)
+{
+    cJSON *root;
+    char *out;
+
+    root = cJSON_CreateObject();
+    if (lf->full_log)
+        cJSON_AddStringToObject(root, "full_log", lf->full_log);
+    if (lf->location)
+        cJSON_AddStringToObject(root, "location", lf->location);
+    if(lf->year && lf->mon && lf->day && lf->hour)
+        W_JSON_ParseTimestamp(root, lf);
+    if(lf->hostname){
+        W_JSON_ParseHostname(root, lf->hostname);
+        W_JSON_ParseAgentIP(root, lf); 
+    }    
+    if (lf->location)
+       W_JSON_ParseLocation(root,lf);
+        
+    out = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return out;
+}

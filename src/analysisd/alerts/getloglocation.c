@@ -17,6 +17,8 @@ FILE *_eflog;
 FILE *_aflog;
 FILE *_fflog;
 FILE *_jflog;
+// Wazuh
+FILE *_ejflog;
 
 /* Global variables */
 static int  __crt_day;
@@ -24,7 +26,8 @@ static char __elogfile[OS_FLSIZE + 1];
 static char __alogfile[OS_FLSIZE + 1];
 static char __flogfile[OS_FLSIZE + 1];
 static char __jlogfile[OS_FLSIZE + 1];
-
+// Wazuh
+static char __ejlogfile[OS_FLSIZE + 1];
 
 void OS_InitLog()
 {
@@ -37,11 +40,13 @@ void OS_InitLog()
     memset(__elogfile, '\0', OS_FLSIZE + 1);
     memset(__flogfile, '\0', OS_FLSIZE + 1);
     memset(__jlogfile, '\0', OS_FLSIZE + 1);
+    memset(__ejlogfile, '\0', OS_FLSIZE + 1);
 
     _eflog = NULL;
     _aflog = NULL;
     _fflog = NULL;
     _jflog = NULL;
+    _ejflog = NULL;
 
     /* Set the umask */
     umask(0027);
@@ -53,7 +58,8 @@ int OS_GetLogLocation(const Eventinfo *lf)
      * Check if the year directory is there
      * If not, create it. Same for the month directory.
      */
-
+    
+     
     /* For the events */
     if (_eflog) {
         if (ftell(_eflog) == 0) {
@@ -95,7 +101,30 @@ int OS_GetLogLocation(const Eventinfo *lf)
     if (link(__elogfile, EVENTS_DAILY) == -1) {
         ErrorExit(LINK_ERROR, ARGV0, __elogfile, EVENTS_DAILY, errno, strerror(errno));
     }
+    /* For the events in JSON WAZUH */
+    if (Config.jsonout_output) {
+        /* Create the json archives logfile name */
+        snprintf(__ejlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
+                 EVENTS,
+                 lf->year,
+                 lf->mon,
+                 "archive",
+                 lf->day);
 
+        _ejflog = fopen(__ejlogfile, "a");
+
+        if (!_ejflog) {
+            ErrorExit("%s: Error opening logfile: '%s'", ARGV0, __ejlogfile);
+        }
+
+        /* Create a symlink */
+        unlink(EVENTSJSON_DAILY);
+
+        if (link(__ejlogfile, EVENTSJSON_DAILY) == -1) {
+            ErrorExit(LINK_ERROR, ARGV0, __ejlogfile, EVENTSJSON_DAILY, errno, strerror(errno));
+        }
+    }
+    
     /* For the alerts logs */
     if (_aflog) {
         if (ftell(_aflog) == 0) {

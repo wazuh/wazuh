@@ -35,6 +35,10 @@ void manage_files(int cday, int cmon, int cyear)
 
     char flogfile[OS_FLSIZE + 1];
     char flogfile_old[OS_FLSIZE + 1];
+    
+    //Wazuh
+    char ejlogfile[OS_FLSIZE + 1];
+    char ejlogfile_old[OS_FLSIZE + 1];
 
     /* Get time from the day before (for log signing) */
     tm_old = time(NULL);
@@ -53,7 +57,8 @@ void manage_files(int cday, int cmon, int cyear)
     memset(ajlogfile_old, '\0', OS_FLSIZE + 1);
     memset(flogfile, '\0', OS_FLSIZE + 1);
     memset(flogfile_old, '\0', OS_FLSIZE + 1);
-
+    memset(ejlogfile, '\0', OS_FLSIZE + 1);
+    memset(ejlogfile_old, '\0', OS_FLSIZE + 1);
     /* When the day changes, we wait up to day_wait before compressing the file */
     sleep(mond.day_wait);
 
@@ -74,6 +79,41 @@ void manage_files(int cday, int cmon, int cyear)
     OS_SignLog(elogfile, elogfile_old, 0);
     OS_CompressLog(elogfile);
 
+    /* Wazuh JSON Event logfile */
+    snprintf(ejlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
+             EVENTS,
+             cyear,
+             months[cmon],
+             "archive",
+             cday);
+    /* Wazuh JSON  Event log file old */
+    snprintf(ejlogfile_old, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
+             EVENTS,
+             pp_old->tm_year + 1900,
+             months[pp_old->tm_mon],
+             "archive",
+             pp_old->tm_mday);
+             
+    int exists_json_events = 0;
+    FILE *fopnetestjsonevents;
+
+    if ((fopnetestjsonevents = fopen(ajlogfile, "r"))) {
+        exists_json_events = 1;
+        fclose(fopnetestjsonevents);
+    }
+
+    if ((fopnetestjsonevents = fopen(ajlogfile_old, "r"))) {
+        exists_json_events = 1;
+        fclose(fopnetestjsonevents);
+    }
+
+    if (exists_json_events) {
+        /* Only if there is a file to operate on. */
+        OS_SignLog(ejlogfile, ejlogfile_old, 0);
+        OS_CompressLog(ejlogfile);
+    }
+    
+    
     /* alert logfile  */
     snprintf(alogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
              ALERTS,

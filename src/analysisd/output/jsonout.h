@@ -13,5 +13,7 @@
 #include "eventinfo.h"
 
 void jsonout_output_event(const Eventinfo *lf);
+//Wazuh
+void jsonout_output_archive(const Eventinfo *lf);
 
 #endif /* _JSONOUT_H_ */

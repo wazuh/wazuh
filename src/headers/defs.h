@@ -177,6 +177,8 @@ http://www.ossec.net/main/license/\n"
 #define ALERTSJSON_DAILY  "/logs/alerts/alerts.json"
 #define FWLOGS            "/logs/firewall"
 #define FWLOGS_DAILY      "/logs/firewall/firewall.log"
+// Wazuh
+#define EVENTSJSON_DAILY  "/logs/archives/archives.json"
 
 /* Stats directories */
 #define STATWQUEUE  "/stats/weekly-average"
