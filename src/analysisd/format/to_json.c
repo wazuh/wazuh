@@ -112,8 +112,6 @@ char *Archiveinfo_to_jsonstr(const Eventinfo *lf)
     root = cJSON_CreateObject();
     if (lf->full_log)
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
-    if (lf->location)
-        cJSON_AddStringToObject(root, "location", lf->location);
     if(lf->year && lf->mon && lf->day && lf->hour)
         W_JSON_ParseTimestamp(root, lf);
     if(lf->hostname){
