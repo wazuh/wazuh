@@ -12,7 +12,8 @@
           "notanalyzed" : {
             "mapping" : {
               "index" : "not_analyzed",
-              "type" : "string"
+              "type" : "string",
+	      "doc_values" : "true"
             },
             "match_mapping_type" : "string",
             "match" : "*"
