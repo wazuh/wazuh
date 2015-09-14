@@ -1,204 +1,199 @@
-
 {
-  "ossec" : {
-    "order" : 0,
-    "template" : "ossec*",
-    "settings" : {
-      "index.refresh_interval" : "5s"
-    },
-    "mappings" : {
-      "ossec" : {
-        "dynamic_templates" : [ {
-          "notanalyzed" : {
-            "mapping" : {
-              "index" : "not_analyzed",
-              "type" : "string",
-	      "doc_values" : "true"
-            },
-            "match_mapping_type" : "string",
-            "match" : "*"
-          }
-        } ],
-        "properties" : {
-          "srcip" : {
-            "index" : "not_analyzed",
-            "type" : "string",
-            "doc_values" : "true"
-          },
-          "offset" : {
-            "type" : "string"
-          },
-          "rule" : {
-            "properties" : {
-              "PCI_DSS" : {
-                "index" : "not_analyzed",
-                "type" : "string",
-                "doc_values" : "true"
-              },
-              "description" : {
-                "index" : "not_analyzed",
-                "type" : "string",
-                "doc_values" : "true"
-              },
-              "groups" : {
-                "index" : "not_analyzed",
-                "type" : "string",
-                "doc_values" : "true"
-              },
-              "AlertLevel" : {
-                "index" : "not_analyzed",
-                "type" : "long",
-                "doc_values" : "true"
-              },
-              "sidid" : {
-                "index" : "not_analyzed",
-                "type" : "long",
-                "doc_values" : "true"
-              },
-              "CIS" : {
-                "index" : "not_analyzed",
-                "type" : "string",
-                "doc_values" : "true"
-              }
+  "order": 0,
+  "template": "ossec*",
+  "settings": {
+    "index.refresh_interval": "5s"
+  },
+  "mappings": {
+    "ossec": {
+      "_source": {
+        "enabled": false
+      },
+      "dynamic_templates": [
+        {
+          "notanalyzed": {
+            "match": "*",
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": true
             }
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "type" : {
-            "type" : "string"
-          },
-          "full_log" : {
-            "type" : "string"
-          },
-          "srcuser" : {
-            "index" : "not_analyzed",
-            "type" : "string",
-            "doc_values" : "true"
-          },
-          "@timestamp" : {
-            "format" : "dateOptionalTime",
-            "type" : "date",
-            "doc_values" : "true"
-          },
-          "dstuser" : {
-            "index" : "not_analyzed",
-            "type" : "string",
-            "doc_values" : "true"
-          },
-          "AgentIP" : {
-            "index" : "not_analyzed",
-            "type" : "string",
-            "doc_values" : "true"
-          },
-          "@version" : {
-            "type" : "string"
-          },
-          "host" : {
-            "index" : "not_analyzed",
-            "type" : "string",
-            "doc_values" : "true"
-          },
-          "AlertsFile" : {
-            "index" : "not_analyzed",
-            "type" : "string",
-            "doc_values" : "true"
-          },
-          "location" : {
-            "index" : "not_analyzed",
-            "type" : "string",
-            "doc_values" : "true"
-          },
-          "GeoLocation" : {
-            "properties" : {
-              "timezone" : {
-                "type" : "string"
-              },
-              "area_code" : {
-                "type" : "long"
-              },
-              "ip" : {
-                "index" : "not_analyzed",
-                "type" : "string"
-              },
-              "latitude" : {
-                "type" : "double"
-              },
-              "coordinates" : {
-                "type" : "double"
-              },
-              "continent_code" : {
-                "type" : "string"
-              },
-              "city_name" : {
-                "index" : "not_analyzed",
-                "type" : "string"
-              },
-              "country_code2" : {
-                "type" : "string"
-              },
-              "country_name" : {
-                "index" : "not_analyzed",
-                "type" : "string"
-              },
-              "dma_code" : {
-                "type" : "long"
-              },
-              "country_code3" : {
-                "type" : "string"
-              },
-              "location" : {
-                "type" : "geo_point"
-              },
-              "region_name" : {
-                "index" : "not_analyzed",
-                "type" : "string"
-              },
-              "real_region_name" : {
-                "index" : "not_analyzed",
-                "type" : "string"
-              },
-              "postal_code" : {
-                "type" : "string"
-              },
-              "longitude" : {
-                "type" : "double"
-              }
-            }
-          },
-          "AgentName" : {
-            "index" : "not_analyzed",
-            "type" : "string",
-            "doc_values" : "true"
-          },
-          "SyscheckFile" : {
-            "properties" : {
-              "path" : {
-                "index" : "not_analyzed",
-                "type" : "string",
-                "doc_values" : "true"
-              },
-              "md5_before" : {
-                "index" : "not_analyzed",
-                "type" : "string",
-                "doc_values" : "true"
-              },
-              "md5_after" : {
-                "index" : "not_analyzed",
-                "type" : "string",
-                "doc_values" : "true"
-              }
-            }
-          },
-          "timestamp" : {
-            "index" : "not_analyzed",
-            "type" : "string",
-            "doc_values" : "true"
           }
         }
+      ],
+      "properties": {
+        "@timestamp": {
+          "type": "date",
+          "format": "dateOptionalTime",
+          "doc_values": true
+        },
+        "@version": {
+          "type": "string"
+        },
+        "AgentIP": {
+          "type": "string",
+          "index": "not_analyzed",
+          "doc_values": true
+        },
+        "dstuser": {
+          "type": "string",
+          "index": "not_analyzed",
+          "doc_values": true
+        },
+        "AlertsFile": {
+          "type": "string",
+          "index": "not_analyzed",
+          "doc_values": true
+        },
+        "full_log": {
+          "type": "string"
+        },
+        "GeoLocation": {
+          "properties": {
+            "area_code": {
+              "type": "long"
+            },
+            "city_name": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "continent_code": {
+              "type": "string"
+            },
+            "coordinates": {
+              "type": "double"
+            },
+            "country_code2": {
+              "type": "string"
+            },
+            "country_code3": {
+              "type": "string"
+            },
+            "country_name": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "dma_code": {
+              "type": "long"
+            },
+            "ip": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "latitude": {
+              "type": "double"
+            },
+            "location": {
+              "type": "geo_point"
+            },
+            "longitude": {
+              "type": "double"
+            },
+            "postal_code": {
+              "type": "string"
+            },
+            "real_region_name": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "region_name": {
+              "type": "string",
+              "index": "not_analyzed"
+            },
+            "timezone": {
+              "type": "string"
+            }
+          }
+        },
+        "host": {
+          "type": "string",
+          "index": "not_analyzed",
+          "doc_values": true
+        },
+        "AgentName": {
+          "type": "string",
+          "index": "not_analyzed",
+          "doc_values": true
+        },
+        "SyscheckFile": {
+          "properties": {
+            "path": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": true
+            },
+            "md5_after": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": true
+            },
+            "md5_before": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": true
+            }
+          }
+        },
+        "location": {
+          "type": "string",
+          "index": "not_analyzed",
+          "doc_values": true
+        },
+        "message": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "string"
+        },
+        "rule": {
+          "properties": {
+            "description": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": true
+            },
+            "groups": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": true
+            },
+            "AlertLevel": {
+              "type": "long",
+              "index": "not_analyzed",
+              "doc_values": true
+            },
+            "sidid": {
+              "type": "long",
+              "index": "not_analyzed",
+              "doc_values": true
+            },
+            "CIS": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": true
+            },
+            "PCI_DSS": {
+              "type": "string",
+              "index": "not_analyzed",
+              "doc_values": true
+            }
+          }
+        },
+        "srcip": {
+          "type": "string",
+          "index": "not_analyzed",
+          "doc_values": true
+        },
+        "srcuser": {
+          "type": "string",
+          "index": "not_analyzed",
+          "doc_values": true
+        },
+        "type": {
+          "type": "string"
+        }
       }
-    },
-    "aliases" : { }
+    }
   }
 }
-
