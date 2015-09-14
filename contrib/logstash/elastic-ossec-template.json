@@ -6,9 +6,6 @@
   },
   "mappings": {
     "ossec": {
-      "_source": {
-        "enabled": false
-      },
       "dynamic_templates": [
         {
           "notanalyzed": {
@@ -17,7 +14,7 @@
             "mapping": {
               "type": "string",
               "index": "not_analyzed",
-              "doc_values": true
+              "doc_values": "true"
             }
           }
         }
@@ -26,7 +23,7 @@
         "@timestamp": {
           "type": "date",
           "format": "dateOptionalTime",
-          "doc_values": true
+          "index": "not_analyzed"
         },
         "@version": {
           "type": "string"
@@ -34,17 +31,17 @@
         "AgentIP": {
           "type": "string",
           "index": "not_analyzed",
-          "doc_values": true
+          "doc_values": "true"
         },
         "dstuser": {
           "type": "string",
           "index": "not_analyzed",
-          "doc_values": true
+          "doc_values": "true"
         },
         "AlertsFile": {
           "type": "string",
           "index": "not_analyzed",
-          "doc_values": true
+          "doc_values": "true"
         },
         "full_log": {
           "type": "string"
@@ -56,7 +53,8 @@
             },
             "city_name": {
               "type": "string",
-              "index": "not_analyzed"
+              "index": "not_analyzed",
+              "doc_values": "true"
             },
             "continent_code": {
               "type": "string"
@@ -72,14 +70,16 @@
             },
             "country_name": {
               "type": "string",
-              "index": "not_analyzed"
+              "index": "not_analyzed",
+              "doc_values": "true"
             },
             "dma_code": {
               "type": "long"
             },
             "ip": {
               "type": "string",
-              "index": "not_analyzed"
+              "index": "not_analyzed",
+              "doc_values": "true"
             },
             "latitude": {
               "type": "double"
@@ -95,11 +95,13 @@
             },
             "real_region_name": {
               "type": "string",
-              "index": "not_analyzed"
+              "index": "not_analyzed",
+              "doc_values": "true"
             },
             "region_name": {
               "type": "string",
-              "index": "not_analyzed"
+              "index": "not_analyzed",
+              "doc_values": "true"
             },
             "timezone": {
               "type": "string"
@@ -109,36 +111,36 @@
         "host": {
           "type": "string",
           "index": "not_analyzed",
-          "doc_values": true
+          "doc_values": "true"
         },
         "AgentName": {
           "type": "string",
           "index": "not_analyzed",
-          "doc_values": true
+          "doc_values": "true"
         },
         "SyscheckFile": {
           "properties": {
             "path": {
               "type": "string",
               "index": "not_analyzed",
-              "doc_values": true
+              "doc_values": "true"
             },
             "md5_after": {
               "type": "string",
               "index": "not_analyzed",
-              "doc_values": true
+              "doc_values": "true"
             },
             "md5_before": {
               "type": "string",
               "index": "not_analyzed",
-              "doc_values": true
+              "doc_values": "true"
             }
           }
         },
         "location": {
           "type": "string",
           "index": "not_analyzed",
-          "doc_values": true
+          "doc_values": "true"
         },
         "message": {
           "type": "string"
@@ -151,44 +153,44 @@
             "description": {
               "type": "string",
               "index": "not_analyzed",
-              "doc_values": true
+              "doc_values": "true"
             },
             "groups": {
               "type": "string",
               "index": "not_analyzed",
-              "doc_values": true
+              "doc_values": "true"
             },
             "AlertLevel": {
               "type": "long",
               "index": "not_analyzed",
-              "doc_values": true
+              "doc_values": "true"
             },
             "sidid": {
               "type": "long",
               "index": "not_analyzed",
-              "doc_values": true
+              "doc_values": "true"
             },
             "CIS": {
               "type": "string",
               "index": "not_analyzed",
-              "doc_values": true
+              "doc_values": "true"
             },
             "PCI_DSS": {
               "type": "string",
               "index": "not_analyzed",
-              "doc_values": true
+              "doc_values": "true"
             }
           }
         },
         "srcip": {
           "type": "string",
           "index": "not_analyzed",
-          "doc_values": true
+          "doc_values": "true"
         },
         "srcuser": {
           "type": "string",
           "index": "not_analyzed",
-          "doc_values": true
+          "doc_values": "true"
         },
         "type": {
           "type": "string"
