@@ -70,8 +70,3 @@ src/test_os_regex
 src/test_os_xml
 src/test_os_zlib
 src/test_shared
-
-# Documentation sphinx build files
-docs/_build
-docs/_static
-docs/_templates
