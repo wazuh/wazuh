@@ -1,0 +1,1 @@
+cmd_Release/obj.target/bson.node := flock ./Release/linker.lock g++ -shared -pthread -rdynamic -m64  -Wl,-soname=bson.node -o Release/obj.target/bson.node -Wl,--start-group Release/obj.target/bson/ext/bson.o -Wl,--end-group 

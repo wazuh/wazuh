@@ -1,0 +1,1 @@
+Wazuh OSSEC RESTful API

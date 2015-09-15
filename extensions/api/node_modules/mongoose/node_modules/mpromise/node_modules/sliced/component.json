@@ -1,0 +1,13 @@
+{
+  "name": "sliced",
+  "version": "0.0.3",
+  "description": "A faster Node.js alternative to Array.prototype.slice.call(arguments)",
+  "repo" : "aheckmann/sliced",
+  "keywords": [
+    "arguments",
+    "slice",
+    "array"
+  ],
+  "author": "Aaron Heckmann <aaron.heckmann+github@gmail.com>",
+  "license": "MIT"
+}
