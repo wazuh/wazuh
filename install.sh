@@ -228,6 +228,10 @@ UseRootcheck()
         echo "    <system_audit>$INSTALLDIR/etc/shared/cis_rhel_linux_rcl.txt</system_audit>" >> $NEWCONFIG
         echo "    <system_audit>$INSTALLDIR/etc/shared/cis_rhel5_linux_rcl.txt</system_audit>" >> $NEWCONFIG
         echo "  </rootcheck>" >> $NEWCONFIG
+	# Patch for systems that use s-nail instead of GNU Mailutils (such as Arch Linux).
+	if strings /usr/bin/mail | grep "x-shsh bash" 1> /dev/null; then
+	  sed -i 's/mail        !bash|/mail        !/' ./src/rootcheck/db/rootkit_trojans.txt
+	fi
     else
       echo "" >> $NEWCONFIG
       echo "  <rootcheck>" >> $NEWCONFIG

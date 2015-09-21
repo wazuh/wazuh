@@ -1,0 +1,18 @@
+ossec-hids (2.8.2-2) unstable; urgency=low
+
+  * Added sticky bit to ossec tmp directory
+  * Set maximum number of agents to 16,384
+  * Included contrib/ossec-batch-manager.pl
+  * Included contrib/ossec-eps.sh
+  * Included contrib/compile_alerts.pl
+  * Included contrib/config2xml
+  * Set ossec users home to /var/ossec/
+  * Added linux-libc-dev build dependency to Debian control file
+
+ -- Santiago Bassett <santiago.bassett@gmail.com>  Mon, 15 Jun 2015 08:43:10 +0000
+
+ossec-hids (2.8.2-1) unstable; urgency=low
+
+  * 2.8.2 Initial release. Includes several fixes, and patch for CVE-2015-3222 
+
+ -- Santiago Bassett <santiago.bassett@gmail.com>  Mon, 15 Jun 2015 08:43:10 +0000

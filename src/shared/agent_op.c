@@ -86,6 +86,13 @@ char *os_read_agent_name()
     /* Get name */
     if (fgets(buf, 1024, fp)) {
         char *ret = NULL;
+	int len;
+
+	// strip the newlines
+	len = strlen(buf) - 1; 
+	while (len > 0 && buf[len] == '\n') 
+	    buf[len--] = '\0'; 
+
         os_strdup(buf, ret);
         fclose(fp);
 
