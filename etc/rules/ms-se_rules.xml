@@ -57,9 +57,9 @@
     <id>^5007$</id>
     <description>Microsoft Security Essentials - Configuration changed.</description>
     <group>policy_changed,</group>
-
   </rule>
-    <rule id="7721" level="9">
+
+  <rule id="7721" level="9">
     <if_sid>7701</if_sid>
     <id>^5008$</id>
     <description>Microsoft Security Essentials - Service failed.</description>
