@@ -13,7 +13,7 @@ void W_ParseJSON(cJSON *root, const Eventinfo *lf){
 		 W_JSON_ParseAgentIP(root, lf);
 	 }
 	 // Parse timestamp
-	 if(lf->year && lf->mon && lf->day && lf->hour){
+	 if(lf->year && lf->mon && lf->day && lf->hour){ 
 		 W_JSON_ParseTimestamp(root, lf);
 	 }
 	 // Parse Location
@@ -23,8 +23,8 @@ void W_ParseJSON(cJSON *root, const Eventinfo *lf){
 	// Parse groups && Parse PCIDSS && Parse CIS
 	if (lf->generated_rule->group) {
        W_JSON_ParseGroups(root,lf);
-	   W_JSON_ParsePCIDSS(root,lf);
-	   W_JSON_ParseCIS(root,lf);
+	   W_JSON_ParsePCIDSS(root);
+	   W_JSON_ParseCIS(root);
     }
 	// Parse CIS and PCIDSS rules from rootcheck .txt benchmarks
 	if (lf->full_log) {
@@ -107,11 +107,12 @@ void W_ParseJSON(cJSON *root, const Eventinfo *lf){
  
  
  // Getting CIS field from rule groups
- void W_JSON_ParseCIS(cJSON *root, const Eventinfo *lf){
+ void W_JSON_ParseCIS(cJSON *root){
 	cJSON *groups;
 	cJSON *group;
 	cJSON *rule;
 	cJSON *cis;
+	cis = cJSON_CreateArray();
 	int i;
 	regex_t r;
 	const char * regex_text;
@@ -130,12 +131,12 @@ void W_ParseJSON(cJSON *root, const Eventinfo *lf){
 	compile_regex(& r, regex_text);
 	for(i = 0; i < totalGroups; i++){
 		group = cJSON_GetArrayItem(groups,i);
-		matches = match_regex(& r, cJSON_Print(group), &results, 2);
+		matches = match_regex(& r, cJSON_Print(group), results, 2);
 		if(matches == -1){
 			if(foundCIS == 0){
 				foundCIS = 1;
 				cJSON_AddItemToArray(groups, cJSON_CreateString("cis"));
-				cJSON_AddItemToObject(rule,"CIS", cis = cJSON_CreateArray());
+				cJSON_AddItemToObject(rule,"CIS", cis);
 			}			
 			memset(buffer, '\0', sizeof(buffer));
 			strncpy(buffer, results[1], 20);
@@ -149,7 +150,7 @@ void W_ParseJSON(cJSON *root, const Eventinfo *lf){
 	int counter = 0;
 	while(counter < cJSON_GetArraySize(groups)){
 		group = cJSON_GetArrayItem(groups,counter);
-		matches = match_regex(& r, cJSON_Print(group), &results, 2);
+		matches = match_regex(& r, cJSON_Print(group), results, 2);
 		if(matches == -1){
 			cJSON_DeleteItemFromArray(groups,counter);
 			counter--;
@@ -160,11 +161,12 @@ void W_ParseJSON(cJSON *root, const Eventinfo *lf){
  }
  
  // Getting PCI DSS field from rule groups
- void W_JSON_ParsePCIDSS(cJSON *root, const Eventinfo *lf){
+ void W_JSON_ParsePCIDSS(cJSON *root){
 	cJSON *groups;
 	cJSON *group;
 	cJSON *rule;
 	cJSON *pci;
+	pci = cJSON_CreateArray();
 	int i;
 	regex_t r;
 	const char * regex_text;
@@ -184,12 +186,12 @@ void W_ParseJSON(cJSON *root, const Eventinfo *lf){
 	
 	for(i = 0; i < totalGroups; i++){
 		group = cJSON_GetArrayItem(groups,i);
-		matches = match_regex(& r, cJSON_Print(group), &results, 1);
+		matches = match_regex(& r, cJSON_Print(group), results, 1);
 		if(matches == -1){
 			//cJSON_DeleteItemFromArray(groups,i);
 			if(foundPCI == 0){
 				foundPCI = 1;
-				cJSON_AddItemToObject(rule,"PCI_DSS", pci = cJSON_CreateArray());
+				cJSON_AddItemToObject(rule,"PCI_DSS", pci);
 				cJSON_AddItemToArray(groups, cJSON_CreateString("pci_dss"));
 			}
 			memset(buffer, '\0', sizeof(buffer));
@@ -202,7 +204,7 @@ void W_ParseJSON(cJSON *root, const Eventinfo *lf){
 	int counter = 0;
 	while(counter < cJSON_GetArraySize(groups)){
 		group = cJSON_GetArrayItem(groups,counter);
-		matches = match_regex(& r, cJSON_Print(group), &results, 1);
+		matches = match_regex(& r, cJSON_Print(group), results, 1);
 		if(matches == -1){
 			cJSON_DeleteItemFromArray(groups,counter);
 			counter--;
@@ -243,8 +245,8 @@ void W_JSON_ParseHostname(cJSON *root, char *hostname){
 		int index;
 		e = strchr(string, ')');
 		index = (int)(e - string);
-		str_cut(&string, index, -1);
-		str_cut(&string, 0, 1);
+		str_cut(string, index, -1);
+		str_cut(string, 0, 1);
 		cJSON_AddStringToObject(root, "hostname", string);
 	}else{
 		cJSON_AddStringToObject(root, "hostname", hostname); 
@@ -268,11 +270,11 @@ void W_JSON_ParseHostname(cJSON *root, char *hostname){
        int index;
        e = strchr(string, ')');
        index = (int)(e - string);
-       str_cut(&string, 0, index);
-       str_cut(&string, 0, 2);
+       str_cut(string, 0, index);
+       str_cut(string, 0, 2);
        e = strchr(string, '-');
        index = (int)(e - string);
-       str_cut(&string, index, -1);
+       str_cut(string, index, -1);
        cJSON_AddStringToObject(root, "agentip", string);
     }
 	 
@@ -286,8 +288,8 @@ void W_JSON_ParseHostname(cJSON *root, char *hostname){
 	 int index;
 	 e = strchr(string, '>');
 	 index = (int)(e - string);
-	 str_cut(&string, 0, index);
-	 str_cut(&string, 0, 1);
+	 str_cut(string, 0, index);
+	 str_cut(string, 0, 1);
 	 cJSON_AddStringToObject(root, "location", string);
   }else{
 	 cJSON_AddStringToObject(root, "location", lf->location);
@@ -297,7 +299,7 @@ void W_JSON_ParseHostname(cJSON *root, char *hostname){
  
 #define MAX_ERROR_MSG 0x1000
 // Regex compilator 
-static int compile_regex (regex_t * r, const char * regex_text)
+int compile_regex (regex_t * r, const char * regex_text)
 {
     int status = regcomp (r, regex_text, REG_EXTENDED|REG_NEWLINE);
     if (status != 0) {
@@ -316,7 +318,7 @@ static int compile_regex (regex_t * r, const char * regex_text)
  */
 // Reglex matcher to extract some strings from differentes LF fields.
 // Results is static array because for now we don't need anymore fields.
-static int match_regex (regex_t * r, const char * to_match, char results[2][100], int totalResults)
+int match_regex (regex_t * r, const char * to_match, char results[2][100], int totalResults)
 {
     const char * p = to_match;
 	// 4 is max of matches to found.

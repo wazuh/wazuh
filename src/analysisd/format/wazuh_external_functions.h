@@ -11,8 +11,8 @@
 #include <regex.h>
 
 int str_cut(char *str, int begin, int len);
-static int compile_regex (regex_t * r, const char * regex_text);
-static int match_regex (regex_t * r, const char * to_match, char results[2][100], int totalResults);
+int compile_regex (regex_t * r, const char * regex_text);
+int match_regex (regex_t * r, const char * to_match, char results[2][100], int totalResults);
 // Main function, call the others parsers.
 void W_ParseJSON(cJSON *root, const Eventinfo *lf);
 // Parse hostname
@@ -26,9 +26,9 @@ void W_JSON_ParseLocation(cJSON *root, const Eventinfo *lf);
 // Parse Groups
 void W_JSON_ParseGroups(cJSON *root, const Eventinfo *lf);
 // Parse PCI DSS
-void W_JSON_ParsePCIDSS(cJSON *root, const Eventinfo *lf);
+void W_JSON_ParsePCIDSS(cJSON *root);
 // Parse CIS
-void W_JSON_ParseCIS(cJSON *root, const Eventinfo *lf);
+void W_JSON_ParseCIS(cJSON *root);
 // Parse ROOTCHECK PCI DSS
 void W_JSON_ParseRootcheckPCIDSS(cJSON *root, const Eventinfo *lf);
 // Parse ROOTCHECK CIS
