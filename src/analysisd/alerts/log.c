@@ -150,7 +150,7 @@ void OS_Store(const Eventinfo *lf)
     }
 
     fprintf(_eflog,
-            "%d test %s %02d %s %s%s%s %s\n",
+            "%d %s %02d %s %s%s%s %s\n",
             lf->year,
             lf->mon,
             lf->day,
