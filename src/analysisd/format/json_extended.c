@@ -3,7 +3,7 @@
  * 
  */
 
-#include "wazuh_external_functions.h"
+#include "json_extended.h"
 #include <stddef.h>
 
 void W_ParseJSON(cJSON *root, const Eventinfo *lf){

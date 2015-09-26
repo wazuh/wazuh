@@ -17,7 +17,6 @@ FILE *_eflog;
 FILE *_aflog;
 FILE *_fflog;
 FILE *_jflog;
-// Wazuh
 FILE *_ejflog;
 
 /* Global variables */
@@ -26,7 +25,6 @@ static char __elogfile[OS_FLSIZE + 1];
 static char __alogfile[OS_FLSIZE + 1];
 static char __flogfile[OS_FLSIZE + 1];
 static char __jlogfile[OS_FLSIZE + 1];
-// Wazuh
 static char __ejlogfile[OS_FLSIZE + 1];
 
 void OS_InitLog()
@@ -101,7 +99,7 @@ int OS_GetLogLocation(const Eventinfo *lf)
     if (link(__elogfile, EVENTS_DAILY) == -1) {
         ErrorExit(LINK_ERROR, ARGV0, __elogfile, EVENTS_DAILY, errno, strerror(errno));
     }
-    /* For the events in JSON WAZUH */
+    /* For the events in JSON */
     if (Config.jsonout_output) {
         /* Create the json archives logfile name */
         snprintf(__ejlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",

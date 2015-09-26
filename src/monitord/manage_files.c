@@ -36,7 +36,6 @@ void manage_files(int cday, int cmon, int cyear)
     char flogfile[OS_FLSIZE + 1];
     char flogfile_old[OS_FLSIZE + 1];
     
-    //Wazuh
     char ejlogfile[OS_FLSIZE + 1];
     char ejlogfile_old[OS_FLSIZE + 1];
 
@@ -79,14 +78,14 @@ void manage_files(int cday, int cmon, int cyear)
     OS_SignLog(elogfile, elogfile_old, 0);
     OS_CompressLog(elogfile);
 
-    /* Wazuh JSON Event logfile */
+    /* JSON Event logfile */
     snprintf(ejlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
              EVENTS,
              cyear,
              months[cmon],
              "archive",
              cday);
-    /* Wazuh JSON  Event log file old */
+    /* JSON  Event log file old */
     snprintf(ejlogfile_old, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
              EVENTS,
              pp_old->tm_year + 1900,

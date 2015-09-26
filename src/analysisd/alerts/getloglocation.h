@@ -27,7 +27,6 @@ extern FILE *_ejflog;
 extern FILE *_aflog;
 extern FILE *_fflog;
 extern FILE *_jflog;
-// Wazuh
 extern FILE *_ejflog;
 
 #endif /* __GETLL_H */

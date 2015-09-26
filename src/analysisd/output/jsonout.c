@@ -23,7 +23,6 @@ void jsonout_output_event(const Eventinfo *lf)
     free(json_alert);
     return;
 }
-// Wazuh
 void jsonout_output_archive(const Eventinfo *lf)
 {
     char *json_alert = Archiveinfo_to_jsonstr(lf);

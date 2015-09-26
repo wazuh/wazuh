@@ -8,7 +8,7 @@
  */
 
 #include "to_json.h"
-#include "wazuh_external_functions.h"
+#include "json_extended.h"
 #include "shared.h"
 #include "rules.h"
 #include "cJSON.h"
@@ -93,16 +93,11 @@ char *Eventinfo_to_jsonstr(const Eventinfo *lf)
             cJSON_AddNumberToObject(file_diff, "perm_after", lf->perm_after);
         }
     }
-	// WAZUH MODIFICATIONS
-	// WAZUH CALL TO EXTENDED PARSE JSON
-	W_ParseJSON(root, lf);
-	// END WAZUH MODIFICATIONS
+    W_ParseJSON(root, lf);
     out = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return out;
 }
-
-// Wazuh
 /* Convert Archiveinfo to json */
 char *Archiveinfo_to_jsonstr(const Eventinfo *lf)
 {
