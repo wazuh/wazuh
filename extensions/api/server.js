@@ -33,10 +33,10 @@ res.setHeader('Access-Control-Allow-Origin', '*');
 
 // test route to make sure everything is working (accessed at GET http://localhost:8080/api)
 router.get('/', function(req, res) {
-    res.json({ message: 'hooray! welcome to our api!' });   
+    res.json({ message: 'OSSEC-API' });   
 });
 
-// more routes for our API will happen here
+// Getting agents list
 router.route('/agents')
 	.get(function(req, res) {
 		var exec = require('child_process').exec;
@@ -52,9 +52,27 @@ router.route('/agents')
 	});
 	
 
+// Getting agent info
+router.route('/agents/:agent_id')
+	.get(function(req, res) {
+		var exec = require('child_process').exec;
+		console.log("es" + req.params.agent_id);
+		agent_id = req.params.agent_id;
+		exec('/var/ossec/bin/agent_control -j -i '+ agent_id, function(error, stdout, stderr) {
+			console.log('stdout: ' + stdout);
+			console.log('stderr: ' + stderr);
+			var response = JSON.parse(stdout);
+			res.status(200).json(response);
+			if (error !== null) {
+				console.log('exec error: ' + error);
+			}
+		});
+	});
+	
+
 // REGISTER OUR ROUTES -------------------------------
 // all of our routes will be prefixed with /api
-app.use('/api', router);
+app.use('/', router);
 
 // START THE SERVER
 // =============================================================================

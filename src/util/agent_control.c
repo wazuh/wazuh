@@ -253,8 +253,18 @@ int main(int argc, char **argv)
 
             agt_id = OS_IsAllowedID(&keys, agent_id);
             if (agt_id < 0) {
-                printf("\n** Invalid agent id '%s'.\n", agent_id);
-                helpmsg();
+                if(json_output){
+                    cJSON *root;
+                    root = cJSON_CreateObject();
+                    cJSON_AddNumberToObject(root, "error", 1); 
+                    cJSON_AddStringToObject(root, "description", "Invalid agent id"); 
+                    printf("%s",cJSON_PrintUnformatted(root));
+                    cJSON_Delete(root);
+                    exit(1);
+                }else{
+                  printf("\n** Invalid agent id '%s'.\n", agent_id);
+                  helpmsg();
+                }
             }
         } else {
             /* server */
@@ -271,9 +281,11 @@ int main(int argc, char **argv)
         final_ip[128] = '\0';
         final_mask[128] = '\0';
         cJSON *root;
+        cJSON *response;
 
         if(json_output){
-            root = cJSON_CreateObject(); 
+            root = cJSON_CreateObject();
+            cJSON_AddItemToObject(root, "response", response = cJSON_CreateObject());
         }
         if (!csv_output && !json_output) {
             printf("\nOSSEC HIDS %s. Agent information:", ARGV0);
@@ -297,10 +309,10 @@ int main(int argc, char **argv)
                 printf("   IP address: %s\n", final_ip);
                 printf("   Status:     %s\n\n", print_agent_status(agt_status));
             }else if(json_output){  
-                cJSON_AddStringToObject(root, "id", keys.keyentries[agt_id]->id); 
-                cJSON_AddStringToObject(root, "name", keys.keyentries[agt_id]->name); 
-                cJSON_AddStringToObject(root, "ip", final_ip); 
-                cJSON_AddStringToObject(root, "status", print_agent_status(agt_status)); 
+                cJSON_AddStringToObject(response, "id", keys.keyentries[agt_id]->id); 
+                cJSON_AddStringToObject(response, "name", keys.keyentries[agt_id]->name); 
+                cJSON_AddStringToObject(response, "ip", final_ip); 
+                cJSON_AddStringToObject(response, "status", print_agent_status(agt_status)); 
             } else {
                 printf("%s,%s,%s,%s,",
                        keys.keyentries[agt_id]->id,
@@ -318,10 +330,10 @@ int main(int argc, char **argv)
                 printf("   IP address: 127.0.0.1\n");
                 printf("   Status:     %s/Local\n\n", print_agent_status(agt_status));
             }else if(json_output){  
-                cJSON_AddStringToObject(root, "id", "000 (local instance)"); 
-                cJSON_AddStringToObject(root, "name", shost); 
-                cJSON_AddStringToObject(root, "ip", "127.0.0.1"); 
-                cJSON_AddStringToObject(root, "status", print_agent_status(agt_status)); 
+                cJSON_AddStringToObject(response, "id", "000 (local instance)"); 
+                cJSON_AddStringToObject(response, "name", shost); 
+                cJSON_AddStringToObject(response, "ip", "127.0.0.1"); 
+                cJSON_AddStringToObject(response, "status", print_agent_status(agt_status)); 
             } else {
                 printf("000,%s,127.0.0.1,%s/Local,",
                        shost,
@@ -344,11 +356,11 @@ int main(int argc, char **argv)
                 printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
             }
         }else if(json_output){  
-                cJSON_AddStringToObject(root, "operating_system", agt_info->os); 
-                cJSON_AddStringToObject(root, "client_version", agt_info->version); 
-                cJSON_AddStringToObject(root, "last_keepalive", agt_info->last_keepalive);
-                cJSON_AddStringToObject(root, "syscheck_last", agt_info->syscheck_time);    
-                cJSON_AddStringToObject(root, "rootcheck_last", agt_info->rootcheck_time);        
+                cJSON_AddStringToObject(response, "operating_system", agt_info->os); 
+                cJSON_AddStringToObject(response, "client_version", agt_info->version); 
+                cJSON_AddStringToObject(response, "last_keepalive", agt_info->last_keepalive);
+                cJSON_AddStringToObject(response, "syscheck_last", agt_info->syscheck_time);    
+                cJSON_AddStringToObject(response, "rootcheck_last", agt_info->rootcheck_time);        
         } else {
             printf("%s,%s,%s,%s,%s,\n",
                    agt_info->os,
@@ -358,6 +370,7 @@ int main(int argc, char **argv)
                    agt_info->rootcheck_time);
         }
         if(json_output){
+            cJSON_AddNumberToObject(root, "error", 0); 
             printf("%s",cJSON_PrintUnformatted(root));
             cJSON_Delete(root);
         }
