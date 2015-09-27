@@ -3,8 +3,8 @@
  * 
  */
 
- #ifndef __WAZUH_EXTERNAL_FUNCTIONS_H__
-#define __WAZUH_EXTERNAL_FUNCTIONS_H__
+#ifndef __JSON_EXTENDED_H__
+#define __JSON_EXTENDED_H__
 
 #include "eventinfo.h"
 #include "cJSON.h"

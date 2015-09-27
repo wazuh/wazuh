@@ -9,6 +9,7 @@
 
 #include "addagent/manage_agents.h"
 #include "sec.h"
+#include "external/cJSON/cJSON.h"
 
 #undef ARGV0
 #define ARGV0 "agent_control"
@@ -267,11 +268,14 @@ int main(int argc, char **argv)
         char final_ip[128 + 1];
         char final_mask[128 + 1];
         agent_info *agt_info;
-
         final_ip[128] = '\0';
         final_mask[128] = '\0';
+        cJSON *root;
 
-        if (!csv_output) {
+        if(json_output){
+            root = cJSON_CreateObject(); 
+        }
+        if (!csv_output && !json_output) {
             printf("\nOSSEC HIDS %s. Agent information:", ARGV0);
         }
 
@@ -287,11 +291,16 @@ int main(int argc, char **argv)
             snprintf(final_ip, 128, "%s%s", keys.keyentries[agt_id]->ip->ip,
                      final_mask);
 
-            if (!csv_output) {
+            if (!csv_output && !json_output) {
                 printf("\n   Agent ID:   %s\n", keys.keyentries[agt_id]->id);
                 printf("   Agent Name: %s\n", keys.keyentries[agt_id]->name);
                 printf("   IP address: %s\n", final_ip);
                 printf("   Status:     %s\n\n", print_agent_status(agt_status));
+            }else if(json_output){  
+                cJSON_AddStringToObject(root, "id", keys.keyentries[agt_id]->id); 
+                cJSON_AddStringToObject(root, "name", keys.keyentries[agt_id]->name); 
+                cJSON_AddStringToObject(root, "ip", final_ip); 
+                cJSON_AddStringToObject(root, "status", print_agent_status(agt_status)); 
             } else {
                 printf("%s,%s,%s,%s,",
                        keys.keyentries[agt_id]->id,
@@ -303,11 +312,16 @@ int main(int argc, char **argv)
             agt_status = get_agent_status(NULL, NULL);
             agt_info = get_agent_info(NULL, "127.0.0.1");
 
-            if (!csv_output) {
+            if (!csv_output && !json_output) {
                 printf("\n   Agent ID:   000 (local instance)\n");
                 printf("   Agent Name: %s\n", shost);
                 printf("   IP address: 127.0.0.1\n");
                 printf("   Status:     %s/Local\n\n", print_agent_status(agt_status));
+            }else if(json_output){  
+                cJSON_AddStringToObject(root, "id", "000 (local instance)"); 
+                cJSON_AddStringToObject(root, "name", shost); 
+                cJSON_AddStringToObject(root, "ip", "127.0.0.1"); 
+                cJSON_AddStringToObject(root, "status", print_agent_status(agt_status)); 
             } else {
                 printf("000,%s,127.0.0.1,%s/Local,",
                        shost,
@@ -315,7 +329,7 @@ int main(int argc, char **argv)
             }
         }
 
-        if (!csv_output) {
+        if (!csv_output && !json_output) {
             printf("   Operating system:    %s\n", agt_info->os);
             printf("   Client version:      %s\n", agt_info->version);
             printf("   Last keep alive:     %s\n\n", agt_info->last_keepalive);
@@ -329,6 +343,12 @@ int main(int argc, char **argv)
                 printf("   Syscheck last started  at: %s\n", agt_info->syscheck_time);
                 printf("   Rootcheck last started at: %s\n", agt_info->rootcheck_time);
             }
+        }else if(json_output){  
+                cJSON_AddStringToObject(root, "operating_system", agt_info->os); 
+                cJSON_AddStringToObject(root, "client_version", agt_info->version); 
+                cJSON_AddStringToObject(root, "last_keepalive", agt_info->last_keepalive);
+                cJSON_AddStringToObject(root, "syscheck_last", agt_info->syscheck_time);    
+                cJSON_AddStringToObject(root, "rootcheck_last", agt_info->rootcheck_time);        
         } else {
             printf("%s,%s,%s,%s,%s,\n",
                    agt_info->os,
@@ -337,7 +357,10 @@ int main(int argc, char **argv)
                    agt_info->syscheck_time,
                    agt_info->rootcheck_time);
         }
-
+        if(json_output){
+            printf("%s",cJSON_PrintUnformatted(root));
+            cJSON_Delete(root);
+        }
         exit(0);
     }
 
