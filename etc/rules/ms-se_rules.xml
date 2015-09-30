@@ -19,37 +19,94 @@
 <group name="windows,mse,">
   <rule id="7701" level="0">
     <category>windows</category>
+    <if_sid>18101,18102,18103</if_sid>
     <extra_data>^Microsoft Antimalware</extra_data>
     <description>Grouping of Microsoft Security Essentials rules.</description>
   </rule>
 
   <rule id="7710" level="12">
     <if_sid>7701</if_sid>
-    <id>^1008$</id>
+    <id>^1118$|^1119$</id>
     <group>virus</group>
     <description>Microsoft Security Essentials - Virus detected, but unable to remove.</description>
   </rule>
 
   <rule id="7711" level="7">
     <if_sid>7701</if_sid>
-    <id>^1007$</id>
+    <id>^1107$</id>
     <group>virus</group>
     <description>Microsoft Security Essentials - Virus detected and properly removed.</description>
   </rule>
 
   <rule id="7712" level="7">
     <if_sid>7701</if_sid>
-    <id>^1015$|^1006$</id>
+    <id>^1119$|^1118$|^1117$|^1116$</id>
     <group>virus</group>
     <description>Microsoft Security Essentials - Virus detected.</description>
   </rule>
-  
+    
+  <rule id="7713" level="7">
+    <if_sid>7701</if_sid>
+    <id>^1015$</id>
+    <group>virus,</group>
+    <description>Microsoft Security Essentials - Suspicious activity detected.</description>
+  </rule>
+
   <rule id="7720" level="3">
     <if_sid>7701</if_sid>
     <id>^5007$</id>
     <description>Microsoft Security Essentials - Configuration changed.</description>
     <group>policy_changed,</group>
   </rule>
+
+  <rule id="7721" level="9">
+    <if_sid>7701</if_sid>
+    <id>^5008$</id>
+    <description>Microsoft Security Essentials - Service failed.</description>
+  </rule>
+
+  <rule id="7722" level="9">
+    <if_sid>7701</if_sid>
+    <id>^3002$</id>
+    <description>Microsoft Security Essentials - Real time protection failed.</description>
+  </rule>
+
+  <rule id="7723" level="8">
+    <if_sid>7701</if_sid>
+    <id>^2012$</id>
+    <description>Microsoft Security Essentials - Cannot use Dynamic Signature Service.</description>
+  </rule>
+
+  <rule id="7724" level="8">
+    <if_sid>7701</if_sid>
+    <id>^2004$</id>
+    <description>Microsoft Security Essentials - Loading definitions failed. Using last good set.</description>
+  </rule>
+
+  <rule id="7725" level="8">
+    <if_sid>7701</if_sid>
+    <id>^2003$</id>
+    <description>Microsoft Security Essentials - Engine update failed.</description>
+  </rule>
+
+  <rule id="7726" level="8">
+    <if_sid>7701</if_sid>
+    <id>^2001$</id>
+    <description>Microsoft Security Essentials - Definitions update failed.</description>
+  </rule>
+
+  <rule id="7727" level="7">
+    <if_sid>7701</if_sid>
+    <id>^1005$</id>
+    <description>Microsoft Security Essentials - Scan error. Scan has stopped.</description>
+  </rule>
+
+  <rule id="7728" level="5">
+    <if_sid>7701</if_sid>
+    <id>^1002$</id>
+    <description>Microsoft Security Essentials - Scan stopped before completion.</description>
+  </rule>
+
 
   <rule id="7731" level="5">
     <if_sid>7711, 7712</if_sid>

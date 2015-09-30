@@ -96,7 +96,7 @@
 
 
 
-<!-- Privilege scalation messages -->
+<!-- Privilege escalation messages -->
 <group name="syslog,elevation_of_privilege,">
   <rule id="40501" level="15" timeframe="300" frequency="2">
     <if_group>adduser</if_group>

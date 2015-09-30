@@ -214,13 +214,17 @@ char *seechanges_addfile(const char *filename)
 
     old_location[OS_MAXSTR] = '\0';
     tmp_location[OS_MAXSTR] = '\0';
+    diff_location[OS_MAXSTR] = '\0';
+    old_tmp[OS_MAXSTR] = '\0';
+    new_tmp[OS_MAXSTR] = '\0';
+    diff_tmp[OS_MAXSTR] = '\0';
     diff_cmd[OS_MAXSTR] = '\0';
     md5sum_new[0] = '\0';
     md5sum_old[0] = '\0';
 
     snprintf(
         old_location,
-        sizeof(old_location),
+        OS_MAXSTR,
         "%s/local/%s/%s",
         DIFF_DIR_PATH,
         filename + 1,
@@ -251,7 +255,7 @@ char *seechanges_addfile(const char *filename)
 
     snprintf(
         tmp_location,
-        sizeof(tmp_location),
+        OS_MAXSTR,
         "%s/local/%s/state.%d",
         DIFF_DIR_PATH,
         filename + 1,
@@ -273,8 +277,9 @@ char *seechanges_addfile(const char *filename)
     /* Create file names */
     snprintf(
         old_tmp,
-        sizeof(old_tmp),
-        "%s/syscheck-changes-%s-%d",
+        OS_MAXSTR,
+        "%s/%s/syscheck-changes-%s-%d",
+        DEFAULTDIR,
         TMP_DIR,
         md5sum_old,
         (int)old_date_of_change
@@ -282,8 +287,9 @@ char *seechanges_addfile(const char *filename)
 
     snprintf(
         new_tmp,
-        sizeof(new_tmp),
-        "%s/syscheck-changes-%s-%d",
+        OS_MAXSTR,
+        "%s/%s/syscheck-changes-%s-%d",
+        DEFAULTDIR,
         TMP_DIR,
         md5sum_new,
         (int)new_date_of_change
@@ -291,8 +297,9 @@ char *seechanges_addfile(const char *filename)
 
     snprintf(
         diff_tmp,
-        sizeof(diff_tmp),
-        "%s/syscheck-changes-%s-%d-%s-%d",
+        OS_MAXSTR,
+        "%s/%s/syscheck-changes-%s-%d-%s-%d",
+        DEFAULTDIR,
         TMP_DIR,
         md5sum_old,
         (int)old_date_of_change,
@@ -303,7 +310,7 @@ char *seechanges_addfile(const char *filename)
     /* Create diff location */
     snprintf(
         diff_location,
-        sizeof(diff_location),
+        OS_MAXSTR,
         "%s/local/%s/diff.%d",
         DIFF_DIR_PATH,
         filename + 1,
