@@ -28,9 +28,9 @@ int StartMQ(const char *path, short int type)
             if (File_DateofChange(path) < 0) {
                 sleep(5);
                 if (File_DateofChange(path) < 0) {
-                    merror(QUEUE_ERROR, __local_name, path, "Queue not found");
                     sleep(15);
                     if (File_DateofChange(path) < 0) {
+                        merror(QUEUE_ERROR, __local_name, path, "Queue not found");
                         return (-1);
                     }
                 }

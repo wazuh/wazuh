@@ -1287,7 +1287,7 @@ Jan  8 19:32:41 tp.lan dropbear[15165]: Pubkey auth succeeded for 'root' with ke
   <parent>pix</parent>
   <type>firewall</type>
   <prematch offset="after_parent">^3-710003|^7-710002|^7-710005</prematch>
-  <regex offset="after_parent">^(\S+): (\S+) \w+ (\w+)\.+from </regex>
+  <regex offset="after_parent">^(\S+): (\S+) \w+ (\w+) \.+from </regex>
   <regex>(\S+)/(\S+) to \w+:(\S+)/(\S+)</regex>
   <order>id, protocol, action, srcip, srcport, dstip, dstport</order>
 </decoder>
