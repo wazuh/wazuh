@@ -46,6 +46,9 @@ int main(int argc, char **argv)
     const char *ip_address = NULL;
     const char *ar = NULL;
 
+    cJSON *root;
+    cJSON *response;
+
     int arq = 0;
     gid_t gid;
     uid_t uid;
@@ -141,6 +144,11 @@ int main(int argc, char **argv)
 
     }
 
+    /* Prepare JSON Structure */
+    if(json_output){
+        root = cJSON_CreateObject();
+        cJSON_AddItemToObject(root, "response", response = cJSON_CreateObject());
+    }
     /* Get the group name */
     gid = Privsep_GetGroup(group);
     uid = Privsep_GetUser(user);
@@ -254,8 +262,6 @@ int main(int argc, char **argv)
             agt_id = OS_IsAllowedID(&keys, agent_id);
             if (agt_id < 0) {
                 if(json_output){
-                    cJSON *root;
-                    root = cJSON_CreateObject();
                     cJSON_AddNumberToObject(root, "error", 1); 
                     cJSON_AddStringToObject(root, "description", "Invalid agent id"); 
                     printf("%s",cJSON_PrintUnformatted(root));
@@ -280,13 +286,7 @@ int main(int argc, char **argv)
         agent_info *agt_info;
         final_ip[128] = '\0';
         final_mask[128] = '\0';
-        cJSON *root;
-        cJSON *response;
 
-        if(json_output){
-            root = cJSON_CreateObject();
-            cJSON_AddItemToObject(root, "response", response = cJSON_CreateObject());
-        }
         if (!csv_output && !json_output) {
             printf("\nOSSEC HIDS %s. Agent information:", ARGV0);
         }
@@ -433,19 +433,53 @@ int main(int argc, char **argv)
     }
 
     if (restart_agent && agent_id) {
+
         /* Connect to remoted */
         debug1("%s: DEBUG: Connecting to remoted...", ARGV0);
         arq = connect_to_remoted();
         if (arq < 0) {
-            printf("\n** Unable to connect to remoted.\n");
+            if(json_output){
+                cJSON_AddNumberToObject(root, "error", 1); 
+                cJSON_AddStringToObject(root, "description", "Unable to connect to remoted"); 
+                printf("%s",cJSON_PrintUnformatted(root));
+                cJSON_Delete(root);
+            }
+            printf("\n** Unable to connect to remoted.\n"); 
             exit(1);
         }
         debug1("%s: DEBUG: Connected...", ARGV0);
 
         if (send_msg_to_agent(arq, "restart-ossec0", agent_id, "null") == 0) {
-            printf("\nOSSEC HIDS %s: Restarting agent: %s\n",
-                   ARGV0, agent_id);
+            if(json_output){
+                char final_ip[128 + 1];
+                char final_mask[128 + 1];
+                final_ip[128] = '\0';
+                final_mask[128] = '\0';
+
+                /* Get netmask from IP */
+                getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 128);
+                snprintf(final_ip, 128, "%s%s", keys.keyentries[agt_id]->ip->ip,final_mask);
+
+                cJSON_AddStringToObject(response, "id", keys.keyentries[agt_id]->id); 
+                cJSON_AddStringToObject(response, "name", keys.keyentries[agt_id]->name); 
+                cJSON_AddStringToObject(response, "ip", final_ip); 
+
+                cJSON_AddNumberToObject(root, "error", 0); 
+                cJSON_AddStringToObject(root, "description", ""); 
+                cJSON_AddStringToObject(response, "message", "Restarting agent"); 
+
+                printf("%s",cJSON_PrintUnformatted(root));
+                cJSON_Delete(root);
+            }else{
+                printf("\nOSSEC HIDS %s: Restarting agent: %s\n",ARGV0, agent_id);
+            }
         } else {
+            if(json_output){
+                cJSON_AddNumberToObject(root, "error", 1); 
+                cJSON_AddStringToObject(root, "description", "Unable to restart agent"); 
+                printf("%s",cJSON_PrintUnformatted(root));
+                cJSON_Delete(root);
+            }
             printf("\n** Unable to restart agent: %s\n", agent_id);
             exit(1);
         }
