@@ -20,9 +20,6 @@ app.use(bodyParser.json());
 var port = process.env.PORT || 8080;        // set our port
 
 
-
-
-
 // Extra functions
 // =============================================================================
 
@@ -31,8 +28,6 @@ var padding_zero = function(x, n) {
 	return String(zeros + x).slice(-1 * n)
 } 
  
-
-
 // ROUTES FOR OUR API
 // =============================================================================
 var router = express.Router();              // get an instance of the express Router
@@ -69,7 +64,24 @@ router.route('/agents')
 		});
 	});
 	
-
+// Restart syscheck/rootcheck in all agents
+router.route('/agents/sysrootcheck/restart')
+	.get(function(req, res) {
+		var exec = require('child_process').exec;
+		exec('/var/ossec/bin/agent_control -j -r -a', function(error, stdout, stderr) {
+			console.log('stdout: ' + stdout);
+			console.log('stderr: ' + stderr);
+			try {
+				var response = JSON.parse(stdout);
+			} catch (e) {
+				res.status(500).send("600: JSON parse error");
+			}
+			res.status(200).json(response);
+			if (error !== null) {
+				console.log('exec error: ' + error);
+			}
+		});
+	});	
 
 // Getting agent info
 router.route('/agents/:agent_id')
@@ -77,7 +89,7 @@ router.route('/agents/:agent_id')
 		in_agent_id = req.params.agent_id;
 		agent_id = padding_zero(parseInt(in_agent_id), in_agent_id.length);
 		var exec = require('child_process').exec;
-		exec('/var/ossec/bin/agent_control -j -i '+ agent_id, function(error, stdout, stderr) {
+		exec('/var/ossec/bin/agent_control -j -e -i '+ agent_id, function(error, stdout, stderr) {
 			console.log('stdout: ' + stdout);
 			console.log('stderr: ' + stderr);
 			try {
@@ -92,13 +104,36 @@ router.route('/agents/:agent_id')
 		});
 	});
 
-// Getting agent info
+// Restart agent
 router.route('/agents/:agent_id/restart')
 	.get(function(req, res) {
 		in_agent_id = req.params.agent_id;
 		agent_id = padding_zero(parseInt(in_agent_id), in_agent_id.length);
 		var exec = require('child_process').exec;
 		exec('/var/ossec/bin/agent_control -j -R '+ agent_id, function(error, stdout, stderr) {
+			console.log('stdout: ' + stdout);
+			console.log('stderr: ' + stderr);
+			try {
+				var response = JSON.parse(stdout);
+			} catch (e) {
+				res.status(500).send("600: JSON parse error");
+			}
+			res.status(200).json(response);
+			if (error !== null) {
+				console.log('exec error: ' + error);
+			}
+		});
+	});	
+
+
+
+// Restart syscheck/rootcheck in one agents
+router.route('/agents/:agent_id/sysrootcheck/restart')
+	.get(function(req, res) {
+		in_agent_id = req.params.agent_id;
+		agent_id = padding_zero(parseInt(in_agent_id), in_agent_id.length);
+		var exec = require('child_process').exec;
+		exec('/var/ossec/bin/agent_control -j -r -u '+ agent_id, function(error, stdout, stderr) {
 			console.log('stdout: ' + stdout);
 			console.log('stderr: ' + stderr);
 			try {
