@@ -359,12 +359,15 @@ int main(int argc, char **argv)
                 cJSON_AddStringToObject(response, "operating_system", agt_info->os); 
                 cJSON_AddStringToObject(response, "client_version", agt_info->version); 
                 cJSON_AddStringToObject(response, "last_keepalive", agt_info->last_keepalive);
-                cJSON_AddStringToObject(response, "syscheck_last_started", agt_info->syscheck_time);    
-                cJSON_AddStringToObject(response, "rootcheck_last_started", agt_info->rootcheck_time);
-                if (end_time) {
+                
+                cJSON_AddStringToObject(response, "syscheck_last_started", agt_info->syscheck_time);
+                if (end_time)
                     cJSON_AddStringToObject(response, "syscheck_last_ended", agt_info->syscheck_endtime);    
+
+                cJSON_AddStringToObject(response, "rootcheck_last_started", agt_info->rootcheck_time);  
+                if (end_time)
                     cJSON_AddStringToObject(response, "rootcheck_last_ended", agt_info->rootcheck_endtime);  
-                }    
+                 
         } else {
             printf("%s,%s,%s,%s,%s,\n",
                    agt_info->os,
