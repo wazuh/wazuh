@@ -63,6 +63,28 @@ router.route('/agents')
 			}
 		});
 	});
+
+// Add agent, returns ID
+router.route('/agents/add/:agent_name')
+        .get(function(req, res) {
+                agent_name = req.params.agent_name;
+                var exec = require('child_process').exec;
+                exec('/var/ossec/bin/api_add_agent.sh ' + agent_name, function(error, stdout, stderr) {
+                        console.log('stdout: ' + stdout);
+                        console.log('stderr: ' + stderr);
+                        try {
+                                var response = JSON.parse(stdout);
+                        } catch (e) {
+                                res.status(500).send("600: JSON parse error");
+                        }
+                        res.status(200).json(response);
+                        if (error !== null) {
+                                console.log('exec error: ' + error);
+                        }
+                });
+        });
+
+
 	
 // Restart syscheck/rootcheck in all agents
 router.route('/agents/sysrootcheck/restart')
@@ -125,7 +147,25 @@ router.route('/agents/:agent_id/restart')
 		});
 	});	
 
-
+// Get Agent KEY
+router.route('/agents/:agent_id/key')
+        .get(function(req, res) {
+                agent_id = req.params.agent_id;
+                var exec = require('child_process').exec;
+                exec('sh /var/ossec/bin/api_getkey_agent.sh ' + agent_id, function(error, stdout, stderr) {
+                        console.log('stdout: ' + stdout);
+                        console.log('stderr: ' + stderr);
+                        try {
+                                var response = JSON.parse(stdout);
+                        } catch (e) {
+                                res.status(500).send("600: JSON parse error");
+                        }
+                        res.status(200).json(response);
+                        if (error !== null) {
+                                console.log('exec error: ' + error);
+                        }
+                });
+        });
 
 // Restart syscheck/rootcheck in one agents
 router.route('/agents/:agent_id/sysrootcheck/restart')
