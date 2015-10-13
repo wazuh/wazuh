@@ -11,6 +11,9 @@
 var express    = require('express');        // call express
 var app        = express();                 // define our app using express
 var bodyParser = require('body-parser');
+var fs = require('fs');
+var http = require('http');
+var https = require('https');
 
 // configure app to use bodyParser()
 // this will let us get the data from a POST
@@ -192,9 +195,17 @@ router.route('/agents/:agent_id/sysrootcheck/restart')
 // all of our routes will be prefixed with /api
 app.use('/', router);
 
+
+// CERTS
+var options = {
+  key: fs.readFileSync('key.pem'),
+  cert: fs.readFileSync('cert.pem')
+};
 // START THE SERVER
 // =============================================================================
-app.listen(port);
+http.createServer(app).listen(80);
+https.createServer(options, app).listen(443);
+
 console.log('Magic happens on port ' + port);
 
 
