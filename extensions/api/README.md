@@ -1,29 +1,29 @@
 Wazuh OSSEC RESTful API
 
-*/agents/sysrootcheck/restart*
+**/agents/sysrootcheck/restart**
 
 Restart syscheck and rootcheck on all agents
 
-*/agents*
+**/agents**
 
 List all agents info
 
-*/agents/:agent_id*
+**/agents/:agent_id**
 
 Display agent info
 
-*/agents/:agent_id/restart*
+**/agents/:agent_id/restart**
 
 Restart agents
 
-*/agents/:agent_id/sysrootcheck/restart*
+**/agents/:agent_id/sysrootcheck/restart**
 
 Restart syscheck and rootcheck on one agent
 
-*/agents/:agent_id/key*
+**/agents/:agent_id/key**
 
 Get Agent Key
 
-*/agents/add/:agent_name*
+**/agents/add/:agent_name**
 
 Add agent.
