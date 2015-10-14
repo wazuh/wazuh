@@ -10,11 +10,5 @@ if [ $# -ne 1 ]; then
 fi
 
 # Extract key
-echo -n '{ key: "';
-
-
-KEY="$(/var/ossec/bin/manage_agents manage_agents -e $ID)"
-
-echo "${KEY}"
-
-echo -n '"}';
+KEY="$(/var/ossec/bin/manage_agents manage_agents -e $ID | tail -1)"
+echo "{ \"key\": \"${KEY}\"}"
