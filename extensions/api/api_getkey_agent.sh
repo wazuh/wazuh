@@ -10,5 +10,10 @@ if [ $# -ne 1 ]; then
 fi
 
 # Extract key
-KEY="$(/var/ossec/bin/manage_agents manage_agents -e $ID | tail -1)"
-echo "{ \"key\": \"${KEY}\"}"
+KEY="$(/var/ossec/bin/manage_agents manage_agents -e $ID | tail -1 | grep -v "Invalid")"
+
+if [ ! -z "$KEY" ]; then
+	echo "{\"response\": {\"key\": \"${KEY}\"},\"error\": 0}"
+else
+	echo "{\"response\": \"\",\"error\": 1,\"description\": \"Invalid ID '$1' given. ID is not present.\"}"
+fi
