@@ -1,0 +1,7 @@
+.gitignore
+node_modules
+.project
+apache-crypt.iml
+.idea
+.settings
+build

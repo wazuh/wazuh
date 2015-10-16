@@ -4,6 +4,7 @@ param([switch]$Elevated)
 $path = $PSScriptRoot
 $file_log = "\ossec_deploy.txt"
 
+<<<<<<< HEAD
 # Ossec service name
 $ossec_service = 'OssecSvc'
 
@@ -16,6 +17,8 @@ $ossec_path = "D:\Program Files (x86)\ossec-agent\"
 # Path
 
 
+=======
+>>>>>>> 431952b81e240b4b5c2fd40bc1c9e82f0a2939a8
 if(!(Test-Path -Path $path$file_log)){
 	New-Item -Path $path$file_log -ItemType File
 }else{
@@ -38,6 +41,7 @@ if ((Test-Admin) -eq $false)  {
 	   Exit
 }
 Add-Content -Path $path$file_log -Value "Privileges OK"
+<<<<<<< HEAD
 
 # If OSSEC service already exits, do not install.
 Get-Service -Name $ossec_service | Restart-Service -ErrorAction SilentlyContinue
@@ -46,6 +50,8 @@ if ($? -eq $true) {
     Exit
 }
 
+=======
+>>>>>>> 431952b81e240b4b5c2fd40bc1c9e82f0a2939a8
 # Certs functions
 add-type @"
     using System.Net;
@@ -62,6 +68,14 @@ add-type @"
 "@
 [System.Net.ServicePointManager]::CertificatePolicy = new-object PolicyCert 
 Add-Content -Path $path$file_log -Value "Certify OK"
+<<<<<<< HEAD
+=======
+#API SETTINGS
+$api_port = "8080"
+$api_ip = "192.168.73.145"
+$username = "foo"
+$password = "bar"
+>>>>>>> 431952b81e240b4b5c2fd40bc1c9e82f0a2939a8
 $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$password)))
 
 #Installing Agent Executable
@@ -69,7 +83,13 @@ $exe = "ossec-win32-agent-duplium.exe"
 $AllArgs = @('/S')
 $check = Start-Process $exe $AllArgs -Wait -Verb runAs
 Add-Content -Path $path$file_log -Value "OSSEC Installed OK"
+<<<<<<< HEAD
 
+=======
+# Temp adding ip to ossec.conf
+# $ossec_server_ip = "<ossec_config><client> <server-ip>192.168.73.145</server-ip> </client></ossec_config>"
+# Add-Content "C:\Program Files\ossec-agent\ossec.conf" $ossec_server_ip
+>>>>>>> 431952b81e240b4b5c2fd40bc1c9e82f0a2939a8
 
 # API: Add Agent +  Get Key
 $url = "https://" + $api_ip + ":" + $api_port;

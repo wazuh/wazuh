@@ -3,6 +3,8 @@
 // Wazuh, Inc. 2015-2016
 //********************//
 
+// SETTINGS
+var port = process.env.PORT || 8080;        // set our port
 
 // BASE SETUP
 // =============================================================================
@@ -14,14 +16,28 @@ var bodyParser = require('body-parser');
 var fs = require('fs');
 var http = require('http');
 var https = require('https');
+var auth = require("http-auth");
+
+// Basic HTTP authentication
+var auth = require('http-auth');
+var auth_secure = auth.basic({
+    realm: "OSSEC API",
+    file: __dirname + "/htpasswd"
+});
+
+// CERTS
+var options = {
+  key: fs.readFileSync('key.key'),
+  cert: fs.readFileSync('cert.pem')
+};
+
+
 
 // configure app to use bodyParser()
 // this will let us get the data from a POST
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-
-var port = process.env.PORT || 8080;        // set our port
-
+app.use(auth.connect(auth_secure));
 
 // Extra functions
 // =============================================================================
@@ -44,7 +60,7 @@ res.setHeader('Access-Control-Allow-Origin', '*');
 });
 
 // (accessed at GET http://localhost:8080)
-router.get('/', function(req, res) {
+router.get('/',function(req, res) {
     res.json({ message: 'OSSEC-API' });   
 });
 
@@ -196,16 +212,7 @@ router.route('/agents/:agent_id/sysrootcheck/restart')
 app.use('/', router);
 
 
-// CERTS
-var options = {
-  key: fs.readFileSync('key.pem'),
-  cert: fs.readFileSync('cert.pem')
-};
 // START THE SERVER
 // =============================================================================
 http.createServer(app).listen(80);
-https.createServer(options, app).listen(443);
-
-console.log('Magic happens on port ' + port);
-
-
+https.createServer(options, app).listen(port);
