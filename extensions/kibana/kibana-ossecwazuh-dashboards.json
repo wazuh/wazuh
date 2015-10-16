@@ -14,20 +14,6 @@
     }
   },
   {
-    "_id": "Agents-Info",
-    "_type": "dashboard",
-    "_source": {
-      "title": "Agents Info",
-      "hits": 0,
-      "description": "",
-      "panelsJSON": "[{\"id\":\"Agents-status\",\"type\":\"visualization\",\"size_x\":4,\"size_y\":2,\"col\":1,\"row\":5},{\"id\":\"Agents-total-alerts\",\"type\":\"visualization\",\"size_x\":5,\"size_y\":4,\"col\":1,\"row\":1},{\"id\":\"Alerts-by-host\",\"type\":\"visualization\",\"size_x\":7,\"size_y\":4,\"col\":6,\"row\":1},{\"id\":\"Requirements-by-agent\",\"type\":\"visualization\",\"size_x\":5,\"size_y\":2,\"col\":8,\"row\":5},{\"id\":\"CIS:-Security-breaches-by-agent\",\"type\":\"visualization\",\"size_x\":3,\"size_y\":2,\"col\":5,\"row\":5}]",
-      "version": 1,
-      "kibanaSavedObjectMeta": {
-        "searchSourceJSON": "{\"filter\":[{\"query\":{\"query_string\":{\"query\":\"*\",\"analyze_wildcard\":true}}}]}"
-      }
-    }
-  },
-  {
     "_id": "OSSEC-Alerts",
     "_type": "dashboard",
     "_source": {
