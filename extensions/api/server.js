@@ -4,7 +4,7 @@
 //********************//
 
 // SETTINGS
-var port = process.env.PORT || 8080;        // set our port
+var port = process.env.PORT || 55000;        // set our port
 
 // BASE SETUP
 // =============================================================================
@@ -27,8 +27,8 @@ var auth_secure = auth.basic({
 
 // CERTS
 var options = {
-  key: fs.readFileSync('key.key'),
-  cert: fs.readFileSync('cert.pem')
+  key: fs.readFileSync('server.key'),
+  cert: fs.readFileSync('server.crt')
 };
 
 
@@ -214,5 +214,4 @@ app.use('/', router);
 
 // START THE SERVER
 // =============================================================================
-http.createServer(app).listen(80);
 https.createServer(options, app).listen(port);
