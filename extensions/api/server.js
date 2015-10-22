@@ -88,7 +88,7 @@ router.route('/agents/add/:agent_name')
         .get(function(req, res) {
                 agent_name = req.params.agent_name;
                 var exec = require('child_process').exec;
-                exec('/var/ossec/bin/api_add_agent.sh ' + agent_name, function(error, stdout, stderr) {
+                exec('bin/api_add_agent.sh ' + agent_name, function(error, stdout, stderr) {
                         console.log('stdout: ' + stdout);
                         console.log('stderr: ' + stderr);
                         try {
@@ -171,7 +171,7 @@ router.route('/agents/:agent_id/key')
         .get(function(req, res) {
                 agent_id = req.params.agent_id;
                 var exec = require('child_process').exec;
-                exec('sh /var/ossec/bin/api_getkey_agent.sh ' + agent_id, function(error, stdout, stderr) {
+                exec('sh bin/api_getkey_agent.sh ' + agent_id, function(error, stdout, stderr) {
                         console.log('stdout: ' + stdout);
                         console.log('stderr: ' + stderr);
                         try {
