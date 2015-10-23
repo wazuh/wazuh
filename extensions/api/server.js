@@ -181,7 +181,8 @@ router.route('/agents/:agent_id/restart').get(function(req, res) {
 
 // Get Agent KEY
 router.route('/agents/:agent_id/key').get(function(req, res) {
-    agent_id = req.params.agent_id;
+    in_agent_id = req.params.agent_id;
+    agent_id = padding_zero(parseInt(in_agent_id), in_agent_id.length);
     var exec = require('child_process').exec;
     exec('sh bin/api_getkey_agent.sh ' + agent_id, function(error, stdout, stderr) {
 		var errorAPI = logWrite(error, stdout, stderr);
