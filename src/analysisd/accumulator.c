@@ -254,7 +254,7 @@ void Accumulate_CleanUp()
             /* Check for a valid element */
             if ( stored_data != NULL ) {
                 /* Check for expiration */
-                debug2("accumulator: DEBUG: CleanUp() elm:%ld, curr:%ld", stored_data->timestamp, current_ts);
+                debug2("accumulator: DEBUG: CleanUp() elm:%ld, curr:%ld", (long int)stored_data->timestamp, (long int)current_ts);
                 if ( stored_data->timestamp < current_ts - OS_ACM_EXPIRE_ELM ) {
                     debug2("accumulator: DEBUG: CleanUp() Expiring '%s'", key);
                     if ( OSHash_Delete(acm_store, key) != NULL ) {

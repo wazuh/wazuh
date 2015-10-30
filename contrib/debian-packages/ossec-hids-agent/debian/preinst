@@ -1,0 +1,36 @@
+#!/bin/sh
+# preinst script for ossec-hids
+# Santiago Bassett <santiago.bassett@gmail.com>
+# 03/25/2014
+
+set -e
+
+# configuration variables
+OSSEC_HIDS_TMP_DIR="/tmp/ossec-hids"
+
+# environment configuration
+if [ ! -d ${OSSEC_HIDS_TMP_DIR} ]; then
+  mkdir ${OSSEC_HIDS_TMP_DIR}
+fi
+
+case "$1" in
+    install|upgrade)
+        # back up the current user rules
+        if [ -f /var/ossec/rules/local_rules.xml ]; then
+            cp /var/ossec/rules/local_rules.xml ${OSSEC_HIDS_TMP_DIR}/local_rules.xml
+        fi
+    ;;
+
+    abort-upgrade)
+
+    ;;
+
+    *)
+        echo "preinst called with unknown argument \`$1'" >&2
+        exit 1
+
+    ;;
+
+esac
+
+exit 0
