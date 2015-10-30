@@ -16,13 +16,13 @@
 # It can be "en", "br", "tr", "it", "de" or "pl".
 # In case of an invalid language, it will default
 # to English "en" 
-# USER_LANGUAGE="en"     # For english
-# USER_LANGUAGE="br"     # For portuguese
+#USER_LANGUAGE="en"     # For english
+#USER_LANGUAGE="br"     # For portuguese
 
 
 # If USER_NO_STOP is set to anything, the confirmation
 # messages are not going to be asked.
-# USER_NO_STOP="y"
+#USER_NO_STOP="y"
 
 
 # USER_INSTALL_TYPE defines the installation type to
