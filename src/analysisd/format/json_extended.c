@@ -120,8 +120,10 @@ int W_isRootcheck(cJSON *root){
 	cJSON *groups;
 	cJSON *group;
 	cJSON *rule;
-	cJSON *compliance;
-	compliance = cJSON_CreateArray();
+	cJSON *compliance1;
+	cJSON *compliance2;
+	compliance1 = cJSON_CreateArray();
+	compliance2 = cJSON_CreateArray();
 	int i, counter;
 	regex_t regex_cis;
 	regex_t regex_pci;
@@ -131,7 +133,9 @@ int W_isRootcheck(cJSON *root){
 	char *results[MAX_MATCHES];
 	int matches = 0;
 	char buffer[MAX_STRING];
-	int found = 0;
+	int foundCIS = 0;
+	int foundPCI = 0;
+	int j = 0;
 	// Getting groups object JSON
 	rule = cJSON_GetObjectItem(root,"rule");
 	groups = cJSON_GetObjectItem(rule,"groups");
@@ -144,61 +148,45 @@ int W_isRootcheck(cJSON *root){
 	compile_regex(& regex_pci, regex_pci_text);
 	for(i = 0; i < totalGroups; i++){
 		group = cJSON_GetArrayItem(groups,i);
-		// CIS
-		matches = match_regex(& regex_cis, cJSON_Print(group), results);
-		if(matches > 0){
-			if(found == 0){
-				found = 1;
-				cJSON_AddItemToArray(groups, cJSON_CreateString("cis"));
-				cJSON_AddItemToObject(rule,"CIS", compliance);
-			}			
-			memset(buffer, '\0', sizeof(buffer));
-
-			strncpy(buffer, results[1], 20);
-			strncat(buffer, " ", 20);
-			strncat(buffer, results[0], 20);
-			cJSON_AddItemToArray(compliance, cJSON_CreateString(buffer));
-		}
-		found = 0;
 		// PCI
 		matches = match_regex(& regex_pci, cJSON_Print(group), results);
 		if(matches > 0){
-			if(found == 0){
-				found = 1;
+			if(foundPCI == 0){
+				foundPCI = 1;
 				cJSON_AddItemToArray(groups, cJSON_CreateString("pci_dss"));
-				cJSON_AddItemToObject(rule,"PCI_DSS", compliance);
+				cJSON_AddItemToObject(rule,"PCI_DSS", compliance1);
 			}			
 			memset(buffer, '\0', sizeof(buffer));
 			strncpy(buffer, results[0], sizeof(buffer));
-			cJSON_AddItemToArray(compliance, cJSON_CreateString(buffer));
+			cJSON_AddItemToArray(compliance1, cJSON_CreateString(buffer));
+			for (j = 0; j < matches; j++)
+				free(results[j]);
+			continue;
 		}
-	}
-	// Delete old groups
-	counter = 0;
-	while(counter < cJSON_GetArraySize(groups)){
-		group = cJSON_GetArrayItem(groups,counter);
-		matches = match_regex(& regex_pci, cJSON_Print(group), results);
-		if(matches > 0){
-			cJSON_DeleteItemFromArray(groups,counter);
-			counter--;
-		}
-		counter++;
-	}
-	regfree (& regex_pci); 
-
-	counter = 0;
-	while(counter < cJSON_GetArraySize(groups)){
-		group = cJSON_GetArrayItem(groups,counter);
+		// CIS
 		matches = match_regex(& regex_cis, cJSON_Print(group), results);
-		if(matches > 0){
-			cJSON_DeleteItemFromArray(groups,counter);
-			counter--;
+		if(matches > 1){
+			if(foundCIS == 0){
+				foundCIS = 1;
+				cJSON_AddItemToArray(groups, cJSON_CreateString("cis"));
+				cJSON_AddItemToObject(rule,"CIS", compliance2);
+			}			
+			memset(buffer, '\0', sizeof(buffer));
+			strncpy(buffer, results[1], 100);
+			strcat(buffer, " ");
+			strncat(buffer, results[0], 100);
+			cJSON_AddItemToArray(compliance2, cJSON_CreateString(buffer));
+			for (j = 0; j < matches; j++)
+				free(results[j]);
+			continue;
 		}
-		counter++;
+
 	}
+
+	regfree (& regex_pci); 
 	regfree (& regex_cis);
-	for (i = 0; i < matches; i++)
-        free(results[i]);
+
+
  }
  
 // STRTOK every "-" delimiter to get differents groups to our json array.
