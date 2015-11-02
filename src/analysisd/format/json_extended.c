@@ -93,11 +93,8 @@ int W_isRootcheck(cJSON *root){
 			}
             cJSON_AddItemToObject(rule,token, compliance = cJSON_CreateArray());
             cJSON_AddItemToArray(groups, cJSON_CreateString(token));
-            // Get requirement info (11.4, 10.4.5, 1.4 Debian Linux...)
 			if(token){		 
 				token = strtok(0, delim);
-				// Ahora aqui que tengo la parte de : 1.4.5, 1.5.6, 1.8.9 debo de hacer otro strtok con delimitador 
-				//una , y que vaya rotando y añadiendo
 				trim(token);
 				token2 = strtok(token, delim2);
 				while (token2)
