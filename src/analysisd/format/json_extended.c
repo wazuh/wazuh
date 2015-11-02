@@ -82,30 +82,29 @@ int W_isRootcheck(cJSON *root){
 	regex_text = "\\{([A-Za-z0-9_]*: [A-Za-z0-9_., ]*)\\}";
 	find_text = fullog;
 	compile_regex(& r, regex_text);
-    matches = match_regex(& r, find_text, results);
-    if(matches > 0){
-        for (i = 0; i < matches; i++) {
-            // Get Compliance name (CIS, PCIDSS...)
-            token = strtok(results[i], delim);
-            trim(token);
-            for(j = 0; token[j]; j++){
-			  token[j] = tolower(token[j]);
+	matches = match_regex(& r, find_text, results);
+	if(matches > 0){
+		for (i = 0; i < matches; i++) {
+			token = strtok(results[i], delim);
+			trim(token);
+			cJSON_AddItemToObject(rule,token, compliance = cJSON_CreateArray());
+			for(j = 0; token[j]; j++){
+				token[j] = tolower(token[j]);
 			}
-            cJSON_AddItemToObject(rule,token, compliance = cJSON_CreateArray());
-            cJSON_AddItemToArray(groups, cJSON_CreateString(token));
+			cJSON_AddItemToArray(groups, cJSON_CreateString(token));
 			if(token){		 
 				token = strtok(0, delim);
 				trim(token);
 				token2 = strtok(token, delim2);
 				while (token2)
 				{
-				    trim(token2);
-				    cJSON_AddItemToArray(compliance, cJSON_CreateString(token2));
-				    token2 = strtok(0, delim2);
+					trim(token2);
+					cJSON_AddItemToArray(compliance, cJSON_CreateString(token2));
+					token2 = strtok(0, delim2);
 				}
 				
 			}
-        }  
+	        }  
     }
     regfree (& r);
 	for (i = 0; i < matches; i++)
