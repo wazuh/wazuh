@@ -26,21 +26,21 @@
   <rule id="7710" level="12">
     <if_sid>7701</if_sid>
     <id>^1008$</id>
-    <group>virus</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,</group>
     <description>Microsoft Security Essentials - Virus detected, but unable to remove.</description>
   </rule>
 
   <rule id="7711" level="7">
     <if_sid>7701</if_sid>
     <id>^1007$</id>
-    <group>virus</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,</group>
     <description>Microsoft Security Essentials - Virus detected and properly removed.</description>
   </rule>
 
   <rule id="7712" level="7">
     <if_sid>7701</if_sid>
     <id>^1015$|^1006$</id>
-    <group>virus</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,</group>
     <description>Microsoft Security Essentials - Virus detected.</description>
   </rule>
   
@@ -48,7 +48,7 @@
     <if_sid>7701</if_sid>
     <id>^5007$</id>
     <description>Microsoft Security Essentials - Configuration changed.</description>
-    <group>policy_changed,</group>
+    <group>policy_changed,pci_dss_10.2.7,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="7731" level="5">

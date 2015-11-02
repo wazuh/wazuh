@@ -32,7 +32,7 @@
     <action>PASS</action>
     <id>530</id>
     <description>FTP Authentication failed.</description>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="11503" level="3">
@@ -40,7 +40,7 @@
     <action>PASS</action>
     <id>230</id>
     <description>FTP Authentication success.</description>
-    <group>authentication_success,</group>
+    <group>authentication_success,pci_dss_10.2.5,</group>
   </rule>  
 
   <rule id="11504" level="4">
@@ -52,20 +52,21 @@
   <rule id="11510" level="10" frequency="6" timeframe="120">
     <if_matched_sid>11502</if_matched_sid>
     <description>FTP brute force (multiple failed logins).</description>
-    <group>authentication_failures,</group>
+    <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
   <rule id="11511" level="10" frequency="8" timeframe="30">
     <if_matched_sid>11501</if_matched_sid>
     <same_source_ip />
     <description>Multiple connection attempts from same source.</description>
-    <group>recon,</group>
+    <group>recon,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
   <rule id="11512" level="10" frequency="6" timeframe="120">
     <if_matched_sid>11504</if_matched_sid>
     <same_source_ip />
     <description>Multiple FTP errors from same source.</description>
+    <group>pci_dss_10.6.1,</group>
   </rule>
 </group> <!-- SYSLOG,PURE-FTPD -->
 

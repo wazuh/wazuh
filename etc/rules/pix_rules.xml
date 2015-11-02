@@ -66,20 +66,21 @@
     <if_sid>4314</if_sid>
     <id>^6-605004</id>
     <description>Failed login attempt at the PIX firewall.</description>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="4322" level="3">
     <if_sid>4314</if_sid>
     <id>^5-502103</id>
     <description>Privilege changed in the PIX firewall.</description>
+    <group>pci_dss_10.2.7,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="4323" level="3">
     <if_sid>4314</if_sid>
     <id>^6-605005</id>
     <description>Successful login to the PIX firewall.</description>
-    <group>authentication_success,</group>
+    <group>authentication_success,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="4324" level="9">
@@ -87,26 +88,28 @@
     <id>^6-308001</id>
     <description>Password mismatch while running 'enable' </description>
     <description>on the PIX.</description>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="4325" level="8">
     <if_sid>4313</if_sid>
     <id>^4-405001</id>
     <description>ARP collision detected by the PIX.</description>
+    <group>pci_dss_10.6.1</group>
   </rule> 
 
   <rule id="4326" level="8">
     <if_sid>4313</if_sid>
     <id>^4-401004</id>
     <description>Attempt to connect from a blocked (shunned) IP.</description>
-    <group>access_denied,</group>
+    <group>access_denied,pci_dss_10.2.4,pci_dss_11.4,</group>
   </rule> 
 
   <rule id="4327" level="8">
     <if_sid>4313</if_sid>
     <id>^4-710004</id>
     <description>Connection limit exceeded.</description>
+    <group>pci_dss_10.6.1</group>
   </rule> 
   
   <rule id="4330" level="8">
@@ -133,35 +136,35 @@
   <rule id="4333" level="8">
     <if_sid>4330, 4331, 4332</if_sid>
     <description>Attack in progress detected by the PIX.</description>
-    <group>ids,</group>
+    <group>ids,pci_dss_11.4,</group>
   </rule>
 
   <rule id="4334" level="5">
     <if_sid>4314</if_sid>
     <id>^6-113005</id>
     <description>AAA (VPN) authentication failed.</description>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
  
   <rule id="4335" level="3">
     <if_sid>4314</if_sid>
     <id>^6-113004</id>
     <description>AAA (VPN) authentication successful.</description>
-    <group>authentication_success,</group>
+    <group>authentication_success,pci_dss_10.2.5,</group>
   </rule>
   
   <rule id="4336" level="8">
     <if_sid>4314</if_sid>
     <id>^6-113006</id>
     <description>AAA (VPN) user locked out.</description>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
   
   <rule id="4337" level="8">
     <if_sid>4312</if_sid>
     <id>^3-201008</id>
     <description>The PIX is disallowing new connections.</description>
-    <group>service_availability,</group>
+    <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="4338" level="8">
@@ -169,21 +172,21 @@
     <id>^1-105005|^1-105009|^1-105043</id>
     <match>Failed|Lost Failover</match>
     <description>Firewall failover pair communication problem.</description>
-    <group>service_availability,</group>
+    <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="4339" level="8">
     <if_sid>4314</if_sid>
     <id>^5-111003</id>
     <description>Firewall configuration deleted.</description>
-    <group>config_changed,</group>
+    <group>config_changed,pci_dss_1.1.1,pci_dss_10.4,</group>
   </rule>
   
   <rule id="4340" level="8">
     <if_sid>4314</if_sid>
     <id>^5-111005|^5-111004|^5-111002|^5-111007</id>
     <description>Firewall configuration changed.</description>
-    <group>config_changed,</group>
+    <group>config_changed,pci_dss_1.1.1,pci_dss_10.4,</group>
   </rule>
 
   <rule id="4341" level="3">
@@ -196,40 +199,44 @@
     <if_sid>4314</if_sid>
     <id>^5-502101|^5-502102</id>
     <description>User created or modified on the Firewall.</description>
-    <group>adduser,account_changed,</group>
+    <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,</group>
   </rule>
   
   <rule id="4380" level="10" frequency="6" timeframe="360">
     <if_matched_sid>4310</if_matched_sid>
     <description>Multiple PIX alert messages.</description>
+    <group>pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
   
   <rule id="4381" level="10" frequency="6" timeframe="360">
     <if_matched_sid>4311</if_matched_sid>
     <description>Multiple PIX critical messages.</description>
+    <group>pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
   
   <rule id="4382" level="10" frequency="8" timeframe="120">
     <if_matched_sid>4312</if_matched_sid>
     <description>Multiple PIX error messages.</description>
-    <group>system_error,</group>
+    <group>system_error,pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
   
   <rule id="4383" level="10" frequency="8" timeframe="120">
     <if_matched_sid>4313</if_matched_sid>
     <description>Multiple PIX warning messages.</description>
+    <group>pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="4385" level="10" frequency="8" timeframe="240" ignore="90">
     <if_matched_sid>4333</if_matched_sid>
     <same_source_ip />
     <description>Multiple attack in progress messages.</description>
+    <group>pci_dss_10.6.1,pci_dss_11.4,</group>
   </rule>
 
   <rule id="4386" level="10" frequency="8" timeframe="240">
     <if_matched_sid>4334</if_matched_sid>
     <description>Multiple AAA (VPN) authentication failures.</description>
-    <group>authentication_failures,</group>
+    <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 </group> <!-- SYSLOG,PIX -->
 

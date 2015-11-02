@@ -28,13 +28,13 @@
     <action>DROP</action>
     <options>no_log</options>
     <description>Firewall drop event.</description>
-    <group>firewall_drop,</group>
+    <group>firewall_drop,pci_dss_1.4,</group>
   </rule>
 
   <rule id="4151" level="10" frequency="16" timeframe="45" ignore="240">
     <if_matched_sid>4101</if_matched_sid>
     <same_source_ip />
     <description>Multiple Firewall drop events from same source.</description>
-    <group>multiple_drops,</group>
+    <group>multiple_drops,pci_dss_1.4,pci_dss_10.6.1,</group>
   </rule>  
 </group>

@@ -53,6 +53,7 @@
     <id>^401</id>
     <description>Unauthorized: Failed attempt to access </description>
     <description>authorization-required file or directory.</description>
+    <group>pci_dss_10.2.4, pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="35005" level="5">
@@ -60,6 +61,7 @@
     <id>^403</id>
     <description>Forbidden: Attempt to access forbidden file </description>
     <description>or directory.</description>
+    <group>pci_dss_10.2.4,</group>
   </rule>
 
   <rule id="35006" level="5">
@@ -67,6 +69,7 @@
     <id>^404</id>
     <description>Not Found: Attempt to access non-existent </description>
     <description>file or directory.</description>
+    <group>pci_dss_10.2.4,</group>
   </rule>
 
   <rule id="35007" level="5">
@@ -74,6 +77,7 @@
     <id>^407</id>
     <description>Proxy Authentication Required: User is not </description>
     <description>authorized to use proxy.</description>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="35008" level="5">
@@ -86,12 +90,14 @@
     <if_sid>35002</if_sid>
     <id>^5|^6</id>
     <description>Squid 500/600 error code (server error).</description>
+    <group>pci_dss_10.6.1,</group>
   </rule>
   
   <rule id="35010" level="4">
     <if_sid>35009</if_sid>
     <id>^503</id>
     <description>Squid 503 error code (server unavailable).</description>
+    <group>pci_dss_10.6.1,</group>
   </rule>
   
   <!-- Special rules for 403/404 errors -->
@@ -102,7 +108,7 @@
     <description>file.</description>
     <info type="link">http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
     <info type="text">W32.Beagle.DP is a Worm that drops Trojan.Lodear and opens a back door on the compromised computer.</info>
-    <group>automatic_attack,</group>
+    <group>automatic_attack,pci_dss_11.4,pci_dss_6.2,</group>
   </rule>
   
   <!-- Other worms -->
@@ -110,7 +116,7 @@
     <if_sid>35006</if_sid>
     <url>/jk/exp.wmf$|/PopupSh.ocx$</url>
     <description>Attempt to access a worm/trojan related site.</description>
-    <group>automatic_attack,</group>
+    <group>automatic_attack,pci_dss_11.4,pci_dss_6.2,</group>
   </rule>
   
   <!-- Ignoring google earth, ms web site access and some other
@@ -148,12 +154,14 @@
     <different_url />
     <description>Multiple attempts to access forbidden file </description>
     <description>or directory from same source ip.</description>
+    <group>pci_dss_10.2.4,pci_dss_11.4,</group>
   </rule>
 
   <rule id="35052" level="10" frequency="$SQUID_FREQ" timeframe="120">
     <if_matched_sid>35007</if_matched_sid>
     <same_source_ip />
     <description>Multiple unauthorized attempts to use proxy.</description>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
   <rule id="35053" level="10" frequency="$SQUID_FREQ" timeframe="120">
@@ -161,6 +169,7 @@
     <same_source_ip />
     <different_url />
     <description>Multiple Bad requests/Invalid syntax.</description>
+    <group>pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="35054" level="12" frequency="$SQUID_FREQ" timeframe="240">
@@ -169,6 +178,7 @@
     <description>Infected machine with W32.Beagle.DP.</description>
     <info type="link">http://www.symantec.com/avcenter/venc/data/w32.beagle.dp.html</info>
     <info type="text">W32.Beagle.DP is a Worm that drops Trojan.Lodear and opens a back door on the compromised computer.</info>
+    <group>pci_dss_11.4,pci_dss_6.2,</group>
   </rule>
   
   <rule id="35055" level="10" frequency="$SQUID_FREQ" timeframe="90">
@@ -176,6 +186,7 @@
     <same_source_ip />
     <different_url />
     <description>Multiple attempts to access a non-existent file.</description>
+    <group>pci_dss_10.2.4,pci_dss_11.4,</group>
   </rule>
 
   <rule id="35056" level="12" frequency="$SQUID_FREQ" timeframe="240">
@@ -183,6 +194,7 @@
     <same_source_ip />
     <description>Multiple attempts to access a worm/trojan/virus </description>
     <description>related web site. System probably infected.</description>
+    <group>pci_dss_10.2.4,pci_dss_11.4,</group>
   </rule>
   
   <rule id="35057" level="10" frequency="$SQUID_FREQ" timeframe="240">
