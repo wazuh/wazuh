@@ -46,8 +46,8 @@ int main(int argc, char **argv)
     const char *ip_address = NULL;
     const char *ar = NULL;
 
-    cJSON *root;
-    cJSON *response;
+    cJSON *root = NULL;
+    cJSON *response = NULL;
 
     int arq = 0;
     gid_t gid;
