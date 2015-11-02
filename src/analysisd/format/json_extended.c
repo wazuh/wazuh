@@ -120,7 +120,7 @@ int W_isRootcheck(cJSON *root){
 	cJSON *compliance2;
 	compliance1 = cJSON_CreateArray();
 	compliance2 = cJSON_CreateArray();
-	int i, counter;
+	int i;
 	regex_t regex_cis;
 	regex_t regex_pci;
 	const char * regex_cis_text;
