@@ -96,12 +96,12 @@ void manage_files(int cday, int cmon, int cyear)
     int exists_json_events = 0;
     FILE *fopnetestjsonevents;
 
-    if ((fopnetestjsonevents = fopen(ajlogfile, "r"))) {
+    if ((fopnetestjsonevents = fopen(ejlogfile, "r"))) {
         exists_json_events = 1;
         fclose(fopnetestjsonevents);
     }
 
-    if ((fopnetestjsonevents = fopen(ajlogfile_old, "r"))) {
+    if ((fopnetestjsonevents = fopen(ejlogfile_old, "r"))) {
         exists_json_events = 1;
         fclose(fopnetestjsonevents);
     }
