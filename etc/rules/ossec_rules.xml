@@ -111,7 +111,7 @@
     <if_sid>510</if_sid>
     <match>^System Audit</match>
     <description>System Audit event.</description>
-    <group>rootcheck,pci_dss_10.6.1,</group>
+    <group>rootcheck,</group>
   </rule>
   
   <rule id="518" level="9">
