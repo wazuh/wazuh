@@ -21,15 +21,15 @@ void W_JSON_ParseTimestamp(cJSON *root, const Eventinfo *lf);
 // Parse AgentIP
 void W_JSON_ParseAgentIP(cJSON *root, const Eventinfo *lf);
 // Parse Location
-void W_JSON_ParseLocation(cJSON *root, const Eventinfo *lf);
+void W_JSON_ParseLocation(cJSON *root, const Eventinfo *lf, int archives);
 // Parse Groups
-void W_JSON_ParseGroups(cJSON *root, const Eventinfo *lf);
+void W_JSON_ParseGroups(cJSON *root, const Eventinfo *lf, int nested);
 // Parse Groups Compliance 
-void W_JSON_ParseGroupsCompliance(cJSON *root);
+void W_JSON_ParseGroupsCompliance(cJSON *root, int nested);
 // Parse Rootcheck compliance
-void W_JSON_ParseRootcheck(cJSON *root, const Eventinfo *lf);
+void W_JSON_ParseRootcheck(cJSON *root, const Eventinfo *lf, int nested);
 // Detecting if an alert comes from rootcheck
-int W_isRootcheck(cJSON *root);
+int W_isRootcheck(cJSON *root, int nested);
 // Aux functions
 int str_cut(char *str, int begin, int len);
 int compile_regex (regex_t * r, const char * regex_text);
