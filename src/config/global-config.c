@@ -95,6 +95,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     /* XML definitions */
     const char *xml_mailnotify = "email_notification";
     const char *xml_logall = "logall";
+    const char *xml_logall_json = "logall_json";
     const char *xml_integrity = "integrity_checking";
     const char *xml_rootcheckd = "rootkit_detection";
     const char *xml_hostinfo = "host_information";
@@ -292,6 +293,21 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 return (OS_INVALID);
             }
         }
+        /* Log all JSON*/
+        else if (strcmp(node[i]->element, xml_logall_json) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                if (Config) {
+                    Config->logall_json = 1;
+                }
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                if (Config) {
+                    Config->logall_json = 0;
+                }
+            } else {
+                merror(XML_VALUEERR, __local_name, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+        }           
         /* Compress alerts */
         else if (strcmp(node[i]->element, xml_compress_alerts) == 0) {
             /* removed from here -- compatility issues only */

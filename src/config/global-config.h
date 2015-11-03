@@ -15,6 +15,7 @@
 /* Configuration structure */
 typedef struct __Config {
     u_int8_t logall;
+    u_int8_t logall_json; 
     u_int8_t stats;
     u_int8_t integrity;
     u_int8_t syscheck_auto_ignore;

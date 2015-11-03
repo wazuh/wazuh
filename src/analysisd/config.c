@@ -24,6 +24,7 @@ int GlobalConf(const char *cfgfile)
 
     /* Default values */
     Config.logall = 0;
+    Config.logall_json = 0;
     Config.stats = 4;
     Config.integrity = 8;
     Config.rootcheck = 8;

@@ -1013,10 +1013,11 @@ void OS_ReadMSG_analysisd(int m_queue)
             } while ((rulenode_pt = rulenode_pt->next) != NULL);
 
             /* If configured to log all, do it */
-            if (Config.logall) {
+            if (Config.logall)
                 OS_Store(lf);
+            if (Config.logall_json)
                 jsonout_output_archive(lf);
-            }
+            
 
 CLMEM:
             /** Cleaning the memory **/
