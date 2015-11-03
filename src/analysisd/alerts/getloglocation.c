@@ -100,7 +100,7 @@ int OS_GetLogLocation(const Eventinfo *lf)
         ErrorExit(LINK_ERROR, ARGV0, __elogfile, EVENTS_DAILY, errno, strerror(errno));
     }
     /* For the events in JSON */
-    if (Config.jsonout_output) {
+    if (Config.logall_json) {
         /* Create the json archives logfile name */
         snprintf(__ejlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
                  EVENTS,
