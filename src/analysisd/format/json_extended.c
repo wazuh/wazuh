@@ -7,44 +7,47 @@
 #include <stddef.h>
 
 #define MAX_MATCHES 10
-#define MAX_STRING 256
+#define MAX_STRING 1024
 
 void W_ParseJSON(cJSON *root, const Eventinfo *lf){
-	 // Parse hostname & Parse AGENTIP
+		 // Parse hostname & Parse AGENTIP
 	 if(lf->hostname){
 		 W_JSON_ParseHostname(root, lf->hostname);
 		 W_JSON_ParseAgentIP(root, lf);
 	 }
-	 // Parse timestamp
+	 // Parse timestamp 
 	 if(lf->year && lf->mon && lf->day && lf->hour){ 
 		 W_JSON_ParseTimestamp(root, lf);
 	 }
 	 // Parse Location
 	if (lf->location) {
-       W_JSON_ParseLocation(root,lf);
+       W_JSON_ParseLocation(root,lf,0);
     }
 	// Parse groups && Parse PCIDSS && Parse CIS
 	if (lf->generated_rule->group) {
-       W_JSON_ParseGroups(root,lf);
-       W_JSON_ParseGroupsCompliance(root);
+       W_JSON_ParseGroups(root,lf,1);
+       W_JSON_ParseGroupsCompliance(root,1);
     }
 	// Parse CIS and PCIDSS rules from rootcheck .txt benchmarks
-	if (lf->full_log && W_isRootcheck(root)) {
-		W_JSON_ParseRootcheck(root,lf);
+	if (lf->full_log && W_isRootcheck(root,1)) {
+       W_JSON_ParseRootcheck(root,lf,1);
 	}
-	
+		
  }
 
 // Detect if the alert is coming from rootcheck controls.
-int W_isRootcheck(cJSON *root){
+int W_isRootcheck(cJSON *root, int nested){
 	cJSON *groups;
 	cJSON *group;
 	cJSON *rule;
 	int totalGroups,i;
 
-	rule = cJSON_GetObjectItem(root,"rule");
+	if(!nested)
+		rule = root;
+	else
+		rule = cJSON_GetObjectItem(root,"rule");
+
 	groups = cJSON_GetObjectItem(rule,"groups");
-	// Counting total groups
 	totalGroups = cJSON_GetArraySize(groups);
 	for(i = 0; i < totalGroups; i++){
 		group = cJSON_GetArrayItem(groups,i);
@@ -56,7 +59,7 @@ int W_isRootcheck(cJSON *root){
 }
 
 // Getting security compliance field from rootcheck rules benchmarks .txt
- void W_JSON_ParseRootcheck(cJSON *root, const Eventinfo *lf){
+ void W_JSON_ParseRootcheck(cJSON *root, const Eventinfo *lf, int nested){
 	regex_t r;
 	cJSON *groups;
 	cJSON *rule;
@@ -71,11 +74,15 @@ int W_isRootcheck(cJSON *root){
 	const char delim2[2] = ",";
 	char fullog[MAX_STRING];
 
-
+	 
 	// Getting groups object JSON
-	rule = cJSON_GetObjectItem(root,"rule");
-	groups = cJSON_GetObjectItem(rule,"groups");
+	if(!nested)
+		rule = root;
+	else
+		rule = cJSON_GetObjectItem(root,"rule");
 
+	groups = cJSON_GetObjectItem(rule,"groups");
+	 
 	// Getting full log string
 	strncpy(fullog, lf->full_log,MAX_STRING);
 	// Searching regex
@@ -83,14 +90,17 @@ int W_isRootcheck(cJSON *root){
 	find_text = fullog;
 	compile_regex(& r, regex_text);
 	matches = match_regex(& r, find_text, results);
+	 
 	if(matches > 0){
 		for (i = 0; i < matches; i++) {
 			token = strtok(results[i], delim);
+			 
 			trim(token);
 			cJSON_AddItemToObject(rule,token, compliance = cJSON_CreateArray());
 			for(j = 0; token[j]; j++){
 				token[j] = tolower(token[j]);
 			}
+			 
 			cJSON_AddItemToArray(groups, cJSON_CreateString(token));
 			if(token){		 
 				token = strtok(0, delim);
@@ -98,21 +108,25 @@ int W_isRootcheck(cJSON *root){
 				token2 = strtok(token, delim2);
 				while (token2)
 				{
+					 	
 					trim(token2);
 					cJSON_AddItemToArray(compliance, cJSON_CreateString(token2));
 					token2 = strtok(0, delim2);
+					 
 				}
 				
 			}
-	        }  
+	   }  
     }
     regfree (& r);
 	for (i = 0; i < matches; i++)
         free(results[i]);
+     
 } 
 
  
-  void W_JSON_ParseGroupsCompliance(cJSON *root){
+ void W_JSON_ParseGroupsCompliance(cJSON *root, int nested){
+ 	 
 	cJSON *groups;
 	cJSON *group;
 	cJSON *rule;
@@ -132,53 +146,70 @@ int W_isRootcheck(cJSON *root){
 	int foundPCI = 0;
 	int j = 0;
 	// Getting groups object JSON
-	rule = cJSON_GetObjectItem(root,"rule");
+	if(!nested)
+		rule = root;
+	else
+		rule = cJSON_GetObjectItem(root,"rule");
+
 	groups = cJSON_GetObjectItem(rule,"groups");
+	 
 	// Counting total groups
 	// Set regex! CAUTION !=!=!=!=!=!=!=! Start with '"' because JSON PRINT function give the string like that
 	regex_cis_text = "^\"cis_([[:alnum:]]+[ [:alnum:]]*)_([[:digit:]]+[.[:digit:]]*)";
 	regex_pci_text = "^\"pci_dss_([[:digit:]]+[.[:digit:]]*)";
 	compile_regex(& regex_cis, regex_cis_text);
 	compile_regex(& regex_pci, regex_pci_text);
-
+	 
 	i = 0;
 	while((group = cJSON_GetArrayItem(groups,i))){
 		// PCI
 		matches = match_regex(& regex_pci, cJSON_Print(group), results);
 		if(matches > 0){
 			cJSON_DeleteItemFromArray(groups,i);
+			 
 			i--;
 			if(foundPCI == 0){
 				foundPCI = 1;
 				cJSON_AddItemToArray(groups, cJSON_CreateString("pci_dss"));
 				cJSON_AddItemToObject(rule,"PCI_DSS", compliance1);
+				 
 			}
+			 
 			memset(buffer, '\0', sizeof(buffer));
 			strncpy(buffer, results[0], sizeof(buffer));
 			cJSON_AddItemToArray(compliance1, cJSON_CreateString(buffer));
+			 
 			for (j = 0; j < matches; j++)
 				free(results[j]);
 			i++;
+			 
 			continue;
+			 
 		}
 		// CIS
 		matches = match_regex(& regex_cis, cJSON_Print(group), results);
+		 
 		if(matches > 1){
 			cJSON_DeleteItemFromArray(groups,i);
+			 
 			i--;
 			if(foundCIS == 0){
 				foundCIS = 1;
 				cJSON_AddItemToArray(groups, cJSON_CreateString("cis"));
 				cJSON_AddItemToObject(rule,"CIS", compliance2);
-			}			
+				 
+			}
+			 	
 			memset(buffer, '\0', sizeof(buffer));
 			strncpy(buffer, results[1], 100);
 			strcat(buffer, " ");
 			strncat(buffer, results[0], 100);
+			 
 			cJSON_AddItemToArray(compliance2, cJSON_CreateString(buffer));
 			for (j = 0; j < matches; j++)
 				free(results[j]);
 			i++;
+			 
 			continue;
 		}
 		i++;
@@ -190,15 +221,20 @@ int W_isRootcheck(cJSON *root){
 
  }
  
-// STRTOK every "-" delimiter to get differents groups to our json array.
- void W_JSON_ParseGroups(cJSON *root, const Eventinfo *lf){
+// STRTOK every "-" delimiter to get differents groups to our json array. 
+ void W_JSON_ParseGroups(cJSON *root, const Eventinfo *lf, int nested){
 	cJSON *groups;
 	cJSON *rule;
-	rule = cJSON_GetObjectItem(root,"rule");
+	 
+	if(!nested)
+		rule = root;
+	else
+		rule = cJSON_GetObjectItem(root,"rule");
+
 	cJSON_AddItemToObject(rule,"groups", groups = cJSON_CreateArray());
-	
-	char buffer[strlen(lf->generated_rule->group)];
-	strcpy(buffer, lf->generated_rule->group);	
+	 
+	char buffer[MAX_STRING];
+	strncpy(buffer, lf->generated_rule->group, sizeof(buffer));	
 	char delim[2];
 	delim[0] = ',';
 	delim[1] = 0;
@@ -207,8 +243,8 @@ int W_isRootcheck(cJSON *root){
 	{
 		cJSON_AddItemToArray(groups, cJSON_CreateString(strdup(token)));
 		token = strtok(0, delim);
-	}
-	free(token); 	 
+		 
+	}	 
  }
  
 // If hostname being with "(" means that alerts came from an agent, so we will remove the brakets
@@ -256,22 +292,28 @@ void W_JSON_ParseHostname(cJSON *root, char *hostname){
 	 
  }
  // The file location usually comes with more information about the alert (like hostname or ip) we will extract just the "/var/folder/file.log".
- void W_JSON_ParseLocation(cJSON *root, const Eventinfo *lf){
-  if(lf->location[0] == '('){
-	 char *e;
-	 char string[strlen(lf->location)];
-	 strcpy(string,lf->location);
-	 int index;
-	 e = strchr(string, '>');
-	 index = (int)(e - string);
-	 str_cut(string, 0, index);
-	 str_cut(string, 0, 1);
-	 cJSON_AddStringToObject(root, "location", string);
-  }else{
-	 cJSON_AddStringToObject(root, "location", lf->location);
-  } 	 
-	 
- }
+void W_JSON_ParseLocation(cJSON *root, const Eventinfo *lf, int archives){
+	if(lf->location[0] == '('){
+		char *e;
+		char string[strlen(lf->location)];
+		strcpy(string,lf->location);
+		int index;
+		e = strchr(string, '>');
+		index = (int)(e - string);
+		str_cut(string, 0, index);
+		str_cut(string, 0, 1);
+		if(archives == 1)
+			cJSON_AddStringToObject(root, "location_desc", string);
+		else
+			cJSON_AddStringToObject(root, "location", string);
+	}else{
+		if(archives == 1)
+			cJSON_AddStringToObject(root, "location_desc", lf->location);
+		else
+			cJSON_AddStringToObject(root, "location", lf->location);
+	} 	 
+
+}
  
 
 #define MAX_ERROR_MSG 0x1000
