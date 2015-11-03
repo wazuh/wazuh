@@ -112,7 +112,7 @@ int W_isRootcheck(cJSON *root){
 } 
 
  
- void W_JSON_ParseGroupsCompliance(cJSON *root){
+  void W_JSON_ParseGroupsCompliance(cJSON *root){
 	cJSON *groups;
 	cJSON *group;
 	cJSON *rule;
@@ -125,49 +125,47 @@ int W_isRootcheck(cJSON *root){
 	regex_t regex_pci;
 	const char * regex_cis_text;
 	const char * regex_pci_text;
-	int totalGroups;
 	char *results[MAX_MATCHES];
 	int matches = 0;
 	char buffer[MAX_STRING];
 	int foundCIS = 0;
 	int foundPCI = 0;
 	int j = 0;
-	int removeGroupsCounter = 0;
 	// Getting groups object JSON
 	rule = cJSON_GetObjectItem(root,"rule");
 	groups = cJSON_GetObjectItem(rule,"groups");
 	// Counting total groups
-	totalGroups = cJSON_GetArraySize(groups);
-	int removeGroups[totalGroups];
 	// Set regex! CAUTION !=!=!=!=!=!=!=! Start with '"' because JSON PRINT function give the string like that
 	regex_cis_text = "^\"cis_([[:alnum:]]+[ [:alnum:]]*)_([[:digit:]]+[.[:digit:]]*)";
 	regex_pci_text = "^\"pci_dss_([[:digit:]]+[.[:digit:]]*)";
 	compile_regex(& regex_cis, regex_cis_text);
 	compile_regex(& regex_pci, regex_pci_text);
-	for(i = 0; i < totalGroups; i++){
-		group = cJSON_GetArrayItem(groups,i);
+
+	i = 0;
+	while((group = cJSON_GetArrayItem(groups,i))){
 		// PCI
 		matches = match_regex(& regex_pci, cJSON_Print(group), results);
 		if(matches > 0){
-			removeGroups[removeGroupsCounter] = i;
-			removeGroupsCounter++;
+			cJSON_DeleteItemFromArray(groups,i);
+			i--;
 			if(foundPCI == 0){
 				foundPCI = 1;
 				cJSON_AddItemToArray(groups, cJSON_CreateString("pci_dss"));
 				cJSON_AddItemToObject(rule,"PCI_DSS", compliance1);
-			}			
+			}
 			memset(buffer, '\0', sizeof(buffer));
 			strncpy(buffer, results[0], sizeof(buffer));
 			cJSON_AddItemToArray(compliance1, cJSON_CreateString(buffer));
 			for (j = 0; j < matches; j++)
 				free(results[j]);
+			i++;
 			continue;
 		}
 		// CIS
 		matches = match_regex(& regex_cis, cJSON_Print(group), results);
 		if(matches > 1){
-			removeGroups[removeGroupsCounter] = i;
-			removeGroupsCounter++;
+			cJSON_DeleteItemFromArray(groups,i);
+			i--;
 			if(foundCIS == 0){
 				foundCIS = 1;
 				cJSON_AddItemToArray(groups, cJSON_CreateString("cis"));
@@ -180,12 +178,10 @@ int W_isRootcheck(cJSON *root){
 			cJSON_AddItemToArray(compliance2, cJSON_CreateString(buffer));
 			for (j = 0; j < matches; j++)
 				free(results[j]);
+			i++;
 			continue;
 		}
-
-	}
-	for (j = removeGroupsCounter; j >= 0; j--){
-		cJSON_DeleteItemFromArray(groups,removeGroups[j]);
+		i++;
 	}
 
 	regfree (& regex_pci); 
