@@ -59,7 +59,7 @@ function logWrite(error, ossec_response, stderr) {
 	var now = _moment()
 	var timestamp = now.format('YYYY-MM-DD HH:mm:ss')
 
-	if(error != null){
+	if(error != null && error > 1){
 		console.error(timestamp + " exec_error:" + error);
 		return true;
 	}
