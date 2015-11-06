@@ -15,7 +15,7 @@
 
 // SETTINGS
 var port = process.env.PORT || 55000;        // set our port
-var debug = true; // Debug mode, printing ossec_response to log.
+var debug = false; // Debug mode, printing ossec_response to log.
 
 // BASE SETUP
 // =============================================================================
