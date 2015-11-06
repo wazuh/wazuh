@@ -266,7 +266,7 @@ int main(int argc, char **argv)
                     cJSON_AddStringToObject(root, "description", "Invalid agent id"); 
                     printf("%s",cJSON_PrintUnformatted(root));
                     cJSON_Delete(root);
-                    exit(1);
+                    exit(0);
                 }else{
                   printf("\n** Invalid agent id '%s'.\n", agent_id);
                   helpmsg();
