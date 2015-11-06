@@ -241,14 +241,14 @@ int main(int argc, char **argv)
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n",
                    shost);
 		} else if(json_output){
-				printf("[ { \"ID\" : \"000\", \"Name\" : \"%s (server)\", \"IP\": \"127.0.0.1\", \"Status\" : \"Active/Local\" }",shost);
+				printf("{\"error\":0, \"response\":[ { \"id\" : \"000\", \"name\" : \"%s (server)\", \"ip\": \"127.0.0.1\", \"status\" : \"Active/Local\" }",shost);
         } else {
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         }
         print_agents(1, active_only, csv_output, json_output);
 		// Closing JSON Object array
 		if(json_output)
-			 printf("]");
+			 printf("] }");
 		else
 			printf("\n");
         exit(0);
