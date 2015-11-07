@@ -1,0 +1,38 @@
+#!/bin/sh
+# postrm script for ossec-hids
+
+set -e
+
+case "$1" in
+    purge|remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+	if getent passwd | grep -q "^ossecr"
+	then
+		deluser ossecr
+	fi
+	if getent passwd | grep -q "^ossecm"
+	then
+		deluser ossecm
+	fi
+	if getent passwd | grep -q "^ossec"
+	then
+		deluser ossec
+	fi
+	if getent group | grep -q "^ossec"
+	then
+		delgroup ossec
+	fi
+	rm -f /etc/init.d/ossec
+	rm -f /etc/ossec-init.conf
+	update-rc.d -f ossec remove
+
+    ;;
+
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 1
+
+    ;;
+
+esac
+
+exit 0
