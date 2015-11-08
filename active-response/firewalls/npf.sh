@@ -44,12 +44,9 @@ if [ "x${IP}" = "x" ]; then
    exit 1;
 fi
 
-# Blocking IP
-if [ "x${ACTION}" != "xadd" -a "x${ACTION}" != "xdelete" ]; then
-fi
-
 case "x${ACTION}" in
 
+	# Blocking IP
 	xadd)
 
 	${NPFCTL} table ossec_blacklist add ${IP} >/dev/null 2>&1
@@ -57,6 +54,7 @@ case "x${ACTION}" in
 
 	;;
 
+	# Unblocking IP
 	xdelete)
 
 	${NPFCTL} table ossec_blacklist del ${IP} >/dev/null 2>&1
@@ -64,6 +62,7 @@ case "x${ACTION}" in
 
 	;;
 
+	# No matching action
 	*)
 
 	echo "$0: invalid action: ${ACTION}"
