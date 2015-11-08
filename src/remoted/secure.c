@@ -85,12 +85,12 @@ void HandleSecure()
         /* Set the source IP */
         strncpy(srcip, inet_ntoa(peer_info.sin_addr), IPSIZE);
         srcip[IPSIZE] = '\0';
-
+	    debug1("DebugW:SourceIP:->%s<-", srcip);
         /* Get a valid agent id */
         if (buffer[0] == '!') {
             tmp_msg = buffer;
             tmp_msg++;
-
+	        debug1("DebugW:AllowedDynamicID Checking:->%s<-", tmp_msg);
             /* We need to make sure that we have a valid id
              * and that we reduce the recv buffer size
              */
@@ -109,7 +109,8 @@ void HandleSecure()
             recv_b -= 2;
 
             agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
-            if (agentid == -1) {
+            debug1("DebugW:Found Valid DynamicID:->%d<-", agentid);
+	    if (agentid == -1) {
                 if (check_keyupdate()) {
                     agentid = OS_IsAllowedDynamicID(&keys, buffer + 1, srcip);
                     if (agentid == -1) {
@@ -123,7 +124,8 @@ void HandleSecure()
             }
         } else {
             agentid = OS_IsAllowedIP(&keys, srcip);
-            if (agentid < 0) {
+	       debug1("DebugW:Checking ValidAllowIP");           
+ 	    if (agentid < 0) {
                 if (check_keyupdate()) {
                     agentid = OS_IsAllowedIP(&keys, srcip);
                     if (agentid == -1) {
@@ -136,22 +138,26 @@ void HandleSecure()
                 }
             }
             tmp_msg = buffer;
-        }
+            debug1("DebugW:ValidAllowIP AgenID is:->%d<-", agentid);   	
+	}
 
         /* Decrypt the message */
         tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg,
                              agentid, recv_b - 1);
+	    debug1("DebugW:FinallyAgentIDisValid");
         if (tmp_msg == NULL) {
+	    debug1("DebugW: Message is NULL");
             /* If duplicated, a warning was already generated */
             continue;
         }
+
 
         /* Check if it is a control message */
         if (IsValidHeader(tmp_msg)) {
             /* We need to save the peerinfo if it is a control msg */
             memcpy(&keys.keyentries[agentid]->peer_info, &peer_info, peer_size);
             keys.keyentries[agentid]->rcvd = time(0);
-
+	        debug1("DebugW:Is a ControlMSG:->%s<-", tmp_msg);
             save_controlmsg((unsigned)agentid, tmp_msg);
 
             continue;
@@ -160,7 +166,7 @@ void HandleSecure()
         /* Generate srcmsg */
         snprintf(srcmsg, OS_FLSIZE, "(%s) %s", keys.keyentries[agentid]->name,
                  keys.keyentries[agentid]->ip->ip);
-
+	    debug1("DebugW:FinallyAgentIDisValid, message:->%s<-", tmp_msg);
         /* If we can't send the message, try to connect to the
          * socket again. If it not exit.
          */
@@ -174,4 +180,3 @@ void HandleSecure()
         }
     }
 }
-

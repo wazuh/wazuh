@@ -1,0 +1,15 @@
+Source: ossec-hids
+Section: admin 
+Priority: extra
+Maintainer: Santiago Bassett <santiago.bassett@gmail.com>
+Build-Depends: debhelper (>= 7.0.50~), libssl-dev, linux-libc-dev
+Standards-Version: 3.8.4
+Homepage: http://www.ossec.net
+
+Package: ossec-hids
+Architecture: any
+Depends: ${shlibs:Depends}, libc6 (>= 2.7), libssl1.0.0, expect, debconf
+Conflicts: ossec-hids-agent
+Description: OSSEC - Host Based Intrusion Detection System
+ OSSEC HIDS for log analysis, integrity checking, rootkits detection and
+ active response. This package includes the server and the agent.

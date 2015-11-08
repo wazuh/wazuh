@@ -182,7 +182,7 @@ int main(int argc, char **argv)
                 break;
             case 'd':
                 nowDebug();
-                debug_level = 1;
+                debug_level ++;
                 break;
             case 'f':
                 run_foreground = 1;

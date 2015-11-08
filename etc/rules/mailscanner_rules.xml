@@ -37,6 +37,6 @@
     <if_matched_sid>3702</if_matched_sid>
     <same_source_ip />
     <description>Multiple attempts of spam.</description>
-    <group>multiple_spam,</group>
+    <group>multiple_spam,pci_dss_10.6.1,</group>
   </rule>
 </group> <!-- SYSLOG,MAILSCANNER -->

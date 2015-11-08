@@ -93,6 +93,7 @@ char *Eventinfo_to_jsonstr(const Eventinfo *lf)
             cJSON_AddNumberToObject(file_diff, "perm_after", lf->perm_after);
         }
     }
+
     W_ParseJSON(root, lf);
     out = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -105,16 +106,6 @@ char *Archiveinfo_to_jsonstr(const Eventinfo *lf)
     char *out;
 
     root = cJSON_CreateObject();
-    if (lf->full_log)
-        cJSON_AddStringToObject(root, "full_log", lf->full_log);
-    if(lf->year && lf->mon && lf->day && lf->hour)
-        W_JSON_ParseTimestamp(root, lf);
-    if(lf->hostname){
-        W_JSON_ParseHostname(root, lf->hostname);
-        W_JSON_ParseAgentIP(root, lf); 
-    }    
-    if (lf->location)
-       W_JSON_ParseLocation(root,lf);
 
     if(lf->program_name)
 	   cJSON_AddStringToObject(root, "program_name", lf->program_name);
@@ -164,44 +155,31 @@ char *Archiveinfo_to_jsonstr(const Eventinfo *lf)
    if(lf->systemname)
        cJSON_AddStringToObject(root, "systemname", lf->systemname);
 
-   if(lf->filename)
-       cJSON_AddStringToObject(root, "filename", lf->filename);
+  
+    if (lf->filename) {
+        cJSON_AddStringToObject(root, "filename", lf->filename);
 
-   if(lf->perm_before)
-       cJSON_AddNumberToObject(root, "perm_before", lf->perm_before);
-
-   if(lf->perm_after)
-       cJSON_AddNumberToObject(root, "perm_after", lf->perm_after);
-
-   if(lf->md5_before)
-       cJSON_AddStringToObject(root, "md5_before", lf->md5_before);
-
-   if(lf->md5_after)
-       cJSON_AddStringToObject(root, "md5_after", lf->md5_after);
-
-   if(lf->sha1_before)
-       cJSON_AddStringToObject(root, "sha1_before", lf->sha1_before);
-
-   if(lf->sha1_after)
-       cJSON_AddStringToObject(root, "sha1_after", lf->sha1_after);
-
-   if(lf->size_before)
-       cJSON_AddStringToObject(root, "size_before", lf->size_before);
-
-   if(lf->size_after)
-       cJSON_AddStringToObject(root, "size_after", lf->size_after);
-
-   if(lf->owner_before)
-       cJSON_AddStringToObject(root, "owner_before", lf->owner_before);
-
-   if(lf->owner_after)
-       cJSON_AddStringToObject(root, "owner_after", lf->owner_after);
-
-   if(lf->gowner_before)
-       cJSON_AddStringToObject(root, "gowner_before", lf->gowner_before);
-
-   if(lf->gowner_after)
-       cJSON_AddStringToObject(root, "gowner_after", lf->gowner_after);
+        if (lf->md5_before && lf->md5_after && strcmp(lf->md5_before, lf->md5_after) != 0  ) {
+            cJSON_AddStringToObject(root, "md5_before", lf->md5_before);
+            cJSON_AddStringToObject(root, "md5_after", lf->md5_after);
+        }
+        if (lf->sha1_before && lf->sha1_after && !strcmp(lf->sha1_before, lf->sha1_after) != 0) {
+            cJSON_AddStringToObject(root, "sha1_before", lf->sha1_before);
+            cJSON_AddStringToObject(root, "sha1_after", lf->sha1_after);
+        }
+        if (lf->owner_before && lf->owner_after && !strcmp(lf->owner_before, lf->owner_after) != 0) {
+            cJSON_AddStringToObject(root, "owner_before", lf->owner_before);
+            cJSON_AddStringToObject(root, "owner_after", lf->owner_after);
+        }
+        if (lf->gowner_before && lf->gowner_after && !strcmp(lf->gowner_before, lf->gowner_after) != 0 ) {
+            cJSON_AddStringToObject(root, "gowner_before", lf->gowner_before);
+            cJSON_AddStringToObject(root, "gowner_after", lf->gowner_after);
+        }
+        if (lf->perm_before && lf->perm_after && lf->perm_before != lf->perm_after) {
+            cJSON_AddNumberToObject(root, "perm_before", lf->perm_before);
+            cJSON_AddNumberToObject(root, "perm_after", lf->perm_after);
+        }
+    }
 
 
    // RuleInfo
@@ -232,29 +210,45 @@ char *Archiveinfo_to_jsonstr(const Eventinfo *lf)
             cJSON_AddNumberToObject(rule, "firedtimes", lf->generated_rule->frequency);
 
     }
-
     // DecoderInfo
-    if(lf->generated_rule){
+    if(lf->decoder_info){
+
         cJSON *decoder;
         cJSON_AddItemToObject(root, "decoder", decoder = cJSON_CreateObject());
 
         if (lf->decoder_info->fts) 
             cJSON_AddNumberToObject(decoder, "fts", lf->decoder_info->fts);
+
         if (lf->decoder_info->accumulate) 
             cJSON_AddNumberToObject(decoder, "accumulate", lf->decoder_info->accumulate);
+
         if (lf->decoder_info->accumulate) 
             cJSON_AddNumberToObject(decoder, "accumulate", lf->decoder_info->accumulate);
 
         if (lf->decoder_info->parent) 
             cJSON_AddStringToObject(decoder, "parent", lf->decoder_info->parent);
+
         if (lf->decoder_info->name) 
             cJSON_AddStringToObject(decoder, "name", lf->decoder_info->name);
+
         if (lf->decoder_info->ftscomment) 
             cJSON_AddStringToObject(decoder, "ftscomment", lf->decoder_info->ftscomment);
 
     }
 
+    if (lf->full_log)
+        cJSON_AddStringToObject(root, "full_log", lf->full_log);
 
+    if(lf->year && lf->mon && lf->day && lf->hour)
+        W_JSON_ParseTimestamp(root, lf);
+
+    if(lf->hostname){
+        W_JSON_ParseHostname(root, lf->hostname);
+        W_JSON_ParseAgentIP(root, lf); 
+    }
+
+    if (lf->location)
+       W_JSON_ParseLocation(root,lf,1);
 
     out = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);

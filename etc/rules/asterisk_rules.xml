@@ -43,39 +43,42 @@
     <if_sid>6201</if_sid>
     <match>Wrong password</match>
     <description>Login session failed.</description>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="6211" level="5">
     <if_sid>6201</if_sid>
     <match>Username/auth name mismatch</match>
     <description>Login session failed (invalid user).</description>
-    <group>invalid_login,</group>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="6212" level="5">
     <if_sid>6201</if_sid>
     <match>No matching peer found</match>
     <description>Login session failed (invalid extension).</description>
-    <group>invalid_login,</group>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <rule id="6250" level="10" frequency="6" timeframe="300">
     <if_matched_sid>6211</if_matched_sid>
     <same_source_ip />
     <description>Multiple failed logins (user enumeration in process).</description>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
   <rule id="6251" level="10" frequency="6" timeframe="300">
     <if_matched_sid>6210</if_matched_sid>
     <same_source_ip />
     <description>Multiple failed logins.</description>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
   
   <rule id="6252" level="10" frequency="6" timeframe="300">
     <if_matched_sid>6212</if_matched_sid>
     <same_source_ip />
     <description>Extension enumeration.</description>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
   <!--From Javi Benito jabi.benito@gmail.com-->
@@ -84,7 +87,7 @@
     <if_sid>6201</if_sid>
     <match>No registration for peer</match>
     <description>Login session failed (invalid iax user).</description>
-    <group>invalid_login,</group>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <!--From Javi Benito jabi.benito@gmail.com-->
@@ -92,6 +95,7 @@
     <if_matched_sid>6253</if_matched_sid>
     <same_source_ip />
     <description>Extension IAX Enumeration.</description>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
   <!--From Javi Benito jabi.benito@gmail.com-->
@@ -99,7 +103,7 @@
     <if_sid>6202</if_sid>
     <match>Don't know how to respond via</match>
     <description>Possible Registration Hijacking.</description>
-    <group>invalid_login,</group>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
   <!--From Javi Benito jabi.benito@gmail.com-->
@@ -107,7 +111,7 @@
     <if_sid>6201</if_sid>
     <match>failed MD5 authentication</match>
     <description>IAX peer Wrong Password.</description>
-    <group>invalid_login,</group>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,</group>
   </rule>
 
   <!--From Javi Benito jabi.benito@gmail.com-->
@@ -115,6 +119,7 @@
     <if_matched_sid>6256</if_matched_sid>
     <same_source_ip />
     <description>Multiple failed logins.</description>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
   

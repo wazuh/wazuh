@@ -1,0 +1,4 @@
+Template: ossec-hids-agent/server-ip
+Type: string
+Default: 127.0.0.1
+Description: OSSEC server IP address for this agent. This server is also known as Manager and will receive information from the agent. You need to specify the IP address, the hostname is not valid. The agent still needs to be registered and started manually.

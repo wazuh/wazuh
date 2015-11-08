@@ -46,8 +46,8 @@ int main(int argc, char **argv)
     const char *ip_address = NULL;
     const char *ar = NULL;
 
-    cJSON *root;
-    cJSON *response;
+    cJSON *root = NULL;
+    cJSON *response = NULL;
 
     int arq = 0;
     gid_t gid;
@@ -241,14 +241,14 @@ int main(int argc, char **argv)
             printf("\n   ID: 000, Name: %s (server), IP: 127.0.0.1, Active/Local\n",
                    shost);
 		} else if(json_output){
-				printf("[ { \"ID\" : \"000\", \"Name\" : \"%s (server)\", \"IP\": \"127.0.0.1\", \"Status\" : \"Active/Local\" }",shost);
+				printf("{\"error\":0, \"response\":[ { \"id\" : \"000\", \"name\" : \"%s (server)\", \"ip\": \"127.0.0.1\", \"status\" : \"Active/Local\" }",shost);
         } else {
             printf("000,%s (server),127.0.0.1,Active/Local,\n", shost);
         }
         print_agents(1, active_only, csv_output, json_output);
 		// Closing JSON Object array
 		if(json_output)
-			 printf("]");
+			 printf("] }");
 		else
 			printf("\n");
         exit(0);
@@ -266,7 +266,7 @@ int main(int argc, char **argv)
                     cJSON_AddStringToObject(root, "description", "Invalid agent id"); 
                     printf("%s",cJSON_PrintUnformatted(root));
                     cJSON_Delete(root);
-                    exit(1);
+                    exit(0);
                 }else{
                   printf("\n** Invalid agent id '%s'.\n", agent_id);
                   helpmsg();
