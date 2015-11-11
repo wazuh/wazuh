@@ -121,12 +121,21 @@ int Start_win32_Syscheck()
         r++;
     }
 
+    /* Print directories to be monitored */
     r = 0;
     while (syscheck.dir[r] != NULL) {
-        verbose("%s: INFO: Monitoring directory: '%s'.",
-                ARGV0, syscheck.dir[r]);
+	char optstr[ 100 ];
+        verbose("%s: INFO: Monitoring directory: '%s', with options %s.",
+	    ARGV0, syscheck.dir[r],
+	    syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
         r++;
     }
+
+    /* Print ignores. */
+    if(syscheck.ignore)
+	for (r = 0; syscheck.ignore[r] != NULL; r++)
+	    verbose("%s: INFO: ignoring: '%s'",
+		ARGV0, syscheck.ignore[r]);
 
     /* Start up message */
     verbose(STARTUP_MSG, ARGV0, getpid());
@@ -291,10 +300,18 @@ int main(int argc, char **argv)
     /* Print directories to be monitored */
     r = 0;
     while (syscheck.dir[r] != NULL) {
-        verbose("%s: INFO: Monitoring directory: '%s'.",
-                ARGV0, syscheck.dir[r]);
+	char optstr[ 100 ];
+        verbose("%s: INFO: Monitoring directory: '%s', with options %s.",
+	    ARGV0, syscheck.dir[r],
+	    syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
         r++;
     }
+
+    /* Print ignores. */
+    if(syscheck.ignore)
+	for (r = 0; syscheck.ignore[r] != NULL; r++)
+	    verbose("%s: INFO: ignoring: '%s'",
+		ARGV0, syscheck.ignore[r]);
 
     /* Check directories set for real time */
     r = 0;

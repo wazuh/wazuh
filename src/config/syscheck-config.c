@@ -230,6 +230,8 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_OWNER;
                     opts |= CHECK_GROUP;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM
+		       | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP );
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -242,6 +244,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_MD5SUM;
                     opts |= CHECK_SHA1SUM;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM );
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -253,6 +256,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_MD5SUM;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_MD5SUM;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -264,6 +268,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_SHA1SUM;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_SHA1SUM;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -275,6 +280,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_PERM;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_PERM;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -286,6 +292,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_SIZE;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_SIZE;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -297,6 +304,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_OWNER;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_OWNER;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -308,6 +316,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_GROUP;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_GROUP;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -317,6 +326,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_REALTIME;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_REALTIME;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -326,6 +336,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_SEECHANGES;
                 } else if (strcmp(*values, "no") == 0) {
+		    opts &= ~ CHECK_SEECHANGES;
                 } else {
                     merror(SK_INV_OPT, __local_name, *values, *attrs);
                     ret = 0;
@@ -367,7 +378,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
         }
 
         /* Check for glob */
-#ifndef WIN32
+	/* The mingw32 builder used by travis.ci can't find glob.h 
+	 * Yet glob must work on actual win32.  
+	 */
+#ifndef __MINGW32__ 
         if (strchr(tmp_dir, '*') ||
                 strchr(tmp_dir, '?') ||
                 strchr(tmp_dir, '[')) {
@@ -398,7 +412,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile);
         }
 #else
-        dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile);
+	dump_syscheck_entry(syscheck, tmp_dir, opts, 0, restrictfile);
 #endif
 
         if (restrictfile) {
@@ -727,4 +741,49 @@ int Read_Syscheck(XML_NODE node, void *configp, __attribute__((unused)) void *ma
 
     return (0);
 }
+
+
+/* return a text version of the directory check option bits,
+ * in a provided string buffer
+ */
+char *syscheck_opts2str(char *buf, int buflen, int opts) {
+    int left = buflen;
+    int i;
+    int check_bits[] = {
+        CHECK_PERM,
+        CHECK_SIZE,
+        CHECK_OWNER,
+        CHECK_GROUP,
+	CHECK_MD5SUM,
+        CHECK_SHA1SUM,
+        CHECK_REALTIME,
+        CHECK_SEECHANGES,
+	0
+	};
+    char *check_strings[] = {
+        "perm",
+        "size",
+        "owner",
+        "group",
+	"md5sum",
+        "sha1sum",
+        "realtime",
+        "report_changes",
+	NULL
+	};
+
+    buf[0] = '\0';
+    for ( i = 0; check_bits[ i ]; i++ ) {
+	if ( opts & check_bits[ i ] ) {
+	    if ( left < buflen )  {
+		strncat( buf, " | ", left );
+		left -= 3;
+		}
+	    strncat( buf, check_strings[ i ], left );
+	    left = buflen - strlen( buf );
+	    }
+	}
+
+    return buf;
+    }
 
