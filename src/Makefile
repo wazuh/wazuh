@@ -74,6 +74,11 @@ ifeq (${uname_S},FreeBSD)
 		OSSEC_LDFLAGS+=-pthread
 		LUA_PLAT=freebsd
 else
+ifeq (${uname_S},NetBSD)
+		DEFINES+=-DNetBSD
+		OSSEC_LDFLAGS+=-pthread
+		LUA_PLAT=posix
+else
 ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
 		DEFINES+=-pthread
@@ -90,6 +95,7 @@ else
 	    # Unknow platform
 endif # HPUX
 endif # OpenBSD
+endif # NetBSD
 endif # FreeBSD
 endif # Darwin
 endif # SunOS
