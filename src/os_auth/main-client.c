@@ -234,7 +234,7 @@ int main(int argc, char **argv)
     }
 
     /* Connect via TCP */
-    sock = OS_ConnectTCP(port, ipaddress, 0);
+    sock = OS_ConnectTCP(port, ipaddress, 0, NULL);
     if (sock <= 0) {
         merror("%s: Unable to connect to %s:%d", ARGV0, ipaddress, port);
         exit(1);
