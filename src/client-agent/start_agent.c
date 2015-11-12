@@ -84,10 +84,13 @@ int connect_server(int initial_id)
         /* IPv6 address */
         if (strchr(tmp_str, ':') != NULL) {
             verbose("%s: INFO: Using IPv6 (%s).", ARGV0, tmp_str);
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 1);
+            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 1, NULL);
         } else {
             verbose("%s: INFO: Using IPv4 (%s).", ARGV0, tmp_str);
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 0);
+            if(agt->lip) {
+                verbose("%s: INFO: Bind to src ip: %s", ARGV0, agt->lip);
+            }
+            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 0, agt->lip);
         }
 
         if (agt->sock < 0) {

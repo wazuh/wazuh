@@ -33,8 +33,8 @@ int OS_getsocketsize(int ossock);
 /* OS_Connect
  * Connect to a TCP/UDP socket
  */
-int OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6);
-int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6);
+int OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6, const char *_lip);
+int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6, const char *_lip);
 
 /* OS_RecvUDP
  * Receive a UDP packet. Return NULL if failed
