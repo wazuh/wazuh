@@ -173,6 +173,7 @@ http://www.ossec.net/main/license/\n"
 #define EVENTS            "/logs/archives"
 #define EVENTS_DAILY      "/logs/archives/archives.log"
 #define ALERTS            "/logs/alerts"
+#define ALERTS_PATH       DEFAULTDIR ALERTS
 #define ALERTS_DAILY      "/logs/alerts/alerts.log"
 #define ALERTSJSON_DAILY  "/logs/alerts/alerts.json"
 #define FWLOGS            "/logs/firewall"

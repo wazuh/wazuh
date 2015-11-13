@@ -53,7 +53,7 @@ static void GetFile_Queue(file_queue *fileq)
     } else {
         snprintf(fileq->file_name, MAX_FQUEUE,
                  "%s/%d/%s/ossec-alerts-%02d.log",
-                 ALERTS,
+                 isChroot() ? ALERTS : ALERTS_PATH,
                  fileq->year,
                  fileq->mon,
                  fileq->day);
