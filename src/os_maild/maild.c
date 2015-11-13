@@ -160,11 +160,14 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    /* chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+    if (mail.smtpserver[0] != '/') {
+        /* chroot */
+        if (Privsep_Chroot(dir) < 0) {
+            merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));
+        }
+        nowChroot();
+        mdebug1(PRIVSEP_MSG, dir, user);
     }
-    nowChroot();
 
     /* Change user */
     if (Privsep_SetUser(uid) < 0) {
@@ -421,4 +424,3 @@ snd_check_hour:
 
     }
 }
-
