@@ -12,7 +12,7 @@
 #include "shared.h"
 #include "rules.h"
 #include "cJSON.h"
-
+#include <sys/resource.h>
 
 /* Convert Eventinfo to json */
 char *Eventinfo_to_jsonstr(const Eventinfo *lf)
@@ -68,7 +68,8 @@ char *Eventinfo_to_jsonstr(const Eventinfo *lf)
         cJSON_AddStringToObject(root, "full_log", lf->full_log);
     }
     if (lf->filename) {
-        cJSON_AddItemToObject(root, "SyscheckFile", file_diff = cJSON_CreateObject());
+        file_diff = cJSON_CreateObject();
+        cJSON_AddItemToObject(root, "SyscheckFile", file_diff);
 
         cJSON_AddStringToObject(file_diff, "path", lf->filename);
 
@@ -108,7 +109,7 @@ char *Archiveinfo_to_jsonstr(const Eventinfo *lf)
     root = cJSON_CreateObject();
 
     if(lf->program_name)
-	   cJSON_AddStringToObject(root, "program_name", lf->program_name);
+       cJSON_AddStringToObject(root, "program_name", lf->program_name);
 
     if(lf->log)
        cJSON_AddStringToObject(root, "log", lf->log);
