@@ -93,25 +93,9 @@ void manage_files(int cday, int cmon, int cyear)
              "archive",
              pp_old->tm_mday);
              
-    int exists_json_events = 0;
-    FILE *fopnetestjsonevents;
+    OS_SignLog(ejlogfile, ejlogfile_old, 1);
+    OS_CompressLog(ejlogfile);
 
-    if ((fopnetestjsonevents = fopen(ejlogfile, "r"))) {
-        exists_json_events = 1;
-        fclose(fopnetestjsonevents);
-    }
-
-    if ((fopnetestjsonevents = fopen(ejlogfile_old, "r"))) {
-        exists_json_events = 1;
-        fclose(fopnetestjsonevents);
-    }
-
-    if (exists_json_events) {
-        /* Only if there is a file to operate on. */
-        OS_SignLog(ejlogfile, ejlogfile_old, 0);
-        OS_CompressLog(ejlogfile);
-    }
-    
     
     /* alert logfile  */
     snprintf(alogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
@@ -145,24 +129,9 @@ void manage_files(int cday, int cmon, int cyear)
              "alerts",
              pp_old->tm_mday);
 
-    int exists = 0;
-    FILE *fopnetest;
-
-    if ((fopnetest = fopen(ajlogfile, "r"))) {
-        exists = 1;
-        fclose(fopnetest);
-    }
-
-    if ((fopnetest = fopen(ajlogfile_old, "r"))) {
-        exists = 1;
-        fclose(fopnetest);
-    }
-
-    if (exists) {
-        /* Only if there is a file to operate on. */
-        OS_SignLog(ajlogfile, ajlogfile_old, 1);
-        OS_CompressLog(ajlogfile);
-    }
+    /* Only if there is a file to operate on. */
+    OS_SignLog(ajlogfile, ajlogfile_old, 1);
+    OS_CompressLog(ajlogfile);
 
     /* firewall events */
     snprintf(flogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.log",
