@@ -121,6 +121,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      ||
         (
             (loglen > 21) &&
+            (isdigit(pieces[0])) &&
             (pieces[4] == ' ') &&
             (pieces[8] == ' ') &&
             (pieces[11] == ' ') &&
