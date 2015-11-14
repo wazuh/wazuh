@@ -120,7 +120,9 @@ Install()
 
     # Generate the /etc/ossec-init.conf
     VERSION_FILE="./src/VERSION"
+    WVERSION_FILE="./src/VERSION_WAZUH"
     VERSION=`cat ${VERSION_FILE}`
+    WVERSION=`cat ${WVERSION_FILE}`
     chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
     echo "DIRECTORY=\"${INSTALLDIR}\"" > ${OSSEC_INIT}
     echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}
@@ -976,7 +978,7 @@ main()
 
     # Initial message
     echo " $NAME $VERSION ${installscript} - http://www.ossec.net"
-
+    echo " OSSEC WAZUH $WVERSION ${installscript} - http://www.wazuh.com"
     catMsg "0x101-initial"
 
     echo "  - $system: $UNAME"
