@@ -56,9 +56,9 @@ void Monitord()
         p = localtime(&tm);
 
         /* Check for unavailable agents */
-       // if (mond.monitor_agents) {
-       //     monitor_agents();
-       // }
+        if (mond.monitor_agents) {
+            monitor_agents();
+        }
 
         /* Day changed, deal with log files */
         if (today != p->tm_mday) {
