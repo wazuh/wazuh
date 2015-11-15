@@ -39,5 +39,4 @@ int str_cut(char *str, int begin, int len);
 int compile_regex (regex_t * r, const char * regex_text);
 int match_regex (regex_t * r, const char * to_match, char * results[MAX_MATCHES]);
 void trim(char * s);
-void removeChar( char * string, char letter );
 #endif
