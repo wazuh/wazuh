@@ -12,7 +12,6 @@
 #include "shared.h"
 #include "rules.h"
 #include "cJSON.h"
-#include <sys/resource.h>
 
 /* Convert Eventinfo to json */
 char *Eventinfo_to_jsonstr(const Eventinfo *lf)

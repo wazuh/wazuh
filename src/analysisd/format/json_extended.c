@@ -211,15 +211,17 @@ int add_groupCIS(cJSON *rule, cJSON *groups, char * group, int *firstCIS){
 // ** TODO ** Regex instead str_cut
 void W_JSON_ParseHostname(cJSON *root, char *hostname){
 	if(hostname[0] == '('){
-		char *e;
-		char string[strlen(hostname)];
-		strcpy(string,hostname);
+		char *search;
+		char string[MAX_STRING];
+		strncpy(string,hostname,MAX_STRING);
 		int index;
-		e = strchr(string, ')');
-		index = (int)(e - string);
-		str_cut(string, index, -1);
-		str_cut(string, 0, 1);
-		cJSON_AddStringToObject(root, "hostname", string);
+		search = strchr(string, ')');
+		if(search){
+			index = (int)(search - string);
+			str_cut(string, index, -1);
+			str_cut(string, 0, 1);
+			cJSON_AddStringToObject(root, "hostname", string);
+		}
 	}else{
 		cJSON_AddStringToObject(root, "hostname", hostname); 
 	}  
@@ -236,36 +238,41 @@ void W_JSON_ParseHostname(cJSON *root, char *hostname){
 // ** TODO ** Regex instead str_cut
  void W_JSON_ParseAgentIP(cJSON *root, const Eventinfo *lf){
     if(lf->hostname[0] == '('){
-       char *e;
-       char string[strlen(lf->hostname)];
-       strcpy(string,lf->hostname);
+       char *search;
+       char string[MAX_STRING];
+       strncpy(string,lf->hostname,MAX_STRING);
        int index;
-       e = strchr(string, ')');
-       index = (int)(e - string);
-       str_cut(string, 0, index);
-       str_cut(string, 0, 2);
-       e = strchr(string, '-');
-       index = (int)(e - string);
-       str_cut(string, index, -1);
-       cJSON_AddStringToObject(root, "agentip", string);
+       search = strchr(string, ')');
+       if(search){
+	       index = (int)(search - string);
+	       str_cut(string, 0, index);
+	       str_cut(string, 0, 2);
+	       search = strchr(string, '-');
+	       index = (int)(search - string);
+	       str_cut(string, index, -1);
+	       cJSON_AddStringToObject(root, "agentip", string);
+	   }
     }
 	 
  }
  // The file location usually comes with more information about the alert (like hostname or ip) we will extract just the "/var/folder/file.log".
 void W_JSON_ParseLocation(cJSON *root, const Eventinfo *lf, int archives){
 	if(lf->location[0] == '('){
-		char *e;
-		char string[strlen(lf->location)];
-		strcpy(string,lf->location);
+		char *search;
+		char string[MAX_STRING];
+		strncpy(string,lf->location,MAX_STRING);
 		int index;
-		e = strchr(string, '>');
-		index = (int)(e - string);
-		str_cut(string, 0, index);
-		str_cut(string, 0, 1);
-		if(archives == 1)
-			cJSON_AddStringToObject(root, "location_desc", string);
-		else
-			cJSON_AddStringToObject(root, "location", string);
+		search = strchr(string, '>');
+		if(search){
+			index = (int)(search - string);
+			str_cut(string, 0, index);
+			str_cut(string, 0, 1);
+
+			if(archives == 1)
+				cJSON_AddStringToObject(root, "location_desc", string);
+			else
+				cJSON_AddStringToObject(root, "location", string);
+		}
 	}else{
 		if(archives == 1)
 			cJSON_AddStringToObject(root, "location_desc", lf->location);
@@ -341,10 +348,4 @@ void trim(char * s) {
     while(* p && isspace(* p)) ++p, --l;
 
     memmove(s, p, l + 1);
-}
-void removeChar( char * string, char letter ) {
-	unsigned int i;
-	for(i = 0; i < strlen( string ); i++ )
-		if( string[i] == letter )
-	  		strcpy( string + i, string + i + 1 );
 }
