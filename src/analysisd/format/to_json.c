@@ -222,9 +222,6 @@ char *Archiveinfo_to_jsonstr(const Eventinfo *lf)
         if (lf->decoder_info->accumulate) 
             cJSON_AddNumberToObject(decoder, "accumulate", lf->decoder_info->accumulate);
 
-        if (lf->decoder_info->accumulate) 
-            cJSON_AddNumberToObject(decoder, "accumulate", lf->decoder_info->accumulate);
-
         if (lf->decoder_info->parent) 
             cJSON_AddStringToObject(decoder, "parent", lf->decoder_info->parent);
 
