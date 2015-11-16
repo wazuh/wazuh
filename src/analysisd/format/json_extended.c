@@ -8,29 +8,30 @@
 
 #define MAX_MATCHES 10
 #define MAX_STRING 1024
+#define MAX_STRING_LESS 30
 
 void W_ParseJSON(cJSON *root, const Eventinfo *lf){
-		 // Parse hostname & Parse AGENTIP
-	 if(lf->hostname){
-		 W_JSON_ParseHostname(root, lf->hostname);
-		 W_JSON_ParseAgentIP(root, lf);
-	 }
-	 // Parse timestamp 
-	 if(lf->year && lf->mon && lf->day && lf->hour){ 
-		 W_JSON_ParseTimestamp(root, lf);
-	 }
-	 // Parse Location
+
+	// Parse hostname & Parse AGENTIP
+	if(lf->hostname){
+		W_JSON_ParseHostname(root, lf->hostname);
+		W_JSON_ParseAgentIP(root, lf);
+	}
+	// Parse timestamp 
+	if(lf->year && lf->mon && lf->day && lf->hour){ 
+		W_JSON_ParseTimestamp(root, lf);
+	}
+	// Parse Location
 	if (lf->location) {
-       W_JSON_ParseLocation(root,lf,0);
-    }
+		W_JSON_ParseLocation(root,lf,0);
+	}
 	// Parse groups && Parse PCIDSS && Parse CIS
 	if (lf->generated_rule->group) {
-       W_JSON_ParseGroups(root,lf,1);
-       W_JSON_ParseGroupsCompliance(root,1);
-    }
+	   W_JSON_ParseGroups(root,lf,1);
+	}
 	// Parse CIS and PCIDSS rules from rootcheck .txt benchmarks
 	if (lf->full_log && W_isRootcheck(root,1)) {
-       W_JSON_ParseRootcheck(root,lf,1);
+	 	W_JSON_ParseRootcheck(root,lf,1);
 	}
 		
  }
@@ -40,6 +41,8 @@ int W_isRootcheck(cJSON *root, int nested){
 	cJSON *groups;
 	cJSON *group;
 	cJSON *rule;
+	char * group_json;
+
 	int totalGroups,i;
 
 	if(!nested)
@@ -51,9 +54,12 @@ int W_isRootcheck(cJSON *root, int nested){
 	totalGroups = cJSON_GetArraySize(groups);
 	for(i = 0; i < totalGroups; i++){
 		group = cJSON_GetArrayItem(groups,i);
-		if(strcmp(cJSON_Print(group),"\"rootcheck\"") == 0){
+		group_json = cJSON_Print(group);
+		if(strcmp(group_json,"\"rootcheck\"") == 0){
+			free(group_json);
 			return 1;
 		}
+		free(group_json);
 	}
 	return 0;
 }
@@ -74,6 +80,9 @@ int W_isRootcheck(cJSON *root, int nested){
 	const char delim2[2] = ",";
 	char fullog[MAX_STRING];
 
+	//Allocate memory
+	for(i = 0; i < MAX_MATCHES; i++)
+		results[i] = malloc((MAX_STRING_LESS)*sizeof(char));
 	 
 	// Getting groups object JSON
 	if(!nested)
@@ -119,147 +128,100 @@ int W_isRootcheck(cJSON *root, int nested){
 	   }  
     }
     regfree (& r);
-	for (i = 0; i < matches; i++)
+	for (i = 0; i < MAX_MATCHES; i++)
         free(results[i]);
      
 } 
-
- 
- void W_JSON_ParseGroupsCompliance(cJSON *root, int nested){
- 	 
-	cJSON *groups;
-	cJSON *group;
-	cJSON *rule;
-	cJSON *compliance1;
-	cJSON *compliance2;
-	compliance1 = cJSON_CreateArray();
-	compliance2 = cJSON_CreateArray();
-	int i;
-	regex_t regex_cis;
-	regex_t regex_pci;
-	const char * regex_cis_text;
-	const char * regex_pci_text;
-	char *results[MAX_MATCHES];
-	int matches = 0;
-	char buffer[MAX_STRING];
-	int foundCIS = 0;
-	int foundPCI = 0;
-	int j = 0;
-	// Getting groups object JSON
-	if(!nested)
-		rule = root;
-	else
-		rule = cJSON_GetObjectItem(root,"rule");
-
-	groups = cJSON_GetObjectItem(rule,"groups");
-	 
-	// Counting total groups
-	// Set regex! CAUTION !=!=!=!=!=!=!=! Start with '"' because JSON PRINT function give the string like that
-	regex_cis_text = "^\"cis_([[:alnum:]]+[ [:alnum:]]*)_([[:digit:]]+[.[:digit:]]*)";
-	regex_pci_text = "^\"pci_dss_([[:digit:]]+[.[:digit:]]*)";
-	compile_regex(& regex_cis, regex_cis_text);
-	compile_regex(& regex_pci, regex_pci_text);
-	 
-	i = 0;
-	while((group = cJSON_GetArrayItem(groups,i))){
-		// PCI
-		matches = match_regex(& regex_pci, cJSON_Print(group), results);
-		if(matches > 0){
-			cJSON_DeleteItemFromArray(groups,i);
-			 
-			i--;
-			if(foundPCI == 0){
-				foundPCI = 1;
-				cJSON_AddItemToArray(groups, cJSON_CreateString("pci_dss"));
-				cJSON_AddItemToObject(rule,"PCI_DSS", compliance1);
-				 
-			}
-			 
-			memset(buffer, '\0', sizeof(buffer));
-			strncpy(buffer, results[0], sizeof(buffer));
-			cJSON_AddItemToArray(compliance1, cJSON_CreateString(buffer));
-			 
-			for (j = 0; j < matches; j++)
-				free(results[j]);
-			i++;
-			 
-			continue;
-			 
-		}
-		// CIS
-		matches = match_regex(& regex_cis, cJSON_Print(group), results);
-		 
-		if(matches > 1){
-			cJSON_DeleteItemFromArray(groups,i);
-			 
-			i--;
-			if(foundCIS == 0){
-				foundCIS = 1;
-				cJSON_AddItemToArray(groups, cJSON_CreateString("cis"));
-				cJSON_AddItemToObject(rule,"CIS", compliance2);
-				 
-			}
-			 	
-			memset(buffer, '\0', sizeof(buffer));
-			strncpy(buffer, results[1], 100);
-			strcat(buffer, " ");
-			strncat(buffer, results[0], 100);
-			 
-			cJSON_AddItemToArray(compliance2, cJSON_CreateString(buffer));
-			for (j = 0; j < matches; j++)
-				free(results[j]);
-			i++;
-			 
-			continue;
-		}
-		i++;
-	}
-
-	regfree (& regex_pci); 
-	regfree (& regex_cis);
-
-
- }
  
 // STRTOK every "-" delimiter to get differents groups to our json array. 
  void W_JSON_ParseGroups(cJSON *root, const Eventinfo *lf, int nested){
 	cJSON *groups;
 	cJSON *rule;
-	 
+	int firstPCI, firstCIS;	 
+	char delim[2];	
+	char buffer[MAX_STRING];
+	char* token;
+
+	firstPCI = firstCIS = 1;
+	delim[0] = ',';
+	delim[1] = 0;
+
 	if(!nested)
 		rule = root;
 	else
 		rule = cJSON_GetObjectItem(root,"rule");
 
 	cJSON_AddItemToObject(rule,"groups", groups = cJSON_CreateArray());
-	 
-	char buffer[MAX_STRING];
 	strncpy(buffer, lf->generated_rule->group, sizeof(buffer));	
-	char delim[2];
-	delim[0] = ',';
-	delim[1] = 0;
-	char* token = strtok(buffer, delim);
+
+	token = strtok(buffer, delim);
 	while (token)
 	{
-		cJSON_AddItemToArray(groups, cJSON_CreateString(strdup(token)));
+		if(!add_groupPCI(rule,groups,token,&firstPCI) && !add_groupCIS(rule,groups,token,&firstCIS))
+			cJSON_AddItemToArray(groups, cJSON_CreateString(token));
 		token = strtok(0, delim);
 		 
 	}	 
  }
- 
+// Parse groups PCI
+int add_groupPCI(cJSON *rule, cJSON *groups, char * group, int *firstPCI){
+	char * len = NULL;
+	cJSON *pci;
+	int aux_int;
+	aux_int = *firstPCI;
+	char aux [strlen(group)]; 
+	// If group begin with pci_dss_ we have a PCI group
+	if((len = strstr(group, "pci_dss_")) != NULL) {
+		// Once we add pci_dss group and create array for PCI_DSS requirements
+		if(aux_int == 1){
+			cJSON_AddItemToArray(groups, cJSON_CreateString("pci_dss"));
+			pci = cJSON_CreateArray();
+			cJSON_AddItemToObject(rule,"PCI_DSS", pci);
+			aux_int = 0;
+		}
+		// Prepare string and add it to PCI dss array
+		strncpy(aux,group,strlen(group));
+		str_cut(aux,0,8);
+		cJSON_AddItemToArray(pci, cJSON_CreateString(aux));
+		return 1;
+	}
+	return 0;
+}
+
+int add_groupCIS(cJSON *rule, cJSON *groups, char * group, int *firstCIS){
+	char * len = NULL;
+	cJSON *cis;
+	char aux [strlen(group)]; 
+	if((len = strstr(group, "cis_")) != NULL) {
+		if(*firstCIS == 1){
+			cJSON_AddItemToArray(groups, cJSON_CreateString("cis"));
+			cis = cJSON_CreateArray();
+			cJSON_AddItemToObject(rule,"CIS", cis);
+			*firstCIS = 0;
+		}
+		strncpy(aux,group,strlen(group));
+		str_cut(aux,0,4);
+		cJSON_AddItemToArray(cis, cJSON_CreateString(aux));
+		return 1;
+	}
+	return 0;
+}
+
 // If hostname being with "(" means that alerts came from an agent, so we will remove the brakets
 // ** TODO ** Regex instead str_cut
 void W_JSON_ParseHostname(cJSON *root, char *hostname){
 	if(hostname[0] == '('){
-		char *e;
-		char string[strlen(hostname)];
-		strcpy(string,hostname);
+		char *search;
+		char string[MAX_STRING];
+		strncpy(string,hostname,MAX_STRING);
 		int index;
-		e = strchr(string, ')');
-		index = (int)(e - string);
-		str_cut(string, index, -1);
-		str_cut(string, 0, 1);
-		cJSON_AddStringToObject(root, "hostname", string);
+		search = strchr(string, ')');
+		if(search){
+			index = (int)(search - string);
+			str_cut(string, index, -1);
+			str_cut(string, 0, 1);
+			cJSON_AddStringToObject(root, "hostname", string);
+		}
 	}else{
 		cJSON_AddStringToObject(root, "hostname", hostname); 
 	}  
@@ -276,36 +238,41 @@ void W_JSON_ParseHostname(cJSON *root, char *hostname){
 // ** TODO ** Regex instead str_cut
  void W_JSON_ParseAgentIP(cJSON *root, const Eventinfo *lf){
     if(lf->hostname[0] == '('){
-       char *e;
-       char string[strlen(lf->hostname)];
-       strcpy(string,lf->hostname);
+       char *search;
+       char string[MAX_STRING];
+       strncpy(string,lf->hostname,MAX_STRING);
        int index;
-       e = strchr(string, ')');
-       index = (int)(e - string);
-       str_cut(string, 0, index);
-       str_cut(string, 0, 2);
-       e = strchr(string, '-');
-       index = (int)(e - string);
-       str_cut(string, index, -1);
-       cJSON_AddStringToObject(root, "agentip", string);
+       search = strchr(string, ')');
+       if(search){
+	       index = (int)(search - string);
+	       str_cut(string, 0, index);
+	       str_cut(string, 0, 2);
+	       search = strchr(string, '-');
+	       index = (int)(search - string);
+	       str_cut(string, index, -1);
+	       cJSON_AddStringToObject(root, "agentip", string);
+	   }
     }
 	 
  }
  // The file location usually comes with more information about the alert (like hostname or ip) we will extract just the "/var/folder/file.log".
 void W_JSON_ParseLocation(cJSON *root, const Eventinfo *lf, int archives){
 	if(lf->location[0] == '('){
-		char *e;
-		char string[strlen(lf->location)];
-		strcpy(string,lf->location);
+		char *search;
+		char string[MAX_STRING];
+		strncpy(string,lf->location,MAX_STRING);
 		int index;
-		e = strchr(string, '>');
-		index = (int)(e - string);
-		str_cut(string, 0, index);
-		str_cut(string, 0, 1);
-		if(archives == 1)
-			cJSON_AddStringToObject(root, "location_desc", string);
-		else
-			cJSON_AddStringToObject(root, "location", string);
+		search = strchr(string, '>');
+		if(search){
+			index = (int)(search - string);
+			str_cut(string, 0, index);
+			str_cut(string, 0, 1);
+
+			if(archives == 1)
+				cJSON_AddStringToObject(root, "location_desc", string);
+			else
+				cJSON_AddStringToObject(root, "location", string);
+		}
 	}else{
 		if(archives == 1)
 			cJSON_AddStringToObject(root, "location_desc", lf->location);
@@ -353,7 +320,6 @@ int match_regex (regex_t * r, const char * to_match, char * results[MAX_MATCHES]
             start = m[i].rm_so + (p - to_match);
             finish = m[i].rm_eo + (p - to_match);
             if (i > 0) {
-                results[totalResults] = malloc((finish - start)*sizeof(char));
                 sprintf (results[totalResults], "%.*s", (finish - start),to_match + start);
                 totalResults = totalResults + 1;
             }
@@ -382,10 +348,4 @@ void trim(char * s) {
     while(* p && isspace(* p)) ++p, --l;
 
     memmove(s, p, l + 1);
-}
-void removeChar( char * string, char letter ) {
-	unsigned int i;
-	for(i = 0; i < strlen( string ); i++ )
-		if( string[i] == letter )
-	  		strcpy( string + i, string + i + 1 );
 }

@@ -57,7 +57,7 @@ int OS_GetLogLocation(const Eventinfo *lf)
      * If not, create it. Same for the month directory.
      */
     
-     
+
     /* For the events */
     if (_eflog) {
         if (ftell(_eflog) == 0) {
@@ -101,6 +101,27 @@ int OS_GetLogLocation(const Eventinfo *lf)
     }
     /* For the events in JSON */
     if (Config.logall_json) {
+        if (_ejflog) {
+            if (ftell(_ejflog) == 0) {
+                unlink(__ejlogfile);
+            }
+            fclose(_ejflog);
+            _ejflog = NULL;
+        }
+
+        snprintf(__ejlogfile, OS_FLSIZE, "%s/%d/", EVENTS, lf->year);
+        if (IsDir(__ejlogfile) == -1)
+            if (mkdir(__ejlogfile, 0770) == -1) {
+                ErrorExit(MKDIR_ERROR, ARGV0, __ejlogfile, errno, strerror(errno));
+        }
+
+        snprintf(__ejlogfile, OS_FLSIZE, "%s/%d/%s", EVENTS, lf->year, lf->mon);
+
+        if (IsDir(__ejlogfile) == -1)
+            if (mkdir(__ejlogfile, 0770) == -1) {
+                ErrorExit(MKDIR_ERROR, ARGV0, __ejlogfile, errno, strerror(errno));
+        }
+
         /* Create the json archives logfile name */
         snprintf(__ejlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
                  EVENTS,
@@ -167,6 +188,27 @@ int OS_GetLogLocation(const Eventinfo *lf)
     }
 
     if (Config.jsonout_output) {
+        if (_jflog) {
+            if (ftell(_jflog) == 0) {
+                unlink(__jlogfile);
+            }
+            fclose(_jflog);
+            _jflog = NULL;
+        }
+
+        snprintf(__jlogfile, OS_FLSIZE, "%s/%d/", ALERTS, lf->year);
+        if (IsDir(__jlogfile) == -1)
+            if (mkdir(__jlogfile, 0770) == -1) {
+                ErrorExit(MKDIR_ERROR, ARGV0, __jlogfile, errno, strerror(errno));
+            }
+
+        snprintf(__jlogfile, OS_FLSIZE, "%s/%d/%s", ALERTS, lf->year, lf->mon);
+
+        if (IsDir(__jlogfile) == -1)
+            if (mkdir(__jlogfile, 0770) == -1) {
+                ErrorExit(MKDIR_ERROR, ARGV0, __jlogfile, errno, strerror(errno));
+            }
+
         /* Create the json logfile name */
         snprintf(__jlogfile, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
                  ALERTS,
@@ -187,7 +229,7 @@ int OS_GetLogLocation(const Eventinfo *lf)
         if (link(__jlogfile, ALERTSJSON_DAILY) == -1) {
             ErrorExit(LINK_ERROR, ARGV0, __jlogfile, ALERTSJSON_DAILY, errno, strerror(errno));
         }
-    }
+    } 
 
     /* For the firewall events */
     if (_fflog) {

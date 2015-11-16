@@ -5,6 +5,8 @@
 ### Setting up variables
 VERSION_FILE="./src/VERSION"
 VERSION=`cat ${VERSION_FILE}`
+WVERSION_FILE="./src/VERSION_WAZUH"
+WVERSION=`cat ${WVERSION_FILE}`
 LOCATION="./src/LOCATION"
 UNAME=`uname -snr`
 NUNAME=`uname`

@@ -28,7 +28,7 @@ int OS_MD5_File(const char *fname, os_md5 output)
 
     memset(output, 0, 33);
     buf[1024] = '\0';
-
+    
     fp = fopen(fname, "r");
     if (!fp) {
         return (-1);
