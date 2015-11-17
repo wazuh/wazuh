@@ -4,11 +4,11 @@ OSSEC Copyright (C) 2015 Trend Micro Inc.
 
 OSSEC is a full platform to monitor and control your systems. It mixes together all the aspects of HIDS (host-based intrusion detection), log monitoring and SIM/SIEM together in a simple, powerful and open source solution. 
 
-*OSSEC website is http://ossec.net
-*OSSEC project documentation can be found at: http://ossec.github.io/docs/
+* OSSEC website is http://ossec.net
+* OSSEC project documentation can be found at: http://ossec.github.io/docs/
 
-*Wazuh website is http://wazuh.com
-*OSSEC Wazuh fork documentation can be found at: http://documentation.wazuh.com
+* Wazuh website is http://wazuh.com
+* OSSEC Wazuh fork documentation can be found at: http://documentation.wazuh.com
 
 # Information about OSSEC forked by Wazuh
 
