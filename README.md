@@ -35,7 +35,7 @@ Wazuh team is currently supporting OSSEC enterprise users, and decided to develo
 ## Branches
 
 * `master` branch on correspond to the last OSSEC Wazuh stable version.
-* `development` branch containst the latest code, be aware of possible bugs on this branch.  
+* `development` branch contains the latest code, be aware of possible bugs on this branch.  
 
 ## Installation
 
