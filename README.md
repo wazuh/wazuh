@@ -1,14 +1,6 @@
-
-OSSEC HIDS forked by Wazuh, Inc.
-
-OSSEC Copyright (C) 2015 Trend Micro Inc.
+# OSSEC Wazuh fork
 
 OSSEC is a full platform to monitor and control your systems. It mixes together all the aspects of HIDS (host-based intrusion detection), log monitoring and SIM/SIEM together in a simple, powerful and open source solution. 
-
-* OSSEC website is http://ossec.net
-* OSSEC project documentation can be found at http://ossec.github.io/docs/
-* Wazuh website is http://wazuh.com
-* OSSEC Wazuh fork documentation can be found at http://documentation.wazuh.com
 
 This fork provides compliance support, extended logging, and additional management features. These capabilities are required for the integration with ELK Stack and OSSEC Wazuh RESTful API (also included in this repository). 
 
@@ -30,7 +22,8 @@ Wazuh team is currently supporting OSSEC enterprise users, and decided to develo
 
 ## Documentation
 
-* Full documentation at [documentation.wazuh.com](http://documentation.wazuh.com)
+* [Full documentation](http://documentation.wazuh.com)
+* [OSSEC Wazuh fork documentation](http://documentation.wazuh.com/ossec_wazuh.html)
 
 ## Branches
 
@@ -43,26 +36,29 @@ Please refer to [Installation guide](http://documentation.wazuh.com/en/latest/os
 
 ## Contribute
 
-If you want to contribute to our project please don't hesitate to send a pull request. 
+If you want to contribute to our project please don't hesitate to send a pull request. You can also join our users [mailing list](https://groups.google.com/d/forum/wazuh), by sending an email to [wazuh+subscribe@googlegroups.com](mailto:wazuh+subscribe@googlegroups.com), to ask questions and participate in discussions.
 
-You can also join our users [mailing list](https://groups.google.com/d/forum/wazuh), by sending an email to [wazuh+subscribe@googlegroups.com](mailto:wazuh+subscribe@googlegroups.com), to ask questions and participate in discussions.
+## Software and libraries used
+
+* Modified version of Zlib and a small part of OpenSSL (SHA1 and Blowfish libraries).
+* OpenSSL Project for use in the OpenSSL Toolkit (http://www.openssl.org/).
+* Cryptographic software written by Eric Young (eay@cryptsoft.com).
+* Software developed by the Zlib project (Jean-loup Gailly and Mark Adler).
+* Software developed by the cJSON project (Dave Gamble).
+* Node.js (Ryan Dahl).
+* NPM packages Body Parser, Express, HTTP-Auth and Moment.
 
 ## Credits and Thank you
 
-Thank you Daniel Cid, who started the OSSEC project.
+* Daniel Cid, who started the OSSEC project.
+* [OSSEC core team members](http://ossec.github.io/about.html#ossec-team).
+* [OSSEC developers and contributors](https://github.com/ossec/ossec-hids/blob/master/CONTRIBUTORS).
 
-Thank you [OSSEC core team members](http://ossec.github.io/about.html#ossec-team).
+## License and copyright
 
-Thank you [OSSEC developers and contributors](https://github.com/ossec/ossec-hids/blob/master/CONTRIBUTORS).
+OSSEC Copyright (C) 2015 Trend Micro Inc. (License GPLv2)
 
-* [OSSEC Project] (https://github.com/ossec/ossec-hids)
-* OSSEC comes with a modified version of zlib and a small part 
-  of openssl (sha1 and blowfish libraries)
-* This product includes software developed by the OpenSSL Project
-  for use in the OpenSSL Toolkit (http://www.openssl.org/).
-* This product includes cryptographic software written by Eric 
-  Young (eay@cryptsoft.com)
-* This product include software developed by the zlib project 
-  (Jean-loup Gailly and Mark Adler).
-* This product include software developed by the cJSON project 
-  (Dave Gamble)
+## References
+
+* [Wazuh website](http://wazuh.com)
+* [OSSEC project website](http://ossec.github.io)
