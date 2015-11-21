@@ -6,7 +6,7 @@ This fork provides compliance support, extended logging, and additional manageme
 
 ## Wazuh Open Source modules and contributions
 
-Wazuh team is currently supporting OSSEC enterprise users, and decided to develop and publish additional modules as a way to contribute back to the Open Source community. Find below a list and description of these modules, that have been released under the terms of GPLv2 license.
+Wazuh team is currently supporting OSSEC enterprise users, and decided to develop and publish additional modules as a way to contribute back to the Open Source community. Find below a list and description of these modules:
 
 * [OSSEC Wazuh Ruleset](http://documentation.wazuh.com/en/latest/ossec_ruleset.html): Includes compliance mapping with PCI DSS v3.1, CIS and additional decoders and rules. Users can contribute to this rule set by submitting pull requests to our [Github repository](https://github.com/wazuh/ossec-rules). Our team will continue to maintain and update it periodically.
 
@@ -23,16 +23,12 @@ Wazuh team is currently supporting OSSEC enterprise users, and decided to develo
 ## Documentation
 
 * [Full documentation](http://documentation.wazuh.com)
-* [OSSEC Wazuh fork documentation](http://documentation.wazuh.com/ossec_wazuh.html)
+* [OSSEC Wazuh fork installation guide](http://documentation.wazuh.com/ossec_wazuh.html)
 
 ## Branches
 
 * `master` branch on correspond to the last OSSEC Wazuh stable version.
 * `development` branch contains the latest code, be aware of possible bugs on this branch.  
-
-## Installation
-
-Please refer to [Installation guide](http://documentation.wazuh.com/en/latest/ossec_wazuh.html)
 
 ## Contribute
 
