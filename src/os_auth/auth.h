@@ -45,7 +45,7 @@
 extern BIO *bio_err;
 #define KEYFILE  "/etc/sslmanager.key"
 #define CERTFILE "/etc/sslmanager.cert"
-#define DEFAULT_PORT 1515
+#define DEFAULT_PORT "1515"
 
 SSL_CTX *os_ssl_keys(int is_server, const char *os_dir, const char *cert, const char *key, const char *ca_cert);
 SSL_CTX *get_ssl_context(void);

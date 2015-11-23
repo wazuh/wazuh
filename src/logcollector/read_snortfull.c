@@ -115,7 +115,7 @@ void *read_snortfull(int pos, int *rc, int drop_it)
 
 file_error:
 
-        merror("%s: Bad formated snort full file.", ARGV0);
+        merror("%s: Bad formatted snort full file.", ARGV0);
         *rc = -1;
         return (NULL);
 

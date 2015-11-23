@@ -20,7 +20,7 @@
 #define VALIDDATA       "354"
 
 /* Default values used to connect */
-#define SMTP_DEFAULT_PORT   25
+#define SMTP_DEFAULT_PORT   "25"
 #define MAILFROM            "Mail From: <%s>\r\n"
 #define RCPTTO              "Rcpt To: <%s>\r\n"
 #define DATAMSG             "DATA\r\n"
@@ -55,7 +55,7 @@ int OS_Sendsms(MailConfig *mail, struct tm *p, MailMsg *sms_msg)
     char final_to[512];
 
     /* Connect to the SMTP server */
-    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver, 0, NULL);
+    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver);
     if (socket < 0) {
         return (socket);
     }
@@ -260,7 +260,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
     }
 
     /* Connect to the SMTP server */
-    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver, 0, NULL);
+    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, mail->smtpserver);
     if (socket < 0) {
         return (socket);
     }

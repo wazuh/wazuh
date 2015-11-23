@@ -75,6 +75,10 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #else
+/* WINVER needs to be 0x0501 or higher to pull in IPv6 functions */
+#ifndef WINVER
+#define WINVER	0x0501
+#endif
 #include <winsock2.h>
 #include <windows.h>
 #include <io.h>

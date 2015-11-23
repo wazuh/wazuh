@@ -388,18 +388,6 @@ sub taillog {
    } # End of while read line
 }
 
-sub ossec_aton(){
-        my ($ip)=@_;
-        if ($ip=~ m/(\d+)\.(\d+)\.(\d+)\.(\d+)/){
-                my $num= ($1 * 256 ** 3) + ($2 * 256 ** 2)+ ($3 * 256 ** 1)+ ($4);
-
-                return "$num";
-        }else{
-                return "1";  # Snorby has a bug where it wont ouput "N\A" on the IP columns if srcip\dstip = 0\null
-        }
-
-}
-
 sub prepair2basedata(){
     my (
         $hids_id,
@@ -533,8 +521,8 @@ VALUES (
 VALUES (
 ? , ? , ? , ? , ? , ? , ? , ? , ? , ? , ? , ? , ? , ?
 ) ";
-    $dbi->execute($query,$hids_id,$last_cid,&ossec_aton($srcip),&ossec_aton($dstip),4,5,0,20,0,0,0,0,0,0);
-    &printlog ("iphdr: ($query,$hids_id,$last_cid,&ossec_aton($srcip),&ossec_aton($dstip),4,5,0,undef,undef,undef,undef,undef,undef,undef)\n");
+    $dbi->execute($query,$hids_id,$last_cid,$srcip,$dstip,4,5,0,20,0,0,0,0,0,0);
+    &printlog ("iphdr: ($query,$hids_id,$last_cid,$srcip,$dstip,4,5,0,undef,undef,undef,undef,undef,undef,undef)\n");
     $dbi->{sth}->finish;
 
 #########

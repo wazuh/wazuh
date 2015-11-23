@@ -12,6 +12,8 @@
 
 #define MAX_LAST_EVENTS 11
 
+#define MAX_TIMEFRAME 604800
+
 #include "shared.h"
 #include "active-response.h"
 #include "lists.h"

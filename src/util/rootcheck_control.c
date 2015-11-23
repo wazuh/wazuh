@@ -237,8 +237,7 @@ int main(int argc, char **argv)
     /* Print information from an agent */
     if (info_agent) {
         int i;
-        char final_ip[128 + 1];
-        char final_mask[128 + 1];
+        char final_ip[IPSIZE + 4];
         keystore keys;
 
         if ((strcmp(agent_id, "000") == 0) ||
@@ -258,12 +257,11 @@ int main(int argc, char **argv)
                 helpmsg();
             }
 
-            final_ip[128] = '\0';
-            final_mask[128] = '\0';
-            getNetmask(keys.keyentries[i]->ip->netmask,
-                       final_mask, 128);
-            snprintf(final_ip, 128, "%s%s", keys.keyentries[i]->ip->ip,
-                     final_mask);
+            /* Getting full address/prefixlength from ip. */
+            final_ip[(sizeof final_ip) - 1] = '\0';
+            snprintf(final_ip, sizeof final_ip, "%s/%u",
+                     keys.keyentries[i]->ip->ip,
+                     keys.keyentries[i]->ip->prefixlength);
 
             if (!csv_output)
                 printf("\nPolicy and auditing events for agent "

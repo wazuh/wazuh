@@ -50,11 +50,11 @@ void OS_CSyslogD(SyslogConfig **syslog_config)
     s = 0;
     while (syslog_config[s]) {
         syslog_config[s]->socket = OS_ConnectUDP(syslog_config[s]->port,
-                                   syslog_config[s]->server, 0, NULL);
+                                                 syslog_config[s]->server);
         if (syslog_config[s]->socket < 0) {
             merror(CONNS_ERROR, ARGV0, syslog_config[s]->server);
         } else {
-            merror("%s: INFO: Forwarding alerts via syslog to: '%s:%d'.",
+            merror("%s: INFO: Forwarding alerts via syslog to: '%s:%s'.",
                    ARGV0, syslog_config[s]->server, syslog_config[s]->port);
         }
 

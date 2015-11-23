@@ -217,7 +217,7 @@ void *read_nmapg(int pos, int *rc, int drop_it)
 
             p = __get_port(p, proto, port, 9);
             if (!p) {
-                debug1("%s: Bad formated nmap grepable file (port).", ARGV0);
+                debug1("%s: Bad formatted nmap grepable file (port).", ARGV0);
                 break;
             }
 
@@ -250,7 +250,7 @@ void *read_nmapg(int pos, int *rc, int drop_it)
         /* Handle errors */
 file_error:
 
-        merror("%s: Bad formated nmap grepable file.", ARGV0);
+        merror("%s: Bad formatted nmap grepable file.", ARGV0);
         *rc = -1;
         return (NULL);
 

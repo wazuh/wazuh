@@ -14,10 +14,11 @@
 #include <errno.h>
 #include "shared.h"
 #include "os_net.h"
+agent *agt;
 
 /* Prototypes */
-static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, int ipv6);
-static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6, const char *_lip);
+static int OS_Bindport(char *_port, unsigned int _proto, const char *_ip);
+static int OS_Connect(char *_port, unsigned int protocol, const char *_ip);
 
 /* Unix socket -- not for windows */
 #ifndef WIN32
@@ -40,64 +41,66 @@ static socklen_t us_l = sizeof(n_us);
 
 
 /* Bind a specific port */
-static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, int ipv6)
+int OS_Bindport(char *_port, unsigned int _proto, const char *_ip)
 {
-    int ossock;
-    struct sockaddr_in server;
+    int ossock = 0, s;
+    struct addrinfo hints, *result, *rp;
 
-#ifndef WIN32
-    struct sockaddr_in6 server6;
+
+    memset(&hints, 0, sizeof(struct addrinfo));
+#ifdef AI_V4MAPPED
+    hints.ai_family = AF_INET6;    /* Allow IPv4 and IPv6 */
+    hints.ai_flags = AI_PASSIVE | AI_ADDRCONFIG | AI_V4MAPPED;
 #else
-    ipv6 = 0;
+    /* Certain *BSD OS (eg. OpenBSD) do not allow binding to a
+       single-socket for both IPv4 and IPv6 per RFC 3493.  This will 
+       allow one or the other based on _ip. */
+    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_flags = AI_PASSIVE;
 #endif
-
+    hints.ai_protocol = _proto;
     if (_proto == IPPROTO_UDP) {
-        if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-            return OS_SOCKTERR;
-        }
+        hints.ai_socktype = SOCK_DGRAM;
     } else if (_proto == IPPROTO_TCP) {
-        int flag = 1;
-        if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-            return (int)(OS_SOCKTERR);
-        }
-
-        if (setsockopt(ossock, SOL_SOCKET, SO_REUSEADDR,
-                       (char *)&flag,  sizeof(flag)) < 0) {
-            OS_CloseSocket(ossock);
-            return (OS_SOCKTERR);
-        }
+        hints.ai_socktype = SOCK_STREAM;
     } else {
-        return (OS_INVALID);
+        return(OS_INVALID);
     }
 
-    if (ipv6) {
-#ifndef WIN32
-        memset(&server6, 0, sizeof(server6));
-        server6.sin6_family = AF_INET6;
-        server6.sin6_port = htons( _port );
-        server6.sin6_addr = in6addr_any;
+    s = getaddrinfo(_ip, _port, &hints, &result);
+    if (s != 0) {
+        verbose("getaddrinfo: %s", gai_strerror(s));
+        return(OS_INVALID);
+    }
 
-        if (bind(ossock, (struct sockaddr *) &server6, sizeof(server6)) < 0) {
-            OS_CloseSocket(ossock);
-            return (OS_SOCKTERR);
-        }
-#endif
-    } else {
-        memset(&server, 0, sizeof(server));
-        server.sin_family = AF_INET;
-        server.sin_port = htons( _port );
+           /* getaddrinfo() returns a list of address structures.
+              Try each address until we successfully connect(2).
+              If socket(2) (or bind(2)) fails, we (close the socket
+              and) try the next address. */
 
-        if ((_ip == NULL) || (_ip[0] == '\0')) {
-            server.sin_addr.s_addr = htonl(INADDR_ANY);
-        } else {
-            server.sin_addr.s_addr = inet_addr(_ip);
-        }
-
-        if (bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0) {
-            OS_CloseSocket(ossock);
-            return (OS_SOCKTERR);
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+        ossock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (ossock == -1) {
+            continue;
+        } 
+        if (_proto == IPPROTO_TCP) {
+            int flag = 1;
+            if (setsockopt(ossock, SOL_SOCKET, SO_REUSEADDR,
+                          (char *)&flag, sizeof(flag)) < 0) {
+                OS_CloseSocket(ossock);
+                return(OS_SOCKTERR);
+            }
+        } 
+        if (bind(ossock, rp->ai_addr, rp->ai_addrlen) == 0) {
+            break;                  /* Success */
         }
     }
+    if (rp == NULL) {               /* No address succeeded */
+        OS_CloseSocket(ossock);
+        return (OS_SOCKTERR);
+    }
+
+    freeaddrinfo(result);           /* No longer needed */
 
     if (_proto == IPPROTO_TCP) {
         if (listen(ossock, 32) < 0) {
@@ -109,16 +112,17 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
     return (ossock);
 }
 
+
 /* Bind a TCP port, using the OS_Bindport */
-int OS_Bindporttcp(u_int16_t _port, const char *_ip, int ipv6)
+int OS_Bindporttcp(char *_port, const char *_ip)
 {
-    return (OS_Bindport(_port, IPPROTO_TCP, _ip, ipv6));
+    return (OS_Bindport(_port, IPPROTO_TCP, _ip));
 }
 
 /* Bind a UDP port, using the OS_Bindport */
-int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6)
+int OS_Bindportudp(char *_port, const char *_ip)
 {
-    return (OS_Bindport(_port, IPPROTO_UDP, _ip, ipv6));
+    return (OS_Bindport(_port, IPPROTO_UDP, _ip));
 }
 
 #ifndef WIN32
@@ -220,7 +224,8 @@ int OS_getsocketsize(int ossock)
 
     /* Get current maximum size */
     if (getsockopt(ossock, SOL_SOCKET, SO_SNDBUF, &len, &optlen) == -1) {
-        return (OS_SOCKTERR);
+        OS_CloseSocket(ossock);
+        return(OS_SOCKTERR);
     }
 
     return (len);
@@ -229,93 +234,108 @@ int OS_getsocketsize(int ossock)
 #endif
 
 /* Open a TCP/UDP client socket */
-static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6, const char *_lip)
+int OS_Connect(char *_port, unsigned int protocol, const char *_ip)
 {
-    int ossock;
-    struct sockaddr_in server;
-#ifndef WIN32
-    struct sockaddr_in6 server6;
-#else
-    ipv6 = 0;
-#endif
+    int ossock = 0, s;
+    struct addrinfo hints, *result, *rp, local_ai;
+    char tempaddr[INET6_ADDRSTRLEN];
 
-    if (protocol == IPPROTO_TCP) {
-        if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-            return (OS_SOCKTERR);
-        }
-    } else if (protocol == IPPROTO_UDP) {
-        if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-            return (OS_SOCKTERR);
-        }
-    } else {
-        return (OS_INVALID);
-    }
-#ifdef HPUX
-    {
-        int flags;
-        flags = fcntl(ossock, F_GETFL, 0);
-        fcntl(ossock, F_SETFL, flags | O_NONBLOCK);
-    }
-#endif
-
-    if ((_ip == NULL) || (_ip[0] == '\0')) {
+    if ((_ip == NULL)||(_ip[0] == '\0')) {
         OS_CloseSocket(ossock);
-        return (OS_INVALID);
+        return(OS_INVALID);
     }
 
-    /* KAA 16.05.2015
-       bind to source IP if _lip is not null */
-    if(!ipv6 && _lip != NULL && _lip[0] != '\0')
-    {
-        memset(&server, 0, sizeof(server));
-        server.sin_family = AF_INET;
-        server.sin_port = 0;
-        server.sin_addr.s_addr = inet_addr(_lip);
-
-        if(bind(ossock, (struct sockaddr *) &server, sizeof(server)) < 0)
-        {
-            OS_CloseSocket(ossock);
-            return(OS_SOCKTERR);
+    memset(&local_ai, 0, sizeof(struct addrinfo));
+    if (agt) {
+        if (agt->lip) {
+            memset(&hints, 0, sizeof(struct addrinfo));
+            hints.ai_flags = AI_NUMERICHOST;
+            s = getaddrinfo(agt->lip, NULL, &hints, &result);
+            if (s != 0) {
+                verbose("getaddrinfo: %s", gai_strerror(s));
+            }
+            else {
+                memcpy(&local_ai, result, sizeof(struct addrinfo));
+                freeaddrinfo(result);
+            }
         }
     }
 
-    if (ipv6 == 1) {
-#ifndef WIN32
-        memset(&server6, 0, sizeof(server6));
-        server6.sin6_family = AF_INET6;
-        server6.sin6_port = htons( _port );
-        inet_pton(AF_INET6, _ip, &server6.sin6_addr.s6_addr);
-
-        if (connect(ossock, (struct sockaddr *)&server6, sizeof(server6)) < 0) {
-            OS_CloseSocket(ossock);
-            return (OS_SOCKTERR);
-        }
-#endif
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_protocol = protocol;
+    if (protocol == IPPROTO_TCP) {
+        hints.ai_socktype = SOCK_STREAM;
+    } else if (protocol == IPPROTO_UDP) {
+        hints.ai_socktype = SOCK_DGRAM;
     } else {
-        memset(&server, 0, sizeof(server));
-        server.sin_family = AF_INET;
-        server.sin_port = htons( _port );
-        server.sin_addr.s_addr = inet_addr(_ip);
+        return(OS_INVALID);
+    }
+    hints.ai_flags = 0;
 
-        if (connect(ossock, (struct sockaddr *)&server, sizeof(server)) < 0) {
-            OS_CloseSocket(ossock);
-            return (OS_SOCKTERR);
-        }
+    s = getaddrinfo(_ip, _port, &hints, &result);
+    if (s != 0) {
+        verbose("getaddrinfo: %s", gai_strerror(s));
+        return(OS_INVALID);
     }
 
-    return (ossock);
+           /* getaddrinfo() returns a list of address structures.
+              Try each address until we successfully connect(2).
+              If socket(2) (or connect(2)) fails, we (close the socket
+              and) try the next address. */
+
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+        ossock = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (ossock == -1) {
+            continue;
+        }
+
+        if (agt) {
+            if (agt->lip) {
+                if (bind(ossock, local_ai.ai_addr, local_ai.ai_addrlen)) {
+                    verbose("Unable to bind to local address %s.  Ignoring...",
+                            agt->lip);
+                }
+                else verbose("Connecting from local address %s", agt->lip);
+            }
+        }
+
+        if (connect(ossock, rp->ai_addr, rp->ai_addrlen) != -1) {
+            break;                  /* Success */
+        }
+    }
+    if (rp == NULL) {               /* No address succeeded */
+        OS_CloseSocket(ossock);
+        return(OS_SOCKTERR);
+    }
+    satop(rp->ai_addr, tempaddr, sizeof tempaddr);
+    verbose("INFO: Connected to %s at address %s, port %s", _ip,
+            tempaddr, _port);
+
+    freeaddrinfo(result);           /* No longer needed */
+
+    #ifdef HPUX
+    {
+    int flags;
+    flags = fcntl(ossock,F_GETFL,0);
+    fcntl(ossock, F_SETFL, flags | O_NONBLOCK);
+    }
+    #endif
+
+    return(ossock);
 }
 
+
 /* Open a TCP socket */
-int OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6, const char *_lip)
+int OS_ConnectTCP(char *_port, const char *_ip)
 {
-    return (OS_Connect(_port, IPPROTO_TCP, _ip, ipv6, _lip));
+    return (OS_Connect(_port, IPPROTO_TCP, _ip));
 }
 
 /* Open a UDP socket */
-int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6, const char *_lip)
+int OS_ConnectUDP(char *_port, const char *_ip)
 {
-    return (OS_Connect(_port, IPPROTO_UDP, _ip, ipv6, _lip));
+    return (OS_Connect(_port, IPPROTO_UDP, _ip));
 }
 
 /* Send a TCP packet (through an open socket) */
@@ -361,7 +381,7 @@ int OS_SendUDPbySize(int socket, int size, const char *msg)
 int OS_AcceptTCP(int socket, char *srcip, size_t addrsize)
 {
     int clientsocket;
-    struct sockaddr_in _nc;
+    struct sockaddr_storage _nc;
     socklen_t _ncl;
 
     memset(&_nc, 0, sizeof(_nc));
@@ -372,8 +392,8 @@ int OS_AcceptTCP(int socket, char *srcip, size_t addrsize)
         return (-1);
     }
 
-    strncpy(srcip, inet_ntoa(_nc.sin_addr), addrsize - 1);
-    srcip[addrsize - 1] = '\0';
+    satop((struct sockaddr *) &_nc, srcip, addrsize -1);
+    srcip[addrsize -1] = '\0';
 
     return (clientsocket);
 }
@@ -476,35 +496,83 @@ int OS_SendUnix(int socket, const char *msg, int size)
 }
 #endif
 
-/* Calls gethostbyname (tries x attempts) */
+/* Calls getaddrinfo (tries x attempts) */
 char *OS_GetHost(const char *host, unsigned int attempts)
 {
     unsigned int i = 0;
-    size_t sz;
+    int error;
+
     char *ip;
-    struct hostent *h;
+    struct addrinfo *hai, *result;
 
     if (host == NULL) {
         return (NULL);
     }
 
     while (i <= attempts) {
-        if ((h = gethostbyname(host)) == NULL) {
+        if ((error = getaddrinfo(host, NULL, NULL, &result)) != 0) {
             sleep(i++);
             continue;
         }
 
-        sz = strlen(inet_ntoa(*((struct in_addr *)h->h_addr))) + 1;
-        if ((ip = (char *) calloc(sz, sizeof(char))) == NULL) {
+        if ((ip = (char *) calloc(IPSIZE, sizeof(char))) == NULL) {
             return (NULL);
         }
 
-        strncpy(ip, inet_ntoa(*((struct in_addr *)h->h_addr)), sz - 1);
+        hai = result;
+        satop(hai->ai_addr, ip, IPSIZE);
 
+        freeaddrinfo(result);
         return (ip);
     }
 
     return (NULL);
+}
+
+/* satop(struct sockaddr *sa, char *dst, socklen_t size) 
+ * Convert a sockaddr to a printable address.
+ */
+int satop(struct sockaddr *sa, char *dst, socklen_t size)
+{
+    sa_family_t af;
+    struct sockaddr_in *sa4;
+    struct sockaddr_in6 *sa6;
+#ifdef WIN32
+    int newlength;
+#endif
+
+    af = sa->sa_family;
+
+    switch (af)
+    {
+    case AF_INET:
+        sa4 = (struct sockaddr_in *) sa;
+#ifdef WIN32
+        newlength = size;
+        WSAAddressToString((LPSOCKADDR) sa4, sizeof(struct sockaddr_in), 
+                           NULL, dst, (LPDWORD) &newlength);
+#else
+        inet_ntop(af, (const void *) &(sa4->sin_addr), dst, size);
+#endif
+        return(0);
+    case AF_INET6:
+        sa6 = (struct sockaddr_in6 *) sa;
+#ifdef WIN32
+        newlength = size;
+        WSAAddressToString((LPSOCKADDR) sa6, sizeof(struct sockaddr_in6), 
+                           NULL, dst, (LPDWORD) &newlength);
+#else
+        inet_ntop(af, (const void *) &(sa6->sin6_addr), dst, size);
+#endif
+        if (IN6_IS_ADDR_V4MAPPED(&(sa6->sin6_addr)))
+        {  /* extract the embedded IPv4 address */
+            memmove(dst, dst+7, size-7);
+        }
+        return(0);
+    default:  
+        *dst = '\0';
+        return(-1);     
+    }
 }
 
 int OS_CloseSocket(int socket)
