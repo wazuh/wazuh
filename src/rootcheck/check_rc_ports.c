@@ -56,6 +56,7 @@ static int conn_port(int proto, int port)
     int rc = 0;
     int ossock;
     struct sockaddr_in server;
+    struct sockaddr_in6 server6;
 
     if (proto == IPPROTO_UDP) {
         if ((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
@@ -87,6 +88,39 @@ static int conn_port(int proto, int port)
     }
 
     close(ossock);
+
+    /* repeat for IPv6 */
+    if (proto == IPPROTO_UDP) {
+        if ((ossock = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+            return(0);
+        }
+    } else if (proto == IPPROTO_TCP) {
+        if ((ossock = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+            return(0);
+        }
+    }
+
+
+    memset(&server6, 0, sizeof(server6));
+    server6.sin6_family = AF_INET6;
+    server6.sin6_port = htons( port );
+    memcpy(&server6.sin6_addr.s6_addr, &in6addr_any, sizeof in6addr_any);
+
+
+    /* If we can't bind, it means the port is open */
+    if(bind(ossock, (struct sockaddr *) &server6, sizeof(server6)) < 0) {
+        rc = 1;
+    }
+
+    /* Setting if port is open or closed */
+    if(proto == IPPROTO_TCP) {
+        total_ports_tcp[port] = rc;
+    } else {
+        total_ports_udp[port] = rc;
+    }
+
+    close(ossock);
+
     return (rc);
 }
 

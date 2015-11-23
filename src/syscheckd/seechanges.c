@@ -262,9 +262,24 @@ char *seechanges_addfile(const char *filename)
         (int)old_date_of_change
     );
 
-    if (rename(old_location, tmp_location) == -1) {
-        merror(RENAME_ERROR, ARGV0, old_location, tmp_location, errno, strerror(errno));
-        return (NULL);
+    /* Saving the old file at timestamp and renaming new to last. */
+    old_date_of_change = File_DateofChange(old_location);
+
+    snprintf(
+        tmp_location,
+        sizeof(tmp_location),
+        "%s/local/%s/state.%d",
+        DIFF_DIR_PATH,
+        filename + 1,
+       (int)old_date_of_change
+    );
+
+
+    rename(old_location, tmp_location);
+    if(seechanges_dupfile(filename, old_location) != 1)
+    {
+        merror("%s: ERROR: Unable to create snapshot for %s",ARGV0, filename);
+        return(NULL);
     }
 
     if (seechanges_dupfile(filename, old_location) != 1) {
@@ -306,7 +321,6 @@ char *seechanges_addfile(const char *filename)
         md5sum_new,
         (int)new_date_of_change
     );
-
     /* Create diff location */
     snprintf(
         diff_location,

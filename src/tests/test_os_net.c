@@ -14,9 +14,9 @@
 #include "../os_net/os_net.h"
 #include "../headers/os_err.h"
 
-#define IPV4 "127.0.0.1"
-#define IPV6 "::1"
-#define PORT 4321
+#define LOCALHOST4 "127.0.0.1"
+#define LOCALHOST6 "::1"
+#define PORT "4321"
 #define SENDSTRING "Hello World!\n"
 #define BUFFERSIZE 1024
 
@@ -30,13 +30,13 @@ START_TEST(test_tcpv4_local)
     char *msg;
     char ipbuffer[BUFFERSIZE];
 
-    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, IPV4, 0)), 0);
+    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, LOCALHOST4)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV4, 0, NULL)) , 0);
+    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, LOCALHOST4)) , 0);
 
     ck_assert_int_ge((server_client_socket = OS_AcceptTCP(server_root_socket, ipbuffer, BUFFERSIZE)), 0);
 
-    ck_assert_str_eq(ipbuffer, IPV4);
+    ck_assert_str_eq(ipbuffer, LOCALHOST4);
 
     ck_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
@@ -65,13 +65,13 @@ START_TEST(test_tcpv4_inet)
     char *msg;
     char ipbuffer[BUFFERSIZE];
 
-    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, NULL, 0)), 0);
+    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, NULL)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV4, 0, NULL)) , 0);
+    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, LOCALHOST4)) , 0);
 
     ck_assert_int_ge((server_client_socket = OS_AcceptTCP(server_root_socket, ipbuffer, BUFFERSIZE)), 0);
 
-    ck_assert_str_eq(ipbuffer, IPV4);
+    ck_assert_str_eq(ipbuffer, LOCALHOST4);
 
     ck_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
@@ -93,21 +93,55 @@ START_TEST(test_tcpv4_inet)
 }
 END_TEST
 
-START_TEST(test_tcpv6)
+START_TEST(test_tcpv6_local)
 {
     int server_root_socket, server_client_socket, client_socket;
     char buffer[BUFFERSIZE];
     char *msg;
     char ipbuffer[BUFFERSIZE];
 
-    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, IPV6, 1)), 0);
+    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, LOCALHOST6)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, IPV6, 1, NULL)) , 0);
+    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, LOCALHOST6)) , 0);
 
     ck_assert_int_ge((server_client_socket = OS_AcceptTCP(server_root_socket, ipbuffer, BUFFERSIZE)), 0);
 
-    //TODO: ipv6 ip
-    ck_assert_str_eq(ipbuffer, "0.0.0.0");
+    ck_assert_str_eq(ipbuffer, LOCALHOST6);
+
+    ck_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
+
+    ck_assert_int_eq(OS_RecvTCPBuffer(server_client_socket, buffer, BUFFERSIZE), 0);
+
+    ck_assert_str_eq(buffer, SENDSTRING);
+
+    ck_assert_int_eq(OS_SendTCPbySize(server_client_socket, 5, SENDSTRING), 0);
+
+    ck_assert_ptr_ne((msg = OS_RecvTCP(client_socket, BUFFERSIZE)), NULL);
+
+    ck_assert_str_eq(msg, "Hello"); /* only 5 bytes send */
+
+    free(msg);
+
+    OS_CloseSocket(client_socket);
+    OS_CloseSocket(server_client_socket);
+    OS_CloseSocket(server_root_socket);
+}
+END_TEST
+
+START_TEST(test_tcpv6_inet)
+{
+    int server_root_socket, server_client_socket, client_socket;
+    char buffer[BUFFERSIZE];
+    char *msg;
+    char ipbuffer[BUFFERSIZE];
+
+    ck_assert_int_ge((server_root_socket = OS_Bindporttcp(PORT, NULL)), 0);
+
+    ck_assert_int_ge((client_socket = OS_ConnectTCP(PORT, LOCALHOST6)) , 0);
+
+    ck_assert_int_ge((server_client_socket = OS_AcceptTCP(server_root_socket, ipbuffer, BUFFERSIZE)), 0);
+
+    ck_assert_str_eq(ipbuffer, LOCALHOST6);
 
     ck_assert_int_eq(OS_SendTCP(client_socket, SENDSTRING), 0);
 
@@ -151,9 +185,9 @@ START_TEST(test_udpv4)
     char buffer[BUFFERSIZE];
     char *msg;
 
-    ck_assert_int_ge((server_socket = OS_Bindportudp(PORT, IPV4, 0)), 0);
+    ck_assert_int_ge((server_socket = OS_Bindportudp(PORT, LOCALHOST4)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectUDP(PORT, IPV4, 0, NULL)) , 0);
+    ck_assert_int_ge((client_socket = OS_ConnectUDP(PORT, LOCALHOST4)) , 0);
 
     //TODO: ck_assert_int_eq(OS_SendUDP(client_socket, SENDSTRING), 0);
     ck_assert_int_eq(OS_SendUDPbySize(client_socket, strlen(SENDSTRING), SENDSTRING), 0);
@@ -182,9 +216,9 @@ START_TEST(test_udpv6)
     char buffer[BUFFERSIZE];
     char *msg;
 
-    ck_assert_int_ge((server_socket = OS_Bindportudp(PORT, IPV6, 1)), 0);
+    ck_assert_int_ge((server_socket = OS_Bindportudp(PORT, LOCALHOST6)), 0);
 
-    ck_assert_int_ge((client_socket = OS_ConnectUDP(PORT, IPV6, 1, NULL)) , 0);
+    ck_assert_int_ge((client_socket = OS_ConnectUDP(PORT, LOCALHOST6)) , 0);
 
     //TODO: ck_assert_int_eq(OS_SendUDP(client_socket, SENDSTRING), 0);
     ck_assert_int_eq(OS_SendUDPbySize(client_socket, strlen(SENDSTRING), SENDSTRING), 0);
@@ -270,11 +304,21 @@ START_TEST(test_unixinvalidsockets)
 }
 END_TEST
 
-START_TEST(test_gethost_success)
+START_TEST(test_gethost_success_ipv4)
 {
     char *ret;
 
-    ck_assert_str_eq((ret = OS_GetHost("google-public-dns-a.google.com", 2)), "8.8.8.8");
+    ck_assert_str_eq((ret = OS_GetHost("ipv4.test-ipv6.com", 2)), "216.218.228.119");
+
+    free(ret);
+}
+END_TEST
+
+START_TEST(test_gethost_success_ipv6)
+{
+    char *ret;
+
+    ck_assert_str_eq((ret = OS_GetHost("ipv6.test-ipv6.com", 2)), "2001:470:1:18::119");
 
     free(ret);
 }
@@ -300,7 +344,8 @@ Suite *test_suite(void)
     TCase *tc_tcp = tcase_create("TCP");
     tcase_add_test(tc_tcp, test_tcpv4_local);
     tcase_add_test(tc_tcp, test_tcpv4_inet);
-    tcase_add_test(tc_tcp, test_tcpv6);
+    tcase_add_test(tc_tcp, test_tcpv6_local);
+    tcase_add_test(tc_tcp, test_tcpv6_inet);
     tcase_add_test(tc_tcp, test_tcpinvalidsockets);
 
     TCase *tc_udp = tcase_create("UDP");
@@ -313,7 +358,8 @@ Suite *test_suite(void)
     tcase_add_test(tc_unix, test_unixinvalidsockets);
 
     TCase *tc_gethost = tcase_create("GetHost");
-    tcase_add_test(tc_gethost, test_gethost_success);
+    tcase_add_test(tc_gethost, test_gethost_success_ipv4);
+    tcase_add_test(tc_gethost, test_gethost_success_ipv6);
     tcase_add_test(tc_gethost, test_gethost_fail1);
     tcase_add_test(tc_gethost, test_gethost_fail2);
     tcase_set_timeout(tc_gethost, 10);

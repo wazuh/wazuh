@@ -18,7 +18,7 @@
 #define VALIDDATA       "354"
 
 /* Default values used to connect */
-#define SMTP_DEFAULT_PORT   25
+#define SMTP_DEFAULT_PORT   "25"
 #define HELOMSG             "Helo notify.ossec.net\r\n"
 #define MAILFROM            "Mail From: <%s>\r\n"
 #define RCPTTO              "Rcpt To: <%s>\r\n"
@@ -55,7 +55,7 @@ int OS_SendCustomEmail(char **to, char *subject, char *smtpserver, char *from, c
     buffer[2048] = '\0';
 
     /* Connect to the SMTP server */
-    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, smtpserver, 0, NULL);
+    socket = OS_ConnectTCP(SMTP_DEFAULT_PORT, smtpserver);
     if (socket < 0) {
         return (socket);
     }

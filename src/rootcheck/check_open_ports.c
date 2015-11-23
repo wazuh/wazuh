@@ -29,6 +29,11 @@ static int connect_to_port(int proto, int port)
     int rc = 0;
     int ossock;
     struct sockaddr_in server;
+    struct sockaddr_in6 server6;
+#ifdef WIN32
+    int salen = sizeof(struct sockaddr_in6);
+#endif
+
 
     if (proto == IPPROTO_UDP) {
         if ((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
@@ -48,6 +53,33 @@ static int connect_to_port(int proto, int port)
     server.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     if (connect(ossock, (struct sockaddr *)&server, sizeof(server)) == 0) {
+        rc = 1;
+    }
+
+    close(ossock);
+
+    /* repeat for IPv6 */
+    if (proto == IPPROTO_UDP) {
+        if ((ossock = socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+            return(0);
+        }
+    } else if (proto == IPPROTO_TCP) {
+        if ((ossock = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+            return(0);
+        }
+    }
+
+    memset(&server6, 0, sizeof(server6));
+#ifdef WIN32
+    WSAStringToAddress("::1", AF_INET6, NULL, (LPSOCKADDR) &server6,
+                       (LPINT) &salen);
+#else
+    server6.sin6_family = AF_INET6;
+    inet_pton(AF_INET6, "::1", &server6.sin6_addr.s6_addr);
+#endif
+    server6.sin6_port = htons( port );
+
+    if(connect(ossock, (struct sockaddr *)&server6, sizeof(server6)) == 0) {
         rc = 1;
     }
 

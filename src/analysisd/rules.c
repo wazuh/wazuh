@@ -170,7 +170,7 @@ int Rules_OP_ReadRules(const char *rulefile)
     /* Get default time frame */
     default_timeframe = getDefine_Int("analysisd",
                                       "default_timeframe",
-                                      60, 3600);
+                                      60, MAX_TIMEFRAME);
 
     /* Check if there is any invalid global option */
     while (node[i]) {

@@ -28,7 +28,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     char *pieces;
     struct tm *p;
 
-    /* The message is formated in the following way:
+    /* The message is formatted in the following way:
      * id:location:message.
      */
 
@@ -40,6 +40,17 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     if (!pieces) {
         merror(FORMAT_ERROR, ARGV0);
         return (-1);
+    }
+
+    /* Is this from an agent? */
+    if ( *msg == '(' )
+    {   /* look past '->' for the first ':' */
+        pieces = strchr(strstr(msg, "->"), ':');
+        if(!pieces)
+        {
+            merror(FORMAT_ERROR, ARGV0);
+            return(-1);
+        }
     }
 
     *pieces = '\0';
@@ -76,6 +87,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 
     /* Check for the syslog date format
      * ( ex: Dec 29 10:00:01
+     *   or  2015 Dec 29 10:00:01
      *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate
      *   or  2009-05-22T09:36:46.214994-07:00 for rsyslog )
      *   or  2015-04-16 21:51:02,805 (proftpd 1.3.5)
@@ -91,7 +103,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         )
         ||
 	(
-	    (loglen > 24) && 
+	    (loglen > 24) &&
 	    (pieces[4] == '-') &&
 	    (pieces[7] == '-') &&
 	    (pieces[10] == ' ') &&
@@ -117,6 +129,18 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                  (pieces[29] == ':') && (lf->log += 32))
             )
         )
+     ||
+        (
+            (loglen > 21) &&
+            (isdigit(pieces[0])) &&
+            (pieces[4] == ' ') &&
+            (pieces[8] == ' ') &&
+            (pieces[11] == ' ') &&
+            (pieces[14] == ':') &&
+            (pieces[17] == ':') &&
+            (pieces[20] == ' ') && (lf->log += 21)
+        )
+
     ) {
         /* Check for an extra space in here */
         if (*lf->log == ' ') {

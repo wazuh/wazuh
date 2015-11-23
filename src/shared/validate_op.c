@@ -10,18 +10,7 @@
 #include "shared.h"
 
 static char *_read_file(const char *high_name, const char *low_name, const char *defines_file) __attribute__((nonnull(3)));
-static void _init_masks(void);
 static const char *__gethour(const char *str, char *ossec_hour) __attribute__((nonnull));
-
-#ifndef WIN32
-static const char *ip_address_regex =
-    "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/?"
-    "([0-9]{0,2}|[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})$";
-#endif /* !WIN32 */
-
-/* Global variables */
-static int _mask_inited = 0;
-static unsigned int _netmasks[33];
 
 
 /* Read the file and return a string the matches the following
@@ -119,67 +108,6 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
     return (NULL);
 }
 
-/* Get netmask based on the integer value */
-int getNetmask(unsigned int mask, char *strmask, size_t size)
-{
-    int i = 0;
-
-    strmask[0] = '\0';
-
-    if (mask == 0) {
-        snprintf(strmask, size, "/any");
-        return (1);
-    }
-
-    for (i = 0; i <= 31; i++) {
-        if (htonl(_netmasks[i]) == mask) {
-            snprintf(strmask, size, "/%d", i);
-            break;
-        }
-    }
-
-    return (1);
-}
-
-/* Initialize netmasks -- taken from snort util.c */
-static void _init_masks()
-{
-    _mask_inited = 1;
-    _netmasks[0] = 0x0;
-    _netmasks[1] = 0x80000000;
-    _netmasks[2] = 0xC0000000;
-    _netmasks[3] = 0xE0000000;
-    _netmasks[4] = 0xF0000000;
-    _netmasks[5] = 0xF8000000;
-    _netmasks[6] = 0xFC000000;
-    _netmasks[7] = 0xFE000000;
-    _netmasks[8] = 0xFF000000;
-    _netmasks[9] = 0xFF800000;
-    _netmasks[10] = 0xFFC00000;
-    _netmasks[11] = 0xFFE00000;
-    _netmasks[12] = 0xFFF00000;
-    _netmasks[13] = 0xFFF80000;
-    _netmasks[14] = 0xFFFC0000;
-    _netmasks[15] = 0xFFFE0000;
-    _netmasks[16] = 0xFFFF0000;
-    _netmasks[17] = 0xFFFF8000;
-    _netmasks[18] = 0xFFFFC000;
-    _netmasks[19] = 0xFFFFE000;
-    _netmasks[20] = 0xFFFFF000;
-    _netmasks[21] = 0xFFFFF800;
-    _netmasks[22] = 0xFFFFFC00;
-    _netmasks[23] = 0xFFFFFE00;
-    _netmasks[24] = 0xFFFFFF00;
-    _netmasks[25] = 0xFFFFFF80;
-    _netmasks[26] = 0xFFFFFFC0;
-    _netmasks[27] = 0xFFFFFFE0;
-    _netmasks[28] = 0xFFFFFFF0;
-    _netmasks[29] = 0xFFFFFFF8;
-    _netmasks[30] = 0xFFFFFFFC;
-    _netmasks[31] = 0xFFFFFFFE;
-    _netmasks[32] = 0xFFFFFFFF;
-}
-
 /* Get an integer definition. This function always return on
  * success or exits on error.
  */
@@ -223,10 +151,12 @@ int getDefine_Int(const char *high_name, const char *low_name, int min, int max)
 int OS_IPFound(const char *ip_address, const os_ip *that_ip)
 {
     int _true = 1;
-    struct in_addr net;
+    os_ip temp_ip;
+
+    memset(&temp_ip, 0, sizeof(struct _os_ip));
 
     /* Extract IP address */
-    if ((net.s_addr = inet_addr(ip_address)) <= 0) {
+    if (OS_IsValidIP(ip_address, &temp_ip) == 0) {
         return (!_true);
     }
 
@@ -236,7 +166,9 @@ int OS_IPFound(const char *ip_address, const os_ip *that_ip)
     }
 
     /* Check if IP is in thatip & netmask */
-    if ((net.s_addr & that_ip->netmask) == that_ip->ip_address) {
+    if (sacmp((struct sockaddr *) &temp_ip.ss, 
+              (struct sockaddr *) &that_ip->ss,
+              that_ip->prefixlength)) {
         return (_true);
     }
 
@@ -250,11 +182,13 @@ int OS_IPFound(const char *ip_address, const os_ip *that_ip)
  */
 int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
 {
-    struct in_addr net;
     int _true = 1;
+    os_ip temp_ip;
+
+    memset(&temp_ip, 0, sizeof(struct _os_ip));
 
     /* Extract IP address */
-    if ((net.s_addr = inet_addr(ip_address)) <= 0) {
+    if (OS_IsValidIP(ip_address, &temp_ip) == 0) {
         return (!_true);
     }
 
@@ -265,7 +199,10 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
             _true = 0;
         }
 
-        if ((net.s_addr & l_ip->netmask) == l_ip->ip_address) {
+        /* Checking if ip is in thatip & netmask */
+        if (sacmp((struct sockaddr *) &temp_ip.ss, 
+                  (struct sockaddr *) &l_ip->ss,
+                  l_ip->prefixlength)) {
             return (_true);
         }
         list_of_ips++;
@@ -274,14 +211,16 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips)
     return (!_true);
 }
 
-/* Validate if an IP address is in the right format
+/** int OS_IsValidIP(char *ip_address, os_ip *final_ip)
+ * Validate if an IP address is in the right format
  * Returns 0 if doesn't match or 1 if it is an IP or 2 an IP with CIDR.
  * WARNING: On success this function may modify the value of ip_address
  */
 int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
 {
-    unsigned int nmask = 0;
     char *tmp_str;
+    int cidr = -1, prefixlength;
+    struct addrinfo hints, *result;
 
     /* Can't be null */
     if (!ip_address) {
@@ -297,124 +236,131 @@ int OS_IsValidIP(const char *ip_address, os_ip *final_ip)
         ip_address++;
     }
 
-#ifndef WIN32
-    /* Check against the basic regex */
-    if (!OS_PRegex(ip_address, ip_address_regex)) {
-        if (strcmp(ip_address, "any") != 0) {
-            return (0);
-        }
+    if(strcmp(ip_address, "any") == 0) {
+        strcpy((char *) ip_address, "::/0");   
     }
-#else
 
-    if (strcmp(ip_address, "any") != 0) {
-        const char *tmp_ip;
-        int dots = 0;
-        tmp_ip = ip_address;
-        while (*tmp_ip != '\0') {
-            if ((*tmp_ip < '0' ||
-                    *tmp_ip > '9') &&
-                    *tmp_ip != '.' &&
-                    *tmp_ip != '/') {
-                /* Invalid IP */
-                return (0);
-            }
-            if (*tmp_ip == '.') {
-                dots++;
-            }
-            tmp_ip++;
-        }
-        if (dots < 3 || dots > 6) {
-            return (0);
-        }
-    }
-#endif
-
-    /* Get the CIDR/netmask if available */
-    tmp_str = strchr(ip_address, '/');
-    if (tmp_str) {
-        int cidr;
-        struct in_addr net;
-
+    /* Getting the cidr/netmask if available */
+    tmp_str = strchr(ip_address,'/');
+    if(tmp_str) {
         *tmp_str = '\0';
         tmp_str++;
 
-        /* CIDR */
-        if (strlen(tmp_str) <= 2) {
+        /* Cidr */
+        if(strlen(tmp_str) <= 3) {
             cidr = atoi(tmp_str);
-            if ((cidr >= 0) && (cidr <= 32)) {
-                if (!_mask_inited) {
-                    _init_masks();
-                }
-                nmask = _netmasks[cidr];
-                nmask = htonl(nmask);
-            } else {
-                return (0);
-            }
+        } else {
+            return(0);
         }
-        /* Full netmask */
-        else {
-            /* Init the masks */
-            if (!_mask_inited) {
-                _init_masks();
-            }
-
-            if (strcmp(tmp_str, "255.255.255.255") == 0) {
-                nmask = htonl(_netmasks[32]);
-            } else {
-                if ((nmask = inet_addr(ip_address)) <= 0) {
-                    return (0);
-                }
-            }
-        }
-
-        if ((net.s_addr = inet_addr(ip_address)) <= 0) {
-            if (strcmp("0.0.0.0", ip_address) == 0) {
-                net.s_addr = 0;
-            } else {
-                return (0);
-            }
-        }
-
-        if (final_ip) {
-            final_ip->ip_address = net.s_addr & nmask;
-            final_ip->netmask = nmask;
-        }
-
-        tmp_str--;
-        *tmp_str = '/';
-
-        return (2);
     }
 
-    /* No CIDR available */
-    else {
-        struct in_addr net;
-        nmask = 32;
-
-        if (strcmp("any", ip_address) == 0) {
-            net.s_addr = 0;
-            nmask = 0;
-        } else if ((net.s_addr = inet_addr(ip_address)) <= 0) {
-            return (0);
-        }
-
-        if (final_ip) {
-            final_ip->ip_address = net.s_addr;
-
-            if (!_mask_inited) {
-                _init_masks();
-            }
-
-            final_ip->netmask = htonl(_netmasks[nmask]);
-        }
-
-        /* IP without CIDR */
-        if (nmask) {
-            return (1);
-        }
-
-        return (2);
+    /* No cidr available */
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_flags = AI_NUMERICHOST;
+    if (getaddrinfo(ip_address, NULL, &hints, &result) != 0) {
+        return(0);
     }
+
+    switch (result->ai_family)
+    {
+    case AF_INET:
+        if (cidr >=0 && cidr <= 32) {
+            prefixlength = cidr;
+            break;
+        } else if (cidr < 0) {
+            prefixlength = 32;
+            break;
+        }
+        return(0);
+    case AF_INET6:
+        if (cidr >=0 && cidr <= 128) {
+            prefixlength = cidr;
+            break;
+        } else if (cidr < 0) {
+            prefixlength = 128;
+            break;
+        }
+        return(0);
+    default:  
+        return(0);
+    }
+
+    if (final_ip) {
+        memcpy(&(final_ip->ss), result->ai_addr, result->ai_addrlen);
+        final_ip->prefixlength = prefixlength;
+    }
+
+    freeaddrinfo(result);
+    return((cidr >= 0) ? 2 : 1);
+}
+
+/** int sacmp(struct sockaddr *sa1, struct sockaddr *sa2, int prefixlength)
+ * Compares two sockaddrs up to prefixlength.
+ * Returns 0 if doesn't match or 1 if they do.
+ */
+int sacmp(struct sockaddr *sa1, struct sockaddr *sa2, int prefixlength)
+{
+    int _true = 1;
+    int i, realaf1, realaf2;
+    div_t ip_div;
+    char *addr1, *addr2, modbits;
+
+    switch (sa1->sa_family)
+    {
+    case AF_INET:
+        addr1 = (char *) &(((struct sockaddr_in *) sa1)->sin_addr);
+        realaf1 = AF_INET;
+        break;
+    case AF_INET6:
+        addr1 = (char *) &(((struct sockaddr_in6 *) sa1)->sin6_addr);
+        realaf1 = AF_INET6;
+        if (IN6_IS_ADDR_V4MAPPED((struct in6_addr *) addr1))
+        {   /* shift the pointer for a mapped address */
+            addr1 += (sizeof (struct in6_addr)) - (sizeof (struct in_addr));
+            realaf1 = AF_INET;
+        }
+        break;
+    default:
+        return(!_true);
+    }
+
+    switch (sa2->sa_family)
+    {
+    case AF_INET:
+        addr2 = (char *) &(((struct sockaddr_in *) sa2)->sin_addr);
+        realaf2 = AF_INET;
+        break;
+    case AF_INET6:
+        addr2 = (char *) &(((struct sockaddr_in6 *) sa2)->sin6_addr);
+        realaf2 = AF_INET6;
+        if (IN6_IS_ADDR_V4MAPPED((struct in6_addr *) addr2)) {
+            /* shift the pointer for a mapped address */
+            addr1 += (sizeof (struct in6_addr)) - (sizeof (struct in_addr));
+            realaf2 = AF_INET;
+        }
+        break;
+    default:
+        return(!_true);
+    }
+
+    if (realaf1 != realaf2) {
+        return(!_true);
+    }
+
+    ip_div = div(prefixlength, 8);
+
+    for (i=0; i < ip_div.quot; i++) {
+        if (addr1[i] != addr2[i]) {
+            return(!_true);
+        }
+    }
+    if (ip_div.rem) {
+        modbits = ((char) ~0) << (8 - ip_div.rem);
+        if ( (addr1[i] & modbits) != (addr2[i] & modbits) ) {
+            return(!_true);
+        }
+    }
+    return(_true);
 }
 
 

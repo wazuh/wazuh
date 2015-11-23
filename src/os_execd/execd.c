@@ -49,6 +49,8 @@ static void help_execd()
 /* Shut down execd properly */
 static void execd_shutdown(int sig)
 {
+    int status;
+
     /* Remove pending active responses */
     merror(EXEC_SHUTDOWN, ARGV0);
 
@@ -59,6 +61,7 @@ static void execd_shutdown(int sig)
         list_entry = (timeout_data *)timeout_node->data;
 
         ExecCmd(list_entry->command);
+        wait(&status);
 
         /* Delete current node - already sets the pointer to next */
         OSList_DeleteCurrentlyNode(timeout_list);

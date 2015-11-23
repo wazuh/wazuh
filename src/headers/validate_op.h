@@ -13,12 +13,9 @@
 /* IP structure */
 typedef struct _os_ip {
     char *ip;
-    unsigned int ip_address;
-    unsigned int netmask;
-} os_ip;
-
-/* Get the netmask based on the integer value */
-int getNetmask(unsigned int mask, char *strmask, size_t size) __attribute__((nonnull));
+    struct sockaddr_storage ss;
+    unsigned int prefixlength;
+}os_ip;
 
 /* Run-time definitions */
 int getDefine_Int(const char *high_name, const char *low_name, int min, int max) __attribute__((nonnull));
@@ -39,6 +36,12 @@ int OS_IPFoundList(const char *ip_address, os_ip **list_of_ips) __attribute__((n
  * WARNING: On success this function may modify the value of IP_address
  */
 int OS_IsValidIP(const char *ip_address, os_ip *final_ip);
+
+/** int sacmp(struct sockaddr *sa1, struct sockaddr *sa2, int prefixlength)
+ * Compares two sockaddrs up to prefixlength.
+ * Returns 0 if doesn't match or 1 if they do.
+ */
+int sacmp(struct sockaddr *sa1, struct sockaddr *sa2, int prefixlength);
 
 /** Time range validations **/
 
@@ -85,7 +88,7 @@ char *OS_IsValidDay(const char *day_str);
 /* Macros */
 
 /* Check if the IP is a single host, not a network with a netmask */
-#define isSingleHost(x) (x->netmask == 0xFFFFFFFF)
+#define isSingleHost(x) ((x->ss.ss_family == AF_INET) ? (x->prefixlength == 32) : (x->prefixlength == 128))
 
 #endif
 

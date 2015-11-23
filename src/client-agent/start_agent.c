@@ -32,7 +32,7 @@ int connect_server(int initial_id)
         agt->sock = -1;
 
         if (agt->rip[1]) {
-            verbose("%s: INFO: Closing connection to server (%s:%d).",
+            verbose("%s: INFO: Closing connection to server %s, port %s.",
                     ARGV0,
                     agt->rip[rc],
                     agt->port);
@@ -41,61 +41,17 @@ int connect_server(int initial_id)
     }
 
     while (agt->rip[rc]) {
-        char *tmp_str;
 
-        /* Check if we have a hostname */
-        tmp_str = strchr(agt->rip[rc], '/');
-        if (tmp_str) {
-            char *f_ip;
-            *tmp_str = '\0';
-
-            f_ip = OS_GetHost(agt->rip[rc], 5);
-            if (f_ip) {
-                char ip_str[128];
-                ip_str[127] = '\0';
-
-                snprintf(ip_str, 127, "%s/%s", agt->rip[rc], f_ip);
-
-                free(f_ip);
-                free(agt->rip[rc]);
-
-                os_strdup(ip_str, agt->rip[rc]);
-                tmp_str = strchr(agt->rip[rc], '/');
-                if (!tmp_str) {
-                    merror("%s: WARN: Invalid hostname format: '%s'.", ARGV0, agt->rip[rc]);
-                    return 0;
-                }
-
-                tmp_str++;
-            } else {
-                merror("%s: WARN: Unable to get hostname for '%s'.",
-                       ARGV0, agt->rip[rc]);
-                *tmp_str = '/';
-                tmp_str++;
-            }
-        } else {
-            tmp_str = agt->rip[rc];
-        }
-
-        verbose("%s: INFO: Trying to connect to server (%s:%d).", ARGV0,
+        /* Connect to any useable address of the server */
+        verbose("%s: INFO: Trying to connect to server %s, port %s.", ARGV0,
                 agt->rip[rc],
                 agt->port);
 
-        /* IPv6 address */
-        if (strchr(tmp_str, ':') != NULL) {
-            verbose("%s: INFO: Using IPv6 (%s).", ARGV0, tmp_str);
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 1, NULL);
-        } else {
-            verbose("%s: INFO: Using IPv4 (%s).", ARGV0, tmp_str);
-            if(agt->lip) {
-                verbose("%s: INFO: Bind to src ip: %s", ARGV0, agt->lip);
-            }
-            agt->sock = OS_ConnectUDP(agt->port, tmp_str, 0, agt->lip);
-        }
+        agt->sock = OS_ConnectUDP(agt->port, agt->rip[rc]);
 
         if (agt->sock < 0) {
             agt->sock = -1;
-            merror(CONNS_ERROR, ARGV0, tmp_str);
+            merror(CONNS_ERROR, ARGV0, agt->rip[rc]);
             rc++;
 
             if (agt->rip[rc] == NULL) {
@@ -211,7 +167,7 @@ void start_agent(int is_startup)
         /* If we have more than one server, try all */
         if (agt->rip[1]) {
             int curr_rip = agt->rip_id;
-            merror("%s: INFO: Trying next server ip in the line: '%s'.", ARGV0,
+            merror("%s: INFO: Trying next server in the line: '%s'.", ARGV0,
                    agt->rip[agt->rip_id + 1] != NULL ? agt->rip[agt->rip_id + 1] : agt->rip[0]);
             connect_server(agt->rip_id + 1);
 

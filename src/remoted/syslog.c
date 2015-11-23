@@ -40,7 +40,7 @@ void HandleSyslog()
     char srcip[IPSIZE + 1];
     char *buffer_pt = NULL;
     ssize_t recv_b;
-    struct sockaddr_in peer_info;
+    struct sockaddr_storage peer_info;
     socklen_t peer_size;
 
     /* Set peer size */
@@ -76,7 +76,7 @@ void HandleSyslog()
         }
 
         /* Set the source IP */
-        strncpy(srcip, inet_ntoa(peer_info.sin_addr), IPSIZE);
+        satop((struct sockaddr *) &peer_info, srcip, IPSIZE);
         srcip[IPSIZE] = '\0';
 
         /* Remove syslog header */
