@@ -86,8 +86,9 @@ void send_msg_init()
  */
 int send_msg(unsigned int agentid, const char *msg)
 {
-    size_t msg_size;
+    size_t msg_size, sa_size;
     char crypt_msg[OS_MAXSTR + 1];
+    struct sockaddr * dest_sa;
 
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[agentid]->rcvd < (time(0) - (2 * NOTIFY_TIME))) {
@@ -107,9 +108,10 @@ int send_msg(unsigned int agentid, const char *msg)
     }
 
     /* Send initial message */
-    if (sendto(logr.sock, crypt_msg, msg_size, 0,
-               (struct sockaddr *)&keys.keyentries[agentid]->peer_info,
-               logr.peer_size) < 0) {
+    dest_sa = (struct sockaddr *)&keys.keyentries[agentid]->peer_info;
+    sa_size = (dest_sa->sa_family == AF_INET) ?
+              sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+    if (sendto(logr.sock, crypt_msg, msg_size, 0, dest_sa, sa_size) < 0) {
         merror(SEND_ERROR, ARGV0, keys.keyentries[agentid]->id);
     }
 
