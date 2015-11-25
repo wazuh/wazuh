@@ -48,7 +48,7 @@
    <rule id="7713" level="7">
     <if_sid>7701</if_sid>
     <id>^1015$</id>
-    <group>virus,</group>
+    <group>virus,pci_dss_5.1,pci_dss_5.2,pci_dss_10.6.1,pci_dss_11.4,</group>
     <description>Microsoft Security Essentials - Suspicious activity detected.</description>
   </rule> 
   
@@ -62,12 +62,14 @@
   <rule id="7721" level="9">
     <if_sid>7701</if_sid>
     <id>^5008$</id>
+    <group>pci_dss_10.6.1,</group>
     <description>Microsoft Security Essentials - Service failed.</description>
   </rule>
 
   <rule id="7722" level="9">
     <if_sid>7701</if_sid>
     <id>^3002$</id>
+    <group>pci_dss_10.6.1,</group>
     <description>Microsoft Security Essentials - Real time protection failed.</description>
   </rule>
 
@@ -80,30 +82,35 @@
   <rule id="7724" level="8">
     <if_sid>7701</if_sid>
     <id>^2004$</id>
+    <group>pci_dss_10.6.1,</group>
     <description>Microsoft Security Essentials - Loading definitions failed. Using last good set.</description>
   </rule>
 
   <rule id="7725" level="8">
     <if_sid>7701</if_sid>
     <id>^2003$</id>
+    <group>pci_dss_10.6.1,</group>
     <description>Microsoft Security Essentials - Engine update failed.</description>
   </rule>
  
   <rule id="7726" level="8">
     <if_sid>7701</if_sid>
     <id>^2001$</id>
+    <group>pci_dss_10.6.1,</group>
     <description>Microsoft Security Essentials - Definitions update failed.</description>
   </rule>
 
   <rule id="7727" level="7">
     <if_sid>7701</if_sid>
     <id>^1005$</id>
+    <group>pci_dss_10.6.1,</group>
     <description>Microsoft Security Essentials - Scan error. Scan has stopped.</description>
   </rule>
 
   <rule id="7728" level="5">
     <if_sid>7701</if_sid>
     <id>^1002$</id>
+    <group>pci_dss_10.6.1,</group>
     <description>Microsoft Security Essentials - Scan stopped before completion.</description>
   </rule> 
 

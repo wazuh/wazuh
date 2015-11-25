@@ -819,7 +819,7 @@
     <if_sid>18101</if_sid>
     <id>^200$|^300$|^302$</id>
     <description>TS Gateway login success.</description>
-    <group>authentication_success,</group>
+    <group>authentication_success,pci_dss_10.2.5,</group>
     <info>https://technet.microsoft.com/en-us/library/cc775181(v=ws.10).aspx</info>
   </rule>
 
@@ -827,7 +827,7 @@
     <if_sid>18102, 18103</if_sid>
     <id>^201$|^203$|^204$|^301$|^304$|^305$|^306$|^1001$</id>
     <description>TS Gateway login failure.</description>
-    <group>authentication_failed,</group>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>
     <info>https://technet.microsoft.com/en-us/library/cc775181(v=ws.10).aspx</info>
   </rule>
 
@@ -952,7 +952,7 @@
   <rule id="18157" level="10" frequency="$MS_FREQ" timeframe="240">
       <if_matched_sid>18258</if_matched_sid>
       <description>Multiple TS Gateway login failures.</description>
-      <group>authentication_failures,</group>
+      <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
 
