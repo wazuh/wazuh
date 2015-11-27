@@ -305,6 +305,7 @@ void start_daemon()
 int c_read_file(const char *file_name, const char *oldsum, char *newsum)
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0;
+    int return_error = 0;
     struct stat statbuf;
     os_md5 mf_sum;
     os_sha1 sf_sum;
@@ -315,10 +316,11 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum)
 
     /* Stat the file */
 #ifdef WIN32
-    if (stat(file_name, &statbuf) < 0)
+    return_error = (stat(file_name, &statbuf) < 0);
 #else
-    if (lstat(file_name, &statbuf) < 0)
+    return_error = (lstat(file_name, &statbuf) < 0);
 #endif
+    if (return_error)
     {
         char alert_msg[PATH_MAX+4];
 
