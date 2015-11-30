@@ -137,12 +137,13 @@ int W_isRootcheck(cJSON *root, int nested){
  void W_JSON_ParseGroups(cJSON *root, const Eventinfo *lf, int nested){
 	cJSON *groups;
 	cJSON *rule;
-	int firstPCI, firstCIS;	 
+	int firstPCI, firstCIS, foundCIS, foundPCI;
 	char delim[2];	
 	char buffer[MAX_STRING];
 	char* token;
 
 	firstPCI = firstCIS = 1;
+	foundPCI = foundCIS = 0;
 	delim[0] = ',';
 	delim[1] = 0;
 
@@ -157,27 +158,36 @@ int W_isRootcheck(cJSON *root, int nested){
 	token = strtok(buffer, delim);
 	while (token)
 	{
-		if(!add_groupPCI(rule,groups,token,&firstPCI) && !add_groupCIS(rule,groups,token,&firstCIS))
+		foundPCI = foundCIS = 0;
+		foundPCI = add_groupPCI(rule,groups,token,firstPCI);
+		if(!foundPCI)
+			foundCIS = add_groupCIS(rule,groups,token,firstCIS);
+
+		if(foundPCI && firstPCI)
+			firstPCI = 0;
+		if(foundCIS && firstCIS)
+			firstCIS = 0;
+
+		if(!foundPCI && !foundCIS){
 			cJSON_AddItemToArray(groups, cJSON_CreateString(token));
+		}
 		token = strtok(0, delim);
 		 
 	}	 
  }
 // Parse groups PCI
-int add_groupPCI(cJSON *rule, cJSON *groups, char * group, int *firstPCI){
+int add_groupPCI(cJSON *rule, cJSON *groups, char * group, int firstPCI){
 	char * len = NULL;
 	cJSON *pci;
-	int aux_int;
-	aux_int = *firstPCI;
 	char aux [strlen(group)]; 
 	// If group begin with pci_dss_ we have a PCI group
 	if((len = strstr(group, "pci_dss_")) != NULL) {
 		// Once we add pci_dss group and create array for PCI_DSS requirements
-		if(aux_int == 1){
-			cJSON_AddItemToArray(groups, cJSON_CreateString("pci_dss"));
+		if(firstPCI == 1){
 			pci = cJSON_CreateArray();
 			cJSON_AddItemToObject(rule,"PCI_DSS", pci);
-			aux_int = 0;
+		}else{
+			pci = cJSON_GetObjectItem(rule,"PCI_DSS");
 		}
 		// Prepare string and add it to PCI dss array
 		strncpy(aux,group,strlen(group));
@@ -188,16 +198,16 @@ int add_groupPCI(cJSON *rule, cJSON *groups, char * group, int *firstPCI){
 	return 0;
 }
 
-int add_groupCIS(cJSON *rule, cJSON *groups, char * group, int *firstCIS){
+int add_groupCIS(cJSON *rule, cJSON *groups, char * group, int firstCIS){
 	char * len = NULL;
 	cJSON *cis;
 	char aux [strlen(group)]; 
 	if((len = strstr(group, "cis_")) != NULL) {
-		if(*firstCIS == 1){
-			cJSON_AddItemToArray(groups, cJSON_CreateString("cis"));
+		if(firstCIS == 1){
 			cis = cJSON_CreateArray();
 			cJSON_AddItemToObject(rule,"CIS", cis);
-			*firstCIS = 0;
+		}else{
+			cis = cJSON_GetObjectItem(rule,"CIS");
 		}
 		strncpy(aux,group,strlen(group));
 		str_cut(aux,0,4);

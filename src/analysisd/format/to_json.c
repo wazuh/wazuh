@@ -94,6 +94,33 @@ char *Eventinfo_to_jsonstr(const Eventinfo *lf)
         }
     }
 
+    if(lf->program_name)
+       cJSON_AddStringToObject(root, "program_name", lf->program_name);
+
+   if(lf->id)
+       cJSON_AddStringToObject(root, "id", lf->id);
+
+   if(lf->status)
+       cJSON_AddStringToObject(root, "status", lf->status);
+
+   if(lf->command)
+       cJSON_AddStringToObject(root, "command", lf->command);
+
+   if(lf->url)
+       cJSON_AddStringToObject(root, "url", lf->url);
+
+   if(lf->data)
+       cJSON_AddStringToObject(root, "data", lf->data);
+
+   if(lf->systemname)
+       cJSON_AddStringToObject(root, "systemname", lf->systemname);
+
+   if (lf->generated_rule->frequency) 
+       cJSON_AddNumberToObject(rule, "frequency", lf->generated_rule->frequency);
+
+   if (lf->generated_rule->firedtimes) 
+        cJSON_AddNumberToObject(rule, "firedtimes", lf->generated_rule->frequency);
+
     W_ParseJSON(root, lf);
     out = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
@@ -209,6 +236,13 @@ char *Archiveinfo_to_jsonstr(const Eventinfo *lf)
         if (lf->generated_rule->firedtimes) 
             cJSON_AddNumberToObject(rule, "firedtimes", lf->generated_rule->frequency);
 
+        if (lf->generated_rule->group) {
+            W_JSON_ParseGroups(root,lf,1);
+        }
+
+        if (lf->full_log && W_isRootcheck(root,1)) {
+            W_JSON_ParseRootcheck(root,lf,1);
+        }       
     }
     // DecoderInfo
     if(lf->decoder_info){
@@ -245,7 +279,7 @@ char *Archiveinfo_to_jsonstr(const Eventinfo *lf)
     }
 
     if (lf->location)
-       W_JSON_ParseLocation(root,lf,1);
+        W_JSON_ParseLocation(root,lf,1);
 
     out = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
