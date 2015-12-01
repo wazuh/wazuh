@@ -157,9 +157,9 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf, int nested)
     token = strtok(buffer, delim);
     while(token) {
         foundPCI = foundCIS = 0;
-        foundPCI = add_groupPCI(rule, groups, token, firstPCI);
+        foundPCI = add_groupPCI(rule, token, firstPCI);
         if(!foundPCI)
-            foundCIS = add_groupCIS(rule, groups, token, firstCIS);
+            foundCIS = add_groupCIS(rule, token, firstCIS);
 
         if(foundPCI && firstPCI)
             firstPCI = 0;
@@ -173,7 +173,7 @@ void W_JSON_ParseGroups(cJSON* root, const Eventinfo* lf, int nested)
     }
 }
 // Parse groups PCI
-int add_groupPCI(cJSON* rule, cJSON* groups, char* group, int firstPCI)
+int add_groupPCI(cJSON* rule, char* group, int firstPCI)
 {
     char* len = NULL;
     cJSON* pci;
@@ -196,7 +196,7 @@ int add_groupPCI(cJSON* rule, cJSON* groups, char* group, int firstPCI)
     return 0;
 }
 
-int add_groupCIS(cJSON* rule, cJSON* groups, char* group, int firstCIS)
+int add_groupCIS(cJSON* rule, char* group, int firstCIS)
 {
     char* len = NULL;
     cJSON* cis;

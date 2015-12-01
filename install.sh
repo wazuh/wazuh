@@ -125,7 +125,7 @@ Install()
     WVERSION=`cat ${WVERSION_FILE}`
     chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
     echo "DIRECTORY=\"${INSTALLDIR}\"" > ${OSSEC_INIT}
-    echo "VERSION=\"${INSTALLDIR}\"" >> ${OSSEC_INIT}   
+    echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}   
     echo "WAZUH_VERSION=\"${WVERSION}\"" >> ${OSSEC_INIT}
     echo "DATE=\"`date`\"" >> ${OSSEC_INIT}
     echo "TYPE=\"${INSTYPE}\"" >> ${OSSEC_INIT}
