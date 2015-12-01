@@ -111,8 +111,6 @@ void W_JSON_ParseRootcheck(cJSON* root, const Eventinfo* lf, int nested)
             for(j = 0; token[j]; j++) {
                 token[j] = tolower(token[j]);
             }
-
-            cJSON_AddItemToArray(groups, cJSON_CreateString(token));
             if(token) {
                 token = strtok(0, delim);
                 trim(token);
