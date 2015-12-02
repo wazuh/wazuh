@@ -546,6 +546,7 @@ ConfigureServer()
     # Writting global parameters
     echo "<ossec_config>" > $NEWCONFIG
     echo "  <global>" >> $NEWCONFIG
+    echo "    <jsonout_output>yes</jsonout_output>" >> $NEWCONFIG
     if [ "$EMAILNOTIFY" = "yes" ]; then
         echo "    <email_notification>yes</email_notification>" >> $NEWCONFIG
         echo "    <email_to>$EMAIL</email_to>" >> $NEWCONFIG

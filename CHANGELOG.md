@@ -13,9 +13,11 @@ All notable changes to this project will be documented in this file.
 - ossec-init.conf now includes wazuh version
 - Integrated with wazuh OSSEC ruleset updater
 - Several new fields at JSON output (archives and alerts)
+- Wazuh decoders folder
 
 ### Changed
 
+- jsonout_out enable by default
 - JSON Security groups improvements
 - Some rules updated
 - Extensions: Improved Kibana dashboards

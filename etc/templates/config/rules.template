@@ -1,4 +1,6 @@
   <rules>
+    <decoder>etc/decoder.xml</decoder>
+    <decoder_dir>etc/wazuh_decoders</decoder_dir>
     <include>rules_config.xml</include>
     <include>pam_rules.xml</include>
     <include>sshd_rules.xml</include>
