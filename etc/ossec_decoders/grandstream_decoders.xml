@@ -1,0 +1,65 @@
+<!-- @(#) $Id: decoder.xml,v 1.166 2010/06/15 12:52:01 dcid Exp $
+  -  OSSEC log decoder.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  -->
+
+
+<!--
+   - Allowed fields:
+   - location - where the log came from (only on FTS)
+   - srcuser  - extracts the source username
+   - dstuser  - extracts the destination (target) username
+   - user     - an alias to dstuser (only one of the two can be used)
+   - srcip    - source ip
+   - dstip    - dst ip
+   - srcport  - source port
+   - dstport  - destination port
+   - protocol - protocol
+   - id       - event id
+   - url      - url of the event
+   - action   - event action (deny, drop, accept, etc)
+   - status   - event status (success, failure, etc)
+   - extra_data     - Any extra data
+  -->
+
+
+
+<!-- Grandstream HT502 VoIP gateway decoder
+Author and (c): Michael Starks, 2014 -->
+
+<!-- HT502: [00:0B:82:14:5B:94] Transport error (-1) for transaction 2677 -->
+
+<decoder name="grandstream-ata">
+ <prematch>^HT286: [\w\w:\w\w:\w\w:\w\w:\w\w:\w\w]\p*\.+\p* |</prematch>
+ <prematch>^HT502: [\w\w:\w\w:\w\w:\w\w:\w\w:\w\w]\p*\.+\p* |</prematch>
+ <prematch>^HT503: [\w\w:\w\w:\w\w:\w\w:\w\w:\w\w]\p*\.+\p* </prematch>
+</decoder>
+
+<decoder name="grandstream-registration">
+ <parent>grandstream-ata</parent>
+ <prematch>Received </prematch>
+ <regex offset="after_prematch">^(\d+) response for transaction (\d+)\((\w+)\)$</regex>
+ <order>status, id, action</order>
+</decoder>
+
+<decoder name="grandstream-fts-registered">
+ <parent>grandstream-ata</parent>
+ <prematch>Account </prematch>
+ <regex offset="after_prematch">^(\d+) (registered), tried \d+; Next registration in \d+ seconds \(\d+/\d+\) on (\.+)$</regex>
+ <order>id, status, extra_data</order>
+ <fts>name, location, extra_data</fts>
+</decoder>
+
+<decoder name="grandstream-incoming-cid">
+ <parent>grandstream-ata</parent>
+ <prematch>Vinetic::</prematch>
+ <regex offset="after_prematch">^(startRing) with CID, Attempting to deliver CID (\d+) on port \d+$</regex>
+ <order>action, id</order>
+</decoder>
+
+<decoder name="grandstream-outgoing-call">
+ <parent>grandstream-ata</parent>
+ <regex offset="after_parent">^(Dialing) (\d+)$</regex>
+ <order>action, id</order>
+</decoder>

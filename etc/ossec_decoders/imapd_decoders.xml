@@ -1,0 +1,40 @@
+<!-- @(#) $Id: decoder.xml,v 1.166 2010/06/15 12:52:01 dcid Exp $
+  -  OSSEC log decoder.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  -->
+
+
+<!--
+   - Allowed fields:
+   - location - where the log came from (only on FTS)
+   - srcuser  - extracts the source username
+   - dstuser  - extracts the destination (target) username
+   - user     - an alias to dstuser (only one of the two can be used)
+   - srcip    - source ip
+   - dstip    - dst ip
+   - srcport  - source port
+   - dstport  - destination port
+   - protocol - protocol
+   - id       - event id
+   - url      - url of the event
+   - action   - event action (deny, drop, accept, etc)
+   - status   - event status (success, failure, etc)
+   - extra_data     - Any extra data
+  -->
+
+
+<!-- Imapd decoder.
+  - Will extract the username/srcip
+  - Examples:
+  - imapd[26888]: Login failed user=babadosfashion auth=babadosfashion host=bahiana.resenet.com.br [200.255.5.8]
+  - imapd[21040]: Login failed user=root domain=(null) auth=root host=host29-141.poo
+    l8249.interbusiness.it [82.49.141.29]
+  - imapd[27113]: Authenticated user=badyy host=a.resenet.com.br [1.2.3.4]
+  - imapd[27113]: Logout user=badyy host=a.resenet.com.br [1.2.3.4]
+  -->
+<decoder name="imapd">
+  <program_name>^imapd</program_name>
+  <regex offset="after_prematch">user=(\S+) \.+ [(\d+.\d+.\d+.\d+)]$</regex>
+  <order>user,srcip</order>
+</decoder>
