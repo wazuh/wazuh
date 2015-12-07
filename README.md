@@ -6,7 +6,7 @@ OSSEC is a full platform to monitor and control your systems. It mixes together
 all the aspects of HIDS (host-based intrusion detection), log monitoring and 
 SIM/SIEM together in a simple, powerful and open source solution.
 
-Visit our website for the latest information.  [www.ossec.net](http://www.ossec.net)
+Visit our website for the latest information.  [ossec.github.io](http://ossec.github.io)
 
 
 
@@ -14,8 +14,8 @@ Visit our website for the latest information.  [www.ossec.net](http://www.ossec.
 
 The current stable releases are available on the ossec website. 
 
-* Releases can be downloaded from: [Downloads](http://www.ossec.net/?page_id=19)
-* Release documentation is available at: [docs](http://www.ossec.net/doc/)
+* Releases can be downloaded from: [Downloads](http://ossec.github.io/downloads.html)
+* Release documentation is available at: [docs](http://ossec.github.io/docs/)
 
 ## Development ##
 
@@ -32,7 +32,7 @@ $ (ossec_version="2.8.2" ; ossec_checksum="a0f403270f388fbc6a0a4fd46791b1371f559
 
 ```
 
-Then follow the prompts.  You should still Read the Documentation [here](http://ossec.net/doc/).
+Then follow the prompts.  You should still Read the Documentation [here](http://ossec.github.io/docs/).
 
 ## Credits and Thanks ##
 
