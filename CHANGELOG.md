@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Decoders are now splitted in differents files.
 - jsonout_out enable by default
 - JSON Security groups improvements
 - Some rules updated
