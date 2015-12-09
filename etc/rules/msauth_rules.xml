@@ -523,7 +523,7 @@
     <if_sid>18207,18208</if_sid>
     <regex> ID:\s+%{S-1-5-11}</regex>
     <description>Authenticated Users Group Changed</description>
-    <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,,</group>
+    <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,</group>
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 

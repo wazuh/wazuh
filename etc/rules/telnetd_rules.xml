@@ -6,7 +6,7 @@
   -->
       
 
-<group name="syslog,telnetd">
+<group name="syslog,telnetd,">
   <rule id="5600" level="0" noalert="1">
     <match>telnetd</match>
     <description>Grouping for the telnetd rules</description>

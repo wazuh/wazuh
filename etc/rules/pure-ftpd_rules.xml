@@ -17,7 +17,7 @@
     <if_sid>11300</if_sid>
     <match>[INFO] New connection from</match>
     <description>New FTP connection.</description>
-    <group>connection_attempt,pci_dss_10.6.1</group>
+    <group>connection_attempt,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="11302" level="5">
@@ -31,7 +31,7 @@
     <if_sid>11300</if_sid>
     <match> [INFO] Logout| [INFO] Timeout</match>
     <description>FTP user logout/timeout</description>
-    <group>pci_dss_8.1.5, </group>
+    <group>pci_dss_8.1.5,</group>
   </rule>
   
   <rule id="11304" level="0">

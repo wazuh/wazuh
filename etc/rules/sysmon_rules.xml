@@ -13,7 +13,7 @@
   -  extra_data = ParentImage
   -->
   
-<group name="sysmon_process-anomalies">
+<group name="sysmon_process-anomalies,">
   
  <rule id="184666" level="12">
   <if_sid>18100</if_sid>

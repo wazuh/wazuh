@@ -56,7 +56,7 @@
     <if_sid>4503</if_sid>
     <id>^00027</id>
     <description>Netscreen Erase sequence started.</description>
-    <group>service_availability,pci_dss_1.4,pci_dss_10.6.1</group>
+    <group>service_availability,pci_dss_1.4,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="4506" level="8">

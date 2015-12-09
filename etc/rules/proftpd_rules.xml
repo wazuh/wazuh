@@ -109,7 +109,7 @@
     <if_sid>11200</if_sid>
     <match>connect from </match>
     <description>Remote host connected to FTP server.</description>
-    <group>connection_attempt,pci_dss_10.6.1</group>
+    <group>connection_attempt,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="11214" level="3">
@@ -143,7 +143,7 @@
     <if_sid>11200</if_sid>
     <match>ProFTPD terminating (signal 11)</match>
     <description>FTP process crashed.</description>
-    <group>service_availability,pci_dss_10.6.1</group>
+    <group>service_availability,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="11219" level="12">

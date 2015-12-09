@@ -11,7 +11,7 @@
 
   <!-- Modify it at your will. -->
 
-<group name="local,syslog,apparmor">
+<group name="local,syslog,apparmor,">
 
   <rule id="52000" level="3">
     <decoded_as>iptables</decoded_as>

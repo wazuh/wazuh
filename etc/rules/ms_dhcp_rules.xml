@@ -137,7 +137,7 @@ ID,Date,Time,Description,IP Address,Host Name,MAC Address
 	<if_sid>6300</if_sid>
 	<id>^18</id>
     <description>A lease was expired and DNS records were deleted.</description>
-    <group>dhcp_lease_action,dhcp_dns_maintenance</group>
+    <group>dhcp_lease_action,dhcp_dns_maintenance,</group>
   </rule>
   
   <rule id="6312" level="0">

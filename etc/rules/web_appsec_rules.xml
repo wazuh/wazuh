@@ -19,7 +19,7 @@
   -  The real goal is to stop bots and automated attacks from doing further damage
   -  on sites that are not updated.
   -->
-<group name="web,appsec,attack">
+<group name="web,appsec,attack,">
 
 
 
