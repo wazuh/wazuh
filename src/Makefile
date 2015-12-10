@@ -463,11 +463,13 @@ ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
 	cp ${PREFIX}/rules/local_rules.xml ${PREFIX}/rules/local_rules.xml.installbackup
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/ossec_decoders/*.xml ${PREFIX}/etc/ossec_decoders
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/wazuh_decoders/*.xml ${PREFIX}/etc/wazuh_decoders
 	install -m 0640 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules/local_rules.xml.installbackup ${PREFIX}/rules/local_rules.xml
 	rm ${PREFIX}/rules/local_rules.xml.installbackup
 else
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/ossec_decoders/*.xml ${PREFIX}/etc/ossec_decoders
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/wazuh_decoders/*.xml ${PREFIX}/etc/wazuh_decoders
 endif
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
@@ -479,7 +481,6 @@ endif
 
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 
-	install -m 0640 -o root -g ${OSSEC_GROUP} ../etc/decoder.xml ${PREFIX}/etc/
 	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_decoder.xml
 
 	rm -f ${PREFIX}/etc/shared/merged.mg
