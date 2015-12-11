@@ -20,6 +20,7 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
     modules |= CMAIL;
 
     Mail->to = NULL;
+    Mail->reply_to = NULL;
     Mail->from = NULL;
     Mail->idsname = NULL;
     Mail->smtpserver = NULL;
