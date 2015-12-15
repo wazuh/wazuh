@@ -19,7 +19,7 @@
   -->
 
 
-<group name="trend_micro,ocse">
+<group name="trend_micro,ocse,">
   <rule id="7600" level="0">
     <decoded_as>trend-osce</decoded_as>
     <description>Grouping of Trend OSCE rules.</description>

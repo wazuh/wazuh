@@ -1,0 +1,41 @@
+<!-- @(#) $Id: decoder.xml,v 1.166 2010/06/15 12:52:01 dcid Exp $
+  -  OSSEC log decoder.
+  -  Author: Daniel B. Cid
+  -  License: http://www.ossec.net/en/licensing.html
+  -->
+
+
+<!--
+   - Allowed fields:
+   - location - where the log came from (only on FTS)
+   - srcuser  - extracts the source username
+   - dstuser  - extracts the destination (target) username
+   - user     - an alias to dstuser (only one of the two can be used)
+   - srcip    - source ip
+   - dstip    - dst ip
+   - srcport  - source port
+   - dstport  - destination port
+   - protocol - protocol
+   - id       - event id
+   - url      - url of the event
+   - action   - event action (deny, drop, accept, etc)
+   - status   - event status (success, failure, etc)
+   - extra_data     - Any extra data
+  -->
+
+
+<!-- AIX IPSec decoder.
+  - Will extract the action,srcip,dstip,protocol,srcport,dstport
+  - Examples:
+  - ipsec_logd: #:3 R:p  I:10.0.0.99 S:10.0.0.82 D:10.0.0.99
+    P:tcp/ack SP:50349 DP:22 R:l I:en0 F:n T:0 L:88
+  - ipsec_logd: #:1 R:p  O:10.0.0.99. S:10.0.0.99 D:10.0.0.25
+    P:udp SP:2063 DP:53 R:l I:en0 F:n T:0 L:81
+ -->
+<decoder name="aix-ipsec">
+   <type>firewall</type>
+   <program_name>^ipsec_logd</program_name>
+   <regex> R:(\w)  \w:\S+ S:(\d+.\d+.\d+.\d+) </regex>
+   <regex>D:(\d+.\d+.\d+.\d+) P:(\S+) SP:(\d+) DP:(\d+) </regex>
+   <order>action,srcip,dstip,protocol,srcport,dstport</order>
+</decoder>

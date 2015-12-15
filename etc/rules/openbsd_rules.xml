@@ -11,7 +11,7 @@
 
   <!-- Modify it at your will. -->
 
-<group name="local,syslog,openbsd">
+<group name="local,syslog,openbsd,">
 
   <rule id="51500" level="0" noalert="1">
     <decoded_as>bsd_kernel</decoded_as>
@@ -208,7 +208,7 @@
     <decoded_as>open-userdel</decoded_as>
     <match>user removed: name=</match>
     <description>User account deleted.</description>
-    <group>account_changed,pci_dss_10.2.5,pci_dss_8.1.2</group>
+    <group>account_changed,pci_dss_10.2.5,pci_dss_8.1.2,</group>
   </rule>
 
   <rule id="51532" level="0">

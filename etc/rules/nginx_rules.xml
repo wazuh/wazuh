@@ -70,7 +70,7 @@
     <if_matched_sid>31315</if_matched_sid>
     <same_source_ip />
     <description>Multiple web authentication failures.</description>
-    <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4</group>
+    <group>authentication_failures,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,</group>
   </rule>
 
   <rule id="31317" level="0">

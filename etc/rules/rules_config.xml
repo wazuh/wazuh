@@ -16,49 +16,49 @@
   -->
 
 
-<group name="syslog">
+<group name="syslog,">
   <rule id="01" level="0" noalert="1">
     <category>syslog</category>
     <description>Generic template for all syslog rules.</description>
   </rule>
 </group>
 
-<group name="firewall">
+<group name="firewall,">
   <rule id="02" level="0" noalert="1">
     <category>firewall</category>
     <description>Generic template for all firewall rules.</description>
   </rule>
 </group>
 
-<group name="ids">
+<group name="ids,">
   <rule id="03" level="0" noalert="1">
     <category>ids</category>
     <description>Generic template for all ids rules.</description>
   </rule>
 </group>
 
-<group name="web-log">
+<group name="web-log,">
   <rule id="04" level="0" noalert="1">
     <category>web-log</category>
     <description>Generic template for all web rules.</description>
   </rule>  
 </group>            
 
-<group name="squid">
+<group name="squid,">
   <rule id="05" level="0" noalert="1">
     <category>squid</category>
     <description>Generic template for all web proxy rules.</description>
   </rule>
 </group>
 
-<group name="windows">
+<group name="windows,">
   <rule id="06" level="0" noalert="1">
     <category>windows</category>
     <description>Generic template for all windows rules.</description>
   </rule>
 </group>            
 
-<group name="ossec">
+<group name="ossec,">
   <rule id="07" level="0" noalert="1">
     <category>ossec</category>
     <description>Generic template for all ossec rules.</description>

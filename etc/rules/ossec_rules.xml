@@ -155,7 +155,7 @@
     <match>ossec: output: 'netstat -tan</match>
     <check_diff />
     <description>Listened ports status (netstat) changed (new port opened or closed).</description> 
-    <group>pci_dss_10.2.7,pci_dss_10.6.1</group>
+    <group>pci_dss_10.2.7,pci_dss_10.6.1,</group>
   </rule>
 
   <rule id="534" level="1">
