@@ -74,6 +74,11 @@ ifeq (${uname_S},FreeBSD)
 		OSSEC_LDFLAGS+=-pthread
 		LUA_PLAT=freebsd
 else
+ifeq (${uname_S},NetBSD)
+		DEFINES+=-DNetBSD
+		OSSEC_LDFLAGS+=-pthread
+		LUA_PLAT=posix
+else
 ifeq (${uname_S},OpenBSD)
 #		DEFINES+=-DOpenBSD
 		DEFINES+=-pthread
@@ -90,6 +95,7 @@ else
 	    # Unknow platform
 endif # HPUX
 endif # OpenBSD
+endif # NetBSD
 endif # FreeBSD
 endif # Darwin
 endif # SunOS
@@ -344,8 +350,6 @@ install-agent: install-common
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
 
-	install -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/tmp
-
 install-local: install-server-generic
 
 install-hybrid: install-server-generic
@@ -379,6 +383,9 @@ install-common: build
 
 	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc
 	install -m 0440 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
+    
+	install -d -m 1550 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
+    
 ifneq (,$(wildcard /etc/TIMEZONE))
 	install -m 440 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
 endif
@@ -423,6 +430,8 @@ endif
 
 
 install-server-generic: install-common
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/ossec_decoders
+	install -d -m 0550 -o root -g ${OSSEC_GROUP} ${PREFIX}/etc/wazuh_decoders
 	install -m 0660 -o ${OSSEC_USER} -g ${OSSEC_GROUP} /dev/null ${PREFIX}/logs/active-responses.log
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/archives
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/logs/alerts
@@ -453,10 +462,14 @@ install-server-generic: install-common
 ifneq (,$(wildcard ${PREFIX}/rules/local_rules.xml))
 	cp ${PREFIX}/rules/local_rules.xml ${PREFIX}/rules/local_rules.xml.installbackup
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/ossec_decoders/*.xml ${PREFIX}/etc/ossec_decoders
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/wazuh_decoders/*.xml ${PREFIX}/etc/wazuh_decoders
 	install -m 0640 -o root -g ${OSSEC_GROUP} ${PREFIX}/rules/local_rules.xml.installbackup ${PREFIX}/rules/local_rules.xml
 	rm ${PREFIX}/rules/local_rules.xml.installbackup
 else
 	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/rules
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/ossec_decoders/*.xml ${PREFIX}/etc/ossec_decoders
+	install -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/wazuh_decoders/*.xml ${PREFIX}/etc/wazuh_decoders
 endif
 
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
@@ -467,11 +480,6 @@ endif
 	install -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agentless
 
 	install -d -m 0750 -o ${OSSEC_USER_REM} -g ${OSSEC_GROUP} ${PREFIX}/queue/rids
-
-	install -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
-
-	install -m 0640 -o root -g ${OSSEC_GROUP} ../etc/decoder.xml ${PREFIX}/etc/
-	install -m 0640 -o root -g ${OSSEC_GROUP} /dev/null ${PREFIX}/etc/local_decoder.xml
 
 	rm -f ${PREFIX}/etc/shared/merged.mg
 

@@ -465,7 +465,7 @@
 
 
 <!-- Adduser messages -->
-<group name="syslog,adduser">
+<group name="syslog,adduser,">
   <rule id="5901" level="8">
     <match>^new group</match>
     <description>New group added to the system</description>
@@ -524,7 +524,7 @@
 
 
 <!-- PPTP messages -->
-<group name="syslog,pptp">
+<group name="syslog,pptp,">
   <rule id="9100" level="0" noalert="1">
     <program_name>^pptpd</program_name>
     <description>PPTPD messages grouped</description>

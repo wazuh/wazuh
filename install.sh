@@ -120,12 +120,13 @@ Install()
 
     # Generate the /etc/ossec-init.conf
     VERSION_FILE="./src/VERSION"
-    WVERSION_FILE="./src/VERSION_WAZUH"
+    WVERSION_FILE="./src/WAZUH_VERSION"
     VERSION=`cat ${VERSION_FILE}`
     WVERSION=`cat ${WVERSION_FILE}`
     chmod 700 ${OSSEC_INIT} > /dev/null 2>&1
     echo "DIRECTORY=\"${INSTALLDIR}\"" > ${OSSEC_INIT}
-    echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}
+    echo "VERSION=\"${VERSION}\"" >> ${OSSEC_INIT}   
+    echo "WAZUH_VERSION=\"${WVERSION}\"" >> ${OSSEC_INIT}
     echo "DATE=\"`date`\"" >> ${OSSEC_INIT}
     echo "TYPE=\"${INSTYPE}\"" >> ${OSSEC_INIT}
     chmod 600 ${OSSEC_INIT}
@@ -545,6 +546,7 @@ ConfigureServer()
     # Writting global parameters
     echo "<ossec_config>" > $NEWCONFIG
     echo "  <global>" >> $NEWCONFIG
+    echo "    <jsonout_output>yes</jsonout_output>" >> $NEWCONFIG
     if [ "$EMAILNOTIFY" = "yes" ]; then
         echo "    <email_notification>yes</email_notification>" >> $NEWCONFIG
         echo "    <email_to>$EMAIL</email_to>" >> $NEWCONFIG

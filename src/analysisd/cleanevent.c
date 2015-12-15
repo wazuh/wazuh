@@ -116,7 +116,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                 ((pieces[19] == '.') &&
                  (pieces[29] == ':') && (lf->log += 32))
             )
-        )
+        ) 
     ) {
         /* Check for an extra space in here */
         if (*lf->log == ' ') {

@@ -408,7 +408,7 @@ void LogCollectorStart()
                     merror(FSTAT_ERROR, ARGV0, logff[i].file, errno, strerror(errno));
                 }
 		if(fclose(tf) == EOF) {
-			merror("Closing the temporary file %s did not work (%d): %s", logff[i].file, errno, strerror);
+			merror("Closing the temporary file %s did not work (%d): %s", logff[i].file, errno, strerror(errno));
 		}
 #else
                 BY_HANDLE_FILE_INFORMATION lpFileInformation;

@@ -12,9 +12,12 @@ $api_port = "55000"
 $api_ip = ""
 $username = ""
 $password = ""
-$ossec_path = "D:\Program Files (x86)\ossec-agent\"
-# Path
 
+# Installation Path
+$ossec_path = "C:\Program Files (x86)\ossec-agent\"
+
+# Executable name
+$exe = "ossec-win32-agent.exe"
 
 if(!(Test-Path -Path $path$file_log)){
 	New-Item -Path $path$file_log -ItemType File
@@ -40,7 +43,7 @@ if ((Test-Admin) -eq $false)  {
 Add-Content -Path $path$file_log -Value "Privileges OK"
 
 # If OSSEC service already exits, do not install.
-Get-Service -Name $ossec_service | Restart-Service -ErrorAction SilentlyContinue
+Get-Service -Name $ossec_service -ErrorAction SilentlyContinue | Restart-Service -ErrorAction SilentlyContinue
 if ($? -eq $true) {
 	Add-Content -Path $path$file_log -Value "ERROR: OSSEC SERVICE already installed."
     Exit
@@ -65,7 +68,6 @@ Add-Content -Path $path$file_log -Value "Certify OK"
 $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$password)))
 
 #Installing Agent Executable
-$exe = "ossec-win32-agent.exe"
 $AllArgs = @('/S')
 $check = Start-Process $exe $AllArgs -Wait -Verb runAs
 Add-Content -Path $path$file_log -Value "OSSEC Installed OK"
@@ -104,6 +106,7 @@ if ($ID) {
 		exit 1001
 	}
 }
+
 Add-Content -Path $path$file_log -Value "Getting KEY OK"
 # API: Import key
 if($key) {
@@ -121,6 +124,9 @@ if($key) {
 	# Start OSSEC Service
 	net start OssecSvc
 	Add-Content -Path $path$file_log -Value "OSSEC SERVICE OK"
+    # Restart Service
+    Start-Sleep -s 5 #wait 5s and restart OSSEC Agent (Better way to send a notification to OSSEC Manager)
+    Get-Service -Name $ossec_service -ErrorAction SilentlyContinue | Restart-Service -ErrorAction SilentlyContinue
 }
 
 

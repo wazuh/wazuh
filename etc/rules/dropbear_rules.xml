@@ -11,7 +11,7 @@
 
 <!-- Modify it at your will. -->
 
-<group name="syslog,sshd,dropbear">
+<group name="syslog,sshd,dropbear,">
 
   <rule id="51000" level="0" noalert="1">
     <decoded_as>dropbear</decoded_as>

@@ -23,6 +23,8 @@ VERSION="v2.8"
 AUTHOR="Trend Micro Inc."
 DAEMONS="ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON}"
 
+[ -f /etc/ossec-init.conf ] && . /etc/ossec-init.conf;
+
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
 LOCK_PID="${LOCK}/pid"

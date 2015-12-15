@@ -126,7 +126,7 @@
   <rule id="7550" level="10" frequency="$MCAFEE_FREQ" timeframe="240">
     <if_matched_sid>7502</if_matched_sid>
     <description>Multiple McAfee AV warning events.</description>
-    <group>pci_dss_5.1,pci_dss_10.6.1</group>
+    <group>pci_dss_5.1,pci_dss_10.6.1,</group>
   </rule>
 
 </group>
