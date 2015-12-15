@@ -441,10 +441,14 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         } else if (strcmp(node[i]->element, xml_smtpserver) == 0) {
 #ifndef WIN32
             if (Mail && (Mail->mn)) {
-                Mail->smtpserver = OS_GetHost(node[i]->content, 5);
-                if (!Mail->smtpserver) {
-                    merror(INVALID_SMTP, __local_name, node[i]->content);
-                    return (OS_INVALID);
+                if (node[i]->content[0] == '/') {
+                    os_strdup(node[i]->content, Mail->smtpserver);
+                } else {
+                    Mail->smtpserver = OS_GetHost(node[i]->content, 5);
+                    if (!Mail->smtpserver) {
+                        merror(INVALID_SMTP, __local_name, node[i]->content);
+                        return (OS_INVALID);
+                    }
                 }
                 free(Mail->smtpserver);
                 os_strdup(node[i]->content, Mail->smtpserver);

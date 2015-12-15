@@ -160,18 +160,21 @@ int main(int argc, char **argv)
         ErrorExit(SETGID_ERROR, ARGV0, group, errno, strerror(errno));
     }
 
-    /* chroot */
-    if (Privsep_Chroot(dir) < 0) {
-        ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+    if (mail.smtpserver[0] != '/') {
+        /* chroot */
+        if (Privsep_Chroot(dir) < 0) {
+            ErrorExit(CHROOT_ERROR, ARGV0, dir, errno, strerror(errno));
+        }
+        nowChroot();
+        debug1(CHROOT_MSG, ARGV0, dir);
     }
-    nowChroot();
 
     /* Change user */
     if (Privsep_SetUser(uid) < 0) {
         ErrorExit(SETUID_ERROR, ARGV0, user, errno, strerror(errno));
     }
 
-    debug1(PRIVSEP_MSG, ARGV0, dir, user);
+    debug1(PRIVSEP_MSG, ARGV0, user);
 
     /* Signal manipulation */
     StartSIG(ARGV0);

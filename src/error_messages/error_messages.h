@@ -258,7 +258,8 @@
 
 /* Verbose messages */
 #define STARTUP_MSG "%s: INFO: Started (pid: %d)."
-#define PRIVSEP_MSG "%s: INFO: Chrooted to directory: %s, using user: %s"
+#define CHROOT_MSG  "%s: INFO: Chrooted to directory: %s"
+#define PRIVSEP_MSG "%s: INFO: Using user: %s"
 #define MSG_SOCKET_SIZE "%s: INFO: (unix_domain) Maximum send buffer set to: '%d'."
 
 #define NO_SYSLOG       "%s(1501): ERROR: No IP or network allowed in the access list" \
