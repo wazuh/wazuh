@@ -93,7 +93,7 @@ void manage_files(int cday, int cmon, int cyear)
              "archive",
              pp_old->tm_mday);
              
-    OS_SignLog(ejlogfile, ejlogfile_old, 1);
+    OS_SignLog(ejlogfile, ejlogfile_old, 0);
     OS_CompressLog(ejlogfile);
 
     
@@ -111,6 +111,7 @@ void manage_files(int cday, int cmon, int cyear)
              months[pp_old->tm_mon],
              "alerts",
              pp_old->tm_mday);
+
     OS_SignLog(alogfile, alogfile_old, 1);
     OS_CompressLog(alogfile);
 
@@ -121,6 +122,7 @@ void manage_files(int cday, int cmon, int cyear)
              months[cmon],
              "alerts",
              cday);
+
     /* alert logfile old  */
     snprintf(ajlogfile_old, OS_FLSIZE, "%s/%d/%s/ossec-%s-%02d.json",
              ALERTS,
@@ -129,8 +131,7 @@ void manage_files(int cday, int cmon, int cyear)
              "alerts",
              pp_old->tm_mday);
 
-    /* Only if there is a file to operate on. */
-    OS_SignLog(ajlogfile, ajlogfile_old, 1);
+    OS_SignLog(ajlogfile, ajlogfile_old, 0);
     OS_CompressLog(ajlogfile);
 
     /* firewall events */
@@ -147,6 +148,7 @@ void manage_files(int cday, int cmon, int cyear)
              months[pp_old->tm_mon],
              "firewall",
              pp_old->tm_mday);
+
     OS_SignLog(flogfile, flogfile_old, 0);
     OS_CompressLog(flogfile);
 
