@@ -1,8 +1,8 @@
 <group name="local,systemd,">
 
   <rule id="40700" level="0">
-    <program_name>^systemd$</program_name>
-    <description>Uh-oh, someone slipped you systemd!</description>
+    <program_name>^systemd$|^systemctl$</program_name>
+    <description>Systemd rules</description>
   </rule>
 
   <rule id="40701" level="0">
@@ -11,6 +11,17 @@
     <description>Stale file handle.</description>
   </rule>
 
+  <rule id="40702" level="2">
+    <if_sid>40700</if_sid>
+    <match>Failed to get unit file state for</match>
+    <description>Failed to get unit state for service. This means that the .service file is missing</description>
+  </rule>
 
+  <rule id="40703" level="5">
+    <if_sid>40700</if_sid>
+    <match>entered failed state</match>
+    <description>Service has entered a failed state, and likely has not started.</description>
+  </rule>
 
 </group>
+
