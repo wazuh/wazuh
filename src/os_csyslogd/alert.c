@@ -101,6 +101,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
                  al_data->rule, al_data->comment,
                  al_data->location
                 );
+        field_add_string(syslog_msg, OS_SIZE_2048, " classification: %s;", al_data->group );
         field_add_string(syslog_msg, OS_SIZE_2048, " srcip: %s;", al_data->srcip );
 #ifdef LIBGEOIP_ENABLED
         field_add_string(syslog_msg, OS_SIZE_2048, " srccity: %s;", al_data->geoipdatasrc );
@@ -125,6 +126,7 @@ int OS_Alert_SendSyslog(alert_data *al_data, const SyslogConfig *syslog_config)
                  al_data->comment,
                  (al_data->level > 10) ? 10 : al_data->level,
                  hostname, al_data->location);
+        field_add_string(syslog_msg, OS_SIZE_2048, " classification=%s", al_data->group );
         field_add_string(syslog_msg, OS_SIZE_2048, " src=%s", al_data->srcip );
         field_add_int(syslog_msg, OS_SIZE_2048, " dpt=%d", al_data->dstport );
         field_add_int(syslog_msg, OS_SIZE_2048, " spt=%d", al_data->srcport );
