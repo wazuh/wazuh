@@ -15,7 +15,7 @@ param (
     [string]$server_ip = $api_ip,
     [string]$agent_name = $env:computername,
 	[string]$ossec_path = $env:SystemDrive+"\ossec-agent\",
-	[string]$ossec_exe = "ossec-win32-agent.exe",
+	[string]$ossec_exe = "",
 	[Int]$prompt_agent_name = 0,
 	[switch]$help
 	
@@ -34,12 +34,12 @@ Site: http://www.wazuh.com"
 		-api_ip Wazuh API IP
 		-username Wazuh API auth https username
 		-password Wazuh API auth https password
+        -ossec_exe Agent installer full path[Default ossec-win32-agent.exe]
 	Optionals:
 		-api_port Wazuh API port [Default 55000]
 		-server_ip OSSEC Manager IP [Default -api_ip]
 		-agent_name OSSEC Agent Name [Default windows hostname]
 		-ossec_path OSSEC Agent installation path [Default Sysdrive:\ossec-agent]
-		-ossec_exe OSSEC Agent executable name [Default ossec-win32-agent.exe]
 		-prompt_agent_name [0/1] In case agent name already exists on OSSEC Manager, prompt to ask Agent Name [default 0]
 		-help Display help
 	"
@@ -68,40 +68,41 @@ if ((Test-Admin) -eq $false)  {
 }
 
 if($api_ip -eq ""){
-	"-api_ip argument is required. Try -Arguments -help to display arguments list"
+	"-api_ip argument is required. Try help to display arguments list"
 	Write-Host "Press any key to continue ..."
 	$x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 	Exit
 }
 if($username -eq ""){
-	"-username argument is required. Try -Arguments -help to display arguments list"
+	"-username argument is required. Try -help to display arguments list"
 	Write-Host "Press any key to continue ..."
 	$x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")	
 	Exit
 }
 if($password -eq ""){
-	"-password argument is required. Try -Arguments -help to display arguments list"
+	"-password argument is required. Try -help to display arguments list"
+	Write-Host "Press any key to continue ..."
+	$x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")	
+	Exit
+}
+if($ossec_exe -eq ""){
+	"-ossec_exe argument is required. Try -help to display arguments list"
 	Write-Host "Press any key to continue ..."
 	$x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")	
 	Exit
 }
 
-
 # Create Log file
 # ps1
-# $path = $PSScriptRoot
-# executable
-$path = $PSScriptRoot
+$path = "."
 
 $file_log = "\add_agent.log"
-$slash = "\"
 
 # Ossec service name
 $ossec_service = 'OssecSvc'
 
-#Executable name
+#Agent installer path and name
 $exe = $ossec_exe
-$exe = $slash+$exe
 
 if(!(Test-Path -Path $path$file_log)){
 	New-Item -Path $path$file_log -ItemType File
@@ -134,9 +135,9 @@ if ($? -eq $true) {
 }
 
 # Verifying executable path
-if(!(Test-Path -Path $path$exe)){
-	Add-Content -Path $path$file_log -Value "OSSEC Executable does not exists: $path$exe"
-	"OSSEC Executable does not exists: $path$exe"
+if(!(Test-Path -Path $exe)){
+	Add-Content -Path $path$file_log -Value "OSSEC Executable does not exists: $exe"
+	"OSSEC Executable does not exists: $exe"
     Exit
 }
 
@@ -164,7 +165,18 @@ $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0
 #Installing Agent Executable
 ############################
 $AllArgs = @('/S /D='+$env:SystemDrive+'\ossec-agent\')
-$check = Start-Process $path$exe $AllArgs -Wait -Verb runAs
+try{
+    $check = Start-Process $exe $AllArgs -Wait -Verb runAs
+}catch{
+    "OSSEC Installation failed"
+    Add-Content -Path $path$file_log -Value "OSSEC Executable does not exists: $exe"
+    "OSSEC Executable does not exists: $exe"
+    $exceptionDetails = $_.Exception
+    Add-Content -Path $path$file_log -Value "$($exceptionDetails)"
+    $exceptionDetails
+    exit 1001
+}
+
 Add-Content -Path $path$file_log -Value "OSSEC Installed OK"
 "OSSEC Installed OK"
 
