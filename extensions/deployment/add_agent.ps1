@@ -1,6 +1,6 @@
 # WAZUH Windows Add Agent Script
 
-# v2.0 2015/12/30
+# v2.1 2015/01/05
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 param (
@@ -28,13 +28,13 @@ API Documentation: http://documentation.wazuh.com/en/latest/ossec_api.html
 Site: http://www.wazuh.com"
 ""
 ""
-	"Usage: add_agent.exe -Arguments -api_ip IP -username USERNAME -password PASSWORD"
+	"Usage: add_agent.ps1 -api_ip IP -username USERNAME -password PASSWORD"
 	"Arguments description:
 	Mandatory:
 		-api_ip Wazuh API IP
 		-username Wazuh API auth https username
 		-password Wazuh API auth https password
-        -ossec_exe Agent installer full path[Default ossec-win32-agent.exe]
+        -ossec_exe OSSEC Agent installer full path [Default ossec-win32-agent.exe]
 	Optionals:
 		-api_port Wazuh API port [Default 55000]
 		-server_ip OSSEC Manager IP [Default -api_ip]
@@ -68,25 +68,25 @@ if ((Test-Admin) -eq $false)  {
 }
 
 if($api_ip -eq ""){
-	"-api_ip argument is required. Try help to display arguments list"
+	"-api_ip is required. Try help to display arguments list"
 	Write-Host "Press any key to continue ..."
 	$x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 	Exit
 }
 if($username -eq ""){
-	"-username argument is required. Try -help to display arguments list"
+	"-username is required. Try -help to display arguments list"
 	Write-Host "Press any key to continue ..."
 	$x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")	
 	Exit
 }
 if($password -eq ""){
-	"-password argument is required. Try -help to display arguments list"
+	"-password is required. Try -help to display arguments list"
 	Write-Host "Press any key to continue ..."
 	$x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")	
 	Exit
 }
 if($ossec_exe -eq ""){
-	"-ossec_exe argument is required. Try -help to display arguments list"
+	"-ossec_exe is required. Try -help to display arguments list"
 	Write-Host "Press any key to continue ..."
 	$x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")	
 	Exit
@@ -160,6 +160,112 @@ Add-Content -Path $path$file_log -Value "Certify OK"
 "Certify OK"
 $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $username,$password)))
 
+############################
+# Aux functions
+############################
+
+function setConnection($User,$Password){
+    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+    $webclient = new-object system.net.webclient;
+    $PWord = ConvertTo-SecureString –String $Password –AsPlainText -Force
+    $Credential = New-Object –TypeName System.Management.Automation.PSCredential –ArgumentList $User, $PWord;
+    $webclient.Credentials = $Credential;
+    return $webclient
+}
+function addAgent($webclient, $api_ip, $api_port, $agent_name, $prompt_agent_name, $path, $file_log){
+
+    $addedOK = 0
+    $ID = "-1"
+    while($addedOK -eq 0){
+        $url = "https://" + $api_ip + ":" + $api_port;
+        $resource = $url + "/agents/add/" + $agent_name
+        try{
+            $response = $webclient.DownloadString($resource);
+            $response = ConvertFrom-Json20($response)
+        }catch{
+            $exceptionDetails = $_.Exception
+            Add-Content -Path $path$file_log -Value "$($exceptionDetails)"
+            Write-Host $exceptionDetails.Message
+            exit 1001
+        }
+        if($response.error -eq 0){
+            $ID = $response.response.id
+            $addedOK = 1
+        }else{
+            Add-Content -Path $path$file_log -Value "$($response.description)"
+            if($prompt_agent_name){
+                Write-Host $response.description
+                $agent_name = AgentName
+            }else{
+                Write-Host $response.description
+                exit 1001
+            }
+        }
+    }
+    return $ID
+
+}
+
+function getKey($webclient, $api_ip, $api_port, $agent_id, $path, $file_log ){
+
+    $key = "-1"
+    $url = "https://" + $api_ip + ":" + $api_port;
+	$resource = $url + "/agents/"+$ID+"/key"
+	try{
+        $response = $webclient.DownloadString($resource);
+        $response = ConvertFrom-Json20($response)
+	}catch{
+		$exceptionDetails = $_.Exception
+		Add-Content -Path $path$file_log -Value "$($exceptionDetails)"
+		Write-Host $exceptionDetails.Message
+		exit 1001
+	}
+	if($response.error -eq 0){
+		$key = $response.response.key
+	}else{
+		Add-Content -Path $path$file_log -Value "$($response.description)"
+		Write-Host $response.description
+		exit 1001
+	}
+    return $key
+}
+
+function importKey($key, $ossec_path, $path, $file_log ){
+    $psi = New-Object System.Diagnostics.ProcessStartInfo;
+    $psi.FileName = $ossec_path+"manage_agents.exe"; #process file_log
+    #Verifying manage_agent path
+    if(!(Test-Path -Path $psi.FileName)){
+        Add-Content -Path $path$file_log -Value $psi.FileName" does not exists"
+		Write-Host $psi.FileName" does not exists"
+        Exit
+    }
+    $psi.UseShellExecute = $false; #start the process from it's own executable file
+    $psi.RedirectStandardInput = $true; #enable the process to read from standard input
+    $psi.Arguments = "-i " + $key
+    $p = [System.Diagnostics.Process]::Start($psi);
+    Start-Sleep -s 2 #wait 2 seconds so that the process can be up and running
+    $p.StandardInput.WriteLine("y");
+    Start-Sleep -s 2 #wait 2 seconds so that the process can be up and running
+    $p.StandardInput.WriteLine("ENTER");
+	Add-Content -Path $path$file_log -Value "Import Key into OSSEC OK"
+    Write-Host "Import Key into OSSEC OK"
+	# Start OSSEC Service
+	net start OssecSvc
+	Add-Content -Path $path$file_log -Value "OSSEC SERVICE OK"
+    Write-Host "OSSEC SERVICE OK"
+    # Restart Service
+    Start-Sleep -s 3 #wait 5s and restart OSSEC Agent (Better way to send a notification to OSSEC Manager)
+    Get-Service -Name $ossec_service -ErrorAction SilentlyContinue | Restart-Service -ErrorAction SilentlyContinue
+	Start-Sleep -s 3 #wait 5s and restart OSSEC Agent (Better way to send a notification to OSSEC Manager)
+    Get-Service -Name $ossec_service -ErrorAction SilentlyContinue | Restart-Service -ErrorAction SilentlyContinue
+    Write-Host "AGENT INSTALLED SUCCESSFULLY"
+}
+
+function ConvertFrom-Json20([object] $item){ 
+    add-type -assembly system.web.extensions 
+    $ps_js=new-object system.web.script.serialization.javascriptSerializer
+    return $ps_js.DeserializeObject($item) 
+}
 
 ############################
 #Installing Agent Executable
@@ -168,13 +274,13 @@ $AllArgs = @('/S /D='+$env:SystemDrive+'\ossec-agent\')
 try{
     $check = Start-Process $exe $AllArgs -Wait -Verb runAs
 }catch{
-    "OSSEC Installation failed"
-    Add-Content -Path $path$file_log -Value "OSSEC Executable does not exists: $exe"
-    "OSSEC Executable does not exists: $exe"
-    $exceptionDetails = $_.Exception
-    Add-Content -Path $path$file_log -Value "$($exceptionDetails)"
-    $exceptionDetails
-    exit 1001
+        "OSSEC Installation failed"
+        Add-Content -Path $path$file_log -Value "OSSEC Executable does not exists: $exe"
+        "OSSEC Executable does not exists: $exe"
+        $exceptionDetails = $_.Exception
+        Add-Content -Path $path$file_log -Value "$($exceptionDetails)"
+		Write-Host $exceptionDetails.Message
+        exit 1001
 }
 
 Add-Content -Path $path$file_log -Value "OSSEC Installed OK"
@@ -201,87 +307,38 @@ if((Test-Path -Path $ossec_path"ossec.conf")){
 if($prompt_agent_name){
     $agent_name = AgentName
 }
+
 ####################
 # API: Adding Agent
 ####################
-$addedOK = 0
-while($addedOK -eq 0){
-    $url = "https://" + $api_ip + ":" + $api_port;
-    $resource = $url + "/agents/add/" + $agent_name
-    try{
-        $response = Invoke-RestMethod -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -Uri $resource
-    }catch{
-        $exceptionDetails = $_.Exception
-        Add-Content -Path $path$file_log -Value "$($exceptionDetails)"
-		$exceptionDetails
-        exit 1001
-    }
-    if($response.error -eq 0){
-        $ID = $response.response.ID
-        $addedOK = 1
-    }else{
-        Add-Content -Path $path$file_log -Value "$($response.description)"
-        if($prompt_agent_name){
-            $response.description
-            $agent_name = AgentName
-        }else{
-			$response.description
-            exit 1001
-        }
-    }
-}
-Add-Content -Path $path$file_log -Value "Adding Agent OK"
-"Adding Agent OK"
+
+$webclient = setConnection $username $password
+$ID = addAgent $webclient $api_ip $api_port $agent_name $prompt_agent_name $path $file_log
 
 ##################
 # API: Getting key
 ##################
-if ($ID) {
-	$resource = $url + "/agents/"+$ID+"/key"
-	try{
-		$response = Invoke-RestMethod -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -Uri $resource
-	}catch{
-		$exceptionDetails = $_.Exception
-		Add-Content -Path $path$file_log -Value "$($exceptionDetails)"
-		$exceptionDetails
-		exit 1001
-	}
-	if($response.error -eq 0){
-		$key = $response.response.key
-	}else{
-		Add-Content -Path $path$file_log -Value "$($response.description)"
-		$response.description
-		exit 1001
-	}
+
+if($ID -ne "-1"){
+    Add-Content -Path $path$file_log -Value "Adding Agent OK"
+    Write-Host "Adding Agent OK"
+    $KEY = getKey $webclient $api_ip $api_port $ID $path $file_log
+}else{
+    Add-Content -Path $path$file_log -Value "Error registering agent, ID not valid, stop."
+    Write-Host "Error registering agent, ID not valid, stop."
+    exit 1001   
 }
-Add-Content -Path $path$file_log -Value "Getting KEY OK"
+
 #################
 # API: Import key
-#################
-if($key) {
-    $psi = New-Object System.Diagnostics.ProcessStartInfo;
-    $psi.FileName = $ossec_path+"manage_agents.exe"; #process file_log
-    #Verifying manage_agent path
-    if(!(Test-Path -Path $psi.FileName)){
-        Add-Content -Path $path$file_log -Value "$psi.FileName does not exists"
-		"$psi.FileName does not exists"
-        Exit
-    }
-    $psi.UseShellExecute = $false; #start the process from it's own executable file
-    $psi.RedirectStandardInput = $true; #enable the process to read from standard input
-    $psi.Arguments = "-i " + $key
-    $p = [System.Diagnostics.Process]::Start($psi);
-    Start-Sleep -s 2 #wait 2 seconds so that the process can be up and running
-    $p.StandardInput.WriteLine("y");
-    Start-Sleep -s 2 #wait 2 seconds so that the process can be up and running
-    $p.StandardInput.WriteLine("ENTER");
-	Add-Content -Path $path$file_log -Value "Import Key OK"
-	# Start OSSEC Service
-	net start OssecSvc
-	Add-Content -Path $path$file_log -Value "OSSEC SERVICE OK"
-    # Restart Service
-    Start-Sleep -s 3 #wait 5s and restart OSSEC Agent (Better way to send a notification to OSSEC Manager)
-    Get-Service -Name $ossec_service -ErrorAction SilentlyContinue | Restart-Service -ErrorAction SilentlyContinue
-	Start-Sleep -s 3 #wait 5s and restart OSSEC Agent (Better way to send a notification to OSSEC Manager)
-    Get-Service -Name $ossec_service -ErrorAction SilentlyContinue | Restart-Service -ErrorAction SilentlyContinue
+################# 
+
+if($KEY -ne "-1"){
+    Add-Content -Path $path$file_log -Value "Getting KEY OK"
+    Write-Host "Getting KEY OK"
+    importKey $KEY $ossec_path $path $file_log
+}else{
+    Add-Content -Path $path$file_log -Value "Error getting key, KEY not valid, stop."
+    Write-Host "Error getting key, KEY not valid, stop."
+    exit 1001  
 }
